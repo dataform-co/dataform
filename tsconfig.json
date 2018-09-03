@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "noImplicitAny": false,
+    "outDir": "build",
+    "baseUrl": ".",
+    "preserveConstEnums": true,
+    "removeComments": true,
+    "target": "ES5",
+    "sourceMap": true,
+    "allowJs": true,
+    "experimentalDecorators": true
+  },
+  "exclude": ["node_modules", "build", "sample"]
+}
