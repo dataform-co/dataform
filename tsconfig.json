@@ -6,10 +6,10 @@
     "baseUrl": ".",
     "preserveConstEnums": true,
     "removeComments": true,
-    "target": "ES5",
+    "target": "ES6",
     "sourceMap": true,
     "allowJs": true,
     "experimentalDecorators": true
   },
-  "exclude": ["node_modules", "build", "sample"]
+  "exclude": ["node_modules", "build"]
 }

@@ -1,9 +1,13 @@
 {
-  "name": "dft",
-  "version": "0.0.1",
-  "description": "Dataform tool",
+  "name": "Dataform",
+  "version": "0.0.2",
+  "description": "Dataform command line utilities.",
   "author": "",
   "license": "ISC",
+  "main": "build/index.js",
+  "bin": {
+    "dft": "build/cli.js"
+  },
   "devDependencies": {
     "@types/node": "^9.6.27",
     "prettier": "^1.14.2",
@@ -11,6 +15,7 @@
   },
   "dependencies": {
     "@types/yargs": "^11.1.1",
+    "glob": "^7.1.3",
     "protobufjs": "^6.8.8",
     "vm2": "^3.6.3",
     "yargs": "^12.0.1"

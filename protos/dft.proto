@@ -1,0 +1,75 @@
+syntax="proto3";
+
+enum WarehouseType {
+  BIGQUERY = 1;
+  REDSHIFT = 2;
+  SNOWFLAKE = 3;
+  POSTGRES = 4;
+}
+
+enum MaterializationType {
+  VIEW = 1;
+  TABLE = 2;
+  INCREMENTAL = 3;
+}
+
+message Target {
+  string schema = 1;
+  string name = 2;
+}
+
+message Operation {
+  string name = 1;
+  repeated string dependencies = 2;
+
+  repeated string statements = 6;
+}
+
+message Materialization {
+  string name = 1;
+  repeated string dependencies = 2;
+
+  MaterializationType type = 3;
+  Target target = 4;
+  string query = 5;
+  bool protected = 9;
+  string partition_by = 10;
+
+  // Incremental only.
+  string where = 8;
+  string unique_key = 15;
+
+  // Pre/post hooks for convenience.
+  repeated string pres = 13;
+  repeated string posts = 14;
+
+  // Generated.
+  repeated string parsed_columns = 12;
+  // Executable only.
+  repeated string compiled_statements = 11;
+}
+
+message Assertion {
+  string name = 1;
+  repeated string dependencies = 2;
+
+  repeated string queries = 3;
+}
+
+message CompiledGraph {
+  repeated Materialization materializations = 1;
+}
+
+message ProjectConfig {
+  WarehouseType warehouse_type = 1;
+  string default_schema = 2;
+
+  repeated string model_paths = 3;
+  repeated string include_paths = 4;
+}
+
+message RunConfig {
+  repeated string nodes = 1;
+  bool include_dependencies = 3;
+  bool full_refresh = 2;
+}

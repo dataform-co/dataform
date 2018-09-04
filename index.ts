@@ -1,54 +1,247 @@
-import * as fs from "fs";
-import * as util from "util";
-import * as yargs from "yargs";
-import * as path from "path";
-import { NodeVM } from "vm2";
-import * as dft from "./dft";
+import * as protos from "./protos";
+import * as adapters from "./adapters";
 
-const argv = yargs.option("project-dir", { describe: "Project directory", default: "." }).argv;
+export class Dft {
+  projectConfig: protos.IProjectConfig;
+  nodes: { [name: string]: Node };
 
-var projectDir = argv["project-dir"];
+  constructor(projectConfig?: protos.IProjectConfig) {
+    this.init(projectConfig);
+  }
 
-const readdir = util.promisify(fs.readdir);
+  init(projectConfig?: protos.IProjectConfig) {
+    this.projectConfig = projectConfig || { defaultSchema: "dataform" };
+    this.nodes = {};
+  }
 
-const vm = new NodeVM({
-  timeout: 1000,
-  wrapper: "none",
-  require: {
-    context: "sandbox",
-    root: "./",
-    external: true,
-    mock: {
-      dft: dft
+  adapter(): adapters.Adapter {
+    return new adapters.GenericAdapter(this.projectConfig);
+  }
+
+  target(name: string, schema?: string) {
+    return protos.Target.create({ name: name, schema: schema || this.projectConfig.defaultSchema });
+  }
+
+  operation(name: string, statements: OContextable<string | string[]>): Operation {
+    var operation = new Operation();
+    operation.dft = this;
+    operation.proto.name = name;
+    operation.contextableStatements = statements;
+    this.nodes[name] = operation;
+    return operation;
+  }
+
+  materialize(name: string) {
+    var materialization = new Materialization();
+    materialization.dft = this;
+    materialization.proto.name = name;
+    materialization.proto.target = this.target(name);
+    // Add it to global index.
+    this.nodes[name] = materialization;
+    return materialization;
+  }
+
+  compile() {
+    return Object.keys(this.nodes).map(key => {
+      this.nodes[key].compile();
+      return this.nodes[key].proto;
+    });
+  }
+
+  build(runConfig: protos.IRunConfig) {
+    this.compile();
+    return Object.keys(this.nodes).map(key => {
+      this.nodes[key].build(runConfig);
+      return this.nodes[key].proto;
+    });
+  }
+}
+
+const global = new Dft();
+
+export const materialize = (name: string) => global.materialize(name);
+export const operation = (name: string, statements: OContextable<string | string[]>) => global.operation(name, statements);
+export const compile = () => global.compile();
+export const build = (runConfig: protos.IRunConfig) => global.build(runConfig);
+export const init = (projectConfig?: protos.IProjectConfig) => global.init(projectConfig);
+
+export interface Node {
+  proto: {
+    name?: string;
+  }
+  compile();
+  build(runConfig: protos.IRunConfig);
+}
+
+export type MContextable<T> = T | ((ctx: MaterializationContext) => T);
+export type OContextable<T> = T | ((ctx: OperationContext) => T);
+
+export class Materialization implements Node {
+  proto: protos.Materialization = protos.Materialization.create({ type: protos.MaterializationType.VIEW });
+
+  // Hold a reference to the Dft instance.
+  dft: Dft;
+
+  // We delay contextification until the final compile step, so hold these here for now.
+  private contextableQuery: MContextable<string>;
+  private contextablePres: MContextable<string | string[]>;
+  private contextablePosts: MContextable<string | string[]>;
+
+  public type(type: protos.MaterializationType) {
+    this.proto.type = type;
+  }
+
+  public query(query: MContextable<string>) {
+    this.contextableQuery = query;
+    return this;
+  }
+
+  public pre(pres: MContextable<string | string[]>) {
+    this.contextablePres = pres;
+    return this;
+  }
+
+  public post(posts: MContextable<string | string[]>) {
+    this.contextablePosts = posts;
+    return this;
+  }
+
+  public dependency(value: string) {
+    this.proto.dependencies.push(value);
+    return this;
+  }
+
+  compile() {
+    var context = new MaterializationContext(this);
+
+    this.proto.query = context.apply(this.contextableQuery);
+    this.contextableQuery = null;
+
+    if (this.contextablePres) {
+      var appliedPres = context.apply(this.contextablePres);
+      this.proto.pres = typeof appliedPres == "string" ? [appliedPres] : appliedPres;
+      this.contextablePres = null;
+    }
+
+    if (this.contextablePosts) {
+      var appliedPosts = context.apply(this.contextablePosts);
+      this.proto.posts = typeof appliedPosts == "string" ? [appliedPosts] : appliedPosts;
+      this.contextablePosts = null;
     }
   }
-});
 
-var walk = function(dir): string[] {
-  var results = [];
-  var list = fs.readdirSync(dir);
-  list.forEach(function(file) {
-    file = dir + "/" + file;
-    var stat = fs.statSync(file);
-    if (stat && stat.isDirectory()) {
-      /* Recurse into a subdirectory */
-      results = results.concat(walk(file));
+  build(runConfig: protos.IRunConfig) {
+    this.proto.compiledStatements = [];
+    this.proto.compiledStatements = this.proto.compiledStatements.concat(this.proto.pres);
+    this.proto.compiledStatements = this.proto.compiledStatements.concat(
+      this.dft.adapter().materializeStatements(this.proto, runConfig)
+    );
+    this.proto.compiledStatements = this.proto.compiledStatements.concat(this.proto.posts);
+  }
+}
+
+export class MaterializationContext {
+  private materialization?: Materialization;
+
+  constructor(materialization: Materialization) {
+    this.materialization = materialization;
+  }
+
+  public this(): string {
+    return this.materialization.dft.adapter().queryableName(this.materialization.proto.target);
+  }
+
+  public ref(name: string) {
+    var refNode = this.materialization.dft.nodes[name];
+    if (refNode && refNode instanceof Materialization) {
+      this.materialization.proto.dependencies.push(name);
+      return this.materialization.dft.adapter().queryableName((refNode as Materialization).proto.target);
     } else {
-      /* Is a file */
-      results.push(file);
+      throw "Could not find reference node";
     }
-  });
-  return results;
-};
+  }
 
-var allFiles = walk(projectDir).map(file => file.substr(projectDir.length + 1, file.length));
-var allImports = allFiles.map(file => {
-  return `require("./${file}");`;
-}).join("\n");
+  public pre(statement: MContextable<string | string[]>) {
+    this.materialization.pre(statement);
+    return "";
+  }
 
-var mainScript = `const dft = require("dft");\ndft.GLOBAL = new dft.Global();\n${allImports}\nreturn dft.GLOBAL;`;
-console.log(mainScript);
+  public post(statement: MContextable<string | string[]>) {
+    this.materialization.post(statement);
+    return "";
+  }
 
-var global = vm.run(mainScript, path.resolve(path.join(projectDir, "main.js")));
+  public dependency(name: string) {
+    this.materialization.proto.dependencies.push(name);
+  }
 
-console.log(JSON.stringify(global));
+  public apply<T>(value: MContextable<T>): T {
+    if (typeof value === "string") {
+      return value;
+    } else {
+      return (value as any)(this);
+    }
+  }
+}
+
+export class Operation implements Node {
+  proto: protos.IOperation = protos.Operation.create();
+
+  // Hold a reference to the Dft instance.
+  dft: Dft;
+
+  // We delay contextification until the final compile step, so hold these here for now.
+  contextableStatements: OContextable<string | string[]>;
+
+  public dependency(value: string) {
+    this.proto.dependencies.push(value);
+    return this;
+  }
+
+  compile() {
+    var context = new OperationContext(this);
+
+    var appliedStatements = context.apply(this.contextableStatements);
+    this.proto.statements = typeof appliedStatements == "string" ? [appliedStatements] : appliedStatements;
+    this.contextableStatements = null;
+  }
+
+  build(runConfig: protos.IRunConfig) {}
+}
+
+export class OperationContext {
+  private operation?: Operation;
+
+  constructor(operation: Operation) {
+    this.operation = operation;
+  }
+
+  public ref(name: string) {
+    var refNode = this.operation.dft.nodes[name];
+    if (refNode && refNode instanceof Materialization) {
+      this.operation.proto.dependencies.push(name);
+      return this.operation.dft.adapter().queryableName((refNode as Materialization).proto.target);
+    } else {
+      throw "Could not find reference node";
+    }
+  }
+
+  public dependency(name: string) {
+    this.operation.proto.dependencies.push(name);
+  }
+
+  public apply<T>(value: OContextable<T>): T {
+    if (typeof value === "string") {
+      return value;
+    } else {
+      return (value as any)(this);
+    }
+  }
+}
+
+export class Assertion implements Node {
+  proto: protos.IAssertion = protos.Assertion.create();
+
+  compile() {}
+  build(runConfig: protos.IRunConfig) {}
+}

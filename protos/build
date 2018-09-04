@@ -1,0 +1,5 @@
+chmod +x node_modules/protobufjs/cli/bin/pbjs
+chmod +x node_modules/protobufjs/cli/bin/pbts
+
+node_modules/protobufjs/cli/bin/pbjs -t static-module -w commonjs -p protos/ -o protos/index.js dft.proto
+node_modules/protobufjs/cli/bin/pbts -o protos/index.d.ts protos/index.js
