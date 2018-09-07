@@ -6,6 +6,7 @@ import * as path from "path";
 import { NodeVM } from "vm2";
 import * as glob from "glob";
 import * as protos from "./protos";
+import * as utils from "./utils";
 
 const argv = yargs.option("project-dir", { describe: "Project directory", default: "." }).argv;
 
@@ -22,16 +23,7 @@ const vm = new NodeVM({
   sourceExtensions: ["js", "sql"],
   compiler: (code, file) => {
     if (file.includes(".sql")) {
-      var pathSplits = file.split("/");
-      var fileBasename = pathSplits[pathSplits.length - 1].split(".")[0];
-      return `materialize("${fileBasename}").query(ctx => {
-        const type = ctx.type.bind(ctx);
-        const post = ctx.post.bind(ctx);
-        const pre = ctx.pre.bind(ctx);
-        const ref = ctx.ref.bind(ctx);
-        const dependency = ctx.dependency.bind(ctx);
-        return \`${code}\`;
-      })`;
+      return utils.compileSql(code, file);
     } else {
       return code;
     }
@@ -39,8 +31,8 @@ const vm = new NodeVM({
 });
 
 var projectConfig = protos.ProjectConfig.create({
-  modelPaths: ["models/*"],
-  includePaths: ["includes/*"]
+  buildPaths: ["models/*"],
+  includePaths: ["includes/*"],
 });
 
 var projectConfigPath = path.join(projectDir, "dataform.json");
@@ -49,15 +41,21 @@ if (fs.existsSync(projectConfigPath)) {
   Object.assign(projectConfig, JSON.parse(fs.readFileSync(projectConfigPath, "utf8")));
 }
 
-var includePaths = glob.sync(projectConfig.includePaths[0], { cwd: projectDir });
-var modelPaths = glob.sync(projectConfig.modelPaths[0], { cwd: projectDir });
+var packageJsonPath = path.join(projectDir, "package.json");
+var packageConfig = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
 
-console.log(includePaths);
-console.log(modelPaths);
+var includePaths = glob.sync(projectConfig.includePaths[0], { cwd: projectDir });
+var modelPaths = glob.sync(projectConfig.buildPaths[0], { cwd: projectDir });
+
+var packageRequires = Object.keys(packageConfig.dependencies)
+  .map(packageName => {
+    return `global.${utils.variableNameFriendly(packageName)} = require("${packageName}");`;
+  })
+  .join("\n");
 
 var includeRequires = includePaths
   .map(path => {
-    return `require("./${path}");`;
+    return `global.${utils.baseFilename(path)} = require("./${path}");`;
   })
   .join("\n");
 var modelRequires = modelPaths
@@ -68,9 +66,11 @@ var modelRequires = modelPaths
 
 var mainScript = `
 const dft = require("dft");
+dft.init(require("./dataform.json"));
+${packageRequires}
 ${includeRequires}
 ${modelRequires}
-return dft.build();`;
+return dft.build({});`;
 
 var output = vm.run(mainScript, path.resolve(path.join(projectDir, "index.js")));
 

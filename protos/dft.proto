@@ -29,7 +29,7 @@ message Materialization {
   string name = 1;
   repeated string dependencies = 2;
 
-  MaterializationType type = 3;
+  string type = 3;
   Target target = 4;
   string query = 5;
   bool protected = 9;
@@ -45,8 +45,9 @@ message Materialization {
 
   // Generated.
   repeated string parsed_columns = 12;
+
   // Executable only.
-  repeated string compiled_statements = 11;
+  repeated string executions = 11;
 }
 
 message Assertion {
@@ -56,16 +57,19 @@ message Assertion {
   repeated string queries = 3;
 }
 
-message CompiledGraph {
+message CompiledNode {
   repeated Materialization materializations = 1;
 }
 
 message ProjectConfig {
-  WarehouseType warehouse_type = 1;
+  string warehouse = 1;
   string default_schema = 2;
+  string assertion_schema = 5;
 
-  repeated string model_paths = 3;
+  repeated string build_paths = 3;
   repeated string include_paths = 4;
+
+  map<string, string> dependencies = 6;
 }
 
 message RunConfig {

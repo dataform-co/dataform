@@ -1,23 +1,16 @@
 import * as protos from "./protos";
 import * as adapters from "./adapters";
+import * as utils from "./utils";
+
+export type WarehouseType = "bigquery" | "redshift" | "postgres" | "snowflake";
+export type MaterializationType = "table" | "view" | "incremental";
 
 if (require.extensions) {
   require.extensions[".sql"] = function(module: any, file: string) {
-    var pathSplits = file.split("/");
-    var fileBasename = pathSplits[pathSplits.length - 1].split(".")[0];
     var oldCompile = module._compile;
     module._compile = function(code, file) {
       module._compile = oldCompile;
-      var newCode = `
-      materialize("${fileBasename}").query(ctx => {
-        const type = ctx.type.bind(ctx);
-        const post = ctx.post.bind(ctx);
-        const pre = ctx.pre.bind(ctx);
-        const ref = ctx.ref.bind(ctx);
-        const dependency = ctx.dependency.bind(ctx);
-        return \`${code}\`;
-      })`;
-      module._compile(newCode, file);
+      module._compile(utils.compileSql(code, file), file);
     };
     require.extensions[".js"](module, file);
   };
@@ -103,23 +96,29 @@ export type MContextable<T> = T | ((ctx: MaterializationContext) => T);
 export type OContextable<T> = T | ((ctx: OperationContext) => T);
 
 export class Materialization implements Node {
-  proto: protos.Materialization = protos.Materialization.create({ type: protos.MaterializationType.VIEW });
+  proto: protos.Materialization = protos.Materialization.create({ type: "view" });
 
   // Hold a reference to the Dft instance.
   dft: Dft;
 
   // We delay contextification until the final compile step, so hold these here for now.
   private contextableQuery: MContextable<string>;
+  private contextableWhere: MContextable<string>;
   private contextablePres: MContextable<string | string[]>;
   private contextablePosts: MContextable<string | string[]>;
 
-  public type(type: string) {
-    this.proto.type = protos.MaterializationType[type.toUpperCase()];
+  public type(type: MaterializationType) {
+    this.proto.type = type;
     return this;
   }
 
   public query(query: MContextable<string>) {
     this.contextableQuery = query;
+    return this;
+  }
+
+  public where(where: MContextable<string>) {
+    this.contextableWhere = where;
     return this;
   }
 
@@ -144,6 +143,9 @@ export class Materialization implements Node {
     this.proto.query = context.apply(this.contextableQuery);
     this.contextableQuery = null;
 
+    this.proto.where = context.apply(this.contextableWhere);
+    this.contextableWhere = null;
+
     if (this.contextablePres) {
       var appliedPres = context.apply(this.contextablePres);
       this.proto.pres = typeof appliedPres == "string" ? [appliedPres] : appliedPres;
@@ -158,12 +160,12 @@ export class Materialization implements Node {
   }
 
   build(runConfig: protos.IRunConfig) {
-    this.proto.compiledStatements = [];
-    this.proto.compiledStatements = this.proto.compiledStatements.concat(this.proto.pres);
-    this.proto.compiledStatements = this.proto.compiledStatements.concat(
+    this.proto.executions = [];
+    this.proto.executions = this.proto.executions.concat(this.proto.pres);
+    this.proto.executions = this.proto.executions.concat(
       this.dft.adapter().materializeStatements(this.proto, runConfig)
     );
-    this.proto.compiledStatements = this.proto.compiledStatements.concat(this.proto.posts);
+    this.proto.executions = this.proto.executions.concat(this.proto.posts);
   }
 }
 
@@ -174,12 +176,7 @@ export class MaterializationContext {
     this.materialization = materialization;
   }
 
-  public type(type: string) {
-    this.materialization.type(type);
-    return "";
-  }
-
-  public this(): string {
+  public self(): string {
     return this.materialization.dft.adapter().queryableName(this.materialization.proto.target);
   }
 
@@ -189,9 +186,18 @@ export class MaterializationContext {
       this.materialization.proto.dependencies.push(name);
       return this.materialization.dft.adapter().queryableName((refNode as Materialization).proto.target);
     } else {
-      var err = `Could not find reference node (${name}) in nodes [${Object.keys(this.materialization.dft.nodes)}]`;
-      throw err;
+      throw `Could not find reference node (${name}) in nodes [${Object.keys(this.materialization.dft.nodes)}]`;
     }
+  }
+
+  public type(type: MaterializationType) {
+    this.materialization.type(type);
+    return "";
+  }
+
+  public where(where: MContextable<string>) {
+    this.materialization.where(where);
+    return "";
   }
 
   public pre(statement: MContextable<string | string[]>) {
@@ -209,10 +215,10 @@ export class MaterializationContext {
   }
 
   public apply<T>(value: MContextable<T>): T {
-    if (typeof value === "string") {
-      return value;
+    if (typeof value === "function") {
+      return value(this);
     } else {
-      return (value as any)(this);
+      return value;
     }
   }
 }

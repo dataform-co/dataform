@@ -18,7 +18,7 @@ export class GenericAdapter implements Adapter {
 
   materializeStatements(m: protos.IMaterialization, runConfig: protos.IRunConfig) {
     var statements: string[] = [];
-    if (m.type == protos.MaterializationType.INCREMENTAL) {
+    if (m.type == "incremental") {
       if (m.protected && runConfig.fullRefresh) {
         throw "Cannot run full-refresh on a protected table.";
       }
@@ -33,11 +33,11 @@ export class GenericAdapter implements Adapter {
       );
       statements.push(`insert ${this.queryableName(m.target)} (v1, v2, v3) select * from (${m.query})`);
     }
-    if (m.type == protos.MaterializationType.TABLE || m.type == protos.MaterializationType.VIEW) {
+    if (m.type == "table" || m.type == "view") {
       statements.push(`drop view if exists ${this.queryableName(m.target)}`);
       statements.push(`drop table if exists ${this.queryableName(m.target)}`);
       statements.push(
-        `create ${m.type == protos.MaterializationType.TABLE ? "table" : "view"} ${this.queryableName(m.target)}
+        `create ${m.type == "table" ? "table" : "view"} ${this.queryableName(m.target)}
          ${m.partitionBy ? `partition by ${m.partitionBy}` : ""}
          as select * from (${m.query})`
       )
