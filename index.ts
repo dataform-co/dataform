@@ -66,8 +66,7 @@ export class Dft {
   build(runConfig: protos.IRunConfig) {
     this.compile();
     return Object.keys(this.nodes).map(key => {
-      this.nodes[key].build(runConfig);
-      return this.nodes[key].proto;
+      return this.nodes[key].build(runConfig);
     });
   }
 }
@@ -89,7 +88,7 @@ export interface Node {
     name?: string;
   };
   compile();
-  build(runConfig: protos.IRunConfig);
+  build(runConfig: protos.IRunConfig): protos.IExecutionNode;
 }
 
 export type MContextable<T> = T | ((ctx: MaterializationContext) => T);
@@ -160,12 +159,13 @@ export class Materialization implements Node {
   }
 
   build(runConfig: protos.IRunConfig) {
-    this.proto.executions = [];
-    this.proto.executions = this.proto.executions.concat(this.proto.pres);
-    this.proto.executions = this.proto.executions.concat(
-      this.dft.adapter().materializeStatements(this.proto, runConfig)
-    );
-    this.proto.executions = this.proto.executions.concat(this.proto.posts);
+    return protos.ExecutionNode.create({
+      name: this.proto.name,
+      dependencies: this.proto.dependencies,
+      tasks: ([] as string[])
+        .concat(this.proto.pres, this.dft.adapter().materializeStatements(this.proto, runConfig), this.proto.posts)
+        .map(statement => ({ type: "statement", statement: statement }))
+    });
   }
 }
 
@@ -245,7 +245,13 @@ export class Operation implements Node {
     this.contextableStatements = null;
   }
 
-  build(runConfig: protos.IRunConfig) {}
+  build(runConfig: protos.IRunConfig) {
+    return protos.ExecutionNode.create({
+      dependencies: this.proto.dependencies,
+      name: this.proto.name,
+      tasks: this.proto.statements.map(statement => ({ type: "statement", statement: statement }))
+    });
+  }
 }
 
 export class OperationContext {
@@ -261,7 +267,7 @@ export class OperationContext {
       this.operation.proto.dependencies.push(name);
       return this.operation.dft.adapter().queryableName((refNode as Materialization).proto.target);
     } else {
-      throw "Could not find reference node";
+      throw `Could not find reference node (${name}) in nodes [${Object.keys(this.operation.dft.nodes)}]`;
     }
   }
 
@@ -282,5 +288,12 @@ export class Assertion implements Node {
   proto: protos.IAssertion = protos.Assertion.create();
 
   compile() {}
-  build(runConfig: protos.IRunConfig) {}
+
+  build(runConfig: protos.IRunConfig) {
+    return protos.ExecutionNode.create({
+      name: this.proto.name,
+      dependencies: this.proto.dependencies,
+      tasks: this.proto.queries.map(query => ({ type: "test", statement: query }))
+    });
+  }
 }

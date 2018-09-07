@@ -45,9 +45,6 @@ message Materialization {
 
   // Generated.
   repeated string parsed_columns = 12;
-
-  // Executable only.
-  repeated string executions = 11;
 }
 
 message Assertion {
@@ -57,8 +54,15 @@ message Assertion {
   repeated string queries = 3;
 }
 
-message CompiledNode {
-  repeated Materialization materializations = 1;
+message ExecutionTask {
+  string type = 1;
+  string statement = 2;
+}
+
+message ExecutionNode {
+  string name = 1;
+  repeated string dependencies = 3;
+  repeated ExecutionTask tasks = 2;
 }
 
 message ProjectConfig {
