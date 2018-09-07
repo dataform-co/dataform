@@ -1,6 +1,28 @@
 import * as protos from "./protos";
 import * as adapters from "./adapters";
 
+if (require.extensions) {
+  require.extensions[".sql"] = function(module: any, file: string) {
+    var pathSplits = file.split("/");
+    var fileBasename = pathSplits[pathSplits.length - 1].split(".")[0];
+    var oldCompile = module._compile;
+    module._compile = function(code, file) {
+      module._compile = oldCompile;
+      var newCode = `
+      materialize("${fileBasename}").query(ctx => {
+        const type = ctx.type.bind(ctx);
+        const post = ctx.post.bind(ctx);
+        const pre = ctx.pre.bind(ctx);
+        const ref = ctx.ref.bind(ctx);
+        const dependency = ctx.dependency.bind(ctx);
+        return \`${code}\`;
+      })`;
+      module._compile(newCode, file);
+    };
+    require.extensions[".js"](module, file);
+  };
+}
+
 export class Dft {
   projectConfig: protos.IProjectConfig;
   nodes: { [name: string]: Node };
@@ -57,18 +79,22 @@ export class Dft {
   }
 }
 
-const global = new Dft();
+const singleton = new Dft();
 
-export const materialize = (name: string) => global.materialize(name);
-export const operation = (name: string, statements: OContextable<string | string[]>) => global.operation(name, statements);
-export const compile = () => global.compile();
-export const build = (runConfig: protos.IRunConfig) => global.build(runConfig);
-export const init = (projectConfig?: protos.IProjectConfig) => global.init(projectConfig);
+export const materialize = (name: string) => singleton.materialize(name);
+export const operation = (name: string, statements: OContextable<string | string[]>) =>
+  singleton.operation(name, statements);
+export const compile = () => singleton.compile();
+export const build = (runConfig: protos.IRunConfig) => singleton.build(runConfig);
+export const init = (projectConfig?: protos.IProjectConfig) => singleton.init(projectConfig);
+
+(global as any).materialize = materialize;
+(global as any).operation = operation;
 
 export interface Node {
   proto: {
     name?: string;
-  }
+  };
   compile();
   build(runConfig: protos.IRunConfig);
 }
@@ -87,8 +113,9 @@ export class Materialization implements Node {
   private contextablePres: MContextable<string | string[]>;
   private contextablePosts: MContextable<string | string[]>;
 
-  public type(type: protos.MaterializationType) {
-    this.proto.type = type;
+  public type(type: string) {
+    this.proto.type = protos.MaterializationType[type.toUpperCase()];
+    return this;
   }
 
   public query(query: MContextable<string>) {
@@ -147,6 +174,11 @@ export class MaterializationContext {
     this.materialization = materialization;
   }
 
+  public type(type: string) {
+    this.materialization.type(type);
+    return "";
+  }
+
   public this(): string {
     return this.materialization.dft.adapter().queryableName(this.materialization.proto.target);
   }
@@ -157,7 +189,8 @@ export class MaterializationContext {
       this.materialization.proto.dependencies.push(name);
       return this.materialization.dft.adapter().queryableName((refNode as Materialization).proto.target);
     } else {
-      throw "Could not find reference node";
+      var err = `Could not find reference node (${name}) in nodes [${Object.keys(this.materialization.dft.nodes)}]`;
+      throw err;
     }
   }
 

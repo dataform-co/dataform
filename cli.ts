@@ -18,6 +18,23 @@ const vm = new NodeVM({
     context: "sandbox",
     root: "./",
     external: true
+  },
+  sourceExtensions: ["js", "sql"],
+  compiler: (code, file) => {
+    if (file.includes(".sql")) {
+      var pathSplits = file.split("/");
+      var fileBasename = pathSplits[pathSplits.length - 1].split(".")[0];
+      return `materialize("${fileBasename}").query(ctx => {
+        const type = ctx.type.bind(ctx);
+        const post = ctx.post.bind(ctx);
+        const pre = ctx.pre.bind(ctx);
+        const ref = ctx.ref.bind(ctx);
+        const dependency = ctx.dependency.bind(ctx);
+        return \`${code}\`;
+      })`;
+    } else {
+      return code;
+    }
   }
 });
 
@@ -51,9 +68,6 @@ var modelRequires = modelPaths
 
 var mainScript = `
 const dft = require("dft");
-global.materialize = dft.materialize;
-global.operation = dft.operation;
-global.assertion = dft.assertion;
 ${includeRequires}
 ${modelRequires}
 return dft.build();`;
