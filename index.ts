@@ -1,6 +1,7 @@
 import * as protos from "./protos";
 import * as adapters from "./adapters";
 import * as utils from "./utils";
+import * as runners from "./runners";
 
 export type WarehouseType = "bigquery" | "redshift" | "postgres" | "snowflake";
 export type MaterializationType = "table" | "view" | "incremental";
