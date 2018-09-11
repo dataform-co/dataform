@@ -44,9 +44,10 @@ message Materialization {
   string where = 8;
   string unique_key = 15;
 
-  // Pre/post hooks for convenience.
+  // Pre/post hooks and assertions for convenience.
   repeated string pres = 13;
   repeated string posts = 14;
+  repeated string assertions = 17;
 
   // Generated.
   repeated string parsed_columns = 12;

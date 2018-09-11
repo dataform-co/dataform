@@ -14,6 +14,7 @@ export function compileSql(code: string, path: string) {
     const dependency = ctx.dependency.bind(ctx);
     const where = ctx.where.bind(ctx);
     const describe = ctx.describe.bind(ctx);
+    const assert = ctx.assert.bind(ctx);
     return \`${code}\`;
   })`;
 }

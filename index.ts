@@ -40,7 +40,7 @@ export class Dft {
     return protos.Target.create({ name: name, schema: schema || this.projectConfig.defaultSchema });
   }
 
-  operation(name: string, statement?: OContextable<string | string[]>): Operation {
+  operate(name: string, statement?: OContextable<string | string[]>): Operation {
     var operation = new Operation();
     operation.dft = this;
     operation.proto.name = name;
@@ -65,6 +65,18 @@ export class Dft {
     return materialization;
   }
 
+  assert(name: string, query?: AContextable<string | string[]>): Assertion {
+    var assertion = new Assertion();
+    assertion.dft = this;
+    assertion.proto.name = name;
+    if (query) {
+      assertion.query(query);
+    }
+    // Add it to global index.
+    this.nodes[name] = assertion;
+    return assertion;
+  }
+
   compile() {
     return Object.keys(this.nodes).map(key => {
       this.nodes[key].compile();
@@ -87,14 +99,16 @@ export class Dft {
 const singleton = new Dft();
 
 export const materialize = (name: string, query?: MContextable<string>) => singleton.materialize(name, query);
-export const operation = (name: string, statement?: OContextable<string | string[]>) =>
-  singleton.operation(name, statement);
+export const operate = (name: string, statement?: OContextable<string | string[]>) =>
+  singleton.operate(name, statement);
+export const assert = (name: string, query?: AContextable<string | string[]>) => singleton.assert(name, query);
 export const compile = () => singleton.compile();
 export const build = (runConfig: protos.IRunConfig) => singleton.build(runConfig);
 export const init = (projectConfig?: protos.IProjectConfig) => singleton.init(projectConfig);
 
 (global as any).materialize = materialize;
-(global as any).operation = operation;
+(global as any).operate = operate;
+(global as any).assert = assert;
 
 export interface Node {
   proto: {
@@ -106,6 +120,7 @@ export interface Node {
 
 export type MContextable<T> = T | ((ctx: MaterializationContext) => T);
 export type OContextable<T> = T | ((ctx: OperationContext) => T);
+export type AContextable<T> = T | ((ctx: AssertionContext) => T);
 
 export class Materialization implements Node {
   proto: protos.Materialization = protos.Materialization.create({ type: "view" });
@@ -118,6 +133,7 @@ export class Materialization implements Node {
   private contextableWhere: MContextable<string>;
   private contextablePres: MContextable<string | string[]>;
   private contextablePosts: MContextable<string | string[]>;
+  private contextableAssertions: MContextable<string | string[]>;
 
   public type(type: MaterializationType) {
     this.proto.type = type;
@@ -142,6 +158,10 @@ export class Materialization implements Node {
   public post(posts: MContextable<string | string[]>) {
     this.contextablePosts = posts;
     return this;
+  }
+
+  public assert(query: MContextable<string | string[]>) {
+    this.contextableAssertions = query;
   }
 
   public dependency(value: string) {
@@ -183,6 +203,12 @@ export class Materialization implements Node {
       this.contextablePosts = null;
     }
 
+    if (this.contextableAssertions) {
+      var appliedAssertions = context.apply(this.contextableAssertions);
+      this.proto.assertions = typeof appliedAssertions == "string" ? [appliedAssertions] : appliedAssertions;
+      this.contextableAssertions = null;
+    }
+
     // Compute columns.
     try {
       var tree = parser.parse(this.proto.query, {});
@@ -202,7 +228,8 @@ export class Materialization implements Node {
       tasks: ([] as protos.IExecutionTask[]).concat(
         this.proto.pres.map(pre => ({ statement: pre })),
         this.dft.adapter().build(this.proto, runConfig),
-        this.proto.posts.map(post => ({ statement: post }))
+        this.proto.posts.map(post => ({ statement: post })),
+        this.proto.assertions.map(assertion => ({ statement: assertion, type: "assertion" }))
       )
     });
   }
@@ -251,6 +278,12 @@ export class MaterializationContext {
 
   public dependency(name: string) {
     this.materialization.proto.dependencies.push(name);
+    return "";
+  }
+
+  public assert(query: MContextable<string | string[]>) {
+    this.materialization.assert(query);
+    return "";
   }
 
   public describe(key: string, description: string);
@@ -340,13 +373,55 @@ export class OperationContext {
 export class Assertion implements Node {
   proto: protos.IAssertion = protos.Assertion.create();
 
-  compile() {}
+  // Hold a reference to the Dft instance.
+  dft: Dft;
+
+  // We delay contextification until the final compile step, so hold these here for now.
+  private contextableQueries: AContextable<string | string[]>;
+
+  public query(query: AContextable<string | string[]>) {
+    this.contextableQueries = query;
+  }
+
+  compile() {
+    var context = new AssertionContext(this);
+
+    var appliedQueries = context.apply(this.contextableQueries);
+    this.proto.queries = typeof appliedQueries == "string" ? [appliedQueries] : appliedQueries;
+    this.contextableQueries = null;
+  }
 
   build(runConfig: protos.IRunConfig) {
     return protos.ExecutionNode.create({
       name: this.proto.name,
       dependencies: this.proto.dependencies,
-      tasks: this.proto.queries.map(query => ({ type: "test", statement: query }))
+      tasks: this.proto.queries.map(query => ({ type: "assertion", statement: query }))
     });
+  }
+}
+
+export class AssertionContext {
+  private assertion?: Assertion;
+
+  constructor(assertion: Assertion) {
+    this.assertion = assertion;
+  }
+
+  public ref(name: string) {
+    var refNode = this.assertion.dft.nodes[name];
+    if (refNode && refNode instanceof Materialization) {
+      this.assertion.proto.dependencies.push(name);
+      return this.assertion.dft.adapter().queryableName((refNode as Materialization).proto.target);
+    } else {
+      throw `Could not find reference node (${name}) in nodes [${Object.keys(this.assertion.dft.nodes)}]`;
+    }
+  }
+
+  public apply<T>(value: AContextable<T>): T {
+    if (typeof value === "string") {
+      return value;
+    } else {
+      return (value as any)(this);
+    }
   }
 }

@@ -59,6 +59,7 @@ export class Executor {
   }
 
   private executeNode(node: protos.IExecutionNode) {
+    // This creates a promise chain that executes all tasks in order.
     var executedTasks = node.tasks
       .reduce((chain, task) => {
         return chain.then(chainResults =>
