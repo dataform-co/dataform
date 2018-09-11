@@ -7,6 +7,27 @@ import { NodeVM } from "vm2";
 import * as glob from "glob";
 import * as protos from "./protos";
 import * as utils from "./utils";
+import * as runners from "./runners";
+import * as testcreds from "./testcreds";
+import { Executor } from "./executor";
+
+const vm = new NodeVM({
+  timeout: 5000,
+  wrapper: "none",
+  require: {
+    context: "sandbox",
+    root: "./",
+    external: true
+  },
+  sourceExtensions: ["js", "sql"],
+  compiler: (code, file) => {
+    if (file.includes(".sql")) {
+      return utils.compileSql(code, file);
+    } else {
+      return code;
+    }
+  }
+});
 
 const argv = yargs
   .option("project-dir", { describe: "The directory of the dataform project to run against", default: "." })
@@ -66,24 +87,6 @@ const argv = yargs
     }
   ).argv;
 
-  const vm = new NodeVM({
-    timeout: 5000,
-    wrapper: "none",
-    require: {
-      context: "sandbox",
-      root: "./",
-      external: true
-    },
-    sourceExtensions: ["js", "sql"],
-    compiler: (code, file) => {
-      if (file.includes(".sql")) {
-        return utils.compileSql(code, file);
-      } else {
-        return code;
-      }
-    }
-  });
-
 function run(
   projectDir: string,
   dryRun: boolean,
@@ -99,11 +102,30 @@ function run(
     includeDependencies: includeDeps,
     nodes: nodes
   };
+  var indexScript = genIndex(projectDir, `dft.build(${JSON.stringify(runConfig)})`);
+  var executionGraph: protos.IExecutionGraph = vm.run(indexScript, path.resolve(path.join(projectDir, "index.js")));
+  if (dryRun) {
+    console.log(JSON.stringify(executionGraph, null, 4));
+    return;
+  }
 
+  var runner = runners.create("bigquery", {
+    bigquery: { projectId: "tada-analytics", keyFile: testcreds.bigquery }
+  });
+
+  new Executor(runner, executionGraph)
+    .execute()
+    .then(executedGraph => console.log(JSON.stringify(executedGraph, null, 4)));
 }
 
 function compile(projectDir: string, runOptions?: protos.IRunConfig) {
+  var indexScript = genIndex(projectDir, "dft.compile()");
+  console.log(indexScript);
+  var output = vm.run(indexScript, path.resolve(path.join(projectDir, "index.js")));
+  console.log(JSON.stringify(output, null, 4));
+}
 
+function genIndex(projectDir: string, returnStatement: string): string {
   var projectConfig = protos.ProjectConfig.create({
     buildPaths: ["models/*"],
     includePaths: ["includes/*"]
@@ -138,15 +160,11 @@ function compile(projectDir: string, runOptions?: protos.IRunConfig) {
     })
     .join("\n");
 
-  var mainScript = `
-const dft = require("dft");
-dft.init(require("./dataform.json"));
-${packageRequires}
-${includeRequires}
-${modelRequires}
-return dft.build({});`;
-
-  var output = vm.run(mainScript, path.resolve(path.join(projectDir, "index.js")));
-
-  console.log(JSON.stringify(output, null, 4));
+  return `
+    const dft = require("dft");
+    dft.init(require("./dataform.json"));
+    ${packageRequires}
+    ${includeRequires}
+    ${modelRequires}
+    return ${returnStatement};`;
 }

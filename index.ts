@@ -3,6 +3,8 @@ import * as adapters from "./adapters";
 import * as utils from "./utils";
 import * as runners from "./runners";
 
+import * as parser from "./parser";
+
 export type WarehouseType = "bigquery" | "redshift" | "postgres" | "snowflake";
 export type MaterializationType = "table" | "view" | "incremental";
 
@@ -38,20 +40,26 @@ export class Dft {
     return protos.Target.create({ name: name, schema: schema || this.projectConfig.defaultSchema });
   }
 
-  operation(name: string, statements: OContextable<string | string[]>): Operation {
+  operation(name: string, statement?: OContextable<string | string[]>): Operation {
     var operation = new Operation();
     operation.dft = this;
     operation.proto.name = name;
-    operation.contextableStatements = statements;
+    if (statement) {
+      operation.statement(statement);
+    }
+    // Add it to global index.
     this.nodes[name] = operation;
     return operation;
   }
 
-  materialize(name: string) {
+  materialize(name: string, query?: MContextable<string>): Materialization {
     var materialization = new Materialization();
     materialization.dft = this;
     materialization.proto.name = name;
     materialization.proto.target = this.target(name);
+    if (query) {
+      materialization.query(query);
+    }
     // Add it to global index.
     this.nodes[name] = materialization;
     return materialization;
@@ -64,19 +72,23 @@ export class Dft {
     });
   }
 
-  build(runConfig: protos.IRunConfig) {
+  build(runConfig: protos.IRunConfig): protos.IExecutionGraph {
     this.compile();
-    return Object.keys(this.nodes).map(key => {
-      return this.nodes[key].build(runConfig);
-    });
+    return {
+      projectConfig: this.projectConfig,
+      runConfig: runConfig,
+      nodes: Object.keys(this.nodes).map(key => {
+        return this.nodes[key].build(runConfig);
+      })
+    };
   }
 }
 
 const singleton = new Dft();
 
-export const materialize = (name: string) => singleton.materialize(name);
-export const operation = (name: string, statements: OContextable<string | string[]>) =>
-  singleton.operation(name, statements);
+export const materialize = (name: string, query?: MContextable<string>) => singleton.materialize(name, query);
+export const operation = (name: string, statement?: OContextable<string | string[]>) =>
+  singleton.operation(name, statement);
 export const compile = () => singleton.compile();
 export const build = (runConfig: protos.IRunConfig) => singleton.build(runConfig);
 export const init = (projectConfig?: protos.IProjectConfig) => singleton.init(projectConfig);
@@ -157,15 +169,28 @@ export class Materialization implements Node {
       this.proto.posts = typeof appliedPosts == "string" ? [appliedPosts] : appliedPosts;
       this.contextablePosts = null;
     }
+
+    // Compute columns.
+    try {
+      var tree = parser.parse(this.proto.query, {});
+      var parsedColumns = tree.statement[0].result.map(res => res.alias);
+      if (parsedColumns.indexOf(null) < 0) {
+        this.proto.parsedColumns = parsedColumns;
+      }
+    } catch (e) {
+      // There was an exception parsing the columns, ignore.
+    }
   }
 
   build(runConfig: protos.IRunConfig) {
     return protos.ExecutionNode.create({
       name: this.proto.name,
       dependencies: this.proto.dependencies,
-      tasks: ([] as string[])
-        .concat(this.proto.pres, this.dft.adapter().materializeStatements(this.proto, runConfig), this.proto.posts)
-        .map(statement => ({ type: "statement", statement: statement }))
+      tasks: ([] as protos.IExecutionTask[]).concat(
+        this.proto.pres.map(pre => ({ statement: pre })),
+        this.dft.adapter().build(this.proto, runConfig),
+        this.proto.posts.map(post => ({ statement: post }))
+      )
     });
   }
 }
@@ -231,7 +256,11 @@ export class Operation implements Node {
   dft: Dft;
 
   // We delay contextification until the final compile step, so hold these here for now.
-  contextableStatements: OContextable<string | string[]>;
+  private contextableStatements: OContextable<string | string[]>;
+
+  public statement(statement: OContextable<string | string[]>) {
+    this.contextableStatements = statement;
+  }
 
   public dependency(value: string) {
     this.proto.dependencies.push(value);

@@ -17,8 +17,8 @@ export class RedshiftRunner implements Runner {
   }
 }
 
-import * as testcreds from "../testcreds";
-
-const runner = new RedshiftRunner({ redshift: testcreds.redshift });
-
-runner.execute("select 1 as test").then(rows => console.log(rows));
+// import * as testcreds from "../testcreds";
+//
+// const runner = new RedshiftRunner({ redshift: testcreds.redshift });
+//
+// runner.execute("select 1 as test").then(rows => console.log(rows));

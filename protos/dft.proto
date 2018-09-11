@@ -57,12 +57,42 @@ message Assertion {
 message ExecutionTask {
   string type = 1;
   string statement = 2;
+  bool ignore_errors = 3;
 }
 
 message ExecutionNode {
   string name = 1;
   repeated string dependencies = 3;
   repeated ExecutionTask tasks = 2;
+}
+
+message ExecutionGraph {
+  ProjectConfig project_config = 1;
+  RunConfig run_config = 2;
+  repeated ExecutionNode nodes = 3;
+}
+
+message ExecutedTask {
+  ExecutionTask task = 1;
+
+  bool ok = 2;
+  string error = 3;
+  string test_results = 4;
+}
+
+message ExecutedNode {
+  string name = 1;
+  repeated ExecutedTask tasks = 2;
+
+  bool ok = 3;
+  bool skipped = 4;
+}
+
+message ExecutedGraph {
+  ProjectConfig project_config = 1;
+  RunConfig run_config = 2;
+
+  repeated ExecutedNode nodes = 3;
 }
 
 message ProjectConfig {

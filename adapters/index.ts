@@ -2,7 +2,7 @@ import * as protos from "../protos";
 
 export interface Adapter {
   queryableName: (target: protos.ITarget) => string;
-  materializeStatements: (materialization: protos.Materialization, runConfig: protos.IRunConfig) => string[];
+  build: (materialization: protos.Materialization, runConfig: protos.IRunConfig) => protos.IExecutionTask[];
 }
 
 export class GenericAdapter implements Adapter {
@@ -13,34 +13,45 @@ export class GenericAdapter implements Adapter {
   }
 
   queryableName(target: protos.ITarget) {
-    return `"${target.schema || this.project.defaultSchema}"."${target.name}"`;
+    return `\`${target.schema || this.project.defaultSchema}.${target.name}\``;
   }
 
-  materializeStatements(m: protos.IMaterialization, runConfig: protos.IRunConfig) {
-    var statements: string[] = [];
+  build(m: protos.IMaterialization, runConfig: protos.IRunConfig): protos.IExecutionTask[] {
+    var statements: protos.IExecutionTask[] = [];
+    statements.push({
+      statement: `drop ${m.type == "view" ? "table" : "view"} if exists ${this.queryableName(m.target)}`,
+      ignoreErrors: true
+    });
     if (m.type == "incremental") {
       if (m.protected && runConfig.fullRefresh) {
         throw "Cannot run full-refresh on a protected table.";
       }
-      // Drop the table if it exists and we are doing a full refresh.
-      if (runConfig.fullRefresh) {
-        statements.push(`drop table if exists ${this.queryableName(m.target)}`);
+      if (!m.parsedColumns || m.parsedColumns.length == 0) {
+        throw "Incremental models must have explicitly named column selects.";
       }
-      statements.push(
-        `create table if not exists ${this.queryableName(m.target)}
+      statements.push({
+        statement: `create ${runConfig.fullRefresh ? "or replace table" : "table if not exists"} ${this.queryableName(
+          m.target
+        )}
          ${m.partitionBy ? `partition by ${m.partitionBy}` : ""}
          as select * from (${m.query}) where false`
-      );
-      statements.push(`insert ${this.queryableName(m.target)} (v1, v2, v3) select * from (${m.query})`);
-    }
-    if (m.type == "table" || m.type == "view") {
-      statements.push(`drop view if exists ${this.queryableName(m.target)}`);
-      statements.push(`drop table if exists ${this.queryableName(m.target)}`);
-      statements.push(
-        `create ${m.type == "table" ? "table" : "view"} ${this.queryableName(m.target)}
-         ${m.partitionBy ? `partition by ${m.partitionBy}` : ""}
-         as select * from (${m.query})`
-      )
+      });
+      statements.push({
+        statement: `
+          insert ${this.queryableName(m.target)} (${m.parsedColumns.join(",")})
+          select * from (
+            ${m.query}
+          ) ${runConfig.fullRefresh ? "" : `where ${m.where}`}`
+      });
+    } else {
+      statements.push({
+        statement: `
+          create or replace ${m.type == "table" ? "table" : "view"} ${this.queryableName(m.target)}
+          ${m.partitionBy ? `partition by ${m.partitionBy}` : ""}
+          as select * from (
+            ${m.query}
+          )`
+      });
     }
     return statements;
   }

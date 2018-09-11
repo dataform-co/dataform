@@ -34,8 +34,8 @@ export class SnowflakeRunner implements Runner {
   }
 }
 
-import * as testcreds from "../testcreds";
-
-const runner = new SnowflakeRunner({ snowflake: testcreds.snowflake });
-
-runner.execute("select 1 as test").then(rows => console.log(rows));
+// import * as testcreds from "../testcreds";
+//
+// const runner = new SnowflakeRunner({ snowflake: testcreds.snowflake });
+//
+// runner.execute("select 1 as test").then(rows => console.log(rows));

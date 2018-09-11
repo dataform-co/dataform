@@ -14,6 +14,7 @@ export class BigQueryRunner implements Runner {
   }
 
   execute(statement: string) {
+    console.log(statement);
     return this.client
       .query({
         useLegacySql: false,
@@ -23,13 +24,13 @@ export class BigQueryRunner implements Runner {
 }
 
 
-import * as testcreds from "../testcreds";
-
-const runner = new BigQueryRunner({
-  bigquery: {
-    projectId: "tada-analytics",
-    keyFile: testcreds.bigquery
-  }
-});
-
-runner.execute("select 1 as test").then(rows => console.log(rows));
+// import * as testcreds from "../testcreds";
+//
+// const runner = new BigQueryRunner({
+//   bigquery: {
+//     projectId: "tada-analytics",
+//     keyFile: testcreds.bigquery
+//   }
+// });
+//
+// runner.execute("select 1 as test").then(rows => console.log(rows));
