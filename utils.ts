@@ -13,6 +13,7 @@ export function compileSql(code: string, path: string) {
     const self = ctx.self.bind(ctx);
     const dependency = ctx.dependency.bind(ctx);
     const where = ctx.where.bind(ctx);
+    const describe = ctx.describe.bind(ctx);
     return \`${code}\`;
   })`;
 }

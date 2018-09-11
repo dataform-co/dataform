@@ -14,7 +14,6 @@ export class BigQueryRunner implements Runner {
   }
 
   execute(statement: string) {
-    console.log(statement);
     return this.client
       .query({
         useLegacySql: false,

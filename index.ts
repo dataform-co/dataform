@@ -149,6 +149,19 @@ export class Materialization implements Node {
     return this;
   }
 
+  public describe(key: string, description: string);
+  public describe(map: { [key: string]: string });
+  public describe(keyOrMap: string | { [key: string]: string }, description?: string) {
+    if (!!this.proto.descriptions) {
+      this.proto.descriptions = {};
+    }
+    if (typeof keyOrMap === "string") {
+      this.proto.descriptions[keyOrMap] = description;
+    } else {
+      Object.assign(this.proto.descriptions, keyOrMap);
+    }
+  }
+
   compile() {
     var context = new MaterializationContext(this);
 
@@ -238,6 +251,16 @@ export class MaterializationContext {
 
   public dependency(name: string) {
     this.materialization.proto.dependencies.push(name);
+  }
+
+  public describe(key: string, description: string);
+  public describe(map: { [key: string]: string });
+  public describe(keyOrMap: string | { [key: string]: string }, description?: string) {
+    this.materialization.describe(keyOrMap as any, description);
+    if (typeof keyOrMap == "string") {
+      return keyOrMap;
+    }
+    return "";
   }
 
   public apply<T>(value: MContextable<T>): T {

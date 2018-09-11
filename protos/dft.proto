@@ -25,6 +25,9 @@ message Operation {
   repeated string statements = 6;
 }
 
+message Description {
+
+}
 message Materialization {
   string name = 1;
   repeated string dependencies = 2;
@@ -34,6 +37,8 @@ message Materialization {
   string query = 5;
   bool protected = 9;
   string partition_by = 10;
+
+  map<string, string> descriptions = 16;
 
   // Incremental only.
   string where = 8;
