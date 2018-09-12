@@ -12,14 +12,12 @@ export class SnowflakeRunner implements Runner {
     this.connection.connect((err, conn) => {
       if (err) {
         console.error("Unable to connect: " + err.message);
-      } else {
-        console.log("Successfully connected as id: " + this.connection.getId());
       }
     });
   }
 
   execute(statement: string) {
-    return new Promise((resolve, reject) => {
+    return new Promise<any[]>((resolve, reject) => {
       this.connection.execute({
         sqlText: statement,
         complete: function(err, _, rows) {
@@ -33,9 +31,3 @@ export class SnowflakeRunner implements Runner {
     });
   }
 }
-
-// import * as testcreds from "../testcreds";
-//
-// const runner = new SnowflakeRunner({ snowflake: testcreds.snowflake });
-//
-// runner.execute("select 1 as test").then(rows => console.log(rows));

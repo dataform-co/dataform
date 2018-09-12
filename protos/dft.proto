@@ -116,4 +116,6 @@ message RunConfig {
   repeated string nodes = 1;
   bool include_dependencies = 3;
   bool full_refresh = 2;
+  bool carry_on = 4;
+  int32 retries = 5;
 }

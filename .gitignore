@@ -2,4 +2,4 @@ build/
 node_modules/
 protos/index.*
 
-testcreds.ts
+test_profiles/

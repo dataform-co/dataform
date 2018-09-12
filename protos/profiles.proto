@@ -32,10 +32,9 @@ message Snowflake {
   string warehouse = 7;
 }
 
-
 message BigQuery {
   string project_id = 1;
-  message KeyFile {
+  message Credentials {
     string type = 1;
     string project_id = 2;
     string private_key_id = 3;
@@ -47,5 +46,5 @@ message BigQuery {
     string auth_provider_x509_cert_url = 9;
     string client_x509_cert_url = 10;
   }
-  KeyFile key_file = 3;
+  Credentials credentials = 3;
 }

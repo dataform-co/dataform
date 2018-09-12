@@ -15,7 +15,11 @@ export class Executor {
     this.pendingNodes = graph.nodes;
   }
 
-  execute(): Promise<protos.IExecutedGraph> {
+  public static execute(runner: runners.Runner, graph: protos.IExecutionGraph) {
+    return new Executor(runner, graph).execute();
+  }
+
+  private execute(): Promise<protos.IExecutedGraph> {
     return new Promise((resolve, reject) => {
       try {
         this.loop(() =>
@@ -36,11 +40,17 @@ export class Executor {
     this.pendingNodes = [];
 
     let allFinishedDeps = this.finishedNodes.map(fn => fn.name);
-    let allSuccessfulDeps = this.finishedNodes.filter(fn => fn.ok).map(fn => fn.name);
+    let allSuccessfulDeps = this.finishedNodes
+      .filter(fn => fn.ok)
+      .map(fn => fn.name);
 
     pendingNodes.forEach(node => {
-      let finishedDeps = node.dependencies.filter(d => allFinishedDeps.indexOf(d) >= 0);
-      let successfulDeps = node.dependencies.filter(d => allSuccessfulDeps.indexOf(d) >= 0);
+      let finishedDeps = node.dependencies.filter(
+        d => allFinishedDeps.indexOf(d) >= 0
+      );
+      let successfulDeps = node.dependencies.filter(
+        d => allSuccessfulDeps.indexOf(d) >= 0
+      );
       if (successfulDeps.length == node.dependencies.length) {
         // All required deps are completed, start this node.
         this.executeNode(node);
@@ -51,7 +61,10 @@ export class Executor {
         this.pendingNodes.push(node);
       }
     });
-    if (this.pendingNodes.length > 0 || this.finishedNodes.length != this.graph.nodes.length) {
+    if (
+      this.pendingNodes.length > 0 ||
+      this.finishedNodes.length != this.graph.nodes.length
+    ) {
       setTimeout(() => this.loop(resolve), 100);
     } else {
       resolve();
@@ -67,7 +80,10 @@ export class Executor {
             .execute(task.statement)
             .then(rows => [...chainResults, { ok: true, task: task }])
             .catch(e => {
-              var newChainResults = [...chainResults, { ok: !!task.ignoreErrors, error: e.message, task: task }];
+              var newChainResults = [
+                ...chainResults,
+                { ok: !!task.ignoreErrors, error: e.message, task: task }
+              ];
               if (task.ignoreErrors) {
                 return newChainResults;
                 // If we can ignore erros on this task, continue.

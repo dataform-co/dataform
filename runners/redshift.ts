@@ -13,12 +13,7 @@ export class RedshiftRunner implements Runner {
 
   execute(statement: string) {
     return this.client
-      .query(statement);
+      .query(statement)
+      .then(result => result.rows);
   }
 }
-
-// import * as testcreds from "../testcreds";
-//
-// const runner = new RedshiftRunner({ redshift: testcreds.redshift });
-//
-// runner.execute("select 1 as test").then(rows => console.log(rows));

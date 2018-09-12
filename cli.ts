@@ -8,210 +8,100 @@ import * as glob from "glob";
 import * as protos from "./protos";
 import * as utils from "./utils";
 import * as runners from "./runners";
-//import * as testcreds from "./testcreds";
 import { Executor } from "./executor";
+import * as commands from "./commands";
 
-const vm = new NodeVM({
-  timeout: 5000,
-  wrapper: "none",
-  require: {
-    context: "sandbox",
-    root: "./",
-    external: true
-  },
-  sourceExtensions: ["js", "sql"],
-  compiler: (code, file) => {
-    if (file.includes(".sql")) {
-      return utils.compileSql(code, file);
-    } else {
-      return code;
-    }
-  }
+const addBuildYargs = (yargs: yargs.Argv) =>
+  yargs
+    .option("full-refresh", {
+      describe: "If set, this will rebuild incremental tables from scratch",
+      type: "boolean",
+      default: false,
+      alias: "fr"
+    })
+    .option("carry-on", {
+      describe:
+        "If set, when a task fails it won't stop dependencies from attempting to run.",
+      type: "boolean",
+      default: false,
+      alias: "co"
+    })
+    .option("retries", {
+      describe: "If set, failing tasks will be retried this many times.",
+      type: "number",
+      default: false,
+      alias: "r"
+    })
+    .option("nodes", {
+      describe: "A list of computation nodes to run. Defaults to all nodes",
+      type: "array"
+    })
+    .option("include-deps", {
+      describe: "If set, dependencies for selected nodes will also be run",
+      type: "boolean",
+      alias: "id"
+    });
+
+const parseBuildArgs = (argv: yargs.Arguments): protos.IRunConfig => ({
+  fullRefresh: argv["full-refresh"],
+  carryOn: argv["carry-on"],
+  retries: argv["retries"],
+  nodes: argv["nodes"],
+  includeDependencies: argv["include-deps"]
 });
 
-const argv = yargs
-  .option("project-dir", { describe: "The directory of the dataform project to run against", default: "." })
+yargs
+  .option("project-dir", {
+    describe: "The directory of the dataform project to run against",
+    default: "."
+  })
   .command(
     "init",
     "Create a new dataform project in the current, or specified directory.",
     yargs => yargs,
-    argv => init(argv["project-dir"])
+    argv => {
+      commands.init(argv["project-dir"]);
+    }
   )
   .command(
     "compile",
-    "Compile the dataform project. Produces JSON output describing the entire computation graph.",
+    "Compile the dataform project. Produces JSON output describing the non-executable graph.",
     yargs => yargs,
-    argv => compile(argv["project-dir"])
+    argv => {
+      console.log(
+        JSON.stringify(commands.compile(argv["project-dir"]), null, 4)
+      );
+    }
+  )
+  .command(
+    "build",
+    "Build the dataform project. Produces JSON output describing the execution graph.",
+    yargs => addBuildYargs(yargs),
+    argv => {
+      console.log(
+        JSON.stringify(
+          commands.build(argv["project-dir"], parseBuildArgs(argv)),
+          null,
+          4
+        )
+      );
+    }
   )
   .command(
     "run",
-    "Will run the computation graph, with the provided options.",
+    "Build and run the dataform project, with the provided options.",
     yargs =>
-      yargs
-        .option("dry-run", {
-          describe: "Prints the executable computation graph without actually running it",
-          type: "boolean",
-          default: false,
-          alias: "dr"
-        })
-        .option("full-refresh", {
-          describe: "If set, this will rebuild incremental tables from scratch",
-          type: "boolean",
-          default: false,
-          alias: "fr"
-        })
-        .option("carry-on", {
-          describe: "If set, when a task fails it won't stop dependencies from attempting to run.",
-          type: "boolean",
-          default: false,
-          alias: "co"
-        })
-        .option("retries", {
-          describe: "If set, failing tasks will be retried this many times.",
-          type: "number",
-          default: false,
-          alias: "r"
-        })
-        .option("profile", { describe: "The location of the profile file to run against" })
-        .option("nodes", { describe: "A list of computation nodes to run. Defaults to all nodes", type: "array" })
-        .option("include-deps", {
-          describe: "If set, dependencies for selected nodes will also be run",
-          type: "boolean",
-          alias: "id"
-        }),
+      addBuildYargs(yargs).option("profile", {
+        describe: "The location of the profile file to run against"
+      }),
     argv => {
-      run(
-        argv["project-dir"],
-        argv["dry-run"],
-        argv["full-refresh"],
-        argv["profile"],
-        argv["nodes"],
-        argv["include-deps"],
-        argv["carry-on"],
-        argv["retries"]
-      );
+      commands
+        .run(
+          commands.build(argv["project-dir"], parseBuildArgs(argv)),
+          protos.Profile.create(
+            JSON.parse(fs.readFileSync(argv["profile"], "utf8"))
+          )
+        )
+        .then(result => console.log(JSON.stringify(result, null, 4)));
     }
   ).argv;
-
-function init(projectDir: string) {
-  var dataformJsonPath = path.join(projectDir, "dataform.json");
-  var packageJsonPath = path.join(projectDir, "dataform.json");
-  if (fs.existsSync(dataformJsonPath) || fs.existsSync(packageJsonPath)) {
-    throw "Cannot init dataform project, this already appears to be an NPM or Dataform directory.";
-  }
-  if (!fs.existsSync(projectDir)) {
-    fs.mkdirSync(projectDir);
-  }
-  fs.writeFileSync(
-    dataformJsonPath,
-    JSON.stringify(
-      protos.ProjectConfig.create({
-        warehouse: "bigquery",
-        defaultSchema: "dataform"
-      }),
-      null,
-      4
-    )
-  );
-  fs.writeFileSync(
-    packageJsonPath,
-    JSON.stringify(
-      {
-        name: utils.baseFilename(path.resolve(projectDir)),
-        version: "0.0.1",
-        description: "New Dataform project.",
-        license: "ISC",
-        bin: {
-          dft: "build/cli.js"
-        },
-        dependencies: {
-          dft: "^0.0.1"
-        }
-      },
-      null,
-      4
-    )
-  );
-}
-
-function run(
-  projectDir: string,
-  dryRun: boolean,
-  fullRefresh: boolean,
-  profile: string,
-  nodes: string[],
-  includeDeps: boolean,
-  carryOn: boolean,
-  retries: number
-) {
-  var runConfig: protos.IRunConfig = {
-    fullRefresh: fullRefresh,
-    includeDependencies: includeDeps,
-    nodes: nodes
-  };
-  var indexScript = genIndex(projectDir, `dft.build(${JSON.stringify(runConfig)})`);
-  var executionGraph: protos.IExecutionGraph = vm.run(indexScript, path.resolve(path.join(projectDir, "index.js")));
-  if (dryRun) {
-    console.log(JSON.stringify(executionGraph, null, 4));
-    return;
-  }
-
-  var runner = runners.create("bigquery", {
-    //bigquery: { projectId: "tada-analytics", keyFile: testcreds.bigquery }
-  });
-
-  new Executor(runner, executionGraph)
-    .execute()
-    .then(executedGraph => console.log(JSON.stringify(executedGraph, null, 4)));
-}
-
-function compile(projectDir: string, runOptions?: protos.IRunConfig) {
-  var indexScript = genIndex(projectDir, "dft.compile()");
-  console.log(indexScript);
-  var output = vm.run(indexScript, path.resolve(path.join(projectDir, "index.js")));
-  console.log(JSON.stringify(output, null, 4));
-}
-
-function genIndex(projectDir: string, returnStatement: string): string {
-  var projectConfig = protos.ProjectConfig.create({
-    buildPaths: ["models/*"],
-    includePaths: ["includes/*"]
-  });
-
-  var projectConfigPath = path.join(projectDir, "dataform.json");
-
-  if (fs.existsSync(projectConfigPath)) {
-    Object.assign(projectConfig, JSON.parse(fs.readFileSync(projectConfigPath, "utf8")));
-  }
-
-  var packageJsonPath = path.join(projectDir, "package.json");
-  var packageConfig = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
-
-  var includePaths = glob.sync(projectConfig.includePaths[0], { cwd: projectDir });
-  var modelPaths = glob.sync(projectConfig.buildPaths[0], { cwd: projectDir });
-
-  var packageRequires = Object.keys(packageConfig.dependencies || {})
-    .map(packageName => {
-      return `global.${utils.variableNameFriendly(packageName)} = require("${packageName}");`;
-    })
-    .join("\n");
-
-  var includeRequires = includePaths
-    .map(path => {
-      return `global.${utils.baseFilename(path)} = require("./${path}");`;
-    })
-    .join("\n");
-  var modelRequires = modelPaths
-    .map(path => {
-      return `require("./${path}");`;
-    })
-    .join("\n");
-
-  return `
-    const dft = require("dft");
-    dft.init(require("./dataform.json"));
-    ${packageRequires}
-    ${includeRequires}
-    ${modelRequires}
-    return ${returnStatement};`;
-}

@@ -1,8 +1,6 @@
 import * as protos from "./protos";
 import * as adapters from "./adapters";
 import * as utils from "./utils";
-import * as runners from "./runners";
-
 import * as parser from "./parser";
 
 export type WarehouseType = "bigquery" | "redshift" | "postgres" | "snowflake";
@@ -33,7 +31,7 @@ export class Dft {
   }
 
   adapter(): adapters.Adapter {
-    return new adapters.GenericAdapter(this.projectConfig);
+    return adapters.create(this.projectConfig);
   }
 
   target(name: string, schema?: string) {
