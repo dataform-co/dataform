@@ -8,7 +8,7 @@ import * as glob from "glob";
 import * as protos from "./protos";
 import * as utils from "./utils";
 import * as runners from "./runners";
-import * as testcreds from "./testcreds";
+//import * as testcreds from "./testcreds";
 import { Executor } from "./executor";
 
 const vm = new NodeVM({
@@ -31,6 +31,12 @@ const vm = new NodeVM({
 
 const argv = yargs
   .option("project-dir", { describe: "The directory of the dataform project to run against", default: "." })
+  .command(
+    "init",
+    "Create a new dataform project in the current, or specified directory.",
+    yargs => yargs,
+    argv => init(argv["project-dir"])
+  )
   .command(
     "compile",
     "Compile the dataform project. Produces JSON output describing the entire computation graph.",
@@ -87,6 +93,47 @@ const argv = yargs
     }
   ).argv;
 
+function init(projectDir: string) {
+  var dataformJsonPath = path.join(projectDir, "dataform.json");
+  var packageJsonPath = path.join(projectDir, "dataform.json");
+  if (fs.existsSync(dataformJsonPath) || fs.existsSync(packageJsonPath)) {
+    throw "Cannot init dataform project, this already appears to be an NPM or Dataform directory.";
+  }
+  if (!fs.existsSync(projectDir)) {
+    fs.mkdirSync(projectDir);
+  }
+  fs.writeFileSync(
+    dataformJsonPath,
+    JSON.stringify(
+      protos.ProjectConfig.create({
+        warehouse: "bigquery",
+        defaultSchema: "dataform"
+      }),
+      null,
+      4
+    )
+  );
+  fs.writeFileSync(
+    packageJsonPath,
+    JSON.stringify(
+      {
+        name: utils.baseFilename(path.resolve(projectDir)),
+        version: "0.0.1",
+        description: "New Dataform project.",
+        license: "ISC",
+        bin: {
+          dft: "build/cli.js"
+        },
+        dependencies: {
+          dft: "^0.0.1"
+        }
+      },
+      null,
+      4
+    )
+  );
+}
+
 function run(
   projectDir: string,
   dryRun: boolean,
@@ -110,7 +157,7 @@ function run(
   }
 
   var runner = runners.create("bigquery", {
-    bigquery: { projectId: "tada-analytics", keyFile: testcreds.bigquery }
+    //bigquery: { projectId: "tada-analytics", keyFile: testcreds.bigquery }
   });
 
   new Executor(runner, executionGraph)
