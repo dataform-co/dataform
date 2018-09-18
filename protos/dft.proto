@@ -106,7 +106,7 @@ message ProjectConfig {
   string default_schema = 2;
   string assertion_schema = 5;
 
-  repeated string build_paths = 3;
+  repeated string dataset_paths = 3;
   repeated string include_paths = 4;
 
   map<string, string> dependencies = 6;

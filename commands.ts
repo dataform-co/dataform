@@ -9,6 +9,7 @@ import * as protos from "./protos";
 import * as utils from "./utils";
 import * as runners from "./runners";
 import { Executor } from "./executor";
+import * as childProcess from "child_process";
 
 const vm = new NodeVM({
   timeout: 5000,
@@ -30,7 +31,7 @@ const vm = new NodeVM({
 
 export function init(projectDir: string) {
   var dataformJsonPath = path.join(projectDir, "dataform.json");
-  var packageJsonPath = path.join(projectDir, "dataform.json");
+  var packageJsonPath = path.join(projectDir, "package.json");
   if (fs.existsSync(dataformJsonPath) || fs.existsSync(packageJsonPath)) {
     throw "Cannot init dataform project, this already appears to be an NPM or Dataform directory.";
   }
@@ -46,7 +47,7 @@ export function init(projectDir: string) {
       }),
       null,
       4
-    )
+    ) + "\n"
   );
   fs.writeFileSync(
     packageJsonPath,
@@ -55,25 +56,34 @@ export function init(projectDir: string) {
         name: utils.baseFilename(path.resolve(projectDir)),
         version: "0.0.1",
         description: "New Dataform project.",
-        license: "ISC",
-        bin: {
-          dft: "build/cli.js"
-        },
         dependencies: {
           dft: "^0.0.1"
         }
       },
       null,
       4
-    )
+    ) + "\n"
   );
+  // Make the default datasets, includes folders.
+  fs.mkdirSync(path.join(projectDir, "datasets"));
+  fs.mkdirSync(path.join(projectDir, "includes"));
+  // Run npm i in the directory.
+  util
+    .promisify(childProcess.exec)("npm i", { cwd: path.resolve(projectDir) })
+    .catch(e => {
+      console.log(e);
+      console.log("Failed to initialize project.");
+    });
 }
 
 export function run(
   graph: protos.IExecutionGraph,
   profile: protos.IProfile
 ): Promise<protos.IExecutedGraph> {
-  return Executor.execute(runners.create(graph.projectConfig.warehouse, profile), graph);
+  return Executor.execute(
+    runners.create(graph.projectConfig.warehouse, profile),
+    graph
+  );
 }
 
 export function build(
@@ -96,12 +106,11 @@ export function compile(
 
 function genIndex(projectDir: string, returnStatement: string): string {
   var projectConfig = protos.ProjectConfig.create({
-    buildPaths: ["models/*"],
+    datasetPaths: ["datasets/*"],
     includePaths: ["includes/*"]
   });
 
   var projectConfigPath = path.join(projectDir, "dataform.json");
-
   if (fs.existsSync(projectConfigPath)) {
     Object.assign(
       projectConfig,
@@ -112,10 +121,22 @@ function genIndex(projectDir: string, returnStatement: string): string {
   var packageJsonPath = path.join(projectDir, "package.json");
   var packageConfig = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
 
-  var includePaths = glob.sync(projectConfig.includePaths[0], {
-    cwd: projectDir
-  });
-  var modelPaths = glob.sync(projectConfig.buildPaths[0], { cwd: projectDir });
+  var includePaths = [];
+  projectConfig.includePaths.forEach(pathPattern =>
+    glob.sync(pathPattern, { cwd: projectDir }).forEach(path => {
+      if (includePaths.indexOf(path) < 0) {
+        includePaths.push(path);
+      }
+    })
+  );
+  var datasetPaths = [];
+  projectConfig.datasetPaths.forEach(pathPattern =>
+    glob.sync(pathPattern, { cwd: projectDir }).forEach(path => {
+      if (datasetPaths.indexOf(path) < 0) {
+        datasetPaths.push(path);
+      }
+    })
+  );
 
   var packageRequires = Object.keys(packageConfig.dependencies || {})
     .map(packageName => {
@@ -130,7 +151,7 @@ function genIndex(projectDir: string, returnStatement: string): string {
       return `global.${utils.baseFilename(path)} = require("./${path}");`;
     })
     .join("\n");
-  var modelRequires = modelPaths
+  var datasetRequires = datasetPaths
     .map(path => {
       return `require("./${path}");`;
     })
@@ -141,6 +162,6 @@ function genIndex(projectDir: string, returnStatement: string): string {
     dft.init(require("./dataform.json"));
     ${packageRequires}
     ${includeRequires}
-    ${modelRequires}
+    ${datasetRequires}
     return ${returnStatement};`;
 }

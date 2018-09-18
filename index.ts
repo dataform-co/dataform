@@ -17,6 +17,26 @@ if (require.extensions) {
   };
 }
 
+function simplePatternToRegex(pattern: string) {
+  return new RegExp(
+    "^" +
+      pattern
+        .replace(/[.+?^${}()|[\]\\]/g, "\\$&")
+        .split("*")
+        .join(".*") +
+      "$"
+  );
+}
+
+function matchesAny(regexps: RegExp[], value) {
+  for (let i in regexps) {
+    if (regexps[i].test(value)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 export class Dft {
   projectConfig: protos.IProjectConfig;
   nodes: { [name: string]: Node };
@@ -35,10 +55,16 @@ export class Dft {
   }
 
   target(name: string, schema?: string) {
-    return protos.Target.create({ name: name, schema: schema || this.projectConfig.defaultSchema });
+    return protos.Target.create({
+      name: name,
+      schema: schema || this.projectConfig.defaultSchema
+    });
   }
 
-  operate(name: string, statement?: OContextable<string | string[]>): Operation {
+  operate(
+    name: string,
+    statement?: OContextable<string | string[]>
+  ): Operation {
     var operation = new Operation();
     operation.dft = this;
     operation.proto.name = name;
@@ -84,11 +110,40 @@ export class Dft {
 
   build(runConfig: protos.IRunConfig): protos.IExecutionGraph {
     this.compile();
+    var nodeRegexps = (runConfig.nodes || []).map(pattern =>
+      simplePatternToRegex(pattern)
+    );
+    var includedNodeNames = Object.keys(this.nodes).filter(
+      name => nodeRegexps.length == 0 || matchesAny(nodeRegexps, name)
+    );
+    if (runConfig.includeDependencies) {
+      // Compute all transitive dependencies.
+      for (let i = 0; i < Object.keys(this.nodes).length; i++) {
+        includedNodeNames.forEach(includedName => {
+          var dependencyRegexps = this.nodes[
+            includedName
+          ].proto.dependencies.map(dep => simplePatternToRegex(dep));
+          var matchingNodeNames = Object.keys(this.nodes).filter(key =>
+            matchesAny(dependencyRegexps, key)
+          );
+          matchingNodeNames.forEach(nodeName => {
+            if (includedNodeNames.indexOf(nodeName) < 0) {
+              includedNodeNames.push(nodeName);
+            }
+          });
+        });
+      }
+    }
     return {
       projectConfig: this.projectConfig,
       runConfig: runConfig,
-      nodes: Object.keys(this.nodes).map(key => {
-        return this.nodes[key].build(runConfig);
+      nodes: includedNodeNames.map(key => {
+        var node = this.nodes[key].build(runConfig);
+        // Remove any excluded dependencies and evaluate wildcard dependencies.
+        node.dependencies = node.dependencies.filter(
+          dep => includedNodeNames.indexOf(dep) >= 0
+        );
+        return node;
       })
     };
   }
@@ -96,13 +151,19 @@ export class Dft {
 
 const singleton = new Dft();
 
-export const materialize = (name: string, query?: MContextable<string>) => singleton.materialize(name, query);
-export const operate = (name: string, statement?: OContextable<string | string[]>) =>
-  singleton.operate(name, statement);
-export const assert = (name: string, query?: AContextable<string | string[]>) => singleton.assert(name, query);
+export const materialize = (name: string, query?: MContextable<string>) =>
+  singleton.materialize(name, query);
+export const operate = (
+  name: string,
+  statement?: OContextable<string | string[]>
+) => singleton.operate(name, statement);
+export const assert = (name: string, query?: AContextable<string | string[]>) =>
+  singleton.assert(name, query);
 export const compile = () => singleton.compile();
-export const build = (runConfig: protos.IRunConfig) => singleton.build(runConfig);
-export const init = (projectConfig?: protos.IProjectConfig) => singleton.init(projectConfig);
+export const build = (runConfig: protos.IRunConfig) =>
+  singleton.build(runConfig);
+export const init = (projectConfig?: protos.IProjectConfig) =>
+  singleton.init(projectConfig);
 
 (global as any).materialize = materialize;
 (global as any).operate = operate;
@@ -111,6 +172,7 @@ export const init = (projectConfig?: protos.IProjectConfig) => singleton.init(pr
 export interface Node {
   proto: {
     name?: string;
+    dependencies?: string[];
   };
   compile();
   build(runConfig: protos.IRunConfig): protos.IExecutionNode;
@@ -121,7 +183,9 @@ export type OContextable<T> = T | ((ctx: OperationContext) => T);
 export type AContextable<T> = T | ((ctx: AssertionContext) => T);
 
 export class Materialization implements Node {
-  proto: protos.Materialization = protos.Materialization.create({ type: "view" });
+  proto: protos.Materialization = protos.Materialization.create({
+    type: "view"
+  });
 
   // Hold a reference to the Dft instance.
   dft: Dft;
@@ -169,7 +233,10 @@ export class Materialization implements Node {
 
   public describe(key: string, description: string);
   public describe(map: { [key: string]: string });
-  public describe(keyOrMap: string | { [key: string]: string }, description?: string) {
+  public describe(
+    keyOrMap: string | { [key: string]: string },
+    description?: string
+  ) {
     if (!!this.proto.descriptions) {
       this.proto.descriptions = {};
     }
@@ -191,19 +258,24 @@ export class Materialization implements Node {
 
     if (this.contextablePres) {
       var appliedPres = context.apply(this.contextablePres);
-      this.proto.pres = typeof appliedPres == "string" ? [appliedPres] : appliedPres;
+      this.proto.pres =
+        typeof appliedPres == "string" ? [appliedPres] : appliedPres;
       this.contextablePres = null;
     }
 
     if (this.contextablePosts) {
       var appliedPosts = context.apply(this.contextablePosts);
-      this.proto.posts = typeof appliedPosts == "string" ? [appliedPosts] : appliedPosts;
+      this.proto.posts =
+        typeof appliedPosts == "string" ? [appliedPosts] : appliedPosts;
       this.contextablePosts = null;
     }
 
     if (this.contextableAssertions) {
       var appliedAssertions = context.apply(this.contextableAssertions);
-      this.proto.assertions = typeof appliedAssertions == "string" ? [appliedAssertions] : appliedAssertions;
+      this.proto.assertions =
+        typeof appliedAssertions == "string"
+          ? [appliedAssertions]
+          : appliedAssertions;
       this.contextableAssertions = null;
     }
 
@@ -227,7 +299,10 @@ export class Materialization implements Node {
         this.proto.pres.map(pre => ({ statement: pre })),
         this.dft.adapter().build(this.proto, runConfig),
         this.proto.posts.map(post => ({ statement: post })),
-        this.proto.assertions.map(assertion => ({ statement: assertion, type: "assertion" }))
+        this.proto.assertions.map(assertion => ({
+          statement: assertion,
+          type: "assertion"
+        }))
       )
     });
   }
@@ -241,16 +316,22 @@ export class MaterializationContext {
   }
 
   public self(): string {
-    return this.materialization.dft.adapter().queryableName(this.materialization.proto.target);
+    return this.materialization.dft
+      .adapter()
+      .queryableName(this.materialization.proto.target);
   }
 
   public ref(name: string) {
     var refNode = this.materialization.dft.nodes[name];
     if (refNode && refNode instanceof Materialization) {
       this.materialization.proto.dependencies.push(name);
-      return this.materialization.dft.adapter().queryableName((refNode as Materialization).proto.target);
+      return this.materialization.dft
+        .adapter()
+        .queryableName((refNode as Materialization).proto.target);
     } else {
-      throw `Could not find reference node (${name}) in nodes [${Object.keys(this.materialization.dft.nodes)}]`;
+      throw `Could not find reference node (${name}) in nodes [${Object.keys(
+        this.materialization.dft.nodes
+      )}]`;
     }
   }
 
@@ -286,7 +367,10 @@ export class MaterializationContext {
 
   public describe(key: string, description: string);
   public describe(map: { [key: string]: string });
-  public describe(keyOrMap: string | { [key: string]: string }, description?: string) {
+  public describe(
+    keyOrMap: string | { [key: string]: string },
+    description?: string
+  ) {
     this.materialization.describe(keyOrMap as any, description);
     if (typeof keyOrMap == "string") {
       return keyOrMap;
@@ -325,7 +409,10 @@ export class Operation implements Node {
     var context = new OperationContext(this);
 
     var appliedStatements = context.apply(this.contextableStatements);
-    this.proto.statements = typeof appliedStatements == "string" ? [appliedStatements] : appliedStatements;
+    this.proto.statements =
+      typeof appliedStatements == "string"
+        ? [appliedStatements]
+        : appliedStatements;
     this.contextableStatements = null;
   }
 
@@ -333,7 +420,10 @@ export class Operation implements Node {
     return protos.ExecutionNode.create({
       dependencies: this.proto.dependencies,
       name: this.proto.name,
-      tasks: this.proto.statements.map(statement => ({ type: "statement", statement: statement }))
+      tasks: this.proto.statements.map(statement => ({
+        type: "statement",
+        statement: statement
+      }))
     });
   }
 }
@@ -349,9 +439,13 @@ export class OperationContext {
     var refNode = this.operation.dft.nodes[name];
     if (refNode && refNode instanceof Materialization) {
       this.operation.proto.dependencies.push(name);
-      return this.operation.dft.adapter().queryableName((refNode as Materialization).proto.target);
+      return this.operation.dft
+        .adapter()
+        .queryableName((refNode as Materialization).proto.target);
     } else {
-      throw `Could not find reference node (${name}) in nodes [${Object.keys(this.operation.dft.nodes)}]`;
+      throw `Could not find reference node (${name}) in nodes [${Object.keys(
+        this.operation.dft.nodes
+      )}]`;
     }
   }
 
@@ -385,7 +479,8 @@ export class Assertion implements Node {
     var context = new AssertionContext(this);
 
     var appliedQueries = context.apply(this.contextableQueries);
-    this.proto.queries = typeof appliedQueries == "string" ? [appliedQueries] : appliedQueries;
+    this.proto.queries =
+      typeof appliedQueries == "string" ? [appliedQueries] : appliedQueries;
     this.contextableQueries = null;
   }
 
@@ -393,7 +488,10 @@ export class Assertion implements Node {
     return protos.ExecutionNode.create({
       name: this.proto.name,
       dependencies: this.proto.dependencies,
-      tasks: this.proto.queries.map(query => ({ type: "assertion", statement: query }))
+      tasks: this.proto.queries.map(query => ({
+        type: "assertion",
+        statement: query
+      }))
     });
   }
 }
@@ -409,9 +507,13 @@ export class AssertionContext {
     var refNode = this.assertion.dft.nodes[name];
     if (refNode && refNode instanceof Materialization) {
       this.assertion.proto.dependencies.push(name);
-      return this.assertion.dft.adapter().queryableName((refNode as Materialization).proto.target);
+      return this.assertion.dft
+        .adapter()
+        .queryableName((refNode as Materialization).proto.target);
     } else {
-      throw `Could not find reference node (${name}) in nodes [${Object.keys(this.assertion.dft.nodes)}]`;
+      throw `Could not find reference node (${name}) in nodes [${Object.keys(
+        this.assertion.dft.nodes
+      )}]`;
     }
   }
 

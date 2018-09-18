@@ -1,6 +1,8 @@
 import * as runners from "./runners";
 import * as protos from "./protos";
 
+
+
 export class Executor {
   private runner: runners.Runner;
   private graph: protos.IExecutionGraph;
@@ -84,7 +86,7 @@ export class Executor {
                 ...chainResults,
                 { ok: !!task.ignoreErrors, error: e.message, task: task }
               ];
-              if (task.ignoreErrors) {
+              if (task.ignoreErrors || this.graph.runConfig.carryOn) {
                 return newChainResults;
                 // If we can ignore erros on this task, continue.
               } else {

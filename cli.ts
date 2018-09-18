@@ -21,20 +21,21 @@ const addBuildYargs = (yargs: yargs.Argv) =>
     })
     .option("carry-on", {
       describe:
-        "If set, when a task fails it won't stop dependencies from attempting to run.",
+        "If set, when a task fails it won't stop dependencies from attempting to run",
       type: "boolean",
       default: false,
       alias: "co"
     })
     .option("retries", {
-      describe: "If set, failing tasks will be retried this many times.",
+      describe: "If set, failing tasks will be retried this many times",
       type: "number",
       default: false,
       alias: "r"
     })
     .option("nodes", {
       describe: "A list of computation nodes to run. Defaults to all nodes",
-      type: "array"
+      type: "array",
+      alias: "n"
     })
     .option("include-deps", {
       describe: "If set, dependencies for selected nodes will also be run",
@@ -51,22 +52,26 @@ const parseBuildArgs = (argv: yargs.Arguments): protos.IRunConfig => ({
 });
 
 yargs
-  .option("project-dir", {
-    describe: "The directory of the dataform project to run against",
-    default: "."
-  })
   .command(
-    "init",
+    "init [project-dir]",
     "Create a new dataform project in the current, or specified directory.",
-    yargs => yargs,
+    yargs =>
+      yargs.positional("project-dir", {
+        describe: "The directory in which to create the Dataform project.",
+        default: "."
+      }),
     argv => {
       commands.init(argv["project-dir"]);
     }
   )
   .command(
-    "compile",
+    "compile [project-dir]",
     "Compile the dataform project. Produces JSON output describing the non-executable graph.",
-    yargs => yargs,
+    yargs =>
+      yargs.positional("project-dir", {
+        describe: "The directory of the Dataform project.",
+        default: "."
+      }),
     argv => {
       console.log(
         JSON.stringify(commands.compile(argv["project-dir"]), null, 4)
@@ -74,9 +79,13 @@ yargs
     }
   )
   .command(
-    "build",
+    "build [project-dir]",
     "Build the dataform project. Produces JSON output describing the execution graph.",
-    yargs => addBuildYargs(yargs),
+    yargs =>
+      addBuildYargs(yargs).positional("project-dir", {
+        describe: "The directory of the Dataform project.",
+        default: "."
+      }),
     argv => {
       console.log(
         JSON.stringify(
@@ -88,12 +97,18 @@ yargs
     }
   )
   .command(
-    "run",
-    "Build and run the dataform project, with the provided options.",
+    "run [project-dir]",
+    "Build and run the dataform project with the provided options.",
     yargs =>
-      addBuildYargs(yargs).option("profile", {
-        describe: "The location of the profile file to run against"
-      }),
+      addBuildYargs(yargs)
+        .positional("project-dir", {
+          describe: "The directory of the Dataform project.",
+          default: "."
+        })
+        .option("profile", {
+          describe: "The location of the profile JSON file to run against",
+          required: true
+        }),
     argv => {
       commands
         .run(
