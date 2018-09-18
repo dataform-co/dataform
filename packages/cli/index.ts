@@ -5,8 +5,7 @@ import * as yargs from "yargs";
 import * as path from "path";
 import { NodeVM } from "vm2";
 import * as glob from "glob";
-import * as protos from "./protos";
-import * as utils from "./utils";
+import { protos, utils } from "@dataform/core";
 import * as runners from "./runners";
 import { Executor } from "./executor";
 import * as commands from "./commands";
@@ -26,14 +25,8 @@ const addBuildYargs = (yargs: yargs.Argv) =>
       default: false,
       alias: "co"
     })
-    .option("retries", {
-      describe: "If set, failing tasks will be retried this many times",
-      type: "number",
-      default: false,
-      alias: "r"
-    })
     .option("nodes", {
-      describe: "A list of computation nodes to run. Defaults to all nodes",
+      describe: "A list of node names or patterns to run, which can include * wildcards",
       type: "array",
       alias: "n"
     })
@@ -46,7 +39,6 @@ const addBuildYargs = (yargs: yargs.Argv) =>
 const parseBuildArgs = (argv: yargs.Arguments): protos.IRunConfig => ({
   fullRefresh: argv["full-refresh"],
   carryOn: argv["carry-on"],
-  retries: argv["retries"],
   nodes: argv["nodes"],
   includeDependencies: argv["include-deps"]
 });

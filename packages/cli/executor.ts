@@ -1,8 +1,6 @@
 import * as runners from "./runners";
 import * as protos from "./protos";
 
-
-
 export class Executor {
   private runner: runners.Runner;
   private graph: protos.IExecutionGraph;
@@ -77,8 +75,9 @@ export class Executor {
     // This creates a promise chain that executes all tasks in order.
     var executedTasks = node.tasks
       .reduce((chain, task) => {
-        return chain.then(chainResults =>
-          this.runner
+        return chain.then(chainResults => {
+          // Create another promise chain for retries, if we allow them.
+          return this.runner
             .execute(task.statement)
             .then(rows => [...chainResults, { ok: true, task: task }])
             .catch(e => {
@@ -93,8 +92,8 @@ export class Executor {
                 // This task is not allowed to fail, kill the promise chain.
                 throw newChainResults;
               }
-            })
-        );
+            });
+        });
       }, Promise.resolve([] as protos.IExecutedTask[]))
       .then(results => {
         this.finishedNodes.push({ name: node.name, ok: true, tasks: results });

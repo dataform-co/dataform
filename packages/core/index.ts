@@ -3,6 +3,8 @@ import * as adapters from "./adapters";
 import * as utils from "./utils";
 import * as parser from "./parser";
 
+export { protos, adapters, utils, parser };
+
 export type WarehouseType = "bigquery" | "redshift" | "postgres" | "snowflake";
 export type MaterializationType = "table" | "view" | "incremental";
 
@@ -17,7 +19,7 @@ if (require.extensions) {
   };
 }
 
-function simplePatternToRegex(pattern: string) {
+function patternToRegex(pattern: string) {
   return new RegExp(
     "^" +
       pattern
@@ -28,13 +30,11 @@ function simplePatternToRegex(pattern: string) {
   );
 }
 
-function matchesAny(regexps: RegExp[], value) {
-  for (let i in regexps) {
-    if (regexps[i].test(value)) {
-      return true;
-    }
-  }
-  return false;
+function matchPatterns(patterns: string[], values: string[]) {
+  var regexps = patterns.map(pattern => patternToRegex(pattern));
+  return values.filter(
+    value => regexps.filter(regexp => regexp.test(value)).length > 0
+  );
 }
 
 export class Dft {
@@ -110,22 +110,19 @@ export class Dft {
 
   build(runConfig: protos.IRunConfig): protos.IExecutionGraph {
     this.compile();
-    var nodeRegexps = (runConfig.nodes || []).map(pattern =>
-      simplePatternToRegex(pattern)
-    );
-    var includedNodeNames = Object.keys(this.nodes).filter(
-      name => nodeRegexps.length == 0 || matchesAny(nodeRegexps, name)
-    );
+    var includedNodeNames =
+      runConfig.nodes && runConfig.nodes.length > 0
+        ? matchPatterns(runConfig.nodes, Object.keys(this.nodes))
+        : Object.keys(this.nodes);
     if (runConfig.includeDependencies) {
       // Compute all transitive dependencies.
       for (let i = 0; i < Object.keys(this.nodes).length; i++) {
         includedNodeNames.forEach(includedName => {
-          var dependencyRegexps = this.nodes[
-            includedName
-          ].proto.dependencies.map(dep => simplePatternToRegex(dep));
-          var matchingNodeNames = Object.keys(this.nodes).filter(key =>
-            matchesAny(dependencyRegexps, key)
-          );
+          var node = this.nodes[includedName].proto;
+          var matchingNodeNames =
+            node.dependencies && node.dependencies.length > 0
+              ? matchPatterns(node.dependencies, Object.keys(this.nodes))
+              : [];
           matchingNodeNames.forEach(nodeName => {
             if (includedNodeNames.indexOf(nodeName) < 0) {
               includedNodeNames.push(nodeName);
@@ -140,9 +137,7 @@ export class Dft {
       nodes: includedNodeNames.map(key => {
         var node = this.nodes[key].build(runConfig);
         // Remove any excluded dependencies and evaluate wildcard dependencies.
-        node.dependencies = node.dependencies.filter(
-          dep => includedNodeNames.indexOf(dep) >= 0
-        );
+        node.dependencies = matchPatterns(node.dependencies, includedNodeNames);
         return node;
       })
     };

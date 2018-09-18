@@ -1,0 +1,6 @@
+{
+  "name": "@dataform/core",
+  "version": "0.0.1",
+  "description": "Dataform core API.",
+  "main": "build/index.js"
+}
