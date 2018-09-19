@@ -9,6 +9,7 @@ import { protos, utils } from "@dataform/core";
 import * as runners from "./runners";
 import { Executor } from "./executor";
 import * as childProcess from "child_process";
+import * as builder from "./builder";
 
 const vm = new NodeVM({
   timeout: 5000,
@@ -86,25 +87,18 @@ export function run(
 }
 
 export function build(
-  projectDir: string,
+  compiledGraph: protos.ICompiledGraph,
   runConfig?: protos.IRunConfig
 ): protos.IExecutionGraph {
-  var indexScript = genIndex(
-    projectDir,
-    `dft.build(${JSON.stringify(runConfig)})`
-  );
+  return builder.build(compiledGraph, runConfig);
+}
+
+export function compile(projectDir: string): protos.ICompiledGraph {
+  var indexScript = genCompileIndex(projectDir);
   return vm.run(indexScript, path.resolve(path.join(projectDir, "index.js")));
 }
 
-export function compile(
-  projectDir: string
-): (protos.IMaterialization | protos.IOperation | protos.IAssertion)[] {
-  var indexScript = genIndex(projectDir, "dft.compile()");
-  console.log(indexScript);
-  return vm.run(indexScript, path.resolve(path.join(projectDir, "index.js")));
-}
-
-function genIndex(projectDir: string, returnStatement: string): string {
+function genCompileIndex(projectDir: string): string {
   var projectConfig = protos.ProjectConfig.create({
     datasetPaths: ["datasets/*"],
     includePaths: ["includes/*"]
@@ -158,10 +152,10 @@ function genIndex(projectDir: string, returnStatement: string): string {
     .join("\n");
 
   return `
-    const dft = require("@dataform/core");
-    dft.init(require("./dataform.json"));
+    const dataformcore = require("@dataform/core");
+    dataformcore.init(require("./dataform.json"));
     ${packageRequires}
     ${includeRequires}
     ${datasetRequires}
-    return ${returnStatement};`;
+    return dataformcore.compile();`;
 }

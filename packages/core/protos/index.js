@@ -9,38 +9,358 @@ var $Reader = $protobuf.Reader, $Writer = $protobuf.Writer, $util = $protobuf.ut
 // Exported root namespace
 var $root = $protobuf.roots["default"] || ($protobuf.roots["default"] = {});
 
-/**
- * WarehouseType enum.
- * @exports WarehouseType
- * @enum {string}
- * @property {number} BIGQUERY=1 BIGQUERY value
- * @property {number} REDSHIFT=2 REDSHIFT value
- * @property {number} SNOWFLAKE=3 SNOWFLAKE value
- * @property {number} POSTGRES=4 POSTGRES value
- */
-$root.WarehouseType = (function() {
-    var valuesById = {}, values = Object.create(valuesById);
-    values[valuesById[1] = "BIGQUERY"] = 1;
-    values[valuesById[2] = "REDSHIFT"] = 2;
-    values[valuesById[3] = "SNOWFLAKE"] = 3;
-    values[valuesById[4] = "POSTGRES"] = 4;
-    return values;
-})();
+$root.ProjectConfig = (function() {
 
-/**
- * MaterializationType enum.
- * @exports MaterializationType
- * @enum {string}
- * @property {number} VIEW=1 VIEW value
- * @property {number} TABLE=2 TABLE value
- * @property {number} INCREMENTAL=3 INCREMENTAL value
- */
-$root.MaterializationType = (function() {
-    var valuesById = {}, values = Object.create(valuesById);
-    values[valuesById[1] = "VIEW"] = 1;
-    values[valuesById[2] = "TABLE"] = 2;
-    values[valuesById[3] = "INCREMENTAL"] = 3;
-    return values;
+    /**
+     * Properties of a ProjectConfig.
+     * @exports IProjectConfig
+     * @interface IProjectConfig
+     * @property {string|null} [warehouse] ProjectConfig warehouse
+     * @property {string|null} [defaultSchema] ProjectConfig defaultSchema
+     * @property {string|null} [assertionSchema] ProjectConfig assertionSchema
+     * @property {Array.<string>|null} [datasetPaths] ProjectConfig datasetPaths
+     * @property {Array.<string>|null} [includePaths] ProjectConfig includePaths
+     * @property {Object.<string,string>|null} [dependencies] ProjectConfig dependencies
+     */
+
+    /**
+     * Constructs a new ProjectConfig.
+     * @exports ProjectConfig
+     * @classdesc Represents a ProjectConfig.
+     * @implements IProjectConfig
+     * @constructor
+     * @param {IProjectConfig=} [properties] Properties to set
+     */
+    function ProjectConfig(properties) {
+        this.datasetPaths = [];
+        this.includePaths = [];
+        this.dependencies = {};
+        if (properties)
+            for (var keys = Object.keys(properties), i = 0; i < keys.length; ++i)
+                if (properties[keys[i]] != null)
+                    this[keys[i]] = properties[keys[i]];
+    }
+
+    /**
+     * ProjectConfig warehouse.
+     * @member {string} warehouse
+     * @memberof ProjectConfig
+     * @instance
+     */
+    ProjectConfig.prototype.warehouse = "";
+
+    /**
+     * ProjectConfig defaultSchema.
+     * @member {string} defaultSchema
+     * @memberof ProjectConfig
+     * @instance
+     */
+    ProjectConfig.prototype.defaultSchema = "";
+
+    /**
+     * ProjectConfig assertionSchema.
+     * @member {string} assertionSchema
+     * @memberof ProjectConfig
+     * @instance
+     */
+    ProjectConfig.prototype.assertionSchema = "";
+
+    /**
+     * ProjectConfig datasetPaths.
+     * @member {Array.<string>} datasetPaths
+     * @memberof ProjectConfig
+     * @instance
+     */
+    ProjectConfig.prototype.datasetPaths = $util.emptyArray;
+
+    /**
+     * ProjectConfig includePaths.
+     * @member {Array.<string>} includePaths
+     * @memberof ProjectConfig
+     * @instance
+     */
+    ProjectConfig.prototype.includePaths = $util.emptyArray;
+
+    /**
+     * ProjectConfig dependencies.
+     * @member {Object.<string,string>} dependencies
+     * @memberof ProjectConfig
+     * @instance
+     */
+    ProjectConfig.prototype.dependencies = $util.emptyObject;
+
+    /**
+     * Creates a new ProjectConfig instance using the specified properties.
+     * @function create
+     * @memberof ProjectConfig
+     * @static
+     * @param {IProjectConfig=} [properties] Properties to set
+     * @returns {ProjectConfig} ProjectConfig instance
+     */
+    ProjectConfig.create = function create(properties) {
+        return new ProjectConfig(properties);
+    };
+
+    /**
+     * Encodes the specified ProjectConfig message. Does not implicitly {@link ProjectConfig.verify|verify} messages.
+     * @function encode
+     * @memberof ProjectConfig
+     * @static
+     * @param {IProjectConfig} message ProjectConfig message or plain object to encode
+     * @param {$protobuf.Writer} [writer] Writer to encode to
+     * @returns {$protobuf.Writer} Writer
+     */
+    ProjectConfig.encode = function encode(message, writer) {
+        if (!writer)
+            writer = $Writer.create();
+        if (message.warehouse != null && message.hasOwnProperty("warehouse"))
+            writer.uint32(/* id 1, wireType 2 =*/10).string(message.warehouse);
+        if (message.defaultSchema != null && message.hasOwnProperty("defaultSchema"))
+            writer.uint32(/* id 2, wireType 2 =*/18).string(message.defaultSchema);
+        if (message.datasetPaths != null && message.datasetPaths.length)
+            for (var i = 0; i < message.datasetPaths.length; ++i)
+                writer.uint32(/* id 3, wireType 2 =*/26).string(message.datasetPaths[i]);
+        if (message.includePaths != null && message.includePaths.length)
+            for (var i = 0; i < message.includePaths.length; ++i)
+                writer.uint32(/* id 4, wireType 2 =*/34).string(message.includePaths[i]);
+        if (message.assertionSchema != null && message.hasOwnProperty("assertionSchema"))
+            writer.uint32(/* id 5, wireType 2 =*/42).string(message.assertionSchema);
+        if (message.dependencies != null && message.hasOwnProperty("dependencies"))
+            for (var keys = Object.keys(message.dependencies), i = 0; i < keys.length; ++i)
+                writer.uint32(/* id 6, wireType 2 =*/50).fork().uint32(/* id 1, wireType 2 =*/10).string(keys[i]).uint32(/* id 2, wireType 2 =*/18).string(message.dependencies[keys[i]]).ldelim();
+        return writer;
+    };
+
+    /**
+     * Encodes the specified ProjectConfig message, length delimited. Does not implicitly {@link ProjectConfig.verify|verify} messages.
+     * @function encodeDelimited
+     * @memberof ProjectConfig
+     * @static
+     * @param {IProjectConfig} message ProjectConfig message or plain object to encode
+     * @param {$protobuf.Writer} [writer] Writer to encode to
+     * @returns {$protobuf.Writer} Writer
+     */
+    ProjectConfig.encodeDelimited = function encodeDelimited(message, writer) {
+        return this.encode(message, writer).ldelim();
+    };
+
+    /**
+     * Decodes a ProjectConfig message from the specified reader or buffer.
+     * @function decode
+     * @memberof ProjectConfig
+     * @static
+     * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+     * @param {number} [length] Message length if known beforehand
+     * @returns {ProjectConfig} ProjectConfig
+     * @throws {Error} If the payload is not a reader or valid buffer
+     * @throws {$protobuf.util.ProtocolError} If required fields are missing
+     */
+    ProjectConfig.decode = function decode(reader, length) {
+        if (!(reader instanceof $Reader))
+            reader = $Reader.create(reader);
+        var end = length === undefined ? reader.len : reader.pos + length, message = new $root.ProjectConfig(), key;
+        while (reader.pos < end) {
+            var tag = reader.uint32();
+            switch (tag >>> 3) {
+            case 1:
+                message.warehouse = reader.string();
+                break;
+            case 2:
+                message.defaultSchema = reader.string();
+                break;
+            case 5:
+                message.assertionSchema = reader.string();
+                break;
+            case 3:
+                if (!(message.datasetPaths && message.datasetPaths.length))
+                    message.datasetPaths = [];
+                message.datasetPaths.push(reader.string());
+                break;
+            case 4:
+                if (!(message.includePaths && message.includePaths.length))
+                    message.includePaths = [];
+                message.includePaths.push(reader.string());
+                break;
+            case 6:
+                reader.skip().pos++;
+                if (message.dependencies === $util.emptyObject)
+                    message.dependencies = {};
+                key = reader.string();
+                reader.pos++;
+                message.dependencies[key] = reader.string();
+                break;
+            default:
+                reader.skipType(tag & 7);
+                break;
+            }
+        }
+        return message;
+    };
+
+    /**
+     * Decodes a ProjectConfig message from the specified reader or buffer, length delimited.
+     * @function decodeDelimited
+     * @memberof ProjectConfig
+     * @static
+     * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+     * @returns {ProjectConfig} ProjectConfig
+     * @throws {Error} If the payload is not a reader or valid buffer
+     * @throws {$protobuf.util.ProtocolError} If required fields are missing
+     */
+    ProjectConfig.decodeDelimited = function decodeDelimited(reader) {
+        if (!(reader instanceof $Reader))
+            reader = new $Reader(reader);
+        return this.decode(reader, reader.uint32());
+    };
+
+    /**
+     * Verifies a ProjectConfig message.
+     * @function verify
+     * @memberof ProjectConfig
+     * @static
+     * @param {Object.<string,*>} message Plain object to verify
+     * @returns {string|null} `null` if valid, otherwise the reason why it is not
+     */
+    ProjectConfig.verify = function verify(message) {
+        if (typeof message !== "object" || message === null)
+            return "object expected";
+        if (message.warehouse != null && message.hasOwnProperty("warehouse"))
+            if (!$util.isString(message.warehouse))
+                return "warehouse: string expected";
+        if (message.defaultSchema != null && message.hasOwnProperty("defaultSchema"))
+            if (!$util.isString(message.defaultSchema))
+                return "defaultSchema: string expected";
+        if (message.assertionSchema != null && message.hasOwnProperty("assertionSchema"))
+            if (!$util.isString(message.assertionSchema))
+                return "assertionSchema: string expected";
+        if (message.datasetPaths != null && message.hasOwnProperty("datasetPaths")) {
+            if (!Array.isArray(message.datasetPaths))
+                return "datasetPaths: array expected";
+            for (var i = 0; i < message.datasetPaths.length; ++i)
+                if (!$util.isString(message.datasetPaths[i]))
+                    return "datasetPaths: string[] expected";
+        }
+        if (message.includePaths != null && message.hasOwnProperty("includePaths")) {
+            if (!Array.isArray(message.includePaths))
+                return "includePaths: array expected";
+            for (var i = 0; i < message.includePaths.length; ++i)
+                if (!$util.isString(message.includePaths[i]))
+                    return "includePaths: string[] expected";
+        }
+        if (message.dependencies != null && message.hasOwnProperty("dependencies")) {
+            if (!$util.isObject(message.dependencies))
+                return "dependencies: object expected";
+            var key = Object.keys(message.dependencies);
+            for (var i = 0; i < key.length; ++i)
+                if (!$util.isString(message.dependencies[key[i]]))
+                    return "dependencies: string{k:string} expected";
+        }
+        return null;
+    };
+
+    /**
+     * Creates a ProjectConfig message from a plain object. Also converts values to their respective internal types.
+     * @function fromObject
+     * @memberof ProjectConfig
+     * @static
+     * @param {Object.<string,*>} object Plain object
+     * @returns {ProjectConfig} ProjectConfig
+     */
+    ProjectConfig.fromObject = function fromObject(object) {
+        if (object instanceof $root.ProjectConfig)
+            return object;
+        var message = new $root.ProjectConfig();
+        if (object.warehouse != null)
+            message.warehouse = String(object.warehouse);
+        if (object.defaultSchema != null)
+            message.defaultSchema = String(object.defaultSchema);
+        if (object.assertionSchema != null)
+            message.assertionSchema = String(object.assertionSchema);
+        if (object.datasetPaths) {
+            if (!Array.isArray(object.datasetPaths))
+                throw TypeError(".ProjectConfig.datasetPaths: array expected");
+            message.datasetPaths = [];
+            for (var i = 0; i < object.datasetPaths.length; ++i)
+                message.datasetPaths[i] = String(object.datasetPaths[i]);
+        }
+        if (object.includePaths) {
+            if (!Array.isArray(object.includePaths))
+                throw TypeError(".ProjectConfig.includePaths: array expected");
+            message.includePaths = [];
+            for (var i = 0; i < object.includePaths.length; ++i)
+                message.includePaths[i] = String(object.includePaths[i]);
+        }
+        if (object.dependencies) {
+            if (typeof object.dependencies !== "object")
+                throw TypeError(".ProjectConfig.dependencies: object expected");
+            message.dependencies = {};
+            for (var keys = Object.keys(object.dependencies), i = 0; i < keys.length; ++i)
+                message.dependencies[keys[i]] = String(object.dependencies[keys[i]]);
+        }
+        return message;
+    };
+
+    /**
+     * Creates a plain object from a ProjectConfig message. Also converts values to other types if specified.
+     * @function toObject
+     * @memberof ProjectConfig
+     * @static
+     * @param {ProjectConfig} message ProjectConfig
+     * @param {$protobuf.IConversionOptions} [options] Conversion options
+     * @returns {Object.<string,*>} Plain object
+     */
+    ProjectConfig.toObject = function toObject(message, options) {
+        if (!options)
+            options = {};
+        var object = {};
+        if (options.arrays || options.defaults) {
+            object.datasetPaths = [];
+            object.includePaths = [];
+        }
+        if (options.objects || options.defaults)
+            object.dependencies = {};
+        if (options.defaults) {
+            object.warehouse = "";
+            object.defaultSchema = "";
+            object.assertionSchema = "";
+        }
+        if (message.warehouse != null && message.hasOwnProperty("warehouse"))
+            object.warehouse = message.warehouse;
+        if (message.defaultSchema != null && message.hasOwnProperty("defaultSchema"))
+            object.defaultSchema = message.defaultSchema;
+        if (message.datasetPaths && message.datasetPaths.length) {
+            object.datasetPaths = [];
+            for (var j = 0; j < message.datasetPaths.length; ++j)
+                object.datasetPaths[j] = message.datasetPaths[j];
+        }
+        if (message.includePaths && message.includePaths.length) {
+            object.includePaths = [];
+            for (var j = 0; j < message.includePaths.length; ++j)
+                object.includePaths[j] = message.includePaths[j];
+        }
+        if (message.assertionSchema != null && message.hasOwnProperty("assertionSchema"))
+            object.assertionSchema = message.assertionSchema;
+        var keys2;
+        if (message.dependencies && (keys2 = Object.keys(message.dependencies)).length) {
+            object.dependencies = {};
+            for (var j = 0; j < keys2.length; ++j)
+                object.dependencies[keys2[j]] = message.dependencies[keys2[j]];
+        }
+        return object;
+    };
+
+    /**
+     * Converts this ProjectConfig to JSON.
+     * @function toJSON
+     * @memberof ProjectConfig
+     * @instance
+     * @returns {Object.<string,*>} JSON object
+     */
+    ProjectConfig.prototype.toJSON = function toJSON() {
+        return this.constructor.toObject(this, $protobuf.util.toJSONOptions);
+    };
+
+    return ProjectConfig;
 })();
 
 $root.Target = (function() {
@@ -251,431 +571,6 @@ $root.Target = (function() {
     };
 
     return Target;
-})();
-
-$root.Operation = (function() {
-
-    /**
-     * Properties of an Operation.
-     * @exports IOperation
-     * @interface IOperation
-     * @property {string|null} [name] Operation name
-     * @property {Array.<string>|null} [dependencies] Operation dependencies
-     * @property {Array.<string>|null} [statements] Operation statements
-     */
-
-    /**
-     * Constructs a new Operation.
-     * @exports Operation
-     * @classdesc Represents an Operation.
-     * @implements IOperation
-     * @constructor
-     * @param {IOperation=} [properties] Properties to set
-     */
-    function Operation(properties) {
-        this.dependencies = [];
-        this.statements = [];
-        if (properties)
-            for (var keys = Object.keys(properties), i = 0; i < keys.length; ++i)
-                if (properties[keys[i]] != null)
-                    this[keys[i]] = properties[keys[i]];
-    }
-
-    /**
-     * Operation name.
-     * @member {string} name
-     * @memberof Operation
-     * @instance
-     */
-    Operation.prototype.name = "";
-
-    /**
-     * Operation dependencies.
-     * @member {Array.<string>} dependencies
-     * @memberof Operation
-     * @instance
-     */
-    Operation.prototype.dependencies = $util.emptyArray;
-
-    /**
-     * Operation statements.
-     * @member {Array.<string>} statements
-     * @memberof Operation
-     * @instance
-     */
-    Operation.prototype.statements = $util.emptyArray;
-
-    /**
-     * Creates a new Operation instance using the specified properties.
-     * @function create
-     * @memberof Operation
-     * @static
-     * @param {IOperation=} [properties] Properties to set
-     * @returns {Operation} Operation instance
-     */
-    Operation.create = function create(properties) {
-        return new Operation(properties);
-    };
-
-    /**
-     * Encodes the specified Operation message. Does not implicitly {@link Operation.verify|verify} messages.
-     * @function encode
-     * @memberof Operation
-     * @static
-     * @param {IOperation} message Operation message or plain object to encode
-     * @param {$protobuf.Writer} [writer] Writer to encode to
-     * @returns {$protobuf.Writer} Writer
-     */
-    Operation.encode = function encode(message, writer) {
-        if (!writer)
-            writer = $Writer.create();
-        if (message.name != null && message.hasOwnProperty("name"))
-            writer.uint32(/* id 1, wireType 2 =*/10).string(message.name);
-        if (message.dependencies != null && message.dependencies.length)
-            for (var i = 0; i < message.dependencies.length; ++i)
-                writer.uint32(/* id 2, wireType 2 =*/18).string(message.dependencies[i]);
-        if (message.statements != null && message.statements.length)
-            for (var i = 0; i < message.statements.length; ++i)
-                writer.uint32(/* id 6, wireType 2 =*/50).string(message.statements[i]);
-        return writer;
-    };
-
-    /**
-     * Encodes the specified Operation message, length delimited. Does not implicitly {@link Operation.verify|verify} messages.
-     * @function encodeDelimited
-     * @memberof Operation
-     * @static
-     * @param {IOperation} message Operation message or plain object to encode
-     * @param {$protobuf.Writer} [writer] Writer to encode to
-     * @returns {$protobuf.Writer} Writer
-     */
-    Operation.encodeDelimited = function encodeDelimited(message, writer) {
-        return this.encode(message, writer).ldelim();
-    };
-
-    /**
-     * Decodes an Operation message from the specified reader or buffer.
-     * @function decode
-     * @memberof Operation
-     * @static
-     * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
-     * @param {number} [length] Message length if known beforehand
-     * @returns {Operation} Operation
-     * @throws {Error} If the payload is not a reader or valid buffer
-     * @throws {$protobuf.util.ProtocolError} If required fields are missing
-     */
-    Operation.decode = function decode(reader, length) {
-        if (!(reader instanceof $Reader))
-            reader = $Reader.create(reader);
-        var end = length === undefined ? reader.len : reader.pos + length, message = new $root.Operation();
-        while (reader.pos < end) {
-            var tag = reader.uint32();
-            switch (tag >>> 3) {
-            case 1:
-                message.name = reader.string();
-                break;
-            case 2:
-                if (!(message.dependencies && message.dependencies.length))
-                    message.dependencies = [];
-                message.dependencies.push(reader.string());
-                break;
-            case 6:
-                if (!(message.statements && message.statements.length))
-                    message.statements = [];
-                message.statements.push(reader.string());
-                break;
-            default:
-                reader.skipType(tag & 7);
-                break;
-            }
-        }
-        return message;
-    };
-
-    /**
-     * Decodes an Operation message from the specified reader or buffer, length delimited.
-     * @function decodeDelimited
-     * @memberof Operation
-     * @static
-     * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
-     * @returns {Operation} Operation
-     * @throws {Error} If the payload is not a reader or valid buffer
-     * @throws {$protobuf.util.ProtocolError} If required fields are missing
-     */
-    Operation.decodeDelimited = function decodeDelimited(reader) {
-        if (!(reader instanceof $Reader))
-            reader = new $Reader(reader);
-        return this.decode(reader, reader.uint32());
-    };
-
-    /**
-     * Verifies an Operation message.
-     * @function verify
-     * @memberof Operation
-     * @static
-     * @param {Object.<string,*>} message Plain object to verify
-     * @returns {string|null} `null` if valid, otherwise the reason why it is not
-     */
-    Operation.verify = function verify(message) {
-        if (typeof message !== "object" || message === null)
-            return "object expected";
-        if (message.name != null && message.hasOwnProperty("name"))
-            if (!$util.isString(message.name))
-                return "name: string expected";
-        if (message.dependencies != null && message.hasOwnProperty("dependencies")) {
-            if (!Array.isArray(message.dependencies))
-                return "dependencies: array expected";
-            for (var i = 0; i < message.dependencies.length; ++i)
-                if (!$util.isString(message.dependencies[i]))
-                    return "dependencies: string[] expected";
-        }
-        if (message.statements != null && message.hasOwnProperty("statements")) {
-            if (!Array.isArray(message.statements))
-                return "statements: array expected";
-            for (var i = 0; i < message.statements.length; ++i)
-                if (!$util.isString(message.statements[i]))
-                    return "statements: string[] expected";
-        }
-        return null;
-    };
-
-    /**
-     * Creates an Operation message from a plain object. Also converts values to their respective internal types.
-     * @function fromObject
-     * @memberof Operation
-     * @static
-     * @param {Object.<string,*>} object Plain object
-     * @returns {Operation} Operation
-     */
-    Operation.fromObject = function fromObject(object) {
-        if (object instanceof $root.Operation)
-            return object;
-        var message = new $root.Operation();
-        if (object.name != null)
-            message.name = String(object.name);
-        if (object.dependencies) {
-            if (!Array.isArray(object.dependencies))
-                throw TypeError(".Operation.dependencies: array expected");
-            message.dependencies = [];
-            for (var i = 0; i < object.dependencies.length; ++i)
-                message.dependencies[i] = String(object.dependencies[i]);
-        }
-        if (object.statements) {
-            if (!Array.isArray(object.statements))
-                throw TypeError(".Operation.statements: array expected");
-            message.statements = [];
-            for (var i = 0; i < object.statements.length; ++i)
-                message.statements[i] = String(object.statements[i]);
-        }
-        return message;
-    };
-
-    /**
-     * Creates a plain object from an Operation message. Also converts values to other types if specified.
-     * @function toObject
-     * @memberof Operation
-     * @static
-     * @param {Operation} message Operation
-     * @param {$protobuf.IConversionOptions} [options] Conversion options
-     * @returns {Object.<string,*>} Plain object
-     */
-    Operation.toObject = function toObject(message, options) {
-        if (!options)
-            options = {};
-        var object = {};
-        if (options.arrays || options.defaults) {
-            object.dependencies = [];
-            object.statements = [];
-        }
-        if (options.defaults)
-            object.name = "";
-        if (message.name != null && message.hasOwnProperty("name"))
-            object.name = message.name;
-        if (message.dependencies && message.dependencies.length) {
-            object.dependencies = [];
-            for (var j = 0; j < message.dependencies.length; ++j)
-                object.dependencies[j] = message.dependencies[j];
-        }
-        if (message.statements && message.statements.length) {
-            object.statements = [];
-            for (var j = 0; j < message.statements.length; ++j)
-                object.statements[j] = message.statements[j];
-        }
-        return object;
-    };
-
-    /**
-     * Converts this Operation to JSON.
-     * @function toJSON
-     * @memberof Operation
-     * @instance
-     * @returns {Object.<string,*>} JSON object
-     */
-    Operation.prototype.toJSON = function toJSON() {
-        return this.constructor.toObject(this, $protobuf.util.toJSONOptions);
-    };
-
-    return Operation;
-})();
-
-$root.Description = (function() {
-
-    /**
-     * Properties of a Description.
-     * @exports IDescription
-     * @interface IDescription
-     */
-
-    /**
-     * Constructs a new Description.
-     * @exports Description
-     * @classdesc Represents a Description.
-     * @implements IDescription
-     * @constructor
-     * @param {IDescription=} [properties] Properties to set
-     */
-    function Description(properties) {
-        if (properties)
-            for (var keys = Object.keys(properties), i = 0; i < keys.length; ++i)
-                if (properties[keys[i]] != null)
-                    this[keys[i]] = properties[keys[i]];
-    }
-
-    /**
-     * Creates a new Description instance using the specified properties.
-     * @function create
-     * @memberof Description
-     * @static
-     * @param {IDescription=} [properties] Properties to set
-     * @returns {Description} Description instance
-     */
-    Description.create = function create(properties) {
-        return new Description(properties);
-    };
-
-    /**
-     * Encodes the specified Description message. Does not implicitly {@link Description.verify|verify} messages.
-     * @function encode
-     * @memberof Description
-     * @static
-     * @param {IDescription} message Description message or plain object to encode
-     * @param {$protobuf.Writer} [writer] Writer to encode to
-     * @returns {$protobuf.Writer} Writer
-     */
-    Description.encode = function encode(message, writer) {
-        if (!writer)
-            writer = $Writer.create();
-        return writer;
-    };
-
-    /**
-     * Encodes the specified Description message, length delimited. Does not implicitly {@link Description.verify|verify} messages.
-     * @function encodeDelimited
-     * @memberof Description
-     * @static
-     * @param {IDescription} message Description message or plain object to encode
-     * @param {$protobuf.Writer} [writer] Writer to encode to
-     * @returns {$protobuf.Writer} Writer
-     */
-    Description.encodeDelimited = function encodeDelimited(message, writer) {
-        return this.encode(message, writer).ldelim();
-    };
-
-    /**
-     * Decodes a Description message from the specified reader or buffer.
-     * @function decode
-     * @memberof Description
-     * @static
-     * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
-     * @param {number} [length] Message length if known beforehand
-     * @returns {Description} Description
-     * @throws {Error} If the payload is not a reader or valid buffer
-     * @throws {$protobuf.util.ProtocolError} If required fields are missing
-     */
-    Description.decode = function decode(reader, length) {
-        if (!(reader instanceof $Reader))
-            reader = $Reader.create(reader);
-        var end = length === undefined ? reader.len : reader.pos + length, message = new $root.Description();
-        while (reader.pos < end) {
-            var tag = reader.uint32();
-            switch (tag >>> 3) {
-            default:
-                reader.skipType(tag & 7);
-                break;
-            }
-        }
-        return message;
-    };
-
-    /**
-     * Decodes a Description message from the specified reader or buffer, length delimited.
-     * @function decodeDelimited
-     * @memberof Description
-     * @static
-     * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
-     * @returns {Description} Description
-     * @throws {Error} If the payload is not a reader or valid buffer
-     * @throws {$protobuf.util.ProtocolError} If required fields are missing
-     */
-    Description.decodeDelimited = function decodeDelimited(reader) {
-        if (!(reader instanceof $Reader))
-            reader = new $Reader(reader);
-        return this.decode(reader, reader.uint32());
-    };
-
-    /**
-     * Verifies a Description message.
-     * @function verify
-     * @memberof Description
-     * @static
-     * @param {Object.<string,*>} message Plain object to verify
-     * @returns {string|null} `null` if valid, otherwise the reason why it is not
-     */
-    Description.verify = function verify(message) {
-        if (typeof message !== "object" || message === null)
-            return "object expected";
-        return null;
-    };
-
-    /**
-     * Creates a Description message from a plain object. Also converts values to their respective internal types.
-     * @function fromObject
-     * @memberof Description
-     * @static
-     * @param {Object.<string,*>} object Plain object
-     * @returns {Description} Description
-     */
-    Description.fromObject = function fromObject(object) {
-        if (object instanceof $root.Description)
-            return object;
-        return new $root.Description();
-    };
-
-    /**
-     * Creates a plain object from a Description message. Also converts values to other types if specified.
-     * @function toObject
-     * @memberof Description
-     * @static
-     * @param {Description} message Description
-     * @param {$protobuf.IConversionOptions} [options] Conversion options
-     * @returns {Object.<string,*>} Plain object
-     */
-    Description.toObject = function toObject() {
-        return {};
-    };
-
-    /**
-     * Converts this Description to JSON.
-     * @function toJSON
-     * @memberof Description
-     * @instance
-     * @returns {Object.<string,*>} JSON object
-     */
-    Description.prototype.toJSON = function toJSON() {
-        return this.constructor.toObject(this, $protobuf.util.toJSONOptions);
-    };
-
-    return Description;
 })();
 
 $root.Materialization = (function() {
@@ -1261,6 +1156,271 @@ $root.Materialization = (function() {
     return Materialization;
 })();
 
+$root.Operation = (function() {
+
+    /**
+     * Properties of an Operation.
+     * @exports IOperation
+     * @interface IOperation
+     * @property {string|null} [name] Operation name
+     * @property {Array.<string>|null} [dependencies] Operation dependencies
+     * @property {Array.<string>|null} [statements] Operation statements
+     */
+
+    /**
+     * Constructs a new Operation.
+     * @exports Operation
+     * @classdesc Represents an Operation.
+     * @implements IOperation
+     * @constructor
+     * @param {IOperation=} [properties] Properties to set
+     */
+    function Operation(properties) {
+        this.dependencies = [];
+        this.statements = [];
+        if (properties)
+            for (var keys = Object.keys(properties), i = 0; i < keys.length; ++i)
+                if (properties[keys[i]] != null)
+                    this[keys[i]] = properties[keys[i]];
+    }
+
+    /**
+     * Operation name.
+     * @member {string} name
+     * @memberof Operation
+     * @instance
+     */
+    Operation.prototype.name = "";
+
+    /**
+     * Operation dependencies.
+     * @member {Array.<string>} dependencies
+     * @memberof Operation
+     * @instance
+     */
+    Operation.prototype.dependencies = $util.emptyArray;
+
+    /**
+     * Operation statements.
+     * @member {Array.<string>} statements
+     * @memberof Operation
+     * @instance
+     */
+    Operation.prototype.statements = $util.emptyArray;
+
+    /**
+     * Creates a new Operation instance using the specified properties.
+     * @function create
+     * @memberof Operation
+     * @static
+     * @param {IOperation=} [properties] Properties to set
+     * @returns {Operation} Operation instance
+     */
+    Operation.create = function create(properties) {
+        return new Operation(properties);
+    };
+
+    /**
+     * Encodes the specified Operation message. Does not implicitly {@link Operation.verify|verify} messages.
+     * @function encode
+     * @memberof Operation
+     * @static
+     * @param {IOperation} message Operation message or plain object to encode
+     * @param {$protobuf.Writer} [writer] Writer to encode to
+     * @returns {$protobuf.Writer} Writer
+     */
+    Operation.encode = function encode(message, writer) {
+        if (!writer)
+            writer = $Writer.create();
+        if (message.name != null && message.hasOwnProperty("name"))
+            writer.uint32(/* id 1, wireType 2 =*/10).string(message.name);
+        if (message.dependencies != null && message.dependencies.length)
+            for (var i = 0; i < message.dependencies.length; ++i)
+                writer.uint32(/* id 2, wireType 2 =*/18).string(message.dependencies[i]);
+        if (message.statements != null && message.statements.length)
+            for (var i = 0; i < message.statements.length; ++i)
+                writer.uint32(/* id 6, wireType 2 =*/50).string(message.statements[i]);
+        return writer;
+    };
+
+    /**
+     * Encodes the specified Operation message, length delimited. Does not implicitly {@link Operation.verify|verify} messages.
+     * @function encodeDelimited
+     * @memberof Operation
+     * @static
+     * @param {IOperation} message Operation message or plain object to encode
+     * @param {$protobuf.Writer} [writer] Writer to encode to
+     * @returns {$protobuf.Writer} Writer
+     */
+    Operation.encodeDelimited = function encodeDelimited(message, writer) {
+        return this.encode(message, writer).ldelim();
+    };
+
+    /**
+     * Decodes an Operation message from the specified reader or buffer.
+     * @function decode
+     * @memberof Operation
+     * @static
+     * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+     * @param {number} [length] Message length if known beforehand
+     * @returns {Operation} Operation
+     * @throws {Error} If the payload is not a reader or valid buffer
+     * @throws {$protobuf.util.ProtocolError} If required fields are missing
+     */
+    Operation.decode = function decode(reader, length) {
+        if (!(reader instanceof $Reader))
+            reader = $Reader.create(reader);
+        var end = length === undefined ? reader.len : reader.pos + length, message = new $root.Operation();
+        while (reader.pos < end) {
+            var tag = reader.uint32();
+            switch (tag >>> 3) {
+            case 1:
+                message.name = reader.string();
+                break;
+            case 2:
+                if (!(message.dependencies && message.dependencies.length))
+                    message.dependencies = [];
+                message.dependencies.push(reader.string());
+                break;
+            case 6:
+                if (!(message.statements && message.statements.length))
+                    message.statements = [];
+                message.statements.push(reader.string());
+                break;
+            default:
+                reader.skipType(tag & 7);
+                break;
+            }
+        }
+        return message;
+    };
+
+    /**
+     * Decodes an Operation message from the specified reader or buffer, length delimited.
+     * @function decodeDelimited
+     * @memberof Operation
+     * @static
+     * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+     * @returns {Operation} Operation
+     * @throws {Error} If the payload is not a reader or valid buffer
+     * @throws {$protobuf.util.ProtocolError} If required fields are missing
+     */
+    Operation.decodeDelimited = function decodeDelimited(reader) {
+        if (!(reader instanceof $Reader))
+            reader = new $Reader(reader);
+        return this.decode(reader, reader.uint32());
+    };
+
+    /**
+     * Verifies an Operation message.
+     * @function verify
+     * @memberof Operation
+     * @static
+     * @param {Object.<string,*>} message Plain object to verify
+     * @returns {string|null} `null` if valid, otherwise the reason why it is not
+     */
+    Operation.verify = function verify(message) {
+        if (typeof message !== "object" || message === null)
+            return "object expected";
+        if (message.name != null && message.hasOwnProperty("name"))
+            if (!$util.isString(message.name))
+                return "name: string expected";
+        if (message.dependencies != null && message.hasOwnProperty("dependencies")) {
+            if (!Array.isArray(message.dependencies))
+                return "dependencies: array expected";
+            for (var i = 0; i < message.dependencies.length; ++i)
+                if (!$util.isString(message.dependencies[i]))
+                    return "dependencies: string[] expected";
+        }
+        if (message.statements != null && message.hasOwnProperty("statements")) {
+            if (!Array.isArray(message.statements))
+                return "statements: array expected";
+            for (var i = 0; i < message.statements.length; ++i)
+                if (!$util.isString(message.statements[i]))
+                    return "statements: string[] expected";
+        }
+        return null;
+    };
+
+    /**
+     * Creates an Operation message from a plain object. Also converts values to their respective internal types.
+     * @function fromObject
+     * @memberof Operation
+     * @static
+     * @param {Object.<string,*>} object Plain object
+     * @returns {Operation} Operation
+     */
+    Operation.fromObject = function fromObject(object) {
+        if (object instanceof $root.Operation)
+            return object;
+        var message = new $root.Operation();
+        if (object.name != null)
+            message.name = String(object.name);
+        if (object.dependencies) {
+            if (!Array.isArray(object.dependencies))
+                throw TypeError(".Operation.dependencies: array expected");
+            message.dependencies = [];
+            for (var i = 0; i < object.dependencies.length; ++i)
+                message.dependencies[i] = String(object.dependencies[i]);
+        }
+        if (object.statements) {
+            if (!Array.isArray(object.statements))
+                throw TypeError(".Operation.statements: array expected");
+            message.statements = [];
+            for (var i = 0; i < object.statements.length; ++i)
+                message.statements[i] = String(object.statements[i]);
+        }
+        return message;
+    };
+
+    /**
+     * Creates a plain object from an Operation message. Also converts values to other types if specified.
+     * @function toObject
+     * @memberof Operation
+     * @static
+     * @param {Operation} message Operation
+     * @param {$protobuf.IConversionOptions} [options] Conversion options
+     * @returns {Object.<string,*>} Plain object
+     */
+    Operation.toObject = function toObject(message, options) {
+        if (!options)
+            options = {};
+        var object = {};
+        if (options.arrays || options.defaults) {
+            object.dependencies = [];
+            object.statements = [];
+        }
+        if (options.defaults)
+            object.name = "";
+        if (message.name != null && message.hasOwnProperty("name"))
+            object.name = message.name;
+        if (message.dependencies && message.dependencies.length) {
+            object.dependencies = [];
+            for (var j = 0; j < message.dependencies.length; ++j)
+                object.dependencies[j] = message.dependencies[j];
+        }
+        if (message.statements && message.statements.length) {
+            object.statements = [];
+            for (var j = 0; j < message.statements.length; ++j)
+                object.statements[j] = message.statements[j];
+        }
+        return object;
+    };
+
+    /**
+     * Converts this Operation to JSON.
+     * @function toJSON
+     * @memberof Operation
+     * @instance
+     * @returns {Object.<string,*>} JSON object
+     */
+    Operation.prototype.toJSON = function toJSON() {
+        return this.constructor.toObject(this, $protobuf.util.toJSONOptions);
+    };
+
+    return Operation;
+})();
+
 $root.Assertion = (function() {
 
     /**
@@ -1524,6 +1684,329 @@ $root.Assertion = (function() {
     };
 
     return Assertion;
+})();
+
+$root.CompiledGraph = (function() {
+
+    /**
+     * Properties of a CompiledGraph.
+     * @exports ICompiledGraph
+     * @interface ICompiledGraph
+     * @property {IProjectConfig|null} [projectConfig] CompiledGraph projectConfig
+     * @property {Array.<IMaterialization>|null} [materializations] CompiledGraph materializations
+     * @property {Array.<IOperation>|null} [operations] CompiledGraph operations
+     * @property {Array.<IAssertion>|null} [assertions] CompiledGraph assertions
+     */
+
+    /**
+     * Constructs a new CompiledGraph.
+     * @exports CompiledGraph
+     * @classdesc Represents a CompiledGraph.
+     * @implements ICompiledGraph
+     * @constructor
+     * @param {ICompiledGraph=} [properties] Properties to set
+     */
+    function CompiledGraph(properties) {
+        this.materializations = [];
+        this.operations = [];
+        this.assertions = [];
+        if (properties)
+            for (var keys = Object.keys(properties), i = 0; i < keys.length; ++i)
+                if (properties[keys[i]] != null)
+                    this[keys[i]] = properties[keys[i]];
+    }
+
+    /**
+     * CompiledGraph projectConfig.
+     * @member {IProjectConfig|null|undefined} projectConfig
+     * @memberof CompiledGraph
+     * @instance
+     */
+    CompiledGraph.prototype.projectConfig = null;
+
+    /**
+     * CompiledGraph materializations.
+     * @member {Array.<IMaterialization>} materializations
+     * @memberof CompiledGraph
+     * @instance
+     */
+    CompiledGraph.prototype.materializations = $util.emptyArray;
+
+    /**
+     * CompiledGraph operations.
+     * @member {Array.<IOperation>} operations
+     * @memberof CompiledGraph
+     * @instance
+     */
+    CompiledGraph.prototype.operations = $util.emptyArray;
+
+    /**
+     * CompiledGraph assertions.
+     * @member {Array.<IAssertion>} assertions
+     * @memberof CompiledGraph
+     * @instance
+     */
+    CompiledGraph.prototype.assertions = $util.emptyArray;
+
+    /**
+     * Creates a new CompiledGraph instance using the specified properties.
+     * @function create
+     * @memberof CompiledGraph
+     * @static
+     * @param {ICompiledGraph=} [properties] Properties to set
+     * @returns {CompiledGraph} CompiledGraph instance
+     */
+    CompiledGraph.create = function create(properties) {
+        return new CompiledGraph(properties);
+    };
+
+    /**
+     * Encodes the specified CompiledGraph message. Does not implicitly {@link CompiledGraph.verify|verify} messages.
+     * @function encode
+     * @memberof CompiledGraph
+     * @static
+     * @param {ICompiledGraph} message CompiledGraph message or plain object to encode
+     * @param {$protobuf.Writer} [writer] Writer to encode to
+     * @returns {$protobuf.Writer} Writer
+     */
+    CompiledGraph.encode = function encode(message, writer) {
+        if (!writer)
+            writer = $Writer.create();
+        if (message.materializations != null && message.materializations.length)
+            for (var i = 0; i < message.materializations.length; ++i)
+                $root.Materialization.encode(message.materializations[i], writer.uint32(/* id 1, wireType 2 =*/10).fork()).ldelim();
+        if (message.operations != null && message.operations.length)
+            for (var i = 0; i < message.operations.length; ++i)
+                $root.Operation.encode(message.operations[i], writer.uint32(/* id 2, wireType 2 =*/18).fork()).ldelim();
+        if (message.assertions != null && message.assertions.length)
+            for (var i = 0; i < message.assertions.length; ++i)
+                $root.Assertion.encode(message.assertions[i], writer.uint32(/* id 3, wireType 2 =*/26).fork()).ldelim();
+        if (message.projectConfig != null && message.hasOwnProperty("projectConfig"))
+            $root.ProjectConfig.encode(message.projectConfig, writer.uint32(/* id 4, wireType 2 =*/34).fork()).ldelim();
+        return writer;
+    };
+
+    /**
+     * Encodes the specified CompiledGraph message, length delimited. Does not implicitly {@link CompiledGraph.verify|verify} messages.
+     * @function encodeDelimited
+     * @memberof CompiledGraph
+     * @static
+     * @param {ICompiledGraph} message CompiledGraph message or plain object to encode
+     * @param {$protobuf.Writer} [writer] Writer to encode to
+     * @returns {$protobuf.Writer} Writer
+     */
+    CompiledGraph.encodeDelimited = function encodeDelimited(message, writer) {
+        return this.encode(message, writer).ldelim();
+    };
+
+    /**
+     * Decodes a CompiledGraph message from the specified reader or buffer.
+     * @function decode
+     * @memberof CompiledGraph
+     * @static
+     * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+     * @param {number} [length] Message length if known beforehand
+     * @returns {CompiledGraph} CompiledGraph
+     * @throws {Error} If the payload is not a reader or valid buffer
+     * @throws {$protobuf.util.ProtocolError} If required fields are missing
+     */
+    CompiledGraph.decode = function decode(reader, length) {
+        if (!(reader instanceof $Reader))
+            reader = $Reader.create(reader);
+        var end = length === undefined ? reader.len : reader.pos + length, message = new $root.CompiledGraph();
+        while (reader.pos < end) {
+            var tag = reader.uint32();
+            switch (tag >>> 3) {
+            case 4:
+                message.projectConfig = $root.ProjectConfig.decode(reader, reader.uint32());
+                break;
+            case 1:
+                if (!(message.materializations && message.materializations.length))
+                    message.materializations = [];
+                message.materializations.push($root.Materialization.decode(reader, reader.uint32()));
+                break;
+            case 2:
+                if (!(message.operations && message.operations.length))
+                    message.operations = [];
+                message.operations.push($root.Operation.decode(reader, reader.uint32()));
+                break;
+            case 3:
+                if (!(message.assertions && message.assertions.length))
+                    message.assertions = [];
+                message.assertions.push($root.Assertion.decode(reader, reader.uint32()));
+                break;
+            default:
+                reader.skipType(tag & 7);
+                break;
+            }
+        }
+        return message;
+    };
+
+    /**
+     * Decodes a CompiledGraph message from the specified reader or buffer, length delimited.
+     * @function decodeDelimited
+     * @memberof CompiledGraph
+     * @static
+     * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+     * @returns {CompiledGraph} CompiledGraph
+     * @throws {Error} If the payload is not a reader or valid buffer
+     * @throws {$protobuf.util.ProtocolError} If required fields are missing
+     */
+    CompiledGraph.decodeDelimited = function decodeDelimited(reader) {
+        if (!(reader instanceof $Reader))
+            reader = new $Reader(reader);
+        return this.decode(reader, reader.uint32());
+    };
+
+    /**
+     * Verifies a CompiledGraph message.
+     * @function verify
+     * @memberof CompiledGraph
+     * @static
+     * @param {Object.<string,*>} message Plain object to verify
+     * @returns {string|null} `null` if valid, otherwise the reason why it is not
+     */
+    CompiledGraph.verify = function verify(message) {
+        if (typeof message !== "object" || message === null)
+            return "object expected";
+        if (message.projectConfig != null && message.hasOwnProperty("projectConfig")) {
+            var error = $root.ProjectConfig.verify(message.projectConfig);
+            if (error)
+                return "projectConfig." + error;
+        }
+        if (message.materializations != null && message.hasOwnProperty("materializations")) {
+            if (!Array.isArray(message.materializations))
+                return "materializations: array expected";
+            for (var i = 0; i < message.materializations.length; ++i) {
+                var error = $root.Materialization.verify(message.materializations[i]);
+                if (error)
+                    return "materializations." + error;
+            }
+        }
+        if (message.operations != null && message.hasOwnProperty("operations")) {
+            if (!Array.isArray(message.operations))
+                return "operations: array expected";
+            for (var i = 0; i < message.operations.length; ++i) {
+                var error = $root.Operation.verify(message.operations[i]);
+                if (error)
+                    return "operations." + error;
+            }
+        }
+        if (message.assertions != null && message.hasOwnProperty("assertions")) {
+            if (!Array.isArray(message.assertions))
+                return "assertions: array expected";
+            for (var i = 0; i < message.assertions.length; ++i) {
+                var error = $root.Assertion.verify(message.assertions[i]);
+                if (error)
+                    return "assertions." + error;
+            }
+        }
+        return null;
+    };
+
+    /**
+     * Creates a CompiledGraph message from a plain object. Also converts values to their respective internal types.
+     * @function fromObject
+     * @memberof CompiledGraph
+     * @static
+     * @param {Object.<string,*>} object Plain object
+     * @returns {CompiledGraph} CompiledGraph
+     */
+    CompiledGraph.fromObject = function fromObject(object) {
+        if (object instanceof $root.CompiledGraph)
+            return object;
+        var message = new $root.CompiledGraph();
+        if (object.projectConfig != null) {
+            if (typeof object.projectConfig !== "object")
+                throw TypeError(".CompiledGraph.projectConfig: object expected");
+            message.projectConfig = $root.ProjectConfig.fromObject(object.projectConfig);
+        }
+        if (object.materializations) {
+            if (!Array.isArray(object.materializations))
+                throw TypeError(".CompiledGraph.materializations: array expected");
+            message.materializations = [];
+            for (var i = 0; i < object.materializations.length; ++i) {
+                if (typeof object.materializations[i] !== "object")
+                    throw TypeError(".CompiledGraph.materializations: object expected");
+                message.materializations[i] = $root.Materialization.fromObject(object.materializations[i]);
+            }
+        }
+        if (object.operations) {
+            if (!Array.isArray(object.operations))
+                throw TypeError(".CompiledGraph.operations: array expected");
+            message.operations = [];
+            for (var i = 0; i < object.operations.length; ++i) {
+                if (typeof object.operations[i] !== "object")
+                    throw TypeError(".CompiledGraph.operations: object expected");
+                message.operations[i] = $root.Operation.fromObject(object.operations[i]);
+            }
+        }
+        if (object.assertions) {
+            if (!Array.isArray(object.assertions))
+                throw TypeError(".CompiledGraph.assertions: array expected");
+            message.assertions = [];
+            for (var i = 0; i < object.assertions.length; ++i) {
+                if (typeof object.assertions[i] !== "object")
+                    throw TypeError(".CompiledGraph.assertions: object expected");
+                message.assertions[i] = $root.Assertion.fromObject(object.assertions[i]);
+            }
+        }
+        return message;
+    };
+
+    /**
+     * Creates a plain object from a CompiledGraph message. Also converts values to other types if specified.
+     * @function toObject
+     * @memberof CompiledGraph
+     * @static
+     * @param {CompiledGraph} message CompiledGraph
+     * @param {$protobuf.IConversionOptions} [options] Conversion options
+     * @returns {Object.<string,*>} Plain object
+     */
+    CompiledGraph.toObject = function toObject(message, options) {
+        if (!options)
+            options = {};
+        var object = {};
+        if (options.arrays || options.defaults) {
+            object.materializations = [];
+            object.operations = [];
+            object.assertions = [];
+        }
+        if (options.defaults)
+            object.projectConfig = null;
+        if (message.materializations && message.materializations.length) {
+            object.materializations = [];
+            for (var j = 0; j < message.materializations.length; ++j)
+                object.materializations[j] = $root.Materialization.toObject(message.materializations[j], options);
+        }
+        if (message.operations && message.operations.length) {
+            object.operations = [];
+            for (var j = 0; j < message.operations.length; ++j)
+                object.operations[j] = $root.Operation.toObject(message.operations[j], options);
+        }
+        if (message.assertions && message.assertions.length) {
+            object.assertions = [];
+            for (var j = 0; j < message.assertions.length; ++j)
+                object.assertions[j] = $root.Assertion.toObject(message.assertions[j], options);
+        }
+        if (message.projectConfig != null && message.hasOwnProperty("projectConfig"))
+            object.projectConfig = $root.ProjectConfig.toObject(message.projectConfig, options);
+        return object;
+    };
+
+    /**
+     * Converts this CompiledGraph to JSON.
+     * @function toJSON
+     * @memberof CompiledGraph
+     * @instance
+     * @returns {Object.<string,*>} JSON object
+     */
+    CompiledGraph.prototype.toJSON = function toJSON() {
+        return this.constructor.toObject(this, $protobuf.util.toJSONOptions);
+    };
+
+    return CompiledGraph;
 })();
 
 $root.ExecutionTask = (function() {
@@ -3089,360 +3572,6 @@ $root.ExecutedGraph = (function() {
     };
 
     return ExecutedGraph;
-})();
-
-$root.ProjectConfig = (function() {
-
-    /**
-     * Properties of a ProjectConfig.
-     * @exports IProjectConfig
-     * @interface IProjectConfig
-     * @property {string|null} [warehouse] ProjectConfig warehouse
-     * @property {string|null} [defaultSchema] ProjectConfig defaultSchema
-     * @property {string|null} [assertionSchema] ProjectConfig assertionSchema
-     * @property {Array.<string>|null} [datasetPaths] ProjectConfig datasetPaths
-     * @property {Array.<string>|null} [includePaths] ProjectConfig includePaths
-     * @property {Object.<string,string>|null} [dependencies] ProjectConfig dependencies
-     */
-
-    /**
-     * Constructs a new ProjectConfig.
-     * @exports ProjectConfig
-     * @classdesc Represents a ProjectConfig.
-     * @implements IProjectConfig
-     * @constructor
-     * @param {IProjectConfig=} [properties] Properties to set
-     */
-    function ProjectConfig(properties) {
-        this.datasetPaths = [];
-        this.includePaths = [];
-        this.dependencies = {};
-        if (properties)
-            for (var keys = Object.keys(properties), i = 0; i < keys.length; ++i)
-                if (properties[keys[i]] != null)
-                    this[keys[i]] = properties[keys[i]];
-    }
-
-    /**
-     * ProjectConfig warehouse.
-     * @member {string} warehouse
-     * @memberof ProjectConfig
-     * @instance
-     */
-    ProjectConfig.prototype.warehouse = "";
-
-    /**
-     * ProjectConfig defaultSchema.
-     * @member {string} defaultSchema
-     * @memberof ProjectConfig
-     * @instance
-     */
-    ProjectConfig.prototype.defaultSchema = "";
-
-    /**
-     * ProjectConfig assertionSchema.
-     * @member {string} assertionSchema
-     * @memberof ProjectConfig
-     * @instance
-     */
-    ProjectConfig.prototype.assertionSchema = "";
-
-    /**
-     * ProjectConfig datasetPaths.
-     * @member {Array.<string>} datasetPaths
-     * @memberof ProjectConfig
-     * @instance
-     */
-    ProjectConfig.prototype.datasetPaths = $util.emptyArray;
-
-    /**
-     * ProjectConfig includePaths.
-     * @member {Array.<string>} includePaths
-     * @memberof ProjectConfig
-     * @instance
-     */
-    ProjectConfig.prototype.includePaths = $util.emptyArray;
-
-    /**
-     * ProjectConfig dependencies.
-     * @member {Object.<string,string>} dependencies
-     * @memberof ProjectConfig
-     * @instance
-     */
-    ProjectConfig.prototype.dependencies = $util.emptyObject;
-
-    /**
-     * Creates a new ProjectConfig instance using the specified properties.
-     * @function create
-     * @memberof ProjectConfig
-     * @static
-     * @param {IProjectConfig=} [properties] Properties to set
-     * @returns {ProjectConfig} ProjectConfig instance
-     */
-    ProjectConfig.create = function create(properties) {
-        return new ProjectConfig(properties);
-    };
-
-    /**
-     * Encodes the specified ProjectConfig message. Does not implicitly {@link ProjectConfig.verify|verify} messages.
-     * @function encode
-     * @memberof ProjectConfig
-     * @static
-     * @param {IProjectConfig} message ProjectConfig message or plain object to encode
-     * @param {$protobuf.Writer} [writer] Writer to encode to
-     * @returns {$protobuf.Writer} Writer
-     */
-    ProjectConfig.encode = function encode(message, writer) {
-        if (!writer)
-            writer = $Writer.create();
-        if (message.warehouse != null && message.hasOwnProperty("warehouse"))
-            writer.uint32(/* id 1, wireType 2 =*/10).string(message.warehouse);
-        if (message.defaultSchema != null && message.hasOwnProperty("defaultSchema"))
-            writer.uint32(/* id 2, wireType 2 =*/18).string(message.defaultSchema);
-        if (message.datasetPaths != null && message.datasetPaths.length)
-            for (var i = 0; i < message.datasetPaths.length; ++i)
-                writer.uint32(/* id 3, wireType 2 =*/26).string(message.datasetPaths[i]);
-        if (message.includePaths != null && message.includePaths.length)
-            for (var i = 0; i < message.includePaths.length; ++i)
-                writer.uint32(/* id 4, wireType 2 =*/34).string(message.includePaths[i]);
-        if (message.assertionSchema != null && message.hasOwnProperty("assertionSchema"))
-            writer.uint32(/* id 5, wireType 2 =*/42).string(message.assertionSchema);
-        if (message.dependencies != null && message.hasOwnProperty("dependencies"))
-            for (var keys = Object.keys(message.dependencies), i = 0; i < keys.length; ++i)
-                writer.uint32(/* id 6, wireType 2 =*/50).fork().uint32(/* id 1, wireType 2 =*/10).string(keys[i]).uint32(/* id 2, wireType 2 =*/18).string(message.dependencies[keys[i]]).ldelim();
-        return writer;
-    };
-
-    /**
-     * Encodes the specified ProjectConfig message, length delimited. Does not implicitly {@link ProjectConfig.verify|verify} messages.
-     * @function encodeDelimited
-     * @memberof ProjectConfig
-     * @static
-     * @param {IProjectConfig} message ProjectConfig message or plain object to encode
-     * @param {$protobuf.Writer} [writer] Writer to encode to
-     * @returns {$protobuf.Writer} Writer
-     */
-    ProjectConfig.encodeDelimited = function encodeDelimited(message, writer) {
-        return this.encode(message, writer).ldelim();
-    };
-
-    /**
-     * Decodes a ProjectConfig message from the specified reader or buffer.
-     * @function decode
-     * @memberof ProjectConfig
-     * @static
-     * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
-     * @param {number} [length] Message length if known beforehand
-     * @returns {ProjectConfig} ProjectConfig
-     * @throws {Error} If the payload is not a reader or valid buffer
-     * @throws {$protobuf.util.ProtocolError} If required fields are missing
-     */
-    ProjectConfig.decode = function decode(reader, length) {
-        if (!(reader instanceof $Reader))
-            reader = $Reader.create(reader);
-        var end = length === undefined ? reader.len : reader.pos + length, message = new $root.ProjectConfig(), key;
-        while (reader.pos < end) {
-            var tag = reader.uint32();
-            switch (tag >>> 3) {
-            case 1:
-                message.warehouse = reader.string();
-                break;
-            case 2:
-                message.defaultSchema = reader.string();
-                break;
-            case 5:
-                message.assertionSchema = reader.string();
-                break;
-            case 3:
-                if (!(message.datasetPaths && message.datasetPaths.length))
-                    message.datasetPaths = [];
-                message.datasetPaths.push(reader.string());
-                break;
-            case 4:
-                if (!(message.includePaths && message.includePaths.length))
-                    message.includePaths = [];
-                message.includePaths.push(reader.string());
-                break;
-            case 6:
-                reader.skip().pos++;
-                if (message.dependencies === $util.emptyObject)
-                    message.dependencies = {};
-                key = reader.string();
-                reader.pos++;
-                message.dependencies[key] = reader.string();
-                break;
-            default:
-                reader.skipType(tag & 7);
-                break;
-            }
-        }
-        return message;
-    };
-
-    /**
-     * Decodes a ProjectConfig message from the specified reader or buffer, length delimited.
-     * @function decodeDelimited
-     * @memberof ProjectConfig
-     * @static
-     * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
-     * @returns {ProjectConfig} ProjectConfig
-     * @throws {Error} If the payload is not a reader or valid buffer
-     * @throws {$protobuf.util.ProtocolError} If required fields are missing
-     */
-    ProjectConfig.decodeDelimited = function decodeDelimited(reader) {
-        if (!(reader instanceof $Reader))
-            reader = new $Reader(reader);
-        return this.decode(reader, reader.uint32());
-    };
-
-    /**
-     * Verifies a ProjectConfig message.
-     * @function verify
-     * @memberof ProjectConfig
-     * @static
-     * @param {Object.<string,*>} message Plain object to verify
-     * @returns {string|null} `null` if valid, otherwise the reason why it is not
-     */
-    ProjectConfig.verify = function verify(message) {
-        if (typeof message !== "object" || message === null)
-            return "object expected";
-        if (message.warehouse != null && message.hasOwnProperty("warehouse"))
-            if (!$util.isString(message.warehouse))
-                return "warehouse: string expected";
-        if (message.defaultSchema != null && message.hasOwnProperty("defaultSchema"))
-            if (!$util.isString(message.defaultSchema))
-                return "defaultSchema: string expected";
-        if (message.assertionSchema != null && message.hasOwnProperty("assertionSchema"))
-            if (!$util.isString(message.assertionSchema))
-                return "assertionSchema: string expected";
-        if (message.datasetPaths != null && message.hasOwnProperty("datasetPaths")) {
-            if (!Array.isArray(message.datasetPaths))
-                return "datasetPaths: array expected";
-            for (var i = 0; i < message.datasetPaths.length; ++i)
-                if (!$util.isString(message.datasetPaths[i]))
-                    return "datasetPaths: string[] expected";
-        }
-        if (message.includePaths != null && message.hasOwnProperty("includePaths")) {
-            if (!Array.isArray(message.includePaths))
-                return "includePaths: array expected";
-            for (var i = 0; i < message.includePaths.length; ++i)
-                if (!$util.isString(message.includePaths[i]))
-                    return "includePaths: string[] expected";
-        }
-        if (message.dependencies != null && message.hasOwnProperty("dependencies")) {
-            if (!$util.isObject(message.dependencies))
-                return "dependencies: object expected";
-            var key = Object.keys(message.dependencies);
-            for (var i = 0; i < key.length; ++i)
-                if (!$util.isString(message.dependencies[key[i]]))
-                    return "dependencies: string{k:string} expected";
-        }
-        return null;
-    };
-
-    /**
-     * Creates a ProjectConfig message from a plain object. Also converts values to their respective internal types.
-     * @function fromObject
-     * @memberof ProjectConfig
-     * @static
-     * @param {Object.<string,*>} object Plain object
-     * @returns {ProjectConfig} ProjectConfig
-     */
-    ProjectConfig.fromObject = function fromObject(object) {
-        if (object instanceof $root.ProjectConfig)
-            return object;
-        var message = new $root.ProjectConfig();
-        if (object.warehouse != null)
-            message.warehouse = String(object.warehouse);
-        if (object.defaultSchema != null)
-            message.defaultSchema = String(object.defaultSchema);
-        if (object.assertionSchema != null)
-            message.assertionSchema = String(object.assertionSchema);
-        if (object.datasetPaths) {
-            if (!Array.isArray(object.datasetPaths))
-                throw TypeError(".ProjectConfig.datasetPaths: array expected");
-            message.datasetPaths = [];
-            for (var i = 0; i < object.datasetPaths.length; ++i)
-                message.datasetPaths[i] = String(object.datasetPaths[i]);
-        }
-        if (object.includePaths) {
-            if (!Array.isArray(object.includePaths))
-                throw TypeError(".ProjectConfig.includePaths: array expected");
-            message.includePaths = [];
-            for (var i = 0; i < object.includePaths.length; ++i)
-                message.includePaths[i] = String(object.includePaths[i]);
-        }
-        if (object.dependencies) {
-            if (typeof object.dependencies !== "object")
-                throw TypeError(".ProjectConfig.dependencies: object expected");
-            message.dependencies = {};
-            for (var keys = Object.keys(object.dependencies), i = 0; i < keys.length; ++i)
-                message.dependencies[keys[i]] = String(object.dependencies[keys[i]]);
-        }
-        return message;
-    };
-
-    /**
-     * Creates a plain object from a ProjectConfig message. Also converts values to other types if specified.
-     * @function toObject
-     * @memberof ProjectConfig
-     * @static
-     * @param {ProjectConfig} message ProjectConfig
-     * @param {$protobuf.IConversionOptions} [options] Conversion options
-     * @returns {Object.<string,*>} Plain object
-     */
-    ProjectConfig.toObject = function toObject(message, options) {
-        if (!options)
-            options = {};
-        var object = {};
-        if (options.arrays || options.defaults) {
-            object.datasetPaths = [];
-            object.includePaths = [];
-        }
-        if (options.objects || options.defaults)
-            object.dependencies = {};
-        if (options.defaults) {
-            object.warehouse = "";
-            object.defaultSchema = "";
-            object.assertionSchema = "";
-        }
-        if (message.warehouse != null && message.hasOwnProperty("warehouse"))
-            object.warehouse = message.warehouse;
-        if (message.defaultSchema != null && message.hasOwnProperty("defaultSchema"))
-            object.defaultSchema = message.defaultSchema;
-        if (message.datasetPaths && message.datasetPaths.length) {
-            object.datasetPaths = [];
-            for (var j = 0; j < message.datasetPaths.length; ++j)
-                object.datasetPaths[j] = message.datasetPaths[j];
-        }
-        if (message.includePaths && message.includePaths.length) {
-            object.includePaths = [];
-            for (var j = 0; j < message.includePaths.length; ++j)
-                object.includePaths[j] = message.includePaths[j];
-        }
-        if (message.assertionSchema != null && message.hasOwnProperty("assertionSchema"))
-            object.assertionSchema = message.assertionSchema;
-        var keys2;
-        if (message.dependencies && (keys2 = Object.keys(message.dependencies)).length) {
-            object.dependencies = {};
-            for (var j = 0; j < keys2.length; ++j)
-                object.dependencies[keys2[j]] = message.dependencies[keys2[j]];
-        }
-        return object;
-    };
-
-    /**
-     * Converts this ProjectConfig to JSON.
-     * @function toJSON
-     * @memberof ProjectConfig
-     * @instance
-     * @returns {Object.<string,*>} JSON object
-     */
-    ProjectConfig.prototype.toJSON = function toJSON() {
-        return this.constructor.toObject(this, $protobuf.util.toJSONOptions);
-    };
-
-    return ProjectConfig;
 })();
 
 $root.RunConfig = (function() {

@@ -1,16 +1,14 @@
 syntax="proto3";
 
-enum WarehouseType {
-  BIGQUERY = 1;
-  REDSHIFT = 2;
-  SNOWFLAKE = 3;
-  POSTGRES = 4;
-}
+message ProjectConfig {
+  string warehouse = 1;
+  string default_schema = 2;
+  string assertion_schema = 5;
 
-enum MaterializationType {
-  VIEW = 1;
-  TABLE = 2;
-  INCREMENTAL = 3;
+  repeated string dataset_paths = 3;
+  repeated string include_paths = 4;
+
+  map<string, string> dependencies = 6;
 }
 
 message Target {
@@ -18,16 +16,6 @@ message Target {
   string name = 2;
 }
 
-message Operation {
-  string name = 1;
-  repeated string dependencies = 2;
-
-  repeated string statements = 6;
-}
-
-message Description {
-
-}
 message Materialization {
   string name = 1;
   repeated string dependencies = 2;
@@ -53,11 +41,27 @@ message Materialization {
   repeated string parsed_columns = 12;
 }
 
+
+message Operation {
+  string name = 1;
+  repeated string dependencies = 2;
+
+  repeated string statements = 6;
+}
+
 message Assertion {
   string name = 1;
   repeated string dependencies = 2;
 
   repeated string queries = 3;
+}
+
+message CompiledGraph {
+  ProjectConfig project_config = 4;
+
+  repeated Materialization materializations = 1;
+  repeated Operation operations = 2;
+  repeated Assertion assertions = 3;
 }
 
 message ExecutionTask {
@@ -99,22 +103,4 @@ message ExecutedGraph {
   RunConfig run_config = 2;
 
   repeated ExecutedNode nodes = 3;
-}
-
-message ProjectConfig {
-  string warehouse = 1;
-  string default_schema = 2;
-  string assertion_schema = 5;
-
-  repeated string dataset_paths = 3;
-  repeated string include_paths = 4;
-
-  map<string, string> dependencies = 6;
-}
-
-message RunConfig {
-  repeated string nodes = 1;
-  bool include_dependencies = 3;
-  bool full_refresh = 2;
-  bool carry_on = 4;
 }

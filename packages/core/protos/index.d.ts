@@ -1,17 +1,122 @@
 import * as $protobuf from "protobufjs";
-/** WarehouseType enum. */
-export enum WarehouseType {
-    BIGQUERY = 1,
-    REDSHIFT = 2,
-    SNOWFLAKE = 3,
-    POSTGRES = 4
+/** Properties of a ProjectConfig. */
+export interface IProjectConfig {
+
+    /** ProjectConfig warehouse */
+    warehouse?: (string|null);
+
+    /** ProjectConfig defaultSchema */
+    defaultSchema?: (string|null);
+
+    /** ProjectConfig assertionSchema */
+    assertionSchema?: (string|null);
+
+    /** ProjectConfig datasetPaths */
+    datasetPaths?: (string[]|null);
+
+    /** ProjectConfig includePaths */
+    includePaths?: (string[]|null);
+
+    /** ProjectConfig dependencies */
+    dependencies?: ({ [k: string]: string }|null);
 }
 
-/** MaterializationType enum. */
-export enum MaterializationType {
-    VIEW = 1,
-    TABLE = 2,
-    INCREMENTAL = 3
+/** Represents a ProjectConfig. */
+export class ProjectConfig implements IProjectConfig {
+
+    /**
+     * Constructs a new ProjectConfig.
+     * @param [properties] Properties to set
+     */
+    constructor(properties?: IProjectConfig);
+
+    /** ProjectConfig warehouse. */
+    public warehouse: string;
+
+    /** ProjectConfig defaultSchema. */
+    public defaultSchema: string;
+
+    /** ProjectConfig assertionSchema. */
+    public assertionSchema: string;
+
+    /** ProjectConfig datasetPaths. */
+    public datasetPaths: string[];
+
+    /** ProjectConfig includePaths. */
+    public includePaths: string[];
+
+    /** ProjectConfig dependencies. */
+    public dependencies: { [k: string]: string };
+
+    /**
+     * Creates a new ProjectConfig instance using the specified properties.
+     * @param [properties] Properties to set
+     * @returns ProjectConfig instance
+     */
+    public static create(properties?: IProjectConfig): ProjectConfig;
+
+    /**
+     * Encodes the specified ProjectConfig message. Does not implicitly {@link ProjectConfig.verify|verify} messages.
+     * @param message ProjectConfig message or plain object to encode
+     * @param [writer] Writer to encode to
+     * @returns Writer
+     */
+    public static encode(message: IProjectConfig, writer?: $protobuf.Writer): $protobuf.Writer;
+
+    /**
+     * Encodes the specified ProjectConfig message, length delimited. Does not implicitly {@link ProjectConfig.verify|verify} messages.
+     * @param message ProjectConfig message or plain object to encode
+     * @param [writer] Writer to encode to
+     * @returns Writer
+     */
+    public static encodeDelimited(message: IProjectConfig, writer?: $protobuf.Writer): $protobuf.Writer;
+
+    /**
+     * Decodes a ProjectConfig message from the specified reader or buffer.
+     * @param reader Reader or buffer to decode from
+     * @param [length] Message length if known beforehand
+     * @returns ProjectConfig
+     * @throws {Error} If the payload is not a reader or valid buffer
+     * @throws {$protobuf.util.ProtocolError} If required fields are missing
+     */
+    public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): ProjectConfig;
+
+    /**
+     * Decodes a ProjectConfig message from the specified reader or buffer, length delimited.
+     * @param reader Reader or buffer to decode from
+     * @returns ProjectConfig
+     * @throws {Error} If the payload is not a reader or valid buffer
+     * @throws {$protobuf.util.ProtocolError} If required fields are missing
+     */
+    public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): ProjectConfig;
+
+    /**
+     * Verifies a ProjectConfig message.
+     * @param message Plain object to verify
+     * @returns `null` if valid, otherwise the reason why it is not
+     */
+    public static verify(message: { [k: string]: any }): (string|null);
+
+    /**
+     * Creates a ProjectConfig message from a plain object. Also converts values to their respective internal types.
+     * @param object Plain object
+     * @returns ProjectConfig
+     */
+    public static fromObject(object: { [k: string]: any }): ProjectConfig;
+
+    /**
+     * Creates a plain object from a ProjectConfig message. Also converts values to other types if specified.
+     * @param message ProjectConfig
+     * @param [options] Conversion options
+     * @returns Plain object
+     */
+    public static toObject(message: ProjectConfig, options?: $protobuf.IConversionOptions): { [k: string]: any };
+
+    /**
+     * Converts this ProjectConfig to JSON.
+     * @returns JSON object
+     */
+    public toJSON(): { [k: string]: any };
 }
 
 /** Properties of a Target. */
@@ -105,192 +210,6 @@ export class Target implements ITarget {
 
     /**
      * Converts this Target to JSON.
-     * @returns JSON object
-     */
-    public toJSON(): { [k: string]: any };
-}
-
-/** Properties of an Operation. */
-export interface IOperation {
-
-    /** Operation name */
-    name?: (string|null);
-
-    /** Operation dependencies */
-    dependencies?: (string[]|null);
-
-    /** Operation statements */
-    statements?: (string[]|null);
-}
-
-/** Represents an Operation. */
-export class Operation implements IOperation {
-
-    /**
-     * Constructs a new Operation.
-     * @param [properties] Properties to set
-     */
-    constructor(properties?: IOperation);
-
-    /** Operation name. */
-    public name: string;
-
-    /** Operation dependencies. */
-    public dependencies: string[];
-
-    /** Operation statements. */
-    public statements: string[];
-
-    /**
-     * Creates a new Operation instance using the specified properties.
-     * @param [properties] Properties to set
-     * @returns Operation instance
-     */
-    public static create(properties?: IOperation): Operation;
-
-    /**
-     * Encodes the specified Operation message. Does not implicitly {@link Operation.verify|verify} messages.
-     * @param message Operation message or plain object to encode
-     * @param [writer] Writer to encode to
-     * @returns Writer
-     */
-    public static encode(message: IOperation, writer?: $protobuf.Writer): $protobuf.Writer;
-
-    /**
-     * Encodes the specified Operation message, length delimited. Does not implicitly {@link Operation.verify|verify} messages.
-     * @param message Operation message or plain object to encode
-     * @param [writer] Writer to encode to
-     * @returns Writer
-     */
-    public static encodeDelimited(message: IOperation, writer?: $protobuf.Writer): $protobuf.Writer;
-
-    /**
-     * Decodes an Operation message from the specified reader or buffer.
-     * @param reader Reader or buffer to decode from
-     * @param [length] Message length if known beforehand
-     * @returns Operation
-     * @throws {Error} If the payload is not a reader or valid buffer
-     * @throws {$protobuf.util.ProtocolError} If required fields are missing
-     */
-    public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): Operation;
-
-    /**
-     * Decodes an Operation message from the specified reader or buffer, length delimited.
-     * @param reader Reader or buffer to decode from
-     * @returns Operation
-     * @throws {Error} If the payload is not a reader or valid buffer
-     * @throws {$protobuf.util.ProtocolError} If required fields are missing
-     */
-    public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): Operation;
-
-    /**
-     * Verifies an Operation message.
-     * @param message Plain object to verify
-     * @returns `null` if valid, otherwise the reason why it is not
-     */
-    public static verify(message: { [k: string]: any }): (string|null);
-
-    /**
-     * Creates an Operation message from a plain object. Also converts values to their respective internal types.
-     * @param object Plain object
-     * @returns Operation
-     */
-    public static fromObject(object: { [k: string]: any }): Operation;
-
-    /**
-     * Creates a plain object from an Operation message. Also converts values to other types if specified.
-     * @param message Operation
-     * @param [options] Conversion options
-     * @returns Plain object
-     */
-    public static toObject(message: Operation, options?: $protobuf.IConversionOptions): { [k: string]: any };
-
-    /**
-     * Converts this Operation to JSON.
-     * @returns JSON object
-     */
-    public toJSON(): { [k: string]: any };
-}
-
-/** Properties of a Description. */
-export interface IDescription {
-}
-
-/** Represents a Description. */
-export class Description implements IDescription {
-
-    /**
-     * Constructs a new Description.
-     * @param [properties] Properties to set
-     */
-    constructor(properties?: IDescription);
-
-    /**
-     * Creates a new Description instance using the specified properties.
-     * @param [properties] Properties to set
-     * @returns Description instance
-     */
-    public static create(properties?: IDescription): Description;
-
-    /**
-     * Encodes the specified Description message. Does not implicitly {@link Description.verify|verify} messages.
-     * @param message Description message or plain object to encode
-     * @param [writer] Writer to encode to
-     * @returns Writer
-     */
-    public static encode(message: IDescription, writer?: $protobuf.Writer): $protobuf.Writer;
-
-    /**
-     * Encodes the specified Description message, length delimited. Does not implicitly {@link Description.verify|verify} messages.
-     * @param message Description message or plain object to encode
-     * @param [writer] Writer to encode to
-     * @returns Writer
-     */
-    public static encodeDelimited(message: IDescription, writer?: $protobuf.Writer): $protobuf.Writer;
-
-    /**
-     * Decodes a Description message from the specified reader or buffer.
-     * @param reader Reader or buffer to decode from
-     * @param [length] Message length if known beforehand
-     * @returns Description
-     * @throws {Error} If the payload is not a reader or valid buffer
-     * @throws {$protobuf.util.ProtocolError} If required fields are missing
-     */
-    public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): Description;
-
-    /**
-     * Decodes a Description message from the specified reader or buffer, length delimited.
-     * @param reader Reader or buffer to decode from
-     * @returns Description
-     * @throws {Error} If the payload is not a reader or valid buffer
-     * @throws {$protobuf.util.ProtocolError} If required fields are missing
-     */
-    public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): Description;
-
-    /**
-     * Verifies a Description message.
-     * @param message Plain object to verify
-     * @returns `null` if valid, otherwise the reason why it is not
-     */
-    public static verify(message: { [k: string]: any }): (string|null);
-
-    /**
-     * Creates a Description message from a plain object. Also converts values to their respective internal types.
-     * @param object Plain object
-     * @returns Description
-     */
-    public static fromObject(object: { [k: string]: any }): Description;
-
-    /**
-     * Creates a plain object from a Description message. Also converts values to other types if specified.
-     * @param message Description
-     * @param [options] Conversion options
-     * @returns Plain object
-     */
-    public static toObject(message: Description, options?: $protobuf.IConversionOptions): { [k: string]: any };
-
-    /**
-     * Converts this Description to JSON.
      * @returns JSON object
      */
     public toJSON(): { [k: string]: any };
@@ -464,6 +383,108 @@ export class Materialization implements IMaterialization {
     public toJSON(): { [k: string]: any };
 }
 
+/** Properties of an Operation. */
+export interface IOperation {
+
+    /** Operation name */
+    name?: (string|null);
+
+    /** Operation dependencies */
+    dependencies?: (string[]|null);
+
+    /** Operation statements */
+    statements?: (string[]|null);
+}
+
+/** Represents an Operation. */
+export class Operation implements IOperation {
+
+    /**
+     * Constructs a new Operation.
+     * @param [properties] Properties to set
+     */
+    constructor(properties?: IOperation);
+
+    /** Operation name. */
+    public name: string;
+
+    /** Operation dependencies. */
+    public dependencies: string[];
+
+    /** Operation statements. */
+    public statements: string[];
+
+    /**
+     * Creates a new Operation instance using the specified properties.
+     * @param [properties] Properties to set
+     * @returns Operation instance
+     */
+    public static create(properties?: IOperation): Operation;
+
+    /**
+     * Encodes the specified Operation message. Does not implicitly {@link Operation.verify|verify} messages.
+     * @param message Operation message or plain object to encode
+     * @param [writer] Writer to encode to
+     * @returns Writer
+     */
+    public static encode(message: IOperation, writer?: $protobuf.Writer): $protobuf.Writer;
+
+    /**
+     * Encodes the specified Operation message, length delimited. Does not implicitly {@link Operation.verify|verify} messages.
+     * @param message Operation message or plain object to encode
+     * @param [writer] Writer to encode to
+     * @returns Writer
+     */
+    public static encodeDelimited(message: IOperation, writer?: $protobuf.Writer): $protobuf.Writer;
+
+    /**
+     * Decodes an Operation message from the specified reader or buffer.
+     * @param reader Reader or buffer to decode from
+     * @param [length] Message length if known beforehand
+     * @returns Operation
+     * @throws {Error} If the payload is not a reader or valid buffer
+     * @throws {$protobuf.util.ProtocolError} If required fields are missing
+     */
+    public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): Operation;
+
+    /**
+     * Decodes an Operation message from the specified reader or buffer, length delimited.
+     * @param reader Reader or buffer to decode from
+     * @returns Operation
+     * @throws {Error} If the payload is not a reader or valid buffer
+     * @throws {$protobuf.util.ProtocolError} If required fields are missing
+     */
+    public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): Operation;
+
+    /**
+     * Verifies an Operation message.
+     * @param message Plain object to verify
+     * @returns `null` if valid, otherwise the reason why it is not
+     */
+    public static verify(message: { [k: string]: any }): (string|null);
+
+    /**
+     * Creates an Operation message from a plain object. Also converts values to their respective internal types.
+     * @param object Plain object
+     * @returns Operation
+     */
+    public static fromObject(object: { [k: string]: any }): Operation;
+
+    /**
+     * Creates a plain object from an Operation message. Also converts values to other types if specified.
+     * @param message Operation
+     * @param [options] Conversion options
+     * @returns Plain object
+     */
+    public static toObject(message: Operation, options?: $protobuf.IConversionOptions): { [k: string]: any };
+
+    /**
+     * Converts this Operation to JSON.
+     * @returns JSON object
+     */
+    public toJSON(): { [k: string]: any };
+}
+
 /** Properties of an Assertion. */
 export interface IAssertion {
 
@@ -561,6 +582,114 @@ export class Assertion implements IAssertion {
 
     /**
      * Converts this Assertion to JSON.
+     * @returns JSON object
+     */
+    public toJSON(): { [k: string]: any };
+}
+
+/** Properties of a CompiledGraph. */
+export interface ICompiledGraph {
+
+    /** CompiledGraph projectConfig */
+    projectConfig?: (IProjectConfig|null);
+
+    /** CompiledGraph materializations */
+    materializations?: (IMaterialization[]|null);
+
+    /** CompiledGraph operations */
+    operations?: (IOperation[]|null);
+
+    /** CompiledGraph assertions */
+    assertions?: (IAssertion[]|null);
+}
+
+/** Represents a CompiledGraph. */
+export class CompiledGraph implements ICompiledGraph {
+
+    /**
+     * Constructs a new CompiledGraph.
+     * @param [properties] Properties to set
+     */
+    constructor(properties?: ICompiledGraph);
+
+    /** CompiledGraph projectConfig. */
+    public projectConfig?: (IProjectConfig|null);
+
+    /** CompiledGraph materializations. */
+    public materializations: IMaterialization[];
+
+    /** CompiledGraph operations. */
+    public operations: IOperation[];
+
+    /** CompiledGraph assertions. */
+    public assertions: IAssertion[];
+
+    /**
+     * Creates a new CompiledGraph instance using the specified properties.
+     * @param [properties] Properties to set
+     * @returns CompiledGraph instance
+     */
+    public static create(properties?: ICompiledGraph): CompiledGraph;
+
+    /**
+     * Encodes the specified CompiledGraph message. Does not implicitly {@link CompiledGraph.verify|verify} messages.
+     * @param message CompiledGraph message or plain object to encode
+     * @param [writer] Writer to encode to
+     * @returns Writer
+     */
+    public static encode(message: ICompiledGraph, writer?: $protobuf.Writer): $protobuf.Writer;
+
+    /**
+     * Encodes the specified CompiledGraph message, length delimited. Does not implicitly {@link CompiledGraph.verify|verify} messages.
+     * @param message CompiledGraph message or plain object to encode
+     * @param [writer] Writer to encode to
+     * @returns Writer
+     */
+    public static encodeDelimited(message: ICompiledGraph, writer?: $protobuf.Writer): $protobuf.Writer;
+
+    /**
+     * Decodes a CompiledGraph message from the specified reader or buffer.
+     * @param reader Reader or buffer to decode from
+     * @param [length] Message length if known beforehand
+     * @returns CompiledGraph
+     * @throws {Error} If the payload is not a reader or valid buffer
+     * @throws {$protobuf.util.ProtocolError} If required fields are missing
+     */
+    public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): CompiledGraph;
+
+    /**
+     * Decodes a CompiledGraph message from the specified reader or buffer, length delimited.
+     * @param reader Reader or buffer to decode from
+     * @returns CompiledGraph
+     * @throws {Error} If the payload is not a reader or valid buffer
+     * @throws {$protobuf.util.ProtocolError} If required fields are missing
+     */
+    public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): CompiledGraph;
+
+    /**
+     * Verifies a CompiledGraph message.
+     * @param message Plain object to verify
+     * @returns `null` if valid, otherwise the reason why it is not
+     */
+    public static verify(message: { [k: string]: any }): (string|null);
+
+    /**
+     * Creates a CompiledGraph message from a plain object. Also converts values to their respective internal types.
+     * @param object Plain object
+     * @returns CompiledGraph
+     */
+    public static fromObject(object: { [k: string]: any }): CompiledGraph;
+
+    /**
+     * Creates a plain object from a CompiledGraph message. Also converts values to other types if specified.
+     * @param message CompiledGraph
+     * @param [options] Conversion options
+     * @returns Plain object
+     */
+    public static toObject(message: CompiledGraph, options?: $protobuf.IConversionOptions): { [k: string]: any };
+
+    /**
+     * Converts this CompiledGraph to JSON.
      * @returns JSON object
      */
     public toJSON(): { [k: string]: any };
@@ -1185,126 +1314,6 @@ export class ExecutedGraph implements IExecutedGraph {
 
     /**
      * Converts this ExecutedGraph to JSON.
-     * @returns JSON object
-     */
-    public toJSON(): { [k: string]: any };
-}
-
-/** Properties of a ProjectConfig. */
-export interface IProjectConfig {
-
-    /** ProjectConfig warehouse */
-    warehouse?: (string|null);
-
-    /** ProjectConfig defaultSchema */
-    defaultSchema?: (string|null);
-
-    /** ProjectConfig assertionSchema */
-    assertionSchema?: (string|null);
-
-    /** ProjectConfig datasetPaths */
-    datasetPaths?: (string[]|null);
-
-    /** ProjectConfig includePaths */
-    includePaths?: (string[]|null);
-
-    /** ProjectConfig dependencies */
-    dependencies?: ({ [k: string]: string }|null);
-}
-
-/** Represents a ProjectConfig. */
-export class ProjectConfig implements IProjectConfig {
-
-    /**
-     * Constructs a new ProjectConfig.
-     * @param [properties] Properties to set
-     */
-    constructor(properties?: IProjectConfig);
-
-    /** ProjectConfig warehouse. */
-    public warehouse: string;
-
-    /** ProjectConfig defaultSchema. */
-    public defaultSchema: string;
-
-    /** ProjectConfig assertionSchema. */
-    public assertionSchema: string;
-
-    /** ProjectConfig datasetPaths. */
-    public datasetPaths: string[];
-
-    /** ProjectConfig includePaths. */
-    public includePaths: string[];
-
-    /** ProjectConfig dependencies. */
-    public dependencies: { [k: string]: string };
-
-    /**
-     * Creates a new ProjectConfig instance using the specified properties.
-     * @param [properties] Properties to set
-     * @returns ProjectConfig instance
-     */
-    public static create(properties?: IProjectConfig): ProjectConfig;
-
-    /**
-     * Encodes the specified ProjectConfig message. Does not implicitly {@link ProjectConfig.verify|verify} messages.
-     * @param message ProjectConfig message or plain object to encode
-     * @param [writer] Writer to encode to
-     * @returns Writer
-     */
-    public static encode(message: IProjectConfig, writer?: $protobuf.Writer): $protobuf.Writer;
-
-    /**
-     * Encodes the specified ProjectConfig message, length delimited. Does not implicitly {@link ProjectConfig.verify|verify} messages.
-     * @param message ProjectConfig message or plain object to encode
-     * @param [writer] Writer to encode to
-     * @returns Writer
-     */
-    public static encodeDelimited(message: IProjectConfig, writer?: $protobuf.Writer): $protobuf.Writer;
-
-    /**
-     * Decodes a ProjectConfig message from the specified reader or buffer.
-     * @param reader Reader or buffer to decode from
-     * @param [length] Message length if known beforehand
-     * @returns ProjectConfig
-     * @throws {Error} If the payload is not a reader or valid buffer
-     * @throws {$protobuf.util.ProtocolError} If required fields are missing
-     */
-    public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): ProjectConfig;
-
-    /**
-     * Decodes a ProjectConfig message from the specified reader or buffer, length delimited.
-     * @param reader Reader or buffer to decode from
-     * @returns ProjectConfig
-     * @throws {Error} If the payload is not a reader or valid buffer
-     * @throws {$protobuf.util.ProtocolError} If required fields are missing
-     */
-    public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): ProjectConfig;
-
-    /**
-     * Verifies a ProjectConfig message.
-     * @param message Plain object to verify
-     * @returns `null` if valid, otherwise the reason why it is not
-     */
-    public static verify(message: { [k: string]: any }): (string|null);
-
-    /**
-     * Creates a ProjectConfig message from a plain object. Also converts values to their respective internal types.
-     * @param object Plain object
-     * @returns ProjectConfig
-     */
-    public static fromObject(object: { [k: string]: any }): ProjectConfig;
-
-    /**
-     * Creates a plain object from a ProjectConfig message. Also converts values to other types if specified.
-     * @param message ProjectConfig
-     * @param [options] Conversion options
-     * @returns Plain object
-     */
-    public static toObject(message: ProjectConfig, options?: $protobuf.IConversionOptions): { [k: string]: any };
-
-    /**
-     * Converts this ProjectConfig to JSON.
      * @returns JSON object
      */
     public toJSON(): { [k: string]: any };

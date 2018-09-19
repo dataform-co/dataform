@@ -21,5 +21,24 @@ export function compileSql(code: string, path: string) {
 
 export function variableNameFriendly(value: string) {
   return value
-    .replace("-", "").replace("@", "").replace("/", "");
+    .replace("-", "")
+    .replace("@", "")
+    .replace("/", "");
+}
+
+export function matchPatterns(patterns: string[], values: string[]) {
+  var regexps = patterns.map(
+    pattern =>
+      new RegExp(
+        "^" +
+          pattern
+            .replace(/[.+?^${}()|[\]\\]/g, "\\$&")
+            .split("*")
+            .join(".*") +
+          "$"
+      )
+  );
+  return values.filter(
+    value => regexps.filter(regexp => regexp.test(value)).length > 0
+  );
 }

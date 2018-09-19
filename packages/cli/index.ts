@@ -26,7 +26,8 @@ const addBuildYargs = (yargs: yargs.Argv) =>
       alias: "co"
     })
     .option("nodes", {
-      describe: "A list of node names or patterns to run, which can include * wildcards",
+      describe:
+        "A list of node names or patterns to run, which can include * wildcards",
       type: "array",
       alias: "n"
     })
@@ -81,7 +82,10 @@ yargs
     argv => {
       console.log(
         JSON.stringify(
-          commands.build(argv["project-dir"], parseBuildArgs(argv)),
+          commands.build(
+            commands.compile(argv["project-dir"]),
+            parseBuildArgs(argv)
+          ),
           null,
           4
         )
@@ -104,7 +108,10 @@ yargs
     argv => {
       commands
         .run(
-          commands.build(argv["project-dir"], parseBuildArgs(argv)),
+          commands.build(
+            commands.compile(argv["project-dir"]),
+            parseBuildArgs(argv)
+          ),
           protos.Profile.create(
             JSON.parse(fs.readFileSync(argv["profile"], "utf8"))
           )
