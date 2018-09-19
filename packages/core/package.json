@@ -2,5 +2,9 @@
   "name": "@dataform/core",
   "version": "0.0.1",
   "description": "Dataform core API.",
-  "main": "build/index.js"
+  "main": "build/index.js",
+  "types": "build/index.d.ts",
+  "dependencies": {
+    "protobufjs": "^6.8.8"
+  }
 }

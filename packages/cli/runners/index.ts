@@ -1,4 +1,4 @@
-import * as protos from "../protos";
+import { protos } from "@dataform/core";
 import { BigQueryRunner } from "./bigquery";
 import { RedshiftRunner } from "./redshift";
 import { SnowflakeRunner } from "./snowflake";

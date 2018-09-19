@@ -21,5 +21,5 @@ export function compileSql(code: string, path: string) {
 
 export function variableNameFriendly(value: string) {
   return value
-    .replace("-", "");
+    .replace("-", "").replace("@", "").replace("/", "");
 }

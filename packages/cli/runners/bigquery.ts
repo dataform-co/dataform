@@ -1,5 +1,5 @@
 import { Runner } from "./index";
-import * as protos from "../protos";
+import { protos } from "@dataform/core";
 const BigQuery = require("@google-cloud/bigquery");
 
 export class BigQueryRunner implements Runner {

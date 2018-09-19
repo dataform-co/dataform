@@ -1,5 +1,5 @@
 import * as runners from "./runners";
-import * as protos from "./protos";
+import { protos } from "@dataform/core";
 
 export class Executor {
   private runner: runners.Runner;

@@ -1,5 +1,5 @@
 import { Runner } from "./index";
-import * as protos from "../protos";
+import { protos } from "@dataform/core";
 const Snowflake = require("snowflake-sdk");
 
 export class SnowflakeRunner implements Runner {

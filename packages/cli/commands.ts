@@ -5,8 +5,7 @@ import * as yargs from "yargs";
 import * as path from "path";
 import { NodeVM } from "vm2";
 import * as glob from "glob";
-import * as protos from "./protos";
-import * as utils from "./utils";
+import { protos, utils } from "@dataform/core";
 import * as runners from "./runners";
 import { Executor } from "./executor";
 import * as childProcess from "child_process";
@@ -57,7 +56,7 @@ export function init(projectDir: string) {
         version: "0.0.1",
         description: "New Dataform project.",
         dependencies: {
-          dft: "^0.0.1"
+          "@dataform/core": "^0.0.1"
         }
       },
       null,
@@ -101,6 +100,7 @@ export function compile(
   projectDir: string
 ): (protos.IMaterialization | protos.IOperation | protos.IAssertion)[] {
   var indexScript = genIndex(projectDir, "dft.compile()");
+  console.log(indexScript);
   return vm.run(indexScript, path.resolve(path.join(projectDir, "index.js")));
 }
 
@@ -158,7 +158,7 @@ function genIndex(projectDir: string, returnStatement: string): string {
     .join("\n");
 
   return `
-    const dft = require("dft");
+    const dft = require("@dataform/core");
     dft.init(require("./dataform.json"));
     ${packageRequires}
     ${includeRequires}

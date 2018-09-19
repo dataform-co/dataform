@@ -1,5 +1,5 @@
 import { Runner } from "./index";
-import * as protos from "../protos";
+import { protos } from "@dataform/core";
 const Redshift = require('node-redshift');
 
 export class RedshiftRunner implements Runner {

@@ -3,9 +3,10 @@
   "version": "0.0.1",
   "description": "Dataform command line utilities.",
   "main": "build/index.js",
+  "types": "build/index.d.ts",
   "bin": {
     "dataform": "build/index.js",
-    "dfm": "build/index.js"
+    "dtfm": "build/index.js"
   },
   "dependencies": {
     "@dataform/core": "^0.0.1",

@@ -8,7 +8,7 @@
     "removeComments": true,
     "target": "ES6",
     "sourceMap": true,
-    "allowJs": true,
+    "declaration": true,
     "experimentalDecorators": true
   },
   "exclude": ["node_modules", "build"]
