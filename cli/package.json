@@ -18,5 +18,8 @@
     "snowflake-sdk": "^1.1.5",
     "vm2": "^3.6.3",
     "yargs": "^12.0.1"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

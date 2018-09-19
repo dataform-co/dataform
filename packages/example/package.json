@@ -1,8 +1,0 @@
-{
-    "name": "example",
-    "version": "0.0.1",
-    "description": "New Dataform project.",
-    "dependencies": {
-        "@dataform/core": "^0.0.1"
-    }
-}
