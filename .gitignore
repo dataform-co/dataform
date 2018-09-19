@@ -1,5 +1,5 @@
 build/
 node_modules/
-protos/index.*
+**/protos/index.*
 
 test_profiles/

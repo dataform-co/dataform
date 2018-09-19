@@ -1,2 +1,2 @@
 ${type("table")}
-select * from ${ref("sample_data")} where true
+select sample, "${macros.foo("bar")}" as foobar from ${ref("sample_data")} where true
