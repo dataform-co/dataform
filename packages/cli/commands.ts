@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 import * as fs from "fs";
 import * as util from "util";
 import * as yargs from "yargs";
