@@ -1,0 +1,8 @@
+#!/bin/bash
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
+
+mkdir -p $DIR/build/parser
+
+cp -R $DIR/parser/index.js $DIR/build/parser/index.js
+
+(cd $DIR && tsc $@)
