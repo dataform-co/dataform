@@ -1,12 +1,5 @@
 syntax="proto3";
 
-message RunConfig {
-  repeated string nodes = 1;
-  bool include_dependencies = 3;
-  bool full_refresh = 2;
-  bool carry_on = 4;
-}
-
 message Profile {
   //int64 id = 1;
   //string project_id = 2;
