@@ -7,9 +7,7 @@ import { NodeVM } from "vm2";
 import * as glob from "glob";
 import { utils } from "@dataform/core";
 import * as protos from "@dataform/protos";
-import * as runners from "./runners";
-import { Executor } from "./executor";
-import * as commands from "./commands";
+import { init, compile, build, run } from "@dataform/api";
 
 const addBuildYargs = (yargs: yargs.Argv) =>
   yargs
@@ -55,7 +53,7 @@ yargs
         default: "."
       }),
     argv => {
-      commands.init(argv["project-dir"]);
+      init(argv["project-dir"]);
     }
   )
   .command(
@@ -68,7 +66,7 @@ yargs
       }),
     argv => {
       console.log(
-        JSON.stringify(commands.compile(argv["project-dir"]), null, 4)
+        JSON.stringify(compile(argv["project-dir"]), null, 4)
       );
     }
   )
@@ -83,8 +81,8 @@ yargs
     argv => {
       console.log(
         JSON.stringify(
-          commands.build(
-            commands.compile(argv["project-dir"]),
+          build(
+            compile(argv["project-dir"]),
             parseBuildArgs(argv)
           ),
           null,
@@ -107,10 +105,9 @@ yargs
           required: true
         }),
     argv => {
-      commands
-        .run(
-          commands.build(
-            commands.compile(argv["project-dir"]),
+      run(
+          build(
+            compile(argv["project-dir"]),
             parseBuildArgs(argv)
           ),
           protos.Profile.create(

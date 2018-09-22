@@ -11,6 +11,13 @@ message ProjectConfig {
   map<string, string> dependencies = 6;
 }
 
+message RunConfig {
+  repeated string nodes = 1;
+  bool include_dependencies = 3;
+  bool full_refresh = 2;
+  bool carry_on = 4;
+}
+
 message Target {
   string schema = 1;
   string name = 2;
