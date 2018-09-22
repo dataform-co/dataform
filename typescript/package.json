@@ -4,6 +4,7 @@
     "lerna": "^3.4.0",
     "pegjs": "^0.10.0",
     "prettier": "^1.14.2",
+    "protobufjs": "^6.8.8",
     "typescript": "^2.9.2"
   }
 }
