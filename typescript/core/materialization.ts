@@ -76,8 +76,10 @@ export class Materialization {
     this.proto.query = context.apply(this.contextableQuery);
     this.contextableQuery = null;
 
-    this.proto.where = context.apply(this.contextableWhere);
-    this.contextableWhere = null;
+    if (this.contextableWhere) {
+      this.proto.where = context.apply(this.contextableWhere);
+      this.contextableWhere = null;
+    }
 
     if (this.contextablePres) {
       var appliedPres = context.apply(this.contextablePres);
