@@ -107,10 +107,7 @@ export class Materialization {
     // Compute columns.
     try {
       var tree = parser.parse(this.proto.query, {});
-      var parsedColumns = tree.statement[0].result.map(res => res.alias);
-      if (parsedColumns.indexOf(null) < 0) {
-        this.proto.parsedColumns = parsedColumns;
-      }
+      this.proto.parsedColumns = tree.statement[0].result.map(res => res.alias).filter(column => !!column);
     } catch (e) {
       // There was an exception parsing the columns, ignore.
     }
