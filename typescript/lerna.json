@@ -1,9 +1,0 @@
-{
-  "packages": [
-    "cli",
-    "core",
-    "protos",
-    "example"
-  ],
-  "version": "0.0.2-alpha.0"
-}
