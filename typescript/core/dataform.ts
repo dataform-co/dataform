@@ -6,7 +6,10 @@ import { Materialization, MContextable } from "./materialization";
 import { Operation, OContextable } from "./operation";
 import { Assertion, AContextable } from "./assertion";
 
+
 export class Dataform {
+  public static ROOT_DIR = "";
+
   projectConfig: protos.IProjectConfig;
 
   materializations: { [name: string]: Materialization };
@@ -58,6 +61,7 @@ export class Dataform {
     if (statement) {
       operation.statement(statement);
     }
+    operation.proto.fileName = utils.getCallerFile(Dataform.ROOT_DIR);
     // Add it to global index.
     this.operations[name] = operation;
     return operation;
@@ -71,6 +75,7 @@ export class Dataform {
     if (query) {
       materialization.query(query);
     }
+    materialization.proto.fileName = utils.getCallerFile(Dataform.ROOT_DIR);
     // Add it to global index.
     this.materializations[name] = materialization;
     return materialization;
@@ -83,6 +88,7 @@ export class Dataform {
     if (query) {
       assertion.query(query);
     }
+    assertion.proto.fileName = utils.getCallerFile(Dataform.ROOT_DIR);
     // Add it to global index.
     this.assertions[name] = assertion;
     return assertion;

@@ -83,6 +83,7 @@ function genCompileIndex(projectDir: string): string {
 
   return `
     const dataformcore = require("@dataform/core");
+    dataformcore.Dataform.ROOT_DIR="${projectDir}";
     dataformcore.init(require("./dataform.json"));
     ${packageRequires}
     ${includeRequires}

@@ -46,6 +46,7 @@ message Materialization {
 
   // Generated.
   repeated string parsed_columns = 12;
+  string file_name = 18;
 }
 
 
@@ -54,6 +55,9 @@ message Operation {
   repeated string dependencies = 2;
 
   repeated string statements = 6;
+
+  // Generated.
+  string file_name = 7;
 }
 
 message Assertion {
@@ -61,6 +65,9 @@ message Assertion {
   repeated string dependencies = 2;
 
   repeated string queries = 3;
+
+  // Generated.
+  string file_name = 7;
 }
 
 message CompiledGraph {

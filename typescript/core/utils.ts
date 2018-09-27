@@ -1,3 +1,13 @@
+export function relativePath(path: string, base: string) {
+  if (base.length == 0) {
+    return path;
+  }
+  var stripped = path.substr(base.length);
+  if (stripped.startsWith("/")) {
+    return stripped.substr(1);
+  }
+}
+
 export function baseFilename(path: string) {
   var pathSplits = path.split("/");
   return pathSplits[pathSplits.length - 1].split(".")[0];
@@ -41,4 +51,24 @@ export function matchPatterns(patterns: string[], values: string[]) {
   return values.filter(
     value => regexps.filter(regexp => regexp.test(value)).length > 0
   );
+}
+
+export function getCallerFile(rootDir: string) {
+  var originalFunc = Error.prepareStackTrace;
+  var callerfile;
+  try {
+    var err = new Error();
+    var currentfile;
+    Error.prepareStackTrace = function(err, stack) {
+      return stack;
+    };
+    currentfile = (err.stack as any).shift().getFileName();
+    while (err.stack.length) {
+      callerfile = (err.stack as any).shift().getFileName();
+
+      if (currentfile !== callerfile && !callerfile.includes("vm2/lib/") && ! callerfile.includes("@dataform/core/")) break;
+    }
+  } catch (e) {}
+  Error.prepareStackTrace = originalFunc;
+  return relativePath(callerfile, rootDir);
 }
