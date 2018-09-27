@@ -5,6 +5,8 @@ export function relativePath(path: string, base: string) {
   var stripped = path.substr(base.length);
   if (stripped.startsWith("/")) {
     return stripped.substr(1);
+  } else {
+    return stripped;
   }
 }
 
