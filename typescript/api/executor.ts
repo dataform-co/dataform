@@ -7,40 +7,53 @@ export class Executor {
 
   private pendingNodes: protos.IExecutionNode[];
 
-  private finishedNodes: protos.IExecutedNode[] = [];
+  private result: protos.IExecutedGraph;
+  private running: boolean = false;
+
+  private changeListeners: ((graph: protos.IExecutedGraph) => void)[] = [];
 
   constructor(runner: runners.Runner, graph: protos.IExecutionGraph) {
     this.runner = runner;
     this.graph = graph;
     this.pendingNodes = graph.nodes;
+    this.result = {
+      projectConfig: this.graph.projectConfig,
+      runConfig: this.graph.runConfig,
+      nodes: []
+    };
   }
 
-  public static execute(runner: runners.Runner, graph: protos.IExecutionGraph) {
-    return new Executor(runner, graph).execute();
+  public static create(runner: runners.Runner, graph: protos.IExecutionGraph) {
+    return new Executor(runner, graph);
   }
 
-  private execute(): Promise<protos.IExecutedGraph> {
+  public onChange(listener: (graph: protos.IExecutedGraph) => void) {
+    this.changeListeners.push(listener);
+    return this;
+  }
+
+  public execute(): Promise<protos.IExecutedGraph> {
+    if (this.running) throw Error("Executor already started.");
+
     return new Promise((resolve, reject) => {
       try {
-        this.loop(() =>
-          resolve({
-            projectConfig: this.graph.projectConfig,
-            runConfig: this.graph.runConfig,
-            nodes: this.finishedNodes
-          })
-        );
+        this.loop(() => resolve(this.result));
       } catch (e) {
         reject(e);
       }
     });
   }
 
+  private triggerChange() {
+    this.changeListeners.forEach(listener => listener(this.result));
+  }
+
   private loop(resolve: () => void) {
     var pendingNodes = this.pendingNodes;
     this.pendingNodes = [];
 
-    let allFinishedDeps = this.finishedNodes.map(fn => fn.name);
-    let allSuccessfulDeps = this.finishedNodes
+    let allFinishedDeps = this.result.nodes.map(fn => fn.name);
+    let allSuccessfulDeps = this.result.nodes
       .filter(fn => fn.ok)
       .map(fn => fn.name);
 
@@ -56,14 +69,16 @@ export class Executor {
         this.executeNode(node);
       } else if (finishedDeps.length == node.dependencies.length) {
         // All deps are finished but they weren't all successful, skip this node.
-        this.finishedNodes.push({ name: node.name, skipped: true });
+        this.result.nodes.push({ name: node.name, skipped: true });
+        this.triggerChange();
       } else {
         this.pendingNodes.push(node);
+        this.triggerChange();
       }
     });
     if (
       this.pendingNodes.length > 0 ||
-      this.finishedNodes.length != this.graph.nodes.length
+      this.result.nodes.length != this.graph.nodes.length
     ) {
       setTimeout(() => this.loop(resolve), 100);
     } else {
@@ -96,10 +111,12 @@ export class Executor {
         });
       }, Promise.resolve([] as protos.IExecutedTask[]))
       .then(results => {
-        this.finishedNodes.push({ name: node.name, ok: true, tasks: results });
+        this.result.nodes.push({ name: node.name, ok: true, tasks: results });
+        this.triggerChange();
       })
       .catch((results: protos.IExecutedTask[]) => {
-        this.finishedNodes.push({ name: node.name, ok: false, tasks: results });
+        this.result.nodes.push({ name: node.name, ok: false, tasks: results });
+        this.triggerChange();
       });
   }
 }

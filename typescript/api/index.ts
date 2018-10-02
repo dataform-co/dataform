@@ -13,10 +13,10 @@ export function run(
   graph: protos.IExecutionGraph,
   profile: protos.IProfile
 ): Promise<protos.IExecutedGraph> {
-  return Executor.execute(
+  return Executor.create(
     runners.create(graph.projectConfig.warehouse, profile),
     graph
-  );
+  ).execute();
 }
 
 export function build(
