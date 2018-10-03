@@ -33,7 +33,7 @@ message Materialization {
   bool protected = 9;
   string partition_by = 10;
 
-  map<string, string> descriptions = 16;
+  map<string, string> schema = 16;
 
   // Incremental only.
   string where = 8;
