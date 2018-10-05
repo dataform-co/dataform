@@ -21,4 +21,19 @@ export class BigQueryRunner implements Runner {
       })
       .then(result => result[0]);
   }
+
+  tables() {
+    return this.client
+      .getDatasets()
+      .then(datasets =>
+        Promise.all(
+          datasets.map(dataset => dataset.getTables({ autoPaginate: true }))
+        )
+      ).then(datasetTables => {
+        var allTables = [];
+        datasetTables.forEach(tables => tables.forEach(table => allTables.push(`${dataset.name}.${table.name}`)));
+      });
+  }
+
+  schema(table: string) {}
 }

@@ -118,3 +118,15 @@ message ExecutedGraph {
 
   repeated ExecutedNode nodes = 3;
 }
+
+
+message Schema {
+  message Column {
+    string name = 1;
+    string type = 2;
+
+    // This is only populated for object or array types.
+    Schema sub_schema = 3;
+  }
+  repeated Column columns = 3;
+}
