@@ -30,4 +30,12 @@ export class SnowflakeRunner implements Runner {
       });
     });
   }
+
+  tables(): Promise<protos.ITarget[]> {
+    throw Error("Unimplemented");
+  }
+
+  schema(target: protos.ITarget): Promise<protos.ISchema> {
+    throw Error("Unimplemented");
+  }
 }

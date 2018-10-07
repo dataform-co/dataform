@@ -7,7 +7,7 @@ import { NodeVM } from "vm2";
 import * as glob from "glob";
 import { utils } from "@dataform/core";
 import * as protos from "@dataform/protos";
-import { init, compile, build, run } from "@dataform/api";
+import { init, compile, build, run, tables, schema } from "@dataform/api";
 
 const addBuildYargs = (yargs: yargs.Argv) =>
   yargs
@@ -65,9 +65,7 @@ yargs
         default: "."
       }),
     argv => {
-      console.log(
-        JSON.stringify(compile(argv["project-dir"]), null, 4)
-      );
+      console.log(JSON.stringify(compile(argv["project-dir"]), null, 4));
     }
   )
   .command(
@@ -81,10 +79,7 @@ yargs
     argv => {
       console.log(
         JSON.stringify(
-          build(
-            compile(argv["project-dir"]),
-            parseBuildArgs(argv)
-          ),
+          build(compile(argv["project-dir"]), parseBuildArgs(argv)),
           null,
           4
         )
@@ -106,14 +101,43 @@ yargs
         }),
     argv => {
       run(
-          build(
-            compile(argv["project-dir"]),
-            parseBuildArgs(argv)
-          ),
-          protos.Profile.create(
-            JSON.parse(fs.readFileSync(argv["profile"], "utf8"))
-          )
+        build(compile(argv["project-dir"]), parseBuildArgs(argv)),
+        protos.Profile.create(
+          JSON.parse(fs.readFileSync(argv["profile"], "utf8"))
         )
-        .then(result => console.log(JSON.stringify(result, null, 4)));
+      ).then(result => console.log(JSON.stringify(result, null, 4)));
+    }
+  )
+  .command(
+    "tables",
+    "Fetch available tables for the provided profile.",
+    yargs =>
+      yargs.option("profile", {
+        describe: "The location of the profile JSON file to run against",
+        required: true
+      }),
+    argv => {
+      tables(
+        protos.Profile.create(
+          JSON.parse(fs.readFileSync(argv["profile"], "utf8"))
+        )
+      ).then(tables => console.log(JSON.stringify(tables, null, 4)));
+    }
+  )
+  .command(
+    "schema <schema> <table>",
+    "Fetch metadata for the given table",
+    yargs =>
+      yargs.option("profile", {
+        describe: "The location of the profile JSON file to run against",
+        required: true
+      }),
+    argv => {
+      schema(
+        protos.Profile.create(
+          JSON.parse(fs.readFileSync(argv["profile"], "utf8"))
+        ),
+        { schema: argv["schema"], name: argv["table"] }
+      ).then(schema => console.log(JSON.stringify(schema, null, 4)));
     }
   ).argv;

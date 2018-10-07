@@ -3,3 +3,4 @@ node_modules/
 **/protos/index.*
 
 test_profiles/
+build-cache.json

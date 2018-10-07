@@ -14,7 +14,7 @@ export function run(
   profile: protos.IProfile
 ): Promise<protos.IExecutedGraph> {
   return Executor.create(
-    runners.create(graph.projectConfig.warehouse, profile),
+    runners.create(profile, graph.projectConfig.warehouse),
     graph
   ).execute();
 }
@@ -24,4 +24,15 @@ export function build(
   runConfig?: protos.IRunConfig
 ): protos.IExecutionGraph {
   return builder.build(compiledGraph, runConfig);
+}
+
+export function tables(profile: protos.IProfile): Promise<protos.ITarget[]> {
+  return runners.create(profile).tables();
+}
+
+export function schema(
+  profile: protos.IProfile,
+  target: protos.ITarget
+): Promise<protos.ISchema> {
+  return runners.create(profile).schema(target);
 }

@@ -1,8 +1,0 @@
-#!/bin/bash
-DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
-
-chmod +x $DIR/../../node_modules/protobufjs/cli/bin/pbjs
-chmod +x $DIR/../../node_modules/protobufjs/cli/bin/pbts
-
-$DIR/../../node_modules/protobufjs/cli/bin/pbjs -t static-module -w commonjs -p $DIR/../../protos/ -o $DIR/index.js core.proto profiles.proto
-$DIR/../../node_modules/protobufjs/cli/bin/pbts -o $DIR/index.d.ts $DIR/index.js

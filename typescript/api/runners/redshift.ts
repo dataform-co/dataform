@@ -1,6 +1,6 @@
 import { Runner } from "./index";
 import * as protos from "@dataform/protos";
-const Redshift = require('node-redshift');
+const Redshift = require("node-redshift");
 
 export class RedshiftRunner implements Runner {
   private profile: protos.IProfile;
@@ -12,8 +12,14 @@ export class RedshiftRunner implements Runner {
   }
 
   execute(statement: string) {
-    return this.client
-      .query(statement)
-      .then(result => result.rows);
+    return this.client.query(statement).then(result => result.rows);
+  }
+
+  tables(): Promise<protos.ITarget[]> {
+    throw Error("Unimplemented");
+  }
+
+  schema(target: protos.ITarget): Promise<protos.ISchema> {
+    throw Error("Unimplemented");
   }
 }

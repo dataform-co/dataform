@@ -121,12 +121,13 @@ message ExecutedGraph {
 
 
 message Schema {
-  message Column {
+  message Field {
     string name = 1;
-    string type = 2;
-
-    // This is only populated for object or array types.
-    Schema sub_schema = 3;
+    repeated string flags = 4;
+    oneof type {
+      string primitive = 2;
+      Schema struct = 3;
+    }
   }
-  repeated Column columns = 3;
+  repeated Field fields = 3;
 }

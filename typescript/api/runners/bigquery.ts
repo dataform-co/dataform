@@ -22,18 +22,51 @@ export class BigQueryRunner implements Runner {
       .then(result => result[0]);
   }
 
-  tables() {
+  tables(): Promise<protos.ITarget[]> {
     return this.client
-      .getDatasets()
-      .then(datasets =>
-        Promise.all(
-          datasets.map(dataset => dataset.getTables({ autoPaginate: true }))
-        )
-      ).then(datasetTables => {
-        var allTables = [];
-        datasetTables.forEach(tables => tables.forEach(table => allTables.push(`${dataset.name}.${table.name}`)));
+      .getDatasets({ autoPaginate: true })
+      .then(result => {
+        return Promise.all(
+          result[0].map(dataset => {
+            return dataset.getTables({ autoPaginate: true });
+          })
+        );
+      })
+      .then(datasetTables => {
+        var allTables: protos.ITarget[] = [];
+        datasetTables.forEach(tablesResult =>
+          tablesResult[0].forEach(table =>
+            allTables.push({ schema: table.dataset.id, name: table.id })
+          )
+        );
+        return allTables;
       });
   }
 
-  schema(table: string) {}
+  schema(target: protos.ITarget): Promise<protos.ISchema> {
+    return this.client
+      .dataset(target.schema)
+      .table(target.name)
+      .getMetadata()
+      .then(result => {
+        var table = result[0];
+        return protos.Schema.create({
+          fields: table.schema.fields.map(field => convertField(field))
+        });
+      });
+  }
+}
+
+function convertField(field: any): protos.Schema.IField {
+  return {
+    name: field.name,
+    flags: [field.mode],
+    primitive: field.type != "RECORD" ? field.type : null,
+    struct:
+      field.type == "RECORD"
+        ? {
+            fields: field.fields.map(field => convertField(field))
+          }
+        : null
+  };
 }
