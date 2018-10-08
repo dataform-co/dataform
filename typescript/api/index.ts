@@ -36,3 +36,7 @@ export function table(
 ): Promise<protos.ITable> {
   return runners.create(profile).schema(target);
 }
+
+export function query(profile: protos.IProfile, query: string): Promise<any[]> {
+  return runners.create(profile).execute(query);
+}

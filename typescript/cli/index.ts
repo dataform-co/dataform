@@ -7,7 +7,7 @@ import { NodeVM } from "vm2";
 import * as glob from "glob";
 import { utils } from "@dataform/core";
 import * as protos from "@dataform/protos";
-import { init, compile, build, run, tables, table } from "@dataform/api";
+import { init, compile, build, run, tables, table, query } from "@dataform/api";
 
 const addBuildYargs = (yargs: yargs.Argv) =>
   yargs
@@ -139,5 +139,22 @@ yargs
         ),
         { schema: argv["schema"], name: argv["table"] }
       ).then(schema => console.log(JSON.stringify(schema, null, 4)));
+    }
+  )
+  .command(
+    "query <query>",
+    "Execute the given query against the warehouse",
+    yargs =>
+      yargs.option("profile", {
+        describe: "The location of the profile JSON file to run against",
+        required: true
+      }),
+    argv => {
+      query(
+        protos.Profile.create(
+          JSON.parse(fs.readFileSync(argv["profile"], "utf8"))
+        ),
+        argv["query"]
+      ).then(results => console.log(JSON.stringify(results, null, 4)));
     }
   ).argv;
