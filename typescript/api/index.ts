@@ -30,7 +30,7 @@ export function tables(profile: protos.IProfile): Promise<protos.ITarget[]> {
   return runners.create(profile).tables();
 }
 
-export function schema(
+export function table(
   profile: protos.IProfile,
   target: protos.ITarget
 ): Promise<protos.ITable> {

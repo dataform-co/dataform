@@ -7,7 +7,7 @@ import { NodeVM } from "vm2";
 import * as glob from "glob";
 import { utils } from "@dataform/core";
 import * as protos from "@dataform/protos";
-import { init, compile, build, run, tables, schema } from "@dataform/api";
+import { init, compile, build, run, tables, table } from "@dataform/api";
 
 const addBuildYargs = (yargs: yargs.Argv) =>
   yargs
@@ -133,7 +133,7 @@ yargs
         required: true
       }),
     argv => {
-      schema(
+      table(
         protos.Profile.create(
           JSON.parse(fs.readFileSync(argv["profile"], "utf8"))
         ),
