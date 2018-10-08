@@ -33,6 +33,6 @@ export function tables(profile: protos.IProfile): Promise<protos.ITarget[]> {
 export function schema(
   profile: protos.IProfile,
   target: protos.ITarget
-): Promise<protos.ISchema> {
+): Promise<protos.ITable> {
   return runners.create(profile).schema(target);
 }

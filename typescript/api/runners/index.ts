@@ -6,7 +6,7 @@ import { SnowflakeRunner } from "./snowflake";
 export interface Runner {
   execute(statement: string): Promise<any[]>;
   tables(): Promise<protos.ITarget[]>;
-  schema(target: protos.ITarget): Promise<protos.ISchema>;
+  schema(target: protos.ITarget): Promise<protos.ITable>;
 }
 
 export interface RunnerConstructor<T extends Runner> {
@@ -32,6 +32,7 @@ export function create(profile: protos.IProfile, warehouseType?: string): Runner
   if (!!profile.snowflake) {
     return new registry["bigquery"](profile);
   }
+  else throw Error("Invalid profile.");
 }
 
 register("bigquery", BigQueryRunner);

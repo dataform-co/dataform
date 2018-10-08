@@ -109,7 +109,7 @@ yargs
     }
   )
   .command(
-    "tables",
+    "tables list",
     "Fetch available tables for the provided profile.",
     yargs =>
       yargs.option("profile", {
@@ -125,7 +125,7 @@ yargs
     }
   )
   .command(
-    "schema <schema> <table>",
+    "tables get <schema> <table>",
     "Fetch metadata for the given table",
     yargs =>
       yargs.option("profile", {

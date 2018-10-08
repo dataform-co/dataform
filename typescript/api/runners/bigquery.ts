@@ -43,15 +43,18 @@ export class BigQueryRunner implements Runner {
       });
   }
 
-  schema(target: protos.ITarget): Promise<protos.ISchema> {
+  schema(target: protos.ITarget): Promise<protos.ITable> {
     return this.client
       .dataset(target.schema)
       .table(target.name)
       .getMetadata()
       .then(result => {
         var table = result[0];
-        return protos.Schema.create({
-          fields: table.schema.fields.map(field => convertField(field))
+        return protos.Table.create({
+          target: target,
+          schema: {
+            fields: table.schema.fields.map(field => convertField(field))
+          }
         });
       });
   }

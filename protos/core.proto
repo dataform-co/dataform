@@ -119,7 +119,6 @@ message ExecutedGraph {
   repeated ExecutedNode nodes = 3;
 }
 
-
 message Schema {
   message Field {
     string name = 1;
@@ -130,4 +129,9 @@ message Schema {
     }
   }
   repeated Field fields = 3;
+}
+
+message Table {
+  Target target = 1;
+  Schema schema = 2;
 }
