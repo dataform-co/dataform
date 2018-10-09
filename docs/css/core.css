@@ -1,0 +1,39 @@
+.pageWidth {
+  width: 960px;
+  margin: 0px auto;
+}
+
+.content {
+  background-color: #FFF;
+}
+
+.flexContainer_column {
+  display: flex;
+  flex-direction: column;
+}
+
+.flexContainer_row {
+  display: flex;
+  flex-direction: row;
+}
+
+.flex_grow {
+  flex-grow: 1;
+}
+
+.sidebar {
+  width: 280px;
+  min-width: 280px;
+  padding: 10px;
+}
+
+div.highlight {
+  padding: 5px;
+  background-color: #394b59;
+  margin-bottom: 10px;
+}
+
+pre.highlight {
+  margin: 0px;
+  background-color: #394b59;
+}

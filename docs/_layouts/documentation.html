@@ -1,0 +1,18 @@
+---
+layout: default
+---
+<div class="flexContainer_row">
+  <div class="sidebar">
+    <ul class="bp3-menu .modifier">
+      {% for doc in site.documentation %}
+        <li><a class="bp3-menu-item" href="{{ doc.url }}">{{ doc.title }}</a></li>
+        {% for sub_header in doc.sub_headers %}
+          <li><a class="bp3-menu-item" style="margin-left: 20px" href="{{ doc.url }}#{{ sub_header }}">{{ sub_header }}</a></li>
+        {% endfor %}
+      {% endfor %}
+    </ul>
+  </div>
+  <div class="flex_grow">
+    {{ content }}
+  </div>
+</div>
