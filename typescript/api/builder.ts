@@ -32,13 +32,49 @@ class Builder {
       this.compiledGraph.operations.map(o => this.buildOperation(o)),
       this.compiledGraph.assertions.map(a => this.buildAssertion(a))
     );
-    // Determine which nodes should be included.
+
     var allNodeNames = allNodes.map(n => n.name);
+    var nodeNameMap: { [name: string]: protos.IExecutionNode } = {};
+    allNodes.forEach(node => (nodeNameMap[node.name] = node));
+
+    // Check all dependencies actually exist.
+    allNodes.forEach(node => {
+      node.dependencies.forEach(dependency => {
+        if (allNodeNames.indexOf(dependency) < 0) {
+          throw Error(
+            `Node "${
+              node.name
+            }" depends on "${dependency}" which does not exist.`
+          );
+        }
+      });
+    });
+    // Check for circular dependencies.
+    function checkCircular(
+      node: protos.IExecutionNode,
+      dependents: protos.IExecutionNode[]
+    ) {
+      if (dependents.indexOf(node) >= 0) {
+        throw Error(
+          `Circular dependency detected in chain: [${dependents
+            .map(d => d.name)
+            .join(" > ")} > ${node.name}]`
+        );
+      }
+      node.dependencies.forEach(d =>
+        checkCircular(nodeNameMap[d], dependents.concat([node]))
+      );
+    }
+    allNodes.forEach(node => checkCircular(node, []));
+
+    // Determine which nodes should be included.
     var includedNodeNames =
       this.runConfig.nodes && this.runConfig.nodes.length > 0
         ? utils.matchPatterns(this.runConfig.nodes, allNodeNames)
         : allNodeNames;
-    var includedNodes = allNodes.filter(node => includedNodeNames.indexOf(node.name) >= 0);
+    var includedNodes = allNodes.filter(
+      node => includedNodeNames.indexOf(node.name) >= 0
+    );
     if (this.runConfig.includeDependencies) {
       // Compute all transitive dependencies.
       for (let i = 0; i < allNodes.length; i++) {
@@ -54,21 +90,23 @@ class Builder {
             }
           });
           // Update included nodes.
-          includedNodes = allNodes.filter(node => includedNodeNames.indexOf(node.name) >= 0)
+          includedNodes = allNodes.filter(
+            node => includedNodeNames.indexOf(node.name) >= 0
+          );
         });
       }
     }
+    // Remove any excluded dependencies and evaluate wildcard dependencies.
+    includedNodes.forEach(node => {
+      node.dependencies = utils.matchPatterns(
+        node.dependencies,
+        includedNodeNames
+      );
+    });
     return {
       projectConfig: this.compiledGraph.projectConfig,
       runConfig: this.runConfig,
-      nodes: includedNodes.map(node => {
-        // Remove any excluded dependencies and evaluate wildcard dependencies.
-        node.dependencies = utils.matchPatterns(
-          node.dependencies,
-          includedNodeNames
-        );
-        return node;
-      })
+      nodes: includedNodes
     };
   }
 

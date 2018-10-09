@@ -48,12 +48,18 @@ yargs
     "init [project-dir]",
     "Create a new dataform project in the current, or specified directory.",
     yargs =>
-      yargs.positional("project-dir", {
-        describe: "The directory in which to create the Dataform project.",
-        default: "."
-      }),
+      yargs
+        .option("warehouse", {
+          describe:
+            "The warehouse type. One of [bigquery, redshift, snowflake, postgres]",
+          default: "bigquery"
+        })
+        .positional("project-dir", {
+          describe: "The directory in which to create the Dataform project.",
+          default: "."
+        }),
     argv => {
-      init(argv["project-dir"]);
+      init(path.resolve(argv["project-dir"]), argv["warehouse"]);
     }
   )
   .command(
@@ -65,7 +71,7 @@ yargs
         default: "."
       }),
     argv => {
-      console.log(JSON.stringify(compile(argv["project-dir"]), null, 4));
+      console.log(JSON.stringify(compile(path.resolve(argv["project-dir"])), null, 4));
     }
   )
   .command(
@@ -79,7 +85,7 @@ yargs
     argv => {
       console.log(
         JSON.stringify(
-          build(compile(argv["project-dir"]), parseBuildArgs(argv)),
+          build(compile(path.resolve(argv["project-dir"])), parseBuildArgs(argv)),
           null,
           4
         )
@@ -101,7 +107,7 @@ yargs
         }),
     argv => {
       run(
-        build(compile(argv["project-dir"]), parseBuildArgs(argv)),
+        build(compile(path.resolve(argv["project-dir"])), parseBuildArgs(argv)),
         protos.Profile.create(
           JSON.parse(fs.readFileSync(argv["profile"], "utf8"))
         )

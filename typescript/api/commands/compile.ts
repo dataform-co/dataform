@@ -30,8 +30,8 @@ export default function compile(projectDir: string): protos.ICompiledGraph {
 
 function genCompileIndex(projectDir: string): string {
   var projectConfig = protos.ProjectConfig.create({
-    datasetPaths: ["datasets/*"],
-    includePaths: ["includes/*"]
+    defaultSchema: "dataform",
+    assertionSchema: "dataform_assertions"
   });
 
   var projectConfigPath = path.join(projectDir, "dataform.json");
@@ -46,21 +46,18 @@ function genCompileIndex(projectDir: string): string {
   var packageConfig = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
 
   var includePaths = [];
-  projectConfig.includePaths.forEach(pathPattern =>
-    glob.sync(pathPattern, { cwd: projectDir }).forEach(path => {
-      if (includePaths.indexOf(path) < 0) {
-        includePaths.push(path);
-      }
-    })
-  );
+  glob.sync("includes/*.{js}", { cwd: projectDir }).forEach(path => {
+    if (includePaths.indexOf(path) < 0) {
+      includePaths.push(path);
+    }
+  });
+
   var datasetPaths = [];
-  projectConfig.datasetPaths.forEach(pathPattern =>
-    glob.sync(pathPattern, { cwd: projectDir }).forEach(path => {
-      if (datasetPaths.indexOf(path) < 0) {
-        datasetPaths.push(path);
-      }
-    })
-  );
+  glob.sync("models/**/*.{js,sql}", { cwd: projectDir }).forEach(path => {
+    if (datasetPaths.indexOf(path) < 0) {
+      datasetPaths.push(path);
+    }
+  });
 
   var packageRequires = Object.keys(packageConfig.dependencies || {})
     .map(packageName => {
