@@ -1,9 +1,9 @@
 {
     "name": "@dataform/example",
-    "version": "0.0.2-alpha.7",
+    "version": "0.0.2-alpha.8",
     "description": "Example Dataform project.",
     "dependencies": {
-        "@dataform/core": "^0.0.2-alpha.7"
+        "@dataform/core": "^0.0.2-alpha.8"
     },
     "private": true
 }
