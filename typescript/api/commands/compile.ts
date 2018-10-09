@@ -69,12 +69,12 @@ function genCompileIndex(projectDir: string): string {
 
   var includeRequires = includePaths
     .map(path => {
-      return `global.${utils.baseFilename(path)} = require("./${path}");`;
+      return `try { global.${utils.baseFilename(path)} = require("./${path}"); } catch (e) { throw Error("Exception in ${path}: " + e) }`;
     })
     .join("\n");
   var datasetRequires = datasetPaths
     .map(path => {
-      return `require("./${path}");`;
+      return `try { require("./${path}"); } catch (e) { throw Error("Exception in ${path}: " + e) }`;
     })
     .join("\n");
 
