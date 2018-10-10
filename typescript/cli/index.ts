@@ -71,7 +71,9 @@ yargs
         default: "."
       }),
     argv => {
-      console.log(JSON.stringify(compile(path.resolve(argv["project-dir"])), null, 4));
+      console.log(
+        JSON.stringify(compile(path.resolve(argv["project-dir"])), null, 4)
+      );
     }
   )
   .command(
@@ -85,7 +87,10 @@ yargs
     argv => {
       console.log(
         JSON.stringify(
-          build(compile(path.resolve(argv["project-dir"])), parseBuildArgs(argv)),
+          build(
+            compile(path.resolve(argv["project-dir"])),
+            parseBuildArgs(argv)
+          ),
           null,
           4
         )
@@ -111,7 +116,9 @@ yargs
         protos.Profile.create(
           JSON.parse(fs.readFileSync(argv["profile"], "utf8"))
         )
-      ).then(result => console.log(JSON.stringify(result, null, 4)));
+      )
+        .then(result => console.log(JSON.stringify(result, null, 4)))
+        .catch(e => console.log(e));
     }
   )
   .command(
@@ -127,7 +134,9 @@ yargs
         protos.Profile.create(
           JSON.parse(fs.readFileSync(argv["profile"], "utf8"))
         )
-      ).then(tables => console.log(JSON.stringify(tables, null, 4)));
+      )
+        .then(tables => console.log(JSON.stringify(tables, null, 4)))
+        .catch(e => console.log(e));
     }
   )
   .command(
@@ -144,23 +153,33 @@ yargs
           JSON.parse(fs.readFileSync(argv["profile"], "utf8"))
         ),
         { schema: argv["schema"], name: argv["table"] }
-      ).then(schema => console.log(JSON.stringify(schema, null, 4)));
+      )
+        .then(schema => console.log(JSON.stringify(schema, null, 4)))
+        .catch(e => console.log(e));
     }
   )
   .command(
-    "query <query>",
+    "query <query> [project-dir]",
     "Execute the given query against the warehouse",
     yargs =>
-      yargs.option("profile", {
-        describe: "The location of the profile JSON file to run against",
-        required: true
-      }),
+      yargs
+        .option("profile", {
+          describe: "The location of the profile JSON file to run against",
+          required: true
+        })
+        .positional("project-dir", {
+          describe: "The directory of the Dataform project.",
+          default: "."
+        }),
     argv => {
       query(
         protos.Profile.create(
           JSON.parse(fs.readFileSync(argv["profile"], "utf8"))
         ),
-        argv["query"]
-      ).then(results => console.log(JSON.stringify(results, null, 4)));
+        argv["query"],
+        path.resolve(argv["project-dir"])
+      )
+        .then(results => console.log(JSON.stringify(results, null, 4)))
+        .catch(e => console.log(e));
     }
   ).argv;

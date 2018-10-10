@@ -6,8 +6,9 @@ import * as builder from "./builder";
 import compile from "./commands/compile";
 import init from "./commands/init";
 import install from "./commands/install";
+import query from "./commands/query";
 
-export { compile, init, install };
+export { compile, init, install, query };
 
 export function run(
   graph: protos.IExecutionGraph,
@@ -35,8 +36,4 @@ export function table(
   target: protos.ITarget
 ): Promise<protos.ITable> {
   return runners.create(profile).schema(target);
-}
-
-export function query(profile: protos.IProfile, query: string): Promise<any[]> {
-  return runners.create(profile).execute(query);
 }
