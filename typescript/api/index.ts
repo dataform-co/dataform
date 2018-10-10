@@ -6,7 +6,7 @@ import * as builder from "./builder";
 import compile from "./commands/compile";
 import init from "./commands/init";
 import install from "./commands/install";
-import query from "./commands/query";
+import * as query from "./commands/query";
 
 export { compile, init, install, query };
 

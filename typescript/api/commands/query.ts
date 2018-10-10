@@ -7,7 +7,13 @@ import { utils } from "@dataform/core";
 import * as protos from "@dataform/protos";
 import * as runners from "../runners";
 
-export default function query(profile: protos.IProfile, query: string, projectDir?: string): Promise<any[]> {
+
+export function run(profile: protos.IProfile, query: string, projectDir?: string): Promise<any[]> {
+  var compiledQuery = compile(query, projectDir);
+  return runners.create(profile).execute(compiledQuery);
+}
+
+export function compile(query: string, projectDir?: string) {
   var compiledQuery = query;
   if (projectDir) {
     const vm = new NodeVM({
@@ -23,7 +29,7 @@ export default function query(profile: protos.IProfile, query: string, projectDi
     var indexScript = genQueryCompileIndex(projectDir, query);
     compiledQuery = vm.run(indexScript, path.resolve(path.join(projectDir, "index.js")));
   }
-  return runners.create(profile).execute(compiledQuery);
+  return compiledQuery;
 }
 
 function genQueryCompileIndex(projectDir: string, query: string): string {

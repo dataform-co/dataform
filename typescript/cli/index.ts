@@ -122,7 +122,7 @@ yargs
     }
   )
   .command(
-    "tables list",
+    "tables-list",
     "Fetch available tables for the provided profile.",
     yargs =>
       yargs.option("profile", {
@@ -140,7 +140,7 @@ yargs
     }
   )
   .command(
-    "tables get <schema> <table>",
+    "tables-get <schema> <table>",
     "Fetch metadata for the given table",
     yargs =>
       yargs.option("profile", {
@@ -159,7 +159,23 @@ yargs
     }
   )
   .command(
-    "query <query> [project-dir]",
+    "query-compile <query> [project-dir]",
+    "Compile the given query, evaluating project macros.",
+    yargs =>
+      yargs
+        .positional("project-dir", {
+          describe: "The directory of the Dataform project.",
+          default: "."
+        }),
+    argv => {
+      console.log(query.compile(
+        argv["query"],
+        path.resolve(argv["project-dir"])
+      ));
+    }
+  )
+  .command(
+    "query-run <query> [project-dir]",
     "Execute the given query against the warehouse",
     yargs =>
       yargs
@@ -172,7 +188,7 @@ yargs
           default: "."
         }),
     argv => {
-      query(
+      query.run(
         protos.Profile.create(
           JSON.parse(fs.readFileSync(argv["profile"], "utf8"))
         ),
