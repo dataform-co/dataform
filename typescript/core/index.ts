@@ -29,7 +29,16 @@ if (require.extensions) {
     var oldCompile = module._compile;
     module._compile = function(code, file) {
       module._compile = oldCompile;
-      module._compile(utils.compileSql(code, file), file);
+      var transformedCode;
+      if (file.endsWith(".test.sql")) {
+        transformedCode = utils.compileAssertionSql(code, file);
+      }
+      if (file.endsWith(".ops.sql")) {
+        transformedCode = utils.compileOperationSql(code, file);
+      } else {
+        transformedCode = utils.compileMaterializationSql(code, file);
+      }
+      module._compile(transformedCode, file);
     };
     require.extensions[".js"](module, file);
   };

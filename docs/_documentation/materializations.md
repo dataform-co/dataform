@@ -10,8 +10,8 @@ A materialization defines a table, or view that will be created in your data war
 
 To define a new materialization, create a `.sql` file in the `models` directory. The name of the file will be the name of the table created in your data warehouse.
 
-```sql
--- myfirstmodel.sql
+```js
+// myfirstmodel.sql
 select 1 as test
 ```
 
@@ -25,7 +25,7 @@ By default, materializations are created as views in your warehouse. To create a
 
 ```js
 ${type("table")}
----
+--
 select 1 as test
 ```
 
@@ -39,42 +39,77 @@ For example, if we have a timestamp field in our source table called `ts`, then 
 
 ```js
 ${type("incremental")}
----
+--
 select a, b from sourcetable
   ${where(`ts > (select max(ts) from ${self()}`)}
 ```
+
+Note: to use the `${self()}` syntax within the call to `where()`, you must provide a string in back-tick's \`\`, in order to use JavaScript's template string syntax.
 
 Incremental tables automatically produce the necessary `create table` and `insert` statements.
 
 For the above example, if the table does not exist the the following statement will be run:
 
-```sql
-create or replace table schema.incrementalexample as
+```js
+create or replace table dataform.incrementalexample as
   select a, b
   from sourcetable
 ```
 
 Subsequent runs will then run the following statement:
 
-```sql
-insert into schema.incrementalexample (a, b)
+```js
+insert into dataform.incrementalexample (a, b)
   select a, b
   from sourcetable
-  where ts > (select max(ts) from schema.incrementaltable)
+  where ts > (select max(ts) from dataform.incrementaltable)
 ```
 
 It's important to note that incremental tables MUST specifically list selected fields, so that the insert statement can be automatically generated.
 
-## Options syntax
+The following would not work:
+```js
+${type("incremental")}
+--
+select * from sourcetable
+```
 
-You can set several properties at once using the options syntax. The options method takes a JavaScript object as its argument:
+## Pre hooks
+
+You can execute one or more statements before a table is materialized using the [`pre()`](/docs/built-in-functions#pre) built-in:
 
 ```js
-${options({
-  type: "table",
-  pre: "insert current_timestamp() into run_logs",
-  dependencies: ["myothermodel"]
-})}
----
+${pre([
+  "run this before",
+  "then run this before"
+])}
+--
 select 1 as test
 ```
+
+## Post hooks
+
+You can execute one or more statements after a table is materialized using the [`post()`](/docs/built-in-functions#post) built-in:
+
+```js
+${post([
+  "run this after",
+  "then run this after"
+])}
+--
+select 1 as test
+```
+
+## Assertions
+
+[Assertions](/docs/assertions) can be easily added to a query without having to define them in a seperate file.
+
+```js
+select 1 as test
+--
+${assert([
+  `select test from ${self()} where test > 1`,
+])}
+```
+
+The above statement will check that the output of these query contains no rows where the `test` value is greater than 1.

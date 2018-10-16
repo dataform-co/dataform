@@ -15,7 +15,7 @@ export function baseFilename(path: string) {
   return pathSplits[pathSplits.length - 1].split(".")[0];
 }
 
-export function compileSql(code: string, path: string) {
+export function compileMaterializationSql(code: string, path: string) {
   return `
   materialize("${baseFilename(path)}").query(ctx => {
     const type = ctx.type.bind(ctx);
@@ -28,6 +28,24 @@ export function compileSql(code: string, path: string) {
     const describe = ctx.describe.bind(ctx);
     const assert = ctx.assert.bind(ctx);
     return \`${code}\`;
+  })`;
+}
+
+export function compileOperationSql(code: string, path: string) {
+  return `
+  operate("${baseFilename(path)}").statement(ctx => {
+    const ref = ctx.ref.bind(ctx);
+    const dependency = ctx.dependency.bind(ctx);
+    return \`${code}\`.split("\\n---\\n");
+  })`;
+}
+
+export function compileAssertionSql(code: string, path: string) {
+  return `
+  assert("${baseFilename(path)}").query(ctx => {
+    const ref = ctx.ref.bind(ctx);
+    const dependency = ctx.dependency.bind(ctx);
+    return \`${code}\`.split("\\n---\\n");
   })`;
 }
 

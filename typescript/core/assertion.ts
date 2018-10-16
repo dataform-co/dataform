@@ -3,8 +3,6 @@ import { Dataform } from "./index";
 
 export type AContextable<T> = T | ((ctx: AssertionContext) => T);
 
-
-
 export class Assertion {
   proto: protos.IAssertion = protos.Assertion.create();
 
@@ -35,6 +33,11 @@ export class AssertionContext {
 
   constructor(assertion: Assertion) {
     this.assertion = assertion;
+  }
+
+  public dependency(name: string) {
+    this.assertion.proto.dependencies.push(name);
+    return "";
   }
 
   public ref(name: string) {

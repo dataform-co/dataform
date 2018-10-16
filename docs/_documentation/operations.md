@@ -10,7 +10,7 @@ An `operation` defines a set of SQL commands that will be executed in order agai
 To define a new operation, create a `.ops.sql` file in the `models` directory.
 
 For example, the following file defines two operations that will be run in order and executes vacuum commands in `Redshift`:
-```sql
+```js
 vacuum delete only sales to 75 percent
 ---
 vacuum reindex listing
@@ -19,7 +19,7 @@ Multiple statements can be seperated with a single line containing only `---`
 
 ## Context functions
 
-Operation files (`.ops.sql`) can use the following context operations:
+Operation files (`.ops.sql`) can use the following built-ins:
 
 - [ref()](/docs/built-in-functions/#ref)
 - [dependency()](/docs/built-in-functions/#dependency)

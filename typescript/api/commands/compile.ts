@@ -17,11 +17,17 @@ export default function compile(projectDir: string): protos.ICompiledGraph {
     },
     sourceExtensions: ["js", "sql"],
     compiler: (code, file) => {
-      if (file.includes(".sql")) {
-        return utils.compileSql(code, file);
-      } else {
-        return code;
+      if (file.endsWith(".test.sql")) {
+        return utils.compileAssertionSql(code, file);
       }
+      if (file.endsWith(".ops.sql")) {
+        console.log(utils.compileOperationSql(code, file));
+        return utils.compileOperationSql(code, file);
+      }
+      if (file.endsWith(".sql")) {
+        return utils.compileMaterializationSql(code, file);
+      }
+      return code;
     }
   });
   var indexScript = genCompileIndex(projectDir);
@@ -69,7 +75,9 @@ function genCompileIndex(projectDir: string): string {
 
   var includeRequires = includePaths
     .map(path => {
-      return `try { global.${utils.baseFilename(path)} = require("./${path}"); } catch (e) { throw Error("Exception in ${path}: " + e) }`;
+      return `try { global.${utils.baseFilename(
+        path
+      )} = require("./${path}"); } catch (e) { throw Error("Exception in ${path}: " + e) }`;
     })
     .join("\n");
   var datasetRequires = datasetPaths
