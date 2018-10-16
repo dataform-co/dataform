@@ -37,3 +37,7 @@ pre.highlight {
   margin: 0px;
   background-color: #394b59;
 }
+
+p > code {
+  font-weight: bold;
+}

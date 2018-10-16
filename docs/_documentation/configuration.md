@@ -4,8 +4,7 @@ title: Configuration
 sub_headers: ["dataform.json", "package.json"]
 ---
 
-Configuration
-===
+# Configuration
 
 ## `dataform.json`
 
