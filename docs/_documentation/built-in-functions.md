@@ -1,7 +1,7 @@
 ---
 layout: documentation
 title: Built-in functions
-sub_headers: ["ref()", "dependency()", "self()", "pre()", "post()", "assert()", "type()"]
+sub_headers: ["ref()", "dependency()", "self()", "pre()", "post()", "assert()", "type()", "where()"]
 ---
 
 # Built-in functions
@@ -67,3 +67,7 @@ Allows you to specify tests inline as part of a materialization.
 ## `type()`
 
 Changes the type of the materialization. See [materializations](/docs/materializations) for more details.
+
+## `where()`
+
+Specifies the where clause used for incremental. See [incremental tables](/docs/materializations#incremental-tables) for more details.

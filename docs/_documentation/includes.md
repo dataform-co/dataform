@@ -5,7 +5,7 @@ title: Includes
 
 # Includes
 
-Javascript files can be written in the `includes/` folder to define simple scripts, constants or macros that can promote reuse of code across your project.
+Javascript files can be added in the `includes/` folder to define simple scripts, constants or macros that can promote reuse of code across your project.
 
 Each file in the includes folder will be made available to be used within your other SQL or JavaScript files.
 
@@ -26,7 +26,7 @@ function prefixProjectName(value) {
 module.exports = { PROJECT_NAME, prefixProjectName };
 ```
 
-We can now use these functions in our scripts:
+We can now use these functions in our scripts, and they will be automatically made available under the name of the file they where defined in, in this case `utils`:
 
 ```js
 // models/example.sql
