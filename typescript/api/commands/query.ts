@@ -61,6 +61,7 @@ function genQueryCompileIndex(projectDir: string, query: string): string {
     const dataformcore = require("@dataform/core");
     dataformcore.Dataform.ROOT_DIR="${projectDir}";
     dataformcore.init(require("./dataform.json"));
+    const ref = dataformcore.singleton.ref.bind(dataformcore.singleton);
     ${packageRequires}
     ${includeRequires}
     return \`${query}\``;
