@@ -49,6 +49,7 @@ export class OperationContext {
 
   public dependency(name: string) {
     this.operation.proto.dependencies.push(name);
+    return "";
   }
 
   public apply<T>(value: OContextable<T>): T {

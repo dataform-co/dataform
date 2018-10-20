@@ -94,7 +94,22 @@ export class Executor {
           // Create another promise chain for retries, if we allow them.
           return this.runner
             .execute(task.statement)
-            .then(rows => [...chainResults, { ok: true, task: task }])
+            .then(rows => {
+              if (task.type == "assertion" && rows.length > 0) {
+                return [
+                  ...chainResults,
+                  {
+                    ok: false,
+                    task: task,
+                    error: `Test failed, as it returned the following rows:\n${rows
+                      .slice(0, Math.max(rows.length - 1, 10))
+                      .map(row => JSON.stringify(row, null, 4))
+                      .join("\n")}`
+                  }
+                ];
+              }
+              return [...chainResults, { ok: true, task: task }];
+            })
             .catch(e => {
               var newChainResults = [
                 ...chainResults,

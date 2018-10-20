@@ -21,7 +21,6 @@ export default function compile(projectDir: string): protos.ICompiledGraph {
         return utils.compileAssertionSql(code, file);
       }
       if (file.endsWith(".ops.sql")) {
-        console.log(utils.compileOperationSql(code, file));
         return utils.compileOperationSql(code, file);
       }
       if (file.endsWith(".sql")) {

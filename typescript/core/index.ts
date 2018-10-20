@@ -32,8 +32,7 @@ if (require.extensions) {
       var transformedCode;
       if (file.endsWith(".test.sql")) {
         transformedCode = utils.compileAssertionSql(code, file);
-      }
-      if (file.endsWith(".ops.sql")) {
+      } else if (file.endsWith(".ops.sql")) {
         transformedCode = utils.compileOperationSql(code, file);
       } else {
         transformedCode = utils.compileMaterializationSql(code, file);

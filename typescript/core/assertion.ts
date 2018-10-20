@@ -16,6 +16,11 @@ export class Assertion {
     this.contextableQueries = query;
   }
 
+  public dependency(value: string) {
+    this.proto.dependencies.push(value);
+    return this;
+  }
+
   compile() {
     var context = new AssertionContext(this);
 
@@ -35,14 +40,14 @@ export class AssertionContext {
     this.assertion = assertion;
   }
 
-  public dependency(name: string) {
-    this.assertion.proto.dependencies.push(name);
-    return "";
-  }
-
   public ref(name: string) {
     this.assertion.proto.dependencies.push(name);
     return this.assertion.dataform.ref(name);
+  }
+
+  public dependency(name: string) {
+    this.assertion.proto.dependencies.push(name);
+    return "";
   }
 
   public apply<T>(value: AContextable<T>): T {
