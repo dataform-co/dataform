@@ -52,7 +52,7 @@ function genCompileIndex(projectDir: string): string {
   var packageConfig = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
 
   var includePaths = [];
-  glob.sync("includes/*.{js}", { cwd: projectDir }).forEach(path => {
+  glob.sync("includes/*.js", { cwd: projectDir }).forEach(path => {
     if (includePaths.indexOf(path) < 0) {
       includePaths.push(path);
     }
