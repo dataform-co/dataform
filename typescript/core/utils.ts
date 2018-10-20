@@ -18,6 +18,7 @@ export function baseFilename(path: string) {
 export function compileMaterializationSql(code: string, path: string) {
   return `
   materialize("${baseFilename(path)}").query(ctx => {
+    const config = ctx.config.bind(ctx);
     const type = ctx.type.bind(ctx);
     const post = ctx.post.bind(ctx);
     const pre = ctx.pre.bind(ctx);
@@ -27,6 +28,8 @@ export function compileMaterializationSql(code: string, path: string) {
     const where = ctx.where.bind(ctx);
     const describe = ctx.describe.bind(ctx);
     const assert = ctx.assert.bind(ctx);
+    const schema = ctx.schema.bind(ctx);
+    const describe = ctx.describe.bind(ctx);
     return \`${code}\`;
   })`;
 }

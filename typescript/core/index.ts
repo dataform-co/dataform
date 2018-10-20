@@ -1,6 +1,6 @@
 import * as protos from "@dataform/protos";
 import { Dataform } from "./dataform";
-import { Materialization, MContextable } from "./materialization";
+import { Materialization, MaterializationContext, MContextable, MConfig } from "./materialization";
 import { Operation, OContextable } from "./operation";
 import { Assertion, AContextable } from "./assertion";
 
@@ -18,6 +18,8 @@ export {
   parser,
   Dataform,
   Materialization,
+  MaterializationContext,
+  MConfig,
   Operation,
   Assertion
 };
@@ -47,8 +49,8 @@ if (require.extensions) {
 
 const singleton = new Dataform();
 
-export const materialize = (name: string, query?: MContextable<string>) =>
-  singleton.materialize(name, query);
+export const materialize = (name: string, queryOrConfig?: MContextable<string> | MConfig) =>
+  singleton.materialize(name, queryOrConfig);
 export const operate = (
   name: string,
   statement?: OContextable<string | string[]>

@@ -174,6 +174,10 @@ export class MaterializationContext {
     this.materialization = materialization;
   }
 
+  public config(config: MConfig) {
+    this.materialization.config(config);
+    return "";
+  }
   public self(): string {
     return this.materialization.dataform
       .adapter()

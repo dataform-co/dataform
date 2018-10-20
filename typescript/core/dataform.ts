@@ -2,7 +2,7 @@ import * as protos from "@dataform/protos";
 import * as adapters from "./adapters";
 import * as utils from "./utils";
 import * as parser from "./parser";
-import { Materialization, MContextable } from "./materialization";
+import { Materialization, MContextable, MConfig } from "./materialization";
 import { Operation, OContextable } from "./operation";
 import { Assertion, AContextable } from "./assertion";
 
@@ -67,13 +67,17 @@ export class Dataform {
     return operation;
   }
 
-  materialize(name: string, query?: MContextable<string>): Materialization {
+  materialize(name: string, queryOrConfig?: MContextable<string> | MConfig): Materialization {
     var materialization = new Materialization();
     materialization.dataform = this;
     materialization.proto.name = name;
     materialization.proto.target = this.target(name);
-    if (query) {
-      materialization.query(query);
+    if (!!queryOrConfig) {
+      if (typeof(queryOrConfig) === "object") {
+        materialization.config(queryOrConfig);
+      } else {
+        materialization.query(queryOrConfig);
+      }
     }
     materialization.proto.fileName = utils.getCallerFile(Dataform.ROOT_DIR);
     // Add it to global index.
