@@ -8,7 +8,7 @@ import init from "./commands/init";
 import install from "./commands/install";
 import * as query from "./commands/query";
 
-export { compile, init, install, query };
+export { compile, init, install, query, Executor };
 
 export function run(
   graph: protos.IExecutionGraph,

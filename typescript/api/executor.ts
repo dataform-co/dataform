@@ -7,6 +7,7 @@ export class Executor {
 
   private pendingNodes: protos.IExecutionNode[];
 
+  private cancelled = false;
   private result: protos.IExecutedGraph;
 
   private changeListeners: ((graph: protos.IExecutedGraph) => void)[] = [];
@@ -45,6 +46,10 @@ export class Executor {
     return this.executionTask;
   }
 
+  public cancel() {
+    this.cancelled = true;
+  }
+
   public resultPromise(): Promise<protos.IExecutedGraph> {
     return this.executionTask;
   }
@@ -54,6 +59,9 @@ export class Executor {
   }
 
   private loop(resolve: () => void) {
+    if (this.cancelled) {
+      throw Error("Run cancelled.");
+    }
     var pendingNodes = this.pendingNodes;
     this.pendingNodes = [];
 
