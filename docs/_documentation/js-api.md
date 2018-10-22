@@ -26,7 +26,7 @@ Arguments: `materialization-name, query (optional)`
 
 ```js
 // models/example.js
-materialization("example")
+materialize("example")
   .type("table")
   .query("select 1 as test");
 ```
@@ -37,7 +37,7 @@ For example, to use the `self()` built-in as part of a [`where()`](/docs/built-i
 
 ```js
 // models/example_incremental.js
-materialization("example_incremental")
+materialize("example_incremental")
   .type("incremental")
   .query("select 1 as ts")
   .where(context => `ts > (select max(ts) from ${context.self()})`);
