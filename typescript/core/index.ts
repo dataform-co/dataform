@@ -47,7 +47,7 @@ if (require.extensions) {
 
 // Create static singleton object and bind global functions.
 
-const singleton = new Dataform();
+export const singleton = new Dataform();
 
 export const materialize = (name: string, queryOrConfig?: MContextable<string> | MConfig) =>
   singleton.materialize(name, queryOrConfig);
