@@ -36,7 +36,7 @@ export default function init(projectDir: string, warehouse: string) {
         version: "0.0.1",
         description: "New Dataform project.",
         dependencies: {
-          "@dataform/core": "^0.0.2-alpha.12"
+          "@dataform/core": "^0.0.2-alpha.13"
         }
       },
       null,
