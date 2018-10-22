@@ -26,7 +26,6 @@ export function compileMaterializationSql(code: string, path: string) {
     const self = ctx.self.bind(ctx);
     const dependency = ctx.dependency.bind(ctx);
     const where = ctx.where.bind(ctx);
-    const describe = ctx.describe.bind(ctx);
     const assert = ctx.assert.bind(ctx);
     const schema = ctx.schema.bind(ctx);
     const describe = ctx.describe.bind(ctx);
