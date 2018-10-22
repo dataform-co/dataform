@@ -13,11 +13,13 @@ export { compile, init, install, query };
 export function run(
   graph: protos.IExecutionGraph,
   profile: protos.IProfile
-): Promise<protos.IExecutedGraph> {
-  return Executor.create(
+): Executor {
+  var executor = Executor.create(
     runners.create(profile, graph.projectConfig.warehouse),
     graph
-  ).execute();
+  );
+  executor.execute();
+  return executor;
 }
 
 export function build(

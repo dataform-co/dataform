@@ -8,9 +8,10 @@ export class Executor {
   private pendingNodes: protos.IExecutionNode[];
 
   private result: protos.IExecutedGraph;
-  private running: boolean = false;
 
   private changeListeners: ((graph: protos.IExecutedGraph) => void)[] = [];
+
+  private executionTask: Promise<protos.IExecutedGraph>;
 
   constructor(runner: runners.Runner, graph: protos.IExecutionGraph) {
     this.runner = runner;
@@ -27,21 +28,25 @@ export class Executor {
     return new Executor(runner, graph);
   }
 
-  public onChange(listener: (graph: protos.IExecutedGraph) => void) {
+  public onChange(listener: (graph: protos.IExecutedGraph) => void): Executor {
     this.changeListeners.push(listener);
     return this;
   }
 
   public execute(): Promise<protos.IExecutedGraph> {
-    if (this.running) throw Error("Executor already started.");
-
-    return new Promise((resolve, reject) => {
+    if (!!this.executionTask) throw Error("Executor already started.");
+    this.executionTask = new Promise((resolve, reject) => {
       try {
         this.loop(() => resolve(this.result));
       } catch (e) {
         reject(e);
       }
     });
+    return this.executionTask;
+  }
+
+  public resultPromise(): Promise<protos.IExecutedGraph> {
+    return this.executionTask;
   }
 
   private triggerChange() {

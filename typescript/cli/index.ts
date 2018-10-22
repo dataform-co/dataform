@@ -111,12 +111,14 @@ yargs
           required: true
         }),
     argv => {
-      run(
+      var executor = run(
         build(compile(path.resolve(argv["project-dir"])), parseBuildArgs(argv)),
         protos.Profile.create(
           JSON.parse(fs.readFileSync(argv["profile"], "utf8"))
         )
-      )
+      );
+      executor
+        .resultPromise()
         .then(result => console.log(JSON.stringify(result, null, 4)))
         .catch(e => console.log(e));
     }
@@ -162,16 +164,14 @@ yargs
     "query-compile <query> [project-dir]",
     "Compile the given query, evaluating project macros.",
     yargs =>
-      yargs
-        .positional("project-dir", {
-          describe: "The directory of the Dataform project.",
-          default: "."
-        }),
+      yargs.positional("project-dir", {
+        describe: "The directory of the Dataform project.",
+        default: "."
+      }),
     argv => {
-      console.log(query.compile(
-        argv["query"],
-        path.resolve(argv["project-dir"])
-      ));
+      console.log(
+        query.compile(argv["query"], path.resolve(argv["project-dir"]))
+      );
     }
   )
   .command(
@@ -188,13 +188,14 @@ yargs
           default: "."
         }),
     argv => {
-      query.run(
-        protos.Profile.create(
-          JSON.parse(fs.readFileSync(argv["profile"], "utf8"))
-        ),
-        argv["query"],
-        path.resolve(argv["project-dir"])
-      )
+      query
+        .run(
+          protos.Profile.create(
+            JSON.parse(fs.readFileSync(argv["profile"], "utf8"))
+          ),
+          argv["query"],
+          path.resolve(argv["project-dir"])
+        )
         .then(results => console.log(JSON.stringify(results, null, 4)))
         .catch(e => console.log(e));
     }
