@@ -38,7 +38,7 @@ export class Executor {
     if (!!this.executionTask) throw Error("Executor already started.");
     this.executionTask = new Promise((resolve, reject) => {
       try {
-        this.loop(() => resolve(this.result));
+        this.loop(() => resolve(this.result), reject);
       } catch (e) {
         reject(e);
       }
@@ -58,9 +58,9 @@ export class Executor {
     this.changeListeners.forEach(listener => listener(this.result));
   }
 
-  private loop(resolve: () => void) {
+  private loop(resolve: () => void, reject: (value: any) => void) {
     if (this.cancelled) {
-      throw Error("Run cancelled.");
+      reject(Error("Run cancelled."));
     }
     var pendingNodes = this.pendingNodes;
     this.pendingNodes = [];
@@ -93,7 +93,7 @@ export class Executor {
       this.pendingNodes.length > 0 ||
       this.result.nodes.length != this.graph.nodes.length
     ) {
-      setTimeout(() => this.loop(resolve), 100);
+      setTimeout(() => this.loop(resolve, reject), 100);
     } else {
       resolve();
     }
