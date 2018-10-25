@@ -21,5 +21,5 @@ Multiple statements can be seperated with a single line containing only `---`
 
 Operation files (`.ops.sql`) can use the following built-ins:
 
-- [ref()](/docs/built-in-functions/#ref)
-- [dependency()](/docs/built-in-functions/#dependency)
+- [ref()](/built-in-functions/#ref)
+- [dependency()](/built-in-functions/#dependency)

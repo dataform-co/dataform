@@ -70,7 +70,7 @@ The default project structure is as follows:
 
 ## Define a materialization
 
-The `models/` directory contains files that define [materializations](/docs/materializations), [assertions](/docs/assertions), and [operations](/docs/operations).
+The `models/` directory contains files that define [materializations](/materializations), [assertions](/assertions), and [operations](/operations).
 
 To create a new materialization, create a new file such as `models/simplemodel.sql` with the following contents:
 

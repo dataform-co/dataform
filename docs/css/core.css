@@ -5,6 +5,7 @@
 
 .content {
   background-color: #FFF;
+  margin-bottom: 500px;
 }
 
 .flexContainer_column {
@@ -40,4 +41,8 @@ pre.highlight {
 
 p > code {
   font-weight: bold;
+}
+
+a:hover {
+  text-decoration: none;
 }

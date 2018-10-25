@@ -1,17 +1,43 @@
 ---
 layout: default
 ---
-<div class="flexContainer_row">
-  <div class="sidebar">
-    <ul class="bp3-menu .modifier">
+{% assign core_doc_paths = "materializations,operations,assertions,includes,js-api,built-in-functions" | split: "," %}
+{% assign cli_doc_paths = "getting-started" | split: "," %}
+
+<div class="flexContainer_row" style="position: fixed;">
+<div class="sidebar">
+
+  <ul class="bp3-menu .modifier">
+    {% for doc_path in core_doc_paths %}
       {% for doc in site.documentation %}
-        <li><a class="bp3-menu-item" href="{{ doc.url }}">{{ doc.title }}</a></li>
-        {% for sub_header in doc.sub_headers %}
-          <li><a class="bp3-menu-item" style="margin-left: 20px" href="{{ doc.url }}#{{ sub_header | downcase | replace: " ", "-" | replace: ".", "" | replace: "(", "" | replace: ")", "" }}">{{ sub_header }}</a></li>
-        {% endfor %}
+        {% if doc.path contains doc_path %}
+          <li><a class="bp3-menu-item" href="{{ doc.url }}">{{ doc.title }}</a></li>
+          {% for sub_header in doc.sub_headers %}
+            <li><a class="bp3-menu-item" style="margin-left: 20px" href="{{ doc.url }}#{{ sub_header | downcase | replace: " ", "-" | replace: ".", "" | replace: "(", "" | replace: ")", "" }}">{{ sub_header }}</a></li>
+          {% endfor %}
+        {% endif %}
       {% endfor %}
-    </ul>
-  </div>
+    {% endfor %}
+  </ul>
+
+  <ul class="bp3-menu .modifier">
+    {% for doc_path in cli_doc_paths %}
+      {% for doc in site.documentation %}
+        {% if doc.path contains doc_path %}
+          <li><a class="bp3-menu-item" href="{{ doc.url }}">{{ doc.title }}</a></li>
+          {% for sub_header in doc.sub_headers %}
+            <li><a class="bp3-menu-item" style="margin-left: 20px" href="{{ doc.url }}#{{ sub_header | downcase | replace: " ", "-" | replace: ".", "" | replace: "(", "" | replace: ")", "" }}">{{ sub_header }}</a></li>
+          {% endfor %}
+        {% endif %}
+      {% endfor %}
+    {% endfor %}
+  </ul>
+
+</div>
+<div class="flex_grow"></div>
+</div>
+<div class="flexContainer_row">
+  <div class="sidebar"></div>
   <div class="flex_grow">
     {{ content }}
   </div>
