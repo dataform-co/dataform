@@ -32,8 +32,9 @@ export class RedshiftRunner implements Runner {
 
   schema(target: protos.ITarget): Promise<protos.ITable> {
     return this.execute(
-      `select column_name, data_type, is_nullable from information_schema.columns
-         where table_schema = '${target.schema}' AND table_name = '${
+      `select column_name, data_type, is_nullable
+       from information_schema.columns
+       where table_schema = '${target.schema}' AND table_name = '${
         target.name
       }'`
     ).then(rows => ({
