@@ -37,7 +37,7 @@ plugins:
 collections:
   documentation:
     output: true
-    permalink: /docs/:path/
+    permalink: /:path/
 
 defaults:
   - scope:

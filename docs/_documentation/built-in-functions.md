@@ -66,8 +66,8 @@ Allows you to specify tests inline as part of a materialization.
 
 ## `type()`
 
-Changes the type of the materialization. See [materializations](/docs/materializations) for more details.
+Changes the type of the materialization. See [materializations](/materializations) for more details.
 
 ## `where()`
 
-Specifies the where clause used for incremental. See [incremental tables](/docs/materializations#incremental-tables) for more details.
+Specifies the where clause used for incremental. See [incremental tables](/materializations#incremental-tables) for more details.

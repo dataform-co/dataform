@@ -85,6 +85,7 @@ export class Materialization {
 
   public assert(query: MContextable<string | string[]>) {
     this.contextableAssertions.push(query);
+    return this;
   }
 
   public dependency(value: string | string[]) {
@@ -115,6 +116,7 @@ export class Materialization {
         this.proto.schema[key] = keyOrKeysOrMap[key] || "";
       });
     }
+    return this;
   }
 
   compile() {

@@ -15,7 +15,7 @@ To define a new materialization, create a `.sql` file in the `models` directory.
 select 1 as test
 ```
 
-Will create a `view` called `myfirstmodel.sql` in the default dataform schema defined in the [`dataform.json`](/docs/configuration/#dataform.json) file.
+Will create a `view` called `myfirstmodel.sql` in the default dataform schema defined in the [`dataform.json`](/configuration/#dataform.json) file.
 
 There are several configuration options that can be applied to a materialization. These can be applied by calling the appropriate method within a `${}` block, or can be provided all as one using the [options syntax](#Options syntax).
 
@@ -76,7 +76,7 @@ select * from sourcetable
 
 ## Pre hooks
 
-You can execute one or more statements before a table is materialized using the [`pre()`](/docs/built-in-functions#pre) built-in:
+You can execute one or more statements before a table is materialized using the [`pre()`](/built-in-functions#pre) built-in:
 
 ```js
 ${pre([
@@ -89,7 +89,7 @@ select 1 as test
 
 ## Post hooks
 
-You can execute one or more statements after a table is materialized using the [`post()`](/docs/built-in-functions#post) built-in:
+You can execute one or more statements after a table is materialized using the [`post()`](/built-in-functions#post) built-in:
 
 ```js
 ${post([
@@ -102,7 +102,7 @@ select 1 as test
 
 ## Assertions
 
-[Assertions](/docs/assertions) can be easily added to a query without having to define them in a seperate file.
+[Assertions](/assertions) can be easily added to a query without having to define them in a seperate file.
 
 ```js
 select 1 as test

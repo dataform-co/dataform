@@ -5,7 +5,7 @@ title: JS API
 
 # JS API
 
-Generally the easiest way to define [materializations](/docs/materializations), [assertions](/docs/assertions), and [operations](/docs/operations) is to create a new file with the appropriate extension, one of `.sql .test.sql .ops.sql`.
+Generally the easiest way to define [materializations](/materializations), [assertions](/assertions), and [operations](/operations) is to create a new file with the appropriate extension, one of `.sql .test.sql .ops.sql`.
 
 For advanced use cases, all of the above can be defined Dataform's a JavaScript API.
 
@@ -31,9 +31,9 @@ materialize("example")
   .query("select 1 as test");
 ```
 
-To use [built in functions](/docs/built-in-functions), for some of the methods we can provide a function as an argument. The function will be called with a context object that has all the built-in functions available on it.
+To use [built in functions](/built-in-functions), for some of the methods we can provide a function as an argument. The function will be called with a context object that has all the built-in functions available on it.
 
-For example, to use the `self()` built-in as part of a [`where()`](/docs/built-in-functions#where) method call, we pass a function to the method that uses ES5 template strings:
+For example, to use the `self()` built-in as part of a [`where()`](/built-in-functions#where) method call, we pass a function to the method that uses ES5 template strings:
 
 ```js
 // models/example_incremental.js
