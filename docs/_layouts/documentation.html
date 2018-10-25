@@ -7,6 +7,7 @@ layout: default
 <div class="flexContainer_row" style="position: fixed;">
 <div class="sidebar">
 
+  <div style="margin: 10px 0px 10px"><b>CORE</b></div>
   <ul class="bp3-menu .modifier">
     {% for doc_path in core_doc_paths %}
       {% for doc in site.documentation %}
@@ -20,6 +21,7 @@ layout: default
     {% endfor %}
   </ul>
 
+  <div style="margin: 10px 0px 10px"><b>CLI</b></div>
   <ul class="bp3-menu .modifier">
     {% for doc_path in cli_doc_paths %}
       {% for doc in site.documentation %}
