@@ -27,10 +27,10 @@ export function create(profile: protos.IProfile, warehouseType?: string): Runner
     return new registry["bigquery"](profile);
   }
   if (!!profile.redshift) {
-    return new registry["bigquery"](profile);
+    return new registry["redshift"](profile);
   }
   if (!!profile.snowflake) {
-    return new registry["bigquery"](profile);
+    return new registry["snowflake"](profile);
   }
   else throw Error("Invalid profile.");
 }
