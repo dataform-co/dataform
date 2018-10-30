@@ -40,6 +40,17 @@ export function compile(query: string, projectDir?: string) {
     });
     var indexScript = genIndex(projectDir, `(function() {
         const ref = dataformcore.singleton.ref.bind(dataformcore.singleton);
+        const noop = () => "";
+        const config = noop;
+        const type = noop;
+        const post = noop;
+        const pre = noop;
+        const self = noop;
+        const dependency = noop;
+        const where = noop;
+        const assert = noop;
+        const schema = noop;
+        const describe = noop;
         return \`${query}\`;
       })()`);
     compiledQuery = vm.run(indexScript, path.resolve(path.join(projectDir, "index.js")));
