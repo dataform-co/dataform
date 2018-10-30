@@ -6,7 +6,7 @@ import * as glob from "glob";
 import { utils } from "@dataform/core";
 import * as protos from "@dataform/protos";
 import * as runners from "../runners";
-
+import { genIndex } from "./compile";
 
 export function run(profile: protos.IProfile, query: string, projectDir?: string): Promise<any[]> {
   var compiledQuery = compile(query, projectDir);
@@ -24,45 +24,25 @@ export function compile(query: string, projectDir?: string) {
         root: projectDir,
         external: true
       },
-      sourceExtensions: ["js"],
+      sourceExtensions: ["js", "sql"],
+      compiler: (code, file) => {
+        if (file.endsWith(".test.sql")) {
+          return utils.compileAssertionSql(code, file);
+        }
+        if (file.endsWith(".ops.sql")) {
+          return utils.compileOperationSql(code, file);
+        }
+        if (file.endsWith(".sql")) {
+          return utils.compileMaterializationSql(code, file);
+        }
+        return code;
+      }
     });
-    var indexScript = genQueryCompileIndex(projectDir, query);
+    var indexScript = genIndex(projectDir, `(function() {
+        const ref = dataformcore.singleton.ref.bind(dataformcore.singleton);
+        return \`${query}\`;
+      })()`);
     compiledQuery = vm.run(indexScript, path.resolve(path.join(projectDir, "index.js")));
   }
   return compiledQuery;
-}
-
-function genQueryCompileIndex(projectDir: string, query: string): string {
-  var packageJsonPath = path.join(projectDir, "package.json");
-  var packageConfig = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
-
-  var includePaths = [];
-  glob.sync("includes/*.js", { cwd: projectDir }).forEach(path => {
-    if (includePaths.indexOf(path) < 0) {
-      includePaths.push(path);
-    }
-  });
-
-  var packageRequires = Object.keys(packageConfig.dependencies || {})
-    .map(packageName => {
-      return `global.${utils.variableNameFriendly(
-        packageName
-      )} = require("${packageName}");`;
-    })
-    .join("\n");
-
-  var includeRequires = includePaths
-    .map(path => {
-      return `try { global.${utils.baseFilename(path)} = require("./${path}"); } catch (e) { throw Error("Exception in ${path}: " + e) }`;
-    })
-    .join("\n");
-
-  return `
-    const dataformcore = require("@dataform/core");
-    dataformcore.Dataform.ROOT_DIR="${projectDir}";
-    dataformcore.init(require("./dataform.json"));
-    const ref = dataformcore.singleton.ref.bind(dataformcore.singleton);
-    ${packageRequires}
-    ${includeRequires}
-    return \`${query}\``;
 }
