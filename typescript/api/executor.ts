@@ -38,7 +38,10 @@ export class Executor {
     if (!!this.executionTask) throw Error("Executor already started.");
     this.executionTask = new Promise((resolve, reject) => {
       try {
-        this.loop(() => resolve(this.result), reject);
+        this.runner
+          .prepareSchema(this.graph.projectConfig.defaultSchema)
+          .then(() => this.loop(() => resolve(this.result), reject))
+          .catch(e => reject(e));
       } catch (e) {
         reject(e);
       }
