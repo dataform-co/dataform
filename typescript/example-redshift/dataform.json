@@ -1,4 +1,4 @@
 {
     "warehouse": "redshift",
-    "defaultSchema": "public"
+    "defaultSchema": "dataform_example"
 }

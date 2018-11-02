@@ -1,4 +1,4 @@
 {
     "warehouse": "bigquery",
-    "defaultSchema": "dataform_example"
+    "defaultSchema": "dataform_example2"
 }
