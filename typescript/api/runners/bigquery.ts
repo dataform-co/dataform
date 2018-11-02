@@ -8,8 +8,9 @@ export class BigQueryRunner implements Runner {
 
   constructor(profile: protos.IProfile) {
     this.profile = profile;
-    this.client = BigQuery(profile.bigquery.projectId, {
-      credentials: profile.bigquery.credentials
+    this.client = BigQuery({
+      projectId: profile.bigquery.projectId,
+      credentials: JSON.parse(profile.bigquery.credentials)
     });
   }
 

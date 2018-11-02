@@ -1,4 +1,0 @@
-{
-    "warehouse": "bigquery",
-    "defaultSchema": "dataform"
-}
