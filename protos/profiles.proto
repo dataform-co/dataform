@@ -35,4 +35,5 @@ message Snowflake {
 message BigQuery {
   string project_id = 1;
   string credentials = 3;
+  string location = 4; // EU or US (default)
 }

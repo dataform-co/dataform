@@ -29,11 +29,11 @@ export default function compile(projectDir: string): protos.ICompiledGraph {
       return code;
     }
   });
-  var indexScript = genCompileIndex(projectDir);
+  var indexScript = genIndex(projectDir);
   return vm.run(indexScript, path.resolve(path.join(projectDir, "index.js")));
 }
 
-function genCompileIndex(projectDir: string): string {
+export function genIndex(projectDir: string, returnOverride?: string): string {
   var projectConfig = protos.ProjectConfig.create({
     defaultSchema: "dataform",
     assertionSchema: "dataform_assertions"
@@ -92,5 +92,5 @@ function genCompileIndex(projectDir: string): string {
     ${packageRequires}
     ${includeRequires}
     ${datasetRequires}
-    return dataformcore.compile();`;
+    return ${returnOverride || "dataformcore.compile()"};`;
 }

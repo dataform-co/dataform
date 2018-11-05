@@ -48,4 +48,8 @@ export class RedshiftRunner implements Runner {
       }
     }));
   }
+
+  prepareSchema(schema: string): Promise<void> {
+    return this.execute(`create schema if not exists "${schema}"`);
+  }
 }

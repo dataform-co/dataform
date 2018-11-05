@@ -8,8 +8,9 @@ export class BigQueryRunner implements Runner {
 
   constructor(profile: protos.IProfile) {
     this.profile = profile;
-    this.client = BigQuery(profile.bigquery.projectId, {
-      credentials: profile.bigquery.credentials
+    this.client = BigQuery({
+      projectId: profile.bigquery.projectId,
+      credentials: JSON.parse(profile.bigquery.credentials)
     });
   }
 
@@ -57,6 +58,20 @@ export class BigQueryRunner implements Runner {
           }
         });
       });
+  }
+
+  prepareSchema(schema: string): Promise<void> {
+    // If metadata call fails, it probably doesn't exist. So try to create it.
+    return this.client
+      .dataset(schema)
+      .getMetadata()
+      .catch(e =>
+        this.client
+          .createDataset(schema, {
+            location: this.profile.bigquery.location || "US"
+          })
+          .then(() => {})
+      );
   }
 }
 
