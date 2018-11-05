@@ -1,6 +1,6 @@
 {
   "name": "@dataform/api",
-  "version": "0.0.2-alpha.18",
+  "version": "0.0.2-alpha.19",
   "description": "API for running Dataform projects.",
   "main": "build/index.js",
   "types": "build/index.d.ts",
@@ -9,8 +9,8 @@
     "dtfm": "build/index.js"
   },
   "dependencies": {
-    "@dataform/core": "^0.0.2-alpha.18",
-    "@dataform/protos": "^0.0.2-alpha.18",
+    "@dataform/core": "^0.0.2-alpha.19",
+    "@dataform/protos": "^0.0.2-alpha.19",
     "@google-cloud/bigquery": "^1.3.0",
     "@types/yargs": "^11.1.1",
     "glob": "^7.1.3",
