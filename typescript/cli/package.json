@@ -1,6 +1,6 @@
 {
   "name": "@dataform/cli",
-  "version": "0.0.2-alpha.17",
+  "version": "0.0.2-alpha.18",
   "description": "Dataform command line interface.",
   "main": "build/index.js",
   "types": "build/index.d.ts",
@@ -9,9 +9,9 @@
     "dtfm": "build/index.js"
   },
   "dependencies": {
-    "@dataform/api": "^0.0.2-alpha.17",
-    "@dataform/core": "^0.0.2-alpha.17",
-    "@dataform/protos": "^0.0.2-alpha.17",
+    "@dataform/api": "^0.0.2-alpha.18",
+    "@dataform/core": "^0.0.2-alpha.18",
+    "@dataform/protos": "^0.0.2-alpha.18",
     "@google-cloud/bigquery": "^1.3.0",
     "@types/yargs": "^11.1.1",
     "glob": "^7.1.3",

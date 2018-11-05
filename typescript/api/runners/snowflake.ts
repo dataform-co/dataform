@@ -38,4 +38,8 @@ export class SnowflakeRunner implements Runner {
   schema(target: protos.ITarget): Promise<protos.ITable> {
     throw Error("Unimplemented");
   }
+
+  prepareSchema(schema: string): Promise<void> {
+    throw Error("Unimplemented");
+  }
 }

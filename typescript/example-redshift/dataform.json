@@ -1,0 +1,4 @@
+{
+    "warehouse": "redshift",
+    "defaultSchema": "dataform_example"
+}

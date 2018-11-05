@@ -7,6 +7,7 @@ export interface Runner {
   execute(statement: string): Promise<any[]>;
   tables(): Promise<protos.ITarget[]>;
   schema(target: protos.ITarget): Promise<protos.ITable>;
+  prepareSchema(schema: string): Promise<void>;
 }
 
 export interface RunnerConstructor<T extends Runner> {
