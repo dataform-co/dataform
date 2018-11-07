@@ -9,18 +9,8 @@ export enum TableType {
 
 export interface Adapter {
   resolveTarget(target: protos.ITarget): string;
-  createIfNotExists(
-    target: protos.ITarget,
-    query: string,
-    type: TableType,
-    partitionBy: string
-  ): string;
-  createOrReplace(
-    target: protos.ITarget,
-    query: string,
-    type: TableType,
-    partitionBy: string
-  ): string;
+  createIfNotExists(target: protos.ITarget, query: string, type: TableType, partitionBy: string): string;
+  createOrReplace(target: protos.ITarget, query: string, type: TableType, partitionBy: string): string;
   insertInto(target: protos.ITarget, columns: string[], query: string);
   dropIfExists(target: protos.ITarget, type: TableType): string;
   where(query: string, where: string): string;
@@ -32,10 +22,7 @@ export interface AdapterConstructor<T extends Adapter> {
 
 const registry: { [warehouseType: string]: AdapterConstructor<Adapter> } = {};
 
-export function register(
-  warehouseType: string,
-  c: AdapterConstructor<Adapter>
-) {
+export function register(warehouseType: string, c: AdapterConstructor<Adapter>) {
   registry[warehouseType] = c;
 }
 

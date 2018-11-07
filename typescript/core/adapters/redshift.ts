@@ -12,29 +12,15 @@ export class RedshiftAdapter implements Adapter {
     return `"${target.schema || this.project.defaultSchema}"."${target.name}"`;
   }
 
-  createIfNotExists(
-    target: protos.ITarget,
-    query: string,
-    type: TableType,
-    partitionBy?: string
-  ) {
+  createIfNotExists(target: protos.ITarget, query: string, type: TableType, partitionBy?: string) {
     return `
-      create ${
-        type == TableType.TABLE ? "table" : "view"
-      } if not exists ${this.resolveTarget(target)}
+      create ${type == TableType.TABLE ? "table" : "view"} if not exists ${this.resolveTarget(target)}
       ${partitionBy ? `partition by ${partitionBy}` : ""}
       as ${query}`;
   }
-  createOrReplace(
-    target: protos.ITarget,
-    query: string,
-    type: TableType,
-    partitionBy?: string
-  ) {
+  createOrReplace(target: protos.ITarget, query: string, type: TableType, partitionBy?: string) {
     return `
-      create or replace ${
-        type == TableType.TABLE ? "table" : "view"
-      } ${this.resolveTarget(target)}
+      create or replace ${type == TableType.TABLE ? "table" : "view"} ${this.resolveTarget(target)}
       ${partitionBy ? `partition by ${partitionBy}` : ""}
       as ${query}`;
   }
@@ -45,9 +31,7 @@ export class RedshiftAdapter implements Adapter {
   }
 
   dropIfExists(target: protos.ITarget, type: TableType) {
-    return `drop ${
-      type == TableType.TABLE ? "table" : "view"
-    } if exists ${this.resolveTarget(target)}`;
+    return `drop ${type == TableType.TABLE ? "table" : "view"} if exists ${this.resolveTarget(target)}`;
   }
 
   where(query: string, where: string) {

@@ -70,9 +70,7 @@ export function matchPatterns(patterns: string[], values: string[]) {
           "$"
       )
   );
-  return values.filter(
-    value => regexps.filter(regexp => regexp.test(value)).length > 0
-  );
+  return values.filter(value => regexps.filter(regexp => regexp.test(value)).length > 0);
 }
 
 export function getCallerFile(rootDir: string) {
@@ -88,7 +86,8 @@ export function getCallerFile(rootDir: string) {
     while (err.stack.length) {
       callerfile = (err.stack as any).shift().getFileName();
 
-      if (currentfile !== callerfile && !callerfile.includes("vm2/lib/") && ! callerfile.includes("@dataform/core/")) break;
+      if (currentfile !== callerfile && !callerfile.includes("vm2/lib/") && !callerfile.includes("@dataform/core/"))
+        break;
     }
   } catch (e) {}
   Error.prepareStackTrace = originalFunc;

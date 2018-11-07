@@ -101,10 +101,7 @@ export class Materialization {
   public schema(key: string, description?: string);
   public schema(map: { [key: string]: string });
   public schema(keys: string[]);
-  public schema(
-    keyOrKeysOrMap: string | string[] | { [key: string]: string },
-    description?: string
-  ) {
+  public schema(keyOrKeysOrMap: string | string[] | { [key: string]: string }, description?: string) {
     if (!!this.proto.schema) {
       this.proto.schema = {};
     }
@@ -135,9 +132,7 @@ export class Materialization {
 
     this.contextablePres.forEach(contextablePres => {
       var appliedPres = context.apply(contextablePres);
-      this.proto.pres = (this.proto.pres || []).concat(
-        typeof appliedPres == "string" ? [appliedPres] : appliedPres
-      );
+      this.proto.pres = (this.proto.pres || []).concat(typeof appliedPres == "string" ? [appliedPres] : appliedPres);
     });
     this.contextablePres = [];
 
@@ -152,9 +147,7 @@ export class Materialization {
     this.contextableAssertions.forEach(contextableAssertions => {
       var appliedAssertions = context.apply(contextableAssertions);
       this.proto.assertions = (this.proto.assertions || []).concat(
-        typeof appliedAssertions == "string"
-          ? [appliedAssertions]
-          : appliedAssertions
+        typeof appliedAssertions == "string" ? [appliedAssertions] : appliedAssertions
       );
     });
     this.contextableAssertions = [];
@@ -162,9 +155,7 @@ export class Materialization {
     // Compute columns.
     try {
       var tree = parser.parse(this.proto.query, {});
-      this.proto.parsedColumns = tree.statement[0].result
-        .map(res => res.alias)
-        .map(column => column || "*");
+      this.proto.parsedColumns = tree.statement[0].result.map(res => res.alias).map(column => column || "*");
     } catch (e) {
       // There was an exception parsing the columns, ignore.
     }
@@ -184,9 +175,7 @@ export class MaterializationContext {
     return "";
   }
   public self(): string {
-    return this.materialization.dataform
-      .adapter()
-      .resolveTarget(this.materialization.proto.target);
+    return this.materialization.dataform.adapter().resolveTarget(this.materialization.proto.target);
   }
 
   public ref(name: string) {
@@ -227,10 +216,7 @@ export class MaterializationContext {
   public schema(key: string, description?: string);
   public schema(map: { [key: string]: string });
   public schema(keys: string[]);
-  public schema(
-    keyOrKeysOrMap: string | string[] | { [key: string]: string },
-    description?: string
-  ) {
+  public schema(keyOrKeysOrMap: string | string[] | { [key: string]: string }, description?: string) {
     this.materialization.schema(keyOrKeysOrMap as any, description);
     return "";
   }

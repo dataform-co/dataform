@@ -1,10 +1,7 @@
 import { utils, adapters } from "@dataform/core";
 import * as protos from "@dataform/protos";
 
-export function build(
-  compiledGraph: protos.ICompiledGraph,
-  runConfig: protos.IRunConfig
-) {
+export function build(compiledGraph: protos.ICompiledGraph, runConfig: protos.IRunConfig) {
   return new Builder(compiledGraph, runConfig).build();
 }
 
@@ -14,10 +11,7 @@ class Builder {
 
   private adapter: adapters.Adapter;
 
-  constructor(
-    compiledGraph: protos.ICompiledGraph,
-    runConfig: protos.IRunConfig
-  ) {
+  constructor(compiledGraph: protos.ICompiledGraph, runConfig: protos.IRunConfig) {
     this.compiledGraph = compiledGraph;
     this.runConfig = runConfig;
     this.adapter = adapters.create(compiledGraph.projectConfig);
@@ -26,9 +20,7 @@ class Builder {
   build(): protos.IExecutionGraph {
     // Firstly, turn every thing into an execution node.
     var allNodes: protos.IExecutionNode[] = [].concat(
-      this.compiledGraph.materializations.map(m =>
-        this.buildMaterialization(m)
-      ),
+      this.compiledGraph.materializations.map(m => this.buildMaterialization(m)),
       this.compiledGraph.operations.map(o => this.buildOperation(o)),
       this.compiledGraph.assertions.map(a => this.buildAssertion(a))
     );
@@ -42,9 +34,7 @@ class Builder {
       this.runConfig.nodes && this.runConfig.nodes.length > 0
         ? utils.matchPatterns(this.runConfig.nodes, allNodeNames)
         : allNodeNames;
-    var includedNodes = allNodes.filter(
-      node => includedNodeNames.indexOf(node.name) >= 0
-    );
+    var includedNodes = allNodes.filter(node => includedNodeNames.indexOf(node.name) >= 0);
     if (this.runConfig.includeDependencies) {
       // Compute all transitive dependencies.
       for (let i = 0; i < allNodes.length; i++) {
@@ -60,18 +50,13 @@ class Builder {
             }
           });
           // Update included nodes.
-          includedNodes = allNodes.filter(
-            node => includedNodeNames.indexOf(node.name) >= 0
-          );
+          includedNodes = allNodes.filter(node => includedNodeNames.indexOf(node.name) >= 0);
         });
       }
     }
     // Remove any excluded dependencies and evaluate wildcard dependencies.
     includedNodes.forEach(node => {
-      node.dependencies = utils.matchPatterns(
-        node.dependencies,
-        includedNodeNames
-      );
+      node.dependencies = utils.matchPatterns(node.dependencies, includedNodeNames);
     });
     return {
       projectConfig: this.compiledGraph.projectConfig,
@@ -83,34 +68,23 @@ class Builder {
   buildMaterialization(m: protos.IMaterialization) {
     // We try to make this common across warehouses.
     var statements: protos.IExecutionTask[] = [];
-    var implicitTableType =
-      m.type == "view" ? adapters.TableType.VIEW : adapters.TableType.TABLE;
+    var implicitTableType = m.type == "view" ? adapters.TableType.VIEW : adapters.TableType.TABLE;
     statements.push({
       statement: this.adapter.dropIfExists(
         m.target,
-        implicitTableType == adapters.TableType.VIEW
-          ? adapters.TableType.TABLE
-          : adapters.TableType.VIEW
+        implicitTableType == adapters.TableType.VIEW ? adapters.TableType.TABLE : adapters.TableType.VIEW
       ),
       ignoreErrors: true
     });
     if (m.type == "incremental") {
       if (m.protected && this.runConfig.fullRefresh) {
-        throw Error(
-          `Cannot run full-refresh on protected materialization "${m.name}"`
-        );
+        throw Error(`Cannot run full-refresh on protected materialization "${m.name}"`);
       }
       if (!m.parsedColumns || m.parsedColumns.length == 0) {
-        throw Error(
-          `Incremental materializations must have explicitly named column selects in: ${
-            m.name
-          }"`
-        );
+        throw Error(`Incremental materializations must have explicitly named column selects in: ${m.name}"`);
       }
       statements.push({
-        statement: (this.runConfig.fullRefresh
-          ? this.adapter.createOrReplace
-          : this.adapter.createIfNotExists)(
+        statement: (this.runConfig.fullRefresh ? this.adapter.createOrReplace : this.adapter.createIfNotExists)(
           m.target,
           this.adapter.where(m.query, "false"),
           implicitTableType,
@@ -118,20 +92,11 @@ class Builder {
         )
       });
       statements.push({
-        statement: this.adapter.insertInto(
-          m.target,
-          m.parsedColumns,
-          this.adapter.where(m.query, m.where)
-        )
+        statement: this.adapter.insertInto(m.target, m.parsedColumns, this.adapter.where(m.query, m.where))
       });
     } else {
       statements.push({
-        statement: this.adapter.createOrReplace(
-          m.target,
-          m.query,
-          implicitTableType,
-          m.partitionBy
-        )
+        statement: this.adapter.createOrReplace(m.target, m.query, implicitTableType, m.partitionBy)
       });
     }
 

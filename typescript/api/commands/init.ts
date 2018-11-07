@@ -4,11 +4,7 @@ import { utils } from "@dataform/core";
 import * as protos from "@dataform/protos";
 import { install } from "./install";
 
-export function init(
-  projectDir: string,
-  warehouse: string,
-  projectName?: string
-) {
+export function init(projectDir: string, warehouse: string, projectName?: string) {
   var dataformJsonPath = path.join(projectDir, "dataform.json");
   var packageJsonPath = path.join(projectDir, "package.json");
   var gitignorePath = path.join(projectDir, ".gitignore");
