@@ -1,11 +1,9 @@
 import * as protos from "@dataform/protos";
 import * as adapters from "./adapters";
 import * as utils from "./utils";
-import * as parser from "./parser";
 import { Materialization, MContextable, MConfig } from "./materialization";
 import { Operation, OContextable } from "./operation";
 import { Assertion, AContextable } from "./assertion";
-
 
 export class Dataform {
   public static ROOT_DIR = "";
@@ -31,11 +29,17 @@ export class Dataform {
     return adapters.create(this.projectConfig);
   }
 
-  target(name: string, schema?: string) {
-    return protos.Target.create({
-      name: name,
-      schema: schema || this.projectConfig.defaultSchema
-    });
+  target(name: string): protos.ITarget {
+    if (name.includes(".")) {
+      var schema = name.split(".")[0];
+      var name = name.split(".")[1];
+      return protos.Target.create({ name, schema });
+    } else {
+      return protos.Target.create({
+        name,
+        schema: this.projectConfig.defaultSchema
+      });
+    }
   }
 
   ref(name: string): string {
@@ -67,13 +71,16 @@ export class Dataform {
     return operation;
   }
 
-  materialize(name: string, queryOrConfig?: MContextable<string> | MConfig): Materialization {
+  materialize(
+    name: string,
+    queryOrConfig?: MContextable<string> | MConfig
+  ): Materialization {
     var materialization = new Materialization();
     materialization.dataform = this;
     materialization.proto.name = name;
     materialization.proto.target = this.target(name);
     if (!!queryOrConfig) {
-      if (typeof(queryOrConfig) === "object") {
+      if (typeof queryOrConfig === "object") {
         materialization.config(queryOrConfig);
       } else {
         materialization.query(queryOrConfig);

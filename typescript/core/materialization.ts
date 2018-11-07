@@ -89,9 +89,12 @@ export class Materialization {
   }
 
   public dependency(value: string | string[]) {
-    this.proto.dependencies = (this.proto.dependencies || []).concat(
-      typeof value === "string" ? [value] : value
-    );
+    var newDependencies = typeof value === "string" ? [value] : value;
+    newDependencies.forEach(d => {
+      if (this.proto.dependencies.indexOf(d) < 0) {
+        this.proto.dependencies.push(d);
+      }
+    });
     return this;
   }
 
@@ -187,7 +190,7 @@ export class MaterializationContext {
   }
 
   public ref(name: string) {
-    this.materialization.proto.dependencies.push(name);
+    this.materialization.dependency(name);
     return this.materialization.dataform.ref(name);
   }
 
@@ -212,7 +215,7 @@ export class MaterializationContext {
   }
 
   public dependency(name: string) {
-    this.materialization.proto.dependencies.push(name);
+    this.materialization.dependency(name);
     return "";
   }
 
