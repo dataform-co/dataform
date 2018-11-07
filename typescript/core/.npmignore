@@ -1,0 +1,6 @@
+# ignore the .ts files
+*.ts
+# include the .d.ts files
+!*.d.ts
+
+node_modules/
