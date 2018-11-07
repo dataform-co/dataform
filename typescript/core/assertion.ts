@@ -30,8 +30,7 @@ export class Assertion {
     var context = new AssertionContext(this);
 
     var appliedQueries = context.apply(this.contextableQueries);
-    this.proto.queries =
-      typeof appliedQueries == "string" ? [appliedQueries] : appliedQueries;
+    this.proto.queries = typeof appliedQueries == "string" ? [appliedQueries] : appliedQueries;
     this.contextableQueries = null;
 
     return this.proto;

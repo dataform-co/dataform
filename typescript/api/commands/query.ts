@@ -35,7 +35,9 @@ export function compile(query: string, projectDir?: string) {
         return code;
       }
     });
-    var indexScript = genIndex(projectDir, `(function() {
+    var indexScript = genIndex(
+      projectDir,
+      `(function() {
         const ref = dataformcore.singleton.ref.bind(dataformcore.singleton);
         const noop = () => "";
         const config = noop;
@@ -49,7 +51,8 @@ export function compile(query: string, projectDir?: string) {
         const schema = noop;
         const describe = noop;
         return \`${query}\`;
-      })()`);
+      })()`
+    );
     compiledQuery = vm.run(indexScript, path.resolve(path.join(projectDir, "index.js")));
   }
   return compiledQuery;

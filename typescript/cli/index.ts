@@ -14,15 +14,13 @@ const addBuildYargs = (yargs: yargs.Argv) =>
       alias: "fr"
     })
     .option("carry-on", {
-      describe:
-        "If set, when a task fails it won't stop dependencies from attempting to run",
+      describe: "If set, when a task fails it won't stop dependencies from attempting to run",
       type: "boolean",
       default: false,
       alias: "co"
     })
     .option("nodes", {
-      describe:
-        "A list of node names or patterns to run, which can include * wildcards",
+      describe: "A list of node names or patterns to run, which can include * wildcards",
       type: "array",
       alias: "n"
     })
@@ -46,8 +44,7 @@ yargs
     yargs =>
       yargs
         .option("warehouse", {
-          describe:
-            "The warehouse type. One of [bigquery, redshift, snowflake, postgres]",
+          describe: "The warehouse type. One of [bigquery, redshift, snowflake, postgres]",
           default: "bigquery"
         })
         .positional("project-dir", {
@@ -67,9 +64,7 @@ yargs
         default: "."
       }),
     argv => {
-      console.log(
-        JSON.stringify(compile(path.resolve(argv["project-dir"])), null, 4)
-      );
+      console.log(JSON.stringify(compile(path.resolve(argv["project-dir"])), null, 4));
     }
   )
   .command(
@@ -81,16 +76,7 @@ yargs
         default: "."
       }),
     argv => {
-      console.log(
-        JSON.stringify(
-          build(
-            compile(path.resolve(argv["project-dir"])),
-            parseBuildArgs(argv)
-          ),
-          null,
-          4
-        )
-      );
+      console.log(JSON.stringify(build(compile(path.resolve(argv["project-dir"])), parseBuildArgs(argv)), null, 4));
     }
   )
   .command(
@@ -109,9 +95,7 @@ yargs
     argv => {
       var runner = run(
         build(compile(path.resolve(argv["project-dir"])), parseBuildArgs(argv)),
-        protos.Profile.create(
-          JSON.parse(fs.readFileSync(argv["profile"], "utf8"))
-        )
+        protos.Profile.create(JSON.parse(fs.readFileSync(argv["profile"], "utf8")))
       );
       runner
         .resultPromise()
@@ -129,11 +113,7 @@ yargs
       }),
     argv => {
       table
-        .list(
-          protos.Profile.create(
-            JSON.parse(fs.readFileSync(argv["profile"], "utf8"))
-          )
-        )
+        .list(protos.Profile.create(JSON.parse(fs.readFileSync(argv["profile"], "utf8"))))
         .then(tables => console.log(JSON.stringify(tables, null, 4)))
         .catch(e => console.log(e));
     }
@@ -148,12 +128,10 @@ yargs
       }),
     argv => {
       table
-        .get(
-          protos.Profile.create(
-            JSON.parse(fs.readFileSync(argv["profile"], "utf8"))
-          ),
-          { schema: argv["schema"], name: argv["table"] }
-        )
+        .get(protos.Profile.create(JSON.parse(fs.readFileSync(argv["profile"], "utf8"))), {
+          schema: argv["schema"],
+          name: argv["table"]
+        })
         .then(schema => console.log(JSON.stringify(schema, null, 4)))
         .catch(e => console.log(e));
     }
@@ -167,9 +145,7 @@ yargs
         default: "."
       }),
     argv => {
-      console.log(
-        query.compile(argv["query"], path.resolve(argv["project-dir"]))
-      );
+      console.log(query.compile(argv["query"], path.resolve(argv["project-dir"])));
     }
   )
   .command(
@@ -188,9 +164,7 @@ yargs
     argv => {
       query
         .run(
-          protos.Profile.create(
-            JSON.parse(fs.readFileSync(argv["profile"], "utf8"))
-          ),
+          protos.Profile.create(JSON.parse(fs.readFileSync(argv["profile"], "utf8"))),
           argv["query"],
           path.resolve(argv["project-dir"])
         )

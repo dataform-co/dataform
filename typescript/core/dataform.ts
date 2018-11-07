@@ -45,20 +45,13 @@ export class Dataform {
   ref(name: string): string {
     var refNode = this.materializations[name];
     if (refNode) {
-      return this.adapter().resolveTarget(
-        (refNode as Materialization).proto.target
-      );
+      return this.adapter().resolveTarget((refNode as Materialization).proto.target);
     } else {
-      throw `Could not find reference node (${name}) in nodes [${Object.keys(
-        this.materializations
-      )}]`;
+      throw `Could not find reference node (${name}) in nodes [${Object.keys(this.materializations)}]`;
     }
   }
 
-  operate(
-    name: string,
-    statement?: OContextable<string | string[]>
-  ): Operation {
+  operate(name: string, statement?: OContextable<string | string[]>): Operation {
     var operation = new Operation();
     operation.dataform = this;
     operation.proto.name = name;
@@ -71,10 +64,7 @@ export class Dataform {
     return operation;
   }
 
-  materialize(
-    name: string,
-    queryOrConfig?: MContextable<string> | MConfig
-  ): Materialization {
+  materialize(name: string, queryOrConfig?: MContextable<string> | MConfig): Materialization {
     var materialization = new Materialization();
     materialization.dataform = this;
     materialization.proto.name = name;
@@ -108,23 +98,13 @@ export class Dataform {
   compile(): protos.ICompiledGraph {
     var compiledGraph = protos.CompiledGraph.create({
       projectConfig: this.projectConfig,
-      materializations: Object.keys(this.materializations).map(key =>
-        this.materializations[key].compile()
-      ),
-      operations: Object.keys(this.operations).map(key =>
-        this.operations[key].compile()
-      ),
-      assertions: Object.keys(this.assertions).map(key =>
-        this.assertions[key].compile()
-      )
+      materializations: Object.keys(this.materializations).map(key => this.materializations[key].compile()),
+      operations: Object.keys(this.operations).map(key => this.operations[key].compile()),
+      assertions: Object.keys(this.assertions).map(key => this.assertions[key].compile())
     });
 
     // Check there aren't any duplicate names.
-    var allNodes = [].concat(
-      compiledGraph.materializations,
-      compiledGraph.assertions,
-      compiledGraph.operations
-    );
+    var allNodes = [].concat(compiledGraph.materializations, compiledGraph.assertions, compiledGraph.operations);
     var allNodeNames = allNodes.map(node => node.name);
 
     // Check there are no duplicate node names.
@@ -145,29 +125,18 @@ export class Dataform {
     allNodes.forEach(node => {
       node.dependencies.forEach(dependency => {
         if (allNodeNames.indexOf(dependency) < 0) {
-          throw Error(
-            `Node "${
-              node.name
-            }" depends on "${dependency}" which does not exist.`
-          );
+          throw Error(`Node "${node.name}" depends on "${dependency}" which does not exist.`);
         }
       });
     });
     // Check for circular dependencies.
-    function checkCircular(
-      node: protos.IExecutionNode,
-      dependents: protos.IExecutionNode[]
-    ) {
+    function checkCircular(node: protos.IExecutionNode, dependents: protos.IExecutionNode[]) {
       if (dependents.indexOf(node) >= 0) {
         throw Error(
-          `Circular dependency detected in chain: [${dependents
-            .map(d => d.name)
-            .join(" > ")} > ${node.name}]`
+          `Circular dependency detected in chain: [${dependents.map(d => d.name).join(" > ")} > ${node.name}]`
         );
       }
-      node.dependencies.forEach(d =>
-        checkCircular(nodesByName[d], dependents.concat([node]))
-      );
+      node.dependencies.forEach(d => checkCircular(nodesByName[d], dependents.concat([node])));
     }
     allNodes.forEach(node => checkCircular(node, []));
     return compiledGraph;

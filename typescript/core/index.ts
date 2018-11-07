@@ -12,17 +12,7 @@ import * as parser from "./parser";
 
 // Exports.
 
-export {
-  adapters,
-  utils,
-  parser,
-  Dataform,
-  Materialization,
-  MaterializationContext,
-  MConfig,
-  Operation,
-  Assertion
-};
+export { adapters, utils, parser, Dataform, Materialization, MaterializationContext, MConfig, Operation, Assertion };
 
 // Install extensions for SQL files.
 
@@ -51,15 +41,11 @@ export const singleton = new Dataform();
 
 export const materialize = (name: string, queryOrConfig?: MContextable<string> | MConfig) =>
   singleton.materialize(name, queryOrConfig);
-export const operate = (
-  name: string,
-  statement?: OContextable<string | string[]>
-) => singleton.operate(name, statement);
-export const assert = (name: string, query?: AContextable<string | string[]>) =>
-  singleton.assert(name, query);
+export const operate = (name: string, statement?: OContextable<string | string[]>) =>
+  singleton.operate(name, statement);
+export const assert = (name: string, query?: AContextable<string | string[]>) => singleton.assert(name, query);
 export const compile = () => singleton.compile();
-export const init = (projectConfig?: protos.IProjectConfig) =>
-  singleton.init(projectConfig);
+export const init = (projectConfig?: protos.IProjectConfig) => singleton.init(projectConfig);
 
 (global as any).materialize = materialize;
 (global as any).operate = operate;

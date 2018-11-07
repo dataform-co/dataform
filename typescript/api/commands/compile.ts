@@ -40,10 +40,7 @@ export function genIndex(projectDir: string, returnOverride?: string): string {
 
   var projectConfigPath = path.join(projectDir, "dataform.json");
   if (fs.existsSync(projectConfigPath)) {
-    Object.assign(
-      projectConfig,
-      JSON.parse(fs.readFileSync(projectConfigPath, "utf8"))
-    );
+    Object.assign(projectConfig, JSON.parse(fs.readFileSync(projectConfigPath, "utf8")));
   }
 
   var packageJsonPath = path.join(projectDir, "package.json");
@@ -65,9 +62,7 @@ export function genIndex(projectDir: string, returnOverride?: string): string {
 
   var packageRequires = Object.keys(packageConfig.dependencies || {})
     .map(packageName => {
-      return `global.${utils.variableNameFriendly(
-        packageName
-      )} = require("${packageName}");`;
+      return `global.${utils.variableNameFriendly(packageName)} = require("${packageName}");`;
     })
     .join("\n");
 

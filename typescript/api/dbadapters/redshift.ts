@@ -33,9 +33,7 @@ export class RedshiftDbAdapter implements DbAdapter {
     return this.execute(
       `select column_name, data_type, is_nullable
        from information_schema.columns
-       where table_schema = '${target.schema}' AND table_name = '${
-        target.name
-      }'`
+       where table_schema = '${target.schema}' AND table_name = '${target.name}'`
     ).then(rows => ({
       target: target,
       schema: {

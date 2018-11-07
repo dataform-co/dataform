@@ -37,9 +37,7 @@ export class BigQueryDbAdapter implements DbAdapter {
       .then(datasetTables => {
         var allTables: protos.ITarget[] = [];
         datasetTables.forEach(tablesResult =>
-          tablesResult[0].forEach(table =>
-            allTables.push({ schema: table.dataset.id, name: table.id })
-          )
+          tablesResult[0].forEach(table => allTables.push({ schema: table.dataset.id, name: table.id }))
         );
         return allTables;
       });

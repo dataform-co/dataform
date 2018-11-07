@@ -32,8 +32,7 @@ export function create(profile: protos.IProfile, warehouseType?: string): DbAdap
   }
   if (!!profile.snowflake) {
     return new registry["snowflake"](profile);
-  }
-  else throw Error("Invalid profile.");
+  } else throw Error("Invalid profile.");
 }
 
 register("bigquery", BigQueryDbAdapter);

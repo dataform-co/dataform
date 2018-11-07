@@ -30,10 +30,7 @@ export class Operation {
     var context = new OperationContext(this);
 
     var appliedStatements = context.apply(this.contextableStatements);
-    this.proto.statements =
-      typeof appliedStatements == "string"
-        ? [appliedStatements]
-        : appliedStatements;
+    this.proto.statements = typeof appliedStatements == "string" ? [appliedStatements] : appliedStatements;
     this.contextableStatements = null;
 
     return this.proto;
