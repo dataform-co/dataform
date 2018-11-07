@@ -1,13 +1,12 @@
-import { Runner } from "./index";
+import { DbAdapter } from "./index";
 import * as protos from "@dataform/protos";
+
 const Redshift = require("node-redshift");
 
-export class RedshiftRunner implements Runner {
-  private profile: protos.IProfile;
+export class RedshiftDbAdapter implements DbAdapter {
   private client: any;
 
   constructor(profile: protos.IProfile) {
-    this.profile = profile;
     this.client = new Redshift(profile.redshift);
   }
 

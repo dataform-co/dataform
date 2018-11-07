@@ -1,8 +1,20 @@
-import { DbAdapter } from "./dbadapters";
 import * as protos from "@dataform/protos";
+import * as dbadapters from "../dbadapters";
 
-export class Executor {
-  private adapter: DbAdapter;
+export function run(
+  graph: protos.IExecutionGraph,
+  profile: protos.IProfile
+): Runner {
+  var runner = Runner.create(
+    dbadapters.create(profile, graph.projectConfig.warehouse),
+    graph
+  );
+  runner.execute();
+  return runner;
+}
+
+export class Runner {
+  private adapter: dbadapters.DbAdapter;
   private graph: protos.IExecutionGraph;
 
   private pendingNodes: protos.IExecutionNode[];
@@ -14,7 +26,7 @@ export class Executor {
 
   private executionTask: Promise<protos.IExecutedGraph>;
 
-  constructor(adapter: DbAdapter, graph: protos.IExecutionGraph) {
+  constructor(adapter: dbadapters.DbAdapter, graph: protos.IExecutionGraph) {
     this.adapter = adapter;
     this.graph = graph;
     this.pendingNodes = graph.nodes;
@@ -25,11 +37,14 @@ export class Executor {
     };
   }
 
-  public static create(adapter: DbAdapter, graph: protos.IExecutionGraph) {
-    return new Executor(adapter, graph);
+  public static create(
+    adapter: dbadapters.DbAdapter,
+    graph: protos.IExecutionGraph
+  ) {
+    return new Runner(adapter, graph);
   }
 
-  public onChange(listener: (graph: protos.IExecutedGraph) => void): Executor {
+  public onChange(listener: (graph: protos.IExecutedGraph) => void): Runner {
     this.changeListeners.push(listener);
     return this;
   }

@@ -1,13 +1,9 @@
 #!/usr/bin/env node
 import * as fs from "fs";
-import * as util from "util";
 import * as yargs from "yargs";
 import * as path from "path";
-import { NodeVM } from "vm2";
-import * as glob from "glob";
-import { utils } from "@dataform/core";
 import * as protos from "@dataform/protos";
-import { init, compile, build, run, tables, table, query } from "@dataform/api";
+import { init, compile, build, run, table, query } from "@dataform/api";
 
 const addBuildYargs = (yargs: yargs.Argv) =>
   yargs
@@ -111,13 +107,13 @@ yargs
           required: true
         }),
     argv => {
-      var executor = run(
+      var runner = run(
         build(compile(path.resolve(argv["project-dir"])), parseBuildArgs(argv)),
         protos.Profile.create(
           JSON.parse(fs.readFileSync(argv["profile"], "utf8"))
         )
       );
-      executor
+      runner
         .resultPromise()
         .then(result => console.log(JSON.stringify(result, null, 4)))
         .catch(e => console.log(e));
@@ -132,11 +128,12 @@ yargs
         required: true
       }),
     argv => {
-      tables(
-        protos.Profile.create(
-          JSON.parse(fs.readFileSync(argv["profile"], "utf8"))
+      table
+        .list(
+          protos.Profile.create(
+            JSON.parse(fs.readFileSync(argv["profile"], "utf8"))
+          )
         )
-      )
         .then(tables => console.log(JSON.stringify(tables, null, 4)))
         .catch(e => console.log(e));
     }
@@ -150,12 +147,13 @@ yargs
         required: true
       }),
     argv => {
-      table(
-        protos.Profile.create(
-          JSON.parse(fs.readFileSync(argv["profile"], "utf8"))
-        ),
-        { schema: argv["schema"], name: argv["table"] }
-      )
+      table
+        .get(
+          protos.Profile.create(
+            JSON.parse(fs.readFileSync(argv["profile"], "utf8"))
+          ),
+          { schema: argv["schema"], name: argv["table"] }
+        )
         .then(schema => console.log(JSON.stringify(schema, null, 4)))
         .catch(e => console.log(e));
     }

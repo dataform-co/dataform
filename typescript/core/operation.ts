@@ -16,8 +16,13 @@ export class Operation {
     this.contextableStatements = statement;
   }
 
-  public dependency(value: string) {
-    this.proto.dependencies.push(value);
+  public dependency(value: string | string[]) {
+    var newDependencies = typeof value === "string" ? [value] : value;
+    newDependencies.forEach(d => {
+      if (this.proto.dependencies.indexOf(d) < 0) {
+        this.proto.dependencies.push(d);
+      }
+    });
     return this;
   }
 
@@ -43,12 +48,12 @@ export class OperationContext {
   }
 
   public ref(name: string) {
-    this.operation.proto.dependencies.push(name);
+    this.operation.dependency(name);
     return this.operation.dataform.ref(name);
   }
 
-  public dependency(name: string) {
-    this.operation.proto.dependencies.push(name);
+  public dependency(name: string | string[]) {
+    this.operation.dependency(name);
     return "";
   }
 

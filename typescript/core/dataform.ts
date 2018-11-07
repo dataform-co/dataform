@@ -45,7 +45,7 @@ export class Dataform {
   ref(name: string): string {
     var refNode = this.materializations[name];
     if (refNode) {
-      return this.adapter().queryableName(
+      return this.adapter().resolveTarget(
         (refNode as Materialization).proto.target
       );
     } else {
@@ -105,8 +105,8 @@ export class Dataform {
     return assertion;
   }
 
-  compile() {
-    return protos.CompiledGraph.create({
+  compile(): protos.ICompiledGraph {
+    var compiledGraph = protos.CompiledGraph.create({
       projectConfig: this.projectConfig,
       materializations: Object.keys(this.materializations).map(key =>
         this.materializations[key].compile()
@@ -118,5 +118,58 @@ export class Dataform {
         this.assertions[key].compile()
       )
     });
+
+    // Check there aren't any duplicate names.
+    var allNodes = [].concat(
+      compiledGraph.materializations,
+      compiledGraph.assertions,
+      compiledGraph.operations
+    );
+    var allNodeNames = allNodes.map(node => node.name);
+
+    // Check there are no duplicate node names.
+    allNodes.forEach(node => {
+      if (allNodes.filter(subNode => subNode.name == node.name).length > 1) {
+        throw Error(
+          `Duplicate node name detected, names must be unique across materializations, assertions, and operations: "${
+            node.name
+          }"`
+        );
+      }
+    });
+
+    var nodesByName: { [name: string]: protos.IExecutionNode } = {};
+    allNodes.forEach(node => (nodesByName[node.name] = node));
+
+    // Check all dependencies actually exist.
+    allNodes.forEach(node => {
+      node.dependencies.forEach(dependency => {
+        if (allNodeNames.indexOf(dependency) < 0) {
+          throw Error(
+            `Node "${
+              node.name
+            }" depends on "${dependency}" which does not exist.`
+          );
+        }
+      });
+    });
+    // Check for circular dependencies.
+    function checkCircular(
+      node: protos.IExecutionNode,
+      dependents: protos.IExecutionNode[]
+    ) {
+      if (dependents.indexOf(node) >= 0) {
+        throw Error(
+          `Circular dependency detected in chain: [${dependents
+            .map(d => d.name)
+            .join(" > ")} > ${node.name}]`
+        );
+      }
+      node.dependencies.forEach(d =>
+        checkCircular(nodesByName[d], dependents.concat([node]))
+      );
+    }
+    allNodes.forEach(node => checkCircular(node, []));
+    return compiledGraph;
   }
 }

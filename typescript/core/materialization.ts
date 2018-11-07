@@ -186,7 +186,7 @@ export class MaterializationContext {
   public self(): string {
     return this.materialization.dataform
       .adapter()
-      .queryableName(this.materialization.proto.target);
+      .resolveTarget(this.materialization.proto.target);
   }
 
   public ref(name: string) {

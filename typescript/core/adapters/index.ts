@@ -1,11 +1,29 @@
 import * as protos from "@dataform/protos";
 import { BigQueryAdapter } from "./bigquery";
 import { RedshiftAdapter } from "./redshift";
-import { SnowflakeAdapter } from "./snowflake";
+
+export enum TableType {
+  TABLE,
+  VIEW
+}
 
 export interface Adapter {
-  queryableName: (target: protos.ITarget) => string;
-  build: (materialization: protos.IMaterialization, runConfig: protos.IRunConfig) => protos.IExecutionTask[];
+  resolveTarget(target: protos.ITarget): string;
+  createIfNotExists(
+    target: protos.ITarget,
+    query: string,
+    type: TableType,
+    partitionBy: string
+  ): string;
+  createOrReplace(
+    target: protos.ITarget,
+    query: string,
+    type: TableType,
+    partitionBy: string
+  ): string;
+  insertInto(target: protos.ITarget, columns: string[], query: string);
+  dropIfExists(target: protos.ITarget, type: TableType): string;
+  where(query: string, where: string): string;
 }
 
 export interface AdapterConstructor<T extends Adapter> {
@@ -14,7 +32,10 @@ export interface AdapterConstructor<T extends Adapter> {
 
 const registry: { [warehouseType: string]: AdapterConstructor<Adapter> } = {};
 
-export function register(warehouseType: string, c: AdapterConstructor<Adapter>) {
+export function register(
+  warehouseType: string,
+  c: AdapterConstructor<Adapter>
+) {
   registry[warehouseType] = c;
 }
 
@@ -24,4 +45,3 @@ export function create(projectConfig: protos.IProjectConfig): Adapter {
 
 register("bigquery", BigQueryAdapter);
 register("redshift", RedshiftAdapter);
-register("snowflake", SnowflakeAdapter);
