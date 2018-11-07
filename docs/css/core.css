@@ -5,7 +5,6 @@
 }
 
 .content {
-  background-color: #FFF;
   margin-bottom: 500px;
 }
 
@@ -58,4 +57,18 @@ p > code {
 
 a:hover {
   text-decoration: none;
+}
+
+::-webkit-scrollbar-track {
+  background-color: transparent;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+  background-color: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: #aaa;
 }
