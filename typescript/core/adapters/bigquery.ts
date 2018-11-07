@@ -1,5 +1,5 @@
 import * as protos from "@dataform/protos";
-import { Adapter } from "./index";
+import { Adapter, TableType } from "./index";
 
 export class BigQueryAdapter implements Adapter {
   private project: protos.IProjectConfig;
@@ -8,47 +8,51 @@ export class BigQueryAdapter implements Adapter {
     this.project = project;
   }
 
-  queryableName(target: protos.ITarget) {
+  resolveTarget(target: protos.ITarget) {
     return `\`${target.schema || this.project.defaultSchema}.${target.name}\``;
   }
 
-  build(m: protos.IMaterialization, runConfig: protos.IRunConfig): protos.IExecutionTask[] {
-    var statements: protos.IExecutionTask[] = [];
-    statements.push({
-      statement: `drop ${m.type == "view" ? "table" : "view"} if exists ${this.queryableName(m.target)}`,
-      ignoreErrors: true
-    });
-    if (m.type == "incremental") {
-      if (m.protected && runConfig.fullRefresh) {
-        throw "Cannot run full-refresh on a protected table.";
-      }
-      if (!m.parsedColumns || m.parsedColumns.length == 0) {
-        throw "Incremental models must have explicitly named column selects.";
-      }
-      statements.push({
-        statement: `create ${runConfig.fullRefresh ? "or replace table" : "table if not exists"} ${this.queryableName(
-          m.target
-        )}
-         ${m.partitionBy ? `partition by ${m.partitionBy}` : ""}
-         as select * from (${m.query}) where false`
-      });
-      statements.push({
-        statement: `
-          insert ${this.queryableName(m.target)} (${m.parsedColumns.join(",")})
-          select * from (
-            ${m.query}
-          ) ${runConfig.fullRefresh ? "" : `where ${m.where}`}`
-      });
-    } else {
-      statements.push({
-        statement: `
-          create or replace ${m.type == "table" ? "table" : "view"} ${this.queryableName(m.target)}
-          ${m.partitionBy ? `partition by ${m.partitionBy}` : ""}
-          as select * from (
-            ${m.query}
-          )`
-      });
-    }
-    return statements;
+  createIfNotExists(
+    target: protos.ITarget,
+    query: string,
+    type: TableType,
+    partitionBy?: string
+  ) {
+    return `
+      create ${
+        type == TableType.TABLE ? "table" : "view"
+      } if not exists ${this.resolveTarget(target)}
+      ${partitionBy ? `partition by ${partitionBy}` : ""}
+      as ${query}`;
+  }
+  createOrReplace(
+    target: protos.ITarget,
+    query: string,
+    type: TableType,
+    partitionBy?: string
+  ) {
+    return `
+      create or replace ${
+        type == TableType.TABLE ? "table" : "view"
+      } ${this.resolveTarget(target)}
+      ${partitionBy ? `partition by ${partitionBy}` : ""}
+      as ${query}`;
+  }
+  insertInto(target: protos.ITarget, columns: string[], query: string) {
+    return `
+      insert ${this.resolveTarget(target)} (${columns.join(",")})
+      ${query}`;
+  }
+
+  dropIfExists(target: protos.ITarget, type: TableType) {
+    return `drop ${
+      type == TableType.TABLE ? "table" : "view"
+    } if exists ${this.resolveTarget(target)}`;
+  }
+
+  where(query: string, where: string) {
+    return `select * from (
+        ${query})
+        where ${where}`;
   }
 }

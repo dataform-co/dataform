@@ -1,16 +1,13 @@
-import * as fs from "fs";
-import * as util from "util";
 import * as path from "path";
 import { NodeVM } from "vm2";
-import * as glob from "glob";
 import { utils } from "@dataform/core";
 import * as protos from "@dataform/protos";
-import * as runners from "../runners";
+import * as dbadapters from "../dbadapters";
 import { genIndex } from "./compile";
 
 export function run(profile: protos.IProfile, query: string, projectDir?: string): Promise<any[]> {
   var compiledQuery = compile(query, projectDir);
-  return runners.create(profile).execute(compiledQuery);
+  return dbadapters.create(profile).execute(compiledQuery);
 }
 
 export function compile(query: string, projectDir?: string) {
@@ -26,7 +23,7 @@ export function compile(query: string, projectDir?: string) {
       },
       sourceExtensions: ["js", "sql"],
       compiler: (code, file) => {
-        if (file.endsWith(".test.sql")) {
+        if (file.endsWith(".asserts.sql")) {
           return utils.compileAssertionSql(code, file);
         }
         if (file.endsWith(".ops.sql")) {

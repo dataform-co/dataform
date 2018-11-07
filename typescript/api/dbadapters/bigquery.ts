@@ -1,8 +1,9 @@
-import { Runner } from "./index";
+import { DbAdapter } from "./index";
 import * as protos from "@dataform/protos";
+
 const BigQuery = require("@google-cloud/bigquery");
 
-export class BigQueryRunner implements Runner {
+export class BigQueryDbAdapter implements DbAdapter {
   private profile: protos.IProfile;
   private client: any;
 
@@ -65,7 +66,7 @@ export class BigQueryRunner implements Runner {
     return this.client
       .dataset(schema)
       .getMetadata()
-      .catch(e =>
+      .catch(_ =>
         this.client
           .createDataset(schema, {
             location: this.profile.bigquery.location || "US"

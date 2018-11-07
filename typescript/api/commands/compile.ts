@@ -1,12 +1,11 @@
 import * as fs from "fs";
-import * as util from "util";
 import * as path from "path";
 import { NodeVM } from "vm2";
 import * as glob from "glob";
 import { utils } from "@dataform/core";
 import * as protos from "@dataform/protos";
 
-export default function compile(projectDir: string): protos.ICompiledGraph {
+export function compile(projectDir: string): protos.ICompiledGraph {
   const vm = new NodeVM({
     timeout: 5000,
     wrapper: "none",
@@ -17,7 +16,7 @@ export default function compile(projectDir: string): protos.ICompiledGraph {
     },
     sourceExtensions: ["js", "sql"],
     compiler: (code, file) => {
-      if (file.endsWith(".test.sql")) {
+      if (file.endsWith(".asserts.sql")) {
         return utils.compileAssertionSql(code, file);
       }
       if (file.endsWith(".ops.sql")) {

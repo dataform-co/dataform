@@ -1,0 +1,9 @@
+0 silly argv { _: [ 'bootstrap' ],
+0 silly argv   lernaVersion: '3.4.0',
+0 silly argv   '$0': '../node_modules/.bin/lerna' }
+1 notice cli v3.4.0
+2 verbose rootPath /home/lewis/workspace/dataform
+3 error JSONError: Unexpected token } in JSON at position 667 while parsing near '...ess": "public"  },}' in api/package.json
+3 error     at module.exports (/home/lewis/workspace/dataform/node_modules/parse-json/index.js:26:19)
+3 error     at parse (/home/lewis/workspace/dataform/node_modules/load-json-file/index.js:8:29)
+3 error     at pify.then.data (/home/lewis/workspace/dataform/node_modules/load-json-file/index.js:10:67)
