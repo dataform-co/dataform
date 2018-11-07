@@ -1,8 +1,3 @@
----
-layout: documentation
-title: dataform.json
----
-
 The `dataform.json` file stores project level information, such as the type of warehouse the project should compile against, or the default schemas/datasets to use.
 
 An example `dataform.json` file:
