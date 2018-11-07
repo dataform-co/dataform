@@ -1,5 +1,6 @@
 .pageWidth {
-  width: 960px;
+  width: 100%;
+  max-width: 960px;
   margin: 0px auto;
 }
 
@@ -28,6 +29,10 @@
   padding: 10px;
 }
 
+.navbar_spacer {
+  height: 50px;
+}
+
 div.highlight {
   padding: 5px;
   background-color: #394b59;
@@ -37,6 +42,14 @@ div.highlight {
 pre.highlight {
   margin: 0px;
   background-color: #394b59;
+}
+
+pre {
+  white-space: pre-wrap;       /* Since CSS 2.1 */
+  white-space: -moz-pre-wrap;  /* Mozilla, since 1999 */
+  white-space: -pre-wrap;      /* Opera 4-6 */
+  white-space: -o-pre-wrap;    /* Opera 7 */
+  word-wrap: break-word;
 }
 
 p > code {
