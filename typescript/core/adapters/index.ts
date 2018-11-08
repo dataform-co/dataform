@@ -1,19 +1,13 @@
 import * as protos from "@dataform/protos";
 import { BigQueryAdapter } from "./bigquery";
 import { RedshiftAdapter } from "./redshift";
+import { Materialization } from "../";
+import { Tasks } from "../tasks";
 
-export enum TableType {
-  TABLE,
-  VIEW
-}
 
 export interface Adapter {
   resolveTarget(target: protos.ITarget): string;
-  createIfNotExists(target: protos.ITarget, query: string, type: TableType, partitionBy: string): string;
-  createOrReplace(target: protos.ITarget, query: string, type: TableType, partitionBy: string): string;
-  insertInto(target: protos.ITarget, columns: string[], query: string);
-  dropIfExists(target: protos.ITarget, type: TableType): string;
-  where(query: string, where: string): string;
+  materialize(materialization: protos.IMaterialization, fullRefresh: boolean): Tasks;
 }
 
 export interface AdapterConstructor<T extends Adapter> {
