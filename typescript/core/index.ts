@@ -8,11 +8,23 @@ import { Assertion, AContextable } from "./assertion";
 
 import * as adapters from "./adapters";
 import * as utils from "./utils";
+import * as tasks from "./tasks";
 import * as parser from "./parser";
 
 // Exports.
 
-export { adapters, utils, parser, Dataform, Materialization, MaterializationContext, MConfig, Operation, Assertion };
+export {
+  adapters,
+  utils,
+  parser,
+  tasks,
+  Dataform,
+  Materialization,
+  MaterializationContext,
+  MConfig,
+  Operation,
+  Assertion
+};
 
 // Install extensions for SQL files.
 

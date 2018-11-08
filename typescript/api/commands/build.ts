@@ -68,44 +68,13 @@ class Builder {
   buildMaterialization(m: protos.IMaterialization) {
     // We try to make this common across warehouses.
     var statements: protos.IExecutionTask[] = [];
-    var implicitTableType = m.type == "view" ? adapters.TableType.VIEW : adapters.TableType.TABLE;
-    statements.push({
-      statement: this.adapter.dropIfExists(
-        m.target,
-        implicitTableType == adapters.TableType.VIEW ? adapters.TableType.TABLE : adapters.TableType.VIEW
-      ),
-      ignoreErrors: true
-    });
-    if (m.type == "incremental") {
-      if (m.protected && this.runConfig.fullRefresh) {
-        throw Error(`Cannot run full-refresh on protected materialization "${m.name}"`);
-      }
-      if (!m.parsedColumns || m.parsedColumns.length == 0) {
-        throw Error(`Incremental materializations must have explicitly named column selects in: ${m.name}"`);
-      }
-      statements.push({
-        statement: (this.runConfig.fullRefresh ? this.adapter.createOrReplace : this.adapter.createIfNotExists)(
-          m.target,
-          this.adapter.where(m.query, "false"),
-          implicitTableType,
-          m.partitionBy
-        )
-      });
-      statements.push({
-        statement: this.adapter.insertInto(m.target, m.parsedColumns, this.adapter.where(m.query, m.where))
-      });
-    } else {
-      statements.push({
-        statement: this.adapter.createOrReplace(m.target, m.query, implicitTableType, m.partitionBy)
-      });
-    }
 
     return protos.ExecutionNode.create({
       name: m.name,
       dependencies: m.dependencies,
       tasks: ([] as protos.IExecutionTask[]).concat(
         m.pres.map(pre => ({ statement: pre })),
-        statements,
+        this.adapter.materialize(m, this.runConfig.fullRefresh).build(),
         m.posts.map(post => ({ statement: post })),
         m.assertions.map(assertion => ({
           statement: assertion,
