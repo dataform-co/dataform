@@ -5,27 +5,21 @@ title: Assertions
 
 # Assertions
 
-An `assertion` can define one or more queries that, under normal conditions.
-
-The best way to think about assertions, are as queries that scan for rows that break some test. If the queries return any results, then the test is considered to have failed.
+An `assertion` is a query that should return 0 rows, and can be used to check the state of your materializations as part of your pipelines.
 
 To define a new assertion, create a `.assert.sql` file in the `models` directory.
 
-For example, the following file defines two tests on a dataset, one to make sure that the combination of 3 fields are always unique, and one to check there are no null values present:
+The following assertion checks that the combination of 3 fields in a table are always unique:
 ```js
 select id, a, b, sum(1) as count
 from ${ref("sometable")}
 group by id, a, b
 having count > 1
----
-select id, a, b from ${ref("sometable")} where a is NULL or b is NULL
 ```
-
-Multiple statements can be seperated with a single line containing only `---`
 
 ## Context functions
 
 Assertion files (`.assert.sql`) can use the following built-ins:
 
 - [ref()](/built-in-functions/#ref)
-- [dependency()](/built-in-functions/#dependency)
+- [dependencies()](/built-in-functions/#dependencies)
