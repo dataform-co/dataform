@@ -30,14 +30,22 @@ export class RedshiftDbAdapter implements DbAdapter {
   }
 
   schema(target: protos.ITarget): Promise<protos.ITable> {
-    return this.execute(
-      `select column_name, data_type, is_nullable
+    return Promise.all([
+      this.execute(
+        `select column_name, data_type, is_nullable
        from information_schema.columns
        where table_schema = '${target.schema}' AND table_name = '${target.name}'`
-    ).then(rows => ({
+      ),
+      this.execute(
+        `select table_type from information_schema.tables where table_schema = '${target.schema}' AND table_name = '${
+          target.name
+        }'`
+      )
+    ]).then(results => ({
       target: target,
+      type: results[1][0] ? (results[1][0].table_type == "VIEW" ? "view" : "table") : null,
       schema: {
-        fields: rows.map(row => ({
+        fields: results[0].map(row => ({
           name: row.column_name,
           primitive: row.data_type,
           flags: row.is_nullable && row.is_nullable == "YES" ? ["nullable"] : []

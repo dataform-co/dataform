@@ -13,47 +13,57 @@ export class RedshiftAdapter implements Adapter {
     return `"${target.schema || this.project.defaultSchema}"."${target.name}"`;
   }
 
-  materialize(m: protos.IMaterialization, fullRefresh: boolean): Tasks {
+  buildTasks(m: protos.IMaterialization, runConfig: protos.IRunConfig, table: protos.ITable): Tasks {
     var tasks = Tasks.create();
-    // Drop views/tables first if they exist.
-    tasks.add(Task.statement(this.dropIfExists(m.target, this.oppositeTableType(m.type))).ignoreErrors(true));
+    // Drop the existing view or table if we are changing it's type.
+    if (table.type && table.type != this.baseTableType(m.type)) {
+      tasks.add(Task.statement(this.dropIfExists(m.target, this.oppositeTableType(m.type))));
+    }
     if (m.type == "incremental") {
-      tasks.addAll(this.materializeIncremental(m, fullRefresh));
+      if (runConfig.fullRefresh || !table.type || table.type == "view") {
+        tasks.addAll(this.createOrReplace(m, table));
+      } else {
+        // The table exists, insert new rows.
+        tasks.add(Task.statement(this.insertInto(m.target, m.parsedColumns, this.where(m.query, m.where))));
+      }
     } else {
-      tasks.add(Task.statement(this.createOrReplace(m)));
+      tasks.addAll(this.createOrReplace(m, table));
     }
     return tasks;
   }
 
-  materializeIncremental(m: protos.IMaterialization, fullRefresh: boolean): Tasks {
-    var tasks = Tasks.create();
-    if (fullRefresh) {
-      tasks.add(Task.statement(this.createOrReplace(m)));
+  createOrReplace(m: protos.IMaterialization, table: protos.ITable) {
+    if (m.type == "view") {
+      return Tasks.create().add(
+        Task.statement(`
+        create or replace view ${this.resolveTarget(m.target)}
+        as ${m.query}`)
+      );
     } else {
-      tasks
-        .addAll(this.createEmptyTableIfNotExists(m))
-        .add(Task.statement(this.insertInto(m.target, m.parsedColumns, this.where(m.query, m.where))));
+      var tempTableTarget = protos.Target.create({
+        schema: m.target.schema,
+        name: m.target.name + "_temp"
+      });
+      var tasks = Tasks.create();
+      tasks.add(Task.statement(this.dropIfExists(tempTableTarget, m.type)));
+      tasks.add(
+        Task.statement(`
+        create table ${this.resolveTarget(tempTableTarget)}
+        as ${m.query}`)
+      );
+      tasks.add(Task.statement(this.dropIfExists(m.target, "table")));
+      tasks.add(
+        Task.statement(`alter table ${this.resolveTarget(tempTableTarget)} rename to ${this.resolveTarget(m.target)}`)
+      );
+      tasks.add(Task.statement(this.dropIfExists(tempTableTarget, "table")));
+      return tasks;
     }
-    return tasks;
-  }
-
-  createEmptyTableIfNotExists(m: protos.IMaterialization): Tasks {
-    var tmpViewName = this.resolveTarget({ schema: m.target.schema, name: m.name + "_temp" });
-    return Tasks.create()
-      .add(Task.statement(`drop table ${tmpViewName}`).ignoreErrors(true))
-      .add(Task.statement(`create or replace view ${tmpViewName} as ${m.query}`))
-      .add(Task.statement(`create table if not exists ${this.resolveTarget(m.target)} (like ${tmpViewName})`));
-  }
-
-  createOrReplace(m: protos.IMaterialization) {
-    return `
-      create or replace ${this.baseTableType(m.type)} ${this.resolveTarget(m.target)}
-      as ${m.query}`;
   }
 
   insertInto(target: protos.ITarget, columns: string[], query: string) {
     return `
-      insert ${this.resolveTarget(target)} (${columns.join(",")})
+      insert into ${this.resolveTarget(target)}
+      (${columns.join(",")})
       ${query}`;
   }
 

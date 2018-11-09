@@ -71,12 +71,20 @@ yargs
     "build [project-dir]",
     "Build the dataform project. Produces JSON output describing the execution graph.",
     yargs =>
-      addBuildYargs(yargs).positional("project-dir", {
-        describe: "The directory of the Dataform project.",
-        default: "."
-      }),
+      addBuildYargs(yargs)
+        .positional("project-dir", {
+          describe: "The directory of the Dataform project.",
+          default: "."
+        })
+        .option("profile", {
+          describe: "The location of the profile JSON file to run against",
+          required: true
+        }),
     argv => {
-      console.log(JSON.stringify(build(compile(path.resolve(argv["project-dir"])), parseBuildArgs(argv)), null, 4));
+      var profile = protos.Profile.create(JSON.parse(fs.readFileSync(argv["profile"], "utf8")));
+      build(compile(path.resolve(argv["project-dir"])), parseBuildArgs(argv), profile).then(result =>
+        console.log(JSON.stringify(result, null, 4))
+      );
     }
   )
   .command(
@@ -93,12 +101,9 @@ yargs
           required: true
         }),
     argv => {
-      var runner = run(
-        build(compile(path.resolve(argv["project-dir"])), parseBuildArgs(argv)),
-        protos.Profile.create(JSON.parse(fs.readFileSync(argv["profile"], "utf8")))
-      );
-      runner
-        .resultPromise()
+      var profile = protos.Profile.create(JSON.parse(fs.readFileSync(argv["profile"], "utf8")));
+      build(compile(path.resolve(argv["project-dir"])), parseBuildArgs(argv), profile)
+        .then(executionGraph => run(executionGraph, profile).resultPromise())
         .then(result => console.log(JSON.stringify(result, null, 4)))
         .catch(e => console.log(e));
     }

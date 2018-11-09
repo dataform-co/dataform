@@ -13,12 +13,12 @@ export class BigQueryAdapter implements Adapter {
     return `\`${target.schema || this.project.defaultSchema}.${target.name}\``;
   }
 
-  materialize(m: protos.IMaterialization, fullRefresh: boolean): Tasks {
+  buildTasks(m: protos.IMaterialization, runConfig: protos.IRunConfig, table: protos.ITable): Tasks {
     var tasks = Tasks.create();
     // Drop views/tables first if they exist.
     tasks.add(Task.statement(this.dropIfExists(m.target, this.oppositeTableType(m.type))).ignoreErrors(true));
     if (m.type == "incremental") {
-      tasks.addAll(this.materializeIncremental(m, fullRefresh));
+      tasks.addAll(this.materializeIncremental(m, runConfig.fullRefresh));
     } else {
       tasks.add(Task.statement(this.createOrReplace(m)));
     }

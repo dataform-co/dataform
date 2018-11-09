@@ -128,5 +128,6 @@ message Schema {
 
 message Table {
   Target target = 1;
+  string type = 3; // "table" or "view"
   Schema schema = 2;
 }
