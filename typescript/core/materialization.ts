@@ -123,9 +123,6 @@ export class Materialization {
       this.contextableWhere = null;
     }
 
-    // Evaluate wildcard dependencies.
-    this.proto.dependencies = utils.matchPatterns(this.proto.dependencies, Object.keys(this.dataform.materializations));
-
     this.contextablePreOps.forEach(contextablePreOps => {
       var appliedPres = context.apply(contextablePreOps);
       this.proto.preOps = (this.proto.preOps || []).concat(typeof appliedPres == "string" ? [appliedPres] : appliedPres);

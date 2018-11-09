@@ -35,9 +35,6 @@ export class Assertion {
     this.proto.query = appliedQuery;
     this.contextableQuery = null;
 
-    // Evaluate wildcard dependencies.
-    this.proto.dependencies = utils.matchPatterns(this.proto.dependencies, Object.keys(this.dataform.materializations));
-
     return this.proto;
   }
 }
