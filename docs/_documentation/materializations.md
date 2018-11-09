@@ -15,7 +15,7 @@ To define a new materialization, create a `.sql` file in the `models` directory.
 select 1 as test
 ```
 
-Will create a `view` called `myfirstmodel.sql` in the default dataform schema defined in the [`dataform.json`](/configuration/#dataform.json) file.
+Will create a `view` called `myfirstmodel` in the default dataform schema defined in the [`dataform.json`](/configuration/#dataform.json) file.
 
 There are several configuration options that can be applied to a materialization. These can be applied by calling the appropriate method within a `${}` block, or can be provided all as one using the [options syntax](#Options syntax).
 
@@ -74,12 +74,12 @@ ${type("incremental")}
 select * from sourcetable
 ```
 
-## Pre hooks
+## Pre operations
 
-You can execute one or more statements before a table is materialized using the [`pre()`](/built-in-functions#pre) built-in:
+You can execute one or more statements before a table is materialized using the [`preOps()`](/built-in-functions#preOps) built-in:
 
 ```js
-${pre([
+${preOps([
   "run this before",
   "then run this before"
 ])}
@@ -87,29 +87,15 @@ ${pre([
 select 1 as test
 ```
 
-## Post hooks
+## Post operations
 
-You can execute one or more statements after a table is materialized using the [`post()`](/built-in-functions#post) built-in:
+You can execute one or more statements after a table is materialized using the [`postOps()`](/built-in-functions#postOps) built-in:
 
 ```js
-${post([
+${postOps([
   "run this after",
   "then run this after"
 ])}
 --
 select 1 as test
 ```
-
-## Assertions
-
-[Assertions](/assertions) can be easily added to a query without having to define them in a seperate file.
-
-```js
-select 1 as test
---
-${assert([
-  `select test from ${self()} where test > 1`,
-])}
-```
-
-The above statement will check that the output of these query contains no rows where the `test` value is greater than 1.
