@@ -16,7 +16,7 @@ export function compile(projectDir: string): protos.ICompiledGraph {
     },
     sourceExtensions: ["js", "sql"],
     compiler: (code, file) => {
-      if (file.endsWith(".asserts.sql")) {
+      if (file.endsWith(".assert.sql")) {
         return utils.compileAssertionSql(code, file);
       }
       if (file.endsWith(".ops.sql")) {

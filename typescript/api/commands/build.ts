@@ -65,9 +65,9 @@ class Builder {
           });
         }
       }
-      // Remove any excluded dependencies and evaluate wildcard dependencies.
+      // Remove any excluded dependencies.
       includedNodes.forEach(node => {
-        node.dependencies = utils.matchPatterns(node.dependencies, includedNodeNames);
+        node.dependencies = node.dependencies.filter(dep => includedNodeNames.indexOf(dep) >= 0);
       });
       return {
         projectConfig: this.compiledGraph.projectConfig,

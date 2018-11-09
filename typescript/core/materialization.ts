@@ -1,4 +1,5 @@
 import { Dataform } from "./index";
+import * as utils from "./utils";
 import * as protos from "@dataform/protos";
 import * as parser from "./parser";
 
@@ -51,6 +52,7 @@ export class Materialization {
     if (config.descriptor) {
       this.descriptor(config.descriptor);
     }
+    return this;
   }
 
   public type(type: MaterializationType) {
@@ -120,6 +122,9 @@ export class Materialization {
       this.proto.where = context.apply(this.contextableWhere);
       this.contextableWhere = null;
     }
+
+    // Evaluate wildcard dependencies.
+    this.proto.dependencies = utils.matchPatterns(this.proto.dependencies, Object.keys(this.dataform.materializations));
 
     this.contextablePreOps.forEach(contextablePreOps => {
       var appliedPres = context.apply(contextablePreOps);

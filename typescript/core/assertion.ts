@@ -1,5 +1,6 @@
 import * as protos from "@dataform/protos";
 import { Dataform } from "./index";
+import * as utils from "./utils";
 
 export type AContextable<T> = T | ((ctx: AssertionContext) => T);
 
@@ -14,6 +15,7 @@ export class Assertion {
 
   public query(query: AContextable<string>) {
     this.contextableQuery = query;
+    return this;
   }
 
   public dependencies(value: string | string[]) {
@@ -32,6 +34,9 @@ export class Assertion {
     var appliedQuery = context.apply(this.contextableQuery);
     this.proto.query = appliedQuery;
     this.contextableQuery = null;
+
+    // Evaluate wildcard dependencies.
+    this.proto.dependencies = utils.matchPatterns(this.proto.dependencies, Object.keys(this.dataform.materializations));
 
     return this.proto;
   }
