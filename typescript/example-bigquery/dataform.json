@@ -1,5 +1,6 @@
 {
     "warehouse": "bigquery",
+    "projectId": "tada-analytics",
     "defaultSchema": "dataform_example",
     "assertionSchema": "dataform_assertions"
 }

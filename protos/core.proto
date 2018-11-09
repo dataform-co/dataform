@@ -4,6 +4,9 @@ message ProjectConfig {
   string warehouse = 1;
   string default_schema = 2;
   string assertion_schema = 5;
+
+  // BigQuery only.
+  string projectId = 6;
 }
 
 message RunConfig {

@@ -10,7 +10,8 @@ export class BigQueryAdapter implements Adapter {
   }
 
   resolveTarget(target: protos.ITarget) {
-    return `\`${target.schema || this.project.defaultSchema}.${target.name}\``;
+    return `\`${this.project.projectId ? `${this.project.projectId}.` : ""}${target.schema ||
+      this.project.defaultSchema}.${target.name}\``;
   }
 
   materializeTasks(m: protos.IMaterialization, runConfig: protos.IRunConfig, table: protos.ITable): Tasks {
