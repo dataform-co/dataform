@@ -1,58 +1,35 @@
-import * as path from "path";
-import { NodeVM } from "vm2";
-import { utils } from "@dataform/core";
 import * as protos from "@dataform/protos";
 import * as dbadapters from "../dbadapters";
-import { genIndex } from "./compile";
+
+import { fork } from "child_process";
 
 export function run(profile: protos.IProfile, query: string, projectDir?: string): Promise<any[]> {
-  var compiledQuery = compile(query, projectDir);
-  return dbadapters.create(profile).execute(compiledQuery);
+  return compile(query, projectDir).then(compiledQuery => dbadapters.create(profile).execute(compiledQuery));
 }
 
-export function compile(query: string, projectDir?: string) {
-  var compiledQuery = query;
-  if (projectDir) {
-    const vm = new NodeVM({
-      timeout: 5000,
-      wrapper: "none",
-      require: {
-        context: "sandbox",
-        root: projectDir,
-        external: true
-      },
-      sourceExtensions: ["js", "sql"],
-      compiler: (code, file) => {
-        if (file.endsWith(".assert.sql")) {
-          return utils.compileAssertionSql(code, file);
-        }
-        if (file.endsWith(".ops.sql")) {
-          return utils.compileOperationSql(code, file);
-        }
-        if (file.endsWith(".sql")) {
-          return utils.compileMaterializationSql(code, file);
-        }
-        return code;
+export function compile(query: string, projectDir?: string): Promise<string> {
+  var child = fork(require.resolve("../vm/query"));
+  return new Promise((resolve, reject) => {
+    var timeout = 5000;
+    var timeoutStart = Date.now();
+    var checkTimeout = () => {
+      if (child.killed) return;
+      if (Date.now() > timeoutStart + timeout) {
+        child.kill();
+        reject(new Error("Compilation timed out"));
+      } else {
+        setTimeout(checkTimeout, 100);
+      }
+    }
+    checkTimeout();
+    child.on("message", obj => {
+      if (!child.killed) child.kill();
+      if (obj.err) {
+        reject(obj.err);
+      } else {
+        resolve(obj.result);
       }
     });
-    var indexScript = genIndex(
-      projectDir,
-      `(function() {
-        const ref = dataformcore.singleton.ref.bind(dataformcore.singleton);
-        const noop = () => "";
-        const config = noop;
-        const type = noop;
-        const postOps = noop;
-        const preOps = noop;
-        const self = noop;
-        const dependencies = noop;
-        const where = noop;
-        const descriptor = noop;
-        const describe = noop;
-        return \`${query}\`;
-      })()`
-    );
-    compiledQuery = vm.run(indexScript, path.resolve(path.join(projectDir, "index.js")));
-  }
-  return compiledQuery;
+    child.send({ query, projectDir });
+  });
 }
