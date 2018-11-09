@@ -1,7 +1,7 @@
 ---
 layout: documentation
 title: Built-in functions
-sub_headers: ["ref()", "dependency()", "self()", "pre()", "post()", "assert()", "type()", "where()"]
+sub_headers: ["ref()", "dependencies()", "self()", "pre()", "post()", "assert()", "type()", "where()"]
 ---
 
 # Built-in functions
@@ -15,7 +15,7 @@ ${functionName(...)}
 
 ## `ref()`
 
-References another materialization in the project, and adds that materialization as a [dependency](#dependency) of the current materialization, operation, or test.
+References another materialization in the project, and adds that materialization as a [dependencies](#dependencies) of the current materialization, operation, or test.
 
 Arguments: `model-name`
 
@@ -32,31 +32,32 @@ Gets compiled to something (depending on the warehouse type) like:
 ```js
 select * from "schema"."sourcetable"
 ```
-And has the side affect of adding the `sourcetable` materialization as a dependency.
+And has the side affect of adding the `sourcetable` materialization as a dependencies.
 
-## `dependency()`
+## `dependencies()`
 
-Adds another materialization as a dependency of the current materialization, test, or operation.
+Specifies one or more materializations, operations or assertions that this node depends on.
+Supports wildcard matches with `"*"`.
 
 ```js
-${dependency("sourcetable")}
+${dependencies("sourcetable")}
 ```
 
 Multiple tables can be provided in a single call:
 
 ```js
-${dependency(["sourcetable", "othertable"])}
+${dependencies(["sourcetable", "othertable"])}
 ```
 
 ## `self()`
 
 Returns a full table reference to the current materialization.
 
-## `pre()`
+## `preOps()`
 
 Allows you to specify statements that should be executed before the main materialization statement.
 
-## `post()`
+## `postOps()`
 
 Allows you to specify statements that should be executed after the main materialization statement.
 

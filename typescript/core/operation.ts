@@ -35,9 +35,6 @@ export class Operation {
     this.proto.queries = typeof appliedQueries == "string" ? [appliedQueries] : appliedQueries;
     this.contextableQueries = null;
 
-    // Evaluate wildcard dependencies.
-    this.proto.dependencies = utils.matchPatterns(this.proto.dependencies, Object.keys(this.dataform.materializations));
-
     return this.proto;
   }
 }

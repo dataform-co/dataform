@@ -118,6 +118,18 @@ export class Dataform {
       }
     });
 
+    // Expand node dependency wilcards.
+    allNodes.forEach(node => {
+      var uniqueDeps: { [d: string]: boolean } = {};
+      // Add non-wildcard deps normally.
+      node.dependencies.filter(d => !d.includes("*")).forEach(d => (uniqueDeps[d] = true));
+      // Match wildcard deps against all node names.
+      utils
+        .matchPatterns(node.dependencies.filter(d => d.includes("*")), allNodeNames)
+        .forEach(d => (uniqueDeps[d] = true));
+      node.dependencies = Object.keys(uniqueDeps);
+    });
+
     var nodesByName: { [name: string]: protos.IExecutionNode } = {};
     allNodes.forEach(node => (nodesByName[node.name] = node));
 

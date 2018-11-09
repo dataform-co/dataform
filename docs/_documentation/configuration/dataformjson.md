@@ -5,19 +5,25 @@ An example `dataform.json` file:
 ```json
 {
   "warehouse": "bigquery",
-  "default_schema": "dataform_output",
-  "assertion_schema": "dataform_tests"
+  "defaultSchema": "dataform_output",
+  "assertionSchema": "dataform_assertions",
+  "projectId": "gcloud-project-id"
+
 }
 ```
 
-### Warehouse
+### `warehouse`
 
 The `warehouse` setting specifies the type of warehouse the project will run against, and can be one of `["bigquery", "redshift", "snowflake", "postgres"]`.
 
-### Default schema
+### `defaultSchema`
 
-The `default_schema` setting refers to the schema in your warehouse that materializations will be written to.
+The `defaultSchema` setting refers to the schema (or dataset in BigQuery) in your warehouse that materializations will be written to.
 
-### Assertion schema
+### `assertionSchema`
 
-The `assertion_schema` setting refers to the schema in your warehouse that assertions will be written to. By default this are stored somewhere else to the normal materializations.
+The `assertionSchema` setting refers to the schema (or dataset in BigQuery) in your warehouse that assertions will be written to.
+
+##  `projectId` (BigQuery)
+
+For BigQuery you must set the `projectId` field to be your Google Cloud Project ID.

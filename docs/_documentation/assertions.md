@@ -9,7 +9,7 @@ An `assertion` can define one or more queries that, under normal conditions.
 
 The best way to think about assertions, are as queries that scan for rows that break some test. If the queries return any results, then the test is considered to have failed.
 
-To define a new assertion, create a `.test.sql` file in the `models` directory.
+To define a new assertion, create a `.assert.sql` file in the `models` directory.
 
 For example, the following file defines two tests on a dataset, one to make sure that the combination of 3 fields are always unique, and one to check there are no null values present:
 ```js
@@ -25,7 +25,7 @@ Multiple statements can be seperated with a single line containing only `---`
 
 ## Context functions
 
-Assertion files (`.test.sql`) can use the following built-ins:
+Assertion files (`.assert.sql`) can use the following built-ins:
 
 - [ref()](/built-in-functions/#ref)
 - [dependency()](/built-in-functions/#dependency)
