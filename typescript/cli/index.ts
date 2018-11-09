@@ -64,7 +64,9 @@ yargs
         default: "."
       }),
     argv => {
-      console.log(JSON.stringify(compile(path.resolve(argv["project-dir"])), null, 4));
+      compile(path.resolve(argv["project-dir"]))
+        .then(graph => console.log(JSON.stringify(graph, null, 4)))
+        .catch(e => console.log(e));
     }
   )
   .command(
@@ -82,9 +84,10 @@ yargs
         }),
     argv => {
       var profile = protos.Profile.create(JSON.parse(fs.readFileSync(argv["profile"], "utf8")));
-      build(compile(path.resolve(argv["project-dir"])), parseBuildArgs(argv), profile).then(result =>
-        console.log(JSON.stringify(result, null, 4))
-      );
+      compile(path.resolve(argv["project-dir"]))
+        .then(graph => build(graph, parseBuildArgs(argv), profile))
+        .then(result => console.log(JSON.stringify(result, null, 4)))
+        .catch(e => console.log(e));
     }
   )
   .command(
@@ -102,8 +105,8 @@ yargs
         }),
     argv => {
       var profile = protos.Profile.create(JSON.parse(fs.readFileSync(argv["profile"], "utf8")));
-      build(compile(path.resolve(argv["project-dir"])), parseBuildArgs(argv), profile)
-        .then(executionGraph => run(executionGraph, profile).resultPromise())
+      compile(path.resolve(argv["project-dir"]))
+        .then(graph => build(graph, parseBuildArgs(argv), profile))
         .then(result => console.log(JSON.stringify(result, null, 4)))
         .catch(e => console.log(e));
     }
@@ -150,7 +153,10 @@ yargs
         default: "."
       }),
     argv => {
-      console.log(query.compile(argv["query"], path.resolve(argv["project-dir"])));
+      query
+        .compile(argv["query"], path.resolve(argv["project-dir"]))
+        .then(compiledQuery => console.log(compiledQuery))
+        .catch(e => console.log(e));
     }
   )
   .command(
