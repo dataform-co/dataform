@@ -4,7 +4,7 @@ import { utils } from "@dataform/core";
 import * as protos from "@dataform/protos";
 import { install } from "./install";
 
-export function init(projectDir: string, warehouse: string, projectName?: string) {
+export function init(projectDir: string, projectConfig: protos.IProjectConfig) {
   var dataformJsonPath = path.join(projectDir, "dataform.json");
   var packageJsonPath = path.join(projectDir, "package.json");
   var gitignorePath = path.join(projectDir, ".gitignore");
@@ -17,11 +17,14 @@ export function init(projectDir: string, warehouse: string, projectName?: string
   fs.writeFileSync(
     dataformJsonPath,
     JSON.stringify(
-      protos.ProjectConfig.create({
-        warehouse: warehouse,
-        defaultSchema: "dataform",
-        assertionSchema: "dataform_asserts"
-      }),
+      Object.assign(
+        {},
+        protos.ProjectConfig.create({
+          defaultSchema: "dataform",
+          assertionSchema: "dataform_assertions"
+        }),
+        projectConfig
+      ),
       null,
       4
     ) + "\n"
@@ -30,8 +33,9 @@ export function init(projectDir: string, warehouse: string, projectName?: string
     packageJsonPath,
     JSON.stringify(
       {
-        name: projectName || utils.baseFilename(path.resolve(projectDir)),
-        dependencies: {}
+        dependencies: {
+          "@dataform/core": "^0.0.2-alpha.22"
+        }
       },
       null,
       4

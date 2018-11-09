@@ -13,12 +13,6 @@ const addBuildYargs = (yargs: yargs.Argv) =>
       default: false,
       alias: "fr"
     })
-    .option("carry-on", {
-      describe: "If set, when a task fails it won't stop dependencies from attempting to run",
-      type: "boolean",
-      default: false,
-      alias: "co"
-    })
     .option("nodes", {
       describe: "A list of node names or patterns to run, which can include * wildcards",
       type: "array",
@@ -32,7 +26,6 @@ const addBuildYargs = (yargs: yargs.Argv) =>
 
 const parseBuildArgs = (argv: yargs.Arguments): protos.IRunConfig => ({
   fullRefresh: argv["full-refresh"],
-  carryOn: argv["carry-on"],
   nodes: argv["nodes"],
   includeDependencies: argv["include-deps"]
 });
@@ -44,15 +37,21 @@ yargs
     yargs =>
       yargs
         .option("warehouse", {
-          describe: "The warehouse type. One of [bigquery, redshift, snowflake, postgres]",
+          describe: "The warehouse type. One of [bigquery, redshift]",
           default: "bigquery"
+        })
+        .option("gcloud-project-id", {
+          describe: "Your Google Cloud Project ID"
         })
         .positional("project-dir", {
           describe: "The directory in which to create the Dataform project.",
           default: "."
         }),
     argv => {
-      init(path.resolve(argv["project-dir"]), argv["warehouse"]);
+      init(path.resolve(argv["project-dir"]), {
+        warehouse: argv["warehouse"],
+        gcloudProjectId: argv["gcloud-project-id"]
+      });
     }
   )
   .command(
@@ -107,6 +106,7 @@ yargs
       var profile = protos.Profile.create(JSON.parse(fs.readFileSync(argv["profile"], "utf8")));
       compile(path.resolve(argv["project-dir"]))
         .then(graph => build(graph, parseBuildArgs(argv), profile))
+        .then(graph => run(graph, profile))
         .then(result => console.log(JSON.stringify(result, null, 4)))
         .catch(e => console.log(e));
     }

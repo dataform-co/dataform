@@ -24,6 +24,6 @@ The `defaultSchema` setting refers to the schema (or dataset in BigQuery) in you
 
 The `assertionSchema` setting refers to the schema (or dataset in BigQuery) in your warehouse that assertions will be written to.
 
-##  `projectId` (BigQuery)
+###  `gcloudProjectId` (BigQuery)
 
-For BigQuery you must set the `projectId` field to be your Google Cloud Project ID.
+For BigQuery you must set the `gcloudProjectId` field to be your Google Cloud Project ID.
