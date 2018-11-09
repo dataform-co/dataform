@@ -34,7 +34,7 @@ if (require.extensions) {
     module._compile = function(code, file) {
       module._compile = oldCompile;
       var transformedCode;
-      if (file.endsWith(".asserts.sql")) {
+      if (file.endsWith(".assert.sql")) {
         transformedCode = utils.compileAssertionSql(code, file);
       } else if (file.endsWith(".ops.sql")) {
         transformedCode = utils.compileOperationSql(code, file);

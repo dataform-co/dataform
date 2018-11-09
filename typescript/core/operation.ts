@@ -1,5 +1,6 @@
 import * as protos from "@dataform/protos";
 import { Dataform } from "./index";
+import * as utils from "./utils";
 
 export type OContextable<T> = T | ((ctx: OperationContext) => T);
 
@@ -14,6 +15,7 @@ export class Operation {
 
   public queries(queries: OContextable<string | string[]>) {
     this.contextableQueries = queries;
+    return this;
   }
 
   public dependencies(value: string | string[]) {
@@ -32,6 +34,9 @@ export class Operation {
     var appliedQueries = context.apply(this.contextableQueries);
     this.proto.queries = typeof appliedQueries == "string" ? [appliedQueries] : appliedQueries;
     this.contextableQueries = null;
+
+    // Evaluate wildcard dependencies.
+    this.proto.dependencies = utils.matchPatterns(this.proto.dependencies, Object.keys(this.dataform.materializations));
 
     return this.proto;
   }
