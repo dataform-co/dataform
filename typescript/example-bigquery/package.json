@@ -1,9 +1,9 @@
 {
     "name": "@dataform/example-bigquery",
-    "version": "0.0.2-alpha.22",
+    "version": "0.0.2-y.0",
     "description": "Example Dataform project (BigQuery).",
     "dependencies": {
-        "@dataform/core": "^0.0.2-alpha.22"
+        "@dataform/core": "^0.0.2-y.0"
     },
     "private": true
 }
