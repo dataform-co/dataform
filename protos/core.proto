@@ -6,7 +6,7 @@ message ProjectConfig {
   string assertion_schema = 5;
 
   // BigQuery only.
-  string projectId = 6;
+  string gcloud_project_id = 6;
 }
 
 message RunConfig {

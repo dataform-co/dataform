@@ -10,7 +10,7 @@ export class BigQueryAdapter implements Adapter {
   }
 
   resolveTarget(target: protos.ITarget) {
-    return `\`${this.project.projectId ? `${this.project.projectId}.` : ""}${target.schema ||
+    return `\`${this.project.gcloudProjectId ? `${this.project.gcloudProjectId}.` : ""}${target.schema ||
       this.project.defaultSchema}.${target.name}\``;
   }
 
