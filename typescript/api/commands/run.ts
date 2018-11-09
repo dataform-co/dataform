@@ -27,6 +27,7 @@ export class Runner {
     this.result = {
       projectConfig: this.graph.projectConfig,
       runConfig: this.graph.runConfig,
+      warehouseState: this.graph.warehouseState,
       nodes: []
     };
   }
@@ -98,6 +99,10 @@ export class Runner {
     if (this.pendingNodes.length > 0 || this.result.nodes.length != this.graph.nodes.length) {
       setTimeout(() => this.loop(resolve, reject), 100);
     } else {
+      // Work out if this run was an overall success.
+      var ok = true;
+      this.result.nodes.forEach(node => { ok = ok && node.ok});
+      this.result.ok = ok;
       resolve();
     }
   }
