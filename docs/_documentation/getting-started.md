@@ -125,10 +125,6 @@ You should see something similar to the following:
       "name": "simplemodel",
       "tasks": [
         {
-          "statement": "drop table if exists `dataform.simplemodel`",
-          "ignoreErrors": true
-        },
-        {
           "statement": "create or replace view `dataform.simplemodel`
            as select * from (select 1 as test)"
         }
