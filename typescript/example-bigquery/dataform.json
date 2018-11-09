@@ -1,4 +1,5 @@
 {
     "warehouse": "bigquery",
-    "defaultSchema": "dataform_example2"
+    "defaultSchema": "dataform_example",
+    "assertionSchema": "dataform_assertions"
 }

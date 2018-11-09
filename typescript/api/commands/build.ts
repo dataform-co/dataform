@@ -21,18 +21,18 @@ class Builder {
   }
 
   build(): Promise<protos.IExecutionGraph> {
-    var databaseState: { [tableName: string]: protos.ITable } = {};
+    var warehouseStates: { [tableName: string]: protos.ITable } = {};
     return Promise.all(
       this.compiledGraph.materializations.map(m =>
         this.dbadapter
-          .schema(m.target)
-          .then(schema => (databaseState[m.name] = schema))
-          .catch(_ => (databaseState[m.name] = {}))
+          .table(m.target)
+          .then(table => (warehouseStates[m.name] = { target: table.target, type: table.type }))
+          .catch(_ => {})
       )
     ).then(() => {
       // Firstly, turn every thing into an execution node.
       var allNodes: protos.IExecutionNode[] = [].concat(
-        this.compiledGraph.materializations.map(m => this.buildMaterialization(m, databaseState[m.name])),
+        this.compiledGraph.materializations.map(m => this.buildMaterialization(m, warehouseStates[m.name])),
         this.compiledGraph.operations.map(o => this.buildOperation(o)),
         this.compiledGraph.assertions.map(a => this.buildAssertion(a))
       );
@@ -72,6 +72,7 @@ class Builder {
       return {
         projectConfig: this.compiledGraph.projectConfig,
         runConfig: this.runConfig,
+        warehouseState: { tables: Object.keys(warehouseStates).map(key => warehouseStates[key]) },
         nodes: includedNodes
       };
     });
@@ -82,13 +83,9 @@ class Builder {
       name: m.name,
       dependencies: m.dependencies,
       tasks: ([] as protos.IExecutionTask[]).concat(
-        m.pres.map(pre => ({ statement: pre })),
-        this.adapter.buildTasks(m, this.runConfig, table).build(),
-        m.posts.map(post => ({ statement: post })),
-        m.assertions.map(assertion => ({
-          statement: assertion,
-          type: "assertion"
-        }))
+        m.preOps.map(pre => ({ statement: pre })),
+        this.adapter.materializeTasks(m, this.runConfig, table).build(),
+        m.postOps.map(post => ({ statement: post }))
       )
     });
   }
@@ -97,7 +94,7 @@ class Builder {
     return protos.ExecutionNode.create({
       name: operation.name,
       dependencies: operation.dependencies,
-      tasks: operation.statements.map(statement => ({
+      tasks: operation.queries.map(statement => ({
         type: "statement",
         statement: statement
       }))
@@ -108,10 +105,7 @@ class Builder {
     return protos.ExecutionNode.create({
       name: assertion.name,
       dependencies: assertion.dependencies,
-      tasks: assertion.queries.map(query => ({
-        type: "assertion",
-        statement: query
-      }))
+      tasks: this.adapter.assertTasks(assertion, this.compiledGraph.projectConfig).build()
     });
   }
 }

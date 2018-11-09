@@ -10,13 +10,13 @@ export class Assertion {
   dataform: Dataform;
 
   // We delay contextification until the final compile step, so hold these here for now.
-  private contextableQueries: AContextable<string | string[]>;
+  private contextableQuery: AContextable<string>;
 
-  public query(query: AContextable<string | string[]>) {
-    this.contextableQueries = query;
+  public query(query: AContextable<string>) {
+    this.contextableQuery = query;
   }
 
-  public dependency(value: string | string[]) {
+  public dependencies(value: string | string[]) {
     var newDependencies = typeof value === "string" ? [value] : value;
     newDependencies.forEach(d => {
       if (this.proto.dependencies.indexOf(d) < 0) {
@@ -29,9 +29,9 @@ export class Assertion {
   compile() {
     var context = new AssertionContext(this);
 
-    var appliedQueries = context.apply(this.contextableQueries);
-    this.proto.queries = typeof appliedQueries == "string" ? [appliedQueries] : appliedQueries;
-    this.contextableQueries = null;
+    var appliedQuery = context.apply(this.contextableQuery);
+    this.proto.query = appliedQuery;
+    this.contextableQuery = null;
 
     return this.proto;
   }
@@ -45,12 +45,12 @@ export class AssertionContext {
   }
 
   public ref(name: string) {
-    this.assertion.dependency(name);
+    this.assertion.dependencies(name);
     return this.assertion.dataform.ref(name);
   }
 
-  public dependency(name: string | string[]) {
-    this.assertion.dependency(name);
+  public dependencies(name: string | string[]) {
+    this.assertion.dependencies(name);
     return "";
   }
 

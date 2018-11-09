@@ -1,4 +1,5 @@
 {
     "warehouse": "redshift",
-    "defaultSchema": "dataform_example"
+    "defaultSchema": "dataform_example",
+    "assertionSchema": "dataform_assertions"
 }

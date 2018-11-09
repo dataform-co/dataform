@@ -55,7 +55,7 @@ export const materialize = (name: string, queryOrConfig?: MContextable<string> |
   singleton.materialize(name, queryOrConfig);
 export const operate = (name: string, statement?: OContextable<string | string[]>) =>
   singleton.operate(name, statement);
-export const assert = (name: string, query?: AContextable<string | string[]>) => singleton.assert(name, query);
+export const assert = (name: string, query?: AContextable<string>) => singleton.assert(name, query);
 export const compile = () => singleton.compile();
 export const init = (projectConfig?: protos.IProjectConfig) => singleton.init(projectConfig);
 

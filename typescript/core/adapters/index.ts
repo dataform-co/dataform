@@ -1,14 +1,14 @@
 import * as protos from "@dataform/protos";
 import { BigQueryAdapter } from "./bigquery";
 import { RedshiftAdapter } from "./redshift";
-import { Materialization } from "../index";
 import { Tasks } from "../tasks";
 
 
 export interface Adapter {
   resolveTarget(target: protos.ITarget): string;
 
-  buildTasks(materialization: protos.IMaterialization, runConfig: protos.IRunConfig, table: protos.ITable): Tasks;
+  materializeTasks(materialization: protos.IMaterialization, runConfig: protos.IRunConfig, table: protos.ITable): Tasks;
+  assertTasks(materialization: protos.IAssertion, projectConfig: protos.IProjectConfig): Tasks;
 }
 
 export interface AdapterConstructor<T extends Adapter> {

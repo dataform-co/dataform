@@ -51,11 +51,6 @@ export class Task {
     return this;
   }
 
-  public ignoreErrors(v: boolean) {
-    this.proto.ignoreErrors = v;
-    return this;
-  }
-
   public build() {
     return protos.ExecutionTask.create(this.proto);
   }

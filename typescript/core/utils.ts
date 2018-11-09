@@ -20,14 +20,13 @@ export function compileMaterializationSql(code: string, path: string) {
   materialize("${baseFilename(path)}").query(ctx => {
     const config = ctx.config.bind(ctx);
     const type = ctx.type.bind(ctx);
-    const post = ctx.post.bind(ctx);
-    const pre = ctx.pre.bind(ctx);
+    const preOps = ctx.preOps.bind(ctx);
+    const postOps = ctx.postOps.bind(ctx);
     const ref = ctx.ref.bind(ctx);
     const self = ctx.self.bind(ctx);
-    const dependency = ctx.dependency.bind(ctx);
+    const dependencies = ctx.dependencies.bind(ctx);
     const where = ctx.where.bind(ctx);
-    const assert = ctx.assert.bind(ctx);
-    const schema = ctx.schema.bind(ctx);
+    const descriptor = ctx.descriptor.bind(ctx);
     const describe = ctx.describe.bind(ctx);
     return \`${code}\`;
   })`;
@@ -37,7 +36,7 @@ export function compileOperationSql(code: string, path: string) {
   return `
   operate("${baseFilename(path)}").statement(ctx => {
     const ref = ctx.ref.bind(ctx);
-    const dependency = ctx.dependency.bind(ctx);
+    const dependencies = ctx.dependencies.bind(ctx);
     return \`${code}\`.split("\\n---\\n");
   })`;
 }
@@ -46,7 +45,7 @@ export function compileAssertionSql(code: string, path: string) {
   return `
   assert("${baseFilename(path)}").query(ctx => {
     const ref = ctx.ref.bind(ctx);
-    const dependency = ctx.dependency.bind(ctx);
+    const dependencies = ctx.dependencies.bind(ctx);
     return \`${code}\`.split("\\n---\\n");
   })`;
 }

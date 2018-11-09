@@ -10,13 +10,13 @@ export class Operation {
   dataform: Dataform;
 
   // We delay contextification until the final compile step, so hold these here for now.
-  private contextableStatements: OContextable<string | string[]>;
+  private contextableQueries: OContextable<string | string[]>;
 
-  public statement(statement: OContextable<string | string[]>) {
-    this.contextableStatements = statement;
+  public queries(queries: OContextable<string | string[]>) {
+    this.contextableQueries = queries;
   }
 
-  public dependency(value: string | string[]) {
+  public dependencies(value: string | string[]) {
     var newDependencies = typeof value === "string" ? [value] : value;
     newDependencies.forEach(d => {
       if (this.proto.dependencies.indexOf(d) < 0) {
@@ -29,9 +29,9 @@ export class Operation {
   compile() {
     var context = new OperationContext(this);
 
-    var appliedStatements = context.apply(this.contextableStatements);
-    this.proto.statements = typeof appliedStatements == "string" ? [appliedStatements] : appliedStatements;
-    this.contextableStatements = null;
+    var appliedQueries = context.apply(this.contextableQueries);
+    this.proto.queries = typeof appliedQueries == "string" ? [appliedQueries] : appliedQueries;
+    this.contextableQueries = null;
 
     return this.proto;
   }
@@ -45,12 +45,12 @@ export class OperationContext {
   }
 
   public ref(name: string) {
-    this.operation.dependency(name);
+    this.operation.dependencies(name);
     return this.operation.dataform.ref(name);
   }
 
-  public dependency(name: string | string[]) {
-    this.operation.dependency(name);
+  public dependencies(name: string | string[]) {
+    this.operation.dependencies(name);
     return "";
   }
 

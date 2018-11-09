@@ -51,12 +51,12 @@ export class Dataform {
     }
   }
 
-  operate(name: string, statement?: OContextable<string | string[]>): Operation {
+  operate(name: string, queries?: OContextable<string | string[]>): Operation {
     var operation = new Operation();
     operation.dataform = this;
     operation.proto.name = name;
-    if (statement) {
-      operation.statement(statement);
+    if (queries) {
+      operation.queries(queries);
     }
     operation.proto.fileName = utils.getCallerFile(Dataform.ROOT_DIR);
     // Add it to global index.
@@ -82,7 +82,7 @@ export class Dataform {
     return materialization;
   }
 
-  assert(name: string, query?: AContextable<string | string[]>): Assertion {
+  assert(name: string, query?: AContextable<string>): Assertion {
     var assertion = new Assertion();
     assertion.dataform = this;
     assertion.proto.name = name;
