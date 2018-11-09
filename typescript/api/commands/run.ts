@@ -44,8 +44,11 @@ export class Runner {
     if (!!this.executionTask) throw Error("Executor already started.");
     this.executionTask = new Promise((resolve, reject) => {
       try {
-        this.adapter
-          .prepareSchema(this.graph.projectConfig.defaultSchema)
+        Promise.all([
+          this.adapter.prepareSchema(this.graph.projectConfig.defaultSchema),
+          this.adapter.prepareSchema(this.graph.projectConfig.assertionSchema)
+        ])
+          .then(() => this.adapter)
           .then(() => this.loop(() => resolve(this.result), reject))
           .catch(e => reject(e));
       } catch (e) {
@@ -114,24 +117,15 @@ export class Runner {
                   {
                     ok: false,
                     task: task,
-                    error: `Test failed, as it returned the following rows:\n${rows
-                      .slice(0, Math.max(rows.length - 1, 10))
-                      .map(row => JSON.stringify(row, null, 4))
-                      .join("\n")}`
+                    error: `Test failed: returned >= ${rows.length} rows.`
                   }
                 ];
+              } else {
+                return [...chainResults, { ok: true, task: task }];
               }
-              return [...chainResults, { ok: true, task: task }];
             })
             .catch(e => {
-              var newChainResults = [...chainResults, { ok: !!task.ignoreErrors, error: e.message, task: task }];
-              if (task.ignoreErrors || this.graph.runConfig.carryOn) {
-                return newChainResults;
-                // If we can ignore erros on this task, continue.
-              } else {
-                // This task is not allowed to fail, kill the promise chain.
-                throw newChainResults;
-              }
+              throw [...chainResults, { ok: false, error: e.message, task: task }];
             });
         });
       }, Promise.resolve([] as protos.IExecutedTask[]))

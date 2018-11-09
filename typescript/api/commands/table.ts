@@ -6,5 +6,5 @@ export function list(profile: protos.IProfile): Promise<protos.ITarget[]> {
 }
 
 export function get(profile: protos.IProfile, target: protos.ITarget): Promise<protos.ITable> {
-  return dbadapters.create(profile).schema(target);
+  return dbadapters.create(profile).table(target);
 }

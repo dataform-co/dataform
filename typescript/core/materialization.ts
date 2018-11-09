@@ -9,11 +9,10 @@ export interface MConfig {
   type: MaterializationType;
   query: MContextable<string>;
   where: MContextable<string>;
-  pre: MContextable<string | string[]>;
-  post: MContextable<string | string[]>;
-  assert: MContextable<string | string[]>;
+  preOps: MContextable<string | string[]>;
+  postOps: MContextable<string | string[]>;
   dependencies: string | string[];
-  schema: { [key: string]: string } | string[];
+  descriptor: { [key: string]: string };
 }
 
 export class Materialization {
@@ -27,9 +26,8 @@ export class Materialization {
   // We delay contextification until the final compile step, so hold these here for now.
   private contextableQuery: MContextable<string>;
   private contextableWhere: MContextable<string>;
-  private contextablePres: MContextable<string | string[]>[] = [];
-  private contextablePosts: MContextable<string | string[]>[] = [];
-  private contextableAssertions: MContextable<string | string[]>[] = [];
+  private contextablePreOps: MContextable<string | string[]>[] = [];
+  private contextablePostOps: MContextable<string | string[]>[] = [];
 
   public config(config: MConfig) {
     if (config.type) {
@@ -41,20 +39,17 @@ export class Materialization {
     if (config.where) {
       this.where(config.where);
     }
-    if (config.pre) {
-      this.pre(config.pre);
+    if (config.preOps) {
+      this.preOps(config.preOps);
     }
-    if (config.post) {
-      this.post(config.post);
-    }
-    if (config.assert) {
-      this.assert(config.assert);
+    if (config.postOps) {
+      this.postOps(config.postOps);
     }
     if (config.dependencies) {
-      this.dependency(config.dependencies);
+      this.dependencies(config.dependencies);
     }
-    if (config.schema) {
-      this.schema(config.schema as any);
+    if (config.descriptor) {
+      this.descriptor(config.descriptor);
     }
   }
 
@@ -73,22 +68,18 @@ export class Materialization {
     return this;
   }
 
-  public pre(pres: MContextable<string | string[]>) {
-    this.contextablePres.push(pres);
+  public preOps(pres: MContextable<string | string[]>) {
+    this.contextablePreOps.push(pres);
     return this;
   }
 
-  public post(posts: MContextable<string | string[]>) {
-    this.contextablePosts.push(posts);
+  public postOps(posts: MContextable<string | string[]>) {
+    this.contextablePostOps.push(posts);
     return this;
   }
 
-  public assert(query: MContextable<string | string[]>) {
-    this.contextableAssertions.push(query);
-    return this;
-  }
 
-  public dependency(value: string | string[]) {
+  public dependencies(value: string | string[]) {
     var newDependencies = typeof value === "string" ? [value] : value;
     newDependencies.forEach(d => {
       if (this.proto.dependencies.indexOf(d) < 0) {
@@ -98,22 +89,22 @@ export class Materialization {
     return this;
   }
 
-  public schema(key: string, description?: string);
-  public schema(map: { [key: string]: string });
-  public schema(keys: string[]);
-  public schema(keyOrKeysOrMap: string | string[] | { [key: string]: string }, description?: string) {
-    if (!!this.proto.schema) {
-      this.proto.schema = {};
+  public descriptor(key: string, description?: string);
+  public descriptor(map: { [key: string]: string });
+  public descriptor(keys: string[]);
+  public descriptor(keyOrKeysOrMap: string | string[] | { [key: string]: string }, description?: string) {
+    if (!!this.proto.descriptor) {
+      this.proto.descriptor = {};
     }
     if (typeof keyOrKeysOrMap === "string") {
-      this.proto.schema[keyOrKeysOrMap] = description || "";
+      this.proto.descriptor[keyOrKeysOrMap] = description || "";
     } else if (keyOrKeysOrMap instanceof Array) {
       keyOrKeysOrMap.forEach(key => {
-        this.proto.schema[key] = "";
+        this.proto.descriptor[key] = "";
       });
     } else {
       Object.keys(keyOrKeysOrMap).forEach(key => {
-        this.proto.schema[key] = keyOrKeysOrMap[key] || "";
+        this.proto.descriptor[key] = keyOrKeysOrMap[key] || "";
       });
     }
     return this;
@@ -130,27 +121,19 @@ export class Materialization {
       this.contextableWhere = null;
     }
 
-    this.contextablePres.forEach(contextablePres => {
-      var appliedPres = context.apply(contextablePres);
-      this.proto.pres = (this.proto.pres || []).concat(typeof appliedPres == "string" ? [appliedPres] : appliedPres);
+    this.contextablePreOps.forEach(contextablePreOps => {
+      var appliedPres = context.apply(contextablePreOps);
+      this.proto.preOps = (this.proto.preOps || []).concat(typeof appliedPres == "string" ? [appliedPres] : appliedPres);
     });
-    this.contextablePres = [];
+    this.contextablePreOps = [];
 
-    this.contextablePosts.forEach(contextablePosts => {
-      var appliedPosts = context.apply(contextablePosts);
-      this.proto.posts = (this.proto.posts || []).concat(
+    this.contextablePostOps.forEach(contextablePostOps => {
+      var appliedPosts = context.apply(contextablePostOps);
+      this.proto.postOps = (this.proto.postOps || []).concat(
         typeof appliedPosts == "string" ? [appliedPosts] : appliedPosts
       );
     });
-    this.contextablePosts = [];
-
-    this.contextableAssertions.forEach(contextableAssertions => {
-      var appliedAssertions = context.apply(contextableAssertions);
-      this.proto.assertions = (this.proto.assertions || []).concat(
-        typeof appliedAssertions == "string" ? [appliedAssertions] : appliedAssertions
-      );
-    });
-    this.contextableAssertions = [];
+    this.contextablePostOps = [];
 
     // Compute columns.
     try {
@@ -179,7 +162,7 @@ export class MaterializationContext {
   }
 
   public ref(name: string) {
-    this.materialization.dependency(name);
+    this.materialization.dependencies(name);
     return this.materialization.dataform.ref(name);
   }
 
@@ -193,36 +176,31 @@ export class MaterializationContext {
     return "";
   }
 
-  public pre(statement: MContextable<string | string[]>) {
-    this.materialization.pre(statement);
+  public preOps(statement: MContextable<string | string[]>) {
+    this.materialization.preOps(statement);
     return "";
   }
 
-  public post(statement: MContextable<string | string[]>) {
-    this.materialization.post(statement);
+  public postOps(statement: MContextable<string | string[]>) {
+    this.materialization.postOps(statement);
     return "";
   }
 
-  public dependency(name: string) {
-    this.materialization.dependency(name);
+  public dependencies(name: string) {
+    this.materialization.dependencies(name);
     return "";
   }
 
-  public assert(query: MContextable<string | string[]>) {
-    this.materialization.assert(query);
-    return "";
-  }
-
-  public schema(key: string, description?: string);
-  public schema(map: { [key: string]: string });
-  public schema(keys: string[]);
-  public schema(keyOrKeysOrMap: string | string[] | { [key: string]: string }, description?: string) {
-    this.materialization.schema(keyOrKeysOrMap as any, description);
+  public descriptor(key: string, description?: string);
+  public descriptor(map: { [key: string]: string });
+  public descriptor(keys: string[]);
+  public descriptor(keyOrKeysOrMap: string | string[] | { [key: string]: string }, description?: string) {
+    this.materialization.descriptor(keyOrKeysOrMap as any, description);
     return "";
   }
 
   public describe(key: string, description?: string) {
-    this.materialization.schema(key, description);
+    this.materialization.descriptor(key, description);
     return key;
   }
 

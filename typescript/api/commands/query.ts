@@ -23,7 +23,7 @@ export function compile(query: string, projectDir?: string) {
       },
       sourceExtensions: ["js", "sql"],
       compiler: (code, file) => {
-        if (file.endsWith(".asserts.sql")) {
+        if (file.endsWith(".assert.sql")) {
           return utils.compileAssertionSql(code, file);
         }
         if (file.endsWith(".ops.sql")) {
@@ -42,13 +42,12 @@ export function compile(query: string, projectDir?: string) {
         const noop = () => "";
         const config = noop;
         const type = noop;
-        const post = noop;
-        const pre = noop;
+        const postOps = noop;
+        const preOps = noop;
         const self = noop;
-        const dependency = noop;
+        const dependencies = noop;
         const where = noop;
-        const assert = noop;
-        const schema = noop;
+        const descriptor = noop;
         const describe = noop;
         return \`${query}\`;
       })()`

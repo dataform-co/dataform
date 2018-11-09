@@ -43,7 +43,7 @@ export class BigQueryDbAdapter implements DbAdapter {
       });
   }
 
-  schema(target: protos.ITarget): Promise<protos.ITable> {
+  table(target: protos.ITarget): Promise<protos.ITable> {
     return this.client
       .dataset(target.schema)
       .table(target.name)
@@ -53,9 +53,7 @@ export class BigQueryDbAdapter implements DbAdapter {
         return protos.Table.create({
           type: String(table.type).toLowerCase(),
           target: target,
-          schema: {
-            fields: table.schema.fields.map(field => convertField(field))
-          }
+          fields: table.schema.fields.map(field => convertField(field))
         });
       })
       .catch(e =>
@@ -81,7 +79,7 @@ export class BigQueryDbAdapter implements DbAdapter {
   }
 }
 
-function convertField(field: any): protos.Schema.IField {
+function convertField(field: any): protos.IField {
   return {
     name: field.name,
     flags: [field.mode],

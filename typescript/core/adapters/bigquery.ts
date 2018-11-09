@@ -13,27 +13,32 @@ export class BigQueryAdapter implements Adapter {
     return `\`${target.schema || this.project.defaultSchema}.${target.name}\``;
   }
 
-  buildTasks(m: protos.IMaterialization, runConfig: protos.IRunConfig, table: protos.ITable): Tasks {
+  materializeTasks(m: protos.IMaterialization, runConfig: protos.IRunConfig, table: protos.ITable): Tasks {
     var tasks = Tasks.create();
     // Drop views/tables first if they exist.
-    tasks.add(Task.statement(this.dropIfExists(m.target, this.oppositeTableType(m.type))).ignoreErrors(true));
+    if (table && table.type != this.baseTableType(m.type)) {
+      tasks.add(Task.statement(this.dropIfExists(m.target, this.oppositeTableType(m.type))));
+    }
     if (m.type == "incremental") {
-      tasks.addAll(this.materializeIncremental(m, runConfig.fullRefresh));
+      if (runConfig.fullRefresh || !table || table.type == "view") {
+        tasks.add(Task.statement(this.createOrReplace(m)));
+      } else {
+        tasks.add(Task.statement(this.insertInto(m.target, m.parsedColumns, this.where(m.query, m.where))));
+      }
     } else {
       tasks.add(Task.statement(this.createOrReplace(m)));
     }
     return tasks;
   }
 
-  materializeIncremental(m: protos.IMaterialization, fullRefresh: boolean): Tasks {
+  assertTasks(a: protos.IAssertion, projectConfig: protos.IProjectConfig): Tasks {
     var tasks = Tasks.create();
-    if (fullRefresh) {
-      tasks.add(Task.statement(this.createOrReplace(m)));
-    } else {
-      tasks
-        .add(Task.statement(this.createEmptyIfNotExists(m)))
-        .add(Task.statement(this.insertInto(m.target, m.parsedColumns, this.where(m.query, m.where))));
-    }
+    var assertionTarget = protos.Target.create({
+      schema: projectConfig.assertionSchema,
+      name: a.name
+    });
+    tasks.add(Task.statement(this.createOrReplaceView(assertionTarget, a.query)));
+    tasks.add(Task.assertion(`select 1 as detect from ${this.resolveTarget(assertionTarget)}`));
     return tasks;
   }
 
@@ -49,6 +54,11 @@ export class BigQueryAdapter implements Adapter {
       create or replace ${this.baseTableType(m.type)} ${this.resolveTarget(m.target)}
       ${m.partitionBy ? `partition by ${m.partitionBy}` : ""}
       as ${m.query}`;
+  }
+
+  createOrReplaceView(target: protos.ITarget, query: string) {
+    return `
+      create or replace view ${this.resolveTarget(target)} as ${query}`;
   }
 
   insertInto(target: protos.ITarget, columns: string[], query: string) {

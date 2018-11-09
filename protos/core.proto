@@ -26,30 +26,32 @@ message Materialization {
   Target target = 4;
   string query = 5;
   bool protected = 9;
-  string partition_by = 10;
 
-  map<string, string> schema = 16;
+  map<string, string> descriptor = 16;
 
   // Incremental only.
   string where = 8;
-  string unique_key = 15;
 
-  // Pre/post hooks and assertions for convenience.
-  repeated string pres = 13;
-  repeated string posts = 14;
-  repeated string assertions = 17;
+  // Pre/post operations.
+  repeated string pre_ops = 13;
+  repeated string post_ops = 14;
+
+  // Warehouse specific features.
+
+  string partition_by = 10; // bigquery
+  string dist_key = 19; //redshift
+  string sort_key = 20; //redshift
 
   // Generated.
   repeated string parsed_columns = 12;
   string file_name = 18;
 }
 
-
 message Operation {
   string name = 1;
   repeated string dependencies = 2;
 
-  repeated string statements = 6;
+  repeated string queries = 6;
 
   // Generated.
   string file_name = 7;
@@ -59,7 +61,7 @@ message Assertion {
   string name = 1;
   repeated string dependencies = 2;
 
-  repeated string queries = 3;
+  string query = 3;
 
   // Generated.
   string file_name = 7;
@@ -76,7 +78,6 @@ message CompiledGraph {
 message ExecutionTask {
   string type = 1;
   string statement = 2;
-  bool ignore_errors = 3;
 }
 
 message ExecutionNode {
@@ -85,9 +86,20 @@ message ExecutionNode {
   repeated ExecutionTask tasks = 2;
 }
 
+message TableState {
+  Target target = 1;
+  string type = 2;
+}
+
+message WarehouseState {
+  repeated TableState tables = 1;
+}
+
 message ExecutionGraph {
   ProjectConfig project_config = 1;
   RunConfig run_config = 2;
+  WarehouseState warehouse_state = 4;
+
   repeated ExecutionNode nodes = 3;
 }
 
@@ -95,8 +107,8 @@ message ExecutedTask {
   ExecutionTask task = 1;
 
   bool ok = 2;
+  bool skipped = 5;
   string error = 3;
-  string test_results = 4;
 }
 
 message ExecutedNode {
@@ -110,24 +122,27 @@ message ExecutedNode {
 message ExecutedGraph {
   ProjectConfig project_config = 1;
   RunConfig run_config = 2;
+  WarehouseState warehouse_state = 4;
 
+  bool ok = 5;
   repeated ExecutedNode nodes = 3;
 }
 
-message Schema {
-  message Field {
-    string name = 1;
-    repeated string flags = 4;
-    oneof type {
-      string primitive = 2;
-      Schema struct = 3;
-    }
+message Field {
+  string name = 1;
+  repeated string flags = 4;
+  oneof type {
+    string primitive = 2;
+    Fields struct = 3;
   }
-  repeated Field fields = 3;
+}
+
+message Fields {
+  repeated Field fields = 1;
 }
 
 message Table {
   Target target = 1;
   string type = 3; // "table" or "view"
-  Schema schema = 2;
+  repeated Field fields = 2;
 }

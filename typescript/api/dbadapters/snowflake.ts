@@ -34,7 +34,7 @@ export class SnowflakeDbAdapter implements DbAdapter {
     throw Error("Unimplemented");
   }
 
-  schema(target: protos.ITarget): Promise<protos.ITable> {
+  table(target: protos.ITarget): Promise<protos.ITable> {
     throw Error("Unimplemented");
   }
 
