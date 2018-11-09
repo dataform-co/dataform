@@ -45,17 +45,14 @@ export class RedshiftAdapter implements Adapter {
         name: m.target.name + "_temp"
       });
       var tasks = Tasks.create();
-      tasks.add(Task.statement(this.dropIfExists(tempTableTarget, m.type)));
+      tasks.add(Task.statement(this.dropIfExists(tempTableTarget, this.baseTableType(m.type))));
       tasks.add(
         Task.statement(`
         create table ${this.resolveTarget(tempTableTarget)}
         as ${m.query}`)
       );
       tasks.add(Task.statement(this.dropIfExists(m.target, "table")));
-      tasks.add(
-        Task.statement(`alter table ${this.resolveTarget(tempTableTarget)} rename to ${this.resolveTarget(m.target)}`)
-      );
-      tasks.add(Task.statement(this.dropIfExists(tempTableTarget, "table")));
+      tasks.add(Task.statement(`alter table ${this.resolveTarget(tempTableTarget)} rename to "${m.target.name}"`));
       return tasks;
     }
   }
