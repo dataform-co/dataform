@@ -36,7 +36,7 @@ process.on(`message`, object => {
     process.send({ result: graph });
   }
   catch (e) {
-    process.send({ err: e });
+    process.send({ err: String(e) });
   }
   process.exit();
 })
