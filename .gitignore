@@ -1,6 +1,9 @@
-ts/**/build/
 node_modules/
-**/protos/index.*
+
+ts/**/build/
+
+ts/protos/index.*
 
 test_profiles/
-build-cache.json
+
+lerna-debug.log

@@ -52,6 +52,14 @@ Runs Jekyll locally at http://localhost:4000
 (cd docs && bundle exec jekyll serve)
 ```
 
+## Run tests
+
+Run mocha tests in `ts/tests`:
+
+```bash
+./scripts/test
+```
+
 ## Publish
 
 Publish a new version with lerna:
