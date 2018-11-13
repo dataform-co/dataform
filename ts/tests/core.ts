@@ -62,4 +62,19 @@ describe("@dataform/core", () => {
       expect(m.postOps).to.deep.equal(["post_op"]);
     });
   });
+
+  describe("graph", () => {
+    it("circular_dependencies", () => {
+      var df = new Dataform(TEST_CONFIG);
+      df.materialize("a").dependencies("b");
+      df.materialize("b").dependencies("a");
+      expect(() => df.compile()).to.throw(Error, /Circular dependency/);
+    });
+
+    it("missing_dependency", () => {
+      var df = new Dataform(TEST_CONFIG);
+      df.materialize("a").dependencies("b");
+      expect(() => df.compile()).to.throw(Error, /Missing dependency/);
+    });
+  });
 });
