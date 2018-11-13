@@ -7,13 +7,13 @@ export type MContextable<T> = T | ((ctx: MaterializationContext) => T);
 export type MaterializationType = "table" | "view" | "incremental";
 
 export interface MConfig {
-  type: MaterializationType;
-  query: MContextable<string>;
-  where: MContextable<string>;
-  preOps: MContextable<string | string[]>;
-  postOps: MContextable<string | string[]>;
-  dependencies: string | string[];
-  descriptor: { [key: string]: string };
+  type?: MaterializationType;
+  query?: MContextable<string>;
+  where?: MContextable<string>;
+  preOps?: MContextable<string | string[]>;
+  postOps?: MContextable<string | string[]>;
+  dependencies?: string | string[];
+  descriptor?: { [key: string]: string };
 }
 
 export class Materialization {

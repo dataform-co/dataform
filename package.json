@@ -1,10 +1,15 @@
 {
   "devDependencies": {
+    "@types/chai": "^4.1.7",
+    "@types/mocha": "^5.2.5",
     "@types/node": "^9.6.27",
+    "chai": "^4.2.0",
     "lerna": "^3.4.0",
+    "mocha": "^5.2.0",
     "pegjs": "^0.10.0",
     "prettier": "^1.14.2",
     "protobufjs": "^6.8.8",
+    "ts-node": "^7.0.1",
     "typescript": "^2.9.2"
   }
 }

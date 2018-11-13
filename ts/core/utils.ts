@@ -85,7 +85,12 @@ export function getCallerFile(rootDir: string) {
     while (err.stack.length) {
       callerfile = (err.stack as any).shift().getFileName();
 
-      if (currentfile !== callerfile && !callerfile.includes("vm2/lib/") && !callerfile.includes("@dataform/core/"))
+      if (
+        currentfile !== callerfile &&
+        !callerfile.includes("vm2/lib/") &&
+        !callerfile.includes("@dataform/core/") &&
+        callerfile.startsWith(rootDir)
+      )
         break;
     }
   } catch (e) {}
