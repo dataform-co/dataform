@@ -1,11 +1,11 @@
 {
   "name": "@dataform/tests",
-  "version": "0.0.2-alpha.24",
+  "version": "0.0.2-alpha.25",
   "description": "Dataform tests.",
   "dependencies": {
-    "@dataform/api": "^0.0.2-alpha.24",
-    "@dataform/core": "^0.0.2-alpha.24",
-    "@dataform/protos": "^0.0.2-alpha.24"
+    "@dataform/api": "^0.0.2-alpha.25",
+    "@dataform/core": "^0.0.2-alpha.25",
+    "@dataform/protos": "^0.0.2-alpha.25"
   },
   "private": true
 }
