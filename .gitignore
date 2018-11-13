@@ -1,4 +1,4 @@
-build/
+ts/**/build/
 node_modules/
 **/protos/index.*
 
