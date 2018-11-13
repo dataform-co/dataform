@@ -34,7 +34,7 @@ export function compileMaterializationSql(code: string, path: string) {
 
 export function compileOperationSql(code: string, path: string) {
   return `
-  operate("${baseFilename(path)}").statement(ctx => {
+  operate("${baseFilename(path)}").queries(ctx => {
     const ref = ctx.ref.bind(ctx);
     const dependencies = ctx.dependencies.bind(ctx);
     return \`${code}\`.split("\\n---\\n");
