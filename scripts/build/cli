@@ -1,0 +1,6 @@
+#!/bin/bash
+set -e
+
+./scripts/build/api
+
+(cd ts/cli && tsc)

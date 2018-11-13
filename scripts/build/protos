@@ -1,0 +1,16 @@
+#!/bin/bash
+set -e
+
+# Make sure scripts are executable.
+chmod +x node_modules/protobufjs/cli/bin/pbjs
+chmod +x node_modules/protobufjs/cli/bin/pbts
+
+# Generate JS.
+./node_modules/protobufjs/cli/bin/pbjs -t static-module -w commonjs \
+  -p ./ \
+  -o ts/protos/index.js \
+  protos/core.proto \
+  protos/profiles.proto
+
+# Generate TS.
+./node_modules/protobufjs/cli/bin/pbts -o ts/protos/index.d.ts ts/protos/index.js
