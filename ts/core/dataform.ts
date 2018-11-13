@@ -137,7 +137,7 @@ export class Dataform {
     allNodes.forEach(node => {
       node.dependencies.forEach(dependency => {
         if (allNodeNames.indexOf(dependency) < 0) {
-          throw Error(`Node "${node.name}" depends on "${dependency}" which does not exist.`);
+          throw Error(`Missing dependency detected: Node "${node.name}" depends on "${dependency}" which does not exist.`);
         }
       });
     });
