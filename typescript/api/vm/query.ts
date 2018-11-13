@@ -54,7 +54,7 @@ process.on(`message`, object => {
     var graph = compile(object.query, object.projectDir);
     process.send({ result: graph });
   } catch (e) {
-    process.send({ err: e });
+    process.send({ err: String(e) });
   }
   process.exit();
 });

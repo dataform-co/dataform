@@ -20,7 +20,7 @@ export function compile(projectDir: string): Promise<protos.ICompiledGraph> {
     child.on("message", obj => {
       if (!child.killed) child.kill();
       if (obj.err) {
-        reject(obj.err);
+        reject(new Error(obj.err));
       } else {
         resolve(protos.CompiledGraph.create(obj.result));
       }

@@ -25,7 +25,7 @@ export function compile(query: string, projectDir?: string): Promise<string> {
     child.on("message", obj => {
       if (!child.killed) child.kill();
       if (obj.err) {
-        reject(obj.err);
+        reject(new Error(obj.err));
       } else {
         resolve(obj.result);
       }
