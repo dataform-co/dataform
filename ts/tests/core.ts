@@ -28,13 +28,13 @@ describe("@dataform/core", () => {
         })
         .compile();
 
-      expect(m.name).to.equal("example");
-      expect(m.type).to.equal("table");
-      expect(m.descriptor).to.deep.equal({
+      expect(m.name).equals("example");
+      expect(m.type).equals("table");
+      expect(m.descriptor).deep.equals({
         test: "test description"
       });
-      expect(m.preOps).to.deep.equal(["pre_op"]);
-      expect(m.postOps).to.deep.equal(["post_op"]);
+      expect(m.preOps).deep.equals(["pre_op"]);
+      expect(m.postOps).deep.equals(["post_op"]);
     });
 
     it("config_context", function() {
@@ -53,13 +53,13 @@ describe("@dataform/core", () => {
         )
         .compile();
 
-      expect(m.name).to.equal("example");
-      expect(m.type).to.equal("table");
-      expect(m.descriptor).to.deep.equal({
+      expect(m.name).equals("example");
+      expect(m.type).equals("table");
+      expect(m.descriptor).deep.equals({
         test: "test description"
       });
-      expect(m.preOps).to.deep.equal(["pre_op"]);
-      expect(m.postOps).to.deep.equal(["post_op"]);
+      expect(m.preOps).deep.equals(["pre_op"]);
+      expect(m.postOps).deep.equals(["post_op"]);
     });
   });
 
@@ -68,13 +68,13 @@ describe("@dataform/core", () => {
       var df = new Dataform(TEST_CONFIG);
       df.materialize("a").dependencies("b");
       df.materialize("b").dependencies("a");
-      expect(() => df.compile()).to.throw(Error, /Circular dependency/);
+      expect(() => df.compile()).throws(Error, /Circular dependency/);
     });
 
     it("missing_dependency", () => {
       var df = new Dataform(TEST_CONFIG);
       df.materialize("a").dependencies("b");
-      expect(() => df.compile()).to.throw(Error, /Missing dependency/);
+      expect(() => df.compile()).throws(Error, /Missing dependency/);
     });
   });
 });
