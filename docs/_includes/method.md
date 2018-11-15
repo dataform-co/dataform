@@ -1,7 +1,11 @@
 # {{ include.method.name }}
 
+{% if include.method.description %}
+{{ include.method.description }}
+{% endif %}
+
 ```js
-{{ include.method.signature }}
+{% if include.context %}${{"{"}}{% endif %}{{ include.method.signature }}{% if include.context %}}{% endif %}
 ```
 
 {% if include.method.args %}
@@ -42,4 +46,3 @@
 ## Returns
 {{ include.method.returns }}
 {% endif %}
-## Description
