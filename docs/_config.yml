@@ -7,10 +7,6 @@ url: "https://docs.dataform.co"
 twitter_username: dataform
 github_username:  tada-science
 
-# Navigation
-navigation:
-  guides: site.guides
-    - path:
 # Build settings
 markdown: kramdown
 kramdown:

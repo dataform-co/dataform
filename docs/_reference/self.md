@@ -12,6 +12,6 @@ Returns a full table reference to the current materialization output table. Usef
 
 ```js
 ${type("incremental")}
-${where(`ts > (select max(ts) from ${self})`)}
+${where(`ts > (select max(ts) from ${self()})`)}
 select now() as ts
 ```

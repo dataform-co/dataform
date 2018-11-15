@@ -1,0 +1,62 @@
+classes:
+  - Materialization
+  - Operation
+  - Assertion
+
+methods:
+  ref:
+    name: ref()
+    signature: ref(materializationName)
+    description: "Returns the full, query-able name of the referenced table, and adds the table to dependencies."
+    args:
+      - name: materializationName
+        type: string
+        description: "The name of the materialization to reference"
+  self:
+    name: self()
+    signature: self()
+    description: "Returns the full, query-able name of the current materialization"
+  dependencies:
+    name: dependencies()
+    description: "Specifies one or more materializations, operations or assertions that this node depends on. Supports wildcard matches with `\"*\"`."
+    signature: dependencies(deps)
+    args:
+      - name: deps
+        type: 'string | string[]'
+        description: "Either a single dependency name, or a list"
+  postops:
+    name: postOps()
+    signature: postOps(ops)
+    description: "Provide one of more queries to execute after this materialization has completed."
+    args:
+      - name: ops
+        type: 'Contextable<string | string[]>'
+        description: "The queries to run"
+  preops:
+    name: preOps()
+    signature: preOps(ops)
+    description: "Provide one of more queries to execute before this materialization is created."
+    args:
+      - name: ops
+        type: 'Contextable<string | string[]>'
+        description: "The queries to run"
+  type:
+    name: type()
+    signature: type(name)
+    description: "Set the type of the materialization. View the [materialization guide](/guides/materializations) for more info."
+    args:
+      - name: name
+        type: '"view" | "table" | "incremental"'
+        description: "The type of the materialization"
+  where:
+    name: where()
+    signature: where(clause)
+    description: "Sets a where clause that is used for incremental tables."
+    args:
+      - name: clause
+        type: Contextable<string>
+        description: "The where clause. Can be a string or a context function."
+  protected:
+    name: protected()
+    signature: protected()
+    description: "A incremental table marked protected will never be rebuilt from scratch."
