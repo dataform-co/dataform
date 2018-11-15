@@ -1,9 +1,9 @@
 {
     "name": "@dataform/example-redshift",
-    "version": "0.0.2-alpha.26",
+    "version": "0.0.2-alpha.27",
     "description": "Example Dataform project (Redshift).",
     "dependencies": {
-        "@dataform/core": "^0.0.2-alpha.26"
+        "@dataform/core": "^0.0.2-alpha.27"
     },
     "private": true
 }
