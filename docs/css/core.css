@@ -33,14 +33,12 @@
 }
 
 div.highlight {
-  padding: 5px;
-  background-color: #394b59;
+  padding: 10px;
   margin-bottom: 10px;
 }
 
 pre.highlight {
   margin: 0px;
-  background-color: #394b59;
 }
 
 pre {

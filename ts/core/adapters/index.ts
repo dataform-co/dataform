@@ -22,6 +22,9 @@ export function register(warehouseType: string, c: AdapterConstructor<Adapter>) 
 }
 
 export function create(projectConfig: protos.IProjectConfig): Adapter {
+  if (!registry[projectConfig.warehouse]) {
+    throw Error(`Unsupported warehouse: ${projectConfig.warehouse}`);
+  }
   return new registry[projectConfig.warehouse](projectConfig);
 }
 

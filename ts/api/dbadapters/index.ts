@@ -22,6 +22,9 @@ export function register(warehouseType: string, c: DbAdapterConstructor<DbAdapte
 
 export function create(profile: protos.IProfile, warehouseType?: string): DbAdapter {
   if (warehouseType) {
+    if (!registry[warehouseType]) {
+      throw Error(`Unsupported warehouse: ${warehouseType}`);
+    }
     return new registry[warehouseType](profile);
   }
   if (!!profile.bigquery) {
