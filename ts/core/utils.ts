@@ -46,7 +46,7 @@ export function compileAssertionSql(code: string, path: string) {
   assert("${baseFilename(path)}").query(ctx => {
     const ref = ctx.ref.bind(ctx);
     const dependencies = ctx.dependencies.bind(ctx);
-    return \`${code}\`.split("\\n---\\n");
+    return \`${code}\`;
   })`;
 }
 
