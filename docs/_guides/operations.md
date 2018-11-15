@@ -3,8 +3,6 @@ layout: documentation
 title: Operations
 ---
 
-# Operations
-
 An `operation` defines a set of SQL commands that will be executed in order against your warehouse, and can be used for arbitrary operations that don't necessarily create materializations or tests.
 
 To define a new operation, create a `.ops.sql` file in the `models` directory.
@@ -18,9 +16,6 @@ vacuum reindex listing
 
 Multiple statements can be seperated with a single line containing only `---`
 
-## Context functions
+## Reference
 
-Operation files (`.ops.sql`) can use the following built-ins:
-
-- [ref()](/built-in-functions/#ref)
-- [dependencies()](/built-in-functions/#dependencies)
+Check the [assertions reference](/reference/assertions) for a list of all methods you can use in `.ops.sql` files.

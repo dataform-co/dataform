@@ -1,10 +1,10 @@
 ---
 layout: documentation
-title: Getting started
+title: Command line interface
 sub_headers: ["Installation", "Create new project", "Project structure", "Define a materialization", "Compile project", "Dry run", "Create a profile", "Run project"]
 ---
 
-# Installation
+## Installation
 
 Dataform can be installed via Node:
 
@@ -12,7 +12,7 @@ Dataform can be installed via Node:
 npm i -g @dataform/cli
 ```
 
-# Create new project
+## Create new project
 
 To create a new project in the folder `new_project`:
 

@@ -1,4 +1,4 @@
-# {{ include.method.name }}
+## {{ include.method.name }}
 
 {% if include.method.description %}
 {{ include.method.description }}
@@ -9,7 +9,7 @@
 ```
 
 {% if include.method.args %}
-## Arguments
+### Arguments
 <table class="bp3-html-table bp3-html-table-striped" style="width: 100%">
   <thead>
     <tr>
@@ -31,7 +31,7 @@
         <code>{{arg.name}}</code>
       </td>
       <td>
-        {{arg.type}}
+        <code>{{arg.type | escape }}</code>
       </td>
       <td>
         {{arg.description}}
@@ -43,6 +43,6 @@
 {% endif %}
 
 {% if include.method.returns %}
-## Returns
+### Returns
 {{ include.method.returns }}
 {% endif %}
