@@ -1,0 +1,27 @@
+sections:
+  - name: Guides
+    pages:
+      - name: Core concepts
+        path: /guides/core-concepts
+      - name: Materializations
+        path: /guides/materializations
+      - name: Operations
+        path: /guides/operations
+      - name: Assertions
+        path: /guides/assertions
+      - name: Configuration
+        path: /guides/configuration
+      - name: JS API
+        path: /guides/js-api
+      - name: Command line interface
+        path: /guides/command-line-interface
+  - name: API Reference
+    pages:
+      - name: Materializations
+        path: /reference/materializations
+      - name: Operations
+        path: /reference/operations
+      - name: Assertions
+        path: /reference/assertions
+      - name: dataform.json
+        path: /reference/dataform-json

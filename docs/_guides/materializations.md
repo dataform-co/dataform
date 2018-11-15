@@ -4,8 +4,6 @@ title: Materializations
 sub_headers: ["Tables", "Incremental tables"]
 ---
 
-# Materializations
-
 A materialization defines a table, or view that will be created in your data warehouse.
 
 To define a new materialization, create a `.sql` file in the `models` directory. The name of the file will be the name of the table created in your data warehouse.
@@ -17,7 +15,7 @@ select 1 as test
 
 Will create a `view` called `myfirstmodel` in the default dataform schema defined in the [`dataform.json`](/configuration/#dataform.json) file.
 
-There are several configuration options that can be applied to a materialization. These can be applied by calling the appropriate method within a `${}` block, or can be provided all as one using the [options syntax](#Options syntax).
+There are many configuration options that can be applied to a materialization, for a full list see the [materializations reference](/reference/materializations).
 
 ## Tables
 
@@ -35,16 +33,19 @@ Incremental tables allow you build a table incrementally, by only inserting data
 
 In order to define an incremental table we must set the `type` of the query to `"incremental"`, and provide a where clause.
 
-For example, if we have a timestamp field in our source table called `ts`, then we provide a where statement that means we only processes rows that are newer than the latest value `ts` in our output table. The `where` function should be used inline as part of a query.
+For example, if you have a timestamp field in a source table called `ts`, then you can provide a where statement that means only rows that are newer than the latest value value of `ts` in our output table. The `where` function should be used inline as part of a query.
 
 ```js
 ${type("incremental")}
+${where(`ts > (select max(ts) from ${self()}`)}
 --
-select a, b from sourcetable
-  ${where(`ts > (select max(ts) from ${self()}`)}
+select ts, a, b from sourcetable
 ```
-
-Note: to use the `${self()}` syntax within the call to `where()`, you must provide a string in back-tick's \`\`, in order to use JavaScript's template string syntax.
+<p>
+<div class="bp3-callout bp3-icon-info-sign bp3-intent-warning" markdown="1">
+To use the `${self()}` syntax within the call to `where()`, you must provide a string in back-tick's \`\`, in order to use JavaScript's template string syntax.
+</div>
+</p>
 
 Incremental tables automatically produce the necessary `create table` and `insert` statements.
 

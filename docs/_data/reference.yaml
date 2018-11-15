@@ -54,9 +54,37 @@ methods:
     description: "Sets a where clause that is used for incremental tables."
     args:
       - name: clause
-        type: Contextable<string>
+        type: "Contextable<string>"
         description: "The where clause. Can be a string or a context function."
   protected:
     name: protected()
     signature: protected()
     description: "A incremental table marked protected will never be rebuilt from scratch."
+  partitionby:
+    name: partitionBy()
+    signature: partitionBy(expression)
+    description: "Set's the table partition expression for BigQuery."
+  config:
+    name: config()
+    signature: config(config)
+    description: "Sets several properties of the materialization at once."
+    args:
+      - name: config
+        type: MaterializationConfig
+        description: "The configuration object"
+  query:
+    name: query()
+    signature: query(query)
+    description: "Sets the SQL query for this materialization or assertion."
+    args:
+      - name: query
+        type: string
+        description: "The SQL query to run"
+  queries:
+    name: queries()
+    signature: queries(queries)
+    description: "Sets the SQL queries to run in order for this operation."
+    args:
+      - name: query
+        type: "string | string[]"
+        description: "The SQL queries to run"

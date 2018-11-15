@@ -3,13 +3,11 @@ layout: documentation
 title: JS API
 ---
 
-# JS API
-
-Generally the easiest way to define [materializations](/materializations), [assertions](/assertions), and [operations](/operations) is to create a new file with the appropriate extension, one of `.sql .test.sql .ops.sql`.
+Generally the easiest way to define [materializations](/guides/materializations), [assertions](/guides/assertions), and [operations](/guides/operations) is to create a new file with the appropriate extension, one of `.sql .assert.sql .ops.sql`.
 
 For advanced use cases, all of the above can be defined Dataform's a JavaScript API.
 
-To use the JS API, put a `.js` file anywhere in the `models/` folder of your project.
+To use the JS API, create a `.js` file anywhere in the `models/` folder of your project.
 
 The JS API provides three primary functions that correspond to the types of objects above:
 - [`materialize()`](#materialize)
