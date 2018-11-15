@@ -4,7 +4,7 @@ import * as dbadapters from "../dbadapters";
 import { state } from "../commands/state";
 
 export function build(compiledGraph: protos.ICompiledGraph, runConfig: protos.IRunConfig, profile: protos.IProfile) {
-  return state(compiledGraph).then(state => {
+  return state(compiledGraph, dbadapters.create(profile)).then(state => {
     return new Builder(compiledGraph, runConfig, state).build();
   });
 }
