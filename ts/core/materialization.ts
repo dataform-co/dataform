@@ -14,11 +14,13 @@ export interface MConfig {
   postOps?: MContextable<string | string[]>;
   dependencies?: string | string[];
   descriptor?: { [key: string]: string };
+  disabled?: boolean;
 }
 
 export class Materialization {
   proto: protos.Materialization = protos.Materialization.create({
-    type: "view"
+    type: "view",
+    disabled: false
   });
 
   // Hold a reference to the Dataform instance.
@@ -52,6 +54,9 @@ export class Materialization {
     if (config.descriptor) {
       this.descriptor(config.descriptor);
     }
+    if (config.disabled) {
+      this.disabled();
+    }
     return this;
   }
 
@@ -80,6 +85,10 @@ export class Materialization {
     return this;
   }
 
+  public disabled() {
+    this.proto.disabled = true;
+    return this;
+  }
 
   public dependencies(value: string | string[]) {
     var newDependencies = typeof value === "string" ? [value] : value;
@@ -185,6 +194,11 @@ export class MaterializationContext {
 
   public postOps(statement: MContextable<string | string[]>) {
     this.materialization.postOps(statement);
+    return "";
+  }
+
+  public disabled() {
+    this.materialization.disabled();
     return "";
   }
 
