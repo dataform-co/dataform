@@ -24,6 +24,25 @@ describe("@dataform/api", () => {
             name: "b"
           },
           query: "query"
+        },
+        {
+          name: "c",
+          target: {
+            schema: "schema",
+            name: "c"
+          },
+          query: "query",
+          dependencies: ["d"],
+          disabled: true
+        },
+        {
+          name: "d",
+          target: {
+            schema: "schema",
+            name: "d"
+          },
+          query: "query",
+          disabled: true
         }
       ]
     });
@@ -44,6 +63,16 @@ describe("@dataform/api", () => {
       var includedNodeNames = executionGraph.nodes.map(n => n.name);
       expect(includedNodeNames).includes("a");
       expect(includedNodeNames).not.includes("b");
+    });
+
+    it("exclude_disabled", () => {
+      var builder = new Builder(TEST_GRAPH, { includeDependencies: true }, TEST_STATE);
+      var executionGraph = builder.build();
+      var includedNodeNames = executionGraph.nodes.map(n => n.name);
+      expect(includedNodeNames).includes("a");
+      expect(includedNodeNames).includes("b");
+      expect(includedNodeNames).not.includes("c");
+      expect(includedNodeNames).not.includes("d");
     });
   });
 });

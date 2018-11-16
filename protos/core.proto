@@ -24,6 +24,7 @@ message Target {
 message Materialization {
   string name = 1;
   repeated string dependencies = 2;
+  bool disabled = 6;
 
   string type = 3;
   Target target = 4;
