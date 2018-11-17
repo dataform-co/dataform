@@ -52,11 +52,19 @@ export function genIndex(projectDir: string, returnOverride?: string): string {
     .join("\n");
 
   return `
+    console.log("DEBUG(fork): gen_index_start:\t " + Date.now());
     const dataformcore = require("@dataform/core");
     dataformcore.Dataform.ROOT_DIR="${projectDir}";
     dataformcore.init(require("./dataform.json"));
+    console.log("DEBUG(fork): post_init:\t " + Date.now());
     ${packageRequires}
+    console.log("DEBUG(fork): post_pkg_requires:\t " + Date.now());
     ${includeRequires}
+    console.log("DEBUG(fork): post_include_requires:\t " + Date.now());
     ${datasetRequires}
-    return ${returnOverride || "dataformcore.compile()"};`;
+    console.log("DEBUG(fork): post_dataset_requires:\t " + Date.now());
+    var returnValue = ${returnOverride || "dataformcore.compile()"};
+    console.log("DEBUG(fork): post_return_value:\t " + Date.now());
+    return returnValue;
+    `;
 }

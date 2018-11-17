@@ -26,7 +26,9 @@ export function compile(projectDir: string): protos.ICompiledGraph {
       return code;
     }
   });
+  console.log("DEBUG(fork): create_vm:\t " + Date.now());
   var indexScript = genIndex(projectDir);
+  console.log("DEBUG(fork): post_gen_index:\t " + Date.now());
   return vm.run(indexScript, path.resolve(path.join(projectDir, "index.js")));
 }
 
