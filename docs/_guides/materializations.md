@@ -35,17 +35,19 @@ In order to define an incremental table we must set the `type` of the query to `
 
 For example, if you have a timestamp field in a source table called `ts`, then you can provide a where statement that means only rows that are newer than the latest value value of `ts` in our output table. The `where` function should be used inline as part of a query.
 
+<p>
+<div class="bp3-callout bp3-icon-info-sign bp3-intent-warning" markdown="1">
+When using incremental tables, you must describe all the columns in the table, so that the correct insert statements can be generated.
+</div>
+</p>
+
 ```js
 ${type("incremental")}
 ${where(`ts > (select max(ts) from ${self()}`)}
+${descriptor("ts", "a", "b")}
 --
 select ts, a, b from sourcetable
 ```
-<p>
-<div class="bp3-callout bp3-icon-info-sign bp3-intent-warning" markdown="1">
-To use the `${self()}` syntax within the call to `where()`, you must provide a string in back-tick's \`\`, in order to use JavaScript's template string syntax.
-</div>
-</p>
 
 Incremental tables automatically produce the necessary `create table` and `insert` statements.
 
@@ -53,15 +55,15 @@ For the above example, if the table does not exist the the following statement w
 
 ```js
 create or replace table dataform.incrementalexample as
-  select a, b
+  select ts, a, b
   from sourcetable
 ```
 
 Subsequent runs will then run the following statement:
 
 ```js
-insert into dataform.incrementalexample (a, b)
-  select a, b
+insert into dataform.incrementalexample (ts, a, b)
+  select ts, a, b
   from sourcetable
   where ts > (select max(ts) from dataform.incrementaltable)
 ```

@@ -24,7 +24,7 @@ export class BigQueryAdapter implements Adapter {
       if (runConfig.fullRefresh || !table || table.type == "view") {
         tasks.add(Task.statement(this.createOrReplace(m)));
       } else {
-        tasks.add(Task.statement(this.insertInto(m.target, m.parsedColumns, this.where(m.query, m.where))));
+        tasks.add(Task.statement(this.insertInto(m.target, Object.keys(m.descriptor), this.where(m.query, m.where))));
       }
     } else {
       tasks.add(Task.statement(this.createOrReplace(m)));

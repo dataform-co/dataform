@@ -4,9 +4,13 @@
 {{ include.method.description }}
 {% endif %}
 
+{% if include.method.signatures %}
+{% for signature in include.method.signatures %}
 ```js
-{% if include.context %}${{"{"}}{% endif %}{{ include.method.signature }}{% if include.context %}}{% endif %}
+{% if include.context %}${{"{"}}{% endif %}{{ signature }}{% if include.context %}}{% endif %}
 ```
+{% endfor %}
+{% endif %}
 
 {% if include.method.args %}
 ### Arguments

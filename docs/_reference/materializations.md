@@ -27,4 +27,8 @@ For examples and usage, check out the [materializations guide](/guides/materiali
 
 {% include method.md method=methods.partitionBy context="true" %}
 
+{% include method.md method=methods.describe context="true" %}
+
+{% include method.md method=methods.descriptor context="true" %}
+
 {% include method.md method=methods.config context="true" %}
