@@ -7,7 +7,7 @@ export function compile(projectDir: string): Promise<protos.ICompiledGraph> {
   var child = fork(require.resolve("../vm/compile"));
   console.log("DEBUG: post_fork:\t " + Date.now());
   return new Promise((resolve, reject) => {
-    var timeout = 20000;
+    var timeout = 20001;
     var timeoutStart = Date.now();
     var checkTimeout = () => {
       if (child.killed) return;
