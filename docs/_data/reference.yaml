@@ -7,7 +7,7 @@ methods:
   ref:
     name: ref()
     signatures:
-      - ref(materializationName)
+      - "ref(materializationName)"
     description: "Returns the full, query-able name of the referenced table, and adds the table to dependencies."
     args:
       - name: materializationName
@@ -16,13 +16,13 @@ methods:
   self:
     name: self()
     signatures:
-      - self()
+      - "self()"
     description: "Returns the full, query-able name of the current materialization"
   dependencies:
     name: dependencies()
     description: "Specifies one or more materializations, operations or assertions that this node depends on. Supports wildcard matches with `\"*\"`."
     signatures:
-      - dependencies(deps)
+      - "dependencies(deps)"
     args:
       - name: deps
         type: 'string | string[]'
@@ -30,7 +30,7 @@ methods:
   postops:
     name: postOps()
     signatures:
-      - postOps(ops)
+      - "postOps(ops)"
     description: "Provide one of more queries to execute after this materialization has completed."
     args:
       - name: ops
@@ -39,7 +39,7 @@ methods:
   preops:
     name: preOps()
     signatures:
-      - preOps(ops)
+      - "preOps(ops)"
     description: "Provide one of more queries to execute before this materialization is created."
     args:
       - name: ops
@@ -48,7 +48,7 @@ methods:
   type:
     name: type()
     signatures:
-      - type(name)
+      - "type(name)"
     description: "Set the type of the materialization. View the [materialization guide](/guides/materializations) for more info."
     args:
       - name: name
@@ -57,7 +57,7 @@ methods:
   where:
     name: where()
     signatures:
-      - where(clause)
+      - "where(clause)"
     description: "Sets a where clause that is used for incremental tables."
     args:
       - name: clause
@@ -66,7 +66,7 @@ methods:
   protected:
     name: protected()
     signatures:
-      - protected()
+      - "protected()"
     description: "A incremental table marked protected will never be rebuilt from scratch."
   partitionby:
     name: partitionBy()
@@ -75,7 +75,7 @@ methods:
   config:
     name: config()
     signatures:
-      - config(config)
+      - "config(config)"
     description: "Sets several properties of the materialization at once."
     args:
       - name: config
@@ -104,7 +104,7 @@ methods:
   describe:
     name: describe()
     signatures:
-      - describe(field, description?)
+      - "describe(field, description?)"
     description: "Adds a field to the table descriptor with the given description (optional), and returns the field name."
     args:
       - name: field
@@ -116,7 +116,7 @@ methods:
   query:
     name: query()
     signatures:
-      - query(query)
+      - "query(query)"
     description: "Sets the SQL query for this materialization or assertion."
     args:
       - name: query
@@ -125,7 +125,7 @@ methods:
   queries:
     name: queries()
     signatures:
-      - queries(queries)
+      - "queries(queries)"
     description: "Sets the SQL queries to run in order for this operation."
     args:
       - name: query
