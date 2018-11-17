@@ -98,11 +98,13 @@ export class Dataform {
   compile(): protos.ICompiledGraph {
     var compiledGraph = protos.CompiledGraph.create({
       projectConfig: this.projectConfig,
-      materializations: Object.keys(this.materializations).map(key => this.materializations[key].compile()),
-      operations: Object.keys(this.operations).map(key => this.operations[key].compile()),
-      assertions: Object.keys(this.assertions).map(key => this.assertions[key].compile())
     });
-
+    console.log("DEBUG(fork): pre_compile_materializations:\t " + Date.now());
+    compiledGraph.materializations = Object.keys(this.materializations).map(key => this.materializations[key].compile()),
+    console.log("DEBUG(fork): post_compile_materializations:\t " + Date.now());
+    compiledGraph.operations = Object.keys(this.operations).map(key => this.operations[key].compile()),
+    compiledGraph.assertions = Object.keys(this.assertions).map(key => this.assertions[key].compile())
+    console.log("DEBUG(fork): post_compile_assertions_operations:\t " + Date.now());
     // Check there aren't any duplicate names.
     var allNodes = [].concat(compiledGraph.materializations, compiledGraph.assertions, compiledGraph.operations);
     var allNodeNames = allNodes.map(node => node.name);
@@ -117,7 +119,7 @@ export class Dataform {
         );
       }
     });
-
+    console.log("DEBUG(fork): post_check_duplicates:\t " + Date.now());
     // Expand node dependency wilcards.
     allNodes.forEach(node => {
       var uniqueDeps: { [d: string]: boolean } = {};
@@ -129,7 +131,7 @@ export class Dataform {
         .forEach(d => (uniqueDeps[d] = true));
       node.dependencies = Object.keys(uniqueDeps);
     });
-
+    console.log("DEBUG(fork): post_expand_wildcards:\t " + Date.now());
     var nodesByName: { [name: string]: protos.IExecutionNode } = {};
     allNodes.forEach(node => (nodesByName[node.name] = node));
 
@@ -141,6 +143,7 @@ export class Dataform {
         }
       });
     });
+    console.log("DEBUG(fork): post_check_deps_exist:\t " + Date.now());
     // Check for circular dependencies.
     function checkCircular(node: protos.IExecutionNode, dependents: protos.IExecutionNode[]) {
       if (dependents.indexOf(node) >= 0) {
@@ -151,6 +154,7 @@ export class Dataform {
       node.dependencies.forEach(d => checkCircular(nodesByName[d], dependents.concat([node])));
     }
     allNodes.forEach(node => checkCircular(node, []));
+    console.log("DEBUG(fork): post_check_circular:\t " + Date.now());
     return compiledGraph;
   }
 }
