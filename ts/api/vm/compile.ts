@@ -31,9 +31,12 @@ export function compile(projectDir: string): protos.ICompiledGraph {
 }
 
 process.on(`message`, object => {
+  console.log("DEBUG(fork): on_message:\t " + Date.now());
   try {
     var graph = compile(object.projectDir);
+    console.log("DEBUG(fork): post_compile:\t " + Date.now());
     process.send({ result: graph });
+    console.log("DEBUG(fork): post_send:\t " + Date.now());
   }
   catch (e) {
     process.send({ err: String(e) });
