@@ -6,7 +6,8 @@ classes:
 methods:
   ref:
     name: ref()
-    signature: ref(materializationName)
+    signatures:
+      - ref(materializationName)
     description: "Returns the full, query-able name of the referenced table, and adds the table to dependencies."
     args:
       - name: materializationName
@@ -14,19 +15,22 @@ methods:
         description: "The name of the materialization to reference"
   self:
     name: self()
-    signature: self()
+    signatures:
+      - self()
     description: "Returns the full, query-able name of the current materialization"
   dependencies:
     name: dependencies()
     description: "Specifies one or more materializations, operations or assertions that this node depends on. Supports wildcard matches with `\"*\"`."
-    signature: dependencies(deps)
+    signatures:
+      - dependencies(deps)
     args:
       - name: deps
         type: 'string | string[]'
         description: "Either a single dependency name, or a list"
   postops:
     name: postOps()
-    signature: postOps(ops)
+    signatures:
+      - postOps(ops)
     description: "Provide one of more queries to execute after this materialization has completed."
     args:
       - name: ops
@@ -34,7 +38,8 @@ methods:
         description: "The queries to run"
   preops:
     name: preOps()
-    signature: preOps(ops)
+    signatures:
+      - preOps(ops)
     description: "Provide one of more queries to execute before this materialization is created."
     args:
       - name: ops
@@ -42,7 +47,8 @@ methods:
         description: "The queries to run"
   type:
     name: type()
-    signature: type(name)
+    signatures:
+      - type(name)
     description: "Set the type of the materialization. View the [materialization guide](/guides/materializations) for more info."
     args:
       - name: name
@@ -50,7 +56,8 @@ methods:
         description: "The type of the materialization"
   where:
     name: where()
-    signature: where(clause)
+    signatures:
+      - where(clause)
     description: "Sets a where clause that is used for incremental tables."
     args:
       - name: clause
@@ -58,7 +65,8 @@ methods:
         description: "The where clause. Can be a string or a context function."
   protected:
     name: protected()
-    signature: protected()
+    signatures:
+      - protected()
     description: "A incremental table marked protected will never be rebuilt from scratch."
   partitionby:
     name: partitionBy()
@@ -66,15 +74,49 @@ methods:
     description: "Set's the table partition expression for BigQuery."
   config:
     name: config()
-    signature: config(config)
+    signatures:
+      - config(config)
     description: "Sets several properties of the materialization at once."
     args:
       - name: config
         type: MaterializationConfig
         description: "The configuration object"
+  descriptor:
+    name: descriptor()
+    signatures:
+      - "descriptor(fields)"
+      - "descriptor(field, description)"
+      - "descriptor(descriptor)"
+    description: "Sets the descriptor for fields in this materialization."
+    args:
+      - name: fields
+        type: string[]
+        description: "A list of field names"
+      - name: field
+        type: string
+        description: "The field name"
+      - name: description
+        type: string
+        description: "The field description"
+      - name: descriptor
+        type: "{[field: string]: string}"
+        description: "A map of field names to field descriptions"
+  describe:
+    name: describe()
+    signatures:
+      - describe(field, description?)
+    description: "Adds a field to the table descriptor with the given description (optional), and returns the field name."
+    args:
+      - name: field
+        type: string
+        description: "The field name"
+      - name: description
+        type: string
+        description: "The field description"
   query:
     name: query()
-    signature: query(query)
+    signatures:
+      - query(query)
     description: "Sets the SQL query for this materialization or assertion."
     args:
       - name: query
@@ -82,7 +124,8 @@ methods:
         description: "The SQL query to run"
   queries:
     name: queries()
-    signature: queries(queries)
+    signatures:
+      - queries(queries)
     description: "Sets the SQL queries to run in order for this operation."
     args:
       - name: query

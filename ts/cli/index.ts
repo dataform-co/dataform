@@ -106,7 +106,7 @@ yargs
       var profile = protos.Profile.create(JSON.parse(fs.readFileSync(argv["profile"], "utf8")));
       compile(path.resolve(argv["project-dir"]))
         .then(graph => build(graph, parseBuildArgs(argv), profile))
-        .then(graph => run(graph, profile))
+        .then(graph => run(graph, profile).resultPromise())
         .then(result => console.log(JSON.stringify(result, null, 4)))
         .catch(e => console.log(e));
     }

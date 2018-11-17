@@ -24,7 +24,7 @@ export class RedshiftAdapter implements Adapter {
         tasks.addAll(this.createOrReplace(m));
       } else {
         // The table exists, insert new rows.
-        tasks.add(Task.statement(this.insertInto(m.target, m.parsedColumns, this.where(m.query, m.where))));
+        tasks.add(Task.statement(this.insertInto(m.target, Object.keys(m.descriptor), this.where(m.query, m.where))));
       }
     } else {
       tasks.addAll(this.createOrReplace(m));

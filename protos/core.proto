@@ -42,12 +42,14 @@ message Materialization {
   // Warehouse specific features.
 
   string partition_by = 10; // bigquery
-  string dist_key = 19; //redshift
-  string sort_key = 20; //redshift
+  string dist_key = 19; // redshift
+  string sort_key = 20; // redshift
 
   // Generated.
-  repeated string parsed_columns = 12;
   string file_name = 18;
+
+  // Deprecated.
+  repeated string deprecated_parsed_columns = 12;
 }
 
 message Operation {

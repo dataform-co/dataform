@@ -3,7 +3,4 @@ set -e
 
 ./scripts/build/protos
 
-mkdir -p ts/core/build/parser
-cp ts/core/parser/index.js ts/core/build/parser/
-
 (cd ts/core && tsc)
