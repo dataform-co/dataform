@@ -1,11 +1,11 @@
 {
   "name": "@dataform/tests",
-  "version": "0.0.2-debug.1",
+  "version": "0.0.2-debug.2",
   "description": "Dataform tests.",
   "dependencies": {
-    "@dataform/api": "^0.0.2-debug.1",
-    "@dataform/core": "^0.0.2-debug.1",
-    "@dataform/protos": "^0.0.2-debug.1"
+    "@dataform/api": "^0.0.2-debug.2",
+    "@dataform/core": "^0.0.2-debug.2",
+    "@dataform/protos": "^0.0.2-debug.2"
   },
   "private": true
 }
