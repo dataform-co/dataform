@@ -14,10 +14,10 @@ Install node dev packages:
 npm i
 ```
 
-Initialize lerna:
+Install lerna managed packages:
 
 ```bash
-npx lerna init
+npx lerna bootstrap
 ```
 
 ## Build
