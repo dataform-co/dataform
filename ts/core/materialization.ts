@@ -93,7 +93,7 @@ export class Materialization {
   public descriptor(map: { [key: string]: string });
   public descriptor(keys: string[]);
   public descriptor(keyOrKeysOrMap: string | string[] | { [key: string]: string }, description?: string) {
-    if (!!this.proto.descriptor) {
+    if (!this.proto.descriptor) {
       this.proto.descriptor = {};
     }
     if (typeof keyOrKeysOrMap === "string") {
