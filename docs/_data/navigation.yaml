@@ -25,3 +25,9 @@ sections:
         path: /reference/assertions
       - name: dataform.json
         path: /reference/dataform-json
+      - name: JS API
+        path: /reference/js-api
+      - name: "MaterializationConfig (Class)"
+        path: /reference/materialization-config
+      - name: "Contextable (Type)"
+        path: /reference/contextable
