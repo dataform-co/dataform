@@ -131,3 +131,45 @@ methods:
       - name: query
         type: "string | string[]"
         description: "The SQL queries to run"
+  materialize:
+    name: materialize()
+    signatures:
+      - "materialize(name)"
+      - "materialize(name, query)"
+      - "materialize(name, config)"
+    description: "Returns a new [`Materialization`](/reference/materializations-js) with the given name."
+    args:
+      - name: name
+        type: "string"
+        description: "The name of the materialization"
+      - name: query
+        type: "Contextable<string>"
+        description: "The query for the materialization"
+      - name: config
+        type: "MaterializationConfig"
+        typeLink: /reference/materialization-config
+        description: "The configuration object for this materialization"
+  operate:
+    name: operate()
+    signatures:
+      - "operate(name, queries?)"
+    description: "Returns a new [`Operation`](/reference/operations-js) with the given name."
+    args:
+      - name: name
+        type: "string"
+        description: "The name of the operation"
+      - name: queries
+        type: "Contextable<string | string>"
+        description: "The query for the materialization"
+  assert:
+    name: assert()
+    signatures:
+      - "assert(name, query)"
+    description: "Returns a new [`Assertion`](/reference/assertion-js) with the given name."
+    args:
+      - name: name
+        type: "string"
+        description: "The name of the assertion"
+      - name: queries
+        type: "Contextable<string>"
+        description: "The query for the assertion"

@@ -35,7 +35,9 @@
         <code>{{arg.name}}</code>
       </td>
       <td>
+        {% if arg.typeLink %}<a href="{{arg.typeLink}}">{% endif %}
         <code>{{arg.type | escape }}</code>
+        {% if arg.typeLink %}</a>{% endif %}
       </td>
       <td>
         {{arg.description}}
