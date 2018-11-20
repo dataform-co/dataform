@@ -4,6 +4,8 @@ import { utils } from "@dataform/core";
 import * as protos from "@dataform/protos";
 import { install } from "./install";
 
+const CURRENT_VERSION = require("../package.json").version;
+
 export function init(projectDir: string, projectConfig: protos.IProjectConfig) {
   var dataformJsonPath = path.join(projectDir, "dataform.json");
   var packageJsonPath = path.join(projectDir, "package.json");
@@ -11,6 +13,7 @@ export function init(projectDir: string, projectConfig: protos.IProjectConfig) {
   if (fs.existsSync(dataformJsonPath) || fs.existsSync(packageJsonPath)) {
     throw "Cannot init dataform project, this already appears to be an NPM or Dataform directory.";
   }
+
   if (!fs.existsSync(projectDir)) {
     fs.mkdirSync(projectDir);
   }
@@ -34,7 +37,7 @@ export function init(projectDir: string, projectConfig: protos.IProjectConfig) {
     JSON.stringify(
       {
         dependencies: {
-          "@dataform/core": "^0.0.2-alpha.22"
+          "@dataform/core": CURRENT_VERSION
         }
       },
       null,
