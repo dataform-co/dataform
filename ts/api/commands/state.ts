@@ -9,7 +9,9 @@ export function state(compiledGraph: protos.ICompiledGraph, dbadapter: DbAdapter
       dbadapter
         .table(m.target)
         .then(table => {
-          tables.push({ target: table.target, type: table.type });
+          if (table.type) {
+            tables.push({ target: table.target, type: table.type });
+          }
         })
         .catch(_ => {})
     )

@@ -55,13 +55,7 @@ export class BigQueryDbAdapter implements DbAdapter {
           target: target,
           fields: table.schema.fields.map(field => convertField(field))
         });
-      })
-      .catch(e =>
-        protos.Table.create({
-          target: target,
-          type: null
-        })
-      );
+      });
   }
 
   prepareSchema(schema: string): Promise<void> {
