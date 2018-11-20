@@ -1,6 +1,6 @@
 {
   "packages": [
-    "ts/**"
+    "ts/*"
   ],
   "version": "0.0.2-alpha.31"
 }
