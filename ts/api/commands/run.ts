@@ -117,7 +117,7 @@ export class Runner {
             .execute(task.statement)
             .then(rows => {
               if (task.type == "assertion" && rows.length > 0) {
-                return [
+                throw [
                   ...chainResults,
                   {
                     ok: false,
