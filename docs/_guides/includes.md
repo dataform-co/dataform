@@ -3,8 +3,6 @@ layout: documentation
 title: Includes
 ---
 
-# Includes
-
 Javascript files can be added in the `includes/` folder to define simple scripts, constants or macros that can promote reuse of code across your project.
 
 Each file in the includes folder will be made available to be used within your other SQL or JavaScript files.
