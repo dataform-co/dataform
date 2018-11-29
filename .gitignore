@@ -7,3 +7,5 @@ ts/protos/index.*
 test_profiles/
 
 lerna-debug.log
+
+.idea/
