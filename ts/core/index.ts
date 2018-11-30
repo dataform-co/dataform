@@ -8,6 +8,7 @@ import { Assertion, AContextable } from "./assertion";
 
 import * as adapters from "./adapters";
 import * as utils from "./utils";
+import * as compilers from "./compilers";
 import * as tasks from "./tasks";
 
 // Exports.
@@ -15,6 +16,7 @@ import * as tasks from "./tasks";
 export {
   adapters,
   utils,
+  compilers,
   tasks,
   Dataform,
   Materialization,
@@ -31,14 +33,7 @@ if (require.extensions) {
     var oldCompile = module._compile;
     module._compile = function(code, file) {
       module._compile = oldCompile;
-      var transformedCode;
-      if (file.endsWith(".assert.sql")) {
-        transformedCode = utils.compileAssertionSql(code, file);
-      } else if (file.endsWith(".ops.sql")) {
-        transformedCode = utils.compileOperationSql(code, file);
-      } else {
-        transformedCode = utils.compileMaterializationSql(code, file);
-      }
+      var transformedCode = compilers.compile(code, file);
       module._compile(transformedCode, file);
     };
     require.extensions[".js"](module, file);
