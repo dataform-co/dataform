@@ -23,7 +23,9 @@ describe("@dataform/api", () => {
             schema: "schema",
             name: "b"
           },
-          query: "query"
+          query: "query",
+          dependencies: ["c"],
+          disabled: true
         },
         {
           name: "c",
@@ -31,48 +33,8 @@ describe("@dataform/api", () => {
             schema: "schema",
             name: "c"
           },
-          query: "query",
-          dependencies: ["d"],
-          disabled: true
-        },
-        {
-          name: "d",
-          target: {
-            schema: "schema",
-            name: "d"
-          },
-          query: "query",
-          disabled: true
-        },
-        {
-          name: "e",
-          target: {
-            schema: "schema",
-            name: "e"
-          },
-          query: "query",
-          dependencies: ["f"],
-          disabled: false
-        },
-        {
-          name: "f",
-          target: {
-            schema: "schema",
-            name: "f"
-          },
-          query: "query",
-          dependencies: ["g"],
-          disabled: true
-        },
-        {
-          name: "g",
-          target: {
-            schema: "schema",
-            name: "g"
-          },
-          query: "query",
-          disabled: false
-        },
+          query: "query"
+        }
       ]
     });
 
@@ -99,25 +61,16 @@ describe("@dataform/api", () => {
       const executionGraph = builder.build();
 
       const nodeA = executionGraph.nodes.find(n => (n.name === 'a'));
+      const nodeB = executionGraph.nodes.find(n => (n.name === 'b'));
       const nodeC = executionGraph.nodes.find(n => (n.name === 'c'));
-      const nodeD = executionGraph.nodes.find(n => (n.name === 'd'));
-      const nodeE = executionGraph.nodes.find(n => (n.name === 'e'));
-      const nodeF = executionGraph.nodes.find(n => (n.name === 'f'));
-      const nodeG = executionGraph.nodes.find(n => (n.name === 'g'));
 
       assert.exists(nodeA);
+      assert.exists(nodeB);
       assert.exists(nodeC);
-      assert.exists(nodeD);
-      assert.exists(nodeE);
-      assert.exists(nodeF);
-      assert.exists(nodeG);
 
       expect(nodeA).to.have.property('tasks').to.be.an('array').that.not.is.empty;
-      expect(nodeC).to.have.property('tasks').to.be.an('array').that.is.empty;
-      expect(nodeD).to.have.property('tasks').to.be.an('array').that.is.empty;
-      expect(nodeE).to.have.property('tasks').to.be.an('array').that.not.is.empty;
-      expect(nodeF).to.have.property('tasks').to.be.an('array').that.is.empty;
-      expect(nodeG).to.have.property('tasks').to.be.an('array').that.not.is.empty;
+      expect(nodeB).to.have.property('tasks').to.be.an('array').that.is.empty;
+      expect(nodeC).to.have.property('tasks').to.be.an('array').that.not.is.empty;
     });
   });
 });
