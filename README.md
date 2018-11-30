@@ -41,7 +41,7 @@ Runs the command line app:
 Outputs a compiled JSON graph for one of the example projects:
 
 ```bash
-./scripts/run/cli compile ts/example-bigquery
+./scripts/run/cli compile ts/examples/bigquery
 ```
 
 ## Serve docs
