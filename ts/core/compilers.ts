@@ -1,6 +1,6 @@
 import * as utils from "./utils";
 
-export function compile(code, path) {
+export function compile(code: string, path: string) {
   if (path.endsWith(".assert.sql")) {
     return compileAssertionSql(code, path);
   }
