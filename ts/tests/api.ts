@@ -1,4 +1,4 @@
-import { expect } from "chai";
+import { expect, assert } from "chai";
 
 import { compile } from "@dataform/api/build/commands/compile";
 import { Builder } from "@dataform/api/commands/build";
@@ -24,6 +24,16 @@ describe("@dataform/api", () => {
             schema: "schema",
             name: "b"
           },
+          query: "query",
+          dependencies: ["c"],
+          disabled: true
+        },
+        {
+          name: "c",
+          target: {
+            schema: "schema",
+            name: "c"
+          },
           query: "query"
         }
       ]
@@ -45,6 +55,23 @@ describe("@dataform/api", () => {
       var includedNodeNames = executionGraph.nodes.map(n => n.name);
       expect(includedNodeNames).includes("a");
       expect(includedNodeNames).not.includes("b");
+    });
+
+    it("exclude_disabled", () => {
+      const builder = new Builder(TEST_GRAPH, { includeDependencies: true }, TEST_STATE);
+      const executionGraph = builder.build();
+
+      const nodeA = executionGraph.nodes.find(n => (n.name === 'a'));
+      const nodeB = executionGraph.nodes.find(n => (n.name === 'b'));
+      const nodeC = executionGraph.nodes.find(n => (n.name === 'c'));
+
+      assert.exists(nodeA);
+      assert.exists(nodeB);
+      assert.exists(nodeC);
+
+      expect(nodeA).to.have.property('tasks').to.be.an('array').that.not.is.empty;
+      expect(nodeB).to.have.property('tasks').to.be.an('array').that.is.empty;
+      expect(nodeC).to.have.property('tasks').to.be.an('array').that.not.is.empty;
     });
   });
 
