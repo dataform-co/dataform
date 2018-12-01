@@ -7,6 +7,10 @@ export function run(profile: protos.IProfile, query: string, projectDir?: string
   return compile(query, projectDir).then(compiledQuery => dbadapters.create(profile).execute(compiledQuery));
 }
 
+export function evaluate(profile: protos.IProfile, query: string, projectDir?: string): Promise<void> {
+  return compile(query, projectDir).then(compiledQuery => dbadapters.create(profile).evaluate(compiledQuery));
+}
+
 export function compile(query: string, projectDir?: string): Promise<string> {
   var child = fork(require.resolve("../vm/query"));
   return new Promise((resolve, reject) => {
@@ -20,7 +24,7 @@ export function compile(query: string, projectDir?: string): Promise<string> {
       } else {
         setTimeout(checkTimeout, 100);
       }
-    }
+    };
     checkTimeout();
     child.on("message", obj => {
       if (!child.killed) child.kill();

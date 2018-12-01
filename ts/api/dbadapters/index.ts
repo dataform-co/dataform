@@ -5,6 +5,7 @@ import { SnowflakeDbAdapter } from "./snowflake";
 
 export interface DbAdapter {
   execute(statement: string): Promise<any[]>;
+  evaluate(statement: string): Promise<void>;
   tables(): Promise<protos.ITarget[]>;
   table(target: protos.ITarget): Promise<protos.ITable>;
   prepareSchema(schema: string): Promise<void>;
