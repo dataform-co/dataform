@@ -55,9 +55,9 @@ export function genIndex(projectDir: string, returnOverride?: string): string {
 
   return `
     const { init, compile } = require("@dataform/core");
-    init("${projectDir}", require("./dataform.json"));
     ${packageRequires}
     ${includeRequires}
+    init("${projectDir}", require("./dataform.json"));
     ${datasetRequires}
     return ${returnOverride || "compile()"};`;
 }
