@@ -1,7 +1,7 @@
 import { expect, assert } from "chai";
 // We depend on the compiled JS instead of the typescript code, as this code runs a forked process.
 import { compile } from "@dataform/api/build/commands/compile";
-import { Builder } from "@dataform/api/commands/build";
+import { query, Builder } from "@dataform/api";
 import * as protos from "@dataform/protos";
 
 describe("@dataform/api", () => {
@@ -110,6 +110,14 @@ describe("@dataform/api", () => {
         expect(materializationNames).includes("example_incremental");
         var exampleIncremental = graph.materializations.filter(m => m.name == "example_incremental")[0];
         expect(exampleIncremental.query).equals("select current_timestamp::timestamp as ts");
+      });
+    });
+  });
+
+  describe("query", () => {
+    it("bigquery_example", () => {
+      return query.compile('select 1 as ${describe("test")}', "ts/examples/bigquery").then(compiledQuery => {
+        expect(compiledQuery).equals("select 1 as test");
       });
     });
   });

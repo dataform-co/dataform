@@ -19,7 +19,8 @@ export function compile(query: string, projectDir?: string): string {
     var indexScript = genIndex(
       projectDir,
       `(function() {
-        const ref = dataformcore.singleton.ref.bind(dataformcore.singleton);
+        const { session } = require("@dataform/core");
+        const ref = session.ref.bind(session);
         const noop = () => "";
         const config = noop;
         const type = noop;
@@ -29,7 +30,7 @@ export function compile(query: string, projectDir?: string): string {
         const dependencies = noop;
         const where = noop;
         const descriptor = noop;
-        const describe = noop;
+        const describe = field => field;
         return \`${query}\`;
       })()`
     );
