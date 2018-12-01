@@ -30,6 +30,10 @@ export class SnowflakeDbAdapter implements DbAdapter {
     });
   }
 
+  evaluate(statement: string): Promise<void> {
+    throw Error("Unimplemented");
+  }
+
   tables(): Promise<protos.ITarget[]> {
     throw Error("Unimplemented");
   }
