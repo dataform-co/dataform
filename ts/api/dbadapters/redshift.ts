@@ -14,6 +14,10 @@ export class RedshiftDbAdapter implements DbAdapter {
     return this.client.query(statement).then(result => result.rows);
   }
 
+  evaluate(statement: string) {
+    return this.client.query(`explain ${statement}`);
+  }
+
   tables(): Promise<protos.ITarget[]> {
     return this.execute(
       `select table_name, table_schema

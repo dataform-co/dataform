@@ -24,6 +24,15 @@ export class BigQueryDbAdapter implements DbAdapter {
       .then(result => result[0]);
   }
 
+  evaluate(statement: string) {
+    return this.client
+      .query({
+        useLegacySql: false,
+        query: statement,
+        dryRun: true
+      });
+  }
+
   tables(): Promise<protos.ITarget[]> {
     return this.client
       .getDatasets({ autoPaginate: true })
