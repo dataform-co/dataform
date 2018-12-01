@@ -96,6 +96,9 @@ describe("@dataform/api", () => {
         expect(materializationNames).includes("example_incremental");
         var exampleIncremental = graph.materializations.filter(m => m.name == "example_incremental")[0];
         expect(exampleIncremental.query).equals("select current_timestamp() as ts");
+
+        // Check materializations defined in includes are not included.
+        expect(materializationNames).not.includes("example_ignore");
       });
     });
 
