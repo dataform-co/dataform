@@ -85,10 +85,28 @@ describe("@dataform/api", () => {
     it("bigquery_example", () => {
       return compile("ts/examples/bigquery").then(graph => {
         var materializationNames = graph.materializations.map(m => m.name);
+
+        // Check JS blocks get processed.
         expect(materializationNames).includes("example_js_blocks");
         var exampleJsBlocks = graph.materializations.filter(m => m.name == "example_js_blocks")[0];
         expect(exampleJsBlocks.type).equals("table");
         expect(exampleJsBlocks.query).equals("select 1 as foo");
+
+        // Check we can import and use an external package.
+        expect(materializationNames).includes("example_incremental");
+        var exampleIncremental = graph.materializations.filter(m => m.name == "example_incremental")[0];
+        expect(exampleIncremental.query).equals("select current_timestamp() as ts");
+      });
+    });
+
+    it("redshift_example", () => {
+      return compile("ts/examples/redshift").then(graph => {
+        var materializationNames = graph.materializations.map(m => m.name);
+
+        // Check we can import and use an external package.
+        expect(materializationNames).includes("example_incremental");
+        var exampleIncremental = graph.materializations.filter(m => m.name == "example_incremental")[0];
+        expect(exampleIncremental.query).equals("select current_timestamp::timestamp as ts");
       });
     });
   });

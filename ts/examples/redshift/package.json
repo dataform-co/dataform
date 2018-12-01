@@ -3,7 +3,8 @@
     "version": "0.0.2-alpha.33",
     "description": "Example Dataform project (Redshift).",
     "dependencies": {
-        "@dataform/core": "^0.0.2-alpha.33"
+        "@dataform/core": "^0.0.2-alpha.33",
+        "@dataform/crossdb": "^0.0.2-alpha.33"
     },
     "private": true
 }

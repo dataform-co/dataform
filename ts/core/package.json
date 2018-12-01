@@ -1,7 +1,7 @@
 {
   "name": "@dataform/core",
   "version": "0.0.2-alpha.33",
-  "description": "Dataform core API.",
+  "description": "Session core API.",
   "main": "build/index.js",
   "types": "build/index.d.ts",
   "dependencies": {
