@@ -1,5 +1,5 @@
 import * as protos from "@dataform/protos";
-import { Dataform } from "./index";
+import { Session } from "./index";
 import * as utils from "./utils";
 
 export type AContextable<T> = T | ((ctx: AssertionContext) => T);
@@ -7,8 +7,8 @@ export type AContextable<T> = T | ((ctx: AssertionContext) => T);
 export class Assertion {
   proto: protos.IAssertion = protos.Assertion.create();
 
-  // Hold a reference to the Dataform instance.
-  dataform: Dataform;
+  // Hold a reference to the Session instance.
+  session: Session;
 
   // We delay contextification until the final compile step, so hold these here for now.
   private contextableQuery: AContextable<string>;
@@ -48,7 +48,7 @@ export class AssertionContext {
 
   public ref(name: string) {
     this.assertion.dependencies(name);
-    return this.assertion.dataform.ref(name);
+    return this.assertion.session.ref(name);
   }
 
   public dependencies(name: string | string[]) {

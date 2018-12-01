@@ -1,4 +1,4 @@
-import { Dataform } from "./index";
+import { Session } from "./index";
 import * as protos from "@dataform/protos";
 
 export type MContextable<T> = T | ((ctx: MaterializationContext) => T);
@@ -21,8 +21,8 @@ export class Materialization {
     disabled: false
   });
 
-  // Hold a reference to the Dataform instance.
-  dataform: Dataform;
+  // Hold a reference to the Session instance.
+  session: Session;
 
   // We delay contextification until the final compile step, so hold these here for now.
   private contextableQuery: MContextable<string>;
@@ -160,12 +160,12 @@ export class MaterializationContext {
     return "";
   }
   public self(): string {
-    return this.materialization.dataform.adapter().resolveTarget(this.materialization.proto.target);
+    return this.materialization.session.adapter().resolveTarget(this.materialization.proto.target);
   }
 
   public ref(name: string) {
     this.materialization.dependencies(name);
-    return this.materialization.dataform.ref(name);
+    return this.materialization.session.ref(name);
   }
 
   public type(type: MaterializationType) {

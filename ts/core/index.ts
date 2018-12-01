@@ -1,5 +1,5 @@
 import * as protos from "@dataform/protos";
-import { Dataform } from "./dataform";
+import { Session } from "./session";
 import { Materialization, MaterializationContext, MContextable, MConfig } from "./materialization";
 import { Operation, OContextable } from "./operation";
 import { Assertion, AContextable } from "./assertion";
@@ -18,7 +18,7 @@ export {
   utils,
   compilers,
   tasks,
-  Dataform,
+  Session,
   Materialization,
   MaterializationContext,
   MConfig,
@@ -40,18 +40,25 @@ if (require.extensions) {
   };
 }
 
-// Create static singleton object and bind global functions.
+// Create static session object and bind global functions.
 
-export const singleton = new Dataform();
+// TODO: Lerna causes issues here, as a package get's included via nested
+// node_modules, this breaks the require cache and we end up with multiple
+// @dataform/core packages being loaded and referenced by different packages
+// during development. This hack just enforces the singleton session object to
+// be the same, regardless of the @dataform/core package that is running.
+const existingGlobalSession = (global as any)._DF_SESSION;
+export const session = existingGlobalSession || new Session(process.cwd());
+(global as any)._DF_SESSION = session;
 
 export const materialize = (name: string, queryOrConfig?: MContextable<string> | MConfig) =>
-  singleton.materialize(name, queryOrConfig);
-export const operate = (name: string, statement?: OContextable<string | string[]>) =>
-  singleton.operate(name, statement);
-export const assert = (name: string, query?: AContextable<string>) => singleton.assert(name, query);
-export const compile = () => singleton.compile();
-export const init = (projectConfig?: protos.IProjectConfig) => singleton.init(projectConfig);
+  session.materialize(name, queryOrConfig);
+export const operate = (name: string, statement?: OContextable<string | string[]>) => session.operate(name, statement);
+export const assert = (name: string, query?: AContextable<string>) => session.assert(name, query);
+export const compile = () => session.compile();
+export const init = (rootDir: string, projectConfig?: protos.IProjectConfig) => session.init(rootDir, projectConfig);
 
+(global as any).session = session;
 (global as any).materialize = materialize;
 (global as any).operate = operate;
 (global as any).assert = assert;

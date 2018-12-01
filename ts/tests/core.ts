@@ -1,11 +1,9 @@
 import { expect } from "chai";
 
-import { Dataform } from "@dataform/core";
+import { Session } from "@dataform/core";
 import * as compilers from "@dataform/core/compilers";
 import * as protos from "@dataform/protos";
 import * as path from "path";
-
-Dataform.ROOT_DIR = path.dirname(__filename);
 
 const TEST_CONFIG: protos.IProjectConfig = {
   warehouse: "redshift",
@@ -15,7 +13,7 @@ const TEST_CONFIG: protos.IProjectConfig = {
 describe("@dataform/core", () => {
   describe("materialize", () => {
     it("config", function() {
-      var df = new Dataform(TEST_CONFIG);
+      var df = new Session(path.dirname(__filename), TEST_CONFIG);
       var m = df
         .materialize("example", {
           type: "table",
@@ -39,7 +37,7 @@ describe("@dataform/core", () => {
     });
 
     it("config_context", function() {
-      var df = new Dataform(TEST_CONFIG);
+      var df = new Session(path.dirname(__filename), TEST_CONFIG);
       var m = df
         .materialize(
           "example",
@@ -66,14 +64,14 @@ describe("@dataform/core", () => {
 
   describe("graph", () => {
     it("circular_dependencies", () => {
-      var df = new Dataform(TEST_CONFIG);
+      var df = new Session(path.dirname(__filename), TEST_CONFIG);
       df.materialize("a").dependencies("b");
       df.materialize("b").dependencies("a");
       expect(() => df.compile()).throws(Error, /Circular dependency/);
     });
 
     it("missing_dependency", () => {
-      var df = new Dataform(TEST_CONFIG);
+      var df = new Session(path.dirname(__filename), TEST_CONFIG);
       df.materialize("a").dependencies("b");
       expect(() => df.compile()).throws(Error, /Missing dependency/);
     });
