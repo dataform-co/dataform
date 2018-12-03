@@ -1,14 +1,14 @@
 import { Dataform } from "./index";
 import * as protos from "@dataform/protos";
 
-const materializationType = {
-  table: "",
-  view: "",
-  incremental: ""
+export const MaterializationTypes = {
+  table: "table",
+  view: "view",
+  incremental: "incremental"
 };
 
 export type MContextable<T> = T | ((ctx: MaterializationContext) => T);
-export type MaterializationType = keyof typeof materializationType;
+export type MaterializationType = keyof typeof MaterializationTypes;
 
 export interface MConfig {
   type?: MaterializationType;
@@ -65,10 +65,10 @@ export class Materialization {
   }
 
   public type(type: MaterializationType) {
-    if (materializationType.hasOwnProperty(type)) {
+    if (MaterializationTypes.hasOwnProperty(type)) {
       this.proto.type = type;
     } else {
-      const predefinedTypes = Object.keys(materializationType)
+      const predefinedTypes = Object.keys(MaterializationTypes)
         .map(item => `"${item}"`)
         .join(" | ");
       throw Error(`Wrong type of materialization detected. Should only use predefined types: ${predefinedTypes}`);
