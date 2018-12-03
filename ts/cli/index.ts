@@ -148,14 +148,45 @@ yargs
     "query-compile <query> [project-dir]",
     "Compile the given query, evaluating project macros.",
     yargs =>
-      yargs.positional("project-dir", {
-        describe: "The directory of the Dataform project.",
-        default: "."
-      }),
+      yargs
+        .positional("project-dir", {
+          describe: "The directory of the Dataform project.",
+          default: "."
+        }),
     argv => {
+      console.log(argv);
       query
         .compile(argv["query"], path.resolve(argv["project-dir"]))
         .then(compiledQuery => console.log(compiledQuery))
+        .catch(e => console.log(e));
+    }
+  )
+  .command(
+    "query-evaluate <query> [project-dir]",
+    "Evaluate the query, checking it's valid against the warehouse.",
+    yargs =>
+      yargs
+        .option("profile", {
+          describe: "The location of the profile JSON file to run against",
+          required: true
+        })
+        .positional("query", {
+          describe: "The query to evaluate."
+        })
+        .positional("project-dir", {
+          describe: "The directory of the Dataform project.",
+          default: "."
+        }),
+    argv => {
+      query
+        .compile(argv["query"], path.resolve(argv["project-dir"]))
+        .then(compiledQuery =>
+          query.evaluate(
+            protos.Profile.create(JSON.parse(fs.readFileSync(argv["profile"], "utf8"))),
+            compiledQuery,
+            path.resolve(argv["project-dir"])
+          )
+        )
         .catch(e => console.log(e));
     }
   )
@@ -168,16 +199,22 @@ yargs
           describe: "The location of the profile JSON file to run against",
           required: true
         })
+        .positional("query", {
+          describe: "The query to compile and run."
+        })
         .positional("project-dir", {
           describe: "The directory of the Dataform project.",
           default: "."
         }),
     argv => {
       query
-        .run(
-          protos.Profile.create(JSON.parse(fs.readFileSync(argv["profile"], "utf8"))),
-          argv["query"],
-          path.resolve(argv["project-dir"])
+        .compile(argv["query"], path.resolve(argv["project-dir"]))
+        .then(compiledQuery =>
+          query.run(
+            protos.Profile.create(JSON.parse(fs.readFileSync(argv["profile"], "utf8"))),
+            compiledQuery,
+            path.resolve(argv["project-dir"])
+          )
         )
         .then(results => console.log(JSON.stringify(results, null, 4)))
         .catch(e => console.log(e));

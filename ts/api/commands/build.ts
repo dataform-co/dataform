@@ -79,14 +79,18 @@ export class Builder {
   }
 
   buildMaterialization(m: protos.IMaterialization, table: protos.ITable) {
+    const emptyTasks = ([] as protos.IExecutionTask[]);
+
+    const tasks = m.disabled ? emptyTasks : emptyTasks.concat(
+      (m.preOps || []).map(pre => ({ statement: pre })),
+      this.adapter.materializeTasks(m, this.runConfig, table).build(),
+      (m.postOps || []).map(post => ({ statement: post }))
+    );
+
     return protos.ExecutionNode.create({
       name: m.name,
       dependencies: m.dependencies,
-      tasks: ([] as protos.IExecutionTask[]).concat(
-        (m.preOps || []).map(pre => ({ statement: pre })),
-        this.adapter.materializeTasks(m, this.runConfig, table).build(),
-        (m.postOps || []).map(post => ({ statement: post }))
-      )
+      tasks,
     });
   }
 
