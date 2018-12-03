@@ -62,14 +62,14 @@ describe("@dataform/core", () => {
     });
 
     it("should_only_use_predefined_types", function() {
-      const dfSuccess = new Dataform(TEST_CONFIG);
+      const dfSuccess = new Session(path.dirname(__filename), TEST_CONFIG);
       dfSuccess.materialize("example1", { type: "table" });
       dfSuccess.materialize("example2", { type: "view" });
       dfSuccess.materialize("example3", { type: "incremental" });
       expect(() => dfSuccess.compile()).to.not.throw();
 
       expect(() => {
-        const dfFail = new Dataform(TEST_CONFIG);
+        const dfFail = new Session(path.dirname(__filename), TEST_CONFIG);
         dfFail.materialize("example", JSON.parse('{"type": "ta ble"}')).compile();
       }).throws(Error, /Wrong type of materialization/);
     });
