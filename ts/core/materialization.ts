@@ -59,15 +59,13 @@ export class Materialization {
     return this;
   }
 
-  private isPredefinedType(type: string): type is MaterializationType {
-    return materializationType.hasOwnProperty(type);
-  }
-
   public type(type: MaterializationType) {
-    if (this.isPredefinedType(type)) {
+    if (materializationType.hasOwnProperty(type)) {
       this.proto.type = type;
     } else {
-      const predefinedTypes = Object.keys(materializationType).map(item => `"${item}"`).join(" | ");
+      const predefinedTypes = Object.keys(materializationType)
+        .map(item => `"${item}"`)
+        .join(" | ");
       throw Error(`Wrong type of materialization detected. Should only use predefined types: ${predefinedTypes}`);
     }
 
@@ -93,7 +91,6 @@ export class Materialization {
     this.contextablePostOps.push(posts);
     return this;
   }
-
 
   public dependencies(value: string | string[]) {
     var newDependencies = typeof value === "string" ? [value] : value;
@@ -139,7 +136,9 @@ export class Materialization {
 
     this.contextablePreOps.forEach(contextablePreOps => {
       var appliedPres = context.apply(contextablePreOps);
-      this.proto.preOps = (this.proto.preOps || []).concat(typeof appliedPres == "string" ? [appliedPres] : appliedPres);
+      this.proto.preOps = (this.proto.preOps || []).concat(
+        typeof appliedPres == "string" ? [appliedPres] : appliedPres
+      );
     });
     this.contextablePreOps = [];
 
