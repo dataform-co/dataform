@@ -3,4 +3,4 @@ set -e
 
 ./scripts/build/core
 
-(cd ts/packages/crossdb && tsc)
+(cd ts/packages/crossdb && npx tsc)
