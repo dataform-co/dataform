@@ -71,8 +71,7 @@ describe("@dataform/core", () => {
 
       expect(() => {
         const dfFail = new Dataform(TEST_CONFIG);
-        dfFail.materialize("example", JSON.parse('{"type": "ta ble"}'))
-          .compile();
+        dfFail.materialize("example", JSON.parse('{"type": "ta ble"}')).compile();
       }).throws(Error, /Wrong type of materialization/);
     });
   });
