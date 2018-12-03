@@ -3,5 +3,5 @@ set -e
 
 ./scripts/build/core
 
-(cd ts/api && tsc)
+(cd ts/api && npx tsc)
 cp ts/api/package.json ts/api/build/package.json

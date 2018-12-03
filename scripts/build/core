@@ -3,4 +3,4 @@ set -e
 
 ./scripts/build/protos
 
-(cd ts/core && tsc)
+(cd ts/core && npx tsc)
