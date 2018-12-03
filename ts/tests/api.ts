@@ -60,17 +60,23 @@ describe("@dataform/api", () => {
       const builder = new Builder(TEST_GRAPH, { includeDependencies: true }, TEST_STATE);
       const executionGraph = builder.build();
 
-      const nodeA = executionGraph.nodes.find(n => (n.name === 'a'));
-      const nodeB = executionGraph.nodes.find(n => (n.name === 'b'));
-      const nodeC = executionGraph.nodes.find(n => (n.name === 'c'));
+      const nodeA = executionGraph.nodes.find(n => n.name === "a");
+      const nodeB = executionGraph.nodes.find(n => n.name === "b");
+      const nodeC = executionGraph.nodes.find(n => n.name === "c");
 
       assert.exists(nodeA);
       assert.exists(nodeB);
       assert.exists(nodeC);
 
-      expect(nodeA).to.have.property('tasks').to.be.an('array').that.not.is.empty;
-      expect(nodeB).to.have.property('tasks').to.be.an('array').that.is.empty;
-      expect(nodeC).to.have.property('tasks').to.be.an('array').that.not.is.empty;
+      expect(nodeA)
+        .to.have.property("tasks")
+        .to.be.an("array").that.not.is.empty;
+      expect(nodeB)
+        .to.have.property("tasks")
+        .to.be.an("array").that.is.empty;
+      expect(nodeC)
+        .to.have.property("tasks")
+        .to.be.an("array").that.not.is.empty;
     });
   });
 });
