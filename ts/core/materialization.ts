@@ -1,8 +1,14 @@
 import { Dataform } from "./index";
 import * as protos from "@dataform/protos";
 
+const materializationType = {
+  table: "",
+  view: "",
+  incremental: ""
+};
+
 export type MContextable<T> = T | ((ctx: MaterializationContext) => T);
-export type MaterializationType = "table" | "view" | "incremental";
+export type MaterializationType = keyof typeof materializationType;
 
 export interface MConfig {
   type?: MaterializationType;
@@ -59,7 +65,15 @@ export class Materialization {
   }
 
   public type(type: MaterializationType) {
-    this.proto.type = type;
+    if (materializationType.hasOwnProperty(type)) {
+      this.proto.type = type;
+    } else {
+      const predefinedTypes = Object.keys(materializationType)
+        .map(item => `"${item}"`)
+        .join(" | ");
+      throw Error(`Wrong type of materialization detected. Should only use predefined types: ${predefinedTypes}`);
+    }
+
     return this;
   }
 
@@ -132,7 +146,9 @@ export class Materialization {
 
     this.contextablePreOps.forEach(contextablePreOps => {
       var appliedPres = context.apply(contextablePreOps);
-      this.proto.preOps = (this.proto.preOps || []).concat(typeof appliedPres == "string" ? [appliedPres] : appliedPres);
+      this.proto.preOps = (this.proto.preOps || []).concat(
+        typeof appliedPres == "string" ? [appliedPres] : appliedPres
+      );
     });
     this.contextablePreOps = [];
 

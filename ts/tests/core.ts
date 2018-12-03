@@ -61,6 +61,20 @@ describe("@dataform/core", () => {
       expect(m.preOps).deep.equals(["pre_op"]);
       expect(m.postOps).deep.equals(["post_op"]);
     });
+
+    it("should_only_use_predefined_types", function() {
+      const dfSuccess = new Dataform(TEST_CONFIG);
+      dfSuccess.materialize("example1", { type: "table" });
+      dfSuccess.materialize("example2", { type: "view" });
+      dfSuccess.materialize("example3", { type: "incremental" });
+      expect(() => dfSuccess.compile()).to.not.throw();
+
+      expect(() => {
+        const dfFail = new Dataform(TEST_CONFIG);
+        dfFail.materialize("example", JSON.parse('{"type": "ta ble"}'))
+          .compile();
+      }).throws(Error, /Wrong type of materialization/);
+    });
   });
 
   describe("graph", () => {
