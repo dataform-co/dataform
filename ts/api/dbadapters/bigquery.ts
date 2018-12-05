@@ -19,7 +19,8 @@ export class BigQueryDbAdapter implements DbAdapter {
     return this.client
       .query({
         useLegacySql: false,
-        query: statement
+        query: statement,
+        maxResults: 1000
       })
       .then(result => result[0]);
   }
