@@ -24,7 +24,8 @@ export interface MConfig {
 export class Materialization {
   proto: protos.Materialization = protos.Materialization.create({
     type: "view",
-    disabled: false
+    disabled: false,
+    validationErrors: []
   });
 
   // Hold a reference to the Dataform instance.
@@ -64,6 +65,13 @@ export class Materialization {
     return this;
   }
 
+  public validationError(message: string) {
+    let fileName = this.proto.fileName || __filename;
+
+    var validationError = protos.ValidationError.create({ fileName, message });
+    this.proto.validationErrors.push(validationError);
+  }
+
   public type(type: MaterializationType) {
     if (materializationType.hasOwnProperty(type)) {
       this.proto.type = type;
@@ -71,7 +79,9 @@ export class Materialization {
       const predefinedTypes = Object.keys(materializationType)
         .map(item => `"${item}"`)
         .join(" | ");
-      throw Error(`Wrong type of materialization detected. Should only use predefined types: ${predefinedTypes}`);
+      const message = `Wrong type of materialization detected. Should only use predefined types: ${predefinedTypes}`;
+
+      this.validationError(message);
     }
 
     return this;
@@ -229,7 +239,7 @@ export class MaterializationContext {
 
   public apply<T>(value: MContextable<T>): T {
     if (typeof value === "function") {
-      return value(this);
+      return (value as Function)(this);
     } else {
       return value;
     }

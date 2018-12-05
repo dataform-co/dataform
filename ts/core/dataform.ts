@@ -13,6 +13,7 @@ export class Dataform {
   materializations: { [name: string]: Materialization };
   operations: { [name: string]: Operation };
   assertions: { [name: string]: Assertion };
+  validationErrors: protos.IValidationError[];
 
   constructor(projectConfig?: protos.IProjectConfig) {
     this.init(projectConfig);
@@ -23,6 +24,7 @@ export class Dataform {
     this.materializations = {};
     this.operations = {};
     this.assertions = {};
+    this.validationErrors = [];
   }
 
   adapter(): adapters.Adapter {
@@ -47,7 +49,8 @@ export class Dataform {
     if (refNode) {
       return this.adapter().resolveTarget((refNode as Materialization).proto.target);
     } else {
-      throw `Could not find reference node (${name}) in nodes [${Object.keys(this.materializations)}]`;
+      const message = `Could not find reference node (${name}) in nodes [${Object.keys(this.materializations)}]`;
+      this.validationError(this, message);
     }
   }
 
@@ -65,7 +68,13 @@ export class Dataform {
   }
 
   materialize(name: string, queryOrConfig?: MContextable<string> | MConfig): Materialization {
-    var materialization = new Materialization();
+    // Check for duplicate names
+    if (this.materializations[name]) {
+      const message = `Duplicate node name detected, names must be unique across materializations, assertions, and operations: "${name}"`;
+      this.validationError(this, message);
+    }
+
+    const materialization = new Materialization();
     materialization.dataform = this;
     materialization.proto.name = name;
     materialization.proto.target = this.target(name);
@@ -95,12 +104,20 @@ export class Dataform {
     return assertion;
   }
 
+  validationError(obj: protos.ICompiledGraph | Dataform, message: string) {
+    const fileName = utils.getCallerFile(Dataform.ROOT_DIR) || __filename;
+
+    const validationError = protos.ValidationError.create({ fileName, message });
+    obj.validationErrors.push(validationError);
+  }
+
   compile(): protos.ICompiledGraph {
     var compiledGraph = protos.CompiledGraph.create({
       projectConfig: this.projectConfig,
       materializations: Object.keys(this.materializations).map(key => this.materializations[key].compile()),
       operations: Object.keys(this.operations).map(key => this.operations[key].compile()),
-      assertions: Object.keys(this.assertions).map(key => this.assertions[key].compile())
+      assertions: Object.keys(this.assertions).map(key => this.assertions[key].compile()),
+      validationErrors: this.validationErrors
     });
 
     // Check there aren't any duplicate names.
@@ -110,11 +127,10 @@ export class Dataform {
     // Check there are no duplicate node names.
     allNodes.forEach(node => {
       if (allNodes.filter(subNode => subNode.name == node.name).length > 1) {
-        throw Error(
-          `Duplicate node name detected, names must be unique across materializations, assertions, and operations: "${
-            node.name
-          }"`
-        );
+        const message = `Duplicate node name detected, names must be unique across materializations, assertions, and operations: "${
+          node.name
+        }"`;
+        this.validationError(compiledGraph, message);
       }
     });
 
@@ -137,20 +153,34 @@ export class Dataform {
     allNodes.forEach(node => {
       node.dependencies.forEach(dependency => {
         if (allNodeNames.indexOf(dependency) < 0) {
-          throw Error(`Missing dependency detected: Node "${node.name}" depends on "${dependency}" which does not exist.`);
+          const message = `Missing dependency detected: Node "${
+            node.name
+          }" depends on "${dependency}" which does not exist.`;
+          this.validationError(compiledGraph, message);
         }
       });
     });
+
     // Check for circular dependencies.
-    function checkCircular(node: protos.IExecutionNode, dependents: protos.IExecutionNode[]) {
+    const checkCircular = (node: protos.IExecutionNode, dependents: protos.IExecutionNode[]): boolean => {
       if (dependents.indexOf(node) >= 0) {
-        throw Error(
-          `Circular dependency detected in chain: [${dependents.map(d => d.name).join(" > ")} > ${node.name}]`
-        );
+        const message = `Circular dependency detected in chain: [${dependents.map(d => d.name).join(" > ")} > ${
+          node.name
+        }]`;
+        this.validationError(compiledGraph, message);
+        return true;
       }
-      node.dependencies.forEach(d => checkCircular(nodesByName[d], dependents.concat([node])));
+      return node.dependencies.some(d => {
+        return nodesByName[d] && checkCircular(nodesByName[d], dependents.concat([node]));
+      });
+    };
+
+    for (let i = 0; i < allNodes.length; i++) {
+      if (checkCircular(allNodes[i], [])) {
+        break;
+      }
     }
-    allNodes.forEach(node => checkCircular(node, []));
+
     return compiledGraph;
   }
 }
