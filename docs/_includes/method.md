@@ -7,7 +7,7 @@
 {% if include.method.signatures %}
 {% for signature in include.method.signatures %}
 ```js
-{% if include.context %}${{"{"}}{% endif %}{{ signature }}{% if include.context %}}{% endif %}
+{{ signature }}{% if include.context %};{% endif %}
 ```
 {% endfor %}
 {% endif %}
