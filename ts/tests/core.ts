@@ -64,15 +64,25 @@ describe("@dataform/core", () => {
 
     it("should_only_use_predefined_types", function() {
       const dfSuccess = new Dataform(TEST_CONFIG);
-      dfSuccess.materialize("example1", { type: "table" });
-      dfSuccess.materialize("example2", { type: "view" });
-      dfSuccess.materialize("example3", { type: "incremental" });
-      expect(() => dfSuccess.compile()).to.not.throw();
+      dfSuccess.materialize("exampleSuccess1", { type: "table" });
+      dfSuccess.materialize("exampleSuccess2", { type: "view" });
+      dfSuccess.materialize("exampleSuccess3", { type: "incremental" });
+      const cgSuccess = dfSuccess.compile();
 
-      expect(() => {
-        const dfFail = new Dataform(TEST_CONFIG);
-        dfFail.materialize("example", JSON.parse('{"type": "ta ble"}')).compile();
-      }).throws(Error, /Wrong type of materialization/);
+      cgSuccess.materializations.forEach(item => {
+        expect(item)
+          .to.have.property("validationErrors")
+          .to.be.an("array").that.is.empty;
+      });
+
+      const dfFail = new Dataform(TEST_CONFIG);
+      const mFail = dfFail.materialize("exampleFail", JSON.parse('{"type": "ta ble"}')).compile();
+      expect(mFail)
+        .to.have.property("validationErrors")
+        .to.be.an("array");
+
+      const errors = mFail.validationErrors.filter(item => item.message.match(/Wrong type of materialization/));
+      expect(errors).to.be.an("array").that.is.not.empty;
     });
   });
 
@@ -81,13 +91,39 @@ describe("@dataform/core", () => {
       var df = new Dataform(TEST_CONFIG);
       df.materialize("a").dependencies("b");
       df.materialize("b").dependencies("a");
-      expect(() => df.compile()).throws(Error, /Circular dependency/);
+      const cGraph = df.compile();
+
+      expect(cGraph)
+        .to.have.property("validationErrors")
+        .to.be.an("array");
+      const errors = cGraph.validationErrors.filter(item => item.message.match(/Circular dependency/));
+      expect(errors).to.be.an("array").that.is.not.empty;
     });
 
     it("missing_dependency", () => {
-      var df = new Dataform(TEST_CONFIG);
+      const df = new Dataform(TEST_CONFIG);
       df.materialize("a").dependencies("b");
-      expect(() => df.compile()).throws(Error, /Missing dependency/);
+      const cGraph = df.compile();
+
+      expect(cGraph)
+        .to.have.property("validationErrors")
+        .to.be.an("array");
+      const errors = cGraph.validationErrors.filter(item => item.message.match(/Missing dependency/));
+      expect(errors).to.be.an("array").that.is.not.empty;
+    });
+
+    it("duplicate_node_names", () => {
+      const df = new Dataform(TEST_CONFIG);
+      df.materialize("a").dependencies("b");
+      df.materialize("b");
+      df.materialize("a");
+      const cGraph = df.compile();
+
+      expect(cGraph)
+        .to.have.property("validationErrors")
+        .to.be.an("array");
+      const errors = cGraph.validationErrors.filter(item => item.message.match(/Duplicate node name/));
+      expect(errors).to.be.an("array").that.is.not.empty;
     });
   });
 });
