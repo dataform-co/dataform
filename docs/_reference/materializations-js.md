@@ -21,6 +21,8 @@ For examples and usage, check out the [materializations guide](/guides/materiali
 
 {% include method.md method=methods.protected %}
 
+{% include method.md method=methods.disabled %}
+
 {% include method.md method=methods.preops %}
 
 {% include method.md method=methods.postops %}

@@ -8,12 +8,13 @@ A materialization defines a table, or view that will be created in your data war
 
 To define a new materialization, create a `.sql` file in the `models` directory. The name of the file will be the name of the table created in your data warehouse.
 
+For example, the file `models/example.sql` with the contents:
+
 ```js
-// myfirstmodel.sql
 select 1 as test
 ```
 
-Will create a `view` called `myfirstmodel` in the default dataform schema defined in the [`dataform.json`](/configuration/#dataform.json) file.
+Will create a `view` called `example` in the default dataform schema defined in the [`dataform.json`](/configuration/#dataform.json) file.
 
 There are many configuration options that can be applied to a materialization, for a full list see the [materializations reference](/reference/materializations).
 
@@ -21,9 +22,8 @@ There are many configuration options that can be applied to a materialization, f
 
 By default, materializations are created as views in your warehouse. To create a copy of the query result as table, you can use the `type` method to change the materialization type to `"table"`.
 
-```js
-${type("table")}
---
+```sql
+--js type("table");
 select 1 as test
 ```
 
@@ -41,11 +41,12 @@ When using incremental tables, you must describe all the columns in the table, s
 </div>
 </p>
 
-```js
-${type("incremental")}
-${where(`ts > (select max(ts) from ${self()}`)}
-${descriptor("ts", "a", "b")}
---
+```sql
+/*js
+type("incremental");
+where(`ts > (select max(ts) from ${self()}`);
+descriptor("ts", "a", "b");
+*/
 select ts, a, b from sourcetable
 ```
 
@@ -53,7 +54,7 @@ Incremental tables automatically produce the necessary `create table` and `inser
 
 For the above example, if the table does not exist the the following statement will be run:
 
-```js
+```sql
 create or replace table dataform.incrementalexample as
   select ts, a, b
   from sourcetable
@@ -61,7 +62,7 @@ create or replace table dataform.incrementalexample as
 
 Subsequent runs will then run the following statement:
 
-```js
+```sql
 insert into dataform.incrementalexample (ts, a, b)
   select ts, a, b
   from sourcetable
@@ -71,9 +72,8 @@ insert into dataform.incrementalexample (ts, a, b)
 It's important to note that incremental tables MUST specifically list selected fields, so that the insert statement can be automatically generated.
 
 The following would not work:
-```js
-${type("incremental")}
---
+```sql
+--js type("incremental");
 select * from sourcetable
 ```
 
@@ -82,11 +82,12 @@ select * from sourcetable
 You can execute one or more statements before a table is materialized using the [`preOps()`](/built-in-functions#preOps) built-in:
 
 ```js
-${preOps([
+/*js
+preOps([
   "run this before",
   "then run this before"
-])}
---
+])
+*/
 select 1 as test
 ```
 
@@ -95,10 +96,11 @@ select 1 as test
 You can execute one or more statements after a table is materialized using the [`postOps()`](/built-in-functions#postOps) built-in:
 
 ```js
-${postOps([
+/*js
+postOps([
   "run this after",
   "then run this after"
-])}
---
+])
+*/
 select 1 as test
 ```

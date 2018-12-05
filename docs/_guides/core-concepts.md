@@ -19,7 +19,8 @@ Dataform compiles your project and computes a directed, acyclic graph of all the
 
 ## API
 
-Dataform provides APIs to make it easy to perform common tasks, such as [creating a table]((/guides/materializations), or incrementally inserting new rows into a table.
+Dataform provides APIs to make it easy to perform common tasks, such as [creating a table](/guides/materializations), or incrementally inserting new rows into a table.
+
 
 ## JS API
 
