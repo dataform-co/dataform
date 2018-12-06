@@ -34,7 +34,9 @@ export function genIndex(projectDir: string, returnOverride?: string): string {
 
   var packageRequires = Object.keys(packageConfig.dependencies || {})
     .map(packageName => {
-      return `global.${utils.variableNameFriendly(packageName)} = require("${packageName}");`;
+      return `try { global.${utils.variableNameFriendly(
+        packageName
+      )} = require("${packageName}"); } catch (e) { throw Error("Exception in ${packageName}: " + e); }`;
     })
     .join("\n");
 
@@ -42,21 +44,20 @@ export function genIndex(projectDir: string, returnOverride?: string): string {
     .map(path => {
       return `try { global.${utils.baseFilename(
         path
-      )} = require("./${path}"); } catch (e) { throw Error("Exception in ${path}: " + e) }`;
+      )} = require("./${path}"); } catch (e) { throw Error("Exception in ${path}: " + e); }`;
     })
     .join("\n");
   var datasetRequires = datasetPaths
     .map(path => {
-      return `try { require("./${path}"); } catch (e) { throw Error("Exception in ${path}: " + e) }`;
+      return `try { require("./${path}"); } catch (e) { throw Error("Exception in ${path}: " + e); }`;
     })
     .join("\n");
 
   return `
-    const dataformcore = require("@dataform/core");
-    dataformcore.Dataform.ROOT_DIR="${projectDir}";
-    dataformcore.init(require("./dataform.json"));
+    const { init, compile } = require("@dataform/core");
     ${packageRequires}
     ${includeRequires}
+    init("${projectDir}", require("./dataform.json"));
     ${datasetRequires}
-    return ${returnOverride || "dataformcore.compile()"};`;
+    return ${returnOverride || "compile()"};`;
 }

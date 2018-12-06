@@ -1,10 +1,11 @@
 import { expect } from "chai";
 
-import { Dataform } from "@dataform/core";
+import { Session } from "@dataform/core";
+import * as compilers from "@dataform/core/compilers";
 import * as protos from "@dataform/protos";
 import * as path from "path";
 
-Dataform.ROOT_DIR = path.dirname(__filename);
+
 
 const TEST_CONFIG: protos.IProjectConfig = {
   warehouse: "redshift",
@@ -14,7 +15,7 @@ const TEST_CONFIG: protos.IProjectConfig = {
 describe("@dataform/core", () => {
   describe("materialize", () => {
     it("config", function() {
-      var df = new Dataform(TEST_CONFIG);
+      var df = new Session(path.dirname(__filename), TEST_CONFIG);
       var m = df
         .materialize("example", {
           type: "table",
@@ -38,7 +39,7 @@ describe("@dataform/core", () => {
     });
 
     it("config_context", function() {
-      var df = new Dataform(TEST_CONFIG);
+      var df = new Session(path.dirname(__filename), TEST_CONFIG);
       var m = df
         .materialize(
           "example",
@@ -63,7 +64,7 @@ describe("@dataform/core", () => {
     });
 
     it("should_only_use_predefined_types", function() {
-      const dfSuccess = new Dataform(TEST_CONFIG);
+      const dfSuccess = new Session(path.dirname(__filename), TEST_CONFIG);
       dfSuccess.materialize("exampleSuccess1", { type: "table" });
       dfSuccess.materialize("exampleSuccess2", { type: "view" });
       dfSuccess.materialize("exampleSuccess3", { type: "incremental" });
@@ -75,7 +76,7 @@ describe("@dataform/core", () => {
           .to.be.an("array").that.is.empty;
       });
 
-      const dfFail = new Dataform(TEST_CONFIG);
+      const dfFail = new Session(path.dirname(__filename), TEST_CONFIG);
       const mFail = dfFail.materialize("exampleFail", JSON.parse('{"type": "ta ble"}')).compile();
       expect(mFail)
         .to.have.property("validationErrors")
@@ -88,7 +89,7 @@ describe("@dataform/core", () => {
 
   describe("graph", () => {
     it("circular_dependencies", () => {
-      var df = new Dataform(TEST_CONFIG);
+      var df = new Session(path.dirname(__filename), TEST_CONFIG);
       df.materialize("a").dependencies("b");
       df.materialize("b").dependencies("a");
       const cGraph = df.compile();
@@ -101,7 +102,7 @@ describe("@dataform/core", () => {
     });
 
     it("missing_dependency", () => {
-      const df = new Dataform(TEST_CONFIG);
+      const df = new Session(path.dirname(__filename), TEST_CONFIG);
       df.materialize("a").dependencies("b");
       const cGraph = df.compile();
 
@@ -113,7 +114,7 @@ describe("@dataform/core", () => {
     });
 
     it("duplicate_node_names", () => {
-      const df = new Dataform(TEST_CONFIG);
+      const df = new Session(path.dirname(__filename), TEST_CONFIG);
       df.materialize("a").dependencies("b");
       df.materialize("b");
       df.materialize("a");
@@ -124,6 +125,37 @@ describe("@dataform/core", () => {
         .to.be.an("array");
       const errors = cGraph.validationErrors.filter(item => item.message.match(/Duplicate node name/));
       expect(errors).to.be.an("array").that.is.not.empty;
+    });
+  });
+
+  const TEST_SQL_FILE = `
+/*js
+var a = 1;
+*/
+--js var b = 2;
+/*
+normal_multiline_comment
+*/
+-- normal_single_line_comment
+select 1 as test
+`;
+
+  const EXPECTED_JS = `
+var a = 1;
+var b = 2;`.trim();
+
+  const EXPECTED_SQL = `
+/*
+normal_multiline_comment
+*/
+-- normal_single_line_comment
+select 1 as test`.trim();
+
+  describe("compilers", () => {
+    it("extract_blocks", function() {
+      var { sql, js } = compilers.extractJsBlocks(TEST_SQL_FILE);
+      expect(sql).equals(EXPECTED_SQL);
+      expect(js).equals(EXPECTED_JS);
     });
   });
 });

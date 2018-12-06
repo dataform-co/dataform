@@ -68,10 +68,16 @@ methods:
     signatures:
       - "protected()"
     description: "A incremental table marked protected will never be rebuilt from scratch."
+  disabled:
+    name: disabled()
+    signatures:
+      - "disabled()"
+    description: "Disable this action from being run."
   partitionby:
     name: partitionBy()
-    signature: partitionBy(expression)
-    description: "Set's the table partition expression for BigQuery."
+    signatures:
+      - "partitionBy(expression)"
+    description: "Sets the table partition expression for BigQuery."
   config:
     name: config()
     signatures:

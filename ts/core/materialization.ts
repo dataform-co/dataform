@@ -1,14 +1,14 @@
-import { Dataform } from "./index";
+import { Session } from "./index";
 import * as protos from "@dataform/protos";
 
-const materializationType = {
-  table: "",
-  view: "",
-  incremental: ""
+export const MaterializationTypes = {
+  table: "table",
+  view: "view",
+  incremental: "incremental"
 };
 
 export type MContextable<T> = T | ((ctx: MaterializationContext) => T);
-export type MaterializationType = keyof typeof materializationType;
+export type MaterializationType = keyof typeof MaterializationTypes;
 
 export interface MConfig {
   type?: MaterializationType;
@@ -28,8 +28,8 @@ export class Materialization {
     validationErrors: []
   });
 
-  // Hold a reference to the Dataform instance.
-  dataform: Dataform;
+  // Hold a reference to the Session instance.
+  session: Session;
 
   // We delay contextification until the final compile step, so hold these here for now.
   private contextableQuery: MContextable<string>;
@@ -73,10 +73,10 @@ export class Materialization {
   }
 
   public type(type: MaterializationType) {
-    if (materializationType.hasOwnProperty(type)) {
+    if (MaterializationTypes.hasOwnProperty(type)) {
       this.proto.type = type;
     } else {
-      const predefinedTypes = Object.keys(materializationType)
+      const predefinedTypes = Object.keys(MaterializationTypes)
         .map(item => `"${item}"`)
         .join(" | ");
       const message = `Wrong type of materialization detected. Should only use predefined types: ${predefinedTypes}`;
@@ -186,12 +186,12 @@ export class MaterializationContext {
     return "";
   }
   public self(): string {
-    return this.materialization.dataform.adapter().resolveTarget(this.materialization.proto.target);
+    return this.materialization.session.adapter().resolveTarget(this.materialization.proto.target);
   }
 
   public ref(name: string) {
     this.materialization.dependencies(name);
-    return this.materialization.dataform.ref(name);
+    return this.materialization.session.ref(name);
   }
 
   public type(type: MaterializationType) {

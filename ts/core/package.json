@@ -1,11 +1,11 @@
 {
   "name": "@dataform/core",
-  "version": "0.0.2-alpha.33",
+  "version": "0.0.2-alpha.35",
   "description": "Dataform core API.",
   "main": "build/index.js",
   "types": "build/index.d.ts",
   "dependencies": {
-    "@dataform/protos": "^0.0.2-alpha.33",
+    "@dataform/protos": "^0.0.2-alpha.35",
     "protobufjs": "^6.8.8"
   },
   "publishConfig": {

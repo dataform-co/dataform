@@ -3,4 +3,4 @@ set -e
 
 ./scripts/build/api
 
-(cd ts/cli && tsc)
+(cd ts/cli && npx tsc)

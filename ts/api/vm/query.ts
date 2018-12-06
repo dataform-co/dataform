@@ -1,6 +1,6 @@
 import * as path from "path";
 import { NodeVM } from "vm2";
-import { utils } from "@dataform/core";
+import { compilers } from "@dataform/core";
 import { genIndex } from "../gen_index";
 
 export function compile(query: string, projectDir?: string): string {
@@ -14,23 +14,13 @@ export function compile(query: string, projectDir?: string): string {
         external: true
       },
       sourceExtensions: ["js", "sql"],
-      compiler: (code, file) => {
-        if (file.endsWith(".assert.sql")) {
-          return utils.compileAssertionSql(code, file);
-        }
-        if (file.endsWith(".ops.sql")) {
-          return utils.compileOperationSql(code, file);
-        }
-        if (file.endsWith(".sql")) {
-          return utils.compileMaterializationSql(code, file);
-        }
-        return code;
-      }
+      compiler: (code, path) => compilers.compile(code, path)
     });
     var indexScript = genIndex(
       projectDir,
       `(function() {
-        const ref = dataformcore.singleton.ref.bind(dataformcore.singleton);
+        const { session } = require("@dataform/core");
+        const ref = session.ref.bind(session);
         const noop = () => "";
         const config = noop;
         const type = noop;
@@ -40,7 +30,7 @@ export function compile(query: string, projectDir?: string): string {
         const dependencies = noop;
         const where = noop;
         const descriptor = noop;
-        const describe = noop;
+        const describe = field => field;
         return \`${query}\`;
       })()`
     );
