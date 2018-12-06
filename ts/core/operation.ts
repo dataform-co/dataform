@@ -1,5 +1,5 @@
 import * as protos from "@dataform/protos";
-import { Dataform } from "./index";
+import { Session } from "./index";
 import * as utils from "./utils";
 
 export type OContextable<T> = T | ((ctx: OperationContext) => T);
@@ -7,8 +7,8 @@ export type OContextable<T> = T | ((ctx: OperationContext) => T);
 export class Operation {
   proto: protos.IOperation = protos.Operation.create();
 
-  // Hold a reference to the Dataform instance.
-  dataform: Dataform;
+  // Hold a reference to the Session instance.
+  session: Session;
 
   // We delay contextification until the final compile step, so hold these here for now.
   private contextableQueries: OContextable<string | string[]>;
@@ -48,7 +48,7 @@ export class OperationContext {
 
   public ref(name: string) {
     this.operation.dependencies(name);
-    return this.operation.dataform.ref(name);
+    return this.operation.session.ref(name);
   }
 
   public dependencies(name: string | string[]) {

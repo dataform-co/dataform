@@ -1,6 +1,8 @@
 {
   "packages": [
-    "ts/*"
+    "ts/*",
+    "ts/examples/*",
+    "ts/packages/*"
   ],
-  "version": "0.0.2-alpha.33"
+  "version": "0.0.2-alpha.35"
 }

@@ -1,6 +1,7 @@
 import { expect, assert } from "chai";
-
-import { Builder } from "@dataform/api/commands/build";
+// We depend on the compiled JS instead of the typescript code, as this code runs a forked process.
+import { compile } from "@dataform/api/build/commands/compile";
+import { query, Builder } from "@dataform/api";
 import * as protos from "@dataform/protos";
 
 describe("@dataform/api", () => {
@@ -77,6 +78,47 @@ describe("@dataform/api", () => {
       expect(nodeC)
         .to.have.property("tasks")
         .to.be.an("array").that.not.is.empty;
+    });
+  });
+
+  describe("compile", () => {
+    it("bigquery_example", () => {
+      return compile("ts/examples/bigquery").then(graph => {
+        var materializationNames = graph.materializations.map(m => m.name);
+
+        // Check JS blocks get processed.
+        expect(materializationNames).includes("example_js_blocks");
+        var exampleJsBlocks = graph.materializations.filter(m => m.name == "example_js_blocks")[0];
+        expect(exampleJsBlocks.type).equals("table");
+        expect(exampleJsBlocks.query).equals("select 1 as foo");
+
+        // Check we can import and use an external package.
+        expect(materializationNames).includes("example_incremental");
+        var exampleIncremental = graph.materializations.filter(m => m.name == "example_incremental")[0];
+        expect(exampleIncremental.query).equals("select current_timestamp() as ts");
+
+        // Check materializations defined in includes are not included.
+        expect(materializationNames).not.includes("example_ignore");
+      });
+    });
+
+    it("redshift_example", () => {
+      return compile("ts/examples/redshift").then(graph => {
+        var materializationNames = graph.materializations.map(m => m.name);
+
+        // Check we can import and use an external package.
+        expect(materializationNames).includes("example_incremental");
+        var exampleIncremental = graph.materializations.filter(m => m.name == "example_incremental")[0];
+        expect(exampleIncremental.query).equals("select current_timestamp::timestamp as ts");
+      });
+    });
+  });
+
+  describe("query", () => {
+    it("bigquery_example", () => {
+      return query.compile('select 1 as ${describe("test")}', "ts/examples/bigquery").then(compiledQuery => {
+        expect(compiledQuery).equals("select 1 as test");
+      });
     });
   });
 });

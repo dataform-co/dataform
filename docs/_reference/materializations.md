@@ -21,11 +21,13 @@ For examples and usage, check out the [materializations guide](/guides/materiali
 
 {% include method.md method=methods.protected context="true" %}
 
+{% include method.md method=methods.disabled context="true" %}
+
 {% include method.md method=methods.preops context="true" %}
 
 {% include method.md method=methods.postops context="true" %}
 
-{% include method.md method=methods.partitionBy context="true" %}
+{% include method.md method=methods.partitionby context="true" %}
 
 {% include method.md method=methods.describe context="true" %}
 

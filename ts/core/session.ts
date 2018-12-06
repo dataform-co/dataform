@@ -5,23 +5,26 @@ import { Materialization, MContextable, MConfig } from "./materialization";
 import { Operation, OContextable } from "./operation";
 import { Assertion, AContextable } from "./assertion";
 
-export class Dataform {
-  public static ROOT_DIR = "";
+export class Session {
 
-  projectConfig: protos.IProjectConfig;
+  public rootDir: string;
 
-  materializations: { [name: string]: Materialization };
-  operations: { [name: string]: Operation };
-  assertions: { [name: string]: Assertion };
-  validationErrors: protos.IValidationError[];
-  compileErrors: protos.ICompileError[];
+  public config: protos.IProjectConfig;
 
-  constructor(projectConfig?: protos.IProjectConfig) {
-    this.init(projectConfig);
+  public materializations: { [name: string]: Materialization };
+  public operations: { [name: string]: Operation };
+  public assertions: { [name: string]: Assertion };
+
+  public validationErrors: protos.IValidationError[];
+  public compileErrors: protos.ICompileError[];
+
+  constructor(rootDir: string, projectConfig?: protos.IProjectConfig) {
+    this.init(rootDir, projectConfig);
   }
 
-  init(projectConfig?: protos.IProjectConfig) {
-    this.projectConfig = projectConfig || { defaultSchema: "dataform" };
+  init(rootDir: string, projectConfig?: protos.IProjectConfig) {
+    this.rootDir = rootDir;
+    this.config = projectConfig || { defaultSchema: "dataform" };
     this.materializations = {};
     this.operations = {};
     this.assertions = {};
@@ -30,7 +33,7 @@ export class Dataform {
   }
 
   adapter(): adapters.Adapter {
-    return adapters.create(this.projectConfig);
+    return adapters.create(this.config);
   }
 
   target(name: string): protos.ITarget {
@@ -41,7 +44,7 @@ export class Dataform {
     } else {
       return protos.Target.create({
         name,
-        schema: this.projectConfig.defaultSchema
+        schema: this.config.defaultSchema
       });
     }
   }
@@ -58,12 +61,12 @@ export class Dataform {
 
   operate(name: string, queries?: OContextable<string | string[]>): Operation {
     var operation = new Operation();
-    operation.dataform = this;
+    operation.session = this;
     operation.proto.name = name;
     if (queries) {
       operation.queries(queries);
     }
-    operation.proto.fileName = utils.getCallerFile(Dataform.ROOT_DIR);
+    operation.proto.fileName = utils.getCallerFile(this.rootDir);
     // Add it to global index.
     this.operations[name] = operation;
     return operation;
@@ -77,7 +80,7 @@ export class Dataform {
     }
 
     const materialization = new Materialization();
-    materialization.dataform = this;
+    materialization.session = this;
     materialization.proto.name = name;
     materialization.proto.target = this.target(name);
     if (!!queryOrConfig) {
@@ -87,7 +90,7 @@ export class Dataform {
         materialization.query(queryOrConfig);
       }
     }
-    materialization.proto.fileName = utils.getCallerFile(Dataform.ROOT_DIR);
+    materialization.proto.fileName = utils.getCallerFile(this.rootDir);
     // Add it to global index.
     this.materializations[name] = materialization;
     return materialization;
@@ -95,26 +98,26 @@ export class Dataform {
 
   assert(name: string, query?: AContextable<string>): Assertion {
     var assertion = new Assertion();
-    assertion.dataform = this;
+    assertion.session = this;
     assertion.proto.name = name;
     if (query) {
       assertion.query(query);
     }
-    assertion.proto.fileName = utils.getCallerFile(Dataform.ROOT_DIR);
+    assertion.proto.fileName = utils.getCallerFile(this.rootDir);
     // Add it to global index.
     this.assertions[name] = assertion;
     return assertion;
   }
 
   validationError(message: string) {
-    const fileName = utils.getCallerFile(Dataform.ROOT_DIR) || __filename;
+    const fileName = utils.getCallerFile(this.rootDir) || __filename;
 
     const validationError = protos.ValidationError.create({ fileName, message });
     this.validationErrors.push(validationError);
   }
 
   compileError(message: string, path: string = null) {
-    const fileName = path || utils.getCallerFile(Dataform.ROOT_DIR) || __filename;
+    const fileName = path || utils.getCallerFile(this.rootDir) || __filename;
 
     const compileError = protos.CompileError.create({ fileName, message });
     this.compileErrors.push(compileError);
@@ -122,7 +125,7 @@ export class Dataform {
 
   compile(): protos.ICompiledGraph {
     var compiledGraph = protos.CompiledGraph.create({
-      projectConfig: this.projectConfig,
+      projectConfig: this.config,
       materializations: Object.keys(this.materializations).map(key => this.materializations[key].compile()),
       operations: Object.keys(this.operations).map(key => this.operations[key].compile()),
       assertions: Object.keys(this.assertions).map(key => this.assertions[key].compile()),
