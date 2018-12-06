@@ -14,6 +14,7 @@ export class Dataform {
   operations: { [name: string]: Operation };
   assertions: { [name: string]: Assertion };
   validationErrors: protos.IValidationError[];
+  compileErrors: protos.ICompileError[];
 
   constructor(projectConfig?: protos.IProjectConfig) {
     this.init(projectConfig);
@@ -25,6 +26,7 @@ export class Dataform {
     this.operations = {};
     this.assertions = {};
     this.validationErrors = [];
+    this.compileErrors = [];
   }
 
   adapter(): adapters.Adapter {
@@ -50,7 +52,7 @@ export class Dataform {
       return this.adapter().resolveTarget((refNode as Materialization).proto.target);
     } else {
       const message = `Could not find reference node (${name}) in nodes [${Object.keys(this.materializations)}]`;
-      this.validationError(this, message);
+      this.validationError(message);
     }
   }
 
@@ -71,7 +73,7 @@ export class Dataform {
     // Check for duplicate names
     if (this.materializations[name]) {
       const message = `Duplicate node name detected, names must be unique across materializations, assertions, and operations: "${name}"`;
-      this.validationError(this, message);
+      this.validationError(message);
     }
 
     const materialization = new Materialization();
@@ -104,11 +106,18 @@ export class Dataform {
     return assertion;
   }
 
-  validationError(obj: protos.ICompiledGraph | Dataform, message: string) {
+  validationError(message: string) {
     const fileName = utils.getCallerFile(Dataform.ROOT_DIR) || __filename;
 
     const validationError = protos.ValidationError.create({ fileName, message });
-    obj.validationErrors.push(validationError);
+    this.validationErrors.push(validationError);
+  }
+
+  compileError(message: string, path: string = null) {
+    const fileName = path || utils.getCallerFile(Dataform.ROOT_DIR) || __filename;
+
+    const compileError = protos.CompileError.create({ fileName, message });
+    this.compileErrors.push(compileError);
   }
 
   compile(): protos.ICompiledGraph {
@@ -117,7 +126,8 @@ export class Dataform {
       materializations: Object.keys(this.materializations).map(key => this.materializations[key].compile()),
       operations: Object.keys(this.operations).map(key => this.operations[key].compile()),
       assertions: Object.keys(this.assertions).map(key => this.assertions[key].compile()),
-      validationErrors: this.validationErrors
+      validationErrors: this.validationErrors,
+      compileErrors: this.compileErrors
     });
 
     // Check there aren't any duplicate names.
@@ -130,7 +140,7 @@ export class Dataform {
         const message = `Duplicate node name detected, names must be unique across materializations, assertions, and operations: "${
           node.name
         }"`;
-        this.validationError(compiledGraph, message);
+        this.validationError(message);
       }
     });
 
@@ -156,7 +166,7 @@ export class Dataform {
           const message = `Missing dependency detected: Node "${
             node.name
           }" depends on "${dependency}" which does not exist.`;
-          this.validationError(compiledGraph, message);
+          this.validationError(message);
         }
       });
     });
@@ -167,7 +177,7 @@ export class Dataform {
         const message = `Circular dependency detected in chain: [${dependents.map(d => d.name).join(" > ")} > ${
           node.name
         }]`;
-        this.validationError(compiledGraph, message);
+        this.validationError(message);
         return true;
       }
       return node.dependencies.some(d => {
