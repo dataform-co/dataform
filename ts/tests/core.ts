@@ -5,8 +5,6 @@ import * as compilers from "@dataform/core/compilers";
 import * as protos from "@dataform/protos";
 import * as path from "path";
 
-
-
 const TEST_CONFIG: protos.IProjectConfig = {
   warehouse: "redshift",
   defaultSchema: "schema"
@@ -128,31 +126,30 @@ describe("@dataform/core", () => {
     });
   });
 
-  const TEST_SQL_FILE = `
-/*js
-var a = 1;
-*/
---js var b = 2;
-/*
-normal_multiline_comment
-*/
--- normal_single_line_comment
-select 1 as test
-`;
-
-  const EXPECTED_JS = `
-var a = 1;
-var b = 2;`.trim();
-
-  const EXPECTED_SQL = `
-/*
-normal_multiline_comment
-*/
--- normal_single_line_comment
-select 1 as test`.trim();
-
   describe("compilers", () => {
     it("extract_blocks", function() {
+      const TEST_SQL_FILE = `
+        /*js
+        var a = 1;
+        */
+        --js var b = 2;
+        /*
+        normal_multiline_comment
+        */
+        -- normal_single_line_comment
+        select 1 as test
+        `;
+      const EXPECTED_JS = `
+        var a = 1;
+        var b = 2;`.trim();
+
+      const EXPECTED_SQL = `
+        /*
+        normal_multiline_comment
+        */
+        -- normal_single_line_comment
+        select 1 as test`.trim();
+
       var { sql, js } = compilers.extractJsBlocks(TEST_SQL_FILE);
       expect(sql).equals(EXPECTED_SQL);
       expect(js).equals(EXPECTED_JS);

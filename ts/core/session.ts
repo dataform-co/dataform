@@ -6,7 +6,6 @@ import { Operation, OContextable } from "./operation";
 import { Assertion, AContextable } from "./assertion";
 
 export class Session {
-
   public rootDir: string;
 
   public config: protos.IProjectConfig;
@@ -116,19 +115,34 @@ export class Session {
     this.validationErrors.push(validationError);
   }
 
-  compileError(message: string, path: string = null) {
+  compileError(message: string, path?: string) {
     const fileName = path || utils.getCallerFile(this.rootDir) || __filename;
 
     const compileError = protos.CompileError.create({ fileName, message });
     this.compileErrors.push(compileError);
   }
 
+  compileGraphChunk(part: { [name: string]: Materialization | Operation | Assertion }): Array<any> {
+    const compiledChunks = [];
+
+    Object.keys(part).forEach(key => {
+      try {
+        const compiledChunk = part[key].compile();
+        compiledChunks.push(compiledChunk);
+      } catch (e) {
+        this.compileError(e.message);
+      }
+    });
+
+    return compiledChunks;
+  }
+
   compile(): protos.ICompiledGraph {
     var compiledGraph = protos.CompiledGraph.create({
       projectConfig: this.config,
-      materializations: Object.keys(this.materializations).map(key => this.materializations[key].compile()),
-      operations: Object.keys(this.operations).map(key => this.operations[key].compile()),
-      assertions: Object.keys(this.assertions).map(key => this.assertions[key].compile()),
+      materializations: this.compileGraphChunk(this.materializations),
+      operations: this.compileGraphChunk(this.operations),
+      assertions: this.compileGraphChunk(this.assertions),
       validationErrors: this.validationErrors,
       compileErrors: this.compileErrors
     });
