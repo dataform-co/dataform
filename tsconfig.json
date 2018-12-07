@@ -4,12 +4,16 @@
     "noImplicitAny": false,
     "outDir": "build",
     "baseUrl": ".",
+    "paths": {
+      "@dataform/*": ["*", "build/*"]
+    },
     "preserveConstEnums": true,
     "removeComments": true,
     "target": "ES6",
-    "sourceMap": true,
+    "inlineSourceMap": true,
     "declaration": true,
-    "experimentalDecorators": true
+    "experimentalDecorators": true,
+    "resolveJsonModule": true
   },
   "exclude": ["node_modules", "build"]
 }

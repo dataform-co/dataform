@@ -1,6 +1,5 @@
 import { expect, assert } from "chai";
-// We depend on the compiled JS instead of the typescript code, as this code runs a forked process.
-import { compile } from "@dataform/api/build/commands/compile";
+import { compile } from "@dataform/api";
 import { query, Builder } from "@dataform/api";
 import * as protos from "@dataform/protos";
 import { throws } from "assert";
@@ -84,7 +83,7 @@ describe("@dataform/api", () => {
 
   describe("compile", () => {
     it("bigquery_example", () => {
-      return compile("ts/examples/bigquery").then(graph => {
+      return compile("examples/bigquery").then(graph => {
         var materializationNames = graph.materializations.map(m => m.name);
 
         // Check JS blocks get processed.
@@ -104,7 +103,7 @@ describe("@dataform/api", () => {
     });
 
     it("redshift_example", () => {
-      return compile("ts/examples/redshift").then(graph => {
+      return compile("examples/redshift").then(graph => {
         var materializationNames = graph.materializations.map(m => m.name);
 
         // Check we can import and use an external package.
@@ -115,7 +114,7 @@ describe("@dataform/api", () => {
     });
 
     it("bigquery_with_errors_example", async () => {
-      const graph = await compile("ts/examples/bigquery_with_errors").catch(error => error);
+      const graph = await compile("examples/bigquery_with_errors").catch(error => error);
 
       expect(graph).to.not.be.an.instanceof(Error);
       expect(graph)
@@ -135,7 +134,7 @@ describe("@dataform/api", () => {
 
   describe("query", () => {
     it("bigquery_example", () => {
-      return query.compile('select 1 as ${describe("test")}', "ts/examples/bigquery").then(compiledQuery => {
+      return query.compile('select 1 as ${describe("test")}', "examples/bigquery").then(compiledQuery => {
         expect(compiledQuery).equals("select 1 as test");
       });
     });

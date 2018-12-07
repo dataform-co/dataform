@@ -1,6 +1,8 @@
 node_modules/
 
-ts/**/build/
+build/
+
+!!build/package.json
 
 ts/protos/index.*
 
@@ -9,3 +11,8 @@ test_profiles/
 lerna-debug.log
 
 .idea/
+
+api/package-lock.json
+cli/package-lock.json
+core/package-lock.json
+protos/package-lock.json

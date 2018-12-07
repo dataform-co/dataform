@@ -1,4 +1,12 @@
 #!/bin/bash
 set -e
 
-npx mocha -r ts-node/register ts/tests/*.ts $@
+./scripts/build
+
+## Run install on the example projects using locally developed packages.
+
+(cd build/examples/bigquery && npm i ../../core ../../crossdb)
+(cd build/examples/redshift && npm i ../../core ../../crossdb)
+(cd build/examples/bigquery_with_errors && npm i ../../core ../../crossdb)
+
+(cd build && npx mocha tests/**/*.js $@)
