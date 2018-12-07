@@ -139,9 +139,7 @@ describe("@dataform/core", () => {
         -- normal_single_line_comment
         select 1 as test
         `;
-      const EXPECTED_JS = `
-        var a = 1;
-        var b = 2;`.trim();
+      const EXPECTED_JS = `var a = 1;\nvar b = 2;`.trim();
 
       const EXPECTED_SQL = `
         /*
