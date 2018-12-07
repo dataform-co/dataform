@@ -3,7 +3,7 @@
     "api",
     "cli",
     "core",
-    "protos",
+    "protos"
   ],
   "version": "0.0.2-alpha.35"
 }
