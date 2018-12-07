@@ -3,6 +3,7 @@ import { expect, assert } from "chai";
 import { compile } from "@dataform/api/build/commands/compile";
 import { query, Builder } from "@dataform/api";
 import * as protos from "@dataform/protos";
+import { throws } from "assert";
 
 describe("@dataform/api", () => {
   describe("build", () => {
@@ -111,6 +112,24 @@ describe("@dataform/api", () => {
         var exampleIncremental = graph.materializations.filter(m => m.name == "example_incremental")[0];
         expect(exampleIncremental.query).equals("select current_timestamp::timestamp as ts");
       });
+    });
+
+    it("bigquery_with_errors_example", async () => {
+      const graph = await compile("ts/examples/bigquery_with_errors").catch(error => error);
+
+      expect(graph).to.not.be.an.instanceof(Error);
+      expect(graph)
+        .to.have.property("compileErrors")
+        .to.be.an("array");
+
+      const errors1 = graph.compileErrors.filter(item => item.message.match(/ref_with_error is not defined/));
+      expect(errors1).to.be.an("array").that.is.not.empty;
+
+      const errors2 = graph.compileErrors.filter(item => item.message.match(/Error in multiline comment/));
+      expect(errors2).to.be.an("array").that.is.not.empty;
+
+      const errors3 = graph.compileErrors.filter(item => item.message.match(/Error in JS/));
+      expect(errors3).to.be.an("array").that.is.not.empty;
     });
   });
 
