@@ -1,11 +1,11 @@
 {
   "name": "@dataform/api",
-  "version": "0.0.2-alpha.35",
+  "version": "0.0.2-test.0",
   "description": "API for running Dataform projects.",
   "main": "index.js",
   "types": "index.d.ts",
   "dependencies": {
-    "@dataform/core": "^0.0.2-alpha.35",
+    "@dataform/core": "^0.0.2-test.0",
     "@google-cloud/bigquery": "^1.3.0",
     "@types/glob": "^7.1.1",
     "glob": "^7.1.3",
