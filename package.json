@@ -11,5 +11,10 @@
     "protobufjs": "^6.8.8",
     "ts-node": "^7.0.1",
     "typescript": "^3.2.1"
+  },
+  "scripts": {
+    "bootstrap": "npx lerna bootstrap",
+    "build": "./scripts/build/cli && ./scripts/build/crossdb",
+    "test": "./scripts/test"
   }
 }
