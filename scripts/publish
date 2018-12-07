@@ -1,6 +1,14 @@
 #!/bin/bash
 set -e
 
-./scripts/build/cli
+# Update to a new version.
 
-npx lerna publish $@
+npx lerna version
+
+# Build the project with the new version.
+
+./scripts/build
+
+# Publish the new built packages.
+
+(cd build && npx lerna publish from-package $@)
