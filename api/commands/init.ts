@@ -3,8 +3,7 @@ import * as fs from "fs";
 import { utils } from "@dataform/core";
 import * as protos from "@dataform/protos";
 import { install } from "./install";
-
-const CURRENT_VERSION = require("../package.json").version;
+import { version } from "../package.json";
 
 export function init(projectDir: string, projectConfig: protos.IProjectConfig) {
   var dataformJsonPath = path.join(projectDir, "dataform.json");
@@ -37,7 +36,7 @@ export function init(projectDir: string, projectConfig: protos.IProjectConfig) {
     JSON.stringify(
       {
         dependencies: {
-          "@dataform/core": CURRENT_VERSION
+          "@dataform/core": version
         }
       },
       null,
