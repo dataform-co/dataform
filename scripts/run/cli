@@ -1,4 +1,0 @@
-#!/bin/bash
-set -e
-
-node ts/cli/build/index.js $@

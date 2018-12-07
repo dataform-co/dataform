@@ -1,8 +1,9 @@
 {
   "packages": [
-    "ts/*",
-    "ts/examples/*",
-    "ts/packages/*"
+    "api",
+    "cli",
+    "core",
+    "protos",
   ],
   "version": "0.0.2-alpha.35"
 }

@@ -229,7 +229,7 @@ export class MaterializationContext {
 
   public apply<T>(value: MContextable<T>): T {
     if (typeof value === "function") {
-      return value(this);
+      return (value as any)(this);
     } else {
       return value;
     }

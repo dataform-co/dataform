@@ -1,5 +1,5 @@
 {
-    "name": "@dataform/example-bigquery",
+    "name": "@dataform/examples-bigquery",
     "version": "0.0.2-alpha.35",
     "description": "Example Dataform project (BigQuery).",
     "dependencies": {

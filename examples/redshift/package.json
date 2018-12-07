@@ -1,5 +1,5 @@
 {
-    "name": "@dataform/example-redshift",
+    "name": "@dataform/examples-redshift",
     "version": "0.0.2-alpha.35",
     "description": "Example Dataform project (Redshift).",
     "dependencies": {
