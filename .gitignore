@@ -1,6 +1,8 @@
 node_modules/
 
-ts/**/build/
+build/
+
+!!build/package.json
 
 ts/protos/index.*
 
