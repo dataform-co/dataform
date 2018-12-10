@@ -19,7 +19,7 @@ npm i
 Compile typescript for all packages:
 
 ```bash
-npm run build
+./scripts/build
 ```
 
 ## Run
@@ -48,10 +48,10 @@ Runs Jekyll locally at http://localhost:4000
 
 ## Run tests
 
-Run mocha tests in `/tests`:
+Run mocha tests in `tests`:
 
 ```bash
-npm test
+./scripts/test
 ```
 
 ## Publish

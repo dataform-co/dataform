@@ -22,6 +22,6 @@
   },
   "scripts": {
     "build": "./scripts/build",
-    "test": "./scripts/clean && ./scripts/test"
+    "test": "./scripts/test"
   }
 }
