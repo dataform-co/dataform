@@ -1,0 +1,14 @@
+{
+  "name": "@dataform/tests",
+  "version": "0.0.2-alpha.35",
+  "description": "Dataform tests.",
+  "dependencies": {
+    "@dataform/cli": "^0.0.2-alpha.35",
+    "@dataform/api": "^0.0.2-alpha.35",
+    "@dataform/core": "^0.0.2-alpha.35",
+    "@dataform/protos": "^0.0.2-alpha.35"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
