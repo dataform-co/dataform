@@ -9,4 +9,4 @@ set -e
 
 ## Run tests.
 
-(cd build && npx mocha tests/**/*.js $@)
+(cd build/tests && npx mocha *.js $@)

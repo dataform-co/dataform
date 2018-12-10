@@ -37,7 +37,7 @@ cp -R examples build/
 
 # Copy over the development build package.json and install local deps.
 
-cp build.package.json build/package.json
+cp package.json build/package.json
 
 (cd build && npm i)
 
