@@ -21,6 +21,16 @@ message Target {
   string name = 2;
 }
 
+message ValidationError {
+  string file_name = 1;
+  string message = 2;
+}
+
+message CompileError {
+  string file_name = 1;
+  string message = 2;
+}
+
 message Materialization {
   string name = 1;
   repeated string dependencies = 2;
@@ -48,6 +58,8 @@ message Materialization {
 
   // Generated.
   string file_name = 18;
+
+  repeated ValidationError validation_errors = 7;
 
   // Deprecated.
   repeated string deprecated_parsed_columns = 12;
@@ -79,6 +91,9 @@ message CompiledGraph {
   repeated Materialization materializations = 1;
   repeated Operation operations = 2;
   repeated Assertion assertions = 3;
+
+  repeated ValidationError validation_errors = 5;
+  repeated CompileError compile_errors = 6;
 }
 
 message ExecutionTask {

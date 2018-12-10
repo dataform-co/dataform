@@ -36,7 +36,7 @@ export function genIndex(projectDir: string, returnOverride?: string): string {
     .map(packageName => {
       return `try { global.${utils.variableNameFriendly(
         packageName
-      )} = require("${packageName}"); } catch (e) { throw Error("Exception in ${packageName}: " + e); }`;
+      )} = require("${packageName}"); } catch (e) { global.session.compileError(e.message, "${packageName}"); }`;
     })
     .join("\n");
 
@@ -44,12 +44,12 @@ export function genIndex(projectDir: string, returnOverride?: string): string {
     .map(path => {
       return `try { global.${utils.baseFilename(
         path
-      )} = require("./${path}"); } catch (e) { throw Error("Exception in ${path}: " + e); }`;
+      )} = require("./${path}"); } catch (e) { global.session.compileError(e.message, "${path}"); }`;
     })
     .join("\n");
   var datasetRequires = datasetPaths
     .map(path => {
-      return `try { require("./${path}"); } catch (e) { throw Error("Exception in ${path}: " + e); }`;
+      return `try { require("./${path}"); } catch (e) { global.session.compileError(e.message, "${path}"); }`;
     })
     .join("\n");
 

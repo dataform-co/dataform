@@ -14,18 +14,12 @@ Install node dev packages:
 npm i
 ```
 
-Install lerna managed packages:
-
-```bash
-npx lerna bootstrap
-```
-
 ## Build
 
 Compile typescript for all packages:
 
 ```bash
-./scripts/build/cli
+npm run build
 ```
 
 ## Run
@@ -33,7 +27,7 @@ Compile typescript for all packages:
 Runs the command line app:
 
 ```bash
-./scripts/run/cli --help
+./scripts/run --help
 ```
 
 ## Compile example project
@@ -41,7 +35,7 @@ Runs the command line app:
 Outputs a compiled JSON graph for one of the example projects:
 
 ```bash
-./scripts/run/cli compile ts/examples/bigquery
+./scripts/run compile examples/bigquery
 ```
 
 ## Serve docs
@@ -54,10 +48,10 @@ Runs Jekyll locally at http://localhost:4000
 
 ## Run tests
 
-Run mocha tests in `ts/tests`:
+Run mocha tests in `/tests`:
 
 ```bash
-./scripts/test
+npm test
 ```
 
 ## Publish

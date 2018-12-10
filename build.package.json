@@ -1,9 +1,0 @@
-{
-  "dependencies": {
-    "@dataform/cli": "./cli",
-    "@dataform/api": "./api",
-    "@dataform/core": "./core",
-    "@dataform/protos": "./protos",
-    "@dataform/crossdb": "./crossdb"
-  }
-}
