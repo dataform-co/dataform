@@ -6,7 +6,6 @@ import { Operation, OContextable } from "./operation";
 import { Assertion, AContextable } from "./assertion";
 
 export class Session {
-
   public rootDir: string;
 
   public config: protos.IProjectConfig;
@@ -14,6 +13,9 @@ export class Session {
   public materializations: { [name: string]: Materialization };
   public operations: { [name: string]: Operation };
   public assertions: { [name: string]: Assertion };
+
+  public validationErrors: protos.IValidationError[];
+  public compileErrors: protos.ICompileError[];
 
   constructor(rootDir: string, projectConfig?: protos.IProjectConfig) {
     this.init(rootDir, projectConfig);
@@ -25,6 +27,8 @@ export class Session {
     this.materializations = {};
     this.operations = {};
     this.assertions = {};
+    this.validationErrors = [];
+    this.compileErrors = [];
   }
 
   adapter(): adapters.Adapter {
@@ -49,7 +53,8 @@ export class Session {
     if (refNode) {
       return this.adapter().resolveTarget((refNode as Materialization).proto.target);
     } else {
-      throw `Could not find reference node (${name}) in nodes [${Object.keys(this.materializations)}]`;
+      const message = `Could not find reference node (${name}) in nodes [${Object.keys(this.materializations)}]`;
+      this.validationError(message);
     }
   }
 
@@ -67,7 +72,13 @@ export class Session {
   }
 
   materialize(name: string, queryOrConfig?: MContextable<string> | MConfig): Materialization {
-    var materialization = new Materialization();
+    // Check for duplicate names
+    if (this.materializations[name]) {
+      const message = `Duplicate node name detected, names must be unique across materializations, assertions, and operations: "${name}"`;
+      this.validationError(message);
+    }
+
+    const materialization = new Materialization();
     materialization.session = this;
     materialization.proto.name = name;
     materialization.proto.target = this.target(name);
@@ -97,12 +108,43 @@ export class Session {
     return assertion;
   }
 
+  validationError(message: string) {
+    const fileName = utils.getCallerFile(this.rootDir) || __filename;
+
+    const validationError = protos.ValidationError.create({ fileName, message });
+    this.validationErrors.push(validationError);
+  }
+
+  compileError(message: string, path?: string) {
+    const fileName = path || utils.getCallerFile(this.rootDir) || __filename;
+
+    const compileError = protos.CompileError.create({ fileName, message });
+    this.compileErrors.push(compileError);
+  }
+
+  compileGraphChunk(part: { [name: string]: Materialization | Operation | Assertion }): Array<any> {
+    const compiledChunks = [];
+
+    Object.keys(part).forEach(key => {
+      try {
+        const compiledChunk = part[key].compile();
+        compiledChunks.push(compiledChunk);
+      } catch (e) {
+        this.compileError(e.message);
+      }
+    });
+
+    return compiledChunks;
+  }
+
   compile(): protos.ICompiledGraph {
     var compiledGraph = protos.CompiledGraph.create({
       projectConfig: this.config,
-      materializations: Object.keys(this.materializations).map(key => this.materializations[key].compile()),
-      operations: Object.keys(this.operations).map(key => this.operations[key].compile()),
-      assertions: Object.keys(this.assertions).map(key => this.assertions[key].compile())
+      materializations: this.compileGraphChunk(this.materializations),
+      operations: this.compileGraphChunk(this.operations),
+      assertions: this.compileGraphChunk(this.assertions),
+      validationErrors: this.validationErrors,
+      compileErrors: this.compileErrors
     });
 
     // Check there aren't any duplicate names.
@@ -112,11 +154,10 @@ export class Session {
     // Check there are no duplicate node names.
     allNodes.forEach(node => {
       if (allNodes.filter(subNode => subNode.name == node.name).length > 1) {
-        throw Error(
-          `Duplicate node name detected, names must be unique across materializations, assertions, and operations: "${
-            node.name
-          }"`
-        );
+        const message = `Duplicate node name detected, names must be unique across materializations, assertions, and operations: "${
+          node.name
+        }"`;
+        this.validationError(message);
       }
     });
 
@@ -139,20 +180,34 @@ export class Session {
     allNodes.forEach(node => {
       node.dependencies.forEach(dependency => {
         if (allNodeNames.indexOf(dependency) < 0) {
-          throw Error(`Missing dependency detected: Node "${node.name}" depends on "${dependency}" which does not exist.`);
+          const message = `Missing dependency detected: Node "${
+            node.name
+          }" depends on "${dependency}" which does not exist.`;
+          this.validationError(message);
         }
       });
     });
+
     // Check for circular dependencies.
-    function checkCircular(node: protos.IExecutionNode, dependents: protos.IExecutionNode[]) {
+    const checkCircular = (node: protos.IExecutionNode, dependents: protos.IExecutionNode[]): boolean => {
       if (dependents.indexOf(node) >= 0) {
-        throw Error(
-          `Circular dependency detected in chain: [${dependents.map(d => d.name).join(" > ")} > ${node.name}]`
-        );
+        const message = `Circular dependency detected in chain: [${dependents.map(d => d.name).join(" > ")} > ${
+          node.name
+        }]`;
+        this.validationError(message);
+        return true;
       }
-      node.dependencies.forEach(d => checkCircular(nodesByName[d], dependents.concat([node])));
+      return node.dependencies.some(d => {
+        return nodesByName[d] && checkCircular(nodesByName[d], dependents.concat([node]));
+      });
+    };
+
+    for (let i = 0; i < allNodes.length; i++) {
+      if (checkCircular(allNodes[i], [])) {
+        break;
+      }
     }
-    allNodes.forEach(node => checkCircular(node, []));
+
     return compiledGraph;
   }
 }
