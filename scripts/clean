@@ -1,0 +1,6 @@
+#!/bin/bash
+set -e
+
+# Delete the build directory.
+
+rm -R build

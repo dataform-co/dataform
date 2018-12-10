@@ -63,15 +63,25 @@ describe("@dataform/core", () => {
 
     it("should_only_use_predefined_types", function() {
       const dfSuccess = new Session(path.dirname(__filename), TEST_CONFIG);
-      dfSuccess.materialize("example1", { type: "table" });
-      dfSuccess.materialize("example2", { type: "view" });
-      dfSuccess.materialize("example3", { type: "incremental" });
-      expect(() => dfSuccess.compile()).to.not.throw();
+      dfSuccess.materialize("exampleSuccess1", { type: "table" });
+      dfSuccess.materialize("exampleSuccess2", { type: "view" });
+      dfSuccess.materialize("exampleSuccess3", { type: "incremental" });
+      const cgSuccess = dfSuccess.compile();
 
-      expect(() => {
-        const dfFail = new Session(path.dirname(__filename), TEST_CONFIG);
-        dfFail.materialize("example", JSON.parse('{"type": "ta ble"}')).compile();
-      }).throws(Error, /Wrong type of materialization/);
+      cgSuccess.materializations.forEach(item => {
+        expect(item)
+          .to.have.property("validationErrors")
+          .to.be.an("array").that.is.empty;
+      });
+
+      const dfFail = new Session(path.dirname(__filename), TEST_CONFIG);
+      const mFail = dfFail.materialize("exampleFail", JSON.parse('{"type": "ta ble"}')).compile();
+      expect(mFail)
+        .to.have.property("validationErrors")
+        .to.be.an("array");
+
+      const errors = mFail.validationErrors.filter(item => item.message.match(/Wrong type of materialization/));
+      expect(errors).to.be.an("array").that.is.not.empty;
     });
   });
 
@@ -80,41 +90,64 @@ describe("@dataform/core", () => {
       var df = new Session(path.dirname(__filename), TEST_CONFIG);
       df.materialize("a").dependencies("b");
       df.materialize("b").dependencies("a");
-      expect(() => df.compile()).throws(Error, /Circular dependency/);
+      const cGraph = df.compile();
+
+      expect(cGraph)
+        .to.have.property("validationErrors")
+        .to.be.an("array");
+      const errors = cGraph.validationErrors.filter(item => item.message.match(/Circular dependency/));
+      expect(errors).to.be.an("array").that.is.not.empty;
     });
 
     it("missing_dependency", () => {
-      var df = new Session(path.dirname(__filename), TEST_CONFIG);
+      const df = new Session(path.dirname(__filename), TEST_CONFIG);
       df.materialize("a").dependencies("b");
-      expect(() => df.compile()).throws(Error, /Missing dependency/);
+      const cGraph = df.compile();
+
+      expect(cGraph)
+        .to.have.property("validationErrors")
+        .to.be.an("array");
+      const errors = cGraph.validationErrors.filter(item => item.message.match(/Missing dependency/));
+      expect(errors).to.be.an("array").that.is.not.empty;
+    });
+
+    it("duplicate_node_names", () => {
+      const df = new Session(path.dirname(__filename), TEST_CONFIG);
+      df.materialize("a").dependencies("b");
+      df.materialize("b");
+      df.materialize("a");
+      const cGraph = df.compile();
+
+      expect(cGraph)
+        .to.have.property("validationErrors")
+        .to.be.an("array");
+      const errors = cGraph.validationErrors.filter(item => item.message.match(/Duplicate node name/));
+      expect(errors).to.be.an("array").that.is.not.empty;
     });
   });
 
-  const TEST_SQL_FILE = `
-/*js
-var a = 1;
-*/
---js var b = 2;
-/*
-normal_multiline_comment
-*/
--- normal_single_line_comment
-select 1 as test
-`;
-
-  const EXPECTED_JS = `
-var a = 1;
-var b = 2;`.trim();
-
-  const EXPECTED_SQL = `
-/*
-normal_multiline_comment
-*/
--- normal_single_line_comment
-select 1 as test`.trim();
-
   describe("compilers", () => {
     it("extract_blocks", function() {
+      const TEST_SQL_FILE = `
+        /*js
+        var a = 1;
+        */
+        --js var b = 2;
+        /*
+        normal_multiline_comment
+        */
+        -- normal_single_line_comment
+        select 1 as test
+        `;
+      const EXPECTED_JS = `var a = 1;\nvar b = 2;`.trim();
+
+      const EXPECTED_SQL = `
+        /*
+        normal_multiline_comment
+        */
+        -- normal_single_line_comment
+        select 1 as test`.trim();
+
       var { sql, js } = compilers.extractJsBlocks(TEST_SQL_FILE);
       expect(sql).equals(EXPECTED_SQL);
       expect(js).equals(EXPECTED_JS);

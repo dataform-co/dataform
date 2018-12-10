@@ -38,17 +38,23 @@ export function matchPatterns(patterns: string[], values: string[]) {
 }
 
 export function getCallerFile(rootDir: string) {
-  var originalFunc = Error.prepareStackTrace;
-  var callerfile;
+  const originalFunc = Error.prepareStackTrace;
+  let callerfile;
+  let lastfile;
+
   try {
-    var err = new Error();
-    var currentfile;
+    const err = new Error();
+    let currentfile;
     Error.prepareStackTrace = function(err, stack) {
       return stack;
     };
+
     currentfile = (err.stack as any).shift().getFileName();
     while (err.stack.length) {
       callerfile = (err.stack as any).shift().getFileName();
+      if (callerfile) {
+        lastfile = callerfile;
+      }
 
       if (
         currentfile !== callerfile &&
@@ -60,5 +66,6 @@ export function getCallerFile(rootDir: string) {
     }
   } catch (e) {}
   Error.prepareStackTrace = originalFunc;
-  return relativePath(callerfile, rootDir);
+
+  return relativePath(callerfile || lastfile, rootDir);
 }

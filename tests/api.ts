@@ -2,6 +2,7 @@ import { expect, assert } from "chai";
 import { compile } from "@dataform/api";
 import { query, Builder } from "@dataform/api";
 import * as protos from "@dataform/protos";
+import { throws } from "assert";
 
 describe("@dataform/api", () => {
   describe("build", () => {
@@ -82,7 +83,7 @@ describe("@dataform/api", () => {
 
   describe("compile", () => {
     it("bigquery_example", () => {
-      return compile("examples/bigquery").then(graph => {
+      return compile("../examples/bigquery").then(graph => {
         var materializationNames = graph.materializations.map(m => m.name);
 
         // Check JS blocks get processed.
@@ -102,7 +103,7 @@ describe("@dataform/api", () => {
     });
 
     it("redshift_example", () => {
-      return compile("examples/redshift").then(graph => {
+      return compile("../examples/redshift").then(graph => {
         var materializationNames = graph.materializations.map(m => m.name);
 
         // Check we can import and use an external package.
@@ -111,11 +112,29 @@ describe("@dataform/api", () => {
         expect(exampleIncremental.query).equals("select current_timestamp::timestamp as ts");
       });
     });
+
+    it("bigquery_with_errors_example", async () => {
+      const graph = await compile("../examples/bigquery_with_errors").catch(error => error);
+
+      expect(graph).to.not.be.an.instanceof(Error);
+      expect(graph)
+        .to.have.property("compileErrors")
+        .to.be.an("array");
+
+      const errors1 = graph.compileErrors.filter(item => item.message.match(/ref_with_error is not defined/));
+      expect(errors1).to.be.an("array").that.is.not.empty;
+
+      const errors2 = graph.compileErrors.filter(item => item.message.match(/Error in multiline comment/));
+      expect(errors2).to.be.an("array").that.is.not.empty;
+
+      const errors3 = graph.compileErrors.filter(item => item.message.match(/Error in JS/));
+      expect(errors3).to.be.an("array").that.is.not.empty;
+    });
   });
 
   describe("query", () => {
     it("bigquery_example", () => {
-      return query.compile('select 1 as ${describe("test")}', "examples/bigquery").then(compiledQuery => {
+      return query.compile('select 1 as ${describe("test")}', "../examples/bigquery").then(compiledQuery => {
         expect(compiledQuery).equals("select 1 as test");
       });
     });

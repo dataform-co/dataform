@@ -3,7 +3,12 @@
     "api",
     "cli",
     "core",
-    "protos"
+    "protos",
+    "crossdb",
+    "examples/bigquery",
+    "examples/bigquery_with_errors",
+    "examples/redshift",
+    "tests"
   ],
-  "version": "0.0.2-test.0"
+  "version": "0.0.2-alpha.35"
 }
