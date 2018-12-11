@@ -1,11 +1,20 @@
 import { Session } from "./index";
 import * as protos from "@dataform/protos";
 
-export const MaterializationTypes = {
-  table: "table",
-  view: "view",
-  incremental: "incremental"
-};
+export enum MaterializationTypes {
+  table = "table",
+  view = "view",
+  incremental = "incremental"
+}
+export enum DistStyleTypes {
+  even = "even",
+  key = "key",
+  all = "all"
+}
+export enum SortStyleTypes {
+  compound = "compound",
+  interleaved = "interleaved"
+}
 
 export type MContextable<T> = T | ((ctx: MaterializationContext) => T);
 export type MaterializationType = keyof typeof MaterializationTypes;
@@ -19,6 +28,7 @@ export interface MConfig {
   dependencies?: string | string[];
   descriptor?: { [key: string]: string };
   disabled?: boolean;
+  redshift?: protos.IRedshift;
 }
 
 export class Materialization {
@@ -36,6 +46,12 @@ export class Materialization {
   private contextableWhere: MContextable<string>;
   private contextablePreOps: MContextable<string | string[]>[] = [];
   private contextablePostOps: MContextable<string | string[]>[] = [];
+
+  private getPredefinedTypes(types) {
+    return Object.keys(types)
+      .map(item => `"${item}"`)
+      .join(" | ");
+  }
 
   public config(config: MConfig) {
     if (config.type) {
@@ -62,6 +78,9 @@ export class Materialization {
     if (config.disabled) {
       this.disabled();
     }
+    if (config.redshift) {
+      this.redshift(config.redshift);
+    }
     return this;
   }
 
@@ -76,11 +95,8 @@ export class Materialization {
     if (MaterializationTypes.hasOwnProperty(type)) {
       this.proto.type = type;
     } else {
-      const predefinedTypes = Object.keys(MaterializationTypes)
-        .map(item => `"${item}"`)
-        .join(" | ");
+      const predefinedTypes = this.getPredefinedTypes(MaterializationTypes);
       const message = `Wrong type of materialization detected. Should only use predefined types: ${predefinedTypes}`;
-
       this.validationError(message);
     }
 
@@ -109,6 +125,24 @@ export class Materialization {
 
   public disabled() {
     this.proto.disabled = true;
+    return this;
+  }
+
+  public redshift(redshift: protos.IRedshift) {
+    if (!(redshift.distStyle in DistStyleTypes)) {
+      const predefinedTypes = this.getPredefinedTypes(DistStyleTypes);
+      const message = `Wrong distStyle of redshift detected. Should only use predefined distStyles: ${predefinedTypes}`;
+      this.validationError(message);
+      return this;
+    }
+    if (!(redshift.sortStyle in SortStyleTypes)) {
+      const predefinedTypes = this.getPredefinedTypes(SortStyleTypes);
+      const message = `Wrong sortStyle of redshift detected. Should only use predefined sortStyles: ${predefinedTypes}`;
+      this.validationError(message);
+      return this;
+    }
+
+    this.proto.redshift = protos.Redshift.create(redshift);
     return this;
   }
 
@@ -185,6 +219,7 @@ export class MaterializationContext {
     this.materialization.config(config);
     return "";
   }
+
   public self(): string {
     return this.materialization.session.adapter().resolveTarget(this.materialization.proto.target);
   }
@@ -216,6 +251,11 @@ export class MaterializationContext {
 
   public disabled() {
     this.materialization.disabled();
+    return "";
+  }
+
+  public redshift(redshift: protos.IRedshift) {
+    this.materialization.redshift(redshift);
     return "";
   }
 

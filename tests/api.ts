@@ -79,6 +79,41 @@ describe("@dataform/api", () => {
         .to.have.property("tasks")
         .to.be.an("array").that.not.is.empty;
     });
+
+    it("redshift_tables", () => {
+      const cg: protos.ICompiledGraph = protos.CompiledGraph.create({
+        projectConfig: { warehouse: "redshift" },
+        materializations: [
+          {
+            name: "redshift_test",
+            target: {
+              schema: "schema",
+              name: "redshift_test"
+            },
+            query: "query",
+            redshift: {
+              distKey: "column1",
+              distStyle: "even",
+              sortKeys: ["column1", "column2"],
+              sortStyle: "compound"
+            }
+          }
+        ]
+      });
+      const expectedSQL =
+        'create table "schema"."redshift_test_temp" diststyle even distkey (column1) compound sortkey (column1, column2) as query';
+
+      const builder = new Builder(cg, {}, TEST_STATE);
+      const executionGraph = builder.build();
+
+      expect(executionGraph.nodes).to.be.an("array").that.is.not.empty;
+      expect(executionGraph.nodes[0])
+        .to.have.property("tasks")
+        .to.be.an("array").that.is.not.empty;
+
+      const statements = executionGraph.nodes[0].tasks.map(item => item.statement);
+      expect(statements).includes(expectedSQL);
+    });
   });
 
   describe("compile", () => {
