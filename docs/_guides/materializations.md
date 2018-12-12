@@ -6,9 +6,9 @@ sub_headers: ["Tables", "Incremental tables"]
 
 A materialization defines a table, or view that will be created in your data warehouse.
 
-To define a new materialization, create a `.sql` file in the `models` directory. The name of the file will be the name of the table created in your data warehouse.
+To define a new materialization, create a `.sql` file in the `definitions` directory. The name of the file will be the name of the table created in your data warehouse.
 
-For example, the file `models/example.sql` with the contents:
+For example, the file `definitions/example.sql` with the contents:
 
 ```js
 select 1 as test

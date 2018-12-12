@@ -27,7 +27,7 @@ module.exports = { PROJECT_NAME, prefixProjectName };
 You can use these functions in your scripts, and they will be automatically made available under the name of the file they where defined in, in this case `utils`:
 
 ```js
-// models/example.sql
+// definitions/example.sql
 select 1 as ${utils.prefixProjectName("test")}
 ```
 

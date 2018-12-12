@@ -5,7 +5,7 @@ title: Operations
 
 An `operation` defines a set of SQL commands that will be executed in order against your warehouse, and can be used for arbitrary operations that don't necessarily create materializations or tests.
 
-To define a new operation, create a `.ops.sql` file in the `models` directory.
+To define a new operation, create a `.ops.sql` file in the `definitions` directory.
 
 For example, the following file defines two queries that will be run in order and executes vacuum commands in `Redshift`:
 ```js

@@ -7,7 +7,7 @@ Generally the easiest way to define [materializations](/guides/materializations)
 
 For advanced use cases, all of the above can be defined via Dataform's a JavaScript API.
 
-To use the JS API, create a `.js` file anywhere in the `models/` folder of your project.
+To use the JS API, create a `.js` file anywhere in the `definitions/` folder of your project.
 
 The JS API provides three primary functions that correspond to the types of objects above:
 - [`materialize()`](/reference/js-api/#materialize)
