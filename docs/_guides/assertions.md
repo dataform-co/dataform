@@ -5,7 +5,7 @@ title: Assertions
 
 An `assertion` is a query that should return 0 rows, and can be used to check the state of your materializations as part of your pipelines.
 
-To define a new assertion, create a `.assert.sql` file in the `models` directory.
+To define a new assertion, create a `.assert.sql` file in the `definitions` directory.
 
 ## Example
 

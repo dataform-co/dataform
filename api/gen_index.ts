@@ -25,10 +25,16 @@ export function genIndex(projectDir: string, returnOverride?: string): string {
     }
   });
 
-  var datasetPaths = [];
+  var definitionPaths = [];
+  glob.sync("definitions/**/*.{js,sql}", { cwd: projectDir }).forEach(path => {
+    if (definitionPaths.indexOf(path) < 0) {
+      definitionPaths.push(path);
+    }
+  });
+  // Support projects that don't use the new project structure.
   glob.sync("models/**/*.{js,sql}", { cwd: projectDir }).forEach(path => {
-    if (datasetPaths.indexOf(path) < 0) {
-      datasetPaths.push(path);
+    if (definitionPaths.indexOf(path) < 0) {
+      definitionPaths.push(path);
     }
   });
 
@@ -47,7 +53,7 @@ export function genIndex(projectDir: string, returnOverride?: string): string {
       )} = require("./${path}"); } catch (e) { global.session.compileError(e.message, "${path}"); }`;
     })
     .join("\n");
-  var datasetRequires = datasetPaths
+  var definitionRequires = definitionPaths
     .map(path => {
       return `try { require("./${path}"); } catch (e) { global.session.compileError(e.message, "${path}"); }`;
     })
@@ -58,6 +64,6 @@ export function genIndex(projectDir: string, returnOverride?: string): string {
     ${packageRequires}
     ${includeRequires}
     init("${projectDir}", require("./dataform.json"));
-    ${datasetRequires}
+    ${definitionRequires}
     return ${returnOverride || "compile()"};`;
 }

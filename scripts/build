@@ -39,8 +39,6 @@ cp -R examples build/
 
 cp package.json build/package.json
 
-(cd build && npm i)
-
 # Copy over the lerna.json file.
 
 cp lerna.json build/

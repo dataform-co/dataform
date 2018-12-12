@@ -39,7 +39,7 @@ The default project structure is as follows:
           <div class="bp3-tree-node-content">
             <span class="bp3-tree-node-caret bp3-tree-node-caret-open bp3-icon-standard"></span>
             <span class="bp3-tree-node-icon bp3-icon-standard bp3-icon-folder-close"></span>
-            <span class="bp3-tree-node-label">models</span>
+            <span class="bp3-tree-node-label">definitions</span>
           </div>
         </li>
         <li class="bp3-tree-node">
@@ -70,9 +70,9 @@ The default project structure is as follows:
 
 ## Define a materialization
 
-The `models/` directory contains files that define [materializations](/materializations), [assertions](/assertions), and [operations](/operations).
+The `definitions/` directory contains files that define [materializations](/materializations), [assertions](/assertions), and [operations](/operations).
 
-To create a new materialization, create a new file such as `models/simplemodel.sql` with the following contents:
+To create a new materialization, create a new file such as `definitions/simplemodel.sql` with the following contents:
 
 ```sql
 select 1 as test
@@ -102,7 +102,7 @@ You should see output along the lines of:
       "parsedColumns": [
         "test"
       ],
-      "fileName": "models/simplemodel.sql"
+      "fileName": "definitions/simplemodel.sql"
     }
   ]
 }
