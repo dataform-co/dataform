@@ -72,11 +72,16 @@ export class RedshiftAdapter implements Adapter {
 
   createTable(m: protos.IMaterialization, tempTableTarget) {
     if (m.redshift) {
-      const prefix = `create table ${this.resolveTarget(tempTableTarget)}`;
-      const distPart = `diststyle ${m.redshift.distStyle} distkey (${m.redshift.distKey})`;
-      const sortPart = `${m.redshift.sortStyle} sortkey (${m.redshift.sortKeys.join(", ")})`;
+      let query = `create table ${this.resolveTarget(tempTableTarget)}`;
 
-      return `${prefix} ${distPart} ${sortPart} as ${m.query}`;
+      if (m.redshift.distStyle && m.redshift.distKey) {
+        query = `${query} diststyle ${m.redshift.distStyle} distkey (${m.redshift.distKey})`;
+      }
+      if (m.redshift.sortStyle && m.redshift.sortKeys) {
+        query = `${query} ${m.redshift.sortStyle} sortkey (${m.redshift.sortKeys.join(", ")})`;
+      }
+
+      return `${query} as ${m.query}`;
     }
 
     return `create table ${this.resolveTarget(tempTableTarget)} as ${m.query}`;

@@ -79,16 +79,18 @@ describe("@dataform/api", () => {
         .to.have.property("tasks")
         .to.be.an("array").that.not.is.empty;
     });
+  });
 
-    it("redshift_tables", () => {
-      const cg: protos.ICompiledGraph = protos.CompiledGraph.create({
+  describe("sql_generating", () => {
+    it("redshift_create", () => {
+      const testGraph: protos.ICompiledGraph = protos.CompiledGraph.create({
         projectConfig: { warehouse: "redshift" },
         materializations: [
           {
-            name: "redshift_test",
+            name: "redshift_all",
             target: {
               schema: "schema",
-              name: "redshift_test"
+              name: "redshift_all"
             },
             query: "query",
             redshift: {
@@ -97,22 +99,55 @@ describe("@dataform/api", () => {
               sortKeys: ["column1", "column2"],
               sortStyle: "compound"
             }
+          },
+          {
+            name: "redshift_only_sort",
+            target: {
+              schema: "schema",
+              name: "redshift_only_sort"
+            },
+            query: "query",
+            redshift: {
+              sortKeys: ["column1"],
+              sortStyle: "interleaved"
+            }
+          },
+          {
+            name: "redshift_only_dist",
+            target: {
+              schema: "schema",
+              name: "redshift_only_dist"
+            },
+            query: "query",
+            redshift: {
+              distKey: "column1",
+              distStyle: "even"
+            }
           }
         ]
       });
-      const expectedSQL =
-        'create table "schema"."redshift_test_temp" diststyle even distkey (column1) compound sortkey (column1, column2) as query';
+      const testState = protos.WarehouseState.create({ tables: [] });
+      const expectedSQL = [
+        'create table "schema"."redshift_all_temp" diststyle even distkey (column1) compound sortkey (column1, column2) as query',
+        'create table "schema"."redshift_only_sort_temp" interleaved sortkey (column1) as query',
+        'create table "schema"."redshift_only_dist_temp" diststyle even distkey (column1) as query'
+      ];
 
-      const builder = new Builder(cg, {}, TEST_STATE);
+      const builder = new Builder(testGraph, {}, testState);
       const executionGraph = builder.build();
 
-      expect(executionGraph.nodes).to.be.an("array").that.is.not.empty;
-      expect(executionGraph.nodes[0])
-        .to.have.property("tasks")
-        .to.be.an("array").that.is.not.empty;
+      expect(executionGraph.nodes)
+        .to.be.an("array")
+        .to.have.lengthOf(3);
 
-      const statements = executionGraph.nodes[0].tasks.map(item => item.statement);
-      expect(statements).includes(expectedSQL);
+      executionGraph.nodes.forEach((node, index) => {
+        expect(node)
+          .to.have.property("tasks")
+          .to.be.an("array").that.is.not.empty;
+
+        const statements = node.tasks.map(item => item.statement);
+        expect(statements).includes(expectedSQL[index]);
+      });
     });
   });
 

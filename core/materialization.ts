@@ -53,6 +53,29 @@ export class Materialization {
       .join(" | ");
   }
 
+  private isValidProps(props: { [x: string]: string | string[] }, types: { [x: string]: any }) {
+    const propsValid = Object.keys(props).every(key => {
+      if (!props[key] || !props[key].length) {
+        const message = `Property "${key}" is not defined`;
+        this.validationError(message);
+        return false;
+      }
+      return true;
+    });
+
+    const typesValid = Object.keys(types).every(type => {
+      if (!(props[type] in types[type])) {
+        const predefinedValues = this.getPredefinedTypes(types[type]);
+        const message = `Wrong value of "${type}" property. Should only use predefined values: ${predefinedValues}`;
+        this.validationError(message);
+        return false;
+      }
+      return true;
+    });
+
+    return propsValid && typesValid;
+  }
+
   public config(config: MConfig) {
     if (config.type) {
       this.type(config.type);
@@ -92,7 +115,7 @@ export class Materialization {
   }
 
   public type(type: MaterializationType) {
-    if (MaterializationTypes.hasOwnProperty(type)) {
+    if (type in MaterializationTypes) {
       this.proto.type = type;
     } else {
       const predefinedTypes = this.getPredefinedTypes(MaterializationTypes);
@@ -129,17 +152,22 @@ export class Materialization {
   }
 
   public redshift(redshift: protos.IRedshift) {
-    if (!(redshift.distStyle in DistStyleTypes)) {
-      const predefinedTypes = this.getPredefinedTypes(DistStyleTypes);
-      const message = `Wrong distStyle of redshift detected. Should only use predefined distStyles: ${predefinedTypes}`;
+    if (Object.keys(redshift).length === 0) {
+      const message = `Missing properties in redshift config`;
       this.validationError(message);
       return this;
     }
-    if (!(redshift.sortStyle in SortStyleTypes)) {
-      const predefinedTypes = this.getPredefinedTypes(SortStyleTypes);
-      const message = `Wrong sortStyle of redshift detected. Should only use predefined sortStyles: ${predefinedTypes}`;
-      this.validationError(message);
-      return this;
+    if (redshift.distStyle || redshift.distKey) {
+      const props = { distStyle: redshift.distStyle, distKey: redshift.distKey };
+      if (!this.isValidProps(props, { distStyle: DistStyleTypes })) {
+        return this;
+      }
+    }
+    if (redshift.sortStyle || redshift.sortKeys) {
+      const props = { sortStyle: redshift.sortStyle, sortKeys: redshift.sortKeys };
+      if (!this.isValidProps(props, { sortStyle: SortStyleTypes })) {
+        return this;
+      }
     }
 
     this.proto.redshift = protos.Redshift.create(redshift);

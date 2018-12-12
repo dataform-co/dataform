@@ -61,7 +61,7 @@ describe("@dataform/core", () => {
       expect(m.postOps).deep.equals(["post_op"]);
     });
 
-    it("should_only_use_predefined_types", function() {
+    it("validation_type", function() {
       const dfSuccess = new Session(path.dirname(__filename), TEST_CONFIG);
       dfSuccess.materialize("exampleSuccess1", { type: "table" });
       dfSuccess.materialize("exampleSuccess2", { type: "view" });
@@ -82,6 +82,120 @@ describe("@dataform/core", () => {
 
       const errors = mFail.validationErrors.filter(item => item.message.match(/Wrong type of materialization/));
       expect(errors).to.be.an("array").that.is.not.empty;
+    });
+
+    it("validation_redshift_success", function() {
+      const session = new Session(path.dirname(__filename), TEST_CONFIG);
+      session.materialize("example_without_dist", {
+        redshift: {
+          sortKeys: ["column1", "column2"],
+          sortStyle: "compound"
+        }
+      });
+      session.materialize("example_without_sort", {
+        redshift: {
+          distKey: "column1",
+          distStyle: "even"
+        }
+      });
+
+      const graph = session.compile();
+
+      expect(graph)
+        .to.have.property("materializations")
+        .to.be.an("array")
+        .to.have.lengthOf(2);
+
+      graph.materializations.forEach((item, index) => {
+        expect(item)
+          .to.have.property("validationErrors")
+          .to.be.an("array").that.is.empty;
+      });
+    });
+
+    it("validation_redshift_fail", function() {
+      const session = new Session(path.dirname(__filename), TEST_CONFIG);
+      session.materialize("example_absent_distKey", {
+        redshift: {
+          distStyle: "even",
+          sortKeys: ["column1", "column2"],
+          sortStyle: "compound"
+        }
+      });
+      session.materialize("example_absent_distStyle", {
+        redshift: {
+          distKey: "column1",
+          sortKeys: ["column1", "column2"],
+          sortStyle: "compound"
+        }
+      });
+      session.materialize("example_wrong_distStyle", {
+        redshift: {
+          distKey: "column1",
+          distStyle: "wrong_even",
+          sortKeys: ["column1", "column2"],
+          sortStyle: "compound"
+        }
+      });
+      session.materialize("example_absent_sortKeys", {
+        redshift: {
+          distKey: "column1",
+          distStyle: "even",
+          sortStyle: "compound"
+        }
+      });
+      session.materialize("example_empty_sortKeys", {
+        redshift: {
+          distKey: "column1",
+          distStyle: "even",
+          sortKeys: [],
+          sortStyle: "compound"
+        }
+      });
+      session.materialize("example_absent_sortStyle", {
+        redshift: {
+          distKey: "column1",
+          distStyle: "even",
+          sortKeys: ["column1", "column2"]
+        }
+      });
+      session.materialize("example_wrong_sortStyle", {
+        redshift: {
+          distKey: "column1",
+          distStyle: "even",
+          sortKeys: ["column1", "column2"],
+          sortStyle: "wrong_sortStyle"
+        }
+      });
+      session.materialize("example_empty_redshift", {
+        redshift: {}
+      });
+
+      const graph = session.compile();
+      const expectedMessages = [
+        /Property "distKey" is not defined/,
+        /Property "distStyle" is not defined/,
+        /Wrong value of "distStyle" property/,
+        /Property "sortKeys" is not defined/,
+        /Property "sortKeys" is not defined/,
+        /Property "sortStyle" is not defined/,
+        /Wrong value of "sortStyle" property/,
+        /Missing properties in redshift config/
+      ];
+
+      expect(graph)
+        .to.have.property("materializations")
+        .to.be.an("array")
+        .to.have.lengthOf(8);
+
+      graph.materializations.forEach((item, index) => {
+        expect(item)
+          .to.have.property("validationErrors")
+          .to.be.an("array");
+
+        const errors = item.validationErrors.filter(item => item.message.match(expectedMessages[index]));
+        expect(errors).to.be.an("array").that.is.not.empty;
+      });
     });
   });
 
