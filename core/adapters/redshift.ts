@@ -56,21 +56,35 @@ export class RedshiftAdapter implements Adapter {
         as ${m.query}`)
       );
     } else {
-      var tempTableTarget = protos.Target.create({
+      const tempTableTarget = protos.Target.create({
         schema: m.target.schema,
         name: m.target.name + "_temp"
       });
-      var tasks = Tasks.create();
+
+      const tasks = Tasks.create();
       tasks.add(Task.statement(this.dropIfExists(tempTableTarget, this.baseTableType(m.type))));
-      tasks.add(
-        Task.statement(`
-        create table ${this.resolveTarget(tempTableTarget)}
-        as ${m.query}`)
-      );
+      tasks.add(Task.statement(this.createTable(m, tempTableTarget)));
       tasks.add(Task.statement(this.dropIfExists(m.target, "table")));
       tasks.add(Task.statement(`alter table ${this.resolveTarget(tempTableTarget)} rename to "${m.target.name}"`));
       return tasks;
     }
+  }
+
+  createTable(m: protos.IMaterialization, tempTableTarget) {
+    if (m.redshift) {
+      let query = `create table ${this.resolveTarget(tempTableTarget)}`;
+
+      if (m.redshift.distStyle && m.redshift.distKey) {
+        query = `${query} diststyle ${m.redshift.distStyle} distkey (${m.redshift.distKey})`;
+      }
+      if (m.redshift.sortStyle && m.redshift.sortKeys) {
+        query = `${query} ${m.redshift.sortStyle} sortkey (${m.redshift.sortKeys.join(", ")})`;
+      }
+
+      return `${query} as ${m.query}`;
+    }
+
+    return `create table ${this.resolveTarget(tempTableTarget)} as ${m.query}`;
   }
 
   insertInto(target: protos.ITarget, columns: string[], query: string) {

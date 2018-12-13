@@ -81,6 +81,95 @@ describe("@dataform/api", () => {
     });
   });
 
+  describe("sql_generating", () => {
+    it("redshift_create", () => {
+      const testGraph: protos.ICompiledGraph = protos.CompiledGraph.create({
+        projectConfig: { warehouse: "redshift" },
+        materializations: [
+          {
+            name: "redshift_all",
+            target: {
+              schema: "schema",
+              name: "redshift_all"
+            },
+            query: "query",
+            redshift: {
+              distKey: "column1",
+              distStyle: "even",
+              sortKeys: ["column1", "column2"],
+              sortStyle: "compound"
+            }
+          },
+          {
+            name: "redshift_only_sort",
+            target: {
+              schema: "schema",
+              name: "redshift_only_sort"
+            },
+            query: "query",
+            redshift: {
+              sortKeys: ["column1"],
+              sortStyle: "interleaved"
+            }
+          },
+          {
+            name: "redshift_only_dist",
+            target: {
+              schema: "schema",
+              name: "redshift_only_dist"
+            },
+            query: "query",
+            redshift: {
+              distKey: "column1",
+              distStyle: "even"
+            }
+          },
+          {
+            name: "redshift_empty_redshift",
+            target: {
+              schema: "schema",
+              name: "redshift_empty_redshift"
+            },
+            query: "query",
+            redshift: {}
+          },
+          {
+            name: "redshift_without_redshift",
+            target: {
+              schema: "schema",
+              name: "redshift_without_redshift"
+            },
+            query: "query"
+          }
+        ]
+      });
+      const testState = protos.WarehouseState.create({});
+      const expectedSQL = [
+        'create table "schema"."redshift_all_temp" diststyle even distkey (column1) compound sortkey (column1, column2) as query',
+        'create table "schema"."redshift_only_sort_temp" interleaved sortkey (column1) as query',
+        'create table "schema"."redshift_only_dist_temp" diststyle even distkey (column1) as query',
+        'create table "schema"."redshift_empty_redshift_temp" as query',
+        'create table "schema"."redshift_without_redshift_temp" as query'
+      ];
+
+      const builder = new Builder(testGraph, {}, testState);
+      const executionGraph = builder.build();
+
+      expect(executionGraph.nodes)
+        .to.be.an("array")
+        .to.have.lengthOf(5);
+
+      executionGraph.nodes.forEach((node, index) => {
+        expect(node)
+          .to.have.property("tasks")
+          .to.be.an("array").that.is.not.empty;
+
+        const statements = node.tasks.map(item => item.statement);
+        expect(statements).includes(expectedSQL[index]);
+      });
+    });
+  });
+
   describe("compile", () => {
     it("bigquery_example", () => {
       return compile("../examples/bigquery").then(graph => {
