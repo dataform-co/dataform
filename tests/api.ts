@@ -123,14 +123,33 @@ describe("@dataform/api", () => {
               distKey: "column1",
               distStyle: "even"
             }
+          },
+          {
+            name: "redshift_empty_redshift",
+            target: {
+              schema: "schema",
+              name: "redshift_empty_redshift"
+            },
+            query: "query",
+            redshift: {}
+          },
+          {
+            name: "redshift_without_redshift",
+            target: {
+              schema: "schema",
+              name: "redshift_without_redshift"
+            },
+            query: "query"
           }
         ]
       });
-      const testState = protos.WarehouseState.create({ tables: [] });
+      const testState = protos.WarehouseState.create({});
       const expectedSQL = [
         'create table "schema"."redshift_all_temp" diststyle even distkey (column1) compound sortkey (column1, column2) as query',
         'create table "schema"."redshift_only_sort_temp" interleaved sortkey (column1) as query',
-        'create table "schema"."redshift_only_dist_temp" diststyle even distkey (column1) as query'
+        'create table "schema"."redshift_only_dist_temp" diststyle even distkey (column1) as query',
+        'create table "schema"."redshift_empty_redshift_temp" as query',
+        'create table "schema"."redshift_without_redshift_temp" as query'
       ];
 
       const builder = new Builder(testGraph, {}, testState);
@@ -138,7 +157,7 @@ describe("@dataform/api", () => {
 
       expect(executionGraph.nodes)
         .to.be.an("array")
-        .to.have.lengthOf(3);
+        .to.have.lengthOf(5);
 
       executionGraph.nodes.forEach((node, index) => {
         expect(node)

@@ -10,6 +10,7 @@
     "preserveConstEnums": true,
     "removeComments": true,
     "target": "ES6",
+    "lib": ["es2017"],
     "inlineSourceMap": true,
     "declaration": true,
     "experimentalDecorators": true,

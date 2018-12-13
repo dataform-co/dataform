@@ -2,22 +2,23 @@ import { Session } from "./index";
 import * as protos from "@dataform/protos";
 
 export enum MaterializationTypes {
-  table = "table",
-  view = "view",
-  incremental = "incremental"
+  TABLE = "table",
+  VIEW = "view",
+  INCREMENTAL = "incremental"
 }
 export enum DistStyleTypes {
-  even = "even",
-  key = "key",
-  all = "all"
+  EVEN = "even",
+  KEY = "key",
+  ALL = "all"
 }
 export enum SortStyleTypes {
-  compound = "compound",
-  interleaved = "interleaved"
+  COMPOUND = "compound",
+  INTERLEAVED = "interleaved"
 }
 
+type ValueOf<T> = T[keyof T];
 export type MContextable<T> = T | ((ctx: MaterializationContext) => T);
-export type MaterializationType = keyof typeof MaterializationTypes;
+export type MaterializationType = ValueOf<MaterializationTypes>;
 
 export interface MConfig {
   type?: MaterializationType;
@@ -48,7 +49,7 @@ export class Materialization {
   private contextablePostOps: MContextable<string | string[]>[] = [];
 
   private getPredefinedTypes(types) {
-    return Object.keys(types)
+    return Object.values(types)
       .map(item => `"${item}"`)
       .join(" | ");
   }
@@ -64,7 +65,7 @@ export class Materialization {
     });
 
     const typesValid = Object.keys(types).every(type => {
-      if (!(props[type] in types[type])) {
+      if (!Object.values(types[type]).includes(props[type])) {
         const predefinedValues = this.getPredefinedTypes(types[type]);
         const message = `Wrong value of "${type}" property. Should only use predefined values: ${predefinedValues}`;
         this.validationError(message);
@@ -115,8 +116,8 @@ export class Materialization {
   }
 
   public type(type: MaterializationType) {
-    if (type in MaterializationTypes) {
-      this.proto.type = type;
+    if (Object.values(MaterializationTypes).includes(type)) {
+      this.proto.type = type as string;
     } else {
       const predefinedTypes = this.getPredefinedTypes(MaterializationTypes);
       const message = `Wrong type of materialization detected. Should only use predefined types: ${predefinedTypes}`;
