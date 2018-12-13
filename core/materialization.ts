@@ -49,8 +49,8 @@ export class Materialization {
   private contextablePostOps: MContextable<string | string[]>[] = [];
 
   private getPredefinedTypes(types) {
-    return Object.values(types)
-      .map(item => `"${item}"`)
+    return Object.keys(types)
+      .map(key => `"${types[key]}"`)
       .join(" | ");
   }
 
@@ -65,8 +65,9 @@ export class Materialization {
     });
 
     const typesValid = Object.keys(types).every(type => {
-      if (!Object.values(types[type]).includes(props[type])) {
-        const predefinedValues = this.getPredefinedTypes(types[type]);
+      const currentEnum = types[type];
+      if (Object.keys(currentEnum).map(key => currentEnum[key]).indexOf(props[type]) === -1) {
+        const predefinedValues = this.getPredefinedTypes(currentEnum);
         const message = `Wrong value of "${type}" property. Should only use predefined values: ${predefinedValues}`;
         this.validationError(message);
         return false;
@@ -116,7 +117,7 @@ export class Materialization {
   }
 
   public type(type: MaterializationType) {
-    if (Object.values(MaterializationTypes).includes(type)) {
+    if (Object.keys(MaterializationTypes).map(key => MaterializationTypes[key]).indexOf(type) !== -1) {
       this.proto.type = type as string;
     } else {
       const predefinedTypes = this.getPredefinedTypes(MaterializationTypes);
