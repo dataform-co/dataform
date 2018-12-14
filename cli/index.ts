@@ -2,6 +2,7 @@
 import * as fs from "fs";
 import * as yargs from "yargs";
 import * as path from "path";
+import * as chokidar from "chokidar";
 import * as protos from "@dataform/protos";
 import { init, compile, build, run, table, query } from "@dataform/api";
 
@@ -29,6 +30,14 @@ const parseBuildArgs = (argv: yargs.Arguments): protos.IRunConfig => ({
   nodes: argv["nodes"],
   includeDependencies: argv["include-deps"]
 });
+
+const compileProject = (projectDir: string) => {
+  return compile(projectDir)
+    .then(graph => console.log(JSON.stringify(graph, null, 4)))
+    .catch(e => console.log(e));
+};
+
+const RECOMPILE_DELAY = 2000;
 
 yargs
   .command(
@@ -58,14 +67,61 @@ yargs
     "compile [project-dir]",
     "Compile the dataform project. Produces JSON output describing the non-executable graph.",
     yargs =>
-      yargs.positional("project-dir", {
-        describe: "The directory of the Dataform project.",
-        default: "."
-      }),
+      yargs
+        .positional("project-dir", {
+          describe: "The directory of the Dataform project.",
+          default: "."
+        })
+        .option("watch", {
+          describe: "Watch the changes in the project directory."
+        }),
     argv => {
-      compile(path.resolve(argv["project-dir"]))
-        .then(graph => console.log(JSON.stringify(graph, null, 4)))
-        .catch(e => console.log(e));
+      const projectDir = path.resolve(argv["project-dir"]);
+
+      compileProject(projectDir)
+        .then(() => {
+          if (argv["watch"]) {
+            let timeoutID = null;
+            let isCompiling = false;
+
+            // Initialize watcher.
+            const watcher = chokidar.watch(projectDir, {
+              ignored: /node_modules/,
+              persistent: true,
+              ignoreInitial: true,
+              awaitWriteFinish: {
+                stabilityThreshold: 1000,
+                pollInterval: 200
+              }
+            });
+
+            // Add event listeners.
+            watcher
+              .on('ready', () => console.log('Watcher ready for changes...'))
+              .on('error', error => console.error(`Watcher error: ${error}`))
+              .on('all', () => {
+                if (timeoutID || isCompiling) {
+                  // don't recompile many times if we changed a lot of files
+                  clearTimeout(timeoutID);
+                } else {
+                  console.log('Watcher recompile project...');
+                }
+
+                timeoutID = setTimeout(() => {
+                  clearTimeout(timeoutID);
+
+                  if (!isCompiling) {
+                    // recompile project
+                    isCompiling = true;
+                    compileProject(projectDir).then(() => {
+                      console.log('Watcher ready for changes...');
+                      isCompiling = false;
+                    });
+                  }
+                }, RECOMPILE_DELAY);
+              });
+          }
+        });
     }
   )
   .command(
