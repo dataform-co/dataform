@@ -61,11 +61,45 @@ describe("@dataform/core", () => {
       expect(m.postOps).deep.equals(["post_op"]);
     });
 
+    it("validation_type_incremental", function() {
+      const sessionSuccess = new Session(path.dirname(__filename), TEST_CONFIG);
+      sessionSuccess.materialize("exampleSuccess1", { type: "incremental", where: "test1" });
+      sessionSuccess.materialize(
+        "exampleSuccess2",
+        ctx => `
+        ${ctx.where("test2")}
+        ${ctx.type("incremental")}
+      `
+      );
+      const cgSuccess = sessionSuccess.compile();
+
+      cgSuccess.materializations.forEach(item => {
+        expect(item)
+          .to.have.property("validationErrors")
+          .to.be.an("array").that.is.empty;
+      });
+
+      const sessionFail = new Session(path.dirname(__filename), TEST_CONFIG);
+      sessionFail.materialize("exampleFail1", { type: "incremental" });
+      sessionFail.materialize("exampleFail2", { type: "incremental", where: "" });
+      sessionFail.materialize("exampleFail3", ctx => `${ctx.type("incremental")}`);
+      const cgFail = sessionFail.compile();
+
+      cgFail.materializations.forEach(item => {
+        expect(item)
+          .to.have.property("validationErrors")
+          .to.be.an("array");
+
+        const errors = item.validationErrors.filter(item => item.message.match(/"where" property is not defined/));
+        expect(errors).to.be.an("array").that.is.not.empty;
+      });
+    });
+
     it("validation_type", function() {
       const dfSuccess = new Session(path.dirname(__filename), TEST_CONFIG);
       dfSuccess.materialize("exampleSuccess1", { type: "table" });
       dfSuccess.materialize("exampleSuccess2", { type: "view" });
-      dfSuccess.materialize("exampleSuccess3", { type: "incremental" });
+      dfSuccess.materialize("exampleSuccess3", { type: "incremental", where: "test" });
       const cgSuccess = dfSuccess.compile();
 
       cgSuccess.materializations.forEach(item => {

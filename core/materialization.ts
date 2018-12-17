@@ -66,7 +66,11 @@ export class Materialization {
 
     const typesValid = Object.keys(types).every(type => {
       const currentEnum = types[type];
-      if (Object.keys(currentEnum).map(key => currentEnum[key]).indexOf(props[type]) === -1) {
+      if (
+        Object.keys(currentEnum)
+          .map(key => currentEnum[key])
+          .indexOf(props[type]) === -1
+      ) {
         const predefinedValues = this.getPredefinedTypes(currentEnum);
         const message = `Wrong value of "${type}" property. Should only use predefined values: ${predefinedValues}`;
         this.validationError(message);
@@ -79,14 +83,14 @@ export class Materialization {
   }
 
   public config(config: MConfig) {
+    if (config.where) {
+      this.where(config.where);
+    }
     if (config.type) {
       this.type(config.type);
     }
     if (config.query) {
       this.query(config.query);
-    }
-    if (config.where) {
-      this.where(config.where);
     }
     if (config.preOps) {
       this.preOps(config.preOps);
@@ -117,14 +121,22 @@ export class Materialization {
   }
 
   public type(type: MaterializationType) {
-    if (Object.keys(MaterializationTypes).map(key => MaterializationTypes[key]).indexOf(type) !== -1) {
-      this.proto.type = type as string;
-    } else {
+    if (
+      Object.keys(MaterializationTypes)
+        .map(key => MaterializationTypes[key])
+        .indexOf(type) === -1
+    ) {
       const predefinedTypes = this.getPredefinedTypes(MaterializationTypes);
       const message = `Wrong type of materialization detected. Should only use predefined types: ${predefinedTypes}`;
       this.validationError(message);
+      return this;
+    } else if (type === MaterializationTypes.INCREMENTAL && !this.contextableWhere) {
+      const message = `"where" property is not defined. With the type “incremental” you must first specify the property “where”!`;
+      this.validationError(message);
+      return this;
     }
 
+    this.proto.type = type as string;
     return this;
   }
 
