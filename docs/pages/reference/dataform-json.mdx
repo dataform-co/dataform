@@ -1,0 +1,18 @@
+import Documentation from "../../_documentation";
+import Struct from "../../components/struct";
+import { structs } from "../../_structs";
+
+export default ({children}) => <Documentation title="dataform.json reference">{children}</Documentation>;
+
+<Struct {...structs.dataformJson} />
+
+## Example
+
+```json
+{
+  "warehouse": "bigquery",
+  "defaultSchema": "dataform",
+  "assertionsSchema": "dataform_assertions",
+  "gcloudProjectId": "my-project-id"
+}
+```

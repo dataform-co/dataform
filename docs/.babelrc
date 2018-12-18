@@ -1,0 +1,11 @@
+{
+  "presets": ["next/babel", ["@zeit/next-typescript/babel", { "extensions": [".ts", ".tsx", ".md", ".mdx"] }]],
+  "plugins": [
+    [
+      "module-resolver",
+      {
+        "root": ["./"],
+      }
+    ]
+  ]
+}

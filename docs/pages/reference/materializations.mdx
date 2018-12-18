@@ -1,0 +1,35 @@
+import Documentation from "../../_documentation";
+import Method from "../../components/method";
+import { methods } from "../../_methods";
+
+export default ({children}) => <Documentation title="Materializations reference">{children}</Documentation>;
+
+A `materialization` defines a table, or view that will be created in your data warehouse.
+
+For examples and usage, check out the [materializations guide](/guides/materializations).
+
+<Method {...methods.ref} />
+
+<Method {...methods.self} />
+
+<Method {...methods.dependencies} />
+
+<Method {...methods.type} />
+
+<Method {...methods.where} />
+
+<Method {...methods.protected} />
+
+<Method {...methods.disabled} />
+
+<Method {...methods.preops} />
+
+<Method {...methods.postops} />
+
+<Method {...methods.partitionby} />
+
+<Method {...methods.describe} />
+
+<Method {...methods.descriptor} />
+
+<Method {...methods.config} />
