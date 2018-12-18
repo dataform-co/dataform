@@ -1,4 +1,8 @@
 #!/bin/bash
 set -e
 
-(cd build && npx dataform $@)
+./scripts/build
+
+(cd build && npx lerna bootstrap)
+
+(cd build && node cli/index.js $@)
