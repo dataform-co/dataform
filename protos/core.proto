@@ -21,6 +21,13 @@ message Target {
   string name = 2;
 }
 
+message Redshift {
+  string dist_key = 1;
+  string dist_style = 2;
+  repeated string sort_keys = 3;
+  string sort_style = 4;
+}
+
 message ValidationError {
   string file_name = 1;
   string message = 2;
@@ -55,6 +62,8 @@ message Materialization {
   string partition_by = 10; // bigquery
   string dist_key = 19; // redshift
   string sort_key = 20; // redshift
+
+  Redshift redshift = 21;
 
   // Generated.
   string file_name = 18;

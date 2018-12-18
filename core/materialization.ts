@@ -1,14 +1,24 @@
 import { Session } from "./index";
 import * as protos from "@dataform/protos";
 
-export const MaterializationTypes = {
-  table: "table",
-  view: "view",
-  incremental: "incremental"
-};
+export enum MaterializationTypes {
+  TABLE = "table",
+  VIEW = "view",
+  INCREMENTAL = "incremental"
+}
+export enum DistStyleTypes {
+  EVEN = "even",
+  KEY = "key",
+  ALL = "all"
+}
+export enum SortStyleTypes {
+  COMPOUND = "compound",
+  INTERLEAVED = "interleaved"
+}
 
+type ValueOf<T> = T[keyof T];
 export type MContextable<T> = T | ((ctx: MaterializationContext) => T);
-export type MaterializationType = keyof typeof MaterializationTypes;
+export type MaterializationType = ValueOf<MaterializationTypes>;
 
 export interface MConfig {
   type?: MaterializationType;
@@ -19,6 +29,7 @@ export interface MConfig {
   dependencies?: string | string[];
   descriptor?: { [key: string]: string };
   disabled?: boolean;
+  redshift?: protos.IRedshift;
 }
 
 export class Materialization {
@@ -37,15 +48,49 @@ export class Materialization {
   private contextablePreOps: MContextable<string | string[]>[] = [];
   private contextablePostOps: MContextable<string | string[]>[] = [];
 
+  private getPredefinedTypes(types) {
+    return Object.keys(types)
+      .map(key => `"${types[key]}"`)
+      .join(" | ");
+  }
+
+  private isValidProps(props: { [x: string]: string | string[] }, types: { [x: string]: any }) {
+    const propsValid = Object.keys(props).every(key => {
+      if (!props[key] || !props[key].length) {
+        const message = `Property "${key}" is not defined`;
+        this.validationError(message);
+        return false;
+      }
+      return true;
+    });
+
+    const typesValid = Object.keys(types).every(type => {
+      const currentEnum = types[type];
+      if (
+        Object.keys(currentEnum)
+          .map(key => currentEnum[key])
+          .indexOf(props[type]) === -1
+      ) {
+        const predefinedValues = this.getPredefinedTypes(currentEnum);
+        const message = `Wrong value of "${type}" property. Should only use predefined values: ${predefinedValues}`;
+        this.validationError(message);
+        return false;
+      }
+      return true;
+    });
+
+    return propsValid && typesValid;
+  }
+
   public config(config: MConfig) {
+    if (config.where) {
+      this.where(config.where);
+    }
     if (config.type) {
       this.type(config.type);
     }
     if (config.query) {
       this.query(config.query);
-    }
-    if (config.where) {
-      this.where(config.where);
     }
     if (config.preOps) {
       this.preOps(config.preOps);
@@ -62,6 +107,9 @@ export class Materialization {
     if (config.disabled) {
       this.disabled();
     }
+    if (config.redshift) {
+      this.redshift(config.redshift);
+    }
     return this;
   }
 
@@ -73,17 +121,22 @@ export class Materialization {
   }
 
   public type(type: MaterializationType) {
-    if (MaterializationTypes.hasOwnProperty(type)) {
-      this.proto.type = type;
-    } else {
-      const predefinedTypes = Object.keys(MaterializationTypes)
-        .map(item => `"${item}"`)
-        .join(" | ");
+    if (
+      Object.keys(MaterializationTypes)
+        .map(key => MaterializationTypes[key])
+        .indexOf(type) === -1
+    ) {
+      const predefinedTypes = this.getPredefinedTypes(MaterializationTypes);
       const message = `Wrong type of materialization detected. Should only use predefined types: ${predefinedTypes}`;
-
       this.validationError(message);
+      return this;
+    } else if (type === MaterializationTypes.INCREMENTAL && !this.contextableWhere) {
+      const message = `"where" property is not defined. With the type “incremental” you must first specify the property “where”!`;
+      this.validationError(message);
+      return this;
     }
 
+    this.proto.type = type as string;
     return this;
   }
 
@@ -109,6 +162,29 @@ export class Materialization {
 
   public disabled() {
     this.proto.disabled = true;
+    return this;
+  }
+
+  public redshift(redshift: protos.IRedshift) {
+    if (Object.keys(redshift).length === 0) {
+      const message = `Missing properties in redshift config`;
+      this.validationError(message);
+      return this;
+    }
+    if (redshift.distStyle || redshift.distKey) {
+      const props = { distStyle: redshift.distStyle, distKey: redshift.distKey };
+      if (!this.isValidProps(props, { distStyle: DistStyleTypes })) {
+        return this;
+      }
+    }
+    if (redshift.sortStyle || redshift.sortKeys) {
+      const props = { sortStyle: redshift.sortStyle, sortKeys: redshift.sortKeys };
+      if (!this.isValidProps(props, { sortStyle: SortStyleTypes })) {
+        return this;
+      }
+    }
+
+    this.proto.redshift = protos.Redshift.create(redshift);
     return this;
   }
 
@@ -185,6 +261,7 @@ export class MaterializationContext {
     this.materialization.config(config);
     return "";
   }
+
   public self(): string {
     return this.materialization.session.adapter().resolveTarget(this.materialization.proto.target);
   }
@@ -216,6 +293,11 @@ export class MaterializationContext {
 
   public disabled() {
     this.materialization.disabled();
+    return "";
+  }
+
+  public redshift(redshift: protos.IRedshift) {
+    this.materialization.redshift(redshift);
     return "";
   }
 
