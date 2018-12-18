@@ -1,6 +1,0 @@
-#!/bin/bash
-set -e
-
-./scripts/docs/build
-
-git subtree push --prefix docs/out origin gh-pages
