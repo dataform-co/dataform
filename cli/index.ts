@@ -78,50 +78,49 @@ yargs
     argv => {
       const projectDir = path.resolve(argv["project-dir"]);
 
-      compileProject(projectDir)
-        .then(() => {
-          if (argv["watch"]) {
-            let timeoutID = null;
-            let isCompiling = false;
+      compileProject(projectDir).then(() => {
+        if (argv["watch"]) {
+          let timeoutID = null;
+          let isCompiling = false;
 
-            // Initialize watcher.
-            const watcher = chokidar.watch(projectDir, {
-              ignored: /node_modules/,
-              persistent: true,
-              ignoreInitial: true,
-              awaitWriteFinish: {
-                stabilityThreshold: 1000,
-                pollInterval: 200
+          // Initialize watcher.
+          const watcher = chokidar.watch(projectDir, {
+            ignored: /node_modules/,
+            persistent: true,
+            ignoreInitial: true,
+            awaitWriteFinish: {
+              stabilityThreshold: 1000,
+              pollInterval: 200
+            }
+          });
+
+          // Add event listeners.
+          watcher
+            .on("ready", () => console.log("Watcher ready for changes..."))
+            .on("error", error => console.error(`Watcher error: ${error}`))
+            .on("all", () => {
+              if (timeoutID || isCompiling) {
+                // don't recompile many times if we changed a lot of files
+                clearTimeout(timeoutID);
+              } else {
+                console.log("Watcher recompile project...");
               }
-            });
 
-            // Add event listeners.
-            watcher
-              .on('ready', () => console.log('Watcher ready for changes...'))
-              .on('error', error => console.error(`Watcher error: ${error}`))
-              .on('all', () => {
-                if (timeoutID || isCompiling) {
-                  // don't recompile many times if we changed a lot of files
-                  clearTimeout(timeoutID);
-                } else {
-                  console.log('Watcher recompile project...');
+              timeoutID = setTimeout(() => {
+                clearTimeout(timeoutID);
+
+                if (!isCompiling) {
+                  // recompile project
+                  isCompiling = true;
+                  compileProject(projectDir).then(() => {
+                    console.log("Watcher ready for changes...");
+                    isCompiling = false;
+                  });
                 }
-
-                timeoutID = setTimeout(() => {
-                  clearTimeout(timeoutID);
-
-                  if (!isCompiling) {
-                    // recompile project
-                    isCompiling = true;
-                    compileProject(projectDir).then(() => {
-                      console.log('Watcher ready for changes...');
-                      isCompiling = false;
-                    });
-                  }
-                }, RECOMPILE_DELAY);
-              });
-          }
-        });
+              }, RECOMPILE_DELAY);
+            });
+        }
+      });
     }
   )
   .command(
@@ -157,13 +156,33 @@ yargs
         .option("profile", {
           describe: "The location of the profile JSON file to run against",
           required: true
+        })
+        .option("result-path", {
+          describe: "Path to save executed graph in the JSON file",
+          type: "string"
         }),
     argv => {
+      console.log("Project status: starting...");
       var profile = protos.Profile.create(JSON.parse(fs.readFileSync(argv["profile"], "utf8")));
+
       compile(path.resolve(argv["project-dir"]))
-        .then(graph => build(graph, parseBuildArgs(argv), profile))
-        .then(graph => run(graph, profile).resultPromise())
-        .then(result => console.log(JSON.stringify(result, null, 4)))
+        .then(graph => {
+          console.log("Project status: build...");
+
+          return build(graph, parseBuildArgs(argv), profile);
+        })
+        .then(graph => {
+          const tasksAmount = graph.nodes.reduce((prev, item) => prev + item.tasks.length, 0);
+          console.log(`Project status: ready for run ${graph.nodes.length} node(s) with ${tasksAmount} task(s)`);
+          console.log("Project status: running...");
+
+          return run(graph, profile).resultPromise();
+        })
+        .then(result => {
+          console.log("Project status: finished");
+          // TODO: save result with 'result-path' option
+          console.log(JSON.stringify(result, null, 4));
+        })
         .catch(e => console.log(e));
     }
   )
@@ -204,11 +223,10 @@ yargs
     "query-compile <query> [project-dir]",
     "Compile the given query, evaluating project macros.",
     yargs =>
-      yargs
-        .positional("project-dir", {
-          describe: "The directory of the Dataform project.",
-          default: "."
-        }),
+      yargs.positional("project-dir", {
+        describe: "The directory of the Dataform project.",
+        default: "."
+      }),
     argv => {
       console.log(argv);
       query
