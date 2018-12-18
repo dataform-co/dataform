@@ -69,17 +69,15 @@ yargs
     yargs =>
       yargs
         .positional("project-dir", {
-          describe: "The directory of the Dataform project."
+          describe: "The directory of the Dataform project.",
+          default: "."
         })
         .option("watch", {
           describe: "Watch the changes in the project directory.",
           type: "boolean",
           default: false
-        })
-        .demandOption(['project-dir']),
+        }),
     argv => {
-      if (!argv["project-dir"]) return;
-
       const projectDir = path.resolve(argv["project-dir"]);
 
       compileProject(projectDir)
