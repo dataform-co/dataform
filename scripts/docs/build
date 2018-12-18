@@ -1,0 +1,4 @@
+#!/bin/bash
+set -e
+
+(cd docs/ && npx next build && npx next export)

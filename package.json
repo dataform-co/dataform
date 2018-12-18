@@ -1,19 +1,29 @@
 {
-  "devDependencies": {
+  "dependencies": {
+    "@blueprintjs/core": "^3.10.0",
     "@google-cloud/bigquery": "^1.3.0",
     "@types/chai": "^4.1.7",
     "@types/glob": "^7.1.1",
     "@types/mocha": "^5.2.5",
+    "@types/next": "^7.0.5",
     "@types/node": "^9.6.27",
+    "@types/react": "^16.7.17",
     "@types/yargs": "^11.1.1",
+    "@zeit/next-mdx": "^1.2.0",
+    "@zeit/next-typescript": "^1.1.1",
+    "babel-plugin-module-resolver": "^3.1.1",
     "chai": "^4.2.0",
+    "copy-webpack-plugin": "^4.6.0",
     "glob": "^7.1.3",
     "lerna": "^3.4.0",
     "mocha": "^5.2.0",
+    "next": "^7.0.2",
     "node-redshift": "^0.1.5",
     "pegjs": "^0.10.0",
     "prettier": "^1.14.2",
     "protobufjs": "^6.8.8",
+    "react": "^16.6.3",
+    "react-dom": "^16.6.3",
     "snowflake-sdk": "^1.1.5",
     "ts-node": "^7.0.1",
     "typescript": "^3.2.1",
@@ -23,5 +33,8 @@
   "scripts": {
     "build": "./scripts/build",
     "test": "./scripts/test"
+  },
+  "devDependencies": {
+    "remark-highlight.js": "^5.1.0"
   }
 }
