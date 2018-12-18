@@ -73,7 +73,9 @@ yargs
           default: "."
         })
         .option("watch", {
-          describe: "Watch the changes in the project directory."
+          describe: "Watch the changes in the project directory.",
+          type: "boolean",
+          default: false
         }),
     argv => {
       const projectDir = path.resolve(argv["project-dir"]);
@@ -275,4 +277,6 @@ yargs
         .then(results => console.log(JSON.stringify(results, null, 4)))
         .catch(e => console.log(e));
     }
-  ).argv;
+  )
+  .demandCommand(1, 'You need at least one command before moving on')
+  .argv;
