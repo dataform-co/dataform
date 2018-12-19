@@ -11,4 +11,4 @@ npx lerna version
 
 # Publish the new built packages.
 
-(cd build && npx lerna publish from-package $@)
+(cd build && npx lerna publish from-package --no-git-tag-version $@)
