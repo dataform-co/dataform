@@ -168,6 +168,43 @@ describe("@dataform/api", () => {
         expect(statements).includes(expectedSQL[index]);
       });
     });
+    it("bigquery_partitionby", () => {
+      const testGraph: protos.ICompiledGraph = protos.CompiledGraph.create({
+        projectConfig: { warehouse: "bigquery" },
+        materializations: [
+          {
+            name: "partitionby",
+            target: {
+              schema: "schema",
+              name: "name"
+            },
+            type: "table",
+            query: "select 1 as test",
+            bigquery: {
+              partitionBy: "DATE(test)"
+            }
+          }
+        ]
+      });
+      const testState = protos.WarehouseState.create({});
+      const expectedSQL = ["create or replace table `schema.name` partition by DATE(test) as select 1 as test"];
+
+      const builder = new Builder(testGraph, {}, testState);
+      const executionGraph = builder.build();
+
+      expect(executionGraph.nodes)
+        .to.be.an("array")
+        .to.have.lengthOf(1);
+
+      executionGraph.nodes.forEach((node, index) => {
+        expect(node)
+          .to.have.property("tasks")
+          .to.be.an("array").that.is.not.empty;
+
+        const statements = node.tasks.map(item => item.statement);
+        expect(statements).includes(expectedSQL[index]);
+      });
+    });
   });
 
   describe("compile", () => {

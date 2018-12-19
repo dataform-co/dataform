@@ -29,7 +29,8 @@ export interface MConfig {
   dependencies?: string | string[];
   descriptor?: { [key: string]: string };
   disabled?: boolean;
-  redshift?: protos.IRedshift;
+  redshift?: protos.IRedshiftOptions;
+  bigquery?: protos.IBigQueryOptions;
 }
 
 export class Materialization {
@@ -110,6 +111,9 @@ export class Materialization {
     if (config.redshift) {
       this.redshift(config.redshift);
     }
+    if (config.bigquery) {
+      this.bigquery(config.bigquery);
+    }
     return this;
   }
 
@@ -165,7 +169,7 @@ export class Materialization {
     return this;
   }
 
-  public redshift(redshift: protos.IRedshift) {
+  public redshift(redshift: protos.IRedshiftOptions) {
     if (Object.keys(redshift).length === 0) {
       const message = `Missing properties in redshift config`;
       this.validationError(message);
@@ -184,8 +188,12 @@ export class Materialization {
       }
     }
 
-    this.proto.redshift = protos.Redshift.create(redshift);
+    this.proto.redshift = protos.RedshiftOptions.create(redshift);
     return this;
+  }
+
+  public bigquery(bigquery: protos.IBigQueryOptions) {
+    this.proto.bigquery = protos.BigQueryOptions.create(bigquery);
   }
 
   public dependencies(value: string | string[]) {
@@ -296,8 +304,13 @@ export class MaterializationContext {
     return "";
   }
 
-  public redshift(redshift: protos.IRedshift) {
+  public redshift(redshift: protos.IRedshiftOptions) {
     this.materialization.redshift(redshift);
+    return "";
+  }
+
+  public bigquery(bigquery: protos.IBigQueryOptions) {
+    this.materialization.bigquery(bigquery);
     return "";
   }
 

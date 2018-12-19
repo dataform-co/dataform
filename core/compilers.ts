@@ -27,6 +27,8 @@ export function compileMaterializationSql(code: string, path: string) {
     const where = ctx.where.bind(ctx);
     const descriptor = ctx.descriptor.bind(ctx);
     const describe = ctx.describe.bind(ctx);
+    const redshift = ctx.redshift.bind(ctx);
+    const bigquery = ctx.bigquery.bind(ctx);
     ${js}
     return \`${sql}\`;
   })`;
