@@ -188,6 +188,11 @@ describe("@dataform/api", () => {
 
         // Check materializations defined in includes are not included.
         expect(materializationNames).not.includes("example_ignore");
+
+        // Check SQL files with raw back-ticks get escaped.
+        expect(materializationNames).includes("example_backticks");
+        var exampleBackticks = graph.materializations.filter(m => m.name == "example_backticks")[0];
+        expect(exampleBackticks.query).equals("select * from `tada-analytics.dataform_example.sample_data`");
       });
     });
 

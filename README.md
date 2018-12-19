@@ -40,10 +40,8 @@ Outputs a compiled JSON graph for one of the example projects:
 
 ## Serve docs
 
-Runs Jekyll locally at http://localhost:4000
-
 ```bash
-(cd docs && bundle exec jekyll serve)
+./scripts/docs/serve
 ```
 
 ## Run tests
