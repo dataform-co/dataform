@@ -158,7 +158,7 @@ yargs
           required: true
         })
         .option("result-path", {
-          describe: "Path to save executed graph in the JSON file",
+          describe: "Path to save executed graph to JSON file",
           type: "string"
         }),
     argv => {
@@ -180,7 +180,14 @@ yargs
         })
         .then(result => {
           console.log("Project status: finished");
-          // TODO: save result with 'result-path' option
+          const pathForResult = argv["result-path"];
+
+          if (pathForResult) {
+            const graph = JSON.stringify(result);
+            fs.writeFileSync(pathForResult, graph);
+            console.log(`Project status: executed graph is saved to file: "${pathForResult}"`);
+          }
+
           console.log(JSON.stringify(result, null, 4));
         })
         .catch(e => console.log(e));
