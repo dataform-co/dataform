@@ -1,0 +1,13 @@
+import Documentation from "../../_documentation";
+import Method from "../../components/method";
+import { methods } from "../../_methods";
+
+export default ({children}) => <Documentation title="Assertions reference">{children}</Documentation>;
+
+An `assertion` is a query that should return 0 rows, and can be used to check the state of your materializations as part of your pipeline.
+
+For examples and usage, check out the [assertions guide](/guides/assertions).
+
+<Method {...methods.ref} />
+
+<Method {...methods.dependencies} />
