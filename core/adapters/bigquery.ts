@@ -44,17 +44,15 @@ export class BigQueryAdapter implements Adapter {
   }
 
   createEmptyIfNotExists(m: protos.IMaterialization) {
-    return `
-      create ${this.baseTableType(m.type)} if not exists ${this.resolveTarget(m.target)}
-      ${m.partitionBy ? `partition by ${m.partitionBy}` : ""}
-      as ${this.where(m.query, "false")}`;
+    return `create ${this.baseTableType(m.type)} if not exists ${this.resolveTarget(m.target)} ${
+      m.bigquery.partitionBy ? `partition by ${m.bigquery.partitionBy}` : ""
+    } as ${this.where(m.query, "false")}`;
   }
 
   createOrReplace(m: protos.IMaterialization) {
-    return `
-      create or replace ${this.baseTableType(m.type)} ${this.resolveTarget(m.target)}
-      ${m.partitionBy ? `partition by ${m.partitionBy}` : ""}
-      as ${m.query}`;
+    return `create or replace ${this.baseTableType(m.type)} ${this.resolveTarget(m.target)} ${
+      m.bigquery.partitionBy ? `partition by ${m.bigquery.partitionBy}` : ""
+    } as ${m.query}`;
   }
 
   createOrReplaceView(target: protos.ITarget, query: string) {

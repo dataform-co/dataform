@@ -90,11 +90,6 @@ export const methods: {[name:string] : MethodProps} = {
     signatures: ["disabled()"],
     description: "Disable this action from being run."
   },
-  partitionby: {
-    name: "partitionBy()",
-    signatures: ["partitionBy(expression)"],
-    description: "Sets the table partition expression for BigQuery."
-  },
   config: {
     name: "config()",
     signatures: ["config(config)"],

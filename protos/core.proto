@@ -21,7 +21,11 @@ message Target {
   string name = 2;
 }
 
-message Redshift {
+message BigQueryOptions {
+  string partition_by = 1;
+}
+
+message RedshiftOptions {
   string dist_key = 1;
   string dist_style = 2;
   repeated string sort_keys = 3;
@@ -58,12 +62,8 @@ message Materialization {
   repeated string post_ops = 14;
 
   // Warehouse specific features.
-
-  string partition_by = 10; // bigquery
-  string dist_key = 19; // redshift
-  string sort_key = 20; // redshift
-
-  Redshift redshift = 21;
+  RedshiftOptions redshift = 21;
+  BigQueryOptions bigquery = 22;
 
   // Generated.
   string file_name = 18;
