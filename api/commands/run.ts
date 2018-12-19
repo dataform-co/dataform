@@ -89,6 +89,7 @@ export class Runner {
         this.executeNode(node);
       } else if (finishedDeps.length == node.dependencies.length) {
         // All deps are finished but they weren't all successful, skip this node.
+        console.log(`Completed node: "${node.name}", status: skipped`);
         this.result.nodes.push({ name: node.name, skipped: true });
         this.triggerChange();
       } else {
@@ -101,7 +102,9 @@ export class Runner {
     } else {
       // Work out if this run was an overall success.
       var ok = true;
-      this.result.nodes.forEach(node => { ok = ok && node.ok});
+      this.result.nodes.forEach(node => {
+        ok = ok && node.ok;
+      });
       this.result.ok = ok;
       resolve();
     }
@@ -135,10 +138,12 @@ export class Runner {
         });
       }, Promise.resolve([] as protos.IExecutedTask[]))
       .then(results => {
+        console.log(`Completed node: "${node.name}", status: successful`);
         this.result.nodes.push({ name: node.name, ok: true, tasks: results });
         this.triggerChange();
       })
       .catch((results: protos.IExecutedTask[]) => {
+        console.log(`Completed node: "${node.name}", status: failed`);
         this.result.nodes.push({ name: node.name, ok: false, tasks: results });
         this.triggerChange();
       });
