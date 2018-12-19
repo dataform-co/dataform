@@ -53,7 +53,7 @@ export class Session {
     if (refNode) {
       return this.adapter().resolveTarget((refNode as Materialization).proto.target);
     } else {
-      const message = `Could not find reference node (${name}) in nodes [${Object.keys(this.materializations)}]`;
+      const message = `Could not find referenced node: ${name}`;
       this.validationError(message);
     }
   }
