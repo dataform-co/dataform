@@ -130,7 +130,7 @@ export class Session {
         const compiledChunk = part[key].compile();
         compiledChunks.push(compiledChunk);
       } catch (e) {
-        this.compileError(e.message);
+        this.compileError(e.message, part[key].proto.fileName);
       }
     });
 
