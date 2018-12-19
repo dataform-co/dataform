@@ -285,7 +285,7 @@ describe("@dataform/core", () => {
         normal_multiline_comment
         */
         -- normal_single_line_comment
-        select 1 as test
+        select 1 as test from \`x\`
         `;
       const EXPECTED_JS = `var a = 1;\nvar b = 2;`.trim();
 
@@ -294,7 +294,7 @@ describe("@dataform/core", () => {
         normal_multiline_comment
         */
         -- normal_single_line_comment
-        select 1 as test`.trim();
+        select 1 as test from \\\`x\\\``.trim();
 
       var { sql, js } = compilers.extractJsBlocks(TEST_SQL_FILE);
       expect(sql).equals(EXPECTED_SQL);
