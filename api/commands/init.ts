@@ -49,7 +49,7 @@ export function init(projectDir: string, projectConfig: protos.IProjectConfig) {
   `
   );
   // Make the default models, includes folders.
-  fs.mkdirSync(path.join(projectDir, "models"));
+  fs.mkdirSync(path.join(projectDir, "definitions"));
   fs.mkdirSync(path.join(projectDir, "includes"));
 
   // Install packages.
