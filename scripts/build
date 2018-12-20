@@ -35,6 +35,10 @@ cp --parents ./*/package.json build/
 
 cp -R examples build/
 
+# Copy over proto buffers to the protos package.
+
+cp protos/*.proto build/protos
+
 # Copy over the development build package.json and install local deps.
 
 cp package.json build/package.json
