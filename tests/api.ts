@@ -5,6 +5,7 @@ import { query, Builder } from "@dataform/api";
 import * as protos from "@dataform/protos";
 import * as fs from "fs";
 import * as path from "path";
+import * as os from "os";
 
 describe("@dataform/api", () => {
   describe("build", () => {
@@ -172,6 +173,52 @@ describe("@dataform/api", () => {
     });
   });
 
+  describe("init", () => {
+    let projectDir;
+
+    after(() => {
+      // delete project directory
+      rimraf.sync(projectDir);
+    });
+
+    it("redshift", async function() {
+      this.timeout(30000);
+
+      // create temp directory
+      projectDir = fs.mkdtempSync(path.join(os.tmpdir(), "df-"));
+
+      // init new project
+      await init(projectDir, {
+        warehouse: "redshift"
+      });
+
+      // add new materialization
+      const query = "select 1 as test";
+      const mPath = path.resolve(projectDir, "./definitions/simplemodel.sql");
+      fs.writeFileSync(mPath, query);
+
+      expect(fs.existsSync(mPath)).to.be.true;
+
+      // compile project
+      const graph = await compile(projectDir).catch(error => error);
+      expect(graph).to.not.be.an.instanceof(Error);
+
+      expect(graph)
+        .to.have.property("compileErrors")
+        .to.be.an("array").that.is.empty;
+      expect(graph)
+        .to.have.property("validationErrors")
+        .to.be.an("array").that.is.empty;
+      expect(graph)
+        .to.have.property("materializations")
+        .to.be.an("array").that.is.not.empty;
+
+      graph.materializations.forEach(item => {
+        expect(item).to.satisfy(m => !m.validationErrors || !m.validationErrors.length);
+      });
+    });
+  });
+
   describe("compile", () => {
     it("bigquery_example", () => {
       return compile("../examples/bigquery").then(graph => {
@@ -220,49 +267,6 @@ describe("@dataform/api", () => {
 
       const errors3 = graph.compileErrors.filter(item => item.message.match(/Error in JS/));
       expect(errors3).to.be.an("array").that.is.not.empty;
-    });
-
-    it("redshift_init", async function() {
-      this.timeout(30000);
-      const projectDir = path.resolve(__dirname, "./redshift_init_test");
-
-      // check if the directory exists and delete it
-      if (fs.existsSync(projectDir)) {
-        rimraf.sync(projectDir);
-      }
-
-      // init new project
-      await init(projectDir, {
-        warehouse: "redshift"
-      });
-
-      // add new materialization
-      const query = "select 1 as test";
-      const mPath = path.resolve(projectDir, "./definitions/simplemodel.sql");
-      fs.writeFileSync(mPath, query);
-
-      expect(fs.existsSync(mPath)).to.be.true;
-
-      // compile project
-      const graph = await compile(projectDir).catch(error => error);
-      expect(graph).to.not.be.an.instanceof(Error);
-
-      expect(graph)
-        .to.have.property("compileErrors")
-        .to.be.an("array").that.is.empty;
-      expect(graph)
-        .to.have.property("validationErrors")
-        .to.be.an("array").that.is.empty;
-      expect(graph)
-        .to.have.property("materializations")
-        .to.be.an("array").that.is.not.empty;
-
-      graph.materializations.forEach(item => {
-        expect(item).to.satisfy(m => !m.validationErrors || !m.validationErrors.length);
-      });
-
-      // delete project directory
-      rimraf.sync(projectDir);
     });
   });
 
