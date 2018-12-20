@@ -1,10 +1,15 @@
 import { DbAdapter } from "./index";
 import * as protos from "@dataform/protos";
 
-const Redshift = require("node-redshift");
+const Redshift: RedshiftType = require("node-redshift");
+
+type RedshiftType = {
+  new (client: { host?: string; port?: number | Long; user?: string; password?: string; database?: string });
+  query: (query: string) => Promise<{ rows: any[] }>;
+};
 
 export class RedshiftDbAdapter implements DbAdapter {
-  private client: any;
+  private client: RedshiftType;
 
   constructor(profile: protos.IProfile) {
     this.client = new Redshift(profile.redshift);
@@ -15,7 +20,7 @@ export class RedshiftDbAdapter implements DbAdapter {
   }
 
   evaluate(statement: string) {
-    return this.client.query(`explain ${statement}`);
+    return this.client.query(`explain ${statement}`).then(() => {});
   }
 
   tables(): Promise<protos.ITarget[]> {
@@ -57,6 +62,6 @@ export class RedshiftDbAdapter implements DbAdapter {
   }
 
   prepareSchema(schema: string): Promise<void> {
-    return this.execute(`create schema if not exists "${schema}"`);
+    return this.execute(`create schema if not exists "${schema}"`).then(() => {});
   }
 }
