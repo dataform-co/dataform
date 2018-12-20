@@ -324,6 +324,18 @@ describe("@dataform/api", () => {
       const errors3 = graph.compileErrors.filter(item => item.message.match(/Error in JS/));
       expect(errors3).to.be.an("array").that.is.not.empty;
     });
+
+    it("bigquery_backwards_compatibility_example", () => {
+      return compile("../examples/bigquery_backwards_compatibility").then(graph => {
+        var materializationNames = graph.materializations.map(m => m.name);
+
+        // We just want to make sure this compiles really.
+        expect(materializationNames).includes("example");
+        var example = graph.materializations.filter(m => m.name == "example")[0];
+        expect(example.type).equals("table");
+        expect(example.query.trim()).equals("select 1 as foo_bar");
+      });
+    });
   });
 
   describe("query", () => {
