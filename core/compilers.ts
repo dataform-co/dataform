@@ -19,7 +19,7 @@ export function compile(code: string, path: string) {
 export function compileMaterializationSql(code: string, path: string) {
   var { sql, js } = extractJsBlocks(code);
   var functionsBindings = getFunctionPropertyNames(MaterializationContext.prototype).map(
-    name => `const ${name} = ctx.${name}.bind(ctx);`
+    name => `const ${name} = !!ctx.${name} ? ctx.${name}.bind(ctx) : () => "";`
   );
   return `
   materialize("${utils.baseFilename(path)}").query(ctx => {
