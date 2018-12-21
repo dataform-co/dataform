@@ -5,7 +5,9 @@ import * as utils from "./utils";
 export type OContextable<T> = T | ((ctx: OperationContext) => T);
 
 export class Operation {
-  proto: protos.IOperation = protos.Operation.create();
+  proto: protos.IOperation = protos.Operation.create({
+    hasOutput: false
+  });
 
   // Hold a reference to the Session instance.
   session: Session;
@@ -28,6 +30,11 @@ export class Operation {
     return this;
   }
 
+  public hasOutput(hasOutput: boolean) {
+    this.proto.hasOutput = hasOutput;
+    return this;
+  }
+
   compile() {
     var context = new OperationContext(this);
 
@@ -35,6 +42,7 @@ export class Operation {
     this.proto.queries = typeof appliedQueries == "string" ? [appliedQueries] : appliedQueries;
     this.contextableQueries = null;
 
+    console.log('**** ****', this.proto);
     return this.proto;
   }
 }
@@ -53,6 +61,11 @@ export class OperationContext {
 
   public dependencies(name: string | string[]) {
     this.operation.dependencies(name);
+    return "";
+  }
+
+  public hasOutput(hasOutput: boolean) {
+    this.operation.hasOutput(hasOutput);
     return "";
   }
 
