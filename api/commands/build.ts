@@ -23,7 +23,7 @@ export class Builder {
     this.adapter = adapters.create(compiledGraph.projectConfig);
   }
 
-  build(): protos.IExecutionGraph {
+  build(): protos.ExecutionGraph {
     var tableStateByTarget: { [targetJson: string]: protos.ITableState } = {};
     this.state.tables.forEach(tableState => {
       tableStateByTarget[JSON.stringify(tableState.target)] = tableState;
@@ -70,12 +70,12 @@ export class Builder {
     includedNodes.forEach(node => {
       node.dependencies = node.dependencies.filter(dep => includedNodeNames.indexOf(dep) >= 0);
     });
-    return {
+    return protos.ExecutionGraph.create({
       projectConfig: this.compiledGraph.projectConfig,
       runConfig: this.runConfig,
       warehouseState: this.state,
       nodes: includedNodes
-    };
+    });
   }
 
   buildMaterialization(m: protos.IMaterialization, table: protos.ITable) {

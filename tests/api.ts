@@ -6,6 +6,7 @@ import * as protos from "@dataform/protos";
 import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";
+import { asPlainObject } from "./utils";
 
 describe("@dataform/api", () => {
   describe("build", () => {
@@ -186,27 +187,40 @@ describe("@dataform/api", () => {
             bigquery: {
               partitionBy: "DATE(test)"
             }
+          },
+          {
+            name: "plain",
+            target: {
+              schema: "schema",
+              name: "name"
+            },
+            type: "table",
+            query: "select 1 as test"
           }
         ]
       });
-      const testState = protos.WarehouseState.create({});
-      const expectedSQL = ["create or replace table `schema.name` partition by DATE(test) as select 1 as test"];
-
-      const builder = new Builder(testGraph, {}, testState);
-      const executionGraph = builder.build();
-
-      expect(executionGraph.nodes)
-        .to.be.an("array")
-        .to.have.lengthOf(1);
-
-      executionGraph.nodes.forEach((node, index) => {
-        expect(node)
-          .to.have.property("tasks")
-          .to.be.an("array").that.is.not.empty;
-
-        const statements = node.tasks.map(item => item.statement);
-        expect(statements).includes(expectedSQL[index]);
-      });
+      const expectedExecutionNodes: protos.IExecutionNode[] = [
+        {
+          name: "partitionby",
+          tasks: [
+            {
+              type: "statement",
+              statement: "create or replace table `schema.name` partition by DATE(test) as select 1 as test"
+            }
+          ]
+        },
+        {
+          name: "plain",
+          tasks: [
+            {
+              type: "statement",
+              statement: "create or replace table `schema.name`  as select 1 as test"
+            }
+          ]
+        }
+      ];
+      const executionGraph = new Builder(testGraph, {}, protos.WarehouseState.create({})).build();
+      expect(asPlainObject(executionGraph.nodes)).deep.equals(asPlainObject(expectedExecutionNodes));
     });
   });
 
@@ -309,6 +323,18 @@ describe("@dataform/api", () => {
 
       const errors3 = graph.compileErrors.filter(item => item.message.match(/Error in JS/));
       expect(errors3).to.be.an("array").that.is.not.empty;
+    });
+
+    it("bigquery_backwards_compatibility_example", () => {
+      return compile("../examples/bigquery_backwards_compatibility").then(graph => {
+        var materializationNames = graph.materializations.map(m => m.name);
+
+        // We just want to make sure this compiles really.
+        expect(materializationNames).includes("example");
+        var example = graph.materializations.filter(m => m.name == "example")[0];
+        expect(example.type).equals("table");
+        expect(example.query.trim()).equals("select 1 as foo_bar");
+      });
     });
   });
 

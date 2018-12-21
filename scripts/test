@@ -7,6 +7,10 @@ set -e
 
 (cd build && npx lerna bootstrap)
 
+## Set up the backwards compatibility project NOT using lerna.
+
+(cd build/examples/bigquery_backwards_compatibility && npm i)
+
 ## Run tests.
 
 (cd build/tests && npx mocha *.js $@)
