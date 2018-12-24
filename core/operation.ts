@@ -42,7 +42,6 @@ export class Operation {
     this.proto.queries = typeof appliedQueries == "string" ? [appliedQueries] : appliedQueries;
     this.contextableQueries = null;
 
-    console.log('**** ****', this.proto);
     return this.proto;
   }
 }
@@ -52,6 +51,10 @@ export class OperationContext {
 
   constructor(operation: Operation) {
     this.operation = operation;
+  }
+
+  public self(): string {
+    return this.operation.session.adapter().resolveTarget(this.operation.proto.target);
   }
 
   public ref(name: string) {

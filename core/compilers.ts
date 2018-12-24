@@ -32,7 +32,7 @@ export function compileMaterializationSql(code: string, path: string) {
 export function compileOperationSql(code: string, path: string) {
   var { sql, js } = extractJsBlocks(code);
   var functionsBindings = getFunctionPropertyNames(OperationContext.prototype).map(
-    name => `const ${name} = ctx.${name}.bind(ctx);`
+    name => `const ${name} = !!ctx.${name} ? ctx.${name}.bind(ctx) : () => "";`
   );
   return `
   operate("${utils.baseFilename(path)}").queries(ctx => {
@@ -45,7 +45,7 @@ export function compileOperationSql(code: string, path: string) {
 export function compileAssertionSql(code: string, path: string) {
   var { sql, js } = extractJsBlocks(code);
   var functionsBindings = getFunctionPropertyNames(AssertionContext.prototype).map(
-    name => `const ${name} = ctx.${name}.bind(ctx);`
+    name => `const ${name} = !!ctx.${name} ? ctx.${name}.bind(ctx) : () => "";`
   );
   return `
   assert("${utils.baseFilename(path)}").query(ctx => {

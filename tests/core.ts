@@ -233,6 +233,35 @@ describe("@dataform/core", () => {
     });
   });
 
+  describe("operate", () => {
+    it("ref", function() {
+      const session = new Session(path.dirname(__filename), TEST_CONFIG);
+      session.operate("operate-1", () => `select 1 as sample`).hasOutput(true);
+      session.operate("operate-2", ctx => `select * from ${ctx.ref("operate-1")}`).hasOutput(true);
+
+      const graph = session.compile();
+
+      expect(graph)
+        .to.have.property("compileErrors")
+        .to.be.an("array").that.is.empty;
+      expect(graph)
+        .to.have.property("validationErrors")
+        .to.be.an("array").that.is.empty;
+      expect(graph)
+        .to.have.property("operations")
+        .to.be.an("array")
+        .to.have.lengthOf(2);
+
+      expect(graph.operations[0].name).equals("operate-1");
+      expect(graph.operations[0].hasOutput).equals(true);
+      expect(graph.operations[0].queries).deep.equals(["select 1 as sample"]);
+
+      expect(graph.operations[1].name).equals("operate-2");
+      expect(graph.operations[1].hasOutput).equals(true);
+      expect(graph.operations[1].queries).deep.equals(['select * from "schema"."operate-1"']);
+    });
+  });
+
   describe("graph", () => {
     it("circular_dependencies", () => {
       var df = new Session(path.dirname(__filename), TEST_CONFIG);

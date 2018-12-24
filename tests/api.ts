@@ -1,7 +1,7 @@
 import { expect, assert } from "chai";
 import * as rimraf from "rimraf";
-import { compile, init } from "@dataform/api";
-import { query, Builder } from "@dataform/api";
+import { query, Builder, compile, init } from "@dataform/api";
+// import { query, Builder } from "@dataform/api";
 import * as protos from "@dataform/protos";
 import * as fs from "fs";
 import * as path from "path";
@@ -172,6 +172,7 @@ describe("@dataform/api", () => {
         expect(statements).includes(expectedSQL[index]);
       });
     });
+
     it("bigquery_partitionby", () => {
       const testGraph: protos.ICompiledGraph = protos.CompiledGraph.create({
         projectConfig: { warehouse: "bigquery" },
@@ -229,7 +230,9 @@ describe("@dataform/api", () => {
 
     after(() => {
       // delete project directory
-      rimraf.sync(projectDir);
+      if (fs.existsSync(projectDir)) {
+        rimraf.sync(projectDir);
+      }
     });
 
     it("redshift", async function() {
@@ -271,6 +274,15 @@ describe("@dataform/api", () => {
   });
 
   describe("compile", () => {
+    let projectDir;
+
+    afterEach(() => {
+      // delete project directory if exist
+      if (fs.existsSync(projectDir)) {
+        rimraf.sync(projectDir);
+      }
+    });
+
     it("bigquery_example", () => {
       return compile("../examples/bigquery").then(graph => {
         var materializationNames = graph.materializations.map(m => m.name);
@@ -335,6 +347,45 @@ describe("@dataform/api", () => {
         expect(example.type).equals("table");
         expect(example.query.trim()).equals("select 1 as foo_bar");
       });
+    });
+
+    it("operation_refing", async function() {
+      this.timeout(30000);
+
+      // create temp directory
+      projectDir = fs.mkdtempSync(path.join(os.tmpdir(), "df-"));
+
+      // init new project
+      await init(projectDir, {
+        warehouse: "redshift"
+      });
+
+      // add new queries
+      const query1 = "select 1 as sample_1";
+      const query2 = 'select * from ${ref(\"sample_1\")}';
+      const path1 = path.resolve(projectDir, "./definitions/sample_1.ops.sql");
+      const path2 = path.resolve(projectDir, "./definitions/sample_2.ops.sql");
+      fs.writeFileSync(path1, query1);
+      fs.writeFileSync(path2, query2);
+
+      expect(fs.existsSync(path1)).to.be.true;
+      expect(fs.existsSync(path2)).to.be.true;
+
+      // compile project
+      const graph = await compile(projectDir).catch(error => error);
+      expect(graph).to.not.be.an.instanceof(Error);
+
+      console.log('-------- graph:', graph);
+
+      expect(graph)
+        .to.have.property("compileErrors")
+        .to.be.an("array").that.is.empty;
+      expect(graph)
+        .to.have.property("validationErrors")
+        .to.be.an("array").that.is.empty;
+      expect(graph)
+        .to.have.property("operations")
+        .to.be.an("array").that.is.not.empty;
     });
   });
 
