@@ -254,10 +254,12 @@ describe("@dataform/core", () => {
 
       expect(graph.operations[0].name).equals("operate-1");
       expect(graph.operations[0].hasOutput).equals(true);
+      expect(graph.operations[0].dependencies).to.be.an("array").that.is.empty;
       expect(graph.operations[0].queries).deep.equals(["select 1 as sample"]);
 
       expect(graph.operations[1].name).equals("operate-2");
       expect(graph.operations[1].hasOutput).equals(true);
+      expect(graph.operations[1].dependencies).deep.equals(["operate-1"]);
       expect(graph.operations[1].queries).deep.equals(['select * from "schema"."operate-1"']);
     });
   });
