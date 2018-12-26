@@ -234,7 +234,7 @@ describe("@dataform/core", () => {
   });
 
   describe("operate", () => {
-    it("ref", function() {
+    it("ref", () => {
       const session = new Session(path.dirname(__filename), TEST_CONFIG);
       session.operate("operate-1", () => `select 1 as sample`).hasOutput(true);
       session.operate("operate-2", ctx => `select * from ${ctx.ref("operate-1")}`).hasOutput(true);
@@ -261,6 +261,20 @@ describe("@dataform/core", () => {
       expect(graph.operations[1].hasOutput).equals(true);
       expect(graph.operations[1].dependencies).deep.equals(["operate-1"]);
       expect(graph.operations[1].queries).deep.equals(['select * from "schema"."operate-1"']);
+    });
+
+    it("ref_no_output", () => {
+      const session = new Session(path.dirname(__filename), TEST_CONFIG);
+      session.operate("operate-1", () => `select 1 as sample`).hasOutput(false);
+      session.operate("operate-2", ctx => `select * from ${ctx.ref("operate-1")}`).hasOutput(false);
+      const graph = session.compile();
+
+      expect(graph)
+        .to.have.property("validationErrors")
+        .to.be.an("array");
+
+      const errors = graph.validationErrors.map(item => item.message);
+      expect(errors).deep.equals(["Could not find referenced node: operate-1"]);
     });
   });
 
