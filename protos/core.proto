@@ -78,10 +78,13 @@ message Operation {
   string name = 1;
   repeated string dependencies = 2;
 
+  Target target = 3;
   repeated string queries = 6;
 
   // Generated.
   string file_name = 7;
+
+  bool has_output = 8;
 }
 
 message Assertion {

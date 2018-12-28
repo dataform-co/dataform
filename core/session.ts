@@ -49,9 +49,13 @@ export class Session {
   }
 
   ref(name: string): string {
-    var refNode = this.materializations[name];
-    if (refNode) {
-      return this.adapter().resolveTarget((refNode as Materialization).proto.target);
+    const mNode = this.materializations[name];
+    const oNode = this.operations[name];
+
+    if (mNode) {
+      return this.adapter().resolveTarget((mNode as Materialization).proto.target);
+    } else if (oNode && oNode.proto.hasOutput) {
+      return this.adapter().resolveTarget((oNode as Operation).proto.target);
     } else {
       const message = `Could not find referenced node: ${name}`;
       this.validationError(message);
@@ -62,6 +66,7 @@ export class Session {
     var operation = new Operation();
     operation.session = this;
     operation.proto.name = name;
+    operation.proto.target = this.target(name);
     if (queries) {
       operation.queries(queries);
     }
