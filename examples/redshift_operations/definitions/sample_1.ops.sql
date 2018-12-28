@@ -1,2 +1,2 @@
 --js hasOutput(true);
-select 1 as sample_1
+create table "test_schema"."sample_1" as select 1 as sample_1

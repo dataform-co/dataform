@@ -341,7 +341,7 @@ describe("@dataform/api", () => {
 
     it("operation_refing", async function() {
       const expectedQueries = {
-        sample_1: "select 1 as sample_1",
+        sample_1: 'create table "test_schema"."sample_1" as select 1 as sample_1',
         sample_2: 'select * from "test_schema"."sample_1"'
       };
 
