@@ -5,7 +5,9 @@ import * as utils from "./utils";
 export type OContextable<T> = T | ((ctx: OperationContext) => T);
 
 export class Operation {
-  proto: protos.IOperation = protos.Operation.create();
+  proto: protos.IOperation = protos.Operation.create({
+    hasOutput: false
+  });
 
   // Hold a reference to the Session instance.
   session: Session;
@@ -28,6 +30,11 @@ export class Operation {
     return this;
   }
 
+  public hasOutput(hasOutput: boolean) {
+    this.proto.hasOutput = hasOutput;
+    return this;
+  }
+
   compile() {
     var context = new OperationContext(this);
 
@@ -46,6 +53,10 @@ export class OperationContext {
     this.operation = operation;
   }
 
+  public self(): string {
+    return this.operation.session.adapter().resolveTarget(this.operation.proto.target);
+  }
+
   public ref(name: string) {
     this.operation.dependencies(name);
     return this.operation.session.ref(name);
@@ -53,6 +64,11 @@ export class OperationContext {
 
   public dependencies(name: string | string[]) {
     this.operation.dependencies(name);
+    return "";
+  }
+
+  public hasOutput(hasOutput: boolean) {
+    this.operation.hasOutput(hasOutput);
     return "";
   }
 
