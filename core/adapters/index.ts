@@ -1,6 +1,7 @@
 import * as protos from "@dataform/protos";
 import { BigQueryAdapter } from "./bigquery";
 import { RedshiftAdapter } from "./redshift";
+import { SnowflakeAdapter } from "./snowflake";
 import { Tasks } from "../tasks";
 
 
@@ -30,3 +31,4 @@ export function create(projectConfig: protos.IProjectConfig): Adapter {
 
 register("bigquery", BigQueryAdapter);
 register("redshift", RedshiftAdapter);
+register("snowflake", SnowflakeAdapter);
