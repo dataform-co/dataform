@@ -1,7 +1,6 @@
 import { expect, assert } from "chai";
 import * as rimraf from "rimraf";
-import { compile, init } from "@dataform/api";
-import { query, Builder } from "@dataform/api";
+import { query, Builder, compile, init } from "@dataform/api";
 import * as protos from "@dataform/protos";
 import * as fs from "fs";
 import * as path from "path";
@@ -172,6 +171,7 @@ describe("@dataform/api", () => {
         expect(statements).includes(expectedSQL[index]);
       });
     });
+
     it("bigquery_partitionby", () => {
       const testGraph: protos.ICompiledGraph = protos.CompiledGraph.create({
         projectConfig: { warehouse: "bigquery" },
@@ -229,7 +229,9 @@ describe("@dataform/api", () => {
 
     after(() => {
       // delete project directory
-      rimraf.sync(projectDir);
+      if (fs.existsSync(projectDir)) {
+        rimraf.sync(projectDir);
+      }
     });
 
     it("redshift", async function() {
@@ -334,6 +336,31 @@ describe("@dataform/api", () => {
         var example = graph.materializations.filter(m => m.name == "example")[0];
         expect(example.type).equals("table");
         expect(example.query.trim()).equals("select 1 as foo_bar");
+      });
+    });
+
+    it("operation_refing", async function() {
+      const expectedQueries = {
+        sample_1: 'create table "test_schema"."sample_1" as select 1 as sample_1',
+        sample_2: 'select * from "test_schema"."sample_1"'
+      };
+
+      const graph = await compile("../examples/redshift_operations").catch(error => error);
+      expect(graph).to.not.be.an.instanceof(Error);
+
+      expect(graph)
+        .to.have.property("compileErrors")
+        .to.be.an("array").that.is.empty;
+      expect(graph)
+        .to.have.property("validationErrors")
+        .to.be.an("array").that.is.empty;
+      expect(graph)
+        .to.have.property("operations")
+        .to.be.an("array")
+        .that.have.lengthOf(Object.keys(expectedQueries).length);
+
+      graph.operations.forEach(op => {
+        expect(op.queries).deep.equals([expectedQueries[op.name]]);
       });
     });
   });
