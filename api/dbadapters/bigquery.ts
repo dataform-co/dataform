@@ -11,7 +11,8 @@ export class BigQueryDbAdapter implements DbAdapter {
     this.profile = profile;
     this.client = BigQuery({
       projectId: profile.bigquery.projectId,
-      credentials: JSON.parse(profile.bigquery.credentials)
+      credentials: JSON.parse(profile.bigquery.credentials),
+      scopes: ["https://www.googleapis.com/auth/drive"]
     });
   }
 
@@ -20,18 +21,17 @@ export class BigQueryDbAdapter implements DbAdapter {
       .query({
         useLegacySql: false,
         query: statement,
-        maxResults: 1000
+        maxResults: 1000,
       })
       .then(result => result[0]);
   }
 
   evaluate(statement: string) {
-    return this.client
-      .query({
-        useLegacySql: false,
-        query: statement,
-        dryRun: true
-      });
+    return this.client.query({
+      useLegacySql: false,
+      query: statement,
+      dryRun: true
+    });
   }
 
   tables(): Promise<protos.ITarget[]> {
