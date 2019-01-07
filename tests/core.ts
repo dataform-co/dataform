@@ -71,6 +71,13 @@ describe("@dataform/core", () => {
         ${ctx.type("incremental")}
       `
       );
+      sessionSuccess.materialize(
+        "exampleSuccess3",
+        ctx => `
+        ${ctx.type("incremental")}
+        ${ctx.where("test2")}
+      `
+      );
       const cgSuccess = sessionSuccess.compile();
 
       cgSuccess.materializations.forEach(item => {
