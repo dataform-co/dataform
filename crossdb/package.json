@@ -1,9 +1,9 @@
 {
     "name": "@dataform/crossdb",
-    "version": "0.0.2-alpha.42",
+    "version": "0.0.2-alpha.43",
     "description": "Cross database utilities for dataform.",
     "dependencies": {
-        "@dataform/core": "^0.0.2-alpha.42"
+        "@dataform/core": "^0.0.2-alpha.43"
     },
     "main": "index.js",
     "types": "index.d.ts",
