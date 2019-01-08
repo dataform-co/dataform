@@ -41,7 +41,6 @@ export function getCallerFile(rootDir: string) {
   const originalFunc = Error.prepareStackTrace;
   let callerfile;
   let lastfile;
-
   try {
     const err = new Error();
     let currentfile;
@@ -55,12 +54,12 @@ export function getCallerFile(rootDir: string) {
       if (callerfile) {
         lastfile = callerfile;
       }
-
       if (
         currentfile !== callerfile &&
-        !callerfile.includes("vm2/lib/") &&
-        !callerfile.includes("@dataform/core/") &&
-        callerfile.startsWith(rootDir)
+        callerfile.includes(rootDir) &&
+        !callerfile.includes("node_modules") &&
+        // We don't want to attribute files in includes/ to the caller files.
+        (callerfile.includes("definitions/") || callerfile.includes("models/"))
       )
         break;
     }
