@@ -1,6 +1,6 @@
 {
   "name": "@dataform/protos",
-  "version": "0.0.2-alpha.43",
+  "version": "0.0.2-alpha.44",
   "description": "Dataform protocol buffers.",
   "main": "index.js",
   "types": "index.d.ts",
