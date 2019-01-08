@@ -21,7 +21,7 @@ export class BigQueryDbAdapter implements DbAdapter {
       .query({
         useLegacySql: false,
         query: statement,
-        maxResults: 1000,
+        maxResults: 1000
       })
       .then(result => result[0]);
   }
@@ -84,15 +84,14 @@ export class BigQueryDbAdapter implements DbAdapter {
 }
 
 function convertField(field: any): protos.IField {
-  return {
+  const result: protos.IField = {
     name: field.name,
-    flags: [field.mode],
-    primitive: field.type != "RECORD" ? field.type : null,
-    struct:
-      field.type == "RECORD"
-        ? {
-            fields: field.fields.map(field => convertField(field))
-          }
-        : null
+    flags: [field.mode]
   };
+  if (field.type == "RECORD") {
+    result.struct = { fields: field.fields.map(field => convertField(field)) };
+  } else {
+    result.primitive = field.type;
+  }
+  return result;
 }

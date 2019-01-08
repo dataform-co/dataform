@@ -52,7 +52,7 @@ export class RedshiftDbAdapter implements DbAdapter {
       )
     ]).then(results => ({
       target: target,
-      type: results[1][0] ? (results[1][0].table_type == "VIEW" ? "view" : "table") : null,
+      type: results[1][0] ? (results[1][0].table_type == "VIEW" ? "view" : "table") : "other",
       fields: results[0].map(row => ({
         name: row.column_name,
         primitive: row.data_type,
