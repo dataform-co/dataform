@@ -1,10 +1,10 @@
 {
     "name": "@dataform/examples-redshift",
-    "version": "0.0.2-alpha.41",
+    "version": "0.0.2-alpha.42",
     "description": "Example Dataform project (Redshift).",
     "dependencies": {
-        "@dataform/core": "^0.0.2-alpha.41",
-        "@dataform/crossdb": "^0.0.2-alpha.41"
+        "@dataform/core": "^0.0.2-alpha.42",
+        "@dataform/crossdb": "^0.0.2-alpha.42"
     },
     "private": true
 }
