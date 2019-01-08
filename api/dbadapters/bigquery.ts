@@ -86,7 +86,7 @@ export class BigQueryDbAdapter implements DbAdapter {
 function convertField(field: any): protos.IField {
   const result: protos.IField = {
     name: field.name,
-    flags: [field.mode]
+    flags: !!field.mode ? [field.mode] : []
   };
   if (field.type == "RECORD") {
     result.struct = { fields: field.fields.map(field => convertField(field)) };
