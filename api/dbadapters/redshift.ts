@@ -4,7 +4,14 @@ import * as protos from "@dataform/protos";
 const Redshift: RedshiftType = require("node-redshift");
 
 type RedshiftType = {
-  new (client: { host?: string; port?: number | Long; user?: string; password?: string; database?: string });
+  new (client: {
+    host?: string;
+    port?: number | Long;
+    user?: string;
+    password?: string;
+    database?: string;
+    ssl: boolean;
+  });
   query: (query: string) => Promise<{ rows: any[] }>;
 };
 
@@ -12,7 +19,7 @@ export class RedshiftDbAdapter implements DbAdapter {
   private client: RedshiftType;
 
   constructor(profile: protos.IProfile) {
-    this.client = new Redshift(profile.redshift);
+    this.client = new Redshift(Object.assign({ ssl: true }, profile.redshift));
   }
 
   execute(statement: string) {
