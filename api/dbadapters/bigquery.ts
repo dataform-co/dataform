@@ -11,7 +11,8 @@ export class BigQueryDbAdapter implements DbAdapter {
     this.profile = profile;
     this.client = BigQuery({
       projectId: profile.bigquery.projectId,
-      credentials: JSON.parse(profile.bigquery.credentials)
+      credentials: JSON.parse(profile.bigquery.credentials),
+      scopes: ["https://www.googleapis.com/auth/drive"]
     });
   }
 
@@ -26,12 +27,11 @@ export class BigQueryDbAdapter implements DbAdapter {
   }
 
   evaluate(statement: string) {
-    return this.client
-      .query({
-        useLegacySql: false,
-        query: statement,
-        dryRun: true
-      });
+    return this.client.query({
+      useLegacySql: false,
+      query: statement,
+      dryRun: true
+    });
   }
 
   tables(): Promise<protos.ITarget[]> {
@@ -84,15 +84,14 @@ export class BigQueryDbAdapter implements DbAdapter {
 }
 
 function convertField(field: any): protos.IField {
-  return {
+  const result: protos.IField = {
     name: field.name,
-    flags: [field.mode],
-    primitive: field.type != "RECORD" ? field.type : null,
-    struct:
-      field.type == "RECORD"
-        ? {
-            fields: field.fields.map(field => convertField(field))
-          }
-        : null
+    flags: !!field.mode ? [field.mode] : []
   };
+  if (field.type == "RECORD") {
+    result.struct = { fields: field.fields.map(field => convertField(field)) };
+  } else {
+    result.primitive = field.type;
+  }
+  return result;
 }

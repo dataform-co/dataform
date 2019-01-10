@@ -134,10 +134,6 @@ export class Materialization {
       const message = `Wrong type of materialization detected. Should only use predefined types: ${predefinedTypes}`;
       this.validationError(message);
       return this;
-    } else if (type === MaterializationTypes.INCREMENTAL && !this.contextableWhere) {
-      const message = `"where" property is not defined. With the type “incremental” you must first specify the property “where”!`;
-      this.validationError(message);
-      return this;
     }
 
     this.proto.type = type as string;
@@ -254,6 +250,11 @@ export class Materialization {
     });
     this.contextablePostOps = [];
 
+    // Validation.
+    if (this.proto.type === MaterializationTypes.INCREMENTAL && (!this.proto.where || this.proto.where.length === 0)) {
+      const message = `"where" property is not defined. With the type “incremental” you must also specify the property “where”!`;
+      this.validationError(message);
+    }
     return this.proto;
   }
 }

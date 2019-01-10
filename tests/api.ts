@@ -295,6 +295,11 @@ describe("@dataform/api", () => {
         expect(materializationNames).includes("example_backticks");
         var exampleBackticks = graph.materializations.filter(m => m.name == "example_backticks")[0];
         expect(exampleBackticks.query).equals("select * from `tada-analytics.dataform_example.sample_data`");
+
+        // Check deferred calls to materialization resolve to the correct definitions file.
+        expect(materializationNames).includes("example_deferred");
+        var exampleDeferred = graph.materializations.filter(m => m.name == "example_deferred")[0];
+        expect(exampleDeferred.fileName).includes("definitions/example_deferred.js");
       });
     });
 

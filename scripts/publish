@@ -1,6 +1,11 @@
 #!/bin/bash
 set -e
 
+# Clean and run tests before we publish.
+
+./scripts/clean
+./scripts/test
+
 # Update to a new version.
 
 npx lerna version
