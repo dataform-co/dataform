@@ -27,7 +27,7 @@ export interface MConfig {
   preOps?: MContextable<string | string[]>;
   postOps?: MContextable<string | string[]>;
   dependencies?: string | string[];
-  descriptor?: { [key: string]: string };
+  descriptor?: string[] | { [key: string]: string };
   disabled?: boolean;
   redshift?: protos.IRedshiftOptions;
   bigquery?: protos.IBigQueryOptions;
@@ -103,7 +103,11 @@ export class Materialization {
       this.dependencies(config.dependencies);
     }
     if (config.descriptor) {
-      this.descriptor(config.descriptor);
+      if (config.descriptor instanceof Array) {
+        this.descriptor(config.descriptor);
+      } else {
+        this.descriptor(config.descriptor);
+      }
     }
     if (config.disabled) {
       this.disabled();
@@ -253,6 +257,10 @@ export class Materialization {
     // Validation.
     if (this.proto.type === MaterializationTypes.INCREMENTAL && (!this.proto.where || this.proto.where.length === 0)) {
       const message = `"where" property is not defined. With the type “incremental” you must also specify the property “where”!`;
+      this.validationError(message);
+    }
+    if (this.proto.type === MaterializationTypes.INCREMENTAL && (!this.proto.descriptor || Object.keys(this.proto.descriptor).length === 0)) {
+      const message = `Incremental tables must explicitly list fields in the table descriptor, using the describe() or descriptor() methods.`;
       this.validationError(message);
     }
     return this.proto;
