@@ -1,0 +1,10 @@
+import Documentation from "../../../_documentation";
+
+export default ({children}) => <Documentation title="BigQuery options">{children}</Documentation>;
+
+# Table partitions
+
+```sql
+--js bigquery({ partitionBy: "DATE(ts)"});
+select current_timestamp() as ts
+```

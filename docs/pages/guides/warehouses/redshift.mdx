@@ -1,0 +1,17 @@
+import Documentation from "../../../_documentation";
+
+export default ({children}) => <Documentation title="Redshift options">{children}</Documentation>;
+
+# Setting distribution keys
+
+```sql
+--js redshift({ distKey: "ts", distStyle: "even" });
+select 1 as ts
+```
+
+# Setting sort keys
+
+```sql
+--js redshift({ sortKey: "ts", sortStyle: "compound" });
+select 1 as ts
+```
