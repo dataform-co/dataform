@@ -8,6 +8,7 @@
     "examples/bigquery_with_errors",
     "examples/redshift",
     "examples/redshift_operations",
+    "examples/snowflake",
     "protos",
     "tests"
   ],
