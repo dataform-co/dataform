@@ -19,7 +19,7 @@ export class SnowflakeDbAdapter implements DbAdapter {
     return new Promise<any[]>((resolve, reject) => {
       this.connection.execute({
         sqlText: statement,
-        complete: function(err, _, rows) {
+        complete: function(err, stmt, rows) {
           if (err) {
             reject(err);
           } else {
@@ -31,20 +31,20 @@ export class SnowflakeDbAdapter implements DbAdapter {
   }
 
   evaluate(statement: string): Promise<void> {
-    return this.connection.query(`explain ${statement}`).then(() => {});
+    throw Error("Unimplemented");
   }
 
   tables(): Promise<protos.ITarget[]> {
     return this.execute(
       `select table_name, table_schema
          from information_schema.tables
-         where table_schema != 'information_schema'
-           and table_schema != 'pg_catalog'
-           and table_schema != 'pg_internal'`
+         where LOWER(table_schema) != 'information_schema'
+           and LOWER(table_schema) != 'pg_catalog'
+           and LOWER(table_schema) != 'pg_internal'`
     ).then(rows =>
       rows.map(row => ({
-        schema: row.table_schema,
-        name: row.table_name
+        schema: row.TABLE_SCHEMA,
+        name: row.TABLE_NAME
       }))
     );
   }
@@ -59,7 +59,7 @@ export class SnowflakeDbAdapter implements DbAdapter {
       this.execute(
         `select table_type from information_schema.tables where table_schema = '${target.schema}' AND table_name = '${
           target.name
-          }'`
+        }'`
       )
     ]).then(results => ({
       target: target,

@@ -391,27 +391,34 @@ describe("@dataform/api", () => {
       expect(mNames).includes("example_table");
       const mTable = graph.materializations.filter(m => m.name == "example_table")[0];
       expect(mTable.type).equals("table");
-      expect(mTable.query).equals("\nselect * from \"dataform_example\".\"sample_data\"");
+      expect(mTable.query).equals('\nselect * from "dataform_example"."sample_data"');
       expect(mTable.dependencies).deep.equals(["sample_data"]);
 
       expect(mNames).includes("example_view");
       const mView = graph.materializations.filter(m => m.name == "example_view")[0];
       expect(mView.type).equals("view");
-      expect(mView.query).equals("\nselect * from \"dataform_example\".\"sample_data\"");
+      expect(mView.query).equals('\nselect * from "dataform_example"."sample_data"');
       expect(mView.dependencies).deep.equals(["sample_data"]);
 
       expect(mNames).includes("sample_data");
       const mSampleData = graph.materializations.filter(m => m.name == "sample_data")[0];
       expect(mSampleData.type).equals("view");
-      expect(mSampleData.query).equals("select 1 as sample_column union all\nselect 2 as sample_column union all\nselect 3 as sample_column");
+      expect(mSampleData.query).equals(
+        "select 1 as sample_column union all\nselect 2 as sample_column union all\nselect 3 as sample_column"
+      );
       expect(mSampleData.dependencies).to.be.an("array").that.is.empty;
 
       const aNames = graph.assertions.map(m => m.name);
 
       expect(aNames).includes("sample_data_assertion");
       const assertion = graph.assertions.filter(m => m.name == "sample_data_assertion")[0];
-      expect(assertion.query).equals("select * from \"dataform_example\".\"sample_data\" where sample_column > 3");
-      expect(assertion.dependencies).to.include.members(["sample_data",  "example_table", "example_incremental", "example_view"]);
+      expect(assertion.query).equals('select * from "dataform_example"."sample_data" where sample_column > 3');
+      expect(assertion.dependencies).to.include.members([
+        "sample_data",
+        "example_table",
+        "example_incremental",
+        "example_view"
+      ]);
     });
   });
 
