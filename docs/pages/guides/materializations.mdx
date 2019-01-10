@@ -1,8 +1,10 @@
 import Documentation from "../../_documentation";
 
-export default ({children}) => <Documentation title="Materializations">{children}</Documentation>;
+export default ({children}) => <Documentation title="Publishing datasets">{children}</Documentation>;
 
 A materialization defines a table, or view that will be created in your data warehouse.
+
+# Example: Create a view
 
 To define a new materialization, create a `.sql` file in the `definitions` directory. The name of the file will be the name of the table created in your data warehouse.
 
@@ -16,7 +18,7 @@ Will create a `view` called `example` in the default dataform schema defined in 
 
 There are many configuration options that can be applied to a materialization, for a full list see the [materializations reference](/reference/materializations).
 
-## Tables
+# Example: Create a table
 
 By default, materializations are created as views in your warehouse. To create a copy of the query result as table, you can use the `type` method to change the materialization type to `"table"`.
 
@@ -25,80 +27,66 @@ By default, materializations are created as views in your warehouse. To create a
 select 1 as test
 ```
 
-## Incremental tables
+# Example: Referencing other datasets
 
-Incremental tables allow you build a table incrementally, by only inserting data that has not yet been processed.
+TODO
 
-In order to define an incremental table we must set the `type` of the query to `"incremental"`, and provide a where clause.
+## Example: Adding custom dependencies
 
-For example, if you have a timestamp field in a source table called `ts`, then you can provide a where statement that means only rows that are newer than the latest value value of `ts` in our output table. The `where` function should be used inline as part of a query.
+TODO
 
-<p>
-<div class="bp3-callout bp3-icon-info-sign bp3-intent-warning" markdown="1">
-When using incremental tables, you must describe all the columns in the table, so that the correct insert statements can be generated.
-</div>
-</p>
+# Example: Disable a dataset
 
-```sql
-/*js
-type("incremental");
-where(`ts > (select max(ts) from ${self()}`);
-descriptor("ts", "a", "b");
-*/
-select ts, a, b from sourcetable
-```
+TODO
 
-Incremental tables automatically produce the necessary `create table` and `insert` statements.
+# Executing statements after creation
 
-For the above example, if the table does not exist the the following statement will be run:
+You can execute one or more statements before or after a table is materialized using the [`postOps()`](/built-in-functions#postOps) built-in.
 
-```sql
-create or replace table dataform.incrementalexample as
-  select ts, a, b
-  from sourcetable
-```
+## Example: Granting table access
 
-Subsequent runs will then run the following statement:
-
-```sql
-insert into dataform.incrementalexample (ts, a, b)
-  select ts, a, b
-  from sourcetable
-  where ts > (select max(ts) from dataform.incrementaltable)
-```
-
-It's important to note that incremental tables MUST specifically list selected fields, so that the insert statement can be automatically generated.
-
-The following would not work:
-```sql
---js type("incremental");
-select * from sourcetable
-```
-
-## Pre operations
-
-You can execute one or more statements before a table is materialized using the [`preOps()`](/built-in-functions#preOps) built-in:
+The following example SQL file defines a post operation to grant access to the dataset to specific groups, after the table or view is created.
 
 ```js
-/*js
-preOps([
-  "run this before",
-  "then run this before"
-])
-*/
 select 1 as test
+--js postOps(`grant select on ${self()} to group "allusers@dataform.co"`);
 ```
 
-## Post operations
+## Executing statements before
 
-You can execute one or more statements after a table is materialized using the [`postOps()`](/built-in-functions#postOps) built-in:
+TODO
 
-```js
+# Configuration statements
+
+e.g, cover the following all being equivelant
+
+```sql
 /*js
-postOps([
-  "run this after",
-  "then run this after"
-])
+config({
+  type: "table",
+  disabled: true,
+});
 */
-select 1 as test
 ```
+
+```sql
+--js type("table");
+--js disabled(true);
+```
+
+```sql
+/*js
+type("table");
+disabled(true);
+*/
+```
+
+# Warehouse specific configuration
+
+## BigQuery
+
+For more information on configuring BigQuery tables, such as enabling table partitioning, check out the [BigQuery guide](/guides/warehouses/bigquery).
+
+## Redshift
+
+For more information on configuring Redshift tables, such as sort keys and dist keys, check out the [Redshift guide](/guides/warehouses/redshift).

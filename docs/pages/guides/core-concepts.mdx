@@ -2,7 +2,11 @@ import Documentation from "../../_documentation";
 
 export default ({children}) => <Documentation title="Core concepts">{children}</Documentation>;
 
-At it's core, Dataform runs SQL queries against your warehouse, in the correct order. It also provides a framework to make it easy to develop queries and dependencies, provides templating so you can re-use code across different queries, and provides pre built packages that you can use within your project so you don't have to re-invent the wheel.
+# What is dataform?
+
+Dataform is a framework for managing datasets and pipelines within your data warehouse.
+
+It also provides a framework to make it easy to develop queries and dependencies, provides templating so you can re-use code across different queries, and provides pre built packages that you can use within your project so you don't have to re-invent the wheel.
 
 There are 3 main types of things you can do in dataform:
 
@@ -11,6 +15,16 @@ There are 3 main types of things you can do in dataform:
 [Execute arbitrary queries](/guides/operations) - run arbitrary SQL queries against your warehouse.
 
 [Run assertions against your data](/guides/assertions) - check that data conforms to certain rules.
+
+# What can it do?
+
+- Publish datasets
+- Write tests against your data
+- Execute arbitrary SQL operations
+
+# How can I use it?
+
+# How does it work?
 
 ## Directed graph
 

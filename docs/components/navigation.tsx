@@ -7,14 +7,20 @@ export default class Navigation extends React.Component<any, any> {
       <div>
         <h3>Guides</h3>
         <Menu style={styles.menu}>
-          <MenuItem href="/guides/assertions" text="Assertions" />
-          <MenuItem href="/guides/configuration" text="Configuration" />
           <MenuItem href="/guides/core-concepts" text="Core concepts" />
-          <MenuItem href="/guides/includes" text="Includes" />
-          <MenuItem href="/guides/js-api" text="JS API" />
-          <MenuItem href="/guides/operations" text="Operations" />
-          <MenuItem href="/guides/materializations" text="Materializations" />
-          <MenuItem href="/guides/command-line-interface" text="Command line interface" />
+          <MenuItem href="/guides/materializations" text="Publishing datasets" />
+          <MenuItem href="/guides/incremental-tables" text="Building incremental tables" />
+          <MenuItem href="/guides/includes" text="Re-usable code with includes" />
+          <MenuItem href="/guides/operations" text="Custom SQL operations" />
+          <MenuItem href="/guides/assertions" text="Testing data with assertions" />
+          <MenuItem href="/guides/configuration" text="Project configuration" />
+          <MenuItem href="/guides/js-api" text="JavaScript API" />
+          {/*<MenuItem href="/guides/command-line-interface" text="Command line interface" />*/}
+          <MenuItem text="Warehouse integrations" />
+          <div style={styles.indent1}>
+            <MenuItem href="/guides/warehouses/bigquery" text="BigQuery" />
+            <MenuItem href="/guides/warehouses/redshift" text="Redshift" />
+          </div>
         </Menu>
         <h3>Reference</h3>
         <Menu style={styles.menu}>
@@ -34,5 +40,8 @@ export default class Navigation extends React.Component<any, any> {
 export const styles: { [className: string]: React.CSSProperties } = {
   menu: {
     backgroundColor: "transparent"
+  },
+  indent1: {
+    marginLeft: "16px"
   }
 };
