@@ -1,40 +1,35 @@
 import Documentation from "../../_documentation";
 
-export default ({children}) => <Documentation title="Core concepts">{children}</Documentation>;
+export default ({children}) => <Documentation title="Overview">{children}</Documentation>
 
 # What is dataform?
 
-Dataform is a framework for managing datasets and pipelines within your data warehouse.
-
-It also provides a framework to make it easy to develop queries and dependencies, provides templating so you can re-use code across different queries, and provides pre built packages that you can use within your project so you don't have to re-invent the wheel.
-
-There are 3 main types of things you can do in dataform:
-
-[Materialize data sets](/guides/materializations) - create a table, or view in your warehouse from a SQL query.
-
-[Execute arbitrary queries](/guides/operations) - run arbitrary SQL queries against your warehouse.
-
-[Run assertions against your data](/guides/assertions) - check that data conforms to certain rules.
+Dataform makes it easy to manage complex SQL data pipelines in your data warehouse, without building and maintaining custom code.
 
 # What can it do?
 
-- Publish datasets
-- Write tests against your data
-- Execute arbitrary SQL operations
+With Dataform you can:
+
+- [Publish datasets](/guides/materializations)
+- [Write tests against your data](/guides/assertions)
+- [Execute arbitrary SQL operations](/guides/operations)
+
+Dataform currently supports Google BigQuery, Amazon Redshift, and Snowflake data warehouses.
 
 # How can I use it?
 
+You can get started quickly with https://dataform.co, or check out our [command line interface](/guides/command-line-interface) and open-source packages to download and develop Dataform projects yourself.
+
 # How does it work?
 
-## Directed graph
+1. You write SQL files enriched with Dataform's API and templating functions.
+2. Dataform compiles, validates, and executes the generated SQL statements against your warehouse, automating boiler plate such as `create table` and `insert` statements.
+3. You have a clean, well defined datasets pushed back to your warehouse, that the rest of your team can use for anything from dashboards to machine learning.
 
-Dataform compiles your project and computes a directed, acyclic graph of all the queries that should be run, and makes sure to run them in the correct order.
+Dataform's enriched SQL format allows you to:
 
-## API
-
-Dataform provides APIs to make it easy to perform common tasks, such as [creating a table](/guides/materializations), or incrementally inserting new rows into a table.
-
-
-## JS API
-
-Dataform provides a way to define anything in dataform via JavaScript, check out the [JS API reference](/reference/js-api) for more info.
+- Reference and declare dependencies between datasets
+- Re-use common SQL across many queries
+- Write tests against your data
+- Document your tables fields
+- Write custom functions in JavaScript
