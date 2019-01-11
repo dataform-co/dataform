@@ -2,9 +2,11 @@ import Documentation from "../../_documentation";
 
 export default ({children}) => <Documentation title="JS API">{children}</Documentation>;
 
+# Introduction
+
 Generally the easiest way to define [materializations](/guides/materializations), [assertions](/guides/assertions), and [operations](/guides/operations) is to create a new file with the appropriate extension, one of `.sql .assert.sql .ops.sql`.
 
-For advanced use cases, all of the above can be defined via Dataform's a JavaScript API.
+However, for advanced use cases, all of the above can be defined via Dataform's a JavaScript API.
 
 To use the JS API, create a `.js` file anywhere in the `definitions/` folder of your project.
 
@@ -15,13 +17,45 @@ The JS API provides three primary functions that correspond to the types of obje
 
 These are regular JavaScript (ES6) files that can contain arbitrary code, for loops, functions, constants etc.
 
-## Example
+# Defining actions via JavaScript
 
-Define an incremental table, provide a query and a where clause using a [`Contextable`](/reference/contextable) argument and `self()`.
+e.g.
 
-```js
-materialize("example_incremental")
-  .type("incremental")
-  .query("select 1 as ts")
-  .where(context => `ts > (select max(ts) from ${context.self()})`);
 ```
+materialize("table1")
+  .query("select 1 as test");
+
+assert("assertion1")
+  .query("select * from source_table where value is null");
+
+operate("operation1")
+  .query("insert into some_table (test) values (2)");
+```
+
+# Understanding contextable functions
+
+e.g.
+```
+materialize("example")
+  .query(ctx => `select * from ${ctx.ref("other_table")}`);
+```
+
+
+# Example: Setting other properties via the API
+
+```
+materialize("table1")
+  .query("select 1 as test")
+  .type("table");
+
+assert("assertion1")
+  .query(ctx => `select * from ${ctx.ref("table1")} where test != 1`);
+
+operate("operation1")
+  .query(ctx => `insert into ${ctx.ref("table1")} (test) values (2)`)
+  .dependencies("assertion1");
+```
+
+# Example: Creating several tables at once
+
+TODO

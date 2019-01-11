@@ -1,104 +1,189 @@
 import Documentation from "../../_documentation";
 
-export default ({children}) => <Documentation title="Materializations">{children}</Documentation>;
+export default ({children}) => <Documentation title="Publishing tables">{children}</Documentation>;
 
-A materialization defines a table, or view that will be created in your data warehouse.
+## Create a view
 
-To define a new materialization, create a `.sql` file in the `definitions` directory. The name of the file will be the name of the table created in your data warehouse.
-
-For example, the file `definitions/example.sql` with the contents:
+Create a new file in your project under the `definitions/` folder, such as `definitions/example.sql`:
 
 ```js
 select 1 as test
 ```
 
-Will create a `view` called `example` in the default dataform schema defined in the [`dataform.json`](/configuration/#dataform.json) file.
+This will create a `view` by default, that will be called `example` in the dataform schema defined in the [`dataform.json`](/guides/configuration#dataform.json) file.
 
-There are many configuration options that can be applied to a materialization, for a full list see the [materializations reference](/reference/materializations).
+<div class="bp3-callout bp3-icon-info-sign bp3-intent-warning" markdown="1">
+Trailing semi-colons should be omitted at the end of the query.
+</div>
 
-## Tables
+## Create a table
 
-By default, materializations are created as views in your warehouse. To create a copy of the query result as table, you can use the `type` method to change the materialization type to `"table"`.
+By default, tables are actually created as `views` in your warehouse. To create a copy of the query result as an actual table from the query, you can use Dataform's JavaScript configuration syntax to set the `type` of the query to `table`.
 
-```sql
+```js
 --js type("table");
 select 1 as test
 ```
 
-## Incremental tables
+Configuration statements starting with `--js` will be stripped from the compiled query, leaving the actual final query to be executed as:
 
-Incremental tables allow you build a table incrementally, by only inserting data that has not yet been processed.
+```js
+select 1 as test
+```
 
-In order to define an incremental table we must set the `type` of the query to `"incremental"`, and provide a where clause.
+## Referencing other tables
 
-For example, if you have a timestamp field in a source table called `ts`, then you can provide a where statement that means only rows that are newer than the latest value value of `ts` in our output table. The `where` function should be used inline as part of a query.
+Dataform provides methods that enable you to easily reference another table in your project, without having to provide the full SQL table name.
 
-<p>
+
+`definitions/source.sql`:
+```js
+select 1 as sourcedata
+```
+
+`definitions/example.sql`:
+```js
+select * from ${ref("source")}
+```
+
+The value we provide to the `ref()` function is the name of the file that defines the table you would like to reference, *without* the extension. In this case, as the source table is defined in the file `source.sql`, we use the string value `"source"`.
+
+The query will be compiled into the following SQL before it is run:
+
+```js
+select * from "dataform_schema"."source";
+```
+
+Any table that is referenced in a query will be automatically added to it's dependencies. When the queries are executed against the warehouse, this makes sure they are done so in the correct order.
+
 <div class="bp3-callout bp3-icon-info-sign bp3-intent-warning" markdown="1">
-When using incremental tables, you must describe all the columns in the table, so that the correct insert statements can be generated.
+File names must be unique within your <code>definitions/</code> folder, even across directories, as these determine the name of the table or view created within your warehouse.
 </div>
-</p>
 
-```sql
-/*js
-type("incremental");
-where(`ts > (select max(ts) from ${self()}`);
-descriptor("ts", "a", "b");
-*/
-select ts, a, b from sourcetable
-```
+## Adding custom dependencies
 
-Incremental tables automatically produce the necessary `create table` and `insert` statements.
-
-For the above example, if the table does not exist the the following statement will be run:
-
-```sql
-create or replace table dataform.incrementalexample as
-  select ts, a, b
-  from sourcetable
-```
-
-Subsequent runs will then run the following statement:
-
-```sql
-insert into dataform.incrementalexample (ts, a, b)
-  select ts, a, b
-  from sourcetable
-  where ts > (select max(ts) from dataform.incrementaltable)
-```
-
-It's important to note that incremental tables MUST specifically list selected fields, so that the insert statement can be automatically generated.
-
-The following would not work:
-```sql
---js type("incremental");
-select * from sourcetable
-```
-
-## Pre operations
-
-You can execute one or more statements before a table is materialized using the [`preOps()`](/built-in-functions#preOps) built-in:
+You may want to make sure a table is created only after another table is created, but without explicitly referencing it in the query itself. For this, you can use another JavaScript configuration method called `dependencies(...)`:
 
 ```js
-/*js
-preOps([
-  "run this before",
-  "then run this before"
-])
-*/
+--js dependencies("some_table");
+select * from ...
+```
+
+Multiple dependencies can also be provided in a single call:
+
+```js
+--js dependencies(["some_table", "some_other_table"]);
+select * from ...
+```
+
+## Disable a table
+
+To stop a table being created, you can call the `disabled()` method. This will keep the table as part of your graph, but stop it from executing when you run your project. This is useful if the query breaks, and you don't want your entire pipeline to fail while it's fixed.
+
+```js
+--js disabled();
+select * from ...
+```
+
+## Executing statements before or after creating tables
+
+To execute one or more SQL statements before or after creating a table, you can use the `preOps()` and `postOps()` configuration methods.
+
+### Granting table access with `postOps()`
+
+The following example SQL file defines a post operation to grant access to the table to specific groups, after the table is created.
+
+```js
+--js postOps(`grant select on ${self()} to group "allusers@dataform.co"`);
+select * from ...
+```
+## Overriding the output schema
+
+By default, all tables are created within the default schema chosen when initializing a project, usually `dataform`.
+
+This can be overriden by changing the file name to have a fully qualified table name. For example, to create a table called `example` in the schema `other_schema`, create the file `definitions/other_schema.example.sql`:
+
+```js
 select 1 as test
 ```
 
-## Post operations
+This will override the output schema of the table to `other_schema`. To reference such tables, use the fully qualified name of the table, for example:
 
-You can execute one or more statements after a table is materialized using the [`postOps()`](/built-in-functions#postOps) built-in:
+```js
+select * from ${ref("other_schema.table")}
+```
+
+
+## Configuration statements
+
+There are a few equivelant ways of using JS configuration statements covered below.
+
+### Single line statements
+
+Each line starting with `--js` will be interpreted as JavaScript.
+
+```js
+--js type("table");
+--js disabled(true);
+```
+
+### Multi-line statements
+
+For writing JavaScript over multiple lines, create a comment block that starts with `/*js`:
 
 ```js
 /*js
-postOps([
-  "run this after",
-  "then run this after"
-])
-*/
-select 1 as test
 ```
+
+<div style={{ marginTop: "-30px" }} />
+
+```js
+type("table");
+disabled(true);
+```
+
+<div style={{ marginTop: "-30px" }} />
+
+```js
+*/
+```
+
+### Setting multiple properties with `config()`
+
+Most settings for a table can be set in a single call to the `config(...)` method, and are passed in via a JSON object:
+
+
+```js
+/*js
+```
+
+<div style={{ marginTop: "-30px" }} />
+
+```js
+config({
+  type: "table",
+  disabled: true,
+});
+```
+
+<div style={{ marginTop: "-30px" }} />
+
+```js
+*/
+```
+
+## Warehouse specific configuration
+
+### BigQuery
+
+For more information on configuring BigQuery tables, such as enabling table partitioning, check out the [BigQuery guide](/guides/warehouses/bigquery).
+
+### Redshift
+
+For more information on configuring Redshift tables, such as sort keys and dist keys, check out the [Redshift guide](/guides/warehouses/redshift).
+
+## Further reading
+
+- [Testing data with assertions](/guides/assertions)
+- [Custom SQL operations](/guides/operations)
+- [JavaScript API](/guides/js-api)
