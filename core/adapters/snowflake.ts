@@ -69,7 +69,7 @@ export class SnowflakeAdapter implements Adapter {
         where ${where}`;
   }
 
-  baseTableType(type: string) {
+  baseTableType(type: string = "table") {
     if (type == "incremental") {
       return "table";
     }

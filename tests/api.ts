@@ -222,6 +222,47 @@ describe("@dataform/api", () => {
       const executionGraph = new Builder(testGraph, {}, protos.WarehouseState.create({})).build();
       expect(asPlainObject(executionGraph.nodes)).deep.equals(asPlainObject(expectedExecutionNodes));
     });
+
+    it("snowflake", () => {
+      const testGraph: protos.ICompiledGraph = protos.CompiledGraph.create({
+        projectConfig: { warehouse: "snowflake" },
+        materializations: [
+          {
+            name: "a",
+            target: {
+              schema: "schema",
+              name: "a"
+            },
+            query: "select 1 as test"
+          },
+          {
+            name: "b",
+            target: {
+              schema: "schema",
+              name: "b"
+            },
+            dependencies: ["a"],
+            query: "select 1 as test"
+          }
+        ]
+      });
+      const testState = protos.WarehouseState.create({});
+      const builder = new Builder(testGraph, {}, testState);
+      const executionGraph = builder.build();
+
+      expect(executionGraph.nodes)
+        .to.be.an("array")
+        .to.have.lengthOf(2);
+
+      executionGraph.nodes.forEach((node, index) => {
+        expect(node)
+          .to.have.property("tasks")
+          .to.be.an("array").that.is.not.empty;
+
+        const statements = node.tasks.map(item => item.statement);
+        expect(statements).includes(`create or replace table "schema"."${node.name}" as select 1 as test`);
+      });
+    });
   });
 
   describe("init", () => {
