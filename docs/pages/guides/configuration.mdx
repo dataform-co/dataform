@@ -1,21 +1,64 @@
 import Documentation from "../../_documentation";
+import Struct from "../../components/struct";
+import { structs } from "../../_structs";
 
 export default ({children}) => <Documentation title="Configuration">{children}</Documentation>;
 
-# Introduction
+## Introduction
 
-Dataform projects are configured using two JSON files.
+A dataform project is primarily configured through the `dataform.json` file that is created at the top level of your project directory.
+
+As Dataform projects use NPM for package management, you can also control dependencies and the current dataform version through the `package.json` file. Check out the [packages guide](/guides/packages) for more information on this.
 
 ## `dataform.json`
 
 Stores information about the project that is used to compile SQL, such as the warehouse type, default schemas, and warehouse specific settings.
 
-See the [dataform.json reference](/reference/dataform-json) for more information.
+The following is an example of the `dataform.json` file for a default BigQuery project:
+```json
+{
+  "warehouse": "bigquery",
+  "defaultSchema": "dataform",
+  "assertionsSchema": "dataform_assertions",
+  "gcloudProjectId": "my-project-id"
+}
+```
+
+See the [`dataform.json` reference](/reference/dataform-json) for more information on all the settings that can be configured.
+
+## Changing default schemas
+
+Dataform aims to create all objects under a single schema (or dataset in BigQuery) in your warehouse. This is usually called `dataform` but can be changed by editing the `defaultSchema` property to something else. For example to change it to `mytables` update the configuration file as such:
+
+```json
+{
+  ...
+  "defaultSchema": "mytables",
+  ...
+}
+```
+
+[Assertions](/guides/assertions) are created in a different schema as denoted by the `assertionsSchema` property. This can also be changed similar to above.
+
 
 ## `package.json`
 
 This is a regular Node/NPM package file which can be used it include JavaScript packages within your project.
 
-# Example: Changing the default schema
+Most importantly, your Dataform version is logged here, and can be updated by changing this file or running the `npm install` or `npm update` commands inside your project directory.
 
-# Example: Updating dataform version
+This is managed for you when developing projects on https://dataform.co and so can be largely ignored.
+
+## Updating dataform to the latest version
+
+All dataform projects depend on the package `@dataform/core`. To upgrade your dataform version, you can run the following command when developing locally:
+
+```bash
+npm update @dataform/core
+```
+
+When running commands such as `dataform run`, you may need to also upgrade your globally installed dataform version. This can be done with the command:
+
+```bash
+npm update -g @dataform/cli
+```

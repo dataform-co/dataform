@@ -2,21 +2,17 @@ import Documentation from "../../_documentation";
 
 export default ({children}) => <Documentation title="Testing data with assertions">{children}</Documentation>;
 
-# Introduction
+## Introduction
 
-An `assertion` is a query that should return 0 rows, and can be used to check the state of your materializations as part of your pipelines.
+Assertions allow you to check the state of data produced in other actions.
+An assertion query should be written to look for rows that violate one or more rules. If the query returns any rows, then the test will fail.
 
 To define a new assertion, create a `.assert.sql` file in the `definitions` directory.
 
-# Inspecting failed test rows
+## Checking for nulls
 
-# Stopping the pipeline on failure
-
-TODO(Cover how you stop other models running if a test fails)
-
-# Example: Checking for nulls
-
-The following assertion checks that 3 fields in a table are never null:
+Modern warehouses often don't have a way to strongly enforce non-null behaviour.
+In order to check for nulls on certain fields in a table `"sometable"` produced by an action, we can create a new file `definitions/sometable_not_null.assert.sql`:
 
 ```js
 select * from ${ref("sometable")}
@@ -25,10 +21,61 @@ where a is not null
   and c is not null
 ```
 
-# Example: Checking for unique keys
+If `a`, `b`, or `c` are null in any rows, then this test will fail.
 
-TODO
+## Checking keys are unique
 
-# Reference
+Another common use case is to check that a particular field, or combination of fields are unique in a table. For example in a daily customer stats table, we would expect that there is only a single row for both the `date` and `customer_id` fields.
+
+Assuming we have a table called `daily_customer_stats` with fields `date` and `customer_id` that make up a unique key, we can create a new file `definitions/daily_customer_stats_unique_keys.assert.sql`:
+
+```js
+with
+select
+  date,
+  customer_id,
+  sum(1) as rows
+from ${ref("daily_customer_stats")}
+as base
+select * from base where rows > 1
+```
+
+This query will pick up any keys where there are more than 1 row for that key, and thus are not unique.
+
+## Inspecting failed test rows
+
+Dataform automatically creates a view in your warehouse with the compiled assertion query. This makes it easy to inspect the rows that caused the test to fail, without increasing storage requirements or causing data to leave your warehouse.
+
+Assertions create views in a seperate schema to your default schema. This property is configured in the [`dataform.json`](/guides/configuration) file.
+
+If we have a default assertion schema `dataform_assertions`, and an assertion file called `definitions/someassertion.assert.sql`:
+
+```js
+select * from ${ref("example")} where test > 1
+```
+
+Dataform will create a view called `dataform_assertions.someassertion` in your warehouse with the following query:
+
+```js
+create or replace view dataform_assertions.someassertion as select * from dataform.example where test > 1
+```
+
+You can manually query this output view in order to debug failing tests.
+
+## Depending on assertions
+
+Assertions create named nodes in your project that can be depended on using the `dependencies()` configuration statement.
+
+If you would like another table, assertion, or operation to only run if a specific test passes, you can add it to that action's dependencies.
+
+For example, if you have two tables called `table1` and `table2`, and an assertion called `table1_not_null`, to make sure the `table2` code will only run if `table1_checks` passes, you can add it as a dependency.
+
+`definitions/table2.sql`:
+```js
+--js dependencies("table1_checks");
+select * from ${ref("table1")} left join ...
+```
+
+## Reference
 
 Check the [assertions reference](/reference/assertions) for a list of all methods you can use in `.assert.sql` files.
