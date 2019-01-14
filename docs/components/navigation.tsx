@@ -8,7 +8,7 @@ export default class Navigation extends React.Component<any, any> {
         <h3>Guides</h3>
         <Menu style={styles.menu}>
           <MenuItem href="/guides/core-concepts" text="Core concepts" />
-          <MenuItem href="/guides/materializations" text="Publishing datasets" />
+          <MenuItem href="/guides/materializations" text="Publishing tables" />
           <MenuItem href="/guides/incremental-tables" text="Building incremental tables" />
           <MenuItem href="/guides/includes" text="Re-usable code with includes" />
           <MenuItem href="/guides/operations" text="Custom SQL operations" />

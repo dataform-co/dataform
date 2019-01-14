@@ -2,27 +2,79 @@ import Documentation from "../../_documentation";
 
 export default ({children}) => <Documentation title="Operations">{children}</Documentation>;
 
-# Introduction
+## Introduction
 
-An `operation` defines a set of SQL commands that will be executed in order against your warehouse, and can be used for arbitrary operations that don't necessarily create materializations or tests.
+An `operation` defines a set of SQL commands that will be executed in order against your warehouse, and can be used for running SQL or warehouse specific that don't necessarily fit into the model of publishing a table or writing a test.
 
-To define a new operation, create a `.ops.sql` file in the `definitions` directory.
+## Simple example
 
-Multiple statements can be seperated with a single line containing only `---`
+To define a new operation action, create a file such as `definitions/example.ops.sql`:
 
-# Example: Granting table access
-
-# Example: Running vacuum commands (Redshift)
-
-For example, the following file defines two queries that will be run in order and executes vacuum commands in `Redshift`:
 ```js
-vacuum delete only sales to 75 percent
+create or replace view someschema.someview as select 1 as test
+```
+
+Multiple statements can be seperated with a single line containing only 3 dashes (`---`):
+
+```js
+create or replace view someschema.someview as select 1 as test
 ---
-vacuum reindex listing
+drop view if exists someschema.someview
+```
+
+These statements will be run as is against the warehouse. You can use warehouse specific commands in these files, such as BigQuery's DML or DDL statements, or Redshift/Postgres specific commands.
+
+Operations SQL files behave very similarly to the statements provided to `postOps()` and `preOps()` configuration statements that can be used when publishing tables.
+
+## Custom table builds
+
+In some cases, you may want to create a table manually, rather than relying on Dataform's built in logic. This can be achieved by writing an operations file and specifying the full `create table/view` commands manually:
+
+```js
+create or replace view sometable.someschema as (select 1 as test)
+```
+
+## Declaring and referencing outputs
+
+If an operations file creates a table or view that can be referenced using `ref()`, then you can use the configuration method `hasOutput()` to tell Dataform that this operations file can be referenced.
+
+For example create the following file `definitions/customview.ops.sql`:
+```js
+--js hasOutput(true);
+create or replace view defaultschema.customview as (select 1 as test)
+```
+
+<div class="bp3-callout bp3-icon-info-sign bp3-intent-warning" markdown="1">
+The output created must match the name of the file excluding the prefix in order for references to work properly. In this case <code>customview</code>. If you are creating a table in a custom schema, you can change the file name to reflect this to: <code>definitions/customschema.customview.ops.sql</code>.
+</div>
+
+<br />
+
+The `self()` method can also be used to automatically reference the table or view denoted by the current file name. This saves you having to make sure they both match:
+
+```js
+--js hasOutput(true);
+create or replace view ${self()} as (select 1 as test)
 ```
 
 
-# Example: Custom insert statements
+References to `"customview"` will now resolve to `"defaultschema.customview"` and can be used in other SQL files, for example:
+
+```js
+select * from ${ref("customview")}
+```
+
+## Running vacuum commands (Redshift)
+
+Redshift has a command `vacuum` that can be used to improve the performance of some tables. This is a common use case for operations:
+
+```js
+vacuum delete only ${ref("sometable")} to 75 percent
+---
+vacuum reindex ${ref("sometable")}
+```
+
+In the above example, the `ref()` function can be used within the operations file like normal.
 
 ## Reference
 
