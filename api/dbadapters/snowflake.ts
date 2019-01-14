@@ -63,7 +63,7 @@ export class SnowflakeDbAdapter implements DbAdapter {
       )
     ]).then(results => ({
       target: target,
-      type: results[1][0] ? (results[1][0].TABLE_TYPE == "VIEW" ? "view" : "table") : null,
+      type: results[1][0] ? (results[1][0].TABLE_TYPE == "VIEW" ? "view" : "table") : "other",
       fields: results[0].map(row => ({
         name: row.COLUMN_NAME,
         primitive: row.DATA_TYPE,

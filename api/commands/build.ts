@@ -13,7 +13,7 @@ export class Builder {
   private compiledGraph: protos.ICompiledGraph;
   private runConfig: protos.IRunConfig;
 
-  private adapter: adapters.Adapter;
+  private adapter: adapters.IAdapter;
   private state: protos.IWarehouseState;
 
   constructor(compiledGraph: protos.ICompiledGraph, runConfig: protos.IRunConfig, state: protos.IWarehouseState) {

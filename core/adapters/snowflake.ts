@@ -1,11 +1,13 @@
 import * as protos from "@dataform/protos";
-import { Adapter } from "./index";
+import { IAdapter } from "./index";
+import { Adapter } from "./base";
 import { Task, Tasks } from "../tasks";
 
-export class SnowflakeAdapter implements Adapter {
+export class SnowflakeAdapter extends Adapter implements IAdapter {
   private project: protos.IProjectConfig;
 
   constructor(project: protos.IProjectConfig) {
+    super();
     this.project = project;
   }
 
@@ -49,7 +51,7 @@ export class SnowflakeAdapter implements Adapter {
   }
 
   createOrReplace(m: protos.IMaterialization) {
-    return `create or replace ${this.baseTableType(m.type)} ${this.resolveTarget(m.target)} as ${m.query}`;
+    return `create or replace ${this.baseTableType(m.type || "table")} ${this.resolveTarget(m.target)} as ${m.query}`;
   }
 
   insertInto(target: protos.ITarget, columns: string[], query: string) {
@@ -61,22 +63,5 @@ export class SnowflakeAdapter implements Adapter {
 
   dropIfExists(target: protos.ITarget, type: string) {
     return `drop ${this.baseTableType(type)} if exists ${this.resolveTarget(target)}`;
-  }
-
-  where(query: string, where: string) {
-    return `select * from (
-        ${query})
-        where ${where}`;
-  }
-
-  baseTableType(type: string = "table") {
-    if (type == "incremental") {
-      return "table";
-    }
-    return type;
-  }
-
-  oppositeTableType(type: string) {
-    return this.baseTableType(type) == "table" ? "view" : "table";
   }
 }
