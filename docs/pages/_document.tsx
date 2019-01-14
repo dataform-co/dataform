@@ -25,10 +25,12 @@ export default class DefaultDocument extends Document {
               </a>
             </NavbarGroup>
           </Navbar>
-          <div style={styles.navbarSpacer} className="hideInline" />
           <div style={styles.contents}>
-            <Main />
-            <NextScript />
+            <div style={styles.navbarSpacer} className="hideInline" />
+            <div >
+              <Main />
+              <NextScript />
+            </div>
           </div>
         </body>
       </html>
@@ -51,9 +53,8 @@ export const styles: { [className: string]: React.CSSProperties } = {
     opacity: 0.9
   },
   contents: {
-    padding: "20px",
     width: "100%",
-    maxWidth: "960px",
+    maxWidth: "1200px",
     margin: "auto"
   },
   githubLogo: {
