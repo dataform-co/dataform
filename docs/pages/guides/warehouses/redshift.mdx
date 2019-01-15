@@ -2,16 +2,32 @@ import Documentation from "../../../_documentation";
 
 export default ({children}) => <Documentation title="Redshift options">{children}</Documentation>;
 
-# Setting distribution keys
+Redshift specific options can be applied to tables using the `redshift()` configuration statement.
 
-```sql
---js redshift({ distKey: "ts", distStyle: "even" });
-select 1 as ts
+## Distributing data
+
+You can configure how Redshift [distributes data](https://docs.aws.amazon.com/redshift/latest/dg/t_Distributing_data.html#t_data_distribution_concepts) in your cluster by configuring the `distStyle` and `distKey` properties.
+
+```js
+--js type("table");
+--js redshift({ distKey: "user_id", distStyle: "even" });
+select user_id from ...
 ```
 
-# Setting sort keys
+Setting these properties will generate the correct table creation statement to run in Redshift, for example:
 
-```sql
---js redshift({ sortKey: "ts", sortStyle: "compound" });
+```js
+create table "dataform"."example"
+distkey(user_id)
+diststyle even
+as select user_id from ...
+```
+
+## Sorting data
+
+You can also configure how Redshift [sorts data](https://docs.aws.amazon.com/redshift/latest/dg/t_Sorting_data.html) in your tables with the `sortKeys` and `sortStyle` properties.
+
+```js
+--js redshift({ sortKeys: ["ts"], sortStyle: "compound" });
 select 1 as ts
 ```

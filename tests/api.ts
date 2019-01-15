@@ -222,6 +222,47 @@ describe("@dataform/api", () => {
       const executionGraph = new Builder(testGraph, {}, protos.WarehouseState.create({})).build();
       expect(asPlainObject(executionGraph.nodes)).deep.equals(asPlainObject(expectedExecutionNodes));
     });
+
+    it("snowflake", () => {
+      const testGraph: protos.ICompiledGraph = protos.CompiledGraph.create({
+        projectConfig: { warehouse: "snowflake" },
+        materializations: [
+          {
+            name: "a",
+            target: {
+              schema: "schema",
+              name: "a"
+            },
+            query: "select 1 as test"
+          },
+          {
+            name: "b",
+            target: {
+              schema: "schema",
+              name: "b"
+            },
+            dependencies: ["a"],
+            query: "select 1 as test"
+          }
+        ]
+      });
+      const testState = protos.WarehouseState.create({});
+      const builder = new Builder(testGraph, {}, testState);
+      const executionGraph = builder.build();
+
+      expect(executionGraph.nodes)
+        .to.be.an("array")
+        .to.have.lengthOf(2);
+
+      executionGraph.nodes.forEach((node, index) => {
+        expect(node)
+          .to.have.property("tasks")
+          .to.be.an("array").that.is.not.empty;
+
+        const statements = node.tasks.map(item => item.statement);
+        expect(statements).includes(`create or replace table "schema"."${node.name}" as select 1 as test`);
+      });
+    });
   });
 
   describe("init", () => {
@@ -367,6 +408,58 @@ describe("@dataform/api", () => {
       graph.operations.forEach(op => {
         expect(op.queries).deep.equals([expectedQueries[op.name]]);
       });
+    });
+
+    it("snowflake_example", async () => {
+      const graph = await compile("../examples/snowflake").catch(error => error);
+      expect(graph).to.not.be.an.instanceof(Error);
+
+      expect(graph)
+        .to.have.property("compileErrors")
+        .to.be.an("array").that.is.empty;
+      expect(graph)
+        .to.have.property("validationErrors")
+        .to.be.an("array").that.is.empty;
+
+      const mNames = graph.materializations.map(m => m.name);
+
+      expect(mNames).includes("example_incremental");
+      const mIncremental = graph.materializations.filter(m => m.name == "example_incremental")[0];
+      expect(mIncremental.type).equals("incremental");
+      expect(mIncremental.query).equals("select convert_timezone('UTC', current_timestamp())::timestamp as ts");
+      expect(mIncremental.dependencies).to.be.an("array").that.is.empty;
+
+      expect(mNames).includes("example_table");
+      const mTable = graph.materializations.filter(m => m.name == "example_table")[0];
+      expect(mTable.type).equals("table");
+      expect(mTable.query).equals('\nselect * from "dataform_example"."sample_data"');
+      expect(mTable.dependencies).deep.equals(["sample_data"]);
+
+      expect(mNames).includes("example_view");
+      const mView = graph.materializations.filter(m => m.name == "example_view")[0];
+      expect(mView.type).equals("view");
+      expect(mView.query).equals('\nselect * from "dataform_example"."sample_data"');
+      expect(mView.dependencies).deep.equals(["sample_data"]);
+
+      expect(mNames).includes("sample_data");
+      const mSampleData = graph.materializations.filter(m => m.name == "sample_data")[0];
+      expect(mSampleData.type).equals("view");
+      expect(mSampleData.query).equals(
+        "select 1 as sample_column union all\nselect 2 as sample_column union all\nselect 3 as sample_column"
+      );
+      expect(mSampleData.dependencies).to.be.an("array").that.is.empty;
+
+      const aNames = graph.assertions.map(m => m.name);
+
+      expect(aNames).includes("sample_data_assertion");
+      const assertion = graph.assertions.filter(m => m.name == "sample_data_assertion")[0];
+      expect(assertion.query).equals('select * from "dataform_example"."sample_data" where sample_column > 3');
+      expect(assertion.dependencies).to.include.members([
+        "sample_data",
+        "example_table",
+        "example_incremental",
+        "example_view"
+      ]);
     });
   });
 
