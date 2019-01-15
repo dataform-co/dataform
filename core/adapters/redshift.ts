@@ -1,11 +1,13 @@
 import * as protos from "@dataform/protos";
-import { Adapter } from "./index";
+import { IAdapter } from "./index";
+import { Adapter } from "./base";
 import { Task, Tasks } from "../tasks";
 
-export class RedshiftAdapter implements Adapter {
+export class RedshiftAdapter extends Adapter implements IAdapter {
   private project: protos.IProjectConfig;
 
   constructor(project: protos.IProjectConfig) {
+    super();
     this.project = project;
   }
 
@@ -96,22 +98,5 @@ export class RedshiftAdapter implements Adapter {
 
   dropIfExists(target: protos.ITarget, type: string) {
     return `drop ${type} if exists ${this.resolveTarget(target)}`;
-  }
-
-  where(query: string, where: string) {
-    return `select * from (
-        ${query})
-        where ${where}`;
-  }
-
-  baseTableType(type: string) {
-    if (type == "incremental") {
-      return "table";
-    }
-    return type;
-  }
-
-  oppositeTableType(type: string) {
-    return this.baseTableType(type) == "table" ? "view" : "table";
   }
 }
