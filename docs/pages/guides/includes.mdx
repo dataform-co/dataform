@@ -2,65 +2,195 @@ import Documentation from "../../_documentation";
 
 export default ({children}) => <Documentation title="Includes">{children}</Documentation>;
 
-# Introduction
+## Introduction
 
 
 Javascript files can be added in the `includes/` folder to define simple scripts, constants or macros that can promote reuse of code across your project.
 
 Each file in the includes folder will be made available to be used within your other SQL or JavaScript files.
 
-## What are includes
+## Create an include
 
-## How do I use them
+Create a new file in your project under the `includes/` folder, such as `definitions/example_include.js`:
 
-# Includes concepts
+```js
+const PROJECT_ID = "my_project_name";
+module.exports = { PROJECT_ID };
+```
 
-## Folder/naming structure
+## Use an include in a SQL file
+You can reference any include function, constant or macro by using its name preceded by the name of the include file it is in.
+
+`definitions/query.sql`:
+```sql
+SELECT * FROM ${constants.PROJECT_ID}.my_schema_name.my_table_name
+```
+
+
+The query will be compiled into the following SQL before it is run:
+```sql
+SELECT * FROM my_project_name.my_schema_name.my_table_name
+```
+
+
+## Create an include with parameters
+
+Writing functions can be helpful to reuse the same block of SQL logic across many different scripts. Functions can take 0 or more named parameters and need to return a string.
+
+In the example below, we write a function `country_group` that takes as input a country_code and returns a CASE statement.
+
+
+`includes/country_mapping.js`:
+```js
+function country_group(country){
+  return `CASE
+          WHEN ${country} IN ("US", "CA") THEN "NA"
+          WHEN ${country} IN ("GB", "FR", "DE", "IT", "PL") THEN "EU"
+          WHEN ${country} IN ("AU") THEN ${country}
+          ELSE "Other countries"
+          END`
+}
+
+module.exports = { country_group };
+```
+
+### Use an include with parameters
+You can reference any function, constant or macro by using its name preceded by the name of the include file it is in.
+
+`definitions/revenue_by_country_group.sql`:
+```js
+SELECT ${mapping.country_group("country_code")} as country_group,
+       sum(revenue) as revenue
+
+FROM my_schema.revenue_by_country
+
+GROUP BY 1
+
+```
+
+The query will be compiled into the following SQL before it is run:
+```sql
+SELECT CASE
+          WHEN country_code IN ("US", "CA") THEN "NA"
+          WHEN country_code IN ("GB", "FR", "DE", "IT", "PL") THEN "EU"
+          WHEN country_code IN ("AU") THEN country_code
+          ELSE "Other countries"
+          END as country_group,
+       sum(revenue) as revenue
+
+FROM my_schema.revenue_by_country
+
+GROUP BY 1
+```
+
+## Other example of an include with parameters: GROUP BY
+
+In the example below, we write a function `group_by` that takes as input a number and generates a GROUP BY statement
+
+
+`includes/utils.js`:
+```js
+function group_by(number){
+  var string = "GROUP BY ";
+  for(var i=1;i<=number;i++){
+    string = string + i;
+    if(i<number){
+      string = string + ", ";
+    }
+  }
+  return string;
+}
+
+module.exports = { group_by };
+```
+
+### Use an include with parameters
+You can reference any function, constant or macro by using its name preceded by the name of the include file it is in.
+
+`definitions/example.sql`:
+```sql
+SELECT field1,
+       field2,
+       field3,
+       field4,
+       field5,
+       sum(revenue) as revenue
+
+FROM my_schema.my_table
+
+${group_by(5)}
+
+```
+
+The query will be compiled into the following SQL before it is run:
+```sql
+SELECT field1,
+       field2,
+       field3,
+       field4,
+       field5,
+       sum(revenue) as revenue
+
+FROM my_schema.my_table
+
+GROUP BY 1, 2, 3, 4, 5
+```
+
+
+## Generating entire queries
+
+Functions can be used to generate entire queries. That can be useful if you need to create datasets with very similar structure.
+
+The example below includes a function that aggregates all metrics with a sum and group by every dimension.
+
+
+`includes/script_builder.js`:
+```js
+function render_script(table, dimensions, metrics) {
+    return `
+      SELECT
+      ${dimensions.map(field => `${field} as ${field}`).join(",\n")},
+      ${metrics.map(field => `sum(${field}) as ${field}`).join(",\n")}
+      FROM ${table}
+      GROUP BY 1, ${dimensions.map((field, i) => `${i+2}`).join(", ")}
+`
+}
+module.exports = { render_script };
+}
+```
+
+### How to use
+
+To use the function, call it inside a SQL files
+
+
+`definitions/stats_per_country_and_device.sql`:
+```js
+${script_builder.render_script(ref("source_table"),
+                               ["country", "device_type"],
+                               ["revenue", "pageviews", "sessions"]
+                               )}
+
+```
+
+The query will be compiled into the following SQL before it is run:
+```sql
+SELECT country as country,
+       device_type as device_type,
+       sum(revenue) as revenue,
+       sum(pageviews) as pageviews,
+       sum(sessions) as sessions
+
+FROM my_schema.source_table
+
+GROUP BY 1,2
+```
+
 
 ## Exporting functions and constants
 
-## Using includes in SQL files
 
-# Example: Global variables
-
-# Example: Functions
-
-## Re-usable user agent parser
-
-## Group by macro
 
 ## Generating entire queries
 
 TODO(Covering passing ref() calls)
-
-# OLD
-
-For example, the following includes file defines a constant and a function that can be used within other scripts:
-
-```js
-// includes/utils.js
-
-// Define a constant.
-const PROJECT_NAME = "my_project_name";
-
-// Define a function that prefixes the project name to a string.
-function prefixProjectName(value) {
-  return PROJECT_NAME + "_" + value;
-}
-
-// Export the constant and the function so they can be used.
-module.exports = { PROJECT_NAME, prefixProjectName };
-```
-
-You can use these functions in your scripts, and they will be automatically made available under the name of the file they where defined in, in this case `utils`:
-
-```js
-// definitions/example.sql
-select 1 as ${utils.prefixProjectName("test")}
-```
-
-Which get's compiled to:
-
-```sql
-select 1 as my_project_name_test
-```
