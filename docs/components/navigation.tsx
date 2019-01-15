@@ -4,7 +4,7 @@ import { Menu, MenuItem } from "@blueprintjs/core";
 export default class Navigation extends React.Component<any, any> {
   render() {
     return (
-      <div>
+      <div style={{paddingTop: "10px"}}>
         <h3>Guides</h3>
         <Menu style={styles.menu}>
           <MenuItem href="/guides/core-concepts" text="Core concepts" />
@@ -39,7 +39,9 @@ export default class Navigation extends React.Component<any, any> {
 
 export const styles: { [className: string]: React.CSSProperties } = {
   menu: {
-    backgroundColor: "transparent"
+    backgroundColor: "transparent",
+    fontSize: "14px",
+    color: "#2f2d44"
   },
   indent1: {
     marginLeft: "16px"

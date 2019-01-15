@@ -1,3 +1,7 @@
+* {
+  -webkit-font-smoothing: antialiased;
+}
+
 div.highlight {
   padding: 10px;
   margin-bottom: 10px;
@@ -15,8 +19,18 @@ pre {
   word-wrap: break-word;
 }
 
-p > code {
+pre > code {
+  padding: 15px!important;
+}
+
+p {
+  line-height: 26px;
+  color: #373e42;
+}
+
+p > code, li > code {
   font-weight: bold;
+  color: #2f2d44;
 }
 
 code {
@@ -45,4 +59,29 @@ a:hover {
 
 ::-webkit-scrollbar-thumb {
   background-color: #aaa;
+}
+
+h1 {
+  color: #2f2d44;
+  font-weight: 400;
+}
+
+h2,
+h3 {
+  color: #2f2d44;
+  font-weight: 500;
+}
+
+h2 {
+  margin-top: 39px;
+  padding-top: 39px;
+  border-top: 2px solid #f4f6f7;
+}
+
+h3 {
+  padding-top: 25px;
+}
+
+a {
+  text-decoration: underline;
 }
