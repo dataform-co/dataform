@@ -254,6 +254,7 @@ yargs
           required: true
         })
         .positional("query", {
+          type: "string",
           describe: "The query to evaluate."
         })
         .positional("project-dir", {
@@ -263,13 +264,14 @@ yargs
     argv => {
       query
         .compile(argv["query"], path.resolve(argv["project-dir"]))
-        .then(compiledQuery =>
-          query.evaluate(
-            protos.Profile.create(JSON.parse(fs.readFileSync(argv["profile"], "utf8"))),
-            compiledQuery,
-            path.resolve(argv["project-dir"])
-          )
-        )
+        .then(compiledQuery => {
+          const profile = JSON.parse(fs.readFileSync(argv["profile"], "utf8"));
+          if (profile.snowflake) {
+            return console.log("Not implemented! You can try to use the web interface in your Snowflake profile");
+          }
+
+          return query.evaluate(protos.Profile.create(profile), compiledQuery, path.resolve(argv["project-dir"]));
+        })
         .catch(e => console.log(e));
     }
   )
@@ -303,5 +305,4 @@ yargs
         .catch(e => console.log(e));
     }
   )
-  .demandCommand(1, 'You need at least one command before moving on')
-  .argv;
+  .demandCommand(1, "You need at least one command before moving on").argv;
