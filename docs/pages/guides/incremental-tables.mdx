@@ -162,7 +162,7 @@ We can write the following incremental to create a daily snapshot of that data:
 --js type("incremental");
 --js where(`snapshot_date > (select max(snapshot_date) from ${self()})`);
 --js descriptor(["snapshot_date", "customer_id", "name", "account_settings", ...]);
-select current_date() as snapshot_date, customer_id, name, account_settings from productiondb.customers;
+select current_date() as snapshot_date, customer_id, name, account_settings from productiondb.customers
 ```
 
 By selecting the current date as the extraction date, this effectively puts one, and only one, copy of customer data into the output table each day.
