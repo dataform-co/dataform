@@ -126,7 +126,7 @@ tableNames.forEach(tableName => {
       select * from ${ctx.ref(tableName)}
       where user_id not in (
         select user_id
-        from ${ref("blacklisted_user_ids")}
+        from ${ctx.ref("blacklisted_user_ids")}
       )`);
 });
 ```
