@@ -1,14 +1,28 @@
 import * as React from "react";
 import { styles as commonStyles } from "./common_styles";
 import Navigation from "./components/navigation";
+import OnThisPage from "./components/onThisPage";
 
 export interface Props {
   title: string;
 }
 export default class Documentation extends React.Component<Props, any> {
+  getMenuItems = (child: React.ReactElement<any>) => {
+    if (child && child.props && Array.isArray(child.props.children)) {
+      return child.props.children.filter(item => item.props.name === "h2").map(item => ({
+        id: item.props.props.id,
+        text: item.props.children
+      }));
+    }
+
+    return [];
+  };
+
   render() {
+    const menu = this.getMenuItems(this.props.children as React.ReactElement<any>);
+
     return (
-      <div style={commonStyles.flexRow}>
+      <div style={{ ...commonStyles.flexRow, ...styles.container }}>
         <div style={styles.sidebar} className="hideInline">
           <Navigation />
         </div>
@@ -16,18 +30,28 @@ export default class Documentation extends React.Component<Props, any> {
           <h1>{this.props.title}</h1>
           {this.props.children}
         </div>
+        <div style={{ ...styles.sidebar, ...styles.onThisPage }} className="hideInline">
+          <OnThisPage menu={menu} />
+        </div>
       </div>
     );
   }
 }
 
 export const styles: { [className: string]: React.CSSProperties } = {
+  container: {
+    alignItems: "baseline"
+  },
   sidebar: {
     width: "280px",
     minWidth: "280px",
     padding: "10px",
     maxHeight: "100%",
     overflowY: "scroll"
+  },
+  onThisPage: {
+    position: "sticky",
+    top: 0
   },
   mainContent: {
     borderLeft: "1px solid rgba(120,134,156,0.2)",

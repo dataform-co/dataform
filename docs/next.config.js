@@ -1,9 +1,10 @@
 const withTypescript = require("@zeit/next-typescript");
 const remarkHighlight = require("remark-highlight.js");
+const remarkSlug = require("remark-slug");
 const withMDX = require("@zeit/next-mdx")({
   extension: /\.mdx?$/,
   options: {
-    mdPlugins: [remarkHighlight]
+    mdPlugins: [remarkHighlight, remarkSlug]
   }
 });
 const CopyWebpackPlugin = require("copy-webpack-plugin");
