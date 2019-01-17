@@ -13,6 +13,10 @@ class OnThisPage extends React.Component<Props, any> {
   render() {
     const { menu } = this.props;
 
+    if (!menu.length) {
+      return null;
+    }
+
     return (
       <div style={styles.container}>
         <h3>On this page</h3>

@@ -2,17 +2,26 @@ import * as React from "react";
 import { styles as commonStyles } from "./common_styles";
 import Navigation from "./components/navigation";
 import OnThisPage from "./components/onThisPage";
+import Method from "./components/method";
 
 export interface Props {
   title: string;
 }
+
 export default class Documentation extends React.Component<Props, any> {
   getMenuItems = (child: React.ReactElement<any>) => {
     if (child && child.props && Array.isArray(child.props.children)) {
-      return child.props.children.filter(item => item.props.name === "h2").map(item => ({
+      const headers = child.props.children.filter(item => item.props.name === "h2").map(item => ({
         id: item.props.props.id,
         text: item.props.children
       }));
+
+      const methods = child.props.children.filter(item => item.type === Method).map(item => ({
+        id: item.props.name,
+        text: item.props.name
+      }));
+
+      return [...headers, ...methods];
     }
 
     return [];

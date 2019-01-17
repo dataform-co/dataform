@@ -34,7 +34,7 @@ To make sure incremental tables behave consistently, you must explicitly tell Da
 select field1, field2 from ...
 ```
 
-<div class="bp3-callout bp3-icon-info-sign bp3-intent-warning" markdown="1">
+<div className="bp3-callout bp3-icon-info-sign bp3-intent-warning" markdown="1">
 When using incremental tables, you must describe all the columns in the table, so that the correct insert statements can be generated. Fields not included in the descriptor will not be inserted to the table.
 </div>
 
@@ -42,7 +42,7 @@ When using incremental tables, you must describe all the columns in the table, s
 
 Let's assume we have a source table containing timestamped data about user actions on our site called `weblogs.user_actions`, that is streamed into our warehouse via some other data integration tool:
 
-<table class="bp3-html-table bp3-html-table-striped .modifier" style={{ width: "100%" }}>
+<table className="bp3-html-table bp3-html-table-striped .modifier" style={{ width: "100%" }}>
   <thead>
     <tr>
       <th>timestamp</th>
