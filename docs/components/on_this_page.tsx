@@ -9,7 +9,7 @@ export interface Props {
   menu: OnThisPageItem[];
 }
 
-class OnThisPage extends React.Component<Props, any> {
+export class OnThisPage extends React.Component<Props, any> {
   render() {
     const { menu } = this.props;
 
@@ -40,5 +40,3 @@ export const styles: { [className: string]: React.CSSProperties } = {
     color: "#2f2d44"
   }
 };
-
-export default OnThisPage;

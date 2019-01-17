@@ -1,7 +1,8 @@
 import * as React from "react";
+import Media from "react-media";
 import { styles as commonStyles } from "./common_styles";
 import Navigation from "./components/navigation";
-import OnThisPage from "./components/onThisPage";
+import { OnThisPage } from "./components/on_this_page";
 import Method from "./components/method";
 
 export interface Props {
@@ -27,11 +28,19 @@ export default class Documentation extends React.Component<Props, any> {
     return [];
   };
 
-  render() {
+  renderRightSidebar = () => {
     const menu = this.getMenuItems(this.props.children as React.ReactElement<any>);
 
     return (
-      <div style={{ ...commonStyles.flexRow, ...styles.container }}>
+      <div style={styles.sidebar} className="hideInline">
+        <OnThisPage menu={menu} />
+      </div>
+    );
+  };
+
+  render() {
+    return (
+      <div style={commonStyles.flexRow}>
         <div style={styles.sidebar} className="hideInline">
           <Navigation />
         </div>
@@ -39,26 +48,22 @@ export default class Documentation extends React.Component<Props, any> {
           <h1>{this.props.title}</h1>
           {this.props.children}
         </div>
-        <div style={{ ...styles.sidebar, ...styles.onThisPage }} className="hideInline">
-          <OnThisPage menu={menu} />
-        </div>
+        <Media
+          query="(min-width: 1100px)"
+          render={this.renderRightSidebar}
+        />
       </div>
     );
   }
 }
 
 export const styles: { [className: string]: React.CSSProperties } = {
-  container: {
-    alignItems: "baseline"
-  },
   sidebar: {
     width: "280px",
     minWidth: "280px",
     padding: "10px",
     maxHeight: "100%",
-    overflowY: "scroll"
-  },
-  onThisPage: {
+    overflowY: "scroll",
     position: "sticky",
     top: 0
   },

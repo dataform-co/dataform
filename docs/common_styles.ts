@@ -13,7 +13,8 @@ export const styles: { [className: string]: React.CSSProperties } = {
 
   flexRow: {
     display: "flex",
-    flexDirection: "row"
+    flexDirection: "row",
+    alignItems: "baseline"
   },
 
   flexGrow: {
