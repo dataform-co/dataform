@@ -9,7 +9,7 @@ export interface Props {
   menu: OnThisPageItem[];
 }
 
-export class OnThisPage extends React.Component<Props, any> {
+export default class OnThisPage extends React.Component<Props, any> {
   render() {
     const { menu } = this.props;
 

@@ -2,7 +2,7 @@ import * as React from "react";
 import Media from "react-media";
 import { styles as commonStyles } from "./common_styles";
 import Navigation from "./components/navigation";
-import { OnThisPage } from "./components/on_this_page";
+import OnThisPage from "./components/on_this_page";
 import Method from "./components/method";
 
 export interface Props {
