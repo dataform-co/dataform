@@ -6,7 +6,7 @@ export const structs: { [name: string]: StructProps } = {
     fields: [
       {
         name: "warehouse",
-        type: '"bigquery" | "redshift"',
+        type: '"bigquery" | "redshift" | "snowflake"',
         description: "The type of the warehouse to compile against"
       },
       {

@@ -174,7 +174,7 @@ export const methods: {[name:string] : MethodProps} = {
   materialize: {
     name: "materialize()",
     signatures: ["materialize(name)", "materialize(name, query)", "materialize(name, config)"],
-    description: "Returns a new [`Materialization`](/reference/materializations-js) with the given name.",
+    description: "Returns a new [Materialization`](/reference/materializations-js) with the given name.",
     fields: [
       {
         name: "name",
