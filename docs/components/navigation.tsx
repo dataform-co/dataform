@@ -22,7 +22,7 @@ export default class Navigation extends React.Component<any, any> {
             <MenuItem href="/guides/warehouses/redshift" text="Redshift" />
           </div>
         </Menu>
-        <h3>Reference</h3>
+        <h3>API reference</h3>
         <Menu style={styles.menu}>
           <MenuItem href="/reference/assertions" text="Assertions" />
           <MenuItem href="/reference/contextable" text="Contextable<> Class" />

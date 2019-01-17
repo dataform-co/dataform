@@ -31,7 +31,7 @@ export class Session {
     this.compileErrors = [];
   }
 
-  adapter(): adapters.Adapter {
+  adapter(): adapters.IAdapter {
     return adapters.create(this.config);
   }
 

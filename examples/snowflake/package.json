@@ -1,0 +1,10 @@
+{
+    "name": "@dataform/examples-snowflake",
+    "version": "0.0.2-alpha.45",
+    "description": "Example Dataform project (Snowflake).",
+    "dependencies": {
+        "@dataform/core": "^0.0.2-alpha.45",
+        "@dataform/crossdb": "^0.0.2-alpha.45"
+    },
+    "private": true
+}

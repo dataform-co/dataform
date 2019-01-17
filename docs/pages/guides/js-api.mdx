@@ -1,28 +1,27 @@
 import Documentation from "../../_documentation";
 
-export default ({children}) => <Documentation title="JS API">{children}</Documentation>;
+export default ({children}) => <Documentation title="JavaScript API">{children}</Documentation>;
 
-# Introduction
+## Introduction
 
-Generally the easiest way to define [materializations](/guides/materializations), [assertions](/guides/assertions), and [operations](/guides/operations) is to create a new file with the appropriate extension, one of `.sql .assert.sql .ops.sql`.
+Dataform provides a JavaScript API for defining all actions via code, rather than through creating individual SQL files. This can be useful in advanced use cases.
 
-However, for advanced use cases, all of the above can be defined via Dataform's a JavaScript API.
+To use the JavaScript API, create a `.js` file anywhere in the `definitions/` folder of your project. This code will be run during project compilation.
 
-To use the JS API, create a `.js` file anywhere in the `definitions/` folder of your project.
+The JavaScript API provides methods that create any of the actions that you would otherwise define in a SQL file:
+- Publish a table
+- Define custom SQL operations
+- Write tests against data
 
-The JS API provides three primary functions that correspond to the types of objects above:
-- [`materialize()`](/reference/js-api#materialize())
-- [`operate()`](/reference/js-api#operate())
-- [`assert()`](/reference/js-api#assert())
+These are regular JavaScript (ES5) files that can contain arbitrary code, for loops, functions, constants etc.
 
-These are regular JavaScript (ES6) files that can contain arbitrary code, for loops, functions, constants etc.
+## Defining actions via JavaScript
 
-# Defining actions via JavaScript
+The following file shows a simple example of creating the 3 primary actions via JavaScript:
 
-e.g.
-
-```
-materialize("table1")
+`definitions/example.js`:
+```js
+publish("table1")
   .query("select 1 as test");
 
 assert("assertion1")
@@ -32,30 +31,104 @@ operate("operation1")
   .query("insert into some_table (test) values (2)");
 ```
 
-# Understanding contextable functions
+This creates a table, an assertion, and an operation in a single file, which would have otherwise required 3 seperate files to be created.
 
-e.g.
-```
-materialize("example")
-  .query(ctx => `select * from ${ctx.ref("other_table")}`);
-```
+## Setting properties on actions
 
+Each of the global methods, `publish()`, `operate()`, `assert()` returns an object that can then be used to configure that action. The API follows a builder syntax which can be seen in the following example:
 
-# Example: Setting other properties via the API
-
-```
-materialize("table1")
-  .query("select 1 as test")
-  .type("table");
-
-assert("assertion1")
-  .query(ctx => `select * from ${ctx.ref("table1")} where test != 1`);
-
-operate("operation1")
-  .query(ctx => `insert into ${ctx.ref("table1")} (test) values (2)`)
-  .dependencies("assertion1");
+```js
+publish("table1")
+  .query("select 1 as test")    // Defines the main query
+  .type("table")                // Set's the type of the table
+  .dependecies(["other_table"]) // Add's dependencies
+  .descriptor({
+    "test": "Value is 1"        // Describes fields in the table
+  });
 ```
 
-# Example: Creating several tables at once
+Multiple properties can also be set using the `config()` method, or as a shorthand, passed as a second argument to the method:
 
-TODO
+```js
+publish("table1", {
+  query: "select 1 as test",
+  type: "table",
+  dependecies: ["other_table"],
+  descriptor: {
+    "test": "Value is 1"
+  }
+});
+```
+
+To see all the settings that can be configured for each action type, refer to the relevant reference below:
+
+- [`publish()`](/reference/materializations)
+- [`operate()`](/reference/operations)
+- [`assert()`](/reference/assertions)
+
+## Using built-in functions such as `ref()`
+
+When writing `.sql` files, Dataform makes a number of built in functions such as `ref()` and `self()` available to use within the main query. For example the file `definitions/example.sql`:
+```js
+select * from ${ref("other_table")}
+```
+
+The `ref()` function is made available automatically. This is not the case when using the JavaScript API.
+
+To use these functions, certain methods such as `query()` accept a contextable argument. Instead of providing a string as the argument, a function can be provided that will be passed a `context` object which has all these methods available on it.
+
+To mirror the behaviour above, you can use a contextable argument to the `query()` method and take advantage of JavaScript template strings:
+
+`definitions/example.js`:
+```js
+publish("example")
+  .query(ctx => `select ${ctx.ref("other_table")}`);
+```
+<div class="bp3-callout bp3-icon-info-sign bp3-intent-warning" markdown="1">
+In order to use the <code>${"{}"}</code> syntax to call methods inline in a string, the argument must be wrapped in backticks<code>`</code> instead of regular quotes <code>"</code>.
+</div>
+
+<br/>
+
+The following methods and configuration options accept a contextable argument and be called in a similar way:
+- `query()`
+- `where()`
+- `preOps()`
+- `postOps()`
+
+Contextable arguments can also be provided via the `config()` API, again mirroring the behaviour above:
+
+```js
+publish("example")
+  .config({
+    query: ctx => `select ${ctx.ref("other_table")}`
+  });
+```
+
+## Creating several tables at once
+
+One of the most common use cases for using the JavaScript API is to perform a similar action several times.
+
+For example, imagine you have several tables, all of which have a field `user_id`. You would like to create a view of each table with certain blacklisted user IDs removed. You can perform this across all tables using a JavaScript `forEach` statement:
+
+`definitions/blacklist_views.js`:
+```js
+const tableNames = [
+  "user_events",
+  "user_settings",
+  "user_logs",
+  "user_friends"
+];
+
+tableNames.forEach(tableName => {
+  publish(tableName + "_blacklist_removed")
+    .query(ctx => `
+      select * from ${ref(tableName)}
+      where user_id not in (
+        select user_id
+        from ${ref("blacklisted_user_ids")}
+      )`);
+});
+```
+
+This would create 4 new views, `user_events_blacklist_removed`, etc, that don't contain any of the users with blacklisted IDs.
