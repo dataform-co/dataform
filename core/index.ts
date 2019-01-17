@@ -60,5 +60,6 @@ export const init = (rootDir: string, projectConfig?: protos.IProjectConfig) => 
 
 (global as any).session = session;
 (global as any).materialize = materialize;
+(global as any).publish = materialize;
 (global as any).operate = operate;
 (global as any).assert = assert;
