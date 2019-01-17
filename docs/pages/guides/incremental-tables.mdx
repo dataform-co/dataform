@@ -8,6 +8,24 @@ Incremental tables don't get rebuilt from scratch every time they are run. Inste
 
 Dataform takes care of managing the state, creating tables and generating insert statements for you.
 
+
+## Incremental table purposes
+
+There are a few different use cases for incremental tables, covered below.
+
+### Append only for performance
+
+Data sources such as logs or web analytics data are great use cases for incremental tables. When processing this data, you ideally only want to process new records, instead of having to reprocess months or possibly years of data.
+
+### Micro-batching for latency
+
+Another benefit of this approach is that pipelines are quicker and can be run more frequently at lower cost, reducing downstream latency to other consumers of these large tables.
+
+### Creating daily snapshots
+
+Another use case of incremental tables is to create a daily snapshot of a dataset, for example enabling you to do longitudinal analysis on user settings in a production database.
+
+
 ## Incremental table concepts
 
 Incremental tables are stateful and make use of insert statements. As a result, care must be taken to ensure that data is not erased, or duplicated during this process.
@@ -144,7 +162,7 @@ We can write the following incremental to create a daily snapshot of that data:
 --js type("incremental");
 --js where(`snapshot_date > (select max(snapshot_date) from ${self()})`);
 --js descriptor(["snapshot_date", "customer_id", "name", "account_settings", ...]);
-select current_date() as snapshot_date, customer_id, name, account_settings from productiondb.customers;
+select current_date() as snapshot_date, customer_id, name, account_settings from productiondb.customers
 ```
 
 By selecting the current date as the extraction date, this effectively puts one, and only one, copy of customer data into the output table each day.
@@ -164,22 +182,6 @@ For incremental tables that cannot be rebuilt from scratch, for example if the s
 --js protected();
 select ...
 ```
-
-## Incremental table purposes
-
-There are a few different use cases for incremental tables, covered below.
-
-### Append only for performance
-
-Data sources such as logs or web analytics data are great use cases for incremental tables. When processing this data, you ideally only want to process new records, instead of having to reprocess months or possibly years of data.
-
-### Micro-batching for latency
-
-Another benefit of this approach is that pipelines are quicker and can be run more frequently at lower cost, reducing downstream latency to other consumers of these large tables.
-
-### Creating daily snapshots
-
-Another use case of incremental tables is to create a daily snapshot of a dataset, for example enabling you to do longitudinal analysis on user settings in a production database.
 
 
 ## Table partitioning / dist keys

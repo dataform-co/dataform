@@ -33,12 +33,12 @@ To reference the constant `PROJECT_ID` in the file `includes/constants.js` you c
 
 `definitions/query.sql`:
 ```js
-SELECT * FROM ${constants.PROJECT_ID}.my_schema_name.my_table_name
+select * from ${constants.PROJECT_ID}.my_schema_name.my_table_name
 ```
 
 The query will be compiled into the following SQL before it is run:
 ```js
-SELECT * FROM my_project_name.my_schema_name.my_table_name
+select * from my_project_name.my_schema_name.my_table_name
 ```
 
 ## Writing functions
@@ -88,9 +88,9 @@ from my_schema.revenue_by_country
 group by 1
 ```
 
-## Other example of an include with parameters: GROUP BY
+## Other example of an include with parameters: group by
 
-In the example below, we write a function `group_by` that takes as input a number and generates a GROUP BY statement
+In the example below, we write a function `group_by` that takes as input a number and generates a group by statement
 
 
 `includes/utils.js`:
@@ -100,7 +100,7 @@ function group_by(n) {
   for(var i = 1; i <= n; i++){
     indices.push(i);
   }
-  return `GROUP BY ${indices.join(", ")}`;
+  return `group by ${indices.join(", ")}`;
 }
 
 module.exports = { group_by };
@@ -112,14 +112,14 @@ The group by function defined above is used in the following example:
 
 `definitions/example.sql`:
 ```js
-SELECT field1,
+select field1,
        field2,
        field3,
        field4,
        field5,
        sum(revenue) as revenue
 
-FROM my_schema.my_table
+from my_schema.my_table
 
 ${group_by(5)}
 
@@ -127,16 +127,16 @@ ${group_by(5)}
 
 The query will be compiled into the following SQL before it is run:
 ```sql
-SELECT field1,
+select field1,
        field2,
        field3,
        field4,
        field5,
        sum(revenue) as revenue
 
-FROM my_schema.my_table
+from my_schema.my_table
 
-GROUP BY 1, 2, 3, 4, 5
+group by 1, 2, 3, 4, 5
 ```
 
 
@@ -151,11 +151,11 @@ The example below includes a function that aggregates all metrics with a sum and
 ```js
 function render_script(table, dimensions, metrics) {
     return `
-      SELECT
+      select
       ${dimensions.map(field => `${field} as ${field}`).join(",\\n")},
       ${metrics.map(field => `sum(${field}) as ${field}`).join(",\\n")}
-      FROM ${table}
-      GROUP BY ${dimensions.map((field, i) => `${i+1}`).join(", ")}
+      from ${table}
+      group by ${dimensions.map((field, i) => `${i+1}`).join(", ")}
     `;
 }
 module.exports = { render_script };
@@ -177,13 +177,13 @@ Note that calls to functions such as `ref()` should be made in the SQL file itse
 
 The query will be compiled into the following SQL before it is run:
 ```sql
-SELECT country as country,
+select country as country,
        device_type as device_type,
        sum(revenue) as revenue,
        sum(pageviews) as pageviews,
        sum(sessions) as sessions
 
-FROM my_schema.source_table
+from my_schema.source_table
 
-GROUP BY 1, 2
+group by 1, 2
 ```

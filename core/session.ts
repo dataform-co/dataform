@@ -77,6 +77,10 @@ export class Session {
   }
 
   materialize(name: string, queryOrConfig?: MContextable<string> | MConfig): Materialization {
+    return this.publish(name, queryOrConfig);
+  }
+
+  publish(name: string, queryOrConfig?: MContextable<string> | MConfig): Materialization {
     // Check for duplicate names
     if (this.materializations[name]) {
       const message = `Duplicate node name detected, names must be unique across materializations, assertions, and operations: "${name}"`;

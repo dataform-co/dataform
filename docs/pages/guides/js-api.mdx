@@ -123,10 +123,10 @@ const tableNames = [
 tableNames.forEach(tableName => {
   publish(tableName + "_blacklist_removed")
     .query(ctx => `
-      select * from ${ref(tableName)}
+      select * from ${ctx.ref(tableName)}
       where user_id not in (
         select user_id
-        from ${ref("blacklisted_user_ids")}
+        from ${ctx.ref("blacklisted_user_ids")}
       )`);
 });
 ```
