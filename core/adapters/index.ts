@@ -7,8 +7,8 @@ import { Tasks } from "../tasks";
 export interface IAdapter {
   resolveTarget(target: protos.ITarget): string;
 
-  materializeTasks(materialization: protos.IMaterialization, runConfig: protos.IRunConfig, table: protos.ITable): Tasks;
-  assertTasks(materialization: protos.IAssertion, projectConfig: protos.IProjectConfig): Tasks;
+  publishTasks(table: protos.ITable, runConfig: protos.IRunConfig, tableMetadata: protos.ITableMetadata): Tasks;
+  assertTasks(assertion: protos.IAssertion, projectConfig: protos.IProjectConfig): Tasks;
 }
 
 export interface AdapterConstructor<T extends IAdapter> {

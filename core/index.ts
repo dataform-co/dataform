@@ -1,6 +1,6 @@
 import * as protos from "@dataform/protos";
 import { Session } from "./session";
-import { Materialization, MaterializationContext, MContextable, MConfig } from "./materialization";
+import { Table, TableContext, TContextable, TConfig } from "./table";
 import { Operation, OContextable } from "./operation";
 import { Assertion, AContextable } from "./assertion";
 
@@ -13,18 +13,7 @@ import * as tasks from "./tasks";
 
 // Exports.
 
-export {
-  adapters,
-  utils,
-  compilers,
-  tasks,
-  Session,
-  Materialization,
-  MaterializationContext,
-  MConfig,
-  Operation,
-  Assertion
-};
+export { adapters, utils, compilers, tasks, Session, Table, TableContext, TConfig, Operation, Assertion };
 
 // Install extensions for SQL files.
 
@@ -51,15 +40,16 @@ const existingGlobalSession = (global as any)._DF_SESSION;
 export const session = existingGlobalSession || new Session(process.cwd());
 (global as any)._DF_SESSION = session;
 
-export const materialize = (name: string, queryOrConfig?: MContextable<string> | MConfig) =>
-  session.materialize(name, queryOrConfig);
+export const publish = (name: string, queryOrConfig?: TContextable<string> | TConfig) =>
+  session.publish(name, queryOrConfig);
+export const materialize = publish;
 export const operate = (name: string, statement?: OContextable<string | string[]>) => session.operate(name, statement);
 export const assert = (name: string, query?: AContextable<string>) => session.assert(name, query);
 export const compile = () => session.compile();
 export const init = (rootDir: string, projectConfig?: protos.IProjectConfig) => session.init(rootDir, projectConfig);
 
 (global as any).session = session;
-(global as any).materialize = materialize;
-(global as any).publish = materialize;
+(global as any).materialize = publish;
+(global as any).publish = publish;
 (global as any).operate = operate;
 (global as any).assert = assert;

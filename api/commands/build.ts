@@ -31,9 +31,7 @@ export class Builder {
 
     // Firstly, turn every thing into an execution node.
     var allNodes: protos.IExecutionNode[] = [].concat(
-      this.compiledGraph.materializations.map(m =>
-        this.buildMaterialization(m, tableStateByTarget[JSON.stringify(m.target)])
-      ),
+      this.compiledGraph.tables.map(t => this.buildTable(t, tableStateByTarget[JSON.stringify(t.target)])),
       this.compiledGraph.operations.map(o => this.buildOperation(o)),
       this.compiledGraph.assertions.map(a => this.buildAssertion(a))
     );
@@ -78,20 +76,20 @@ export class Builder {
     });
   }
 
-  buildMaterialization(m: protos.IMaterialization, table: protos.ITable) {
+  buildTable(t: protos.ITable, tableMetadata: protos.ITableMetadata) {
     const emptyTasks = [] as protos.IExecutionTask[];
 
-    const tasks = m.disabled
+    const tasks = t.disabled
       ? emptyTasks
       : emptyTasks.concat(
-          (m.preOps || []).map(pre => ({ statement: pre })),
-          this.adapter.materializeTasks(m, this.runConfig, table).build(),
-          (m.postOps || []).map(post => ({ statement: post }))
+          (t.preOps || []).map(pre => ({ statement: pre })),
+          this.adapter.publishTasks(t, this.runConfig, tableMetadata).build(),
+          (t.postOps || []).map(post => ({ statement: post }))
         );
 
     return protos.ExecutionNode.create({
-      name: m.name,
-      dependencies: m.dependencies,
+      name: t.name,
+      dependencies: t.dependencies,
       tasks
     });
   }
