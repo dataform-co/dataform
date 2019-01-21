@@ -44,7 +44,7 @@ For example create the following file `definitions/customview.ops.sql`:
 create or replace view defaultschema.customview as (select 1 as test)
 ```
 
-<div class="bp3-callout bp3-icon-info-sign bp3-intent-warning" markdown="1">
+<div className="bp3-callout bp3-icon-info-sign bp3-intent-warning" markdown="1">
 The output created must match the name of the file excluding the prefix in order for references to work properly. In this case <code>customview</code>. If you are creating a table in a custom schema, you can change the file name to reflect this to: <code>definitions/customschema.customview.ops.sql</code>.
 </div>
 
