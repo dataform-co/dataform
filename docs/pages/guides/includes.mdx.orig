@@ -1,0 +1,194 @@
+import Documentation from "../../_documentation";
+
+export default ({children}) => <Documentation title="Includes">{children}</Documentation>;
+
+## Introduction
+
+
+Javascript files can be added in the `includes/` folder to define simple scripts, constants or macros that can promote reuse of code across your project.
+
+Each file in the includes folder will be made available to be used within your other SQL or JavaScript files.
+
+If you are new to Javascript, the examples below should cover most use cases. <a target="_blank" href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/A_re-introduction_to_JavaScript" >MDN</a> is a great resource to learn more.
+
+## Defining and using constants
+
+Create a new file in your project under the `includes/` folder, such as:
+
+`definitions/constants.js`:
+```js
+const PROJECT_ID = "my_project_name";
+module.exports = { PROJECT_ID };
+```
+
+<<<<<<< HEAD
+<div class="bp3-callout bp3-icon-info-sign bp3-intent-warning" markdown="1">
+All functions and constants must be exported using the <code>module.exports = {"{}"}</code> syntax as above, on order to use them elsewhere in the project.
+=======
+<div className="bp3-callout bp3-icon-info-sign bp3-intent-warning" markdown="1">
+All functions and costants must be exported using the <code>module.exports = {"{}"}</code> syntax as above, on order to use them elsewhere in the project.
+>>>>>>> 856619e5b8ef16a7109571eb9344183048a2f115
+</div>
+
+## Use an include in a SQL file
+
+You can reference any include function, constant or macro by using it's file name without the `.js` extension, followed by the name of the exported function or constant.
+
+To reference the constant `PROJECT_ID` in the file `includes/constants.js` you can used the following example:
+
+`definitions/query.sql`:
+```js
+select * from ${constants.PROJECT_ID}.my_schema_name.my_table_name
+```
+
+The query will be compiled into the following SQL before it is run:
+```js
+select * from my_project_name.my_schema_name.my_table_name
+```
+
+## Writing functions
+
+Writing functions can be helpful to reuse the same block of SQL logic across many different scripts. Functions can take 0 or more named parameters and need to return a string.
+
+In the example below, there is function `country_group` that takes as input a the name of the field and returns a CASE statement that will map country codes to contry groups.
+
+
+`includes/country_mapping.js`:
+```js
+function country_group(country) {
+  return `CASE
+          WHEN ${country} IN ("US", "CA") THEN "NA"
+          WHEN ${country} IN ("GB", "FR", "DE", "IT", "PL") THEN "EU"
+          WHEN ${country} IN ("AU") THEN ${country}
+          ELSE "Other countries"
+          END`;
+}
+
+module.exports = { country_group };
+```
+
+This function can be used in a SQL query:
+
+`definitions/revenue_by_country_group.sql`:
+```js
+select
+  ${country_mapping.country_group("country_code")} as country_group,
+  sum(revenue) as revenue
+from my_schema.revenue_by_country
+group by 1
+
+```
+
+The query will be compiled into the following SQL before it is run:
+```sql
+select
+  CASE
+    WHEN country_code IN ("US", "CA") THEN "NA"
+    WHEN country_code IN ("GB", "FR", "DE", "IT", "PL") THEN "EU"
+    WHEN country_code IN ("AU") THEN country_code
+    ELSE "Other countries"
+  END as country_group,
+  sum(revenue) as revenue
+from my_schema.revenue_by_country
+group by 1
+```
+
+## Other example of an include with parameters: group by
+
+In the example below, we write a function `group_by` that takes as input a number and generates a group by statement
+
+
+`includes/utils.js`:
+```js
+function group_by(n) {
+  var indices = [];
+  for(var i = 1; i <= n; i++){
+    indices.push(i);
+  }
+  return `group by ${indices.join(", ")}`;
+}
+
+module.exports = { group_by };
+```
+
+### Use an include with parameters
+
+The group by function defined above is used in the following example:
+
+`definitions/example.sql`:
+```js
+select field1,
+       field2,
+       field3,
+       field4,
+       field5,
+       sum(revenue) as revenue
+
+from my_schema.my_table
+
+${group_by(5)}
+
+```
+
+The query will be compiled into the following SQL before it is run:
+```sql
+select field1,
+       field2,
+       field3,
+       field4,
+       field5,
+       sum(revenue) as revenue
+
+from my_schema.my_table
+
+group by 1, 2, 3, 4, 5
+```
+
+
+## Generating entire queries
+
+Functions can be used to generate entire queries. That can be useful if you need to create datasets with very similar structure.
+
+The example below includes a function that aggregates all metrics with a sum and group by every dimension.
+
+
+`includes/script_builder.js`:
+```js
+function render_script(table, dimensions, metrics) {
+    return `
+      select
+      ${dimensions.map(field => `${field} as ${field}`).join(",\\n")},
+      ${metrics.map(field => `sum(${field}) as ${field}`).join(",\\n")}
+      from ${table}
+      group by ${dimensions.map((field, i) => `${i+1}`).join(", ")}
+    `;
+}
+module.exports = { render_script };
+```
+
+To use the function, call it inside a SQL file like so:
+
+
+`definitions/stats_per_country_and_device.sql`:
+```js
+${script_builder.render_script(
+  ref("source_table"),
+  ["country", "device_type"],
+  ["revenue", "pageviews", "sessions"])}
+
+```
+
+Note that calls to functions such as `ref()` should be made in the SQL file itself and passed to the include function, so that dependencies are set up correctly.
+
+The query will be compiled into the following SQL before it is run:
+```sql
+select country as country,
+       device_type as device_type,
+       sum(revenue) as revenue,
+       sum(pageviews) as pageviews,
+       sum(sessions) as sessions
+
+from my_schema.source_table
+
+group by 1, 2
+```
