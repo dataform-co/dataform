@@ -15,7 +15,7 @@ describe("@dataform/core", () => {
     it("config", function() {
       var df = new Session(path.dirname(__filename), TEST_CONFIG);
       var m = df
-        .materialize("example", {
+        .publish("example", {
           type: "table",
           query: _ => "select 1 as test",
           dependencies: [],
@@ -39,7 +39,7 @@ describe("@dataform/core", () => {
     it("config_context", function() {
       var df = new Session(path.dirname(__filename), TEST_CONFIG);
       var m = df
-        .materialize(
+        .publish(
           "example",
           ctx => `
           ${ctx.type("table")}
@@ -63,8 +63,8 @@ describe("@dataform/core", () => {
 
     it("validation_type_incremental", function() {
       const sessionSuccess = new Session(path.dirname(__filename), TEST_CONFIG);
-      sessionSuccess.materialize("exampleSuccess1", { type: "incremental", where: "test1", descriptor: ["field"] });
-      sessionSuccess.materialize(
+      sessionSuccess.publish("exampleSuccess1", { type: "incremental", where: "test1", descriptor: ["field"] });
+      sessionSuccess.publish(
         "exampleSuccess2",
         ctx => `
         ${ctx.where("test2")}
@@ -72,7 +72,7 @@ describe("@dataform/core", () => {
         select ${ctx.describe("field")} as 1
       `
       );
-      sessionSuccess.materialize(
+      sessionSuccess.publish(
         "exampleSuccess3",
         ctx => `
         ${ctx.type("incremental")}
@@ -91,15 +91,15 @@ describe("@dataform/core", () => {
       const sessionFail = new Session(path.dirname(__filename), TEST_CONFIG);
       const cases = {
         "missing_where": {
-          materialization: sessionFail.materialize("missing_where", { type: "incremental", descriptor: ["field"]}),
+          materialization: sessionFail.publish("missing_where", { type: "incremental", descriptor: ["field"]}),
           errorTest: /"where" property is not defined/
         },
         "empty_where": {
-          materialization: sessionFail.materialize("empty_where", { type: "incremental", where: "", descriptor: ["field"]}),
+          materialization: sessionFail.publish("empty_where", { type: "incremental", where: "", descriptor: ["field"]}),
           errorTest: /"where" property is not defined/
         },
         "missing_descriptor": {
-          materialization: sessionFail.materialize("missing_descriptor", { type: "incremental", where: "true"}),
+          materialization: sessionFail.publish("missing_descriptor", { type: "incremental", where: "true"}),
           errorTest: /Incremental tables must explicitly list fields in the table descriptor/
         }
       }
@@ -116,9 +116,9 @@ describe("@dataform/core", () => {
 
     it("validation_type", function() {
       const dfSuccess = new Session(path.dirname(__filename), TEST_CONFIG);
-      dfSuccess.materialize("exampleSuccess1", { type: "table" });
-      dfSuccess.materialize("exampleSuccess2", { type: "view" });
-      dfSuccess.materialize("exampleSuccess3", { type: "incremental", where: "test", descriptor: ["field"] });
+      dfSuccess.publish("exampleSuccess1", { type: "table" });
+      dfSuccess.publish("exampleSuccess2", { type: "view" });
+      dfSuccess.publish("exampleSuccess3", { type: "incremental", where: "test", descriptor: ["field"] });
       const cgSuccess = dfSuccess.compile();
 
       cgSuccess.materializations.forEach(item => {
@@ -128,7 +128,7 @@ describe("@dataform/core", () => {
       });
 
       const dfFail = new Session(path.dirname(__filename), TEST_CONFIG);
-      const mFail = dfFail.materialize("exampleFail", JSON.parse('{"type": "ta ble"}')).compile();
+      const mFail = dfFail.publish("exampleFail", JSON.parse('{"type": "ta ble"}')).compile();
       expect(mFail)
         .to.have.property("validationErrors")
         .to.be.an("array");
@@ -139,13 +139,13 @@ describe("@dataform/core", () => {
 
     it("validation_redshift_success", function() {
       const session = new Session(path.dirname(__filename), TEST_CONFIG);
-      session.materialize("example_without_dist", {
+      session.publish("example_without_dist", {
         redshift: {
           sortKeys: ["column1", "column2"],
           sortStyle: "compound"
         }
       });
-      session.materialize("example_without_sort", {
+      session.publish("example_without_sort", {
         redshift: {
           distKey: "column1",
           distStyle: "even"
@@ -168,21 +168,21 @@ describe("@dataform/core", () => {
 
     it("validation_redshift_fail", function() {
       const session = new Session(path.dirname(__filename), TEST_CONFIG);
-      session.materialize("example_absent_distKey", {
+      session.publish("example_absent_distKey", {
         redshift: {
           distStyle: "even",
           sortKeys: ["column1", "column2"],
           sortStyle: "compound"
         }
       });
-      session.materialize("example_absent_distStyle", {
+      session.publish("example_absent_distStyle", {
         redshift: {
           distKey: "column1",
           sortKeys: ["column1", "column2"],
           sortStyle: "compound"
         }
       });
-      session.materialize("example_wrong_distStyle", {
+      session.publish("example_wrong_distStyle", {
         redshift: {
           distKey: "column1",
           distStyle: "wrong_even",
@@ -190,14 +190,14 @@ describe("@dataform/core", () => {
           sortStyle: "compound"
         }
       });
-      session.materialize("example_absent_sortKeys", {
+      session.publish("example_absent_sortKeys", {
         redshift: {
           distKey: "column1",
           distStyle: "even",
           sortStyle: "compound"
         }
       });
-      session.materialize("example_empty_sortKeys", {
+      session.publish("example_empty_sortKeys", {
         redshift: {
           distKey: "column1",
           distStyle: "even",
@@ -205,14 +205,14 @@ describe("@dataform/core", () => {
           sortStyle: "compound"
         }
       });
-      session.materialize("example_absent_sortStyle", {
+      session.publish("example_absent_sortStyle", {
         redshift: {
           distKey: "column1",
           distStyle: "even",
           sortKeys: ["column1", "column2"]
         }
       });
-      session.materialize("example_wrong_sortStyle", {
+      session.publish("example_wrong_sortStyle", {
         redshift: {
           distKey: "column1",
           distStyle: "even",
@@ -220,7 +220,7 @@ describe("@dataform/core", () => {
           sortStyle: "wrong_sortStyle"
         }
       });
-      session.materialize("example_empty_redshift", {
+      session.publish("example_empty_redshift", {
         redshift: {}
       });
 
@@ -300,8 +300,8 @@ describe("@dataform/core", () => {
   describe("graph", () => {
     it("circular_dependencies", () => {
       var df = new Session(path.dirname(__filename), TEST_CONFIG);
-      df.materialize("a").dependencies("b");
-      df.materialize("b").dependencies("a");
+      df.publish("a").dependencies("b");
+      df.publish("b").dependencies("a");
       const cGraph = df.compile();
 
       expect(cGraph)
@@ -313,7 +313,7 @@ describe("@dataform/core", () => {
 
     it("missing_dependency", () => {
       const df = new Session(path.dirname(__filename), TEST_CONFIG);
-      df.materialize("a").dependencies("b");
+      df.publish("a").dependencies("b");
       const cGraph = df.compile();
 
       expect(cGraph)
@@ -325,9 +325,9 @@ describe("@dataform/core", () => {
 
     it("duplicate_node_names", () => {
       const df = new Session(path.dirname(__filename), TEST_CONFIG);
-      df.materialize("a").dependencies("b");
-      df.materialize("b");
-      df.materialize("a");
+      df.publish("a").dependencies("b");
+      df.publish("b");
+      df.publish("a");
       const cGraph = df.compile();
 
       expect(cGraph)
