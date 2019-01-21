@@ -54,7 +54,7 @@ export const styles: { [className: string]: React.CSSProperties } = {
   },
   contents: {
     width: "100%",
-    maxWidth: "1200px",
+    maxWidth: "1300px",
     margin: "auto"
   },
   githubLogo: {
