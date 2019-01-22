@@ -5,7 +5,7 @@ import * as protos from "@dataform/protos";
 import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";
-import { asPlainObject } from "./utils";
+import { asPlainObject, cleanSql } from "./utils";
 
 describe("@dataform/api", () => {
   describe("build", () => {
@@ -85,6 +85,51 @@ describe("@dataform/api", () => {
   });
 
   describe("sql_generating", () => {
+    it("bigquery_incremental", () => {
+      const graph = protos.CompiledGraph.create({
+        projectConfig: { warehouse: "bigquery" },
+        tables: [
+          {
+            name: "incremental",
+            target: {
+              schema: "schema",
+              name: "incremental"
+            },
+            type: "incremental",
+            query: "select 1 as test",
+            where: "true"
+          }
+        ]
+      });
+      const state = protos.WarehouseState.create({
+        tables: [
+          {
+            target: {
+              schema: "schema",
+              name: "incremental"
+            },
+            type: "table",
+            fields: [
+              {
+                name: "existing_field"
+              }
+            ]
+          }
+        ]
+      });
+      const executionGraph = new Builder(graph, {}, state).build();
+      expect(executionGraph.nodes.filter(n => n.name == "incremental")).is.not.empty;
+      expect(cleanSql(executionGraph.nodes.filter(n => n.name == "incremental")[0].tasks[0].statement)).equals(
+        cleanSql(
+          `insert into \`schema.incremental\` (existing_field)
+           select existing_field from (
+             select * from (select 1 as test)
+             where true
+           )`
+        )
+      );
+    });
+
     it("redshift_create", () => {
       const testGraph: protos.ICompiledGraph = protos.CompiledGraph.create({
         projectConfig: { warehouse: "redshift" },

@@ -259,13 +259,6 @@ export class Table {
       const message = `"where" property is not defined. With the type “incremental” you must also specify the property “where”!`;
       this.validationError(message);
     }
-    if (
-      this.proto.type === TableTypes.INCREMENTAL &&
-      (!this.proto.descriptor || Object.keys(this.proto.descriptor).length === 0)
-    ) {
-      const message = `Incremental tables must explicitly list fields in the table descriptor, using the describe() or descriptor() methods.`;
-      this.validationError(message);
-    }
     return this.proto;
   }
 }

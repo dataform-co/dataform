@@ -26,7 +26,9 @@ export class BigQueryAdapter extends Adapter implements IAdapter {
       if (runConfig.fullRefresh || !tableMetadata || tableMetadata.type == "view") {
         tasks.add(Task.statement(this.createOrReplace(t)));
       } else {
-        tasks.add(Task.statement(this.insertInto(t.target, Object.keys(t.descriptor), this.where(t.query, t.where))));
+        tasks.add(
+          Task.statement(this.insertInto(t.target, tableMetadata.fields.map(f => f.name), this.where(t.query, t.where)))
+        );
       }
     } else {
       tasks.add(Task.statement(this.createOrReplace(t)));
@@ -60,15 +62,5 @@ export class BigQueryAdapter extends Adapter implements IAdapter {
   createOrReplaceView(target: protos.ITarget, query: string) {
     return `
       create or replace view ${this.resolveTarget(target)} as ${query}`;
-  }
-
-  insertInto(target: protos.ITarget, columns: string[], query: string) {
-    return `
-      insert ${this.resolveTarget(target)} (${columns.join(",")})
-      ${query}`;
-  }
-
-  dropIfExists(target: protos.ITarget, type: string) {
-    return `drop ${type} if exists ${this.resolveTarget(target)}`;
   }
 }
