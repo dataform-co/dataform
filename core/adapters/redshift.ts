@@ -26,7 +26,9 @@ export class RedshiftAdapter extends Adapter implements IAdapter {
         tasks.addAll(this.createOrReplace(t));
       } else {
         // The table exists, insert new rows.
-        tasks.add(Task.statement(this.insertInto(t.target, Object.keys(t.descriptor), this.where(t.query, t.where))));
+        tasks.add(
+          Task.statement(this.insertInto(t.target, tableMetadata.fields.map(f => f.name), this.where(t.query, t.where)))
+        );
       }
     } else {
       tasks.addAll(this.createOrReplace(t));
@@ -72,9 +74,9 @@ export class RedshiftAdapter extends Adapter implements IAdapter {
     }
   }
 
-  createTable(t: protos.ITable, tempTableTarget) {
+  createTable(t: protos.ITable, target: protos.ITarget) {
     if (t.redshift) {
-      let query = `create table ${this.resolveTarget(tempTableTarget)}`;
+      let query = `create table ${this.resolveTarget(target)}`;
 
       if (t.redshift.distStyle && t.redshift.distKey) {
         query = `${query} diststyle ${t.redshift.distStyle} distkey (${t.redshift.distKey})`;
@@ -86,17 +88,6 @@ export class RedshiftAdapter extends Adapter implements IAdapter {
       return `${query} as ${t.query}`;
     }
 
-    return `create table ${this.resolveTarget(tempTableTarget)} as ${t.query}`;
-  }
-
-  insertInto(target: protos.ITarget, columns: string[], query: string) {
-    return `
-      insert into ${this.resolveTarget(target)}
-      (${columns.join(",")})
-      ${query}`;
-  }
-
-  dropIfExists(target: protos.ITarget, type: string) {
-    return `drop ${type} if exists ${this.resolveTarget(target)}`;
+    return `create table ${this.resolveTarget(target)} as ${t.query}`;
   }
 }
