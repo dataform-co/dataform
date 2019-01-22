@@ -1,13 +1,12 @@
 import * as path from "path";
 import { NodeVM } from "vm2";
 import { compilers } from "@dataform/core";
-import * as protos from "@dataform/protos";
 import { genIndex } from "../gen_index";
 import * as fs from "fs";
 import * as os from "os";
 import * as crypto from "crypto";
 
-export function compile(projectDir: string): protos.CompiledGraph {
+export function compile(projectDir: string): Uint8Array {
   const vm = new NodeVM({
     wrapper: "none",
     require: {
@@ -23,7 +22,7 @@ export function compile(projectDir: string): protos.CompiledGraph {
   const result = vm.run(indexScript, path.resolve(path.join(projectDir, "index.js")));
   const buf = new Uint8Array(result);
 
-  return protos.CompiledGraph.decode(buf);
+  return buf;
 }
 
 process.on("message", object => {
@@ -44,9 +43,7 @@ process.on("message", object => {
     if (fs.existsSync(tmpPath)) {
       fs.unlinkSync(tmpPath);
     }
-    const graph = compile(object.projectDir);
-    // Use protobuffer encoding rather than JSON.
-    const encodedGraph = protos.CompiledGraph.encode(graph).finish();
+    const encodedGraph = compile(object.projectDir);
     fs.writeFileSync(tmpPath, encodedGraph);
     // Send back the temp path.
     process.send({ path: String(tmpPath) });
