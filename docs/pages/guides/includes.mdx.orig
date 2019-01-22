@@ -21,8 +21,13 @@ const PROJECT_ID = "my_project_name";
 module.exports = { PROJECT_ID };
 ```
 
-<div className="bp3-callout bp3-icon-info-sign bp3-intent-warning" markdown="1">
+<<<<<<< HEAD
+<div class="bp3-callout bp3-icon-info-sign bp3-intent-warning" markdown="1">
 All functions and constants must be exported using the <code>module.exports = {"{}"}</code> syntax as above, on order to use them elsewhere in the project.
+=======
+<div className="bp3-callout bp3-icon-info-sign bp3-intent-warning" markdown="1">
+All functions and costants must be exported using the <code>module.exports = {"{}"}</code> syntax as above, on order to use them elsewhere in the project.
+>>>>>>> 856619e5b8ef16a7109571eb9344183048a2f115
 </div>
 
 ## Use an include in a SQL file

@@ -26,6 +26,8 @@
     "react": "^16.6.3",
     "react-dom": "^16.6.3",
     "react-media": "^1.9.2",
+    "remark": "^10.0.1",
+    "remark-react": "^5.0.1",
     "remark-slug": "^5.1.1",
     "rimraf": "^2.6.2",
     "snowflake-sdk": "^1.1.5",

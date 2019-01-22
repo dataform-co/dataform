@@ -11,7 +11,7 @@ describe("@dataform/api", () => {
   describe("build", () => {
     const TEST_GRAPH: protos.ICompiledGraph = protos.CompiledGraph.create({
       projectConfig: { warehouse: "redshift" },
-      materializations: [
+      tables: [
         {
           name: "a",
           target: {
@@ -88,7 +88,7 @@ describe("@dataform/api", () => {
     it("redshift_create", () => {
       const testGraph: protos.ICompiledGraph = protos.CompiledGraph.create({
         projectConfig: { warehouse: "redshift" },
-        materializations: [
+        tables: [
           {
             name: "redshift_all",
             target: {
@@ -175,7 +175,7 @@ describe("@dataform/api", () => {
     it("bigquery_partitionby", () => {
       const testGraph: protos.ICompiledGraph = protos.CompiledGraph.create({
         projectConfig: { warehouse: "bigquery" },
-        materializations: [
+        tables: [
           {
             name: "partitionby",
             target: {
@@ -226,7 +226,7 @@ describe("@dataform/api", () => {
     it("snowflake", () => {
       const testGraph: protos.ICompiledGraph = protos.CompiledGraph.create({
         projectConfig: { warehouse: "snowflake" },
-        materializations: [
+        tables: [
           {
             name: "a",
             target: {
@@ -286,7 +286,7 @@ describe("@dataform/api", () => {
         warehouse: "redshift"
       });
 
-      // add new materialization
+      // add new table
       const query = "select 1 as test";
       const mPath = path.resolve(projectDir, "./definitions/simplemodel.sql");
       fs.writeFileSync(mPath, query);
@@ -304,11 +304,11 @@ describe("@dataform/api", () => {
         .to.have.property("validationErrors")
         .to.be.an("array").that.is.empty;
       expect(graph)
-        .to.have.property("materializations")
+        .to.have.property("tables")
         .to.be.an("array").that.is.not.empty;
 
-      graph.materializations.forEach(item => {
-        expect(item).to.satisfy(m => !m.validationErrors || !m.validationErrors.length);
+      graph.tables.forEach(item => {
+        expect(item).to.satisfy(t => !t.validationErrors || !t.validationErrors.length);
       });
     });
   });
@@ -316,41 +316,41 @@ describe("@dataform/api", () => {
   describe("compile", () => {
     it("bigquery_example", () => {
       return compile("../examples/bigquery").then(graph => {
-        var materializationNames = graph.materializations.map(m => m.name);
+        var tableNames = graph.tables.map(t => t.name);
 
         // Check JS blocks get processed.
-        expect(materializationNames).includes("example_js_blocks");
-        var exampleJsBlocks = graph.materializations.filter(m => m.name == "example_js_blocks")[0];
+        expect(tableNames).includes("example_js_blocks");
+        var exampleJsBlocks = graph.tables.filter(t => t.name == "example_js_blocks")[0];
         expect(exampleJsBlocks.type).equals("table");
         expect(exampleJsBlocks.query).equals("select 1 as foo");
 
         // Check we can import and use an external package.
-        expect(materializationNames).includes("example_incremental");
-        var exampleIncremental = graph.materializations.filter(m => m.name == "example_incremental")[0];
+        expect(tableNames).includes("example_incremental");
+        var exampleIncremental = graph.tables.filter(t => t.name == "example_incremental")[0];
         expect(exampleIncremental.query).equals("select current_timestamp() as ts");
 
-        // Check materializations defined in includes are not included.
-        expect(materializationNames).not.includes("example_ignore");
+        // Check tables defined in includes are not included.
+        expect(tableNames).not.includes("example_ignore");
 
         // Check SQL files with raw back-ticks get escaped.
-        expect(materializationNames).includes("example_backticks");
-        var exampleBackticks = graph.materializations.filter(m => m.name == "example_backticks")[0];
+        expect(tableNames).includes("example_backticks");
+        var exampleBackticks = graph.tables.filter(t => t.name == "example_backticks")[0];
         expect(exampleBackticks.query).equals("select * from `tada-analytics.dataform_example.sample_data`");
 
-        // Check deferred calls to materialization resolve to the correct definitions file.
-        expect(materializationNames).includes("example_deferred");
-        var exampleDeferred = graph.materializations.filter(m => m.name == "example_deferred")[0];
+        // Check deferred calls to table resolve to the correct definitions file.
+        expect(tableNames).includes("example_deferred");
+        var exampleDeferred = graph.tables.filter(t => t.name == "example_deferred")[0];
         expect(exampleDeferred.fileName).includes("definitions/example_deferred.js");
       });
     });
 
     it("redshift_example", () => {
       return compile("../examples/redshift").then(graph => {
-        var materializationNames = graph.materializations.map(m => m.name);
+        var tableNames = graph.tables.map(t => t.name);
 
         // Check we can import and use an external package.
-        expect(materializationNames).includes("example_incremental");
-        var exampleIncremental = graph.materializations.filter(m => m.name == "example_incremental")[0];
+        expect(tableNames).includes("example_incremental");
+        var exampleIncremental = graph.tables.filter(t => t.name == "example_incremental")[0];
         expect(exampleIncremental.query).equals("select current_timestamp::timestamp as ts");
       });
     });
@@ -375,11 +375,11 @@ describe("@dataform/api", () => {
 
     it("bigquery_backwards_compatibility_example", () => {
       return compile("../examples/bigquery_backwards_compatibility").then(graph => {
-        var materializationNames = graph.materializations.map(m => m.name);
+        const tableNames = graph.tables.map(t => t.name);
 
         // We just want to make sure this compiles really.
-        expect(materializationNames).includes("example");
-        var example = graph.materializations.filter(m => m.name == "example")[0];
+        expect(tableNames).includes("example");
+        const example = graph.tables.filter(t => t.name == "example")[0];
         expect(example.type).equals("table");
         expect(example.query.trim()).equals("select 1 as foo_bar");
       });
@@ -421,38 +421,38 @@ describe("@dataform/api", () => {
         .to.have.property("validationErrors")
         .to.be.an("array").that.is.empty;
 
-      const mNames = graph.materializations.map(m => m.name);
+      const mNames = graph.tables.map(t => t.name);
 
       expect(mNames).includes("example_incremental");
-      const mIncremental = graph.materializations.filter(m => m.name == "example_incremental")[0];
+      const mIncremental = graph.tables.filter(t => t.name == "example_incremental")[0];
       expect(mIncremental.type).equals("incremental");
       expect(mIncremental.query).equals("select convert_timezone('UTC', current_timestamp())::timestamp as ts");
       expect(mIncremental.dependencies).to.be.an("array").that.is.empty;
 
       expect(mNames).includes("example_table");
-      const mTable = graph.materializations.filter(m => m.name == "example_table")[0];
+      const mTable = graph.tables.filter(t => t.name == "example_table")[0];
       expect(mTable.type).equals("table");
       expect(mTable.query).equals('\nselect * from "dataform_example"."sample_data"');
       expect(mTable.dependencies).deep.equals(["sample_data"]);
 
       expect(mNames).includes("example_view");
-      const mView = graph.materializations.filter(m => m.name == "example_view")[0];
+      const mView = graph.tables.filter(t => t.name == "example_view")[0];
       expect(mView.type).equals("view");
       expect(mView.query).equals('\nselect * from "dataform_example"."sample_data"');
       expect(mView.dependencies).deep.equals(["sample_data"]);
 
       expect(mNames).includes("sample_data");
-      const mSampleData = graph.materializations.filter(m => m.name == "sample_data")[0];
+      const mSampleData = graph.tables.filter(t => t.name == "sample_data")[0];
       expect(mSampleData.type).equals("view");
       expect(mSampleData.query).equals(
         "select 1 as sample_column union all\nselect 2 as sample_column union all\nselect 3 as sample_column"
       );
       expect(mSampleData.dependencies).to.be.an("array").that.is.empty;
 
-      const aNames = graph.assertions.map(m => m.name);
+      const aNames = graph.assertions.map(a => a.name);
 
       expect(aNames).includes("sample_data_assertion");
-      const assertion = graph.assertions.filter(m => m.name == "sample_data_assertion")[0];
+      const assertion = graph.assertions.filter(a => a.name == "sample_data_assertion")[0];
       expect(assertion.query).equals('select * from "dataform_example"."sample_data" where sample_column > 3');
       expect(assertion.dependencies).to.include.members([
         "sample_data",

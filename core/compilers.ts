@@ -1,5 +1,5 @@
 import * as utils from "./utils";
-import { MaterializationContext } from "./materialization";
+import { TableContext } from "./table";
 import { OperationContext } from "./operation";
 import { AssertionContext } from "./assertion";
 
@@ -11,18 +11,19 @@ export function compile(code: string, path: string) {
     return compileOperationSql(code, path);
   }
   if (path.endsWith(".sql")) {
-    return compileMaterializationSql(code, path);
+    return compileTableSql(code, path);
   }
   return code;
 }
 
-export function compileMaterializationSql(code: string, path: string) {
+export function compileTableSql(code: string, path: string) {
   var { sql, js } = extractJsBlocks(code);
-  var functionsBindings = getFunctionPropertyNames(MaterializationContext.prototype).map(
+  var functionsBindings = getFunctionPropertyNames(TableContext.prototype).map(
     name => `const ${name} = !!ctx.${name} ? ctx.${name}.bind(ctx) : () => "";`
   );
   return `
-  materialize("${utils.baseFilename(path)}").query(ctx => {
+  const publish = global.publish || global.materialize;
+  publish("${utils.baseFilename(path)}").query(ctx => {
     ${functionsBindings.join("\n")}
     ${js}
     return \`${sql}\`;

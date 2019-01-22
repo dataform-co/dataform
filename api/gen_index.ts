@@ -40,30 +40,45 @@ export function genIndex(projectDir: string, returnOverride?: string): string {
 
   var packageRequires = Object.keys(packageConfig.dependencies || {})
     .map(packageName => {
-      return `try { global.${utils.variableNameFriendly(
-        packageName
-      )} = require("${packageName}"); } catch (e) { global.session.compileError(e.message, "${packageName}"); }`;
+      return `try { global.${utils.variableNameFriendly(packageName)} = require("${packageName}"); } catch (e) {
+        if (global.session.compileError) {
+          global.session.compileError(e.message, "${packageName}");
+        } else {
+          console.error('Error:', e.message, 'Path: "${packageName}"');
+        }
+      }`;
     })
     .join("\n");
 
   var includeRequires = includePaths
     .map(path => {
-      return `try { global.${utils.baseFilename(
-        path
-      )} = require("./${path}"); } catch (e) { global.session.compileError(e.message, "${path}"); }`;
+      return `try { global.${utils.baseFilename(path)} = require("./${path}"); } catch (e) {
+        if (global.session.compileError) {
+          global.session.compileError(e.message, "${path}");
+        } else {
+          console.error('Error:', e.message, 'Path: "${path}"');
+        }
+      }`;
     })
     .join("\n");
   var definitionRequires = definitionPaths
     .map(path => {
-      return `try { require("./${path}"); } catch (e) { global.session.compileError(e.message, "${path}"); }`;
+      return `try { require("./${path}"); } catch (e) {
+        if (global.session.compileError) {
+          global.session.compileError(e.message, "${path}");
+        } else {
+          console.error('Error:', e.message, 'Path: "${path}"');
+        }
+      }`;
     })
     .join("\n");
 
   return `
     const { init, compile } = require("@dataform/core");
+    const protos = require("@dataform/protos");
     ${packageRequires}
     ${includeRequires}
     init("${projectDir}", require("./dataform.json"));
     ${definitionRequires}
-    return ${returnOverride || "compile()"};`;
+    return ${returnOverride || "protos.CompiledGraph.encode(compile()).finish()"};`;
 }
