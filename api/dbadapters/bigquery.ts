@@ -53,14 +53,14 @@ export class BigQueryDbAdapter implements DbAdapter {
       });
   }
 
-  table(target: protos.ITarget): Promise<protos.ITable> {
+  table(target: protos.ITarget): Promise<protos.ITableMetadata> {
     return this.client
       .dataset(target.schema)
       .table(target.name)
       .getMetadata()
       .then(result => {
         var table = result[0];
-        return protos.Table.create({
+        return protos.TableMetadata.create({
           type: String(table.type).toLowerCase(),
           target: target,
           fields: table.schema.fields.map(field => convertField(field))
