@@ -32,11 +32,11 @@ project-dir
 └── dataform.json
 ```
 
-## Define a materialization
+## Define a table
 
-The `definitions/` directory contains files that define [materializations](/materializations), [assertions](/assertions), and [operations](/operations).
+The `definitions/` directory contains files that define [tables](/tables), [assertions](/assertions), and [operations](/operations).
 
-To create a new materialization, create a new file such as `definitions/simplemodel.sql` with the following contents:
+To create a new table, create a new file such as `definitions/simplemodel.sql` with the following contents:
 
 ```sql
 select 1 as test
@@ -54,7 +54,7 @@ You should see output along the lines of:
 
 ```json
 {
-  "materializations": [
+  "tables": [
     {
       "name": "simplemodel",
       "type": "view",
