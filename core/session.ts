@@ -1,7 +1,7 @@
 import * as protos from "@dataform/protos";
 import * as adapters from "./adapters";
 import * as utils from "./utils";
-import { Materialization, MContextable, MConfig } from "./materialization";
+import { Table, TContextable, TConfig } from "./table";
 import { Operation, OContextable } from "./operation";
 import { Assertion, AContextable } from "./assertion";
 
@@ -10,7 +10,7 @@ export class Session {
 
   public config: protos.IProjectConfig;
 
-  public materializations: { [name: string]: Materialization };
+  public tables: { [name: string]: Table };
   public operations: { [name: string]: Operation };
   public assertions: { [name: string]: Assertion };
 
@@ -24,7 +24,7 @@ export class Session {
   init(rootDir: string, projectConfig?: protos.IProjectConfig) {
     this.rootDir = rootDir;
     this.config = projectConfig || { defaultSchema: "dataform" };
-    this.materializations = {};
+    this.tables = {};
     this.operations = {};
     this.assertions = {};
     this.validationErrors = [];
@@ -49,11 +49,11 @@ export class Session {
   }
 
   ref(name: string): string {
-    const mNode = this.materializations[name];
+    const tNode = this.tables[name];
     const oNode = this.operations[name];
 
-    if (mNode) {
-      return this.adapter().resolveTarget((mNode as Materialization).proto.target);
+    if (tNode) {
+      return this.adapter().resolveTarget((tNode as Table).proto.target);
     } else if (oNode && oNode.proto.hasOutput) {
       return this.adapter().resolveTarget((oNode as Operation).proto.target);
     } else {
@@ -76,32 +76,32 @@ export class Session {
     return operation;
   }
 
-  materialize(name: string, queryOrConfig?: MContextable<string> | MConfig): Materialization {
+  materialize(name: string, queryOrConfig?: TContextable<string> | TConfig): Table {
     return this.publish(name, queryOrConfig);
   }
 
-  publish(name: string, queryOrConfig?: MContextable<string> | MConfig): Materialization {
+  publish(name: string, queryOrConfig?: TContextable<string> | TConfig): Table {
     // Check for duplicate names
-    if (this.materializations[name]) {
-      const message = `Duplicate node name detected, names must be unique across materializations, assertions, and operations: "${name}"`;
+    if (this.tables[name]) {
+      const message = `Duplicate node name detected, names must be unique across tables, assertions, and operations: "${name}"`;
       this.validationError(message);
     }
 
-    const materialization = new Materialization();
-    materialization.session = this;
-    materialization.proto.name = name;
-    materialization.proto.target = this.target(name);
+    const table = new Table();
+    table.session = this;
+    table.proto.name = name;
+    table.proto.target = this.target(name);
     if (!!queryOrConfig) {
       if (typeof queryOrConfig === "object") {
-        materialization.config(queryOrConfig);
+        table.config(queryOrConfig);
       } else {
-        materialization.query(queryOrConfig);
+        table.query(queryOrConfig);
       }
     }
-    materialization.proto.fileName = utils.getCallerFile(this.rootDir);
+    table.proto.fileName = utils.getCallerFile(this.rootDir);
     // Add it to global index.
-    this.materializations[name] = materialization;
-    return materialization;
+    this.tables[name] = table;
+    return table;
   }
 
   assert(name: string, query?: AContextable<string>): Assertion {
@@ -131,7 +131,7 @@ export class Session {
     this.compileErrors.push(compileError);
   }
 
-  compileGraphChunk(part: { [name: string]: Materialization | Operation | Assertion }): Array<any> {
+  compileGraphChunk(part: { [name: string]: Table | Operation | Assertion }): Array<any> {
     const compiledChunks = [];
 
     Object.keys(part).forEach(key => {
@@ -149,7 +149,7 @@ export class Session {
   compile(): protos.ICompiledGraph {
     var compiledGraph = protos.CompiledGraph.create({
       projectConfig: this.config,
-      materializations: this.compileGraphChunk(this.materializations),
+      tables: this.compileGraphChunk(this.tables),
       operations: this.compileGraphChunk(this.operations),
       assertions: this.compileGraphChunk(this.assertions),
       validationErrors: this.validationErrors,
@@ -157,13 +157,13 @@ export class Session {
     });
 
     // Check there aren't any duplicate names.
-    var allNodes = [].concat(compiledGraph.materializations, compiledGraph.assertions, compiledGraph.operations);
+    var allNodes = [].concat(compiledGraph.tables, compiledGraph.assertions, compiledGraph.operations);
     var allNodeNames = allNodes.map(node => node.name);
 
     // Check there are no duplicate node names.
     allNodes.forEach(node => {
       if (allNodes.filter(subNode => subNode.name == node.name).length > 1) {
-        const message = `Duplicate node name detected, names must be unique across materializations, assertions, and operations: "${
+        const message = `Duplicate node name detected, names must be unique across tables, assertions, and operations: "${
           node.name
         }"`;
         this.validationError(message);

@@ -1,27 +1,27 @@
 import { Props as MethodProps } from "./components/method";
 
-export const methods: {[name:string] : MethodProps} = {
+export const methods: { [name: string]: MethodProps } = {
   ref: {
     name: "ref()",
-    signatures: ["ref(materializationName)"],
+    signatures: ["ref(tableName)"],
     description: "Returns the full, query-able name of the referenced table, and adds the table to dependencies.",
     fields: [
       {
-        name: "materializationName",
+        name: "tableName",
         type: "string",
-        description: "The name of the materialization to reference"
+        description: "The name of the table to reference"
       }
     ]
   },
   self: {
     name: "self()",
     signatures: ["self()"],
-    description: "Returns the full, query-able name of the current materialization"
+    description: "Returns the full, query-able name of the current table"
   },
   dependencies: {
     name: "dependencies()",
     description:
-      'Specifies one or more materializations, operations or assertions that this node depends on. Supports wildcard matches with `"*"`.',
+      'Specifies one or more tables, operations or assertions that this node depends on. Supports wildcard matches with `"*"`.',
     signatures: ["dependencies(deps)"],
     fields: [
       {
@@ -34,7 +34,7 @@ export const methods: {[name:string] : MethodProps} = {
   postops: {
     name: "postOps()",
     signatures: ["postOps(ops)"],
-    description: "Provide one of more queries to execute after this materialization has completed.",
+    description: "Provide one of more queries to execute after this table has completed.",
     fields: [
       {
         name: "ops",
@@ -46,7 +46,7 @@ export const methods: {[name:string] : MethodProps} = {
   preops: {
     name: "preOps()",
     signatures: ["preOps(ops)"],
-    description: "Provide one of more queries to execute before this materialization is created.",
+    description: "Provide one of more queries to execute before this table is created.",
     fields: [
       {
         name: "ops",
@@ -58,13 +58,12 @@ export const methods: {[name:string] : MethodProps} = {
   type: {
     name: "type()",
     signatures: ["type(name)"],
-    description:
-      "Set the type of the materialization. View the [materialization guide](/guides/materializations) for more info.",
+    description: "Set the type of the table. View the [table guide](/guides/tables) for more info.",
     fields: [
       {
         name: "name",
         type: '"view" | "table" | "incremental"',
-        description: "The type of the materialization"
+        description: "The type of the table"
       }
     ]
   },
@@ -93,11 +92,11 @@ export const methods: {[name:string] : MethodProps} = {
   config: {
     name: "config()",
     signatures: ["config(config)"],
-    description: "Sets several properties of the materialization at once.",
+    description: "Sets several properties of the table at once.",
     fields: [
       {
         name: "config",
-        type: "MaterializationConfig",
+        type: "TableConfig",
         description: "The configuration object"
       }
     ]
@@ -105,7 +104,7 @@ export const methods: {[name:string] : MethodProps} = {
   descriptor: {
     name: "descriptor()",
     signatures: ["descriptor(fields)", "descriptor(field, description)", "descriptor(descriptor)"],
-    description: "Sets the descriptor for fields in this materialization.",
+    description: "Sets the descriptor for fields in this table.",
     fields: [
       {
         name: "fields",
@@ -150,7 +149,7 @@ export const methods: {[name:string] : MethodProps} = {
   query: {
     name: "query()",
     signatures: ["query(query)"],
-    description: "Sets the SQL query for this materialization or assertion.",
+    description: "Sets the SQL query for this table or assertion.",
     fields: [
       {
         name: "query",
@@ -171,26 +170,26 @@ export const methods: {[name:string] : MethodProps} = {
       }
     ]
   },
-  materialize: {
-    name: "materialize()",
-    signatures: ["materialize(name)", "materialize(name, query)", "materialize(name, config)"],
-    description: "Returns a new [`Materialization`](/reference/materializations-js) with the given name.",
+  publish: {
+    name: "publish()",
+    signatures: ["publish(name)", "publish(name, query)", "publish(name, config)"],
+    description: "Returns a new [`Table`](/reference/tables-js) with the given name.",
     fields: [
       {
         name: "name",
         type: "string",
-        description: "The name of the materialization"
+        description: "The name of the table"
       },
       {
         name: "query",
         type: "Contextable<string>",
-        description: "The query for the materialization"
+        description: "The query for the table"
       },
       {
         name: "config",
-        type: "MaterializationConfig",
-        typeLink: "/reference/materialization-config",
-        description: "The configuration object for this materialization"
+        type: "TableConfig",
+        typeLink: "/reference/table-config",
+        description: "The configuration object for this table"
       }
     ]
   },
@@ -207,7 +206,7 @@ export const methods: {[name:string] : MethodProps} = {
       {
         name: "queries",
         type: "Contextable<string | string>",
-        description: "The query for the materialization"
+        description: "The query for the table"
       }
     ]
   },
