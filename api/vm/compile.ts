@@ -18,8 +18,12 @@ export function compile(projectDir: string): protos.CompiledGraph {
     sourceExtensions: ["js", "sql"],
     compiler: (code, path) => compilers.compile(code, path)
   });
-  var indexScript = genIndex(projectDir);
-  return vm.run(indexScript, path.resolve(path.join(projectDir, "index.js")));
+
+  const indexScript = genIndex(projectDir);
+  const result = vm.run(indexScript, path.resolve(path.join(projectDir, "index.js")));
+  const buf = new Uint8Array(result);
+
+  return protos.CompiledGraph.decode(buf);
 }
 
 process.on("message", object => {

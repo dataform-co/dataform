@@ -75,9 +75,10 @@ export function genIndex(projectDir: string, returnOverride?: string): string {
 
   return `
     const { init, compile } = require("@dataform/core");
+    const protos = require("@dataform/protos");
     ${packageRequires}
     ${includeRequires}
     init("${projectDir}", require("./dataform.json"));
     ${definitionRequires}
-    return ${returnOverride || "compile()"};`;
+    return ${returnOverride || "protos.CompiledGraph.encode(compile()).finish()"};`;
 }

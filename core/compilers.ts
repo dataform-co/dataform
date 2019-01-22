@@ -22,6 +22,7 @@ export function compileTableSql(code: string, path: string) {
     name => `const ${name} = !!ctx.${name} ? ctx.${name}.bind(ctx) : () => "";`
   );
   return `
+  const publish = global.publish || global.materialize;
   publish("${utils.baseFilename(path)}").query(ctx => {
     ${functionsBindings.join("\n")}
     ${js}
