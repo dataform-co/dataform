@@ -3,13 +3,22 @@ set -e
 
 ./scripts/build
 
+## Set up the backwards compatibility project NOT using lerna.
+
+(cd build/examples/bigquery_backwards_compatibility && npm i)
+
 ## Run install on the example projects using locally developed packages.
 
 (cd build && npx lerna bootstrap)
 
-## Set up the backwards compatibility project NOT using lerna.
+## We need some deps to be installed in the local node_modules folder.
 
-(cd build/examples/bigquery_backwards_compatibility && npm i)
+(cd build/examples/bigquery && npm i protobufjs)
+(cd build/examples/bigquery_with_errors && npm i protobufjs)
+(cd build/examples/redshift && npm i protobufjs)
+(cd build/examples/redshift_operations && npm i protobufjs)
+(cd build/examples/snowflake && npm i protobufjs)
+
 
 ## Run tests.
 

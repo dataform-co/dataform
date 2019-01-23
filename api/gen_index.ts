@@ -76,9 +76,14 @@ export function genIndex(projectDir: string, returnOverride?: string): string {
   return `
     const { init, compile } = require("@dataform/core");
     const protos = require("@dataform/protos");
+    const { util } = require("protobufjs");
     ${packageRequires}
     ${includeRequires}
     init("${projectDir}", require("./dataform.json"));
     ${definitionRequires}
-    return ${returnOverride || "protos.CompiledGraph.encode(compile()).finish()"};`;
+    const compiledGraph = compile();
+    // We return a base64 encoded proto via NodeVM, as returning a Uint8Array directly causes issues.
+    const encodedGraphBytes = protos.CompiledGraph.encode(compiledGraph).finish();
+    const base64EncodedGraphBytes = util.base64.encode(encodedGraphBytes, 0, encodedGraphBytes.length);
+    return ${returnOverride || "base64EncodedGraphBytes"};`;
 }
