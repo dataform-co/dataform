@@ -11,10 +11,10 @@ const TEST_CONFIG: protos.IProjectConfig = {
 };
 
 describe("@dataform/core", () => {
-  describe("materialize", () => {
+  describe("publish", () => {
     it("config", function() {
-      var df = new Session(path.dirname(__filename), TEST_CONFIG);
-      var m = df
+      var session = new Session(path.dirname(__filename), TEST_CONFIG);
+      var t = session
         .publish("example", {
           type: "table",
           query: _ => "select 1 as test",
@@ -27,18 +27,18 @@ describe("@dataform/core", () => {
         })
         .compile();
 
-      expect(m.name).equals("example");
-      expect(m.type).equals("table");
-      expect(m.descriptor).deep.equals({
+      expect(t.name).equals("example");
+      expect(t.type).equals("table");
+      expect(t.descriptor).deep.equals({
         test: "test description"
       });
-      expect(m.preOps).deep.equals(["pre_op"]);
-      expect(m.postOps).deep.equals(["post_op"]);
+      expect(t.preOps).deep.equals(["pre_op"]);
+      expect(t.postOps).deep.equals(["post_op"]);
     });
 
     it("config_context", function() {
-      var df = new Session(path.dirname(__filename), TEST_CONFIG);
-      var m = df
+      var session = new Session(path.dirname(__filename), TEST_CONFIG);
+      var t = session
         .publish(
           "example",
           ctx => `
@@ -52,13 +52,13 @@ describe("@dataform/core", () => {
         )
         .compile();
 
-      expect(m.name).equals("example");
-      expect(m.type).equals("table");
-      expect(m.descriptor).deep.equals({
+      expect(t.name).equals("example");
+      expect(t.type).equals("table");
+      expect(t.descriptor).deep.equals({
         test: "test description"
       });
-      expect(m.preOps).deep.equals(["pre_op"]);
-      expect(m.postOps).deep.equals(["post_op"]);
+      expect(t.preOps).deep.equals(["pre_op"]);
+      expect(t.postOps).deep.equals(["post_op"]);
     });
 
     it("validation_type_incremental", function() {
@@ -82,7 +82,7 @@ describe("@dataform/core", () => {
       );
       const cgSuccess = sessionSuccess.compile();
 
-      cgSuccess.materializations.forEach(item => {
+      cgSuccess.tables.forEach(item => {
         expect(item)
           .to.have.property("validationErrors")
           .to.be.an("array").that.is.empty;
@@ -90,50 +90,44 @@ describe("@dataform/core", () => {
 
       const sessionFail = new Session(path.dirname(__filename), TEST_CONFIG);
       const cases = {
-        "missing_where": {
-          materialization: sessionFail.publish("missing_where", { type: "incremental", descriptor: ["field"]}),
+        missing_where: {
+          table: sessionFail.publish("missing_where", { type: "incremental", descriptor: ["field"] }),
           errorTest: /"where" property is not defined/
         },
-        "empty_where": {
-          materialization: sessionFail.publish("empty_where", { type: "incremental", where: "", descriptor: ["field"]}),
+        empty_where: {
+          table: sessionFail.publish("empty_where", { type: "incremental", where: "", descriptor: ["field"] }),
           errorTest: /"where" property is not defined/
         },
-        "missing_descriptor": {
-          materialization: sessionFail.publish("missing_descriptor", { type: "incremental", where: "true"}),
-          errorTest: /Incremental tables must explicitly list fields in the table descriptor/
-        }
-      }
+      };
       const cgFail = sessionFail.compile();
 
       Object.keys(cases).forEach(key => {
-        let materialization = cgFail.materializations.filter(m => m.name == key)[0];
-        expect(materialization.validationErrors)
-          .to.be.an("array")
-          .that.is.not.empty;
-        expect(materialization.validationErrors[0].message).matches(cases[key].errorTest);
-      })
+        let table = cgFail.tables.filter(t => t.name == key)[0];
+        expect(table.validationErrors).to.be.an("array").that.is.not.empty;
+        expect(table.validationErrors[0].message).matches(cases[key].errorTest);
+      });
     });
 
     it("validation_type", function() {
-      const dfSuccess = new Session(path.dirname(__filename), TEST_CONFIG);
-      dfSuccess.publish("exampleSuccess1", { type: "table" });
-      dfSuccess.publish("exampleSuccess2", { type: "view" });
-      dfSuccess.publish("exampleSuccess3", { type: "incremental", where: "test", descriptor: ["field"] });
-      const cgSuccess = dfSuccess.compile();
+      const sessionSuccess = new Session(path.dirname(__filename), TEST_CONFIG);
+      sessionSuccess.publish("exampleSuccess1", { type: "table" });
+      sessionSuccess.publish("exampleSuccess2", { type: "view" });
+      sessionSuccess.publish("exampleSuccess3", { type: "incremental", where: "test" });
+      const cgSuccess = sessionSuccess.compile();
 
-      cgSuccess.materializations.forEach(item => {
+      cgSuccess.tables.forEach(item => {
         expect(item)
           .to.have.property("validationErrors")
           .to.be.an("array").that.is.empty;
       });
 
-      const dfFail = new Session(path.dirname(__filename), TEST_CONFIG);
-      const mFail = dfFail.publish("exampleFail", JSON.parse('{"type": "ta ble"}')).compile();
-      expect(mFail)
+      const sessionFail = new Session(path.dirname(__filename), TEST_CONFIG);
+      const tFail = sessionFail.publish("exampleFail", JSON.parse('{"type": "ta ble"}')).compile();
+      expect(tFail)
         .to.have.property("validationErrors")
         .to.be.an("array");
 
-      const errors = mFail.validationErrors.filter(item => item.message.match(/Wrong type of materialization/));
+      const errors = tFail.validationErrors.filter(item => item.message.match(/Wrong type of table/));
       expect(errors).to.be.an("array").that.is.not.empty;
     });
 
@@ -155,11 +149,11 @@ describe("@dataform/core", () => {
       const graph = session.compile();
 
       expect(graph)
-        .to.have.property("materializations")
+        .to.have.property("tables")
         .to.be.an("array")
         .to.have.lengthOf(2);
 
-      graph.materializations.forEach((item, index) => {
+      graph.tables.forEach(item => {
         expect(item)
           .to.have.property("validationErrors")
           .to.be.an("array").that.is.empty;
@@ -237,11 +231,11 @@ describe("@dataform/core", () => {
       ];
 
       expect(graph)
-        .to.have.property("materializations")
+        .to.have.property("tables")
         .to.be.an("array")
         .to.have.lengthOf(8);
 
-      graph.materializations.forEach((item, index) => {
+      graph.tables.forEach((item, index) => {
         expect(item)
           .to.have.property("validationErrors")
           .to.be.an("array");
@@ -299,10 +293,10 @@ describe("@dataform/core", () => {
 
   describe("graph", () => {
     it("circular_dependencies", () => {
-      var df = new Session(path.dirname(__filename), TEST_CONFIG);
-      df.publish("a").dependencies("b");
-      df.publish("b").dependencies("a");
-      const cGraph = df.compile();
+      var session = new Session(path.dirname(__filename), TEST_CONFIG);
+      session.publish("a").dependencies("b");
+      session.publish("b").dependencies("a");
+      const cGraph = session.compile();
 
       expect(cGraph)
         .to.have.property("validationErrors")
@@ -312,9 +306,9 @@ describe("@dataform/core", () => {
     });
 
     it("missing_dependency", () => {
-      const df = new Session(path.dirname(__filename), TEST_CONFIG);
-      df.publish("a").dependencies("b");
-      const cGraph = df.compile();
+      const session = new Session(path.dirname(__filename), TEST_CONFIG);
+      session.publish("a").dependencies("b");
+      const cGraph = session.compile();
 
       expect(cGraph)
         .to.have.property("validationErrors")
@@ -324,11 +318,11 @@ describe("@dataform/core", () => {
     });
 
     it("duplicate_node_names", () => {
-      const df = new Session(path.dirname(__filename), TEST_CONFIG);
-      df.publish("a").dependencies("b");
-      df.publish("b");
-      df.publish("a");
-      const cGraph = df.compile();
+      const session = new Session(path.dirname(__filename), TEST_CONFIG);
+      session.publish("a").dependencies("b");
+      session.publish("b");
+      session.publish("a");
+      const cGraph = session.compile();
 
       expect(cGraph)
         .to.have.property("validationErrors")

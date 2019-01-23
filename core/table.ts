@@ -1,7 +1,7 @@
 import { Session } from "./index";
 import * as protos from "@dataform/protos";
 
-export enum MaterializationTypes {
+export enum TableTypes {
   TABLE = "table",
   VIEW = "view",
   INCREMENTAL = "incremental"
@@ -17,15 +17,15 @@ export enum SortStyleTypes {
 }
 
 type ValueOf<T> = T[keyof T];
-export type MContextable<T> = T | ((ctx: MaterializationContext) => T);
-export type MaterializationType = ValueOf<MaterializationTypes>;
+export type TContextable<T> = T | ((ctx: TableContext) => T);
+export type TableType = ValueOf<TableTypes>;
 
-export interface MConfig {
-  type?: MaterializationType;
-  query?: MContextable<string>;
-  where?: MContextable<string>;
-  preOps?: MContextable<string | string[]>;
-  postOps?: MContextable<string | string[]>;
+export interface TConfig {
+  type?: TableType;
+  query?: TContextable<string>;
+  where?: TContextable<string>;
+  preOps?: TContextable<string | string[]>;
+  postOps?: TContextable<string | string[]>;
   dependencies?: string | string[];
   descriptor?: string[] | { [key: string]: string };
   disabled?: boolean;
@@ -33,8 +33,8 @@ export interface MConfig {
   bigquery?: protos.IBigQueryOptions;
 }
 
-export class Materialization {
-  proto: protos.Materialization = protos.Materialization.create({
+export class Table {
+  proto: protos.Table = protos.Table.create({
     type: "view",
     disabled: false,
     validationErrors: []
@@ -44,10 +44,10 @@ export class Materialization {
   session: Session;
 
   // We delay contextification until the final compile step, so hold these here for now.
-  private contextableQuery: MContextable<string>;
-  private contextableWhere: MContextable<string>;
-  private contextablePreOps: MContextable<string | string[]>[] = [];
-  private contextablePostOps: MContextable<string | string[]>[] = [];
+  private contextableQuery: TContextable<string>;
+  private contextableWhere: TContextable<string>;
+  private contextablePreOps: TContextable<string | string[]>[] = [];
+  private contextablePostOps: TContextable<string | string[]>[] = [];
 
   private getPredefinedTypes(types) {
     return Object.keys(types)
@@ -83,7 +83,7 @@ export class Materialization {
     return propsValid && typesValid;
   }
 
-  public config(config: MConfig) {
+  public config(config: TConfig) {
     if (config.where) {
       this.where(config.where);
     }
@@ -128,14 +128,14 @@ export class Materialization {
     this.proto.validationErrors.push(validationError);
   }
 
-  public type(type: MaterializationType) {
+  public type(type: TableType) {
     if (
-      Object.keys(MaterializationTypes)
-        .map(key => MaterializationTypes[key])
+      Object.keys(TableTypes)
+        .map(key => TableTypes[key])
         .indexOf(type) === -1
     ) {
-      const predefinedTypes = this.getPredefinedTypes(MaterializationTypes);
-      const message = `Wrong type of materialization detected. Should only use predefined types: ${predefinedTypes}`;
+      const predefinedTypes = this.getPredefinedTypes(TableTypes);
+      const message = `Wrong type of table detected. Should only use predefined types: ${predefinedTypes}`;
       this.validationError(message);
       return this;
     }
@@ -144,22 +144,22 @@ export class Materialization {
     return this;
   }
 
-  public query(query: MContextable<string>) {
+  public query(query: TContextable<string>) {
     this.contextableQuery = query;
     return this;
   }
 
-  public where(where: MContextable<string>) {
+  public where(where: TContextable<string>) {
     this.contextableWhere = where;
     return this;
   }
 
-  public preOps(pres: MContextable<string | string[]>) {
+  public preOps(pres: TContextable<string | string[]>) {
     this.contextablePreOps.push(pres);
     return this;
   }
 
-  public postOps(posts: MContextable<string | string[]>) {
+  public postOps(posts: TContextable<string | string[]>) {
     this.contextablePostOps.push(posts);
     return this;
   }
@@ -228,7 +228,7 @@ export class Materialization {
   }
 
   compile() {
-    var context = new MaterializationContext(this);
+    var context = new TableContext(this);
 
     this.proto.query = context.apply(this.contextableQuery);
     this.contextableQuery = null;
@@ -255,76 +255,72 @@ export class Materialization {
     this.contextablePostOps = [];
 
     // Validation.
-    if (this.proto.type === MaterializationTypes.INCREMENTAL && (!this.proto.where || this.proto.where.length === 0)) {
+    if (this.proto.type === TableTypes.INCREMENTAL && (!this.proto.where || this.proto.where.length === 0)) {
       const message = `"where" property is not defined. With the type “incremental” you must also specify the property “where”!`;
-      this.validationError(message);
-    }
-    if (this.proto.type === MaterializationTypes.INCREMENTAL && (!this.proto.descriptor || Object.keys(this.proto.descriptor).length === 0)) {
-      const message = `Incremental tables must explicitly list fields in the table descriptor, using the describe() or descriptor() methods.`;
       this.validationError(message);
     }
     return this.proto;
   }
 }
 
-export class MaterializationContext {
-  private materialization?: Materialization;
+export class TableContext {
+  private table?: Table;
 
-  constructor(materialization: Materialization) {
-    this.materialization = materialization;
+  constructor(table: Table) {
+    this.table = table;
   }
 
-  public config(config: MConfig) {
-    this.materialization.config(config);
+  public config(config: TConfig) {
+    this.table.config(config);
     return "";
   }
 
   public self(): string {
-    return this.materialization.session.adapter().resolveTarget(this.materialization.proto.target);
+    return this.table.session.adapter().resolveTarget(this.table.proto.target);
   }
 
   public ref(name: string) {
-    this.materialization.dependencies(name);
-    return this.materialization.session.ref(name);
+    this.table.dependencies(name);
+    return this.table.session.ref(name);
   }
 
-  public type(type: MaterializationType) {
-    this.materialization.type(type);
+  public type(type: TableType) {
+    this.table.type(type);
     return "";
   }
 
-  public where(where: MContextable<string>) {
-    this.materialization.where(where);
+  public where(where: TContextable<string>) {
+    this.table.where(where);
     return "";
   }
 
-  public preOps(statement: MContextable<string | string[]>) {
-    this.materialization.preOps(statement);
+  public preOps(statement: TContextable<string | string[]>) {
+    this.table.preOps(statement);
     return "";
   }
 
-  public postOps(statement: MContextable<string | string[]>) {
-    this.materialization.postOps(statement);
+  public postOps(statement: TContextable<string | string[]>) {
+    this.table.postOps(statement);
     return "";
   }
 
   public disabled() {
-    this.materialization.disabled();
+    this.table.disabled();
     return "";
   }
 
   public redshift(redshift: protos.IRedshiftOptions) {
-    this.materialization.redshift(redshift);
+    this.table.redshift(redshift);
     return "";
   }
 
   public bigquery(bigquery: protos.IBigQueryOptions) {
-    this.materialization.bigquery(bigquery);
+    this.table.bigquery(bigquery);
     return "";
   }
 
   public dependencies(name: string) {
-    this.materialization.dependencies(name);
+    this.table.dependencies(name);
     return "";
   }
 
@@ -332,16 +328,16 @@ export class MaterializationContext {
   public descriptor(map: { [key: string]: string });
   public descriptor(keys: string[]);
   public descriptor(keyOrKeysOrMap: string | string[] | { [key: string]: string }, description?: string) {
-    this.materialization.descriptor(keyOrKeysOrMap as any, description);
+    this.table.descriptor(keyOrKeysOrMap as any, description);
     return "";
   }
 
   public describe(key: string, description?: string) {
-    this.materialization.descriptor(key, description);
+    this.table.descriptor(key, description);
     return key;
   }
 
-  public apply<T>(value: MContextable<T>): T {
+  public apply<T>(value: TContextable<T>): T {
     if (typeof value === "function") {
       return (value as any)(this);
     } else {

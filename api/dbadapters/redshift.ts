@@ -45,7 +45,7 @@ export class RedshiftDbAdapter implements DbAdapter {
     );
   }
 
-  table(target: protos.ITarget): Promise<protos.ITable> {
+  table(target: protos.ITarget): Promise<protos.ITableMetadata> {
     return Promise.all([
       this.execute(
         `select column_name, data_type, is_nullable
