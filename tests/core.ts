@@ -98,10 +98,6 @@ describe("@dataform/core", () => {
           table: sessionFail.publish("empty_where", { type: "incremental", where: "", descriptor: ["field"] }),
           errorTest: /"where" property is not defined/
         },
-        missing_descriptor: {
-          table: sessionFail.publish("missing_descriptor", { type: "incremental", where: "true" }),
-          errorTest: /Incremental tables must explicitly list fields in the table descriptor/
-        }
       };
       const cgFail = sessionFail.compile();
 
@@ -116,7 +112,7 @@ describe("@dataform/core", () => {
       const sessionSuccess = new Session(path.dirname(__filename), TEST_CONFIG);
       sessionSuccess.publish("exampleSuccess1", { type: "table" });
       sessionSuccess.publish("exampleSuccess2", { type: "view" });
-      sessionSuccess.publish("exampleSuccess3", { type: "incremental", where: "test", descriptor: ["field"] });
+      sessionSuccess.publish("exampleSuccess3", { type: "incremental", where: "test" });
       const cgSuccess = sessionSuccess.compile();
 
       cgSuccess.tables.forEach(item => {

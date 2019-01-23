@@ -30,10 +30,9 @@ Another use case of incremental tables is to create a daily snapshot of a datase
 
 Incremental tables are stateful and make use of insert statements. As a result, care must be taken to ensure that data is not erased, or duplicated during this process.
 
-There are 3 parts to an incremental table build that you must configure:
+There are 2 parts to an incremental table build that you must configure:
 - The main query that generates new rows
 - A where clause to determine which rows should be processed
-- A table descriptor, explicitly specifying the fields that will be inserted
 
 ### Where clause
 
@@ -42,19 +41,6 @@ When inserting new data, the where clause is applied to the main query before se
 ```js
 ts > (select max(timestamp) from target_table
 ```
-
-### Table descriptors
-
-To make sure incremental tables behave consistently, you must explicitly tell Dataform which fields you would like to insert into the incremental table. This is achieved using the `descriptor()` API.
-
-```js
---js descriptor(["field1", "field2"]);
-select field1, field2 from ...
-```
-
-<div className="bp3-callout bp3-icon-info-sign bp3-intent-warning" markdown="1">
-When using incremental tables, you must describe all the columns in the table, so that the correct insert statements can be generated. Fields not included in the descriptor will not be inserted to the table.
-</div>
 
 ## A simple example
 
@@ -97,7 +83,6 @@ To make a simple incremental copy of this table, we can create a new file called
 ```js
 --js type("incremental");
 --js where(`timestamp > (select max(timestamp) from ${self()})`);
---js descriptor(["timestamp", "action"]);
 
 select timestamp, action
 from weblogs.user_actions
@@ -121,13 +106,9 @@ timestamp > (select max(timestamp) from default_schema.example_incremental)
 
 This table may not exist yet - that's OK, as the where clause will only be used if the table does exist, and we are inserting new data.
 
-Finally, the descriptor is specified using the `descriptor(...)` configuration statement:
-
-```js
---js descriptor(["timestamp", "action"]);
-```
-
-This tells Dataform which fields should be inserted. It must be explicitly set, failing to do so will cause a validation error. This should match the fields that are actually present in the outermost select query.
+<div className="bp3-callout bp3-icon-info-sign bp3-intent-warning" markdown="1">
+When inserting into incremental tables, only already existing fields in the destination table will be written. To make sure new fields are written after changing the query, the table must be re-built with the <code>--full-refresh</code> option enabled.
+</div>
 
 ### Generated SQL
 
@@ -154,9 +135,9 @@ insert into default_schema.example_incremental (timestamp, action)
 
 Incremental tables can be used in other ways, for example to create a daily snapshot of mutable external tables.
 
-Imagine we have another an external table called `productiondb.customers` that we would like to snapshot on a daily basis, and is replicated into our warehouse via another mechanism.
+Imagine you have another an external table called `productiondb.customers` that we would like to snapshot on a daily basis, and is replicated into our warehouse via another mechanism.
 
-We can write the following incremental to create a daily snapshot of that data:
+You can write the following incremental to create a daily snapshot of that data:
 
 ```js
 --js type("incremental");
