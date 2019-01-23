@@ -171,6 +171,6 @@ message Fields {
 
 message TableMetadata {
   Target target = 1;
-  string type = 3; // "table" or "view"
-  repeated Field fields = 2;
+  string type = 2; // "table" or "view"
+  repeated Field fields = 3;
 }
