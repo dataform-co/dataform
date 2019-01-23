@@ -24,7 +24,7 @@ export class Builder {
   }
 
   build(): protos.ExecutionGraph {
-    var tableStateByTarget: { [targetJson: string]: protos.ITableState } = {};
+    var tableStateByTarget: { [targetJson: string]: protos.ITableMetadata } = {};
     this.state.tables.forEach(tableState => {
       tableStateByTarget[JSON.stringify(tableState.target)] = tableState;
     });

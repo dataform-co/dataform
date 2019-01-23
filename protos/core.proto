@@ -119,13 +119,8 @@ message ExecutionNode {
   repeated ExecutionTask tasks = 2;
 }
 
-message TableState {
-  Target target = 1;
-  string type = 2;
-}
-
 message WarehouseState {
-  repeated TableState tables = 1;
+  repeated TableMetadata tables = 1;
 }
 
 message ExecutionGraph {

@@ -26,7 +26,7 @@ export class SnowflakeAdapter extends Adapter implements IAdapter {
         tasks.add(Task.statement(this.createOrReplace(t)));
       } else {
         // The table exists, insert new rows.
-        tasks.add(Task.statement(this.insertInto(t.target, Object.keys(t.descriptor), this.where(t.query, t.where))));
+        tasks.add(Task.statement(this.insertInto(t.target, tableMetadata.fields.map(f => f.name), this.where(t.query, t.where))));
       }
     } else {
       tasks.add(Task.statement(this.createOrReplace(t)));
@@ -52,16 +52,5 @@ export class SnowflakeAdapter extends Adapter implements IAdapter {
 
   createOrReplace(t: protos.ITable) {
     return `create or replace ${this.baseTableType(t.type || "table")} ${this.resolveTarget(t.target)} as ${t.query}`;
-  }
-
-  insertInto(target: protos.ITarget, columns: string[], query: string) {
-    return `
-      insert into ${this.resolveTarget(target)}
-      (${columns.join(",")})
-      ${query}`;
-  }
-
-  dropIfExists(target: protos.ITarget, type: string) {
-    return `drop ${this.baseTableType(type)} if exists ${this.resolveTarget(target)}`;
   }
 }
