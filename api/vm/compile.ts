@@ -1,13 +1,13 @@
 import * as path from "path";
 import { NodeVM } from "vm2";
 import { compilers } from "@dataform/core";
-import * as protos from "@dataform/protos";
 import { genIndex } from "../gen_index";
 import * as fs from "fs";
 import * as os from "os";
 import * as crypto from "crypto";
+import { util } from "protobufjs";
 
-export function compile(projectDir: string): protos.CompiledGraph {
+export function compile(projectDir: string): Uint8Array {
   const vm = new NodeVM({
     wrapper: "none",
     require: {
@@ -18,8 +18,13 @@ export function compile(projectDir: string): protos.CompiledGraph {
     sourceExtensions: ["js", "sql"],
     compiler: (code, path) => compilers.compile(code, path)
   });
-  var indexScript = genIndex(projectDir);
-  return vm.run(indexScript, path.resolve(path.join(projectDir, "index.js")));
+
+  const indexScript = genIndex(projectDir);
+  // We return a base64 encoded proto via NodeVM, as returning a Uint8Array directly causes issues.
+  const res: string = vm.run(indexScript, path.resolve(path.join(projectDir, "index.js")));
+  const encodedGraphBytes = new Uint8Array(util.base64.length(res));
+  util.base64.decode(res, encodedGraphBytes, 0);
+  return encodedGraphBytes;
 }
 
 process.on("message", object => {
@@ -40,9 +45,7 @@ process.on("message", object => {
     if (fs.existsSync(tmpPath)) {
       fs.unlinkSync(tmpPath);
     }
-    const graph = compile(object.projectDir);
-    // Use protobuffer encoding rather than JSON.
-    const encodedGraph = protos.CompiledGraph.encode(graph).finish();
+    const encodedGraph = compile(object.projectDir);
     fs.writeFileSync(tmpPath, encodedGraph);
     // Send back the temp path.
     process.send({ path: String(tmpPath) });

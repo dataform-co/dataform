@@ -12,7 +12,7 @@ export const structs: { [name: string]: StructProps } = {
       {
         name: "defaultSchema",
         type: "string",
-        description: "The default output schema/dataset for materializations"
+        description: "The default output schema/dataset for tables"
       },
       {
         name: "assertionsSchema",
@@ -26,19 +26,18 @@ export const structs: { [name: string]: StructProps } = {
       }
     ]
   },
-  materializationConfig: {
-    description:
-      "The `MaterializationConfig` interface can be used to set several properties of a materialization at once.",
+  tableConfig: {
+    description: "The `TableConfig` interface can be used to set several properties of a table at once.",
     fields: [
       {
         name: "type",
         type: '"view" | "table" | "incremental"',
-        description: "The type of the materialization"
+        description: "The type of the table"
       },
       {
         name: "query",
         type: "Contextable<string>",
-        description: "The materialization select query"
+        description: "The table select query"
       },
       {
         name: "where",
@@ -48,12 +47,12 @@ export const structs: { [name: string]: StructProps } = {
       {
         name: "preOps",
         type: "Contextable<string | string[]>",
-        description: "Operations to run before the materialization"
+        description: "Operations to run before the table"
       },
       {
         name: "postOps",
         type: "Contextable<string | string[]>",
-        description: "Operations to run after the materialization"
+        description: "Operations to run after the table"
       },
       {
         name: "dependencies",

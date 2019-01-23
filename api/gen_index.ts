@@ -40,30 +40,50 @@ export function genIndex(projectDir: string, returnOverride?: string): string {
 
   var packageRequires = Object.keys(packageConfig.dependencies || {})
     .map(packageName => {
-      return `try { global.${utils.variableNameFriendly(
-        packageName
-      )} = require("${packageName}"); } catch (e) { global.session.compileError(e.message, "${packageName}"); }`;
+      return `try { global.${utils.variableNameFriendly(packageName)} = require("${packageName}"); } catch (e) {
+        if (global.session.compileError) {
+          global.session.compileError(e.message, "${packageName}");
+        } else {
+          console.error('Error:', e.message, 'Path: "${packageName}"');
+        }
+      }`;
     })
     .join("\n");
 
   var includeRequires = includePaths
     .map(path => {
-      return `try { global.${utils.baseFilename(
-        path
-      )} = require("./${path}"); } catch (e) { global.session.compileError(e.message, "${path}"); }`;
+      return `try { global.${utils.baseFilename(path)} = require("./${path}"); } catch (e) {
+        if (global.session.compileError) {
+          global.session.compileError(e.message, "${path}");
+        } else {
+          console.error('Error:', e.message, 'Path: "${path}"');
+        }
+      }`;
     })
     .join("\n");
   var definitionRequires = definitionPaths
     .map(path => {
-      return `try { require("./${path}"); } catch (e) { global.session.compileError(e.message, "${path}"); }`;
+      return `try { require("./${path}"); } catch (e) {
+        if (global.session.compileError) {
+          global.session.compileError(e.message, "${path}");
+        } else {
+          console.error('Error:', e.message, 'Path: "${path}"');
+        }
+      }`;
     })
     .join("\n");
 
   return `
     const { init, compile } = require("@dataform/core");
+    const protos = require("@dataform/protos");
+    const { util } = require("protobufjs");
     ${packageRequires}
     ${includeRequires}
     init("${projectDir}", require("./dataform.json"));
     ${definitionRequires}
-    return ${returnOverride || "compile()"};`;
+    const compiledGraph = compile();
+    // We return a base64 encoded proto via NodeVM, as returning a Uint8Array directly causes issues.
+    const encodedGraphBytes = protos.CompiledGraph.encode(compiledGraph).finish();
+    const base64EncodedGraphBytes = util.base64.encode(encodedGraphBytes, 0, encodedGraphBytes.length);
+    return ${returnOverride || "base64EncodedGraphBytes"};`;
 }

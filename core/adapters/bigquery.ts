@@ -16,20 +16,22 @@ export class BigQueryAdapter extends Adapter implements IAdapter {
       this.project.defaultSchema}.${target.name}\``;
   }
 
-  materializeTasks(m: protos.IMaterialization, runConfig: protos.IRunConfig, table: protos.ITable): Tasks {
+  publishTasks(t: protos.ITable, runConfig: protos.IRunConfig, tableMetadata: protos.ITableMetadata): Tasks {
     var tasks = Tasks.create();
     // Drop views/tables first if they exist.
-    if (table && table.type != this.baseTableType(m.type)) {
-      tasks.add(Task.statement(this.dropIfExists(m.target, this.oppositeTableType(m.type))));
+    if (tableMetadata && tableMetadata.type != this.baseTableType(t.type)) {
+      tasks.add(Task.statement(this.dropIfExists(t.target, this.oppositeTableType(t.type))));
     }
-    if (m.type == "incremental") {
-      if (runConfig.fullRefresh || !table || table.type == "view") {
-        tasks.add(Task.statement(this.createOrReplace(m)));
+    if (t.type == "incremental") {
+      if (runConfig.fullRefresh || !tableMetadata || tableMetadata.type == "view") {
+        tasks.add(Task.statement(this.createOrReplace(t)));
       } else {
-        tasks.add(Task.statement(this.insertInto(m.target, Object.keys(m.descriptor), this.where(m.query, m.where))));
+        tasks.add(
+          Task.statement(this.insertInto(t.target, tableMetadata.fields.map(f => f.name), this.where(t.query, t.where)))
+        );
       }
     } else {
-      tasks.add(Task.statement(this.createOrReplace(m)));
+      tasks.add(Task.statement(this.createOrReplace(t)));
     }
     return tasks;
   }
@@ -45,30 +47,20 @@ export class BigQueryAdapter extends Adapter implements IAdapter {
     return tasks;
   }
 
-  createEmptyIfNotExists(m: protos.IMaterialization) {
-    return `create ${this.baseTableType(m.type)} if not exists ${this.resolveTarget(m.target)} ${
-      m.bigquery && m.bigquery.partitionBy ? `partition by ${m.bigquery.partitionBy}` : ""
-    } as ${this.where(m.query, "false")}`;
+  createEmptyIfNotExists(t: protos.ITable) {
+    return `create ${this.baseTableType(t.type)} if not exists ${this.resolveTarget(t.target)} ${
+      t.bigquery && t.bigquery.partitionBy ? `partition by ${t.bigquery.partitionBy}` : ""
+    } as ${this.where(t.query, "false")}`;
   }
 
-  createOrReplace(m: protos.IMaterialization) {
-    return `create or replace ${this.baseTableType(m.type)} ${this.resolveTarget(m.target)} ${
-      m.bigquery && m.bigquery.partitionBy ? `partition by ${m.bigquery.partitionBy}` : ""
-    } as ${m.query}`;
+  createOrReplace(t: protos.ITable) {
+    return `create or replace ${this.baseTableType(t.type)} ${this.resolveTarget(t.target)} ${
+      t.bigquery && t.bigquery.partitionBy ? `partition by ${t.bigquery.partitionBy}` : ""
+    } as ${t.query}`;
   }
 
   createOrReplaceView(target: protos.ITarget, query: string) {
     return `
       create or replace view ${this.resolveTarget(target)} as ${query}`;
-  }
-
-  insertInto(target: protos.ITarget, columns: string[], query: string) {
-    return `
-      insert ${this.resolveTarget(target)} (${columns.join(",")})
-      ${query}`;
-  }
-
-  dropIfExists(target: protos.ITarget, type: string) {
-    return `drop ${type} if exists ${this.resolveTarget(target)}`;
   }
 }
