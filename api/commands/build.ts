@@ -24,6 +24,10 @@ export class Builder {
   }
 
   build(): protos.ExecutionGraph {
+    if (utils.graphHasErrors(this.compiledGraph)) {
+      throw Error(`Project has unresolved compilation or validation errors.`);
+    }
+
     var tableStateByTarget: { [targetJson: string]: protos.ITableMetadata } = {};
     this.state.tables.forEach(tableState => {
       tableStateByTarget[JSON.stringify(tableState.target)] = tableState;
