@@ -117,6 +117,9 @@ message ExecutionNode {
   string name = 1;
   repeated string dependencies = 3;
   repeated ExecutionTask tasks = 2;
+  string type = 4;
+  Target target = 5;
+  string tableType = 6;
 }
 
 message WarehouseState {
