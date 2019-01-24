@@ -1,3 +1,5 @@
+import * as protos from "@dataform/protos";
+
 export function relativePath(path: string, base: string) {
   if (base.length == 0) {
     return path;
@@ -67,4 +69,12 @@ export function getCallerFile(rootDir: string) {
   Error.prepareStackTrace = originalFunc;
 
   return relativePath(callerfile || lastfile, rootDir);
+}
+
+export function graphHasErrors(graph: protos.ICompiledGraph) {
+  return (
+    (graph.compileErrors && graph.compileErrors.length > 0) ||
+    (graph.validationErrors && graph.validationErrors.length > 0) ||
+    graph.tables.some(m => m.validationErrors && m.validationErrors.length > 0)
+  );
 }
