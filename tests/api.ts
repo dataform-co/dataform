@@ -82,6 +82,19 @@ describe("@dataform/api", () => {
         .to.have.property("tasks")
         .to.be.an("array").that.not.is.empty;
     });
+
+    it("build_with_errors", () => {
+      expect(() => {
+        const graphWithErrors: protos.ICompiledGraph = protos.CompiledGraph.create({
+          projectConfig: { warehouse: "redshift" },
+          validationErrors: [{ fileName: "someFile", message: "Some critical error" }],
+          tables: [{ name: "a", target: { schema: "schema", name: "a" } }]
+        });
+
+        const builder = new Builder(graphWithErrors, {}, TEST_STATE);
+        builder.build();
+      }).to.throw();
+    });
   });
 
   describe("sql_generating", () => {
