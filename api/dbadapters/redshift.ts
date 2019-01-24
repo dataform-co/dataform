@@ -57,15 +57,20 @@ export class RedshiftDbAdapter implements DbAdapter {
           target.name
         }'`
       )
-    ]).then(results => ({
-      target: target,
-      type: results[1][0] ? (results[1][0].table_type == "VIEW" ? "view" : "table") : "other",
-      fields: results[0].map(row => ({
-        name: row.column_name,
-        primitive: row.data_type,
-        flags: row.is_nullable && row.is_nullable == "YES" ? ["nullable"] : []
-      }))
-    }));
+    ]).then(results => {
+      if (results[1].length > 0) {
+        // The table exists.
+        return {
+          target: target,
+          type: results[1][0].table_type == "VIEW" ? "view" : "table",
+          fields: results[0].map(row => ({
+            name: row.column_name,
+            primitive: row.data_type,
+            flags: row.is_nullable && row.is_nullable == "YES" ? ["nullable"] : []
+          }))
+        };
+      } else throw new Error(`Could not find relation: ${target.schema}.${target.name}`);
+    });
   }
 
   prepareSchema(schema: string): Promise<void> {
