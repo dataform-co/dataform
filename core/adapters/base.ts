@@ -27,7 +27,9 @@ export abstract class Adapter {
   }
 
   dropIfExists(target: protos.ITarget, type: string) {
-    return `drop ${this.baseTableType(type)} if exists ${this.resolveTarget(target)}`;
+    return `drop ${this.baseTableType(type)} if exists ${this.resolveTarget(target)} ${
+      this.baseTableType(type) == "table" ? "cascade" : ""
+    }`;
   }
 
   abstract resolveTarget(target: protos.ITarget);
