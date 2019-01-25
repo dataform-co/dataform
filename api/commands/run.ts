@@ -1,4 +1,5 @@
 import * as protos from "@dataform/protos";
+import * as prettyHrtime from "pretty-hrtime";
 import * as dbadapters from "../dbadapters";
 
 export function run(graph: protos.IExecutionGraph, profile: protos.IProfile): Runner {
@@ -111,6 +112,7 @@ export class Runner {
   }
 
   private executeNode(node: protos.IExecutionNode) {
+    const startTime = process.hrtime();
     // This creates a promise chain that executes all tasks in order.
     node.tasks
       .reduce((chain, task) => {
@@ -138,12 +140,14 @@ export class Runner {
         });
       }, Promise.resolve([] as protos.IExecutedTask[]))
       .then(results => {
-        console.log(`Completed node: "${node.name}", status: successful`);
+        const executionTime = prettyHrtime(process.hrtime(startTime));
+        console.log(`Completed node: "${node.name}", status: successful (${executionTime})`);
         this.result.nodes.push({ name: node.name, ok: true, tasks: results });
         this.triggerChange();
       })
       .catch((results: protos.IExecutedTask[]) => {
-        console.log(`Completed node: "${node.name}", status: failed`);
+        const executionTime = prettyHrtime(process.hrtime(startTime));
+        console.log(`Completed node: "${node.name}", status: failed (${executionTime})`);
         this.result.nodes.push({ name: node.name, ok: false, tasks: results });
         this.triggerChange();
       });
