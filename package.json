@@ -22,7 +22,7 @@
     "node-redshift": "^0.1.5",
     "pegjs": "^0.10.0",
     "prettier": "^1.14.2",
-    "pretty-hrtime": "^1.0.3",
+    "pretty-ms": "^4.0.0",
     "protobufjs": "^6.8.8",
     "react": "^16.6.3",
     "react-dom": "^16.6.3",

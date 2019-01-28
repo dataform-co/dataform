@@ -148,6 +148,7 @@ message ExecutedNode {
 
   bool ok = 3;
   bool skipped = 4;
+  int64 executionTime = 5;
 }
 
 message ExecutedGraph {

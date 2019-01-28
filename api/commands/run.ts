@@ -1,5 +1,5 @@
 import * as protos from "@dataform/protos";
-import * as prettyHrtime from "pretty-hrtime";
+import * as prettyMs from "pretty-ms";
 import * as dbadapters from "../dbadapters";
 
 export function run(graph: protos.IExecutionGraph, profile: protos.IProfile): Runner {
@@ -140,15 +140,21 @@ export class Runner {
         });
       }, Promise.resolve([] as protos.IExecutedTask[]))
       .then(results => {
-        const executionTime = prettyHrtime(process.hrtime(startTime));
-        console.log(`Completed node: "${node.name}", status: successful (${executionTime})`);
-        this.result.nodes.push({ name: node.name, ok: true, tasks: results });
+        const endTime = process.hrtime(startTime);
+        const executionTime = endTime[0] * 1000 + Math.round(endTime[1]/1000000);
+        const prettyTime = prettyMs(executionTime);
+
+        console.log(`Completed node: "${node.name}", status: successful (${prettyTime})`);
+        this.result.nodes.push({ name: node.name, ok: true, tasks: results, executionTime });
         this.triggerChange();
       })
       .catch((results: protos.IExecutedTask[]) => {
-        const executionTime = prettyHrtime(process.hrtime(startTime));
-        console.log(`Completed node: "${node.name}", status: failed (${executionTime})`);
-        this.result.nodes.push({ name: node.name, ok: false, tasks: results });
+        const endTime = process.hrtime(startTime);
+        const executionTime = endTime[0] * 1000 + Math.round(endTime[1]/1000000);
+        const prettyTime = prettyMs(executionTime);
+
+        console.log(`Completed node: "${node.name}", status: failed (${prettyTime})`);
+        this.result.nodes.push({ name: node.name, ok: false, tasks: results, executionTime });
         this.triggerChange();
       });
   }
