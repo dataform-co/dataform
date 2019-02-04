@@ -24,6 +24,10 @@ export class Builder {
   }
 
   build(): protos.ExecutionGraph {
+    if (utils.graphHasErrors(this.compiledGraph)) {
+      throw Error(`Project has unresolved compilation or validation errors.`);
+    }
+
     var tableStateByTarget: { [targetJson: string]: protos.ITableMetadata } = {};
     this.state.tables.forEach(tableState => {
       tableStateByTarget[JSON.stringify(tableState.target)] = tableState;
@@ -90,6 +94,9 @@ export class Builder {
     return protos.ExecutionNode.create({
       name: t.name,
       dependencies: t.dependencies,
+      type: "table",
+      target: t.target,
+      tableType: t.type,
       tasks
     });
   }
@@ -98,6 +105,8 @@ export class Builder {
     return protos.ExecutionNode.create({
       name: operation.name,
       dependencies: operation.dependencies,
+      type: "operation",
+      target: operation.target,
       tasks: operation.queries.map(statement => ({
         type: "statement",
         statement: statement
@@ -109,6 +118,7 @@ export class Builder {
     return protos.ExecutionNode.create({
       name: assertion.name,
       dependencies: assertion.dependencies,
+      type: "assertion",
       tasks: this.adapter.assertTasks(assertion, this.compiledGraph.projectConfig).build()
     });
   }
