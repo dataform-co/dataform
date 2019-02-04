@@ -1,12 +1,12 @@
 {
   "name": "@dataform/tests",
-  "version": "0.0.2-beta.1",
+  "version": "0.0.2-beta.2",
   "description": "Dataform tests.",
   "dependencies": {
-    "@dataform/api": "^0.0.2-beta.1",
-    "@dataform/cli": "^0.0.2-beta.1",
-    "@dataform/core": "^0.0.2-beta.1",
-    "@dataform/protos": "^0.0.2-beta.1",
+    "@dataform/api": "^0.0.2-beta.2",
+    "@dataform/cli": "^0.0.2-beta.2",
+    "@dataform/core": "^0.0.2-beta.2",
+    "@dataform/protos": "^0.0.2-beta.2",
     "babel-core": "^6.26.3",
     "chai": "^4.2.0",
     "mocha": "^5.2.0",
