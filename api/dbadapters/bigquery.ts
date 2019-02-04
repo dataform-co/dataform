@@ -1,11 +1,12 @@
 import { DbAdapter } from "./index";
 import * as protos from "@dataform/protos";
-
+import * as PromisePool from "promise-pool-executor";
 const BigQuery = require("@google-cloud/bigquery");
 
 export class BigQueryDbAdapter implements DbAdapter {
   private profile: protos.IProfile;
   private client: any;
+  private pool: PromisePool.PromisePoolExecutor;
 
   constructor(profile: protos.IProfile) {
     this.profile = profile;
@@ -14,16 +15,28 @@ export class BigQueryDbAdapter implements DbAdapter {
       credentials: JSON.parse(profile.bigquery.credentials),
       scopes: ["https://www.googleapis.com/auth/drive"]
     });
+    // Bigquery allows 50 concurrent queries, and a rate limit of 100/user/second by default.
+    // These limits should be safely low enough for most projects.
+    this.pool = new PromisePool.PromisePoolExecutor({
+      concurrencyLimit: this.profile.threads || 16,
+      frequencyWindow: 1000,
+      frequencyLimit: 30
+    });
   }
 
   execute(statement: string) {
-    return this.client
-      .query({
-        useLegacySql: false,
-        query: statement,
-        maxResults: 1000
+    return this.pool
+      .addSingleTask({
+        generator: () =>
+          this.client
+            .query({
+              useLegacySql: false,
+              query: statement,
+              maxResults: 1000
+            })
+            .then(result => result[0])
       })
-      .then(result => result[0]);
+      .promise();
   }
 
   evaluate(statement: string) {
@@ -40,7 +53,11 @@ export class BigQueryDbAdapter implements DbAdapter {
       .then(result => {
         return Promise.all(
           result[0].map(dataset => {
-            return dataset.getTables({ autoPaginate: true });
+            return this.pool
+              .addSingleTask({
+                generator: () => dataset.getTables({ autoPaginate: true })
+              })
+              .promise();
           })
         );
       })
@@ -54,10 +71,15 @@ export class BigQueryDbAdapter implements DbAdapter {
   }
 
   table(target: protos.ITarget): Promise<protos.ITableMetadata> {
-    return this.client
-      .dataset(target.schema)
-      .table(target.name)
-      .getMetadata()
+    return this.pool
+      .addSingleTask({
+        generator: () =>
+          this.client
+            .dataset(target.schema)
+            .table(target.name)
+            .getMetadata()
+      })
+      .promise()
       .then(result => {
         var table = result[0];
         return protos.TableMetadata.create({
