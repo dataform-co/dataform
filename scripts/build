@@ -17,6 +17,7 @@ chmod +x node_modules/protobufjs/cli/bin/pbts
 ./node_modules/protobufjs/cli/bin/pbjs -t static-module -w commonjs \
   -p ./ \
   -o build/protos/index.js \
+  --force-long \
   protos/core.proto \
   protos/profiles.proto
 
