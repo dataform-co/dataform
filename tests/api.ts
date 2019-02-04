@@ -82,6 +82,60 @@ describe("@dataform/api", () => {
         .to.have.property("tasks")
         .to.be.an("array").that.not.is.empty;
     });
+
+    it("build_with_errors", () => {
+      expect(() => {
+        const graphWithErrors: protos.ICompiledGraph = protos.CompiledGraph.create({
+          projectConfig: { warehouse: "redshift" },
+          validationErrors: [{ fileName: "someFile", message: "Some critical error" }],
+          tables: [{ name: "a", target: { schema: "schema", name: "a" } }]
+        });
+
+        const builder = new Builder(graphWithErrors, {}, TEST_STATE);
+        builder.build();
+      }).to.throw();
+    });
+
+    it("node_types", () => {
+      const graph: protos.ICompiledGraph = protos.CompiledGraph.create({
+        projectConfig: { warehouse: "redshift" },
+        tables: [
+          { name: "a", target: { schema: "schema", name: "a" }, type: "table" },
+          { name: "b", target: { schema: "schema", name: "b" }, type: "incremental" },
+          { name: "c", target: { schema: "schema", name: "c" }, type: "view" }
+        ],
+        operations: [
+          {
+            name: "d",
+            target: { schema: "schema", name: "d" },
+            queries: ["create or replace view schema.someview as select 1 as test"]
+          }
+        ],
+        assertions: [{ name: "e" }]
+      });
+
+      const builder = new Builder(graph, {}, TEST_STATE);
+      const executedGraph = builder.build();
+
+      expect(executedGraph)
+        .to.have.property("nodes")
+        .to.be.an("array").that.is.not.empty;
+
+      graph.tables.forEach(t => {
+        const node = executedGraph.nodes.find(item => item.name == t.name);
+        expect(node).to.include({ type: "table", target: t.target, tableType: t.type });
+      });
+
+      graph.operations.forEach(t => {
+        const node = executedGraph.nodes.find(item => item.name == t.name);
+        expect(node).to.include({ type: "operation", target: t.target });
+      });
+
+      graph.assertions.forEach(t => {
+        const node = executedGraph.nodes.find(item => item.name == t.name);
+        expect(node).to.include({ type: "assertion" });
+      });
+    });
   });
 
   describe("sql_generating", () => {
@@ -247,6 +301,12 @@ describe("@dataform/api", () => {
       const expectedExecutionNodes: protos.IExecutionNode[] = [
         {
           name: "partitionby",
+          type: "table",
+          tableType: "table",
+          target: {
+            schema: "schema",
+            name: "name"
+          },
           tasks: [
             {
               type: "statement",
@@ -256,6 +316,12 @@ describe("@dataform/api", () => {
         },
         {
           name: "plain",
+          type: "table",
+          tableType: "table",
+          target: {
+            schema: "schema",
+            name: "name"
+          },
           tasks: [
             {
               type: "statement",

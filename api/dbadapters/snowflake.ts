@@ -61,15 +61,20 @@ export class SnowflakeDbAdapter implements DbAdapter {
           target.name
         }'`
       )
-    ]).then(results => ({
-      target: target,
-      type: results[1][0] ? (results[1][0].TABLE_TYPE == "VIEW" ? "view" : "table") : "other",
-      fields: results[0].map(row => ({
-        name: row.COLUMN_NAME,
-        primitive: row.DATA_TYPE,
-        flags: row.IS_NULLABLE && row.IS_NULLABLE == "YES" ? ["nullable"] : []
-      }))
-    }));
+    ]).then(results => {
+      if (results[1].length > 0) {
+        // The table exists.
+        return {
+          target: target,
+          type: (results[1][0].TABLE_TYPE == "VIEW" ? "view" : "table"),
+          fields: results[0].map(row => ({
+            name: row.COLUMN_NAME,
+            primitive: row.DATA_TYPE,
+            flags: row.IS_NULLABLE && row.IS_NULLABLE == "YES" ? ["nullable"] : []
+          }))
+        };
+      } else throw new Error(`Could not find relation: ${target.schema}.${target.name}`);
+    });
   }
 
   prepareSchema(schema: string): Promise<void> {
