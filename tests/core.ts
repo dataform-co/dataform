@@ -338,6 +338,9 @@ describe("@dataform/core", () => {
         /*js
         var a = 1;
         */
+        /*js
+        var c = 3;
+        */
         --js var b = 2;
         /*
         normal_multiline_comment
@@ -345,7 +348,7 @@ describe("@dataform/core", () => {
         -- normal_single_line_comment
         select 1 as test from \`x\`
         `;
-      const EXPECTED_JS = `var a = 1;\nvar b = 2;`.trim();
+      const EXPECTED_JS = `var a = 1;\nvar c = 3;\nvar b = 2;`.trim();
 
       const EXPECTED_SQL = `
         /*
