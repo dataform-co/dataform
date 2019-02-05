@@ -6,17 +6,19 @@ import * as os from "os";
 import { query } from "@dataform/api";
 import * as protos from "@dataform/protos";
 import { asPlainObject } from "./utils";
+import { create } from "../core/adapters";
 
 interface ITableInfo {
-  dataset: string;
+  schema: string;
   table: string;
-  type: number | string;
+  type: string;
 }
 
 interface ITestConfig {
   warehouse: string;
   profile: protos.IProfile;
   projectDir: string;
+  projectConf: protos.IProjectConfig;
   defaultSchema: string;
   assertionSchema: string;
   resultPath: string;
@@ -24,65 +26,71 @@ interface ITestConfig {
   workingDir: string;
 }
 
+interface IExpectedResult {
+  id: string;
+  data: object[];
+}
+
 function queryRun(sqlQuery: string, testConfig: ITestConfig) {
-  return query
-    .run(protos.Profile.create(testConfig.profile), sqlQuery, path.resolve(testConfig.projectDir))
-    .catch(e => e);
+  return query.run(protos.Profile.create(testConfig.profile), sqlQuery, path.resolve(testConfig.projectDir));
+}
+
+function getTarget(schema: string, table: string, testConfig: ITestConfig) {
+  const adapter = create({ ...testConfig.projectConf, gcloudProjectId: null });
+  const target = adapter.resolveTarget({ schema: schema, name: table });
+
+  return target.replace(/`/g, "\\`");
 }
 
 function deleteTables(tables: ITableInfo[], testConfig: ITestConfig) {
   return Promise.all(
     tables.map(item => {
-      const sqlDelete =
-        testConfig.warehouse === "snowflake"
-          ? `drop ${item.type} if exists "${item.dataset}"."${item.table}"`
-          : `drop ${item.type} if exists ${item.dataset}.${item.table}`;
+      const target = getTarget(item.schema, item.table, testConfig);
+      const sqlDelete = `drop ${item.type} if exists ${target}`;
 
       return queryRun(sqlDelete, testConfig);
     })
   );
 }
 
-function getTables(datasetId: string, testConfig: ITestConfig) {
+function getTables(schema: string, testConfig: ITestConfig) {
   const tablesQuery = {
     bigquery: `
       select
         table_id as table,
-        dataset_id as dataset,
+        dataset_id as schema,
         case type when 2 then 'view' else 'table' end as type
-      from ${datasetId}.__TABLES__`,
+      from ${schema}.__TABLES__`,
     redshift: `
       select
         table_name as table,
-        table_schema as dataset,
+        table_schema as schema,
         case table_type when 'VIEW' then 'view' else 'table' end as type
       from information_schema.tables
       where table_schema != 'information_schema'
         and table_schema != 'pg_catalog'
         and table_schema != 'pg_internal'
-        and table_schema = '${datasetId}'`,
+        and table_schema = '${schema}'`,
     snowflake: `
       select
         table_name as "table",
-        table_schema as "dataset",
+        table_schema as "schema",
         case table_type when 'VIEW' then 'view' else 'table' end as "type"
       from information_schema.tables
       where LOWER(table_schema) != 'information_schema'
         and LOWER(table_schema) != 'pg_catalog'
         and LOWER(table_schema) != 'pg_internal'
-        and LOWER(table_schema) = '${datasetId}'`
+        and LOWER(table_schema) = '${schema}'`
   };
 
   return queryRun(tablesQuery[testConfig.warehouse], testConfig);
 }
 
-function getData(expectedResult: { [x: string]: any }, datasetId: string, testConfig: ITestConfig) {
+function getData(expectedResult: IExpectedResult[], schema: string, testConfig: ITestConfig) {
   return Promise.all(
     expectedResult.map(item => {
-      const sqlSelect =
-        testConfig.warehouse === "snowflake"
-          ? `select * from "${datasetId}"."${item.id}"`
-          : `select * from ${datasetId}.${item.id}`;
+      const target = getTarget(schema, item.id, testConfig);
+      const sqlSelect = `select * from ${target}`;
 
       return queryRun(sqlSelect, testConfig);
     })
@@ -102,6 +110,7 @@ function getTestConfig(warehouse: string): ITestConfig {
     warehouse,
     profile,
     projectDir,
+    projectConf,
     defaultSchema: projectConf.defaultSchema,
     assertionSchema: projectConf.assertionSchema,
     resultPath,
@@ -110,7 +119,7 @@ function getTestConfig(warehouse: string): ITestConfig {
   };
 }
 
-function getTestRunCommand(testConfig: ITestConfig, expectedResult: { [x: string]: any }) {
+function getTestRunCommand(testConfig: ITestConfig, expectedResult: IExpectedResult[], incrementalLength: number) {
   return async () => {
     // run the command
     await expect(async () => {
@@ -129,43 +138,17 @@ function getTestRunCommand(testConfig: ITestConfig, expectedResult: { [x: string
     // check for errors in database
     const data = await getData(expectedResult, testConfig.defaultSchema, testConfig);
     expectedResult.forEach((item, i) => {
+      const isIncremental = item.id === "example_incremental";
+      const dataLength = isIncremental ? incrementalLength: item.data.length;
+
       expect(data[i])
         .to.be.an("array")
-        .that.have.lengthOf(item.data.length);
-      expect(asPlainObject(data[i])).to.have.deep.members(asPlainObject(item.data));
+        .that.have.lengthOf(dataLength);
+
+      if (!isIncremental) {
+        expect(asPlainObject(data[i])).to.have.deep.members(asPlainObject(item.data));
+      }
     });
-
-    // check for errors in database (table with timestamp)
-    if (testConfig.warehouse === "snowflake") {
-      const sqlIncremental = `select * from "${testConfig.defaultSchema}"."example_incremental"`;
-      const incremental = await queryRun(sqlIncremental, testConfig);
-
-      expect(incremental).to.be.an("array").that.is.not.empty;
-      expect(incremental[0])
-        .to.have.property("TS")
-        .that.to.be.an.instanceof(Date);
-    } else if (testConfig.warehouse === "redshift") {
-      const sqlIncremental = `select * from ${testConfig.defaultSchema}.example_incremental`;
-      const incremental = await queryRun(sqlIncremental, testConfig);
-
-      expect(incremental).to.be.an("array").that.is.not.empty;
-      expect(incremental[0])
-        .to.have.property("ts")
-        .that.to.be.an.instanceof(Date);
-    } else if (testConfig.warehouse === "bigquery") {
-      const sqlIncremental = `select * from ${testConfig.defaultSchema}.example_incremental`;
-      const incremental = await queryRun(sqlIncremental, testConfig);
-
-      expect(incremental).to.be.an("array").that.is.not.empty;
-      expect(incremental[0])
-        .to.have.property("ts")
-        .that.to.have.property("value");
-
-      expect(incremental[0].ts.value).to.satisfy(str => {
-        const reTimestamp = /([12]\d{3}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01]))T(([0-1]\d|2[0-3])(:([0-5]\d)){2}\.(\d{3}))Z/;
-        return reTimestamp.test(str);
-      });
-    }
   };
 }
 
@@ -176,11 +159,11 @@ function getHookBefore(testConfig: ITestConfig) {
     const aTables = await getTables(testConfig.assertionSchema, testConfig);
 
     // delete existing tables
-    if (dTables.length > 0) {
-      await deleteTables(dTables, testConfig);
-    }
     if (aTables.length > 0) {
       await deleteTables(aTables, testConfig);
+    }
+    if (dTables.length > 0) {
+      await deleteTables(dTables, testConfig);
     }
   };
 }
@@ -197,7 +180,8 @@ describe("@dataform/integration", () => {
         { id: "example_js_blocks", data: [{ foo: 1 }] },
         { id: "example_deferred", data: [{ test: 1 }] },
         { id: "example_view", data: [{ sample: 1 }, { sample: 2 }, { sample: 3 }] },
-        { id: "sample_data", data: [{ sample: 1 }, { sample: 2 }, { sample: 3 }] }
+        { id: "sample_data", data: [{ sample: 1 }, { sample: 2 }, { sample: 3 }] },
+        { id: "example_incremental", data: [] }
       ];
 
       // check project credentials
@@ -206,11 +190,11 @@ describe("@dataform/integration", () => {
         console.log("No Bigquery profile config, tests will be skipped!");
       }
 
-      before("clear_dataset", getHookBefore(testConfig));
+      before("clear_schema", getHookBefore(testConfig));
 
-      it("bigquery_1", getTestRunCommand(testConfig, expectedResult));
+      it("bigquery_1", getTestRunCommand(testConfig, expectedResult, 1));
 
-      it("bigquery_2", getTestRunCommand(testConfig, expectedResult));
+      it("bigquery_2", getTestRunCommand(testConfig, expectedResult, 2));
     });
 
     describe("redshift", function() {
@@ -221,7 +205,8 @@ describe("@dataform/integration", () => {
         { id: "example_table", data: [{ sample: 1 }, { sample: 2 }, { sample: 3 }] },
         { id: "example_table_dependency", data: [{ sample: 1 }, { sample: 2 }, { sample: 3 }] },
         { id: "example_view", data: [{ sample: 1 }, { sample: 2 }, { sample: 3 }] },
-        { id: "sample_data", data: [{ sample: 1 }, { sample: 2 }, { sample: 3 }] }
+        { id: "sample_data", data: [{ sample: 1 }, { sample: 2 }, { sample: 3 }] },
+        { id: "example_incremental", data: [] }
       ];
 
       // check project credentials
@@ -230,11 +215,11 @@ describe("@dataform/integration", () => {
         console.log("No Redshift profile config, tests will be skipped!");
       }
 
-      before("clear_dataset", getHookBefore(testConfig));
+      before("clear_schema", getHookBefore(testConfig));
 
-      it("redshift_1", getTestRunCommand(testConfig, expectedResult));
+      it("redshift_1", getTestRunCommand(testConfig, expectedResult, 1));
 
-      it("redshift_2", getTestRunCommand(testConfig, expectedResult));
+      it("redshift_2", getTestRunCommand(testConfig, expectedResult, 2));
     });
 
     describe("snowflake", function() {
@@ -244,7 +229,8 @@ describe("@dataform/integration", () => {
       const expectedResult = [
         { id: "example_table", data: [{ SAMPLE_COLUMN: 1 }, { SAMPLE_COLUMN: 2 }, { SAMPLE_COLUMN: 3 }] },
         { id: "example_view", data: [{ SAMPLE_COLUMN: 1 }, { SAMPLE_COLUMN: 2 }, { SAMPLE_COLUMN: 3 }] },
-        { id: "sample_data", data: [{ SAMPLE_COLUMN: 1 }, { SAMPLE_COLUMN: 2 }, { SAMPLE_COLUMN: 3 }] }
+        { id: "sample_data", data: [{ SAMPLE_COLUMN: 1 }, { SAMPLE_COLUMN: 2 }, { SAMPLE_COLUMN: 3 }] },
+        { id: "example_incremental", data: [] }
       ];
 
       // check project credentials
@@ -253,11 +239,11 @@ describe("@dataform/integration", () => {
         console.log("No Snowflake profile config, tests will be skipped!");
       }
 
-      before("clear_dataset", getHookBefore(testConfig));
+      before("clear_schema", getHookBefore(testConfig));
 
-      it("snowflake_1", getTestRunCommand(testConfig, expectedResult));
+      it("snowflake_1", getTestRunCommand(testConfig, expectedResult, 1));
 
-      it("snowflake_2", getTestRunCommand(testConfig, expectedResult));
+      it("snowflake_2", getTestRunCommand(testConfig, expectedResult, 2));
     });
   });
 });

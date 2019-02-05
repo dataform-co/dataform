@@ -1,5 +1,5 @@
 {
     "warehouse": "redshift",
-    "defaultSchema": "dataform_example",
-    "assertionSchema": "dataform_assertions"
+    "defaultSchema": "df_integration_test",
+    "assertionSchema": "df_integration_test_assertions"
 }
