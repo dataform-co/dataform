@@ -57,7 +57,7 @@ export function compileAssertionSql(code: string, path: string) {
 }
 
 export function extractJsBlocks(code: string): { sql: string; js: string } {
-  const JS_REGEX = /\/\*[jJ][sS][\r\n]+((?:[^*]|[\r\n]|(?:\*+(?:[^*/]|[\r\n])))*)\*+\/|\-\-[jJ][sS]\s(.*)/g;
+  const JS_REGEX = /\/\*[jJ][sS]\s*[\r\n]+((?:[^*]|[\r\n]|(?:\*+(?:[^*/]|[\r\n])))*)\*+\/|\-\-[jJ][sS]\s(.*)/g;
   // This captures any single backticks that aren't escaped with a preceding \.
   const RAW_BACKTICKS_REGEX = /([^\\])`/g;
   var jsBlocks: string[] = [];
