@@ -6,7 +6,7 @@ import * as os from "os";
 import { query } from "@dataform/api";
 import * as protos from "@dataform/protos";
 import { asPlainObject } from "./utils";
-import { create } from "../core/adapters";
+import { create, IAdapter } from "../core/adapters";
 
 interface ITableInfo {
   schema: string;
@@ -24,6 +24,7 @@ interface ITestConfig {
   resultPath: string;
   command: string;
   workingDir: string;
+  adapter: IAdapter;
 }
 
 interface IExpectedResult {
@@ -36,8 +37,7 @@ function queryRun(sqlQuery: string, testConfig: ITestConfig) {
 }
 
 function getTarget(schema: string, table: string, testConfig: ITestConfig) {
-  const adapter = create({ ...testConfig.projectConf, gcloudProjectId: null });
-  const target = adapter.resolveTarget({ schema: schema, name: table });
+  const target = testConfig.adapter.resolveTarget({ schema: schema, name: table });
 
   return target.replace(/`/g, "\\`");
 }
@@ -45,8 +45,9 @@ function getTarget(schema: string, table: string, testConfig: ITestConfig) {
 function deleteTables(tables: ITableInfo[], testConfig: ITestConfig) {
   return Promise.all(
     tables.map(item => {
-      const target = getTarget(item.schema, item.table, testConfig);
-      const sqlDelete = `drop ${item.type} if exists ${target}`;
+      const target = { schema: item.schema, name: item.table };
+      const query = testConfig.adapter.dropIfExists(target, item.type);
+      const sqlDelete = query.replace(/`/g, "\\`");
 
       return queryRun(sqlDelete, testConfig);
     })
@@ -106,6 +107,8 @@ function getTestConfig(warehouse: string): ITestConfig {
   const resultPath = path.resolve(tempDir, "./executed_graph.json");
   const command = `./scripts/run run examples/${warehouse} --profile="${profilePath}" --result-path="${resultPath}"`;
 
+  const adapter = create({ ...projectConf, gcloudProjectId: null });
+
   return {
     warehouse,
     profile,
@@ -115,7 +118,8 @@ function getTestConfig(warehouse: string): ITestConfig {
     assertionSchema: projectConf.assertionSchema,
     resultPath,
     command,
-    workingDir: "../../"
+    workingDir: "../../",
+    adapter
   };
 }
 
@@ -139,7 +143,7 @@ function getTestRunCommand(testConfig: ITestConfig, expectedResult: IExpectedRes
     const data = await getData(expectedResult, testConfig.defaultSchema, testConfig);
     expectedResult.forEach((item, i) => {
       const isIncremental = item.id === "example_incremental";
-      const dataLength = isIncremental ? incrementalLength: item.data.length;
+      const dataLength = isIncremental ? incrementalLength : item.data.length;
 
       expect(data[i])
         .to.be.an("array")
