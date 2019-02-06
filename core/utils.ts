@@ -1,4 +1,5 @@
 import * as protos from "@dataform/protos";
+import * as stackTrace from "stack-trace";
 
 export function relativePath(path: string, base: string) {
   if (base.length == 0) {
@@ -77,4 +78,16 @@ export function graphHasErrors(graph: protos.ICompiledGraph) {
     (graph.validationErrors && graph.validationErrors.length > 0) ||
     graph.tables.some(m => m.validationErrors && m.validationErrors.length > 0)
   );
+}
+
+export function getStackTraceData(error: Error): { [name: string]: number | string } {
+  const trace = stackTrace.parse(error);
+  const lineNumber = trace.length > 0 ? trace[0].lineNumber : 0;
+  const columnNumber = trace.length > 0 ? trace[0].columnNumber : 0;
+
+  return {
+    lineNumber,
+    columnNumber,
+    stack: error.stack
+  };
 }
