@@ -21,13 +21,18 @@ export function compileTableSql(code: string, path: string) {
   var functionsBindings = getFunctionPropertyNames(TableContext.prototype).map(
     name => `const ${name} = !!ctx.${name} ? ctx.${name}.bind(ctx) : () => "";`
   );
-  return `
-  const publish = global.publish || global.materialize;
-  publish("${utils.baseFilename(path)}").query(ctx => {
-    ${functionsBindings.join("\n")}
-    ${js}
-    return \`${sql}\`;
-  })`;
+
+  // return `
+  // const publish = global.publish || global.materialize;
+  // publish("${utils.baseFilename(path)}").query(ctx => {
+  //   ${functionsBindings.join("\n")}
+  //   ${js}
+  //   return \`${sql}\`;
+  // })`;
+
+  return `const publish = global.publish || global.materialize; publish("${utils.baseFilename(
+    path
+  )}").query(ctx => {${functionsBindings.join(" ")} ${js} return \`${sql}\`; })`;
 }
 
 export function compileOperationSql(code: string, path: string) {
@@ -61,16 +66,18 @@ export function extractJsBlocks(code: string): { sql: string; js: string } {
   // This captures any single backticks that aren't escaped with a preceding \.
   const RAW_BACKTICKS_REGEX = /([^\\])`/g;
   var jsBlocks: string[] = [];
+
   var cleanSql = code
     .replace(JS_REGEX, (_, group1, group2) => {
-      if (group1) jsBlocks.push(group1);
-      if (group2) jsBlocks.push(group2);
+      if (group1) jsBlocks.push(`\n${group1.trim()}\n`);
+      if (group2) jsBlocks.push(`${group2.trim()}\n`);
       return "";
     })
     .replace(RAW_BACKTICKS_REGEX, (_, group1) => group1 + "\\`");
+
   return {
     sql: cleanSql.trim(),
-    js: jsBlocks.map(block => block.trim()).join("\n")
+    js: jsBlocks.join("")
   };
 }
 

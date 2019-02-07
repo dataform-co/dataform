@@ -467,6 +467,23 @@ describe("@dataform/api", () => {
     });
 
     it("bigquery_with_errors_example", async () => {
+      const expectedResults = [
+        {
+          fileName: "definitions/test.js",
+          message: /Error in JS/,
+          lineNumber: 4
+        },
+        {
+          fileName: "definitions/example_js_blocks.sql",
+          message: /Error in multiline comment/,
+          lineNumber: 3
+        },
+        {
+          fileName: "definitions/example_table.sql",
+          message: /ref_with_error is not defined/,
+          lineNumber: 4
+        }
+      ];
       const graph = await compile("../examples/bigquery_with_errors").catch(error => error);
 
       expect(graph).to.not.be.an.instanceof(Error);
@@ -474,14 +491,19 @@ describe("@dataform/api", () => {
         .to.have.property("compileErrors")
         .to.be.an("array");
 
-      const errors1 = graph.compileErrors.filter(item => item.message.match(/ref_with_error is not defined/));
-      expect(errors1).to.be.an("array").that.is.not.empty;
+      console.log("---- ---- ---- ----compileErrors:", graph.compileErrors);
 
-      const errors2 = graph.compileErrors.filter(item => item.message.match(/Error in multiline comment/));
-      expect(errors2).to.be.an("array").that.is.not.empty;
+      expectedResults.forEach(result => {
+        const error = graph.compileErrors.find(item => item.message.match(result.message));
 
-      const errors3 = graph.compileErrors.filter(item => item.message.match(/Error in JS/));
-      expect(errors3).to.be.an("array").that.is.not.empty;
+        expect(error).to.include({ fileName: result.fileName, lineNumber: result.lineNumber });
+        expect(error)
+          .to.have.property("columnNumber")
+          .that.is.a("number");
+        expect(error)
+          .to.have.property("stack")
+          .that.is.a("string");
+      });
     });
 
     it("bigquery_backwards_compatibility_example", () => {
