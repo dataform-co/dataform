@@ -1,2 +1,2 @@
 --js dependencies("sample_data");
-select * from `tada-analytics.dataform_example.sample_data\`
+select * from `tada-analytics.df_integration_test.sample_data\`
