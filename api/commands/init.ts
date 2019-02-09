@@ -1,9 +1,9 @@
 import * as path from "path";
 import * as fs from "fs";
-import { utils } from "@dataform/core";
 import * as protos from "@dataform/protos";
 import { install } from "./install";
-import { version } from "../package.json";
+
+const { version } = require("../package.json");
 
 export function init(projectDir: string, projectConfig: protos.IProjectConfig) {
   var dataformJsonPath = path.join(projectDir, "dataform.json");
