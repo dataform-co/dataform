@@ -16,3 +16,5 @@ api/package-lock.json
 cli/package-lock.json
 core/package-lock.json
 protos/package-lock.json
+
+bazel-*
