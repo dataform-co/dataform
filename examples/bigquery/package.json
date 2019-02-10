@@ -3,9 +3,9 @@
     "version": "0.0.2-beta.4",
     "description": "Example Dataform project (BigQuery).",
     "dependencies": {
-        "@dataform/core": "^0.0.2-beta.4",
-        "@dataform/crossdb": "^0.0.2-beta.4",
-        "@dataform/protos": "^0.0.2-beta.4"
+        "@dataform/core": "../../bazel-bin/core/pkg",
+        "@dataform/crossdb": "../../bazel-bin/crossdb/pkg",
+        "@dataform/protos": "../../bazel-bin/protos/pkg"
     },
     "private": true
 }

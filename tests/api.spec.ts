@@ -426,7 +426,7 @@ describe("@dataform/api", () => {
 
   describe("compile", () => {
     it("bigquery_example", () => {
-      return compile("../examples/bigquery").then(graph => {
+      return compile(path.resolve("df/examples/bigquery")).then(graph => {
         var tableNames = graph.tables.map(t => t.name);
 
         // Check JS blocks get processed.

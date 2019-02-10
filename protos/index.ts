@@ -1,1 +1,1 @@
-export * from "df/protos/protobufjs_lib";
+export * from "@dataform/protos/protobufjs_lib";

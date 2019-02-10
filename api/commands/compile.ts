@@ -4,8 +4,14 @@ import { fork } from "child_process";
 import * as fs from "fs";
 import { promisify } from "util";
 import * as path from "path";
+import { compile as vmCompile } from "@dataform/api/vm/compile";
 
-export function compile(projectDir: string): Promise<protos.CompiledGraph> {
+export function compile(projectDir: string, forked?: boolean): Promise<protos.CompiledGraph> {
+  // Skip the whole thread thing if local is true.
+  if (!forked) {
+    const contents = vmCompile(projectDir);
+    return Promise.resolve(protos.CompiledGraph.decode(contents));
+  }
   // Resolve the path in case it hasn't been resolved already.
   projectDir = path.resolve(projectDir);
   var child = fork(require.resolve("../vm/compile"));
