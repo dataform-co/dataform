@@ -5,6 +5,7 @@ load("@build_bazel_rules_nodejs//:defs.bzl", "nodejs_binary")
 exports_files(["tsconfig.json"])
 exports_files(["webpack.config.js"])
 
+
 PROTOBUF_DEPS = [
     "@npm//protobufjs",
     # these deps are needed even though they are not automatic transitive deps of
