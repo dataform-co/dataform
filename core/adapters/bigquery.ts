@@ -63,4 +63,8 @@ export class BigQueryAdapter extends Adapter implements IAdapter {
     return `
       create or replace view ${this.resolveTarget(target)} as ${query}`;
   }
+
+  dropIfExists(target: protos.ITarget, type: string) {
+    return `drop ${this.baseTableType(type)} if exists ${this.resolveTarget(target)}`;
+  }
 }

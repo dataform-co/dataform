@@ -90,4 +90,8 @@ export class RedshiftAdapter extends Adapter implements IAdapter {
 
     return `create table ${this.resolveTarget(target)} as ${t.query}`;
   }
+
+  dropIfExists(target: protos.ITarget, type: string) {
+    return `drop ${this.baseTableType(type)} if exists ${this.resolveTarget(target)} cascade`;
+  }
 }
