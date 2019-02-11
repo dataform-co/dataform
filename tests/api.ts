@@ -476,12 +476,12 @@ describe("@dataform/api", () => {
         {
           fileName: "definitions/example_js_blocks.sql",
           message: /Error in multiline comment/,
-          lineNumber: 3
+          lineNumber: 6
         },
         {
           fileName: "definitions/example_table.sql",
           message: /ref_with_error is not defined/,
-          lineNumber: 4
+          lineNumber: 7
         }
       ];
       const graph = await compile("../examples/bigquery_with_errors").catch(error => error);
@@ -490,8 +490,6 @@ describe("@dataform/api", () => {
       expect(graph)
         .to.have.property("compileErrors")
         .to.be.an("array");
-
-      console.log("---- ---- ---- ----compileErrors:", graph.compileErrors);
 
       expectedResults.forEach(result => {
         const error = graph.compileErrors.find(item => item.message.match(result.message));
@@ -565,13 +563,13 @@ describe("@dataform/api", () => {
       expect(mNames).includes("example_table");
       const mTable = graph.tables.filter(t => t.name == "example_table")[0];
       expect(mTable.type).equals("table");
-      expect(mTable.query).equals('\nselect * from "dataform_example"."sample_data"');
+      expect(mTable.query).equals('select * from "dataform_example"."sample_data"');
       expect(mTable.dependencies).deep.equals(["sample_data"]);
 
       expect(mNames).includes("example_view");
       const mView = graph.tables.filter(t => t.name == "example_view")[0];
       expect(mView.type).equals("view");
-      expect(mView.query).equals('\nselect * from "dataform_example"."sample_data"');
+      expect(mView.query).equals('select * from "dataform_example"."sample_data"');
       expect(mView.dependencies).deep.equals(["sample_data"]);
 
       expect(mNames).includes("sample_data");
