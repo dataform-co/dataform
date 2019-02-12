@@ -33,6 +33,7 @@
     "remark-slug": "^5.1.1",
     "rimraf": "^2.6.2",
     "snowflake-sdk": "^1.1.5",
+    "stack-trace": "0.0.10",
     "ts-node": "^7.0.1",
     "typescript": "^3.2.1",
     "vm2": "^3.6.3",

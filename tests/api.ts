@@ -5,6 +5,7 @@ import * as protos from "@dataform/protos";
 import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";
+import * as stackTrace from "stack-trace";
 import { asPlainObject, cleanSql } from "./utils";
 
 describe("@dataform/api", () => {
@@ -467,6 +468,23 @@ describe("@dataform/api", () => {
     });
 
     it("bigquery_with_errors_example", async () => {
+      const expectedResults = [
+        {
+          fileName: "definitions/test.js",
+          message: /Error in JS/,
+          lineNumber: 4
+        },
+        {
+          fileName: "definitions/example_js_blocks.sql",
+          message: /Error in multiline comment/,
+          lineNumber: 6
+        },
+        {
+          fileName: "definitions/example_table.sql",
+          message: /ref_with_error is not defined/,
+          lineNumber: 7
+        }
+      ];
       const graph = await compile("../examples/bigquery_with_errors").catch(error => error);
 
       expect(graph).to.not.be.an.instanceof(Error);
@@ -474,14 +492,23 @@ describe("@dataform/api", () => {
         .to.have.property("compileErrors")
         .to.be.an("array");
 
-      const errors1 = graph.compileErrors.filter(item => item.message.match(/ref_with_error is not defined/));
-      expect(errors1).to.be.an("array").that.is.not.empty;
+      expectedResults.forEach(result => {
+        const error = graph.compileErrors.find(item => item.message.match(result.message));
 
-      const errors2 = graph.compileErrors.filter(item => item.message.match(/Error in multiline comment/));
-      expect(errors2).to.be.an("array").that.is.not.empty;
+        expect(error)
+          .to.have.property("fileName")
+          .that.equals(result.fileName);
 
-      const errors3 = graph.compileErrors.filter(item => item.message.match(/Error in JS/));
-      expect(errors3).to.be.an("array").that.is.not.empty;
+        expect(error)
+          .to.have.property("stack")
+          .that.is.a("string");
+
+        const stack = stackTrace.parse(error);
+        expect(stack).to.be.an("array").that.is.not.empty;
+        expect(stack[0])
+          .to.have.property("lineNumber")
+          .that.equals(result.lineNumber);
+      });
     });
 
     it("bigquery_backwards_compatibility_example", () => {
@@ -543,13 +570,13 @@ describe("@dataform/api", () => {
       expect(mNames).includes("example_table");
       const mTable = graph.tables.filter(t => t.name == "example_table")[0];
       expect(mTable.type).equals("table");
-      expect(mTable.query).equals('\nselect * from "df_integration_test"."sample_data"');
+      expect(mTable.query).equals('select * from "df_integration_test"."sample_data"');
       expect(mTable.dependencies).deep.equals(["sample_data"]);
 
       expect(mNames).includes("example_view");
       const mView = graph.tables.filter(t => t.name == "example_view")[0];
       expect(mView.type).equals("view");
-      expect(mView.query).equals('\nselect * from "df_integration_test"."sample_data"');
+      expect(mView.query).equals('select * from "df_integration_test"."sample_data"');
       expect(mView.dependencies).deep.equals(["sample_data"]);
 
       expect(mNames).includes("sample_data");

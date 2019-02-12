@@ -40,6 +40,7 @@ message ValidationError {
 message CompileError {
   string file_name = 1;
   string message = 2;
+  string stack = 3;
 }
 
 message Table {
