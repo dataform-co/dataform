@@ -10,6 +10,7 @@
     "babel-core": "^6.26.3",
     "chai": "^4.2.0",
     "mocha": "^5.2.0",
+    "stack-trace": "0.0.10",
     "tape": "^4.9.1"
   },
   "publishConfig": {

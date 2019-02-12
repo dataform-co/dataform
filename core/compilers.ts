@@ -47,26 +47,6 @@ export function compileAssertionSql(code: string, path: string) {
   return `assert("${utils.baseFilename(path)}").query(ctx => {${functionsBindings.join("\n")} ${parsedCode} })`;
 }
 
-export function extractJsBlocks(code: string): { sql: string; js: string } {
-  const JS_REGEX = /\/\*[jJ][sS]\s*[\r\n]+((?:[^*]|[\r\n]|(?:\*+(?:[^*/]|[\r\n])))*)\*+\/|\-\-[jJ][sS]\s(.*)/g;
-  // This captures any single backticks that aren't escaped with a preceding \.
-  const RAW_BACKTICKS_REGEX = /([^\\])`/g;
-  var jsBlocks: string[] = [];
-
-  var cleanSql = code
-    .replace(JS_REGEX, (_, group1, group2) => {
-      if (group1) jsBlocks.push(group1);
-      if (group2) jsBlocks.push(group2);
-      return "";
-    })
-    .replace(RAW_BACKTICKS_REGEX, (_, group1) => group1 + "\\`");
-
-  return {
-    sql: cleanSql.trim(),
-    js: jsBlocks.map(block => block.trim()).join("\n")
-  };
-}
-
 export function captureSingleBackticks(str: string): string {
   const RAW_BACKTICKS_REGEX = /([^\\])`/g;
   return str.replace(RAW_BACKTICKS_REGEX, (_, group1) => group1 + "\\`");
@@ -80,34 +60,31 @@ export function getJSCode(code: string) {
   let isSQLBlock = false;
 
   arr.forEach((line, i) => {
-    if (line.startsWith("/*js")) {
+    const str = line.trim();
+
+    if (str.toLowerCase().startsWith("/*js")) {
       isJSBlock = true;
       isSQLBlock = false;
-      result.push(line.slice(4).trim());
-    } else if (isJSBlock && !line.endsWith("*/")) {
-      result.push(line.trim());
-    } else if (isJSBlock && line.endsWith("*/")) {
+      result.push(str.slice(4).trim());
+    } else if (isJSBlock && !str.endsWith("*/")) {
+      result.push(str);
+    } else if (isJSBlock && str.endsWith("*/")) {
       isJSBlock = false;
-      result.push(
-        line
-          .trim()
-          .slice(0, -2)
-          .trim()
-      );
-    } else if (line.startsWith("/*")) {
+      result.push(str.slice(0, -2).trim());
+    } else if (str.startsWith("/*")) {
       isCommentBlock = true;
       isSQLBlock = false;
       isJSBlock = false;
       result.push("");
     } else if (isCommentBlock) {
-      isCommentBlock = !line.endsWith("*/");
+      isCommentBlock = !str.endsWith("*/");
       result.push("");
-    } else if (line.startsWith("--js")) {
+    } else if (str.toLowerCase().startsWith("--js")) {
       isSQLBlock = false;
-      result.push(line.slice(4).trim());
+      result.push(str.slice(4).trim());
     } else if (
-      (!isSQLBlock && (line.startsWith("--") || line.trim() === "")) ||
-      (isSQLBlock && line.trim() === "" && arr.length - 1 === i)
+      (!isSQLBlock && (str.startsWith("--") || str === "")) ||
+      (isSQLBlock && str === "" && arr.length - 1 === i)
     ) {
       result.push("");
     } else {
@@ -115,7 +92,7 @@ export function getJSCode(code: string) {
         isSQLBlock = true;
         isJSBlock = false;
       }
-      const sql = captureSingleBackticks(line.trim());
+      const sql = captureSingleBackticks(str);
       result.push(`sqlBlocks.push(\`${sql}\`);`);
     }
   });

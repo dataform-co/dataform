@@ -6,7 +6,6 @@
   "types": "index.d.ts",
   "dependencies": {
     "@dataform/protos": "^0.0.2-beta.4",
-    "stack-trace": "0.0.10",
     "protobufjs": "^6.8.8"
   },
   "publishConfig": {

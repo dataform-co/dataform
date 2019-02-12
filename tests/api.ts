@@ -5,6 +5,7 @@ import * as protos from "@dataform/protos";
 import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";
+import * as stackTrace from "stack-trace";
 import { asPlainObject, cleanSql } from "./utils";
 
 describe("@dataform/api", () => {
@@ -494,13 +495,19 @@ describe("@dataform/api", () => {
       expectedResults.forEach(result => {
         const error = graph.compileErrors.find(item => item.message.match(result.message));
 
-        expect(error).to.include({ fileName: result.fileName, lineNumber: result.lineNumber });
         expect(error)
-          .to.have.property("columnNumber")
-          .that.is.a("number");
+          .to.have.property("fileName")
+          .that.equals(result.fileName);
+
         expect(error)
           .to.have.property("stack")
           .that.is.a("string");
+
+        const stack = stackTrace.parse(error);
+        expect(stack).to.be.an("array").that.is.not.empty;
+        expect(stack[0])
+          .to.have.property("lineNumber")
+          .that.equals(result.lineNumber);
       });
     });
 

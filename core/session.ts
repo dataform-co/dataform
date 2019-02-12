@@ -126,9 +126,8 @@ export class Session {
 
   compileError(err: Error, path?: string) {
     const fileName = path || utils.getCallerFile(this.rootDir) || __filename;
-    const stData = utils.getStackTraceData(err);
 
-    const compileError = protos.CompileError.create({ ...stData, fileName, message: err.message });
+    const compileError = protos.CompileError.create({ stack: err.stack, fileName, message: err.message });
     this.compileErrors.push(compileError);
   }
 

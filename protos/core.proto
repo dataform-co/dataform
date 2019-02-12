@@ -40,9 +40,7 @@ message ValidationError {
 message CompileError {
   string file_name = 1;
   string message = 2;
-  int32 line_number = 3;
-  int32 column_number = 4;
-  string stack = 5;
+  string stack = 3;
 }
 
 message Table {
