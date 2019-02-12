@@ -97,7 +97,7 @@ describe("@dataform/core", () => {
         empty_where: {
           table: sessionFail.publish("empty_where", { type: "incremental", where: "", descriptor: ["field"] }),
           errorTest: /"where" property is not defined/
-        },
+        }
       };
       const cgFail = sessionFail.compile();
 
@@ -333,7 +333,7 @@ describe("@dataform/core", () => {
   });
 
   describe("compilers", () => {
-    it("extract_blocks", function() {
+    it("extract_js_code", function() {
       const TEST_SQL_FILE = `
         /*js
         var a = 1;
@@ -348,18 +348,14 @@ describe("@dataform/core", () => {
         -- normal_single_line_comment
         select 1 as test from \`x\`
         `;
-      const EXPECTED_JS = `var a = 1;\nvar c = 3;\nvar b = 2;`.trim();
 
-      const EXPECTED_SQL = `
-        /*
-        normal_multiline_comment
-        */
-        -- normal_single_line_comment
-        select 1 as test from \\\`x\\\``.trim();
+      const EXPECTED_JS =
+        " let sqlBlocks = []; " +
+        "\n\nvar a = 1;\n\n\nvar c = 3;\n\nvar b = 2;\n\n\n\n\nsqlBlocks.push(`select 1 as test from \\`x\\``);\n" +
+        ' return sqlBlocks.filter(item => item !== "").join("\\n")';
 
-      var { sql, js } = compilers.extractJsBlocks(TEST_SQL_FILE);
-      expect(sql).equals(EXPECTED_SQL);
-      expect(js).equals(EXPECTED_JS);
+      const parsedCode = compilers.getJSCode(TEST_SQL_FILE);
+      expect(parsedCode).equals(EXPECTED_JS);
     });
   });
 });
