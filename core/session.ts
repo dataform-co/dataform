@@ -124,10 +124,10 @@ export class Session {
     this.validationErrors.push(validationError);
   }
 
-  compileError(message: string, path?: string) {
+  compileError(err: Error, path?: string) {
     const fileName = path || utils.getCallerFile(this.rootDir) || __filename;
 
-    const compileError = protos.CompileError.create({ fileName, message });
+    const compileError = protos.CompileError.create({ stack: err.stack, fileName, message: err.message });
     this.compileErrors.push(compileError);
   }
 
@@ -139,7 +139,7 @@ export class Session {
         const compiledChunk = part[key].compile();
         compiledChunks.push(compiledChunk);
       } catch (e) {
-        this.compileError(e.message, part[key].proto.fileName);
+        this.compileError(e, part[key].proto.fileName);
       }
     });
 
