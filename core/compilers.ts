@@ -49,7 +49,12 @@ export function compileAssertionSql(code: string, path: string) {
 
 export function captureSingleBackticks(str: string): string {
   const RAW_BACKTICKS_REGEX = /([^\\])`/g;
-  return str.replace(RAW_BACKTICKS_REGEX, (_, group1) => group1 + "\\`");
+  let fixedStr = str.replace(RAW_BACKTICKS_REGEX, (_, group1) => group1 + "\\`");
+  // The above regex doesn't work if the backtick is the first character in the string.
+  if (fixedStr.startsWith("`")) {
+    fixedStr = "\\`" + fixedStr.substr(1);
+  }
+  return fixedStr;
 }
 
 export function getJSCode(code: string) {

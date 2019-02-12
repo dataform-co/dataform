@@ -447,7 +447,7 @@ describe("@dataform/api", () => {
         // Check SQL files with raw back-ticks get escaped.
         expect(tableNames).includes("example_backticks");
         var exampleBackticks = graph.tables.filter(t => t.name == "example_backticks")[0];
-        expect(exampleBackticks.query).equals("select * from `tada-analytics.df_integration_test.sample_data`");
+        expect(cleanSql(exampleBackticks.query)).equals("select * from `tada-analytics.df_integration_test.sample_data`");
 
         // Check deferred calls to table resolve to the correct definitions file.
         expect(tableNames).includes("example_deferred");

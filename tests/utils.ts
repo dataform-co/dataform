@@ -7,8 +7,8 @@ export function cleanSql(value: string) {
   while (true) {
     let newCleanVal = cleanValue
       .replace("  ", " ")
-      .replace("\t", "")
-      .replace("\n", "")
+      .replace("\t", " ")
+      .replace("\n", " ")
       .replace("( ", "(")
       .replace(" )", ")");
     if (newCleanVal != cleanValue) {
