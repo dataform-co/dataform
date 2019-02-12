@@ -1,13 +1,47 @@
 import { DbAdapter } from "./index";
 import * as protos from "@dataform/protos";
 
-const Snowflake = require("snowflake-sdk");
+interface ISnowflakeStatement {
+  cancel: () => void;
+}
+
+interface ISnowflakeConnection {
+  connect: (callback: (err: any, connection: ISnowflakeConnection) => void) => void;
+  execute: (
+    options: {
+      sqlText: string;
+      complete: (err: any, statement: ISnowflakeStatement, rows: any[]) => void;
+    }
+  ) => void;
+}
+
+interface ISnowflake {
+  createConnection: (
+    options: {
+      account: string;
+      username: string;
+      password: string;
+      database: string;
+      warehouse: string;
+      role: string;
+    }
+  ) => ISnowflakeConnection;
+}
+
+const Snowflake: ISnowflake = require("snowflake-sdk");
 
 export class SnowflakeDbAdapter implements DbAdapter {
-  private connection: any;
+  private connection: ISnowflakeConnection;
 
   constructor(profile: protos.IProfile) {
-    this.connection = Snowflake.createConnection(profile.snowflake);
+    this.connection = Snowflake.createConnection({
+      account: profile.snowflake.accountId,
+      username: profile.snowflake.userName,
+      password: profile.snowflake.password,
+      database: profile.snowflake.databaseName,
+      warehouse: profile.snowflake.warehouse,
+      role: profile.snowflake.role
+    });
     this.connection.connect((err, conn) => {
       if (err) {
         console.error("Unable to connect: " + err.message);
@@ -19,7 +53,7 @@ export class SnowflakeDbAdapter implements DbAdapter {
     return new Promise<any[]>((resolve, reject) => {
       this.connection.execute({
         sqlText: statement,
-        complete: function(err, stmt, rows) {
+        complete: function(err, _, rows) {
           if (err) {
             reject(err);
           } else {
@@ -66,7 +100,7 @@ export class SnowflakeDbAdapter implements DbAdapter {
         // The table exists.
         return {
           target: target,
-          type: (results[1][0].TABLE_TYPE == "VIEW" ? "view" : "table"),
+          type: results[1][0].TABLE_TYPE == "VIEW" ? "view" : "table",
           fields: results[0].map(row => ({
             name: row.COLUMN_NAME,
             primitive: row.DATA_TYPE,
