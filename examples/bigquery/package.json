@@ -1,11 +1,11 @@
 {
     "name": "@dataform/examples-bigquery",
-    "version": "0.0.2-beta.5",
+    "version": "0.0.2-beta.6",
     "description": "Example Dataform project (BigQuery).",
     "dependencies": {
-        "@dataform/core": "^0.0.2-beta.5",
-        "@dataform/crossdb": "^0.0.2-beta.5",
-        "@dataform/protos": "^0.0.2-beta.5"
+        "@dataform/core": "^0.0.2-beta.6",
+        "@dataform/crossdb": "^0.0.2-beta.6",
+        "@dataform/protos": "^0.0.2-beta.6"
     },
     "private": true
 }
