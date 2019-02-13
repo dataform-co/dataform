@@ -239,7 +239,7 @@ yargs
     argv => {
       console.log(argv);
       query
-        .compile(argv["query"], path.resolve(argv["project-dir"]))
+        .compile(argv["query"], { projectDir: path.resolve(argv["project-dir"]) })
         .then(compiledQuery => console.log(compiledQuery))
         .catch(e => console.log(e));
     }
@@ -263,14 +263,16 @@ yargs
         }),
     argv => {
       query
-        .compile(argv["query"], path.resolve(argv["project-dir"]))
+        .compile(argv["query"], { projectDir: path.resolve(argv["project-dir"]) })
         .then(compiledQuery => {
           const profile = JSON.parse(fs.readFileSync(argv["profile"], "utf8"));
           if (profile.snowflake) {
             return console.log("Not implemented! You can try to use the web interface in your Snowflake profile");
           }
 
-          return query.evaluate(protos.Profile.create(profile), compiledQuery, path.resolve(argv["project-dir"]));
+          return query.evaluate(protos.Profile.create(profile), compiledQuery, {
+            projectDir: path.resolve(argv["project-dir"])
+          });
         })
         .catch(e => console.log(e));
     }
@@ -293,13 +295,11 @@ yargs
         }),
     argv => {
       query
-        .compile(argv["query"], path.resolve(argv["project-dir"]))
+        .compile(argv["query"], { projectDir: path.resolve(argv["project-dir"]) })
         .then(compiledQuery =>
-          query.run(
-            protos.Profile.create(JSON.parse(fs.readFileSync(argv["profile"], "utf8"))),
-            compiledQuery,
-            path.resolve(argv["project-dir"])
-          )
+          query.run(protos.Profile.create(JSON.parse(fs.readFileSync(argv["profile"], "utf8"))), compiledQuery, {
+            projectDir: path.resolve(argv["project-dir"])
+          })
         )
         .then(results => console.log(JSON.stringify(results, null, 4)))
         .catch(e => console.log(e));

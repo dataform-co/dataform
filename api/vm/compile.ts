@@ -1,6 +1,6 @@
 import * as path from "path";
 import { NodeVM } from "vm2";
-import { compilers } from "@dataform/core";
+import * as core from "@dataform/core";
 import { genIndex } from "../gen_index";
 import * as fs from "fs";
 import * as os from "os";
@@ -16,7 +16,7 @@ export function compile(projectDir: string): Uint8Array {
       external: true
     },
     sourceExtensions: ["js", "sql"],
-    compiler: (code, path) => compilers.compile(code, path)
+    compiler: (code, path) => core.compilers.compile(code, path)
   });
 
   const indexScript = genIndex(projectDir);

@@ -1,25 +1,22 @@
 #!/bin/bash
 set -e
 
-./scripts/build
+## Build tarballs that our test projects depend on.
 
-## Set up the backwards compatibility project NOT using lerna.
+bazel build \
+  //core:package_tar \
+  //crossdb:package_tar \
+  //protos:package_tar
 
-(cd build/examples/bigquery_backwards_compatibility && npm i)
+## We do this outside of bazel, just because it's a PITA.
 
-## Run install on the example projects using locally developed packages.
-
-(cd build && npx lerna bootstrap)
-
-## We need some deps to be installed in the local node_modules folder.
-
-(cd build/examples/bigquery && npm i protobufjs)
-(cd build/examples/bigquery_with_errors && npm i protobufjs)
-(cd build/examples/redshift && npm i protobufjs)
-(cd build/examples/redshift_operations && npm i protobufjs)
-(cd build/examples/snowflake && npm i protobufjs)
-
+(cd examples/bigquery && npm i)
+(cd examples/bigquery_backwards_compatibility && npm i)
+(cd examples/bigquery_with_errors && npm i)
+(cd examples/redshift && npm i)
+(cd examples/redshift_operations && npm i)
+(cd examples/snowflake && npm i)
 
 ## Run tests.
 
-(cd build/tests && npx mocha *.js $@)
+bazel run //tests -- $@
