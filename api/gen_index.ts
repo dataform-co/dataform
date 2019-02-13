@@ -42,7 +42,7 @@ export function genIndex(projectDir: string, returnOverride?: string): string {
     .map(packageName => {
       return `try { global.${utils.variableNameFriendly(packageName)} = require("${packageName}"); } catch (e) {
         if (global.session.compileError) {
-          global.session.compileError(e.message, "${packageName}");
+          global.session.compileError(e, "${packageName}");
         } else {
           console.error('Error:', e.message, 'Path: "${packageName}"');
         }
@@ -54,7 +54,7 @@ export function genIndex(projectDir: string, returnOverride?: string): string {
     .map(path => {
       return `try { global.${utils.baseFilename(path)} = require("./${path}"); } catch (e) {
         if (global.session.compileError) {
-          global.session.compileError(e.message, "${path}");
+          global.session.compileError(e, "${path}");
         } else {
           console.error('Error:', e.message, 'Path: "${path}"');
         }
@@ -65,7 +65,7 @@ export function genIndex(projectDir: string, returnOverride?: string): string {
     .map(path => {
       return `try { require("./${path}"); } catch (e) {
         if (global.session.compileError) {
-          global.session.compileError(e.message, "${path}");
+          global.session.compileError(e, "${path}");
         } else {
           console.error('Error:', e.message, 'Path: "${path}"');
         }
