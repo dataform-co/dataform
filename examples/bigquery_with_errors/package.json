@@ -1,11 +1,11 @@
 {
     "name": "@dataform/bigquery-with-error",
-    "version": "0.0.2-beta.4",
+    "version": "0.0.2-beta.6",
     "description": "Example Dataform project (BigQuery with error).",
     "dependencies": {
-        "@dataform/core": "^0.0.2-beta.4",
-        "@dataform/crossdb": "^0.0.2-beta.4",
-        "@dataform/protos": "^0.0.2-beta.4"
+        "@dataform/core": "^0.0.2-beta.6",
+        "@dataform/crossdb": "^0.0.2-beta.6",
+        "@dataform/protos": "^0.0.2-beta.6"
     },
     "private": true
 }

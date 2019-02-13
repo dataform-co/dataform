@@ -9,6 +9,8 @@ export interface IAdapter {
 
   publishTasks(table: protos.ITable, runConfig: protos.IRunConfig, tableMetadata: protos.ITableMetadata): Tasks;
   assertTasks(assertion: protos.IAssertion, projectConfig: protos.IProjectConfig): Tasks;
+
+  dropIfExists(target: protos.ITarget, type: string): string;
 }
 
 export interface AdapterConstructor<T extends IAdapter> {
