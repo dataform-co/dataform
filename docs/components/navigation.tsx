@@ -5,7 +5,7 @@ export default class Navigation extends React.Component<any, any> {
   render() {
     return (
       <div style={{ paddingTop: "10px" }}>
-        <h3>Guides</h3>
+        <h3>Framework guides</h3>
         <Menu style={styles.menu}>
           <MenuItem href="/guides/core-concepts" text="Core concepts" />
           <MenuItem href="/guides/tables" text="Publishing tables" />
@@ -21,6 +21,13 @@ export default class Navigation extends React.Component<any, any> {
             <MenuItem href="/guides/warehouses/bigquery" text="BigQuery" />
             <MenuItem href="/guides/warehouses/redshift" text="Redshift" />
           </div>
+        </Menu>
+        <h3>Platform guides</h3>
+        <Menu style={styles.menu}>
+          <MenuItem href="/platform_guides/set_up_datawarehouse" text="Set up your cloud data warehouse" />
+          <MenuItem href="/platform_guides/publish_tables" text="Publish your first tables" />
+          <MenuItem href="/platform_guides/version_control" text="Use version control" />
+          <MenuItem href="/platform_guides/scheduling" text="Schedule datasets" />
         </Menu>
         <h3>API reference</h3>
         <Menu style={styles.menu}>

@@ -1,0 +1,44 @@
+import Documentation from "../../_documentation";
+
+export default ({children}) => <Documentation title="Use version control">{children}</Documentation>;
+
+## Introduction
+
+Dataform uses Git to record changes and manage file versions. Each Dataform project has a Git repository.
+
+By default, Dataform will use its own source file management. However, projects can be configured to work with GitHub by Migrating project to GitHub in settings.
+
+<div className="bp3-callout bp3-icon-info-sign bp3-intent-primary" markdown="1">
+Version control is a core concept and will impact how your data pipelines run. We strongly recommend understanding the following concepts before developing your datasets in dataform.
+</div>
+
+
+
+## Working with branches
+
+One of the main benefits of Git is that a developer can work in a branch, an isolated version of a file repository.
+
+The `production` branch is not directly editable and **all schedules run from the production branch**. That enables users to develop and test without affecting the project data pipelines nor affecting other users.
+
+## How to use
+
+By default, you will land on the `development` branch and you (and others) can make edits here. After making changes to files, you can commit/checkpoint the changes:
+
+<img src="/static/images/platform_guides/version_control/commit.png" style={{width: "100%", padding: "20px"}} />
+
+Then when you are happy with you changes and tested everything worked, push the changes back to production.
+
+<img src="/static/images/platform_guides/version_control/push.png" style={{width: "100%", padding: "20px"}} />
+
+
+<div className="bp3-callout bp3-icon-info-sign bp3-intent-warning" markdown="1">
+We recommend that if you have multiple team members working on a project at the same time, you try and work in separate branches, such as a branch called <i>your_name</i>
+</div>
+
+## Dealing with merges
+
+If another user has pushed changes to production while you are making edits in another branch, you will need to pull those changes first
+
+<img src="/static/images/platform_guides/version_control/pull.png" style={{width: "100%", padding: "20px"}} />
+
+After pulling, there may be conflicting edits that you will have to resolve. These will be shown in the files list. Once you are happy, you can commit and push your changes back to production again.
