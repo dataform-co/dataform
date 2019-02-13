@@ -1,10 +1,10 @@
-package(default_visibility=["//visibility:public"])
+package(default_visibility = ["//visibility:public"])
 
 load("@build_bazel_rules_nodejs//:defs.bzl", "nodejs_binary")
 
 exports_files(["tsconfig.json"])
-exports_files(["webpack.config.js"])
 
+exports_files(["webpack.config.js"])
 
 PROTOBUF_DEPS = [
     "@npm//protobufjs",
@@ -37,4 +37,10 @@ nodejs_binary(
     data = PROTOBUF_DEPS,
     entry_point = "protobufjs/bin/pbts",
     install_source_map_support = False,
+)
+
+load("@com_github_bazelbuild_buildtools//buildifier:def.bzl", "buildifier")
+
+buildifier(
+    name = "buildifier",
 )
