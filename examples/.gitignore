@@ -1,2 +1,5 @@
 # We don't want to version control package-lock.json in test folders.
 **/package-lock.json
+
+# The init project directory is created as part of the tests scripts.
+init/
