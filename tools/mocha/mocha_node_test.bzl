@@ -1,15 +1,15 @@
-
 load("@build_bazel_rules_nodejs//:defs.bzl", "nodejs_test")
 load("//tools/common:devmode_js_sources.bzl", "devmode_js_sources")
+
 def mocha_node_test(
-    name,
-    test_entrypoints = [], # these should NOT contain the preceding workspace name.
-    srcs = [],
-    deps = [],
-    data = [],
-    tags = [],
-    expected_exit_code = 0,
-    **kwargs):
+        name,
+        test_entrypoints = [],  # these should NOT contain the preceding workspace name.
+        srcs = [],
+        deps = [],
+        data = [],
+        tags = [],
+        expected_exit_code = 0,
+        **kwargs):
     """Runs tests in NodeJS using the Mocha test framework.
     To debug the test, see debugging notes in `nodejs_test`.
     Args:
@@ -22,22 +22,22 @@ def mocha_node_test(
     **kwargs: remaining arguments passed to the test rule
     """
     devmode_js_sources(
-      name = "%s_devmode_srcs" % name,
-      deps = srcs + deps,
-      testonly = 1,
-      tags = tags,
+        name = "%s_devmode_srcs" % name,
+        deps = srcs + deps,
+        testonly = 1,
+        tags = tags,
     )
     all_data = data + srcs + [
-      Label("//tools/mocha:mocha_runner.js"),
-      ":%s_devmode_srcs.MF" % name
+        Label("//tools/mocha:mocha_runner.js"),
+        ":%s_devmode_srcs.MF" % name,
     ]
     entry_point = "df/tools/mocha/mocha_runner.js"
     nodejs_test(
-      name = name,
-      data = all_data,
-      entry_point = entry_point,
-      templated_args = ["$(location :%s_devmode_srcs.MF)" % name],
-      expected_exit_code = expected_exit_code,
-      tags = tags,
-      **kwargs
+        name = name,
+        data = all_data,
+        entry_point = entry_point,
+        templated_args = ["$(location :%s_devmode_srcs.MF)" % name],
+        expected_exit_code = expected_exit_code,
+        tags = tags,
+        **kwargs
     )

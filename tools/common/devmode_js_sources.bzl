@@ -28,18 +28,19 @@ load(":sources_aspect.bzl", "sources_aspect")
 load(":expand_into_runfiles.bzl", "expand_path_into_runfiles")
 
 def _devmode_js_sources_impl(ctx):
-  files = depset()
+    files = depset()
 
-  for d in ctx.attr.deps:
-    if hasattr(d, "node_sources"):
-      files = depset(transitive=[files, d.node_sources])
-    elif hasattr(d, "files"):
-      files = depset(transitive=[files, d.files])
+    for d in ctx.attr.deps:
+        if hasattr(d, "node_sources"):
+            files = depset(transitive = [files, d.node_sources])
+        elif hasattr(d, "files"):
+            files = depset(transitive = [files, d.files])
 
-  ctx.actions.write(ctx.outputs.manifest, "".join([
-    expand_path_into_runfiles(ctx, f.path) + "\n" for f in files
-  ]))
-  return [DefaultInfo(files = files)]
+    ctx.actions.write(ctx.outputs.manifest, "".join([
+        expand_path_into_runfiles(ctx, f.path) + "\n"
+        for f in files
+    ]))
+    return [DefaultInfo(files = files)]
 
 devmode_js_sources = rule(
     implementation = _devmode_js_sources_impl,
@@ -47,9 +48,9 @@ devmode_js_sources = rule(
         "deps": attr.label_list(
             allow_files = True,
             aspects = [sources_aspect],
-          ),
+        ),
     },
     outputs = {
         "manifest": "%{name}.MF",
-    }
+    },
 )
