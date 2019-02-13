@@ -378,32 +378,13 @@ describe("@dataform/api", () => {
   });
 
   describe("init", () => {
-    let projectDir;
-
-    after(() => {
-      // delete project directory
-      if (fs.existsSync(projectDir)) {
-        rimraf.sync(projectDir);
-      }
-    });
-
-    it("redshift", async function() {
+    it("init", async function() {
       this.timeout(30000);
 
       // create temp directory
-      projectDir = fs.mkdtempSync(path.join(os.tmpdir(), "df-"));
+      const projectDir = "df/examples/init";
 
-      // init new project
-      await init(projectDir, {
-        warehouse: "redshift"
-      });
-
-      // add new table
-      const query = "select 1 as test";
-      const mPath = path.resolve(projectDir, "./definitions/simplemodel.sql");
-      fs.writeFileSync(mPath, query);
-
-      expect(fs.existsSync(mPath)).to.be.true;
+      // Project has already been initialized via the tests script, check data is valid.
 
       // compile project
       const graph = await compile(projectDir).catch(error => error);
@@ -415,13 +396,6 @@ describe("@dataform/api", () => {
       expect(graph)
         .to.have.property("validationErrors")
         .to.be.an("array").that.is.empty;
-      expect(graph)
-        .to.have.property("tables")
-        .to.be.an("array").that.is.not.empty;
-
-      graph.tables.forEach(item => {
-        expect(item).to.satisfy(t => !t.validationErrors || !t.validationErrors.length);
-      });
     });
   });
 
