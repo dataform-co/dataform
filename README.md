@@ -2,9 +2,7 @@
 
 ## Requirements
 
-- Node (8+)
-- NPM
-- [Jekyll](https://jekyllrb.com/docs/installation/)
+- [Bazel](https://bazel.build)
 
 ## Setup
 
@@ -16,10 +14,10 @@ npm i
 
 ## Build
 
-Compile typescript for all packages:
+Build everything:
 
 ```bash
-./scripts/build
+bazel build //...
 ```
 
 ## Run
@@ -32,6 +30,11 @@ Runs the command line app:
 
 ## Compile example project
 
+Setup the example projects
+```
+./scripts/
+```
+
 Outputs a compiled JSON graph for one of the example projects:
 
 ```bash
@@ -41,7 +44,7 @@ Outputs a compiled JSON graph for one of the example projects:
 ## Serve docs
 
 ```bash
-./scripts/docs/serve
+npx next docs
 ```
 
 ## Run tests
@@ -50,12 +53,4 @@ Run mocha tests in `tests`:
 
 ```bash
 ./scripts/test
-```
-
-## Publish
-
-Publish a new version with lerna:
-
-```bash
-npx lerna publish
 ```

@@ -6,9 +6,19 @@ import { promisify } from "util";
 import * as path from "path";
 import { compile as vmCompile } from "@dataform/api/vm/compile";
 
-export function compile(projectDir: string, forked?: boolean): Promise<protos.CompiledGraph> {
+interface IOptions {
+  forked?: boolean;
+}
+
+export function compile(projectDir: string, callOptions?: IOptions): Promise<protos.CompiledGraph> {
+  const options = Object.assign(
+    {
+      forked: false
+    } as IOptions,
+    callOptions
+  );
   // Skip the whole thread thing if local is true.
-  if (!forked) {
+  if (!options.forked) {
     const contents = vmCompile(projectDir);
     return Promise.resolve(protos.CompiledGraph.decode(contents));
   }

@@ -9,6 +9,8 @@
     "@types/next": "^7.0.5",
     "@types/node": "^9.6.27",
     "@types/react": "^16.7.17",
+    "@types/rimraf": "^2.0.2",
+    "@types/stack-trace": "0.0.29",
     "@types/yargs": "^11.1.1",
     "@zeit/next-mdx": "^1.2.0",
     "@zeit/next-typescript": "^1.1.1",

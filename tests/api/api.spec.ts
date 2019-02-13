@@ -6,7 +6,7 @@ import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";
 import * as stackTrace from "stack-trace";
-import { asPlainObject, cleanSql } from "./utils";
+import { asPlainObject, cleanSql } from "df/tests/utils";
 
 describe("@dataform/api", () => {
   describe("build", () => {
@@ -447,7 +447,9 @@ describe("@dataform/api", () => {
         // Check SQL files with raw back-ticks get escaped.
         expect(tableNames).includes("example_backticks");
         var exampleBackticks = graph.tables.filter(t => t.name == "example_backticks")[0];
-        expect(cleanSql(exampleBackticks.query)).equals("select * from `tada-analytics.df_integration_test.sample_data`");
+        expect(cleanSql(exampleBackticks.query)).equals(
+          "select * from `tada-analytics.df_integration_test.sample_data`"
+        );
 
         // Check deferred calls to table resolve to the correct definitions file.
         expect(tableNames).includes("example_deferred");
@@ -457,7 +459,7 @@ describe("@dataform/api", () => {
     });
 
     it("redshift_example", () => {
-      return compile("../examples/redshift").then(graph => {
+      return compile("df/examples/redshift").then(graph => {
         var tableNames = graph.tables.map(t => t.name);
 
         // Check we can import and use an external package.
@@ -485,7 +487,7 @@ describe("@dataform/api", () => {
           lineNumber: 7
         }
       ];
-      const graph = await compile("../examples/bigquery_with_errors").catch(error => error);
+      const graph = await compile(path.resolve("df/examples/bigquery_with_errors")).catch(error => error);
 
       expect(graph).to.not.be.an.instanceof(Error);
       expect(graph)
@@ -512,7 +514,7 @@ describe("@dataform/api", () => {
     });
 
     it("bigquery_backwards_compatibility_example", () => {
-      return compile("../examples/bigquery_backwards_compatibility").then(graph => {
+      return compile("df/examples/bigquery_backwards_compatibility").then(graph => {
         const tableNames = graph.tables.map(t => t.name);
 
         // We just want to make sure this compiles really.
@@ -529,7 +531,7 @@ describe("@dataform/api", () => {
         sample_2: 'select * from "test_schema"."sample_1"'
       };
 
-      const graph = await compile("../examples/redshift_operations").catch(error => error);
+      const graph = await compile("df/examples/redshift_operations").catch(error => error);
       expect(graph).to.not.be.an.instanceof(Error);
 
       expect(graph)
@@ -549,7 +551,7 @@ describe("@dataform/api", () => {
     });
 
     it("snowflake_example", async () => {
-      const graph = await compile("../examples/snowflake").catch(error => error);
+      const graph = await compile("df/examples/snowflake").catch(error => error);
       expect(graph).to.not.be.an.instanceof(Error);
 
       expect(graph)
@@ -603,9 +605,11 @@ describe("@dataform/api", () => {
 
   describe("query", () => {
     it("bigquery_example", () => {
-      return query.compile('select 1 as ${describe("test")}', "../examples/bigquery").then(compiledQuery => {
-        expect(compiledQuery).equals("select 1 as test");
-      });
+      return query
+        .compile('select 1 as ${describe("test")}', { projectDir: "df/examples/bigquery" })
+        .then(compiledQuery => {
+          expect(compiledQuery).equals("select 1 as test");
+        });
     });
   });
 });
