@@ -3,3 +3,26 @@ import Documentation from "../../_documentation";
 export default ({children}) => <Documentation title="Schedule datasets">{children}</Documentation>;
 
 ## Introduction
+
+Schedules can be used to run any selection of your datasets on a schedule with granular control. That will make sure your data is up to date in your reports and dashboards or for other analysts to use.
+
+<div className="bp3-callout bp3-icon-info-sign bp3-intent-warning" markdown="1">
+Schedules <b>only run from the `production` branch</b>. Make sure you commit and push your changes to the production branch before editing your schedules.
+</div>
+
+## Use schedules
+
+1. Navigate to your project's Scheduling page on the left menu bar
+2. Click `Add schedule`
+3. Fill the form and click `Create schedule`
+
+<img src="/static/images/platform_guides/scheduling/create_schedule.png" style={{width: "100%", padding: "20px"}} />
+
+
+## View past runs
+
+You can find the current and historical schedules runs under your project’s *Run logs* page on the left menu bar.
+
+Clicking on a run will show the jobs that were run for that pipeline.
+
+<img src="/static/images/platform_guides/scheduling/run_logs.png" style={{width: "100%", padding: "20px"}} />
