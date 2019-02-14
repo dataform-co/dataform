@@ -16,15 +16,21 @@ Version control is a core concept and will impact how your data pipelines run. W
 
 ## Working with branches
 
-One of the main benefits of Git is that a developer can work in a branch, an isolated version of a file repository.
+One of the main benefits of Git is that a developer can work in a branch, an isolated version of a file repository. From the `development` branch or you own branch, you can make changes, execute queries and publish datasets.
+
+Once you are happy with the changes, you can commit the changes and push them to the `Production` branch.
 
 The `production` branch is not directly editable and **all schedules run from the production branch**. That enables users to develop and test without affecting the project data pipelines nor affecting other users.
 
 ## How to use
 
-By default, you will land on the `development` branch and you (and others) can make edits here. After making changes to files, you can commit/checkpoint the changes:
+By default, you will land on the `development` branch and you (and others) can make edits here.
+
+After making changes to files, you can commit/checkpoint the changes:
 
 <img src="/static/images/platform_guides/version_control/commit.png" style={{width: "100%", padding: "20px"}} />
+
+<img src="/static/images/platform_guides/version_control/commit2.png" style={{width: "100%", padding: "20px"}} />
 
 Then when you are happy with you changes and tested everything worked, push the changes back to production.
 
