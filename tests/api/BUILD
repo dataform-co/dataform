@@ -27,7 +27,7 @@ mocha_node_test(
       ":lib"
     ],
     data = [
-      "//examples",
+      "//examples/bigquery:...",
       "@npm//mocha",
       "@npm//chai"
     ],

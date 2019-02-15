@@ -2,10 +2,5 @@
     "name": "@dataform/examples-redshift-operations",
     "version": "0.0.2-beta.6",
     "description": "Example Dataform project (Redshift).",
-    "dependencies": {
-        "@dataform/core": "../../bazel-genfiles/core/package.tgz",
-        "@dataform/crossdb": "../../bazel-genfiles/crossdb/package.tgz",
-        "@dataform/protos": "../../bazel-genfiles/protos/package.tgz"
-    },
     "private": true
 }

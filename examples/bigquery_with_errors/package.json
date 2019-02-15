@@ -2,10 +2,5 @@
     "name": "@dataform/bigquery-with-error",
     "version": "0.0.2-beta.6",
     "description": "Example Dataform project (BigQuery with error).",
-    "dependencies": {
-        "@dataform/core": "../../bazel-genfiles/core/package.tgz",
-        "@dataform/crossdb": "../../bazel-genfiles/crossdb/package.tgz",
-        "@dataform/protos": "../../bazel-genfiles/protos/package.tgz"
-    },
     "private": true
 }
