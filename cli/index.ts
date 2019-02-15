@@ -55,12 +55,20 @@ yargs
         .positional("project-dir", {
           describe: "The directory in which to create the Dataform project.",
           default: "."
+        })
+        .option("skip-install", {
+          describe: "Whether to skip installing packages.",
+          default: false
         }),
     argv => {
-      init(path.resolve(argv["project-dir"]), {
-        warehouse: argv["warehouse"],
-        gcloudProjectId: argv["gcloud-project-id"]
-      });
+      init(
+        path.resolve(argv["project-dir"]),
+        {
+          warehouse: argv["warehouse"],
+          gcloudProjectId: argv["gcloud-project-id"]
+        },
+        argv["skip-install"]
+      );
     }
   )
   .command(
