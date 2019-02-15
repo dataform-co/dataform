@@ -5,7 +5,7 @@ import { install } from "./install";
 
 const { version } = require("../package.json");
 
-export function init(projectDir: string, projectConfig: protos.IProjectConfig) {
+export function init(projectDir: string, projectConfig: protos.IProjectConfig, skipInstall?: boolean): Promise<any> {
   var dataformJsonPath = path.join(projectDir, "dataform.json");
   var packageJsonPath = path.join(projectDir, "package.json");
   var gitignorePath = path.join(projectDir, ".gitignore");
@@ -53,5 +53,9 @@ export function init(projectDir: string, projectConfig: protos.IProjectConfig) {
   fs.mkdirSync(path.join(projectDir, "includes"));
 
   // Install packages.
-  return install(projectDir);
+  if (!skipInstall) {
+    return install(projectDir);
+  } else {
+    return Promise.resolve();
+  }
 }

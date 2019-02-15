@@ -2,13 +2,6 @@ package(default_visibility=["//tests:__subpackages__"])
 
 load("//tools:node_modules.bzl", "node_modules")
 
-filegroup(
-    name = "files",
-    srcs = glob([
-        "**/*.*",
-    ]),
-)
-
 node_modules(
   name = "node_modules",
   deps = [
@@ -16,4 +9,11 @@ node_modules(
     "//crossdb:package_tar",
     "//protos:package_tar"
   ]
+)
+
+genrule(
+  name = "init",
+  outs = ["package.json", "dataform.json"],
+  cmd = "$(location //cli:bin) init $$(dirname $(location dataform.json)) --skip-install",
+  tools = ["//cli:bin"]
 )
