@@ -17,6 +17,14 @@ bazel build \
 (cd examples/redshift_operations && npm i)
 (cd examples/snowflake && npm i)
 
+## For the init test, we do this as part of the script.
+
+bazel build //cli:bin
+
+rm -rf examples/init
+
+./bazel-bin/cli/bin init examples/init
+
 ## Run tests.
 
-bazel run //tests -- $@
+bazel test //...
