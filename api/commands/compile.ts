@@ -4,27 +4,12 @@ import { fork } from "child_process";
 import * as fs from "fs";
 import { promisify } from "util";
 import * as path from "path";
-import { compile as vmCompile } from "@dataform/api/vm/compile";
 
-interface IOptions {
-  forked?: boolean;
-}
 
-export function compile(projectDir: string, callOptions?: IOptions): Promise<protos.CompiledGraph> {
-  const options = Object.assign(
-    {
-      forked: false
-    } as IOptions,
-    callOptions
-  );
-  // Skip the whole thread thing if local is true.
-  if (!options.forked) {
-    const contents = vmCompile(projectDir);
-    return Promise.resolve(protos.CompiledGraph.decode(contents));
-  }
+export function compile(projectDir: string): Promise<protos.CompiledGraph> {
   // Resolve the path in case it hasn't been resolved already.
   projectDir = path.resolve(projectDir);
-  var child = fork(require.resolve("../vm/compile"));
+  var child = fork(require.resolve("../vm/compile_bin_loader"));
   return new Promise((resolve, reject) => {
     var timeout = 5000;
     var timeoutStart = Date.now();

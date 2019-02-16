@@ -5,6 +5,9 @@ load("@build_bazel_rules_typescript//:defs.bzl", "ts_library")
 ts_library(
     name = "lib",
     srcs = glob(["**/*.ts"]),
+    data = [
+      "//api:vm/compile",
+    ],
     deps = [
         "//api",
         "//core",
