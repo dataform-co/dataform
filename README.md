@@ -4,17 +4,7 @@
 
 - [Bazel](https://bazel.build)
 
-## Setup
-
-Install node dev packages:
-
-```bash
-npm i
-```
-
 ## Build
-
-Build everything:
 
 ```bash
 bazel build //...
@@ -22,34 +12,30 @@ bazel build //...
 
 ## Run
 
-Runs the command line app:
-
 ```bash
 ./scripts/run --help
 ```
 
-## Compile example project
-
-Setup the example projects
-```
-./scripts/
-```
-
-Outputs a compiled JSON graph for one of the example projects:
+## Create and compile example project
 
 ```bash
-./scripts/run compile examples/bigquery
+./scripts/run init /tmp/dataform-project
+./scripts/run compile /tmp/dataform-project
 ```
 
-## Serve docs
+## Setup docs site
 
 ```bash
-npx next docs
+npm i --prod
+```
+
+## Serve docs site
+
+```bash
+./scripts/docs/serve
 ```
 
 ## Run tests
-
-Run mocha tests in `tests`:
 
 ```bash
 ./scripts/test

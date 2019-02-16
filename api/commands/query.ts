@@ -6,33 +6,23 @@ import { compile as vmCompile } from "../vm/query";
 
 interface IOptions {
   projectDir?: string;
-  forked?: boolean;
 }
 
-export function run(profile: protos.IProfile, query: string, callOptions?: IOptions): Promise<any[]> {
-  return compile(query, callOptions).then(compiledQuery => dbadapters.create(profile).execute(compiledQuery));
+export function run(profile: protos.IProfile, query: string, options?: IOptions): Promise<any[]> {
+  return compile(query, options).then(compiledQuery => dbadapters.create(profile).execute(compiledQuery));
 }
 
-export function evaluate(profile: protos.IProfile, query: string, callOptions?: IOptions): Promise<void> {
-  return compile(query, callOptions).then(compiledQuery => dbadapters.create(profile).evaluate(compiledQuery));
+export function evaluate(profile: protos.IProfile, query: string, options?: IOptions): Promise<void> {
+  return compile(query, options).then(compiledQuery => dbadapters.create(profile).evaluate(compiledQuery));
 }
 
-export function compile(query: string, callOptions?: IOptions): Promise<string> {
-  const options = Object.assign(
-    {
-      forked: false
-    } as IOptions,
-    callOptions
-  );
+export function compile(query: string, options?: IOptions): Promise<string> {
   // If there is no project directory, no need to compile the script.
   if (!options.projectDir) {
     return Promise.resolve(query);
   }
   // Resolve the path in case it hasn't been resolved already.
   const projectDir = path.resolve(options.projectDir);
-  if (!options.forked) {
-    return Promise.resolve(vmCompile(query, projectDir));
-  }
   var child = fork(require.resolve("../vm/query_bin_loader"));
   return new Promise((resolve, reject) => {
     var timeout = 5000;
