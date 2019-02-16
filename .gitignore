@@ -4,5 +4,15 @@ bazel-*
 
 .idea/
 
-# TODO: Remove this.
+bazel-*
+
+# TODO: Remove these.
+
 build/
+!!build/package.json
+ts/protos/index.*
+api/package-lock.json
+cli/package-lock.json
+core/package-lock.json
+protos/package-lock.json
+lerna-debug.log
