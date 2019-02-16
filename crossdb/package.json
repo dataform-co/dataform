@@ -1,10 +1,13 @@
 {
-    "name": "@dataform/crossdb",
-    "version": "0.0.2-beta.6",
-    "description": "Cross database utilities for dataform.",
-    "dependencies": {
-        "@dataform/core": "^0.0.2-beta.6"
-    },
-    "main": "index.js",
-    "types": "index.d.ts"
+  "name": "@dataform/crossdb",
+  "version": "0.0.2-beta.6",
+  "description": "Cross database utilities for dataform.",
+  "dependencies": {
+    "@dataform/core": "^0.0.2-beta.6"
+  },
+  "main": "index.js",
+  "types": "index.d.ts",
+  "publishConfig": {
+    "access": "public"
+  }
 }

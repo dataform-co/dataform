@@ -11,8 +11,8 @@ filegroup(
 
 node_modules(
   name = "node_modules",
-  deps = [
-    "//core:package_tar",
-    "//protos:package_tar"
+  packages = [
+    "@dataform/core@0.0.2-alpha.35",
+    "@dataform/protos@0.0.2-alpha.35"
   ]
 )
