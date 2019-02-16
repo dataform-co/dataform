@@ -33,7 +33,7 @@ export function compile(query: string, callOptions?: IOptions): Promise<string> 
   if (!options.forked) {
     return Promise.resolve(vmCompile(query, projectDir));
   }
-  var child = fork(require.resolve("../vm/query"));
+  var child = fork(require.resolve("../vm/query_bin_loader"));
   return new Promise((resolve, reject) => {
     var timeout = 5000;
     var timeoutStart = Date.now();
