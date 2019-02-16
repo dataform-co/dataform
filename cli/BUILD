@@ -29,3 +29,18 @@ nodejs_binary(
     ],
     entry_point = "df/cli/index.js",
 )
+
+load("@build_bazel_rules_nodejs//:defs.bzl", "npm_package")
+
+npm_package(
+    name = "package",
+    srcs = ["package.json"],
+    deps = [":cli"],
+)
+
+genrule(
+    name = "package_tar",
+    srcs = [":package"],
+    outs = ["package.tgz"],
+    cmd = "tar -cvzf $(location package.tgz) -C $(location :package)/.. package --dereference",
+)

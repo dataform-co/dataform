@@ -22,3 +22,18 @@ ts_library(
         "@npm//vm2",
     ],
 )
+
+load("@build_bazel_rules_nodejs//:defs.bzl", "npm_package")
+
+npm_package(
+    name = "package",
+    srcs = ["package.json"],
+    deps = [":api"],
+)
+
+genrule(
+    name = "package_tar",
+    srcs = [":package"],
+    outs = ["package.tgz"],
+    cmd = "tar -cvzf $(location package.tgz) -C $(location :package)/.. package --dereference",
+)

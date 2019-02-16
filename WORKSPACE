@@ -14,6 +14,16 @@ load("@bazel_skylib//:lib.bzl", "versions")
 
 versions.check(minimum_bazel_version = "0.20.0")
 
+# proto_library rules implicitly depend on @com_google_protobuf//:protoc,
+# which is the proto-compiler.
+# This statement defines the @com_google_protobuf repo.
+http_archive(
+    name = "com_google_protobuf",
+    sha256 = "983975ab66113cbaabea4b8ec9f3a73406d89ed74db9ae75c74888e685f956f8",
+    strip_prefix = "protobuf-66dc42d891a4fc8e9190c524fd67961688a37bbe",
+    url = "https://github.com/google/protobuf/archive/66dc42d891a4fc8e9190c524fd67961688a37bbe.tar.gz",
+)
+
 http_archive(
     name = "build_bazel_rules_nodejs",
     sha256 = "23987a5cf549146742aa6a0d2536e4906906e63a608d5b9b32dd9fe5523ef51c",
