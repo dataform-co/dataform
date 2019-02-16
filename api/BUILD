@@ -26,8 +26,14 @@ ts_library(
 ts_library(
     name = "api",
     srcs = [],
-    data = [":vm/compile_bin_loader.js", ":vm/query_bin_loader.js"],
-    deps = ["@npm//source-map-support", ":lib"]
+    data = [
+        ":vm/compile_bin_loader.js",
+        ":vm/query_bin_loader.js",
+    ],
+    deps = [
+        ":lib",
+        "@npm//source-map-support",
+    ],
 )
 
 load("@build_bazel_rules_nodejs//:defs.bzl", "npm_package")

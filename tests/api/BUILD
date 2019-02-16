@@ -6,7 +6,7 @@ ts_library(
     name = "lib",
     srcs = glob(["**/*.ts"]),
     data = [
-      "//api:vm/compile",
+        "//api:vm/compile",
     ],
     deps = [
         "//api",
