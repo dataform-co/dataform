@@ -452,13 +452,11 @@ describe("@dataform/api", () => {
         },
         {
           fileName: "definitions/example_js_blocks.sql",
-          message: /Error in multiline comment/,
-          lineNumber: 6
+          message: /Error in multiline comment/
         },
         {
           fileName: "definitions/example_table.sql",
-          message: /ref_with_error is not defined/,
-          lineNumber: 7
+          message: /ref_with_error is not defined/
         }
       ];
       const graph = await compile(path.resolve("df/examples/bigquery_with_errors")).catch(error => error);
@@ -479,11 +477,13 @@ describe("@dataform/api", () => {
           .to.have.property("stack")
           .that.is.a("string");
 
-        const stack = stackTrace.parse(error);
-        expect(stack).to.be.an("array").that.is.not.empty;
-        expect(stack[0])
-          .to.have.property("lineNumber")
-          .that.equals(result.lineNumber);
+        if (result.lineNumber) {
+          const stack = stackTrace.parse(error);
+          expect(stack).to.be.an("array").that.is.not.empty;
+          expect(stack[0])
+            .to.have.property("lineNumber")
+            .that.equals(result.lineNumber);
+        }
       });
     });
 
@@ -546,13 +546,13 @@ describe("@dataform/api", () => {
       expect(mNames).includes("example_table");
       const mTable = graph.tables.filter(t => t.name == "example_table")[0];
       expect(mTable.type).equals("table");
-      expect(mTable.query).equals('select * from "df_integration_test"."sample_data"');
+      expect(mTable.query).equals('\nselect * from "df_integration_test"."sample_data"');
       expect(mTable.dependencies).deep.equals(["sample_data"]);
 
       expect(mNames).includes("example_view");
       const mView = graph.tables.filter(t => t.name == "example_view")[0];
       expect(mView.type).equals("view");
-      expect(mView.query).equals('select * from "df_integration_test"."sample_data"');
+      expect(mView.query).equals('\nselect * from "df_integration_test"."sample_data"');
       expect(mView.dependencies).deep.equals(["sample_data"]);
 
       expect(mNames).includes("sample_data");

@@ -1,0 +1,80 @@
+import Documentation from "../../_documentation";
+
+export default ({children}) => <Documentation title="Set up data warehouse">{children}</Documentation>;
+
+## Introduction
+
+Dataform connects to your data warehouse to send the SQL instructions that will create views, tables and perform other operations you specify in Dataform.
+
+Different cloud data warehouses require different set up. Setting up any cloud data warehouse should take 5 minutes. If you encounter any issue, please contact our team via the intercom messenger or via email at [team@dataform.co](mailto:team@dataform.co).
+
+## BigQuery
+
+### Create a service account
+
+You’ll need to create a service account from your Google Cloud Console and assign it permissions to access BigQuery.
+
+1. Open the [service account page](https://console.cloud.google.com/projectselector/iam-admin/serviceaccounts?pli=1) in Google Cloud Console, choose a project if needed.
+2. Click add service account, give it a name a select BigQuery Admin role. You need to use the admin role since it's the only role that can create queries and list tables.
+
+ <img src="/static/images/platform_guides/datawarehouse/bigquery_service_account.png" style={{width: "100%", padding: "20px"}} />
+
+3. Check the furnish a new private key checkbox and select the JSON option. You will upload this JSON key in dataform.
+
+<img src="/static/images/platform_guides/datawarehouse/bigquery_private_key.png" style={{width: "100%", maxWidth: "500px", padding: "20px"}} />
+
+## Redshift / Postgres in AWS
+
+Redshift and Postgres require the following elements:
+ * Hostname - in the form of `[name].[id].[region].redshift.amazonaws.com`
+ * Port (usually 5439 for Redshift and 5432 for Postgres)
+ * User name and password
+ * Name of the database
+
+You will also need to whitelist Dataform's IP to access your Redshift cluster.
+
+
+### Where to find credentials
+
+1. Go to Redshift in your AWS console
+2. Select your cluster under Clusters
+3. The hostname will be the endpoint at the top of the page
+4. Username and database name under cluster database properties. You may want to create a separate username and password for Dataform. Please contact our team for assistance doing that.
+
+### Whitelist Dataform's IPs
+
+1. In your Redshift's cluster Configuration, click on your VPC security groups under Cluster Properties
+<img src="/static/images/platform_guides/datawarehouse/redshift_vpc.png" style={{width: "100%", maxWidth: "350px", padding: "20px"}} />
+
+2. Click on Edit under Inbound
+3. Click on Add rule to create a new rule for Dataform. Select type Redshift and add the following source IP addresses
+
+```
+35.233.106.210
+```
+
+and
+
+```
+104.196.10.242
+```
+<img src="/static/images/platform_guides/datawarehouse/redshift_ips.png" style={{width: "100%", maxWidth: "500px", padding: "20px"}} />
+
+
+## Snowflake
+
+Snowflake connections require the following elements:
+
+### Account name
+The first part of your Snowflake url, including region if your region is not US West Region : **account-name.region**.snowflakecomputing.com
+
+### Account user and password
+The username and password you use to log in to your Snowflake console. You can decide to create a new user for Dataform to use, please reach out to our team if you need help doing that.
+
+### Warehouse name
+Click "Warehouses" from within your Snowflake console to view a list of warehouses. Any warehouse in your account will work with any database.
+
+### Database
+Click "Databases" from within your Snowflake console to view a list of databases.
+
+You may also need to whitelist the following Dataform's IP: `35.233.106.210` and `104.196.10.242`
