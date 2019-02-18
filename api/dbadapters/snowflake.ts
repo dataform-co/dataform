@@ -1,5 +1,6 @@
 import { DbAdapter } from "./index";
 import * as protos from "@dataform/protos";
+import { promisify } from "util";
 
 interface ISnowflakeStatement {
   cancel: () => void;

@@ -1,13 +1,8 @@
 {
   "steps": [
     {
-      "name": "node:10.10.0",
-      "entrypoint": "npm",
-      "args": ["install"]
-    },
-    {
-      "name": "node:10.10.0",
-      "args": ["bash", "./scripts/test"]
+      "name": "gcr.io/cloud-builders/bazel",
+      "args": ["test", "//tests/core", "//tests/api"]
     }
   ]
 }

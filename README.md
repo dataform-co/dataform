@@ -2,43 +2,34 @@
 
 ## Requirements
 
-- Node (8+)
-- NPM
-- [Jekyll](https://jekyllrb.com/docs/installation/)
-
-## Setup
-
-Install node dev packages:
-
-```bash
-npm i
-```
+- [Bazel](https://bazel.build)
 
 ## Build
 
-Compile typescript for all packages:
-
 ```bash
-./scripts/build
+bazel build //...
 ```
 
 ## Run
-
-Runs the command line app:
 
 ```bash
 ./scripts/run --help
 ```
 
-## Compile example project
-
-Outputs a compiled JSON graph for one of the example projects:
+## Create and compile example project
 
 ```bash
-./scripts/run compile examples/bigquery
+./scripts/run init /tmp/dataform-project
+./scripts/run compile /tmp/dataform-project
 ```
 
-## Serve docs
+## Setup docs site
+
+```bash
+npm i --prod
+```
+
+## Serve docs site
 
 ```bash
 ./scripts/docs/serve
@@ -46,16 +37,6 @@ Outputs a compiled JSON graph for one of the example projects:
 
 ## Run tests
 
-Run mocha tests in `tests`:
-
 ```bash
 ./scripts/test
-```
-
-## Publish
-
-Publish a new version with lerna:
-
-```bash
-npx lerna publish
 ```
