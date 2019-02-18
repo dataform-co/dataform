@@ -1,19 +1,12 @@
 #!/bin/bash
 set -e
 
-# Clean and run tests before we publish.
+# Run all the tests.
 
-./scripts/clean
-./scripts/test
+bazel test //...
 
-# Update to a new version.
-
-npx lerna version
-
-# Build the project with the new version.
-
-./scripts/build
-
-# Publish the new built packages.
-
-(cd build && npx lerna publish from-package --no-git-tag-version $@)
+bazel run //api:package.publish
+bazel run //core:package.publish
+bazel run //cli:package.publish
+bazel run //crossdb:package.publish
+bazel run //protos:package.publish

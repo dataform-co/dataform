@@ -1,18 +1,18 @@
 node_modules/
 
-build/
-
-!!build/package.json
-
-ts/protos/index.*
-
-test_profiles/
-
-lerna-debug.log
+bazel-*
 
 .idea/
 
+bazel-*
+
+# TODO: Remove these.
+
+build/
+!!build/package.json
+ts/protos/index.*
 api/package-lock.json
 cli/package-lock.json
 core/package-lock.json
 protos/package-lock.json
+lerna-debug.log

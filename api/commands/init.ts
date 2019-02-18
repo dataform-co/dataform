@@ -1,11 +1,11 @@
 import * as path from "path";
 import * as fs from "fs";
-import { utils } from "@dataform/core";
 import * as protos from "@dataform/protos";
 import { install } from "./install";
-import { version } from "../package.json";
 
-export function init(projectDir: string, projectConfig: protos.IProjectConfig) {
+const { version } = require("../package.json");
+
+export function init(projectDir: string, projectConfig: protos.IProjectConfig, skipInstall?: boolean): Promise<any> {
   var dataformJsonPath = path.join(projectDir, "dataform.json");
   var packageJsonPath = path.join(projectDir, "package.json");
   var gitignorePath = path.join(projectDir, ".gitignore");
@@ -53,5 +53,9 @@ export function init(projectDir: string, projectConfig: protos.IProjectConfig) {
   fs.mkdirSync(path.join(projectDir, "includes"));
 
   // Install packages.
-  return install(projectDir);
+  if (!skipInstall) {
+    return install(projectDir);
+  } else {
+    return Promise.resolve();
+  }
 }

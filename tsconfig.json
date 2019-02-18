@@ -5,16 +5,14 @@
     "outDir": "build",
     "baseUrl": ".",
     "paths": {
-      "@dataform/*": ["*", "build/*"]
+      "df/*": ["*", "bazel-genfiles/*", "bazel-bin/*"],
+      "@dataform/*": ["*", "bazel-genfiles/*", "bazel-bin/*"]
     },
-    "preserveConstEnums": true,
     "removeComments": true,
-    "target": "ES6",
     "inlineSourceMap": true,
-    "declaration": true,
     "experimentalDecorators": true,
-    "resolveJsonModule": true,
-    "jsx": "react"
+    "jsx": "react",
+    "lib": ["es2015"]
   },
-  "exclude": ["node_modules", "build"]
+  "exclude": ["node_modules"]
 }

@@ -1,8 +1,5 @@
 #!/bin/bash
 set -e
 
-./scripts/build
-
-(cd build && npx lerna bootstrap)
-
-(cd build && node cli/index.js $@)
+bazel build //cli:bin
+./bazel-bin/cli/bin $@

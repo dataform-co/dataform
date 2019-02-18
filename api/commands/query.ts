@@ -1,18 +1,29 @@
 import * as protos from "@dataform/protos";
 import * as dbadapters from "../dbadapters";
-
+import * as path from "path";
 import { fork } from "child_process";
+import { compile as vmCompile } from "../vm/query";
 
-export function run(profile: protos.IProfile, query: string, projectDir?: string): Promise<any[]> {
-  return compile(query, projectDir).then(compiledQuery => dbadapters.create(profile).execute(compiledQuery));
+interface IOptions {
+  projectDir?: string;
 }
 
-export function evaluate(profile: protos.IProfile, query: string, projectDir?: string): Promise<void> {
-  return compile(query, projectDir).then(compiledQuery => dbadapters.create(profile).evaluate(compiledQuery));
+export function run(profile: protos.IProfile, query: string, options?: IOptions): Promise<any[]> {
+  return compile(query, options).then(compiledQuery => dbadapters.create(profile).execute(compiledQuery));
 }
 
-export function compile(query: string, projectDir?: string): Promise<string> {
-  var child = fork(require.resolve("../vm/query"));
+export function evaluate(profile: protos.IProfile, query: string, options?: IOptions): Promise<void> {
+  return compile(query, options).then(compiledQuery => dbadapters.create(profile).evaluate(compiledQuery));
+}
+
+export function compile(query: string, options?: IOptions): Promise<string> {
+  // If there is no project directory, no need to compile the script.
+  if (!options.projectDir) {
+    return Promise.resolve(query);
+  }
+  // Resolve the path in case it hasn't been resolved already.
+  const projectDir = path.resolve(options.projectDir);
+  var child = fork(require.resolve("../vm/query_bin_loader"));
   return new Promise((resolve, reject) => {
     var timeout = 5000;
     var timeoutStart = Date.now();

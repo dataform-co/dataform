@@ -5,10 +5,11 @@ import * as fs from "fs";
 import { promisify } from "util";
 import * as path from "path";
 
+
 export function compile(projectDir: string): Promise<protos.CompiledGraph> {
   // Resolve the path in case it hasn't been resolved already.
   projectDir = path.resolve(projectDir);
-  var child = fork(require.resolve("../vm/compile"));
+  var child = fork(require.resolve("../vm/compile_bin_loader"));
   return new Promise((resolve, reject) => {
     var timeout = 5000;
     var timeoutStart = Date.now();
