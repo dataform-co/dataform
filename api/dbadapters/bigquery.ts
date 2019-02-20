@@ -1,7 +1,14 @@
 import { DbAdapter } from "./index";
 import * as protos from "@dataform/protos";
 import * as PromisePool from "promise-pool-executor";
+import * as Promise from "bluebird";
+import { BehaviorSubject } from "rxjs";
 const BigQuery = require("@google-cloud/bigquery");
+
+Promise.config({
+  cancellation: true,
+  longStackTraces: true
+});
 
 export class BigQueryDbAdapter implements DbAdapter {
   private profile: protos.IProfile;
@@ -25,18 +32,47 @@ export class BigQueryDbAdapter implements DbAdapter {
   }
 
   execute(statement: string) {
-    return this.pool
-      .addSingleTask({
-        generator: () =>
-          this.client
-            .query({
-              useLegacySql: false,
-              query: statement,
-              maxResults: 1000
-            })
-            .then(result => result[0])
-      })
-      .promise();
+    return new Promise((resolve, reject, onCancel) => {
+      const subject = new BehaviorSubject(null);
+      let isCanceled = false;
+
+      onCancel(() => {
+        subject.subscribe({
+          error(err) {
+            reject(err);
+          },
+          next(queryJob) {
+            if (queryJob) {
+              isCanceled = true;
+              queryJob.cancel().then(() => {
+                reject(new Error("Run cancelled"));
+              });
+            }
+          }
+        });
+      });
+
+      this.client.createQueryJob(
+        {
+          useLegacySql: false,
+          query: statement,
+          maxResults: 1000
+        },
+        (err, job) => {
+          if (err) reject(err);
+
+          subject.next(job);
+          if (isCanceled) {
+            return;
+          }
+
+          job.getQueryResults((err, result) => {
+            if (err) reject(err);
+            resolve(result);
+          });
+        }
+      );
+    });
   }
 
   evaluate(statement: string) {

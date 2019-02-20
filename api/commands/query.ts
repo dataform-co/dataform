@@ -2,14 +2,48 @@ import * as protos from "@dataform/protos";
 import * as dbadapters from "../dbadapters";
 import * as path from "path";
 import { fork } from "child_process";
+import * as Promise from "bluebird";
+import { BehaviorSubject } from "rxjs";
 import { compile as vmCompile } from "../vm/query";
 
 interface IOptions {
   projectDir?: string;
 }
 
+Promise.config({
+  cancellation: true,
+  longStackTraces: true
+});
+
 export function run(profile: protos.IProfile, query: string, options?: IOptions): Promise<any[]> {
-  return compile(query, options).then(compiledQuery => dbadapters.create(profile).execute(compiledQuery));
+  return new Promise((resolve, reject, onCancel) => {
+    const subject = new BehaviorSubject(null);
+    let isCanceled = false;
+    onCancel(() => {
+      subject.subscribe({
+        error(err) {
+          reject(err);
+        },
+        next(promise) {
+          if (promise) {
+            isCanceled = true;
+            promise.cancel();
+            reject(new Error("Run cancelled"));
+          }
+        }
+      });
+    });
+
+    compile(query, options).then(compiledQuery => {
+      const promise = dbadapters.create(profile).execute(compiledQuery);
+      subject.next(promise);
+
+      if (isCanceled || promise.isCancelled()) {
+        return;
+      }
+      resolve(promise);
+    });
+  });
 }
 
 export function evaluate(profile: protos.IProfile, query: string, options?: IOptions): Promise<void> {

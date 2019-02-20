@@ -18,6 +18,7 @@ ts_library(
         "@npm//pretty-ms",
         "@npm//promise-pool-executor",
         "@npm//protobufjs",
+        "@npm//rxjs",
         "@npm//snowflake-sdk",
         "@npm//vm2",
     ],

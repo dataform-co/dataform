@@ -27,7 +27,7 @@ interface IExpectedResult {
   data: object[];
 }
 
-function queryRun(sqlQuery: string, testConfig: ITestConfig) {
+export function queryRun(sqlQuery: string, testConfig: ITestConfig) {
   return dfapi.query.run(protos.Profile.create(testConfig.profile), sqlQuery, {
     projectDir: path.resolve(testConfig.projectDir)
   });
