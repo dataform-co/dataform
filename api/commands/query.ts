@@ -36,6 +36,10 @@ export function run(profile: protos.IProfile, query: string, options?: IOptions)
 
     compile(query, options).then(compiledQuery => {
       const promise = dbadapters.create(profile).execute(compiledQuery);
+      process.on("SIGINT", () => {
+        promise.cancel();
+        console.log("\nQuery execution cancelled!");
+      });
       subject.next(promise);
 
       if (isCanceled || promise.isCancelled()) {
