@@ -3,7 +3,7 @@ import * as dbadapters from "../dbadapters";
 import * as path from "path";
 import { fork } from "child_process";
 import * as Promise from "bluebird";
-import { BehaviorSubject } from "rxjs";
+import * as EventEmitter from "events";
 import { compile as vmCompile } from "../vm/query";
 
 interface IOptions {
@@ -17,26 +17,20 @@ Promise.config({
 
 export function run(profile: protos.IProfile, query: string, options?: IOptions): Promise<any[]> {
   return new Promise((resolve, reject, onCancel) => {
-    const subject = new BehaviorSubject(null);
+    const eEmitter = new EventEmitter();
     let isCanceled = false;
+
     onCancel(() => {
-      subject.subscribe({
-        error(err) {
-          reject(err);
-        },
-        next(promise) {
-          if (promise) {
-            isCanceled = true;
-            promise.cancel();
-            reject(new Error("Run cancelled"));
-          }
-        }
-      });
+      isCanceled = true;
+      eEmitter.emit("jobCancel");
     });
 
     compile(query, options).then(compiledQuery => {
       const promise = dbadapters.create(profile).execute(compiledQuery);
-      subject.next(promise);
+      eEmitter.on("jobCancel", () => {
+        promise.cancel();
+        reject(new Error("Run cancelled"));
+      });
 
       if (isCanceled || promise.isCancelled()) {
         return;

@@ -2,7 +2,7 @@ import { DbAdapter } from "./index";
 import * as protos from "@dataform/protos";
 import * as PromisePool from "promise-pool-executor";
 import * as Promise from "bluebird";
-import { BehaviorSubject } from "rxjs";
+import * as EventEmitter from "events";
 const BigQuery = require("@google-cloud/bigquery");
 
 Promise.config({
@@ -33,23 +33,12 @@ export class BigQueryDbAdapter implements DbAdapter {
 
   execute(statement: string) {
     return new Promise((resolve, reject, onCancel) => {
-      const subject = new BehaviorSubject(null);
       let isCanceled = false;
+      const eEmitter = new EventEmitter();
 
       onCancel(() => {
-        subject.subscribe({
-          error(err) {
-            reject(err);
-          },
-          next(queryJob) {
-            if (queryJob) {
-              isCanceled = true;
-              queryJob.cancel().then(() => {
-                reject(new Error("Run cancelled"));
-              });
-            }
-          }
-        });
+        isCanceled = true;
+        eEmitter.emit("jobCancel");
       });
 
       this.client.createQueryJob(
@@ -61,11 +50,15 @@ export class BigQueryDbAdapter implements DbAdapter {
         (err, job) => {
           if (err) reject(err);
 
-          subject.next(job);
+          eEmitter.on("jobCancel", () => {
+            job.cancel().then(() => {
+              reject(new Error("Run cancelled"));
+            });
+          });
+
           if (isCanceled) {
             return;
           }
-
           job.getQueryResults((err, result) => {
             if (err) reject(err);
             resolve(result);

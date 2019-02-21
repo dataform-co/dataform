@@ -14,7 +14,6 @@
     "node-redshift": "^0.1.5",
     "pretty-ms": "^4.0.0",
     "promise-pool-executor": "^1.1.1",
-    "rxjs": "^6.4.0",
     "snowflake-sdk": "^1.1.5",
     "vm2": "^3.6.3"
   },
