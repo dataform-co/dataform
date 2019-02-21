@@ -302,15 +302,19 @@ yargs
           default: "."
         }),
     argv => {
-      query
-        .compile(argv["query"], { projectDir: path.resolve(argv["project-dir"]) })
-        .then(compiledQuery =>
-          query.run(protos.Profile.create(JSON.parse(fs.readFileSync(argv["profile"], "utf8"))), compiledQuery, {
-            projectDir: path.resolve(argv["project-dir"])
-          })
-        )
+      const promise = query
+        .run(protos.Profile.create(JSON.parse(fs.readFileSync(argv["profile"], "utf8"))), argv["query"], {
+          projectDir: path.resolve(argv["project-dir"])
+        })
         .then(results => console.log(JSON.stringify(results, null, 4)))
         .catch(e => console.log(e));
+
+      process.on("SIGINT", () => {
+        if (promise.cancel) {
+          promise.cancel();
+          console.log("\nQuery execution cancelled!");
+        }
+      });
     }
   )
   .demandCommand(1, "You need at least one command before moving on").argv;
