@@ -4,7 +4,7 @@ import * as styles from "df/fe/components/header.css";
 
 import { Button, Intent } from "@blueprintjs/core";
 
-interface IPage {
+export interface IPage {
   path?: string;
   name: string;
 }
