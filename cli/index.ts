@@ -186,7 +186,11 @@ yargs
           console.log(`Project status: ready for run ${graph.nodes.length} node(s) with ${tasksAmount} task(s)`);
           console.log("Project status: running...");
 
-          return run(graph, profile).resultPromise();
+          const runner = run(graph, profile);
+          process.on("SIGINT", () => {
+            runner.cancel();
+          });
+          return runner.resultPromise();
         })
         .then(result => {
           console.log("Project status: finished");
