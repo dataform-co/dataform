@@ -1,4 +1,4 @@
-import Documentation from "../../_documentation";
+import Documentation from "df/docs/layouts/documentation";
 
 export default ({children}) => <Documentation title="Publishing tables">{children}</Documentation>;
 
@@ -15,7 +15,7 @@ select 1 as test
 
 This will create a `view` by default, that will be called `example` in the dataform schema defined in the [`dataform.json`](/guides/configuration#dataform.json) file.
 
-<div className="bp3-callout bp3-icon-info-sign bp3-intent-warning" markdown="1">
+<div className="pt-callout pt-icon-info-sign pt-intent-warning" markdown="1">
 Trailing semi-colons should be omitted at the end of the query.
 </div>
 
@@ -59,7 +59,7 @@ select * from "dataform_schema"."source"
 
 Any table that is referenced in a query will be automatically added to it's dependencies. When the queries are executed against the warehouse, this makes sure they are done so in the correct order.
 
-<div className="bp3-callout bp3-icon-info-sign bp3-intent-warning" markdown="1">
+<div className="pt-callout pt-icon-info-sign pt-intent-warning" markdown="1">
 File names must be unique within your <code>definitions/</code> folder, even across directories, as these determine the name of the table or view created within your warehouse.
 </div>
 
@@ -101,7 +101,7 @@ The following example SQL file defines a post operation to grant access to the t
 select * from ...
 ```
 
-<div className="bp3-callout bp3-icon-info-sign bp3-intent-warning" markdown="1">
+<div className="pt-callout pt-icon-info-sign pt-intent-warning" markdown="1">
 To use the <code>self()</code> method within the argument provided to <code>postOps</code>, you must use JavaScript's ES6 template string syntax, wrapping it in back-ticks <code>`</code>.
 </div>
 
