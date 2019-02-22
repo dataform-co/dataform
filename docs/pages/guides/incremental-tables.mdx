@@ -1,4 +1,4 @@
-import Documentation from "../../_documentation";
+import Documentation from "df/docs/layouts/documentation";
 
 export default ({children}) => <Documentation title="Building incremental tables">{children}</Documentation>;
 
@@ -46,7 +46,7 @@ ts > (select max(timestamp) from target_table
 
 Let's assume we have a source table containing timestamped data about user actions on our site called `weblogs.user_actions`, that is streamed into our warehouse via some other data integration tool:
 
-<table className="bp3-html-table bp3-html-table-striped .modifier" style={{ width: "100%" }}>
+<table className="pt-html-table pt-html-table-striped .modifier" style={{ width: "100%" }}>
   <thead>
     <tr>
       <th>timestamp</th>
@@ -106,7 +106,7 @@ timestamp > (select max(timestamp) from default_schema.example_incremental)
 
 This table may not exist yet - that's OK, as the where clause will only be used if the table does exist, and we are inserting new data.
 
-<div className="bp3-callout bp3-icon-info-sign bp3-intent-warning" markdown="1">
+<div className="pt-callout pt-icon-info-sign pt-intent-warning" markdown="1">
 When inserting into incremental tables, only already existing fields in the destination table will be written. To make sure new fields are written after changing the query, the table must be re-built with the <code>--full-refresh</code> option enabled.
 </div>
 

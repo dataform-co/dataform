@@ -2,6 +2,7 @@ import * as React from "react";
 import remark from "remark";
 import remark2react from "remark-react";
 import Struct, { Props as StructProps } from "./struct";
+import * as typedoc from "typedoc";
 
 export interface Props extends StructProps {
   name: string;
