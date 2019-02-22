@@ -1,8 +1,10 @@
+package(default_visibility = ["//visibility:public"])
+
 load("//tools:css_typings.bzl", "css_typings")
 
 filegroup(
   name = "files",
-  srcs = glob(["**/*"]) + [":css"]
+  srcs = glob(["**/*"])
 )
 
 css_typings(
