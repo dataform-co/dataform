@@ -1,0 +1,19 @@
+.sidebar {
+  width: 280px;
+  min-width: 280px;
+  padding: 10px;
+  max-height: 100%;
+  overflow-y: auto;
+  position: sticky;
+  top: 100px;
+}
+
+.mainContent {
+  border-left: 1px solid rgba(120;134;156;0.2);
+  border-right: 1px solid rgba(120;134;156;0.2);
+  padding-left: 30px;
+  padding-right: 30px;
+  padding-top: 30px;
+  background-color: #fff;
+  flex-grow: 1;
+}

@@ -19,7 +19,7 @@ export default class OnThisPage extends React.Component<Props, any> {
 
     return (
       <div style={styles.container}>
-        <h3>On this page</h3>
+        <h4>On this page</h4>
         <Menu style={styles.menu}>
           {menu.map(item => (
             <MenuItem href={`#${item.id}`} text={item.text} key={item.id} />

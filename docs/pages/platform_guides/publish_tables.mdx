@@ -1,17 +1,15 @@
-import Documentation from "../../_documentation";
+import Documentation from "df/docs/layouts/documentation";
 
 export default ({children}) => <Documentation title="Publishing tables">{children}</Documentation>;
 
-## Publish a dataset
-
-### 1. Create a new file
+## 1. Create a new file
 
 Create a new file by clicking on the + button next to the definitions folder and create a new SQL file named `onboarding_dataset`. Ignore for now the other options in this modal (Assertions, Operations, Javascript), they are more advanced features that will be covered later.
 
 <img src="/static/images/platform_guides/publish_tables/new_file.png" style={{width: "100%", padding: "20px"}} />
 
 
-### 2. Write query
+## 2. Write query
 In the text editor, write a simple SQL statement like the following:
 
 ```sql
@@ -27,27 +25,27 @@ The `execute query` button executes the query in your warehouse and returns the 
 <img src="/static/images/platform_guides/publish_tables/compilation.png" style={{width: "100%", padding: "20px"}} />
 
 
-### 3. Run node
+## 3. Run node
 
 Now click `Run this node` button. That will open a modal with a few options for running your nodes. Click `Run now` in the modal to continue.
 
 This will create a new view in your data warehouse, that will be called `dataform.onboarding_dataset`.
 
-<div className="bp3-callout bp3-icon-info-sign bp3-intent-primary" markdown="1">
+<div className="pt-callout pt-icon-info-sign pt-intent-primary" markdown="1">
 By default, dataform creates views and table under a schema named <code>dataform</code>, you can change this in your <code>dataform.json</code> in your <a href="../guides/configuration" >project configuration</a>.
 </div>
 
 <img src="/static/images/platform_guides/publish_tables/run_node.png" style={{width: "100%", padding: "20px"}} />
 
 
-### 4. Create a table instead of a view
+## 4. Create a table instead of a view
 By default, dataform creates views in your data warehouse. To create a table instead of a view, simply add the following statement at the top of your script:
 ```js
 --js type("table");
 ```
 You will see the tag on the right updating from view to table instantaneously.
 
-<div className="bp3-callout bp3-icon-info-sign bp3-intent-none" markdown="1">
+<div className="pt-callout pt-icon-info-sign pt-intent-none" markdown="1">
 Many more options are available to publishing datasets, you can read more on <a href="../guides/tables" >publishing datasets</a> and <a href="../guides/incremental-tables" >incremental tables</a>.
 </div>
 
@@ -66,7 +64,7 @@ That provides two advantages:
  * You don’t have provide the full SQL table name
  * This lists the table as a dependency to the table. When the queries are executed against the warehouse, this makes sure they are done so in the correct order.
 
-### 1. Create a new file
+## 1. Create a new file
 
 Create a new SQL file named `onboarding_dataset2` and add the following content:
 
@@ -80,11 +78,11 @@ You will see the right sidebar updating with the name of the view, `onboarding_d
 
 _*Your compiled script will differ depending on your cloud data warehouse. This example uses Redshift.*_
 
-<div className="bp3-callout bp3-icon-info-sign bp3-intent-warning" markdown="1">
+<div className="pt-callout pt-icon-info-sign pt-intent-warning" markdown="1">
 You can get validation errors if you reference a table that hasn't yet been created in your data warehouse. The validation error comes from your data warehouse and will warn you that the table you are selecting from doesn't exist. Dataform will run your script in dependency order so you can safely ignore this error.
 </div>
 
-### 3. View dependency tree
+## 3. View dependency tree
 
 The overview page (linked at the top left of the page) gives you an overview of your project. There you can see the dependency tree graph of your project containing your two materialisations and a table listing them.
 
@@ -92,4 +90,4 @@ The overview page (linked at the top left of the page) gives you an overview of 
 
 This example is very simple but over time you may have have dozens or hundreds of datasets that depend on each other and the table and the graph will help you and you team keeping track of them.
 
-Now that you have successfully published your first datasets, learn how to use version control to  
+Now that you have successfully published your first datasets, learn how to use version control to

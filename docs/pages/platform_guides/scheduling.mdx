@@ -1,4 +1,4 @@
-import Documentation from "../../_documentation";
+import Documentation from "df/docs/layouts/documentation";
 
 export default ({children}) => <Documentation title="Schedule datasets">{children}</Documentation>;
 
@@ -6,7 +6,7 @@ export default ({children}) => <Documentation title="Schedule datasets">{childre
 
 Schedules can be used to run any selection of your datasets on a schedule with granular control. That will make sure your data is up to date in your reports and dashboards or for other analysts to use.
 
-<div className="bp3-callout bp3-icon-info-sign bp3-intent-warning" markdown="1">
+<div className="pt-callout pt-icon-info-sign pt-intent-warning" markdown="1">
 Schedules <b>only run from the `production` branch</b>. Make sure you commit and push your changes to the production branch before editing your schedules.
 </div>
 

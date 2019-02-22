@@ -1,0 +1,147 @@
+@value headerPadding: 40px 40px 0px;
+
+.nav {
+  height: 100px;
+  display: flex;
+  flex-direction: row;
+  position: fixed;
+  left: 0;
+  right: 0;
+  transition: background-color 0.3s ease, color 0.3s ease;
+  z-index: 1000;
+}
+
+.navContent {
+    width: 100%;
+    margin: 0 auto;
+    display: flex;
+}
+
+
+.navInverted a {
+  color: #fff !important;
+}
+
+.navScrolled {
+  background-color: #fff;
+  box-shadow: 0 5px 5px rgba(17, 17, 17, 0.07);
+}
+
+.pages {
+  flex-grow: 1;
+  text-align: center;
+  margin-left: 70px;
+}
+
+.pages > * {
+  padding: 40px 24px;
+  display: inline-block;
+  font-weight: bold;
+  line-height: 22px;
+  font-size: 12px;
+  text-align: center;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.pageSelected {
+  background-image: url("../../static/images/selected_page_marker.svg");
+  background-repeat: no-repeat;
+  background-position: top center;
+}
+
+.actions {
+  padding: headerPadding;
+}
+
+.actions > * {
+  padding: 0px 12px;
+}
+
+.logoImage {
+  padding: headerPadding;
+  content: url("../../static/images/new_logo_with_text.svg");
+}
+
+.navInverted > .navContent > span > a > .logoImage {
+  padding: headerPadding;
+  content: url("../../static/images/new_logo_with_text_white.svg");
+}
+
+.logoImageWhite {
+  padding: headerPadding;
+  content: url("../../static/images/new_logo_with_text_white.svg");
+}
+
+.menuIcon {
+  content: url("../../static/images/menu_icon.svg");
+}
+
+.navInverted > .actions > span > .menuIcon {
+  content: url("../../static/images/menu_icon_white.svg");
+}
+
+.menuCloseIcon {
+  content: url("../../static/images/menu_close.svg");
+  z-index: 1001;
+}
+
+.mobileMenuContainer{
+  position: fixed;
+  left: 0;
+  right: 0;
+  height: 100%;
+  background-color: #2F419B;
+  z-index: 1001;
+  display: flex;
+  flex-direction: column;
+}
+
+.mobileMenu{
+  position: fixed;
+  top: 100px;
+  color: #fff;
+  width: 100%;
+}
+
+.mobileMenuDivider {
+  width: calc(100% - 80px);
+  margin: 0 auto;
+  height: 1px;
+  background-color: rgba(223,223,223, 0.2);
+}
+
+.mobileMenuItem{
+  padding: 20px 40px;
+  color: #fff;
+  font-size: 14px;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.mobileMenuActions {
+  margin-top: auto;
+  width: 100%;
+}
+
+.mobileMenuAction {
+  width: calc(100% - 80px);
+  margin: 0 auto;
+  margin-bottom: 20px;
+}
+.mobileMenuAction > a, .mobileMenuAction > a > button {
+  width: 100%;
+}
+
+.showMobile{
+  display: none;
+}
+
+@media (max-width: 1100px) {
+  .showMobile{
+    display: block;
+  }
+  .hideMobile{
+    display: none;
+  }
+}

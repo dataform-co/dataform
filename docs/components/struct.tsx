@@ -13,7 +13,7 @@ export interface Props {
 export default class Struct extends React.Component<Props, any> {
   render() {
     return (
-      <table className="bp3-html-table bp3-html-table-striped" style={styles.table}>
+      <table className="pt-html-table pt-html-table-striped" style={styles.table}>
         <thead>
           <tr>
             <td>Field</td>
