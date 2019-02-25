@@ -36,30 +36,26 @@ export class BigQueryDbAdapter implements DbAdapter {
         eEmitter.emit("jobCancel");
       });
 
-      this.client.createQueryJob(
-        {
-          useLegacySql: false,
-          query: statement,
-          maxResults: 1000
-        },
-        (err, job) => {
-          if (err) reject(err);
-
-          eEmitter.on("jobCancel", () => {
-            job.cancel().then(() => {
-              reject(new Error("Run cancelled"));
-            });
-          });
-
-          if (isCanceled) {
-            return;
-          }
-          job.getQueryResults((err, result) => {
+      this.pool.addSingleTask({
+        generator: () =>
+          this.client.createQueryJob({ useLegacySql: false, query: statement, maxResults: 1000 }, (err, job) => {
             if (err) reject(err);
-            resolve(result);
-          });
-        }
-      );
+
+            eEmitter.on("jobCancel", () => {
+              job.cancel().then(() => {
+                reject(new Error("Run cancelled"));
+              });
+            });
+
+            if (isCanceled) {
+              return;
+            }
+            job.getQueryResults((err, result) => {
+              if (err) reject(err);
+              resolve(result);
+            });
+          })
+        });
     });
   }
 
