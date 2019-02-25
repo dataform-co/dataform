@@ -2,10 +2,6 @@ import { DbAdapter } from "./index";
 import * as protos from "@dataform/protos";
 import * as Promise from "bluebird";
 
-Promise.config({
-  longStackTraces: true
-});
-
 const Redshift: RedshiftType = require("node-redshift");
 
 type RedshiftType = {

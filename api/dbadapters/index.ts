@@ -4,11 +4,6 @@ import { BigQueryDbAdapter } from "./bigquery";
 import { RedshiftDbAdapter } from "./redshift";
 import { SnowflakeDbAdapter } from "./snowflake";
 
-Promise.config({
-  cancellation: true,
-  longStackTraces: true
-});
-
 export interface DbAdapter {
   execute(statement: string): Promise<any[]>;
   evaluate(statement: string): Promise<void>;

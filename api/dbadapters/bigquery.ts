@@ -5,11 +5,6 @@ import * as Promise from "bluebird";
 import * as EventEmitter from "events";
 const BigQuery = require("@google-cloud/bigquery");
 
-Promise.config({
-  cancellation: true,
-  longStackTraces: true
-});
-
 export class BigQueryDbAdapter implements DbAdapter {
   private profile: protos.IProfile;
   private client: any;

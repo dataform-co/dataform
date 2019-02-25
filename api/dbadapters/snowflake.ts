@@ -3,10 +3,6 @@ import * as protos from "@dataform/protos";
 import { promisify } from "util";
 import * as Promise from "bluebird";
 
-Promise.config({
-  longStackTraces: true
-});
-
 interface ISnowflakeStatement {
   cancel: () => void;
 }
