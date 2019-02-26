@@ -1,5 +1,6 @@
 import * as protos from "@dataform/protos";
 import * as prettyMs from "pretty-ms";
+import * as EventEmitter from "events";
 import * as dbadapters from "../dbadapters";
 import * as Long from "long";
 
@@ -22,6 +23,8 @@ export class Runner {
 
   private executionTask: Promise<protos.IExecutedGraph>;
 
+  private eEmitter: EventEmitter;
+
   constructor(adapter: dbadapters.DbAdapter, graph: protos.IExecutionGraph) {
     this.adapter = adapter;
     this.graph = graph;
@@ -32,6 +35,7 @@ export class Runner {
       warehouseState: this.graph.warehouseState,
       nodes: []
     };
+    this.eEmitter = new EventEmitter();
   }
 
   public static create(adapter: dbadapters.DbAdapter, graph: protos.IExecutionGraph) {
@@ -63,6 +67,7 @@ export class Runner {
 
   public cancel() {
     this.cancelled = true;
+    this.eEmitter.emit("jobCancel");
   }
 
   public resultPromise(): Promise<protos.IExecutedGraph> {
@@ -75,7 +80,7 @@ export class Runner {
 
   private loop(resolve: () => void, reject: (value: any) => void) {
     if (this.cancelled) {
-      reject(Error("Run cancelled."));
+      return reject(Error("Run cancelled."));
     }
     var pendingNodes = this.pendingNodes;
     this.pendingNodes = [];
@@ -119,7 +124,7 @@ export class Runner {
       .reduce((chain, task) => {
         return chain.then(chainResults => {
           // Create another promise chain for retries, if we allow them.
-          return this.adapter
+          const promise = this.adapter
             .execute(task.statement)
             .then(rows => {
               if (task.type == "assertion" && rows.length > 0) {
@@ -138,6 +143,14 @@ export class Runner {
             .catch(e => {
               throw [...chainResults, { ok: false, error: e.message, task: task }];
             });
+
+          this.eEmitter.on("jobCancel", () => {
+            promise.cancel();
+          });
+          if (this.cancelled) {
+            promise.cancel();
+          }
+          return promise;
         });
       }, Promise.resolve([] as protos.IExecutedTask[]))
       .then(results => {
