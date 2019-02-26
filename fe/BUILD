@@ -12,3 +12,17 @@ css_typings(
   srcs = glob(["**/*.css"]),
   path = "fe"
 )
+
+load("@build_bazel_rules_typescript//:defs.bzl", "ts_library")
+
+ts_library(
+    name = "fe",
+    srcs = glob(["**/*.tsx"]) + [":css"],
+    module_name = "@dataform/fe",
+    deps = [
+        "@npm//@types/node",
+        "@npm//@types/react",
+        "@npm//react",
+        "@npm//@blueprintjs/core",
+    ],
+)
