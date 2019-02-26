@@ -46,7 +46,7 @@ export function evaluate(profile: protos.IProfile, query: string, options?: IOpt
 
 export function compile(query: string, options?: IOptions): Promise<string> {
   // If there is no project directory, no need to compile the script.
-  if (!options.projectDir) {
+  if (!options || !options.projectDir) {
     return Promise.resolve(query);
   }
   // Resolve the path in case it hasn't been resolved already.
