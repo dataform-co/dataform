@@ -283,10 +283,10 @@ describe("@dataform/core", () => {
       const graph = session.compile();
 
       expect(graph)
-        .to.have.property("validationErrors")
+        .to.have.property("compileErrors")
         .to.be.an("array");
 
-      const errors = graph.validationErrors.map(item => item.message);
+      const errors = graph.compileErrors.map(item => item.message);
       expect(errors).deep.equals(["Could not find referenced node: operate-1"]);
     });
   });

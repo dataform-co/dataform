@@ -88,7 +88,7 @@ describe("@dataform/api", () => {
       expect(() => {
         const graphWithErrors: protos.ICompiledGraph = protos.CompiledGraph.create({
           projectConfig: { warehouse: "redshift" },
-          validationErrors: [{ fileName: "someFile", message: "Some critical error" }],
+          validationErrors: [{ message: "Some critical error" }],
           tables: [{ name: "a", target: { schema: "schema", name: "a" } }]
         });
 

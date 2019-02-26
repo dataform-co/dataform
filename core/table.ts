@@ -122,9 +122,7 @@ export class Table {
   }
 
   public validationError(message: string) {
-    let fileName = this.proto.fileName || __filename;
-
-    var validationError = protos.ValidationError.create({ fileName, message });
+    var validationError = protos.ValidationError.create({ message });
     this.proto.validationErrors.push(validationError);
   }
 

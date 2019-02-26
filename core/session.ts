@@ -1,7 +1,7 @@
 import * as protos from "@dataform/protos";
 import * as adapters from "./adapters";
 import * as utils from "./utils";
-import { Table, TContextable, TConfig } from "./table";
+import { Table, TContextable, TConfig, TableTypes } from "./table";
 import { Operation, OContextable } from "./operation";
 import { Assertion, AContextable } from "./assertion";
 
@@ -58,7 +58,7 @@ export class Session {
       return this.adapter().resolveTarget((oNode as Operation).proto.target);
     } else {
       const message = `Could not find referenced node: ${name}`;
-      this.validationError(message);
+      this.compileError(new Error(message));
     }
   }
 
@@ -118,9 +118,7 @@ export class Session {
   }
 
   validationError(message: string) {
-    const fileName = utils.getCallerFile(this.rootDir) || __filename;
-
-    const validationError = protos.ValidationError.create({ fileName, message });
+    const validationError = protos.ValidationError.create({ message });
     this.validationErrors.push(validationError);
   }
 
@@ -146,15 +144,8 @@ export class Session {
     return compiledChunks;
   }
 
-  compile(): protos.ICompiledGraph {
-    var compiledGraph = protos.CompiledGraph.create({
-      projectConfig: this.config,
-      tables: this.compileGraphChunk(this.tables),
-      operations: this.compileGraphChunk(this.operations),
-      assertions: this.compileGraphChunk(this.assertions),
-      validationErrors: this.validationErrors,
-      compileErrors: this.compileErrors
-    });
+  validate(graph: protos.ICompiledGraph): protos.ICompiledGraph {
+    const compiledGraph = protos.CompiledGraph.create({ ...graph });
 
     // Check there aren't any duplicate names.
     var allNodes = [].concat(compiledGraph.tables, compiledGraph.assertions, compiledGraph.operations);
@@ -218,5 +209,18 @@ export class Session {
     }
 
     return compiledGraph;
+  }
+
+  compile(): protos.ICompiledGraph {
+    const compiledGraph = protos.CompiledGraph.create({
+      projectConfig: this.config,
+      tables: this.compileGraphChunk(this.tables),
+      operations: this.compileGraphChunk(this.operations),
+      assertions: this.compileGraphChunk(this.assertions),
+      validationErrors: this.validationErrors,
+      compileErrors: this.compileErrors
+    });
+
+    return this.validate(compiledGraph);
   }
 }
