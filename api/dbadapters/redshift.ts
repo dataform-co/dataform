@@ -1,5 +1,6 @@
 import { DbAdapter } from "./index";
 import * as protos from "@dataform/protos";
+import * as Promise from "bluebird";
 
 const Redshift: RedshiftType = require("node-redshift");
 

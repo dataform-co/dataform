@@ -1,6 +1,7 @@
 import { DbAdapter } from "./index";
 import * as protos from "@dataform/protos";
 import { promisify } from "util";
+import * as Promise from "bluebird";
 
 interface ISnowflakeStatement {
   cancel: () => void;
