@@ -1,4 +1,5 @@
 import * as protos from "@dataform/protos";
+import * as Promise from "bluebird";
 import { BigQueryDbAdapter } from "./bigquery";
 import { RedshiftDbAdapter } from "./redshift";
 import { SnowflakeDbAdapter } from "./snowflake";
