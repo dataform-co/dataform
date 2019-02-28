@@ -1,4 +1,4 @@
-import Documentation from "../../_documentation";
+import Documentation from "df/docs/layouts/documentation";
 
 export default ({children}) => <Documentation title="JavaScript API">{children}</Documentation>;
 
@@ -84,7 +84,7 @@ To mirror the behaviour above, you can use a contextable argument to the `query(
 publish("example")
   .query(ctx => `select ${ctx.ref("other_table")}`);
 ```
-<div className="bp3-callout bp3-icon-info-sign bp3-intent-warning" markdown="1">
+<div className="pt-callout pt-icon-info-sign pt-intent-warning" markdown="1">
 In order to use the <code>${"{}"}</code> syntax to call methods inline in a string, the argument must be wrapped in backticks<code>`</code> instead of regular quotes <code>"</code>.
 </div>
 

@@ -1,4 +1,4 @@
-import Documentation from "../../_documentation";
+import Documentation from "df/docs/layouts/documentation";
 
 export default ({children}) => <Documentation title="Building incremental tables">{children}</Documentation>;
 
@@ -46,7 +46,7 @@ ts > (select max(timestamp) from target_table
 
 Let's assume we have a source table containing timestamped data about user actions on our site called `weblogs.user_actions`, that is streamed into our warehouse via some other data integration tool:
 
-<table className="bp3-html-table bp3-html-table-striped .modifier" style={{ width: "100%" }}>
+<table className="pt-html-table pt-html-table-striped .modifier" style={{ width: "100%" }}>
   <thead>
     <tr>
       <th>timestamp</th>
@@ -167,6 +167,6 @@ select ...
 
 ## Table partitioning / dist keys
 
-As incremental tables produced are usually timestamp based, it's best practice to set up table partitioning on the timestamp field, to speed up downstream queries.
+As incremental tables produced are usually timestamp based, it's best practice to set up table partioning on the timestamp field, to speed up downstream queries.
 
 For more information, check out the [Bigquery](/guides/warehouses/bigquery) and [Redshift](/guides/warehouses/redshift) guides.

@@ -39,6 +39,15 @@ nodejs_binary(
     install_source_map_support = False,
 )
 
+nodejs_binary(
+    name = "tcm",
+    data = [
+      "@npm//typed-css-modules"
+    ],
+    entry_point = "typed-css-modules/lib/cli",
+    install_source_map_support = False,
+)
+
 load("@com_github_bazelbuild_buildtools//buildifier:def.bzl", "buildifier")
 
 buildifier(

@@ -1,0 +1,17 @@
+.container {
+  padding: 100px 20px 50px;
+  margin: 0px auto;
+}
+
+.container h1,
+.container h3,
+.container h4,
+.container > p {
+  padding: 15px 0px;
+}
+
+/* This makes sure that the on this page anchors scroll correctly */
+.container h2 {
+  padding: 125px 0px 15px;
+  margin-top: -110px;
+}
