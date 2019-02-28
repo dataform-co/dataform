@@ -5,11 +5,12 @@ import * as fs from "fs";
 import { promisify } from "util";
 import * as path from "path";
 
-
 export function compile(projectDir: string): Promise<protos.CompiledGraph> {
   // Resolve the path in case it hasn't been resolved already.
   projectDir = path.resolve(projectDir);
-  var child = fork(require.resolve("../vm/compile_bin_loader"));
+  // Run the bin_loader script if inside bazel, otherwise don't.
+  const forkScript = process.env["BAZEL_TARGET"] ? "../vm/compile_bin_loader" : "../vm/compile";
+  var child = fork(require.resolve(forkScript));
   return new Promise((resolve, reject) => {
     var timeout = 5000;
     var timeoutStart = Date.now();

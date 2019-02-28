@@ -21,7 +21,9 @@ ts_library(
     srcs = glob(["bigquery.spec.ts"]),
     deps = [
         ":utils",
+        "//tests/utils",
         "@npm//@types/mocha",
+        "@npm//@types/chai",
         "@npm//@types/node",
     ],
 )
