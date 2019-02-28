@@ -107,7 +107,7 @@ timestamp > (select max(timestamp) from default_schema.example_incremental)
 This table may not exist yet - that's OK, as the where clause will only be used if the table does exist, and we are inserting new data.
 
 <div className="bp3-callout bp3-icon-info-sign bp3-intent-warning" markdown="1">
-When inserting into incremental tables, only already existing fields in the destination table will be written. To make sure new fields are written after changing the query, the table must be re-built with the <code>--full-refresh</code> option enabled.
+When inserting into incremental tables, only already existing fields in the destination table will be written. To make sure new fields are written after changing the query, the table must be re-built from scratch with the <code>--full-refresh</code> option in the command line or with the <code>Run with full refresh</code> option on the Dataform platform.
 </div>
 
 ### Generated SQL
@@ -152,7 +152,7 @@ This dataform project must be scheduled to run at least once a day to make sure 
 
 ## Protecting incremental tables from data loss
 
-It's possible to force an incremental table to be rebuilt from scratch using either the command line interface or via https://dataform.co, when the `--full-refresh` option is provided.
+It's possible to force an incremental table to be rebuilt from scratch using either the command line interface with the <code>--full-refresh</code> option or with the <code>Run with full refresh</code> option on the Dataform platform.
 
 For incremental tables that cannot be rebuilt from scratch, for example if the source data is only temporary, or expires at some point - you can mark an incremental table as `protected`. This means Dataform will never delete this table, even if a user asks for a full refresh.
 
@@ -167,6 +167,6 @@ select ...
 
 ## Table partitioning / dist keys
 
-As incremental tables produced are usually timestamp based, it's best practice to set up table partioning on the timestamp field, to speed up downstream queries.
+As incremental tables produced are usually timestamp based, it's best practice to set up table partitioning on the timestamp field, to speed up downstream queries.
 
 For more information, check out the [Bigquery](/guides/warehouses/bigquery) and [Redshift](/guides/warehouses/redshift) guides.
