@@ -21,9 +21,12 @@ npm_package(
     deps = [":core"],
 )
 
-genrule(
+load("@bazel_tools//tools/build_defs/pkg:pkg.bzl", "pkg_tar")
+
+pkg_tar(
     name = "package_tar",
-    srcs = [":package"],
-    outs = ["package.tgz"],
-    cmd = "tar -cvzf $(location package.tgz) -C $(location :package)/.. package --dereference",
+    extension = "tgz",
+    srcs = [
+        ":package",
+    ],
 )
