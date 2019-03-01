@@ -32,11 +32,17 @@ message RedshiftOptions {
   string sort_style = 4;
 }
 
+message GraphErrors {
+  repeated CompilationError compilation_errors = 1;
+  repeated ValidationError validation_errors = 2;
+}
+
 message ValidationError {
+  string node_name = 1;
   string message = 2;
 }
 
-message CompileError {
+message CompilationError {
   string file_name = 1;
   string message = 2;
   string stack = 3;
@@ -67,8 +73,6 @@ message Table {
 
   // Generated.
   string file_name = 18;
-
-  repeated ValidationError validation_errors = 7;
 
   // Deprecated.
   repeated string deprecated_parsed_columns = 12;
@@ -104,8 +108,7 @@ message CompiledGraph {
   repeated Operation operations = 2;
   repeated Assertion assertions = 3;
 
-  repeated ValidationError validation_errors = 5;
-  repeated CompileError compile_errors = 6;
+  GraphErrors graph_errors = 5;
 }
 
 message ExecutionTask {

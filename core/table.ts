@@ -36,8 +36,7 @@ export interface TConfig {
 export class Table {
   proto: protos.Table = protos.Table.create({
     type: "view",
-    disabled: false,
-    validationErrors: []
+    disabled: false
   });
 
   // Hold a reference to the Session instance.
@@ -48,40 +47,6 @@ export class Table {
   private contextableWhere: TContextable<string>;
   private contextablePreOps: TContextable<string | string[]>[] = [];
   private contextablePostOps: TContextable<string | string[]>[] = [];
-
-  private getPredefinedTypes(types) {
-    return Object.keys(types)
-      .map(key => `"${types[key]}"`)
-      .join(" | ");
-  }
-
-  private isValidProps(props: { [x: string]: string | string[] }, types: { [x: string]: any }) {
-    const propsValid = Object.keys(props).every(key => {
-      if (!props[key] || !props[key].length) {
-        const message = `Property "${key}" is not defined`;
-        this.validationError(message);
-        return false;
-      }
-      return true;
-    });
-
-    const typesValid = Object.keys(types).every(type => {
-      const currentEnum = types[type];
-      if (
-        Object.keys(currentEnum)
-          .map(key => currentEnum[key])
-          .indexOf(props[type]) === -1
-      ) {
-        const predefinedValues = this.getPredefinedTypes(currentEnum);
-        const message = `Wrong value of "${type}" property. Should only use predefined values: ${predefinedValues}`;
-        this.validationError(message);
-        return false;
-      }
-      return true;
-    });
-
-    return propsValid && typesValid;
-  }
 
   public config(config: TConfig) {
     if (config.where) {
@@ -121,23 +86,7 @@ export class Table {
     return this;
   }
 
-  public validationError(message: string) {
-    var validationError = protos.ValidationError.create({ message });
-    this.proto.validationErrors.push(validationError);
-  }
-
   public type(type: TableType) {
-    if (
-      Object.keys(TableTypes)
-        .map(key => TableTypes[key])
-        .indexOf(type) === -1
-    ) {
-      const predefinedTypes = this.getPredefinedTypes(TableTypes);
-      const message = `Wrong type of table detected. Should only use predefined types: ${predefinedTypes}`;
-      this.validationError(message);
-      return this;
-    }
-
     this.proto.type = type as string;
     return this;
   }
@@ -168,24 +117,6 @@ export class Table {
   }
 
   public redshift(redshift: protos.IRedshiftOptions) {
-    if (Object.keys(redshift).length === 0) {
-      const message = `Missing properties in redshift config`;
-      this.validationError(message);
-      return this;
-    }
-    if (redshift.distStyle || redshift.distKey) {
-      const props = { distStyle: redshift.distStyle, distKey: redshift.distKey };
-      if (!this.isValidProps(props, { distStyle: DistStyleTypes })) {
-        return this;
-      }
-    }
-    if (redshift.sortStyle || redshift.sortKeys) {
-      const props = { sortStyle: redshift.sortStyle, sortKeys: redshift.sortKeys };
-      if (!this.isValidProps(props, { sortStyle: SortStyleTypes })) {
-        return this;
-      }
-    }
-
     this.proto.redshift = protos.RedshiftOptions.create(redshift);
     return this;
   }
@@ -252,11 +183,6 @@ export class Table {
     });
     this.contextablePostOps = [];
 
-    // Validation.
-    if (this.proto.type === TableTypes.INCREMENTAL && (!this.proto.where || this.proto.where.length === 0)) {
-      const message = `"where" property is not defined. With the type “incremental” you must also specify the property “where”!`;
-      this.validationError(message);
-    }
     return this.proto;
   }
 }
