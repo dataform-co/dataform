@@ -1,6 +1,8 @@
 import { DbAdapter } from "./index";
 import * as protos from "@dataform/protos";
 import * as PromisePool from "promise-pool-executor";
+import * as Promise from "bluebird";
+import * as EventEmitter from "events";
 const BigQuery = require("@google-cloud/bigquery");
 
 export class BigQueryDbAdapter implements DbAdapter {
@@ -25,18 +27,36 @@ export class BigQueryDbAdapter implements DbAdapter {
   }
 
   execute(statement: string) {
-    return this.pool
-      .addSingleTask({
-        generator: () =>
-          this.client
-            .query({
-              useLegacySql: false,
-              query: statement,
-              maxResults: 1000
-            })
-            .then(result => result[0])
-      })
-      .promise();
+    this.pool.addSingleTask({
+      generator: () =>
+        new Promise((resolve, reject, onCancel) => {
+          let isCanceled = false;
+          const eEmitter = new EventEmitter();
+
+          onCancel(() => {
+            isCanceled = true;
+            eEmitter.emit("jobCancel");
+          });
+
+          this.client.createQueryJob({ useLegacySql: false, query: statement, maxResults: 1000 }, (err, job) => {
+            if (err) reject(err);
+
+            eEmitter.on("jobCancel", () => {
+              job.cancel().then(() => {
+                reject(new Error("Run cancelled"));
+              });
+            });
+
+            if (isCanceled) {
+              return;
+            }
+            job.getQueryResults((err, result) => {
+              if (err) reject(err);
+              resolve(result);
+            });
+          });
+        })
+    }).promise();
   }
 
   evaluate(statement: string) {

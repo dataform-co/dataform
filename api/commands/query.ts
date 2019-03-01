@@ -2,14 +2,42 @@ import * as protos from "@dataform/protos";
 import * as dbadapters from "../dbadapters";
 import * as path from "path";
 import { fork } from "child_process";
+import * as Promise from "bluebird";
+import * as EventEmitter from "events";
 import { compile as vmCompile } from "../vm/query";
 
 interface IOptions {
   projectDir?: string;
 }
 
+Promise.config({
+  cancellation: true,
+  longStackTraces: true
+});
+
 export function run(profile: protos.IProfile, query: string, options?: IOptions): Promise<any[]> {
-  return compile(query, options).then(compiledQuery => dbadapters.create(profile).execute(compiledQuery));
+  return new Promise((resolve, reject, onCancel) => {
+    const eEmitter = new EventEmitter();
+    let isCanceled = false;
+
+    onCancel(() => {
+      isCanceled = true;
+      eEmitter.emit("jobCancel");
+    });
+
+    compile(query, options).then(compiledQuery => {
+      const promise = dbadapters.create(profile).execute(compiledQuery);
+      eEmitter.on("jobCancel", () => {
+        promise.cancel();
+        reject(new Error("Run cancelled"));
+      });
+
+      if (isCanceled || promise.isCancelled()) {
+        return;
+      }
+      resolve(promise);
+    });
+  });
 }
 
 export function evaluate(profile: protos.IProfile, query: string, options?: IOptions): Promise<void> {
@@ -18,7 +46,7 @@ export function evaluate(profile: protos.IProfile, query: string, options?: IOpt
 
 export function compile(query: string, options?: IOptions): Promise<string> {
   // If there is no project directory, no need to compile the script.
-  if (!options.projectDir) {
+  if (!options || !options.projectDir) {
     return Promise.resolve(query);
   }
   // Resolve the path in case it hasn't been resolved already.
