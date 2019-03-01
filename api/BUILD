@@ -48,16 +48,10 @@ load("@bazel_tools//tools/build_defs/pkg:pkg.bzl", "pkg_tar")
 
 pkg_tar(
     name = "package_tar",
-<<<<<<< HEAD
     extension = "tgz",
     srcs = [
         ":package",
     ],
-=======
-    srcs = [":package"],
-    outs = ["package.tgz"],
-    cmd = "tar -cvzf $(location package.tgz) -C $(location :package)/.. --dereference package",
->>>>>>> master
 )
 
 load("@build_bazel_rules_nodejs//:defs.bzl", "nodejs_binary")
