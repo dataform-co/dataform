@@ -48,7 +48,7 @@ genrule(
     name = "package_tar",
     srcs = [":package"],
     outs = ["package.tgz"],
-    cmd = "tar -cvzf $(location package.tgz) -C $(location :package)/.. package --dereference",
+    cmd = "tar -cvzf $(location package.tgz) -C $(location :package)/.. --dereference package",
 )
 
 load("@build_bazel_rules_nodejs//:defs.bzl", "nodejs_binary")
