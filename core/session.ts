@@ -5,6 +5,8 @@ import { Table, TContextable, TConfig } from "./table";
 import { Operation, OContextable } from "./operation";
 import { Assertion, AContextable } from "./assertion";
 
+type ActionProto = { name?: string; fileName?: string; dependencies?: string[] };
+
 export class Session {
   public rootDir: string;
 
@@ -131,8 +133,8 @@ export class Session {
     this.compileErrors.push(compileError);
   }
 
-  compileGraphChunk(part: { [name: string]: Table | Operation | Assertion }): Array<any> {
-    const compiledChunks = [];
+  compileGraphChunk<T>(part: { [name: string]: { proto: ActionProto; compile(): T } }): Array<T> {
+    const compiledChunks: Array<T> = [];
 
     Object.keys(part).forEach(key => {
       try {
@@ -149,15 +151,19 @@ export class Session {
   compile(): protos.ICompiledGraph {
     var compiledGraph = protos.CompiledGraph.create({
       projectConfig: this.config,
-      tables: this.compileGraphChunk(this.tables),
-      operations: this.compileGraphChunk(this.operations),
-      assertions: this.compileGraphChunk(this.assertions),
+      tables: this.compileGraphChunk<protos.ITable>(this.tables),
+      operations: this.compileGraphChunk<protos.IOperation>(this.operations),
+      assertions: this.compileGraphChunk<protos.IAssertion>(this.assertions),
       validationErrors: this.validationErrors,
       compileErrors: this.compileErrors
     });
 
     // Check there aren't any duplicate names.
-    var allNodes = [].concat(compiledGraph.tables, compiledGraph.assertions, compiledGraph.operations);
+    var allNodes = (<Array<ActionProto>>[]).concat(
+      compiledGraph.tables,
+      compiledGraph.assertions,
+      compiledGraph.operations
+    );
     var allNodeNames = allNodes.map(node => node.name);
 
     // Check there are no duplicate node names.

@@ -1,7 +1,7 @@
 import { DbAdapter } from "./index";
 import * as protos from "@dataform/protos";
 import * as PromisePool from "promise-pool-executor";
-import * as Promise from "bluebird";
+import * as Bluebird from "bluebird";
 import * as EventEmitter from "events";
 const BigQuery = require("@google-cloud/bigquery");
 
@@ -27,36 +27,43 @@ export class BigQueryDbAdapter implements DbAdapter {
   }
 
   execute(statement: string) {
-    this.pool.addSingleTask({
-      generator: () =>
-        new Promise((resolve, reject, onCancel) => {
-          let isCanceled = false;
-          const eEmitter = new EventEmitter();
+    return Bluebird.resolve().then(() =>
+      this.pool
+        .addSingleTask({
+          generator: () =>
+            new Bluebird<any[]>((resolve, reject, onCancel) => {
+              let isCanceled = false;
+              const eEmitter = new EventEmitter();
 
-          onCancel(() => {
-            isCanceled = true;
-            eEmitter.emit("jobCancel");
-          });
-
-          this.client.createQueryJob({ useLegacySql: false, query: statement, maxResults: 1000 }, (err, job) => {
-            if (err) reject(err);
-
-            eEmitter.on("jobCancel", () => {
-              job.cancel().then(() => {
-                reject(new Error("Run cancelled"));
+              onCancel(() => {
+                isCanceled = true;
+                eEmitter.emit("jobCancel");
               });
-            });
 
-            if (isCanceled) {
-              return;
-            }
-            job.getQueryResults((err, result) => {
-              if (err) reject(err);
-              resolve(result);
-            });
-          });
+              this.client.createQueryJob(
+                { useLegacySql: false, query: statement, maxResults: 1000 },
+                (err: any, job: any) => {
+                  if (err) reject(err);
+
+                  eEmitter.on("jobCancel", () => {
+                    job.cancel().then(() => {
+                      reject(new Error("Run cancelled"));
+                    });
+                  });
+
+                  if (isCanceled) {
+                    return;
+                  }
+                  job.getQueryResults((err: any, result: any[]) => {
+                    if (err) reject(err);
+                    resolve(result);
+                  });
+                }
+              );
+            })
         })
-    }).promise();
+        .promise()
+    );
   }
 
   evaluate(statement: string) {
@@ -70,9 +77,9 @@ export class BigQueryDbAdapter implements DbAdapter {
   tables(): Promise<protos.ITarget[]> {
     return this.client
       .getDatasets({ autoPaginate: true })
-      .then(result => {
+      .then((result: any) => {
         return Promise.all(
-          result[0].map(dataset => {
+          result[0].map((dataset: any) => {
             return this.pool
               .addSingleTask({
                 generator: () => dataset.getTables({ autoPaginate: true })
@@ -81,10 +88,10 @@ export class BigQueryDbAdapter implements DbAdapter {
           })
         );
       })
-      .then(datasetTables => {
+      .then((datasetTables: any) => {
         var allTables: protos.ITarget[] = [];
-        datasetTables.forEach(tablesResult =>
-          tablesResult[0].forEach(table => allTables.push({ schema: table.dataset.id, name: table.id }))
+        datasetTables.forEach((tablesResult: any) =>
+          tablesResult[0].forEach((table: any) => allTables.push({ schema: table.dataset.id, name: table.id }))
         );
         return allTables;
       });
