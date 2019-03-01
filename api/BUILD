@@ -11,6 +11,7 @@ ts_library(
         "//core",
         "//protos",
         "@npm//@google-cloud/bigquery",
+        "@npm//@types/bluebird",
         "@npm//@types/long",
         "@npm//@types/node",
         "@npm//glob",

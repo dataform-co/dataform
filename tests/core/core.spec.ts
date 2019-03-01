@@ -1,6 +1,6 @@
 import { expect } from "chai";
 
-import { Session } from "@dataform/core";
+import { Session, Table } from "@dataform/core";
 import * as compilers from "@dataform/core/compilers";
 import * as protos from "@dataform/protos";
 import * as path from "path";
@@ -89,7 +89,7 @@ describe("@dataform/core", () => {
       });
 
       const sessionFail = new Session(path.dirname(__filename), TEST_CONFIG);
-      const cases = {
+      const cases: { [key: string]: { table: Table; errorTest: RegExp } } = {
         missing_where: {
           table: sessionFail.publish("missing_where", { type: "incremental", descriptor: ["field"] }),
           errorTest: /"where" property is not defined/

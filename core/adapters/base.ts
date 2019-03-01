@@ -32,5 +32,5 @@ export abstract class Adapter {
     }`;
   }
 
-  abstract resolveTarget(target: protos.ITarget);
+  abstract resolveTarget(target: protos.ITarget): string;
 }

@@ -20,7 +20,7 @@ export { adapters, utils, compilers, tasks, Session, Table, TableContext, TConfi
 if (require.extensions) {
   require.extensions[".sql"] = function(module: any, file: string) {
     var oldCompile = module._compile;
-    module._compile = function(code, file) {
+    module._compile = function(code: any, file: any) {
       module._compile = oldCompile;
       var transformedCode = compilers.compile(code, file);
       module._compile(transformedCode, file);

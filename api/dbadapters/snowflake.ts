@@ -1,7 +1,7 @@
 import { DbAdapter } from "./index";
 import * as protos from "@dataform/protos";
 import { promisify } from "util";
-import * as Promise from "bluebird";
+import * as Bluebird from "bluebird";
 
 interface ISnowflakeStatement {
   cancel: () => void;
@@ -52,7 +52,7 @@ export class SnowflakeDbAdapter implements DbAdapter {
   }
 
   execute(statement: string) {
-    return new Promise<any[]>((resolve, reject) => {
+    return new Bluebird<any[]>((resolve, reject) => {
       this.connection.execute({
         sqlText: statement,
         complete: function(err, _, rows) {
@@ -71,17 +71,19 @@ export class SnowflakeDbAdapter implements DbAdapter {
   }
 
   tables(): Promise<protos.ITarget[]> {
-    return this.execute(
-      `select table_name, table_schema
+    return Promise.resolve().then(() =>
+      this.execute(
+        `select table_name, table_schema
          from information_schema.tables
          where LOWER(table_schema) != 'information_schema'
            and LOWER(table_schema) != 'pg_catalog'
            and LOWER(table_schema) != 'pg_internal'`
-    ).then(rows =>
-      rows.map(row => ({
-        schema: row.TABLE_SCHEMA,
-        name: row.TABLE_NAME
-      }))
+      ).then(rows =>
+        rows.map(row => ({
+          schema: row.TABLE_SCHEMA,
+          name: row.TABLE_NAME
+        }))
+      )
     );
   }
 
@@ -114,6 +116,6 @@ export class SnowflakeDbAdapter implements DbAdapter {
   }
 
   prepareSchema(schema: string): Promise<void> {
-    return this.execute(`create schema if not exists "${schema}"`).then(() => {});
+    return Promise.resolve().then(() => this.execute(`create schema if not exists "${schema}"`).then(() => {}));
   }
 }

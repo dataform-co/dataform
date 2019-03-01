@@ -49,7 +49,7 @@ export class Table {
   private contextablePreOps: TContextable<string | string[]>[] = [];
   private contextablePostOps: TContextable<string | string[]>[] = [];
 
-  private getPredefinedTypes(types) {
+  private getPredefinedTypes(types: any) {
     return Object.keys(types)
       .map(key => `"${types[key]}"`)
       .join(" | ");
@@ -131,8 +131,8 @@ export class Table {
   public type(type: TableType) {
     if (
       Object.keys(TableTypes)
-        .map(key => TableTypes[key])
-        .indexOf(type) === -1
+        .map(key => TableTypes[key as any])
+        .indexOf(type as any) === -1
     ) {
       const predefinedTypes = this.getPredefinedTypes(TableTypes);
       const message = `Wrong type of table detected. Should only use predefined types: ${predefinedTypes}`;
@@ -194,6 +194,7 @@ export class Table {
 
   public bigquery(bigquery: protos.IBigQueryOptions) {
     this.proto.bigquery = protos.BigQueryOptions.create(bigquery);
+    return this;
   }
 
   public dependencies(value: string | string[]) {
@@ -206,10 +207,10 @@ export class Table {
     return this;
   }
 
-  public descriptor(key: string, description?: string);
-  public descriptor(map: { [key: string]: string });
-  public descriptor(keys: string[]);
-  public descriptor(keyOrKeysOrMap: string | string[] | { [key: string]: string }, description?: string) {
+  public descriptor(key: string, description?: string): Table;
+  public descriptor(map: { [key: string]: string }): Table;
+  public descriptor(keys: string[]): Table;
+  public descriptor(keyOrKeysOrMap: string | string[] | { [key: string]: string }, description?: string): Table {
     if (!this.proto.descriptor) {
       this.proto.descriptor = {};
     }
@@ -324,10 +325,10 @@ export class TableContext {
     return "";
   }
 
-  public descriptor(key: string, description?: string);
-  public descriptor(map: { [key: string]: string });
-  public descriptor(keys: string[]);
-  public descriptor(keyOrKeysOrMap: string | string[] | { [key: string]: string }, description?: string) {
+  public descriptor(key: string, description?: string): string;
+  public descriptor(map: { [key: string]: string }): string;
+  public descriptor(keys: string[]): string;
+  public descriptor(keyOrKeysOrMap: string | string[] | { [key: string]: string }, description?: string): string {
     this.table.descriptor(keyOrKeysOrMap as any, description);
     return "";
   }
