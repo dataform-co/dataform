@@ -27,17 +27,17 @@ export class BigQueryDbAdapter implements DbAdapter {
   }
 
   execute(statement: string) {
-    return new Promise((resolve, reject, onCancel) => {
-      let isCanceled = false;
-      const eEmitter = new EventEmitter();
+    this.pool.addSingleTask({
+      generator: () =>
+        new Promise((resolve, reject, onCancel) => {
+          let isCanceled = false;
+          const eEmitter = new EventEmitter();
 
-      onCancel(() => {
-        isCanceled = true;
-        eEmitter.emit("jobCancel");
-      });
+          onCancel(() => {
+            isCanceled = true;
+            eEmitter.emit("jobCancel");
+          });
 
-      this.pool.addSingleTask({
-        generator: () =>
           this.client.createQueryJob({ useLegacySql: false, query: statement, maxResults: 1000 }, (err, job) => {
             if (err) reject(err);
 
@@ -54,9 +54,9 @@ export class BigQueryDbAdapter implements DbAdapter {
               if (err) reject(err);
               resolve(result);
             });
-          })
-        });
-    });
+          });
+        })
+    }).promise();
   }
 
   evaluate(statement: string) {
