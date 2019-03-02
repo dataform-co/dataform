@@ -22,8 +22,8 @@ ts_library(
     deps = [
         ":utils",
         "//tests/utils",
-        "@npm//@types/mocha",
         "@npm//@types/chai",
+        "@npm//@types/mocha",
         "@npm//@types/node",
     ],
 )
