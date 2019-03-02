@@ -211,18 +211,18 @@ export class Table {
   public descriptor(map: { [key: string]: string }): Table;
   public descriptor(keys: string[]): Table;
   public descriptor(keyOrKeysOrMap: string | string[] | { [key: string]: string }, description?: string): Table {
-    if (!this.proto.descriptor) {
-      this.proto.descriptor = {};
+    if (!this.proto.fieldDescriptor) {
+      this.proto.fieldDescriptor = {};
     }
     if (typeof keyOrKeysOrMap === "string") {
-      this.proto.descriptor[keyOrKeysOrMap] = description || "";
+      this.proto.fieldDescriptor[keyOrKeysOrMap] = description || "";
     } else if (keyOrKeysOrMap instanceof Array) {
       keyOrKeysOrMap.forEach(key => {
-        this.proto.descriptor[key] = "";
+        this.proto.fieldDescriptor[key] = "";
       });
     } else {
       Object.keys(keyOrKeysOrMap).forEach(key => {
-        this.proto.descriptor[key] = keyOrKeysOrMap[key] || "";
+        this.proto.fieldDescriptor[key] = keyOrKeysOrMap[key] || "";
       });
     }
     return this;

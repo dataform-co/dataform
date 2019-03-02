@@ -5,6 +5,11 @@ proto_library(
     srcs = glob(["**/*.proto"]),
 )
 
+java_proto_library(
+    name = "java",
+    deps = [":protos_lib"],
+)
+
 load("//tools:ts_proto_library.bzl", "ts_proto_library")
 
 ts_proto_library(
