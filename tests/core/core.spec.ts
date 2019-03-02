@@ -29,7 +29,7 @@ describe("@dataform/core", () => {
 
       expect(t.name).equals("example");
       expect(t.type).equals("table");
-      expect(t.descriptor).deep.equals({
+      expect(t.fieldDescriptor).deep.equals({
         test: "test description"
       });
       expect(t.preOps).deep.equals(["pre_op"]);
@@ -54,7 +54,7 @@ describe("@dataform/core", () => {
 
       expect(t.name).equals("example");
       expect(t.type).equals("table");
-      expect(t.descriptor).deep.equals({
+      expect(t.fieldDescriptor).deep.equals({
         test: "test description"
       });
       expect(t.preOps).deep.equals(["pre_op"]);
