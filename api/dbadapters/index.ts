@@ -1,11 +1,11 @@
 import * as protos from "@dataform/protos";
-import * as Promise from "bluebird";
+import * as Bluebird from "bluebird";
 import { BigQueryDbAdapter } from "./bigquery";
 import { RedshiftDbAdapter } from "./redshift";
 import { SnowflakeDbAdapter } from "./snowflake";
 
 export interface DbAdapter {
-  execute(statement: string): Promise<any[]>;
+  execute(statement: string): Bluebird<any[]>;
   evaluate(statement: string): Promise<void>;
   tables(): Promise<protos.ITarget[]>;
   table(target: protos.ITarget): Promise<protos.ITableMetadata>;

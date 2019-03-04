@@ -1,6 +1,6 @@
 import { DbAdapter } from "./index";
 import * as protos from "@dataform/protos";
-import * as Promise from "bluebird";
+import * as Bluebird from "bluebird";
 
 const Redshift: RedshiftType = require("node-redshift");
 
@@ -12,7 +12,7 @@ type RedshiftType = {
     password?: string;
     database?: string;
     ssl: boolean;
-  });
+  }): RedshiftType;
   query: (query: string) => Promise<{ rows: any[] }>;
 };
 
@@ -24,7 +24,7 @@ export class RedshiftDbAdapter implements DbAdapter {
   }
 
   execute(statement: string) {
-    return this.client.query(statement).then(result => result.rows);
+    return Bluebird.resolve().then(() => this.client.query(statement).then(result => result.rows));
   }
 
   evaluate(statement: string) {
@@ -32,18 +32,22 @@ export class RedshiftDbAdapter implements DbAdapter {
   }
 
   tables(): Promise<protos.ITarget[]> {
-    return this.execute(
-      `select table_name, table_schema
+    return Promise.resolve()
+      .then(() =>
+        this.execute(
+          `select table_name, table_schema
          from information_schema.tables
          where table_schema != 'information_schema'
            and table_schema != 'pg_catalog'
            and table_schema != 'pg_internal'`
-    ).then(rows =>
-      rows.map(row => ({
-        schema: row.table_schema,
-        name: row.table_name
-      }))
-    );
+        )
+      )
+      .then(rows =>
+        rows.map(row => ({
+          schema: row.table_schema,
+          name: row.table_name
+        }))
+      );
   }
 
   table(target: protos.ITarget): Promise<protos.ITableMetadata> {
@@ -75,6 +79,6 @@ export class RedshiftDbAdapter implements DbAdapter {
   }
 
   prepareSchema(schema: string): Promise<void> {
-    return this.execute(`create schema if not exists "${schema}"`).then(() => {});
+    return Promise.resolve().then(() => this.execute(`create schema if not exists "${schema}"`).then(() => {}));
   }
 }

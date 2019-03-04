@@ -1,5 +1,9 @@
 syntax="proto3";
 
+option java_package = "com.dataform.protos";
+option java_outer_classname = "CoreMeta";
+option java_multiple_files = true;
+
 message ProjectConfig {
   string warehouse = 1;
   string default_schema = 2;
@@ -58,7 +62,7 @@ message Table {
   string query = 5;
   bool protected = 9;
 
-  map<string, string> descriptor = 16;
+  map<string, string> fieldDescriptor = 16;
 
   // Incremental only.
   string where = 8;

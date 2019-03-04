@@ -123,6 +123,7 @@ export class Table {
 
   public bigquery(bigquery: protos.IBigQueryOptions) {
     this.proto.bigquery = protos.BigQueryOptions.create(bigquery);
+    return this;
   }
 
   public dependencies(value: string | string[]) {
@@ -135,22 +136,22 @@ export class Table {
     return this;
   }
 
-  public descriptor(key: string, description?: string);
-  public descriptor(map: { [key: string]: string });
-  public descriptor(keys: string[]);
-  public descriptor(keyOrKeysOrMap: string | string[] | { [key: string]: string }, description?: string) {
-    if (!this.proto.descriptor) {
-      this.proto.descriptor = {};
+  public descriptor(key: string, description?: string): Table;
+  public descriptor(map: { [key: string]: string }): Table;
+  public descriptor(keys: string[]): Table;
+  public descriptor(keyOrKeysOrMap: string | string[] | { [key: string]: string }, description?: string): Table {
+    if (!this.proto.fieldDescriptor) {
+      this.proto.fieldDescriptor = {};
     }
     if (typeof keyOrKeysOrMap === "string") {
-      this.proto.descriptor[keyOrKeysOrMap] = description || "";
+      this.proto.fieldDescriptor[keyOrKeysOrMap] = description || "";
     } else if (keyOrKeysOrMap instanceof Array) {
       keyOrKeysOrMap.forEach(key => {
-        this.proto.descriptor[key] = "";
+        this.proto.fieldDescriptor[key] = "";
       });
     } else {
       Object.keys(keyOrKeysOrMap).forEach(key => {
-        this.proto.descriptor[key] = keyOrKeysOrMap[key] || "";
+        this.proto.fieldDescriptor[key] = keyOrKeysOrMap[key] || "";
       });
     }
     return this;
@@ -248,10 +249,10 @@ export class TableContext {
     return "";
   }
 
-  public descriptor(key: string, description?: string);
-  public descriptor(map: { [key: string]: string });
-  public descriptor(keys: string[]);
-  public descriptor(keyOrKeysOrMap: string | string[] | { [key: string]: string }, description?: string) {
+  public descriptor(key: string, description?: string): string;
+  public descriptor(map: { [key: string]: string }): string;
+  public descriptor(keys: string[]): string;
+  public descriptor(keyOrKeysOrMap: string | string[] | { [key: string]: string }, description?: string): string {
     this.table.descriptor(keyOrKeysOrMap as any, description);
     return "";
   }

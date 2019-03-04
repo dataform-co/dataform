@@ -5,6 +5,8 @@ import { Table, TContextable, TConfig } from "./table";
 import { Operation, OContextable } from "./operation";
 import { Assertion, AContextable } from "./assertion";
 
+type ActionProto = { name?: string; fileName?: string; dependencies?: string[] };
+
 export class Session {
   public rootDir: string;
 
@@ -122,8 +124,8 @@ export class Session {
     this.graphErrors.compilationErrors.push(compileError);
   }
 
-  compileGraphChunk(part: { [name: string]: Table | Operation | Assertion }): Array<any> {
-    const compiledChunks = [];
+  compileGraphChunk<T>(part: { [name: string]: { proto: ActionProto; compile(): T } }): Array<T> {
+    const compiledChunks: Array<T> = [];
 
     Object.keys(part).forEach(key => {
       try {

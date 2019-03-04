@@ -1,6 +1,5 @@
 import { expect } from "chai";
-
-import { Session, utils } from "@dataform/core";
+import { Session, Table, utils } from "@dataform/core";
 import * as compilers from "@dataform/core/compilers";
 import * as protos from "@dataform/protos";
 import * as path from "path";
@@ -29,7 +28,7 @@ describe("@dataform/core", () => {
 
       expect(t.name).equals("example");
       expect(t.type).equals("table");
-      expect(t.descriptor).deep.equals({
+      expect(t.fieldDescriptor).deep.equals({
         test: "test description"
       });
       expect(t.preOps).deep.equals(["pre_op"]);
@@ -54,7 +53,7 @@ describe("@dataform/core", () => {
 
       expect(t.name).equals("example");
       expect(t.type).equals("table");
-      expect(t.descriptor).deep.equals({
+      expect(t.fieldDescriptor).deep.equals({
         test: "test description"
       });
       expect(t.preOps).deep.equals(["pre_op"]);
@@ -88,7 +87,7 @@ describe("@dataform/core", () => {
         .to.be.an("array").that.is.empty;
 
       const sessionFail = new Session(path.dirname(__filename), TEST_CONFIG);
-      const cases = {
+      const cases: { [key: string]: { table: Table; errorTest: RegExp } } = {
         missing_where: {
           table: sessionFail.publish("missing_where", { type: "incremental", descriptor: ["field"] }),
           errorTest: /"where" property is not defined/
