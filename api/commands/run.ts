@@ -153,7 +153,7 @@ export class Runner {
           return promise;
         });
       }, Promise.resolve([] as protos.IExecutedTask[]))
-      .then(results => {
+      .then((results: protos.IExecutedTask[]) => {
         const endTime = process.hrtime(startTime);
         const executionTime = endTime[0] * 1000 + Math.round(endTime[1] / 1000000);
         const prettyTime = prettyMs(executionTime);
