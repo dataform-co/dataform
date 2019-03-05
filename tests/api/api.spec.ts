@@ -379,9 +379,9 @@ describe("@dataform/api", () => {
 
       // compile project
       const graph = await compile(projectDir).catch(error => error);
-      const gErrors = utils.validate(graph);
-
       expect(graph).to.not.be.an.instanceof(Error);
+
+      const gErrors = utils.validate(graph);
 
       expect(gErrors)
         .to.have.property("compilationErrors")
@@ -453,9 +453,10 @@ describe("@dataform/api", () => {
         }
       ];
       const graph = await compile(path.resolve("df/examples/bigquery_with_errors")).catch(error => error);
+      expect(graph).to.not.be.an.instanceof(Error);
+
       const gErrors = utils.validate(graph);
 
-      expect(graph).to.not.be.an.instanceof(Error);
       expect(gErrors)
         .to.have.property("compilationErrors")
         .to.be.an("array");
@@ -502,9 +503,9 @@ describe("@dataform/api", () => {
       };
 
       const graph = await compile("df/examples/redshift_operations").catch(error => error);
-      const gErrors = utils.validate(graph);
-
       expect(graph).to.not.be.an.instanceof(Error);
+
+      const gErrors = utils.validate(graph);  
 
       expect(gErrors)
         .to.have.property("compilationErrors")
@@ -524,9 +525,9 @@ describe("@dataform/api", () => {
 
     it("snowflake_example", async () => {
       const graph = await compile("df/examples/snowflake").catch(error => error);
-      const gErrors = utils.validate(graph);
-
       expect(graph).to.not.be.an.instanceof(Error);
+
+      const gErrors = utils.validate(graph);
 
       expect(gErrors)
         .to.have.property("compilationErrors")
