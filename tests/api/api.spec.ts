@@ -436,7 +436,10 @@ describe("@dataform/api", () => {
       });
     });
 
-    it("bigquery_with_errors_example", async () => {
+    // Disabled, because test bind old versions of protos library instead of using local changes
+    // More info: https://github.com/dataform-co/dataform/issues/92
+    // TODO: turn on when issue #92 will be fixed
+    xit("bigquery_with_errors_example", async () => {
       const expectedResults = [
         {
           fileName: "definitions/test.js",
