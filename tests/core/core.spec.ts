@@ -1,6 +1,5 @@
 import { expect } from "chai";
-
-import { Session, Table } from "@dataform/core";
+import { Session, Table, utils } from "@dataform/core";
 import * as compilers from "@dataform/core/compilers";
 import * as protos from "@dataform/protos";
 import * as path from "path";
@@ -81,12 +80,11 @@ describe("@dataform/core", () => {
       `
       );
       const cgSuccess = sessionSuccess.compile();
+      const cgSuccessErrors = utils.validate(cgSuccess);
 
-      cgSuccess.tables.forEach(item => {
-        expect(item)
-          .to.have.property("validationErrors")
-          .to.be.an("array").that.is.empty;
-      });
+      expect(cgSuccessErrors)
+        .to.have.property("validationErrors")
+        .to.be.an("array").that.is.empty;
 
       const sessionFail = new Session(path.dirname(__filename), TEST_CONFIG);
       const cases: { [key: string]: { table: Table; errorTest: RegExp } } = {
@@ -100,11 +98,17 @@ describe("@dataform/core", () => {
         }
       };
       const cgFail = sessionFail.compile();
+      const cgFailErrors = utils.validate(cgFail);
+
+      expect(cgFailErrors)
+        .to.have.property("validationErrors")
+        .to.be.an("array").that.is.not.empty;
 
       Object.keys(cases).forEach(key => {
-        let table = cgFail.tables.filter(t => t.name == key)[0];
-        expect(table.validationErrors).to.be.an("array").that.is.not.empty;
-        expect(table.validationErrors[0].message).matches(cases[key].errorTest);
+        const err = cgFailErrors.validationErrors.find(e => e.nodeName === key);
+        expect(err)
+          .to.have.property("message")
+          .that.matches(cases[key].errorTest);
       });
     });
 
@@ -114,21 +118,25 @@ describe("@dataform/core", () => {
       sessionSuccess.publish("exampleSuccess2", { type: "view" });
       sessionSuccess.publish("exampleSuccess3", { type: "incremental", where: "test" });
       const cgSuccess = sessionSuccess.compile();
+      const cgSuccessErrors = utils.validate(cgSuccess);
 
-      cgSuccess.tables.forEach(item => {
-        expect(item)
-          .to.have.property("validationErrors")
-          .to.be.an("array").that.is.empty;
-      });
+      expect(cgSuccessErrors)
+        .to.have.property("validationErrors")
+        .to.be.an("array").that.is.empty;
 
       const sessionFail = new Session(path.dirname(__filename), TEST_CONFIG);
-      const tFail = sessionFail.publish("exampleFail", JSON.parse('{"type": "ta ble"}')).compile();
-      expect(tFail)
-        .to.have.property("validationErrors")
-        .to.be.an("array");
+      sessionFail.publish("exampleFail", JSON.parse('{"type": "ta ble"}'));
+      const cgFail = sessionFail.compile();
+      const cgFailErrors = utils.validate(cgFail);
 
-      const errors = tFail.validationErrors.filter(item => item.message.match(/Wrong type of table/));
-      expect(errors).to.be.an("array").that.is.not.empty;
+      expect(cgFailErrors)
+        .to.have.property("validationErrors")
+        .to.be.an("array").that.is.not.empty;
+
+      const err = cgFailErrors.validationErrors.find(e => e.nodeName === "exampleFail");
+      expect(err)
+        .to.have.property("message")
+        .that.matches(/Wrong type of table/);
     });
 
     it("validation_redshift_success", function() {
@@ -147,17 +155,16 @@ describe("@dataform/core", () => {
       });
 
       const graph = session.compile();
+      const gErrors = utils.validate(graph);
 
       expect(graph)
         .to.have.property("tables")
         .to.be.an("array")
         .to.have.lengthOf(2);
 
-      graph.tables.forEach(item => {
-        expect(item)
-          .to.have.property("validationErrors")
-          .to.be.an("array").that.is.empty;
-      });
+      expect(gErrors)
+        .to.have.property("validationErrors")
+        .to.be.an("array").that.is.empty;
     });
 
     it("validation_redshift_fail", function() {
@@ -218,30 +225,30 @@ describe("@dataform/core", () => {
         redshift: {}
       });
 
-      const graph = session.compile();
-      const expectedMessages = [
-        /Property "distKey" is not defined/,
-        /Property "distStyle" is not defined/,
-        /Wrong value of "distStyle" property/,
-        /Property "sortKeys" is not defined/,
-        /Property "sortKeys" is not defined/,
-        /Property "sortStyle" is not defined/,
-        /Wrong value of "sortStyle" property/,
-        /Missing properties in redshift config/
+      const expectedResults = [
+        { name: "example_absent_distKey", message: /Property "distKey" is not defined/ },
+        { name: "example_absent_distStyle", message: /Property "distStyle" is not defined/ },
+        { name: "example_wrong_distStyle", message: /Wrong value of "distStyle" property/ },
+        { name: "example_absent_sortKeys", message: /Property "sortKeys" is not defined/ },
+        { name: "example_empty_sortKeys", message: /Property "sortKeys" is not defined/ },
+        { name: "example_absent_sortStyle", message: /Property "sortStyle" is not defined/ },
+        { name: "example_wrong_sortStyle", message: /Wrong value of "sortStyle" property/ },
+        { name: "example_empty_redshift", message: /Missing properties in redshift config/ }
       ];
 
-      expect(graph)
-        .to.have.property("tables")
+      const graph = session.compile();
+      const gErrors = utils.validate(graph);
+
+      expect(gErrors)
+        .to.have.property("validationErrors")
         .to.be.an("array")
         .to.have.lengthOf(8);
 
-      graph.tables.forEach((item, index) => {
-        expect(item)
-          .to.have.property("validationErrors")
-          .to.be.an("array");
-
-        const errors = item.validationErrors.filter(item => item.message.match(expectedMessages[index]));
-        expect(errors).to.be.an("array").that.is.not.empty;
+      expectedResults.forEach(result => {
+        const err = gErrors.validationErrors.find(e => e.nodeName === result.name);
+        expect(err)
+          .to.have.property("message")
+          .that.matches(result.message);
       });
     });
   });
@@ -253,11 +260,12 @@ describe("@dataform/core", () => {
       session.operate("operate-2", ctx => `select * from ${ctx.ref("operate-1")}`).hasOutput(true);
 
       const graph = session.compile();
+      const gErrors = utils.validate(graph);
 
-      expect(graph)
-        .to.have.property("compileErrors")
+      expect(gErrors)
+        .to.have.property("compilationErrors")
         .to.be.an("array").that.is.empty;
-      expect(graph)
+      expect(gErrors)
         .to.have.property("validationErrors")
         .to.be.an("array").that.is.empty;
       expect(graph)
@@ -281,12 +289,13 @@ describe("@dataform/core", () => {
       session.operate("operate-1", () => `select 1 as sample`).hasOutput(false);
       session.operate("operate-2", ctx => `select * from ${ctx.ref("operate-1")}`).hasOutput(false);
       const graph = session.compile();
+      const gErrors = utils.validate(graph);
 
-      expect(graph)
-        .to.have.property("validationErrors")
-        .to.be.an("array");
+      expect(gErrors)
+        .to.have.property("compilationErrors")
+        .to.be.an("array").that.is.not.empty;
 
-      const errors = graph.validationErrors.map(item => item.message);
+      const errors = gErrors.compilationErrors.map(item => item.message);
       expect(errors).deep.equals(["Could not find referenced node: operate-1"]);
     });
   });
@@ -297,24 +306,32 @@ describe("@dataform/core", () => {
       session.publish("a").dependencies("b");
       session.publish("b").dependencies("a");
       const cGraph = session.compile();
+      const gErrors = utils.validate(cGraph);
 
-      expect(cGraph)
+      expect(gErrors)
         .to.have.property("validationErrors")
-        .to.be.an("array");
-      const errors = cGraph.validationErrors.filter(item => item.message.match(/Circular dependency/));
-      expect(errors).to.be.an("array").that.is.not.empty;
+        .to.be.an("array").that.is.not.empty;
+
+      const err = gErrors.validationErrors.find(e => e.nodeName === "a");
+      expect(err)
+        .to.have.property("message")
+        .that.matches(/Circular dependency/);
     });
 
     it("missing_dependency", () => {
       const session = new Session(path.dirname(__filename), TEST_CONFIG);
       session.publish("a").dependencies("b");
       const cGraph = session.compile();
+      const gErrors = utils.validate(cGraph);
 
-      expect(cGraph)
+      expect(gErrors)
         .to.have.property("validationErrors")
-        .to.be.an("array");
-      const errors = cGraph.validationErrors.filter(item => item.message.match(/Missing dependency/));
-      expect(errors).to.be.an("array").that.is.not.empty;
+        .to.be.an("array").that.is.not.empty;
+
+      const err = gErrors.validationErrors.find(e => e.nodeName === "a");
+      expect(err)
+        .to.have.property("message")
+        .that.matches(/Missing dependency/);
     });
 
     it("duplicate_node_names", () => {
@@ -323,12 +340,38 @@ describe("@dataform/core", () => {
       session.publish("b");
       session.publish("a");
       const cGraph = session.compile();
+      const gErrors = utils.validate(cGraph);
 
-      expect(cGraph)
-        .to.have.property("validationErrors")
-        .to.be.an("array");
-      const errors = cGraph.validationErrors.filter(item => item.message.match(/Duplicate node name/));
+      expect(gErrors)
+        .to.have.property("compilationErrors")
+        .to.be.an("array").that.is.not.empty;
+
+      const errors = gErrors.compilationErrors.filter(item => item.message.match(/Duplicate node name/));
       expect(errors).to.be.an("array").that.is.not.empty;
+    });
+
+    it("validate", () => {
+      const graph: protos.ICompiledGraph = protos.CompiledGraph.create({
+        projectConfig: { warehouse: "redshift" },
+        tables: [
+          { name: "a", target: { schema: "schema", name: "a" }, dependencies: ["b"] },
+          { name: "b", target: { schema: "schema", name: "b" }, dependencies: ["z"] },
+          { name: "a", target: { schema: "schema", name: "a" }, dependencies: [] },
+          { name: "c", target: { schema: "schema", name: "c" }, dependencies: ["d"] },
+          { name: "d", target: { schema: "schema", name: "d" }, dependencies: ["c"] }
+        ]
+      });
+      const gErrors = utils.validate(graph);
+
+      expect(gErrors)
+        .to.have.property("validationErrors")
+        .to.be.an("array").that.is.not.empty;
+
+      const errors = gErrors.validationErrors.map(item => item.message);
+
+      expect(errors.some(item => !!item.match(/Duplicate node name/))).to.be.true;
+      expect(errors.some(item => !!item.match(/Missing dependency/))).to.be.true;
+      expect(errors.some(item => !!item.match(/Circular dependency/))).to.be.true;
     });
   });
 
