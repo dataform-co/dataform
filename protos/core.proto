@@ -147,14 +147,25 @@ message ExecutedTask {
   string error = 3;
 }
 
+enum NodeExecutionStatus {
+  UNKNOWN_NODE_EXECUTION_STATUS = 0;
+  SUCCESSFUL = 1;
+  FAILED = 2;
+  SKIPPED = 3;
+  DISABLED = 4;
+}
+
 message ExecutedNode {
   string name = 1;
   // May be empty, indicating that nothing was run as part of this Node.
   repeated ExecutedTask tasks = 2;
 
-  bool ok = 3;
-  bool skipped = 4;
+  NodeExecutionStatus status = 6;
   int64 executionTime = 5;
+
+  // Deprecated status fields. Prefer using the 'status' field.
+  bool deprecated_ok = 3;
+  bool deprecated_skipped = 4;
 }
 
 message ExecutedGraph {
