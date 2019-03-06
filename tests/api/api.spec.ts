@@ -1,4 +1,5 @@
 import { expect, assert } from "chai";
+import * as Long from "long";
 import * as rimraf from "rimraf";
 import { query, Builder, compile, init } from "@dataform/api";
 import * as protos from "@dataform/protos";
@@ -7,6 +8,7 @@ import * as path from "path";
 import * as os from "os";
 import * as stackTrace from "stack-trace";
 import { asPlainObject, cleanSql } from "df/tests/utils";
+import { validateProfile } from "@dataform/cli/utils";
 
 describe("@dataform/api", () => {
   describe("build", () => {
@@ -584,6 +586,51 @@ describe("@dataform/api", () => {
         .then(compiledQuery => {
           expect(compiledQuery).equals("select 1 as test");
         });
+    });
+  });
+
+  describe("profile_config", () => {
+    const bigqueryProfile = { projectId: "", credentials: "" };
+    const redshiftProfile = { host: "", port: Long.fromNumber(0), user: "", password: "", database: "" };
+    const snowflakeProfile = { accountId: "", userName: "", password: "", role: "", databaseName: "", warehouse: "" };
+
+    it("empty_profile", () => {
+      expect(() => validateProfile(null)).to.throw(/Missing profile JSON/);
+      expect(() => validateProfile({})).to.throw(/Missing profile JSON/);
+    });
+
+    it("warehouse_check", () => {
+      expect(() => validateProfile({ bigquery: bigqueryProfile })).to.not.throw();
+      expect(() => validateProfile({ redshift: redshiftProfile })).to.not.throw();
+      expect(() => validateProfile({ snowflake: snowflakeProfile })).to.not.throw();
+      expect(() => validateProfile(JSON.parse('{ "some_other_warehouse": {}}'))).to.throw(/Unsupported warehouse/);
+    });
+
+    it("props_check", () => {
+      const toThrow = [
+        { bigquery: {} },
+        { bigquery: { wrongPropery: "" } },
+        { bigquery: { projectId: "" } },
+        { redshift: {} },
+        { redshift: { wrongPropery: "" } },
+        { redshift: { host: "" } },
+        { redshift: { ...redshiftProfile, port: "" } },
+        { snowflake: {} },
+        { snowflake: { wrongPropery: "" } },
+        { snowflake: { accountId: "" } }
+      ];
+      const toNotThrow = [
+        { bigquery: { ...bigqueryProfile, oneMoreProperty: "" } },
+        { redshift: { ...redshiftProfile, oneMoreProperty: "" } },
+        { snowflake: { ...snowflakeProfile, oneMoreProperty: "" } }
+      ];
+
+      toThrow.forEach(profile => {
+        expect(() => validateProfile(JSON.parse(JSON.stringify(profile)))).to.throw();
+      });
+      toNotThrow.forEach(profile => {
+        expect(() => validateProfile(JSON.parse(JSON.stringify(profile)))).to.not.throw();
+      });
     });
   });
 });

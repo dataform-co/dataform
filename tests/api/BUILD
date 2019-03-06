@@ -13,6 +13,7 @@ ts_library(
         "//core",
         "//protos",
         "//tests/utils",
+        "//cli",
         "@npm//@types/chai",
         "@npm//@types/long",
         "@npm//@types/mocha",

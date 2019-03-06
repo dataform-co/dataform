@@ -5,6 +5,7 @@ import * as dfapi from "@dataform/api";
 import * as protos from "@dataform/protos";
 import { asPlainObject } from "df/tests/utils";
 import { create, IAdapter } from "@dataform/core/adapters";
+import { validateProfile } from "@dataform/cli/utils";
 
 interface ITableInfo {
   schema: string;
@@ -28,7 +29,10 @@ interface IExpectedResult {
 }
 
 export function queryRun(sqlQuery: string, testConfig: ITestConfig) {
-  return dfapi.query.run(protos.Profile.create(testConfig.profile), sqlQuery, {
+  validateProfile(testConfig.profile);
+  const profile = protos.Profile.create(testConfig.profile);
+
+  return dfapi.query.run(profile, sqlQuery, {
     projectDir: path.resolve(testConfig.projectDir)
   });
 }
@@ -113,7 +117,11 @@ export function getTestConfig(warehouse: string): ITestConfig {
   };
 }
 
-export function getTestRunCommand(testConfig: ITestConfig, expectedResult: IExpectedResult[], incrementalLength: number) {
+export function getTestRunCommand(
+  testConfig: ITestConfig,
+  expectedResult: IExpectedResult[],
+  incrementalLength: number
+) {
   return async () => {
     // run the command
     const graph = await dfapi
