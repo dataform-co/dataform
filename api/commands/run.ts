@@ -47,22 +47,19 @@ export class Runner {
     return this;
   }
 
-  public execute(): Promise<protos.IExecutedGraph> {
+  public async execute(): Promise<protos.IExecutedGraph> {
     if (!!this.executionTask) throw Error("Executor already started.");
+    const prepareDefaultSchema = this.adapter.prepareSchema(this.graph.projectConfig.defaultSchema);
+    const prepareAssertionSchema = this.adapter.prepareSchema(this.graph.projectConfig.assertionSchema);
+    await prepareDefaultSchema, prepareAssertionSchema;
     this.executionTask = new Promise((resolve, reject) => {
       try {
-        Promise.all([
-          this.adapter.prepareSchema(this.graph.projectConfig.defaultSchema),
-          this.adapter.prepareSchema(this.graph.projectConfig.assertionSchema)
-        ])
-          .then(() => this.adapter)
-          .then(() => this.loop(() => resolve(this.result), reject))
-          .catch(e => reject(e));
+        this.loop(() => resolve(this.result), reject)
       } catch (e) {
         reject(e);
       }
     });
-    return this.executionTask;
+    return await this.executionTask;
   }
 
   public cancel() {
