@@ -124,7 +124,7 @@ message ExecutionNode {
   repeated ExecutionTask tasks = 2;
   string type = 4;
   Target target = 5;
-  string tableType = 6;
+  string table_type = 6;
 }
 
 message WarehouseState {
@@ -161,7 +161,7 @@ message ExecutedNode {
   repeated ExecutedTask tasks = 2;
 
   NodeExecutionStatus status = 6;
-  int64 executionTime = 5;
+  int64 execution_time = 5;
 
   // Deprecated status fields. Prefer using the 'status' field.
   bool deprecated_ok = 3;
