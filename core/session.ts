@@ -16,8 +16,7 @@ export class Session {
   public operations: { [name: string]: Operation };
   public assertions: { [name: string]: Assertion };
 
-  public validationErrors: protos.IValidationError[];
-  public compileErrors: protos.ICompileError[];
+  public graphErrors: protos.IGraphErrors;
 
   constructor(rootDir: string, projectConfig?: protos.IProjectConfig) {
     this.init(rootDir, projectConfig);
@@ -29,8 +28,7 @@ export class Session {
     this.tables = {};
     this.operations = {};
     this.assertions = {};
-    this.validationErrors = [];
-    this.compileErrors = [];
+    this.graphErrors = { compilationErrors: [] };
   }
 
   adapter(): adapters.IAdapter {
@@ -60,7 +58,7 @@ export class Session {
       return this.adapter().resolveTarget((oNode as Operation).proto.target);
     } else {
       const message = `Could not find referenced node: ${name}`;
-      this.validationError(message);
+      this.compileError(new Error(message));
     }
   }
 
@@ -86,7 +84,7 @@ export class Session {
     // Check for duplicate names
     if (this.tables[name]) {
       const message = `Duplicate node name detected, names must be unique across tables, assertions, and operations: "${name}"`;
-      this.validationError(message);
+      this.compileError(new Error(message));
     }
 
     const table = new Table();
@@ -119,18 +117,11 @@ export class Session {
     return assertion;
   }
 
-  validationError(message: string) {
-    const fileName = utils.getCallerFile(this.rootDir) || __filename;
-
-    const validationError = protos.ValidationError.create({ fileName, message });
-    this.validationErrors.push(validationError);
-  }
-
   compileError(err: Error, path?: string) {
     const fileName = path || utils.getCallerFile(this.rootDir) || __filename;
 
-    const compileError = protos.CompileError.create({ stack: err.stack, fileName, message: err.message });
-    this.compileErrors.push(compileError);
+    const compileError = protos.CompilationError.create({ stack: err.stack, fileName, message: err.message });
+    this.graphErrors.compilationErrors.push(compileError);
   }
 
   compileGraphChunk<T>(part: { [name: string]: { proto: ActionProto; compile(): T } }): Array<T> {
@@ -149,79 +140,13 @@ export class Session {
   }
 
   compile(): protos.ICompiledGraph {
-    var compiledGraph = protos.CompiledGraph.create({
+    const compiledGraph = protos.CompiledGraph.create({
       projectConfig: this.config,
-      tables: this.compileGraphChunk<protos.ITable>(this.tables),
-      operations: this.compileGraphChunk<protos.IOperation>(this.operations),
-      assertions: this.compileGraphChunk<protos.IAssertion>(this.assertions),
-      validationErrors: this.validationErrors,
-      compileErrors: this.compileErrors
+      tables: this.compileGraphChunk(this.tables),
+      operations: this.compileGraphChunk(this.operations),
+      assertions: this.compileGraphChunk(this.assertions),
+      graphErrors: this.graphErrors
     });
-
-    // Check there aren't any duplicate names.
-    var allNodes = (<Array<ActionProto>>[]).concat(
-      compiledGraph.tables,
-      compiledGraph.assertions,
-      compiledGraph.operations
-    );
-    var allNodeNames = allNodes.map(node => node.name);
-
-    // Check there are no duplicate node names.
-    allNodes.forEach(node => {
-      if (allNodes.filter(subNode => subNode.name == node.name).length > 1) {
-        const message = `Duplicate node name detected, names must be unique across tables, assertions, and operations: "${
-          node.name
-        }"`;
-        this.validationError(message);
-      }
-    });
-
-    // Expand node dependency wilcards.
-    allNodes.forEach(node => {
-      var uniqueDeps: { [d: string]: boolean } = {};
-      // Add non-wildcard deps normally.
-      node.dependencies.filter(d => !d.includes("*")).forEach(d => (uniqueDeps[d] = true));
-      // Match wildcard deps against all node names.
-      utils
-        .matchPatterns(node.dependencies.filter(d => d.includes("*")), allNodeNames)
-        .forEach(d => (uniqueDeps[d] = true));
-      node.dependencies = Object.keys(uniqueDeps);
-    });
-
-    var nodesByName: { [name: string]: protos.IExecutionNode } = {};
-    allNodes.forEach(node => (nodesByName[node.name] = node));
-
-    // Check all dependencies actually exist.
-    allNodes.forEach(node => {
-      node.dependencies.forEach(dependency => {
-        if (allNodeNames.indexOf(dependency) < 0) {
-          const message = `Missing dependency detected: Node "${
-            node.name
-          }" depends on "${dependency}" which does not exist.`;
-          this.validationError(message);
-        }
-      });
-    });
-
-    // Check for circular dependencies.
-    const checkCircular = (node: protos.IExecutionNode, dependents: protos.IExecutionNode[]): boolean => {
-      if (dependents.indexOf(node) >= 0) {
-        const message = `Circular dependency detected in chain: [${dependents.map(d => d.name).join(" > ")} > ${
-          node.name
-        }]`;
-        this.validationError(message);
-        return true;
-      }
-      return node.dependencies.some(d => {
-        return nodesByName[d] && checkCircular(nodesByName[d], dependents.concat([node]));
-      });
-    };
-
-    for (let i = 0; i < allNodes.length; i++) {
-      if (checkCircular(allNodes[i], [])) {
-        break;
-      }
-    }
 
     return compiledGraph;
   }
