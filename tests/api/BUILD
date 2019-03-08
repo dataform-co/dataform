@@ -13,12 +13,14 @@ ts_library(
         "//core",
         "//protos",
         "//tests/utils",
+        "@npm//@types/bluebird",
         "@npm//@types/chai",
         "@npm//@types/long",
         "@npm//@types/mocha",
         "@npm//@types/node",
         "@npm//rimraf",
         "@npm//stack-trace",
+        "@npm//ts-mockito",
     ],
 )
 
