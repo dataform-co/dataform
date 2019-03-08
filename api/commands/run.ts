@@ -47,22 +47,19 @@ export class Runner {
     return this;
   }
 
-  public execute(): Promise<protos.IExecutedGraph> {
+  public async execute(): Promise<protos.IExecutedGraph> {
     if (!!this.executionTask) throw Error("Executor already started.");
+    const prepareDefaultSchema = this.adapter.prepareSchema(this.graph.projectConfig.defaultSchema);
+    const prepareAssertionSchema = this.adapter.prepareSchema(this.graph.projectConfig.assertionSchema);
+    await prepareDefaultSchema, prepareAssertionSchema;
     this.executionTask = new Promise((resolve, reject) => {
       try {
-        Promise.all([
-          this.adapter.prepareSchema(this.graph.projectConfig.defaultSchema),
-          this.adapter.prepareSchema(this.graph.projectConfig.assertionSchema)
-        ])
-          .then(() => this.adapter)
-          .then(() => this.loop(() => resolve(this.result), reject))
-          .catch(e => reject(e));
+        this.loop(() => resolve(this.result), reject)
       } catch (e) {
         reject(e);
       }
     });
-    return this.executionTask;
+    return await this.executionTask;
   }
 
   public cancel() {
@@ -85,8 +82,10 @@ export class Runner {
     var pendingNodes = this.pendingNodes;
     this.pendingNodes = [];
 
-    let allFinishedDeps = this.result.nodes.map(fn => fn.name);
-    let allSuccessfulDeps = this.result.nodes.filter(fn => fn.ok).map(fn => fn.name);
+    let allFinishedDeps = this.result.nodes.map(node => node.name);
+    let allSuccessfulDeps = this.result.nodes
+        .filter(node => node.status === protos.NodeExecutionStatus.SUCCESSFUL || node.status == protos.NodeExecutionStatus.DISABLED)
+        .map(fn => fn.name);
 
     pendingNodes.forEach(node => {
       let finishedDeps = node.dependencies.filter(d => allFinishedDeps.indexOf(d) >= 0);
@@ -97,7 +96,11 @@ export class Runner {
       } else if (finishedDeps.length == node.dependencies.length) {
         // All deps are finished but they weren't all successful, skip this node.
         console.log(`Completed node: "${node.name}", status: skipped`);
-        this.result.nodes.push({ name: node.name, skipped: true });
+        this.result.nodes.push({
+          name: node.name,
+          status: protos.NodeExecutionStatus.SKIPPED,
+          deprecatedSkipped: true,
+        });
         this.triggerChange();
       } else {
         this.pendingNodes.push(node);
@@ -110,7 +113,7 @@ export class Runner {
       // Work out if this run was an overall success.
       var ok = true;
       this.result.nodes.forEach(node => {
-        ok = ok && node.ok;
+        ok = ok && (node.status === protos.NodeExecutionStatus.SUCCESSFUL || node.status == protos.NodeExecutionStatus.DISABLED);
       });
       this.result.ok = ok;
       resolve();
@@ -161,9 +164,10 @@ export class Runner {
         console.log(`Completed node: "${node.name}", status: successful (${prettyTime})`);
         this.result.nodes.push({
           name: node.name,
-          ok: true,
+          status: results.length == 0 ? protos.NodeExecutionStatus.DISABLED : protos.NodeExecutionStatus.SUCCESSFUL,
           tasks: results,
-          executionTime: Long.fromNumber(executionTime)
+          executionTime: Long.fromNumber(executionTime),
+          deprecatedOk: true,
         });
         this.triggerChange();
       })
@@ -175,9 +179,10 @@ export class Runner {
         console.log(`Completed node: "${node.name}", status: failed (${prettyTime})`);
         this.result.nodes.push({
           name: node.name,
-          ok: false,
+          status: protos.NodeExecutionStatus.FAILED,
           tasks: results,
-          executionTime: Long.fromNumber(executionTime)
+          executionTime: Long.fromNumber(executionTime),
+          deprecatedOk: false,
         });
         this.triggerChange();
       });
