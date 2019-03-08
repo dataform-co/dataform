@@ -644,7 +644,10 @@ describe("@dataform/api", () => {
     it("execute", async () => {
       const mockedDbAdapter = mock(BigQueryDbAdapter);
       when(mockedDbAdapter.prepareSchema(anyString())).thenResolve(null);
-      when(mockedDbAdapter.execute(anyString())).thenReturn(Bluebird.resolve([]));
+      when(mockedDbAdapter.execute(TEST_GRAPH.nodes[0].tasks[0].statement)).thenReturn(Bluebird.resolve([]));
+      when(mockedDbAdapter.execute(TEST_GRAPH.nodes[1].tasks[0].statement)).thenReturn(
+        Bluebird.reject(new Error("bad statement"))
+      );
 
       const runner = new Runner(instance(mockedDbAdapter), TEST_GRAPH);
       await runner.execute();
@@ -661,7 +664,7 @@ describe("@dataform/api", () => {
           projectConfig: TEST_GRAPH.projectConfig,
           runConfig: TEST_GRAPH.runConfig,
           warehouseState: TEST_GRAPH.warehouseState,
-          ok: true,
+          ok: false,
           nodes: [
             {
               name: TEST_GRAPH.nodes[0].name,
@@ -679,11 +682,12 @@ describe("@dataform/api", () => {
               tasks: [
                 {
                   task: TEST_GRAPH.nodes[1].tasks[0],
-                  ok: true
+                  ok: false,
+                  error: "bad statement"
                 }
               ],
-              status: protos.NodeExecutionStatus.SUCCESSFUL,
-              deprecatedOk: true
+              status: protos.NodeExecutionStatus.FAILED,
+              deprecatedOk: false
             }
           ]
         })
