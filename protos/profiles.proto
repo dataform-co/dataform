@@ -20,24 +20,24 @@ message Profile {
 }
 
 message JDBC {
-  required string host = 2;
-  required int64 port = 3;
-  required string user = 4;
-  required string password = 5;
-  required string database = 6;
+  string host = 2;
+  int64 port = 3;
+  string user = 4;
+  string password = 5;
+  string database = 6;
 }
 
 message Snowflake {
-  required string account_id = 2;
-  required string user_name = 3;
-  required string password = 4;
-  required string role = 5;
-  required string database_name = 6;
-  required string warehouse = 7;
+  string account_id = 2;
+  string user_name = 3;
+  string password = 4;
+  string role = 5;
+  string database_name = 6;
+  string warehouse = 7;
 }
 
 message BigQuery {
-  required string project_id = 1;
-  required string credentials = 3;
+  string project_id = 1;
+  string credentials = 3;
   string location = 4; // EU or US (default)
 }

@@ -4,8 +4,7 @@ import * as yargs from "yargs";
 import * as path from "path";
 import * as chokidar from "chokidar";
 import * as protos from "@dataform/protos";
-import { init, compile, build, run, table, query } from "@dataform/api";
-import { getProfile } from "./utils";
+import { init, compile, build, run, table, query, utils } from "@dataform/api";
 
 const addBuildYargs = (yargs: yargs.Argv) =>
   yargs
@@ -148,7 +147,7 @@ yargs
           required: true
         }),
     argv => {
-      const profile = getProfile(argv["profile"]);
+      const profile = utils.getProfile(argv["profile"]);
       compile(path.resolve(argv["project-dir"]))
         .then(graph => build(graph, parseBuildArgs(argv), profile))
         .then(result => console.log(JSON.stringify(result, null, 4)))
@@ -174,7 +173,7 @@ yargs
         }),
     argv => {
       console.log("Project status: starting...");
-      const profile = getProfile(argv["profile"]);
+      const profile = utils.getProfile(argv["profile"]);
 
       compile(path.resolve(argv["project-dir"]))
         .then(graph => {
@@ -218,7 +217,7 @@ yargs
       }),
     argv => {
       table
-        .list(getProfile(argv["profile"]))
+        .list(utils.getProfile(argv["profile"]))
         .then(tables => console.log(JSON.stringify(tables, null, 4)))
         .catch(e => console.log(e));
     }
@@ -233,7 +232,7 @@ yargs
       }),
     argv => {
       table
-        .get(getProfile(argv["profile"]), {
+        .get(utils.getProfile(argv["profile"]), {
           schema: argv["schema"],
           name: argv["table"]
         })
@@ -279,7 +278,7 @@ yargs
         .compile(argv["query"], { projectDir: path.resolve(argv["project-dir"]) })
         .then(compiledQuery => {
           // const profile = JSON.parse(fs.readFileSync(argv["profile"], "utf8"));
-          const profile = getProfile(argv["profile"]);
+          const profile = utils.getProfile(argv["profile"]);
           if (profile.snowflake) {
             return console.log("Not implemented! You can try to use the web interface in your Snowflake profile");
           }
@@ -309,7 +308,7 @@ yargs
         }),
     argv => {
       const promise = query
-        .run(getProfile(argv["profile"]), argv["query"], {
+        .run(utils.getProfile(argv["profile"]), argv["query"], {
           projectDir: path.resolve(argv["project-dir"])
         })
         .then(results => console.log(JSON.stringify(results, null, 4)))

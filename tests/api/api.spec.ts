@@ -1,7 +1,7 @@
 import { expect, assert } from "chai";
 import * as Long from "long";
 import * as rimraf from "rimraf";
-import { query, Builder, compile, init } from "@dataform/api";
+import { query, Builder, compile, init, utils as apiUtils } from "@dataform/api";
 import { utils } from "@dataform/core";
 import * as protos from "@dataform/protos";
 import * as fs from "fs";
@@ -9,7 +9,6 @@ import * as path from "path";
 import * as os from "os";
 import * as stackTrace from "stack-trace";
 import { asPlainObject, cleanSql } from "df/tests/utils";
-import { validateProfile } from "@dataform/cli/utils";
 
 describe("@dataform/api", () => {
   describe("build", () => {
@@ -510,7 +509,7 @@ describe("@dataform/api", () => {
       const graph = await compile("df/examples/redshift_operations").catch(error => error);
       expect(graph).to.not.be.an.instanceof(Error);
 
-      const gErrors = utils.validate(graph);  
+      const gErrors = utils.validate(graph);
 
       expect(gErrors)
         .to.have.property("compilationErrors")
@@ -599,15 +598,20 @@ describe("@dataform/api", () => {
     const snowflakeProfile = { accountId: "", userName: "", password: "", role: "", databaseName: "", warehouse: "" };
 
     it("empty_profile", () => {
-      expect(() => validateProfile(null)).to.throw(/Missing profile JSON/);
-      expect(() => validateProfile({})).to.throw(/Missing profile JSON/);
+      expect(() => apiUtils.validateProfile(null)).to.throw(/Profile JSON file is empty/);
+      expect(() => apiUtils.validateProfile({})).to.throw(/Profile JSON file is empty/);
     });
 
     it("warehouse_check", () => {
-      expect(() => validateProfile({ bigquery: bigqueryProfile })).to.not.throw();
-      expect(() => validateProfile({ redshift: redshiftProfile })).to.not.throw();
-      expect(() => validateProfile({ snowflake: snowflakeProfile })).to.not.throw();
-      expect(() => validateProfile(JSON.parse('{ "some_other_warehouse": {}}'))).to.throw(/Unsupported warehouse/);
+      expect(() => apiUtils.validateProfile({ bigquery: bigqueryProfile })).to.not.throw();
+      expect(() => apiUtils.validateProfile({ redshift: redshiftProfile })).to.not.throw();
+      expect(() => apiUtils.validateProfile({ snowflake: snowflakeProfile })).to.not.throw();
+      expect(() => apiUtils.validateProfile(JSON.parse('{ "some_other_warehouse": {}}'))).to.throw(
+        /Unsupported warehouse/
+      );
+      expect(() => apiUtils.validateProfile({ bigquery: bigqueryProfile, redshift: redshiftProfile })).to.throw(
+        /Multiple warehouses detected/
+      );
     });
 
     it("props_check", () => {
@@ -618,7 +622,6 @@ describe("@dataform/api", () => {
         { redshift: {} },
         { redshift: { wrongPropery: "" } },
         { redshift: { host: "" } },
-        { redshift: { ...redshiftProfile, port: "" } },
         { snowflake: {} },
         { snowflake: { wrongPropery: "" } },
         { snowflake: { accountId: "" } }
@@ -630,10 +633,12 @@ describe("@dataform/api", () => {
       ];
 
       toThrow.forEach(profile => {
-        expect(() => validateProfile(JSON.parse(JSON.stringify(profile)))).to.throw();
+        expect(() => apiUtils.validateProfile(JSON.parse(JSON.stringify(profile)))).to.throw();
       });
       toNotThrow.forEach(profile => {
-        expect(() => validateProfile(JSON.parse(JSON.stringify(profile)))).to.not.throw();
+        expect(() => apiUtils.validateProfile(JSON.parse(JSON.stringify(profile)))).to.not.throw(
+          /Missing required properties/
+        );
       });
     });
   });
