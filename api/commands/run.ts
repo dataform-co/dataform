@@ -51,15 +51,19 @@ export class Runner {
     if (!!this.executionTask) throw Error("Executor already started.");
     const prepareDefaultSchema = this.adapter.prepareSchema(this.graph.projectConfig.defaultSchema);
     const prepareAssertionSchema = this.adapter.prepareSchema(this.graph.projectConfig.assertionSchema);
-    await prepareDefaultSchema, prepareAssertionSchema;
+
     this.executionTask = new Promise((resolve, reject) => {
       try {
-        this.loop(() => resolve(this.result), reject)
+        this.loop(() => resolve(this.result), reject);
       } catch (e) {
         reject(e);
       }
     });
-    return await this.executionTask;
+
+    await prepareDefaultSchema;
+    await prepareAssertionSchema;
+
+    return this.executionTask;
   }
 
   public cancel() {
@@ -84,8 +88,11 @@ export class Runner {
 
     let allFinishedDeps = this.result.nodes.map(node => node.name);
     let allSuccessfulDeps = this.result.nodes
-        .filter(node => node.status === protos.NodeExecutionStatus.SUCCESSFUL || node.status == protos.NodeExecutionStatus.DISABLED)
-        .map(fn => fn.name);
+      .filter(
+        node =>
+          node.status === protos.NodeExecutionStatus.SUCCESSFUL || node.status == protos.NodeExecutionStatus.DISABLED
+      )
+      .map(fn => fn.name);
 
     pendingNodes.forEach(node => {
       let finishedDeps = node.dependencies.filter(d => allFinishedDeps.indexOf(d) >= 0);
@@ -99,7 +106,7 @@ export class Runner {
         this.result.nodes.push({
           name: node.name,
           status: protos.NodeExecutionStatus.SKIPPED,
-          deprecatedSkipped: true,
+          deprecatedSkipped: true
         });
         this.triggerChange();
       } else {
@@ -113,7 +120,9 @@ export class Runner {
       // Work out if this run was an overall success.
       var ok = true;
       this.result.nodes.forEach(node => {
-        ok = ok && (node.status === protos.NodeExecutionStatus.SUCCESSFUL || node.status == protos.NodeExecutionStatus.DISABLED);
+        ok =
+          ok &&
+          (node.status === protos.NodeExecutionStatus.SUCCESSFUL || node.status == protos.NodeExecutionStatus.DISABLED);
       });
       this.result.ok = ok;
       resolve();
@@ -167,7 +176,7 @@ export class Runner {
           status: results.length == 0 ? protos.NodeExecutionStatus.DISABLED : protos.NodeExecutionStatus.SUCCESSFUL,
           tasks: results,
           executionTime: Long.fromNumber(executionTime),
-          deprecatedOk: true,
+          deprecatedOk: true
         });
         this.triggerChange();
       })
@@ -182,7 +191,7 @@ export class Runner {
           status: protos.NodeExecutionStatus.FAILED,
           tasks: results,
           executionTime: Long.fromNumber(executionTime),
-          deprecatedOk: false,
+          deprecatedOk: false
         });
         this.triggerChange();
       });
