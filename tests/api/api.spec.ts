@@ -1,14 +1,17 @@
-import { expect, assert } from "chai";
+import { expect, assert, config } from "chai";
 import * as Long from "long";
 import * as rimraf from "rimraf";
-import { query, Builder, compile, init, utils as apiUtils } from "@dataform/api";
+import { query, Builder, compile, init, Runner, utils as apiUtils } from "@dataform/api";
+import { BigQueryDbAdapter } from "@dataform/api/dbadapters/bigquery";
 import { utils } from "@dataform/core";
 import * as protos from "@dataform/protos";
-import * as fs from "fs";
-import * as path from "path";
-import * as os from "os";
-import * as stackTrace from "stack-trace";
+import * as Bluebird from "bluebird";
 import { asPlainObject, cleanSql } from "df/tests/utils";
+import * as path from "path";
+import * as stackTrace from "stack-trace";
+import { anyString, mock, instance, when } from "ts-mockito";
+
+config.truncateThreshold = 0;
 
 describe("@dataform/api", () => {
   describe("build", () => {
@@ -437,10 +440,7 @@ describe("@dataform/api", () => {
       });
     });
 
-    // Disabled, because test bind old versions of protos library instead of using local changes
-    // More info: https://github.com/dataform-co/dataform/issues/92
-    // TODO: turn on when issue #92 will be fixed
-    xit("bigquery_with_errors_example", async () => {
+    it("bigquery_with_errors_example", async () => {
       const expectedResults = [
         {
           fileName: "definitions/test.js",
@@ -592,6 +592,7 @@ describe("@dataform/api", () => {
     });
   });
 
+
   describe("profile_config", () => {
     const bigqueryProfile = { projectId: "", credentials: "" };
     const redshiftProfile = { host: "", port: Long.fromNumber(0), user: "", password: "", database: "" };
@@ -640,6 +641,109 @@ describe("@dataform/api", () => {
           /Missing required properties/
         );
       });
+    });
+  });
+
+  describe("run", () => {
+    const TEST_GRAPH: protos.IExecutionGraph = protos.ExecutionGraph.create({
+      projectConfig: {
+        warehouse: "bigquery",
+        defaultSchema: "foo",
+        assertionSchema: "bar"
+      },
+      runConfig: {
+        fullRefresh: true
+      },
+      warehouseState: {
+        tables: [{ type: "table" }]
+      },
+      nodes: [
+        {
+          name: "node1",
+          dependencies: [],
+          tasks: [
+            {
+              type: "executionTaskType",
+              statement: "SELECT foo FROM bar"
+            }
+          ],
+          type: "table",
+          target: {
+            schema: "schema1",
+            name: "target1"
+          },
+          tableType: "someTableType"
+        },
+        {
+          name: "node2",
+          dependencies: ["node1"],
+          tasks: [
+            {
+              type: "executionTaskType2",
+              statement: "SELECT bar FROM baz"
+            }
+          ],
+          type: "assertion",
+          target: {
+            schema: "schema1",
+            name: "target1"
+          },
+          tableType: "someTableType"
+        }
+      ]
+    });
+
+    it("execute", async () => {
+      const mockedDbAdapter = mock(BigQueryDbAdapter);
+      when(mockedDbAdapter.prepareSchema(anyString())).thenResolve(null);
+      when(mockedDbAdapter.execute(TEST_GRAPH.nodes[0].tasks[0].statement)).thenReturn(Bluebird.resolve([]));
+      when(mockedDbAdapter.execute(TEST_GRAPH.nodes[1].tasks[0].statement)).thenReturn(
+        Bluebird.reject(new Error("bad statement"))
+      );
+
+      const runner = new Runner(instance(mockedDbAdapter), TEST_GRAPH);
+      await runner.execute();
+      const result = await runner.resultPromise();
+
+      const timeCleanedNodes = result.nodes.map(node => {
+        delete node["executionTime"];
+        return node;
+      });
+      result.nodes = timeCleanedNodes;
+
+      expect(protos.ExecutedGraph.create(result)).to.deep.equal(
+        protos.ExecutedGraph.create({
+          projectConfig: TEST_GRAPH.projectConfig,
+          runConfig: TEST_GRAPH.runConfig,
+          warehouseState: TEST_GRAPH.warehouseState,
+          ok: false,
+          nodes: [
+            {
+              name: TEST_GRAPH.nodes[0].name,
+              tasks: [
+                {
+                  task: TEST_GRAPH.nodes[0].tasks[0],
+                  ok: true
+                }
+              ],
+              status: protos.NodeExecutionStatus.SUCCESSFUL,
+              deprecatedOk: true
+            },
+            {
+              name: TEST_GRAPH.nodes[1].name,
+              tasks: [
+                {
+                  task: TEST_GRAPH.nodes[1].tasks[0],
+                  ok: false,
+                  error: "bad statement"
+                }
+              ],
+              status: protos.NodeExecutionStatus.FAILED,
+              deprecatedOk: false
+            }
+          ]
+        })
+      );
     });
   });
 });
