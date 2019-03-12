@@ -1,4 +1,5 @@
 import * as protos from "@dataform/protos";
+import * as utils from "../utils";
 import * as dbadapters from "../dbadapters";
 import * as path from "path";
 import { fork } from "child_process";
@@ -16,6 +17,7 @@ Promise.config({
 });
 
 export function run(profile: protos.IProfile, query: string, options?: IOptions): Promise<any[]> {
+  utils.validateProfile(profile);
   return new Promise((resolve, reject, onCancel) => {
     const eEmitter = new EventEmitter();
     let isCanceled = false;
