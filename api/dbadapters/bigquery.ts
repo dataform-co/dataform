@@ -27,33 +27,32 @@ export class BigQueryDbAdapter implements DbAdapter {
   }
 
   execute(statement: string) {
-    return Bluebird.resolve().then(() =>
+    return new Bluebird<any[]>((resolve, reject, onCancel) => {
+      let isCancelled = false;
+      const eEmitter = new EventEmitter();
+
+      onCancel(() => {
+        isCancelled = true;
+        eEmitter.emit("jobCancel");
+      });
+
       this.pool
         .addSingleTask({
           generator: () =>
-            new Bluebird<any[]>((resolve, reject, onCancel) => {
-              let isCanceled = false;
-              const eEmitter = new EventEmitter();
-
-              onCancel(() => {
-                isCanceled = true;
-                eEmitter.emit("jobCancel");
-              });
-
+            new Promise<any[]>((resolve, reject) => {
               this.client.createQueryJob(
                 { useLegacySql: false, query: statement, maxResults: 1000 },
                 (err: any, job: any) => {
                   if (err) reject(err);
-
-                  eEmitter.on("jobCancel", () => {
-                    job.cancel().then(() => {
-                      reject(new Error("Run cancelled"));
-                    });
-                  });
-
-                  if (isCanceled) {
+                  // Cancelled before it was created, kill it now.
+                  if (isCancelled) {
+                    job.cancel();
                     return;
                   }
+                  eEmitter.on("jobCancel", () => {
+                    // Cancelled while running.
+                    job.cancel();
+                  });
                   job.getQueryResults((err: any, result: any[]) => {
                     if (err) reject(err);
                     resolve(result);
@@ -63,7 +62,12 @@ export class BigQueryDbAdapter implements DbAdapter {
             })
         })
         .promise()
-    );
+        // We need to return a bluebird promise, but we also wrap the actual execution in a normal promise
+        // so that we can use the node promise pool library. This just forwards on the pooled promise outcomes
+        // to the outer bluebird promise.
+        .then(v => resolve(v))
+        .catch(e => reject(e));
+    });
   }
 
   evaluate(statement: string) {

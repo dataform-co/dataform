@@ -592,7 +592,6 @@ describe("@dataform/api", () => {
     });
   });
 
-
   describe("profile_config", () => {
     const bigqueryProfile = { projectId: "", credentials: "" };
     const redshiftProfile = { host: "", port: Long.fromNumber(0), user: "", password: "", database: "" };
@@ -744,6 +743,61 @@ describe("@dataform/api", () => {
           ]
         })
       );
+    });
+
+    it("execute_with_cancel", async () => {
+      const TEST_GRAPH: protos.IExecutionGraph = protos.ExecutionGraph.create({
+        projectConfig: {
+          warehouse: "bigquery",
+          defaultSchema: "foo",
+          assertionSchema: "bar"
+        },
+        warehouseState: {
+          tables: []
+        },
+        nodes: [
+          {
+            name: "node1",
+            dependencies: [],
+            tasks: [
+              {
+                type: "statement",
+                statement: "some statement"
+              }
+            ],
+            type: "table",
+            target: {
+              schema: "schema1",
+              name: "target1"
+            },
+            tableType: "table"
+          }
+        ]
+      });
+      const mockedDbAdapter = mock(BigQueryDbAdapter);
+      when(mockedDbAdapter.prepareSchema(anyString())).thenResolve(null);
+      let wasCancelled = false;
+      // This will deliberately never return.
+      when(mockedDbAdapter.execute(TEST_GRAPH.nodes[0].tasks[0].statement)).thenReturn(
+        new Bluebird((resolve, reject, onCancel) => {
+          onCancel(() => {
+            wasCancelled = true;
+          });
+        })
+      );
+
+      const runner = new Runner(instance(mockedDbAdapter), TEST_GRAPH);
+      const promise = runner.execute();
+      // Push this to the back of the "queue" so we can await the promise first.
+      setTimeout(() => runner.cancel(), 10);
+      try {
+        const result = await promise;
+      } catch (e) {
+        // Expected.
+        expect(wasCancelled).is.true;
+        return;
+      }
+      throw new Error("Cancelled run did not throw");
     });
   });
 });
