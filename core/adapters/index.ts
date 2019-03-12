@@ -17,6 +17,17 @@ export interface AdapterConstructor<T extends IAdapter> {
   new (projectConfig: protos.IProjectConfig): T;
 }
 
+export enum WarehouseTypes {
+  BIGQUERY = "bigquery",
+  REDSHIFT = "redshift",
+  SNOWFLAKE = "snowflake"
+}
+export const requiredWarehouseProps = {
+  [WarehouseTypes.BIGQUERY]: ["projectId", "credentials"],
+  [WarehouseTypes.REDSHIFT]: ["host", "port", "user", "password", "database"],
+  [WarehouseTypes.SNOWFLAKE]: ["accountId", "userName", "password", "role", "databaseName", "warehouse"]
+};
+
 const registry: { [warehouseType: string]: AdapterConstructor<IAdapter> } = {};
 
 export function register(warehouseType: string, c: AdapterConstructor<IAdapter>) {
