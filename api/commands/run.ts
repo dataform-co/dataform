@@ -38,6 +38,8 @@ export class Runner {
       nodes: []
     };
     this.eEmitter = new EventEmitter();
+    // There could feasibly be thousands of listeners to this, 0 makes the limit infinite.
+    this.eEmitter.setMaxListeners(0);
   }
 
   public static create(adapter: dbadapters.DbAdapter, graph: protos.IExecutionGraph) {
