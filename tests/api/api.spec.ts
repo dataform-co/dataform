@@ -424,6 +424,13 @@ describe("@dataform/api", () => {
         expect(tableNames).includes("example_deferred");
         var exampleDeferred = graph.tables.filter(t => t.name == "example_deferred")[0];
         expect(exampleDeferred.fileName).includes("definitions/example_deferred.js");
+
+        // Check inline tables
+        expect(tableNames).includes("example_inline");
+        var exampleInline = graph.tables.filter(t => t.name == "example_inline")[0];
+        console.log('---- ----exampleInline:', exampleInline);
+        expect(exampleInline.type).equals("table");
+        expect(exampleInline.query).equals('\nselect * from `tada-analytics.df_integration_test.sample_data`');
       });
     });
 
