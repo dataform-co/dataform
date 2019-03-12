@@ -2,10 +2,12 @@ import * as protos from "@dataform/protos";
 import * as prettyMs from "pretty-ms";
 import * as EventEmitter from "events";
 import * as dbadapters from "../dbadapters";
+import * as utils from "../utils";
 import * as Long from "long";
 
 export function run(graph: protos.IExecutionGraph, profile: protos.IProfile): Runner {
-  var runner = Runner.create(dbadapters.create(profile, graph.projectConfig.warehouse), graph);
+  utils.validateProfile(profile);
+  const runner = Runner.create(dbadapters.create(profile, graph.projectConfig.warehouse), graph);
   runner.execute();
   return runner;
 }
