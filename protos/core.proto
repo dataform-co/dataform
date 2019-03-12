@@ -80,6 +80,7 @@ message Table {
 
   // Deprecated.
   repeated string deprecated_parsed_columns = 12;
+  repeated ValidationError deprecated_validation_errors = 7;
 }
 
 message Operation {
@@ -112,7 +113,10 @@ message CompiledGraph {
   repeated Operation operations = 2;
   repeated Assertion assertions = 3;
 
-  GraphErrors graph_errors = 5;
+  GraphErrors graph_errors = 7;
+
+  repeated ValidationError deprecated_validation_errors = 5;
+  repeated CompilationError deprecated_compilation_errors = 6;
 }
 
 message ExecutionTask {
