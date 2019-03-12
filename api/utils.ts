@@ -2,12 +2,12 @@ import * as fs from "fs";
 import * as protos from "@dataform/protos";
 import { WarehouseTypes, requiredWarehouseProps } from "@dataform/core/adapters";
 
-export function readProfile(profilePath: string): protos.IProfile {
-  if (fs.existsSync(profilePath)) {
-    return JSON.parse(fs.readFileSync(profilePath, "utf8"));
-  }
-  throw new Error("Missing profile JSON file.");
-}
+// export function readProfile(profilePath: string): protos.IProfile {
+//   if (fs.existsSync(profilePath)) {
+//     return JSON.parse(fs.readFileSync(profilePath, "utf8"));
+//   }
+//   throw new Error("Missing profile JSON file.");
+// }
 
 export function validateProfile(profile: protos.IProfile): void {
   // profile shouldn't be empty
@@ -16,13 +16,13 @@ export function validateProfile(profile: protos.IProfile): void {
   }
 
   // warehouse check
-  const supurtedWarehouses = Object.keys(WarehouseTypes).map(key => WarehouseTypes[key]);
+  const supportedWarehouses = Object.keys(WarehouseTypes).map(key => WarehouseTypes[key]);
   const warehouses = Object.keys(profile).filter(key => key !== "threads");
 
   if (warehouses.length === 0) {
     throw new Error(`Warehouse not specified.`);
-  } else if (!warehouses.every(key => supurtedWarehouses.indexOf(key) !== -1)) {
-    const predefinedW = supurtedWarehouses.map(item => `"${item}"`).join(" | ");
+  } else if (!warehouses.every(key => supportedWarehouses.indexOf(key) !== -1)) {
+    const predefinedW = supportedWarehouses.map(item => `"${item}"`).join(" | ");
     throw new Error(`Unsupported warehouse detected. Should only use predefined warehouses: ${predefinedW}`);
   } else if (warehouses.length > 1) {
     throw new Error(`Multiple warehouses detected. Should be only one warehouse config.`);
@@ -38,8 +38,12 @@ export function validateProfile(profile: protos.IProfile): void {
   }
 }
 
-export function getProfile(profilePath: string): protos.IProfile {
-  const profile = readProfile(profilePath);
+export function readProfile(profilePath: string): protos.IProfile {
+  // const profile = readProfile(profilePath);
+  if (!fs.existsSync(profilePath)) {
+    throw new Error("Missing profile JSON file.");
+  }
+  const profile =  JSON.parse(fs.readFileSync(profilePath, "utf8"));
 
   validateProfile(profile);
 

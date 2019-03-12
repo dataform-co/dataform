@@ -147,7 +147,7 @@ yargs
           required: true
         }),
     argv => {
-      const profile = utils.getProfile(argv["profile"]);
+      const profile = utils.readProfile(argv["profile"]);
       compile(path.resolve(argv["project-dir"]))
         .then(graph => build(graph, parseBuildArgs(argv), profile))
         .then(result => console.log(JSON.stringify(result, null, 4)))
@@ -173,7 +173,7 @@ yargs
         }),
     argv => {
       console.log("Project status: starting...");
-      const profile = utils.getProfile(argv["profile"]);
+      const profile = utils.readProfile(argv["profile"]);
 
       compile(path.resolve(argv["project-dir"]))
         .then(graph => {
@@ -217,7 +217,7 @@ yargs
       }),
     argv => {
       table
-        .list(utils.getProfile(argv["profile"]))
+        .list(utils.readProfile(argv["profile"]))
         .then(tables => console.log(JSON.stringify(tables, null, 4)))
         .catch(e => console.log(e));
     }
@@ -232,7 +232,7 @@ yargs
       }),
     argv => {
       table
-        .get(utils.getProfile(argv["profile"]), {
+        .get(utils.readProfile(argv["profile"]), {
           schema: argv["schema"],
           name: argv["table"]
         })
@@ -278,7 +278,7 @@ yargs
         .compile(argv["query"], { projectDir: path.resolve(argv["project-dir"]) })
         .then(compiledQuery => {
           // const profile = JSON.parse(fs.readFileSync(argv["profile"], "utf8"));
-          const profile = utils.getProfile(argv["profile"]);
+          const profile = utils.readProfile(argv["profile"]);
           if (profile.snowflake) {
             return console.log("Not implemented! You can try to use the web interface in your Snowflake profile");
           }
@@ -308,7 +308,7 @@ yargs
         }),
     argv => {
       const promise = query
-        .run(utils.getProfile(argv["profile"]), argv["query"], {
+        .run(utils.readProfile(argv["profile"]), argv["query"], {
           projectDir: path.resolve(argv["project-dir"])
         })
         .then(results => console.log(JSON.stringify(results, null, 4)))
