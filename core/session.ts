@@ -53,6 +53,9 @@ export class Session {
     const oNode = this.operations[name];
 
     if (tNode) {
+      if (tNode.proto.type === "inline") {
+        return `(${tNode.proto.query})`;
+      }
       return this.adapter().resolveTarget((tNode as Table).proto.target);
     } else if (oNode && oNode.proto.hasOutput) {
       return this.adapter().resolveTarget((oNode as Operation).proto.target);

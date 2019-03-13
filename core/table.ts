@@ -126,11 +126,21 @@ export class Table {
     return this;
   }
 
+  private addDependency(dependency: string): void {
+    if (this.proto.dependencies.indexOf(dependency) < 0) {
+      this.proto.dependencies.push(dependency);
+    }
+  }
+
   public dependencies(value: string | string[]) {
-    var newDependencies = typeof value === "string" ? [value] : value;
+    const newDependencies = typeof value === "string" ? [value] : value;
     newDependencies.forEach(d => {
-      if (this.proto.dependencies.indexOf(d) < 0) {
-        this.proto.dependencies.push(d);
+      const table = this.session.tables[d];
+
+      if (!!table && table.proto.type === "inline") {
+        table.proto.dependencies.forEach(childDep => this.addDependency(childDep));
+      } else {
+        this.addDependency(d);
       }
     });
     return this;

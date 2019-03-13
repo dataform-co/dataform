@@ -397,17 +397,17 @@ describe("@dataform/api", () => {
   describe("compile", () => {
     it("bigquery_example", () => {
       return compile(path.resolve("df/examples/bigquery")).then(graph => {
-        var tableNames = graph.tables.map(t => t.name);
+        const tableNames = graph.tables.map(t => t.name);
 
         // Check JS blocks get processed.
         expect(tableNames).includes("example_js_blocks");
-        var exampleJsBlocks = graph.tables.filter(t => t.name == "example_js_blocks")[0];
+        const exampleJsBlocks = graph.tables.filter(t => t.name == "example_js_blocks")[0];
         expect(exampleJsBlocks.type).equals("table");
         expect(exampleJsBlocks.query).equals("select 1 as foo");
 
         // Check we can import and use an external package.
         expect(tableNames).includes("example_incremental");
-        var exampleIncremental = graph.tables.filter(t => t.name == "example_incremental")[0];
+        const exampleIncremental = graph.tables.filter(t => t.name == "example_incremental")[0];
         expect(exampleIncremental.query).equals("select current_timestamp() as ts");
 
         // Check tables defined in includes are not included.
@@ -415,22 +415,30 @@ describe("@dataform/api", () => {
 
         // Check SQL files with raw back-ticks get escaped.
         expect(tableNames).includes("example_backticks");
-        var exampleBackticks = graph.tables.filter(t => t.name == "example_backticks")[0];
+        const exampleBackticks = graph.tables.filter(t => t.name == "example_backticks")[0];
         expect(cleanSql(exampleBackticks.query)).equals(
           "select * from `tada-analytics.df_integration_test.sample_data`"
         );
 
         // Check deferred calls to table resolve to the correct definitions file.
         expect(tableNames).includes("example_deferred");
-        var exampleDeferred = graph.tables.filter(t => t.name == "example_deferred")[0];
+        const exampleDeferred = graph.tables.filter(t => t.name == "example_deferred")[0];
         expect(exampleDeferred.fileName).includes("definitions/example_deferred.js");
 
         // Check inline tables
         expect(tableNames).includes("example_inline");
-        var exampleInline = graph.tables.filter(t => t.name == "example_inline")[0];
-        console.log('---- ----exampleInline:', exampleInline);
-        expect(exampleInline.type).equals("table");
-        expect(exampleInline.query).equals('\nselect * from `tada-analytics.df_integration_test.sample_data`');
+        const exampleInline = graph.tables.filter(t => t.name == "example_inline")[0];
+        expect(exampleInline.type).equals("inline");
+        expect(exampleInline.query).equals("\nselect * from `tada-analytics.df_integration_test.sample_data`");
+        expect(exampleInline.dependencies).includes("sample_data");
+
+        expect(tableNames).includes("example_using_inline");
+        const exampleUsingInline = graph.tables.filter(t => t.name == "example_using_inline")[0];
+        expect(exampleUsingInline.type).equals("table");
+        expect(exampleUsingInline.query).equals(
+          "\nselect * from (\nselect * from `tada-analytics.df_integration_test.sample_data`)\nwhere true"
+        );
+        expect(exampleUsingInline.dependencies).includes("sample_data");
       });
     });
 
