@@ -1,9 +1,11 @@
-import { query, Builder, compile, init, Runner } from "@dataform/api";
+import { expect, assert, config } from "chai";
+import * as Long from "long";
+import * as rimraf from "rimraf";
+import { query, Builder, compile, init, Runner, utils as apiUtils } from "@dataform/api";
 import { BigQueryDbAdapter } from "@dataform/api/dbadapters/bigquery";
 import { utils } from "@dataform/core";
 import * as protos from "@dataform/protos";
 import * as Bluebird from "bluebird";
-import { assert, config, expect } from "chai";
 import { asPlainObject, cleanSql } from "df/tests/utils";
 import * as path from "path";
 import * as stackTrace from "stack-trace";
@@ -605,6 +607,58 @@ describe("@dataform/api", () => {
     });
   });
 
+
+  describe("profile_config", () => {
+    const bigqueryProfile = { projectId: "", credentials: "" };
+    const redshiftProfile = { host: "", port: Long.fromNumber(0), user: "", password: "", database: "" };
+    const snowflakeProfile = { accountId: "", userName: "", password: "", role: "", databaseName: "", warehouse: "" };
+
+    it("empty_profile", () => {
+      expect(() => apiUtils.validateProfile(null)).to.throw(/Profile JSON file is empty/);
+      expect(() => apiUtils.validateProfile({})).to.throw(/Profile JSON file is empty/);
+    });
+
+    it("warehouse_check", () => {
+      expect(() => apiUtils.validateProfile({ bigquery: bigqueryProfile })).to.not.throw();
+      expect(() => apiUtils.validateProfile({ redshift: redshiftProfile })).to.not.throw();
+      expect(() => apiUtils.validateProfile({ snowflake: snowflakeProfile })).to.not.throw();
+      expect(() => apiUtils.validateProfile(JSON.parse('{ "some_other_warehouse": {}}'))).to.throw(
+        /Unsupported warehouse/
+      );
+      expect(() => apiUtils.validateProfile({ bigquery: bigqueryProfile, redshift: redshiftProfile })).to.throw(
+        /Multiple warehouses detected/
+      );
+    });
+
+    it("props_check", () => {
+      const toThrow = [
+        { bigquery: {} },
+        { bigquery: { wrongPropery: "" } },
+        { bigquery: { projectId: "" } },
+        { redshift: {} },
+        { redshift: { wrongPropery: "" } },
+        { redshift: { host: "" } },
+        { snowflake: {} },
+        { snowflake: { wrongPropery: "" } },
+        { snowflake: { accountId: "" } }
+      ];
+      const toNotThrow = [
+        { bigquery: { ...bigqueryProfile, oneMoreProperty: "" } },
+        { redshift: { ...redshiftProfile, oneMoreProperty: "" } },
+        { snowflake: { ...snowflakeProfile, oneMoreProperty: "" } }
+      ];
+
+      toThrow.forEach(profile => {
+        expect(() => apiUtils.validateProfile(JSON.parse(JSON.stringify(profile)))).to.throw();
+      });
+      toNotThrow.forEach(profile => {
+        expect(() => apiUtils.validateProfile(JSON.parse(JSON.stringify(profile)))).to.not.throw(
+          /Missing required properties/
+        );
+      });
+    });
+  });
+
   describe("run", () => {
     const TEST_GRAPH: protos.IExecutionGraph = protos.ExecutionGraph.create({
       projectConfig: {
@@ -653,6 +707,7 @@ describe("@dataform/api", () => {
         }
       ]
     });
+
     it("execute", async () => {
       const mockedDbAdapter = mock(BigQueryDbAdapter);
       when(mockedDbAdapter.prepareSchema(anyString())).thenResolve(null);
