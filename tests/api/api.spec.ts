@@ -142,6 +142,31 @@ describe("@dataform/api", () => {
         expect(node).to.include({ type: "assertion" });
       });
     });
+
+    it("inline_tables", () => {
+      const graph: protos.ICompiledGraph = protos.CompiledGraph.create({
+        projectConfig: { warehouse: "bigquery" },
+        tables: [
+          { name: "a", target: { schema: "schema", name: "a" }, type: "table", dependencies: [] },
+          { name: "b", target: { schema: "schema", name: "b" }, type: "inline", dependencies: ["a"] },
+          { name: "c", target: { schema: "schema", name: "c" }, type: "table", dependencies: ["a"] }
+        ]
+      });
+
+      const builder = new Builder(graph, {}, TEST_STATE);
+      const executedGraph = builder.build();
+
+      expect(executedGraph).to.exist;
+      expect(executedGraph)
+        .to.have.property("nodes")
+        .to.be.an("array").that.is.not.empty;
+
+      const nodeNames = executedGraph.nodes.map(t => t.name);
+
+      expect(nodeNames).includes("a");
+      expect(nodeNames).not.includes("b");
+      expect(nodeNames).includes("c");
+    });
   });
 
   describe("sql_generating", () => {
@@ -606,7 +631,6 @@ describe("@dataform/api", () => {
         });
     });
   });
-
 
   describe("profile_config", () => {
     const bigqueryProfile = { projectId: "", credentials: "" };

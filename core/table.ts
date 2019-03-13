@@ -4,7 +4,8 @@ import * as protos from "@dataform/protos";
 export enum TableTypes {
   TABLE = "table",
   VIEW = "view",
-  INCREMENTAL = "incremental"
+  INCREMENTAL = "incremental",
+  INLINE = "inline"
 }
 export enum DistStyleTypes {
   EVEN = "even",
