@@ -471,12 +471,27 @@ describe("@dataform/api", () => {
 
     it("redshift_example", () => {
       return compile("df/examples/redshift").then(graph => {
-        var tableNames = graph.tables.map(t => t.name);
+        const tableNames = graph.tables.map(t => t.name);
 
         // Check we can import and use an external package.
         expect(tableNames).includes("example_incremental");
-        var exampleIncremental = graph.tables.filter(t => t.name == "example_incremental")[0];
+        const exampleIncremental = graph.tables.filter(t => t.name == "example_incremental")[0];
         expect(exampleIncremental.query).equals("select current_timestamp::timestamp as ts");
+
+        // Check inline tables
+        expect(tableNames).includes("example_inline");
+        const exampleInline = graph.tables.filter(t => t.name == "example_inline")[0];
+        expect(exampleInline.type).equals("inline");
+        expect(exampleInline.query).equals('\nselect * from "df_integration_test"."sample_data"');
+        expect(exampleInline.dependencies).includes("sample_data");
+
+        expect(tableNames).includes("example_using_inline");
+        const exampleUsingInline = graph.tables.filter(t => t.name == "example_using_inline")[0];
+        expect(exampleUsingInline.type).equals("table");
+        expect(exampleUsingInline.query).equals(
+          '\nselect * from (\nselect * from "df_integration_test"."sample_data")\nwhere true'
+        );
+        expect(exampleUsingInline.dependencies).includes("sample_data");
       });
     });
 
@@ -607,6 +622,21 @@ describe("@dataform/api", () => {
         "select 1 as sample_column union all\nselect 2 as sample_column union all\nselect 3 as sample_column"
       );
       expect(mSampleData.dependencies).to.be.an("array").that.is.empty;
+
+      // Check inline tables
+      expect(mNames).includes("example_inline");
+      const exampleInline = graph.tables.filter(t => t.name == "example_inline")[0];
+      expect(exampleInline.type).equals("inline");
+      expect(exampleInline.query).equals('\nselect * from "df_integration_test"."sample_data"');
+      expect(exampleInline.dependencies).includes("sample_data");
+
+      expect(mNames).includes("example_using_inline");
+      const exampleUsingInline = graph.tables.filter(t => t.name == "example_using_inline")[0];
+      expect(exampleUsingInline.type).equals("table");
+      expect(exampleUsingInline.query).equals(
+        '\nselect * from (\nselect * from "df_integration_test"."sample_data")\nwhere true'
+      );
+      expect(exampleUsingInline.dependencies).includes("sample_data");
 
       const aNames = graph.assertions.map(a => a.name);
 
