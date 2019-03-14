@@ -1,40 +1,69 @@
 import * as protos from "@dataform/protos";
 
-import { fork } from "child_process";
+import { ChildProcess, fork } from "child_process";
 import * as fs from "fs";
 import { promisify } from "util";
 import * as path from "path";
+import { ICompileIPCParameters, ICompileIPCResult } from "../vm/compile";
 
-export function compile(projectDir: string): Promise<protos.CompiledGraph> {
+export async function compile(
+  projectDir: string,
+  defaultSchemaOverride?: string,
+  assertionSchemaOverride?: string
+): Promise<protos.CompiledGraph> {
   // Resolve the path in case it hasn't been resolved already.
   projectDir = path.resolve(projectDir);
-  // Run the bin_loader script if inside bazel, otherwise don't.
-  const forkScript = process.env["BAZEL_TARGET"] ? "../vm/compile_bin_loader" : "../vm/compile";
-  var child = fork(require.resolve(forkScript));
-  return new Promise((resolve, reject) => {
-    var timeout = 5000;
-    var timeoutStart = Date.now();
-    var checkTimeout = () => {
-      if (child.killed) return;
+  const returnedPath = await CompileChildProcess.forkProcess().compile({
+    projectDir,
+    defaultSchemaOverride,
+    assertionSchemaOverride
+  });
+  const contents = await promisify(fs.readFile)(returnedPath);
+  return protos.CompiledGraph.decode(contents);
+}
+
+class CompileChildProcess {
+  private readonly childProcess: ChildProcess;
+
+  constructor(childProcess: ChildProcess) {
+    this.childProcess = childProcess;
+  }
+
+  public static forkProcess() {
+    // Run the bin_loader script if inside bazel, otherwise don't.
+    const forkScript = process.env["BAZEL_TARGET"] ? "../vm/compile_bin_loader" : "../vm/compile";
+    var childProcess = fork(require.resolve(forkScript));
+    return new CompileChildProcess(childProcess);
+  }
+
+  public async compile(compileIpcParameters: ICompileIPCParameters) {
+    return await new Promise<string>(async (resolve, reject) => {
+      this.awaitCompletionOrTimeout();
+      this.childProcess.on("message", (result: ICompileIPCResult) => {
+        if (!this.childProcess.killed) this.childProcess.kill();
+        if (result.err) {
+          reject(new Error(result.err));
+        } else {
+          // We receive back a path where the compiled graph was written in proto format.
+          resolve(result.path);
+        }
+      });
+      this.childProcess.send(compileIpcParameters);
+    });
+  }
+
+  private awaitCompletionOrTimeout() {
+    const timeout = 5000;
+    const timeoutStart = Date.now();
+    const checkTimeout = () => {
+      if (this.childProcess.killed) return;
       if (Date.now() > timeoutStart + timeout) {
-        child.kill();
-        reject(new Error("Compilation timed out"));
+        this.childProcess.kill();
+        throw new Error("Compilation timed out");
       } else {
         setTimeout(checkTimeout, 100);
       }
     };
     checkTimeout();
-    child.on("message", obj => {
-      if (!child.killed) child.kill();
-      if (obj.err) {
-        reject(new Error(obj.err));
-      } else {
-        // We receive back a path where the compiled graph was written in proto format.
-        promisify(fs.readFile)(obj.path)
-          .then(contents => protos.CompiledGraph.decode(contents))
-          .then(graph => resolve(graph));
-      }
-    });
-    child.send({ projectDir });
-  });
+  }
 }
