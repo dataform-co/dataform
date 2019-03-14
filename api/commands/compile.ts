@@ -32,8 +32,7 @@ class CompileChildProcess {
   public static forkProcess() {
     // Run the bin_loader script if inside bazel, otherwise don't.
     const forkScript = process.env["BAZEL_TARGET"] ? "../vm/compile_bin_loader" : "../vm/compile";
-    var childProcess = fork(require.resolve(forkScript));
-    return new CompileChildProcess(childProcess);
+    return new CompileChildProcess(fork(require.resolve(forkScript)));
   }
 
   public async compile(compileIpcParameters: ICompileIPCParameters) {
