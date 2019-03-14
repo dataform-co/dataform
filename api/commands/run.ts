@@ -5,6 +5,8 @@ import * as dbadapters from "../dbadapters";
 import * as utils from "../utils";
 import * as Long from "long";
 
+const CANCEL_EVENT = "jobCancel";
+
 export function run(graph: protos.IExecutionGraph, profile: protos.IProfile): Runner {
   utils.validateProfile(profile);
   const runner = Runner.create(dbadapters.create(profile, graph.projectConfig.warehouse), graph);
@@ -72,7 +74,7 @@ export class Runner {
 
   public cancel() {
     this.cancelled = true;
-    this.eEmitter.emit("jobCancel");
+    this.eEmitter.emit(CANCEL_EVENT);
   }
 
   public resultPromise(): Promise<protos.IExecutedGraph> {
@@ -84,9 +86,6 @@ export class Runner {
   }
 
   private loop(resolve: () => void, reject: (value: any) => void) {
-    if (this.cancelled) {
-      return reject(Error("Run cancelled."));
-    }
     var pendingNodes = this.pendingNodes;
     this.pendingNodes = [];
 
@@ -101,11 +100,12 @@ export class Runner {
     pendingNodes.forEach(node => {
       let finishedDeps = node.dependencies.filter(d => allFinishedDeps.indexOf(d) >= 0);
       let successfulDeps = node.dependencies.filter(d => allSuccessfulDeps.indexOf(d) >= 0);
-      if (successfulDeps.length == node.dependencies.length) {
+      if (!this.cancelled && successfulDeps.length == node.dependencies.length) {
         // All required deps are completed, start this node.
         this.executeNode(node);
-      } else if (finishedDeps.length == node.dependencies.length) {
-        // All deps are finished but they weren't all successful, skip this node.
+      } else if (this.cancelled || finishedDeps.length == node.dependencies.length) {
+        // All deps are finished but they weren't all successful, or the run was cancelled.
+        // skip this node.
         console.log(`Completed node: "${node.name}", status: skipped`);
         this.result.nodes.push({
           name: node.name,
@@ -140,8 +140,8 @@ export class Runner {
       .reduce((chain, task) => {
         return chain.then(chainResults => {
           // Create another promise chain for retries, if we allow them.
-          const promise = this.adapter
-            .execute(task.statement)
+          return this.adapter
+            .execute(task.statement, handleCancel => this.eEmitter.on(CANCEL_EVENT, handleCancel))
             .then(rows => {
               if (task.type == "assertion" && rows.length > 0) {
                 throw [
@@ -159,14 +159,6 @@ export class Runner {
             .catch(e => {
               throw [...chainResults, { ok: false, error: e.message, task: task }];
             });
-
-          this.eEmitter.on("jobCancel", () => {
-            promise.cancel();
-          });
-          if (this.cancelled) {
-            promise.cancel();
-          }
-          return promise;
         });
       }, Promise.resolve([] as protos.IExecutedTask[]))
       .then((results: protos.IExecutedTask[]) => {

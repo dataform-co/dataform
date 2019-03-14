@@ -307,12 +307,9 @@ yargs
           default: "."
         }),
     argv => {
-      const promise = query
-        .run(utils.readProfile(argv["profile"]), argv["query"], {
-          projectDir: path.resolve(argv["project-dir"])
-        })
-        .then(results => console.log(JSON.stringify(results, null, 4)))
-        .catch(e => console.log(e));
+      const promise = query.run(utils.readProfile(argv["profile"]), argv["query"], {
+        projectDir: path.resolve(argv["project-dir"])
+      });
 
       process.on("SIGINT", () => {
         if (promise.cancel) {
@@ -320,6 +317,8 @@ yargs
           console.log("\nQuery execution cancelled!");
         }
       });
+
+      promise.then(results => console.log(JSON.stringify(results, null, 4))).catch(e => console.log(e));
     }
   )
   .demandCommand(1, "You need at least one command before moving on").argv;

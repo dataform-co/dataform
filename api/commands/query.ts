@@ -3,43 +3,17 @@ import * as utils from "../utils";
 import * as dbadapters from "../dbadapters";
 import * as path from "path";
 import { fork } from "child_process";
-import * as Promise from "bluebird";
-import * as EventEmitter from "events";
-import { compile as vmCompile } from "../vm/query";
+import { CancellablePromise } from "../utils/cancellable_promise";
 
 interface IOptions {
   projectDir?: string;
 }
 
-Promise.config({
-  cancellation: true,
-  longStackTraces: true
-});
-
-export function run(profile: protos.IProfile, query: string, options?: IOptions): Promise<any[]> {
+export function run(profile: protos.IProfile, query: string, options?: IOptions): CancellablePromise<any[]> {
   utils.validateProfile(profile);
-  return new Promise((resolve, reject, onCancel) => {
-    const eEmitter = new EventEmitter();
-    let isCanceled = false;
-
-    onCancel(() => {
-      isCanceled = true;
-      eEmitter.emit("jobCancel");
-    });
-
-    compile(query, options).then(compiledQuery => {
-      const promise = dbadapters.create(profile).execute(compiledQuery);
-      eEmitter.on("jobCancel", () => {
-        promise.cancel();
-        reject(new Error("Run cancelled"));
-      });
-
-      if (isCanceled || promise.isCancelled()) {
-        return;
-      }
-      resolve(promise);
-    });
-  });
+  return new CancellablePromise((_resolve, _reject, onCancel) =>
+    compile(query, options).then(compiledQuery => dbadapters.create(profile).execute(compiledQuery, onCancel))
+  );
 }
 
 export function evaluate(profile: protos.IProfile, query: string, options?: IOptions): Promise<void> {

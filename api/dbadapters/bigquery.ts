@@ -1,8 +1,7 @@
-import { DbAdapter } from "./index";
+import { DbAdapter, OnCancel } from "./index";
 import * as protos from "@dataform/protos";
 import * as PromisePool from "promise-pool-executor";
-import * as Bluebird from "bluebird";
-import * as EventEmitter from "events";
+
 const BigQuery = require("@google-cloud/bigquery");
 
 export class BigQueryDbAdapter implements DbAdapter {
@@ -26,48 +25,38 @@ export class BigQueryDbAdapter implements DbAdapter {
     });
   }
 
-  execute(statement: string) {
-    return new Bluebird<any[]>((resolve, reject, onCancel) => {
-      let isCancelled = false;
-      const eEmitter = new EventEmitter();
-
+  execute(statement: string, onCancel?: OnCancel) {
+    let isCancelled = false;
+    onCancel &&
       onCancel(() => {
         isCancelled = true;
-        eEmitter.emit("jobCancel");
       });
-
-      this.pool
-        .addSingleTask({
-          generator: () =>
-            new Promise<any[]>((resolve, reject) => {
-              this.client.createQueryJob(
-                { useLegacySql: false, query: statement, maxResults: 1000 },
-                (err: any, job: any) => {
-                  if (err) reject(err);
-                  // Cancelled before it was created, kill it now.
-                  if (isCancelled) {
-                    job.cancel();
-                    return;
-                  }
-                  eEmitter.on("jobCancel", () => {
-                    // Cancelled while running.
-                    job.cancel();
-                  });
-                  job.getQueryResults((err: any, result: any[]) => {
-                    if (err) reject(err);
-                    resolve(result);
-                  });
+    return this.pool
+      .addSingleTask({
+        generator: () =>
+          new Promise<any[]>((resolve, reject) => {
+            this.client.createQueryJob(
+              { useLegacySql: false, query: statement, maxResults: 1000 },
+              (err: any, job: any) => {
+                if (err) reject(err);
+                // Cancelled before it was created, kill it now.
+                if (isCancelled) {
+                  job.cancel().then(() => reject("Query cancelled."));
                 }
-              );
-            })
-        })
-        .promise()
-        // We need to return a bluebird promise, but we also wrap the actual execution in a normal promise
-        // so that we can use the node promise pool library. This just forwards on the pooled promise outcomes
-        // to the outer bluebird promise.
-        .then(v => resolve(v))
-        .catch(e => reject(e));
-    });
+                onCancel &&
+                  onCancel(() => {
+                    // Cancelled while running.
+                    job.cancel().then(() => reject("Query cancelled."));
+                  });
+                job.getQueryResults((err: any, result: any[]) => {
+                  if (err) reject(err);
+                  resolve(result);
+                });
+              }
+            );
+          })
+      })
+      .promise();
   }
 
   evaluate(statement: string) {

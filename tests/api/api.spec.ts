@@ -3,13 +3,13 @@ import * as Long from "long";
 import * as rimraf from "rimraf";
 import { query, Builder, compile, init, Runner, utils as apiUtils } from "@dataform/api";
 import { BigQueryDbAdapter } from "@dataform/api/dbadapters/bigquery";
+import { DbAdapter } from "@dataform/api/dbadapters";
 import { utils } from "@dataform/core";
 import * as protos from "@dataform/protos";
-import * as Bluebird from "bluebird";
 import { asPlainObject, cleanSql } from "df/tests/utils";
 import * as path from "path";
 import * as stackTrace from "stack-trace";
-import { anyString, mock, instance, when } from "ts-mockito";
+import { anyFunction, anyString, mock, instance, when } from "ts-mockito";
 
 config.truncateThreshold = 0;
 
@@ -695,9 +695,9 @@ describe("@dataform/api", () => {
     it("execute", async () => {
       const mockedDbAdapter = mock(BigQueryDbAdapter);
       when(mockedDbAdapter.prepareSchema(anyString())).thenResolve(null);
-      when(mockedDbAdapter.execute(TEST_GRAPH.nodes[0].tasks[0].statement)).thenReturn(Bluebird.resolve([]));
-      when(mockedDbAdapter.execute(TEST_GRAPH.nodes[1].tasks[0].statement)).thenReturn(
-        Bluebird.reject(new Error("bad statement"))
+      when(mockedDbAdapter.execute(TEST_GRAPH.nodes[0].tasks[0].statement, anyFunction())).thenResolve([]);
+      when(mockedDbAdapter.execute(TEST_GRAPH.nodes[1].tasks[0].statement, anyFunction())).thenReject(
+        new Error("bad statement")
       );
 
       const runner = new Runner(instance(mockedDbAdapter), TEST_GRAPH);
@@ -774,30 +774,32 @@ describe("@dataform/api", () => {
           }
         ]
       });
-      const mockedDbAdapter = mock(BigQueryDbAdapter);
-      when(mockedDbAdapter.prepareSchema(anyString())).thenResolve(null);
-      let wasCancelled = false;
-      // This will deliberately never return.
-      when(mockedDbAdapter.execute(TEST_GRAPH.nodes[0].tasks[0].statement)).thenReturn(
-        new Bluebird((resolve, reject, onCancel) => {
-          onCancel(() => {
-            wasCancelled = true;
-          });
-        })
-      );
 
-      const runner = new Runner(instance(mockedDbAdapter), TEST_GRAPH);
+      let wasCancelled = false;
+      const mockDbAdapter = {
+        execute: (_, onCancel) =>
+          new Promise((_, reject) => {
+            onCancel(() => {
+              wasCancelled = true;
+              reject(new Error("Run cancelled"));
+            });
+          }),
+        prepareSchema: _ => {
+          return Promise.resolve();
+        }
+      } as DbAdapter;
+
+      const runner = new Runner(mockDbAdapter, TEST_GRAPH);
       const promise = runner.execute();
-      // Push this to the back of the "queue" so we can await the promise first.
+      // We want to await the return promise before we actually call cancel.
+      // Setting a short (10ms) timeout on calling cancel accomplishes this.
       setTimeout(() => runner.cancel(), 10);
-      try {
-        const result = await promise;
-      } catch (e) {
-        // Expected.
-        expect(wasCancelled).is.true;
-        return;
-      }
-      throw new Error("Cancelled run did not throw");
+      const result = await promise;
+      expect(wasCancelled).is.true;
+      // Cancelling a run doesn't actually throw at the top level.
+      // The node should fail, and have an appropriate error message.
+      expect(result.nodes[0].deprecatedOk).is.false;
+      expect(result.nodes[0].tasks[0].error).to.match(/cancelled/);
     });
   });
 });
