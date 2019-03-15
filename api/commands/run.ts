@@ -138,27 +138,28 @@ export class Runner {
     // This creates a promise chain that executes all tasks in order.
     node.tasks
       .reduce((chain, task) => {
-        return chain.then(chainResults => {
-          // Create another promise chain for retries, if we allow them.
-          return this.adapter
-            .execute(task.statement, handleCancel => this.eEmitter.on(CANCEL_EVENT, handleCancel))
-            .then(rows => {
-              if (task.type == "assertion" && rows.length > 0) {
-                throw [
-                  ...chainResults,
-                  {
-                    ok: false,
-                    task: task,
-                    error: `Test failed: returned >= ${rows.length} rows.`
-                  }
-                ];
-              } else {
-                return [...chainResults, { ok: true, task: task }];
-              }
-            })
-            .catch(e => {
-              throw [...chainResults, { ok: false, error: e.message, task: task }];
-            });
+        return chain.then(async chainResults => {
+          try {
+            // Create another promise chain for retries, if we allow them.
+            const rows = await this.adapter.execute(task.statement, handleCancel =>
+              this.eEmitter.on(CANCEL_EVENT, handleCancel)
+            );
+
+            if (task.type == "assertion" && rows.length > 0) {
+              throw [
+                ...chainResults,
+                {
+                  ok: false,
+                  task: task,
+                  error: `Test failed: returned >= ${rows.length} rows.`
+                }
+              ];
+            } else {
+              return [...chainResults, { ok: true, task: task }];
+            }
+          } catch (e) {
+            throw [...chainResults, { ok: false, error: e.message, task: task }];
+          }
         });
       }, Promise.resolve([] as protos.IExecutedTask[]))
       .then((results: protos.IExecutedTask[]) => {

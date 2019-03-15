@@ -790,11 +790,11 @@ describe("@dataform/api", () => {
       } as DbAdapter;
 
       const runner = new Runner(mockDbAdapter, TEST_GRAPH);
-      const promise = runner.execute();
+      const execution = runner.execute();
       // We want to await the return promise before we actually call cancel.
       // Setting a short (10ms) timeout on calling cancel accomplishes this.
       setTimeout(() => runner.cancel(), 10);
-      const result = await promise;
+      const result = await execution;
       expect(wasCancelled).is.true;
       // Cancelling a run doesn't actually throw at the top level.
       // The node should fail, and have an appropriate error message.

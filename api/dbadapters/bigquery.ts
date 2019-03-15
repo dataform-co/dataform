@@ -37,16 +37,20 @@ export class BigQueryDbAdapter implements DbAdapter {
           new Promise<any[]>((resolve, reject) => {
             this.client.createQueryJob(
               { useLegacySql: false, query: statement, maxResults: 1000 },
-              (err: any, job: any) => {
-                if (err) reject(err);
+              async (err: any, job: any) => {
+                if (err) {
+                  return reject(err);
+                }
                 // Cancelled before it was created, kill it now.
                 if (isCancelled) {
-                  job.cancel().then(() => reject("Query cancelled."));
+                  await job.cancel();
+                  return reject("Query cancelled.");
                 }
                 onCancel &&
-                  onCancel(() => {
+                  onCancel(async () => {
                     // Cancelled while running.
-                    job.cancel().then(() => reject("Query cancelled."));
+                    await job.cancel();
+                    return reject("Query cancelled.");
                   });
                 job.getQueryResults((err: any, result: any[]) => {
                   if (err) reject(err);
