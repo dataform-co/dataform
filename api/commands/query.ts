@@ -13,7 +13,7 @@ export function run(profile: protos.IProfile, query: string, options?: IOptions)
   utils.validateProfile(profile);
   return new CancellablePromise(async (_resolve, _reject, onCancel) => {
     const compiledQuery = await compile(query, options);
-    dbadapters.create(profile).execute(compiledQuery, onCancel);
+    return dbadapters.create(profile).execute(compiledQuery, onCancel);
   });
 }
 
