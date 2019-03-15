@@ -382,7 +382,7 @@ describe("@dataform/api", () => {
       // Project has already been initialized via the tests script, check data is valid.
 
       // compile project
-      const graph = await compile(projectDir).catch(error => error);
+      const graph = await compile({ projectDir }).catch(error => error);
       expect(graph).to.not.be.an.instanceof(Error);
 
       const gErrors = utils.validate(graph);
@@ -398,7 +398,7 @@ describe("@dataform/api", () => {
 
   describe("compile", () => {
     it("bigquery_example", async () => {
-      const graph = await compile(path.resolve("df/examples/bigquery"));
+      const graph = await compile({ projectDir: path.resolve("df/examples/bigquery") });
       var tableNames = graph.tables.map(t => t.name);
 
       // Check JS blocks get processed.
@@ -427,18 +427,18 @@ describe("@dataform/api", () => {
     });
 
     it("schema overrides", async () => {
-      const graph = await compile(
-        path.resolve("df/examples/bigquery"),
-        "overridden_default_schema",
-        "overridden_assertion_schema"
-      );
+      const graph = await compile({
+        projectDir: path.resolve("df/examples/bigquery"),
+        defaultSchemaOverride: "overridden_default_schema",
+        assertionSchemaOverride: "overridden_assertion_schema"
+      });
       expect(graph.projectConfig.defaultSchema).to.equal("overridden_default_schema");
       expect(graph.projectConfig.assertionSchema).to.equal("overridden_assertion_schema");
       graph.tables.forEach(table => expect(table.target.schema).to.equal("overridden_default_schema"));
     });
 
     it("redshift_example", () => {
-      return compile("df/examples/redshift").then(graph => {
+      return compile({ projectDir: "df/examples/redshift" }).then(graph => {
         var tableNames = graph.tables.map(t => t.name);
 
         // Check we can import and use an external package.
@@ -464,7 +464,9 @@ describe("@dataform/api", () => {
           message: /ref_with_error is not defined/
         }
       ];
-      const graph = await compile(path.resolve("df/examples/bigquery_with_errors")).catch(error => error);
+      const graph = await compile({ projectDir: path.resolve("df/examples/bigquery_with_errors") }).catch(
+        error => error
+      );
       expect(graph).to.not.be.an.instanceof(Error);
 
       const gErrors = utils.validate(graph);
@@ -497,7 +499,7 @@ describe("@dataform/api", () => {
     });
 
     it("bigquery_backwards_compatibility_example", () => {
-      return compile("df/examples/bigquery_backwards_compatibility").then(graph => {
+      return compile({ projectDir: "df/examples/bigquery_backwards_compatibility" }).then(graph => {
         const tableNames = graph.tables.map(t => t.name);
 
         // We just want to make sure this compiles really.
@@ -514,7 +516,7 @@ describe("@dataform/api", () => {
         sample_2: 'select * from "test_schema"."sample_1"'
       };
 
-      const graph = await compile("df/examples/redshift_operations").catch(error => error);
+      const graph = await compile({ projectDir: "df/examples/redshift_operations" }).catch(error => error);
       expect(graph).to.not.be.an.instanceof(Error);
 
       const gErrors = utils.validate(graph);
@@ -536,7 +538,7 @@ describe("@dataform/api", () => {
     });
 
     it("snowflake_example", async () => {
-      const graph = await compile("df/examples/snowflake").catch(error => error);
+      const graph = await compile({ projectDir: "df/examples/snowflake" }).catch(error => error);
       expect(graph).to.not.be.an.instanceof(Error);
 
       const gErrors = utils.validate(graph);
