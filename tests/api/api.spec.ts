@@ -382,7 +382,7 @@ describe("@dataform/api", () => {
       // Project has already been initialized via the tests script, check data is valid.
 
       // compile project
-      const graph = await compile(projectDir).catch(error => error);
+      const graph = await compile({ projectDir }).catch(error => error);
       expect(graph).to.not.be.an.instanceof(Error);
 
       const gErrors = utils.validate(graph);
@@ -397,40 +397,48 @@ describe("@dataform/api", () => {
   });
 
   describe("compile", () => {
-    it("bigquery_example", () => {
-      return compile(path.resolve("df/examples/bigquery")).then(graph => {
-        var tableNames = graph.tables.map(t => t.name);
+    it("bigquery_example", async () => {
+      const graph = await compile({ projectDir: path.resolve("df/examples/bigquery") });
+      var tableNames = graph.tables.map(t => t.name);
 
-        // Check JS blocks get processed.
-        expect(tableNames).includes("example_js_blocks");
-        var exampleJsBlocks = graph.tables.filter(t => t.name == "example_js_blocks")[0];
-        expect(exampleJsBlocks.type).equals("table");
-        expect(exampleJsBlocks.query).equals("select 1 as foo");
+      // Check JS blocks get processed.
+      expect(tableNames).includes("example_js_blocks");
+      var exampleJsBlocks = graph.tables.filter(t => t.name == "example_js_blocks")[0];
+      expect(exampleJsBlocks.type).equals("table");
+      expect(exampleJsBlocks.query).equals("select 1 as foo");
 
-        // Check we can import and use an external package.
-        expect(tableNames).includes("example_incremental");
-        var exampleIncremental = graph.tables.filter(t => t.name == "example_incremental")[0];
-        expect(exampleIncremental.query).equals("select current_timestamp() as ts");
+      // Check we can import and use an external package.
+      expect(tableNames).includes("example_incremental");
+      var exampleIncremental = graph.tables.filter(t => t.name == "example_incremental")[0];
+      expect(exampleIncremental.query).equals("select current_timestamp() as ts");
 
-        // Check tables defined in includes are not included.
-        expect(tableNames).not.includes("example_ignore");
+      // Check tables defined in includes are not included.
+      expect(tableNames).not.includes("example_ignore");
 
-        // Check SQL files with raw back-ticks get escaped.
-        expect(tableNames).includes("example_backticks");
-        var exampleBackticks = graph.tables.filter(t => t.name == "example_backticks")[0];
-        expect(cleanSql(exampleBackticks.query)).equals(
-          "select * from `tada-analytics.df_integration_test.sample_data`"
-        );
+      // Check SQL files with raw back-ticks get escaped.
+      expect(tableNames).includes("example_backticks");
+      var exampleBackticks = graph.tables.filter(t => t.name == "example_backticks")[0];
+      expect(cleanSql(exampleBackticks.query)).equals("select * from `tada-analytics.df_integration_test.sample_data`");
 
-        // Check deferred calls to table resolve to the correct definitions file.
-        expect(tableNames).includes("example_deferred");
-        var exampleDeferred = graph.tables.filter(t => t.name == "example_deferred")[0];
-        expect(exampleDeferred.fileName).includes("definitions/example_deferred.js");
+      // Check deferred calls to table resolve to the correct definitions file.
+      expect(tableNames).includes("example_deferred");
+      var exampleDeferred = graph.tables.filter(t => t.name == "example_deferred")[0];
+      expect(exampleDeferred.fileName).includes("definitions/example_deferred.js");
+    });
+
+    it("schema overrides", async () => {
+      const graph = await compile({
+        projectDir: path.resolve("df/examples/bigquery"),
+        defaultSchemaOverride: "overridden_default_schema",
+        assertionSchemaOverride: "overridden_assertion_schema"
       });
+      expect(graph.projectConfig.defaultSchema).to.equal("overridden_default_schema");
+      expect(graph.projectConfig.assertionSchema).to.equal("overridden_assertion_schema");
+      graph.tables.forEach(table => expect(table.target.schema).to.equal("overridden_default_schema"));
     });
 
     it("redshift_example", () => {
-      return compile("df/examples/redshift").then(graph => {
+      return compile({ projectDir: "df/examples/redshift" }).then(graph => {
         var tableNames = graph.tables.map(t => t.name);
 
         // Check we can import and use an external package.
@@ -456,7 +464,9 @@ describe("@dataform/api", () => {
           message: /ref_with_error is not defined/
         }
       ];
-      const graph = await compile(path.resolve("df/examples/bigquery_with_errors")).catch(error => error);
+      const graph = await compile({ projectDir: path.resolve("df/examples/bigquery_with_errors") }).catch(
+        error => error
+      );
       expect(graph).to.not.be.an.instanceof(Error);
 
       const gErrors = utils.validate(graph);
@@ -489,7 +499,7 @@ describe("@dataform/api", () => {
     });
 
     it("bigquery_backwards_compatibility_example", () => {
-      return compile("df/examples/bigquery_backwards_compatibility").then(graph => {
+      return compile({ projectDir: "df/examples/bigquery_backwards_compatibility" }).then(graph => {
         const tableNames = graph.tables.map(t => t.name);
 
         // We just want to make sure this compiles really.
@@ -506,7 +516,7 @@ describe("@dataform/api", () => {
         sample_2: 'select * from "test_schema"."sample_1"'
       };
 
-      const graph = await compile("df/examples/redshift_operations").catch(error => error);
+      const graph = await compile({ projectDir: "df/examples/redshift_operations" }).catch(error => error);
       expect(graph).to.not.be.an.instanceof(Error);
 
       const gErrors = utils.validate(graph);
@@ -528,7 +538,7 @@ describe("@dataform/api", () => {
     });
 
     it("snowflake_example", async () => {
-      const graph = await compile("df/examples/snowflake").catch(error => error);
+      const graph = await compile({ projectDir: "df/examples/snowflake" }).catch(error => error);
       expect(graph).to.not.be.an.instanceof(Error);
 
       const gErrors = utils.validate(graph);
@@ -591,7 +601,6 @@ describe("@dataform/api", () => {
         });
     });
   });
-
 
   describe("profile_config", () => {
     const bigqueryProfile = { projectId: "", credentials: "" };

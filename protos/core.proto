@@ -20,6 +20,15 @@ message RunConfig {
   bool carry_on = 4;
 }
 
+message CompileConfig {
+  // Required.
+  string project_dir = 1;
+
+  // Optional overrides for project-level settings.
+  string default_schema_override = 2;
+  string assertion_schema_override = 3;
+}
+
 message Target {
   string schema = 1;
   string name = 2;

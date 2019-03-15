@@ -2,30 +2,24 @@ import * as fs from "fs";
 import * as path from "path";
 import * as glob from "glob";
 import { utils } from "@dataform/core";
-import * as protos from "@dataform/protos";
 
-export function genIndex(projectDir: string, returnOverride?: string): string {
-  var projectConfig = protos.ProjectConfig.create({
-    defaultSchema: "dataform",
-    assertionSchema: "dataform_assertions"
-  });
+export function genIndex(
+  projectDir: string,
+  returnOverride?: string,
+  defaultSchemaOverride: string = "",
+  assertionSchemaOverride: string = ""
+): string {
+  const packageJsonPath = path.join(projectDir, "package.json");
+  const packageConfig = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
 
-  var projectConfigPath = path.join(projectDir, "dataform.json");
-  if (fs.existsSync(projectConfigPath)) {
-    Object.assign(projectConfig, JSON.parse(fs.readFileSync(projectConfigPath, "utf8")));
-  }
-
-  var packageJsonPath = path.join(projectDir, "package.json");
-  var packageConfig = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
-
-  var includePaths = [];
+  const includePaths = [];
   glob.sync("includes/*.js", { cwd: projectDir }).forEach(path => {
     if (includePaths.indexOf(path) < 0) {
       includePaths.push(path);
     }
   });
 
-  var definitionPaths = [];
+  const definitionPaths = [];
   glob.sync("definitions/**/*.{js,sql}", { cwd: projectDir }).forEach(path => {
     if (definitionPaths.indexOf(path) < 0) {
       definitionPaths.push(path);
@@ -38,9 +32,10 @@ export function genIndex(projectDir: string, returnOverride?: string): string {
     }
   });
 
-  var packageRequires = Object.keys(packageConfig.dependencies || {})
+  const packageRequires = Object.keys(packageConfig.dependencies || {})
     .map(packageName => {
-      return `try { global.${utils.variableNameFriendly(packageName)} = require("${packageName}"); } catch (e) {
+      return `
+      try { global.${utils.variableNameFriendly(packageName)} = require("${packageName}"); } catch (e) {
         if (global.session.compileError) {
           global.session.compileError(e, "${packageName}");
         } else {
@@ -50,9 +45,10 @@ export function genIndex(projectDir: string, returnOverride?: string): string {
     })
     .join("\n");
 
-  var includeRequires = includePaths
+  const includeRequires = includePaths
     .map(path => {
-      return `try { global.${utils.baseFilename(path)} = require("./${path}"); } catch (e) {
+      return `
+      try { global.${utils.baseFilename(path)} = require("./${path}"); } catch (e) {
         if (global.session.compileError) {
           global.session.compileError(e, "${path}");
         } else {
@@ -61,9 +57,10 @@ export function genIndex(projectDir: string, returnOverride?: string): string {
       }`;
     })
     .join("\n");
-  var definitionRequires = definitionPaths
+  const definitionRequires = definitionPaths
     .map(path => {
-      return `try { require("./${path}"); } catch (e) {
+      return `
+      try { require("./${path}"); } catch (e) {
         if (global.session.compileError) {
           global.session.compileError(e, "${path}");
         } else {
@@ -79,7 +76,10 @@ export function genIndex(projectDir: string, returnOverride?: string): string {
     const { util } = require("protobufjs");
     ${packageRequires}
     ${includeRequires}
-    init("${projectDir}", require("./dataform.json"));
+    const projectConfig = require("./dataform.json");
+    projectConfig.defaultSchema = "${defaultSchemaOverride}" || projectConfig.defaultSchema;
+    projectConfig.assertionSchema = "${assertionSchemaOverride}" || projectConfig.assertionSchema;
+    init("${projectDir}", projectConfig);
     ${definitionRequires}
     const compiledGraph = compile();
     // We return a base64 encoded proto via NodeVM, as returning a Uint8Array directly causes issues.

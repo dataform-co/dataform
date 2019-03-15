@@ -124,7 +124,7 @@ export function getTestRunCommand(
   return async () => {
     // run the command
     const graph = await dfapi
-      .compile(testConfig.projectDir)
+      .compile({ projectDir: testConfig.projectDir })
       .then(cg => dfapi.build(cg, {}, testConfig.profile))
       .then(eg => dfapi.run(eg, testConfig.profile).resultPromise());
 
