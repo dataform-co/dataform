@@ -142,6 +142,31 @@ describe("@dataform/api", () => {
         expect(node).to.include({ type: "assertion" });
       });
     });
+
+    it("inline_tables", () => {
+      const graph: protos.ICompiledGraph = protos.CompiledGraph.create({
+        projectConfig: { warehouse: "bigquery" },
+        tables: [
+          { name: "a", target: { schema: "schema", name: "a" }, type: "table", dependencies: [] },
+          { name: "b", target: { schema: "schema", name: "b" }, type: "inline", dependencies: ["a"] },
+          { name: "c", target: { schema: "schema", name: "c" }, type: "table", dependencies: ["a"] }
+        ]
+      });
+
+      const builder = new Builder(graph, {}, TEST_STATE);
+      const executedGraph = builder.build();
+
+      expect(executedGraph).to.exist;
+      expect(executedGraph)
+        .to.have.property("nodes")
+        .to.be.an("array").that.is.not.empty;
+
+      const nodeNames = executedGraph.nodes.map(t => t.name);
+
+      expect(nodeNames).includes("a");
+      expect(nodeNames).not.includes("b");
+      expect(nodeNames).includes("c");
+    });
   });
 
   describe("sql_generating", () => {
@@ -424,6 +449,21 @@ describe("@dataform/api", () => {
       expect(tableNames).includes("example_deferred");
       var exampleDeferred = graph.tables.filter(t => t.name == "example_deferred")[0];
       expect(exampleDeferred.fileName).includes("definitions/example_deferred.js");
+
+      // Check inline tables
+      expect(tableNames).includes("example_inline");
+      var exampleInline = graph.tables.filter(t => t.name == "example_inline")[0];
+      expect(exampleInline.type).equals("inline");
+      expect(exampleInline.query).equals("\nselect * from `tada-analytics.df_integration_test.sample_data`");
+      expect(exampleInline.dependencies).includes("sample_data");
+
+      expect(tableNames).includes("example_using_inline");
+      var exampleUsingInline = graph.tables.filter(t => t.name == "example_using_inline")[0];
+      expect(exampleUsingInline.type).equals("table");
+      expect(exampleUsingInline.query).equals(
+        "\nselect * from (\nselect * from `tada-analytics.df_integration_test.sample_data`)\nwhere true"
+      );
+      expect(exampleUsingInline.dependencies).includes("sample_data");
     });
 
     it("schema overrides", async () => {
@@ -443,8 +483,23 @@ describe("@dataform/api", () => {
 
         // Check we can import and use an external package.
         expect(tableNames).includes("example_incremental");
-        var exampleIncremental = graph.tables.filter(t => t.name == "example_incremental")[0];
+        const exampleIncremental = graph.tables.filter(t => t.name == "example_incremental")[0];
         expect(exampleIncremental.query).equals("select current_timestamp::timestamp as ts");
+
+        // Check inline tables
+        expect(tableNames).includes("example_inline");
+        const exampleInline = graph.tables.filter(t => t.name == "example_inline")[0];
+        expect(exampleInline.type).equals("inline");
+        expect(exampleInline.query).equals('\nselect * from "df_integration_test"."sample_data"');
+        expect(exampleInline.dependencies).includes("sample_data");
+
+        expect(tableNames).includes("example_using_inline");
+        const exampleUsingInline = graph.tables.filter(t => t.name == "example_using_inline")[0];
+        expect(exampleUsingInline.type).equals("table");
+        expect(exampleUsingInline.query).equals(
+          '\nselect * from (\nselect * from "df_integration_test"."sample_data")\nwhere true'
+        );
+        expect(exampleUsingInline.dependencies).includes("sample_data");
       });
     });
 
@@ -577,6 +632,21 @@ describe("@dataform/api", () => {
         "select 1 as sample_column union all\nselect 2 as sample_column union all\nselect 3 as sample_column"
       );
       expect(mSampleData.dependencies).to.be.an("array").that.is.empty;
+
+      // Check inline tables
+      expect(mNames).includes("example_inline");
+      const exampleInline = graph.tables.filter(t => t.name == "example_inline")[0];
+      expect(exampleInline.type).equals("inline");
+      expect(exampleInline.query).equals('\nselect * from "df_integration_test"."sample_data"');
+      expect(exampleInline.dependencies).includes("sample_data");
+
+      expect(mNames).includes("example_using_inline");
+      const exampleUsingInline = graph.tables.filter(t => t.name == "example_using_inline")[0];
+      expect(exampleUsingInline.type).equals("table");
+      expect(exampleUsingInline.query).equals(
+        '\nselect * from (\nselect * from "df_integration_test"."sample_data")\nwhere true'
+      );
+      expect(exampleUsingInline.dependencies).includes("sample_data");
 
       const aNames = graph.assertions.map(a => a.name);
 

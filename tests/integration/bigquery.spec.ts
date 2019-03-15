@@ -20,6 +20,7 @@ describe("@dataform/integration/bigquery", function() {
       { id: "example_deferred", data: [{ test: 1 }] },
       { id: "example_view", data: [{ sample: 1 }, { sample: 2 }, { sample: 3 }] },
       { id: "sample_data", data: [{ sample: 1 }, { sample: 2 }, { sample: 3 }] },
+      { id: "example_using_inline", data: [{ sample: 1 }, { sample: 2 }, { sample: 3 }] },
       { id: "example_incremental", data: [] }
     ];
 
