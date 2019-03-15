@@ -87,7 +87,7 @@ function getPredefinedTypes(types): string {
     .join(" | ");
 }
 
-function isPropertyExist(prop: any): boolean {
+function objectExistsOrIsNonEmpty(prop: any): boolean {
   if (!prop) {
     return false;
   }
@@ -236,7 +236,7 @@ export function validate(compiledGraph: protos.ICompiledGraph): protos.IGraphErr
     // ignored properties in tables
     if (!!ignoredProps[node.type]) {
       ignoredProps[node.type].forEach(ignoredProp => {
-        if (isPropertyExist(node[ignoredProp])) {
+        if (objectExistsOrIsNonEmpty(node[ignoredProp])) {
           const message = `Unused property was detected: "${ignoredProp}". This property is not used for tables with type "${
             node.type
           }" and will be ignored.`;
