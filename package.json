@@ -65,7 +65,6 @@
   },
   "scripts": {
     "build": "./scripts/build",
-    "clean": "rm -rf /tmp/.yarn-bazel-cache/ && bazel clean",
     "test": "./scripts/test"
   }
 }

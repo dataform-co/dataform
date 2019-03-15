@@ -17,6 +17,19 @@ export enum SortStyleTypes {
   INTERLEAVED = "interleaved"
 }
 
+export const ignoredProps = {
+  [TableTypes.INLINE]: [
+    "bigquery",
+    "redshift",
+    "preOps",
+    "postOps",
+    "descriptor",
+    "disabled",
+    "where",
+    "fieldDescriptor"
+  ]
+};
+
 type ValueOf<T> = T[keyof T];
 export type TContextable<T> = T | ((ctx: TableContext) => T);
 export type TableType = ValueOf<TableTypes>;
