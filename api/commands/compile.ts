@@ -6,17 +6,13 @@ import { promisify } from "util";
 import * as path from "path";
 import { ICompileIPCParameters, ICompileIPCResult } from "../vm/compile";
 
-export async function compile(
-  projectDir: string,
-  defaultSchemaOverride?: string,
-  assertionSchemaOverride?: string
-): Promise<protos.CompiledGraph> {
+export async function compile(compileConfig: protos.ICompileConfig): Promise<protos.CompiledGraph> {
   // Resolve the path in case it hasn't been resolved already.
-  projectDir = path.resolve(projectDir);
+  const projectDir = path.resolve(compileConfig.projectDir);
   const returnedPath = await CompileChildProcess.forkProcess().compile({
     projectDir,
-    defaultSchemaOverride,
-    assertionSchemaOverride
+    defaultSchemaOverride: compileConfig.defaultSchemaOverride,
+    assertionSchemaOverride: compileConfig.assertionSchemaOverride
   });
   const contents = await promisify(fs.readFile)(returnedPath);
   return protos.CompiledGraph.decode(contents);

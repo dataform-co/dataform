@@ -8,10 +8,10 @@ import { init, compile, build, run, table, query, utils } from "@dataform/api";
 
 const addCompileYargs = (yargs: yargs.Argv) =>
   yargs
-    .option("default-schema-override", {
+    .option("default-schema", {
       describe: "An optional default schema name override"
     })
-    .option("assertion-schema-override", {
+    .option("assertion-schema", {
       describe: "An optional assertion schema name override"
     });
 
@@ -41,7 +41,7 @@ const parseBuildArgs = (argv: yargs.Arguments): protos.IRunConfig => ({
 });
 
 const compileProject = (projectDir: string, defaultSchemaOverride?: string, assertionSchemaOverride?: string) => {
-  return compile(projectDir, defaultSchemaOverride, assertionSchemaOverride)
+  return compile({ projectDir, defaultSchemaOverride, assertionSchemaOverride })
     .then(graph => console.log(JSON.stringify(graph, null, 4)))
     .catch(e => console.log(e));
 };
@@ -158,11 +158,11 @@ yargs
         }),
     argv => {
       const profile = utils.readProfile(argv["profile"]);
-      compile(
-        path.resolve(argv["project-dir"]),
-        path.resolve(argv["default-schema-override"]),
-        path.resolve(argv["assertion-schema-override"])
-      )
+      compile({
+        projectDir: path.resolve(argv["project-dir"]),
+        defaultSchemaOverride: path.resolve(argv["default-schema-override"]),
+        assertionSchemaOverride: path.resolve(argv["assertion-schema-override"])
+      })
         .then(graph => build(graph, parseBuildArgs(argv), profile))
         .then(result => console.log(JSON.stringify(result, null, 4)))
         .catch(e => console.log(e));
@@ -189,11 +189,11 @@ yargs
       console.log("Project status: starting...");
       const profile = utils.readProfile(argv["profile"]);
 
-      compile(
-        path.resolve(argv["project-dir"]),
-        path.resolve(argv["default-schema-override"]),
-        path.resolve(argv["assertion-schema-override"])
-      )
+      compile({
+        projectDir: path.resolve(argv["project-dir"]),
+        defaultSchemaOverride: path.resolve(argv["default-schema-override"]),
+        assertionSchemaOverride: path.resolve(argv["assertion-schema-override"])
+      })
         .then(graph => {
           console.log("Project status: build...");
 
