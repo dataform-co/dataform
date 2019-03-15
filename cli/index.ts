@@ -6,6 +6,15 @@ import * as chokidar from "chokidar";
 import * as protos from "@dataform/protos";
 import { init, compile, build, run, table, query, utils } from "@dataform/api";
 
+const addCompileYargs = (yargs: yargs.Argv) =>
+  yargs
+    .option("default-schema", {
+      describe: "An optional default schema name override"
+    })
+    .option("assertion-schema", {
+      describe: "An optional assertion schema name override"
+    });
+
 const addBuildYargs = (yargs: yargs.Argv) =>
   yargs
     .option("full-refresh", {
@@ -31,8 +40,8 @@ const parseBuildArgs = (argv: yargs.Arguments): protos.IRunConfig => ({
   includeDependencies: argv["include-deps"]
 });
 
-const compileProject = (projectDir: string) => {
-  return compile(projectDir)
+const compileProject = (projectDir: string, defaultSchemaOverride?: string, assertionSchemaOverride?: string) => {
+  return compile({ projectDir, defaultSchemaOverride, assertionSchemaOverride })
     .then(graph => console.log(JSON.stringify(graph, null, 4)))
     .catch(e => console.log(e));
 };
@@ -60,7 +69,7 @@ yargs
           describe: "Whether to skip installing packages.",
           default: false
         }),
-    argv => {
+    argv =>
       init(
         path.resolve(argv["project-dir"]),
         {
@@ -68,14 +77,13 @@ yargs
           gcloudProjectId: argv["gcloud-project-id"]
         },
         argv["skip-install"]
-      );
-    }
+      )
   )
   .command(
     "compile [project-dir]",
     "Compile the dataform project. Produces JSON output describing the non-executable graph.",
     yargs =>
-      yargs
+      addCompileYargs(yargs)
         .positional("project-dir", {
           describe: "The directory of the Dataform project.",
           default: "."
@@ -87,8 +95,10 @@ yargs
         }),
     argv => {
       const projectDir = path.resolve(argv["project-dir"]);
+      const defaultSchemaOverride = path.resolve(argv["default-schema-override"]);
+      const assertionSchemaOverride = path.resolve(argv["assertion-schema-override"]);
 
-      compileProject(projectDir).then(() => {
+      compileProject(projectDir, defaultSchemaOverride, assertionSchemaOverride).then(() => {
         if (argv["watch"]) {
           let timeoutID = null;
           let isCompiling = false;
@@ -122,7 +132,7 @@ yargs
                 if (!isCompiling) {
                   // recompile project
                   isCompiling = true;
-                  compileProject(projectDir).then(() => {
+                  compileProject(projectDir, defaultSchemaOverride, assertionSchemaOverride).then(() => {
                     console.log("Watcher ready for changes...");
                     isCompiling = false;
                   });
@@ -148,7 +158,11 @@ yargs
         }),
     argv => {
       const profile = utils.readProfile(argv["profile"]);
-      compile(path.resolve(argv["project-dir"]))
+      compile({
+        projectDir: path.resolve(argv["project-dir"]),
+        defaultSchemaOverride: path.resolve(argv["default-schema-override"]),
+        assertionSchemaOverride: path.resolve(argv["assertion-schema-override"])
+      })
         .then(graph => build(graph, parseBuildArgs(argv), profile))
         .then(result => console.log(JSON.stringify(result, null, 4)))
         .catch(e => console.log(e));
@@ -175,7 +189,11 @@ yargs
       console.log("Project status: starting...");
       const profile = utils.readProfile(argv["profile"]);
 
-      compile(path.resolve(argv["project-dir"]))
+      compile({
+        projectDir: path.resolve(argv["project-dir"]),
+        defaultSchemaOverride: path.resolve(argv["default-schema-override"]),
+        assertionSchemaOverride: path.resolve(argv["assertion-schema-override"])
+      })
         .then(graph => {
           console.log("Project status: build...");
 
