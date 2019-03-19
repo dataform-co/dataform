@@ -4,7 +4,8 @@ import * as protos from "@dataform/protos";
 export enum TableTypes {
   TABLE = "table",
   VIEW = "view",
-  INCREMENTAL = "incremental"
+  INCREMENTAL = "incremental",
+  INLINE = "inline"
 }
 export enum DistStyleTypes {
   EVEN = "even",
@@ -15,6 +16,19 @@ export enum SortStyleTypes {
   COMPOUND = "compound",
   INTERLEAVED = "interleaved"
 }
+
+export const ignoredProps = {
+  [TableTypes.INLINE]: [
+    "bigquery",
+    "redshift",
+    "preOps",
+    "postOps",
+    "descriptor",
+    "disabled",
+    "where",
+    "fieldDescriptor"
+  ]
+};
 
 type ValueOf<T> = T[keyof T];
 export type TContextable<T> = T | ((ctx: TableContext) => T);
@@ -126,11 +140,21 @@ export class Table {
     return this;
   }
 
+  private addDependency(dependency: string): void {
+    if (this.proto.dependencies.indexOf(dependency) < 0) {
+      this.proto.dependencies.push(dependency);
+    }
+  }
+
   public dependencies(value: string | string[]) {
-    var newDependencies = typeof value === "string" ? [value] : value;
+    const newDependencies = typeof value === "string" ? [value] : value;
     newDependencies.forEach(d => {
-      if (this.proto.dependencies.indexOf(d) < 0) {
-        this.proto.dependencies.push(d);
+      const table = this.session.tables[d];
+
+      if (!!table && table.proto.type === "inline") {
+        table.proto.dependencies.forEach(childDep => this.addDependency(childDep));
+      } else {
+        this.addDependency(d);
       }
     });
     return this;
@@ -205,6 +229,12 @@ export class TableContext {
   }
 
   public ref(name: string) {
+    if (!name) {
+      const message = `Node name is not specified`;
+      this.table.session.compileError(new Error(message));
+      return "";
+    }
+
     this.table.dependencies(name);
     return this.table.session.ref(name);
   }

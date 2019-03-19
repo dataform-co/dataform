@@ -1,5 +1,5 @@
 import * as protos from "@dataform/protos";
-import { TableTypes, DistStyleTypes, SortStyleTypes } from "./table";
+import { TableTypes, DistStyleTypes, SortStyleTypes, ignoredProps } from "./table";
 
 export function relativePath(path: string, base: string) {
   if (base.length == 0) {
@@ -85,6 +85,18 @@ function getPredefinedTypes(types): string {
   return Object.keys(types)
     .map(key => `"${types[key]}"`)
     .join(" | ");
+}
+
+function objectExistsOrIsNonEmpty(prop: any): boolean {
+  if (!prop) {
+    return false;
+  }
+
+  return (
+    (Array.isArray(prop) && !!prop.length) ||
+    (!Array.isArray(prop) && typeof prop === "object" && !!Object.keys(prop).length) ||
+    typeof prop !== "object"
+  );
 }
 
 export function validate(compiledGraph: protos.ICompiledGraph): protos.IGraphErrors {
@@ -218,6 +230,18 @@ export function validate(compiledGraph: protos.ICompiledGraph): protos.IGraphErr
             validationErrors.push(protos.ValidationError.create({ message, nodeName }));
           }
         });
+      });
+    }
+
+    // ignored properties in tables
+    if (!!ignoredProps[node.type]) {
+      ignoredProps[node.type].forEach(ignoredProp => {
+        if (objectExistsOrIsNonEmpty(node[ignoredProp])) {
+          const message = `Unused property was detected: "${ignoredProp}". This property is not used for tables with type "${
+            node.type
+          }" and will be ignored.`;
+          validationErrors.push(protos.ValidationError.create({ message, nodeName }));
+        }
       });
     }
   });

@@ -62,7 +62,7 @@ export const methods: { [name: string]: MethodProps } = {
     fields: [
       {
         name: "name",
-        type: '"view" | "table" | "incremental"',
+        type: '"view" | "table" | "incremental" | "inline"',
         description: "The type of the table"
       }
     ]
