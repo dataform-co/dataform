@@ -3,6 +3,7 @@ import { Session, Table, utils } from "@dataform/core";
 import * as compilers from "@dataform/core/compilers";
 import * as protos from "@dataform/protos";
 import * as path from "path";
+import { asPlainObject } from "df/tests/utils";
 
 const TEST_CONFIG: protos.IProjectConfig = {
   warehouse: "redshift",
@@ -250,6 +251,81 @@ describe("@dataform/core", () => {
           .to.have.property("message")
           .that.matches(result.message);
       });
+    });
+
+    it("validation_type_inline", function() {
+      const session = new Session(path.dirname(__filename), TEST_CONFIG);
+      session.publish("a", { type: "table", query: _ => "select 1 as test" });
+      session.publish("b", {
+        type: "inline",
+        redshift: { distKey: "column1", distStyle: "even", sortKeys: ["column1", "column2"], sortStyle: "compound" },
+        preOps: _ => ["pre_op_b"],
+        postOps: _ => ["post_op_b"],
+        descriptor: { test: "test description b" },
+        disabled: true,
+        where: "test_where",
+        query: ctx => `select * from ${ctx.ref("a")}`
+      });
+      session.publish("c", {
+        type: "table",
+        preOps: _ => ["pre_op_c"],
+        postOps: _ => ["post_op_c"],
+        descriptor: { test: "test description c" },
+        query: ctx => `select * from ${ctx.ref("b")}`
+      });
+
+      const graph = session.compile();
+      const graphErrors = utils.validate(graph);
+
+      const tableA = graph.tables.find(item => item.name === "a");
+      expect(tableA).to.exist;
+      expect(tableA.type).equals("table");
+      expect(tableA.dependencies).to.be.an("array").that.is.empty;
+      expect(tableA.query).equals("select 1 as test");
+
+      const tableB = graph.tables.find(item => item.name === "b");
+      expect(tableB).to.exist;
+      expect(tableB.type).equals("inline");
+      expect(tableB.dependencies).includes("a");
+      expect(tableB.fieldDescriptor).deep.equals({ test: "test description b" });
+      expect(tableB.preOps).deep.equals(["pre_op_b"]);
+      expect(tableB.postOps).deep.equals(["post_op_b"]);
+      expect(asPlainObject(tableB.redshift)).deep.equals(
+        asPlainObject({
+          distKey: "column1",
+          distStyle: "even",
+          sortKeys: ["column1", "column2"],
+          sortStyle: "compound"
+        })
+      );
+      expect(tableB.disabled).to.be.true;
+      expect(tableB.where).equals("test_where");
+      expect(tableB.query).equals('select * from "schema"."a"');
+
+      const tableC = graph.tables.find(item => item.name === "c");
+      expect(tableC).to.exist;
+      expect(tableC.type).equals("table");
+      expect(tableC.dependencies).includes("a");
+      expect(tableC.fieldDescriptor).deep.equals({ test: "test description c" });
+      expect(tableC.preOps).deep.equals(["pre_op_c"]);
+      expect(tableC.postOps).deep.equals(["post_op_c"]);
+      expect(tableC.redshift).to.not.exist;
+      expect(tableC.disabled).to.be.false;
+      expect(tableC.where).equals("");
+      expect(tableC.query).equals('select * from (select * from "schema"."a")');
+
+      expect(graphErrors)
+        .to.have.property("validationErrors")
+        .to.be.an("array").that.is.not.empty;
+
+      const errors = graphErrors.validationErrors.filter(item => item.nodeName === "b").map(item => item.message);
+
+      expect(errors).that.matches(/Unused property was detected: "fieldDescriptor"/);
+      expect(errors).that.matches(/Unused property was detected: "preOps"/);
+      expect(errors).that.matches(/Unused property was detected: "postOps"/);
+      expect(errors).that.matches(/Unused property was detected: "redshift"/);
+      expect(errors).that.matches(/Unused property was detected: "disabled"/);
+      expect(errors).that.matches(/Unused property was detected: "where"/);
     });
   });
 

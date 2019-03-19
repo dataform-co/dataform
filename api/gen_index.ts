@@ -70,6 +70,10 @@ export function genIndex(
     })
     .join("\n");
 
+  // NOTE: The code in this returned JS calls the locally-installed versions of the @dataform
+  // NPM packages, as defined by the project's package.json file. Thus, changes made
+  // to code inside e.g. @dataform/core will only take effect on a user's project compilation
+  // once that code is pushed to NPM and the user updates their package.json.
   return `
     const { init, compile } = require("@dataform/core");
     const protos = require("@dataform/protos");

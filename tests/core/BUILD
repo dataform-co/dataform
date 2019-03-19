@@ -8,6 +8,7 @@ ts_library(
     deps = [
         "//core",
         "//protos",
+        "//tests/utils",
         "@npm//@types/chai",
         "@npm//@types/long",
         "@npm//@types/mocha",

@@ -33,9 +33,12 @@ export class Builder {
       tableStateByTarget[JSON.stringify(tableState.target)] = tableState;
     });
 
+    // Remove inline tables.
+    const filteredTables = this.compiledGraph.tables.filter(t => t.type !== "inline");
+
     // Firstly, turn every thing into an execution node.
     var allNodes: protos.IExecutionNode[] = [].concat(
-      this.compiledGraph.tables.map(t => this.buildTable(t, tableStateByTarget[JSON.stringify(t.target)])),
+      filteredTables.map(t => this.buildTable(t, tableStateByTarget[JSON.stringify(t.target)])),
       this.compiledGraph.operations.map(o => this.buildOperation(o)),
       this.compiledGraph.assertions.map(a => this.buildAssertion(a))
     );
