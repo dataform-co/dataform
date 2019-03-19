@@ -1,7 +1,5 @@
 import { DbAdapter } from "./index";
 import * as protos from "@dataform/protos";
-import { promisify } from "util";
-import * as Bluebird from "bluebird";
 
 interface ISnowflakeStatement {
   cancel: () => void;
@@ -52,7 +50,7 @@ export class SnowflakeDbAdapter implements DbAdapter {
   }
 
   execute(statement: string) {
-    return new Bluebird<any[]>((resolve, reject) => {
+    return new Promise<any[]>((resolve, reject) => {
       this.connection.execute({
         sqlText: statement,
         complete: function(err, _, rows) {
