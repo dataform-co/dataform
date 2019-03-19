@@ -43,7 +43,7 @@ export class BigQueryAdapter extends Adapter implements IAdapter {
       name: a.name
     });
     tasks.add(Task.statement(this.createOrReplaceView(assertionTarget, a.query)));
-    tasks.add(Task.assertion(`select 1 as detect from ${this.resolveTarget(assertionTarget)}`));
+    tasks.add(Task.assertion(`select count(*) as rows_number from ${this.resolveTarget(assertionTarget)}`));
     return tasks;
   }
 

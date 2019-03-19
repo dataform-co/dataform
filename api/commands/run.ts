@@ -144,8 +144,9 @@ export class Runner {
             const rows = await this.adapter.execute(task.statement, handleCancel =>
               this.eEmitter.on(CANCEL_EVENT, handleCancel)
             );
+            const rowsNumber = !!rows.length ? rows[0].rowsNumber : 0;
 
-            if (task.type == "assertion" && rows.length > 0) {
+            if (task.type == "assertion" && rowsNumber > 0) {
               throw [
                 ...chainResults,
                 {
