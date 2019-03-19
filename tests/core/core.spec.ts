@@ -327,6 +327,24 @@ describe("@dataform/core", () => {
       expect(errors).that.matches(/Unused property was detected: "disabled"/);
       expect(errors).that.matches(/Unused property was detected: "where"/);
     });
+
+    it("ref", () => {
+      const session = new Session(path.dirname(__filename), TEST_CONFIG);
+      session.publish("a", _ => "select 1 as test");
+      session.publish("b", ctx => `select * from ${ctx.ref("a")}`);
+      session.publish("c", ctx => `select * from ${ctx.ref(undefined)}`);
+
+      const graph = session.compile();
+      const graphErrors = utils.validate(graph);
+
+      const tableNames = graph.tables.map(item => item.name);
+      expect(tableNames).includes("a");
+      expect(tableNames).includes("b");
+      expect(tableNames).includes("c");
+
+      const errors = graphErrors.compilationErrors.map(item => item.message);
+      expect(errors).includes("Node name is not specified");
+    });
   });
 
   describe("operate", () => {
