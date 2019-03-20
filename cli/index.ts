@@ -95,8 +95,12 @@ yargs
         }),
     argv => {
       const projectDir = path.resolve(argv["project-dir"]);
-      const defaultSchemaOverride = path.resolve(argv["default-schema-override"]);
-      const assertionSchemaOverride = path.resolve(argv["assertion-schema-override"]);
+      const defaultSchemaOverride = !!argv["default-schema-override"]
+        ? path.resolve(argv["default-schema-override"])
+        : "";
+      const assertionSchemaOverride = !!argv["assertion-schema-override"]
+        ? path.resolve(argv["assertion-schema-override"])
+        : "";
 
       compileProject(projectDir, defaultSchemaOverride, assertionSchemaOverride).then(() => {
         if (argv["watch"]) {
@@ -158,10 +162,17 @@ yargs
         }),
     argv => {
       const profile = utils.readProfile(argv["profile"]);
+      const defaultSchemaOverride = !!argv["default-schema-override"]
+        ? path.resolve(argv["default-schema-override"])
+        : "";
+      const assertionSchemaOverride = !!argv["assertion-schema-override"]
+        ? path.resolve(argv["assertion-schema-override"])
+        : "";
+
       compile({
         projectDir: path.resolve(argv["project-dir"]),
-        defaultSchemaOverride: path.resolve(argv["default-schema-override"]),
-        assertionSchemaOverride: path.resolve(argv["assertion-schema-override"])
+        defaultSchemaOverride,
+        assertionSchemaOverride
       })
         .then(graph => build(graph, parseBuildArgs(argv), profile))
         .then(result => console.log(JSON.stringify(result, null, 4)))
@@ -188,11 +199,17 @@ yargs
     argv => {
       console.log("Project status: starting...");
       const profile = utils.readProfile(argv["profile"]);
+      const defaultSchemaOverride = !!argv["default-schema-override"]
+        ? path.resolve(argv["default-schema-override"])
+        : "";
+      const assertionSchemaOverride = !!argv["assertion-schema-override"]
+        ? path.resolve(argv["assertion-schema-override"])
+        : "";
 
       compile({
         projectDir: path.resolve(argv["project-dir"]),
-        defaultSchemaOverride: path.resolve(argv["default-schema-override"]),
-        assertionSchemaOverride: path.resolve(argv["assertion-schema-override"])
+        defaultSchemaOverride,
+        assertionSchemaOverride
       })
         .then(graph => {
           console.log("Project status: build...");
@@ -325,12 +342,9 @@ yargs
           default: "."
         }),
     argv => {
-      const promise = query
-        .run(utils.readProfile(argv["profile"]), argv["query"], {
-          projectDir: path.resolve(argv["project-dir"])
-        })
-        .then(results => console.log(JSON.stringify(results, null, 4)))
-        .catch(e => console.log(e));
+      const promise = query.run(utils.readProfile(argv["profile"]), argv["query"], {
+        projectDir: path.resolve(argv["project-dir"])
+      });
 
       process.on("SIGINT", () => {
         if (promise.cancel) {
@@ -338,6 +352,8 @@ yargs
           console.log("\nQuery execution cancelled!");
         }
       });
+
+      promise.then(results => console.log(JSON.stringify(results, null, 4))).catch(e => console.log(e));
     }
   )
   .demandCommand(1, "You need at least one command before moving on").argv;

@@ -1,6 +1,5 @@
 import { DbAdapter } from "./index";
 import * as protos from "@dataform/protos";
-import * as Bluebird from "bluebird";
 
 const Redshift: RedshiftType = require("node-redshift");
 
@@ -24,7 +23,7 @@ export class RedshiftDbAdapter implements DbAdapter {
   }
 
   execute(statement: string) {
-    return Bluebird.resolve().then(() => this.client.query(statement).then(result => result.rows));
+    return  this.client.query(statement).then(result => result.rows);
   }
 
   evaluate(statement: string) {

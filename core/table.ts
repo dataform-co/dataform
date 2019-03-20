@@ -229,6 +229,12 @@ export class TableContext {
   }
 
   public ref(name: string) {
+    if (!name) {
+      const message = `Node name is not specified`;
+      this.table.session.compileError(new Error(message));
+      return "";
+    }
+
     this.table.dependencies(name);
     return this.table.session.ref(name);
   }

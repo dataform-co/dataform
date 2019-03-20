@@ -1,11 +1,13 @@
 import * as protos from "@dataform/protos";
-import * as Bluebird from "bluebird";
 import { BigQueryDbAdapter } from "./bigquery";
 import { RedshiftDbAdapter } from "./redshift";
 import { SnowflakeDbAdapter } from "./snowflake";
+import { EventEmitter } from "events";
+
+export type OnCancel = ((handleCancel: () => void) => void);
 
 export interface DbAdapter {
-  execute(statement: string): Bluebird<any[]>;
+  execute(statement: string, onCancel?: OnCancel): Promise<any[]>;
   evaluate(statement: string): Promise<void>;
   tables(): Promise<protos.ITarget[]>;
   table(target: protos.ITarget): Promise<protos.ITableMetadata>;
