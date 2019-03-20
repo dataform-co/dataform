@@ -1,8 +1,8 @@
 import { CancellablePromise } from "@dataform/api/utils/cancellable_promise";
 import { expect } from "chai";
 
-describe("@dataform/api/utils/cancellable_promise", () => {
-  it("cancel_is_called", () => {
+describe("cancellable_promise", () => {
+  it("cancel is called", () => {
     let wasCancelled = false;
     const promise = new CancellablePromise((resolve, reject, onCancel) => {
       onCancel(() => {

@@ -1,10 +1,10 @@
 import { EventEmitter } from "events";
 
 export class CancellablePromise<T> implements PromiseLike<T> {
-  private static CANCEL_EVENT = "cancel";
+  private static readonly CANCEL_EVENT = "cancel";
 
-  private emitter = new EventEmitter();
-  private promise: Promise<T>;
+  private readonly emitter = new EventEmitter();
+  private readonly promise: Promise<T>;
 
   constructor(
     method: (
