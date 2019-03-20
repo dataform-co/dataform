@@ -95,8 +95,12 @@ yargs
         }),
     argv => {
       const projectDir = path.resolve(argv["project-dir"]);
-      const defaultSchemaOverride = path.resolve(argv["default-schema-override"]);
-      const assertionSchemaOverride = path.resolve(argv["assertion-schema-override"]);
+      const defaultSchemaOverride = !!argv["default-schema-override"]
+        ? path.resolve(argv["default-schema-override"])
+        : "";
+      const assertionSchemaOverride = !!argv["assertion-schema-override"]
+        ? path.resolve(argv["assertion-schema-override"])
+        : "";
 
       compileProject(projectDir, defaultSchemaOverride, assertionSchemaOverride).then(() => {
         if (argv["watch"]) {
@@ -158,10 +162,17 @@ yargs
         }),
     argv => {
       const profile = utils.readProfile(argv["profile"]);
+      const defaultSchemaOverride = !!argv["default-schema-override"]
+        ? path.resolve(argv["default-schema-override"])
+        : "";
+      const assertionSchemaOverride = !!argv["assertion-schema-override"]
+        ? path.resolve(argv["assertion-schema-override"])
+        : "";
+
       compile({
         projectDir: path.resolve(argv["project-dir"]),
-        defaultSchemaOverride: path.resolve(argv["default-schema-override"]),
-        assertionSchemaOverride: path.resolve(argv["assertion-schema-override"])
+        defaultSchemaOverride,
+        assertionSchemaOverride
       })
         .then(graph => build(graph, parseBuildArgs(argv), profile))
         .then(result => console.log(JSON.stringify(result, null, 4)))
