@@ -1,8 +1,7 @@
-import { DbAdapter } from "./index";
+import { DbAdapter, OnCancel } from "./index";
 import * as protos from "@dataform/protos";
 import * as PromisePool from "promise-pool-executor";
-import * as Bluebird from "bluebird";
-import * as EventEmitter from "events";
+
 const BigQuery = require("@google-cloud/bigquery");
 
 export class BigQueryDbAdapter implements DbAdapter {
@@ -26,44 +25,42 @@ export class BigQueryDbAdapter implements DbAdapter {
     });
   }
 
-  execute(statement: string) {
-    return Bluebird.resolve().then(() =>
-      this.pool
-        .addSingleTask({
-          generator: () =>
-            new Bluebird<any[]>((resolve, reject, onCancel) => {
-              let isCanceled = false;
-              const eEmitter = new EventEmitter();
-
-              onCancel(() => {
-                isCanceled = true;
-                eEmitter.emit("jobCancel");
-              });
-
-              this.client.createQueryJob(
-                { useLegacySql: false, query: statement, maxResults: 1000 },
-                (err: any, job: any) => {
-                  if (err) reject(err);
-
-                  eEmitter.on("jobCancel", () => {
-                    job.cancel().then(() => {
-                      reject(new Error("Run cancelled"));
-                    });
-                  });
-
-                  if (isCanceled) {
-                    return;
-                  }
-                  job.getQueryResults((err: any, result: any[]) => {
-                    if (err) reject(err);
-                    resolve(result);
-                  });
+  execute(statement: string, onCancel?: OnCancel) {
+    let isCancelled = false;
+    onCancel &&
+      onCancel(() => {
+        isCancelled = true;
+      });
+    return this.pool
+      .addSingleTask({
+        generator: () =>
+          new Promise<any[]>((resolve, reject) => {
+            this.client.createQueryJob(
+              { useLegacySql: false, query: statement, maxResults: 1000 },
+              async (err: any, job: any) => {
+                if (err) {
+                  return reject(err);
                 }
-              );
-            })
-        })
-        .promise()
-    );
+                // Cancelled before it was created, kill it now.
+                if (isCancelled) {
+                  await job.cancel();
+                  return reject("Query cancelled.");
+                }
+                onCancel &&
+                  onCancel(async () => {
+                    // Cancelled while running.
+                    await job.cancel();
+                    return reject("Query cancelled.");
+                  });
+                job.getQueryResults((err: any, result: any[]) => {
+                  if (err) reject(err);
+                  resolve(result);
+                });
+              }
+            );
+          })
+      })
+      .promise();
   }
 
   evaluate(statement: string) {
@@ -118,17 +115,26 @@ export class BigQueryDbAdapter implements DbAdapter {
   }
 
   prepareSchema(schema: string): Promise<void> {
+    const location = this.profile.bigquery.location || "US";
+
     // If metadata call fails, it probably doesn't exist. So try to create it.
     return this.client
       .dataset(schema)
       .getMetadata()
-      .catch(_ =>
-        this.client
-          .createDataset(schema, {
-            location: this.profile.bigquery.location || "US"
-          })
-          .then(() => {})
-      );
+      .then(
+        metadata => {
+          // check location of the dataset
+          const wrongMetadata = metadata.find(md => md.location.toUpperCase() !== location.toUpperCase());
+          if (wrongMetadata) {
+            const message = `Cannot create dataset "${schema}" in location "${location}" as it already exists in location "${
+              wrongMetadata.location
+            }". Change your default dataset location or delete the existing dataset.`;
+            throw Error(message);
+          }
+        },
+        _ => this.client.createDataset(schema, { location }).then(() => {})
+      )
+      .catch(e => console.error(e));
   }
 }
 
