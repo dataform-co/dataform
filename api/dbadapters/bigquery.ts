@@ -128,7 +128,7 @@ export class BigQueryDbAdapter implements DbAdapter {
           if (wrongMetadata) {
             const message = `Cannot create dataset "${schema}" in location "${location}" as it already exists in location "${
               wrongMetadata.location
-            }". Change your default dataset location or delete the exist dataset.`;
+            }". Change your default dataset location or delete the existing dataset.`;
             throw Error(message);
           }
         },
