@@ -12,8 +12,13 @@ interface IOptions {
 export function run(profile: protos.IProfile, query: string, options?: IOptions): CancellablePromise<any[]> {
   utils.validateProfile(profile);
   return new CancellablePromise(async (_resolve, _reject, onCancel) => {
-    const compiledQuery = await compile(query, options);
-    return dbadapters.create(profile).execute(compiledQuery, onCancel);
+    try {
+      const compiledQuery = await compile(query, options);
+      const results = await dbadapters.create(profile).execute(compiledQuery, onCancel);
+      _resolve(results);
+    } catch (e) {
+      _reject(e);
+    }
   });
 }
 

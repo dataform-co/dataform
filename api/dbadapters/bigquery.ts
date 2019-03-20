@@ -115,17 +115,26 @@ export class BigQueryDbAdapter implements DbAdapter {
   }
 
   prepareSchema(schema: string): Promise<void> {
+    const location = this.profile.bigquery.location || "US";
+
     // If metadata call fails, it probably doesn't exist. So try to create it.
     return this.client
       .dataset(schema)
       .getMetadata()
-      .catch(_ =>
-        this.client
-          .createDataset(schema, {
-            location: this.profile.bigquery.location || "US"
-          })
-          .then(() => {})
-      );
+      .then(
+        metadata => {
+          // check location of the dataset
+          const wrongMetadata = metadata.find(md => md.location.toUpperCase() !== location.toUpperCase());
+          if (wrongMetadata) {
+            const message = `Cannot create dataset "${schema}" in location "${location}" as it already exists in location "${
+              wrongMetadata.location
+            }". Change your default dataset location or delete the existing dataset.`;
+            throw Error(message);
+          }
+        },
+        _ => this.client.createDataset(schema, { location }).then(() => {})
+      )
+      .catch(e => console.error(e));
   }
 }
 
