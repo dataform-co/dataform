@@ -188,11 +188,17 @@ yargs
     argv => {
       console.log("Project status: starting...");
       const profile = utils.readProfile(argv["profile"]);
+      const defaultSchemaOverride = !!argv["default-schema-override"]
+        ? path.resolve(argv["default-schema-override"])
+        : "";
+      const assertionSchemaOverride = !!argv["assertion-schema-override"]
+        ? path.resolve(argv["assertion-schema-override"])
+        : "";
 
       compile({
         projectDir: path.resolve(argv["project-dir"]),
-        defaultSchemaOverride: path.resolve(argv["default-schema-override"]),
-        assertionSchemaOverride: path.resolve(argv["assertion-schema-override"])
+        defaultSchemaOverride,
+        assertionSchemaOverride
       })
         .then(graph => {
           console.log("Project status: build...");
