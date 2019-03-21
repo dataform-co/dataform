@@ -53,9 +53,5 @@ export function init(projectDir: string, projectConfig: protos.IProjectConfig, s
   fs.mkdirSync(path.join(projectDir, "includes"));
 
   // Install packages.
-  if (!skipInstall) {
-    return install(projectDir);
-  } else {
-    return Promise.resolve();
-  }
+  return install(projectDir, skipInstall);
 }
