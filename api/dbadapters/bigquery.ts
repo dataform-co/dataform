@@ -44,13 +44,13 @@ export class BigQueryDbAdapter implements DbAdapter {
                 // Cancelled before it was created, kill it now.
                 if (isCancelled) {
                   await job.cancel();
-                  return reject("Query cancelled.");
+                  return reject(new Error("Query cancelled."));
                 }
                 onCancel &&
                   onCancel(async () => {
                     // Cancelled while running.
                     await job.cancel();
-                    return reject("Query cancelled.");
+                    return reject(new Error("Query cancelled."));
                   });
                 job.getQueryResults((err: any, result: any[]) => {
                   if (err) reject(err);

@@ -2,6 +2,10 @@
   "steps": [
     {
       "name": "gcr.io/cloud-builders/bazel",
+      "args": ["build", "..."]
+    }
+    {
+      "name": "gcr.io/cloud-builders/bazel",
       "args": ["test", "//tests/core", "//tests/api"]
     }
   ]

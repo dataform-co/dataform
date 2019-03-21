@@ -6,6 +6,8 @@ export class CancellablePromise<T> implements PromiseLike<T> {
   private readonly emitter = new EventEmitter();
   private readonly promise: Promise<T>;
 
+  private cancelled = false;
+
   constructor(
     method: (
       resolve: (value?: T | PromiseLike<T>) => void,
@@ -14,7 +16,13 @@ export class CancellablePromise<T> implements PromiseLike<T> {
     ) => void
   ) {
     this.promise = new Promise<T>((resolve, reject) =>
-      method(resolve, reject, handleCancel => this.emitter.on(CancellablePromise.CANCEL_EVENT, handleCancel))
+      method(resolve, reject, handleCancel => {
+        if (this.cancelled) {
+          handleCancel();
+        } else {
+          this.emitter.on(CancellablePromise.CANCEL_EVENT, handleCancel);
+        }
+      })
     );
   }
 
@@ -30,6 +38,7 @@ export class CancellablePromise<T> implements PromiseLike<T> {
   }
 
   public cancel(): void {
+    this.cancelled = true;
     this.emitter.emit(CancellablePromise.CANCEL_EVENT);
   }
 }
