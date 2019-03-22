@@ -1,0 +1,6 @@
+#!/bin/bash
+
+set -e
+
+bazel build //:tslint
+./bazel-bin/tslint "ts/**/*.{ts,tsx}"

@@ -1,5 +1,5 @@
-import { DbAdapter } from "./index";
 import * as protos from "@dataform/protos";
+import { DbAdapter } from "./index";
 
 interface ISnowflakeStatement {
   cancel: () => void;
@@ -49,11 +49,11 @@ export class SnowflakeDbAdapter implements DbAdapter {
     });
   }
 
-  execute(statement: string) {
+  public execute(statement: string) {
     return new Promise<any[]>((resolve, reject) => {
       this.connection.execute({
         sqlText: statement,
-        complete: function(err, _, rows) {
+        complete(err, _, rows) {
           if (err) {
             reject(err);
           } else {
@@ -64,11 +64,11 @@ export class SnowflakeDbAdapter implements DbAdapter {
     });
   }
 
-  evaluate(statement: string): Promise<void> {
+  public evaluate(statement: string): Promise<void> {
     throw Error("Unimplemented");
   }
 
-  tables(): Promise<protos.ITarget[]> {
+  public tables(): Promise<protos.ITarget[]> {
     return Promise.resolve().then(() =>
       this.execute(
         `select table_name, table_schema
@@ -85,7 +85,7 @@ export class SnowflakeDbAdapter implements DbAdapter {
     );
   }
 
-  table(target: protos.ITarget): Promise<protos.ITableMetadata> {
+  public table(target: protos.ITarget): Promise<protos.ITableMetadata> {
     return Promise.all([
       this.execute(
         `select column_name, data_type, is_nullable
@@ -93,15 +93,15 @@ export class SnowflakeDbAdapter implements DbAdapter {
        where table_schema = '${target.schema}' AND table_name = '${target.name}'`
       ),
       this.execute(
-        `select table_type from information_schema.tables where table_schema = '${target.schema}' AND table_name = '${
-          target.name
-        }'`
+        `select table_type from information_schema.tables where table_schema = '${
+          target.schema
+        }' AND table_name = '${target.name}'`
       )
     ]).then(results => {
       if (results[1].length > 0) {
         // The table exists.
         return {
-          target: target,
+          target,
           type: results[1][0].TABLE_TYPE == "VIEW" ? "view" : "table",
           fields: results[0].map(row => ({
             name: row.COLUMN_NAME,
@@ -109,11 +109,15 @@ export class SnowflakeDbAdapter implements DbAdapter {
             flags: row.IS_NULLABLE && row.IS_NULLABLE == "YES" ? ["nullable"] : []
           }))
         };
-      } else throw new Error(`Could not find relation: ${target.schema}.${target.name}`);
+      } else {
+        throw new Error(`Could not find relation: ${target.schema}.${target.name}`);
+      }
     });
   }
 
-  prepareSchema(schema: string): Promise<void> {
-    return Promise.resolve().then(() => this.execute(`create schema if not exists "${schema}"`).then(() => {}));
+  public prepareSchema(schema: string): Promise<void> {
+    return Promise.resolve().then(() =>
+      this.execute(`create schema if not exists "${schema}"`).then(() => {})
+    );
   }
 }

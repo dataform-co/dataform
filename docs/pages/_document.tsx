@@ -1,11 +1,11 @@
-import * as React from "react";
+import { Alignment, Button, Navbar, NavbarGroup, NavbarHeading } from "@blueprintjs/core";
 import Document, { Head, Main, NextScript } from "next/document";
-import { Navbar, NavbarHeading, NavbarGroup, Button, Alignment } from "@blueprintjs/core";
+import * as React from "react";
 
 import faviconImage from "df/static/images/new_logo.png";
 
 export default class DefaultDocument extends Document {
-  render() {
+  public render() {
     return (
       <html>
         <Head>
@@ -19,7 +19,10 @@ export default class DefaultDocument extends Document {
             href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.min.css"
           />
           <link rel="shortcut icon" href={faviconImage} type="image/png" />
-          <link href="https://fonts.googleapis.com/css?family=Montserrat|Open+Sans|Muli" rel="stylesheet" />
+          <link
+            href="https://fonts.googleapis.com/css?family=Montserrat|Open+Sans|Muli"
+            rel="stylesheet"
+          />
           <script type="text/javascript" src="/static/js/inline.js" />
         </Head>
         <body>
