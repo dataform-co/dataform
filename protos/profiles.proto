@@ -5,18 +5,16 @@ option java_outer_classname = "ProfilesMeta";
 option java_multiple_files = true;
 
 message Profile {
-  //int64 id = 1;
-  //string project_id = 2;
-
   int32 threads = 7;
-  //string schema = 8;
-
+ 
   oneof connection {
     JDBC redshift = 3;
     JDBC postgres = 8;
     BigQuery bigquery = 4;
     Snowflake snowflake = 5;
   }
+  
+  reserved 1, 2, 8;
 }
 
 message JDBC {
