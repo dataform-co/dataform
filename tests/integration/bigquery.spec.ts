@@ -42,24 +42,16 @@ describe("@dataform/integration/bigquery", function() {
       });
     });
 
-    it("canceled", () => {
-      return new Promise((resolve, reject) => {
-        const promise = queryRun(sql, testConfig)
-          .then(resolve)
-          .finally(() => {
-            if (promise.isCancelled()) reject(new Error("Run cancelled"));
-          });
-
-        promise.cancel();
-      })
-        .then(result => {
-          // if the cancellation did not work - check the results
-          expect(asPlainObject(result)).not.deep.equals(asPlainObject(expectedResult));
-        })
-        .catch(err => {
+    it("canceled", async () => {
+        const promise = queryRun(sql, testConfig);
+        setTimeout(() => promise.cancel(), 10);
+        try {
+          const result = await promise;
+          throw new Error("Should not pass");
+        } catch (err) {
           expect(err).to.be.an.instanceof(Error);
-          expect(err.message).to.equals("Run cancelled");
-        });
+          expect(err.message).to.equals("Query cancelled.");
+        }
     });
   });
 });
