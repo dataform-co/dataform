@@ -56,7 +56,6 @@ yargs
       yargs
         .option("warehouse", {
           describe: "The warehouse type. One of [bigquery, redshift]",
-          default: "bigquery"
         })
         .option("gcloud-project-id", {
           describe: "Your Google Cloud Project ID"
