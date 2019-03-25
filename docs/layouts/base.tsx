@@ -5,9 +5,9 @@ import Head from "next/head";
 import { Footer } from "df/fe/components/footer";
 import { Header } from "df/fe/components/header";
 
+import * as styles from "df/docs/layouts/base.css";
 import * as globalStyles from "df/fe/global.css";
 import * as highlightStyles from "df/fe/highlight.css";
-import * as styles from "df/docs/layouts/base.css";
 
 export interface IProps {
   title: string;

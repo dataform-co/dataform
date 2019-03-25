@@ -1,8 +1,8 @@
 import * as React from "react";
 import remark from "remark";
 import remark2react from "remark-react";
-import Struct, { Props as StructProps } from "./struct";
 import * as typedoc from "typedoc";
+import Struct, { Props as StructProps } from "./struct";
 
 export interface Props extends StructProps {
   name: string;
@@ -11,13 +11,13 @@ export interface Props extends StructProps {
 }
 
 export default class Method extends React.Component<Props, any> {
-  renderDescription = () => {
+  public renderDescription = () => {
     return remark()
       .use(remark2react)
       .processSync(this.props.description).contents;
   };
 
-  render() {
+  public render() {
     return (
       <div>
         <h2 id={this.props.name}>

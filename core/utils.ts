@@ -1,11 +1,11 @@
 import * as protos from "@dataform/protos";
-import { TableTypes, DistStyleTypes, SortStyleTypes, ignoredProps } from "./table";
+import { DistStyleTypes, ignoredProps, SortStyleTypes, TableTypes } from "./table";
 
 export function relativePath(path: string, base: string) {
   if (base.length == 0) {
     return path;
   }
-  var stripped = path.substr(base.length);
+  const stripped = path.substr(base.length);
   if (stripped.startsWith("/")) {
     return stripped.substr(1);
   } else {
@@ -14,7 +14,7 @@ export function relativePath(path: string, base: string) {
 }
 
 export function baseFilename(path: string) {
-  var pathSplits = path.split("/");
+  const pathSplits = path.split("/");
   return pathSplits[pathSplits.length - 1].split(".")[0];
 }
 
@@ -26,7 +26,7 @@ export function variableNameFriendly(value: string) {
 }
 
 export function matchPatterns(patterns: string[], values: string[]) {
-  var regexps = patterns.map(
+  const regexps = patterns.map(
     pattern =>
       new RegExp(
         "^" +
@@ -63,8 +63,9 @@ export function getCallerFile(rootDir: string) {
         !callerfile.includes("node_modules") &&
         // We don't want to attribute files in includes/ to the caller files.
         (callerfile.includes("definitions/") || callerfile.includes("models/"))
-      )
+      ) {
         break;
+      }
     }
   } catch (e) {}
   Error.prepareStackTrace = originalFunc;
@@ -103,8 +104,12 @@ export function validate(compiledGraph: protos.ICompiledGraph): protos.IGraphErr
   const validationErrors: protos.IValidationError[] = [];
 
   // Check there aren't any duplicate names.
-  var allNodes = [].concat(compiledGraph.tables, compiledGraph.assertions, compiledGraph.operations);
-  var allNodeNames = allNodes.map(node => node.name);
+  const allNodes = [].concat(
+    compiledGraph.tables,
+    compiledGraph.assertions,
+    compiledGraph.operations
+  );
+  const allNodeNames = allNodes.map(node => node.name);
 
   // Check there are no duplicate node names.
   allNodes.forEach(node => {
@@ -124,11 +129,13 @@ export function validate(compiledGraph: protos.ICompiledGraph): protos.IGraphErr
     // Add non-wildcard deps normally.
     deps.filter(d => !d.includes("*")).forEach(d => (uniqueDeps[d] = true));
     // Match wildcard deps against all node names.
-    matchPatterns(deps.filter(d => d.includes("*")), allNodeNames).forEach(d => (uniqueDeps[d] = true));
+    matchPatterns(deps.filter(d => d.includes("*")), allNodeNames).forEach(
+      d => (uniqueDeps[d] = true)
+    );
     node.dependencies = Object.keys(uniqueDeps);
   });
 
-  var nodesByName: { [name: string]: protos.IExecutionNode } = {};
+  const nodesByName: { [name: string]: protos.IExecutionNode } = {};
   allNodes.forEach(node => (nodesByName[node.name] = node));
 
   // Check all dependencies actually exist.
@@ -145,12 +152,15 @@ export function validate(compiledGraph: protos.ICompiledGraph): protos.IGraphErr
   });
 
   // Check for circular dependencies.
-  const checkCircular = (node: protos.IExecutionNode, dependents: protos.IExecutionNode[]): boolean => {
+  const checkCircular = (
+    node: protos.IExecutionNode,
+    dependents: protos.IExecutionNode[]
+  ): boolean => {
     if (dependents.indexOf(node) >= 0) {
       const nodeName = node.name;
-      const message = `Circular dependency detected in chain: [${dependents.map(d => d.name).join(" > ")} > ${
-        node.name
-      }]`;
+      const message = `Circular dependency detected in chain: [${dependents
+        .map(d => d.name)
+        .join(" > ")} > ${node.name}]`;
       validationErrors.push(protos.ValidationError.create({ message, nodeName }));
       return true;
     }
