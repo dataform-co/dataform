@@ -1,5 +1,5 @@
-import * as path from "path";
 import * as childProcess from "child_process";
+import * as path from "path";
 import { promisify } from "util";
 
 export async function install(projectDir: string, skipInstall?: boolean) {

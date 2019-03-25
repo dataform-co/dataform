@@ -2,16 +2,16 @@ import * as React from "react";
 
 export interface Props {
   description?: string;
-  fields?: {
+  fields?: Array<{
     name: string;
     type: string;
     typeLink?: string;
     description: string;
-  }[];
+  }>;
 }
 
 export default class Struct extends React.Component<Props, any> {
-  render() {
+  public render() {
     return (
       <table className="pt-html-table pt-html-table-striped" style={styles.table}>
         <thead>

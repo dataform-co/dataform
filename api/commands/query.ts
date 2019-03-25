@@ -1,15 +1,19 @@
 import * as protos from "@dataform/protos";
-import * as utils from "../utils";
-import * as dbadapters from "../dbadapters";
-import * as path from "path";
 import { fork } from "child_process";
+import * as path from "path";
+import * as dbadapters from "../dbadapters";
+import * as utils from "../utils";
 import { CancellablePromise } from "../utils/cancellable_promise";
 
 interface IOptions {
   projectDir?: string;
 }
 
-export function run(profile: protos.IProfile, query: string, options?: IOptions): CancellablePromise<any[]> {
+export function run(
+  profile: protos.IProfile,
+  query: string,
+  options?: IOptions
+): CancellablePromise<any[]> {
   utils.validateProfile(profile);
   return new CancellablePromise(async (_resolve, _reject, onCancel) => {
     try {
@@ -22,8 +26,14 @@ export function run(profile: protos.IProfile, query: string, options?: IOptions)
   });
 }
 
-export function evaluate(profile: protos.IProfile, query: string, options?: IOptions): Promise<void> {
-  return compile(query, options).then(compiledQuery => dbadapters.create(profile).evaluate(compiledQuery));
+export function evaluate(
+  profile: protos.IProfile,
+  query: string,
+  options?: IOptions
+): Promise<void> {
+  return compile(query, options).then(compiledQuery =>
+    dbadapters.create(profile).evaluate(compiledQuery)
+  );
 }
 
 export function compile(query: string, options?: IOptions): Promise<string> {
@@ -34,13 +44,15 @@ export function compile(query: string, options?: IOptions): Promise<string> {
   // Resolve the path in case it hasn't been resolved already.
   const projectDir = path.resolve(options.projectDir);
   // Run the bin_loader script if inside bazel, otherwise don't.
-  const forkScript = process.env["BAZEL_TARGET"] ? "../vm/query_bin_loader" : "../vm/query";
-  var child = fork(require.resolve(forkScript));
+  const forkScript = process.env.BAZEL_TARGET ? "../vm/query_bin_loader" : "../vm/query";
+  const child = fork(require.resolve(forkScript));
   return new Promise((resolve, reject) => {
-    var timeout = 5000;
-    var timeoutStart = Date.now();
-    var checkTimeout = () => {
-      if (child.killed) return;
+    const timeout = 5000;
+    const timeoutStart = Date.now();
+    const checkTimeout = () => {
+      if (child.killed) {
+        return;
+      }
       if (Date.now() > timeoutStart + timeout) {
         child.kill();
         reject(new Error("Compilation timed out"));
@@ -50,7 +62,9 @@ export function compile(query: string, options?: IOptions): Promise<string> {
     };
     checkTimeout();
     child.on("message", obj => {
-      if (!child.killed) child.kill();
+      if (!child.killed) {
+        child.kill();
+      }
       if (obj.err) {
         reject(new Error(obj.err));
       } else {

@@ -46,6 +46,16 @@ nodejs_binary(
     install_source_map_support = False,
 )
 
+nodejs_binary(
+    name = "tslint",
+    data = [
+        "@npm//tslint",
+    ],
+    entry_point = "tslint/bin/tslint",
+    install_source_map_support = False,
+    templated_args = ["--node_options=--preserve-symlinks"],
+)
+
 load("@com_github_bazelbuild_buildtools//buildifier:def.bzl", "buildifier")
 
 buildifier(
