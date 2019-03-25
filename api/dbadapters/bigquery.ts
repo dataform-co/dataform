@@ -1,6 +1,6 @@
-import { DbAdapter, OnCancel } from "./index";
 import * as protos from "@dataform/protos";
 import * as PromisePool from "promise-pool-executor";
+import { DbAdapter, OnCancel } from "./index";
 
 const BigQuery = require("@google-cloud/bigquery");
 
@@ -25,7 +25,7 @@ export class BigQueryDbAdapter implements DbAdapter {
     });
   }
 
-  execute(statement: string, onCancel?: OnCancel) {
+  public execute(statement: string, onCancel?: OnCancel) {
     let isCancelled = false;
     onCancel &&
       onCancel(() => {
@@ -53,7 +53,9 @@ export class BigQueryDbAdapter implements DbAdapter {
                     return reject(new Error("Query cancelled."));
                   });
                 job.getQueryResults((err: any, result: any[]) => {
-                  if (err) reject(err);
+                  if (err) {
+                    reject(err);
+                  }
                   resolve(result);
                 });
               }
@@ -63,7 +65,7 @@ export class BigQueryDbAdapter implements DbAdapter {
       .promise();
   }
 
-  evaluate(statement: string) {
+  public evaluate(statement: string) {
     return this.client.query({
       useLegacySql: false,
       query: statement,
@@ -71,7 +73,7 @@ export class BigQueryDbAdapter implements DbAdapter {
     });
   }
 
-  tables(): Promise<protos.ITarget[]> {
+  public tables(): Promise<protos.ITarget[]> {
     return this.client
       .getDatasets({ autoPaginate: true })
       .then((result: any) => {
@@ -86,15 +88,17 @@ export class BigQueryDbAdapter implements DbAdapter {
         );
       })
       .then((datasetTables: any) => {
-        var allTables: protos.ITarget[] = [];
+        const allTables: protos.ITarget[] = [];
         datasetTables.forEach((tablesResult: any) =>
-          tablesResult[0].forEach((table: any) => allTables.push({ schema: table.dataset.id, name: table.id }))
+          tablesResult[0].forEach((table: any) =>
+            allTables.push({ schema: table.dataset.id, name: table.id })
+          )
         );
         return allTables;
       });
   }
 
-  table(target: protos.ITarget): Promise<protos.ITableMetadata> {
+  public table(target: protos.ITarget): Promise<protos.ITableMetadata> {
     return this.pool
       .addSingleTask({
         generator: () =>
@@ -105,16 +109,16 @@ export class BigQueryDbAdapter implements DbAdapter {
       })
       .promise()
       .then(result => {
-        var table = result[0];
+        const table = result[0];
         return protos.TableMetadata.create({
           type: String(table.type).toLowerCase(),
-          target: target,
+          target,
           fields: table.schema.fields.map(field => convertField(field))
         });
       });
   }
 
-  prepareSchema(schema: string): Promise<void> {
+  public prepareSchema(schema: string): Promise<void> {
     const location = this.profile.bigquery.location || "US";
 
     // If metadata call fails, it probably doesn't exist. So try to create it.
@@ -124,7 +128,9 @@ export class BigQueryDbAdapter implements DbAdapter {
       .then(
         metadata => {
           // check location of the dataset
-          const wrongMetadata = metadata.find(md => md.location.toUpperCase() !== location.toUpperCase());
+          const wrongMetadata = metadata.find(
+            md => md.location.toUpperCase() !== location.toUpperCase()
+          );
           if (wrongMetadata) {
             const message = `Cannot create dataset "${schema}" in location "${location}" as it already exists in location "${
               wrongMetadata.location
