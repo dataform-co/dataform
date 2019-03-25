@@ -19,10 +19,12 @@ message Profile {
 
 message JDBC {
   string host = 2;
-  int64 port = 3;
+  int32 port = 3;
   string user = 4;
   string password = 5;
   string database = 6;
+
+  reserved 1;
 }
 
 message Snowflake {
@@ -32,10 +34,14 @@ message Snowflake {
   string role = 5;
   string database_name = 6;
   string warehouse = 7;
+
+  reserved 1;
 }
 
 message BigQuery {
   string project_id = 1;
   string credentials = 3;
   string location = 4; // EU or US (default)
+
+  reserved 2;
 }
