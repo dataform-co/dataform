@@ -1,6 +1,6 @@
-import * as fs from "fs";
+import { requiredWarehouseProps, WarehouseTypes } from "@dataform/core/adapters";
 import * as protos from "@dataform/protos";
-import { WarehouseTypes, requiredWarehouseProps } from "@dataform/core/adapters";
+import * as fs from "fs";
 
 export function validateProfile(profile: protos.IProfile): void {
   // profile shouldn't be empty
@@ -16,7 +16,9 @@ export function validateProfile(profile: protos.IProfile): void {
     throw new Error(`Warehouse not specified.`);
   } else if (!warehouses.every(key => supportedWarehouses.indexOf(key) !== -1)) {
     const predefinedW = supportedWarehouses.map(item => `"${item}"`).join(" | ");
-    throw new Error(`Unsupported warehouse detected. Should only use predefined warehouses: ${predefinedW}`);
+    throw new Error(
+      `Unsupported warehouse detected. Should only use predefined warehouses: ${predefinedW}`
+    );
   } else if (warehouses.length > 1) {
     throw new Error(`Multiple warehouses detected. Should be only one warehouse config.`);
   }

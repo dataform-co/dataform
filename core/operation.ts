@@ -5,12 +5,12 @@ import * as utils from "./utils";
 export type OContextable<T> = T | ((ctx: OperationContext) => T);
 
 export class Operation {
-  proto: protos.IOperation = protos.Operation.create({
+  public proto: protos.IOperation = protos.Operation.create({
     hasOutput: false
   });
 
   // Hold a reference to the Session instance.
-  session: Session;
+  public session: Session;
 
   // We delay contextification until the final compile step, so hold these here for now.
   private contextableQueries: OContextable<string | string[]>;
@@ -21,7 +21,7 @@ export class Operation {
   }
 
   public dependencies(value: string | string[]) {
-    var newDependencies = typeof value === "string" ? [value] : value;
+    const newDependencies = typeof value === "string" ? [value] : value;
     newDependencies.forEach(d => {
       if (this.proto.dependencies.indexOf(d) < 0) {
         this.proto.dependencies.push(d);
@@ -35,10 +35,10 @@ export class Operation {
     return this;
   }
 
-  compile() {
-    var context = new OperationContext(this);
+  public compile() {
+    const context = new OperationContext(this);
 
-    var appliedQueries = context.apply(this.contextableQueries);
+    const appliedQueries = context.apply(this.contextableQueries);
     this.proto.queries = typeof appliedQueries == "string" ? [appliedQueries] : appliedQueries;
     this.contextableQueries = null;
 

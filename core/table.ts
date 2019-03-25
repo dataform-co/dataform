@@ -1,5 +1,5 @@
-import { Session } from "./index";
 import * as protos from "@dataform/protos";
+import { Session } from "./index";
 
 export enum TableTypes {
   TABLE = "table",
@@ -48,19 +48,19 @@ export interface TConfig {
 }
 
 export class Table {
-  proto: protos.Table = protos.Table.create({
+  public proto: protos.Table = protos.Table.create({
     type: "view",
     disabled: false
   });
 
   // Hold a reference to the Session instance.
-  session: Session;
+  public session: Session;
 
   // We delay contextification until the final compile step, so hold these here for now.
   private contextableQuery: TContextable<string>;
   private contextableWhere: TContextable<string>;
-  private contextablePreOps: TContextable<string | string[]>[] = [];
-  private contextablePostOps: TContextable<string | string[]>[] = [];
+  private contextablePreOps: Array<TContextable<string | string[]>> = [];
+  private contextablePostOps: Array<TContextable<string | string[]>> = [];
 
   public config(config: TConfig) {
     if (config.where) {
@@ -140,12 +140,6 @@ export class Table {
     return this;
   }
 
-  private addDependency(dependency: string): void {
-    if (this.proto.dependencies.indexOf(dependency) < 0) {
-      this.proto.dependencies.push(dependency);
-    }
-  }
-
   public dependencies(value: string | string[]) {
     const newDependencies = typeof value === "string" ? [value] : value;
     newDependencies.forEach(d => {
@@ -163,7 +157,10 @@ export class Table {
   public descriptor(key: string, description?: string): Table;
   public descriptor(map: { [key: string]: string }): Table;
   public descriptor(keys: string[]): Table;
-  public descriptor(keyOrKeysOrMap: string | string[] | { [key: string]: string }, description?: string): Table {
+  public descriptor(
+    keyOrKeysOrMap: string | string[] | { [key: string]: string },
+    description?: string
+  ): Table {
     if (!this.proto.fieldDescriptor) {
       this.proto.fieldDescriptor = {};
     }
@@ -181,8 +178,8 @@ export class Table {
     return this;
   }
 
-  compile() {
-    var context = new TableContext(this);
+  public compile() {
+    const context = new TableContext(this);
 
     this.proto.query = context.apply(this.contextableQuery);
     this.contextableQuery = null;
@@ -193,7 +190,7 @@ export class Table {
     }
 
     this.contextablePreOps.forEach(contextablePreOps => {
-      var appliedPres = context.apply(contextablePreOps);
+      const appliedPres = context.apply(contextablePreOps);
       this.proto.preOps = (this.proto.preOps || []).concat(
         typeof appliedPres == "string" ? [appliedPres] : appliedPres
       );
@@ -201,7 +198,7 @@ export class Table {
     this.contextablePreOps = [];
 
     this.contextablePostOps.forEach(contextablePostOps => {
-      var appliedPosts = context.apply(contextablePostOps);
+      const appliedPosts = context.apply(contextablePostOps);
       this.proto.postOps = (this.proto.postOps || []).concat(
         typeof appliedPosts == "string" ? [appliedPosts] : appliedPosts
       );
@@ -209,6 +206,12 @@ export class Table {
     this.contextablePostOps = [];
 
     return this.proto;
+  }
+
+  private addDependency(dependency: string): void {
+    if (this.proto.dependencies.indexOf(dependency) < 0) {
+      this.proto.dependencies.push(dependency);
+    }
   }
 }
 
@@ -282,7 +285,10 @@ export class TableContext {
   public descriptor(key: string, description?: string): string;
   public descriptor(map: { [key: string]: string }): string;
   public descriptor(keys: string[]): string;
-  public descriptor(keyOrKeysOrMap: string | string[] | { [key: string]: string }, description?: string): string {
+  public descriptor(
+    keyOrKeysOrMap: string | string[] | { [key: string]: string },
+    description?: string
+  ): string {
     this.table.descriptor(keyOrKeysOrMap as any, description);
     return "";
   }

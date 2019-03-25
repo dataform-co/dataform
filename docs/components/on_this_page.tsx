@@ -1,5 +1,5 @@
-import * as React from "react";
 import { Menu, MenuItem } from "@blueprintjs/core";
+import * as React from "react";
 
 interface OnThisPageItem {
   id: string;
@@ -10,7 +10,7 @@ export interface Props {
 }
 
 export default class OnThisPage extends React.Component<Props, any> {
-  render() {
+  public render() {
     const { menu } = this.props;
 
     if (!menu.length) {

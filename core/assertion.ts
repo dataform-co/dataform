@@ -5,10 +5,10 @@ import * as utils from "./utils";
 export type AContextable<T> = T | ((ctx: AssertionContext) => T);
 
 export class Assertion {
-  proto: protos.IAssertion = protos.Assertion.create();
+  public proto: protos.IAssertion = protos.Assertion.create();
 
   // Hold a reference to the Session instance.
-  session: Session;
+  public session: Session;
 
   // We delay contextification until the final compile step, so hold these here for now.
   private contextableQuery: AContextable<string>;
@@ -19,7 +19,7 @@ export class Assertion {
   }
 
   public dependencies(value: string | string[]) {
-    var newDependencies = typeof value === "string" ? [value] : value;
+    const newDependencies = typeof value === "string" ? [value] : value;
     newDependencies.forEach(d => {
       if (this.proto.dependencies.indexOf(d) < 0) {
         this.proto.dependencies.push(d);
@@ -28,10 +28,10 @@ export class Assertion {
     return this;
   }
 
-  compile() {
-    var context = new AssertionContext(this);
+  public compile() {
+    const context = new AssertionContext(this);
 
-    var appliedQuery = context.apply(this.contextableQuery);
+    const appliedQuery = context.apply(this.contextableQuery);
     this.proto.query = appliedQuery;
     this.contextableQuery = null;
 
