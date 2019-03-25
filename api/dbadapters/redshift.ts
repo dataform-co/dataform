@@ -22,11 +22,6 @@ export class RedshiftDbAdapter implements DbAdapter {
   private client: RedshiftType;
 
   constructor(profile: protos.IProfile) {
-    const deprecatedPort = profile.redshift.deprecatedPort;
-    if (deprecatedPort) {
-      profile.redshift.port = new Long(deprecatedPort.low, deprecatedPort.high, deprecatedPort.unsigned).toInt();
-    }
-
     const config: RedshiftConfig = {
       ...profile.redshift,
       ssl: true

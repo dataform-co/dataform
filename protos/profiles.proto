@@ -19,14 +19,10 @@ message Profile {
 
 message JDBC {
   string host = 2;
-  int32 port = 7;
+  int32 port = 3;
   string user = 4;
   string password = 5;
   string database = 6;
-
-  // Deprecated, DO NOT USE.
-  // Kept for backwards compatibility; will be removed upon a later release.
-  int64 deprecated_port = 3;
 
   reserved 1;
 }
