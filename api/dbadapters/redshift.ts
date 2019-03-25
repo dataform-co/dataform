@@ -3,23 +3,29 @@ import { DbAdapter } from "./index";
 
 const Redshift: RedshiftType = require("node-redshift");
 
-interface RedshiftType {
-  query: (query: string) => Promise<{ rows: any[] }>;
-  new (client: {
-    host?: string;
-    port?: number | Long;
-    user?: string;
-    password?: string;
-    database?: string;
-    ssl: boolean;
-  }): RedshiftType;
+interface RedshiftConfig {
+  host?: string;
+  port?: number;
+  user?: string;
+  password?: string;
+  database?: string;
+  ssl: boolean;
 }
+
+type RedshiftType = {
+  new (config: RedshiftConfig): RedshiftType;
+  query: (query: string) => Promise<{ rows: any[] }>;
+};
 
 export class RedshiftDbAdapter implements DbAdapter {
   private client: RedshiftType;
 
   constructor(profile: protos.IProfile) {
-    this.client = new Redshift(Object.assign({ ssl: true }, profile.redshift));
+    const config: RedshiftConfig = {
+      ...profile.redshift,
+      ssl: true
+    };
+    this.client = new Redshift(config);
   }
 
   public execute(statement: string) {
