@@ -55,7 +55,8 @@ yargs
     yargs =>
       yargs
         .option("warehouse", {
-          describe: "The warehouse type. One of [bigquery, redshift]",
+          describe: "The warehouse type. One of [bigquery, redshift, snowflake]",
+          required: true
         })
         .option("gcloud-project-id", {
           describe: "Your Google Cloud Project ID"
