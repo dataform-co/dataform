@@ -294,7 +294,6 @@ yargs
         default: "."
       }),
     argv => {
-      console.log(argv);
       query
         .compile(argv.query, { projectDir: path.resolve(argv["project-dir"]) })
         .then(compiledQuery => console.log(compiledQuery))
