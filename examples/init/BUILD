@@ -11,12 +11,14 @@ node_modules(
     ],
 )
 
+# TODO: The output of this is used by the "init" tests in api.spec.ts.
+# We should instead just invoke the init API directly in that test.
 genrule(
     name = "init",
     outs = [
         "package.json",
         "dataform.json",
     ],
-    cmd = "$(location //cli:bin) init $$(dirname $(location dataform.json)) --skip-install",
+    cmd = "$(location //cli:bin) init $$(dirname $(location dataform.json)) --warehouse=bigquery --skip-install",
     tools = ["//cli:bin"],
 )
