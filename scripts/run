@@ -2,4 +2,4 @@
 set -e
 
 bazel build //cli:bin
-./bazel-bin/cli/bin $@
+./bazel-bin/cli/bin "$@"
