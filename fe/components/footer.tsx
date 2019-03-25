@@ -44,21 +44,21 @@ export class Footer extends React.Component<IProps> {
         <div className={styles.lineBreak} style={maxWidthStyle} />
         <div className={styles.sitemap} style={maxWidthStyle}>
           <div className={styles.sitemapContent}>
-          <div className={styles.sitemapColumn1}>
-            <h4>Product</h4>
-            <a href="/product">
-              <p className={styles.sitemapColumnLink}>Product</p>
-            </a>
-            <a href="/developers">
-              <p className={styles.sitemapColumnLink}>Developers</p>
-            </a>
-            <a href="/pricing">
-              <p className={styles.sitemapColumnLink}>Pricing</p>
-            </a>
-            <a href="https://docs.dataform.co">
-              <p className={styles.sitemapColumnLink}>Documentation</p>
-            </a>
-          </div>
+            <div className={styles.sitemapColumn1}>
+              <h4>Product</h4>
+              <a href="/product">
+                <p className={styles.sitemapColumnLink}>Product</p>
+              </a>
+              <a href="/developers">
+                <p className={styles.sitemapColumnLink}>Developers</p>
+              </a>
+              <a href="/pricing">
+                <p className={styles.sitemapColumnLink}>Pricing</p>
+              </a>
+              <a href="https://docs.dataform.co">
+                <p className={styles.sitemapColumnLink}>Documentation</p>
+              </a>
+            </div>
             <div className={styles.sitemapColumn2}>
               <h4>About</h4>
               <a target="_blank" href="https://angel.co/dataform/jobs">

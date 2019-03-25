@@ -1,9 +1,9 @@
-import { expect } from "chai";
 import { Session, Table, utils } from "@dataform/core";
 import * as compilers from "@dataform/core/compilers";
 import * as protos from "@dataform/protos";
-import * as path from "path";
+import { expect } from "chai";
 import { asPlainObject } from "df/tests/utils";
+import * as path from "path";
 
 const TEST_CONFIG: protos.IProjectConfig = {
   warehouse: "redshift",
@@ -13,8 +13,8 @@ const TEST_CONFIG: protos.IProjectConfig = {
 describe("@dataform/core", () => {
   describe("publish", () => {
     it("config", function() {
-      var session = new Session(path.dirname(__filename), TEST_CONFIG);
-      var t = session
+      const session = new Session(path.dirname(__filename), TEST_CONFIG);
+      const t = session
         .publish("example", {
           type: "table",
           query: _ => "select 1 as test",
@@ -37,8 +37,8 @@ describe("@dataform/core", () => {
     });
 
     it("config_context", function() {
-      var session = new Session(path.dirname(__filename), TEST_CONFIG);
-      var t = session
+      const session = new Session(path.dirname(__filename), TEST_CONFIG);
+      const t = session
         .publish(
           "example",
           ctx => `
@@ -63,7 +63,11 @@ describe("@dataform/core", () => {
 
     it("validation_type_incremental", function() {
       const sessionSuccess = new Session(path.dirname(__filename), TEST_CONFIG);
-      sessionSuccess.publish("exampleSuccess1", { type: "incremental", where: "test1", descriptor: ["field"] });
+      sessionSuccess.publish("exampleSuccess1", {
+        type: "incremental",
+        where: "test1",
+        descriptor: ["field"]
+      });
       sessionSuccess.publish(
         "exampleSuccess2",
         ctx => `
@@ -90,11 +94,18 @@ describe("@dataform/core", () => {
       const sessionFail = new Session(path.dirname(__filename), TEST_CONFIG);
       const cases: { [key: string]: { table: Table; errorTest: RegExp } } = {
         missing_where: {
-          table: sessionFail.publish("missing_where", { type: "incremental", descriptor: ["field"] }),
+          table: sessionFail.publish("missing_where", {
+            type: "incremental",
+            descriptor: ["field"]
+          }),
           errorTest: /"where" property is not defined/
         },
         empty_where: {
-          table: sessionFail.publish("empty_where", { type: "incremental", where: "", descriptor: ["field"] }),
+          table: sessionFail.publish("empty_where", {
+            type: "incremental",
+            where: "",
+            descriptor: ["field"]
+          }),
           errorTest: /"where" property is not defined/
         }
       };
@@ -258,7 +269,12 @@ describe("@dataform/core", () => {
       session.publish("a", { type: "table", query: _ => "select 1 as test" });
       session.publish("b", {
         type: "inline",
-        redshift: { distKey: "column1", distStyle: "even", sortKeys: ["column1", "column2"], sortStyle: "compound" },
+        redshift: {
+          distKey: "column1",
+          distStyle: "even",
+          sortKeys: ["column1", "column2"],
+          sortStyle: "compound"
+        },
         preOps: _ => ["pre_op_b"],
         postOps: _ => ["post_op_b"],
         descriptor: { test: "test description b" },
@@ -318,7 +334,9 @@ describe("@dataform/core", () => {
         .to.have.property("validationErrors")
         .to.be.an("array").that.is.not.empty;
 
-      const errors = graphErrors.validationErrors.filter(item => item.nodeName === "b").map(item => item.message);
+      const errors = graphErrors.validationErrors
+        .filter(item => item.nodeName === "b")
+        .map(item => item.message);
 
       expect(errors).that.matches(/Unused property was detected: "fieldDescriptor"/);
       expect(errors).that.matches(/Unused property was detected: "preOps"/);
@@ -396,7 +414,7 @@ describe("@dataform/core", () => {
 
   describe("graph", () => {
     it("circular_dependencies", () => {
-      var session = new Session(path.dirname(__filename), TEST_CONFIG);
+      const session = new Session(path.dirname(__filename), TEST_CONFIG);
       session.publish("a").dependencies("b");
       session.publish("b").dependencies("a");
       const cGraph = session.compile();
@@ -440,7 +458,9 @@ describe("@dataform/core", () => {
         .to.have.property("compilationErrors")
         .to.be.an("array").that.is.not.empty;
 
-      const errors = gErrors.compilationErrors.filter(item => item.message.match(/Duplicate node name/));
+      const errors = gErrors.compilationErrors.filter(item =>
+        item.message.match(/Duplicate node name/)
+      );
       expect(errors).to.be.an("array").that.is.not.empty;
     });
 

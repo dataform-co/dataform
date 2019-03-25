@@ -1,4 +1,4 @@
-import { getTestConfig, getHookBefore, getTestRunCommand } from "df/tests/integration/utils";
+import { getHookBefore, getTestConfig, getTestRunCommand } from "df/tests/integration/utils";
 
 describe("@dataform/integration/redshift", function() {
   this.timeout(300000);
