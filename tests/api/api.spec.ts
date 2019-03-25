@@ -5,7 +5,6 @@ import { utils } from "@dataform/core";
 import * as protos from "@dataform/protos";
 import { assert, config, expect } from "chai";
 import { asPlainObject, cleanSql } from "df/tests/utils";
-import * as Long from "long";
 import * as path from "path";
 import * as rimraf from "rimraf";
 import * as stackTrace from "stack-trace";
@@ -713,7 +712,7 @@ describe("@dataform/api", () => {
     const bigqueryProfile = { projectId: "", credentials: "" };
     const redshiftProfile = {
       host: "",
-      port: Long.fromNumber(0),
+      port: 0,
       user: "",
       password: "",
       database: ""
@@ -728,8 +727,10 @@ describe("@dataform/api", () => {
     };
 
     it("empty_profile", () => {
-      expect(() => apiUtils.validateProfile(null)).to.throw(/Profile JSON file is empty/);
-      expect(() => apiUtils.validateProfile({})).to.throw(/Profile JSON file is empty/);
+      expect(() => apiUtils.validateProfile(null)).to.throw(
+        /Profile JSON object does not conform to protobuf requirements: object expected/
+      );
+      expect(() => apiUtils.validateProfile({})).to.throw(/Profile is empty./);
     });
 
     it("warehouse_check", () => {
@@ -741,7 +742,9 @@ describe("@dataform/api", () => {
       );
       expect(() =>
         apiUtils.validateProfile({ bigquery: bigqueryProfile, redshift: redshiftProfile })
-      ).to.throw(/Multiple warehouses detected/);
+      ).to.throw(
+        /Profile JSON object does not conform to protobuf requirements: connection: multiple values/
+      );
     });
 
     it("props_check", () => {

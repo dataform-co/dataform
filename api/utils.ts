@@ -5,14 +5,14 @@ import * as fs from "fs";
 export function validateProfile(profileJson: any) {
   const errMsg = protos.Profile.verify(profileJson);
   if (errMsg) {
-    throw new Error(errMsg);
+    throw new Error(`Profile JSON object does not conform to protobuf requirements: ${errMsg}`);
   }
 
   const profile = protos.Profile.create(profileJson);
 
   // profile shouldn't be empty
   if (!profile || !Object.keys(profile).length) {
-    throw new Error("Profile JSON file is empty.");
+    throw new Error("Profile is empty.");
   }
 
   // warehouse check
@@ -26,8 +26,6 @@ export function validateProfile(profileJson: any) {
     throw new Error(
       `Unsupported warehouse detected. Should only use predefined warehouses: ${predefinedW}`
     );
-  } else if (warehouses.length > 1) {
-    throw new Error(`Multiple warehouses detected. Should be only one warehouse config.`);
   }
 
   // props check
