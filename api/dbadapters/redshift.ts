@@ -1,17 +1,20 @@
 import { DbAdapter } from "./index";
 import * as protos from "@dataform/protos";
+import * as Long from "long";
 
 const Redshift: RedshiftType = require("node-redshift");
 
+interface RedshiftConfig {
+  host?: string;
+  port?: number;
+  user?: string;
+  password?: string;
+  database?: string;
+  ssl: boolean;
+}
+
 type RedshiftType = {
-  new (client: {
-    host?: string;
-    port?: number | Long;
-    user?: string;
-    password?: string;
-    database?: string;
-    ssl: boolean;
-  }): RedshiftType;
+  new (config: RedshiftConfig): RedshiftType;
   query: (query: string) => Promise<{ rows: any[] }>;
 };
 
@@ -19,11 +22,20 @@ export class RedshiftDbAdapter implements DbAdapter {
   private client: RedshiftType;
 
   constructor(profile: protos.IProfile) {
-    this.client = new Redshift(Object.assign({ ssl: true }, profile.redshift));
+    const deprecatedPort = profile.redshift.deprecatedPort;
+    if (deprecatedPort) {
+      profile.redshift.port = new Long(deprecatedPort.low, deprecatedPort.high, deprecatedPort.unsigned).toInt();
+    }
+
+    const config: RedshiftConfig = {
+      ...profile.redshift,
+      ssl: true
+    };
+    this.client = new Redshift(config);
   }
 
   execute(statement: string) {
-    return  this.client.query(statement).then(result => result.rows);
+    return this.client.query(statement).then(result => result.rows);
   }
 
   evaluate(statement: string) {

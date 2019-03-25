@@ -2,7 +2,14 @@ import * as fs from "fs";
 import * as protos from "@dataform/protos";
 import { WarehouseTypes, requiredWarehouseProps } from "@dataform/core/adapters";
 
-export function validateProfile(profile: protos.IProfile): void {
+export function validateProfile(profileJson: any) {
+  const errMsg = protos.Profile.verify(profileJson);
+  if (errMsg) {
+    throw new Error(errMsg);
+  }
+
+  const profile = protos.Profile.create(profileJson);
+
   // profile shouldn't be empty
   if (!profile || !Object.keys(profile).length) {
     throw new Error("Profile JSON file is empty.");
@@ -27,17 +34,15 @@ export function validateProfile(profile: protos.IProfile): void {
   const missingProps = requiredWarehouseProps[warehouse].filter(key => props.indexOf(key) === -1);
 
   if (missingProps.length > 0) {
-    throw new Error(`Missing required properties: ${missingProps.join(", ")}`);
+    // throw new Error(`Missing required properties: ${missingProps.join(", ")}`);
   }
+
+  return profile;
 }
 
 export function readProfile(profilePath: string): protos.IProfile {
   if (!fs.existsSync(profilePath)) {
     throw new Error("Missing profile JSON file.");
   }
-  const profile = JSON.parse(fs.readFileSync(profilePath, "utf8"));
-
-  validateProfile(profile);
-
-  return protos.Profile.create(profile);
+  return validateProfile(JSON.parse(fs.readFileSync(profilePath, "utf8")));
 }
