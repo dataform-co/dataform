@@ -1,7 +1,7 @@
-import * as utils from "./utils";
-import { TableContext } from "./table";
-import { OperationContext } from "./operation";
 import { AssertionContext } from "./assertion";
+import { OperationContext } from "./operation";
+import { TableContext } from "./table";
+import * as utils from "./utils";
 
 export function compile(code: string, path: string) {
   if (path.endsWith(".assert.sql")) {
@@ -66,8 +66,12 @@ export function extractJsBlocks(code: string): { sql: string; js: string } {
   const jsBlocks: string[] = [];
   const cleanSql = code
     .replace(JS_REGEX, (_, group1, group2) => {
-      if (group1) jsBlocks.push(group1);
-      if (group2) jsBlocks.push(group2);
+      if (group1) {
+        jsBlocks.push(group1);
+      }
+      if (group2) {
+        jsBlocks.push(group2);
+      }
       return "";
     })
     .replace(RAW_BACKTICKS_REGEX, (_, group1) => group1 + "\\`");
@@ -80,6 +84,8 @@ export function extractJsBlocks(code: string): { sql: string; js: string } {
 
 export function getFunctionPropertyNames(prototype: any) {
   return Object.getOwnPropertyNames(prototype).filter(function(e, i, arr) {
-    if (e != arr[i + 1] && typeof prototype[e] == "function") return true;
+    if (e != arr[i + 1] && typeof prototype[e] == "function") {
+      return true;
+    }
   });
 }

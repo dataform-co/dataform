@@ -1,28 +1,39 @@
 import * as protos from "@dataform/protos";
+import { AContextable, Assertion } from "./assertion";
+import { OContextable, Operation } from "./operation";
 import { Session } from "./session";
-import { Table, TableContext, TContextable, TConfig } from "./table";
-import { Operation, OContextable } from "./operation";
-import { Assertion, AContextable } from "./assertion";
+import { Table, TableContext, TConfig, TContextable } from "./table";
 
 // Export only imports.
 
 import * as adapters from "./adapters";
-import * as utils from "./utils";
 import * as compilers from "./compilers";
 import * as tasks from "./tasks";
+import * as utils from "./utils";
 
 // Exports.
 
-export { adapters, utils, compilers, tasks, Session, Table, TableContext, TConfig, Operation, Assertion };
+export {
+  adapters,
+  utils,
+  compilers,
+  tasks,
+  Session,
+  Table,
+  TableContext,
+  TConfig,
+  Operation,
+  Assertion
+};
 
 // Install extensions for SQL files.
 
 if (require.extensions) {
   require.extensions[".sql"] = function(module: any, file: string) {
-    var oldCompile = module._compile;
+    const oldCompile = module._compile;
     module._compile = function(code: any, file: any) {
       module._compile = oldCompile;
-      var transformedCode = compilers.compile(code, file);
+      const transformedCode = compilers.compile(code, file);
       module._compile(transformedCode, file);
     };
     require.extensions[".js"](module, file);
@@ -43,10 +54,12 @@ export const session = existingGlobalSession || new Session(process.cwd());
 export const publish = (name: string, queryOrConfig?: TContextable<string> | TConfig) =>
   session.publish(name, queryOrConfig);
 export const materialize = publish;
-export const operate = (name: string, statement?: OContextable<string | string[]>) => session.operate(name, statement);
+export const operate = (name: string, statement?: OContextable<string | string[]>) =>
+  session.operate(name, statement);
 export const assert = (name: string, query?: AContextable<string>) => session.assert(name, query);
 export const compile = () => session.compile();
-export const init = (rootDir: string, projectConfig?: protos.IProjectConfig) => session.init(rootDir, projectConfig);
+export const init = (rootDir: string, projectConfig?: protos.IProjectConfig) =>
+  session.init(rootDir, projectConfig);
 
 (global as any).session = session;
 (global as any).materialize = publish;

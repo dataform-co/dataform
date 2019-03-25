@@ -1,8 +1,8 @@
-import * as React from "react";
 import { Menu, MenuItem } from "@blueprintjs/core";
+import * as React from "react";
 
 export default class Navigation extends React.Component<any, any> {
-  render() {
+  public render() {
     return (
       <div style={{ paddingTop: "10px" }}>
         <h4>Framework guides</h4>
@@ -24,7 +24,10 @@ export default class Navigation extends React.Component<any, any> {
         </Menu>
         <h4>Platform guides</h4>
         <Menu style={styles.menu}>
-          <MenuItem href="/platform_guides/set_up_datawarehouse" text="Set up your cloud data warehouse" />
+          <MenuItem
+            href="/platform_guides/set_up_datawarehouse"
+            text="Set up your cloud data warehouse"
+          />
           <MenuItem href="/platform_guides/publish_tables" text="Publish your first tables" />
           <MenuItem href="/platform_guides/version_control" text="Use version control" />
           <MenuItem href="/platform_guides/scheduling" text="Schedule datasets" />

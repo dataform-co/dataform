@@ -1,9 +1,13 @@
-import { utils, adapters } from "@dataform/core";
+import { adapters, utils } from "@dataform/core";
 import * as protos from "@dataform/protos";
-import * as dbadapters from "../dbadapters";
 import { state } from "../commands/state";
+import * as dbadapters from "../dbadapters";
 
-export function build(compiledGraph: protos.ICompiledGraph, runConfig: protos.IRunConfig, profile: protos.IProfile) {
+export function build(
+  compiledGraph: protos.ICompiledGraph,
+  runConfig: protos.IRunConfig,
+  profile: protos.IProfile
+) {
   return state(compiledGraph, dbadapters.create(profile)).then(state => {
     return new Builder(compiledGraph, runConfig, state).build();
   });
@@ -16,19 +20,23 @@ export class Builder {
   private adapter: adapters.IAdapter;
   private state: protos.IWarehouseState;
 
-  constructor(compiledGraph: protos.ICompiledGraph, runConfig: protos.IRunConfig, state: protos.IWarehouseState) {
+  constructor(
+    compiledGraph: protos.ICompiledGraph,
+    runConfig: protos.IRunConfig,
+    state: protos.IWarehouseState
+  ) {
     this.compiledGraph = compiledGraph;
     this.runConfig = runConfig;
     this.state = state;
     this.adapter = adapters.create(compiledGraph.projectConfig);
   }
 
-  build(): protos.ExecutionGraph {
+  public build(): protos.ExecutionGraph {
     if (utils.graphHasErrors(this.compiledGraph)) {
       throw Error(`Project has unresolved compilation or validation errors.`);
     }
 
-    var tableStateByTarget: { [targetJson: string]: protos.ITableMetadata } = {};
+    const tableStateByTarget: { [targetJson: string]: protos.ITableMetadata } = {};
     this.state.tables.forEach(tableState => {
       tableStateByTarget[JSON.stringify(tableState.target)] = tableState;
     });
@@ -37,26 +45,26 @@ export class Builder {
     const filteredTables = this.compiledGraph.tables.filter(t => t.type !== "inline");
 
     // Firstly, turn every thing into an execution node.
-    var allNodes: protos.IExecutionNode[] = [].concat(
+    const allNodes: protos.IExecutionNode[] = [].concat(
       filteredTables.map(t => this.buildTable(t, tableStateByTarget[JSON.stringify(t.target)])),
       this.compiledGraph.operations.map(o => this.buildOperation(o)),
       this.compiledGraph.assertions.map(a => this.buildAssertion(a))
     );
-    var allNodeNames = allNodes.map(n => n.name);
-    var nodeNameMap: { [name: string]: protos.IExecutionNode } = {};
+    const allNodeNames = allNodes.map(n => n.name);
+    const nodeNameMap: { [name: string]: protos.IExecutionNode } = {};
     allNodes.forEach(node => (nodeNameMap[node.name] = node));
 
     // Determine which nodes should be included.
-    var includedNodeNames =
+    const includedNodeNames =
       this.runConfig.nodes && this.runConfig.nodes.length > 0
         ? utils.matchPatterns(this.runConfig.nodes, allNodeNames)
         : allNodeNames;
-    var includedNodes = allNodes.filter(node => includedNodeNames.indexOf(node.name) >= 0);
+    let includedNodes = allNodes.filter(node => includedNodeNames.indexOf(node.name) >= 0);
     if (this.runConfig.includeDependencies) {
       // Compute all transitive dependencies.
       for (let i = 0; i < allNodes.length; i++) {
         includedNodes.forEach(node => {
-          var matchingNodeNames =
+          const matchingNodeNames =
             node.dependencies && node.dependencies.length > 0
               ? utils.matchPatterns(node.dependencies, allNodeNames)
               : [];
@@ -83,7 +91,7 @@ export class Builder {
     });
   }
 
-  buildTable(t: protos.ITable, tableMetadata: protos.ITableMetadata) {
+  public buildTable(t: protos.ITable, tableMetadata: protos.ITableMetadata) {
     const emptyTasks = [] as protos.IExecutionTask[];
 
     const tasks = t.disabled
@@ -104,7 +112,7 @@ export class Builder {
     });
   }
 
-  buildOperation(operation: protos.IOperation) {
+  public buildOperation(operation: protos.IOperation) {
     return protos.ExecutionNode.create({
       name: operation.name,
       dependencies: operation.dependencies,
@@ -112,12 +120,12 @@ export class Builder {
       target: operation.target,
       tasks: operation.queries.map(statement => ({
         type: "statement",
-        statement: statement
+        statement
       }))
     });
   }
 
-  buildAssertion(assertion: protos.IAssertion) {
+  public buildAssertion(assertion: protos.IAssertion) {
     return protos.ExecutionNode.create({
       name: assertion.name,
       dependencies: assertion.dependencies,
