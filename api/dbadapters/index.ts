@@ -32,7 +32,7 @@ export function create(profile: protos.IProfile, warehouseType?: string): DbAdap
     return new registry[warehouseType](profile);
   }
   if (!!profile.bigquery) {
-    return new registry["bigquery"](profile);
+    throw new Error(profile.toString());
   }
   if (!!profile.redshift) {
     return new registry["redshift"](profile);
