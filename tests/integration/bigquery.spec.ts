@@ -1,5 +1,10 @@
 import { expect } from "chai";
-import { getTestConfig, getHookBefore, getTestRunCommand, queryRun } from "df/tests/integration/utils";
+import {
+  getHookBefore,
+  getTestConfig,
+  getTestRunCommand,
+  queryRun
+} from "df/tests/integration/utils";
 import { asPlainObject } from "df/tests/utils";
 
 describe("@dataform/integration/bigquery", function() {
@@ -43,15 +48,15 @@ describe("@dataform/integration/bigquery", function() {
     });
 
     it("canceled", async () => {
-        const promise = queryRun(sql, testConfig);
-        setTimeout(() => promise.cancel(), 10);
-        try {
-          const result = await promise;
-          throw new Error("Should not pass");
-        } catch (err) {
-          expect(err).to.be.an.instanceof(Error);
-          expect(err.message).to.equals("Query cancelled.");
-        }
+      const promise = queryRun(sql, testConfig);
+      setTimeout(() => promise.cancel(), 10);
+      try {
+        const result = await promise;
+        throw new Error("Should not pass");
+      } catch (err) {
+        expect(err).to.be.an.instanceof(Error);
+        expect(err.message).to.equals("Query cancelled.");
+      }
     });
   });
 });

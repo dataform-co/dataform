@@ -1,7 +1,7 @@
-import * as fs from "fs";
-import * as path from "path";
-import * as glob from "glob";
 import { utils } from "@dataform/core";
+import * as fs from "fs";
+import * as glob from "glob";
+import * as path from "path";
 
 export function genIndex(
   projectDir: string,
@@ -35,7 +35,9 @@ export function genIndex(
   const packageRequires = Object.keys(packageConfig.dependencies || {})
     .map(packageName => {
       return `
-      try { global.${utils.variableNameFriendly(packageName)} = require("${packageName}"); } catch (e) {
+      try { global.${utils.variableNameFriendly(
+        packageName
+      )} = require("${packageName}"); } catch (e) {
         if (global.session.compileError) {
           global.session.compileError(e, "${packageName}");
         } else {

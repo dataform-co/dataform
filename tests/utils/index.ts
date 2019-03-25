@@ -3,9 +3,9 @@ export function asPlainObject<T>(object: T): T {
 }
 
 export function cleanSql(value: string) {
-  var cleanValue = value;
+  let cleanValue = value;
   while (true) {
-    let newCleanVal = cleanValue
+    const newCleanVal = cleanValue
       .replace("  ", " ")
       .replace("\t", " ")
       .replace("\n", " ")

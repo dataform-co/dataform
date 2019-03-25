@@ -1,7 +1,7 @@
 import * as protos from "@dataform/protos";
-import { IAdapter } from "./index";
-import { Adapter } from "./base";
 import { Task, Tasks } from "../tasks";
+import { Adapter } from "./base";
+import { IAdapter } from "./index";
 
 export class RedshiftAdapter extends Adapter implements IAdapter {
   private project: protos.IProjectConfig;
@@ -11,12 +11,16 @@ export class RedshiftAdapter extends Adapter implements IAdapter {
     this.project = project;
   }
 
-  resolveTarget(target: protos.ITarget) {
+  public resolveTarget(target: protos.ITarget) {
     return `"${target.schema || this.project.defaultSchema}"."${target.name}"`;
   }
 
-  publishTasks(t: protos.ITable, runConfig: protos.IRunConfig, tableMetadata: protos.ITableMetadata): Tasks {
-    var tasks = Tasks.create();
+  public publishTasks(
+    t: protos.ITable,
+    runConfig: protos.IRunConfig,
+    tableMetadata: protos.ITableMetadata
+  ): Tasks {
+    const tasks = Tasks.create();
     // Drop the existing view or table if we are changing it's type.
     if (tableMetadata && tableMetadata.type != this.baseTableType(t.type)) {
       tasks.add(Task.statement(this.dropIfExists(t.target, this.oppositeTableType(t.type))));
@@ -27,7 +31,13 @@ export class RedshiftAdapter extends Adapter implements IAdapter {
       } else {
         // The table exists, insert new rows.
         tasks.add(
-          Task.statement(this.insertInto(t.target, tableMetadata.fields.map(f => f.name), this.where(t.query, t.where)))
+          Task.statement(
+            this.insertInto(
+              t.target,
+              tableMetadata.fields.map(f => f.name),
+              this.where(t.query, t.where)
+            )
+          )
         );
       }
     } else {
@@ -36,23 +46,25 @@ export class RedshiftAdapter extends Adapter implements IAdapter {
     return tasks;
   }
 
-  assertTasks(a: protos.IAssertion, projectConfig: protos.IProjectConfig): Tasks {
-    var tasks = Tasks.create();
-    var assertionTarget = protos.Target.create({
+  public assertTasks(a: protos.IAssertion, projectConfig: protos.IProjectConfig): Tasks {
+    const tasks = Tasks.create();
+    const assertionTarget = protos.Target.create({
       schema: projectConfig.assertionSchema,
       name: a.name
     });
     tasks.add(Task.statement(this.createOrReplaceView(assertionTarget, a.query)));
-    tasks.add(Task.assertion(`select count(*) as row_count from ${this.resolveTarget(assertionTarget)}`));
+    tasks.add(
+      Task.assertion(`select count(*) as row_count from ${this.resolveTarget(assertionTarget)}`)
+    );
     return tasks;
   }
 
-  createOrReplaceView(target: protos.ITarget, query: string) {
+  public createOrReplaceView(target: protos.ITarget, query: string) {
     return `
       create or replace view ${this.resolveTarget(target)} as ${query}`;
   }
 
-  createOrReplace(t: protos.ITable) {
+  public createOrReplace(t: protos.ITable) {
     if (t.type == "view") {
       return Tasks.create().add(
         Task.statement(`
@@ -69,12 +81,16 @@ export class RedshiftAdapter extends Adapter implements IAdapter {
       tasks.add(Task.statement(this.dropIfExists(tempTableTarget, this.baseTableType(t.type))));
       tasks.add(Task.statement(this.createTable(t, tempTableTarget)));
       tasks.add(Task.statement(this.dropIfExists(t.target, "table")));
-      tasks.add(Task.statement(`alter table ${this.resolveTarget(tempTableTarget)} rename to "${t.target.name}"`));
+      tasks.add(
+        Task.statement(
+          `alter table ${this.resolveTarget(tempTableTarget)} rename to "${t.target.name}"`
+        )
+      );
       return tasks;
     }
   }
 
-  createTable(t: protos.ITable, target: protos.ITarget) {
+  public createTable(t: protos.ITable, target: protos.ITarget) {
     if (t.redshift) {
       let query = `create table ${this.resolveTarget(target)}`;
 
@@ -91,7 +107,7 @@ export class RedshiftAdapter extends Adapter implements IAdapter {
     return `create table ${this.resolveTarget(target)} as ${t.query}`;
   }
 
-  dropIfExists(target: protos.ITarget, type: string) {
+  public dropIfExists(target: protos.ITarget, type: string) {
     return `drop ${this.baseTableType(type)} if exists ${this.resolveTarget(target)} cascade`;
   }
 }

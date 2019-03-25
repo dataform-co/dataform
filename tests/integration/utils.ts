@@ -1,10 +1,10 @@
-import { expect } from "chai";
-import * as path from "path";
-import * as fs from "fs";
 import * as dfapi from "@dataform/api";
-import * as protos from "@dataform/protos";
-import { asPlainObject } from "df/tests/utils";
 import { create, IAdapter } from "@dataform/core/adapters";
+import * as protos from "@dataform/protos";
+import { expect } from "chai";
+import { asPlainObject } from "df/tests/utils";
+import * as fs from "fs";
+import * as path from "path";
 
 interface ITableInfo {
   schema: string;
@@ -37,7 +37,7 @@ export function queryRun(sqlQuery: string, testConfig: ITestConfig) {
 }
 
 function getTarget(schema: string, table: string, testConfig: ITestConfig) {
-  const target = testConfig.adapter.resolveTarget({ schema: schema, name: table });
+  const target = testConfig.adapter.resolveTarget({ schema, name: table });
 
   return target.replace(/`/g, "\\`");
 }
@@ -100,7 +100,9 @@ function getData(expectedResult: IExpectedResult[], schema: string, testConfig: 
 
 export function getTestConfig(warehouse: string): ITestConfig {
   const profilePath = `df/test_profiles/${warehouse}.json`;
-  const profile = fs.existsSync(profilePath) ? JSON.parse(fs.readFileSync(profilePath, "utf8")) : null;
+  const profile = fs.existsSync(profilePath)
+    ? JSON.parse(fs.readFileSync(profilePath, "utf8"))
+    : null;
   const projectDir = `df/examples/${warehouse}`;
   const projectConf = JSON.parse(fs.readFileSync(path.join(projectDir, "./dataform.json"), "utf8"));
   const adapter = create({ ...projectConf, gcloudProjectId: null });
