@@ -110,7 +110,6 @@ export class Runner {
       } else if (this.cancelled || finishedDeps.length == node.dependencies.length) {
         // All deps are finished but they weren't all successful, or the run was cancelled.
         // skip this node.
-        console.log(`Completed node: "${node.name}", status: skipped`);
         this.result.nodes.push({
           name: node.name,
           status: protos.NodeExecutionStatus.SKIPPED,
@@ -171,9 +170,7 @@ export class Runner {
       .then((results: protos.IExecutedTask[]) => {
         const endTime = process.hrtime(startTime);
         const executionTime = endTime[0] * 1000 + Math.round(endTime[1] / 1000000);
-        const prettyTime = prettyMs(executionTime);
 
-        console.log(`Completed node: "${node.name}", status: successful (${prettyTime})`);
         this.result.nodes.push({
           name: node.name,
           status:
@@ -189,9 +186,7 @@ export class Runner {
       .catch((results: protos.IExecutedTask[]) => {
         const endTime = process.hrtime(startTime);
         const executionTime = endTime[0] * 1000 + Math.round(endTime[1] / 1000000);
-        const prettyTime = prettyMs(executionTime);
 
-        console.log(`Completed node: "${node.name}", status: failed (${prettyTime})`);
         this.result.nodes.push({
           name: node.name,
           status: protos.NodeExecutionStatus.FAILED,
