@@ -14,7 +14,7 @@ message Profile {
     Snowflake snowflake = 5;
   }
   
-  reserved 1, 2, 8;
+  reserved 1, 2;
 }
 
 message JDBC {
