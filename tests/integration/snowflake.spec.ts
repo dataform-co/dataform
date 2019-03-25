@@ -1,14 +1,23 @@
-import { getTestConfig, getHookBefore, getTestRunCommand } from "df/tests/integration/utils";
+import { getHookBefore, getTestConfig, getTestRunCommand } from "df/tests/integration/utils";
 
 describe("@dataform/integration/snowflake", function() {
   this.timeout(300000);
 
   const testConfig = getTestConfig("snowflake");
   const expectedResult = [
-    { id: "example_table", data: [{ SAMPLE_COLUMN: 1 }, { SAMPLE_COLUMN: 2 }, { SAMPLE_COLUMN: 3 }] },
-    { id: "example_view", data: [{ SAMPLE_COLUMN: 1 }, { SAMPLE_COLUMN: 2 }, { SAMPLE_COLUMN: 3 }] },
+    {
+      id: "example_table",
+      data: [{ SAMPLE_COLUMN: 1 }, { SAMPLE_COLUMN: 2 }, { SAMPLE_COLUMN: 3 }]
+    },
+    {
+      id: "example_view",
+      data: [{ SAMPLE_COLUMN: 1 }, { SAMPLE_COLUMN: 2 }, { SAMPLE_COLUMN: 3 }]
+    },
     { id: "sample_data", data: [{ SAMPLE_COLUMN: 1 }, { SAMPLE_COLUMN: 2 }, { SAMPLE_COLUMN: 3 }] },
-    { id: "example_using_inline", data: [{ SAMPLE_COLUMN: 1 }, { SAMPLE_COLUMN: 2 }, { SAMPLE_COLUMN: 3 }] },
+    {
+      id: "example_using_inline",
+      data: [{ SAMPLE_COLUMN: 1 }, { SAMPLE_COLUMN: 2 }, { SAMPLE_COLUMN: 3 }]
+    },
     { id: "example_incremental", data: [] }
   ];
 

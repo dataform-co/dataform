@@ -1,8 +1,8 @@
-import * as React from "react";
-import Media from "react-media";
+import Method from "df/docs/components/method";
 import Navigation from "df/docs/components/navigation";
 import OnThisPage from "df/docs/components/on_this_page";
-import Method from "df/docs/components/method";
+import * as React from "react";
+import Media from "react-media";
 
 import { BaseLayout } from "df/docs/layouts/base";
 
@@ -14,7 +14,7 @@ export interface Props {
 }
 
 export default class Documentation extends React.Component<Props, any> {
-  getMenuItems = (child: React.ReactElement<any>) => {
+  public getMenuItems = (child: React.ReactElement<any>) => {
     if (child && child.props && Array.isArray(child.props.children)) {
       const headers = child.props.children.filter(item => item.props.name === "h2").map(item => ({
         id: item.props.props.id,
@@ -32,7 +32,7 @@ export default class Documentation extends React.Component<Props, any> {
     return [];
   };
 
-  renderRightSidebar = () => {
+  public renderRightSidebar = () => {
     const menu = this.getMenuItems(this.props.children as React.ReactElement<any>);
 
     return (
@@ -42,7 +42,7 @@ export default class Documentation extends React.Component<Props, any> {
     );
   };
 
-  render() {
+  public render() {
     return (
       <BaseLayout title="Dataform | Docs">
         <div className={commonStyles.flexRow}>

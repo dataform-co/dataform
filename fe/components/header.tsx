@@ -56,7 +56,10 @@ export class Header extends React.Component<IProps, IState> {
       <div>
         <div className={styles.hideMobile}>
           <nav className={navClasses.join(" ")}>
-            <span className={styles.navContent} style={{ maxWidth: this.props.maxWidth || DEFAULT_MAX_WIDTH }}>
+            <span
+              className={styles.navContent}
+              style={{ maxWidth: this.props.maxWidth || DEFAULT_MAX_WIDTH }}
+            >
               <span>
                 <a href="/">
                   <img className={styles.logoImage} />
@@ -64,7 +67,10 @@ export class Header extends React.Component<IProps, IState> {
               </span>
               <span className={styles.pages}>
                 {this.props.pages.map(p => (
-                  <span id={p.name} className={this.props.pagePath === getPath(p) ? styles.pageSelected : ""}>
+                  <span
+                    id={p.name}
+                    className={this.props.pagePath === getPath(p) ? styles.pageSelected : ""}
+                  >
                     <a href={`/${getPath(p)}`}>{p.name}</a>
                   </span>
                 ))}

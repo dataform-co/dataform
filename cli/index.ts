@@ -1,10 +1,10 @@
 #!/usr/bin/env node
-import * as fs from "fs";
-import * as yargs from "yargs";
-import * as path from "path";
-import * as chokidar from "chokidar";
+import { build, compile, init, query, run, table, utils } from "@dataform/api";
 import * as protos from "@dataform/protos";
-import { init, compile, build, run, table, query, utils } from "@dataform/api";
+import * as chokidar from "chokidar";
+import * as fs from "fs";
+import * as path from "path";
+import * as yargs from "yargs";
 
 const addCompileYargs = (yargs: yargs.Argv) =>
   yargs
@@ -36,11 +36,15 @@ const addBuildYargs = (yargs: yargs.Argv) =>
 
 const parseBuildArgs = (argv: yargs.Arguments): protos.IRunConfig => ({
   fullRefresh: argv["full-refresh"],
-  nodes: argv["nodes"],
+  nodes: argv.nodes,
   includeDependencies: argv["include-deps"]
 });
 
-const compileProject = (projectDir: string, defaultSchemaOverride?: string, assertionSchemaOverride?: string) => {
+const compileProject = (
+  projectDir: string,
+  defaultSchemaOverride?: string,
+  assertionSchemaOverride?: string
+) => {
   return compile({ projectDir, defaultSchemaOverride, assertionSchemaOverride })
     .then(graph => console.log(JSON.stringify(graph, null, 4)))
     .catch(e => console.log(e));
@@ -73,7 +77,7 @@ yargs
       init(
         path.resolve(argv["project-dir"]),
         {
-          warehouse: argv["warehouse"],
+          warehouse: argv.warehouse,
           gcloudProjectId: argv["gcloud-project-id"]
         },
         argv["skip-install"]
@@ -103,7 +107,7 @@ yargs
         : "";
 
       compileProject(projectDir, defaultSchemaOverride, assertionSchemaOverride).then(() => {
-        if (argv["watch"]) {
+        if (argv.watch) {
           let timeoutID = null;
           let isCompiling = false;
 
@@ -136,10 +140,12 @@ yargs
                 if (!isCompiling) {
                   // recompile project
                   isCompiling = true;
-                  compileProject(projectDir, defaultSchemaOverride, assertionSchemaOverride).then(() => {
-                    console.log("Watcher ready for changes...");
-                    isCompiling = false;
-                  });
+                  compileProject(projectDir, defaultSchemaOverride, assertionSchemaOverride).then(
+                    () => {
+                      console.log("Watcher ready for changes...");
+                      isCompiling = false;
+                    }
+                  );
                 }
               }, RECOMPILE_DELAY);
             });
@@ -161,7 +167,7 @@ yargs
           required: true
         }),
     argv => {
-      const profile = utils.readProfile(argv["profile"]);
+      const profile = utils.readProfile(argv.profile);
       const defaultSchemaOverride = !!argv["default-schema-override"]
         ? path.resolve(argv["default-schema-override"])
         : "";
@@ -198,7 +204,7 @@ yargs
         }),
     argv => {
       console.log("Project status: starting...");
-      const profile = utils.readProfile(argv["profile"]);
+      const profile = utils.readProfile(argv.profile);
       const defaultSchemaOverride = !!argv["default-schema-override"]
         ? path.resolve(argv["default-schema-override"])
         : "";
@@ -218,7 +224,11 @@ yargs
         })
         .then(graph => {
           const tasksAmount = graph.nodes.reduce((prev, item) => prev + item.tasks.length, 0);
-          console.log(`Project status: ready for run ${graph.nodes.length} node(s) with ${tasksAmount} task(s)`);
+          console.log(
+            `Project status: ready for run ${
+              graph.nodes.length
+            } node(s) with ${tasksAmount} task(s)`
+          );
           console.log("Project status: running...");
 
           const runner = run(graph, profile);
@@ -252,7 +262,7 @@ yargs
       }),
     argv => {
       table
-        .list(utils.readProfile(argv["profile"]))
+        .list(utils.readProfile(argv.profile))
         .then(tables => console.log(JSON.stringify(tables, null, 4)))
         .catch(e => console.log(e));
     }
@@ -267,9 +277,9 @@ yargs
       }),
     argv => {
       table
-        .get(utils.readProfile(argv["profile"]), {
-          schema: argv["schema"],
-          name: argv["table"]
+        .get(utils.readProfile(argv.profile), {
+          schema: argv.schema,
+          name: argv.table
         })
         .then(schema => console.log(JSON.stringify(schema, null, 4)))
         .catch(e => console.log(e));
@@ -286,7 +296,7 @@ yargs
     argv => {
       console.log(argv);
       query
-        .compile(argv["query"], { projectDir: path.resolve(argv["project-dir"]) })
+        .compile(argv.query, { projectDir: path.resolve(argv["project-dir"]) })
         .then(compiledQuery => console.log(compiledQuery))
         .catch(e => console.log(e));
     }
@@ -310,12 +320,14 @@ yargs
         }),
     argv => {
       query
-        .compile(argv["query"], { projectDir: path.resolve(argv["project-dir"]) })
+        .compile(argv.query, { projectDir: path.resolve(argv["project-dir"]) })
         .then(compiledQuery => {
           // const profile = JSON.parse(fs.readFileSync(argv["profile"], "utf8"));
-          const profile = utils.readProfile(argv["profile"]);
+          const profile = utils.readProfile(argv.profile);
           if (profile.snowflake) {
-            return console.log("Not implemented! You can try to use the web interface in your Snowflake profile");
+            return console.log(
+              "Not implemented! You can try to use the web interface in your Snowflake profile"
+            );
           }
 
           return query.evaluate(profile, compiledQuery, {
@@ -342,7 +354,7 @@ yargs
           default: "."
         }),
     argv => {
-      const promise = query.run(utils.readProfile(argv["profile"]), argv["query"], {
+      const promise = query.run(utils.readProfile(argv.profile), argv.query, {
         projectDir: path.resolve(argv["project-dir"])
       });
 
@@ -353,7 +365,9 @@ yargs
         }
       });
 
-      promise.then(results => console.log(JSON.stringify(results, null, 4))).catch(e => console.log(e));
+      promise
+        .then(results => console.log(JSON.stringify(results, null, 4)))
+        .catch(e => console.log(e));
     }
   )
   .demandCommand(1, "You need at least one command before moving on").argv;
