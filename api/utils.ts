@@ -34,7 +34,7 @@ export function validateProfile(profileJson: any) {
   const missingProps = requiredWarehouseProps[warehouse].filter(key => props.indexOf(key) === -1);
 
   if (missingProps.length > 0) {
-    // throw new Error(`Missing required properties: ${missingProps.join(", ")}`);
+    throw new Error(`Missing required properties: ${missingProps.join(", ")}`);
   }
 
   return profile;
