@@ -13,13 +13,7 @@ const projectDirOption = {
   option: {
     describe: "The Dataform project directory.",
     default: ".",
-    coerce: dir => {
-      dir = path.resolve(dir);
-      if (!fs.existsSync(dir)) {
-        throw new Error(`Credentials file ${dir} does not exist!`);
-      }
-      return dir;
-    }
+    coerce: fullyResolvePath
   }
 };
 
@@ -68,13 +62,7 @@ const credentialsOption = {
   option: {
     describe: "The location of the credentials JSON file to use.",
     default: ".df-credentials.json",
-    coerce: filePath => {
-      filePath = path.resolve(filePath);
-      if (!fs.existsSync(filePath)) {
-        throw new Error(`Credentials file ${filePath} does not exist!`);
-      }
-      return filePath;
-    }
+    coerce: fullyResolvePath
   }
 };
 
@@ -324,9 +312,16 @@ createYargsCli({
       }
     }
   ],
-  moreChaining: yargs =>
-    yargs.demandCommand(1, "You need at least one command before moving on").argv
+  moreChaining: yargs => yargs.demandCommand(1, "Please choose a command.").argv
 });
+
+function fullyResolvePath(filePath: string) {
+  filePath = path.resolve(filePath);
+  if (!fs.existsSync(filePath)) {
+    throw new Error(`${filePath} does not exist!`);
+  }
+  return filePath;
+}
 
 const compileProject = (
   projectDir: string,
