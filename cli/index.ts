@@ -8,75 +8,101 @@ import * as yargs from "yargs";
 
 const RECOMPILE_DELAY = 2000;
 
-const commonBuildOptions: INamedOption[] = [
-  {
-    name: "full-refresh",
-    option: {
-      describe: "If set, this will rebuild incremental tables from scratch",
-      type: "boolean",
-      default: false,
-      alias: "fr"
-    }
-  },
-  {
-    name: "nodes",
-    option: {
-      describe: "A list of node names or patterns to run, which can include * wildcards",
-      type: "array",
-      alias: "n"
-    }
-  },
-  {
-    name: "include-deps",
-    option: {
-      describe: "If set, dependencies for selected nodes will also be run",
-      type: "boolean",
-      alias: "id"
-    }
+const projectDirOption = {
+  name: "project-dir",
+  option: {
+    describe: "The Dataform project directory.",
+    default: ".",
+    coerce: fullyResolvePath
   }
-];
+};
+
+const fullRefreshOption = {
+  name: "full-refresh",
+  option: {
+    describe: "Forces incremental tables to be rebuilt from scratch.",
+    type: "boolean",
+    default: false
+  }
+};
+
+const nodesOption = {
+  name: "nodes",
+  option: {
+    describe: "A list of node names or patterns to run. Can include '*' wildcards.",
+    type: "array"
+  }
+};
+
+// TODO: Should this be only set when "nodes" is also set? (using yargs 'implies')
+const includeDepsOption = {
+  name: "include-deps",
+  option: {
+    describe: "If set, dependencies for selected nodes will also be run.",
+    type: "boolean"
+  }
+};
+
+const defaultSchemaOption = {
+  name: "default-schema",
+  option: {
+    describe: "An optional default schema name override."
+  }
+};
+
+const assertionSchemaOption = {
+  name: "assertion-schema",
+  option: {
+    describe: "An optional assertion schema name override."
+  }
+};
+
+const credentialsOption = {
+  name: "credentials",
+  option: {
+    describe: "The location of the credentials JSON file to use.",
+    default: ".df-credentials.json",
+    coerce: fullyResolvePath
+  }
+};
 
 createYargsCli({
   commands: [
     {
-      format: "init [project-dir]",
-      description: "Create a new dataform project in the current, or specified directory.",
+      format: "init <warehouse> [project-dir]",
+      description: "Create a new dataform project.",
       positionalOptions: [
-        {
-          name: "project-dir",
-          option: {
-            describe: "The directory in which to create the Dataform project.",
-            default: "."
-          }
-        }
-      ],
-      options: [
         {
           name: "warehouse",
           option: {
-            describe: "The warehouse type. One of [bigquery, redshift, snowflake]",
-            required: true
+            describe: "The project's data warehouse type.",
+            choices: ["bigquery", "redshift", "snowflake"]
           }
         },
+        projectDirOption
+      ],
+      options: [
+        // TODO: Should we error out if this is not provided when the warehouse is set to "bigquery",
+        // or conversely if it is provided for other warehouse types?
         {
           name: "gcloud-project-id",
           option: {
-            describe: "Your Google Cloud Project ID"
+            describe: "The Google Cloud Project ID to use when accessing bigquery."
           }
         },
         {
           name: "skip-install",
           option: {
-            describe: "Whether to skip installing packages.",
+            describe: "Whether to skip installing NPM packages.",
             default: false
           }
         }
       ],
       processFn: argv =>
         init(
-          path.resolve(argv["project-dir"]),
+          argv["project-dir"],
           {
-            warehouse: argv.warehouse,
+            warehouse: argv["warehouse"],
             gcloudProjectId: argv["gcloud-project-id"]
           },
           argv["skip-install"]
@@ -86,48 +112,26 @@ createYargsCli({
       format: "compile [project-dir]",
       description:
         "Compile the dataform project. Produces JSON output describing the non-executable graph.",
-      positionalOptions: [
-        {
-          name: "project-dir",
-          option: {
-            describe: "The directory of the Dataform project.",
-            default: "."
-          }
-        }
-      ],
+      positionalOptions: [projectDirOption],
       options: [
-        {
-          name: "default-schema",
-          option: {
-            describe: "An optional default schema name override"
-          }
-        },
-        {
-          name: "assertion-schema",
-          option: {
-            describe: "An optional assertion schema name override"
-          }
-        },
+        defaultSchemaOption,
+        assertionSchemaOption,
         {
           name: "watch",
           option: {
-            describe: "Watch the changes in the project directory.",
+            describe: "Whether to watch the changes in the project directory.",
             type: "boolean",
             default: false
           }
         }
       ],
       processFn: argv => {
-        const projectDir = path.resolve(argv["project-dir"]);
-        const defaultSchemaOverride = !!argv["default-schema-override"]
-          ? path.resolve(argv["default-schema-override"])
-          : "";
-        const assertionSchemaOverride = !!argv["assertion-schema-override"]
-          ? path.resolve(argv["assertion-schema-override"])
-          : "";
+        const projectDir = argv["project-dir"];
+        const defaultSchemaOverride = argv["default-schema"];
+        const assertionSchemaOverride = argv["assertion-schema"];
 
         compileProject(projectDir, defaultSchemaOverride, assertionSchemaOverride).then(() => {
-          if (argv.watch) {
+          if (argv["watch"]) {
             let timeoutID = null;
             let isCompiling = false;
 
@@ -177,92 +181,78 @@ createYargsCli({
       format: "build [project-dir]",
       description:
         "Build the dataform project. Produces JSON output describing the execution graph.",
-      positionalOptions: [
-        {
-          name: "project-dir",
-          option: {
-            describe: "The directory of the Dataform project.",
-            default: "."
-          }
-        }
-      ],
+      positionalOptions: [projectDirOption],
       options: [
-        ...commonBuildOptions,
-        {
-          name: "profile",
-          option: {
-            describe: "The location of the profile JSON file to run against",
-            required: true
-          }
-        }
+        fullRefreshOption,
+        nodesOption,
+        includeDepsOption,
+        defaultSchemaOption,
+        assertionSchemaOption,
+        credentialsOption
       ],
       processFn: argv => {
-        const profile = utils.readProfile(argv.profile);
-        const defaultSchemaOverride = !!argv["default-schema-override"]
-          ? path.resolve(argv["default-schema-override"])
-          : "";
-        const assertionSchemaOverride = !!argv["assertion-schema-override"]
-          ? path.resolve(argv["assertion-schema-override"])
-          : "";
+        const profile = utils.readProfile(argv["credentials"]);
 
         compile({
-          projectDir: path.resolve(argv["project-dir"]),
-          defaultSchemaOverride,
-          assertionSchemaOverride
+          projectDir: argv["project-dir"],
+          defaultSchemaOverride: argv["default-schema"],
+          assertionSchemaOverride: argv["assertion-schema"]
         })
-          .then(graph => build(graph, parseBuildArgs(argv), profile))
+          .then(graph =>
+            build(
+              graph,
+              {
+                fullRefresh: argv["full-refresh"],
+                nodes: argv["nodes"],
+                includeDependencies: argv["include-deps"]
+              },
+              profile
+            )
+          )
           .then(result => console.log(JSON.stringify(result, null, 4)))
           .catch(e => console.log(e));
       }
     },
     {
       format: "run [project-dir]",
-      description: "Build and run the dataform project with the provided options.",
-      positionalOptions: [
-        {
-          name: "project-dir",
-          option: {
-            describe: "The directory of the Dataform project.",
-            default: "."
-          }
-        }
-      ],
+      description: "Run the dataform project's scripts on the configured data warehouse.",
+      positionalOptions: [projectDirOption],
       options: [
-        ...commonBuildOptions,
-        {
-          name: "profile",
-          option: {
-            describe: "The location of the profile JSON file to run against",
-            required: true
-          }
-        },
+        fullRefreshOption,
+        nodesOption,
+        includeDepsOption,
+        defaultSchemaOption,
+        assertionSchemaOption,
+        credentialsOption,
         {
           name: "result-path",
           option: {
-            describe: "Path to save executed graph to JSON file",
+            describe: "Optional path where executed graph JSON should be written.",
             type: "string"
           }
         }
       ],
       processFn: argv => {
         console.log("Project status: starting...");
-        const profile = utils.readProfile(argv.profile);
-        const defaultSchemaOverride = !!argv["default-schema-override"]
-          ? path.resolve(argv["default-schema-override"])
-          : "";
-        const assertionSchemaOverride = !!argv["assertion-schema-override"]
-          ? path.resolve(argv["assertion-schema-override"])
-          : "";
+        const profile = utils.readProfile(argv["credentials"]);
 
         compile({
-          projectDir: path.resolve(argv["project-dir"]),
-          defaultSchemaOverride,
-          assertionSchemaOverride
+          projectDir: argv["project-dir"],
+          defaultSchemaOverride: argv["default-schema"],
+          assertionSchemaOverride: argv["assertion-schema"]
         })
           .then(graph => {
             console.log("Project status: build...");
 
-            return build(graph, parseBuildArgs(argv), profile);
+            return build(
+              graph,
+              {
+                fullRefresh: argv["full-refresh"],
+                nodes: argv["nodes"],
+                includeDependencies: argv["include-deps"]
+              },
+              profile
+            );
           })
           .then(graph => {
             const tasksAmount = graph.nodes.reduce((prev, item) => prev + item.tasks.length, 0);
@@ -295,58 +285,43 @@ createYargsCli({
       }
     },
     {
-      format: "tables-list",
-      description: "Fetch available tables for the provided profile.",
+      format: "listtables",
+      description: "List tables on the configured data warehouse.",
       positionalOptions: [],
-      options: [
-        {
-          name: "profile",
-          option: {
-            describe: "The location of the profile JSON file to run against",
-            required: true
-          }
-        }
-      ],
+      options: [credentialsOption],
       processFn: argv => {
         table
-          .list(utils.readProfile(argv.profile))
+          .list(utils.readProfile(argv["credentials"]))
           .then(tables => console.log(JSON.stringify(tables, null, 4)))
           .catch(e => console.log(e));
       }
     },
     {
-      format: "tables-get <schema> <table>",
-      description: "Fetch metadata for the given table",
+      format: "gettablemetadata <schema> <table>",
+      description: "Fetch metadata for a specified table.",
       positionalOptions: [],
-      options: [
-        {
-          name: "profile",
-          option: {
-            describe: "The location of the profile JSON file to run against",
-            required: true
-          }
-        }
-      ],
+      options: [credentialsOption],
       processFn: argv => {
         table
-          .get(utils.readProfile(argv.profile), {
-            schema: argv.schema,
-            name: argv.table
+          .get(utils.readProfile(argv["credentials"]), {
+            schema: argv["schema"],
+            name: argv["table"]
           })
           .then(schema => console.log(JSON.stringify(schema, null, 4)))
           .catch(e => console.log(e));
       }
     }
   ],
-  moreChaining: yargs =>
-    yargs.demandCommand(1, "You need at least one command before moving on").argv
+  moreChaining: yargs => yargs.demandCommand(1, "Please choose a command.").argv
 });
 
-const parseBuildArgs = (argv: yargs.Arguments): protos.IRunConfig => ({
-  fullRefresh: argv["full-refresh"],
-  nodes: argv.nodes,
-  includeDependencies: argv["include-deps"]
-});
+function fullyResolvePath(filePath: string) {
+  filePath = path.resolve(filePath);
+  if (!fs.existsSync(filePath)) {
+    throw new Error(`${filePath} does not exist!`);
+  }
+  return filePath;
+}
 
 const compileProject = (
   projectDir: string,
@@ -366,19 +341,14 @@ interface ICli {
 interface ICommand {
   format: string;
   description: string;
-  positionalOptions: INamedPositionalOption[];
-  options: INamedOption[];
+  positionalOptions: INamedOption<yargs.PositionalOptions>[];
+  options: INamedOption<yargs.Options>[];
   processFn: (argv) => any;
 }
 
-interface INamedPositionalOption {
+interface INamedOption<T> {
   name: string;
-  option: yargs.PositionalOptions;
-}
-
-interface INamedOption {
-  name: string;
-  option: yargs.Options;
+  option: T;
 }
 
 function createYargsCli(cli: ICli) {
@@ -392,6 +362,7 @@ function createYargsCli(cli: ICli) {
       command.processFn
     );
   }
+
   if (cli.moreChaining) {
     return cli.moreChaining(yargsChain);
   }

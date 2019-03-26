@@ -19,6 +19,6 @@ genrule(
         "package.json",
         "dataform.json",
     ],
-    cmd = "$(location //cli:bin) init $$(dirname $(location dataform.json)) --warehouse=bigquery --skip-install",
+    cmd = "$(location //cli:bin) init bigquery $$(dirname $(location dataform.json)) --skip-install",
     tools = ["//cli:bin"],
 )
