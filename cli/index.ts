@@ -40,7 +40,7 @@ const nodesOption = {
   }
 };
 
-// TODO: should this be only set with "nodes" also set? ('implies' in yargs)
+// TODO: Should this be only set when "nodes" is also set? (using yargs 'implies')
 const includeDepsOption = {
   name: "include-deps",
   option: {
@@ -94,7 +94,8 @@ createYargsCli({
         projectDirOption
       ],
       options: [
-        // TODO: seems like we should shout loudly if this is not provided when warehouse is "bigquery", or if it is provided for the other warehouse types
+        // TODO: Should we error out if this is not provided when the warehouse is set to "bigquery",
+        // or conversely if it is provided for other warehouse types?
         {
           name: "gcloud-project-id",
           option: {
