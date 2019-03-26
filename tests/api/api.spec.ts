@@ -1,15 +1,14 @@
-import { expect, assert, config } from "chai";
-import * as Long from "long";
-import * as rimraf from "rimraf";
-import { query, Builder, compile, init, Runner, utils as apiUtils } from "@dataform/api";
-import { BigQueryDbAdapter } from "@dataform/api/dbadapters/bigquery";
+import { Builder, compile, init, query, Runner, utils as apiUtils } from "@dataform/api";
 import { DbAdapter } from "@dataform/api/dbadapters";
+import { BigQueryDbAdapter } from "@dataform/api/dbadapters/bigquery";
 import { utils } from "@dataform/core";
 import * as protos from "@dataform/protos";
+import { assert, config, expect } from "chai";
 import { asPlainObject, cleanSql } from "df/tests/utils";
 import * as path from "path";
+import * as rimraf from "rimraf";
 import * as stackTrace from "stack-trace";
-import { anyFunction, anyString, mock, instance, when } from "ts-mockito";
+import { anyFunction, anyString, instance, mock, when } from "ts-mockito";
 
 config.truncateThreshold = 0;
 
@@ -51,17 +50,25 @@ describe("@dataform/api", () => {
     const TEST_STATE = protos.WarehouseState.create({ tables: [] });
 
     it("include_deps", () => {
-      var builder = new Builder(TEST_GRAPH, { nodes: ["a"], includeDependencies: true }, TEST_STATE);
-      var executionGraph = builder.build();
-      var includedNodeNames = executionGraph.nodes.map(n => n.name);
+      const builder = new Builder(
+        TEST_GRAPH,
+        { nodes: ["a"], includeDependencies: true },
+        TEST_STATE
+      );
+      const executionGraph = builder.build();
+      const includedNodeNames = executionGraph.nodes.map(n => n.name);
       expect(includedNodeNames).includes("a");
       expect(includedNodeNames).includes("b");
     });
 
     it("exclude_deps", () => {
-      var builder = new Builder(TEST_GRAPH, { nodes: ["a"], includeDependencies: false }, TEST_STATE);
-      var executionGraph = builder.build();
-      var includedNodeNames = executionGraph.nodes.map(n => n.name);
+      const builder = new Builder(
+        TEST_GRAPH,
+        { nodes: ["a"], includeDependencies: false },
+        TEST_STATE
+      );
+      const executionGraph = builder.build();
+      const includedNodeNames = executionGraph.nodes.map(n => n.name);
       expect(includedNodeNames).includes("a");
       expect(includedNodeNames).not.includes("b");
     });
@@ -107,7 +114,12 @@ describe("@dataform/api", () => {
         projectConfig: { warehouse: "redshift" },
         tables: [
           { name: "a", target: { schema: "schema", name: "a" }, type: "table" },
-          { name: "b", target: { schema: "schema", name: "b" }, type: "incremental", where: "test" },
+          {
+            name: "b",
+            target: { schema: "schema", name: "b" },
+            type: "incremental",
+            where: "test"
+          },
           { name: "c", target: { schema: "schema", name: "c" }, type: "view" }
         ],
         operations: [
@@ -148,7 +160,12 @@ describe("@dataform/api", () => {
         projectConfig: { warehouse: "bigquery" },
         tables: [
           { name: "a", target: { schema: "schema", name: "a" }, type: "table", dependencies: [] },
-          { name: "b", target: { schema: "schema", name: "b" }, type: "inline", dependencies: ["a"] },
+          {
+            name: "b",
+            target: { schema: "schema", name: "b" },
+            type: "inline",
+            dependencies: ["a"]
+          },
           { name: "c", target: { schema: "schema", name: "c" }, type: "table", dependencies: ["a"] }
         ]
       });
@@ -204,7 +221,9 @@ describe("@dataform/api", () => {
       });
       const executionGraph = new Builder(graph, {}, state).build();
       expect(executionGraph.nodes.filter(n => n.name == "incremental")).is.not.empty;
-      expect(cleanSql(executionGraph.nodes.filter(n => n.name == "incremental")[0].tasks[0].statement)).equals(
+      expect(
+        cleanSql(executionGraph.nodes.filter(n => n.name == "incremental")[0].tasks[0].statement)
+      ).equals(
         cleanSql(
           `insert into \`schema.incremental\` (existing_field)
            select existing_field from (
@@ -331,7 +350,8 @@ describe("@dataform/api", () => {
           tasks: [
             {
               type: "statement",
-              statement: "create or replace table `schema.name` partition by DATE(test) as select 1 as test"
+              statement:
+                "create or replace table `schema.name` partition by DATE(test) as select 1 as test"
             }
           ]
         },
@@ -352,7 +372,9 @@ describe("@dataform/api", () => {
         }
       ];
       const executionGraph = new Builder(testGraph, {}, protos.WarehouseState.create({})).build();
-      expect(asPlainObject(executionGraph.nodes)).deep.equals(asPlainObject(expectedExecutionNodes));
+      expect(asPlainObject(executionGraph.nodes)).deep.equals(
+        asPlainObject(expectedExecutionNodes)
+      );
     });
 
     it("snowflake", () => {
@@ -392,7 +414,9 @@ describe("@dataform/api", () => {
           .to.be.an("array").that.is.not.empty;
 
         const statements = node.tasks.map(item => item.statement);
-        expect(statements).includes(`create or replace table "schema"."${node.name}" as select 1 as test`);
+        expect(statements).includes(
+          `create or replace table "schema"."${node.name}" as select 1 as test`
+        );
       });
     });
   });
@@ -424,17 +448,17 @@ describe("@dataform/api", () => {
   describe("compile", () => {
     it("bigquery_example", async () => {
       const graph = await compile({ projectDir: path.resolve("df/examples/bigquery") });
-      var tableNames = graph.tables.map(t => t.name);
+      const tableNames = graph.tables.map(t => t.name);
 
       // Check JS blocks get processed.
       expect(tableNames).includes("example_js_blocks");
-      var exampleJsBlocks = graph.tables.filter(t => t.name == "example_js_blocks")[0];
+      const exampleJsBlocks = graph.tables.filter(t => t.name == "example_js_blocks")[0];
       expect(exampleJsBlocks.type).equals("table");
       expect(exampleJsBlocks.query).equals("select 1 as foo");
 
       // Check we can import and use an external package.
       expect(tableNames).includes("example_incremental");
-      var exampleIncremental = graph.tables.filter(t => t.name == "example_incremental")[0];
+      const exampleIncremental = graph.tables.filter(t => t.name == "example_incremental")[0];
       expect(exampleIncremental.query).equals("select current_timestamp() as ts");
 
       // Check tables defined in includes are not included.
@@ -442,23 +466,27 @@ describe("@dataform/api", () => {
 
       // Check SQL files with raw back-ticks get escaped.
       expect(tableNames).includes("example_backticks");
-      var exampleBackticks = graph.tables.filter(t => t.name == "example_backticks")[0];
-      expect(cleanSql(exampleBackticks.query)).equals("select * from `tada-analytics.df_integration_test.sample_data`");
+      const exampleBackticks = graph.tables.filter(t => t.name == "example_backticks")[0];
+      expect(cleanSql(exampleBackticks.query)).equals(
+        "select * from `tada-analytics.df_integration_test.sample_data`"
+      );
 
       // Check deferred calls to table resolve to the correct definitions file.
       expect(tableNames).includes("example_deferred");
-      var exampleDeferred = graph.tables.filter(t => t.name == "example_deferred")[0];
+      const exampleDeferred = graph.tables.filter(t => t.name == "example_deferred")[0];
       expect(exampleDeferred.fileName).includes("definitions/example_deferred.js");
 
       // Check inline tables
       expect(tableNames).includes("example_inline");
-      var exampleInline = graph.tables.filter(t => t.name == "example_inline")[0];
+      const exampleInline = graph.tables.filter(t => t.name == "example_inline")[0];
       expect(exampleInline.type).equals("inline");
-      expect(exampleInline.query).equals("\nselect * from `tada-analytics.df_integration_test.sample_data`");
+      expect(exampleInline.query).equals(
+        "\nselect * from `tada-analytics.df_integration_test.sample_data`"
+      );
       expect(exampleInline.dependencies).includes("sample_data");
 
       expect(tableNames).includes("example_using_inline");
-      var exampleUsingInline = graph.tables.filter(t => t.name == "example_using_inline")[0];
+      const exampleUsingInline = graph.tables.filter(t => t.name == "example_using_inline")[0];
       expect(exampleUsingInline.type).equals("table");
       expect(exampleUsingInline.query).equals(
         "\nselect * from (\nselect * from `tada-analytics.df_integration_test.sample_data`)\nwhere true"
@@ -474,12 +502,14 @@ describe("@dataform/api", () => {
       });
       expect(graph.projectConfig.defaultSchema).to.equal("overridden_default_schema");
       expect(graph.projectConfig.assertionSchema).to.equal("overridden_assertion_schema");
-      graph.tables.forEach(table => expect(table.target.schema).to.equal("overridden_default_schema"));
+      graph.tables.forEach(table =>
+        expect(table.target.schema).to.equal("overridden_default_schema")
+      );
     });
 
     it("redshift_example", () => {
       return compile({ projectDir: "df/examples/redshift" }).then(graph => {
-        var tableNames = graph.tables.map(t => t.name);
+        const tableNames = graph.tables.map(t => t.name);
 
         // Check we can import and use an external package.
         expect(tableNames).includes("example_incremental");
@@ -519,9 +549,9 @@ describe("@dataform/api", () => {
           message: /ref_with_error is not defined/
         }
       ];
-      const graph = await compile({ projectDir: path.resolve("df/examples/bigquery_with_errors") }).catch(
-        error => error
-      );
+      const graph = await compile({
+        projectDir: path.resolve("df/examples/bigquery_with_errors")
+      }).catch(error => error);
       expect(graph).to.not.be.an.instanceof(Error);
 
       const gErrors = utils.validate(graph);
@@ -571,7 +601,9 @@ describe("@dataform/api", () => {
         sample_2: 'select * from "test_schema"."sample_1"'
       };
 
-      const graph = await compile({ projectDir: "df/examples/redshift_operations" }).catch(error => error);
+      const graph = await compile({ projectDir: "df/examples/redshift_operations" }).catch(
+        error => error
+      );
       expect(graph).to.not.be.an.instanceof(Error);
 
       const gErrors = utils.validate(graph);
@@ -610,7 +642,9 @@ describe("@dataform/api", () => {
       expect(mNames).includes("example_incremental");
       const mIncremental = graph.tables.filter(t => t.name == "example_incremental")[0];
       expect(mIncremental.type).equals("incremental");
-      expect(mIncremental.query).equals("select convert_timezone('UTC', current_timestamp())::timestamp as ts");
+      expect(mIncremental.query).equals(
+        "select convert_timezone('UTC', current_timestamp())::timestamp as ts"
+      );
       expect(mIncremental.dependencies).to.be.an("array").that.is.empty;
 
       expect(mNames).includes("example_table");
@@ -652,7 +686,9 @@ describe("@dataform/api", () => {
 
       expect(aNames).includes("sample_data_assertion");
       const assertion = graph.assertions.filter(a => a.name == "sample_data_assertion")[0];
-      expect(assertion.query).equals('select * from "df_integration_test"."sample_data" where sample_column > 3');
+      expect(assertion.query).equals(
+        'select * from "df_integration_test"."sample_data" where sample_column > 3'
+      );
       expect(assertion.dependencies).to.include.members([
         "sample_data",
         "example_table",
@@ -674,12 +710,27 @@ describe("@dataform/api", () => {
 
   describe("profile_config", () => {
     const bigqueryProfile = { projectId: "", credentials: "" };
-    const redshiftProfile = { host: "", port: Long.fromNumber(0), user: "", password: "", database: "" };
-    const snowflakeProfile = { accountId: "", userName: "", password: "", role: "", databaseName: "", warehouse: "" };
+    const redshiftProfile = {
+      host: "",
+      port: 0,
+      user: "",
+      password: "",
+      database: ""
+    };
+    const snowflakeProfile = {
+      accountId: "",
+      userName: "",
+      password: "",
+      role: "",
+      databaseName: "",
+      warehouse: ""
+    };
 
     it("empty_profile", () => {
-      expect(() => apiUtils.validateProfile(null)).to.throw(/Profile JSON file is empty/);
-      expect(() => apiUtils.validateProfile({})).to.throw(/Profile JSON file is empty/);
+      expect(() => apiUtils.validateProfile(null)).to.throw(
+        /Profile JSON object does not conform to protobuf requirements: object expected/
+      );
+      expect(() => apiUtils.validateProfile({})).to.throw(/Profile is empty./);
     });
 
     it("warehouse_check", () => {
@@ -689,8 +740,10 @@ describe("@dataform/api", () => {
       expect(() => apiUtils.validateProfile(JSON.parse('{ "some_other_warehouse": {}}'))).to.throw(
         /Unsupported warehouse/
       );
-      expect(() => apiUtils.validateProfile({ bigquery: bigqueryProfile, redshift: redshiftProfile })).to.throw(
-        /Multiple warehouses detected/
+      expect(() =>
+        apiUtils.validateProfile({ bigquery: bigqueryProfile, redshift: redshiftProfile })
+      ).to.throw(
+        /Profile JSON object does not conform to protobuf requirements: connection: multiple values/
       );
     });
 
@@ -775,17 +828,19 @@ describe("@dataform/api", () => {
     it("execute", async () => {
       const mockedDbAdapter = mock(BigQueryDbAdapter);
       when(mockedDbAdapter.prepareSchema(anyString())).thenResolve(null);
-      when(mockedDbAdapter.execute(TEST_GRAPH.nodes[0].tasks[0].statement, anyFunction())).thenResolve([]);
-      when(mockedDbAdapter.execute(TEST_GRAPH.nodes[1].tasks[0].statement, anyFunction())).thenReject(
-        new Error("bad statement")
-      );
+      when(
+        mockedDbAdapter.execute(TEST_GRAPH.nodes[0].tasks[0].statement, anyFunction())
+      ).thenResolve([]);
+      when(
+        mockedDbAdapter.execute(TEST_GRAPH.nodes[1].tasks[0].statement, anyFunction())
+      ).thenReject(new Error("bad statement"));
 
       const runner = new Runner(instance(mockedDbAdapter), TEST_GRAPH);
       await runner.execute();
       const result = await runner.resultPromise();
 
       const timeCleanedNodes = result.nodes.map(node => {
-        delete node["executionTime"];
+        delete node.executionTime;
         return node;
       });
       result.nodes = timeCleanedNodes;

@@ -1,7 +1,7 @@
 import * as protos from "@dataform/protos";
-import { IAdapter } from "./index";
-import { Adapter } from "./base";
 import { Task, Tasks } from "../tasks";
+import { Adapter } from "./base";
+import { IAdapter } from "./index";
 
 export class BigQueryAdapter extends Adapter implements IAdapter {
   private project: protos.IProjectConfig;
@@ -11,13 +11,18 @@ export class BigQueryAdapter extends Adapter implements IAdapter {
     this.project = project;
   }
 
-  resolveTarget(target: protos.ITarget) {
-    return `\`${this.project.gcloudProjectId ? `${this.project.gcloudProjectId}.` : ""}${target.schema ||
-      this.project.defaultSchema}.${target.name}\``;
+  public resolveTarget(target: protos.ITarget) {
+    return `\`${
+      this.project.gcloudProjectId ? `${this.project.gcloudProjectId}.` : ""
+    }${target.schema || this.project.defaultSchema}.${target.name}\``;
   }
 
-  publishTasks(t: protos.ITable, runConfig: protos.IRunConfig, tableMetadata: protos.ITableMetadata): Tasks {
-    var tasks = Tasks.create();
+  public publishTasks(
+    t: protos.ITable,
+    runConfig: protos.IRunConfig,
+    tableMetadata: protos.ITableMetadata
+  ): Tasks {
+    const tasks = Tasks.create();
     // Drop views/tables first if they exist.
     if (tableMetadata && tableMetadata.type != this.baseTableType(t.type)) {
       tasks.add(Task.statement(this.dropIfExists(t.target, this.oppositeTableType(t.type))));
@@ -27,7 +32,13 @@ export class BigQueryAdapter extends Adapter implements IAdapter {
         tasks.add(Task.statement(this.createOrReplace(t)));
       } else {
         tasks.add(
-          Task.statement(this.insertInto(t.target, tableMetadata.fields.map(f => f.name), this.where(t.query, t.where)))
+          Task.statement(
+            this.insertInto(
+              t.target,
+              tableMetadata.fields.map(f => f.name),
+              this.where(t.query, t.where)
+            )
+          )
         );
       }
     } else {
@@ -36,35 +47,37 @@ export class BigQueryAdapter extends Adapter implements IAdapter {
     return tasks;
   }
 
-  assertTasks(a: protos.IAssertion, projectConfig: protos.IProjectConfig): Tasks {
-    var tasks = Tasks.create();
-    var assertionTarget = protos.Target.create({
+  public assertTasks(a: protos.IAssertion, projectConfig: protos.IProjectConfig): Tasks {
+    const tasks = Tasks.create();
+    const assertionTarget = protos.Target.create({
       schema: projectConfig.assertionSchema,
       name: a.name
     });
     tasks.add(Task.statement(this.createOrReplaceView(assertionTarget, a.query)));
-    tasks.add(Task.assertion(`select count(*) as row_count from ${this.resolveTarget(assertionTarget)}`));
+    tasks.add(
+      Task.assertion(`select count(*) as row_count from ${this.resolveTarget(assertionTarget)}`)
+    );
     return tasks;
   }
 
-  createEmptyIfNotExists(t: protos.ITable) {
+  public createEmptyIfNotExists(t: protos.ITable) {
     return `create ${this.baseTableType(t.type)} if not exists ${this.resolveTarget(t.target)} ${
       t.bigquery && t.bigquery.partitionBy ? `partition by ${t.bigquery.partitionBy}` : ""
     } as ${this.where(t.query, "false")}`;
   }
 
-  createOrReplace(t: protos.ITable) {
+  public createOrReplace(t: protos.ITable) {
     return `create or replace ${this.baseTableType(t.type)} ${this.resolveTarget(t.target)} ${
       t.bigquery && t.bigquery.partitionBy ? `partition by ${t.bigquery.partitionBy}` : ""
     } as ${t.query}`;
   }
 
-  createOrReplaceView(target: protos.ITarget, query: string) {
+  public createOrReplaceView(target: protos.ITarget, query: string) {
     return `
       create or replace view ${this.resolveTarget(target)} as ${query}`;
   }
 
-  dropIfExists(target: protos.ITarget, type: string) {
+  public dropIfExists(target: protos.ITarget, type: string) {
     return `drop ${this.baseTableType(type)} if exists ${this.resolveTarget(target)}`;
   }
 }

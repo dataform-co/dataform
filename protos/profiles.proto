@@ -5,26 +5,26 @@ option java_outer_classname = "ProfilesMeta";
 option java_multiple_files = true;
 
 message Profile {
-  //int64 id = 1;
-  //string project_id = 2;
-
   int32 threads = 7;
-  //string schema = 8;
-
+ 
   oneof connection {
     JDBC redshift = 3;
     JDBC postgres = 8;
     BigQuery bigquery = 4;
     Snowflake snowflake = 5;
   }
+  
+  reserved 1, 2;
 }
 
 message JDBC {
   string host = 2;
-  int64 port = 3;
+  int32 port = 3;
   string user = 4;
   string password = 5;
   string database = 6;
+
+  reserved 1;
 }
 
 message Snowflake {
@@ -34,10 +34,14 @@ message Snowflake {
   string role = 5;
   string database_name = 6;
   string warehouse = 7;
+
+  reserved 1;
 }
 
 message BigQuery {
   string project_id = 1;
   string credentials = 3;
   string location = 4; // EU or US (default)
+
+  reserved 2;
 }

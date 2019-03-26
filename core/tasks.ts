@@ -1,30 +1,27 @@
 import * as protos from "@dataform/protos";
 
 export class Tasks {
-  private tasks: Task[] = [];
-
   public static create() {
     return new Tasks();
   }
+  private tasks: Task[] = [];
 
-  add(task: Task) {
+  public add(task: Task) {
     this.tasks.push(task);
     return this;
   }
 
-  addAll(tasks: Tasks) {
+  public addAll(tasks: Tasks) {
     this.tasks = this.tasks.concat(tasks.tasks);
     return this;
   }
 
-  build() {
+  public build() {
     return this.tasks.map(task => task.build());
   }
 }
 
 export class Task {
-  private proto: protos.IExecutionTask = protos.ExecutionTask.create();
-
   public static create() {
     return new Task();
   }
@@ -40,6 +37,7 @@ export class Task {
       .type("assertion")
       .statement(statement);
   }
+  private proto: protos.IExecutionTask = protos.ExecutionTask.create();
 
   public type(v: string) {
     this.proto.type = v;

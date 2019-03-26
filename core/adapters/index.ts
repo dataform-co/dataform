@@ -1,21 +1,25 @@
 import * as protos from "@dataform/protos";
+import { Tasks } from "../tasks";
 import { BigQueryAdapter } from "./bigquery";
 import { RedshiftAdapter } from "./redshift";
 import { SnowflakeAdapter } from "./snowflake";
-import { Tasks } from "../tasks";
 
 export interface IAdapter {
   resolveTarget(target: protos.ITarget): string;
 
-  publishTasks(table: protos.ITable, runConfig: protos.IRunConfig, tableMetadata: protos.ITableMetadata): Tasks;
+  publishTasks(
+    table: protos.ITable,
+    runConfig: protos.IRunConfig,
+    tableMetadata: protos.ITableMetadata
+  ): Tasks;
   assertTasks(assertion: protos.IAssertion, projectConfig: protos.IProjectConfig): Tasks;
 
   dropIfExists(target: protos.ITarget, type: string): string;
 }
 
-export interface AdapterConstructor<T extends IAdapter> {
-  new (projectConfig: protos.IProjectConfig): T;
-}
+export type AdapterConstructor<T extends IAdapter> = new (
+  projectConfig: protos.IProjectConfig
+) => T;
 
 export enum WarehouseTypes {
   BIGQUERY = "bigquery",
@@ -25,7 +29,14 @@ export enum WarehouseTypes {
 export const requiredWarehouseProps = {
   [WarehouseTypes.BIGQUERY]: ["projectId", "credentials"],
   [WarehouseTypes.REDSHIFT]: ["host", "port", "user", "password", "database"],
-  [WarehouseTypes.SNOWFLAKE]: ["accountId", "userName", "password", "role", "databaseName", "warehouse"]
+  [WarehouseTypes.SNOWFLAKE]: [
+    "accountId",
+    "userName",
+    "password",
+    "role",
+    "databaseName",
+    "warehouse"
+  ]
 };
 
 const registry: { [warehouseType: string]: AdapterConstructor<IAdapter> } = {};

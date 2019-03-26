@@ -1,11 +1,11 @@
-import * as path from "path";
-import { NodeVM } from "vm2";
 import * as core from "@dataform/core";
-import { genIndex } from "../gen_index";
+import * as crypto from "crypto";
 import * as fs from "fs";
 import * as os from "os";
-import * as crypto from "crypto";
+import * as path from "path";
 import { util } from "protobufjs";
+import { NodeVM } from "vm2";
+import { genIndex } from "../gen_index";
 
 export interface ICompileIPCParameters {
   projectDir: string;
@@ -46,7 +46,6 @@ process.on("message", (compileIpcParameters: ICompileIPCParameters) => {
   try {
     returnToParent({ path: compileInTmpDir(compileIpcParameters) });
   } catch (e) {
-    console.log(e);
     returnToParent({ err: String(e) });
   }
   process.exit();

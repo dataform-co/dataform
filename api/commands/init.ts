@@ -1,16 +1,22 @@
-import * as path from "path";
-import * as fs from "fs";
 import * as protos from "@dataform/protos";
+import * as fs from "fs";
+import * as path from "path";
 import { install } from "./install";
 
 const { version } = require("../package.json");
 
-export function init(projectDir: string, projectConfig: protos.IProjectConfig, skipInstall?: boolean): Promise<any> {
-  var dataformJsonPath = path.join(projectDir, "dataform.json");
-  var packageJsonPath = path.join(projectDir, "package.json");
-  var gitignorePath = path.join(projectDir, ".gitignore");
+export function init(
+  projectDir: string,
+  projectConfig: protos.IProjectConfig,
+  skipInstall?: boolean
+): Promise<any> {
+  const dataformJsonPath = path.join(projectDir, "dataform.json");
+  const packageJsonPath = path.join(projectDir, "package.json");
+  const gitignorePath = path.join(projectDir, ".gitignore");
   if (fs.existsSync(dataformJsonPath) || fs.existsSync(packageJsonPath)) {
-    throw "Cannot init dataform project, this already appears to be an NPM or Dataform directory.";
+    throw new Error(
+      "Cannot init dataform project, this already appears to be an NPM or Dataform directory."
+    );
   }
 
   if (!fs.existsSync(projectDir)) {
@@ -53,9 +59,5 @@ export function init(projectDir: string, projectConfig: protos.IProjectConfig, s
   fs.mkdirSync(path.join(projectDir, "includes"));
 
   // Install packages.
-  if (!skipInstall) {
-    return install(projectDir);
-  } else {
-    return Promise.resolve();
-  }
+  return install(projectDir, skipInstall);
 }
