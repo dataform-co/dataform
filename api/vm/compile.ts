@@ -46,7 +46,6 @@ process.on("message", (compileIpcParameters: ICompileIPCParameters) => {
   try {
     returnToParent({ path: compileInTmpDir(compileIpcParameters) });
   } catch (e) {
-    console.log(e);
     returnToParent({ err: String(e) });
   }
   process.exit();
