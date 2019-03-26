@@ -8,7 +8,7 @@ import * as yargs from "yargs";
 
 const RECOMPILE_DELAY = 2000;
 
-const commonBuildOptions: NamedOption[] = [
+const commonBuildOptions: INamedOption[] = [
   {
     name: "full-refresh",
     option: {
@@ -358,25 +358,30 @@ const compileProject = (
     .catch(e => console.log(e));
 };
 
-interface Cli {
-  commands: Command[];
+interface ICli {
+  commands: ICommand[];
   moreChaining?: (yargs: yargs.Argv) => any;
 }
 
-interface Command {
+interface ICommand {
   format: string;
   description: string;
-  positionalOptions: NamedOption[];
-  options: NamedOption[];
+  positionalOptions: INamedPositionalOption[];
+  options: INamedOption[];
   processFn: (argv) => any;
 }
 
-interface NamedOption {
+interface INamedPositionalOption {
+  name: string;
+  option: yargs.PositionalOptions;
+}
+
+interface INamedOption {
   name: string;
   option: yargs.Options;
 }
 
-function createYargsCli(cli: Cli) {
+function createYargsCli(cli: ICli) {
   let yargsChain = yargs;
   for (let i = 0; i < cli.commands.length; i++) {
     const command = cli.commands[i];
@@ -393,7 +398,7 @@ function createYargsCli(cli: Cli) {
   return yargsChain;
 }
 
-function createOptionsChain(yargs: yargs.Argv, command: any) {
+function createOptionsChain(yargs: yargs.Argv, command: ICommand) {
   let yargsChain = yargs;
   for (let i = 0; i < command.positionalOptions.length; i++) {
     const positionalOption = command.positionalOptions[i];
