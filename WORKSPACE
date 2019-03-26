@@ -25,6 +25,7 @@ http_archive(
 )
 
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+
 http_archive(
     name = "build_bazel_rules_nodejs",
     sha256 = "88e5e579fb9edfbd19791b8a3c6bfbe16ae3444dba4b428e5efd36856db7cf16",
@@ -32,16 +33,19 @@ http_archive(
 )
 
 load("@build_bazel_rules_nodejs//:defs.bzl", "npm_install")
+
 npm_install(
     name = "npm",
     package_json = "//:package.json",
-    package_lock_json = "//:package-lock.json"
+    package_lock_json = "//:package-lock.json",
 )
 
 load("@npm//:install_bazel_dependencies.bzl", "install_bazel_dependencies")
+
 install_bazel_dependencies()
 
 load("@npm_bazel_typescript//:index.bzl", "ts_setup_workspace")
+
 ts_setup_workspace()
 
 # buildifier is written in Go and hence needs rules_go to be built.
