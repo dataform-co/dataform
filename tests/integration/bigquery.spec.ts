@@ -11,9 +11,9 @@ describe("@dataform/integration/bigquery", function() {
   const testConfig = getTestConfig("bigquery");
 
   // check project credentials
-  this.pending = !testConfig.profile;
+  this.pending = !testConfig.credentials;
   if (this.isPending()) {
-    console.log("No Bigquery profile config, tests will be skipped!");
+    console.log("No Bigquery credentials, tests will be skipped!");
   }
 
   describe("run", function() {

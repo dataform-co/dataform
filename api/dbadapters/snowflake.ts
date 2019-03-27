@@ -1,5 +1,6 @@
-import * as protos from "@dataform/protos";
-import { DbAdapter } from "./index";
+import { dataform } from "@dataform/protos";
+import { DbAdapter } from "df/api/dbadapters/index";
+import * as util from "df/api/utils";
 
 interface ISnowflakeStatement {
   cancel: () => void;
@@ -33,14 +34,17 @@ const Snowflake: ISnowflake = require("snowflake-sdk");
 export class SnowflakeDbAdapter implements DbAdapter {
   private connection: ISnowflakeConnection;
 
-  constructor(profile: protos.IProfile) {
+  constructor(credentials: util.Credentials) {
+    if (!(credentials instanceof dataform.Snowflake)) {
+      throw new Error("Invalid credentials; did not receive a Snowflake protobuf instance.");
+    }
     this.connection = Snowflake.createConnection({
-      account: profile.snowflake.accountId,
-      username: profile.snowflake.userName,
-      password: profile.snowflake.password,
-      database: profile.snowflake.databaseName,
-      warehouse: profile.snowflake.warehouse,
-      role: profile.snowflake.role
+      account: credentials.accountId,
+      username: credentials.userName,
+      password: credentials.password,
+      database: credentials.databaseName,
+      warehouse: credentials.warehouse,
+      role: credentials.role
     });
     this.connection.connect((err, conn) => {
       if (err) {
@@ -68,7 +72,7 @@ export class SnowflakeDbAdapter implements DbAdapter {
     throw Error("Unimplemented");
   }
 
-  public tables(): Promise<protos.ITarget[]> {
+  public tables(): Promise<dataform.ITarget[]> {
     return Promise.resolve().then(() =>
       this.execute(
         `select table_name, table_schema
@@ -85,7 +89,7 @@ export class SnowflakeDbAdapter implements DbAdapter {
     );
   }
 
-  public table(target: protos.ITarget): Promise<protos.ITableMetadata> {
+  public table(target: dataform.ITarget): Promise<dataform.ITableMetadata> {
     return Promise.all([
       this.execute(
         `select column_name, data_type, is_nullable

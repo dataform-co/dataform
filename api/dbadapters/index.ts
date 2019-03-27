@@ -1,20 +1,20 @@
-import * as protos from "@dataform/protos";
-import { EventEmitter } from "events";
-import { BigQueryDbAdapter } from "./bigquery";
-import { RedshiftDbAdapter } from "./redshift";
-import { SnowflakeDbAdapter } from "./snowflake";
+import { dataform } from "@dataform/protos";
+import { BigQueryDbAdapter } from "df/api/dbadapters/bigquery";
+import { RedshiftDbAdapter } from "df/api/dbadapters/redshift";
+import { SnowflakeDbAdapter } from "df/api/dbadapters/snowflake";
+import * as util from "df/api/utils";
 
 export type OnCancel = ((handleCancel: () => void) => void);
 
 export interface DbAdapter {
   execute(statement: string, onCancel?: OnCancel): Promise<any[]>;
   evaluate(statement: string): Promise<void>;
-  tables(): Promise<protos.ITarget[]>;
-  table(target: protos.ITarget): Promise<protos.ITableMetadata>;
+  tables(): Promise<dataform.ITarget[]>;
+  table(target: dataform.ITarget): Promise<dataform.ITableMetadata>;
   prepareSchema(schema: string): Promise<void>;
 }
 
-export type DbAdapterConstructor<T extends DbAdapter> = new (profile: protos.IProfile) => T;
+export type DbAdapterConstructor<T extends DbAdapter> = new (credentials: util.Credentials) => T;
 
 const registry: { [warehouseType: string]: DbAdapterConstructor<DbAdapter> } = {};
 
@@ -22,24 +22,23 @@ export function register(warehouseType: string, c: DbAdapterConstructor<DbAdapte
   registry[warehouseType] = c;
 }
 
-export function create(profile: protos.IProfile, warehouseType?: string): DbAdapter {
+export function create(credentials: util.Credentials, warehouseType?: string): DbAdapter {
   if (warehouseType) {
     if (!registry[warehouseType]) {
       throw Error(`Unsupported warehouse: ${warehouseType}`);
     }
-    return new registry[warehouseType](profile);
+    return new registry[warehouseType](credentials);
   }
-  if (!!profile.bigquery) {
-    return new registry.bigquery(profile);
+  if (credentials instanceof dataform.BigQuery) {
+    return new registry.bigquery(credentials);
   }
-  if (!!profile.redshift) {
-    return new registry.redshift(profile);
+  if (credentials instanceof dataform.JDBC) {
+    return new registry.redshift(credentials);
   }
-  if (!!profile.snowflake) {
-    return new registry.snowflake(profile);
-  } else {
-    throw Error("Invalid profile.");
+  if (credentials instanceof dataform.Snowflake) {
+    return new registry.snowflake(credentials);
   }
+  throw Error("Invalid profile.");
 }
 
 register("bigquery", BigQueryDbAdapter);

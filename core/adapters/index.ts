@@ -1,24 +1,24 @@
-import * as protos from "@dataform/protos";
+import { dataform } from "@dataform/protos";
 import { Tasks } from "../tasks";
 import { BigQueryAdapter } from "./bigquery";
 import { RedshiftAdapter } from "./redshift";
 import { SnowflakeAdapter } from "./snowflake";
 
 export interface IAdapter {
-  resolveTarget(target: protos.ITarget): string;
+  resolveTarget(target: dataform.ITarget): string;
 
   publishTasks(
-    table: protos.ITable,
-    runConfig: protos.IRunConfig,
-    tableMetadata: protos.ITableMetadata
+    table: dataform.ITable,
+    runConfig: dataform.IRunConfig,
+    tableMetadata: dataform.ITableMetadata
   ): Tasks;
-  assertTasks(assertion: protos.IAssertion, projectConfig: protos.IProjectConfig): Tasks;
+  assertTasks(assertion: dataform.IAssertion, projectConfig: dataform.IProjectConfig): Tasks;
 
-  dropIfExists(target: protos.ITarget, type: string): string;
+  dropIfExists(target: dataform.ITarget, type: string): string;
 }
 
 export type AdapterConstructor<T extends IAdapter> = new (
-  projectConfig: protos.IProjectConfig
+  projectConfig: dataform.IProjectConfig
 ) => T;
 
 export enum WarehouseTypes {
@@ -45,7 +45,7 @@ export function register(warehouseType: string, c: AdapterConstructor<IAdapter>)
   registry[warehouseType] = c;
 }
 
-export function create(projectConfig: protos.IProjectConfig): IAdapter {
+export function create(projectConfig: dataform.IProjectConfig): IAdapter {
   if (!registry[projectConfig.warehouse]) {
     throw Error(`Unsupported warehouse: ${projectConfig.warehouse}`);
   }
