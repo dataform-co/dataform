@@ -38,7 +38,7 @@ export function create(credentials: util.Credentials, warehouseType?: string): D
   if (credentials instanceof dataform.Snowflake) {
     return new registry.snowflake(credentials);
   }
-  throw Error("Invalid profile.");
+  throw Error("Invalid credentials.");
 }
 
 register("bigquery", BigQueryDbAdapter);

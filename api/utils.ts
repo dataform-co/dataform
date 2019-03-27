@@ -8,13 +8,13 @@ export function readCredentials(warehouse: string, credentialsPath: string): Cre
   if (!fs.existsSync(credentialsPath)) {
     throw new Error("Missing credentials JSON file.");
   }
-  return validateCredentials(warehouse, JSON.parse(fs.readFileSync(credentialsPath, "utf8")));
+  return coerceCredentials(warehouse, JSON.parse(fs.readFileSync(credentialsPath, "utf8")));
 }
 
-export function validateCredentials(warehouse: string, credentials: any) {
+export function coerceCredentials(warehouse: string, credentials: any): Credentials {
   switch (warehouse) {
     case WarehouseTypes.BIGQUERY: {
-      return validateWarehouseCredentials(
+      return validateAnyAsCredentials(
         credentials,
         dataform.BigQuery.verify,
         dataform.BigQuery.create,
@@ -22,7 +22,7 @@ export function validateCredentials(warehouse: string, credentials: any) {
       );
     }
     case WarehouseTypes.REDSHIFT: {
-      return validateWarehouseCredentials(
+      return validateAnyAsCredentials(
         credentials,
         dataform.JDBC.verify,
         dataform.JDBC.create,
@@ -30,7 +30,7 @@ export function validateCredentials(warehouse: string, credentials: any) {
       );
     }
     case WarehouseTypes.SNOWFLAKE: {
-      return validateWarehouseCredentials(
+      return validateAnyAsCredentials(
         credentials,
         dataform.Snowflake.verify,
         dataform.Snowflake.create,
@@ -42,7 +42,7 @@ export function validateCredentials(warehouse: string, credentials: any) {
   }
 }
 
-function validateWarehouseCredentials<T>(
+function validateAnyAsCredentials<T>(
   credentials: any,
   verify: (any) => string,
   create: (any) => T,
