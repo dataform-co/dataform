@@ -1,11 +1,11 @@
 import { Session, Table, utils } from "@dataform/core";
 import * as compilers from "@dataform/core/compilers";
-import * as protos from "@dataform/protos";
+import { dataform } from "@dataform/protos";
 import { expect } from "chai";
 import { asPlainObject } from "df/tests/utils";
 import * as path from "path";
 
-const TEST_CONFIG: protos.IProjectConfig = {
+const TEST_CONFIG: dataform.IProjectConfig = {
   warehouse: "redshift",
   defaultSchema: "schema"
 };
@@ -465,7 +465,7 @@ describe("@dataform/core", () => {
     });
 
     it("validate", () => {
-      const graph: protos.ICompiledGraph = protos.CompiledGraph.create({
+      const graph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
         projectConfig: { warehouse: "redshift" },
         tables: [
           { name: "a", target: { schema: "schema", name: "a" }, dependencies: ["b"] },

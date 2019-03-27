@@ -88,8 +88,13 @@ export function genIndex(
     init("${projectDir}", projectConfig);
     ${definitionRequires}
     const compiledGraph = compile();
+    // Keep backwards compatibility with un-namespaced protobufs (i.e. before dataform protobufs were inside a package).
+    let protoNamespace = protos.dataform;
+    if (!protoNamespace) {
+      protoNamespace = protos;
+    }
     // We return a base64 encoded proto via NodeVM, as returning a Uint8Array directly causes issues.
-    const encodedGraphBytes = protos.CompiledGraph.encode(compiledGraph).finish();
+    const encodedGraphBytes = protoNamespace.CompiledGraph.encode(compiledGraph).finish();
     const base64EncodedGraphBytes = util.base64.encode(encodedGraphBytes, 0, encodedGraphBytes.length);
     return ${returnOverride || "base64EncodedGraphBytes"};`;
 }

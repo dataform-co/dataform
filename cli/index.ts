@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { build, compile, init, query, run, table, utils } from "@dataform/api";
-import * as protos from "@dataform/protos";
+import { dataform } from "@dataform/protos";
 import * as chokidar from "chokidar";
 import * as fs from "fs";
 import * as path from "path";
@@ -66,21 +66,20 @@ const credentialsOption = {
   }
 };
 
+const warehouseOption = {
+  name: "warehouse",
+  option: {
+    describe: "The project's data warehouse type.",
+    choices: ["bigquery", "redshift", "snowflake"]
+  }
+};
+
 createYargsCli({
   commands: [
     {
       format: "init <warehouse> [project-dir]",
       description: "Create a new dataform project.",
-      positionalOptions: [
-        {
-          name: "warehouse",
-          option: {
-            describe: "The project's data warehouse type.",
-            choices: ["bigquery", "redshift", "snowflake"]
-          }
-        },
-        projectDirOption
-      ],
+      positionalOptions: [warehouseOption, projectDirOption],
       options: [
         // TODO: Should we error out if this is not provided when the warehouse is set to "bigquery",
         // or conversely if it is provided for other warehouse types?
@@ -191,8 +190,6 @@ createYargsCli({
         credentialsOption
       ],
       processFn: argv => {
-        const profile = utils.readProfile(argv["credentials"]);
-
         compile({
           projectDir: argv["project-dir"],
           defaultSchemaOverride: argv["default-schema"],
@@ -206,7 +203,7 @@ createYargsCli({
                 nodes: argv["nodes"],
                 includeDependencies: argv["include-deps"]
               },
-              profile
+              getCredentials(argv["project-dir"], argv["credentials"])
             )
           )
           .then(result => console.log(JSON.stringify(result, null, 4)))
@@ -234,7 +231,7 @@ createYargsCli({
       ],
       processFn: argv => {
         console.log("Project status: starting...");
-        const profile = utils.readProfile(argv["credentials"]);
+        const credentials = getCredentials(argv["project-dir"], argv["credentials"]);
 
         compile({
           projectDir: argv["project-dir"],
@@ -251,7 +248,7 @@ createYargsCli({
                 nodes: argv["nodes"],
                 includeDependencies: argv["include-deps"]
               },
-              profile
+              credentials
             );
           })
           .then(graph => {
@@ -263,7 +260,7 @@ createYargsCli({
             );
             console.log("Project status: running...");
 
-            const runner = run(graph, profile);
+            const runner = run(graph, credentials);
             process.on("SIGINT", () => {
               runner.cancel();
             });
@@ -285,25 +282,25 @@ createYargsCli({
       }
     },
     {
-      format: "listtables",
+      format: "listtables <warehouse>",
       description: "List tables on the configured data warehouse.",
-      positionalOptions: [],
+      positionalOptions: [warehouseOption],
       options: [credentialsOption],
       processFn: argv => {
         table
-          .list(utils.readProfile(argv["credentials"]))
+          .list(utils.readCredentials(argv["warehouse"], argv["credentials"]))
           .then(tables => console.log(JSON.stringify(tables, null, 4)))
           .catch(e => console.log(e));
       }
     },
     {
-      format: "gettablemetadata <schema> <table>",
+      format: "gettablemetadata <warehouse> <schema> <table>",
       description: "Fetch metadata for a specified table.",
-      positionalOptions: [],
+      positionalOptions: [warehouseOption],
       options: [credentialsOption],
       processFn: argv => {
         table
-          .get(utils.readProfile(argv["credentials"]), {
+          .get(utils.readCredentials(argv["warehouse"], argv["credentials"]), {
             schema: argv["schema"],
             name: argv["table"]
           })
@@ -314,6 +311,11 @@ createYargsCli({
   ],
   moreChaining: yargs => yargs.demandCommand(1, "Please choose a command.").argv
 });
+
+function getCredentials(projectDir: string, credentialsPath: string) {
+  const projectConfig = require(path.resolve(projectDir, "dataform.json"));
+  return utils.readCredentials(projectConfig.warehouse, credentialsPath);
+}
 
 function fullyResolvePath(filePath: string) {
   filePath = path.resolve(filePath);

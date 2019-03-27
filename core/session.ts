@@ -1,4 +1,4 @@
-import * as protos from "@dataform/protos";
+import { dataform } from "@dataform/protos";
 import * as adapters from "./adapters";
 import { AContextable, Assertion } from "./assertion";
 import { OContextable, Operation } from "./operation";
@@ -14,19 +14,19 @@ interface ActionProto {
 export class Session {
   public rootDir: string;
 
-  public config: protos.IProjectConfig;
+  public config: dataform.IProjectConfig;
 
   public tables: { [name: string]: Table };
   public operations: { [name: string]: Operation };
   public assertions: { [name: string]: Assertion };
 
-  public graphErrors: protos.IGraphErrors;
+  public graphErrors: dataform.IGraphErrors;
 
-  constructor(rootDir: string, projectConfig?: protos.IProjectConfig) {
+  constructor(rootDir: string, projectConfig?: dataform.IProjectConfig) {
     this.init(rootDir, projectConfig);
   }
 
-  public init(rootDir: string, projectConfig?: protos.IProjectConfig) {
+  public init(rootDir: string, projectConfig?: dataform.IProjectConfig) {
     this.rootDir = rootDir;
     this.config = projectConfig || { defaultSchema: "dataform" };
     this.tables = {};
@@ -39,13 +39,13 @@ export class Session {
     return adapters.create(this.config);
   }
 
-  public target(target: string): protos.ITarget {
+  public target(target: string): dataform.ITarget {
     if (target.includes(".")) {
       const schema = target.split(".")[0];
       const name = target.split(".")[1];
-      return protos.Target.create({ name, schema });
+      return dataform.Target.create({ name, schema });
     } else {
-      return protos.Target.create({
+      return dataform.Target.create({
         name: target,
         schema: this.config.defaultSchema
       });
@@ -127,7 +127,7 @@ export class Session {
   public compileError(err: Error, path?: string) {
     const fileName = path || utils.getCallerFile(this.rootDir) || __filename;
 
-    const compileError = protos.CompilationError.create({
+    const compileError = dataform.CompilationError.create({
       stack: err.stack,
       fileName,
       message: err.message
@@ -150,8 +150,8 @@ export class Session {
     return compiledChunks;
   }
 
-  public compile(): protos.ICompiledGraph {
-    const compiledGraph = protos.CompiledGraph.create({
+  public compile(): dataform.ICompiledGraph {
+    const compiledGraph = dataform.CompiledGraph.create({
       projectConfig: this.config,
       tables: this.compileGraphChunk(this.tables),
       operations: this.compileGraphChunk(this.operations),

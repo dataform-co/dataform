@@ -1,13 +1,14 @@
-import * as protos from "@dataform/protos";
-import * as dbadapters from "../dbadapters";
+import { dataform } from "@dataform/protos";
+import * as dbadapters from "df/api/dbadapters";
+import * as utils from "df/api/utils";
 
-export function list(profile: protos.IProfile): Promise<protos.ITarget[]> {
-  return dbadapters.create(profile).tables();
+export function list(credentials: utils.Credentials): Promise<dataform.ITarget[]> {
+  return dbadapters.create(credentials).tables();
 }
 
 export function get(
-  profile: protos.IProfile,
-  target: protos.ITarget
-): Promise<protos.ITableMetadata> {
-  return dbadapters.create(profile).table(target);
+  credentials: utils.Credentials,
+  target: dataform.ITarget
+): Promise<dataform.ITableMetadata> {
+  return dbadapters.create(credentials).table(target);
 }

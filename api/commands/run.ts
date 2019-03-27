@@ -1,38 +1,40 @@
-import * as protos from "@dataform/protos";
+import { dataform } from "@dataform/protos";
 import * as EventEmitter from "events";
 import * as Long from "long";
 import * as prettyMs from "pretty-ms";
-import * as dbadapters from "../dbadapters";
-import * as utils from "../utils";
+import * as dbadapters from "df/api/dbadapters";
+import * as utils from "df/api/utils";
 
 const CANCEL_EVENT = "jobCancel";
 
-export function run(graph: protos.IExecutionGraph, profile: protos.IProfile): Runner {
-  utils.validateProfile(profile);
-  const runner = Runner.create(dbadapters.create(profile, graph.projectConfig.warehouse), graph);
+export function run(graph: dataform.IExecutionGraph, credentials: utils.Credentials): Runner {
+  const runner = Runner.create(
+    dbadapters.create(credentials, graph.projectConfig.warehouse),
+    graph
+  );
   runner.execute();
   return runner;
 }
 
 export class Runner {
-  public static create(adapter: dbadapters.DbAdapter, graph: protos.IExecutionGraph) {
+  public static create(adapter: dbadapters.DbAdapter, graph: dataform.IExecutionGraph) {
     return new Runner(adapter, graph);
   }
   private adapter: dbadapters.DbAdapter;
-  private graph: protos.IExecutionGraph;
+  private graph: dataform.IExecutionGraph;
 
-  private pendingNodes: protos.IExecutionNode[];
+  private pendingNodes: dataform.IExecutionNode[];
 
   private cancelled = false;
-  private result: protos.IExecutedGraph;
+  private result: dataform.IExecutedGraph;
 
-  private changeListeners: Array<(graph: protos.IExecutedGraph) => void> = [];
+  private changeListeners: Array<(graph: dataform.IExecutedGraph) => void> = [];
 
-  private executionTask: Promise<protos.IExecutedGraph>;
+  private executionTask: Promise<dataform.IExecutedGraph>;
 
   private eEmitter: EventEmitter;
 
-  constructor(adapter: dbadapters.DbAdapter, graph: protos.IExecutionGraph) {
+  constructor(adapter: dbadapters.DbAdapter, graph: dataform.IExecutionGraph) {
     this.adapter = adapter;
     this.graph = graph;
     this.pendingNodes = graph.nodes;
@@ -47,12 +49,12 @@ export class Runner {
     this.eEmitter.setMaxListeners(0);
   }
 
-  public onChange(listener: (graph: protos.IExecutedGraph) => void): Runner {
+  public onChange(listener: (graph: dataform.IExecutedGraph) => void): Runner {
     this.changeListeners.push(listener);
     return this;
   }
 
-  public async execute(): Promise<protos.IExecutedGraph> {
+  public async execute(): Promise<dataform.IExecutedGraph> {
     if (!!this.executionTask) {
       throw Error("Executor already started.");
     }
@@ -80,7 +82,7 @@ export class Runner {
     this.eEmitter.emit(CANCEL_EVENT);
   }
 
-  public resultPromise(): Promise<protos.IExecutedGraph> {
+  public resultPromise(): Promise<dataform.IExecutedGraph> {
     return this.executionTask;
   }
 
@@ -96,8 +98,8 @@ export class Runner {
     const allSuccessfulDeps = this.result.nodes
       .filter(
         node =>
-          node.status === protos.NodeExecutionStatus.SUCCESSFUL ||
-          node.status == protos.NodeExecutionStatus.DISABLED
+          node.status === dataform.NodeExecutionStatus.SUCCESSFUL ||
+          node.status == dataform.NodeExecutionStatus.DISABLED
       )
       .map(fn => fn.name);
 
@@ -112,7 +114,7 @@ export class Runner {
         // skip this node.
         this.result.nodes.push({
           name: node.name,
-          status: protos.NodeExecutionStatus.SKIPPED,
+          status: dataform.NodeExecutionStatus.SKIPPED,
           deprecatedSkipped: true
         });
         this.triggerChange();
@@ -129,15 +131,15 @@ export class Runner {
       this.result.nodes.forEach(node => {
         ok =
           ok &&
-          (node.status === protos.NodeExecutionStatus.SUCCESSFUL ||
-            node.status == protos.NodeExecutionStatus.DISABLED);
+          (node.status === dataform.NodeExecutionStatus.SUCCESSFUL ||
+            node.status == dataform.NodeExecutionStatus.DISABLED);
       });
       this.result.ok = ok;
       resolve();
     }
   }
 
-  private executeNode(node: protos.IExecutionNode) {
+  private executeNode(node: dataform.IExecutionNode) {
     const startTime = process.hrtime();
     // This creates a promise chain that executes all tasks in order.
     node.tasks
@@ -166,8 +168,8 @@ export class Runner {
             throw [...chainResults, { ok: false, error: e.message, task }];
           }
         });
-      }, Promise.resolve([] as protos.IExecutedTask[]))
-      .then((results: protos.IExecutedTask[]) => {
+      }, Promise.resolve([] as dataform.IExecutedTask[]))
+      .then((results: dataform.IExecutedTask[]) => {
         const endTime = process.hrtime(startTime);
         const executionTime = endTime[0] * 1000 + Math.round(endTime[1] / 1000000);
 
@@ -175,21 +177,21 @@ export class Runner {
           name: node.name,
           status:
             results.length == 0
-              ? protos.NodeExecutionStatus.DISABLED
-              : protos.NodeExecutionStatus.SUCCESSFUL,
+              ? dataform.NodeExecutionStatus.DISABLED
+              : dataform.NodeExecutionStatus.SUCCESSFUL,
           tasks: results,
           executionTime: Long.fromNumber(executionTime),
           deprecatedOk: true
         });
         this.triggerChange();
       })
-      .catch((results: protos.IExecutedTask[]) => {
+      .catch((results: dataform.IExecutedTask[]) => {
         const endTime = process.hrtime(startTime);
         const executionTime = endTime[0] * 1000 + Math.round(endTime[1] / 1000000);
 
         this.result.nodes.push({
           name: node.name,
-          status: protos.NodeExecutionStatus.FAILED,
+          status: dataform.NodeExecutionStatus.FAILED,
           tasks: results,
           executionTime: Long.fromNumber(executionTime),
           deprecatedOk: false

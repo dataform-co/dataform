@@ -1,11 +1,11 @@
-import * as protos from "@dataform/protos";
+import { dataform } from "@dataform/protos";
 import { DbAdapter } from "../dbadapters";
 
 export function state(
-  compiledGraph: protos.ICompiledGraph,
+  compiledGraph: dataform.ICompiledGraph,
   dbadapter: DbAdapter
-): Promise<protos.IWarehouseState> {
-  const tables: protos.ITableMetadata[] = [];
+): Promise<dataform.IWarehouseState> {
+  const tables: dataform.ITableMetadata[] = [];
 
   return Promise.all(
     compiledGraph.tables.map(t =>

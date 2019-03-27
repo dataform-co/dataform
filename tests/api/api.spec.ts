@@ -2,7 +2,7 @@ import { Builder, compile, init, query, Runner, utils as apiUtils } from "@dataf
 import { DbAdapter } from "@dataform/api/dbadapters";
 import { BigQueryDbAdapter } from "@dataform/api/dbadapters/bigquery";
 import { utils } from "@dataform/core";
-import * as protos from "@dataform/protos";
+import { dataform } from "@dataform/protos";
 import { assert, config, expect } from "chai";
 import { asPlainObject, cleanSql } from "df/tests/utils";
 import * as path from "path";
@@ -14,7 +14,7 @@ config.truncateThreshold = 0;
 
 describe("@dataform/api", () => {
   describe("build", () => {
-    const TEST_GRAPH: protos.ICompiledGraph = protos.CompiledGraph.create({
+    const TEST_GRAPH: dataform.ICompiledGraph = dataform.CompiledGraph.create({
       projectConfig: { warehouse: "redshift" },
       tables: [
         {
@@ -47,7 +47,7 @@ describe("@dataform/api", () => {
       ]
     });
 
-    const TEST_STATE = protos.WarehouseState.create({ tables: [] });
+    const TEST_STATE = dataform.WarehouseState.create({ tables: [] });
 
     it("include_deps", () => {
       const builder = new Builder(
@@ -98,7 +98,7 @@ describe("@dataform/api", () => {
 
     it("build_with_errors", () => {
       expect(() => {
-        const graphWithErrors: protos.ICompiledGraph = protos.CompiledGraph.create({
+        const graphWithErrors: dataform.ICompiledGraph = dataform.CompiledGraph.create({
           projectConfig: { warehouse: "redshift" },
           graphErrors: { compilationErrors: [{ message: "Some critical error" }] },
           tables: [{ name: "a", target: { schema: "schema", name: "a" } }]
@@ -110,7 +110,7 @@ describe("@dataform/api", () => {
     });
 
     it("node_types", () => {
-      const graph: protos.ICompiledGraph = protos.CompiledGraph.create({
+      const graph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
         projectConfig: { warehouse: "redshift" },
         tables: [
           { name: "a", target: { schema: "schema", name: "a" }, type: "table" },
@@ -156,7 +156,7 @@ describe("@dataform/api", () => {
     });
 
     it("inline_tables", () => {
-      const graph: protos.ICompiledGraph = protos.CompiledGraph.create({
+      const graph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
         projectConfig: { warehouse: "bigquery" },
         tables: [
           { name: "a", target: { schema: "schema", name: "a" }, type: "table", dependencies: [] },
@@ -188,7 +188,7 @@ describe("@dataform/api", () => {
 
   describe("sql_generating", () => {
     it("bigquery_incremental", () => {
-      const graph = protos.CompiledGraph.create({
+      const graph = dataform.CompiledGraph.create({
         projectConfig: { warehouse: "bigquery" },
         tables: [
           {
@@ -203,7 +203,7 @@ describe("@dataform/api", () => {
           }
         ]
       });
-      const state = protos.WarehouseState.create({
+      const state = dataform.WarehouseState.create({
         tables: [
           {
             target: {
@@ -235,7 +235,7 @@ describe("@dataform/api", () => {
     });
 
     it("redshift_create", () => {
-      const testGraph: protos.ICompiledGraph = protos.CompiledGraph.create({
+      const testGraph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
         projectConfig: { warehouse: "redshift" },
         tables: [
           {
@@ -286,7 +286,7 @@ describe("@dataform/api", () => {
           }
         ]
       });
-      const testState = protos.WarehouseState.create({});
+      const testState = dataform.WarehouseState.create({});
       const expectedSQL = [
         'create table "schema"."redshift_all_temp" diststyle even distkey (column1) compound sortkey (column1, column2) as query',
         'create table "schema"."redshift_only_sort_temp" interleaved sortkey (column1) as query',
@@ -312,7 +312,7 @@ describe("@dataform/api", () => {
     });
 
     it("bigquery_partitionby", () => {
-      const testGraph: protos.ICompiledGraph = protos.CompiledGraph.create({
+      const testGraph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
         projectConfig: { warehouse: "bigquery" },
         tables: [
           {
@@ -338,7 +338,7 @@ describe("@dataform/api", () => {
           }
         ]
       });
-      const expectedExecutionNodes: protos.IExecutionNode[] = [
+      const expectedExecutionNodes: dataform.IExecutionNode[] = [
         {
           name: "partitionby",
           type: "table",
@@ -371,14 +371,14 @@ describe("@dataform/api", () => {
           ]
         }
       ];
-      const executionGraph = new Builder(testGraph, {}, protos.WarehouseState.create({})).build();
+      const executionGraph = new Builder(testGraph, {}, dataform.WarehouseState.create({})).build();
       expect(asPlainObject(executionGraph.nodes)).deep.equals(
         asPlainObject(expectedExecutionNodes)
       );
     });
 
     it("snowflake", () => {
-      const testGraph: protos.ICompiledGraph = protos.CompiledGraph.create({
+      const testGraph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
         projectConfig: { warehouse: "snowflake" },
         tables: [
           {
@@ -400,7 +400,7 @@ describe("@dataform/api", () => {
           }
         ]
       });
-      const testState = protos.WarehouseState.create({});
+      const testState = dataform.WarehouseState.create({});
       const builder = new Builder(testGraph, {}, testState);
       const executionGraph = builder.build();
 
@@ -709,15 +709,15 @@ describe("@dataform/api", () => {
   });
 
   describe("profile_config", () => {
-    const bigqueryProfile = { projectId: "", credentials: "" };
-    const redshiftProfile = {
+    const bigqueryCredentials = { projectId: "", credentials: "" };
+    const redshiftCredentials = {
       host: "",
       port: 0,
       user: "",
       password: "",
       database: ""
     };
-    const snowflakeProfile = {
+    const snowflakeCredentials = {
       accountId: "",
       userName: "",
       password: "",
@@ -726,58 +726,74 @@ describe("@dataform/api", () => {
       warehouse: ""
     };
 
-    it("empty_profile", () => {
-      expect(() => apiUtils.validateProfile(null)).to.throw(
-        /Profile JSON object does not conform to protobuf requirements: object expected/
-      );
-      expect(() => apiUtils.validateProfile({})).to.throw(/Profile is empty./);
+    ["bigquery", "redshift", "snowflake"].forEach(warehouse => {
+      it(`${warehouse}_empty_profile`, () => {
+        expect(() => apiUtils.validateCredentials(warehouse, null)).to.throw(
+          /Credentials JSON object does not conform to protobuf requirements: object expected/
+        );
+        expect(() => apiUtils.validateCredentials(warehouse, {})).to.throw(
+          /Missing required properties:/
+        );
+      });
     });
 
     it("warehouse_check", () => {
-      expect(() => apiUtils.validateProfile({ bigquery: bigqueryProfile })).to.not.throw();
-      expect(() => apiUtils.validateProfile({ redshift: redshiftProfile })).to.not.throw();
-      expect(() => apiUtils.validateProfile({ snowflake: snowflakeProfile })).to.not.throw();
-      expect(() => apiUtils.validateProfile(JSON.parse('{ "some_other_warehouse": {}}'))).to.throw(
-        /Unsupported warehouse/
-      );
-      expect(() =>
-        apiUtils.validateProfile({ bigquery: bigqueryProfile, redshift: redshiftProfile })
-      ).to.throw(
-        /Profile JSON object does not conform to protobuf requirements: connection: multiple values/
+      expect(() => apiUtils.validateCredentials("bigquery", bigqueryCredentials)).to.not.throw();
+      expect(() => apiUtils.validateCredentials("redshift", redshiftCredentials)).to.not.throw();
+      expect(() => apiUtils.validateCredentials("snowflake", snowflakeCredentials)).to.not.throw();
+      expect(() => apiUtils.validateCredentials("some_other_warehouse", {})).to.throw(
+        /Unrecognized warehouse:/
       );
     });
 
-    it("props_check", () => {
-      const toThrow = [
-        { bigquery: {} },
-        { bigquery: { wrongPropery: "" } },
-        { bigquery: { projectId: "" } },
-        { redshift: {} },
-        { redshift: { wrongPropery: "" } },
-        { redshift: { host: "" } },
-        { snowflake: {} },
-        { snowflake: { wrongPropery: "" } },
-        { snowflake: { accountId: "" } }
-      ];
-      const toNotThrow = [
-        { bigquery: { ...bigqueryProfile, oneMoreProperty: "" } },
-        { redshift: { ...redshiftProfile, oneMoreProperty: "" } },
-        { snowflake: { ...snowflakeProfile, oneMoreProperty: "" } }
-      ];
+    [{}, { wrongProperty: "" }, { projectId: "" }].forEach(bigquery => {
+      it("bigquery_properties_check", () => {
+        expect(() =>
+          apiUtils.validateCredentials("bigquery", JSON.parse(JSON.stringify(bigquery)))
+        ).to.throw();
 
-      toThrow.forEach(profile => {
-        expect(() => apiUtils.validateProfile(JSON.parse(JSON.stringify(profile)))).to.throw();
+        expect(() =>
+          apiUtils.validateCredentials(
+            "bigquery",
+            JSON.parse(JSON.stringify({ ...bigqueryCredentials, oneMoreProperty: "" }))
+          )
+        ).to.not.throw(/Missing required properties/);
       });
-      toNotThrow.forEach(profile => {
-        expect(() => apiUtils.validateProfile(JSON.parse(JSON.stringify(profile)))).to.not.throw(
-          /Missing required properties/
-        );
+    });
+
+    [{}, { wrongProperty: "" }, { host: "" }].forEach(redshift => {
+      it("redshift_properties_check", () => {
+        expect(() =>
+          apiUtils.validateCredentials("redshift", JSON.parse(JSON.stringify(redshift)))
+        ).to.throw();
+
+        expect(() =>
+          apiUtils.validateCredentials(
+            "redshift",
+            JSON.parse(JSON.stringify({ ...redshiftCredentials, oneMoreProperty: "" }))
+          )
+        ).to.not.throw(/Missing required properties/);
+      });
+    });
+
+    [{}, { wrongProperty: "" }, { accountId: "" }].forEach(snowflake => {
+      it("snowflake_properties_check", () => {
+        expect(() =>
+          apiUtils.validateCredentials("snowflake", JSON.parse(JSON.stringify(snowflake)))
+        ).to.throw();
+
+        expect(() =>
+          apiUtils.validateCredentials(
+            "snowflake",
+            JSON.parse(JSON.stringify({ ...snowflakeCredentials, oneMoreProperty: "" }))
+          )
+        ).to.not.throw(/Missing required properties/);
       });
     });
   });
 
   describe("run", () => {
-    const TEST_GRAPH: protos.IExecutionGraph = protos.ExecutionGraph.create({
+    const TEST_GRAPH: dataform.IExecutionGraph = dataform.ExecutionGraph.create({
       projectConfig: {
         warehouse: "bigquery",
         defaultSchema: "foo",
@@ -845,8 +861,8 @@ describe("@dataform/api", () => {
       });
       result.nodes = timeCleanedNodes;
 
-      expect(protos.ExecutedGraph.create(result)).to.deep.equal(
-        protos.ExecutedGraph.create({
+      expect(dataform.ExecutedGraph.create(result)).to.deep.equal(
+        dataform.ExecutedGraph.create({
           projectConfig: TEST_GRAPH.projectConfig,
           runConfig: TEST_GRAPH.runConfig,
           warehouseState: TEST_GRAPH.warehouseState,
@@ -860,7 +876,7 @@ describe("@dataform/api", () => {
                   ok: true
                 }
               ],
-              status: protos.NodeExecutionStatus.SUCCESSFUL,
+              status: dataform.NodeExecutionStatus.SUCCESSFUL,
               deprecatedOk: true
             },
             {
@@ -872,7 +888,7 @@ describe("@dataform/api", () => {
                   error: "bad statement"
                 }
               ],
-              status: protos.NodeExecutionStatus.FAILED,
+              status: dataform.NodeExecutionStatus.FAILED,
               deprecatedOk: false
             }
           ]
@@ -881,7 +897,7 @@ describe("@dataform/api", () => {
     });
 
     it("execute_with_cancel", async () => {
-      const TEST_GRAPH: protos.IExecutionGraph = protos.ExecutionGraph.create({
+      const TEST_GRAPH: dataform.IExecutionGraph = dataform.ExecutionGraph.create({
         projectConfig: {
           warehouse: "bigquery",
           defaultSchema: "foo",

@@ -1,25 +1,29 @@
-import * as protos from "@dataform/protos";
+import { dataform } from "@dataform/protos";
 import * as PromisePool from "promise-pool-executor";
-import { DbAdapter, OnCancel } from "./index";
+import { DbAdapter, OnCancel } from "df/api/dbadapters/index";
+import * as util from "df/api/utils";
 
 const BigQuery = require("@google-cloud/bigquery");
 
 export class BigQueryDbAdapter implements DbAdapter {
-  private profile: protos.IProfile;
+  private bigquery: dataform.IBigQuery;
   private client: any;
   private pool: PromisePool.PromisePoolExecutor;
 
-  constructor(profile: protos.IProfile) {
-    this.profile = profile;
+  constructor(credentials: util.Credentials) {
+    if (!(credentials instanceof dataform.BigQuery)) {
+      throw new Error("Invalid credentials; did not receive a BigQuery protobuf instance.");
+    }
+    this.bigquery = credentials;
     this.client = BigQuery({
-      projectId: profile.bigquery.projectId,
-      credentials: JSON.parse(profile.bigquery.credentials),
+      projectId: this.bigquery.projectId,
+      credentials: JSON.parse(this.bigquery.credentials),
       scopes: ["https://www.googleapis.com/auth/drive"]
     });
     // Bigquery allows 50 concurrent queries, and a rate limit of 100/user/second by default.
     // These limits should be safely low enough for most projects.
     this.pool = new PromisePool.PromisePoolExecutor({
-      concurrencyLimit: this.profile.threads || 16,
+      concurrencyLimit: 16,
       frequencyWindow: 1000,
       frequencyLimit: 30
     });
@@ -73,7 +77,7 @@ export class BigQueryDbAdapter implements DbAdapter {
     });
   }
 
-  public tables(): Promise<protos.ITarget[]> {
+  public tables(): Promise<dataform.ITarget[]> {
     return this.client
       .getDatasets({ autoPaginate: true })
       .then((result: any) => {
@@ -88,7 +92,7 @@ export class BigQueryDbAdapter implements DbAdapter {
         );
       })
       .then((datasetTables: any) => {
-        const allTables: protos.ITarget[] = [];
+        const allTables: dataform.ITarget[] = [];
         datasetTables.forEach((tablesResult: any) =>
           tablesResult[0].forEach((table: any) =>
             allTables.push({ schema: table.dataset.id, name: table.id })
@@ -98,7 +102,7 @@ export class BigQueryDbAdapter implements DbAdapter {
       });
   }
 
-  public table(target: protos.ITarget): Promise<protos.ITableMetadata> {
+  public table(target: dataform.ITarget): Promise<dataform.ITableMetadata> {
     return this.pool
       .addSingleTask({
         generator: () =>
@@ -110,7 +114,7 @@ export class BigQueryDbAdapter implements DbAdapter {
       .promise()
       .then(result => {
         const table = result[0];
-        return protos.TableMetadata.create({
+        return dataform.TableMetadata.create({
           type: String(table.type).toLowerCase(),
           target,
           fields: table.schema.fields.map(field => convertField(field))
@@ -119,7 +123,7 @@ export class BigQueryDbAdapter implements DbAdapter {
   }
 
   public prepareSchema(schema: string): Promise<void> {
-    const location = this.profile.bigquery.location || "US";
+    const location = this.bigquery.location || "US";
 
     // If metadata call fails, it probably doesn't exist. So try to create it.
     return this.client
@@ -144,8 +148,8 @@ export class BigQueryDbAdapter implements DbAdapter {
   }
 }
 
-function convertField(field: any): protos.IField {
-  const result: protos.IField = {
+function convertField(field: any): dataform.IField {
+  const result: dataform.IField = {
     name: field.name,
     flags: !!field.mode ? [field.mode] : []
   };

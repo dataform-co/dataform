@@ -1,21 +1,6 @@
 syntax="proto3";
 
-option java_package = "com.dataform.protos";
-option java_outer_classname = "ProfilesMeta";
-option java_multiple_files = true;
-
-message Profile {
-  int32 threads = 7;
- 
-  oneof connection {
-    JDBC redshift = 3;
-    JDBC postgres = 8;
-    BigQuery bigquery = 4;
-    Snowflake snowflake = 5;
-  }
-  
-  reserved 1, 2;
-}
+package dataform;
 
 message JDBC {
   string host = 2;

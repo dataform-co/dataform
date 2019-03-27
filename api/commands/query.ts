@@ -1,24 +1,23 @@
-import * as protos from "@dataform/protos";
+import { dataform } from "@dataform/protos";
 import { fork } from "child_process";
 import * as path from "path";
-import * as dbadapters from "../dbadapters";
-import * as utils from "../utils";
-import { CancellablePromise } from "../utils/cancellable_promise";
+import * as dbadapters from "df/api/dbadapters";
+import * as utils from "df/api/utils";
+import { CancellablePromise } from "df/api/utils/cancellable_promise";
 
 interface IOptions {
   projectDir?: string;
 }
 
 export function run(
-  profile: protos.IProfile,
+  credentials: utils.Credentials,
   query: string,
   options?: IOptions
 ): CancellablePromise<any[]> {
-  utils.validateProfile(profile);
   return new CancellablePromise(async (_resolve, _reject, onCancel) => {
     try {
       const compiledQuery = await compile(query, options);
-      const results = await dbadapters.create(profile).execute(compiledQuery, onCancel);
+      const results = await dbadapters.create(credentials).execute(compiledQuery, onCancel);
       _resolve(results);
     } catch (e) {
       _reject(e);
@@ -27,12 +26,12 @@ export function run(
 }
 
 export function evaluate(
-  profile: protos.IProfile,
+  credentials: utils.Credentials,
   query: string,
   options?: IOptions
 ): Promise<void> {
   return compile(query, options).then(compiledQuery =>
-    dbadapters.create(profile).evaluate(compiledQuery)
+    dbadapters.create(credentials).evaluate(compiledQuery)
   );
 }
 

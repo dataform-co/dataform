@@ -1,29 +1,30 @@
 import { adapters, utils } from "@dataform/core";
-import * as protos from "@dataform/protos";
-import { state } from "../commands/state";
-import * as dbadapters from "../dbadapters";
+import { dataform } from "@dataform/protos";
+import { state } from "df/api/commands/state";
+import * as dbadapters from "df/api/dbadapters";
+import * as util from "df/api/utils";
 
 export function build(
-  compiledGraph: protos.ICompiledGraph,
-  runConfig: protos.IRunConfig,
-  profile: protos.IProfile
+  compiledGraph: dataform.ICompiledGraph,
+  runConfig: dataform.IRunConfig,
+  credentials: util.Credentials
 ) {
-  return state(compiledGraph, dbadapters.create(profile)).then(state => {
+  return state(compiledGraph, dbadapters.create(credentials)).then(state => {
     return new Builder(compiledGraph, runConfig, state).build();
   });
 }
 
 export class Builder {
-  private compiledGraph: protos.ICompiledGraph;
-  private runConfig: protos.IRunConfig;
+  private compiledGraph: dataform.ICompiledGraph;
+  private runConfig: dataform.IRunConfig;
 
   private adapter: adapters.IAdapter;
-  private state: protos.IWarehouseState;
+  private state: dataform.IWarehouseState;
 
   constructor(
-    compiledGraph: protos.ICompiledGraph,
-    runConfig: protos.IRunConfig,
-    state: protos.IWarehouseState
+    compiledGraph: dataform.ICompiledGraph,
+    runConfig: dataform.IRunConfig,
+    state: dataform.IWarehouseState
   ) {
     this.compiledGraph = compiledGraph;
     this.runConfig = runConfig;
@@ -31,12 +32,12 @@ export class Builder {
     this.adapter = adapters.create(compiledGraph.projectConfig);
   }
 
-  public build(): protos.ExecutionGraph {
+  public build(): dataform.ExecutionGraph {
     if (utils.graphHasErrors(this.compiledGraph)) {
       throw Error(`Project has unresolved compilation or validation errors.`);
     }
 
-    const tableStateByTarget: { [targetJson: string]: protos.ITableMetadata } = {};
+    const tableStateByTarget: { [targetJson: string]: dataform.ITableMetadata } = {};
     this.state.tables.forEach(tableState => {
       tableStateByTarget[JSON.stringify(tableState.target)] = tableState;
     });
@@ -45,13 +46,13 @@ export class Builder {
     const filteredTables = this.compiledGraph.tables.filter(t => t.type !== "inline");
 
     // Firstly, turn every thing into an execution node.
-    const allNodes: protos.IExecutionNode[] = [].concat(
+    const allNodes: dataform.IExecutionNode[] = [].concat(
       filteredTables.map(t => this.buildTable(t, tableStateByTarget[JSON.stringify(t.target)])),
       this.compiledGraph.operations.map(o => this.buildOperation(o)),
       this.compiledGraph.assertions.map(a => this.buildAssertion(a))
     );
     const allNodeNames = allNodes.map(n => n.name);
-    const nodeNameMap: { [name: string]: protos.IExecutionNode } = {};
+    const nodeNameMap: { [name: string]: dataform.IExecutionNode } = {};
     allNodes.forEach(node => (nodeNameMap[node.name] = node));
 
     // Determine which nodes should be included.
@@ -83,7 +84,7 @@ export class Builder {
     includedNodes.forEach(node => {
       node.dependencies = node.dependencies.filter(dep => includedNodeNames.indexOf(dep) >= 0);
     });
-    return protos.ExecutionGraph.create({
+    return dataform.ExecutionGraph.create({
       projectConfig: this.compiledGraph.projectConfig,
       runConfig: this.runConfig,
       warehouseState: this.state,
@@ -91,8 +92,8 @@ export class Builder {
     });
   }
 
-  public buildTable(t: protos.ITable, tableMetadata: protos.ITableMetadata) {
-    const emptyTasks = [] as protos.IExecutionTask[];
+  public buildTable(t: dataform.ITable, tableMetadata: dataform.ITableMetadata) {
+    const emptyTasks = [] as dataform.IExecutionTask[];
 
     const tasks = t.disabled
       ? emptyTasks
@@ -102,7 +103,7 @@ export class Builder {
           (t.postOps || []).map(post => ({ statement: post }))
         );
 
-    return protos.ExecutionNode.create({
+    return dataform.ExecutionNode.create({
       name: t.name,
       dependencies: t.dependencies,
       type: "table",
@@ -112,8 +113,8 @@ export class Builder {
     });
   }
 
-  public buildOperation(operation: protos.IOperation) {
-    return protos.ExecutionNode.create({
+  public buildOperation(operation: dataform.IOperation) {
+    return dataform.ExecutionNode.create({
       name: operation.name,
       dependencies: operation.dependencies,
       type: "operation",
@@ -125,8 +126,8 @@ export class Builder {
     });
   }
 
-  public buildAssertion(assertion: protos.IAssertion) {
-    return protos.ExecutionNode.create({
+  public buildAssertion(assertion: dataform.IAssertion) {
+    return dataform.ExecutionNode.create({
       name: assertion.name,
       dependencies: assertion.dependencies,
       type: "assertion",

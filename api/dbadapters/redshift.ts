@@ -1,5 +1,6 @@
-import * as protos from "@dataform/protos";
-import { DbAdapter } from "./index";
+import { dataform } from "@dataform/protos";
+import { DbAdapter } from "df/api/dbadapters/index";
+import * as util from "df/api/utils";
 
 const Redshift: RedshiftType = require("node-redshift");
 
@@ -20,9 +21,12 @@ type RedshiftType = {
 export class RedshiftDbAdapter implements DbAdapter {
   private client: RedshiftType;
 
-  constructor(profile: protos.IProfile) {
+  constructor(credentials: util.Credentials) {
+    if (!(credentials instanceof dataform.JDBC)) {
+      throw new Error("Invalid credentials; did not receive a JDBC protobuf instance.");
+    }
     const config: RedshiftConfig = {
-      ...profile.redshift,
+      ...credentials,
       ssl: true
     };
     this.client = new Redshift(config);
@@ -36,7 +40,7 @@ export class RedshiftDbAdapter implements DbAdapter {
     return this.client.query(`explain ${statement}`).then(() => {});
   }
 
-  public tables(): Promise<protos.ITarget[]> {
+  public tables(): Promise<dataform.ITarget[]> {
     return Promise.resolve()
       .then(() =>
         this.execute(
@@ -55,7 +59,7 @@ export class RedshiftDbAdapter implements DbAdapter {
       );
   }
 
-  public table(target: protos.ITarget): Promise<protos.ITableMetadata> {
+  public table(target: dataform.ITarget): Promise<dataform.ITableMetadata> {
     return Promise.all([
       this.execute(
         `select column_name, data_type, is_nullable
