@@ -1,13 +1,13 @@
-import * as protos from "@dataform/protos";
+import { dataform } from "@dataform/protos";
 import * as fs from "fs";
 import * as path from "path";
-import { install } from "./install";
+import { install } from "@dataform/api/commands/install";
 
 const { version } = require("../package.json");
 
 export function init(
   projectDir: string,
-  projectConfig: protos.IProjectConfig,
+  projectConfig: dataform.IProjectConfig,
   skipInstall?: boolean
 ): Promise<any> {
   const dataformJsonPath = path.join(projectDir, "dataform.json");
@@ -27,7 +27,7 @@ export function init(
     JSON.stringify(
       Object.assign(
         {},
-        protos.ProjectConfig.create({
+        dataform.ProjectConfig.create({
           defaultSchema: "dataform",
           assertionSchema: "dataform_assertions"
         }),

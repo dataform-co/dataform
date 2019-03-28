@@ -1,4 +1,4 @@
-import * as protos from "@dataform/protos";
+import { dataform } from "@dataform/protos";
 import { AContextable, Assertion } from "./assertion";
 import { OContextable, Operation } from "./operation";
 import { Session } from "./session";
@@ -58,7 +58,7 @@ export const operate = (name: string, statement?: OContextable<string | string[]
   session.operate(name, statement);
 export const assert = (name: string, query?: AContextable<string>) => session.assert(name, query);
 export const compile = () => session.compile();
-export const init = (rootDir: string, projectConfig?: protos.IProjectConfig) =>
+export const init = (rootDir: string, projectConfig?: dataform.IProjectConfig) =>
   session.init(rootDir, projectConfig);
 
 (global as any).session = session;

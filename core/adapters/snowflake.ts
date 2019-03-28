@@ -1,24 +1,24 @@
-import * as protos from "@dataform/protos";
+import { dataform } from "@dataform/protos";
 import { Task, Tasks } from "../tasks";
 import { Adapter } from "./base";
 import { IAdapter } from "./index";
 
 export class SnowflakeAdapter extends Adapter implements IAdapter {
-  private project: protos.IProjectConfig;
+  private project: dataform.IProjectConfig;
 
-  constructor(project: protos.IProjectConfig) {
+  constructor(project: dataform.IProjectConfig) {
     super();
     this.project = project;
   }
 
-  public resolveTarget(target: protos.ITarget) {
+  public resolveTarget(target: dataform.ITarget) {
     return `"${target.schema || this.project.defaultSchema}"."${target.name}"`;
   }
 
   public publishTasks(
-    t: protos.ITable,
-    runConfig: protos.IRunConfig,
-    tableMetadata: protos.ITableMetadata
+    t: dataform.ITable,
+    runConfig: dataform.IRunConfig,
+    tableMetadata: dataform.ITableMetadata
   ): Tasks {
     const tasks = Tasks.create();
     // Drop the existing view or table if we are changing it's type.
@@ -46,9 +46,9 @@ export class SnowflakeAdapter extends Adapter implements IAdapter {
     return tasks;
   }
 
-  public assertTasks(a: protos.IAssertion, projectConfig: protos.IProjectConfig): Tasks {
+  public assertTasks(a: dataform.IAssertion, projectConfig: dataform.IProjectConfig): Tasks {
     const tasks = Tasks.create();
-    const assertionTarget = protos.Target.create({
+    const assertionTarget = dataform.Target.create({
       schema: projectConfig.assertionSchema,
       name: a.name
     });
@@ -59,12 +59,12 @@ export class SnowflakeAdapter extends Adapter implements IAdapter {
     return tasks;
   }
 
-  public createOrReplaceView(target: protos.ITarget, query: string) {
+  public createOrReplaceView(target: dataform.ITarget, query: string) {
     return `
       create or replace view ${this.resolveTarget(target)} as ${query}`;
   }
 
-  public createOrReplace(t: protos.ITable) {
+  public createOrReplace(t: dataform.ITable) {
     return `create or replace ${this.baseTableType(t.type || "table")} ${this.resolveTarget(
       t.target
     )} as ${t.query}`;

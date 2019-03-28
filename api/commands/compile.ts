@@ -1,12 +1,14 @@
-import * as protos from "@dataform/protos";
+import { dataform } from "@dataform/protos";
 
 import { ChildProcess, fork } from "child_process";
 import * as fs from "fs";
 import * as path from "path";
 import { promisify } from "util";
-import { ICompileIPCParameters, ICompileIPCResult } from "../vm/compile";
+import { ICompileIPCParameters, ICompileIPCResult } from "@dataform/api/vm/compile";
 
-export async function compile(compileConfig: protos.ICompileConfig): Promise<protos.CompiledGraph> {
+export async function compile(
+  compileConfig: dataform.ICompileConfig
+): Promise<dataform.CompiledGraph> {
   // Resolve the path in case it hasn't been resolved already.
   const projectDir = path.resolve(compileConfig.projectDir);
   const returnedPath = await CompileChildProcess.forkProcess().compile({
@@ -15,7 +17,7 @@ export async function compile(compileConfig: protos.ICompileConfig): Promise<pro
     assertionSchemaOverride: compileConfig.assertionSchemaOverride
   });
   const contents = await promisify(fs.readFile)(returnedPath);
-  return protos.CompiledGraph.decode(contents);
+  return dataform.CompiledGraph.decode(contents);
 }
 
 class CompileChildProcess {

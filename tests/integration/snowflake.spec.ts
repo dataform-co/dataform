@@ -22,9 +22,9 @@ describe("@dataform/integration/snowflake", function() {
   ];
 
   // check project credentials
-  this.pending = !testConfig.profile;
+  this.pending = !testConfig.credentials;
   if (this.isPending()) {
-    console.log("No Snowflake profile config, tests will be skipped!");
+    console.log("No Snowflake credentials, tests will be skipped!");
   }
 
   before("clear_schema", getHookBefore(testConfig));

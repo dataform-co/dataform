@@ -14,9 +14,9 @@ describe("@dataform/integration/redshift", function() {
   ];
 
   // check project credentials
-  this.pending = !testConfig.profile;
+  this.pending = !testConfig.credentials;
   if (this.isPending()) {
-    console.log("No Redshift profile config, tests will be skipped!");
+    console.log("No Redshift credentials, tests will be skipped!");
   }
 
   before("clear_schema", getHookBefore(testConfig));
