@@ -9,8 +9,11 @@ import * as yargs from "yargs";
 
 const RECOMPILE_DELAY = 2000;
 
+// Uses ANSI escape color codes.
+// https://en.wikipedia.org/wiki/ANSI_escape_code#Colors
 const colorFmtString = (ansiColorCode: number) => `\x1b[${ansiColorCode}m%s\x1b[0m`;
 const commandOutputFmtString = colorFmtString(34);
+const errorOutputFmtString = colorFmtString(91);
 
 const projectDirOption = {
   name: "project-dir",
@@ -345,7 +348,20 @@ createYargsCli({
       }
     }
   ],
-  moreChaining: yargs => yargs.demandCommand(1, "Please choose a command.").argv
+  moreChaining: yargs =>
+    yargs
+      .fail((msg, err) => {
+        if (err) {
+          console.log(
+            errorOutputFmtString,
+            `Dataform encountered an error: ${err.stack || err.message}`
+          );
+        } else {
+          console.log(errorOutputFmtString, msg);
+        }
+        process.exit(1);
+      })
+      .demandCommand(1, "Please choose a command.").argv
 });
 
 function assertPathExists(checkPath: string) {
@@ -359,11 +375,30 @@ async function compileProject(
   defaultSchemaOverride?: string,
   assertionSchemaOverride?: string
 ) {
-  const graph = await compile({ projectDir, defaultSchemaOverride, assertionSchemaOverride });
+  const foo = new Error("error message");
+  const graph: any = await compile({ projectDir, defaultSchemaOverride, assertionSchemaOverride });
   console.log(commandOutputFmtString, "Compiled output:");
   console.log(prettyJsonStringify(graph));
   if (graph.graphErrors) {
-    console.log(commandOutputFmtString, "Compiled graph contains errors:");
+    console.log(errorOutputFmtString, "Compiled graph contains errors.");
+    if (graph.graphErrors.compilationErrors) {
+      console.log(errorOutputFmtString, "Compilation errors:");
+      graph.graphErrors.compilationErrors.forEach(compileError => {
+        console.log(
+          errorOutputFmtString,
+          `${compileError.fileName}: ${compileError.stack || compileError.message}`
+        );
+      });
+    }
+    if (graph.graphErrors.validationErrors) {
+      console.log(errorOutputFmtString, "Validation errors:");
+      graph.graphErrors.validationErrors.forEach(validationError => {
+        console.log(
+          errorOutputFmtString,
+          `${validationError.nodeName}: ${validationError.message}`
+        );
+      });
+    }
   }
 }
 
