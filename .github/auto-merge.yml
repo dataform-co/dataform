@@ -3,7 +3,8 @@ minApprovals:
 maxRequestedChanges:
   COLLABORATOR: 0
 requiredLabels:
-- auto-merge
+  - auto-merge
 reportStatus: true
 deleteBranchAfterMerge: true
 mergeMethod: squash
+updateBranch: true
