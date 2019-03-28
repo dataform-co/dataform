@@ -11,13 +11,16 @@ interface IOptions {
 
 export function run(
   credentials: utils.Credentials,
+  warehouse: string,
   query: string,
   options?: IOptions
 ): CancellablePromise<any[]> {
   return new CancellablePromise(async (_resolve, _reject, onCancel) => {
     try {
       const compiledQuery = await compile(query, options);
-      const results = await dbadapters.create(credentials).execute(compiledQuery, onCancel);
+      const results = await dbadapters
+        .create(credentials, warehouse)
+        .execute(compiledQuery, onCancel);
       _resolve(results);
     } catch (e) {
       _reject(e);
@@ -27,11 +30,12 @@ export function run(
 
 export function evaluate(
   credentials: utils.Credentials,
+  warehouse: string,
   query: string,
   options?: IOptions
 ): Promise<void> {
   return compile(query, options).then(compiledQuery =>
-    dbadapters.create(credentials).evaluate(compiledQuery)
+    dbadapters.create(credentials, warehouse).evaluate(compiledQuery)
   );
 }
 
