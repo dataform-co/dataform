@@ -24,23 +24,11 @@ export function register(warehouseType: string, c: DbAdapterConstructor<DbAdapte
   registry[warehouseType] = c;
 }
 
-export function create(credentials: apiUtils.Credentials, warehouseType?: string): DbAdapter {
-  if (warehouseType) {
-    if (!registry[warehouseType]) {
-      throw Error(`Unsupported warehouse: ${warehouseType}`);
-    }
-    return new registry[warehouseType](credentials);
+export function create(credentials: apiUtils.Credentials, warehouseType: string): DbAdapter {
+  if (!registry[warehouseType]) {
+    throw Error(`Unsupported warehouse: ${warehouseType}`);
   }
-  if (credentials instanceof dataform.BigQuery) {
-    return new registry.bigquery(credentials);
-  }
-  if (credentials instanceof dataform.JDBC) {
-    return new registry.redshift(credentials);
-  }
-  if (credentials instanceof dataform.Snowflake) {
-    return new registry.snowflake(credentials);
-  }
-  throw Error("Invalid credentials.");
+  return new registry[warehouseType](credentials);
 }
 
 register("bigquery", BigQueryDbAdapter);
