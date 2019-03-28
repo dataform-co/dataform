@@ -195,17 +195,20 @@ createYargsCli({
           defaultSchemaOverride: argv["default-schema"],
           assertionSchemaOverride: argv["assertion-schema"]
         })
-          .then(graph =>
-            build(
+          .then(graph => {
+            const projectConfig = require(path.resolve(argv["project-dir"], "dataform.json"));
+            const credentials = utils.readCredentials(projectConfig.warehouse, argv["credentials"]);
+            return build(
               graph,
               {
                 fullRefresh: argv["full-refresh"],
                 nodes: argv["nodes"],
                 includeDependencies: argv["include-deps"]
               },
-              getCredentials(argv["project-dir"], argv["credentials"])
-            )
-          )
+              credentials,
+              projectConfig.warehouse
+            );
+          })
           .then(result => console.log(JSON.stringify(result, null, 4)))
           .catch(e => console.log(e));
       }
@@ -231,7 +234,9 @@ createYargsCli({
       ],
       processFn: argv => {
         console.log("Project status: starting...");
-        const credentials = getCredentials(argv["project-dir"], argv["credentials"]);
+
+        const projectConfig = require(path.resolve(argv["project-config"], "dataform.json"));
+        const credentials = utils.readCredentials(projectConfig.warehouse, argv["credentials"]);
 
         compile({
           projectDir: argv["project-dir"],
@@ -248,7 +253,8 @@ createYargsCli({
                 nodes: argv["nodes"],
                 includeDependencies: argv["include-deps"]
               },
-              credentials
+              credentials,
+              projectConfig.warehouse
             );
           })
           .then(graph => {
@@ -288,7 +294,7 @@ createYargsCli({
       options: [credentialsOption],
       processFn: argv => {
         table
-          .list(utils.readCredentials(argv["warehouse"], argv["credentials"]))
+          .list(utils.readCredentials(argv["warehouse"], argv["credentials"]), argv["warehouse"])
           .then(tables => console.log(JSON.stringify(tables, null, 4)))
           .catch(e => console.log(e));
       }
@@ -300,7 +306,7 @@ createYargsCli({
       options: [credentialsOption],
       processFn: argv => {
         table
-          .get(utils.readCredentials(argv["warehouse"], argv["credentials"]), {
+          .get(utils.readCredentials(argv["warehouse"], argv["credentials"]), argv["warehouse"], {
             schema: argv["schema"],
             name: argv["table"]
           })
@@ -311,11 +317,6 @@ createYargsCli({
   ],
   moreChaining: yargs => yargs.demandCommand(1, "Please choose a command.").argv
 });
-
-function getCredentials(projectDir: string, credentialsPath: string) {
-  const projectConfig = require(path.resolve(projectDir, "dataform.json"));
-  return utils.readCredentials(projectConfig.warehouse, credentialsPath);
-}
 
 function fullyResolvePath(filePath: string) {
   filePath = path.resolve(filePath);
