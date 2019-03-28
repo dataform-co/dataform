@@ -14,7 +14,11 @@ const projectDirOption = {
     describe: "The Dataform project directory.",
     default: ".",
     coerce: path.resolve
-  },
+  }
+};
+
+const projectDirMustExistOption = {
+  ...projectDirOption,
   check: (argv: yargs.Arguments) => assertPathExists(argv["project-dir"])
 };
 
@@ -110,21 +114,31 @@ createYargsCli({
           }
         }
       ],
-      processFn: argv =>
-        init(
+      processFn: async argv => {
+        const result = await init(
           argv["project-dir"],
           {
             warehouse: argv["warehouse"],
             gcloudProjectId: argv["gcloud-project-id"]
           },
           argv["skip-install"]
-        )
+        );
+        const colorFmtString = colorCode => `\x1b[${colorCode}m%s\x1b[0m`;
+
+        console.log(colorFmtString("34"), "Directories created:");
+        result.dirsCreated.forEach(dir => console.log(dir));
+        console.log(colorFmtString("34"), "Files written:");
+        result.filesWritten.forEach(file => console.log(file));
+        if (result.installedNpmPackages) {
+          console.log(colorFmtString("34"), "NPM packages successfully installed.");
+        }
+      }
     },
     {
       format: "compile [project-dir]",
       description:
         "Compile the dataform project. Produces JSON output describing the non-executable graph.",
-      positionalOptions: [projectDirOption],
+      positionalOptions: [projectDirMustExistOption],
       options: [
         defaultSchemaOption,
         assertionSchemaOption,
@@ -193,7 +207,7 @@ createYargsCli({
       format: "build [project-dir]",
       description:
         "Build the dataform project. Produces JSON output describing the execution graph.",
-      positionalOptions: [projectDirOption],
+      positionalOptions: [projectDirMustExistOption],
       options: [
         fullRefreshOption,
         nodesOption,
@@ -226,7 +240,7 @@ createYargsCli({
     {
       format: "run [project-dir]",
       description: "Run the dataform project's scripts on the configured data warehouse.",
-      positionalOptions: [projectDirOption],
+      positionalOptions: [projectDirMustExistOption],
       options: [
         fullRefreshOption,
         nodesOption,
