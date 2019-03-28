@@ -123,7 +123,7 @@ export function getTestRunCommand(
     // run the command
     const graph = await dfapi
       .compile({ projectDir: testConfig.projectDir })
-      .then(cg => dfapi.build(cg, {}, testConfig.credentials, testConfig.warehouse))
+      .then(cg => dfapi.build(cg, {}, testConfig.credentials))
       .then(eg => dfapi.run(eg, testConfig.credentials).resultPromise());
 
     expect(graph).to.have.property("ok").that.to.be.true;
