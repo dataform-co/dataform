@@ -7,10 +7,12 @@ import * as apiUtils from "@dataform/api/utils";
 export function build(
   compiledGraph: dataform.ICompiledGraph,
   runConfig: dataform.IRunConfig,
-  credentials: apiUtils.Credentials,
-  warehouse: string
+  credentials: apiUtils.Credentials
 ) {
-  return state(compiledGraph, dbadapters.create(credentials, warehouse)).then(state => {
+  return state(
+    compiledGraph,
+    dbadapters.create(credentials, compiledGraph.projectConfig.warehouse)
+  ).then(state => {
     return new Builder(compiledGraph, runConfig, state).build();
   });
 }
