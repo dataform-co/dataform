@@ -13,8 +13,9 @@ const projectDirOption = {
   option: {
     describe: "The Dataform project directory.",
     default: ".",
-    coerce: fullyResolvePath
-  }
+    coerce: path.resolve
+  },
+  check: (argv: yargs.Arguments) => assertPathExists(argv["project-dir"])
 };
 
 const fullRefreshOption = {
@@ -34,12 +35,17 @@ const nodesOption = {
   }
 };
 
-// TODO: Should this be only set when "nodes" is also set? (using yargs 'implies')
 const includeDepsOption = {
   name: "include-deps",
   option: {
     describe: "If set, dependencies for selected nodes will also be run.",
     type: "boolean"
+  },
+  // It would be nice to use yargs' "implies" to implement this, but it doesn't work for some reason.
+  check: (argv: yargs.Arguments) => {
+    if (argv["include_deps"] && !argv["nodes"]) {
+      throw new Error("The --include_deps flag should only be supplied along with --nodes.");
+    }
   }
 };
 
@@ -62,8 +68,9 @@ const credentialsOption = {
   option: {
     describe: "The location of the credentials JSON file to use.",
     default: ".df-credentials.json",
-    coerce: fullyResolvePath
-  }
+    coerce: path.resolve
+  },
+  check: (argv: yargs.Arguments) => assertPathExists(argv["credentials"])
 };
 
 const warehouseOption = {
@@ -81,12 +88,18 @@ createYargsCli({
       description: "Create a new dataform project.",
       positionalOptions: [warehouseOption, projectDirOption],
       options: [
-        // TODO: Should we error out if this is not provided when the warehouse is set to "bigquery",
-        // or conversely if it is provided for other warehouse types?
         {
           name: "gcloud-project-id",
           option: {
             describe: "The Google Cloud Project ID to use when accessing bigquery."
+          },
+          check: (argv: yargs.Arguments) => {
+            if (argv["gcloud-project-id"] && argv["warehouse"] !== "bigquery") {
+              throw new Error("The --gcloud-project-id flag is only used for BigQuery projects.");
+            }
+            if (!argv["gcloud-project-id"] && argv["warehouse"] === "bigquery") {
+              throw new Error("The --gcloud-project-id flag is required for BigQuery projects.");
+            }
           }
         },
         {
@@ -316,23 +329,21 @@ createYargsCli({
   moreChaining: yargs => yargs.demandCommand(1, "Please choose a command.").argv
 });
 
-function fullyResolvePath(filePath: string) {
-  filePath = path.resolve(filePath);
-  if (!fs.existsSync(filePath)) {
-    throw new Error(`${filePath} does not exist!`);
+function assertPathExists(checkPath: string) {
+  if (!fs.existsSync(checkPath)) {
+    throw new Error(`${checkPath} does not exist!`);
   }
-  return filePath;
 }
 
-const compileProject = (
+function compileProject(
   projectDir: string,
   defaultSchemaOverride?: string,
   assertionSchemaOverride?: string
-) => {
+) {
   return compile({ projectDir, defaultSchemaOverride, assertionSchemaOverride })
     .then(graph => console.log(JSON.stringify(graph, null, 4)))
     .catch(e => console.log(e));
-};
+}
 
 interface ICli {
   commands: ICommand[];
@@ -350,6 +361,7 @@ interface ICommand {
 interface INamedOption<T> {
   name: string;
   option: T;
+  check?: (args: yargs.Arguments) => void;
 }
 
 function createYargsCli(cli: ICli) {
@@ -371,14 +383,26 @@ function createYargsCli(cli: ICli) {
 }
 
 function createOptionsChain(yargs: yargs.Argv, command: ICommand) {
+  const checks: ((args: yargs.Arguments) => void)[] = [];
+
   let yargsChain = yargs;
   for (let i = 0; i < command.positionalOptions.length; i++) {
     const positionalOption = command.positionalOptions[i];
     yargsChain = yargsChain.positional(positionalOption.name, positionalOption.option);
+    if (positionalOption.check) {
+      checks.push(positionalOption.check);
+    }
   }
   for (let i = 0; i < command.options.length; i++) {
     const option = command.options[i];
     yargsChain = yargsChain.option(option.name, option.option);
+    if (option.check) {
+      checks.push(option.check);
+    }
   }
+  yargsChain = yargsChain.check(argv => {
+    checks.forEach(check => check(argv));
+    return true;
+  });
   return yargsChain;
 }
