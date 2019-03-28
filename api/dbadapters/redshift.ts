@@ -1,6 +1,6 @@
-import { dataform } from "@dataform/protos";
 import { DbAdapter } from "@dataform/api/dbadapters/index";
 import * as apiUtils from "@dataform/api/utils";
+import { dataform } from "@dataform/protos";
 
 const Redshift: RedshiftType = require("node-redshift");
 
@@ -13,20 +13,17 @@ interface RedshiftConfig {
   ssl: boolean;
 }
 
-type RedshiftType = {
+interface RedshiftType {
   new (config: RedshiftConfig): RedshiftType;
   query: (query: string) => Promise<{ rows: any[] }>;
-};
+}
 
 export class RedshiftDbAdapter implements DbAdapter {
   private client: RedshiftType;
 
   constructor(credentials: apiUtils.Credentials) {
-    if (!(credentials instanceof dataform.JDBC)) {
-      throw new Error("Invalid credentials; did not receive a JDBC protobuf instance.");
-    }
     const config: RedshiftConfig = {
-      ...credentials,
+      ...(credentials as dataform.IJDBC),
       ssl: true
     };
     this.client = new Redshift(config);
