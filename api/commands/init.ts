@@ -2,6 +2,7 @@ import { dataform } from "@dataform/protos";
 import * as fs from "fs";
 import * as path from "path";
 import { install } from "@dataform/api/commands/install";
+import { prettyJsonStringify } from "@dataform/api/utils";
 
 const { version } = require("../package.json");
 
@@ -75,8 +76,4 @@ export async function init(
     dirsCreated,
     installedNpmPackages: !skipInstall
   };
-}
-
-function prettyJsonStringify(obj) {
-  return JSON.stringify(obj, null, 4) + "\n";
 }

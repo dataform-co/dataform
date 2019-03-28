@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { build, compile, init, run, table, utils } from "@dataform/api";
+import { prettyJsonStringify } from "@dataform/api/utils";
 import { WarehouseTypes } from "@dataform/core/adapters";
 import * as chokidar from "chokidar";
 import * as fs from "fs";
@@ -7,6 +8,9 @@ import * as path from "path";
 import * as yargs from "yargs";
 
 const RECOMPILE_DELAY = 2000;
+
+const colorFmtString = (ansiColorCode: number) => `\x1b[${ansiColorCode}m%s\x1b[0m`;
+const commandOutputFmtString = colorFmtString(34);
 
 const projectDirOption = {
   name: "project-dir",
@@ -123,14 +127,13 @@ createYargsCli({
           },
           argv["skip-install"]
         );
-        const colorFmtString = colorCode => `\x1b[${colorCode}m%s\x1b[0m`;
 
-        console.log(colorFmtString("34"), "Directories created:");
+        console.log(commandOutputFmtString, "Directories created:");
         result.dirsCreated.forEach(dir => console.log(dir));
-        console.log(colorFmtString("34"), "Files written:");
+        console.log(commandOutputFmtString, "Files written:");
         result.filesWritten.forEach(file => console.log(file));
         if (result.installedNpmPackages) {
-          console.log(colorFmtString("34"), "NPM packages successfully installed.");
+          console.log(commandOutputFmtString, "NPM packages successfully installed.");
         }
       }
     },
@@ -151,56 +154,56 @@ createYargsCli({
           }
         }
       ],
-      processFn: argv => {
+      processFn: async argv => {
         const projectDir = argv["project-dir"];
         const defaultSchemaOverride = argv["default-schema"];
         const assertionSchemaOverride = argv["assertion-schema"];
 
-        compileProject(projectDir, defaultSchemaOverride, assertionSchemaOverride).then(() => {
-          if (argv["watch"]) {
-            let timeoutID = null;
-            let isCompiling = false;
+        await compileProject(projectDir, defaultSchemaOverride, assertionSchemaOverride);
 
-            // Initialize watcher.
-            const watcher = chokidar.watch(projectDir, {
-              ignored: /node_modules/,
-              persistent: true,
-              ignoreInitial: true,
-              awaitWriteFinish: {
-                stabilityThreshold: 1000,
-                pollInterval: 200
+        if (argv["watch"]) {
+          let timeoutID = null;
+          let isCompiling = false;
+
+          // Initialize watcher.
+          const watcher = chokidar.watch(projectDir, {
+            ignored: /node_modules/,
+            persistent: true,
+            ignoreInitial: true,
+            awaitWriteFinish: {
+              stabilityThreshold: 1000,
+              pollInterval: 200
+            }
+          });
+
+          // Add event listeners.
+          watcher
+            .on("ready", () => console.log(commandOutputFmtString, "Watching for changes..."))
+            .on("error", error => console.error(`Error: ${error}`))
+            .on("all", () => {
+              if (timeoutID || isCompiling) {
+                // don't recompile many times if we changed a lot of files
+                clearTimeout(timeoutID);
+              } else {
+                console.log(commandOutputFmtString, "Recompiling project...");
               }
-            });
 
-            // Add event listeners.
-            watcher
-              .on("ready", () => console.log("Watcher ready for changes..."))
-              .on("error", error => console.error(`Watcher error: ${error}`))
-              .on("all", () => {
-                if (timeoutID || isCompiling) {
-                  // don't recompile many times if we changed a lot of files
-                  clearTimeout(timeoutID);
-                } else {
-                  console.log("Watcher recompile project...");
+              timeoutID = setTimeout(() => {
+                clearTimeout(timeoutID);
+
+                if (!isCompiling) {
+                  // recompile project
+                  isCompiling = true;
+                  compileProject(projectDir, defaultSchemaOverride, assertionSchemaOverride).then(
+                    () => {
+                      console.log(commandOutputFmtString, "Watching for changes...");
+                      isCompiling = false;
+                    }
+                  );
                 }
-
-                timeoutID = setTimeout(() => {
-                  clearTimeout(timeoutID);
-
-                  if (!isCompiling) {
-                    // recompile project
-                    isCompiling = true;
-                    compileProject(projectDir, defaultSchemaOverride, assertionSchemaOverride).then(
-                      () => {
-                        console.log("Watcher ready for changes...");
-                        isCompiling = false;
-                      }
-                    );
-                  }
-                }, RECOMPILE_DELAY);
-              });
-          }
-        });
+              }, RECOMPILE_DELAY);
+            });
+        }
       }
     },
     {
@@ -351,14 +354,17 @@ function assertPathExists(checkPath: string) {
   }
 }
 
-function compileProject(
+async function compileProject(
   projectDir: string,
   defaultSchemaOverride?: string,
   assertionSchemaOverride?: string
 ) {
-  return compile({ projectDir, defaultSchemaOverride, assertionSchemaOverride })
-    .then(graph => console.log(JSON.stringify(graph, null, 4)))
-    .catch(e => console.log(e));
+  const graph = await compile({ projectDir, defaultSchemaOverride, assertionSchemaOverride });
+  console.log(commandOutputFmtString, "Compiled output:");
+  console.log(prettyJsonStringify(graph));
+  if (graph.graphErrors) {
+    console.log(commandOutputFmtString, "Compiled graph contains errors:");
+  }
 }
 
 interface ICli {
