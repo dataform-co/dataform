@@ -238,8 +238,7 @@ createYargsCli({
                 nodes: argv["nodes"],
                 includeDependencies: argv["include-deps"]
               },
-              credentials,
-              projectConfig.warehouse
+              credentials
             );
           })
           .then(result => console.log(JSON.stringify(result, null, 4)))
@@ -286,8 +285,7 @@ createYargsCli({
                 nodes: argv["nodes"],
                 includeDependencies: argv["include-deps"]
               },
-              credentials,
-              projectConfig.warehouse
+              credentials
             );
           })
           .then(graph => {
