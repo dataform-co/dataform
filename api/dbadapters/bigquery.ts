@@ -11,10 +11,7 @@ export class BigQueryDbAdapter implements DbAdapter {
   private pool: PromisePool.PromisePoolExecutor;
 
   constructor(credentials: apiUtils.Credentials) {
-    if (!(credentials instanceof dataform.BigQuery)) {
-      throw new Error("Invalid credentials; did not receive a BigQuery protobuf instance.");
-    }
-    this.bigQueryCredentials = credentials;
+    this.bigQueryCredentials = credentials as dataform.IBigQuery;
     this.client = BigQuery({
       projectId: this.bigQueryCredentials.projectId,
       credentials: JSON.parse(this.bigQueryCredentials.credentials),
