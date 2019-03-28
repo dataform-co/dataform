@@ -4,7 +4,7 @@ import { ChildProcess, fork } from "child_process";
 import * as fs from "fs";
 import * as path from "path";
 import { promisify } from "util";
-import { ICompileIPCParameters, ICompileIPCResult } from "df/api/vm/compile";
+import { ICompileIPCParameters, ICompileIPCResult } from "@dataform/api/vm/compile";
 
 export async function compile(
   compileConfig: dataform.ICompileConfig

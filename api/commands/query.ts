@@ -1,9 +1,9 @@
 import { dataform } from "@dataform/protos";
 import { fork } from "child_process";
 import * as path from "path";
-import * as dbadapters from "df/api/dbadapters";
-import * as utils from "df/api/utils";
-import { CancellablePromise } from "df/api/utils/cancellable_promise";
+import * as dbadapters from "@dataform/api/dbadapters";
+import * as utils from "@dataform/api/utils";
+import { CancellablePromise } from "@dataform/api/utils/cancellable_promise";
 
 interface IOptions {
   projectDir?: string;

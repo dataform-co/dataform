@@ -1,8 +1,8 @@
 import { adapters, utils } from "@dataform/core";
 import { dataform } from "@dataform/protos";
-import { state } from "df/api/commands/state";
-import * as dbadapters from "df/api/dbadapters";
-import * as util from "df/api/utils";
+import { state } from "@dataform/api/commands/state";
+import * as dbadapters from "@dataform/api/dbadapters";
+import * as util from "@dataform/api/utils";
 
 export function build(
   compiledGraph: dataform.ICompiledGraph,

@@ -1,7 +1,7 @@
 import { dataform } from "@dataform/protos";
 import * as fs from "fs";
 import * as path from "path";
-import { install } from "df/api/commands/install";
+import { install } from "@dataform/api/commands/install";
 
 const { version } = require("../package.json");
 
