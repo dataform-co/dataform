@@ -29,7 +29,7 @@ interface IExpectedResult {
 }
 
 export function queryRun(sqlQuery: string, testConfig: ITestConfig) {
-  return dfapi.query.run(testConfig.credentials, sqlQuery, {
+  return dfapi.query.run(testConfig.credentials, testConfig.warehouse, sqlQuery, {
     projectDir: path.resolve(testConfig.projectDir)
   });
 }
@@ -123,7 +123,7 @@ export function getTestRunCommand(
     // run the command
     const graph = await dfapi
       .compile({ projectDir: testConfig.projectDir })
-      .then(cg => dfapi.build(cg, {}, testConfig.credentials))
+      .then(cg => dfapi.build(cg, {}, testConfig.credentials, testConfig.warehouse))
       .then(eg => dfapi.run(eg, testConfig.credentials).resultPromise());
 
     expect(graph).to.have.property("ok").that.to.be.true;
