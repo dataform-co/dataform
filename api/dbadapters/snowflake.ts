@@ -1,6 +1,6 @@
-import { dataform } from "@dataform/protos";
 import { DbAdapter } from "@dataform/api/dbadapters/index";
 import * as apiUtils from "@dataform/api/utils";
+import { dataform } from "@dataform/protos";
 
 interface ISnowflakeStatement {
   cancel: () => void;
@@ -35,16 +35,14 @@ export class SnowflakeDbAdapter implements DbAdapter {
   private connection: ISnowflakeConnection;
 
   constructor(credentials: apiUtils.Credentials) {
-    if (!(credentials instanceof dataform.Snowflake)) {
-      throw new Error("Invalid credentials; did not receive a Snowflake protobuf instance.");
-    }
+    const snowflakeCredentials = credentials as dataform.ISnowflake;
     this.connection = Snowflake.createConnection({
-      account: credentials.accountId,
-      username: credentials.userName,
-      password: credentials.password,
-      database: credentials.databaseName,
-      warehouse: credentials.warehouse,
-      role: credentials.role
+      account: snowflakeCredentials.accountId,
+      username: snowflakeCredentials.userName,
+      password: snowflakeCredentials.password,
+      database: snowflakeCredentials.databaseName,
+      warehouse: snowflakeCredentials.warehouse,
+      role: snowflakeCredentials.role
     });
     this.connection.connect((err, conn) => {
       if (err) {
