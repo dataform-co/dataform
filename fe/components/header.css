@@ -12,11 +12,10 @@
 }
 
 .navContent {
-    width: 100%;
-    margin: 0 auto;
-    display: flex;
+  width: 100%;
+  margin: 0 auto;
+  display: flex;
 }
-
 
 .navInverted a {
   color: #fff !important;
@@ -59,45 +58,46 @@
 }
 
 .logoImage {
-  padding: headerPadding;
-  content: url("../../static/images/new_logo_with_text.svg");
+  padding: 40px 0;
 }
-
-.navInverted > .navContent > span > a > .logoImage {
-  padding: headerPadding;
-  content: url("../../static/images/new_logo_with_text_white.svg");
-}
-
-.logoImageWhite {
-  padding: headerPadding;
-  content: url("../../static/images/new_logo_with_text_white.svg");
-}
-
-.menuIcon {
-  content: url("../../static/images/menu_icon.svg");
-}
-
-.navInverted > .actions > span > .menuIcon {
-  content: url("../../static/images/menu_icon_white.svg");
-}
-
 .menuCloseIcon {
-  content: url("../../static/images/menu_close.svg");
   z-index: 1001;
 }
 
-.mobileMenuContainer{
+.nav :global .pt-button.pt-intent-primary.ghost {
+  background-color: white;
+  border: 2px solid #5e73e5;
+}
+.nav :global .pt-button.pt-intent-primary.ghost > span {
+  color: #5e73e5;
+}
+.nav :global .pt-button.pt-intent-primary.ghost:hover {
+  background-color: white;
+}
+
+.navInverted :global .pt-button.pt-intent-primary.ghost {
+  background-color: unset;
+  border: 2px solid white;
+}
+.navInverted :global .pt-button.pt-intent-primary.ghost > span {
+  color: white;
+}
+.navInverted :global .pt-button.pt-intent-primary.ghost:hover {
+  background-color: none;
+}
+
+.mobileMenuContainer {
   position: fixed;
   left: 0;
   right: 0;
   height: 100%;
-  background-color: #2F419B;
+  background-color: #2f419b;
   z-index: 1001;
   display: flex;
   flex-direction: column;
 }
 
-.mobileMenu{
+.mobileMenu {
   position: fixed;
   top: 100px;
   color: #fff;
@@ -108,10 +108,10 @@
   width: calc(100% - 80px);
   margin: 0 auto;
   height: 1px;
-  background-color: rgba(223,223,223, 0.2);
+  background-color: rgba(223, 223, 223, 0.2);
 }
 
-.mobileMenuItem{
+.mobileMenuItem {
   padding: 20px 40px;
   color: #fff;
   font-size: 14px;
@@ -129,19 +129,30 @@
   margin: 0 auto;
   margin-bottom: 20px;
 }
-.mobileMenuAction > a, .mobileMenuAction > a > button {
+.mobileMenuAction > a,
+.mobileMenuAction > a > button {
   width: 100%;
 }
 
-.showMobile{
+.showMobile {
   display: none;
 }
 
-@media (max-width: 1100px) {
-  .showMobile{
+@media (max-width: 1250px) {
+  .showMobile {
     display: block;
   }
-  .hideMobile{
+  .hideMobile {
     display: none;
+  }
+
+  .logoImage {
+    padding: headerPadding;
+  }
+  .navInverted > .navContent > span > a > .logoImage {
+    padding: headerPadding;
+  }
+  .logoImageWhite {
+    padding: headerPadding;
   }
 }
