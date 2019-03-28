@@ -1,4 +1,4 @@
-import * as protos from "@dataform/protos";
+import { dataform } from "@dataform/protos";
 import { DistStyleTypes, ignoredProps, SortStyleTypes, TableTypes } from "./table";
 
 export function relativePath(path: string, base: string) {
@@ -73,7 +73,7 @@ export function getCallerFile(rootDir: string) {
   return relativePath(callerfile || lastfile, rootDir);
 }
 
-export function graphHasErrors(graph: protos.ICompiledGraph) {
+export function graphHasErrors(graph: dataform.ICompiledGraph) {
   const graphErrors = validate(graph);
 
   return (
@@ -100,8 +100,8 @@ function objectExistsOrIsNonEmpty(prop: any): boolean {
   );
 }
 
-export function validate(compiledGraph: protos.ICompiledGraph): protos.IGraphErrors {
-  const validationErrors: protos.IValidationError[] = [];
+export function validate(compiledGraph: dataform.ICompiledGraph): dataform.IGraphErrors {
+  const validationErrors: dataform.IValidationError[] = [];
 
   // Check there aren't any duplicate names.
   const allNodes = [].concat(
@@ -118,7 +118,7 @@ export function validate(compiledGraph: protos.ICompiledGraph): protos.IGraphErr
       const message = `Duplicate node name detected, names must be unique across tables, assertions, and operations: "${
         node.name
       }"`;
-      validationErrors.push(protos.ValidationError.create({ message, nodeName }));
+      validationErrors.push(dataform.ValidationError.create({ message, nodeName }));
     }
   });
 
@@ -135,7 +135,7 @@ export function validate(compiledGraph: protos.ICompiledGraph): protos.IGraphErr
     node.dependencies = Object.keys(uniqueDeps);
   });
 
-  const nodesByName: { [name: string]: protos.IExecutionNode } = {};
+  const nodesByName: { [name: string]: dataform.IExecutionNode } = {};
   allNodes.forEach(node => (nodesByName[node.name] = node));
 
   // Check all dependencies actually exist.
@@ -146,22 +146,22 @@ export function validate(compiledGraph: protos.ICompiledGraph): protos.IGraphErr
         const message = `Missing dependency detected: Node "${
           node.name
         }" depends on "${dependency}" which does not exist.`;
-        validationErrors.push(protos.ValidationError.create({ message, nodeName }));
+        validationErrors.push(dataform.ValidationError.create({ message, nodeName }));
       }
     });
   });
 
   // Check for circular dependencies.
   const checkCircular = (
-    node: protos.IExecutionNode,
-    dependents: protos.IExecutionNode[]
+    node: dataform.IExecutionNode,
+    dependents: dataform.IExecutionNode[]
   ): boolean => {
     if (dependents.indexOf(node) >= 0) {
       const nodeName = node.name;
       const message = `Circular dependency detected in chain: [${dependents
         .map(d => d.name)
         .join(" > ")} > ${node.name}]`;
-      validationErrors.push(protos.ValidationError.create({ message, nodeName }));
+      validationErrors.push(dataform.ValidationError.create({ message, nodeName }));
       return true;
     }
     return node.dependencies.some(d => {
@@ -188,13 +188,13 @@ export function validate(compiledGraph: protos.ICompiledGraph): protos.IGraphErr
     ) {
       const predefinedTypes = getPredefinedTypes(TableTypes);
       const message = `Wrong type of table detected. Should only use predefined types: ${predefinedTypes}`;
-      validationErrors.push(protos.ValidationError.create({ message, nodeName }));
+      validationErrors.push(dataform.ValidationError.create({ message, nodeName }));
     }
 
     // "where" property
     if (node.type === TableTypes.INCREMENTAL && (!node.where || node.where.length === 0)) {
       const message = `"where" property is not defined. With the type “incremental” you must also specify the property “where”!`;
-      validationErrors.push(protos.ValidationError.create({ message, nodeName }));
+      validationErrors.push(dataform.ValidationError.create({ message, nodeName }));
     }
 
     // redshift config
@@ -204,7 +204,7 @@ export function validate(compiledGraph: protos.ICompiledGraph): protos.IGraphErr
         Object.keys(node.redshift).every(key => !node.redshift[key] || !node.redshift[key].length)
       ) {
         const message = `Missing properties in redshift config`;
-        validationErrors.push(protos.ValidationError.create({ message, nodeName }));
+        validationErrors.push(dataform.ValidationError.create({ message, nodeName }));
       }
       const redshiftConfig = [];
 
@@ -223,7 +223,7 @@ export function validate(compiledGraph: protos.ICompiledGraph): protos.IGraphErr
         Object.keys(item.props).forEach(key => {
           if (!item.props[key] || !item.props[key].length) {
             const message = `Property "${key}" is not defined`;
-            validationErrors.push(protos.ValidationError.create({ message, nodeName }));
+            validationErrors.push(dataform.ValidationError.create({ message, nodeName }));
           }
         });
 
@@ -237,7 +237,7 @@ export function validate(compiledGraph: protos.ICompiledGraph): protos.IGraphErr
           ) {
             const predefinedValues = getPredefinedTypes(currentEnum);
             const message = `Wrong value of "${type}" property. Should only use predefined values: ${predefinedValues}`;
-            validationErrors.push(protos.ValidationError.create({ message, nodeName }));
+            validationErrors.push(dataform.ValidationError.create({ message, nodeName }));
           }
         });
       });
@@ -250,7 +250,7 @@ export function validate(compiledGraph: protos.ICompiledGraph): protos.IGraphErr
           const message = `Unused property was detected: "${ignoredProp}". This property is not used for tables with type "${
             node.type
           }" and will be ignored.`;
-          validationErrors.push(protos.ValidationError.create({ message, nodeName }));
+          validationErrors.push(dataform.ValidationError.create({ message, nodeName }));
         }
       });
     }
@@ -261,5 +261,5 @@ export function validate(compiledGraph: protos.ICompiledGraph): protos.IGraphErr
       ? compiledGraph.graphErrors.compilationErrors
       : [];
 
-  return protos.GraphErrors.create({ validationErrors, compilationErrors });
+  return dataform.GraphErrors.create({ validationErrors, compilationErrors });
 }

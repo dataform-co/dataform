@@ -1,24 +1,24 @@
-import * as protos from "@dataform/protos";
+import { dataform } from "@dataform/protos";
 import { Task, Tasks } from "../tasks";
 import { Adapter } from "./base";
 import { IAdapter } from "./index";
 
 export class RedshiftAdapter extends Adapter implements IAdapter {
-  private project: protos.IProjectConfig;
+  private project: dataform.IProjectConfig;
 
-  constructor(project: protos.IProjectConfig) {
+  constructor(project: dataform.IProjectConfig) {
     super();
     this.project = project;
   }
 
-  public resolveTarget(target: protos.ITarget) {
+  public resolveTarget(target: dataform.ITarget) {
     return `"${target.schema || this.project.defaultSchema}"."${target.name}"`;
   }
 
   public publishTasks(
-    t: protos.ITable,
-    runConfig: protos.IRunConfig,
-    tableMetadata: protos.ITableMetadata
+    t: dataform.ITable,
+    runConfig: dataform.IRunConfig,
+    tableMetadata: dataform.ITableMetadata
   ): Tasks {
     const tasks = Tasks.create();
     // Drop the existing view or table if we are changing it's type.
@@ -46,9 +46,9 @@ export class RedshiftAdapter extends Adapter implements IAdapter {
     return tasks;
   }
 
-  public assertTasks(a: protos.IAssertion, projectConfig: protos.IProjectConfig): Tasks {
+  public assertTasks(a: dataform.IAssertion, projectConfig: dataform.IProjectConfig): Tasks {
     const tasks = Tasks.create();
-    const assertionTarget = protos.Target.create({
+    const assertionTarget = dataform.Target.create({
       schema: projectConfig.assertionSchema,
       name: a.name
     });
@@ -59,12 +59,12 @@ export class RedshiftAdapter extends Adapter implements IAdapter {
     return tasks;
   }
 
-  public createOrReplaceView(target: protos.ITarget, query: string) {
+  public createOrReplaceView(target: dataform.ITarget, query: string) {
     return `
       create or replace view ${this.resolveTarget(target)} as ${query}`;
   }
 
-  public createOrReplace(t: protos.ITable) {
+  public createOrReplace(t: dataform.ITable) {
     if (t.type == "view") {
       return Tasks.create().add(
         Task.statement(`
@@ -72,7 +72,7 @@ export class RedshiftAdapter extends Adapter implements IAdapter {
         as ${t.query}`)
       );
     } else {
-      const tempTableTarget = protos.Target.create({
+      const tempTableTarget = dataform.Target.create({
         schema: t.target.schema,
         name: t.target.name + "_temp"
       });
@@ -90,7 +90,7 @@ export class RedshiftAdapter extends Adapter implements IAdapter {
     }
   }
 
-  public createTable(t: protos.ITable, target: protos.ITarget) {
+  public createTable(t: dataform.ITable, target: dataform.ITarget) {
     if (t.redshift) {
       let query = `create table ${this.resolveTarget(target)}`;
 
@@ -107,7 +107,7 @@ export class RedshiftAdapter extends Adapter implements IAdapter {
     return `create table ${this.resolveTarget(target)} as ${t.query}`;
   }
 
-  public dropIfExists(target: protos.ITarget, type: string) {
+  public dropIfExists(target: dataform.ITarget, type: string) {
     return `drop ${this.baseTableType(type)} if exists ${this.resolveTarget(target)} cascade`;
   }
 }

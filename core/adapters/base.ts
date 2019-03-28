@@ -1,4 +1,4 @@
-import * as protos from "@dataform/protos";
+import { dataform } from "@dataform/protos";
 
 export abstract class Adapter {
   public where(query: string, where: string) {
@@ -18,7 +18,7 @@ export abstract class Adapter {
     return this.baseTableType(type) == "table" ? "view" : "table";
   }
 
-  public insertInto(target: protos.ITarget, columns: string[], query: string) {
+  public insertInto(target: dataform.ITarget, columns: string[], query: string) {
     return `
       insert into ${this.resolveTarget(target)}
       (${columns.join(",")})
@@ -26,11 +26,11 @@ export abstract class Adapter {
       from (${query})`;
   }
 
-  public dropIfExists(target: protos.ITarget, type: string) {
+  public dropIfExists(target: dataform.ITarget, type: string) {
     return `drop ${this.baseTableType(type)} if exists ${this.resolveTarget(target)} ${
       this.baseTableType(type) == "table" ? "cascade" : ""
     }`;
   }
 
-  public abstract resolveTarget(target: protos.ITarget): string;
+  public abstract resolveTarget(target: dataform.ITarget): string;
 }
