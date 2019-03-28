@@ -1,6 +1,6 @@
 import { dataform } from "@dataform/protos";
 import { DbAdapter } from "@dataform/api/dbadapters/index";
-import * as util from "@dataform/api/utils";
+import * as apiUtils from "@dataform/api/utils";
 
 const Redshift: RedshiftType = require("node-redshift");
 
@@ -21,7 +21,7 @@ type RedshiftType = {
 export class RedshiftDbAdapter implements DbAdapter {
   private client: RedshiftType;
 
-  constructor(credentials: util.Credentials) {
+  constructor(credentials: apiUtils.Credentials) {
     if (!(credentials instanceof dataform.JDBC)) {
       throw new Error("Invalid credentials; did not receive a JDBC protobuf instance.");
     }

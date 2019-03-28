@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-import { build, compile, init, query, run, table, utils } from "@dataform/api";
-import { dataform } from "@dataform/protos";
+import { build, compile, init, run, table, utils } from "@dataform/api";
+import { WarehouseTypes } from "@dataform/core/adapters";
 import * as chokidar from "chokidar";
 import * as fs from "fs";
 import * as path from "path";
@@ -70,7 +70,7 @@ const warehouseOption = {
   name: "warehouse",
   option: {
     describe: "The project's data warehouse type.",
-    choices: ["bigquery", "redshift", "snowflake"]
+    choices: Object.keys(WarehouseTypes).map(warehouseType => WarehouseTypes[warehouseType])
   }
 };
 
