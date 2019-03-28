@@ -1,23 +1,23 @@
 import { dataform } from "@dataform/protos";
 import * as PromisePool from "promise-pool-executor";
 import { DbAdapter, OnCancel } from "@dataform/api/dbadapters/index";
-import * as util from "@dataform/api/utils";
+import * as apiUtils from "@dataform/api/utils";
 
 const BigQuery = require("@google-cloud/bigquery");
 
 export class BigQueryDbAdapter implements DbAdapter {
-  private bigquery: dataform.IBigQuery;
+  private bigQueryCredentials: dataform.IBigQuery;
   private client: any;
   private pool: PromisePool.PromisePoolExecutor;
 
-  constructor(credentials: util.Credentials) {
+  constructor(credentials: apiUtils.Credentials) {
     if (!(credentials instanceof dataform.BigQuery)) {
       throw new Error("Invalid credentials; did not receive a BigQuery protobuf instance.");
     }
-    this.bigquery = credentials;
+    this.bigQueryCredentials = credentials;
     this.client = BigQuery({
-      projectId: this.bigquery.projectId,
-      credentials: JSON.parse(this.bigquery.credentials),
+      projectId: this.bigQueryCredentials.projectId,
+      credentials: JSON.parse(this.bigQueryCredentials.credentials),
       scopes: ["https://www.googleapis.com/auth/drive"]
     });
     // Bigquery allows 50 concurrent queries, and a rate limit of 100/user/second by default.
@@ -123,7 +123,7 @@ export class BigQueryDbAdapter implements DbAdapter {
   }
 
   public prepareSchema(schema: string): Promise<void> {
-    const location = this.bigquery.location || "US";
+    const location = this.bigQueryCredentials.location || "US";
 
     // If metadata call fails, it probably doesn't exist. So try to create it.
     return this.client

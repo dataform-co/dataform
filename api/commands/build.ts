@@ -2,12 +2,12 @@ import { adapters, utils } from "@dataform/core";
 import { dataform } from "@dataform/protos";
 import { state } from "@dataform/api/commands/state";
 import * as dbadapters from "@dataform/api/dbadapters";
-import * as util from "@dataform/api/utils";
+import * as apiUtils from "@dataform/api/utils";
 
 export function build(
   compiledGraph: dataform.ICompiledGraph,
   runConfig: dataform.IRunConfig,
-  credentials: util.Credentials
+  credentials: apiUtils.Credentials
 ) {
   return state(compiledGraph, dbadapters.create(credentials)).then(state => {
     return new Builder(compiledGraph, runConfig, state).build();

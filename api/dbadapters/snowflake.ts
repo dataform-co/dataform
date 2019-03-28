@@ -1,6 +1,6 @@
 import { dataform } from "@dataform/protos";
 import { DbAdapter } from "@dataform/api/dbadapters/index";
-import * as util from "@dataform/api/utils";
+import * as apiUtils from "@dataform/api/utils";
 
 interface ISnowflakeStatement {
   cancel: () => void;
@@ -34,7 +34,7 @@ const Snowflake: ISnowflake = require("snowflake-sdk");
 export class SnowflakeDbAdapter implements DbAdapter {
   private connection: ISnowflakeConnection;
 
-  constructor(credentials: util.Credentials) {
+  constructor(credentials: apiUtils.Credentials) {
     if (!(credentials instanceof dataform.Snowflake)) {
       throw new Error("Invalid credentials; did not receive a Snowflake protobuf instance.");
     }

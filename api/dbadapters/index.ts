@@ -2,7 +2,7 @@ import { dataform } from "@dataform/protos";
 import { BigQueryDbAdapter } from "@dataform/api/dbadapters/bigquery";
 import { RedshiftDbAdapter } from "@dataform/api/dbadapters/redshift";
 import { SnowflakeDbAdapter } from "@dataform/api/dbadapters/snowflake";
-import * as util from "@dataform/api/utils";
+import * as apiUtils from "@dataform/api/utils";
 
 export type OnCancel = ((handleCancel: () => void) => void);
 
@@ -14,7 +14,9 @@ export interface DbAdapter {
   prepareSchema(schema: string): Promise<void>;
 }
 
-export type DbAdapterConstructor<T extends DbAdapter> = new (credentials: util.Credentials) => T;
+export type DbAdapterConstructor<T extends DbAdapter> = new (
+  credentials: apiUtils.Credentials
+) => T;
 
 const registry: { [warehouseType: string]: DbAdapterConstructor<DbAdapter> } = {};
 
@@ -22,7 +24,7 @@ export function register(warehouseType: string, c: DbAdapterConstructor<DbAdapte
   registry[warehouseType] = c;
 }
 
-export function create(credentials: util.Credentials, warehouseType?: string): DbAdapter {
+export function create(credentials: apiUtils.Credentials, warehouseType?: string): DbAdapter {
   if (warehouseType) {
     if (!registry[warehouseType]) {
       throw Error(`Unsupported warehouse: ${warehouseType}`);
