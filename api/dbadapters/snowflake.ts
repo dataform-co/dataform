@@ -1,6 +1,6 @@
 import { dataform } from "@dataform/protos";
-import { DbAdapter } from "df/api/dbadapters/index";
-import * as util from "df/api/utils";
+import { DbAdapter } from "@dataform/api/dbadapters/index";
+import * as util from "@dataform/api/utils";
 
 interface ISnowflakeStatement {
   cancel: () => void;

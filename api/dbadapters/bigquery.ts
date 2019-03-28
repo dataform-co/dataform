@@ -1,7 +1,7 @@
 import { dataform } from "@dataform/protos";
 import * as PromisePool from "promise-pool-executor";
-import { DbAdapter, OnCancel } from "df/api/dbadapters/index";
-import * as util from "df/api/utils";
+import { DbAdapter, OnCancel } from "@dataform/api/dbadapters/index";
+import * as util from "@dataform/api/utils";
 
 const BigQuery = require("@google-cloud/bigquery");
 

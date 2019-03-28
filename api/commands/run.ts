@@ -2,8 +2,8 @@ import { dataform } from "@dataform/protos";
 import * as EventEmitter from "events";
 import * as Long from "long";
 import * as prettyMs from "pretty-ms";
-import * as dbadapters from "df/api/dbadapters";
-import * as utils from "df/api/utils";
+import * as dbadapters from "@dataform/api/dbadapters";
+import * as utils from "@dataform/api/utils";
 
 const CANCEL_EVENT = "jobCancel";
 
