@@ -6,6 +6,7 @@ import * as chokidar from "chokidar";
 import * as fs from "fs";
 import * as path from "path";
 import * as yargs from "yargs";
+import { dataform } from "df/protos";
 
 const RECOMPILE_DELAY = 2000;
 
@@ -212,7 +213,7 @@ createYargsCli({
     {
       format: "build [project-dir]",
       description:
-        "Build the dataform project. Produces JSON output describing the execution graph.",
+        "Build the dataform project, using the current state of the configured warehouse to compute final SQL.",
       positionalOptions: [projectDirMustExistOption],
       options: [
         fullRefreshOption,
@@ -222,27 +223,26 @@ createYargsCli({
         assertionSchemaOption,
         credentialsOption
       ],
-      processFn: argv => {
-        compile({
+      processFn: async argv => {
+        const compiledGraph = await compile({
           projectDir: argv["project-dir"],
           defaultSchemaOverride: argv["default-schema"],
           assertionSchemaOverride: argv["assertion-schema"]
-        })
-          .then(graph => {
-            const projectConfig = require(path.resolve(argv["project-dir"], "dataform.json"));
-            const credentials = utils.readCredentials(projectConfig.warehouse, argv["credentials"]);
-            return build(
-              graph,
-              {
-                fullRefresh: argv["full-refresh"],
-                nodes: argv["nodes"],
-                includeDependencies: argv["include-deps"]
-              },
-              credentials
-            );
-          })
-          .then(result => console.log(JSON.stringify(result, null, 4)))
-          .catch(e => console.log(e));
+        });
+        if (compiledGraph.graphErrors) {
+          logGraphErrors(compiledGraph.graphErrors);
+          return;
+        }
+        const executionGraph = await build(
+          compiledGraph,
+          {
+            fullRefresh: argv["full-refresh"],
+            nodes: argv["nodes"],
+            includeDependencies: argv["include-deps"]
+          },
+          utils.readCredentials(compiledGraph.projectConfig.warehouse, argv["credentials"])
+        );
+        console.log(prettyJsonStringify(executionGraph));
       }
     },
     {
@@ -255,67 +255,52 @@ createYargsCli({
         includeDepsOption,
         defaultSchemaOption,
         assertionSchemaOption,
-        credentialsOption,
-        {
-          name: "result-path",
-          option: {
-            describe: "Optional path where executed graph JSON should be written.",
-            type: "string"
-          }
-        }
+        credentialsOption
       ],
-      processFn: argv => {
-        console.log("Project status: starting...");
-
-        const projectConfig = require(path.resolve(argv["project-config"], "dataform.json"));
-        const credentials = utils.readCredentials(projectConfig.warehouse, argv["credentials"]);
-
-        compile({
+      processFn: async argv => {
+        const compiledGraph = await compile({
           projectDir: argv["project-dir"],
           defaultSchemaOverride: argv["default-schema"],
           assertionSchemaOverride: argv["assertion-schema"]
-        })
-          .then(graph => {
-            console.log("Project status: build...");
+        });
+        if (compiledGraph.graphErrors) {
+          logGraphErrors(compiledGraph.graphErrors);
+          return;
+        }
+        const credentials = utils.readCredentials(
+          compiledGraph.projectConfig.warehouse,
+          argv["credentials"]
+        );
+        const executionGraph = await build(
+          compiledGraph,
+          {
+            fullRefresh: argv["full-refresh"],
+            nodes: argv["nodes"],
+            includeDependencies: argv["include-deps"]
+          },
+          credentials
+        );
 
-            return build(
-              graph,
-              {
-                fullRefresh: argv["full-refresh"],
-                nodes: argv["nodes"],
-                includeDependencies: argv["include-deps"]
-              },
-              credentials
-            );
-          })
-          .then(graph => {
-            const tasksAmount = graph.nodes.reduce((prev, item) => prev + item.tasks.length, 0);
-            console.log(
-              `Project status: ready for run ${
-                graph.nodes.length
-              } node(s) with ${tasksAmount} task(s)`
-            );
-            console.log("Project status: running...");
-
-            const runner = run(graph, credentials);
-            process.on("SIGINT", () => {
-              runner.cancel();
+        const runner = run(executionGraph, credentials);
+        process.on("SIGINT", () => {
+          runner.cancel();
+        });
+        const executedGraph = await runner.resultPromise();
+        const prettyPrintedExecutedGraph = prettyJsonStringify(executedGraph);
+        console.log(prettyPrintedExecutedGraph);
+        if (!executedGraph.ok) {
+          executedGraph.nodes
+            .filter(node => node.status === dataform.NodeExecutionStatus.FAILED)
+            .forEach(node => {
+              console.log(errorOutputFmtString, `Execution failed on node "${node.name}":`);
+              node.tasks.filter(task => !task.ok).forEach(task => {
+                console.log(
+                  errorOutputFmtString,
+                  `Statement "${task.task.statement}" failed with error: ${task.error}`
+                );
+              });
             });
-            return runner.resultPromise();
-          })
-          .then(result => {
-            console.log("Project status: finished");
-            const pathForResult = argv["result-path"];
-
-            if (pathForResult) {
-              const graph = JSON.stringify(result);
-              fs.writeFileSync(pathForResult, graph);
-              console.log(`Project status: executed graph is saved to file: "${pathForResult}"`);
-            }
-
-            console.log(JSON.stringify(result, null, 4));
-          })
-          .catch(e => console.log(e));
+        }
       }
     },
     {
@@ -323,11 +308,12 @@ createYargsCli({
       description: "List tables on the configured data warehouse.",
       positionalOptions: [warehouseOption],
       options: [credentialsOption],
-      processFn: argv => {
-        table
-          .list(utils.readCredentials(argv["warehouse"], argv["credentials"]), argv["warehouse"])
-          .then(tables => console.log(JSON.stringify(tables, null, 4)))
-          .catch(e => console.log(e));
+      processFn: async argv => {
+        const tables = await table.list(
+          utils.readCredentials(argv["warehouse"], argv["credentials"]),
+          argv["warehouse"]
+        );
+        tables.forEach(table => console.log(`${table.schema}.${table.name}`));
       }
     },
     {
@@ -335,28 +321,30 @@ createYargsCli({
       description: "Fetch metadata for a specified table.",
       positionalOptions: [warehouseOption],
       options: [credentialsOption],
-      processFn: argv => {
-        table
-          .get(utils.readCredentials(argv["warehouse"], argv["credentials"]), argv["warehouse"], {
+      processFn: async argv => {
+        const tableMetadata = await table.get(
+          utils.readCredentials(argv["warehouse"], argv["credentials"]),
+          argv["warehouse"],
+          {
             schema: argv["schema"],
             name: argv["table"]
-          })
-          .then(schema => console.log(JSON.stringify(schema, null, 4)))
-          .catch(e => console.log(e));
+          }
+        );
+        console.log(prettyJsonStringify(tableMetadata));
       }
     }
   ],
   moreChaining: yargs =>
     yargs
+      .scriptName("dataform")
+      .strict()
+      .recommendCommands()
+      .help("help")
       .fail((msg, err) => {
-        if (err) {
-          console.log(
-            errorOutputFmtString,
-            `Dataform encountered an error: ${err.stack || err.message}`
-          );
-        } else {
-          console.log(errorOutputFmtString, msg);
-        }
+        console.log(
+          errorOutputFmtString,
+          `Dataform encountered an error: ${err ? err.stack || err.message : msg}`
+        );
         process.exit(1);
       })
       .demandCommand(1, "Please choose a command.").argv
@@ -373,30 +361,30 @@ async function compileProject(
   defaultSchemaOverride?: string,
   assertionSchemaOverride?: string
 ) {
-  const foo = new Error("error message");
-  const graph: any = await compile({ projectDir, defaultSchemaOverride, assertionSchemaOverride });
-  console.log(commandOutputFmtString, "Compiled output:");
-  console.log(prettyJsonStringify(graph));
+  const graph = await compile({ projectDir, defaultSchemaOverride, assertionSchemaOverride });
   if (graph.graphErrors) {
-    console.log(errorOutputFmtString, "Compiled graph contains errors.");
-    if (graph.graphErrors.compilationErrors) {
-      console.log(errorOutputFmtString, "Compilation errors:");
-      graph.graphErrors.compilationErrors.forEach(compileError => {
-        console.log(
-          errorOutputFmtString,
-          `${compileError.fileName}: ${compileError.stack || compileError.message}`
-        );
-      });
-    }
-    if (graph.graphErrors.validationErrors) {
-      console.log(errorOutputFmtString, "Validation errors:");
-      graph.graphErrors.validationErrors.forEach(validationError => {
-        console.log(
-          errorOutputFmtString,
-          `${validationError.nodeName}: ${validationError.message}`
-        );
-      });
-    }
+    logGraphErrors(graph.graphErrors);
+  } else {
+    console.log(prettyJsonStringify(graph));
+  }
+}
+
+function logGraphErrors(graphErrors: dataform.IGraphErrors) {
+  console.log(errorOutputFmtString, "Compiled graph contains errors.");
+  if (graphErrors.compilationErrors) {
+    console.log(errorOutputFmtString, "Compilation errors:");
+    graphErrors.compilationErrors.forEach(compileError => {
+      console.log(
+        errorOutputFmtString,
+        `${compileError.fileName}: ${compileError.stack || compileError.message}`
+      );
+    });
+  }
+  if (graphErrors.validationErrors) {
+    console.log(errorOutputFmtString, "Validation errors:");
+    graphErrors.validationErrors.forEach(validationError => {
+      console.log(errorOutputFmtString, `${validationError.nodeName}: ${validationError.message}`);
+    });
   }
 }
 
