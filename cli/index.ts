@@ -1,9 +1,11 @@
 #!/usr/bin/env node
 import { build, compile, init, run, table, utils } from "@dataform/api";
 import { WarehouseTypes } from "@dataform/core/adapters";
+import { dataform } from "@dataform/protos";
 import * as chokidar from "chokidar";
 import * as fs from "fs";
 import * as path from "path";
+import * as readlineSync from "readline-sync";
 import * as yargs from "yargs";
 
 const RECOMPILE_DELAY = 2000;
@@ -119,6 +121,47 @@ createYargsCli({
           },
           argv["skip-install"]
         )
+    },
+    {
+      format: "init-creds <warehouse> [project-dir]",
+      description:
+        "Creates a .df-credentials.json file for dataform to use when accessing your warehouse.",
+      positionalOptions: [
+        warehouseOption,
+        projectDirOption /* TODO this should be projectDirMustExistOption */
+      ],
+      options: [],
+      processFn: argv => {
+        switch (argv["warehouse"]) {
+          case "bigquery": {
+            fs.writeFileSync(
+              path.resolve(argv["project-dir"], ".df-credentials.json"),
+              // TODO: nicely stringify
+              JSON.stringify(getBigQueryCredentials(), null, 4)
+            );
+            break;
+          }
+          case "redshift": {
+            fs.writeFileSync(
+              path.resolve(argv["project-dir"], ".df-credentials.json"),
+              // TODO: nicely stringify
+              JSON.stringify(getRedshiftCredentials(), null, 4)
+            );
+            break;
+          }
+          case "snowflake": {
+            fs.writeFileSync(
+              path.resolve(argv["project-dir"], ".df-credentials.json"),
+              // TODO: nicely stringify
+              JSON.stringify(getSnowflakeCredentials(), null, 4)
+            );
+            break;
+          }
+          default: {
+            throw new Error(`Unrecognized warehouse type ${argv["warehouse"]}`);
+          }
+        }
+      }
     },
     {
       format: "compile [project-dir]",
@@ -333,6 +376,90 @@ function assertPathExists(checkPath: string) {
   if (!fs.existsSync(checkPath)) {
     throw new Error(`${checkPath} does not exist!`);
   }
+}
+
+function getBigQueryCredentials(): dataform.IBigQuery {
+  // TODO: replace this.
+  const coloredText = text => `\x1b[36m${text}\x1b[0m`;
+
+  console.log(
+    coloredText(
+      "Please follow the instructions at https://docs.dataform.co/platform_guides/set_up_datawarehouse/ to create \n" +
+        "and download a private key from the Google Cloud Console in JSON format.\n" +
+        "(You can delete this file after credential initialization is complete.)\n"
+    )
+  );
+  const cloudCredentialsPath = path.resolve(
+    readlineSync.question(coloredText("Enter the path to your Google Cloud private key file:\n"))
+  );
+  if (!fs.existsSync(cloudCredentialsPath)) {
+    throw new Error(`Google Cloud private key file "${cloudCredentialsPath}" does not exist!`);
+  }
+  const cloudCredentials = require(cloudCredentialsPath);
+  const locationIndex = readlineSync.keyInSelect(
+    ["US (default)", "EU"],
+    "Enter the location of your datasets:\n",
+    {
+      cancel: false
+    }
+  );
+  return {
+    projectId: cloudCredentials.project_id,
+    credentials: fs.readFileSync(cloudCredentialsPath, "utf8"),
+    location: locationIndex === 0 ? "US" : "EU"
+  };
+}
+
+function getRedshiftCredentials(): dataform.IJDBC {
+  // TODO: replace this.
+  const coloredText = text => `\x1b[36m${text}\x1b[0m`;
+
+  const host = readlineSync.question(
+    coloredText(
+      "Enter the hostname of your Redshift instance (in the form '[name].[id].[region].redshift.amazonaws.com'):\n"
+    )
+  );
+  const port = readlineSync.questionInt(
+    coloredText("Enter the port that Dataform should connect to (usually 5439):\n")
+  );
+  const username = readlineSync.question(coloredText("Enter your database username:\n"));
+  const password = readlineSync.question(coloredText("Enter your database password:\n"), {
+    hideEchoBack: true
+  });
+  const databaseName = readlineSync.question(coloredText("Enter the database name:\n"));
+  return {
+    host,
+    port,
+    username,
+    password,
+    databaseName
+  };
+}
+
+function getSnowflakeCredentials(): dataform.ISnowflake {
+  // TODO: replace this.
+  const coloredText = text => `\x1b[36m${text}\x1b[0m`;
+
+  const accountId = readlineSync.question(
+    coloredText(
+      "Enter your Snowflake account identifier, including region (for example 'myaccount.us-east-1'):\n"
+    )
+  );
+  const role = readlineSync.question(coloredText("Enter your database role:\n"));
+  const username = readlineSync.question(coloredText("Enter your database username:\n"));
+  const password = readlineSync.question(coloredText("Enter your database password:\n"), {
+    hideEchoBack: true
+  });
+  const databaseName = readlineSync.question(coloredText("Enter the database name:\n"));
+  const warehouse = readlineSync.question(coloredText("Enter your warehouse name:\n"));
+  return {
+    accountId,
+    role,
+    username,
+    password,
+    databaseName,
+    warehouse
+  };
 }
 
 function compileProject(

@@ -12,8 +12,10 @@ ts_library(
         "//protos",
         "@npm//@types/long",
         "@npm//@types/node",
+        "@npm//@types/readline-sync",
         "@npm//@types/yargs",
         "@npm//chokidar",
+        "@npm//readline-sync",
         "@npm//yargs",
     ],
 )

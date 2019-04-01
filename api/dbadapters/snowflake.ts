@@ -38,7 +38,7 @@ export class SnowflakeDbAdapter implements DbAdapter {
     const snowflakeCredentials = credentials as dataform.ISnowflake;
     this.connection = Snowflake.createConnection({
       account: snowflakeCredentials.accountId,
-      username: snowflakeCredentials.userName,
+      username: snowflakeCredentials.username,
       password: snowflakeCredentials.password,
       database: snowflakeCredentials.databaseName,
       warehouse: snowflakeCredentials.warehouse,
