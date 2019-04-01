@@ -2,6 +2,10 @@ import { requiredWarehouseProps, WarehouseTypes } from "@dataform/core/adapters"
 import { dataform } from "@dataform/protos";
 import * as fs from "fs";
 
+export function prettyJsonStringify(obj) {
+  return JSON.stringify(obj, null, 4) + "\n";
+}
+
 export type Credentials = dataform.IBigQuery | dataform.IJDBC | dataform.ISnowflake;
 
 export function readCredentials(warehouse: string, credentialsPath: string): Credentials {
