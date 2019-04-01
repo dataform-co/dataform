@@ -242,8 +242,7 @@ const builtYargs = createYargsCli({
     },
     {
       format: "build [project-dir]",
-      description:
-        "Build the dataform project, using the current state of the configured warehouse to compute final SQL.",
+      description: "Build the dataform project using the current warehouse configuration to compute final SQL.",
       positionalOptions: [projectDirMustExistOption],
       options: [
         fullRefreshOption,
