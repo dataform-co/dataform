@@ -5,16 +5,16 @@ package dataform;
 message JDBC {
   string host = 2;
   int32 port = 3;
-  string user = 4;
+  string username = 4;
   string password = 5;
-  string database = 6;
+  string database_name = 6;
 
   reserved 1;
 }
 
 message Snowflake {
   string account_id = 2;
-  string user_name = 3;
+  string username = 3;
   string password = 4;
   string role = 5;
   string database_name = 6;

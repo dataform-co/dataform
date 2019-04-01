@@ -2,19 +2,24 @@
 import { build, compile, init, run, table, utils } from "@dataform/api";
 import { prettyJsonStringify } from "@dataform/api/utils";
 import { WarehouseTypes } from "@dataform/core/adapters";
+import { dataform } from "@dataform/protos";
 import * as chokidar from "chokidar";
 import * as fs from "fs";
 import * as path from "path";
+import * as readlineSync from "readline-sync";
 import * as yargs from "yargs";
-import { dataform } from "df/protos";
 
 const RECOMPILE_DELAY = 2000;
 
 // Uses ANSI escape color codes.
 // https://en.wikipedia.org/wiki/ANSI_escape_code#Colors
-const colorFmtString = (ansiColorCode: number) => `\x1b[${ansiColorCode}m%s\x1b[0m`;
-const commandOutputFmtString = colorFmtString(34);
-const errorOutputFmtString = colorFmtString(91);
+const coloredOutput = (output: string, ansiColorCode: number) =>
+  `\x1b[${ansiColorCode}m${output}\x1b[0m`;
+const commandOutput = (output: string) => coloredOutput(output, 34);
+const errorOutput = (output: string) => coloredOutput(output, 91);
+
+const writeStdOut = (output: string) => process.stdout.write(output + "\n");
+const writeStdErr = (output: string) => process.stderr.write(output + "\n");
 
 const projectDirOption = {
   name: "project-dir",
@@ -55,7 +60,7 @@ const includeDepsOption = {
   },
   // It would be nice to use yargs' "implies" to implement this, but it doesn't work for some reason.
   check: (argv: yargs.Arguments) => {
-    if (argv["include_deps"] && !argv["nodes"]) {
+    if (argv.include_deps && !argv.nodes) {
       throw new Error("The --include_deps flag should only be supplied along with --nodes.");
     }
   }
@@ -82,7 +87,7 @@ const credentialsOption = {
     default: ".df-credentials.json",
     coerce: path.resolve
   },
-  check: (argv: yargs.Arguments) => assertPathExists(argv["credentials"])
+  check: (argv: yargs.Arguments) => assertPathExists(argv.credentials)
 };
 
 const warehouseOption = {
@@ -93,7 +98,7 @@ const warehouseOption = {
   }
 };
 
-createYargsCli({
+const builtYargs = createYargsCli({
   commands: [
     {
       format: "init <warehouse> [project-dir]",
@@ -106,10 +111,10 @@ createYargsCli({
             describe: "The Google Cloud Project ID to use when accessing bigquery."
           },
           check: (argv: yargs.Arguments) => {
-            if (argv["gcloud-project-id"] && argv["warehouse"] !== "bigquery") {
+            if (argv["gcloud-project-id"] && argv.warehouse !== "bigquery") {
               throw new Error("The --gcloud-project-id flag is only used for BigQuery projects.");
             }
-            if (!argv["gcloud-project-id"] && argv["warehouse"] === "bigquery") {
+            if (!argv["gcloud-project-id"] && argv.warehouse === "bigquery") {
               throw new Error("The --gcloud-project-id flag is required for BigQuery projects.");
             }
           }
@@ -126,19 +131,48 @@ createYargsCli({
         const result = await init(
           argv["project-dir"],
           {
-            warehouse: argv["warehouse"],
+            warehouse: argv.warehouse,
             gcloudProjectId: argv["gcloud-project-id"]
           },
           argv["skip-install"]
         );
 
-        console.log(commandOutputFmtString, "Directories created:");
-        result.dirsCreated.forEach(dir => console.log(dir));
-        console.log(commandOutputFmtString, "Files written:");
-        result.filesWritten.forEach(file => console.log(file));
+        writeStdOut(commandOutput("Directories created:"));
+        result.dirsCreated.forEach(dir => writeStdOut(dir));
+        writeStdOut(commandOutput("Files written:"));
+        result.filesWritten.forEach(file => writeStdOut(file));
         if (result.installedNpmPackages) {
-          console.log(commandOutputFmtString, "NPM packages successfully installed.");
+          writeStdOut(commandOutput("NPM packages successfully installed."));
         }
+      }
+    },
+    {
+      format: "init-creds <warehouse> [project-dir]",
+      description:
+        "Creates a .df-credentials.json file for dataform to use when accessing your warehouse.",
+      positionalOptions: [warehouseOption, projectDirMustExistOption],
+      options: [],
+      processFn: argv => {
+        const credentials = () => {
+          switch (argv.warehouse) {
+            case "bigquery": {
+              return getBigQueryCredentials();
+            }
+            case "redshift": {
+              return getRedshiftCredentials();
+            }
+            case "snowflake": {
+              return getSnowflakeCredentials();
+            }
+            default: {
+              throw new Error(`Unrecognized warehouse type ${argv.warehouse}`);
+            }
+          }
+        };
+        fs.writeFileSync(
+          path.resolve(argv["project-dir"], ".df-credentials.json"),
+          prettyJsonStringify(credentials())
+        );
       }
     },
     {
@@ -165,7 +199,7 @@ createYargsCli({
 
         await compileProject(projectDir, defaultSchemaOverride, assertionSchemaOverride);
 
-        if (argv["watch"]) {
+        if (argv.watch) {
           let timeoutID = null;
           let isCompiling = false;
 
@@ -182,28 +216,24 @@ createYargsCli({
 
           // Add event listeners.
           watcher
-            .on("ready", () => console.log(commandOutputFmtString, "Watching for changes..."))
-            .on("error", error => console.error(`Error: ${error}`))
+            .on("ready", () => writeStdOut(commandOutput("Watching for changes...")))
+            .on("error", error => writeStdErr(errorOutput(`Error: ${error}`)))
             .on("all", () => {
               if (timeoutID || isCompiling) {
                 // don't recompile many times if we changed a lot of files
                 clearTimeout(timeoutID);
               } else {
-                console.log(commandOutputFmtString, "Recompiling project...");
+                writeStdOut(commandOutput("Recompiling project..."));
               }
 
-              timeoutID = setTimeout(() => {
+              timeoutID = setTimeout(async () => {
                 clearTimeout(timeoutID);
 
                 if (!isCompiling) {
-                  // recompile project
                   isCompiling = true;
-                  compileProject(projectDir, defaultSchemaOverride, assertionSchemaOverride).then(
-                    () => {
-                      console.log(commandOutputFmtString, "Watching for changes...");
-                      isCompiling = false;
-                    }
-                  );
+                  await compileProject(projectDir, defaultSchemaOverride, assertionSchemaOverride);
+                  writeStdOut(commandOutput("Watching for changes..."));
+                  isCompiling = false;
                 }
               }, RECOMPILE_DELAY);
             });
@@ -236,12 +266,12 @@ createYargsCli({
           compiledGraph,
           {
             fullRefresh: argv["full-refresh"],
-            nodes: argv["nodes"],
+            nodes: argv.nodes,
             includeDependencies: argv["include-deps"]
           },
-          utils.readCredentials(compiledGraph.projectConfig.warehouse, argv["credentials"])
+          utils.readCredentials(compiledGraph.projectConfig.warehouse, argv.credentials)
         );
-        console.log(prettyJsonStringify(executionGraph));
+        writeStdOut(prettyJsonStringify(executionGraph));
       }
     },
     {
@@ -268,13 +298,13 @@ createYargsCli({
         }
         const credentials = utils.readCredentials(
           compiledGraph.projectConfig.warehouse,
-          argv["credentials"]
+          argv.credentials
         );
         const executionGraph = await build(
           compiledGraph,
           {
             fullRefresh: argv["full-refresh"],
-            nodes: argv["nodes"],
+            nodes: argv.nodes,
             includeDependencies: argv["include-deps"]
           },
           credentials
@@ -286,16 +316,15 @@ createYargsCli({
         });
         const executedGraph = await runner.resultPromise();
         const prettyPrintedExecutedGraph = prettyJsonStringify(executedGraph);
-        console.log(prettyPrintedExecutedGraph);
+        writeStdOut(prettyPrintedExecutedGraph);
         if (!executedGraph.ok) {
           executedGraph.nodes
             .filter(node => node.status === dataform.NodeExecutionStatus.FAILED)
             .forEach(node => {
-              console.log(errorOutputFmtString, `Execution failed on node "${node.name}":`);
+              writeStdErr(errorOutput(`Execution failed on node "${node.name}":`));
               node.tasks.filter(task => !task.ok).forEach(task => {
-                console.log(
-                  errorOutputFmtString,
-                  `Statement "${task.task.statement}" failed with error: ${task.error}`
+                writeStdErr(
+                  errorOutput(`Statement "${task.task.statement}" failed with error: ${task.error}`)
                 );
               });
             });
@@ -309,10 +338,10 @@ createYargsCli({
       options: [credentialsOption],
       processFn: async argv => {
         const tables = await table.list(
-          utils.readCredentials(argv["warehouse"], argv["credentials"]),
-          argv["warehouse"]
+          utils.readCredentials(argv.warehouse, argv.credentials),
+          argv.warehouse
         );
-        tables.forEach(table => console.log(`${table.schema}.${table.name}`));
+        tables.forEach(table => writeStdOut(`${table.schema}.${table.name}`));
       }
     },
     {
@@ -322,37 +351,109 @@ createYargsCli({
       options: [credentialsOption],
       processFn: async argv => {
         const tableMetadata = await table.get(
-          utils.readCredentials(argv["warehouse"], argv["credentials"]),
-          argv["warehouse"],
+          utils.readCredentials(argv.warehouse, argv.credentials),
+          argv.warehouse,
           {
-            schema: argv["schema"],
-            name: argv["table"]
+            schema: argv.schema,
+            name: argv.table
           }
         );
-        console.log(prettyJsonStringify(tableMetadata));
+        writeStdOut(prettyJsonStringify(tableMetadata));
       }
     }
-  ],
-  moreChaining: yargs =>
-    yargs
-      .scriptName("dataform")
-      .strict()
-      .recommendCommands()
-      .help("help")
-      .fail((msg, err) => {
-        console.log(
-          errorOutputFmtString,
-          `Dataform encountered an error: ${err ? err.stack || err.message : msg}`
-        );
-        process.exit(1);
-      })
-      .demandCommand(1, "Please choose a command.").argv
-});
+  ]
+})
+  .scriptName("dataform")
+  .strict()
+  .recommendCommands()
+  .help("help")
+  .fail((msg, err) => {
+    writeStdErr(
+      errorOutput(`Dataform encountered an error: ${err ? err.stack || err.message : msg}`)
+    );
+    process.exit(1);
+  })
+  .demandCommand(1, "Please choose a command.").argv;
 
 function assertPathExists(checkPath: string) {
   if (!fs.existsSync(checkPath)) {
     throw new Error(`${checkPath} does not exist!`);
   }
+}
+
+function getBigQueryCredentials(): dataform.IBigQuery {
+  writeStdOut(
+    commandOutput(
+      "Please follow the instructions at https://docs.dataform.co/platform_guides/set_up_datawarehouse/ to create \n" +
+        "and download a private key from the Google Cloud Console in JSON format.\n" +
+        "(You can delete this file after credential initialization is complete.)\n"
+    )
+  );
+  const cloudCredentialsPath = path.resolve(
+    readlineSync.question(commandOutput("Enter the path to your Google Cloud private key file:\n"))
+  );
+  if (!fs.existsSync(cloudCredentialsPath)) {
+    throw new Error(`Google Cloud private key file "${cloudCredentialsPath}" does not exist!`);
+  }
+  const cloudCredentials = require(cloudCredentialsPath);
+  const locationIndex = readlineSync.keyInSelect(
+    ["US (default)", "EU"],
+    "Enter the location of your datasets:\n",
+    {
+      cancel: false
+    }
+  );
+  return {
+    projectId: cloudCredentials.project_id,
+    credentials: fs.readFileSync(cloudCredentialsPath, "utf8"),
+    location: locationIndex === 0 ? "US" : "EU"
+  };
+}
+
+function getRedshiftCredentials(): dataform.IJDBC {
+  const host = readlineSync.question(
+    commandOutput(
+      "Enter the hostname of your Redshift instance (in the form '[name].[id].[region].redshift.amazonaws.com'):\n"
+    )
+  );
+  const port = readlineSync.questionInt(
+    commandOutput("Enter the port that Dataform should connect to (usually 5439):\n")
+  );
+  const username = readlineSync.question(commandOutput("Enter your database username:\n"));
+  const password = readlineSync.question(commandOutput("Enter your database password:\n"), {
+    hideEchoBack: true
+  });
+  const databaseName = readlineSync.question(commandOutput("Enter the database name:\n"));
+  return {
+    host,
+    port,
+    username,
+    password,
+    databaseName
+  };
+}
+
+function getSnowflakeCredentials(): dataform.ISnowflake {
+  const accountId = readlineSync.question(
+    commandOutput(
+      "Enter your Snowflake account identifier, including region (for example 'myaccount.us-east-1'):\n"
+    )
+  );
+  const role = readlineSync.question(commandOutput("Enter your database role:\n"));
+  const username = readlineSync.question(commandOutput("Enter your database username:\n"));
+  const password = readlineSync.question(commandOutput("Enter your database password:\n"), {
+    hideEchoBack: true
+  });
+  const databaseName = readlineSync.question(commandOutput("Enter the database name:\n"));
+  const warehouse = readlineSync.question(commandOutput("Enter your warehouse name:\n"));
+  return {
+    accountId,
+    role,
+    username,
+    password,
+    databaseName,
+    warehouse
+  };
 }
 
 async function compileProject(
@@ -364,39 +465,37 @@ async function compileProject(
   if (graph.graphErrors) {
     logGraphErrors(graph.graphErrors);
   } else {
-    console.log(prettyJsonStringify(graph));
+    writeStdOut(prettyJsonStringify(graph));
   }
 }
 
 function logGraphErrors(graphErrors: dataform.IGraphErrors) {
-  console.log(errorOutputFmtString, "Compiled graph contains errors.");
+  writeStdErr(errorOutput("Compiled graph contains errors."));
   if (graphErrors.compilationErrors) {
-    console.log(errorOutputFmtString, "Compilation errors:");
+    writeStdErr(errorOutput("Compilation errors:"));
     graphErrors.compilationErrors.forEach(compileError => {
-      console.log(
-        errorOutputFmtString,
-        `${compileError.fileName}: ${compileError.stack || compileError.message}`
+      writeStdErr(
+        errorOutput(`${compileError.fileName}: ${compileError.stack || compileError.message}`)
       );
     });
   }
   if (graphErrors.validationErrors) {
-    console.log(errorOutputFmtString, "Validation errors:");
+    writeStdErr(errorOutput("Validation errors:"));
     graphErrors.validationErrors.forEach(validationError => {
-      console.log(errorOutputFmtString, `${validationError.nodeName}: ${validationError.message}`);
+      writeStdErr(errorOutput(`${validationError.nodeName}: ${validationError.message}`));
     });
   }
 }
 
 interface ICli {
   commands: ICommand[];
-  moreChaining?: (yargs: yargs.Argv) => any;
 }
 
 interface ICommand {
   format: string;
   description: string;
-  positionalOptions: INamedOption<yargs.PositionalOptions>[];
-  options: INamedOption<yargs.Options>[];
+  positionalOptions: Array<INamedOption<yargs.PositionalOptions>>;
+  options: Array<INamedOption<yargs.Options>>;
   processFn: (argv) => any;
 }
 
@@ -408,35 +507,27 @@ interface INamedOption<T> {
 
 function createYargsCli(cli: ICli) {
   let yargsChain = yargs;
-  for (let i = 0; i < cli.commands.length; i++) {
-    const command = cli.commands[i];
+  for (const command of cli.commands) {
     yargsChain = yargsChain.command(
       command.format,
       command.description,
-      yargs => createOptionsChain(yargs, command),
+      yargsChainer => createOptionsChain(yargsChainer, command),
       command.processFn
     );
-  }
-
-  if (cli.moreChaining) {
-    return cli.moreChaining(yargsChain);
   }
   return yargsChain;
 }
 
-function createOptionsChain(yargs: yargs.Argv, command: ICommand) {
-  const checks: ((args: yargs.Arguments) => void)[] = [];
+function createOptionsChain(yargsChain: yargs.Argv, command: ICommand) {
+  const checks: Array<(args: yargs.Arguments) => void> = [];
 
-  let yargsChain = yargs;
-  for (let i = 0; i < command.positionalOptions.length; i++) {
-    const positionalOption = command.positionalOptions[i];
+  for (const positionalOption of command.positionalOptions) {
     yargsChain = yargsChain.positional(positionalOption.name, positionalOption.option);
     if (positionalOption.check) {
       checks.push(positionalOption.check);
     }
   }
-  for (let i = 0; i < command.options.length; i++) {
-    const option = command.options[i];
+  for (const option of command.options) {
     yargsChain = yargsChain.option(option.name, option.option);
     if (option.check) {
       checks.push(option.check);
