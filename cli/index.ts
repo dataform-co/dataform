@@ -18,6 +18,9 @@ const coloredOutput = (output: string, ansiColorCode: number) =>
 const commandOutput = (output: string) => coloredOutput(output, 34);
 const errorOutput = (output: string) => coloredOutput(output, 91);
 
+const writeStdOut = (output: string) => process.stdout.write(output + "\n");
+const writeStdErr = (output: string) => process.stderr.write(output + "\n");
+
 const projectDirOption = {
   name: "project-dir",
   option: {
@@ -95,7 +98,7 @@ const warehouseOption = {
   }
 };
 
-createYargsCli({
+const builtYargs = createYargsCli({
   commands: [
     {
       format: "init <warehouse> [project-dir]",
@@ -134,12 +137,12 @@ createYargsCli({
           argv["skip-install"]
         );
 
-        console.log(commandOutput("Directories created:"));
-        result.dirsCreated.forEach(dir => console.log(dir));
-        console.log(commandOutput("Files written:"));
-        result.filesWritten.forEach(file => console.log(file));
+        writeStdOut(commandOutput("Directories created:"));
+        result.dirsCreated.forEach(dir => writeStdOut(dir));
+        writeStdOut(commandOutput("Files written:"));
+        result.filesWritten.forEach(file => writeStdOut(file));
         if (result.installedNpmPackages) {
-          console.log(commandOutput("NPM packages successfully installed."));
+          writeStdOut(commandOutput("NPM packages successfully installed."));
         }
       }
     },
@@ -213,28 +216,24 @@ createYargsCli({
 
           // Add event listeners.
           watcher
-            .on("ready", () => console.log(commandOutput("Watching for changes...")))
-            .on("error", error => console.error(errorOutput(`Error: ${error}`)))
+            .on("ready", () => writeStdOut(commandOutput("Watching for changes...")))
+            .on("error", error => writeStdErr(errorOutput(`Error: ${error}`)))
             .on("all", () => {
               if (timeoutID || isCompiling) {
                 // don't recompile many times if we changed a lot of files
                 clearTimeout(timeoutID);
               } else {
-                console.log(commandOutput("Recompiling project..."));
+                writeStdOut(commandOutput("Recompiling project..."));
               }
 
-              timeoutID = setTimeout(() => {
+              timeoutID = setTimeout(async () => {
                 clearTimeout(timeoutID);
 
                 if (!isCompiling) {
-                  // recompile project
                   isCompiling = true;
-                  compileProject(projectDir, defaultSchemaOverride, assertionSchemaOverride).then(
-                    () => {
-                      console.log(commandOutput("Watching for changes..."));
-                      isCompiling = false;
-                    }
-                  );
+                  await compileProject(projectDir, defaultSchemaOverride, assertionSchemaOverride);
+                  writeStdOut(commandOutput("Watching for changes..."));
+                  isCompiling = false;
                 }
               }, RECOMPILE_DELAY);
             });
@@ -273,7 +272,7 @@ createYargsCli({
           },
           utils.readCredentials(compiledGraph.projectConfig.warehouse, argv.credentials)
         );
-        console.log(prettyJsonStringify(executionGraph));
+        writeStdOut(prettyJsonStringify(executionGraph));
       }
     },
     {
@@ -318,14 +317,14 @@ createYargsCli({
         });
         const executedGraph = await runner.resultPromise();
         const prettyPrintedExecutedGraph = prettyJsonStringify(executedGraph);
-        console.log(prettyPrintedExecutedGraph);
+        writeStdOut(prettyPrintedExecutedGraph);
         if (!executedGraph.ok) {
           executedGraph.nodes
             .filter(node => node.status === dataform.NodeExecutionStatus.FAILED)
             .forEach(node => {
-              console.log(errorOutput(`Execution failed on node "${node.name}":`));
+              writeStdErr(errorOutput(`Execution failed on node "${node.name}":`));
               node.tasks.filter(task => !task.ok).forEach(task => {
-                console.log(
+                writeStdErr(
                   errorOutput(`Statement "${task.task.statement}" failed with error: ${task.error}`)
                 );
               });
@@ -343,7 +342,7 @@ createYargsCli({
           utils.readCredentials(argv.warehouse, argv.credentials),
           argv.warehouse
         );
-        tables.forEach(table => console.log(`${table.schema}.${table.name}`));
+        tables.forEach(table => writeStdOut(`${table.schema}.${table.name}`));
       }
     },
     {
@@ -360,24 +359,22 @@ createYargsCli({
             name: argv.table
           }
         );
-        console.log(prettyJsonStringify(tableMetadata));
+        writeStdOut(prettyJsonStringify(tableMetadata));
       }
     }
-  ],
-  moreChaining: yargs =>
-    yargs
-      .scriptName("dataform")
-      .strict()
-      .recommendCommands()
-      .help("help")
-      .fail((msg, err) => {
-        console.log(
-          errorOutput(`Dataform encountered an error: ${err ? err.stack || err.message : msg}`)
-        );
-        process.exit(1);
-      })
-      .demandCommand(1, "Please choose a command.").argv
-});
+  ]
+})
+  .scriptName("dataform")
+  .strict()
+  .recommendCommands()
+  .help("help")
+  .fail((msg, err) => {
+    writeStdErr(
+      errorOutput(`Dataform encountered an error: ${err ? err.stack || err.message : msg}`)
+    );
+    process.exit(1);
+  })
+  .demandCommand(1, "Please choose a command.").argv;
 
 function assertPathExists(checkPath: string) {
   if (!fs.existsSync(checkPath)) {
@@ -386,7 +383,7 @@ function assertPathExists(checkPath: string) {
 }
 
 function getBigQueryCredentials(): dataform.IBigQuery {
-  console.log(
+  writeStdOut(
     commandOutput(
       "Please follow the instructions at https://docs.dataform.co/platform_guides/set_up_datawarehouse/ to create \n" +
         "and download a private key from the Google Cloud Console in JSON format.\n" +
@@ -469,31 +466,30 @@ async function compileProject(
   if (graph.graphErrors) {
     logGraphErrors(graph.graphErrors);
   } else {
-    console.log(prettyJsonStringify(graph));
+    writeStdOut(prettyJsonStringify(graph));
   }
 }
 
 function logGraphErrors(graphErrors: dataform.IGraphErrors) {
-  console.log(errorOutput("Compiled graph contains errors."));
+  writeStdErr(errorOutput("Compiled graph contains errors."));
   if (graphErrors.compilationErrors) {
-    console.log(errorOutput("Compilation errors:"));
+    writeStdErr(errorOutput("Compilation errors:"));
     graphErrors.compilationErrors.forEach(compileError => {
-      console.log(
+      writeStdErr(
         errorOutput(`${compileError.fileName}: ${compileError.stack || compileError.message}`)
       );
     });
   }
   if (graphErrors.validationErrors) {
-    console.log(errorOutput("Validation errors:"));
+    writeStdErr(errorOutput("Validation errors:"));
     graphErrors.validationErrors.forEach(validationError => {
-      console.log(errorOutput(`${validationError.nodeName}: ${validationError.message}`));
+      writeStdErr(errorOutput(`${validationError.nodeName}: ${validationError.message}`));
     });
   }
 }
 
 interface ICli {
   commands: ICommand[];
-  moreChaining?: (yargs: yargs.Argv) => any;
 }
 
 interface ICommand {
@@ -512,35 +508,27 @@ interface INamedOption<T> {
 
 function createYargsCli(cli: ICli) {
   let yargsChain = yargs;
-  for (let i = 0; i < cli.commands.length; i++) {
-    const command = cli.commands[i];
+  for (const command of cli.commands) {
     yargsChain = yargsChain.command(
       command.format,
       command.description,
-      yargs => createOptionsChain(yargs, command),
+      yargsChainer => createOptionsChain(yargsChainer, command),
       command.processFn
     );
-  }
-
-  if (cli.moreChaining) {
-    return cli.moreChaining(yargsChain);
   }
   return yargsChain;
 }
 
-function createOptionsChain(yargs: yargs.Argv, command: ICommand) {
+function createOptionsChain(yargsChain: yargs.Argv, command: ICommand) {
   const checks: Array<(args: yargs.Arguments) => void> = [];
 
-  let yargsChain = yargs;
-  for (let i = 0; i < command.positionalOptions.length; i++) {
-    const positionalOption = command.positionalOptions[i];
+  for (const positionalOption of command.positionalOptions) {
     yargsChain = yargsChain.positional(positionalOption.name, positionalOption.option);
     if (positionalOption.check) {
       checks.push(positionalOption.check);
     }
   }
-  for (let i = 0; i < command.options.length; i++) {
-    const option = command.options[i];
+  for (const option of command.options) {
     yargsChain = yargsChain.option(option.name, option.option);
     if (option.check) {
       checks.push(option.check);
