@@ -64,7 +64,7 @@
   vertical-align: top;
 }
 
-.sitemapContent{
+.sitemapContent {
   display: flex;
 }
 
@@ -94,26 +94,27 @@
 }
 
 @media (max-width: 1100px) {
-
-  .ctaHeader, .ctaDescription, .ctaActions, .sitemapContent {
+  .ctaHeader,
+  .ctaDescription,
+  .ctaActions,
+  .sitemapContent {
     width: 90%;
     margin: 0 5%;
   }
-  .sitemapContent{
+  .sitemapContent {
     flex-direction: column;
   }
-  .footer{
+  .footer {
     height: unset;
     padding-top: 40px;
   }
-
 }
 
-
 @media (max-width: 1400px) {
-
-  .ctaHeader, .ctaDescription, .ctaActions, .sitemapContent {
+  .ctaHeader,
+  .ctaDescription,
+  .ctaActions,
+  .sitemapContent {
     margin: 0 5%;
   }
-
 }

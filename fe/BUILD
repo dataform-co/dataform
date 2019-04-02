@@ -9,20 +9,20 @@ filegroup(
 
 css_typings(
     name = "css",
-    srcs = glob(["**/*.css"]),
-    path = "fe",
+    srcs = glob(["**/*.css"])
 )
 
 load("@npm_bazel_typescript//:index.bzl", "ts_library")
 
 ts_library(
     name = "fe",
-    srcs = glob(["**/*.tsx"]) + [":css"],
+    srcs = glob(["**/*.tsx"]),
     module_name = "@dataform/fe",
     deps = [
         "@npm//@blueprintjs/core",
         "@npm//@types/node",
         "@npm//@types/react",
         "@npm//react",
+        ":css",
     ],
 )
