@@ -1,14 +1,44 @@
-def css_typings(name, srcs, path):
-    # Only create outputs for css files.
-    outs = [f.replace(".css", ".css.d.ts") for f in srcs if f[-4:] == ".css"]
-    if (len(outs) == 0):
-        fail("No .css files found, check your srcs")
+def _impl(ctx):
+    outs = []
+    for f in ctx.files.srcs:
+        # Only create outputs for css files.
+        if f.path[-4:] != ".css":
+            fail("Only .css file inputs are allowed.")
 
-    # Some little hacks in here to work with nested workspaces and the tcm CLI.
-    native.genrule(
-        name = name,
-        srcs = srcs + [":BUILD"],
-        outs = outs,
-        cmd = """$(location //:tcm) --silent -o $(GENDIR) -p "$$(dirname $(location :BUILD))/**/*.css" """,
-        tools = ["//:tcm"],
+        out = ctx.actions.declare_file(f.basename.replace(".css", ".css.d.ts"), sibling = f)
+        outs.append(out)
+        ctx.actions.run(
+            inputs = [f] + [ctx.executable._tool],
+            outputs = [out],
+            executable = ctx.executable._tool,
+            arguments = ["-o", out.root.path, "-p", f.path, "--silent"],
+            progress_message = "Generating CSS type definitions for %s" % f.path,
+        )
+
+    # Return a structure that is compatible with the deps[] of a ts_library.
+    return struct(
+        files = depset(outs),
+        typescript = struct(
+            declarations = depset(outs),
+            transitive_declarations = depset(outs),
+            type_blacklisted_declarations = depset(),
+            es5_sources = depset(),
+            es6_sources = depset(),
+            transitive_es5_sources = depset(),
+            transitive_es6_sources = depset(),
+        ),
     )
+
+css_typings = rule(
+    implementation = _impl,
+    attrs = {
+        "srcs": attr.label_list(doc = "css files", allow_files = True),
+        "packages": attr.string_list(),
+        "_tool": attr.label(
+            executable = True,
+            cfg = "host",
+            allow_files = True,
+            default = Label("//:tcm"),
+        ),
+    },
+)
