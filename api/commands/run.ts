@@ -1,9 +1,9 @@
+import * as dbadapters from "@dataform/api/dbadapters";
+import * as utils from "@dataform/api/utils";
 import { dataform } from "@dataform/protos";
 import * as EventEmitter from "events";
 import * as Long from "long";
 import * as prettyMs from "pretty-ms";
-import * as dbadapters from "@dataform/api/dbadapters";
-import * as utils from "@dataform/api/utils";
 
 const CANCEL_EVENT = "jobCancel";
 
@@ -63,16 +63,15 @@ export class Runner {
       this.graph.projectConfig.assertionSchema
     );
 
-    this.executionTask = new Promise((resolve, reject) => {
+    this.executionTask = new Promise(async (resolve, reject) => {
       try {
+        await prepareDefaultSchema;
+        await prepareAssertionSchema;
         this.loop(() => resolve(this.result), reject);
       } catch (e) {
         reject(e);
       }
     });
-
-    await prepareDefaultSchema;
-    await prepareAssertionSchema;
 
     return this.executionTask;
   }
