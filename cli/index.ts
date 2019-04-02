@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { build, compile, init, run, table, utils } from "@dataform/api";
-import { prettyJsonStringify } from "@dataform/api/utils";
+import { CREDENTIALS_FILENAME, prettyJsonStringify } from "@dataform/api/utils";
 import { WarehouseType } from "@dataform/core/adapters";
 import { dataform } from "@dataform/protos";
 import * as chokidar from "chokidar";
@@ -84,7 +84,7 @@ const credentialsOption = {
   name: "credentials",
   option: {
     describe: "The location of the credentials JSON file to use.",
-    default: ".df-credentials.json",
+    default: CREDENTIALS_FILENAME,
     coerce: path.resolve
   },
   check: (argv: yargs.Arguments) => assertPathExists(argv.credentials)
@@ -148,8 +148,7 @@ const builtYargs = createYargsCli({
     },
     {
       format: "init-creds <warehouse> [project-dir]",
-      description:
-        "Creates a .df-credentials.json file for dataform to use when accessing your warehouse.",
+      description: `Creates a ${CREDENTIALS_FILENAME} file for dataform to use when accessing your warehouse.`,
       positionalOptions: [warehouseOption, projectDirMustExistOption],
       options: [],
       processFn: argv => {
@@ -173,7 +172,7 @@ const builtYargs = createYargsCli({
           }
         };
         fs.writeFileSync(
-          path.resolve(argv["project-dir"], ".df-credentials.json"),
+          path.resolve(argv["project-dir"], CREDENTIALS_FILENAME),
           prettyJsonStringify(credentials())
         );
       }

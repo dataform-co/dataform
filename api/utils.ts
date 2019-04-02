@@ -6,6 +6,8 @@ export function prettyJsonStringify(obj) {
   return JSON.stringify(obj, null, 4) + "\n";
 }
 
+export const CREDENTIALS_FILENAME = ".df-credentials.json";
+
 export type Credentials = dataform.IBigQuery | dataform.IJDBC | dataform.ISnowflake;
 
 export function readCredentials(warehouse: string, credentialsPath: string): Credentials {
