@@ -1,15 +1,27 @@
-import * as protos from "@dataform/protos";
+import { install } from "@dataform/api/commands/install";
+import { CREDENTIALS_FILENAME, prettyJsonStringify } from "@dataform/api/utils";
+import { dataform } from "@dataform/protos";
 import * as fs from "fs";
 import * as path from "path";
-import { install } from "./install";
 
 const { version } = require("../package.json");
 
-export function init(
+const gitIgnoreContents = `
+${CREDENTIALS_FILENAME}
+node_modules/
+`;
+
+export interface InitResult {
+  filesWritten: string[];
+  dirsCreated: string[];
+  installedNpmPackages: boolean;
+}
+
+export async function init(
   projectDir: string,
-  projectConfig: protos.IProjectConfig,
+  projectConfig: dataform.IProjectConfig,
   skipInstall?: boolean
-): Promise<any> {
+): Promise<InitResult> {
   const dataformJsonPath = path.join(projectDir, "dataform.json");
   const packageJsonPath = path.join(projectDir, "package.json");
   const gitignorePath = path.join(projectDir, ".gitignore");
@@ -19,45 +31,54 @@ export function init(
     );
   }
 
+  const filesWritten = [];
+  const dirsCreated = [];
+
   if (!fs.existsSync(projectDir)) {
     fs.mkdirSync(projectDir);
+    dirsCreated.push(projectDir);
   }
+
   fs.writeFileSync(
     dataformJsonPath,
-    JSON.stringify(
-      Object.assign(
-        {},
-        protos.ProjectConfig.create({
-          defaultSchema: "dataform",
-          assertionSchema: "dataform_assertions"
-        }),
-        projectConfig
-      ),
-      null,
-      4
-    ) + "\n"
+    prettyJsonStringify(
+      dataform.ProjectConfig.create({
+        defaultSchema: "dataform",
+        assertionSchema: "dataform_assertions",
+        ...projectConfig
+      })
+    )
   );
+  filesWritten.push(dataformJsonPath);
+
   fs.writeFileSync(
     packageJsonPath,
-    JSON.stringify(
-      {
-        dependencies: {
-          "@dataform/core": version
-        }
-      },
-      null,
-      4
-    ) + "\n"
+    prettyJsonStringify({
+      dependencies: {
+        "@dataform/core": version
+      }
+    })
   );
-  fs.writeFileSync(
-    gitignorePath,
-    `node_modules/
-  `
-  );
+  filesWritten.push(packageJsonPath);
+
+  fs.writeFileSync(gitignorePath, gitIgnoreContents);
+  filesWritten.push(gitignorePath);
+
   // Make the default models, includes folders.
-  fs.mkdirSync(path.join(projectDir, "definitions"));
-  fs.mkdirSync(path.join(projectDir, "includes"));
+  const definitionsDir = path.join(projectDir, "definitions");
+  fs.mkdirSync(definitionsDir);
+  dirsCreated.push(definitionsDir);
+
+  const includesDir = path.join(projectDir, "includes");
+  fs.mkdirSync(includesDir);
+  dirsCreated.push(includesDir);
 
   // Install packages.
-  return install(projectDir, skipInstall);
+  await install(projectDir, skipInstall);
+
+  return {
+    filesWritten,
+    dirsCreated,
+    installedNpmPackages: !skipInstall
+  };
 }

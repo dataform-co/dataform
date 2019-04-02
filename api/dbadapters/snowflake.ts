@@ -1,5 +1,6 @@
-import * as protos from "@dataform/protos";
-import { DbAdapter } from "./index";
+import { DbAdapter } from "@dataform/api/dbadapters/index";
+import * as apiUtils from "@dataform/api/utils";
+import { dataform } from "@dataform/protos";
 
 interface ISnowflakeStatement {
   cancel: () => void;
@@ -33,14 +34,15 @@ const Snowflake: ISnowflake = require("snowflake-sdk");
 export class SnowflakeDbAdapter implements DbAdapter {
   private connection: ISnowflakeConnection;
 
-  constructor(profile: protos.IProfile) {
+  constructor(credentials: apiUtils.Credentials) {
+    const snowflakeCredentials = credentials as dataform.ISnowflake;
     this.connection = Snowflake.createConnection({
-      account: profile.snowflake.accountId,
-      username: profile.snowflake.userName,
-      password: profile.snowflake.password,
-      database: profile.snowflake.databaseName,
-      warehouse: profile.snowflake.warehouse,
-      role: profile.snowflake.role
+      account: snowflakeCredentials.accountId,
+      username: snowflakeCredentials.username,
+      password: snowflakeCredentials.password,
+      database: snowflakeCredentials.databaseName,
+      warehouse: snowflakeCredentials.warehouse,
+      role: snowflakeCredentials.role
     });
     this.connection.connect((err, conn) => {
       if (err) {
@@ -68,7 +70,7 @@ export class SnowflakeDbAdapter implements DbAdapter {
     throw Error("Unimplemented");
   }
 
-  public tables(): Promise<protos.ITarget[]> {
+  public tables(): Promise<dataform.ITarget[]> {
     return Promise.resolve().then(() =>
       this.execute(
         `select table_name, table_schema
@@ -85,7 +87,7 @@ export class SnowflakeDbAdapter implements DbAdapter {
     );
   }
 
-  public table(target: protos.ITarget): Promise<protos.ITableMetadata> {
+  public table(target: dataform.ITarget): Promise<dataform.ITableMetadata> {
     return Promise.all([
       this.execute(
         `select column_name, data_type, is_nullable
