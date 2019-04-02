@@ -243,45 +243,18 @@ const builtYargs = createYargsCli({
       }
     },
     {
-      format: "build [project-dir]",
-      description:
-        "Build the dataform project using the current warehouse configuration to compute final SQL.",
-      positionalOptions: [projectDirMustExistOption],
-      options: [
-        fullRefreshOption,
-        nodesOption,
-        includeDepsOption,
-        defaultSchemaOption,
-        assertionSchemaOption,
-        credentialsOption
-      ],
-      processFn: async argv => {
-        const compiledGraph = await compile({
-          projectDir: argv["project-dir"],
-          defaultSchemaOverride: argv["default-schema"],
-          assertionSchemaOverride: argv["assertion-schema"]
-        });
-        if (compiledGraph.graphErrors) {
-          logGraphErrors(compiledGraph.graphErrors);
-          return;
-        }
-        const executionGraph = await build(
-          compiledGraph,
-          {
-            fullRefresh: argv["full-refresh"],
-            nodes: argv.nodes,
-            includeDependencies: argv["include-deps"]
-          },
-          utils.readCredentials(compiledGraph.projectConfig.warehouse, argv.credentials)
-        );
-        writeStdOut(prettyJsonStringify(executionGraph));
-      }
-    },
-    {
       format: "run [project-dir]",
       description: "Run the dataform project's scripts on the configured data warehouse.",
       positionalOptions: [projectDirMustExistOption],
       options: [
+        {
+          name: "dry-run",
+          option: {
+            describe:
+              "If set, built SQL is not run against the data warehouse and instead is printed to the console.",
+            type: "boolean"
+          }
+        },
         fullRefreshOption,
         nodesOption,
         includeDepsOption,
@@ -312,6 +285,10 @@ const builtYargs = createYargsCli({
           },
           credentials
         );
+        if (argv["dry-run"]) {
+          writeStdOut(prettyJsonStringify(executionGraph));
+          return;
+        }
 
         const runner = run(executionGraph, credentials);
         process.on("SIGINT", () => {
