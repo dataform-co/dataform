@@ -1,10 +1,15 @@
+import { install } from "@dataform/api/commands/install";
+import { CREDENTIALS_FILENAME, prettyJsonStringify } from "@dataform/api/utils";
 import { dataform } from "@dataform/protos";
 import * as fs from "fs";
 import * as path from "path";
-import { install } from "@dataform/api/commands/install";
-import { prettyJsonStringify } from "@dataform/api/utils";
 
 const { version } = require("../package.json");
+
+const gitIgnoreContents = `
+${CREDENTIALS_FILENAME}
+node_modules/
+`;
 
 export interface InitResult {
   filesWritten: string[];
@@ -56,7 +61,7 @@ export async function init(
   );
   filesWritten.push(packageJsonPath);
 
-  fs.writeFileSync(gitignorePath, "node_modules/\n");
+  fs.writeFileSync(gitignorePath, gitIgnoreContents);
   filesWritten.push(gitignorePath);
 
   // Make the default models, includes folders.
