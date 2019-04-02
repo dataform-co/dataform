@@ -1,4 +1,4 @@
-import { requiredWarehouseProps, WarehouseTypes } from "@dataform/core/adapters";
+import { requiredWarehouseProps, WarehouseType } from "@dataform/core/adapters";
 import { dataform } from "@dataform/protos";
 import * as fs from "fs";
 
@@ -17,7 +17,7 @@ export function readCredentials(warehouse: string, credentialsPath: string): Cre
 
 export function coerceCredentials(warehouse: string, credentials: any): Credentials {
   switch (warehouse) {
-    case WarehouseTypes.BIGQUERY: {
+    case WarehouseType.BIGQUERY: {
       return validateAnyAsCredentials(
         credentials,
         dataform.BigQuery.verify,
@@ -25,7 +25,8 @@ export function coerceCredentials(warehouse: string, credentials: any): Credenti
         requiredWarehouseProps[warehouse]
       );
     }
-    case WarehouseTypes.REDSHIFT: {
+    case WarehouseType.POSTGRES:
+    case WarehouseType.REDSHIFT: {
       return validateAnyAsCredentials(
         credentials,
         dataform.JDBC.verify,
@@ -33,7 +34,7 @@ export function coerceCredentials(warehouse: string, credentials: any): Credenti
         requiredWarehouseProps[warehouse]
       );
     }
-    case WarehouseTypes.SNOWFLAKE: {
+    case WarehouseType.SNOWFLAKE: {
       return validateAnyAsCredentials(
         credentials,
         dataform.Snowflake.verify,
