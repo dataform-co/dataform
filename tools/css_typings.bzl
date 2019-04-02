@@ -1,20 +1,21 @@
-
 def _impl(ctx):
     outs = []
     for f in ctx.files.srcs:
         # Only create outputs for css files.
         if f.path[-4:] != ".css":
-            continue
-    
+            fail("Only .css file inputs are allowed.")
+
         out = ctx.actions.declare_file(f.basename.replace(".css", ".css.d.ts"), sibling = f)
         outs.append(out)
+        print(out)
         ctx.actions.run(
             inputs = [f] + [ctx.executable._tool],
             outputs = [out],
-            executable =  ctx.executable._tool,
-            arguments = ["-o", out.root.path, "-p", f.path],
-            progress_message = "Generating css type definitions",
+            executable = ctx.executable._tool,
+            arguments = ["-o", out.root.path, "-p", f.path, "--silent"],
+            progress_message = "Generating CSS type definitions for %s" % f.path,
         )
+
     # Return a structure that is compatible with the deps[] of a ts_library.
     return struct(
         files = depset(outs),
