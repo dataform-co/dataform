@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { build, compile, init, run, table, utils } from "@dataform/api";
 import { CREDENTIALS_FILENAME, prettyJsonStringify } from "@dataform/api/utils";
-import { WarehouseTypes } from "@dataform/core/adapters";
+import { WarehouseType } from "@dataform/core/adapters";
 import { dataform } from "@dataform/protos";
 import * as chokidar from "chokidar";
 import * as fs from "fs";
@@ -94,7 +94,7 @@ const warehouseOption = {
   name: "warehouse",
   option: {
     describe: "The project's data warehouse type.",
-    choices: Object.keys(WarehouseTypes).map(warehouseType => WarehouseTypes[warehouseType])
+    choices: Object.keys(WarehouseType).map(warehouseType => WarehouseType[warehouseType])
   }
 };
 
@@ -156,6 +156,9 @@ const builtYargs = createYargsCli({
           switch (argv.warehouse) {
             case "bigquery": {
               return getBigQueryCredentials();
+            }
+            case "postgres": {
+              return getPostgresCredentials();
             }
             case "redshift": {
               return getRedshiftCredentials();
@@ -410,14 +413,21 @@ function getBigQueryCredentials(): dataform.IBigQuery {
   };
 }
 
-function getRedshiftCredentials(): dataform.IJDBC {
-  const host = readlineSync.question(
-    commandOutput(
-      "Enter the hostname of your Redshift instance (in the form '[name].[id].[region].redshift.amazonaws.com'):\n"
-    )
+function getRedshiftCredentials() {
+  return getJdbcCredentials(
+    "Enter the hostname of your Redshift instance (in the form '[name].[id].[region].redshift.amazonaws.com'):\n",
+    5439
   );
+}
+
+function getPostgresCredentials() {
+  return getJdbcCredentials("Enter the hostname of your Postgres database:\n", 5432);
+}
+
+function getJdbcCredentials(hostQuestion: string, defaultPort: number): dataform.IJDBC {
+  const host = readlineSync.question(commandOutput(hostQuestion));
   const port = readlineSync.questionInt(
-    commandOutput("Enter the port that Dataform should connect to (usually 5439):\n")
+    commandOutput(`Enter the port that Dataform should connect to (usually ${defaultPort}):\n`)
   );
   const username = readlineSync.question(commandOutput("Enter your database username:\n"));
   const password = readlineSync.question(commandOutput("Enter your database password:\n"), {
