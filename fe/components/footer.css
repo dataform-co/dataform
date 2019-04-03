@@ -103,7 +103,8 @@
 @media (max-width: 1400px) {
   .ctaHeader,
   .ctaDescription,
-  .ctaActions {
+  .ctaActions,
+  .sitemapContent {
     margin: 0 5%;
   }
 }
