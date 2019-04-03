@@ -1,6 +1,6 @@
 import * as React from "react";
 
-import * as styles from "df/fe/components/header.css";
+import * as styles from "@dataform/fe/components/header.css";
 
 import { Button, Intent } from "@blueprintjs/core";
 
