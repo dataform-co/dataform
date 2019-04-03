@@ -44,7 +44,7 @@ export default class Documentation extends React.Component<Props, any> {
 
   public render() {
     return (
-      <BaseLayout title="Dataform | Docs">
+      <BaseLayout title="Dataform | Documentation">
         <div className={commonStyles.flexRow}>
           <div className={styles.sidebar}>
             <Navigation />

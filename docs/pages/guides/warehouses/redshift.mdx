@@ -1,33 +1,33 @@
 import Documentation from "df/docs/layouts/documentation";
 
-export default ({children}) => <Documentation title="Redshift options">{children}</Documentation>;
+export default ({ children }) => <Documentation title="Redshift options">{children}</Documentation>;
 
 Redshift specific options can be applied to tables using the `redshift()` configuration statement.
 
 ## Distributing data
 
-You can configure how Redshift [distributes data](https://docs.aws.amazon.com/redshift/latest/dg/t_Distributing_data.html#t_data_distribution_concepts) in your cluster by configuring the `distStyle` and `distKey` properties.
+You can configure how Redshift <a target="_blank" href="https://docs.aws.amazon.com/redshift/latest/dg/t_Distributing_data.html#t_data_distribution_concepts">distributes data</a> in your cluster by configuring the `distStyle` and `distKey` properties.
 
 ```js
 --js type("table");
 --js redshift({ distKey: "user_id", distStyle: "even" });
-select user_id from ...
+SELECT user_id FROM ...
 ```
 
-Setting these properties will generate the correct table creation statement to run in Redshift, for example:
+This query would compile to the following statement:
 
 ```js
-create table "dataform"."example"
-distkey(user_id)
-diststyle even
-as select user_id from ...
+CREATE TABLE "dataform"."example"
+DISTKEY(user_id)
+DISTSTYLE even
+AS SELECT user_id FROM ...
 ```
 
 ## Sorting data
 
-You can also configure how Redshift [sorts data](https://docs.aws.amazon.com/redshift/latest/dg/t_Sorting_data.html) in your tables with the `sortKeys` and `sortStyle` properties.
+You can also configure how Redshift <a target="_blank" href="https://docs.aws.amazon.com/redshift/latest/dg/t_Sorting_data.html">sorts data</a> in your tables with the `sortKeys` and `sortStyle` properties.
 
 ```js
 --js redshift({ sortKeys: ["ts"], sortStyle: "compound" });
-select 1 as ts
+SELECT 1 AS ts
 ```

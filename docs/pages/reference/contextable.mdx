@@ -12,8 +12,8 @@ When defining a table via the JS API, the `query()` method takes a `Contextable<
 
 ```js
 publish("example_simple")
-  .query("select 1 as test");
+  .query("SELECT 1 AS TEST");
 
 publish("example_context")
-  .query(context => `select * from ${context.ref("example_simple")}`);
+  .query(context => `SELECT * FROM ${context.ref("example_simple")}`);
 ```

@@ -2,19 +2,22 @@ import Documentation from "df/docs/layouts/documentation";
 import Struct from "../../components/struct";
 import { structs } from "../../_structs";
 
-export default ({children}) => <Documentation title="Project configuration">{children}</Documentation>;
+export default ({ children }) => (
+  <Documentation title="Project configuration">{children}</Documentation>
+);
 
 ## Introduction
 
-A dataform project is primarily configured through the `dataform.json` file that is created at the top level of your project directory.
+A Dataform project is primarily configured through the `dataform.json` file that is created at the top level of your project directory.
 
-As Dataform projects use NPM for package management, you can also control dependencies and the current dataform version through the `package.json` file.
+Since Dataform projects use NPM for package management, you can also control dependencies and the current Dataform version through the `package.json` file.
 
 ## `dataform.json`
 
-Stores information about the project that is used to compile SQL, such as the warehouse type, default schemas, and warehouse specific settings.
+This file contains information about the project. These settings, such as the warehouse type, default schema names, and so on, are used to compile SQL.
 
-The following is an example of the `dataform.json` file for a default BigQuery project:
+The following is an example of the `dataform.json` file for a BigQuery project:
+
 ```json
 {
   "warehouse": "bigquery",
@@ -24,11 +27,12 @@ The following is an example of the `dataform.json` file for a default BigQuery p
 }
 ```
 
-See the [`dataform.json` reference](/reference/dataform-json) for more information on all the settings that can be configured.
+See the [`dataform.json` reference](/reference/dataform-json) for more information on all configurable settings.
 
-## Changing default schemas
+### Changing default schema names
 
-Dataform aims to create all objects under a single schema (or dataset in BigQuery) in your warehouse. This is usually called `dataform` but can be changed by editing the `defaultSchema` property to something else. For example to change it to `mytables` update the configuration file as such:
+Dataform aims to create all objects under a single schema (or dataset in BigQuery) in your warehouse. This is usually called `dataform` but can be changed
+by changing the `defaultSchema` property to some other value. For example, to change it to `mytables`, update the configuration file as following:
 
 ```json
 {
@@ -38,26 +42,25 @@ Dataform aims to create all objects under a single schema (or dataset in BigQuer
 }
 ```
 
-[Assertions](/guides/assertions) are created in a different schema as denoted by the `assertionsSchema` property. This can also be changed similar to above.
-
+[Assertions](/guides/assertions) are created inside a different schema as specified by the `assertionsSchema` property. This is similarly configurable.
 
 ## `package.json`
 
-This is a regular Node/NPM package file which can be used it include JavaScript packages within your project.
+This is a standard NPM package file which may be used to include JavaScript packages within your project.
 
-Most importantly, your Dataform version is logged here, and can be updated by changing this file or running the `npm install` or `npm update` commands inside your project directory.
+Most importantly, your Dataform version is specified here, and can be updated by changing this file or running the `npm install` or `npm update` commands inside your project directory.
 
-This is managed for you when developing projects on https://dataform.co and so can be largely ignored.
+If you develop projects on https://dataform.co, this is managed for you and can be largely ignored.
 
-## Updating dataform to the latest version
+### Updating Dataform to the latest version
 
-All dataform projects depend on the package `@dataform/core`. To upgrade your dataform version, you can run the following command when developing locally:
+All Dataform projects depend on the NPM package `@dataform/core`. If you are developing your project locally and would like to upgrade your Dataform version, you can run the following command:
 
 ```bash
 npm update @dataform/core
 ```
 
-When running commands such as `dataform run`, you may need to also upgrade your globally installed dataform version. This can be done with the command:
+If you run `dataform` commands, you may also wish to upgrade your globally installed Dataform version:
 
 ```bash
 npm update -g @dataform/cli

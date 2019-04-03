@@ -1,91 +1,97 @@
 import Documentation from "df/docs/layouts/documentation";
 
-export default ({children}) => <Documentation title="Publishing tables">{children}</Documentation>;
+export default ({ children }) => (
+  <Documentation title="Publishing tables">{children}</Documentation>
+);
 
-## 
-<img src="/static/images/publishing_tables.png" style={{width: "100%", padding: "20px"}} />
+##
+
+<img src="/static/images/publishing_tables.png" style={{ width: "100%", padding: "20px" }} />
 
 ## Create a view
 
-Create a new file in your project under the `definitions/` folder, such as `definitions/example.sql`:
+Create a new `example.sql` file in your project under the `definitions/` folder:
 
 ```js
-select 1 as test
+SELECT 1 AS TEST
 ```
 
-This will create a `view` by default, that will be called `example` in the dataform schema defined in the [`dataform.json`](/guides/configuration#dataform.json) file.
+By default this will create a view called `schema.example` (where `schema` is the Dataform schema defined in your [`dataform.json`](/guides/configuration#dataform.json) file).
 
 <div className="pt-callout pt-icon-info-sign pt-intent-warning" markdown="1">
-Trailing semi-colons should be omitted at the end of the query.
+  Trailing semi-colons should be omitted from queries.
+</div>
+
+<div className="pt-callout pt-icon-info-sign pt-intent-warning" markdown="1">
+  File names must be unique within your <code>definitions/</code> folder, even across different
+  directories, because these determine the name of the table or view created within your warehouse.
 </div>
 
 ## Create a table
 
-By default, tables are actually created as `views` in your warehouse. To create a copy of the query result as an actual table from the query, you can use Dataform's JavaScript configuration syntax to set the `type` of the query to `table`.
+By default, tables are actually created as views in your warehouse. To create an actual table, i.e. a full independent copy of the query result, you can use Dataform's JavaScript configuration syntax to set the `type` of the query to `table`.
 
 ```js
 --js type("table");
-select 1 as test
+SELECT 1 AS TEST
 ```
 
-Configuration statements starting with `--js` will be stripped from the compiled query, leaving the actual final query to be executed as:
+Note that configuration statements starting with `--js` are stripped during query compilation, leaving the final executable query as:
 
 ```js
-select 1 as test
+SELECT 1 AS TEST
 ```
 
 ## Referencing other tables
 
-Dataform provides methods that enable you to easily reference another table in your project, without having to provide the full SQL table name.
-
+Dataform provides methods that enable you to easily reference another table in your project without having to provide the full SQL table name.
 
 `definitions/source.sql`:
+
 ```js
-select 1 as sourcedata
+SELECT 1 AS sourcedata
 ```
 
-`definitions/example.sql`:
+`definitions/ref_example.sql`:
+
 ```js
-select * from ${ref("source")}
+SELECT * FROM ${ref("source")}
 ```
 
-The value we provide to the `ref()` function is the name of the file that defines the table you would like to reference, *without* the extension. In this case, as the source table is defined in the file `source.sql`, we use the string value `"source"`.
+In order to reference the table created by a `source.sql` file, the value that should be passed to the `ref()` function is `"source"`, i.e. the name of the file defining the table (_without_ the extension).
 
 The query will be compiled into the following SQL before it is run:
 
 ```js
-select * from "dataform_schema"."source"
+SELECT * FROM "dataform_schema"."source"
 ```
 
-Any table that is referenced in a query will be automatically added to it's dependencies. When the queries are executed against the warehouse, this makes sure they are done so in the correct order.
-
-<div className="pt-callout pt-icon-info-sign pt-intent-warning" markdown="1">
-File names must be unique within your <code>definitions/</code> folder, even across directories, as these determine the name of the table or view created within your warehouse.
-</div>
+Any table that is referenced by a query will automatically be added to that query's dependencies. Dependency queries are always executed before dependent queries to ensure correctness.
 
 ## Adding custom dependencies
 
-You may want to make sure a table is created only after another table is created, but without explicitly referencing it in the query itself. For this, you can use another JavaScript configuration method called `dependencies(...)`:
+If you want to manually add a dependency to a query - one that is not already explicitly referenced in the query - you can use the `dependencies()` JavaScript configuration method:
 
 ```js
 --js dependencies("some_table");
-select * from ...
+SELECT * FROM ...
 ```
 
-Multiple dependencies can also be provided in a single call:
+Multiple dependencies may be provided in a single call:
 
 ```js
 --js dependencies(["some_table", "some_other_table"]);
-select * from ...
+SELECT * FROM ...
 ```
 
 ## Disable a table
 
-To stop a table being created, you can call the `disabled()` method. This will keep the table as part of your graph, but stop it from executing when you run your project. This is useful if the query breaks, and you don't want your entire pipeline to fail while it's fixed.
+To stop a query being run, you can use the JavaScript `disabled()` method. This will keep the table as part of your graph, but stop it from executing when you run your project.
+This can be useful for example if the relevant query breaks for some reason and you don't want your entire pipeline to fail while it's being fixed.
 
 ```js
 --js disabled();
-select * from ...
+SELECT * FROM ...
 ```
 
 ## Executing statements before or after creating tables
@@ -94,20 +100,22 @@ To execute one or more SQL statements before or after creating a table, you can 
 
 ### Granting table access with `postOps()`
 
-The following example SQL file defines a post operation to grant access to the table to specific groups, after the table is created. It makes use of the `self()` method, that returns a fully qualified table name of the current table.
+The following example defines a post-query operation to configure table access permissions. It makes use of the built in `self()` method which returns the fully-qualified name of the current table.
 
 ```js
---js postOps(`grant select on ${self()} to group "allusers@dataform.co"`);
-select * from ...
+--js postOps(`GRANT SELECT ON ${self()} TO GROUP "allusers@dataform.co"`);
+SELECT * FROM ...
 ```
 
 <div className="pt-callout pt-icon-info-sign pt-intent-warning" markdown="1">
-To use the <code>self()</code> method within the argument provided to <code>postOps</code>, you must use JavaScript's ES6 template string syntax, wrapping it in back-ticks <code>`</code>.
+  To use the <code>self()</code> method within the string argument provided to{" "}
+  <code>postOps()</code>, you must use JavaScript's ES6 template string syntax, wrapping the string
+  in back-ticks <code>`</code>.
 </div>
 
-<br/>
+<br />
 
-Multiple arguments can be provided to `postOps` and `preOps`, each a seperate query, which will be executed in the order given. You can also use the multi-line configuration statement (below) to make this cleaner:
+Multiple arguments can be provided to `postOps()` and `preOps()`, each a seperate query, which will be executed in the provided order. You can also use a multi-line configuration statement to make this cleaner:
 
 ```js
 /*js
@@ -117,8 +125,8 @@ Multiple arguments can be provided to `postOps` and `preOps`, each a seperate qu
 
 ```js
 postOps([
-  `grant select on ${self()} to group "allusers@dataform.co"`,
-  `grant select on ${self()} to group "otherusers@dataform.co"`,
+  `GRANT SELECT ON ${self()} TO GROUP "allusers@dataform.co"`,
+  `GRANT SELECT ON ${self()} TO GROUP "otherusers@dataform.co"`
 ]);
 ```
 
@@ -132,26 +140,26 @@ postOps([
 
 By default, all tables are created within the default schema chosen when initializing a project, usually `dataform`.
 
-This can be overriden by changing the file name to have a fully qualified table name. For example, to create a table called `example` in the schema `other_schema`, create a file with the name `definitions/other_schema.example.sql`:
+This can be overridden on a per-file basis by changing the file name to have a fully qualified table name.
+For example, to create a table called `example` in the schema `other_schema`, create a file with the name `definitions/other_schema.example.sql`:
 
 ```js
-select 1 as test
+SELECT 1 AS TEST
 ```
 
-This will override the output schema of the table to `other_schema`. To reference such tables, use the fully qualified name of the table, for example:
+This will override the output schema of the table to `other_schema`. To reference tables with overridden schemas, use the fully qualified name of the table, for example:
 
 ```js
-select * from ${ref("other_schema.table")}
+SELECT * FROM ${ref("other_schema.table")}
 ```
-
 
 ## Configuration statements
 
-There are a few equivelant ways of using JS configuration statements covered below.
+Each of the following examples of JavaScript configuration statements result in equivalent behavior.
 
 ### Single line statements
 
-Each line starting with `--js` will be interpreted as JavaScript.
+Every line starting with `--js` will be interpreted as JavaScript.
 
 ```js
 --js type("table");
@@ -160,7 +168,7 @@ Each line starting with `--js` will be interpreted as JavaScript.
 
 ### Multi-line statements
 
-For writing JavaScript over multiple lines, create a comment block that starts with `/*js` and ends with `*/`:
+To write JavaScript over multiple lines, create a comment block that starts with `/*js` and ends with `*/`:
 
 ```js
 /*js
@@ -183,7 +191,6 @@ disabled(true);
 
 Most settings for a table can be set in a single call to the `config(...)` method, and are passed in via a JSON object:
 
-
 ```js
 /*js
 ```
@@ -193,7 +200,7 @@ Most settings for a table can be set in a single call to the `config(...)` metho
 ```js
 config({
   type: "table",
-  disabled: true,
+  disabled: true
 });
 ```
 

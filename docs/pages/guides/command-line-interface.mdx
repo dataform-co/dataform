@@ -1,24 +1,27 @@
 import Documentation from "df/docs/layouts/documentation";
 
-export default ({children}) => <Documentation title="Command line interface">{children}</Documentation>;
+export default ({ children }) => (
+  <Documentation title="Command line interface">{children}</Documentation>
+);
 
 ## Installation
 
-Dataform can be installed via Node:
+Dataform can be installed using <a target="_blank" href="https://www.npmjs.com/get-npm">NPM</a>:
 
 ```bash
 npm i -g @dataform/cli
 ```
 
-## Create new project
+## Create a new project
 
 To create a new project in the folder `new_project`:
 
 ```bash
-dataform init new_project --warehouse bigquery
+WAREHOUSE=bigquery
+dataform init $WAREHOUSE new_project
 ```
 
-Currently supported warehouse types are `[bigquery, redshift, snowflake, postgres]`
+The currently supported warehouse types are: `[bigquery, postgres, redshift, snowflake]`
 
 ## Project structure
 
@@ -39,75 +42,89 @@ The `definitions/` directory contains files that define [tables](/tables), [asse
 To create a new table, create a new file such as `definitions/simplemodel.sql` with the following contents:
 
 ```sql
-select 1 as test
+SELECT 1 AS test
 ```
 
-## Compile project
+## Compile your code
 
-To check everything has worked, run the following command at the root of your project directory to get JSON dump of the compiled project:
+To check that your Dataform code compiles, run the `compile` command at the root of your project directory to get JSON dump of the compiled project:
 
 ```bash
 dataform compile
 ```
 
-You should see output along the lines of:
+You should see output similar to the following:
 
 ```json
 {
-  "tables": [
-    {
-      "name": "simplemodel",
-      "type": "view",
-      "target": {
-        "schema": "dataform",
-        "name": "simplemodel"
-      },
-      "query": "select 1 as test\n",
-      "parsedColumns": [
-        "test"
-      ],
-      "fileName": "definitions/simplemodel.sql"
-    }
-  ]
+    "tables": [
+        {
+            "name": "simplemodel",
+            "type": "view",
+            "target": {
+                "schema": "dataform",
+                "name": "simplemodel"
+            },
+            "query": "SELECT 1 AS test\n",
+            "disabled": false,
+            "fileName": "definitions/simplemodel.sql"
+        }
+    ],
+    ...
 }
 ```
 
-## Dry run
+## Create a credentials file
 
-We can take this a step further and see exactly what statements and graph will be run, by executing the following:
+Dataform requires a credentials file in order to connect to your warehouse. Run the `init-creds` command at the root of your project
+directory and Dataform will guide you through creation of a credentials file:
 
 ```bash
-dataform build
+WAREHOUSE=bigquery
+dataform init-creds $WAREHOUSE
+```
+
+This will result in a `.df-credentials.json` file being written to disk. Be careful not to check this file into any source control system you may be using.
+
+## Run your code
+
+In order to run your code, Dataform needs to access your data warehouse in order to determine its current state and tailor the resulting
+SQL accordingly. If you'd like to see the final SQL that Dataform will run on your warehouse without actually running it, you can perform a dry run:
+
+```bash
+dataform run --dry-run
 ```
 
 You should see something similar to the following:
 
 ```json
 {
-  "nodes": [
-    {
-      "name": "simplemodel",
-      "tasks": [
+      ...
+      "nodes": [
         {
-          "statement": "create or replace view `dataform.simplemodel`
-           as select * from (select 1 as test)"
+            "name": "simplemodel",
+            "tasks": [
+                {
+                    "type": "statement",
+                    "statement": "\n        create or replace view \"dataform\".\"simplemodel\"\n        as SELECT 1 AS test;"
+                }
+            ],
+            "type": "table",
+            "target": {
+                "schema": "dataform",
+                "name": "simplemodel"
+            },
+            "tableType": "view"
         }
-      ]
-    }
-  ]
+    ],
+    ...
 }
 ```
 
-## Create a profile
-
-A profile defines the connection parameters to your warehouse.
-
-TODO
-
-## Run project
-
-If you are happy with the statements that will be executed, you can execute them against your data warehouse, by providing the path to your `profile.json` file created in the previous step.
+Removing the `--dry-run` option will result in the SQL being run in your warehouse:
 
 ```bash
-dataform run --profile=<path-to-profile.json>
+dataform run
 ```
+
+The `run` command's output will now include the run's execution status, including any errors encountered during the run.

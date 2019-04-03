@@ -1,50 +1,64 @@
 import Documentation from "df/docs/layouts/documentation";
 
-export default ({children}) => <Documentation title="Use version control">{children}</Documentation>;
+export default ({ children }) => (
+  <Documentation title="Using version control">{children}</Documentation>
+);
 
 ## Introduction
 
-Dataform uses Git to record changes and manage file versions. Each Dataform project has a Git repository.
+Dataform uses the Git version control system to maintain a record of each change made to project files and to manage file versions. Each Dataform project has an associated Git repository.
 
-By default, Dataform will use its own source file management. However, projects can be configured to work with GitHub by Migrating project to GitHub in settings.
+By default, Dataform will manage your project's Git repository for you. However, projects can be configured to use GitHub instead by clicking the `Migrate project to GitHub` button in Settings.
 
 <div className="pt-callout pt-icon-info-sign pt-intent-primary" markdown="1">
-Version control is a core concept and will impact how your data pipelines run. We strongly recommend understanding the following concepts before developing your datasets in dataform.
+  Version control is a core concept and affects how your data pipelines run. We strongly recommend
+  understanding the following concepts before developing your tables in dataform.
 </div>
 
+## Workspaces
 
+One of the main benefits of Git is that a developer can work in an isolated "branch" of the file repository without affecting the base files. In Dataform, Git branches correspond to workspaces.
 
-## Working with branches
+From the `development` workspace - or any other non-`production` workspace - you can edit files (and run those edited scripts on your warehouse, if desired).
 
-One of the main benefits of Git is that a developer can work in a branch, an isolated version of a file repository. From the `development` branch or you own branch, you can make changes, execute queries and publish datasets.
+Once you are happy with your changes, you can commit them and push them to the `production` workspace. If at any point you make changes that you don't want to commit, you can revert your workspace to its last commit.
 
-Once you are happy with the changes, you can commit the changes and push them to the `Production` branch.
-
-The `production` branch is not directly editable and **all schedules run from the production branch**. That enables users to develop and test without affecting the project data pipelines nor affecting other users.
+Note that the `production` workspace is not directly editable and **all schedules run from the production branch**. This enables users to develop and test changes without affecting the project's data pipelines or affecting other users.
 
 ## How to use
 
-By default, you will land on the `development` branch and you (and others) can make edits here.
+By default, you will use the `development` workspace. Anyone on your team can make edits here.
 
-After making changes to files, you can commit/checkpoint the changes:
+After making changes to files, you can commit the changes:
 
-<img src="/static/images/platform_guides/version_control/commit.png" style={{width: "100%", padding: "20px"}} />
+<img
+  src="/static/images/platform_guides/version_control/commit.png"
+  style={{ width: "100%", padding: "20px" }}
+/>
 
-<img src="/static/images/platform_guides/version_control/commit2.png" style={{width: "100%", padding: "20px"}} />
+<img
+  src="/static/images/platform_guides/version_control/commit2.png"
+  style={{ width: "100%", padding: "20px" }}
+/>
 
-Then when you are happy with you changes and tested everything worked, push the changes back to production.
+Once you are happy with your changes, push the changes back to the `production` workspace.
 
-<img src="/static/images/platform_guides/version_control/push.png" style={{width: "100%", padding: "20px"}} />
-
+<img
+  src="/static/images/platform_guides/version_control/push.png"
+  style={{ width: "100%", padding: "20px" }}
+/>
 
 <div className="pt-callout pt-icon-info-sign pt-intent-warning" markdown="1">
-We recommend that if you have multiple team members working on a project at the same time, you try and work in separate branches, such as a branch called <i>your_name</i>
+  We recommend that each team member uses their own separate development workspace.
 </div>
 
-## Dealing with merges
+## Resolving merge conflicts
 
-If another user has pushed changes to production while you are making edits in another branch, you will need to pull those changes first
+If other changes have been pushed to the `production` workspace while you were making edits in another workspace, you will need to pull those changes into your workspace first:
 
-<img src="/static/images/platform_guides/version_control/pull.png" style={{width: "100%", padding: "20px"}} />
+<img
+  src="/static/images/platform_guides/version_control/pull.png"
+  style={{ width: "100%", padding: "20px" }}
+/>
 
-After pulling, there may be conflicting edits that you will have to resolve. These will be shown in the files list. Once you are happy, you can commit and push your changes back to production again.
+There may be conflicting edits that you will have to resolve manually. Files with conflicts are highlighted in the files list. Once you are comfortable with your edits, you can commit and push your changes back to `production` again.

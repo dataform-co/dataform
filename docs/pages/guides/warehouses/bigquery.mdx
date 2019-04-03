@@ -1,25 +1,27 @@
 import Documentation from "df/docs/layouts/documentation";
 
-export default ({children}) => <Documentation title="BigQuery options">{children}</Documentation>;
+export default ({ children }) => <Documentation title="BigQuery options">{children}</Documentation>;
 
 BigQuery specific options can be applied to tables using the `bigquery()` configuration statement.
 
 ## Setting table partitions
 
-BigQuery supports [table partitions](https://cloud.google.com/bigquery/docs/partitioned-tables), and these can be configured with the `partitionBy` option.
+BigQuery supports <a target="_blank" href="https://cloud.google.com/bigquery/docs/partitioned-tables">partitioned tables</a>.
+These can be useful when you have data spread across many different dates, but usually query the table on only a small range of dates.
+In these circumstances, partitioning will increase query performance and reduce cost.
+
+BigQuery partitions can be configured in Dataform using the `partitionBy()` option:
 
 ```js
 --js type("table");
---js bigquery({ partitionBy: "date(ts)" });
-select current_timestamp() as ts
+--js bigquery({ partitionBy: "DATE(ts)" });
+SELECT CURRENT_TIMESTAMP() AS ts
 ```
 
-This is useful when you have data spread across many different dates, and often query the produced table on only a small range of dates. This will increase query performance and reduce cost.
-
-The above query will end up executing a statement like so when the graph is run. This takes advantage of BigQuery's DDL to set the partitioning:
+This query would compile to the following statement, taking advantage of BigQuery's DDL to configure partitioning:
 
 ```js
-create or replace table dataform.example
-partition by date(ts)
-as (select current_timestamp() as ts)
+CREATE OR REPLACE TABLE dataform.example
+PARTITION BY DATE(ts)
+AS (SELECT CURRENT_TIMESTAMP() AS ts)
 ```
