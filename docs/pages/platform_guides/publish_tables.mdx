@@ -1,93 +1,121 @@
 import Documentation from "df/docs/layouts/documentation";
 
-export default ({children}) => <Documentation title="Publishing tables">{children}</Documentation>;
+export default ({ children }) => (
+  <Documentation title="Publishing tables">{children}</Documentation>
+);
 
-## 1. Create a new file
+## Create a new file
 
-Create a new file by clicking on the + button next to the definitions folder and create a new SQL file named `onboarding_dataset`. Ignore for now the other options in this modal (Assertions, Operations, Javascript), they are more advanced features that will be covered later.
+Create a new file by clicking on the + button next to the `definitions` folder and create a new SQL file named `onboarding_table`.
+For now, ignore the other options (Assertions, Operations, JavaScript); these are more advanced features which will be covered in later documentation.
 
-<img src="/static/images/platform_guides/publish_tables/new_file.png" style={{width: "100%", padding: "20px"}} />
+<img
+  src="/static/images/platform_guides/publish_tables/new_file.png"
+  style={{ width: "100%", padding: "20px" }}
+/>
 
+## Write a query
 
-## 2. Write query
-In the text editor, write a simple SQL statement like the following:
+In the text editor, write a simple SQL statement:
 
-```sql
-SELECT 1 as one,
-       2 as two,
-       3 as three
+```js
+SELECT 1 AS one,
+       2 AS two,
+       3 AS three
 ```
 
-You will see the right sidebar updating with the name of the table/view, `onboarding_dataset`, a tag for the type - a view by default - as well as a validation message and two action buttons.
+You will see the right sidebar update with `onboarding_table` which is the name of the table, a tag for the type - a view by default - as well as a validation message and two action buttons.
 
-The `execute query` button executes the query in your warehouse and returns the output at the bottom of the page. That is useful while you are developing to check if the query is returning the output you are expecting.
+The `Execute query` button executes the query in your warehouse and returns the output at the bottom of the page. This can be useful during query development to check that the query returns expected output.
 
-<img src="/static/images/platform_guides/publish_tables/compilation.png" style={{width: "100%", padding: "20px"}} />
+<img
+  src="/static/images/platform_guides/publish_tables/compilation.png"
+  style={{ width: "100%", padding: "20px" }}
+/>
 
+## Run the query
 
-## 3. Run node
+Clicking the `Run this node` button will open a dialog box with a few options for running your nodes. Click `Run now` to continue.
 
-Now click `Run this node` button. That will open a modal with a few options for running your nodes. Click `Run now` in the modal to continue.
-
-This will create a new view in your data warehouse, that will be called `dataform.onboarding_dataset`.
+Upon successful completion of the run, a new view named `dataform.onboarding_table` will be created in your warehouse.
 
 <div className="pt-callout pt-icon-info-sign pt-intent-primary" markdown="1">
-By default, dataform creates views and table under a schema named <code>dataform</code>, you can change this in your <code>dataform.json</code> in your <a href="../guides/configuration" >project configuration</a>.
+  By default, Dataform creates tables and views under a schema named <code>dataform</code>. You can
+  change this in the <code>dataform.json</code> in your{" "}
+  <a href="../guides/configuration">project configuration</a>.
 </div>
 
-<img src="/static/images/platform_guides/publish_tables/run_node.png" style={{width: "100%", padding: "20px"}} />
+<img
+  src="/static/images/platform_guides/publish_tables/run_node.png"
+  style={{ width: "100%", padding: "20px" }}
+/>
 
+## Create a table instead of a view
 
-## 4. Create a table instead of a view
-By default, dataform creates views in your data warehouse. To create a table instead of a view, simply add the following statement at the top of your script:
+By default, Dataform creates views in your data warehouse. To create a table instead, add the following statement at the top of your script:
+
 ```js
 --js type("table");
 ```
-You will see the tag on the right updating from view to table instantaneously.
+
+You will see the tag on the right sidebar update from `view` to `table`.
 
 <div className="pt-callout pt-icon-info-sign pt-intent-none" markdown="1">
-Many more options are available to publishing datasets, you can read more on <a href="../guides/tables" >publishing datasets</a> and <a href="../guides/incremental-tables" >incremental tables</a>.
+  Dataform provides many other options for table creation. Learn about{" "}
+  <a href="../guides/tables">publishing tables</a> and{" "}
+  <a href="../guides/incremental-tables">incremental tables</a>.
 </div>
 
-<img src="/static/images/platform_guides/publish_tables/table_vs_view.png" style={{width: "100%", padding: "20px"}} />
+<img
+  src="/static/images/platform_guides/publish_tables/table_vs_view.png"
+  style={{ width: "100%", padding: "20px" }}
+/>
 
+## Referencing other tables
 
-## Referencing other models
-
-Dataform provides methods that enable you to easily reference another table in your project using the following function:
-
-```js
-select * from ${ref('my_table')}
-```
-
-That provides two advantages:
- * You don’t have provide the full SQL table name
- * This lists the table as a dependency to the table. When the queries are executed against the warehouse, this makes sure they are done so in the correct order.
-
-## 1. Create a new file
-
-Create a new SQL file named `onboarding_dataset2` and add the following content:
+Dataform provides methods that enable you to easily reference another table in your project using the `ref()` function:
 
 ```js
-select * from ${ref('onboarding_dataset')}
+SELECT * FROM ${ref('my_table')}
 ```
 
-<img src="/static/images/platform_guides/publish_tables/ref_query.png" style={{width: "100%", padding: "20px"}} />
+This provides two advantages:
 
-You will see the right sidebar updating with the name of the view, `onboarding_dataset2`. Click on `Show compiled` to see the actual query that will be run in your data warehouse. The `${ref()}` function will be replaced with the actual name of the table in your data warehouse. You can also notice the dependency listed just above the query validation message.
+- You don’t have provide the full SQL table name.
+- Any table that is referenced by a query will be automatically added to that query's dependencies. Dependency queries are always executed before dependent queries to ensure correctness.
+
+## Create a new file
+
+Create a new SQL file named `onboarding_table2` and add the following content:
+
+```js
+SELECT * FROM ${ref('onboarding_table')}
+```
+
+<img
+  src="/static/images/platform_guides/publish_tables/ref_query.png"
+  style={{ width: "100%", padding: "20px" }}
+/>
+
+You will see the right sidebar update with the name of the view, `onboarding_table2`. Clicking on `Show compiled` will display the fully qualified query to be run in your data warehouse.
+The `${ref()}` function will be replaced with the actual name of the table in your data warehouse. Note that the dependency is also listed just above the query validation message.
 
 _*Your compiled script will differ depending on your cloud data warehouse. This example uses Redshift.*_
 
 <div className="pt-callout pt-icon-info-sign pt-intent-warning" markdown="1">
-You can get validation errors if you reference a table that hasn't yet been created in your data warehouse. The validation error comes from your data warehouse and will warn you that the table you are selecting from doesn't exist. Dataform will run your script in dependency order so you can safely ignore this error.
+  Referencing a table that hasn't yet been created in your data warehouse will cause validation
+  errors. These validation errors are warning you that the table you are referencing doesn't exist
+  (yet). However, since Dataform will run your project's scripts in dependency order, you can safely
+  ignore these errors.
 </div>
 
-## 3. View dependency tree
+## View dependency tree
 
-The overview page (linked at the top left of the page) gives you an overview of your project. There you can see the dependency tree graph of your project containing your two materialisations and a table listing them.
+The overview page (linked at the top left of Dataform) gives you an overview of your project. The overview includes a visualization of the dependency tree of your project, containing the two tables created by your scripts.
 
-<img src="/static/images/platform_guides/publish_tables/dependency_tree.png" style={{width: "100%", padding: "20px"}} />
+<img
+  src="/static/images/platform_guides/publish_tables/dependency_tree.png"
+  style={{ width: "100%", padding: "20px" }}
+/>
 
-This example is very simple but over time you may have have dozens or hundreds of datasets that depend on each other and the table and the graph will help you and you team keeping track of them.
-
-Now that you have successfully published your first datasets, learn how to use version control to
+In bigger projects containing dozens or hundreds of tables with complicated interdependencies, the overview page can help you keep track of your project's overall structure.

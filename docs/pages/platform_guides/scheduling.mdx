@@ -1,28 +1,35 @@
 import Documentation from "df/docs/layouts/documentation";
 
-export default ({children}) => <Documentation title="Schedule datasets">{children}</Documentation>;
+export default ({ children }) => <Documentation title="Scheduling runs">{children}</Documentation>;
 
 ## Introduction
 
-Schedules can be used to run any selection of your datasets on a schedule with granular control. That will make sure your data is up to date in your reports and dashboards or for other analysts to use.
+Schedules can be used to run any selection of your tables at a user-specified frequency. Running your scripts on a repeating schedule ensures output data is always kept up to date.
 
 <div className="pt-callout pt-icon-info-sign pt-intent-warning" markdown="1">
-Schedules <b>only run from the `production` branch</b>. Make sure you commit and push your changes to the production branch before editing your schedules.
+  Schedules{" "}
+  <b>
+    only run from the <code>production</code> workspace
+  </b>
+  . Make sure you commit and push your changes to the production workspace before configuring schedules.
 </div>
 
-## Use schedules
+## Create a schedule
 
-1. Navigate to your project's Scheduling page on the left menu bar
+1. Navigate to the Scheduling page using the left menu
 2. Click `Add schedule`
-3. Fill the form and click `Create schedule`
+3. Enter your schedule's settings and click `Create schedule`
 
-<img src="/static/images/platform_guides/scheduling/create_schedule.png" style={{width: "100%", padding: "20px"}} />
-
+<img
+  src="/static/images/platform_guides/scheduling/create_schedule.png"
+  style={{ width: "100%", padding: "20px" }}
+/>
 
 ## View past runs
 
-You can find the current and historical schedules runs under your project’s *Run logs* page on the left menu bar.
+You can find all current and historical scheduled runs in the _Run logs_ page, accessible using the left menu bar.
 
-Clicking on a run will show the jobs that were run for that pipeline.
-
-<img src="/static/images/platform_guides/scheduling/run_logs.png" style={{width: "100%", padding: "20px"}} />
+<img
+  src="/static/images/platform_guides/scheduling/run_logs.png"
+  style={{ width: "100%", padding: "20px" }}
+/>

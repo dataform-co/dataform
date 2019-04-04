@@ -2,9 +2,11 @@ import Documentation from "df/docs/layouts/documentation";
 import Method from "../../components/method";
 import { methods } from "../../_methods";
 
-export default ({children}) => <Documentation title="Operations reference">{children}</Documentation>;
+export default ({ children }) => (
+  <Documentation title="Operations reference">{children}</Documentation>
+);
 
-An `operation` defines a set of SQL commands that will be executed in order against your warehouse, and can be used for running arbitrary queries.
+An `operation` defines a set of SQL commands that will be executed in order against your warehouse. They are useful when you need to run arbitrary queries.
 
 For examples and usage, check out the [operations guide](/guides/operations).
 

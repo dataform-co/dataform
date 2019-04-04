@@ -1,35 +1,37 @@
 import Documentation from "df/docs/layouts/documentation";
 
-export default ({children}) => <Documentation title="Overview">{children}</Documentation>
+export default ({ children }) => (
+  <Documentation title="Dataform core concepts">{children}</Documentation>
+);
 
-## What is dataform?
+## What is Dataform?
 
-Dataform makes it easy to manage complex SQL data pipelines in your data warehouse. Dataform's powerful API lets you quickly transform your data and perform other actions by writing simple statements.
+Dataform makes it easy to manage complex SQL pipelines in your data warehouse. Using Dataform's API you can power large, complex data transformations with just a few simple statements.
 
 ## What can it do?
 
-With Dataform you can:
+Using Dataform you can:
 
-- [Publish datasets](/guides/tables)
-- [Write tests against your data](/guides/assertions)
+- [Publish tables and views](/guides/tables)
+- [Write assertions for your data](/guides/assertions)
 - [Execute arbitrary SQL operations](/guides/operations)
 
-Dataform currently supports Google BigQuery, Amazon Redshift, and Snowflake data warehouses.
+Dataform currently supports Google BigQuery, Postgres, Amazon Redshift, and Snowflake data warehouses.
 
 ## How can I use it?
 
-You can get started quickly with https://dataform.co, or check out our [command line interface](/guides/command-line-interface) and open-source packages to download and develop Dataform projects yourself.
+You can get started quickly using <a target="_blank" href="https://dataform.co">Dataform Web</a>, or if you prefer, check out our open source [command line interface](/guides/command-line-interface) to develop Dataform projects yourself.
 
 ## How does it work?
 
 1. You write SQL files enriched with Dataform's API and templating functions.
-2. Dataform compiles, validates, and executes the generated SQL statements against your warehouse, automating boiler plate such as `create table` and `insert` statements.
-3. You have a clean, well defined datasets pushed back to your warehouse, that the rest of your team can use for anything from dashboards to machine learning.
+2. Dataform compiles, validates, and executes the generated SQL statements against your warehouse, automatically adding boiler plate such as `CREATE TABLE` and `INSERT` statements.
+3. Clean, well-defined tables are created in your data warehouse, which the rest of your team can use for anything from dashboards to machine learning.
 
 Dataform's enriched SQL format allows you to:
 
-- Reference and declare dependencies between datasets
-- Re-use common SQL across many queries
-- Write tests against your data
-- Document your tables fields
+- Reference and declare dependencies between tables
+- Re-use common SQL across any number of queries
+- Write assertions against your data
+- Document your table fields
 - Write custom functions in JavaScript
