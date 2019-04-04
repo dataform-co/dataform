@@ -7,11 +7,14 @@ export default ({ children }) => <Documentation title="Scheduling runs">{childre
 Schedules can be used to run any selection of your tables at a user-specified frequency. Running your scripts on a repeating schedule ensures output data is always kept up to date.
 
 <div className="pt-callout pt-icon-info-sign pt-intent-warning" markdown="1">
-  Schedules <b>only run from the `production` workspace</b>. Make sure you commit and push your
-  changes to the production workspace before configuring schedules.
+  Schedules{" "}
+  <b>
+    only run from the <code>production</code> workspace
+  </b>
+  . Make sure you commit and push your changes to the production workspace before configuring schedules.
 </div>
 
-## Use schedules
+## Create a schedule
 
 1. Navigate to the Scheduling page using the left menu
 2. Click `Add schedule`

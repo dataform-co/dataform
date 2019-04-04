@@ -10,11 +10,11 @@ export default ({ children }) => (
 
 A Dataform project is primarily configured through the `dataform.json` file that is created at the top level of your project directory.
 
-Since Dataform projects use NPM for package management, you can also control dependencies and the current Dataform version through the `package.json` file.
+In addition, `package.json` is used to control NPM dependency versions, including the current Dataform version.
 
 ## `dataform.json`
 
-This file contains information about the project. These settings, such as the warehouse type, default schema names, and so on, are used to compile SQL.
+This file contains information about the project. These settings, such as the warehouse type, default schema names, and so on, are used to compile final SQL.
 
 The following is an example of the `dataform.json` file for a BigQuery project:
 
@@ -42,7 +42,7 @@ by changing the `defaultSchema` property to some other value. For example, to ch
 }
 ```
 
-[Assertions](/guides/assertions) are created inside a different schema as specified by the `assertionsSchema` property. This is similarly configurable.
+[Assertions](/guides/assertions) are created inside a different schema as specified by the `assertionsSchema` property.
 
 ## `package.json`
 
@@ -50,17 +50,17 @@ This is a standard NPM package file which may be used to include JavaScript pack
 
 Most importantly, your Dataform version is specified here, and can be updated by changing this file or running the `npm install` or `npm update` commands inside your project directory.
 
-If you develop projects on https://dataform.co, this is managed for you and can be largely ignored.
+If you develop projects on <a target="_blank" href="https://dataform.co">Dataform Web</a>, this is managed for you and can be largely ignored.
 
 ### Updating Dataform to the latest version
 
-All Dataform projects depend on the NPM package `@dataform/core`. If you are developing your project locally and would like to upgrade your Dataform version, you can run the following command:
+All Dataform projects depend on the `@dataform/core` NPM package. If you are developing your project locally and would like to upgrade your Dataform version, run the following command:
 
 ```bash
 npm update @dataform/core
 ```
 
-If you run `dataform` commands, you may also wish to upgrade your globally installed Dataform version:
+If you use the `dataform` command line tool, you may also wish to upgrade your globally installed Dataform version:
 
 ```bash
 npm update -g @dataform/cli

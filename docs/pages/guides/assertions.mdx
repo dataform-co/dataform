@@ -7,15 +7,16 @@ export default ({ children }) => (
 ## Introduction
 
 Assertions enable you to check the state of data produced by other actions.
-An assertion query is written to find rows that violate one or more rules. If the query returns any rows, then the test will fail.
+
+An assertion query is written to find rows that violate one or more rules. If the query returns any rows, then the assertion will fail.
 
 To define a new assertion, create a `<your_test_name_here>.assert.sql` file in the `definitions` directory.
 
 <img src="/static/images/assertions.png" style={{ width: "100%", padding: "20px" }} />
 
-## Null checks
+## Example: Null checks
 
-Modern warehouses often don't have a way to strongly enforce non-null behaviour.
+Modern warehouses often don't have a way to strongly enforce non-null fields.
 To check for nulls on fields `a`, `b`, and `c` in a table `sometable` produced by another action, you can create a new file `definitions/sometable_not_null.assert.sql`:
 
 ```js
@@ -25,11 +26,11 @@ WHERE a IS NOT NULL
   AND c IS NOT NULL
 ```
 
-If `a`, `b`, or `c` are null for any row in `sometable`, then this test will fail.
+If `a`, `b`, or `c` are null for any row in `sometable`, then this assertion will fail.
 
-## Key uniqueness checks
+## Example: Key uniqueness checks
 
-Another common use case is to check that a particular field or combination of fields are unique in a table.
+Another common requirement is to check that all values for a particular field or combination of fields are unique in a table.
 For example, in a daily customer stats table, there should only ever be a single row for each combination of the `date` and `customer_id` fields.
 
 Assuming a table called `daily_customer_stats` with fields `date` and `customer_id` which together should constitute a unique key, you can create a new file `definitions/daily_customer_stats_unique_keys.assert.sql`:
@@ -47,38 +48,38 @@ SELECT * FROM base WHERE rows > 1
 
 This query find any keys where there exists more than 1 row for that key, and thus are not unique.
 
-## Inspecting failed test rows
+## Inspecting failed assertion rows
 
 Dataform automatically creates a view in your warehouse containing the results of the compiled assertion query.
-This makes it easy to inspect the rows that caused the test to fail without increasing storage requirements or pulling any data out of your warehouse.
+This makes it easy to inspect the rows that caused the assertion to fail, without increasing storage requirements or pulling any data out of your warehouse.
 
 Assertions create views in a seperate schema to your default schema. This is configured in the [`dataform.json`](/guides/configuration) file.
 
-Given a default assertion schema `dataform_assertions` and an assertion file called `definitions/someassertion.assert.sql`:
+Given a default assertion schema `dataform_assertions` and an assertion file called `definitions/some_assertion.assert.sql`:
 
 ```js
 SELECT * FROM ${ref("example")} WHERE test > 1
 ```
 
-Dataform will create a view called `dataform_assertions.someassertion` in your warehouse using the following query:
+Dataform will create a view called `dataform_assertions.some_assertion` in your warehouse using the following query:
 
 ```js
-CREATE OR REPLACE VIEW dataform_assertions.someassertion AS SELECT * from dataform.example WHERE test > 1
+CREATE OR REPLACE VIEW dataform_assertions.some_assertion AS SELECT * from dataform.example WHERE test > 1
 ```
 
-You can manually query this view to debug failing tests.
+You can manually query this view to debug failing assertions.
 
 ## Assertions as dependencies
 
 Assertions create named nodes in your project that can be depended upon by using the `dependencies()` configuration statement.
 
-If you would like another table, assertion, or operation to only run if a specific test passes, you can add the test to that action's dependencies.
+If you would like another table, assertion, or operation to only run if a specific assertion passes, you can add the assertion to that action's dependencies.
 
 For example, given two tables called `table1` and `table2`, and an assertion called `table1_not_null`, if you want to ensure that `table2` only
-runs if `table1_checks` passes you could add it as a dependency in `definitions/table2.sql`:
+runs if `table1_not_null` passes, you could add it as a dependency in `definitions/table2.sql`:
 
 ```js
---js dependencies("table1_checks");
+--js dependencies("table1_not_null");
 
 SELECT * FROM ${ref("table1")} LEFT JOIN ...
 ```

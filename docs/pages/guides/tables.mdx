@@ -16,7 +16,7 @@ Create a new `example.sql` file in your project under the `definitions/` folder:
 SELECT 1 AS TEST
 ```
 
-By default this will create a view called `schema.example` (where `schema` is the Dataform schema defined in your [`dataform.json`](/guides/configuration#dataform.json) file).
+By default, upon running this query, a **view** called `schema.example` will be created (where `schema` is the Dataform schema defined in your [`dataform.json`](/guides/configuration#dataform.json) file).
 
 <div className="pt-callout pt-icon-info-sign pt-intent-warning" markdown="1">
   Trailing semi-colons should be omitted from queries.
@@ -36,7 +36,7 @@ By default, tables are actually created as views in your warehouse. To create an
 SELECT 1 AS TEST
 ```
 
-Note that configuration statements starting with `--js` are stripped during query compilation, leaving the final executable query as:
+Note that configuration statements starting with `--js` are stripped during query compilation, so the final executable query in this case would be:
 
 ```js
 SELECT 1 AS TEST
@@ -58,7 +58,7 @@ SELECT 1 AS sourcedata
 SELECT * FROM ${ref("source")}
 ```
 
-In order to reference the table created by a `source.sql` file, the value that should be passed to the `ref()` function is `"source"`, i.e. the name of the file defining the table (_without_ the extension).
+In order to reference the table created by a `source.sql` file, the value that should be passed to the `ref()` function is `"source"`, i.e. the name of the file defining the table (_without_ the file extension).
 
 The query will be compiled into the following SQL before it is run:
 
@@ -66,18 +66,18 @@ The query will be compiled into the following SQL before it is run:
 SELECT * FROM "dataform_schema"."source"
 ```
 
-Any table that is referenced by a query will automatically be added to that query's dependencies. Dependency queries are always executed before dependent queries to ensure correctness.
+Any table that is referenced by a query will automatically be added to that query's dependencies. Dependency queries are always executed before dependent queries to ensure pipeline correctness.
 
 ## Adding custom dependencies
 
-If you want to manually add a dependency to a query - one that is not already explicitly referenced in the query - you can use the `dependencies()` JavaScript configuration method:
+If you want to manually add a dependency to a query - one that is not already explicitly referenced with `ref()` - you can use the `dependencies()` JavaScript configuration method:
 
 ```js
 --js dependencies("some_table");
 SELECT * FROM ...
 ```
 
-Multiple dependencies may be provided in a single call:
+Multiple dependencies may be provided in a single invocation:
 
 ```js
 --js dependencies(["some_table", "some_other_table"]);
@@ -87,20 +87,20 @@ SELECT * FROM ...
 ## Disable a table
 
 To stop a query being run, you can use the JavaScript `disabled()` method. This will keep the table as part of your graph, but stop it from executing when you run your project.
-This can be useful for example if the relevant query breaks for some reason and you don't want your entire pipeline to fail while it's being fixed.
+This can be useful for example if the relevant query breaks for some reason and you don't want your pipeline to fail while it's being fixed.
 
 ```js
 --js disabled();
 SELECT * FROM ...
 ```
 
-## Executing statements before or after creating tables
+## Executing statements before or after table creation
 
 To execute one or more SQL statements before or after creating a table, you can use the `preOps()` and `postOps()` configuration methods.
 
-### Granting table access with `postOps()`
+### Example: Granting table access with `postOps()`
 
-The following example defines a post-query operation to configure table access permissions. It makes use of the built in `self()` method which returns the fully-qualified name of the current table.
+The following example defines a post-query operation to configure table access permissions. It makes use of the built-in `self()` method which returns the fully-qualified name of the current table.
 
 ```js
 --js postOps(`GRANT SELECT ON ${self()} TO GROUP "allusers@dataform.co"`);
@@ -110,18 +110,18 @@ SELECT * FROM ...
 <div className="pt-callout pt-icon-info-sign pt-intent-warning" markdown="1">
   To use the <code>self()</code> method within the string argument provided to{" "}
   <code>postOps()</code>, you must use JavaScript's ES6 template string syntax, wrapping the string
-  in back-ticks <code>`</code>.
+  in back-ticks: <code>`template_string`</code>
 </div>
 
 <br />
 
-Multiple arguments can be provided to `postOps()` and `preOps()`, each a seperate query, which will be executed in the provided order. You can also use a multi-line configuration statement to make this cleaner:
+Multiple arguments can be provided to `postOps()` and `preOps()`, each a seperate query, which will be executed in the provided order. You can alternatively use a multi-line configuration statement:
 
 ```js
 /*js
 ```
 
-<div style={{ marginTop: "-30px" }} />
+<div style={{ marginTop: "-40px" }} />
 
 ```js
 postOps([
@@ -130,7 +130,7 @@ postOps([
 ]);
 ```
 
-<div style={{ marginTop: "-30px" }} />
+<div style={{ marginTop: "-40px" }} />
 
 ```js
 */
@@ -141,13 +141,8 @@ postOps([
 By default, all tables are created within the default schema chosen when initializing a project, usually `dataform`.
 
 This can be overridden on a per-file basis by changing the file name to have a fully qualified table name.
-For example, to create a table called `example` in the schema `other_schema`, create a file with the name `definitions/other_schema.example.sql`:
-
-```js
-SELECT 1 AS TEST
-```
-
-This will override the output schema of the table to `other_schema`. To reference tables with overridden schemas, use the fully qualified name of the table, for example:
+For example, to create a table called `example` in the schema `other_schema`, create a file with the name `definitions/other_schema.example.sql`.
+This will override the output schema of the table to `other_schema`. To reference tables with overridden schemas, use the fully qualified name of the table:
 
 ```js
 SELECT * FROM ${ref("other_schema.table")}
@@ -155,7 +150,7 @@ SELECT * FROM ${ref("other_schema.table")}
 
 ## Configuration statements
 
-Each of the following examples of JavaScript configuration statements result in equivalent behavior.
+Each of the following examples of JavaScript configuration statements results in equivalent behavior.
 
 ### Single line statements
 
@@ -174,14 +169,14 @@ To write JavaScript over multiple lines, create a comment block that starts with
 /*js
 ```
 
-<div style={{ marginTop: "-30px" }} />
+<div style={{ marginTop: "-40px" }} />
 
 ```js
 type("table");
 disabled(true);
 ```
 
-<div style={{ marginTop: "-30px" }} />
+<div style={{ marginTop: "-40px" }} />
 
 ```js
 */
@@ -189,13 +184,13 @@ disabled(true);
 
 ### Setting multiple properties with `config()`
 
-Most settings for a table can be set in a single call to the `config(...)` method, and are passed in via a JSON object:
+Most settings for a table can be passed in a single JSON object using the `config()` method:
 
 ```js
 /*js
 ```
 
-<div style={{ marginTop: "-30px" }} />
+<div style={{ marginTop: "-40px" }} />
 
 ```js
 config({
@@ -204,7 +199,7 @@ config({
 });
 ```
 
-<div style={{ marginTop: "-30px" }} />
+<div style={{ marginTop: "-40px" }} />
 
 ```js
 */

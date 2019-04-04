@@ -1,4 +1,4 @@
-import { Menu, MenuItem } from "@blueprintjs/core";
+import { Menu, MenuDivider, MenuItem } from "@blueprintjs/core";
 import * as React from "react";
 
 export default class Navigation extends React.Component<any, any> {
@@ -16,7 +16,7 @@ export default class Navigation extends React.Component<any, any> {
           <MenuItem href="/guides/configuration" text="Project configuration" />
           <MenuItem href="/guides/js-api" text="JavaScript API" />
           <MenuItem href="/guides/command-line-interface" text="Command line interface" />
-          <MenuItem text="Warehouse integrations" />
+          <MenuDivider title="Warehouse integrations" />
           <div style={styles.indent1}>
             <MenuItem href="/guides/warehouses/bigquery" text="BigQuery" />
             <MenuItem href="/guides/warehouses/redshift" text="Redshift" />
@@ -30,7 +30,7 @@ export default class Navigation extends React.Component<any, any> {
           />
           <MenuItem href="/platform_guides/publish_tables" text="Publish your first tables" />
           <MenuItem href="/platform_guides/version_control" text="Use version control" />
-          <MenuItem href="/platform_guides/scheduling" text="Schedule datasets" />
+          <MenuItem href="/platform_guides/scheduling" text="Schedule runs" />
         </Menu>
         <h4>API reference</h4>
         <Menu style={styles.menu}>

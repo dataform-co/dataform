@@ -4,17 +4,17 @@ export default ({ children }) => <Documentation title="JavaScript API">{children
 
 ## Introduction
 
-Dataform provides a JavaScript API for defining all actions via code rather than through creating individual SQL files. This can be useful in advanced use cases.
+Dataform provides a JavaScript API for defining all actions via code instead of creating individual SQL files for each action. This can be useful in advanced use cases.
 
 To use the JavaScript API, create a `.js` file anywhere in the `definitions/` folder of your project. This code will be run during project compilation.
 
-The JavaScript API provides methods that create any of the actions that you would otherwise define in a SQL file:
+The JavaScript API exposes functions that create any of the actions that you would otherwise define in a SQL file:
 
 - Tables
 - Assertions
 - Operations
 
-These are regular JavaScript (ES5) files that can contain arbitrary code, for loops, functions, constants, etc.
+These are regular JavaScript (ES5) files that can contain arbitrary code: loops, functions, constants, etc.
 
 ## Defining actions in JavaScript
 
@@ -34,19 +34,19 @@ This example creates a table, an assertion, and an operation in a single file, w
 
 ## Setting properties on actions
 
-Each of the global methods, `publish()`, `operate()`, `assert()` returns an object that can then be used to configure that action. The API follows a builder syntax which can be seen in the following example:
+Each of the global methods - `publish()`, `operate()`, and `assert()` - return an object that can be used to configure that action. The API follows a builder syntax which can be seen in the following example:
 
 ```js
 publish("table1")
   .query("SELECT 1 AS test") // Defines the query
-  .type("table") // Sets the type of the table
+  .type("table") // Sets the query's type
   .dependencies(["other_table"]) // Specifies table dependencies
   .descriptor({
     test: "Value is 1" // Describes fields in the table
   });
 ```
 
-Multiple properties can also be set using the `config()` method, or as a shorthand, passed as a second argument to the method:
+Multiple properties can also be set using the `config()` method, or alternatively simply passed as a second argument to the method:
 
 ```js
 publish("table1", {
@@ -65,9 +65,9 @@ Configuration options for each type of action are listed at the relevant referen
 - [`operate()`](/reference/operations)
 - [`assert()`](/reference/assertions)
 
-## Using built-in functions such as `ref()`
+## Using built-in functions
 
-When writing `.sql` files, Dataform makes a number of built in functions such as `ref()` and `self()` available to use within the main query. For example in a `definitions/example.sql` file:
+When writing `.sql` files, Dataform makes a number of built-in functions such as `ref()` and `self()` available to use within the main query. For example in `definitions/example.sql`:
 
 ```js
 SELECT * FROM ${ref("other_table")}
@@ -76,20 +76,18 @@ SELECT * FROM ${ref("other_table")}
 The `ref()` function is made available for the script to use automatically. Note that this is not the case when using the JavaScript API.
 
 To use these functions in JavaScript, API methods - such as `query()` - take a `Contextable` argument. Instead of providing a string as the argument to the API method,
-you can pass a function whose only parameter is a `context` object. This object makes the built in functions available for use.
+you can pass a function whose only parameter is a `context` object. This object exposes the built-in functions for JavaScript code to use.
 
-For example, to mirror the above example using JavaScript (also making handy use of JavaScript template strings):
-
-`definitions/example.js`:
+For example, the above example written in JavaScript (making handy use of JavaScript template strings), in `definitions/example.js`:
 
 ```js
 publish("example").query(ctx => `SELECT * FROM ${ctx.ref("other_table")}`);
 ```
 
 <div className="pt-callout pt-icon-info-sign pt-intent-warning" markdown="1">
-  Note that JavaScript template strings - which allow use of the <code>${"{}"}</code> syntax
-  directly inside strings - the string in question must be wrapped in backticks (<code>`</code>)
-  instead of single (<code>'</code>) or double (<code>"</code>) quotes.
+  Note that when using JavaScript template strings - which allow use of the <code>${"{}"}</code>{" "}
+  syntax - the string in question must be wrapped in backticks <code>`</code> instead of single{" "}
+  <code>'</code> or double <code>"</code> quotes.
 </div>
 
 <br />
@@ -109,17 +107,17 @@ publish("example").config({
 });
 ```
 
-## Creating several tables at once
+## Example: Dynamic table generation
 
-One of the most common use cases for using the JavaScript API is to perform a similar action several times.
+One of the most common use cases for using the JavaScript API is to perform a similar action repeatedly.
 
-For example, imagine you have several tables, all of which have a field `user_id`. You would like to create a view of each table with certain blacklisted user IDs removed.
-You could perform this action across all tables using a JavaScript `forEach` statement:
+For example, imagine you have several tables, all of which have a `user_id` field. Perhaps you would like to create a view of each table with certain blacklisted user IDs removed.
+You could perform this action across all tables using a JavaScript `forEach()` statement:
 
 `definitions/blacklist_views.js`:
 
 ```js
-const tableNames = ["user_events", "user_settings", "user_logs", "user_friends"];
+const tableNames = ["user_events", "user_settings", "user_logs"];
 
 tableNames.forEach(tableName => {
   publish(tableName + "_blacklist_removed").query(
@@ -133,4 +131,4 @@ tableNames.forEach(tableName => {
 });
 ```
 
-This script would create 4 new views named `user_events_blacklist_removed` (and so on) that don't contain any of the users with blacklisted IDs.
+This script would create 3 new views named `user_events_blacklist_removed`, `user_settings_blacklist_removed`, and `user_logs_blacklist_removed` that don't contain any of the blacklisted user IDs.

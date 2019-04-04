@@ -21,9 +21,9 @@ WAREHOUSE=bigquery
 dataform init $WAREHOUSE new_project
 ```
 
-The currently supported warehouse types are: `[bigquery, postgres, redshift, snowflake]`
+The currently supported warehouse types are `bigquery`, `postgres`, `redshift`, and `snowflake`.
 
-## Project structure
+### Project structure
 
 The default project structure is as follows:
 
@@ -37,17 +37,17 @@ project-dir
 
 ## Define a table
 
-The `definitions/` directory contains files that define [tables](/tables), [assertions](/assertions), and [operations](/operations).
+The `definitions/` directory should be used for files that define [tables](/tables), [assertions](/assertions), and [operations](/operations).
 
-To create a new table, create a new file such as `definitions/simplemodel.sql` with the following contents:
+To create a new table, create a new file `definitions/simplemodel.sql`:
 
-```sql
+```js
 SELECT 1 AS test
 ```
 
 ## Compile your code
 
-To check that your Dataform code compiles, run the `compile` command at the root of your project directory to get JSON dump of the compiled project:
+To check that your Dataform code compiles, run the `compile` command at the root of your project directory to get JSON output of the compiled project:
 
 ```bash
 dataform compile
@@ -65,7 +65,7 @@ You should see output similar to the following:
                 "schema": "dataform",
                 "name": "simplemodel"
             },
-            "query": "SELECT 1 AS test\n",
+            "query": "SELECT 1 AS test",
             "disabled": false,
             "fileName": "definitions/simplemodel.sql"
         }
@@ -77,14 +77,20 @@ You should see output similar to the following:
 ## Create a credentials file
 
 Dataform requires a credentials file in order to connect to your warehouse. Run the `init-creds` command at the root of your project
-directory and Dataform will guide you through creation of a credentials file:
+directory and Dataform will guide you through credentials file creation:
 
 ```bash
 WAREHOUSE=bigquery
 dataform init-creds $WAREHOUSE
 ```
 
-This will result in a `.df-credentials.json` file being written to disk. Be careful not to check this file into any source control system you may be using.
+This will result in a `.df-credentials.json` file being written to disk.
+
+<div className="pt-callout pt-icon-info-sign pt-intent-warning" markdown="1">
+  If using a source control system, we strongly recommend that you do not commit the{" "}
+  <code>.df-credentials.json</code> file to your repository in order to protect these access
+  credentials.
+</div>
 
 ## Run your code
 
@@ -106,7 +112,7 @@ You should see something similar to the following:
             "tasks": [
                 {
                     "type": "statement",
-                    "statement": "\n        create or replace view \"dataform\".\"simplemodel\"\n        as SELECT 1 AS test;"
+                    "statement": "create or replace view \"dataform\".\"simplemodel\" as SELECT 1 AS test;"
                 }
             ],
             "type": "table",

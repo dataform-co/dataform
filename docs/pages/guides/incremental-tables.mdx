@@ -6,23 +6,21 @@ export default ({ children }) => (
 
 ## Introduction
 
-Incremental tables aren't rebuilt from scratch every time they run. Instead, only new rows are inserted into the table, as according to the conditions provided in the table configuration.
+Incremental tables aren't rebuilt from scratch every time they run. Instead, only new rows are inserted into the table according to the conditions you provide when configuring the table.
 
 Dataform takes care of managing state, creating tables, and generating `INSERT` statements for you.
 
-Some of the use cases for incremental tables are covered below.
+### Example: Append only for performance
 
-### Append only for performance
+Web logs or analytics data are great use cases for incremental tables. For these kinds of data sources you usually only want to process new records instead of having to reprocess old data.
 
-Data sources such as logs or web analytics data are great use cases for incremental tables. When processing this data, you usually only want to process new records instead of having to reprocess old data.
+### Example: Micro-batching for latency
 
-### Micro-batching for latency
+A major benefit of incremental tables is that pipelines complete more quickly and can therefore be run more frequently at lower cost, reducing downstream latency to consumers of these tables.
 
-Another benefit of incremental tables is that pipelines are quicker and can be run more frequently at lower cost, reducing downstream latency to consumers of these datasets.
+### Example: Creating daily snapshots
 
-### Creating daily snapshots
-
-A common incremental table use case is to create daily snapshots of a dataset, for example to use in longitudinal analysis on user settings in a production database.
+A common incremental table use case is to create daily snapshots of an input table, for example to use in longitudinal analysis of user settings stored in a production database.
 
 ## Key concepts
 
@@ -35,7 +33,7 @@ There are 2 parts to an incremental table that you must configure:
 
 ### `WHERE` clause
 
-The `WHERE` clause is applied to the main query and is used to ensure that only new data is added to the incremental table. This is typically achieved with a clause such as:
+The `WHERE` clause is applied to the main query and is used to ensure that only new data is added to the incremental table. For example:
 
 ```js
 ts > (SELECT MAX(timestamp) FROM target_table)
@@ -43,7 +41,7 @@ ts > (SELECT MAX(timestamp) FROM target_table)
 
 ## A simple example
 
-Assuming a source table containing timestamped user action events called `weblogs.user_actions` which is streamed into our warehouse via some other data integration tool:
+Assuming there is a source table containing timestamped user action events called `weblogs.user_actions` which is streamed into our warehouse via some other data integration tool:
 
 <table className="pt-html-table pt-html-table-striped .modifier" style={{ width: "100%" }}>
   <thead>
@@ -77,7 +75,7 @@ Assuming a source table containing timestamped user action events called `weblog
   </tbody>
 </table>
 
-To make a simple incremental copy of this table, you can create a new file called `definitions/example_incremental.sql`:
+To make a simple incremental copy of this table, create a new file called `definitions/example_incremental.sql`:
 
 ```js
 --js type("incremental");
@@ -87,15 +85,15 @@ SELECT timestamp, action
 FROM weblogs.user_actions
 ```
 
-First the script sets the type of the table to `"incremental"`.
+First the script sets the type of the table to `incremental`.
 
-It then specifies a `WHERE` clause using the `where(...)` configuration statement:
+It then specifies a `WHERE` clause using the `where()` configuration statement:
 
 ```js
 --js where(`timestamp > (SELECT MAX(timestamp) FROM ${self()})`);
 ```
 
-This ensures that only rows from the source table with a <b>timestamp greater than the latest timestamp that has been processed so far</b> are selected in the query.
+This ensures that only rows from the source table with a <b>timestamp greater than the latest timestamp that has been processed so far</b> are selected in the incremental query.
 
 Note that the `self()` method is used here in order to get the name of the current table. Thus the compiled `WHERE` clause will be expanded to:
 
@@ -103,21 +101,21 @@ Note that the `self()` method is used here in order to get the name of the curre
 timestamp > (SELECT MAX(timestamp) FROM default_schema.example_incremental)
 ```
 
-This table may not exist in the warehouse yet. That's OK, because the `WHERE` clause will only be used if the table already exists and new data is inserted into it.
+This table may not exist in the warehouse yet. That's OK, because the `WHERE` clause will only be added to the final query if the table already exists and new data is being inserted into it.
 
 <div className="bp3-callout bp3-icon-info-sign bp3-intent-warning" markdown="1">
   Note that when data is inserted into an incremental table, only fields that already exist in the
   table will be written. To make sure that new fields are written after changing the query, the
   table must be rebuilt from scratch with the <code>--full-refresh</code> option (if using the
-  Dataform tool on the command line) or with the <code>Run with full refresh</code> option in the
-  Dataform platform.
+  Dataform tool on the command line) or with the <code>Run with full refresh</code> option in
+  Dataform Web.
 </div>
 
 ### Generated SQL
 
 The SQL generated by the above example will depend on the warehouse type, but generally follow the same format.
 
-#### When the table doesn't exist
+If the table doesn't exist yet:
 
 ```js
 CREATE OR REPLACE TABLE default_schema.example_incremental AS
@@ -125,7 +123,7 @@ CREATE OR REPLACE TABLE default_schema.example_incremental AS
   FROM weblogs.user_actions;
 ```
 
-#### When incrementally inserting new rows
+When incrementally inserting new rows:
 
 ```js
 INSERT INTO default_schema.example_incremental (timestamp, action)
@@ -136,7 +134,7 @@ INSERT INTO default_schema.example_incremental (timestamp, action)
 
 ## Daily snapshots with incremental tables
 
-Incremental tables can also be used to create a daily snapshot of mutable external tables.
+Incremental tables can be used to create a daily snapshot of mutable external tables.
 
 Assuming an external table called `productiondb.customers`, you could write the following incremental to create a daily snapshot of that data:
 
@@ -146,18 +144,16 @@ Assuming an external table called `productiondb.customers`, you could write the 
 SELECT CURRENT_DATE() AS snapshot_date, customer_id, name, account_settings FROM productiondb.customers
 ```
 
-By selecting the current date as `snapshot_date`, this effectively appends a dated snapshot of the `productiondb.customers` table to the output table each day.
-
-The `WHERE` clause here prevents more than one insertion per day (which could result in duplicate rows in the output table), since any newly inserted rows must have a later `snapshot_date`
-than any existing row in the output.
-
-This dataform project must be scheduled to run at least once a day.
+- By selecting the current date as `snapshot_date`, this effectively appends a dated snapshot of the `productiondb.customers` table to the output table each day.
+- The `WHERE` clause here prevents more than one insertion per day (which could result in duplicate rows in the output table), since any newly inserted rows must have a later `snapshot_date`
+  than any previously existing row in the output.
+- This Dataform project should be scheduled to run at least once a day.
 
 ## Protecting incremental tables from data loss
 
-It's possible to force an incremental table to be rebuilt from scratch using either the command line interface with the <code>--full-refresh</code> option or with the <code>Run with full refresh</code> option in the Dataform platform.
+It's possible to force an incremental table to be rebuilt from scratch using either the command line interface with the <code>--full-refresh</code> option or with the <code>Run with full refresh</code> option in Dataform Web.
 
-If you need to protect a table from being rebuilt from scratch, for example if the source data is only temporary, you can mark an incremental table as `protected`.
+If you need to protect a table from ever being rebuilt from scratch, for example if the source data is only temporary, you can mark an incremental table as `protected()`.
 This means that Dataform will never delete this table, even if a user requests a full refresh.
 
 `definitions/incremental_example_protected.sql`:

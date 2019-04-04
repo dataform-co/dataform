@@ -18,7 +18,7 @@ const PAGES = [
     name: "framework"
   },
   {
-    name: "platform"
+    name: "web"
   },
   {
     name: "reference"

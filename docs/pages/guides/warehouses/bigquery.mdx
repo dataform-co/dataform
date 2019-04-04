@@ -7,10 +7,10 @@ BigQuery specific options can be applied to tables using the `bigquery()` config
 ## Setting table partitions
 
 BigQuery supports <a target="_blank" href="https://cloud.google.com/bigquery/docs/partitioned-tables">partitioned tables</a>.
-These can be useful when you have data spread across many different dates, but usually query the table on only a small range of dates.
+These can be useful when you have data spread across many different dates but usually query the table on only a small range of dates.
 In these circumstances, partitioning will increase query performance and reduce cost.
 
-BigQuery partitions can be configured in Dataform using the `partitionBy()` option:
+BigQuery partitions can be configured in Dataform using the `partitionBy` option:
 
 ```js
 --js type("table");
@@ -18,7 +18,7 @@ BigQuery partitions can be configured in Dataform using the `partitionBy()` opti
 SELECT CURRENT_TIMESTAMP() AS ts
 ```
 
-This query would compile to the following statement, taking advantage of BigQuery's DDL to configure partitioning:
+This query compiles to the following statement, taking advantage of BigQuery's DDL to configure partitioning:
 
 ```js
 CREATE OR REPLACE TABLE dataform.example
