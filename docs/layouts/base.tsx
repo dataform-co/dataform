@@ -14,15 +14,6 @@ export interface IProps {
 }
 
 const PAGES = [
-  {
-    name: "framework"
-  },
-  {
-    name: "web"
-  },
-  {
-    name: "reference"
-  }
 ];
 
 const MAX_WIDTH = "1500px";

@@ -185,6 +185,9 @@ message ExecutedNode {
   bool deprecated_skipped = 4;
 }
 
+// TODO: Instead of returning this as a result of run(...), return an ExecutionGraph
+// along with something like a RunStatus message indicating the success/failure of executing
+// that graph on the data warehouse.
 message ExecutedGraph {
   ProjectConfig project_config = 1;
   RunConfig run_config = 2;
