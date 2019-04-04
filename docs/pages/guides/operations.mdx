@@ -1,80 +1,82 @@
 import Documentation from "df/docs/layouts/documentation";
 
-export default ({children}) => <Documentation title="Operations">{children}</Documentation>;
+export default ({ children }) => <Documentation title="Operations">{children}</Documentation>;
 
 ## Introduction
 
-An `operation` defines a set of SQL commands that will be executed in order against your warehouse, and can be used for running SQL or warehouse specific that don't necessarily fit into the model of publishing a table or writing a test.
+An `operation` defines a set of SQL commands that will be executed in order against your warehouse. Operations can be used to run custom SQL that doesn't necessarily fit into the model of publishing a table or writing an assertion.
 
 ## Simple example
 
-To define a new operation action, create a file such as `definitions/example.ops.sql`:
+To define a new `operation` action, create a file such as `definitions/example.ops.sql`:
 
 ```js
-create or replace view someschema.someview as select 1 as test
+CREATE OR REPLACE VIEW someschema.someview AS (SELECT 1 AS test)
 ```
 
-Multiple statements can be seperated with a single line containing only 3 dashes (`---`):
+Multiple statements can be separated with a single line containing only 3 dashes `---`:
 
 ```js
-create or replace view someschema.someview as select 1 as test
+CREATE OR REPLACE VIEW someschema.someview AS (SELECT 1 AS test)
 ---
-drop view if exists someschema.someview
+DROP VIEW IF EXISTS someschema.someview
 ```
 
-These statements will be run as is against the warehouse. You can use warehouse specific commands in these files, such as BigQuery's DML or DDL statements, or Redshift/Postgres specific commands.
+These statements will be run without modification against the warehouse. You can use warehouse specific commands in these files, such as BigQuery's DML or DDL statements, or Redshift/Postgres specific commands.
 
-Operations SQL files behave very similarly to the statements provided to `postOps()` and `preOps()` configuration statements that can be used when publishing tables.
+Operations files behave very similarly to the statements provided to `postOps()` and `preOps()` configuration statements used when publishing tables.
 
 ## Custom table builds
 
-In some cases, you may want to create a table manually, rather than relying on Dataform's built in logic. This can be achieved by writing an operations file and specifying the full `create table/view` commands manually:
+In some cases, you may want to create a table manually rather than relying on Dataform's built-in logic. This can be achieved by writing an operations file and specifying the full `CREATE TABLE/VIEW` commands manually:
 
 ```js
-create or replace view sometable.someschema as (select 1 as test)
+CREATE OR REPLACE VIEW sometable.someschema AS (SELECT 1 AS TEST)
 ```
 
 ## Declaring and referencing outputs
 
-If an operations file creates a table or view that can be referenced using `ref()`, then you can use the configuration method `hasOutput()` to tell Dataform that this operations file can be referenced.
+If an operation creates a table or view that you would like to make available to other scripts, then you can use the `hasOutput()` configuration method to tell
+Dataform that the output of this operation should be made available to callers of the `ref()` function.
 
-For example create the following file `definitions/customview.ops.sql`:
-```js
---js hasOutput(true);
-create or replace view defaultschema.customview as (select 1 as test)
-```
-
-<div className="pt-callout pt-icon-info-sign pt-intent-warning" markdown="1">
-The output created must match the name of the file excluding the prefix in order for references to work properly. In this case <code>customview</code>. If you are creating a table in a custom schema, you can change the file name to reflect this to: <code>definitions/customschema.customview.ops.sql</code>.
-</div>
-
-<br />
-
-The `self()` method can also be used to automatically reference the table or view denoted by the current file name. This saves you having to make sure they both match:
+For example, in `definitions/customview.ops.sql`:
 
 ```js
 --js hasOutput(true);
-create or replace view ${self()} as (select 1 as test)
+CREATE OR REPLACE VIEW defaultschema.customview AS (SELECT 1 AS TEST)
 ```
-
 
 References to `"customview"` will now resolve to `"defaultschema.customview"` and can be used in other SQL files, for example:
 
 ```js
-select * from ${ref("customview")}
+SELECT * FROM ${ref("customview")}
 ```
 
-## Running vacuum commands (Redshift)
+<div className="pt-callout pt-icon-info-sign pt-intent-warning" markdown="1">
+  The output table or view created by the operation must match the name of the file in order for
+  references to work properly. In this case: <code>customview</code>. If you are creating a table in
+  a custom schema, you should change the file name to reflect this:{" "}
+  <code>definitions/customschema.customview.ops.sql</code>.
+</div>
 
-Redshift has a command `vacuum` that can be used to improve the performance of some tables. This is a common use case for operations:
+<br />
+
+The `self()` method can also be used to automatically reference the table or view denoted by the current file name. This makes it easy to ensure that they always match:
 
 ```js
-vacuum delete only ${ref("sometable")} to 75 percent
----
-vacuum reindex ${ref("sometable")}
+--js hasOutput(true);
+CREATE OR REPLACE VIEW ${self()} AS (SELECT 1 AS TEST)
 ```
 
-In the above example, the `ref()` function can be used within the operations file like normal.
+## Example: Running `VACUUM` commands (in Postgres or Redshift)
+
+Postgres and Redshift have a `VACUUM` command that can be used to improve the performance of some tables. This is a common use case for operations:
+
+```js
+VACUUM DELETE ONLY ${ref("sometable")} TO 75 PERCENT
+---
+VACUUM REINDEX ${ref("sometable")}
+```
 
 ## Reference
 

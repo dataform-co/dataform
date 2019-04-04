@@ -1,19 +1,19 @@
 import Documentation from "df/docs/layouts/documentation";
 
-export default ({children}) => <Documentation title="Contextable<> (Class) reference">{children}</Documentation>;
+export default ({ children }) => (
+  <Documentation title="Contextable<> (Class) reference">{children}</Documentation>
+);
 
-Any argument that is `Contextable` can be provided as a function, that will be called with a `Context` object, which proves access to all the methods available for the current `table`, `assertion`, or `operation`.
+Any `Contextable` API argument can be passed as a function whose single parameter is a `Context` object. `Context` exposes all the methods available for the current `table`, `assertion`, or `operation`.
 
 This is useful when you need to use context methods within an argument.
 
-## Example
+## Example: Use `ref()` in JavaScript
 
-When defining a table via the JS API, the `query()` method takes a `Contextable<string>` argument, and can be called in two ways:
+When defining a table via the JavaScript API, the `query()` method takes a `Contextable<string>` argument, and can be called in two ways:
 
 ```js
-publish("example_simple")
-  .query("select 1 as test");
+publish("example_simple").query("SELECT 1 AS TEST");
 
-publish("example_context")
-  .query(context => `select * from ${context.ref("example_simple")}`);
+publish("example_context").query(context => `SELECT * FROM ${context.ref("example_simple")}`);
 ```
