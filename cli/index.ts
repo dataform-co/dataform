@@ -74,7 +74,7 @@ const schemaSuffixOverrideOption: INamedOption<yargs.Options> = {
   check: (argv: yargs.Arguments) => {
     if (argv.schemaSuffix && !/^[a-zA-Z_0-9]+$/.test(argv.schemaSuffix)) {
       throw new Error(
-        "--schema-suffix must containly only lowercase, uppercase, underscore and number characters."
+        "--schema-suffix should contain only alphanumeric characters and/or underscores."
       );
     }
   }
