@@ -21,7 +21,7 @@ const errorOutput = (output: string) => coloredOutput(output, 91);
 const writeStdOut = (output: string) => process.stdout.write(output + "\n");
 const writeStdErr = (output: string) => process.stderr.write(output + "\n");
 
-const projectDirOption = {
+const projectDirOption: INamedOption<yargs.PositionalOptions> = {
   name: "project-dir",
   option: {
     describe: "The Dataform project directory.",
@@ -35,7 +35,7 @@ const projectDirMustExistOption = {
   check: (argv: yargs.Arguments) => assertPathExists(argv["project-dir"])
 };
 
-const fullRefreshOption = {
+const fullRefreshOption: INamedOption<yargs.Options> = {
   name: "full-refresh",
   option: {
     describe: "Forces incremental tables to be rebuilt from scratch.",
@@ -44,7 +44,7 @@ const fullRefreshOption = {
   }
 };
 
-const nodesOption = {
+const nodesOption: INamedOption<yargs.Options> = {
   name: "nodes",
   option: {
     describe: "A list of node names or patterns to run. Can include '*' wildcards.",
@@ -52,7 +52,7 @@ const nodesOption = {
   }
 };
 
-const includeDepsOption = {
+const includeDepsOption: INamedOption<yargs.Options> = {
   name: "include-deps",
   option: {
     describe: "If set, dependencies for selected nodes will also be run.",
@@ -66,14 +66,21 @@ const includeDepsOption = {
   }
 };
 
-const schemaSuffixOverrideOption = {
+const schemaSuffixOverrideOption: INamedOption<yargs.Options> = {
   name: "schema-suffix",
   option: {
     describe: "A suffix to be appended to output schema names."
+  },
+  check: (argv: yargs.Arguments) => {
+    if (argv.schemaSuffix && !/^[a-zA-Z_0-9]+$/.test(argv.schemaSuffix)) {
+      throw new Error(
+        "--schema-suffix must containly only lowercase, uppercase, underscore and number characters."
+      );
+    }
   }
 };
 
-const credentialsOption = {
+const credentialsOption: INamedOption<yargs.Options> = {
   name: "credentials",
   option: {
     describe: "The location of the credentials JSON file to use.",
@@ -83,7 +90,7 @@ const credentialsOption = {
   check: (argv: yargs.Arguments) => assertPathExists(argv.credentials)
 };
 
-const warehouseOption = {
+const warehouseOption: INamedOption<yargs.PositionalOptions> = {
   name: "warehouse",
   option: {
     describe: "The project's data warehouse type.",
