@@ -69,7 +69,7 @@ const includeDepsOption = {
 const schemaSuffixOverrideOption = {
   name: "schema-suffix",
   option: {
-    describe: "A suffix to add to any output schema names."
+    describe: "A suffix to be appended to output schema names."
   }
 };
 
