@@ -1,12 +1,16 @@
 {
-  "presets": ["next/babel", ["@zeit/next-typescript/babel", { "extensions": [".ts", ".tsx", ".md", ".mdx"] }]],
+  "presets": [
+    "next/babel",
+    ["@zeit/next-typescript/babel", { "extensions": [".ts", ".tsx", ".md", ".mdx"] }]
+  ],
   "plugins": [
     [
       "module-resolver",
       {
         "root": ["./"],
         "alias": {
-          "df": "../"
+          "df": "../",
+          "@dataform": "../"
         }
       }
     ]
