@@ -1,10 +1,10 @@
 import { dataform } from "@dataform/protos";
 
+import { ICompileIPCParameters, ICompileIPCResult } from "@dataform/api/vm/compile";
 import { ChildProcess, fork } from "child_process";
 import * as fs from "fs";
 import * as path from "path";
 import { promisify } from "util";
-import { ICompileIPCParameters, ICompileIPCResult } from "@dataform/api/vm/compile";
 
 export async function compile(
   compileConfig: dataform.ICompileConfig
@@ -13,8 +13,7 @@ export async function compile(
   const projectDir = path.resolve(compileConfig.projectDir);
   const returnedPath = await CompileChildProcess.forkProcess().compile({
     projectDir,
-    defaultSchemaOverride: compileConfig.defaultSchemaOverride,
-    assertionSchemaOverride: compileConfig.assertionSchemaOverride
+    schemaSuffixOverride: compileConfig.schemaSuffixOverride
   });
   const contents = await promisify(fs.readFile)(returnedPath);
   return dataform.CompiledGraph.decode(contents);

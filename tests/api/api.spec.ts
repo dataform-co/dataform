@@ -497,13 +497,13 @@ describe("@dataform/api", () => {
     it("schema overrides", async () => {
       const graph = await compile({
         projectDir: path.resolve("df/examples/bigquery"),
-        defaultSchemaOverride: "overridden_default_schema",
-        assertionSchemaOverride: "overridden_assertion_schema"
+        schemaSuffixOverride: "suffix"
       });
-      expect(graph.projectConfig.defaultSchema).to.equal("overridden_default_schema");
-      expect(graph.projectConfig.assertionSchema).to.equal("overridden_assertion_schema");
+      expect(graph.projectConfig.schemaSuffix).to.equal("suffix");
       graph.tables.forEach(table =>
-        expect(table.target.schema).to.equal("overridden_default_schema")
+        expect(table.target.schema).to.match(
+          /^(df_integration_test_suffix|override_schema_suffix)$/
+        )
       );
     });
 
