@@ -1,5 +1,5 @@
 <p align="center">
-  <img width="250" src="/dataform_logo.svg">
+  <img width="250" src="/static/images/dataform_logo.svg">
 </p>
 <h1 align="center"> Dataform </h1>
 
