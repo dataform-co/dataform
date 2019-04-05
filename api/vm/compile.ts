@@ -9,7 +9,7 @@ import { genIndex } from "../gen_index";
 
 export interface ICompileIPCParameters {
   projectDir: string;
-  schemaSuffix?: string;
+  schemaSuffixOverride?: string;
 }
 
 export interface ICompileIPCResult {
@@ -17,10 +17,7 @@ export interface ICompileIPCResult {
   err?: string;
 }
 
-export function compile(
-  projectDir: string,
-  schemaSuffix?: string,
-): Uint8Array {
+export function compile(projectDir: string, schemaSuffixOverride?: string): Uint8Array {
   const vm = new NodeVM({
     wrapper: "none",
     require: {
@@ -32,7 +29,7 @@ export function compile(
     compiler: (code, path) => core.compilers.compile(code, path)
   });
 
-  const indexScript = genIndex(projectDir, "", schemaSuffix);
+  const indexScript = genIndex(projectDir, "", schemaSuffixOverride);
   // We return a base64 encoded proto via NodeVM, as returning a Uint8Array directly causes issues.
   const res: string = vm.run(indexScript, path.resolve(path.join(projectDir, "index.js")));
   const encodedGraphBytes = new Uint8Array(util.base64.length(res));
@@ -68,7 +65,7 @@ function compileInTmpDir(compileIpcParameters: ICompileIPCParameters) {
   }
   const encodedGraph = compile(
     compileIpcParameters.projectDir,
-    compileIpcParameters.schemaSuffix
+    compileIpcParameters.schemaSuffixOverride
   );
   fs.writeFileSync(tmpPath, encodedGraph);
   // Send back the temp path.

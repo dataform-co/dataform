@@ -21,7 +21,7 @@ const errorOutput = (output: string) => coloredOutput(output, 91);
 const writeStdOut = (output: string) => process.stdout.write(output + "\n");
 const writeStdErr = (output: string) => process.stderr.write(output + "\n");
 
-const projectDirOption: INamedOption<yargs.PositionalOptions> = {
+const projectDirOption = {
   name: "project-dir",
   option: {
     describe: "The Dataform project directory.",
@@ -35,7 +35,7 @@ const projectDirMustExistOption = {
   check: (argv: yargs.Arguments) => assertPathExists(argv["project-dir"])
 };
 
-const fullRefreshOption: INamedOption<yargs.Options> = {
+const fullRefreshOption = {
   name: "full-refresh",
   option: {
     describe: "Forces incremental tables to be rebuilt from scratch.",
@@ -44,7 +44,7 @@ const fullRefreshOption: INamedOption<yargs.Options> = {
   }
 };
 
-const nodesOption: INamedOption<yargs.Options> = {
+const nodesOption = {
   name: "nodes",
   option: {
     describe: "A list of node names or patterns to run. Can include '*' wildcards.",
@@ -52,7 +52,7 @@ const nodesOption: INamedOption<yargs.Options> = {
   }
 };
 
-const includeDepsOption: INamedOption<yargs.Options> = {
+const includeDepsOption = {
   name: "include-deps",
   option: {
     describe: "If set, dependencies for selected nodes will also be run.",
@@ -66,15 +66,14 @@ const includeDepsOption: INamedOption<yargs.Options> = {
   }
 };
 
-const schemaSuffixOption: INamedOption<yargs.Options> = {
+const schemaSuffixOverrideOption = {
   name: "schema-suffix",
   option: {
-    describe: "A suffix to add to any output schema names.",
-    
+    describe: "A suffix to add to any output schema names."
   }
 };
 
-const credentialsOption: INamedOption<yargs.Options> = {
+const credentialsOption = {
   name: "credentials",
   option: {
     describe: "The location of the credentials JSON file to use.",
@@ -177,7 +176,7 @@ const builtYargs = createYargsCli({
         "Compile the dataform project. Produces JSON output describing the non-executable graph.",
       positionalOptions: [projectDirMustExistOption],
       options: [
-        schemaSuffixOption,
+        schemaSuffixOverrideOption,
         {
           name: "watch",
           option: {
@@ -189,9 +188,9 @@ const builtYargs = createYargsCli({
       ],
       processFn: async argv => {
         const projectDir = argv["project-dir"];
-        const schemaSuffix = argv["schema-suffix"];
+        const schemaSuffixOverride = argv["schema-suffix"];
 
-        await compileProject(projectDir, schemaSuffix);
+        await compileProject(projectDir, schemaSuffixOverride);
 
         if (argv.watch) {
           let timeoutID = null;
@@ -225,7 +224,7 @@ const builtYargs = createYargsCli({
 
                 if (!isCompiling) {
                   isCompiling = true;
-                  await compileProject(projectDir, schemaSuffix);
+                  await compileProject(projectDir, schemaSuffixOverride);
                   writeStdOut(commandOutput("Watching for changes..."));
                   isCompiling = false;
                 }
@@ -250,13 +249,13 @@ const builtYargs = createYargsCli({
         fullRefreshOption,
         nodesOption,
         includeDepsOption,
-        schemaSuffixOption,
+        schemaSuffixOverrideOption,
         credentialsOption
       ],
       processFn: async argv => {
         const compiledGraph = await compile({
           projectDir: argv["project-dir"],
-          schemaSuffix: argv["schema-suffix"],
+          schemaSuffixOverride: argv["schema-suffix"]
         });
         if (compiledGraph.graphErrors) {
           logGraphErrors(compiledGraph.graphErrors);
@@ -433,11 +432,8 @@ function getSnowflakeCredentials(): dataform.ISnowflake {
   };
 }
 
-async function compileProject(
-  projectDir: string,
-  schemaSuffix: string,
-) {
-  const graph = await compile({ projectDir, schemaSuffix });
+async function compileProject(projectDir: string, schemaSuffixOverride: string) {
+  const graph = await compile({ projectDir, schemaSuffixOverride });
   if (graph.graphErrors) {
     logGraphErrors(graph.graphErrors);
   } else {

@@ -497,11 +497,13 @@ describe("@dataform/api", () => {
     it("schema overrides", async () => {
       const graph = await compile({
         projectDir: path.resolve("df/examples/bigquery"),
-        schemaSuffix: "suffix",
+        schemaSuffixOverride: "suffix"
       });
       expect(graph.projectConfig.schemaSuffix).to.equal("suffix");
       graph.tables.forEach(table =>
-        expect(table.target.schema).to.match(/.*_suffix$/)
+        expect(table.target.schema).to.match(
+          /^(df_integration_test_suffix|override_schema_suffix)$/
+        )
       );
     });
 

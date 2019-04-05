@@ -29,7 +29,7 @@ message CompileConfig {
   string project_dir = 1;
 
   // Compile time configuration options.
-  string schema_suffix = 2;
+  string schema_suffix_override = 2;
 }
 
 message Target {
