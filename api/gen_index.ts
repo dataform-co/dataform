@@ -10,7 +10,9 @@ export function genIndex(
   assertionSchemaOverride: string = ""
 ): string {
   const packageJsonPath = path.join(projectDir, "package.json");
-  const packageConfig = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
+  const packageConfig = fs.existsSync(packageJsonPath)
+    ? JSON.parse(fs.readFileSync(packageJsonPath, "utf8"))
+    : {};
 
   const includePaths = [];
   glob.sync("includes/*.js", { cwd: projectDir }).forEach(path => {

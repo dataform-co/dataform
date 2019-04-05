@@ -15,6 +15,7 @@ export interface IAdapter {
   assertTasks(assertion: dataform.IAssertion, projectConfig: dataform.IProjectConfig): Tasks;
 
   dropIfExists(target: dataform.ITarget, type: string): string;
+  baseTableType(type: string): string;
 }
 
 export type AdapterConstructor<T extends IAdapter> = new (
@@ -36,7 +37,7 @@ export const requiredWarehouseProps = {
   [WarehouseType.REDSHIFT]: requiredJdbcWarehouseProps,
   [WarehouseType.SNOWFLAKE]: [
     "accountId",
-    "userName",
+    "username",
     "password",
     "role",
     "databaseName",

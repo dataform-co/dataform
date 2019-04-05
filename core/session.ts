@@ -28,7 +28,10 @@ export class Session {
 
   public init(rootDir: string, projectConfig?: dataform.IProjectConfig) {
     this.rootDir = rootDir;
-    this.config = projectConfig || { defaultSchema: "dataform" };
+    this.config = projectConfig || {
+      defaultSchema: "dataform",
+      assertionSchema: "dataform_assertions"
+    };
     this.tables = {};
     this.operations = {};
     this.assertions = {};
@@ -39,7 +42,7 @@ export class Session {
     return adapters.create(this.config);
   }
 
-  public target(target: string): dataform.ITarget {
+  public target(target: string, defaultSchema?: string): dataform.ITarget {
     if (target.includes(".")) {
       const schema = target.split(".")[0];
       const name = target.split(".")[1];
@@ -47,7 +50,7 @@ export class Session {
     } else {
       return dataform.Target.create({
         name: target,
-        schema: this.config.defaultSchema
+        schema: defaultSchema || this.config.defaultSchema
       });
     }
   }
@@ -115,6 +118,7 @@ export class Session {
     const assertion = new Assertion();
     assertion.session = this;
     assertion.proto.name = name;
+    assertion.proto.target = this.target(name, this.config.assertionSchema);
     if (query) {
       assertion.query(query);
     }

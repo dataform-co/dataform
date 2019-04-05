@@ -111,6 +111,7 @@ message Assertion {
   string name = 1;
   repeated string dependencies = 2;
 
+  Target target = 8;
   string query = 3;
 
   // Generated.

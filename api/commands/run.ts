@@ -149,20 +149,22 @@ export class Runner {
             const rows = await this.adapter.execute(task.statement, handleCancel =>
               this.eEmitter.on(CANCEL_EVENT, handleCancel)
             );
-            const rowCount = !!rows.length ? rows[0].rowCount : 0;
-
-            if (task.type == "assertion" && rowCount > 0) {
-              throw [
-                ...chainResults,
-                {
-                  ok: false,
-                  task,
-                  error: `Test failed: returned >= ${rows.length} rows.`
-                }
-              ];
-            } else {
-              return [...chainResults, { ok: true, task }];
+            if (task.type === "assertion") {
+              // We expect that an assertion query returns 1 row, with 1 field that is the row count.
+              // We don't really care what that field/column is called.
+              const rowCount = rows[0][Object.keys(rows[0])[0]];
+              if (rowCount > 0) {
+                throw [
+                  ...chainResults,
+                  {
+                    ok: false,
+                    task,
+                    error: `Test failed: query returned ${rowCount} row(s).`
+                  }
+                ];
+              }
             }
+            return [...chainResults, { ok: true, task }];
           } catch (e) {
             throw [...chainResults, { ok: false, error: e.message, task }];
           }

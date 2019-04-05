@@ -46,6 +46,7 @@ export class SnowflakeDbAdapter implements DbAdapter {
     });
     this.connection.connect((err, conn) => {
       if (err) {
+        console.log(credentials);
         console.error("Unable to connect: " + err.message);
       }
     });

@@ -1,62 +1,53 @@
+import * as dfapi from "@dataform/api";
+import * as dbadapters from "@dataform/api/dbadapters";
+import * as adapters from "@dataform/core/adapters";
+import { dataform } from "@dataform/protos";
 import { expect } from "chai";
-import {
-  getHookBefore,
-  getTestConfig,
-  getTestRunCommand,
-  queryRun
-} from "df/tests/integration/utils";
-import { asPlainObject } from "df/tests/utils";
+import * as utils from "df/api/utils";
+import { dropAllTables, getTableRows, toMap } from "df/tests/integration/utils";
 
-describe("@dataform/integration/bigquery", function() {
-  const testConfig = getTestConfig("bigquery");
+describe("@dataform/integration/bigquery", () => {
+  it("run", async () => {
+    const credentials = utils.readCredentials("bigquery", "df/test_profiles/bigquery.json");
 
-  // check project credentials
-  this.pending = !testConfig.credentials;
-  if (this.isPending()) {
-    console.log("No Bigquery credentials, tests will be skipped!");
-  }
-
-  describe("run", function() {
-    this.timeout(300000);
-    const expectedResult = [
-      { id: "example_backticks", data: [{ sample: 1 }, { sample: 2 }, { sample: 3 }] },
-      { id: "example_table", data: [{ sample: 1 }, { sample: 2 }, { sample: 3 }] },
-      { id: "example_js_blocks", data: [{ foo: 1 }] },
-      { id: "example_deferred", data: [{ test: 1 }] },
-      { id: "example_view", data: [{ sample: 1 }, { sample: 2 }, { sample: 3 }] },
-      { id: "sample_data", data: [{ sample: 1 }, { sample: 2 }, { sample: 3 }] },
-      { id: "example_using_inline", data: [{ sample: 1 }, { sample: 2 }, { sample: 3 }] },
-      { id: "example_incremental", data: [] }
-    ];
-
-    before("clear_schema", getHookBefore(testConfig));
-
-    it("bigquery_1", getTestRunCommand(testConfig, expectedResult, 1));
-
-    it("bigquery_2", getTestRunCommand(testConfig, expectedResult, 2));
-  });
-
-  describe("cancelable_query_run", function() {
-    this.timeout(60000);
-    const sql = "select 1 as test union all select 2 as test union all select 3 as test";
-    const expectedResult = [{ test: 1 }, { test: 2 }, { test: 3 }];
-
-    it("not_canceled", () => {
-      return queryRun(sql, testConfig).then(result => {
-        expect(asPlainObject(result)).deep.equals(asPlainObject(expectedResult));
-      });
+    const compiledGraph = await dfapi.compile({
+      projectDir: "df/tests/integration/bigquery_project"
     });
 
-    it("canceled", async () => {
-      const promise = queryRun(sql, testConfig);
-      setTimeout(() => promise.cancel(), 10);
-      try {
-        const result = await promise;
-        throw new Error("Should not pass");
-      } catch (err) {
-        expect(err).to.be.an.instanceof(Error);
-        expect(err.message).to.equals("Query cancelled.");
-      }
-    });
-  });
+    const dbadapter = dbadapters.create(credentials, "bigquery");
+    const adapter = adapters.create(compiledGraph.projectConfig);
+
+    // Drop all the tables before we do anything.
+    await dropAllTables(compiledGraph, adapter, dbadapter);
+
+    // Run the project.
+    let executionGraph = await dfapi.build(compiledGraph, {}, credentials);
+    let executedGraph = await dfapi.run(executionGraph, credentials).resultPromise();
+
+    const nodeMap = toMap(executedGraph.nodes, v => v.name);
+
+    // Check the status of the two tests.
+    expect(nodeMap.example_assertion_fail.status).equals(dataform.NodeExecutionStatus.FAILED);
+    expect(nodeMap.example_assertion_pass.status).equals(dataform.NodeExecutionStatus.SUCCESSFUL);
+
+    // Check the data in the incremental table.
+    let incrementalTable = toMap(compiledGraph.tables, t => t.name).example_incremental;
+    let incrementalRows = await getTableRows(incrementalTable.target, adapter, dbadapter);
+    expect(incrementalRows.length).equals(1);
+
+    // Re-run some of the actions.
+    executionGraph = await dfapi.build(
+      compiledGraph,
+      { nodes: ["example_incremental", "example_table", "example_view"] },
+      credentials
+    );
+
+    executedGraph = await dfapi.run(executionGraph, credentials).resultPromise();
+    expect(executedGraph.ok).equals(true);
+
+    // Check there is an extra row in the incremental table.
+    incrementalTable = toMap(compiledGraph.tables, t => t.name).example_incremental;
+    incrementalRows = await getTableRows(incrementalTable.target, adapter, dbadapter);
+    expect(incrementalRows.length).equals(2);
+  }).timeout(60000);
 });
