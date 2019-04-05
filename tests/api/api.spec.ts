@@ -719,7 +719,7 @@ describe("@dataform/api", () => {
     };
     const snowflakeCredentials = {
       accountId: "",
-      userName: "",
+      username: "",
       password: "",
       role: "",
       databaseName: "",
