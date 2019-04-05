@@ -11,6 +11,8 @@ message ProjectConfig {
   string default_schema = 2;
   string assertion_schema = 5;
 
+  string schema_suffix = 7;
+
   // BigQuery only.
   string gcloud_project_id = 6;
 }
@@ -26,9 +28,8 @@ message CompileConfig {
   // Required.
   string project_dir = 1;
 
-  // Optional overrides for project-level settings.
-  string default_schema_override = 2;
-  string assertion_schema_override = 3;
+  // Compile time configuration options.
+  string schema_suffix_override = 2;
 }
 
 message Target {

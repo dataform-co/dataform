@@ -40,14 +40,18 @@ export class Session {
   }
 
   public target(target: string): dataform.ITarget {
+    const suffix = !!this.config.schemaSuffix
+      ? `_${this.config.schemaSuffix}`
+      : "";
+
     if (target.includes(".")) {
       const schema = target.split(".")[0];
       const name = target.split(".")[1];
-      return dataform.Target.create({ name, schema });
+      return dataform.Target.create({ name, schema: schema + suffix });
     } else {
       return dataform.Target.create({
         name: target,
-        schema: this.config.defaultSchema
+        schema: this.config.defaultSchema + suffix
       });
     }
   }
