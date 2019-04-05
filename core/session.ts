@@ -40,14 +40,18 @@ export class Session {
   }
 
   public target(target: string): protos.ITarget {
+    const suffix = !!this.config.schemaSuffix
+      ? `_${this.config.schemaSuffix}`
+      : "";
+
     if (target.includes(".")) {
       const schema = target.split(".")[0];
       const name = target.split(".")[1];
-      return protos.Target.create({ name, schema });
+      return protos.Target.create({ name, schema: schema + suffix });
     } else {
       return protos.Target.create({
         name: target,
-        schema: this.config.defaultSchema
+        schema: this.config.defaultSchema + suffix
       });
     }
   }

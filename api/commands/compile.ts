@@ -11,8 +11,7 @@ export async function compile(compileConfig: protos.ICompileConfig): Promise<pro
   const projectDir = path.resolve(compileConfig.projectDir);
   const returnedPath = await CompileChildProcess.forkProcess().compile({
     projectDir,
-    defaultSchemaOverride: compileConfig.defaultSchemaOverride,
-    assertionSchemaOverride: compileConfig.assertionSchemaOverride
+    schemaSuffix: compileConfig.schemaSuffix,
   });
   const contents = await promisify(fs.readFile)(returnedPath);
   return protos.CompiledGraph.decode(contents);

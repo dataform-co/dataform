@@ -8,7 +8,7 @@ import * as yargs from "yargs";
 
 const RECOMPILE_DELAY = 2000;
 
-const projectDirOption = {
+const projectDirOption: INamedOption<yargs.PositionalOptions> = {
   name: "project-dir",
   option: {
     describe: "The Dataform project directory.",
@@ -17,7 +17,7 @@ const projectDirOption = {
   }
 };
 
-const fullRefreshOption = {
+const fullRefreshOption: INamedOption<yargs.Options> = {
   name: "full-refresh",
   option: {
     describe: "Forces incremental tables to be rebuilt from scratch.",
@@ -26,7 +26,7 @@ const fullRefreshOption = {
   }
 };
 
-const nodesOption = {
+const nodesOption: INamedOption<yargs.Options> = {
   name: "nodes",
   option: {
     describe: "A list of node names or patterns to run. Can include '*' wildcards.",
@@ -35,7 +35,7 @@ const nodesOption = {
 };
 
 // TODO: Should this be only set when "nodes" is also set? (using yargs 'implies')
-const includeDepsOption = {
+const includeDepsOption: INamedOption<yargs.Options> = {
   name: "include-deps",
   option: {
     describe: "If set, dependencies for selected nodes will also be run.",
@@ -43,21 +43,15 @@ const includeDepsOption = {
   }
 };
 
-const defaultSchemaOption = {
-  name: "default-schema",
+const schemaSuffixOption: INamedOption<yargs.Options> = {
+  name: "schema-suffix",
   option: {
-    describe: "An optional default schema name override."
+    describe: "A suffix to add to any output schema names.",
+    
   }
 };
 
-const assertionSchemaOption = {
-  name: "assertion-schema",
-  option: {
-    describe: "An optional assertion schema name override."
-  }
-};
-
-const credentialsOption = {
+const credentialsOption: INamedOption<yargs.Options> = {
   name: "credentials",
   option: {
     describe: "The location of the credentials JSON file to use.",
@@ -114,23 +108,21 @@ createYargsCli({
         "Compile the dataform project. Produces JSON output describing the non-executable graph.",
       positionalOptions: [projectDirOption],
       options: [
-        defaultSchemaOption,
-        assertionSchemaOption,
+        schemaSuffixOption,
         {
           name: "watch",
           option: {
             describe: "Whether to watch the changes in the project directory.",
-            type: "boolean",
+            type: "boolean" as "boolean",
             default: false
           }
         }
       ],
       processFn: argv => {
         const projectDir = argv["project-dir"];
-        const defaultSchemaOverride = argv["default-schema"];
-        const assertionSchemaOverride = argv["assertion-schema"];
+        const schemaSuffix = argv["schema-suffix"];
 
-        compileProject(projectDir, defaultSchemaOverride, assertionSchemaOverride).then(() => {
+        compileProject(projectDir, schemaSuffix).then(() => {
           if (argv["watch"]) {
             let timeoutID = null;
             let isCompiling = false;
@@ -164,7 +156,7 @@ createYargsCli({
                   if (!isCompiling) {
                     // recompile project
                     isCompiling = true;
-                    compileProject(projectDir, defaultSchemaOverride, assertionSchemaOverride).then(
+                    compileProject(projectDir, schemaSuffix).then(
                       () => {
                         console.log("Watcher ready for changes...");
                         isCompiling = false;
@@ -186,8 +178,7 @@ createYargsCli({
         fullRefreshOption,
         nodesOption,
         includeDepsOption,
-        defaultSchemaOption,
-        assertionSchemaOption,
+        schemaSuffixOption,
         credentialsOption
       ],
       processFn: argv => {
@@ -195,8 +186,7 @@ createYargsCli({
 
         compile({
           projectDir: argv["project-dir"],
-          defaultSchemaOverride: argv["default-schema"],
-          assertionSchemaOverride: argv["assertion-schema"]
+          schemaSuffix: argv["schema-suffix"],
         })
           .then(graph =>
             build(
@@ -221,14 +211,13 @@ createYargsCli({
         fullRefreshOption,
         nodesOption,
         includeDepsOption,
-        defaultSchemaOption,
-        assertionSchemaOption,
+        schemaSuffixOption,
         credentialsOption,
         {
           name: "result-path",
           option: {
             describe: "Optional path where executed graph JSON should be written.",
-            type: "string"
+            type: "string" as "string"
           }
         }
       ],
@@ -238,8 +227,7 @@ createYargsCli({
 
         compile({
           projectDir: argv["project-dir"],
-          defaultSchemaOverride: argv["default-schema"],
-          assertionSchemaOverride: argv["assertion-schema"]
+          schemaSuffix: argv["schema-suffix"],
         })
           .then(graph => {
             console.log("Project status: build...");
@@ -325,10 +313,9 @@ function fullyResolvePath(filePath: string) {
 
 const compileProject = (
   projectDir: string,
-  defaultSchemaOverride?: string,
-  assertionSchemaOverride?: string
+  schemaSuffix?: string
 ) => {
-  return compile({ projectDir, defaultSchemaOverride, assertionSchemaOverride })
+  return compile({ projectDir, schemaSuffix })
     .then(graph => console.log(JSON.stringify(graph, null, 4)))
     .catch(e => console.log(e));
 };
