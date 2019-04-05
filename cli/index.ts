@@ -115,7 +115,9 @@ const builtYargs = createYargsCli({
               throw new Error("The --gcloud-project-id flag is only used for BigQuery projects.");
             }
             if (!argv["gcloud-project-id"] && argv.warehouse === "bigquery") {
-              throw new Error("The --gcloud-project-id flag is required for BigQuery projects.");
+              throw new Error(
+                "The --gcloud-project-id flag is required for BigQuery projects. Please run 'dataform help init' for more information."
+              );
             }
           }
         },
@@ -341,15 +343,19 @@ const builtYargs = createYargsCli({
 })
   .scriptName("dataform")
   .strict()
+  .wrap(null)
   .recommendCommands()
-  .help("help")
   .fail((msg, err) => {
     writeStdErr(
       errorOutput(`Dataform encountered an error: ${err ? err.stack || err.message : msg}`)
     );
     process.exit(1);
-  })
-  .demandCommand(1, "Please choose a command.").argv;
+  }).argv;
+
+// If no command is specified, show top-level help string.
+if (!builtYargs._[0]) {
+  yargs.showHelp();
+}
 
 function assertPathExists(checkPath: string) {
   if (!fs.existsSync(checkPath)) {
@@ -485,7 +491,7 @@ interface INamedOption<T> {
 }
 
 function createYargsCli(cli: ICli) {
-  let yargsChain = yargs;
+  let yargsChain = yargs(fixArgvForHelp());
   for (const command of cli.commands) {
     yargsChain = yargsChain.command(
       command.format,
@@ -517,4 +523,19 @@ function createOptionsChain(yargsChain: yargs.Argv, command: ICommand) {
     return true;
   });
   return yargsChain;
+}
+
+function fixArgvForHelp() {
+  // Obviously this is a massive hack.
+  // The outcome of this is that the following commands are interchangeable:
+  // $ dataform help run
+  // $ dataform --help run
+  // The problem is that yargs.help() only allows us to specify an alias for the "--help" built-in option (by default that alias is "help").
+  // But because "--help" is only an option, not a command, it appears to be impossible (?) to configure yargs to respond to "help" correctly
+  // (or at least, to correctly print help strings for commands; it happily prints a top-level help string).
+  const argvCopy = process.argv.slice(2);
+  if (argvCopy[0] === "help") {
+    argvCopy[0] = "--help";
+  }
+  return argvCopy;
 }
