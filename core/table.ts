@@ -1,4 +1,4 @@
-import * as protos from "@dataform/protos";
+import { dataform } from "@dataform/protos";
 import { Session } from "./index";
 
 export enum TableTypes {
@@ -43,12 +43,12 @@ export interface TConfig {
   dependencies?: string | string[];
   descriptor?: string[] | { [key: string]: string };
   disabled?: boolean;
-  redshift?: protos.IRedshiftOptions;
-  bigquery?: protos.IBigQueryOptions;
+  redshift?: dataform.IRedshiftOptions;
+  bigquery?: dataform.IBigQueryOptions;
 }
 
 export class Table {
-  public proto: protos.Table = protos.Table.create({
+  public proto: dataform.Table = dataform.Table.create({
     type: "view",
     disabled: false
   });
@@ -130,13 +130,13 @@ export class Table {
     return this;
   }
 
-  public redshift(redshift: protos.IRedshiftOptions) {
-    this.proto.redshift = protos.RedshiftOptions.create(redshift);
+  public redshift(redshift: dataform.IRedshiftOptions) {
+    this.proto.redshift = dataform.RedshiftOptions.create(redshift);
     return this;
   }
 
-  public bigquery(bigquery: protos.IBigQueryOptions) {
-    this.proto.bigquery = protos.BigQueryOptions.create(bigquery);
+  public bigquery(bigquery: dataform.IBigQueryOptions) {
+    this.proto.bigquery = dataform.BigQueryOptions.create(bigquery);
     return this;
   }
 
@@ -267,12 +267,12 @@ export class TableContext {
     return "";
   }
 
-  public redshift(redshift: protos.IRedshiftOptions) {
+  public redshift(redshift: dataform.IRedshiftOptions) {
     this.table.redshift(redshift);
     return "";
   }
 
-  public bigquery(bigquery: protos.IBigQueryOptions) {
+  public bigquery(bigquery: dataform.IBigQueryOptions) {
     this.table.bigquery(bigquery);
     return "";
   }

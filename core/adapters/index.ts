@@ -1,35 +1,40 @@
-import * as protos from "@dataform/protos";
+import { dataform } from "@dataform/protos";
 import { Tasks } from "../tasks";
 import { BigQueryAdapter } from "./bigquery";
 import { RedshiftAdapter } from "./redshift";
 import { SnowflakeAdapter } from "./snowflake";
 
 export interface IAdapter {
-  resolveTarget(target: protos.ITarget): string;
+  resolveTarget(target: dataform.ITarget): string;
 
   publishTasks(
-    table: protos.ITable,
-    runConfig: protos.IRunConfig,
-    tableMetadata: protos.ITableMetadata
+    table: dataform.ITable,
+    runConfig: dataform.IRunConfig,
+    tableMetadata: dataform.ITableMetadata
   ): Tasks;
-  assertTasks(assertion: protos.IAssertion, projectConfig: protos.IProjectConfig): Tasks;
+  assertTasks(assertion: dataform.IAssertion, projectConfig: dataform.IProjectConfig): Tasks;
 
-  dropIfExists(target: protos.ITarget, type: string): string;
+  dropIfExists(target: dataform.ITarget, type: string): string;
 }
 
 export type AdapterConstructor<T extends IAdapter> = new (
-  projectConfig: protos.IProjectConfig
+  projectConfig: dataform.IProjectConfig
 ) => T;
 
-export enum WarehouseTypes {
+export enum WarehouseType {
   BIGQUERY = "bigquery",
+  POSTGRES = "postgres",
   REDSHIFT = "redshift",
   SNOWFLAKE = "snowflake"
 }
+
+const requiredJdbcWarehouseProps = ["host", "port", "user", "password", "database"];
+
 export const requiredWarehouseProps = {
-  [WarehouseTypes.BIGQUERY]: ["projectId", "credentials"],
-  [WarehouseTypes.REDSHIFT]: ["host", "port", "user", "password", "database"],
-  [WarehouseTypes.SNOWFLAKE]: [
+  [WarehouseType.BIGQUERY]: ["projectId", "credentials"],
+  [WarehouseType.POSTGRES]: requiredJdbcWarehouseProps,
+  [WarehouseType.REDSHIFT]: requiredJdbcWarehouseProps,
+  [WarehouseType.SNOWFLAKE]: [
     "accountId",
     "userName",
     "password",
@@ -45,7 +50,7 @@ export function register(warehouseType: string, c: AdapterConstructor<IAdapter>)
   registry[warehouseType] = c;
 }
 
-export function create(projectConfig: protos.IProjectConfig): IAdapter {
+export function create(projectConfig: dataform.IProjectConfig): IAdapter {
   if (!registry[projectConfig.warehouse]) {
     throw Error(`Unsupported warehouse: ${projectConfig.warehouse}`);
   }
@@ -53,5 +58,9 @@ export function create(projectConfig: protos.IProjectConfig): IAdapter {
 }
 
 register("bigquery", BigQueryAdapter);
+// TODO: The redshift client library happens to work well for postgres, but we should probably
+// not be relying on that behaviour. At some point we should replace this with a first-class
+// PostgresAdapter.
+register("postgres", RedshiftAdapter);
 register("redshift", RedshiftAdapter);
 register("snowflake", SnowflakeAdapter);

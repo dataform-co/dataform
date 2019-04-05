@@ -1,4 +1,4 @@
-import * as protos from "@dataform/protos";
+import { dataform } from "@dataform/protos";
 
 export class Tasks {
   public static create() {
@@ -37,7 +37,7 @@ export class Task {
       .type("assertion")
       .statement(statement);
   }
-  private proto: protos.IExecutionTask = protos.ExecutionTask.create();
+  private proto: dataform.IExecutionTask = dataform.ExecutionTask.create();
 
   public type(v: string) {
     this.proto.type = v;
@@ -50,6 +50,6 @@ export class Task {
   }
 
   public build() {
-    return protos.ExecutionTask.create(this.proto);
+    return dataform.ExecutionTask.create(this.proto);
   }
 }

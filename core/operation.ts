@@ -1,11 +1,11 @@
-import * as protos from "@dataform/protos";
+import { dataform } from "@dataform/protos";
 import { Session } from "./index";
 import * as utils from "./utils";
 
 export type OContextable<T> = T | ((ctx: OperationContext) => T);
 
 export class Operation {
-  public proto: protos.IOperation = protos.Operation.create({
+  public proto: dataform.IOperation = dataform.Operation.create({
     hasOutput: false
   });
 

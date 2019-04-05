@@ -1,7 +1,8 @@
 import * as dfapi from "@dataform/api";
 import { create, IAdapter } from "@dataform/core/adapters";
-import * as protos from "@dataform/protos";
+import { dataform } from "@dataform/protos";
 import { expect } from "chai";
+import * as utils from "df/api/utils";
 import { asPlainObject } from "df/tests/utils";
 import * as fs from "fs";
 import * as path from "path";
@@ -14,9 +15,9 @@ interface ITableInfo {
 
 interface ITestConfig {
   warehouse: string;
-  profile: protos.IProfile;
+  credentials: utils.Credentials;
   projectDir: string;
-  projectConf: protos.IProjectConfig;
+  projectConf: dataform.IProjectConfig;
   defaultSchema: string;
   assertionSchema: string;
   adapter: IAdapter;
@@ -28,10 +29,7 @@ interface IExpectedResult {
 }
 
 export function queryRun(sqlQuery: string, testConfig: ITestConfig) {
-  dfapi.utils.validateProfile(testConfig.profile);
-  const profile = protos.Profile.create(testConfig.profile);
-
-  return dfapi.query.run(profile, sqlQuery, {
+  return dfapi.query.run(testConfig.credentials, testConfig.warehouse, sqlQuery, {
     projectDir: path.resolve(testConfig.projectDir)
   });
 }
@@ -99,17 +97,15 @@ function getData(expectedResult: IExpectedResult[], schema: string, testConfig: 
 }
 
 export function getTestConfig(warehouse: string): ITestConfig {
-  const profilePath = `df/test_profiles/${warehouse}.json`;
-  const profile = fs.existsSync(profilePath)
-    ? JSON.parse(fs.readFileSync(profilePath, "utf8"))
-    : null;
+  const credentialsPath = `df/test_profiles/${warehouse}.json`;
+  const credentials = utils.readCredentials(warehouse, credentialsPath);
   const projectDir = `df/examples/${warehouse}`;
   const projectConf = JSON.parse(fs.readFileSync(path.join(projectDir, "./dataform.json"), "utf8"));
   const adapter = create({ ...projectConf, gcloudProjectId: null });
 
   return {
     warehouse,
-    profile,
+    credentials,
     projectDir,
     projectConf,
     defaultSchema: projectConf.defaultSchema,
@@ -127,8 +123,8 @@ export function getTestRunCommand(
     // run the command
     const graph = await dfapi
       .compile({ projectDir: testConfig.projectDir })
-      .then(cg => dfapi.build(cg, {}, testConfig.profile))
-      .then(eg => dfapi.run(eg, testConfig.profile).resultPromise());
+      .then(cg => dfapi.build(cg, {}, testConfig.credentials))
+      .then(eg => dfapi.run(eg, testConfig.credentials).resultPromise());
 
     expect(graph).to.have.property("ok").that.to.be.true;
     expect(graph)

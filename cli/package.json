@@ -12,8 +12,10 @@
     "@dataform/api": "^0.0.2-beta.8",
     "@dataform/core": "^0.0.2-beta.8",
     "@dataform/protos": "^0.0.2-beta.8",
+    "@types/readline-sync": "^1.4.3",
     "@types/yargs": "^11.1.1",
     "chokidar": "^2.0.4",
+    "readline-sync": "^1.4.9",
     "yargs": "^12.0.1"
   },
   "publishConfig": {

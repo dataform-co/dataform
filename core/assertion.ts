@@ -1,11 +1,11 @@
-import * as protos from "@dataform/protos";
+import { dataform } from "@dataform/protos";
 import { Session } from "./index";
 import * as utils from "./utils";
 
 export type AContextable<T> = T | ((ctx: AssertionContext) => T);
 
 export class Assertion {
-  public proto: protos.IAssertion = protos.Assertion.create();
+  public proto: dataform.IAssertion = dataform.Assertion.create();
 
   // Hold a reference to the Session instance.
   public session: Session;
