@@ -21,7 +21,7 @@ const errorOutput = (output: string) => coloredOutput(output, 91);
 const writeStdOut = (output: string) => process.stdout.write(output + "\n");
 const writeStdErr = (output: string) => process.stderr.write(output + "\n");
 
-const projectDirOption = {
+const projectDirOption: INamedOption<yargs.PositionalOptions> = {
   name: "project-dir",
   option: {
     describe: "The Dataform project directory.",
@@ -35,7 +35,7 @@ const projectDirMustExistOption = {
   check: (argv: yargs.Arguments) => assertPathExists(argv["project-dir"])
 };
 
-const fullRefreshOption = {
+const fullRefreshOption: INamedOption<yargs.Options> = {
   name: "full-refresh",
   option: {
     describe: "Forces incremental tables to be rebuilt from scratch.",
@@ -44,7 +44,7 @@ const fullRefreshOption = {
   }
 };
 
-const nodesOption = {
+const nodesOption: INamedOption<yargs.Options> = {
   name: "nodes",
   option: {
     describe: "A list of node names or patterns to run. Can include '*' wildcards.",
@@ -52,7 +52,7 @@ const nodesOption = {
   }
 };
 
-const includeDepsOption = {
+const includeDepsOption: INamedOption<yargs.Options> = {
   name: "include-deps",
   option: {
     describe: "If set, dependencies for selected nodes will also be run.",
@@ -66,21 +66,21 @@ const includeDepsOption = {
   }
 };
 
-const defaultSchemaOption = {
-  name: "default-schema",
+const schemaSuffixOverrideOption: INamedOption<yargs.Options> = {
+  name: "schema-suffix",
   option: {
-    describe: "An optional default schema name override."
+    describe: "A suffix to be appended to output schema names."
+  },
+  check: (argv: yargs.Arguments) => {
+    if (argv.schemaSuffix && !/^[a-zA-Z_0-9]+$/.test(argv.schemaSuffix)) {
+      throw new Error(
+        "--schema-suffix should contain only alphanumeric characters and/or underscores."
+      );
+    }
   }
 };
 
-const assertionSchemaOption = {
-  name: "assertion-schema",
-  option: {
-    describe: "An optional assertion schema name override."
-  }
-};
-
-const credentialsOption = {
+const credentialsOption: INamedOption<yargs.Options> = {
   name: "credentials",
   option: {
     describe: "The location of the credentials JSON file to use.",
@@ -90,7 +90,7 @@ const credentialsOption = {
   check: (argv: yargs.Arguments) => assertPathExists(argv.credentials)
 };
 
-const warehouseOption = {
+const warehouseOption: INamedOption<yargs.PositionalOptions> = {
   name: "warehouse",
   option: {
     describe: "The project's data warehouse type.",
@@ -115,7 +115,9 @@ const builtYargs = createYargsCli({
               throw new Error("The --gcloud-project-id flag is only used for BigQuery projects.");
             }
             if (!argv["gcloud-project-id"] && argv.warehouse === "bigquery") {
-              throw new Error("The --gcloud-project-id flag is required for BigQuery projects.");
+              throw new Error(
+                "The --gcloud-project-id flag is required for BigQuery projects. Please run 'dataform help init' for more information."
+              );
             }
           }
         },
@@ -183,8 +185,7 @@ const builtYargs = createYargsCli({
         "Compile the dataform project. Produces JSON output describing the non-executable graph.",
       positionalOptions: [projectDirMustExistOption],
       options: [
-        defaultSchemaOption,
-        assertionSchemaOption,
+        schemaSuffixOverrideOption,
         {
           name: "watch",
           option: {
@@ -196,10 +197,9 @@ const builtYargs = createYargsCli({
       ],
       processFn: async argv => {
         const projectDir = argv["project-dir"];
-        const defaultSchemaOverride = argv["default-schema"];
-        const assertionSchemaOverride = argv["assertion-schema"];
+        const schemaSuffixOverride = argv["schema-suffix"];
 
-        await compileProject(projectDir, defaultSchemaOverride, assertionSchemaOverride);
+        await compileProject(projectDir, schemaSuffixOverride);
 
         if (argv.watch) {
           let timeoutID = null;
@@ -233,7 +233,7 @@ const builtYargs = createYargsCli({
 
                 if (!isCompiling) {
                   isCompiling = true;
-                  await compileProject(projectDir, defaultSchemaOverride, assertionSchemaOverride);
+                  await compileProject(projectDir, schemaSuffixOverride);
                   writeStdOut(commandOutput("Watching for changes..."));
                   isCompiling = false;
                 }
@@ -258,15 +258,13 @@ const builtYargs = createYargsCli({
         fullRefreshOption,
         nodesOption,
         includeDepsOption,
-        defaultSchemaOption,
-        assertionSchemaOption,
+        schemaSuffixOverrideOption,
         credentialsOption
       ],
       processFn: async argv => {
         const compiledGraph = await compile({
           projectDir: argv["project-dir"],
-          defaultSchemaOverride: argv["default-schema"],
-          assertionSchemaOverride: argv["assertion-schema"]
+          schemaSuffixOverride: argv["schema-suffix"]
         });
         if (compiledGraph.graphErrors) {
           logGraphErrors(compiledGraph.graphErrors);
@@ -345,15 +343,19 @@ const builtYargs = createYargsCli({
 })
   .scriptName("dataform")
   .strict()
+  .wrap(null)
   .recommendCommands()
-  .help("help")
   .fail((msg, err) => {
     writeStdErr(
       errorOutput(`Dataform encountered an error: ${err ? err.stack || err.message : msg}`)
     );
     process.exit(1);
-  })
-  .demandCommand(1, "Please choose a command.").argv;
+  }).argv;
+
+// If no command is specified, show top-level help string.
+if (!builtYargs._[0]) {
+  yargs.showHelp();
+}
 
 function assertPathExists(checkPath: string) {
   if (!fs.existsSync(checkPath)) {
@@ -443,12 +445,8 @@ function getSnowflakeCredentials(): dataform.ISnowflake {
   };
 }
 
-async function compileProject(
-  projectDir: string,
-  defaultSchemaOverride?: string,
-  assertionSchemaOverride?: string
-) {
-  const graph = await compile({ projectDir, defaultSchemaOverride, assertionSchemaOverride });
+async function compileProject(projectDir: string, schemaSuffixOverride: string) {
+  const graph = await compile({ projectDir, schemaSuffixOverride });
   if (graph.graphErrors) {
     logGraphErrors(graph.graphErrors);
   } else {
@@ -493,7 +491,7 @@ interface INamedOption<T> {
 }
 
 function createYargsCli(cli: ICli) {
-  let yargsChain = yargs;
+  let yargsChain = yargs(fixArgvForHelp());
   for (const command of cli.commands) {
     yargsChain = yargsChain.command(
       command.format,
@@ -525,4 +523,19 @@ function createOptionsChain(yargsChain: yargs.Argv, command: ICommand) {
     return true;
   });
   return yargsChain;
+}
+
+function fixArgvForHelp() {
+  // Obviously this is a massive hack.
+  // The outcome of this is that the following commands are interchangeable:
+  // $ dataform help run
+  // $ dataform --help run
+  // The problem is that yargs.help() only allows us to specify an alias for the "--help" built-in option (by default that alias is "help").
+  // But because "--help" is only an option, not a command, it appears to be impossible (?) to configure yargs to respond to "help" correctly
+  // (or at least, to correctly print help strings for commands; it happily prints a top-level help string).
+  const argvCopy = process.argv.slice(2);
+  if (argvCopy[0] === "help") {
+    argvCopy[0] = "--help";
+  }
+  return argvCopy;
 }

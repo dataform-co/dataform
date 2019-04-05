@@ -6,8 +6,7 @@ import * as path from "path";
 export function genIndex(
   projectDir: string,
   returnOverride?: string,
-  defaultSchemaOverride: string = "",
-  assertionSchemaOverride: string = ""
+  schemaSuffixOverride: string = ""
 ): string {
   const packageJsonPath = path.join(projectDir, "package.json");
   const packageConfig = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
@@ -83,8 +82,7 @@ export function genIndex(
     ${packageRequires}
     ${includeRequires}
     const projectConfig = require("./dataform.json");
-    projectConfig.defaultSchema = "${defaultSchemaOverride}" || projectConfig.defaultSchema;
-    projectConfig.assertionSchema = "${assertionSchemaOverride}" || projectConfig.assertionSchema;
+    projectConfig.schemaSuffix = "${schemaSuffixOverride}" || projectConfig.schemaSuffix;
     init("${projectDir}", projectConfig);
     ${definitionRequires}
     const compiledGraph = compile();
