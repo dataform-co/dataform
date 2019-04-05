@@ -177,8 +177,7 @@ const builtYargs = createYargsCli({
         "Compile the dataform project. Produces JSON output describing the non-executable graph.",
       positionalOptions: [projectDirMustExistOption],
       options: [
-        defaultSchemaOption,
-        assertionSchemaOption,
+        schemaSuffixOption,
         {
           name: "watch",
           option: {
@@ -226,7 +225,7 @@ const builtYargs = createYargsCli({
 
                 if (!isCompiling) {
                   isCompiling = true;
-                  await compileProject(projectDir, defaultSchemaOverride, assertionSchemaOverride);
+                  await compileProject(projectDir, schemaSuffix);
                   writeStdOut(commandOutput("Watching for changes..."));
                   isCompiling = false;
                 }
@@ -251,8 +250,7 @@ const builtYargs = createYargsCli({
         fullRefreshOption,
         nodesOption,
         includeDepsOption,
-        defaultSchemaOption,
-        assertionSchemaOption,
+        schemaSuffixOption,
         credentialsOption
       ],
       processFn: async argv => {
@@ -437,10 +435,9 @@ function getSnowflakeCredentials(): dataform.ISnowflake {
 
 async function compileProject(
   projectDir: string,
-  defaultSchemaOverride?: string,
-  assertionSchemaOverride?: string
+  schemaSuffix: string,
 ) {
-  const graph = await compile({ projectDir, defaultSchemaOverride, assertionSchemaOverride });
+  const graph = await compile({ projectDir, schemaSuffix });
   if (graph.graphErrors) {
     logGraphErrors(graph.graphErrors);
   } else {
