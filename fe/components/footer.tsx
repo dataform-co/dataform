@@ -2,7 +2,7 @@ import * as React from "react";
 
 import * as styles from "@dataform/fe/components/footer.css";
 
-import FooterLogoImage from "df/static/images/new_logo_with_text_white.svg";
+const footerLogoImage = require("df/static/images/new_logo_with_text_white.svg");
 
 export interface IProps {
   maxWidth?: string;
@@ -67,7 +67,7 @@ export class Footer extends React.Component<IProps> {
           </div>
         </div>
         <div className={styles.footerLogo} style={{ maxWidth }}>
-          <img src={FooterLogoImage} className={styles.logo} />
+          <img src={footerLogoImage} className={styles.logo} />
           <div>© 2019 Tada science, Inc.</div>
         </div>
       </div>

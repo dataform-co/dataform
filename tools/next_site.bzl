@@ -16,7 +16,7 @@ def _export_next_site_impl(ctx):
             site_path = ctx.attr.site_path,
             export_path = export_dir.path,
             binary = ctx.executable.binary.path,
-            workspace_name = ctx.workspace_name
+            workspace_name = ctx.workspace_name,
         ),
     )
     return [DefaultInfo(files = depset([export_dir]))]

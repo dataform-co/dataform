@@ -5,7 +5,7 @@
   display: flex;
   flex-direction: column;
   justify-content: space-around;
-  background-image: url("../../static/images/footer_illustration.svg");
+  background-image: url("df/static/images/footer_illustration.svg");
   background-repeat: no-repeat;
   background-position: right;
   background-size: contain;
@@ -36,6 +36,7 @@
 .sitemapContent {
   display: flex;
   flex-direction: row;
+  margin: 0 5%;
 }
 
 .sitemap h4 {
@@ -64,7 +65,7 @@
 }
 
 .footerLogo {
-  width: 100%;
+  width: 90%;
   margin: 0 auto;
   display: flex;
   flex-direction: row;
@@ -79,13 +80,9 @@
 @media (max-width: 1250px) {
   .sitemapContent {
     width: 90%;
-    margin: 0 5%;
   }
   .sitemapContent {
     flex-direction: column;
-  }
-  .footerLogo {
-    width: 90%;
   }
   .footer {
     height: unset;

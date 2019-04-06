@@ -9,6 +9,7 @@ const withMDX = require("@zeit/next-mdx")({
 const withImages = require("next-images");
 const withCSS = require("@zeit/next-css");
 const path = require("path");
+const TsconfigPathsPlugin = require("tsconfig-paths-webpack-plugin");
 
 let config = {
   pageExtensions: ["tsx", "md", "mdx"],
@@ -18,8 +19,9 @@ let config = {
     localIdentName: "[local]___[hash:base64:5]"
   },
   webpack: (config, options) => {
-    // Make sure anything imported under df/ get's resolved.
-    config.resolve.modules.push(path.resolve("../"));
+    // Use the module name mappings in tsconfig so imports resolve properly.
+    config.resolve.plugins = config.resolve.plugins || [];
+    config.resolve.plugins.push(new TsconfigPathsPlugin({ extensions: [".ts", ".tsx", ".js", ".css"] }));
     // Make sure webpack can resolve modules that live within our bazel managed deps.
     const bazelNodeModulesPath = path.resolve("./external/npm/node_modules");
     config.resolve.modules.push(bazelNodeModulesPath);
@@ -46,8 +48,8 @@ let config = {
 };
 
 config = withCSS(config);
+config = withImages(config);
 config = withMDX(config);
 config = withTypescript(config);
-config = withImages(config);
 
 module.exports = config;

@@ -44,7 +44,7 @@
 }
 
 .pageSelected {
-  background-image: url("../../static/images/selected_page_marker.svg");
+  background-image: url("df/static/images/selected_page_marker.svg");
   background-repeat: no-repeat;
   background-position: top center;
 }
@@ -58,8 +58,9 @@
 }
 
 .logoImage {
-  padding: 40px 0;
+  padding: headerPadding;
 }
+
 .menuCloseIcon {
   z-index: 1001;
 }
@@ -146,9 +147,6 @@
     display: none;
   }
 
-  .logoImage {
-    padding: headerPadding;
-  }
   .navInverted > .navContent > span > a > .logoImage {
     padding: headerPadding;
   }
