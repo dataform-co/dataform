@@ -2,9 +2,9 @@ import { DbAdapter } from "@dataform/api/dbadapters/index";
 import * as apiUtils from "@dataform/api/utils";
 import { dataform } from "@dataform/protos";
 
-const Redshift: RedshiftType = require("node-redshift");
+const Redshift: IRedshiftType = require("node-redshift");
 
-interface RedshiftConfig {
+interface IRedshiftConfig {
   host?: string;
   port?: number;
   user?: string;
@@ -13,17 +13,22 @@ interface RedshiftConfig {
   ssl: boolean;
 }
 
-interface RedshiftType {
-  new (config: RedshiftConfig): RedshiftType;
+interface IRedshiftType {
+  new (config: IRedshiftConfig): IRedshiftType;
   query: (query: string) => Promise<{ rows: any[] }>;
 }
 
 export class RedshiftDbAdapter implements DbAdapter {
-  private client: RedshiftType;
+  private client: IRedshiftType;
 
   constructor(credentials: apiUtils.Credentials) {
-    const config: RedshiftConfig = {
-      ...(credentials as dataform.IJDBC),
+    const redshiftCredentials = credentials as dataform.IJDBC;
+    const config: IRedshiftConfig = {
+      host: redshiftCredentials.host,
+      port: redshiftCredentials.port,
+      user: redshiftCredentials.username,
+      password: redshiftCredentials.password,
+      database: redshiftCredentials.databaseName,
       ssl: true
     };
     this.client = new Redshift(config);

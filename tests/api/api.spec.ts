@@ -713,13 +713,13 @@ describe("@dataform/api", () => {
     const redshiftCredentials = {
       host: "",
       port: 0,
-      user: "",
+      username: "",
       password: "",
-      database: ""
+      databaseName: ""
     };
     const snowflakeCredentials = {
       accountId: "",
-      userName: "",
+      username: "",
       password: "",
       role: "",
       databaseName: "",
