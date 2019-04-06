@@ -12,7 +12,7 @@ export class SnowflakeAdapter extends Adapter implements IAdapter {
   }
 
   public resolveTarget(target: dataform.ITarget) {
-    return `"${target.schema || this.project.defaultSchema}"."${target.name}"`;
+    return `"${target.schema}"."${target.name}"`;
   }
 
   public publishTasks(
@@ -54,7 +54,7 @@ export class SnowflakeAdapter extends Adapter implements IAdapter {
     });
     tasks.add(Task.statement(this.createOrReplaceView(assertionTarget, a.query)));
     tasks.add(
-      Task.assertion(`select count(*) as row_count from ${this.resolveTarget(assertionTarget)}`)
+      Task.assertion(`select sum(1) as row_count from ${this.resolveTarget(assertionTarget)}`)
     );
     return tasks;
   }
