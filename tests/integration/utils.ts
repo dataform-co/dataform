@@ -2,7 +2,7 @@ import * as dbadapters from "@dataform/api/dbadapters";
 import * as adapters from "@dataform/core/adapters";
 import { dataform } from "@dataform/protos";
 
-export function toMap<V>(values: V[], keyFn: (value: V) => string): { [key: string]: V } {
+export function keyBy<V>(values: V[], keyFn: (value: V) => string): { [key: string]: V } {
   return values.reduce(
     (map, value) => {
       map[keyFn(value)] = value;

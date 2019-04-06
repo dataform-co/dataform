@@ -159,7 +159,7 @@ export class Runner {
                   {
                     ok: false,
                     task,
-                    error: `Test failed: query returned ${rowCount} row(s).`
+                    error: `Assertion failed: query returned ${rowCount} row(s).`
                   }
                 ];
               }

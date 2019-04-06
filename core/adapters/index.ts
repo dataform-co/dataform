@@ -29,7 +29,7 @@ export enum WarehouseType {
   SNOWFLAKE = "snowflake"
 }
 
-const requiredJdbcWarehouseProps = ["host", "port", "user", "password", "database"];
+const requiredJdbcWarehouseProps = ["host", "port", "username", "password", "databaseName"];
 
 export const requiredWarehouseProps = {
   [WarehouseType.BIGQUERY]: ["projectId", "credentials"],
