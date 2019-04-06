@@ -1,42 +1,12 @@
-# Development
+<p align="center">
+  <img width="250" src="/static/images/dataform_logo.svg">
+</p>
+<h1 align="center"> Dataform </h1>
 
-## Requirements
+The Dataform SDK is an open source framework for managing SQL based data operations in your warehouse.
+Using the SDK, or Dataform Web, you can easily develop, test, and deploy SQL to your data warehouse.
 
-- [Bazel](https://bazel.build)
+- [Learn more about Dataform](https://dataform.co/)
+- [Get started with the Dataform CLI](https://docs.dataform.co/guides/command-line-interface/)
 
-## Build
-
-```bash
-bazel build //...
-```
-
-## Run
-
-```bash
-./scripts/run --help
-```
-
-## Create and compile example project
-
-```bash
-./scripts/run init /tmp/dataform-project
-./scripts/run compile /tmp/dataform-project
-```
-
-## Setup docs site
-
-```bash
-npm i --prod
-```
-
-## Serve docs site
-
-```bash
-./scripts/docs/serve
-```
-
-## Run tests
-
-```bash
-./scripts/test
-```
+[Want to contribute?](contributors.md)
