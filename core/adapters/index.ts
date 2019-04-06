@@ -15,6 +15,7 @@ export interface IAdapter {
   assertTasks(assertion: dataform.IAssertion, projectConfig: dataform.IProjectConfig): Tasks;
 
   dropIfExists(target: dataform.ITarget, type: string): string;
+  baseTableType(type: string): string;
 }
 
 export type AdapterConstructor<T extends IAdapter> = new (
@@ -28,7 +29,7 @@ export enum WarehouseType {
   SNOWFLAKE = "snowflake"
 }
 
-const requiredJdbcWarehouseProps = ["host", "port", "user", "password", "database"];
+const requiredJdbcWarehouseProps = ["host", "port", "username", "password", "databaseName"];
 
 export const requiredWarehouseProps = {
   [WarehouseType.BIGQUERY]: ["projectId", "credentials"],
@@ -36,7 +37,7 @@ export const requiredWarehouseProps = {
   [WarehouseType.REDSHIFT]: requiredJdbcWarehouseProps,
   [WarehouseType.SNOWFLAKE]: [
     "accountId",
-    "userName",
+    "username",
     "password",
     "role",
     "databaseName",
