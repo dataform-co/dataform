@@ -3,18 +3,13 @@ package(default_visibility = ["//visibility:public"])
 load("//tools:css_typings.bzl", "css_typings")
 
 filegroup(
-    name = "files",
-    srcs = glob(["**/*"]),
-)
-
-filegroup(
-    name = "files_css",
+    name = "css",
     srcs = glob(["**/*.css"]),
 )
 
 css_typings(
-    name = "css",
-    srcs = glob(["**/*.css"]),
+    name = "css_typings",
+    srcs = [":css"],
 )
 
 load("@npm_bazel_typescript//:index.bzl", "ts_library")
@@ -26,8 +21,7 @@ ts_library(
         "**/*.ts",
     ]),
     data = [
-        ":files_css",
-        "//static:files",
+        ":css",
     ],
     module_name = "@dataform/fe",
     deps = [
