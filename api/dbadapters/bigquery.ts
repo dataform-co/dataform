@@ -1,7 +1,7 @@
-import { dataform } from "@dataform/protos";
-import * as PromisePool from "promise-pool-executor";
 import { DbAdapter, OnCancel } from "@dataform/api/dbadapters/index";
 import * as apiUtils from "@dataform/api/utils";
+import { dataform } from "@dataform/protos";
+import * as PromisePool from "promise-pool-executor";
 
 const BigQuery = require("@google-cloud/bigquery");
 
@@ -28,10 +28,11 @@ export class BigQueryDbAdapter implements DbAdapter {
 
   public execute(statement: string, onCancel?: OnCancel) {
     let isCancelled = false;
-    onCancel &&
+    if (onCancel) {
       onCancel(() => {
         isCancelled = true;
       });
+    }
     return this.pool
       .addSingleTask({
         generator: () =>
@@ -47,12 +48,13 @@ export class BigQueryDbAdapter implements DbAdapter {
                   await job.cancel();
                   return reject(new Error("Query cancelled."));
                 }
-                onCancel &&
+                if (onCancel) {
                   onCancel(async () => {
                     // Cancelled while running.
                     await job.cancel();
                     return reject(new Error("Query cancelled."));
                   });
+                }
                 job.getQueryResults((err: any, result: any[]) => {
                   if (err) {
                     reject(err);

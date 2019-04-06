@@ -55,7 +55,7 @@ export class BigQueryAdapter extends Adapter implements IAdapter {
     });
     tasks.add(Task.statement(this.createOrReplaceView(assertionTarget, a.query)));
     tasks.add(
-      Task.assertion(`select count(*) as row_count from ${this.resolveTarget(assertionTarget)}`)
+      Task.assertion(`select sum(1) as row_count from ${this.resolveTarget(assertionTarget)}`)
     );
     return tasks;
   }

@@ -1,165 +1,38 @@
-import * as dfapi from "@dataform/api";
-import { create, IAdapter } from "@dataform/core/adapters";
+import * as dbadapters from "@dataform/api/dbadapters";
+import * as adapters from "@dataform/core/adapters";
 import { dataform } from "@dataform/protos";
-import { expect } from "chai";
-import * as utils from "df/api/utils";
-import { asPlainObject } from "df/tests/utils";
-import * as fs from "fs";
-import * as path from "path";
 
-interface ITableInfo {
-  schema: string;
-  table: string;
-  type: string;
-}
-
-interface ITestConfig {
-  warehouse: string;
-  credentials: utils.Credentials;
-  projectDir: string;
-  projectConf: dataform.IProjectConfig;
-  defaultSchema: string;
-  assertionSchema: string;
-  adapter: IAdapter;
-}
-
-interface IExpectedResult {
-  id: string;
-  data: object[];
-}
-
-export function queryRun(sqlQuery: string, testConfig: ITestConfig) {
-  return dfapi.query.run(testConfig.credentials, testConfig.warehouse, sqlQuery, {
-    projectDir: path.resolve(testConfig.projectDir)
-  });
-}
-
-function getTarget(schema: string, table: string, testConfig: ITestConfig) {
-  const target = testConfig.adapter.resolveTarget({ schema, name: table });
-
-  return target.replace(/`/g, "\\`");
-}
-
-function deleteTables(tables: ITableInfo[], testConfig: ITestConfig) {
-  return Promise.all(
-    tables.map(item => {
-      const target = { schema: item.schema, name: item.table };
-      const query = testConfig.adapter.dropIfExists(target, item.type);
-      const sqlDelete = query.replace(/`/g, "\\`");
-
-      return queryRun(sqlDelete, testConfig);
-    })
+export function keyBy<V>(values: V[], keyFn: (value: V) => string): { [key: string]: V } {
+  return values.reduce(
+    (map, value) => {
+      map[keyFn(value)] = value;
+      return map;
+    },
+    {} as { [key: string]: V }
   );
 }
 
-function getTables(schema: string, testConfig: ITestConfig) {
-  const tablesQuery = {
-    bigquery: `
-      select
-        table_id as table,
-        dataset_id as schema,
-        case type when 2 then 'view' else 'table' end as type
-      from ${schema}.__TABLES__`,
-    redshift: `
-      select
-        table_name as table,
-        table_schema as schema,
-        case table_type when 'VIEW' then 'view' else 'table' end as type
-      from information_schema.tables
-      where table_schema != 'information_schema'
-        and table_schema != 'pg_catalog'
-        and table_schema != 'pg_internal'
-        and table_schema = '${schema}'`,
-    snowflake: `
-      select
-        table_name as "table",
-        table_schema as "schema",
-        case table_type when 'VIEW' then 'view' else 'table' end as "type"
-      from information_schema.tables
-      where LOWER(table_schema) != 'information_schema'
-        and LOWER(table_schema) != 'pg_catalog'
-        and LOWER(table_schema) != 'pg_internal'
-        and LOWER(table_schema) = '${schema}'`
-  };
-
-  return queryRun(tablesQuery[testConfig.warehouse], testConfig);
-}
-
-function getData(expectedResult: IExpectedResult[], schema: string, testConfig: ITestConfig) {
-  return Promise.all(
-    expectedResult.map(item => {
-      const target = getTarget(schema, item.id, testConfig);
-      const sqlSelect = `select * from ${target}`;
-
-      return queryRun(sqlSelect, testConfig);
-    })
-  );
-}
-
-export function getTestConfig(warehouse: string): ITestConfig {
-  const credentialsPath = `df/test_profiles/${warehouse}.json`;
-  const credentials = utils.readCredentials(warehouse, credentialsPath);
-  const projectDir = `df/examples/${warehouse}`;
-  const projectConf = JSON.parse(fs.readFileSync(path.join(projectDir, "./dataform.json"), "utf8"));
-  const adapter = create({ ...projectConf, gcloudProjectId: null });
-
-  return {
-    warehouse,
-    credentials,
-    projectDir,
-    projectConf,
-    defaultSchema: projectConf.defaultSchema,
-    assertionSchema: projectConf.assertionSchema,
-    adapter
-  };
-}
-
-export function getTestRunCommand(
-  testConfig: ITestConfig,
-  expectedResult: IExpectedResult[],
-  incrementalLength: number
+export async function dropAllTables(
+  compiledGraph: dataform.ICompiledGraph,
+  adapter: adapters.IAdapter,
+  dbadapter: dbadapters.DbAdapter
 ) {
-  return async () => {
-    // run the command
-    const graph = await dfapi
-      .compile({ projectDir: testConfig.projectDir })
-      .then(cg => dfapi.build(cg, {}, testConfig.credentials))
-      .then(eg => dfapi.run(eg, testConfig.credentials).resultPromise());
-
-    expect(graph).to.have.property("ok").that.to.be.true;
-    expect(graph)
-      .to.have.property("nodes")
-      .to.be.an("array").that.is.not.empty;
-
-    // check for errors in database
-    const data = await getData(expectedResult, testConfig.defaultSchema, testConfig);
-    expectedResult.forEach((item, i) => {
-      const isIncremental = item.id === "example_incremental";
-      const dataLength = isIncremental ? incrementalLength : item.data.length;
-
-      expect(data[i])
-        .to.be.an("array")
-        .that.have.lengthOf(dataLength);
-
-      if (!isIncremental) {
-        expect(asPlainObject(data[i])).to.have.deep.members(asPlainObject(item.data));
-      }
-    });
-  };
+  await Promise.all(
+    [].concat(
+      compiledGraph.tables.map(table =>
+        dbadapter.execute(adapter.dropIfExists(table.target, adapter.baseTableType(table.type)))
+      ),
+      compiledGraph.assertions.map(assertion =>
+        dbadapter.execute(adapter.dropIfExists(assertion.target, "view"))
+      )
+    )
+  );
 }
 
-export function getHookBefore(testConfig: ITestConfig) {
-  return async () => {
-    // get all tables in dataset
-    const dTables = await getTables(testConfig.defaultSchema, testConfig);
-    const aTables = await getTables(testConfig.assertionSchema, testConfig);
-
-    // delete existing tables
-    if (aTables.length > 0) {
-      await deleteTables(aTables, testConfig);
-    }
-    if (dTables.length > 0) {
-      await deleteTables(dTables, testConfig);
-    }
-  };
+export async function getTableRows(
+  target: dataform.ITarget,
+  adapter: adapters.IAdapter,
+  dbadapter: dbadapters.DbAdapter
+) {
+  return dbadapter.execute(`select * from ${adapter.resolveTarget(target)}`);
 }
