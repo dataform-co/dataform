@@ -1,11 +1,21 @@
 package(default_visibility = ["//visibility:public"])
 
-load("//tools:css_typings.bzl", "css_typings")
-
 EXCLUDE_PATTERNS = [
     ".next/**",
     "out/**",
 ]
+
+load("//tools:css_typings.bzl", "css_typings")
+
+filegroup(
+    name = "css",
+    srcs = glob(["**/*.css"]),
+)
+
+css_typings(
+    name = "css_typings",
+    srcs = [":css"],
+)
 
 load("//tools:next_site.bzl", "next_site")
 
@@ -16,6 +26,7 @@ next_site(
         exclude = EXCLUDE_PATTERNS,
     ),
     data = [
+        ":css_typings",
         "//:package.json",
         "//:tsconfig.json",
         "//fe",

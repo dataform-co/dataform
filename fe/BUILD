@@ -25,7 +25,7 @@ ts_library(
     ],
     module_name = "@dataform/fe",
     deps = [
-        ":css",
+        ":css_typings",
         "@npm//@blueprintjs/core",
         "@npm//@types/node",
         "@npm//@types/react",
