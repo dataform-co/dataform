@@ -18,14 +18,29 @@ let config = {
     localIdentName: "[local]___[hash:base64:5]"
   },
   webpack: (config, options) => {
-    // This makes sure we can transpile common typescript code.
-    options.defaultLoaders.babel.options.configFile = path.join(__dirname, ".babelrc");
+    // Make sure anything imported under df/ get's resolved.
+    config.resolve.modules.push(path.resolve("../"));
+    // Make sure webpack can resolve modules that live within our bazel managed deps.
+    const bazelNodeModulesPath = path.resolve("./external/npm/node_modules");
+    config.resolve.modules.push(bazelNodeModulesPath);
+    config.resolveLoader.modules.push(bazelNodeModulesPath);
+    // Inline babel config for typescript compilation.
+    options.defaultLoaders.babel.options.configFile = false;
+    options.defaultLoaders.babel.options.presets = [
+      require.resolve("next/babel"),
+      [require.resolve("@zeit/next-typescript/babel"), { extensions: [".ts", ".tsx", ".mdx"] }]
+    ];
+    // Another hack for bazel to make sure our typescript code in here actually gets compiled.
     config.module.rules.push({
       test: /\.tsx?$/,
-      include: /..\/..\/ts/,
       use: [options.defaultLoaders.babel]
     });
-    config.module.rules[config.module.rules.length - 1].include = undefined;
+    // Make sure the outputs of other ts_library rules can be consumed without webpack warnings.
+    config.module.rules.push({
+      test: /\.jsx?$/,
+      exclude: /node_modules/,
+      use: [{ loader: require.resolve("umd-compat-loader") }]
+    });
     return config;
   }
 };
