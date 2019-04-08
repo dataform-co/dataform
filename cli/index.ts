@@ -266,7 +266,7 @@ const builtYargs = createYargsCli({
           projectDir: argv["project-dir"],
           schemaSuffixOverride: argv["schema-suffix"]
         });
-        if (compiledGraph.graphErrors) {
+        if (graphHasErrors(compiledGraph)) {
           logGraphErrors(compiledGraph.graphErrors);
           return;
         }
@@ -300,11 +300,15 @@ const builtYargs = createYargsCli({
             .filter(node => node.status === dataform.NodeExecutionStatus.FAILED)
             .forEach(node => {
               writeStdErr(errorOutput(`Execution failed on node "${node.name}":`));
-              node.tasks.filter(task => !task.ok).forEach(task => {
-                writeStdErr(
-                  errorOutput(`Statement "${task.task.statement}" failed with error: ${task.error}`)
-                );
-              });
+              node.tasks
+                .filter(task => !task.ok)
+                .forEach(task => {
+                  writeStdErr(
+                    errorOutput(
+                      `Statement "${task.task.statement}" failed with error: ${task.error}`
+                    )
+                  );
+                });
             });
         }
       }
@@ -445,9 +449,20 @@ function getSnowflakeCredentials(): dataform.ISnowflake {
   };
 }
 
+function graphHasErrors(graph: dataform.ICompiledGraph) {
+  return (
+    graph.graphErrors &&
+    graph.graphErrors.compilationErrors &&
+    graph.graphErrors.compilationErrors.length > 0 &&
+    graph.graphErrors &&
+    graph.graphErrors.validationErrors &&
+    graph.graphErrors.validationErrors.length > 0
+  );
+}
+
 async function compileProject(projectDir: string, schemaSuffixOverride: string) {
   const graph = await compile({ projectDir, schemaSuffixOverride });
-  if (graph.graphErrors) {
+  if (graphHasErrors(graph)) {
     logGraphErrors(graph.graphErrors);
   } else {
     writeStdOut(prettyJsonStringify(graph));

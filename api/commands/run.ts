@@ -58,15 +58,22 @@ export class Runner {
     if (!!this.executionTask) {
       throw Error("Executor already started.");
     }
-    const prepareDefaultSchema = this.adapter.prepareSchema(this.graph.projectConfig.defaultSchema);
-    const prepareAssertionSchema = this.adapter.prepareSchema(
-      this.graph.projectConfig.assertionSchema
+
+    // Work out all the schemas we are going to need to create first.
+    const uniqueSchemas = {};
+    this.graph.nodes
+      .filter(node => !!node.target)
+      .map(node => node.target.schema)
+      .filter(schema => !!schema)
+      .forEach(schema => (uniqueSchemas[schema] = true));
+
+    const prepareSchemas = Promise.all(
+      Object.keys(uniqueSchemas).map(schema => this.adapter.prepareSchema(schema))
     );
 
     this.executionTask = new Promise(async (resolve, reject) => {
       try {
-        await prepareDefaultSchema;
-        await prepareAssertionSchema;
+        await prepareSchemas;
         this.loop(() => resolve(this.result), reject);
       } catch (e) {
         reject(e);
@@ -154,14 +161,7 @@ export class Runner {
               // We don't really care what that field/column is called.
               const rowCount = rows[0][Object.keys(rows[0])[0]];
               if (rowCount > 0) {
-                throw [
-                  ...chainResults,
-                  {
-                    ok: false,
-                    task,
-                    error: `Assertion failed: query returned ${rowCount} row(s).`
-                  }
-                ];
+                throw new Error(`Assertion failed: query returned ${rowCount} row(s).`);
               }
             }
             return [...chainResults, { ok: true, task }];

@@ -134,6 +134,7 @@ export class Builder {
       name: assertion.name,
       dependencies: assertion.dependencies,
       type: "assertion",
+      target: assertion.target,
       tasks: this.adapter.assertTasks(assertion, this.compiledGraph.projectConfig).build()
     });
   }
