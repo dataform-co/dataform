@@ -4,11 +4,11 @@ import * as styles from "@dataform/fe/components/header.css";
 
 import { Button, Intent } from "@blueprintjs/core";
 
-import MenuCloseIcon from "df/static/images/menu_close.svg";
-import MenuIcon from "df/static/images/menu_icon.svg";
-import MenuIconWhite from "df/static/images/menu_icon_white.svg";
-import LogoImage from "df/static/images/new_logo_with_text.svg";
-import LogoImageWhite from "df/static/images/new_logo_with_text_white.svg";
+const menuCloseIcon = require("df/static/images/menu_close.svg");
+const menuIcon = require("static/images/menu_icon.svg");
+const menuIconWhite = require("static/images/menu_icon_white.svg");
+const logoImageWhite = require("static/images/new_logo_with_text_white.svg");
+const logoImage = require("df/static/images/new_logo_with_text.svg");
 
 export interface IPage {
   name: string;
@@ -112,13 +112,13 @@ export class Header extends React.Component<IProps, IState> {
                 <span className={styles.navContent}>
                   <span>
                     <a href="/">
-                      <img src={LogoImageWhite} className={styles.logoImageWhite} />
+                      <img src={logoImageWhite} className={styles.logoImageWhite} />
                     </a>
                   </span>
                 </span>
                 <span className={styles.actions}>
                   <span onClick={this.handleMobileMenuChange}>
-                    <img src={MenuCloseIcon} className={styles.menuCloseIcon} />
+                    <img src={menuCloseIcon} className={styles.menuCloseIcon} />
                   </span>
                 </span>
               </nav>
@@ -156,13 +156,13 @@ export class Header extends React.Component<IProps, IState> {
   // TODO just use the fill property in the svg to do this
   private createColouredLogo = (invert: boolean, showFixedNav: boolean) => {
     return invert && !showFixedNav ? (
-      <img src={LogoImageWhite} className={styles.logoImage} />
+      <img src={logoImageWhite} className={styles.logoImage} />
     ) : (
-      <img src={LogoImage} className={styles.logoImage} />
+      <img src={logoImage} className={styles.logoImage} />
     );
   };
 
   private createColouredMenuLogo = (invert: boolean, showFixedNav: boolean) => {
-    return invert && !showFixedNav ? <img src={MenuIconWhite} /> : <img src={MenuIcon} />;
+    return invert && !showFixedNav ? <img src={menuIconWhite} /> : <img src={menuIcon} />;
   };
 }

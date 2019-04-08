@@ -1,18 +1,19 @@
 {
   "compilerOptions": {
-    "module": "commonjs",
-    "noImplicitAny": false,
-    "outDir": "build",
     "baseUrl": ".",
     "paths": {
-      "df/*": ["*", "bazel-genfiles/*", "bazel-bin/*"],
-      "@dataform/*": ["*", "bazel-genfiles/*", "bazel-bin/*"]
+      "df/*": ["*", "bazel-bin/*", "bazel-genfiles/*"],
+      "@dataform/*": ["*", "bazel-bin/*", "bazel-genfiles/*"]
     },
+    "module": "commonjs",
+    "noImplicitAny": false,
+    "preserveConstEnums": true,
     "removeComments": true,
-    "inlineSourceMap": true,
+    "target": "es6",
+    "sourceMap": true,
+    "skipLibCheck": true,
     "experimentalDecorators": true,
     "jsx": "react",
-    "lib": ["es2015", "dom"]
-  },
-  "exclude": ["node_modules"]
+    "lib": ["es6", "dom"]
+  }
 }
