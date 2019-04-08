@@ -29,20 +29,31 @@ export enum WarehouseType {
   SNOWFLAKE = "snowflake"
 }
 
-const requiredJdbcWarehouseProps = ["host", "port", "username", "password", "databaseName"];
+const requiredBigQueryWarehouseProps: Array<keyof dataform.IBigQuery> = [
+  "projectId",
+  "credentials"
+];
+const requiredJdbcWarehouseProps: Array<keyof dataform.IJDBC> = [
+  "host",
+  "port",
+  "username",
+  "password",
+  "databaseName"
+];
+const requiredSnowflakeWarehouseProps: Array<keyof dataform.ISnowflake> = [
+  "accountId",
+  "username",
+  "password",
+  "role",
+  "databaseName",
+  "warehouse"
+];
 
 export const requiredWarehouseProps = {
-  [WarehouseType.BIGQUERY]: ["projectId", "credentials"],
+  [WarehouseType.BIGQUERY]: requiredBigQueryWarehouseProps,
   [WarehouseType.POSTGRES]: requiredJdbcWarehouseProps,
   [WarehouseType.REDSHIFT]: requiredJdbcWarehouseProps,
-  [WarehouseType.SNOWFLAKE]: [
-    "accountId",
-    "username",
-    "password",
-    "role",
-    "databaseName",
-    "warehouse"
-  ]
+  [WarehouseType.SNOWFLAKE]: requiredSnowflakeWarehouseProps
 };
 
 const registry: { [warehouseType: string]: AdapterConstructor<IAdapter> } = {};
