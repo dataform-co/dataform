@@ -59,21 +59,22 @@ export class Runner {
       throw Error("Executor already started.");
     }
 
-    // Work out all the schemas we are going to need to create first.
-    const uniqueSchemas = {};
-    this.graph.nodes
-      .filter(node => !!node.target)
-      .map(node => node.target.schema)
-      .filter(schema => !!schema)
-      .forEach(schema => (uniqueSchemas[schema] = true));
-
-    const prepareSchemas = Promise.all(
-      Object.keys(uniqueSchemas).map(schema => this.adapter.prepareSchema(schema))
-    );
-
     this.executionTask = new Promise(async (resolve, reject) => {
       try {
-        await prepareSchemas;
+        // Work out all the schemas we are going to need to create first.
+        const uniqueSchemas = {};
+        this.graph.nodes
+          .filter(node => !!node.target)
+          .map(node => node.target.schema)
+          .filter(schema => !!schema)
+          .forEach(schema => (uniqueSchemas[schema] = true));
+
+        // Wait for all schemas to be created.
+        await Promise.all(
+          Object.keys(uniqueSchemas).map(schema => this.adapter.prepareSchema(schema))
+        );
+
+        // Start the main execution loop.
         this.loop(() => resolve(this.result), reject);
       } catch (e) {
         reject(e);

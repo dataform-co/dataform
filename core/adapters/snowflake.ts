@@ -16,40 +16,47 @@ export class SnowflakeAdapter extends Adapter implements IAdapter {
   }
 
   public publishTasks(
-    t: dataform.ITable,
+    table: dataform.ITable,
     runConfig: dataform.IRunConfig,
     tableMetadata: dataform.ITableMetadata
   ): Tasks {
     const tasks = Tasks.create();
     // Drop the existing view or table if we are changing it's type.
-    if (tableMetadata && tableMetadata.type != this.baseTableType(t.type)) {
-      tasks.add(Task.statement(this.dropIfExists(t.target, this.oppositeTableType(t.type))));
+    if (tableMetadata && tableMetadata.type != this.baseTableType(table.type)) {
+      tasks.add(
+        Task.statement(this.dropIfExists(table.target, this.oppositeTableType(table.type)))
+      );
     }
-    if (t.type == "incremental") {
+    if (table.type == "incremental") {
       if (runConfig.fullRefresh || !tableMetadata || tableMetadata.type == "view") {
-        tasks.add(Task.statement(this.createOrReplace(t)));
+        tasks.add(Task.statement(this.createOrReplace(table)));
       } else {
         // The table exists, insert new rows.
         tasks.add(
           Task.statement(
             this.insertInto(
-              t.target,
+              table.target,
               tableMetadata.fields.map(f => f.name),
-              this.where(t.query, t.where)
+              this.where(table.query, table.where)
             )
           )
         );
       }
     } else {
-      tasks.add(Task.statement(this.createOrReplace(t)));
+      tasks.add(Task.statement(this.createOrReplace(table)));
     }
     return tasks;
   }
 
-  public assertTasks(a: dataform.IAssertion, projectConfig: dataform.IProjectConfig): Tasks {
+  public assertTasks(
+    assertion: dataform.IAssertion,
+    projectConfig: dataform.IProjectConfig
+  ): Tasks {
     const tasks = Tasks.create();
-    tasks.add(Task.statement(this.createOrReplaceView(a.target, a.query)));
-    tasks.add(Task.assertion(`select sum(1) as row_count from ${this.resolveTarget(a.target)}`));
+    tasks.add(Task.statement(this.createOrReplaceView(assertion.target, assertion.query)));
+    tasks.add(
+      Task.assertion(`select sum(1) as row_count from ${this.resolveTarget(assertion.target)}`)
+    );
     return tasks;
   }
 
@@ -58,9 +65,9 @@ export class SnowflakeAdapter extends Adapter implements IAdapter {
       create or replace view ${this.resolveTarget(target)} as ${query}`;
   }
 
-  public createOrReplace(t: dataform.ITable) {
-    return `create or replace ${this.baseTableType(t.type || "table")} ${this.resolveTarget(
-      t.target
-    )} as ${t.query}`;
+  public createOrReplace(table: dataform.ITable) {
+    return `create or replace ${this.baseTableType(table.type || "table")} ${this.resolveTarget(
+      table.target
+    )} as ${table.query}`;
   }
 }

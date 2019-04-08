@@ -450,13 +450,12 @@ function getSnowflakeCredentials(): dataform.ISnowflake {
 }
 
 function graphHasErrors(graph: dataform.ICompiledGraph) {
+  if (!graph.graphErrors) {
+    return false;
+  }
   return (
-    graph.graphErrors &&
-    graph.graphErrors.compilationErrors &&
-    graph.graphErrors.compilationErrors.length > 0 &&
-    graph.graphErrors &&
-    graph.graphErrors.validationErrors &&
-    graph.graphErrors.validationErrors.length > 0
+    (graph.graphErrors.compilationErrors && graph.graphErrors.compilationErrors.length > 0) ||
+    (graph.graphErrors.validationErrors && graph.graphErrors.validationErrors.length > 0)
   );
 }
 
