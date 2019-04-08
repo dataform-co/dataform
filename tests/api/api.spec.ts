@@ -129,7 +129,7 @@ describe("@dataform/api", () => {
             queries: ["create or replace view schema.someview as select 1 as test"]
           }
         ],
-        assertions: [{ name: "e" }]
+        assertions: [{ name: "e", target: { schema: "schema", name: "d" } }]
       });
 
       const builder = new Builder(graph, {}, TEST_STATE);
