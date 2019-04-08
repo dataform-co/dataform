@@ -1,10 +1,12 @@
 import Documentation from "df/docs/layouts/documentation";
 
+import logoWithText from "df/static/images/new_logo_with_text.svg";
+
 export default ({ children }) => (
   <Documentation title="Dataform documentation">{children}</Documentation>
 );
 
-<img src="/static/images/logo_with_text.svg" style={{ width: "100%", padding: "20px" }} />
+<img src={logoWithText} style={{ width: "100%", padding: "20px" }} />
 
 Dataform makes it easy to manage complex SQL pipelines in your data warehouse. Using Dataform's API you can power large, complex data transformations with just a few simple statements.
 
