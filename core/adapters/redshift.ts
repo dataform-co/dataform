@@ -53,10 +53,14 @@ export class RedshiftAdapter extends Adapter implements IAdapter {
     projectConfig: dataform.IProjectConfig
   ): Tasks {
     const tasks = Tasks.create();
-    tasks.add(Task.statement(this.createOrReplaceView(assertion.target, assertion.query)));
-    tasks.add(
-      Task.assertion(`select sum(1) as row_count from ${this.resolveTarget(assertion.target)}`)
-    );
+    const target =
+      assertion.target ||
+      dataform.Target.create({
+        schema: projectConfig.assertionSchema,
+        name: assertion.name
+      });
+    tasks.add(Task.statement(this.createOrReplaceView(target, assertion.query)));
+    tasks.add(Task.assertion(`select sum(1) as row_count from ${this.resolveTarget(target)}`));
     return tasks;
   }
 
