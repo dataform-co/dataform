@@ -51,3 +51,23 @@ next_site(
     ],
     site_path = "docs",
 )
+
+load("@io_bazel_rules_docker//container:container.bzl", "container_image")
+
+container_image(
+    name = "image",
+    base = "@nginx_base//image",
+    directory = "/usr/share/nginx/html",
+    tars = [":docs_pkg"],
+)
+
+load("@io_bazel_rules_docker//container:container.bzl", "container_push")
+
+container_push(
+    name = "push",
+    format = "Docker",
+    registry = "gcr.io",
+    image = ":image",
+    repository = "tada-analytics/static-docs",
+    tag = "latest"
+)
