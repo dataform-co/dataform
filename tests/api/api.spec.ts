@@ -583,16 +583,19 @@ describe("@dataform/api", () => {
       });
     });
 
-    it("bigquery_backwards_compatibility_example", () => {
-      return compile({ projectDir: "df/examples/bigquery_backwards_compatibility" }).then(graph => {
-        const tableNames = graph.tables.map(t => t.name);
+    it("bigquery_backwards_compatibility_example", async () => {
+      const graph = await compile({ projectDir: "df/examples/bigquery_backwards_compatibility" });
 
-        // We just want to make sure this compiles really.
-        expect(tableNames).includes("example");
-        const example = graph.tables.filter(t => t.name == "example")[0];
-        expect(example.type).equals("table");
-        expect(example.query.trim()).equals("select 1 as foo_bar");
-      });
+      const tableNames = graph.tables.map(t => t.name);
+
+      // Make sure it compiles.
+      expect(tableNames).includes("example");
+      const example = graph.tables.filter(t => t.name == "example")[0];
+      expect(example.type).equals("table");
+      expect(example.query.trim()).equals("select 1 as foo_bar");
+
+      // Make sure we can dry run.
+      new Builder(graph, {}, { tables: [] }).build();
     });
 
     it("operation_refing", async function() {
