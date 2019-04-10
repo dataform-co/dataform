@@ -26,13 +26,7 @@ bazel build //...
 
 ## Docs site
 
-### Setup
-
-```bash
-npm i --prod
-```
-
-### Serve
+### Run locally
 
 ```bash
 ./scripts/docs/serve
