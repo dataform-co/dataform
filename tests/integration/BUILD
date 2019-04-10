@@ -39,9 +39,9 @@ mocha_node_test(
         ":bigquery_lib",
     ],
     data = [
+        "//test_profiles",
         "//tests/integration/bigquery_project:files",
         "//tests/integration/bigquery_project:node_modules",
-        "//test_profiles",
         "@npm//chai",
         "@npm//mocha",
     ],
@@ -68,9 +68,9 @@ mocha_node_test(
         ":redshift_lib",
     ],
     data = [
+        "//test_profiles",
         "//tests/integration/redshift_project:files",
         "//tests/integration/redshift_project:node_modules",
-        "//test_profiles",
         "@npm//chai",
         "@npm//mocha",
     ],
@@ -97,9 +97,9 @@ mocha_node_test(
         ":snowflake_lib",
     ],
     data = [
+        "//test_profiles",
         "//tests/integration/snowflake_project:files",
         "//tests/integration/snowflake_project:node_modules",
-        "//test_profiles",
         "@npm//chai",
         "@npm//mocha",
     ],

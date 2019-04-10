@@ -66,8 +66,8 @@ load("@io_bazel_rules_docker//container:container.bzl", "container_push")
 container_push(
     name = "push",
     format = "Docker",
-    registry = "gcr.io",
     image = ":image",
+    registry = "gcr.io",
     repository = "tada-analytics/static-docs",
-    tag = "latest"
+    tag = "latest",
 )
