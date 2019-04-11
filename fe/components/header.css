@@ -84,7 +84,7 @@
   color: white;
 }
 .navInverted :global .pt-button.pt-intent-primary.ghost:hover {
-  background-color: none;
+  background-color: transparent;
 }
 
 .mobileMenuContainer {
