@@ -69,5 +69,5 @@ container_push(
     image = ":image",
     registry = "gcr.io",
     repository = "tada-analytics/static-docs",
-    tag = "latest",
+    tag = "prod",
 )

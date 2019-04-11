@@ -9,7 +9,7 @@
 ### Build
 
 ```bash
-bazel build //...
+bazel build ...
 ```
 
 ### Test
@@ -29,5 +29,5 @@ bazel build //...
 ### Run locally
 
 ```bash
-./scripts/docs/serve
+bazel run docs
 ```
