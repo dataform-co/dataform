@@ -9,7 +9,7 @@
 ### Build
 
 ```bash
-bazel build //...
+bazel build ...
 ```
 
 ### Test
@@ -26,14 +26,8 @@ bazel build //...
 
 ## Docs site
 
-### Setup
+### Run locally
 
 ```bash
-npm i --prod
-```
-
-### Serve
-
-```bash
-./scripts/docs/serve
+bazel run docs
 ```

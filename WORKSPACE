@@ -70,3 +70,27 @@ go_rules_dependencies()
 go_register_toolchains()
 
 buildifier_dependencies()
+
+# Docker base images.
+
+http_archive(
+    name = "io_bazel_rules_docker",
+    sha256 = "29d109605e0d6f9c892584f07275b8c9260803bf0c6fcb7de2623b2bedc910bd",
+    strip_prefix = "rules_docker-0.5.1",
+    urls = ["https://github.com/bazelbuild/rules_docker/archive/v0.5.1.tar.gz"],
+)
+
+load(
+    "@io_bazel_rules_docker//container:container.bzl",
+    "container_pull",
+    container_repositories = "repositories",
+)
+
+container_repositories()
+
+container_pull(
+    name = "nginx_base",
+    registry = "index.docker.io",
+    repository = "library/nginx",
+    tag = "latest",
+)

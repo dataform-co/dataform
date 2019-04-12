@@ -1,9 +1,0 @@
-#!/bin/bash
-set -e
-
-rm -rf docs/out
-rm -rf docs/.next
-
-(cd docs/ && npx next build && npx next export)
-
-echo "docs.dataform.co" > docs/out/CNAME
