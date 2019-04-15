@@ -1,0 +1,6 @@
+{
+    "warehouse": "bigquery",
+    "defaultSchema": "test_local",
+    "assertionSchema": "test_local_assertions",
+    "gcloudProjectId": "tada-analytics"
+}

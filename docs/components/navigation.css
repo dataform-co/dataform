@@ -1,0 +1,24 @@
+.sidebar {
+  padding-top: 10px;
+}
+
+.sidebar > .pt-menu {
+  background-color: unset;
+}
+
+.menu {
+  background-color: transparent;
+  font-size: 14px;
+  color: #2f2d44;
+}
+
+.menu > li .pt-menu-header {
+  border-top: none;
+}
+.menu > li .pt-menu-header > h6 {
+  font-weight: normal;
+}
+
+.indent1 {
+  margin-left: 16px;
+}
