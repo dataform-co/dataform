@@ -3,12 +3,11 @@ import * as dbadapters from "@dataform/api/dbadapters";
 import * as adapters from "@dataform/core/adapters";
 import { dataform } from "@dataform/protos";
 import { expect } from "chai";
-import * as utils from "df/api/utils";
 import { dropAllTables, getTableRows, keyBy } from "df/tests/integration/utils";
 
 describe("@dataform/integration/snowflake", () => {
   it("run", async () => {
-    const credentials = utils.readCredentials("snowflake", "df/test_profiles/snowflake.json");
+    const credentials = dfapi.credentials.read("snowflake", "df/test_profiles/snowflake.json");
 
     const compiledGraph = await dfapi.compile({
       projectDir: "df/tests/integration/snowflake_project"

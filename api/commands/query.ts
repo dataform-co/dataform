@@ -1,16 +1,15 @@
-import { dataform } from "@dataform/protos";
+import { Credentials } from "@dataform/api/commands/credentials";
+import * as dbadapters from "@dataform/api/dbadapters";
+import { CancellablePromise } from "@dataform/api/utils/cancellable_promise";
 import { fork } from "child_process";
 import * as path from "path";
-import * as dbadapters from "@dataform/api/dbadapters";
-import * as utils from "@dataform/api/utils";
-import { CancellablePromise } from "@dataform/api/utils/cancellable_promise";
 
 interface IOptions {
   projectDir?: string;
 }
 
 export function run(
-  credentials: utils.Credentials,
+  credentials: Credentials,
   warehouse: string,
   query: string,
   options?: IOptions
@@ -29,7 +28,7 @@ export function run(
 }
 
 export function evaluate(
-  credentials: utils.Credentials,
+  credentials: Credentials,
   warehouse: string,
   query: string,
   options?: IOptions
