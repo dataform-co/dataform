@@ -1,5 +1,5 @@
+import { Credentials } from "@dataform/api/commands/credentials";
 import { DbAdapter } from "@dataform/api/dbadapters/index";
-import * as apiUtils from "@dataform/api/utils";
 import { dataform } from "@dataform/protos";
 
 interface ISnowflakeStatement {
@@ -34,7 +34,7 @@ const Snowflake: ISnowflake = require("snowflake-sdk");
 export class SnowflakeDbAdapter implements DbAdapter {
   private connection: ISnowflakeConnection;
 
-  constructor(credentials: apiUtils.Credentials) {
+  constructor(credentials: Credentials) {
     const snowflakeCredentials = credentials as dataform.ISnowflake;
     this.connection = Snowflake.createConnection({
       account: snowflakeCredentials.accountId,

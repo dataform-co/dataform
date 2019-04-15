@@ -1,4 +1,4 @@
-import { Builder, compile, init, query, Runner, utils as apiUtils } from "@dataform/api";
+import { Builder, compile, credentials, query, Runner } from "@dataform/api";
 import { DbAdapter } from "@dataform/api/dbadapters";
 import { BigQueryDbAdapter } from "@dataform/api/dbadapters/bigquery";
 import { utils } from "@dataform/core";
@@ -6,7 +6,6 @@ import { dataform } from "@dataform/protos";
 import { assert, config, expect } from "chai";
 import { asPlainObject, cleanSql } from "df/tests/utils";
 import * as path from "path";
-import * as rimraf from "rimraf";
 import * as stackTrace from "stack-trace";
 import { anyFunction, anyString, instance, mock, when } from "ts-mockito";
 
@@ -731,20 +730,18 @@ describe("@dataform/api", () => {
 
     ["bigquery", "redshift", "snowflake"].forEach(warehouse => {
       it(`${warehouse}_empty_credentials`, () => {
-        expect(() => apiUtils.coerceCredentials(warehouse, null)).to.throw(
+        expect(() => credentials.coerce(warehouse, null)).to.throw(
           /Credentials JSON object does not conform to protobuf requirements: object expected/
         );
-        expect(() => apiUtils.coerceCredentials(warehouse, {})).to.throw(
-          /Missing required properties:/
-        );
+        expect(() => credentials.coerce(warehouse, {})).to.throw(/Missing required properties:/);
       });
     });
 
     it("warehouse_check", () => {
-      expect(() => apiUtils.coerceCredentials("bigquery", bigqueryCredentials)).to.not.throw();
-      expect(() => apiUtils.coerceCredentials("redshift", redshiftCredentials)).to.not.throw();
-      expect(() => apiUtils.coerceCredentials("snowflake", snowflakeCredentials)).to.not.throw();
-      expect(() => apiUtils.coerceCredentials("some_other_warehouse", {})).to.throw(
+      expect(() => credentials.coerce("bigquery", bigqueryCredentials)).to.not.throw();
+      expect(() => credentials.coerce("redshift", redshiftCredentials)).to.not.throw();
+      expect(() => credentials.coerce("snowflake", snowflakeCredentials)).to.not.throw();
+      expect(() => credentials.coerce("some_other_warehouse", {})).to.throw(
         /Unrecognized warehouse:/
       );
     });
@@ -752,11 +749,11 @@ describe("@dataform/api", () => {
     [{}, { wrongProperty: "" }, { projectId: "" }].forEach(bigquery => {
       it("bigquery_properties_check", () => {
         expect(() =>
-          apiUtils.coerceCredentials("bigquery", JSON.parse(JSON.stringify(bigquery)))
+          credentials.coerce("bigquery", JSON.parse(JSON.stringify(bigquery)))
         ).to.throw();
 
         expect(() =>
-          apiUtils.coerceCredentials(
+          credentials.coerce(
             "bigquery",
             JSON.parse(JSON.stringify({ ...bigqueryCredentials, oneMoreProperty: "" }))
           )
@@ -767,11 +764,11 @@ describe("@dataform/api", () => {
     [{}, { wrongProperty: "" }, { host: "" }].forEach(redshift => {
       it("redshift_properties_check", () => {
         expect(() =>
-          apiUtils.coerceCredentials("redshift", JSON.parse(JSON.stringify(redshift)))
+          credentials.coerce("redshift", JSON.parse(JSON.stringify(redshift)))
         ).to.throw();
 
         expect(() =>
-          apiUtils.coerceCredentials(
+          credentials.coerce(
             "redshift",
             JSON.parse(JSON.stringify({ ...redshiftCredentials, oneMoreProperty: "" }))
           )
@@ -782,11 +779,11 @@ describe("@dataform/api", () => {
     [{}, { wrongProperty: "" }, { accountId: "" }].forEach(snowflake => {
       it("snowflake_properties_check", () => {
         expect(() =>
-          apiUtils.coerceCredentials("snowflake", JSON.parse(JSON.stringify(snowflake)))
+          credentials.coerce("snowflake", JSON.parse(JSON.stringify(snowflake)))
         ).to.throw();
 
         expect(() =>
-          apiUtils.coerceCredentials(
+          credentials.coerce(
             "snowflake",
             JSON.parse(JSON.stringify({ ...snowflakeCredentials, oneMoreProperty: "" }))
           )
