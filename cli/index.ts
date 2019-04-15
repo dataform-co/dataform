@@ -478,16 +478,15 @@ function graphHasErrors(graph: dataform.ICompiledGraph) {
 
 async function compileProject(projectDir: string, schemaSuffixOverride: string) {
   const graph = await compile({ projectDir, schemaSuffixOverride });
+  writeStdOut(prettyJsonStringify(graph));
   if (graphHasErrors(graph)) {
     logGraphErrors(graph.graphErrors);
-  } else {
-    writeStdOut(prettyJsonStringify(graph));
   }
 }
 
 function logGraphErrors(graphErrors: dataform.IGraphErrors) {
   writeStdErr(errorOutput("Compiled graph contains errors."));
-  if (graphErrors.compilationErrors) {
+  if (graphErrors.compilationErrors && graphErrors.compilationErrors.length > 0) {
     writeStdErr(errorOutput("Compilation errors:"));
     graphErrors.compilationErrors.forEach(compileError => {
       writeStdErr(
@@ -495,7 +494,7 @@ function logGraphErrors(graphErrors: dataform.IGraphErrors) {
       );
     });
   }
-  if (graphErrors.validationErrors) {
+  if (graphErrors.validationErrors && graphErrors.validationErrors.length > 0) {
     writeStdErr(errorOutput("Validation errors:"));
     graphErrors.validationErrors.forEach(validationError => {
       writeStdErr(errorOutput(`${validationError.nodeName}: ${validationError.message}`));
