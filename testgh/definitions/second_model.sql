@@ -1,0 +1,1 @@
+SELECT one FROM ${ref("first_model")}

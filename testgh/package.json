@@ -1,0 +1,5 @@
+{
+    "dependencies": {
+        "@dataform/core": "0.0.2-beta.8"
+    }
+}
