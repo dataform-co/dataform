@@ -1,3 +1,4 @@
+import * as dbadapters from "@dataform/api/dbadapters";
 import { requiredWarehouseProps, WarehouseType } from "@dataform/core/adapters";
 import { dataform } from "@dataform/protos";
 import * as fs from "fs";
@@ -46,6 +47,28 @@ export function coerceCredentials(warehouse: string, credentials: any): Credenti
     }
     default:
       throw new Error(`Unrecognized warehouse: ${warehouse}`);
+  }
+}
+
+export async function testCredentials(credentials: Credentials, warehouse: string) {
+  let timer;
+  try {
+    const timeoutSeconds = 10;
+    const timeout = new Promise(
+      (resolve, reject) =>
+        (timer = setTimeout(
+          () => reject(new Error(`Test query timed out after ${timeoutSeconds} seconds.`)),
+          timeoutSeconds * 1000
+        ))
+    );
+    await Promise.race([
+      dbadapters.create(credentials, warehouse).execute("SELECT 1 AS x"),
+      timeout
+    ]);
+  } finally {
+    if (timer) {
+      clearTimeout(timer);
+    }
   }
 }
 

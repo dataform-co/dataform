@@ -152,9 +152,18 @@ const builtYargs = createYargsCli({
       format: "init-creds <warehouse> [project-dir]",
       description: `Creates a ${CREDENTIALS_FILENAME} file for dataform to use when accessing your warehouse.`,
       positionalOptions: [warehouseOption, projectDirMustExistOption],
-      options: [],
-      processFn: argv => {
-        const credentials = () => {
+      options: [
+        {
+          name: "test-connection",
+          option: {
+            describe: "If true, a test query will be run using your final credentials.",
+            type: "boolean",
+            default: true
+          }
+        }
+      ],
+      processFn: async argv => {
+        const credentialsFn = () => {
           switch (argv.warehouse) {
             case "bigquery": {
               return getBigQueryCredentials();
@@ -173,10 +182,19 @@ const builtYargs = createYargsCli({
             }
           }
         };
-        fs.writeFileSync(
-          path.resolve(argv["project-dir"], CREDENTIALS_FILENAME),
-          prettyJsonStringify(credentials())
-        );
+        const credentials = credentialsFn();
+        if (argv["test-connection"]) {
+          try {
+            await utils.testCredentials(credentials, argv.warehouse);
+            writeStdOut(commandOutput("Warehouse test query completed successfully."));
+          } catch (e) {
+            throw new Error(`Warehouse test query failed: ${e.stack || e.message}`);
+          }
+        }
+        const filePath = path.resolve(argv["project-dir"], CREDENTIALS_FILENAME);
+        fs.writeFileSync(filePath, prettyJsonStringify(credentials));
+        writeStdOut(commandOutput("Credentials file written:"));
+        writeStdOut(filePath);
       }
     },
     {
@@ -300,15 +318,11 @@ const builtYargs = createYargsCli({
             .filter(node => node.status === dataform.NodeExecutionStatus.FAILED)
             .forEach(node => {
               writeStdErr(errorOutput(`Execution failed on node "${node.name}":`));
-              node.tasks
-                .filter(task => !task.ok)
-                .forEach(task => {
-                  writeStdErr(
-                    errorOutput(
-                      `Statement "${task.task.statement}" failed with error: ${task.error}`
-                    )
-                  );
-                });
+              node.tasks.filter(task => !task.ok).forEach(task => {
+                writeStdErr(
+                  errorOutput(`Statement "${task.task.statement}" failed with error: ${task.error}`)
+                );
+              });
             });
         }
       }
