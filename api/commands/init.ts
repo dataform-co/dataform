@@ -1,5 +1,6 @@
+import { CREDENTIALS_FILENAME } from "@dataform/api/commands/credentials";
 import { install } from "@dataform/api/commands/install";
-import { CREDENTIALS_FILENAME, prettyJsonStringify } from "@dataform/api/utils";
+import { prettyJsonStringify } from "@dataform/api/utils";
 import { dataform } from "@dataform/protos";
 import * as fs from "fs";
 import * as path from "path";

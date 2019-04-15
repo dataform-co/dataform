@@ -1,5 +1,5 @@
+import { Credentials } from "@dataform/api/commands/credentials";
 import { DbAdapter, OnCancel } from "@dataform/api/dbadapters/index";
-import * as apiUtils from "@dataform/api/utils";
 import { dataform } from "@dataform/protos";
 import * as PromisePool from "promise-pool-executor";
 
@@ -10,7 +10,7 @@ export class BigQueryDbAdapter implements DbAdapter {
   private client: any;
   private pool: PromisePool.PromisePoolExecutor;
 
-  constructor(credentials: apiUtils.Credentials) {
+  constructor(credentials: Credentials) {
     this.bigQueryCredentials = credentials as dataform.IBigQuery;
     this.client = BigQuery({
       projectId: this.bigQueryCredentials.projectId,

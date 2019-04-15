@@ -1,5 +1,5 @@
+import { Credentials } from "@dataform/api/commands/credentials";
 import { DbAdapter } from "@dataform/api/dbadapters/index";
-import * as apiUtils from "@dataform/api/utils";
 import { dataform } from "@dataform/protos";
 
 const Redshift: IRedshiftType = require("node-redshift");
@@ -14,14 +14,14 @@ interface IRedshiftConfig {
 }
 
 interface IRedshiftType {
-  new (config: IRedshiftConfig): IRedshiftType;
   query: (query: string) => Promise<{ rows: any[] }>;
+  new (config: IRedshiftConfig): IRedshiftType;
 }
 
 export class RedshiftDbAdapter implements DbAdapter {
   private client: IRedshiftType;
 
-  constructor(credentials: apiUtils.Credentials) {
+  constructor(credentials: Credentials) {
     const redshiftCredentials = credentials as dataform.IJDBC;
     const config: IRedshiftConfig = {
       host: redshiftCredentials.host,

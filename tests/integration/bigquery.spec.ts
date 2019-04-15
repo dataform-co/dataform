@@ -3,12 +3,11 @@ import * as dbadapters from "@dataform/api/dbadapters";
 import * as adapters from "@dataform/core/adapters";
 import { dataform } from "@dataform/protos";
 import { expect } from "chai";
-import * as utils from "df/api/utils";
 import { dropAllTables, getTableRows, keyBy } from "df/tests/integration/utils";
 
 describe("@dataform/integration/bigquery", () => {
   it("run", async () => {
-    const credentials = utils.readCredentials("bigquery", "df/test_profiles/bigquery.json");
+    const credentials = dfapi.credentials.read("bigquery", "df/test_profiles/bigquery.json");
 
     const compiledGraph = await dfapi.compile({
       projectDir: "df/tests/integration/bigquery_project"

@@ -1,13 +1,12 @@
+import { Credentials } from "@dataform/api/commands/credentials";
 import * as dbadapters from "@dataform/api/dbadapters";
-import * as utils from "@dataform/api/utils";
 import { dataform } from "@dataform/protos";
 import * as EventEmitter from "events";
 import * as Long from "long";
-import * as prettyMs from "pretty-ms";
 
 const CANCEL_EVENT = "jobCancel";
 
-export function run(graph: dataform.IExecutionGraph, credentials: utils.Credentials): Runner {
+export function run(graph: dataform.IExecutionGraph, credentials: Credentials): Runner {
   const runner = Runner.create(
     dbadapters.create(credentials, graph.projectConfig.warehouse),
     graph

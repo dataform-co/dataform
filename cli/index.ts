@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-import { build, compile, init, run, table, utils } from "@dataform/api";
-import { CREDENTIALS_FILENAME, prettyJsonStringify } from "@dataform/api/utils";
+import { build, compile, credentials, init, run, table } from "@dataform/api";
+import { prettyJsonStringify } from "@dataform/api/utils";
 import { WarehouseType } from "@dataform/core/adapters";
 import { dataform } from "@dataform/protos";
 import * as chokidar from "chokidar";
@@ -84,7 +84,7 @@ const credentialsOption: INamedOption<yargs.Options> = {
   name: "credentials",
   option: {
     describe: "The location of the credentials JSON file to use.",
-    default: CREDENTIALS_FILENAME,
+    default: credentials.CREDENTIALS_FILENAME,
     coerce: path.resolve
   },
   check: (argv: yargs.Arguments) => assertPathExists(argv.credentials)
@@ -150,11 +150,22 @@ const builtYargs = createYargsCli({
     },
     {
       format: "init-creds <warehouse> [project-dir]",
-      description: `Creates a ${CREDENTIALS_FILENAME} file for dataform to use when accessing your warehouse.`,
+      description: `Creates a ${
+        credentials.CREDENTIALS_FILENAME
+      } file for dataform to use when accessing your warehouse.`,
       positionalOptions: [warehouseOption, projectDirMustExistOption],
-      options: [],
-      processFn: argv => {
-        const credentials = () => {
+      options: [
+        {
+          name: "test-connection",
+          option: {
+            describe: "If true, a test query will be run using your final credentials.",
+            type: "boolean",
+            default: true
+          }
+        }
+      ],
+      processFn: async argv => {
+        const credentialsFn = () => {
           switch (argv.warehouse) {
             case "bigquery": {
               return getBigQueryCredentials();
@@ -173,10 +184,20 @@ const builtYargs = createYargsCli({
             }
           }
         };
-        fs.writeFileSync(
-          path.resolve(argv["project-dir"], CREDENTIALS_FILENAME),
-          prettyJsonStringify(credentials())
-        );
+        const finalCredentials = credentialsFn();
+        if (argv["test-connection"]) {
+          try {
+            await credentials.test(finalCredentials, argv.warehouse);
+            writeStdOut(commandOutput("Warehouse test query completed successfully."));
+          } catch (e) {
+            throw new Error(`Warehouse test query failed: ${e.stack || e.message}`);
+          }
+        }
+        const filePath = path.resolve(argv["project-dir"], credentials.CREDENTIALS_FILENAME);
+        fs.writeFileSync(filePath, prettyJsonStringify(finalCredentials));
+        writeStdOut(commandOutput("Credentials file written:"));
+        writeStdOut(filePath);
+        writeStdOut(commandOutput("To change connection settings, edit this file directly."));
       }
     },
     {
@@ -270,7 +291,7 @@ const builtYargs = createYargsCli({
           logGraphErrors(compiledGraph.graphErrors);
           return;
         }
-        const credentials = utils.readCredentials(
+        const readCredentials = credentials.read(
           compiledGraph.projectConfig.warehouse,
           argv.credentials
         );
@@ -281,14 +302,14 @@ const builtYargs = createYargsCli({
             nodes: argv.nodes,
             includeDependencies: argv["include-deps"]
           },
-          credentials
+          readCredentials
         );
         if (argv["dry-run"]) {
           writeStdOut(prettyJsonStringify(executionGraph));
           return;
         }
 
-        const runner = run(executionGraph, credentials);
+        const runner = run(executionGraph, readCredentials);
         process.on("SIGINT", () => {
           runner.cancel();
         });
@@ -300,15 +321,11 @@ const builtYargs = createYargsCli({
             .filter(node => node.status === dataform.NodeExecutionStatus.FAILED)
             .forEach(node => {
               writeStdErr(errorOutput(`Execution failed on node "${node.name}":`));
-              node.tasks
-                .filter(task => !task.ok)
-                .forEach(task => {
-                  writeStdErr(
-                    errorOutput(
-                      `Statement "${task.task.statement}" failed with error: ${task.error}`
-                    )
-                  );
-                });
+              node.tasks.filter(task => !task.ok).forEach(task => {
+                writeStdErr(
+                  errorOutput(`Statement "${task.task.statement}" failed with error: ${task.error}`)
+                );
+              });
             });
         }
       }
@@ -320,7 +337,7 @@ const builtYargs = createYargsCli({
       options: [credentialsOption],
       processFn: async argv => {
         const tables = await table.list(
-          utils.readCredentials(argv.warehouse, argv.credentials),
+          credentials.read(argv.warehouse, argv.credentials),
           argv.warehouse
         );
         tables.forEach(table => writeStdOut(`${table.schema}.${table.name}`));
@@ -333,7 +350,7 @@ const builtYargs = createYargsCli({
       options: [credentialsOption],
       processFn: async argv => {
         const tableMetadata = await table.get(
-          utils.readCredentials(argv.warehouse, argv.credentials),
+          credentials.read(argv.warehouse, argv.credentials),
           argv.warehouse,
           {
             schema: argv.schema,
