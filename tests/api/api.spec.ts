@@ -553,14 +553,14 @@ describe("@dataform/api", () => {
       }).catch(error => error);
       expect(graph).to.not.be.an.instanceof(Error);
 
-      const gErrors = utils.validate(graph);
-
-      expect(gErrors)
+      expect(graph.graphErrors)
         .to.have.property("compilationErrors")
         .to.be.an("array");
 
       expectedResults.forEach(result => {
-        const error = gErrors.compilationErrors.find(item => result.message.test(item.message));
+        const error = graph.graphErrors.compilationErrors.find(item =>
+          result.message.test(item.message)
+        );
 
         expect(error).to.exist;
         expect(error)

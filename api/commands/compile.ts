@@ -1,6 +1,7 @@
 import { dataform } from "@dataform/protos";
 
 import { ICompileIPCParameters, ICompileIPCResult } from "@dataform/api/vm/compile";
+import { validate } from "@dataform/core/utils";
 import { ChildProcess, fork } from "child_process";
 import * as fs from "fs";
 import * as path from "path";
@@ -16,7 +17,13 @@ export async function compile(
     schemaSuffixOverride: compileConfig.schemaSuffixOverride
   });
   const contents = await promisify(fs.readFile)(returnedPath);
-  return dataform.CompiledGraph.decode(contents);
+  let compiledGraph = dataform.CompiledGraph.decode(contents);
+  // Merge graph errors into the compiled graph.
+  compiledGraph = dataform.CompiledGraph.create({
+    ...compiledGraph,
+    graphErrors: validate(compiledGraph)
+  });
+  return compiledGraph;
 }
 
 class CompileChildProcess {
