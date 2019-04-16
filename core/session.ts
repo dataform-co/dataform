@@ -43,9 +43,7 @@ export class Session {
   }
 
   public target(target: string, defaultSchema?: string): dataform.ITarget {
-    const suffix = !!this.config.schemaSuffix
-      ? `_${this.config.schemaSuffix}`
-      : "";
+    const suffix = !!this.config.schemaSuffix ? `_${this.config.schemaSuffix}` : "";
 
     if (target.includes(".")) {
       const schema = target.split(".")[0];
@@ -59,7 +57,7 @@ export class Session {
     }
   }
 
-  public ref(name: string): string {
+  public resolve(name: string): string {
     const tNode = this.tables[name];
     const oNode = this.operations[name];
 
@@ -71,8 +69,8 @@ export class Session {
     } else if (oNode && oNode.proto.hasOutput) {
       return this.adapter().resolveTarget((oNode as Operation).proto.target);
     } else {
-      const message = `Could not find referenced node: ${name}`;
-      this.compileError(new Error(message));
+      // We couldn't find the node. Resolve anyway, missing dependencies will be caught during validation.
+      return this.adapter().resolveTarget(this.target(name));
     }
   }
 

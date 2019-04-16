@@ -395,21 +395,6 @@ describe("@dataform/core", () => {
       expect(graph.operations[1].dependencies).deep.equals(["operate-1"]);
       expect(graph.operations[1].queries).deep.equals(['select * from "schema"."operate-1"']);
     });
-
-    it("ref_no_output", () => {
-      const session = new Session(path.dirname(__filename), TEST_CONFIG);
-      session.operate("operate-1", () => `select 1 as sample`).hasOutput(false);
-      session.operate("operate-2", ctx => `select * from ${ctx.ref("operate-1")}`).hasOutput(false);
-      const graph = session.compile();
-      const gErrors = utils.validate(graph);
-
-      expect(gErrors)
-        .to.have.property("compilationErrors")
-        .to.be.an("array").that.is.not.empty;
-
-      const errors = gErrors.compilationErrors.map(item => item.message);
-      expect(errors).deep.equals(["Could not find referenced node: operate-1"]);
-    });
   });
 
   describe("graph", () => {
@@ -432,7 +417,7 @@ describe("@dataform/core", () => {
 
     it("missing_dependency", () => {
       const session = new Session(path.dirname(__filename), TEST_CONFIG);
-      session.publish("a").dependencies("b");
+      session.publish("a", ctx => `select * from ${ctx.ref("b")}`);
       const cGraph = session.compile();
       const gErrors = utils.validate(cGraph);
 

@@ -59,7 +59,11 @@ export class OperationContext {
 
   public ref(name: string) {
     this.operation.dependencies(name);
-    return this.operation.session.ref(name);
+    return this.operation.session.resolve(name);
+  }
+
+  public resolve(name: string) {
+    return this.operation.session.resolve(name);
   }
 
   public dependencies(name: string | string[]) {

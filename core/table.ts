@@ -239,7 +239,11 @@ export class TableContext {
     }
 
     this.table.dependencies(name);
-    return this.table.session.ref(name);
+    return this.table.session.resolve(name);
+  }
+
+  public resolve(name: string) {
+    return this.table.session.resolve(name);
   }
 
   public type(type: TableType) {
