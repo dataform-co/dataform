@@ -36,7 +36,7 @@ CREATE OR REPLACE VIEW sometable.someschema AS (SELECT 1 AS TEST)
 
 ## Declaring and referencing outputs
 
-If an operation creates a table or view that you would like to make available to other scripts, then you can use reference this operation like you would a normal table using the `ref()` function. Additionally operations may use the `self()` to create a table or view that matches the current file name.
+If an operation creates a table or view that you would like to make available to other scripts, you can reference this operation as you would a normal table by using the `ref()` function. Note that operations may use `self()` to create a table or view that matches the current file name.
 
 For example, in `definitions/customview.ops.sql`:
 

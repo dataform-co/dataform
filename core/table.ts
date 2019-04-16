@@ -228,7 +228,7 @@ export class TableContext {
   }
 
   public self(): string {
-    return this.table.session.adapter().resolveTarget(this.table.proto.target);
+    return this.resolve(this.table.proto.name);
   }
 
   public ref(name: string) {
@@ -239,7 +239,7 @@ export class TableContext {
     }
 
     this.table.dependencies(name);
-    return this.table.session.resolve(name);
+    return this.resolve(name);
   }
 
   public resolve(name: string) {

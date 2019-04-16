@@ -48,7 +48,7 @@ export class AssertionContext {
 
   public ref(name: string) {
     this.assertion.dependencies(name);
-    return this.assertion.session.resolve(name);
+    return this.resolve(name);
   }
 
   public resolve(name: string) {

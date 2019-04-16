@@ -52,12 +52,12 @@ export class OperationContext {
   }
 
   public self(): string {
-    return this.operation.session.adapter().resolveTarget(this.operation.proto.target);
+    return this.resolve(this.operation.proto.name);
   }
 
   public ref(name: string) {
     this.operation.dependencies(name);
-    return this.operation.session.resolve(name);
+    return this.resolve(name);
   }
 
   public resolve(name: string) {

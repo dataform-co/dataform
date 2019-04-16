@@ -160,7 +160,7 @@ export class Session {
       graphErrors: this.graphErrors
     });
 
-    // Expand node dependency wilcards.
+    // Expand node dependency wildcards.
 
     const allNodes: IActionProto[] = [].concat(
       compiledGraph.tables,
@@ -170,15 +170,17 @@ export class Session {
     const allNodeNames = allNodes.map(node => node.name);
 
     allNodes.forEach(node => {
-      const uniqueDeps: { [d: string]: boolean } = {};
-      const deps = node.dependencies || [];
+      const uniqueDependencies: { [dependency: string]: boolean } = {};
+      const dependencies = node.dependencies || [];
       // Add non-wildcard deps normally.
-      deps.filter(d => !d.includes("*")).forEach(d => (uniqueDeps[d] = true));
+      dependencies
+        .filter(dependency => !dependency.includes("*"))
+        .forEach(dependency => (uniqueDependencies[dependency] = true));
       // Match wildcard deps against all node names.
       utils
-        .matchPatterns(deps.filter(d => d.includes("*")), allNodeNames)
-        .forEach(d => (uniqueDeps[d] = true));
-      node.dependencies = Object.keys(uniqueDeps);
+        .matchPatterns(dependencies.filter(d => d.includes("*")), allNodeNames)
+        .forEach(dependency => (uniqueDependencies[dependency] = true));
+      node.dependencies = Object.keys(uniqueDependencies);
     });
 
     return compiledGraph;
