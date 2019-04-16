@@ -43,7 +43,7 @@ ts > (SELECT MAX(timestamp) FROM target_table)
 
 Assuming there is a source table containing timestamped user action events called `weblogs.user_actions` which is streamed into our warehouse via some other data integration tool:
 
-<table className="pt-html-table pt-html-table-striped .modifier" style={{ width: "100%" }}>
+<table className="bp3-html-table bp3-html-table-striped .modifier" style={{ width: "100%" }}>
   <thead>
     <tr>
       <th>timestamp</th>
@@ -103,7 +103,7 @@ timestamp > (SELECT MAX(timestamp) FROM default_schema.example_incremental)
 
 This table may not exist in the warehouse yet. That's OK, because the `WHERE` clause will only be added to the final query if the table already exists and new data is being inserted into it.
 
-<div className="pt-callout pt-icon-info-sign pt-intent-warning" markdown="1">
+<div className="bp3-callout bp3-icon-info-sign bp3-intent-warning" markdown="1">
   Note that when data is inserted into an incremental table, only fields that already exist in the
   table will be written. To make sure that new fields are written after changing the query, the
   table must be rebuilt from scratch with the <code>--full-refresh</code> option (if using the

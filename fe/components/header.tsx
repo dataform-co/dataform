@@ -63,7 +63,10 @@ export class Header extends React.Component<IProps, IState> {
           <nav className={navClasses.join(" ")}>
             <span className={styles.navContent} style={{ maxWidth }}>
               <span>
-                <a href="/">{this.createColouredLogo(invert, showFixedNav)}</a>
+                <a href="https://dataform.co">{this.createColouredLogo(invert, showFixedNav)}</a>
+                <a href="/">
+                  <span className={styles.docs_tag}>docs</span>
+                </a>
               </span>
               <span className={styles.pages}>
                 {this.props.pages.map(page => (
@@ -96,7 +99,8 @@ export class Header extends React.Component<IProps, IState> {
             <nav className={navClasses.join(" ")}>
               <span className={styles.navContent}>
                 <span>
-                  <a href="/">{this.createColouredLogo(invert, showFixedNav)}</a>
+                  <a href="https://dataform.co">{this.createColouredLogo(invert, showFixedNav)}</a>
+                  <span className={styles.docs_tag}>docs</span>
                 </span>
               </span>
               <span className={styles.actions}>
@@ -111,8 +115,9 @@ export class Header extends React.Component<IProps, IState> {
               <nav className={styles.nav}>
                 <span className={styles.navContent}>
                   <span>
-                    <a href="/">
+                    <a href="https://dataform.co">
                       <img src={logoImageWhite} className={styles.logoImageWhite} />
+                      <span className={styles.docs_tag}>docs</span>
                     </a>
                   </span>
                 </span>
