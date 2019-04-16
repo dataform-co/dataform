@@ -5,7 +5,7 @@ import { OContextable, Operation } from "./operation";
 import { Table, TConfig, TContextable } from "./table";
 import * as utils from "./utils";
 
-interface ActionProto {
+interface IActionProto {
   name?: string;
   fileName?: string;
   dependencies?: string[];
@@ -43,9 +43,7 @@ export class Session {
   }
 
   public target(target: string, defaultSchema?: string): dataform.ITarget {
-    const suffix = !!this.config.schemaSuffix
-      ? `_${this.config.schemaSuffix}`
-      : "";
+    const suffix = !!this.config.schemaSuffix ? `_${this.config.schemaSuffix}` : "";
 
     if (target.includes(".")) {
       const schema = target.split(".")[0];
@@ -59,21 +57,14 @@ export class Session {
     }
   }
 
-  public ref(name: string): string {
-    const tNode = this.tables[name];
-    const oNode = this.operations[name];
-
-    if (tNode) {
-      if (tNode.proto.type === "inline") {
-        return `(${tNode.proto.query})`;
-      }
-      return this.adapter().resolveTarget((tNode as Table).proto.target);
-    } else if (oNode && oNode.proto.hasOutput) {
-      return this.adapter().resolveTarget((oNode as Operation).proto.target);
-    } else {
-      const message = `Could not find referenced node: ${name}`;
-      this.compileError(new Error(message));
+  public resolve(name: string): string {
+    const table = this.tables[name];
+    if (table && table.proto.type === "inline") {
+      // TODO: Pretty sure this is broken as the proto.query value may not
+      // be set yet as it happens during compilation. We should evalute the query here.
+      return `(${table.proto.query})`;
     }
+    return this.adapter().resolveTarget(this.target(name));
   }
 
   public operate(name: string, queries?: OContextable<string | string[]>): Operation {
@@ -143,7 +134,9 @@ export class Session {
     this.graphErrors.compilationErrors.push(compileError);
   }
 
-  public compileGraphChunk<T>(part: { [name: string]: { proto: ActionProto; compile(): T } }): T[] {
+  public compileGraphChunk<T>(part: {
+    [name: string]: { proto: IActionProto; compile(): T };
+  }): T[] {
     const compiledChunks: T[] = [];
 
     Object.keys(part).forEach(key => {
@@ -165,6 +158,29 @@ export class Session {
       operations: this.compileGraphChunk(this.operations),
       assertions: this.compileGraphChunk(this.assertions),
       graphErrors: this.graphErrors
+    });
+
+    // Expand node dependency wildcards.
+
+    const allNodes: IActionProto[] = [].concat(
+      compiledGraph.tables,
+      compiledGraph.assertions,
+      compiledGraph.operations
+    );
+    const allNodeNames = allNodes.map(node => node.name);
+
+    allNodes.forEach(node => {
+      const uniqueDependencies: { [dependency: string]: boolean } = {};
+      const dependencies = node.dependencies || [];
+      // Add non-wildcard deps normally.
+      dependencies
+        .filter(dependency => !dependency.includes("*"))
+        .forEach(dependency => (uniqueDependencies[dependency] = true));
+      // Match wildcard deps against all node names.
+      utils
+        .matchPatterns(dependencies.filter(d => d.includes("*")), allNodeNames)
+        .forEach(dependency => (uniqueDependencies[dependency] = true));
+      node.dependencies = Object.keys(uniqueDependencies);
     });
 
     return compiledGraph;
