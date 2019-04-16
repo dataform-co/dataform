@@ -14,18 +14,28 @@ npm i -g @dataform/cli
 
 ## Create a new project
 
-To create a new project in the folder `new_project`:
+To create a new `bigquery`, `postgres`, `redshift`, or `snowflake` project in the `new_project` directory, run the respective command:
 
 ```bash
-WAREHOUSE=bigquery
-dataform init $WAREHOUSE new_project
+dataform init bigquery new_project --gcloud-project-id<your-google-cloud-project-id>
+- or -
+dataform init postgres new_project
+- or -
+dataform init redshift new_project
+- or -
+dataform init snowflake new_project
 ```
-
-The currently supported warehouse types are `bigquery`, `postgres`, `redshift`, and `snowflake`.
 
 ### Project structure
 
-The default project structure is as follows:
+Change directory into the newly-created `new_project` directory and take a look at your newly created project files:
+
+```bash
+cd new_project
+ls
+```
+
+You should see the following structure:
 
 ```bash
 project-dir
@@ -39,7 +49,7 @@ project-dir
 
 The `definitions/` directory should be used for files that define [tables](/tables), [assertions](/assertions), and [operations](/operations).
 
-To create a new table, create a new file `definitions/simplemodel.sql`:
+To create a new table, create a new file `definitions/example.sql`:
 
 ```js
 SELECT 1 AS test
@@ -59,15 +69,15 @@ You should see output similar to the following:
 {
     "tables": [
         {
-            "name": "simplemodel",
+            "name": "example",
             "type": "view",
             "target": {
                 "schema": "dataform",
-                "name": "simplemodel"
+                "name": "example"
             },
             "query": "SELECT 1 AS test",
             "disabled": false,
-            "fileName": "definitions/simplemodel.sql"
+            "fileName": "definitions/example.sql"
         }
     ],
     ...
@@ -76,15 +86,21 @@ You should see output similar to the following:
 
 ## Create a credentials file
 
-Dataform requires a credentials file in order to connect to your warehouse. Run the `init-creds` command at the root of your project
-directory and Dataform will guide you through credentials file creation:
+Dataform requires a credentials file in order to connect to your warehouse. Run the `init-creds` command and Dataform will guide you through credentials file creation:
 
 ```bash
-WAREHOUSE=bigquery
-dataform init-creds $WAREHOUSE
+dataform init-creds bigquery
+- or -
+dataform init-creds postgres
+- or -
+dataform init-creds redshift
+- or -
+dataform init-creds snowflake
 ```
 
-This will result in a `.df-credentials.json` file being written to disk.
+A `.df-credentials.json` file will be written to disk containing your provided details.
+
+Check out our [data warehouse setup guide](/platform_guides/set_up_datawarehouse) if you need help with the `init-creds` wizard.
 
 <div className="bp3-callout bp3-icon-info-sign bp3-intent-warning" markdown="1">
   If using a source control system, we strongly recommend that you do not commit the{" "}
@@ -108,17 +124,17 @@ You should see something similar to the following:
       ...
       "nodes": [
         {
-            "name": "simplemodel",
+            "name": "example",
             "tasks": [
                 {
                     "type": "statement",
-                    "statement": "create or replace view \"dataform\".\"simplemodel\" as SELECT 1 AS test;"
+                    "statement": "create or replace view \"dataform\".\"example\" as SELECT 1 AS test;"
                 }
             ],
             "type": "table",
             "target": {
                 "schema": "dataform",
-                "name": "simplemodel"
+                "name": "example"
             },
             "tableType": "view"
         }
