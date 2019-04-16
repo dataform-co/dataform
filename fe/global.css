@@ -2,7 +2,7 @@
 @value colorsButtonBlue: #5e73e5;
 @value colorsButtonGreen: #00C37D;
 
-:global body .pt-button {
+:global body .bp3-button {
   font-weight: bold;
   text-transform: uppercase;
   background-color: #5e73e5;
@@ -16,28 +16,28 @@
   background-image: unset !important;
 }
 
-:global body .pt-button * {
+:global body .bp3-button * {
   color: #fff;
   font-size: 12px;
 }
 
-:global body .pt-button.pt-intent-primary {
+:global body .bp3-button.bp3-intent-primary {
   background-color: colorsButtonBlue;
 }
 
-:global body .pt-button.pt-intent-primary:hover {
+:global body .bp3-button.bp3-intent-primary:hover {
   background-color: colorsButtonBlue;
 }
 
-:global body .pt-button.pt-intent-success {
+:global body .bp3-button.bp3-intent-success {
   background-color: colorsButtonGreen;
 }
 
-:global body .pt-button.pt-intent-success:hover {
+:global body .bp3-button.bp3-intent-success:hover {
   background-color: colorsButtonGreen;
 }
 
-:global body .pt-input {
+:global body .bp3-input {
   height: 42px;
   line-height: 42px;
   font-size: 16px;
@@ -168,7 +168,6 @@
 
 :global body pre > code,
 :global body pre > code * {
-  /* background-color: rgba(27, 31, 35, 0.05); */
   border-radius: 3px;
   color: inherit;
   font-family: Roboto Mono, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace;

@@ -42,7 +42,7 @@ Clicking the `Run this node` button will open a dialog box with a few options fo
 
 Upon successful completion of the run, a new view named `dataform.onboarding_table` will be created in your warehouse.
 
-<div className="pt-callout pt-icon-info-sign pt-intent-primary" markdown="1">
+<div className="bp3-callout bp3-icon-info-sign bp3-intent-primary" markdown="1">
   By default, Dataform creates tables and views under a schema named <code>dataform</code>. You can
   change this in the <code>dataform.json</code> in your{" "}
   <a href="../guides/configuration">project configuration</a>.
@@ -66,7 +66,7 @@ By default, Dataform creates views in your data warehouse. To create a table ins
 
 You will see the tag on the right sidebar update from `view` to `table`.
 
-<div className="pt-callout pt-icon-info-sign pt-intent-none" markdown="1">
+<div className="bp3-callout bp3-icon-info-sign bp3-intent-none" markdown="1">
   Dataform provides many other options for table creation. Learn about{" "}
   <a href="../guides/tables">publishing tables</a> and{" "}
   <a href="../guides/incremental-tables">incremental tables</a>.
@@ -112,7 +112,7 @@ The `${ref()}` function will be replaced with the actual name of the table in yo
 
 _*Your compiled script will differ depending on your cloud data warehouse. This example uses Redshift.*_
 
-<div className="pt-callout pt-icon-info-sign pt-intent-warning" markdown="1">
+<div className="bp3-callout bp3-icon-info-sign bp3-intent-warning" markdown="1">
   Referencing a table that hasn't yet been created in your data warehouse will cause validation
   errors. These validation errors are warning you that the table you are referencing doesn't exist
   (yet). However, since Dataform will run your project's scripts in dependency order, you can safely
@@ -123,11 +123,11 @@ _*Your compiled script will differ depending on your cloud data warehouse. This 
 
 The overview page (linked at the top left of Dataform) gives you an overview of your project. The overview includes a visualization of the dependency tree of your project, containing the two tables created by your scripts.
 
-
+<ScreenshotWrapper>
 <img
-  src="/static/images/platform_guides/publish_tables/dependency_tree.png"
+  src="/static/images/platform_guides/publish_tables/dependencies.png"
   style={{ width: "100%" }}
 />
-
+</ScreenshotWrapper>
 
 In bigger projects containing dozens or hundreds of tables with complicated interdependencies, the overview page can help you keep track of your project's overall structure.
