@@ -1,12 +1,14 @@
 import { Menu, MenuDivider, MenuItem } from "@blueprintjs/core";
 import * as React from "react";
+import * as styles from "df/docs/components/navigation.css";
+import * as styles2 from "df/docs/components/navigation.css";
 
 export default class Navigation extends React.Component<any, any> {
   public render() {
     return (
-      <div style={{ paddingTop: "10px" }}>
+      <div className={styles.sidebar}>
         <h4>Framework</h4>
-        <Menu style={styles.menu}>
+        <Menu className={styles.menu}>
           <MenuItem href="/guides/core-concepts" text="Core concepts" />
           <MenuItem href="/guides/tables" text="Publishing tables" />
           <MenuItem href="/guides/incremental-tables" text="Building incremental tables" />
@@ -17,13 +19,13 @@ export default class Navigation extends React.Component<any, any> {
           <MenuItem href="/guides/js-api" text="JavaScript API" />
           <MenuItem href="/guides/command-line-interface" text="Command line interface" />
           <MenuDivider title="Warehouse integrations" />
-          <div style={styles.indent1}>
+          <div className={styles.indent1}>
             <MenuItem href="/guides/warehouses/bigquery" text="BigQuery" />
             <MenuItem href="/guides/warehouses/redshift" text="Redshift" />
           </div>
         </Menu>
         <h4>Web</h4>
-        <Menu style={styles.menu}>
+        <Menu className={styles.menu}>
           <MenuItem
             href="/platform_guides/set_up_datawarehouse"
             text="Set up your cloud data warehouse"
@@ -33,7 +35,7 @@ export default class Navigation extends React.Component<any, any> {
           <MenuItem href="/platform_guides/scheduling" text="Schedule runs" />
         </Menu>
         <h4>API reference</h4>
-        <Menu style={styles.menu}>
+        <Menu className={styles.menu}>
           <MenuItem href="/reference/assertions" text="Assertions" />
           <MenuItem href="/reference/contextable" text="Contextable<> Class" />
           <MenuItem href="/reference/dataform-json" text="dataform.json" />
@@ -46,14 +48,3 @@ export default class Navigation extends React.Component<any, any> {
     );
   }
 }
-
-export const styles: { [className: string]: React.CSSProperties } = {
-  menu: {
-    backgroundColor: "transparent",
-    fontSize: "14px",
-    color: "#2f2d44"
-  },
-  indent1: {
-    marginLeft: "16px"
-  }
-};

@@ -1,4 +1,5 @@
 import Documentation from "df/docs/layouts/documentation";
+import ScreenshotWrapper from "df/docs/components/screenshot_wrapper";
 
 export default ({ children }) => (
   <Documentation title="Using version control">{children}</Documentation>
@@ -37,10 +38,12 @@ After making changes to files, you can commit the changes:
   style={{ width: "100%", padding: "20px" }}
 />
 
+<ScreenshotWrapper>
 <img
   src="/static/images/platform_guides/version_control/commit2.png"
-  style={{ width: "100%", padding: "20px" }}
+  style={{ width: "100%"}}
 />
+</ScreenshotWrapper>
 
 Once you are happy with your changes, push the changes back to the `production` workspace.
 

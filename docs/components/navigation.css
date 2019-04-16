@@ -1,0 +1,17 @@
+.sidebar {
+  padding-top: 10px;
+}
+
+.sidebar > .pt-menu {
+  background-color: unset;
+}
+
+.menu {
+  background-color: transparent;
+  font-size: 14px;
+  color: #2f2d44;
+}
+
+.indent1 {
+  margin-left: 16px;
+}
