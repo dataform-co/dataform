@@ -1,13 +1,13 @@
-import { adapters, utils } from "@dataform/core";
-import { dataform } from "@dataform/protos";
+import { Credentials } from "@dataform/api/commands/credentials";
 import { state } from "@dataform/api/commands/state";
 import * as dbadapters from "@dataform/api/dbadapters";
-import * as apiUtils from "@dataform/api/utils";
+import { adapters, utils } from "@dataform/core";
+import { dataform } from "@dataform/protos";
 
 export function build(
   compiledGraph: dataform.ICompiledGraph,
   runConfig: dataform.IRunConfig,
-  credentials: apiUtils.Credentials
+  credentials: Credentials
 ) {
   return state(
     compiledGraph,
