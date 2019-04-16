@@ -105,7 +105,7 @@ message Operation {
   // Generated.
   string file_name = 7;
 
-  bool has_output = 8;
+  reserved 8;
 }
 
 message Assertion {

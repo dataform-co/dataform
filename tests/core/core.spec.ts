@@ -386,12 +386,10 @@ describe("@dataform/core", () => {
         .to.have.lengthOf(2);
 
       expect(graph.operations[0].name).equals("operate-1");
-      expect(graph.operations[0].hasOutput).equals(true);
       expect(graph.operations[0].dependencies).to.be.an("array").that.is.empty;
       expect(graph.operations[0].queries).deep.equals(["select 1 as sample"]);
 
       expect(graph.operations[1].name).equals("operate-2");
-      expect(graph.operations[1].hasOutput).equals(true);
       expect(graph.operations[1].dependencies).deep.equals(["operate-1"]);
       expect(graph.operations[1].queries).deep.equals(['select * from "schema"."operate-1"']);
     });
@@ -471,6 +469,17 @@ describe("@dataform/core", () => {
       expect(errors.some(item => !!item.match(/Duplicate node name/))).to.be.true;
       expect(errors.some(item => !!item.match(/Missing dependency/))).to.be.true;
       expect(errors.some(item => !!item.match(/Circular dependency/))).to.be.true;
+    });
+
+    it("wildcard_dependencies", () => {
+      const session = new Session(path.dirname(__filename), TEST_CONFIG);
+      session.publish("a1");
+      session.publish("a2");
+      session.publish("b").dependencies("a*");
+
+      const graph = session.compile();
+
+      expect(graph.tables.filter(t => t.name === "b")[0].dependencies).deep.equals(["a1", "a2"]);
     });
   });
 

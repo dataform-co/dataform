@@ -122,26 +122,13 @@ export function validate(compiledGraph: dataform.ICompiledGraph): dataform.IGrap
     }
   });
 
-  // Expand node dependency wilcards.
-  allNodes.forEach(node => {
-    const uniqueDeps: { [d: string]: boolean } = {};
-    const deps = node.dependencies || [];
-    // Add non-wildcard deps normally.
-    deps.filter(d => !d.includes("*")).forEach(d => (uniqueDeps[d] = true));
-    // Match wildcard deps against all node names.
-    matchPatterns(deps.filter(d => d.includes("*")), allNodeNames).forEach(
-      d => (uniqueDeps[d] = true)
-    );
-    node.dependencies = Object.keys(uniqueDeps);
-  });
-
   const nodesByName: { [name: string]: dataform.IExecutionNode } = {};
   allNodes.forEach(node => (nodesByName[node.name] = node));
 
   // Check all dependencies actually exist.
   allNodes.forEach(node => {
     const nodeName = node.name;
-    node.dependencies.forEach(dependency => {
+    (node.dependencies || []).forEach(dependency => {
       if (allNodeNames.indexOf(dependency) < 0) {
         const message = `Missing dependency detected: Node "${
           node.name
@@ -164,7 +151,7 @@ export function validate(compiledGraph: dataform.ICompiledGraph): dataform.IGrap
       validationErrors.push(dataform.ValidationError.create({ message, nodeName }));
       return true;
     }
-    return node.dependencies.some(d => {
+    return (node.dependencies || []).some(d => {
       return nodesByName[d] && checkCircular(nodesByName[d], dependents.concat([node]));
     });
   };

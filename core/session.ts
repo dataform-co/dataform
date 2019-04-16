@@ -5,7 +5,7 @@ import { OContextable, Operation } from "./operation";
 import { Table, TConfig, TContextable } from "./table";
 import * as utils from "./utils";
 
-interface ActionProto {
+interface IActionProto {
   name?: string;
   fileName?: string;
   dependencies?: string[];
@@ -58,20 +58,13 @@ export class Session {
   }
 
   public resolve(name: string): string {
-    const tNode = this.tables[name];
-    const oNode = this.operations[name];
-
-    if (tNode) {
-      if (tNode.proto.type === "inline") {
-        return `(${tNode.proto.query})`;
-      }
-      return this.adapter().resolveTarget((tNode as Table).proto.target);
-    } else if (oNode && oNode.proto.hasOutput) {
-      return this.adapter().resolveTarget((oNode as Operation).proto.target);
-    } else {
-      // We couldn't find the node. Resolve anyway, missing dependencies will be caught during validation.
-      return this.adapter().resolveTarget(this.target(name));
+    const table = this.tables[name];
+    if (table && table.proto.type === "inline") {
+      // TODO: Pretty sure this is broken as the proto.query value may not
+      // be set yet as it happens during compilation. We should evalute the query here.
+      return `(${table.proto.query})`;
     }
+    return this.adapter().resolveTarget(this.target(name));
   }
 
   public operate(name: string, queries?: OContextable<string | string[]>): Operation {
@@ -141,7 +134,9 @@ export class Session {
     this.graphErrors.compilationErrors.push(compileError);
   }
 
-  public compileGraphChunk<T>(part: { [name: string]: { proto: ActionProto; compile(): T } }): T[] {
+  public compileGraphChunk<T>(part: {
+    [name: string]: { proto: IActionProto; compile(): T };
+  }): T[] {
     const compiledChunks: T[] = [];
 
     Object.keys(part).forEach(key => {
@@ -163,6 +158,27 @@ export class Session {
       operations: this.compileGraphChunk(this.operations),
       assertions: this.compileGraphChunk(this.assertions),
       graphErrors: this.graphErrors
+    });
+
+    // Expand node dependency wilcards.
+
+    const allNodes: IActionProto[] = [].concat(
+      compiledGraph.tables,
+      compiledGraph.assertions,
+      compiledGraph.operations
+    );
+    const allNodeNames = allNodes.map(node => node.name);
+
+    allNodes.forEach(node => {
+      const uniqueDeps: { [d: string]: boolean } = {};
+      const deps = node.dependencies || [];
+      // Add non-wildcard deps normally.
+      deps.filter(d => !d.includes("*")).forEach(d => (uniqueDeps[d] = true));
+      // Match wildcard deps against all node names.
+      utils
+        .matchPatterns(deps.filter(d => d.includes("*")), allNodeNames)
+        .forEach(d => (uniqueDeps[d] = true));
+      node.dependencies = Object.keys(uniqueDeps);
     });
 
     return compiledGraph;

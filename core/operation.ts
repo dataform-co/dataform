@@ -5,9 +5,7 @@ import * as utils from "./utils";
 export type OContextable<T> = T | ((ctx: OperationContext) => T);
 
 export class Operation {
-  public proto: dataform.IOperation = dataform.Operation.create({
-    hasOutput: false
-  });
+  public proto: dataform.IOperation = dataform.Operation.create();
 
   // Hold a reference to the Session instance.
   public session: Session;
@@ -31,7 +29,7 @@ export class Operation {
   }
 
   public hasOutput(hasOutput: boolean) {
-    this.proto.hasOutput = hasOutput;
+    // Deprecated.
     return this;
   }
 
