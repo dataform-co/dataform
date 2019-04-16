@@ -20,7 +20,8 @@ export function compile(query: string, projectDir?: string): string {
       projectDir,
       `(function() {
         const { session } = require("@dataform/core");
-        const ref = session.ref.bind(session);
+        const ref = session.resolve.bind(session);
+        const resolve = session.resolve.bind(session);
         const noop = () => "";
         const config = noop;
         const type = noop;
