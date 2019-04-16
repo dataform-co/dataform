@@ -13,7 +13,8 @@ export interface IProps {
   title: string;
 }
 
-const PAGES = [];
+const PAGES = [
+];
 
 const MAX_WIDTH = "1500px";
 
@@ -28,6 +29,7 @@ export class BaseLayout extends React.Component<IProps, {}> {
         <div className={styles.container} style={{ maxWidth: MAX_WIDTH }}>
           {this.props.children}
         </div>
+        <Footer maxWidth={MAX_WIDTH} />
       </div>
     );
   }

@@ -43,11 +43,14 @@
   font-size: 16px;
 }
 
+:global body .pt-html-table thead {
+  font-size: 18px;
+}
+
 :global * {
   font-family: "Open Sans";
   color: colorsTextMain;
   -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
 }
 
 :global body input {
@@ -57,77 +60,55 @@
 }
 
 :global a {
-  text-decoration: none !important;
-  color: #5e73e5;
+  text-decoration: unset !important;
+  color: unset !important;
 }
 
 :global body h1 {
   color: colorsTextMain;
-  font-family: "Poppins";
-  font-weight: 500;
+  font-family: "Montserrat";
+  font-weight: 600;
   letter-spacing: -0.03em;
-  line-height: 58px !important;
-  font-size: 31px !important;
+  line-height: 60px !important;
+  font-size: 45px !important;
   margin: 0px !important;
-  color: #2f2d44;
 }
 
 :global body h2 {
   color: colorsTextMain;
-  font-family: "Poppins";
-  font-weight: 500;
+  font-family: "Montserrat";
+  font-weight: 600;
   letter-spacing: -0.02em;
-  line-height: 22px !important;
-  font-size: 22px !important;
-  color: #2f2d44;
-  margin-top: 60px !important;
-  padding-top: 60px !important;
-  border-top: 1px solid #e9e9e9;
+  line-height: 54px;
+  font-size: 40px;
+  margin: 0px;
 }
 
 :global body h3 {
   color: colorsTextMain;
-  font-family: "Poppins";
-  font-weight: 500;
+  font-family: "Montserrat";
+  font-weight: 600;
   letter-spacing: -0.02em;
   line-height: 46px !important;
-  font-size: 20px !important;
+  font-size: 34px !important;
   margin: 0px !important;
-  color: #2f2d44;
 }
 
 :global body h4 {
   color: colorsTextMain;
-  font-family: "Poppins";
-  font-weight: 500;
-  letter-spacing: -0.02em;
-  line-height: 36px !important;
-  font-size: 17px !important;
+  font-family: "Montserrat";
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 26px !important;
+  font-size: 18px !important;
   margin: 0px !important;
-  color: #2f2d44;
 }
 
-:global body p {
+:global body p, :global body li {
   font-style: normal;
   font-weight: normal;
-  line-height: 30px;
-  font-size: 15px;
-  color: #373e42;
-}
-:global body li {
-  font-style: normal;
-  font-weight: normal;
-  line-height: 30px;
-  font-size: 15px;
-  color: #373e42;
-}
-
-:global body h1 > code,
-:global body h2 > code,
-:global body h3 > code,
-:global body h4 > code {
-  color: inherit;
-  font-weight: 500;
+  line-height: 27px;
+  font-size: 16px;
 }
 
 .root {
@@ -139,6 +120,15 @@
   border: 1px solid #e9e9e9;
   height: 0px;
   margin: 20px auto 20px;
+}
+
+:global body * {
+  -webkit-font-smoothing: antialiased;
+}
+
+:global body div.highlight {
+  padding: 10px;
+  margin-bottom: 10px;
 }
 
 :global body pre.highlight {
@@ -158,20 +148,20 @@
 }
 
 :global body pre > code {
-  padding: 15px !important;
+  padding: 15px!important;
 }
 
-:global body p > code,
-:global body li > code {
+
+:global body p > code, :global body li > code {
+  font-weight: bold;
   color: #2f2d44;
 }
 
-:global body pre > code,
-:global body pre > code * {
-  /* background-color: rgba(27, 31, 35, 0.05); */
+:global body pre > code, :global body pre > code * {
+  background-color: rgba(27, 31, 35, 0.05);
   border-radius: 3px;
   color: inherit;
-  font-family: Roboto Mono, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace;
-  font-size: 15px;
+  font-family: SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace;
+  font-size: 16px;
   margin: 0;
 }

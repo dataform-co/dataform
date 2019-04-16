@@ -20,7 +20,7 @@ export default class DefaultDocument extends Document {
           />
           <link rel="shortcut icon" href={faviconImage} type="image/png" />
           <link
-            href="https://fonts.googleapis.com/css?family=Roboto+Mono:400,700|Poppins:400,500,600|Open+Sans:400,700|Muli"
+            href="https://fonts.googleapis.com/css?family=Montserrat|Open+Sans|Muli"
             rel="stylesheet"
           />
           <script type="text/javascript" src="/static/js/inline.js" />

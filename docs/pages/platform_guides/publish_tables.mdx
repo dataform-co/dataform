@@ -1,5 +1,4 @@
 import Documentation from "df/docs/layouts/documentation";
-import ScreenshotWrapper from "df/docs/components/screenshot_wrapper";
 
 export default ({ children }) => (
   <Documentation title="Publishing tables">{children}</Documentation>
@@ -9,12 +8,11 @@ export default ({ children }) => (
 
 Create a new file by clicking on the + button next to the `definitions` folder and create a new SQL file named `onboarding_table`.
 For now, ignore the other options (Assertions, Operations, JavaScript); these are more advanced features which will be covered in later documentation.
-<ScreenshotWrapper>
+
 <img
   src="/static/images/platform_guides/publish_tables/new_file.png"
-  style={{ width: "100%" }}
+  style={{ width: "100%", padding: "20px" }}
 />
-</ScreenshotWrapper>
 
 ## Write a query
 
@@ -29,12 +27,11 @@ SELECT 1 AS one,
 You will see the right sidebar update with `onboarding_table` which is the name of the table, a tag for the type - a view by default - as well as a validation message and two action buttons.
 
 The `Execute query` button executes the query in your warehouse and returns the output at the bottom of the page. This can be useful during query development to check that the query returns expected output.
-<ScreenshotWrapper>
+
 <img
   src="/static/images/platform_guides/publish_tables/compilation.png"
-  style={{ width: "100%"}}
+  style={{ width: "100%", padding: "20px" }}
 />
-</ScreenshotWrapper>
 
 ## Run the query
 
@@ -48,13 +45,10 @@ Upon successful completion of the run, a new view named `dataform.onboarding_tab
   <a href="../guides/configuration">project configuration</a>.
 </div>
 
-
-<ScreenshotWrapper>
 <img
   src="/static/images/platform_guides/publish_tables/run_node.png"
-  style={{ width: "100%" }}
+  style={{ width: "100%", padding: "20px" }}
 />
-</ScreenshotWrapper>
 
 ## Create a table instead of a view
 
@@ -72,12 +66,10 @@ You will see the tag on the right sidebar update from `view` to `table`.
   <a href="../guides/incremental-tables">incremental tables</a>.
 </div>
 
-<ScreenshotWrapper>
 <img
   src="/static/images/platform_guides/publish_tables/table_vs_view.png"
-  style={{ width: "100%" }}
+  style={{ width: "100%", padding: "20px" }}
 />
-</ScreenshotWrapper>
 
 ## Referencing other tables
 
@@ -100,12 +92,10 @@ Create a new SQL file named `onboarding_table2` and add the following content:
 SELECT * FROM ${ref('onboarding_table')}
 ```
 
-<ScreenshotWrapper>
 <img
   src="/static/images/platform_guides/publish_tables/ref_query.png"
-  style={{ width: "100%" }}
+  style={{ width: "100%", padding: "20px" }}
 />
-</ScreenshotWrapper>
 
 You will see the right sidebar update with the name of the view, `onboarding_table2`. Clicking on `Show compiled` will display the fully qualified query to be run in your data warehouse.
 The `${ref()}` function will be replaced with the actual name of the table in your data warehouse. Note that the dependency is also listed just above the query validation message.
@@ -123,11 +113,9 @@ _*Your compiled script will differ depending on your cloud data warehouse. This 
 
 The overview page (linked at the top left of Dataform) gives you an overview of your project. The overview includes a visualization of the dependency tree of your project, containing the two tables created by your scripts.
 
-
 <img
   src="/static/images/platform_guides/publish_tables/dependency_tree.png"
-  style={{ width: "100%" }}
+  style={{ width: "100%", padding: "20px" }}
 />
-
 
 In bigger projects containing dozens or hundreds of tables with complicated interdependencies, the overview page can help you keep track of your project's overall structure.
