@@ -29,7 +29,7 @@ export class Operation {
   }
 
   public hasOutput(hasOutput: boolean) {
-    // Deprecated.
+    this.proto.hasOutput = hasOutput;
     return this;
   }
 
