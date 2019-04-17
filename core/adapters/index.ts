@@ -29,6 +29,13 @@ export enum WarehouseType {
   SNOWFLAKE = "snowflake"
 }
 
+export function supportsCancel(warehouseType: WarehouseType) {
+  if (warehouseType === WarehouseType.BIGQUERY) {
+    return true;
+  }
+  return false;
+}
+
 const requiredBigQueryWarehouseProps: Array<keyof dataform.IBigQuery> = [
   "projectId",
   "credentials"
