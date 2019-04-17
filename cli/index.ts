@@ -367,9 +367,8 @@ const builtYargs = createYargsCli({
   .wrap(null)
   .recommendCommands()
   .fail((msg, err) => {
-    writeStdErr(
-      errorOutput(`Dataform encountered an error: ${err ? err.stack || err.message : msg}`)
-    );
+    const message = err.message.split("\n")[0];
+    writeStdErr(errorOutput(`Dataform encountered an error: ${message}`));
     process.exit(1);
   }).argv;
 
@@ -527,7 +526,10 @@ function createYargsCli(cli: ICli) {
       command.format,
       command.description,
       yargsChainer => createOptionsChain(yargsChainer, command),
-      command.processFn
+      async (argv: any) => {
+        await command.processFn(argv);
+        process.exit();
+      }
     );
   }
   return yargsChain;
