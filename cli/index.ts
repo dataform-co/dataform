@@ -526,7 +526,7 @@ function createYargsCli(cli: ICli) {
       command.format,
       command.description,
       yargsChainer => createOptionsChain(yargsChainer, command),
-      async (argv: any) => {
+      async (argv: { [argumentName: string]: any }) => {
         await command.processFn(argv);
         process.exit();
       }
