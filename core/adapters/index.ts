@@ -30,10 +30,7 @@ export enum WarehouseType {
 }
 
 export function supportsCancel(warehouseType: WarehouseType) {
-  if (warehouseType === WarehouseType.BIGQUERY) {
-    return true;
-  }
-  return false;
+  return warehouseType === WarehouseType.BIGQUERY;
 }
 
 const requiredBigQueryWarehouseProps: Array<keyof dataform.IBigQuery> = [

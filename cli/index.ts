@@ -22,9 +22,7 @@ const errorOutput = (output: string) => coloredOutput(output, 91);
 const writeStdOut = (output: string) => process.stdout.write(output + "\n");
 const writeStdErr = (output: string) => process.stderr.write(output + "\n");
 
-const actuallyResolve = filePath => {
-  return path.resolve(untildify(filePath));
-};
+const actuallyResolve = filePath => path.resolve(untildify(filePath));
 
 const projectDirOption: INamedOption<yargs.PositionalOptions> = {
   name: "project-dir",
