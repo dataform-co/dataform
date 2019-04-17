@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { build, compile, credentials, init, run, table } from "@dataform/api";
 import { prettyJsonStringify } from "@dataform/api/utils";
-import { WarehouseType, supportsCancel } from "@dataform/core/adapters";
+import { supportsCancel, WarehouseType } from "@dataform/core/adapters";
 import { dataform } from "@dataform/protos";
 import * as chokidar from "chokidar";
 import * as fs from "fs";
@@ -458,7 +458,7 @@ function getJdbcCredentials(hostQuestion: string, defaultPort: number): dataform
   const port = parseInt(
     readlineSync.prompt({
       limit: value => {
-        const intValue = parseInt(value);
+        const intValue = parseInt(value, 10);
         return (
           !isNaN(intValue) && typeof intValue === "number" && intValue >= 0 && intValue <= 65536
         );
@@ -466,7 +466,8 @@ function getJdbcCredentials(hostQuestion: string, defaultPort: number): dataform
       limitMessage: errorOutput("Port numbers must be integers and lie in the [0, 65535] range."),
       prompt: `[${defaultPort}] `,
       defaultInput: `${defaultPort}`
-    })
+    }),
+    10
   );
   const username = readlineSync.question(commandOutput("Enter your database username:\n"));
   const password = readlineSync.question(commandOutput("Enter your database password:\n"), {
