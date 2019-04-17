@@ -139,10 +139,14 @@ const builtYargs = createYargsCli({
           argv["skip-install"]
         );
 
-        writeStdOut(commandOutput("Directories created:"));
-        result.dirsCreated.forEach(dir => writeStdOut(dir));
-        writeStdOut(commandOutput("Files written:"));
-        result.filesWritten.forEach(file => writeStdOut(file));
+        if (result.dirsCreated && result.dirsCreated.length) {
+          writeStdOut(commandOutput("Directories created:"));
+          result.dirsCreated.forEach(dir => writeStdOut(dir));
+        }
+        if (result.filesWritten && result.filesWritten.length) {
+          writeStdOut(commandOutput("Files written:"));
+          result.filesWritten.forEach(file => writeStdOut(file));
+        }
         if (result.installedNpmPackages) {
           writeStdOut(commandOutput("NPM packages successfully installed."));
         }
