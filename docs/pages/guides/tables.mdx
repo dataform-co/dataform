@@ -18,11 +18,11 @@ SELECT 1 AS TEST
 
 By default, upon running this query, a **view** called `schema.example` will be created (where `schema` is the Dataform schema defined in your [`dataform.json`](/guides/configuration#dataform.json) file).
 
-<div className="pt-callout pt-icon-info-sign pt-intent-warning" markdown="1">
+<div className="bp3-callout bp3-icon-info-sign bp3-intent-warning" markdown="1">
   Trailing semi-colons should be omitted from queries.
 </div>
 
-<div className="pt-callout pt-icon-info-sign pt-intent-warning" markdown="1">
+<div className="bp3-callout bp3-icon-info-sign bp3-intent-warning" markdown="1">
   File names must be unique within your <code>definitions/</code> folder, even across different
   directories, because these determine the name of the table or view created within your warehouse.
 </div>
@@ -107,7 +107,7 @@ The following example defines a post-query operation to configure table access p
 SELECT * FROM ...
 ```
 
-<div className="pt-callout pt-icon-info-sign pt-intent-warning" markdown="1">
+<div className="bp3-callout bp3-icon-info-sign bp3-intent-warning" markdown="1">
   To use the <code>self()</code> method within the string argument provided to{" "}
   <code>postOps()</code>, you must use JavaScript's ES6 template string syntax, wrapping the string
   in back-ticks: <code>`template_string`</code>
