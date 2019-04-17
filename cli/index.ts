@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 import { build, compile, credentials, init, run, table } from "@dataform/api";
 import { prettyJsonStringify } from "@dataform/api/utils";
-import { WarehouseType } from "@dataform/core/adapters";
+import { supportsCancel, WarehouseType } from "@dataform/core/adapters";
 import { dataform } from "@dataform/protos";
 import * as chokidar from "chokidar";
 import * as fs from "fs";
 import * as path from "path";
 import * as readlineSync from "readline-sync";
+import * as untildify from "untildify";
 import * as yargs from "yargs";
 
 const RECOMPILE_DELAY = 2000;
@@ -21,18 +22,31 @@ const errorOutput = (output: string) => coloredOutput(output, 91);
 const writeStdOut = (output: string) => process.stdout.write(output + "\n");
 const writeStdErr = (output: string) => process.stderr.write(output + "\n");
 
+const actuallyResolve = filePath => path.resolve(untildify(filePath));
+
 const projectDirOption: INamedOption<yargs.PositionalOptions> = {
   name: "project-dir",
   option: {
     describe: "The Dataform project directory.",
     default: ".",
-    coerce: path.resolve
+    coerce: actuallyResolve
   }
 };
 
 const projectDirMustExistOption = {
   ...projectDirOption,
-  check: (argv: yargs.Arguments) => assertPathExists(argv["project-dir"])
+  check: (argv: yargs.Arguments) => {
+    assertPathExists(argv["project-dir"]);
+    try {
+      assertPathExists(path.resolve(argv["project-dir"], "dataform.json"));
+    } catch (e) {
+      throw new Error(
+        `${
+          argv["project-dir"]
+        } does not appear to be a dataform directory (missing dataform.json file).`
+      );
+    }
+  }
 };
 
 const fullRefreshOption: INamedOption<yargs.Options> = {
@@ -85,7 +99,7 @@ const credentialsOption: INamedOption<yargs.Options> = {
   option: {
     describe: "The location of the credentials JSON file to use.",
     default: credentials.CREDENTIALS_FILENAME,
-    coerce: path.resolve
+    coerce: actuallyResolve
   },
   check: (argv: yargs.Arguments) => assertPathExists(argv.credentials)
 };
@@ -315,6 +329,9 @@ const builtYargs = createYargsCli({
 
         const runner = run(executionGraph, readCredentials);
         process.on("SIGINT", () => {
+          if (!supportsCancel(WarehouseType[compiledGraph.projectConfig.warehouse])) {
+            process.exit();
+          }
           runner.cancel();
         });
         const executedGraph = await runner.resultPromise();
@@ -325,11 +342,15 @@ const builtYargs = createYargsCli({
             .filter(node => node.status === dataform.NodeExecutionStatus.FAILED)
             .forEach(node => {
               writeStdErr(errorOutput(`Execution failed on node "${node.name}":`));
-              node.tasks.filter(task => !task.ok).forEach(task => {
-                writeStdErr(
-                  errorOutput(`Statement "${task.task.statement}" failed with error: ${task.error}`)
-                );
-              });
+              node.tasks
+                .filter(task => !task.ok)
+                .forEach(task => {
+                  writeStdErr(
+                    errorOutput(
+                      `Statement "${task.task.statement}" failed with error: ${task.error}`
+                    )
+                  );
+                });
             });
         }
       }
@@ -371,7 +392,7 @@ const builtYargs = createYargsCli({
   .wrap(null)
   .recommendCommands()
   .fail((msg, err) => {
-    const message = err.message.split("\n")[0];
+    const message = err ? err.message.split("\n")[0] : msg;
     writeStdErr(errorOutput(`Dataform encountered an error: ${message}`));
     process.exit(1);
   }).argv;
@@ -395,7 +416,7 @@ function getBigQueryCredentials(): dataform.IBigQuery {
         "(You can delete this file after credential initialization is complete.)\n"
     )
   );
-  const cloudCredentialsPath = path.resolve(
+  const cloudCredentialsPath = actuallyResolve(
     readlineSync.question(commandOutput("Enter the path to your Google Cloud private key file:\n"))
   );
   if (!fs.existsSync(cloudCredentialsPath)) {
@@ -418,7 +439,7 @@ function getBigQueryCredentials(): dataform.IBigQuery {
 
 function getRedshiftCredentials() {
   return getJdbcCredentials(
-    "Enter the hostname of your Redshift instance (in the form '[name].[id].[region].redshift.amazonaws.com'):\n",
+    "Enter the hostname of your Redshift instance (in the form 'name.id.region.redshift.amazonaws.com'):\n",
     5439
   );
 }
@@ -429,12 +450,25 @@ function getPostgresCredentials() {
 
 function getJdbcCredentials(hostQuestion: string, defaultPort: number): dataform.IJDBC {
   const host = readlineSync.question(commandOutput(hostQuestion));
-  const port = readlineSync.questionInt(
-    commandOutput(`Enter the port that Dataform should connect to (usually ${defaultPort}):\n`)
+  writeStdOut(
+    commandOutput(`Enter the port that Dataform should connect to (leave blank to use default):`)
+  );
+  const port = parseInt(
+    readlineSync.prompt({
+      limit: value => {
+        const intValue = parseInt(value, 10);
+        return !isNaN(intValue) && intValue >= 0 && intValue <= 65536;
+      },
+      limitMessage: errorOutput("Port numbers must be integers and lie in the [0, 65535] range."),
+      prompt: `[${defaultPort}] `,
+      defaultInput: `${defaultPort}`
+    }),
+    10
   );
   const username = readlineSync.question(commandOutput("Enter your database username:\n"));
   const password = readlineSync.question(commandOutput("Enter your database password:\n"), {
-    hideEchoBack: true
+    hideEchoBack: true,
+    mask: ""
   });
   const databaseName = readlineSync.question(commandOutput("Enter the database name:\n"));
   return {

@@ -16,6 +16,7 @@ ts_library(
         "@npm//@types/yargs",
         "@npm//chokidar",
         "@npm//readline-sync",
+        "@npm//untildify",
         "@npm//yargs",
     ],
 )

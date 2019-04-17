@@ -11,7 +11,7 @@
     "@types/long": "^4.0.0",
     "@types/mocha": "^5.2.5",
     "@types/next": "^7.0.5",
-    "@types/node": "^9.6.32",
+    "@types/node": "^9.6.47",
     "@types/react": "^16.7.17",
     "@types/readline-sync": "^1.4.3",
     "@types/rimraf": "^2.0.2",
@@ -67,6 +67,7 @@
     "uglify-es": "^3.3.9",
     "uglify-js": "^3.4.9",
     "umd-compat-loader": "^2.1.1",
+    "untildify": "^3.0.3",
     "vm2": "^3.6.3",
     "webpack": "4.20.2",
     "yargs": "^12.0.1"
