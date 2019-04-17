@@ -1,7 +1,7 @@
-@value headerPadding: 40px 40px 0px;
+@value headerPadding: 20px 40px 0px;
 
 .nav {
-  height: 100px;
+  height: 60px;
   display: flex;
   flex-direction: row;
   position: fixed;
@@ -9,6 +9,7 @@
   right: 0;
   transition: background-color 0.3s ease, color 0.3s ease;
   z-index: 1000;
+  border-bottom: 1px solid #e9e9e9;
 }
 
 .navContent {
@@ -58,32 +59,34 @@
 }
 
 .logoImage {
-  padding: headerPadding;
+  padding-top: 20px;
+  padding-left: 40px;
+  padding-right: 10px;
 }
 
 .menuCloseIcon {
   z-index: 1001;
 }
 
-.nav :global .pt-button.pt-intent-primary.ghost {
+.nav :global .bp3-button.bp3-intent-primary.ghost {
   background-color: white;
   border: 2px solid #5e73e5;
 }
-.nav :global .pt-button.pt-intent-primary.ghost > span {
+.nav :global .bp3-button.bp3-intent-primary.ghost > span {
   color: #5e73e5;
 }
-.nav :global .pt-button.pt-intent-primary.ghost:hover {
+.nav :global .bp3-button.bp3-intent-primary.ghost:hover {
   background-color: white;
 }
 
-.navInverted :global .pt-button.pt-intent-primary.ghost {
+.navInverted :global .bp3-button.bp3-intent-primary.ghost {
   background-color: unset;
   border: 2px solid white;
 }
-.navInverted :global .pt-button.pt-intent-primary.ghost > span {
+.navInverted :global .bp3-button.bp3-intent-primary.ghost > span {
   color: white;
 }
-.navInverted :global .pt-button.pt-intent-primary.ghost:hover {
+.navInverted :global .bp3-button.bp3-intent-primary.ghost:hover {
   background-color: transparent;
 }
 
@@ -100,7 +103,7 @@
 
 .mobileMenu {
   position: fixed;
-  top: 100px;
+  top: 60px;
   color: #fff;
   width: 100%;
 }
@@ -139,12 +142,24 @@
   display: none;
 }
 
+.docs_tag {
+  color: #5e73e5;
+  font-size: 20px;
+  font-weight: 500;
+  display: inline-block;
+  vertical-align: top;
+  margin-top: 18px;
+}
+
 @media (max-width: 1250px) {
   .showMobile {
     display: block;
   }
   .hideMobile {
     display: none;
+  }
+  .nav {
+    border-bottom: none;
   }
 
   .navInverted > .navContent > span > a > .logoImage {

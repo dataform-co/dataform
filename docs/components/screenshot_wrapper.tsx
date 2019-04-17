@@ -1,7 +1,11 @@
 import * as React from "react";
 import * as styles from "df/docs/components/screenshot_wrapper.css";
 
-export default class ScreenshotWrapper extends React.Component<any, any> {
+interface IProps {
+  children: JSX.Element;
+}
+
+export default class ScreenshotWrapper extends React.Component<IProps> {
   public render() {
     return (
       <div className={styles.editor}>
@@ -12,7 +16,7 @@ export default class ScreenshotWrapper extends React.Component<any, any> {
             <span className={`${styles.button} `} />
           </div>
         </div>
-        <div className={styles.image}>{this.props.children}</div>
+        <div>{this.props.children}</div>
       </div>
     );
   }
