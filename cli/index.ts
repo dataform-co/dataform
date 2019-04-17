@@ -457,9 +457,7 @@ function getJdbcCredentials(hostQuestion: string, defaultPort: number): dataform
     readlineSync.prompt({
       limit: value => {
         const intValue = parseInt(value, 10);
-        return (
-          !isNaN(intValue) && typeof intValue === "number" && intValue >= 0 && intValue <= 65536
-        );
+        return !isNaN(intValue) && intValue >= 0 && intValue <= 65536;
       },
       limitMessage: errorOutput("Port numbers must be integers and lie in the [0, 65535] range."),
       prompt: `[${defaultPort}] `,
