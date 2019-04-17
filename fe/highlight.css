@@ -1,98 +1,159 @@
-/*
+/**
+ * Darcula theme
+ *
+ * Adapted from a theme based on:
+ * IntelliJ Darcula Theme (https://github.com/bulenkov/Darcula)
+ *
+ * @author Alexandre Paradis <service.paradis@gmail.com>
+ * @version 1.0
+ */
 
-Atom One Dark by Daniel Gamage
-Original One Dark Syntax theme from https://github.com/atom/one-dark-syntax
-
-base:    #282c34
-mono-1:  #abb2bf
-mono-2:  #818896
-mono-3:  #5c6370
-hue-1:   #56b6c2
-hue-2:   #61aeee
-hue-3:   #c678dd
-hue-4:   #98c379
-hue-5:   #e06c75
-hue-5-2: #be5046
-hue-6:   #d19a66
-hue-6-2: #e6c07b
-
-*/
-
-.root {}
-
-:global .hljs {
-  display: block;
-  overflow-x: auto;
-  padding: 0.5em;
-  color: #abb2bf;
-  background: #282c34;
+.root {
 }
 
-:global .hljs-comment,
-:global .hljs-quote {
-  color: #5c6370;
-  font-style: italic;
+:global code[class*="language-"],
+:global pre[class*="language-"] {
+  font-family: Consolas, Monaco, "Andale Mono", monospace;
+  direction: ltr;
+  text-align: left;
+  white-space: pre;
+  word-spacing: normal;
+  word-break: normal;
+  line-height: 1.6;
+  font-size: 14px;
+
+  white-space: pre-wrap; /* Since CSS 2.1 */
+  white-space: -moz-pre-wrap; /* Mozilla, since 1999 */
+  white-space: -pre-wrap; /* Opera 4-6 */
+  white-space: -o-pre-wrap; /* Opera 7 */
+
+  -moz-tab-size: 4;
+  -o-tab-size: 4;
+  tab-size: 4;
+
+  -webkit-hyphens: none;
+  -moz-hyphens: none;
+  -ms-hyphens: none;
+  hyphens: none;
+
+  background-color: #efefef;
+  border-radius: 3px;
 }
 
-:global .hljs-doctag,
-:global .hljs-keyword,
-:global .hljs-formula {
-  color: #c678dd;
+:global pre[class*="language-"]::-moz-selection,
+:global pre[class*="language-"] ::-moz-selection,
+:global code[class*="language-"]::-moz-selection,
+:global code[class*="language-"] ::-moz-selection {
+  color: inherit;
+  background: rgba(33, 66, 131, 0.85);
 }
 
-:global .hljs-section,
-:global .hljs-name,
-:global .hljs-selector-tag,
-:global .hljs-deletion,
-:global .hljs-subst {
-  color: #e06c75;
+:global pre[class*="language-"]::selection,
+:global pre[class*="language-"] ::selection,
+:global code[class*="language-"]::selection,
+:global code[class*="language-"] ::selection {
+  color: inherit;
+  background: rgba(33, 66, 131, 0.85);
 }
 
-:global .hljs-literal {
-  color: #56b6c2;
+/* :global code blocks */
+:global pre[class*="language-"] {
+  padding: 1em;
+  margin: 15px 0px;
+  overflow: auto;
 }
 
-:global .hljs-string,
-:global .hljs-regexp,
-:global .hljs-addition,
-:global .hljs-attribute,
-:global .hljs-meta-string {
-  color: #98c379;
+:global :not(pre) > code {
+  background: #efefef;
+  padding: 3px 5px;
+  font-size: 14px;
+  border-radius: 3px;
 }
 
-:global .hljs-built_in,
-:global .hljs-class :global .hljs-title {
-  color: #e6c07b;
+:global :not(pre) > code[class*="language-"] {
+  padding: 0.1em;
+  border-radius: 0.3em;
 }
 
-:global .hljs-attr,
-:global .hljs-variable,
-:global .hljs-template-variable,
-:global .hljs-type,
-:global .hljs-selector-class,
-:global .hljs-selector-attr,
-:global .hljs-selector-pseudo,
-:global .hljs-number {
-  color: #d19a66;
+:global .token.comment,
+:global .token.prolog,
+:global .token.cdata {
+  color: #008855;
 }
 
-:global .hljs-symbol,
-:global .hljs-bullet,
-:global .hljs-link,
-:global .hljs-meta,
-:global .hljs-selector-id,
-:global .hljs-title {
-  color: #61aeee;
+:global .token.delimiter,
+:global .token.boolean,
+:global .token.keyword,
+:global .token.selector,
+:global .token.important,
+:global .token.atrule {
+  color: #7B2A90;
 }
 
-:global .hljs-emphasis {
-  font-style: italic;
+:global .token.operator,
+:global .token.punctuation,
+:global .token.attr-name {
+  
 }
 
-:global .hljs-strong {
+:global .token.tag,
+:global .token.tag .punctuation,
+:global .token.doctype,
+:global .token.builtin {
+  color: #3F81B3;
+  
+}
+
+:global .token.entity,
+:global .token.number,
+:global .token.symbol {
+  color: #C56C1B;
+}
+
+:global .token.property,
+:global .token.constant,
+:global .token.variable {
+  color: #7B2A90;
+}
+
+:global .token.string,
+:global .token.char {
+  color: #AA1111;
+}
+
+:global .token.attr-value,
+:global .token.attr-value .punctuation {
+  
+}
+:global .token.attr-value .punctuation:first-child {
+
+}
+
+:global .token.url {
+  color: #008855;
+  text-decoration: underline;
+}
+
+:global .token.function {
+  color: #008855;
+}
+
+:global .token.regex {
+  background: #008855;
+}
+
+:global .token.bold {
   font-weight: bold;
 }
 
-:global .hljs-link {
-  text-decoration: underline;
+:global .token.italic {
+  font-style: italic;
+}
+
+:global .token.inserted {
+  background: #294436;
+}
+
+:global .token.deleted {
+  background: #484a4a;
 }
