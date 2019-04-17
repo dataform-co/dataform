@@ -344,7 +344,7 @@ const builtYargs = createYargsCli({
           credentials.read(argv.warehouse, argv.credentials),
           argv.warehouse
         );
-        tables.forEach(table => writeStdOut(`${table.schema}.${table.name}`));
+        tables.forEach(foundTable => writeStdOut(`${foundTable.schema}.${foundTable.name}`));
       }
     },
     {
