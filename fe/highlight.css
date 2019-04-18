@@ -36,7 +36,7 @@
   -ms-hyphens: none;
   hyphens: none;
 
-  background-color: #efefef;
+  background-color: #f6f8fa;
   border-radius: 3px;
 }
 
@@ -64,7 +64,7 @@
 }
 
 :global :not(pre) > code {
-  background: #efefef;
+  background: #f6f8fa;
   padding: 3px 5px;
   font-size: 14px;
   border-radius: 3px;
@@ -87,46 +87,42 @@
 :global .token.selector,
 :global .token.important,
 :global .token.atrule {
-  color: #7B2A90;
+  color: #7b2a90;
 }
 
 :global .token.operator,
 :global .token.punctuation,
 :global .token.attr-name {
-  
 }
 
 :global .token.tag,
 :global .token.tag .punctuation,
 :global .token.doctype,
 :global .token.builtin {
-  color: #3F81B3;
-  
+  color: #3f81b3;
 }
 
 :global .token.entity,
 :global .token.number,
 :global .token.symbol {
-  color: #C56C1B;
+  color: #c56c1b;
 }
 
 :global .token.property,
 :global .token.constant,
 :global .token.variable {
-  color: #7B2A90;
+  color: #005cc5;
 }
 
 :global .token.string,
 :global .token.char {
-  color: #AA1111;
+  color: #aa1111;
 }
 
 :global .token.attr-value,
 :global .token.attr-value .punctuation {
-  
 }
 :global .token.attr-value .punctuation:first-child {
-
 }
 
 :global .token.url {
@@ -135,7 +131,7 @@
 }
 
 :global .token.function {
-  color: #008855;
+  color: #6f42c1;
 }
 
 :global .token.regex {
