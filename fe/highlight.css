@@ -45,7 +45,6 @@
 :global code[class*="language-"]::-moz-selection,
 :global code[class*="language-"] ::-moz-selection {
   color: inherit;
-  background: rgba(33, 66, 131, 0.85);
 }
 
 :global pre[class*="language-"]::selection,
@@ -53,7 +52,6 @@
 :global code[class*="language-"]::selection,
 :global code[class*="language-"] ::selection {
   color: inherit;
-  background: rgba(33, 66, 131, 0.85);
 }
 
 /* :global code blocks */
