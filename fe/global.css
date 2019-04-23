@@ -2,7 +2,7 @@
 @value colorsButtonBlue: #5e73e5;
 @value colorsButtonGreen: #00C37D;
 
-:global body .pt-button {
+:global body .bp3-button {
   font-weight: bold;
   text-transform: uppercase;
   background-color: #5e73e5;
@@ -16,34 +16,34 @@
   background-image: unset !important;
 }
 
-:global body .pt-button * {
+:global body .bp3-button * {
   color: #fff;
   font-size: 12px;
 }
 
-:global body .pt-button.pt-intent-primary {
+:global body .bp3-button.bp3-intent-primary {
   background-color: colorsButtonBlue;
 }
 
-:global body .pt-button.pt-intent-primary:hover {
+:global body .bp3-button.bp3-intent-primary:hover {
   background-color: colorsButtonBlue;
 }
 
-:global body .pt-button.pt-intent-success {
+:global body .bp3-button.bp3-intent-success {
   background-color: colorsButtonGreen;
 }
 
-:global body .pt-button.pt-intent-success:hover {
+:global body .bp3-button.bp3-intent-success:hover {
   background-color: colorsButtonGreen;
 }
 
-:global body .pt-input {
+:global body .bp3-input {
   height: 42px;
   line-height: 42px;
   font-size: 16px;
 }
 
-:global * {
+:global body {
   font-family: "Open Sans";
   color: colorsTextMain;
   -webkit-font-smoothing: antialiased;
@@ -107,7 +107,7 @@
   color: #2f2d44;
 }
 
-:global body p {
+:global body p, :global body code {
   font-style: normal;
   font-weight: normal;
   line-height: 30px;
@@ -139,39 +139,4 @@
   border: 1px solid #e9e9e9;
   height: 0px;
   margin: 20px auto 20px;
-}
-
-:global body pre.highlight {
-  margin: 0px;
-}
-
-:global body pre {
-  white-space: pre-wrap; /* Since CSS 2.1 */
-  white-space: -moz-pre-wrap; /* Mozilla, since 1999 */
-  white-space: -pre-wrap; /* Opera 4-6 */
-  white-space: -o-pre-wrap; /* Opera 7 */
-  word-wrap: break-word;
-  box-shadow: none;
-  -webkit-box-shadow: none;
-  padding: 15px 0px 5px;
-  background: none;
-}
-
-:global body pre > code {
-  padding: 15px !important;
-}
-
-:global body p > code,
-:global body li > code {
-  color: #2f2d44;
-}
-
-:global body pre > code,
-:global body pre > code * {
-  /* background-color: rgba(27, 31, 35, 0.05); */
-  border-radius: 3px;
-  color: inherit;
-  font-family: Roboto Mono, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace;
-  font-size: 15px;
-  margin: 0;
 }

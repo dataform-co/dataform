@@ -1,7 +1,6 @@
 import { Menu, MenuDivider, MenuItem } from "@blueprintjs/core";
 import * as React from "react";
 import * as styles from "df/docs/components/navigation.css";
-import * as styles2 from "df/docs/components/navigation.css";
 
 export default class Navigation extends React.Component<any, any> {
   public render() {
