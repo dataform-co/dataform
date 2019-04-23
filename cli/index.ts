@@ -374,11 +374,6 @@ const builtYargs = createYargsCli({
           runner.cancel();
         });
 
-        // listen to onchange events from runner.
-        // upon each, try to print out a meaningful message, depending on the newly executed node(s) types.
-        // will have to map back to the execution graph nodes using nodesByName to do that.
-        // after that, await the result promise.
-        // if something fails... i dunno, i guess you do the best you can?
         const nodesByName = new Map<string, dataform.IExecutionNode>();
         executionGraph.nodes.forEach(node => {
           nodesByName.set(node.name, node);
