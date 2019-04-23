@@ -21,16 +21,19 @@ const writeStdErr = (output: string, indentCount: number = 0) =>
 
 const DEFAULT_PROMPT = "> ";
 
-export const question = (questionText: string) => prompt(questionText);
+export function question(questionText: string) {
+  return prompt(questionText);
+}
 
-export const passwordQuestion = (questionText: string) =>
-  prompt(questionText, {
+export function passwordQuestion(questionText: string) {
+  return prompt(questionText, {
     hideEchoBack: true,
     mask: ""
   });
+}
 
-export const intQuestion = (questionText: string, defaultValue?: number) =>
-  parseInt(
+export function intQuestion(questionText: string, defaultValue?: number) {
+  return parseInt(
     prompt(questionText, {
       limit: value => {
         const intValue = parseInt(value, 10);
@@ -42,6 +45,7 @@ export const intQuestion = (questionText: string, defaultValue?: number) =>
     }),
     10
   );
+}
 
 export function selectionQuestion(questionText: string, options: string[]) {
   return readlineSync.keyInSelect(options, `${questionText}\n`, {
@@ -57,7 +61,9 @@ function prompt(questionText: string, options?: readlineSync.BasicOptions) {
   });
 }
 
-export const print = (text: string) => writeStdOut(text);
+export function print(text: string) {
+  writeStdOut(text);
+}
 
 export function printSuccess(text: string) {
   writeStdOut(successOutput(text));
