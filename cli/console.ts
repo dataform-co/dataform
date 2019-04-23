@@ -22,11 +22,13 @@ const writeStdErr = (output: string, indentCount: number = 0) =>
 const DEFAULT_PROMPT = "> ";
 
 export const question = (questionText: string) => prompt(questionText);
+
 export const passwordQuestion = (questionText: string) =>
   prompt(questionText, {
     hideEchoBack: true,
     mask: ""
   });
+
 export const intQuestion = (questionText: string, defaultValue?: number) =>
   parseInt(
     prompt(questionText, {
@@ -123,7 +125,7 @@ export function printCompiledGraph(graph: dataform.ICompiledGraph, verbose: bool
 
 export function printCompiledGraphErrors(graphErrors: dataform.IGraphErrors) {
   if (graphErrors.compilationErrors && graphErrors.compilationErrors.length > 0) {
-    printError("Graph compilation errors:", 1);
+    printError("Compilation errors:", 1);
     graphErrors.compilationErrors.forEach(compileError => {
       writeStdErr(
         `${calloutOutput(compileError.fileName)}: ${errorOutput(
@@ -134,7 +136,7 @@ export function printCompiledGraphErrors(graphErrors: dataform.IGraphErrors) {
     });
   }
   if (graphErrors.validationErrors && graphErrors.validationErrors.length > 0) {
-    printError("Graph validation errors:");
+    printError("Validation errors:");
     graphErrors.validationErrors.forEach(validationError => {
       writeStdErr(
         `${calloutOutput(validationError.nodeName)}: ${errorOutput(validationError.message)}`,
@@ -308,7 +310,7 @@ function printExecutedNodeErrors(executedNode: dataform.IExecutedNode, verbose: 
   const failingTasks = executedNode.tasks.filter(task => !task.ok);
   failingTasks.forEach(task => {
     task.task.statement.split("\n").forEach(line => {
-      writeStdErr(`> ${line}`, 1);
+      writeStdErr(`${DEFAULT_PROMPT}${line}`, 1);
     });
     printError(task.error, 1);
   });
