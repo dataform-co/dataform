@@ -9,7 +9,6 @@ import {
   printExecutedNode,
   printExecutionGraph,
   printGetTableResult,
-  printHeader,
   printInitCredsResult,
   printInitResult,
   printListTablesResult,
