@@ -7,8 +7,6 @@ import * as readlineSync from "readline-sync";
 // https://en.wikipedia.org/wiki/ANSI_escape_code#Colors
 const coloredOutput = (output: string, ansiColorCode: number) =>
   `\x1b[${ansiColorCode}m${output}\x1b[0m`;
-// TODO: delete
-const commandOutput = (output: string) => coloredOutput(output, 34);
 const successOutput = (output: string) => coloredOutput(output, 32);
 const warningOutput = (output: string) => coloredOutput(output, 93);
 const errorOutput = (output: string) => coloredOutput(output, 91);
@@ -44,7 +42,6 @@ export const intQuestion = (questionText: string, defaultValue?: number) =>
   );
 
 export function selectionQuestion(questionText: string, options: string[]) {
-  // TODO: seems like all of these should be wrapped in commandOutput()
   return readlineSync.keyInSelect(options, `${questionText}\n`, {
     cancel: false
   });
@@ -64,14 +61,8 @@ export function printSuccess(text: string) {
   writeStdOut(successOutput(text));
 }
 
-// TODO: replace all writeStdOut(commandOutput()) calls with this
-export function printHeader(header: string) {
-  writeStdOut(commandOutput(header));
-}
-
-// TODO: replace all writeStdErr(errorOutput()) calls with this
-export function printError(errorText: string) {
-  writeStdErr(errorOutput(errorText));
+export function printError(errorText: string, indentCount: number = 0) {
+  writeStdErr(errorOutput(errorText), indentCount);
 }
 
 export function printInitResult(result: InitResult) {
@@ -132,7 +123,7 @@ export function printCompiledGraph(graph: dataform.ICompiledGraph, verbose: bool
 
 export function printCompiledGraphErrors(graphErrors: dataform.IGraphErrors) {
   if (graphErrors.compilationErrors && graphErrors.compilationErrors.length > 0) {
-    writeStdErr(errorOutput("Graph compilation errors:"), 1);
+    printError("Graph compilation errors:", 1);
     graphErrors.compilationErrors.forEach(compileError => {
       writeStdErr(
         `${calloutOutput(compileError.fileName)}: ${errorOutput(
@@ -143,7 +134,7 @@ export function printCompiledGraphErrors(graphErrors: dataform.IGraphErrors) {
     });
   }
   if (graphErrors.validationErrors && graphErrors.validationErrors.length > 0) {
-    writeStdErr(errorOutput("Graph validation errors:"));
+    printError("Graph validation errors:");
     graphErrors.validationErrors.forEach(validationError => {
       writeStdErr(
         `${calloutOutput(validationError.nodeName)}: ${errorOutput(validationError.message)}`,
@@ -319,6 +310,6 @@ function printExecutedNodeErrors(executedNode: dataform.IExecutedNode, verbose: 
     task.task.statement.split("\n").forEach(line => {
       writeStdErr(`> ${line}`, 1);
     });
-    writeStdErr(errorOutput(task.error), 1);
+    printError(task.error, 1);
   });
 }
