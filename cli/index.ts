@@ -212,11 +212,20 @@ const builtYargs = createYargsCli({
         };
         const finalCredentials = credentialsFn();
         if (argv["test-connection"]) {
-          try {
-            await credentials.test(finalCredentials, argv.warehouse);
-            printSuccess("\nWarehouse test query completed successfully.\n");
-          } catch (e) {
-            throw new Error(`Warehouse test query failed: ${e.stack || e.message}`);
+          const testResult = await credentials.test(finalCredentials, argv.warehouse);
+          switch (testResult.status) {
+            case credentials.TestResultStatus.SUCCESSFUL: {
+              printSuccess("\nWarehouse test query completed successfully.\n");
+              break;
+            }
+            case credentials.TestResultStatus.TIMED_OUT: {
+              throw new Error("Warehouse test connection timed out.");
+            }
+            case credentials.TestResultStatus.OTHER_ERROR: {
+              throw new Error(
+                `Warehouse test query failed: ${testResult.error.stack || testResult.error.message}`
+              );
+            }
           }
         } else {
           print("\nWarehouse test query was not run.\n");
