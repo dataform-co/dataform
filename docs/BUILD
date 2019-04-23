@@ -47,6 +47,8 @@ next_site(
         "@npm//remark-slug",
         "@npm//tsconfig-paths-webpack-plugin",
         "@npm//umd-compat-loader",
+        "@npm//algoliasearch",
+        "@npm//react-instantsearch-dom",
         "@npm//url-loader",
     ],
     site_path = "docs",

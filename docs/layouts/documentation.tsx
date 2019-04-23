@@ -8,6 +8,7 @@ import { BaseLayout } from "df/docs/layouts/base";
 
 import * as commonStyles from "df/docs/common.css";
 import * as styles from "df/docs/layouts/documentation.css";
+import { Search } from "df/docs/components/search";
 
 export interface Props {
   title: string;
@@ -47,6 +48,7 @@ export default class Documentation extends React.Component<Props, any> {
       <BaseLayout title="Dataform | Documentation">
         <div className={commonStyles.flexRow}>
           <div className={styles.sidebar}>
+          <Search />
             <Navigation />
           </div>
           <div className={styles.mainContent}>
