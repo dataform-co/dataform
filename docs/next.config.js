@@ -1,9 +1,10 @@
 const withTypescript = require("@zeit/next-typescript");
-const remarkHighlight = require("remark-highlight.js");
+const rehypePrism = require("@mapbox/rehype-prism");
 const remarkSlug = require("remark-slug");
 const withMDX = require("@zeit/next-mdx")({
   options: {
-    mdPlugins: [remarkHighlight, remarkSlug]
+    hastPlugins: [rehypePrism],
+    mdPlugins: [remarkSlug]
   }
 });
 const withImages = require("next-images");
@@ -21,7 +22,9 @@ let config = {
   webpack: (config, options) => {
     // Use the module name mappings in tsconfig so imports resolve properly.
     config.resolve.plugins = config.resolve.plugins || [];
-    config.resolve.plugins.push(new TsconfigPathsPlugin({ extensions: [".ts", ".tsx", ".js", ".css"] }));
+    config.resolve.plugins.push(
+      new TsconfigPathsPlugin({ extensions: [".ts", ".tsx", ".js", ".css"] })
+    );
     // Make sure webpack can resolve modules that live within our bazel managed deps.
     const bazelNodeModulesPath = path.resolve("./external/npm/node_modules");
     config.resolve.modules.push(bazelNodeModulesPath);

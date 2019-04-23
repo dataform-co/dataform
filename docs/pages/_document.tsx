@@ -12,7 +12,7 @@ export default class DefaultDocument extends Document {
           <meta name="viewport" content="width=device-width, initial-scale=1.0" />
           <link
             rel="stylesheet"
-            href="https://unpkg.com/@blueprintjs/core@2.3.1/lib/css/blueprint.css"
+            href="https://unpkg.com/@blueprintjs/core@3.15.1/lib/css/blueprint.css"
           />
           <link
             rel="stylesheet"
