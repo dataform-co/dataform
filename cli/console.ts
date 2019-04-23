@@ -96,7 +96,7 @@ export function printCompiledGraph(graph: dataform.ICompiledGraph, verbose: bool
       (graph.tables ? graph.tables.length : 0) +
       (graph.assertions ? graph.assertions.length : 0) +
       (graph.operations ? graph.operations.length : 0);
-    writeStdOut(successOutput(`Compiled ${actionCount} actions.`));
+    writeStdOut(successOutput(`Compiled ${actionCount} action(s).`));
     if (graph.tables && graph.tables.length) {
       writeStdOut(`${graph.tables.length} dataset(s):`);
       graph.tables.forEach(compiledTable => {
