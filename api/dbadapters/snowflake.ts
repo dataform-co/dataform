@@ -33,6 +33,7 @@ const Snowflake: ISnowflake = require("snowflake-sdk");
 
 export class SnowflakeDbAdapter implements DbAdapter {
   private connection: ISnowflakeConnection;
+  private connected: Promise<void>;
 
   constructor(credentials: Credentials) {
     const snowflakeCredentials = credentials as dataform.ISnowflake;
@@ -44,14 +45,19 @@ export class SnowflakeDbAdapter implements DbAdapter {
       warehouse: snowflakeCredentials.warehouse,
       role: snowflakeCredentials.role
     });
-    this.connection.connect((err, conn) => {
-      if (err) {
-        console.error("Unable to connect: " + err.message);
-      }
+    this.connected = new Promise((resolve, reject) => {
+      this.connection.connect((err, conn) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve();
+        }
+      });
     });
   }
 
-  public execute(statement: string) {
+  public async execute(statement: string) {
+    await this.connected;
     return new Promise<any[]>((resolve, reject) => {
       this.connection.execute({
         sqlText: statement,
@@ -70,56 +76,49 @@ export class SnowflakeDbAdapter implements DbAdapter {
     throw Error("Unimplemented");
   }
 
-  public tables(): Promise<dataform.ITarget[]> {
-    return Promise.resolve().then(() =>
-      this.execute(
-        `select table_name, table_schema
-         from information_schema.tables
-         where LOWER(table_schema) != 'information_schema'
-           and LOWER(table_schema) != 'pg_catalog'
-           and LOWER(table_schema) != 'pg_internal'`
-      ).then(rows =>
-        rows.map(row => ({
-          schema: row.TABLE_SCHEMA,
-          name: row.TABLE_NAME
-        }))
-      )
+  public async tables(): Promise<dataform.ITarget[]> {
+    const rows = await this.execute(
+      `select table_name, table_schema
+       from information_schema.tables
+       where LOWER(table_schema) != 'information_schema'
+         and LOWER(table_schema) != 'pg_catalog'
+         and LOWER(table_schema) != 'pg_internal'`
     );
+    return rows.map(row => ({
+      schema: row.TABLE_SCHEMA,
+      name: row.TABLE_NAME
+    }));
   }
 
-  public table(target: dataform.ITarget): Promise<dataform.ITableMetadata> {
-    return Promise.all([
-      this.execute(
-        `select column_name, data_type, is_nullable
-       from information_schema.columns
-       where table_schema = '${target.schema}' AND table_name = '${target.name}'`
-      ),
-      this.execute(
-        `select table_type from information_schema.tables where table_schema = '${
-          target.schema
-        }' AND table_name = '${target.name}'`
-      )
-    ]).then(results => {
-      if (results[1].length > 0) {
-        // The table exists.
-        return {
-          target,
-          type: results[1][0].TABLE_TYPE == "VIEW" ? "view" : "table",
-          fields: results[0].map(row => ({
-            name: row.COLUMN_NAME,
-            primitive: row.DATA_TYPE,
-            flags: row.IS_NULLABLE && row.IS_NULLABLE == "YES" ? ["nullable"] : []
-          }))
-        };
-      } else {
-        throw new Error(`Could not find relation: ${target.schema}.${target.name}`);
-      }
-    });
+  public async table(target: dataform.ITarget): Promise<dataform.ITableMetadata> {
+    const tableMetadataFuture = this.execute(
+      `select table_type from information_schema.tables where table_schema = '${
+        target.schema
+      }' AND table_name = '${target.name}'`
+    );
+    const columnMetadataFuture = this.execute(
+      `select column_name, data_type, is_nullable
+     from information_schema.columns
+     where table_schema = '${target.schema}' AND table_name = '${target.name}'`
+    );
+    const tableMetadata = await tableMetadataFuture;
+    const columnMetadata = await columnMetadataFuture;
+    if (tableMetadata.length === 0) {
+      throw new Error(`Could not find relation: ${target.schema}.${target.name}`);
+    }
+    // The table exists.
+    return {
+      target,
+      type: tableMetadata[0].TABLE_TYPE === "VIEW" ? "view" : "table",
+      fields: columnMetadata.map(row => ({
+        name: row.COLUMN_NAME,
+        primitive: row.DATA_TYPE,
+        flags: row.IS_NULLABLE && row.IS_NULLABLE === "YES" ? ["nullable"] : []
+      }))
+    };
   }
 
-  public prepareSchema(schema: string): Promise<void> {
-    return Promise.resolve().then(() =>
-      this.execute(`create schema if not exists "${schema}"`).then(() => {})
-    );
+  public async prepareSchema(schema: string): Promise<void> {
+    await this.execute(`create schema if not exists "${schema}"`);
   }
 }
