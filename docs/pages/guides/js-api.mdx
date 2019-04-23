@@ -27,7 +27,7 @@ publish("table1").query("SELECT 1 AS test");
 
 assert("assertion1").query("SELECT * FROM source_table WHERE value IS NULL");
 
-operate("operation1").query("INSERT INTO some_table (test) VALUES (2)");
+operate("operation1").queries("INSERT INTO some_table (test) VALUES (2)");
 ```
 
 This example creates a table, an assertion, and an operation in a single file, which if written in SQL would have required 3 seperate files.
