@@ -60,13 +60,12 @@ export interface ITestResult {
 export async function test(
   credentials: Credentials,
   warehouse: string,
-  timeoutSeconds: number = 10
+  timeoutMs: number = 10000
 ): Promise<ITestResult> {
   let timer;
   try {
     const timeout = new Promise<TestResultStatus>(
-      resolve =>
-        (timer = setTimeout(() => resolve(TestResultStatus.TIMED_OUT), timeoutSeconds * 1000))
+      resolve => (timer = setTimeout(() => resolve(TestResultStatus.TIMED_OUT), timeoutMs))
     );
     const executeQuery = dbadapters
       .create(credentials, warehouse)

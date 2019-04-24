@@ -212,6 +212,7 @@ const builtYargs = createYargsCli({
         };
         const finalCredentials = credentialsFn();
         if (argv["test-connection"]) {
+          print("\nRunning connection test...");
           const testResult = await credentials.test(finalCredentials, argv.warehouse);
           switch (testResult.status) {
             case credentials.TestResultStatus.SUCCESSFUL: {
