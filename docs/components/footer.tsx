@@ -1,6 +1,6 @@
 import * as React from "react";
 
-import * as styles from "@dataform/fe/components/footer.css";
+import * as styles from "df/docs/components/footer.css";
 
 const footerLogoImage = require("df/static/images/new_logo_with_text_white.svg");
 
