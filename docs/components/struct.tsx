@@ -40,7 +40,7 @@ export default class Struct extends React.Component<Props, any> {
 }
 
 export const styles: { [className: string]: React.CSSProperties } = {
-  table: {
+  dataset: {
     width: "100%"
   }
 };

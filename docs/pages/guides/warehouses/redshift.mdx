@@ -2,7 +2,7 @@ import Documentation from "df/docs/layouts/documentation";
 
 export default ({ children }) => <Documentation title="Redshift options">{children}</Documentation>;
 
-Redshift specific options can be applied to tables using the `redshift()` configuration statement.
+Redshift specific options can be applied to datasets using the `redshift()` configuration statement.
 
 ## Distributing data
 
@@ -25,7 +25,7 @@ AS SELECT user_id FROM ...
 
 ## Sorting data
 
-You can also configure how Redshift <a target="_blank" href="https://docs.aws.amazon.com/redshift/latest/dg/t_Sorting_data.html">sorts data</a> in your tables with the `sortKeys` and `sortStyle` properties.
+You can also configure how Redshift <a target="_blank" href="https://docs.aws.amazon.com/redshift/latest/dg/t_Sorting_data.html">sorts data</a> in your datasets with the `sortKeys` and `sortStyle` properties.
 
 ```js
 --js redshift({ sortKeys: ["ts"], sortStyle: "compound" });

@@ -17,7 +17,7 @@ To define a new assertion, create a `<your_test_name_here>.assert.sql` file in t
 ## Example: Null checks
 
 Modern warehouses often don't have a way to strongly enforce non-null fields.
-To check for nulls on fields `a`, `b`, and `c` in a table `sometable` produced by another action, you can create a new file `definitions/sometable_not_null.assert.sql`:
+To check for nulls on fields `a`, `b`, and `c` in a dataset `sometable` produced by another action, you can create a new file `definitions/sometable_not_null.assert.sql`:
 
 ```js
 SELECT * FROM ${ref("sometable")}
@@ -30,10 +30,10 @@ If `a`, `b`, or `c` are null for any row in `sometable`, then this assertion wil
 
 ## Example: Key uniqueness checks
 
-Another common requirement is to check that all values for a particular field or combination of fields are unique in a table.
-For example, in a daily customer stats table, there should only ever be a single row for each combination of the `date` and `customer_id` fields.
+Another common requirement is to check that all values for a particular field or combination of fields are unique in a dataset.
+For example, in a daily customer stats dataset, there should only ever be a single row for each combination of the `date` and `customer_id` fields.
 
-Assuming a table called `daily_customer_stats` with fields `date` and `customer_id` which together should constitute a unique key, you can create a new file `definitions/daily_customer_stats_unique_keys.assert.sql`:
+Assuming a dataset called `daily_customer_stats` with fields `date` and `customer_id` which together should constitute a unique key, you can create a new file `definitions/daily_customer_stats_unique_keys.assert.sql`:
 
 ```js
 WITH
@@ -71,11 +71,11 @@ You can manually query this view to debug failing assertions.
 
 ## Assertions as dependencies
 
-Assertions create named nodes in your project that can be depended upon by using the `dependencies()` configuration statement.
+Assertions create named actions in your project that can be depended upon by using the `dependencies()` configuration statement.
 
-If you would like another table, assertion, or operation to only run if a specific assertion passes, you can add the assertion to that action's dependencies.
+If you would like another dataset, assertion, or operation to only run if a specific assertion passes, you can add the assertion to that action's dependencies.
 
-For example, given two tables called `table1` and `table2`, and an assertion called `table1_not_null`, if you want to ensure that `table2` only
+For example, given two datasets called `table1` and `table2`, and an assertion called `table1_not_null`, if you want to ensure that `table2` only
 runs if `table1_not_null` passes, you could add it as a dependency in `definitions/table2.sql`:
 
 ```js
