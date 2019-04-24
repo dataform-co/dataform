@@ -46,21 +46,39 @@ export function coerce(warehouse: string, credentials: any): Credentials {
   }
 }
 
-export async function test(credentials: Credentials, warehouse: string) {
+export enum TestResultStatus {
+  SUCCESSFUL,
+  TIMED_OUT,
+  OTHER_ERROR
+}
+
+export interface ITestResult {
+  status: TestResultStatus;
+  error?: Error;
+}
+
+export async function test(
+  credentials: Credentials,
+  warehouse: string,
+  timeoutMs: number = 10000
+): Promise<ITestResult> {
   let timer;
   try {
-    const timeoutSeconds = 10;
-    const timeout = new Promise(
-      (resolve, reject) =>
-        (timer = setTimeout(
-          () => reject(new Error(`Test query timed out after ${timeoutSeconds} seconds.`)),
-          timeoutSeconds * 1000
-        ))
+    const timeout = new Promise<TestResultStatus>(
+      resolve => (timer = setTimeout(() => resolve(TestResultStatus.TIMED_OUT), timeoutMs))
     );
-    await Promise.race([
-      dbadapters.create(credentials, warehouse).execute("SELECT 1 AS x"),
-      timeout
-    ]);
+    const executeQuery = dbadapters
+      .create(credentials, warehouse)
+      .execute("SELECT 1 AS x")
+      .then(() => TestResultStatus.SUCCESSFUL);
+    return {
+      status: await Promise.race([executeQuery, timeout])
+    };
+  } catch (e) {
+    return {
+      status: TestResultStatus.OTHER_ERROR,
+      error: e
+    };
   } finally {
     if (timer) {
       clearTimeout(timer);
