@@ -29,7 +29,7 @@ import * as fs from "fs";
 import * as path from "path";
 import * as yargs from "yargs";
 
-const RECOMPILE_DELAY = 2000;
+const RECOMPILE_DELAY = 500;
 
 const projectDirOption: INamedOption<yargs.PositionalOptions> = {
   name: "project-dir",
