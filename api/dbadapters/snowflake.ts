@@ -1,6 +1,7 @@
 import { Credentials } from "@dataform/api/commands/credentials";
 import { DbAdapter } from "@dataform/api/dbadapters/index";
 import { dataform } from "@dataform/protos";
+import * as https from "https";
 
 interface ISnowflakeStatement {
   cancel: () => void;
@@ -45,15 +46,22 @@ export class SnowflakeDbAdapter implements DbAdapter {
       warehouse: snowflakeCredentials.warehouse,
       role: snowflakeCredentials.role
     });
-    this.connected = new Promise((resolve, reject) => {
-      this.connection.connect((err, conn) => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve();
-        }
-      });
-    });
+    // We are forced to try our own HTTPS connection to the final <accountId>.snowflakecomputing.com URL
+    // in order to verify its certificate. If we don't do this, and pass an invalid account ID (which thus
+    // resolves to an invalid URL) to the snowflake connect() API, snowflake-sdk will not handle the
+    // resulting error correctly (and thus crash this process).
+    this.connected = this.verifyCertificate(snowflakeCredentials.accountId).then(
+      () =>
+        new Promise((resolve, reject) => {
+          this.connection.connect((err, conn) => {
+            if (err) {
+              reject(err);
+            } else {
+              resolve();
+            }
+          });
+        })
+    );
   }
 
   public async execute(statement: string) {
@@ -120,5 +128,17 @@ export class SnowflakeDbAdapter implements DbAdapter {
 
   public async prepareSchema(schema: string): Promise<void> {
     await this.execute(`create schema if not exists "${schema}"`);
+  }
+
+  private async verifyCertificate(accountId: string) {
+    return new Promise<void>((resolve, reject) => {
+      const req = https.request(`https://${accountId}.snowflakecomputing.com`);
+      req.on("error", e => {
+        reject(e);
+      });
+      req.end(() => {
+        resolve();
+      });
+    });
   }
 }
