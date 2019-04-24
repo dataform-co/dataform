@@ -29,7 +29,7 @@ next_site(
         ":css_typings",
         "//:package.json",
         "//:tsconfig.json",
-        "//fe",
+        "//fe:css",
         "//static:files",
         "@npm//@blueprintjs/core",
         "@npm//@zeit/next-css",
