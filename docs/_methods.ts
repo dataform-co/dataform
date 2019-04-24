@@ -4,24 +4,25 @@ export const methods: { [name: string]: MethodProps } = {
   ref: {
     name: "ref()",
     signatures: ["ref(tableName)"],
-    description: "Returns the full, query-able name of the referenced table, and adds the table to dependencies.",
+    description:
+      "Returns the full, query-able name of the referenced dataset, and adds the dataset to dependencies.",
     fields: [
       {
         name: "tableName",
         type: "string",
-        description: "The name of the table to reference"
+        description: "The name of the dataset to reference"
       }
     ]
   },
   self: {
     name: "self()",
     signatures: ["self()"],
-    description: "Returns the full, query-able name of the current table"
+    description: "Returns the full, query-able name of the current dataset"
   },
   dependencies: {
     name: "dependencies()",
     description:
-      'Specifies one or more tables, operations or assertions that this node depends on. Supports wildcard matches with `"*"`.',
+      'Specifies one or more datasets, operations or assertions that this action depends on. Supports wildcard matches with `"*"`.',
     signatures: ["dependencies(deps)"],
     fields: [
       {
@@ -34,7 +35,7 @@ export const methods: { [name: string]: MethodProps } = {
   postops: {
     name: "postOps()",
     signatures: ["postOps(ops)"],
-    description: "Provide one of more queries to execute after this table has completed.",
+    description: "Provide one of more queries to execute after this dataset has completed.",
     fields: [
       {
         name: "ops",
@@ -46,7 +47,7 @@ export const methods: { [name: string]: MethodProps } = {
   preops: {
     name: "preOps()",
     signatures: ["preOps(ops)"],
-    description: "Provide one of more queries to execute before this table is created.",
+    description: "Provide one of more queries to execute before this dataset is created.",
     fields: [
       {
         name: "ops",
@@ -58,19 +59,20 @@ export const methods: { [name: string]: MethodProps } = {
   type: {
     name: "type()",
     signatures: ["type(name)"],
-    description: "Set the type of the table. View the [table guide](/guides/tables) for more info.",
+    description:
+      "Set the type of the dataset. View the [table guide](/guides/datasets) for more info.",
     fields: [
       {
         name: "name",
         type: '"view" | "table" | "incremental" | "inline"',
-        description: "The type of the table"
+        description: "The type of the dataset"
       }
     ]
   },
   where: {
     name: "where()",
     signatures: ["where(clause)"],
-    description: "Sets a where clause that is used for incremental tables.",
+    description: "Sets a where clause that is used for incremental datasets.",
     fields: [
       {
         name: "clause",
@@ -82,7 +84,7 @@ export const methods: { [name: string]: MethodProps } = {
   protected: {
     name: "protected()",
     signatures: ["protected()"],
-    description: "A incremental table marked protected will never be rebuilt from scratch."
+    description: "A incremental dataset marked protected will never be rebuilt from scratch."
   },
   disabled: {
     name: "disabled()",
@@ -92,7 +94,7 @@ export const methods: { [name: string]: MethodProps } = {
   config: {
     name: "config()",
     signatures: ["config(config)"],
-    description: "Sets several properties of the table at once.",
+    description: "Sets several properties of the dataset at once.",
     fields: [
       {
         name: "config",
@@ -104,7 +106,7 @@ export const methods: { [name: string]: MethodProps } = {
   descriptor: {
     name: "descriptor()",
     signatures: ["descriptor(fields)", "descriptor(field, description)", "descriptor(descriptor)"],
-    description: "Sets the descriptor for fields in this table.",
+    description: "Sets the descriptor for fields in this dataset.",
     fields: [
       {
         name: "fields",
@@ -132,7 +134,7 @@ export const methods: { [name: string]: MethodProps } = {
     name: "describe()",
     signatures: ["describe(field, description?)"],
     description:
-      "Adds a field to the table descriptor with the given description (optional), and returns the field name.",
+      "Adds a field to the dataset descriptor with the given description (optional), and returns the field name.",
     fields: [
       {
         name: "field",
@@ -149,7 +151,7 @@ export const methods: { [name: string]: MethodProps } = {
   query: {
     name: "query()",
     signatures: ["query(query)"],
-    description: "Sets the SQL query for this table or assertion.",
+    description: "Sets the SQL query for this dataset or assertion.",
     fields: [
       {
         name: "query",
@@ -173,23 +175,23 @@ export const methods: { [name: string]: MethodProps } = {
   publish: {
     name: "publish()",
     signatures: ["publish(name)", "publish(name, query)", "publish(name, config)"],
-    description: "Returns a new [`Table`](/reference/tables-js) with the given name.",
+    description: "Returns a new [`Table`](/reference/datasets-js) with the given name.",
     fields: [
       {
         name: "name",
         type: "string",
-        description: "The name of the table"
+        description: "The name of the dataset"
       },
       {
         name: "query",
         type: "Contextable<string>",
-        description: "The query for the table"
+        description: "The query for the dataset"
       },
       {
         name: "config",
         type: "TableConfig",
         typeLink: "/reference/table-config",
-        description: "The configuration object for this table"
+        description: "The configuration object for this dataset"
       }
     ]
   },
@@ -206,7 +208,7 @@ export const methods: { [name: string]: MethodProps } = {
       {
         name: "queries",
         type: "Contextable<string | string>",
-        description: "The query for the table"
+        description: "The query for the dataset"
       }
     ]
   },
