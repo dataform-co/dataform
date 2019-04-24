@@ -2,6 +2,8 @@ import Documentation from "df/docs/layouts/documentation";
 import Struct from "../../components/struct";
 import { structs } from "../../_structs";
 
-export default ({children}) => <Documentation title="TableConfig reference">{children}</Documentation>;
+export default ({ children }) => (
+  <Documentation title="TableConfig reference">{children}</Documentation>
+);
 
-<Struct {...structs.tableConfig} />
+<Struct {...structs.datasetConfig} />
