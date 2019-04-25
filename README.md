@@ -1,7 +1,6 @@
 <p align="center">
   <img width="250" src="/static/images/dataform_logo.svg">
 </p>
-<h1 align="center"> Dataform </h1>
 
 <div align="center">
   <img src="https://storage.googleapis.com/dataform-cloud-build-badges/build/status.svg" />
