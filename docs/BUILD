@@ -56,7 +56,7 @@ load("@io_bazel_rules_docker//container:container.bzl", "container_image")
 
 container_image(
     name = "image",
-    base = "@nginx_base//image",
+    base = "//tools/nginx/static",
     directory = "/usr/share/nginx/html",
     tars = [":docs_pkg"],
 )
@@ -69,5 +69,5 @@ container_push(
     image = ":image",
     registry = "gcr.io",
     repository = "tada-analytics/static-docs",
-    tag = "prod",
+    tag = "debug",
 )
