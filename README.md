@@ -3,6 +3,10 @@
 </p>
 <h1 align="center"> Dataform </h1>
 
+<div align="center">
+  <img src="https://storage.googleapis.com/dataform-cloud-build-badges/build/status.svg">
+</div>
+
 The Dataform SDK is an open source framework for managing SQL based data operations in your warehouse.
 Using the SDK, or Dataform Web, you can easily develop, test, and deploy SQL to your data warehouse.
 
