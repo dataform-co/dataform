@@ -21,6 +21,8 @@
 # Intro
 
 The Dataform SDK is an open source framework for managing SQL based data operations in your warehouse. It helps you pilot the T in ELT, with SQL code, and brings engineering best practices to how you manage your analytics.
+<br/>
+<br/>
 
 <p align="center">
   <img src="/static/images/datastack.svg">
@@ -39,9 +41,7 @@ You receive detailed execution **logs**
 
 You can install the Dataform SDK using the following command and follow the [docs](https://docs.dataform.co/guides/command-line-interface/) to get started.
 
-<p align="center">
-  <img src="/static/images/gif.gif">
-</p>
+<img width="700" src="/static/images/gif.gif">
 
 ## With Dataform web
 
