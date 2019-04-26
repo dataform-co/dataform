@@ -30,10 +30,10 @@ The Dataform SDK is an open source framework for managing SQL based data operati
 
 # How it works
 
-You **develop** datasets and assertions in SQL with Dataform’s built-in templating syntax and APIs
-Dataform **compiles** your project into a DAG (Directed Acyclic Graph) of every action in SQL
-Dataform connects to your warehouse and **runs** the DAG or just the actions that you specify
-You receive detailed execution **logs**
+- You **develop** datasets and assertions in SQL with Dataform’s built-in templating syntax and APIs
+- Dataform **compiles** your project into a DAG (Directed Acyclic Graph) of every action in SQL
+- Dataform connects to your warehouse and **runs** the DAG or just the actions that you specify
+- You receive detailed execution **logs**
 
 # Get started
 
