@@ -15,7 +15,7 @@
   <img src="https://img.shields.io/github/license/dataform-co/dataform.svg" alt="License information" />
 </div>
 <div align="center">
-  <a href="https://twitter.com/dataform"><img src="https://img.shields.io/twitter/follow/dataform.svg?style=social" alt="Follow Dataform on Twitter" /></a>
+  <!-- <a href="https://twitter.com/dataform"><img src="https://img.shields.io/twitter/follow/dataform.svg?style=social" alt="Follow Dataform on Twitter" /></a> -->
 </div>
 
 # Intro
@@ -23,7 +23,7 @@
 The Dataform SDK is an open source framework for managing SQL based data operations in your warehouse. It helps you pilot the T in ELT, with SQL code, and brings engineering best practices to how you manage your analytics.
 
 <p align="center">
-  <img src="/static/images/datastack_diagram.png">
+  <img src="/static/images/datastack.svg">
 </p>
 
 # How it works
@@ -40,7 +40,7 @@ You receive detailed execution **logs**
 You can install the Dataform SDK using the following command and follow the [docs](https://docs.dataform.co/guides/command-line-interface/) to get started.
 
 <p align="center">
-  <img src="/static/images/gif.gif.png">
+  <img src="/static/images/gif.gif">
 </p>
 
 ## With Dataform web
