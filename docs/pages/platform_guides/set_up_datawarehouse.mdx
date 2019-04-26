@@ -31,7 +31,17 @@ Postgres and Redshift projects require the following configuration settings:
 - Username and password
 - Database name
 
-You will also need to whitelist Dataform's IP to access your database cluster.
+<div className="bp3-callout bp3-icon-info-sign bp3-intent-warning" markdown="1">
+  Dataform's IP addresses must be whitelisted in order to access your Redshift cluster. Please
+  follow{" "}
+  <a
+    target="_blank"
+    href="https://docs.aws.amazon.com/redshift/latest/gsg/rs-gsg-authorize-cluster-access.html"
+  >
+    these instructions
+  </a>
+  . Dataform's IP addresses are <code>35.233.106.210</code> and <code>104.196.10.242</code>.
+</div>
 
 ### How to find Redshift credentials
 
@@ -39,23 +49,6 @@ You will also need to whitelist Dataform's IP to access your database cluster.
 2. Select your cluster under `Clusters`.
 3. The hostname is the endpoint listed at the top of the page. Username and database name are listed under cluster database properties.
    You may prefer to create a separate username and password for Dataform to use - please contact our team if you need help.
-
-### Whitelist Dataform's IP addresses
-
-1. In your Redshift's cluster Configuration options, click on your VPC security groups under Cluster Properties.
-
-   <img
-     src="/static/images/platform_guides/datawarehouse/redshift_vpc.png"
-     style={{ width: "100%", maxWidth: "350px", padding: "20px" }}
-   />
-
-2. Click on Edit under Inbound.
-3. Click on Add rule to create a new rule for Dataform. Select type Redshift and add the following source IP addresses: `35.233.106.210` and `104.196.10.242`
-
-<img
-  src="/static/images/platform_guides/datawarehouse/redshift_ips.png"
-  style={{ width: "100%", maxWidth: "500px", padding: "20px" }}
-/>
 
 ## Snowflake
 
