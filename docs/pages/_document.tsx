@@ -2,7 +2,7 @@ import { Alignment, Button, Navbar, NavbarGroup, NavbarHeading } from "@blueprin
 import Document, { Head, Main, NextScript } from "next/document";
 import * as React from "react";
 
-import faviconImage from "df/static/images/new_logo.png";
+import faviconImage from "df/static/images/favicon.ico";
 
 export default class DefaultDocument extends Document {
   public render() {
@@ -10,6 +10,7 @@ export default class DefaultDocument extends Document {
       <html>
         <Head>
           <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+          <meta property="og:image" content="https://static.dataform.co/og-image.png" />
           <link
             rel="stylesheet"
             href="https://unpkg.com/@blueprintjs/core@3.15.1/lib/css/blueprint.css"
