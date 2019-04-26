@@ -17,19 +17,19 @@ By default, Dataform will manage your project's Git repository for you. However,
   datasets in Dataform.
 </div>
 
-## Workspaces
+## Branches
 
-One of the main benefits of Git is that a developer can work in an isolated "branch" of the file repository without affecting the base files. In Dataform, Git branches correspond to workspaces.
+One of the main benefits of Git is that a developer can work in an isolated "branch" of the file repository without affecting the base files. Dataform has full support for Git branches.
 
-From the `development` workspace - or any other non-`production` workspace - you can edit files (and run those edited scripts on your warehouse, if desired).
+From the `development` branch - or any other non-`production` branch - you can edit files (and run those edited scripts on your warehouse, if desired).
 
-Once you are happy with your changes, you can commit them and push them to the `production` workspace. If at any point you make changes that you don't want to commit, you can revert your workspace to its last commit.
+Once you are happy with your changes, you can commit them and push them to the `production` branch. If at any point you make changes that you don't want to commit, you can revert your branch to its last commit.
 
-Note that the `production` workspace is not directly editable and **all schedules run from the production branch**. This enables users to develop and test changes without affecting the project's data pipelines or affecting other users.
+Note that the `production` branch is not directly editable and **all schedules run from the production branch**. This enables users to develop and test changes without affecting the project's data pipelines or affecting other users.
 
 ## How to use
 
-By default, you will use the `development` workspace. Anyone on your team can make edits here.
+By default, you will use the `development` branch. Anyone on your team can make edits here.
 
 After making changes to files, you can commit the changes:
 
@@ -39,13 +39,10 @@ After making changes to files, you can commit the changes:
 />
 
 <ScreenshotWrapper>
-<img
-  src="/static/images/platform_guides/version_control/commit2.png"
-  style={{ width: "100%"}}
-/>
+  <img src="/static/images/platform_guides/version_control/commit2.png" style={{ width: "100%" }} />
 </ScreenshotWrapper>
 
-Once you are happy with your changes, push the changes back to the `production` workspace.
+Once you are happy with your changes, push the changes back to the `production` branch.
 
 <img
   src="/static/images/platform_guides/version_control/push.png"
@@ -53,12 +50,12 @@ Once you are happy with your changes, push the changes back to the `production` 
 />
 
 <div className="bp3-callout bp3-icon-info-sign bp3-intent-warning" markdown="1">
-  We recommend that each team member uses their own separate development workspace.
+  We recommend that each team member uses their own separate development branch.
 </div>
 
 ## Resolving merge conflicts
 
-If other changes have been pushed to the `production` workspace while you were making edits in another workspace, you will need to pull those changes into your workspace first:
+If other changes have been pushed to the `production` branch while you were making edits in another branch, you will need to pull those changes into your branch first:
 
 <img
   src="/static/images/platform_guides/version_control/pull.png"
