@@ -75,7 +75,7 @@ export class Header extends React.Component<IProps, IState> {
             </span>
             <span className={styles.actions}>
               <span>
-                <a href="https://github.com/dataform-co/dataform">
+                <a target="_blank" href="https://github.com/dataform-co/dataform">
                   <img className={styles.githubLogo} src="/static/images/github_logo.png" />
                 </a>
               </span>
