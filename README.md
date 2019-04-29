@@ -20,7 +20,7 @@
 
 # Intro
 
-The Dataform SDK is an open source framework for managing SQL based data operations in your warehouse. It helps you pilot the T in ELT, with SQL code, and brings engineering best practices to how you manage your analytics.
+The Dataform SDK is an open source framework for managing SQL based data operations in your warehouse. It helps you pilot the T in ELT, with SQL code, and brings engineering best practices to analytics pipeline management.
 <br/>
 <br/>
 
@@ -39,7 +39,7 @@ The Dataform SDK is an open source framework for managing SQL based data operati
 
 ## With the CLI
 
-You can install the Dataform SDK using the following command line and follow the [docs](https://docs.dataform.co/guides/command-line-interface/) to get started.
+You can install the Dataform SDK using the following command line. Follow the [docs](https://docs.dataform.co/guides/command-line-interface/) to get started.
 
 ```
 npm i -g @dataform/cli
@@ -51,11 +51,11 @@ npm i -g @dataform/cli
 
 ## With Dataform web
 
-Dataform web is a development and production ready deployment environment for the Dataform SDK, you can learn more on [dataform.co](https://dataform.co)
+Dataform web is a development environment and production ready deployment tool for the Dataform SDK. You can learn more on [dataform.co](https://dataform.co)
 
 # Looking for support?
 
-For questions and support please join our [Slack Community](https://slack.dataform.co).
+For questions or support please join our [Slack Community](https://slack.dataform.co).
 
 # Want to report a bug or request a feature?
 
@@ -63,5 +63,5 @@ Let us know on Slack, or open an issue!
 
 # Want to contribute?
 
-Check out our [contributors.md](contributors.md) to get started with setting up the repo.
+Check out our [contributors guide](contributors.md) to get started with setting up the repo.
 If you have already joined Slack, join our #development channel and say hi!
