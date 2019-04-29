@@ -39,7 +39,13 @@ The Dataform SDK is an open source framework for managing SQL based data operati
 
 ## With the CLI
 
-You can install the Dataform SDK using the following command and follow the [docs](https://docs.dataform.co/guides/command-line-interface/) to get started.
+You can install the Dataform SDK using the following command line and follow the [docs](https://docs.dataform.co/guides/command-line-interface/) to get started.
+
+```
+npm i -g @dataform/cli
+```
+
+<br/>
 
 <img width="700" src="/static/images/gif.gif">
 
