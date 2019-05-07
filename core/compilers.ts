@@ -60,7 +60,7 @@ export function compileAssertionSql(code: string, path: string) {
 }
 
 export function extractJsBlocks(code: string): { sql: string; js: string } {
-  const JS_REGEX = /\/\*[jJ][sS]\s*[\r\n]+((?:[^*]|[\r\n]|(?:\*+(?:[^*/]|[\r\n])))*)\*+\/|\-\-[jJ][sS]\s(.*)/g;
+  const JS_REGEX = /^\s*\/\*[jJ][sS]\s*[\r\n]+((?:[^*]|[\r\n]|(?:\*+(?:[^*/]|[\r\n])))*)\*+\/|^\s*\-\-[jJ][sS]\s(.*)/gm;
   // This captures any single backticks that aren't escaped with a preceding \.
   const RAW_BACKTICKS_REGEX = /([^\\])`/g;
   const jsBlocks: string[] = [];
@@ -83,7 +83,7 @@ export function extractJsBlocks(code: string): { sql: string; js: string } {
 }
 
 export function getFunctionPropertyNames(prototype: any) {
-  return Object.getOwnPropertyNames(prototype).filter(function(e, i, arr) {
+  return Object.getOwnPropertyNames(prototype).filter(function (e, i, arr) {
     if (e != arr[i + 1] && typeof prototype[e] == "function") {
       return true;
     }
