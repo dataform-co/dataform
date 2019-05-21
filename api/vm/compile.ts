@@ -6,7 +6,7 @@ import * as os from "os";
 import * as path from "path";
 import { util } from "protobufjs";
 import { NodeVM } from "vm2";
-import { getGenIndexConfig } from "./gen_index_config";
+import { createGenIndexConfig } from "./gen_index_config";
 
 export interface ICompileIPCResult {
   path?: string;
@@ -14,7 +14,9 @@ export interface ICompileIPCResult {
 }
 
 export function compile(compileConfig: dataform.ICompileConfig): Uint8Array {
-  const genIndexVm = new NodeVM({
+  const vmIndexFileName = path.resolve(path.join(compileConfig.projectDir, "index.js"));
+
+  const indexGeneratorVm = new NodeVM({
     wrapper: "none",
     require: {
       context: "sandbox",
@@ -24,29 +26,26 @@ export function compile(compileConfig: dataform.ICompileConfig): Uint8Array {
   });
 
   // TODO: Once all users of @dataform/core are updated to include compiler functions, remove
-  // this exception handling code (and assume existence of a compiler in @dataform/core).
+  // this exception handling code (and assume existence of genIndex / compiler functions in @dataform/core).
   const findGenIndex = (): ((base64EncodedConfig: string) => string) => {
     try {
-      return genIndexVm.run(
-        'return require("@dataform/core").genIndex',
-        path.resolve(path.join(compileConfig.projectDir, "index.js"))
-      );
+      return indexGeneratorVm.run('return require("@dataform/core").genIndex', vmIndexFileName);
     } catch (e) {
       return core.genIndex;
     }
   };
   const findCompiler = (): ((code, path) => string) => {
     try {
-      return genIndexVm.run(
+      return indexGeneratorVm.run(
         'return require("@dataform/core").compilers.compile',
-        path.resolve(path.join(compileConfig.projectDir, "index.js"))
+        vmIndexFileName
       );
     } catch (e) {
       return core.compilers.compile;
     }
   };
 
-  const vm = new NodeVM({
+  const userCodeVm = new NodeVM({
     wrapper: "none",
     require: {
       context: "sandbox",
@@ -58,9 +57,9 @@ export function compile(compileConfig: dataform.ICompileConfig): Uint8Array {
   });
 
   // We return a base64 encoded proto via NodeVM, as returning a Uint8Array directly causes issues.
-  const res: string = vm.run(
-    findGenIndex()(getGenIndexConfig(compileConfig)),
-    path.resolve(path.join(compileConfig.projectDir, "index.js"))
+  const res: string = userCodeVm.run(
+    findGenIndex()(createGenIndexConfig(compileConfig)),
+    vmIndexFileName
   );
   const encodedGraphBytes = new Uint8Array(util.base64.length(res));
   util.base64.decode(res, encodedGraphBytes, 0);

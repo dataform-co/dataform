@@ -1,7 +1,7 @@
 import { compilers, genIndex } from "@dataform/core";
 import * as path from "path";
 import { NodeVM } from "vm2";
-import { getGenIndexConfig } from "./gen_index_config";
+import { createGenIndexConfig } from "./gen_index_config";
 
 export function compile(query: string, projectDir?: string): string {
   let compiledQuery = query;
@@ -17,7 +17,7 @@ export function compile(query: string, projectDir?: string): string {
       compiler: (code, path) => compilers.compile(code, path)
     });
     const indexScript = genIndex(
-      getGenIndexConfig(
+      createGenIndexConfig(
         { projectDir },
         `(function() {
         const { session } = require("@dataform/core");

@@ -2,7 +2,7 @@ import { dataform } from "@dataform/protos";
 import * as glob from "glob";
 import { util } from "protobufjs";
 
-export function getGenIndexConfig(
+export function createGenIndexConfig(
   compileConfig: dataform.ICompileConfig,
   returnOverride?: string
 ): string {
