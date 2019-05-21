@@ -114,7 +114,7 @@ export class Runner {
       const successfulDeps = node.dependencies.filter(d => allSuccessfulDeps.indexOf(d) >= 0);
       if (!this.cancelled && successfulDeps.length == node.dependencies.length) {
         // All required deps are completed, start this node.
-        let executedNode = this.executeNode(node);
+        this.executeNode(node);
       } else if (this.cancelled || finishedDeps.length == node.dependencies.length) {
         await this.triggerChange();
         // All deps are finished but they weren't all successful, or the run was cancelled.
@@ -130,7 +130,7 @@ export class Runner {
     }));
 
     if (this.pendingNodes.length > 0 || this.result.nodes.length != this.graph.nodes.length) {
-      setTimeout(async () => await this.loop(resolve, reject), 100);
+      setTimeout(() => this.loop(resolve, reject), 100);
     } else {
       // Work out if this run was an overall success.
       let ok = true;
@@ -145,10 +145,10 @@ export class Runner {
     }
   }
 
-  private async executeNode(node: dataform.IExecutionNode) {
+  private executeNode(node: dataform.IExecutionNode) {
     const startTime = process.hrtime();
     // This creates a promise chain that executes all tasks in order.
-    await node.tasks
+    node.tasks
       .reduce((chain, task) => {
         return chain.then(async chainResults => {
           try {
