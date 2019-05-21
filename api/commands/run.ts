@@ -114,8 +114,9 @@ export class Runner {
       const successfulDeps = node.dependencies.filter(d => allSuccessfulDeps.indexOf(d) >= 0);
       if (!this.cancelled && successfulDeps.length == node.dependencies.length) {
         // All required deps are completed, start this node.
-        await this.executeNode(node);
+        let executedNode = this.executeNode(node);
       } else if (this.cancelled || finishedDeps.length == node.dependencies.length) {
+        await this.triggerChange();
         // All deps are finished but they weren't all successful, or the run was cancelled.
         // skip this node.
         this.result.nodes.push({
@@ -123,10 +124,8 @@ export class Runner {
           status: dataform.NodeExecutionStatus.SKIPPED,
           deprecatedSkipped: true
         });
-        await this.triggerChange();
       } else {
         this.pendingNodes.push(node);
-        await this.triggerChange();
       }
     }));
 
@@ -174,7 +173,7 @@ export class Runner {
       .then(async (results: dataform.IExecutedTask[]) => {
         const endTime = process.hrtime(startTime);
         const executionTime = endTime[0] * 1000 + Math.round(endTime[1] / 1000000);
-
+        await this.triggerChange();
         this.result.nodes.push({
           name: node.name,
           status:
@@ -185,12 +184,11 @@ export class Runner {
           executionTime: Long.fromNumber(executionTime),
           deprecatedOk: true
         });
-        await this.triggerChange();
       })
       .catch(async (results: dataform.IExecutedTask[]) => {
         const endTime = process.hrtime(startTime);
         const executionTime = endTime[0] * 1000 + Math.round(endTime[1] / 1000000);
-
+        await this.triggerChange();
         this.result.nodes.push({
           name: node.name,
           status: dataform.NodeExecutionStatus.FAILED,
@@ -198,7 +196,6 @@ export class Runner {
           executionTime: Long.fromNumber(executionTime),
           deprecatedOk: false
         });
-        await this.triggerChange();
       });
   }
 }
