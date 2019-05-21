@@ -29,7 +29,10 @@ export function compile(compileConfig: dataform.ICompileConfig): Uint8Array {
   // this exception handling code (and assume existence of genIndex / compiler functions in @dataform/core).
   const findGenIndex = (): ((base64EncodedConfig: string) => string) => {
     try {
-      return indexGeneratorVm.run('return require("@dataform/core").genIndex', vmIndexFileName);
+      return (
+        indexGeneratorVm.run('return require("@dataform/core").genIndex', vmIndexFileName) ||
+        core.genIndex
+      );
     } catch (e) {
       return core.genIndex;
     }
