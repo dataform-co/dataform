@@ -69,7 +69,7 @@
     "uglify-js": "^3.4.9",
     "umd-compat-loader": "^2.1.1",
     "untildify": "^3.0.3",
-    "vm2": "^3.6.3",
+    "vm2": "^3.8.1",
     "webpack": "4.20.2",
     "yargs": "^12.0.1"
   }

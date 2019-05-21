@@ -8,6 +8,7 @@ import { Table, TableContext, TConfig, TContextable } from "./table";
 
 import * as adapters from "./adapters";
 import * as compilers from "./compilers";
+import { genIndex } from "./gen_index";
 import * as tasks from "./tasks";
 import * as utils from "./utils";
 
@@ -17,6 +18,7 @@ export {
   adapters,
   utils,
   compilers,
+  genIndex,
   tasks,
   Session,
   Table,
