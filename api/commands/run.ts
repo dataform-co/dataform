@@ -48,7 +48,7 @@ export class Runner {
     this.eEmitter.setMaxListeners(0);
   }
 
-  public onChange(listener: (graph: dataform.IExecutedGraph) => void): Runner {
+  public onChange(listener: (graph: dataform.IExecutedGraph) => Promise<void> | void): Runner {
     this.changeListeners.push(listener);
     return this;
   }
@@ -74,7 +74,7 @@ export class Runner {
         );
 
         // Start the main execution loop.
-        this.loop(() => resolve(this.result), reject);
+        const _ = this.loop(() => resolve(this.result), reject).catch(reject);
       } catch (e) {
         reject(e);
       }
@@ -93,10 +93,10 @@ export class Runner {
   }
 
   private triggerChange() {
-    this.changeListeners.forEach(listener => listener(this.result));
+    return Promise.all(this.changeListeners.map(listener => listener(this.result)))
   }
 
-  private loop(resolve: () => void, reject: (value: any) => void) {
+  private async loop(resolve: () => void, reject: (value: any) => void) {
     const pendingNodes = this.pendingNodes;
     this.pendingNodes = [];
 
@@ -109,13 +109,14 @@ export class Runner {
       )
       .map(fn => fn.name);
 
-    pendingNodes.forEach(node => {
+    pendingNodes.forEach(async (node) => {
       const finishedDeps = node.dependencies.filter(d => allFinishedDeps.indexOf(d) >= 0);
       const successfulDeps = node.dependencies.filter(d => allSuccessfulDeps.indexOf(d) >= 0);
       if (!this.cancelled && successfulDeps.length == node.dependencies.length) {
         // All required deps are completed, start this node.
         this.executeNode(node);
       } else if (this.cancelled || finishedDeps.length == node.dependencies.length) {
+        await this.triggerChange();
         // All deps are finished but they weren't all successful, or the run was cancelled.
         // skip this node.
         this.result.nodes.push({
@@ -123,12 +124,11 @@ export class Runner {
           status: dataform.NodeExecutionStatus.SKIPPED,
           deprecatedSkipped: true
         });
-        this.triggerChange();
       } else {
         this.pendingNodes.push(node);
-        this.triggerChange();
       }
     });
+
     if (this.pendingNodes.length > 0 || this.result.nodes.length != this.graph.nodes.length) {
       setTimeout(() => this.loop(resolve, reject), 100);
     } else {
@@ -170,10 +170,10 @@ export class Runner {
           }
         });
       }, Promise.resolve([] as dataform.IExecutedTask[]))
-      .then((results: dataform.IExecutedTask[]) => {
+      .then(async (results: dataform.IExecutedTask[]) => {
         const endTime = process.hrtime(startTime);
         const executionTime = endTime[0] * 1000 + Math.round(endTime[1] / 1000000);
-
+        await this.triggerChange();
         this.result.nodes.push({
           name: node.name,
           status:
@@ -184,12 +184,11 @@ export class Runner {
           executionTime: Long.fromNumber(executionTime),
           deprecatedOk: true
         });
-        this.triggerChange();
       })
-      .catch((results: dataform.IExecutedTask[]) => {
+      .catch(async (results: dataform.IExecutedTask[]) => {
         const endTime = process.hrtime(startTime);
         const executionTime = endTime[0] * 1000 + Math.round(endTime[1] / 1000000);
-
+        await this.triggerChange();
         this.result.nodes.push({
           name: node.name,
           status: dataform.NodeExecutionStatus.FAILED,
@@ -197,7 +196,6 @@ export class Runner {
           executionTime: Long.fromNumber(executionTime),
           deprecatedOk: false
         });
-        this.triggerChange();
       });
   }
 }
