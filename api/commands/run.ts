@@ -48,7 +48,7 @@ export class Runner {
     this.eEmitter.setMaxListeners(0);
   }
 
-  public onChange(listener: (graph: dataform.IExecutedGraph) => void): Runner {
+  public onChange(listener: (graph: dataform.IExecutedGraph) => Promise<void> | void): Runner {
     this.changeListeners.push(listener);
     return this;
   }
@@ -74,7 +74,7 @@ export class Runner {
         );
 
         // Start the main execution loop.
-        await this.loop(() => resolve(this.result), reject);
+        let runLoop = this.loop(() => resolve(this.result), reject);
       } catch (e) {
         reject(e);
       }
