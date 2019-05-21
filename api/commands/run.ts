@@ -109,7 +109,7 @@ export class Runner {
       )
       .map(fn => fn.name);
 
-    await Promise.all(pendingNodes.map(async (node) => {
+    pendingNodes.forEach(async (node) => {
       const finishedDeps = node.dependencies.filter(d => allFinishedDeps.indexOf(d) >= 0);
       const successfulDeps = node.dependencies.filter(d => allSuccessfulDeps.indexOf(d) >= 0);
       if (!this.cancelled && successfulDeps.length == node.dependencies.length) {
@@ -127,7 +127,7 @@ export class Runner {
       } else {
         this.pendingNodes.push(node);
       }
-    }));
+    });
 
     if (this.pendingNodes.length > 0 || this.result.nodes.length != this.graph.nodes.length) {
       setTimeout(() => this.loop(resolve, reject), 100);
