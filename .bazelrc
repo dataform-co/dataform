@@ -1,1 +1,2 @@
 test --test_output=errors --action_env="GTEST_COLOR=1"
+build --noincompatible_disallow_old_style_args_add

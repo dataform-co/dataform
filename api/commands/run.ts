@@ -74,7 +74,7 @@ export class Runner {
         );
 
         // Start the main execution loop.
-        let runLoop = this.loop(() => resolve(this.result), reject);
+        const _ = this.loop(() => resolve(this.result), reject).catch(reject);
       } catch (e) {
         reject(e);
       }
