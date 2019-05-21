@@ -74,7 +74,7 @@ export class Runner {
         );
 
         // Start the main execution loop.
-        this.loop(() => resolve(this.result), reject);
+        await this.loop(() => resolve(this.result), reject);
       } catch (e) {
         reject(e);
       }
@@ -93,10 +93,10 @@ export class Runner {
   }
 
   private triggerChange() {
-    this.changeListeners.forEach(listener => listener(this.result));
+    return Promise.all(this.changeListeners.map(listener => listener(this.result)))
   }
 
-  private loop(resolve: () => void, reject: (value: any) => void) {
+  private async loop(resolve: () => void, reject: (value: any) => void) {
     const pendingNodes = this.pendingNodes;
     this.pendingNodes = [];
 
@@ -109,12 +109,12 @@ export class Runner {
       )
       .map(fn => fn.name);
 
-    pendingNodes.forEach(node => {
+    await Promise.all(pendingNodes.map(async (node) => {
       const finishedDeps = node.dependencies.filter(d => allFinishedDeps.indexOf(d) >= 0);
       const successfulDeps = node.dependencies.filter(d => allSuccessfulDeps.indexOf(d) >= 0);
       if (!this.cancelled && successfulDeps.length == node.dependencies.length) {
         // All required deps are completed, start this node.
-        this.executeNode(node);
+        await this.executeNode(node);
       } else if (this.cancelled || finishedDeps.length == node.dependencies.length) {
         // All deps are finished but they weren't all successful, or the run was cancelled.
         // skip this node.
@@ -123,14 +123,15 @@ export class Runner {
           status: dataform.NodeExecutionStatus.SKIPPED,
           deprecatedSkipped: true
         });
-        this.triggerChange();
+        await this.triggerChange();
       } else {
         this.pendingNodes.push(node);
-        this.triggerChange();
+        await this.triggerChange();
       }
-    });
+    }));
+
     if (this.pendingNodes.length > 0 || this.result.nodes.length != this.graph.nodes.length) {
-      setTimeout(() => this.loop(resolve, reject), 100);
+      setTimeout(async () => await this.loop(resolve, reject), 100);
     } else {
       // Work out if this run was an overall success.
       let ok = true;
@@ -145,10 +146,10 @@ export class Runner {
     }
   }
 
-  private executeNode(node: dataform.IExecutionNode) {
+  private async executeNode(node: dataform.IExecutionNode) {
     const startTime = process.hrtime();
     // This creates a promise chain that executes all tasks in order.
-    node.tasks
+    await node.tasks
       .reduce((chain, task) => {
         return chain.then(async chainResults => {
           try {
@@ -170,7 +171,7 @@ export class Runner {
           }
         });
       }, Promise.resolve([] as dataform.IExecutedTask[]))
-      .then((results: dataform.IExecutedTask[]) => {
+      .then(async (results: dataform.IExecutedTask[]) => {
         const endTime = process.hrtime(startTime);
         const executionTime = endTime[0] * 1000 + Math.round(endTime[1] / 1000000);
 
@@ -184,9 +185,9 @@ export class Runner {
           executionTime: Long.fromNumber(executionTime),
           deprecatedOk: true
         });
-        this.triggerChange();
+        await this.triggerChange();
       })
-      .catch((results: dataform.IExecutedTask[]) => {
+      .catch(async (results: dataform.IExecutedTask[]) => {
         const endTime = process.hrtime(startTime);
         const executionTime = endTime[0] * 1000 + Math.round(endTime[1] / 1000000);
 
@@ -197,7 +198,7 @@ export class Runner {
           executionTime: Long.fromNumber(executionTime),
           deprecatedOk: false
         });
-        this.triggerChange();
+        await this.triggerChange();
       });
   }
 }
