@@ -1,3 +1,4 @@
+import { createGenIndexConfig } from "@dataform/api/vm/gen_index_config";
 import * as core from "@dataform/core";
 import { dataform } from "@dataform/protos";
 import * as crypto from "crypto";
@@ -6,7 +7,6 @@ import * as os from "os";
 import * as path from "path";
 import { util } from "protobufjs";
 import { NodeVM } from "vm2";
-import { createGenIndexConfig } from "./gen_index_config";
 
 export interface ICompileIPCResult {
   path?: string;

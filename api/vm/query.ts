@@ -1,7 +1,7 @@
+import { createGenIndexConfig } from "@dataform/api/vm/gen_index_config";
 import { compilers, genIndex } from "@dataform/core";
 import * as path from "path";
 import { NodeVM } from "vm2";
-import { createGenIndexConfig } from "./gen_index_config";
 
 export function compile(query: string, projectDir?: string): string {
   let compiledQuery = query;
@@ -16,6 +16,9 @@ export function compile(query: string, projectDir?: string): string {
       sourceExtensions: ["js", "sql"],
       compiler: (code, path) => compilers.compile(code, path)
     });
+    // This use of genIndex needs some rethinking. It uses the version built into
+    // @dataform/api instead of @dataform/core, which would be more correct, as done in compile.ts.
+    // Possibly query compilation as a whole needs a redesign.
     const indexScript = genIndex(
       createGenIndexConfig(
         { projectDir },
