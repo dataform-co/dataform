@@ -1,6 +1,6 @@
 import { createGenIndexConfig } from "@dataform/api/vm/gen_index_config";
+import * as legacyCompiler from "@dataform/api/vm/legacy_compiler";
 import { legacyGenIndex } from "@dataform/api/vm/legacy_gen_index";
-import * as core from "@dataform/core";
 import { dataform } from "@dataform/protos";
 import * as crypto from "crypto";
 import * as fs from "fs";
@@ -44,10 +44,10 @@ export function compile(compileConfig: dataform.ICompileConfig): Uint8Array {
     try {
       return (
         indexGeneratorVm.run('return require("@dataform/core").compiler', vmIndexFileName) ||
-        core.compiler
+        legacyCompiler.compile
       );
     } catch (e) {
-      return core.compiler;
+      return legacyCompiler.compile;
     }
   };
   const compiler = findCompiler();
