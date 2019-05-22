@@ -1,7 +1,6 @@
-import { dataform } from "@dataform/protos";
-
-import { ICompileIPCParameters, ICompileIPCResult } from "@dataform/api/vm/compile";
+import { ICompileIPCResult } from "@dataform/api/vm/compile";
 import { validate } from "@dataform/core/utils";
+import { dataform } from "@dataform/protos";
 import { ChildProcess, fork } from "child_process";
 import * as fs from "fs";
 import * as path from "path";
@@ -11,11 +10,8 @@ export async function compile(
   compileConfig: dataform.ICompileConfig
 ): Promise<dataform.CompiledGraph> {
   // Resolve the path in case it hasn't been resolved already.
-  const projectDir = path.resolve(compileConfig.projectDir);
-  const returnedPath = await CompileChildProcess.forkProcess().compile({
-    projectDir,
-    schemaSuffixOverride: compileConfig.schemaSuffixOverride
-  });
+  path.resolve(compileConfig.projectDir);
+  const returnedPath = await CompileChildProcess.forkProcess().compile(compileConfig);
   const contents = await promisify(fs.readFile)(returnedPath);
   let compiledGraph = dataform.CompiledGraph.decode(contents);
   // Merge graph errors into the compiled graph.
@@ -38,7 +34,7 @@ class CompileChildProcess {
     this.childProcess = childProcess;
   }
 
-  public async compile(compileIpcParameters: ICompileIPCParameters) {
+  public async compile(compileConfig: dataform.ICompileConfig) {
     return await new Promise<string>(async (resolve, reject) => {
       this.awaitCompletionOrTimeout();
       this.childProcess.on("message", (result: ICompileIPCResult) => {
@@ -52,7 +48,7 @@ class CompileChildProcess {
           resolve(result.path);
         }
       });
-      this.childProcess.send(compileIpcParameters);
+      this.childProcess.send(compileConfig);
     });
   }
 
