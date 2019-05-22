@@ -24,6 +24,13 @@ message RunConfig {
   bool carry_on = 4;
 }
 
+message GenerateIndexConfig {
+  CompileConfig compile_config = 1;
+  repeated string include_paths = 2;
+  repeated string definition_paths = 3;
+  string return_override = 4;
+}
+
 message CompileConfig {
   // Required.
   string project_dir = 1;
