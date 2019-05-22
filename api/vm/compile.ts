@@ -37,6 +37,7 @@ export function compile(compileConfig: dataform.ICompileConfig): Uint8Array {
         ) || legacyGenIndex
       );
     } catch (e) {
+      // whatever
       return legacyGenIndex;
     }
   };
