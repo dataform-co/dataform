@@ -1,4 +1,5 @@
 import { createGenIndexConfig } from "@dataform/api/vm/gen_index_config";
+import { legacyGenIndex } from "@dataform/api/vm/legacy_gen_index";
 import * as core from "@dataform/core";
 import { dataform } from "@dataform/protos";
 import * as crypto from "crypto";
@@ -30,23 +31,29 @@ export function compile(compileConfig: dataform.ICompileConfig): Uint8Array {
   const findGenIndex = (): ((base64EncodedConfig: string) => string) => {
     try {
       return (
-        indexGeneratorVm.run('return require("@dataform/core").genIndex', vmIndexFileName) ||
-        core.genIndex
+        indexGeneratorVm.run(
+          'return require("@dataform/core").indexFileGenerator',
+          vmIndexFileName
+        ) || legacyGenIndex
       );
     } catch (e) {
-      return core.genIndex;
+      return legacyGenIndex;
     }
   };
   const findCompiler = (): ((code, path) => string) => {
     try {
-      return indexGeneratorVm.run(
-        'return require("@dataform/core").compilers.compile',
-        vmIndexFileName
+      return (
+        indexGeneratorVm.run('return require("@dataform/core").compiler', vmIndexFileName) ||
+        core.compiler
       );
     } catch (e) {
-      return core.compilers.compile;
+      return core.compiler;
     }
   };
+  const compiler = findCompiler();
+  if (!compiler) {
+    throw new Error("Could not find compiler function.");
+  }
 
   const userCodeVm = new NodeVM({
     wrapper: "none",
@@ -56,7 +63,7 @@ export function compile(compileConfig: dataform.ICompileConfig): Uint8Array {
       external: true
     },
     sourceExtensions: ["js", "sql"],
-    compiler: findCompiler()
+    compiler
   });
 
   // We return a base64 encoded proto via NodeVM, as returning a Uint8Array directly causes issues.

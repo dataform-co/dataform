@@ -14,19 +14,14 @@ import * as utils from "./utils";
 
 // Exports.
 
-export {
-  adapters,
-  utils,
-  compilers,
-  genIndex,
-  tasks,
-  Session,
-  Table,
-  TableContext,
-  TConfig,
-  Operation,
-  Assertion
-};
+// TODO: Once all @dataform/core users *only* use the exported indexFileGenerator/compiler functions
+// trim down exports to only include those (plus whatever might be called in the generated code returned
+// by indexFileGenerator).
+
+export const indexFileGenerator = genIndex;
+export const compiler = compilers.compile;
+
+export { adapters, utils, tasks, Session, Table, TableContext, TConfig, Operation, Assertion };
 
 // Install extensions for SQL files.
 
