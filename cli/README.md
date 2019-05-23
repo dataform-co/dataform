@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="/static/images/github_bg.png">
+  <img src="https://raw.githubusercontent.com/dataform-co/dataform/master/static/images/github_bg.png">
 </p>
 <p align="center">
   The Dataform SDK is a tool for managing SQL based data operations in your warehouse.
@@ -25,7 +25,7 @@ The Dataform SDK is an open source framework for managing SQL based data operati
 <br/>
 
 <p align="center">
-  <img src="/static/images/datastack.svg">
+  <img src="https://raw.githubusercontent.com/dataform-co/dataform/master/static/images/datastack.svg">
 </p>
 
 # How it works
@@ -47,21 +47,11 @@ npm i -g @dataform/cli
 
 <br/>
 
-<img width="700" src="/static/images/gif.gif">
+<img width="700" src="https://raw.githubusercontent.com/dataform-co/dataform/master/static/images/gif.gif">
 
-## With Dataform web
+## Documentation
 
-Dataform web is a development environment and production ready deployment tool for the Dataform SDK. You can learn more on [dataform.co](https://dataform.co)
+Documentation is available [here](https://docs.dataform.co/)
 
-# Looking for support?
 
-For questions or support please join our [Slack Community](https://slack.dataform.co).
-
-# Want to report a bug or request a feature?
-
-Let us know on Slack, or open an issue!
-
-# Want to contribute?
-
-Check out our [contributors guide](contributors.md) to get started with setting up the repo.
-If you have already joined Slack, join our #development channel and say hi!
+For more information please check the github [repository](https://github.com/dataform-co/dataform).
