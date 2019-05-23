@@ -1,13 +1,19 @@
 {
   "name": "@dataform/cli",
-  "version": "0.1.1",
+  "version": "0.1.0",
   "description": "Dataform command line interface.",
   "homepage": "https://github.com/dataform-co/dataform",
   "license": "MIT",
   "keywords": [
     "dataform",
     "etl",
-    "data-pipeline"
+    "data-pipeline",
+    "big-data",
+    "data-modelling",
+    "sql",
+    "bigquery",
+    "redshift",
+    "dataops"
   ],
   "main": "index.js",
   "types": "index.d.ts",
