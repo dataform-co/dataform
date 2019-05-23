@@ -2,6 +2,8 @@
   "name": "@dataform/cli",
   "version": "0.1.0",
   "description": "Dataform command line interface.",
+  "homepage": "https://github.com/dataform-co/dataform",
+  "license": "MIT",
   "main": "index.js",
   "types": "index.d.ts",
   "bin": {
