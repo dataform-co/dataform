@@ -1,6 +1,6 @@
 {
   "name": "@dataform/cli",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Dataform command line interface.",
   "homepage": "https://github.com/dataform-co/dataform",
   "license": "MIT",
