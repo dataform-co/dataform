@@ -4,6 +4,11 @@
   "description": "Dataform command line interface.",
   "homepage": "https://github.com/dataform-co/dataform",
   "license": "MIT",
+  "keywords": [
+    "dataform",
+    "etl",
+    "data-pipeline"
+  ],
   "main": "index.js",
   "types": "index.d.ts",
   "bin": {
