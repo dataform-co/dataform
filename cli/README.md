@@ -24,10 +24,6 @@ The Dataform SDK is an open source framework for managing SQL based data operati
 <br/>
 <br/>
 
-<p align="center">
-  <img src="https://raw.githubusercontent.com/dataform-co/dataform/master/static/images/datastack.svg">
-</p>
-
 # How it works
 
 - You **develop** datasets and assertions in SQL with Dataform’s built-in templating syntax and APIs
