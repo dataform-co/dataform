@@ -1,10 +1,10 @@
 import * as cronParser from "cron-parser";
 import { dataform } from "@dataform/protos";
 
+const EMAIL_REGEX = /^(([^<>()\[\]\.,;:\s@\"]+(\.[^<>()\[\]\.,;:\s@\"]+)*)|(\".+\"))@(([^<>()[\]\.,;:\s@\"]+\.)+[^<>()[\]\.,;:\s@\"]{2,})$/i;
 
 function validateEmail(email: string) {
-  const emailRegex = /^(([^<>()\[\]\.,;:\s@\"]+(\.[^<>()\[\]\.,;:\s@\"]+)*)|(\".+\"))@(([^<>()[\]\.,;:\s@\"]+\.)+[^<>()[\]\.,;:\s@\"]{2,})$/i;
-  return emailRegex.test(email);
+  return EMAIL_REGEX.test(email);
 }
 
 export function validateSchedules(schedules: dataform.schedules.SchedulesJSON) {
