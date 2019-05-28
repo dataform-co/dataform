@@ -49,7 +49,7 @@ const projectDirMustExistOption = {
     } catch (e) {
       throw new Error(
         `${
-          argv["project-dir"]
+        argv["project-dir"]
         } does not appear to be a dataform directory (missing dataform.json file).`
       );
     }
@@ -158,6 +158,13 @@ const builtYargs = createYargsCli({
             describe: "Whether to skip installing NPM packages.",
             default: false
           }
+        },
+        {
+          name: "include-schedules",
+          option: {
+            describe: "Whether to include schedules.json.",
+            default: false
+          }
         }
       ],
       processFn: async argv => {
@@ -169,7 +176,10 @@ const builtYargs = createYargsCli({
               warehouse: argv.warehouse,
               gcloudProjectId: argv["gcloud-project-id"]
             },
-            argv["skip-install"]
+            {
+              skipInstall: argv["skip-install"],
+              includeSchedules: argv['include-schedules']
+            }
           )
         );
       }
@@ -178,7 +188,7 @@ const builtYargs = createYargsCli({
       format: "init-creds <warehouse> [project-dir]",
       description: `Creates a ${
         credentials.CREDENTIALS_FILENAME
-      } file for dataform to use when accessing your warehouse.`,
+        } file for dataform to use when accessing your warehouse.`,
       positionalOptions: [warehouseOption, projectDirMustExistOption],
       options: [
         {
