@@ -26,7 +26,7 @@ export interface InitOptions {
 export async function init(
   projectDir: string,
   projectConfig: dataform.IProjectConfig,
-  options: InitOptions
+  options: InitOptions = {}
 ): Promise<InitResult> {
   const dataformJsonPath = path.join(projectDir, "dataform.json");
   const packageJsonPath = path.join(projectDir, "package.json");
@@ -76,13 +76,12 @@ export async function init(
     fs.writeFileSync(
       schedulesJsonPath,
       prettyJsonStringify(
-        dataform.schedules.Schedules.create({
+        dataform.schedules.SchedulesJSON.create({
           defaultNotification: {
             emails: [],
             success: false,
             failure: false
-          },
-          schedules: []
+          }
         })
       )
     );

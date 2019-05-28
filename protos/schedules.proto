@@ -22,7 +22,8 @@ message Schedule {
   Notification notification = 5;
 }
 
-message Schedules {
+// Don't change the field names as it will be serialized to JSON
+message SchedulesJSON {
   Notification defaultNotification = 1;
   repeated Schedule schedules = 2;
 }
