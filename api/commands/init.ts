@@ -76,13 +76,7 @@ export async function init(
     fs.writeFileSync(
       schedulesJsonPath,
       prettyJsonStringify(
-        dataform.schedules.SchedulesJSON.create({
-          defaultNotification: {
-            emails: [],
-            success: false,
-            failure: false
-          }
-        })
+        dataform.schedules.SchedulesJSON.create({})
       )
     );
     filesWritten.push(schedulesJsonPath);
