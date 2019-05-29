@@ -53,7 +53,7 @@ export function validateSchedules(schedules: dataform.schedules.SchedulesJSON, c
       })
     }
 
-    if (schedule.notification && schedule.notification.emails) {
+    if (schedule.notification) {
       schedule.notification.emails.forEach(email => {
         if (!validateEmail(email)) {
           errors.push(`"${email}" is not a valid email address.`);
