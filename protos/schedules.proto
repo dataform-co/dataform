@@ -15,10 +15,10 @@ message ScheduleOptions {
 } 
 
 message Schedule {
-  string name = 1;
+  string name = 1; // required field
   bool enabled = 2;
   ScheduleOptions options = 3;
-  string cron = 4;
+  string cron = 4; // required field
   Notification notification = 5;
 }
 
