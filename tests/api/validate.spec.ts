@@ -5,7 +5,7 @@ import { assert, config, expect } from "chai";
 describe("@dataform/api/validate", () => {
   describe("validateSchedules", () => {
 
-    it("test_valid_schedule", () => {
+    it("returns no errors for valid schedules object", () => {
       const compiledGraph = dataform.CompiledGraph.create({
         tables: [
           {
@@ -19,14 +19,14 @@ describe("@dataform/api/validate", () => {
       const valid_schedule = dataform.schedules.SchedulesJSON.create({
         defaultNotification: {
           emails: ["team@dataform.co", "abc@test.com"],
-          success: true,
-          failure: true
+          onSuccess: true,
+          onFailure: true
         },
         schedules: [
           {
             name: "name1",
             cron: "*/2 * * * *",
-            enabled: false,
+            disabled: false,
             options: {
               actions: ["action2"]
             }
@@ -35,16 +35,16 @@ describe("@dataform/api/validate", () => {
             name: "name2",
             cron: "*/2 * * * *",
             notification: {
-              emails: ['tada@test.com'],
-              success: true,
-              failure: false
+              emails: ["tada@test.com"],
+              onSuccess: true,
+              onFailure: false
             }
           }
         ]
       })
 
       const errors = validateSchedules(valid_schedule, compiledGraph);
-      expect(errors).to.have.members([]);
+      expect(errors).to.eql([]);
     });
 
     it("test all errors", () => {

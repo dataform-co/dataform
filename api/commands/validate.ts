@@ -10,11 +10,12 @@ function validateEmail(email: string) {
 export function validateSchedules(schedules: dataform.schedules.SchedulesJSON, compiledGraph: dataform.ICompiledGraph) {
 
   const errors = [];
-  const allNodes = [].concat(
+  let allNodes = new Array<{ name?: string; }>().concat(
     compiledGraph.tables,
     compiledGraph.assertions,
     compiledGraph.operations
   );
+
   const allNodeNames = allNodes.map(node => node.name);
 
   if (schedules.defaultNotification) {
