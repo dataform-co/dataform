@@ -1,6 +1,5 @@
+import { Session } from "@dataform/core/session";
 import { dataform } from "@dataform/protos";
-import { Session } from "./index";
-import * as utils from "./utils";
 
 export type OContextable<T> = T | ((ctx: OperationContext) => T);
 

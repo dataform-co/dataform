@@ -1,7 +1,8 @@
 import { Credentials } from "@dataform/api/commands/credentials";
 import { state } from "@dataform/api/commands/state";
 import * as dbadapters from "@dataform/api/dbadapters";
-import { adapters, utils } from "@dataform/core";
+import { adapters } from "@dataform/core";
+import * as utils from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
 
 export function build(

@@ -1,7 +1,7 @@
 import { Builder, compile, credentials, query, Runner } from "@dataform/api";
 import { DbAdapter } from "@dataform/api/dbadapters";
 import { BigQueryDbAdapter } from "@dataform/api/dbadapters/bigquery";
-import { utils } from "@dataform/core";
+import * as utils from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
 import { assert, config, expect } from "chai";
 import { asPlainObject, cleanSql } from "df/tests/utils";
