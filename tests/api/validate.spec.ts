@@ -82,13 +82,13 @@ describe("@dataform/api/validate", () => {
       });
       const errors = validateSchedules(invalid_schedule, compiledGraph);
       const expectedErrors = [
-        '"asdas" is not a valid cron expression.',
-        '"name1" is not unique. All schedule names must be unique.',
         '"test.com" is not a valid email address.',
+        '"asdas" is not a valid cron expression.',
         '"action3" doesn\'t exist in the project.',
-        '"test2.com" is not a valid email address.'
+        '"test2.com" is not a valid email address.',
+        '"name1" is not unique. All schedule names must be unique.'
       ];
-      expect(errors).to.have.members(expectedErrors);
+      expect(errors).to.eql(expectedErrors);
     });
   });
 });

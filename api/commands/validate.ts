@@ -10,7 +10,7 @@ function validateEmail(email: string) {
 export function validateSchedules(schedules: dataform.schedules.SchedulesJSON, compiledGraph: dataform.ICompiledGraph) {
 
   const errors = [];
-  let allNodes = new Array<{ name?: string; }>().concat(
+  const allNodes = new Array<{ name?: string; }>().concat(
     compiledGraph.tables,
     compiledGraph.assertions,
     compiledGraph.operations
