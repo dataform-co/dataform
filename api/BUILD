@@ -13,6 +13,7 @@ ts_library(
         "@npm//@google-cloud/bigquery",
         "@npm//@types/long",
         "@npm//@types/node",
+        "@npm//cron-parser",
         "@npm//glob",
         "@npm//node-redshift",
         "@npm//pretty-ms",
