@@ -10,8 +10,8 @@ message Notification {
 
 message ScheduleOptions {
   repeated string actions = 1;
-  bool includeDependencies = 2;
-  bool fullRefresh = 3;
+  bool include_dependencies = 2;
+  bool full_refresh = 3;
 } 
 
 message Schedule {
@@ -24,6 +24,6 @@ message Schedule {
 
 // Don't change the field names as it will be serialized to JSON
 message SchedulesJSON {
-  Notification defaultNotification = 1;
+  Notification default_notification = 1;
   repeated Schedule schedules = 2;
 }

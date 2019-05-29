@@ -162,7 +162,7 @@ const builtYargs = createYargsCli({
         {
           name: "include-schedules",
           option: {
-            describe: "Whether to include schedules.json.",
+            describe: "Whether to initialize a schedules.json file.",
             default: false
           }
         }
@@ -178,7 +178,7 @@ const builtYargs = createYargsCli({
             },
             {
               skipInstall: argv["skip-install"],
-              includeSchedules: argv['include-schedules']
+              includeSchedules: argv["include-schedules"]
             }
           )
         );

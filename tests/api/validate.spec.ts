@@ -55,10 +55,10 @@ describe("@dataform/api/validate", () => {
       });
       const errors = validateSchedules(invalid_schedule);
       const expectedErrors = [
-        'asdas is not a valid cron expression',
+        'asdas is not a valid cron expression.',
         'name1 is not unique. All the schedules name should be unique.',
-        'test.com is not a valid email address',
-        'test2.com is not a valid email address'
+        'test.com is not a valid email address.',
+        'test2.com is not a valid email address.'
       ];
       expect(errors).to.have.members(expectedErrors);
     });
