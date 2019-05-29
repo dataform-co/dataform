@@ -6,5 +6,6 @@ import { install } from "./commands/install";
 import * as query from "./commands/query";
 import { run, Runner } from "./commands/run";
 import * as table from "./commands/table";
+import { validateSchedules } from "./commands/validate";
 
-export { init, install, credentials, compile, build, run, query, table, Runner, Builder };
+export { init, install, credentials, compile, build, run, query, table, validateSchedules, Runner, Builder };
