@@ -1,5 +1,5 @@
+import { Session } from "@dataform/core/session";
 import { dataform } from "@dataform/protos";
-import { Session } from "./index";
 
 export enum TableTypes {
   TABLE = "table",
