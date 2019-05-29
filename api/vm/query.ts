@@ -23,9 +23,9 @@ export function compile(query: string, projectDir?: string): string {
       createGenIndexConfig(
         { projectDir },
         `(function() {
-        const { session } = require("@dataform/core");
-        const ref = session.resolve.bind(session);
-        const resolve = session.resolve.bind(session);
+        require("@dataform/core");
+        const ref = global.session.resolve.bind(session);
+        const resolve = global.session.resolve.bind(session);
         const noop = () => "";
         const config = noop;
         const type = noop;

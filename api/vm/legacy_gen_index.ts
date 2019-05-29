@@ -1,4 +1,4 @@
-import { utils } from "@dataform/core";
+import * as utils from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
 import { util } from "protobufjs";
 

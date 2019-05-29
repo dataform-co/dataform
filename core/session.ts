@@ -81,10 +81,6 @@ export class Session {
     return operation;
   }
 
-  public materialize(name: string, queryOrConfig?: TContextable<string> | TConfig): Table {
-    return this.publish(name, queryOrConfig);
-  }
-
   public publish(name: string, queryOrConfig?: TContextable<string> | TConfig): Table {
     // Check for duplicate names
     if (this.tables[name]) {

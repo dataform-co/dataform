@@ -1,5 +1,7 @@
-import { Session, Table, utils } from "@dataform/core";
 import * as compilers from "@dataform/core/compilers";
+import { Session } from "@dataform/core/session";
+import { Table } from "@dataform/core/table";
+import * as utils from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
 import { expect } from "chai";
 import { asPlainObject } from "df/tests/utils";
@@ -12,7 +14,7 @@ const TEST_CONFIG: dataform.IProjectConfig = {
 
 describe("@dataform/core", () => {
   describe("publish", () => {
-    it("config", function () {
+    it("config", function() {
       const session = new Session(path.dirname(__filename), TEST_CONFIG);
       const t = session
         .publish("example", {
@@ -36,7 +38,7 @@ describe("@dataform/core", () => {
       expect(t.postOps).deep.equals(["post_op"]);
     });
 
-    it("config_context", function () {
+    it("config_context", function() {
       const session = new Session(path.dirname(__filename), TEST_CONFIG);
       const t = session
         .publish(
@@ -61,7 +63,7 @@ describe("@dataform/core", () => {
       expect(t.postOps).deep.equals(["post_op"]);
     });
 
-    it("validation_type_incremental", function () {
+    it("validation_type_incremental", function() {
       const sessionSuccess = new Session(path.dirname(__filename), TEST_CONFIG);
       sessionSuccess.publish("exampleSuccess1", {
         type: "incremental",
@@ -124,7 +126,7 @@ describe("@dataform/core", () => {
       });
     });
 
-    it("validation_type", function () {
+    it("validation_type", function() {
       const sessionSuccess = new Session(path.dirname(__filename), TEST_CONFIG);
       sessionSuccess.publish("exampleSuccess1", { type: "table" });
       sessionSuccess.publish("exampleSuccess2", { type: "view" });
@@ -151,7 +153,7 @@ describe("@dataform/core", () => {
         .that.matches(/Wrong type of table/);
     });
 
-    it("validation_redshift_success", function () {
+    it("validation_redshift_success", function() {
       const session = new Session(path.dirname(__filename), TEST_CONFIG);
       session.publish("example_without_dist", {
         redshift: {
@@ -179,7 +181,7 @@ describe("@dataform/core", () => {
         .to.be.an("array").that.is.empty;
     });
 
-    it("validation_redshift_fail", function () {
+    it("validation_redshift_fail", function() {
       const session = new Session(path.dirname(__filename), TEST_CONFIG);
       session.publish("example_absent_distKey", {
         redshift: {
@@ -264,7 +266,7 @@ describe("@dataform/core", () => {
       });
     });
 
-    it("validation_type_inline", function () {
+    it("validation_type_inline", function() {
       const session = new Session(path.dirname(__filename), TEST_CONFIG);
       session.publish("a", { type: "table", query: _ => "select 1 as test" });
       session.publish("b", {
@@ -484,7 +486,7 @@ describe("@dataform/core", () => {
   });
 
   describe("compilers", () => {
-    it("extract_blocks", function () {
+    it("extract_blocks", function() {
       const TEST_SQL_FILE = `
         /*js
         var a = 1;

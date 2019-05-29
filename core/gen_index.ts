@@ -1,4 +1,4 @@
-import { utils } from "@dataform/core";
+import * as utils from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
 import { util } from "protobufjs";
 
@@ -33,7 +33,7 @@ export function genIndex(base64EncodedConfig: string): string {
     .join("\n");
 
   return `
-    const { init, compile } = require("@dataform/core");
+    require("@dataform/core");
     const protos = require("@dataform/protos");
     const { util } = require("protobufjs");
     ${includeRequires}
@@ -41,9 +41,9 @@ export function genIndex(base64EncodedConfig: string): string {
     projectConfig.schemaSuffix = "${
       config.compileConfig.schemaSuffixOverride
     }" || projectConfig.schemaSuffix;
-    init("${config.compileConfig.projectDir}", projectConfig);
+    global.session.init("${config.compileConfig.projectDir}", projectConfig);
     ${definitionRequires}
-    const compiledGraph = compile();
+    const compiledGraph = global.session.compile();
     // Keep backwards compatibility with un-namespaced protobufs (i.e. before dataform protobufs were inside a package).
     const protoNamespace = (protos.dataform) ? protos.dataform : protos;
     // We return a base64 encoded proto via NodeVM, as returning a Uint8Array directly causes issues.
