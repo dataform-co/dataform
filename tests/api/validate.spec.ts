@@ -80,6 +80,7 @@ describe("@dataform/api/validate", () => {
           }
         ]
       });
+
       const errors = validateSchedules(invalid_schedule, compiledGraph);
       const expectedErrors = [
         '"test.com" is not a valid email address.',
