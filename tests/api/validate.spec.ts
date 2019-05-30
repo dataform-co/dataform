@@ -77,6 +77,13 @@ describe("@dataform/api/validate", () => {
           {
             name: "name1",
             cron: "*/2 * * * *"
+          },
+          {
+            name: "nam2",
+            cron: "*/2 * * * *",
+            notification: {
+              onFailure: true
+            }
           }
         ]
       });
