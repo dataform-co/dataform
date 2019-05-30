@@ -18,7 +18,7 @@ export function validateSchedules(schedules: dataform.schedules.SchedulesJSON, c
 
   const allNodeNames = allNodes.map(node => node.name);
 
-  if (schedules.defaultNotification) {
+  if (schedules.defaultNotification && schedules.defaultNotification.emails) {
     schedules.defaultNotification.emails.forEach(email => {
       if (!validateEmail(email)) {
         errors.push(`"${email}" is not a valid email address.`);
@@ -46,7 +46,7 @@ export function validateSchedules(schedules: dataform.schedules.SchedulesJSON, c
       errors.push(`"${schedule.cron}" is not a valid cron expression.`);
     }
 
-    if (schedule.options) {
+    if (schedule.options && schedule.options.actions) {
       schedule.options.actions.forEach(action => {
         if (allNodeNames.indexOf(action) < 0) {
           errors.push(`"${action}" doesn't exist in the project.`);
@@ -54,7 +54,7 @@ export function validateSchedules(schedules: dataform.schedules.SchedulesJSON, c
       })
     }
 
-    if (schedule.notification) {
+    if (schedule.notification && schedule.notification.emails) {
       schedule.notification.emails.forEach(email => {
         if (!validateEmail(email)) {
           errors.push(`"${email}" is not a valid email address.`);
