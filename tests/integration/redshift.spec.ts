@@ -45,7 +45,7 @@ describe("@dataform/integration/redshift", () => {
     // Re-run some of the actions.
     executionGraph = await dfapi.build(
       compiledGraph,
-      { nodes: ["example_incremental", "example_table", "example_view"] },
+      { actions: ["example_incremental", "example_table", "example_view"] },
       credentials
     );
     executedGraph = await dfapi.run(executionGraph, credentials).resultPromise();

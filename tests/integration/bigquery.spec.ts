@@ -37,7 +37,7 @@ describe("@dataform/integration/bigquery", () => {
     // Re-run some of the actions.
     executionGraph = await dfapi.build(
       compiledGraph,
-      { nodes: ["example_incremental", "example_table", "example_view"] },
+      { actions: ["example_incremental", "example_table", "example_view"] },
       credentials
     );
 

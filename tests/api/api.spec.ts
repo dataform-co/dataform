@@ -51,7 +51,7 @@ describe("@dataform/api", () => {
     it("include_deps", () => {
       const builder = new Builder(
         TEST_GRAPH,
-        { nodes: ["a"], includeDependencies: true },
+        { actions: ["a"], includeDependencies: true },
         TEST_STATE
       );
       const executionGraph = builder.build();
@@ -63,7 +63,7 @@ describe("@dataform/api", () => {
     it("exclude_deps", () => {
       const builder = new Builder(
         TEST_GRAPH,
-        { nodes: ["a"], includeDependencies: false },
+        { actions: ["a"], includeDependencies: false },
         TEST_STATE
       );
       const executionGraph = builder.build();
@@ -428,7 +428,7 @@ describe("@dataform/api", () => {
   });
 
   describe("init", () => {
-    it("init", async function() {
+    it("init", async function () {
       this.timeout(30000);
 
       // create temp directory
@@ -604,7 +604,7 @@ describe("@dataform/api", () => {
       new Builder(graph, {}, { tables: [] }).build();
     });
 
-    it("operation_refing", async function() {
+    it("operation_refing", async function () {
       const expectedQueries = {
         sample_1: 'create table "test_schema"."sample_1" as select 1 as sample_1',
         sample_2: 'select * from "test_schema"."sample_1"'

@@ -18,7 +18,7 @@ message ProjectConfig {
 }
 
 message RunConfig {
-  repeated string nodes = 1;
+  repeated string actions = 1;
   bool include_dependencies = 3;
   bool full_refresh = 2;
   bool carry_on = 4;

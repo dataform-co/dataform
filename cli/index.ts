@@ -371,7 +371,7 @@ const builtYargs = createYargsCli({
           compiledGraph,
           {
             fullRefresh: argv["full-refresh"],
-            nodes: argv.nodes,
+            actions: argv.nodes,
             includeDependencies: argv["include-deps"]
           },
           readCredentials

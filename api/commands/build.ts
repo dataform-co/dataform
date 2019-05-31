@@ -61,8 +61,8 @@ export class Builder {
 
     // Determine which nodes should be included.
     const includedNodeNames =
-      this.runConfig.nodes && this.runConfig.nodes.length > 0
-        ? utils.matchPatterns(this.runConfig.nodes, allNodeNames)
+      this.runConfig.actions && this.runConfig.actions.length > 0
+        ? utils.matchPatterns(this.runConfig.actions, allNodeNames)
         : allNodeNames;
     let includedNodes = allNodes.filter(node => includedNodeNames.indexOf(node.name) >= 0);
     if (this.runConfig.includeDependencies) {
@@ -106,10 +106,10 @@ export class Builder {
     const tasks = t.disabled
       ? emptyTasks
       : emptyTasks.concat(
-          (t.preOps || []).map(pre => ({ statement: pre })),
-          this.adapter.publishTasks(t, this.runConfig, tableMetadata).build(),
-          (t.postOps || []).map(post => ({ statement: post }))
-        );
+        (t.preOps || []).map(pre => ({ statement: pre })),
+        this.adapter.publishTasks(t, this.runConfig, tableMetadata).build(),
+        (t.postOps || []).map(post => ({ statement: post }))
+      );
 
     return dataform.ExecutionNode.create({
       name: t.name,
