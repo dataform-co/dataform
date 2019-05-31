@@ -1,0 +1,9 @@
+config { type: "incremental" }
+
+js {  const crossdb = require("@dataform/crossdb"); }
+
+select ${crossdb.currentTimestampUTC()} as ts
+
+if_incremental {
+    ts > (select max(ts) from ${self()}) or (select max(ts) from ${self()}) is null
+}

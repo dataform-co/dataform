@@ -1,0 +1,6 @@
+config {
+    schemaOverride: "hi_there",
+    type: "assertion"
+}
+
+select * from ${ref("sample_data")} where sample = 100

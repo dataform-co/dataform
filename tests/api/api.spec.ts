@@ -449,6 +449,8 @@ describe("@dataform/api", () => {
       const graph = await compile({ projectDir: path.resolve("df/examples/bigquery") });
       const tableNames = graph.tables.map(t => t.name);
 
+      expect(graph.graphErrors).to.eql(dataform.GraphErrors.create());
+
       // Check JS blocks get processed.
       expect(tableNames).includes("example_js_blocks");
       const exampleJsBlocks = graph.tables.filter(t => t.name == "example_js_blocks")[0];
@@ -491,6 +493,134 @@ describe("@dataform/api", () => {
         "\nselect * from (\nselect * from `tada-analytics.df_integration_test.sample_data`)\nwhere true"
       );
       expect(exampleUsingInline.dependencies).includes("sample_data");
+
+      // Check view
+      expect(tableNames).includes("example_view");
+      const exampleView = graph.tables.filter(t => t.name == "example_view")[0];
+      expect(exampleView.type).equals("view");
+      expect(exampleView.query).equals(
+        "\nselect * from `tada-analytics.df_integration_test.sample_data`"
+      );
+      expect(exampleView.dependencies).deep.equals(["sample_data"]);
+
+      // Check table
+      expect(tableNames).includes("example_table");
+      const exampleTable = graph.tables.filter(t => t.name == "example_table")[0];
+      expect(exampleTable.type).equals("table");
+      expect(exampleTable.query).equals(
+        "\nselect * from `tada-analytics.df_integration_test.sample_data`"
+      );
+      expect(exampleTable.dependencies).deep.equals(["sample_data"]);
+
+      // Check sample data
+      expect(tableNames).includes("sample_data");
+      const exampleSampleData = graph.tables.filter(t => t.name == "sample_data")[0];
+      expect(exampleSampleData.type).equals("view");
+      expect(exampleSampleData.query).equals(
+        "select 1 as sample union all\nselect 2 as sample union all\nselect 3 as sample"
+      );
+      expect(exampleSampleData.dependencies).to.eql([]);
+    });
+
+    it("bigquery using v2 language compiles", async () => {
+      const graph = await compile({ projectDir: path.resolve("df/examples/bigquery_language_v2") });
+      const tableNames = graph.tables.map(t => t.name);
+      const assertionNames = graph.assertions.map(a => a.name);
+
+      if (graph.graphErrors) {
+        if (graph.graphErrors.compilationErrors.length) {
+          throw new Error(graph.graphErrors.compilationErrors[0].stack);
+        }
+      }
+      expect(graph.graphErrors).to.eql(dataform.GraphErrors.create());
+
+      // Check JS blocks get processed.
+      expect(tableNames).includes("example_js_blocks");
+      const exampleJsBlocks = graph.tables.filter(t => t.name == "example_js_blocks")[0];
+      expect(exampleJsBlocks.type).equals("table");
+      expect(exampleJsBlocks.query.trim()).equals("select 1 as foo");
+
+      // Check we can import and use an external package.
+      expect(tableNames).includes("example_incremental");
+      const exampleIncremental = graph.tables.filter(t => t.name == "example_incremental")[0];
+      expect(exampleIncremental.query.trim()).equals("select current_timestamp() as ts");
+
+      // Check tables defined in includes are not included.
+      expect(tableNames).not.includes("example_ignore");
+
+      // Check SQL files with raw back-ticks get escaped.
+      expect(tableNames).includes("example_backticks");
+      const exampleBackticks = graph.tables.filter(t => t.name == "example_backticks")[0];
+      expect(cleanSql(exampleBackticks.query)).equals(
+        "select * from `tada-analytics.df_integration_test.sample_data`"
+      );
+
+      // Check deferred calls to table resolve to the correct definitions file.
+      expect(tableNames).includes("example_deferred");
+      const exampleDeferred = graph.tables.filter(t => t.name == "example_deferred")[0];
+      expect(exampleDeferred.fileName).includes("definitions/example_deferred.js");
+
+      // Check inline tables
+      expect(tableNames).includes("example_inline");
+      const exampleInline = graph.tables.filter(t => t.name == "example_inline")[0];
+      expect(exampleInline.type).equals("inline");
+      expect(exampleInline.query.trim()).equals(
+        "select * from `tada-analytics.df_integration_test.sample_data`"
+      );
+      expect(exampleInline.dependencies).includes("sample_data");
+
+      expect(tableNames).includes("example_using_inline");
+      const exampleUsingInline = graph.tables.filter(t => t.name == "example_using_inline")[0];
+      expect(exampleUsingInline.type).equals("table");
+      expect(exampleUsingInline.query.trim()).equals(
+        "select * from (\n\nselect * from `tada-analytics.df_integration_test.sample_data`\n)\nwhere true"
+      );
+      expect(exampleUsingInline.dependencies).includes("sample_data");
+
+      // Check view
+      expect(tableNames).includes("example_view");
+      const exampleView = graph.tables.filter(t => t.name == "example_view")[0];
+      expect(exampleView.type).equals("view");
+      expect(exampleView.query.trim()).equals(
+        "select * from `tada-analytics.df_integration_test.sample_data`"
+      );
+      expect(exampleView.dependencies).deep.equals(["sample_data"]);
+
+      // Check table
+      expect(tableNames).includes("example_table");
+      const exampleTable = graph.tables.filter(t => t.name == "example_table")[0];
+      expect(exampleTable.type).equals("table");
+      expect(exampleTable.query.trim()).equals(
+        "select * from `tada-analytics.df_integration_test.sample_data`"
+      );
+      expect(exampleTable.dependencies).deep.equals(["sample_data"]);
+
+      // Check sample data
+      expect(tableNames).includes("sample_data");
+      const exampleSampleData = graph.tables.filter(t => t.name == "sample_data")[0];
+      expect(exampleSampleData.type).equals("view");
+      expect(exampleSampleData.query.trim()).equals(
+        "select 1 as sample union all\nselect 2 as sample union all\nselect 3 as sample"
+      );
+      expect(exampleSampleData.dependencies).to.eql([]);
+
+      // Check schema overrides defined in "config {}"
+      expect(tableNames).includes("override_schema_example");
+      const exampleUsingOverriddenSchema = graph.tables.filter(
+        t => t.name == "override_schema_example"
+      )[0];
+      expect(exampleUsingOverriddenSchema.target.schema).equals("override_schema");
+      expect(exampleUsingOverriddenSchema.type).equals("view");
+      expect(exampleUsingOverriddenSchema.query.trim()).equals("select 1 as test_schema_override");
+
+      // Check assertion
+      expect(assertionNames).includes("example_assertion");
+      const exampleAssertion = graph.assertions.filter(t => t.name == "example_assertion")[0];
+      expect(exampleAssertion.target.schema).equals("hi_there");
+      expect(exampleAssertion.query.trim()).equals(
+        "select * from `tada-analytics.df_integration_test.sample_data` where sample = 100"
+      );
+      expect(exampleAssertion.dependencies).to.eql(["sample_data"]);
     });
 
     it("schema overrides", async () => {

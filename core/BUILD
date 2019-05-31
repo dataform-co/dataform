@@ -9,6 +9,7 @@ ts_library(
     deps = [
         "//protos",
         "@npm//@types/node",
+        "@npm//moo",
         "@npm//protobufjs",
     ],
 )

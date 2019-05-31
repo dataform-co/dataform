@@ -45,6 +45,7 @@ export class Session {
   public target(target: string, defaultSchema?: string): dataform.ITarget {
     const suffix = !!this.config.schemaSuffix ? `_${this.config.schemaSuffix}` : "";
 
+    // TODO: this should probably throw, it should be impossible that this codepath gets hit (i think? unless somebody is doing this in JS!)
     if (target.includes(".")) {
       const schema = target.split(".")[0];
       const name = target.split(".")[1];

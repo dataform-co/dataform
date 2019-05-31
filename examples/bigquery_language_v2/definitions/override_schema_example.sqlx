@@ -1,0 +1,5 @@
+config {
+    schemaOverride: "override_schema"
+}
+
+select 1 as test_schema_override
