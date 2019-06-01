@@ -37,8 +37,8 @@ load("//tools/common:copy.bzl", "copy_file")
 
 copy_file(
     name = "readme",
-    src = "//:README.md",
-    out = "README.md",
+    src = "//:readme.md",
+    out = "readme.md",
 )
 
 load("//tools/npm:package.bzl", "dataform_npm_package")

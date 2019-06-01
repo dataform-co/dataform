@@ -6,7 +6,7 @@ exports_files([
     "tsconfig.json",
     "package.json",
     "common.package.json",
-    "README.md",
+    "readme.md",
 ])
 
 PROTOBUF_DEPS = [
