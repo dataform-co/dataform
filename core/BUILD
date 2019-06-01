@@ -17,6 +17,9 @@ load("//tools/npm:package.bzl", "dataform_npm_package")
 
 dataform_npm_package(
     name = "package",
-    package_layers = ["//:common.package.json", "core.package.json"],
+    package_layers = [
+        "//:common.package.json",
+        "core.package.json",
+    ],
     deps = [":core"],
 )

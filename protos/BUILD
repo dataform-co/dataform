@@ -34,7 +34,10 @@ load("//tools/npm:package.bzl", "dataform_npm_package")
 
 dataform_npm_package(
     name = "package",
-    package_layers = ["//:common.package.json", "protos.package.json"],
     srcs = glob(["**/*.proto"]),
+    package_layers = [
+        "//:common.package.json",
+        "protos.package.json",
+    ],
     deps = [":protos"],
 )

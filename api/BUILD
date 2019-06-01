@@ -41,10 +41,12 @@ load("//tools/npm:package.bzl", "dataform_npm_package")
 
 dataform_npm_package(
     name = "package",
-    package_layers = ["//:common.package.json", "api.package.json"],
+    package_layers = [
+        "//:common.package.json",
+        "api.package.json",
+    ],
     deps = [":api"],
 )
-
 
 load("@build_bazel_rules_nodejs//:defs.bzl", "nodejs_binary")
 

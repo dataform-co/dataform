@@ -3,5 +3,5 @@ def copy_file(name, src, out):
         name = name,
         srcs = [src],
         outs = [out],
-        cmd = "cp -r $(SRCS) $(OUTS)"
+        cmd = "cp -r $(SRCS) $(OUTS)",
     )
