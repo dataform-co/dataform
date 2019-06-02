@@ -4,6 +4,7 @@ import * as React from "react";
 
 import { BaseLayout } from "df/docs/layouts/base";
 import * as styles from "df/docs/layouts/documentation.css";
+import { Search } from "df/docs/components/search";
 
 export interface IProps {
   title: string;
@@ -39,6 +40,7 @@ export default class Documentation extends React.Component<IProps> {
       <BaseLayout title={`Dataform docs | ${this.props.title}`}>
         <div className={styles.container}>
           <div className={styles.sidebar}>
+          <Search />
             <Navigation
               currentPath={pathFromFilename(this.props.__filename)}
               onThisPageItems={menu}
