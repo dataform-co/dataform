@@ -9,6 +9,7 @@ import {
   InstantSearch,
   SearchBox
 } from "react-instantsearch-dom";
+import { styles } from "../struct";
 
 const searchClient = algoliasearch("Q9QS39IFO0", "153e21a16f649c7f9ec28185683415cf");
 
@@ -83,12 +84,12 @@ class SearchWidget extends React.Component<IAlgoliaProps, IWidgetState> {
           onQueryChange={query => this.props.refine(query)}
           onItemSelect={item => {
             console.log(item);
-            this.setState({ isOpen: false});
+            this.setState({ isOpen: false });
             window.location.href = item.url;
           }}
           isOpen={this.state.isOpen}
           onActiveItemChange={item => console.log(item)}
-          onClose={() => this.setState({ isOpen: false})}
+          onClose={() => this.setState({ isOpen: false })}
           items={this.props.hits.filter(hit => !!hit.hierarchy)}
           itemRenderer={this.itemRenderer}
         />
@@ -97,16 +98,17 @@ class SearchWidget extends React.Component<IAlgoliaProps, IWidgetState> {
   }
 
   public itemRenderer = (item: IResult, props: IItemRendererProps) => {
-    const prettyString = [
-      "lvl0",
-      "lvl1",
-      "lvl2",
-      "lvl3"
-    ].map(key => item.hierarchy[key])
-    .filter( value => !!value)
-    .join(" ");
-    return <MenuItem text={prettyString} active={props.modifiers.active} />
-  }
+    const prettyString = ["lvl0", "lvl1", "lvl2", "lvl3"]
+      .map(key => item.hierarchy[key])
+      .filter(value => !!value)
+      .join(" > ");
+    return (
+      <MenuItem
+        text={<div className={"bp3-fill"}>{prettyString}</div>}
+        active={props.modifiers.active}
+      />
+    );
+  };
 }
 
 const CustomOmni = connectHits(connectWithQuery(SearchWidget));
