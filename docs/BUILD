@@ -32,6 +32,7 @@ next_site(
         "//fe:css",
         "//static:files",
         "@npm//@blueprintjs/core",
+        "@npm//@blueprintjs/select",
         "@npm//@zeit/next-css",
         "@npm//@zeit/next-mdx",
         "@npm//@zeit/next-typescript",
