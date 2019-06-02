@@ -1,5 +1,5 @@
 .container {
-  padding: 60px 20px 50px;
+  padding: 60px 20px 0px;
   margin: 0px auto;
 }
 
@@ -12,6 +12,14 @@
 
 /* This makes sure that the on this page anchors scroll correctly */
 .container h2 {
-  padding: 125px 0px 15px;
-  margin-top: -110px;
+  padding-top: 130px;
+  margin-top: -100px;
+}
+
+.leftBackground {
+  position: fixed;
+  width: 50vw;
+  height: 100vh;
+  background-color: #F6F8FA;
+  z-index: -1;
 }

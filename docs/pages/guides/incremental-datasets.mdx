@@ -1,7 +1,12 @@
 import Documentation from "df/docs/layouts/documentation";
 
+export const meta = {
+  title: "Incremental datasets",
+  __filename
+};
+
 export default ({ children }) => (
-  <Documentation title="Incremental datasets">{children}</Documentation>
+  <Documentation {...meta}>{children}</Documentation>
 );
 
 ## Introduction

@@ -15,7 +15,7 @@ export interface IProps {
 
 const PAGES = [];
 
-const MAX_WIDTH = "1500px";
+const MAX_WIDTH = "1100px";
 
 export class BaseLayout extends React.Component<IProps, {}> {
   public render() {
@@ -25,6 +25,7 @@ export class BaseLayout extends React.Component<IProps, {}> {
           <title>{this.props.title}</title>
         </Head>
         <Header pages={PAGES} invert={false} maxWidth={MAX_WIDTH} />
+        <div className={styles.leftBackground} />
         <div className={styles.container} style={{ maxWidth: MAX_WIDTH }}>
           {this.props.children}
         </div>

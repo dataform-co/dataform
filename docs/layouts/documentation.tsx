@@ -1,20 +1,17 @@
 import Method from "df/docs/components/method";
-import Navigation from "df/docs/components/navigation";
-import OnThisPage from "df/docs/components/on_this_page";
+import Navigation, { IHeaderLink } from "df/docs/components/navigation";
 import * as React from "react";
-import Media from "react-media";
 
 import { BaseLayout } from "df/docs/layouts/base";
-
-import * as commonStyles from "df/docs/common.css";
 import * as styles from "df/docs/layouts/documentation.css";
 
-export interface Props {
+export interface IProps {
   title: string;
+  __filename: string;
 }
 
-export default class Documentation extends React.Component<Props, any> {
-  public getMenuItems = (child: React.ReactElement<any>) => {
+export default class Documentation extends React.Component<IProps> {
+  public getHeaderLinks(child: React.ReactElement<any>): IHeaderLink[] {
     if (child && child.props && Array.isArray(child.props.children)) {
       const headers = child.props.children
         .filter(item => item.props.name === "h2")
@@ -36,30 +33,30 @@ export default class Documentation extends React.Component<Props, any> {
     return [];
   };
 
-  public renderRightSidebar = () => {
-    const menu = this.getMenuItems(this.props.children as React.ReactElement<any>);
-
-    return (
-      <div className={styles.sidebar}>
-        <OnThisPage menu={menu} />
-      </div>
-    );
-  };
-
   public render() {
+    const menu = this.getHeaderLinks(this.props.children as React.ReactElement<any>);
     return (
-      <BaseLayout title="Dataform | Documentation">
-        <div className={commonStyles.flexRow}>
+      <BaseLayout title={`Dataform docs | ${this.props.title}`}>
+        <div className={styles.container}>
           <div className={styles.sidebar}>
-            <Navigation />
+            <Navigation
+              currentPath={pathFromFilename(this.props.__filename)}
+              onThisPageItems={menu}
+            />
           </div>
           <div className={styles.mainContent}>
             <h1>{this.props.title}</h1>
             {this.props.children}
           </div>
-          <Media query="(min-width: 1200px)" render={this.renderRightSidebar} />
         </div>
       </BaseLayout>
     );
   }
+}
+
+function pathFromFilename(filename: string) {
+  if (!!filename && filename.indexOf("pages/") >= 0) {
+    return `/${filename.split("pages/")[1].split(".")[0]}`;
+  } 
+  return filename;
 }
