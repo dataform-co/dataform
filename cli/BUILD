@@ -37,7 +37,7 @@ load("@build_bazel_rules_nodejs//:defs.bzl", "npm_package")
 
 npm_package(
     name = "package",
-    srcs = ["package.json"],
+    srcs = ["package.json", "README.md"],
     deps = [":cli"],
 )
 

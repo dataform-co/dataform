@@ -17,15 +17,19 @@ export interface Props {
 export default class Documentation extends React.Component<Props, any> {
   public getMenuItems = (child: React.ReactElement<any>) => {
     if (child && child.props && Array.isArray(child.props.children)) {
-      const headers = child.props.children.filter(item => item.props.name === "h2").map(item => ({
-        id: item.props.props.id,
-        text: item.props.children
-      }));
+      const headers = child.props.children
+        .filter(item => item.props.name === "h2")
+        .map(item => ({
+          id: item.props.props.id,
+          text: item.props.children
+        }));
 
-      const methods = child.props.children.filter(item => item.type === Method).map(item => ({
-        id: item.props.name,
-        text: item.props.name
-      }));
+      const methods = child.props.children
+        .filter(item => item.type === Method)
+        .map(item => ({
+          id: item.props.name,
+          text: item.props.name
+        }));
 
       return [...headers, ...methods];
     }

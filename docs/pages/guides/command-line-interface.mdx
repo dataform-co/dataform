@@ -45,14 +45,14 @@ project-dir
 └── dataform.json
 ```
 
-## Define a table
+## Define a dataset
 
-The `definitions/` directory should be used for files that define [tables](/tables), [assertions](/assertions), and [operations](/operations).
+The `definitions/` directory should be used for files that define [tables](/datasets), [assertions](/assertions), and [operations](/operations).
 
-To create a new table, create a new file `definitions/example.sql`:
+To create a new dataset, create a new file `definitions/example.sql`:
 
-```js
-SELECT 1 AS test
+```bash
+echo "SELECT 1 AS test" > definitions/example.sql
 ```
 
 ## Compile your code
@@ -65,23 +65,12 @@ dataform compile
 
 You should see output similar to the following:
 
-```json
-{
-    "tables": [
-        {
-            "name": "example",
-            "type": "view",
-            "target": {
-                "schema": "dataform",
-                "name": "example"
-            },
-            "query": "SELECT 1 AS test",
-            "disabled": false,
-            "fileName": "definitions/example.sql"
-        }
-    ],
-    ...
-}
+```bash
+Compiling...
+
+Compiled 1 action(s).
+1 dataset(s):
+  dataform.example [view]
 ```
 
 ## Create a credentials file
@@ -119,28 +108,15 @@ dataform run --dry-run
 
 You should see something similar to the following:
 
-```json
-{
-      ...
-      "nodes": [
-        {
-            "name": "example",
-            "tasks": [
-                {
-                    "type": "statement",
-                    "statement": "create or replace view \"dataform\".\"example\" as SELECT 1 AS test;"
-                }
-            ],
-            "type": "table",
-            "target": {
-                "schema": "dataform",
-                "name": "example"
-            },
-            "tableType": "view"
-        }
-    ],
-    ...
-}
+```bash
+Compiling...
+
+Compiled successfully.
+
+Dry run (--dry-run) mode is turned on; not running the following actions against your warehouse:
+
+1 dataset(s):
+  dataform.example [table]
 ```
 
 Removing the `--dry-run` option will result in the SQL being run in your warehouse:
@@ -149,8 +125,18 @@ Removing the `--dry-run` option will result in the SQL being run in your warehou
 dataform run
 ```
 
-The `run` command's output will now include the run's execution status, including any errors encountered during the run.
+The `run` command's output will now include the run's execution status, including any errors encountered during the run:
+
+```bash
+Compiling...
+
+Compiled successfully.
+
+Running...
+
+Dataset created:  dataform.example [view]
+```
 
 ## Next steps
 
-You have now seen how easy it is to use Dataform to publish simple datasets. Next, jump to our [guide](/guides/tables) section.
+You have now seen how easy it is to use Dataform to publish simple datasets. Next, jump to our [guide](/guides/datasets) section.

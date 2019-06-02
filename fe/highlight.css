@@ -64,7 +64,7 @@
 :global :not(pre) > code {
   background: #f6f8fa;
   padding: 3px 5px;
-  font-size: 14px;
+
   border-radius: 3px;
 }
 

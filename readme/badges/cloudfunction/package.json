@@ -1,0 +1,15 @@
+{
+  "name": "cloudbuildbadge",
+  "version": "1.0.0",
+  "description": "A cloud function that changes GitHub badges depending on Cloud Build status.",
+  "main": "index.js",
+  "dependencies": {
+    "@google-cloud/storage": "^2.3.1"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC"
+}

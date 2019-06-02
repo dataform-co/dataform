@@ -2,11 +2,11 @@ import * as React from "react";
 
 import Head from "next/head";
 
-import { Footer } from "df/fe/components/footer";
-import { Header } from "df/fe/components/header";
+import { Footer } from "df/docs/components/footer";
+import { Header } from "df/docs/components/header";
 
+import * as globalStyles from "df/docs/global.css";
 import * as styles from "df/docs/layouts/base.css";
-import * as globalStyles from "df/fe/global.css";
 import * as highlightStyles from "df/fe/highlight.css";
 
 export interface IProps {

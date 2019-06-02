@@ -12,7 +12,7 @@ export const structs: { [name: string]: StructProps } = {
       {
         name: "defaultSchema",
         type: "string",
-        description: "The default output schema/dataset for tables"
+        description: "The default output schema/dataset for datasets"
       },
       {
         name: "assertionsSchema",
@@ -26,43 +26,44 @@ export const structs: { [name: string]: StructProps } = {
       }
     ]
   },
-  tableConfig: {
-    description: "The `TableConfig` interface can be used to set several properties of a table at once.",
+  datasetConfig: {
+    description:
+      "The `TableConfig` interface can be used to set several properties of a dataset at once.",
     fields: [
       {
         name: "type",
         type: '"view" | "table" | "incremental" | "inline"',
-        description: "The type of the table"
+        description: "The type of the dataset"
       },
       {
         name: "query",
         type: "Contextable<string>",
-        description: "The table select query"
+        description: "The dataset select query"
       },
       {
         name: "where",
         type: "Contextable<string>",
-        description: "The where clause for incremental tables"
+        description: "The where clause for incremental datasets"
       },
       {
         name: "preOps",
         type: "Contextable<string | string[]>",
-        description: "Operations to run before the table"
+        description: "Operations to run before the dataset"
       },
       {
         name: "postOps",
         type: "Contextable<string | string[]>",
-        description: "Operations to run after the table"
+        description: "Operations to run after the dataset"
       },
       {
         name: "dependencies",
         type: "string | string[]",
-        description: "The dependencies of this node"
+        description: "The dependencies of this action"
       },
       {
         name: "descriptor",
         type: "{ [field: string]: string }",
-        description: "The descriptor for the table, a map of field names to descriptions"
+        description: "The descriptor for the dataset, a map of field names to descriptions"
       }
     ]
   }

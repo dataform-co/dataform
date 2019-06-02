@@ -1,7 +1,7 @@
 import Documentation from "df/docs/layouts/documentation";
 
 export default ({ children }) => (
-  <Documentation title="Publishing tables">{children}</Documentation>
+  <Documentation title="Publishing datasets">{children}</Documentation>
 );
 
 ##
@@ -24,12 +24,13 @@ By default, upon running this query, a **view** called `schema.example` will be 
 
 <div className="bp3-callout bp3-icon-info-sign bp3-intent-warning" markdown="1">
   File names must be unique within your <code>definitions/</code> folder, even across different
-  directories, because these determine the name of the table or view created within your warehouse.
+  directories, because these determine the name of the dataset or view created within your
+  warehouse.
 </div>
 
 ## Create a table
 
-By default, tables are actually created as views in your warehouse. To create an actual table, i.e. a full independent copy of the query result, you can use Dataform's JavaScript configuration syntax to set the `type` of the query to `table`.
+By default, datasets are created as views in your warehouse. To create an actual table, i.e. a full independent copy of the query result, you can use Dataform's JavaScript configuration syntax to set the `type` of the query to `table`.
 
 ```js
 --js type("table");
@@ -42,9 +43,9 @@ Note that configuration statements starting with `--js` are stripped during quer
 SELECT 1 AS TEST
 ```
 
-## Referencing other tables
+## Referencing other datasets
 
-Dataform provides methods that enable you to easily reference another table in your project without having to provide the full SQL table name.
+Dataform provides methods that enable you to easily reference another dataset in your project without having to provide the full SQL dataset name.
 
 `definitions/source.sql`:
 
@@ -58,7 +59,7 @@ SELECT 1 AS sourcedata
 SELECT * FROM ${ref("source")}
 ```
 
-In order to reference the table created by a `source.sql` file, the value that should be passed to the `ref()` function is `"source"`, i.e. the name of the file defining the table (_without_ the file extension).
+In order to reference the dataset created by a `source.sql` file, the value that should be passed to the `ref()` function is `"source"`, i.e. the name of the file defining the dataset (_without_ the file extension).
 
 The query will be compiled into the following SQL before it is run:
 
@@ -66,7 +67,7 @@ The query will be compiled into the following SQL before it is run:
 SELECT * FROM "dataform_schema"."source"
 ```
 
-Any table that is referenced by a query will automatically be added to that query's dependencies. Dependency queries are always executed before dependent queries to ensure pipeline correctness.
+Any dataset that is referenced by a query will automatically be added to that query's dependencies. Dependency queries are always executed before dependent queries to ensure pipeline correctness.
 
 ## Adding custom dependencies
 
@@ -84,9 +85,9 @@ Multiple dependencies may be provided in a single invocation:
 SELECT * FROM ...
 ```
 
-## Disable a table
+## Disable a dataset
 
-To stop a query being run, you can use the JavaScript `disabled()` method. This will keep the table as part of your graph, but stop it from executing when you run your project.
+To stop a query being run, you can use the JavaScript `disabled()` method. This will keep the dataset as part of your graph, but stop it from executing when you run your project.
 This can be useful for example if the relevant query breaks for some reason and you don't want your pipeline to fail while it's being fixed.
 
 ```js
@@ -94,13 +95,13 @@ This can be useful for example if the relevant query breaks for some reason and 
 SELECT * FROM ...
 ```
 
-## Executing statements before or after table creation
+## Executing statements before or after dataset creation
 
-To execute one or more SQL statements before or after creating a table, you can use the `preOps()` and `postOps()` configuration methods.
+To execute one or more SQL statements before or after creating a dataset, you can use the `preOps()` and `postOps()` configuration methods.
 
-### Example: Granting table access with `postOps()`
+### Example: Granting dataset access with `postOps()`
 
-The following example defines a post-query operation to configure table access permissions. It makes use of the built-in `self()` method which returns the fully-qualified name of the current table.
+The following example defines a post-query operation to configure dataset access permissions. It makes use of the built-in `self()` method which returns the fully-qualified name of the current dataset.
 
 ```js
 --js postOps(`GRANT SELECT ON ${self()} TO GROUP "allusers@dataform.co"`);
@@ -138,11 +139,11 @@ postOps([
 
 ## Overriding the output schema
 
-By default, all tables are created within the default schema chosen when initializing a project, usually `dataform`.
+By default, all datasets are created within the default schema chosen when initializing a project, usually `dataform`.
 
-This can be overridden on a per-file basis by changing the file name to have a fully qualified table name.
-For example, to create a table called `example` in the schema `other_schema`, create a file with the name `definitions/other_schema.example.sql`.
-This will override the output schema of the table to `other_schema`. To reference tables with overridden schemas, use the fully qualified name of the table:
+This can be overridden on a per-file basis by changing the file name to have a fully qualified dataset name.
+For example, to create a dataset called `example` in the schema `other_schema`, create a file with the name `definitions/other_schema.example.sql`.
+This will override the output schema of the dataset to `other_schema`. To reference datasets with overridden schemas, use the fully qualified name of the dataset:
 
 ```js
 SELECT * FROM ${ref("other_schema.table")}
@@ -184,7 +185,7 @@ disabled(true);
 
 ### Setting multiple properties with `config()`
 
-Most settings for a table can be passed in a single JSON object using the `config()` method:
+Most settings for a dataset can be passed in a single JSON object using the `config()` method:
 
 ```js
 /*js
@@ -209,11 +210,11 @@ config({
 
 ### BigQuery
 
-For more information on configuring BigQuery tables, such as enabling table partitioning, check out the [BigQuery guide](/guides/warehouses/bigquery).
+For more information on configuring BigQuery datasets, such as enabling dataset partitioning, check out the [BigQuery guide](/guides/warehouses/bigquery).
 
 ### Redshift
 
-For more information on configuring Redshift tables, such as sort keys and dist keys, check out the [Redshift guide](/guides/warehouses/redshift).
+For more information on configuring Redshift datasets, such as sort keys and dist keys, check out the [Redshift guide](/guides/warehouses/redshift).
 
 ## Further reading
 

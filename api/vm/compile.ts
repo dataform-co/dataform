@@ -1,52 +1,91 @@
-import * as core from "@dataform/core";
+import { createGenIndexConfig } from "@dataform/api/vm/gen_index_config";
+import * as legacyCompiler from "@dataform/api/vm/legacy_compiler";
+import { legacyGenIndex } from "@dataform/api/vm/legacy_gen_index";
+import { dataform } from "@dataform/protos";
 import * as crypto from "crypto";
 import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
 import { util } from "protobufjs";
 import { NodeVM } from "vm2";
-import { genIndex } from "../gen_index";
-
-export interface ICompileIPCParameters {
-  projectDir: string;
-  schemaSuffixOverride?: string;
-}
 
 export interface ICompileIPCResult {
   path?: string;
   err?: string;
 }
 
-export function compile(projectDir: string, schemaSuffixOverride?: string): Uint8Array {
-  const vm = new NodeVM({
+export function compile(compileConfig: dataform.ICompileConfig): Uint8Array {
+  const vmIndexFileName = path.resolve(path.join(compileConfig.projectDir, "index.js"));
+
+  const indexGeneratorVm = new NodeVM({
     wrapper: "none",
     require: {
       context: "sandbox",
-      root: projectDir,
+      root: compileConfig.projectDir,
+      external: true
+    }
+  });
+
+  // TODO: Once all users of @dataform/core are updated to include compiler functions, remove
+  // this exception handling code (and assume existence of genIndex / compiler functions in @dataform/core).
+  const findGenIndex = (): ((base64EncodedConfig: string) => string) => {
+    try {
+      return (
+        indexGeneratorVm.run(
+          'return require("@dataform/core").indexFileGenerator',
+          vmIndexFileName
+        ) || legacyGenIndex
+      );
+    } catch (e) {
+      return legacyGenIndex;
+    }
+  };
+  const findCompiler = (): ((code, path) => string) => {
+    try {
+      return (
+        indexGeneratorVm.run('return require("@dataform/core").compiler', vmIndexFileName) ||
+        legacyCompiler.compile
+      );
+    } catch (e) {
+      return legacyCompiler.compile;
+    }
+  };
+  const compiler = findCompiler();
+  if (!compiler) {
+    throw new Error("Could not find compiler function.");
+  }
+
+  const userCodeVm = new NodeVM({
+    wrapper: "none",
+    require: {
+      context: "sandbox",
+      root: compileConfig.projectDir,
       external: true
     },
     sourceExtensions: ["js", "sql"],
-    compiler: (code, path) => core.compilers.compile(code, path)
+    compiler
   });
 
-  const indexScript = genIndex(projectDir, "", schemaSuffixOverride);
   // We return a base64 encoded proto via NodeVM, as returning a Uint8Array directly causes issues.
-  const res: string = vm.run(indexScript, path.resolve(path.join(projectDir, "index.js")));
+  const res: string = userCodeVm.run(
+    findGenIndex()(createGenIndexConfig(compileConfig)),
+    vmIndexFileName
+  );
   const encodedGraphBytes = new Uint8Array(util.base64.length(res));
   util.base64.decode(res, encodedGraphBytes, 0);
   return encodedGraphBytes;
 }
 
-process.on("message", (compileIpcParameters: ICompileIPCParameters) => {
+process.on("message", (compileConfig: dataform.ICompileConfig) => {
   try {
-    returnToParent({ path: compileInTmpDir(compileIpcParameters) });
+    returnToParent({ path: compileInTmpDir(compileConfig) });
   } catch (e) {
     returnToParent({ err: String(e.stack) });
   }
   process.exit();
 });
 
-function compileInTmpDir(compileIpcParameters: ICompileIPCParameters) {
+function compileInTmpDir(compileConfig: dataform.ICompileConfig) {
   // IPC breaks down above 200kb, which is a problem. Instead, pass via file system...
   // TODO: This isn't ideal.
   const tmpDir = path.join(os.tmpdir(), "dataform");
@@ -56,17 +95,14 @@ function compileInTmpDir(compileIpcParameters: ICompileIPCParameters) {
   // Create a consistent hash for the temporary path based on the absolute project path.
   const absProjectPathHash = crypto
     .createHash("md5")
-    .update(path.resolve(compileIpcParameters.projectDir))
+    .update(path.resolve(compileConfig.projectDir))
     .digest("hex");
   const tmpPath = path.join(tmpDir, absProjectPathHash);
   // Clear the transfer path before writing it.
   if (fs.existsSync(tmpPath)) {
     fs.unlinkSync(tmpPath);
   }
-  const encodedGraph = compile(
-    compileIpcParameters.projectDir,
-    compileIpcParameters.schemaSuffixOverride
-  );
+  const encodedGraph = compile(compileConfig);
   fs.writeFileSync(tmpPath, encodedGraph);
   // Send back the temp path.
   return tmpPath;

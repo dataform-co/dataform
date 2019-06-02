@@ -16,20 +16,11 @@ Configuring your data warehouse settings should take less than 5 minutes. If you
 
 You’ll need to create a service account from your Google Cloud Console and assign it permissions to access BigQuery.
 
-1. Open the <a target="_blank" href="https://console.cloud.google.com/projectselector/iam-admin/serviceaccounts">service account page</a> in Google Cloud Console, choosing a project if needed.
-2. Click `Add Service Account`, give it a name, and select the `BigQuery Admin` role. Admin access is required by Dataform so that it can create queries and list tables.
-
-<img
-  src="/static/images/platform_guides/datawarehouse/bigquery_service_account.png"
-  style={{ width: "100%", padding: "20px" }}
-/>
-
-3. Check the `Furnish a new private key` checkbox and select the JSON option. You will upload this file to Dataform.
-
-<img
-  src="/static/images/platform_guides/datawarehouse/bigquery_private_key.png"
-  style={{ width: "100%", maxWidth: "500px", padding: "20px" }}
-/>
+1. Follow <a target="_blank" href="https://cloud.google.com/iam/docs/creating-managing-service-accounts#creating_a_service_account">these instructions</a> to create a new service account in Google Cloud Console.
+2. Grant the new account the `BigQuery Admin` role. (Admin access is required by Dataform so that it can create queries and list tables.) Read
+   <a target="_blank" href="https://cloud.google.com/iam/docs/granting-roles-to-service-accounts#granting_access_to_a_service_account_for_a_resource">this</a> if you need help.
+3. Create a key for your new service account (in JSON format). You will upload this file to Dataform. Read
+   <a target="_blank" href="https://cloud.google.com/iam/docs/creating-managing-service-account-keys#creating_service_account_keys">this</a> if you need help.
 
 ## Postgres (running in AWS) or Redshift
 
@@ -40,7 +31,17 @@ Postgres and Redshift projects require the following configuration settings:
 - Username and password
 - Database name
 
-You will also need to whitelist Dataform's IP to access your database cluster.
+<div className="bp3-callout bp3-icon-info-sign bp3-intent-warning" markdown="1">
+  Dataform's IP addresses must be whitelisted in order to access your Redshift cluster. Please
+  follow{" "}
+  <a
+    target="_blank"
+    href="https://docs.aws.amazon.com/redshift/latest/gsg/rs-gsg-authorize-cluster-access.html"
+  >
+    these instructions
+  </a>
+  . Dataform's IP addresses are <code>35.233.106.210</code> and <code>104.196.10.242</code>.
+</div>
 
 ### How to find Redshift credentials
 
@@ -48,23 +49,6 @@ You will also need to whitelist Dataform's IP to access your database cluster.
 2. Select your cluster under `Clusters`.
 3. The hostname is the endpoint listed at the top of the page. Username and database name are listed under cluster database properties.
    You may prefer to create a separate username and password for Dataform to use - please contact our team if you need help.
-
-### Whitelist Dataform's IP addresses
-
-1. In your Redshift's cluster Configuration options, click on your VPC security groups under Cluster Properties.
-
-   <img
-     src="/static/images/platform_guides/datawarehouse/redshift_vpc.png"
-     style={{ width: "100%", maxWidth: "350px", padding: "20px" }}
-   />
-
-2. Click on Edit under Inbound.
-3. Click on Add rule to create a new rule for Dataform. Select type Redshift and add the following source IP addresses: `35.233.106.210` and `104.196.10.242`
-
-<img
-  src="/static/images/platform_guides/datawarehouse/redshift_ips.png"
-  style={{ width: "100%", maxWidth: "500px", padding: "20px" }}
-/>
 
 ## Snowflake
 

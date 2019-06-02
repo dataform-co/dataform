@@ -1,6 +1,7 @@
 import { Credentials } from "@dataform/api/commands/credentials";
 import { DbAdapter } from "@dataform/api/dbadapters/index";
 import { dataform } from "@dataform/protos";
+import * as https from "https";
 
 interface ISnowflakeStatement {
   cancel: () => void;
@@ -33,6 +34,7 @@ const Snowflake: ISnowflake = require("snowflake-sdk");
 
 export class SnowflakeDbAdapter implements DbAdapter {
   private connection: ISnowflakeConnection;
+  private connected: Promise<void>;
 
   constructor(credentials: Credentials) {
     const snowflakeCredentials = credentials as dataform.ISnowflake;
@@ -44,14 +46,26 @@ export class SnowflakeDbAdapter implements DbAdapter {
       warehouse: snowflakeCredentials.warehouse,
       role: snowflakeCredentials.role
     });
-    this.connection.connect((err, conn) => {
-      if (err) {
-        console.error("Unable to connect: " + err.message);
-      }
-    });
+    // We are forced to try our own HTTPS connection to the final <accountId>.snowflakecomputing.com URL
+    // in order to verify its certificate. If we don't do this, and pass an invalid account ID (which thus
+    // resolves to an invalid URL) to the snowflake connect() API, snowflake-sdk will not handle the
+    // resulting error correctly (and thus crash this process).
+    this.connected = this.verifyCertificate(snowflakeCredentials.accountId).then(
+      () =>
+        new Promise<void>((resolve, reject) => {
+          this.connection.connect((err, conn) => {
+            if (err) {
+              reject(err);
+            } else {
+              resolve();
+            }
+          });
+        })
+    );
   }
 
-  public execute(statement: string) {
+  public async execute(statement: string) {
+    await this.connected;
     return new Promise<any[]>((resolve, reject) => {
       this.connection.execute({
         sqlText: statement,
@@ -121,5 +135,17 @@ export class SnowflakeDbAdapter implements DbAdapter {
     return Promise.resolve().then(() =>
       this.execute(`create schema if not exists "${schema}"`).then(() => {})
     );
+  }
+
+  private async verifyCertificate(accountId: string) {
+    return new Promise<void>((resolve, reject) => {
+      const req = https.request(`https://${accountId}.snowflakecomputing.com`);
+      req.on("error", e => {
+        reject(e);
+      });
+      req.end(() => {
+        resolve();
+      });
+    });
   }
 }

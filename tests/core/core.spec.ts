@@ -1,5 +1,7 @@
-import { Session, Table, utils } from "@dataform/core";
 import * as compilers from "@dataform/core/compilers";
+import { Session } from "@dataform/core/session";
+import { Table } from "@dataform/core/table";
+import * as utils from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
 import { expect } from "chai";
 import { asPlainObject } from "df/tests/utils";
@@ -492,11 +494,17 @@ describe("@dataform/core", () => {
         /*js
         var c = 3;
         */
-        --js var b = 2;
         /*
         normal_multiline_comment
         */
+        -- --js var x = 1200;
+        --js var b = 2;
         -- normal_single_line_comment
+        
+        -- /*js 
+        -- var y = 234; // some js comment
+        -- */
+
         select 1 as test from \`x\`
         `;
       const EXPECTED_JS = `var a = 1;\nvar c = 3;\nvar b = 2;`.trim();
@@ -504,7 +512,14 @@ describe("@dataform/core", () => {
         /*
         normal_multiline_comment
         */
+        -- --js var x = 1200;
+
         -- normal_single_line_comment
+        
+        -- /*js 
+        -- var y = 234; // some js comment
+        -- */
+
         select 1 as test from \\\`x\\\``.trim();
 
       const { sql, js } = compilers.extractJsBlocks(TEST_SQL_FILE);

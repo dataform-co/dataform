@@ -5,14 +5,14 @@ export default ({ children }) => <Documentation title="Scheduling runs">{childre
 
 ## Introduction
 
-Schedules can be used to run any selection of your tables at a user-specified frequency. Running your scripts on a repeating schedule ensures output data is always kept up to date.
+Schedules can be used to run any selection of your datasets at a user-specified frequency. Running your scripts on a repeating schedule ensures output data is always kept up to date.
 
 <div className="bp3-callout bp3-icon-info-sign bp3-intent-warning" markdown="1">
   Schedules{" "}
   <b>
-    only run from the <code>production</code> workspace
+    only run from the <code>production</code> branch
   </b>
-  . Make sure you commit and push your changes to the production workspace before configuring schedules.
+  . Make sure you commit and push your changes to the production branch before configuring schedules.
 </div>
 
 ## Create a schedule
@@ -22,10 +22,10 @@ Schedules can be used to run any selection of your tables at a user-specified fr
 3. Enter your schedule's settings and click `Create schedule`
 
 <ScreenshotWrapper>
-<img
-  src="/static/images/platform_guides/scheduling/create_schedule.png"
-  style={{ width: "100%" }}
-/>
+  <img
+    src="/static/images/platform_guides/scheduling/create_schedule.png"
+    style={{ width: "100%" }}
+  />
 </ScreenshotWrapper>
 
 ## View past runs
@@ -33,8 +33,5 @@ Schedules can be used to run any selection of your tables at a user-specified fr
 You can find all current and historical scheduled runs in the _Run logs_ page, accessible using the left menu bar.
 
 <ScreenshotWrapper>
-<img
-  src="/static/images/platform_guides/scheduling/run_logs.png"
-  style={{ width: "100%" }}
-/>
+  <img src="/static/images/platform_guides/scheduling/run_logs.png" style={{ width: "100%" }} />
 </ScreenshotWrapper>

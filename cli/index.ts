@@ -29,7 +29,7 @@ import * as fs from "fs";
 import * as path from "path";
 import * as yargs from "yargs";
 
-const RECOMPILE_DELAY = 2000;
+const RECOMPILE_DELAY = 500;
 
 const projectDirOption: INamedOption<yargs.PositionalOptions> = {
   name: "project-dir",
@@ -49,7 +49,7 @@ const projectDirMustExistOption = {
     } catch (e) {
       throw new Error(
         `${
-          argv["project-dir"]
+        argv["project-dir"]
         } does not appear to be a dataform directory (missing dataform.json file).`
       );
     }
@@ -158,6 +158,13 @@ const builtYargs = createYargsCli({
             describe: "Whether to skip installing NPM packages.",
             default: false
           }
+        },
+        {
+          name: "include-schedules",
+          option: {
+            describe: "Whether to initialize a schedules.json file.",
+            default: false
+          }
         }
       ],
       processFn: async argv => {
@@ -169,7 +176,10 @@ const builtYargs = createYargsCli({
               warehouse: argv.warehouse,
               gcloudProjectId: argv["gcloud-project-id"]
             },
-            argv["skip-install"]
+            {
+              skipInstall: argv["skip-install"],
+              includeSchedules: argv["include-schedules"]
+            }
           )
         );
       }
@@ -178,7 +188,7 @@ const builtYargs = createYargsCli({
       format: "init-creds <warehouse> [project-dir]",
       description: `Creates a ${
         credentials.CREDENTIALS_FILENAME
-      } file for dataform to use when accessing your warehouse.`,
+        } file for dataform to use when accessing your warehouse.`,
       positionalOptions: [warehouseOption, projectDirMustExistOption],
       options: [
         {
@@ -212,11 +222,21 @@ const builtYargs = createYargsCli({
         };
         const finalCredentials = credentialsFn();
         if (argv["test-connection"]) {
-          try {
-            await credentials.test(finalCredentials, argv.warehouse);
-            printSuccess("\nWarehouse test query completed successfully.\n");
-          } catch (e) {
-            throw new Error(`Warehouse test query failed: ${e.stack || e.message}`);
+          print("\nRunning connection test...");
+          const testResult = await credentials.test(finalCredentials, argv.warehouse);
+          switch (testResult.status) {
+            case credentials.TestResultStatus.SUCCESSFUL: {
+              printSuccess("\nWarehouse test query completed successfully.\n");
+              break;
+            }
+            case credentials.TestResultStatus.TIMED_OUT: {
+              throw new Error("Warehouse test connection timed out.");
+            }
+            case credentials.TestResultStatus.OTHER_ERROR: {
+              throw new Error(
+                `Warehouse test query failed: ${testResult.error.stack || testResult.error.message}`
+              );
+            }
           }
         } else {
           print("\nWarehouse test query was not run.\n");

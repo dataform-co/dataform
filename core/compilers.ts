@@ -19,11 +19,10 @@ export function compile(code: string, path: string) {
 export function compileTableSql(code: string, path: string) {
   const { sql, js } = extractJsBlocks(code);
   const functionsBindings = getFunctionPropertyNames(TableContext.prototype).map(
-    name => `const ${name} = !!ctx.${name} ? ctx.${name}.bind(ctx) : () => "";`
+    name => `const ${name} = ctx.${name}.bind(ctx);`
   );
 
   return `
-  const publish = global.publish || global.materialize;
   publish("${utils.baseFilename(path)}").query(ctx => {
     ${functionsBindings.join("\n")}
     ${js}
@@ -34,7 +33,7 @@ export function compileTableSql(code: string, path: string) {
 export function compileOperationSql(code: string, path: string) {
   const { sql, js } = extractJsBlocks(code);
   const functionsBindings = getFunctionPropertyNames(OperationContext.prototype).map(
-    name => `const ${name} = !!ctx.${name} ? ctx.${name}.bind(ctx) : () => "";`
+    name => `const ${name} = ctx.${name}.bind(ctx);`
   );
 
   return `
@@ -48,7 +47,7 @@ export function compileOperationSql(code: string, path: string) {
 export function compileAssertionSql(code: string, path: string) {
   const { sql, js } = extractJsBlocks(code);
   const functionsBindings = getFunctionPropertyNames(AssertionContext.prototype).map(
-    name => `const ${name} = !!ctx.${name} ? ctx.${name}.bind(ctx) : () => "";`
+    name => `const ${name} = ctx.${name}.bind(ctx);`
   );
 
   return `
@@ -60,7 +59,7 @@ export function compileAssertionSql(code: string, path: string) {
 }
 
 export function extractJsBlocks(code: string): { sql: string; js: string } {
-  const JS_REGEX = /\/\*[jJ][sS]\s*[\r\n]+((?:[^*]|[\r\n]|(?:\*+(?:[^*/]|[\r\n])))*)\*+\/|\-\-[jJ][sS]\s(.*)/g;
+  const JS_REGEX = /^\s*\/\*[jJ][sS]\s*[\r\n]+((?:[^*]|[\r\n]|(?:\*+(?:[^*/]|[\r\n])))*)\*+\/|^\s*\-\-[jJ][sS]\s(.*)/gm;
   // This captures any single backticks that aren't escaped with a preceding \.
   const RAW_BACKTICKS_REGEX = /([^\\])`/g;
   const jsBlocks: string[] = [];
@@ -82,10 +81,18 @@ export function extractJsBlocks(code: string): { sql: string; js: string } {
   };
 }
 
-export function getFunctionPropertyNames(prototype: any) {
-  return Object.getOwnPropertyNames(prototype).filter(function(e, i, arr) {
-    if (e != arr[i + 1] && typeof prototype[e] == "function") {
-      return true;
-    }
-  });
+function getFunctionPropertyNames(prototype: any) {
+  return [
+    ...new Set(
+      Object.getOwnPropertyNames(prototype).filter(propertyName => {
+        if (typeof prototype[propertyName] !== "function") {
+          return false;
+        }
+        if (propertyName === "constructor") {
+          return false;
+        }
+        return true;
+      })
+    )
+  ];
 }

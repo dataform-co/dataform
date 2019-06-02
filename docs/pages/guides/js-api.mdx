@@ -10,7 +10,7 @@ To use the JavaScript API, create a `.js` file anywhere in the `definitions/` fo
 
 The JavaScript API exposes functions that create any of the actions that you would otherwise define in a SQL file:
 
-- Tables
+- Datasets
 - Assertions
 - Operations
 
@@ -30,7 +30,7 @@ assert("assertion1").query("SELECT * FROM source_table WHERE value IS NULL");
 operate("operation1").queries("INSERT INTO some_table (test) VALUES (2)");
 ```
 
-This example creates a table, an assertion, and an operation in a single file, which if written in SQL would have required 3 seperate files.
+This example creates a dataset, an assertion, and an operation in a single file, which if written in SQL would have required 3 seperate files.
 
 ## Setting properties on actions
 
@@ -40,9 +40,9 @@ Each of the global methods - `publish()`, `operate()`, and `assert()` - return a
 publish("table1")
   .query("SELECT 1 AS test") // Defines the query
   .type("table") // Sets the query's type
-  .dependencies(["other_table"]) // Specifies table dependencies
+  .dependencies(["other_table"]) // Specifies dataset dependencies
   .descriptor({
-    test: "Value is 1" // Describes fields in the table
+    test: "Value is 1" // Describes fields in the dataset
   });
 ```
 
@@ -61,7 +61,7 @@ publish("table1", {
 
 Configuration options for each type of action are listed at the relevant reference documentation:
 
-- [`publish()`](/reference/tables)
+- [`publish()`](/reference/datasets)
 - [`operate()`](/reference/operations)
 - [`assert()`](/reference/assertions)
 
@@ -107,20 +107,20 @@ publish("example").config({
 });
 ```
 
-## Example: Dynamic table generation
+## Example: Dynamic dataset generation
 
 One of the most common use cases for using the JavaScript API is to perform a similar action repeatedly.
 
-For example, imagine you have several tables, all of which have a `user_id` field. Perhaps you would like to create a view of each table with certain blacklisted user IDs removed.
-You could perform this action across all tables using a JavaScript `forEach()` statement:
+For example, imagine you have several datasets, all of which have a `user_id` field. Perhaps you would like to create a view of each dataset with certain blacklisted user IDs removed.
+You could perform this action across all datasets using a JavaScript `forEach()` statement:
 
 `definitions/blacklist_views.js`:
 
 ```js
-const tableNames = ["user_events", "user_settings", "user_logs"];
+const datasetNames = ["user_events", "user_settings", "user_logs"];
 
-tableNames.forEach(tableName => {
-  publish(tableName + "_blacklist_removed").query(
+datasetNames.forEach(datasetNames => {
+  publish(datasetNames + "_blacklist_removed").query(
     ctx => `
       SELECT * FROM ${ctx.ref(tableName)}
       WHERE user_id NOT IN (
@@ -131,4 +131,4 @@ tableNames.forEach(tableName => {
 });
 ```
 
-This script would create 3 new views named `user_events_blacklist_removed`, `user_settings_blacklist_removed`, and `user_logs_blacklist_removed` that don't contain any of the blacklisted user IDs.
+This script would create 3 new datasets as views named `user_events_blacklist_removed`, `user_settings_blacklist_removed`, and `user_logs_blacklist_removed` that don't contain any of the blacklisted user IDs.

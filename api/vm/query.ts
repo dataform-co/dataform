@@ -1,7 +1,7 @@
-import { compilers } from "@dataform/core";
+import { createGenIndexConfig } from "@dataform/api/vm/gen_index_config";
+import { compiler, indexFileGenerator } from "@dataform/core";
 import * as path from "path";
 import { NodeVM } from "vm2";
-import { genIndex } from "../gen_index";
 
 export function compile(query: string, projectDir?: string): string {
   let compiledQuery = query;
@@ -14,14 +14,18 @@ export function compile(query: string, projectDir?: string): string {
         external: true
       },
       sourceExtensions: ["js", "sql"],
-      compiler: (code, path) => compilers.compile(code, path)
+      compiler: (code, path) => compiler(code, path)
     });
-    const indexScript = genIndex(
-      projectDir,
-      `(function() {
-        const { session } = require("@dataform/core");
-        const ref = session.resolve.bind(session);
-        const resolve = session.resolve.bind(session);
+    // This use of genIndex needs some rethinking. It uses the version built into
+    // @dataform/api instead of @dataform/core, which would be more correct, as done in compile.ts.
+    // Possibly query compilation as a whole needs a redesign.
+    const indexScript = indexFileGenerator(
+      createGenIndexConfig(
+        { projectDir },
+        `(function() {
+        require("@dataform/core");
+        const ref = global.session.resolve.bind(session);
+        const resolve = global.session.resolve.bind(session);
         const noop = () => "";
         const config = noop;
         const type = noop;
@@ -34,6 +38,7 @@ export function compile(query: string, projectDir?: string): string {
         const describe = field => field;
         return \`${query}\`;
       })()`
+      )
     );
     compiledQuery = vm.run(indexScript, path.resolve(path.join(projectDir, "index.js")));
   }
