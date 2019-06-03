@@ -13,7 +13,6 @@ export interface IPage {
 interface IProps {
   pages?: IPage[];
   currentPath?: string;
-  invert?: boolean;
   maxWidth?: string;
 }
 
@@ -55,7 +54,9 @@ export class Header extends React.Component<IProps, IState> {
         <nav className={navClasses.join(" ")}>
           <span className={styles.navContent} style={{ maxWidth }}>
             <span>
-              <a href="https://dataform.co">{this.createColouredLogo(showFixedNav)}</a>
+              <a href="https://dataform.co">
+                <img src={logoImage} className={styles.logoImage} />
+              </a>
               <a href="/">
                 <span className={styles.docs_tag}>docs</span>
               </a>
@@ -83,9 +84,4 @@ export class Header extends React.Component<IProps, IState> {
       </div>
     );
   }
-
-  // TODO just use the fill property in the svg to do this
-  private createColouredLogo = (showFixedNav: boolean) => {
-    return <img src={logoImage} className={styles.logoImage} />;
-  };
 }

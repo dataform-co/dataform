@@ -83,6 +83,7 @@ class SearchWidget extends React.Component<IWidgetProps, IWidgetState> {
           />
         </Menu>
         <SearchOmnibar
+          className={styles.omnibar}
           onQueryChange={query => this.props.refine(query)}
           onItemSelect={item => {
             this.setState({ isOpen: false });
@@ -103,9 +104,9 @@ class SearchWidget extends React.Component<IWidgetProps, IWidgetState> {
       .filter(value => !!value)
       .join(" > ");
     return (
-      <div className={props.modifiers.active ? styles.hit_active : styles.hit}>
+      <div className={props.modifiers.active ? styles.hitActive : styles.hit}>
         <a href={item.url}>
-          <div className={styles.hitHierarchy}>{prettyString}</div>
+          <span className={styles.hitHierarchy}>{prettyString}</span>
         </a>
         {item.content && (
           <div className={styles.hitContent} dangerouslySetInnerHTML={{ __html: item.content }} />

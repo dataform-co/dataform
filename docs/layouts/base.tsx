@@ -15,7 +15,7 @@ export interface IProps {
 
 const PAGES = [];
 
-const MAX_WIDTH = "1100px";
+const MAX_WIDTH = "1220px";
 
 export class BaseLayout extends React.Component<IProps, {}> {
   public render() {

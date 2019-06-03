@@ -2,7 +2,14 @@ import Documentation from "df/docs/layouts/documentation";
 import Method from "../../components/method";
 import { methods } from "../../_methods";
 
-export default ({ children }) => <Documentation title="JS API reference">{children}</Documentation>;
+export const meta = {
+  title: "JS API reference",
+  __filename
+};
+
+export default ({ children }) => (
+  <Documentation {...meta}>{children}</Documentation>
+);
 
 For more more advanced use cases, datasets, operations, and assertions can all be defined in JavaScript. The following methods are globally available or can be explicitly required from `@dataform/core`.
 

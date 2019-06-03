@@ -2,9 +2,10 @@ import Method from "df/docs/components/method";
 import Navigation, { IHeaderLink } from "df/docs/components/navigation";
 import * as React from "react";
 
+import { pathFromFilename } from "df/docs/common/paths";
+import { Search } from "df/docs/components/search";
 import { BaseLayout } from "df/docs/layouts/base";
 import * as styles from "df/docs/layouts/documentation.css";
-import { Search } from "df/docs/components/search";
 
 export interface IProps {
   title: string;
@@ -32,18 +33,18 @@ export default class Documentation extends React.Component<IProps> {
     }
 
     return [];
-  };
+  }
 
   public render() {
-    const menu = this.getHeaderLinks(this.props.children as React.ReactElement<any>);
+    const currentHeaderLinks = this.getHeaderLinks(this.props.children as React.ReactElement<any>);
     return (
       <BaseLayout title={`Dataform docs | ${this.props.title}`}>
         <div className={styles.container}>
           <div className={styles.sidebar}>
-          <Search />
+            <Search />
             <Navigation
               currentPath={pathFromFilename(this.props.__filename)}
-              onThisPageItems={menu}
+              currentHeaderLinks={currentHeaderLinks}
             />
           </div>
           <div className={styles.mainContent}>
@@ -54,11 +55,4 @@ export default class Documentation extends React.Component<IProps> {
       </BaseLayout>
     );
   }
-}
-
-function pathFromFilename(filename: string) {
-  if (!!filename && filename.indexOf("pages/") >= 0) {
-    return `/${filename.split("pages/")[1].split(".")[0]}`;
-  } 
-  return filename;
 }
