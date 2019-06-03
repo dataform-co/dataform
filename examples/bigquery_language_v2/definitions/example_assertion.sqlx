@@ -1,5 +1,5 @@
 config {
-    schemaOverride: "hi_there",
+    schema: "hi_there",
     type: "assertion"
 }
 

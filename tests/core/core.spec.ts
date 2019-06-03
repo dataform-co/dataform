@@ -444,7 +444,7 @@ describe("@dataform/core", () => {
         .to.be.an("array").that.is.not.empty;
 
       const errors = gErrors.compilationErrors.filter(item =>
-        item.message.match(/Duplicate node name/)
+        item.message.match(/Duplicate action name/)
       );
       expect(errors).to.be.an("array").that.is.not.empty;
     });
