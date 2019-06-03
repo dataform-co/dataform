@@ -60,11 +60,11 @@ export class Builder {
     allNodes.forEach(node => (nodeNameMap[node.name] = node));
 
     // Determine which nodes should be included.
-    const includedNodeNames =
+    const includedActionNames =
       this.runConfig.actions && this.runConfig.actions.length > 0
         ? utils.matchPatterns(this.runConfig.actions, allNodeNames)
         : allNodeNames;
-    let includedNodes = allNodes.filter(node => includedNodeNames.indexOf(node.name) >= 0);
+    let includedNodes = allNodes.filter(node => includedActionNames.indexOf(node.name) >= 0);
     if (this.runConfig.includeDependencies) {
       // Compute all transitive dependencies.
       for (let i = 0; i < allNodes.length; i++) {
@@ -75,18 +75,18 @@ export class Builder {
               : [];
           // Update included node names.
           matchingNodeNames.forEach(nodeName => {
-            if (includedNodeNames.indexOf(nodeName) < 0) {
-              includedNodeNames.push(nodeName);
+            if (includedActionNames.indexOf(nodeName) < 0) {
+              includedActionNames.push(nodeName);
             }
           });
           // Update included nodes.
-          includedNodes = allNodes.filter(node => includedNodeNames.indexOf(node.name) >= 0);
+          includedNodes = allNodes.filter(node => includedActionNames.indexOf(node.name) >= 0);
         });
       }
     }
     // Remove any excluded dependencies.
     includedNodes.forEach(node => {
-      node.dependencies = node.dependencies.filter(dep => includedNodeNames.indexOf(dep) >= 0);
+      node.dependencies = node.dependencies.filter(dep => includedActionNames.indexOf(dep) >= 0);
     });
     return dataform.ExecutionGraph.create({
       projectConfig: this.compiledGraph.projectConfig,

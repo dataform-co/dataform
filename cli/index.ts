@@ -66,9 +66,9 @@ const fullRefreshOption: INamedOption<yargs.Options> = {
 };
 
 const nodesOption: INamedOption<yargs.Options> = {
-  name: "nodes",
+  name: "actions",
   option: {
-    describe: "A list of node names or patterns to run. Can include '*' wildcards.",
+    describe: "A list of action names or patterns to run. Can include '*' wildcards.",
     type: "array"
   }
 };
@@ -76,13 +76,13 @@ const nodesOption: INamedOption<yargs.Options> = {
 const includeDepsOption: INamedOption<yargs.Options> = {
   name: "include-deps",
   option: {
-    describe: "If set, dependencies for selected nodes will also be run.",
+    describe: "If set, dependencies for selected actions will also be run.",
     type: "boolean"
   },
   // It would be nice to use yargs' "implies" to implement this, but it doesn't work for some reason.
   check: (argv: yargs.Arguments) => {
-    if (argv.include_deps && !argv.nodes) {
-      throw new Error("The --include_deps flag should only be supplied along with --nodes.");
+    if (argv.include_deps && !argv.actions) {
+      throw new Error("The --include_deps flag should only be supplied along with --actions.");
     }
   }
 };
@@ -371,7 +371,7 @@ const builtYargs = createYargsCli({
           compiledGraph,
           {
             fullRefresh: argv["full-refresh"],
-            actions: argv.nodes,
+            actions: argv.actions,
             includeDependencies: argv["include-deps"]
           },
           readCredentials
