@@ -22,7 +22,7 @@ export class Runner {
   private adapter: dbadapters.DbAdapter;
   private graph: dataform.IExecutionGraph;
 
-  private pendingNodes: dataform.IExecutionNode[];
+  private pendingActions: dataform.IExecutionAction[];
 
   private cancelled = false;
   private result: dataform.IExecutedGraph;
@@ -36,12 +36,12 @@ export class Runner {
   constructor(adapter: dbadapters.DbAdapter, graph: dataform.IExecutionGraph) {
     this.adapter = adapter;
     this.graph = graph;
-    this.pendingNodes = graph.nodes;
+    this.pendingActions = graph.actions;
     this.result = {
       projectConfig: this.graph.projectConfig,
       runConfig: this.graph.runConfig,
       warehouseState: this.graph.warehouseState,
-      nodes: []
+      actions: []
     };
     this.eEmitter = new EventEmitter();
     // There could feasibly be thousands of listeners to this, 0 makes the limit infinite.
@@ -62,7 +62,7 @@ export class Runner {
       try {
         // Work out all the schemas we are going to need to create first.
         const uniqueSchemas = {};
-        this.graph.nodes
+        this.graph.actions
           .filter(node => !!node.target)
           .map(node => node.target.schema)
           .filter(schema => !!schema)
@@ -97,15 +97,15 @@ export class Runner {
   }
 
   private async loop(resolve: () => void, reject: (value: any) => void) {
-    const pendingNodes = this.pendingNodes;
-    this.pendingNodes = [];
+    const pendingNodes = this.pendingActions;
+    this.pendingActions = [];
 
-    const allFinishedDeps = this.result.nodes.map(node => node.name);
-    const allSuccessfulDeps = this.result.nodes
+    const allFinishedDeps = this.result.actions.map(node => node.name);
+    const allSuccessfulDeps = this.result.actions
       .filter(
         node =>
-          node.status === dataform.NodeExecutionStatus.SUCCESSFUL ||
-          node.status == dataform.NodeExecutionStatus.DISABLED
+          node.status === dataform.ActionExecutionStatus.SUCCESSFUL ||
+          node.status == dataform.ActionExecutionStatus.DISABLED
       )
       .map(fn => fn.name);
 
@@ -119,33 +119,33 @@ export class Runner {
         await this.triggerChange();
         // All deps are finished but they weren't all successful, or the run was cancelled.
         // skip this node.
-        this.result.nodes.push({
+        this.result.actions.push({
           name: node.name,
-          status: dataform.NodeExecutionStatus.SKIPPED,
+          status: dataform.ActionExecutionStatus.SKIPPED,
           deprecatedSkipped: true
         });
       } else {
-        this.pendingNodes.push(node);
+        this.pendingActions.push(node);
       }
     });
 
-    if (this.pendingNodes.length > 0 || this.result.nodes.length != this.graph.nodes.length) {
+    if (this.pendingActions.length > 0 || this.result.actions.length != this.graph.actions.length) {
       setTimeout(() => this.loop(resolve, reject), 100);
     } else {
       // Work out if this run was an overall success.
       let ok = true;
-      this.result.nodes.forEach(node => {
+      this.result.actions.forEach(node => {
         ok =
           ok &&
-          (node.status === dataform.NodeExecutionStatus.SUCCESSFUL ||
-            node.status == dataform.NodeExecutionStatus.DISABLED);
+          (node.status === dataform.ActionExecutionStatus.SUCCESSFUL ||
+            node.status == dataform.ActionExecutionStatus.DISABLED);
       });
       this.result.ok = ok;
       resolve();
     }
   }
 
-  private executeNode(node: dataform.IExecutionNode) {
+  private executeNode(node: dataform.IExecutionAction) {
     const startTime = process.hrtime();
     // This creates a promise chain that executes all tasks in order.
     node.tasks
@@ -174,12 +174,12 @@ export class Runner {
         const endTime = process.hrtime(startTime);
         const executionTime = endTime[0] * 1000 + Math.round(endTime[1] / 1000000);
         await this.triggerChange();
-        this.result.nodes.push({
+        this.result.actions.push({
           name: node.name,
           status:
             results.length == 0
-              ? dataform.NodeExecutionStatus.DISABLED
-              : dataform.NodeExecutionStatus.SUCCESSFUL,
+              ? dataform.ActionExecutionStatus.DISABLED
+              : dataform.ActionExecutionStatus.SUCCESSFUL,
           tasks: results,
           executionTime: Long.fromNumber(executionTime),
           deprecatedOk: true
@@ -189,9 +189,9 @@ export class Runner {
         const endTime = process.hrtime(startTime);
         const executionTime = endTime[0] * 1000 + Math.round(endTime[1] / 1000000);
         await this.triggerChange();
-        this.result.nodes.push({
+        this.result.actions.push({
           name: node.name,
-          status: dataform.NodeExecutionStatus.FAILED,
+          status: dataform.ActionExecutionStatus.FAILED,
           tasks: results,
           executionTime: Long.fromNumber(executionTime),
           deprecatedOk: false

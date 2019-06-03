@@ -6,7 +6,7 @@ import {
   printCompiledGraph,
   printCompiledGraphErrors,
   printError,
-  printExecutedNode,
+  printExecutedAction,
   printExecutionGraph,
   printGetTableResult,
   printInitCredsResult,
@@ -65,7 +65,7 @@ const fullRefreshOption: INamedOption<yargs.Options> = {
   }
 };
 
-const nodesOption: INamedOption<yargs.Options> = {
+const actionsOption: INamedOption<yargs.Options> = {
   name: "actions",
   option: {
     describe: "A list of action names or patterns to run. Can include '*' wildcards.",
@@ -346,7 +346,7 @@ const builtYargs = createYargsCli({
           }
         },
         fullRefreshOption,
-        nodesOption,
+        actionsOption,
         includeDepsOption,
         schemaSuffixOverrideOption,
         credentialsOption,
@@ -394,18 +394,18 @@ const builtYargs = createYargsCli({
           runner.cancel();
         });
 
-        const nodesByName = new Map<string, dataform.IExecutionNode>();
-        executionGraph.nodes.forEach(node => {
-          nodesByName.set(node.name, node);
+        const actionsByName = new Map<string, dataform.IExecutionAction>();
+        executionGraph.actions.forEach(action => {
+          actionsByName.set(action.name, action);
         });
-        const alreadyPrintedNodes = new Set<string>();
+        const alreadyPrintedActions = new Set<string>();
 
         runner.onChange((updatedGraph: dataform.IExecutedGraph) => {
-          updatedGraph.nodes
-            .filter(executedNode => !alreadyPrintedNodes.has(executedNode.name))
-            .forEach(executedNode => {
-              printExecutedNode(executedNode, nodesByName.get(executedNode.name), argv.verbose);
-              alreadyPrintedNodes.add(executedNode.name);
+          updatedGraph.actions
+            .filter(executedAction => !alreadyPrintedActions.has(executedAction.name))
+            .forEach(executedAction => {
+              printExecutedAction(executedAction, actionsByName.get(executedAction.name), argv.verbose);
+              alreadyPrintedActions.add(executedAction.name);
             });
         });
         await runner.resultPromise();

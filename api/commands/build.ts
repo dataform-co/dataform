@@ -50,49 +50,49 @@ export class Builder {
     const filteredTables = this.compiledGraph.tables.filter(t => t.type !== "inline");
 
     // Firstly, turn every thing into an execution node.
-    const allNodes: dataform.IExecutionNode[] = [].concat(
+    const allActions: dataform.IExecutionAction[] = [].concat(
       filteredTables.map(t => this.buildTable(t, tableStateByTarget[JSON.stringify(t.target)])),
       this.compiledGraph.operations.map(o => this.buildOperation(o)),
       this.compiledGraph.assertions.map(a => this.buildAssertion(a))
     );
-    const allNodeNames = allNodes.map(n => n.name);
-    const nodeNameMap: { [name: string]: dataform.IExecutionNode } = {};
-    allNodes.forEach(node => (nodeNameMap[node.name] = node));
+    const allActionNames = allActions.map(n => n.name);
+    const nodeNameMap: { [name: string]: dataform.IExecutionAction } = {};
+    allActions.forEach(node => (nodeNameMap[node.name] = node));
 
     // Determine which nodes should be included.
     const includedActionNames =
       this.runConfig.actions && this.runConfig.actions.length > 0
-        ? utils.matchPatterns(this.runConfig.actions, allNodeNames)
-        : allNodeNames;
-    let includedNodes = allNodes.filter(node => includedActionNames.indexOf(node.name) >= 0);
+        ? utils.matchPatterns(this.runConfig.actions, allActionNames)
+        : allActionNames;
+    let includedActions = allActions.filter(node => includedActionNames.indexOf(node.name) >= 0);
     if (this.runConfig.includeDependencies) {
       // Compute all transitive dependencies.
-      for (let i = 0; i < allNodes.length; i++) {
-        includedNodes.forEach(node => {
-          const matchingNodeNames =
-            node.dependencies && node.dependencies.length > 0
-              ? utils.matchPatterns(node.dependencies, allNodeNames)
+      for (let i = 0; i < allActions.length; i++) {
+        includedActions.forEach(action => {
+          const matchingActionNames =
+            action.dependencies && action.dependencies.length > 0
+              ? utils.matchPatterns(action.dependencies, allActionNames)
               : [];
           // Update included node names.
-          matchingNodeNames.forEach(nodeName => {
-            if (includedActionNames.indexOf(nodeName) < 0) {
-              includedActionNames.push(nodeName);
+          matchingActionNames.forEach(actionName => {
+            if (includedActionNames.indexOf(actionName) < 0) {
+              includedActionNames.push(actionName);
             }
           });
           // Update included nodes.
-          includedNodes = allNodes.filter(node => includedActionNames.indexOf(node.name) >= 0);
+          includedActions = allActions.filter(node => includedActionNames.indexOf(node.name) >= 0);
         });
       }
     }
     // Remove any excluded dependencies.
-    includedNodes.forEach(node => {
+    includedActions.forEach(node => {
       node.dependencies = node.dependencies.filter(dep => includedActionNames.indexOf(dep) >= 0);
     });
     return dataform.ExecutionGraph.create({
       projectConfig: this.compiledGraph.projectConfig,
       runConfig: this.runConfig,
       warehouseState: this.state,
-      nodes: includedNodes
+      actions: includedActions
     });
   }
 
@@ -111,7 +111,7 @@ export class Builder {
         (t.postOps || []).map(post => ({ statement: post }))
       );
 
-    return dataform.ExecutionNode.create({
+    return dataform.ExecutionAction.create({
       name: t.name,
       dependencies: t.dependencies,
       type: "table",
@@ -122,7 +122,7 @@ export class Builder {
   }
 
   public buildOperation(operation: dataform.IOperation) {
-    return dataform.ExecutionNode.create({
+    return dataform.ExecutionAction.create({
       name: operation.name,
       dependencies: operation.dependencies,
       type: "operation",
@@ -135,7 +135,7 @@ export class Builder {
   }
 
   public buildAssertion(assertion: dataform.IAssertion) {
-    return dataform.ExecutionNode.create({
+    return dataform.ExecutionAction.create({
       name: assertion.name,
       dependencies: assertion.dependencies,
       type: "assertion",

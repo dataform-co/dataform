@@ -84,7 +84,7 @@ export class Session {
   public publish(name: string, queryOrConfig?: TContextable<string> | TConfig): Table {
     // Check for duplicate names
     if (this.tables[name]) {
-      const message = `Duplicate node name detected, names must be unique across tables, assertions, and operations: "${name}"`;
+      const message = `Duplicate action name detected, names must be unique across tables, assertions, and operations: "${name}"`;
       this.compileError(new Error(message));
     }
 
@@ -156,27 +156,27 @@ export class Session {
       graphErrors: this.graphErrors
     });
 
-    // Expand node dependency wildcards.
+    // Expand action dependency wildcards.
 
-    const allNodes: IActionProto[] = [].concat(
+    const allActions: IActionProto[] = [].concat(
       compiledGraph.tables,
       compiledGraph.assertions,
       compiledGraph.operations
     );
-    const allNodeNames = allNodes.map(node => node.name);
+    const allActionNames = allActions.map(node => node.name);
 
-    allNodes.forEach(node => {
+    allActions.forEach(action => {
       const uniqueDependencies: { [dependency: string]: boolean } = {};
-      const dependencies = node.dependencies || [];
+      const dependencies = action.dependencies || [];
       // Add non-wildcard deps normally.
       dependencies
         .filter(dependency => !dependency.includes("*"))
         .forEach(dependency => (uniqueDependencies[dependency] = true));
       // Match wildcard deps against all node names.
       utils
-        .matchPatterns(dependencies.filter(d => d.includes("*")), allNodeNames)
+        .matchPatterns(dependencies.filter(d => d.includes("*")), allActionNames)
         .forEach(dependency => (uniqueDependencies[dependency] = true));
-      node.dependencies = Object.keys(uniqueDependencies);
+      action.dependencies = Object.keys(uniqueDependencies);
     });
 
     return compiledGraph;

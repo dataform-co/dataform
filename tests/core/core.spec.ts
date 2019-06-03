@@ -14,7 +14,7 @@ const TEST_CONFIG: dataform.IProjectConfig = {
 
 describe("@dataform/core", () => {
   describe("publish", () => {
-    it("config", function() {
+    it("config", function () {
       const session = new Session(path.dirname(__filename), TEST_CONFIG);
       const t = session
         .publish("example", {
@@ -38,7 +38,7 @@ describe("@dataform/core", () => {
       expect(t.postOps).deep.equals(["post_op"]);
     });
 
-    it("config_context", function() {
+    it("config_context", function () {
       const session = new Session(path.dirname(__filename), TEST_CONFIG);
       const t = session
         .publish(
@@ -63,7 +63,7 @@ describe("@dataform/core", () => {
       expect(t.postOps).deep.equals(["post_op"]);
     });
 
-    it("validation_type_incremental", function() {
+    it("validation_type_incremental", function () {
       const sessionSuccess = new Session(path.dirname(__filename), TEST_CONFIG);
       sessionSuccess.publish("exampleSuccess1", {
         type: "incremental",
@@ -119,14 +119,14 @@ describe("@dataform/core", () => {
         .to.be.an("array").that.is.not.empty;
 
       Object.keys(cases).forEach(key => {
-        const err = cgFailErrors.validationErrors.find(e => e.nodeName === key);
+        const err = cgFailErrors.validationErrors.find(e => e.actionName === key);
         expect(err)
           .to.have.property("message")
           .that.matches(cases[key].errorTest);
       });
     });
 
-    it("validation_type", function() {
+    it("validation_type", function () {
       const sessionSuccess = new Session(path.dirname(__filename), TEST_CONFIG);
       sessionSuccess.publish("exampleSuccess1", { type: "table" });
       sessionSuccess.publish("exampleSuccess2", { type: "view" });
@@ -147,13 +147,13 @@ describe("@dataform/core", () => {
         .to.have.property("validationErrors")
         .to.be.an("array").that.is.not.empty;
 
-      const err = cgFailErrors.validationErrors.find(e => e.nodeName === "exampleFail");
+      const err = cgFailErrors.validationErrors.find(e => e.actionName === "exampleFail");
       expect(err)
         .to.have.property("message")
         .that.matches(/Wrong type of table/);
     });
 
-    it("validation_redshift_success", function() {
+    it("validation_redshift_success", function () {
       const session = new Session(path.dirname(__filename), TEST_CONFIG);
       session.publish("example_without_dist", {
         redshift: {
@@ -181,7 +181,7 @@ describe("@dataform/core", () => {
         .to.be.an("array").that.is.empty;
     });
 
-    it("validation_redshift_fail", function() {
+    it("validation_redshift_fail", function () {
       const session = new Session(path.dirname(__filename), TEST_CONFIG);
       session.publish("example_absent_distKey", {
         redshift: {
@@ -259,14 +259,14 @@ describe("@dataform/core", () => {
         .to.have.lengthOf(8);
 
       expectedResults.forEach(result => {
-        const err = gErrors.validationErrors.find(e => e.nodeName === result.name);
+        const err = gErrors.validationErrors.find(e => e.actionName === result.name);
         expect(err)
           .to.have.property("message")
           .that.matches(result.message);
       });
     });
 
-    it("validation_type_inline", function() {
+    it("validation_type_inline", function () {
       const session = new Session(path.dirname(__filename), TEST_CONFIG);
       session.publish("a", { type: "table", query: _ => "select 1 as test" });
       session.publish("b", {
@@ -337,7 +337,7 @@ describe("@dataform/core", () => {
         .to.be.an("array").that.is.not.empty;
 
       const errors = graphErrors.validationErrors
-        .filter(item => item.nodeName === "b")
+        .filter(item => item.actionName === "b")
         .map(item => item.message);
 
       expect(errors).that.matches(/Unused property was detected: "fieldDescriptor"/);
@@ -409,7 +409,8 @@ describe("@dataform/core", () => {
         .to.have.property("validationErrors")
         .to.be.an("array").that.is.not.empty;
 
-      const err = gErrors.validationErrors.find(e => e.nodeName === "a");
+      const err = gErrors.validationErrors.find(e => e.actionName === "a");
+      console.log(err)
       expect(err)
         .to.have.property("message")
         .that.matches(/Circular dependency/);
@@ -425,13 +426,13 @@ describe("@dataform/core", () => {
         .to.have.property("validationErrors")
         .to.be.an("array").that.is.not.empty;
 
-      const err = gErrors.validationErrors.find(e => e.nodeName === "a");
+      const err = gErrors.validationErrors.find(e => e.actionName === "a");
       expect(err)
         .to.have.property("message")
         .that.matches(/Missing dependency/);
     });
 
-    it("duplicate_node_names", () => {
+    it("duplicate_action_names", () => {
       const session = new Session(path.dirname(__filename), TEST_CONFIG);
       session.publish("a").dependencies("b");
       session.publish("b");
@@ -444,7 +445,7 @@ describe("@dataform/core", () => {
         .to.be.an("array").that.is.not.empty;
 
       const errors = gErrors.compilationErrors.filter(item =>
-        item.message.match(/Duplicate node name/)
+        item.message.match(/Duplicate action name/)
       );
       expect(errors).to.be.an("array").that.is.not.empty;
     });
@@ -468,7 +469,7 @@ describe("@dataform/core", () => {
 
       const errors = gErrors.validationErrors.map(item => item.message);
 
-      expect(errors.some(item => !!item.match(/Duplicate node name/))).to.be.true;
+      expect(errors.some(item => !!item.match(/Duplicate action name/))).to.be.true;
       expect(errors.some(item => !!item.match(/Missing dependency/))).to.be.true;
       expect(errors.some(item => !!item.match(/Circular dependency/))).to.be.true;
     });
@@ -486,7 +487,7 @@ describe("@dataform/core", () => {
   });
 
   describe("compilers", () => {
-    it("extract_blocks", function() {
+    it("extract_blocks", function () {
       const TEST_SQL_FILE = `
         /*js
         var a = 1;
