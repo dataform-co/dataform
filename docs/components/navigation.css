@@ -1,12 +1,15 @@
 .navigation {
 }
 
+.navigation h4 {
+  margin-left: 10px;
+}
+
 .sidebar > .bp3-menu {
   background-color: unset;
 }
 
 .menu {
-  background-color: transparent;
   color: #2f2d44;
 }
 

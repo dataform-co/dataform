@@ -1,0 +1,19 @@
+.hit {
+  padding: 5px 7px;
+  line-height: 20px;
+  cursor: pointer;
+}
+
+.hit_active {
+  composes: hit;
+  background-color: #f6f6f6;
+}
+
+.hitHierarchy {
+  font-weight: bold;
+  color: #2f419b;
+}
+
+.hitContent {
+  padding: 5px 0px;
+}

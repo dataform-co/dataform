@@ -11,7 +11,8 @@
   overflow-y: hidden;
   position: sticky;
   top: 60px;
-  padding-top: 35px;
+  padding-top: 48px;
+  padding-right: 10px;
 }
 
 .sidebar:hover {

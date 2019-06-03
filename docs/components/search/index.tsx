@@ -1,15 +1,9 @@
-import { Button, MenuItem } from "@blueprintjs/core";
+import { Menu, MenuItem } from "@blueprintjs/core";
 import { IItemRendererProps, Omnibar } from "@blueprintjs/select";
 import algoliasearch from "algoliasearch/lite";
+import * as styles from "df/docs/components/search/index.css";
 import * as React from "react";
-import {
-  connectHits,
-  createConnector,
-  Hits,
-  InstantSearch,
-  SearchBox
-} from "react-instantsearch-dom";
-import { styles } from "../struct";
+import { connectHits, createConnector, InstantSearch } from "react-instantsearch-dom";
 
 const searchClient = algoliasearch("Q9QS39IFO0", "153e21a16f649c7f9ec28185683415cf");
 
@@ -23,6 +17,7 @@ export class Search extends React.Component<{}, {}> {
   }
 }
 
+// Mostly magic to me: https://www.algolia.com/doc/guides/building-search-ui/widgets/create-your-own-widgets/react/
 const connectWithQuery = createConnector({
   displayName: "WidgetWithQuery",
   getProvidedProps(props, searchState) {
@@ -64,6 +59,7 @@ interface IAlgoliaProps {
 interface IResult {
   hierarchy: { [key: string]: string };
   url: string;
+  content: string;
 }
 
 interface IWidgetState {
@@ -79,16 +75,20 @@ class SearchWidget extends React.Component<IAlgoliaProps, IWidgetState> {
   public render() {
     return (
       <div>
-        <Button text="Search..." onClick={() => this.setState({ isOpen: true })} />
+        <Menu>
+          <MenuItem
+            icon="search"
+            text="Search..."
+            onClick={() => this.setState({ isOpen: true })}
+          />
+        </Menu>
         <SearchOmnibar
           onQueryChange={query => this.props.refine(query)}
           onItemSelect={item => {
-            console.log(item);
             this.setState({ isOpen: false });
             window.location.href = item.url;
           }}
           isOpen={this.state.isOpen}
-          onActiveItemChange={item => console.log(item)}
           onClose={() => this.setState({ isOpen: false })}
           items={this.props.hits.filter(hit => !!hit.hierarchy)}
           itemRenderer={this.itemRenderer}
@@ -103,10 +103,14 @@ class SearchWidget extends React.Component<IAlgoliaProps, IWidgetState> {
       .filter(value => !!value)
       .join(" > ");
     return (
-      <MenuItem
-        text={<div className={"bp3-fill"}>{prettyString}</div>}
-        active={props.modifiers.active}
-      />
+      <div className={props.modifiers.active ? styles.hit_active : styles.hit}>
+        <a href={item.url}>
+          <div className={styles.hitHierarchy}>{prettyString}</div>
+        </a>
+        {item.content && (
+          <div className={styles.hitContent} dangerouslySetInnerHTML={{ __html: item.content }} />
+        )}
+      </div>
     );
   };
 }
