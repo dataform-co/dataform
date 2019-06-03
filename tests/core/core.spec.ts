@@ -363,7 +363,7 @@ describe("@dataform/core", () => {
       expect(tableNames).includes("c");
 
       const errors = graphErrors.compilationErrors.map(item => item.message);
-      expect(errors).includes("Node name is not specified");
+      expect(errors).includes("Action name is not specified");
     });
   });
 
@@ -410,7 +410,6 @@ describe("@dataform/core", () => {
         .to.be.an("array").that.is.not.empty;
 
       const err = gErrors.validationErrors.find(e => e.actionName === "a");
-      console.log(err)
       expect(err)
         .to.have.property("message")
         .that.matches(/Circular dependency/);

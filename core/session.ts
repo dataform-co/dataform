@@ -163,7 +163,7 @@ export class Session {
       compiledGraph.assertions,
       compiledGraph.operations
     );
-    const allActionNames = allActions.map(node => node.name);
+    const allActionNames = allActions.map(action => action.name);
 
     allActions.forEach(action => {
       const uniqueDependencies: { [dependency: string]: boolean } = {};
@@ -172,7 +172,7 @@ export class Session {
       dependencies
         .filter(dependency => !dependency.includes("*"))
         .forEach(dependency => (uniqueDependencies[dependency] = true));
-      // Match wildcard deps against all node names.
+      // Match wildcard deps against all action names.
       utils
         .matchPatterns(dependencies.filter(d => d.includes("*")), allActionNames)
         .forEach(dependency => (uniqueDependencies[dependency] = true));

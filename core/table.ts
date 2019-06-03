@@ -233,7 +233,7 @@ export class TableContext {
 
   public ref(name: string) {
     if (!name) {
-      const message = `Node name is not specified`;
+      const message = `Action name is not specified`;
       this.table.session.compileError(new Error(message));
       return "";
     }

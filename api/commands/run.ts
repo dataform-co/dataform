@@ -63,8 +63,8 @@ export class Runner {
         // Work out all the schemas we are going to need to create first.
         const uniqueSchemas = {};
         this.graph.actions
-          .filter(node => !!node.target)
-          .map(node => node.target.schema)
+          .filter(action => !!action.target)
+          .map(action => action.target.schema)
           .filter(schema => !!schema)
           .forEach(schema => (uniqueSchemas[schema] = true));
 
@@ -97,35 +97,35 @@ export class Runner {
   }
 
   private async loop(resolve: () => void, reject: (value: any) => void) {
-    const pendingNodes = this.pendingActions;
+    const pendingActions = this.pendingActions;
     this.pendingActions = [];
 
-    const allFinishedDeps = this.result.actions.map(node => node.name);
+    const allFinishedDeps = this.result.actions.map(action => action.name);
     const allSuccessfulDeps = this.result.actions
       .filter(
-        node =>
-          node.status === dataform.ActionExecutionStatus.SUCCESSFUL ||
-          node.status == dataform.ActionExecutionStatus.DISABLED
+        action =>
+          action.status === dataform.ActionExecutionStatus.SUCCESSFUL ||
+          action.status == dataform.ActionExecutionStatus.DISABLED
       )
       .map(fn => fn.name);
 
-    pendingNodes.forEach(async (node) => {
-      const finishedDeps = node.dependencies.filter(d => allFinishedDeps.indexOf(d) >= 0);
-      const successfulDeps = node.dependencies.filter(d => allSuccessfulDeps.indexOf(d) >= 0);
-      if (!this.cancelled && successfulDeps.length == node.dependencies.length) {
-        // All required deps are completed, start this node.
-        this.executeNode(node);
-      } else if (this.cancelled || finishedDeps.length == node.dependencies.length) {
+    pendingActions.forEach(async (action) => {
+      const finishedDeps = action.dependencies.filter(d => allFinishedDeps.indexOf(d) >= 0);
+      const successfulDeps = action.dependencies.filter(d => allSuccessfulDeps.indexOf(d) >= 0);
+      if (!this.cancelled && successfulDeps.length == action.dependencies.length) {
+        // All required deps are completed, start this action.
+        this.executeAction(action);
+      } else if (this.cancelled || finishedDeps.length == action.dependencies.length) {
         await this.triggerChange();
         // All deps are finished but they weren't all successful, or the run was cancelled.
-        // skip this node.
+        // skip this action.
         this.result.actions.push({
-          name: node.name,
+          name: action.name,
           status: dataform.ActionExecutionStatus.SKIPPED,
           deprecatedSkipped: true
         });
       } else {
-        this.pendingActions.push(node);
+        this.pendingActions.push(action);
       }
     });
 
@@ -134,21 +134,21 @@ export class Runner {
     } else {
       // Work out if this run was an overall success.
       let ok = true;
-      this.result.actions.forEach(node => {
+      this.result.actions.forEach(action => {
         ok =
           ok &&
-          (node.status === dataform.ActionExecutionStatus.SUCCESSFUL ||
-            node.status == dataform.ActionExecutionStatus.DISABLED);
+          (action.status === dataform.ActionExecutionStatus.SUCCESSFUL ||
+            action.status == dataform.ActionExecutionStatus.DISABLED);
       });
       this.result.ok = ok;
       resolve();
     }
   }
 
-  private executeNode(node: dataform.IExecutionAction) {
+  private executeAction(action: dataform.IExecutionAction) {
     const startTime = process.hrtime();
     // This creates a promise chain that executes all tasks in order.
-    node.tasks
+    action.tasks
       .reduce((chain, task) => {
         return chain.then(async chainResults => {
           try {
@@ -175,7 +175,7 @@ export class Runner {
         const executionTime = endTime[0] * 1000 + Math.round(endTime[1] / 1000000);
         await this.triggerChange();
         this.result.actions.push({
-          name: node.name,
+          name: action.name,
           status:
             results.length == 0
               ? dataform.ActionExecutionStatus.DISABLED
@@ -190,7 +190,7 @@ export class Runner {
         const executionTime = endTime[0] * 1000 + Math.round(endTime[1] / 1000000);
         await this.triggerChange();
         this.result.actions.push({
-          name: node.name,
+          name: action.name,
           status: dataform.ActionExecutionStatus.FAILED,
           tasks: results,
           executionTime: Long.fromNumber(executionTime),

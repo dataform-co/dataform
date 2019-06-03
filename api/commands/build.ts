@@ -49,22 +49,22 @@ export class Builder {
     // Remove inline tables.
     const filteredTables = this.compiledGraph.tables.filter(t => t.type !== "inline");
 
-    // Firstly, turn every thing into an execution node.
+    // Firstly, turn every thing into an execution action.
     const allActions: dataform.IExecutionAction[] = [].concat(
       filteredTables.map(t => this.buildTable(t, tableStateByTarget[JSON.stringify(t.target)])),
       this.compiledGraph.operations.map(o => this.buildOperation(o)),
       this.compiledGraph.assertions.map(a => this.buildAssertion(a))
     );
     const allActionNames = allActions.map(n => n.name);
-    const nodeNameMap: { [name: string]: dataform.IExecutionAction } = {};
-    allActions.forEach(node => (nodeNameMap[node.name] = node));
+    const actionNameMap: { [name: string]: dataform.IExecutionAction } = {};
+    allActions.forEach(action => (actionNameMap[action.name] = action));
 
-    // Determine which nodes should be included.
+    // Determine which action should be included.
     const includedActionNames =
       this.runConfig.actions && this.runConfig.actions.length > 0
         ? utils.matchPatterns(this.runConfig.actions, allActionNames)
         : allActionNames;
-    let includedActions = allActions.filter(node => includedActionNames.indexOf(node.name) >= 0);
+    let includedActions = allActions.filter(action => includedActionNames.indexOf(action.name) >= 0);
     if (this.runConfig.includeDependencies) {
       // Compute all transitive dependencies.
       for (let i = 0; i < allActions.length; i++) {
@@ -73,20 +73,20 @@ export class Builder {
             action.dependencies && action.dependencies.length > 0
               ? utils.matchPatterns(action.dependencies, allActionNames)
               : [];
-          // Update included node names.
+          // Update included action names.
           matchingActionNames.forEach(actionName => {
             if (includedActionNames.indexOf(actionName) < 0) {
               includedActionNames.push(actionName);
             }
           });
-          // Update included nodes.
-          includedActions = allActions.filter(node => includedActionNames.indexOf(node.name) >= 0);
+          // Update included actions.
+          includedActions = allActions.filter(action => includedActionNames.indexOf(action.name) >= 0);
         });
       }
     }
     // Remove any excluded dependencies.
-    includedActions.forEach(node => {
-      node.dependencies = node.dependencies.filter(dep => includedActionNames.indexOf(dep) >= 0);
+    includedActions.forEach(action => {
+      action.dependencies = action.dependencies.filter(dep => includedActionNames.indexOf(dep) >= 0);
     });
     return dataform.ExecutionGraph.create({
       projectConfig: this.compiledGraph.projectConfig,
