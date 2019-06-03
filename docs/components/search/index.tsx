@@ -11,7 +11,7 @@ export class Search extends React.Component<{}, {}> {
   public render() {
     return (
       <InstantSearch searchClient={searchClient} indexName="dataform_docs">
-        {connectHits(connectWithQuery(SearchWidget))}
+        <ConnectedSearchWidget />
       </InstantSearch>
     );
   }
@@ -114,3 +114,5 @@ class SearchWidget extends React.Component<IWidgetProps, IWidgetState> {
     );
   };
 }
+
+const ConnectedSearchWidget = connectHits(connectWithQuery(SearchWidget));
