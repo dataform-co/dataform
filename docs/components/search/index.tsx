@@ -11,7 +11,7 @@ export class Search extends React.Component<{}, {}> {
   public render() {
     return (
       <InstantSearch searchClient={searchClient} indexName="dataform_docs">
-        <CustomOmni />
+        {connectHits(connectWithQuery(SearchWidget))}
       </InstantSearch>
     );
   }
@@ -52,24 +52,24 @@ const connectWithQuery = createConnector({
   }
 });
 
-interface IAlgoliaProps {
-  refine: (value: string) => void;
-  hits: IResult[];
-}
 interface IResult {
   hierarchy: { [key: string]: string };
   url: string;
   content: string;
 }
 
+interface IWidgetProps {
+  refine: (value: string) => void;
+  hits: IResult[];
+}
+
 interface IWidgetState {
   isOpen?: boolean;
-  selectedItem?: boolean;
 }
 
 const SearchOmnibar = Omnibar.ofType<IResult>();
 
-class SearchWidget extends React.Component<IAlgoliaProps, IWidgetState> {
+class SearchWidget extends React.Component<IWidgetProps, IWidgetState> {
   public state: IWidgetState = {};
 
   public render() {
@@ -114,5 +114,3 @@ class SearchWidget extends React.Component<IAlgoliaProps, IWidgetState> {
     );
   };
 }
-
-const CustomOmni = connectHits(connectWithQuery(SearchWidget));
