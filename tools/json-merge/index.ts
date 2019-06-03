@@ -1,14 +1,14 @@
 import * as fs from "fs";
 import * as yargs from "yargs";
 
-const argv = yargs.option("output", { required: true }).option("layers", { array: true }).argv;
+const argv = yargs.option("output-path", { required: true }).option("layer-paths", { array: true })
+  .argv;
 
-let result = {};
+const result = argv.layerPaths
+  .map((layerPath: string) => JSON.parse(fs.readFileSync(layerPath, "utf8")))
+  .reduce(
+    (layerJson: object, accumulatorJson: object) => ({ ...accumulatorJson, ...layerJson }),
+    {}
+  );
 
-argv.layers.forEach((layer: string) => {
-  const inputFile = fs.readFileSync(layer, "utf8");
-  const inputJson = JSON.parse(inputFile);
-  result = { ...result, ...inputJson };
-});
-
-fs.writeFileSync(argv.output, JSON.stringify(result, null, 4));
+fs.writeFileSync(argv.outputPath, JSON.stringify(result, null, 4));
