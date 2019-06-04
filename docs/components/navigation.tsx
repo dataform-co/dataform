@@ -91,11 +91,11 @@ export default class Navigation extends React.Component<IProps> {
     const path = pathFromFilename(meta.__filename);
     if (this.props.currentPath === path) {
       return (
-        <React.Fragment>
+        <React.Fragment key={path}>
           <BPMenuItem
             href={path}
             text={meta.title}
-            style={{ backgroundColor: "rgba(167, 182, 194, 0.3);" }}
+            style={{ backgroundColor: "rgba(167, 182, 194, 0.3)" }}
           />
           <div className={styles.indent1}>
             {this.props.currentHeaderLinks.map(item => (
