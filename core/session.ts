@@ -18,6 +18,7 @@ interface ISqlxConfig {
   name: string;
   hasOutput?: boolean;
   disabled?: boolean;
+  protected?: boolean;
   redshift?: dataform.IRedshiftOptions;
   bigquery?: dataform.IBigQueryOptions;
 }
@@ -71,6 +72,10 @@ export class Session {
       const message = `Operations with 'hasOutput: true' must contain exactly one SQL statement.`;
       this.compileError(new Error(message));
     }
+    if (sqlxConfig.protected && sqlxConfig.type !== "incremental") {
+      const message = `Actions may only specify 'protected: true' if they are of type 'incremental'.`;
+      this.compileError(new Error(message));
+    }
     if (sqlxConfig.disabled && !this.isDatasetType(sqlxConfig.type)) {
       const message = `Actions may only specify 'disabled: true' if they create a dataset.`;
       this.compileError(new Error(message));
@@ -108,6 +113,9 @@ export class Session {
           }
           if (sqlxConfig.bigquery) {
             dataset.bigquery(sqlxConfig.bigquery);
+          }
+          if (sqlxConfig.protected) {
+            dataset.proto.protected = true;
           }
           return dataset;
         }
