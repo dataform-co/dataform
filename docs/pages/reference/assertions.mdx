@@ -2,8 +2,13 @@ import Documentation from "df/docs/layouts/documentation";
 import Method from "../../components/method";
 import { methods } from "../../_methods";
 
+export const meta = {
+  title: "Assertions reference",
+  __filename
+};
+
 export default ({ children }) => (
-  <Documentation title="Assertions reference">{children}</Documentation>
+  <Documentation {...meta}>{children}</Documentation>
 );
 
 Assertions can be used to check the state of your datasets as part of your pipeline. An `assertion` is a query that should return 0 rows (or will otherwise fail).

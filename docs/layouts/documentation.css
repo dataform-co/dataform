@@ -1,20 +1,32 @@
+.container {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+}
+
+
 .sidebar {
-  width: 280px;
-  min-width: 280px;
-  padding: 10px;
-  max-height: 100%;
-  overflow-y: auto;
+  width: 320px;
+  height: calc(100vh - 60px);
+  overflow-y: hidden;
   position: sticky;
-  top: 100px;
+  top: 60px;
+  padding-top: 48px;
+  padding-right: 10px;
+}
+
+.sidebar:hover {
+  overflow-y: auto;
 }
 
 .mainContent {
-  border-left: 1px solid rgba(120;134;156;0.2);
-  border-right: 1px solid rgba(120;134;156;0.2);
+  border-left: 1px solid rgba(120,134,156,0.2);
   padding-left: 30px;
   padding-right: 30px;
   padding-top: 30px;
   background-color: #fff;
   flex-grow: 1;
   border-left: 1px solid #e9e9e9;
+  max-width: 800px;
+  padding-bottom: 800px;
 }

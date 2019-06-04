@@ -1,6 +1,13 @@
 import Documentation from "df/docs/layouts/documentation";
 
-export default ({ children }) => <Documentation title="BigQuery options">{children}</Documentation>;
+export const meta = {
+  title: "Google BigQuery",
+  __filename
+};
+
+export default ({ children }) => (
+  <Documentation {...meta}>{children}</Documentation>
+);
 
 BigQuery specific options can be applied to tables using the `bigquery()` configuration statement.
 
