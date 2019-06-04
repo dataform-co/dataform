@@ -1,3 +1,9 @@
+declare module "df/docs/pages/*.mdx" {
+  export const meta: { title: string; __filename: string };
+  let _default: ((props) => JSX.Element);
+  export default _default;
+}
+
 declare module "*.mdx" {
   const MDXComponent: (props: any) => JSX.Element;
   export default MDXComponent;

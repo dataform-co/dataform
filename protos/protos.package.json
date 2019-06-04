@@ -1,13 +1,9 @@
 {
   "name": "@dataform/protos",
-  "version": "0.1.0",
   "description": "Dataform protocol buffers.",
   "main": "index.js",
   "types": "index.d.ts",
   "dependencies": {
     "protobufjs": "^6.8.8"
-  },
-  "publishConfig": {
-    "access": "public"
   }
 }

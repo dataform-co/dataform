@@ -1,5 +1,8 @@
-.sidebar {
-  padding-top: 10px;
+.navigation {
+}
+
+.navigation h4 {
+  margin-left: 10px;
 }
 
 .sidebar > .bp3-menu {
@@ -7,10 +10,19 @@
 }
 
 .menu {
-  background-color: transparent;
   color: #2f2d44;
 }
 
 .indent1 {
   margin-left: 16px;
+}
+
+.subtitle {
+  padding: 5px 7px;
+  line-height: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: rgb(78, 92, 110);
+  letter-spacing: 0.04em;
 }

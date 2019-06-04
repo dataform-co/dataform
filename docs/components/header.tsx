@@ -13,7 +13,6 @@ export interface IPage {
 interface IProps {
   pages?: IPage[];
   currentPath?: string;
-  invert?: boolean;
   maxWidth?: string;
 }
 
@@ -44,20 +43,20 @@ export class Header extends React.Component<IProps, IState> {
   public render() {
     const navClasses = [styles.nav];
     const { showFixedNav } = this.state;
-    const { invert } = this.props;
 
     if (showFixedNav) {
       navClasses.push(styles.navScrolled);
-    } else if (invert) {
-      navClasses.push(styles.navInverted);
     }
+
     const maxWidth = this.props.maxWidth || "1200px";
     return (
       <div>
         <nav className={navClasses.join(" ")}>
           <span className={styles.navContent} style={{ maxWidth }}>
             <span>
-              <a href="https://dataform.co">{this.createColouredLogo(invert, showFixedNav)}</a>
+              <a href="https://dataform.co">
+                <img src={logoImage} className={styles.logoImage} />
+              </a>
               <a href="/">
                 <span className={styles.docs_tag}>docs</span>
               </a>
@@ -85,13 +84,4 @@ export class Header extends React.Component<IProps, IState> {
       </div>
     );
   }
-
-  // TODO just use the fill property in the svg to do this
-  private createColouredLogo = (invert: boolean, showFixedNav: boolean) => {
-    return invert && !showFixedNav ? (
-      <img src={logoImageWhite} className={styles.logoImage} />
-    ) : (
-      <img src={logoImage} className={styles.logoImage} />
-    );
-  };
 }

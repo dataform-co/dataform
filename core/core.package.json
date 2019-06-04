@@ -8,8 +8,5 @@
     "@dataform/protos": "^0.1.0",
     "moo": "^0.5.0",
     "protobufjs": "^6.8.8"
-  },
-  "publishConfig": {
-    "access": "public"
   }
 }

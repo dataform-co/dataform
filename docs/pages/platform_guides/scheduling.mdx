@@ -1,7 +1,14 @@
 import Documentation from "df/docs/layouts/documentation";
 import ScreenshotWrapper from "df/docs/components/screenshot_wrapper";
 
-export default ({ children }) => <Documentation title="Scheduling runs">{children}</Documentation>;
+export const meta = {
+  title: "Scheduling runs",
+  __filename
+};
+
+export default ({ children }) => (
+  <Documentation {...meta}>{children}</Documentation>
+);
 
 ## Introduction
 
