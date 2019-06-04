@@ -5,21 +5,26 @@ export const meta = {
   __filename
 };
 
-export default ({ children }) => (
-  <Documentation {...meta}>{children}</Documentation>
-);
+export default ({ children }) => <Documentation {...meta}>{children}</Documentation>;
 
 <img src="/static/images/publishing_tables.png" style={{ width: "100%", padding: "20px" }} />
 
 ## Create a view
 
-Create a new `example.sql` file in your project under the `definitions/` folder:
+Create a new `example.sqlx` file in your project under the `definitions/` folder:
+
+```js
+config { type: "view" }
+SELECT 1 AS TEST
+```
+
+Upon running this query a **view** called `schema.example` will be created (where `schema` is the Dataform schema defined in your [`dataform.json`](/guides/configuration#dataform.json) file).
+
+Note that non-SQL statements are stripped during query compilation, so the final executable query in this case would be:
 
 ```js
 SELECT 1 AS TEST
 ```
-
-By default, upon running this query, a **view** called `schema.example` will be created (where `schema` is the Dataform schema defined in your [`dataform.json`](/guides/configuration#dataform.json) file).
 
 <div className="bp3-callout bp3-icon-info-sign bp3-intent-warning" markdown="1">
   Trailing semi-colons should be omitted from queries.
@@ -33,16 +38,10 @@ By default, upon running this query, a **view** called `schema.example` will be 
 
 ## Create a table
 
-By default, datasets are created as views in your warehouse. To create an actual table, i.e. a full independent copy of the query result, you can use Dataform's JavaScript configuration syntax to set the `type` of the query to `table`.
+To create a table, i.e. a full independent copy of the query result, set the `type` of the query to `table`.
 
 ```js
---js type("table");
-SELECT 1 AS TEST
-```
-
-Note that configuration statements starting with `--js` are stripped during query compilation, so the final executable query in this case would be:
-
-```js
+config { type: "table" }
 SELECT 1 AS TEST
 ```
 
@@ -74,77 +73,69 @@ Any dataset that is referenced by a query will automatically be added to that qu
 
 ## Adding custom dependencies
 
-If you want to manually add a dependency to a query - one that is not already explicitly referenced with `ref()` - you can use the `dependencies()` JavaScript configuration method:
+If you want to manually add a dependency to a query - one that is not already explicitly referenced with `ref()` - you should configure the file's `dependencies`:
 
 ```js
---js dependencies("some_table");
+config { dependencies: ["some_table"]}
 SELECT * FROM ...
 ```
 
 Multiple dependencies may be provided in a single invocation:
 
 ```js
---js dependencies(["some_table", "some_other_table"]);
+config { dependencies: ["some_table", "some_other_table"]}
 SELECT * FROM ...
 ```
 
 ## Disable a dataset
 
-To stop a query being run, you can use the JavaScript `disabled()` method. This will keep the dataset as part of your graph, but stop it from executing when you run your project.
+To stop a query being run, you can disable it. This will keep the dataset as part of your graph, but stop it from executing when you run your project.
 This can be useful for example if the relevant query breaks for some reason and you don't want your pipeline to fail while it's being fixed.
 
 ```js
---js disabled();
+config { disabled: true}
 SELECT * FROM ...
 ```
 
 ## Executing statements before or after dataset creation
 
-To execute one or more SQL statements before or after creating a dataset, you can use the `preOps()` and `postOps()` configuration methods.
+You can specify `pre_operations { ... }` and `post_operations { ... }` to configure Dataform to execute one or more SQL statements before or after creating a dataset.
 
-### Example: Granting dataset access with `postOps()`
+### Example: Granting dataset access with `post_operations`
 
 The following example defines a post-query operation to configure dataset access permissions. It makes use of the built-in `self()` method which returns the fully-qualified name of the current dataset.
 
 ```js
---js postOps(`GRANT SELECT ON ${self()} TO GROUP "allusers@dataform.co"`);
+SELECT * FROM ...
+
+post_operations {
+  GRANT SELECT ON ${self()} TO GROUP "allusers@dataform.co"
+}
+```
+
+To specify multiple operations, separate them with `---`:
+
+```js
+post_operations {
+  GRANT SELECT ON ${self()} TO GROUP "allusers@dataform.co"
+  ---
+  GRANT SELECT ON ${self()} TO GROUP "otherusers@dataform.co"
+}
+```
+
+## Overriding a dataset's schema or name
+
+By default, a dataset's schema is set to the default schema chosen when initializing a project, usually `dataform`, and a dataset's name is set to its filename.
+This can be overridden on a per-file basis by specifying the `schema` and/or `name` options. For example, to create a dataset called `example` in the schema `other_schema`:
+
+```js
+config {
+  schema: "other_schema",
+  name: "example"
+}
 SELECT * FROM ...
 ```
 
-<div className="bp3-callout bp3-icon-info-sign bp3-intent-warning" markdown="1">
-  To use the <code>self()</code> method within the string argument provided to{" "}
-  <code>postOps()</code>, you must use JavaScript's ES6 template string syntax, wrapping the string
-  in back-ticks: <code>`template_string`</code>
-</div>
-
-<br />
-
-Multiple arguments can be provided to `postOps()` and `preOps()`, each a seperate query, which will be executed in the provided order. You can alternatively use a multi-line configuration statement:
-
-```js
-/*js
-```
-
-<div style={{ marginTop: "-40px" }} />
-
-```js
-postOps([
-  `GRANT SELECT ON ${self()} TO GROUP "allusers@dataform.co"`,
-  `GRANT SELECT ON ${self()} TO GROUP "otherusers@dataform.co"`
-]);
-```
-
-<div style={{ marginTop: "-40px" }} />
-
-```js
-*/
-```
-
-## Overriding the output schema
-
-By default, all datasets are created within the default schema chosen when initializing a project, usually `dataform`.
-
-This can be overridden on a per-file basis by changing the file name to have a fully qualified dataset name.
 For example, to create a dataset called `example` in the schema `other_schema`, create a file with the name `definitions/other_schema.example.sql`.
 This will override the output schema of the dataset to `other_schema`. To reference datasets with overridden schemas, use the fully qualified name of the dataset:
 
