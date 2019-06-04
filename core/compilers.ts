@@ -6,7 +6,6 @@ import * as utils from "@dataform/core/utils";
 
 export function compile(code: string, path: string) {
   if (path.endsWith(".sqlx")) {
-    // throw new Error(compileSqlx(parseSqlx(code), path));
     return compileSqlx(parseSqlx(code), path);
   }
   if (path.endsWith(".assert.sql")) {

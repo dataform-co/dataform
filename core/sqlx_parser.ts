@@ -69,8 +69,6 @@ export interface ISqlxParseResults {
 }
 
 export function parseSqlx(code: string): ISqlxParseResults {
-  lexer.reset(code);
-  const parseState = new SqlxParseState();
   const results = {
     config: "",
     js: "",
@@ -79,6 +77,8 @@ export function parseSqlx(code: string): ISqlxParseResults {
     preOperations: [""],
     postOperations: [""]
   };
+  const parseState = new SqlxParseState();
+  lexer.reset(code);
   for (const token of lexer) {
     const state = parseState.computeState(token);
     if (
@@ -92,8 +92,8 @@ export function parseSqlx(code: string): ISqlxParseResults {
       }
       (results[state] as string[]).push("");
     }
-    if (state === "sql" || state === "preOperations" || state === "postOperations") {
-      results[state][results[state].length - 1] += token.value;
+    if (Array.isArray(results[state])) {
+      (results[state] as string[])[results[state].length - 1] += token.value;
     } else {
       results[state] += token.value;
     }
@@ -101,7 +101,7 @@ export function parseSqlx(code: string): ISqlxParseResults {
   if (results.js) {
     // If the user provided any JS, cut off the last closing brace.
     // We have to do this because we intentionally cut off the starting brace during lexing.
-    // We can't keep both because the user's JS cannot be run inside a scoped block.
+    // We can't keep them because the user's JS must not be run inside a scoped block.
     results.js = results.js.substring(0, results.js.length - 1);
   }
   return results;
