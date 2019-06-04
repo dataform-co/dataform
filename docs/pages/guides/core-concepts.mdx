@@ -1,7 +1,12 @@
 import Documentation from "df/docs/layouts/documentation";
 
+export const meta = {
+  title: "Dataform core concepts",
+  __filename
+};
+
 export default ({ children }) => (
-  <Documentation title="Dataform core concepts">{children}</Documentation>
+  <Documentation {...meta}>{children}</Documentation>
 );
 
 ## What is Dataform?

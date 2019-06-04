@@ -1,7 +1,12 @@
 import Documentation from "df/docs/layouts/documentation";
 
+export const meta = {
+  title: "Testing data using assertions",
+  __filename
+};
+
 export default ({ children }) => (
-  <Documentation title="Testing data using assertions">{children}</Documentation>
+  <Documentation {...meta}>{children}</Documentation>
 );
 
 ## Introduction

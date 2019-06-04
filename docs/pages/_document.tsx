@@ -17,6 +17,10 @@ export default class DefaultDocument extends Document {
           />
           <link
             rel="stylesheet"
+            href="https://unpkg.com/@blueprintjs/select@3.8.1/lib/css/blueprint-select.css"
+          />
+          <link
+            rel="stylesheet"
             href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.min.css"
           />
           <link rel="shortcut icon" href={faviconImage} type="image/png" />
