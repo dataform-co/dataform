@@ -7,8 +7,5 @@
   "dependencies": {
     "@dataform/protos": "^0.1.0",
     "protobufjs": "^6.8.8"
-  },
-  "publishConfig": {
-    "access": "public"
   }
 }

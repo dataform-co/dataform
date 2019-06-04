@@ -1,6 +1,5 @@
 {
   "name": "@dataform/api",
-  "version": "0.1.0",
   "description": "API for running Dataform projects.",
   "main": "index.js",
   "types": "index.d.ts",
@@ -17,9 +16,6 @@
     "promise-pool-executor": "^1.1.1",
     "snowflake-sdk": "^1.1.5",
     "vm2": "^3.6.3"
-  },
-  "publishConfig": {
-    "access": "public"
   }
 }
 

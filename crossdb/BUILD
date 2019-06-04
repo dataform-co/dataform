@@ -12,17 +12,13 @@ ts_library(
     ],
 )
 
-load("@build_bazel_rules_nodejs//:defs.bzl", "npm_package")
+load("//tools/npm:package.bzl", "dataform_npm_package")
 
-npm_package(
+dataform_npm_package(
     name = "package",
-    srcs = ["package.json"],
+    package_layers = [
+        "//:common.package.json",
+        "crossdb.package.json",
+    ],
     deps = [":crossdb"],
-)
-
-genrule(
-    name = "package_tar",
-    srcs = [":package"],
-    outs = ["package.tgz"],
-    cmd = "tar -cvzf $(location package.tgz) -C $(location :package)/.. --dereference package",
 )
