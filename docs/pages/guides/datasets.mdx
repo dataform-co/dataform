@@ -76,14 +76,14 @@ Any dataset that is referenced by a query will automatically be added to that qu
 If you want to manually add a dependency to a query - one that is not already explicitly referenced with `ref()` - you should configure the file's `dependencies`:
 
 ```js
-config { dependencies: ["some_table"]}
+config { dependencies: [ "some_table" ] }
 SELECT * FROM ...
 ```
 
 Multiple dependencies may be provided in a single invocation:
 
 ```js
-config { dependencies: ["some_table", "some_other_table"]}
+config { dependencies: [ "some_table", "some_other_table" ] }
 SELECT * FROM ...
 ```
 
@@ -125,7 +125,7 @@ post_operations {
 
 ## Overriding a dataset's schema or name
 
-By default, a dataset's schema is set to the default schema chosen when initializing a project, usually `dataform`, and a dataset's name is set to its filename.
+By default, a dataset's schema is set to the default schema chosen when initializing a project, usually `dataform`, and a dataset's name is set to the name of the corresponding file.
 This can be overridden on a per-file basis by specifying the `schema` and/or `name` options. For example, to create a dataset called `example` in the schema `other_schema`:
 
 ```js
@@ -136,68 +136,10 @@ config {
 SELECT * FROM ...
 ```
 
-For example, to create a dataset called `example` in the schema `other_schema`, create a file with the name `definitions/other_schema.example.sql`.
-This will override the output schema of the dataset to `other_schema`. To reference datasets with overridden schemas, use the fully qualified name of the dataset:
+To reference datasets with overridden schemas, use the fully qualified name of the dataset:
 
 ```js
-SELECT * FROM ${ref("other_schema.table")}
-```
-
-## Configuration statements
-
-Each of the following examples of JavaScript configuration statements results in equivalent behavior.
-
-### Single line statements
-
-Every line starting with `--js` will be interpreted as JavaScript.
-
-```js
---js type("table");
---js disabled(true);
-```
-
-### Multi-line statements
-
-To write JavaScript over multiple lines, create a comment block that starts with `/*js` and ends with `*/`:
-
-```js
-/*js
-```
-
-<div style={{ marginTop: "-40px" }} />
-
-```js
-type("table");
-disabled(true);
-```
-
-<div style={{ marginTop: "-40px" }} />
-
-```js
-*/
-```
-
-### Setting multiple properties with `config()`
-
-Most settings for a dataset can be passed in a single JSON object using the `config()` method:
-
-```js
-/*js
-```
-
-<div style={{ marginTop: "-40px" }} />
-
-```js
-config({
-  type: "table",
-  disabled: true
-});
-```
-
-<div style={{ marginTop: "-40px" }} />
-
-```js
-*/
+SELECT * FROM ${ref("other_schema.example")}
 ```
 
 ## Warehouse specific configuration
