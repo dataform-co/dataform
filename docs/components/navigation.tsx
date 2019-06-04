@@ -105,6 +105,6 @@ export default class Navigation extends React.Component<IProps> {
         </React.Fragment>
       );
     }
-    return <BPMenuItem href={path} text={meta.title} />;
+    return <BPMenuItem key={path} href={path} text={meta.title} />;
   };
 }
