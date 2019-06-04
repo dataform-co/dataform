@@ -1,8 +1,5 @@
 import * as moo from "moo";
 
-// NOTES:
-// "example_backticks.sqlx": different than previous syntax, we require an escape backslash before the first backtick.
-
 const LEXER_STATE_NAMES = {
   SQL: "sql",
   JS_BLOCK: "jsBlock",
@@ -22,6 +19,8 @@ const SQL_LEXER_TOKEN_NAMES = {
   SINGLE_QUOTE_STRING: LEXER_STATE_NAMES.SQL + "_singleQuoteString",
   DOUBLE_QUOTE_STRING: LEXER_STATE_NAMES.SQL + "_doubleQuoteString",
   START_JS_PLACEHOLDER: LEXER_STATE_NAMES.SQL + "_startJsPlaceholder",
+  ESCAPED_BACKTICK: LEXER_STATE_NAMES.SQL + "_escapedBacktick",
+  BACKTICK: LEXER_STATE_NAMES.SQL + "_backtick",
   CAPTURE_EVERYTHING_ELSE: LEXER_STATE_NAMES.SQL + "_captureEverythingElse"
 };
 
@@ -53,6 +52,8 @@ const INNER_SQL_BLOCK_LEXER_TOKEN_NAMES = {
   DOUBLE_QUOTE_STRING: LEXER_STATE_NAMES.INNER_SQL_BLOCK + "_doubleQuoteString",
   START_JS_BLOCK: LEXER_STATE_NAMES.INNER_SQL_BLOCK + "_startJsBlock",
   CLOSE_BLOCK: LEXER_STATE_NAMES.INNER_SQL_BLOCK + "_closeBlock",
+  ESCAPED_BACKTICK: LEXER_STATE_NAMES.INNER_SQL_BLOCK + "_escapedBacktick",
+  BACKTICK: LEXER_STATE_NAMES.INNER_SQL_BLOCK + "_backtick",
   CAPTURE_EVERYTHING_ELSE: LEXER_STATE_NAMES.INNER_SQL_BLOCK + "_captureEverythingElse"
 };
 
@@ -99,8 +100,8 @@ export function parseSqlx(code: string): ISqlxParseResults {
   }
   if (results.js) {
     // If the user provided any JS, cut off the last closing brace.
-    // (We have to do this so that JS scoping works, and because we intentionally cut
-    // off the starting brace during lexing.)
+    // We have to do this because we intentionally cut off the starting brace during lexing.
+    // We can't keep both because the user's JS cannot be run inside a scoped block.
     results.js = results.js.substring(0, results.js.length - 1);
   }
   return results;
@@ -167,6 +168,13 @@ function buildSqlxLexer() {
     match: "${",
     push: LEXER_STATE_NAMES.JS_BLOCK
   };
+  sqlLexer[SQL_LEXER_TOKEN_NAMES.ESCAPED_BACKTICK] = {
+    match: "\\`"
+  };
+  sqlLexer[SQL_LEXER_TOKEN_NAMES.BACKTICK] = {
+    match: "`",
+    value: () => "\\`"
+  };
   sqlLexer[SQL_LEXER_TOKEN_NAMES.CAPTURE_EVERYTHING_ELSE] = {
     match: /[\s\S]+?/,
     lineBreaks: true
@@ -226,6 +234,13 @@ function buildSqlxLexer() {
     match: "}",
     pop: 1,
     value: () => ""
+  };
+  innerSqlBlockLexer[INNER_SQL_BLOCK_LEXER_TOKEN_NAMES.ESCAPED_BACKTICK] = {
+    match: "\\`"
+  };
+  innerSqlBlockLexer[INNER_SQL_BLOCK_LEXER_TOKEN_NAMES.BACKTICK] = {
+    match: "`",
+    value: () => "\\`"
   };
   innerSqlBlockLexer[INNER_SQL_BLOCK_LEXER_TOKEN_NAMES.CAPTURE_EVERYTHING_ELSE] = {
     match: /[\s\S]+?/,

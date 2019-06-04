@@ -555,6 +555,10 @@ describe("@dataform/api", () => {
       expect(cleanSql(exampleBackticks.query)).equals(
         "select * from `tada-analytics.df_integration_test.sample_data`"
       );
+      expect(exampleBackticks.preOps).to.eql([
+        '\n    GRANT SELECT ON `tada-analytics.df_integration_test.sample_data` TO GROUP "allusers@dataform.co"\n'
+      ]);
+      expect(exampleBackticks.postOps).to.eql([]);
 
       // Check deferred calls to table resolve to the correct definitions file.
       const exampleDeferred = graph.tables.find(t => t.name === "example_deferred");
