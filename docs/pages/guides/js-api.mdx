@@ -5,9 +5,7 @@ export const meta = {
   __filename
 };
 
-export default ({ children }) => (
-  <Documentation {...meta}>{children}</Documentation>
-);
+export default ({ children }) => <Documentation {...meta}>{children}</Documentation>;
 
 ## Introduction
 
@@ -74,9 +72,10 @@ Configuration options for each type of action are listed at the relevant referen
 
 ## Using built-in functions
 
-When writing `.sql` files, Dataform makes a number of built-in functions such as `ref()` and `self()` available to use within the main query. For example in `definitions/example.sql`:
+When writing `.sqlx` files, Dataform makes a number of built-in functions such as `ref()` and `self()` available to use within the main query. For example in `definitions/example.sqlx`:
 
 ```js
+config { type: "view" }
 SELECT * FROM ${ref("other_table")}
 ```
 

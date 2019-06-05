@@ -165,14 +165,16 @@ if_incremental {
 
 It's possible to force an incremental dataset to be rebuilt from scratch using either the command line interface with the <code>--full-refresh</code> option or with the <code>Run with full refresh</code> option in Dataform Web.
 
-If you need to protect a dataset from ever being rebuilt from scratch, for example if the source data is only temporary, you can mark an incremental dataset as `protected()`.
+If you need to protect a dataset from ever being rebuilt from scratch, for example if the source data is only temporary, you can mark an incremental dataset as `protected`.
 This means that Dataform will never delete this dataset, even if a user requests a full refresh.
 
-`definitions/incremental_example_protected.sql`:
+`definitions/incremental_example_protected.sqlx`:
 
 ```js
---js type("incremental");
---js protected();
+config {
+  type: "incremental",
+  protected: true
+}
 SELECT ...
 ```
 

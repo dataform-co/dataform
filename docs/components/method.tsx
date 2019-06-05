@@ -19,7 +19,7 @@ export default class Method extends React.Component<Props, any> {
 
   public render() {
     return (
-      <div>
+      <>
         <h2 id={this.props.name}>
           <pre>{this.props.name}</pre>
         </h2>
@@ -35,18 +35,18 @@ export default class Method extends React.Component<Props, any> {
             ))}
         </div>
         {this.props.fields && (
-          <div>
+          <>
             <h3> Arguments </h3>
             <Struct fields={this.props.fields} />
-          </div>
+          </>
         )}
         {this.props.returns && (
-          <div>
+          <>
             <h3>Returns</h3>
             <p>{this.props.returns}</p>
-          </div>
+          </>
         )}
-      </div>
+      </>
     );
   }
 }

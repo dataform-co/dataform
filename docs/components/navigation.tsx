@@ -1,8 +1,4 @@
-import {
-  IMenuItemProps as IBPMenuItemProps,
-  Menu,
-  MenuItem as BPMenuItem
-} from "@blueprintjs/core";
+import { Menu, MenuItem as BPMenuItem } from "@blueprintjs/core";
 import { pathFromFilename } from "df/docs/common/paths";
 import * as styles from "df/docs/components/navigation.css";
 import * as React from "react";
@@ -29,11 +25,9 @@ import * as platformSetupDataWarehouse from "df/docs/pages/platform_guides/set_u
 import * as platformVersionControl from "df/docs/pages/platform_guides/version_control.mdx";
 
 // Reference.
-import * as referenceAssertions from "df/docs/pages/reference/assertions.mdx";
 import * as referenceDataformJson from "df/docs/pages/reference/dataform-json.mdx";
-import * as referenceDatasets from "df/docs/pages/reference/datasets.mdx";
 import * as referenceJsApi from "df/docs/pages/reference/js-api.mdx";
-import * as referenceOperations from "df/docs/pages/reference/operations.mdx";
+import * as referenceSqlx from "df/docs/pages/reference/sqlx.mdx";
 
 interface IProps {
   currentPath: string;
@@ -76,13 +70,9 @@ export default class Navigation extends React.Component<IProps> {
         </Menu>
         <h4>API reference</h4>
         <Menu className={styles.menu}>
-          {[
-            referenceDatasets,
-            referenceAssertions,
-            referenceOperations,
-            referenceDataformJson,
-            referenceJsApi
-          ].map(page => this.menuItem(page.meta))}
+          {[referenceDataformJson, referenceSqlx, referenceJsApi].map(page =>
+            this.menuItem(page.meta)
+          )}
         </Menu>
       </div>
     );
