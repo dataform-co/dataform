@@ -108,6 +108,13 @@ describe("@dataform/api", () => {
       }).to.throw();
     });
 
+    it("trying to fully refresh a protected dataset fails", () => {
+      const testGraph = dataform.CompiledGraph.create(TEST_GRAPH);
+      testGraph.tables[0].protected = true;
+      const builder = new Builder(TEST_GRAPH, { fullRefresh: true }, TEST_STATE);
+      expect(() => builder.build()).to.throw();
+    });
+
     it("node_types", () => {
       const graph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
         projectConfig: { warehouse: "redshift" },
