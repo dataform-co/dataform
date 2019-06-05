@@ -54,97 +54,106 @@ export class Session {
     return adapters.create(this.config);
   }
 
-  public sqlxAction(
-    sqlxConfig: ISqlxConfig,
-    sqlStatementCount: number,
-    hasPreOperations: boolean,
-    hasPostOperations: boolean
-  ) {
-    if (sqlStatementCount > 1 && sqlxConfig.type !== "operations") {
-      const message = `Actions may only contain more than one SQL statement if they are of type 'operations'.`;
-      this.compileError(new Error(message));
+  public sqlxAction(actionOptions: {
+    sqlxConfig: ISqlxConfig;
+    sqlStatementCount: number;
+    hasIncremental: boolean;
+    hasPreOperations: boolean;
+    hasPostOperations: boolean;
+  }) {
+    if (actionOptions.sqlStatementCount > 1 && actionOptions.sqlxConfig.type !== "operations") {
+      this.compileError(
+        "Actions may only contain more than one SQL statement if they are of type 'operations'."
+      );
     }
-    if (sqlxConfig.hasOutput && sqlxConfig.type !== "operations") {
-      const message = `Actions may only specify 'hasOutput: true' if they are of type 'operations'.`;
-      this.compileError(new Error(message));
+    if (
+      actionOptions.sqlxConfig.hasOutput &&
+      (actionOptions.sqlxConfig.type !== "operations" ||
+        this.isDatasetType(actionOptions.sqlxConfig.type))
+    ) {
+      this.compileError(
+        "Actions may only specify 'hasOutput: true' if they are of type 'operations' or create a dataset."
+      );
     }
-    if (sqlxConfig.hasOutput && sqlStatementCount !== 1) {
-      const message = `Operations with 'hasOutput: true' must contain exactly one SQL statement.`;
-      this.compileError(new Error(message));
+    if (actionOptions.sqlxConfig.hasOutput && actionOptions.sqlStatementCount !== 1) {
+      this.compileError(
+        "Operations with 'hasOutput: true' must contain exactly one SQL statement."
+      );
     }
-    if (sqlxConfig.protected && sqlxConfig.type !== "incremental") {
-      const message = `Actions may only specify 'protected: true' if they are of type 'incremental'.`;
-      this.compileError(new Error(message));
+    if (actionOptions.sqlxConfig.protected && actionOptions.sqlxConfig.type !== "incremental") {
+      this.compileError(
+        "Actions may only specify 'protected: true' if they are of type 'incremental'."
+      );
     }
-    if (sqlxConfig.disabled && !this.isDatasetType(sqlxConfig.type)) {
-      const message = `Actions may only specify 'disabled: true' if they create a dataset.`;
-      this.compileError(new Error(message));
+    if (actionOptions.hasIncremental && actionOptions.sqlxConfig.type !== "incremental") {
+      this.compileError(
+        "Actions may only include incremental_where if they are of type 'incremental'."
+      );
     }
-    if (sqlxConfig.redshift && !this.isDatasetType(sqlxConfig.type)) {
-      const message = `Actions may only specify 'redshift: { ... }' if they create a dataset.`;
-      this.compileError(new Error(message));
+    if (actionOptions.sqlxConfig.disabled && !this.isDatasetType(actionOptions.sqlxConfig.type)) {
+      this.compileError("Actions may only specify 'disabled: true' if they create a dataset.");
     }
-    if (sqlxConfig.bigquery && !this.isDatasetType(sqlxConfig.type)) {
-      const message = `Actions may only specify 'bigquery: { ... }' if they create a dataset.`;
-      this.compileError(new Error(message));
+    if (actionOptions.sqlxConfig.redshift && !this.isDatasetType(actionOptions.sqlxConfig.type)) {
+      this.compileError("Actions may only specify 'redshift: { ... }' if they create a dataset.");
     }
-    if (hasPreOperations && !this.isDatasetType(sqlxConfig.type)) {
-      const message = `Actions may only include pre_operations if they create a dataset.`;
-      this.compileError(new Error(message));
+    if (actionOptions.sqlxConfig.bigquery && !this.isDatasetType(actionOptions.sqlxConfig.type)) {
+      this.compileError("Actions may only specify 'bigquery: { ... }' if they create a dataset.");
     }
-    if (hasPostOperations && !this.isDatasetType(sqlxConfig.type)) {
-      const message = `Actions may only include post_operations if they create a dataset.`;
-      this.compileError(new Error(message));
+    if (actionOptions.hasPreOperations && !this.isDatasetType(actionOptions.sqlxConfig.type)) {
+      this.compileError("Actions may only include pre_operations if they create a dataset.");
+    }
+    if (actionOptions.hasPostOperations && !this.isDatasetType(actionOptions.sqlxConfig.type)) {
+      this.compileError("Actions may only include post_operations if they create a dataset.");
     }
 
     const action = (() => {
-      switch (sqlxConfig.type) {
+      switch (actionOptions.sqlxConfig.type) {
         case "view":
         case "table":
         case "inline":
         case "incremental": {
-          const dataset = this.publish(sqlxConfig.name);
-          dataset.type(sqlxConfig.type);
-          if (sqlxConfig.disabled) {
+          const dataset = this.publish(actionOptions.sqlxConfig.name);
+          dataset.type(actionOptions.sqlxConfig.type);
+          if (actionOptions.sqlxConfig.disabled) {
             dataset.disabled();
           }
-          if (sqlxConfig.redshift) {
-            dataset.redshift(sqlxConfig.redshift);
+          if (actionOptions.sqlxConfig.redshift) {
+            dataset.redshift(actionOptions.sqlxConfig.redshift);
           }
-          if (sqlxConfig.bigquery) {
-            dataset.bigquery(sqlxConfig.bigquery);
+          if (actionOptions.sqlxConfig.bigquery) {
+            dataset.bigquery(actionOptions.sqlxConfig.bigquery);
           }
-          if (sqlxConfig.protected) {
+          if (actionOptions.sqlxConfig.protected) {
             dataset.proto.protected = true;
           }
           return dataset;
         }
         case "assertion": {
-          const assertion = this.assert(sqlxConfig.name);
+          const assertion = this.assert(actionOptions.sqlxConfig.name);
           return assertion;
         }
         case "operations": {
-          const operations = this.operate(sqlxConfig.name);
-          if (!sqlxConfig.hasOutput) {
+          const operations = this.operate(actionOptions.sqlxConfig.name);
+          if (!actionOptions.sqlxConfig.hasOutput) {
             delete operations.proto.target;
           }
           return operations;
         }
         default: {
-          throw new Error(`Unrecognized action type: ${sqlxConfig.type}`);
+          throw new Error(`Unrecognized action type: ${actionOptions.sqlxConfig.type}`);
         }
       }
     })();
-    if (sqlxConfig.schema) {
-      action.proto.target.schema = sqlxConfig.schema;
+    if (actionOptions.sqlxConfig.schema) {
+      action.proto.target.schema = actionOptions.sqlxConfig.schema;
     }
-    if (sqlxConfig.name) {
-      action.proto.name = sqlxConfig.name;
+    if (actionOptions.sqlxConfig.name) {
+      action.proto.name = actionOptions.sqlxConfig.name;
       if (action.proto.target) {
-        action.proto.target.name = sqlxConfig.name;
+        action.proto.target.name = actionOptions.sqlxConfig.name;
       }
     }
-    action.dependencies(sqlxConfig.dependencies);
+    action.dependencies(actionOptions.sqlxConfig.dependencies);
     return action;
   }
 
@@ -227,14 +236,18 @@ export class Session {
     return assertion;
   }
 
-  public compileError(err: Error, path?: string) {
+  public compileError(err: Error | string, path?: string) {
     const fileName = path || utils.getCallerFile(this.rootDir) || __filename;
 
     const compileError = dataform.CompilationError.create({
-      stack: err.stack,
-      fileName,
-      message: err.message
+      fileName
     });
+    if (typeof err === "string") {
+      compileError.message = err;
+    } else {
+      compileError.message = err.message;
+      compileError.stack = err.stack;
+    }
     this.graphErrors.compilationErrors.push(compileError);
   }
 

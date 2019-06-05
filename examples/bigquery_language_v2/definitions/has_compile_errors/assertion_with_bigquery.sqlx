@@ -1,0 +1,2 @@
+config { type: "assertion", bigquery: { partitionBy: "something" } }
+SELECT 1 as test

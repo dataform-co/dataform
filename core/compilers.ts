@@ -88,20 +88,28 @@ export function extractJsBlocks(code: string): { sql: string; js: string } {
 function compileSqlx(results: ISqlxParseResults, path: string) {
   return `
 const parsedConfig = ${results.config || "{}"};
-const finalConfig = {
+// sqlxConfig should conform to the ISqlxConfig interface.
+const sqlxConfig = {
   name: "${utils.baseFilename(path)}",
   type: "operations",
   dependencies: [],
   ...parsedConfig
-}
+};
 
+const sqlStatementCount = ${results.sql.length};
+const hasIncremental = ${!!results.incremental};
 const hasPreOperations = ${results.preOperations.length > 1 || results.preOperations[0] !== ""};
 const hasPostOperations = ${results.postOperations.length > 1 || results.postOperations[0] !== ""};
-const action = session.sqlxAction(finalConfig, ${
-    results.sql.length
-  }, hasPreOperations, hasPostOperations);
 
-switch (finalConfig.type) {
+const action = session.sqlxAction({
+  sqlxConfig,
+  sqlStatementCount,
+  hasIncremental,
+  hasPreOperations,
+  hasPostOperations
+});
+
+switch (sqlxConfig.type) {
   case "view":
   case "table":
   case "incremental":
@@ -111,7 +119,7 @@ switch (finalConfig.type) {
         .map(name => `const ${name} = ctx.${name}.bind(ctx);`)
         .join("\n")}
       ${results.js}
-      if (finalConfig.type === "incremental") {
+      if (hasIncremental) {
         action.where(\`${results.incremental}\`);
       }
       if (hasPreOperations) {
@@ -148,7 +156,7 @@ switch (finalConfig.type) {
     break;
   }
   default: {
-    session.compileError(new Error(\`Unrecognized action type: \${finalConfig.type}\`));
+    session.compileError(new Error(\`Unrecognized action type: \${sqlxConfig.type}\`));
     break;
   }
 }`;

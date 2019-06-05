@@ -1,0 +1,2 @@
+config { type: "assertion", redshift: { distKey: "something" } }
+SELECT 1 as test

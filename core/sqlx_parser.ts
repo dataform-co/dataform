@@ -142,7 +142,7 @@ function buildSqlxLexer() {
     value: () => ""
   };
   sqlLexer[SQL_LEXER_TOKEN_NAMES.START_INCREMENTAL] = {
-    match: "if_incremental {",
+    match: "incremental_where {",
     push: LEXER_STATE_NAMES.INNER_SQL_BLOCK,
     value: () => ""
   };

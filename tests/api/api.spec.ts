@@ -528,8 +528,56 @@ describe("@dataform/api", () => {
     it("bigquery using v2 language compiles", async () => {
       const graph = await compile({ projectDir: path.resolve("df/examples/bigquery_language_v2") });
 
-      // throw new Error(graph.graphErrors.compilationErrors[0].message);
-      expect(graph.graphErrors).to.eql(dataform.GraphErrors.create());
+      expect(graph.graphErrors).to.eql(
+        dataform.GraphErrors.create({
+          compilationErrors: [
+            dataform.CompilationError.create({
+              fileName: "definitions/has_compile_errors/assertion_with_bigquery.sqlx",
+              message: "Actions may only specify 'bigquery: { ... }' if they create a dataset."
+            }),
+            dataform.CompilationError.create({
+              fileName: "definitions/has_compile_errors/assertion_with_output.sqlx",
+              message:
+                "Actions may only specify 'hasOutput: true' if they are of type 'operations' or create a dataset."
+            }),
+            dataform.CompilationError.create({
+              fileName: "definitions/has_compile_errors/assertion_with_postops.sqlx",
+              message: "Actions may only include post_operations if they create a dataset."
+            }),
+            dataform.CompilationError.create({
+              fileName: "definitions/has_compile_errors/assertion_with_preops.sqlx",
+              message: "Actions may only include pre_operations if they create a dataset."
+            }),
+            dataform.CompilationError.create({
+              fileName: "definitions/has_compile_errors/assertion_with_redshift.sqlx",
+              message: "Actions may only specify 'redshift: { ... }' if they create a dataset."
+            }),
+            dataform.CompilationError.create({
+              fileName: "definitions/has_compile_errors/disabled_assertion.sqlx",
+              message: "Actions may only specify 'disabled: true' if they create a dataset."
+            }),
+            dataform.CompilationError.create({
+              fileName: "definitions/has_compile_errors/op_with_output_multiple_statements.sqlx",
+              message: "Operations with 'hasOutput: true' must contain exactly one SQL statement."
+            }),
+            dataform.CompilationError.create({
+              fileName: "definitions/has_compile_errors/protected_assertion.sqlx",
+              message:
+                "Actions may only specify 'protected: true' if they are of type 'incremental'."
+            }),
+            dataform.CompilationError.create({
+              fileName: "definitions/has_compile_errors/view_with_incremental.sqlx",
+              message:
+                "Actions may only include incremental_where if they are of type 'incremental'."
+            }),
+            dataform.CompilationError.create({
+              fileName: "definitions/has_compile_errors/view_with_multiple_statements.sqlx",
+              message:
+                "Actions may only contain more than one SQL statement if they are of type 'operations'."
+            })
+          ]
+        })
+      );
 
       // Check JS blocks get processed.
       const exampleJsBlocks = graph.tables.find(t => t.name === "example_js_blocks");
