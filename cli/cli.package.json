@@ -8,9 +8,9 @@
     "dtfm": "index.js"
   },
   "dependencies": {
-    "@dataform/api": "^0.1.0",
-    "@dataform/core": "^0.1.0",
-    "@dataform/protos": "^0.1.0",
+    "@dataform/api": "1.0.0-alpha",
+    "@dataform/core": "1.0.0-alpha",
+    "@dataform/protos": "1.0.0-alpha",
     "@types/readline-sync": "^1.4.3",
     "@types/yargs": "^11.1.1",
     "chokidar": "^2.0.4",

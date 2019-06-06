@@ -36,13 +36,10 @@ export type TableType = ValueOf<TableTypes>;
 
 export interface TConfig {
   type?: TableType;
-  query?: TContextable<string>;
-  where?: TContextable<string>;
-  preOps?: TContextable<string | string[]>;
-  postOps?: TContextable<string | string[]>;
   dependencies?: string | string[];
   descriptor?: string[] | { [key: string]: string };
   disabled?: boolean;
+  protected?: boolean;
   redshift?: dataform.IRedshiftOptions;
   bigquery?: dataform.IBigQueryOptions;
 }
@@ -63,20 +60,8 @@ export class Table {
   private contextablePostOps: Array<TContextable<string | string[]>> = [];
 
   public config(config: TConfig) {
-    if (config.where) {
-      this.where(config.where);
-    }
     if (config.type) {
       this.type(config.type);
-    }
-    if (config.query) {
-      this.query(config.query);
-    }
-    if (config.preOps) {
-      this.preOps(config.preOps);
-    }
-    if (config.postOps) {
-      this.postOps(config.postOps);
     }
     if (config.dependencies) {
       this.dependencies(config.dependencies);
@@ -212,6 +197,33 @@ export class Table {
     if (this.proto.dependencies.indexOf(dependency) < 0) {
       this.proto.dependencies.push(dependency);
     }
+  }
+}
+
+export class SqlxTableContext {
+  private table?: Table;
+
+  constructor(table: Table) {
+    this.table = table;
+  }
+
+  public self(): string {
+    return this.resolve(this.table.proto.name);
+  }
+
+  public ref(name: string) {
+    if (!name) {
+      const message = `Node name is not specified`;
+      this.table.session.compileError(new Error(message));
+      return "";
+    }
+
+    this.table.dependencies(name);
+    return this.resolve(name);
+  }
+
+  public resolve(name: string) {
+    return this.table.session.resolve(name);
   }
 }
 

@@ -456,6 +456,8 @@ describe("@dataform/api", () => {
       const graph = await compile({ projectDir: path.resolve("df/examples/bigquery") });
       const tableNames = graph.tables.map(t => t.name);
 
+      expect(graph.graphErrors).to.eql(dataform.GraphErrors.create());
+
       // Check JS blocks get processed.
       expect(tableNames).includes("example_js_blocks");
       const exampleJsBlocks = graph.tables.filter(t => t.name == "example_js_blocks")[0];
@@ -466,6 +468,9 @@ describe("@dataform/api", () => {
       expect(tableNames).includes("example_incremental");
       const exampleIncremental = graph.tables.filter(t => t.name == "example_incremental")[0];
       expect(exampleIncremental.query).equals("select current_timestamp() as ts");
+      expect(exampleIncremental.where.trim()).equals(
+        "ts > (select max(ts) from `tada-analytics.df_integration_test.example_incremental`) or (select max(ts) from `tada-analytics.df_integration_test.example_incremental`) is null"
+      );
 
       // Check tables defined in includes are not included.
       expect(tableNames).not.includes("example_ignore");
@@ -498,6 +503,211 @@ describe("@dataform/api", () => {
         "\nselect * from (\nselect * from `tada-analytics.df_integration_test.sample_data`)\nwhere true"
       );
       expect(exampleUsingInline.dependencies).includes("sample_data");
+
+      // Check view
+      expect(tableNames).includes("example_view");
+      const exampleView = graph.tables.filter(t => t.name == "example_view")[0];
+      expect(exampleView.type).equals("view");
+      expect(exampleView.query).equals(
+        "\nselect * from `tada-analytics.df_integration_test.sample_data`"
+      );
+      expect(exampleView.dependencies).deep.equals(["sample_data"]);
+
+      // Check table
+      expect(tableNames).includes("example_table");
+      const exampleTable = graph.tables.filter(t => t.name == "example_table")[0];
+      expect(exampleTable.type).equals("table");
+      expect(exampleTable.query).equals(
+        "\nselect * from `tada-analytics.df_integration_test.sample_data`"
+      );
+      expect(exampleTable.dependencies).deep.equals(["sample_data"]);
+
+      // Check sample data
+      expect(tableNames).includes("sample_data");
+      const exampleSampleData = graph.tables.filter(t => t.name == "sample_data")[0];
+      expect(exampleSampleData.type).equals("view");
+      expect(exampleSampleData.query).equals(
+        "select 1 as sample union all\nselect 2 as sample union all\nselect 3 as sample"
+      );
+      expect(exampleSampleData.dependencies).to.eql([]);
+    });
+
+    it("bigquery using v2 language compiles", async () => {
+      const graph = await compile({ projectDir: path.resolve("df/examples/bigquery_language_v2") });
+
+      expect(graph.graphErrors).to.eql(
+        dataform.GraphErrors.create({
+          compilationErrors: [
+            dataform.CompilationError.create({
+              fileName: "definitions/has_compile_errors/assertion_with_bigquery.sqlx",
+              message: "Actions may only specify 'bigquery: { ... }' if they create a dataset."
+            }),
+            dataform.CompilationError.create({
+              fileName: "definitions/has_compile_errors/assertion_with_output.sqlx",
+              message:
+                "Actions may only specify 'hasOutput: true' if they are of type 'operations' or create a dataset."
+            }),
+            dataform.CompilationError.create({
+              fileName: "definitions/has_compile_errors/assertion_with_postops.sqlx",
+              message: "Actions may only include post_operations if they create a dataset."
+            }),
+            dataform.CompilationError.create({
+              fileName: "definitions/has_compile_errors/assertion_with_preops.sqlx",
+              message: "Actions may only include pre_operations if they create a dataset."
+            }),
+            dataform.CompilationError.create({
+              fileName: "definitions/has_compile_errors/assertion_with_redshift.sqlx",
+              message: "Actions may only specify 'redshift: { ... }' if they create a dataset."
+            }),
+            dataform.CompilationError.create({
+              fileName: "definitions/has_compile_errors/disabled_assertion.sqlx",
+              message: "Actions may only specify 'disabled: true' if they create a dataset."
+            }),
+            dataform.CompilationError.create({
+              fileName: "definitions/has_compile_errors/op_with_output_multiple_statements.sqlx",
+              message: "Operations with 'hasOutput: true' must contain exactly one SQL statement."
+            }),
+            dataform.CompilationError.create({
+              fileName: "definitions/has_compile_errors/protected_assertion.sqlx",
+              message:
+                "Actions may only specify 'protected: true' if they are of type 'incremental'."
+            }),
+            dataform.CompilationError.create({
+              fileName: "definitions/has_compile_errors/view_with_incremental.sqlx",
+              message:
+                "Actions may only include incremental_where if they are of type 'incremental'."
+            }),
+            dataform.CompilationError.create({
+              fileName: "definitions/has_compile_errors/view_with_multiple_statements.sqlx",
+              message:
+                "Actions may only contain more than one SQL statement if they are of type 'operations'."
+            })
+          ]
+        })
+      );
+
+      // Check JS blocks get processed.
+      const exampleJsBlocks = graph.tables.find(t => t.name === "example_js_blocks");
+      expect(exampleJsBlocks).to.not.be.undefined;
+      expect(exampleJsBlocks.type).equals("table");
+      expect(exampleJsBlocks.query.trim()).equals("select 1 as foo");
+
+      // Check we can import and use an external package.
+      const exampleIncremental = graph.tables.find(t => t.name === "example_incremental");
+      expect(exampleIncremental).to.not.be.undefined;
+      expect(exampleIncremental.query.trim()).equals("select current_timestamp() as ts");
+      expect(exampleIncremental.where.trim()).equals(
+        "ts > (select max(ts) from `tada-analytics.df_integration_test.example_incremental`) or (select max(ts) from `tada-analytics.df_integration_test.example_incremental`) is null"
+      );
+
+      // Check tables defined in includes are not included.
+      const exampleIgnore = graph.tables.find(t => t.name === "example_ignore");
+      expect(exampleIgnore).to.be.undefined;
+
+      // Check SQL files with raw back-ticks get escaped.
+      const exampleBackticks = graph.tables.find(t => t.name === "example_backticks");
+      expect(exampleBackticks).to.not.be.undefined;
+      expect(cleanSql(exampleBackticks.query)).equals(
+        "select * from `tada-analytics.df_integration_test.sample_data`"
+      );
+      expect(exampleBackticks.preOps).to.eql([
+        '\n    GRANT SELECT ON `tada-analytics.df_integration_test.sample_data` TO GROUP "allusers@dataform.co"\n'
+      ]);
+      expect(exampleBackticks.postOps).to.eql([]);
+
+      // Check deferred calls to table resolve to the correct definitions file.
+      const exampleDeferred = graph.tables.find(t => t.name === "example_deferred");
+      expect(exampleDeferred).to.not.be.undefined;
+      expect(exampleDeferred.fileName).includes("definitions/example_deferred.js");
+
+      // Check inline tables
+      const exampleInline = graph.tables.find(t => t.name === "example_inline");
+      expect(exampleInline).to.not.be.undefined;
+      expect(exampleInline.type).equals("inline");
+      expect(exampleInline.query.trim()).equals(
+        "select * from `tada-analytics.df_integration_test.sample_data`"
+      );
+      expect(exampleInline.dependencies).includes("sample_data");
+
+      const exampleUsingInline = graph.tables.find(t => t.name === "example_using_inline");
+      expect(exampleUsingInline).to.not.be.undefined;
+      expect(exampleUsingInline.type).equals("table");
+      expect(exampleUsingInline.query.trim()).equals(
+        "select * from (\n\nselect * from `tada-analytics.df_integration_test.sample_data`\n)\nwhere true"
+      );
+      expect(exampleUsingInline.dependencies).includes("sample_data");
+
+      // Check view
+      const exampleView = graph.tables.find(t => t.name === "example_view");
+      expect(exampleView).to.not.be.undefined;
+      expect(exampleView.type).equals("view");
+      expect(exampleView.query.trim()).equals(
+        "select * from `tada-analytics.df_integration_test.sample_data`"
+      );
+      expect(exampleView.dependencies).deep.equals(["sample_data"]);
+
+      // Check table
+      const exampleTable = graph.tables.find(t => t.name === "example_table");
+      expect(exampleTable).to.not.be.undefined;
+      expect(exampleTable.type).equals("table");
+      expect(exampleTable.query.trim()).equals(
+        "select * from `tada-analytics.df_integration_test.sample_data`"
+      );
+      expect(exampleTable.dependencies).deep.equals(["sample_data"]);
+      expect(exampleTable.preOps).to.eql([]);
+      expect(exampleTable.postOps).to.eql([
+        '\n    GRANT SELECT ON `tada-analytics.df_integration_test.example_table` TO GROUP "allusers@dataform.co"\n',
+        '\n    GRANT SELECT ON `tada-analytics.df_integration_test.example_table` TO GROUP "otherusers@dataform.co"\n'
+      ]);
+
+      // Check sample data
+      const exampleSampleData = graph.tables.find(t => t.name === "sample_data");
+      expect(exampleSampleData).to.not.be.undefined;
+      expect(exampleSampleData.type).equals("view");
+      expect(exampleSampleData.query.trim()).equals(
+        "select 1 as sample union all\nselect 2 as sample union all\nselect 3 as sample"
+      );
+      expect(exampleSampleData.dependencies).to.eql([]);
+
+      // Check schema overrides defined in "config {}"
+      const exampleUsingOverriddenSchema = graph.tables.find(
+        t => t.name === "override_schema_example"
+      );
+      expect(exampleUsingOverriddenSchema).to.not.be.undefined;
+      expect(exampleUsingOverriddenSchema.target.schema).equals("override_schema");
+      expect(exampleUsingOverriddenSchema.type).equals("view");
+      expect(exampleUsingOverriddenSchema.query.trim()).equals("select 1 as test_schema_override");
+
+      // Check assertion
+      const exampleAssertion = graph.assertions.find(t => t.name === "example_assertion");
+      expect(exampleAssertion).to.not.be.undefined;
+      expect(exampleAssertion.target.schema).equals("hi_there");
+      expect(exampleAssertion.query.trim()).equals(
+        "select * from `tada-analytics.df_integration_test.sample_data` where sample = 100"
+      );
+      expect(exampleAssertion.dependencies).to.eql(["sample_data"]);
+
+      // Check example operations file
+      const exampleOperations = graph.operations.find(o => o.name === "example_operations");
+      expect(exampleOperations).to.not.be.undefined;
+      expect(exampleOperations.target).is.null;
+      expect(exampleOperations.queries).to.eql([
+        "\n\nCREATE OR REPLACE VIEW someschema.someview AS (SELECT 1 AS test)\n",
+        "\nDROP VIEW IF EXISTS someschema.someview"
+      ]);
+      expect(exampleOperations.dependencies).to.eql(["example_inline"]);
+
+      // Check example operation with output.
+      const exampleOperationWithOutput = graph.operations.find(
+        o => o.name === "example_operation_with_output"
+      );
+      expect(exampleOperationWithOutput).to.not.be.undefined;
+      expect(exampleOperationWithOutput.target.schema).equals("df_integration_test");
+      expect(exampleOperationWithOutput.target.name).equals("example_operation_with_output");
+      expect(exampleOperationWithOutput.queries).to.eql([
+        "\nCREATE OR REPLACE VIEW `tada-analytics.df_integration_test.example_operation_with_output` AS (SELECT 1 AS TEST)"
+      ]);
+      expect(exampleOperationWithOutput.dependencies).to.eql([]);
     });
 
     it("schema overrides", async () => {

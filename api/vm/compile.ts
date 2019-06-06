@@ -62,7 +62,7 @@ export function compile(compileConfig: dataform.ICompileConfig): Uint8Array {
       root: compileConfig.projectDir,
       external: true
     },
-    sourceExtensions: ["js", "sql"],
+    sourceExtensions: ["js", "sql", "sqlx"],
     compiler
   });
 

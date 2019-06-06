@@ -1,0 +1,6 @@
+config {
+    schema: "hi_there",
+    type: "assertion"
+}
+
+select * from ${ref("sample_data")} where sample = 100
