@@ -2,7 +2,6 @@ import * as React from "react";
 
 import Head from "next/head";
 
-import { Footer } from "df/docs/components/footer";
 import { Header } from "df/docs/components/header";
 
 import * as globalStyles from "df/docs/global.css";
