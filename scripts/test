@@ -1,4 +1,6 @@
 #!/bin/bash
 set -e
 
-bazel test //tests/core //tests/api
+./scripts/decode_credentials
+
+bazel test ...
