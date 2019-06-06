@@ -18,7 +18,7 @@ message ProjectConfig {
 }
 
 message RunConfig {
-  repeated string nodes = 1;
+  repeated string actions = 1;
   bool include_dependencies = 3;
   bool full_refresh = 2;
   bool carry_on = 4;
@@ -61,7 +61,7 @@ message GraphErrors {
 }
 
 message ValidationError {
-  string node_name = 1;
+  string action_name = 1;
   string message = 2;
 }
 
@@ -144,7 +144,7 @@ message ExecutionTask {
   string statement = 2;
 }
 
-message ExecutionNode {
+message ExecutionAction {
   string name = 1;
   repeated string dependencies = 3;
   repeated ExecutionTask tasks = 2;
@@ -162,7 +162,7 @@ message ExecutionGraph {
   RunConfig run_config = 2;
   WarehouseState warehouse_state = 4;
 
-  repeated ExecutionNode nodes = 3;
+  repeated ExecutionAction actions = 3;
 }
 
 message ExecutedTask {
@@ -173,20 +173,20 @@ message ExecutedTask {
   string error = 3;
 }
 
-enum NodeExecutionStatus {
-  UNKNOWN_NODE_EXECUTION_STATUS = 0;
+enum ActionExecutionStatus {
+  UNKNOWN_ACTION_EXECUTION_STATUS = 0;
   SUCCESSFUL = 1;
   FAILED = 2;
   SKIPPED = 3;
   DISABLED = 4;
 }
 
-message ExecutedNode {
+message ExecutedAction {
   string name = 1;
-  // May be empty, indicating that nothing was run as part of this Node.
+  // May be empty, indicating that nothing was run as part of this Action.
   repeated ExecutedTask tasks = 2;
 
-  NodeExecutionStatus status = 6;
+  ActionExecutionStatus status = 6;
   int64 execution_time = 5;
 
   // Deprecated status fields. Prefer using the 'status' field.
@@ -203,7 +203,7 @@ message ExecutedGraph {
   WarehouseState warehouse_state = 4;
 
   bool ok = 5;
-  repeated ExecutedNode nodes = 3;
+  repeated ExecutedAction actions = 3;
 }
 
 message Field {

@@ -23,11 +23,11 @@ describe("@dataform/integration/snowflake", () => {
     let executionGraph = await dfapi.build(compiledGraph, {}, credentials);
     let executedGraph = await dfapi.run(executionGraph, credentials).resultPromise();
 
-    const nodeMap = keyBy(executedGraph.nodes, v => v.name);
+    const actionMap = keyBy(executedGraph.actions, v => v.name);
 
     // Check the status of the two tests.
-    expect(nodeMap.example_assertion_fail.status).equals(dataform.NodeExecutionStatus.FAILED);
-    expect(nodeMap.example_assertion_pass.status).equals(dataform.NodeExecutionStatus.SUCCESSFUL);
+    expect(actionMap.example_assertion_fail.status).equals(dataform.ActionExecutionStatus.FAILED);
+    expect(actionMap.example_assertion_pass.status).equals(dataform.ActionExecutionStatus.SUCCESSFUL);
 
     // Check the data in the incremental table.
     let incrementalTable = keyBy(compiledGraph.tables, t => t.name).example_incremental;
@@ -37,7 +37,7 @@ describe("@dataform/integration/snowflake", () => {
     // Re-run some of the actions.
     executionGraph = await dfapi.build(
       compiledGraph,
-      { nodes: ["example_incremental", "example_table", "example_view"] },
+      { actions: ["example_incremental", "example_table", "example_view"] },
       credentials
     );
 

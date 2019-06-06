@@ -51,46 +51,46 @@ describe("@dataform/api", () => {
     it("include_deps", () => {
       const builder = new Builder(
         TEST_GRAPH,
-        { nodes: ["a"], includeDependencies: true },
+        { actions: ["a"], includeDependencies: true },
         TEST_STATE
       );
       const executionGraph = builder.build();
-      const includedNodeNames = executionGraph.nodes.map(n => n.name);
-      expect(includedNodeNames).includes("a");
-      expect(includedNodeNames).includes("b");
+      const includedActionNames = executionGraph.actions.map(n => n.name);
+      expect(includedActionNames).includes("a");
+      expect(includedActionNames).includes("b");
     });
 
     it("exclude_deps", () => {
       const builder = new Builder(
         TEST_GRAPH,
-        { nodes: ["a"], includeDependencies: false },
+        { actions: ["a"], includeDependencies: false },
         TEST_STATE
       );
       const executionGraph = builder.build();
-      const includedNodeNames = executionGraph.nodes.map(n => n.name);
-      expect(includedNodeNames).includes("a");
-      expect(includedNodeNames).not.includes("b");
+      const includedActionNames = executionGraph.actions.map(n => n.name);
+      expect(includedActionNames).includes("a");
+      expect(includedActionNames).not.includes("b");
     });
 
     it("exclude_disabled", () => {
       const builder = new Builder(TEST_GRAPH, { includeDependencies: true }, TEST_STATE);
       const executionGraph = builder.build();
 
-      const nodeA = executionGraph.nodes.find(n => n.name === "a");
-      const nodeB = executionGraph.nodes.find(n => n.name === "b");
-      const nodeC = executionGraph.nodes.find(n => n.name === "c");
+      const actionA = executionGraph.actions.find(n => n.name === "a");
+      const actionB = executionGraph.actions.find(n => n.name === "b");
+      const actionC = executionGraph.actions.find(n => n.name === "c");
 
-      assert.exists(nodeA);
-      assert.exists(nodeB);
-      assert.exists(nodeC);
+      assert.exists(actionA);
+      assert.exists(actionB);
+      assert.exists(actionC);
 
-      expect(nodeA)
+      expect(actionA)
         .to.have.property("tasks")
         .to.be.an("array").that.not.is.empty;
-      expect(nodeB)
+      expect(actionB)
         .to.have.property("tasks")
         .to.be.an("array").that.is.empty;
-      expect(nodeC)
+      expect(actionC)
         .to.have.property("tasks")
         .to.be.an("array").that.not.is.empty;
     });
@@ -115,7 +115,7 @@ describe("@dataform/api", () => {
       expect(() => builder.build()).to.throw();
     });
 
-    it("node_types", () => {
+    it("action_types", () => {
       const graph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
         projectConfig: { warehouse: "redshift" },
         tables: [
@@ -142,22 +142,22 @@ describe("@dataform/api", () => {
       const executedGraph = builder.build();
 
       expect(executedGraph)
-        .to.have.property("nodes")
+        .to.have.property("actions")
         .to.be.an("array").that.is.not.empty;
 
       graph.tables.forEach(t => {
-        const node = executedGraph.nodes.find(item => item.name == t.name);
-        expect(node).to.include({ type: "table", target: t.target, tableType: t.type });
+        const action = executedGraph.actions.find(item => item.name == t.name);
+        expect(action).to.include({ type: "table", target: t.target, tableType: t.type });
       });
 
       graph.operations.forEach(t => {
-        const node = executedGraph.nodes.find(item => item.name == t.name);
-        expect(node).to.include({ type: "operation", target: t.target });
+        const action = executedGraph.actions.find(item => item.name == t.name);
+        expect(action).to.include({ type: "operation", target: t.target });
       });
 
       graph.assertions.forEach(t => {
-        const node = executedGraph.nodes.find(item => item.name == t.name);
-        expect(node).to.include({ type: "assertion" });
+        const action = executedGraph.actions.find(item => item.name == t.name);
+        expect(action).to.include({ type: "assertion" });
       });
     });
 
@@ -181,14 +181,14 @@ describe("@dataform/api", () => {
 
       expect(executedGraph).to.exist;
       expect(executedGraph)
-        .to.have.property("nodes")
+        .to.have.property("actions")
         .to.be.an("array").that.is.not.empty;
 
-      const nodeNames = executedGraph.nodes.map(t => t.name);
+      const actionNames = executedGraph.actions.map(t => t.name);
 
-      expect(nodeNames).includes("a");
-      expect(nodeNames).not.includes("b");
-      expect(nodeNames).includes("c");
+      expect(actionNames).includes("a");
+      expect(actionNames).not.includes("b");
+      expect(actionNames).includes("c");
     });
   });
 
@@ -226,9 +226,9 @@ describe("@dataform/api", () => {
         ]
       });
       const executionGraph = new Builder(graph, {}, state).build();
-      expect(executionGraph.nodes.filter(n => n.name == "incremental")).is.not.empty;
+      expect(executionGraph.actions.filter(n => n.name == "incremental")).is.not.empty;
       expect(
-        cleanSql(executionGraph.nodes.filter(n => n.name == "incremental")[0].tasks[0].statement)
+        cleanSql(executionGraph.actions.filter(n => n.name == "incremental")[0].tasks[0].statement)
       ).equals(
         cleanSql(
           `insert into \`schema.incremental\` (existing_field)
@@ -303,16 +303,16 @@ describe("@dataform/api", () => {
       const builder = new Builder(testGraph, {}, testState);
       const executionGraph = builder.build();
 
-      expect(executionGraph.nodes)
+      expect(executionGraph.actions)
         .to.be.an("array")
         .to.have.lengthOf(4);
 
-      executionGraph.nodes.forEach((node, index) => {
-        expect(node)
+      executionGraph.actions.forEach((action, index) => {
+        expect(action)
           .to.have.property("tasks")
           .to.be.an("array").that.is.not.empty;
 
-        const statements = node.tasks.map(item => item.statement);
+        const statements = action.tasks.map(item => item.statement);
         expect(statements).includes(expectedSQL[index]);
       });
     });
@@ -344,7 +344,7 @@ describe("@dataform/api", () => {
           }
         ]
       });
-      const expectedExecutionNodes: dataform.IExecutionNode[] = [
+      const expectedExecutionActions: dataform.IExecutionAction[] = [
         {
           name: "partitionby",
           type: "table",
@@ -378,8 +378,8 @@ describe("@dataform/api", () => {
         }
       ];
       const executionGraph = new Builder(testGraph, {}, dataform.WarehouseState.create({})).build();
-      expect(asPlainObject(executionGraph.nodes)).deep.equals(
-        asPlainObject(expectedExecutionNodes)
+      expect(asPlainObject(executionGraph.actions)).deep.equals(
+        asPlainObject(expectedExecutionActions)
       );
     });
 
@@ -410,25 +410,25 @@ describe("@dataform/api", () => {
       const builder = new Builder(testGraph, {}, testState);
       const executionGraph = builder.build();
 
-      expect(executionGraph.nodes)
+      expect(executionGraph.actions)
         .to.be.an("array")
         .to.have.lengthOf(2);
 
-      executionGraph.nodes.forEach((node, index) => {
-        expect(node)
+      executionGraph.actions.forEach((action, index) => {
+        expect(action)
           .to.have.property("tasks")
           .to.be.an("array").that.is.not.empty;
 
-        const statements = node.tasks.map(item => item.statement);
+        const statements = action.tasks.map(item => item.statement);
         expect(statements).includes(
-          `create or replace table "schema"."${node.name}" as select 1 as test`
+          `create or replace table "schema"."${action.name}" as select 1 as test`
         );
       });
     });
   });
 
   describe("init", () => {
-    it("init", async function() {
+    it("init", async function () {
       this.timeout(30000);
 
       // create temp directory
@@ -604,7 +604,7 @@ describe("@dataform/api", () => {
       new Builder(graph, {}, { tables: [] }).build();
     });
 
-    it("operation_refing", async function() {
+    it("operation_refing", async function () {
       const expectedQueries = {
         sample_1: 'create table "test_schema"."sample_1" as select 1 as sample_1',
         sample_2: 'select * from "test_schema"."sample_1"'
@@ -812,9 +812,9 @@ describe("@dataform/api", () => {
       warehouseState: {
         tables: [{ type: "table" }]
       },
-      nodes: [
+      actions: [
         {
-          name: "node1",
+          name: "action1",
           dependencies: [],
           tasks: [
             {
@@ -830,8 +830,8 @@ describe("@dataform/api", () => {
           tableType: "someTableType"
         },
         {
-          name: "node2",
-          dependencies: ["node1"],
+          name: "action2",
+          dependencies: ["action1"],
           tasks: [
             {
               type: "executionTaskType2",
@@ -852,21 +852,21 @@ describe("@dataform/api", () => {
       const mockedDbAdapter = mock(BigQueryDbAdapter);
       when(mockedDbAdapter.prepareSchema(anyString())).thenResolve(null);
       when(
-        mockedDbAdapter.execute(TEST_GRAPH.nodes[0].tasks[0].statement, anyFunction())
+        mockedDbAdapter.execute(TEST_GRAPH.actions[0].tasks[0].statement, anyFunction())
       ).thenResolve([]);
       when(
-        mockedDbAdapter.execute(TEST_GRAPH.nodes[1].tasks[0].statement, anyFunction())
+        mockedDbAdapter.execute(TEST_GRAPH.actions[1].tasks[0].statement, anyFunction())
       ).thenReject(new Error("bad statement"));
 
       const runner = new Runner(instance(mockedDbAdapter), TEST_GRAPH);
       await runner.execute();
       const result = await runner.resultPromise();
 
-      const timeCleanedNodes = result.nodes.map(node => {
-        delete node.executionTime;
-        return node;
+      const timeCleanedActions = result.actions.map(action => {
+        delete action.executionTime;
+        return action;
       });
-      result.nodes = timeCleanedNodes;
+      result.actions = timeCleanedActions;
 
       expect(dataform.ExecutedGraph.create(result)).to.deep.equal(
         dataform.ExecutedGraph.create({
@@ -874,28 +874,28 @@ describe("@dataform/api", () => {
           runConfig: TEST_GRAPH.runConfig,
           warehouseState: TEST_GRAPH.warehouseState,
           ok: false,
-          nodes: [
+          actions: [
             {
-              name: TEST_GRAPH.nodes[0].name,
+              name: TEST_GRAPH.actions[0].name,
               tasks: [
                 {
-                  task: TEST_GRAPH.nodes[0].tasks[0],
+                  task: TEST_GRAPH.actions[0].tasks[0],
                   ok: true
                 }
               ],
-              status: dataform.NodeExecutionStatus.SUCCESSFUL,
+              status: dataform.ActionExecutionStatus.SUCCESSFUL,
               deprecatedOk: true
             },
             {
-              name: TEST_GRAPH.nodes[1].name,
+              name: TEST_GRAPH.actions[1].name,
               tasks: [
                 {
-                  task: TEST_GRAPH.nodes[1].tasks[0],
+                  task: TEST_GRAPH.actions[1].tasks[0],
                   ok: false,
                   error: "bad statement"
                 }
               ],
-              status: dataform.NodeExecutionStatus.FAILED,
+              status: dataform.ActionExecutionStatus.FAILED,
               deprecatedOk: false
             }
           ]
@@ -913,9 +913,9 @@ describe("@dataform/api", () => {
         warehouseState: {
           tables: []
         },
-        nodes: [
+        actions: [
           {
-            name: "node1",
+            name: "action1",
             dependencies: [],
             tasks: [
               {
@@ -955,9 +955,9 @@ describe("@dataform/api", () => {
       const result = await execution;
       expect(wasCancelled).is.true;
       // Cancelling a run doesn't actually throw at the top level.
-      // The node should fail, and have an appropriate error message.
-      expect(result.nodes[0].deprecatedOk).is.false;
-      expect(result.nodes[0].tasks[0].error).to.match(/cancelled/);
+      // The action should fail, and have an appropriate error message.
+      expect(result.actions[0].deprecatedOk).is.false;
+      expect(result.actions[0].tasks[0].error).to.match(/cancelled/);
     });
   });
 });
