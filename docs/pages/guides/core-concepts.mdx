@@ -5,9 +5,7 @@ export const meta = {
   __filename
 };
 
-export default ({ children }) => (
-  <Documentation {...meta}>{children}</Documentation>
-);
+export default ({ children }) => <Documentation {...meta}>{children}</Documentation>;
 
 ## What is Dataform?
 
@@ -30,7 +28,7 @@ You can get started quickly using <a target="_blank" rel="noopener" href="https:
 ## How does it work?
 
 1. You write SQL files enriched with Dataform's API and templating functions.
-2. Dataform compiles, validates, and executes the generated SQL statements against your warehouse, automatically adding boiler plate such as `CREATE TABLE` and `INSERT` statements.
+2. Dataform compiles, validates, and executes the generated SQL statements against your warehouse, automatically adding boilerplate such as `CREATE TABLE` and `INSERT` statements.
 3. Clean, well-defined datasets are created in your data warehouse, which the rest of your team can use for anything from dashboards to machine learning.
 
 Dataform's enriched SQL format allows you to:

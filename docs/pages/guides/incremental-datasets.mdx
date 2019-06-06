@@ -5,9 +5,7 @@ export const meta = {
   __filename
 };
 
-export default ({ children }) => (
-  <Documentation {...meta}>{children}</Documentation>
-);
+export default ({ children }) => <Documentation {...meta}>{children}</Documentation>;
 
 ## Introduction
 
@@ -80,27 +78,32 @@ Assuming there is a source dataset containing timestamped user action events cal
   </tbody>
 </table>
 
-To make a simple incremental copy of this dataset, create a new file called `definitions/example_incremental.sql`:
+To make a simple incremental copy of this dataset, create a new file called `definitions/example_incremental.sqlx`:
 
 ```js
---js type("incremental");
---js where(`timestamp > (SELECT MAX(timestamp) FROM ${self()})`);
+config { type: "incremental" }
 
 SELECT timestamp, action
 FROM weblogs.user_actions
+
+incremental_where {
+  timestamp > (SELECT MAX(timestamp) FROM ${self()})
+}
 ```
 
 First the script sets the type of the dataset to `incremental`.
 
-It then specifies a `WHERE` clause using the `where()` configuration statement:
+It then specifies a `WHERE` clause using an `incremental_where` block:
 
 ```js
---js where(`timestamp > (SELECT MAX(timestamp) FROM ${self()})`);
+incremental_where {
+  timestamp > (SELECT MAX(timestamp) FROM ${self()})
+}
 ```
 
 This ensures that only rows from the source dataset with a <b>timestamp greater than the latest timestamp that has been processed so far</b> are selected in the incremental query.
 
-Note that the `self()` method is used here in order to get the name of the current dataset. Thus the compiled `WHERE` clause will be expanded to:
+Note that `self()` is used here in order to get the name of the current dataset. Thus the compiled `WHERE` clause will be expanded to:
 
 ```js
 timestamp > (SELECT MAX(timestamp) FROM default_schema.example_incremental)
@@ -144,9 +147,13 @@ Incremental datasets can be used to create a daily snapshot of mutable external 
 Assuming an external dataset called `productiondb.customers`, you could write the following incremental to create a daily snapshot of that data:
 
 ```js
---js type("incremental");
---js where(`snapshot_date > (SELECT MAX(snapshot_date) FROM ${self()})`);
+config { type: "incremental" }
+
 SELECT CURRENT_DATE() AS snapshot_date, customer_id, name, account_settings FROM productiondb.customers
+
+incremental_where {
+  snapshot_date > (SELECT MAX(snapshot_date) FROM ${self()})
+}
 ```
 
 - By selecting the current date as `snapshot_date`, this effectively appends a dated snapshot of the `productiondb.customers` dataset to the output dataset each day.
@@ -158,14 +165,16 @@ SELECT CURRENT_DATE() AS snapshot_date, customer_id, name, account_settings FROM
 
 It's possible to force an incremental dataset to be rebuilt from scratch using either the command line interface with the <code>--full-refresh</code> option or with the <code>Run with full refresh</code> option in Dataform Web.
 
-If you need to protect a dataset from ever being rebuilt from scratch, for example if the source data is only temporary, you can mark an incremental dataset as `protected()`.
+If you need to protect a dataset from ever being rebuilt from scratch, for example if the source data is only temporary, you can mark an incremental dataset as `protected`.
 This means that Dataform will never delete this dataset, even if a user requests a full refresh.
 
-`definitions/incremental_example_protected.sql`:
+`definitions/incremental_example_protected.sqlx`:
 
 ```js
---js type("incremental");
---js protected();
+config {
+  type: "incremental",
+  protected: true
+}
 SELECT ...
 ```
 

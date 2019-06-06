@@ -5,10 +5,7 @@ export const meta = {
   __filename
 };
 
-export default ({ children }) => (
-  <Documentation {...meta}>{children}</Documentation>
-);
-
+export default ({ children }) => <Documentation {...meta}>{children}</Documentation>;
 
 ## Installation
 
@@ -55,10 +52,10 @@ project-dir
 
 The `definitions/` directory should be used for files that define [tables](/datasets), [assertions](/assertions), and [operations](/operations).
 
-To create a new dataset, create a new file `definitions/example.sql`:
+To create a new dataset, create a new file `definitions/example.sqlx`:
 
 ```bash
-echo "SELECT 1 AS test" > definitions/example.sql
+echo "config { type: 'view' } SELECT 1 AS test" > definitions/example.sqlx
 ```
 
 ## Compile your code

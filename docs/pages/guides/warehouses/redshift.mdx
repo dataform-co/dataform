@@ -5,19 +5,22 @@ export const meta = {
   __filename
 };
 
-export default ({ children }) => (
-  <Documentation {...meta}>{children}</Documentation>
-);
+export default ({ children }) => <Documentation {...meta}>{children}</Documentation>;
 
-Redshift specific options can be applied to datasets using the `redshift()` configuration statement.
+Redshift specific options can be applied to datasets using the `redshift` configuration parameter.
 
 ## Distributing data
 
 You can configure how Redshift <a target="_blank" rel="noopener" href="https://docs.aws.amazon.com/redshift/latest/dg/t_Distributing_data.html#t_data_distribution_concepts">distributes data</a> in your cluster by configuring the `distStyle` and `distKey` properties.
 
 ```js
---js type("table");
---js redshift({ distKey: "user_id", distStyle: "even" });
+config {
+  type: "table",
+  redshift: {
+    distKey: "user_id",
+    distStyle: "even"
+  }
+}
 SELECT user_id FROM ...
 ```
 
@@ -35,6 +38,11 @@ AS SELECT user_id FROM ...
 You can also configure how Redshift <a target="_blank" rel="noopener" href="https://docs.aws.amazon.com/redshift/latest/dg/t_Sorting_data.html">sorts data</a> in your datasets with the `sortKeys` and `sortStyle` properties.
 
 ```js
---js redshift({ sortKeys: ["ts"], sortStyle: "compound" });
+config {
+  redshift: {
+    sortKeys: [ "ts" ],
+    sortStyle: "compound"
+  }
+}
 SELECT 1 AS ts
 ```
