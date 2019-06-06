@@ -1,9 +1,8 @@
 import { Credentials } from "@dataform/api/commands/credentials";
 import { DbAdapter, OnCancel } from "@dataform/api/dbadapters/index";
 import { dataform } from "@dataform/protos";
+import { BigQuery } from "@google-cloud/bigquery";
 import * as PromisePool from "promise-pool-executor";
-
-const BigQuery = require("@google-cloud/bigquery");
 
 export class BigQueryDbAdapter implements DbAdapter {
   private bigQueryCredentials: dataform.IBigQuery;
@@ -12,7 +11,7 @@ export class BigQueryDbAdapter implements DbAdapter {
 
   constructor(credentials: Credentials) {
     this.bigQueryCredentials = credentials as dataform.IBigQuery;
-    this.client = BigQuery({
+    this.client = new BigQuery({
       projectId: this.bigQueryCredentials.projectId,
       credentials: JSON.parse(this.bigQueryCredentials.credentials),
       scopes: ["https://www.googleapis.com/auth/drive"]
