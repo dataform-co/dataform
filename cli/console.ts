@@ -108,7 +108,7 @@ export function printCompiledGraph(graph: dataform.ICompiledGraph, verbose: bool
       graph.tables.forEach(compiledTable => {
         writeStdOut(
           `${datasetString(compiledTable.target, compiledTable.type)}${
-            compiledTable.disabled ? " [disabled]" : ""
+          compiledTable.disabled ? " [disabled]" : ""
           }`,
           1
         );
@@ -145,7 +145,7 @@ export function printCompiledGraphErrors(graphErrors: dataform.IGraphErrors) {
     printError("Validation errors:");
     graphErrors.validationErrors.forEach(validationError => {
       writeStdErr(
-        `${calloutOutput(validationError.nodeName)}: ${errorOutput(validationError.message)}`,
+        `${calloutOutput(validationError.actionName)}: ${errorOutput(validationError.message)}`,
         1
       );
     });
@@ -156,97 +156,97 @@ export function printExecutionGraph(executionGraph: dataform.IExecutionGraph, ve
   if (verbose) {
     writeStdOut(prettyJsonStringify(executionGraph));
   } else {
-    const nodesByType = {
+    const actionsByType = {
       table: [],
       assertion: [],
       operation: []
     };
-    executionGraph.nodes.forEach(node => {
-      nodesByType[node.type].push(node);
+    executionGraph.actions.forEach(action => {
+      actionsByType[action.type].push(action);
     });
-    const datasetNodes = nodesByType.table;
-    if (datasetNodes && datasetNodes.length) {
-      writeStdOut(`${datasetNodes.length} dataset(s):`);
-      datasetNodes.forEach(datasetNode =>
-        writeStdOut(datasetString(datasetNode.target, datasetNode.type), 1)
+    const datasetActions = actionsByType.table;
+    if (datasetActions && datasetActions.length) {
+      writeStdOut(`${datasetActions.length} dataset(s):`);
+      datasetActions.forEach(datasetAction =>
+        writeStdOut(datasetString(datasetAction.target, datasetAction.type), 1)
       );
     }
-    const assertionNodes = nodesByType.assertion;
-    if (assertionNodes && assertionNodes.length) {
-      writeStdOut(`${assertionNodes.length} assertion(s):`);
-      assertionNodes.forEach(assertionNode => writeStdOut(targetString(assertionNode.target), 1));
+    const assertionActions = actionsByType.assertion;
+    if (assertionActions && assertionActions.length) {
+      writeStdOut(`${assertionActions.length} assertion(s):`);
+      assertionActions.forEach(assertionAction => writeStdOut(targetString(assertionAction.target), 1));
     }
-    const operationNodes = nodesByType.operation;
-    if (operationNodes && operationNodes.length) {
-      writeStdOut(`${operationNodes.length} operation(s):`);
-      operationNodes.forEach(operationNode => writeStdOut(targetString(operationNode.target), 1));
+    const operationActions = actionsByType.operation;
+    if (operationActions && operationActions.length) {
+      writeStdOut(`${operationActions.length} operation(s):`);
+      operationActions.forEach(operationAction => writeStdOut(targetString(operationAction.target), 1));
     }
   }
 }
 
-export function printExecutedNode(
-  executedNode: dataform.IExecutedNode,
-  executionNode: dataform.IExecutionNode,
+export function printExecutedAction(
+  executedAction: dataform.IExecutedAction,
+  executionAction: dataform.IExecutionAction,
   verbose: boolean
 ) {
-  switch (executedNode.status) {
-    case dataform.NodeExecutionStatus.SUCCESSFUL: {
-      switch (executionNode.type) {
+  switch (executedAction.status) {
+    case dataform.ActionExecutionStatus.SUCCESSFUL: {
+      switch (executionAction.type) {
         case "table": {
           writeStdOut(
             `${successOutput("Dataset created: ")} ${datasetString(
-              executionNode.target,
-              executionNode.tableType
+              executionAction.target,
+              executionAction.tableType
             )}`
           );
           return;
         }
         case "assertion": {
           writeStdOut(
-            `${successOutput(`Assertion passed: `)} ${targetString(executionNode.target)}`
+            `${successOutput(`Assertion passed: `)} ${targetString(executionAction.target)}`
           );
           return;
         }
         case "operation": {
           writeStdOut(
             `${successOutput(`Operation completed successfully: `)} ${targetString(
-              executionNode.target
+              executionAction.target
             )}`
           );
           return;
         }
       }
     }
-    case dataform.NodeExecutionStatus.FAILED: {
-      switch (executionNode.type) {
+    case dataform.ActionExecutionStatus.FAILED: {
+      switch (executionAction.type) {
         case "table": {
           writeStdErr(
             `${errorOutput("Dataset creation failed: ")} ${datasetString(
-              executionNode.target,
-              executionNode.tableType
+              executionAction.target,
+              executionAction.tableType
             )}`
           );
           break;
         }
         case "assertion": {
-          writeStdErr(`${errorOutput(`Assertion failed: `)} ${targetString(executionNode.target)}`);
+          writeStdErr(`${errorOutput(`Assertion failed: `)} ${targetString(executionAction.target)}`);
           break;
         }
         case "operation": {
-          writeStdErr(`${errorOutput(`Operation failed: `)} ${targetString(executionNode.target)}`);
+          writeStdErr(`${errorOutput(`Operation failed: `)} ${targetString(executionAction.target)}`);
           break;
         }
       }
-      printExecutedNodeErrors(executedNode, verbose);
+      printExecutedActionErrors(executedAction, verbose);
       return;
     }
-    case dataform.NodeExecutionStatus.SKIPPED: {
-      switch (executionNode.type) {
+    case dataform.ActionExecutionStatus.SKIPPED: {
+      switch (executionAction.type) {
         case "table": {
           writeStdOut(
             `${warningOutput("Skipping dataset creation: ")} ${datasetString(
-              executionNode.target,
-              executionNode.tableType
+              executionAction.target,
+              executionAction.tableType
             )}`
           );
           return;
@@ -254,8 +254,8 @@ export function printExecutedNode(
         case "assertion":
         case "operation": {
           writeStdOut(
-            `${warningOutput(`Skipping ${executionNode.type} execution: `)} ${targetString(
-              executionNode.target
+            `${warningOutput(`Skipping ${executionAction.type} execution: `)} ${targetString(
+              executionAction.target
             )}`
           );
           return;
@@ -263,13 +263,13 @@ export function printExecutedNode(
       }
       return;
     }
-    case dataform.NodeExecutionStatus.DISABLED: {
-      switch (executionNode.type) {
+    case dataform.ActionExecutionStatus.DISABLED: {
+      switch (executionAction.type) {
         case "table": {
           writeStdOut(
             `${warningOutput("Dataset creation disabled: ")} ${datasetString(
-              executionNode.target,
-              executionNode.tableType
+              executionAction.target,
+              executionAction.tableType
             )}`
           );
           return;
@@ -277,7 +277,7 @@ export function printExecutedNode(
         case "assertion": {
           writeStdOut(
             `${warningOutput(`Assertion execution disabled: `)} ${targetString(
-              executionNode.target
+              executionAction.target
             )}`
           );
           return;
@@ -285,7 +285,7 @@ export function printExecutedNode(
         case "operation": {
           writeStdOut(
             `${warningOutput(`Operation execution disabled: `)} ${targetString(
-              executionNode.target
+              executionAction.target
             )}`
           );
           return;
@@ -312,8 +312,8 @@ function targetString(target: dataform.ITarget) {
   return calloutOutput(`${target.schema}.${target.name}`);
 }
 
-function printExecutedNodeErrors(executedNode: dataform.IExecutedNode, verbose: boolean) {
-  const failingTasks = executedNode.tasks.filter(task => !task.ok);
+function printExecutedActionErrors(executedAction: dataform.IExecutedAction, verbose: boolean) {
+  const failingTasks = executedAction.tasks.filter(task => !task.ok);
   failingTasks.forEach(task => {
     task.task.statement.split("\n").forEach(line => {
       writeStdErr(`${DEFAULT_PROMPT}${line}`, 1);

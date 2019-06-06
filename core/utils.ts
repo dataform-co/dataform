@@ -104,104 +104,104 @@ export function validate(compiledGraph: dataform.ICompiledGraph): dataform.IGrap
   const validationErrors: dataform.IValidationError[] = [];
 
   // Check there aren't any duplicate names.
-  const allNodes = [].concat(
+  const allActions = [].concat(
     compiledGraph.tables,
     compiledGraph.assertions,
     compiledGraph.operations
   );
-  const allNodeNames = allNodes.map(node => node.name);
+  const allActionNames = allActions.map(action => action.name);
 
-  // Check there are no duplicate node names.
-  allNodes.forEach(node => {
-    if (allNodes.filter(subNode => subNode.name == node.name).length > 1) {
-      const nodeName = node.name;
-      const message = `Duplicate node name detected, names must be unique across tables, assertions, and operations: "${
-        node.name
+  // Check there are no duplicate action names.
+  allActions.forEach(action => {
+    if (allActions.filter(subAction => subAction.name == action.name).length > 1) {
+      const actionName = action.name;
+      const message = `Duplicate action name detected, names must be unique across tables, assertions, and operations: "${
+        action.name
         }"`;
-      validationErrors.push(dataform.ValidationError.create({ message, nodeName }));
+      validationErrors.push(dataform.ValidationError.create({ message, actionName }));
     }
   });
 
-  const nodesByName: { [name: string]: dataform.IExecutionNode } = {};
-  allNodes.forEach(node => (nodesByName[node.name] = node));
+  const actionsByName: { [name: string]: dataform.IExecutionAction } = {};
+  allActions.forEach(action => (actionsByName[action.name] = action));
 
   // Check all dependencies actually exist.
-  allNodes.forEach(node => {
-    const nodeName = node.name;
-    (node.dependencies || []).forEach(dependency => {
-      if (allNodeNames.indexOf(dependency) < 0) {
+  allActions.forEach(action => {
+    const actionName = action.name;
+    (action.dependencies || []).forEach(dependency => {
+      if (allActionNames.indexOf(dependency) < 0) {
         const message = `Missing dependency detected: Node "${
-          node.name
+          action.name
           }" depends on "${dependency}" which does not exist.`;
-        validationErrors.push(dataform.ValidationError.create({ message, nodeName }));
+        validationErrors.push(dataform.ValidationError.create({ message, actionName }));
       }
     });
   });
 
   // Check for circular dependencies.
   const checkCircular = (
-    node: dataform.IExecutionNode,
-    dependents: dataform.IExecutionNode[]
+    action: dataform.IExecutionAction,
+    dependents: dataform.IExecutionAction[]
   ): boolean => {
-    if (dependents.indexOf(node) >= 0) {
-      const nodeName = node.name;
+    if (dependents.indexOf(action) >= 0) {
+      const actionName = action.name;
       const message = `Circular dependency detected in chain: [${dependents
         .map(d => d.name)
-        .join(" > ")} > ${node.name}]`;
-      validationErrors.push(dataform.ValidationError.create({ message, nodeName }));
+        .join(" > ")} > ${action.name}]`;
+      validationErrors.push(dataform.ValidationError.create({ message, actionName }));
       return true;
     }
-    return (node.dependencies || []).some(d => {
-      return nodesByName[d] && checkCircular(nodesByName[d], dependents.concat([node]));
+    return (action.dependencies || []).some(d => {
+      return actionsByName[d] && checkCircular(actionsByName[d], dependents.concat([action]));
     });
   };
 
-  for (let i = 0; i < allNodes.length; i++) {
-    if (checkCircular(allNodes[i], [])) {
+  for (let i = 0; i < allActions.length; i++) {
+    if (checkCircular(allActions[i], [])) {
       break;
     }
   }
 
   // Table validation
-  compiledGraph.tables.forEach(node => {
-    const nodeName = node.name;
+  compiledGraph.tables.forEach(action => {
+    const actionName = action.name;
 
     // type
     if (
-      !!node.type &&
+      !!action.type &&
       Object.keys(TableTypes)
         .map(key => TableTypes[key])
-        .indexOf(node.type) === -1
+        .indexOf(action.type) === -1
     ) {
       const predefinedTypes = getPredefinedTypes(TableTypes);
       const message = `Wrong type of table detected. Should only use predefined types: ${predefinedTypes}`;
-      validationErrors.push(dataform.ValidationError.create({ message, nodeName }));
+      validationErrors.push(dataform.ValidationError.create({ message, actionName }));
     }
 
     // "where" property
-    if (node.type === TableTypes.INCREMENTAL && (!node.where || node.where.length === 0)) {
+    if (action.type === TableTypes.INCREMENTAL && (!action.where || action.where.length === 0)) {
       const message = `"where" property is not defined. With the type “incremental” you must also specify the property “where”!`;
-      validationErrors.push(dataform.ValidationError.create({ message, nodeName }));
+      validationErrors.push(dataform.ValidationError.create({ message, actionName }));
     }
 
     // redshift config
-    if (!!node.redshift) {
+    if (!!action.redshift) {
       if (
-        Object.keys(node.redshift).length === 0 ||
-        Object.keys(node.redshift).every(key => !node.redshift[key] || !node.redshift[key].length)
+        Object.keys(action.redshift).length === 0 ||
+        Object.keys(action.redshift).every(key => !action.redshift[key] || !action.redshift[key].length)
       ) {
         const message = `Missing properties in redshift config`;
-        validationErrors.push(dataform.ValidationError.create({ message, nodeName }));
+        validationErrors.push(dataform.ValidationError.create({ message, actionName }));
       }
       const redshiftConfig = [];
 
-      if (node.redshift.distStyle || node.redshift.distKey) {
-        const props = { distStyle: node.redshift.distStyle, distKey: node.redshift.distKey };
+      if (action.redshift.distStyle || action.redshift.distKey) {
+        const props = { distStyle: action.redshift.distStyle, distKey: action.redshift.distKey };
         const types = { distStyle: DistStyleTypes };
         redshiftConfig.push({ props, types });
       }
-      if (node.redshift.sortStyle || (node.redshift.sortKeys && node.redshift.sortKeys.length)) {
-        const props = { sortStyle: node.redshift.sortStyle, sortKeys: node.redshift.sortKeys };
+      if (action.redshift.sortStyle || (action.redshift.sortKeys && action.redshift.sortKeys.length)) {
+        const props = { sortStyle: action.redshift.sortStyle, sortKeys: action.redshift.sortKeys };
         const types = { sortStyle: SortStyleTypes };
         redshiftConfig.push({ props, types });
       }
@@ -210,7 +210,7 @@ export function validate(compiledGraph: dataform.ICompiledGraph): dataform.IGrap
         Object.keys(item.props).forEach(key => {
           if (!item.props[key] || !item.props[key].length) {
             const message = `Property "${key}" is not defined`;
-            validationErrors.push(dataform.ValidationError.create({ message, nodeName }));
+            validationErrors.push(dataform.ValidationError.create({ message, actionName }));
           }
         });
 
@@ -224,20 +224,20 @@ export function validate(compiledGraph: dataform.ICompiledGraph): dataform.IGrap
           ) {
             const predefinedValues = getPredefinedTypes(currentEnum);
             const message = `Wrong value of "${type}" property. Should only use predefined values: ${predefinedValues}`;
-            validationErrors.push(dataform.ValidationError.create({ message, nodeName }));
+            validationErrors.push(dataform.ValidationError.create({ message, actionName }));
           }
         });
       });
     }
 
     // ignored properties in tables
-    if (!!ignoredProps[node.type]) {
-      ignoredProps[node.type].forEach(ignoredProp => {
-        if (objectExistsOrIsNonEmpty(node[ignoredProp])) {
+    if (!!ignoredProps[action.type]) {
+      ignoredProps[action.type].forEach(ignoredProp => {
+        if (objectExistsOrIsNonEmpty(action[ignoredProp])) {
           const message = `Unused property was detected: "${ignoredProp}". This property is not used for tables with type "${
-            node.type
+            action.type
             }" and will be ignored.`;
-          validationErrors.push(dataform.ValidationError.create({ message, nodeName }));
+          validationErrors.push(dataform.ValidationError.create({ message, actionName }));
         }
       });
     }
