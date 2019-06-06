@@ -1,0 +1,6 @@
+config {
+    schema: "override_schema",
+    type: "view"
+}
+
+select 1 as test_schema_override

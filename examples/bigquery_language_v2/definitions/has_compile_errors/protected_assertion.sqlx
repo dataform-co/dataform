@@ -1,0 +1,2 @@
+config { type: "assertion", protected: true }
+select 1 as test

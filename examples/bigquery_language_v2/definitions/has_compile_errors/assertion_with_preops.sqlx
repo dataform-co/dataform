@@ -1,0 +1,3 @@
+config { type: "assertion" }
+SELECT 1 as test
+pre_operations { select 2 as other }

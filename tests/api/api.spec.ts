@@ -51,46 +51,46 @@ describe("@dataform/api", () => {
     it("include_deps", () => {
       const builder = new Builder(
         TEST_GRAPH,
-        { nodes: ["a"], includeDependencies: true },
+        { actions: ["a"], includeDependencies: true },
         TEST_STATE
       );
       const executionGraph = builder.build();
-      const includedNodeNames = executionGraph.nodes.map(n => n.name);
-      expect(includedNodeNames).includes("a");
-      expect(includedNodeNames).includes("b");
+      const includedActionNames = executionGraph.actions.map(n => n.name);
+      expect(includedActionNames).includes("a");
+      expect(includedActionNames).includes("b");
     });
 
     it("exclude_deps", () => {
       const builder = new Builder(
         TEST_GRAPH,
-        { nodes: ["a"], includeDependencies: false },
+        { actions: ["a"], includeDependencies: false },
         TEST_STATE
       );
       const executionGraph = builder.build();
-      const includedNodeNames = executionGraph.nodes.map(n => n.name);
-      expect(includedNodeNames).includes("a");
-      expect(includedNodeNames).not.includes("b");
+      const includedActionNames = executionGraph.actions.map(n => n.name);
+      expect(includedActionNames).includes("a");
+      expect(includedActionNames).not.includes("b");
     });
 
     it("exclude_disabled", () => {
       const builder = new Builder(TEST_GRAPH, { includeDependencies: true }, TEST_STATE);
       const executionGraph = builder.build();
 
-      const nodeA = executionGraph.nodes.find(n => n.name === "a");
-      const nodeB = executionGraph.nodes.find(n => n.name === "b");
-      const nodeC = executionGraph.nodes.find(n => n.name === "c");
+      const actionA = executionGraph.actions.find(n => n.name === "a");
+      const actionB = executionGraph.actions.find(n => n.name === "b");
+      const actionC = executionGraph.actions.find(n => n.name === "c");
 
-      assert.exists(nodeA);
-      assert.exists(nodeB);
-      assert.exists(nodeC);
+      assert.exists(actionA);
+      assert.exists(actionB);
+      assert.exists(actionC);
 
-      expect(nodeA)
+      expect(actionA)
         .to.have.property("tasks")
         .to.be.an("array").that.not.is.empty;
-      expect(nodeB)
+      expect(actionB)
         .to.have.property("tasks")
         .to.be.an("array").that.is.empty;
-      expect(nodeC)
+      expect(actionC)
         .to.have.property("tasks")
         .to.be.an("array").that.not.is.empty;
     });
@@ -115,7 +115,7 @@ describe("@dataform/api", () => {
       expect(() => builder.build()).to.throw();
     });
 
-    it("node_types", () => {
+    it("action_types", () => {
       const graph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
         projectConfig: { warehouse: "redshift" },
         tables: [
@@ -142,22 +142,22 @@ describe("@dataform/api", () => {
       const executedGraph = builder.build();
 
       expect(executedGraph)
-        .to.have.property("nodes")
+        .to.have.property("actions")
         .to.be.an("array").that.is.not.empty;
 
       graph.tables.forEach(t => {
-        const node = executedGraph.nodes.find(item => item.name == t.name);
-        expect(node).to.include({ type: "table", target: t.target, tableType: t.type });
+        const action = executedGraph.actions.find(item => item.name == t.name);
+        expect(action).to.include({ type: "table", target: t.target, tableType: t.type });
       });
 
       graph.operations.forEach(t => {
-        const node = executedGraph.nodes.find(item => item.name == t.name);
-        expect(node).to.include({ type: "operation", target: t.target });
+        const action = executedGraph.actions.find(item => item.name == t.name);
+        expect(action).to.include({ type: "operation", target: t.target });
       });
 
       graph.assertions.forEach(t => {
-        const node = executedGraph.nodes.find(item => item.name == t.name);
-        expect(node).to.include({ type: "assertion" });
+        const action = executedGraph.actions.find(item => item.name == t.name);
+        expect(action).to.include({ type: "assertion" });
       });
     });
 
@@ -181,14 +181,14 @@ describe("@dataform/api", () => {
 
       expect(executedGraph).to.exist;
       expect(executedGraph)
-        .to.have.property("nodes")
+        .to.have.property("actions")
         .to.be.an("array").that.is.not.empty;
 
-      const nodeNames = executedGraph.nodes.map(t => t.name);
+      const actionNames = executedGraph.actions.map(t => t.name);
 
-      expect(nodeNames).includes("a");
-      expect(nodeNames).not.includes("b");
-      expect(nodeNames).includes("c");
+      expect(actionNames).includes("a");
+      expect(actionNames).not.includes("b");
+      expect(actionNames).includes("c");
     });
   });
 
@@ -226,9 +226,9 @@ describe("@dataform/api", () => {
         ]
       });
       const executionGraph = new Builder(graph, {}, state).build();
-      expect(executionGraph.nodes.filter(n => n.name == "incremental")).is.not.empty;
+      expect(executionGraph.actions.filter(n => n.name == "incremental")).is.not.empty;
       expect(
-        cleanSql(executionGraph.nodes.filter(n => n.name == "incremental")[0].tasks[0].statement)
+        cleanSql(executionGraph.actions.filter(n => n.name == "incremental")[0].tasks[0].statement)
       ).equals(
         cleanSql(
           `insert into \`schema.incremental\` (existing_field)
@@ -303,16 +303,16 @@ describe("@dataform/api", () => {
       const builder = new Builder(testGraph, {}, testState);
       const executionGraph = builder.build();
 
-      expect(executionGraph.nodes)
+      expect(executionGraph.actions)
         .to.be.an("array")
         .to.have.lengthOf(4);
 
-      executionGraph.nodes.forEach((node, index) => {
-        expect(node)
+      executionGraph.actions.forEach((action, index) => {
+        expect(action)
           .to.have.property("tasks")
           .to.be.an("array").that.is.not.empty;
 
-        const statements = node.tasks.map(item => item.statement);
+        const statements = action.tasks.map(item => item.statement);
         expect(statements).includes(expectedSQL[index]);
       });
     });
@@ -344,7 +344,7 @@ describe("@dataform/api", () => {
           }
         ]
       });
-      const expectedExecutionNodes: dataform.IExecutionNode[] = [
+      const expectedExecutionActions: dataform.IExecutionAction[] = [
         {
           name: "partitionby",
           type: "table",
@@ -378,8 +378,8 @@ describe("@dataform/api", () => {
         }
       ];
       const executionGraph = new Builder(testGraph, {}, dataform.WarehouseState.create({})).build();
-      expect(asPlainObject(executionGraph.nodes)).deep.equals(
-        asPlainObject(expectedExecutionNodes)
+      expect(asPlainObject(executionGraph.actions)).deep.equals(
+        asPlainObject(expectedExecutionActions)
       );
     });
 
@@ -410,25 +410,25 @@ describe("@dataform/api", () => {
       const builder = new Builder(testGraph, {}, testState);
       const executionGraph = builder.build();
 
-      expect(executionGraph.nodes)
+      expect(executionGraph.actions)
         .to.be.an("array")
         .to.have.lengthOf(2);
 
-      executionGraph.nodes.forEach((node, index) => {
-        expect(node)
+      executionGraph.actions.forEach((action, index) => {
+        expect(action)
           .to.have.property("tasks")
           .to.be.an("array").that.is.not.empty;
 
-        const statements = node.tasks.map(item => item.statement);
+        const statements = action.tasks.map(item => item.statement);
         expect(statements).includes(
-          `create or replace table "schema"."${node.name}" as select 1 as test`
+          `create or replace table "schema"."${action.name}" as select 1 as test`
         );
       });
     });
   });
 
   describe("init", () => {
-    it("init", async function() {
+    it("init", async function () {
       this.timeout(30000);
 
       // create temp directory
@@ -456,6 +456,8 @@ describe("@dataform/api", () => {
       const graph = await compile({ projectDir: path.resolve("df/examples/bigquery") });
       const tableNames = graph.tables.map(t => t.name);
 
+      expect(graph.graphErrors).to.eql(dataform.GraphErrors.create());
+
       // Check JS blocks get processed.
       expect(tableNames).includes("example_js_blocks");
       const exampleJsBlocks = graph.tables.filter(t => t.name == "example_js_blocks")[0];
@@ -466,6 +468,9 @@ describe("@dataform/api", () => {
       expect(tableNames).includes("example_incremental");
       const exampleIncremental = graph.tables.filter(t => t.name == "example_incremental")[0];
       expect(exampleIncremental.query).equals("select current_timestamp() as ts");
+      expect(exampleIncremental.where.trim()).equals(
+        "ts > (select max(ts) from `tada-analytics.df_integration_test.example_incremental`) or (select max(ts) from `tada-analytics.df_integration_test.example_incremental`) is null"
+      );
 
       // Check tables defined in includes are not included.
       expect(tableNames).not.includes("example_ignore");
@@ -498,6 +503,211 @@ describe("@dataform/api", () => {
         "\nselect * from (\nselect * from `tada-analytics.df_integration_test.sample_data`)\nwhere true"
       );
       expect(exampleUsingInline.dependencies).includes("sample_data");
+
+      // Check view
+      expect(tableNames).includes("example_view");
+      const exampleView = graph.tables.filter(t => t.name == "example_view")[0];
+      expect(exampleView.type).equals("view");
+      expect(exampleView.query).equals(
+        "\nselect * from `tada-analytics.df_integration_test.sample_data`"
+      );
+      expect(exampleView.dependencies).deep.equals(["sample_data"]);
+
+      // Check table
+      expect(tableNames).includes("example_table");
+      const exampleTable = graph.tables.filter(t => t.name == "example_table")[0];
+      expect(exampleTable.type).equals("table");
+      expect(exampleTable.query).equals(
+        "\nselect * from `tada-analytics.df_integration_test.sample_data`"
+      );
+      expect(exampleTable.dependencies).deep.equals(["sample_data"]);
+
+      // Check sample data
+      expect(tableNames).includes("sample_data");
+      const exampleSampleData = graph.tables.filter(t => t.name == "sample_data")[0];
+      expect(exampleSampleData.type).equals("view");
+      expect(exampleSampleData.query).equals(
+        "select 1 as sample union all\nselect 2 as sample union all\nselect 3 as sample"
+      );
+      expect(exampleSampleData.dependencies).to.eql([]);
+    });
+
+    it("bigquery using v2 language compiles", async () => {
+      const graph = await compile({ projectDir: path.resolve("df/examples/bigquery_language_v2") });
+
+      expect(graph.graphErrors).to.eql(
+        dataform.GraphErrors.create({
+          compilationErrors: [
+            dataform.CompilationError.create({
+              fileName: "definitions/has_compile_errors/assertion_with_bigquery.sqlx",
+              message: "Actions may only specify 'bigquery: { ... }' if they create a dataset."
+            }),
+            dataform.CompilationError.create({
+              fileName: "definitions/has_compile_errors/assertion_with_output.sqlx",
+              message:
+                "Actions may only specify 'hasOutput: true' if they are of type 'operations' or create a dataset."
+            }),
+            dataform.CompilationError.create({
+              fileName: "definitions/has_compile_errors/assertion_with_postops.sqlx",
+              message: "Actions may only include post_operations if they create a dataset."
+            }),
+            dataform.CompilationError.create({
+              fileName: "definitions/has_compile_errors/assertion_with_preops.sqlx",
+              message: "Actions may only include pre_operations if they create a dataset."
+            }),
+            dataform.CompilationError.create({
+              fileName: "definitions/has_compile_errors/assertion_with_redshift.sqlx",
+              message: "Actions may only specify 'redshift: { ... }' if they create a dataset."
+            }),
+            dataform.CompilationError.create({
+              fileName: "definitions/has_compile_errors/disabled_assertion.sqlx",
+              message: "Actions may only specify 'disabled: true' if they create a dataset."
+            }),
+            dataform.CompilationError.create({
+              fileName: "definitions/has_compile_errors/op_with_output_multiple_statements.sqlx",
+              message: "Operations with 'hasOutput: true' must contain exactly one SQL statement."
+            }),
+            dataform.CompilationError.create({
+              fileName: "definitions/has_compile_errors/protected_assertion.sqlx",
+              message:
+                "Actions may only specify 'protected: true' if they are of type 'incremental'."
+            }),
+            dataform.CompilationError.create({
+              fileName: "definitions/has_compile_errors/view_with_incremental.sqlx",
+              message:
+                "Actions may only include incremental_where if they are of type 'incremental'."
+            }),
+            dataform.CompilationError.create({
+              fileName: "definitions/has_compile_errors/view_with_multiple_statements.sqlx",
+              message:
+                "Actions may only contain more than one SQL statement if they are of type 'operations'."
+            })
+          ]
+        })
+      );
+
+      // Check JS blocks get processed.
+      const exampleJsBlocks = graph.tables.find(t => t.name === "example_js_blocks");
+      expect(exampleJsBlocks).to.not.be.undefined;
+      expect(exampleJsBlocks.type).equals("table");
+      expect(exampleJsBlocks.query.trim()).equals("select 1 as foo");
+
+      // Check we can import and use an external package.
+      const exampleIncremental = graph.tables.find(t => t.name === "example_incremental");
+      expect(exampleIncremental).to.not.be.undefined;
+      expect(exampleIncremental.query.trim()).equals("select current_timestamp() as ts");
+      expect(exampleIncremental.where.trim()).equals(
+        "ts > (select max(ts) from `tada-analytics.df_integration_test.example_incremental`) or (select max(ts) from `tada-analytics.df_integration_test.example_incremental`) is null"
+      );
+
+      // Check tables defined in includes are not included.
+      const exampleIgnore = graph.tables.find(t => t.name === "example_ignore");
+      expect(exampleIgnore).to.be.undefined;
+
+      // Check SQL files with raw back-ticks get escaped.
+      const exampleBackticks = graph.tables.find(t => t.name === "example_backticks");
+      expect(exampleBackticks).to.not.be.undefined;
+      expect(cleanSql(exampleBackticks.query)).equals(
+        "select * from `tada-analytics.df_integration_test.sample_data`"
+      );
+      expect(exampleBackticks.preOps).to.eql([
+        '\n    GRANT SELECT ON `tada-analytics.df_integration_test.sample_data` TO GROUP "allusers@dataform.co"\n'
+      ]);
+      expect(exampleBackticks.postOps).to.eql([]);
+
+      // Check deferred calls to table resolve to the correct definitions file.
+      const exampleDeferred = graph.tables.find(t => t.name === "example_deferred");
+      expect(exampleDeferred).to.not.be.undefined;
+      expect(exampleDeferred.fileName).includes("definitions/example_deferred.js");
+
+      // Check inline tables
+      const exampleInline = graph.tables.find(t => t.name === "example_inline");
+      expect(exampleInline).to.not.be.undefined;
+      expect(exampleInline.type).equals("inline");
+      expect(exampleInline.query.trim()).equals(
+        "select * from `tada-analytics.df_integration_test.sample_data`"
+      );
+      expect(exampleInline.dependencies).includes("sample_data");
+
+      const exampleUsingInline = graph.tables.find(t => t.name === "example_using_inline");
+      expect(exampleUsingInline).to.not.be.undefined;
+      expect(exampleUsingInline.type).equals("table");
+      expect(exampleUsingInline.query.trim()).equals(
+        "select * from (\n\nselect * from `tada-analytics.df_integration_test.sample_data`\n)\nwhere true"
+      );
+      expect(exampleUsingInline.dependencies).includes("sample_data");
+
+      // Check view
+      const exampleView = graph.tables.find(t => t.name === "example_view");
+      expect(exampleView).to.not.be.undefined;
+      expect(exampleView.type).equals("view");
+      expect(exampleView.query.trim()).equals(
+        "select * from `tada-analytics.df_integration_test.sample_data`"
+      );
+      expect(exampleView.dependencies).deep.equals(["sample_data"]);
+
+      // Check table
+      const exampleTable = graph.tables.find(t => t.name === "example_table");
+      expect(exampleTable).to.not.be.undefined;
+      expect(exampleTable.type).equals("table");
+      expect(exampleTable.query.trim()).equals(
+        "select * from `tada-analytics.df_integration_test.sample_data`"
+      );
+      expect(exampleTable.dependencies).deep.equals(["sample_data"]);
+      expect(exampleTable.preOps).to.eql([]);
+      expect(exampleTable.postOps).to.eql([
+        '\n    GRANT SELECT ON `tada-analytics.df_integration_test.example_table` TO GROUP "allusers@dataform.co"\n',
+        '\n    GRANT SELECT ON `tada-analytics.df_integration_test.example_table` TO GROUP "otherusers@dataform.co"\n'
+      ]);
+
+      // Check sample data
+      const exampleSampleData = graph.tables.find(t => t.name === "sample_data");
+      expect(exampleSampleData).to.not.be.undefined;
+      expect(exampleSampleData.type).equals("view");
+      expect(exampleSampleData.query.trim()).equals(
+        "select 1 as sample union all\nselect 2 as sample union all\nselect 3 as sample"
+      );
+      expect(exampleSampleData.dependencies).to.eql([]);
+
+      // Check schema overrides defined in "config {}"
+      const exampleUsingOverriddenSchema = graph.tables.find(
+        t => t.name === "override_schema_example"
+      );
+      expect(exampleUsingOverriddenSchema).to.not.be.undefined;
+      expect(exampleUsingOverriddenSchema.target.schema).equals("override_schema");
+      expect(exampleUsingOverriddenSchema.type).equals("view");
+      expect(exampleUsingOverriddenSchema.query.trim()).equals("select 1 as test_schema_override");
+
+      // Check assertion
+      const exampleAssertion = graph.assertions.find(t => t.name === "example_assertion");
+      expect(exampleAssertion).to.not.be.undefined;
+      expect(exampleAssertion.target.schema).equals("hi_there");
+      expect(exampleAssertion.query.trim()).equals(
+        "select * from `tada-analytics.df_integration_test.sample_data` where sample = 100"
+      );
+      expect(exampleAssertion.dependencies).to.eql(["sample_data"]);
+
+      // Check example operations file
+      const exampleOperations = graph.operations.find(o => o.name === "example_operations");
+      expect(exampleOperations).to.not.be.undefined;
+      expect(exampleOperations.target).is.null;
+      expect(exampleOperations.queries).to.eql([
+        "\n\nCREATE OR REPLACE VIEW someschema.someview AS (SELECT 1 AS test)\n",
+        "\nDROP VIEW IF EXISTS someschema.someview"
+      ]);
+      expect(exampleOperations.dependencies).to.eql(["example_inline"]);
+
+      // Check example operation with output.
+      const exampleOperationWithOutput = graph.operations.find(
+        o => o.name === "example_operation_with_output"
+      );
+      expect(exampleOperationWithOutput).to.not.be.undefined;
+      expect(exampleOperationWithOutput.target.schema).equals("df_integration_test");
+      expect(exampleOperationWithOutput.target.name).equals("example_operation_with_output");
+      expect(exampleOperationWithOutput.queries).to.eql([
+        "\nCREATE OR REPLACE VIEW `tada-analytics.df_integration_test.example_operation_with_output` AS (SELECT 1 AS TEST)"
+      ]);
+      expect(exampleOperationWithOutput.dependencies).to.eql([]);
     });
 
     it("schema overrides", async () => {
@@ -604,7 +814,7 @@ describe("@dataform/api", () => {
       new Builder(graph, {}, { tables: [] }).build();
     });
 
-    it("operation_refing", async function() {
+    it("operation_refing", async function () {
       const expectedQueries = {
         sample_1: 'create table "test_schema"."sample_1" as select 1 as sample_1',
         sample_2: 'select * from "test_schema"."sample_1"'
@@ -812,9 +1022,9 @@ describe("@dataform/api", () => {
       warehouseState: {
         tables: [{ type: "table" }]
       },
-      nodes: [
+      actions: [
         {
-          name: "node1",
+          name: "action1",
           dependencies: [],
           tasks: [
             {
@@ -830,8 +1040,8 @@ describe("@dataform/api", () => {
           tableType: "someTableType"
         },
         {
-          name: "node2",
-          dependencies: ["node1"],
+          name: "action2",
+          dependencies: ["action1"],
           tasks: [
             {
               type: "executionTaskType2",
@@ -852,21 +1062,21 @@ describe("@dataform/api", () => {
       const mockedDbAdapter = mock(BigQueryDbAdapter);
       when(mockedDbAdapter.prepareSchema(anyString())).thenResolve(null);
       when(
-        mockedDbAdapter.execute(TEST_GRAPH.nodes[0].tasks[0].statement, anyFunction())
+        mockedDbAdapter.execute(TEST_GRAPH.actions[0].tasks[0].statement, anyFunction())
       ).thenResolve([]);
       when(
-        mockedDbAdapter.execute(TEST_GRAPH.nodes[1].tasks[0].statement, anyFunction())
+        mockedDbAdapter.execute(TEST_GRAPH.actions[1].tasks[0].statement, anyFunction())
       ).thenReject(new Error("bad statement"));
 
       const runner = new Runner(instance(mockedDbAdapter), TEST_GRAPH);
       await runner.execute();
       const result = await runner.resultPromise();
 
-      const timeCleanedNodes = result.nodes.map(node => {
-        delete node.executionTime;
-        return node;
+      const timeCleanedActions = result.actions.map(action => {
+        delete action.executionTime;
+        return action;
       });
-      result.nodes = timeCleanedNodes;
+      result.actions = timeCleanedActions;
 
       expect(dataform.ExecutedGraph.create(result)).to.deep.equal(
         dataform.ExecutedGraph.create({
@@ -874,28 +1084,28 @@ describe("@dataform/api", () => {
           runConfig: TEST_GRAPH.runConfig,
           warehouseState: TEST_GRAPH.warehouseState,
           ok: false,
-          nodes: [
+          actions: [
             {
-              name: TEST_GRAPH.nodes[0].name,
+              name: TEST_GRAPH.actions[0].name,
               tasks: [
                 {
-                  task: TEST_GRAPH.nodes[0].tasks[0],
+                  task: TEST_GRAPH.actions[0].tasks[0],
                   ok: true
                 }
               ],
-              status: dataform.NodeExecutionStatus.SUCCESSFUL,
+              status: dataform.ActionExecutionStatus.SUCCESSFUL,
               deprecatedOk: true
             },
             {
-              name: TEST_GRAPH.nodes[1].name,
+              name: TEST_GRAPH.actions[1].name,
               tasks: [
                 {
-                  task: TEST_GRAPH.nodes[1].tasks[0],
+                  task: TEST_GRAPH.actions[1].tasks[0],
                   ok: false,
                   error: "bad statement"
                 }
               ],
-              status: dataform.NodeExecutionStatus.FAILED,
+              status: dataform.ActionExecutionStatus.FAILED,
               deprecatedOk: false
             }
           ]
@@ -913,9 +1123,9 @@ describe("@dataform/api", () => {
         warehouseState: {
           tables: []
         },
-        nodes: [
+        actions: [
           {
-            name: "node1",
+            name: "action1",
             dependencies: [],
             tasks: [
               {
@@ -955,9 +1165,9 @@ describe("@dataform/api", () => {
       const result = await execution;
       expect(wasCancelled).is.true;
       // Cancelling a run doesn't actually throw at the top level.
-      // The node should fail, and have an appropriate error message.
-      expect(result.nodes[0].deprecatedOk).is.false;
-      expect(result.nodes[0].tasks[0].error).to.match(/cancelled/);
+      // The action should fail, and have an appropriate error message.
+      expect(result.actions[0].deprecatedOk).is.false;
+      expect(result.actions[0].tasks[0].error).to.match(/cancelled/);
     });
   });
 });
