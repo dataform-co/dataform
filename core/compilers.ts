@@ -1,9 +1,13 @@
-import { AssertionContext } from "./assertion";
-import { OperationContext } from "./operation";
-import { TableContext } from "./table";
-import * as utils from "./utils";
+import { AssertionContext, SqlxAssertionContext } from "@dataform/core/assertion";
+import { OperationContext, SqlxOperationContext } from "@dataform/core/operation";
+import { ISqlxParseResults, parseSqlx } from "@dataform/core/sqlx_parser";
+import { SqlxTableContext, TableContext } from "@dataform/core/table";
+import * as utils from "@dataform/core/utils";
 
 export function compile(code: string, path: string) {
+  if (path.endsWith(".sqlx")) {
+    return compileSqlx(parseSqlx(code), path);
+  }
   if (path.endsWith(".assert.sql")) {
     return compileAssertionSql(code, path);
   }
@@ -16,7 +20,7 @@ export function compile(code: string, path: string) {
   return code;
 }
 
-export function compileTableSql(code: string, path: string) {
+function compileTableSql(code: string, path: string) {
   const { sql, js } = extractJsBlocks(code);
   const functionsBindings = getFunctionPropertyNames(TableContext.prototype).map(
     name => `const ${name} = ctx.${name}.bind(ctx);`
@@ -30,7 +34,7 @@ export function compileTableSql(code: string, path: string) {
   })`;
 }
 
-export function compileOperationSql(code: string, path: string) {
+function compileOperationSql(code: string, path: string) {
   const { sql, js } = extractJsBlocks(code);
   const functionsBindings = getFunctionPropertyNames(OperationContext.prototype).map(
     name => `const ${name} = ctx.${name}.bind(ctx);`
@@ -44,7 +48,7 @@ export function compileOperationSql(code: string, path: string) {
   })`;
 }
 
-export function compileAssertionSql(code: string, path: string) {
+function compileAssertionSql(code: string, path: string) {
   const { sql, js } = extractJsBlocks(code);
   const functionsBindings = getFunctionPropertyNames(AssertionContext.prototype).map(
     name => `const ${name} = ctx.${name}.bind(ctx);`
@@ -79,6 +83,83 @@ export function extractJsBlocks(code: string): { sql: string; js: string } {
     sql: cleanSql.trim(),
     js: jsBlocks.map(block => block.trim()).join("\n")
   };
+}
+
+function compileSqlx(results: ISqlxParseResults, path: string) {
+  return `
+const parsedConfig = ${results.config || "{}"};
+// sqlxConfig should conform to the ISqlxConfig interface.
+const sqlxConfig = {
+  name: "${utils.baseFilename(path)}",
+  type: "operations",
+  dependencies: [],
+  ...parsedConfig
+};
+
+const sqlStatementCount = ${results.sql.length};
+const hasIncremental = ${!!results.incremental};
+const hasPreOperations = ${results.preOperations.length > 1 || results.preOperations[0] !== ""};
+const hasPostOperations = ${results.postOperations.length > 1 || results.postOperations[0] !== ""};
+
+const action = session.sqlxAction({
+  sqlxConfig,
+  sqlStatementCount,
+  hasIncremental,
+  hasPreOperations,
+  hasPostOperations
+});
+
+switch (sqlxConfig.type) {
+  case "view":
+  case "table":
+  case "incremental":
+  case "inline": {
+    action.query(ctx => {
+      ${getFunctionPropertyNames(SqlxTableContext.prototype)
+        .map(name => `const ${name} = ctx.${name}.bind(ctx);`)
+        .join("\n")}
+      ${results.js}
+      if (hasIncremental) {
+        action.where(\`${results.incremental}\`);
+      }
+      if (hasPreOperations) {
+        const preOperations = [${results.preOperations.map(sql => `\`${sql}\``)}];
+        action.preOps(preOperations);
+      }
+      if (hasPostOperations) {
+        const postOperations = [${results.postOperations.map(sql => `\`${sql}\``)}];
+        action.postOps(postOperations);
+      }
+      return \`${results.sql[0]}\`;
+    });
+    break;
+  }
+  case "assertion": {
+    action.query(ctx => {
+      ${getFunctionPropertyNames(SqlxAssertionContext.prototype)
+        .map(name => `const ${name} = ctx.${name}.bind(ctx);`)
+        .join("\n")}
+      ${results.js}
+      return \`${results.sql[0]}\`;
+    });
+    break;
+  }
+  case "operations": {
+    action.queries(ctx => {
+      ${getFunctionPropertyNames(SqlxOperationContext.prototype)
+        .map(name => `const ${name} = ctx.${name}.bind(ctx);`)
+        .join("\n")}
+      ${results.js}
+      const operations = [${results.sql.map(sql => `\`${sql}\``)}];
+      return operations;
+    });
+    break;
+  }
+  default: {
+    session.compileError(new Error(\`Unrecognized action type: \${sqlxConfig.type}\`));
+    break;
+  }
+}`;
 }
 
 function getFunctionPropertyNames(prototype: any) {

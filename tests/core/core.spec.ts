@@ -14,19 +14,19 @@ const TEST_CONFIG: dataform.IProjectConfig = {
 
 describe("@dataform/core", () => {
   describe("publish", () => {
-    it("config", function() {
+    it("config", function () {
       const session = new Session(path.dirname(__filename), TEST_CONFIG);
       const t = session
         .publish("example", {
           type: "table",
-          query: _ => "select 1 as test",
           dependencies: [],
           descriptor: {
             test: "test description"
-          },
-          preOps: _ => ["pre_op"],
-          postOps: _ => ["post_op"]
+          }
         })
+        .query(_ => "select 1 as test")
+        .preOps(_ => ["pre_op"])
+        .postOps(_ => ["post_op"])
         .compile();
 
       expect(t.name).equals("example");
@@ -38,7 +38,7 @@ describe("@dataform/core", () => {
       expect(t.postOps).deep.equals(["post_op"]);
     });
 
-    it("config_context", function() {
+    it("config_context", function () {
       const session = new Session(path.dirname(__filename), TEST_CONFIG);
       const t = session
         .publish(
@@ -63,13 +63,14 @@ describe("@dataform/core", () => {
       expect(t.postOps).deep.equals(["post_op"]);
     });
 
-    it("validation_type_incremental", function() {
+    it("validation_type_incremental", function () {
       const sessionSuccess = new Session(path.dirname(__filename), TEST_CONFIG);
-      sessionSuccess.publish("exampleSuccess1", {
-        type: "incremental",
-        where: "test1",
-        descriptor: ["field"]
-      });
+      sessionSuccess
+        .publish("exampleSuccess1", {
+          type: "incremental",
+          descriptor: ["field"]
+        })
+        .where("test1");
       sessionSuccess.publish(
         "exampleSuccess2",
         ctx => `
@@ -103,11 +104,12 @@ describe("@dataform/core", () => {
           errorTest: /"where" property is not defined/
         },
         empty_where: {
-          table: sessionFail.publish("empty_where", {
-            type: "incremental",
-            where: "",
-            descriptor: ["field"]
-          }),
+          table: sessionFail
+            .publish("empty_where", {
+              type: "incremental",
+              descriptor: ["field"]
+            })
+            .where(""),
           errorTest: /"where" property is not defined/
         }
       };
@@ -119,18 +121,18 @@ describe("@dataform/core", () => {
         .to.be.an("array").that.is.not.empty;
 
       Object.keys(cases).forEach(key => {
-        const err = cgFailErrors.validationErrors.find(e => e.nodeName === key);
+        const err = cgFailErrors.validationErrors.find(e => e.actionName === key);
         expect(err)
           .to.have.property("message")
           .that.matches(cases[key].errorTest);
       });
     });
 
-    it("validation_type", function() {
+    it("validation_type", function () {
       const sessionSuccess = new Session(path.dirname(__filename), TEST_CONFIG);
       sessionSuccess.publish("exampleSuccess1", { type: "table" });
       sessionSuccess.publish("exampleSuccess2", { type: "view" });
-      sessionSuccess.publish("exampleSuccess3", { type: "incremental", where: "test" });
+      sessionSuccess.publish("exampleSuccess3", { type: "incremental" }).where("test");
       const cgSuccess = sessionSuccess.compile();
       const cgSuccessErrors = utils.validate(cgSuccess);
 
@@ -147,13 +149,13 @@ describe("@dataform/core", () => {
         .to.have.property("validationErrors")
         .to.be.an("array").that.is.not.empty;
 
-      const err = cgFailErrors.validationErrors.find(e => e.nodeName === "exampleFail");
+      const err = cgFailErrors.validationErrors.find(e => e.actionName === "exampleFail");
       expect(err)
         .to.have.property("message")
         .that.matches(/Wrong type of table/);
     });
 
-    it("validation_redshift_success", function() {
+    it("validation_redshift_success", function () {
       const session = new Session(path.dirname(__filename), TEST_CONFIG);
       session.publish("example_without_dist", {
         redshift: {
@@ -181,7 +183,7 @@ describe("@dataform/core", () => {
         .to.be.an("array").that.is.empty;
     });
 
-    it("validation_redshift_fail", function() {
+    it("validation_redshift_fail", function () {
       const session = new Session(path.dirname(__filename), TEST_CONFIG);
       session.publish("example_absent_distKey", {
         redshift: {
@@ -259,38 +261,40 @@ describe("@dataform/core", () => {
         .to.have.lengthOf(8);
 
       expectedResults.forEach(result => {
-        const err = gErrors.validationErrors.find(e => e.nodeName === result.name);
+        const err = gErrors.validationErrors.find(e => e.actionName === result.name);
         expect(err)
           .to.have.property("message")
           .that.matches(result.message);
       });
     });
 
-    it("validation_type_inline", function() {
+    it("validation_type_inline", function () {
       const session = new Session(path.dirname(__filename), TEST_CONFIG);
-      session.publish("a", { type: "table", query: _ => "select 1 as test" });
-      session.publish("b", {
-        type: "inline",
-        redshift: {
-          distKey: "column1",
-          distStyle: "even",
-          sortKeys: ["column1", "column2"],
-          sortStyle: "compound"
-        },
-        preOps: _ => ["pre_op_b"],
-        postOps: _ => ["post_op_b"],
-        descriptor: { test: "test description b" },
-        disabled: true,
-        where: "test_where",
-        query: ctx => `select * from ${ctx.ref("a")}`
-      });
-      session.publish("c", {
-        type: "table",
-        preOps: _ => ["pre_op_c"],
-        postOps: _ => ["post_op_c"],
-        descriptor: { test: "test description c" },
-        query: ctx => `select * from ${ctx.ref("b")}`
-      });
+      session.publish("a", { type: "table" }).query(_ => "select 1 as test");
+      session
+        .publish("b", {
+          type: "inline",
+          redshift: {
+            distKey: "column1",
+            distStyle: "even",
+            sortKeys: ["column1", "column2"],
+            sortStyle: "compound"
+          },
+          descriptor: { test: "test description b" },
+          disabled: true
+        })
+        .preOps(_ => ["pre_op_b"])
+        .postOps(_ => ["post_op_b"])
+        .where("test_where")
+        .query(ctx => `select * from ${ctx.ref("a")}`);
+      session
+        .publish("c", {
+          type: "table",
+          descriptor: { test: "test description c" }
+        })
+        .preOps(_ => ["pre_op_c"])
+        .postOps(_ => ["post_op_c"])
+        .query(ctx => `select * from ${ctx.ref("b")}`);
 
       const graph = session.compile();
       const graphErrors = utils.validate(graph);
@@ -337,7 +341,7 @@ describe("@dataform/core", () => {
         .to.be.an("array").that.is.not.empty;
 
       const errors = graphErrors.validationErrors
-        .filter(item => item.nodeName === "b")
+        .filter(item => item.actionName === "b")
         .map(item => item.message);
 
       expect(errors).that.matches(/Unused property was detected: "fieldDescriptor"/);
@@ -363,7 +367,7 @@ describe("@dataform/core", () => {
       expect(tableNames).includes("c");
 
       const errors = graphErrors.compilationErrors.map(item => item.message);
-      expect(errors).includes("Node name is not specified");
+      expect(errors).includes("Action name is not specified");
     });
   });
 
@@ -409,7 +413,7 @@ describe("@dataform/core", () => {
         .to.have.property("validationErrors")
         .to.be.an("array").that.is.not.empty;
 
-      const err = gErrors.validationErrors.find(e => e.nodeName === "a");
+      const err = gErrors.validationErrors.find(e => e.actionName === "a");
       expect(err)
         .to.have.property("message")
         .that.matches(/Circular dependency/);
@@ -425,13 +429,13 @@ describe("@dataform/core", () => {
         .to.have.property("validationErrors")
         .to.be.an("array").that.is.not.empty;
 
-      const err = gErrors.validationErrors.find(e => e.nodeName === "a");
+      const err = gErrors.validationErrors.find(e => e.actionName === "a");
       expect(err)
         .to.have.property("message")
         .that.matches(/Missing dependency/);
     });
 
-    it("duplicate_node_names", () => {
+    it("duplicate_action_names", () => {
       const session = new Session(path.dirname(__filename), TEST_CONFIG);
       session.publish("a").dependencies("b");
       session.publish("b");
@@ -444,7 +448,7 @@ describe("@dataform/core", () => {
         .to.be.an("array").that.is.not.empty;
 
       const errors = gErrors.compilationErrors.filter(item =>
-        item.message.match(/Duplicate node name/)
+        item.message.match(/Duplicate action name/)
       );
       expect(errors).to.be.an("array").that.is.not.empty;
     });
@@ -468,7 +472,7 @@ describe("@dataform/core", () => {
 
       const errors = gErrors.validationErrors.map(item => item.message);
 
-      expect(errors.some(item => !!item.match(/Duplicate node name/))).to.be.true;
+      expect(errors.some(item => !!item.match(/Duplicate action name/))).to.be.true;
       expect(errors.some(item => !!item.match(/Missing dependency/))).to.be.true;
       expect(errors.some(item => !!item.match(/Circular dependency/))).to.be.true;
     });
@@ -486,7 +490,7 @@ describe("@dataform/core", () => {
   });
 
   describe("compilers", () => {
-    it("extract_blocks", function() {
+    it("extract_blocks", function () {
       const TEST_SQL_FILE = `
         /*js
         var a = 1;

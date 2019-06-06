@@ -14,7 +14,7 @@ export function createGenIndexConfig(
   });
 
   const definitionPaths = [];
-  glob.sync("definitions/**/*.{js,sql}", { cwd: compileConfig.projectDir }).forEach(path => {
+  glob.sync("definitions/**/*.{js,sql,sqlx}", { cwd: compileConfig.projectDir }).forEach(path => {
     if (definitionPaths.indexOf(path) < 0) {
       definitionPaths.push(path);
     }

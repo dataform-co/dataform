@@ -10,13 +10,13 @@ function validateEmail(email: string) {
 export function validateSchedules(schedules: dataform.schedules.SchedulesJSON, compiledGraph: dataform.ICompiledGraph) {
 
   const errors = [];
-  const allNodes = new Array<{ name?: string; }>().concat(
+  const allActions = new Array<{ name?: string; }>().concat(
     compiledGraph.tables,
     compiledGraph.assertions,
     compiledGraph.operations
   );
 
-  const allNodeNames = allNodes.map(node => node.name);
+  const allActionNames = allActions.map(action => action.name);
 
   if (schedules.defaultNotification && schedules.defaultNotification.emails) {
     schedules.defaultNotification.emails.forEach(email => {
@@ -48,7 +48,7 @@ export function validateSchedules(schedules: dataform.schedules.SchedulesJSON, c
 
     if (schedule.options && schedule.options.actions) {
       schedule.options.actions.forEach(action => {
-        if (allNodeNames.indexOf(action) < 0) {
+        if (allActionNames.indexOf(action) < 0) {
           errors.push(`"${action}" doesn't exist in the project.`);
         }
       })

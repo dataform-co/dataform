@@ -49,50 +49,50 @@ export class Builder {
     // Remove inline tables.
     const filteredTables = this.compiledGraph.tables.filter(t => t.type !== "inline");
 
-    // Firstly, turn every thing into an execution node.
-    const allNodes: dataform.IExecutionNode[] = [].concat(
+    // Firstly, turn every thing into an execution action.
+    const allActions: dataform.IExecutionAction[] = [].concat(
       filteredTables.map(t => this.buildTable(t, tableStateByTarget[JSON.stringify(t.target)])),
       this.compiledGraph.operations.map(o => this.buildOperation(o)),
       this.compiledGraph.assertions.map(a => this.buildAssertion(a))
     );
-    const allNodeNames = allNodes.map(n => n.name);
-    const nodeNameMap: { [name: string]: dataform.IExecutionNode } = {};
-    allNodes.forEach(node => (nodeNameMap[node.name] = node));
+    const allActionNames = allActions.map(n => n.name);
+    const actionNameMap: { [name: string]: dataform.IExecutionAction } = {};
+    allActions.forEach(action => (actionNameMap[action.name] = action));
 
-    // Determine which nodes should be included.
-    const includedNodeNames =
-      this.runConfig.nodes && this.runConfig.nodes.length > 0
-        ? utils.matchPatterns(this.runConfig.nodes, allNodeNames)
-        : allNodeNames;
-    let includedNodes = allNodes.filter(node => includedNodeNames.indexOf(node.name) >= 0);
+    // Determine which action should be included.
+    const includedActionNames =
+      this.runConfig.actions && this.runConfig.actions.length > 0
+        ? utils.matchPatterns(this.runConfig.actions, allActionNames)
+        : allActionNames;
+    let includedActions = allActions.filter(action => includedActionNames.indexOf(action.name) >= 0);
     if (this.runConfig.includeDependencies) {
       // Compute all transitive dependencies.
-      for (let i = 0; i < allNodes.length; i++) {
-        includedNodes.forEach(node => {
-          const matchingNodeNames =
-            node.dependencies && node.dependencies.length > 0
-              ? utils.matchPatterns(node.dependencies, allNodeNames)
+      for (let i = 0; i < allActions.length; i++) {
+        includedActions.forEach(action => {
+          const matchingActionNames =
+            action.dependencies && action.dependencies.length > 0
+              ? utils.matchPatterns(action.dependencies, allActionNames)
               : [];
-          // Update included node names.
-          matchingNodeNames.forEach(nodeName => {
-            if (includedNodeNames.indexOf(nodeName) < 0) {
-              includedNodeNames.push(nodeName);
+          // Update included action names.
+          matchingActionNames.forEach(actionName => {
+            if (includedActionNames.indexOf(actionName) < 0) {
+              includedActionNames.push(actionName);
             }
           });
-          // Update included nodes.
-          includedNodes = allNodes.filter(node => includedNodeNames.indexOf(node.name) >= 0);
+          // Update included actions.
+          includedActions = allActions.filter(action => includedActionNames.indexOf(action.name) >= 0);
         });
       }
     }
     // Remove any excluded dependencies.
-    includedNodes.forEach(node => {
-      node.dependencies = node.dependencies.filter(dep => includedNodeNames.indexOf(dep) >= 0);
+    includedActions.forEach(action => {
+      action.dependencies = action.dependencies.filter(dep => includedActionNames.indexOf(dep) >= 0);
     });
     return dataform.ExecutionGraph.create({
       projectConfig: this.compiledGraph.projectConfig,
       runConfig: this.runConfig,
       warehouseState: this.state,
-      nodes: includedNodes
+      actions: includedActions
     });
   }
 
@@ -106,12 +106,12 @@ export class Builder {
     const tasks = t.disabled
       ? emptyTasks
       : emptyTasks.concat(
-          (t.preOps || []).map(pre => ({ statement: pre })),
-          this.adapter.publishTasks(t, this.runConfig, tableMetadata).build(),
-          (t.postOps || []).map(post => ({ statement: post }))
-        );
+        (t.preOps || []).map(pre => ({ statement: pre })),
+        this.adapter.publishTasks(t, this.runConfig, tableMetadata).build(),
+        (t.postOps || []).map(post => ({ statement: post }))
+      );
 
-    return dataform.ExecutionNode.create({
+    return dataform.ExecutionAction.create({
       name: t.name,
       dependencies: t.dependencies,
       type: "table",
@@ -122,7 +122,7 @@ export class Builder {
   }
 
   public buildOperation(operation: dataform.IOperation) {
-    return dataform.ExecutionNode.create({
+    return dataform.ExecutionAction.create({
       name: operation.name,
       dependencies: operation.dependencies,
       type: "operation",
@@ -135,7 +135,7 @@ export class Builder {
   }
 
   public buildAssertion(assertion: dataform.IAssertion) {
-    return dataform.ExecutionNode.create({
+    return dataform.ExecutionAction.create({
       name: assertion.name,
       dependencies: assertion.dependencies,
       type: "assertion",
