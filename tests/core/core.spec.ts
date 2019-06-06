@@ -19,14 +19,14 @@ describe("@dataform/core", () => {
       const t = session
         .publish("example", {
           type: "table",
-          query: _ => "select 1 as test",
           dependencies: [],
           descriptor: {
             test: "test description"
-          },
-          preOps: _ => ["pre_op"],
-          postOps: _ => ["post_op"]
+          }
         })
+        .query(_ => "select 1 as test")
+        .preOps(_ => ["pre_op"])
+        .postOps(_ => ["post_op"])
         .compile();
 
       expect(t.name).equals("example");
@@ -65,11 +65,12 @@ describe("@dataform/core", () => {
 
     it("validation_type_incremental", function() {
       const sessionSuccess = new Session(path.dirname(__filename), TEST_CONFIG);
-      sessionSuccess.publish("exampleSuccess1", {
-        type: "incremental",
-        where: "test1",
-        descriptor: ["field"]
-      });
+      sessionSuccess
+        .publish("exampleSuccess1", {
+          type: "incremental",
+          descriptor: ["field"]
+        })
+        .where("test1");
       sessionSuccess.publish(
         "exampleSuccess2",
         ctx => `
@@ -103,11 +104,12 @@ describe("@dataform/core", () => {
           errorTest: /"where" property is not defined/
         },
         empty_where: {
-          table: sessionFail.publish("empty_where", {
-            type: "incremental",
-            where: "",
-            descriptor: ["field"]
-          }),
+          table: sessionFail
+            .publish("empty_where", {
+              type: "incremental",
+              descriptor: ["field"]
+            })
+            .where(""),
           errorTest: /"where" property is not defined/
         }
       };
@@ -130,7 +132,7 @@ describe("@dataform/core", () => {
       const sessionSuccess = new Session(path.dirname(__filename), TEST_CONFIG);
       sessionSuccess.publish("exampleSuccess1", { type: "table" });
       sessionSuccess.publish("exampleSuccess2", { type: "view" });
-      sessionSuccess.publish("exampleSuccess3", { type: "incremental", where: "test" });
+      sessionSuccess.publish("exampleSuccess3", { type: "incremental" }).where("test");
       const cgSuccess = sessionSuccess.compile();
       const cgSuccessErrors = utils.validate(cgSuccess);
 
@@ -268,29 +270,31 @@ describe("@dataform/core", () => {
 
     it("validation_type_inline", function() {
       const session = new Session(path.dirname(__filename), TEST_CONFIG);
-      session.publish("a", { type: "table", query: _ => "select 1 as test" });
-      session.publish("b", {
-        type: "inline",
-        redshift: {
-          distKey: "column1",
-          distStyle: "even",
-          sortKeys: ["column1", "column2"],
-          sortStyle: "compound"
-        },
-        preOps: _ => ["pre_op_b"],
-        postOps: _ => ["post_op_b"],
-        descriptor: { test: "test description b" },
-        disabled: true,
-        where: "test_where",
-        query: ctx => `select * from ${ctx.ref("a")}`
-      });
-      session.publish("c", {
-        type: "table",
-        preOps: _ => ["pre_op_c"],
-        postOps: _ => ["post_op_c"],
-        descriptor: { test: "test description c" },
-        query: ctx => `select * from ${ctx.ref("b")}`
-      });
+      session.publish("a", { type: "table" }).query(_ => "select 1 as test");
+      session
+        .publish("b", {
+          type: "inline",
+          redshift: {
+            distKey: "column1",
+            distStyle: "even",
+            sortKeys: ["column1", "column2"],
+            sortStyle: "compound"
+          },
+          descriptor: { test: "test description b" },
+          disabled: true
+        })
+        .preOps(_ => ["pre_op_b"])
+        .postOps(_ => ["post_op_b"])
+        .where("test_where")
+        .query(ctx => `select * from ${ctx.ref("a")}`);
+      session
+        .publish("c", {
+          type: "table",
+          descriptor: { test: "test description c" }
+        })
+        .preOps(_ => ["pre_op_c"])
+        .postOps(_ => ["post_op_c"])
+        .query(ctx => `select * from ${ctx.ref("b")}`);
 
       const graph = session.compile();
       const graphErrors = utils.validate(graph);

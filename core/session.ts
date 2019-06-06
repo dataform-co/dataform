@@ -11,16 +11,11 @@ interface IActionProto {
   dependencies?: string[];
 }
 
-interface ISqlxConfig {
+interface ISqlxConfig extends TConfig {
   type: "view" | "table" | "inline" | "incremental" | "assertion" | "operations";
-  dependencies: string[];
   schema?: string;
   name: string;
   hasOutput?: boolean;
-  disabled?: boolean;
-  protected?: boolean;
-  redshift?: dataform.IRedshiftOptions;
-  bigquery?: dataform.IBigQueryOptions;
 }
 
 export class Session {
@@ -113,23 +108,12 @@ export class Session {
         case "inline":
         case "incremental": {
           const dataset = this.publish(actionOptions.sqlxConfig.name);
-          dataset.type(actionOptions.sqlxConfig.type);
-          if (actionOptions.sqlxConfig.disabled) {
-            dataset.disabled();
-          }
-          if (actionOptions.sqlxConfig.redshift) {
-            dataset.redshift(actionOptions.sqlxConfig.redshift);
-          }
-          if (actionOptions.sqlxConfig.bigquery) {
-            dataset.bigquery(actionOptions.sqlxConfig.bigquery);
-          }
-          if (actionOptions.sqlxConfig.protected) {
-            dataset.proto.protected = true;
-          }
+          dataset.config(actionOptions.sqlxConfig);
           return dataset;
         }
         case "assertion": {
           const assertion = this.assert(actionOptions.sqlxConfig.name);
+          assertion.dependencies(actionOptions.sqlxConfig.dependencies);
           return assertion;
         }
         case "operations": {
@@ -137,6 +121,7 @@ export class Session {
           if (!actionOptions.sqlxConfig.hasOutput) {
             delete operations.proto.target;
           }
+          operations.dependencies(actionOptions.sqlxConfig.dependencies);
           return operations;
         }
         default: {
@@ -153,7 +138,6 @@ export class Session {
         action.proto.target.name = actionOptions.sqlxConfig.name;
       }
     }
-    action.dependencies(actionOptions.sqlxConfig.dependencies);
     return action;
   }
 
