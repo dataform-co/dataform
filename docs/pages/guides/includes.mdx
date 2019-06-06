@@ -5,9 +5,7 @@ export const meta = {
   __filename
 };
 
-export default ({ children }) => (
-  <Documentation {...meta}>{children}</Documentation>
-);
+export default ({ children }) => <Documentation {...meta}>{children}</Documentation>;
 
 ## Introduction
 
@@ -39,7 +37,7 @@ You can reference any `include` function, constant, or macro by using its file n
 
 For example, to reference the constant `PROJECT_ID` in the file `includes/constants.js`:
 
-`definitions/query.sql`:
+`definitions/query.sqlx`:
 
 ```js
 SELECT * FROM ${constants.PROJECT_ID}.my_schema_name.my_table_name
@@ -72,7 +70,7 @@ function countryGroup(countryCodeField) {
 module.exports = { countryGroup };
 ```
 
-This function can be used in a SQL query `definitions/revenue_by_country_group.sql`:
+This function can be used in a SQL query `definitions/revenue_by_country_group.sqlx`:
 
 ```js
 SELECT
@@ -116,7 +114,7 @@ function groupBy(n) {
 module.exports = { groupBy };
 ```
 
-This function can be used in a SQL query `definitions/example.sql`:
+This function can be used in a SQL query `definitions/example.sqlx`:
 
 ```js
 SELECT field1,
@@ -163,7 +161,7 @@ function renderScript(table, dimensions, metrics) {
 module.exports = { renderScript };
 ```
 
-This function can be used in a SQL query `definitions/stats_per_country_and_device.sql`:
+This function can be used in a SQL query `definitions/stats_per_country_and_device.sqlx`:
 
 ```js
 ${script_builder.renderScript(
