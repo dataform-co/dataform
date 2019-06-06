@@ -142,6 +142,13 @@ To reference datasets with overridden schemas, use the fully qualified name of t
 SELECT * FROM ${ref("other_schema.example")}
 ```
 
+<div className="bp3-callout bp3-icon-info-sign bp3-intent-warning" markdown="1">
+  If a dataset's <code>name</code> is overridden, you should use that name when calling the{" "}
+  <code>ref()</code> function. For example, a dataset with{" "}
+  <code>config &#123; name: "overridden_name" &#125;</code> would be referenced using{" "}
+  <code>ref("overridden_name")</code>.
+</div>
+
 ## Warehouse specific configuration
 
 ### BigQuery

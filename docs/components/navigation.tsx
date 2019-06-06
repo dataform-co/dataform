@@ -24,11 +24,6 @@ import * as platformScheduling from "df/docs/pages/platform_guides/scheduling.md
 import * as platformSetupDataWarehouse from "df/docs/pages/platform_guides/set_up_datawarehouse.mdx";
 import * as platformVersionControl from "df/docs/pages/platform_guides/version_control.mdx";
 
-// Reference.
-import * as referenceDataformJson from "df/docs/pages/reference/dataform-json.mdx";
-import * as referenceJsApi from "df/docs/pages/reference/js-api.mdx";
-import * as referenceSqlx from "df/docs/pages/reference/sqlx.mdx";
-
 interface IProps {
   currentPath: string;
   currentHeaderLinks: IHeaderLink[];
@@ -67,12 +62,6 @@ export default class Navigation extends React.Component<IProps> {
             platformVersionControl,
             platformScheduling
           ].map(page => this.menuItem(page.meta))}
-        </Menu>
-        <h4>API reference</h4>
-        <Menu className={styles.menu}>
-          {[referenceDataformJson, referenceSqlx, referenceJsApi].map(page =>
-            this.menuItem(page.meta)
-          )}
         </Menu>
       </div>
     );

@@ -86,17 +86,17 @@ config { type: "incremental" }
 SELECT timestamp, action
 FROM weblogs.user_actions
 
-if_incremental {
+incremental_where {
   timestamp > (SELECT MAX(timestamp) FROM ${self()})
 }
 ```
 
 First the script sets the type of the dataset to `incremental`.
 
-It then specifies a `WHERE` clause using an `if_incremental` block:
+It then specifies a `WHERE` clause using an `incremental_where` block:
 
 ```js
-if_incremental {
+incremental_where {
   timestamp > (SELECT MAX(timestamp) FROM ${self()})
 }
 ```
@@ -151,7 +151,7 @@ config { type: "incremental" }
 
 SELECT CURRENT_DATE() AS snapshot_date, customer_id, name, account_settings FROM productiondb.customers
 
-if_incremental {
+incremental_where {
   snapshot_date > (SELECT MAX(snapshot_date) FROM ${self()})
 }
 ```

@@ -51,11 +51,10 @@ publish("table1")
   });
 ```
 
-Multiple properties can also be set using the `config()` method, or alternatively simply passed as a second argument to the method:
+Multiple configuration properties can also be set using the `config()` method, or alternatively simply passed as a second argument to the method:
 
 ```js
 publish("table1", {
-  query: "SELECT 1 AS test",
   type: "table",
   dependencies: ["other_table"],
   descriptor: {
@@ -104,14 +103,6 @@ The following methods and configuration options accept a function taking a `Cont
 - `where()`
 - `preOps()`
 - `postOps()`
-
-`Contextable` arguments can also be provided via the `config()` API:
-
-```js
-publish("example").config({
-  query: ctx => `SELECT * FROM ${ctx.ref("other_table")}`
-});
-```
 
 ## Example: Dynamic dataset generation
 
