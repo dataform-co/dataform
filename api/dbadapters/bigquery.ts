@@ -130,9 +130,9 @@ export class BigQueryDbAdapter implements DbAdapter {
       .then(
         metadata => {
           // check location of the dataset
-          const wrongMetadata = metadata.find(
-            md => md.location.toUpperCase() !== location.toUpperCase()
-          );
+          const wrongMetadata = metadata
+            .filter(md => !!md.location)
+            .find(md => md.location.toUpperCase() !== location.toUpperCase());
           if (wrongMetadata) {
             const message = `Cannot create dataset "${schema}" in location "${location}" as it already exists in location "${
               wrongMetadata.location
