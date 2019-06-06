@@ -7,7 +7,7 @@ import { getTableRows, keyBy } from "df/tests/integration/utils";
 
 describe("@dataform/integration/redshift", () => {
   it("run", async () => {
-    const credentials = dfapi.credentials.read("redshift", "df/test_profiles/redshift.json");
+    const credentials = dfapi.credentials.read("redshift", "df/test_credentials/redshift.json");
 
     const compiledGraph = await dfapi.compile({
       projectDir: "df/tests/integration/redshift_project"

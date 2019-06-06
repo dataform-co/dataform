@@ -7,7 +7,7 @@ import { dropAllTables, getTableRows, keyBy } from "df/tests/integration/utils";
 
 describe("@dataform/integration/snowflake", () => {
   it("run", async () => {
-    const credentials = dfapi.credentials.read("snowflake", "df/test_profiles/snowflake.json");
+    const credentials = dfapi.credentials.read("snowflake", "df/test_credentials/snowflake.json");
 
     const compiledGraph = await dfapi.compile({
       projectDir: "df/tests/integration/snowflake_project"
