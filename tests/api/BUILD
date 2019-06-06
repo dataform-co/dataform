@@ -35,6 +35,8 @@ mocha_node_test(
         "//examples/bigquery:node_modules",
         "//examples/bigquery_backwards_compatibility:files",
         "//examples/bigquery_backwards_compatibility:node_modules",
+        "//examples/bigquery_language_v2:files",
+        "//examples/bigquery_language_v2:node_modules",
         "//examples/bigquery_with_errors:files",
         "//examples/bigquery_with_errors:node_modules",
         "//examples/init",
