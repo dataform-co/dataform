@@ -37,9 +37,6 @@ class CompileChildProcess {
   public async compile(compileConfig: dataform.ICompileConfig) {
     const compileInChildProcess = new Promise<string>(async (resolve, reject) => {
       this.childProcess.on("message", (result: ICompileIPCResult) => {
-        if (!this.childProcess.killed) {
-          this.childProcess.kill();
-        }
         if (result.err) {
           reject(new Error(result.err));
         } else {
@@ -58,6 +55,9 @@ class CompileChildProcess {
       await Promise.race([timeout, compileInChildProcess]);
       return await compileInChildProcess;
     } finally {
+      if (!this.childProcess.killed) {
+        this.childProcess.kill();
+      }
       if (timer) {
         clearTimeout(timer);
       }
