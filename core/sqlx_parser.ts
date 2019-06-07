@@ -81,26 +81,26 @@ export function parseSqlx(code: string): ISqlxParseResults {
   lexer.reset(code);
   for (const token of lexer) {
     const previousState = parseState.currentState;
-    const state = parseState.computeState(token);
+    const newState = parseState.computeState(token);
     if (
       token.type === SQL_LEXER_TOKEN_NAMES.STATEMENT_SEPERATOR ||
       token.type === INNER_SQL_BLOCK_LEXER_TOKEN_NAMES.STATEMENT_SEPERATOR
     ) {
-      if (state === "incremental") {
+      if (newState === "incremental") {
         throw new Error(
           "Incremental code blocks may not contain SQL statement separators ('---')."
         );
       }
-      (results[state] as string[]).push("");
+      (results[newState] as string[]).push("");
     }
-    if (Array.isArray(results[state])) {
-      (results[state] as string[])[results[state].length - 1] += token.value;
+    if (Array.isArray(results[newState])) {
+      (results[newState] as string[])[results[newState].length - 1] += token.value;
     } else {
-      results[state] += token.value;
+      results[newState] += token.value;
     }
 
-    if (previousState === "js" && state !== "js") {
-      // If the user provided any JS, cut off the last closing brace.
+    if (previousState === "js" && newState !== "js") {
+      // If we're closing off a JS block, cut off the last closing brace.
       // We have to do this because we intentionally cut off the starting brace during lexing.
       // We can't keep them because the user's JS must not be run inside a scoped block.
       results.js = results.js.substring(0, results.js.length - 1);
