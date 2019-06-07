@@ -35,12 +35,8 @@ class CompileChildProcess {
   }
 
   public async compile(compileConfig: dataform.ICompileConfig) {
-    return await new Promise<string>(async (resolve, reject) => {
-      this.awaitCompletionOrTimeout();
+    const compileInChildProcess = new Promise<string>(async (resolve, reject) => {
       this.childProcess.on("message", (result: ICompileIPCResult) => {
-        if (!this.childProcess.killed) {
-          this.childProcess.kill();
-        }
         if (result.err) {
           reject(new Error(result.err));
         } else {
@@ -50,22 +46,21 @@ class CompileChildProcess {
       });
       this.childProcess.send(compileConfig);
     });
-  }
-
-  private awaitCompletionOrTimeout() {
-    const timeout = 5000;
-    const timeoutStart = Date.now();
-    const checkTimeout = () => {
-      if (this.childProcess.killed) {
-        return;
-      }
-      if (Date.now() > timeoutStart + timeout) {
+    let timer;
+    const timeout = new Promise(
+      (resolve, reject) =>
+        (timer = setTimeout(() => reject(new Error("Compilation timed out")), 5000))
+    );
+    try {
+      await Promise.race([timeout, compileInChildProcess]);
+      return await compileInChildProcess;
+    } finally {
+      if (!this.childProcess.killed) {
         this.childProcess.kill();
-        throw new Error("Compilation timed out");
-      } else {
-        setTimeout(checkTimeout, 100);
       }
-    };
-    checkTimeout();
+      if (timer) {
+        clearTimeout(timer);
+      }
+    }
   }
 }
