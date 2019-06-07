@@ -31,7 +31,7 @@ def mocha_node_test(
         Label("//tools/mocha:mocha_runner.js"),
         ":%s_devmode_srcs.MF" % name,
     ]
-    entry_point = "df/tools/mocha/mocha_runner.js"
+    entry_point = "//tools/mocha:mocha_runner.js"
     nodejs_test(
         name = name,
         data = all_data,

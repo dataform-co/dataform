@@ -47,7 +47,7 @@ def next_site(name, srcs, data, site_path):
             "@npm//next",
         ],
         args = [site_path],
-        entry_point = "next/dist/bin/next",
+        entry_point = "@npm//node_modules/next:dist/bin/next",
         templated_args = ["--node_options=--preserve-symlinks"],
         install_source_map_support = False,
     )

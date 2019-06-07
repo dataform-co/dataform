@@ -30,7 +30,7 @@ nodejs_binary(
         ":cli",
         "@npm//source-map-support",
     ],
-    entry_point = "df/cli/index.js",
+    entry_point = ":index.ts",
 )
 
 load("//tools/common:copy.bzl", "copy_file")
