@@ -6,7 +6,7 @@
       "args": ["./scripts/decode_credentials"]
     },
     {
-      "name": "gcr.io/google/bazel:0.26.0",
+      "name": "l.gcr.io/google/bazel:0.26.0",
       "args": ["test", "--config=remote-cache", "..."]
     }
   ],
