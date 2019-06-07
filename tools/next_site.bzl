@@ -1,3 +1,6 @@
+load("@build_bazel_rules_nodejs//:defs.bzl", "nodejs_binary")
+load("@bazel_tools//tools/build_defs/pkg:pkg.bzl", "pkg_tar")
+
 def _export_next_site_impl(ctx):
     export_dir = ctx.actions.declare_directory(ctx.attr.export_path)
     ctx.action(
@@ -32,9 +35,6 @@ _export_next_site = rule(
         ),
     },
 )
-
-load("@build_bazel_rules_nodejs//:defs.bzl", "nodejs_binary")
-load("@bazel_tools//tools/build_defs/pkg:pkg.bzl", "pkg_tar")
 
 # Generates two targets:
 # name: Provides a binary that can be run for local development.

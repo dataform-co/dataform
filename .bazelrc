@@ -12,5 +12,5 @@ build:remote-cache --strategy=Javac=standalone
 build:remote-cache --strategy=Closure=standalone
 build:remote-cache --strategy=Genrule=standalone
 
-# Set up both remote and remote cache rules to use our RBE instance.
+# Set up remote cache rules to use our RBE instance.
 build:remote-cache --remote_instance_name=projects/tada-analytics/instances/default_instance
