@@ -80,29 +80,31 @@ export function parseSqlx(code: string): ISqlxParseResults {
   const parseState = new SqlxParseState();
   lexer.reset(code);
   for (const token of lexer) {
-    const state = parseState.computeState(token);
+    const previousState = parseState.currentState;
+    const newState = parseState.computeState(token);
     if (
       token.type === SQL_LEXER_TOKEN_NAMES.STATEMENT_SEPERATOR ||
       token.type === INNER_SQL_BLOCK_LEXER_TOKEN_NAMES.STATEMENT_SEPERATOR
     ) {
-      if (state === "incremental") {
+      if (newState === "incremental") {
         throw new Error(
           "Incremental code blocks may not contain SQL statement separators ('---')."
         );
       }
-      (results[state] as string[]).push("");
+      (results[newState] as string[]).push("");
     }
-    if (Array.isArray(results[state])) {
-      (results[state] as string[])[results[state].length - 1] += token.value;
+    if (Array.isArray(results[newState])) {
+      (results[newState] as string[])[results[newState].length - 1] += token.value;
     } else {
-      results[state] += token.value;
+      results[newState] += token.value;
     }
-  }
-  if (results.js) {
-    // If the user provided any JS, cut off the last closing brace.
-    // We have to do this because we intentionally cut off the starting brace during lexing.
-    // We can't keep them because the user's JS must not be run inside a scoped block.
-    results.js = results.js.substring(0, results.js.length - 1);
+
+    if (previousState === "js" && newState !== "js") {
+      // If we're closing off a JS block, cut off the last closing brace.
+      // We have to do this because we intentionally cut off the starting brace during lexing.
+      // We can't keep them because the user's JS must not be run inside a scoped block.
+      results.js = results.js.substring(0, results.js.length - 1);
+    }
   }
   return results;
 }
@@ -115,7 +117,7 @@ tokenTypeStateMapping.set(SQL_LEXER_TOKEN_NAMES.START_PRE_OPERATIONS, "preOperat
 tokenTypeStateMapping.set(SQL_LEXER_TOKEN_NAMES.START_POST_OPERATIONS, "postOperations");
 
 class SqlxParseState {
-  private currentState: keyof ISqlxParseResults = "sql";
+  public currentState: keyof ISqlxParseResults = "sql";
 
   public computeState(token: moo.Token): keyof ISqlxParseResults {
     if (!token.type.startsWith(LEXER_STATE_NAMES.SQL)) {

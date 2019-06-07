@@ -1,5 +1,6 @@
 config {
     type: "table"
 }
-js { var foo = () => "foo"; }
+js { const bar = "foo"; }
+js { var foo = () => bar; }
 select 1 as ${foo()}
