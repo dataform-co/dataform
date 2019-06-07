@@ -70,6 +70,7 @@ go_register_toolchains()
 
 http_archive(
     name = "com_github_bazelbuild_buildtools",
+    sha256 = "68f5245048c899a50047ebf8015ace16345ffc6610e5431964464b612da7941f",
     strip_prefix = "buildtools-609ca6e8a79750cf4c6ce37bb92ae8d54876f9e1",
     url = "https://github.com/bazelbuild/buildtools/archive/609ca6e8a79750cf4c6ce37bb92ae8d54876f9e1.zip",
 )
@@ -101,7 +102,7 @@ load(
 
 container_pull(
     name = "nginx_base",
+    digest = "sha256:8c3cdb5acd050a5a46be0bb5637e23d192f4ef010b4fb6c5af40e45c5b7a0a71",
     registry = "index.docker.io",
     repository = "library/nginx",
-    tag = "latest",
 )
