@@ -28,7 +28,7 @@ export class CancellablePromise<T> implements PromiseLike<T> {
 
   public then<S>(
     onfulfilled?: (value: T) => S | PromiseLike<S>,
-    onrejected?: (reason: any) => never | PromiseLike<never>
+    onrejected?: (reason: any) => void
   ): Promise<S> {
     return this.promise.then(onfulfilled, onrejected);
   }

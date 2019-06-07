@@ -7,7 +7,7 @@
     },
     {
       "name": "gcr.io/cloud-builders/bazel@sha256:902d741163e3f9ecba2ac3df9eb6f0f66b190afc4f738d34c8b7f124fc6b4e30",
-      "args": ["test", "..."]
+      "args": ["--config=remote-cache", "test", "..."]
     }
   ],
   "timeout": "3600s",
