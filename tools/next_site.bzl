@@ -40,13 +40,13 @@ _export_next_site = rule(
 # name: Provides a binary that can be run for local development.
 # name_pkg: A tarball of the static site output that can be served in prod.
 
-def next_site(name, srcs, data, site_path):
+def next_site(name, srcs, data, site_path, port = 3000):
     nodejs_binary(
         name = name,
         data = srcs + data + [
             "@npm//next",
         ],
-        args = [site_path],
+        args = [site_path, "-p {port}".format(port = port)],
         entry_point = "@npm//node_modules/next:dist/bin/next",
         templated_args = ["--node_options=--preserve-symlinks"],
         install_source_map_support = False,
