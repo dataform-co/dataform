@@ -21,5 +21,5 @@ nodejs_binary(
         ":json-merge",
         "@npm//source-map-support",
     ],
-    entry_point = "df/tools/json-merge/index.js",
+    entry_point = ":index.ts",
 )

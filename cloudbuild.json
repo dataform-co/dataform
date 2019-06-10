@@ -6,8 +6,8 @@
       "args": ["./scripts/decode_credentials"]
     },
     {
-      "name": "gcr.io/cloud-builders/bazel@sha256:902d741163e3f9ecba2ac3df9eb6f0f66b190afc4f738d34c8b7f124fc6b4e30",
-      "args": ["test", "..."]
+      "name": "l.gcr.io/google/bazel:0.26.0",
+      "args": ["test", "--config=remote-cache", "..."]
     }
   ],
   "timeout": "3600s",

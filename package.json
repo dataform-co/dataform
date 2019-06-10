@@ -2,7 +2,7 @@
   "dependencies": {
     "@babel/runtime": "^7.2.0",
     "@bazel/ibazel": "^0.9.1",
-    "@bazel/typescript": "0.27.8",
+    "@bazel/typescript": "^0.31.1",
     "@blueprintjs/core": "^3.15.1",
     "@blueprintjs/select": "^3.8.1",
     "@google-cloud/bigquery": "^4.1.1",
@@ -70,7 +70,7 @@
     "tslint-react": "^3.6.0",
     "typed-css-modules": "^0.3.7",
     "typedoc": "^0.14.2",
-    "typescript": "^3.2.1",
+    "typescript": "^3.5.1",
     "uglify-es": "^3.3.9",
     "uglify-js": "^3.4.9",
     "umd-compat-loader": "^2.1.1",

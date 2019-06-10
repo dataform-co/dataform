@@ -96,7 +96,7 @@ export function parseSqlx(code: string): ISqlxParseResults {
     if (Array.isArray(results[newState])) {
       (results[newState] as string[])[results[newState].length - 1] += token.value;
     } else {
-      results[newState] += token.value;
+      (results[newState] as string) += token.value;
     }
 
     if (previousState === "js" && newState !== "js") {
