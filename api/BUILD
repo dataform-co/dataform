@@ -63,7 +63,7 @@ nodejs_binary(
         ":lib",
         "@npm//source-map-support",
     ],
-    entry_point = "df/api/vm/compile.js",
+    entry_point = ":vm/compile.ts",
 )
 
 nodejs_binary(
@@ -73,5 +73,5 @@ nodejs_binary(
         ":lib",
         "@npm//source-map-support",
     ],
-    entry_point = "df/api/vm/query.js",
+    entry_point = ":vm/query.ts",
 )
