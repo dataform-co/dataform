@@ -28,9 +28,11 @@ export class CancellablePromise<T> implements PromiseLike<T> {
 
   public then<S>(
     onfulfilled?: (value: T) => S | PromiseLike<S>,
-    onrejected?: (reason: any) => never | PromiseLike<never>
+    onrejected?: (reason: any) => void
   ): Promise<S> {
-    return this.promise.then(onfulfilled, onrejected);
+    // TODO: Seems like local and remote bazel builds behave
+    // differently and I can't get this to type correctly for both.
+    return (this.promise.then(onfulfilled, onrejected) as any);
   }
 
   public catch(onRejected?: (reason: any) => PromiseLike<never>): Promise<T> {

@@ -1,3 +1,6 @@
+load("@build_bazel_rules_nodejs//:defs.bzl", "nodejs_binary")
+load("@bazel_tools//tools/build_defs/pkg:pkg.bzl", "pkg_tar")
+
 def _export_next_site_impl(ctx):
     export_dir = ctx.actions.declare_directory(ctx.attr.export_path)
     ctx.action(
@@ -33,9 +36,6 @@ _export_next_site = rule(
     },
 )
 
-load("@build_bazel_rules_nodejs//:defs.bzl", "nodejs_binary")
-load("@bazel_tools//tools/build_defs/pkg:pkg.bzl", "pkg_tar")
-
 # Generates two targets:
 # name: Provides a binary that can be run for local development.
 # name_pkg: A tarball of the static site output that can be served in prod.
@@ -47,7 +47,7 @@ def next_site(name, srcs, data, site_path):
             "@npm//next",
         ],
         args = [site_path],
-        entry_point = "next/dist/bin/next",
+        entry_point = "@npm//node_modules/next:dist/bin/next",
         templated_args = ["--node_options=--preserve-symlinks"],
         install_source_map_support = False,
     )
