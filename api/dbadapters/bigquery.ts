@@ -129,7 +129,7 @@ export class BigQueryDbAdapter implements DbAdapter {
       metadata = data[0];
     } catch (e) {
       // If metadata call fails, it probably doesn't exist. So try to create it.
-      return this.client.createDataset(schema, { location });
+      return await this.client.createDataset(schema, { location });
     }
 
     if (metadata.location.toUpperCase() !== location.toUpperCase()) {
