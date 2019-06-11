@@ -52,6 +52,7 @@ next_site(
         "@npm//umd-compat-loader",
         "@npm//url-loader",
     ],
+    port = 3001,
     site_path = "docs",
 )
 
