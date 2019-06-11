@@ -125,7 +125,7 @@ export class BigQueryDbAdapter implements DbAdapter {
 
     let metadata;
     try {
-      const data = this.client.dataset(schema).getMetadata();
+      const data = await this.client.dataset(schema).getMetadata();
       metadata = data[0];
     } catch (e) {
       // If metadata call fails, it probably doesn't exist. So try to create it.
