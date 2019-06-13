@@ -3,12 +3,6 @@ import * as compilers from "@dataform/core/compilers";
 import { genIndex } from "@dataform/core/gen_index";
 import { Session } from "@dataform/core/session";
 
-// These exports constitute the public API of @dataform/core.
-// Changes to these will break @dataform/api, so take care!
-export const indexFileGenerator = genIndex;
-export const compiler = compilers.compile;
-export { adapters };
-
 // Install extensions for SQL files.
 if (require.extensions) {
   require.extensions[".sql"] = function(module: any, file: string) {
@@ -37,3 +31,12 @@ const session = globalSession();
 (global as any).publish = session.publish.bind(session);
 (global as any).operate = session.operate.bind(session);
 (global as any).assert = session.assert.bind(session);
+
+// These exports constitute the public API of @dataform/core.
+// Changes to these will break @dataform/api, so take care!
+export const indexFileGenerator = genIndex;
+export const compiler = compilers.compile;
+export { adapters };
+export function projectConfig() {
+  return session.config;
+}
