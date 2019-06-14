@@ -41,13 +41,13 @@ You can assert these requirements as follows:
 ```js
 config { type: "assertion" }
 
-WITH
+WITH base AS (
 SELECT
   date,
   customer_id,
   SUM(1) as rows
 FROM ${ref("daily_customer_stats")}
-AS base
+)
 SELECT * FROM base WHERE rows > 1
 ```
 
