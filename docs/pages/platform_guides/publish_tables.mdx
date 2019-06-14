@@ -6,14 +6,12 @@ export const meta = {
   __filename
 };
 
-export default ({ children }) => (
-  <Documentation {...meta}>{children}</Documentation>
-);
+export default ({ children }) => <Documentation {...meta}>{children}</Documentation>;
 
 ## Create a new file
 
-Create a new file by clicking on the + button next to the `definitions` folder and create a new SQL file named `onboarding_table`.
-For now, ignore the other options (Assertions, Operations, JavaScript); these are more advanced features which will be covered in later documentation.
+Create a new file by clicking on the + button next to the `definitions` folder and create a new SQLX file named `onboarding_table`.
+For now, ignore the other options; these are more advanced features which will be covered in later documentation.
 
 <ScreenshotWrapper>
   <img src="/static/images/platform_guides/publish_tables/new_file.png" style={{ width: "100%" }} />
@@ -21,17 +19,18 @@ For now, ignore the other options (Assertions, Operations, JavaScript); these ar
 
 ## Write a query
 
-In the text editor, write a simple SQL statement:
+In the text editor, write a simple SQLX statement:
 
 ```js
+config { type: "view" }
 SELECT 1 AS one,
        2 AS two,
        3 AS three
 ```
 
-You will see the right sidebar update with `onboarding_table` which is the name of the dataset, a tag for the type - a view by default - as well as a validation message and two action buttons.
+You will see the right sidebar update with `onboarding_table` which is the name of the dataset, a tag for the type - a `view` - as well as a validation message and two action buttons.
 
-The `Execute query` button executes the query in your warehouse and returns the output at the bottom of the page. This can be useful during query development to check that the query returns expected output.
+The `Preview results` button executes the query in your warehouse and returns the output at the bottom of the page. This can be useful during query development to check that the query returns expected output.
 
 <ScreenshotWrapper>
   <img
@@ -56,12 +55,12 @@ Upon successful completion of the run, a new view named `dataform.onboarding_tab
   <img src="/static/images/platform_guides/publish_tables/run_node.png" style={{ width: "100%" }} />
 </ScreenshotWrapper>
 
-## Create a dataset instead of a view
+## Create a table instead of a view
 
-By default, Dataform creates views in your data warehouse. To create a dataset instead, add the following statement at the top of your script:
+To create a table instead of a view, simply change your script's `config` block:
 
 ```js
---js type("table");
+config { type: "table" }
 ```
 
 You will see the tag on the right sidebar update from `view` to `table`.
@@ -94,9 +93,10 @@ This provides two advantages:
 
 ## Create a new file
 
-Create a new SQL file named `onboarding_table2` and add the following content:
+Create a new SQLX file named `onboarding_table2` and add the following content:
 
 ```js
+config { type: "view" }
 SELECT * FROM ${ref('onboarding_table')}
 ```
 
@@ -107,8 +107,8 @@ SELECT * FROM ${ref('onboarding_table')}
   />
 </ScreenshotWrapper>
 
-You will see the right sidebar update with the name of the view, `onboarding_table2`. Clicking on `Show compiled` will display the fully qualified query to be run in your data warehouse.
-The `${ref()}` function will be replaced with the actual name of the dataset in your data warehouse. Note that the dependency is also listed just above the query validation message.
+You will see the right sidebar update with the name of the view, `onboarding_table2`. Clicking on `Compiled query` will display the fully qualified query to be run in your data warehouse.
+The `${ref()}` function will be replaced with the actual name of the dataset in your data warehouse. Note that the dependency is also listed just above the compiled query.
 
 _*Your compiled script will differ depending on your cloud data warehouse. This example uses Redshift.*_
 
