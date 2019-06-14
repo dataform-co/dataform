@@ -4,8 +4,8 @@
   "main": "index.js",
   "types": "index.d.ts",
   "dependencies": {
-    "@dataform/core": "1.0.0-alpha.1",
-    "@dataform/protos": "1.0.0-alpha.1",
+    "@dataform/core": "1.0.0-alpha.2",
+    "@dataform/protos": "1.0.0-alpha.2",
     "@google-cloud/bigquery": "^1.3.0",
     "@types/glob": "^7.1.1",
     "bluebird": "^3.5.3",
