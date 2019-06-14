@@ -48,9 +48,7 @@ const projectDirMustExistOption = {
       assertPathExists(path.resolve(argv["project-dir"], "dataform.json"));
     } catch (e) {
       throw new Error(
-        `${
-        argv["project-dir"]
-        } does not appear to be a dataform directory (missing dataform.json file).`
+        `${argv["project-dir"]} does not appear to be a dataform directory (missing dataform.json file).`
       );
     }
   }
@@ -186,9 +184,7 @@ const builtYargs = createYargsCli({
     },
     {
       format: "init-creds <warehouse> [project-dir]",
-      description: `Creates a ${
-        credentials.CREDENTIALS_FILENAME
-        } file for dataform to use when accessing your warehouse.`,
+      description: `Creates a ${credentials.CREDENTIALS_FILENAME} file for dataform to use when accessing your warehouse.`,
       positionalOptions: [warehouseOption, projectDirMustExistOption],
       options: [
         {
@@ -400,15 +396,21 @@ const builtYargs = createYargsCli({
         });
         const alreadyPrintedActions = new Set<string>();
 
-        runner.onChange((updatedGraph: dataform.IExecutedGraph) => {
-          updatedGraph.actions
+        const printExecutedGraph = (executedGraph: dataform.IExecutedGraph) => {
+          executedGraph.actions
             .filter(executedAction => !alreadyPrintedActions.has(executedAction.name))
             .forEach(executedAction => {
-              printExecutedAction(executedAction, actionsByName.get(executedAction.name), argv.verbose);
+              printExecutedAction(
+                executedAction,
+                actionsByName.get(executedAction.name),
+                argv.verbose
+              );
               alreadyPrintedActions.add(executedAction.name);
             });
-        });
-        await runner.resultPromise();
+        };
+
+        runner.onChange(printExecutedGraph);
+        printExecutedGraph(await runner.resultPromise());
       }
     },
     {
