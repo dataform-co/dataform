@@ -147,7 +147,10 @@ export class BigQueryDbAdapter implements DbAdapter {
     const sampleData = rows[0];
     const BIGQUERY_DATE_CLASS_NAME = "BigQueryDate";
     const fieldsWithBigQueryDates = Object.keys(sampleData).filter(
-      key => sampleData[key].constructor.name === BIGQUERY_DATE_CLASS_NAME
+      key =>
+        sampleData[key] &&
+        sampleData[key].constructor &&
+        sampleData[key].constructor.name === BIGQUERY_DATE_CLASS_NAME
     );
     if (fieldsWithBigQueryDates.length === 0) {
       return rows;
