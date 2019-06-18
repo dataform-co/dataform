@@ -58,7 +58,7 @@ export class BigQueryDbAdapter implements DbAdapter {
                   if (err) {
                     reject(err);
                   }
-                  resolve(result);
+                  resolve(this.cleanRows(result));
                 });
               }
             );
@@ -134,10 +134,32 @@ export class BigQueryDbAdapter implements DbAdapter {
 
     if (metadata.location.toUpperCase() !== location.toUpperCase()) {
       throw new Error(
-        `Cannot create dataset "${schema}" in location "${location}". It already exists in location "${
-          metadata.location
-        }". Change your default dataset location or delete the existing dataset.`
+        `Cannot create dataset "${schema}" in location "${location}". It already exists in location "${metadata.location}". Change your default dataset location or delete the existing dataset.`
       );
+    }
+  }
+
+  private cleanRows(rows: any[]) {
+    if (rows.length === 0) {
+      return rows;
+    }
+
+    const sampleData = rows[0];
+    const BIGQUERY_DATE_CLASS_NAME = "BigQueryDate";
+    const fieldsWithBigQueryDates = Object.keys(sampleData).filter(
+      key => sampleData[key].constructor.name === BIGQUERY_DATE_CLASS_NAME
+    );
+    if (fieldsWithBigQueryDates.length === 0) {
+      return rows;
+    } else {
+      const reformattedResults = rows.map(row => {
+        const newRow = { ...row };
+        fieldsWithBigQueryDates.forEach(field => {
+          newRow[field] = newRow[field].value;
+        });
+        return newRow;
+      });
+      return reformattedResults;
     }
   }
 }
