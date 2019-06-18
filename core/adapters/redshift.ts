@@ -22,13 +22,13 @@ export class RedshiftAdapter extends Adapter implements IAdapter {
   ): Tasks {
     const tasks = Tasks.create();
     // Drop the existing view or table if we are changing it's type.
-    if (tableMetadata && tableMetadata.type != this.baseTableType(table.type)) {
+    if (tableMetadata && tableMetadata.type !== this.baseTableType(table.type)) {
       tasks.add(
         Task.statement(this.dropIfExists(table.target, this.oppositeTableType(table.type)))
       );
     }
-    if (table.type == "incremental") {
-      if (runConfig.fullRefresh || !tableMetadata || tableMetadata.type == "view") {
+    if (table.type === "incremental") {
+      if (runConfig.fullRefresh || !tableMetadata || tableMetadata.type === "view") {
         tasks.addAll(this.createOrReplace(table));
       } else {
         // The table exists, insert new rows.
@@ -52,16 +52,15 @@ export class RedshiftAdapter extends Adapter implements IAdapter {
     assertion: dataform.IAssertion,
     projectConfig: dataform.IProjectConfig
   ): Tasks {
-    const tasks = Tasks.create();
     const target =
       assertion.target ||
       dataform.Target.create({
         schema: projectConfig.assertionSchema,
         name: assertion.name
       });
-    tasks.add(Task.statement(this.createOrReplaceView(target, assertion.query)));
-    tasks.add(Task.assertion(`select sum(1) as row_count from ${this.resolveTarget(target)}`));
-    return tasks;
+    return Tasks.create()
+      .add(Task.statement(this.createOrReplaceView(target, assertion.query)))
+      .add(Task.assertion(`select sum(1) as row_count from ${this.resolveTarget(target)}`));
   }
 
   public createOrReplaceView(target: dataform.ITarget, query: string) {
@@ -70,29 +69,32 @@ export class RedshiftAdapter extends Adapter implements IAdapter {
   }
 
   public createOrReplace(table: dataform.ITable) {
-    if (table.type == "view") {
-      return Tasks.create().add(
-        Task.statement(`
+    if (table.type === "view") {
+      return (
+        Tasks.create()
+          // Drop the view in case we are changing the number of column(s) (or their types).
+          .add(Task.statement(this.dropIfExists(table.target, this.baseTableType(table.type))))
+          .add(
+            Task.statement(`
         create or replace view ${this.resolveTarget(table.target)}
         as ${table.query}`)
+          )
       );
-    } else {
-      const tempTableTarget = dataform.Target.create({
-        schema: table.target.schema,
-        name: table.target.name + "_temp"
-      });
+    }
+    const tempTableTarget = dataform.Target.create({
+      schema: table.target.schema,
+      name: table.target.name + "_temp"
+    });
 
-      const tasks = Tasks.create();
-      tasks.add(Task.statement(this.dropIfExists(tempTableTarget, this.baseTableType(table.type))));
-      tasks.add(Task.statement(this.createTable(table, tempTableTarget)));
-      tasks.add(Task.statement(this.dropIfExists(table.target, "table")));
-      tasks.add(
+    return Tasks.create()
+      .add(Task.statement(this.dropIfExists(tempTableTarget, this.baseTableType(table.type))))
+      .add(Task.statement(this.createTable(table, tempTableTarget)))
+      .add(Task.statement(this.dropIfExists(table.target, "table")))
+      .add(
         Task.statement(
           `alter table ${this.resolveTarget(tempTableTarget)} rename to "${table.target.name}"`
         )
       );
-      return tasks;
-    }
   }
 
   public createTable(table: dataform.ITable, target: dataform.ITarget) {
@@ -100,9 +102,7 @@ export class RedshiftAdapter extends Adapter implements IAdapter {
       let query = `create table ${this.resolveTarget(target)}`;
 
       if (table.redshift.distStyle && table.redshift.distKey) {
-        query = `${query} diststyle ${table.redshift.distStyle} distkey (${
-          table.redshift.distKey
-        })`;
+        query = `${query} diststyle ${table.redshift.distStyle} distkey (${table.redshift.distKey})`;
       }
       if (table.redshift.sortStyle && table.redshift.sortKeys) {
         query = `${query} ${table.redshift.sortStyle} sortkey (${table.redshift.sortKeys.join(
