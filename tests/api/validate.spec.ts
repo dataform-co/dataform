@@ -1,4 +1,4 @@
-import { validateSchedules, validateSchedulesFile } from "@dataform/api";
+import { validateSchedules } from "@dataform/api";
 import { dataform } from "@dataform/protos";
 import { TmpDirFixture } from "df/tests/utils/fixtures";
 import * as dfapi from "@dataform/api";
