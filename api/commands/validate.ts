@@ -84,7 +84,7 @@ export function validateSchedules(
       schedule.options.actions.forEach(action => {
         if (allActionNames.indexOf(action) < 0) {
           errors.push(
-            `Action ${action}" included on schedule ${schedule.name} doesn't exist in the project.`
+            `Action "${action}" included on schedule ${schedule.name} doesn't exist in the project.`
           );
         }
       });
