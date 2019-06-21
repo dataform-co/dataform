@@ -6,28 +6,18 @@ import * as path from "path";
 const SCHEDULES_JSON_PATH = "schedules.json";
 const EMAIL_REGEX = /^(([^<>()\[\]\.,;:\s@\"]+(\.[^<>()\[\]\.,;:\s@\"]+)*)|(\".+\"))@(([^<>()[\]\.,;:\s@\"]+\.)+[^<>()[\]\.,;:\s@\"]{2,})$/i;
 
-interface IOptions {
-  projectDir?: string;
-}
-
 function validateEmail(email: string) {
   return EMAIL_REGEX.test(email);
 }
 
-export function validateSchedulesFile(
+export function validateSchedulesFileIfExists(
   compiledGraph: dataform.ICompiledGraph,
-  options: IOptions
+  projectDir: string
 ): string[] {
-  if (!options || !options.projectDir) {
-    return [];
-  }
-  const filePath = path.resolve(path.join(options.projectDir, SCHEDULES_JSON_PATH));
-  if (!fs.existsSync(filePath)) {
-    return [];
-  }
   if (!compiledGraph) {
     return ["Compiled graph not provided."];
   }
+  const filePath = path.resolve(path.join(projectDir, SCHEDULES_JSON_PATH));
   const content = fs.readFileSync(filePath, "utf8");
   try {
     const scheduleJsonObj = JSON.parse(content);
@@ -36,7 +26,9 @@ export function validateSchedulesFile(
       compiledGraph
     );
   } catch (err) {
-    return [`${SCHEDULES_JSON_PATH} does not contain valid json.`];
+    return [
+      `${SCHEDULES_JSON_PATH} does not contain valid JSON conforming to the SchedulesJSON schema.`
+    ];
   }
 }
 
@@ -67,11 +59,11 @@ export function validateSchedules(
       errors.push("Schedule name is required.");
     }
     if (schedule.name && schedule.name.trim().length === 0) {
-      errors.push("Schedule name can not be blank.");
+      errors.push("Schedule name must not be empty.");
     }
     if (uniqueNames.has(schedule.name)) {
       errors.push(
-        `Schedule name: "${schedule.name}" is not unique. All schedule names must be unique.`
+        `Schedule name "${schedule.name}" is not unique. All schedule names must be unique.`
       );
     }
     uniqueNames.add(schedule.name);
@@ -84,7 +76,7 @@ export function validateSchedules(
       const _ = cronParser.parseExpression(schedule.cron);
     } catch (e) {
       errors.push(
-        `Cron expression: "${schedule.cron}" is not a valid on schedule: ${schedule.name}.`
+        `Schedule "${schedule.name}" contains an invalid cron expression "${schedule.cron}".`
       );
     }
 
@@ -92,9 +84,7 @@ export function validateSchedules(
       schedule.options.actions.forEach(action => {
         if (allActionNames.indexOf(action) < 0) {
           errors.push(
-            `Action: ${action}" included on schedule: ${
-              schedule.name
-            } doesn't exist in the project.`
+            `Action ${action}" included on schedule ${schedule.name} doesn't exist in the project.`
           );
         }
       });
@@ -103,11 +93,7 @@ export function validateSchedules(
     if (schedule.notification && schedule.notification.emails) {
       schedule.notification.emails.forEach(email => {
         if (!validateEmail(email)) {
-          errors.push(
-            `Email address:"${email}" included on schedule: ${
-              schedule.name
-            } is not a valid email address.`
-          );
+          errors.push(`Schedule "${schedule.name}" contains an invalid email address "${email}".`);
         }
       });
     }

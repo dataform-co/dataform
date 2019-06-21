@@ -96,10 +96,10 @@ describe("@dataform/api/validate", () => {
       const errors = validateSchedules(invalid_schedule, compiledGraph);
       const expectedErrors = [
         '"test.com" is not a valid email address.',
-        'Cron expression: "asdas" is not a valid on schedule: name1.',
-        "Action: action3\" included on schedule: name1 doesn't exist in the project.",
-        'Email address:"test2.com" included on schedule: name1 is not a valid email address.',
-        'Schedule name: "name1" is not unique. All schedule names must be unique.'
+        'Schedule "name1" contains an invalid cron expression "asdas".',
+        "Action action3\" included on schedule name1 doesn't exist in the project.",
+        'Schedule "name1" contains an invalid email address "test2.com".',
+        'Schedule name "name1" is not unique. All schedule names must be unique.'
       ];
       expect(errors).to.eql(expectedErrors);
     });
@@ -161,14 +161,12 @@ describe("@dataform/api/validate", () => {
         fs.writeFileSync(filePath, JSON.stringify(invalid_json));
         const expectedErrors = [
           '"test.com" is not a valid email address.',
-          'Cron expression: "asdas" is not a valid on schedule: name1.',
-          "Action: action3\" included on schedule: name1 doesn't exist in the project.",
-          'Email address:"test2.com" included on schedule: name1 is not a valid email address.',
-          'Schedule name: "name1" is not unique. All schedule names must be unique.'
+          'Schedule "name1" contains an invalid cron expression "asdas".',
+          "Action action3\" included on schedule name1 doesn't exist in the project.",
+          'Schedule "name1" contains an invalid email address "test2.com".',
+          'Schedule name "name1" is not unique. All schedule names must be unique.'
         ];
-        const errors = dfapi.validateSchedulesFile(compiledGraph, {
-          projectDir: projectDir
-        });
+        const errors = dfapi.validateSchedulesFileIfExists(compiledGraph, projectDir);
         expect(errors).to.be.eql(expectedErrors);
       });
     });
