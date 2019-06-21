@@ -6,7 +6,7 @@ import { install } from "./commands/install";
 import * as query from "./commands/query";
 import { run, Runner } from "./commands/run";
 import * as table from "./commands/table";
-import { validateSchedules, validateSchedulesFile } from "./commands/validate";
+import { validateSchedules, validateSchedulesFileIfExists } from "./commands/validate";
 
 export {
   init,
@@ -18,7 +18,7 @@ export {
   query,
   table,
   validateSchedules,
-  validateSchedulesFile,
+  validateSchedulesFileIfExists,
   Runner,
   Builder
 };
