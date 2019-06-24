@@ -4,7 +4,7 @@
   "main": "index.js",
   "types": "index.d.ts",
   "dependencies": {
-    "@dataform/protos": "1.0.0-alpha.3",
+    "@dataform/protos": "$DF_VERSION",
     "moo": "^0.5.0",
     "protobufjs": "^6.8.8"
   }
