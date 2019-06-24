@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0-alpha.3",
+  "version": "$DF_VERSION",
   "homepage": "https://github.com/dataform-co/dataform",
   "license": "MIT",
   "keywords": [
