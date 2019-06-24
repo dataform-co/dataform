@@ -20,7 +20,7 @@ export function createGenIndexConfig(
     }
   });
   // Support projects that don't use the new project structure.
-  glob.sync("models/**/*.{js,sql}", { cwd: compileConfig.projectDir }).forEach(path => {
+  glob.sync("models/**/*.{js,sql,sqlx}", { cwd: compileConfig.projectDir }).forEach(path => {
     if (definitionPaths.indexOf(path) < 0) {
       definitionPaths.push(path);
     }
