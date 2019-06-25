@@ -3,8 +3,8 @@ load("@bazel_tools//tools/build_defs/pkg:pkg.bzl", "pkg_tar")
 
 def _export_next_site_impl(ctx):
     export_dir = ctx.actions.declare_directory(ctx.attr.export_path)
-    ctx.action(
-        inputs = [ctx.executable.binary],
+    ctx.actions.run_shell(
+        tools = [ctx.executable.binary],
         outputs = [export_dir],
         progress_message = "Building next.js site %s" % ctx.attr.site_path,
         command = """
@@ -47,7 +47,7 @@ def next_site(name, srcs, data, site_path, port = 3000):
             "@npm//next",
         ],
         args = [site_path, "-p {port}".format(port = port)],
-        entry_point = "@npm//node_modules/next:dist/bin/next",
+        entry_point = "@npm//:node_modules/next/dist/bin/next",
         templated_args = ["--node_options=--preserve-symlinks"],
         install_source_map_support = False,
     )
