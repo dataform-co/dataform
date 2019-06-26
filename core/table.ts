@@ -223,7 +223,7 @@ export class TableContext {
       return "";
     }
 
-    this.table.dependencies(this.table.session.target(name).name);
+    this.table.dependencies(name);
     return this.resolve(name);
   }
 

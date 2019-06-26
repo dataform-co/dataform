@@ -55,7 +55,7 @@ export class OperationContext {
   }
 
   public ref(name: string) {
-    this.operation.dependencies(this.operation.session.target(name).name);
+    this.operation.dependencies(name);
     return this.resolve(name);
   }
 

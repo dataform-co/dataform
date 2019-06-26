@@ -693,7 +693,7 @@ describe("@dataform/api", () => {
       expect(exampleOperations.target).is.null;
       expect(exampleOperations.queries).to.eql([
         "\n\nCREATE OR REPLACE VIEW someschema.someview AS (SELECT 1 AS test)\n",
-        "\nDROP VIEW IF EXISTS `tada-analytics.override_schema.override_schema_example`"
+        "\nDROP VIEW IF EXISTS `tada-analytics.override_schema.override_schema_example`\n"
       ]);
       expect(exampleOperations.dependencies).to.eql(["example_inline", "override_schema_example"]);
 
