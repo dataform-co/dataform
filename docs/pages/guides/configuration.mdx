@@ -7,9 +7,7 @@ export const meta = {
   __filename
 };
 
-export default ({ children }) => (
-  <Documentation {...meta}>{children}</Documentation>
-);
+export default ({ children }) => <Documentation {...meta}>{children}</Documentation>;
 
 ## Introduction
 
@@ -31,8 +29,6 @@ The following is an example of the `dataform.json` file for a BigQuery project:
   "gcloudProjectId": "my-project-id"
 }
 ```
-
-See the [`dataform.json` reference](/reference/dataform-json) for more information on all configurable settings.
 
 ### Changing default schema names
 
