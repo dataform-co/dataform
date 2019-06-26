@@ -129,7 +129,7 @@ export class Session {
         }
       }
     })();
-    if (action.proto.target && actionOptions.sqlxConfig.name) {
+    if (action.proto.target) {
       action.proto.target = this.target(
         actionOptions.sqlxConfig.name,
         actionOptions.sqlxConfig.schema
