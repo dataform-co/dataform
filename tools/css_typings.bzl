@@ -8,7 +8,7 @@ def _impl(ctx):
         out = ctx.actions.declare_file(f.basename.replace(".css", ".css.d.ts"), sibling = f)
         outs.append(out)
         ctx.actions.run(
-            inputs = [f] + [ctx.executable._tool],
+            inputs = [f],
             outputs = [out],
             executable = ctx.executable._tool,
             arguments = ["-o", out.root.path, "-p", f.path, "--silent"],
