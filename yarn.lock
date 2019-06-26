@@ -744,10 +744,10 @@
   resolved "https://registry.yarnpkg.com/@bazel/ibazel/-/ibazel-0.9.1.tgz#d3248d60b7ef44ced1c2bdecda87ab2b6141a56e"
   integrity sha512-twdytcFr+zj7CQcJCDegrAAI2soRyL34yaxD+3g59W8u188iOsZ392gscFJufysoEQKvAon1UiI3DqCrS+qYDw==
 
-"@bazel/typescript@^0.31.1":
-  version "0.31.1"
-  resolved "https://registry.yarnpkg.com/@bazel/typescript/-/typescript-0.31.1.tgz#2ccf9997d97903c51e73f82e29433fe444b8d672"
-  integrity sha512-jUTJjwdc4JSDMt4kIj74gGtctu8xe0YZPJuPxOIS4TdrWcn+dG9Fy7Z8bJLXhePheig1JLY7NBP6BGwrtggzPQ==
+"@bazel/typescript@^0.32.2":
+  version "0.32.2"
+  resolved "https://registry.yarnpkg.com/@bazel/typescript/-/typescript-0.32.2.tgz#c296bb44cb6362a0e3a08ca88752852bc9591ecf"
+  integrity sha512-32zDyvHdYjIa63vtImhl6wy5ErOFVWPkjMT2T035D0UPSKI1tvENW/bRZ3QFlFHqfmJZRBpaI3GiUpO3vUvzmw==
   dependencies:
     protobufjs "6.8.8"
     semver "5.6.0"
