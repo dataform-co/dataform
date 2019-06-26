@@ -43,27 +43,6 @@ export class Operation {
   }
 }
 
-export class SqlxOperationContext {
-  private operation?: Operation;
-
-  constructor(operation: Operation) {
-    this.operation = operation;
-  }
-
-  public self(): string {
-    return this.resolve(this.operation.proto.name);
-  }
-
-  public ref(name: string) {
-    this.operation.dependencies(name);
-    return this.resolve(name);
-  }
-
-  public resolve(name: string) {
-    return this.operation.session.resolve(name);
-  }
-}
-
 export class OperationContext {
   private operation?: Operation;
 
