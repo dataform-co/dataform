@@ -1,7 +1,7 @@
-import { AssertionContext, SqlxAssertionContext } from "@dataform/core/assertion";
-import { OperationContext, SqlxOperationContext } from "@dataform/core/operation";
+import { AssertionContext } from "@dataform/core/assertion";
+import { OperationContext } from "@dataform/core/operation";
 import { ISqlxParseResults, parseSqlx } from "@dataform/core/sqlx_parser";
-import { SqlxTableContext, TableContext } from "@dataform/core/table";
+import { TableContext } from "@dataform/core/table";
 import * as utils from "@dataform/core/utils";
 
 export function compile(code: string, path: string) {
@@ -115,9 +115,7 @@ switch (sqlxConfig.type) {
   case "incremental":
   case "inline": {
     action.query(ctx => {
-      ${getFunctionPropertyNames(SqlxTableContext.prototype)
-        .map(name => `const ${name} = ctx.${name}.bind(ctx);`)
-        .join("\n")}
+      ${["self", "ref", "resolve"].map(name => `const ${name} = ctx.${name}.bind(ctx);`).join("\n")}
       ${results.js}
       if (hasIncremental) {
         action.where(\`${results.incremental}\`);
@@ -136,9 +134,7 @@ switch (sqlxConfig.type) {
   }
   case "assertion": {
     action.query(ctx => {
-      ${getFunctionPropertyNames(SqlxAssertionContext.prototype)
-        .map(name => `const ${name} = ctx.${name}.bind(ctx);`)
-        .join("\n")}
+      ${["ref", "resolve"].map(name => `const ${name} = ctx.${name}.bind(ctx);`).join("\n")}
       ${results.js}
       return \`${results.sql[0]}\`;
     });
@@ -146,9 +142,7 @@ switch (sqlxConfig.type) {
   }
   case "operations": {
     action.queries(ctx => {
-      ${getFunctionPropertyNames(SqlxOperationContext.prototype)
-        .map(name => `const ${name} = ctx.${name}.bind(ctx);`)
-        .join("\n")}
+      ${["self", "ref", "resolve"].map(name => `const ${name} = ctx.${name}.bind(ctx);`).join("\n")}
       ${results.js}
       const operations = [${results.sql.map(sql => `\`${sql}\``)}];
       return operations;

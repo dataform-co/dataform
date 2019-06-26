@@ -144,28 +144,30 @@ export class Session {
   public target(target: string, defaultSchema?: string): dataform.ITarget {
     const suffix = !!this.config.schemaSuffix ? `_${this.config.schemaSuffix}` : "";
 
-    // TODO: This should probably throw (perhaps in a future breaking version of @dataform/core).
-    // It should be impossible that this codepath gets hit (unless potentially somebody is calling this function using the JS API?).
     if (target.includes(".")) {
-      const schema = target.split(".")[0];
-      const name = target.split(".")[1];
+      const [schema, name] = target.split(".");
       return dataform.Target.create({ name, schema: schema + suffix });
-    } else {
-      return dataform.Target.create({
-        name: target,
-        schema: (defaultSchema || this.config.defaultSchema) + suffix
-      });
     }
+    return dataform.Target.create({
+      name: target,
+      schema: (defaultSchema || this.config.defaultSchema) + suffix
+    });
   }
 
   public resolve(name: string): string {
     const table = this.tables[name];
+    const operation = this.operations[name];
+    if (!table && !operation && !operation.hasOutput) {
+      this.compileError(new Error(`Unrecognized dataset name: "${name}".`));
+      return "";
+    }
     if (table && table.proto.type === "inline") {
       // TODO: Pretty sure this is broken as the proto.query value may not
       // be set yet as it happens during compilation. We should evalute the query here.
       return `(${table.proto.query})`;
     }
-    return this.adapter().resolveTarget(this.target(name));
+    const dataset = table || operation;
+    return this.adapter().resolveTarget(dataset.proto.target);
   }
 
   public operate(name: string, queries?: OContextable<string | string[]>): Operation {

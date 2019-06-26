@@ -38,23 +38,6 @@ export class Assertion {
   }
 }
 
-export class SqlxAssertionContext {
-  private assertion?: Assertion;
-
-  constructor(assertion: Assertion) {
-    this.assertion = assertion;
-  }
-
-  public ref(name: string) {
-    this.assertion.dependencies(name);
-    return this.resolve(name);
-  }
-
-  public resolve(name: string) {
-    return this.assertion.session.resolve(name);
-  }
-}
-
 export class AssertionContext {
   private assertion?: Assertion;
 
@@ -63,7 +46,7 @@ export class AssertionContext {
   }
 
   public ref(name: string) {
-    this.assertion.dependencies(name);
+    this.assertion.dependencies(this.assertion.session.target(name).name);
     return this.resolve(name);
   }
 

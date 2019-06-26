@@ -200,33 +200,6 @@ export class Table {
   }
 }
 
-export class SqlxTableContext {
-  private table?: Table;
-
-  constructor(table: Table) {
-    this.table = table;
-  }
-
-  public self(): string {
-    return this.resolve(this.table.proto.name);
-  }
-
-  public ref(name: string) {
-    if (!name) {
-      const message = `Node name is not specified`;
-      this.table.session.compileError(new Error(message));
-      return "";
-    }
-
-    this.table.dependencies(name);
-    return this.resolve(name);
-  }
-
-  public resolve(name: string) {
-    return this.table.session.resolve(name);
-  }
-}
-
 export class TableContext {
   private table?: Table;
 
@@ -250,7 +223,7 @@ export class TableContext {
       return "";
     }
 
-    this.table.dependencies(name);
+    this.table.dependencies(this.table.session.target(name).name);
     return this.resolve(name);
   }
 

@@ -5,4 +5,4 @@ config {
 
 CREATE OR REPLACE VIEW someschema.someview AS (SELECT 1 AS test)
 ---
-DROP VIEW IF EXISTS someschema.someview
+DROP VIEW IF EXISTS ${ref("override_schema_example")}

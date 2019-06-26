@@ -428,7 +428,7 @@ describe("@dataform/api", () => {
   });
 
   describe("init", () => {
-    it("init", async function () {
+    it("init", async function() {
       this.timeout(30000);
 
       // create temp directory
@@ -693,9 +693,9 @@ describe("@dataform/api", () => {
       expect(exampleOperations.target).is.null;
       expect(exampleOperations.queries).to.eql([
         "\n\nCREATE OR REPLACE VIEW someschema.someview AS (SELECT 1 AS test)\n",
-        "\nDROP VIEW IF EXISTS someschema.someview"
+        "\nDROP VIEW IF EXISTS `tada-analytics.override_schema.override_schema_example`"
       ]);
-      expect(exampleOperations.dependencies).to.eql(["example_inline"]);
+      expect(exampleOperations.dependencies).to.eql(["example_inline", "override_schema_example"]);
 
       // Check example operation with output.
       const exampleOperationWithOutput = graph.operations.find(
@@ -814,7 +814,7 @@ describe("@dataform/api", () => {
       new Builder(graph, {}, { tables: [] }).build();
     });
 
-    it("operation_refing", async function () {
+    it("operation_refing", async function() {
       const expectedQueries = {
         sample_1: 'create table "test_schema"."sample_1" as select 1 as sample_1',
         sample_2: 'select * from "test_schema"."sample_1"'
