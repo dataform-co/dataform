@@ -129,14 +129,11 @@ export class Session {
         }
       }
     })();
-    if (actionOptions.sqlxConfig.schema) {
-      action.proto.target.schema = actionOptions.sqlxConfig.schema;
-    }
-    if (actionOptions.sqlxConfig.name) {
-      action.proto.name = actionOptions.sqlxConfig.name;
-      if (action.proto.target) {
-        action.proto.target.name = actionOptions.sqlxConfig.name;
-      }
+    if (action.proto.target) {
+      action.proto.target = this.target(
+        actionOptions.sqlxConfig.name,
+        actionOptions.sqlxConfig.schema
+      );
     }
     return action;
   }
