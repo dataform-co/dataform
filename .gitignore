@@ -4,6 +4,7 @@ bazel-*
 
 .idea/
 .vscode/
+.history/
 
 bazel-*
 
