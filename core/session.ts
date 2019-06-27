@@ -161,7 +161,7 @@ export class Session {
       return `(${table.proto.query})`;
     }
 
-    const dataset = table || operation;
+    const dataset = table || (operation.hasOutput ? operation : undefined);
     // TODO: We fall back to using the plain 'name' here for backwards compatibility with projects that use .sql files.
     // In these projects, this session may not know about all actions (yet), and thus we need to fall back to assuming
     // that the target *will* exist in the future. Once we break backwards compatibility with .sql files, we should remove
