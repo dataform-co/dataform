@@ -20,6 +20,7 @@ import * as guideRedshift from "df/docs/pages/guides/warehouses/redshift.mdx";
 
 // Platform.
 import * as platformPublishTables from "df/docs/pages/platform_guides/publish_tables.mdx";
+import * as platformScheduling from "df/docs/pages/platform_guides/scheduling.mdx";
 import * as platformSetupDataWarehouse from "df/docs/pages/platform_guides/set_up_datawarehouse.mdx";
 import * as platformVersionControl from "df/docs/pages/platform_guides/version_control.mdx";
 
@@ -58,7 +59,8 @@ export default class Navigation extends React.Component<IProps> {
           {[
             platformSetupDataWarehouse,
             platformPublishTables,
-            platformVersionControl
+            platformVersionControl,
+            platformScheduling
           ].map(page => this.menuItem(page.meta))}
         </Menu>
       </div>
