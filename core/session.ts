@@ -153,7 +153,8 @@ export class Session {
 
   public resolve(name: string): string {
     const table = this.tables[name];
-    const operation = this.operations[name];
+    const operation =
+      !!this.operations[name] && this.operations[name].hasOutput && this.operations[name];
 
     if (table && table.proto.type === "inline") {
       // TODO: Pretty sure this is broken as the proto.query value may not
