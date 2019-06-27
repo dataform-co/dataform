@@ -153,7 +153,8 @@ export class Session {
 
   public resolve(name: string): string {
     const table = this.tables[name];
-    const operation = this.operations[name];
+    const operation =
+      !!this.operations[name] && this.operations[name].hasOutput && this.operations[name];
 
     if (table && table.proto.type === "inline") {
       // TODO: Pretty sure this is broken as the proto.query value may not
@@ -161,7 +162,7 @@ export class Session {
       return `(${table.proto.query})`;
     }
 
-    const dataset = table || (operation.hasOutput ? operation : undefined);
+    const dataset = table || operation;
     // TODO: We fall back to using the plain 'name' here for backwards compatibility with projects that use .sql files.
     // In these projects, this session may not know about all actions (yet), and thus we need to fall back to assuming
     // that the target *will* exist in the future. Once we break backwards compatibility with .sql files, we should remove
