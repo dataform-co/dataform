@@ -3,6 +3,7 @@ import { DbAdapter } from "@dataform/api/dbadapters";
 import { BigQueryDbAdapter } from "@dataform/api/dbadapters/bigquery";
 import * as utils from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
+import { fail } from "assert";
 import { assert, config, expect } from "chai";
 import { asPlainObject, cleanSql } from "df/tests/utils";
 import * as path from "path";
@@ -947,6 +948,15 @@ describe("@dataform/api", () => {
         "example_incremental",
         "example_view"
       ]);
+    });
+
+    it("times out after timeout period during compilation", async () => {
+      try {
+        await compile({ projectDir: "df/examples/redshift_never_finishes_compiling" });
+        fail("Compilation timeout Error expected.");
+      } catch (e) {
+        expect(e.message).to.equal("Compilation timed out");
+      }
     });
   });
 

@@ -43,6 +43,8 @@ mocha_node_test(
         "//examples/init:node_modules",
         "//examples/redshift:files",
         "//examples/redshift:node_modules",
+        "//examples/redshift_never_finishes_compiling:files",
+        "//examples/redshift_never_finishes_compiling:node_modules",
         "//examples/redshift_operations:files",
         "//examples/redshift_operations:node_modules",
         "//examples/snowflake:files",
