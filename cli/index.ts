@@ -333,7 +333,7 @@ const builtYargs = createYargsCli({
       format: "test [project-dir]",
       description: "Run the dataform project's unit tests on the configured data warehouse.",
       positionalOptions: [projectDirMustExistOption],
-      options: [credentialsOption, verboseOutputOption],
+      options: [credentialsOption],
       processFn: async argv => {
         print("Compiling...\n");
         const compiledGraph = await compile({
