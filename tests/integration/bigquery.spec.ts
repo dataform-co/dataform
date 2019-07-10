@@ -19,15 +19,47 @@ describe("@dataform/integration/bigquery", () => {
     // Drop all the tables before we do anything.
     await dropAllTables(compiledGraph, adapter, dbadapter);
 
+    // Run the tests.
+    const testResults = await dfapi.test(compiledGraph, credentials);
+    expect(testResults).to.eql([
+      { name: "successful", successful: true },
+      {
+        name: "expected more rows than got",
+        successful: false,
+        messages: ["Expected 3 rows, but saw 2 rows."]
+      },
+      {
+        name: "expected fewer columns than got",
+        successful: false,
+        messages: ['Expected columns "col1,col2,col3", but saw "col1,col2,col3,col4".']
+      },
+      {
+        name: "wrong columns",
+        successful: false,
+        messages: ['Expected columns "col1,col2,col3,col4", but saw "col1,col2,col3,col5".']
+      },
+      {
+        name: "wrong row contents",
+        successful: false,
+        messages: [
+          'For row 0 and column "col2": expected "1", but saw "5".',
+          'For row 1 and column "col3": expected "6.5", but saw "12".',
+          'For row 2 and column "col1": expected "sup?", but saw "WRONG".'
+        ]
+      }
+    ]);
+
     // Run the project.
     let executionGraph = await dfapi.build(compiledGraph, {}, credentials);
     let executedGraph = await dfapi.run(executionGraph, credentials).resultPromise();
 
     const actionMap = keyBy(executedGraph.actions, v => v.name);
 
-    // Check the status of the two tests.
+    // Check the status of the two assertions.
     expect(actionMap.example_assertion_fail.status).equals(dataform.ActionExecutionStatus.FAILED);
-    expect(actionMap.example_assertion_pass.status).equals(dataform.ActionExecutionStatus.SUCCESSFUL);
+    expect(actionMap.example_assertion_pass.status).equals(
+      dataform.ActionExecutionStatus.SUCCESSFUL
+    );
 
     // Check the data in the incremental table.
     let incrementalTable = keyBy(compiledGraph.tables, t => t.name).example_incremental;
