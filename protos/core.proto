@@ -220,7 +220,7 @@ message ExecutedGraph {
 message TestResult {
   string name = 1;
   bool successful = 2;
-  string message = 3;
+  repeated string messages = 3;
 }
 
 message Field {
