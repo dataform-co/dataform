@@ -54,7 +54,7 @@ export class Table {
   public session: Session;
 
   // We delay contextification until the final compile step, so hold these here for now.
-  private contextableQuery: TContextable<string>;
+  public contextableQuery: TContextable<string>;
   private contextableWhere: TContextable<string>;
   private contextablePreOps: Array<TContextable<string | string[]>> = [];
   private contextablePostOps: Array<TContextable<string | string[]>> = [];
@@ -167,11 +167,9 @@ export class Table {
     const context = new TableContext(this);
 
     this.proto.query = context.apply(this.contextableQuery);
-    this.contextableQuery = null;
 
     if (this.contextableWhere) {
       this.proto.where = context.apply(this.contextableWhere);
-      this.contextableWhere = null;
     }
 
     this.contextablePreOps.forEach(contextablePreOps => {
@@ -200,7 +198,28 @@ export class Table {
   }
 }
 
-export class TableContext {
+export interface ITableContext {
+  config: (config: TConfig) => string;
+  self: () => string;
+  ref: (name: string) => string;
+  resolve: (name: string) => string;
+  type: (type: TableType) => string;
+  where: (where: TContextable<string>) => string;
+  preOps: (statement: TContextable<string | string[]>) => string;
+  postOps: (statement: TContextable<string | string[]>) => string;
+  disabled: () => string;
+  redshift: (redshift: dataform.IRedshiftOptions) => string;
+  bigquery: (bigquery: dataform.IBigQueryOptions) => string;
+  dependencies: (name: string) => string;
+  descriptor: (
+    keyOrKeysOrMap: string | string[] | { [key: string]: string },
+    description?: string
+  ) => string;
+  describe: (key: string, description?: string) => string;
+  apply: <T>(value: TContextable<T>) => T;
+}
+
+export class TableContext implements ITableContext {
   private table?: Table;
 
   constructor(table: Table) {

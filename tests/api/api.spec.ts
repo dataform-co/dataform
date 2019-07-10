@@ -741,6 +741,15 @@ describe("@dataform/api", () => {
           )}.example_operation_with_output\` AS (SELECT 1 AS TEST)`
         ]);
         expect(exampleOperationWithOutput.dependencies).to.eql([]);
+
+        // Check testcase.
+        const testCase = graph.tests.find(t => t.name === "this is my cool test");
+        expect(testCase.testQuery.trim()).equals(
+          "select * from (\n        select 'hi' as faked union all\n        select 'ben' as faked union all\n        select 'sup?' as faked\n    )"
+        );
+        expect(testCase.expectedOutputQuery.trim()).equals(
+          "select 'hi' as faked union all\n        select 'ben' as faked union all\n        select 'sup?' as faked"
+        );
       });
     }
 

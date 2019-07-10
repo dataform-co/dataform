@@ -32,7 +32,6 @@ export class Assertion {
 
     const appliedQuery = context.apply(this.contextableQuery);
     this.proto.query = appliedQuery;
-    this.contextableQuery = null;
 
     return this.proto;
   }

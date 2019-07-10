@@ -37,7 +37,6 @@ export class Operation {
 
     const appliedQueries = context.apply(this.contextableQueries);
     this.proto.queries = typeof appliedQueries == "string" ? [appliedQueries] : appliedQueries;
-    this.contextableQueries = null;
 
     return this.proto;
   }
