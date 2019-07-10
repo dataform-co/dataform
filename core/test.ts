@@ -10,11 +10,11 @@ export class Test {
   public session: Session;
   public contextableInputs: { [refName: string]: TContextable<string> } = {};
 
-  private datasetUnderTest: string;
+  private datasetToTest: string;
   private contextableQuery: TContextable<string>;
 
-  public dataset(datasetUnderTest: string) {
-    this.datasetUnderTest = datasetUnderTest;
+  public dataset(datasetToTest: string) {
+    this.datasetToTest = datasetToTest;
     return this;
   }
 
@@ -29,13 +29,13 @@ export class Test {
   }
 
   public compile() {
-    if (!this.datasetUnderTest) {
+    if (!this.datasetToTest) {
       this.session.compileError(new Error("Tests must operate upon a specified dataset."));
       return;
     }
-    const dataset = this.session.tables[this.datasetUnderTest];
+    const dataset = this.session.tables[this.datasetToTest];
     if (!dataset) {
-      this.session.compileError(new Error(`Dataset ${this.datasetUnderTest} could not be found.`));
+      this.session.compileError(new Error(`Dataset ${this.datasetToTest} could not be found.`));
       return;
     }
     if (dataset.proto.type === "incremental") {
@@ -45,7 +45,7 @@ export class Test {
       return;
     }
     const testContext = new TestContext(this);
-    const refReplacingContext = new RefReplacingContext(dataset, testContext);
+    const refReplacingContext = new RefReplacingContext(testContext);
     this.proto.testQuery = refReplacingContext.apply(dataset.contextableQuery);
     this.proto.expectedOutputQuery = testContext.apply(this.contextableQuery);
     return this.proto;
@@ -68,11 +68,9 @@ export class TestContext {
 }
 
 class RefReplacingContext implements table.ITableContext {
-  private readonly dataset: table.Table;
   private readonly testContext: TestContext;
 
-  constructor(dataset: table.Table, testContext: TestContext) {
-    this.dataset = dataset;
+  constructor(testContext: TestContext) {
     this.testContext = testContext;
   }
 
@@ -81,6 +79,12 @@ class RefReplacingContext implements table.ITableContext {
   }
 
   public resolve(name: string) {
+    if (!this.testContext.test.contextableInputs[name]) {
+      this.testContext.test.session.compileError(
+        new Error(`Input for dataset "${name}" has not been provided.`)
+      );
+      return "";
+    }
     return `(${this.testContext.apply(this.testContext.test.contextableInputs[name])})`;
   }
 

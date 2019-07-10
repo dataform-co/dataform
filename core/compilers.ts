@@ -100,13 +100,15 @@ const sqlStatementCount = ${results.sql.length};
 const hasIncremental = ${!!results.incremental};
 const hasPreOperations = ${results.preOperations.length > 1 || results.preOperations[0] !== ""};
 const hasPostOperations = ${results.postOperations.length > 1 || results.postOperations[0] !== ""};
+const hasInputs = ${Object.keys(results.input).length > 0};
 
 const action = session.sqlxAction({
   sqlxConfig,
   sqlStatementCount,
   hasIncremental,
   hasPreOperations,
-  hasPostOperations
+  hasPostOperations,
+  hasInputs
 });
 
 switch (sqlxConfig.type) {
@@ -146,6 +148,22 @@ switch (sqlxConfig.type) {
       ${results.js}
       const operations = [${results.sql.map(sql => `\`${sql}\``)}];
       return operations;
+    });
+    break;
+  }
+  case "test": {
+    ${Object.keys(results.input).map(
+      inputLabel =>
+        `
+        action.input("${inputLabel}", ctx => {
+          ${results.js}
+          return \`${results.input[inputLabel]}\`;
+        });
+        `
+    )}
+    action.expect(ctx => {
+      ${results.js}
+      return \`${results.sql}\`;
     });
     break;
   }
