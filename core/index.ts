@@ -37,3 +37,4 @@ const session = globalSession();
 (global as any).publish = session.publish.bind(session);
 (global as any).operate = session.operate.bind(session);
 (global as any).assert = session.assert.bind(session);
+(global as any).test = session.test.bind(session);

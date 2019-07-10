@@ -2,6 +2,7 @@ import * as adapters from "@dataform/core/adapters";
 import { AContextable, Assertion } from "@dataform/core/assertion";
 import { OContextable, Operation } from "@dataform/core/operation";
 import { Table, TConfig, TContextable } from "@dataform/core/table";
+import { Test } from "@dataform/core/test";
 import * as utils from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
 
@@ -26,6 +27,7 @@ export class Session {
   public tables: { [name: string]: Table };
   public operations: { [name: string]: Operation };
   public assertions: { [name: string]: Assertion };
+  public tests: { [name: string]: Test };
 
   public graphErrors: dataform.IGraphErrors;
 
@@ -42,6 +44,7 @@ export class Session {
     this.tables = {};
     this.operations = {};
     this.assertions = {};
+    this.tests = {};
     this.graphErrors = { compilationErrors: [] };
   }
 
@@ -223,6 +226,16 @@ export class Session {
     return assertion;
   }
 
+  public test(name: string): Test {
+    const test = new Test();
+    test.session = this;
+    test.proto.name = name;
+    test.proto.fileName = utils.getCallerFile(this.rootDir);
+    // Add it to global index.
+    this.tests[name] = test;
+    return test;
+  }
+
   public compileError(err: Error | string, path?: string) {
     const fileName = path || utils.getCallerFile(this.rootDir) || __filename;
 
@@ -255,12 +268,14 @@ export class Session {
     return compiledChunks;
   }
 
+  // TODO: something needs to happen here.
   public compile(): dataform.ICompiledGraph {
     const compiledGraph = dataform.CompiledGraph.create({
       projectConfig: this.config,
       tables: this.compileGraphChunk(this.tables),
       operations: this.compileGraphChunk(this.operations),
       assertions: this.compileGraphChunk(this.assertions),
+      tests: this.compileGraphChunk(this.tests),
       graphErrors: this.graphErrors
     });
 

@@ -126,12 +126,23 @@ message Assertion {
   string file_name = 7;
 }
 
+message Test {
+  string name = 1;
+
+  string test_query = 2;
+  string expected_output_query = 3;
+
+  // Generated.
+  string file_name = 4;
+}
+
 message CompiledGraph {
   ProjectConfig project_config = 4;
 
   repeated Table tables = 1;
   repeated Operation operations = 2;
   repeated Assertion assertions = 3;
+  repeated Test tests = 8;
 
   GraphErrors graph_errors = 7;
 

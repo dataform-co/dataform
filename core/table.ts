@@ -54,7 +54,7 @@ export class Table {
   public session: Session;
 
   // We delay contextification until the final compile step, so hold these here for now.
-  private contextableQuery: TContextable<string>;
+  public contextableQuery: TContextable<string>;
   private contextableWhere: TContextable<string>;
   private contextablePreOps: Array<TContextable<string | string[]>> = [];
   private contextablePostOps: Array<TContextable<string | string[]>> = [];
@@ -167,11 +167,9 @@ export class Table {
     const context = new TableContext(this);
 
     this.proto.query = context.apply(this.contextableQuery);
-    this.contextableQuery = null;
 
     if (this.contextableWhere) {
       this.proto.where = context.apply(this.contextableWhere);
-      this.contextableWhere = null;
     }
 
     this.contextablePreOps.forEach(contextablePreOps => {
