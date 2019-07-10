@@ -45,7 +45,7 @@ export class Test {
       return;
     }
     const testContext = new TestContext(this);
-    const refReplacingContext = new RefReplacingContext(dataset, testContext);
+    const refReplacingContext = new RefReplacingContext(testContext);
     this.proto.testQuery = refReplacingContext.apply(dataset.contextableQuery);
     this.proto.expectedOutputQuery = testContext.apply(this.contextableQuery);
     return this.proto;
@@ -70,7 +70,7 @@ export class TestContext {
 class RefReplacingContext implements table.ITableContext {
   private readonly testContext: TestContext;
 
-  constructor(dataset: table.Table, testContext: TestContext) {
+  constructor(testContext: TestContext) {
     this.testContext = testContext;
   }
 
