@@ -41,7 +41,7 @@ async function runTest(
     return {
       name: testCase.name,
       successful: false,
-      message: `Expected ${expectedColumns.length} columns, but saw ${actualColumns.length} columns.`
+      message: `Expected columns "${expectedColumns}", but saw "${actualColumns}".`
     };
   }
   for (const expectedColumn of expectedColumns) {
@@ -49,7 +49,7 @@ async function runTest(
       return {
         name: testCase.name,
         successful: false,
-        message: `Could not find expected "${expectedColumn}" column.`
+        message: `Expected columns "${expectedColumns}", but saw "${actualColumns}".`
       };
     }
   }

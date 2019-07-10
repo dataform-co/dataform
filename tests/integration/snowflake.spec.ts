@@ -21,7 +21,29 @@ describe("@dataform/integration/snowflake", () => {
 
     // Run the tests.
     const testResults = await dfapi.test(compiledGraph, credentials);
-    expect(testResults).to.eql([{ name: "test case", successful: true }]);
+    expect(testResults).to.eql([
+      { name: "successful", successful: true },
+      {
+        name: "expected more rows than got",
+        successful: false,
+        message: "Expected 3 rows, but saw 2 rows."
+      },
+      {
+        name: "expected fewer columns than got",
+        successful: false,
+        message: 'Expected columns "COL1,COL2,COL3", but saw "COL1,COL2,COL3,COL4".'
+      },
+      {
+        name: "wrong columns",
+        successful: false,
+        message: 'Expected columns "COL1,COL2,COL3,COL4", but saw "COL1,COL2,COL3,COL5".'
+      },
+      {
+        name: "wrong row contents",
+        successful: false,
+        message: 'For row 2 and column "COL1": expected "sup?", but saw "WRONG".'
+      }
+    ]);
 
     // Run the project.
     let executionGraph = await dfapi.build(compiledGraph, {}, credentials);
