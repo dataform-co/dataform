@@ -13,6 +13,7 @@ const SQL_LEXER_TOKEN_NAMES = {
   START_INCREMENTAL: LEXER_STATE_NAMES.SQL + "_startIncremental",
   START_PRE_OPERATIONS: LEXER_STATE_NAMES.SQL + "_startPreOperations",
   START_POST_OPERATIONS: LEXER_STATE_NAMES.SQL + "_startPostOperations",
+  START_INPUT: LEXER_STATE_NAMES.SQL + "_startInput",
   STATEMENT_SEPERATOR: LEXER_STATE_NAMES.SQL + "_statementSeparator",
   SINGLE_LINE_COMMENT: LEXER_STATE_NAMES.SQL + "_singleLineComment",
   MULTI_LINE_COMMENT: LEXER_STATE_NAMES.SQL + "_multiLineComment",
@@ -66,6 +67,7 @@ export interface ISqlxParseResults {
   incremental: string;
   preOperations: string[];
   postOperations: string[];
+  input: { [label: string]: string };
 }
 
 export function parseSqlx(code: string): ISqlxParseResults {
@@ -75,28 +77,76 @@ export function parseSqlx(code: string): ISqlxParseResults {
     sql: [""],
     incremental: "",
     preOperations: [""],
-    postOperations: [""]
+    postOperations: [""],
+    input: {}
   };
+  let currentInputLabel;
   const parseState = new SqlxParseState();
   lexer.reset(code);
   for (const token of lexer) {
     const previousState = parseState.currentState;
     const newState = parseState.computeState(token);
-    if (
-      token.type === SQL_LEXER_TOKEN_NAMES.STATEMENT_SEPERATOR ||
-      token.type === INNER_SQL_BLOCK_LEXER_TOKEN_NAMES.STATEMENT_SEPERATOR
-    ) {
-      if (newState === "incremental") {
-        throw new Error(
-          "Incremental code blocks may not contain SQL statement separators ('---')."
-        );
-      }
-      (results[newState] as string[]).push("");
+
+    if (token.type === SQL_LEXER_TOKEN_NAMES.START_INPUT) {
+      currentInputLabel = token.value;
+      token.value = "";
     }
-    if (Array.isArray(results[newState])) {
-      (results[newState] as string[])[results[newState].length - 1] += token.value;
-    } else {
-      (results[newState] as string) += token.value;
+
+    const isStatementSeparator =
+      token.type === SQL_LEXER_TOKEN_NAMES.STATEMENT_SEPERATOR ||
+      token.type === INNER_SQL_BLOCK_LEXER_TOKEN_NAMES.STATEMENT_SEPERATOR;
+
+    switch (newState) {
+      case "config": {
+        results.config += token.value;
+        break;
+      }
+      case "js": {
+        results.js += token.value;
+        break;
+      }
+      case "sql": {
+        if (isStatementSeparator) {
+          results.sql.push("");
+        }
+        results.sql[results.sql.length - 1] += token.value;
+        break;
+      }
+      case "incremental": {
+        if (isStatementSeparator) {
+          throw new Error(
+            "Incremental code blocks may not contain SQL statement separators ('---')."
+          );
+        }
+        results.incremental += token.value;
+        break;
+      }
+      case "preOperations": {
+        if (isStatementSeparator) {
+          results.preOperations.push("");
+        }
+        results.preOperations[results.preOperations.length - 1] += token.value;
+        break;
+      }
+      case "postOperations": {
+        if (isStatementSeparator) {
+          results.postOperations.push("");
+        }
+        results.postOperations[results.postOperations.length - 1] += token.value;
+        break;
+      }
+      case "input": {
+        if (isStatementSeparator) {
+          throw new Error("Input code blocks may not contain SQL statement separators ('---').");
+        }
+        if (!results.input[currentInputLabel]) {
+          results.input[currentInputLabel] = "";
+        }
+        results.input[currentInputLabel] += token.value;
+        break;
+      }
+      default:
+        throw new Error(`Unrecognized parse state: ${newState}`);
     }
 
     if (previousState === "js" && newState !== "js") {
@@ -115,6 +165,7 @@ tokenTypeStateMapping.set(SQL_LEXER_TOKEN_NAMES.START_JS, "js");
 tokenTypeStateMapping.set(SQL_LEXER_TOKEN_NAMES.START_INCREMENTAL, "incremental");
 tokenTypeStateMapping.set(SQL_LEXER_TOKEN_NAMES.START_PRE_OPERATIONS, "preOperations");
 tokenTypeStateMapping.set(SQL_LEXER_TOKEN_NAMES.START_POST_OPERATIONS, "postOperations");
+tokenTypeStateMapping.set(SQL_LEXER_TOKEN_NAMES.START_INPUT, "input");
 
 class SqlxParseState {
   public currentState: keyof ISqlxParseResults = "sql";
@@ -157,6 +208,11 @@ function buildSqlxLexer() {
     match: "post_operations {",
     push: LEXER_STATE_NAMES.INNER_SQL_BLOCK,
     value: () => ""
+  };
+  sqlLexer[SQL_LEXER_TOKEN_NAMES.START_INPUT] = {
+    match: /input "[a-zA-Z0-9_-]+" {/,
+    push: LEXER_STATE_NAMES.INNER_SQL_BLOCK,
+    value: (value: string) => value.split('"')[1]
   };
   sqlLexer[SQL_LEXER_TOKEN_NAMES.STATEMENT_SEPERATOR] = {
     match: /[^\S\r\n]*---[^\S\r\n]*$/,

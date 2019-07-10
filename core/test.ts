@@ -80,6 +80,12 @@ class RefReplacingContext extends table.TableContext {
   }
 
   public resolve(name: string) {
+    if (!this.testContext.test.contextableInputs[name]) {
+      this.testContext.test.session.compileError(
+        new Error(`Input for dataset "${name}" has not been provided.`)
+      );
+      return "";
+    }
     return `(${this.testContext.apply(this.testContext.test.contextableInputs[name])})`;
   }
 

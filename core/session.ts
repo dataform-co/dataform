@@ -13,10 +13,11 @@ interface IActionProto {
 }
 
 interface ISqlxConfig extends TConfig {
-  type: "view" | "table" | "inline" | "incremental" | "assertion" | "operations";
+  type: "view" | "table" | "inline" | "incremental" | "assertion" | "operations" | "test";
   schema?: string;
   name: string;
   hasOutput?: boolean;
+  datasetUnderTest?: string;
 }
 
 export class Session {
@@ -58,6 +59,7 @@ export class Session {
     hasIncremental: boolean;
     hasPreOperations: boolean;
     hasPostOperations: boolean;
+    hasInputs: boolean;
   }) {
     if (actionOptions.sqlStatementCount > 1 && actionOptions.sqlxConfig.type !== "operations") {
       this.compileError(
@@ -88,6 +90,15 @@ export class Session {
         "Actions may only include incremental_where if they are of type 'incremental'."
       );
     }
+    if (actionOptions.sqlxConfig.datasetUnderTest && actionOptions.sqlxConfig.type !== "test") {
+      this.compileError("Actions may only specify 'datasetUnderTest' if they are of type 'test'.");
+    }
+    if (!actionOptions.sqlxConfig.datasetUnderTest && actionOptions.sqlxConfig.type === "test") {
+      this.compileError("Actions must specify 'datasetUnderTest' if they are of type 'test'.");
+    }
+    if (actionOptions.hasInputs && actionOptions.sqlxConfig.type !== "test") {
+      this.compileError("Actions may only include input blocks if they are of type 'test'.");
+    }
     if (actionOptions.sqlxConfig.disabled && !this.isDatasetType(actionOptions.sqlxConfig.type)) {
       this.compileError("Actions may only specify 'disabled: true' if they create a dataset.");
     }
@@ -104,6 +115,11 @@ export class Session {
       this.compileError("Actions may only include post_operations if they create a dataset.");
     }
 
+    if (actionOptions.sqlxConfig.type === "test") {
+      return this.test(actionOptions.sqlxConfig.name).dataset(
+        actionOptions.sqlxConfig.datasetUnderTest
+      );
+    }
     const action = (() => {
       switch (actionOptions.sqlxConfig.type) {
         case "view":
