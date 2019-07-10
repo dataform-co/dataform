@@ -10,11 +10,11 @@ export class Test {
   public session: Session;
   public contextableInputs: { [refName: string]: TContextable<string> } = {};
 
-  private datasetUnderTest: string;
+  private datasetToTest: string;
   private contextableQuery: TContextable<string>;
 
-  public dataset(datasetUnderTest: string) {
-    this.datasetUnderTest = datasetUnderTest;
+  public dataset(datasetToTest: string) {
+    this.datasetToTest = datasetToTest;
     return this;
   }
 
@@ -29,13 +29,13 @@ export class Test {
   }
 
   public compile() {
-    if (!this.datasetUnderTest) {
+    if (!this.datasetToTest) {
       this.session.compileError(new Error("Tests must operate upon a specified dataset."));
       return;
     }
-    const dataset = this.session.tables[this.datasetUnderTest];
+    const dataset = this.session.tables[this.datasetToTest];
     if (!dataset) {
-      this.session.compileError(new Error(`Dataset ${this.datasetUnderTest} could not be found.`));
+      this.session.compileError(new Error(`Dataset ${this.datasetToTest} could not be found.`));
       return;
     }
     if (dataset.proto.type === "incremental") {

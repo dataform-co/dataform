@@ -17,7 +17,7 @@ interface ISqlxConfig extends TConfig {
   schema?: string;
   name: string;
   hasOutput?: boolean;
-  datasetUnderTest?: string;
+  dataset?: string;
 }
 
 export class Session {
@@ -90,11 +90,11 @@ export class Session {
         "Actions may only include incremental_where if they are of type 'incremental'."
       );
     }
-    if (actionOptions.sqlxConfig.datasetUnderTest && actionOptions.sqlxConfig.type !== "test") {
-      this.compileError("Actions may only specify 'datasetUnderTest' if they are of type 'test'.");
+    if (actionOptions.sqlxConfig.dataset && actionOptions.sqlxConfig.type !== "test") {
+      this.compileError("Actions may only specify 'dataset' if they are of type 'test'.");
     }
-    if (!actionOptions.sqlxConfig.datasetUnderTest && actionOptions.sqlxConfig.type === "test") {
-      this.compileError("Actions must specify 'datasetUnderTest' if they are of type 'test'.");
+    if (!actionOptions.sqlxConfig.dataset && actionOptions.sqlxConfig.type === "test") {
+      this.compileError("Actions must specify 'dataset' if they are of type 'test'.");
     }
     if (actionOptions.hasInputs && actionOptions.sqlxConfig.type !== "test") {
       this.compileError("Actions may only include input blocks if they are of type 'test'.");
@@ -117,7 +117,7 @@ export class Session {
 
     if (actionOptions.sqlxConfig.type === "test") {
       return this.test(actionOptions.sqlxConfig.name).dataset(
-        actionOptions.sqlxConfig.datasetUnderTest
+        actionOptions.sqlxConfig.dataset
       );
     }
     const action = (() => {
