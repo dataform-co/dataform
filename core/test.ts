@@ -67,11 +67,12 @@ export class TestContext {
   }
 }
 
-class RefReplacingContext extends table.TableContext {
+class RefReplacingContext implements table.ITableContext {
+  private readonly dataset: table.Table;
   private readonly testContext: TestContext;
 
   constructor(dataset: table.Table, testContext: TestContext) {
-    super(dataset);
+    this.dataset = dataset;
     this.testContext = testContext;
   }
 
@@ -89,5 +90,56 @@ class RefReplacingContext extends table.TableContext {
     } else {
       return value;
     }
+  }
+
+  public config(config: table.TConfig) {
+    return "";
+  }
+
+  public self() {
+    return "";
+  }
+
+  public type(type: table.TableType) {
+    return "";
+  }
+
+  public where(where: table.TContextable<string>) {
+    return "";
+  }
+
+  public preOps(statement: table.TContextable<string | string[]>) {
+    return "";
+  }
+
+  public postOps(statement: table.TContextable<string | string[]>) {
+    return "";
+  }
+
+  public disabled() {
+    return "";
+  }
+
+  public redshift(redshift: dataform.IRedshiftOptions) {
+    return "";
+  }
+
+  public bigquery(bigquery: dataform.IBigQueryOptions) {
+    return "";
+  }
+
+  public dependencies(name: string) {
+    return "";
+  }
+
+  public descriptor(
+    keyOrKeysOrMap: string | string[] | { [key: string]: string },
+    description?: string
+  ): string {
+    return "";
+  }
+
+  public describe(key: string, description?: string) {
+    return "";
   }
 }

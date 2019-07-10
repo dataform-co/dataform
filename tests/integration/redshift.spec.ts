@@ -34,22 +34,26 @@ describe("@dataform/integration/redshift", () => {
       {
         name: "expected more rows than got",
         successful: false,
-        message: "Expected 3 rows, but saw 2 rows."
+        messages: ["Expected 3 rows, but saw 2 rows."]
       },
       {
         name: "expected fewer columns than got",
         successful: false,
-        message: 'Expected columns "col1,col2,col3", but saw "col1,col2,col3,col4".'
+        messages: ['Expected columns "col1,col2,col3", but saw "col1,col2,col3,col4".']
       },
       {
         name: "wrong columns",
         successful: false,
-        message: 'Expected columns "col1,col2,col3,col4", but saw "col1,col2,col3,col5".'
+        messages: ['Expected columns "col1,col2,col3,col4", but saw "col1,col2,col3,col5".']
       },
       {
         name: "wrong row contents",
         successful: false,
-        message: 'For row 2 and column "col1": expected "sup?", but saw "WRONG".'
+        messages: [
+          'For row 0 and column "col2": expected "1", but saw "5".',
+          'For row 1 and column "col3": expected "6.5", but saw "12.0".',
+          'For row 2 and column "col1": expected "sup?", but saw "WRONG".'
+        ]
       }
     ]);
 

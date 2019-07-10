@@ -198,7 +198,28 @@ export class Table {
   }
 }
 
-export class TableContext {
+export interface ITableContext {
+  config: (config: TConfig) => string;
+  self: () => string;
+  ref: (name: string) => string;
+  resolve: (name: string) => string;
+  type: (type: TableType) => string;
+  where: (where: TContextable<string>) => string;
+  preOps: (statement: TContextable<string | string[]>) => string;
+  postOps: (statement: TContextable<string | string[]>) => string;
+  disabled: () => string;
+  redshift: (redshift: dataform.IRedshiftOptions) => string;
+  bigquery: (bigquery: dataform.IBigQueryOptions) => string;
+  dependencies: (name: string) => string;
+  descriptor: (
+    keyOrKeysOrMap: string | string[] | { [key: string]: string },
+    description?: string
+  ) => string;
+  describe: (key: string, description?: string) => string;
+  apply: <T>(value: TContextable<T>) => T;
+}
+
+export class TableContext implements ITableContext {
   private table?: Table;
 
   constructor(table: Table) {
