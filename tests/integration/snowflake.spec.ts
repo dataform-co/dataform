@@ -19,15 +19,21 @@ describe("@dataform/integration/snowflake", () => {
     // Drop all the tables before we do anything.
     await dropAllTables(compiledGraph, adapter, dbadapter);
 
+    // Run the tests.
+    const testResults = await dfapi.test(compiledGraph, credentials);
+    expect(testResults).to.eql([{ name: "test case", successful: true }]);
+
     // Run the project.
     let executionGraph = await dfapi.build(compiledGraph, {}, credentials);
     let executedGraph = await dfapi.run(executionGraph, credentials).resultPromise();
 
     const actionMap = keyBy(executedGraph.actions, v => v.name);
 
-    // Check the status of the two tests.
+    // Check the status of the two assertions.
     expect(actionMap.example_assertion_fail.status).equals(dataform.ActionExecutionStatus.FAILED);
-    expect(actionMap.example_assertion_pass.status).equals(dataform.ActionExecutionStatus.SUCCESSFUL);
+    expect(actionMap.example_assertion_pass.status).equals(
+      dataform.ActionExecutionStatus.SUCCESSFUL
+    );
 
     // Check the data in the incremental table.
     let incrementalTable = keyBy(compiledGraph.tables, t => t.name).example_incremental;

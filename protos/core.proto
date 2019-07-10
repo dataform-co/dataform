@@ -217,6 +217,12 @@ message ExecutedGraph {
   repeated ExecutedAction actions = 3;
 }
 
+message TestResult {
+  string name = 1;
+  bool successful = 2;
+  string message = 3;
+}
+
 message Field {
   string name = 1;
   repeated string flags = 4;

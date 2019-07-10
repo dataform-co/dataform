@@ -15,10 +15,12 @@ export class Test {
 
   public dataset(datasetUnderTest: string) {
     this.datasetUnderTest = datasetUnderTest;
+    return this;
   }
 
   public input(refName: string, contextableQuery: TContextable<string>) {
     this.contextableInputs[refName] = contextableQuery;
+    return this;
   }
 
   public expect(contextableQuery: TContextable<string>) {

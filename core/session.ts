@@ -268,7 +268,6 @@ export class Session {
     return compiledChunks;
   }
 
-  // TODO: something needs to happen here.
   public compile(): dataform.ICompiledGraph {
     const compiledGraph = dataform.CompiledGraph.create({
       projectConfig: this.config,
