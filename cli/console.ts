@@ -108,7 +108,7 @@ export function printCompiledGraph(graph: dataform.ICompiledGraph, verbose: bool
       graph.tables.forEach(compiledTable => {
         writeStdOut(
           `${datasetString(compiledTable.target, compiledTable.type)}${
-          compiledTable.disabled ? " [disabled]" : ""
+            compiledTable.disabled ? " [disabled]" : ""
           }`,
           1
         );
@@ -152,6 +152,15 @@ export function printCompiledGraphErrors(graphErrors: dataform.IGraphErrors) {
   }
 }
 
+export function printTestResult(testResult: dataform.ITestResult) {
+  writeStdOut(
+    `${testResult.name}: ${testResult.successful ? successOutput("passed") : errorOutput("failed")}`
+  );
+  if (!testResult.successful) {
+    testResult.messages.forEach(message => writeStdErr(message, 1));
+  }
+}
+
 export function printExecutionGraph(executionGraph: dataform.IExecutionGraph, verbose: boolean) {
   if (verbose) {
     writeStdOut(prettyJsonStringify(executionGraph));
@@ -174,12 +183,16 @@ export function printExecutionGraph(executionGraph: dataform.IExecutionGraph, ve
     const assertionActions = actionsByType.assertion;
     if (assertionActions && assertionActions.length) {
       writeStdOut(`${assertionActions.length} assertion(s):`);
-      assertionActions.forEach(assertionAction => writeStdOut(targetString(assertionAction.target), 1));
+      assertionActions.forEach(assertionAction =>
+        writeStdOut(targetString(assertionAction.target), 1)
+      );
     }
     const operationActions = actionsByType.operation;
     if (operationActions && operationActions.length) {
       writeStdOut(`${operationActions.length} operation(s):`);
-      operationActions.forEach(operationAction => writeStdOut(targetString(operationAction.target), 1));
+      operationActions.forEach(operationAction =>
+        writeStdOut(targetString(operationAction.target), 1)
+      );
     }
   }
 }
@@ -229,11 +242,15 @@ export function printExecutedAction(
           break;
         }
         case "assertion": {
-          writeStdErr(`${errorOutput(`Assertion failed: `)} ${targetString(executionAction.target)}`);
+          writeStdErr(
+            `${errorOutput(`Assertion failed: `)} ${targetString(executionAction.target)}`
+          );
           break;
         }
         case "operation": {
-          writeStdErr(`${errorOutput(`Operation failed: `)} ${targetString(executionAction.target)}`);
+          writeStdErr(
+            `${errorOutput(`Operation failed: `)} ${targetString(executionAction.target)}`
+          );
           break;
         }
       }

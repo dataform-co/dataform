@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { build, compile, credentials, init, run, table } from "@dataform/api";
+import { build, compile, credentials, init, run, table, test } from "@dataform/api";
 import { prettyJsonStringify } from "@dataform/api/utils";
 import {
   print,
@@ -12,7 +12,8 @@ import {
   printInitCredsResult,
   printInitResult,
   printListTablesResult,
-  printSuccess
+  printSuccess,
+  printTestResult
 } from "@dataform/cli/console";
 import {
   getBigQueryCredentials,
@@ -329,6 +330,37 @@ const builtYargs = createYargsCli({
       }
     },
     {
+      format: "test [project-dir]",
+      description: "Run the dataform project's unit tests on the configured data warehouse.",
+      positionalOptions: [projectDirMustExistOption],
+      options: [credentialsOption, verboseOutputOption],
+      processFn: async argv => {
+        print("Compiling...\n");
+        const compiledGraph = await compile({
+          projectDir: argv["project-dir"],
+          schemaSuffixOverride: argv["schema-suffix"]
+        });
+        if (compiledGraphHasErrors(compiledGraph)) {
+          printCompiledGraphErrors(compiledGraph.graphErrors);
+          return;
+        }
+        printSuccess("Compiled successfully.\n");
+        const readCredentials = credentials.read(
+          compiledGraph.projectConfig.warehouse,
+          argv.credentials
+        );
+
+        if (!compiledGraph.tests.length) {
+          printError("No unit tests found.");
+          return;
+        }
+
+        print(`Running ${compiledGraph.tests.length} unit tests...\n`);
+        const testResults = await test(compiledGraph, readCredentials);
+        testResults.forEach(testResult => printTestResult(testResult));
+      }
+    },
+    {
       format: "run [project-dir]",
       description: "Run the dataform project's scripts on the configured data warehouse.",
       positionalOptions: [projectDirMustExistOption],
@@ -338,6 +370,14 @@ const builtYargs = createYargsCli({
           option: {
             describe:
               "If set, built SQL is not run against the data warehouse and instead is printed to the console.",
+            type: "boolean"
+          }
+        },
+        {
+          name: "run-tests",
+          option: {
+            describe:
+              "If set, the project's unit tests are required to pass before running the project.",
             type: "boolean"
           }
         },
@@ -379,6 +419,17 @@ const builtYargs = createYargsCli({
           );
           printExecutionGraph(executionGraph, argv.verbose);
           return;
+        }
+
+        if (argv["run-tests"]) {
+          print(`Running ${compiledGraph.tests.length} unit tests...\n`);
+          const testResults = await test(compiledGraph, readCredentials);
+          testResults.forEach(testResult => printTestResult(testResult));
+          if (testResults.some(testResult => !testResult.successful)) {
+            printError("\nUnit tests did not pass; aborting run.");
+            return;
+          }
+          printSuccess("Unit tests completed successfully.\n");
         }
 
         print("Running...\n");
