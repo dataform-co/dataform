@@ -68,11 +68,9 @@ export class TestContext {
 }
 
 class RefReplacingContext implements table.ITableContext {
-  private readonly dataset: table.Table;
   private readonly testContext: TestContext;
 
   constructor(dataset: table.Table, testContext: TestContext) {
-    this.dataset = dataset;
     this.testContext = testContext;
   }
 

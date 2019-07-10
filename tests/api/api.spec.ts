@@ -745,10 +745,10 @@ describe("@dataform/api", () => {
         // Check testcase.
         const testCase = graph.tests.find(t => t.name === "example_test_case");
         expect(testCase.testQuery.trim()).equals(
-          "select * from (\n        select 'hi' as faked union all\n        select 'ben' as faked union all\n        select 'sup?' as faked\n    )"
+          "select * from (\n    select 'hi' as faked union all\n    select 'ben' as faked union all\n    select 'sup?' as faked\n)"
         );
         expect(testCase.expectedOutputQuery.trim()).equals(
-          "select 'hi' as faked union all\n        select 'ben' as faked union all\n        select 'sup?' as faked"
+          "select 'hi' as faked union all\nselect 'ben' as faked union all\nselect 'sup?' as faked"
         );
       });
     }
