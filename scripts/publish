@@ -10,3 +10,7 @@ bazel run //core:package.publish
 bazel run //cli:package.publish
 bazel run //crossdb:package.publish
 bazel run //protos:package.publish
+
+VERSION=$(cat version.bzl | grep DF_VERSION | awk '{ print $3 }' | sed "s/\"//g")
+git tag $VERSION
+git push origin $VERSION
