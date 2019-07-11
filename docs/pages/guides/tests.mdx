@@ -1,0 +1,62 @@
+import Documentation from "df/docs/layouts/documentation";
+
+export const meta = {
+  title: "Unit tests for dataset queries",
+  __filename
+};
+
+export default ({ children }) => <Documentation {...meta}>{children}</Documentation>;
+
+## Introduction
+
+Unit tests give you confidence that your code produces the output data you expect.
+
+A SQLX unit test passes fake input to a `table` or `view` query, checking that the output rows match some expected output data.
+
+## Example
+
+Suppose we have the following "view" SQLX query:
+
+```js
+config {
+  type: "view",
+  name: "age_groups"
+}
+SELECT
+  FLOOR(age / 5) * 5 AS age_group,
+  COUNT(1) AS user_count
+FROM ${ref("ages")}
+GROUP BY age_group
+```
+
+We might want to write a unit test to check that the `age_groups` query works as we expect it to. Create a file `definitions/test_age_groups.sqlx`:
+
+```js
+config {
+  type: "test",
+  dataset: "age_groups"
+}
+
+input "ages" {
+  SELECT 15 AS age UNION ALL
+  SELECT 21 AS age UNION ALL
+  SELECT 24 AS age UNION ALL
+  SELECT 34 AS age
+}
+
+SELECT 15 AS age_group, 1 AS user_count UNION ALL
+SELECT 20 AS age_group, 2 AS user_count UNION ALL
+SELECT 30 AS age_group, 1 AS user_count
+```
+
+This unit test replaces the `ages` input to the `age_groups` query, and checks that the resulting output rows match the three expected `age_group` rows.
+
+## Expected vs. actual output equality rules
+
+A unit test fails if the actual output from the dataset is not equal to the expected output. This means that:
+
+- the number of output rows must match
+- the number of output columns and their names must match
+- the contents of each row must match
+
+Note that unit tests do not fail if columns are not output in the same order.
