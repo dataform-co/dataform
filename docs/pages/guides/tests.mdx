@@ -60,3 +60,9 @@ A unit test fails if the actual output from the dataset is not equal to the expe
 - the contents of each row must match
 
 Note that unit tests do not fail if columns are not output in the same order.
+
+## Test hermiticity
+
+As with unit testing in other languages and frameworks, it's considered bad practice for a unit test to be non-hermetic. This means that running your test
+should have no dependencies on any state in your data warehouse. Thus all input datasets should be referenced using `ref()` or `resolve()`, with fake inputs
+provided for each input dataset.
