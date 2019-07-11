@@ -116,9 +116,7 @@ export class Session {
     }
 
     if (actionOptions.sqlxConfig.type === "test") {
-      return this.test(actionOptions.sqlxConfig.name).dataset(
-        actionOptions.sqlxConfig.dataset
-      );
+      return this.test(actionOptions.sqlxConfig.name).dataset(actionOptions.sqlxConfig.dataset);
     }
     const action = (() => {
       switch (actionOptions.sqlxConfig.type) {
@@ -191,6 +189,7 @@ export class Session {
   }
 
   public operate(name: string, queries?: OContextable<string | string[]>): Operation {
+    this.checkActionNameIsUnused(name);
     const operation = new Operation();
     operation.session = this;
     operation.proto.name = name;
@@ -205,12 +204,7 @@ export class Session {
   }
 
   public publish(name: string, queryOrConfig?: TContextable<string> | TConfig): Table {
-    // Check for duplicate names
-    if (this.tables[name]) {
-      const message = `Duplicate action name detected, names must be unique across tables, assertions, and operations: "${name}"`;
-      this.compileError(new Error(message));
-    }
-
+    this.checkActionNameIsUnused(name);
     const table = new Table();
     table.session = this;
     table.proto.name = name;
@@ -229,6 +223,7 @@ export class Session {
   }
 
   public assert(name: string, query?: AContextable<string>): Assertion {
+    this.checkActionNameIsUnused(name);
     const assertion = new Assertion();
     assertion.session = this;
     assertion.proto.name = name;
@@ -243,6 +238,7 @@ export class Session {
   }
 
   public test(name: string): Test {
+    this.checkTestNameIsUnused(name);
     const test = new Test();
     test.session = this;
     test.proto.name = name;
@@ -322,5 +318,21 @@ export class Session {
 
   public isDatasetType(type) {
     return type === "view" || type === "table" || type === "inline" || type === "incremental";
+  }
+
+  private checkActionNameIsUnused(name: string) {
+    // Check for duplicate names
+    if (this.tables[name] || this.operations[name] || this.assertions[name]) {
+      const message = `Duplicate action name detected. Names must be unique across tables, assertions, and operations: "${name}"`;
+      this.compileError(new Error(message));
+    }
+  }
+
+  private checkTestNameIsUnused(name: string) {
+    // Check for duplicate names
+    if (this.tests[name]) {
+      const message = `Duplicate test name detected: "${name}"`;
+      this.compileError(new Error(message));
+    }
   }
 }
