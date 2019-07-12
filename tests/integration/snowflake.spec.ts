@@ -42,9 +42,9 @@ describe("@dataform/integration/snowflake", () => {
         name: "wrong row contents",
         successful: false,
         messages: [
-          'For row 0 and column "COL2": expected "1", but saw "5".',
-          'For row 1 and column "COL3": expected "6.5", but saw "12".',
-          'For row 2 and column "COL1": expected "sup?", but saw "WRONG".'
+          'For row 0 and column "COL2": expected "1" (number), but saw "5" (number).',
+          'For row 1 and column "COL3": expected "6.5" (number), but saw "12" (number).',
+          'For row 2 and column "COL1": expected "sup?" (string), but saw "WRONG" (string).'
         ]
       }
     ]);
