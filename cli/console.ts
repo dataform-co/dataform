@@ -123,7 +123,7 @@ export function printCompiledGraph(graph: dataform.ICompiledGraph, verbose: bool
     if (graph.operations && graph.operations.length) {
       writeStdOut(`${graph.operations.length} operation(s):`);
       graph.operations.forEach(operation => {
-        writeStdOut(targetString(operation.target), 1);
+        writeStdOut(operationString(operation.name, operation.target), 1);
       });
     }
   }
@@ -191,7 +191,7 @@ export function printExecutionGraph(executionGraph: dataform.IExecutionGraph, ve
     if (operationActions && operationActions.length) {
       writeStdOut(`${operationActions.length} operation(s):`);
       operationActions.forEach(operationAction =>
-        writeStdOut(targetString(operationAction.target), 1)
+        writeStdOut(operationString(operationAction.name, operationAction.target), 1)
       );
     }
   }
@@ -216,13 +216,14 @@ export function printExecutedAction(
         }
         case "assertion": {
           writeStdOut(
-            `${successOutput(`Assertion passed: `)} ${targetString(executionAction.target)}`
+            `${successOutput("Assertion passed: ")} ${targetString(executionAction.target)}`
           );
           return;
         }
         case "operation": {
           writeStdOut(
-            `${successOutput(`Operation completed successfully: `)} ${targetString(
+            `${successOutput("Operation completed successfully: ")} ${operationString(
+              executionAction.name,
               executionAction.target
             )}`
           );
@@ -243,13 +244,16 @@ export function printExecutedAction(
         }
         case "assertion": {
           writeStdErr(
-            `${errorOutput(`Assertion failed: `)} ${targetString(executionAction.target)}`
+            `${errorOutput("Assertion failed: ")} ${targetString(executionAction.target)}`
           );
           break;
         }
         case "operation": {
           writeStdErr(
-            `${errorOutput(`Operation failed: `)} ${targetString(executionAction.target)}`
+            `${errorOutput("Operation failed: ")} ${operationString(
+              executionAction.name,
+              executionAction.target
+            )}`
           );
           break;
         }
@@ -268,10 +272,18 @@ export function printExecutedAction(
           );
           return;
         }
-        case "assertion":
+        case "assertion": {
+          writeStdOut(
+            `${warningOutput("Skipping assertion execution: ")} ${targetString(
+              executionAction.target
+            )}`
+          );
+          return;
+        }
         case "operation": {
           writeStdOut(
-            `${warningOutput(`Skipping ${executionAction.type} execution: `)} ${targetString(
+            `${warningOutput("Skipping operation execution: ")} ${operationString(
+              executionAction.name,
               executionAction.target
             )}`
           );
@@ -301,7 +313,8 @@ export function printExecutedAction(
         }
         case "operation": {
           writeStdOut(
-            `${warningOutput(`Operation execution disabled: `)} ${targetString(
+            `${warningOutput(`Operation execution disabled: `)} ${operationString(
+              executionAction.name,
               executionAction.target
             )}`
           );
@@ -323,6 +336,13 @@ export function printGetTableResult(tableMetadata: dataform.ITableMetadata) {
 
 function datasetString(target: dataform.ITarget, datasetType: string) {
   return `${targetString(target)} [${datasetType}]`;
+}
+
+function operationString(operationName: string, target: dataform.ITarget) {
+  if (target) {
+    return `${targetString(target)} [hasOutput]`;
+  }
+  return calloutOutput(operationName);
 }
 
 function targetString(target: dataform.ITarget) {
