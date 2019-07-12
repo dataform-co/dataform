@@ -9,13 +9,14 @@ export default ({ children }) => <Documentation {...meta}>{children}</Documentat
 
 ## Introduction
 
-Unit tests give you confidence that your code produces the output data you expect.
+Unit tests give you confidence that your code produces the output data you expect. Unit tests differ from assertions in that assertions are used to check the contents of datasets in your data warehouse,
+while unit tests are used to validate your SQL code. Assertions verify _data_, and unit tests verify _logic_.
 
 A SQLX unit test passes fake input to a `table` or `view` query, checking that the output rows match some expected output data.
 
 ## Example
 
-Suppose we have the following "view" SQLX query:
+Suppose we have the following `view` SQLX query:
 
 ```js
 config {
