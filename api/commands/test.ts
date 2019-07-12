@@ -71,7 +71,11 @@ async function runTest(
       const normalizedColumn = normalizeColumnName(column);
       if (actualResultRow[normalizedColumn] !== expectedResultRow[normalizedColumn]) {
         rowMessages.push(
-          `For row ${i} and column "${column}": expected "${expectedResultRow[normalizedColumn]}", but saw "${actualResultRow[normalizedColumn]}".`
+          `For row ${i} and column "${column}": expected "${
+            expectedResultRow[normalizedColumn]
+          }" (${typeof expectedResultRow[normalizedColumn]}), but saw "${
+            actualResultRow[normalizedColumn]
+          }" (${typeof actualResultRow[normalizedColumn]}).`
         );
       }
     }

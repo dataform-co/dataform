@@ -50,9 +50,9 @@ describe("@dataform/integration/redshift", () => {
         name: "wrong row contents",
         successful: false,
         messages: [
-          'For row 0 and column "col2": expected "1", but saw "5".',
-          'For row 1 and column "col3": expected "6.5", but saw "12.0".',
-          'For row 2 and column "col1": expected "sup?", but saw "WRONG".'
+          'For row 0 and column "col2": expected "1" (number), but saw "5" (number).',
+          'For row 1 and column "col3": expected "6.5" (string), but saw "12.0" (string).',
+          'For row 2 and column "col1": expected "sup?" (string), but saw "WRONG" (string).'
         ]
       }
     ]);
