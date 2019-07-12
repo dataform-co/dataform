@@ -18,6 +18,7 @@ The JavaScript API exposes functions that create any of the actions that you wou
 - Datasets
 - Assertions
 - Operations
+- Tests
 
 These are regular JavaScript (ES5) files that can contain arbitrary code: loops, functions, constants, etc.
 
@@ -33,13 +34,18 @@ publish("table1").query("SELECT 1 AS test");
 assert("assertion1").query("SELECT * FROM source_table WHERE value IS NULL");
 
 operate("operation1").queries("INSERT INTO some_table (test) VALUES (2)");
+
+test("test1")
+  .dataset("some_table")
+  .input("input_data", "SELECT 1 AS test")
+  .expect("SELECT 1 AS test");
 ```
 
-This example creates a dataset, an assertion, and an operation in a single file, which if written in SQL would have required 3 seperate files.
+This example creates a dataset, an assertion, an operation, and a test in a single file, which if written in SQL would have required 4 seperate files.
 
 ## Setting properties on actions
 
-Each of the global methods - `publish()`, `operate()`, and `assert()` - return an object that can be used to configure that action. The API follows a builder syntax which can be seen in the following example:
+Each of the global methods - `publish()`, `operate()`, `assert()`, and `test()` - return an object that can be used to configure that action. The API follows a builder syntax which can be seen in the following example:
 
 ```js
 publish("table1")
@@ -68,6 +74,7 @@ Learn more about configuration options for each type of action:
 - [`publish()` (Datasets)](/guides/datasets)
 - [`assert()` (Assertions)](/guides/assertions)
 - [`operate()` (Operations)](/guides/operations)
+- [`test()` (Tests)](/guides/tests)
 
 ## Using built-in functions
 
