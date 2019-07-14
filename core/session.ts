@@ -118,6 +118,18 @@ export class Session {
     if (actionOptions.sqlxConfig.type === "test") {
       return this.test(actionOptions.sqlxConfig.name).dataset(actionOptions.sqlxConfig.dataset);
     }
+
+    if (
+      actionOptions.sqlxConfig.tags &&
+      (actionOptions.sqlxConfig.type !== "operations" ||
+       actionOptions.sqlxConfig.type !== "assertion" ||
+        this.isDatasetType(actionOptions.sqlxConfig.type))
+    ) {
+      this.compileError(
+        "Actions may only include tags if they are of type dataset, operation or assertion."
+      );
+    }
+
     const action = (() => {
       switch (actionOptions.sqlxConfig.type) {
         case "view":
@@ -126,11 +138,13 @@ export class Session {
         case "incremental": {
           const dataset = this.publish(actionOptions.sqlxConfig.name);
           dataset.config(actionOptions.sqlxConfig);
+          dataset.tags(actionOptions.sqlxConfig.tags);
           return dataset;
         }
         case "assertion": {
           const assertion = this.assert(actionOptions.sqlxConfig.name);
           assertion.dependencies(actionOptions.sqlxConfig.dependencies);
+          assertion.tags(actionOptions.sqlxConfig.tags);
           return assertion;
         }
         case "operations": {
@@ -139,6 +153,7 @@ export class Session {
             delete operations.proto.target;
           }
           operations.dependencies(actionOptions.sqlxConfig.dependencies);
+          operations.tags((actionOptions.sqlxConfig.tags);
           return operations;
         }
         default: {
