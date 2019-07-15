@@ -35,6 +35,11 @@ export class Assertion {
 
     return this.proto;
   }
+
+  public tags(tags: string[]) {
+    this.proto.tags = tags;
+    return this;
+  }
 }
 
 export class AssertionContext {
@@ -65,4 +70,8 @@ export class AssertionContext {
       return value;
     }
   }
+  public tags(tags: string[]) {
+    return this.assertion.tags(tags);
+  }
+
 }

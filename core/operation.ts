@@ -32,6 +32,11 @@ export class Operation {
     return this;
   }
 
+  public tags(tags: string[]) {
+    this.proto.tags = tags;
+    return this;
+  }
+
   public compile() {
     const context = new OperationContext(this);
 
@@ -78,5 +83,10 @@ export class OperationContext {
     } else {
       return value;
     }
+  }
+
+  public tags(tags: string[]) {
+    this.operation.tags(tags);
+    return "";
   }
 }

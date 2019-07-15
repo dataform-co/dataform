@@ -42,12 +42,14 @@ export interface TConfig {
   protected?: boolean;
   redshift?: dataform.IRedshiftOptions;
   bigquery?: dataform.IBigQueryOptions;
+  tags?: string[];
 }
 
 export class Table {
   public proto: dataform.Table = dataform.Table.create({
     type: "view",
-    disabled: false
+    disabled: false,
+    tags: []
   });
 
   // Hold a reference to the Session instance.
@@ -82,6 +84,14 @@ export class Table {
     if (config.bigquery) {
       this.bigquery(config.bigquery);
     }
+    if (config.tags) {
+      this.tags(config.tags);
+    }
+    return this;
+  }
+
+  public tags(tags: string[]) {
+    this.proto.tags = tags as string[];
     return this;
   }
 
@@ -217,6 +227,7 @@ export interface ITableContext {
   ) => string;
   describe: (key: string, description?: string) => string;
   apply: <T>(value: TContextable<T>) => T;
+  tags: (name: string[]) => string;
 }
 
 export class TableContext implements ITableContext {
@@ -313,4 +324,9 @@ export class TableContext implements ITableContext {
       return value;
     }
   }
+  public tags(tags: string[]) {
+    this.table.tags(tags);
+    return "";
+  }
+
 }
