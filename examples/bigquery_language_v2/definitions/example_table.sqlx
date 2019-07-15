@@ -1,6 +1,10 @@
 config { type: "table" }
 select * from ${ref("sample_data")}
 
+-- here is a `comment
+
+/* another ` backtick ` containing ```comment */
+
 post_operations {
     GRANT SELECT ON ${self()} TO GROUP "allusers@dataform.co"
     ---
