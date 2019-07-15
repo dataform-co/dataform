@@ -218,8 +218,14 @@ function buildSqlxLexer() {
     match: /[^\S\r\n]*---[^\S\r\n]*$/,
     value: () => ""
   };
-  sqlLexer[SQL_LEXER_TOKEN_NAMES.SINGLE_LINE_COMMENT] = /--.*?$/;
-  sqlLexer[SQL_LEXER_TOKEN_NAMES.MULTI_LINE_COMMENT] = /\/\*[\s\S]*?\*\//;
+  sqlLexer[SQL_LEXER_TOKEN_NAMES.SINGLE_LINE_COMMENT] = {
+    match: /--.*?$/,
+    value: (value: string) => value.replace(/`/g, "\\`")
+  };
+  sqlLexer[SQL_LEXER_TOKEN_NAMES.MULTI_LINE_COMMENT] = {
+    match: /\/\*[\s\S]*?\*\//,
+    value: (value: string) => value.replace(/`/g, "\\`")
+  };
   sqlLexer[SQL_LEXER_TOKEN_NAMES.SINGLE_QUOTE_STRING] = /'(?:\\['\\]|[^\n'\\])*'/;
   sqlLexer[SQL_LEXER_TOKEN_NAMES.DOUBLE_QUOTE_STRING] = /"(?:\\["\\]|[^\n"\\])*"/;
   sqlLexer[SQL_LEXER_TOKEN_NAMES.START_JS_PLACEHOLDER] = {

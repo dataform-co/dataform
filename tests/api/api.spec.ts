@@ -665,7 +665,9 @@ describe("@dataform/api", () => {
         expect(exampleTable).to.not.be.undefined;
         expect(exampleTable.type).equals("table");
         expect(exampleTable.query.trim()).equals(
-          `select * from \`tada-analytics.${schemaWithSuffix("df_integration_test")}.sample_data\``
+          `select * from \`tada-analytics.${schemaWithSuffix(
+            "df_integration_test"
+          )}.sample_data\`\n\n-- here is a \`comment\n\n/* another \` backtick \` containing \`\`\`comment */`
         );
         expect(exampleTable.dependencies).deep.equals(["sample_data"]);
         expect(exampleTable.preOps).to.eql([]);
@@ -745,7 +747,7 @@ describe("@dataform/api", () => {
         // Check testcase.
         const testCase = graph.tests.find(t => t.name === "example_test_case");
         expect(testCase.testQuery.trim()).equals(
-          "select * from (\n    select 'hi' as faked union all\n    select 'ben' as faked union all\n    select 'sup?' as faked\n)"
+          "select * from (\n    select 'hi' as faked union all\n    select 'ben' as faked union all\n    select 'sup?' as faked\n)\n\n-- here is a `comment\n\n/* another ` backtick ` containing ```comment */"
         );
         expect(testCase.expectedOutputQuery.trim()).equals(
           "select 'hi' as faked union all\nselect 'ben' as faked union all\nselect 'sup?' as faked"
