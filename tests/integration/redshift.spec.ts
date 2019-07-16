@@ -28,7 +28,7 @@ describe("@dataform/integration/redshift", () => {
     await dropFunctions.reduce((promiseChain, fn) => promiseChain.then(fn), Promise.resolve());
 
     // Run the tests.
-    const testResults = await dfapi.test(compiledGraph, credentials);
+    const testResults = await dfapi.test(credentials, "redshift", compiledGraph.tests);
     expect(testResults).to.eql([
       { name: "successful", successful: true },
       {

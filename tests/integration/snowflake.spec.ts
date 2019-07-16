@@ -20,7 +20,7 @@ describe("@dataform/integration/snowflake", () => {
     await dropAllTables(compiledGraph, adapter, dbadapter);
 
     // Run the tests.
-    const testResults = await dfapi.test(compiledGraph, credentials);
+    const testResults = await dfapi.test(credentials, "snowflake", compiledGraph.tests);
     expect(testResults).to.eql([
       { name: "successful", successful: true },
       {
