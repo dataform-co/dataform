@@ -84,21 +84,16 @@ export class Table {
     if (config.bigquery) {
       this.bigquery(config.bigquery);
     }
-<<<<<<< HEAD
     if (config.tags)
     {
       this.tags(config.tags);
     }
-=======
-    if (config.tags) {
-      this.tags(config.tags);
-    }
+
     return this;
   }
 
   public tags(tags: string[]) {
     this.proto.tags = tags as string[];
->>>>>>> c5576e4969f6c7aa79bea4f8005bb6f3140d6fd6
     return this;
   }
 
