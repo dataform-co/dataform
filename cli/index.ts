@@ -49,7 +49,9 @@ const projectDirMustExistOption = {
       assertPathExists(path.resolve(argv["project-dir"], "dataform.json"));
     } catch (e) {
       throw new Error(
-        `${argv["project-dir"]} does not appear to be a dataform directory (missing dataform.json file).`
+        `${
+          argv["project-dir"]
+        } does not appear to be a dataform directory (missing dataform.json file).`
       );
     }
   }
@@ -185,7 +187,9 @@ const builtYargs = createYargsCli({
     },
     {
       format: "init-creds <warehouse> [project-dir]",
-      description: `Creates a ${credentials.CREDENTIALS_FILENAME} file for dataform to use when accessing your warehouse.`,
+      description: `Creates a ${
+        credentials.CREDENTIALS_FILENAME
+      } file for dataform to use when accessing your warehouse.`,
       positionalOptions: [warehouseOption, projectDirMustExistOption],
       options: [
         {
@@ -356,7 +360,11 @@ const builtYargs = createYargsCli({
         }
 
         print(`Running ${compiledGraph.tests.length} unit tests...\n`);
-        const testResults = await test(compiledGraph, readCredentials);
+        const testResults = await test(
+          readCredentials,
+          compiledGraph.projectConfig.warehouse,
+          compiledGraph.tests
+        );
         testResults.forEach(testResult => printTestResult(testResult));
       }
     },
@@ -423,7 +431,11 @@ const builtYargs = createYargsCli({
 
         if (argv["run-tests"]) {
           print(`Running ${compiledGraph.tests.length} unit tests...\n`);
-          const testResults = await test(compiledGraph, readCredentials);
+          const testResults = await test(
+            readCredentials,
+            compiledGraph.projectConfig.warehouse,
+            compiledGraph.tests
+          );
           testResults.forEach(testResult => printTestResult(testResult));
           if (testResults.some(testResult => !testResult.successful)) {
             printError("\nUnit tests did not pass; aborting run.");
