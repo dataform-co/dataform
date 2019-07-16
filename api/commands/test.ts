@@ -3,11 +3,12 @@ import * as dbadapters from "@dataform/api/dbadapters";
 import { dataform } from "@dataform/protos";
 
 export async function test(
-  graph: dataform.ICompiledGraph,
-  credentials: Credentials
+  credentials: Credentials,
+  warehouse: string,
+  tests: dataform.ITest[]
 ): Promise<dataform.ITestResult[]> {
-  const dbadapter = dbadapters.create(credentials, graph.projectConfig.warehouse);
-  return await Promise.all(graph.tests.map(testCase => runTest(dbadapter, testCase)));
+  const dbadapter = dbadapters.create(credentials, warehouse);
+  return await Promise.all(tests.map(testCase => runTest(dbadapter, testCase)));
 }
 
 async function runTest(
