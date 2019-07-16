@@ -92,11 +92,6 @@ export class Table {
     return this;
   }
 
-  public tags(tags: string[]) {
-    this.proto.tags = tags as string[];
-    return this;
-  }
-
   public type(type: TableType) {
     this.proto.type = type as string;
     return this;
