@@ -27,6 +27,16 @@ export class Assertion {
     return this;
   }
 
+  public tags(value: string | string[]) {
+    const newTags = typeof value === "string" ? [value] : value;
+    newTags.forEach(d => {
+      if (this.proto.tags.indexOf(d) < 0) {
+        this.proto.tags.push(d);
+      }
+    });
+    return this;
+  }
+
   public compile() {
     const context = new AssertionContext(this);
 
@@ -34,6 +44,11 @@ export class Assertion {
     this.proto.query = appliedQuery;
 
     return this.proto;
+  }
+
+  public tags(tags: string[]) {
+    this.proto.tags = tags;
+    return this;
   }
 }
 
@@ -57,6 +72,10 @@ export class AssertionContext {
     this.assertion.dependencies(name);
     return "";
   }
+  public tags(name: string | string[]) {
+    this.assertion.tags(name);
+    return "";
+  }
 
   public apply<T>(value: AContextable<T>): T {
     if (typeof value === "function") {
@@ -65,4 +84,8 @@ export class AssertionContext {
       return value;
     }
   }
+  public tags(tags: string[]) {
+    return this.assertion.tags(tags);
+  }
+
 }

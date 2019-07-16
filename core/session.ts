@@ -18,6 +18,7 @@ interface ISqlxConfig extends TConfig {
   name: string;
   hasOutput?: boolean;
   dataset?: string;
+  tags?: string[];
 }
 
 export class Session {
@@ -121,9 +122,9 @@ export class Session {
 
     if (
       actionOptions.sqlxConfig.tags &&
-      (actionOptions.sqlxConfig.type !== "operations" ||
-       actionOptions.sqlxConfig.type !== "assertion" ||
-        this.isDatasetType(actionOptions.sqlxConfig.type))
+      (actionOptions.sqlxConfig.type !== "operations" &&
+       actionOptions.sqlxConfig.type !== "assertion" &&
+       ! this.isDatasetType(actionOptions.sqlxConfig.type))
     ) {
       this.compileError(
         "Actions may only include tags if they are of type dataset, operation or assertion."
@@ -138,7 +139,6 @@ export class Session {
         case "incremental": {
           const dataset = this.publish(actionOptions.sqlxConfig.name);
           dataset.config(actionOptions.sqlxConfig);
-          dataset.tags(actionOptions.sqlxConfig.tags);
           return dataset;
         }
         case "assertion": {
@@ -153,7 +153,7 @@ export class Session {
             delete operations.proto.target;
           }
           operations.dependencies(actionOptions.sqlxConfig.dependencies);
-          operations.tags((actionOptions.sqlxConfig.tags);
+          operations.tags(actionOptions.sqlxConfig.tags);
           return operations;
         }
         default: {

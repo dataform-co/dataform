@@ -42,12 +42,14 @@ export interface TConfig {
   protected?: boolean;
   redshift?: dataform.IRedshiftOptions;
   bigquery?: dataform.IBigQueryOptions;
+  tags?: string[];
 }
 
 export class Table {
   public proto: dataform.Table = dataform.Table.create({
     type: "view",
-    disabled: false
+    disabled: false,
+    tags: []
   });
 
   // Hold a reference to the Session instance.
@@ -82,6 +84,21 @@ export class Table {
     if (config.bigquery) {
       this.bigquery(config.bigquery);
     }
+<<<<<<< HEAD
+    if (config.tags)
+    {
+      this.tags(config.tags);
+    }
+=======
+    if (config.tags) {
+      this.tags(config.tags);
+    }
+    return this;
+  }
+
+  public tags(tags: string[]) {
+    this.proto.tags = tags as string[];
+>>>>>>> c5576e4969f6c7aa79bea4f8005bb6f3140d6fd6
     return this;
   }
 
@@ -135,6 +152,15 @@ export class Table {
       } else {
         this.addDependency(d);
       }
+    });
+    return this;
+  }
+
+  public tags(value: string | string[]) {
+    const newTags = typeof value === "string" ? [value] : value;
+    newTags.forEach(d => {
+      const table = this.session.tables[d];
+        this.proto.tags.push(d);
     });
     return this;
   }
@@ -217,6 +243,7 @@ export interface ITableContext {
   ) => string;
   describe: (key: string, description?: string) => string;
   apply: <T>(value: TContextable<T>) => T;
+  tags: (name: string[]) => string;
 }
 
 export class TableContext implements ITableContext {
@@ -313,4 +340,9 @@ export class TableContext implements ITableContext {
       return value;
     }
   }
+  public tags(tags: string[]) {
+    this.table.tags(tags);
+    return "";
+  }
+
 }

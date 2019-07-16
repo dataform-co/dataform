@@ -27,8 +27,23 @@ export class Operation {
     return this;
   }
 
+  public tags(value: string | string[]) {
+    const newTags = typeof value === "string" ? [value] : value;
+    newTags.forEach(d => {
+      if (this.proto.tags.indexOf(d) < 0) {
+        this.proto.tags.push(d);
+      }
+    });
+    return this;
+  }
+
   public hasOutput(hasOutput: boolean) {
     this.proto.hasOutput = hasOutput;
+    return this;
+  }
+
+  public tags(tags: string[]) {
+    this.proto.tags = tags;
     return this;
   }
 
@@ -67,6 +82,11 @@ export class OperationContext {
     return "";
   }
 
+  public tags(name: string | string[]) {
+    this.operation.tags(name);
+    return "";
+  }
+
   public hasOutput(hasOutput: boolean) {
     this.operation.hasOutput(hasOutput);
     return "";
@@ -78,5 +98,10 @@ export class OperationContext {
     } else {
       return value;
     }
+  }
+
+  public tags(tags: string[]) {
+    this.operation.tags(tags);
+    return "";
   }
 }
