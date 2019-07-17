@@ -1,6 +1,16 @@
 #!/bin/bash
 set -e
 
+if [ "$(git status --porcelain)" ]; then 
+    echo "There are uncommitted changes; aborting." 1>&2
+    exit 1
+fi
+
+if [ "master" == "$(git branch --show-current)" ]; then 
+    echo "Not on the 'master' branch; aborting." 1>&2
+    exit 1
+fi
+
 # Run all the tests.
 
 bazel test //...
