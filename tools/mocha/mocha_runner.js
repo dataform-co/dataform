@@ -15,14 +15,14 @@ function main(args) {
   fs.readFileSync(manifest, { encoding: "utf-8" })
     .split("\n")
     .filter(l => l.length > 0)
-    // Filter here so that only files ending in `spec.js` and `test.js`
+    // Filter here so that only files ending in `.spec.js` and `.test.js`
     // are added to jasmine as spec files. This is important as other
     // deps such as "@npm//typescript" if executed may cause the test to
     // fail or have unexpected side-effects. "@npm//typescript" would
     // try to execute tsc, print its help, and process.exit(1)
-    .filter(f => /[^a-zA-Z0-9](spec|test)\.js$/i.test(f))
-    // Filter out files from node_modules that match test.js or spec.js
-    .filter(f => !/\/node_modules\//.test(f))
+    .filter(f => f.endsWith(".test.js") || f.endsWith(".spec.js"))
+    // Filter out files from node_modules.
+    .filter(f => !f.includes("/node_modules/"))
     .forEach(f => mocha.addFile(f));
   // These exit codes are handled specially by Bazel:
   // https://github.com/bazelbuild/bazel/blob/486206012a664ecb20bdb196a681efc9a9825049/src/main/java/com/google/devtools/build/lib/util/ExitCode.java#L44
