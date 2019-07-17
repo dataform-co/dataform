@@ -120,17 +120,6 @@ export class Session {
       return this.test(actionOptions.sqlxConfig.name).dataset(actionOptions.sqlxConfig.dataset);
     }
 
-    if (
-      actionOptions.sqlxConfig.tags &&
-      (actionOptions.sqlxConfig.type !== "operations" &&
-       actionOptions.sqlxConfig.type !== "assertion" &&
-       ! this.isDatasetType(actionOptions.sqlxConfig.type))
-    ) {
-      this.compileError(
-        "Actions may only include tags if they are of type dataset, operation or assertion."
-      );
-    }
-
     const action = (() => {
       switch (actionOptions.sqlxConfig.type) {
         case "view":
