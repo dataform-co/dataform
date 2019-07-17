@@ -6,7 +6,7 @@ if [ "$(git status --porcelain)" ]; then
     exit 1
 fi
 
-if [ "master" == "$(git branch --show-current)" ]; then 
+if [ "master" != "$(git branch --show-current)" ]; then 
     echo "Not on the 'master' branch; aborting." 1>&2
     exit 1
 fi
