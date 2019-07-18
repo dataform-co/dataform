@@ -27,6 +27,16 @@ export class Assertion {
     return this;
   }
 
+  public tags(value: string | string[]) {
+    const newTags = typeof value === "string" ? [value] : value;
+    newTags.forEach(t => {
+      if (this.proto.tags.indexOf(t) < 0) {
+        this.proto.tags.push(t);
+      }
+    });
+    return this;
+  }
+
   public compile() {
     const context = new AssertionContext(this);
 
@@ -55,6 +65,10 @@ export class AssertionContext {
 
   public dependencies(name: string | string[]) {
     this.assertion.dependencies(name);
+    return "";
+  }
+  public tags(name: string | string[]) {
+    this.assertion.tags(name);
     return "";
   }
 

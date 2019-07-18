@@ -18,6 +18,7 @@ interface ISqlxConfig extends TConfig {
   name: string;
   hasOutput?: boolean;
   dataset?: string;
+  tags?: string[];
 }
 
 export class Session {
@@ -118,6 +119,7 @@ export class Session {
     if (actionOptions.sqlxConfig.type === "test") {
       return this.test(actionOptions.sqlxConfig.name).dataset(actionOptions.sqlxConfig.dataset);
     }
+
     const action = (() => {
       switch (actionOptions.sqlxConfig.type) {
         case "view":
@@ -131,6 +133,7 @@ export class Session {
         case "assertion": {
           const assertion = this.assert(actionOptions.sqlxConfig.name);
           assertion.dependencies(actionOptions.sqlxConfig.dependencies);
+          assertion.tags(actionOptions.sqlxConfig.tags);
           return assertion;
         }
         case "operations": {
@@ -139,6 +142,7 @@ export class Session {
             delete operations.proto.target;
           }
           operations.dependencies(actionOptions.sqlxConfig.dependencies);
+          operations.tags(actionOptions.sqlxConfig.tags);
           return operations;
         }
         default: {
