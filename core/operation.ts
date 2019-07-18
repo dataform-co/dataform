@@ -27,6 +27,16 @@ export class Operation {
     return this;
   }
 
+  public tags(value: string | string[]) {
+    const newTags = typeof value === "string" ? [value] : value;
+    newTags.forEach(t => {
+      if (this.proto.tags.indexOf(t) < 0) {
+        this.proto.tags.push(t);
+      }
+    });
+    return this;
+  }
+
   public hasOutput(hasOutput: boolean) {
     this.proto.hasOutput = hasOutput;
     return this;
@@ -64,6 +74,11 @@ export class OperationContext {
 
   public dependencies(name: string | string[]) {
     this.operation.dependencies(name);
+    return "";
+  }
+
+  public tags(name: string | string[]) {
+    this.operation.tags(name);
     return "";
   }
 

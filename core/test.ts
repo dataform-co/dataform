@@ -146,4 +146,8 @@ class RefReplacingContext implements table.ITableContext {
   public describe(key: string, description?: string) {
     return "";
   }
+
+  public tags(tags: string[]) {
+    return "";
+  }
 }

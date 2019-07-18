@@ -37,6 +37,7 @@ export type TableType = ValueOf<TableTypes>;
 export interface TConfig {
   type?: TableType;
   dependencies?: string | string[];
+  tags?: string[];
   descriptor?: string[] | { [key: string]: string };
   disabled?: boolean;
   protected?: boolean;
@@ -47,7 +48,8 @@ export interface TConfig {
 export class Table {
   public proto: dataform.Table = dataform.Table.create({
     type: "view",
-    disabled: false
+    disabled: false,
+    tags: []
   });
 
   // Hold a reference to the Session instance.
@@ -82,6 +84,10 @@ export class Table {
     if (config.bigquery) {
       this.bigquery(config.bigquery);
     }
+    if (config.tags) {
+      this.tags(config.tags);
+    }
+
     return this;
   }
 
@@ -135,6 +141,15 @@ export class Table {
       } else {
         this.addDependency(d);
       }
+    });
+    return this;
+  }
+
+  public tags(value: string | string[]) {
+    const newTags = typeof value === "string" ? [value] : value;
+    newTags.forEach(t => {
+      const table = this.session.tables[t];
+      this.proto.tags.push(t);
     });
     return this;
   }
@@ -217,6 +232,7 @@ export interface ITableContext {
   ) => string;
   describe: (key: string, description?: string) => string;
   apply: <T>(value: TContextable<T>) => T;
+  tags: (name: string | string[]) => string;
 }
 
 export class TableContext implements ITableContext {
@@ -312,5 +328,9 @@ export class TableContext implements ITableContext {
     } else {
       return value;
     }
+  }
+  public tags(tags: string[]) {
+    this.table.tags(tags);
+    return "";
   }
 }

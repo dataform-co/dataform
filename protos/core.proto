@@ -83,6 +83,8 @@ message Table {
 
   map<string, string> fieldDescriptor = 16;
 
+  repeated string tags = 23;
+
   // Incremental only.
   string where = 8;
 
@@ -109,6 +111,8 @@ message Operation {
   Target target = 3;
   repeated string queries = 6;
 
+  repeated string tags = 9;
+
   // Generated.
   string file_name = 7;
 
@@ -122,6 +126,8 @@ message Assertion {
   Target target = 8;
   string query = 3;
 
+  repeated string tags = 9;
+  
   // Generated.
   string file_name = 7;
 }
