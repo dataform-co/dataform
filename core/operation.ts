@@ -29,9 +29,9 @@ export class Operation {
 
   public tags(value: string | string[]) {
     const newTags = typeof value === "string" ? [value] : value;
-    newTags.forEach(d => {
-      if (this.proto.tags.indexOf(d) < 0) {
-        this.proto.tags.push(d);
+    newTags.forEach(t => {
+      if (this.proto.tags.indexOf(t) < 0) {
+        this.proto.tags.push(t);
       }
     });
     return this;

@@ -37,12 +37,12 @@ export type TableType = ValueOf<TableTypes>;
 export interface TConfig {
   type?: TableType;
   dependencies?: string | string[];
+  tags?: string[];
   descriptor?: string[] | { [key: string]: string };
   disabled?: boolean;
   protected?: boolean;
   redshift?: dataform.IRedshiftOptions;
   bigquery?: dataform.IBigQueryOptions;
-  tags?: string[];
 }
 
 export class Table {
@@ -84,8 +84,7 @@ export class Table {
     if (config.bigquery) {
       this.bigquery(config.bigquery);
     }
-    if (config.tags)
-    {
+    if (config.tags) {
       this.tags(config.tags);
     }
 
@@ -148,9 +147,9 @@ export class Table {
 
   public tags(value: string | string[]) {
     const newTags = typeof value === "string" ? [value] : value;
-    newTags.forEach(d => {
-      const table = this.session.tables[d];
-        this.proto.tags.push(d);
+    newTags.forEach(t => {
+      const table = this.session.tables[t];
+      this.proto.tags.push(t);
     });
     return this;
   }
@@ -233,7 +232,7 @@ export interface ITableContext {
   ) => string;
   describe: (key: string, description?: string) => string;
   apply: <T>(value: TContextable<T>) => T;
-  tags: (name: string[]) => string;
+  tags: (name: string | string[]) => string;
 }
 
 export class TableContext implements ITableContext {
@@ -334,5 +333,4 @@ export class TableContext implements ITableContext {
     this.table.tags(tags);
     return "";
   }
-
 }

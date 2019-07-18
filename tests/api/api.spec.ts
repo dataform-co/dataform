@@ -659,6 +659,7 @@ describe("@dataform/api", () => {
           `select * from \`tada-analytics.${schemaWithSuffix("df_integration_test")}.sample_data\``
         );
         expect(exampleView.dependencies).deep.equals(["sample_data"]);
+        expect(exampleView.tags).to.eql([]);
 
         // Check table
         const exampleTable = graph.tables.find(t => t.name === "example_table");
@@ -677,6 +678,12 @@ describe("@dataform/api", () => {
             "df_integration_test"
           )}.example_table\` TO GROUP "otherusers@dataform.co"\n`
         ]);
+        expect(exampleTable.tags).to.eql([]);
+
+        // Check Table with tags
+        const exampleTableWithTags = graph.tables.find(t => t.name === "example_table_with_tags");
+        expect(exampleTableWithTags).to.not.be.undefined;
+        expect(exampleTableWithTags.tags).to.eql(["tag1", "tag2", "tag3"]);
 
         // Check sample data
         const exampleSampleData = graph.tables.find(t => t.name === "sample_data");
@@ -710,6 +717,14 @@ describe("@dataform/api", () => {
           )}.sample_data\` where sample = 100`
         );
         expect(exampleAssertion.dependencies).to.eql(["sample_data"]);
+        expect(exampleAssertion.tags).to.eql([]);
+
+        // Check Assertion with tags
+        const exampleAssertionWithTags = graph.assertions.find(
+          t => t.name === "example_assertion_with_tags"
+        );
+        expect(exampleAssertionWithTags).to.not.be.undefined;
+        expect(exampleAssertionWithTags.tags).to.eql(["tag1", "tag2"]);
 
         // Check example operations file
         const exampleOperations = graph.operations.find(o => o.name === "example_operations");
@@ -725,6 +740,7 @@ describe("@dataform/api", () => {
           "example_inline",
           "override_schema_example"
         ]);
+        expect(exampleOperations.tags).to.eql([]);
 
         // Check example operation with output.
         const exampleOperationWithOutput = graph.operations.find(
@@ -741,6 +757,13 @@ describe("@dataform/api", () => {
           )}.example_operation_with_output\` AS (SELECT 1 AS TEST)`
         ]);
         expect(exampleOperationWithOutput.dependencies).to.eql([]);
+
+        // Check Operation with tags
+        const exampleOperationsWithTags = graph.operations.find(
+          t => t.name === "example_operations_with_tags"
+        );
+        expect(exampleOperationsWithTags).to.not.be.undefined;
+        expect(exampleOperationsWithTags.tags).to.eql(["tag1"]);
 
         // Check testcase.
         const testCase = graph.tests.find(t => t.name === "example_test_case");
