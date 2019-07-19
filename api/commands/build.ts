@@ -41,7 +41,7 @@ export class Builder {
       throw Error(`Project has unresolved compilation or validation errors.`);
     }
 
-    const tableStateByTarget: {
+    let tableStateByTarget: {
       [targetJson: string]: dataform.ITableMetadata;
     } = {};
     this.state.tables.forEach(tableState => {

@@ -1144,6 +1144,7 @@ describe("@dataform/api", () => {
       },
       runConfig: {
         fullRefresh: true,
+        includeDependencies: false,
         tags: ["tag1", "tag3"]
       },
       warehouseState: {
@@ -1276,7 +1277,7 @@ describe("@dataform/api", () => {
       );
     });
 
-    it("should only run the specified actions when --tags_filter option is used", async () => {
+    it("should only run actions tagget with at last one of the specified tags when using --tags option", async () => {
       const mockedDbAdapter = mock(BigQueryDbAdapter);
       when(mockedDbAdapter.prepareSchema(anyString())).thenResolve(null);
       when(
