@@ -93,7 +93,7 @@ export class Runner {
   }
 
   private triggerChange() {
-    return Promise.all(this.changeListeners.map(listener => listener(this.result)));
+    return Promise.all(this.changeListeners.map(listener => listener(this.result)))
   }
 
   private async loop(resolve: () => void, reject: (value: any) => void) {
@@ -109,7 +109,7 @@ export class Runner {
       )
       .map(fn => fn.name);
 
-    pendingActions.forEach(async action => {
+    pendingActions.forEach(async (action) => {
       const finishedDeps = action.dependencies.filter(d => allFinishedDeps.indexOf(d) >= 0);
       const successfulDeps = action.dependencies.filter(d => allSuccessfulDeps.indexOf(d) >= 0);
       if (!this.cancelled && successfulDeps.length == action.dependencies.length) {

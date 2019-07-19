@@ -1277,7 +1277,7 @@ describe("@dataform/api", () => {
       );
     });
 
-    it("should only run actions tagget with at last one of the specified tags when using --tags option", async () => {
+    it("should only run actions containing at least one of the specified tags when using --tags option", async () => {
       const mockedDbAdapter = mock(BigQueryDbAdapter);
       when(mockedDbAdapter.prepareSchema(anyString())).thenResolve(null);
       when(
@@ -1304,6 +1304,7 @@ describe("@dataform/api", () => {
           warehouseState: TEST_GRAPH_WITH_TAGS.warehouseState,
           ok: false,
           actions: [
+            //action1
             {
               name: TEST_GRAPH_WITH_TAGS.actions[0].name,
               tasks: [
@@ -1315,19 +1316,7 @@ describe("@dataform/api", () => {
               status: dataform.ActionExecutionStatus.SUCCESSFUL,
               deprecatedOk: true
             },
-            //Skipping actions[1] as tag2 is not in the list of filtered tags
-            {
-              name: TEST_GRAPH_WITH_TAGS.actions[2].name,
-              tasks: [
-                {
-                  task: TEST_GRAPH_WITH_TAGS.actions[2].tasks[0],
-                  ok: false,
-                  error: "bad statement"
-                }
-              ],
-              status: dataform.ActionExecutionStatus.FAILED,
-              deprecatedOk: false
-            },
+            //action4
             {
               name: TEST_GRAPH_WITH_TAGS.actions[3].name,
               tasks: [
@@ -1337,6 +1326,31 @@ describe("@dataform/api", () => {
                 }
               ],
               status: dataform.ActionExecutionStatus.SUCCESSFUL,
+              deprecatedOk: true
+            },
+            //action2
+            {
+              name: TEST_GRAPH_WITH_TAGS.actions[1].name,
+              tasks: [
+                {
+                  task: TEST_GRAPH_WITH_TAGS.actions[1].tasks[0],
+                  ok: false,
+                  error: "bad statement"
+                }
+              ],
+              status: dataform.ActionExecutionStatus.FAILED,
+              deprecatedOk: false
+            },
+            //action3
+            {
+              name: TEST_GRAPH_WITH_TAGS.actions[2].name,
+              tasks: [
+                {
+                  task: TEST_GRAPH_WITH_TAGS.actions[2].tasks[0],
+                  ok: true
+                }
+              ],
+              status: dataform.ActionExecutionStatus.SKIPPED,
               deprecatedOk: true
             }
           ]
