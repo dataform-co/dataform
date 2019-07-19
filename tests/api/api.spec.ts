@@ -1135,6 +1135,92 @@ describe("@dataform/api", () => {
       ]
     });
 
+    // Graph with tags. Only the actions containing the tags specified in runConfig should run
+    const TEST_GRAPH_WITH_TAGS: dataform.IExecutionGraph = dataform.ExecutionGraph.create({
+      projectConfig: {
+        warehouse: "bigquery",
+        defaultSchema: "foo",
+        assertionSchema: "bar"
+      },
+      runConfig: {
+        fullRefresh: true,
+        tags: ["tag1", "tag3"]
+      },
+      warehouseState: {
+        tables: [{ type: "table" }]
+      },
+      actions: [
+        {
+          name: "action1",
+          dependencies: [],
+          tags: ["tag1"],
+          tasks: [
+            {
+              type: "executionTaskType",
+              statement: "SELECT foo FROM bar"
+            }
+          ],
+          type: "table",
+          target: {
+            schema: "schema1",
+            name: "target1"
+          },
+          tableType: "someTableType"
+        },
+        {
+          name: "action2",
+          dependencies: ["action1"],
+          tags: ["tag2"],
+          tasks: [
+            {
+              type: "executionTaskType2",
+              statement: "SELECT bar FROM baz"
+            }
+          ],
+          type: "assertion",
+          target: {
+            schema: "schema1",
+            name: "target1"
+          },
+          tableType: "someTableType"
+        },
+        {
+          name: "action3",
+          dependencies: ["action1"],
+          tags: ["tag1", "tag3"],
+          tasks: [
+            {
+              type: "executionTaskType2",
+              statement: "SELECT bar FROM baz"
+            }
+          ],
+          type: "assertion",
+          target: {
+            schema: "schema1",
+            name: "target1"
+          },
+          tableType: "someTableType"
+        },
+        {
+          name: "action4",
+          dependencies: ["action1"],
+          tags: ["tag1", "tag2"],
+          tasks: [
+            {
+              type: "executionTaskType2",
+              statement: "SELECT foo FROM bar"
+            }
+          ],
+          type: "assertion",
+          target: {
+            schema: "schema1",
+            name: "target1"
+          },
+          tableType: "someTableType"
+        }
+      ]
+    });
+
     it("execute", async () => {
       const mockedDbAdapter = mock(BigQueryDbAdapter);
       when(mockedDbAdapter.prepareSchema(anyString())).thenResolve(null);
@@ -1184,6 +1270,73 @@ describe("@dataform/api", () => {
               ],
               status: dataform.ActionExecutionStatus.FAILED,
               deprecatedOk: false
+            }
+          ]
+        })
+      );
+    });
+
+    it("should only run the specified actions when --tags_filter option is used", async () => {
+      const mockedDbAdapter = mock(BigQueryDbAdapter);
+      when(mockedDbAdapter.prepareSchema(anyString())).thenResolve(null);
+      when(
+        mockedDbAdapter.execute(TEST_GRAPH_WITH_TAGS.actions[0].tasks[0].statement, anyFunction())
+      ).thenResolve([]);
+      when(
+        mockedDbAdapter.execute(TEST_GRAPH_WITH_TAGS.actions[1].tasks[0].statement, anyFunction())
+      ).thenReject(new Error("bad statement"));
+
+      const runner = new Runner(instance(mockedDbAdapter), TEST_GRAPH_WITH_TAGS);
+      await runner.execute();
+      const result = await runner.resultPromise();
+
+      const timeCleanedActions = result.actions.map(action => {
+        delete action.executionTime;
+        return action;
+      });
+      result.actions = timeCleanedActions;
+
+      expect(dataform.ExecutedGraph.create(result)).to.deep.equal(
+        dataform.ExecutedGraph.create({
+          projectConfig: TEST_GRAPH_WITH_TAGS.projectConfig,
+          runConfig: TEST_GRAPH_WITH_TAGS.runConfig,
+          warehouseState: TEST_GRAPH_WITH_TAGS.warehouseState,
+          ok: false,
+          actions: [
+            {
+              name: TEST_GRAPH_WITH_TAGS.actions[0].name,
+              tasks: [
+                {
+                  task: TEST_GRAPH_WITH_TAGS.actions[0].tasks[0],
+                  ok: true
+                }
+              ],
+              status: dataform.ActionExecutionStatus.SUCCESSFUL,
+              deprecatedOk: true
+            },
+            //Skipping actions[1] as tag2 is not in the list of filtered tags
+            {
+              name: TEST_GRAPH_WITH_TAGS.actions[2].name,
+              tasks: [
+                {
+                  task: TEST_GRAPH_WITH_TAGS.actions[2].tasks[0],
+                  ok: false,
+                  error: "bad statement"
+                }
+              ],
+              status: dataform.ActionExecutionStatus.FAILED,
+              deprecatedOk: false
+            },
+            {
+              name: TEST_GRAPH_WITH_TAGS.actions[3].name,
+              tasks: [
+                {
+                  task: TEST_GRAPH_WITH_TAGS.actions[3].tasks[0],
+                  ok: true
+                }
+              ],
+              status: dataform.ActionExecutionStatus.SUCCESSFUL,
+              deprecatedOk: true
             }
           ]
         })
