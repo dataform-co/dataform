@@ -1135,7 +1135,8 @@ describe("@dataform/api", () => {
       ]
     });
 
-    // Graph with tags. Only the actions containing the tags specified in runConfig should run
+    // Graph with tags.
+    // Only actions containing at least one of the tags specified in runConfig should run.
     const TEST_GRAPH_WITH_TAGS: dataform.IExecutionGraph = dataform.ExecutionGraph.create({
       projectConfig: {
         warehouse: "bigquery",
@@ -1191,7 +1192,7 @@ describe("@dataform/api", () => {
           tags: ["tag1", "tag3"],
           tasks: [
             {
-              type: "executionTaskType2",
+              type: "executionTaskType3",
               statement: "SELECT bar FROM baz"
             }
           ],
@@ -1208,7 +1209,7 @@ describe("@dataform/api", () => {
           tags: ["tag1", "tag2"],
           tasks: [
             {
-              type: "executionTaskType2",
+              type: "executionTaskType4",
               statement: "SELECT foo FROM bar"
             }
           ],
@@ -1280,12 +1281,12 @@ describe("@dataform/api", () => {
     it("should only run actions containing at least one of the specified tags when using --tags option", async () => {
       const mockedDbAdapter = mock(BigQueryDbAdapter);
       when(mockedDbAdapter.prepareSchema(anyString())).thenResolve(null);
-      when(
-        mockedDbAdapter.execute(TEST_GRAPH_WITH_TAGS.actions[0].tasks[0].statement, anyFunction())
-      ).thenResolve([]);
-      when(
-        mockedDbAdapter.execute(TEST_GRAPH_WITH_TAGS.actions[1].tasks[0].statement, anyFunction())
-      ).thenReject(new Error("bad statement"));
+      //action1, action4
+      when(mockedDbAdapter.execute("SELECT bar FROM bar", anyFunction())).thenResolve([]);
+      //action2, action3
+      when(mockedDbAdapter.execute("SELECT bar FROM baz", anyFunction())).thenReject(
+        new Error("bad statement")
+      );
 
       const runner = new Runner(instance(mockedDbAdapter), TEST_GRAPH_WITH_TAGS);
       await runner.execute();
@@ -1334,11 +1335,10 @@ describe("@dataform/api", () => {
               tasks: [
                 {
                   task: TEST_GRAPH_WITH_TAGS.actions[1].tasks[0],
-                  ok: false,
-                  error: "bad statement"
+                  ok: false
                 }
               ],
-              status: dataform.ActionExecutionStatus.FAILED,
+              status: dataform.ActionExecutionStatus.SKIPPED,
               deprecatedOk: false
             },
             //action3
@@ -1347,11 +1347,12 @@ describe("@dataform/api", () => {
               tasks: [
                 {
                   task: TEST_GRAPH_WITH_TAGS.actions[2].tasks[0],
-                  ok: true
+                  ok: false,
+                  error: "bad statement"
                 }
               ],
-              status: dataform.ActionExecutionStatus.SKIPPED,
-              deprecatedOk: true
+              status: dataform.ActionExecutionStatus.FAILED,
+              deprecatedOk: false
             }
           ]
         })

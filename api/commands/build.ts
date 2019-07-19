@@ -41,7 +41,7 @@ export class Builder {
       throw Error(`Project has unresolved compilation or validation errors.`);
     }
 
-    let tableStateByTarget: {
+    const tableStateByTarget: {
       [targetJson: string]: dataform.ITableMetadata;
     } = {};
     this.state.tables.forEach(tableState => {
@@ -59,16 +59,13 @@ export class Builder {
     );
 
     const allActionNames = allActions.map(n => n.name);
-    const actionNameMap: { [name: string]: dataform.IExecutionAction } = {};
+    const actionNameMap: {
+      [name: string]: dataform.IExecutionAction;
+    } = {};
     allActions.forEach(action => (actionNameMap[action.name] = action));
 
-    const actionTags = new Set();
-
-    for (const a of allActions) {
-      actionTags.add(allActions.forEach(action => action.tags));
-    }
-
-    console.log("My actions have all of the following tags:" + actionTags.toString);
+    /*
+    console.log("My actions have all of the following tags:" + actionTags.toString);*/
 
     // Determine which action should be included.
     const includedActionNames =
@@ -79,6 +76,14 @@ export class Builder {
     let includedActions = allActions.filter(
       action => includedActionNames.indexOf(action.name) >= 0
     );
+
+    // Filter only those actions that have at least one of the tags marked with a --tags option
+    includedActions =
+      this.runConfig.tags && this.runConfig.tags.length > 0
+        ? includedActions.filter(includedAction => {
+            this.runConfig.tags.some(r => includedAction.tags.indexOf(r) >= 0);
+          })
+        : includedActions;
 
     if (this.runConfig.includeDependencies) {
       // Compute all transitive dependencies.
@@ -98,11 +103,6 @@ export class Builder {
           includedActions = allActions.filter(
             action => includedActionNames.indexOf(action.name) >= 0
           );
-          // Filter only those actions marked with a --tags option
-          includedActions =
-            this.runConfig.tags && this.runConfig.tags.length > 0
-              ? includedActions.filter(action => actionTags.has(action.tags))
-              : includedActions;
         });
       }
     }
@@ -112,6 +112,7 @@ export class Builder {
         dep => includedActionNames.indexOf(dep) >= 0
       );
     });
+
     return dataform.ExecutionGraph.create({
       projectConfig: this.compiledGraph.projectConfig,
       runConfig: this.runConfig,
