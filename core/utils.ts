@@ -30,11 +30,11 @@ export function matchPatterns(patterns: string[], values: string[]) {
     pattern =>
       new RegExp(
         "^" +
-        pattern
-          .replace(/[.+?^${}()|[\]\\]/g, "\\$&")
-          .split("*")
-          .join(".*") +
-        "$"
+          pattern
+            .replace(/[.+?^${}()|[\]\\]/g, "\\$&")
+            .split("*")
+            .join(".*") +
+          "$"
       )
   );
   return values.filter(value => regexps.filter(regexp => regexp.test(value)).length > 0);
@@ -47,7 +47,7 @@ export function getCallerFile(rootDir: string) {
   try {
     const err = new Error();
     let currentfile;
-    Error.prepareStackTrace = function (err, stack) {
+    Error.prepareStackTrace = function(err, stack) {
       return stack;
     };
 
@@ -67,7 +67,7 @@ export function getCallerFile(rootDir: string) {
         break;
       }
     }
-  } catch (e) { }
+  } catch (e) {}
   Error.prepareStackTrace = originalFunc;
 
   return relativePath(callerfile || lastfile, rootDir);
@@ -115,9 +115,7 @@ export function validate(compiledGraph: dataform.ICompiledGraph): dataform.IGrap
   allActions.forEach(action => {
     if (allActions.filter(subAction => subAction.name == action.name).length > 1) {
       const actionName = action.name;
-      const message = `Duplicate action name detected, names must be unique across tables, assertions, and operations: "${
-        action.name
-        }"`;
+      const message = `Duplicate action name detected, names must be unique across tables, assertions, and operations: "${action.name}"`;
       validationErrors.push(dataform.ValidationError.create({ message, actionName }));
     }
   });
@@ -130,9 +128,7 @@ export function validate(compiledGraph: dataform.ICompiledGraph): dataform.IGrap
     const actionName = action.name;
     (action.dependencies || []).forEach(dependency => {
       if (allActionNames.indexOf(dependency) < 0) {
-        const message = `Missing dependency detected: Node "${
-          action.name
-          }" depends on "${dependency}" which does not exist.`;
+        const message = `Missing dependency detected: Node "${action.name}" depends on "${dependency}" which does not exist.`;
         validationErrors.push(dataform.ValidationError.create({ message, actionName }));
       }
     });
@@ -188,7 +184,9 @@ export function validate(compiledGraph: dataform.ICompiledGraph): dataform.IGrap
     if (!!action.redshift) {
       if (
         Object.keys(action.redshift).length === 0 ||
-        Object.keys(action.redshift).every(key => !action.redshift[key] || !action.redshift[key].length)
+        Object.keys(action.redshift).every(
+          key => !action.redshift[key] || !action.redshift[key].length
+        )
       ) {
         const message = `Missing properties in redshift config`;
         validationErrors.push(dataform.ValidationError.create({ message, actionName }));
@@ -200,7 +198,10 @@ export function validate(compiledGraph: dataform.ICompiledGraph): dataform.IGrap
         const types = { distStyle: DistStyleTypes };
         redshiftConfig.push({ props, types });
       }
-      if (action.redshift.sortStyle || (action.redshift.sortKeys && action.redshift.sortKeys.length)) {
+      if (
+        action.redshift.sortStyle ||
+        (action.redshift.sortKeys && action.redshift.sortKeys.length)
+      ) {
         const props = { sortStyle: action.redshift.sortStyle, sortKeys: action.redshift.sortKeys };
         const types = { sortStyle: SortStyleTypes };
         redshiftConfig.push({ props, types });
@@ -234,9 +235,7 @@ export function validate(compiledGraph: dataform.ICompiledGraph): dataform.IGrap
     if (!!ignoredProps[action.type]) {
       ignoredProps[action.type].forEach(ignoredProp => {
         if (objectExistsOrIsNonEmpty(action[ignoredProp])) {
-          const message = `Unused property was detected: "${ignoredProp}". This property is not used for tables with type "${
-            action.type
-            }" and will be ignored.`;
+          const message = `Unused property was detected: "${ignoredProp}". This property is not used for tables with type "${action.type}" and will be ignored.`;
           validationErrors.push(dataform.ValidationError.create({ message, actionName }));
         }
       });

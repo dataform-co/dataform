@@ -49,9 +49,7 @@ const projectDirMustExistOption = {
       assertPathExists(path.resolve(argv["project-dir"], "dataform.json"));
     } catch (e) {
       throw new Error(
-        `${
-          argv["project-dir"]
-        } does not appear to be a dataform directory (missing dataform.json file).`
+        `${argv["project-dir"]} does not appear to be a dataform directory (missing dataform.json file).`
       );
     }
   }
@@ -85,6 +83,14 @@ const includeDepsOption: INamedOption<yargs.Options> = {
     if (argv.include_deps && !argv.actions) {
       throw new Error("The --include_deps flag should only be supplied along with --actions.");
     }
+  }
+};
+
+const tagsOption: INamedOption<yargs.Options> = {
+  name: "tags",
+  option: {
+    describe: "A list of tags that filter the actions to run.",
+    type: "array"
   }
 };
 
@@ -187,9 +193,7 @@ const builtYargs = createYargsCli({
     },
     {
       format: "init-creds <warehouse> [project-dir]",
-      description: `Creates a ${
-        credentials.CREDENTIALS_FILENAME
-      } file for dataform to use when accessing your warehouse.`,
+      description: `Creates a ${credentials.CREDENTIALS_FILENAME} file for dataform to use when accessing your warehouse.`,
       positionalOptions: [warehouseOption, projectDirMustExistOption],
       options: [
         {
@@ -392,6 +396,7 @@ const builtYargs = createYargsCli({
         fullRefreshOption,
         actionsOption,
         includeDepsOption,
+        tagsOption,
         schemaSuffixOverrideOption,
         credentialsOption,
         verboseOutputOption
@@ -416,7 +421,8 @@ const builtYargs = createYargsCli({
           {
             fullRefresh: argv["full-refresh"],
             actions: argv.actions,
-            includeDependencies: argv["include-deps"]
+            includeDependencies: argv["include-deps"],
+            tags: argv.tags
           },
           readCredentials
         );

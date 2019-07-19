@@ -1,4 +1,4 @@
-syntax="proto3";
+syntax = "proto3";
 
 package dataform;
 
@@ -22,6 +22,7 @@ message RunConfig {
   bool include_dependencies = 3;
   bool full_refresh = 2;
   bool carry_on = 4;
+  repeated string tags = 5;
 }
 
 message GenerateIndexConfig {
@@ -44,9 +45,7 @@ message Target {
   string name = 2;
 }
 
-message BigQueryOptions {
-  string partition_by = 1;
-}
+message BigQueryOptions { string partition_by = 1; }
 
 message RedshiftOptions {
   string dist_key = 1;
@@ -127,7 +126,7 @@ message Assertion {
   string query = 3;
 
   repeated string tags = 9;
-  
+
   // Generated.
   string file_name = 7;
 }
@@ -164,15 +163,14 @@ message ExecutionTask {
 message ExecutionAction {
   string name = 1;
   repeated string dependencies = 3;
+  repeated string tags = 7;
   repeated ExecutionTask tasks = 2;
   string type = 4;
   Target target = 5;
   string table_type = 6;
 }
 
-message WarehouseState {
-  repeated TableMetadata tables = 1;
-}
+message WarehouseState { repeated TableMetadata tables = 1; }
 
 message ExecutionGraph {
   ProjectConfig project_config = 1;
@@ -211,9 +209,9 @@ message ExecutedAction {
   bool deprecated_skipped = 4;
 }
 
-// TODO: Instead of returning this as a result of run(...), return an ExecutionGraph
-// along with something like a RunStatus message indicating the success/failure of executing
-// that graph on the data warehouse.
+// TODO: Instead of returning this as a result of run(...), return an
+// ExecutionGraph along with something like a RunStatus message indicating the
+// success/failure of executing that graph on the data warehouse.
 message ExecutedGraph {
   ProjectConfig project_config = 1;
   RunConfig run_config = 2;
@@ -238,9 +236,7 @@ message Field {
   }
 }
 
-message Fields {
-  repeated Field fields = 1;
-}
+message Fields { repeated Field fields = 1; }
 
 message TableMetadata {
   Target target = 1;

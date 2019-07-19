@@ -41,7 +41,9 @@ export class Builder {
       throw Error(`Project has unresolved compilation or validation errors.`);
     }
 
-    const tableStateByTarget: { [targetJson: string]: dataform.ITableMetadata } = {};
+    const tableStateByTarget: {
+      [targetJson: string]: dataform.ITableMetadata;
+    } = {};
     this.state.tables.forEach(tableState => {
       tableStateByTarget[JSON.stringify(tableState.target)] = tableState;
     });
@@ -55,16 +57,29 @@ export class Builder {
       this.compiledGraph.operations.map(o => this.buildOperation(o)),
       this.compiledGraph.assertions.map(a => this.buildAssertion(a))
     );
+
     const allActionNames = allActions.map(n => n.name);
     const actionNameMap: { [name: string]: dataform.IExecutionAction } = {};
     allActions.forEach(action => (actionNameMap[action.name] = action));
+
+    const actionTags = new Set();
+
+    for (const a of allActions) {
+      actionTags.add(allActions.forEach(action => action.tags));
+    }
+
+    console.log("My actions have all of the following tags:" + actionTags.toString);
 
     // Determine which action should be included.
     const includedActionNames =
       this.runConfig.actions && this.runConfig.actions.length > 0
         ? utils.matchPatterns(this.runConfig.actions, allActionNames)
         : allActionNames;
-    let includedActions = allActions.filter(action => includedActionNames.indexOf(action.name) >= 0);
+
+    let includedActions = allActions.filter(
+      action => includedActionNames.indexOf(action.name) >= 0
+    );
+
     if (this.runConfig.includeDependencies) {
       // Compute all transitive dependencies.
       for (let i = 0; i < allActions.length; i++) {
@@ -80,13 +95,22 @@ export class Builder {
             }
           });
           // Update included actions.
-          includedActions = allActions.filter(action => includedActionNames.indexOf(action.name) >= 0);
+          includedActions = allActions.filter(
+            action => includedActionNames.indexOf(action.name) >= 0
+          );
+          // Filter only those actions marked with a --tags option
+          includedActions =
+            this.runConfig.tags && this.runConfig.tags.length > 0
+              ? includedActions.filter(action => actionTags.has(action.tags))
+              : includedActions;
         });
       }
     }
     // Remove any excluded dependencies.
     includedActions.forEach(action => {
-      action.dependencies = action.dependencies.filter(dep => includedActionNames.indexOf(dep) >= 0);
+      action.dependencies = action.dependencies.filter(
+        dep => includedActionNames.indexOf(dep) >= 0
+      );
     });
     return dataform.ExecutionGraph.create({
       projectConfig: this.compiledGraph.projectConfig,
@@ -106,10 +130,10 @@ export class Builder {
     const tasks = t.disabled
       ? emptyTasks
       : emptyTasks.concat(
-        (t.preOps || []).map(pre => ({ statement: pre })),
-        this.adapter.publishTasks(t, this.runConfig, tableMetadata).build(),
-        (t.postOps || []).map(post => ({ statement: post }))
-      );
+          (t.preOps || []).map(pre => ({ statement: pre })),
+          this.adapter.publishTasks(t, this.runConfig, tableMetadata).build(),
+          (t.postOps || []).map(post => ({ statement: post }))
+        );
 
     return dataform.ExecutionAction.create({
       name: t.name,
