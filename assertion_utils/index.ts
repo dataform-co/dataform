@@ -1,24 +1,39 @@
-export function keyUniqueness(dataset: string, keys: string[]): string {
-  // Given a dataset name and an array of keys for which the table
-  // should be unique, constructs a query to find duplicate rows for
-  // that combination of keys
-  return `
-  WITH base AS (
-  
-  SELECT
-    ${keys.map((field, i) => `${field} as c_${i}`).join(", ")},
-    SUM(1) as row_count
-  FROM ${dataset}
-  GROUP BY 
-    ${keys.map((field, i) => `${i+1}`).join(", ")}
-  
-  )
 
-  SELECT
-    *
-  FROM
-    base
-  WHERE
-    row_count > 1
-  `
+export function forDataset(foo: string) {
+  return new DatasetAssertion(foo);
+}
+
+export class DatasetAssertion {
+  private readonly dataset: string;
+  private groupCols: string[] = [];
+  constructor(dataset: string) {
+    this.dataset = dataset;
+  }
+
+  public groupedBy(cols: string[]) {
+    this.groupCols = cols;
+    return this;
+  }
+
+  public getUniqueRowQuery(): string {
+    return `
+    WITH base AS (
+    
+    SELECT
+      ${this.groupCols.map((field, i) => `${field} as c_${i}`).join(", ")},
+      SUM(1) as row_count
+    FROM ${this.dataset}
+    GROUP BY 
+      ${this.groupCols.map((field, i) => `${i+1}`).join(", ")}
+    
+    )
+  
+    SELECT
+      *
+    FROM
+      base
+    WHERE
+      row_count > 1
+    `
+  }
 }

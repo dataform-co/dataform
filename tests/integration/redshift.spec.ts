@@ -13,6 +13,9 @@ describe("@dataform/integration/redshift", () => {
       projectDir: "df/tests/integration/redshift_project"
     });
 
+    expect(compiledGraph.graphErrors.compilationErrors).to.eql([]);
+    expect(compiledGraph.graphErrors.validationErrors).to.eql([]);
+
     const dbadapter = dbadapters.create(credentials, "redshift");
     const adapter = adapters.create(compiledGraph.projectConfig);
 
@@ -66,6 +69,13 @@ describe("@dataform/integration/redshift", () => {
     // Check the status of the two assertions.
     expect(actionMap.example_assertion_fail.status).equals(dataform.ActionExecutionStatus.FAILED);
     expect(actionMap.example_assertion_pass.status).equals(
+      dataform.ActionExecutionStatus.SUCCESSFUL
+    );
+
+    // Check the status of the two uniqueness assertions.
+    expect(actionMap.example_assertion_uniqueness_fail.status).equals(dataform.ActionExecutionStatus.FAILED);
+    expect(actionMap.example_assertion_uniqueness_fail.tasks[1].error).to.eql("Assertion failed: query returned 1 row(s).");
+    expect(actionMap.example_assertion_uniqueness_pass.status).equals(
       dataform.ActionExecutionStatus.SUCCESSFUL
     );
 
