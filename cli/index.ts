@@ -89,7 +89,7 @@ const includeDepsOption: INamedOption<yargs.Options> = {
 const tagsOption: INamedOption<yargs.Options> = {
   name: "tags",
   option: {
-    describe: "A list of tags that filter the actions to run.",
+    describe: "A list of tags to filter the actions to run.",
     type: "array"
   }
 };
