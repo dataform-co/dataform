@@ -191,6 +191,46 @@ describe("@dataform/api", () => {
       expect(actionNames).not.includes("b");
       expect(actionNames).includes("c");
     });
+
+    it("build actions with tags", () => {
+      const TEST_GRAPH_WITH_TAGS: dataform.ICompiledGraph = dataform.CompiledGraph.create({
+        projectConfig: { warehouse: "bigquery" },
+        operations: [
+          {
+            name: "op_a",
+            tags: ["tag1"],
+            queries: ["create or replace view schema.someview as select 1 as test"]
+          },
+          {
+            name: "op_b",
+            dependencies: ["op_a"],
+            tags: ["tag2"],
+            queries: ["create or replace view schema.someview as select 1 as test"]
+          },
+          {
+            name: "op_c",
+            dependencies: ["op_a"],
+            tags: ["tag3"],
+            queries: ["create or replace view schema.someview as select 1 as test"]
+          }
+        ]
+      });
+
+      const builder = new Builder(
+        TEST_GRAPH_WITH_TAGS,
+        {
+          actions: ["op_a", "op_b", "op_c"],
+          tags: ["tag1", "tag2", "tag4"],
+          includeDependencies: true
+        },
+        TEST_STATE
+      );
+      const executionGraph = builder.build();
+      const includedActionNames = executionGraph.actions.map(n => n.name);
+      expect(includedActionNames).includes("op_a");
+      expect(includedActionNames).includes("op_b");
+      expect(includedActionNames).not.includes("op_c");
+    });
   });
 
   describe("sql_generating", () => {
@@ -1135,94 +1175,6 @@ describe("@dataform/api", () => {
       ]
     });
 
-    // Graph with tags.
-    // Only actions containing at least one of the tags specified in runConfig should run.
-    const TEST_GRAPH_WITH_TAGS: dataform.IExecutionGraph = dataform.ExecutionGraph.create({
-      projectConfig: {
-        warehouse: "bigquery",
-        defaultSchema: "foo",
-        assertionSchema: "bar"
-      },
-      runConfig: {
-        fullRefresh: true,
-        includeDependencies: false,
-        tags: ["tag1", "tag3"]
-      },
-      warehouseState: {
-        tables: [{ type: "table" }]
-      },
-      actions: [
-        {
-          name: "action1",
-          dependencies: [],
-          tags: ["tag1"],
-          tasks: [
-            {
-              type: "executionTaskType",
-              statement: "SELECT foo FROM bar"
-            }
-          ],
-          type: "table",
-          target: {
-            schema: "schema1",
-            name: "target1"
-          },
-          tableType: "someTableType"
-        },
-        {
-          name: "action2",
-          dependencies: ["action1"],
-          tags: ["tag2"],
-          tasks: [
-            {
-              type: "executionTaskType2",
-              statement: "SELECT bar FROM baz"
-            }
-          ],
-          type: "assertion",
-          target: {
-            schema: "schema1",
-            name: "target1"
-          },
-          tableType: "someTableType"
-        },
-        {
-          name: "action3",
-          dependencies: ["action1"],
-          tags: ["tag1", "tag3"],
-          tasks: [
-            {
-              type: "executionTaskType3",
-              statement: "SELECT bar FROM baz"
-            }
-          ],
-          type: "assertion",
-          target: {
-            schema: "schema1",
-            name: "target1"
-          },
-          tableType: "someTableType"
-        },
-        {
-          name: "action4",
-          dependencies: ["action1"],
-          tags: ["tag1", "tag2"],
-          tasks: [
-            {
-              type: "executionTaskType4",
-              statement: "SELECT foo FROM bar"
-            }
-          ],
-          type: "assertion",
-          target: {
-            schema: "schema1",
-            name: "target1"
-          },
-          tableType: "someTableType"
-        }
-      ]
-    });
-
     it("execute", async () => {
       const mockedDbAdapter = mock(BigQueryDbAdapter);
       when(mockedDbAdapter.prepareSchema(anyString())).thenResolve(null);
@@ -1266,87 +1218,6 @@ describe("@dataform/api", () => {
               tasks: [
                 {
                   task: TEST_GRAPH.actions[1].tasks[0],
-                  ok: false,
-                  error: "bad statement"
-                }
-              ],
-              status: dataform.ActionExecutionStatus.FAILED,
-              deprecatedOk: false
-            }
-          ]
-        })
-      );
-    });
-
-    it("should only run actions containing at least one of the specified tags when using --tags option", async () => {
-      const mockedDbAdapter = mock(BigQueryDbAdapter);
-      when(mockedDbAdapter.prepareSchema(anyString())).thenResolve(null);
-      //action1, action4
-      when(mockedDbAdapter.execute("SELECT bar FROM bar", anyFunction())).thenResolve([]);
-      //action2, action3
-      when(mockedDbAdapter.execute("SELECT bar FROM baz", anyFunction())).thenReject(
-        new Error("bad statement")
-      );
-
-      const runner = new Runner(instance(mockedDbAdapter), TEST_GRAPH_WITH_TAGS);
-      await runner.execute();
-      const result = await runner.resultPromise();
-
-      const timeCleanedActions = result.actions.map(action => {
-        delete action.executionTime;
-        return action;
-      });
-      result.actions = timeCleanedActions;
-
-      expect(dataform.ExecutedGraph.create(result)).to.deep.equal(
-        dataform.ExecutedGraph.create({
-          projectConfig: TEST_GRAPH_WITH_TAGS.projectConfig,
-          runConfig: TEST_GRAPH_WITH_TAGS.runConfig,
-          warehouseState: TEST_GRAPH_WITH_TAGS.warehouseState,
-          ok: false,
-          actions: [
-            //action1
-            {
-              name: TEST_GRAPH_WITH_TAGS.actions[0].name,
-              tasks: [
-                {
-                  task: TEST_GRAPH_WITH_TAGS.actions[0].tasks[0],
-                  ok: true
-                }
-              ],
-              status: dataform.ActionExecutionStatus.SUCCESSFUL,
-              deprecatedOk: true
-            },
-            //action4
-            {
-              name: TEST_GRAPH_WITH_TAGS.actions[3].name,
-              tasks: [
-                {
-                  task: TEST_GRAPH_WITH_TAGS.actions[3].tasks[0],
-                  ok: true
-                }
-              ],
-              status: dataform.ActionExecutionStatus.SUCCESSFUL,
-              deprecatedOk: true
-            },
-            //action2
-            {
-              name: TEST_GRAPH_WITH_TAGS.actions[1].name,
-              tasks: [
-                {
-                  task: TEST_GRAPH_WITH_TAGS.actions[1].tasks[0],
-                  ok: false
-                }
-              ],
-              status: dataform.ActionExecutionStatus.SKIPPED,
-              deprecatedOk: false
-            },
-            //action3
-            {
-              name: TEST_GRAPH_WITH_TAGS.actions[2].name,
-              tasks: [
-                {
-                  task: TEST_GRAPH_WITH_TAGS.actions[2].tasks[0],
                   ok: false,
                   error: "bad statement"
                 }

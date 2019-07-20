@@ -58,32 +58,29 @@ export class Builder {
       this.compiledGraph.assertions.map(a => this.buildAssertion(a))
     );
 
-    const allActionNames = allActions.map(n => n.name);
     const actionNameMap: {
       [name: string]: dataform.IExecutionAction;
     } = {};
+
     allActions.forEach(action => (actionNameMap[action.name] = action));
 
-    /*
-    console.log("My actions have all of the following tags:" + actionTags.toString);*/
+    // Include only tagged actions
+    let taggedActions =
+      this.runConfig.tags && this.runConfig.tags.length > 0
+        ? allActions.filter(action => this.runConfig.tags.some(r => action.tags.includes(r)))
+        : allActions;
+
+    const allTaggedActionNames = taggedActions.map(n => n.name);
 
     // Determine which action should be included.
     const includedActionNames =
       this.runConfig.actions && this.runConfig.actions.length > 0
-        ? utils.matchPatterns(this.runConfig.actions, allActionNames)
-        : allActionNames;
+        ? utils.matchPatterns(this.runConfig.actions, allTaggedActionNames)
+        : allTaggedActionNames;
 
-    let includedActions = allActions.filter(
+    let includedActions = taggedActions.filter(
       action => includedActionNames.indexOf(action.name) >= 0
     );
-
-    // Filter only those actions that have at least one of the tags marked with a --tags option
-    includedActions =
-      this.runConfig.tags && this.runConfig.tags.length > 0
-        ? includedActions.filter(includedAction => {
-            this.runConfig.tags.some(r => includedAction.tags.indexOf(r) >= 0);
-          })
-        : includedActions;
 
     if (this.runConfig.includeDependencies) {
       // Compute all transitive dependencies.
@@ -91,7 +88,7 @@ export class Builder {
         includedActions.forEach(action => {
           const matchingActionNames =
             action.dependencies && action.dependencies.length > 0
-              ? utils.matchPatterns(action.dependencies, allActionNames)
+              ? utils.matchPatterns(action.dependencies, allTaggedActionNames)
               : [];
           // Update included action names.
           matchingActionNames.forEach(actionName => {
@@ -142,7 +139,8 @@ export class Builder {
       type: "table",
       target: t.target,
       tableType: t.type,
-      tasks
+      tasks,
+      tags: t.tags
     });
   }
 
@@ -155,7 +153,8 @@ export class Builder {
       tasks: operation.queries.map(statement => ({
         type: "statement",
         statement
-      }))
+      })),
+      tags: operation.tags
     });
   }
 
@@ -165,7 +164,8 @@ export class Builder {
       dependencies: assertion.dependencies,
       type: "assertion",
       target: assertion.target,
-      tasks: this.adapter.assertTasks(assertion, this.compiledGraph.projectConfig).build()
+      tasks: this.adapter.assertTasks(assertion, this.compiledGraph.projectConfig).build(),
+      tags: assertion.tags
     });
   }
 }
