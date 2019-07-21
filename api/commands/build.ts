@@ -67,7 +67,7 @@ export class Builder {
     // Include only tagged actions
     const taggedActions =
       this.runConfig.tags && this.runConfig.tags.length > 0
-        ? allActions.filter(action => this.runConfig.tags.some(r => action.tags.includes(r)))
+        ? allActions.filter(action => this.runConfig.tags.some(t => action.tags.includes(t)))
         : allActions;
 
     const allTaggedActionNames = taggedActions.map(n => n.name);
@@ -109,7 +109,6 @@ export class Builder {
         dep => includedActionNames.indexOf(dep) >= 0
       );
     });
-
     return dataform.ExecutionGraph.create({
       projectConfig: this.compiledGraph.projectConfig,
       runConfig: this.runConfig,
@@ -148,13 +147,13 @@ export class Builder {
     return dataform.ExecutionAction.create({
       name: operation.name,
       dependencies: operation.dependencies,
+      tags: operation.tags,
       type: "operation",
       target: operation.target,
       tasks: operation.queries.map(statement => ({
         type: "statement",
         statement
-      })),
-      tags: operation.tags
+      }))
     });
   }
 
@@ -162,10 +161,10 @@ export class Builder {
     return dataform.ExecutionAction.create({
       name: assertion.name,
       dependencies: assertion.dependencies,
+      tags: assertion.tags,
       type: "assertion",
       target: assertion.target,
-      tasks: this.adapter.assertTasks(assertion, this.compiledGraph.projectConfig).build(),
-      tags: assertion.tags
+      tasks: this.adapter.assertTasks(assertion, this.compiledGraph.projectConfig).build()
     });
   }
 }
