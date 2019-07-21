@@ -41,9 +41,8 @@ export class Builder {
       throw Error(`Project has unresolved compilation or validation errors.`);
     }
 
-    const tableStateByTarget: {
-      [targetJson: string]: dataform.ITableMetadata;
-    } = {};
+    const tableStateByTarget: { [targetJson: string]: dataform.ITableMetadata } = {};
+
     this.state.tables.forEach(tableState => {
       tableStateByTarget[JSON.stringify(tableState.target)] = tableState;
     });
@@ -58,9 +57,7 @@ export class Builder {
       this.compiledGraph.assertions.map(a => this.buildAssertion(a))
     );
 
-    const actionNameMap: {
-      [name: string]: dataform.IExecutionAction;
-    } = {};
+    const actionNameMap: { [name: string]: dataform.IExecutionAction } = {};
 
     allActions.forEach(action => (actionNameMap[action.name] = action));
 
@@ -70,7 +67,7 @@ export class Builder {
         ? allActions.filter(action => this.runConfig.tags.some(t => action.tags.includes(t)))
         : allActions;
 
-    const allTaggedActionNames = taggedActions.map(n => n.name);
+    const allTaggedActionNames = taggedActions.map(ta => ta.name);
 
     // Determine which action should be included.
     const includedActionNames =

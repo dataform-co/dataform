@@ -49,7 +49,9 @@ const projectDirMustExistOption = {
       assertPathExists(path.resolve(argv["project-dir"], "dataform.json"));
     } catch (e) {
       throw new Error(
-        `${argv["project-dir"]} does not appear to be a dataform directory (missing dataform.json file).`
+        `${
+          argv["project-dir"]
+        } does not appear to be a dataform directory (missing dataform.json file).`
       );
     }
   }
@@ -193,7 +195,9 @@ const builtYargs = createYargsCli({
     },
     {
       format: "init-creds <warehouse> [project-dir]",
-      description: `Creates a ${credentials.CREDENTIALS_FILENAME} file for dataform to use when accessing your warehouse.`,
+      description: `Creates a ${
+        credentials.CREDENTIALS_FILENAME
+      } file for dataform to use when accessing your warehouse.`,
       positionalOptions: [warehouseOption, projectDirMustExistOption],
       options: [
         {

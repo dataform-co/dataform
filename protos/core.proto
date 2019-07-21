@@ -45,7 +45,9 @@ message Target {
   string name = 2;
 }
 
-message BigQueryOptions { string partition_by = 1; }
+message BigQueryOptions { 
+  string partition_by = 1; 
+}
 
 message RedshiftOptions {
   string dist_key = 1;
@@ -170,7 +172,9 @@ message ExecutionAction {
   string table_type = 6;
 }
 
-message WarehouseState { repeated TableMetadata tables = 1; }
+message WarehouseState { 
+  repeated TableMetadata tables = 1; 
+}
 
 message ExecutionGraph {
   ProjectConfig project_config = 1;
@@ -236,7 +240,9 @@ message Field {
   }
 }
 
-message Fields { repeated Field fields = 1; }
+message Fields { 
+  repeated Field fields = 1; 
+}
 
 message TableMetadata {
   Target target = 1;
