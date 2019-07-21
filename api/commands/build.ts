@@ -65,7 +65,7 @@ export class Builder {
     allActions.forEach(action => (actionNameMap[action.name] = action));
 
     // Include only tagged actions
-    let taggedActions =
+    const taggedActions =
       this.runConfig.tags && this.runConfig.tags.length > 0
         ? allActions.filter(action => this.runConfig.tags.some(r => action.tags.includes(r)))
         : allActions;
@@ -136,11 +136,11 @@ export class Builder {
     return dataform.ExecutionAction.create({
       name: t.name,
       dependencies: t.dependencies,
+      tags: t.tags,
       type: "table",
       target: t.target,
       tableType: t.type,
-      tasks,
-      tags: t.tags
+      tasks
     });
   }
 
