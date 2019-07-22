@@ -5,7 +5,7 @@ package dataform.schedules;
 message NotificationSettings {
   repeated string emails = 1;
   bool on_success = 2;
-  bool on_failure = 3;
+  bool on_failure = 3; 
 }
 
 message ScheduleOptions {
@@ -13,7 +13,7 @@ message ScheduleOptions {
   repeated string tags = 4;
   bool include_dependencies = 2;
   bool full_refresh = 3;
-}
+} 
 
 message Schedule {
   string name = 1; // required field

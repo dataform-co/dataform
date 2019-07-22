@@ -53,8 +53,8 @@ export class Builder {
     // Firstly, turn every thing into an execution action.
     const allActions: dataform.IExecutionAction[] = [].concat(
       filteredTables.map(t => this.buildTable(t, tableStateByTarget[JSON.stringify(t.target)])),
-      this.compiledGraph.operations.map(t => this.buildOperation(t)),
-      this.compiledGraph.assertions.map(t => this.buildAssertion(t))
+      this.compiledGraph.operations.map(o => this.buildOperation(o)),
+      this.compiledGraph.assertions.map(a => this.buildAssertion(a))
     );
     const allActionNames = allActions.map(n => n.name);
     const actionNameMap: { [name: string]: dataform.IExecutionAction } = {};
@@ -63,13 +63,13 @@ export class Builder {
     // Actions selected with --tag option should be included
     const tagFilteredTables =
       this.runConfig.tags && this.runConfig.tags.length > 0
-        ? this.compiledGraph.tables.filter(a => this.runConfig.tags.some(r => a.tags.includes(r)))
+        ? this.compiledGraph.tables.filter(t => this.runConfig.tags.some(r => t.tags.includes(r)))
         : [];
 
     const tagFilteredOps =
       this.runConfig.tags && this.runConfig.tags.length > 0
-        ? this.compiledGraph.operations.filter(a =>
-            this.runConfig.tags.some(r => a.tags.includes(r))
+        ? this.compiledGraph.operations.filter(o =>
+            this.runConfig.tags.some(r => o.tags.includes(r))
           )
         : [];
 
