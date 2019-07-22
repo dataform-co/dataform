@@ -212,24 +212,57 @@ describe("@dataform/api", () => {
             dependencies: ["op_a"],
             tags: ["tag3"],
             queries: ["create or replace view schema.someview as select 1 as test"]
+          },
+          {
+            name: "op_d",
+            tags: ["tag3"],
+            queries: ["create or replace view schema.someview as select 1 as test"]
+          },
+          {
+            name: "op_e",
+            dependencies: ["op_d"],
+            tags: ["tag1", "tag2"],
+            queries: ["create or replace view schema.someview as select 1 as test"]
           }
         ]
       });
 
-      const builder = new Builder(
+      const builder_with_tags_and_actions_option = new Builder(
         TEST_GRAPH_WITH_TAGS,
         {
-          actions: ["op_a", "op_b", "op_c"],
+          actions: ["op_b", "op_d"],
           tags: ["tag1", "tag2", "tag4"],
           includeDependencies: true
         },
         TEST_STATE
       );
-      const executionGraph = builder.build();
-      const includedActionNames = executionGraph.actions.map(n => n.name);
-      expect(includedActionNames).includes("op_a");
-      expect(includedActionNames).includes("op_b");
-      expect(includedActionNames).not.includes("op_c");
+
+      const executionGraph_with_tags_and_actions_option = builder_with_tags_and_actions_option.build();
+      const combinedActionNames_with_tags_and_actions_option = executionGraph_with_tags_and_actions_option.actions.map(
+        n => n.name
+      );
+      expect(combinedActionNames_with_tags_and_actions_option).includes("op_a");
+      expect(combinedActionNames_with_tags_and_actions_option).includes("op_b");
+      expect(combinedActionNames_with_tags_and_actions_option).not.includes("op_c");
+      expect(combinedActionNames_with_tags_and_actions_option).includes("op_d");
+      expect(combinedActionNames_with_tags_and_actions_option).includes("op_e");
+
+      const builder_with_tags_without_actions_option = new Builder(
+        TEST_GRAPH_WITH_TAGS,
+        {
+          tags: ["tag1", "tag2", "tag4"],
+          includeDependencies: true
+        },
+        TEST_STATE
+      );
+      const executionGraph_with_tags_without_actions_option = builder_with_tags_without_actions_option.build();
+      const combinedActionNames_with_tags_without_actions_option = executionGraph_with_tags_without_actions_option.actions.map(
+        n => n.name
+      );
+      expect(combinedActionNames_with_tags_without_actions_option).includes("op_a");
+      expect(combinedActionNames_with_tags_without_actions_option).includes("op_b");
+      expect(combinedActionNames_with_tags_without_actions_option).includes("op_c");
+      expect(combinedActionNames_with_tags_without_actions_option).includes("op_d");
     });
   });
 
