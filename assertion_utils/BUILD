@@ -7,7 +7,6 @@ ts_library(
     srcs = glob(["**/*.ts"]),
     module_name = "@dataform/assertion_utils",
     deps = [
-        "//core",
         "@npm//@types/node",
     ],
 )

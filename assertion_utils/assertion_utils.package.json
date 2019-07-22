@@ -1,6 +1,6 @@
 {
   "name": "@dataform/assertion_utils",
-  "description": "Assertion utilities for dataform.",
+  "description": "Assertion utilities for Dataform.",
   "dependencies": {
     "@dataform/core": "$DF_VERSION"
   },

@@ -1,6 +1,5 @@
-
-export function forDataset(foo: string) {
-  return new DatasetAssertion(foo);
+export function forDataset(dataset: string) {
+  return new DatasetAssertion(dataset);
 }
 
 export class DatasetAssertion {
@@ -10,8 +9,8 @@ export class DatasetAssertion {
     this.dataset = dataset;
   }
 
-  public groupedBy(cols: string[]) {
-    this.groupCols = cols;
+  public groupedBy(cols: string | string[]) {
+    this.groupCols = typeof cols === "string" ? [cols] : cols;
     return this;
   }
 
