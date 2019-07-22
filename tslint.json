@@ -4,7 +4,7 @@
       "object-literal-sort-keys": false,
       "max-classes-per-file": [false, 1],
       "no-floating-promises": true,
-      "no-console": true
+      "no-console": false
     }
   }
   
