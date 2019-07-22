@@ -59,73 +59,66 @@ export class Builder {
     const actionNameMap: { [name: string]: dataform.IExecutionAction } = {};
     allActions.forEach(action => (actionNameMap[action.name] = action));
 
-    // Actions selected with --tag option should be included
-    const tagFilteredTables =
-      this.runConfig.tags && this.runConfig.tags.length > 0
-        ? this.compiledGraph.tables.filter(t => this.runConfig.tags.some(r => t.tags.includes(r)))
-        : [];
-
-    const tagFilteredOps =
-      this.runConfig.tags && this.runConfig.tags.length > 0
-        ? this.compiledGraph.operations.filter(o =>
-            this.runConfig.tags.some(r => o.tags.includes(r))
-          )
-        : [];
-
-    const tagFilteredAssertions =
-      this.runConfig.tags && this.runConfig.tags.length > 0
-        ? this.compiledGraph.assertions.filter(a =>
-            this.runConfig.tags.some(r => a.tags.includes(r))
-          )
-        : [];
-
-    const taggedActionNameMap: { [name: string]: dataform.IExecutionAction } = {};
-
-    const allTaggedActions: dataform.IExecutionAction[] = [].concat(
-      tagFilteredTables,
-      tagFilteredOps,
-      tagFilteredAssertions
-    );
-    allTaggedActions.forEach(action => (taggedActionNameMap[action.name] = action));
-    const allTaggedActionNames = allTaggedActions.map(n => n.name);
-
     // Determine which action should be included.
-    const includedActionNames =
+    let includedActionNames =
       this.runConfig.actions && this.runConfig.actions.length > 0
         ? utils.matchPatterns(this.runConfig.actions, allActionNames)
         : allActionNames;
-
-    // Merge --tags and --actions into a combined array
-    let combinedActions = allActions.filter(
-      action =>
-        includedActionNames.indexOf(action.name) >= 0 ||
-        allTaggedActionNames.indexOf(action.name) >= 0
+    let includedActions = allActions.filter(
+      action => includedActionNames.indexOf(action.name) >= 0
     );
-    const combinedActionNames = combinedActions.map(n => n.name);
 
+    if (this.runConfig.tags && this.runConfig.tags.length > 0) {
+      // Actions selected with --tag option
+
+      const hasAnyTag = (action: { tags: string[] }) =>
+        !this.runConfig.tags ||
+        this.runConfig.tags.length === 0 ||
+        action.tags.some(actionTag => this.runConfig.tags.includes(actionTag));
+
+      const allTaggedActionNames: string[] = [].concat(
+        filteredTables.filter(t => hasAnyTag({ tags: t.tags })).map(t => t.name),
+        this.compiledGraph.operations.filter(o => hasAnyTag({ tags: o.tags })).map(t => t.name),
+        this.compiledGraph.assertions.filter(a => hasAnyTag({ tags: a.tags })).map(t => t.name)
+      );
+
+      const allTaggedActions = allActions.filter(a => allTaggedActionNames.includes(a.name));
+
+      if (this.runConfig.actions && this.runConfig.actions.length > 0) {
+        // Add up the actions specified by the tags to includedAction(Name).
+        const missingActNames = allTaggedActionNames.filter(n => !includedActionNames.includes(n));
+        const missingAct = allActions.filter(action => missingActNames.includes(action.name));
+        missingActNames.forEach(mn => includedActionNames.push(mn));
+        missingAct.forEach(ma => includedActions.push(ma));
+      } else {
+        // Leave only the actions specified by the tags
+        includedActionNames = allTaggedActionNames;
+        includedActions = allTaggedActions;
+      }
+    }
     if (this.runConfig.includeDependencies) {
       // Compute all transitive dependencies.
-      for (let i = 0; i < combinedActions.length; i++) {
-        combinedActions.forEach(action => {
+      for (let i = 0; i < allActions.length; i++) {
+        includedActions.forEach(action => {
           const matchingActionNames =
             action.dependencies && action.dependencies.length > 0
               ? utils.matchPatterns(action.dependencies, allActionNames)
               : [];
           // Update included action names.
           matchingActionNames.forEach(actionName => {
-            if (combinedActionNames.indexOf(actionName) < 0) {
-              combinedActionNames.push(actionName);
+            if (includedActionNames.indexOf(actionName) < 0) {
+              includedActionNames.push(actionName);
             }
           });
           // Update included actions.
-          combinedActions = allActions.filter(
-            action => combinedActionNames.indexOf(action.name) >= 0
+          includedActions = allActions.filter(
+            action => includedActionNames.indexOf(action.name) >= 0
           );
         });
       }
     }
     // Remove any excluded dependencies.
-    combinedActions.forEach(action => {
+    includedActions.forEach(action => {
       action.dependencies = action.dependencies.filter(
         dep => includedActionNames.indexOf(dep) >= 0
       );
@@ -134,7 +127,7 @@ export class Builder {
       projectConfig: this.compiledGraph.projectConfig,
       runConfig: this.runConfig,
       warehouseState: this.state,
-      actions: combinedActions
+      actions: includedActions
     });
   }
 
