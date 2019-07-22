@@ -42,7 +42,6 @@ export class Builder {
     }
 
     const tableStateByTarget: { [targetJson: string]: dataform.ITableMetadata } = {};
-
     this.state.tables.forEach(tableState => {
       tableStateByTarget[JSON.stringify(tableState.target)] = tableState;
     });
