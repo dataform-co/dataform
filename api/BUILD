@@ -16,6 +16,7 @@ ts_library(
         "@npm//cron-parser",
         "@npm//glob",
         "@npm//node-redshift",
+        "@npm//mssql",
         "@npm//pretty-ms",
         "@npm//promise-pool-executor",
         "@npm//protobufjs",

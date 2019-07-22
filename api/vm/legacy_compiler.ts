@@ -26,6 +26,7 @@ const tableContextPropertyNames = [
   "disabled",
   "redshift",
   "bigquery",
+  "sqldatawarehouse",
   "dependencies",
   "descriptor",
   "describe",

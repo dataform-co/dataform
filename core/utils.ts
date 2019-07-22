@@ -184,6 +184,18 @@ export function validate(compiledGraph: dataform.ICompiledGraph): dataform.IGrap
       validationErrors.push(dataform.ValidationError.create({ message, actionName }));
     }
 
+    // sqlserver config
+    if(!!action.sqldatawarehouse) {
+      if(action.sqldatawarehouse.distribution){
+        let dist = action.sqldatawarehouse.distribution.toUpperCase();
+        let hash_pattern = new RegExp('HASH\\s*\\(\\s*\\w*\\s*\\)\\s*');
+        if(dist !== "REPLICATE"  && dist !== "ROUND_ROBIN" && !hash_pattern.test(dist)  ){
+            const message = `Invalid distribution in sqlserver config [${dist}]`;
+            validationErrors.push(dataform.ValidationError.create({message, actionName}))
+        }
+      }
+    }
+
     // redshift config
     if (!!action.redshift) {
       if (

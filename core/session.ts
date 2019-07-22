@@ -106,6 +106,9 @@ export class Session {
     if (actionOptions.sqlxConfig.redshift && !this.isDatasetType(actionOptions.sqlxConfig.type)) {
       this.compileError("Actions may only specify 'redshift: { ... }' if they create a dataset.");
     }
+    if (actionOptions.sqlxConfig.sqldatawarehouse && !this.isDatasetType(actionOptions.sqlxConfig.type)) {
+      this.compileError("Actions may only specify 'sqldatawarehouse: { ... }' if they create a dataset.");
+    }
     if (actionOptions.sqlxConfig.bigquery && !this.isDatasetType(actionOptions.sqlxConfig.type)) {
       this.compileError("Actions may only specify 'bigquery: { ... }' if they create a dataset.");
     }
@@ -119,6 +122,8 @@ export class Session {
     if (actionOptions.sqlxConfig.type === "test") {
       return this.test(actionOptions.sqlxConfig.name).dataset(actionOptions.sqlxConfig.dataset);
     }
+
+    let schema = actionOptions.sqlxConfig.schema
 
     const action = (() => {
       switch (actionOptions.sqlxConfig.type) {
@@ -134,6 +139,7 @@ export class Session {
           const assertion = this.assert(actionOptions.sqlxConfig.name);
           assertion.dependencies(actionOptions.sqlxConfig.dependencies);
           assertion.tags(actionOptions.sqlxConfig.tags);
+          schema = actionOptions.sqlxConfig.schema || this.config.assertionSchema
           return assertion;
         }
         case "operations": {
@@ -153,7 +159,7 @@ export class Session {
     if (action.proto.target) {
       action.proto.target = this.target(
         actionOptions.sqlxConfig.name,
-        actionOptions.sqlxConfig.schema
+        schema
       );
     }
     return action;

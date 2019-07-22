@@ -3,6 +3,7 @@ import { Tasks } from "../tasks";
 import { BigQueryAdapter } from "./bigquery";
 import { RedshiftAdapter } from "./redshift";
 import { SnowflakeAdapter } from "./snowflake";
+import { SQLDataWarehouseAdapter } from "./sqldatawarehouse";
 
 export interface IAdapter {
   resolveTarget(target: dataform.ITarget): string;
@@ -26,11 +27,15 @@ export enum WarehouseType {
   BIGQUERY = "bigquery",
   POSTGRES = "postgres",
   REDSHIFT = "redshift",
-  SNOWFLAKE = "snowflake"
+  SNOWFLAKE = "snowflake",
+  SQLDATAWAREHOUSE = "sqldatawarehouse"
 }
 
 export function supportsCancel(warehouseType: WarehouseType) {
-  return warehouseType === WarehouseType.BIGQUERY;
+  if (warehouseType === WarehouseType.BIGQUERY || warehouseType === WarehouseType.SQLDATAWAREHOUSE)
+      return true
+  else
+    return false
 }
 
 const requiredBigQueryWarehouseProps: Array<keyof dataform.IBigQuery> = [
@@ -52,12 +57,20 @@ const requiredSnowflakeWarehouseProps: Array<keyof dataform.ISnowflake> = [
   "databaseName",
   "warehouse"
 ];
+const requiredSQLDataWarehouseProps: Array<keyof dataform.ISQLDataWarehouse> = [
+  "server",
+  "port",
+  "username",
+  "password",
+  "databaseName"
+]
 
 export const requiredWarehouseProps = {
   [WarehouseType.BIGQUERY]: requiredBigQueryWarehouseProps,
   [WarehouseType.POSTGRES]: requiredJdbcWarehouseProps,
   [WarehouseType.REDSHIFT]: requiredJdbcWarehouseProps,
-  [WarehouseType.SNOWFLAKE]: requiredSnowflakeWarehouseProps
+  [WarehouseType.SNOWFLAKE]: requiredSnowflakeWarehouseProps,
+  [WarehouseType.SQLDATAWAREHOUSE]: requiredSQLDataWarehouseProps
 };
 
 const registry: { [warehouseType: string]: AdapterConstructor<IAdapter> } = {};
@@ -80,3 +93,4 @@ register("bigquery", BigQueryAdapter);
 register("postgres", RedshiftAdapter);
 register("redshift", RedshiftAdapter);
 register("snowflake", SnowflakeAdapter);
+register("sqldatawarehouse", SQLDataWarehouseAdapter);

@@ -19,7 +19,8 @@ import {
   getBigQueryCredentials,
   getPostgresCredentials,
   getRedshiftCredentials,
-  getSnowflakeCredentials
+  getSQLDataWarehouseCredentials,
+  getSnowflakeCredentials,
 } from "@dataform/cli/credentials";
 import { actuallyResolve, assertPathExists, compiledGraphHasErrors } from "@dataform/cli/util";
 import { createYargsCli, INamedOption } from "@dataform/cli/yargswrapper";
@@ -212,6 +213,9 @@ const builtYargs = createYargsCli({
             }
             case "redshift": {
               return getRedshiftCredentials();
+            }
+            case "sqldatawarehouse":{
+              return getSQLDataWarehouseCredentials();
             }
             case "snowflake": {
               return getSnowflakeCredentials();

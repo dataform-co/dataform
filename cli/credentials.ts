@@ -38,6 +38,22 @@ export function getRedshiftCredentials() {
   );
 }
 
+export function getSQLDataWarehouseCredentials(): dataform.ISQLDataWarehouse {
+  const server = question("Enter your Server name (for example 'name.database.windows.net'):");
+  const port = intQuestion("Enter your Server port:",1433);
+  const username = question("Enter your datawarehouse user:");
+  const password = passwordQuestion("Enter your datawarehouse password:");
+  const databaseName = question("Enter the database name:");
+
+  return {
+    server,
+    port,
+    username,
+    password,
+    databaseName
+  };
+}
+
 export function getSnowflakeCredentials(): dataform.ISnowflake {
   const accountId = question(
     "Enter your Snowflake account identifier, including region (for example 'myaccount.us-east-1'):"

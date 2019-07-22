@@ -21,6 +21,7 @@ export const ignoredProps = {
   [TableTypes.INLINE]: [
     "bigquery",
     "redshift",
+    "sqldatawarehouse",
     "preOps",
     "postOps",
     "descriptor",
@@ -43,6 +44,7 @@ export interface TConfig {
   protected?: boolean;
   redshift?: dataform.IRedshiftOptions;
   bigquery?: dataform.IBigQueryOptions;
+  sqldatawarehouse?: dataform.ISQLDataWarehouseOptions;
 }
 
 export class Table {
@@ -84,6 +86,9 @@ export class Table {
     if (config.bigquery) {
       this.bigquery(config.bigquery);
     }
+    if (config.sqldatawarehouse) {
+      this.sqldatawarehouse(config.sqldatawarehouse);
+    }
     if (config.tags) {
       this.tags(config.tags);
     }
@@ -118,6 +123,11 @@ export class Table {
 
   public disabled() {
     this.proto.disabled = true;
+    return this;
+  }
+
+  public sqldatawarehouse(sqldatawarehouse: dataform.ISQLDataWarehouseOptions) {
+    this.proto.sqldatawarehouse = dataform.SQLDataWarehouseOptions.create(sqldatawarehouse);
     return this;
   }
 
@@ -225,6 +235,7 @@ export interface ITableContext {
   disabled: () => string;
   redshift: (redshift: dataform.IRedshiftOptions) => string;
   bigquery: (bigquery: dataform.IBigQueryOptions) => string;
+  sqldatawarehouse: (sqldatawarehouse: dataform.ISQLDataWarehouseOptions) => string;
   dependencies: (name: string) => string;
   descriptor: (
     keyOrKeysOrMap: string | string[] | { [key: string]: string },
@@ -288,6 +299,11 @@ export class TableContext implements ITableContext {
 
   public disabled() {
     this.table.disabled();
+    return "";
+  }
+
+  public sqldatawarehouse(sqldatawarehouse: dataform.ISQLDataWarehouseOptions){
+    this.table.sqldatawarehouse(sqldatawarehouse);
     return "";
   }
 
