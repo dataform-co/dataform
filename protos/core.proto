@@ -19,10 +19,10 @@ message ProjectConfig {
 
 message RunConfig {
   repeated string actions = 1;
+  repeated string tags = 5;
   bool include_dependencies = 3;
   bool full_refresh = 2;
   bool carry_on = 4;
-  repeated string tags = 5;
 }
 
 message GenerateIndexConfig {
@@ -165,7 +165,6 @@ message ExecutionTask {
 message ExecutionAction {
   string name = 1;
   repeated string dependencies = 3;
-  repeated string tags = 7;
   repeated ExecutionTask tasks = 2;
   string type = 4;
   Target target = 5;
@@ -240,8 +239,8 @@ message Field {
   }
 }
 
-message Fields { 
-  repeated Field fields = 1; 
+message Fields {
+  repeated Field fields = 1;
 }
 
 message TableMetadata {

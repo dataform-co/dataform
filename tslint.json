@@ -1,3 +1,4 @@
+
 {
     "extends": ["tslint:recommended", "tslint-react", "tslint-config-prettier"],
     "rules": {
@@ -6,4 +7,3 @@
       "no-floating-promises": true
     }
   }
-  
