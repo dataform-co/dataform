@@ -192,42 +192,46 @@ describe("@dataform/api", () => {
       expect(actionNames).includes("c");
     });
 
-    it("build actions with tags", () => {
-      const TEST_GRAPH_WITH_TAGS: dataform.ICompiledGraph = dataform.CompiledGraph.create({
-        projectConfig: { warehouse: "bigquery" },
-        operations: [
-          {
-            name: "op_a",
-            tags: ["tag1"],
-            queries: ["create or replace view schema.someview as select 1 as test"]
+    const TEST_GRAPH_WITH_TAGS: dataform.ICompiledGraph = dataform.CompiledGraph.create({
+      projectConfig: { warehouse: "bigquery" },
+      operations: [
+        {
+          name: "op_a",
+          tags: ["tag1"],
+          queries: ["create or replace view schema.someview as select 1 as test"]
+        },
+        {
+          name: "op_b",
+          dependencies: ["op_a"],
+          tags: ["tag2"],
+          queries: ["create or replace view schema.someview as select 1 as test"]
+        },
+        {
+          name: "op_c",
+          dependencies: ["op_a"],
+          tags: ["tag3"],
+          queries: ["create or replace view schema.someview as select 1 as test"]
+        },
+        {
+          name: "op_d",
+          tags: ["tag3"],
+          queries: ["create or replace view schema.someview as select 1 as test"]
+        }
+      ],
+      tables: [
+        {
+          name: "tab_a",
+          dependencies: ["op_d"],
+          target: {
+            schema: "schema",
+            name: "a"
           },
-          {
-            name: "op_b",
-            dependencies: ["op_a"],
-            tags: ["tag2"],
-            queries: ["create or replace view schema.someview as select 1 as test"]
-          },
-          {
-            name: "op_c",
-            dependencies: ["op_a"],
-            tags: ["tag3"],
-            queries: ["create or replace view schema.someview as select 1 as test"]
-          },
-          {
-            name: "op_d",
-            tags: ["tag3"],
-            queries: ["create or replace view schema.someview as select 1 as test"]
-          },
-          {
-            name: "op_e",
-            dependencies: ["op_d"],
-            tags: ["tag1", "tag2"],
-            queries: ["create or replace view schema.someview as select 1 as test"]
-          }
-        ]
-      });
-
-      const builder_with_tags_and_actions_option = new Builder(
+          tags: ["tag1", "tag2"]
+        }
+      ]
+    });
+    it("build actions with --tags (with dependencies)", () => {
+      const builderWithTagsAndActions = new Builder(
         TEST_GRAPH_WITH_TAGS,
         {
           actions: ["op_b", "op_d"],
@@ -237,17 +241,19 @@ describe("@dataform/api", () => {
         TEST_STATE
       );
 
-      const executionGraph_with_tags_and_actions_option = builder_with_tags_and_actions_option.build();
-      const combinedActionNames_with_tags_and_actions_option = executionGraph_with_tags_and_actions_option.actions.map(
+      const executionGraphWithTagsAndActions = builderWithTagsAndActions.build();
+      const combinedActionNamesWithTagsAndActions = executionGraphWithTagsAndActions.actions.map(
         n => n.name
       );
-      expect(combinedActionNames_with_tags_and_actions_option).includes("op_a");
-      expect(combinedActionNames_with_tags_and_actions_option).includes("op_b");
-      expect(combinedActionNames_with_tags_and_actions_option).not.includes("op_c");
-      expect(combinedActionNames_with_tags_and_actions_option).includes("op_d");
-      expect(combinedActionNames_with_tags_and_actions_option).includes("op_e");
+      expect(combinedActionNamesWithTagsAndActions).includes("op_a");
+      expect(combinedActionNamesWithTagsAndActions).includes("op_b");
+      expect(combinedActionNamesWithTagsAndActions).not.includes("op_c");
+      expect(combinedActionNamesWithTagsAndActions).includes("op_d");
+      expect(combinedActionNamesWithTagsAndActions).includes("tab_a");
+    });
 
-      const builder_with_tags_without_actions_option = new Builder(
+    it("build actions with --tags but without --actions (with dependencies)", () => {
+      const builderWithTagsWithoutActions = new Builder(
         TEST_GRAPH_WITH_TAGS,
         {
           tags: ["tag1", "tag2", "tag4"],
@@ -255,14 +261,15 @@ describe("@dataform/api", () => {
         },
         TEST_STATE
       );
-      const executionGraph_with_tags_without_actions_option = builder_with_tags_without_actions_option.build();
-      const combinedActionNames_with_tags_without_actions_option = executionGraph_with_tags_without_actions_option.actions.map(
+      const executionGraphWithTagsWithoutActions = builderWithTagsWithoutActions.build();
+      const combinedActionNamesWithTagsWithoutActions = executionGraphWithTagsWithoutActions.actions.map(
         n => n.name
       );
-      expect(combinedActionNames_with_tags_without_actions_option).includes("op_a");
-      expect(combinedActionNames_with_tags_without_actions_option).includes("op_b");
-      expect(combinedActionNames_with_tags_without_actions_option).includes("op_c");
-      expect(combinedActionNames_with_tags_without_actions_option).includes("op_d");
+      expect(combinedActionNamesWithTagsWithoutActions).includes("op_a");
+      expect(combinedActionNamesWithTagsWithoutActions).includes("op_b");
+      expect(combinedActionNamesWithTagsWithoutActions).not.includes("op_c");
+      expect(combinedActionNamesWithTagsWithoutActions).includes("op_d");
+      expect(combinedActionNamesWithTagsWithoutActions).includes("tab_a");
     });
   });
 
