@@ -1,4 +1,4 @@
-syntax = "proto3";
+syntax="proto3";
 
 package dataform;
 
@@ -45,8 +45,8 @@ message Target {
   string name = 2;
 }
 
-message BigQueryOptions { 
-  string partition_by = 1; 
+message BigQueryOptions {
+  string partition_by = 1;
 }
 
 message RedshiftOptions {
@@ -128,7 +128,7 @@ message Assertion {
   string query = 3;
 
   repeated string tags = 9;
-
+  
   // Generated.
   string file_name = 7;
 }
@@ -171,8 +171,8 @@ message ExecutionAction {
   string table_type = 6;
 }
 
-message WarehouseState { 
-  repeated TableMetadata tables = 1; 
+message WarehouseState {
+  repeated TableMetadata tables = 1;
 }
 
 message ExecutionGraph {
