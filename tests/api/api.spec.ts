@@ -252,12 +252,12 @@ describe("@dataform/api", () => {
       expect(combinedActionNamesWithTagsAndActions).includes("tab_a");
     });
 
-    it("build actions with --tags but without --actions (with dependencies)", () => {
+    it("build actions with --tags but without --actions (without dependencies)", () => {
       const builderWithTagsWithoutActions = new Builder(
         TEST_GRAPH_WITH_TAGS,
         {
           tags: ["tag1", "tag2", "tag4"],
-          includeDependencies: true
+          includeDependencies: false
         },
         TEST_STATE
       );
@@ -268,7 +268,7 @@ describe("@dataform/api", () => {
       expect(combinedActionNamesWithTagsWithoutActions).includes("op_a");
       expect(combinedActionNamesWithTagsWithoutActions).includes("op_b");
       expect(combinedActionNamesWithTagsWithoutActions).not.includes("op_c");
-      expect(combinedActionNamesWithTagsWithoutActions).includes("op_d");
+      expect(combinedActionNamesWithTagsWithoutActions).not.includes("op_d");
       expect(combinedActionNamesWithTagsWithoutActions).includes("tab_a");
     });
   });
