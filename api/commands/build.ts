@@ -55,6 +55,7 @@ export class Builder {
       this.compiledGraph.operations.map(o => this.buildOperation(o)),
       this.compiledGraph.assertions.map(a => this.buildAssertion(a))
     );
+
     const allActionNames = allActions.map(n => n.name);
     const actionNameMap: { [name: string]: dataform.IExecutionAction } = {};
     allActions.forEach(action => (actionNameMap[action.name] = action));
@@ -70,18 +71,17 @@ export class Builder {
 
     if (this.runConfig.tags && this.runConfig.tags.length > 0) {
       // Actions selected with --tag option
-
-      const hasAnyTag = (action: { tags: string[] }) =>
-        !this.runConfig.tags ||
-        this.runConfig.tags.length === 0 ||
-        action.tags.some(actionTag => this.runConfig.tags.includes(actionTag));
-
       const allTaggedActionNames: string[] = [].concat(
-        filteredTables.filter(t => hasAnyTag({ tags: t.tags })).map(t => t.name),
-        this.compiledGraph.operations.filter(o => hasAnyTag({ tags: o.tags })).map(t => t.name),
-        this.compiledGraph.assertions.filter(a => hasAnyTag({ tags: a.tags })).map(t => t.name)
+        filteredTables
+          .filter(t => t.tags.some(t => this.runConfig.tags.includes(t)))
+          .map(t => t.name),
+        this.compiledGraph.operations
+          .filter(o => o.tags.some(t => this.runConfig.tags.includes(t)))
+          .map(t => t.name),
+        this.compiledGraph.assertions
+          .filter(a => a.tags.some(t => this.runConfig.tags.includes(t)))
+          .map(t => t.name)
       );
-
       const allTaggedActions = allActions.filter(a => allTaggedActionNames.includes(a.name));
 
       if (this.runConfig.actions && this.runConfig.actions.length > 0) {
