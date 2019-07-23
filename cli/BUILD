@@ -25,7 +25,7 @@ load("@build_bazel_rules_nodejs//:defs.bzl", "nodejs_binary")
 
 nodejs_binary(
     name = "bin",
-    bootstrap = ["source-map-support"],
+    bootstrap = ["source-map-support/register"],
     data = [
         ":cli",
         "@npm//source-map-support",
