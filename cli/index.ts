@@ -88,6 +88,14 @@ const includeDepsOption: INamedOption<yargs.Options> = {
   }
 };
 
+const tagsOption: INamedOption<yargs.Options> = {
+  name: "tags",
+  option: {
+    describe: "A list of tags to filter the actions to run.",
+    type: "array"
+  }
+};
+
 const schemaSuffixOverrideOption: INamedOption<yargs.Options> = {
   name: "schema-suffix",
   option: {
@@ -392,6 +400,7 @@ const builtYargs = createYargsCli({
         fullRefreshOption,
         actionsOption,
         includeDepsOption,
+        tagsOption,
         schemaSuffixOverrideOption,
         credentialsOption,
         verboseOutputOption
@@ -416,7 +425,8 @@ const builtYargs = createYargsCli({
           {
             fullRefresh: argv["full-refresh"],
             actions: argv.actions,
-            includeDependencies: argv["include-deps"]
+            includeDependencies: argv["include-deps"],
+            tags: argv.tags
           },
           readCredentials
         );
