@@ -4,7 +4,6 @@ import { dataform } from "@dataform/protos";
 import { ChildProcess, fork } from "child_process";
 import * as fs from "fs";
 import * as path from "path";
-import { promisify } from "util";
 
 export async function compile(
   compileConfig: dataform.ICompileConfig
@@ -12,8 +11,9 @@ export async function compile(
   // Resolve the path in case it hasn't been resolved already.
   path.resolve(compileConfig.projectDir);
   const returnedPath = await CompileChildProcess.forkProcess().compile(compileConfig);
-  const contents = await promisify(fs.readFile)(returnedPath);
+  const contents = fs.readFileSync(returnedPath);
   let compiledGraph = dataform.CompiledGraph.decode(contents);
+  fs.unlinkSync(returnedPath);
   // Merge graph errors into the compiled graph.
   compiledGraph = dataform.CompiledGraph.create({
     ...compiledGraph,

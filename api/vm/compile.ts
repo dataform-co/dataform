@@ -92,12 +92,9 @@ function compileInTmpDir(compileConfig: dataform.ICompileConfig) {
   if (!fs.existsSync(tmpDir)) {
     fs.mkdirSync(tmpDir);
   }
-  // Create a consistent hash for the temporary path based on the absolute project path.
-  const absProjectPathHash = crypto
-    .createHash("md5")
-    .update(path.resolve(compileConfig.projectDir))
-    .digest("hex");
-  const tmpPath = path.join(tmpDir, absProjectPathHash);
+  // Generate a random filename.
+  const subdir = crypto.randomBytes(64).toString("hex");
+  const tmpPath = path.join(tmpDir, subdir);
   // Clear the transfer path before writing it.
   if (fs.existsSync(tmpPath)) {
     fs.unlinkSync(tmpPath);

@@ -58,7 +58,7 @@ load("@build_bazel_rules_nodejs//:defs.bzl", "nodejs_binary")
 
 nodejs_binary(
     name = "vm/compile",
-    bootstrap = ["source-map-support"],
+    bootstrap = ["source-map-support/register"],
     data = [
         ":lib",
         "@npm//source-map-support",
@@ -68,7 +68,7 @@ nodejs_binary(
 
 nodejs_binary(
     name = "vm/query",
-    bootstrap = ["source-map-support"],
+    bootstrap = ["source-map-support/register"],
     data = [
         ":lib",
         "@npm//source-map-support",
