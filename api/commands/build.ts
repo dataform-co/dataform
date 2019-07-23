@@ -55,7 +55,6 @@ export class Builder {
       this.compiledGraph.operations.map(o => this.buildOperation(o)),
       this.compiledGraph.assertions.map(a => this.buildAssertion(a))
     );
-
     const allActionNames = allActions.map(n => n.name);
     const actionNameMap: { [name: string]: dataform.IExecutionAction } = {};
     allActions.forEach(action => (actionNameMap[action.name] = action));
@@ -68,9 +67,8 @@ export class Builder {
     let includedActions = allActions.filter(
       action => includedActionNames.indexOf(action.name) >= 0
     );
-
+    // Determine ations selected with --tag option and update applicable actions
     if (this.runConfig.tags && this.runConfig.tags.length > 0) {
-      // Actions selected with --tag option
       const allTaggedActionNames: string[] = [].concat(
         filteredTables
           .filter(t => t.tags.some(t => this.runConfig.tags.includes(t)))
