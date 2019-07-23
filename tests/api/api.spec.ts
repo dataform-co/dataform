@@ -231,7 +231,7 @@ describe("@dataform/api", () => {
       ]
     });
     it("build actions with --tags (with dependencies)", () => {
-      const builderWithTagsAndActions = new Builder(
+      const builder = new Builder(
         TEST_GRAPH_WITH_TAGS,
         {
           actions: ["op_b", "op_d"],
@@ -240,20 +240,17 @@ describe("@dataform/api", () => {
         },
         TEST_STATE
       );
-
-      const executionGraphWithTagsAndActions = builderWithTagsAndActions.build();
-      const combinedActionNamesWithTagsAndActions = executionGraphWithTagsAndActions.actions.map(
-        n => n.name
-      );
-      expect(combinedActionNamesWithTagsAndActions).includes("op_a");
-      expect(combinedActionNamesWithTagsAndActions).includes("op_b");
-      expect(combinedActionNamesWithTagsAndActions).not.includes("op_c");
-      expect(combinedActionNamesWithTagsAndActions).includes("op_d");
-      expect(combinedActionNamesWithTagsAndActions).includes("tab_a");
+      const executedGraph = builder.build();
+      const actionNames = executedGraph.actions.map(n => n.name);
+      expect(actionNames).includes("op_a");
+      expect(actionNames).includes("op_b");
+      expect(actionNames).not.includes("op_c");
+      expect(actionNames).includes("op_d");
+      expect(actionNames).includes("tab_a");
     });
 
     it("build actions with --tags but without --actions (without dependencies)", () => {
-      const builderWithTagsWithoutActions = new Builder(
+      const builder = new Builder(
         TEST_GRAPH_WITH_TAGS,
         {
           tags: ["tag1", "tag2", "tag4"],
@@ -261,15 +258,13 @@ describe("@dataform/api", () => {
         },
         TEST_STATE
       );
-      const executionGraphWithTagsWithoutActions = builderWithTagsWithoutActions.build();
-      const combinedActionNamesWithTagsWithoutActions = executionGraphWithTagsWithoutActions.actions.map(
-        n => n.name
-      );
-      expect(combinedActionNamesWithTagsWithoutActions).includes("op_a");
-      expect(combinedActionNamesWithTagsWithoutActions).includes("op_b");
-      expect(combinedActionNamesWithTagsWithoutActions).not.includes("op_c");
-      expect(combinedActionNamesWithTagsWithoutActions).not.includes("op_d");
-      expect(combinedActionNamesWithTagsWithoutActions).includes("tab_a");
+      const executedGraph = builder.build();
+      const actionNames = executedGraph.actions.map(n => n.name);
+      expect(actionNames).includes("op_a");
+      expect(actionNames).includes("op_b");
+      expect(actionNames).not.includes("op_c");
+      expect(actionNames).not.includes("op_d");
+      expect(actionNames).includes("tab_a");
     });
   });
 
