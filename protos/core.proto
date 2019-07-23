@@ -19,6 +19,7 @@ message ProjectConfig {
 
 message RunConfig {
   repeated string actions = 1;
+  repeated string tags = 5;
   bool include_dependencies = 3;
   bool full_refresh = 2;
   bool carry_on = 4;
@@ -211,9 +212,9 @@ message ExecutedAction {
   bool deprecated_skipped = 4;
 }
 
-// TODO: Instead of returning this as a result of run(...), return an ExecutionGraph
-// along with something like a RunStatus message indicating the success/failure of executing
-// that graph on the data warehouse.
+// TODO: Instead of returning this as a result of run(...), return an
+// ExecutionGraph along with something like a RunStatus message indicating the
+// success/failure of executing that graph on the data warehouse.
 message ExecutedGraph {
   ProjectConfig project_config = 1;
   RunConfig run_config = 2;

@@ -10,6 +10,7 @@ message NotificationSettings {
 
 message ScheduleOptions {
   repeated string actions = 1;
+  repeated string tags = 4;
   bool include_dependencies = 2;
   bool full_refresh = 3;
 } 

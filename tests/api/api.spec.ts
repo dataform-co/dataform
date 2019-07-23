@@ -191,6 +191,81 @@ describe("@dataform/api", () => {
       expect(actionNames).not.includes("b");
       expect(actionNames).includes("c");
     });
+
+    const TEST_GRAPH_WITH_TAGS: dataform.ICompiledGraph = dataform.CompiledGraph.create({
+      projectConfig: { warehouse: "bigquery" },
+      operations: [
+        {
+          name: "op_a",
+          tags: ["tag1"],
+          queries: ["create or replace view schema.someview as select 1 as test"]
+        },
+        {
+          name: "op_b",
+          dependencies: ["op_a"],
+          tags: ["tag2"],
+          queries: ["create or replace view schema.someview as select 1 as test"]
+        },
+        {
+          name: "op_c",
+          dependencies: ["op_a"],
+          tags: ["tag3"],
+          queries: ["create or replace view schema.someview as select 1 as test"]
+        },
+        {
+          name: "op_d",
+          tags: ["tag3"],
+          queries: ["create or replace view schema.someview as select 1 as test"]
+        }
+      ],
+      tables: [
+        {
+          name: "tab_a",
+          dependencies: ["op_d"],
+          target: {
+            schema: "schema",
+            name: "a"
+          },
+          tags: ["tag1", "tag2"]
+        }
+      ]
+    });
+    it("build actions with --tags (with dependencies)", () => {
+      const builder = new Builder(
+        TEST_GRAPH_WITH_TAGS,
+        {
+          actions: ["op_b", "op_d"],
+          tags: ["tag1", "tag2", "tag4"],
+          includeDependencies: true
+        },
+        TEST_STATE
+      );
+      const executedGraph = builder.build();
+      const actionNames = executedGraph.actions.map(n => n.name);
+      expect(actionNames).includes("op_a");
+      expect(actionNames).includes("op_b");
+      expect(actionNames).not.includes("op_c");
+      expect(actionNames).includes("op_d");
+      expect(actionNames).includes("tab_a");
+    });
+
+    it("build actions with --tags but without --actions (without dependencies)", () => {
+      const builder = new Builder(
+        TEST_GRAPH_WITH_TAGS,
+        {
+          tags: ["tag1", "tag2", "tag4"],
+          includeDependencies: false
+        },
+        TEST_STATE
+      );
+      const executedGraph = builder.build();
+      const actionNames = executedGraph.actions.map(n => n.name);
+      expect(actionNames).includes("op_a");
+      expect(actionNames).includes("op_b");
+      expect(actionNames).not.includes("op_c");
+      expect(actionNames).not.includes("op_d");
+      expect(actionNames).includes("tab_a");
+    });
   });
 
   describe("sql_generating", () => {
