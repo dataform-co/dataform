@@ -39,8 +39,8 @@ export function getRedshiftCredentials() {
 }
 
 export function getSQLDataWarehouseCredentials(): dataform.ISQLDataWarehouse {
-  const server = question("Enter your Server name (for example 'name.database.windows.net'):");
-  const port = intQuestion("Enter your Server port:",1433);
+  const server = question("Enter your server name (for example 'name.database.windows.net'):");
+  const port = intQuestion("Enter your server port:", 1433);
   const username = question("Enter your datawarehouse user:");
   const password = passwordQuestion("Enter your datawarehouse password:");
   const databaseName = question("Enter the database name:");

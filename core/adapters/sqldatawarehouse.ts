@@ -4,22 +4,20 @@ import { Adapter } from "./base";
 import { IAdapter } from "./index";
 
 export class SQLDataWarehouseAdapter extends Adapter implements IAdapter {
-  private project: dataform.IProjectConfig;
-
-  constructor(project: dataform.IProjectConfig) {
+  constructor() {
     super();
-    this.project = project;
   }
 
   private createOrReplace(table: dataform.ITable) {
     if (table.type === "view") {
       return (
         Tasks.create()
-        // Drop the view in case we are changing the number of column(s) (or their types).
+          // Drop the view in case we are changing the number of column(s) (or their types).
           .add(Task.statement(this.dropIfExists(table.target, this.baseTableType(table.type))))
           .add(
             Task.statement(`create view ${this.resolveTarget(table.target)}
-             as ${table.query}`))
+             as ${table.query}`)
+          )
       );
     }
     const tempTableTarget = dataform.Target.create({
@@ -31,12 +29,18 @@ export class SQLDataWarehouseAdapter extends Adapter implements IAdapter {
       .add(Task.statement(this.dropIfExists(tempTableTarget, this.baseTableType(table.type))))
       .add(Task.statement(this.createTable(table, tempTableTarget)))
       .add(Task.statement(this.dropIfExists(table.target, "table")))
-      .add(Task.statement(`rename object ${this.resolveTarget(tempTableTarget)} to ${table.target.name} `));
+      .add(
+        Task.statement(
+          `rename object ${this.resolveTarget(tempTableTarget)} to ${table.target.name} `
+        )
+      );
   }
 
   private createTable(table: dataform.ITable, target: dataform.ITarget) {
-    let distribution = (table.sqldatawarehouse && table.sqldatawarehouse.distribution)?
-      table.sqldatawarehouse.distribution:"ROUND_ROBIN" // default
+    let distribution =
+      table.sqlDataWarehouse && table.sqlDataWarehouse.distribution
+        ? table.sqlDataWarehouse.distribution
+        : "ROUND_ROBIN"; // default
     return `create table ${this.resolveTarget(target)}
      with(
        distribution = ${distribution}
@@ -54,7 +58,7 @@ export class SQLDataWarehouseAdapter extends Adapter implements IAdapter {
     tableMetadata: dataform.ITableMetadata
   ): Tasks {
     const tasks = Tasks.create();
-    // Drop the existing view or table if we are changing it's type.
+    // Drop the existing view or table if we are changing its type.
     if (tableMetadata && tableMetadata.type !== this.baseTableType(table.type)) {
       tasks.add(
         Task.statement(this.dropIfExists(table.target, this.oppositeTableType(table.type)))
@@ -94,16 +98,20 @@ export class SQLDataWarehouseAdapter extends Adapter implements IAdapter {
 
     return Tasks.create()
       .add(Task.statement(this.dropIfExists(target, "view")))
-      .add(Task.statement(`
+      .add(
+        Task.statement(`
         create view ${this.resolveTarget(target)}
-        as ${assertion.query}`))
+        as ${assertion.query}`)
+      )
       .add(Task.assertion(`select sum(1) as row_count from ${this.resolveTarget(target)}`));
   }
 
   public dropIfExists(target: dataform.ITarget, type: string) {
-    if(type === "view")
+    if (type === "view")
       return `drop ${this.baseTableType(type)} if exists ${this.resolveTarget(target)} `;
-    else
-      return `if object_id ('${this.resolveTarget(target)}','U') is not null drop table ${this.resolveTarget(target)}`
+
+    return `if object_id ('${this.resolveTarget(
+      target
+    )}','U') is not null drop table ${this.resolveTarget(target)}`;
   }
 }

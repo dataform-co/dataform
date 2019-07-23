@@ -32,11 +32,9 @@ message BigQuery {
 }
 
 message SQLDataWarehouse {
-  string server = 2;
-  int32 port = 3;
-  string username = 4;
-  string password = 5;
-  string database_name = 6;
-
-  reserved 1;
+  string server = 1;
+  int32 port = 2;
+  string username = 3;
+  string password = 4;
+  string database_name = 5;
 }

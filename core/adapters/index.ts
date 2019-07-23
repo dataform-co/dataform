@@ -1,9 +1,9 @@
 import { dataform } from "@dataform/protos";
-import { Tasks } from "../tasks";
-import { BigQueryAdapter } from "./bigquery";
-import { RedshiftAdapter } from "./redshift";
-import { SnowflakeAdapter } from "./snowflake";
-import { SQLDataWarehouseAdapter } from "./sqldatawarehouse";
+import { Tasks } from "@dataform/core/tasks";
+import { BigQueryAdapter } from "@dataform/core/adapters/bigquery";
+import { RedshiftAdapter } from "@dataform/core/adapters/redshift";
+import { SnowflakeAdapter } from "@dataform/core/adapters/snowflake";
+import { SQLDataWarehouseAdapter } from "@dataform/core/adapters/sqldatawarehouse";
 
 export interface IAdapter {
   resolveTarget(target: dataform.ITarget): string;
@@ -32,10 +32,10 @@ export enum WarehouseType {
 }
 
 export function supportsCancel(warehouseType: WarehouseType) {
-  if (warehouseType === WarehouseType.BIGQUERY || warehouseType === WarehouseType.SQLDATAWAREHOUSE)
-      return true
-  else
-    return false
+  const supportsCancel = [WarehouseType.BIGQUERY, WarehouseType.SQLDATAWAREHOUSE];
+  return !!supportsCancel.find(w => {
+    return w === warehouseType;
+  });
 }
 
 const requiredBigQueryWarehouseProps: Array<keyof dataform.IBigQuery> = [
@@ -63,7 +63,7 @@ const requiredSQLDataWarehouseProps: Array<keyof dataform.ISQLDataWarehouse> = [
   "username",
   "password",
   "databaseName"
-]
+];
 
 export const requiredWarehouseProps = {
   [WarehouseType.BIGQUERY]: requiredBigQueryWarehouseProps,
