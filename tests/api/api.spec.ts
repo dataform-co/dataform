@@ -801,6 +801,9 @@ describe("@dataform/api", () => {
           t => t.name === "example_assertion_with_tags"
         );
         expect(exampleAssertionWithTags).to.not.be.undefined;
+        expect(exampleAssertionWithTags.target.schema).equals(
+          schemaWithSuffix("df_integration_test_assertions")
+        );
         expect(exampleAssertionWithTags.tags).to.eql(["tag1", "tag2"]);
 
         // Check example operations file

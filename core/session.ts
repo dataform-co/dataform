@@ -151,10 +151,12 @@ export class Session {
       }
     })();
     if (action.proto.target) {
-      action.proto.target = this.target(
-        actionOptions.sqlxConfig.name,
-        actionOptions.sqlxConfig.schema
-      );
+      const finalSchema =
+        actionOptions.sqlxConfig.schema ||
+        (actionOptions.sqlxConfig.type === "assertion"
+          ? this.config.assertionSchema
+          : this.config.defaultSchema);
+      action.proto.target = this.target(actionOptions.sqlxConfig.name, finalSchema);
     }
     return action;
   }
