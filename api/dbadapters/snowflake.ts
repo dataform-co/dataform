@@ -125,8 +125,8 @@ export class SnowflakeDbAdapter implements IDbAdapter {
     });
   }
 
-  public async preview(target: dataform.ITarget): Promise<any[]> {
-    throw new Error("Method not yet implemented.");
+  public async preview(target: dataform.ITarget, limitRows: number = 10): Promise<any[]> {
+    return this.execute(`SELECT * FROM "${target.schema}"."${target.name}" LIMIT ${limitRows}`);
   }
 
   public prepareSchema(schema: string): Promise<void> {
