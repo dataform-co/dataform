@@ -2,7 +2,7 @@
   <img src="https://github.com/dataform-co/dataform/blob/master/static/images/github_bg.png">
 </p>
 <p align="center">
-  [Dataform](https://dataform.co/?utm_medium=organic&utm_source=github_readme) is a tool for managing SQL based data operations in your warehouse.
+  <a href="https://dataform.co/?utm_medium=organic&utm_source=github_readme">Dataform</a> is a tool for managing SQL based data operations in your warehouse.
 </p>
 <div align="center">
   <img src="https://storage.googleapis.com/dataform-cloud-build-badges/build/status.svg" alt="Cloud build status"/>
