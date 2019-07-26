@@ -130,9 +130,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
             .getRows()
       })
       .promise();
-    const rows = rowsResult[0];
-    console.log("BEN BEN BEN ::: " + JSON.stringify(rows, null, 4));
-    return rows;
+    return rowsResult[0];
   }
 
   public async prepareSchema(schema: string): Promise<void> {
