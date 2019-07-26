@@ -6,6 +6,25 @@ import * as PromisePool from "promise-pool-executor";
 
 const BIGQUERY_DATE_CLASS_NAME = "BigQueryDate";
 
+interface IBigQueryTableMetadata {
+  type: string;
+  schema: {
+    fields: IBigQueryFieldMetadata[];
+  };
+  tableReference: {
+    projectId: string;
+    datasetId: string;
+    tableId: string;
+  };
+}
+
+interface IBigQueryFieldMetadata {
+  name: string;
+  mode: string;
+  type: string;
+  fields?: IBigQueryFieldMetadata[];
+}
+
 export class BigQueryDbAdapter implements IDbAdapter {
   private bigQueryCredentials: dataform.IBigQuery;
   private client: BigQuery;
@@ -60,7 +79,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
                   if (err) {
                     reject(err);
                   }
-                  resolve(this.cleanRows(result));
+                  resolve(cleanRows(result));
                 });
               }
             );
@@ -103,16 +122,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
   }
 
   public async table(target: dataform.ITarget): Promise<dataform.ITableMetadata> {
-    const metadataResult = await this.pool
-      .addSingleTask({
-        generator: () =>
-          this.client
-            .dataset(target.schema)
-            .table(target.name)
-            .getMetadata()
-      })
-      .promise();
-    const metadata = metadataResult[0];
+    const metadata = await this.getMetadata(target);
     return dataform.TableMetadata.create({
       type: String(metadata.type).toLowerCase(),
       target,
@@ -120,19 +130,27 @@ export class BigQueryDbAdapter implements IDbAdapter {
     });
   }
 
-  public async preview(target: dataform.ITarget): Promise<any[]> {
-    // For tables, we use the BigQuery tabledata.list API, as per https://cloud.google.com/bigquery/docs/best-practices-costs#preview-data.
-    // Also see https://cloud.google.com/nodejs/docs/reference/bigquery/3.0.x/Table#getRows.
-    const rowsResult = await this.pool
-      .addSingleTask({
-        generator: () =>
-          this.client
-            .dataset(target.schema)
-            .table(target.name)
-            .getRows()
-      })
-      .promise();
-    return rowsResult[0];
+  public async preview(target: dataform.ITarget, limitRows: number = 10): Promise<any[]> {
+    const metadata = await this.getMetadata(target);
+    if (metadata.type === "TABLE") {
+      // For tables, we use the BigQuery tabledata.list API, as per https://cloud.google.com/bigquery/docs/best-practices-costs#preview-data.
+      // Also see https://cloud.google.com/nodejs/docs/reference/bigquery/3.0.x/Table#getRows.
+      const rowsResult = await this.pool
+        .addSingleTask({
+          generator: () =>
+            this.client
+              .dataset(target.schema)
+              .table(target.name)
+              .getRows({
+                maxResults: limitRows
+              })
+        })
+        .promise();
+      return rowsResult[0];
+    }
+    return this.execute(
+      `SELECT * FROM \`${metadata.tableReference.projectId}.${metadata.tableReference.datasetId}.${metadata.tableReference.tableId}\` LIMIT ${limitRows}`
+    );
   }
 
   public async prepareSchema(schema: string): Promise<void> {
@@ -155,36 +173,49 @@ export class BigQueryDbAdapter implements IDbAdapter {
     }
   }
 
-  private cleanRows(rows: any[]) {
-    if (rows.length === 0) {
-      return rows;
-    }
-
-    const sampleData = rows[0];
-    const fieldsWithBigQueryDates = Object.keys(sampleData).filter(
-      key =>
-        sampleData[key] &&
-        sampleData[key].constructor &&
-        sampleData[key].constructor.name === BIGQUERY_DATE_CLASS_NAME
-    );
-    if (fieldsWithBigQueryDates.length === 0) {
-      return rows;
-    } else {
-      fieldsWithBigQueryDates.forEach(dateField => {
-        rows.forEach(row => (row[dateField] = row[dateField].value));
-      });
-      return rows;
-    }
+  private async getMetadata(target: dataform.ITarget): Promise<IBigQueryTableMetadata> {
+    const metadataResult = await this.pool
+      .addSingleTask({
+        generator: () =>
+          this.client
+            .dataset(target.schema)
+            .table(target.name)
+            .getMetadata()
+      })
+      .promise();
+    return metadataResult[0];
   }
 }
 
-function convertField(field: any): dataform.IField {
+function cleanRows(rows: any[]) {
+  if (rows.length === 0) {
+    return rows;
+  }
+
+  const sampleData = rows[0];
+  const fieldsWithBigQueryDates = Object.keys(sampleData).filter(
+    key =>
+      sampleData[key] &&
+      sampleData[key].constructor &&
+      sampleData[key].constructor.name === BIGQUERY_DATE_CLASS_NAME
+  );
+  if (fieldsWithBigQueryDates.length === 0) {
+    return rows;
+  } else {
+    fieldsWithBigQueryDates.forEach(dateField => {
+      rows.forEach(row => (row[dateField] = row[dateField].value));
+    });
+    return rows;
+  }
+}
+
+function convertField(field: IBigQueryFieldMetadata): dataform.IField {
   const result: dataform.IField = {
     name: field.name,
     flags: !!field.mode ? [field.mode] : []
   };
-  if (field.type == "RECORD") {
-    result.struct = { fields: field.fields.map(field => convertField(field)) };
+  if (field.type === "RECORD") {
+    result.struct = { fields: field.fields.map(innerField => convertField(innerField)) };
   } else {
     result.primitive = field.type;
   }
