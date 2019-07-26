@@ -1,5 +1,5 @@
 import { Credentials } from "@dataform/api/commands/credentials";
-import { DbAdapter } from "@dataform/api/dbadapters/index";
+import { IDbAdapter } from "@dataform/api/dbadapters/index";
 import { dataform } from "@dataform/protos";
 import * as https from "https";
 
@@ -9,30 +9,26 @@ interface ISnowflakeStatement {
 
 interface ISnowflakeConnection {
   connect: (callback: (err: any, connection: ISnowflakeConnection) => void) => void;
-  execute: (
-    options: {
-      sqlText: string;
-      complete: (err: any, statement: ISnowflakeStatement, rows: any[]) => void;
-    }
-  ) => void;
+  execute: (options: {
+    sqlText: string;
+    complete: (err: any, statement: ISnowflakeStatement, rows: any[]) => void;
+  }) => void;
 }
 
 interface ISnowflake {
-  createConnection: (
-    options: {
-      account: string;
-      username: string;
-      password: string;
-      database: string;
-      warehouse: string;
-      role: string;
-    }
-  ) => ISnowflakeConnection;
+  createConnection: (options: {
+    account: string;
+    username: string;
+    password: string;
+    database: string;
+    warehouse: string;
+    role: string;
+  }) => ISnowflakeConnection;
 }
 
 const Snowflake: ISnowflake = require("snowflake-sdk");
 
-export class SnowflakeDbAdapter implements DbAdapter {
+export class SnowflakeDbAdapter implements IDbAdapter {
   private connection: ISnowflakeConnection;
   private connected: Promise<void>;
 
@@ -109,9 +105,7 @@ export class SnowflakeDbAdapter implements DbAdapter {
        where table_schema = '${target.schema}' AND table_name = '${target.name}'`
       ),
       this.execute(
-        `select table_type from information_schema.tables where table_schema = '${
-          target.schema
-        }' AND table_name = '${target.name}'`
+        `select table_type from information_schema.tables where table_schema = '${target.schema}' AND table_name = '${target.name}'`
       )
     ]).then(results => {
       if (results[1].length > 0) {
@@ -129,6 +123,10 @@ export class SnowflakeDbAdapter implements DbAdapter {
         throw new Error(`Could not find relation: ${target.schema}.${target.name}`);
       }
     });
+  }
+
+  public async preview(target: dataform.ITarget): Promise<any[]> {
+    throw new Error("Method not yet implemented.");
   }
 
   public prepareSchema(schema: string): Promise<void> {
