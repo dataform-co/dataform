@@ -121,6 +121,8 @@ export class BigQueryDbAdapter implements IDbAdapter {
   }
 
   public async preview(target: dataform.ITarget): Promise<any[]> {
+    // For tables, we use the BigQuery tabledata.list API, as per https://cloud.google.com/bigquery/docs/best-practices-costs#preview-data.
+    // Also see https://cloud.google.com/nodejs/docs/reference/bigquery/3.0.x/Table#getRows.
     const rowsResult = await this.pool
       .addSingleTask({
         generator: () =>
