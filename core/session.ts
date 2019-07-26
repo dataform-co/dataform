@@ -161,7 +161,6 @@ export class Session {
 
   public target(target: string, defaultSchema?: string): dataform.ITarget {
     const suffix = !!this.config.schemaSuffix ? `_${this.config.schemaSuffix}` : "";
-
     if (target.includes(".")) {
       const [schema, name] = target.split(".");
       return dataform.Target.create({ name, schema: schema + suffix });
@@ -173,23 +172,38 @@ export class Session {
   }
 
   public resolve(name: string): string {
-    const table = this.tables[name];
-    const operation =
-      !!this.operations[name] && this.operations[name].hasOutput && this.operations[name];
+    try {
+      const nam = name.includes(".")
+        ? name
+        : utils.getActionFullName(
+            name,
+            [].concat(
+              Object.keys(this.tables),
+              Object.keys(this.assertions),
+              Object.keys(this.operations)
+            )
+          );
+      const table = this.tables[nam];
+      const operation =
+        !!this.operations[nam] && this.operations[nam].hasOutput && this.operations[nam];
 
-    if (table && table.proto.type === "inline") {
-      // TODO: Pretty sure this is broken as the proto.query value may not
-      // be set yet as it happens during compilation. We should evalute the query here.
-      return `(${table.proto.query})`;
+      if (table && table.proto.type === "inline") {
+        // TODO: Pretty sure this is broken as the proto.query value may not
+        // be set yet as it happens during compilation. We should evalute the query here.
+        return `(${table.proto.query})`;
+      }
+
+      const dataset = table || operation;
+      // TODO: We fall back to using the plain 'name' here for backwards compatibility with projects that use .sql files.
+      // In these projects, this session may not know about all actions (yet), and thus we need to fall back to assuming
+      // that the target *will* exist in the future. Once we break backwards compatibility with .sql files, we should remove
+      // the code that calls 'this.target(...)' below, and append a compile error if we can't find a dataset whose name is 'name'.
+      const target = dataset ? dataset.proto.target : this.target(nam);
+      return this.adapter().resolveTarget(target);
+    } catch (e) {
+      this.compileError(e);
+      return;
     }
-
-    const dataset = table || operation;
-    // TODO: We fall back to using the plain 'name' here for backwards compatibility with projects that use .sql files.
-    // In these projects, this session may not know about all actions (yet), and thus we need to fall back to assuming
-    // that the target *will* exist in the future. Once we break backwards compatibility with .sql files, we should remove
-    // the code that calls 'this.target(...)' below, and append a compile error if we can't find a dataset whose name is 'name'.
-    const target = dataset ? dataset.proto.target : this.target(name);
-    return this.adapter().resolveTarget(target);
   }
 
   public operate(name: string, queries?: OContextable<string | string[]>): Operation {
@@ -302,19 +316,22 @@ export class Session {
       compiledGraph.operations
     );
     const allActionNames = allActions.map(action => action.name);
-
     allActions.forEach(action => {
       const uniqueDependencies: { [dependency: string]: boolean } = {};
       const dependencies = action.dependencies || [];
       // Add non-wildcard deps normally.
-      dependencies
-        .filter(dependency => !dependency.includes("*"))
-        .forEach(dependency => (uniqueDependencies[dependency] = true));
-      // Match wildcard deps against all action names.
-      utils
-        .matchPatterns(dependencies.filter(d => d.includes("*")), allActionNames)
-        .forEach(dependency => (uniqueDependencies[dependency] = true));
-      action.dependencies = Object.keys(uniqueDependencies);
+      if (dependencies) {
+        dependencies
+          .filter(dependency => !dependency.includes("*"))
+          .forEach(dependency => {
+            uniqueDependencies[dependency] = true;
+          });
+        // Match wildcard deps against all action names.
+        utils
+          .matchPatterns(dependencies.filter(d => d.includes("*")), allActionNames)
+          .forEach(dependency => (uniqueDependencies[dependency] = true));
+        action.dependencies = Object.keys(uniqueDependencies);
+      }
     });
 
     return compiledGraph;
@@ -327,7 +344,7 @@ export class Session {
   private checkActionNameIsUnused(name: string) {
     // Check for duplicate names
     if (this.tables[name] || this.operations[name] || this.assertions[name]) {
-      const message = `Duplicate action name detected. Names must be unique across tables, assertions, and operations: "${name}"`;
+      const message = `Duplicate action name detected. Names within a schema must be unique across tables, assertions, and operations: "${name}"`;
       this.compileError(new Error(message));
     }
   }

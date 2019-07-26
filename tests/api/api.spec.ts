@@ -14,37 +14,39 @@ config.truncateThreshold = 0;
 
 describe("@dataform/api", () => {
   describe("build", () => {
+    const TEST_TABLES = [
+      {
+        name: "a",
+        target: {
+          schema: "schema",
+          name: "a"
+        },
+        query: "query",
+        dependencies: ["b"]
+      },
+      {
+        name: "b",
+        target: {
+          schema: "schema",
+          name: "b"
+        },
+        query: "query",
+        dependencies: ["c"],
+        disabled: true
+      },
+      {
+        name: "c",
+        target: {
+          schema: "schema",
+          name: "c"
+        },
+        query: "query"
+      }
+    ];
+
     const TEST_GRAPH: dataform.ICompiledGraph = dataform.CompiledGraph.create({
       projectConfig: { warehouse: "redshift" },
-      tables: [
-        {
-          name: "a",
-          target: {
-            schema: "schema",
-            name: "a"
-          },
-          query: "query",
-          dependencies: ["b"]
-        },
-        {
-          name: "b",
-          target: {
-            schema: "schema",
-            name: "b"
-          },
-          query: "query",
-          dependencies: ["c"],
-          disabled: true
-        },
-        {
-          name: "c",
-          target: {
-            schema: "schema",
-            name: "c"
-          },
-          query: "query"
-        }
-      ]
+      tables: TEST_TABLES
     });
 
     const TEST_STATE = dataform.WarehouseState.create({ tables: [] });
@@ -265,6 +267,81 @@ describe("@dataform/api", () => {
       expect(actionNames).not.includes("op_c");
       expect(actionNames).not.includes("op_d");
       expect(actionNames).includes("tab_a");
+    });
+
+    it("build actions with same name in different schemas", () => {
+      const TEST_TABLES_POTENTIAL_DUPS = TEST_TABLES.concat([
+        {
+          name: "a_specific_schema.a",
+          target: {
+            schema: "schema",
+            name: "a"
+          },
+          query: "query",
+          dependencies: ["b"]
+        }
+      ]);
+      const TEST_GRAPH_WITH_POTENTIAL_DUPS: dataform.ICompiledGraph = dataform.CompiledGraph.create(
+        {
+          projectConfig: { warehouse: "redshift", defaultSchema: "default_schema" },
+          tables: TEST_TABLES_POTENTIAL_DUPS
+        }
+      );
+      const builder = new Builder(
+        TEST_GRAPH_WITH_POTENTIAL_DUPS,
+        { includeDependencies: false },
+        TEST_STATE
+      );
+      const executionGraph = builder.build();
+      const includedActionNames = executionGraph.actions.map(n => n.name);
+      expect(includedActionNames).includes("a");
+      expect(includedActionNames).includes("b");
+      expect(includedActionNames).includes("a_specific_schema.a");
+    });
+
+    it("build actions using an ambiguous --actions option", () => {
+      const TEST_TABLES_POTENTIAL_DUPS = TEST_TABLES.concat([
+        {
+          name: "a_specific_schema.z",
+          target: {
+            schema: "a_specific_schema",
+            name: "z"
+          },
+          query: "query",
+          dependencies: ["b"]
+        },
+        {
+          name: "a_different_schema.z",
+          target: {
+            schema: "a_different_schema",
+            name: "z"
+          },
+          query: "query",
+          dependencies: ["b"]
+        }
+      ]);
+      const TEST_GRAPH_WITH_POTENTIAL_DUPS: dataform.ICompiledGraph = dataform.CompiledGraph.create(
+        {
+          projectConfig: { warehouse: "redshift", defaultSchema: "default_schema" },
+          graphErrors: {
+            compilationErrors: [
+              {
+                message:
+                  "Action name [z] is ambiguous. Did yu mean one of: [a_specific_schema.z,a_different_schema.z]"
+              }
+            ]
+          },
+          tables: TEST_TABLES_POTENTIAL_DUPS
+        }
+      );
+      expect(() => {
+        const builder = new Builder(
+          TEST_GRAPH_WITH_POTENTIAL_DUPS,
+          { includeDependencies: false, actions: ["z"] },
+          TEST_STATE
+        );
+        const executionGraph = builder.build();
+      }).to.throw();
     });
   });
 
@@ -773,7 +850,7 @@ describe("@dataform/api", () => {
 
         // Check schema overrides defined in "config {}"
         const exampleUsingOverriddenSchema = graph.tables.find(
-          t => t.name === "override_schema_example"
+          t => t.name === "override_schema.override_schema_example"
         );
         expect(exampleUsingOverriddenSchema).to.not.be.undefined;
         expect(exampleUsingOverriddenSchema.target.schema).equals(
@@ -785,7 +862,9 @@ describe("@dataform/api", () => {
         );
 
         // Check assertion
-        const exampleAssertion = graph.assertions.find(t => t.name === "example_assertion");
+        const exampleAssertion = graph.assertions.find(
+          t => t.name === "hi_there.example_assertion"
+        );
         expect(exampleAssertion).to.not.be.undefined;
         expect(exampleAssertion.target.schema).equals(schemaWithSuffix("hi_there"));
         expect(exampleAssertion.query.trim()).equals(
@@ -798,7 +877,7 @@ describe("@dataform/api", () => {
 
         // Check Assertion with tags
         const exampleAssertionWithTags = graph.assertions.find(
-          t => t.name === "example_assertion_with_tags"
+          t => t.name === "hi_there.example_assertion_with_tags"
         );
         expect(exampleAssertionWithTags).to.not.be.undefined;
         expect(exampleAssertionWithTags.tags).to.eql(["tag1", "tag2"]);
@@ -815,7 +894,7 @@ describe("@dataform/api", () => {
         ]);
         expect(exampleOperations.dependencies).to.eql([
           "example_inline",
-          "override_schema_example"
+          "override_schema.override_schema_example"
         ]);
         expect(exampleOperations.tags).to.eql([]);
 
@@ -943,10 +1022,8 @@ describe("@dataform/api", () => {
     });
 
     it("bigquery_backwards_compatibility_example", async () => {
-      const graph = await compile({ projectDir: "df/examples/bigquery_backwards_compatibility" });
-
+      const graph = await compile({projectDir: "df/examples/bigquery_backwards_compatibility"});
       const tableNames = graph.tables.map(t => t.name);
-
       // Make sure it compiles.
       expect(tableNames).includes("example");
       const example = graph.tables.filter(t => t.name == "example")[0];
@@ -963,9 +1040,7 @@ describe("@dataform/api", () => {
         sample_2: 'select * from "test_schema"."sample_1"'
       };
 
-      const graph = await compile({ projectDir: "df/examples/redshift_operations" }).catch(
-        error => error
-      );
+      const graph = await compile({projectDir: "df/examples/redshift_operations"}).catch(error => error);
       expect(graph).to.not.be.an.instanceof(Error);
 
       const gErrors = utils.validate(graph);
@@ -987,7 +1062,9 @@ describe("@dataform/api", () => {
     });
 
     it("snowflake_example", async () => {
-      const graph = await compile({ projectDir: "df/examples/snowflake" }).catch(error => error);
+      const graph = await compile({
+        projectDir: "df/examples/snowflake"
+      }).catch(error => error);
       expect(graph).to.not.be.an.instanceof(Error);
 
       const gErrors = utils.validate(graph);

@@ -1,12 +1,13 @@
 import { AssertionContext } from "@dataform/core/assertion";
 import { OperationContext } from "@dataform/core/operation";
+import { Session } from "@dataform/core/session";
 import { ISqlxParseResults, parseSqlx } from "@dataform/core/sqlx_parser";
 import { TableContext } from "@dataform/core/table";
 import * as utils from "@dataform/core/utils";
 
-export function compile(code: string, path: string) {
+export function compile(code: string, path: string, defaultSchema: string) {
   if (path.endsWith(".sqlx")) {
-    return compileSqlx(parseSqlx(code), path);
+    return compileSqlx(parseSqlx(code), path, defaultSchema);
   }
   if (path.endsWith(".assert.sql")) {
     return compileAssertionSql(code, path);
@@ -85,12 +86,22 @@ export function extractJsBlocks(code: string): { sql: string; js: string } {
   };
 }
 
-function compileSqlx(results: ISqlxParseResults, path: string) {
+function compileSqlx(results: ISqlxParseResults, path: string, defaultSchema: string) {
+  const resConfig =
+    results.config != null
+      ? JSON.parse(results.config.replace(/(['"])?([a-zA-Z0-9_]+)(['"])?:/g, '"$2": '))
+      : null;
+  const queryConfigSchema = "schema" in resConfig && resConfig != null ? resConfig.schema : null;
+  const consolidatedSchema = queryConfigSchema || defaultSchema;
+  const fileName =
+    consolidatedSchema == null
+      ? utils.baseFilename(path)
+      : consolidatedSchema + "." + utils.baseFilename(path);
   return `
 const parsedConfig = ${results.config || "{}"};
 // sqlxConfig should conform to the ISqlxConfig interface.
 const sqlxConfig = {
-  name: "${utils.baseFilename(path)}",
+  name: "${fileName}",
   type: "operations",
   dependencies: [],
   tags: [],

@@ -352,6 +352,17 @@ describe("@dataform/core", () => {
       expect(errors).that.matches(/Unused property was detected: "where"/);
     });
 
+    it("ambiguous_ref", () => {
+      const session = new Session(path.dirname(__filename), TEST_CONFIG);
+      session.publish("a", _ => "select 1 as test");
+
+      const graph = session.compile();
+      const graphErrors = utils.validate(graph);
+
+      const tableNames = graph.tables.map(item => item.name);
+      expect(tableNames).includes("a");
+    });
+
     it("ref", () => {
       const session = new Session(path.dirname(__filename), TEST_CONFIG);
       session.publish("a", _ => "select 1 as test");
@@ -451,6 +462,41 @@ describe("@dataform/core", () => {
         item.message.match(/Duplicate action name/)
       );
       expect(errors).to.be.an("array").that.is.not.empty;
+    });
+
+    it("same action name in same schema", () => {
+      const session = new Session(path.dirname(__filename), TEST_CONFIG);
+      session.publish("a").dependencies("b");
+      session.publish("b");
+      session.publish("schema2.a");
+      session.publish("schema2.a");
+      const cGraph = session.compile();
+      const gErrors = utils.validate(cGraph);
+      expect(gErrors)
+        .to.have.property("compilationErrors")
+        .to.be.an("array").that.is.not.empty;
+      // gErrors.compilationErrors.forEach(item => console.log("[core.spec.ts 478] cerr=" + item.message));
+      const errors = gErrors.compilationErrors.filter(item =>
+        item.message.match(/Duplicate action name detected. Names within a schema must be unique/)
+      );
+      expect(errors).to.be.an("array").that.is.not.empty;
+      const errors2 = gErrors.compilationErrors.filter(
+        item => !item.message.match(/Duplicate action name detected. Names within a schema must be unique/)
+      );
+      expect(errors2).to.be.an("array").that.is.empty;
+    });
+
+    it("same action names in different schemas", () => {
+      const session = new Session(path.dirname(__filename), TEST_CONFIG);
+      session.publish("a").dependencies("b");
+      session.publish("b");
+      session.publish("schema1.a");
+      session.publish("schema2.a");
+      const cGraph = session.compile();
+      const gErrors = utils.validate(cGraph);
+      expect(gErrors)
+        .to.have.property("compilationErrors")
+        .to.be.an("array").that.is.empty;
     });
 
     it("validate", () => {

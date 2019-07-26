@@ -30,11 +30,11 @@ export function matchPatterns(patterns: string[], values: string[]) {
     pattern =>
       new RegExp(
         "^" +
-        pattern
-          .replace(/[.+?^${}()|[\]\\]/g, "\\$&")
-          .split("*")
-          .join(".*") +
-        "$"
+          pattern
+            .replace(/[.+?^${}()|[\]\\]/g, "\\$&")
+            .split("*")
+            .join(".*") +
+          "$"
       )
   );
   return values.filter(value => regexps.filter(regexp => regexp.test(value)).length > 0);
@@ -47,7 +47,7 @@ export function getCallerFile(rootDir: string) {
   try {
     const err = new Error();
     let currentfile;
-    Error.prepareStackTrace = function (err, stack) {
+    Error.prepareStackTrace = function(err, stack) {
       return stack;
     };
 
@@ -67,7 +67,7 @@ export function getCallerFile(rootDir: string) {
         break;
       }
     }
-  } catch (e) { }
+  } catch (e) {}
   Error.prepareStackTrace = originalFunc;
 
   return relativePath(callerfile || lastfile, rootDir);
@@ -112,12 +112,13 @@ export function validate(compiledGraph: dataform.ICompiledGraph): dataform.IGrap
   const allActionNames = allActions.map(action => action.name);
 
   // Check there are no duplicate action names.
+  // This check is only needed for back compatibility as it is already checked during compilation
   allActions.forEach(action => {
     if (allActions.filter(subAction => subAction.name == action.name).length > 1) {
       const actionName = action.name;
-      const message = `Duplicate action name detected, names must be unique across tables, assertions, and operations: "${
+      const message = `Duplicate action name detected. Names within a schema must be unique across tables, assertions, and operations: "${
         action.name
-        }"`;
+      }"`;
       validationErrors.push(dataform.ValidationError.create({ message, actionName }));
     }
   });
@@ -132,7 +133,7 @@ export function validate(compiledGraph: dataform.ICompiledGraph): dataform.IGrap
       if (allActionNames.indexOf(dependency) < 0) {
         const message = `Missing dependency detected: Node "${
           action.name
-          }" depends on "${dependency}" which does not exist.`;
+        }" depends on "${dependency}" which does not exist.`;
         validationErrors.push(dataform.ValidationError.create({ message, actionName }));
       }
     });
@@ -188,7 +189,9 @@ export function validate(compiledGraph: dataform.ICompiledGraph): dataform.IGrap
     if (!!action.redshift) {
       if (
         Object.keys(action.redshift).length === 0 ||
-        Object.keys(action.redshift).every(key => !action.redshift[key] || !action.redshift[key].length)
+        Object.keys(action.redshift).every(
+          key => !action.redshift[key] || !action.redshift[key].length
+        )
       ) {
         const message = `Missing properties in redshift config`;
         validationErrors.push(dataform.ValidationError.create({ message, actionName }));
@@ -200,7 +203,10 @@ export function validate(compiledGraph: dataform.ICompiledGraph): dataform.IGrap
         const types = { distStyle: DistStyleTypes };
         redshiftConfig.push({ props, types });
       }
-      if (action.redshift.sortStyle || (action.redshift.sortKeys && action.redshift.sortKeys.length)) {
+      if (
+        action.redshift.sortStyle ||
+        (action.redshift.sortKeys && action.redshift.sortKeys.length)
+      ) {
         const props = { sortStyle: action.redshift.sortStyle, sortKeys: action.redshift.sortKeys };
         const types = { sortStyle: SortStyleTypes };
         redshiftConfig.push({ props, types });
@@ -236,7 +242,7 @@ export function validate(compiledGraph: dataform.ICompiledGraph): dataform.IGrap
         if (objectExistsOrIsNonEmpty(action[ignoredProp])) {
           const message = `Unused property was detected: "${ignoredProp}". This property is not used for tables with type "${
             action.type
-            }" and will be ignored.`;
+          }" and will be ignored.`;
           validationErrors.push(dataform.ValidationError.create({ message, actionName }));
         }
       });
@@ -249,4 +255,36 @@ export function validate(compiledGraph: dataform.ICompiledGraph): dataform.IGrap
       : [];
 
   return dataform.GraphErrors.create({ validationErrors, compilationErrors });
+}
+
+export function getActionFullName(actName: string, allActionFullNames: string[]): string {
+  const actNameNbrDots = actName.split(".").length - 1;
+  if (actNameNbrDots < 0 || actNameNbrDots > 1) {
+    throw new Error("Action name " + actName + " could not be found.");
+  }
+  if (actNameNbrDots === 1) {
+    // Check that it exists
+    if (allActionFullNames.includes(actName)) {
+      return actName;
+    } else {
+      throw new Error("Action name" + actName + " could not be found.");
+    }
+  } else {
+    // Check for amgiguities
+    const allActionShortNamesMap = allActionFullNames.map(act => [
+      act,
+      act.toString().includes(".") ? act.toString().split(".")[1] : act
+    ]);
+    const dupls = [];
+    allActionShortNamesMap.filter(obj => obj[1] === actName).forEach(obj => dupls.push(obj[0]));
+    if (dupls.length === 1) {
+      return dupls[0];
+    } else if (dupls.length > 1) {
+      throw new Error(
+        "Action name [" + actName + "] is ambiguous. Did you mean one of: [" + dupls.join(",") + "]"
+      );
+    } else if (dupls.length === 0) {
+      return actName;
+    }
+  }
 }

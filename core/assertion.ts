@@ -1,4 +1,5 @@
 import { Session } from "@dataform/core/session";
+import * as utils from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
 
 export type AContextable<T> = T | ((ctx: AssertionContext) => T);
@@ -18,10 +19,16 @@ export class Assertion {
   }
 
   public dependencies(value: string | string[]) {
+    const allActs = [].concat(
+      Object.keys(this.session.operations),
+      Object.keys(this.session.tables),
+      Object.keys(this.session.assertions)
+    );
     const newDependencies = typeof value === "string" ? [value] : value;
     newDependencies.forEach(d => {
-      if (this.proto.dependencies.indexOf(d) < 0) {
-        this.proto.dependencies.push(d);
+      const depClean = utils.getActionFullName(d, allActs);
+      if (this.proto.dependencies.indexOf(depClean) < 0) {
+        this.proto.dependencies.push(depClean);
       }
     });
     return this;

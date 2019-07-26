@@ -1,4 +1,5 @@
 import { Session } from "@dataform/core/session";
+import * as utils from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
 
 export type OContextable<T> = T | ((ctx: OperationContext) => T);
@@ -19,9 +20,15 @@ export class Operation {
 
   public dependencies(value: string | string[]) {
     const newDependencies = typeof value === "string" ? [value] : value;
+    const allActs = [].concat(
+      Object.keys(this.session.operations),
+      Object.keys(this.session.tables),
+      Object.keys(this.session.assertions)
+    );
     newDependencies.forEach(d => {
-      if (this.proto.dependencies.indexOf(d) < 0) {
-        this.proto.dependencies.push(d);
+      const depClean = utils.getActionFullName(d, allActs);
+      if (this.proto.dependencies.indexOf(depClean) < 0) {
+        this.proto.dependencies.push(depClean);
       }
     });
     return this;
@@ -44,10 +51,8 @@ export class Operation {
 
   public compile() {
     const context = new OperationContext(this);
-
     const appliedQueries = context.apply(this.contextableQueries);
     this.proto.queries = typeof appliedQueries == "string" ? [appliedQueries] : appliedQueries;
-
     return this.proto;
   }
 }
