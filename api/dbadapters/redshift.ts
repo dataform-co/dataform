@@ -1,5 +1,5 @@
 import { Credentials } from "@dataform/api/commands/credentials";
-import { DbAdapter } from "@dataform/api/dbadapters/index";
+import { IDbAdapter } from "@dataform/api/dbadapters/index";
 import { dataform } from "@dataform/protos";
 
 const Redshift: IRedshiftType = require("node-redshift");
@@ -18,7 +18,7 @@ interface IRedshiftType {
   new (config: IRedshiftConfig): IRedshiftType;
 }
 
-export class RedshiftDbAdapter implements DbAdapter {
+export class RedshiftDbAdapter implements IDbAdapter {
   private client: IRedshiftType;
 
   constructor(credentials: Credentials) {
@@ -69,9 +69,7 @@ export class RedshiftDbAdapter implements DbAdapter {
        where table_schema = '${target.schema}' AND table_name = '${target.name}'`
       ),
       this.execute(
-        `select table_type from information_schema.tables where table_schema = '${
-          target.schema
-        }' AND table_name = '${target.name}'`
+        `select table_type from information_schema.tables where table_schema = '${target.schema}' AND table_name = '${target.name}'`
       )
     ]).then(results => {
       if (results[1].length > 0) {
@@ -89,6 +87,10 @@ export class RedshiftDbAdapter implements DbAdapter {
         throw new Error(`Could not find relation: ${target.schema}.${target.name}`);
       }
     });
+  }
+
+  public async preview(target: dataform.ITarget): Promise<any[]> {
+    throw new Error("Method not yet implemented.");
   }
 
   public prepareSchema(schema: string): Promise<void> {
