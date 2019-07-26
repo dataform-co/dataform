@@ -2,7 +2,7 @@
   <img src="https://github.com/dataform-co/dataform/blob/master/static/images/github_bg.png">
 </p>
 <p align="center">
-  The Dataform SDK is a tool for managing SQL based data operations in your warehouse.
+  [Dataform](https://dataform.co/?utm_medium=organic&utm_source=github_readme) is a tool for managing SQL based data operations in your warehouse.
 </p>
 <div align="center">
   <img src="https://storage.googleapis.com/dataform-cloud-build-badges/build/status.svg" alt="Cloud build status"/>
@@ -20,7 +20,7 @@
 
 # Intro
 
-[Dataform](https://dataform.co/?utm_medium=organic&utm_source=github) is an open source framework for managing SQL based data operations in your warehouse. It helps you pilot the T in ELT, with SQL code, and brings engineering best practices to analytics pipeline management.
+[Dataform](https://dataform.co/?utm_medium=organic&utm_source=github_readme) is an open source framework for managing SQL based data operations in your warehouse. It helps you pilot the T in ELT, with SQL code, and brings engineering best practices to analytics pipeline management.
 <br/>
 <br/>
 
@@ -39,7 +39,7 @@
 
 ## With the CLI
 
-You can install the Dataform SDK using the following command line. Follow the [docs](https://docs.dataform.co/guides/command-line-interface/) to get started.
+You can install the Dataform SDK using the following command line. Follow the [docs](https://docs.dataform.co/guides/command-line-interface/?utm_medium=organic&utm_source=github_readme) to get started.
 
 ```
 npm i -g @dataform/cli
@@ -51,7 +51,7 @@ npm i -g @dataform/cli
 
 ## With Dataform web
 
-Dataform web is a development environment and production ready deployment tool for the Dataform SDK. You can learn more on [dataform.co](https://dataform.co/?utm_medium=organic&utm_source=github)
+Dataform web is a development environment and production ready deployment tool for the Dataform SDK. You can learn more on [dataform.co](https://dataform.co/?utm_medium=organic&utm_source=github_readme)
 
 # Looking for support?
 
