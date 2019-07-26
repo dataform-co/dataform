@@ -20,7 +20,7 @@
 
 # Intro
 
-The Dataform SDK is an open source framework for managing SQL based data operations in your warehouse. It helps you pilot the T in ELT, with SQL code, and brings engineering best practices to analytics pipeline management.
+[Dataform](https://dataform.co/?utm_medium=organic&utm_source=github) is an open source framework for managing SQL based data operations in your warehouse. It helps you pilot the T in ELT, with SQL code, and brings engineering best practices to analytics pipeline management.
 <br/>
 <br/>
 
@@ -51,7 +51,7 @@ npm i -g @dataform/cli
 
 ## With Dataform web
 
-Dataform web is a development environment and production ready deployment tool for the Dataform SDK. You can learn more on [dataform.co](https://dataform.co)
+Dataform web is a development environment and production ready deployment tool for the Dataform SDK. You can learn more on [dataform.co](https://dataform.co/?utm_medium=organic&utm_source=github)
 
 # Looking for support?
 
