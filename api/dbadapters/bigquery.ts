@@ -202,13 +202,12 @@ function cleanRows(rows: any[]) {
   }
 
   const sampleData = rows[0];
-  const fieldsWithBigQueryDates = Object.keys(sampleData).filter(key => {
-    return (
+  const fieldsWithBigQueryDates = Object.keys(sampleData).filter(
+    key =>
       sampleData[key] &&
       sampleData[key].constructor &&
       BIGQUERY_DATE_RELATED_FIELDS.includes(sampleData[key].constructor.name)
-    );
-  });
+  );
   fieldsWithBigQueryDates.forEach(dateField => {
     rows.forEach(row => (row[dateField] = row[dateField].value));
   });
