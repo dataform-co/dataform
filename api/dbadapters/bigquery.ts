@@ -203,7 +203,6 @@ function cleanRows(rows: any[]) {
 
   const sampleData = rows[0];
   const fieldsWithBigQueryDates = Object.keys(sampleData).filter(key => {
-    console.log(sampleData[key].constructor);
     return (
       sampleData[key] &&
       sampleData[key].constructor &&
