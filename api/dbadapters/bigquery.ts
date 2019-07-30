@@ -4,7 +4,12 @@ import { dataform } from "@dataform/protos";
 import { BigQuery } from "@google-cloud/bigquery";
 import * as PromisePool from "promise-pool-executor";
 
-const BIGQUERY_DATE_CLASS_NAME = "BigQueryDate";
+const BIGQUERY_DATE_RELATED_FIELDS = [
+  "BigQueryDate",
+  "BigQueryTime",
+  "BigQueryTimestamp",
+  "BigQueryDatetime"
+];
 
 interface IBigQueryTableMetadata {
   type: string;
@@ -149,7 +154,9 @@ export class BigQueryDbAdapter implements IDbAdapter {
       return rowsResult[0];
     }
     return this.execute(
-      `SELECT * FROM \`${metadata.tableReference.projectId}.${metadata.tableReference.datasetId}.${metadata.tableReference.tableId}\` LIMIT ${limitRows}`
+      `SELECT * FROM \`${metadata.tableReference.projectId}.${metadata.tableReference.datasetId}.${
+        metadata.tableReference.tableId
+      }\` LIMIT ${limitRows}`
     );
   }
 
@@ -168,7 +175,9 @@ export class BigQueryDbAdapter implements IDbAdapter {
 
     if (metadata.location.toUpperCase() !== location.toUpperCase()) {
       throw new Error(
-        `Cannot create dataset "${schema}" in location "${location}". It already exists in location "${metadata.location}". Change your default dataset location or delete the existing dataset.`
+        `Cannot create dataset "${schema}" in location "${location}". It already exists in location "${
+          metadata.location
+        }". Change your default dataset location or delete the existing dataset.`
       );
     }
   }
@@ -197,16 +206,12 @@ function cleanRows(rows: any[]) {
     key =>
       sampleData[key] &&
       sampleData[key].constructor &&
-      sampleData[key].constructor.name === BIGQUERY_DATE_CLASS_NAME
+      BIGQUERY_DATE_RELATED_FIELDS.includes(sampleData[key].constructor.name)
   );
-  if (fieldsWithBigQueryDates.length === 0) {
-    return rows;
-  } else {
-    fieldsWithBigQueryDates.forEach(dateField => {
-      rows.forEach(row => (row[dateField] = row[dateField].value));
-    });
-    return rows;
-  }
+  fieldsWithBigQueryDates.forEach(dateField => {
+    rows.forEach(row => (row[dateField] = row[dateField].value));
+  });
+  return rows;
 }
 
 function convertField(field: IBigQueryFieldMetadata): dataform.IField {
