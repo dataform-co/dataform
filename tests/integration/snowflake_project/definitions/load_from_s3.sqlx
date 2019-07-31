@@ -4,7 +4,7 @@ config {
 }
  
 -- Create a temp table to load the s3 data into with the correct schema.
-create or replace table ${resolve(`${name}_temp`)}
+create or replace table ${resolve(`${name()}_temp`)}
 (
   country string,
   revenue float
@@ -12,7 +12,7 @@ create or replace table ${resolve(`${name}_temp`)}
 
 ---
 -- Copy the data from s3 into the temporary table.
-copy into ${resolve(`${name}_temp`)}
+copy into ${resolve(`${name()}_temp`)}
 from 's3://dataform-integration-tests/sample-data/sample_data.csv'         
 file_format = (
   type=csv,
@@ -27,4 +27,4 @@ drop table if exists ${self()} cascade;
 
 ---
 -- Rename the temporary table to the actual table name.
-alter table ${resolve(`${name}_temp`)} rename to ${self()}
+alter table ${resolve(`${name()}_temp`)} rename to ${self()}
