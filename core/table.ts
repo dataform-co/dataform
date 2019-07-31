@@ -216,6 +216,7 @@ export class Table {
 export interface ITableContext {
   config: (config: TConfig) => string;
   self: () => string;
+  name: () => string;
   ref: (name: string) => string;
   resolve: (name: string) => string;
   type: (type: TableType) => string;
@@ -249,6 +250,10 @@ export class TableContext implements ITableContext {
 
   public self(): string {
     return this.resolve(this.table.proto.name);
+  }
+
+  public name(): string {
+    return this.table.proto.name;
   }
 
   public ref(name: string) {

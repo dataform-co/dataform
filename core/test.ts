@@ -104,6 +104,10 @@ class RefReplacingContext implements table.ITableContext {
     return "";
   }
 
+  public name() {
+    return "";
+  }
+
   public type(type: table.TableType) {
     return "";
   }

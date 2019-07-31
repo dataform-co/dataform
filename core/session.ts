@@ -76,11 +76,6 @@ export class Session {
         "Actions may only specify 'hasOutput: true' if they are of type 'operations' or create a dataset."
       );
     }
-    if (actionOptions.sqlxConfig.hasOutput && actionOptions.sqlStatementCount !== 1) {
-      this.compileError(
-        "Operations with 'hasOutput: true' must contain exactly one SQL statement."
-      );
-    }
     if (actionOptions.sqlxConfig.protected && actionOptions.sqlxConfig.type !== "incremental") {
       this.compileError(
         "Actions may only specify 'protected: true' if they are of type 'incremental'."
