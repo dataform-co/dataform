@@ -647,10 +647,6 @@ describe("@dataform/api", () => {
                 message: "Actions may only specify 'disabled: true' if they create a dataset."
               }),
               dataform.CompilationError.create({
-                fileName: "definitions/has_compile_errors/op_with_output_multiple_statements.sqlx",
-                message: "Operations with 'hasOutput: true' must contain exactly one SQL statement."
-              }),
-              dataform.CompilationError.create({
                 fileName: "definitions/has_compile_errors/protected_assertion.sqlx",
                 message:
                   "Actions may only specify 'protected: true' if they are of type 'incremental'."
