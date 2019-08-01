@@ -112,7 +112,6 @@ export function validate(compiledGraph: dataform.ICompiledGraph): dataform.IGrap
   const allActionNames = allActions.map(action => action.name);
 
   // Check there are no duplicate action names.
-  // This check is only needed for back compatibility as it is already checked during compilation
   allActions.forEach(action => {
     if (allActions.filter(subAction => subAction.name == action.name).length > 1) {
       const actionName = action.name;
@@ -130,7 +129,15 @@ export function validate(compiledGraph: dataform.ICompiledGraph): dataform.IGrap
   allActions.forEach(action => {
     const actionName = action.name;
     (action.dependencies || []).forEach(dependency => {
-      if (allActionNames.indexOf(dependency) < 0) {
+      let depClean = dependency;
+      try {
+        depClean = getActionFullName(dependency, allActionNames);
+      } catch (e) {
+        const message = e.message;
+        validationErrors.push(dataform.ValidationError.create({ message, actionName }));
+      }
+
+      if (allActionNames.indexOf(depClean) < 0) {
         const message = `Missing dependency detected: Node "${
           action.name
         }" depends on "${dependency}" which does not exist.`;
@@ -257,34 +264,31 @@ export function validate(compiledGraph: dataform.ICompiledGraph): dataform.IGrap
   return dataform.GraphErrors.create({ validationErrors, compilationErrors });
 }
 
-export function getActionFullName(actName: string, allActionFullNames: string[]): string {
-  const actNameNbrDots = actName.split(".").length - 1;
-  if (actNameNbrDots < 0 || actNameNbrDots > 1) {
-    throw new Error("Action name " + actName + " could not be found.");
-  }
-  if (actNameNbrDots === 1) {
-    // Check that it exists
-    if (allActionFullNames.includes(actName)) {
-      return actName;
+export function getActionFullName(actName: string, allActFullNames: string[]): string {
+  const actNameNbrParts = actName.split(".").length;
+  if (actNameNbrParts === 2) {
+    if (allActFullNames.includes(actName)) {
+      return actName; // Full name match. Return the full name.
     } else {
-      throw new Error("Action name" + actName + " could not be found.");
+      throw new Error("Action name: " + actName + " could not be found.");
+    }
+  } else if (actNameNbrParts === 1) {
+    const allActShortNamesMap = allActFullNames.map(act => [
+      act,
+      act.includes(".") ? act.split(".")[1] : act
+    ]);
+    const matches = [];
+    allActShortNamesMap.filter(act => act[1] === actName).forEach(act => matches.push(act[0]));
+    if (matches.length === 0) {
+      return actName; // No matches. Return the short name.
+    } else if (matches.length === 1) {
+      return matches[0]; // There was exactly one match to the short name. Return the full name.
+    } else if (matches.length > 1) {
+      throw new Error(
+        "Ambiguous Action name: " + actName + ". Did you mean one of: [" + matches.join(",") + "]."
+      );
     }
   } else {
-    // Check for amgiguities
-    const allActionShortNamesMap = allActionFullNames.map(act => [
-      act,
-      act.toString().includes(".") ? act.toString().split(".")[1] : act
-    ]);
-    const dupls = [];
-    allActionShortNamesMap.filter(obj => obj[1] === actName).forEach(obj => dupls.push(obj[0]));
-    if (dupls.length === 1) {
-      return dupls[0];
-    } else if (dupls.length > 1) {
-      throw new Error(
-        "Action name [" + actName + "] is ambiguous. Did you mean one of: [" + dupls.join(",") + "]"
-      );
-    } else if (dupls.length === 0) {
-      return actName;
-    }
+    throw new Error("Action name: " + actName + " is invalid.");
   }
 }

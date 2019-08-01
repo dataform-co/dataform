@@ -20,13 +20,8 @@ export class Operation {
 
   public dependencies(value: string | string[]) {
     const newDependencies = typeof value === "string" ? [value] : value;
-    const allActs = [].concat(
-      Object.keys(this.session.operations),
-      Object.keys(this.session.tables),
-      Object.keys(this.session.assertions)
-    );
     newDependencies.forEach(d => {
-      const depClean = utils.getActionFullName(d, allActs);
+      const depClean = utils.getActionFullName(d, this.session.getAllActionNames());
       if (this.proto.dependencies.indexOf(depClean) < 0) {
         this.proto.dependencies.push(depClean);
       }

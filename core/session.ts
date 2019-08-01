@@ -175,14 +175,7 @@ export class Session {
     try {
       const nam = name.includes(".")
         ? name
-        : utils.getActionFullName(
-            name,
-            [].concat(
-              Object.keys(this.tables),
-              Object.keys(this.assertions),
-              Object.keys(this.operations)
-            )
-          );
+        : utils.getActionFullName(name, this.getAllActionNames());
       const table = this.tables[nam];
       const operation =
         !!this.operations[nam] && this.operations[nam].hasOutput && this.operations[nam];
@@ -339,6 +332,10 @@ export class Session {
 
   public isDatasetType(type) {
     return type === "view" || type === "table" || type === "inline" || type === "incremental";
+  }
+
+  public getAllActionNames(): string[] {
+    return Object.keys([].concat(this.tables, this.assertions, this.operations));
   }
 
   private checkActionNameIsUnused(name: string) {

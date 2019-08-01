@@ -466,32 +466,25 @@ describe("@dataform/core", () => {
 
     it("same action name in same schema", () => {
       const session = new Session(path.dirname(__filename), TEST_CONFIG);
-      session.publish("a").dependencies("b");
+      session.publish("schema2.a").dependencies("b");
+      session.publish("schema2.a");
       session.publish("b");
-      session.publish("schema2.a");
-      session.publish("schema2.a");
       const cGraph = session.compile();
       const gErrors = utils.validate(cGraph);
       expect(gErrors)
         .to.have.property("compilationErrors")
         .to.be.an("array").that.is.not.empty;
-      // gErrors.compilationErrors.forEach(item => console.log("[core.spec.ts 478] cerr=" + item.message));
       const errors = gErrors.compilationErrors.filter(item =>
         item.message.match(/Duplicate action name detected. Names within a schema must be unique/)
       );
       expect(errors).to.be.an("array").that.is.not.empty;
-      const errors2 = gErrors.compilationErrors.filter(
-        item => !item.message.match(/Duplicate action name detected. Names within a schema must be unique/)
-      );
-      expect(errors2).to.be.an("array").that.is.empty;
     });
 
     it("same action names in different schemas", () => {
       const session = new Session(path.dirname(__filename), TEST_CONFIG);
-      session.publish("a").dependencies("b");
-      session.publish("b");
-      session.publish("schema1.a");
+      session.publish("schema1.a").dependencies("b");
       session.publish("schema2.a");
+      session.publish("b");
       const cGraph = session.compile();
       const gErrors = utils.validate(cGraph);
       expect(gErrors)
@@ -517,7 +510,6 @@ describe("@dataform/core", () => {
         .to.be.an("array").that.is.not.empty;
 
       const errors = gErrors.validationErrors.map(item => item.message);
-
       expect(errors.some(item => !!item.match(/Duplicate action name/))).to.be.true;
       expect(errors.some(item => !!item.match(/Missing dependency/))).to.be.true;
       expect(errors.some(item => !!item.match(/Circular dependency/))).to.be.true;
@@ -525,13 +517,14 @@ describe("@dataform/core", () => {
 
     it("wildcard_dependencies", () => {
       const session = new Session(path.dirname(__filename), TEST_CONFIG);
-      session.publish("a1");
-      session.publish("a2");
-      session.publish("b").dependencies("a*");
-
+      session.publish("foo.a1");
+      session.publish("foo.a2");
+      session.publish("b").dependencies("foo.a*");
       const graph = session.compile();
-
-      expect(graph.tables.filter(t => t.name === "b")[0].dependencies).deep.equals(["a1", "a2"]);
+      expect(graph.tables.filter(t => t.name === "b")[0].dependencies).deep.equals([
+        "foo.a1",
+        "foo.a2"
+      ]);
     });
   });
 

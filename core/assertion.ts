@@ -19,14 +19,9 @@ export class Assertion {
   }
 
   public dependencies(value: string | string[]) {
-    const allActs = [].concat(
-      Object.keys(this.session.operations),
-      Object.keys(this.session.tables),
-      Object.keys(this.session.assertions)
-    );
     const newDependencies = typeof value === "string" ? [value] : value;
     newDependencies.forEach(d => {
-      const depClean = utils.getActionFullName(d, allActs);
+      const depClean = utils.getActionFullName(d, this.session.getAllActionNames());
       if (this.proto.dependencies.indexOf(depClean) < 0) {
         this.proto.dependencies.push(depClean);
       }

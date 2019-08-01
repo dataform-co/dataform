@@ -133,19 +133,13 @@ export class Table {
   }
 
   public dependencies(value: string | string[]) {
-    const allActs = [].concat(
-      Object.keys(this.session.operations),
-      Object.keys(this.session.tables),
-      Object.keys(this.session.assertions)
-    );
     const newDependencies = typeof value === "string" ? [value] : value;
     newDependencies.forEach(d => {
-      const depClean = utils.getActionFullName(d, allActs);
-      const table = this.session.tables[depClean];
+      const table = this.session.tables[d];
       if (!!table && table.proto.type === "inline") {
         table.proto.dependencies.forEach(childDep => this.addDependency(childDep));
       } else {
-        this.addDependency(depClean);
+        this.addDependency(d);
       }
     });
     return this;

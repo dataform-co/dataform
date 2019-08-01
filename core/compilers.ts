@@ -1,6 +1,5 @@
 import { AssertionContext } from "@dataform/core/assertion";
 import { OperationContext } from "@dataform/core/operation";
-import { Session } from "@dataform/core/session";
 import { ISqlxParseResults, parseSqlx } from "@dataform/core/sqlx_parser";
 import { TableContext } from "@dataform/core/table";
 import * as utils from "@dataform/core/utils";

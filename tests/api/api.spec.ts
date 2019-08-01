@@ -272,10 +272,19 @@ describe("@dataform/api", () => {
     it("build actions with same name in different schemas", () => {
       const TEST_TABLES_POTENTIAL_DUPS = TEST_TABLES.concat([
         {
-          name: "a_specific_schema.a",
+          name: "a_specific_schema.z",
           target: {
-            schema: "schema",
-            name: "a"
+            schema: "a_specific_schema",
+            name: "z"
+          },
+          query: "query",
+          dependencies: ["b"]
+        },
+        {
+          name: "a_different_schema.z",
+          target: {
+            schema: "a_different_schema",
+            name: "z"
           },
           query: "query",
           dependencies: ["b"]
@@ -296,7 +305,8 @@ describe("@dataform/api", () => {
       const includedActionNames = executionGraph.actions.map(n => n.name);
       expect(includedActionNames).includes("a");
       expect(includedActionNames).includes("b");
-      expect(includedActionNames).includes("a_specific_schema.a");
+      expect(includedActionNames).includes("a_specific_schema.z");
+      expect(includedActionNames).includes("a_different_schema.z");
     });
 
     it("build actions using an ambiguous --actions option", () => {
@@ -1062,9 +1072,7 @@ describe("@dataform/api", () => {
     });
 
     it("snowflake_example", async () => {
-      const graph = await compile({
-        projectDir: "df/examples/snowflake"
-      }).catch(error => error);
+      const graph = await compile({projectDir: "df/examples/snowflake"}).catch(error => error);
       expect(graph).to.not.be.an.instanceof(Error);
 
       const gErrors = utils.validate(graph);
