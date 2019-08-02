@@ -132,7 +132,9 @@ export class Session {
         }
         case "assertion": {
           const assertion = this.assert(actionOptions.sqlxConfig.name);
-          assertion.dependencies(actionOptions.sqlxConfig.dependencies);
+          if (this.checkActionNamesAreAmbiguous(actionOptions.sqlxConfig.dependencies) === false) {
+            assertion.dependencies(actionOptions.sqlxConfig.dependencies);
+          }
           assertion.tags(actionOptions.sqlxConfig.tags);
           return assertion;
         }
@@ -141,7 +143,9 @@ export class Session {
           if (!actionOptions.sqlxConfig.hasOutput) {
             delete operations.proto.target;
           }
-          operations.dependencies(actionOptions.sqlxConfig.dependencies);
+          if (this.checkActionNamesAreAmbiguous(actionOptions.sqlxConfig.dependencies) === false) {
+            operations.dependencies(actionOptions.sqlxConfig.dependencies);
+          }
           operations.tags(actionOptions.sqlxConfig.tags);
           return operations;
         }
@@ -161,6 +165,7 @@ export class Session {
 
   public target(target: string, defaultSchema?: string): dataform.ITarget {
     const suffix = !!this.config.schemaSuffix ? `_${this.config.schemaSuffix}` : "";
+
     if (target.includes(".")) {
       const [schema, name] = target.split(".");
       return dataform.Target.create({ name, schema: schema + suffix });
@@ -172,54 +177,52 @@ export class Session {
   }
 
   public resolve(name: string): string {
-    try {
-      const nam = name.includes(".")
-        ? name
-        : utils.getActionFullName(name, this.getAllActionNames());
-      const table = this.tables[nam];
-      const operation =
-        !!this.operations[nam] && this.operations[nam].hasOutput && this.operations[nam];
+    const fQName = this.getFQName(name);
+    const shrtName = name.includes(".") ? name.split(".")[1] : name;
+    const table = this.tables[fQName];
+    const operation =
+      !!this.operations[fQName] && this.operations[fQName].hasOutput && this.operations[fQName];
 
-      if (table && table.proto.type === "inline") {
-        // TODO: Pretty sure this is broken as the proto.query value may not
-        // be set yet as it happens during compilation. We should evalute the query here.
-        return `(${table.proto.query})`;
-      }
-
-      const dataset = table || operation;
-      // TODO: We fall back to using the plain 'name' here for backwards compatibility with projects that use .sql files.
-      // In these projects, this session may not know about all actions (yet), and thus we need to fall back to assuming
-      // that the target *will* exist in the future. Once we break backwards compatibility with .sql files, we should remove
-      // the code that calls 'this.target(...)' below, and append a compile error if we can't find a dataset whose name is 'name'.
-      const target = dataset ? dataset.proto.target : this.target(nam);
-      return this.adapter().resolveTarget(target);
-    } catch (e) {
-      this.compileError(e);
-      return;
+    if (table && table.proto.type === "inline") {
+      // TODO: Pretty sure this is broken as the proto.query value may not
+      // be set yet as it happens during compilation. We should evalute the query here.
+      return `(${table.proto.query})`;
     }
+
+    const dataset = table || operation;
+    // TODO: We fall back to using the plain 'name' here for backwards compatibility with projects that use .sql files.
+    // In these projects, this session may not know about all actions (yet), and thus we need to fall back to assuming
+    // that the target *will* exist in the future. Once we break backwards compatibility with .sql files, we should remove
+    // the code that calls 'this.target(...)' below, and append a compile error if we can't find a dataset whose name is 'name'.
+    const target = dataset ? dataset.proto.target : this.target(shrtName);
+    return this.adapter().resolveTarget(target);
   }
 
   public operate(name: string, queries?: OContextable<string | string[]>): Operation {
-    this.checkActionNameIsUnused(name);
+    const fQName = name.includes(".") ? name : [this.config.defaultSchema, name].join(".");
+    const shrtName = name.includes(".") ? name.split(".")[1] : name;
+    this.checkActionNameIsUnused(fQName);
     const operation = new Operation();
     operation.session = this;
-    operation.proto.name = name;
-    operation.proto.target = this.target(name);
+    operation.proto.name = fQName;
+    operation.proto.target = this.target(shrtName);
     if (queries) {
       operation.queries(queries);
     }
     operation.proto.fileName = utils.getCallerFile(this.rootDir);
     // Add it to global index.
-    this.operations[name] = operation;
+    this.operations[fQName] = operation;
     return operation;
   }
 
   public publish(name: string, queryOrConfig?: TContextable<string> | TConfig): Table {
-    this.checkActionNameIsUnused(name);
+    const fQName = name.includes(".") ? name : [this.config.defaultSchema, name].join(".");
+    const shrtName = name.includes(".") ? name.split(".")[1] : name;
+    this.checkActionNameIsUnused(fQName);
     const table = new Table();
     table.session = this;
-    table.proto.name = name;
-    table.proto.target = this.target(name);
+    table.proto.name = fQName;
+    table.proto.target = this.target(shrtName);
     if (!!queryOrConfig) {
       if (typeof queryOrConfig === "object") {
         table.config(queryOrConfig);
@@ -229,22 +232,24 @@ export class Session {
     }
     table.proto.fileName = utils.getCallerFile(this.rootDir);
     // Add it to global index.
-    this.tables[name] = table;
+    this.tables[fQName] = table;
     return table;
   }
 
   public assert(name: string, query?: AContextable<string>): Assertion {
-    this.checkActionNameIsUnused(name);
+    const fQName = name.includes(".") ? name : [this.config.defaultSchema, name].join(".");
+    const shrtName = name.includes(".") ? name.split(".")[1] : name;
+    this.checkActionNameIsUnused(fQName);
     const assertion = new Assertion();
     assertion.session = this;
-    assertion.proto.name = name;
-    assertion.proto.target = this.target(name, this.config.assertionSchema);
+    assertion.proto.name = fQName;
+    assertion.proto.target = this.target(shrtName, this.config.assertionSchema);
     if (query) {
       assertion.query(query);
     }
     assertion.proto.fileName = utils.getCallerFile(this.rootDir);
     // Add it to global index.
-    this.assertions[name] = assertion;
+    this.assertions[fQName] = assertion;
     return assertion;
   }
 
@@ -309,22 +314,19 @@ export class Session {
       compiledGraph.operations
     );
     const allActionNames = allActions.map(action => action.name);
+
     allActions.forEach(action => {
       const uniqueDependencies: { [dependency: string]: boolean } = {};
       const dependencies = action.dependencies || [];
       // Add non-wildcard deps normally.
-      if (dependencies) {
-        dependencies
-          .filter(dependency => !dependency.includes("*"))
-          .forEach(dependency => {
-            uniqueDependencies[dependency] = true;
-          });
-        // Match wildcard deps against all action names.
-        utils
-          .matchPatterns(dependencies.filter(d => d.includes("*")), allActionNames)
-          .forEach(dependency => (uniqueDependencies[dependency] = true));
-        action.dependencies = Object.keys(uniqueDependencies);
-      }
+      dependencies
+        .filter(dependency => !dependency.includes("*"))
+        .forEach(dependency => (uniqueDependencies[dependency] = true));
+      // Match wildcard deps against all action names.
+      utils
+        .matchPatterns(dependencies.filter(d => d.includes("*")), allActionNames)
+        .forEach(dependency => (uniqueDependencies[dependency] = true));
+      action.dependencies = Object.keys(uniqueDependencies);
     });
 
     return compiledGraph;
@@ -334,8 +336,10 @@ export class Session {
     return type === "view" || type === "table" || type === "inline" || type === "incremental";
   }
 
-  public getAllActionNames(): string[] {
-    return Object.keys([].concat(this.tables, this.assertions, this.operations));
+  private checkActionNamesAreAmbiguous(action: string | string[]) {
+    let allActs = [];
+    allActs = typeof action === "string" ? [action] : action;
+    return !allActs.every(t => this.getFQName(t) !== null);
   }
 
   private checkActionNameIsUnused(name: string) {
@@ -351,6 +355,45 @@ export class Session {
     if (this.tests[name]) {
       const message = `Duplicate test name detected: "${name}"`;
       this.compileError(new Error(message));
+    }
+  }
+
+  private getFQName(act: string): string {
+    if (act.includes("*")) {
+      // Skip wildcards
+      return act;
+    }
+    const allActFullNames = Object.keys([].concat(this.tables, this.assertions, this.operations));
+    const actNbrParts = act.split(".").length;
+    if (actNbrParts === 2) {
+      if (allActFullNames.includes(act)) {
+        return act; // Full name match. Return the full name.
+      } else {
+        throw new Error("Action name: " + act + " could not be found.");
+        return null;
+      }
+    } else if (actNbrParts === 1) {
+      const allActShortNamesMap = allActFullNames.map(actFQ => [
+        actFQ,
+        actFQ.includes(".") ? actFQ.split(".")[1] : actFQ
+      ]);
+      const matches = [];
+      allActShortNamesMap
+        .filter(actShort => actShort[1] === act)
+        .forEach(actShort => matches.push(actShort[0]));
+      if (matches.length === 0) {
+        return act; // No matches. Return the short name.
+      } else if (matches.length === 1) {
+        return matches[0]; // There was exactly one match to the short name. Return the full name.
+      } else if (matches.length > 1) {
+        this.compileError(
+          "Ambiguous Action name: " + act + ". Did you mean one of: [" + matches.join(",") + "]."
+        );
+        return null;
+      }
+    } else {
+      this.compileError("Action name: " + act + " is invalid.");
+      return null;
     }
   }
 }

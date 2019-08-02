@@ -29,7 +29,7 @@ describe("@dataform/core", () => {
         .postOps(_ => ["post_op"])
         .compile();
 
-      expect(t.name).equals("example");
+      expect(t.name).equals("schema.example");
       expect(t.type).equals("table");
       expect(t.fieldDescriptor).deep.equals({
         test: "test description"
@@ -54,7 +54,7 @@ describe("@dataform/core", () => {
         )
         .compile();
 
-      expect(t.name).equals("example");
+      expect(t.name).equals("schema.example");
       expect(t.type).equals("table");
       expect(t.fieldDescriptor).deep.equals({
         test: "test description"
@@ -299,16 +299,16 @@ describe("@dataform/core", () => {
       const graph = session.compile();
       const graphErrors = utils.validate(graph);
 
-      const tableA = graph.tables.find(item => item.name === "a");
+      const tableA = graph.tables.find(item => item.name === "schema.a");
       expect(tableA).to.exist;
       expect(tableA.type).equals("table");
       expect(tableA.dependencies).to.be.an("array").that.is.empty;
       expect(tableA.query).equals("select 1 as test");
 
-      const tableB = graph.tables.find(item => item.name === "b");
+      const tableB = graph.tables.find(item => item.name === "schema.b");
       expect(tableB).to.exist;
       expect(tableB.type).equals("inline");
-      expect(tableB.dependencies).includes("a");
+      expect(tableB.dependencies).includes("schema.a");
       expect(tableB.fieldDescriptor).deep.equals({ test: "test description b" });
       expect(tableB.preOps).deep.equals(["pre_op_b"]);
       expect(tableB.postOps).deep.equals(["post_op_b"]);
@@ -354,13 +354,19 @@ describe("@dataform/core", () => {
 
     it("ambiguous_ref", () => {
       const session = new Session(path.dirname(__filename), TEST_CONFIG);
-      session.publish("a", _ => "select 1 as test");
+      session.publish("foo.a", _ => "select 1 as test");
+      session.publish("bar.a", _ => "select 1 as test");
+      session.publish("foo.b", ctx => `select * from ${ctx.ref("foo.a")}`);
+      session.publish("foo.c", ctx => `select * from ${ctx.ref("b")}`);
 
       const graph = session.compile();
       const graphErrors = utils.validate(graph);
 
       const tableNames = graph.tables.map(item => item.name);
-      expect(tableNames).includes("a");
+      expect(tableNames).includes("foo.a");
+      expect(tableNames).includes("bar.a");
+      expect(tableNames).includes("foo.b");
+      expect(tableNames).includes("foo.c");
     });
 
     it("ref", () => {
@@ -373,9 +379,9 @@ describe("@dataform/core", () => {
       const graphErrors = utils.validate(graph);
 
       const tableNames = graph.tables.map(item => item.name);
-      expect(tableNames).includes("a");
-      expect(tableNames).includes("b");
-      expect(tableNames).includes("c");
+      expect(tableNames).includes("schema.a");
+      expect(tableNames).includes("schema.b");
+      expect(tableNames).includes("schema.c");
 
       const errors = graphErrors.compilationErrors.map(item => item.message);
       expect(errors).includes("Action name is not specified");
@@ -510,6 +516,7 @@ describe("@dataform/core", () => {
         .to.be.an("array").that.is.not.empty;
 
       const errors = gErrors.validationErrors.map(item => item.message);
+
       expect(errors.some(item => !!item.match(/Duplicate action name/))).to.be.true;
       expect(errors.some(item => !!item.match(/Missing dependency/))).to.be.true;
       expect(errors.some(item => !!item.match(/Circular dependency/))).to.be.true;
@@ -517,13 +524,28 @@ describe("@dataform/core", () => {
 
     it("wildcard_dependencies", () => {
       const session = new Session(path.dirname(__filename), TEST_CONFIG);
+      session.publish("a1");
+      session.publish("a2");
+      session.publish("b").dependencies("a*");
       session.publish("foo.a1");
       session.publish("foo.a2");
-      session.publish("b").dependencies("foo.a*");
+      session.publish("foo.a3");
+      session.publish("b2").dependencies("foo.a*");
+      session.publish("bar.a3");
+      //session.publish("c").dependencies("a3");
+      session.publish("c").dependencies("dog");
+
       const graph = session.compile();
-      expect(graph.tables.filter(t => t.name === "b")[0].dependencies).deep.equals([
+
+      expect(graph.tables.filter(t => t.name === "b")[0].dependencies).deep.equals(["a1", "a2"]);
+      expect(graph.tables.filter(t => t.name === "b2")[0].dependencies).deep.equals([
         "foo.a1",
-        "foo.a2"
+        "foo.a2",
+        "foo.a3"
+      ]);
+      expect(graph.tables.filter(t => t.name === "c")[0].dependencies).deep.equals([
+        "foo.a3",
+        "bar.a3"
       ]);
     });
   });

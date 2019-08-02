@@ -91,16 +91,12 @@ function compileSqlx(results: ISqlxParseResults, path: string, defaultSchema: st
       ? JSON.parse(results.config.replace(/(['"])?([a-zA-Z0-9_]+)(['"])?:/g, '"$2": '))
       : null;
   const queryConfigSchema = "schema" in resConfig && resConfig != null ? resConfig.schema : null;
-  const consolidatedSchema = queryConfigSchema || defaultSchema;
-  const fileName =
-    consolidatedSchema == null
-      ? utils.baseFilename(path)
-      : consolidatedSchema + "." + utils.baseFilename(path);
+  const fQName = [queryConfigSchema || defaultSchema, utils.baseFilename(path)].join(".");
   return `
 const parsedConfig = ${results.config || "{}"};
 // sqlxConfig should conform to the ISqlxConfig interface.
 const sqlxConfig = {
-  name: "${fileName}",
+  name: "${fQName}",
   type: "operations",
   dependencies: [],
   tags: [],

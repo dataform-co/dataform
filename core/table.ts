@@ -1,5 +1,4 @@
 import { Session } from "@dataform/core/session";
-import * as utils from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
 
 export enum TableTypes {
@@ -136,6 +135,7 @@ export class Table {
     const newDependencies = typeof value === "string" ? [value] : value;
     newDependencies.forEach(d => {
       const table = this.session.tables[d];
+
       if (!!table && table.proto.type === "inline") {
         table.proto.dependencies.forEach(childDep => this.addDependency(childDep));
       } else {

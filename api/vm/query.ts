@@ -3,7 +3,7 @@ import { compiler, indexFileGenerator } from "@dataform/core";
 import * as path from "path";
 import { NodeVM } from "vm2";
 
-export function compile(query: string, defaultSchema: string, projectDir?: string): string {
+export function compile(query: string, projectDir?: string, defaultSchema?: string): string {
   let compiledQuery = query;
   if (projectDir) {
     const vm = new NodeVM({
@@ -47,7 +47,7 @@ export function compile(query: string, defaultSchema: string, projectDir?: strin
 
 process.on(`message`, object => {
   try {
-    const graph = compile(object.query, object.defaultSchema, object.projectDir);
+    const graph = compile(object.query, object.projectDir, object.defaultSchema);
     process.send({ result: graph });
   } catch (e) {
     process.send({ err: String(e) });
