@@ -158,10 +158,12 @@ export class Session {
     }
     return action;
   }
+
   public cleanDeps(value: string | string[]) {
     const deps = typeof value === "string" ? [value] : value;
-    return deps.map(k => this.getFQName(k));
+    return deps.map(k => (k.includes(".") ? k : this.config.defaultSchema + "." + k));
   }
+
   public target(target: string, defaultSchema?: string): dataform.ITarget {
     const suffix = !!this.config.schemaSuffix ? `_${this.config.schemaSuffix}` : "";
 
@@ -176,10 +178,9 @@ export class Session {
   }
 
   public resolve(name: string): string {
-    const fQName = this.getFQName(name);
+    const fQName = this.matchFQName(name);
     const shrtName = name.includes(".") ? name.split(".")[1] : name;
     const table = this.tables[fQName];
-
     const operation =
       !!this.operations[fQName] && this.operations[fQName].hasOutput && this.operations[fQName];
 
@@ -336,18 +337,36 @@ export class Session {
     return type === "view" || type === "table" || type === "inline" || type === "incremental";
   }
 
-  public getFQName(act: string): string {
-    if (act.includes("*")) {
-      return act; // Skip wildcards
-    }
-    const allActFullNames = [].concat(
+  public checkActionNamesAreAmbiguous(action: string | string[]) {
+    const allActFQNames = this.getAllActFQNames();
+    const allActShortNamesMap = allActFQNames.map(act => [
+      act,
+      act.includes(".") ? act.split(".")[1] : act
+    ]);
+    const arrActs = typeof action === "string" ? [action] : action;
+    return !arrActs.every(
+      t =>
+        (t.includes(".") && !!allActFQNames[t]) ||
+        (!t.includes(".") && allActShortNamesMap.filter(actShort => actShort[1] === t).length <= 1)
+    );
+  }
+
+  private getAllActFQNames(): string[] {
+    return [].concat(
       Object.keys(this.tables),
       Object.keys(this.assertions),
       Object.keys(this.operations)
     );
+  }
+
+  private matchFQName(act: string): string {
+    /* if (act.includes("*")) {
+      return act; // Skip wildcards
+    }*/
+    const allActFQNames = this.getAllActFQNames();
     switch (act.split(".").length) {
       case 2: {
-        if (allActFullNames.includes(act)) {
+        if (allActFQNames.includes(act)) {
           return act; // Fully Qualified name match. Return as it is.
         } else {
           this.compileError("Action name: " + act + " could not be found.");
@@ -355,7 +374,7 @@ export class Session {
         }
       }
       case 1: {
-        const allActShortNamesMap = allActFullNames.map(actFQ => [
+        const allActShortNamesMap = allActFQNames.map(actFQ => [
           actFQ,
           actFQ.includes(".") ? actFQ.split(".")[1] : actFQ
         ]);
@@ -365,7 +384,6 @@ export class Session {
           .forEach(actShort => matches.push(actShort[0]));
         if (matches.length === 0) {
           this.compileError("Action name: " + act + " could not be found.");
-          //return act; // No matches. Return the short name.
           return null; // No matches.
         } else if (matches.length === 1) {
           return matches[0]; // There was exactly one match to the short name. Return the full name.
@@ -381,12 +399,6 @@ export class Session {
         return null;
       }
     }
-  }
-
-  public checkActionNamesAreAmbiguous(action: string | string[]) {
-    let allActs = [];
-    allActs = typeof action === "string" ? [action] : action;
-    return !allActs.every(t => this.getFQName(t) !== null);
   }
 
   private checkActionNameIsUnused(name: string) {

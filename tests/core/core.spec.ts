@@ -425,8 +425,10 @@ describe("@dataform/core", () => {
   describe("graph", () => {
     it("circular_dependencies", () => {
       const session = new Session(path.dirname(__filename), TEST_CONFIG);
-      session.publish("foo.a").dependencies("foo.b");
-      session.publish("foo.b").dependencies("foo.a");
+      session.publish("a").dependencies("b");
+      session.publish("b").dependencies("a");
+      session.publish("foo.c").dependencies("foo.d");
+      session.publish("foo.d").dependencies("foo.c");
       const cGraph = session.compile();
       const gErrors = utils.validate(cGraph);
 
@@ -434,8 +436,12 @@ describe("@dataform/core", () => {
         .to.have.property("validationErrors")
         .to.be.an("array").that.is.not.empty;
 
-      const err = gErrors.validationErrors.find(e => e.actionName === "foo.a");
+      const err = gErrors.validationErrors.find(e => e.actionName === "schema.a");
       expect(err)
+        .to.have.property("message")
+        .that.matches(/Circular dependency/);
+      const err2 = gErrors.validationErrors.find(e => e.actionName === "foo.c");
+      expect(err2)
         .to.have.property("message")
         .that.matches(/Circular dependency/);
     });
@@ -445,8 +451,13 @@ describe("@dataform/core", () => {
       session.publish("a", ctx => `select * from ${ctx.ref("b")}`);
       const cGraph = session.compile();
       const gErrors = utils.validate(cGraph);
-      const errors = gErrors.compilationErrors.filter(
-        item => item.message === "Action name: b could not be found."
+
+      expect(gErrors)
+        .to.have.property("compilationErrors")
+        .to.be.an("array").that.is.not.empty;
+
+      const errors = gErrors.compilationErrors.filter(item =>
+        item.message.match(/Action name: b could not be found/)
       );
       expect(errors).to.be.an("array").that.is.not.empty;
     });
@@ -531,8 +542,6 @@ describe("@dataform/core", () => {
       session.publish("foo.a3");
       session.publish("b2").dependencies("foo.a*");
       session.publish("bar.a3");
-      //session.publish("c").dependencies("a3");
-      session.publish("c").dependencies("dog");
 
       const graph = session.compile();
 

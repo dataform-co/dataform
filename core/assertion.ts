@@ -19,7 +19,7 @@ export class Assertion {
 
   public dependencies(value: string | string[]) {
     if (this.session.checkActionNamesAreAmbiguous(value)) {
-      this.session.compileError("Ambiguous action names");
+      this.session.compileError("Ambiguous dependency action name:" + value);
       return this;
     }
     const newDependencies = this.session.cleanDeps(value);
