@@ -425,8 +425,8 @@ describe("@dataform/core", () => {
   describe("graph", () => {
     it("circular_dependencies", () => {
       const session = new Session(path.dirname(__filename), TEST_CONFIG);
-      session.publish("a").dependencies("b");
-      session.publish("b").dependencies("a");
+      session.publish("foo.a").dependencies("foo.b");
+      session.publish("foo.b").dependencies("foo.a");
       const cGraph = session.compile();
       const gErrors = utils.validate(cGraph);
 
@@ -434,7 +434,7 @@ describe("@dataform/core", () => {
         .to.have.property("validationErrors")
         .to.be.an("array").that.is.not.empty;
 
-      const err = gErrors.validationErrors.find(e => e.actionName === "schema.a");
+      const err = gErrors.validationErrors.find(e => e.actionName === "foo.a");
       expect(err)
         .to.have.property("message")
         .that.matches(/Circular dependency/);
@@ -487,9 +487,9 @@ describe("@dataform/core", () => {
 
     it("same action names in different schemas", () => {
       const session = new Session(path.dirname(__filename), TEST_CONFIG);
+      session.publish("b");
       session.publish("schema1.a").dependencies("b");
       session.publish("schema2.a");
-      session.publish("b");
       const cGraph = session.compile();
       const gErrors = utils.validate(cGraph);
       expect(gErrors)
@@ -536,13 +536,16 @@ describe("@dataform/core", () => {
 
       const graph = session.compile();
 
-      expect(graph.tables.filter(t => t.name === "b")[0].dependencies).deep.equals(["a1", "a2"]);
-      expect(graph.tables.filter(t => t.name === "b2")[0].dependencies).deep.equals([
+      expect(graph.tables.filter(t => t.name === "schema.b")[0].dependencies).deep.equals([
+        "schema.a1",
+        "schema.a2"
+      ]);
+      expect(graph.tables.filter(t => t.name === "schema.b2")[0].dependencies).deep.equals([
         "foo.a1",
         "foo.a2",
         "foo.a3"
       ]);
-      expect(graph.tables.filter(t => t.name === "c")[0].dependencies).deep.equals([
+      expect(graph.tables.filter(t => t.name === "schema.c")[0].dependencies).deep.equals([
         "foo.a3",
         "bar.a3"
       ]);

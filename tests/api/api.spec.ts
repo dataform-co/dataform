@@ -270,13 +270,21 @@ describe("@dataform/api", () => {
     it("build actions with same name in different schemas", () => {
       const TEST_TABLES_POTENTIAL_DUPS = [
         {
+          name: "foo.b",
+          target: {
+            schema: "foo",
+            name: "b"
+          },
+          query: "query"
+        },
+        {
           name: "foo.z",
           target: {
             schema: "foo",
             name: "z"
           },
           query: "query",
-          dependencies: ["b"]
+          dependencies: ["foo.b"]
         },
         {
           name: "bar.z",
@@ -285,7 +293,7 @@ describe("@dataform/api", () => {
             name: "z"
           },
           query: "query",
-          dependencies: ["b"]
+          dependencies: ["foo.b"]
         }
       ];
       const TEST_GRAPH_WITH_POTENTIAL_DUPS: dataform.ICompiledGraph = dataform.CompiledGraph.create(
@@ -300,6 +308,7 @@ describe("@dataform/api", () => {
         TEST_STATE
       );
       const executionGraph = builder.build();
+
       /*const includedActionNames = executionGraph.actions.map(n => n.name);
       expect(includedActionNames).includes("a");
       expect(includedActionNames).includes("b");
@@ -619,8 +628,10 @@ describe("@dataform/api", () => {
       expect(graph.graphErrors).to.eql(dataform.GraphErrors.create());
 
       // Check JS blocks get processed.
-      expect(tableNames).includes("example_js_blocks");
-      const exampleJsBlocks = graph.tables.filter(t => t.name == "example_js_blocks")[0];
+      expect(tableNames).includes("df_integration_test.example_js_blocks");
+      const exampleJsBlocks = graph.tables.filter(
+        t => t.name == "df_integration_test.example_js_blocks"
+      )[0];
       expect(exampleJsBlocks.type).equals("table");
       expect(exampleJsBlocks.query).equals("select 1 as foo");
 
@@ -714,7 +725,8 @@ describe("@dataform/api", () => {
       it(`bigquery using v2 language compiles with suffix "${schemaSuffix}"`, async () => {
         const graph = await compile({
           projectDir: path.resolve("df/examples/bigquery_language_v2"),
-          schemaSuffixOverride: schemaSuffix
+          schemaSuffixOverride: schemaSuffix,
+          defaultSchema: "df_integration_test" // This is bad. It should take it from projectDir
         });
 
         expect(graph.graphErrors).to.eql(
@@ -871,7 +883,9 @@ describe("@dataform/api", () => {
         expect(exampleTable.tags).to.eql([]);
 
         // Check Table with tags
-        const exampleTableWithTags = graph.tables.find(t => t.name === "example_table_with_tags");
+        const exampleTableWithTags = graph.tables.find(
+          t => t.name === "df_integration_test.example_table_with_tags"
+        );
         expect(exampleTableWithTags).to.not.be.undefined;
         expect(exampleTableWithTags.tags).to.eql(["tag1", "tag2", "tag3"]);
 
@@ -921,7 +935,9 @@ describe("@dataform/api", () => {
         expect(exampleAssertionWithTags.tags).to.eql(["tag1", "tag2"]);
 
         // Check example operations file
-        const exampleOperations = graph.operations.find(o => o.name === "example_operations");
+        const exampleOperations = graph.operations.find(
+          o => o.name === "df_integration_test.example_operations"
+        );
         expect(exampleOperations).to.not.be.undefined;
         expect(exampleOperations.target).is.null;
         expect(exampleOperations.queries).to.eql([
@@ -938,13 +954,15 @@ describe("@dataform/api", () => {
 
         // Check example operation with output.
         const exampleOperationWithOutput = graph.operations.find(
-          o => o.name === "example_operation_with_output"
+          o => o.name === "df_integration_test.example_operation_with_output"
         );
         expect(exampleOperationWithOutput).to.not.be.undefined;
         expect(exampleOperationWithOutput.target.schema).equals(
           schemaWithSuffix("df_integration_test")
         );
-        expect(exampleOperationWithOutput.target.name).equals("example_operation_with_output");
+        expect(exampleOperationWithOutput.target.name).equals(
+          "df_integration_test.example_operation_with_output"
+        );
         expect(exampleOperationWithOutput.queries).to.eql([
           `\nCREATE OR REPLACE VIEW \`tada-analytics.${schemaWithSuffix(
             "df_integration_test"
@@ -954,13 +972,13 @@ describe("@dataform/api", () => {
 
         // Check Operation with tags
         const exampleOperationsWithTags = graph.operations.find(
-          t => t.name === "example_operations_with_tags"
+          t => t.name === "df_integration_test.example_operations_with_tags"
         );
         expect(exampleOperationsWithTags).to.not.be.undefined;
         expect(exampleOperationsWithTags.tags).to.eql(["tag1"]);
 
         // Check testcase.
-        const testCase = graph.tests.find(t => t.name === "example_test_case");
+        const testCase = graph.tests.find(t => t.name === "df_integration_test.example_test_case");
         expect(testCase.testQuery.trim()).equals(
           "select * from (\n    select 'hi' as faked union all\n    select 'ben' as faked union all\n    select 'sup?' as faked\n)\n\n-- here ${\"is\"} a `comment\n\n/* ${\"another\"} ` backtick ` containing ```comment */"
         );
@@ -996,13 +1014,17 @@ describe("@dataform/api", () => {
 
         // Check inline tables
         expect(tableNames).includes("df_integration_test.example_inline");
-        const exampleInline = graph.tables.filter(t => t.name == "df_integration_test.example_inline")[0];
+        const exampleInline = graph.tables.filter(
+          t => t.name == "df_integration_test.example_inline"
+        )[0];
         expect(exampleInline.type).equals("inline");
         expect(exampleInline.query).equals('\nselect * from "df_integration_test"."sample_data"');
         expect(exampleInline.dependencies).includes("df_integration_test.sample_data");
 
         expect(tableNames).includes("df_integration_test.example_using_inline");
-        const exampleUsingInline = graph.tables.filter(t => t.name == "df_integration_test.example_using_inline")[0];
+        const exampleUsingInline = graph.tables.filter(
+          t => t.name == "df_integration_test.example_using_inline"
+        )[0];
         expect(exampleUsingInline.type).equals("table");
         expect(exampleUsingInline.query).equals(
           '\nselect * from (\nselect * from "df_integration_test"."sample_data")\nwhere true'
@@ -1078,8 +1100,8 @@ describe("@dataform/api", () => {
 
     it("operation_refing", async function() {
       const expectedQueries = {
-        sample_1: 'create table "test_schema"."sample_1" as select 1 as sample_1',
-        sample_2: 'select * from "test_schema"."sample_1"'
+        "test_schema.sample_1": 'create table "test_schema"."sample_1" as select 1 as sample_1',
+        "test_schema.sample_2": 'select * from "test_schema"."sample_1"'
       };
 
       const graph = await compile({ projectDir: "df/examples/redshift_operations" }).catch(
@@ -1120,28 +1142,30 @@ describe("@dataform/api", () => {
 
       const mNames = graph.tables.map(t => t.name);
 
-      expect(mNames).includes("example_incremental");
-      const mIncremental = graph.tables.filter(t => t.name == "example_incremental")[0];
+      expect(mNames).includes("df_integration_test.example_incremental");
+      const mIncremental = graph.tables.filter(
+        t => t.name == "df_integration_test.example_incremental"
+      )[0];
       expect(mIncremental.type).equals("incremental");
       expect(mIncremental.query).equals(
         "select convert_timezone('UTC', current_timestamp())::timestamp as ts"
       );
       expect(mIncremental.dependencies).to.be.an("array").that.is.empty;
 
-      expect(mNames).includes("example_table");
-      const mTable = graph.tables.filter(t => t.name == "example_table")[0];
+      expect(mNames).includes("df_integration_test.example_table");
+      const mTable = graph.tables.filter(t => t.name == "df_integration_test.example_table")[0];
       expect(mTable.type).equals("table");
       expect(mTable.query).equals('\nselect * from "df_integration_test"."sample_data"');
-      expect(mTable.dependencies).deep.equals(["sample_data"]);
+      expect(mTable.dependencies).deep.equals(["df_integration_test.sample_data"]);
 
-      expect(mNames).includes("example_view");
-      const mView = graph.tables.filter(t => t.name == "example_view")[0];
+      expect(mNames).includes("df_integration_test.example_view");
+      const mView = graph.tables.filter(t => t.name == "df_integration_test.example_view")[0];
       expect(mView.type).equals("view");
       expect(mView.query).equals('\nselect * from "df_integration_test"."sample_data"');
-      expect(mView.dependencies).deep.equals(["sample_data"]);
+      expect(mView.dependencies).deep.equals(["df_integration_test.sample_data"]);
 
-      expect(mNames).includes("sample_data");
-      const mSampleData = graph.tables.filter(t => t.name == "sample_data")[0];
+      expect(mNames).includes("df_integration_test.sample_data");
+      const mSampleData = graph.tables.filter(t => t.name == "df_integration_test.sample_data")[0];
       expect(mSampleData.type).equals("view");
       expect(mSampleData.query).equals(
         "select 1 as sample_column union all\nselect 2 as sample_column union all\nselect 3 as sample_column"
@@ -1149,32 +1173,38 @@ describe("@dataform/api", () => {
       expect(mSampleData.dependencies).to.be.an("array").that.is.empty;
 
       // Check inline tables
-      expect(mNames).includes("example_inline");
-      const exampleInline = graph.tables.filter(t => t.name == "example_inline")[0];
+      expect(mNames).includes("df_integration_test.example_inline");
+      const exampleInline = graph.tables.filter(
+        t => t.name == "df_integration_test.example_inline"
+      )[0];
       expect(exampleInline.type).equals("inline");
       expect(exampleInline.query).equals('\nselect * from "df_integration_test"."sample_data"');
-      expect(exampleInline.dependencies).includes("sample_data");
+      expect(exampleInline.dependencies).includes("df_integration_test.sample_data");
 
-      expect(mNames).includes("example_using_inline");
-      const exampleUsingInline = graph.tables.filter(t => t.name == "example_using_inline")[0];
+      expect(mNames).includes("df_integration_test.example_using_inline");
+      const exampleUsingInline = graph.tables.filter(
+        t => t.name == "df_integration_test.example_using_inline"
+      )[0];
       expect(exampleUsingInline.type).equals("table");
       expect(exampleUsingInline.query).equals(
         '\nselect * from (\nselect * from "df_integration_test"."sample_data")\nwhere true'
       );
-      expect(exampleUsingInline.dependencies).includes("sample_data");
+      expect(exampleUsingInline.dependencies).includes("df_integration_test.sample_data");
 
       const aNames = graph.assertions.map(a => a.name);
 
-      expect(aNames).includes("sample_data_assertion");
-      const assertion = graph.assertions.filter(a => a.name == "sample_data_assertion")[0];
+      expect(aNames).includes("df_integration_test.sample_data_assertion");
+      const assertion = graph.assertions.filter(
+        a => a.name == "df_integration_test.sample_data_assertion"
+      )[0];
       expect(assertion.query).equals(
         'select * from "df_integration_test"."sample_data" where sample_column > 3'
       );
       expect(assertion.dependencies).to.include.members([
-        "sample_data",
-        "example_table",
-        "example_incremental",
-        "example_view"
+        "df_integration_test.sample_data",
+        "df_integration_test.example_table",
+        "df_integration_test.example_incremental",
+        "df_integration_test.example_view"
       ]);
     });
 
