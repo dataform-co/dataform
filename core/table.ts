@@ -132,10 +132,13 @@ export class Table {
   }
 
   public dependencies(value: string | string[]) {
-    const newDependencies = typeof value === "string" ? [value] : value;
+    if (this.session.checkActionNamesAreAmbiguous(value)) {
+      this.session.compileError("Ambiguous action names");
+      return this;
+    }
+    const newDependencies = this.session.cleanDeps(value);
     newDependencies.forEach(d => {
       const table = this.session.tables[d];
-
       if (!!table && table.proto.type === "inline") {
         table.proto.dependencies.forEach(childDep => this.addDependency(childDep));
       } else {

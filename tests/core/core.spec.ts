@@ -96,14 +96,14 @@ describe("@dataform/core", () => {
 
       const sessionFail = new Session(path.dirname(__filename), TEST_CONFIG);
       const cases: { [key: string]: { table: Table; errorTest: RegExp } } = {
-        missing_where: {
+        "schema.missing_where": {
           table: sessionFail.publish("missing_where", {
             type: "incremental",
             descriptor: ["field"]
           }),
           errorTest: /"where" property is not defined/
         },
-        empty_where: {
+        "schema.empty_where": {
           table: sessionFail
             .publish("empty_where", {
               type: "incremental",
@@ -149,7 +149,7 @@ describe("@dataform/core", () => {
         .to.have.property("validationErrors")
         .to.be.an("array").that.is.not.empty;
 
-      const err = cgFailErrors.validationErrors.find(e => e.actionName === "exampleFail");
+      const err = cgFailErrors.validationErrors.find(e => e.actionName === "schema.exampleFail");
       expect(err)
         .to.have.property("message")
         .that.matches(/Wrong type of table/);
@@ -242,14 +242,14 @@ describe("@dataform/core", () => {
       });
 
       const expectedResults = [
-        { name: "example_absent_distKey", message: /Property "distKey" is not defined/ },
-        { name: "example_absent_distStyle", message: /Property "distStyle" is not defined/ },
-        { name: "example_wrong_distStyle", message: /Wrong value of "distStyle" property/ },
-        { name: "example_absent_sortKeys", message: /Property "sortKeys" is not defined/ },
-        { name: "example_empty_sortKeys", message: /Property "sortKeys" is not defined/ },
-        { name: "example_absent_sortStyle", message: /Property "sortStyle" is not defined/ },
-        { name: "example_wrong_sortStyle", message: /Wrong value of "sortStyle" property/ },
-        { name: "example_empty_redshift", message: /Missing properties in redshift config/ }
+        { name: "schema.example_absent_distKey", message: /Property "distKey" is not defined/ },
+        { name: "schema.example_absent_distStyle", message: /Property "distStyle" is not defined/ },
+        { name: "schema.example_wrong_distStyle", message: /Wrong value of "distStyle" property/ },
+        { name: "schema.example_absent_sortKeys", message: /Property "sortKeys" is not defined/ },
+        { name: "schema.example_empty_sortKeys", message: /Property "sortKeys" is not defined/ },
+        { name: "schema.example_absent_sortStyle", message: /Property "sortStyle" is not defined/ },
+        { name: "schema.example_wrong_sortStyle", message: /Wrong value of "sortStyle" property/ },
+        { name: "schema.example_empty_redshift", message: /Missing properties in redshift config/ }
       ];
 
       const graph = session.compile();
@@ -324,10 +324,10 @@ describe("@dataform/core", () => {
       expect(tableB.where).equals("test_where");
       expect(tableB.query).equals('select * from "schema"."a"');
 
-      const tableC = graph.tables.find(item => item.name === "c");
+      const tableC = graph.tables.find(item => item.name === "schema.c");
       expect(tableC).to.exist;
       expect(tableC.type).equals("table");
-      expect(tableC.dependencies).includes("a");
+      expect(tableC.dependencies).includes("schema.a");
       expect(tableC.fieldDescriptor).deep.equals({ test: "test description c" });
       expect(tableC.preOps).deep.equals(["pre_op_c"]);
       expect(tableC.postOps).deep.equals(["post_op_c"]);
@@ -341,7 +341,7 @@ describe("@dataform/core", () => {
         .to.be.an("array").that.is.not.empty;
 
       const errors = graphErrors.validationErrors
-        .filter(item => item.actionName === "b")
+        .filter(item => item.actionName === "schema.b")
         .map(item => item.message);
 
       expect(errors).that.matches(/Unused property was detected: "fieldDescriptor"/);
@@ -356,11 +356,15 @@ describe("@dataform/core", () => {
       const session = new Session(path.dirname(__filename), TEST_CONFIG);
       session.publish("foo.a", _ => "select 1 as test");
       session.publish("bar.a", _ => "select 1 as test");
+      //session.publish("foo.b", ctx => `select * from ${ctx.ref("a")}`);
       session.publish("foo.b", ctx => `select * from ${ctx.ref("foo.a")}`);
       session.publish("foo.c", ctx => `select * from ${ctx.ref("b")}`);
 
       const graph = session.compile();
       const graphErrors = utils.validate(graph);
+
+      //nError: expected [ 'foo.a', 'bar.a', 'foo.c' ] to include 'foo.b'
+      //at Context.it (tests/core/core.spec.ts:368:26)
 
       const tableNames = graph.tables.map(item => item.name);
       expect(tableNames).includes("foo.a");
@@ -408,12 +412,12 @@ describe("@dataform/core", () => {
         .to.be.an("array")
         .to.have.lengthOf(2);
 
-      expect(graph.operations[0].name).equals("operate-1");
+      expect(graph.operations[0].name).equals("schema.operate-1");
       expect(graph.operations[0].dependencies).to.be.an("array").that.is.empty;
       expect(graph.operations[0].queries).deep.equals(["select 1 as sample"]);
 
-      expect(graph.operations[1].name).equals("operate-2");
-      expect(graph.operations[1].dependencies).deep.equals(["operate-1"]);
+      expect(graph.operations[1].name).equals("schema.operate-2");
+      expect(graph.operations[1].dependencies).deep.equals(["schema.operate-1"]);
       expect(graph.operations[1].queries).deep.equals(['select * from "schema"."operate-1"']);
     });
   });
@@ -430,7 +434,7 @@ describe("@dataform/core", () => {
         .to.have.property("validationErrors")
         .to.be.an("array").that.is.not.empty;
 
-      const err = gErrors.validationErrors.find(e => e.actionName === "a");
+      const err = gErrors.validationErrors.find(e => e.actionName === "schema.a");
       expect(err)
         .to.have.property("message")
         .that.matches(/Circular dependency/);
@@ -441,15 +445,10 @@ describe("@dataform/core", () => {
       session.publish("a", ctx => `select * from ${ctx.ref("b")}`);
       const cGraph = session.compile();
       const gErrors = utils.validate(cGraph);
-
-      expect(gErrors)
-        .to.have.property("validationErrors")
-        .to.be.an("array").that.is.not.empty;
-
-      const err = gErrors.validationErrors.find(e => e.actionName === "a");
-      expect(err)
-        .to.have.property("message")
-        .that.matches(/Missing dependency/);
+      const errors = gErrors.compilationErrors.filter(
+        item => item.message === "Action name: b could not be found."
+      );
+      expect(errors).to.be.an("array").that.is.not.empty;
     });
 
     it("duplicate_action_names", () => {
