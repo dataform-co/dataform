@@ -132,11 +132,7 @@ export class Table {
   }
 
   public dependencies(value: string | string[]) {
-    if (this.session.checkActionNamesAreAmbiguous(value)) {
-      this.session.compileError("Ambiguous dependency action name: " + value);
-      return this;
-    }
-    const newDependencies = this.session.cleanDeps(value);
+    const newDependencies = typeof value === "string" ? [value] : value;
     newDependencies.forEach(d => {
       const table = this.session.tables[d];
 

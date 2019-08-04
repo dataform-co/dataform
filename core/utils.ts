@@ -30,11 +30,11 @@ export function matchPatterns(patterns: string[], values: string[]) {
     pattern =>
       new RegExp(
         "^" +
-        pattern
-          .replace(/[.+?^${}()|[\]\\]/g, "\\$&")
-          .split("*")
-          .join(".*") +
-        "$"
+          pattern
+            .replace(/[.+?^${}()|[\]\\]/g, "\\$&")
+            .split("*")
+            .join(".*") +
+          "$"
       )
   );
   return values.filter(value => regexps.filter(regexp => regexp.test(value)).length > 0);
@@ -47,7 +47,7 @@ export function getCallerFile(rootDir: string) {
   try {
     const err = new Error();
     let currentfile;
-    Error.prepareStackTrace = function (err, stack) {
+    Error.prepareStackTrace = function(err, stack) {
       return stack;
     };
 
@@ -67,7 +67,7 @@ export function getCallerFile(rootDir: string) {
         break;
       }
     }
-  } catch (e) { }
+  } catch (e) {}
   Error.prepareStackTrace = originalFunc;
 
   return relativePath(callerfile || lastfile, rootDir);
@@ -117,7 +117,7 @@ export function validate(compiledGraph: dataform.ICompiledGraph): dataform.IGrap
       const actionName = action.name;
       const message = `Duplicate action name detected, names must be unique across tables, assertions, and operations: "${
         action.name
-        }"`;
+      }"`;
       validationErrors.push(dataform.ValidationError.create({ message, actionName }));
     }
   });
@@ -125,14 +125,15 @@ export function validate(compiledGraph: dataform.ICompiledGraph): dataform.IGrap
   const actionsByName: { [name: string]: dataform.IExecutionAction } = {};
   allActions.forEach(action => (actionsByName[action.name] = action));
 
-  // Check all dependencies actually exist.
+  // Check all dependencies actually exist and are not ambiguous.
   allActions.forEach(action => {
     const actionName = action.name;
     (action.dependencies || []).forEach(dependency => {
-      if (allActionNames.indexOf(dependency) < 0) {
+      const [matchedDep, err] = matchFQName(dependency, allActionNames);
+      if (allActionNames.indexOf(matchedDep) < 0) {
         const message = `Missing dependency detected: Node "${
           action.name
-          }" depends on "${dependency}" which does not exist.`;
+        }" depends on "${dependency}" which does not exist.`;
         validationErrors.push(dataform.ValidationError.create({ message, actionName }));
       }
     });
@@ -151,7 +152,14 @@ export function validate(compiledGraph: dataform.ICompiledGraph): dataform.IGrap
       validationErrors.push(dataform.ValidationError.create({ message, actionName }));
       return true;
     }
-    return (action.dependencies || []).some(d => {
+    const depsFQ = [];
+    (action.dependencies || []).forEach(d => {
+      const [cleanDep, err] = matchFQName(d, allActionNames);
+      if (!err) {
+        depsFQ.push(cleanDep);
+      }
+    });
+    return (depsFQ || []).some(d => {
       return actionsByName[d] && checkCircular(actionsByName[d], dependents.concat([action]));
     });
   };
@@ -188,7 +196,9 @@ export function validate(compiledGraph: dataform.ICompiledGraph): dataform.IGrap
     if (!!action.redshift) {
       if (
         Object.keys(action.redshift).length === 0 ||
-        Object.keys(action.redshift).every(key => !action.redshift[key] || !action.redshift[key].length)
+        Object.keys(action.redshift).every(
+          key => !action.redshift[key] || !action.redshift[key].length
+        )
       ) {
         const message = `Missing properties in redshift config`;
         validationErrors.push(dataform.ValidationError.create({ message, actionName }));
@@ -200,7 +210,10 @@ export function validate(compiledGraph: dataform.ICompiledGraph): dataform.IGrap
         const types = { distStyle: DistStyleTypes };
         redshiftConfig.push({ props, types });
       }
-      if (action.redshift.sortStyle || (action.redshift.sortKeys && action.redshift.sortKeys.length)) {
+      if (
+        action.redshift.sortStyle ||
+        (action.redshift.sortKeys && action.redshift.sortKeys.length)
+      ) {
         const props = { sortStyle: action.redshift.sortStyle, sortKeys: action.redshift.sortKeys };
         const types = { sortStyle: SortStyleTypes };
         redshiftConfig.push({ props, types });
@@ -236,7 +249,7 @@ export function validate(compiledGraph: dataform.ICompiledGraph): dataform.IGrap
         if (objectExistsOrIsNonEmpty(action[ignoredProp])) {
           const message = `Unused property was detected: "${ignoredProp}". This property is not used for tables with type "${
             action.type
-            }" and will be ignored.`;
+          }" and will be ignored.`;
           validationErrors.push(dataform.ValidationError.create({ message, actionName }));
         }
       });
@@ -249,4 +262,42 @@ export function validate(compiledGraph: dataform.ICompiledGraph): dataform.IGrap
       : [];
 
   return dataform.GraphErrors.create({ validationErrors, compilationErrors });
+}
+
+export function matchFQName(act: string, allActFQNames: any[]): [string, string] {
+  if (act.includes("*")) {
+    return [act, null]; // Skip wildcards
+  }
+  switch (act.split(".").length) {
+    case 2: {
+      if (allActFQNames.includes(act)) {
+        return [act, null]; // Fully Qualified name match. Return as it is.
+      } else {
+        return [null, "Action name: " + act + " could not be found."];
+      }
+    }
+    case 1: {
+      const allActShortNamesMap = allActFQNames.map(actFQ => [
+        actFQ,
+        actFQ.includes(".") ? actFQ.split(".")[1] : actFQ
+      ]);
+      const matches = [];
+      allActShortNamesMap
+        .filter(actShort => actShort[1] === act)
+        .forEach(actShort => matches.push(actShort[0]));
+      if (matches.length === 0) {
+        return [null, "Action name: " + act + " could not be found."]; // No matches.
+      } else if (matches.length === 1) {
+        return [matches[0], null]; // There was exactly one match to the short name. Return the full name.
+      } else if (matches.length > 1) {
+        return [
+          null,
+          "Ambiguous Action name: " + act + ". Did you mean one of: [" + matches.join(",") + "]."
+        ];
+      }
+    }
+    default: {
+      return [null, "Action name: " + act + " is invalid."];
+    }
+  }
 }

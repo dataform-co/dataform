@@ -647,7 +647,6 @@ describe("@dataform/api", () => {
 
       // Check tables defined in includes are not included.
       expect(tableNames).not.includes("example_ignore");
-      expect(tableNames).not.includes("df_integration_test.example_ignore");
 
       // Check SQL files with raw back-ticks get escaped.
       expect(tableNames).includes("df_integration_test.example_backticks");
@@ -674,7 +673,7 @@ describe("@dataform/api", () => {
       expect(exampleInline.query).equals(
         "\nselect * from `tada-analytics.df_integration_test.sample_data`"
       );
-      expect(exampleInline.dependencies).includes("df_integration_test.sample_data");
+      expect(exampleInline.dependencies).includes("sample_data");
 
       expect(tableNames).includes("df_integration_test.example_using_inline");
       const exampleUsingInline = graph.tables.filter(
@@ -684,7 +683,7 @@ describe("@dataform/api", () => {
       expect(exampleUsingInline.query).equals(
         "\nselect * from (\nselect * from `tada-analytics.df_integration_test.sample_data`)\nwhere true"
       );
-      expect(exampleUsingInline.dependencies).includes("df_integration_test.sample_data");
+      expect(exampleUsingInline.dependencies).includes("sample_data");
 
       // Check view
       expect(tableNames).includes("df_integration_test.example_view");
@@ -693,7 +692,7 @@ describe("@dataform/api", () => {
       expect(exampleView.query).equals(
         "\nselect * from `tada-analytics.df_integration_test.sample_data`"
       );
-      expect(exampleView.dependencies).deep.equals(["df_integration_test.sample_data"]);
+      expect(exampleView.dependencies).deep.equals(["sample_data"]);
 
       // Check table
       expect(tableNames).includes("df_integration_test.example_table");
@@ -704,7 +703,7 @@ describe("@dataform/api", () => {
       expect(exampleTable.query).equals(
         "\nselect * from `tada-analytics.df_integration_test.sample_data`"
       );
-      expect(exampleTable.dependencies).deep.equals(["df_integration_test.sample_data"]);
+      expect(exampleTable.dependencies).deep.equals(["sample_data"]);
 
       // Check sample data
       expect(tableNames).includes("df_integration_test.sample_data");
@@ -1019,7 +1018,7 @@ describe("@dataform/api", () => {
         )[0];
         expect(exampleInline.type).equals("inline");
         expect(exampleInline.query).equals('\nselect * from "df_integration_test"."sample_data"');
-        expect(exampleInline.dependencies).includes("df_integration_test.sample_data");
+        expect(exampleInline.dependencies).includes("sample_data");
 
         expect(tableNames).includes("df_integration_test.example_using_inline");
         const exampleUsingInline = graph.tables.filter(
@@ -1029,7 +1028,7 @@ describe("@dataform/api", () => {
         expect(exampleUsingInline.query).equals(
           '\nselect * from (\nselect * from "df_integration_test"."sample_data")\nwhere true'
         );
-        expect(exampleUsingInline.dependencies).includes("df_integration_test.sample_data");
+        expect(exampleUsingInline.dependencies).includes("sample_data");
       });
     });
 
@@ -1156,13 +1155,13 @@ describe("@dataform/api", () => {
       const mTable = graph.tables.filter(t => t.name == "df_integration_test.example_table")[0];
       expect(mTable.type).equals("table");
       expect(mTable.query).equals('\nselect * from "df_integration_test"."sample_data"');
-      expect(mTable.dependencies).deep.equals(["df_integration_test.sample_data"]);
+      expect(mTable.dependencies).deep.equals(["sample_data"]);
 
       expect(mNames).includes("df_integration_test.example_view");
       const mView = graph.tables.filter(t => t.name == "df_integration_test.example_view")[0];
       expect(mView.type).equals("view");
       expect(mView.query).equals('\nselect * from "df_integration_test"."sample_data"');
-      expect(mView.dependencies).deep.equals(["df_integration_test.sample_data"]);
+      expect(mView.dependencies).deep.equals(["sample_data"]);
 
       expect(mNames).includes("df_integration_test.sample_data");
       const mSampleData = graph.tables.filter(t => t.name == "df_integration_test.sample_data")[0];
@@ -1179,7 +1178,7 @@ describe("@dataform/api", () => {
       )[0];
       expect(exampleInline.type).equals("inline");
       expect(exampleInline.query).equals('\nselect * from "df_integration_test"."sample_data"');
-      expect(exampleInline.dependencies).includes("df_integration_test.sample_data");
+      expect(exampleInline.dependencies).includes("sample_data");
 
       expect(mNames).includes("df_integration_test.example_using_inline");
       const exampleUsingInline = graph.tables.filter(
@@ -1189,7 +1188,7 @@ describe("@dataform/api", () => {
       expect(exampleUsingInline.query).equals(
         '\nselect * from (\nselect * from "df_integration_test"."sample_data")\nwhere true'
       );
-      expect(exampleUsingInline.dependencies).includes("df_integration_test.sample_data");
+      expect(exampleUsingInline.dependencies).includes("sample_data");
 
       const aNames = graph.assertions.map(a => a.name);
 

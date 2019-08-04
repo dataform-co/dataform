@@ -87,10 +87,8 @@ export function extractJsBlocks(code: string): { sql: string; js: string } {
 
 function compileSqlx(results: ISqlxParseResults, path: string, defaultSchema: string) {
   const resConfig =
-    results.config != null
-      ? JSON.parse(results.config.replace(/(['"])?([a-zA-Z0-9_]+)(['"])?:/g, '"$2": '))
-      : null;
-  const queryConfigSchema = "schema" in resConfig && resConfig != null ? resConfig.schema : null;
+    results.config != null ? JSON.parse(results.config.replace(/([\w]+)?:/g, '"$2": ')) : null;
+  const queryConfigSchema = "schema" in resConfig ? resConfig.schema : null;
   const fQName = [queryConfigSchema || defaultSchema, utils.baseFilename(path)].join(".");
   return `
 const parsedConfig = ${results.config || "{}"};

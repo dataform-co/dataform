@@ -308,7 +308,7 @@ describe("@dataform/core", () => {
       const tableB = graph.tables.find(item => item.name === "schema.b");
       expect(tableB).to.exist;
       expect(tableB.type).equals("inline");
-      expect(tableB.dependencies).includes("schema.a");
+      expect(tableB.dependencies).includes("a");
       expect(tableB.fieldDescriptor).deep.equals({ test: "test description b" });
       expect(tableB.preOps).deep.equals(["pre_op_b"]);
       expect(tableB.postOps).deep.equals(["post_op_b"]);
@@ -327,7 +327,7 @@ describe("@dataform/core", () => {
       const tableC = graph.tables.find(item => item.name === "schema.c");
       expect(tableC).to.exist;
       expect(tableC.type).equals("table");
-      expect(tableC.dependencies).includes("schema.a");
+      expect(tableC.dependencies).includes("a");
       expect(tableC.fieldDescriptor).deep.equals({ test: "test description c" });
       expect(tableC.preOps).deep.equals(["pre_op_c"]);
       expect(tableC.postOps).deep.equals(["post_op_c"]);
@@ -356,15 +356,11 @@ describe("@dataform/core", () => {
       const session = new Session(path.dirname(__filename), TEST_CONFIG);
       session.publish("foo.a", _ => "select 1 as test");
       session.publish("bar.a", _ => "select 1 as test");
-      //session.publish("foo.b", ctx => `select * from ${ctx.ref("a")}`);
       session.publish("foo.b", ctx => `select * from ${ctx.ref("foo.a")}`);
       session.publish("foo.c", ctx => `select * from ${ctx.ref("b")}`);
 
       const graph = session.compile();
       const graphErrors = utils.validate(graph);
-
-      //nError: expected [ 'foo.a', 'bar.a', 'foo.c' ] to include 'foo.b'
-      //at Context.it (tests/core/core.spec.ts:368:26)
 
       const tableNames = graph.tables.map(item => item.name);
       expect(tableNames).includes("foo.a");
@@ -417,7 +413,7 @@ describe("@dataform/core", () => {
       expect(graph.operations[0].queries).deep.equals(["select 1 as sample"]);
 
       expect(graph.operations[1].name).equals("schema.operate-2");
-      expect(graph.operations[1].dependencies).deep.equals(["schema.operate-1"]);
+      expect(graph.operations[1].dependencies).deep.equals(["operate-1"]);
       expect(graph.operations[1].queries).deep.equals(['select * from "schema"."operate-1"']);
     });
   });
@@ -427,8 +423,6 @@ describe("@dataform/core", () => {
       const session = new Session(path.dirname(__filename), TEST_CONFIG);
       session.publish("a").dependencies("b");
       session.publish("b").dependencies("a");
-      session.publish("foo.c").dependencies("foo.d");
-      session.publish("foo.d").dependencies("foo.c");
       const cGraph = session.compile();
       const gErrors = utils.validate(cGraph);
 
@@ -438,10 +432,6 @@ describe("@dataform/core", () => {
 
       const err = gErrors.validationErrors.find(e => e.actionName === "schema.a");
       expect(err)
-        .to.have.property("message")
-        .that.matches(/Circular dependency/);
-      const err2 = gErrors.validationErrors.find(e => e.actionName === "foo.c");
-      expect(err2)
         .to.have.property("message")
         .that.matches(/Circular dependency/);
     });
