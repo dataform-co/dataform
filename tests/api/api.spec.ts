@@ -268,7 +268,15 @@ describe("@dataform/api", () => {
     });
 
     it("build actions with same name in different schemas", () => {
-      const TEST_TABLES_POTENTIAL_DUPS = [
+      const actionsWithDups = [
+        {
+          name: "b",
+          target: {
+            schema: "some_target",
+            name: "b"
+          },
+          query: "query"
+        },
         {
           name: "foo.b",
           target: {
@@ -296,68 +304,58 @@ describe("@dataform/api", () => {
           dependencies: ["foo.b"]
         }
       ];
-      const TEST_GRAPH_WITH_POTENTIAL_DUPS: dataform.ICompiledGraph = dataform.CompiledGraph.create(
-        {
-          projectConfig: { warehouse: "redshift", defaultSchema: "default_schema" },
-          tables: TEST_TABLES_POTENTIAL_DUPS
-        }
-      );
-      const builder = new Builder(
-        TEST_GRAPH_WITH_POTENTIAL_DUPS,
-        { includeDependencies: false },
-        TEST_STATE
-      );
+      const graphWithDupActions: dataform.ICompiledGraph = dataform.CompiledGraph.create({
+        projectConfig: { warehouse: "redshift", defaultSchema: "default_schema" },
+        tables: actionsWithDups
+      });
+      const builder = new Builder(graphWithDupActions, { includeDependencies: false }, TEST_STATE);
       const executionGraph = builder.build();
 
-      /*const includedActionNames = executionGraph.actions.map(n => n.name);
-      expect(includedActionNames).includes("a");
-      expect(includedActionNames).includes("b");
+      const includedActionNames = executionGraph.actions.map(n => n.name);
+      expect(includedActionNames).includes("default_schema.b");
+      expect(includedActionNames).includes("foo.b");
       expect(includedActionNames).includes("foo.z");
-      expect(includedActionNames).includes("bar.z");*/
+      expect(includedActionNames).includes("bar.z");
     });
 
+    //TODO: This does not work
     it("build actions using an ambiguous --actions option", () => {
-      const TEST_TABLES_POTENTIAL_DUPS = [
+      const tablesWithAmbiguities = [
         {
           name: "foo.z",
           target: {
             schema: "bar",
-            name: "z"
+            name: "feez"
           },
-          query: "query",
-          dependencies: ["b"]
+          type: "table",
+          query: "select 1 as test"
         },
         {
-          name: "a_different_schema.z",
+          name: "bar.z",
           target: {
-            schema: "a_different_schema",
-            name: "z"
+            schema: "bar",
+            name: "fooz"
           },
-          query: "query",
-          dependencies: ["b"]
+          type: "table",
+          query: "select 1 as test"
         }
       ];
-      const TEST_GRAPH_WITH_POTENTIAL_DUPS: dataform.ICompiledGraph = dataform.CompiledGraph.create(
-        {
-          projectConfig: { warehouse: "redshift", defaultSchema: "default_schema" },
-          graphErrors: {
-            compilationErrors: [
-              {
-                message: "Action name [z] is ambiguous. Did yu mean one of: [foo.z,bar.z]"
-              }
-            ]
-          },
-          tables: TEST_TABLES_POTENTIAL_DUPS
-        }
+      const graphWithAmbiguities: dataform.ICompiledGraph = dataform.CompiledGraph.create({
+        projectConfig: { warehouse: "redshift", defaultSchema: "default_schema" },
+        tables: tablesWithAmbiguities
+      });
+      const builder = new Builder(
+        graphWithAmbiguities,
+        { includeDependencies: false, actions: ["z"] },
+        TEST_STATE
       );
-      expect(() => {
-        const builder = new Builder(
-          TEST_GRAPH_WITH_POTENTIAL_DUPS,
-          { includeDependencies: false, actions: ["z"] },
-          TEST_STATE
-        );
-        const executionGraph = builder.build();
-      }).to.throw();
+      builder.build();
+      const gErrors = utils.validate(graphWithAmbiguities);
+      expect(gErrors)
+        .to.have.property("compilationErrors")
+        .to.be.an("array").that.is.not.empty;
+      const errors = gErrors.compilationErrors.map(item => item.message);
+      expect(errors).includes("Action name [z] is ambiguous. Did you mean one of: [foo.z, bar.z");
     });
   });
 
@@ -836,7 +834,7 @@ describe("@dataform/api", () => {
         expect(exampleInline.query.trim()).equals(
           `select * from \`tada-analytics.${schemaWithSuffix("df_integration_test")}.sample_data\``
         );
-        expect(exampleInline.dependencies).includes("df_integration_test.sample_data");
+        expect(exampleInline.dependencies).includes("sample_data");
 
         const exampleUsingInline = graph.tables.find(
           t => t.name === "df_integration_test.example_using_inline"
@@ -848,7 +846,7 @@ describe("@dataform/api", () => {
             "df_integration_test"
           )}.sample_data\`\n)\nwhere true`
         );
-        expect(exampleUsingInline.dependencies).includes("df_integration_test.sample_data");
+        expect(exampleUsingInline.dependencies).includes("sample_data");
 
         // Check view
         const exampleView = graph.tables.find(t => t.name === "df_integration_test.example_view");
@@ -857,7 +855,7 @@ describe("@dataform/api", () => {
         expect(exampleView.query.trim()).equals(
           `select * from \`tada-analytics.${schemaWithSuffix("df_integration_test")}.sample_data\``
         );
-        expect(exampleView.dependencies).deep.equals(["df_integration_test.sample_data"]);
+        expect(exampleView.dependencies).deep.equals(["sample_data"]);
         expect(exampleView.tags).to.eql([]);
 
         // Check table
@@ -869,7 +867,7 @@ describe("@dataform/api", () => {
             "df_integration_test"
           )}.sample_data\`\n\n-- here \${"is"} a \`comment\n\n/* \${"another"} \` backtick \` containing \`\`\`comment */`
         );
-        expect(exampleTable.dependencies).deep.equals(["df_integration_test.sample_data"]);
+        expect(exampleTable.dependencies).deep.equals(["sample_data"]);
         expect(exampleTable.preOps).to.eql([]);
         expect(exampleTable.postOps).to.eql([
           `\n    GRANT SELECT ON \`tada-analytics.${schemaWithSuffix(
@@ -923,7 +921,7 @@ describe("@dataform/api", () => {
             "df_integration_test"
           )}.sample_data\` where sample = 100`
         );
-        expect(exampleAssertion.dependencies).to.eql(["df_integration_test.sample_data"]);
+        expect(exampleAssertion.dependencies).to.eql(["sample_data"]);
         expect(exampleAssertion.tags).to.eql([]);
 
         // Check Assertion with tags
@@ -1200,10 +1198,10 @@ describe("@dataform/api", () => {
         'select * from "df_integration_test"."sample_data" where sample_column > 3'
       );
       expect(assertion.dependencies).to.include.members([
-        "df_integration_test.sample_data",
-        "df_integration_test.example_table",
-        "df_integration_test.example_incremental",
-        "df_integration_test.example_view"
+        "sample_data",
+        "example_table",
+        "example_incremental",
+        "example_view"
       ]);
     });
 

@@ -206,14 +206,14 @@ export class Session {
     this.checkActionNameIsUnused(fQName);
     const operation = new Operation();
     operation.session = this;
-    operation.proto.name = fQName || name;
-    operation.proto.target = this.target(fQName || name);
+    operation.proto.name = fQName;
+    operation.proto.target = this.target(fQName);
     if (queries) {
       operation.queries(queries);
     }
     operation.proto.fileName = utils.getCallerFile(this.rootDir);
     // Add it to global index.
-    this.operations[fQName || name] = operation;
+    this.operations[fQName] = operation;
     return operation;
   }
 
@@ -222,8 +222,8 @@ export class Session {
     this.checkActionNameIsUnused(fQName);
     const table = new Table();
     table.session = this;
-    table.proto.name = fQName || name;
-    table.proto.target = this.target(fQName || name);
+    table.proto.name = fQName;
+    table.proto.target = this.target(fQName);
     if (!!queryOrConfig) {
       if (typeof queryOrConfig === "object") {
         table.config(queryOrConfig);
@@ -233,7 +233,7 @@ export class Session {
     }
     table.proto.fileName = utils.getCallerFile(this.rootDir);
     // Add it to global index.
-    this.tables[fQName || name] = table;
+    this.tables[fQName] = table;
     return table;
   }
 
@@ -244,14 +244,14 @@ export class Session {
     this.checkActionNameIsUnused(fQName);
     const assertion = new Assertion();
     assertion.session = this;
-    assertion.proto.name = fQName || name;
-    assertion.proto.target = this.target(fQName || name, this.config.assertionSchema);
+    assertion.proto.name = fQName;
+    assertion.proto.target = this.target(fQName, this.config.assertionSchema);
     if (query) {
       assertion.query(query);
     }
     assertion.proto.fileName = utils.getCallerFile(this.rootDir);
     // Add it to global index.
-    this.assertions[fQName || name] = assertion;
+    this.assertions[fQName] = assertion;
     return assertion;
   }
 
