@@ -169,10 +169,11 @@ export class Session {
     });
   }
 
-  public resolve(name: string, nameAndSchema?: TContextable<string> | TConfig) {
+  public resolve(name: string): string {
     const [fQName, err] = utils.matchFQName(name, this.getAllFQNames());
     if (err) {
-      this.compileError(err);
+      this.compileError(new Error(err));
+      return;
     }
     const table = this.tables[fQName];
     const operation =
@@ -189,7 +190,7 @@ export class Session {
     // In these projects, this session may not know about all actions (yet), and thus we need to fall back to assuming
     // that the target *will* exist in the future. Once we break backwards compatibility with .sql files, we should remove
     // the code that calls 'this.target(...)' below, and append a compile error if we can't find a dataset whose name is 'name'.
-    const target = dataset ? dataset.proto.target : this.target(fQName || name);
+    const target = dataset ? dataset.proto.target : this.target(fQName);
     return this.adapter().resolveTarget(target);
   }
 
@@ -310,7 +311,7 @@ export class Session {
       const dependencies = action.dependencies || [];
       dependencies.forEach(dependency => (uniqueDependencies[dependency] = true));
     });
-    
+
     return compiledGraph;
   }
 

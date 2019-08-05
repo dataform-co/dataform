@@ -273,7 +273,7 @@ export function matchFQName(act: string, allActFQNames: any[]): [string, string]
       if (allActFQNames.includes(act)) {
         return [act, null]; // Fully Qualified name match. Return as it is.
       } else {
-        return [null, "Action name: " + act + " could not be found."];
+        return [null, "Action name: " + act + " could not be found (Type II)."];
       }
     }
     case 1: {
@@ -286,7 +286,7 @@ export function matchFQName(act: string, allActFQNames: any[]): [string, string]
         .filter(actShort => actShort[1] === act)
         .forEach(actShort => matches.push(actShort[0]));
       if (matches.length === 0) {
-        return [null, "Action name: " + act + " could not be found."]; // No matches.
+        return [null, "Action name: " + act + " could not be found (Type I)."]; // No matches.
       } else if (matches.length === 1) {
         return [matches[0], null]; // There was exactly one match to the short name. Return the full name.
       } else if (matches.length > 1) {

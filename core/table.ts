@@ -137,7 +137,7 @@ export class Table {
     newDependencies.forEach(d => {
       const [fQd, err] = utils.matchFQName(d, this.session.getAllFQNames());
       if (err) {
-        this.session.compileError(err);
+        this.session.compileError(new Error(err));
       }
       const table = this.session.tables[fQd];
       if (!!table && table.proto.type === "inline") {

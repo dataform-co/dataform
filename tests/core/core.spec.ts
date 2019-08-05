@@ -391,7 +391,6 @@ describe("@dataform/core", () => {
       expect(tableNames).includes("foo.c");
 
       const gErrors = utils.validate(graph);
-      gErrors.compilationErrors.forEach(c => console.log("[core.spec.ts 394] c=" + c.message));
 
       expect(gErrors)
         .to.have.property("compilationErrors")
@@ -509,9 +508,6 @@ describe("@dataform/core", () => {
       expect(gErrors)
         .to.have.property("compilationErrors")
         .to.be.an("array").that.is.not.empty;
-      gErrors.compilationErrors.forEach(element => {
-        console.log("[core.spec.ts 503] ce=" + element.message);
-      });
       const errors = gErrors.compilationErrors.filter(item =>
         item.message.match(/Ambiguous Action name: a. Did you mean one of: \[foo.a, bar.a\]./)
       );

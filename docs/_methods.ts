@@ -3,7 +3,7 @@ import { Props as MethodProps } from "./components/method";
 export const methods: { [name: string]: MethodProps } = {
   ref: {
     name: "ref()",
-    signatures: ["ref(name)", "ref(schema, name)"],
+    signatures: ["ref(name)", 'ref({schema: "schema", name: "name"})'],
     description:
       "Returns the full, query-able name of the referenced dataset, and adds the dataset to dependencies.",
     fields: [
