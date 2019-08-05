@@ -36,6 +36,28 @@ describe("@dataform/core", () => {
       });
       expect(t.preOps).deep.equals(["pre_op"]);
       expect(t.postOps).deep.equals(["post_op"]);
+
+      const t2 = session
+        .publish("schema2.example", {
+          type: "table",
+          dependencies: ["schema1.example"],
+          descriptor: {
+            test: "test description"
+          }
+        })
+        .query(_ => "select 1 as test")
+        .preOps(_ => ["pre_op"])
+        .postOps(_ => ["post_op"])
+        .compile();
+
+      expect(t2.name).equals("schema2.example");
+      expect(t2.type).equals("table");
+      expect(t2.fieldDescriptor).deep.equals({
+        test: "test description"
+      });
+      expect(t2.preOps).deep.equals(["pre_op"]);
+      expect(t2.postOps).deep.equals(["post_op"]);
+      expect(t2.dependencies).includes("schema1.example");
     });
 
     it("config_context", function() {

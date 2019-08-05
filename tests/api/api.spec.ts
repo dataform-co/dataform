@@ -1,5 +1,5 @@
 import { Builder, compile, credentials, query, Runner } from "@dataform/api";
-import { DbAdapter } from "@dataform/api/dbadapters";
+import { IDbAdapter } from "@dataform/api/dbadapters";
 import { BigQueryDbAdapter } from "@dataform/api/dbadapters/bigquery";
 import * as utils from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
@@ -265,59 +265,6 @@ describe("@dataform/api", () => {
       expect(actionNames).not.includes("op_c");
       expect(actionNames).not.includes("op_d");
       expect(actionNames).includes("tab_a");
-    });
-
-    it("build actions with same name in different schemas", () => {
-      const actionsWithDups = [
-        {
-          name: "b",
-          target: {
-            schema: "some_target",
-            name: "b"
-          },
-          query: "query"
-        },
-        {
-          name: "foo.b",
-          target: {
-            schema: "foo",
-            name: "b"
-          },
-          query: "query"
-        },
-        {
-          name: "foo.z",
-          target: {
-            schema: "foo",
-            name: "z"
-          },
-          query: "query",
-          dependencies: ["foo.b"]
-        },
-        {
-          name: "bar.z",
-          target: {
-            schema: "bar",
-            name: "z"
-          },
-          query: "query",
-          dependencies: ["foo.b"]
-        }
-      ];
-      const graphWithDupActions: dataform.ICompiledGraph = dataform.CompiledGraph.create({
-        projectConfig: { warehouse: "redshift", defaultSchema: "default_schema" },
-        tables: actionsWithDups
-      });
-      const builder = new Builder(graphWithDupActions, { includeDependencies: false }, TEST_STATE);
-      const executionGraph = builder.build();
-      executionGraph.actions.forEach(act =>
-        console.log("[api.spec.ts 313] act=" + act.name + ", type=" + act.type)
-      );
-      const includedActionNames = executionGraph.actions.map(n => n.name);
-      expect(includedActionNames).includes("default_schema.b");
-      expect(includedActionNames).includes("foo.b");
-      expect(includedActionNames).includes("foo.z");
-      expect(includedActionNames).includes("bar.z");
     });
 
     //TODO: This does not work
@@ -756,10 +703,6 @@ describe("@dataform/api", () => {
                 message: "Actions may only specify 'disabled: true' if they create a dataset."
               }),
               dataform.CompilationError.create({
-                fileName: "definitions/has_compile_errors/op_with_output_multiple_statements.sqlx",
-                message: "Operations with 'hasOutput: true' must contain exactly one SQL statement."
-              }),
-              dataform.CompilationError.create({
                 fileName: "definitions/has_compile_errors/protected_assertion.sqlx",
                 message:
                   "Actions may only specify 'protected: true' if they are of type 'incremental'."
@@ -929,6 +872,9 @@ describe("@dataform/api", () => {
           t => t.name === "hi_there.example_assertion_with_tags"
         );
         expect(exampleAssertionWithTags).to.not.be.undefined;
+        expect(exampleAssertionWithTags.target.schema).equals(
+          schemaWithSuffix("df_integration_test_assertions")
+        );
         expect(exampleAssertionWithTags.tags).to.eql(["tag1", "tag2"]);
 
         // Check example operations file
@@ -1453,7 +1399,7 @@ describe("@dataform/api", () => {
         prepareSchema: _ => {
           return Promise.resolve();
         }
-      } as DbAdapter;
+      } as IDbAdapter;
 
       const runner = new Runner(mockDbAdapter, TEST_GRAPH);
       const execution = runner.execute();

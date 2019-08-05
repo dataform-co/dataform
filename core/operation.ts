@@ -63,6 +63,10 @@ export class OperationContext {
     return this.resolve(this.operation.proto.name);
   }
 
+  public name(): string {
+    return this.operation.proto.name;
+  }
+
   public ref(name: string) {
     this.operation.dependencies(name);
     return this.resolve(name);

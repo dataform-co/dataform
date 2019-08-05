@@ -16,6 +16,7 @@ fi
 bazel test //...
 
 bazel run //api:package.publish
+bazel run //assertion_utils:package.publish
 bazel run //core:package.publish
 bazel run //cli:package.publish
 bazel run //crossdb:package.publish

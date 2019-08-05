@@ -1,5 +1,4 @@
 config {
-    schema: "hi_there",
     type: "assertion",
     tags: ["tag1", "tag2"]
 }

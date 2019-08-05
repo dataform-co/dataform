@@ -12,7 +12,7 @@ export async function test(
 }
 
 async function runTest(
-  dbadapter: dbadapters.DbAdapter,
+  dbadapter: dbadapters.IDbAdapter,
   testCase: dataform.ITest
 ): Promise<dataform.ITestResult> {
   const [actualResults, expectedResults] = await Promise.all([
