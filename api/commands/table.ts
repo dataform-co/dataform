@@ -13,3 +13,12 @@ export function get(
 ): Promise<dataform.ITableMetadata> {
   return dbadapters.create(credentials, warehouse).table(target);
 }
+
+export function preview(
+  credentials: Credentials,
+  warehouse: string,
+  target: dataform.ITarget,
+  limitRows?: number
+): Promise<any[]> {
+  return dbadapters.create(credentials, warehouse).preview(target, limitRows);
+}

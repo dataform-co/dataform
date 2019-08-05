@@ -1,4 +1,0 @@
-config { hasOutput: true }
-select 1 as test
----
-select 2 as test

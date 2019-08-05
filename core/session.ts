@@ -76,11 +76,6 @@ export class Session {
         "Actions may only specify 'hasOutput: true' if they are of type 'operations' or create a dataset."
       );
     }
-    if (actionOptions.sqlxConfig.hasOutput && actionOptions.sqlStatementCount !== 1) {
-      this.compileError(
-        "Operations with 'hasOutput: true' must contain exactly one SQL statement."
-      );
-    }
     if (actionOptions.sqlxConfig.protected && actionOptions.sqlxConfig.type !== "incremental") {
       this.compileError(
         "Actions may only specify 'protected: true' if they are of type 'incremental'."
@@ -151,10 +146,12 @@ export class Session {
       }
     })();
     if (action.proto.target) {
-      action.proto.target = this.target(
-        actionOptions.sqlxConfig.name,
-        actionOptions.sqlxConfig.schema
-      );
+      const finalSchema =
+        actionOptions.sqlxConfig.schema ||
+        (actionOptions.sqlxConfig.type === "assertion"
+          ? this.config.assertionSchema
+          : this.config.defaultSchema);
+      action.proto.target = this.target(actionOptions.sqlxConfig.name, finalSchema);
     }
     return action;
   }
@@ -172,13 +169,8 @@ export class Session {
     });
   }
 
-  public resolve(name: string): string {
-    const allActFQNames = [].concat(
-      Object.keys(this.tables),
-      Object.keys(this.assertions),
-      Object.keys(this.operations)
-    );
-    const [fQName, err] = utils.matchFQName(name, allActFQNames);
+  public resolve(name: string, nameAndSchema?: TContextable<string> | TConfig) {
+    const [fQName, err] = utils.matchFQName(name, this.getAllFQNames());
     if (err) {
       this.compileError(err);
     }
@@ -202,12 +194,12 @@ export class Session {
   }
 
   public operate(name: string, queries?: OContextable<string | string[]>): Operation {
-    const fQName = name.includes(".") ? name : [this.config.defaultSchema, name].join(".");
-    this.checkActionNameIsUnused(fQName);
     const operation = new Operation();
     operation.session = this;
+    operation.proto.target = this.target(name);
+    const fQName = operation.proto.target.schema + "." + operation.proto.target.name;
+    this.checkActionNameIsUnused(fQName);
     operation.proto.name = fQName;
-    operation.proto.target = this.target(fQName);
     if (queries) {
       operation.queries(queries);
     }
@@ -219,14 +211,11 @@ export class Session {
 
   public publish(name: string, queryOrConfig?: TContextable<string> | TConfig): Table {
     const table = new Table();
-    table.proto.target = this.target(name);
-
-    const fQName = name.includes(".") ? name : [this.config.defaultSchema, name].join(".");
-    this.checkActionNameIsUnused(fQName);
-
     table.session = this;
+    table.proto.target = this.target(name);
+    const fQName = table.proto.target.schema + "." + table.proto.target.name;
+    this.checkActionNameIsUnused(fQName);
     table.proto.name = fQName;
-
     if (!!queryOrConfig) {
       if (typeof queryOrConfig === "object") {
         table.config(queryOrConfig);
@@ -241,14 +230,12 @@ export class Session {
   }
 
   public assert(name: string, query?: AContextable<string>): Assertion {
-    const fQName = name.includes(".")
-      ? name
-      : [this.config.assertionSchema || this.config.defaultSchema, name].join(".");
-    this.checkActionNameIsUnused(fQName);
     const assertion = new Assertion();
     assertion.session = this;
+    assertion.proto.target = this.target(name, this.config.assertionSchema);
+    const fQName = assertion.proto.target.schema + "." + assertion.proto.target.name;
+    this.checkActionNameIsUnused(fQName);
     assertion.proto.name = fQName;
-    assertion.proto.target = this.target(fQName, this.config.assertionSchema);
     if (query) {
       assertion.query(query);
     }
@@ -329,6 +316,14 @@ export class Session {
 
   public isDatasetType(type) {
     return type === "view" || type === "table" || type === "inline" || type === "incremental";
+  }
+
+  public getAllFQNames() {
+    return [].concat(
+      Object.keys(this.tables),
+      Object.keys(this.assertions),
+      Object.keys(this.operations)
+    );
   }
 
   private checkActionNameIsUnused(name: string) {

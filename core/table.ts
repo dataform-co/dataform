@@ -1,4 +1,5 @@
 import { Session } from "@dataform/core/session";
+import * as utils from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
 
 export enum TableTypes {
@@ -134,8 +135,8 @@ export class Table {
   public dependencies(value: string | string[]) {
     const newDependencies = typeof value === "string" ? [value] : value;
     newDependencies.forEach(d => {
-      const table = this.session.tables[d];
-
+      const [fQd, err] = utils.matchFQName(d, this.session.getAllFQNames());
+      const table = this.session.tables[fQd];
       if (!!table && table.proto.type === "inline") {
         table.proto.dependencies.forEach(childDep => this.addDependency(childDep));
       } else {
@@ -216,6 +217,7 @@ export class Table {
 export interface ITableContext {
   config: (config: TConfig) => string;
   self: () => string;
+  name: () => string;
   ref: (name: string) => string;
   resolve: (name: string) => string;
   type: (type: TableType) => string;
@@ -249,6 +251,10 @@ export class TableContext implements ITableContext {
 
   public self(): string {
     return this.resolve(this.table.proto.name);
+  }
+
+  public name(): string {
+    return this.table.proto.name;
   }
 
   public ref(name: string) {
