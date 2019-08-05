@@ -1,5 +1,5 @@
 import { Builder, compile, credentials, query, Runner } from "@dataform/api";
-import { DbAdapter } from "@dataform/api/dbadapters";
+import { IDbAdapter } from "@dataform/api/dbadapters";
 import { BigQueryDbAdapter } from "@dataform/api/dbadapters/bigquery";
 import * as utils from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
@@ -647,10 +647,6 @@ describe("@dataform/api", () => {
                 message: "Actions may only specify 'disabled: true' if they create a dataset."
               }),
               dataform.CompilationError.create({
-                fileName: "definitions/has_compile_errors/op_with_output_multiple_statements.sqlx",
-                message: "Operations with 'hasOutput: true' must contain exactly one SQL statement."
-              }),
-              dataform.CompilationError.create({
                 fileName: "definitions/has_compile_errors/protected_assertion.sqlx",
                 message:
                   "Actions may only specify 'protected: true' if they are of type 'incremental'."
@@ -801,6 +797,9 @@ describe("@dataform/api", () => {
           t => t.name === "example_assertion_with_tags"
         );
         expect(exampleAssertionWithTags).to.not.be.undefined;
+        expect(exampleAssertionWithTags.target.schema).equals(
+          schemaWithSuffix("df_integration_test_assertions")
+        );
         expect(exampleAssertionWithTags.tags).to.eql(["tag1", "tag2"]);
 
         // Check example operations file
@@ -1307,7 +1306,7 @@ describe("@dataform/api", () => {
         prepareSchema: _ => {
           return Promise.resolve();
         }
-      } as DbAdapter;
+      } as IDbAdapter;
 
       const runner = new Runner(mockDbAdapter, TEST_GRAPH);
       const execution = runner.execute();
