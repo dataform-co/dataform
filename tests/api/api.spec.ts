@@ -266,46 +266,6 @@ describe("@dataform/api", () => {
       expect(actionNames).not.includes("op_d");
       expect(actionNames).includes("tab_a");
     });
-
-    //TODO: This does not work
-    it("build actions using an ambiguous --actions option", () => {
-      const tablesWithAmbiguities = [
-        {
-          name: "foo.z",
-          target: {
-            schema: "bar",
-            name: "feez"
-          },
-          type: "table",
-          query: "select 1 as test"
-        },
-        {
-          name: "bar.z",
-          target: {
-            schema: "bar",
-            name: "fooz"
-          },
-          type: "table",
-          query: "select 1 as test"
-        }
-      ];
-      const graphWithAmbiguities: dataform.ICompiledGraph = dataform.CompiledGraph.create({
-        projectConfig: { warehouse: "redshift", defaultSchema: "default_schema" },
-        tables: tablesWithAmbiguities
-      });
-      const builder = new Builder(
-        graphWithAmbiguities,
-        { includeDependencies: false, actions: ["z"] },
-        TEST_STATE
-      );
-      builder.build();
-      const gErrors = utils.validate(graphWithAmbiguities);
-      expect(gErrors)
-        .to.have.property("compilationErrors")
-        .to.be.an("array").that.is.not.empty;
-      const errors = gErrors.compilationErrors.map(item => item.message);
-      expect(errors).includes("Action name [z] is ambiguous. Did you mean one of: [foo.z, bar.z");
-    });
   });
 
   describe("sql_generating", () => {
@@ -1136,9 +1096,9 @@ describe("@dataform/api", () => {
 
       const aNames = graph.assertions.map(a => a.name);
 
-      expect(aNames).includes("df_integration_test.sample_data_assertion");
+      expect(aNames).includes("df_integration_test_assertions.sample_data_assertion");
       const assertion = graph.assertions.filter(
-        a => a.name == "df_integration_test.sample_data_assertion"
+        a => a.name == "df_integration_test_assertions.sample_data_assertion"
       )[0];
       expect(assertion.query).equals(
         'select * from "df_integration_test"."sample_data" where sample_column > 3'

@@ -310,6 +310,7 @@ export class Session {
       const dependencies = action.dependencies || [];
       dependencies.forEach(dependency => (uniqueDependencies[dependency] = true));
     });
+    
     return compiledGraph;
   }
 

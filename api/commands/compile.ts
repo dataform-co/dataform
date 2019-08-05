@@ -38,19 +38,19 @@ class CompileChildProcess {
     const compileInChildProcess = new Promise<string>(async (resolve, reject) => {
       this.childProcess.on("message", (result: ICompileIPCResult) => {
         if (result.err) {
-          console.log("And my error is: " + result.err);
+          //console.log("And my error is: " + result.err);
           reject(new Error(result.err));
         } else {
           // We receive back a path where the compiled graph was written in proto format.
           resolve(result.path);
         }
       });
-      console.log(
+      /*console.log(
         "[compile.ts 58] + compileConfig= " +
           compileConfig.projectDir +
           ", " +
           compileConfig.schemaSuffixOverride
-      );
+      );*/
       this.childProcess.send(compileConfig);
     });
     let timer;

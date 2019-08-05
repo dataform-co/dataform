@@ -374,7 +374,7 @@ describe("@dataform/core", () => {
       expect(errors).that.matches(/Unused property was detected: "where"/);
     });
 
-    it("non_ambiguous_ref", () => {
+    it("ref_with_schema", () => {
       const session = new Session(path.dirname(__filename), TEST_CONFIG);
       session.publish("foo.a", _ => "select 1 as test");
       session.publish("bar.a", _ => "select 1 as test");
@@ -389,6 +389,16 @@ describe("@dataform/core", () => {
       expect(tableNames).includes("bar.a");
       expect(tableNames).includes("foo.b");
       expect(tableNames).includes("foo.c");
+
+      const gErrors = utils.validate(graph);
+      gErrors.compilationErrors.forEach(c => console.log("[core.spec.ts 394] c=" + c.message));
+
+      expect(gErrors)
+        .to.have.property("compilationErrors")
+        .to.be.an("array").that.is.empty;
+      expect(gErrors)
+        .to.have.property("validationErrors")
+        .to.be.an("array").that.is.empty;
     });
 
     it("ref", () => {
@@ -485,6 +495,25 @@ describe("@dataform/core", () => {
 
       const errors = gErrors.compilationErrors.filter(item =>
         item.message.match(/Duplicate action name/)
+      );
+      expect(errors).to.be.an("array").that.is.not.empty;
+    });
+
+    it("same action names in different schemas (ambiguity)", () => {
+      const session = new Session(path.dirname(__filename), TEST_CONFIG);
+      session.publish("foo.a");
+      session.publish("bar.a");
+      session.publish("foo.b").dependencies("a");
+      const cGraph = session.compile();
+      const gErrors = utils.validate(cGraph);
+      expect(gErrors)
+        .to.have.property("compilationErrors")
+        .to.be.an("array").that.is.not.empty;
+      gErrors.compilationErrors.forEach(element => {
+        console.log("[core.spec.ts 503] ce=" + element.message);
+      });
+      const errors = gErrors.compilationErrors.filter(item =>
+        item.message.match(/Ambiguous Action name: a. Did you mean one of: \[foo.a, bar.a\]./)
       );
       expect(errors).to.be.an("array").that.is.not.empty;
     });
