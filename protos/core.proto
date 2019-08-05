@@ -38,8 +38,6 @@ message CompileConfig {
 
   // Compile time configuration options.
   string schema_suffix_override = 2;
-  
-  string default_schema = 3;
 }
 
 message Target {

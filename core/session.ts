@@ -218,12 +218,15 @@ export class Session {
   }
 
   public publish(name: string, queryOrConfig?: TContextable<string> | TConfig): Table {
+    const table = new Table();
+    table.proto.target = this.target(name);
+
     const fQName = name.includes(".") ? name : [this.config.defaultSchema, name].join(".");
     this.checkActionNameIsUnused(fQName);
-    const table = new Table();
+
     table.session = this;
     table.proto.name = fQName;
-    table.proto.target = this.target(fQName);
+
     if (!!queryOrConfig) {
       if (typeof queryOrConfig === "object") {
         table.config(queryOrConfig);
@@ -308,8 +311,6 @@ export class Session {
       graphErrors: this.graphErrors
     });
 
-    // Expand action dependency wildcards.
-
     const allActions: IActionProto[] = [].concat(
       compiledGraph.tables,
       compiledGraph.assertions,
@@ -320,15 +321,7 @@ export class Session {
     allActions.forEach(action => {
       const uniqueDependencies: { [dependency: string]: boolean } = {};
       const dependencies = action.dependencies || [];
-      // Add non-wildcard deps normally.
-      dependencies
-        .filter(dependency => !dependency.includes("*"))
-        .forEach(dependency => (uniqueDependencies[dependency] = true));
-      // Match wildcard deps against all action names.
-      utils
-        .matchPatterns(dependencies.filter(d => d.includes("*")), allActionNames)
-        .forEach(dependency => (uniqueDependencies[dependency] = true));
-      action.dependencies = Object.keys(uniqueDependencies);
+      dependencies.forEach(dependency => (uniqueDependencies[dependency] = true));
     });
 
     return compiledGraph;

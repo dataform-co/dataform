@@ -3,7 +3,7 @@ import { compiler, indexFileGenerator } from "@dataform/core";
 import * as path from "path";
 import { NodeVM } from "vm2";
 
-export function compile(query: string, projectDir?: string, defaultSchema?: string): string {
+export function compile(query: string, projectDir?: string): string {
   let compiledQuery = query;
   if (projectDir) {
     const vm = new NodeVM({
@@ -14,7 +14,7 @@ export function compile(query: string, projectDir?: string, defaultSchema?: stri
         external: true
       },
       sourceExtensions: ["js", "sql"],
-      compiler: (code, path) => compiler(code, path, defaultSchema)
+      compiler: (code, path) => compiler(code, path)
     });
     // This use of genIndex needs some rethinking. It uses the version built into
     // @dataform/api instead of @dataform/core, which would be more correct, as done in compile.ts.
@@ -47,7 +47,7 @@ export function compile(query: string, projectDir?: string, defaultSchema?: stri
 
 process.on(`message`, object => {
   try {
-    const graph = compile(object.query, object.projectDir, object.defaultSchema);
+    const graph = compile(object.query, object.projectDir);
     process.send({ result: graph });
   } catch (e) {
     process.send({ err: String(e) });

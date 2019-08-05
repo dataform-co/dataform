@@ -310,7 +310,9 @@ describe("@dataform/api", () => {
       });
       const builder = new Builder(graphWithDupActions, { includeDependencies: false }, TEST_STATE);
       const executionGraph = builder.build();
-
+      executionGraph.actions.forEach(act =>
+        console.log("[api.spec.ts 313] act=" + act.name + ", type=" + act.type)
+      );
       const includedActionNames = executionGraph.actions.map(n => n.name);
       expect(includedActionNames).includes("default_schema.b");
       expect(includedActionNames).includes("foo.b");
@@ -722,8 +724,7 @@ describe("@dataform/api", () => {
       it(`bigquery using v2 language compiles with suffix "${schemaSuffix}"`, async () => {
         const graph = await compile({
           projectDir: path.resolve("df/examples/bigquery_language_v2"),
-          schemaSuffixOverride: schemaSuffix,
-          defaultSchema: "df_integration_test" // This is bad. It should take it from projectDir
+          schemaSuffixOverride: schemaSuffix
         });
 
         expect(graph.graphErrors).to.eql(
@@ -824,7 +825,6 @@ describe("@dataform/api", () => {
         );
         expect(exampleDeferred).to.not.be.undefined;
         expect(exampleDeferred.fileName).includes("definitions/example_deferred.js");
-
         // Check inline tables
         const exampleInline = graph.tables.find(
           t => t.name === "df_integration_test.example_inline"
@@ -945,7 +945,7 @@ describe("@dataform/api", () => {
         ]);
         expect(exampleOperations.dependencies).to.eql([
           "example_inline",
-          "override_schema.override_schema_example"
+          "override_schema_example"
         ]);
         expect(exampleOperations.tags).to.eql([]);
 
@@ -975,7 +975,7 @@ describe("@dataform/api", () => {
         expect(exampleOperationsWithTags.tags).to.eql(["tag1"]);
 
         // Check testcase.
-        const testCase = graph.tests.find(t => t.name === "df_integration_test.example_test_case");
+        const testCase = graph.tests.find(t => t.name === "example_test_case");
         expect(testCase.testQuery.trim()).equals(
           "select * from (\n    select 'hi' as faked union all\n    select 'ben' as faked union all\n    select 'sup?' as faked\n)\n\n-- here ${\"is\"} a `comment\n\n/* ${\"another\"} ` backtick ` containing ```comment */"
         );

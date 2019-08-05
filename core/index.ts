@@ -15,7 +15,7 @@ if (require.extensions) {
     const oldCompile = module._compile;
     module._compile = function(code: any, file: any) {
       module._compile = oldCompile;
-      const transformedCode = compilers.compile(code, file, session.config.defaultSchema);
+      const transformedCode = compilers.compile(code, file);
       module._compile(transformedCode, file);
     };
     require.extensions[".js"](module, file);

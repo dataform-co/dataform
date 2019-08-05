@@ -130,7 +130,10 @@ export function validate(compiledGraph: dataform.ICompiledGraph): dataform.IGrap
     const actionName = action.name;
     (action.dependencies || []).forEach(dependency => {
       const [matchedDep, err] = matchFQName(dependency, allActionNames);
-      if (allActionNames.indexOf(matchedDep) < 0) {
+      if (!!err && err.includes("Ambiguous")) {
+        const message = `Ambiguous dependency detected: ` + err;
+        validationErrors.push(dataform.ValidationError.create({ message, actionName }));
+      } else if (allActionNames.indexOf(matchedDep) < 0) {
         const message = `Missing dependency detected: Node "${
           action.name
         }" depends on "${dependency}" which does not exist.`;
@@ -265,9 +268,6 @@ export function validate(compiledGraph: dataform.ICompiledGraph): dataform.IGrap
 }
 
 export function matchFQName(act: string, allActFQNames: any[]): [string, string] {
-  if (act.includes("*")) {
-    return [act, null]; // Skip wildcards
-  }
   switch (act.split(".").length) {
     case 2: {
       if (allActFQNames.includes(act)) {
@@ -292,7 +292,7 @@ export function matchFQName(act: string, allActFQNames: any[]): [string, string]
       } else if (matches.length > 1) {
         return [
           null,
-          "Ambiguous Action name: " + act + ". Did you mean one of: [" + matches.join(",") + "]."
+          "Ambiguous Action name: " + act + ". Did you mean one of: [" + matches.join(", ") + "]."
         ];
       }
     }

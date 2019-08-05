@@ -352,11 +352,11 @@ describe("@dataform/core", () => {
       expect(errors).that.matches(/Unused property was detected: "where"/);
     });
 
-    it("ambiguous_ref", () => {
+    it("non_ambiguous_ref", () => {
       const session = new Session(path.dirname(__filename), TEST_CONFIG);
       session.publish("foo.a", _ => "select 1 as test");
       session.publish("bar.a", _ => "select 1 as test");
-      session.publish("foo.b", ctx => `select * from ${ctx.ref("foo.a")}`);
+      session.publish("foo.b", ctx => `select * from ${ctx.ref('{schema : "foo", name: "a"}')}`);
       session.publish("foo.c", ctx => `select * from ${ctx.ref("b")}`);
 
       const graph = session.compile();
@@ -440,16 +440,13 @@ describe("@dataform/core", () => {
       const session = new Session(path.dirname(__filename), TEST_CONFIG);
       session.publish("a", ctx => `select * from ${ctx.ref("b")}`);
       const cGraph = session.compile();
-      const gErrors = utils.validate(cGraph);
-
-      expect(gErrors)
-        .to.have.property("compilationErrors")
-        .to.be.an("array").that.is.not.empty;
-
-      const errors = gErrors.compilationErrors.filter(item =>
-        item.message.match(/Action name: b could not be found/)
-      );
-      expect(errors).to.be.an("array").that.is.not.empty;
+      const expectedResults = [{ message: /Action name: b could not be found/ }];
+      expectedResults.forEach(result => {
+        const error = cGraph.graphErrors.compilationErrors.find(item =>
+          result.message.test(item.message)
+        );
+        expect(error).to.exist;
+      });
     });
 
     it("duplicate_action_names", () => {
@@ -520,34 +517,6 @@ describe("@dataform/core", () => {
       expect(errors.some(item => !!item.match(/Duplicate action name/))).to.be.true;
       expect(errors.some(item => !!item.match(/Missing dependency/))).to.be.true;
       expect(errors.some(item => !!item.match(/Circular dependency/))).to.be.true;
-    });
-
-    it("wildcard_dependencies", () => {
-      const session = new Session(path.dirname(__filename), TEST_CONFIG);
-      session.publish("a1");
-      session.publish("a2");
-      session.publish("b").dependencies("a*");
-      session.publish("foo.a1");
-      session.publish("foo.a2");
-      session.publish("foo.a3");
-      session.publish("b2").dependencies("foo.a*");
-      session.publish("bar.a3");
-
-      const graph = session.compile();
-
-      expect(graph.tables.filter(t => t.name === "schema.b")[0].dependencies).deep.equals([
-        "schema.a1",
-        "schema.a2"
-      ]);
-      expect(graph.tables.filter(t => t.name === "schema.b2")[0].dependencies).deep.equals([
-        "foo.a1",
-        "foo.a2",
-        "foo.a3"
-      ]);
-      expect(graph.tables.filter(t => t.name === "schema.c")[0].dependencies).deep.equals([
-        "foo.a3",
-        "bar.a3"
-      ]);
     });
   });
 

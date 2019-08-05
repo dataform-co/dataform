@@ -1,5 +1,4 @@
 import { Session } from "@dataform/core/session";
-import * as utils from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
 
 export type AContextable<T> = T | ((ctx: AssertionContext) => T);
