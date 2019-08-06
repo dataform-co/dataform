@@ -3,6 +3,12 @@ import { dataform } from "@dataform/protos";
 
 export type AContextable<T> = T | ((ctx: AssertionContext) => T);
 
+export interface AConfig {
+  dependencies?: string | string[];
+  tags?: string[];
+  description?: string;
+}
+
 export class Assertion {
   public proto: dataform.IAssertion = dataform.Assertion.create();
 

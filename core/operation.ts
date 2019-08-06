@@ -3,6 +3,14 @@ import { dataform } from "@dataform/protos";
 
 export type OContextable<T> = T | ((ctx: OperationContext) => T);
 
+export interface OConfig {
+  dependencies?: string | string[];
+  tags?: string[];
+  description?: string;
+  columns?: IColumnsDescriptor;
+  hasOutput?: boolean;
+}
+
 export class Operation {
   public proto: dataform.IOperation = dataform.Operation.create();
 

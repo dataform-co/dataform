@@ -174,29 +174,23 @@ export class Session {
         case "view":
         case "table":
         case "inline":
-        case "incremental": {
-          const dataset = this.publish(actionOptions.sqlxConfig.name);
-          dataset.config(actionOptions.sqlxConfig);
-          return dataset;
-        }
-        case "assertion": {
-          const assertion = this.assert(actionOptions.sqlxConfig.name);
-          assertion.dependencies(actionOptions.sqlxConfig.dependencies);
-          assertion.tags(actionOptions.sqlxConfig.tags);
-          return assertion;
-        }
+        case "incremental":
+          return this.publish(actionOptions.sqlxConfig.name).config(actionOptions.sqlxConfig);
+        case "assertion":
+          return this.assert(actionOptions.sqlxConfig.name)
+            .dependencies(actionOptions.sqlxConfig.dependencies)
+            .tags(actionOptions.sqlxConfig.tags);
         case "operations": {
-          const operations = this.operate(actionOptions.sqlxConfig.name);
+          const operations = this.operate(actionOptions.sqlxConfig.name)
+            .dependencies(actionOptions.sqlxConfig.dependencies)
+            .tags(actionOptions.sqlxConfig.tags);
           if (!actionOptions.sqlxConfig.hasOutput) {
             delete operations.proto.target;
           }
-          operations.dependencies(actionOptions.sqlxConfig.dependencies);
-          operations.tags(actionOptions.sqlxConfig.tags);
           return operations;
         }
-        default: {
+        default:
           throw new Error(`Unrecognized action type: ${actionOptions.sqlxConfig.type}`);
-        }
       }
     })();
     if (action.proto.target) {
