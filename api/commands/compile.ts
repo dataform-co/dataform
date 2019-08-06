@@ -16,9 +16,7 @@ export async function compile(
     const dataformJson = fs.readFileSync(`${compileConfig.projectDir}/dataform.json`, "utf8");
     JSON.parse(dataformJson);
   } catch (e) {
-    const error = new Error("Compile Error: `dataform.json` is invalid");
-    error.stack = "Compile Error: `dataform.json` is invalid";
-    throw error;
+    throw new Error("Compile Error: `dataform.json` is invalid");
   }
 
   const returnedPath = await CompileChildProcess.forkProcess().compile(compileConfig);
