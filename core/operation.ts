@@ -1,4 +1,4 @@
-import { IColumnsDescriptor, mapToDescriptorProto, Session } from "@dataform/core/session";
+import { IColumnsDescriptor, mapToColumnProtoArray, Session } from "@dataform/core/session";
 import { dataform } from "@dataform/protos";
 
 export type OContextable<T> = T | ((ctx: OperationContext) => T);
@@ -42,16 +42,25 @@ export class Operation {
     return this;
   }
 
-  public describe(descriptionOrColumns: string | IColumnsDescriptor, columns?: IColumnsDescriptor) {
-    if (typeof descriptionOrColumns === "string") {
-      this.proto.actionDescriptor = mapToDescriptorProto({
-        description: descriptionOrColumns,
-        columns
-      });
-    } else {
-      this.proto.actionDescriptor = mapToDescriptorProto({ columns: descriptionOrColumns });
+  public description(description: string) {
+    if (!this.proto.actionDescriptor) {
+      this.proto.actionDescriptor = {};
     }
+    this.proto.actionDescriptor.description = description;
+    return this;
+  }
+
+  public columns(columns: IColumnsDescriptor) {
+    if (!this.proto.actionDescriptor) {
+      this.proto.actionDescriptor = {};
+    }
+    this.proto.actionDescriptor.columns = mapToColumnProtoArray(columns);
+    return this;
+  }
+
+  public compile() {
     if (
+      this.proto.actionDescriptor &&
       this.proto.actionDescriptor.columns &&
       this.proto.actionDescriptor.columns.length > 0 &&
       !this.proto.hasOutput
@@ -62,10 +71,7 @@ export class Operation {
         )
       );
     }
-    return this;
-  }
 
-  public compile() {
     const context = new OperationContext(this);
 
     const appliedQueries = context.apply(this.contextableQueries);

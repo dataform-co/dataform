@@ -1,4 +1,4 @@
-import { IColumnsDescriptor, mapToDescriptorProto, Session } from "@dataform/core/session";
+import { IColumnsDescriptor, mapToColumnProtoArray, Session } from "@dataform/core/session";
 import { dataform } from "@dataform/protos";
 
 export enum TableTypes {
@@ -82,8 +82,11 @@ export class Table {
     if (config.tags) {
       this.tags(config.tags);
     }
-    if (config.description || config.columns) {
-      this.describe(config.description || config.columns, config.columns);
+    if (config.description) {
+      this.description(config.description);
+    }
+    if (config.columns) {
+      this.columns(config.columns);
     }
 
     return this;
@@ -152,15 +155,19 @@ export class Table {
     return this;
   }
 
-  public describe(descriptionOrColumns: string | IColumnsDescriptor, columns?: IColumnsDescriptor) {
-    if (typeof descriptionOrColumns === "string") {
-      this.proto.actionDescriptor = mapToDescriptorProto({
-        description: descriptionOrColumns,
-        columns
-      });
-    } else {
-      this.proto.actionDescriptor = mapToDescriptorProto({ columns: descriptionOrColumns });
+  public description(description: string) {
+    if (!this.proto.actionDescriptor) {
+      this.proto.actionDescriptor = {};
     }
+    this.proto.actionDescriptor.description = description;
+    return this;
+  }
+
+  public columns(columns: IColumnsDescriptor) {
+    if (!this.proto.actionDescriptor) {
+      this.proto.actionDescriptor = {};
+    }
+    this.proto.actionDescriptor.columns = mapToColumnProtoArray(columns);
     return this;
   }
 

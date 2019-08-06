@@ -32,17 +32,15 @@ describe("@dataform/core", () => {
 
       expect(t.name).equals("example");
       expect(t.type).equals("table");
-      expect(t.actionDescriptor).eql(
-        dataform.ActionDescriptor.create({
-          description: "this is a table",
-          columns: [
-            dataform.ColumnDescriptor.create({
-              description: "test description",
-              path: ["test"]
-            })
-          ]
-        })
-      );
+      expect(t.actionDescriptor).eql({
+        description: "this is a table",
+        columns: [
+          dataform.ColumnDescriptor.create({
+            description: "test description",
+            path: ["test"]
+          })
+        ]
+      });
       expect(t.preOps).deep.equals(["pre_op"]);
       expect(t.postOps).deep.equals(["post_op"]);
     });
@@ -309,16 +307,14 @@ describe("@dataform/core", () => {
       expect(tableB).to.exist;
       expect(tableB.type).equals("inline");
       expect(tableB.dependencies).includes("a");
-      expect(tableB.actionDescriptor).eql(
-        dataform.ActionDescriptor.create({
-          columns: [
-            dataform.ColumnDescriptor.create({
-              description: "test description b",
-              path: ["test"]
-            })
-          ]
-        })
-      );
+      expect(tableB.actionDescriptor).eql({
+        columns: [
+          dataform.ColumnDescriptor.create({
+            description: "test description b",
+            path: ["test"]
+          })
+        ]
+      });
       expect(tableB.preOps).deep.equals(["pre_op_b"]);
       expect(tableB.postOps).deep.equals(["post_op_b"]);
       expect(asPlainObject(tableB.redshift)).deep.equals(
@@ -337,16 +333,14 @@ describe("@dataform/core", () => {
       expect(tableC).to.exist;
       expect(tableC.type).equals("table");
       expect(tableC.dependencies).includes("a");
-      expect(tableC.actionDescriptor).eql(
-        dataform.ActionDescriptor.create({
-          columns: [
-            dataform.ColumnDescriptor.create({
-              description: "test description c",
-              path: ["test"]
-            })
-          ]
-        })
-      );
+      expect(tableC.actionDescriptor).eql({
+        columns: [
+          dataform.ColumnDescriptor.create({
+            description: "test description c",
+            path: ["test"]
+          })
+        ]
+      });
       expect(tableC.preOps).deep.equals(["pre_op_c"]);
       expect(tableC.postOps).deep.equals(["post_op_c"]);
       expect(tableC.redshift).to.not.exist;

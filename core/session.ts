@@ -21,33 +21,24 @@ interface ISqlxConfig extends TConfig {
   tags?: string[];
 }
 
-export interface IDescriptionAndColumns {
+export interface IColumnsDescriptor {
+  [name: string]: string | IRecordDescriptor;
+}
+
+interface IRecordDescriptor {
   description?: string;
   columns?: IColumnsDescriptor;
 }
 
-export interface IColumnsDescriptor {
-  [name: string]: string | IDescriptionAndColumns;
-}
-
-export function mapToDescriptorProto(
-  actionDescription: IDescriptionAndColumns
-): dataform.IActionDescriptor {
-  return dataform.ActionDescriptor.create({
-    description: actionDescription.description,
-    columns: actionDescription.columns
-      ? utils.flatten(
-          Object.keys(actionDescription.columns).map(column =>
-            mapColumnDescriptionToProto([column], actionDescription.columns[column])
-          )
-        )
-      : []
-  });
+export function mapToColumnProtoArray(columns: IColumnsDescriptor): dataform.IColumnDescriptor[] {
+  return utils.flatten(
+    Object.keys(columns).map(column => mapColumnDescriptionToProto([column], columns[column]))
+  );
 }
 
 function mapColumnDescriptionToProto(
   currentPath: string[],
-  description: string | IDescriptionAndColumns
+  description: string | IRecordDescriptor
 ): dataform.IColumnDescriptor[] {
   if (typeof description === "string") {
     return [
