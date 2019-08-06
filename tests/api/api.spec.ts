@@ -680,9 +680,6 @@ describe("@dataform/api", () => {
           })
         );
 
-        graph.tables.forEach(tab => console.log("[api.spec.ts 683] tab=" + tab.name));
-        graph.assertions.forEach(ass => console.log("[api.spec.ts 684] ass=" + ass.name));
-        graph.operations.forEach(ope => console.log("[api.spec.ts 685] ope=" + ope.name));
         // Check JS blocks get processed.
         const exampleJsBlocks = graph.tables.find(
           t => t.name === schemaWithSuffix("df_integration_test") + ".example_js_blocks"
@@ -809,9 +806,7 @@ describe("@dataform/api", () => {
 
         // Check schema overrides defined in "config {}"
         const exampleUsingOverriddenSchema = graph.tables.find(
-          /*t => t.name === "override_schema.override_schema_example"
-        // This is so wrong */
-          t => t.name === schemaWithSuffix("df_integration_test") + ".override_schema_example"
+          t => t.name === schemaWithSuffix("override_schema") + ".override_schema_example"
         );
         expect(exampleUsingOverriddenSchema).to.not.be.undefined;
         expect(exampleUsingOverriddenSchema.target.schema).equals(

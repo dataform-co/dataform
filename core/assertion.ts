@@ -1,4 +1,4 @@
-import { Session } from "@dataform/core/session";
+import { IResolvable, Session } from "@dataform/core/session";
 import { dataform } from "@dataform/protos";
 
 export type AContextable<T> = T | ((ctx: AssertionContext) => T);
@@ -54,13 +54,17 @@ export class AssertionContext {
     this.assertion = assertion;
   }
 
-  public ref(name: string) {
+  public ref(reference: string | IResolvable) {
+    const name =
+      typeof reference === "string" || typeof reference === "undefined"
+        ? reference
+        : (reference as IResolvable).schema + "." + (reference as IResolvable).name;
     this.assertion.dependencies(name);
-    return this.resolve(name);
+    return this.resolve(reference);
   }
 
-  public resolve(name: string) {
-    return this.assertion.session.resolve(name);
+  public resolve(reference: string | IResolvable) {
+    return this.assertion.session.resolve(reference);
   }
 
   public dependencies(name: string | string[]) {

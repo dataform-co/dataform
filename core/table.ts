@@ -1,4 +1,4 @@
-import { Session } from "@dataform/core/session";
+import { IResolvable, Session } from "@dataform/core/session";
 import * as utils from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
 
@@ -260,19 +260,22 @@ export class TableContext implements ITableContext {
     return this.table.proto.name;
   }
 
-  public ref(name: string) {
+  public ref(reference: string | IResolvable) {
+    const name =
+      typeof reference === "string" || typeof reference === "undefined"
+        ? reference
+        : (reference as IResolvable).schema + "." + (reference as IResolvable).name;
     if (!name) {
       const message = `Action name is not specified`;
       this.table.session.compileError(new Error(message));
       return "";
     }
-
     this.table.dependencies(name);
-    return this.resolve(name);
+    return this.resolve(reference);
   }
 
-  public resolve(name: string) {
-    return this.table.session.resolve(name);
+  public resolve(reference: string | IResolvable) {
+    return this.table.session.resolve(reference);
   }
 
   public type(type: TableType) {

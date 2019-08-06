@@ -374,48 +374,32 @@ describe("@dataform/core", () => {
       expect(errors).that.matches(/Unused property was detected: "where"/);
     });
 
-    it("ref_with_schema", () => {
-      const session = new Session(path.dirname(__filename), TEST_CONFIG);
-      session.publish("foo.a", _ => "select 1 as test");
-      session.publish("bar.a", _ => "select 1 as test");
-      session.publish("foo.b", ctx => `select * from ${ctx.ref('{schema : "foo", name: "a"}')}`);
-      session.publish("foo.c", ctx => `select * from ${ctx.ref("b")}`);
-
-      const graph = session.compile();
-      const graphErrors = utils.validate(graph);
-
-      const tableNames = graph.tables.map(item => item.name);
-      expect(tableNames).includes("foo.a");
-      expect(tableNames).includes("bar.a");
-      expect(tableNames).includes("foo.b");
-      expect(tableNames).includes("foo.c");
-
-      const gErrors = utils.validate(graph);
-
-      expect(gErrors)
-        .to.have.property("compilationErrors")
-        .to.be.an("array").that.is.empty;
-      expect(gErrors)
-        .to.have.property("validationErrors")
-        .to.be.an("array").that.is.empty;
-    });
-
     it("ref", () => {
       const session = new Session(path.dirname(__filename), TEST_CONFIG);
       session.publish("a", _ => "select 1 as test");
       session.publish("b", ctx => `select * from ${ctx.ref("a")}`);
       session.publish("c", ctx => `select * from ${ctx.ref(undefined)}`);
+      session.publish("d", ctx => `select * from ${ctx.ref({ schema: "schema", name: "a" })}`);
+      session.publish("foo.e", _ => `select 1 as test`);
+      session.publish("f", ctx => `select * from ${ctx.ref("e")}`);
 
       const graph = session.compile();
       const graphErrors = utils.validate(graph);
 
       const tableNames = graph.tables.map(item => item.name);
+
       expect(tableNames).includes("schema.a");
       expect(tableNames).includes("schema.b");
       expect(tableNames).includes("schema.c");
-
+      expect(tableNames).includes("schema.d");
+      expect(tableNames).includes("foo.e");
+      expect(tableNames).includes("schema.f");
       const errors = graphErrors.compilationErrors.map(item => item.message);
       expect(errors).includes("Action name is not specified");
+      expect(graphErrors.compilationErrors.length === 1);
+      expect(graphErrors)
+        .to.have.property("validationErrors")
+        .to.be.an("array").that.is.empty;
     });
   });
 
