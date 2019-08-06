@@ -32,23 +32,12 @@ export function genIndex(base64EncodedConfig: string): string {
     })
     .join("\n");
 
-  const safeIncludeDataformJson = `
-    try {
-        projectConfig = require("./dataform.json");
-      } catch (e) {
-        const error = new Error()
-        error.stack = "Compile Error: \`dataform.json\` is invalid";
-        throw error;
-      }
-  `;
-
   return `
     require("@dataform/core");
     const protos = require("@dataform/protos");
     const { util } = require("protobufjs");
     ${includeRequires}
-    let projectConfig;
-    ${safeIncludeDataformJson}
+    const projectConfig = require("./dataform.json");
     projectConfig.schemaSuffix = "${
       config.compileConfig.schemaSuffixOverride
     }" || projectConfig.schemaSuffix;
