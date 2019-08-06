@@ -1,4 +1,4 @@
-import { Session } from "@dataform/core/session";
+import { IDatasetDescriptor, mapToDescriptorProto, Session } from "@dataform/core/session";
 import { dataform } from "@dataform/protos";
 
 export enum TableTypes {
@@ -17,7 +17,9 @@ export enum SortStyleTypes {
   INTERLEAVED = "interleaved"
 }
 
-export const ignoredProps = {
+export const ignoredProps: {
+  [tableType: string]: Array<keyof dataform.ITable>;
+} = {
   [TableTypes.INLINE]: [
     "bigquery",
     "redshift",
@@ -25,8 +27,7 @@ export const ignoredProps = {
     "postOps",
     "descriptor",
     "disabled",
-    "where",
-    "fieldDescriptor"
+    "where"
   ]
 };
 
@@ -38,7 +39,8 @@ export interface TConfig {
   type?: TableType;
   dependencies?: string | string[];
   tags?: string[];
-  descriptor?: string[] | { [key: string]: string };
+  description?: string;
+  columns?: IDatasetDescriptor;
   disabled?: boolean;
   protected?: boolean;
   redshift?: dataform.IRedshiftOptions;
@@ -68,13 +70,6 @@ export class Table {
     if (config.dependencies) {
       this.dependencies(config.dependencies);
     }
-    if (config.descriptor) {
-      if (config.descriptor instanceof Array) {
-        this.descriptor(config.descriptor);
-      } else {
-        this.descriptor(config.descriptor);
-      }
-    }
     if (config.disabled) {
       this.disabled();
     }
@@ -86,6 +81,13 @@ export class Table {
     }
     if (config.tags) {
       this.tags(config.tags);
+    }
+    if (config.description || config.columns) {
+      if (config.description) {
+        this.describe(config.description, config.columns);
+      } else {
+        this.describe(config.columns);
+      }
     }
 
     return this;
@@ -154,26 +156,11 @@ export class Table {
     return this;
   }
 
-  public descriptor(key: string, description?: string): Table;
-  public descriptor(map: { [key: string]: string }): Table;
-  public descriptor(keys: string[]): Table;
-  public descriptor(
-    keyOrKeysOrMap: string | string[] | { [key: string]: string },
-    description?: string
-  ): Table {
-    if (!this.proto.fieldDescriptor) {
-      this.proto.fieldDescriptor = {};
-    }
-    if (typeof keyOrKeysOrMap === "string") {
-      this.proto.fieldDescriptor[keyOrKeysOrMap] = description || "";
-    } else if (keyOrKeysOrMap instanceof Array) {
-      keyOrKeysOrMap.forEach(key => {
-        this.proto.fieldDescriptor[key] = "";
-      });
+  public describe(description: string | IDatasetDescriptor, descriptor?: IDatasetDescriptor) {
+    if (typeof description === "string") {
+      this.proto.descriptor = mapToDescriptorProto(description, descriptor);
     } else {
-      Object.keys(keyOrKeysOrMap).forEach(key => {
-        this.proto.fieldDescriptor[key] = keyOrKeysOrMap[key] || "";
-      });
+      this.proto.descriptor = mapToDescriptorProto(undefined, description);
     }
     return this;
   }
@@ -227,11 +214,6 @@ export interface ITableContext {
   redshift: (redshift: dataform.IRedshiftOptions) => string;
   bigquery: (bigquery: dataform.IBigQueryOptions) => string;
   dependencies: (name: string) => string;
-  descriptor: (
-    keyOrKeysOrMap: string | string[] | { [key: string]: string },
-    description?: string
-  ) => string;
-  describe: (key: string, description?: string) => string;
   apply: <T>(value: TContextable<T>) => T;
   tags: (name: string | string[]) => string;
 }
@@ -309,22 +291,6 @@ export class TableContext implements ITableContext {
   public dependencies(name: string) {
     this.table.dependencies(name);
     return "";
-  }
-
-  public descriptor(key: string, description?: string): string;
-  public descriptor(map: { [key: string]: string }): string;
-  public descriptor(keys: string[]): string;
-  public descriptor(
-    keyOrKeysOrMap: string | string[] | { [key: string]: string },
-    description?: string
-  ): string {
-    this.table.descriptor(keyOrKeysOrMap as any, description);
-    return "";
-  }
-
-  public describe(key: string, description?: string) {
-    this.table.descriptor(key, description);
-    return key;
   }
 
   public apply<T>(value: TContextable<T>): T {

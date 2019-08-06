@@ -21,6 +21,64 @@ interface ISqlxConfig extends TConfig {
   tags?: string[];
 }
 
+interface IRecordDescriptor {
+  description?: string;
+  columns?: IDatasetDescriptor;
+}
+
+export interface IDatasetDescriptor {
+  [name: string]: string | IRecordDescriptor;
+}
+
+export function mapToDescriptorProto(
+  description?: string,
+  descriptor?: IDatasetDescriptor
+): dataform.IActionDescriptor {
+  return dataform.ActionDescriptor.create({
+    description,
+    columns: descriptor
+      ? utils.flatten(
+          Object.keys(descriptor).map(column =>
+            mapColumnDescriptionToProto([column], descriptor[column])
+          )
+        )
+      : []
+  });
+}
+
+function mapColumnDescriptionToProto(
+  currentPath: string[],
+  description: string | IRecordDescriptor
+): dataform.IColumnDescriptor[] {
+  if (typeof description === "string") {
+    return [
+      dataform.ColumnDescriptor.create({
+        description,
+        path: currentPath
+      })
+    ];
+  }
+  const columnDescriptor: dataform.IColumnDescriptor[] = description.description
+    ? [
+        dataform.ColumnDescriptor.create({
+          description: description.description,
+          path: currentPath
+        })
+      ]
+    : [];
+  const nestedColumns = description.columns ? Object.keys(description.columns) : [];
+  return columnDescriptor.concat(
+    utils.flatten(
+      nestedColumns.map(nestedColumn =>
+        mapColumnDescriptionToProto(
+          currentPath.concat([nestedColumn]),
+          description.columns[nestedColumn]
+        )
+      )
+    )
+  );
+}
+
 export class Session {
   public rootDir: string;
 

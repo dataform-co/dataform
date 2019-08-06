@@ -1,4 +1,4 @@
-import { Session } from "@dataform/core/session";
+import { mapToDescriptorProto, Session } from "@dataform/core/session";
 import { dataform } from "@dataform/protos";
 
 export type AContextable<T> = T | ((ctx: AssertionContext) => T);
@@ -34,6 +34,11 @@ export class Assertion {
         this.proto.tags.push(t);
       }
     });
+    return this;
+  }
+
+  public describe(description: string) {
+    this.proto.descriptor = mapToDescriptorProto(description);
     return this;
   }
 

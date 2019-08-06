@@ -1,4 +1,4 @@
-import { Session } from "@dataform/core/session";
+import { IDatasetDescriptor, mapToDescriptorProto, Session } from "@dataform/core/session";
 import { dataform } from "@dataform/protos";
 
 export type OContextable<T> = T | ((ctx: OperationContext) => T);
@@ -39,6 +39,26 @@ export class Operation {
 
   public hasOutput(hasOutput: boolean) {
     this.proto.hasOutput = hasOutput;
+    return this;
+  }
+
+  public describe(description: string | IDatasetDescriptor, descriptor?: IDatasetDescriptor) {
+    if (typeof description === "string") {
+      this.proto.descriptor = mapToDescriptorProto(description, descriptor);
+    } else {
+      this.proto.descriptor = mapToDescriptorProto(undefined, description);
+    }
+    if (
+      this.proto.descriptor.columns &&
+      this.proto.descriptor.columns.length > 0 &&
+      !this.proto.hasOutput
+    ) {
+      this.session.compileError(
+        new Error(
+          "Actions of type 'operations' may only describe columns if they specify 'hasOutput: true'."
+        )
+      );
+    }
     return this;
   }
 
