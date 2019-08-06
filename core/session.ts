@@ -133,6 +133,12 @@ export class Session {
         "Actions may only specify 'hasOutput: true' if they are of type 'operations' or create a dataset."
       );
     }
+    if (
+      actionOptions.sqlxConfig.columns &&
+      !(this.isDatasetType(actionOptions.sqlxConfig.type) || actionOptions.sqlxConfig.hasOutput)
+    ) {
+      this.compileError("Actions may only specify 'columns' if they create a dataset.");
+    }
     if (actionOptions.sqlxConfig.protected && actionOptions.sqlxConfig.type !== "incremental") {
       this.compileError(
         "Actions may only specify 'protected: true' if they are of type 'incremental'."
