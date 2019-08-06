@@ -1,4 +1,4 @@
-import { Session } from "@dataform/core/session";
+import { IResolvable, Session } from "@dataform/core/session";
 import { dataform } from "@dataform/protos";
 
 export type OContextable<T> = T | ((ctx: OperationContext) => T);
@@ -67,13 +67,18 @@ export class OperationContext {
     return this.operation.proto.name;
   }
 
-  public ref(name: string) {
+  public ref(reference: string | IResolvable) {
+    const name =
+      typeof reference === "string" || typeof reference === "undefined"
+        ? reference
+        : (reference as IResolvable).schema + "." + (reference as IResolvable).name;
+
     this.operation.dependencies(name);
-    return this.resolve(name);
+    return this.resolve(reference);
   }
 
-  public resolve(name: string) {
-    return this.operation.session.resolve(name);
+  public resolve(reference: string | IResolvable) {
+    return this.operation.session.resolve(reference);
   }
 
   public dependencies(name: string | string[]) {

@@ -79,13 +79,10 @@ class RefReplacingContext implements table.ITableContext {
   }
 
   public resolve(name: string) {
-    console.log("[test.ts 82] name=" + name);
     if (!this.testContext.test.contextableInputs[name]) {
-      console.log("[test.ts 84] name=" + name);
       this.testContext.test.session.compileError(
         new Error(`Input for dataset "${name}" has not been provided.`)
       );
-      console.log("[test.ts 88] name=" + name);
       return "";
     }
     return `(${this.testContext.apply(this.testContext.test.contextableInputs[name])})`;

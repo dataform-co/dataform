@@ -21,6 +21,11 @@ interface ISqlxConfig extends TConfig {
   tags?: string[];
 }
 
+export interface IResolvable {
+  schema: string;
+  name: string;
+}
+
 export class Session {
   public rootDir: string;
 
@@ -152,6 +157,7 @@ export class Session {
           ? this.config.assertionSchema
           : this.config.defaultSchema);
       action.proto.target = this.target(actionOptions.sqlxConfig.name, finalSchema);
+      action.proto.name = action.proto.target.schema + "." + action.proto.target.name;
     }
     return action;
   }
@@ -169,11 +175,15 @@ export class Session {
     });
   }
 
-  public resolve(name: string): string {
-    const [fQName, err] = utils.matchFQName(name, this.getAllFQNames());
-    if (err) {
-      this.compileError(new Error(err));
-      return;
+  public resolve(reference: string | IResolvable): string {
+    let [fQName, err] = ["", ""];
+    if (typeof reference === "string") {
+      [fQName, err] = utils.matchFQName(reference, this.getAllFQNames());
+      if (err) {
+        this.compileError(new Error(err));
+      }
+    } else {
+      fQName = (reference as IResolvable).schema + "." + (reference as IResolvable).name;
     }
     const table = this.tables[fQName];
     const operation =
@@ -190,7 +200,7 @@ export class Session {
     // In these projects, this session may not know about all actions (yet), and thus we need to fall back to assuming
     // that the target *will* exist in the future. Once we break backwards compatibility with .sql files, we should remove
     // the code that calls 'this.target(...)' below, and append a compile error if we can't find a dataset whose name is 'name'.
-    const target = dataset ? dataset.proto.target : this.target(fQName);
+    const target = dataset ? dataset.proto.target : this.target(name);
     return this.adapter().resolveTarget(target);
   }
 
@@ -310,6 +320,7 @@ export class Session {
       const uniqueDependencies: { [dependency: string]: boolean } = {};
       const dependencies = action.dependencies || [];
       dependencies.forEach(dependency => (uniqueDependencies[dependency] = true));
+      action.dependencies = Object.keys(uniqueDependencies);
     });
 
     return compiledGraph;

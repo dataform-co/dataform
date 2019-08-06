@@ -680,9 +680,6 @@ describe("@dataform/api", () => {
           })
         );
 
-        graph.tables.forEach(tab => console.log("[api.spec.ts 683] tab=" + tab.name));
-        graph.assertions.forEach(ass => console.log("[api.spec.ts 684] ass=" + ass.name));
-        graph.operations.forEach(ope => console.log("[api.spec.ts 685] ope=" + ope.name));
         // Check JS blocks get processed.
         const exampleJsBlocks = graph.tables.find(
           t => t.name === schemaWithSuffix("df_integration_test") + ".example_js_blocks"
@@ -714,7 +711,9 @@ describe("@dataform/api", () => {
         expect(exampleIgnore).to.be.undefined;
 
         // Check SQL files with raw back-ticks get escaped.
-        /*const exampleBackticks = graph.tables.find(t => t.name === "example_backticks");
+        const exampleBackticks = graph.tables.find(
+          t => t.name === schemaWithSuffix("df_integration_test") + ".example_backticks"
+        );
         expect(exampleBackticks).to.not.be.undefined;
         expect(cleanSql(exampleBackticks.query)).equals(
           "select * from `tada-analytics.df_integration_test.sample_data`"
@@ -722,7 +721,7 @@ describe("@dataform/api", () => {
         expect(exampleBackticks.preOps).to.eql([
           '\n    GRANT SELECT ON `tada-analytics.df_integration_test.sample_data` TO GROUP "allusers@dataform.co"\n'
         ]);
-        expect(exampleBackticks.postOps).to.eql([]);*/
+        expect(exampleBackticks.postOps).to.eql([]);
 
         // Check deferred calls to table resolve to the correct definitions file.
         const exampleDeferred = graph.tables.find(
@@ -809,9 +808,7 @@ describe("@dataform/api", () => {
 
         // Check schema overrides defined in "config {}"
         const exampleUsingOverriddenSchema = graph.tables.find(
-          /*t => t.name === "override_schema.override_schema_example"
-        // This is so wrong */
-          t => t.name === schemaWithSuffix("df_integration_test") + ".override_schema_example"
+          t => t.name === schemaWithSuffix("override_schema") + ".override_schema_example"
         );
         expect(exampleUsingOverriddenSchema).to.not.be.undefined;
         expect(exampleUsingOverriddenSchema.target.schema).equals(
@@ -838,8 +835,11 @@ describe("@dataform/api", () => {
 
         // Check Assertion with tags
         const exampleAssertionWithTags = graph.assertions.find(
-          t => t.name === "hi_there.example_assertion_with_tags"
+          t =>
+            t.name ===
+            schemaWithSuffix("df_integration_test_assertions") + ".example_assertion_with_tags"
         );
+        graph.assertions.forEach(ass => console.log("[840] ass=" + ass.name));
         expect(exampleAssertionWithTags).to.not.be.undefined;
         expect(exampleAssertionWithTags.target.schema).equals(
           schemaWithSuffix("df_integration_test_assertions")
@@ -865,16 +865,16 @@ describe("@dataform/api", () => {
         expect(exampleOperations.tags).to.eql([]);
 
         // Check example operation with output.
+        console.log("we are here...");
+        graph.operations.forEach(op => console.log("[866] op=" + op.name));
         const exampleOperationWithOutput = graph.operations.find(
           o => o.name === schemaWithSuffix("df_integration_test") + ".example_operation_with_output"
         );
         expect(exampleOperationWithOutput).to.not.be.undefined;
         expect(exampleOperationWithOutput.target.schema).equals(
-          schemaWithSuffix(schemaWithSuffix("df_integration_test"))
+          schemaWithSuffix("df_integration_test")
         );
-        expect(exampleOperationWithOutput.target.name).equals(
-          schemaWithSuffix("df_integration_test") + ".example_operation_with_output"
-        );
+        expect(exampleOperationWithOutput.target.name).equals("example_operation_with_output");
         expect(exampleOperationWithOutput.queries).to.eql([
           `\nCREATE OR REPLACE VIEW \`tada-analytics.${schemaWithSuffix(
             "df_integration_test"
