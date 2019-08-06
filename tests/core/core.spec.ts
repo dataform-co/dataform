@@ -32,7 +32,7 @@ describe("@dataform/core", () => {
 
       expect(t.name).equals("example");
       expect(t.type).equals("table");
-      expect(t.descriptor).eql(
+      expect(t.actionDescriptor).eql(
         dataform.ActionDescriptor.create({
           description: "this is a table",
           columns: [
@@ -309,7 +309,7 @@ describe("@dataform/core", () => {
       expect(tableB).to.exist;
       expect(tableB.type).equals("inline");
       expect(tableB.dependencies).includes("a");
-      expect(tableB.descriptor).eql(
+      expect(tableB.actionDescriptor).eql(
         dataform.ActionDescriptor.create({
           columns: [
             dataform.ColumnDescriptor.create({
@@ -337,7 +337,7 @@ describe("@dataform/core", () => {
       expect(tableC).to.exist;
       expect(tableC.type).equals("table");
       expect(tableC.dependencies).includes("a");
-      expect(tableC.descriptor).eql(
+      expect(tableC.actionDescriptor).eql(
         dataform.ActionDescriptor.create({
           columns: [
             dataform.ColumnDescriptor.create({

@@ -1,4 +1,4 @@
-import { IDatasetDescriptor, mapToDescriptorProto, Session } from "@dataform/core/session";
+import { IColumnsDescriptor, mapToDescriptorProto, Session } from "@dataform/core/session";
 import { dataform } from "@dataform/protos";
 
 export enum TableTypes {
@@ -25,7 +25,7 @@ export const ignoredProps: {
     "redshift",
     "preOps",
     "postOps",
-    "descriptor",
+    "actionDescriptor",
     "disabled",
     "where"
   ]
@@ -40,7 +40,7 @@ export interface TConfig {
   dependencies?: string | string[];
   tags?: string[];
   description?: string;
-  columns?: IDatasetDescriptor;
+  columns?: IColumnsDescriptor;
   disabled?: boolean;
   protected?: boolean;
   redshift?: dataform.IRedshiftOptions;
@@ -83,11 +83,7 @@ export class Table {
       this.tags(config.tags);
     }
     if (config.description || config.columns) {
-      if (config.description) {
-        this.describe(config.description, config.columns);
-      } else {
-        this.describe(config.columns);
-      }
+      this.describe(config.description || config.columns, config.columns);
     }
 
     return this;
@@ -156,11 +152,14 @@ export class Table {
     return this;
   }
 
-  public describe(description: string | IDatasetDescriptor, descriptor?: IDatasetDescriptor) {
-    if (typeof description === "string") {
-      this.proto.descriptor = mapToDescriptorProto(description, descriptor);
+  public describe(descriptionOrColumns: string | IColumnsDescriptor, columns?: IColumnsDescriptor) {
+    if (typeof descriptionOrColumns === "string") {
+      this.proto.actionDescriptor = mapToDescriptorProto({
+        description: descriptionOrColumns,
+        columns
+      });
     } else {
-      this.proto.descriptor = mapToDescriptorProto(undefined, description);
+      this.proto.actionDescriptor = mapToDescriptorProto({ columns: descriptionOrColumns });
     }
     return this;
   }

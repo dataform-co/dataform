@@ -72,18 +72,18 @@ message CompilationError {
   string stack = 3;
 }
 
-message ColumnDescriptor {
-  string description = 1;
-  // For nested records, the path might look like e.g. [“record”, “column”].
-  // For simple columns, this will always contain a single entry e.g. ["column"].
-  repeated string path = 2; 
-}
-
 message ActionDescriptor {
   string description = 1;
   // For Operations, 'columns' may be set iff has_output == true.
   // For Assertions, 'columns' will always be empty.
   repeated ColumnDescriptor columns = 2;
+}
+
+message ColumnDescriptor {
+  string description = 1;
+  // For nested records, the path might look like e.g. [“record”, “column”].
+  // For simple columns, this will always contain a single entry e.g. ["column"].
+  repeated string path = 2; 
 }
 
 message Table {
@@ -96,7 +96,7 @@ message Table {
   string query = 5;
   bool protected = 9;
 
-  ActionDescriptor descriptor = 24;
+  ActionDescriptor action_descriptor = 24;
 
   repeated string tags = 23;
 
@@ -130,7 +130,7 @@ message Operation {
 
   repeated string tags = 9;
 
-  ActionDescriptor descriptor = 10;
+  ActionDescriptor action_descriptor = 10;
 
   // Generated.
   string file_name = 7;
@@ -149,7 +149,7 @@ message Assertion {
 
   repeated string tags = 9;
 
-  ActionDescriptor descriptor = 10;
+  ActionDescriptor action_descriptor = 10;
   
   // Generated.
   string file_name = 7;

@@ -1,4 +1,4 @@
-import { IDatasetDescriptor, mapToDescriptorProto, Session } from "@dataform/core/session";
+import { IColumnsDescriptor, mapToDescriptorProto, Session } from "@dataform/core/session";
 import { dataform } from "@dataform/protos";
 
 export type OContextable<T> = T | ((ctx: OperationContext) => T);
@@ -42,15 +42,18 @@ export class Operation {
     return this;
   }
 
-  public describe(description: string | IDatasetDescriptor, descriptor?: IDatasetDescriptor) {
-    if (typeof description === "string") {
-      this.proto.descriptor = mapToDescriptorProto(description, descriptor);
+  public describe(descriptionOrColumns: string | IColumnsDescriptor, columns?: IColumnsDescriptor) {
+    if (typeof descriptionOrColumns === "string") {
+      this.proto.actionDescriptor = mapToDescriptorProto({
+        description: descriptionOrColumns,
+        columns
+      });
     } else {
-      this.proto.descriptor = mapToDescriptorProto(undefined, description);
+      this.proto.actionDescriptor = mapToDescriptorProto({ columns: descriptionOrColumns });
     }
     if (
-      this.proto.descriptor.columns &&
-      this.proto.descriptor.columns.length > 0 &&
+      this.proto.actionDescriptor.columns &&
+      this.proto.actionDescriptor.columns.length > 0 &&
       !this.proto.hasOutput
     ) {
       this.session.compileError(
@@ -66,7 +69,7 @@ export class Operation {
     const context = new OperationContext(this);
 
     const appliedQueries = context.apply(this.contextableQueries);
-    this.proto.queries = typeof appliedQueries == "string" ? [appliedQueries] : appliedQueries;
+    this.proto.queries = typeof appliedQueries === "string" ? [appliedQueries] : appliedQueries;
 
     return this.proto;
   }

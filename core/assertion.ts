@@ -38,7 +38,7 @@ export class Assertion {
   }
 
   public describe(description: string) {
-    this.proto.descriptor = mapToDescriptorProto(description);
+    this.proto.actionDescriptor = mapToDescriptorProto({ description });
     return this;
   }
 
