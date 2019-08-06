@@ -10,6 +10,15 @@ export async function compile(
 ): Promise<dataform.CompiledGraph> {
   // Resolve the path in case it hasn't been resolved already.
   path.resolve(compileConfig.projectDir);
+
+  try {
+    // check dataformJson is valid before we try to compile
+    const dataformJson = fs.readFileSync(`${compileConfig.projectDir}/dataform.json`, "utf8");
+    JSON.parse(dataformJson);
+  } catch (e) {
+    throw new Error("Compile Error: `dataform.json` is invalid");
+  }
+
   const returnedPath = await CompileChildProcess.forkProcess().compile(compileConfig);
   const contents = fs.readFileSync(returnedPath);
   let compiledGraph = dataform.CompiledGraph.decode(contents);
