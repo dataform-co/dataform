@@ -141,6 +141,17 @@ const verboseOutputOption: INamedOption<yargs.Options> = {
 const builtYargs = createYargsCli({
   commands: [
     {
+      // This dummy command is a hack with the only goal of displaying "help" as a command in the CLI
+      // and we need it because of the limitations of yargs considering "help" as an option and not as a command.
+      format: "help [command]",
+      description: "Show help. If [command] is specified, the help is for the given command.",
+      positionalOptions: [],
+      options: [],
+      processFn: async argv => {
+        return false;
+      }
+    },
+    {
       format: "init <warehouse> [project-dir]",
       description: "Create a new dataform project.",
       positionalOptions: [warehouseOption, projectDirOption],
@@ -195,7 +206,7 @@ const builtYargs = createYargsCli({
     },
     {
       format: "init-creds <warehouse> [project-dir]",
-      description: `Creates a ${
+      description: `Create a ${
         credentials.CREDENTIALS_FILENAME
       } file for dataform to use when accessing your warehouse.`,
       positionalOptions: [warehouseOption, projectDirMustExistOption],
@@ -399,8 +410,8 @@ const builtYargs = createYargsCli({
         },
         fullRefreshOption,
         actionsOption,
-        includeDepsOption,
         tagsOption,
+        includeDepsOption,
         schemaSuffixOverrideOption,
         credentialsOption,
         verboseOutputOption
