@@ -43,7 +43,7 @@ export class Assertion {
     return this;
   }
 
-  public describe(description: string) {
+  public description(description: string) {
     this.proto.actionDescriptor = { description };
     return this;
   }
