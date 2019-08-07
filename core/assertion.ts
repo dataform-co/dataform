@@ -3,6 +3,12 @@ import { dataform } from "@dataform/protos";
 
 export type AContextable<T> = T | ((ctx: AssertionContext) => T);
 
+export interface AConfig {
+  dependencies?: string | string[];
+  tags?: string[];
+  description?: string;
+}
+
 export class Assertion {
   public proto: dataform.IAssertion = dataform.Assertion.create();
 
@@ -11,6 +17,19 @@ export class Assertion {
 
   // We delay contextification until the final compile step, so hold these here for now.
   private contextableQuery: AContextable<string>;
+
+  public config(config: AConfig) {
+    if (config.dependencies) {
+      this.dependencies(config.dependencies);
+    }
+    if (config.tags) {
+      this.tags(config.tags);
+    }
+    if (config.description) {
+      this.description(config.description);
+    }
+    return this;
+  }
 
   public query(query: AContextable<string>) {
     this.contextableQuery = query;

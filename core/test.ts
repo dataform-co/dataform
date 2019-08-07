@@ -4,6 +4,10 @@ import { dataform } from "@dataform/protos";
 
 export type TContextable<T> = T | ((ctx: TestContext) => T);
 
+export interface TConfig {
+  dataset?: string;
+}
+
 export class Test {
   public proto: dataform.ITest = dataform.Test.create();
 
@@ -12,6 +16,13 @@ export class Test {
 
   private datasetToTest: string;
   private contextableQuery: TContextable<string>;
+
+  public config(config: TConfig) {
+    if (config.dataset) {
+      this.dataset(config.dataset);
+    }
+    return this;
+  }
 
   public dataset(datasetToTest: string) {
     this.datasetToTest = datasetToTest;
