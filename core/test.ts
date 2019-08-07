@@ -140,17 +140,6 @@ class RefReplacingContext implements table.ITableContext {
     return "";
   }
 
-  public descriptor(
-    keyOrKeysOrMap: string | string[] | { [key: string]: string },
-    description?: string
-  ): string {
-    return "";
-  }
-
-  public describe(key: string, description?: string) {
-    return "";
-  }
-
   public tags(tags: string[]) {
     return "";
   }

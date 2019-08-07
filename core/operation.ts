@@ -1,4 +1,4 @@
-import { Session } from "@dataform/core/session";
+import { IColumnsDescriptor, mapToColumnProtoArray, Session } from "@dataform/core/session";
 import { dataform } from "@dataform/protos";
 
 export type OContextable<T> = T | ((ctx: OperationContext) => T);
@@ -42,11 +42,40 @@ export class Operation {
     return this;
   }
 
+  public description(description: string) {
+    if (!this.proto.actionDescriptor) {
+      this.proto.actionDescriptor = {};
+    }
+    this.proto.actionDescriptor.description = description;
+    return this;
+  }
+
+  public columns(columns: IColumnsDescriptor) {
+    if (!this.proto.actionDescriptor) {
+      this.proto.actionDescriptor = {};
+    }
+    this.proto.actionDescriptor.columns = mapToColumnProtoArray(columns);
+    return this;
+  }
+
   public compile() {
+    if (
+      this.proto.actionDescriptor &&
+      this.proto.actionDescriptor.columns &&
+      this.proto.actionDescriptor.columns.length > 0 &&
+      !this.proto.hasOutput
+    ) {
+      this.session.compileError(
+        new Error(
+          "Actions of type 'operations' may only describe columns if they specify 'hasOutput: true'."
+        )
+      );
+    }
+
     const context = new OperationContext(this);
 
     const appliedQueries = context.apply(this.contextableQueries);
-    this.proto.queries = typeof appliedQueries == "string" ? [appliedQueries] : appliedQueries;
+    this.proto.queries = typeof appliedQueries === "string" ? [appliedQueries] : appliedQueries;
 
     return this.proto;
   }
