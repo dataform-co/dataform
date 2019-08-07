@@ -37,6 +37,11 @@ export class Assertion {
     return this;
   }
 
+  public description(description: string) {
+    this.proto.actionDescriptor = { description };
+    return this;
+  }
+
   public compile() {
     const context = new AssertionContext(this);
 
