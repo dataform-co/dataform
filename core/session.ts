@@ -1,8 +1,8 @@
 import * as adapters from "@dataform/core/adapters";
-import { AContextable, Assertion } from "@dataform/core/assertion";
-import { OContextable, Operation } from "@dataform/core/operation";
-import { Table, TConfig, TContextable } from "@dataform/core/table";
-import { Test } from "@dataform/core/test";
+import { AConfig, AContextable, Assertion } from "@dataform/core/assertion";
+import { OConfig, OContextable, Operation } from "@dataform/core/operation";
+import * as table from "@dataform/core/table";
+import * as test from "@dataform/core/test";
 import * as utils from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
 
@@ -12,13 +12,10 @@ interface IActionProto {
   dependencies?: string[];
 }
 
-interface ISqlxConfig extends TConfig {
+interface ISqlxConfig extends table.TConfig, AConfig, OConfig, test.TConfig {
   type: "view" | "table" | "inline" | "incremental" | "assertion" | "operations" | "test";
   schema?: string;
   name: string;
-  hasOutput?: boolean;
-  dataset?: string;
-  tags?: string[];
 }
 
 export interface IColumnsDescriptor {
@@ -74,10 +71,10 @@ export class Session {
 
   public config: dataform.IProjectConfig;
 
-  public tables: { [name: string]: Table };
+  public tables: { [name: string]: table.Table };
   public operations: { [name: string]: Operation };
   public assertions: { [name: string]: Assertion };
-  public tests: { [name: string]: Test };
+  public tests: { [name: string]: test.Test };
 
   public graphErrors: dataform.IGraphErrors;
 
@@ -183,21 +180,19 @@ export class Session {
       }
     })().config(actionOptions.sqlxConfig);
 
-    if (action instanceof Test) {
+    if (action instanceof test.Test) {
       return action;
     }
 
-    if (action instanceof Operation && !actionOptions.sqlxConfig.hasOutput) {
-      delete action.proto.target;
-    }
-
-    if (action.proto.target) {
+    if (!(action instanceof Operation) || action.proto.hasOutput) {
       const finalSchema =
         actionOptions.sqlxConfig.schema ||
         (actionOptions.sqlxConfig.type === "assertion"
           ? this.config.assertionSchema
           : this.config.defaultSchema);
       action.proto.target = this.target(actionOptions.sqlxConfig.name, finalSchema);
+    } else {
+      delete action.proto.target;
     }
     return action;
   }
@@ -250,23 +245,26 @@ export class Session {
     return operation;
   }
 
-  public publish(name: string, queryOrConfig?: TContextable<string> | TConfig): Table {
+  public publish(
+    name: string,
+    queryOrConfig?: table.TContextable<string> | table.TConfig
+  ): table.Table {
     this.checkActionNameIsUnused(name);
-    const table = new Table();
-    table.session = this;
-    table.proto.name = name;
-    table.proto.target = this.target(name);
+    const newTable = new table.Table();
+    newTable.session = this;
+    newTable.proto.name = name;
+    newTable.proto.target = this.target(name);
     if (!!queryOrConfig) {
       if (typeof queryOrConfig === "object") {
-        table.config(queryOrConfig);
+        newTable.config(queryOrConfig);
       } else {
-        table.query(queryOrConfig);
+        newTable.query(queryOrConfig);
       }
     }
-    table.proto.fileName = utils.getCallerFile(this.rootDir);
+    newTable.proto.fileName = utils.getCallerFile(this.rootDir);
     // Add it to global index.
-    this.tables[name] = table;
-    return table;
+    this.tables[name] = newTable;
+    return newTable;
   }
 
   public assert(name: string, query?: AContextable<string>): Assertion {
@@ -284,15 +282,15 @@ export class Session {
     return assertion;
   }
 
-  public test(name: string): Test {
+  public test(name: string): test.Test {
     this.checkTestNameIsUnused(name);
-    const test = new Test();
-    test.session = this;
-    test.proto.name = name;
-    test.proto.fileName = utils.getCallerFile(this.rootDir);
+    const newTest = new test.Test();
+    newTest.session = this;
+    newTest.proto.name = name;
+    newTest.proto.fileName = utils.getCallerFile(this.rootDir);
     // Add it to global index.
-    this.tests[name] = test;
-    return test;
+    this.tests[name] = newTest;
+    return newTest;
   }
 
   public compileError(err: Error | string, path?: string) {
