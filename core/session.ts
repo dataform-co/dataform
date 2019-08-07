@@ -165,34 +165,32 @@ export class Session {
       this.compileError("Actions may only include post_operations if they create a dataset.");
     }
 
-    if (actionOptions.sqlxConfig.type === "test") {
-      return this.test(actionOptions.sqlxConfig.name).dataset(actionOptions.sqlxConfig.dataset);
-    }
-
     const action = (() => {
       switch (actionOptions.sqlxConfig.type) {
         case "view":
         case "table":
         case "inline":
         case "incremental":
-          return this.publish(actionOptions.sqlxConfig.name).config(actionOptions.sqlxConfig);
+          return this.publish(actionOptions.sqlxConfig.name);
         case "assertion":
-          return this.assert(actionOptions.sqlxConfig.name)
-            .dependencies(actionOptions.sqlxConfig.dependencies)
-            .tags(actionOptions.sqlxConfig.tags);
-        case "operations": {
-          const operations = this.operate(actionOptions.sqlxConfig.name)
-            .dependencies(actionOptions.sqlxConfig.dependencies)
-            .tags(actionOptions.sqlxConfig.tags);
-          if (!actionOptions.sqlxConfig.hasOutput) {
-            delete operations.proto.target;
-          }
-          return operations;
-        }
+          return this.assert(actionOptions.sqlxConfig.name);
+        case "operations":
+          return this.operate(actionOptions.sqlxConfig.name);
+        case "test":
+          return this.test(actionOptions.sqlxConfig.name);
         default:
           throw new Error(`Unrecognized action type: ${actionOptions.sqlxConfig.type}`);
       }
-    })();
+    })().config(actionOptions.sqlxConfig);
+
+    if (action instanceof Test) {
+      return action;
+    }
+
+    if (action instanceof Operation && !actionOptions.sqlxConfig.hasOutput) {
+      delete action.proto.target;
+    }
+
     if (action.proto.target) {
       const finalSchema =
         actionOptions.sqlxConfig.schema ||

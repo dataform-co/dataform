@@ -1,4 +1,10 @@
-config { type: "view" }
+config {
+  type: "view",
+  description: "This is some sample data.",
+  columns: {
+      sample: "Sample integers."
+  }
+}
 
 select 1 as sample union all
 select 2 as sample union all

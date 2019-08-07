@@ -766,6 +766,17 @@ describe("@dataform/api", () => {
           "select 1 as sample union all\nselect 2 as sample union all\nselect 3 as sample"
         );
         expect(exampleSampleData.dependencies).to.eql([]);
+        expect(exampleSampleData.actionDescriptor).to.eql(
+          dataform.ActionDescriptor.create({
+            description: "This is some sample data.",
+            columns: [
+              dataform.ColumnDescriptor.create({
+                description: "Sample integers.",
+                path: ["sample"]
+              })
+            ]
+          })
+        );
 
         // Check schema overrides defined in "config {}"
         const exampleUsingOverriddenSchema = graph.tables.find(
@@ -791,6 +802,11 @@ describe("@dataform/api", () => {
         );
         expect(exampleAssertion.dependencies).to.eql(["sample_data"]);
         expect(exampleAssertion.tags).to.eql([]);
+        expect(exampleAssertion.actionDescriptor).to.eql(
+          dataform.ActionDescriptor.create({
+            description: "An example assertion looking for incorrect 'sample' values."
+          })
+        );
 
         // Check Assertion with tags
         const exampleAssertionWithTags = graph.assertions.find(
@@ -833,6 +849,17 @@ describe("@dataform/api", () => {
           )}.example_operation_with_output\` AS (SELECT 1 AS TEST)`
         ]);
         expect(exampleOperationWithOutput.dependencies).to.eql([]);
+        expect(exampleOperationWithOutput.actionDescriptor).to.eql(
+          dataform.ActionDescriptor.create({
+            description: "An example operations file which outputs a dataset.",
+            columns: [
+              dataform.ColumnDescriptor.create({
+                description: "Just 1!",
+                path: ["TEST"]
+              })
+            ]
+          })
+        );
 
         // Check Operation with tags
         const exampleOperationsWithTags = graph.operations.find(

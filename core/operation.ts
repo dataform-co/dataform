@@ -20,6 +20,25 @@ export class Operation {
   // We delay contextification until the final compile step, so hold these here for now.
   private contextableQueries: OContextable<string | string[]>;
 
+  public config(config: OConfig) {
+    if (config.dependencies) {
+      this.dependencies(config.dependencies);
+    }
+    if (config.tags) {
+      this.tags(config.tags);
+    }
+    if (config.hasOutput) {
+      this.hasOutput(config.hasOutput);
+    }
+    if (config.description) {
+      this.description(config.description);
+    }
+    if (config.columns) {
+      this.columns(config.columns);
+    }
+    return this;
+  }
+
   public queries(queries: OContextable<string | string[]>) {
     this.contextableQueries = queries;
     return this;
