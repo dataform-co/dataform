@@ -40,24 +40,22 @@ export class Test {
   }
 
   public compile() {
+    const testContext = new TestContext(this);
     if (!this.datasetToTest) {
       this.session.compileError(new Error("Tests must operate upon a specified dataset."));
-      return;
+    } else {
+      const dataset = this.session.tables[this.datasetToTest];
+      if (!dataset) {
+        this.session.compileError(new Error(`Dataset ${this.datasetToTest} could not be found.`));
+      } else if (dataset.proto.type === "incremental") {
+        this.session.compileError(
+          new Error("Running tests on incremental datasets is not yet supported.")
+        );
+      } else {
+        const refReplacingContext = new RefReplacingContext(testContext);
+        this.proto.testQuery = refReplacingContext.apply(dataset.contextableQuery);
+      }
     }
-    const dataset = this.session.tables[this.datasetToTest];
-    if (!dataset) {
-      this.session.compileError(new Error(`Dataset ${this.datasetToTest} could not be found.`));
-      return;
-    }
-    if (dataset.proto.type === "incremental") {
-      this.session.compileError(
-        new Error(`Running tests on incremental datasets is not yet supported.`)
-      );
-      return;
-    }
-    const testContext = new TestContext(this);
-    const refReplacingContext = new RefReplacingContext(testContext);
-    this.proto.testQuery = refReplacingContext.apply(dataset.contextableQuery);
     this.proto.expectedOutputQuery = testContext.apply(this.contextableQuery);
     return this.proto;
   }
