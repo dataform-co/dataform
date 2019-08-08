@@ -1,95 +1,92 @@
 import { Credentials } from "@dataform/api/commands/credentials";
-import { DbAdapter, OnCancel } from "@dataform/api/dbadapters/index";
+import { IDbAdapter, OnCancel } from "@dataform/api/dbadapters/index";
 import { dataform } from "@dataform/protos";
-import { config, IPool, IOptions, ConnectionPool } from "mssql";
+import { ConnectionPool } from "mssql";
 
-export class SQLDataWarehouseDBAdapter implements DbAdapter {
+const INFORMATION_SCHEMA_SCHEMA_NAME = "information_schema";
+const TABLE_NAME_COL_NAME = "table_name";
+const TABLE_SCHEMA_COL_NAME = "table_schema";
+const TABLE_TYPE_COL_NAME = "table_type";
+const COLUMN_NAME_COL_NAME = "column_name";
+const DATA_TYPE_COL_NAME = "data_type";
+const IS_NULLABLE_COL_NAME = "is_nullable";
+
+export class SQLDataWarehouseDBAdapter implements IDbAdapter {
   private pool: Promise<ConnectionPool>;
 
   constructor(credentials: Credentials) {
     const sqlDataWarehouseCredentials = credentials as dataform.ISQLDataWarehouse;
-    const options: IOptions = {
-      encrypt: true
-    };
-
-    const config: config = {
-      server: sqlDataWarehouseCredentials.server,
-      port: sqlDataWarehouseCredentials.port,
-      user: sqlDataWarehouseCredentials.username,
-      password: sqlDataWarehouseCredentials.password,
-      database: sqlDataWarehouseCredentials.databaseName,
-      options: options
-    };
-
-    this.pool = new Promise(resolve => {
-      const conn = new ConnectionPool(config).connect();
-      conn.then(pool => {
-        pool.on("error", err => {
-          throw new Error(err);
-        });
-        resolve(conn);
-      });
+    this.pool = new Promise((resolve, reject) => {
+      const conn = new ConnectionPool({
+        server: sqlDataWarehouseCredentials.server,
+        port: sqlDataWarehouseCredentials.port,
+        user: sqlDataWarehouseCredentials.username,
+        password: sqlDataWarehouseCredentials.password,
+        database: sqlDataWarehouseCredentials.databaseName,
+        options: {
+          encrypt: true
+        }
+      }).connect();
+      conn
+        .then(pool => {
+          pool.on("error", err => {
+            throw new Error(err);
+          });
+          resolve(conn);
+        })
+        .catch(e => reject(e));
     });
   }
 
   public async execute(statement: string, onCancel?: OnCancel) {
-    const pool = await this.pool;
-    const request = pool.request();
-
+    const request = (await this.pool).request();
     if (onCancel) {
-      onCancel(() => {
-        request.cancel();
-      });
+      onCancel(() => request.cancel());
     }
-
-    const result = await request.query(statement);
-    return result.recordset;
+    return (await request.query(statement)).recordset;
   }
 
   public async evaluate(statement: string) {
-    const pool = await this.pool;
-    const request = pool.request();
-
-    const result = await request.query(`explain ${statement}`);
+    await this.execute(`explain ${statement}`);
   }
 
   public async tables(): Promise<dataform.ITarget[]> {
-    let result = await this.execute(
-      `select table_name, table_schema from information_schema.tables`
+    const result = await this.execute(
+      `select ${TABLE_SCHEMA_COL_NAME}, ${TABLE_NAME_COL_NAME} from ${INFORMATION_SCHEMA_SCHEMA_NAME}.tables`
     );
     return result.map(row => ({
-      schema: row.table_schema,
-      name: row.table_name
+      schema: row[TABLE_SCHEMA_COL_NAME],
+      name: row[TABLE_NAME_COL_NAME]
     }));
   }
 
-  public table(target: dataform.ITarget): Promise<dataform.ITableMetadata> {
-    return Promise.all([
+  public async table(target: dataform.ITarget): Promise<dataform.ITableMetadata> {
+    const [tableData, columnData] = await Promise.all([
       this.execute(
-        `select column_name, data_type, is_nullable
-       from information_schema.columns
-       where table_schema = '${target.schema}' AND table_name = '${target.name}'`
+        `select ${TABLE_TYPE_COL_NAME} from ${INFORMATION_SCHEMA_SCHEMA_NAME}.tables 
+          where ${TABLE_SCHEMA_COL_NAME} = '${target.schema}' AND ${TABLE_NAME_COL_NAME} = '${target.name}'`
       ),
       this.execute(
-        `select table_type from information_schema.tables 
-          where table_schema = '${target.schema}' AND table_name = '${target.name}'`
+        `select ${COLUMN_NAME_COL_NAME}, ${DATA_TYPE_COL_NAME}, ${IS_NULLABLE_COL_NAME}
+       from ${INFORMATION_SCHEMA_SCHEMA_NAME}.columns
+       where ${TABLE_SCHEMA_COL_NAME} = '${target.schema}' AND ${TABLE_NAME_COL_NAME} = '${target.name}'`
       )
-    ]).then(results => {
-      if (results[1].length > 0) {
-        // The table exists.
-        return {
-          target,
-          type: results[1][0].table_type == "VIEW" ? "view" : "table",
-          fields: results[0].map(row => ({
-            name: row.column_name,
-            primitive: row.data_type,
-            flags: row.is_nullable && row.is_nullable == "YES" ? ["nullable"] : []
-          }))
-        };
-      } else {
-        throw new Error(`Could not find relation: ${target.schema}.${target.name}`);
-      }
-    });
+    ]);
+
+    if (tableData.length === 0) {
+      throw new Error(`Could not find relation: ${target.schema}.${target.name}`);
+    }
+
+    // The table exists.
+    return {
+      target,
+      type: tableData[0][TABLE_TYPE_COL_NAME] === "VIEW" ? "view" : "table",
+      fields: columnData.map(row => ({
+        name: row[COLUMN_NAME_COL_NAME],
+        primitive: row[DATA_TYPE_COL_NAME],
+        flags: row[IS_NULLABLE_COL_NAME] && row[IS_NULLABLE_COL_NAME] === "YES" ? ["nullable"] : []
+      }))
+    };
   }
 
   public async prepareSchema(schema: string): Promise<void> {

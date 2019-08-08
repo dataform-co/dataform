@@ -15,7 +15,7 @@ export function keyBy<V>(values: V[], keyFn: (value: V) => string): { [key: stri
 export async function dropAllTables(
   compiledGraph: dataform.ICompiledGraph,
   adapter: adapters.IAdapter,
-  dbadapter: dbadapters.DbAdapter
+  dbadapter: dbadapters.IDbAdapter
 ) {
   await Promise.all(
     [].concat(
@@ -32,7 +32,7 @@ export async function dropAllTables(
 export async function getTableRows(
   target: dataform.ITarget,
   adapter: adapters.IAdapter,
-  dbadapter: dbadapters.DbAdapter
+  dbadapter: dbadapters.IDbAdapter
 ) {
   return dbadapter.execute(`select * from ${adapter.resolveTarget(target)}`);
 }

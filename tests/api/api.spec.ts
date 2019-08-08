@@ -1,5 +1,5 @@
 import { Builder, compile, credentials, query, Runner } from "@dataform/api";
-import { DbAdapter } from "@dataform/api/dbadapters";
+import { IDbAdapter } from "@dataform/api/dbadapters";
 import { BigQueryDbAdapter } from "@dataform/api/dbadapters/bigquery";
 import * as utils from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
@@ -1232,7 +1232,7 @@ describe("@dataform/api", () => {
         prepareSchema: _ => {
           return Promise.resolve();
         }
-      } as DbAdapter;
+      } as IDbAdapter;
 
       const runner = new Runner(mockDbAdapter, TEST_GRAPH);
       const execution = runner.execute();

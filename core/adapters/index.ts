@@ -1,9 +1,9 @@
-import { dataform } from "@dataform/protos";
-import { Tasks } from "@dataform/core/tasks";
 import { BigQueryAdapter } from "@dataform/core/adapters/bigquery";
 import { RedshiftAdapter } from "@dataform/core/adapters/redshift";
 import { SnowflakeAdapter } from "@dataform/core/adapters/snowflake";
 import { SQLDataWarehouseAdapter } from "@dataform/core/adapters/sqldatawarehouse";
+import { Tasks } from "@dataform/core/tasks";
+import { dataform } from "@dataform/protos";
 
 export interface IAdapter {
   resolveTarget(target: dataform.ITarget): string;
@@ -31,9 +31,10 @@ export enum WarehouseType {
   SQLDATAWAREHOUSE = "sqldatawarehouse"
 }
 
+const CANCELLATION_SUPPORTED = [WarehouseType.BIGQUERY, WarehouseType.SQLDATAWAREHOUSE];
+
 export function supportsCancel(warehouseType: WarehouseType) {
-  const supportsCancel = [WarehouseType.BIGQUERY, WarehouseType.SQLDATAWAREHOUSE];
-  return !!supportsCancel.find(w => {
+  return CANCELLATION_SUPPORTED.some(w => {
     return w === warehouseType;
   });
 }

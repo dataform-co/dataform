@@ -1,12 +1,12 @@
 import { Credentials } from "@dataform/api/commands/credentials";
-import { DbAdapter, OnCancel } from "@dataform/api/dbadapters/index";
+import { IDbAdapter, OnCancel } from "@dataform/api/dbadapters/index";
 import { dataform } from "@dataform/protos";
 import { BigQuery } from "@google-cloud/bigquery";
 import * as PromisePool from "promise-pool-executor";
 
 const BIGQUERY_DATE_CLASS_NAME = "BigQueryDate";
 
-export class BigQueryDbAdapter implements DbAdapter {
+export class BigQueryDbAdapter implements IDbAdapter {
   private bigQueryCredentials: dataform.IBigQuery;
   private client: any;
   private pool: PromisePool.PromisePoolExecutor;

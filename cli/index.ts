@@ -19,8 +19,8 @@ import {
   getBigQueryCredentials,
   getPostgresCredentials,
   getRedshiftCredentials,
-  getSQLDataWarehouseCredentials,
   getSnowflakeCredentials,
+  getSQLDataWarehouseCredentials
 } from "@dataform/cli/credentials";
 import { actuallyResolve, assertPathExists, compiledGraphHasErrors } from "@dataform/cli/util";
 import { createYargsCli, INamedOption } from "@dataform/cli/yargswrapper";
@@ -50,9 +50,7 @@ const projectDirMustExistOption = {
       assertPathExists(path.resolve(argv["project-dir"], "dataform.json"));
     } catch (e) {
       throw new Error(
-        `${
-          argv["project-dir"]
-        } does not appear to be a dataform directory (missing dataform.json file).`
+        `${argv["project-dir"]} does not appear to be a dataform directory (missing dataform.json file).`
       );
     }
   }
@@ -188,9 +186,7 @@ const builtYargs = createYargsCli({
     },
     {
       format: "init-creds <warehouse> [project-dir]",
-      description: `Creates a ${
-        credentials.CREDENTIALS_FILENAME
-      } file for dataform to use when accessing your warehouse.`,
+      description: `Creates a ${credentials.CREDENTIALS_FILENAME} file for dataform to use when accessing your warehouse.`,
       positionalOptions: [warehouseOption, projectDirMustExistOption],
       options: [
         {
@@ -214,7 +210,7 @@ const builtYargs = createYargsCli({
             case "redshift": {
               return getRedshiftCredentials();
             }
-            case "sqldatawarehouse":{
+            case "sqldatawarehouse": {
               return getSQLDataWarehouseCredentials();
             }
             case "snowflake": {

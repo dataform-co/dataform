@@ -1,7 +1,7 @@
 import { dataform } from "@dataform/protos";
 import { DistStyleTypes, ignoredProps, SortStyleTypes, TableTypes } from "./table";
 
-const hashPattern = new RegExp("HASH\\s*\\(\\s*\\w*\\s*\\)\\s*");
+const SQL_DATA_WAREHOUSE_DIST_HASH_REGEXP = new RegExp("HASH\\s*\\(\\s*\\w*\\s*\\)\\s*");
 
 export function relativePath(path: string, base: string) {
   if (base.length == 0) {
@@ -182,12 +182,16 @@ export function validate(compiledGraph: dataform.ICompiledGraph): dataform.IGrap
       validationErrors.push(dataform.ValidationError.create({ message, actionName }));
     }
 
-    // sqlserver config
+    // sqldatawarehouse config
     if (action.sqlDataWarehouse && action.sqlDataWarehouse.distribution) {
-      const dist = action.sqlDataWarehouse.distribution.toUpperCase();
+      const distribution = action.sqlDataWarehouse.distribution.toUpperCase();
 
-      if (dist !== "REPLICATE" && dist !== "ROUND_ROBIN" && !hashPattern.test(dist)) {
-        const message = `Invalid distribution in sqlserver config [${dist}]`;
+      if (
+        distribution !== "REPLICATE" &&
+        distribution !== "ROUND_ROBIN" &&
+        !SQL_DATA_WAREHOUSE_DIST_HASH_REGEXP.test(distribution)
+      ) {
+        const message = `Invalid value for sqldatawarehouse distribution: "${distribution}"`;
         validationErrors.push(dataform.ValidationError.create({ message, actionName }));
       }
     }

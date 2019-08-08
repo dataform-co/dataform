@@ -128,8 +128,6 @@ export class Session {
       return this.test(actionOptions.sqlxConfig.name).dataset(actionOptions.sqlxConfig.dataset);
     }
 
-    let schema = actionOptions.sqlxConfig.schema;
-
     const action = (() => {
       switch (actionOptions.sqlxConfig.type) {
         case "view":
@@ -144,7 +142,6 @@ export class Session {
           const assertion = this.assert(actionOptions.sqlxConfig.name);
           assertion.dependencies(actionOptions.sqlxConfig.dependencies);
           assertion.tags(actionOptions.sqlxConfig.tags);
-          schema = actionOptions.sqlxConfig.schema || this.config.assertionSchema;
           return assertion;
         }
         case "operations": {
@@ -162,7 +159,10 @@ export class Session {
       }
     })();
     if (action.proto.target) {
-      action.proto.target = this.target(actionOptions.sqlxConfig.name, schema);
+      action.proto.target = this.target(
+        actionOptions.sqlxConfig.name,
+        actionOptions.sqlxConfig.schema
+      );
     }
     return action;
   }
