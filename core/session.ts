@@ -217,7 +217,7 @@ export class Session {
   }
 
   public resolve(reference: string | IResolvable): string {
-    let [fQName, err] = ["", ""];
+    let [fQName, err] = [null, null];
     if (typeof reference === "string") {
       [fQName, err] = utils.matchFQName(reference, this.getAllFQNames());
       if (err) {

@@ -1,11 +1,12 @@
-import { Session } from "@dataform/core/session";
+import { IResolvable, Session } from "@dataform/core/session";
 import * as table from "@dataform/core/table";
 import { dataform } from "@dataform/protos";
+import * as utils from "@dataform/core/utils";
 
 export type TContextable<T> = T | ((ctx: TestContext) => T);
 
 export interface TConfig {
-  dataset?: string;
+  dataset?: string | IResolvable;
 }
 
 export class Test {
@@ -24,7 +25,22 @@ export class Test {
     return this;
   }
 
-  public dataset(datasetToTest: string) {
+  public dataset(reference: string | IResolvable) {
+    const schemaWithSuffix = (schema: string) =>
+      this.session.config.schemaSuffix ? `${schema}_${this.session.config.schemaSuffix}` : schema;
+    let [datasetToTest, err] = [null, null];
+    switch (typeof reference) {
+      case "string":
+        [datasetToTest, err] = utils.matchFQName(reference, this.session.getAllFQNames());
+        if (!!err) {
+          this.session.compileError(new Error(err));
+        }
+      default:
+        datasetToTest =
+          schemaWithSuffix((reference as IResolvable).schema) +
+          "." +
+          (reference as IResolvable).name;
+    }
     this.datasetToTest = datasetToTest;
     return this;
   }
