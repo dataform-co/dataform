@@ -91,7 +91,7 @@ export class SQLDataWarehouseDBAdapter implements IDbAdapter {
 
   public async prepareSchema(schema: string): Promise<void> {
     await this.execute(
-      `if not exists ( select schema_name from information_schema.schemata where schema_name = '${schema}' ) 
+      `if not exists ( select schema_name from ${INFORMATION_SCHEMA_SCHEMA_NAME}.schemata where schema_name = '${schema}' ) 
             begin
               exec sp_executesql N'create schema ${schema}'
             end `
