@@ -255,7 +255,7 @@ export class TableContext implements ITableContext {
 
   public ref(reference: string | IResolvable) {
     const name =
-      typeof reference == "string"
+      typeof reference === "string" || typeof reference === "undefined"
         ? reference
         : (reference as IResolvable).schema + "." + (reference as IResolvable).name;
     if (!name) {
