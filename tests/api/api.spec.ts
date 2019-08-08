@@ -887,9 +887,7 @@ describe("@dataform/api", () => {
         expect(exampleOperationsWithTags.tags).to.eql(["tag1"]);
 
         // Check testcase.
-        const testCase = graph.tests.find(
-          t => t.name === schemaWithSuffix("df_integration_test") + ".example_test_case"
-        );
+        const testCase = graph.tests.find(t => t.name === "example_test_case");
         expect(testCase.testQuery.trim()).equals(
           "select * from (\n    select 'hi' as faked union all\n    select 'ben' as faked union all\n    select 'sup?' as faked\n)\n\n-- here ${\"is\"} a `comment\n\n/* ${\"another\"} ` backtick ` containing ```comment */"
         );
