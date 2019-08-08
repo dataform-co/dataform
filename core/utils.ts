@@ -41,36 +41,29 @@ export function matchPatterns(patterns: string[], values: string[]) {
 }
 
 export function getCallerFile(rootDir: string) {
-  const originalFunc = Error.prepareStackTrace;
-  let callerfile;
-  let lastfile;
+  const lastFile = getCurrentStack()
+    .map(stackFrame => stackFrame.getFileName())
+    .filter(
+      fileName =>
+        fileName &&
+        fileName.includes(rootDir) &&
+        !fileName.includes("node_modules") &&
+        (fileName.includes("definitions/") || fileName.includes("models/"))
+    )
+    .shift();
+  return relativePath(lastFile, rootDir);
+}
+
+function getCurrentStack(): NodeJS.CallSite[] {
+  const originalPrepareStackTrace = Error.prepareStackTrace;
   try {
-    const err = new Error();
-    let currentfile;
-    Error.prepareStackTrace = function(err, stack) {
+    Error.prepareStackTrace = (err, stack) => {
       return stack;
     };
-
-    currentfile = (err.stack as any).shift().getFileName();
-    while (err.stack.length) {
-      callerfile = (err.stack as any).shift().getFileName();
-      if (callerfile) {
-        lastfile = callerfile;
-      }
-      if (
-        currentfile !== callerfile &&
-        callerfile.includes(rootDir) &&
-        !callerfile.includes("node_modules") &&
-        // We don't want to attribute files in includes/ to the caller files.
-        (callerfile.includes("definitions/") || callerfile.includes("models/"))
-      ) {
-        break;
-      }
-    }
-  } catch (e) {}
-  Error.prepareStackTrace = originalFunc;
-
-  return relativePath(callerfile || lastfile, rootDir);
+    return (new Error().stack as unknown) as NodeJS.CallSite[];
+  } finally {
+    Error.prepareStackTrace = originalPrepareStackTrace;
+  }
 }
 
 export function graphHasErrors(graph: dataform.ICompiledGraph) {
