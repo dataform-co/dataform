@@ -1,5 +1,6 @@
 import * as adapters from "@dataform/core/adapters";
 import { AConfig, AContextable, Assertion } from "@dataform/core/assertion";
+import { DConfig, Declaration } from "@dataform/core/declaration";
 import { OConfig, OContextable, Operation } from "@dataform/core/operation";
 import * as table from "@dataform/core/table";
 import * as test from "@dataform/core/test";
@@ -12,8 +13,16 @@ interface IActionProto {
   dependencies?: string[];
 }
 
-interface ISqlxConfig extends table.TConfig, AConfig, OConfig, test.TConfig {
-  type: "view" | "table" | "inline" | "incremental" | "assertion" | "operations" | "test";
+interface ISqlxConfig extends table.TConfig, AConfig, OConfig, DConfig, test.TConfig {
+  type:
+    | "view"
+    | "table"
+    | "inline"
+    | "incremental"
+    | "assertion"
+    | "operations"
+    | "declaration"
+    | "test";
   schema?: string;
   name: string;
 }
@@ -74,6 +83,7 @@ export class Session {
   public tables: { [name: string]: table.Table };
   public operations: { [name: string]: Operation };
   public assertions: { [name: string]: Assertion };
+  public declarations: { [name: string]: Declaration };
   public tests: { [name: string]: test.Test };
 
   public graphErrors: dataform.IGraphErrors;
@@ -91,6 +101,7 @@ export class Session {
     this.tables = {};
     this.operations = {};
     this.assertions = {};
+    this.declarations = {};
     this.tests = {};
     this.graphErrors = { compilationErrors: [] };
   }
@@ -123,9 +134,13 @@ export class Session {
     }
     if (
       actionOptions.sqlxConfig.columns &&
-      !(this.isDatasetType(actionOptions.sqlxConfig.type) || actionOptions.sqlxConfig.hasOutput)
+      !(
+        this.isDatasetType(actionOptions.sqlxConfig.type) ||
+        actionOptions.sqlxConfig.hasOutput ||
+        actionOptions.sqlxConfig.type === "declaration"
+      )
     ) {
-      this.compileError("Actions may only specify 'columns' if they create a dataset.");
+      this.compileError("Actions may only specify 'columns' if they create or declare a dataset.");
     }
     if (actionOptions.sqlxConfig.protected && actionOptions.sqlxConfig.type !== "incremental") {
       this.compileError(
@@ -136,6 +151,9 @@ export class Session {
       this.compileError(
         "Actions may only include incremental_where if they are of type 'incremental'."
       );
+    }
+    if (!actionOptions.sqlxConfig.schema && actionOptions.sqlxConfig.type === "declaration") {
+      this.compileError("Actions of type 'declaration' must specify a value for 'schema'.");
     }
     if (actionOptions.sqlxConfig.dataset && actionOptions.sqlxConfig.type !== "test") {
       this.compileError("Actions may only specify 'dataset' if they are of type 'test'.");
@@ -173,6 +191,11 @@ export class Session {
           return this.assert(actionOptions.sqlxConfig.name);
         case "operations":
           return this.operate(actionOptions.sqlxConfig.name);
+        case "declaration":
+          return this.declare({
+            schema: actionOptions.sqlxConfig.schema,
+            name: actionOptions.sqlxConfig.name
+          });
         case "test":
           return this.test(actionOptions.sqlxConfig.name);
         default:
@@ -180,7 +203,7 @@ export class Session {
       }
     })().config(actionOptions.sqlxConfig);
 
-    if (action instanceof test.Test) {
+    if (action instanceof Declaration || action instanceof test.Test) {
       return action;
     }
 
@@ -214,6 +237,7 @@ export class Session {
     const table = this.tables[name];
     const operation =
       !!this.operations[name] && this.operations[name].hasOutput && this.operations[name];
+    const declaration = this.declarations[name];
 
     if (table && table.proto.type === "inline") {
       // TODO: Pretty sure this is broken as the proto.query value may not
@@ -221,7 +245,7 @@ export class Session {
       return `(${table.proto.query})`;
     }
 
-    const dataset = table || operation;
+    const dataset = table || operation || declaration;
     // TODO: We fall back to using the plain 'name' here for backwards compatibility with projects that use .sql files.
     // In these projects, this session may not know about all actions (yet), and thus we need to fall back to assuming
     // that the target *will* exist in the future. Once we break backwards compatibility with .sql files, we should remove
@@ -293,6 +317,18 @@ export class Session {
     return newTest;
   }
 
+  public declare(fullyQualifiedDataset: { schema: string; name: string }): Declaration {
+    const { name } = fullyQualifiedDataset;
+    this.checkActionNameIsUnused(name);
+    const declaration = new Declaration();
+    declaration.proto.name = name;
+    declaration.proto.target = fullyQualifiedDataset;
+    declaration.proto.fileName = utils.getCallerFile(this.rootDir);
+    // Add it to global index.
+    this.declarations[name] = declaration;
+    return declaration;
+  }
+
   public compileError(err: Error | string, path?: string) {
     const fileName = path || utils.getCallerFile(this.rootDir) || __filename;
 
@@ -331,6 +367,7 @@ export class Session {
       tables: this.compileGraphChunk(this.tables),
       operations: this.compileGraphChunk(this.operations),
       assertions: this.compileGraphChunk(this.assertions),
+      declarations: this.compileGraphChunk(this.declarations),
       tests: this.compileGraphChunk(this.tests),
       graphErrors: this.graphErrors
     });
@@ -350,6 +387,10 @@ export class Session {
       // Add non-wildcard deps normally.
       dependencies
         .filter(dependency => !dependency.includes("*"))
+        .filter(
+          dependency =>
+            !Object.keys(this.declarations).some(declarationName => declarationName === dependency)
+        )
         .forEach(dependency => (uniqueDependencies[dependency] = true));
       // Match wildcard deps against all action names.
       utils
@@ -367,8 +408,13 @@ export class Session {
 
   private checkActionNameIsUnused(name: string) {
     // Check for duplicate names
-    if (this.tables[name] || this.operations[name] || this.assertions[name]) {
-      const message = `Duplicate action name detected. Names must be unique across tables, assertions, and operations: "${name}"`;
+    if (
+      this.tables[name] ||
+      this.operations[name] ||
+      this.assertions[name] ||
+      this.declarations[name]
+    ) {
+      const message = `Duplicate action name detected. Names must be unique across tables, assertions, operations and declarations: "${name}"`;
       this.compileError(new Error(message));
     }
   }

@@ -157,6 +157,17 @@ message Assertion {
   reserved 4, 5, 6;
 }
 
+message Declaration {
+  string name = 1;
+
+  Target target = 2;
+
+  ActionDescriptor action_descriptor = 3;
+
+  // Generated.
+  string file_name = 4;
+}
+
 message Test {
   string name = 1;
 
@@ -173,6 +184,7 @@ message CompiledGraph {
   repeated Table tables = 1;
   repeated Operation operations = 2;
   repeated Assertion assertions = 3;
+  repeated Declaration declarations = 9;
   repeated Test tests = 8;
 
   GraphErrors graph_errors = 7;
