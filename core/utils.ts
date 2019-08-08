@@ -281,6 +281,7 @@ export function matchFQName(act: string, allActFQNames: any[]): [string, string]
       } else {
         return [null, "Action name: " + act + " could not be found."];
       }
+      break;
     }
     case 1: {
       const allActShortNamesMap = allActFQNames.map(actFQ => [
@@ -301,6 +302,7 @@ export function matchFQName(act: string, allActFQNames: any[]): [string, string]
           "Ambiguous Action name: " + act + ". Did you mean one of: [" + matches.join(", ") + "]."
         ];
       }
+      break;
     }
     default: {
       return [null, "Action name: " + act + " is invalid."];

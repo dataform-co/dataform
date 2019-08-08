@@ -1,6 +1,6 @@
 config {
     type: "test",
-    dataset: "example_table"
+    dataset: {schema: "df_integration_test", name: "example_table"}
 }
 
 input "sample_data" {

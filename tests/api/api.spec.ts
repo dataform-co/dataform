@@ -913,12 +913,19 @@ describe("@dataform/api", () => {
         expect(exampleOperationsWithTags).to.not.be.undefined;
         expect(exampleOperationsWithTags.tags).to.eql(["tag1"]);
 
-        // Check testcase.
+        // Check testcases.
         const testCase = graph.tests.find(t => t.name === "example_test_case");
         expect(testCase.testQuery.trim()).equals(
           "select * from (\n    select 'hi' as faked union all\n    select 'ben' as faked union all\n    select 'sup?' as faked\n)\n\n-- here ${\"is\"} a `comment\n\n/* ${\"another\"} ` backtick ` containing ```comment */"
         );
         expect(testCase.expectedOutputQuery.trim()).equals(
+          "select 'hi' as faked union all\nselect 'ben' as faked union all\nselect 'sup?' as faked"
+        );
+        const testCaseLongRef = graph.tests.find(t => t.name === "example_test_case_with_long_ref");
+        expect(testCaseLongRef.testQuery.trim()).equals(
+          "select * from (\n    select 'hi' as faked union all\n    select 'ben' as faked union all\n    select 'sup?' as faked\n)\n\n-- here ${\"is\"} a `comment\n\n/* ${\"another\"} ` backtick ` containing ```comment */"
+        );
+        expect(testCaseLongRef.expectedOutputQuery.trim()).equals(
           "select 'hi' as faked union all\nselect 'ben' as faked union all\nselect 'sup?' as faked"
         );
       });
