@@ -839,7 +839,6 @@ describe("@dataform/api", () => {
             t.name ===
             schemaWithSuffix("df_integration_test_assertions") + ".example_assertion_with_tags"
         );
-        graph.assertions.forEach(ass => console.log("[840] ass=" + ass.name));
         expect(exampleAssertionWithTags).to.not.be.undefined;
         expect(exampleAssertionWithTags.target.schema).equals(
           schemaWithSuffix("df_integration_test_assertions")
@@ -865,8 +864,6 @@ describe("@dataform/api", () => {
         expect(exampleOperations.tags).to.eql([]);
 
         // Check example operation with output.
-        console.log("we are here...");
-        graph.operations.forEach(op => console.log("[866] op=" + op.name));
         const exampleOperationWithOutput = graph.operations.find(
           o => o.name === schemaWithSuffix("df_integration_test") + ".example_operation_with_output"
         );
