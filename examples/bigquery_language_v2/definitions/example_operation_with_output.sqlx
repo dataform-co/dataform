@@ -5,4 +5,4 @@ config {
       TEST: "Just 1!"
   }
 }
-CREATE OR REPLACE VIEW ${self()} AS (SELECT * FROM ${ref("very_important_external_table")})
+CREATE OR REPLACE VIEW ${self()} AS (SELECT * FROM ${resolve("very_important_external_table")})

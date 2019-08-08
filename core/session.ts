@@ -387,10 +387,6 @@ export class Session {
       // Add non-wildcard deps normally.
       dependencies
         .filter(dependency => !dependency.includes("*"))
-        .filter(
-          dependency =>
-            !Object.keys(this.declarations).some(declarationName => declarationName === dependency)
-        )
         .forEach(dependency => (uniqueDependencies[dependency] = true));
       // Match wildcard deps against all action names.
       utils
