@@ -1,4 +1,9 @@
-import { IResolvable, Session } from "@dataform/core/session";
+import {
+  IColumnsDescriptor,
+  IResolvable,
+  mapToColumnProtoArray,
+  Session
+} from "@dataform/core/session";
 import * as utils from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
 
@@ -18,16 +23,17 @@ export enum SortStyleTypes {
   INTERLEAVED = "interleaved"
 }
 
-export const ignoredProps = {
+export const ignoredProps: {
+  [tableType: string]: Array<keyof dataform.ITable>;
+} = {
   [TableTypes.INLINE]: [
     "bigquery",
     "redshift",
     "preOps",
     "postOps",
-    "descriptor",
+    "actionDescriptor",
     "disabled",
-    "where",
-    "fieldDescriptor"
+    "where"
   ]
 };
 
@@ -39,7 +45,8 @@ export interface TConfig {
   type?: TableType;
   dependencies?: string | string[];
   tags?: string[];
-  descriptor?: string[] | { [key: string]: string };
+  description?: string;
+  columns?: IColumnsDescriptor;
   disabled?: boolean;
   protected?: boolean;
   redshift?: dataform.IRedshiftOptions;
@@ -69,13 +76,6 @@ export class Table {
     if (config.dependencies) {
       this.dependencies(config.dependencies);
     }
-    if (config.descriptor) {
-      if (config.descriptor instanceof Array) {
-        this.descriptor(config.descriptor);
-      } else {
-        this.descriptor(config.descriptor);
-      }
-    }
     if (config.disabled) {
       this.disabled();
     }
@@ -87,6 +87,12 @@ export class Table {
     }
     if (config.tags) {
       this.tags(config.tags);
+    }
+    if (config.description) {
+      this.description(config.description);
+    }
+    if (config.columns) {
+      this.columns(config.columns);
     }
 
     return this;
@@ -158,27 +164,19 @@ export class Table {
     return this;
   }
 
-  public descriptor(key: string, description?: string): Table;
-  public descriptor(map: { [key: string]: string }): Table;
-  public descriptor(keys: string[]): Table;
-  public descriptor(
-    keyOrKeysOrMap: string | string[] | { [key: string]: string },
-    description?: string
-  ): Table {
-    if (!this.proto.fieldDescriptor) {
-      this.proto.fieldDescriptor = {};
+  public description(description: string) {
+    if (!this.proto.actionDescriptor) {
+      this.proto.actionDescriptor = {};
     }
-    if (typeof keyOrKeysOrMap === "string") {
-      this.proto.fieldDescriptor[keyOrKeysOrMap] = description || "";
-    } else if (keyOrKeysOrMap instanceof Array) {
-      keyOrKeysOrMap.forEach(key => {
-        this.proto.fieldDescriptor[key] = "";
-      });
-    } else {
-      Object.keys(keyOrKeysOrMap).forEach(key => {
-        this.proto.fieldDescriptor[key] = keyOrKeysOrMap[key] || "";
-      });
+    this.proto.actionDescriptor.description = description;
+    return this;
+  }
+
+  public columns(columns: IColumnsDescriptor) {
+    if (!this.proto.actionDescriptor) {
+      this.proto.actionDescriptor = {};
     }
+    this.proto.actionDescriptor.columns = mapToColumnProtoArray(columns);
     return this;
   }
 
@@ -231,11 +229,6 @@ export interface ITableContext {
   redshift: (redshift: dataform.IRedshiftOptions) => string;
   bigquery: (bigquery: dataform.IBigQueryOptions) => string;
   dependencies: (name: string) => string;
-  descriptor: (
-    keyOrKeysOrMap: string | string[] | { [key: string]: string },
-    description?: string
-  ) => string;
-  describe: (key: string, description?: string) => string;
   apply: <T>(value: TContextable<T>) => T;
   tags: (name: string | string[]) => string;
 }
@@ -316,22 +309,6 @@ export class TableContext implements ITableContext {
   public dependencies(name: string) {
     this.table.dependencies(name);
     return "";
-  }
-
-  public descriptor(key: string, description?: string): string;
-  public descriptor(map: { [key: string]: string }): string;
-  public descriptor(keys: string[]): string;
-  public descriptor(
-    keyOrKeysOrMap: string | string[] | { [key: string]: string },
-    description?: string
-  ): string {
-    this.table.descriptor(keyOrKeysOrMap as any, description);
-    return "";
-  }
-
-  public describe(key: string, description?: string) {
-    this.table.descriptor(key, description);
-    return key;
   }
 
   public apply<T>(value: TContextable<T>): T {

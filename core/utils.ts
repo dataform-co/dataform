@@ -67,7 +67,7 @@ export function getCallerFile(rootDir: string) {
         break;
       }
     }
-  } catch (e) { }
+  } catch (e) {}
   Error.prepareStackTrace = originalFunc;
 
   return relativePath(callerfile || lastfile, rootDir);
@@ -115,7 +115,7 @@ export function validate(compiledGraph: dataform.ICompiledGraph): dataform.IGrap
   allActions.forEach(action => {
     if (allActions.filter(subAction => subAction.name == action.name).length > 1) {
       const actionName = action.name;
-      const message = `Duplicate action name detected, names must be unique across tables, assertions, and operations: "${
+      const message = `Duplicate action name detected. Names within a schema must be unique across tables, assertions, and operations: "${
         action.name
       }"`;
       validationErrors.push(dataform.ValidationError.create({ message, actionName }));
@@ -265,6 +265,12 @@ export function validate(compiledGraph: dataform.ICompiledGraph): dataform.IGrap
       : [];
 
   return dataform.GraphErrors.create({ validationErrors, compilationErrors });
+}
+
+export function flatten<T>(nestedArray: T[][]) {
+  return nestedArray.reduce((previousValue: T[], currentValue: T[]) => {
+    return previousValue.concat(currentValue);
+  }, []);
 }
 
 export function matchFQName(act: string, allActFQNames: any[]): [string, string] {

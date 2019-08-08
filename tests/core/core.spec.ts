@@ -14,13 +14,14 @@ const TEST_CONFIG: dataform.IProjectConfig = {
 
 describe("@dataform/core", () => {
   describe("publish", () => {
-    it("config", function() {
+    it("config", () => {
       const session = new Session(path.dirname(__filename), TEST_CONFIG);
       const t = session
         .publish("example", {
           type: "table",
           dependencies: [],
-          descriptor: {
+          description: "this is a table",
+          columns: {
             test: "test description"
           }
         })
@@ -31,8 +32,14 @@ describe("@dataform/core", () => {
 
       expect(t.name).equals("schema.example");
       expect(t.type).equals("table");
-      expect(t.fieldDescriptor).deep.equals({
-        test: "test description"
+      expect(t.actionDescriptor).eql({
+        description: "this is a table",
+        columns: [
+          dataform.ColumnDescriptor.create({
+            description: "test description",
+            path: ["test"]
+          })
+        ]
       });
       expect(t.preOps).deep.equals(["pre_op"]);
       expect(t.postOps).deep.equals(["post_op"]);
@@ -41,9 +48,7 @@ describe("@dataform/core", () => {
         .publish("schema2.example", {
           type: "table",
           dependencies: ["schema1.example"],
-          descriptor: {
-            test: "test description"
-          }
+          description: "test description"
         })
         .query(_ => "select 1 as test")
         .preOps(_ => ["pre_op"])
@@ -52,24 +57,27 @@ describe("@dataform/core", () => {
 
       expect(t2.name).equals("schema2.example");
       expect(t2.type).equals("table");
-      expect(t2.fieldDescriptor).deep.equals({
-        test: "test description"
+      expect(t.actionDescriptor).eql({
+        description: "this is a table",
+        columns: [
+          dataform.ColumnDescriptor.create({
+            description: "test description",
+            path: ["test"]
+          })
+        ]
       });
       expect(t2.preOps).deep.equals(["pre_op"]);
       expect(t2.postOps).deep.equals(["post_op"]);
       expect(t2.dependencies).includes("schema1.example");
     });
 
-    it("config_context", function() {
+    it("config_context", () => {
       const session = new Session(path.dirname(__filename), TEST_CONFIG);
       const t = session
         .publish(
           "example",
           ctx => `
           ${ctx.type("table")}
-          ${ctx.descriptor({
-            test: "test description"
-          })}
           ${ctx.preOps(["pre_op"])}
           ${ctx.postOps(["post_op"])}
         `
@@ -78,19 +86,15 @@ describe("@dataform/core", () => {
 
       expect(t.name).equals("schema.example");
       expect(t.type).equals("table");
-      expect(t.fieldDescriptor).deep.equals({
-        test: "test description"
-      });
       expect(t.preOps).deep.equals(["pre_op"]);
       expect(t.postOps).deep.equals(["post_op"]);
     });
 
-    it("validation_type_incremental", function() {
+    it("validation_type_incremental", () => {
       const sessionSuccess = new Session(path.dirname(__filename), TEST_CONFIG);
       sessionSuccess
         .publish("exampleSuccess1", {
-          type: "incremental",
-          descriptor: ["field"]
+          type: "incremental"
         })
         .where("test1");
       sessionSuccess.publish(
@@ -98,7 +102,7 @@ describe("@dataform/core", () => {
         ctx => `
         ${ctx.where("test2")}
         ${ctx.type("incremental")}
-        select ${ctx.describe("field")} as 1
+        select field as 1
       `
       );
       sessionSuccess.publish(
@@ -106,7 +110,7 @@ describe("@dataform/core", () => {
         ctx => `
         ${ctx.type("incremental")}
         ${ctx.where("test2")}
-        select ${ctx.describe("field")} as 1
+        select field as 1
       `
       );
       const cgSuccess = sessionSuccess.compile();
@@ -120,16 +124,14 @@ describe("@dataform/core", () => {
       const cases: { [key: string]: { table: Table; errorTest: RegExp } } = {
         "schema.missing_where": {
           table: sessionFail.publish("missing_where", {
-            type: "incremental",
-            descriptor: ["field"]
+            type: "incremental"
           }),
           errorTest: /"where" property is not defined/
         },
         "schema.empty_where": {
           table: sessionFail
             .publish("empty_where", {
-              type: "incremental",
-              descriptor: ["field"]
+              type: "incremental"
             })
             .where(""),
           errorTest: /"where" property is not defined/
@@ -150,7 +152,7 @@ describe("@dataform/core", () => {
       });
     });
 
-    it("validation_type", function() {
+    it("validation_type", () => {
       const sessionSuccess = new Session(path.dirname(__filename), TEST_CONFIG);
       sessionSuccess.publish("exampleSuccess1", { type: "table" });
       sessionSuccess.publish("exampleSuccess2", { type: "view" });
@@ -177,7 +179,7 @@ describe("@dataform/core", () => {
         .that.matches(/Wrong type of table/);
     });
 
-    it("validation_redshift_success", function() {
+    it("validation_redshift_success", () => {
       const session = new Session(path.dirname(__filename), TEST_CONFIG);
       session.publish("example_without_dist", {
         redshift: {
@@ -205,7 +207,7 @@ describe("@dataform/core", () => {
         .to.be.an("array").that.is.empty;
     });
 
-    it("validation_redshift_fail", function() {
+    it("validation_redshift_fail", () => {
       const session = new Session(path.dirname(__filename), TEST_CONFIG);
       session.publish("example_absent_distKey", {
         redshift: {
@@ -290,7 +292,7 @@ describe("@dataform/core", () => {
       });
     });
 
-    it("validation_type_inline", function() {
+    it("validation_type_inline", () => {
       const session = new Session(path.dirname(__filename), TEST_CONFIG);
       session.publish("a", { type: "table" }).query(_ => "select 1 as test");
       session
@@ -302,7 +304,7 @@ describe("@dataform/core", () => {
             sortKeys: ["column1", "column2"],
             sortStyle: "compound"
           },
-          descriptor: { test: "test description b" },
+          columns: { test: "test description b" },
           disabled: true
         })
         .preOps(_ => ["pre_op_b"])
@@ -312,7 +314,7 @@ describe("@dataform/core", () => {
       session
         .publish("c", {
           type: "table",
-          descriptor: { test: "test description c" }
+          columns: { test: "test description c" }
         })
         .preOps(_ => ["pre_op_c"])
         .postOps(_ => ["post_op_c"])
@@ -331,7 +333,14 @@ describe("@dataform/core", () => {
       expect(tableB).to.exist;
       expect(tableB.type).equals("inline");
       expect(tableB.dependencies).includes("a");
-      expect(tableB.fieldDescriptor).deep.equals({ test: "test description b" });
+      expect(tableB.actionDescriptor).eql({
+        columns: [
+          dataform.ColumnDescriptor.create({
+            description: "test description b",
+            path: ["test"]
+          })
+        ]
+      });
       expect(tableB.preOps).deep.equals(["pre_op_b"]);
       expect(tableB.postOps).deep.equals(["post_op_b"]);
       expect(asPlainObject(tableB.redshift)).deep.equals(
@@ -350,7 +359,14 @@ describe("@dataform/core", () => {
       expect(tableC).to.exist;
       expect(tableC.type).equals("table");
       expect(tableC.dependencies).includes("a");
-      expect(tableC.fieldDescriptor).deep.equals({ test: "test description c" });
+      expect(tableC.actionDescriptor).eql({
+        columns: [
+          dataform.ColumnDescriptor.create({
+            description: "test description c",
+            path: ["test"]
+          })
+        ]
+      });
       expect(tableC.preOps).deep.equals(["pre_op_c"]);
       expect(tableC.postOps).deep.equals(["post_op_c"]);
       expect(tableC.redshift).to.not.exist;
@@ -366,7 +382,6 @@ describe("@dataform/core", () => {
         .filter(item => item.actionName === "schema.b")
         .map(item => item.message);
 
-      expect(errors).that.matches(/Unused property was detected: "fieldDescriptor"/);
       expect(errors).that.matches(/Unused property was detected: "preOps"/);
       expect(errors).that.matches(/Unused property was detected: "postOps"/);
       expect(errors).that.matches(/Unused property was detected: "redshift"/);
@@ -552,7 +567,7 @@ describe("@dataform/core", () => {
   });
 
   describe("compilers", () => {
-    it("extract_blocks", function() {
+    it("extract_blocks", () => {
       const TEST_SQL_FILE = `
         /*js
         var a = 1;

@@ -1,8 +1,8 @@
 import * as adapters from "@dataform/core/adapters";
-import { AContextable, Assertion } from "@dataform/core/assertion";
-import { OContextable, Operation } from "@dataform/core/operation";
-import { Table, TConfig, TContextable } from "@dataform/core/table";
-import { Test } from "@dataform/core/test";
+import { AConfig, AContextable, Assertion } from "@dataform/core/assertion";
+import { OConfig, OContextable, Operation } from "@dataform/core/operation";
+import * as table from "@dataform/core/table";
+import * as test from "@dataform/core/test";
 import * as utils from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
 
@@ -12,13 +12,58 @@ interface IActionProto {
   dependencies?: string[];
 }
 
-interface ISqlxConfig extends TConfig {
+interface ISqlxConfig extends table.TConfig, AConfig, OConfig, test.TConfig {
   type: "view" | "table" | "inline" | "incremental" | "assertion" | "operations" | "test";
   schema?: string;
   name: string;
-  hasOutput?: boolean;
-  dataset?: string;
-  tags?: string[];
+}
+
+export interface IColumnsDescriptor {
+  [name: string]: string | IRecordDescriptor;
+}
+
+interface IRecordDescriptor {
+  description?: string;
+  columns?: IColumnsDescriptor;
+}
+
+export function mapToColumnProtoArray(columns: IColumnsDescriptor): dataform.IColumnDescriptor[] {
+  return utils.flatten(
+    Object.keys(columns).map(column => mapColumnDescriptionToProto([column], columns[column]))
+  );
+}
+
+function mapColumnDescriptionToProto(
+  currentPath: string[],
+  description: string | IRecordDescriptor
+): dataform.IColumnDescriptor[] {
+  if (typeof description === "string") {
+    return [
+      dataform.ColumnDescriptor.create({
+        description,
+        path: currentPath
+      })
+    ];
+  }
+  const columnDescriptor: dataform.IColumnDescriptor[] = description.description
+    ? [
+        dataform.ColumnDescriptor.create({
+          description: description.description,
+          path: currentPath
+        })
+      ]
+    : [];
+  const nestedColumns = description.columns ? Object.keys(description.columns) : [];
+  return columnDescriptor.concat(
+    utils.flatten(
+      nestedColumns.map(nestedColumn =>
+        mapColumnDescriptionToProto(
+          currentPath.concat([nestedColumn]),
+          description.columns[nestedColumn]
+        )
+      )
+    )
+  );
 }
 
 export interface IResolvable {
@@ -31,10 +76,10 @@ export class Session {
 
   public config: dataform.IProjectConfig;
 
-  public tables: { [name: string]: Table };
+  public tables: { [name: string]: table.Table };
   public operations: { [name: string]: Operation };
   public assertions: { [name: string]: Assertion };
-  public tests: { [name: string]: Test };
+  public tests: { [name: string]: test.Test };
 
   public graphErrors: dataform.IGraphErrors;
 
@@ -81,6 +126,12 @@ export class Session {
         "Actions may only specify 'hasOutput: true' if they are of type 'operations' or create a dataset."
       );
     }
+    if (
+      actionOptions.sqlxConfig.columns &&
+      !(this.isDatasetType(actionOptions.sqlxConfig.type) || actionOptions.sqlxConfig.hasOutput)
+    ) {
+      this.compileError("Actions may only specify 'columns' if they create a dataset.");
+    }
     if (actionOptions.sqlxConfig.protected && actionOptions.sqlxConfig.type !== "incremental") {
       this.compileError(
         "Actions may only specify 'protected: true' if they are of type 'incremental'."
@@ -116,41 +167,29 @@ export class Session {
       this.compileError("Actions may only include post_operations if they create a dataset.");
     }
 
-    if (actionOptions.sqlxConfig.type === "test") {
-      return this.test(actionOptions.sqlxConfig.name).dataset(actionOptions.sqlxConfig.dataset);
-    }
-
     const action = (() => {
       switch (actionOptions.sqlxConfig.type) {
         case "view":
         case "table":
         case "inline":
-        case "incremental": {
-          const dataset = this.publish(actionOptions.sqlxConfig.name);
-          dataset.config(actionOptions.sqlxConfig);
-          return dataset;
-        }
-        case "assertion": {
-          const assertion = this.assert(actionOptions.sqlxConfig.name);
-          assertion.dependencies(actionOptions.sqlxConfig.dependencies);
-          assertion.tags(actionOptions.sqlxConfig.tags);
-          return assertion;
-        }
-        case "operations": {
-          const operations = this.operate(actionOptions.sqlxConfig.name);
-          if (!actionOptions.sqlxConfig.hasOutput) {
-            delete operations.proto.target;
-          }
-          operations.dependencies(actionOptions.sqlxConfig.dependencies);
-          operations.tags(actionOptions.sqlxConfig.tags);
-          return operations;
-        }
-        default: {
+        case "incremental":
+          return this.publish(actionOptions.sqlxConfig.name);
+        case "assertion":
+          return this.assert(actionOptions.sqlxConfig.name);
+        case "operations":
+          return this.operate(actionOptions.sqlxConfig.name);
+        case "test":
+          return this.test(actionOptions.sqlxConfig.name);
+        default:
           throw new Error(`Unrecognized action type: ${actionOptions.sqlxConfig.type}`);
-        }
       }
-    })();
-    if (action.proto.target) {
+    })().config(actionOptions.sqlxConfig);
+
+    if (action instanceof test.Test) {
+      return action;
+    }
+
+    if (!(action instanceof Operation) || action.proto.hasOutput) {
       const finalSchema =
         actionOptions.sqlxConfig.schema ||
         (actionOptions.sqlxConfig.type === "assertion"
@@ -158,6 +197,8 @@ export class Session {
           : this.config.defaultSchema);
       action.proto.target = this.target(actionOptions.sqlxConfig.name, finalSchema);
       action.proto.name = action.proto.target.schema + "." + action.proto.target.name;
+    } else {
+      delete action.proto.target;
     }
     return action;
   }
@@ -220,24 +261,27 @@ export class Session {
     return operation;
   }
 
-  public publish(name: string, queryOrConfig?: TContextable<string> | TConfig): Table {
-    const table = new Table();
-    table.session = this;
-    table.proto.target = this.target(name);
-    const fQName = table.proto.target.schema + "." + table.proto.target.name;
+  public publish(
+    name: string,
+    queryOrConfig?: table.TContextable<string> | table.TConfig
+  ): table.Table {
+    const newTable = new table.Table();
+    newTable.session = this;
+    newTable.proto.target = this.target(name);
+    const fQName = newTable.proto.target.schema + "." + newTable.proto.target.name;
     this.checkActionNameIsUnused(fQName);
-    table.proto.name = fQName;
+    newTable.proto.name = fQName;
     if (!!queryOrConfig) {
       if (typeof queryOrConfig === "object") {
-        table.config(queryOrConfig);
+        newTable.config(queryOrConfig);
       } else {
-        table.query(queryOrConfig);
+        newTable.query(queryOrConfig);
       }
     }
-    table.proto.fileName = utils.getCallerFile(this.rootDir);
+    newTable.proto.fileName = utils.getCallerFile(this.rootDir);
     // Add it to global index.
-    this.tables[fQName] = table;
-    return table;
+    this.tables[fQName] = newTable;
+    return newTable;
   }
 
   public assert(name: string, query?: AContextable<string>): Assertion {
@@ -256,15 +300,15 @@ export class Session {
     return assertion;
   }
 
-  public test(name: string): Test {
+  public test(name: string): test.Test {
     this.checkTestNameIsUnused(name);
-    const test = new Test();
-    test.session = this;
-    test.proto.name = name;
-    test.proto.fileName = utils.getCallerFile(this.rootDir);
+    const newTest = new test.Test();
+    newTest.session = this;
+    newTest.proto.name = name;
+    newTest.proto.fileName = utils.getCallerFile(this.rootDir);
     // Add it to global index.
-    this.tests[name] = test;
-    return test;
+    this.tests[name] = newTest;
+    return newTest;
   }
 
   public compileError(err: Error | string, path?: string) {
