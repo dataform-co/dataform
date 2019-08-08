@@ -107,7 +107,7 @@ export class Session {
       this.compileError("Actions may only specify 'redshift: { ... }' if they create a dataset.");
     }
     if (
-      actionOptions.sqlxConfig.sqlDataWarehouse &&
+      actionOptions.sqlxConfig.sqldatawarehouse &&
       !this.isDatasetType(actionOptions.sqlxConfig.type)
     ) {
       this.compileError(

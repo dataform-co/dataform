@@ -63,7 +63,7 @@ const requiredSQLDataWarehouseProps: Array<keyof dataform.ISQLDataWarehouse> = [
   "port",
   "username",
   "password",
-  "databaseName"
+  "database"
 ];
 
 export const requiredWarehouseProps = {

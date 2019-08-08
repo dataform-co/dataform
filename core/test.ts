@@ -124,10 +124,6 @@ class RefReplacingContext implements table.ITableContext {
     return "";
   }
 
-  public sqldatawarehouse(sqldatawarehouse: dataform.ISQLDataWarehouseOptions) {
-    return "";
-  }
-
   public redshift(redshift: dataform.IRedshiftOptions) {
     return "";
   }

@@ -36,5 +36,5 @@ message SQLDataWarehouse {
   int32 port = 2;
   string username = 3;
   string password = 4;
-  string database_name = 5;
+  string database = 5;
 }

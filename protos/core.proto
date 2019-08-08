@@ -99,7 +99,7 @@ message Table {
   // Warehouse specific features.
   RedshiftOptions redshift = 21;
   BigQueryOptions bigquery = 22;
-  SQLDataWarehouseOptions sqlDataWarehouse = 24;
+  SQLDataWarehouseOptions sql_data_warehouse = 24;
 
   // Generated.
   string file_name = 18;

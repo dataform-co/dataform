@@ -22,7 +22,7 @@ export class SQLDataWarehouseDBAdapter implements IDbAdapter {
         port: sqlDataWarehouseCredentials.port,
         user: sqlDataWarehouseCredentials.username,
         password: sqlDataWarehouseCredentials.password,
-        database: sqlDataWarehouseCredentials.databaseName,
+        database: sqlDataWarehouseCredentials.database,
         options: {
           encrypt: true
         }

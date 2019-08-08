@@ -43,14 +43,14 @@ export function getSQLDataWarehouseCredentials(): dataform.ISQLDataWarehouse {
   const port = intQuestion("Enter your server port:", 1433);
   const username = question("Enter your datawarehouse user:");
   const password = passwordQuestion("Enter your datawarehouse password:");
-  const databaseName = question("Enter the database name:");
+  const database = question("Enter the database name:");
 
   return {
     server,
     port,
     username,
     password,
-    databaseName
+    database
   };
 }
 
