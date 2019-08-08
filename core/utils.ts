@@ -41,17 +41,25 @@ export function matchPatterns(patterns: string[], values: string[]) {
 }
 
 export function getCallerFile(rootDir: string) {
-  const lastFile = getCurrentStack()
-    .map(stackFrame => stackFrame.getFileName())
-    .filter(
-      fileName =>
-        fileName &&
-        fileName.includes(rootDir) &&
-        !fileName.includes("node_modules") &&
-        (fileName.includes("definitions/") || fileName.includes("models/"))
-    )
-    .shift();
-  return relativePath(lastFile, rootDir);
+  let lastfile: string;
+  const stack = getCurrentStack();
+  while (stack.length) {
+    lastfile = stack.shift().getFileName();
+    if (!lastfile) {
+      continue;
+    }
+    if (!lastfile.includes(rootDir)) {
+      continue;
+    }
+    if (lastfile.includes("node_modules")) {
+      continue;
+    }
+    if (!(lastfile.includes("definitions/") || lastfile.includes("models/"))) {
+      continue;
+    }
+    break;
+  }
+  return relativePath(lastfile, rootDir);
 }
 
 function getCurrentStack(): NodeJS.CallSite[] {

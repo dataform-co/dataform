@@ -1,6 +1,6 @@
 config {
     type: "test",
-    dataset: "example_table2"
+    dataset: "example_table"
 }
 
 input "sample_data" {
