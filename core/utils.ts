@@ -67,7 +67,7 @@ export function getCallerFile(rootDir: string) {
         break;
       }
     }
-  } catch (e) {}
+  } catch (e) { }
   Error.prepareStackTrace = originalFunc;
 
   return relativePath(callerfile || lastfile, rootDir);
