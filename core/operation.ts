@@ -1,7 +1,15 @@
-import { Session } from "@dataform/core/session";
+import { IColumnsDescriptor, mapToColumnProtoArray, Session } from "@dataform/core/session";
 import { dataform } from "@dataform/protos";
 
 export type OContextable<T> = T | ((ctx: OperationContext) => T);
+
+export interface OConfig {
+  dependencies?: string | string[];
+  tags?: string[];
+  description?: string;
+  columns?: IColumnsDescriptor;
+  hasOutput?: boolean;
+}
 
 export class Operation {
   public proto: dataform.IOperation = dataform.Operation.create();
@@ -11,6 +19,25 @@ export class Operation {
 
   // We delay contextification until the final compile step, so hold these here for now.
   private contextableQueries: OContextable<string | string[]>;
+
+  public config(config: OConfig) {
+    if (config.dependencies) {
+      this.dependencies(config.dependencies);
+    }
+    if (config.tags) {
+      this.tags(config.tags);
+    }
+    if (config.hasOutput) {
+      this.hasOutput(config.hasOutput);
+    }
+    if (config.description) {
+      this.description(config.description);
+    }
+    if (config.columns) {
+      this.columns(config.columns);
+    }
+    return this;
+  }
 
   public queries(queries: OContextable<string | string[]>) {
     this.contextableQueries = queries;
@@ -42,11 +69,41 @@ export class Operation {
     return this;
   }
 
+  public description(description: string) {
+    if (!this.proto.actionDescriptor) {
+      this.proto.actionDescriptor = {};
+    }
+    this.proto.actionDescriptor.description = description;
+    return this;
+  }
+
+  public columns(columns: IColumnsDescriptor) {
+    if (!this.proto.actionDescriptor) {
+      this.proto.actionDescriptor = {};
+    }
+    this.proto.actionDescriptor.columns = mapToColumnProtoArray(columns);
+    return this;
+  }
+
   public compile() {
+    if (
+      this.proto.actionDescriptor &&
+      this.proto.actionDescriptor.columns &&
+      this.proto.actionDescriptor.columns.length > 0 &&
+      !this.proto.hasOutput
+    ) {
+      this.session.compileError(
+        new Error(
+          "Actions of type 'operations' may only describe columns if they specify 'hasOutput: true'."
+        ),
+        this.proto.fileName
+      );
+    }
+
     const context = new OperationContext(this);
 
     const appliedQueries = context.apply(this.contextableQueries);
-    this.proto.queries = typeof appliedQueries == "string" ? [appliedQueries] : appliedQueries;
+    this.proto.queries = typeof appliedQueries === "string" ? [appliedQueries] : appliedQueries;
 
     return this.proto;
   }
@@ -61,6 +118,10 @@ export class OperationContext {
 
   public self(): string {
     return this.resolve(this.operation.proto.name);
+  }
+
+  public name(): string {
+    return this.operation.proto.name;
   }
 
   public ref(name: string) {

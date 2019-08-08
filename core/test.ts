@@ -4,6 +4,10 @@ import { dataform } from "@dataform/protos";
 
 export type TContextable<T> = T | ((ctx: TestContext) => T);
 
+export interface TConfig {
+  dataset?: string;
+}
+
 export class Test {
   public proto: dataform.ITest = dataform.Test.create();
 
@@ -12,6 +16,13 @@ export class Test {
 
   private datasetToTest: string;
   private contextableQuery: TContextable<string>;
+
+  public config(config: TConfig) {
+    if (config.dataset) {
+      this.dataset(config.dataset);
+    }
+    return this;
+  }
 
   public dataset(datasetToTest: string) {
     this.datasetToTest = datasetToTest;
@@ -29,24 +40,29 @@ export class Test {
   }
 
   public compile() {
-    if (!this.datasetToTest) {
-      this.session.compileError(new Error("Tests must operate upon a specified dataset."));
-      return;
-    }
-    const dataset = this.session.tables[this.datasetToTest];
-    if (!dataset) {
-      this.session.compileError(new Error(`Dataset ${this.datasetToTest} could not be found.`));
-      return;
-    }
-    if (dataset.proto.type === "incremental") {
-      this.session.compileError(
-        new Error(`Running tests on incremental datasets is not yet supported.`)
-      );
-      return;
-    }
     const testContext = new TestContext(this);
-    const refReplacingContext = new RefReplacingContext(testContext);
-    this.proto.testQuery = refReplacingContext.apply(dataset.contextableQuery);
+    if (!this.datasetToTest) {
+      this.session.compileError(
+        new Error("Tests must operate upon a specified dataset."),
+        this.proto.fileName
+      );
+    } else {
+      const dataset = this.session.tables[this.datasetToTest];
+      if (!dataset) {
+        this.session.compileError(
+          new Error(`Dataset ${this.datasetToTest} could not be found.`),
+          this.proto.fileName
+        );
+      } else if (dataset.proto.type === "incremental") {
+        this.session.compileError(
+          new Error("Running tests on incremental datasets is not yet supported."),
+          this.proto.fileName
+        );
+      } else {
+        const refReplacingContext = new RefReplacingContext(testContext);
+        this.proto.testQuery = refReplacingContext.apply(dataset.contextableQuery);
+      }
+    }
     this.proto.expectedOutputQuery = testContext.apply(this.contextableQuery);
     return this.proto;
   }
@@ -104,6 +120,10 @@ class RefReplacingContext implements table.ITableContext {
     return "";
   }
 
+  public name() {
+    return "";
+  }
+
   public type(type: table.TableType) {
     return "";
   }
@@ -133,17 +153,6 @@ class RefReplacingContext implements table.ITableContext {
   }
 
   public dependencies(name: string) {
-    return "";
-  }
-
-  public descriptor(
-    keyOrKeysOrMap: string | string[] | { [key: string]: string },
-    description?: string
-  ): string {
-    return "";
-  }
-
-  public describe(key: string, description?: string) {
     return "";
   }
 

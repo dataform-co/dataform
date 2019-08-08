@@ -43,36 +43,37 @@ export function matchPatterns(patterns: string[], values: string[]) {
 }
 
 export function getCallerFile(rootDir: string) {
-  const originalFunc = Error.prepareStackTrace;
-  let callerfile;
-  let lastfile;
+  let lastfile: string;
+  const stack = getCurrentStack();
+  while (stack.length) {
+    lastfile = stack.shift().getFileName();
+    if (!lastfile) {
+      continue;
+    }
+    if (!lastfile.includes(rootDir)) {
+      continue;
+    }
+    if (lastfile.includes("node_modules")) {
+      continue;
+    }
+    if (!(lastfile.includes("definitions/") || lastfile.includes("models/"))) {
+      continue;
+    }
+    break;
+  }
+  return relativePath(lastfile, rootDir);
+}
+
+function getCurrentStack(): NodeJS.CallSite[] {
+  const originalPrepareStackTrace = Error.prepareStackTrace;
   try {
-    const err = new Error();
-    let currentfile;
-    Error.prepareStackTrace = function(err, stack) {
+    Error.prepareStackTrace = (err, stack) => {
       return stack;
     };
-
-    currentfile = (err.stack as any).shift().getFileName();
-    while (err.stack.length) {
-      callerfile = (err.stack as any).shift().getFileName();
-      if (callerfile) {
-        lastfile = callerfile;
-      }
-      if (
-        currentfile !== callerfile &&
-        callerfile.includes(rootDir) &&
-        !callerfile.includes("node_modules") &&
-        // We don't want to attribute files in includes/ to the caller files.
-        (callerfile.includes("definitions/") || callerfile.includes("models/"))
-      ) {
-        break;
-      }
-    }
-  } catch (e) {}
-  Error.prepareStackTrace = originalFunc;
-
-  return relativePath(callerfile || lastfile, rootDir);
+    return (new Error().stack as unknown) as NodeJS.CallSite[];
+  } finally {
+    Error.prepareStackTrace = originalPrepareStackTrace;
+  }
 }
 
 export function graphHasErrors(graph: dataform.ICompiledGraph) {
@@ -264,4 +265,10 @@ export function validate(compiledGraph: dataform.ICompiledGraph): dataform.IGrap
       : [];
 
   return dataform.GraphErrors.create({ validationErrors, compilationErrors });
+}
+
+export function flatten<T>(nestedArray: T[][]) {
+  return nestedArray.reduce((previousValue: T[], currentValue: T[]) => {
+    return previousValue.concat(currentValue);
+  }, []);
 }

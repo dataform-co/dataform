@@ -19,6 +19,7 @@ message ProjectConfig {
 
 message RunConfig {
   repeated string actions = 1;
+  repeated string tags = 5;
   bool include_dependencies = 3;
   bool full_refresh = 2;
   bool carry_on = 4;
@@ -75,6 +76,20 @@ message CompilationError {
   string stack = 3;
 }
 
+message ActionDescriptor {
+  string description = 1;
+  // For Operations, 'columns' may be set iff has_output == true.
+  // For Assertions, 'columns' will always be empty.
+  repeated ColumnDescriptor columns = 2;
+}
+
+message ColumnDescriptor {
+  string description = 1;
+  // For nested records, the path might look like e.g. [“record”, “column”].
+  // For simple columns, this will always contain a single entry e.g. ["column"].
+  repeated string path = 2; 
+}
+
 message Table {
   string name = 1;
   repeated string dependencies = 2;
@@ -85,7 +100,7 @@ message Table {
   string query = 5;
   bool protected = 9;
 
-  map<string, string> fieldDescriptor = 16;
+  ActionDescriptor action_descriptor = 24;
 
   repeated string tags = 23;
 
@@ -99,7 +114,7 @@ message Table {
   // Warehouse specific features.
   RedshiftOptions redshift = 21;
   BigQueryOptions bigquery = 22;
-  SQLDataWarehouseOptions sql_data_warehouse = 24;
+  SQLDataWarehouseOptions sql_data_warehouse = 25;
 
   // Generated.
   string file_name = 18;
@@ -107,6 +122,8 @@ message Table {
   // Deprecated.
   repeated string deprecated_parsed_columns = 12;
   repeated ValidationError deprecated_validation_errors = 7;
+
+  reserved 16;
 }
 
 message Operation {
@@ -118,10 +135,14 @@ message Operation {
 
   repeated string tags = 9;
 
+  ActionDescriptor action_descriptor = 10;
+
   // Generated.
   string file_name = 7;
 
   bool has_output = 8;
+
+  reserved 4, 5;
 }
 
 message Assertion {
@@ -132,9 +153,13 @@ message Assertion {
   string query = 3;
 
   repeated string tags = 9;
+
+  ActionDescriptor action_descriptor = 10;
   
   // Generated.
   string file_name = 7;
+
+  reserved 4, 5, 6;
 }
 
 message Test {
@@ -216,9 +241,9 @@ message ExecutedAction {
   bool deprecated_skipped = 4;
 }
 
-// TODO: Instead of returning this as a result of run(...), return an ExecutionGraph
-// along with something like a RunStatus message indicating the success/failure of executing
-// that graph on the data warehouse.
+// TODO: Instead of returning this as a result of run(...), return an
+// ExecutionGraph along with something like a RunStatus message indicating the
+// success/failure of executing that graph on the data warehouse.
 message ExecutedGraph {
   ProjectConfig project_config = 1;
   RunConfig run_config = 2;

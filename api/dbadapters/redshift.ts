@@ -89,6 +89,10 @@ export class RedshiftDbAdapter implements IDbAdapter {
     });
   }
 
+  public async preview(target: dataform.ITarget, limitRows: number = 10): Promise<any[]> {
+    return this.execute(`SELECT * FROM "${target.schema}"."${target.name}" LIMIT ${limitRows}`);
+  }
+
   public prepareSchema(schema: string): Promise<void> {
     return Promise.resolve().then(() =>
       this.execute(`create schema if not exists "${schema}"`).then(() => {})

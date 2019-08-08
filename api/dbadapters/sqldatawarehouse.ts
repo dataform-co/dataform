@@ -89,6 +89,10 @@ export class SQLDataWarehouseDBAdapter implements IDbAdapter {
     };
   }
 
+  public async preview(target: dataform.ITarget, limitRows: number = 10): Promise<any[]> {
+    return this.execute(`SELECT * FROM "${target.schema}"."${target.name}" LIMIT ${limitRows}`);
+  }
+
   public async prepareSchema(schema: string): Promise<void> {
     await this.execute(
       `if not exists ( select schema_name from ${INFORMATION_SCHEMA_SCHEMA_NAME}.schemata where schema_name = '${schema}' ) 

@@ -191,6 +191,81 @@ describe("@dataform/api", () => {
       expect(actionNames).not.includes("b");
       expect(actionNames).includes("c");
     });
+
+    const TEST_GRAPH_WITH_TAGS: dataform.ICompiledGraph = dataform.CompiledGraph.create({
+      projectConfig: { warehouse: "bigquery" },
+      operations: [
+        {
+          name: "op_a",
+          tags: ["tag1"],
+          queries: ["create or replace view schema.someview as select 1 as test"]
+        },
+        {
+          name: "op_b",
+          dependencies: ["op_a"],
+          tags: ["tag2"],
+          queries: ["create or replace view schema.someview as select 1 as test"]
+        },
+        {
+          name: "op_c",
+          dependencies: ["op_a"],
+          tags: ["tag3"],
+          queries: ["create or replace view schema.someview as select 1 as test"]
+        },
+        {
+          name: "op_d",
+          tags: ["tag3"],
+          queries: ["create or replace view schema.someview as select 1 as test"]
+        }
+      ],
+      tables: [
+        {
+          name: "tab_a",
+          dependencies: ["op_d"],
+          target: {
+            schema: "schema",
+            name: "a"
+          },
+          tags: ["tag1", "tag2"]
+        }
+      ]
+    });
+    it("build actions with --tags (with dependencies)", () => {
+      const builder = new Builder(
+        TEST_GRAPH_WITH_TAGS,
+        {
+          actions: ["op_b", "op_d"],
+          tags: ["tag1", "tag2", "tag4"],
+          includeDependencies: true
+        },
+        TEST_STATE
+      );
+      const executedGraph = builder.build();
+      const actionNames = executedGraph.actions.map(n => n.name);
+      expect(actionNames).includes("op_a");
+      expect(actionNames).includes("op_b");
+      expect(actionNames).not.includes("op_c");
+      expect(actionNames).includes("op_d");
+      expect(actionNames).includes("tab_a");
+    });
+
+    it("build actions with --tags but without --actions (without dependencies)", () => {
+      const builder = new Builder(
+        TEST_GRAPH_WITH_TAGS,
+        {
+          tags: ["tag1", "tag2", "tag4"],
+          includeDependencies: false
+        },
+        TEST_STATE
+      );
+      const executedGraph = builder.build();
+      const actionNames = executedGraph.actions.map(n => n.name);
+      expect(actionNames).includes("op_a");
+      expect(actionNames).includes("op_b");
+      expect(actionNames).not.includes("op_c");
+      expect(actionNames).not.includes("op_d");
+      expect(actionNames).includes("tab_a");
+    });
   });
 
   describe("sql_generating", () => {
@@ -572,10 +647,6 @@ describe("@dataform/api", () => {
                 message: "Actions may only specify 'disabled: true' if they create a dataset."
               }),
               dataform.CompilationError.create({
-                fileName: "definitions/has_compile_errors/op_with_output_multiple_statements.sqlx",
-                message: "Operations with 'hasOutput: true' must contain exactly one SQL statement."
-              }),
-              dataform.CompilationError.create({
                 fileName: "definitions/has_compile_errors/protected_assertion.sqlx",
                 message:
                   "Actions may only specify 'protected: true' if they are of type 'incremental'."
@@ -695,6 +766,17 @@ describe("@dataform/api", () => {
           "select 1 as sample union all\nselect 2 as sample union all\nselect 3 as sample"
         );
         expect(exampleSampleData.dependencies).to.eql([]);
+        expect(exampleSampleData.actionDescriptor).to.eql(
+          dataform.ActionDescriptor.create({
+            description: "This is some sample data.",
+            columns: [
+              dataform.ColumnDescriptor.create({
+                description: "Sample integers.",
+                path: ["sample"]
+              })
+            ]
+          })
+        );
 
         // Check schema overrides defined in "config {}"
         const exampleUsingOverriddenSchema = graph.tables.find(
@@ -720,12 +802,20 @@ describe("@dataform/api", () => {
         );
         expect(exampleAssertion.dependencies).to.eql(["sample_data"]);
         expect(exampleAssertion.tags).to.eql([]);
+        expect(exampleAssertion.actionDescriptor).to.eql(
+          dataform.ActionDescriptor.create({
+            description: "An example assertion looking for incorrect 'sample' values."
+          })
+        );
 
         // Check Assertion with tags
         const exampleAssertionWithTags = graph.assertions.find(
           t => t.name === "example_assertion_with_tags"
         );
         expect(exampleAssertionWithTags).to.not.be.undefined;
+        expect(exampleAssertionWithTags.target.schema).equals(
+          schemaWithSuffix("df_integration_test_assertions")
+        );
         expect(exampleAssertionWithTags.tags).to.eql(["tag1", "tag2"]);
 
         // Check example operations file
@@ -759,6 +849,17 @@ describe("@dataform/api", () => {
           )}.example_operation_with_output\` AS (SELECT 1 AS TEST)`
         ]);
         expect(exampleOperationWithOutput.dependencies).to.eql([]);
+        expect(exampleOperationWithOutput.actionDescriptor).to.eql(
+          dataform.ActionDescriptor.create({
+            description: "An example operations file which outputs a dataset.",
+            columns: [
+              dataform.ColumnDescriptor.create({
+                description: "Just 1!",
+                path: ["TEST"]
+              })
+            ]
+          })
+        );
 
         // Check Operation with tags
         const exampleOperationsWithTags = graph.operations.find(
