@@ -12,7 +12,6 @@ assert("sample_data_assertion")
                   "example_operations_with_tags",
                   "example_table",
                   "example_table_with_tags",
-                  "example_test_case",
                   "example_using_inline",
                   "example_view"]);
                   
