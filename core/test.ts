@@ -42,14 +42,21 @@ export class Test {
   public compile() {
     const testContext = new TestContext(this);
     if (!this.datasetToTest) {
-      this.session.compileError(new Error("Tests must operate upon a specified dataset."));
+      this.session.compileError(
+        new Error("Tests must operate upon a specified dataset."),
+        this.proto.fileName
+      );
     } else {
       const dataset = this.session.tables[this.datasetToTest];
       if (!dataset) {
-        this.session.compileError(new Error(`Dataset ${this.datasetToTest} could not be found.`));
+        this.session.compileError(
+          new Error(`Dataset ${this.datasetToTest} could not be found.`),
+          this.proto.fileName
+        );
       } else if (dataset.proto.type === "incremental") {
         this.session.compileError(
-          new Error("Running tests on incremental datasets is not yet supported.")
+          new Error("Running tests on incremental datasets is not yet supported."),
+          this.proto.fileName
         );
       } else {
         const refReplacingContext = new RefReplacingContext(testContext);

@@ -95,7 +95,8 @@ export class Operation {
       this.session.compileError(
         new Error(
           "Actions of type 'operations' may only describe columns if they specify 'hasOutput: true'."
-        )
+        ),
+        this.proto.fileName
       );
     }
 
