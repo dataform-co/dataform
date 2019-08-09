@@ -221,6 +221,9 @@ export class Session {
     if (err) {
       this.compileError(new Error(err));
     }
+    if (!fQName) {
+      return null;
+    }
     const table = this.tables[fQName];
     const operation =
       !!this.operations[fQName] && this.operations[fQName].hasOutput && this.operations[fQName];
