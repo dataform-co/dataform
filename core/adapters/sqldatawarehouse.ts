@@ -22,7 +22,7 @@ export class SQLDataWarehouseAdapter extends Adapter implements IAdapter {
     }
     if (table.type === "incremental") {
       if (runConfig.fullRefresh || !tableMetadata || tableMetadata.type === "view") {
-        tasks.addAll(this.createOrReplace(table));
+        tasks.addAll(this.createOrReplace(table, !!tableMetadata));
       } else {
         // The table exists, insert new rows.
         tasks.add(
@@ -36,7 +36,7 @@ export class SQLDataWarehouseAdapter extends Adapter implements IAdapter {
         );
       }
     } else {
-      tasks.addAll(this.createOrReplace(table));
+      tasks.addAll(this.createOrReplace(table, !!tableMetadata));
     }
     return tasks;
   }
@@ -71,16 +71,14 @@ export class SQLDataWarehouseAdapter extends Adapter implements IAdapter {
     )}','U') is not null drop table ${this.resolveTarget(target)}`;
   }
 
-  private createOrReplace(table: dataform.ITable) {
+  private createOrReplace(table: dataform.ITable, alreadyExists: boolean) {
     if (table.type === "view") {
-      return (
-        Tasks.create()
-          // Drop the view in case we are changing the number of column(s) (or their types).
-          .add(Task.statement(this.dropIfExists(table.target, this.baseTableType(table.type))))
-          .add(
-            Task.statement(`create view ${this.resolveTarget(table.target)}
-             as ${table.query}`)
-          )
+      return Tasks.create().add(
+        Task.statement(
+          `${alreadyExists ? "alter" : "create"} view ${this.resolveTarget(table.target)} as ${
+            table.query
+          }`
+        )
       );
     }
     const tempTableTarget = dataform.Target.create({
