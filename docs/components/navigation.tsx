@@ -19,6 +19,7 @@ import * as guideTests from "df/docs/pages/guides/tests.mdx";
 // Framework warehouses.
 import * as guideBigQuery from "df/docs/pages/guides/warehouses/bigquery.mdx";
 import * as guideRedshift from "df/docs/pages/guides/warehouses/redshift.mdx";
+import * as guideSqlDataWarehouse from "df/docs/pages/guides/warehouses/sqldatawarehouse.mdx";
 
 // Platform.
 import * as platformPublishTables from "df/docs/pages/platform_guides/publish_tables.mdx";
@@ -56,7 +57,9 @@ export default class Navigation extends React.Component<IProps> {
             guideCLI
           ].map(page => this.menuItem(page.meta))}
           <div className={styles.subtitle}>Warehouse integrations</div>
-          {[guideBigQuery, guideRedshift].map(page => this.menuItem(page.meta))}
+          {[guideBigQuery, guideRedshift, guideSqlDataWarehouse].map(page =>
+            this.menuItem(page.meta)
+          )}
         </Menu>
         <h4>Web</h4>
         <Menu className={styles.menu}>
