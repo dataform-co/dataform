@@ -26,22 +26,6 @@ export class Test {
   }
 
   public dataset(ref: Resolvable) {
-    /*var datasetToTest = null;
-    var err = null;
-    switch (typeof ref) {
-      case "string": {
-        [datasetToTest, err] = utils.matchFQName(ref, this.session.getAllFQNames());
-        if (!!err) this.session.compileError(new Error(err));
-        break;
-      }
-      case "object": {
-        const schemaWithSuffix = (schema: string) =>
-          this.session.config.schemaSuffix
-            ? `${schema}_${this.session.config.schemaSuffix}`
-            : schema;
-        datasetToTest = schemaWithSuffix(ref.schema) + "." + ref.name;
-      }
-    }*/
     this.datasetToTest = ref;
     return this;
   }

@@ -355,10 +355,7 @@ export class Session {
     const allActionNames = allActions.map(action => action.name);
 
     allActions.forEach(action => {
-      const uniqueDependencies: { [dependency: string]: boolean } = {};
-      const dependencies = action.dependencies || [];
-      dependencies.forEach(dependency => (uniqueDependencies[dependency] = true));
-      action.dependencies = Object.keys(uniqueDependencies);
+      action.dependencies = action.dependencies = [...new Set(action.dependencies || [])];
     });
 
     return compiledGraph;
