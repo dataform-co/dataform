@@ -3,6 +3,6 @@ export function currentTimestampUTC(warehouse?: string): string {
     bigquery: "current_timestamp()",
     redshift: "current_timestamp::timestamp",
     snowflake: "convert_timezone('UTC', current_timestamp())::timestamp",
-    sqlserver: "CURRENT_TIMESTAMP"
+    sqldatawarehouse: "CURRENT_TIMESTAMP"
   } as { [key: string]: string })[warehouse || (global as any).session.config.warehouse];
 }
