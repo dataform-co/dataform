@@ -5,7 +5,7 @@ import * as fs from "fs";
 
 export const CREDENTIALS_FILENAME = ".df-credentials.json";
 
-export type Credentials = dataform.IBigQuery | dataform.IJDBC | dataform.ISnowflake;
+export type Credentials = dataform.IBigQuery | dataform.IJDBC | dataform.ISnowflake | dataform.ISQLDataWarehouse;
 
 export function read(warehouse: string, credentialsPath: string): Credentials {
   if (!fs.existsSync(credentialsPath)) {
@@ -40,6 +40,14 @@ export function coerce(warehouse: string, credentials: any): Credentials {
         dataform.Snowflake.create,
         requiredWarehouseProps[warehouse]
       );
+    }
+    case WarehouseType.SQLDATAWAREHOUSE: {
+      return validateAnyAsCredentials(
+        credentials,
+        dataform.SQLDataWarehouse.verify,
+        dataform.SQLDataWarehouse.create,
+        requiredWarehouseProps[warehouse]
+      )
     }
     default:
       throw new Error(`Unrecognized warehouse: ${warehouse}`);
