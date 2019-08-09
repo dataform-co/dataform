@@ -3,20 +3,14 @@ import { Props as MethodProps } from "./components/method";
 export const methods: { [name: string]: MethodProps } = {
   ref: {
     name: "ref()",
-    signatures: ["ref(name)", 'ref({schema: "schema", name: "name"})'],
+    signatures: ["ref(tableName)"],
     description:
       "Returns the full, query-able name of the referenced dataset, and adds the dataset to dependencies.",
     fields: [
       {
-        name: "name",
+        name: "tableName",
         type: "string",
-        description:
-          "The name of the dataset to reference. If schema is not provided, the default project configuration schema is used (or the config schema if available)."
-      },
-      {
-        name: "schema",
-        type: "string",
-        description: "The schema name of the dataset to reference."
+        description: "The name of the dataset to reference"
       }
     ]
   },
@@ -28,7 +22,7 @@ export const methods: { [name: string]: MethodProps } = {
   dependencies: {
     name: "dependencies()",
     description:
-      "Specifies one or more datasets, operations or assertions that this action depends on.",
+      'Specifies one or more datasets, operations or assertions that this action depends on. Supports wildcard matches with `"*"`.',
     signatures: ["dependencies(deps)"],
     fields: [
       {

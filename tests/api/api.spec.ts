@@ -866,7 +866,7 @@ describe("@dataform/api", () => {
           o => o.name === schemaWithSuffix("df_integration_test") + ".example_operations"
         );
         expect(exampleOperations).to.not.be.undefined;
-        expect(exampleOperations.target).is.null;
+        expect(exampleOperations.hasOutput).is.false;
         expect(exampleOperations.queries).to.eql([
           "\n\nCREATE OR REPLACE VIEW someschema.someview AS (SELECT 1 AS test)\n",
           `\nDROP VIEW IF EXISTS \`tada-analytics.${schemaWithSuffix(

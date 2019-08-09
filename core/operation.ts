@@ -1,7 +1,7 @@
 import {
   IColumnsDescriptor,
   mapToColumnProtoArray,
-  IResolvable,
+  Resolvable,
   Session
 } from "@dataform/core/session";
 import { dataform } from "@dataform/protos";
@@ -129,18 +129,23 @@ export class OperationContext {
     return this.operation.proto.name;
   }
 
-  public ref(reference: string | IResolvable) {
-    const name =
-      typeof reference === "string" || typeof reference === "undefined"
-        ? reference
-        : (reference as IResolvable).schema + "." + (reference as IResolvable).name;
-
+  public ref(ref: Resolvable) {
+    const name = typeof ref === "object" ? ref.schema + "." + ref.name : ref;
     this.operation.dependencies(name);
-    return this.resolve(reference);
+    return this.resolve(ref);
   }
 
-  public resolve(reference: string | IResolvable) {
-    return this.operation.session.resolve(reference);
+  public resolve(ref: Resolvable) {
+    if (this.hasOutput) {
+      return this.operation.session.resolve(ref);
+    } else {
+      this.operation.session.compileError(
+        new Error(
+          "Actions of type 'operations' may only be resolved or referred if they specify 'hasOutput: true'."
+        ),
+        this.operation.proto.fileName
+      );
+    }
   }
 
   public dependencies(name: string | string[]) {

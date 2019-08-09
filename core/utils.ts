@@ -1,5 +1,6 @@
 import { dataform } from "@dataform/protos";
 import { DistStyleTypes, ignoredProps, SortStyleTypes, TableTypes } from "./table";
+import { Resolvable } from "./session";
 
 export function relativePath(path: string, base: string) {
   if (base.length == 0) {
@@ -274,7 +275,8 @@ export function flatten<T>(nestedArray: T[][]) {
   }, []);
 }
 
-export function matchFQName(act: string, allActFQNames: any[]): [string, string] {
+export function matchFQName(ref: Resolvable, allActFQNames: any[]): [string, string] {
+  const act = typeof ref === "string" ? ref : ref.schema + "." + ref.name;
   switch (act.split(".").length) {
     case 2: {
       if (allActFQNames.includes(act)) {

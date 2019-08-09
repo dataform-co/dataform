@@ -412,6 +412,7 @@ describe("@dataform/core", () => {
       const errors = graphErrors.compilationErrors.map(item => item.message);
       expect(errors).includes("Action name is not specified");
       expect(graphErrors.compilationErrors.length === 1);
+      graphErrors.validationErrors.forEach(v => console.log("[core.spec.ts 415] v=" + v.message));
       expect(graphErrors)
         .to.have.property("validationErrors")
         .to.be.an("array").that.is.empty;
