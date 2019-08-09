@@ -141,10 +141,10 @@ export class Table {
   public dependencies(value: string | string[]) {
     const newDependencies = typeof value === "string" ? [value] : value;
     newDependencies.forEach(d => {
-      const [fQd, err] = utils.matchFQName(d, this.session.getAllFQNames());
-      if (!!err && err.includes("Ambiguous")) {
+      const [fQd, _] = utils.matchFQName(d, this.session.getAllFQNames());
+      /*if (!!err && err.includes("Ambiguous")) {
         this.session.compileError(new Error(err));
-      }
+      }*/
       const table = this.session.tables[fQd];
       if (!!table && table.proto.type === "inline") {
         table.proto.dependencies.forEach(childDep => this.addDependency(childDep));
@@ -205,6 +205,13 @@ export class Table {
     });
     this.contextablePostOps = [];
 
+    //Check dependencies are not ambiguous
+    this.proto.dependencies.forEach(dep => {
+      const [fQDep, err] = utils.matchFQName(dep, this.session.getAllFQNames());
+      if (!!err && err.match(/Ambiguous/)) {
+        this.session.compileError(new Error(err));
+      }
+    });
     return this.proto;
   }
 
