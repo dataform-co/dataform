@@ -108,7 +108,8 @@ export function validate(compiledGraph: dataform.ICompiledGraph): dataform.IGrap
   const allActions = [].concat(
     compiledGraph.tables,
     compiledGraph.assertions,
-    compiledGraph.operations
+    compiledGraph.operations,
+    compiledGraph.declarations
   );
   const allActionNames = allActions.map(action => action.name);
 

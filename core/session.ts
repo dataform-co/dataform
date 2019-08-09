@@ -321,8 +321,8 @@ export class Session {
     const { name } = fullyQualifiedDataset;
     this.checkActionNameIsUnused(name);
     const declaration = new Declaration();
-    declaration.proto.name = name;
     declaration.proto.target = fullyQualifiedDataset;
+    declaration.proto.name = name;
     declaration.proto.fileName = utils.getCallerFile(this.rootDir);
     // Add it to global index.
     this.declarations[name] = declaration;
@@ -374,14 +374,14 @@ export class Session {
 
     // Expand action dependency wildcards.
 
-    const allActions: IActionProto[] = [].concat(
+    const actionsWithDependencies: IActionProto[] = [].concat(
       compiledGraph.tables,
       compiledGraph.assertions,
       compiledGraph.operations
     );
-    const allActionNames = allActions.map(action => action.name);
+    const allActionNames = actionsWithDependencies.map(action => action.name);
 
-    allActions.forEach(action => {
+    actionsWithDependencies.forEach(action => {
       const uniqueDependencies: { [dependency: string]: boolean } = {};
       const dependencies = action.dependencies || [];
       // Add non-wildcard deps normally.

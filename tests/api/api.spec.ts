@@ -848,7 +848,7 @@ describe("@dataform/api", () => {
             "df_integration_test"
           )}.example_operation_with_output\` AS (SELECT * FROM \`tada-analytics.some_external_schema_name.very_important_external_table\`)`
         ]);
-        expect(exampleOperationWithOutput.dependencies).to.eql([]);
+        expect(exampleOperationWithOutput.dependencies).to.eql(["very_important_external_table"]);
         expect(exampleOperationWithOutput.actionDescriptor).to.eql(
           dataform.ActionDescriptor.create({
             description: "An example operations file which outputs a dataset.",
