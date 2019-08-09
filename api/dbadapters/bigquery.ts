@@ -154,9 +154,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
       return rowsResult[0];
     }
     return this.execute(
-      `SELECT * FROM \`${metadata.tableReference.projectId}.${metadata.tableReference.datasetId}.${
-        metadata.tableReference.tableId
-      }\` LIMIT ${limitRows}`
+      `SELECT * FROM \`${metadata.tableReference.projectId}.${metadata.tableReference.datasetId}.${metadata.tableReference.tableId}\` LIMIT ${limitRows}`
     );
   }
 
@@ -175,9 +173,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
 
     if (metadata.location.toUpperCase() !== location.toUpperCase()) {
       throw new Error(
-        `Cannot create dataset "${schema}" in location "${location}". It already exists in location "${
-          metadata.location
-        }". Change your default dataset location or delete the existing dataset.`
+        `Cannot create dataset "${schema}" in location "${location}". It already exists in location "${metadata.location}". Change your default dataset location or delete the existing dataset.`
       );
     }
   }

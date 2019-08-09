@@ -56,6 +56,10 @@ message RedshiftOptions {
   string sort_style = 4;
 }
 
+message SQLDataWarehouseOptions {
+  string distribution = 1;
+}
+
 message GraphErrors {
   repeated CompilationError compilation_errors = 1;
   repeated ValidationError validation_errors = 2;
@@ -110,6 +114,7 @@ message Table {
   // Warehouse specific features.
   RedshiftOptions redshift = 21;
   BigQueryOptions bigquery = 22;
+  SQLDataWarehouseOptions sql_data_warehouse = 25;
 
   // Generated.
   string file_name = 18;

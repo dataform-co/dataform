@@ -30,3 +30,11 @@ message BigQuery {
 
   reserved 2;
 }
+
+message SQLDataWarehouse {
+  string server = 1;
+  int32 port = 2;
+  string username = 3;
+  string password = 4;
+  string database = 5;
+}

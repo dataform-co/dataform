@@ -2,8 +2,7 @@ import { dataform } from "@dataform/protos";
 
 export abstract class Adapter {
   public where(query: string, where: string) {
-    return `select * from (
-        ${query})
+    return `select * from (${query}) as subquery
         where ${where}`;
   }
 
@@ -23,7 +22,7 @@ export abstract class Adapter {
       insert into ${this.resolveTarget(target)}
       (${columns.join(",")})
       select ${columns.join(",")}
-      from (${query})`;
+      from (${query}) as insertions`;
   }
 
   public dropIfExists(target: dataform.ITarget, type: string) {
