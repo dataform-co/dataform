@@ -170,6 +170,14 @@ export class Session {
     if (actionOptions.sqlxConfig.redshift && !this.isDatasetType(actionOptions.sqlxConfig.type)) {
       this.compileError("Actions may only specify 'redshift: { ... }' if they create a dataset.");
     }
+    if (
+      actionOptions.sqlxConfig.sqldatawarehouse &&
+      !this.isDatasetType(actionOptions.sqlxConfig.type)
+    ) {
+      this.compileError(
+        "Actions may only specify 'sqldatawarehouse: { ... }' if they create a dataset."
+      );
+    }
     if (actionOptions.sqlxConfig.bigquery && !this.isDatasetType(actionOptions.sqlxConfig.type)) {
       this.compileError("Actions may only specify 'bigquery: { ... }' if they create a dataset.");
     }

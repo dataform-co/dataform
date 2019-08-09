@@ -2,6 +2,7 @@ import { Credentials } from "@dataform/api/commands/credentials";
 import { BigQueryDbAdapter } from "@dataform/api/dbadapters/bigquery";
 import { RedshiftDbAdapter } from "@dataform/api/dbadapters/redshift";
 import { SnowflakeDbAdapter } from "@dataform/api/dbadapters/snowflake";
+import { SQLDataWarehouseDBAdapter } from "@dataform/api/dbadapters/sqldatawarehouse";
 import { dataform } from "@dataform/protos";
 
 export type OnCancel = (handleCancel: () => void) => void;
@@ -37,3 +38,4 @@ register("bigquery", BigQueryDbAdapter);
 register("postgres", RedshiftDbAdapter);
 register("redshift", RedshiftDbAdapter);
 register("snowflake", SnowflakeDbAdapter);
+register("sqldatawarehouse", SQLDataWarehouseDBAdapter);

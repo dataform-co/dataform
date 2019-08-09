@@ -309,9 +309,9 @@ describe("@dataform/api", () => {
         cleanSql(
           `insert into \`schema.incremental\` (existing_field)
            select existing_field from (
-             select * from (select 1 as test)
+             select * from (select 1 as test) as subquery
              where true
-           )`
+           ) as insertions`
         )
       );
     });
