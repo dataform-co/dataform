@@ -66,10 +66,12 @@ function mapColumnDescriptionToProto(
   );
 }
 
-export interface IResolvable {
-  schema: string;
-  name: string;
-}
+export type Resolvable =
+  | string
+  | {
+      schema: string;
+      name: string;
+    };
 
 export class Session {
   public rootDir: string;
@@ -197,8 +199,6 @@ export class Session {
           : this.config.defaultSchema);
       action.proto.target = this.target(actionOptions.sqlxConfig.name, finalSchema);
       action.proto.name = action.proto.target.schema + "." + action.proto.target.name;
-    } else {
-      delete action.proto.target;
     }
     return action;
   }
@@ -216,20 +216,14 @@ export class Session {
     });
   }
 
-  public resolve(reference: string | IResolvable): string {
-    let [fQName, err] = [null, null];
-    if (typeof reference === "string") {
-      [fQName, err] = utils.matchFQName(reference, this.getAllFQNames());
-      if (err) {
-        this.compileError(new Error(err));
-      }
-    } else {
-      fQName = (reference as IResolvable).schema + "." + (reference as IResolvable).name;
+  public resolve(ref: Resolvable): string {
+    const [fQName, err] = utils.matchFQName(ref, this.getAllFQNames());
+    if (err) {
+      this.compileError(new Error(err));
     }
     const table = this.tables[fQName];
     const operation =
       !!this.operations[fQName] && this.operations[fQName].hasOutput && this.operations[fQName];
-
     if (table && table.proto.type === "inline") {
       // TODO: Pretty sure this is broken as the proto.query value may not
       // be set yet as it happens during compilation. We should evalute the query here.

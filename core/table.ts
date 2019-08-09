@@ -1,6 +1,6 @@
 import {
   IColumnsDescriptor,
-  IResolvable,
+  Resolvable,
   mapToColumnProtoArray,
   Session
 } from "@dataform/core/session";
@@ -253,22 +253,19 @@ export class TableContext implements ITableContext {
     return this.table.proto.name;
   }
 
-  public ref(reference: string | IResolvable) {
-    const name =
-      typeof reference === "string" || typeof reference === "undefined"
-        ? reference
-        : (reference as IResolvable).schema + "." + (reference as IResolvable).name;
+  public ref(ref: Resolvable) {
+    const name = typeof ref === "object" ? ref.schema + "." + ref.name : ref;
     if (!name) {
       const message = `Action name is not specified`;
       this.table.session.compileError(new Error(message));
       return "";
     }
     this.table.dependencies(name);
-    return this.resolve(reference);
+    return this.resolve(ref);
   }
 
-  public resolve(reference: string | IResolvable) {
-    return this.table.session.resolve(reference);
+  public resolve(ref: Resolvable) {
+    return this.table.session.resolve(ref);
   }
 
   public type(type: TableType) {
