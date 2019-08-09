@@ -15,7 +15,7 @@ export class Test {
   public session: Session;
   public contextableInputs: { [refName: string]: TContextable<string> } = {};
 
-  private datasetToTest: string;
+  private datasetToTest: Resolvable;
   private contextableQuery: TContextable<string>;
 
   public config(config: TConfig) {
@@ -26,7 +26,7 @@ export class Test {
   }
 
   public dataset(ref: Resolvable) {
-    var datasetToTest = null;
+    /*var datasetToTest = null;
     var err = null;
     switch (typeof ref) {
       case "string": {
@@ -41,8 +41,8 @@ export class Test {
             : schema;
         datasetToTest = schemaWithSuffix(ref.schema) + "." + ref.name;
       }
-    }
-    this.datasetToTest = datasetToTest;
+    }*/
+    this.datasetToTest = ref;
     return this;
   }
 
@@ -64,7 +64,15 @@ export class Test {
         this.proto.fileName
       );
     } else {
-      const dataset = this.session.tables[this.datasetToTest];
+      const [datasetToTest, err] = utils.matchFQName(
+        this.datasetToTest,
+        this.session.getAllFQNames(),
+        this.session.config.schemaSuffix
+      );
+      if (err) {
+        this.session.compileError(new Error(err));
+      }
+      const dataset = this.session.tables[datasetToTest];
       if (!dataset) {
         this.session.compileError(
           new Error(`Dataset ${this.datasetToTest} could not be found.`),

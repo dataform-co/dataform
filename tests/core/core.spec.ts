@@ -546,14 +546,18 @@ describe("@dataform/core", () => {
       const graph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
         projectConfig: { warehouse: "redshift" },
         tables: [
-          { name: "a", target: { schema: "schema", name: "a" }, dependencies: ["b"] },
-          { name: "b", target: { schema: "schema", name: "b" }, dependencies: ["z"] },
-          { name: "a", target: { schema: "schema", name: "a" }, dependencies: [] },
-          { name: "c", target: { schema: "schema", name: "c" }, dependencies: ["d"] },
-          { name: "d", target: { schema: "schema", name: "d" }, dependencies: ["c"] }
+          { name: "schema.a", target: { schema: "schema", name: "a" }, dependencies: ["b"] },
+          { name: "schema.b", target: { schema: "schema", name: "b" }, dependencies: ["z"] },
+          { name: "schema.a", target: { schema: "schema", name: "a" }, dependencies: [] },
+          { name: "schema.c", target: { schema: "schema", name: "c" }, dependencies: ["d"] },
+          { name: "schema.d", target: { schema: "schema", name: "d" }, dependencies: ["c"] }
         ]
       });
       const gErrors = utils.validate(graph);
+
+      expect(gErrors)
+      .to.have.property("compilationErrors")
+      .to.be.an("array").that.is.empty;
 
       expect(gErrors)
         .to.have.property("validationErrors")

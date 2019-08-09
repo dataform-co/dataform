@@ -18,26 +18,26 @@ describe("@dataform/api", () => {
       projectConfig: { warehouse: "redshift" },
       tables: [
         {
-          name: "a",
+          name: "schema.a",
           target: {
             schema: "schema",
             name: "a"
           },
           query: "query",
-          dependencies: ["b"]
+          dependencies: ["schema.b"]
         },
         {
-          name: "b",
+          name: "schema.b",
           target: {
             schema: "schema",
             name: "b"
           },
           query: "query",
-          dependencies: ["c"],
+          dependencies: ["schema.c"],
           disabled: true
         },
         {
-          name: "c",
+          name: "schema.c",
           target: {
             schema: "schema",
             name: "c"
@@ -52,34 +52,34 @@ describe("@dataform/api", () => {
     it("include_deps", () => {
       const builder = new Builder(
         TEST_GRAPH,
-        { actions: ["a"], includeDependencies: true },
+        { actions: ["schema.a"], includeDependencies: true },
         TEST_STATE
       );
       const executionGraph = builder.build();
       const includedActionNames = executionGraph.actions.map(n => n.name);
-      expect(includedActionNames).includes("a");
-      expect(includedActionNames).includes("b");
+      expect(includedActionNames).includes("schema.a");
+      expect(includedActionNames).includes("schema.b");
     });
 
     it("exclude_deps", () => {
       const builder = new Builder(
         TEST_GRAPH,
-        { actions: ["a"], includeDependencies: false },
+        { actions: ["schema.a"], includeDependencies: false },
         TEST_STATE
       );
       const executionGraph = builder.build();
       const includedActionNames = executionGraph.actions.map(n => n.name);
-      expect(includedActionNames).includes("a");
-      expect(includedActionNames).not.includes("b");
+      expect(includedActionNames).includes("schema.a");
+      expect(includedActionNames).not.includes("schema.b");
     });
 
     it("exclude_disabled", () => {
       const builder = new Builder(TEST_GRAPH, { includeDependencies: true }, TEST_STATE);
       const executionGraph = builder.build();
 
-      const actionA = executionGraph.actions.find(n => n.name === "a");
-      const actionB = executionGraph.actions.find(n => n.name === "b");
-      const actionC = executionGraph.actions.find(n => n.name === "c");
+      const actionA = executionGraph.actions.find(n => n.name === "schema.a");
+      const actionB = executionGraph.actions.find(n => n.name === "schema.b");
+      const actionC = executionGraph.actions.find(n => n.name === "schema.c");
 
       assert.exists(actionA);
       assert.exists(actionB);

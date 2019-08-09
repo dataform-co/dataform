@@ -159,9 +159,9 @@ export function validate(compiledGraph: dataform.ICompiledGraph): dataform.IGrap
     }
     const depsFQ = [];
     (action.dependencies || []).forEach(d => {
-      const [cleanDep, err] = matchFQName(d, allActionNames);
+      const [fQd, err] = matchFQName(d, allActionNames);
       if (!err) {
-        depsFQ.push(cleanDep);
+        depsFQ.push(fQd);
       }
     });
     return (depsFQ || []).some(d => {
@@ -275,8 +275,14 @@ export function flatten<T>(nestedArray: T[][]) {
   }, []);
 }
 
-export function matchFQName(ref: Resolvable, allActFQNames: any[]): [string, string] {
-  const act = typeof ref === "string" ? ref : ref.schema + "." + ref.name;
+export function matchFQName(
+  ref: Resolvable,
+  allActFQNames: any[],
+  schemaSuffix?: string
+): [string, string] {
+  const schemaWithSuffix = (schema: string) =>
+    schemaSuffix ? `${schema}_${schemaSuffix}` : schema;
+  const act = typeof ref === "string" ? ref : schemaWithSuffix(ref.schema) + "." + ref.name;
   switch (act.split(".").length) {
     case 2: {
       if (allActFQNames.includes(act)) {
