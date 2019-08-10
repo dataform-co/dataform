@@ -159,6 +159,14 @@ export class Session {
     if (actionOptions.sqlxConfig.redshift && !this.isDatasetType(actionOptions.sqlxConfig.type)) {
       this.compileError("Actions may only specify 'redshift: { ... }' if they create a dataset.");
     }
+    if (
+      actionOptions.sqlxConfig.sqldatawarehouse &&
+      !this.isDatasetType(actionOptions.sqlxConfig.type)
+    ) {
+      this.compileError(
+        "Actions may only specify 'sqldatawarehouse: { ... }' if they create a dataset."
+      );
+    }
     if (actionOptions.sqlxConfig.bigquery && !this.isDatasetType(actionOptions.sqlxConfig.type)) {
       this.compileError("Actions may only specify 'bigquery: { ... }' if they create a dataset.");
     }
@@ -190,16 +198,13 @@ export class Session {
     if (action instanceof test.Test) {
       return action;
     }
-
-    if (!(action instanceof Operation) || action.proto.hasOutput) {
-      const finalSchema =
-        actionOptions.sqlxConfig.schema ||
-        (actionOptions.sqlxConfig.type === "assertion"
-          ? this.config.assertionSchema
-          : this.config.defaultSchema);
-      action.proto.target = this.target(actionOptions.sqlxConfig.name, finalSchema);
-      action.proto.name = action.proto.target.schema + "." + action.proto.target.name;
-    }
+    const finalSchema =
+      actionOptions.sqlxConfig.schema ||
+      (actionOptions.sqlxConfig.type === "assertion"
+        ? this.config.assertionSchema
+        : this.config.defaultSchema);
+    action.proto.target = this.target(actionOptions.sqlxConfig.name, finalSchema);
+    action.proto.name = action.proto.target.schema + "." + action.proto.target.name;
     return action;
   }
 

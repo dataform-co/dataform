@@ -2,6 +2,8 @@ import { dataform } from "@dataform/protos";
 import { DistStyleTypes, ignoredProps, SortStyleTypes, TableTypes } from "./table";
 import { Resolvable } from "./session";
 
+const SQL_DATA_WAREHOUSE_DIST_HASH_REGEXP = new RegExp("HASH\\s*\\(\\s*\\w*\\s*\\)\\s*");
+
 export function relativePath(path: string, base: string) {
   if (base.length == 0) {
     return path;
@@ -195,6 +197,20 @@ export function validate(compiledGraph: dataform.ICompiledGraph): dataform.IGrap
     if (action.type === TableTypes.INCREMENTAL && (!action.where || action.where.length === 0)) {
       const message = `"where" property is not defined. With the type “incremental” you must also specify the property “where”!`;
       validationErrors.push(dataform.ValidationError.create({ message, actionName }));
+    }
+
+    // sqldatawarehouse config
+    if (action.sqlDataWarehouse && action.sqlDataWarehouse.distribution) {
+      const distribution = action.sqlDataWarehouse.distribution.toUpperCase();
+
+      if (
+        distribution !== "REPLICATE" &&
+        distribution !== "ROUND_ROBIN" &&
+        !SQL_DATA_WAREHOUSE_DIST_HASH_REGEXP.test(distribution)
+      ) {
+        const message = `Invalid value for sqldatawarehouse distribution: "${distribution}"`;
+        validationErrors.push(dataform.ValidationError.create({ message, actionName }));
+      }
     }
 
     // redshift config

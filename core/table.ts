@@ -29,6 +29,7 @@ export const ignoredProps: {
   [TableTypes.INLINE]: [
     "bigquery",
     "redshift",
+    "sqlDataWarehouse",
     "preOps",
     "postOps",
     "actionDescriptor",
@@ -51,6 +52,7 @@ export interface TConfig {
   protected?: boolean;
   redshift?: dataform.IRedshiftOptions;
   bigquery?: dataform.IBigQueryOptions;
+  sqldatawarehouse?: dataform.ISQLDataWarehouseOptions;
 }
 
 export class Table {
@@ -84,6 +86,9 @@ export class Table {
     }
     if (config.bigquery) {
       this.bigquery(config.bigquery);
+    }
+    if (config.sqldatawarehouse) {
+      this.sqldatawarehouse(config.sqldatawarehouse);
     }
     if (config.tags) {
       this.tags(config.tags);
@@ -125,6 +130,11 @@ export class Table {
 
   public disabled() {
     this.proto.disabled = true;
+    return this;
+  }
+
+  public sqldatawarehouse(sqlDataWarehouse: dataform.ISQLDataWarehouseOptions) {
+    this.proto.sqlDataWarehouse = dataform.SQLDataWarehouseOptions.create(sqlDataWarehouse);
     return this;
   }
 
