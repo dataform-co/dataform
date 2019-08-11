@@ -69,6 +69,18 @@ describe("@dataform/core", () => {
       expect(t2.preOps).deep.equals(["pre_op"]);
       expect(t2.postOps).deep.equals(["post_op"]);
       expect(t2.dependencies).includes("schema1.example");
+
+      const t3 = session
+        .publish("my_table", {
+          type: "table",
+          schema: "test_schema"
+        })
+        .query(_ => "SELECT 1 as one")
+        .compile();
+      expect(t3.name).equals("test_schema.my_table");
+      expect((t3.target.name = "my_table"));
+      expect((t3.target.schema = "test_schema"));
+      expect(t3.type).equals("table");
     });
 
     it("config_context", () => {
@@ -556,8 +568,8 @@ describe("@dataform/core", () => {
       const gErrors = utils.validate(graph);
 
       expect(gErrors)
-      .to.have.property("compilationErrors")
-      .to.be.an("array").that.is.empty;
+        .to.have.property("compilationErrors")
+        .to.be.an("array").that.is.empty;
 
       expect(gErrors)
         .to.have.property("validationErrors")
