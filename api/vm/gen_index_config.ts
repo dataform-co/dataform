@@ -6,14 +6,14 @@ export function createGenIndexConfig(
   compileConfig: dataform.ICompileConfig,
   returnOverride?: string
 ): string {
-  const includePaths = [];
+  const includePaths: string[] = [];
   glob.sync("includes/*.js", { cwd: compileConfig.projectDir }).forEach(path => {
     if (includePaths.indexOf(path) < 0) {
       includePaths.push(path);
     }
   });
 
-  const definitionPaths = [];
+  const definitionPaths: string[] = [];
   glob.sync("definitions/**/*.{js,sql,sqlx}", { cwd: compileConfig.projectDir }).forEach(path => {
     if (definitionPaths.indexOf(path) < 0) {
       definitionPaths.push(path);

@@ -10,40 +10,53 @@ export async function compile(
 ): Promise<dataform.CompiledGraph> {
   // Resolve the path in case it hasn't been resolved already.
   path.resolve(compileConfig.projectDir);
-  var dataformJsonParsed;
-  var compErrors = [];
+  var compErrors: dataform.CompilationError[] = [];
   try {
     // check dataformJson is valid before we try to compile
     const dataformJson = fs.readFileSync(`${compileConfig.projectDir}/dataform.json`, "utf8");
-    dataformJsonParsed = JSON.parse(dataformJson);
-    const mandatoryProps = ["warehouse", "defaultSchema"];
-    mandatoryProps.forEach(prop => {
-      if (!(prop in dataformJsonParsed)) {
-        compErrors = [
-          { message: "`dataform.json` does not have mandatory property defined: " + prop + "." }
-        ];
-      }
-    });
+    var dataformJsonParsed = JSON.parse(dataformJson);
   } catch (e) {
     throw new Error("Compile Error: `dataform.json` is invalid" + e);
   }
+  const mandatoryProps = ["warehouse", "defaultSchema"];
+  mandatoryProps.forEach(prop => {
+    if (!(prop in dataformJsonParsed)) {
+      const compileError = dataform.CompilationError.create();
+      compileError.message =
+        "`dataform.json` does not have mandatory property defined: " + prop + ".";
+      compErrors.push(compileError);
+    }
+  });
+  const validDWHs = ["bigquery", "postgres", "redshift", "sqldatawarehouse", "snowflake"];
+  if (!!dataformJsonParsed.warehouse && validDWHs.indexOf(dataformJsonParsed.warehouse) === -1) {
+    const compileError = dataform.CompilationError.create();
+    compileError.message =
+      "`dataform.json` has an invalid value on property warehouse: " +
+      dataformJsonParsed.warehouse +
+      ". Should be one of: " +
+      validDWHs;
+    compErrors.push(compileError);
+  }
 
-  //this.table.session.compileError(new Error(message));
-  const compileError = dataform.CompilationError.create();
-  compileError.message = "shit shit";
-  var compileErrors = new Array(dataform.CompilationError); //.push(compileError);
-  compileErrors = compileErrors.push(compileError);
-  console.log(".adadadad compErrors=" + compErrors);
-  console.log(".adadadad compErrors[0]=" + compErrors[0].message);
+  const gErrors: dataform.GraphErrors =
+    compErrors !== null
+      ? dataform.GraphErrors.create({ compilationErrors: compErrors })
+      : dataform.GraphErrors.create({ compilationErrors: [], validationErrors: [] });
 
   const returnedPath = await CompileChildProcess.forkProcess().compile(compileConfig);
   const contents = fs.readFileSync(returnedPath);
   let compiledGraph = dataform.CompiledGraph.decode(contents);
   fs.unlinkSync(returnedPath);
+  const compiledGraphErrors = validate(compiledGraph);
+  const joinedErrors = dataform.GraphErrors.create({
+    compilationErrors: gErrors.compilationErrors.concat(compiledGraphErrors.compilationErrors),
+    validationErrors: gErrors.validationErrors.concat(compiledGraphErrors.validationErrors)
+  });
+
   // Merge graph errors into the compiled graph.
   compiledGraph = dataform.CompiledGraph.create({
     ...compiledGraph,
-    graphErrors: compileErrors || validate(compiledGraph)
+    graphErrors: joinedErrors
   });
   return compiledGraph;
 }

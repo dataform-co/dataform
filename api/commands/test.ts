@@ -100,7 +100,7 @@ function normalizeColumnName(name: string) {
 }
 
 function normalizeRow(row: any) {
-  const newRow = {};
+  const newRow: { [col: string]: any } = {};
   Object.keys(row).forEach(colName => {
     newRow[normalizeColumnName(colName)] = row[colName];
   });

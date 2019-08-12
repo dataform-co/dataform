@@ -6,7 +6,7 @@
       "@dataform/*": ["*", "bazel-bin/*", "bazel-genfiles/*"]
     },
     "module": "commonjs",
-    "noImplicitAny": false,
+    "noImplicitAny": true,
     "preserveConstEnums": true,
     "removeComments": true,
     "target": "es6",
