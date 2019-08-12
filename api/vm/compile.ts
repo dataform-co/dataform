@@ -7,7 +7,7 @@ import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
 import { util } from "protobufjs";
-import { NodeVM } from "vm2";
+import { CompilerFunction, NodeVM } from "vm2";
 
 export interface ICompileIPCResult {
   path?: string;
@@ -40,7 +40,7 @@ export function compile(compileConfig: dataform.ICompileConfig): Uint8Array {
       return legacyGenIndex;
     }
   };
-  const findCompiler = (): ((code, path) => string) => {
+  const findCompiler = (): CompilerFunction => {
     try {
       return (
         indexGeneratorVm.run('return require("@dataform/core").compiler', vmIndexFileName) ||

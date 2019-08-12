@@ -19,7 +19,7 @@
     "@types/react": "^16.7.17",
     "@types/readline-sync": "^1.4.3",
     "@types/rimraf": "^2.0.2",
-    "@types/stack-trace": "0.0.29",
+    "@types/stack-trace": "^0.0.29",
     "@types/yargs": "^11.1.1",
     "@zeit/next-css": "^1.0.1",
     "@zeit/next-mdx": "^1.2.0",
@@ -76,7 +76,7 @@
     "uglify-es": "^3.3.9",
     "uglify-js": "^3.4.9",
     "umd-compat-loader": "^2.1.1",
-    "untildify": "^3.0.3",
+    "untildify": "^4.0.0",
     "vm2": "^3.8.1",
     "webpack": "4.20.2",
     "yargs": "^12.0.1"

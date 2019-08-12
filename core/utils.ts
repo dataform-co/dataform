@@ -86,10 +86,8 @@ export function graphHasErrors(graph: dataform.ICompiledGraph) {
   );
 }
 
-function getPredefinedTypes(types): string {
-  return Object.keys(types)
-    .map(key => `"${types[key]}"`)
-    .join(" | ");
+function joinQuoted(values: string[]) {
+  return values.map((value: string) => `"${value}"`).join(" | ");
 }
 
 function objectExistsOrIsNonEmpty(prop: any): boolean {
@@ -132,9 +130,8 @@ export function validate(compiledGraph: dataform.ICompiledGraph): dataform.IGrap
   // Check all dependencies actually exist and are not ambiguous.
   allActions.forEach(action => {
     const actionName = action.name;
-    (action.dependencies || []).forEach(dependency => {
+    (action.dependencies || []).forEach((dependency:string) => {
       const [matchedDep, err] = matchFQName(dependency, allActionNames);
-      console.log("[utils.ts 137] matchedDep=" + matchedDep + ", dependency=" + dependency + ", err=" + err);
       if (!!err && err.includes("Ambiguous")) {
         const message = `Ambiguous dependency detected: ` + err;
         validationErrors.push(dataform.ValidationError.create({ message, actionName }));
@@ -165,8 +162,8 @@ export function validate(compiledGraph: dataform.ICompiledGraph): dataform.IGrap
       validationErrors.push(dataform.ValidationError.create({ message, actionName }));
       return true;
     }
-    const depsFQ = [];
-    (action.dependencies || []).forEach(d => {
+    const depsFQ: string[] = [];
+    (action.dependencies || []).forEach((d: string) => {
       const [fQd, err] = matchFQName(d, allActionNames);
       if (!err) {
         depsFQ.push(fQd);
@@ -177,8 +174,8 @@ export function validate(compiledGraph: dataform.ICompiledGraph): dataform.IGrap
     });
   };
 
-  for (let i = 0; i < allActions.length; i++) {
-    if (checkCircular(allActions[i], [])) {
+  for (const action of allActions) {
+    if (checkCircular(action, [])) {
       break;
     }
   }
@@ -188,13 +185,8 @@ export function validate(compiledGraph: dataform.ICompiledGraph): dataform.IGrap
     const actionName = action.name;
 
     // type
-    if (
-      !!action.type &&
-      Object.keys(TableTypes)
-        .map(key => TableTypes[key])
-        .indexOf(action.type) === -1
-    ) {
-      const predefinedTypes = getPredefinedTypes(TableTypes);
+    if (!!action.type && !Object.values(TableTypes).includes(action.type)) {
+      const predefinedTypes = joinQuoted(Object.values(TableTypes));
       const message = `Wrong type of table detected. Should only use predefined types: ${predefinedTypes}`;
       validationErrors.push(dataform.ValidationError.create({ message, actionName }));
     }
@@ -223,51 +215,49 @@ export function validate(compiledGraph: dataform.ICompiledGraph): dataform.IGrap
     if (!!action.redshift) {
       if (
         Object.keys(action.redshift).length === 0 ||
-        Object.keys(action.redshift).every(
-          key => !action.redshift[key] || !action.redshift[key].length
-        )
+        Object.values(action.redshift).every((value: string) => !value.length)
       ) {
         const message = `Missing properties in redshift config`;
         validationErrors.push(dataform.ValidationError.create({ message, actionName }));
       }
-      const redshiftConfig = [];
+
+      const validatePropertyDefined = (
+        opts: dataform.IRedshiftOptions,
+        prop: keyof dataform.IRedshiftOptions
+      ) => {
+        if (!opts[prop] || !opts[prop].length) {
+          const message = `Property "${prop}" is not defined`;
+          validationErrors.push(dataform.ValidationError.create({ message, actionName }));
+        }
+      };
+      const validatePropertiesDefined = (
+        opts: dataform.IRedshiftOptions,
+        props: Array<keyof dataform.IRedshiftOptions>
+      ) => props.forEach(prop => validatePropertyDefined(opts, prop));
+      const validatePropertyValueInValues = (
+        opts: dataform.IRedshiftOptions,
+        prop: keyof dataform.IRedshiftOptions & ("distStyle" | "sortStyle"),
+        values: string[]
+      ) => {
+        if (!!opts[prop] && !values.includes(opts[prop])) {
+          const message = `Wrong value of "${prop}" property. Should only use predefined values: ${joinQuoted(
+            values
+          )}`;
+          validationErrors.push(dataform.ValidationError.create({ message, actionName }));
+        }
+      };
 
       if (action.redshift.distStyle || action.redshift.distKey) {
-        const props = { distStyle: action.redshift.distStyle, distKey: action.redshift.distKey };
-        const types = { distStyle: DistStyleTypes };
-        redshiftConfig.push({ props, types });
+        validatePropertiesDefined(action.redshift, ["distStyle", "distKey"]);
+        validatePropertyValueInValues(action.redshift, "distStyle", Object.values(DistStyleTypes));
       }
       if (
         action.redshift.sortStyle ||
         (action.redshift.sortKeys && action.redshift.sortKeys.length)
       ) {
-        const props = { sortStyle: action.redshift.sortStyle, sortKeys: action.redshift.sortKeys };
-        const types = { sortStyle: SortStyleTypes };
-        redshiftConfig.push({ props, types });
+        validatePropertiesDefined(action.redshift, ["sortStyle", "sortKeys"]);
+        validatePropertyValueInValues(action.redshift, "sortStyle", Object.values(SortStyleTypes));
       }
-
-      redshiftConfig.forEach(item => {
-        Object.keys(item.props).forEach(key => {
-          if (!item.props[key] || !item.props[key].length) {
-            const message = `Property "${key}" is not defined`;
-            validationErrors.push(dataform.ValidationError.create({ message, actionName }));
-          }
-        });
-
-        Object.keys(item.types).forEach(type => {
-          const currentEnum = item.types[type];
-          if (
-            !!item.props[type] &&
-            Object.keys(currentEnum)
-              .map(key => currentEnum[key])
-              .indexOf(item.props[type]) === -1
-          ) {
-            const predefinedValues = getPredefinedTypes(currentEnum);
-            const message = `Wrong value of "${type}" property. Should only use predefined values: ${predefinedValues}`;
-            validationErrors.push(dataform.ValidationError.create({ message, actionName }));
-          }
-        });
-      });
     }
 
     // ignored properties in tables
@@ -319,7 +309,7 @@ export function matchFQName(
         actFQ,
         actFQ.includes(".") ? actFQ.split(".")[1] : actFQ
       ]);
-      const matches = [];
+      const matches: string[] = [];
       allActShortNamesMap
         .filter(actShort => actShort[1] === act)
         .forEach(actShort => matches.push(actShort[0]));

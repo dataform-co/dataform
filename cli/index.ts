@@ -123,7 +123,7 @@ const warehouseOption: INamedOption<yargs.PositionalOptions> = {
   name: "warehouse",
   option: {
     describe: "The project's data warehouse type.",
-    choices: Object.keys(WarehouseType).map(warehouseType => WarehouseType[warehouseType])
+    choices: Object.values(WarehouseType)
   }
 };
 
@@ -302,7 +302,7 @@ const builtYargs = createYargsCli({
         await compileAndPrint();
 
         if (argv.watch) {
-          let timeoutID = null;
+          let timeoutID: NodeJS.Timer = null;
           let isCompiling = false;
 
           // Initialize watcher.
@@ -468,7 +468,11 @@ const builtYargs = createYargsCli({
         print("Running...\n");
         const runner = run(executionGraph, readCredentials);
         process.on("SIGINT", () => {
-          if (!supportsCancel(WarehouseType[compiledGraph.projectConfig.warehouse])) {
+          if (
+            !supportsCancel(
+              WarehouseType[compiledGraph.projectConfig.warehouse as keyof typeof WarehouseType]
+            )
+          ) {
             process.exit();
           }
           runner.cancel();
@@ -528,7 +532,7 @@ const builtYargs = createYargsCli({
   .strict()
   .wrap(null)
   .recommendCommands()
-  .fail((msg, err) => {
+  .fail((msg: string, err: Error) => {
     const message = err ? err.message.split("\n")[0] : msg;
     printError(`Dataform encountered an error: ${message}`);
     process.exit(1);

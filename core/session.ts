@@ -223,11 +223,8 @@ export class Session {
 
   public resolve(ref: Resolvable): string {
     const [fQName, err] = utils.matchFQName(ref, this.getAllFQNames());
-    if (err) {
-      //this.compileError(new Error(err));
-      return;
-    }
-
+    if (err) return;
+  
     const table = this.tables[fQName];
     const operation =
       !!this.operations[fQName] && this.operations[fQName].hasOutput && this.operations[fQName];
@@ -368,7 +365,7 @@ export class Session {
     return compiledGraph;
   }
 
-  public isDatasetType(type) {
+  public isDatasetType(type: string) {
     return type === "view" || type === "table" || type === "inline" || type === "incremental";
   }
 
