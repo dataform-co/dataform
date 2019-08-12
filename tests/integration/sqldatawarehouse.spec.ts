@@ -62,8 +62,10 @@ describe("@dataform/integration/sqldatawarehouse", () => {
     const actionMap = keyBy(executedGraph.actions, v => v.name);
 
     // Check the status of the two assertions.
-    expect(actionMap.example_assertion_fail.status).equals(dataform.ActionExecutionStatus.FAILED);
-    expect(actionMap.example_assertion_pass.status).equals(
+    expect(actionMap["df_integration_test.example_assertion_fail"].status).equals(
+      dataform.ActionExecutionStatus.FAILED
+    );
+    expect(actionMap["df_integration_test.example_assertion_pass"].status).equals(
       dataform.ActionExecutionStatus.SUCCESSFUL
     );
 
@@ -71,9 +73,9 @@ describe("@dataform/integration/sqldatawarehouse", () => {
     expect(actionMap["df_integration_test.example_assertion_uniqueness_fail"].status).equals(
       dataform.ActionExecutionStatus.FAILED
     );
-    expect(actionMap["df_integration_test.example_assertion_uniqueness_fail"].tasks[2].error).to.eql(
-      "Assertion failed: query returned 1 row(s)."
-    );
+    expect(
+      actionMap["df_integration_test.example_assertion_uniqueness_fail"].tasks[2].error
+    ).to.eql("Assertion failed: query returned 1 row(s).");
     expect(actionMap["df_integration_test.example_assertion_uniqueness_pass"].status).equals(
       dataform.ActionExecutionStatus.SUCCESSFUL
     );
