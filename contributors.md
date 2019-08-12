@@ -14,7 +14,8 @@ To check the project builds succesfully, run the following command:
 ```bash
 bazel build ...
 ```
-_Note: If you are running Bazel on a **Mac**, `bazel build...` may fail with a `Too many open files in system` error. This is [due to a  limitation](https://github.com/bazelbuild/rules_closure/issues/218) on the default maximum open file descriptors. For OS Sierra you can increase this limit with this  command: `sudo sysctl -w kern.maxfiles=16384`._
+
+_Note: If you are running Bazel on a **Mac**, `bazel build...` may fail with a `Too many open files in system` error. This is [due to a limitation](https://github.com/angular/angular-bazel-example/issues/178) on the default maximum open file descriptors. On OS X Sierra or newer the limit can be increased with `sudo sysctl -w kern.maxfiles=20480`._
 
 ### Test
 
