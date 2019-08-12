@@ -1,0 +1,3 @@
+config { type: "assertion" }
+
+select * from ${ref("sample_data")}

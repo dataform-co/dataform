@@ -1,5 +1,2 @@
 # Ignore everything in here, except the build file and the gitignore file.
-*
-!BUILD
-!.gitignore
-!.enc
+*.json

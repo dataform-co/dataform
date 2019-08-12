@@ -17,7 +17,7 @@ npm i -g @dataform/cli
 
 ## Create a new project
 
-To create a new `bigquery`, `postgres`, `redshift`, or `snowflake` project in the `new_project` directory, run the respective command:
+To create a new `bigquery`, `postgres`, `redshift`, `snowflake`, or `sqldatawarehouse` project in the `new_project` directory, run the respective command:
 
 ```bash
 dataform init bigquery new_project --gcloud-project-id<your-google-cloud-project-id>
@@ -27,6 +27,8 @@ dataform init postgres new_project
 dataform init redshift new_project
 - or -
 dataform init snowflake new_project
+- or -
+dataform init sqldatawarehouse new_project
 ```
 
 ### Project structure
@@ -88,6 +90,8 @@ dataform init-creds postgres
 dataform init-creds redshift
 - or -
 dataform init-creds snowflake
+- or -
+dataform init-creds sqldatawarehouse
 ```
 
 A `.df-credentials.json` file will be written to disk containing your provided details.
@@ -139,6 +143,7 @@ Running...
 
 Dataset created:  dataform.example [view]
 ```
+
 ## Get help
 
 In addition to this guide, you can run the `help` command to get a short description of any Dataform command or option. For example, you can type:
@@ -146,6 +151,7 @@ In addition to this guide, you can run the `help` command to get a short descrip
 ```bash
 dataform help
 ```
+
 This will list all of the available commands and options:
 
 ```bash

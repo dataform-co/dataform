@@ -104,3 +104,32 @@ mocha_node_test(
         "@npm//mocha",
     ],
 )
+
+ts_library(
+    name = "sqldatawarehouse_lib",
+    srcs = glob(["sqldatawarehouse.spec.ts"]),
+    deps = [
+        ":utils",
+        "//api",
+        "//core",
+        "//protos",
+        "//tests/utils",
+        "@npm//@types/chai",
+        "@npm//@types/mocha",
+        "@npm//@types/node",
+    ],
+)
+
+mocha_node_test(
+    name = "sqldatawarehouse",
+    srcs = [
+        ":sqldatawarehouse_lib",
+    ],
+    data = [
+        "//test_credentials",
+        "//tests/integration/sqldatawarehouse_project:files",
+        "//tests/integration/sqldatawarehouse_project:node_modules",
+        "@npm//chai",
+        "@npm//mocha",
+    ],
+)
