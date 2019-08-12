@@ -14,6 +14,7 @@ export interface OConfig {
   description?: string;
   columns?: IColumnsDescriptor;
   hasOutput?: boolean;
+  schema?: string;
 }
 
 export class Operation {
@@ -40,6 +41,9 @@ export class Operation {
     }
     if (config.columns) {
       this.columns(config.columns);
+    }
+    if (config.schema) {
+      this.schema(config.schema);
     }
     return this;
   }
@@ -88,6 +92,19 @@ export class Operation {
     }
     this.proto.actionDescriptor.columns = mapToColumnProtoArray(columns);
     return this;
+  }
+
+  public schema(schema: string) {
+    const name = schema + "." + this.proto.target.name;
+    if (
+      !(this.session.tables[name] || this.session.operations[name] || this.session.assertions[name])
+    ) {
+      this.proto.target.schema = schema;
+      this.proto.name = name;
+    } else {
+      const message = `Duplicate action name detected. Names within a schema must be unique across tables, assertions, and operations: "${name}"`;
+      this.session.compileError(new Error(message));
+    }
   }
 
   public compile() {

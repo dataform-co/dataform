@@ -7,6 +7,7 @@ export interface AConfig {
   dependencies?: string | string[];
   tags?: string[];
   description?: string;
+  schema?: string;
 }
 
 export class Assertion {
@@ -27,6 +28,9 @@ export class Assertion {
     }
     if (config.description) {
       this.description(config.description);
+    }
+    if (config.schema) {
+      this.schema(config.schema);
     }
     return this;
   }
@@ -59,6 +63,19 @@ export class Assertion {
   public description(description: string) {
     this.proto.actionDescriptor = { description };
     return this;
+  }
+
+  public schema(schema: string) {
+    const name = schema + "." + this.proto.target.name;
+    if (
+      !(this.session.tables[name] || this.session.operations[name] || this.session.assertions[name])
+    ) {
+      this.proto.target.schema = schema;
+      this.proto.name = name;
+    } else {
+      const message = `Duplicate action name detected. Names within a schema must be unique across tables, assertions, and operations: "${name}"`;
+      this.session.compileError(new Error(message));
+    }
   }
 
   public compile() {

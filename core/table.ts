@@ -191,9 +191,15 @@ export class Table {
   }
 
   public schema(schema: string) {
-    this.proto.target.schema = schema;
-    if (this.proto.name.includes(".")) {
-      this.proto.name = schema + "." + this.proto.name.split(".")[1];
+    const name = schema + "." + this.proto.target.name;
+    if (
+      !(this.session.tables[name] || this.session.operations[name] || this.session.assertions[name])
+    ) {
+      this.proto.target.schema = schema;
+      this.proto.name = name;
+    } else {
+      const message = `Duplicate action name detected. Names within a schema must be unique across tables, assertions, and operations: "${name}"`;
+      this.session.compileError(new Error(message));
     }
   }
 
