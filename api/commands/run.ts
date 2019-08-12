@@ -61,7 +61,7 @@ export class Runner {
     this.executionTask = new Promise(async (resolve, reject) => {
       try {
         // Work out all the schemas we are going to need to create first.
-        const uniqueSchemas = {};
+        const uniqueSchemas: { [schema: string]: boolean } = {};
         this.graph.actions
           .filter(action => !!action.target)
           .map(action => action.target.schema)

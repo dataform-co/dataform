@@ -71,7 +71,7 @@ export interface ISqlxParseResults {
 }
 
 export function parseSqlx(code: string): ISqlxParseResults {
-  const results = {
+  const results: ISqlxParseResults = {
     config: "",
     js: "",
     sql: [""],
@@ -182,8 +182,8 @@ class SqlxParseState {
   }
 }
 
-function buildSqlxLexer() {
-  const sqlLexer = {};
+function buildSqlxLexer(): { [x: string]: moo.Rules } {
+  const sqlLexer: moo.Rules = {};
   sqlLexer[SQL_LEXER_TOKEN_NAMES.START_CONFIG] = {
     match: "config {",
     push: LEXER_STATE_NAMES.JS_BLOCK,
@@ -244,7 +244,7 @@ function buildSqlxLexer() {
     lineBreaks: true
   };
 
-  const jsBlockLexer = {};
+  const jsBlockLexer: moo.Rules = {};
   jsBlockLexer[JS_BLOCK_LEXER_TOKEN_NAMES.SINGLE_LINE_COMMENT] = /\/\/.*?$/;
   jsBlockLexer[JS_BLOCK_LEXER_TOKEN_NAMES.MULTI_LINE_COMMENT] = /\/\*[\s\S]*?\*\//;
   jsBlockLexer[JS_BLOCK_LEXER_TOKEN_NAMES.SINGLE_QUOTE_STRING] = /'(?:\\['\\]|[^\n'\\])*'/;
@@ -263,7 +263,7 @@ function buildSqlxLexer() {
     lineBreaks: true
   };
 
-  const jsTemplateStringLexer = {};
+  const jsTemplateStringLexer: moo.Rules = {};
   jsTemplateStringLexer[JS_TEMPLATE_STRING_LEXER_TOKEN_NAMES.ESCAPED_BACKSLASH] = /\\\\/;
   jsTemplateStringLexer[JS_TEMPLATE_STRING_LEXER_TOKEN_NAMES.ESCAPED_BACKTICK] = /\\`/;
   jsTemplateStringLexer[JS_TEMPLATE_STRING_LEXER_TOKEN_NAMES.ESCAPED_DOLLAR_BRACE] = /\\\${`/;
@@ -277,7 +277,7 @@ function buildSqlxLexer() {
     lineBreaks: true
   };
 
-  const innerSqlBlockLexer = {};
+  const innerSqlBlockLexer: moo.Rules = {};
   innerSqlBlockLexer[INNER_SQL_BLOCK_LEXER_TOKEN_NAMES.STATEMENT_SEPERATOR] = {
     match: /[^\S\r\n]*---[^\S\r\n]*$/,
     value: () => ""
@@ -311,7 +311,7 @@ function buildSqlxLexer() {
     lineBreaks: true
   };
 
-  const lexerStates = {};
+  const lexerStates: { [x: string]: moo.Rules } = {};
   lexerStates[LEXER_STATE_NAMES.SQL] = sqlLexer;
   lexerStates[LEXER_STATE_NAMES.JS_BLOCK] = jsBlockLexer;
   lexerStates[LEXER_STATE_NAMES.JS_TEMPLATE_STRING] = jsTemplateStringLexer;
