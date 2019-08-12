@@ -483,13 +483,14 @@ describe("@dataform/core", () => {
       const session = new Session(path.dirname(__filename), TEST_CONFIG);
       session.publish("a", ctx => `select * from ${ctx.ref("b")}`);
       const cGraph = session.compile();
-      const expectedResults = [{ message: /Action name: b could not be found/ }];
-      expectedResults.forEach(result => {
-        const error = cGraph.graphErrors.compilationErrors.find(item =>
-          result.message.test(item.message)
-        );
-        expect(error).to.exist;
-      });
+      const gErrors = utils.validate(cGraph);
+      expect(gErrors)
+      .to.have.property("validationErrors")
+      .to.be.an("array").that.is.not.empty;
+      const err = gErrors.validationErrors.find(e => e.actionName === "schema.a");
+      expect(err)	
+        .to.have.property("message")	
+        .that.matches(/Missing dependency/);
     });
 
     it("duplicate_action_names", () => {

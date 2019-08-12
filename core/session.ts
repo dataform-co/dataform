@@ -224,11 +224,10 @@ export class Session {
   public resolve(ref: Resolvable): string {
     const [fQName, err] = utils.matchFQName(ref, this.getAllFQNames());
     if (err) {
-      this.compileError(new Error(err));
+      //this.compileError(new Error(err));
+      return;
     }
-    if (!fQName) {
-      return null;
-    }
+
     const table = this.tables[fQName];
     const operation =
       !!this.operations[fQName] && this.operations[fQName].hasOutput && this.operations[fQName];

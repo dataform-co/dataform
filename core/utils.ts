@@ -134,8 +134,14 @@ export function validate(compiledGraph: dataform.ICompiledGraph): dataform.IGrap
     const actionName = action.name;
     (action.dependencies || []).forEach(dependency => {
       const [matchedDep, err] = matchFQName(dependency, allActionNames);
+      console.log("[utils.ts 137] matchedDep=" + matchedDep + ", dependency=" + dependency + ", err=" + err);
       if (!!err && err.includes("Ambiguous")) {
         const message = `Ambiguous dependency detected: ` + err;
+        validationErrors.push(dataform.ValidationError.create({ message, actionName }));
+      } if (!!err && err.includes("could not be found")) {
+        const message = `Missing dependency detected: Node "${
+          action.name
+        }" depends on "${dependency}" which does not exist.`;
         validationErrors.push(dataform.ValidationError.create({ message, actionName }));
       } else if (allActionNames.indexOf(matchedDep) < 0) {
         const message = `Missing dependency detected: Node "${
