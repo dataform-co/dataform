@@ -49,6 +49,8 @@ mocha_node_test(
         "//examples/redshift_operations:node_modules",
         "//examples/snowflake:files",
         "//examples/snowflake:node_modules",
+        "//examples/dataform_json_with_errors/invalid_datawarehouse:files",
+        "//examples/dataform_json_with_errors/invalid_datawarehouse:node_modules",
         "@npm//chai",
         "@npm//mocha",
     ],

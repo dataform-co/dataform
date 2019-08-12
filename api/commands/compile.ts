@@ -10,14 +10,31 @@ export async function compile(
 ): Promise<dataform.CompiledGraph> {
   // Resolve the path in case it hasn't been resolved already.
   path.resolve(compileConfig.projectDir);
-
+  var dataformJsonParsed;
+  var compErrors = [];
   try {
     // check dataformJson is valid before we try to compile
     const dataformJson = fs.readFileSync(`${compileConfig.projectDir}/dataform.json`, "utf8");
-    JSON.parse(dataformJson);
+    dataformJsonParsed = JSON.parse(dataformJson);
+    const mandatoryProps = ["warehouse", "defaultSchema"];
+    mandatoryProps.forEach(prop => {
+      if (!(prop in dataformJsonParsed)) {
+        compErrors = [
+          { message: "`dataform.json` does not have mandatory property defined: " + prop + "." }
+        ];
+      }
+    });
   } catch (e) {
-    throw new Error("Compile Error: `dataform.json` is invalid");
+    throw new Error("Compile Error: `dataform.json` is invalid" + e);
   }
+
+  //this.table.session.compileError(new Error(message));
+  const compileError = dataform.CompilationError.create();
+  compileError.message = "shit shit";
+  var compileErrors = new Array(dataform.CompilationError); //.push(compileError);
+  compileErrors = compileErrors.push(compileError);
+  console.log(".adadadad compErrors=" + compErrors);
+  console.log(".adadadad compErrors[0]=" + compErrors[0].message);
 
   const returnedPath = await CompileChildProcess.forkProcess().compile(compileConfig);
   const contents = fs.readFileSync(returnedPath);
@@ -26,7 +43,7 @@ export async function compile(
   // Merge graph errors into the compiled graph.
   compiledGraph = dataform.CompiledGraph.create({
     ...compiledGraph,
-    graphErrors: validate(compiledGraph)
+    graphErrors: compileErrors || validate(compiledGraph)
   });
   return compiledGraph;
 }

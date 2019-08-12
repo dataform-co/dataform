@@ -1093,6 +1093,16 @@ describe("@dataform/api", () => {
         expect(e.message).to.equal("Compilation timed out");
       }
     });
+
+    it("dataform.json contains errors", async () => {
+      const graph = await compile({
+        projectDir: path.resolve("df/examples/dataform_json_with_errors/invalid_datawarehouse")
+      });
+      const gErrors = utils.validate(graph);
+      expect(gErrors)
+        .to.have.property("compilationErrors")
+        .to.be.an("array").that.is.not.empty;
+    });
   });
 
   describe("query", () => {

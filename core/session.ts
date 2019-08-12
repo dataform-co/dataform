@@ -170,6 +170,20 @@ export class Session {
       this.compileError("Actions may only include post_operations if they create a dataset.");
     }
 
+    if (
+      ["bigquery", "postgres", "redshift", "sqldatawarehouse", "snowflake"].indexOf(
+        this.config.warehouse
+      ) === -1
+    ) {
+      this.compileError("Unrecognized warehouse type " + this.config.warehouse || "");
+    }
+    if (!this.config.defaultSchema) {
+      this.compileError("Unrecognized defaultSchema type " + this.config.defaultSchema || "");
+    }
+    if (!this.config.defaultSchema) {
+      this.compileError("Unrecognized defaultSchema type " + this.config.defaultSchema || "");
+    }
+
     const action = (() => {
       switch (actionOptions.sqlxConfig.type) {
         case "view":
