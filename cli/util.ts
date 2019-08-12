@@ -1,9 +1,9 @@
 import { dataform } from "@dataform/protos";
 import * as fs from "fs";
 import * as path from "path";
-import * as untildify from "untildify";
+import untildify = require("untildify");
 
-export const actuallyResolve = filePath => path.resolve(untildify(filePath));
+export const actuallyResolve = (filePath: string) => path.resolve(untildify(filePath));
 
 export function assertPathExists(checkPath: string) {
   if (!fs.existsSync(checkPath)) {

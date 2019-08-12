@@ -8,6 +8,7 @@ ts_library(
     deps = [
         "@npm//@types/mocha",
         "@npm//@types/node",
+        "@npm//@types/rimraf",
         "@npm//rimraf",
     ],
 )

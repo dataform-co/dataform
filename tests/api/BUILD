@@ -17,6 +17,7 @@ ts_library(
         "@npm//@types/long",
         "@npm//@types/mocha",
         "@npm//@types/node",
+        "@npm//@types/stack-trace",
         "@npm//rimraf",
         "@npm//stack-trace",
         "@npm//ts-mockito",

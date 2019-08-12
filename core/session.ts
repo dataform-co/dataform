@@ -406,7 +406,7 @@ export class Session {
     return compiledGraph;
   }
 
-  public isDatasetType(type) {
+  public isDatasetType(type: string) {
     return type === "view" || type === "table" || type === "inline" || type === "incremental";
   }
 
