@@ -26,7 +26,7 @@ config { type: "inline"}
 select * from ${ref("source_table")}
 ```
 
-You can now reference the inline table from a normal table in the FROM clause in another file such as:
+You can now reference the inline table from a normal table in the `FROM` clause in another file such as:
 
 `definitions/table_using_FROM.sqlx`:
 
@@ -63,7 +63,7 @@ You can now reference the inline table from a normal table in the `WHERE` clause
 `definitions/table_using_WHERE.sqlx`:
 
 ```sql
-select * from ${ref("outer_table")} where user_id in ${ref("inline_table")}
+select * from ${ref("outer_table")} where user_id in ${ref("inline_table_ids")}
 ```
 
 The resulting compiled SQL should be:
