@@ -43,15 +43,6 @@ nodejs_binary(
 )
 
 nodejs_binary(
-    name = "tcm",
-    data = [
-        "@npm//typed-css-modules",
-    ],
-    entry_point = "@npm//:node_modules/typed-css-modules/lib/cli.js",
-    install_source_map_support = False,
-)
-
-nodejs_binary(
     name = "tslint",
     data = [
         "@npm//tslint",
