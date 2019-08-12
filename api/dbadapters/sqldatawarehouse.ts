@@ -38,7 +38,7 @@ export class SQLDataWarehouseDBAdapter implements IDbAdapter {
     });
   }
 
-  public async execute(statement: string, onCancel?: OnCancel) {
+  public async execute(statement: string, onCancel?: OnCancel): Promise<any[]> {
     const request = (await this.pool).request();
     if (onCancel) {
       onCancel(() => request.cancel());

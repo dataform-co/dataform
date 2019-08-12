@@ -1,5 +1,5 @@
-import * as cronParser from "cron-parser";
 import { dataform } from "@dataform/protos";
+import * as cronParser from "cron-parser";
 import * as fs from "fs";
 import * as path from "path";
 
@@ -36,7 +36,7 @@ export function validateSchedules(
   schedules: dataform.schedules.ISchedulesJSON,
   compiledGraph: dataform.ICompiledGraph
 ): string[] {
-  const errors = [];
+  const errors: string[] = [];
   const allActions = new Array<{ name?: string }>().concat(
     compiledGraph.tables,
     compiledGraph.assertions,
