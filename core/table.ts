@@ -103,6 +103,7 @@ export class Table {
     if (config.schema) {
       this.schema(config.schema);
     }
+    
     return this;
   }
 

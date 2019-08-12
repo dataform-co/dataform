@@ -68,13 +68,13 @@ describe("@dataform/integration/sqldatawarehouse", () => {
     );
 
     // Check the status of the two uniqueness assertions.
-    expect(actionMap.example_assertion_uniqueness_fail.status).equals(
+    expect(actionMap["df_integration_test.example_assertion_uniqueness_fail"].status).equals(
       dataform.ActionExecutionStatus.FAILED
     );
-    expect(actionMap.example_assertion_uniqueness_fail.tasks[2].error).to.eql(
+    expect(actionMap["df_integration_test.example_assertion_uniqueness_fail"].tasks[2].error).to.eql(
       "Assertion failed: query returned 1 row(s)."
     );
-    expect(actionMap.example_assertion_uniqueness_pass.status).equals(
+    expect(actionMap["df_integration_test.example_assertion_uniqueness_pass"].status).equals(
       dataform.ActionExecutionStatus.SUCCESSFUL
     );
 
