@@ -166,11 +166,16 @@ export function printExecutionGraph(executionGraph: dataform.IExecutionGraph, ve
     writeStdOut(prettyJsonStringify(executionGraph));
   } else {
     const actionsByType = {
-      table: [],
-      assertion: [],
-      operation: []
+      table: [] as dataform.IExecutionAction[],
+      assertion: [] as dataform.IExecutionAction[],
+      operation: [] as dataform.IExecutionAction[]
     };
     executionGraph.actions.forEach(action => {
+      if (
+        !(action.type === "table" || action.type === "assertion" || action.type === "operation")
+      ) {
+        throw new Error(`Unrecognized action type: ${action.type}`);
+      }
       actionsByType[action.type].push(action);
     });
     const datasetActions = actionsByType.table;
