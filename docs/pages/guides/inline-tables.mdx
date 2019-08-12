@@ -15,7 +15,9 @@ They are similar to subqueries, but by breaking up the original query into multi
 
 Like subqueries, inline tables can be nested inside places like `SELECT`, `FROM`, `WHERE` or inside another inline table or subquery.
 
-### Example: Using inline tables in the `FROM` clause on a large query
+### Example: Using inline tables in the `FROM` clause of a large query
+
+Create a new file in your project under the `definitions/` folder such as:
 
 `definitions/inline_table.sqlx`:
 
@@ -24,7 +26,7 @@ config { type: "inline"}
 select * from ${ref("source_table")}
 ```
 
-Can be used inside a normal table:
+You can now reference the inline table from a normal table in the FROM clause in another file such as:
 
 `definitions/table_using_FROM.sqlx`:
 
@@ -44,9 +46,11 @@ where true
 
 Since we are using `ref()`, any dependencies in the inline table should be passed along to the calling table, in this case `source_table`.
 
-### Example: Using inline tables in the `WHERE` clause on a large query
+### Example: Using inline tables in the `WHERE` clause of a large query
 
 We can create a new inline table to select a list of ids which will be used to filter out a calling table but this time we embed the inline table inside the `WHERE` clause.
+
+Create a new file in your project under the `definitions/` folder such as:
 
 `definitions/inline_table_ids.sqlx`:
 
@@ -54,11 +58,12 @@ We can create a new inline table to select a list of ids which will be used to f
 config { type: "inline"}
 select id from ${ref("source_table")}
 ```
+You can now reference the inline table from a normal table in the `WHERE` clause in another file such as:
 
 `definitions/table_using_WHERE.sqlx`:
 
 ```sql
-select * from ${ref("outer_table")} where user_id in (${ref("inline_table")})
+select * from ${ref("outer_table")} where user_id in ${ref("inline_table")}
 ```
 
 The resulting compiled SQL should be:
