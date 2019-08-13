@@ -62,7 +62,7 @@ export class Builder {
     // Determine which action should be included.
     let includedActionNames =
       this.runConfig.actions && this.runConfig.actions.length > 0
-        ? utils.matchPatterns(this.runConfig.actions, allActionNames)
+        ? matchActionNames(this.runConfig.actions, allActionNames)
         : allActionNames;
     let includedActions = allActions.filter(
       action => includedActionNames.indexOf(action.name) >= 0
@@ -100,7 +100,7 @@ export class Builder {
         includedActions.forEach(action => {
           const matchingActionNames =
             action.dependencies && action.dependencies.length > 0
-              ? utils.matchPatterns(action.dependencies, allActionNames)
+              ? matchActionNames(action.dependencies, allActionNames)
               : [];
           // Update included action names.
           matchingActionNames.forEach(actionName => {
@@ -173,4 +173,21 @@ export class Builder {
       tasks: this.adapter.assertTasks(assertion, this.compiledGraph.projectConfig).build()
     });
   }
+}
+
+function matchActionNames(requestedActionNames: string[], allActionNames: string[]) {
+  return allActionNames.filter(actionName => {
+    if (requestedActionNames.includes(actionName)) {
+      return true;
+    }
+    if (
+      actionName.includes(".") &&
+      requestedActionNames
+        .filter(requestedName => !requestedName.includes("."))
+        .some(requestedName => requestedName === actionName.split(".").slice(-1)[0])
+    ) {
+      return true;
+    }
+    return false;
+  });
 }
