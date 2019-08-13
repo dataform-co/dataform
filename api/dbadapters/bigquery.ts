@@ -151,7 +151,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
               })
         })
         .promise();
-      return rowsResult[0];
+      return cleanRows(rowsResult[0]);
     }
     return this.execute(
       `SELECT * FROM \`${metadata.tableReference.projectId}.${metadata.tableReference.datasetId}.${metadata.tableReference.tableId}\` LIMIT ${limitRows}`
