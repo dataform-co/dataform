@@ -90,7 +90,7 @@ export class SQLDataWarehouseDBAdapter implements IDbAdapter {
   }
 
   public async preview(target: dataform.ITarget, limitRows: number = 10): Promise<any[]> {
-    return this.execute(`SELECT * FROM "${target.schema}"."${target.name}" LIMIT ${limitRows}`);
+    return this.execute(`SELECT TOP ${limitRows} * FROM "${target.schema}"."${target.name}"`);
   }
 
   public async prepareSchema(schema: string): Promise<void> {
