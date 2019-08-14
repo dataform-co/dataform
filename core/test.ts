@@ -1,7 +1,6 @@
 import { Resolvable, Session } from "@dataform/core/session";
 import * as table from "@dataform/core/table";
 import { dataform } from "@dataform/protos";
-import * as utils from "@dataform/core/utils";
 
 export type TContextable<T> = T | ((ctx: TestContext) => T);
 
@@ -26,7 +25,11 @@ export class Test {
   }
 
   public dataset(ref: Resolvable) {
-    this.datasetToTest = ref;
+    const target =
+      typeof ref === "object"
+        ? this.session.target(ref.schema + "." + ref.name)
+        : this.session.target(ref);
+    this.datasetToTest = { schema: target.schema, name: target.name };
     return this;
   }
 

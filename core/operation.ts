@@ -137,8 +137,8 @@ export class OperationContext {
 
   public self(): string {
     return this.resolve({
-      schema: this.table.proto.target.schema,
-      name: this.table.proto.target.name
+      schema: this.operation.proto.target.schema,
+      name: this.operation.proto.target.name
     });
   }
 

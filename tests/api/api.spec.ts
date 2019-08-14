@@ -940,6 +940,14 @@ describe("@dataform/api", () => {
         expect(testCase.expectedOutputQuery.trim()).equals(
           "select 'hi' as faked union all\nselect 'ben' as faked union all\nselect 'sup?' as faked"
         );
+
+        const testCaseFQ = graph.tests.find(t => t.name === "example_test_case_fq_ref");
+        expect(testCaseFQ.testQuery.trim()).equals(
+          "select * from (\n    select 'hi' as faked union all\n    select 'ben' as faked union all\n    select 'sup?' as faked\n)\n\n-- here ${\"is\"} a `comment\n\n/* ${\"another\"} ` backtick ` containing ```comment */"
+        );
+        expect(testCaseFQ.expectedOutputQuery.trim()).equals(
+          "select 'hi' as faked union all\nselect 'ben' as faked union all\nselect 'sup?' as faked"
+        );
       });
     }
 
