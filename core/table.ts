@@ -279,7 +279,10 @@ export class TableContext implements ITableContext {
   }
 
   public self(): string {
-    return this.resolve(this.table.proto.name);
+    return this.resolve({
+      schema: this.table.proto.target.schema,
+      name: this.table.proto.target.name
+    });
   }
 
   public name(): string {

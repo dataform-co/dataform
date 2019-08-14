@@ -136,7 +136,10 @@ export class OperationContext {
   }
 
   public self(): string {
-    return this.resolve(this.operation.proto.name);
+    return this.resolve({
+      schema: this.table.proto.target.schema,
+      name: this.table.proto.target.name
+    });
   }
 
   public name(): string {

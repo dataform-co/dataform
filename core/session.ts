@@ -219,9 +219,13 @@ export class Session {
   public resolve(ref: Resolvable): string {
     const allResolved = this.findActions(ref);
     if (allResolved.length > 1) {
-      this.compileError(
-        new Error("TODO: nice error because this is not a specific enough Resolvable")
-      );
+      const msg =
+        "Ambiguous Action name: " +
+        ref +
+        ". Did you mean one of: [" +
+        allResolved.join(", ") +
+        "].";
+      this.compileError(new Error(msg));
     }
     const resolved = allResolved.length > 0 ? allResolved[0] : undefined;
 
@@ -240,6 +244,7 @@ export class Session {
     // In these projects, this session may not know about all actions (yet), and thus we need to fall back to assuming
     // that the target *will* exist in the future. Once we break backwards compatibility with .sql files, we should remove
     // the code that calls 'this.target(...)' below, and append a compile error if we can't find a dataset whose name is 'name'.
+
     const target = resolved
       ? resolved.proto.target
       : this.target(typeof ref === "string" ? ref : ref.name);
