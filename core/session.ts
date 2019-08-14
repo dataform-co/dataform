@@ -14,7 +14,6 @@ interface IActionProto {
 
 interface ISqlxConfig extends table.TConfig, AConfig, OConfig, test.TConfig {
   type: "view" | "table" | "inline" | "incremental" | "assertion" | "operations" | "test";
-  schema?: string;
   name: string;
 }
 
@@ -288,9 +287,8 @@ export class Session {
     const assertion = new Assertion();
     assertion.session = this;
     assertion.proto.target = this.target(name, this.config.assertionSchema);
-    const fQName = assertion.proto.target.schema + "." + assertion.proto.target.name;
     this.checkTargetIsUnused(assertion.proto.target);
-    assertion.proto.name = fQName;
+    assertion.proto.name = assertion.proto.target.schema + "." + assertion.proto.target.name;
     if (query) {
       assertion.query(query);
     }
@@ -326,12 +324,8 @@ export class Session {
   }
 
   public compileGraphChunk<T>(actions: Array<{ proto: IActionProto; compile(): T }>): T[] {
-    /*public compileGraphChunk<T>(part: {
-    [name: string]: { proto: IActionProto; compile(): T };
-  }): T[] {*/
     const compiledChunks: T[] = [];
 
-    //Object.keys(part).forEach(key => {
     actions.forEach(action => {
       try {
         const compiledChunk = action.compile();
@@ -398,14 +392,6 @@ export class Session {
       this.compileError(new Error(message));
     }
   }
-
-  /*private checkActionNameIsUnused(name: string) {
-    // Check for duplicate names
-    if (this.tables[name] || this.operations[name] || this.assertions[name]) {
-      const message = `Duplicate action name detected. Names within a schema must be unique across tables, assertions, and operations: "${name}"`;
-      this.compileError(new Error(message));
-    }
-  }*/
 
   private checkTestNameIsUnused(name: string) {
     // Check for duplicate names

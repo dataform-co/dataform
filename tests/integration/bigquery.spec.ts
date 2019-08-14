@@ -57,6 +57,7 @@ describe("@dataform/integration/bigquery", () => {
     let executedGraph = await dfapi.run(executionGraph, credentials).resultPromise();
 
     const actionMap = keyBy(executedGraph.actions, v => v.name);
+    //executedGraph.actions.forEach(act => console.log("[bigquery 61] act=" + act.name));
 
     // Check the status of the two assertions.
     expect(actionMap["df_integration_test_assertions.example_assertion_fail"].status).equals(
