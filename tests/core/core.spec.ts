@@ -43,6 +43,18 @@ describe("@dataform/core", () => {
       });
       expect(t.preOps).deep.equals(["pre_op"]);
       expect(t.postOps).deep.equals(["post_op"]);
+
+      const t2 = session
+        .publish("my_table", {
+          type: "table",
+          schema: "test_schema"
+        })
+        .query(_ => "SELECT 1 as one")
+        .compile();
+      expect(t2.name).equals("my_table");
+      expect((t2.target.name = "my_table"));
+      expect((t2.target.schema = "test_schema"));
+      expect(t2.type).equals("table");
     });
 
     it("config_context", () => {
