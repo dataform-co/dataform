@@ -9,6 +9,7 @@ export interface OConfig {
   description?: string;
   columns?: IColumnsDescriptor;
   hasOutput?: boolean;
+  schema?: string;
 }
 
 export class Operation {
@@ -35,6 +36,9 @@ export class Operation {
     }
     if (config.columns) {
       this.columns(config.columns);
+    }
+    if (config.schema) {
+      this.schema(config.schema);
     }
     return this;
   }
@@ -83,6 +87,10 @@ export class Operation {
     }
     this.proto.actionDescriptor.columns = mapToColumnProtoArray(columns);
     return this;
+  }
+
+  public schema(schema: string) {
+    this.proto.target = this.session.target(schema);
   }
 
   public compile() {
