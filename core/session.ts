@@ -14,7 +14,6 @@ interface IActionProto {
 
 interface ISqlxConfig extends table.TConfig, AConfig, OConfig, test.TConfig {
   type: "view" | "table" | "inline" | "incremental" | "assertion" | "operations" | "test";
-  schema?: string;
   name: string;
 }
 
