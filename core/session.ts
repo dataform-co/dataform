@@ -78,9 +78,7 @@ export class Session {
 
   public config: dataform.IProjectConfig;
 
-  public tables: { [name: string]: table.Table };
-  public operations: { [name: string]: Operation };
-  public assertions: { [name: string]: Assertion };
+  public actions: Array<table.Table | Operation | Assertion>;
   public tests: { [name: string]: test.Test };
 
   public graphErrors: dataform.IGraphErrors;
@@ -95,9 +93,7 @@ export class Session {
       defaultSchema: "dataform",
       assertionSchema: "dataform_assertions"
     };
-    this.tables = {};
-    this.operations = {};
-    this.assertions = {};
+    this.actions = [];
     this.tests = {};
     this.graphErrors = { compilationErrors: [] };
   }
@@ -222,24 +218,32 @@ export class Session {
   }
 
   public resolve(ref: Resolvable): string {
-    const [fQName, err] = utils.matchFQName(ref, this.getAllFQNames());
-    if (err) return;
-  
-    const table = this.tables[fQName];
-    const operation =
-      !!this.operations[fQName] && this.operations[fQName].hasOutput && this.operations[fQName];
-    if (table && table.proto.type === "inline") {
+    const allResolved = this.findActions(ref);
+    if (allResolved.length > 1) {
+      this.compileError(
+        new Error("TODO: nice error because this is not a specific enough Resolvable")
+      );
+    }
+    const resolved = allResolved.length > 0 ? allResolved[0] : undefined;
+
+    if (resolved && resolved instanceof table.Table && resolved.proto.type === "inline") {
       // TODO: Pretty sure this is broken as the proto.query value may not
       // be set yet as it happens during compilation. We should evalute the query here.
-      return `(${table.proto.query})`;
+      return `(${resolved.proto.query})`;
+    }
+    if (resolved && resolved instanceof Operation && !resolved.proto.hasOutput) {
+      this.compileError(
+        new Error("Actions cannot resolve operations which do not produce output.")
+      );
     }
 
-    const dataset = table || operation;
     // TODO: We fall back to using the plain 'name' here for backwards compatibility with projects that use .sql files.
     // In these projects, this session may not know about all actions (yet), and thus we need to fall back to assuming
     // that the target *will* exist in the future. Once we break backwards compatibility with .sql files, we should remove
     // the code that calls 'this.target(...)' below, and append a compile error if we can't find a dataset whose name is 'name'.
-    const target = dataset ? dataset.proto.target : this.target(name);
+    const target = resolved
+      ? resolved.proto.target
+      : this.target(typeof ref === "string" ? ref : ref.name);
     return this.adapter().resolveTarget(target);
   }
 
@@ -248,14 +252,13 @@ export class Session {
     operation.session = this;
     operation.proto.target = this.target(name);
     const fQName = operation.proto.target.schema + "." + operation.proto.target.name;
-    this.checkActionNameIsUnused(fQName);
+    this.checkTargetIsUnused(operation.proto.target);
     operation.proto.name = fQName;
     if (queries) {
       operation.queries(queries);
     }
     operation.proto.fileName = utils.getCallerFile(this.rootDir);
-    // Add it to global index.
-    this.operations[fQName] = operation;
+    this.actions.push(operation);
     return operation;
   }
 
@@ -267,7 +270,7 @@ export class Session {
     newTable.session = this;
     newTable.proto.target = this.target(name);
     const fQName = newTable.proto.target.schema + "." + newTable.proto.target.name;
-    this.checkActionNameIsUnused(fQName);
+    this.checkTargetIsUnused(newTable.proto.target);
     newTable.proto.name = fQName;
     if (!!queryOrConfig) {
       if (typeof queryOrConfig === "object") {
@@ -277,8 +280,7 @@ export class Session {
       }
     }
     newTable.proto.fileName = utils.getCallerFile(this.rootDir);
-    // Add it to global index.
-    this.tables[fQName] = newTable;
+    this.actions.push(newTable);
     return newTable;
   }
 
@@ -287,14 +289,13 @@ export class Session {
     assertion.session = this;
     assertion.proto.target = this.target(name, this.config.assertionSchema);
     const fQName = assertion.proto.target.schema + "." + assertion.proto.target.name;
-    this.checkActionNameIsUnused(fQName);
+    this.checkTargetIsUnused(assertion.proto.target);
     assertion.proto.name = fQName;
     if (query) {
       assertion.query(query);
     }
     assertion.proto.fileName = utils.getCallerFile(this.rootDir);
-    // Add it to global index.
-    this.assertions[fQName] = assertion;
+    this.actions.push(assertion);
     return assertion;
   }
 
@@ -324,17 +325,19 @@ export class Session {
     this.graphErrors.compilationErrors.push(compileError);
   }
 
-  public compileGraphChunk<T>(part: {
+  public compileGraphChunk<T>(actions: Array<{ proto: IActionProto; compile(): T }>): T[] {
+    /*public compileGraphChunk<T>(part: {
     [name: string]: { proto: IActionProto; compile(): T };
-  }): T[] {
+  }): T[] {*/
     const compiledChunks: T[] = [];
 
-    Object.keys(part).forEach(key => {
+    //Object.keys(part).forEach(key => {
+    actions.forEach(action => {
       try {
-        const compiledChunk = part[key].compile();
+        const compiledChunk = action.compile();
         compiledChunks.push(compiledChunk);
       } catch (e) {
-        this.compileError(e, part[key].proto.fileName);
+        this.compileError(e, action.proto.fileName);
       }
     });
 
@@ -344,10 +347,14 @@ export class Session {
   public compile(): dataform.ICompiledGraph {
     const compiledGraph = dataform.CompiledGraph.create({
       projectConfig: this.config,
-      tables: this.compileGraphChunk(this.tables),
-      operations: this.compileGraphChunk(this.operations),
-      assertions: this.compileGraphChunk(this.assertions),
-      tests: this.compileGraphChunk(this.tests),
+      tables: this.compileGraphChunk(this.actions.filter(action => action instanceof table.Table)),
+      operations: this.compileGraphChunk(
+        this.actions.filter(action => action instanceof Operation)
+      ),
+      assertions: this.compileGraphChunk(
+        this.actions.filter(action => action instanceof Assertion)
+      ),
+      tests: this.compileGraphChunk(Object.values(this.tests)),
       graphErrors: this.graphErrors
     });
 
@@ -369,21 +376,36 @@ export class Session {
     return type === "view" || type === "table" || type === "inline" || type === "incremental";
   }
 
-  public getAllFQNames() {
-    return [].concat(
-      Object.keys(this.tables),
-      Object.keys(this.assertions),
-      Object.keys(this.operations)
-    );
+  public findActions(resolvable: Resolvable) {
+    return this.actions.filter(action => {
+      if (typeof resolvable === "string") {
+        return action.proto.target.name === resolvable;
+      }
+      return (
+        action.proto.target.schema === resolvable.schema &&
+        action.proto.target.name === resolvable.name
+      );
+    });
   }
 
-  private checkActionNameIsUnused(name: string) {
+  private checkTargetIsUnused(target: dataform.ITarget) {
+    // Check for duplicate names
+    const duplicateActions = this.findActions({ schema: target.schema, name: target.name });
+    if (duplicateActions && duplicateActions.length > 0) {
+      const message = `Duplicate action name detected. Names within a schema must be unique across tables, assertions, and operations: "${
+        target.schema
+      }.${target.name}"`;
+      this.compileError(new Error(message));
+    }
+  }
+
+  /*private checkActionNameIsUnused(name: string) {
     // Check for duplicate names
     if (this.tables[name] || this.operations[name] || this.assertions[name]) {
       const message = `Duplicate action name detected. Names within a schema must be unique across tables, assertions, and operations: "${name}"`;
       this.compileError(new Error(message));
     }
-  }
+  }*/
 
   private checkTestNameIsUnused(name: string) {
     // Check for duplicate names

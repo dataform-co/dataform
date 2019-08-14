@@ -594,7 +594,9 @@ describe("@dataform/api", () => {
 
       // Check view
       expect(tableNames).includes("df_integration_test.example_view");
-      const exampleView = graph.tables.filter((t: dataform.ITable) => t.name == "df_integration_test.example_view")[0];
+      const exampleView = graph.tables.filter(
+        (t: dataform.ITable) => t.name == "df_integration_test.example_view"
+      )[0];
       expect(exampleView.type).equals("view");
       expect(exampleView.query).equals(
         "\nselect * from `tada-analytics.df_integration_test.sample_data`"
@@ -682,7 +684,8 @@ describe("@dataform/api", () => {
 
         // Check JS blocks get processed.
         const exampleJsBlocks = graph.tables.find(
-          (t: dataform.ITable) => t.name === schemaWithSuffix("df_integration_test") + ".example_js_blocks"
+          (t: dataform.ITable) =>
+            t.name === schemaWithSuffix("df_integration_test") + ".example_js_blocks"
         );
         expect(exampleJsBlocks).to.not.be.undefined;
         expect(exampleJsBlocks.type).equals("table");
@@ -690,7 +693,8 @@ describe("@dataform/api", () => {
 
         // Check we can import and use an external package.
         const exampleIncremental = graph.tables.find(
-          (t: dataform.ITable) => t.name === schemaWithSuffix("df_integration_test") + ".example_incremental"
+          (t: dataform.ITable) =>
+            t.name === schemaWithSuffix("df_integration_test") + ".example_incremental"
         );
         expect(exampleIncremental).to.not.be.undefined;
         expect(exampleIncremental.query.trim()).equals("select current_timestamp() as ts");
@@ -708,13 +712,15 @@ describe("@dataform/api", () => {
         );
         expect(exampleIgnore).to.be.undefined;
         const exampleIgnore_2 = graph.tables.find(
-          (t: dataform.ITable) => t.name === schemaWithSuffix("df_integration_test") + ".example_ignore"
+          (t: dataform.ITable) =>
+            t.name === schemaWithSuffix("df_integration_test") + ".example_ignore"
         );
         expect(exampleIgnore).to.be.undefined;
 
         // Check SQL files with raw back-ticks get escaped.
         const exampleBackticks = graph.tables.find(
-          (t: dataform.ITable) => t.name === schemaWithSuffix("df_integration_test") + ".example_backticks"
+          (t: dataform.ITable) =>
+            t.name === schemaWithSuffix("df_integration_test") + ".example_backticks"
         );
         expect(exampleBackticks).to.not.be.undefined;
         expect(cleanSql(exampleBackticks.query)).equals(
@@ -727,14 +733,16 @@ describe("@dataform/api", () => {
 
         // Check deferred calls to table resolve to the correct definitions file.
         const exampleDeferred = graph.tables.find(
-          (t: dataform.ITable) => t.name === schemaWithSuffix("df_integration_test") + ".example_deferred"
+          (t: dataform.ITable) =>
+            t.name === schemaWithSuffix("df_integration_test") + ".example_deferred"
         );
         expect(exampleDeferred).to.not.be.undefined;
         expect(exampleDeferred.fileName).includes("definitions/example_deferred.js");
 
         // Check inline tables
         const exampleInline = graph.tables.find(
-          (t: dataform.ITable) => t.name === schemaWithSuffix("df_integration_test") + ".example_inline"
+          (t: dataform.ITable) =>
+            t.name === schemaWithSuffix("df_integration_test") + ".example_inline"
         );
         expect(exampleInline).to.not.be.undefined;
         expect(exampleInline.type).equals("inline");
@@ -744,7 +752,8 @@ describe("@dataform/api", () => {
         expect(exampleInline.dependencies).includes("sample_data");
 
         const exampleUsingInline = graph.tables.find(
-          (t: dataform.ITable) => t.name === schemaWithSuffix("df_integration_test") + ".example_using_inline"
+          (t: dataform.ITable) =>
+            t.name === schemaWithSuffix("df_integration_test") + ".example_using_inline"
         );
         expect(exampleUsingInline).to.not.be.undefined;
         expect(exampleUsingInline.type).equals("table");
@@ -757,7 +766,8 @@ describe("@dataform/api", () => {
 
         // Check view
         const exampleView = graph.tables.find(
-          (t: dataform.ITable) => t.name === schemaWithSuffix("df_integration_test") + ".example_view"
+          (t: dataform.ITable) =>
+            t.name === schemaWithSuffix("df_integration_test") + ".example_view"
         );
         expect(exampleView).to.not.be.undefined;
         expect(exampleView.type).equals("view");
@@ -769,7 +779,8 @@ describe("@dataform/api", () => {
 
         // Check table
         const exampleTable = graph.tables.find(
-          (t: dataform.ITable) => t.name === schemaWithSuffix("df_integration_test") + ".example_table"
+          (t: dataform.ITable) =>
+            t.name === schemaWithSuffix("df_integration_test") + ".example_table"
         );
         expect(exampleTable).to.not.be.undefined;
         expect(exampleTable.type).equals("table");
@@ -792,14 +803,16 @@ describe("@dataform/api", () => {
 
         // Check Table with tags
         const exampleTableWithTags = graph.tables.find(
-          (t: dataform.ITable) => t.name === schemaWithSuffix("df_integration_test") + ".example_table_with_tags"
+          (t: dataform.ITable) =>
+            t.name === schemaWithSuffix("df_integration_test") + ".example_table_with_tags"
         );
         expect(exampleTableWithTags).to.not.be.undefined;
         expect(exampleTableWithTags.tags).to.eql(["tag1", "tag2", "tag3"]);
 
         // Check sample data
         const exampleSampleData = graph.tables.find(
-          (t: dataform.ITable) => t.name === schemaWithSuffix("df_integration_test") + ".sample_data"
+          (t: dataform.ITable) =>
+            t.name === schemaWithSuffix("df_integration_test") + ".sample_data"
         );
         expect(exampleSampleData).to.not.be.undefined;
         expect(exampleSampleData.type).equals("view");
@@ -821,7 +834,8 @@ describe("@dataform/api", () => {
 
         // Check schema overrides defined in "config {}"
         const exampleUsingOverriddenSchema = graph.tables.find(
-          (t: dataform.ITable) => t.name === schemaWithSuffix("override_schema") + ".override_schema_example"
+          (t: dataform.ITable) =>
+            t.name === schemaWithSuffix("override_schema") + ".override_schema_example"
         );
         expect(exampleUsingOverriddenSchema).to.not.be.undefined;
         expect(exampleUsingOverriddenSchema.target.schema).equals(
@@ -834,7 +848,7 @@ describe("@dataform/api", () => {
 
         // Check assertion
         const exampleAssertion = graph.assertions.find(
-(a: dataform.IAssertion) => a.name === schemaWithSuffix("hi_there") + ".example_assertion"
+          (a: dataform.IAssertion) => a.name === schemaWithSuffix("hi_there") + ".example_assertion"
         );
         expect(exampleAssertion).to.not.be.undefined;
         expect(exampleAssertion.target.schema).equals(schemaWithSuffix("hi_there"));
@@ -853,7 +867,8 @@ describe("@dataform/api", () => {
 
         // Check Assertion with tags
         const exampleAssertionWithTags = graph.assertions.find(
-          (a: dataform.IAssertion) => a.name ===
+          (a: dataform.IAssertion) =>
+            a.name ===
             schemaWithSuffix("df_integration_test_assertions") + ".example_assertion_with_tags"
         );
         expect(exampleAssertionWithTags).to.not.be.undefined;
@@ -864,7 +879,8 @@ describe("@dataform/api", () => {
 
         // Check example operations file
         const exampleOperations = graph.operations.find(
-          (o: dataform.IOperation) => o.name === schemaWithSuffix("df_integration_test") + ".example_operations"
+          (o: dataform.IOperation) =>
+            o.name === schemaWithSuffix("df_integration_test") + ".example_operations"
         );
         expect(exampleOperations).to.not.be.undefined;
         expect(exampleOperations.hasOutput).is.false;
@@ -882,7 +898,8 @@ describe("@dataform/api", () => {
 
         // Check example operation with output.
         const exampleOperationWithOutput = graph.operations.find(
-          (o: dataform.IOperation) => o.name === schemaWithSuffix("df_integration_test") + ".example_operation_with_output"
+          (o: dataform.IOperation) =>
+            o.name === schemaWithSuffix("df_integration_test") + ".example_operation_with_output"
         );
         expect(exampleOperationWithOutput).to.not.be.undefined;
         expect(exampleOperationWithOutput.target.schema).equals(
@@ -909,7 +926,8 @@ describe("@dataform/api", () => {
 
         // Check Operation with tags
         const exampleOperationsWithTags = graph.operations.find(
-        (o: dataform.IOperation) => o.name === schemaWithSuffix("df_integration_test") + ".example_operations_with_tags"
+          (o: dataform.IOperation) =>
+            o.name === schemaWithSuffix("df_integration_test") + ".example_operations_with_tags"
         );
         expect(exampleOperationsWithTags).to.not.be.undefined;
         expect(exampleOperationsWithTags.tags).to.eql(["tag1"]);
@@ -920,13 +938,6 @@ describe("@dataform/api", () => {
           "select * from (\n    select 'hi' as faked union all\n    select 'ben' as faked union all\n    select 'sup?' as faked\n)\n\n-- here ${\"is\"} a `comment\n\n/* ${\"another\"} ` backtick ` containing ```comment */"
         );
         expect(testCase.expectedOutputQuery.trim()).equals(
-          "select 'hi' as faked union all\nselect 'ben' as faked union all\nselect 'sup?' as faked"
-        );
-        const testCaseLongRef = graph.tests.find(t => t.name === "example_test_case_with_long_ref");
-        expect(testCaseLongRef.testQuery.trim()).equals(
-          "select * from (\n    select 'hi' as faked union all\n    select 'ben' as faked union all\n    select 'sup?' as faked\n)\n\n-- here ${\"is\"} a `comment\n\n/* ${\"another\"} ` backtick ` containing ```comment */"
-        );
-        expect(testCaseLongRef.expectedOutputQuery.trim()).equals(
           "select 'hi' as faked union all\nselect 'ben' as faked union all\nselect 'sup?' as faked"
         );
       });
@@ -1097,19 +1108,25 @@ describe("@dataform/api", () => {
       expect(mIncremental.dependencies).to.be.an("array").that.is.empty;
 
       expect(mNames).includes("df_integration_test.example_table");
-      const mTable = graph.tables.filter((t: dataform.ITable) => t.name == "df_integration_test.example_table")[0];
+      const mTable = graph.tables.filter(
+        (t: dataform.ITable) => t.name == "df_integration_test.example_table"
+      )[0];
       expect(mTable.type).equals("table");
       expect(mTable.query).equals('\nselect * from "df_integration_test"."sample_data"');
       expect(mTable.dependencies).deep.equals(["sample_data"]);
 
       expect(mNames).includes("df_integration_test.example_view");
-      const mView = graph.tables.filter((t: dataform.ITable) => t.name == "df_integration_test.example_view")[0];
+      const mView = graph.tables.filter(
+        (t: dataform.ITable) => t.name == "df_integration_test.example_view"
+      )[0];
       expect(mView.type).equals("view");
       expect(mView.query).equals('\nselect * from "df_integration_test"."sample_data"');
       expect(mView.dependencies).deep.equals(["sample_data"]);
 
       expect(mNames).includes("df_integration_test.sample_data");
-      const mSampleData = graph.tables.filter((t: dataform.ITable) => t.name == "df_integration_test.sample_data")[0];
+      const mSampleData = graph.tables.filter(
+        (t: dataform.ITable) => t.name == "df_integration_test.sample_data"
+      )[0];
       expect(mSampleData.type).equals("view");
       expect(mSampleData.query).equals(
         "select 1 as sample_column union all\nselect 2 as sample_column union all\nselect 3 as sample_column"

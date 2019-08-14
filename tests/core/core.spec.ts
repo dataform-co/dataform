@@ -484,11 +484,11 @@ describe("@dataform/core", () => {
       const cGraph = session.compile();
       const gErrors = utils.validate(cGraph);
       expect(gErrors)
-      .to.have.property("validationErrors")
-      .to.be.an("array").that.is.not.empty;
+        .to.have.property("validationErrors")
+        .to.be.an("array").that.is.not.empty;
       const err = gErrors.validationErrors.find(e => e.actionName === "schema.a");
-      expect(err)	
-        .to.have.property("message")	
+      expect(err)
+        .to.have.property("message")
         .that.matches(/Missing dependency/);
     });
 

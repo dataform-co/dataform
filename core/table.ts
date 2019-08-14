@@ -103,7 +103,7 @@ export class Table {
     if (config.schema) {
       this.schema(config.schema);
     }
-    
+
     return this;
   }
 
@@ -155,10 +155,10 @@ export class Table {
   public dependencies(value: string | string[]) {
     const newDependencies = typeof value === "string" ? [value] : value;
     newDependencies.forEach(d => {
-      const [fQd, _] = utils.matchFQName(d, this.session.getAllFQNames());
-      const table = this.session.tables[fQd];
-      if (!!table && table.proto.type === "inline") {
-        table.proto.dependencies.forEach(childDep => this.addDependency(childDep));
+      const allResolved = this.session.findActions(d);
+      const resolved = allResolved.length > 0 ? allResolved[0] : undefined;
+      if (!!resolved && resolved instanceof Table && resolved.proto.type === "inline") {
+        resolved.proto.dependencies.forEach(childDep => this.addDependency(childDep));
       } else {
         this.addDependency(d);
       }
@@ -169,7 +169,6 @@ export class Table {
   public tags(value: string | string[]) {
     const newTags = typeof value === "string" ? [value] : value;
     newTags.forEach(t => {
-      const table = this.session.tables[t];
       this.proto.tags.push(t);
     });
     return this;
@@ -192,12 +191,9 @@ export class Table {
   }
 
   public schema(schema: string) {
-    const name = schema + "." + this.proto.target.name;
-    if (
-      !(this.session.tables[name] || this.session.operations[name] || this.session.assertions[name])
-    ) {
+    if (this.session.findActions({ schema: schema, name: this.proto.target.name }).length === 0) {
       this.proto.target.schema = schema;
-      this.proto.name = name;
+      this.proto.name = schema + "." + this.proto.target.name;
     } else {
       const message = `Duplicate action name detected. Names within a schema must be unique across tables, assertions, and operations: "${name}"`;
       this.session.compileError(new Error(message));
@@ -231,9 +227,15 @@ export class Table {
 
     //Check dependencies are not ambiguous
     this.proto.dependencies.forEach(dep => {
-      const [_, err] = utils.matchFQName(dep, this.session.getAllFQNames());
-      if (!!err && err.match(/Ambiguous/)) {
-        this.session.compileError(new Error(err));
+      const allResolved = this.session.findActions(dep);
+      if (!!allResolved && allResolved.length > 1) {
+        const message =
+          "Ambiguous Action name: " +
+          dep +
+          ". Did you mean one of: [" +
+          allResolved.map(r => r.proto.target.schema + "." + r.proto.target.name).join(", ") +
+          "].";
+        this.session.compileError(new Error(message));
       }
     });
     return this.proto;

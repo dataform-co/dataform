@@ -1,6 +1,6 @@
 import { dataform } from "@dataform/protos";
-import { Resolvable } from "./session";
 import { DistStyleTypes, ignoredProps, SortStyleTypes, TableTypes } from "./table";
+import { Resolvable } from "./session";
 
 const SQL_DATA_WAREHOUSE_DIST_HASH_REGEXP = new RegExp("HASH\\s*\\(\\s*\\w*\\s*\\)\\s*");
 
@@ -26,6 +26,21 @@ export function variableNameFriendly(value: string) {
     .replace("-", "")
     .replace("@", "")
     .replace("/", "");
+}
+
+export function matchPatterns(patterns: string[], values: string[]) {
+  const regexps = patterns.map(
+    pattern =>
+      new RegExp(
+        "^" +
+          pattern
+            .replace(/[.+?^${}()|[\]\\]/g, "\\$&")
+            .split("*")
+            .join(".*") +
+          "$"
+      )
+  );
+  return values.filter(value => regexps.filter(regexp => regexp.test(value)).length > 0);
 }
 
 export function getCallerFile(rootDir: string) {
@@ -102,7 +117,9 @@ export function validate(compiledGraph: dataform.ICompiledGraph): dataform.IGrap
   allActions.forEach(action => {
     if (allActions.filter(subAction => subAction.name == action.name).length > 1) {
       const actionName = action.name;
-      const message = `Duplicate action name detected. Names within a schema must be unique across tables, assertions, and operations: "${action.name}"`;
+      const message = `Duplicate action name detected. Names within a schema must be unique across tables, assertions, and operations: "${
+        action.name
+      }"`;
       validationErrors.push(dataform.ValidationError.create({ message, actionName }));
     }
   });
@@ -120,10 +137,14 @@ export function validate(compiledGraph: dataform.ICompiledGraph): dataform.IGrap
         validationErrors.push(dataform.ValidationError.create({ message, actionName }));
       }
       if (!!err && err.includes("could not be found")) {
-        const message = `Missing dependency detected: Node "${action.name}" depends on "${dependency}" which does not exist.`;
+        const message = `Missing dependency detected: Node "${
+          action.name
+        }" depends on "${dependency}" which does not exist.`;
         validationErrors.push(dataform.ValidationError.create({ message, actionName }));
       } else if (allActionNames.indexOf(matchedDep) < 0) {
-        const message = `Missing dependency detected: Node "${action.name}" depends on "${dependency}" which does not exist.`;
+        const message = `Missing dependency detected: Node "${
+          action.name
+        }" depends on "${dependency}" which does not exist.`;
         validationErrors.push(dataform.ValidationError.create({ message, actionName }));
       }
     });
@@ -244,7 +265,9 @@ export function validate(compiledGraph: dataform.ICompiledGraph): dataform.IGrap
     if (!!ignoredProps[action.type]) {
       ignoredProps[action.type].forEach(ignoredProp => {
         if (objectExistsOrIsNonEmpty(action[ignoredProp])) {
-          const message = `Unused property was detected: "${ignoredProp}". This property is not used for tables with type "${action.type}" and will be ignored.`;
+          const message = `Unused property was detected: "${ignoredProp}". This property is not used for tables with type "${
+            action.type
+          }" and will be ignored.`;
           validationErrors.push(dataform.ValidationError.create({ message, actionName }));
         }
       });

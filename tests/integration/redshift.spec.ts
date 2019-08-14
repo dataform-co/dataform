@@ -67,17 +67,23 @@ describe("@dataform/integration/redshift", () => {
     const actionMap = keyBy(executedGraph.actions, v => v.name);
 
     // Check the status of the two assertions.
-    expect(actionMap["df_integration_test.example_assertion_fail"].status).equals(dataform.ActionExecutionStatus.FAILED);
-    expect(actionMap["df_integration_test.example_assertion_pass"].status).equals(
+    expect(actionMap["df_integration_test_assertions.example_assertion_fail"].status).equals(
+      dataform.ActionExecutionStatus.FAILED
+    );
+    expect(actionMap["df_integration_test_assertions.example_assertion_pass"].status).equals(
       dataform.ActionExecutionStatus.SUCCESSFUL
     );
 
     // Check the status of the two uniqueness assertions.
-    expect(actionMap["df_integration_test.example_assertion_uniqueness_fail"].status).equals(dataform.ActionExecutionStatus.FAILED);
-    expect(actionMap["df_integration_test.example_assertion_uniqueness_fail"].tasks[1].error).to.eql("Assertion failed: query returned 1 row(s).");
-    expect(actionMap["df_integration_test.example_assertion_uniqueness_pass"].status).equals(
-      dataform.ActionExecutionStatus.SUCCESSFUL
-    );
+    expect(
+      actionMap["df_integration_test_assertions.example_assertion_uniqueness_fail"].status
+    ).equals(dataform.ActionExecutionStatus.FAILED);
+    expect(
+      actionMap["df_integration_test_assertions.example_assertion_uniqueness_fail"].tasks[1].error
+    ).to.eql("Assertion failed: query returned 1 row(s).");
+    expect(
+      actionMap["df_integration_test_assertions.example_assertion_uniqueness_pass"].status
+    ).equals(dataform.ActionExecutionStatus.SUCCESSFUL);
 
     // Check the data in the incremental table.
     let incrementalTable = keyBy(compiledGraph.tables, t => t.name).example_incremental;

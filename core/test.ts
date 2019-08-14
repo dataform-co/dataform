@@ -48,16 +48,9 @@ export class Test {
         this.proto.fileName
       );
     } else {
-      const [datasetToTest, err] = utils.matchFQName(
-        this.datasetToTest,
-        this.session.getAllFQNames(),
-        this.session.config.schemaSuffix
-      );
-      if (err) {
-        this.session.compileError(new Error(err));
-      }
-      const dataset = this.session.tables[datasetToTest];
-      if (!dataset) {
+      const allResolved = this.session.findActions(this.datasetToTest);
+      const dataset = allResolved.length > 0 ? allResolved[0] : undefined;
+      if (!(dataset && dataset instanceof table.Table)) {
         this.session.compileError(
           new Error(`Dataset ${this.datasetToTest} could not be found.`),
           this.proto.fileName
