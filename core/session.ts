@@ -23,7 +23,6 @@ interface ISqlxConfig extends table.TConfig, AConfig, OConfig, DConfig, test.TCo
     | "operations"
     | "declaration"
     | "test";
-  schema?: string;
   name: string;
 }
 

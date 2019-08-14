@@ -47,6 +47,7 @@ export interface TConfig {
   redshift?: dataform.IRedshiftOptions;
   bigquery?: dataform.IBigQueryOptions;
   sqldatawarehouse?: dataform.ISQLDataWarehouseOptions;
+  schema?: string;
 }
 
 export class Table {
@@ -92,6 +93,9 @@ export class Table {
     }
     if (config.columns) {
       this.columns(config.columns);
+    }
+    if (config.schema) {
+      this.schema(config.schema);
     }
 
     return this;
@@ -179,6 +183,10 @@ export class Table {
     }
     this.proto.actionDescriptor.columns = mapToColumnProtoArray(columns);
     return this;
+  }
+
+  public schema(schema: string) {
+    this.proto.target = this.session.target(schema);
   }
 
   public compile() {
