@@ -7,6 +7,7 @@ export interface AConfig {
   dependencies?: string | string[];
   tags?: string[];
   description?: string;
+  schema?: string;
 }
 
 export class Assertion {
@@ -27,6 +28,9 @@ export class Assertion {
     }
     if (config.description) {
       this.description(config.description);
+    }
+    if (config.schema) {
+      this.schema(config.schema);
     }
     return this;
   }
@@ -59,6 +63,10 @@ export class Assertion {
   public description(description: string) {
     this.proto.actionDescriptor = { description };
     return this;
+  }
+
+  public schema(schema: string) {
+    this.proto.target = this.session.target(schema, this.session.config.assertionSchema);
   }
 
   public compile() {
