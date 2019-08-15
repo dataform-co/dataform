@@ -25,6 +25,15 @@ export async function compile(
       compileError.message =
         "`dataform.json` does not have mandatory property defined: " + prop + ".";
       compErrors.push(compileError);
+    } else if (!!dataformJsonParsed.prop && dataformJsonParsed.prop.length <= 1) {
+      const compileError = dataform.CompilationError.create();
+      compileError.message =
+        "`dataform.json` has an invalid value on property " +
+        prop +
+        ": " +
+        dataformJsonParsed.prop +
+        ". Should not be blank";
+      compErrors.push(compileError);
     }
   });
   const validDWHs = ["bigquery", "postgres", "redshift", "sqldatawarehouse", "snowflake"];
@@ -34,7 +43,7 @@ export async function compile(
       "`dataform.json` has an invalid value on property warehouse: " +
       dataformJsonParsed.warehouse +
       ". Should be one of: " +
-      validDWHs;
+      validDWHs.join(", ");
     compErrors.push(compileError);
   }
 
