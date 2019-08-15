@@ -25,17 +25,9 @@ export async function compile(
       compileError.message =
         "`dataform.json` does not have mandatory property defined: " + prop + ".";
       compErrors.push(compileError);
-    } else if (prop in dataformJsonParsed && dataformJsonParsed[prop].length <= 1) {
-      const compileError = dataform.CompilationError.create();
-      compileError.message =
-        "`dataform.json` has an invalid value on property " +
-        prop +
-        ": " +
-        dataformJsonParsed.prop +
-        ". Should not be blank";
-      compErrors.push(compileError);
     }
   });
+
   const validDWHs = ["bigquery", "postgres", "redshift", "sqldatawarehouse", "snowflake"];
   if (!!dataformJsonParsed.warehouse && validDWHs.indexOf(dataformJsonParsed.warehouse) === -1) {
     const compileError = dataform.CompilationError.create();
@@ -46,6 +38,26 @@ export async function compile(
       validDWHs.join(", ");
     compErrors.push(compileError);
   }
+
+  const checkSimpleValidityProps = [
+    "assertion_schema",
+    "schema_suffix",
+    "gcloud_project_id",
+    "defaultSchema"
+  ];
+  checkSimpleValidityProps.forEach(prop => {
+    // We can probably be more stringent (eg: only alphanumeric characters, - and _)
+    if (prop in dataformJsonParsed && dataformJsonParsed[prop].length <= 1) {
+      const compileError = dataform.CompilationError.create();
+      compileError.message =
+        "`dataform.json` has an invalid value on property " +
+        prop +
+        ": " +
+        dataformJsonParsed.prop +
+        ". Should not be blank";
+      compErrors.push(compileError);
+    }
+  });
 
   const gErrors: dataform.GraphErrors =
     compErrors !== null
