@@ -1146,7 +1146,7 @@ describe("@dataform/api", () => {
       }
     });
 
-    it("dataform.json contains errors", async () => {
+    it("dataform.json is valid", async () => {
       const graphInvalidWarehouse = await compile({
         projectDir: path.resolve("df/examples/dataform_json_checks/invalid_warehouse")
       });
@@ -1183,7 +1183,7 @@ describe("@dataform/api", () => {
         .to.have.property("compilationErrors")
         .to.be.an("array").that.is.not.empty;
       expect(
-        graphMissingWarehouseErrors.compilationErrors.map(
+        graphInvalidDefaultSchemaErrors.compilationErrors.map(
           (item: dataform.CompilationError) => item.message
         )
       )

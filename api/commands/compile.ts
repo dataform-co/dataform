@@ -16,7 +16,7 @@ export async function compile(
     const dataformJson = fs.readFileSync(`${compileConfig.projectDir}/dataform.json`, "utf8");
     var dataformJsonParsed = JSON.parse(dataformJson);
   } catch (e) {
-    throw new Error("Compile Error: `dataform.json` is invalid" + e);
+    throw new Error("Compile Error: `dataform.json` is invalid");
   }
   const mandatoryProps = ["warehouse", "defaultSchema"];
   mandatoryProps.forEach(prop => {
@@ -25,7 +25,7 @@ export async function compile(
       compileError.message =
         "`dataform.json` does not have mandatory property defined: " + prop + ".";
       compErrors.push(compileError);
-    } else if (!!dataformJsonParsed.prop && dataformJsonParsed.prop.length <= 1) {
+    } else if (prop in dataformJsonParsed && dataformJsonParsed[prop].length <= 1) {
       const compileError = dataform.CompilationError.create();
       compileError.message =
         "`dataform.json` has an invalid value on property " +

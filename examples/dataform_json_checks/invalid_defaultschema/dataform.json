@@ -1,5 +1,5 @@
 {
-    "warehouse": "dataform",
+    "warehouse": "redshift",
     "gcloudProjectId": "tada-analytics",
     "defaultSchema": "",
     "assertionSchema": "df_integration_test_assertions"
