@@ -100,7 +100,13 @@ describe("@dataform/integration/snowflake", () => {
     // Re-run some of the actions.
     executionGraph = await dfapi.build(
       compiledGraph,
-      { actions: ["example_incremental", "example_table", "example_view"] },
+      {
+        actions: [
+          "df_integration_test.example_incremental",
+          "df_integration_test.example_table",
+          "df_integration_test.example_view"
+        ]
+      },
       credentials
     );
 

@@ -344,7 +344,7 @@ describe("@dataform/core", () => {
       const tableB = graph.tables.find(item => item.name === "schema.b");
       expect(tableB).to.exist;
       expect(tableB.type).equals("inline");
-      expect(tableB.dependencies).includes("a");
+      expect(tableB.dependencies).includes("schema.a");
       expect(tableB.actionDescriptor).eql({
         columns: [
           dataform.ColumnDescriptor.create({
@@ -370,7 +370,7 @@ describe("@dataform/core", () => {
       const tableC = graph.tables.find(item => item.name === "schema.c");
       expect(tableC).to.exist;
       expect(tableC.type).equals("table");
-      expect(tableC.dependencies).includes("a");
+      expect(tableC.dependencies).includes("schema.a");
       expect(tableC.actionDescriptor).eql({
         columns: [
           dataform.ColumnDescriptor.create({
@@ -455,7 +455,7 @@ describe("@dataform/core", () => {
       expect(graph.operations[0].queries).deep.equals(["select 1 as sample"]);
 
       expect(graph.operations[1].name).equals("schema.operate-2");
-      expect(graph.operations[1].dependencies).deep.equals(["operate-1"]);
+      expect(graph.operations[1].dependencies).deep.equals(["schema.operate-1"]);
       expect(graph.operations[1].queries).deep.equals(['select * from "schema"."operate-1"']);
     });
   });

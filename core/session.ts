@@ -362,10 +362,16 @@ export class Session {
       compiledGraph.assertions,
       compiledGraph.operations
     );
-    const allActionNames = allActions.map(action => action.name);
 
     allActions.forEach(action => {
-      action.dependencies = action.dependencies = [...new Set(action.dependencies || [])];
+      const fQDeps = action.dependencies.map(act => {
+        const allActs = this.findActions(act);
+        return allActs.length === 1
+          ? allActs[0].proto.target.schema + "." + allActs[0].proto.target.name
+          : act;
+      });
+
+      action.dependencies = [...new Set(fQDeps || [])];
     });
 
     return compiledGraph;
