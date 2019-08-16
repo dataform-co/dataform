@@ -1147,56 +1147,36 @@ describe("@dataform/api", () => {
     });
 
     it("dataform.json is valid", async () => {
-      const graphInvalidWarehouse = await compile({
-        projectDir: path.resolve("df/examples/dataform_json_checks/invalid_warehouse")
-      });
-      const graphInvalidWarehouseErrors = utils.validate(graphInvalidWarehouse);
-      expect(graphInvalidWarehouseErrors)
-        .to.have.property("compilationErrors")
-        .to.be.an("array").that.is.not.empty;
-      expect(
-        graphInvalidWarehouseErrors.compilationErrors.map(
-          (item: dataform.CompilationError) => item.message
-        )
-      )
-        .match(/has an invalid value on property warehouse/)
-        .match(/Should be one of:/);
-
-      const graphMissingWarehouse = await compile({
-        projectDir: path.resolve("df/examples/dataform_json_checks/missing_warehouse")
-      });
-      const graphMissingWarehouseErrors = utils.validate(graphMissingWarehouse);
-      expect(graphMissingWarehouseErrors)
-        .to.have.property("compilationErrors")
-        .to.be.an("array").that.is.not.empty;
-      expect(
-        graphMissingWarehouseErrors.compilationErrors.map(
-          (item: dataform.CompilationError) => item.message
-        )
-      ).match(/`dataform.json` does not have mandatory property defined: warehouse./);
-
-      const graphInvalidDefaultSchema = await compile({
-        projectDir: path.resolve("df/examples/dataform_json_checks/invalid_defaultschema")
-      });
-      const graphInvalidDefaultSchemaErrors = utils.validate(graphInvalidDefaultSchema);
-      expect(graphInvalidDefaultSchemaErrors)
-        .to.have.property("compilationErrors")
-        .to.be.an("array").that.is.not.empty;
-      expect(
-        graphInvalidDefaultSchemaErrors.compilationErrors.map(
-          (item: dataform.CompilationError) => item.message
-        )
-      )
-        .match(/has an invalid value on property defaultSchema/)
-        .match(/Should not be blank/);
-
-      const graphValidDataformJson = await compile({
-        projectDir: path.resolve("df/examples/dataform_json_checks/valid_dataform_json")
-      });
-      const graphValidDataformJsonErrors = utils.validate(graphValidDataformJson);
-      expect(graphValidDataformJsonErrors)
-        .to.have.property("compilationErrors")
-        .to.be.an("array").that.is.empty;
+      try {
+        utils.validate(
+          await compile({
+            projectDir: path.resolve("df/examples/dataform_json_checks/invalid_warehouse")
+          })
+        );
+        fail("Should have failed.");
+      } catch (e) {
+        expect(e.message).to.match(/Invalid value on property warehouse/);
+      }
+      try {
+        utils.validate(
+          await compile({
+            projectDir: path.resolve("df/examples/dataform_json_checks/missing_warehouse")
+          })
+        );
+        fail("Should have failed.");
+      } catch (e) {
+        expect(e.message).to.match(/Missing mandatory property: warehouse/);
+      }
+      try {
+        utils.validate(
+          await compile({
+            projectDir: path.resolve("df/examples/dataform_json_checks/invalid_defaultschema")
+          })
+        );
+        fail("Should have failed.");
+      } catch (e) {
+        expect(e.message).to.match(/Invalid value on property defaultSchema/);
+      }
     });
   });
 

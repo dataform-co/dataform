@@ -5,79 +5,41 @@ import { ChildProcess, fork } from "child_process";
 import * as fs from "fs";
 import * as path from "path";
 
+const validDatawarehouses = ["bigquery", "postgres", "redshift", "sqldatawarehouse", "snowflake"];
+const mandatoryProps: Array<keyof dataform.IProjectConfig> = ["warehouse", "defaultSchema"];
+const simpleCheckProps: Array<keyof dataform.IProjectConfig> = [
+  "assertionSchema",
+  "schemaSuffix",
+  "gcloudProjectId",
+  "defaultSchema"
+];
+
 export async function compile(
   compileConfig: dataform.ICompileConfig
 ): Promise<dataform.CompiledGraph> {
   // Resolve the path in case it hasn't been resolved already.
   path.resolve(compileConfig.projectDir);
-  var compErrors: dataform.CompilationError[] = [];
+
   try {
     // check dataformJson is valid before we try to compile
     const dataformJson = fs.readFileSync(`${compileConfig.projectDir}/dataform.json`, "utf8");
-    var dataformJsonParsed = JSON.parse(dataformJson);
+    const checkValidity = checkDataformJsonValidity(JSON.parse(dataformJson));
+    if (checkValidity) {
+      throw checkValidity;
+    }
   } catch (e) {
-    throw new Error("Compile Error: `dataform.json` is invalid");
+    throw new Error(`Compile Error: 'dataform.json' is invalid. ${e}`);
   }
-  const mandatoryProps = ["warehouse", "defaultSchema"];
-  mandatoryProps.forEach(prop => {
-    if (!(prop in dataformJsonParsed)) {
-      const compileError = dataform.CompilationError.create();
-      compileError.message =
-        "`dataform.json` does not have mandatory property defined: " + prop + ".";
-      compErrors.push(compileError);
-    }
-  });
-
-  const validDWHs = ["bigquery", "postgres", "redshift", "sqldatawarehouse", "snowflake"];
-  if (!!dataformJsonParsed.warehouse && validDWHs.indexOf(dataformJsonParsed.warehouse) === -1) {
-    const compileError = dataform.CompilationError.create();
-    compileError.message =
-      "`dataform.json` has an invalid value on property warehouse: " +
-      dataformJsonParsed.warehouse +
-      ". Should be one of: " +
-      validDWHs.join(", ");
-    compErrors.push(compileError);
-  }
-
-  const checkSimpleValidityProps = [
-    "assertion_schema",
-    "schema_suffix",
-    "gcloud_project_id",
-    "defaultSchema"
-  ];
-  checkSimpleValidityProps.forEach(prop => {
-    // We can probably be more stringent (eg: only alphanumeric characters, - and _)
-    if (prop in dataformJsonParsed && dataformJsonParsed[prop].length <= 1) {
-      const compileError = dataform.CompilationError.create();
-      compileError.message =
-        "`dataform.json` has an invalid value on property " +
-        prop +
-        ": " +
-        dataformJsonParsed.prop +
-        ". Should not be blank";
-      compErrors.push(compileError);
-    }
-  });
-
-  const gErrors: dataform.GraphErrors =
-    compErrors !== null
-      ? dataform.GraphErrors.create({ compilationErrors: compErrors })
-      : dataform.GraphErrors.create({ compilationErrors: [], validationErrors: [] });
 
   const returnedPath = await CompileChildProcess.forkProcess().compile(compileConfig);
   const contents = fs.readFileSync(returnedPath);
   let compiledGraph = dataform.CompiledGraph.decode(contents);
   fs.unlinkSync(returnedPath);
-  const compiledGraphErrors = validate(compiledGraph);
-  const joinedErrors = dataform.GraphErrors.create({
-    compilationErrors: gErrors.compilationErrors.concat(compiledGraphErrors.compilationErrors),
-    validationErrors: gErrors.validationErrors.concat(compiledGraphErrors.validationErrors)
-  });
 
   // Merge graph errors into the compiled graph.
   compiledGraph = dataform.CompiledGraph.create({
     ...compiledGraph,
-    graphErrors: joinedErrors
+    graphErrors: validate(compiledGraph)
   });
   return compiledGraph;
 }
@@ -123,4 +85,28 @@ class CompileChildProcess {
       }
     }
   }
+}
+
+function checkDataformJsonValidity(dataformJsonParsed: { [prop: string]: string }): string {
+  const invalidDatawarehouseProp = function(): string {
+    return dataformJsonParsed.warehouse &&
+      !validDatawarehouses.includes(dataformJsonParsed.warehouse)
+      ? `Invalid value on property warehouse: ${
+          dataformJsonParsed.warehouse
+        }. Should be one of: ${validDatawarehouses.join(", ")}.`
+      : null;
+  };
+  const invalidProp = function(): string {
+    const invProp = simpleCheckProps.find(prop => {
+      return prop in dataformJsonParsed && dataformJsonParsed[prop].length === 0;
+    });
+    return invProp ? `Invalid value on property ${invProp}. Should not be blank.` : null;
+  };
+  const missingMandatoryProp = function(): string {
+    const missMandatoryProp = mandatoryProps.find(prop => {
+      return !(prop in dataformJsonParsed);
+    });
+    return missMandatoryProp ? `Missing mandatory property: ${missMandatoryProp}.` : null;
+  };
+  return invalidDatawarehouseProp() || invalidProp() || missingMandatoryProp();
 }
