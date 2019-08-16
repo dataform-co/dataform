@@ -25,11 +25,14 @@ export class Test {
   }
 
   public dataset(ref: Resolvable) {
-    const target =
-      typeof ref === "object"
-        ? this.session.target(ref.schema + "." + ref.name)
-        : this.session.target(ref);
-    this.datasetToTest = { schema: target.schema, name: target.name };
+    const target2Resolvable = (t: dataform.ITarget) => {
+      return { schema: t.schema, name: t.name };
+    };
+    this.datasetToTest =
+      typeof ref === "string"
+        ? target2Resolvable(this.session.target(ref))
+        : target2Resolvable(this.session.target(`${ref.schema}.${ref.name}`));
+    /*this.datasetToTest = ref;*/
     return this;
   }
 

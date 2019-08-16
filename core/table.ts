@@ -4,7 +4,6 @@ import {
   mapToColumnProtoArray,
   Session
 } from "@dataform/core/session";
-import * as utils from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
 
 export enum TableTypes {
@@ -155,6 +154,8 @@ export class Table {
   public dependencies(value: string | string[]) {
     const newDependencies = typeof value === "string" ? [value] : value;
     newDependencies.forEach(d => {
+      // TODO: This code fails to function correctly if the inline table has not yet
+      // been attached to the session. This code probably needs to be moved to compile().
       const allResolved = this.session.findActions(d);
       const resolved = allResolved.length > 0 ? allResolved[0] : undefined;
       if (!!resolved && resolved instanceof Table && resolved.proto.type === "inline") {
@@ -193,7 +194,7 @@ export class Table {
   public schema(schema: string) {
     if (this.session.findActions({ schema: schema, name: this.proto.target.name }).length === 0) {
       this.proto.target.schema = schema;
-      this.proto.name = schema + "." + this.proto.target.name;
+      this.proto.name = `${schema}.${this.proto.target.name}`;
     } else {
       const message = `Duplicate action name detected. Names within a schema must be unique across tables, assertions, and operations: "${name}"`;
       this.session.compileError(new Error(message));
@@ -233,7 +234,7 @@ export class Table {
           "Ambiguous Action name: " +
           dep +
           ". Did you mean one of: [" +
-          allResolved.map(r => r.proto.target.schema + "." + r.proto.target.name).join(", ") +
+          allResolved.map(r => `${r.proto.target.schema}.${r.proto.target.name}`).join(", ") +
           "].";
         this.session.compileError(new Error(message));
       }
@@ -290,7 +291,8 @@ export class TableContext implements ITableContext {
   }
 
   public ref(ref: Resolvable) {
-    const name = typeof ref === "object" ? ref.schema + "." + ref.name : ref;
+    const name =
+      typeof ref === "string" || typeof ref === "undefined" ? ref : `${ref.schema}.${ref.name}`;
     if (!name) {
       const message = `Action name is not specified`;
       this.table.session.compileError(new Error(message));

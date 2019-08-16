@@ -10,6 +10,7 @@ interface IActionProto {
   name?: string;
   fileName?: string;
   dependencies?: string[];
+  target?: dataform.ITarget;
 }
 
 interface ISqlxConfig extends table.TConfig, AConfig, OConfig, test.TConfig {
@@ -46,11 +47,11 @@ function mapColumnDescriptionToProto(
   }
   const columnDescriptor: dataform.IColumnDescriptor[] = description.description
     ? [
-        dataform.ColumnDescriptor.create({
-          description: description.description,
-          path: currentPath
-        })
-      ]
+      dataform.ColumnDescriptor.create({
+        description: description.description,
+        path: currentPath
+      })
+    ]
     : [];
   const nestedColumns = description.columns ? Object.keys(description.columns) : [];
   return columnDescriptor.concat(
@@ -65,12 +66,7 @@ function mapColumnDescriptionToProto(
   );
 }
 
-export type Resolvable =
-  | string
-  | {
-      schema: string;
-      name: string;
-    };
+export type Resolvable = string | { schema: string; name: string };
 
 export class Session {
   public rootDir: string;
@@ -199,7 +195,7 @@ export class Session {
         ? this.config.assertionSchema
         : this.config.defaultSchema);
     action.proto.target = this.target(actionOptions.sqlxConfig.name, finalSchema);
-    action.proto.name = action.proto.target.schema + "." + action.proto.target.name;
+    action.proto.name = `${action.proto.target.schema}.${action.proto.target.name}`;
     return action;
   }
 
@@ -220,7 +216,7 @@ export class Session {
     const allResolved = this.findActions(ref);
     if (allResolved.length > 1) {
       const msg =
-        "Ambiguous Action name: " +
+        "Umbiguous Action name: " +
         ref +
         ". Did you mean one of: [" +
         allResolved.join(", ") +
@@ -254,10 +250,7 @@ export class Session {
   public operate(name: string, queries?: OContextable<string | string[]>): Operation {
     const operation = new Operation();
     operation.session = this;
-    operation.proto.target = this.target(name);
-    const fQName = operation.proto.target.schema + "." + operation.proto.target.name;
-    this.checkTargetIsUnused(operation.proto.target);
-    operation.proto.name = fQName;
+    this.setNameAndTarget(operation.proto, name);
     if (queries) {
       operation.queries(queries);
     }
@@ -272,10 +265,7 @@ export class Session {
   ): table.Table {
     const newTable = new table.Table();
     newTable.session = this;
-    newTable.proto.target = this.target(name);
-    const fQName = newTable.proto.target.schema + "." + newTable.proto.target.name;
-    this.checkTargetIsUnused(newTable.proto.target);
-    newTable.proto.name = fQName;
+    this.setNameAndTarget(newTable.proto, name);
     if (!!queryOrConfig) {
       if (typeof queryOrConfig === "object") {
         newTable.config(queryOrConfig);
@@ -291,9 +281,7 @@ export class Session {
   public assert(name: string, query?: AContextable<string>): Assertion {
     const assertion = new Assertion();
     assertion.session = this;
-    assertion.proto.target = this.target(name, this.config.assertionSchema);
-    this.checkTargetIsUnused(assertion.proto.target);
-    assertion.proto.name = assertion.proto.target.schema + "." + assertion.proto.target.name;
+    this.setNameAndTarget(assertion.proto, name, this.config.assertionSchema);
     if (query) {
       assertion.query(query);
     }
@@ -311,6 +299,12 @@ export class Session {
     // Add it to global index.
     this.tests[name] = newTest;
     return newTest;
+  }
+
+  private setNameAndTarget(action: IActionProto, name: string, overrideSchema?: string) {
+    action.target = overrideSchema ? this.target(name, overrideSchema) : this.target(name);
+    this.checkTargetIsUnused(action.target);
+    action.name = `${action.target.schema}.${action.target.name}`;
   }
 
   public compileError(err: Error | string, path?: string) {
@@ -367,7 +361,7 @@ export class Session {
       const fQDeps = action.dependencies.map(act => {
         const allActs = this.findActions(act);
         return allActs.length === 1
-          ? allActs[0].proto.target.schema + "." + allActs[0].proto.target.name
+          ? `${allActs[0].proto.target.schema}.${allActs[0].proto.target.name}`
           : act;
       });
 
@@ -399,7 +393,7 @@ export class Session {
     if (duplicateActions && duplicateActions.length > 0) {
       const message = `Duplicate action name detected. Names within a schema must be unique across tables, assertions, and operations: "${
         target.schema
-      }.${target.name}"`;
+        }.${target.name}"`;
       this.compileError(new Error(message));
     }
   }

@@ -96,11 +96,7 @@ describe("@dataform/integration/redshift", () => {
     executionGraph = await dfapi.build(
       compiledGraph,
       {
-        actions: [
-          "df_integration_test.example_incremental",
-          "df_integration_test.example_table",
-          "df_integration_test.example_view"
-        ]
+        actions: ["example_incremental", "example_table", "example_view"]
       },
       credentials
     );

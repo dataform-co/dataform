@@ -1,6 +1,6 @@
 import { dataform } from "@dataform/protos";
 import { DistStyleTypes, ignoredProps, SortStyleTypes, TableTypes } from "./table";
-import { Resolvable } from "./session";
+import { Resolvable } from "@dataform/core/session";
 
 const SQL_DATA_WAREHOUSE_DIST_HASH_REGEXP = new RegExp("HASH\\s*\\(\\s*\\w*\\s*\\)\\s*");
 
@@ -29,18 +29,16 @@ export function variableNameFriendly(value: string) {
 }
 
 export function matchPatterns(patterns: string[], values: string[]) {
-  const regexps = patterns.map(
-    pattern =>
-      new RegExp(
-        "^" +
-          pattern
-            .replace(/[.+?^${}()|[\]\\]/g, "\\$&")
-            .split("*")
-            .join(".*") +
-          "$"
-      )
-  );
-  return values.filter(value => regexps.filter(regexp => regexp.test(value)).length > 0);
+  const fQActs: string[] = [];
+  patterns.forEach(pat => {
+    const [fqPat, err] = matchFQName(pat, values);
+    if (err) {
+      throw new Error(err);
+    } else {
+      fQActs.push(fqPat);
+    }
+  });
+  return fQActs;
 }
 
 export function getCallerFile(rootDir: string) {
@@ -119,7 +117,7 @@ export function validate(compiledGraph: dataform.ICompiledGraph): dataform.IGrap
       const actionName = action.name;
       const message = `Duplicate action name detected. Names within a schema must be unique across tables, assertions, and operations: "${
         action.name
-      }"`;
+        }"`;
       validationErrors.push(dataform.ValidationError.create({ message, actionName }));
     }
   });
@@ -132,19 +130,15 @@ export function validate(compiledGraph: dataform.ICompiledGraph): dataform.IGrap
     const actionName = action.name;
     (action.dependencies || []).forEach((dependency: string) => {
       const [matchedDep, err] = matchFQName(dependency, allActionNames);
-      if (!!err && err.includes("Ambiguous")) {
-        const message = `Ambiguous dependency detected: ` + err;
-        validationErrors.push(dataform.ValidationError.create({ message, actionName }));
-      }
       if (!!err && err.includes("could not be found")) {
         const message = `Missing dependency detected: Node "${
           action.name
-        }" depends on "${dependency}" which does not exist.`;
+          }" depends on "${dependency}" which does not exist.`;
         validationErrors.push(dataform.ValidationError.create({ message, actionName }));
       } else if (allActionNames.indexOf(matchedDep) < 0) {
         const message = `Missing dependency detected: Node "${
           action.name
-        }" depends on "${dependency}" which does not exist.`;
+          }" depends on "${dependency}" which does not exist.`;
         validationErrors.push(dataform.ValidationError.create({ message, actionName }));
       }
     });
@@ -267,7 +261,7 @@ export function validate(compiledGraph: dataform.ICompiledGraph): dataform.IGrap
         if (objectExistsOrIsNonEmpty(action[ignoredProp])) {
           const message = `Unused property was detected: "${ignoredProp}". This property is not used for tables with type "${
             action.type
-          }" and will be ignored.`;
+            }" and will be ignored.`;
           validationErrors.push(dataform.ValidationError.create({ message, actionName }));
         }
       });
@@ -295,13 +289,13 @@ export function matchFQName(
 ): [string, string] {
   const schemaWithSuffix = (schema: string) =>
     schemaSuffix ? `${schema}_${schemaSuffix}` : schema;
-  const act = typeof ref === "string" ? ref : schemaWithSuffix(ref.schema) + "." + ref.name;
+  const act = typeof ref === "string" ? ref : `${schemaWithSuffix(ref.schema)}.${ref.name}`;
   switch (act.split(".").length) {
     case 2: {
       if (allActFQNames.includes(act)) {
         return [act, null]; // Fully Qualified name match. Return as it is.
       } else {
-        return [null, "Action name: " + act + " could not be found."];
+        return [null, `Action name: ${act} could not be found.`];
       }
       break;
     }
@@ -315,19 +309,16 @@ export function matchFQName(
         .filter(actShort => actShort[1] === act)
         .forEach(actShort => matches.push(actShort[0]));
       if (matches.length === 0) {
-        return [null, "Action name: " + act + " could not be found."]; // No matches.
+        return [null, `Action name: ${act} could not be found.`]; // No matches.
       } else if (matches.length === 1) {
         return [matches[0], null]; // There was exactly one match to the short name. Return the full name.
       } else if (matches.length > 1) {
-        return [
-          null,
-          "Ambiguous Action name: " + act + ". Did you mean one of: [" + matches.join(", ") + "]."
-        ];
+        return [null, `Ymbiguous Action name: ${act}. Did you mean one of: ${matches.join(", ")}.`];
       }
       break;
     }
     default: {
-      return [null, "Action name: " + act + " is invalid."];
+      return [null, `Action name: ${act} is invalid.`];
     }
   }
 }
