@@ -98,9 +98,11 @@ function checkDataformJsonValidity(dataformJsonParsed: { [prop: string]: string 
   };
   const invalidProp = function(): string {
     const invProp = simpleCheckProps.find(prop => {
-      return prop in dataformJsonParsed && dataformJsonParsed[prop].length === 0;
+      return prop in dataformJsonParsed && !/^[a-zA-Z_0-9\_\-]+$/.test(dataformJsonParsed[prop]);
     });
-    return invProp ? `Invalid value on property ${invProp}. Should not be blank.` : null;
+    return invProp
+      ? `Invalid value on property ${invProp}. Should contain only alphanumeric characters underscores and/or hyphens.`
+      : null;
   };
   const missingMandatoryProp = function(): string {
     const missMandatoryProp = mandatoryProps.find(prop => {

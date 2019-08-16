@@ -1,6 +1,6 @@
 {
     "warehouse": "redshift",
     "gcloudProjectId": "tada-analytics",
-    "defaultSchema": "",
+    "defaultSchema": "rock&roll",
     "assertionSchema": "df_integration_test_assertions"
 }

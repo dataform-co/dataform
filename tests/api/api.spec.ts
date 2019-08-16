@@ -1177,6 +1177,16 @@ describe("@dataform/api", () => {
       } catch (e) {
         expect(e.message).to.match(/Invalid value on property defaultSchema/);
       }
+      try {
+        utils.validate(
+          await compile({
+            projectDir: path.resolve("df/examples/dataform_json_checks/valid_dataform_json")
+          })
+        );
+        fail("Should have failed.");
+      } catch (e) {
+        expect(e.message).to.match(/Should have failed./);
+      }
     });
   });
 
