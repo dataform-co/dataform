@@ -10,7 +10,6 @@ const mandatoryProps: Array<keyof dataform.IProjectConfig> = ["warehouse", "defa
 const simpleCheckProps: Array<keyof dataform.IProjectConfig> = [
   "assertionSchema",
   "schemaSuffix",
-  "gcloudProjectId",
   "defaultSchema"
 ];
 
@@ -35,7 +34,6 @@ export async function compile(
   const contents = fs.readFileSync(returnedPath);
   let compiledGraph = dataform.CompiledGraph.decode(contents);
   fs.unlinkSync(returnedPath);
-
   // Merge graph errors into the compiled graph.
   compiledGraph = dataform.CompiledGraph.create({
     ...compiledGraph,
@@ -98,10 +96,16 @@ function checkDataformJsonValidity(dataformJsonParsed: { [prop: string]: string 
   };
   const invalidProp = function(): string {
     const invProp = simpleCheckProps.find(prop => {
-      return prop in dataformJsonParsed && !/^[a-zA-Z_0-9\_\-]+$/.test(dataformJsonParsed[prop]);
+      return (
+        prop in dataformJsonParsed &&
+        !/^[a-zA-Z_0-9\-]+$/.test(dataformJsonParsed[prop]) &&
+        !(dataformJsonParsed[prop].length === 0)
+      );
     });
     return invProp
-      ? `Invalid value on property ${invProp}. Should contain only alphanumeric characters underscores and/or hyphens.`
+      ? `Invalid value on property ${invProp}: ${
+          dataformJsonParsed[invProp]
+        }. Should only contain alphanumeric characters, underscores and/or hyphens.`
       : null;
   };
   const missingMandatoryProp = function(): string {

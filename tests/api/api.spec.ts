@@ -1155,7 +1155,7 @@ describe("@dataform/api", () => {
         );
         fail("Should have failed.");
       } catch (e) {
-        expect(e.message).to.match(/Invalid value on property warehouse/);
+        expect(e.message).to.match(/Invalid value on property warehouse: dataform/);
       }
       try {
         utils.validate(
@@ -1175,7 +1175,9 @@ describe("@dataform/api", () => {
         );
         fail("Should have failed.");
       } catch (e) {
-        expect(e.message).to.match(/Invalid value on property defaultSchema/);
+        expect(e.message).to.match(
+          /Invalid value on property defaultSchema: rock&roll. Should only contain alphanumeric characters, underscores and\/or hyphens./
+        );
       }
       try {
         utils.validate(
@@ -1183,9 +1185,9 @@ describe("@dataform/api", () => {
             projectDir: path.resolve("df/examples/dataform_json_checks/valid_dataform_json")
           })
         );
-        fail("Should have failed.");
+        fail("Forcing a failure.");
       } catch (e) {
-        expect(e.message).to.match(/Should have failed./);
+        expect(e.message).to.match(/Forcing a failure./);
       }
     });
   });

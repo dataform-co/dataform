@@ -50,9 +50,7 @@ const projectDirMustExistOption = {
       assertPathExists(path.resolve(argv["project-dir"], "dataform.json"));
     } catch (e) {
       throw new Error(
-        `${
-          argv["project-dir"]
-        } does not appear to be a dataform directory (missing dataform.json file).`
+        `${argv["project-dir"]} does not appear to be a dataform directory (missing dataform.json file).`
       );
     }
   }
@@ -103,7 +101,7 @@ const schemaSuffixOverrideOption: INamedOption<yargs.Options> = {
     describe: "A suffix to be appended to output schema names."
   },
   check: (argv: yargs.Arguments) => {
-    if (argv.schemaSuffix && !/^[a-zA-Z_0-9\_]+$/.test(argv.schemaSuffix)) {
+    if (argv.schemaSuffix && !/^[a-zA-Z_0-9]+$/.test(argv.schemaSuffix)) {
       throw new Error(
         "--schema-suffix should contain only alphanumeric characters and/or underscores."
       );
@@ -207,9 +205,7 @@ const builtYargs = createYargsCli({
     },
     {
       format: "init-creds <warehouse> [project-dir]",
-      description: `Create a ${
-        credentials.CREDENTIALS_FILENAME
-      } file for Dataform to use when accessing your warehouse.`,
+      description: `Create a ${credentials.CREDENTIALS_FILENAME} file for Dataform to use when accessing your warehouse.`,
       positionalOptions: [warehouseOption, projectDirMustExistOption],
       options: [
         {
