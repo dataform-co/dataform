@@ -1,4 +1,3 @@
-import { ICompileIPCResult } from "@dataform/api/vm/compile";
 import { validate } from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
 import { ChildProcess, fork } from "child_process";
@@ -19,23 +18,20 @@ export async function compile(
     throw new Error("Compile Error: `dataform.json` is invalid");
   }
 
-  const returnedPath = await CompileChildProcess.forkProcess().compile(compileConfig);
-  const contents = fs.readFileSync(returnedPath);
-  let compiledGraph = dataform.CompiledGraph.decode(contents);
-  fs.unlinkSync(returnedPath);
-  // Merge graph errors into the compiled graph.
-  compiledGraph = dataform.CompiledGraph.create({
-    ...compiledGraph,
+  const compiledGraph = await CompileChildProcess.forkProcess().compile(compileConfig);
+  return dataform.CompiledGraph.create({
+    ...(await CompileChildProcess.forkProcess().compile(compileConfig)),
     graphErrors: validate(compiledGraph)
   });
-  return compiledGraph;
 }
 
 class CompileChildProcess {
   public static forkProcess() {
     // Run the bin_loader script if inside bazel, otherwise don't.
     const forkScript = process.env.BAZEL_TARGET ? "../vm/compile_bin_loader" : "../vm/compile";
-    return new CompileChildProcess(fork(require.resolve(forkScript)));
+    return new CompileChildProcess(
+      fork(require.resolve(forkScript), [], { stdio: [0, 1, 2, "ipc", "pipe"] })
+    );
   }
   private readonly childProcess: ChildProcess;
 
@@ -44,15 +40,19 @@ class CompileChildProcess {
   }
 
   public async compile(compileConfig: dataform.ICompileConfig) {
-    const compileInChildProcess = new Promise<string>(async (resolve, reject) => {
-      this.childProcess.on("message", (result: ICompileIPCResult) => {
-        if (result.err) {
-          reject(new Error(result.err));
-        } else {
-          // We receive back a path where the compiled graph was written in proto format.
-          resolve(result.path);
-        }
+    const compileInChildProcess = new Promise<dataform.CompiledGraph>(async (resolve, reject) => {
+      const pipe = this.childProcess.stdio[4];
+      // const allData: Buffer[] = [];
+      pipe.on("data", (chunk: Buffer) => {
+        resolve(dataform.CompiledGraph.decode(chunk));
+        // allData.push(chunk);
       });
+      pipe.on("end", () => {
+        // const finalData = Buffer.concat(allData);
+        // dataform.CompiledGraph.decode(finalData);
+      });
+
+      this.childProcess.on("message", (e: Error) => reject(e));
       this.childProcess.send(compileConfig);
     });
     let timer;
