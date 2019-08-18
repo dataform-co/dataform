@@ -5,7 +5,7 @@ import { ChildProcess, fork } from "child_process";
 import * as fs from "fs";
 import * as path from "path";
 
-const validDatawarehouses = ["bigquery", "postgres", "redshift", "sqldatawarehouse", "snowflake"];
+const validWarehouses = ["bigquery", "postgres", "redshift", "sqldatawarehouse", "snowflake"];
 const mandatoryProps: Array<keyof dataform.IProjectConfig> = ["warehouse", "defaultSchema"];
 const simpleCheckProps: Array<keyof dataform.IProjectConfig> = [
   "assertionSchema",
@@ -86,21 +86,16 @@ class CompileChildProcess {
 }
 
 function checkDataformJsonValidity(dataformJsonParsed: { [prop: string]: string }): string {
-  const invalidDatawarehouseProp = function(): string {
-    return dataformJsonParsed.warehouse &&
-      !validDatawarehouses.includes(dataformJsonParsed.warehouse)
+  const invalidWarehouseProp = function(): string {
+    return dataformJsonParsed.warehouse && !validWarehouses.includes(dataformJsonParsed.warehouse)
       ? `Invalid value on property warehouse: ${
           dataformJsonParsed.warehouse
-        }. Should be one of: ${validDatawarehouses.join(", ")}.`
+        }. Should be one of: ${validWarehouses.join(", ")}.`
       : null;
   };
   const invalidProp = function(): string {
     const invProp = simpleCheckProps.find(prop => {
-      return (
-        prop in dataformJsonParsed &&
-        !/^[a-zA-Z_0-9\-]+$/.test(dataformJsonParsed[prop]) &&
-        !(dataformJsonParsed[prop].length === 0)
-      );
+      return prop in dataformJsonParsed && !/^[a-zA-Z_0-9\-]*$/.test(dataformJsonParsed[prop]);
     });
     return invProp
       ? `Invalid value on property ${invProp}: ${
@@ -114,5 +109,5 @@ function checkDataformJsonValidity(dataformJsonParsed: { [prop: string]: string 
     });
     return missMandatoryProp ? `Missing mandatory property: ${missMandatoryProp}.` : null;
   };
-  return invalidDatawarehouseProp() || invalidProp() || missingMandatoryProp();
+  return invalidWarehouseProp() || invalidProp() || missingMandatoryProp();
 }
