@@ -2,15 +2,11 @@ import { createGenIndexConfig } from "@dataform/api/vm/gen_index_config";
 import * as legacyCompiler from "@dataform/api/vm/legacy_compiler";
 import { legacyGenIndex } from "@dataform/api/vm/legacy_gen_index";
 import { dataform } from "@dataform/protos";
-import * as crypto from "crypto";
 import * as fs from "fs";
-import * as net from "net";
-import * as os from "os";
 import * as path from "path";
-import { util } from "protobufjs";
 import { CompilerFunction, NodeVM } from "vm2";
 
-export function compile(compileConfig: dataform.ICompileConfig): Uint8Array {
+export function compile(compileConfig: dataform.ICompileConfig) {
   const vmIndexFileName = path.resolve(path.join(compileConfig.projectDir, "index.js"));
 
   const indexGeneratorVm = new NodeVM({
@@ -62,21 +58,18 @@ export function compile(compileConfig: dataform.ICompileConfig): Uint8Array {
     compiler
   });
 
-  // We return a base64 encoded proto via NodeVM, as returning a Uint8Array directly causes issues.
   const res: string = userCodeVm.run(
     findGenIndex()(createGenIndexConfig(compileConfig)),
     vmIndexFileName
   );
-  const encodedGraphBytes = new Uint8Array(util.base64.length(res));
-  util.base64.decode(res, encodedGraphBytes, 0);
-  return encodedGraphBytes;
+  return res;
 }
 
 process.on("message", (compileConfig: dataform.ICompileConfig) => {
   try {
     const compiledResult = compile(compileConfig);
-    const outPipe = new net.Socket({ fd: 4 });
-    outPipe.write(compiledResult);
+    const writeable = fs.createWriteStream(null, { fd: 4 });
+    writeable.write(compiledResult, "utf8");
   } catch (e) {
     process.send(e);
   }

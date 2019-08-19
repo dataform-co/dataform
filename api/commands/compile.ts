@@ -3,6 +3,7 @@ import { dataform } from "@dataform/protos";
 import { ChildProcess, fork } from "child_process";
 import * as fs from "fs";
 import * as path from "path";
+import { util } from "protobufjs";
 
 export async function compile(
   compileConfig: dataform.ICompileConfig
@@ -42,14 +43,14 @@ class CompileChildProcess {
   public async compile(compileConfig: dataform.ICompileConfig) {
     const compileInChildProcess = new Promise<dataform.CompiledGraph>(async (resolve, reject) => {
       const pipe = this.childProcess.stdio[4];
-      // const allData: Buffer[] = [];
-      pipe.on("data", (chunk: Buffer) => {
-        resolve(dataform.CompiledGraph.decode(chunk));
-        // allData.push(chunk);
-      });
+      const chunks: Buffer[] = [];
+      pipe.on("data", (chunk: Buffer) => chunks.push(chunk));
       pipe.on("end", () => {
-        // const finalData = Buffer.concat(allData);
-        // dataform.CompiledGraph.decode(finalData);
+        // The child process returns a base64 encoded proto.
+        const allData = Buffer.concat(chunks).toString("utf8");
+        const encodedGraphBytes = new Uint8Array(util.base64.length(allData));
+        util.base64.decode(allData, encodedGraphBytes, 0);
+        resolve(dataform.CompiledGraph.decode(encodedGraphBytes));
       });
 
       this.childProcess.on("message", (e: Error) => reject(e));
