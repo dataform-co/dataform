@@ -19,7 +19,7 @@ export function run(
       const compiledQuery = await compile(query, options);
       const results = await dbadapters
         .create(credentials, warehouse)
-        .execute(compiledQuery, onCancel);
+        .execute(compiledQuery, onCancel, { interactive: true });
       _resolve(results);
     } catch (e) {
       _reject(e);

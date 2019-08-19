@@ -1,6 +1,8 @@
+import { Credentials } from "@dataform/api/commands/credentials";
 import * as dbadapters from "@dataform/api/dbadapters";
 import * as adapters from "@dataform/core/adapters";
 import { dataform } from "@dataform/protos";
+import { query } from "df/api";
 
 export function keyBy<V>(values: V[], keyFn: (value: V) => string): { [key: string]: V } {
   return values.reduce(
@@ -32,7 +34,8 @@ export async function dropAllTables(
 export async function getTableRows(
   target: dataform.ITarget,
   adapter: adapters.IAdapter,
-  dbadapter: dbadapters.IDbAdapter
+  credentials: Credentials,
+  warehouse: string
 ) {
-  return dbadapter.execute(`select * from ${adapter.resolveTarget(target)}`);
+  return query.run(credentials, warehouse, `SELECT * FROM ${adapter.resolveTarget(target)}`);
 }

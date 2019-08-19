@@ -51,44 +51,19 @@ export class BigQueryDbAdapter implements IDbAdapter {
     });
   }
 
-  public execute(statement: string, onCancel?: OnCancel) {
-    let isCancelled = false;
-    if (onCancel) {
-      onCancel(() => {
-        isCancelled = true;
-      });
-    }
+  public async execute(
+    statement: string,
+    onCancel?: OnCancel,
+    options: {
+      interactive?: boolean;
+    } = { interactive: false }
+  ) {
     return this.pool
       .addSingleTask({
         generator: () =>
-          new Promise<any[]>((resolve, reject) => {
-            this.client.createQueryJob(
-              { useLegacySql: false, query: statement, maxResults: 1000 },
-              async (err: any, job: any) => {
-                if (err) {
-                  return reject(err);
-                }
-                // Cancelled before it was created, kill it now.
-                if (isCancelled) {
-                  await job.cancel();
-                  return reject(new Error("Query cancelled."));
-                }
-                if (onCancel) {
-                  onCancel(async () => {
-                    // Cancelled while running.
-                    await job.cancel();
-                    return reject(new Error("Query cancelled."));
-                  });
-                }
-                job.getQueryResults((err: any, result: any[]) => {
-                  if (err) {
-                    reject(err);
-                  }
-                  resolve(cleanRows(result));
-                });
-              }
-            );
-          })
+          options && options.interactive
+            ? this.runQuery(statement)
+            : this.createQueryJob(statement, onCancel)
       })
       .promise();
   }
@@ -176,6 +151,49 @@ export class BigQueryDbAdapter implements IDbAdapter {
         `Cannot create dataset "${schema}" in location "${location}". It already exists in location "${metadata.location}". Change your default dataset location or delete the existing dataset.`
       );
     }
+  }
+
+  private async runQuery(statement: string) {
+    const data = await this.client.query(statement);
+    return cleanRows(data[0]);
+  }
+
+  private createQueryJob(statement: string, onCancel?: OnCancel) {
+    let isCancelled = false;
+    if (onCancel) {
+      onCancel(() => {
+        isCancelled = true;
+      });
+    }
+
+    return new Promise<any[]>((resolve, reject) =>
+      this.client.createQueryJob(
+        { useLegacySql: false, query: statement, maxResults: 1000 },
+        async (err: any, job: any) => {
+          if (err) {
+            return reject(err);
+          }
+          // Cancelled before it was created, kill it now.
+          if (isCancelled) {
+            await job.cancel();
+            return reject(new Error("Query cancelled."));
+          }
+          if (onCancel) {
+            onCancel(async () => {
+              // Cancelled while running.
+              await job.cancel();
+              return reject(new Error("Query cancelled."));
+            });
+          }
+          job.getQueryResults((err: any, result: any[]) => {
+            if (err) {
+              reject(err);
+            }
+            resolve(cleanRows(result));
+          });
+        }
+      )
+    );
   }
 
   private async getMetadata(target: dataform.ITarget): Promise<IBigQueryTableMetadata> {

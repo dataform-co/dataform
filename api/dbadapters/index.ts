@@ -8,7 +8,13 @@ import { dataform } from "@dataform/protos";
 export type OnCancel = (handleCancel: () => void) => void;
 
 export interface IDbAdapter {
-  execute(statement: string, onCancel?: OnCancel): Promise<any[]>;
+  execute(
+    statement: string,
+    onCancel?: OnCancel,
+    options?: {
+      interactive?: boolean;
+    }
+  ): Promise<any[]>;
   evaluate(statement: string): Promise<void>;
   tables(): Promise<dataform.ITarget[]>;
   table(target: dataform.ITarget): Promise<dataform.ITableMetadata>;
