@@ -196,8 +196,10 @@ export class Table {
       this.proto.target.schema = schema;
       this.proto.name = `${schema}.${this.proto.target.name}`;
     } else {
-      //TODO: We need to add a test case to catch this specific case, right now it is not tested
-      const message = `Duplicate action name detected. Names within a schema must be unique across tables, assertions, and operations: "${this.proto.target.name}"`;
+      //TODO: This block needs to remain. We need to add a test case to catch this specific case though.
+      const message = `Duplicate action name detected. Names within a schema must be unique across tables, assertions, and operations: "${
+        this.proto.target.name
+      }"`;
       this.session.compileError(new Error(message));
     }
   }

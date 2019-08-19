@@ -117,7 +117,7 @@ export function validate(compiledGraph: dataform.ICompiledGraph): dataform.IGrap
       const actionName = action.name;
       const message = `Duplicate action name detected. Names within a schema must be unique across tables, assertions, and operations: "${
         action.name
-        }"`;
+      }"`;
       validationErrors.push(dataform.ValidationError.create({ message, actionName }));
     }
   });
@@ -129,16 +129,10 @@ export function validate(compiledGraph: dataform.ICompiledGraph): dataform.IGrap
   allActions.forEach(action => {
     const actionName = action.name;
     (action.dependencies || []).forEach((dependency: string) => {
-      const [matchedDep, err] = matchFQName(dependency, allActionNames);
-      if (!!err && err.includes("could not be found")) {
+      if (!allActionNames.includes(dependency)) {
         const message = `Missing dependency detected: Node "${
           action.name
-          }" depends on "${dependency}" which does not exist.`;
-        validationErrors.push(dataform.ValidationError.create({ message, actionName }));
-      } else if (allActionNames.indexOf(matchedDep) < 0) {
-        const message = `Missing dependency detected: Node "${
-          action.name
-          }" depends on "${dependency}" which does not exist.`;
+        }" depends on "${dependency}" which does not exist.`;
         validationErrors.push(dataform.ValidationError.create({ message, actionName }));
       }
     });
@@ -254,7 +248,7 @@ export function validate(compiledGraph: dataform.ICompiledGraph): dataform.IGrap
         if (objectExistsOrIsNonEmpty(action[ignoredProp])) {
           const message = `Unused property was detected: "${ignoredProp}". This property is not used for tables with type "${
             action.type
-            }" and will be ignored.`;
+          }" and will be ignored.`;
           validationErrors.push(dataform.ValidationError.create({ message, actionName }));
         }
       });
