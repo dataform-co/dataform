@@ -32,7 +32,6 @@ export class Test {
       typeof ref === "string"
         ? target2Resolvable(this.session.target(ref))
         : target2Resolvable(this.session.target(`${ref.schema}.${ref.name}`));
-    /*this.datasetToTest = ref;*/
     return this;
   }
 

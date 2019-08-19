@@ -375,14 +375,14 @@ export class Session {
     return type === "view" || type === "table" || type === "inline" || type === "incremental";
   }
 
-  public findActions(resolvable: Resolvable) {
+  public findActions(res: Resolvable) {
     return this.actions.filter(action => {
-      if (typeof resolvable === "string") {
-        return action.proto.target.name === resolvable;
+      if (typeof res === "string") {
+        return action.proto.target.name === res;
       }
       return (
-        action.proto.target.schema === resolvable.schema &&
-        action.proto.target.name === resolvable.name
+        action.proto.target.schema === res.schema &&
+        action.proto.target.name === res.name
       );
     });
   }

@@ -558,28 +558,24 @@ describe("@dataform/core", () => {
       const graph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
         projectConfig: { warehouse: "redshift" },
         tables: [
-          { name: "schema.a", target: { schema: "schema", name: "a" }, dependencies: ["b"] },
-          { name: "schema.b", target: { schema: "schema", name: "b" }, dependencies: ["z"] },
+          { name: "schema.a", target: { schema: "schema", name: "a" }, dependencies: ["schema.b"] },
+          { name: "schema.b", target: { schema: "schema", name: "b" }, dependencies: ["schema.z"] },
           { name: "schema.a", target: { schema: "schema", name: "a" }, dependencies: [] },
-          { name: "schema.c", target: { schema: "schema", name: "c" }, dependencies: ["d"] },
-          { name: "schema.d", target: { schema: "schema", name: "d" }, dependencies: ["c"] }
+          { name: "schema.c", target: { schema: "schema", name: "c" }, dependencies: ["schema.d"] },
+          { name: "schema.d", target: { schema: "schema", name: "d" }, dependencies: ["schema.c"] }
         ]
       });
       const gErrors = utils.validate(graph);
-
       expect(gErrors)
         .to.have.property("compilationErrors")
         .to.be.an("array").that.is.empty;
-
       expect(gErrors)
         .to.have.property("validationErrors")
         .to.be.an("array").that.is.not.empty;
-
-      const errors = gErrors.validationErrors.map(item => item.message);
-
-      expect(errors.some(item => !!item.match(/Duplicate action name/))).to.be.true;
-      expect(errors.some(item => !!item.match(/Missing dependency/))).to.be.true;
-      expect(errors.some(item => !!item.match(/Circular dependency/))).to.be.true;
+      const vErrors = gErrors.validationErrors.map(item => item.message);
+      expect(vErrors.some(item => !!item.match(/Duplicate action name/))).to.be.true;
+      expect(vErrors.some(item => !!item.match(/Missing dependency/))).to.be.true;
+      expect(vErrors.some(item => !!item.match(/Circular dependency/))).to.be.true;
     });
   });
 

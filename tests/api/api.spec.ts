@@ -845,6 +845,7 @@ describe("@dataform/api", () => {
           (t: dataform.ITable) =>
             t.name === schemaWithSuffix("override_schema") + ".override_schema_example"
         );
+
         expect(exampleUsingOverriddenSchema).to.not.be.undefined;
         expect(exampleUsingOverriddenSchema.target.schema).equals(
           schemaWithSuffix("override_schema")
@@ -865,7 +866,9 @@ describe("@dataform/api", () => {
             "df_integration_test"
           )}.sample_data\` where sample = 100`
         );
-        expect(exampleAssertion.dependencies).to.eql([schemaWithSuffix("df_integration_test") + ".sample_data"]);
+        expect(exampleAssertion.dependencies).to.eql([
+          schemaWithSuffix("df_integration_test") + ".sample_data"
+        ]);
         expect(exampleAssertion.tags).to.eql([]);
         expect(exampleAssertion.actionDescriptor).to.eql(
           dataform.ActionDescriptor.create({

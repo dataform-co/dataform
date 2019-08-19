@@ -157,14 +157,7 @@ export function validate(compiledGraph: dataform.ICompiledGraph): dataform.IGrap
       validationErrors.push(dataform.ValidationError.create({ message, actionName }));
       return true;
     }
-    const depsFQ: string[] = [];
-    (action.dependencies || []).forEach((d: string) => {
-      const [fQd, err] = matchFQName(d, allActionNames);
-      if (!err) {
-        depsFQ.push(fQd);
-      }
-    });
-    return (depsFQ || []).some(d => {
+    return (action.dependencies || []).some(d => {
       return actionsByName[d] && checkCircular(actionsByName[d], dependents.concat([action]));
     });
   };
