@@ -21,7 +21,7 @@ export async function compile(
 
   const compiledGraph = await CompileChildProcess.forkProcess().compile(compileConfig);
   return dataform.CompiledGraph.create({
-    ...(await CompileChildProcess.forkProcess().compile(compileConfig)),
+    ...compiledGraph,
     graphErrors: validate(compiledGraph)
   });
 }
@@ -42,6 +42,10 @@ class CompileChildProcess {
 
   public async compile(compileConfig: dataform.ICompileConfig) {
     const compileInChildProcess = new Promise<dataform.CompiledGraph>(async (resolve, reject) => {
+      // Handle errors returned by the child process.
+      this.childProcess.on("message", (e: Error) => reject(e));
+
+      // Handle CompiledGraphs returned by the child process.
       const pipe = this.childProcess.stdio[4];
       const chunks: Buffer[] = [];
       pipe.on("data", (chunk: Buffer) => chunks.push(chunk));
@@ -53,7 +57,7 @@ class CompileChildProcess {
         resolve(dataform.CompiledGraph.decode(encodedGraphBytes));
       });
 
-      this.childProcess.on("message", (e: Error) => reject(e));
+      // Trigger the child process to start compiling.
       this.childProcess.send(compileConfig);
     });
     let timer;
