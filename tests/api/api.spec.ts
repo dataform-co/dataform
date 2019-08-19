@@ -1148,47 +1148,34 @@ describe("@dataform/api", () => {
 
     it("dataform.json is valid", async () => {
       try {
-        utils.validate(
-          await compile({
-            projectDir: path.resolve("df/examples/dataform_json_checks/invalid_warehouse")
-          })
-        );
+        await compile({
+          projectDir: path.resolve("df/examples/dataform_json_checks/invalid_warehouse")
+        });
         fail("Should have failed.");
       } catch (e) {
         expect(e.message).to.match(/Invalid value on property warehouse: dataform/);
       }
       try {
-        utils.validate(
-          await compile({
-            projectDir: path.resolve("df/examples/dataform_json_checks/missing_warehouse")
-          })
-        );
+        await compile({
+          projectDir: path.resolve("df/examples/dataform_json_checks/missing_warehouse")
+        });
         fail("Should have failed.");
       } catch (e) {
         expect(e.message).to.match(/Missing mandatory property: warehouse/);
       }
       try {
-        utils.validate(
-          await compile({
-            projectDir: path.resolve("df/examples/dataform_json_checks/invalid_defaultschema")
-          })
-        );
+        await compile({
+          projectDir: path.resolve("df/examples/dataform_json_checks/invalid_defaultschema")
+        });
         fail("Should have failed.");
       } catch (e) {
         expect(e.message).to.match(
           /Invalid value on property defaultSchema: rock&roll. Should only contain alphanumeric characters, underscores and\/or hyphens./
         );
       }
-      try {
-        utils.validate(
-          await compile({
-            projectDir: path.resolve("df/examples/dataform_json_checks/valid_dataform_json")
-          })
-        );
-        fail("Forcing a failure.");
-      } catch (e) {
-        expect(e.message).to.match(/Forcing a failure./);
-      }
+      await compile({
+        projectDir: path.resolve("df/examples/dataform_json_checks/valid_dataform_json")
+      });
     });
   });
 

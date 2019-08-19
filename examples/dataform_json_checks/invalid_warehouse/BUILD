@@ -12,8 +12,6 @@ filegroup(
 node_modules(
     name = "node_modules",
     deps = [
-        "//core:package_tar",
-        "//crossdb:package_tar",
-        "//protos:package_tar",
+        "//core:package_tar"
     ],
 )
