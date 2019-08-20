@@ -521,7 +521,7 @@ describe("@dataform/core", () => {
         .to.have.property("compilationErrors")
         .to.be.an("array").that.is.not.empty;
       const errors = gErrors.compilationErrors.filter(item =>
-        item.message.match(/Ambiguous Action name: a. Did you mean one of: \[foo.a, bar.a\]./)
+        item.message.match(/Ambiguous Action name: a. Did you mean one of: foo.a, bar.a./)
       );
       expect(errors).to.be.an("array").that.is.not.empty;
     });
@@ -572,10 +572,10 @@ describe("@dataform/core", () => {
       expect(gErrors)
         .to.have.property("validationErrors")
         .to.be.an("array").that.is.not.empty;
-      const vErrors = gErrors.validationErrors.map(item => item.message);
-      expect(vErrors.some(item => !!item.match(/Duplicate action name/))).to.be.true;
-      expect(vErrors.some(item => !!item.match(/Missing dependency/))).to.be.true;
-      expect(vErrors.some(item => !!item.match(/Circular dependency/))).to.be.true;
+      const errors = gErrors.validationErrors.map(item => item.message);
+      expect(errors.some(item => !!item.match(/Duplicate action name/))).to.be.true;
+      expect(errors.some(item => !!item.match(/Missing dependency/))).to.be.true;
+      expect(errors.some(item => !!item.match(/Circular dependency/))).to.be.true;
     });
   });
 

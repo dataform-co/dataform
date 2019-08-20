@@ -47,11 +47,11 @@ function mapColumnDescriptionToProto(
   }
   const columnDescriptor: dataform.IColumnDescriptor[] = description.description
     ? [
-      dataform.ColumnDescriptor.create({
-        description: description.description,
-        path: currentPath
-      })
-    ]
+        dataform.ColumnDescriptor.create({
+          description: description.description,
+          path: currentPath
+        })
+      ]
     : [];
   const nestedColumns = description.columns ? Object.keys(description.columns) : [];
   return columnDescriptor.concat(
@@ -215,12 +215,9 @@ export class Session {
   public resolve(ref: Resolvable): string {
     const allResolved = this.findActions(ref);
     if (allResolved.length > 1) {
-      const msg =
-        "Umbiguous Action name: " +
-        ref +
-        ". Did you mean one of: [" +
-        allResolved.join(", ") +
-        "].";
+      const msg = `Ambiguous Action name: ${ref}. Did you mean one of: ${allResolved
+        .map(res => res.proto.target.schema + "." + res.proto.target.name)
+        .join(", ")}.`;
       this.compileError(new Error(msg));
     }
     const resolved = allResolved.length > 0 ? allResolved[0] : undefined;
@@ -380,21 +377,20 @@ export class Session {
       if (typeof res === "string") {
         return action.proto.target.name === res;
       }
-      return (
-        action.proto.target.schema === res.schema &&
-        action.proto.target.name === res.name
-      );
+      return action.proto.target.schema === res.schema && action.proto.target.name === res.name;
     });
   }
 
-  private checkTargetIsUnused(target: dataform.ITarget) {
-    // Check for duplicate names
+  public checkTargetIsUnused(target: dataform.ITarget) {
     const duplicateActions = this.findActions({ schema: target.schema, name: target.name });
     if (duplicateActions && duplicateActions.length > 0) {
-      const message = `Duplicate action name detected. Names within a schema must be unique across tables, assertions, and operations: "${
-        target.schema
-        }.${target.name}"`;
-      this.compileError(new Error(message));
+      this.compileError(
+        new Error(
+          `Duplicate action name detected. Names within a schema must be unique across tables, assertions, and operations: "${
+            target.schema
+          }.${target.name}"`
+        )
+      );
     }
   }
 
