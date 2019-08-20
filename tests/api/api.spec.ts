@@ -8,7 +8,7 @@ import { assert, config, expect } from "chai";
 import { asPlainObject, cleanSql } from "df/tests/utils";
 import * as path from "path";
 import * as stackTrace from "stack-trace";
-import { anyFunction, anyString, instance, mock, when } from "ts-mockito";
+import { anyString, anything, instance, mock, when } from "ts-mockito";
 
 config.truncateThreshold = 0;
 
@@ -1324,10 +1324,10 @@ describe("@dataform/api", () => {
       const mockedDbAdapter = mock(BigQueryDbAdapter);
       when(mockedDbAdapter.prepareSchema(anyString())).thenResolve(null);
       when(
-        mockedDbAdapter.execute(TEST_GRAPH.actions[0].tasks[0].statement, anyFunction())
+        mockedDbAdapter.execute(TEST_GRAPH.actions[0].tasks[0].statement, anything())
       ).thenResolve([]);
       when(
-        mockedDbAdapter.execute(TEST_GRAPH.actions[1].tasks[0].statement, anyFunction())
+        mockedDbAdapter.execute(TEST_GRAPH.actions[1].tasks[0].statement, anything())
       ).thenReject(new Error("bad statement"));
 
       const runner = new Runner(instance(mockedDbAdapter), TEST_GRAPH);
@@ -1407,7 +1407,7 @@ describe("@dataform/api", () => {
 
       let wasCancelled = false;
       const mockDbAdapter = {
-        execute: (_, onCancel) =>
+        execute: (_, { onCancel }) =>
           new Promise((_, reject) => {
             onCancel(() => {
               wasCancelled = true;
