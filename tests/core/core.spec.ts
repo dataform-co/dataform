@@ -484,12 +484,11 @@ describe("@dataform/core", () => {
       const cGraph = session.compile();
       const gErrors = utils.validate(cGraph);
       expect(gErrors)
-        .to.have.property("validationErrors")
+        .to.have.property("compilationErrors")
         .to.be.an("array").that.is.not.empty;
-      const err = gErrors.validationErrors.find(e => e.actionName === "schema.a");
-      expect(err)
-        .to.have.property("message")
-        .that.matches(/Missing dependency/);
+      expect(
+        gErrors.compilationErrors.filter(item => item.message.match(/Missing dependency/))
+      ).to.be.an("array").that.is.not.empty;
     });
 
     it("duplicate_action_names", () => {
@@ -574,7 +573,6 @@ describe("@dataform/core", () => {
         .to.be.an("array").that.is.not.empty;
       const errors = gErrors.validationErrors.map(item => item.message);
       expect(errors.some(item => !!item.match(/Duplicate action name/))).to.be.true;
-      expect(errors.some(item => !!item.match(/Missing dependency/))).to.be.true;
       expect(errors.some(item => !!item.match(/Circular dependency/))).to.be.true;
     });
   });

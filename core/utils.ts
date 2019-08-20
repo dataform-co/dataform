@@ -125,19 +125,6 @@ export function validate(compiledGraph: dataform.ICompiledGraph): dataform.IGrap
   const actionsByName: { [name: string]: dataform.IExecutionAction } = {};
   allActions.forEach(action => (actionsByName[action.name] = action));
 
-  // Check all dependencies actually exist and are not ambiguous.
-  allActions.forEach(action => {
-    const actionName = action.name;
-    (action.dependencies || []).forEach((dependency: string) => {
-      if (!allActionNames.includes(dependency)) {
-        const message = `Missing dependency detected: Node "${
-          action.name
-        }" depends on "${dependency}" which does not exist.`;
-        validationErrors.push(dataform.ValidationError.create({ message, actionName }));
-      }
-    });
-  });
-
   // Check for circular dependencies.
   const checkCircular = (
     action: dataform.IExecutionAction,

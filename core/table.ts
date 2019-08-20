@@ -220,17 +220,6 @@ export class Table {
       );
     });
     this.contextablePostOps = [];
-
-    //Check dependencies are not ambiguous
-    this.proto.dependencies.forEach(dep => {
-      const allResolved = this.session.findActions(dep);
-      if (!!allResolved && allResolved.length > 1) {
-        const message = `Ambiguous Action name: ${dep}. Did you mean one of: ${allResolved
-          .map(r => r.proto.target.schema + "." + r.proto.target.name)
-          .join(", ")}.`;
-        this.session.compileError(new Error(message));
-      }
-    });
     return this.proto;
   }
 

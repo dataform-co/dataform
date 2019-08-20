@@ -357,11 +357,28 @@ export class Session {
     allActions.forEach(action => {
       const fQDeps = action.dependencies.map(act => {
         const allActs = this.findActions(act);
-        return allActs.length === 1
-          ? `${allActs[0].proto.target.schema}.${allActs[0].proto.target.name}`
-          : act;
+        if (allActs.length === 1) {
+          return `${allActs[0].proto.target.schema}.${allActs[0].proto.target.name}`;
+        } else if (allActs.length >= 1) {
+          this.compileError(
+            new Error(
+              `Ambiguous Action name: ${act}. Did you mean one of: ${allActs
+                .map(r => r.proto.target.schema + "." + r.proto.target.name)
+                .join(", ")}.`
+            )
+          );
+          return act;
+        } else {
+          this.compileError(
+            new Error(
+              `Missing dependency detected: Node "${
+                action.name
+              }" depends on "${act}" which does not exist.`
+            )
+          );
+          return act;
+        }
       });
-
       action.dependencies = [...new Set(fQDeps || [])];
     });
 
