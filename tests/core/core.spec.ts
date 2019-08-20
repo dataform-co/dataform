@@ -47,7 +47,7 @@ describe("@dataform/core", () => {
       const t2 = session
         .publish("schema2.example", {
           type: "table",
-          dependencies: ["schema1.example"],
+          dependencies: [{ schema: "schema1", name: "example" }],
           description: "test description"
         })
         .query(_ => "select 1 as test")
@@ -467,15 +467,12 @@ describe("@dataform/core", () => {
       session.publish("b").dependencies("a");
       const cGraph = session.compile();
       const gErrors = utils.validate(cGraph);
-
       expect(gErrors)
-        .to.have.property("validationErrors")
+        .to.have.property("compilationErrors")
         .to.be.an("array").that.is.not.empty;
-
-      const err = gErrors.validationErrors.find(e => e.actionName === "schema.a");
-      expect(err)
-        .to.have.property("message")
-        .that.matches(/Circular dependency/);
+      expect(
+        gErrors.compilationErrors.filter(item => item.message.match(/Circular dependency/))
+      ).to.be.an("array").that.is.not.empty;
     });
 
     it("missing_dependency", () => {
@@ -551,29 +548,6 @@ describe("@dataform/core", () => {
       expect(gErrors)
         .to.have.property("compilationErrors")
         .to.be.an("array").that.is.empty;
-    });
-
-    it("validate", () => {
-      const graph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
-        projectConfig: { warehouse: "redshift" },
-        tables: [
-          { name: "schema.a", target: { schema: "schema", name: "a" }, dependencies: ["schema.b"] },
-          { name: "schema.b", target: { schema: "schema", name: "b" }, dependencies: ["schema.z"] },
-          { name: "schema.a", target: { schema: "schema", name: "a" }, dependencies: [] },
-          { name: "schema.c", target: { schema: "schema", name: "c" }, dependencies: ["schema.d"] },
-          { name: "schema.d", target: { schema: "schema", name: "d" }, dependencies: ["schema.c"] }
-        ]
-      });
-      const gErrors = utils.validate(graph);
-      expect(gErrors)
-        .to.have.property("compilationErrors")
-        .to.be.an("array").that.is.empty;
-      expect(gErrors)
-        .to.have.property("validationErrors")
-        .to.be.an("array").that.is.not.empty;
-      const errors = gErrors.validationErrors.map(item => item.message);
-      expect(errors.some(item => !!item.match(/Duplicate action name/))).to.be.true;
-      expect(errors.some(item => !!item.match(/Circular dependency/))).to.be.true;
     });
   });
 

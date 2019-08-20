@@ -66,7 +66,16 @@ function mapColumnDescriptionToProto(
   );
 }
 
-export type Resolvable = string | { schema: string; name: string };
+export type FullyQualifiedName = { schema: string; name: string };
+export type Resolvable = string | FullyQualifiedName;
+
+export function isResolvable(res: any) {
+  return typeof res === "string" || (!!res.schema && !!res.name);
+}
+
+export function resolvable2string(res: Resolvable) {
+  return typeof res === "string" ? res : `${res.schema}.${res.name}`;
+}
 
 export class Session {
   public rootDir: string;
@@ -215,10 +224,7 @@ export class Session {
   public resolve(ref: Resolvable): string {
     const allResolved = this.findActions(ref);
     if (allResolved.length > 1) {
-      const msg = `Ambiguous Action name: ${ref}. Did you mean one of: ${allResolved
-        .map(res => res.proto.target.schema + "." + res.proto.target.name)
-        .join(", ")}.`;
-      this.compileError(new Error(msg));
+      this.ambiguousActionNameError(ref, allResolved);
     }
     const resolved = allResolved.length > 0 ? allResolved[0] : undefined;
 
@@ -360,13 +366,7 @@ export class Session {
         if (allActs.length === 1) {
           return `${allActs[0].proto.target.schema}.${allActs[0].proto.target.name}`;
         } else if (allActs.length >= 1) {
-          this.compileError(
-            new Error(
-              `Ambiguous Action name: ${act}. Did you mean one of: ${allActs
-                .map(r => r.proto.target.schema + "." + r.proto.target.name)
-                .join(", ")}.`
-            )
-          );
+          this.ambiguousActionNameError(act, allActs);
           return act;
         } else {
           this.compileError(
@@ -381,6 +381,32 @@ export class Session {
       });
       action.dependencies = [...new Set(fQDeps || [])];
     });
+
+    const actionsByName: { [name: string]: dataform.IExecutionAction } = {};
+    allActions.forEach(action => (actionsByName[action.name] = action));
+
+    // Check for circular dependencies.
+    const checkCircular = (
+      action: dataform.IExecutionAction,
+      dependents: dataform.IExecutionAction[]
+    ): boolean => {
+      if (dependents.indexOf(action) >= 0) {
+        const message = `Circular dependency detected in chain: [${dependents
+          .map(d => d.name)
+          .join(" > ")} > ${action.name}]`;
+        this.compileError(new Error(message));
+        return true;
+      }
+      return (action.dependencies || []).some(d => {
+        return actionsByName[d] && checkCircular(actionsByName[d], dependents.concat([action]));
+      });
+    };
+
+    for (const action of allActions) {
+      if (checkCircular(action, [])) {
+        break;
+      }
+    }
 
     return compiledGraph;
   }
@@ -411,11 +437,24 @@ export class Session {
     }
   }
 
-  private checkTestNameIsUnused(name: string) {
+  public checkTestNameIsUnused(name: string) {
     // Check for duplicate names
     if (this.tests[name]) {
       const message = `Duplicate test name detected: "${name}"`;
       this.compileError(new Error(message));
     }
+  }
+
+  public ambiguousActionNameError(
+    act: Resolvable,
+    allActs: Array<table.Table | Operation | Assertion>
+  ) {
+    this.compileError(
+      new Error(
+        `Ambiguous Action name: ${resolvable2string(act)}. Did you mean one of: ${allActs
+          .map(r => r.proto.target.schema + "." + r.proto.target.name)
+          .join(", ")}.`
+      )
+    );
   }
 }

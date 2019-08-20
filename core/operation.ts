@@ -2,14 +2,16 @@ import {
   IColumnsDescriptor,
   mapToColumnProtoArray,
   Resolvable,
-  Session
+  Session,
+  isResolvable,
+  resolvable2string
 } from "@dataform/core/session";
 import { dataform } from "@dataform/protos";
 
 export type OContextable<T> = T | ((ctx: OperationContext) => T);
 
 export interface OConfig {
-  dependencies?: string | string[];
+  dependencies?: Resolvable | Resolvable[];
   tags?: string[];
   description?: string;
   columns?: IColumnsDescriptor;
@@ -53,11 +55,12 @@ export class Operation {
     return this;
   }
 
-  public dependencies(value: string | string[]) {
-    const newDependencies = typeof value === "string" ? [value] : value;
-    newDependencies.forEach(d => {
-      if (this.proto.dependencies.indexOf(d) < 0) {
-        this.proto.dependencies.push(d);
+  public dependencies(value: Resolvable | Resolvable[]) {
+    const newDependencies = isResolvable(value) ? [value] : (value as Resolvable[]);
+    newDependencies.forEach((d: Resolvable) => {
+      const depName = resolvable2string(d);
+      if (this.proto.dependencies.indexOf(depName) < 0) {
+        this.proto.dependencies.push(depName);
       }
     });
     return this;
@@ -138,7 +141,7 @@ export class OperationContext {
   }
 
   public name(): string {
-    return this.operation.proto.name;
+    return this.operation.proto.target.name;
   }
 
   public ref(ref: Resolvable) {
@@ -152,7 +155,7 @@ export class OperationContext {
     return this.operation.session.resolve(ref);
   }
 
-  public dependencies(name: string | string[]) {
+  public dependencies(name: Resolvable | Resolvable[]) {
     this.operation.dependencies(name);
     return "";
   }

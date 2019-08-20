@@ -2,7 +2,9 @@ import {
   IColumnsDescriptor,
   Resolvable,
   mapToColumnProtoArray,
-  Session
+  Session,
+  isResolvable,
+  resolvable2string
 } from "@dataform/core/session";
 import { dataform } from "@dataform/protos";
 
@@ -43,7 +45,7 @@ export type TableType = ValueOf<TableTypes>;
 
 export interface TConfig {
   type?: TableType;
-  dependencies?: string | string[];
+  dependencies?: Resolvable | Resolvable[];
   tags?: string[];
   description?: string;
   columns?: IColumnsDescriptor;
@@ -151,9 +153,9 @@ export class Table {
     return this;
   }
 
-  public dependencies(value: string | string[]) {
-    const newDependencies = typeof value === "string" ? [value] : value;
-    newDependencies.forEach(d => {
+  public dependencies(value: Resolvable | Resolvable[]) {
+    const newDependencies = isResolvable(value) ? [value] : (value as Resolvable[]);
+    newDependencies.forEach((d: Resolvable) => {
       // TODO: This code fails to function correctly if the inline table has not yet
       // been attached to the session. This code probably needs to be moved to compile().
       const allResolved = this.session.findActions(d);
@@ -223,9 +225,10 @@ export class Table {
     return this.proto;
   }
 
-  private addDependency(dependency: string): void {
-    if (this.proto.dependencies.indexOf(dependency) < 0) {
-      this.proto.dependencies.push(dependency);
+  private addDependency(dependency: Resolvable): void {
+    const depName = resolvable2string(dependency);
+    if (this.proto.dependencies.indexOf(depName) < 0) {
+      this.proto.dependencies.push(depName);
     }
   }
 }
@@ -243,7 +246,7 @@ export interface ITableContext {
   disabled: () => string;
   redshift: (redshift: dataform.IRedshiftOptions) => string;
   bigquery: (bigquery: dataform.IBigQueryOptions) => string;
-  dependencies: (name: string) => string;
+  dependencies: (name: Resolvable) => string;
   apply: <T>(value: TContextable<T>) => T;
   tags: (name: string | string[]) => string;
 }
@@ -268,7 +271,7 @@ export class TableContext implements ITableContext {
   }
 
   public name(): string {
-    return this.table.proto.name;
+    return this.table.proto.target.name;
   }
 
   public ref(ref: Resolvable) {
@@ -322,8 +325,8 @@ export class TableContext implements ITableContext {
     return "";
   }
 
-  public dependencies(name: string) {
-    this.table.dependencies(name);
+  public dependencies(res: Resolvable) {
+    this.table.dependencies(res);
     return "";
   }
 

@@ -109,45 +109,9 @@ export function validate(compiledGraph: dataform.ICompiledGraph): dataform.IGrap
     compiledGraph.assertions,
     compiledGraph.operations
   );
-  const allActionNames = allActions.map(action => action.name);
-
-  // Check there are no duplicate action names.
-  allActions.forEach(action => {
-    if (allActions.filter(subAction => subAction.name == action.name).length > 1) {
-      const actionName = action.name;
-      const message = `Duplicate action name detected. Names within a schema must be unique across tables, assertions, and operations: "${
-        action.name
-      }"`;
-      validationErrors.push(dataform.ValidationError.create({ message, actionName }));
-    }
-  });
 
   const actionsByName: { [name: string]: dataform.IExecutionAction } = {};
   allActions.forEach(action => (actionsByName[action.name] = action));
-
-  // Check for circular dependencies.
-  const checkCircular = (
-    action: dataform.IExecutionAction,
-    dependents: dataform.IExecutionAction[]
-  ): boolean => {
-    if (dependents.indexOf(action) >= 0) {
-      const actionName = action.name;
-      const message = `Circular dependency detected in chain: [${dependents
-        .map(d => d.name)
-        .join(" > ")} > ${action.name}]`;
-      validationErrors.push(dataform.ValidationError.create({ message, actionName }));
-      return true;
-    }
-    return (action.dependencies || []).some(d => {
-      return actionsByName[d] && checkCircular(actionsByName[d], dependents.concat([action]));
-    });
-  };
-
-  for (const action of allActions) {
-    if (checkCircular(action, [])) {
-      break;
-    }
-  }
 
   // Table validation
   compiledGraph.tables.forEach(action => {
@@ -287,7 +251,7 @@ export function matchFQName(
       } else if (matches.length === 1) {
         return [matches[0], null]; // There was exactly one match to the short name. Return the full name.
       } else if (matches.length > 1) {
-        return [null, `Ymbiguous Action name: ${act}. Did you mean one of: ${matches.join(", ")}.`];
+        return [null, `Ambiguous Action name: ${act}. Did you mean one of: ${matches.join(", ")}.`];
       }
       break;
     }
