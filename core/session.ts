@@ -77,6 +77,27 @@ export function resolvable2string(res: Resolvable) {
   return typeof res === "string" ? res : `${res.schema}.${res.name}`;
 }
 
+export function resolvable2FQame(res: Resolvable) {
+  return typeof res === "string"
+    ? { schema: res.split(".").slice(-1)[0], name: res.split(".").slice(-1)[1] }
+    : res;
+}
+
+export function ambiguousActionNameMsg(
+  act: Resolvable,
+  allActs: Array<table.Table | Operation | Assertion> | string[]
+) {
+  const allActNames =
+    typeof allActs[0] === "string"
+      ? allActs
+      : (allActs as Array<table.Table | Operation | Assertion>).map(
+          r => `${r.proto.target.schema}.${r.proto.target.name}`
+        );
+  return `Ambiguous Action name: ${resolvable2string(act)}. Did you mean one of: ${allActNames.join(
+    ", "
+  )}.`;
+}
+
 export class Session {
   public rootDir: string;
 
@@ -224,7 +245,7 @@ export class Session {
   public resolve(ref: Resolvable): string {
     const allResolved = this.findActions(ref);
     if (allResolved.length > 1) {
-      this.ambiguousActionNameError(ref, allResolved);
+      this.compileError(new Error(ambiguousActionNameMsg(ref, allResolved)));
     }
     const resolved = allResolved.length > 0 ? allResolved[0] : undefined;
 
@@ -366,7 +387,7 @@ export class Session {
         if (allActs.length === 1) {
           return `${allActs[0].proto.target.schema}.${allActs[0].proto.target.name}`;
         } else if (allActs.length >= 1) {
-          this.ambiguousActionNameError(act, allActs);
+          this.compileError(new Error(ambiguousActionNameMsg(act, allActs)));
           return act;
         } else {
           this.compileError(
@@ -443,18 +464,5 @@ export class Session {
       const message = `Duplicate test name detected: "${name}"`;
       this.compileError(new Error(message));
     }
-  }
-
-  public ambiguousActionNameError(
-    act: Resolvable,
-    allActs: Array<table.Table | Operation | Assertion>
-  ) {
-    this.compileError(
-      new Error(
-        `Ambiguous Action name: ${resolvable2string(act)}. Did you mean one of: ${allActs
-          .map(r => r.proto.target.schema + "." + r.proto.target.name)
-          .join(", ")}.`
-      )
-    );
   }
 }

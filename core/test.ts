@@ -1,4 +1,9 @@
-import { Resolvable, Session } from "@dataform/core/session";
+import {
+  Resolvable,
+  Session,
+  resolvable2string,
+  ambiguousActionNameMsg
+} from "@dataform/core/session";
 import * as table from "@dataform/core/table";
 import { dataform } from "@dataform/protos";
 
@@ -25,13 +30,7 @@ export class Test {
   }
 
   public dataset(ref: Resolvable) {
-    const target2Resolvable = (t: dataform.ITarget) => {
-      return { schema: t.schema, name: t.name };
-    };
-    this.datasetToTest =
-      typeof ref === "string"
-        ? target2Resolvable(this.session.target(ref))
-        : target2Resolvable(this.session.target(`${ref.schema}.${ref.name}`));
+    this.datasetToTest = ref;
     return this;
   }
 
@@ -53,11 +52,26 @@ export class Test {
         this.proto.fileName
       );
     } else {
-      const allResolved = this.session.findActions(this.datasetToTest);
+      const target2Resolvable = (t: dataform.ITarget) => {
+        return { schema: t.schema, name: t.name };
+      };
+      const datasetToTestFinal =
+        typeof this.datasetToTest === "string"
+          ? target2Resolvable(this.session.target(this.datasetToTest))
+          : target2Resolvable(
+              this.session.target(`${this.datasetToTest.schema}.${this.datasetToTest.name}`)
+            );
+
+      const allResolved = this.session.findActions(datasetToTestFinal);
+      if (allResolved.length > 1) {
+        this.session.compileError(
+          new Error(ambiguousActionNameMsg(datasetToTestFinal, allResolved))
+        );
+      }
       const dataset = allResolved.length > 0 ? allResolved[0] : undefined;
       if (!(dataset && dataset instanceof table.Table)) {
         this.session.compileError(
-          new Error(`Dataset ${this.datasetToTest} could not be found.`),
+          new Error(`Dataset ${resolvable2string(this.datasetToTest)} could not be found.`),
           this.proto.fileName
         );
       } else if (dataset.proto.type === "incremental") {

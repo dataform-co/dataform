@@ -1,6 +1,6 @@
 import { dataform } from "@dataform/protos";
 import { DistStyleTypes, ignoredProps, SortStyleTypes, TableTypes } from "./table";
-import { Resolvable } from "@dataform/core/session";
+import { ambiguousActionNameMsg } from "@dataform/core/session";
 
 const SQL_DATA_WAREHOUSE_DIST_HASH_REGEXP = new RegExp("HASH\\s*\\(\\s*\\w*\\s*\\)\\s*");
 
@@ -31,11 +31,19 @@ export function variableNameFriendly(value: string) {
 export function matchPatterns(patterns: string[], values: string[]) {
   const fQActs: string[] = [];
   patterns.forEach(pat => {
-    const [fqPat, err] = matchFQName(pat, values);
-    if (err) {
-      throw new Error(err);
+    if (pat.includes(".")) {
+      if (values.includes(pat)) {
+        fQActs.push(pat);
+      }
     } else {
-      fQActs.push(fqPat);
+      const matchingActions = values.filter(value => pat === value.split(".").slice(-1)[0]);
+      if (matchingActions.length === 0) {
+        return;
+      }
+      if (matchingActions.length > 1) {
+        throw new Error(ambiguousActionNameMsg(pat, matchingActions));
+      }
+      fQActs.push(matchingActions[0]);
     }
   });
   return fQActs;
@@ -218,45 +226,4 @@ export function flatten<T>(nestedArray: T[][]) {
   return nestedArray.reduce((previousValue: T[], currentValue: T[]) => {
     return previousValue.concat(currentValue);
   }, []);
-}
-
-export function matchFQName(
-  ref: Resolvable,
-  allActFQNames: any[],
-  schemaSuffix?: string
-): [string, string] {
-  const schemaWithSuffix = (schema: string) =>
-    schemaSuffix ? `${schema}_${schemaSuffix}` : schema;
-  const act = typeof ref === "string" ? ref : `${schemaWithSuffix(ref.schema)}.${ref.name}`;
-  switch (act.split(".").length) {
-    case 2: {
-      if (allActFQNames.includes(act)) {
-        return [act, null]; // Fully Qualified name match. Return as it is.
-      } else {
-        return [null, `Action name: ${act} could not be found.`];
-      }
-      break;
-    }
-    case 1: {
-      const allActShortNamesMap = allActFQNames.map(actFQ => [
-        actFQ,
-        actFQ.includes(".") ? actFQ.split(".")[1] : actFQ
-      ]);
-      const matches: string[] = [];
-      allActShortNamesMap
-        .filter(actShort => actShort[1] === act)
-        .forEach(actShort => matches.push(actShort[0]));
-      if (matches.length === 0) {
-        return [null, `Action name: ${act} could not be found.`]; // No matches.
-      } else if (matches.length === 1) {
-        return [matches[0], null]; // There was exactly one match to the short name. Return the full name.
-      } else if (matches.length > 1) {
-        return [null, `Ambiguous Action name: ${act}. Did you mean one of: ${matches.join(", ")}.`];
-      }
-      break;
-    }
-    default: {
-      return [null, `Action name: ${act} is invalid.`];
-    }
-  }
 }
