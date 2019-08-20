@@ -68,7 +68,7 @@ describe("@dataform/integration/snowflake", () => {
     const s3Table = keyBy(compiledGraph.operations, t => t.name)[
       "df_integration_test.load_from_s3"
     ];
-    const s3Rows = await getTableRows(s3Table.target, adapter, dbadapter);
+    const s3Rows = await getTableRows(s3Table.target, adapter, credentials, "snowflake");
     expect(s3Rows.length).equals(2);
 
     // Check the status of the two assertions.
@@ -91,10 +91,16 @@ describe("@dataform/integration/snowflake", () => {
     ).equals(dataform.ActionExecutionStatus.SUCCESSFUL);
 
     // Check the data in the incremental table.
-    const incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
+    let incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
       "df_integration_test.example_incremental"
     ];
-    let incrementalRows = await getTableRows(incrementalTable.target, adapter, dbadapter);
+    let incrementalRows = await getTableRows(
+      incrementalTable.target,
+      adapter,
+      credentials,
+      "snowflake"
+    );
+
     expect(incrementalRows.length).equals(1);
 
     // Re-run some of the actions.
@@ -110,7 +116,14 @@ describe("@dataform/integration/snowflake", () => {
     expect(executedGraph.ok).equals(true);
 
     // Check there is an extra row in the incremental table.
-    incrementalRows = await getTableRows(incrementalTable.target, adapter, dbadapter);
-    expect(incrementalRows.length).equals(2);
+    incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
+      "df_integration_test.example_incremental"
+    ];
+    incrementalRows = await getTableRows(
+      incrementalTable.target,
+      adapter,
+      credentials,
+      "snowflake"
+    );
   }).timeout(60000);
 });

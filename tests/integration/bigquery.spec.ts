@@ -81,7 +81,14 @@ describe("@dataform/integration/bigquery", () => {
     let incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
       "df_integration_test.example_incremental"
     ];
-    let incrementalRows = await getTableRows(incrementalTable.target, adapter, dbadapter);
+
+    let incrementalRows = await getTableRows(
+      incrementalTable.target,
+      adapter,
+      credentials,
+      "bigquery"
+    );
+
     expect(incrementalRows.length).equals(1);
 
     // Re-run some of the actions.
@@ -100,7 +107,7 @@ describe("@dataform/integration/bigquery", () => {
     incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
       "df_integration_test.example_incremental"
     ];
-    incrementalRows = await getTableRows(incrementalTable.target, adapter, dbadapter);
+    incrementalRows = await getTableRows(incrementalTable.target, adapter, credentials, "bigquery");
     expect(incrementalRows.length).equals(2);
   }).timeout(60000);
 });

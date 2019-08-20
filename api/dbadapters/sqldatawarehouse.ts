@@ -38,10 +38,15 @@ export class SQLDataWarehouseDBAdapter implements IDbAdapter {
     });
   }
 
-  public async execute(statement: string, onCancel?: OnCancel): Promise<any[]> {
+  public async execute(
+    statement: string,
+    options?: {
+      onCancel?: OnCancel;
+    }
+  ): Promise<any[]> {
     const request = (await this.pool).request();
-    if (onCancel) {
-      onCancel(() => request.cancel());
+    if (options && options.onCancel) {
+      options.onCancel(() => request.cancel());
     }
     return (await request.query(statement)).recordset;
   }

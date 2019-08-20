@@ -2,19 +2,11 @@ import { createGenIndexConfig } from "@dataform/api/vm/gen_index_config";
 import * as legacyCompiler from "@dataform/api/vm/legacy_compiler";
 import { legacyGenIndex } from "@dataform/api/vm/legacy_gen_index";
 import { dataform } from "@dataform/protos";
-import * as crypto from "crypto";
 import * as fs from "fs";
-import * as os from "os";
 import * as path from "path";
-import { util } from "protobufjs";
 import { CompilerFunction, NodeVM } from "vm2";
 
-export interface ICompileIPCResult {
-  path?: string;
-  err?: string;
-}
-
-export function compile(compileConfig: dataform.ICompileConfig): Uint8Array {
+export function compile(compileConfig: dataform.ICompileConfig) {
   const vmIndexFileName = path.resolve(path.join(compileConfig.projectDir, "index.js"));
 
   const indexGeneratorVm = new NodeVM({
@@ -66,45 +58,20 @@ export function compile(compileConfig: dataform.ICompileConfig): Uint8Array {
     compiler
   });
 
-  // We return a base64 encoded proto via NodeVM, as returning a Uint8Array directly causes issues.
   const res: string = userCodeVm.run(
     findGenIndex()(createGenIndexConfig(compileConfig)),
     vmIndexFileName
   );
-  const encodedGraphBytes = new Uint8Array(util.base64.length(res));
-  util.base64.decode(res, encodedGraphBytes, 0);
-  return encodedGraphBytes;
+  return res;
 }
 
 process.on("message", (compileConfig: dataform.ICompileConfig) => {
   try {
-    returnToParent({ path: compileInTmpDir(compileConfig) });
+    const compiledResult = compile(compileConfig);
+    const writeable = fs.createWriteStream(null, { fd: 4 });
+    writeable.write(compiledResult, "utf8");
   } catch (e) {
-    returnToParent({ err: String(e.stack) });
+    process.send(e);
   }
   process.exit();
 });
-
-function compileInTmpDir(compileConfig: dataform.ICompileConfig) {
-  // IPC breaks down above 200kb, which is a problem. Instead, pass via file system...
-  // TODO: This isn't ideal.
-  const tmpDir = path.join(os.tmpdir(), "dataform");
-  if (!fs.existsSync(tmpDir)) {
-    fs.mkdirSync(tmpDir);
-  }
-  // Generate a random filename.
-  const subdir = crypto.randomBytes(64).toString("hex");
-  const tmpPath = path.join(tmpDir, subdir);
-  // Clear the transfer path before writing it.
-  if (fs.existsSync(tmpPath)) {
-    fs.unlinkSync(tmpPath);
-  }
-  const encodedGraph = compile(compileConfig);
-  fs.writeFileSync(tmpPath, encodedGraph);
-  // Send back the temp path.
-  return tmpPath;
-}
-
-function returnToParent(result: ICompileIPCResult) {
-  process.send(result);
-}
