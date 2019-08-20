@@ -5,6 +5,14 @@ import * as fs from "fs";
 import * as path from "path";
 import { util } from "protobufjs";
 
+const validWarehouses = ["bigquery", "postgres", "redshift", "sqldatawarehouse", "snowflake"];
+const mandatoryProps: Array<keyof dataform.IProjectConfig> = ["warehouse", "defaultSchema"];
+const simpleCheckProps: Array<keyof dataform.IProjectConfig> = [
+  "assertionSchema",
+  "schemaSuffix",
+  "defaultSchema"
+];
+
 export async function compile(
   compileConfig: dataform.ICompileConfig
 ): Promise<dataform.CompiledGraph> {
@@ -14,9 +22,9 @@ export async function compile(
   try {
     // check dataformJson is valid before we try to compile
     const dataformJson = fs.readFileSync(`${compileConfig.projectDir}/dataform.json`, "utf8");
-    JSON.parse(dataformJson);
+    checkDataformJsonValidity(JSON.parse(dataformJson));
   } catch (e) {
-    throw new Error("Compile Error: `dataform.json` is invalid");
+    throw new Error(`Compile Error: 'dataform.json' is invalid. ${e}`);
   }
 
   const compiledGraph = await CompileChildProcess.forkProcess().compile(compileConfig);
@@ -78,3 +86,33 @@ class CompileChildProcess {
     }
   }
 }
+
+const checkDataformJsonValidity = (dataformJsonParsed: { [prop: string]: string }) => {
+  const invalidWarehouseProp = () => {
+    return dataformJsonParsed.warehouse && !validWarehouses.includes(dataformJsonParsed.warehouse)
+      ? `Invalid value on property warehouse: ${
+      dataformJsonParsed.warehouse
+      }. Should be one of: ${validWarehouses.join(", ")}.`
+      : null;
+  };
+  const invalidProp = () => {
+    const invProp = simpleCheckProps.find(prop => {
+      return prop in dataformJsonParsed && !/^[a-zA-Z_0-9\-]*$/.test(dataformJsonParsed[prop]);
+    });
+    return invProp
+      ? `Invalid value on property ${invProp}: ${
+      dataformJsonParsed[invProp]
+      }. Should only contain alphanumeric characters, underscores and/or hyphens.`
+      : null;
+  };
+  const missingMandatoryProp = () => {
+    const missMandatoryProp = mandatoryProps.find(prop => {
+      return !(prop in dataformJsonParsed);
+    });
+    return missMandatoryProp ? `Missing mandatory property: ${missMandatoryProp}.` : null;
+  };
+  const message = invalidWarehouseProp() || invalidProp() || missingMandatoryProp();
+  if (message) {
+    throw new Error(message);
+  }
+};

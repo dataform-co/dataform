@@ -80,7 +80,12 @@ describe("@dataform/integration/sqldatawarehouse", () => {
 
     // Check the data in the incremental table.
     let incrementalTable = keyBy(compiledGraph.tables, t => t.name).example_incremental;
-    let incrementalRows = await getTableRows(incrementalTable.target, adapter, dbadapter);
+    let incrementalRows = await getTableRows(
+      incrementalTable.target,
+      adapter,
+      credentials,
+      "sqldatawarehouse"
+    );
     expect(incrementalRows.length).equals(1);
 
     // Re-run some of the actions.
@@ -95,7 +100,12 @@ describe("@dataform/integration/sqldatawarehouse", () => {
 
     // Check there is an extra row in the incremental table.
     incrementalTable = keyBy(compiledGraph.tables, t => t.name).example_incremental;
-    incrementalRows = await getTableRows(incrementalTable.target, adapter, dbadapter);
+    incrementalRows = await getTableRows(
+      incrementalTable.target,
+      adapter,
+      credentials,
+      "sqldatawarehouse"
+    );
     expect(incrementalRows.length).equals(2);
   }).timeout(60000);
 });

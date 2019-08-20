@@ -65,15 +65,24 @@ describe("@dataform/integration/bigquery", () => {
     );
 
     // Check the status of the two uniqueness assertions.
-    expect(actionMap.example_assertion_uniqueness_fail.status).equals(dataform.ActionExecutionStatus.FAILED);
-    expect(actionMap.example_assertion_uniqueness_fail.tasks[1].error).to.eql("Assertion failed: query returned 1 row(s).");
+    expect(actionMap.example_assertion_uniqueness_fail.status).equals(
+      dataform.ActionExecutionStatus.FAILED
+    );
+    expect(actionMap.example_assertion_uniqueness_fail.tasks[1].error).to.eql(
+      "Assertion failed: query returned 1 row(s)."
+    );
     expect(actionMap.example_assertion_uniqueness_pass.status).equals(
       dataform.ActionExecutionStatus.SUCCESSFUL
     );
 
     // Check the data in the incremental table.
     let incrementalTable = keyBy(compiledGraph.tables, t => t.name).example_incremental;
-    let incrementalRows = await getTableRows(incrementalTable.target, adapter, dbadapter);
+    let incrementalRows = await getTableRows(
+      incrementalTable.target,
+      adapter,
+      credentials,
+      "bigquery"
+    );
     expect(incrementalRows.length).equals(1);
 
     // Re-run some of the actions.
@@ -88,7 +97,7 @@ describe("@dataform/integration/bigquery", () => {
 
     // Check there is an extra row in the incremental table.
     incrementalTable = keyBy(compiledGraph.tables, t => t.name).example_incremental;
-    incrementalRows = await getTableRows(incrementalTable.target, adapter, dbadapter);
+    incrementalRows = await getTableRows(incrementalTable.target, adapter, credentials, "bigquery");
     expect(incrementalRows.length).equals(2);
   }).timeout(60000);
 });

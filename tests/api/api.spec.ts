@@ -8,7 +8,7 @@ import { assert, config, expect } from "chai";
 import { asPlainObject, cleanSql } from "df/tests/utils";
 import * as path from "path";
 import * as stackTrace from "stack-trace";
-import { anyFunction, anyString, instance, mock, when } from "ts-mockito";
+import { anyString, anything, instance, mock, when } from "ts-mockito";
 
 config.truncateThreshold = 0;
 
@@ -1160,6 +1160,38 @@ describe("@dataform/api", () => {
         expect(e.message).to.equal("Compilation timed out");
       }
     });
+
+    it("dataform.json is valid", async () => {
+      try {
+        await compile({
+          projectDir: path.resolve("df/examples/dataform_json_checks/invalid_warehouse")
+        });
+        fail("Should have failed.");
+      } catch (e) {
+        expect(e.message).to.match(/Invalid value on property warehouse: dataform/);
+      }
+      try {
+        await compile({
+          projectDir: path.resolve("df/examples/dataform_json_checks/missing_warehouse")
+        });
+        fail("Should have failed.");
+      } catch (e) {
+        expect(e.message).to.match(/Missing mandatory property: warehouse/);
+      }
+      try {
+        await compile({
+          projectDir: path.resolve("df/examples/dataform_json_checks/invalid_defaultschema")
+        });
+        fail("Should have failed.");
+      } catch (e) {
+        expect(e.message).to.match(
+          /Invalid value on property defaultSchema: rock&roll. Should only contain alphanumeric characters, underscores and\/or hyphens./
+        );
+      }
+      await compile({
+        projectDir: path.resolve("df/examples/dataform_json_checks/valid_dataform_json")
+      });
+    });
   });
 
   describe("query", () => {
@@ -1307,10 +1339,10 @@ describe("@dataform/api", () => {
       const mockedDbAdapter = mock(BigQueryDbAdapter);
       when(mockedDbAdapter.prepareSchema(anyString())).thenResolve(null);
       when(
-        mockedDbAdapter.execute(TEST_GRAPH.actions[0].tasks[0].statement, anyFunction())
+        mockedDbAdapter.execute(TEST_GRAPH.actions[0].tasks[0].statement, anything())
       ).thenResolve([]);
       when(
-        mockedDbAdapter.execute(TEST_GRAPH.actions[1].tasks[0].statement, anyFunction())
+        mockedDbAdapter.execute(TEST_GRAPH.actions[1].tasks[0].statement, anything())
       ).thenReject(new Error("bad statement"));
 
       const runner = new Runner(instance(mockedDbAdapter), TEST_GRAPH);
@@ -1390,7 +1422,7 @@ describe("@dataform/api", () => {
 
       let wasCancelled = false;
       const mockDbAdapter = {
-        execute: (_, onCancel) =>
+        execute: (_, { onCancel }) =>
           new Promise((_, reject) => {
             onCancel(() => {
               wasCancelled = true;
