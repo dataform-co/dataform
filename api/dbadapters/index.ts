@@ -10,8 +10,8 @@ export type OnCancel = (handleCancel: () => void) => void;
 export interface IDbAdapter {
   execute(
     statement: string,
-    onCancel?: OnCancel,
     options?: {
+      onCancel?: OnCancel;
       interactive?: boolean;
     }
   ): Promise<any[]>;

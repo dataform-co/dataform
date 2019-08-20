@@ -53,8 +53,8 @@ export class BigQueryDbAdapter implements IDbAdapter {
 
   public async execute(
     statement: string,
-    onCancel?: OnCancel,
     options: {
+      onCancel?: OnCancel;
       interactive?: boolean;
     } = { interactive: false }
   ) {
@@ -63,7 +63,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
         generator: () =>
           options && options.interactive
             ? this.runQuery(statement)
-            : this.createQueryJob(statement, onCancel)
+            : this.createQueryJob(statement, options && options.onCancel)
       })
       .promise();
   }

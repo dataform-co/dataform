@@ -1,8 +1,8 @@
+import { query } from "@dataform/api";
 import { Credentials } from "@dataform/api/commands/credentials";
 import * as dbadapters from "@dataform/api/dbadapters";
 import * as adapters from "@dataform/core/adapters";
 import { dataform } from "@dataform/protos";
-import { query } from "df/api";
 
 export function keyBy<V>(values: V[], keyFn: (value: V) => string): { [key: string]: V } {
   return values.reduce(
