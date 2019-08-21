@@ -14,7 +14,7 @@ export function assertPathExists(checkPath: string) {
 export function compiledGraphHasErrors(graph: dataform.ICompiledGraph) {
   return (
     graph.graphErrors &&
-    ((graph.graphErrors.compilationErrors && graph.graphErrors.compilationErrors.length > 0) ||
-      (graph.graphErrors.validationErrors && graph.graphErrors.validationErrors.length > 0))
+    graph.graphErrors.compilationErrors &&
+    graph.graphErrors.compilationErrors.length > 0
   );
 }

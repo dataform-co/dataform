@@ -14,7 +14,6 @@ describe("@dataform/integration/redshift", () => {
     });
 
     expect(compiledGraph.graphErrors.compilationErrors).to.eql([]);
-    expect(compiledGraph.graphErrors.validationErrors).to.eql([]);
 
     const dbadapter = dbadapters.create(credentials, "redshift");
     const adapter = adapters.create(compiledGraph.projectConfig);
@@ -67,11 +66,15 @@ describe("@dataform/integration/redshift", () => {
     const actionMap = keyBy(executedGraph.actions, v => v.name);
 
     // Check the status of the s3 load operation.
-    expect(actionMap.load_from_s3.status).equals(dataform.ActionExecutionStatus.SUCCESSFUL);
+    expect(actionMap["df_integration_test.load_from_s3"].status).equals(
+      dataform.ActionExecutionStatus.SUCCESSFUL
+    );
 
     // Check the s3 table has two rows, as per:
     // https://dataform-integration-tests.s3.us-east-2.amazonaws.com/sample-data/sample_data.csv
-    const s3Table = keyBy(compiledGraph.operations, t => t.name).load_from_s3;
+    const s3Table = keyBy(compiledGraph.operations, t => t.name)[
+      "df_integration_test.load_from_s3"
+    ];
     const s3Rows = await getTableRows(s3Table.target, adapter, credentials, "redshift");
     expect(s3Rows.length).equals(2);
 

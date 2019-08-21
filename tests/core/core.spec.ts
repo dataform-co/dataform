@@ -112,7 +112,7 @@ describe("@dataform/core", () => {
       expect(t.postOps).deep.equals(["post_op"]);
     });
 
-    it("validation_type_incremental", () => {
+    it("compilation_type_incremental", () => {
       const sessionSuccess = new Session(path.dirname(__filename), TEST_CONFIG);
       sessionSuccess
         .publish("exampleSuccess1", {
@@ -139,7 +139,7 @@ describe("@dataform/core", () => {
       const cgSuccessErrors = utils.validate(cgSuccess);
 
       expect(cgSuccessErrors)
-        .to.have.property("validationErrors")
+        .to.have.property("compilationErrors")
         .to.be.an("array").that.is.empty;
 
       const sessionFail = new Session(path.dirname(__filename), TEST_CONFIG);
@@ -148,7 +148,7 @@ describe("@dataform/core", () => {
           table: sessionFail.publish("missing_where", {
             type: "incremental"
           }),
-          errorTest: /"where" property is not defined/
+          errorTest: /schema\.missing_where.*"where" property is not defined/
         },
         "schema.empty_where": {
           table: sessionFail
@@ -156,25 +156,24 @@ describe("@dataform/core", () => {
               type: "incremental"
             })
             .where(""),
-          errorTest: /"where" property is not defined/
+          errorTest: /schema\.empty_where.*"where" property is not defined/
         }
       };
       const cgFail = sessionFail.compile();
       const cgFailErrors = utils.validate(cgFail);
 
       expect(cgFailErrors)
-        .to.have.property("validationErrors")
+        .to.have.property("compilationErrors")
         .to.be.an("array").that.is.not.empty;
 
       Object.keys(cases).forEach(key => {
-        const err = cgFailErrors.validationErrors.find(e => e.actionName === key);
-        expect(err)
-          .to.have.property("message")
-          .that.matches(cases[key].errorTest);
+        expect(
+          cgFailErrors.compilationErrors.filter(item => item.message.match(cases[key].errorTest))
+        ).to.be.an("array").that.is.not.empty;
       });
     });
 
-    it("validation_type", () => {
+    it("compilation_type", () => {
       const sessionSuccess = new Session(path.dirname(__filename), TEST_CONFIG);
       sessionSuccess.publish("exampleSuccess1", { type: "table" });
       sessionSuccess.publish("exampleSuccess2", { type: "view" });
@@ -183,7 +182,7 @@ describe("@dataform/core", () => {
       const cgSuccessErrors = utils.validate(cgSuccess);
 
       expect(cgSuccessErrors)
-        .to.have.property("validationErrors")
+        .to.have.property("compilationErrors")
         .to.be.an("array").that.is.empty;
 
       const sessionFail = new Session(path.dirname(__filename), TEST_CONFIG);
@@ -192,16 +191,17 @@ describe("@dataform/core", () => {
       const cgFailErrors = utils.validate(cgFail);
 
       expect(cgFailErrors)
-        .to.have.property("validationErrors")
+        .to.have.property("compilationErrors")
         .to.be.an("array").that.is.not.empty;
 
-      const err = cgFailErrors.validationErrors.find(e => e.actionName === "schema.exampleFail");
-      expect(err)
-        .to.have.property("message")
-        .that.matches(/Wrong type of table/);
+      expect(
+        cgFailErrors.compilationErrors.filter(item =>
+          item.message.match(/schema\.exampleFail.*Wrong type of table/)
+        )
+      ).to.be.an("array").that.is.not.empty;
     });
 
-    it("validation_redshift_success", () => {
+    it("compilation_redshift_success", () => {
       const session = new Session(path.dirname(__filename), TEST_CONFIG);
       session.publish("example_without_dist", {
         redshift: {
@@ -223,13 +223,9 @@ describe("@dataform/core", () => {
         .to.have.property("tables")
         .to.be.an("array")
         .to.have.lengthOf(2);
-
-      expect(gErrors)
-        .to.have.property("validationErrors")
-        .to.be.an("array").that.is.empty;
     });
 
-    it("validation_redshift_fail", () => {
+    it("compilation_redshift_fail", () => {
       const session = new Session(path.dirname(__filename), TEST_CONFIG);
       session.publish("example_absent_distKey", {
         redshift: {
@@ -288,33 +284,32 @@ describe("@dataform/core", () => {
       });
 
       const expectedResults = [
-        { name: "schema.example_absent_distKey", message: /Property "distKey" is not defined/ },
-        { name: "schema.example_absent_distStyle", message: /Property "distStyle" is not defined/ },
-        { name: "schema.example_wrong_distStyle", message: /Wrong value of "distStyle" property/ },
-        { name: "schema.example_absent_sortKeys", message: /Property "sortKeys" is not defined/ },
-        { name: "schema.example_empty_sortKeys", message: /Property "sortKeys" is not defined/ },
-        { name: "schema.example_absent_sortStyle", message: /Property "sortStyle" is not defined/ },
-        { name: "schema.example_wrong_sortStyle", message: /Wrong value of "sortStyle" property/ },
-        { name: "schema.example_empty_redshift", message: /Missing properties in redshift config/ }
+        /schema.example_absent_distKey.*Property "distKey" is not defined/,
+        /schema.example_absent_distStyle.*Property "distStyle" is not defined/,
+        /schema.example_wrong_distStyle.*Wrong value of "distStyle" property/,
+        /schema.example_absent_sortKeys.*Property "sortKeys" is not defined/,
+        /schema.example_empty_sortKeys.*Property "sortKeys" is not defined/,
+        /schema.example_absent_sortStyle.*Property "sortStyle" is not defined/,
+        /schema.example_wrong_sortStyle.*Wrong value of "sortStyle" property/,
+        /schema.example_empty_redshift.*Missing properties in redshift config/
       ];
 
       const graph = session.compile();
       const gErrors = utils.validate(graph);
 
       expect(gErrors)
-        .to.have.property("validationErrors")
+        .to.have.property("compilationErrors")
         .to.be.an("array")
-        .to.have.lengthOf(8);
+        .to.have.lengthOf(expectedResults.length);
 
       expectedResults.forEach(result => {
-        const err = gErrors.validationErrors.find(e => e.actionName === result.name);
-        expect(err)
-          .to.have.property("message")
-          .that.matches(result.message);
+        expect(gErrors.compilationErrors.filter(item => item.message.match(result))).to.be.an(
+          "array"
+        ).that.is.not.empty;
       });
     });
 
-    it("validation_type_inline", () => {
+    it("compilation_type_inline", () => {
       const session = new Session(path.dirname(__filename), TEST_CONFIG);
       session.publish("a", { type: "table" }).query(_ => "select 1 as test");
       session
@@ -343,7 +338,6 @@ describe("@dataform/core", () => {
         .query(ctx => `select * from ${ctx.ref("b")}`);
 
       const graph = session.compile();
-      const graphErrors = utils.validate(graph);
 
       const tableA = graph.tables.find(item => item.name === "schema.a");
       expect(tableA).to.exist;
@@ -396,19 +390,27 @@ describe("@dataform/core", () => {
       expect(tableC.where).equals("");
       expect(tableC.query).equals('select * from (select * from "schema"."a")');
 
-      expect(graphErrors)
-        .to.have.property("validationErrors")
-        .to.be.an("array").that.is.not.empty;
+      const expectedResults = [
+        /schema.b.*Unused property was detected: "preOps"/,
+        /schema.b.*Unused property was detected: "postOps"/,
+        /schema.b.*Unused property was detected: "actionDescriptor"/, // This wasn't here before. Is it legit?
+        /schema.b.*Unused property was detected: "redshift"/,
+        /schema.b.*Unused property was detected: "disabled"/,
+        /schema.b.*Unused property was detected: "where"/
+      ];
 
-      const errors = graphErrors.validationErrors
-        .filter(item => item.actionName === "schema.b")
-        .map(item => item.message);
+      const gErrors = utils.validate(graph);
 
-      expect(errors).that.matches(/Unused property was detected: "preOps"/);
-      expect(errors).that.matches(/Unused property was detected: "postOps"/);
-      expect(errors).that.matches(/Unused property was detected: "redshift"/);
-      expect(errors).that.matches(/Unused property was detected: "disabled"/);
-      expect(errors).that.matches(/Unused property was detected: "where"/);
+      expect(gErrors)
+        .to.have.property("compilationErrors")
+        .to.be.an("array")
+        .to.have.lengthOf(expectedResults.length);
+
+      expectedResults.forEach(result => {
+        expect(gErrors.compilationErrors.filter(item => item.message.match(result))).to.be.an(
+          "array"
+        ).that.is.not.empty;
+      });
     });
 
     it("ref", () => {
@@ -434,9 +436,6 @@ describe("@dataform/core", () => {
       const errors = graphErrors.compilationErrors.map(item => item.message);
       expect(errors).includes("Action name is not specified");
       expect(graphErrors.compilationErrors.length === 1);
-      expect(graphErrors)
-        .to.have.property("validationErrors")
-        .to.be.an("array").that.is.empty;
     });
   });
 
@@ -451,9 +450,6 @@ describe("@dataform/core", () => {
 
       expect(gErrors)
         .to.have.property("compilationErrors")
-        .to.be.an("array").that.is.empty;
-      expect(gErrors)
-        .to.have.property("validationErrors")
         .to.be.an("array").that.is.empty;
       expect(graph)
         .to.have.property("operations")

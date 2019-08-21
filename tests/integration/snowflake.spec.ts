@@ -14,7 +14,6 @@ describe("@dataform/integration/snowflake", () => {
     });
 
     expect(compiledGraph.graphErrors.compilationErrors).to.eql([]);
-    expect(compiledGraph.graphErrors.validationErrors).to.eql([]);
 
     const dbadapter = dbadapters.create(credentials, "snowflake");
     const adapter = adapters.create(compiledGraph.projectConfig);

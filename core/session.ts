@@ -1,7 +1,15 @@
 import * as adapters from "@dataform/core/adapters";
 import { AConfig, AContextable, Assertion } from "@dataform/core/assertion";
 import { OConfig, OContextable, Operation } from "@dataform/core/operation";
-import * as table from "@dataform/core/table";
+import {
+  DistStyleTypes,
+  ignoredProps,
+  SortStyleTypes,
+  TableTypes,
+  Table,
+  TContextable,
+  TConfig
+} from "@dataform/core/table";
 import * as test from "@dataform/core/test";
 import * as utils from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
@@ -13,7 +21,7 @@ interface IActionProto {
   target?: dataform.ITarget;
 }
 
-interface ISqlxConfig extends table.TConfig, AConfig, OConfig, test.TConfig {
+interface ISqlxConfig extends TConfig, AConfig, OConfig, test.TConfig {
   type: "view" | "table" | "inline" | "incremental" | "assertion" | "operations" | "test";
   name: string;
 }
@@ -74,7 +82,7 @@ export class Session {
 
   public config: dataform.IProjectConfig;
 
-  public actions: Array<table.Table | Operation | Assertion>;
+  public actions: Array<Table | Operation | Assertion>;
   public tests: { [name: string]: test.Test };
 
   public graphErrors: dataform.IGraphErrors;
@@ -218,7 +226,7 @@ export class Session {
     }
     const resolved = allResolved.length > 0 ? allResolved[0] : undefined;
 
-    if (resolved && resolved instanceof table.Table && resolved.proto.type === "inline") {
+    if (resolved && resolved instanceof Table && resolved.proto.type === "inline") {
       // TODO: Pretty sure this is broken as the proto.query value may not
       // be set yet as it happens during compilation. We should evalute the query here.
       return `(${resolved.proto.query})`;
@@ -252,11 +260,8 @@ export class Session {
     return operation;
   }
 
-  public publish(
-    name: string,
-    queryOrConfig?: table.TContextable<string> | table.TConfig
-  ): table.Table {
-    const newTable = new table.Table();
+  public publish(name: string, queryOrConfig?: TContextable<string> | TConfig): Table {
+    const newTable = new Table();
     newTable.session = this;
     this.setNameAndTarget(newTable.proto, name);
     if (!!queryOrConfig) {
@@ -333,7 +338,7 @@ export class Session {
   public compile(): dataform.ICompiledGraph {
     const compiledGraph = dataform.CompiledGraph.create({
       projectConfig: this.config,
-      tables: this.compileGraphChunk(this.actions.filter(action => action instanceof table.Table)),
+      tables: this.compileGraphChunk(this.actions.filter(action => action instanceof Table)),
       operations: this.compileGraphChunk(
         this.actions.filter(action => action instanceof Operation)
       ),
@@ -398,6 +403,111 @@ export class Session {
       }
     }
 
+    compiledGraph.tables.forEach(action => {
+      const actionName = action.name;
+      // type
+      if (!!action.type && !Object.values(TableTypes).includes(action.type)) {
+        const predefinedTypes = utils.joinQuoted(Object.values(TableTypes));
+        this.compileError(
+          new Error(
+            `Error on dataset ${actionName}: Wrong type of table detected. Should only use predefined types: ${predefinedTypes}`
+          )
+        );
+      }
+      // "where" property
+      if (action.type === TableTypes.INCREMENTAL && (!action.where || action.where.length === 0)) {
+        this.compileError(
+          new Error(
+            `Error on dataset ${actionName}: "where" property is not defined. With the type “incremental” you must also specify the property “where”!`
+          )
+        );
+      }
+      // sqldatawarehouse config
+      if (action.sqlDataWarehouse && action.sqlDataWarehouse.distribution) {
+        const distribution = action.sqlDataWarehouse.distribution.toUpperCase();
+        if (
+          distribution !== "REPLICATE" &&
+          distribution !== "ROUND_ROBIN" &&
+          !utils.SQL_DATA_WAREHOUSE_DIST_HASH_REGEXP.test(distribution)
+        ) {
+          this.compileError(
+            new Error(
+              `Error on dataset ${actionName}: Invalid value for sqldatawarehouse distribution: "${distribution}"`
+            )
+          );
+        }
+      }
+      // redshift config
+      if (!!action.redshift) {
+        if (
+          Object.keys(action.redshift).length === 0 ||
+          Object.values(action.redshift).every((value: string) => !value.length)
+        ) {
+          this.compileError(
+            new Error(`Error on dataset ${actionName}: Missing properties in redshift config`)
+          );
+        }
+        const validatePropertyDefined = (
+          opts: dataform.IRedshiftOptions,
+          prop: keyof dataform.IRedshiftOptions
+        ) => {
+          if (!opts[prop] || !opts[prop].length) {
+            this.compileError(
+              new Error(`Error on dataset ${actionName}: Property "${prop}" is not defined`)
+            );
+          }
+        };
+        const validatePropertiesDefined = (
+          opts: dataform.IRedshiftOptions,
+          props: Array<keyof dataform.IRedshiftOptions>
+        ) => props.forEach(prop => validatePropertyDefined(opts, prop));
+        const validatePropertyValueInValues = (
+          opts: dataform.IRedshiftOptions,
+          prop: keyof dataform.IRedshiftOptions & ("distStyle" | "sortStyle"),
+          values: string[]
+        ) => {
+          if (!!opts[prop] && !values.includes(opts[prop])) {
+            this.compileError(
+              new Error(
+                `Error on dataset ${actionName}: Wrong value of "${prop}" property. Should only use predefined values: ${utils.joinQuoted(
+                  values
+                )}`
+              )
+            );
+          }
+        };
+        if (action.redshift.distStyle || action.redshift.distKey) {
+          validatePropertiesDefined(action.redshift, ["distStyle", "distKey"]);
+          validatePropertyValueInValues(
+            action.redshift,
+            "distStyle",
+            Object.values(DistStyleTypes)
+          );
+        }
+        if (
+          action.redshift.sortStyle ||
+          (action.redshift.sortKeys && action.redshift.sortKeys.length)
+        ) {
+          validatePropertiesDefined(action.redshift, ["sortStyle", "sortKeys"]);
+          validatePropertyValueInValues(
+            action.redshift,
+            "sortStyle",
+            Object.values(SortStyleTypes)
+          );
+        }
+      }
+      // ignored properties in tables
+      if (!!ignoredProps[action.type]) {
+        ignoredProps[action.type].forEach(ignoredProp => {
+          if (utils.objectExistsOrIsNonEmpty(action[ignoredProp])) {
+            const message = `Error on dataset ${actionName}: Unused property was detected: "${ignoredProp}". This property is not used for tables with type "${
+              action.type
+            }" and will be ignored.`;
+            this.compileError(new Error(message));
+          }
+        });
+      }
+    });
     return compiledGraph;
   }
 
