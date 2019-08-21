@@ -12,75 +12,85 @@ const TEST_CONFIG: dataform.IProjectConfig = {
   defaultSchema: "schema"
 };
 
+const TEST_CONFIG_WITH_SUFFIX: dataform.IProjectConfig = {
+  warehouse: "redshift",
+  defaultSchema: "schema",
+  schemaSuffix: "suffix"
+};
+
 describe("@dataform/core", () => {
   describe("publish", () => {
     it("config", () => {
-      const session = new Session(path.dirname(__filename), TEST_CONFIG);
-      const t = session
-        .publish("example", {
-          type: "table",
-          dependencies: [],
+      [TEST_CONFIG, TEST_CONFIG_WITH_SUFFIX].forEach(testConfig => {
+        const schemaWithSuffix = (schema: string) =>
+          testConfig.schemaSuffix ? `${schema}_${testConfig.schemaSuffix}` : schema;
+        const session = new Session(path.dirname(__filename), testConfig);
+        const t = session
+          .publish("example", {
+            type: "table",
+            dependencies: [],
+            description: "this is a table",
+            columns: {
+              test: "test description"
+            }
+          })
+          .query(_ => "select 1 as test")
+          .preOps(_ => ["pre_op"])
+          .postOps(_ => ["post_op"])
+          .compile();
+
+        expect(t.name).equals(`${schemaWithSuffix("schema")}.example`);
+        expect(t.type).equals("table");
+        expect(t.actionDescriptor).eql({
           description: "this is a table",
-          columns: {
-            test: "test description"
-          }
-        })
-        .query(_ => "select 1 as test")
-        .preOps(_ => ["pre_op"])
-        .postOps(_ => ["post_op"])
-        .compile();
+          columns: [
+            dataform.ColumnDescriptor.create({
+              description: "test description",
+              path: ["test"]
+            })
+          ]
+        });
+        expect(t.preOps).deep.equals(["pre_op"]);
+        expect(t.postOps).deep.equals(["post_op"]);
 
-      expect(t.name).equals("schema.example");
-      expect(t.type).equals("table");
-      expect(t.actionDescriptor).eql({
-        description: "this is a table",
-        columns: [
-          dataform.ColumnDescriptor.create({
-            description: "test description",
-            path: ["test"]
+        const t2 = session
+          .publish("schema2.example", {
+            type: "table",
+            dependencies: [{ schema: "schema1", name: "example" }],
+            description: "test description"
           })
-        ]
-      });
-      expect(t.preOps).deep.equals(["pre_op"]);
-      expect(t.postOps).deep.equals(["post_op"]);
+          .query(_ => "select 1 as test")
+          .preOps(_ => ["pre_op"])
+          .postOps(_ => ["post_op"])
+          .compile();
 
-      const t2 = session
-        .publish("schema2.example", {
-          type: "table",
-          dependencies: [{ schema: "schema1", name: "example" }],
-          description: "test description"
-        })
-        .query(_ => "select 1 as test")
-        .preOps(_ => ["pre_op"])
-        .postOps(_ => ["post_op"])
-        .compile();
+        expect(t2.name).equals(`${schemaWithSuffix("schema2")}.example`);
+        expect(t2.type).equals("table");
+        expect(t.actionDescriptor).eql({
+          description: "this is a table",
+          columns: [
+            dataform.ColumnDescriptor.create({
+              description: "test description",
+              path: ["test"]
+            })
+          ]
+        });
+        expect(t2.preOps).deep.equals(["pre_op"]);
+        expect(t2.postOps).deep.equals(["post_op"]);
+        expect(t2.dependencies).includes(`${schemaWithSuffix("schema1")}.example`);
 
-      expect(t2.name).equals("schema2.example");
-      expect(t2.type).equals("table");
-      expect(t.actionDescriptor).eql({
-        description: "this is a table",
-        columns: [
-          dataform.ColumnDescriptor.create({
-            description: "test description",
-            path: ["test"]
+        const t3 = session
+          .publish("my_table", {
+            type: "table",
+            schema: "test_schema"
           })
-        ]
+          .query(_ => "SELECT 1 as one")
+          .compile();
+        expect(t3.name).equals(`${schemaWithSuffix("test_schema")}.my_table`);
+        expect((t3.target.name = "my_table"));
+        expect((t3.target.schema = schemaWithSuffix("test_schema")));
+        expect(t3.type).equals("table");
       });
-      expect(t2.preOps).deep.equals(["pre_op"]);
-      expect(t2.postOps).deep.equals(["post_op"]);
-      expect(t2.dependencies).includes("schema1.example");
-
-      const t3 = session
-        .publish("my_table", {
-          type: "table",
-          schema: "test_schema"
-        })
-        .query(_ => "SELECT 1 as one")
-        .compile();
-      expect(t3.name).equals("test_schema.my_table");
-      expect((t3.target.name = "my_table"));
-      expect((t3.target.schema = "test_schema"));
-      expect(t3.type).equals("table");
     });
 
     it("config_context", () => {

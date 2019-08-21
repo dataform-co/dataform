@@ -2,11 +2,10 @@ import {
   IColumnsDescriptor,
   Resolvable,
   mapToColumnProtoArray,
-  Session,
-  isResolvable,
-  resolvable2string
+  Session
 } from "@dataform/core/session";
 import { dataform } from "@dataform/protos";
+import * as utils from "@dataform/core/utils";
 
 export enum TableTypes {
   TABLE = "table",
@@ -154,16 +153,20 @@ export class Table {
   }
 
   public dependencies(value: Resolvable | Resolvable[]) {
-    const newDependencies = isResolvable(value) ? [value] : (value as Resolvable[]);
+    const newDependencies = utils.isResolvable(value) ? [value] : (value as Resolvable[]);
     newDependencies.forEach((d: Resolvable) => {
       // TODO: This code fails to function correctly if the inline table has not yet
       // been attached to the session. This code probably needs to be moved to compile().
-      const allResolved = this.session.findActions(d);
+      const dStr = utils.stringifyResolvable(d);
+      const depFinal = dStr.includes(".")
+        ? `${dStr.split(".")[0]}${this.session.getSuffixWithUnderscore()}.${dStr.split(".")[1]}`
+        : dStr;
+      const allResolved = this.session.findActions(depFinal);
       const resolved = allResolved.length > 0 ? allResolved[0] : undefined;
       if (!!resolved && resolved instanceof Table && resolved.proto.type === "inline") {
         resolved.proto.dependencies.forEach(childDep => this.addDependency(childDep));
       } else {
-        this.addDependency(d);
+        this.addDependency(depFinal);
       }
     });
     return this;
@@ -195,7 +198,9 @@ export class Table {
 
   public schema(schema: string) {
     this.proto.target.schema = schema;
-    this.proto.name = `${schema}.${this.proto.target.name}`;
+    this.proto.name = `${schema}${this.session.getSuffixWithUnderscore()}.${
+      this.proto.target.name
+    }`;
   }
 
   public compile() {
@@ -226,7 +231,7 @@ export class Table {
   }
 
   private addDependency(dependency: Resolvable): void {
-    const depName = resolvable2string(dependency);
+    const depName = utils.stringifyResolvable(dependency);
     if (this.proto.dependencies.indexOf(depName) < 0) {
       this.proto.dependencies.push(depName);
     }

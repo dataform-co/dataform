@@ -69,35 +69,6 @@ function mapColumnDescriptionToProto(
 export type FullyQualifiedName = { schema: string; name: string };
 export type Resolvable = string | FullyQualifiedName;
 
-export function isResolvable(res: any) {
-  return typeof res === "string" || (!!res.schema && !!res.name);
-}
-
-export function resolvable2string(res: Resolvable) {
-  return typeof res === "string" ? res : `${res.schema}.${res.name}`;
-}
-
-export function resolvable2FQame(res: Resolvable) {
-  return typeof res === "string"
-    ? { schema: res.split(".").slice(-1)[0], name: res.split(".").slice(-1)[1] }
-    : res;
-}
-
-export function ambiguousActionNameMsg(
-  act: Resolvable,
-  allActs: Array<table.Table | Operation | Assertion> | string[]
-) {
-  const allActNames =
-    typeof allActs[0] === "string"
-      ? allActs
-      : (allActs as Array<table.Table | Operation | Assertion>).map(
-          r => `${r.proto.target.schema}.${r.proto.target.name}`
-        );
-  return `Ambiguous Action name: ${resolvable2string(act)}. Did you mean one of: ${allActNames.join(
-    ", "
-  )}.`;
-}
-
 export class Session {
   public rootDir: string;
 
@@ -230,22 +201,20 @@ export class Session {
   }
 
   public target(target: string, defaultSchema?: string): dataform.ITarget {
-    const suffix = !!this.config.schemaSuffix ? `_${this.config.schemaSuffix}` : "";
-
     if (target.includes(".")) {
       const [schema, name] = target.split(".");
-      return dataform.Target.create({ name, schema: schema + suffix });
+      return dataform.Target.create({ name, schema: schema + this.getSuffixWithUnderscore() });
     }
     return dataform.Target.create({
       name: target,
-      schema: (defaultSchema || this.config.defaultSchema) + suffix
+      schema: (defaultSchema || this.config.defaultSchema) + this.getSuffixWithUnderscore()
     });
   }
 
   public resolve(ref: Resolvable): string {
     const allResolved = this.findActions(ref);
     if (allResolved.length > 1) {
-      this.compileError(new Error(ambiguousActionNameMsg(ref, allResolved)));
+      this.compileError(new Error(utils.ambiguousActionNameMsg(ref, allResolved)));
     }
     const resolved = allResolved.length > 0 ? allResolved[0] : undefined;
 
@@ -387,7 +356,7 @@ export class Session {
         if (allActs.length === 1) {
           return `${allActs[0].proto.target.schema}.${allActs[0].proto.target.name}`;
         } else if (allActs.length >= 1) {
-          this.compileError(new Error(ambiguousActionNameMsg(act, allActs)));
+          this.compileError(new Error(utils.ambiguousActionNameMsg(act, allActs)));
           return act;
         } else {
           this.compileError(
@@ -458,11 +427,14 @@ export class Session {
     }
   }
 
-  public checkTestNameIsUnused(name: string) {
+  private checkTestNameIsUnused(name: string) {
     // Check for duplicate names
     if (this.tests[name]) {
       const message = `Duplicate test name detected: "${name}"`;
       this.compileError(new Error(message));
     }
+  }
+  public getSuffixWithUnderscore() {
+    return !!this.config.schemaSuffix ? `_${this.config.schemaSuffix}` : "";
   }
 }

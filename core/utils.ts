@@ -1,6 +1,14 @@
 import { dataform } from "@dataform/protos";
-import { DistStyleTypes, ignoredProps, SortStyleTypes, TableTypes } from "./table";
-import { ambiguousActionNameMsg } from "@dataform/core/session";
+import { Assertion } from "@dataform/core/assertion";
+import { Operation } from "@dataform/core/operation";
+import {
+  DistStyleTypes,
+  ignoredProps,
+  SortStyleTypes,
+  TableTypes,
+  Table
+} from "@dataform/core/table";
+import { Resolvable } from "@dataform/core/session";
 
 const SQL_DATA_WAREHOUSE_DIST_HASH_REGEXP = new RegExp("HASH\\s*\\(\\s*\\w*\\s*\\)\\s*");
 
@@ -226,4 +234,31 @@ export function flatten<T>(nestedArray: T[][]) {
   return nestedArray.reduce((previousValue: T[], currentValue: T[]) => {
     return previousValue.concat(currentValue);
   }, []);
+}
+
+export function isResolvable(res: any) {
+  return typeof res === "string" || (!!res.schema && !!res.name);
+}
+
+export function stringifyResolvable(res: Resolvable) {
+  return typeof res === "string" ? res : `${res.schema}.${res.name}`;
+}
+
+export function targetAsResolvable(t: dataform.ITarget) {
+  return { schema: t.schema, name: t.name };
+}
+
+export function ambiguousActionNameMsg(
+  act: Resolvable,
+  allActs: Array<Table | Operation | Assertion> | string[]
+) {
+  const allActNames =
+    typeof allActs[0] === "string"
+      ? allActs
+      : (allActs as Array<Table | Operation | Assertion>).map(
+          r => `${r.proto.target.schema}.${r.proto.target.name}`
+        );
+  return `Ambiguous Action name: ${stringifyResolvable(
+    act
+  )}. Did you mean one of: ${allActNames.join(", ")}.`;
 }

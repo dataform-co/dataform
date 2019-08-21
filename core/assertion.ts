@@ -1,5 +1,6 @@
-import { Resolvable, Session, isResolvable, resolvable2string } from "@dataform/core/session";
+import { Resolvable, Session } from "@dataform/core/session";
 import { dataform } from "@dataform/protos";
+import * as utils from "@dataform/core/utils";
 
 export type AContextable<T> = T | ((ctx: AssertionContext) => T);
 
@@ -41,9 +42,9 @@ export class Assertion {
   }
 
   public dependencies(value: Resolvable | Resolvable[]) {
-    const newDependencies = isResolvable(value) ? [value] : (value as Resolvable[]);
+    const newDependencies = utils.isResolvable(value) ? [value] : (value as Resolvable[]);
     newDependencies.forEach((d: Resolvable) => {
-      const depName = resolvable2string(d);
+      const depName = utils.stringifyResolvable(d);
       if (this.proto.dependencies.indexOf(depName) < 0) {
         this.proto.dependencies.push(depName);
       }
@@ -68,7 +69,9 @@ export class Assertion {
 
   public schema(schema: string) {
     this.proto.target.schema = schema;
-    this.proto.name = `${schema}.${this.proto.target.name}`;
+    this.proto.name = `${schema}${this.session.getSuffixWithUnderscore()}.${
+      this.proto.target.name
+    }`;
   }
 
   public compile() {
