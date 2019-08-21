@@ -18,12 +18,17 @@ export function getBigQueryCredentials(): dataform.IBigQuery {
   const cloudCredentials = require(cloudCredentialsPath);
   const locationIndex = selectionQuestion("Enter the location of your datasets:", [
     "US (default)",
-    "EU"
+    "EU",
+    "other"
   ]);
+  let location = locationIndex === 0 ? "US" : "EU";
+  if (locationIndex === 2) {
+    location = question("Enter the location's region name (e.g. 'asia-south1'):");
+  }
   return {
     projectId: cloudCredentials.project_id,
     credentials: fs.readFileSync(cloudCredentialsPath, "utf8"),
-    location: locationIndex === 0 ? "US" : "EU"
+    location
   };
 }
 
