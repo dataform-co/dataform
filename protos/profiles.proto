@@ -26,7 +26,8 @@ message Snowflake {
 message BigQuery {
   string project_id = 1;
   string credentials = 3;
-  string location = 4; // EU or US (default)
+  // Options are listed here: https://cloud.google.com/bigquery/docs/locations
+  string location = 4;
 
   reserved 2;
 }
