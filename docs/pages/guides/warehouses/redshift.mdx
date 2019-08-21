@@ -18,7 +18,7 @@ config {
   type: "table",
   redshift: {
     distKey: "user_id",
-    distStyle: "even"
+    distStyle: "key"
   }
 }
 SELECT user_id FROM ...
