@@ -23,7 +23,7 @@ export function getBigQueryCredentials(): dataform.IBigQuery {
   ]);
   let location = locationIndex === 0 ? "US" : "EU";
   if (locationIndex === 2) {
-    location = question("Enter the location's region name (e.g. 'us-west2'):");
+    location = question("Enter the location's region name (e.g. 'asia-south1'):");
   }
   return {
     projectId: cloudCredentials.project_id,
