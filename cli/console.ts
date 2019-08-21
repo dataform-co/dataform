@@ -141,15 +141,6 @@ export function printCompiledGraphErrors(graphErrors: dataform.IGraphErrors) {
       );
     });
   }
-  if (graphErrors.validationErrors && graphErrors.validationErrors.length > 0) {
-    printError("Validation errors:");
-    graphErrors.validationErrors.forEach(validationError => {
-      writeStdErr(
-        `${calloutOutput(validationError.actionName)}: ${errorOutput(validationError.message)}`,
-        1
-      );
-    });
-  }
 }
 
 export function printTestResult(testResult: dataform.ITestResult) {

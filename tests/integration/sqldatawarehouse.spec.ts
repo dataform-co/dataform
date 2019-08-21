@@ -17,7 +17,6 @@ describe("@dataform/integration/sqldatawarehouse", () => {
     });
 
     expect(compiledGraph.graphErrors.compilationErrors).to.eql([]);
-    expect(compiledGraph.graphErrors.validationErrors).to.eql([]);
 
     const dbadapter = dbadapters.create(credentials, "sqldatawarehouse");
     const adapter = adapters.create(compiledGraph.projectConfig);

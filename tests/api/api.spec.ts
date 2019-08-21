@@ -521,9 +521,6 @@ describe("@dataform/api", () => {
       expect(gErrors)
         .to.have.property("compilationErrors")
         .to.be.an("array").that.is.empty;
-      expect(gErrors)
-        .to.have.property("validationErrors")
-        .to.be.an("array").that.is.empty;
     });
   });
 
@@ -1088,9 +1085,6 @@ describe("@dataform/api", () => {
       expect(gErrors)
         .to.have.property("compilationErrors")
         .to.be.an("array").that.is.empty;
-      expect(gErrors)
-        .to.have.property("validationErrors")
-        .to.be.an("array").that.is.empty;
       expect(graph)
         .to.have.property("operations")
         .to.be.an("array")
@@ -1109,9 +1103,6 @@ describe("@dataform/api", () => {
 
       expect(gErrors)
         .to.have.property("compilationErrors")
-        .to.be.an("array").that.is.empty;
-      expect(gErrors)
-        .to.have.property("validationErrors")
         .to.be.an("array").that.is.empty;
 
       const mNames = graph.tables.map((t: dataform.ITable) => t.name);

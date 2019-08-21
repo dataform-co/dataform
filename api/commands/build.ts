@@ -38,7 +38,7 @@ export class Builder {
 
   public build(): dataform.ExecutionGraph {
     if (utils.graphHasErrors(this.compiledGraph)) {
-      throw Error(`Project has unresolved compilation or validation errors.`);
+      throw Error(`Project has unresolved compilation errors.`);
     }
 
     const tableStateByTarget: { [targetJson: string]: dataform.ITableMetadata } = {};

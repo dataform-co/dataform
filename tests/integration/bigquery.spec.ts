@@ -14,7 +14,6 @@ describe("@dataform/integration/bigquery", () => {
     });
 
     expect(compiledGraph.graphErrors.compilationErrors).to.eql([]);
-    expect(compiledGraph.graphErrors.validationErrors).to.eql([]);
 
     const dbadapter = dbadapters.create(credentials, "bigquery");
     const adapter = adapters.create(compiledGraph.projectConfig);
