@@ -97,6 +97,11 @@ export class SnowflakeDbAdapter implements IDbAdapter {
     );
   }
 
+  public async schemas(): Promise<string[]> {
+    const rows = await this.execute(`select SCHEMA_NAME from information_schema.schemata`);
+    return rows.map(row => row.SCHEMA_NAME);
+  }
+
   public table(target: dataform.ITarget): Promise<dataform.ITableMetadata> {
     return Promise.all([
       this.execute(
@@ -105,7 +110,9 @@ export class SnowflakeDbAdapter implements IDbAdapter {
        where table_schema = '${target.schema}' AND table_name = '${target.name}'`
       ),
       this.execute(
-        `select table_type from information_schema.tables where table_schema = '${target.schema}' AND table_name = '${target.name}'`
+        `select table_type from information_schema.tables where table_schema = '${
+          target.schema
+        }' AND table_name = '${target.name}'`
       )
     ]).then(results => {
       if (results[1].length > 0) {
@@ -129,10 +136,11 @@ export class SnowflakeDbAdapter implements IDbAdapter {
     return this.execute(`SELECT * FROM "${target.schema}"."${target.name}" LIMIT ${limitRows}`);
   }
 
-  public prepareSchema(schema: string): Promise<void> {
-    return Promise.resolve().then(() =>
-      this.execute(`create schema if not exists "${schema}"`).then(() => {})
-    );
+  public async prepareSchema(schema: string): Promise<void> {
+    const schemas = await this.schemas();
+    if (!schemas.includes(schema)) {
+      await this.execute(`create schema if not exists "${schema}"`);
+    }
   }
 
   private async verifyCertificate(accountId: string) {
