@@ -157,10 +157,7 @@ export class Table {
     newDependencies.forEach((d: Resolvable) => {
       // TODO: This code fails to function correctly if the inline table has not yet
       // been attached to the session. This code probably needs to be moved to compile().
-      const dStr = utils.stringifyResolvable(d);
-      const depFinal = dStr.includes(".")
-        ? `${dStr.split(".")[0]}${this.session.getSuffixWithUnderscore()}.${dStr.split(".")[1]}`
-        : dStr;
+      const depFinal = utils.prependSuffixToSchema(d, this.session.getSuffixWithUnderscore());
       const allResolved = this.session.findActions(depFinal);
       const resolved = allResolved.length > 0 ? allResolved[0] : undefined;
       if (!!resolved && resolved instanceof Table && resolved.proto.type === "inline") {
@@ -197,10 +194,9 @@ export class Table {
   }
 
   public schema(schema: string) {
-    this.proto.target.schema = schema;
-    this.proto.name = `${schema}${this.session.getSuffixWithUnderscore()}.${
-      this.proto.target.name
-    }`;
+    this.proto.target = this.session.target(`${schema}.${this.proto.target.name}`);
+    this.proto.name = `${this.proto.target.schema}.${this.proto.target.name}`;
+    return this;
   }
 
   public compile() {

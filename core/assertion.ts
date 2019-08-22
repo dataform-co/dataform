@@ -44,7 +44,7 @@ export class Assertion {
   public dependencies(value: Resolvable | Resolvable[]) {
     const newDependencies = utils.isResolvable(value) ? [value] : (value as Resolvable[]);
     newDependencies.forEach((d: Resolvable) => {
-      const depName = utils.stringifyResolvable(d);
+      const depName = utils.prependSuffixToSchema(d, this.session.getSuffixWithUnderscore());
       if (this.proto.dependencies.indexOf(depName) < 0) {
         this.proto.dependencies.push(depName);
       }
@@ -68,10 +68,9 @@ export class Assertion {
   }
 
   public schema(schema: string) {
-    this.proto.target.schema = schema;
-    this.proto.name = `${schema}${this.session.getSuffixWithUnderscore()}.${
-      this.proto.target.name
-    }`;
+    this.proto.target = this.session.target(`${schema}.${this.proto.target.name}`);
+    this.proto.name = `${this.proto.target.schema}.${this.proto.target.name}`;
+    return this;
   }
 
   public compile() {

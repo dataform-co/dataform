@@ -434,6 +434,7 @@ export class Session {
       this.compileError(new Error(message));
     }
   }
+
   public getSuffixWithUnderscore() {
     return !!this.config.schemaSuffix ? `_${this.config.schemaSuffix}` : "";
   }

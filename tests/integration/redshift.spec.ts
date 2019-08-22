@@ -14,6 +14,7 @@ describe("@dataform/integration/redshift", () => {
     });
 
     expect(compiledGraph.graphErrors.compilationErrors).to.eql([]);
+    expect(compiledGraph.graphErrors.validationErrors).to.eql([]);
 
     const dbadapter = dbadapters.create(credentials, "redshift");
     const adapter = adapters.create(compiledGraph.projectConfig);
