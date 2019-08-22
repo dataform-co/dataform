@@ -246,7 +246,7 @@ export function targetAsResolvable(t: dataform.ITarget) {
   return { schema: t.schema, name: t.name };
 }
 
-export function prependSuffixToSchema(d: Resolvable, suffix: string) {
+export function appendSuffixToSchema(d: Resolvable, suffix: string) {
   const dStr = stringifyResolvable(d);
   return dStr.includes(".") ? `${dStr.split(".")[0]}${suffix}.${dStr.split(".")[1]}` : dStr;
 }

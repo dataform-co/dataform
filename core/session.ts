@@ -190,13 +190,7 @@ export class Session {
     if (action instanceof test.Test) {
       return action;
     }
-    const finalSchema =
-      actionOptions.sqlxConfig.schema ||
-      (actionOptions.sqlxConfig.type === "assertion"
-        ? this.config.assertionSchema
-        : this.config.defaultSchema);
-    action.proto.target = this.target(actionOptions.sqlxConfig.name, finalSchema);
-    action.proto.name = `${action.proto.target.schema}.${action.proto.target.name}`;
+
     return action;
   }
 
@@ -421,9 +415,10 @@ export class Session {
     return !!this.config.schemaSuffix ? `_${this.config.schemaSuffix}` : "";
   }
 
-  private setNameAndTarget(action: IActionProto, name: string, overrideSchema?: string) {
-    action.target = overrideSchema ? this.target(name, overrideSchema) : this.target(name);
-    this.checkTargetIsUnused(action.target);
+  public setNameAndTarget(action: IActionProto, name: string, overrideSchema?: string) {
+    const newTarget = overrideSchema ? this.target(name, overrideSchema) : this.target(name);
+    this.checkTargetIsUnused(newTarget);
+    action.target = newTarget;
     action.name = `${action.target.schema}.${action.target.name}`;
   }
 
