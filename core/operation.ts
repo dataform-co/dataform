@@ -97,7 +97,9 @@ export class Operation {
   }
 
   public schema(schema: string) {
-    this.session.setNameAndTarget(this.proto, this.proto.target.name, schema);
+    if (schema !== this.session.config.defaultSchema) {
+      this.session.setNameAndTarget(this.proto, this.proto.target.name, schema);
+    }
     return this;
   }
 

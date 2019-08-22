@@ -855,6 +855,21 @@ describe("@dataform/api", () => {
           "select 1 as test_schema_override"
         );
 
+        // Check schema overrides defined in "config {}" -- case with schema unchanged
+        const exampleUsingOverriddenSchemaUnchanged = graph.tables.find(
+          (t: dataform.ITable) =>
+            t.name === schemaWithSuffix("df_integration_test") + ".override_schema_example_unchanged"
+        );
+
+        expect(exampleUsingOverriddenSchemaUnchanged).to.not.be.undefined;
+        expect(exampleUsingOverriddenSchemaUnchanged.target.schema).equals(
+          schemaWithSuffix("df_integration_test")
+        );
+        expect(exampleUsingOverriddenSchemaUnchanged.type).equals("view");
+        expect(exampleUsingOverriddenSchemaUnchanged.query.trim()).equals(
+          "select 1 as test_schema_override"
+        );
+
         // Check assertion
         const exampleAssertion = graph.assertions.find(
           (a: dataform.IAssertion) => a.name === schemaWithSuffix("hi_there") + ".example_assertion"
