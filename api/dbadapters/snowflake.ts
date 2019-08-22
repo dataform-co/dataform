@@ -98,11 +98,7 @@ export class SnowflakeDbAdapter implements IDbAdapter {
   }
 
   public async schemas(): Promise<string[]> {
-    const rows = await this.execute(
-      `select SCHEMA_NAME
-         from information_schema.schemata
-         `
-    );
+    const rows = await this.execute(`select SCHEMA_NAME from information_schema.schemata`);
     return rows.map(row => row.SCHEMA_NAME);
   }
 
