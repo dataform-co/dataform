@@ -1,14 +1,14 @@
-import { dataform } from "@dataform/protos";
 import { Assertion } from "@dataform/core/assertion";
 import { Operation } from "@dataform/core/operation";
+import { Resolvable } from "@dataform/core/session";
 import {
   DistStyleTypes,
   ignoredProps,
   SortStyleTypes,
-  TableTypes,
-  Table
+  Table,
+  TableTypes
 } from "@dataform/core/table";
-import { Resolvable } from "@dataform/core/session";
+import { dataform } from "@dataform/protos";
 
 const SQL_DATA_WAREHOUSE_DIST_HASH_REGEXP = new RegExp("HASH\\s*\\(\\s*\\w*\\s*\\)\\s*");
 
@@ -213,9 +213,7 @@ export function validate(compiledGraph: dataform.ICompiledGraph): dataform.IGrap
     if (!!ignoredProps[action.type]) {
       ignoredProps[action.type].forEach(ignoredProp => {
         if (objectExistsOrIsNonEmpty(action[ignoredProp])) {
-          const message = `Unused property was detected: "${ignoredProp}". This property is not used for tables with type "${
-            action.type
-          }" and will be ignored.`;
+          const message = `Unused property was detected: "${ignoredProp}". This property is not used for tables with type "${action.type}" and will be ignored.`;
           validationErrors.push(dataform.ValidationError.create({ message, actionName }));
         }
       });

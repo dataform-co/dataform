@@ -294,12 +294,6 @@ export class Session {
     return newTest;
   }
 
-  private setNameAndTarget(action: IActionProto, name: string, overrideSchema?: string) {
-    action.target = overrideSchema ? this.target(name, overrideSchema) : this.target(name);
-    this.checkTargetIsUnused(action.target);
-    action.name = `${action.target.schema}.${action.target.name}`;
-  }
-
   public compileError(err: Error | string, path?: string) {
     const fileName = path || utils.getCallerFile(this.rootDir) || __filename;
 
@@ -361,9 +355,7 @@ export class Session {
         } else {
           this.compileError(
             new Error(
-              `Missing dependency detected: Node "${
-                action.name
-              }" depends on "${act}" which does not exist.`
+              `Missing dependency detected: Node "${action.name}" depends on "${act}" which does not exist.`
             )
           );
           return act;
@@ -419,12 +411,20 @@ export class Session {
     if (duplicateActions && duplicateActions.length > 0) {
       this.compileError(
         new Error(
-          `Duplicate action name detected. Names within a schema must be unique across tables, assertions, and operations: "${
-            target.schema
-          }.${target.name}"`
+          `Duplicate action name detected. Names within a schema must be unique across tables, assertions, and operations: "${target.schema}.${target.name}"`
         )
       );
     }
+  }
+
+  public getSuffixWithUnderscore() {
+    return !!this.config.schemaSuffix ? `_${this.config.schemaSuffix}` : "";
+  }
+
+  private setNameAndTarget(action: IActionProto, name: string, overrideSchema?: string) {
+    action.target = overrideSchema ? this.target(name, overrideSchema) : this.target(name);
+    this.checkTargetIsUnused(action.target);
+    action.name = `${action.target.schema}.${action.target.name}`;
   }
 
   private checkTestNameIsUnused(name: string) {
@@ -433,9 +433,5 @@ export class Session {
       const message = `Duplicate test name detected: "${name}"`;
       this.compileError(new Error(message));
     }
-  }
-
-  public getSuffixWithUnderscore() {
-    return !!this.config.schemaSuffix ? `_${this.config.schemaSuffix}` : "";
   }
 }
