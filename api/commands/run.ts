@@ -55,7 +55,7 @@ export class Runner {
 
   public async execute(): Promise<dataform.IExecutedGraph> {
     if (!!this.executionTask) {
-      throw Error("Executor already started.");
+      throw new Error("Executor already started.");
     }
 
     this.executionTask = new Promise(async (resolve, reject) => {
@@ -166,6 +166,7 @@ export class Runner {
             }
             return [...chainResults, { ok: true, task }];
           } catch (e) {
+            // TODO: wtf? we are throwing an array?
             throw [...chainResults, { ok: false, error: e.message, task }];
           }
         });
