@@ -1,4 +1,10 @@
-import { IColumnsDescriptor, mapToColumnProtoArray, Session } from "@dataform/core/session";
+import {
+  IColumnsDescriptor,
+  mapToColumnProtoArray,
+  Resolvable,
+  Session
+} from "@dataform/core/session";
+import * as utils from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
 
 export enum TableTypes {
@@ -38,7 +44,7 @@ export type TableType = ValueOf<TableTypes>;
 
 export interface TConfig {
   type?: TableType;
-  dependencies?: string | string[];
+  dependencies?: Resolvable | Resolvable[];
   tags?: string[];
   description?: string;
   columns?: IColumnsDescriptor;
@@ -146,15 +152,18 @@ export class Table {
     return this;
   }
 
-  public dependencies(value: string | string[]) {
-    const newDependencies = typeof value === "string" ? [value] : value;
-    newDependencies.forEach(d => {
-      const table = this.session.tables[d];
-
-      if (!!table && table.proto.type === "inline") {
-        table.proto.dependencies.forEach(childDep => this.addDependency(childDep));
+  public dependencies(value: Resolvable | Resolvable[]) {
+    const newDependencies = utils.isResolvable(value) ? [value] : (value as Resolvable[]);
+    newDependencies.forEach((d: Resolvable) => {
+      // TODO: This code fails to function correctly if the inline table has not yet
+      // been attached to the session. This code probably needs to be moved to compile().
+      const depFinal = utils.appendSuffixToSchema(d, this.session.getSuffixWithUnderscore());
+      const allResolved = this.session.findActions(depFinal);
+      const resolved = allResolved.length > 0 ? allResolved[0] : undefined;
+      if (!!resolved && resolved instanceof Table && resolved.proto.type === "inline") {
+        resolved.proto.dependencies.forEach(childDep => this.addDependency(childDep));
       } else {
-        this.addDependency(d);
+        this.addDependency(depFinal);
       }
     });
     return this;
@@ -163,7 +172,6 @@ export class Table {
   public tags(value: string | string[]) {
     const newTags = typeof value === "string" ? [value] : value;
     newTags.forEach(t => {
-      const table = this.session.tables[t];
       this.proto.tags.push(t);
     });
     return this;
@@ -186,7 +194,10 @@ export class Table {
   }
 
   public schema(schema: string) {
-    this.proto.target = this.session.target(schema);
+    if (schema !== this.session.config.defaultSchema) {
+      this.session.setNameAndTarget(this.proto, this.proto.target.name, schema);
+    }
+    return this;
   }
 
   public compile() {
@@ -213,13 +224,13 @@ export class Table {
       );
     });
     this.contextablePostOps = [];
-
     return this.proto;
   }
 
-  private addDependency(dependency: string): void {
-    if (this.proto.dependencies.indexOf(dependency) < 0) {
-      this.proto.dependencies.push(dependency);
+  private addDependency(dependency: Resolvable): void {
+    const depName = utils.stringifyResolvable(dependency);
+    if (this.proto.dependencies.indexOf(depName) < 0) {
+      this.proto.dependencies.push(depName);
     }
   }
 }
@@ -237,7 +248,7 @@ export interface ITableContext {
   disabled: () => string;
   redshift: (redshift: dataform.IRedshiftOptions) => string;
   bigquery: (bigquery: dataform.IBigQueryOptions) => string;
-  dependencies: (name: string) => string;
+  dependencies: (name: Resolvable) => string;
   apply: <T>(value: TContextable<T>) => T;
   tags: (name: string | string[]) => string;
 }
@@ -255,26 +266,30 @@ export class TableContext implements ITableContext {
   }
 
   public self(): string {
-    return this.resolve(this.table.proto.name);
+    return this.resolve({
+      schema: this.table.proto.target.schema,
+      name: this.table.proto.target.name
+    });
   }
 
   public name(): string {
-    return this.table.proto.name;
+    return this.table.proto.target.name;
   }
 
-  public ref(name: string) {
+  public ref(ref: Resolvable) {
+    const name =
+      typeof ref === "string" || typeof ref === "undefined" ? ref : `${ref.schema}.${ref.name}`;
     if (!name) {
       const message = `Action name is not specified`;
       this.table.session.compileError(new Error(message));
       return "";
     }
-
     this.table.dependencies(name);
-    return this.resolve(name);
+    return this.resolve(ref);
   }
 
-  public resolve(name: string) {
-    return this.table.session.resolve(name);
+  public resolve(ref: Resolvable) {
+    return this.table.session.resolve(ref);
   }
 
   public type(type: TableType) {
@@ -312,8 +327,8 @@ export class TableContext implements ITableContext {
     return "";
   }
 
-  public dependencies(name: string) {
-    this.table.dependencies(name);
+  public dependencies(res: Resolvable) {
+    this.table.dependencies(res);
     return "";
   }
 
