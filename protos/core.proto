@@ -91,7 +91,6 @@ message ColumnDescriptor {
 }
 
 message Table {
-  string name = 1;
   repeated string dependencies = 2;
   bool disabled = 6;
 
@@ -122,12 +121,12 @@ message Table {
   // Deprecated.
   repeated string deprecated_parsed_columns = 12;
   repeated ValidationError deprecated_validation_errors = 7;
+  string name = 1; // Preferred: Target
 
   reserved 16;
 }
 
 message Operation {
-  string name = 1;
   repeated string dependencies = 2;
 
   Target target = 3;
@@ -143,10 +142,12 @@ message Operation {
   bool has_output = 8;
 
   reserved 4, 5;
+  
+  // Deprecated.
+  string name = 1; // Preferred: Target
 }
 
 message Assertion {
-  string name = 1;
   repeated string dependencies = 2;
 
   Target target = 8;
@@ -160,6 +161,9 @@ message Assertion {
   string file_name = 7;
 
   reserved 4, 5, 6;
+
+  //Deprecated
+  string name = 1; // Preferred: Target
 }
 
 message Test {
