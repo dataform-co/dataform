@@ -1,8 +1,8 @@
-import { dataform } from "@dataform/protos";
 import { Assertion } from "@dataform/core/assertion";
 import { Operation } from "@dataform/core/operation";
 import { Resolvable } from "@dataform/core/session";
 import { Table } from "@dataform/core/table";
+import { dataform } from "@dataform/protos";
 
 export const SQL_DATA_WAREHOUSE_DIST_HASH_REGEXP = new RegExp("HASH\\s*\\(\\s*\\w*\\s*\\)\\s*");
 
@@ -132,6 +132,11 @@ export function stringifyResolvable(res: Resolvable) {
 
 export function targetAsResolvable(t: dataform.ITarget) {
   return { schema: t.schema, name: t.name };
+}
+
+export function appendSuffixToSchema(d: Resolvable, suffix: string) {
+  const dStr = stringifyResolvable(d);
+  return dStr.includes(".") ? `${dStr.split(".")[0]}${suffix}.${dStr.split(".")[1]}` : dStr;
 }
 
 export function ambiguousActionNameMsg(

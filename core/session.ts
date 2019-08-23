@@ -198,13 +198,6 @@ export class Session {
     if (action instanceof test.Test) {
       return action;
     }
-    const finalSchema =
-      actionOptions.sqlxConfig.schema ||
-      (actionOptions.sqlxConfig.type === "assertion"
-        ? this.config.assertionSchema
-        : this.config.defaultSchema);
-    action.proto.target = this.target(actionOptions.sqlxConfig.name, finalSchema);
-    action.proto.name = `${action.proto.target.schema}.${action.proto.target.name}`;
     return action;
   }
 
@@ -297,12 +290,6 @@ export class Session {
     // Add it to global index.
     this.tests[name] = newTest;
     return newTest;
-  }
-
-  private setNameAndTarget(action: IActionProto, name: string, overrideSchema?: string) {
-    action.target = overrideSchema ? this.target(name, overrideSchema) : this.target(name);
-    this.checkTargetIsUnused(action.target);
-    action.name = `${action.target.schema}.${action.target.name}`;
   }
 
   public compileError(err: Error | string, path?: string) {
@@ -537,14 +524,22 @@ export class Session {
     }
   }
 
+  public getSuffixWithUnderscore() {
+    return !!this.config.schemaSuffix ? `_${this.config.schemaSuffix}` : "";
+  }
+
+  public setNameAndTarget(action: IActionProto, name: string, overrideSchema?: string) {
+    const newTarget = overrideSchema ? this.target(name, overrideSchema) : this.target(name);
+    this.checkTargetIsUnused(newTarget);
+    action.target = newTarget;
+    action.name = `${action.target.schema}.${action.target.name}`;
+  }
+
   private checkTestNameIsUnused(name: string) {
     // Check for duplicate names
     if (this.tests[name]) {
       const message = `Duplicate test name detected: "${name}"`;
       this.compileError(new Error(message));
     }
-  }
-  public getSuffixWithUnderscore() {
-    return !!this.config.schemaSuffix ? `_${this.config.schemaSuffix}` : "";
   }
 }

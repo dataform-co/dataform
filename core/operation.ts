@@ -4,8 +4,8 @@ import {
   Resolvable,
   Session
 } from "@dataform/core/session";
-import { dataform } from "@dataform/protos";
 import * as utils from "@dataform/core/utils";
+import { dataform } from "@dataform/protos";
 
 export type OContextable<T> = T | ((ctx: OperationContext) => T);
 
@@ -57,7 +57,7 @@ export class Operation {
   public dependencies(value: Resolvable | Resolvable[]) {
     const newDependencies = utils.isResolvable(value) ? [value] : (value as Resolvable[]);
     newDependencies.forEach((d: Resolvable) => {
-      const depName = utils.stringifyResolvable(d);
+      const depName = utils.appendSuffixToSchema(d, this.session.getSuffixWithUnderscore());
       if (this.proto.dependencies.indexOf(depName) < 0) {
         this.proto.dependencies.push(depName);
       }
@@ -97,10 +97,10 @@ export class Operation {
   }
 
   public schema(schema: string) {
-    this.proto.target.schema = schema;
-    this.proto.name = `${schema}${this.session.getSuffixWithUnderscore()}.${
-      this.proto.target.name
-    }`;
+    if (schema !== this.session.config.defaultSchema) {
+      this.session.setNameAndTarget(this.proto, this.proto.target.name, schema);
+    }
+    return this;
   }
 
   public compile() {

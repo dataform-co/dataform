@@ -1,7 +1,7 @@
 import { Resolvable, Session } from "@dataform/core/session";
 import * as table from "@dataform/core/table";
-import { dataform } from "@dataform/protos";
 import * as utils from "@dataform/core/utils";
+import { dataform } from "@dataform/protos";
 
 export type TContextable<T> = T | ((ctx: TestContext) => T);
 
