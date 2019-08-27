@@ -387,7 +387,7 @@ export class Session {
       .forEach(action => (allActionsByName[action.name] = action));
 
     Object.values(allActionsByName).forEach(action => {
-      const fQDeps = action.dependencies.map(act => {
+      const fQDeps = (action.dependencies || []).map(act => {
         const allActs = this.findActions(act);
         if (allActs.length === 1) {
           return `${allActs[0].proto.target.schema}.${allActs[0].proto.target.name}`;
