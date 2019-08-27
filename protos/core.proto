@@ -41,6 +41,9 @@ message CompileConfig {
 
   // Project configuration overrides (dataform.json).
   ProjectConfig project_config_override = 3;
+
+  // Allow injecting custom code at the end of compilation.
+  string injected_code = 4;
 }
 
 message Target {

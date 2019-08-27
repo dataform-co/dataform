@@ -1,6 +1,0 @@
-{
-  "name": "@dataform/examples-snowflake",
-  "version": "0.1.0",
-  "description": "Example Dataform project (Snowflake).",
-  "private": true
-}

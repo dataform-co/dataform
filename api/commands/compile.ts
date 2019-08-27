@@ -22,7 +22,10 @@ export async function compile(
   try {
     // check dataformJson is valid before we try to compile
     const dataformJson = fs.readFileSync(`${compileConfig.projectDir}/dataform.json`, "utf8");
-    checkDataformJsonValidity(JSON.parse(dataformJson));
+    checkDataformJsonValidity({
+      ...JSON.parse(dataformJson),
+      ...(compileConfig.projectConfigOverride || {})
+    });
   } catch (e) {
     throw new Error(`Compile Error: 'dataform.json' is invalid. ${e}`);
   }

@@ -529,7 +529,10 @@ describe("@dataform/api", () => {
 
   describe("compile", () => {
     it("bigquery_example", async () => {
-      const graph = await compile({ projectDir: path.resolve("df/examples/bigquery") });
+      const graph = await compile({
+        projectDir: path.resolve("df/examples/common_v1"),
+        projectConfigOverride: { warehouse: "bigquery", gcloudProjectId: "tada-analytics" }
+      });
       const tableNames = graph.tables.map((t: dataform.ITable) => t.name);
 
       expect(graph.graphErrors).to.eql(dataform.GraphErrors.create());
@@ -919,7 +922,7 @@ describe("@dataform/api", () => {
 
     it("schema overrides", async () => {
       const graph = await compile({
-        projectDir: path.resolve("df/examples/bigquery"),
+        projectDir: path.resolve("df/examples/common_v1"),
         schemaSuffixOverride: "suffix"
       });
       expect(graph.projectConfig.schemaSuffix).to.equal("suffix");
@@ -931,7 +934,7 @@ describe("@dataform/api", () => {
     });
 
     it("redshift_example", () => {
-      return compile({ projectDir: "df/examples/redshift" }).then(graph => {
+      return compile({ projectDir: "df/examples/common_v1" }).then(graph => {
         const tableNames = graph.tables.map((t: dataform.ITable) => t.name);
 
         // Check we can import and use an external package.
@@ -1057,7 +1060,7 @@ describe("@dataform/api", () => {
     });
 
     it("snowflake_example", async () => {
-      const graph = await compile({ projectDir: "df/examples/snowflake" }).catch(error => error);
+      const graph = await compile({ projectDir: "df/examples/common_v1" }).catch(error => error);
       expect(graph).to.not.be.an.instanceof(Error);
 
       const gErrors = utils.validate(graph);
@@ -1182,7 +1185,10 @@ describe("@dataform/api", () => {
   describe("query", () => {
     it("bigquery_example", () => {
       return query
-        .compile('select 1 as ${describe("test")}', { projectDir: "df/examples/bigquery" })
+        .compile('select 1 as ${describe("test")}', {
+          projectDir: "df/examples/common_v1",
+          projectConfigOverride: { warehouse: "bigquery", gcloudProjectId: "tada-analytics" }
+        })
         .then(compiledQuery => {
           expect(compiledQuery).equals("select 1 as test");
         });
