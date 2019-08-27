@@ -166,7 +166,6 @@ export class Runner {
             }
             return [...chainResults, { ok: true, task }];
           } catch (e) {
-            // TODO: wtf? we are throwing an array?
             throw [...chainResults, { ok: false, error: e.message, task }];
           }
         });

@@ -86,10 +86,6 @@ export class Session {
 
   public config: dataform.IProjectConfig;
 
-  public tables: { [name: string]: table.Table };
-  public operations: { [name: string]: Operation };
-  public assertions: { [name: string]: Assertion };
-  public declarations: { [name: string]: Declaration };
   public actions: Array<table.Table | Operation | Assertion | Declaration>;
   public tests: { [name: string]: test.Test };
 
@@ -129,8 +125,10 @@ export class Session {
     }
     if (
       actionOptions.sqlxConfig.hasOutput &&
-      (actionOptions.sqlxConfig.type !== "operations" ||
-        this.isDatasetType(actionOptions.sqlxConfig.type))
+      !(
+        actionOptions.sqlxConfig.type === "operations" ||
+        definesDataset(actionOptions.sqlxConfig.type)
+      )
     ) {
       this.compileError(
         "Actions may only specify 'hasOutput: true' if they are of type 'operations' or create a dataset."
@@ -138,11 +136,7 @@ export class Session {
     }
     if (
       actionOptions.sqlxConfig.columns &&
-      !(
-        this.isDatasetType(actionOptions.sqlxConfig.type) ||
-        actionOptions.sqlxConfig.hasOutput ||
-        actionOptions.sqlxConfig.type === "declaration"
-      )
+      !declaresDataset(actionOptions.sqlxConfig.type, actionOptions.sqlxConfig.hasOutput)
     ) {
       this.compileError("Actions may only specify 'columns' if they create or declare a dataset.");
     }
@@ -168,27 +162,27 @@ export class Session {
     if (actionOptions.hasInputs && actionOptions.sqlxConfig.type !== "test") {
       this.compileError("Actions may only include input blocks if they are of type 'test'.");
     }
-    if (actionOptions.sqlxConfig.disabled && !this.isDatasetType(actionOptions.sqlxConfig.type)) {
+    if (actionOptions.sqlxConfig.disabled && !definesDataset(actionOptions.sqlxConfig.type)) {
       this.compileError("Actions may only specify 'disabled: true' if they create a dataset.");
     }
-    if (actionOptions.sqlxConfig.redshift && !this.isDatasetType(actionOptions.sqlxConfig.type)) {
+    if (actionOptions.sqlxConfig.redshift && !definesDataset(actionOptions.sqlxConfig.type)) {
       this.compileError("Actions may only specify 'redshift: { ... }' if they create a dataset.");
     }
     if (
       actionOptions.sqlxConfig.sqldatawarehouse &&
-      !this.isDatasetType(actionOptions.sqlxConfig.type)
+      !definesDataset(actionOptions.sqlxConfig.type)
     ) {
       this.compileError(
         "Actions may only specify 'sqldatawarehouse: { ... }' if they create a dataset."
       );
     }
-    if (actionOptions.sqlxConfig.bigquery && !this.isDatasetType(actionOptions.sqlxConfig.type)) {
+    if (actionOptions.sqlxConfig.bigquery && !definesDataset(actionOptions.sqlxConfig.type)) {
       this.compileError("Actions may only specify 'bigquery: { ... }' if they create a dataset.");
     }
-    if (actionOptions.hasPreOperations && !this.isDatasetType(actionOptions.sqlxConfig.type)) {
+    if (actionOptions.hasPreOperations && !definesDataset(actionOptions.sqlxConfig.type)) {
       this.compileError("Actions may only include pre_operations if they create a dataset.");
     }
-    if (actionOptions.hasPostOperations && !this.isDatasetType(actionOptions.sqlxConfig.type)) {
+    if (actionOptions.hasPostOperations && !definesDataset(actionOptions.sqlxConfig.type)) {
       this.compileError("Actions may only include post_operations if they create a dataset.");
     }
 
@@ -214,11 +208,6 @@ export class Session {
           throw new Error(`Unrecognized action type: ${actionOptions.sqlxConfig.type}`);
       }
     })().config(actionOptions.sqlxConfig);
-
-    if (action instanceof Declaration || action instanceof test.Test) {
-      return action;
-    }
-
     return action;
   }
 
@@ -431,10 +420,6 @@ export class Session {
     return compiledGraph;
   }
 
-  public isDatasetType(type: string) {
-    return type === "view" || type === "table" || type === "inline" || type === "incremental";
-  }
-
   public findActions(res: Resolvable) {
     return this.actions.filter(action => {
       if (typeof res === "string") {
@@ -473,4 +458,12 @@ export class Session {
       this.compileError(new Error(message));
     }
   }
+}
+
+function declaresDataset(type: string, hasOutput?: boolean) {
+  return definesDataset(type) || type === "declaration" || hasOutput;
+}
+
+function definesDataset(type: string) {
+  return type === "view" || type === "table" || type === "inline" || type === "incremental";
 }

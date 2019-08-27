@@ -4,6 +4,7 @@ import { dataform } from "@dataform/protos";
 export interface DConfig {
   description?: string;
   columns?: IColumnsDescriptor;
+  schema?: string;
 }
 
 export class Declaration {
