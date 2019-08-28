@@ -37,7 +37,11 @@ message CompileConfig {
   string project_dir = 1;
 
   // Compile time configuration options.
+  // Deprecated.
   string schema_suffix_override = 2;
+
+  // Project configuration overrides (dataform.json).
+  ProjectConfig project_config_override = 3;
 }
 
 message Target {

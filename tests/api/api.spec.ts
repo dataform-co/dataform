@@ -633,7 +633,7 @@ describe("@dataform/api", () => {
       it(`bigquery using v2 language compiles with suffix "${schemaSuffix}"`, async () => {
         const graph = await compile({
           projectDir: path.resolve("df/examples/bigquery_language_v2"),
-          schemaSuffixOverride: schemaSuffix
+          projectConfigOverride: { schemaSuffix }
         });
         expect(graph.graphErrors).to.eql(
           dataform.GraphErrors.create({
