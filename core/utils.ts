@@ -1,5 +1,15 @@
+import { Assertion } from "@dataform/core/assertion";
+import { Declaration } from "@dataform/core/declaration";
+import { Operation } from "@dataform/core/operation";
+import { Resolvable } from "@dataform/core/session";
+import {
+  DistStyleTypes,
+  ignoredProps,
+  SortStyleTypes,
+  Table,
+  TableTypes
+} from "@dataform/core/table";
 import { dataform } from "@dataform/protos";
-import { DistStyleTypes, ignoredProps, SortStyleTypes, TableTypes } from "./table";
 
 const SQL_DATA_WAREHOUSE_DIST_HASH_REGEXP = new RegExp("HASH\\s*\\(\\s*\\w*\\s*\\)\\s*");
 
@@ -28,18 +38,24 @@ export function variableNameFriendly(value: string) {
 }
 
 export function matchPatterns(patterns: string[], values: string[]) {
-  const regexps = patterns.map(
-    pattern =>
-      new RegExp(
-        "^" +
-          pattern
-            .replace(/[.+?^${}()|[\]\\]/g, "\\$&")
-            .split("*")
-            .join(".*") +
-          "$"
-      )
-  );
-  return values.filter(value => regexps.filter(regexp => regexp.test(value)).length > 0);
+  const fQActs: string[] = [];
+  patterns.forEach(pat => {
+    if (pat.includes(".")) {
+      if (values.includes(pat)) {
+        fQActs.push(pat);
+      }
+    } else {
+      const matchingActions = values.filter(value => pat === value.split(".").slice(-1)[0]);
+      if (matchingActions.length === 0) {
+        return;
+      }
+      if (matchingActions.length > 1) {
+        throw new Error(ambiguousActionNameMsg(pat, matchingActions));
+      }
+      fQActs.push(matchingActions[0]);
+    }
+  });
+  return fQActs;
 }
 
 export function getCallerFile(rootDir: string) {
@@ -108,56 +124,12 @@ export function validate(compiledGraph: dataform.ICompiledGraph): dataform.IGrap
   const allActions = [].concat(
     compiledGraph.tables,
     compiledGraph.assertions,
-    compiledGraph.operations
+    compiledGraph.operations,
+    compiledGraph.declarations
   );
-  const allActionNames = allActions.map(action => action.name);
-
-  // Check there are no duplicate action names.
-  allActions.forEach(action => {
-    if (allActions.filter(subAction => subAction.name == action.name).length > 1) {
-      const actionName = action.name;
-      const message = `Duplicate action name detected, names must be unique across tables, assertions, and operations: "${action.name}"`;
-      validationErrors.push(dataform.ValidationError.create({ message, actionName }));
-    }
-  });
 
   const actionsByName: { [name: string]: dataform.IExecutionAction } = {};
   allActions.forEach(action => (actionsByName[action.name] = action));
-
-  // Check all dependencies actually exist.
-  allActions.forEach(action => {
-    const actionName = action.name;
-    (action.dependencies || []).forEach((dependency: string) => {
-      if (allActionNames.indexOf(dependency) < 0) {
-        const message = `Missing dependency detected: Node "${action.name}" depends on "${dependency}" which does not exist.`;
-        validationErrors.push(dataform.ValidationError.create({ message, actionName }));
-      }
-    });
-  });
-
-  // Check for circular dependencies.
-  const checkCircular = (
-    action: dataform.IExecutionAction,
-    dependents: dataform.IExecutionAction[]
-  ): boolean => {
-    if (dependents.indexOf(action) >= 0) {
-      const actionName = action.name;
-      const message = `Circular dependency detected in chain: [${dependents
-        .map(d => d.name)
-        .join(" > ")} > ${action.name}]`;
-      validationErrors.push(dataform.ValidationError.create({ message, actionName }));
-      return true;
-    }
-    return (action.dependencies || []).some(d => {
-      return actionsByName[d] && checkCircular(actionsByName[d], dependents.concat([action]));
-    });
-  };
-
-  for (const action of allActions) {
-    if (checkCircular(action, [])) {
-      break;
-    }
-  }
 
   // Table validation
   compiledGraph.tables.forEach(action => {
@@ -262,4 +234,36 @@ export function flatten<T>(nestedArray: T[][]) {
   return nestedArray.reduce((previousValue: T[], currentValue: T[]) => {
     return previousValue.concat(currentValue);
   }, []);
+}
+
+export function isResolvable(res: any) {
+  return typeof res === "string" || (!!res.schema && !!res.name);
+}
+
+export function stringifyResolvable(res: Resolvable) {
+  return typeof res === "string" ? res : `${res.schema}.${res.name}`;
+}
+
+export function targetAsResolvable(t: dataform.ITarget) {
+  return { schema: t.schema, name: t.name };
+}
+
+export function appendSuffixToSchema(d: Resolvable, suffix: string) {
+  const dStr = stringifyResolvable(d);
+  return dStr.includes(".") ? `${dStr.split(".")[0]}${suffix}.${dStr.split(".")[1]}` : dStr;
+}
+
+export function ambiguousActionNameMsg(
+  act: Resolvable,
+  allActs: Array<Table | Operation | Assertion | Declaration> | string[]
+) {
+  const allActNames =
+    typeof allActs[0] === "string"
+      ? allActs
+      : (allActs as Array<Table | Operation | Assertion>).map(
+          r => `${r.proto.target.schema}.${r.proto.target.name}`
+        );
+  return `Ambiguous Action name: ${stringifyResolvable(
+    act
+  )}. Did you mean one of: ${allActNames.join(", ")}.`;
 }

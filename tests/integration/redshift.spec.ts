@@ -67,33 +67,41 @@ describe("@dataform/integration/redshift", () => {
     const actionMap = keyBy(executedGraph.actions, v => v.name);
 
     // Check the status of the s3 load operation.
-    expect(actionMap.load_from_s3.status).equals(dataform.ActionExecutionStatus.SUCCESSFUL);
+    expect(actionMap["df_integration_test.load_from_s3"].status).equals(
+      dataform.ActionExecutionStatus.SUCCESSFUL
+    );
 
     // Check the s3 table has two rows, as per:
     // https://dataform-integration-tests.s3.us-east-2.amazonaws.com/sample-data/sample_data.csv
-    const s3Table = keyBy(compiledGraph.operations, t => t.name).load_from_s3;
+    const s3Table = keyBy(compiledGraph.operations, t => t.name)[
+      "df_integration_test.load_from_s3"
+    ];
     const s3Rows = await getTableRows(s3Table.target, adapter, credentials, "redshift");
     expect(s3Rows.length).equals(2);
 
     // Check the status of the two assertions.
-    expect(actionMap.example_assertion_fail.status).equals(dataform.ActionExecutionStatus.FAILED);
-    expect(actionMap.example_assertion_pass.status).equals(
+    expect(actionMap["df_integration_test_assertions.example_assertion_fail"].status).equals(
+      dataform.ActionExecutionStatus.FAILED
+    );
+    expect(actionMap["df_integration_test_assertions.example_assertion_pass"].status).equals(
       dataform.ActionExecutionStatus.SUCCESSFUL
     );
 
     // Check the status of the two uniqueness assertions.
-    expect(actionMap.example_assertion_uniqueness_fail.status).equals(
-      dataform.ActionExecutionStatus.FAILED
-    );
-    expect(actionMap.example_assertion_uniqueness_fail.tasks[1].error).to.eql(
-      "Assertion failed: query returned 1 row(s)."
-    );
-    expect(actionMap.example_assertion_uniqueness_pass.status).equals(
-      dataform.ActionExecutionStatus.SUCCESSFUL
-    );
+    expect(
+      actionMap["df_integration_test_assertions.example_assertion_uniqueness_fail"].status
+    ).equals(dataform.ActionExecutionStatus.FAILED);
+    expect(
+      actionMap["df_integration_test_assertions.example_assertion_uniqueness_fail"].tasks[1].error
+    ).to.eql("Assertion failed: query returned 1 row(s).");
+    expect(
+      actionMap["df_integration_test_assertions.example_assertion_uniqueness_pass"].status
+    ).equals(dataform.ActionExecutionStatus.SUCCESSFUL);
 
     // Check the data in the incremental table.
-    let incrementalTable = keyBy(compiledGraph.tables, t => t.name).example_incremental;
+    let incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
+      "df_integration_test.example_incremental"
+    ];
     let incrementalRows = await getTableRows(
       incrementalTable.target,
       adapter,
@@ -105,14 +113,18 @@ describe("@dataform/integration/redshift", () => {
     // Re-run some of the actions.
     executionGraph = await dfapi.build(
       compiledGraph,
-      { actions: ["example_incremental", "example_table", "example_view"] },
+      {
+        actions: ["example_incremental", "example_table", "example_view"]
+      },
       credentials
     );
     executedGraph = await dfapi.run(executionGraph, credentials).resultPromise();
     expect(executedGraph.ok).equals(true);
 
     // Check there is an extra row in the incremental table.
-    incrementalTable = keyBy(compiledGraph.tables, t => t.name).example_incremental;
+    incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
+      "df_integration_test.example_incremental"
+    ];
     incrementalRows = await getTableRows(incrementalTable.target, adapter, credentials, "redshift");
     expect(incrementalRows.length).equals(2);
   }).timeout(60000);

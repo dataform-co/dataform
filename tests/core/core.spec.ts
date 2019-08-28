@@ -12,49 +12,85 @@ const TEST_CONFIG: dataform.IProjectConfig = {
   defaultSchema: "schema"
 };
 
+const TEST_CONFIG_WITH_SUFFIX: dataform.IProjectConfig = {
+  warehouse: "redshift",
+  defaultSchema: "schema",
+  schemaSuffix: "suffix"
+};
+
 describe("@dataform/core", () => {
   describe("publish", () => {
     it("config", () => {
-      const session = new Session(path.dirname(__filename), TEST_CONFIG);
-      const t = session
-        .publish("example", {
-          type: "table",
-          dependencies: [],
-          description: "this is a table",
-          columns: {
-            test: "test description"
-          }
-        })
-        .query(_ => "select 1 as test")
-        .preOps(_ => ["pre_op"])
-        .postOps(_ => ["post_op"])
-        .compile();
-
-      expect(t.name).equals("example");
-      expect(t.type).equals("table");
-      expect(t.actionDescriptor).eql({
-        description: "this is a table",
-        columns: [
-          dataform.ColumnDescriptor.create({
-            description: "test description",
-            path: ["test"]
+      [TEST_CONFIG, TEST_CONFIG_WITH_SUFFIX].forEach(testConfig => {
+        const schemaWithSuffix = (schema: string) =>
+          testConfig.schemaSuffix ? `${schema}_${testConfig.schemaSuffix}` : schema;
+        const session = new Session(path.dirname(__filename), testConfig);
+        const t = session
+          .publish("example", {
+            type: "table",
+            dependencies: [],
+            description: "this is a table",
+            columns: {
+              test: "test description"
+            }
           })
-        ]
-      });
-      expect(t.preOps).deep.equals(["pre_op"]);
-      expect(t.postOps).deep.equals(["post_op"]);
+          .query(_ => "select 1 as test")
+          .preOps(_ => ["pre_op"])
+          .postOps(_ => ["post_op"])
+          .compile();
 
-      const t2 = session
-        .publish("my_table", {
-          type: "table",
-          schema: "test_schema"
-        })
-        .query(_ => "SELECT 1 as one")
-        .compile();
-      expect(t2.name).equals("my_table");
-      expect((t2.target.name = "my_table"));
-      expect((t2.target.schema = "test_schema"));
-      expect(t2.type).equals("table");
+        expect(t.name).equals(`${schemaWithSuffix("schema")}.example`);
+        expect(t.type).equals("table");
+        expect(t.actionDescriptor).eql({
+          description: "this is a table",
+          columns: [
+            dataform.ColumnDescriptor.create({
+              description: "test description",
+              path: ["test"]
+            })
+          ]
+        });
+        expect(t.preOps).deep.equals(["pre_op"]);
+        expect(t.postOps).deep.equals(["post_op"]);
+
+        const t2 = session
+          .publish("schema2.example", {
+            type: "table",
+            dependencies: [{ schema: "schema1", name: "example" }],
+            description: "test description"
+          })
+          .query(_ => "select 1 as test")
+          .preOps(_ => ["pre_op"])
+          .postOps(_ => ["post_op"])
+          .compile();
+
+        expect(t2.name).equals(`${schemaWithSuffix("schema2")}.example`);
+        expect(t2.type).equals("table");
+        expect(t.actionDescriptor).eql({
+          description: "this is a table",
+          columns: [
+            dataform.ColumnDescriptor.create({
+              description: "test description",
+              path: ["test"]
+            })
+          ]
+        });
+        expect(t2.preOps).deep.equals(["pre_op"]);
+        expect(t2.postOps).deep.equals(["post_op"]);
+        expect(t2.dependencies).includes(`${schemaWithSuffix("schema1")}.example`);
+
+        const t3 = session
+          .publish("my_table", {
+            type: "table",
+            schema: "test_schema"
+          })
+          .query(_ => "SELECT 1 as one")
+          .compile();
+        expect(t3.name).equals(`${schemaWithSuffix("test_schema")}.my_table`);
+        expect((t3.target.name = "my_table"));
+        expect((t3.target.schema = schemaWithSuffix("test_schema")));
+        expect(t3.type).equals("table");
+      });
     });
 
     it("config_context", () => {
@@ -70,7 +106,7 @@ describe("@dataform/core", () => {
         )
         .compile();
 
-      expect(t.name).equals("example");
+      expect(t.name).equals("schema.example");
       expect(t.type).equals("table");
       expect(t.preOps).deep.equals(["pre_op"]);
       expect(t.postOps).deep.equals(["post_op"]);
@@ -108,13 +144,13 @@ describe("@dataform/core", () => {
 
       const sessionFail = new Session(path.dirname(__filename), TEST_CONFIG);
       const cases: { [key: string]: { table: Table; errorTest: RegExp } } = {
-        missing_where: {
+        "schema.missing_where": {
           table: sessionFail.publish("missing_where", {
             type: "incremental"
           }),
           errorTest: /"where" property is not defined/
         },
-        empty_where: {
+        "schema.empty_where": {
           table: sessionFail
             .publish("empty_where", {
               type: "incremental"
@@ -159,7 +195,7 @@ describe("@dataform/core", () => {
         .to.have.property("validationErrors")
         .to.be.an("array").that.is.not.empty;
 
-      const err = cgFailErrors.validationErrors.find(e => e.actionName === "exampleFail");
+      const err = cgFailErrors.validationErrors.find(e => e.actionName === "schema.exampleFail");
       expect(err)
         .to.have.property("message")
         .that.matches(/Wrong type of table/);
@@ -252,14 +288,14 @@ describe("@dataform/core", () => {
       });
 
       const expectedResults = [
-        { name: "example_absent_distKey", message: /Property "distKey" is not defined/ },
-        { name: "example_absent_distStyle", message: /Property "distStyle" is not defined/ },
-        { name: "example_wrong_distStyle", message: /Wrong value of "distStyle" property/ },
-        { name: "example_absent_sortKeys", message: /Property "sortKeys" is not defined/ },
-        { name: "example_empty_sortKeys", message: /Property "sortKeys" is not defined/ },
-        { name: "example_absent_sortStyle", message: /Property "sortStyle" is not defined/ },
-        { name: "example_wrong_sortStyle", message: /Wrong value of "sortStyle" property/ },
-        { name: "example_empty_redshift", message: /Missing properties in redshift config/ }
+        { name: "schema.example_absent_distKey", message: /Property "distKey" is not defined/ },
+        { name: "schema.example_absent_distStyle", message: /Property "distStyle" is not defined/ },
+        { name: "schema.example_wrong_distStyle", message: /Wrong value of "distStyle" property/ },
+        { name: "schema.example_absent_sortKeys", message: /Property "sortKeys" is not defined/ },
+        { name: "schema.example_empty_sortKeys", message: /Property "sortKeys" is not defined/ },
+        { name: "schema.example_absent_sortStyle", message: /Property "sortStyle" is not defined/ },
+        { name: "schema.example_wrong_sortStyle", message: /Wrong value of "sortStyle" property/ },
+        { name: "schema.example_empty_redshift", message: /Missing properties in redshift config/ }
       ];
 
       const graph = session.compile();
@@ -309,16 +345,16 @@ describe("@dataform/core", () => {
       const graph = session.compile();
       const graphErrors = utils.validate(graph);
 
-      const tableA = graph.tables.find(item => item.name === "a");
+      const tableA = graph.tables.find(item => item.name === "schema.a");
       expect(tableA).to.exist;
       expect(tableA.type).equals("table");
       expect(tableA.dependencies).to.be.an("array").that.is.empty;
       expect(tableA.query).equals("select 1 as test");
 
-      const tableB = graph.tables.find(item => item.name === "b");
+      const tableB = graph.tables.find(item => item.name === "schema.b");
       expect(tableB).to.exist;
       expect(tableB.type).equals("inline");
-      expect(tableB.dependencies).includes("a");
+      expect(tableB.dependencies).includes("schema.a");
       expect(tableB.actionDescriptor).eql({
         columns: [
           dataform.ColumnDescriptor.create({
@@ -341,10 +377,10 @@ describe("@dataform/core", () => {
       expect(tableB.where).equals("test_where");
       expect(tableB.query).equals('select * from "schema"."a"');
 
-      const tableC = graph.tables.find(item => item.name === "c");
+      const tableC = graph.tables.find(item => item.name === "schema.c");
       expect(tableC).to.exist;
       expect(tableC.type).equals("table");
-      expect(tableC.dependencies).includes("a");
+      expect(tableC.dependencies).includes("schema.a");
       expect(tableC.actionDescriptor).eql({
         columns: [
           dataform.ColumnDescriptor.create({
@@ -365,7 +401,7 @@ describe("@dataform/core", () => {
         .to.be.an("array").that.is.not.empty;
 
       const errors = graphErrors.validationErrors
-        .filter(item => item.actionName === "b")
+        .filter(item => item.actionName === "schema.b")
         .map(item => item.message);
 
       expect(errors).that.matches(/Unused property was detected: "preOps"/);
@@ -380,17 +416,27 @@ describe("@dataform/core", () => {
       session.publish("a", _ => "select 1 as test");
       session.publish("b", ctx => `select * from ${ctx.ref("a")}`);
       session.publish("c", ctx => `select * from ${ctx.ref(undefined)}`);
+      session.publish("d", ctx => `select * from ${ctx.ref({ schema: "schema", name: "a" })}`);
+      session.publish("foo.e", _ => `select 1 as test`);
+      session.publish("f", ctx => `select * from ${ctx.ref("e")}`);
 
       const graph = session.compile();
       const graphErrors = utils.validate(graph);
 
       const tableNames = graph.tables.map(item => item.name);
-      expect(tableNames).includes("a");
-      expect(tableNames).includes("b");
-      expect(tableNames).includes("c");
 
+      expect(tableNames).includes("schema.a");
+      expect(tableNames).includes("schema.b");
+      expect(tableNames).includes("schema.c");
+      expect(tableNames).includes("schema.d");
+      expect(tableNames).includes("foo.e");
+      expect(tableNames).includes("schema.f");
       const errors = graphErrors.compilationErrors.map(item => item.message);
       expect(errors).includes("Action name is not specified");
+      expect(graphErrors.compilationErrors.length === 1);
+      expect(graphErrors)
+        .to.have.property("validationErrors")
+        .to.be.an("array").that.is.empty;
     });
   });
 
@@ -414,12 +460,12 @@ describe("@dataform/core", () => {
         .to.be.an("array")
         .to.have.lengthOf(2);
 
-      expect(graph.operations[0].name).equals("operate-1");
+      expect(graph.operations[0].name).equals("schema.operate-1");
       expect(graph.operations[0].dependencies).to.be.an("array").that.is.empty;
       expect(graph.operations[0].queries).deep.equals(["select 1 as sample"]);
 
-      expect(graph.operations[1].name).equals("operate-2");
-      expect(graph.operations[1].dependencies).deep.equals(["operate-1"]);
+      expect(graph.operations[1].name).equals("schema.operate-2");
+      expect(graph.operations[1].dependencies).deep.equals(["schema.operate-1"]);
       expect(graph.operations[1].queries).deep.equals(['select * from "schema"."operate-1"']);
     });
   });
@@ -431,15 +477,12 @@ describe("@dataform/core", () => {
       session.publish("b").dependencies("a");
       const cGraph = session.compile();
       const gErrors = utils.validate(cGraph);
-
       expect(gErrors)
-        .to.have.property("validationErrors")
+        .to.have.property("compilationErrors")
         .to.be.an("array").that.is.not.empty;
-
-      const err = gErrors.validationErrors.find(e => e.actionName === "a");
-      expect(err)
-        .to.have.property("message")
-        .that.matches(/Circular dependency/);
+      expect(
+        gErrors.compilationErrors.filter(item => item.message.match(/Circular dependency/))
+      ).to.be.an("array").that.is.not.empty;
     });
 
     it("missing_dependency", () => {
@@ -447,15 +490,12 @@ describe("@dataform/core", () => {
       session.publish("a", ctx => `select * from ${ctx.ref("b")}`);
       const cGraph = session.compile();
       const gErrors = utils.validate(cGraph);
-
       expect(gErrors)
-        .to.have.property("validationErrors")
+        .to.have.property("compilationErrors")
         .to.be.an("array").that.is.not.empty;
-
-      const err = gErrors.validationErrors.find(e => e.actionName === "a");
-      expect(err)
-        .to.have.property("message")
-        .that.matches(/Missing dependency/);
+      expect(
+        gErrors.compilationErrors.filter(item => item.message.match(/Missing dependency/))
+      ).to.be.an("array").that.is.not.empty;
     });
 
     it("duplicate_action_names", () => {
@@ -476,39 +516,48 @@ describe("@dataform/core", () => {
       expect(errors).to.be.an("array").that.is.not.empty;
     });
 
-    it("validate", () => {
-      const graph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
-        projectConfig: { warehouse: "redshift" },
-        tables: [
-          { name: "a", target: { schema: "schema", name: "a" }, dependencies: ["b"] },
-          { name: "b", target: { schema: "schema", name: "b" }, dependencies: ["z"] },
-          { name: "a", target: { schema: "schema", name: "a" }, dependencies: [] },
-          { name: "c", target: { schema: "schema", name: "c" }, dependencies: ["d"] },
-          { name: "d", target: { schema: "schema", name: "d" }, dependencies: ["c"] }
-        ]
-      });
-      const gErrors = utils.validate(graph);
-
+    it("same action names in different schemas (ambiguity)", () => {
+      const session = new Session(path.dirname(__filename), TEST_CONFIG);
+      session.publish("foo.a");
+      session.publish("bar.a");
+      session.publish("foo.b").dependencies("a");
+      const cGraph = session.compile();
+      const gErrors = utils.validate(cGraph);
       expect(gErrors)
-        .to.have.property("validationErrors")
+        .to.have.property("compilationErrors")
         .to.be.an("array").that.is.not.empty;
-
-      const errors = gErrors.validationErrors.map(item => item.message);
-
-      expect(errors.some(item => !!item.match(/Duplicate action name/))).to.be.true;
-      expect(errors.some(item => !!item.match(/Missing dependency/))).to.be.true;
-      expect(errors.some(item => !!item.match(/Circular dependency/))).to.be.true;
+      const errors = gErrors.compilationErrors.filter(item =>
+        item.message.match(/Ambiguous Action name: a. Did you mean one of: foo.a, bar.a./)
+      );
+      expect(errors).to.be.an("array").that.is.not.empty;
     });
 
-    it("wildcard_dependencies", () => {
+    it("same action name in same schema", () => {
       const session = new Session(path.dirname(__filename), TEST_CONFIG);
-      session.publish("a1");
-      session.publish("a2");
-      session.publish("b").dependencies("a*");
+      session.publish("schema2.a").dependencies("b");
+      session.publish("schema2.a");
+      session.publish("b");
+      const cGraph = session.compile();
+      const gErrors = utils.validate(cGraph);
+      expect(gErrors)
+        .to.have.property("compilationErrors")
+        .to.be.an("array").that.is.not.empty;
+      const errors = gErrors.compilationErrors.filter(item =>
+        item.message.match(/Duplicate action name detected. Names within a schema must be unique/)
+      );
+      expect(errors).to.be.an("array").that.is.not.empty;
+    });
 
-      const graph = session.compile();
-
-      expect(graph.tables.filter(t => t.name === "b")[0].dependencies).deep.equals(["a1", "a2"]);
+    it("same action names in different schemas", () => {
+      const session = new Session(path.dirname(__filename), TEST_CONFIG);
+      session.publish("b");
+      session.publish("schema1.a").dependencies("b");
+      session.publish("schema2.a");
+      const cGraph = session.compile();
+      const gErrors = utils.validate(cGraph);
+      expect(gErrors)
+        .to.have.property("compilationErrors")
+        .to.be.an("array").that.is.empty;
     });
   });
 
