@@ -14,7 +14,7 @@ const simpleCheckProps: Array<keyof dataform.IProjectConfig> = [
 ];
 
 export async function compile(
-  compileConfig: dataform.ICompileConfig
+  compileConfig: dataform.ICompileConfig = {}
 ): Promise<dataform.CompiledGraph> {
   // Resolve the path in case it hasn't been resolved already.
   path.resolve(compileConfig.projectDir);
@@ -25,6 +25,17 @@ export async function compile(
     checkDataformJsonValidity(JSON.parse(dataformJson));
   } catch (e) {
     throw new Error(`Compile Error: 'dataform.json' is invalid. ${e}`);
+  }
+
+  // Create an empty projectConfigOverride if not set.
+  compileConfig = { projectConfigOverride: {}, ...compileConfig };
+
+  // Schema overrides field can be set in two places, projectConfigOverride.schemaSuffix takes precedent.
+  if (compileConfig.schemaSuffixOverride) {
+    compileConfig.projectConfigOverride = {
+      schemaSuffix: compileConfig.schemaSuffixOverride,
+      ...compileConfig.projectConfigOverride
+    };
   }
 
   const compiledGraph = await CompileChildProcess.forkProcess().compile(compileConfig);
@@ -91,8 +102,8 @@ const checkDataformJsonValidity = (dataformJsonParsed: { [prop: string]: string 
   const invalidWarehouseProp = () => {
     return dataformJsonParsed.warehouse && !validWarehouses.includes(dataformJsonParsed.warehouse)
       ? `Invalid value on property warehouse: ${
-      dataformJsonParsed.warehouse
-      }. Should be one of: ${validWarehouses.join(", ")}.`
+          dataformJsonParsed.warehouse
+        }. Should be one of: ${validWarehouses.join(", ")}.`
       : null;
   };
   const invalidProp = () => {
@@ -100,9 +111,7 @@ const checkDataformJsonValidity = (dataformJsonParsed: { [prop: string]: string 
       return prop in dataformJsonParsed && !/^[a-zA-Z_0-9\-]*$/.test(dataformJsonParsed[prop]);
     });
     return invProp
-      ? `Invalid value on property ${invProp}: ${
-      dataformJsonParsed[invProp]
-      }. Should only contain alphanumeric characters, underscores and/or hyphens.`
+      ? `Invalid value on property ${invProp}: ${dataformJsonParsed[invProp]}. Should only contain alphanumeric characters, underscores and/or hyphens.`
       : null;
   };
   const missingMandatoryProp = () => {

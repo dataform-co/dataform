@@ -32,15 +32,22 @@ export function genIndex(base64EncodedConfig: string): string {
     })
     .join("\n");
 
+  const projectOverridesJsonString = JSON.stringify(
+    dataform.ProjectConfig.create(config.compileConfig.projectConfigOverride).toJSON()
+  );
+
   return `
     require("@dataform/core");
     const protos = require("@dataform/protos");
     const { util } = require("protobufjs");
     ${includeRequires}
-    const projectConfig = require("./dataform.json");
+    let projectConfig = require("./dataform.json");
+    // For backwards compatibility, in case core version is ahead of api.
     projectConfig.schemaSuffix = "${
       config.compileConfig.schemaSuffixOverride
     }" || projectConfig.schemaSuffix;
+    // Merge in general project config overrides.
+    projectConfig = { ...projectConfig, ...${projectOverridesJsonString} };
     global.session.init("${config.compileConfig.projectDir}", projectConfig);
     ${definitionRequires}
     const compiledGraph = global.session.compile();
