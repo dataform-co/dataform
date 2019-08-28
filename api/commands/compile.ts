@@ -19,14 +19,6 @@ export async function compile(
   // Resolve the path in case it hasn't been resolved already.
   path.resolve(compileConfig.projectDir);
 
-  try {
-    // check dataformJson is valid before we try to compile
-    const dataformJson = fs.readFileSync(`${compileConfig.projectDir}/dataform.json`, "utf8");
-    checkDataformJsonValidity(JSON.parse(dataformJson));
-  } catch (e) {
-    throw new Error(`Compile Error: 'dataform.json' is invalid. ${e}`);
-  }
-
   // Create an empty projectConfigOverride if not set.
   compileConfig = { projectConfigOverride: {}, ...compileConfig };
 
@@ -36,6 +28,18 @@ export async function compile(
       schemaSuffix: compileConfig.schemaSuffixOverride,
       ...compileConfig.projectConfigOverride
     };
+  }
+
+  try {
+    // check dataformJson is valid before we try to compile
+    const dataformJson = fs.readFileSync(`${compileConfig.projectDir}/dataform.json`, "utf8");
+    const projectConfig = JSON.parse(dataformJson);
+    checkDataformJsonValidity({
+      ...projectConfig,
+      ...compileConfig.projectConfigOverride
+    });
+  } catch (e) {
+    throw new Error(`Compile Error: ProjectConfig ('dataform.json') is invalid. ${e}`);
   }
 
   const compiledGraph = await CompileChildProcess.forkProcess().compile(compileConfig);
