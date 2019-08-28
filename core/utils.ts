@@ -1,4 +1,5 @@
 import { Assertion } from "@dataform/core/assertion";
+import { Declaration } from "@dataform/core/declaration";
 import { Operation } from "@dataform/core/operation";
 import { Resolvable } from "@dataform/core/session";
 import {
@@ -123,7 +124,8 @@ export function validate(compiledGraph: dataform.ICompiledGraph): dataform.IGrap
   const allActions = [].concat(
     compiledGraph.tables,
     compiledGraph.assertions,
-    compiledGraph.operations
+    compiledGraph.operations,
+    compiledGraph.declarations
   );
 
   const actionsByName: { [name: string]: dataform.IExecutionAction } = {};
@@ -253,7 +255,7 @@ export function appendSuffixToSchema(d: Resolvable, suffix: string) {
 
 export function ambiguousActionNameMsg(
   act: Resolvable,
-  allActs: Array<Table | Operation | Assertion> | string[]
+  allActs: Array<Table | Operation | Assertion | Declaration> | string[]
 ) {
   const allActNames =
     typeof allActs[0] === "string"

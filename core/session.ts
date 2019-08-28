@@ -1,5 +1,6 @@
 import * as adapters from "@dataform/core/adapters";
 import { AConfig, AContextable, Assertion } from "@dataform/core/assertion";
+import { DConfig, Declaration } from "@dataform/core/declaration";
 import { OConfig, OContextable, Operation } from "@dataform/core/operation";
 import * as table from "@dataform/core/table";
 import * as test from "@dataform/core/test";
@@ -13,8 +14,16 @@ interface IActionProto {
   target?: dataform.ITarget;
 }
 
-interface ISqlxConfig extends table.TConfig, AConfig, OConfig, test.TConfig {
-  type: "view" | "table" | "inline" | "incremental" | "assertion" | "operations" | "test";
+interface ISqlxConfig extends table.TConfig, AConfig, OConfig, DConfig, test.TConfig {
+  type:
+    | "view"
+    | "table"
+    | "inline"
+    | "incremental"
+    | "assertion"
+    | "operations"
+    | "declaration"
+    | "test";
   name: string;
 }
 
@@ -66,7 +75,10 @@ function mapColumnDescriptionToProto(
   );
 }
 
-export type FullyQualifiedName = { schema: string; name: string };
+export interface FullyQualifiedName {
+  schema: string;
+  name: string;
+}
 export type Resolvable = string | FullyQualifiedName;
 
 export class Session {
@@ -74,7 +86,7 @@ export class Session {
 
   public config: dataform.IProjectConfig;
 
-  public actions: Array<table.Table | Operation | Assertion>;
+  public actions: Array<table.Table | Operation | Assertion | Declaration>;
   public tests: { [name: string]: test.Test };
 
   public graphErrors: dataform.IGraphErrors;
@@ -113,8 +125,10 @@ export class Session {
     }
     if (
       actionOptions.sqlxConfig.hasOutput &&
-      (actionOptions.sqlxConfig.type !== "operations" ||
-        this.isDatasetType(actionOptions.sqlxConfig.type))
+      !(
+        actionOptions.sqlxConfig.type === "operations" ||
+        definesDataset(actionOptions.sqlxConfig.type)
+      )
     ) {
       this.compileError(
         "Actions may only specify 'hasOutput: true' if they are of type 'operations' or create a dataset."
@@ -122,9 +136,9 @@ export class Session {
     }
     if (
       actionOptions.sqlxConfig.columns &&
-      !(this.isDatasetType(actionOptions.sqlxConfig.type) || actionOptions.sqlxConfig.hasOutput)
+      !declaresDataset(actionOptions.sqlxConfig.type, actionOptions.sqlxConfig.hasOutput)
     ) {
-      this.compileError("Actions may only specify 'columns' if they create a dataset.");
+      this.compileError("Actions may only specify 'columns' if they create or declare a dataset.");
     }
     if (actionOptions.sqlxConfig.protected && actionOptions.sqlxConfig.type !== "incremental") {
       this.compileError(
@@ -136,6 +150,9 @@ export class Session {
         "Actions may only include incremental_where if they are of type 'incremental'."
       );
     }
+    if (!actionOptions.sqlxConfig.schema && actionOptions.sqlxConfig.type === "declaration") {
+      this.compileError("Actions of type 'declaration' must specify a value for 'schema'.");
+    }
     if (actionOptions.sqlxConfig.dataset && actionOptions.sqlxConfig.type !== "test") {
       this.compileError("Actions may only specify 'dataset' if they are of type 'test'.");
     }
@@ -145,27 +162,27 @@ export class Session {
     if (actionOptions.hasInputs && actionOptions.sqlxConfig.type !== "test") {
       this.compileError("Actions may only include input blocks if they are of type 'test'.");
     }
-    if (actionOptions.sqlxConfig.disabled && !this.isDatasetType(actionOptions.sqlxConfig.type)) {
+    if (actionOptions.sqlxConfig.disabled && !definesDataset(actionOptions.sqlxConfig.type)) {
       this.compileError("Actions may only specify 'disabled: true' if they create a dataset.");
     }
-    if (actionOptions.sqlxConfig.redshift && !this.isDatasetType(actionOptions.sqlxConfig.type)) {
+    if (actionOptions.sqlxConfig.redshift && !definesDataset(actionOptions.sqlxConfig.type)) {
       this.compileError("Actions may only specify 'redshift: { ... }' if they create a dataset.");
     }
     if (
       actionOptions.sqlxConfig.sqldatawarehouse &&
-      !this.isDatasetType(actionOptions.sqlxConfig.type)
+      !definesDataset(actionOptions.sqlxConfig.type)
     ) {
       this.compileError(
         "Actions may only specify 'sqldatawarehouse: { ... }' if they create a dataset."
       );
     }
-    if (actionOptions.sqlxConfig.bigquery && !this.isDatasetType(actionOptions.sqlxConfig.type)) {
+    if (actionOptions.sqlxConfig.bigquery && !definesDataset(actionOptions.sqlxConfig.type)) {
       this.compileError("Actions may only specify 'bigquery: { ... }' if they create a dataset.");
     }
-    if (actionOptions.hasPreOperations && !this.isDatasetType(actionOptions.sqlxConfig.type)) {
+    if (actionOptions.hasPreOperations && !definesDataset(actionOptions.sqlxConfig.type)) {
       this.compileError("Actions may only include pre_operations if they create a dataset.");
     }
-    if (actionOptions.hasPostOperations && !this.isDatasetType(actionOptions.sqlxConfig.type)) {
+    if (actionOptions.hasPostOperations && !definesDataset(actionOptions.sqlxConfig.type)) {
       this.compileError("Actions may only include post_operations if they create a dataset.");
     }
 
@@ -180,17 +197,17 @@ export class Session {
           return this.assert(actionOptions.sqlxConfig.name);
         case "operations":
           return this.operate(actionOptions.sqlxConfig.name);
+        case "declaration":
+          return this.declare({
+            schema: actionOptions.sqlxConfig.schema,
+            name: actionOptions.sqlxConfig.name
+          });
         case "test":
           return this.test(actionOptions.sqlxConfig.name);
         default:
           throw new Error(`Unrecognized action type: ${actionOptions.sqlxConfig.type}`);
       }
     })().config(actionOptions.sqlxConfig);
-
-    if (action instanceof test.Test) {
-      return action;
-    }
-
     return action;
   }
 
@@ -277,6 +294,19 @@ export class Session {
     return assertion;
   }
 
+  public declare(dataset: FullyQualifiedName): Declaration {
+    const declaration = new Declaration();
+    declaration.session = this;
+    // We intentionally do not use setNameAndTarget(...) here because that might add a schema suffix,
+    // which would be incorrect in the case of declarations.
+    this.checkTargetIsUnused(dataset);
+    declaration.proto.target = dataset;
+    declaration.proto.name = `${dataset.schema}.${dataset.name}`;
+    declaration.proto.fileName = utils.getCallerFile(this.rootDir);
+    this.actions.push(declaration);
+    return declaration;
+  }
+
   public test(name: string): test.Test {
     this.checkTestNameIsUnused(name);
     const newTest = new test.Test();
@@ -328,18 +358,25 @@ export class Session {
       assertions: this.compileGraphChunk(
         this.actions.filter(action => action instanceof Assertion)
       ),
+      declarations: this.compileGraphChunk(
+        this.actions.filter(action => action instanceof Declaration)
+      ),
       tests: this.compileGraphChunk(Object.values(this.tests)),
       graphErrors: this.graphErrors
     });
 
-    const allActions: IActionProto[] = [].concat(
-      compiledGraph.tables,
-      compiledGraph.assertions,
-      compiledGraph.operations
-    );
+    const allActionsByName: { [name: string]: IActionProto } = {};
+    ([] as IActionProto[])
+      .concat(
+        compiledGraph.tables,
+        compiledGraph.assertions,
+        compiledGraph.operations,
+        compiledGraph.declarations
+      )
+      .forEach(action => (allActionsByName[action.name] = action));
 
-    allActions.forEach(action => {
-      const fQDeps = action.dependencies.map(act => {
+    Object.values(allActionsByName).forEach(action => {
+      const fQDeps = (action.dependencies || []).map(act => {
         const allActs = this.findActions(act);
         if (allActs.length === 1) {
           return `${allActs[0].proto.target.schema}.${allActs[0].proto.target.name}`;
@@ -358,14 +395,8 @@ export class Session {
       action.dependencies = [...new Set(fQDeps || [])];
     });
 
-    const actionsByName: { [name: string]: dataform.IExecutionAction } = {};
-    allActions.forEach(action => (actionsByName[action.name] = action));
-
     // Check for circular dependencies.
-    const checkCircular = (
-      action: dataform.IExecutionAction,
-      dependents: dataform.IExecutionAction[]
-    ): boolean => {
+    const checkCircular = (action: IActionProto, dependents: IActionProto[]): boolean => {
       if (dependents.indexOf(action) >= 0) {
         const message = `Circular dependency detected in chain: [${dependents
           .map(d => d.name)
@@ -374,21 +405,19 @@ export class Session {
         return true;
       }
       return (action.dependencies || []).some(d => {
-        return actionsByName[d] && checkCircular(actionsByName[d], dependents.concat([action]));
+        return (
+          allActionsByName[d] && checkCircular(allActionsByName[d], dependents.concat([action]))
+        );
       });
     };
 
-    for (const action of allActions) {
+    for (const action of Object.values(allActionsByName)) {
       if (checkCircular(action, [])) {
         break;
       }
     }
 
     return compiledGraph;
-  }
-
-  public isDatasetType(type: string) {
-    return type === "view" || type === "table" || type === "inline" || type === "incremental";
   }
 
   public findActions(res: Resolvable) {
@@ -429,4 +458,12 @@ export class Session {
       this.compileError(new Error(message));
     }
   }
+}
+
+function declaresDataset(type: string, hasOutput?: boolean) {
+  return definesDataset(type) || type === "declaration" || hasOutput;
+}
+
+function definesDataset(type: string) {
+  return type === "view" || type === "table" || type === "inline" || type === "incremental";
 }

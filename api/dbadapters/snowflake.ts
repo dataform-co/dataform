@@ -77,7 +77,7 @@ export class SnowflakeDbAdapter implements IDbAdapter {
   }
 
   public evaluate(statement: string): Promise<void> {
-    throw Error("Unimplemented");
+    throw new Error("Unimplemented");
   }
 
   public tables(): Promise<dataform.ITarget[]> {
@@ -110,9 +110,7 @@ export class SnowflakeDbAdapter implements IDbAdapter {
        where table_schema = '${target.schema}' AND table_name = '${target.name}'`
       ),
       this.execute(
-        `select table_type from information_schema.tables where table_schema = '${
-          target.schema
-        }' AND table_name = '${target.name}'`
+        `select table_type from information_schema.tables where table_schema = '${target.schema}' AND table_name = '${target.name}'`
       )
     ]).then(results => {
       if (results[1].length > 0) {
