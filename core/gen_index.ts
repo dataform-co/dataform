@@ -41,7 +41,6 @@ export function genIndex(base64EncodedConfig: string): string {
     const protos = require("@dataform/protos");
     const { util } = require("protobufjs");
     ${includeRequires}
-    // Merge in the project config overrides from the compile options.
     let projectConfig = { ...require("./dataform.json") };
     // For backwards compatibility, in case core version is ahead of api.
     projectConfig.schemaSuffix = "${
