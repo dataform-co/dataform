@@ -42,11 +42,13 @@ export function genIndex(base64EncodedConfig: string): string {
     const { util } = require("protobufjs");
     ${includeRequires}
     // Merge in the project config overrides from the compile options.
-    const projectConfig = { ...require("./dataform.json"), ...${projectOverridesJsonString} };
+    let projectConfig = { ...require("./dataform.json") };
     // For backwards compatibility, in case core version is ahead of api.
     projectConfig.schemaSuffix = "${
       config.compileConfig.schemaSuffixOverride
     }" || projectConfig.schemaSuffix;
+    // Merge in general project config overrides.
+    projectConfig = { ...projectConfig, ...${projectOverridesJsonString} };
     global.session.init("${config.compileConfig.projectDir}", projectConfig);
     ${definitionRequires}
     const compiledGraph = global.session.compile();

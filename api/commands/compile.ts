@@ -14,7 +14,7 @@ const simpleCheckProps: Array<keyof dataform.IProjectConfig> = [
 ];
 
 export async function compile(
-  compileConfig: dataform.ICompileConfig
+  compileConfig: dataform.ICompileConfig = {}
 ): Promise<dataform.CompiledGraph> {
   // Resolve the path in case it hasn't been resolved already.
   path.resolve(compileConfig.projectDir);
@@ -27,9 +27,16 @@ export async function compile(
     throw new Error(`Compile Error: 'dataform.json' is invalid. ${e}`);
   }
 
-  // Schema overrides field can be set in two places, projectConfigOverride is the source of truth.
-  if (compileConfig.projectConfigOverride && compileConfig.projectConfigOverride.schemaSuffix) {
-    compileConfig.schemaSuffixOverride = compileConfig.projectConfigOverride.schemaSuffix;
+  // Create an empty projectConfigOverride if not set.
+  compileConfig = { projectConfigOverride: {}, ...compileConfig };
+
+  // Schema overrides field can be set in two places, projectConfigOverride.schemaSuffix takes precedent.
+  if (compileConfig.schemaSuffixOverride) {
+    // Maybe create an empty project config override.
+    compileConfig.projectConfigOverride = {
+      schemaSuffix: compileConfig.schemaSuffixOverride,
+      ...compileConfig.projectConfigOverride
+    };
   }
 
   const compiledGraph = await CompileChildProcess.forkProcess().compile(compileConfig);
