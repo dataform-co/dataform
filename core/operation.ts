@@ -1,14 +1,21 @@
-import { IColumnsDescriptor, mapToColumnProtoArray, Session } from "@dataform/core/session";
+import {
+  IColumnsDescriptor,
+  mapToColumnProtoArray,
+  Resolvable,
+  Session
+} from "@dataform/core/session";
+import * as utils from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
 
 export type OContextable<T> = T | ((ctx: OperationContext) => T);
 
 export interface OConfig {
-  dependencies?: string | string[];
+  dependencies?: Resolvable | Resolvable[];
   tags?: string[];
   description?: string;
   columns?: IColumnsDescriptor;
   hasOutput?: boolean;
+  schema?: string;
 }
 
 export class Operation {
@@ -36,6 +43,9 @@ export class Operation {
     if (config.columns) {
       this.columns(config.columns);
     }
+    if (config.schema) {
+      this.schema(config.schema);
+    }
     return this;
   }
 
@@ -44,11 +54,12 @@ export class Operation {
     return this;
   }
 
-  public dependencies(value: string | string[]) {
-    const newDependencies = typeof value === "string" ? [value] : value;
-    newDependencies.forEach(d => {
-      if (this.proto.dependencies.indexOf(d) < 0) {
-        this.proto.dependencies.push(d);
+  public dependencies(value: Resolvable | Resolvable[]) {
+    const newDependencies = utils.isResolvable(value) ? [value] : (value as Resolvable[]);
+    newDependencies.forEach((d: Resolvable) => {
+      const depName = utils.appendSuffixToSchema(d, this.session.getSuffixWithUnderscore());
+      if (this.proto.dependencies.indexOf(depName) < 0) {
+        this.proto.dependencies.push(depName);
       }
     });
     return this;
@@ -85,6 +96,13 @@ export class Operation {
     return this;
   }
 
+  public schema(schema: string) {
+    if (schema !== this.session.config.defaultSchema) {
+      this.session.setNameAndTarget(this.proto, this.proto.target.name, schema);
+    }
+    return this;
+  }
+
   public compile() {
     if (
       this.proto.actionDescriptor &&
@@ -117,23 +135,28 @@ export class OperationContext {
   }
 
   public self(): string {
-    return this.resolve(this.operation.proto.name);
+    return this.resolve({
+      schema: this.operation.proto.target.schema,
+      name: this.operation.proto.target.name
+    });
   }
 
   public name(): string {
-    return this.operation.proto.name;
+    return this.operation.proto.target.name;
   }
 
-  public ref(name: string) {
+  public ref(ref: Resolvable) {
+    const name =
+      typeof ref === "string" || typeof ref === "undefined" ? ref : `${ref.schema}.${ref.name}`;
     this.operation.dependencies(name);
-    return this.resolve(name);
+    return this.resolve(ref);
   }
 
-  public resolve(name: string) {
-    return this.operation.session.resolve(name);
+  public resolve(ref: Resolvable) {
+    return this.operation.session.resolve(ref);
   }
 
-  public dependencies(name: string | string[]) {
+  public dependencies(name: Resolvable | Resolvable[]) {
     this.operation.dependencies(name);
     return "";
   }

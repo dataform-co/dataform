@@ -38,10 +38,15 @@ export class SQLDataWarehouseDBAdapter implements IDbAdapter {
     });
   }
 
-  public async execute(statement: string, onCancel?: OnCancel): Promise<any[]> {
+  public async execute(
+    statement: string,
+    options?: {
+      onCancel?: OnCancel;
+    }
+  ): Promise<any[]> {
     const request = (await this.pool).request();
-    if (onCancel) {
-      onCancel(() => request.cancel());
+    if (options && options.onCancel) {
+      options.onCancel(() => request.cancel());
     }
     return (await request.query(statement)).recordset;
   }
@@ -90,7 +95,7 @@ export class SQLDataWarehouseDBAdapter implements IDbAdapter {
   }
 
   public async preview(target: dataform.ITarget, limitRows: number = 10): Promise<any[]> {
-    return this.execute(`SELECT * FROM "${target.schema}"."${target.name}" LIMIT ${limitRows}`);
+    return this.execute(`SELECT TOP ${limitRows} * FROM "${target.schema}"."${target.name}"`);
   }
 
   public async prepareSchema(schema: string): Promise<void> {

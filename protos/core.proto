@@ -37,7 +37,11 @@ message CompileConfig {
   string project_dir = 1;
 
   // Compile time configuration options.
+  // Deprecated.
   string schema_suffix_override = 2;
+
+  // Project configuration overrides (dataform.json).
+  ProjectConfig project_config_override = 3;
 }
 
 message Target {
@@ -91,7 +95,6 @@ message ColumnDescriptor {
 }
 
 message Table {
-  string name = 1;
   repeated string dependencies = 2;
   bool disabled = 6;
 
@@ -122,12 +125,12 @@ message Table {
   // Deprecated.
   repeated string deprecated_parsed_columns = 12;
   repeated ValidationError deprecated_validation_errors = 7;
+  string name = 1; // Preferred: Target
 
   reserved 16;
 }
 
 message Operation {
-  string name = 1;
   repeated string dependencies = 2;
 
   Target target = 3;
@@ -143,10 +146,12 @@ message Operation {
   bool has_output = 8;
 
   reserved 4, 5;
+  
+  // Deprecated.
+  string name = 1; // Preferred: Target
 }
 
 message Assertion {
-  string name = 1;
   repeated string dependencies = 2;
 
   Target target = 8;
@@ -160,6 +165,20 @@ message Assertion {
   string file_name = 7;
 
   reserved 4, 5, 6;
+
+  //Deprecated
+  string name = 1; // Preferred: Target
+}
+
+message Declaration {
+  string name = 1;
+
+  Target target = 2;
+
+  ActionDescriptor action_descriptor = 3;
+
+  // Generated.
+  string file_name = 4;
 }
 
 message Test {
@@ -178,6 +197,7 @@ message CompiledGraph {
   repeated Table tables = 1;
   repeated Operation operations = 2;
   repeated Assertion assertions = 3;
+  repeated Declaration declarations = 9;
   repeated Test tests = 8;
 
   GraphErrors graph_errors = 7;

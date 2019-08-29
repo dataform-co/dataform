@@ -82,7 +82,7 @@ export function register(warehouseType: string, c: AdapterConstructor<IAdapter>)
 
 export function create(projectConfig: dataform.IProjectConfig): IAdapter {
   if (!registry[projectConfig.warehouse]) {
-    throw Error(`Unsupported warehouse: ${projectConfig.warehouse}`);
+    throw new Error(`Unsupported warehouse: ${projectConfig.warehouse}`);
   }
   return new registry[projectConfig.warehouse](projectConfig);
 }

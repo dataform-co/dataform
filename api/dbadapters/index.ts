@@ -8,7 +8,13 @@ import { dataform } from "@dataform/protos";
 export type OnCancel = (handleCancel: () => void) => void;
 
 export interface IDbAdapter {
-  execute(statement: string, onCancel?: OnCancel): Promise<any[]>;
+  execute(
+    statement: string,
+    options?: {
+      onCancel?: OnCancel;
+      interactive?: boolean;
+    }
+  ): Promise<any[]>;
   evaluate(statement: string): Promise<void>;
   tables(): Promise<dataform.ITarget[]>;
   table(target: dataform.ITarget): Promise<dataform.ITableMetadata>;
@@ -26,7 +32,7 @@ export function register(warehouseType: string, c: DbAdapterConstructor<IDbAdapt
 
 export function create(credentials: Credentials, warehouseType: string): IDbAdapter {
   if (!registry[warehouseType]) {
-    throw Error(`Unsupported warehouse: ${warehouseType}`);
+    throw new Error(`Unsupported warehouse: ${warehouseType}`);
   }
   return new registry[warehouseType](credentials);
 }

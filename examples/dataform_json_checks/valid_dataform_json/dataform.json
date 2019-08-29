@@ -1,0 +1,5 @@
+{
+    "warehouse": "redshift",
+    "defaultSchema": "df_integration_test-",
+    "assertionSchema": ""
+}

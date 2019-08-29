@@ -59,27 +59,44 @@ describe("@dataform/integration/bigquery", () => {
     const actionMap = keyBy(executedGraph.actions, v => v.name);
 
     // Check the status of the two assertions.
-    expect(actionMap.example_assertion_fail.status).equals(dataform.ActionExecutionStatus.FAILED);
-    expect(actionMap.example_assertion_pass.status).equals(
+    expect(actionMap["df_integration_test_assertions.example_assertion_fail"].status).equals(
+      dataform.ActionExecutionStatus.FAILED
+    );
+    expect(actionMap["df_integration_test_assertions.example_assertion_pass"].status).equals(
       dataform.ActionExecutionStatus.SUCCESSFUL
     );
 
     // Check the status of the two uniqueness assertions.
-    expect(actionMap.example_assertion_uniqueness_fail.status).equals(dataform.ActionExecutionStatus.FAILED);
-    expect(actionMap.example_assertion_uniqueness_fail.tasks[1].error).to.eql("Assertion failed: query returned 1 row(s).");
-    expect(actionMap.example_assertion_uniqueness_pass.status).equals(
-      dataform.ActionExecutionStatus.SUCCESSFUL
-    );
+    expect(
+      actionMap["df_integration_test_assertions.example_assertion_uniqueness_fail"].status
+    ).equals(dataform.ActionExecutionStatus.FAILED);
+    expect(
+      actionMap["df_integration_test_assertions.example_assertion_uniqueness_fail"].tasks[1].error
+    ).to.eql("Assertion failed: query returned 1 row(s).");
+    expect(
+      actionMap["df_integration_test_assertions.example_assertion_uniqueness_pass"].status
+    ).equals(dataform.ActionExecutionStatus.SUCCESSFUL);
 
     // Check the data in the incremental table.
-    let incrementalTable = keyBy(compiledGraph.tables, t => t.name).example_incremental;
-    let incrementalRows = await getTableRows(incrementalTable.target, adapter, dbadapter);
+    let incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
+      "df_integration_test.example_incremental"
+    ];
+
+    let incrementalRows = await getTableRows(
+      incrementalTable.target,
+      adapter,
+      credentials,
+      "bigquery"
+    );
+
     expect(incrementalRows.length).equals(1);
 
     // Re-run some of the actions.
     executionGraph = await dfapi.build(
       compiledGraph,
-      { actions: ["example_incremental", "example_table", "example_view"] },
+      {
+        actions: ["example_incremental", "example_table", "example_view"]
+      },
       credentials
     );
 
@@ -87,8 +104,10 @@ describe("@dataform/integration/bigquery", () => {
     expect(executedGraph.ok).equals(true);
 
     // Check there is an extra row in the incremental table.
-    incrementalTable = keyBy(compiledGraph.tables, t => t.name).example_incremental;
-    incrementalRows = await getTableRows(incrementalTable.target, adapter, dbadapter);
+    incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
+      "df_integration_test.example_incremental"
+    ];
+    incrementalRows = await getTableRows(incrementalTable.target, adapter, credentials, "bigquery");
     expect(incrementalRows.length).equals(2);
   }).timeout(60000);
 });

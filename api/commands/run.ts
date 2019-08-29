@@ -55,7 +55,7 @@ export class Runner {
 
   public async execute(): Promise<dataform.IExecutedGraph> {
     if (!!this.executionTask) {
-      throw Error("Executor already started.");
+      throw new Error("Executor already started.");
     }
 
     this.executionTask = new Promise(async (resolve, reject) => {
@@ -153,9 +153,9 @@ export class Runner {
         return chain.then(async chainResults => {
           try {
             // Create another promise chain for retries, if we allow them.
-            const rows = await this.adapter.execute(task.statement, handleCancel =>
-              this.eEmitter.on(CANCEL_EVENT, handleCancel)
-            );
+            const rows = await this.adapter.execute(task.statement, {
+              onCancel: handleCancel => this.eEmitter.on(CANCEL_EVENT, handleCancel)
+            });
             if (task.type === "assertion") {
               // We expect that an assertion query returns 1 row, with 1 field that is the row count.
               // We don't really care what that field/column is called.

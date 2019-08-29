@@ -77,7 +77,7 @@ export class SnowflakeDbAdapter implements IDbAdapter {
   }
 
   public evaluate(statement: string): Promise<void> {
-    throw Error("Unimplemented");
+    throw new Error("Unimplemented");
   }
 
   public tables(): Promise<dataform.ITarget[]> {
@@ -95,6 +95,11 @@ export class SnowflakeDbAdapter implements IDbAdapter {
         }))
       )
     );
+  }
+
+  public async schemas(): Promise<string[]> {
+    const rows = await this.execute(`select SCHEMA_NAME from information_schema.schemata`);
+    return rows.map(row => row.SCHEMA_NAME);
   }
 
   public table(target: dataform.ITarget): Promise<dataform.ITableMetadata> {
@@ -129,10 +134,11 @@ export class SnowflakeDbAdapter implements IDbAdapter {
     return this.execute(`SELECT * FROM "${target.schema}"."${target.name}" LIMIT ${limitRows}`);
   }
 
-  public prepareSchema(schema: string): Promise<void> {
-    return Promise.resolve().then(() =>
-      this.execute(`create schema if not exists "${schema}"`).then(() => {})
-    );
+  public async prepareSchema(schema: string): Promise<void> {
+    const schemas = await this.schemas();
+    if (!schemas.includes(schema)) {
+      await this.execute(`create schema if not exists "${schema}"`);
+    }
   }
 
   private async verifyCertificate(accountId: string) {
