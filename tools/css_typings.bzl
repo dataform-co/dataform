@@ -7,7 +7,7 @@ def _impl(ctx):
             inputs = [f],
             outputs = [out],
             executable = ctx.executable._tool,
-            arguments = ["-o", out.root.path, "-p", f.short_path, f.root.path],
+            arguments = ["-o", out.root.path, "-p", f.short_path, f.root.path, "--silent"],
             progress_message = "Generating CSS type definitions for %s" % f.path,
         )
 
