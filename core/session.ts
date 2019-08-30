@@ -212,13 +212,19 @@ export class Session {
   }
 
   public target(target: string, defaultSchema?: string): dataform.ITarget {
+    const adapter = this.adapter();
     if (target.includes(".")) {
       const [schema, name] = target.split(".");
-      return dataform.Target.create({ name, schema: schema + this.getSuffixWithUnderscore() });
+      return dataform.Target.create({
+        name: adapter.normalizeIdentifier(name),
+        schema: adapter.normalizeIdentifier(schema + this.getSuffixWithUnderscore())
+      });
     }
     return dataform.Target.create({
-      name: target,
-      schema: (defaultSchema || this.config.defaultSchema) + this.getSuffixWithUnderscore()
+      name: adapter.normalizeIdentifier(target),
+      schema: adapter.normalizeIdentifier(
+        (defaultSchema || this.config.defaultSchema) + this.getSuffixWithUnderscore()
+      )
     });
   }
 
@@ -421,11 +427,15 @@ export class Session {
   }
 
   public findActions(res: Resolvable) {
+    const adapter = this.adapter();
     return this.actions.filter(action => {
       if (typeof res === "string") {
-        return action.proto.target.name === res;
+        return action.proto.target.name === adapter.normalizeIdentifier(res);
       }
-      return action.proto.target.schema === res.schema && action.proto.target.name === res.name;
+      return (
+        action.proto.target.schema === adapter.normalizeIdentifier(res.schema) &&
+        action.proto.target.name === adapter.normalizeIdentifier(res.name)
+      );
     });
   }
 
