@@ -6,6 +6,7 @@ import * as table from "@dataform/core/table";
 import * as test from "@dataform/core/test";
 import * as utils from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
+import { util } from "protobufjs";
 
 interface IActionProto {
   name?: string;
@@ -424,6 +425,11 @@ export class Session {
     }
 
     return compiledGraph;
+  }
+
+  public compileToBase64() {
+    const encodedGraphBytes = dataform.CompiledGraph.encode(this.compile()).finish();
+    return util.base64.encode(encodedGraphBytes, 0, encodedGraphBytes.length);
   }
 
   public findActions(res: Resolvable) {
