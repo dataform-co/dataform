@@ -48,12 +48,13 @@ export class Test {
         this.proto.fileName
       );
     } else {
-      const datasetToTestFinal =
-        typeof this.datasetToTest === "string"
-          ? utils.targetAsResolvable(this.session.target(this.datasetToTest))
-          : utils.targetAsResolvable(
-              this.session.target(`${this.datasetToTest.schema}.${this.datasetToTest.name}`)
-            );
+      const datasetToTestFinal = {
+        schema:
+          typeof this.datasetToTest === "string"
+            ? this.session.config.defaultSchema
+            : this.datasetToTest.schema,
+        name: typeof this.datasetToTest === "string" ? this.datasetToTest : this.datasetToTest.name
+      };
 
       const allResolved = this.session.findActions(datasetToTestFinal);
       if (allResolved.length > 1) {

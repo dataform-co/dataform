@@ -212,20 +212,11 @@ export class Session {
     return action;
   }
 
-  public target(target: string, defaultSchema?: string): dataform.ITarget {
+  public target(name: string, schema: string): dataform.ITarget {
     const adapter = this.adapter();
-    if (target.includes(".")) {
-      const [schema, name] = target.split(".");
-      return dataform.Target.create({
-        name: adapter.normalizeIdentifier(name),
-        schema: adapter.normalizeIdentifier(schema + this.getSuffixWithUnderscore())
-      });
-    }
     return dataform.Target.create({
-      name: adapter.normalizeIdentifier(target),
-      schema: adapter.normalizeIdentifier(
-        (defaultSchema || this.config.defaultSchema) + this.getSuffixWithUnderscore()
-      )
+      name: adapter.normalizeIdentifier(name),
+      schema: adapter.normalizeIdentifier(schema)
     });
   }
 
@@ -253,8 +244,17 @@ export class Session {
     // the code that calls 'this.target(...)' below, and append a compile error if we can't find a dataset whose name is 'name'.
 
     const target = resolved
-      ? resolved.proto.target
-      : this.target(typeof ref === "string" ? ref : ref.name);
+      ? {
+          schema:
+            resolved instanceof Declaration
+              ? resolved.proto.target.schema
+              : `${resolved.proto.target.schema}${this.getSuffixWithUnderscore()}`,
+          name: resolved.proto.target.name
+        }
+      : this.target(
+          typeof ref === "string" ? ref : ref.name,
+          `${this.config.defaultSchema}${this.getSuffixWithUnderscore()}`
+        );
     return this.adapter().resolveTarget(target);
   }
 
@@ -382,6 +382,16 @@ export class Session {
       )
       .forEach(action => (allActionsByName[action.name] = action));
 
+    ([] as IActionProto[])
+      .concat(compiledGraph.tables, compiledGraph.assertions, compiledGraph.operations)
+      .forEach(action => {
+        action.target = {
+          ...action.target,
+          schema: `${action.target.schema}${this.getSuffixWithUnderscore()}`
+        };
+        action.name = `${action.target.schema}.${action.target.name}`;
+      });
+
     Object.values(allActionsByName).forEach(action => {
       const fQDeps = (action.dependencies || []).map(act => {
         const allActs = this.findActions(act);
@@ -461,7 +471,7 @@ export class Session {
   }
 
   public setNameAndTarget(action: IActionProto, name: string, overrideSchema?: string) {
-    const newTarget = overrideSchema ? this.target(name, overrideSchema) : this.target(name);
+    const newTarget = this.target(name, overrideSchema || this.config.defaultSchema);
     this.checkTargetIsUnused(newTarget);
     action.target = newTarget;
     action.name = `${action.target.schema}.${action.target.name}`;
