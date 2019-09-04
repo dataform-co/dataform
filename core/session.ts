@@ -444,7 +444,8 @@ export class Session {
           this.compileError(
             new Error(
               `Missing dependency detected: Action "${action.name}" depends on "${dependencyName}" which does not exist.`
-            )
+            ),
+            action.fileName
           );
         }
         return dependencyName;
@@ -474,30 +475,30 @@ export class Session {
 
   private checkActionNameUniqueness(actions: IActionProto[]) {
     const allNames: string[] = [];
-    actions
-      .map(action => action.name)
-      .forEach(name => {
-        if (allNames.includes(name)) {
-          this.compileError(
-            new Error(
-              `Duplicate action name detected. Names within a schema must be unique across tables, declarations, assertions, and operations: "${name}"`
-            )
-          );
-        }
-        allNames.push(name);
-      });
+    actions.forEach(action => {
+      if (allNames.includes(action.name)) {
+        this.compileError(
+          new Error(
+            `Duplicate action name detected. Names within a schema must be unique across tables, declarations, assertions, and operations: "${action.name}"`
+          ),
+          action.fileName
+        );
+      }
+      allNames.push(action.name);
+    });
   }
 
   private checkTestNameUniqueness(tests: dataform.ITest[]) {
     const allNames: string[] = [];
-    tests
-      .map(testProto => testProto.name)
-      .forEach(name => {
-        if (allNames.includes(name)) {
-          this.compileError(new Error(`Duplicate test name detected: "${name}"`));
-        }
-        allNames.push(name);
-      });
+    tests.forEach(testProto => {
+      if (allNames.includes(testProto.name)) {
+        this.compileError(
+          new Error(`Duplicate test name detected: "${testProto.name}"`),
+          testProto.fileName
+        );
+      }
+      allNames.push(testProto.name);
+    });
   }
 
   private checkCircularity(actions: IActionProto[]) {
@@ -507,7 +508,7 @@ export class Session {
         const message = `Circular dependency detected in chain: [${dependents
           .map(d => d.name)
           .join(" > ")} > ${action.name}]`;
-        this.compileError(new Error(message));
+        this.compileError(new Error(message), action.fileName);
         return true;
       }
       return (action.dependencies || []).some(
