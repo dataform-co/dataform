@@ -394,8 +394,7 @@ export class Session {
   }
 
   public setNameAndTarget(action: IActionProto, name: string, overrideSchema?: string) {
-    const newTarget = this.target(name, overrideSchema || this.config.defaultSchema);
-    action.target = newTarget;
+    action.target = this.target(name, overrideSchema || this.config.defaultSchema);
     action.name = `${action.target.schema}.${action.target.name}`;
   }
 
