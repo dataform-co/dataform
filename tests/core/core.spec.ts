@@ -13,19 +13,18 @@ const TEST_CONFIG: dataform.IProjectConfig = {
 };
 
 const TEST_CONFIG_WITH_SUFFIX: dataform.IProjectConfig = {
-  warehouse: "redshift",
-  defaultSchema: "schema",
+  ...TEST_CONFIG,
   schemaSuffix: "suffix"
 };
 
 describe("@dataform/core", () => {
   describe("publish", () => {
-    it("config", () => {
-      [TEST_CONFIG, TEST_CONFIG_WITH_SUFFIX].forEach(testConfig => {
+    [TEST_CONFIG, TEST_CONFIG_WITH_SUFFIX].forEach(testConfig => {
+      it(`config with suffix "${testConfig.schemaSuffix}"`, () => {
         const schemaWithSuffix = (schema: string) =>
           testConfig.schemaSuffix ? `${schema}_${testConfig.schemaSuffix}` : schema;
         const session = new Session(path.dirname(__filename), testConfig);
-        const t = session
+        session
           .publish("example", {
             type: "table",
             dependencies: [],
@@ -36,10 +35,31 @@ describe("@dataform/core", () => {
           })
           .query(_ => "select 1 as test")
           .preOps(_ => ["pre_op"])
-          .postOps(_ => ["post_op"])
-          .compile();
+          .postOps(_ => ["post_op"]);
+        session
+          .publish("example", {
+            type: "table",
+            schema: "schema2",
+            dependencies: [{ schema: "schema", name: "example" }],
+            description: "test description"
+          })
+          .query(_ => "select 1 as test")
+          .preOps(_ => ["pre_op"])
+          .postOps(_ => ["post_op"]);
+        session
+          .publish("my_table", {
+            type: "table",
+            schema: "test_schema"
+          })
+          .query(_ => "SELECT 1 as one");
 
-        expect(t.name).equals(`${schemaWithSuffix("schema")}.example`);
+        const compiledGraph = session.compile();
+
+        expect(compiledGraph.graphErrors.compilationErrors).to.eql([]);
+
+        const t = compiledGraph.tables.find(
+          table => table.name === `${schemaWithSuffix("schema")}.example`
+        );
         expect(t.type).equals("table");
         expect(t.actionDescriptor).eql({
           description: "this is a table",
@@ -53,18 +73,9 @@ describe("@dataform/core", () => {
         expect(t.preOps).deep.equals(["pre_op"]);
         expect(t.postOps).deep.equals(["post_op"]);
 
-        const t2 = session
-          .publish("schema2.example", {
-            type: "table",
-            dependencies: [{ schema: "schema1", name: "example" }],
-            description: "test description"
-          })
-          .query(_ => "select 1 as test")
-          .preOps(_ => ["pre_op"])
-          .postOps(_ => ["post_op"])
-          .compile();
-
-        expect(t2.name).equals(`${schemaWithSuffix("schema2")}.example`);
+        const t2 = compiledGraph.tables.find(
+          table => table.name === `${schemaWithSuffix("schema2")}.example`
+        );
         expect(t2.type).equals("table");
         expect(t.actionDescriptor).eql({
           description: "this is a table",
@@ -77,16 +88,11 @@ describe("@dataform/core", () => {
         });
         expect(t2.preOps).deep.equals(["pre_op"]);
         expect(t2.postOps).deep.equals(["post_op"]);
-        expect(t2.dependencies).includes(`${schemaWithSuffix("schema1")}.example`);
+        expect(t2.dependencies).includes(`${schemaWithSuffix("schema")}.example`);
 
-        const t3 = session
-          .publish("my_table", {
-            type: "table",
-            schema: "test_schema"
-          })
-          .query(_ => "SELECT 1 as one")
-          .compile();
-        expect(t3.name).equals(`${schemaWithSuffix("test_schema")}.my_table`);
+        const t3 = compiledGraph.tables.find(
+          table => table.name === `${schemaWithSuffix("test_schema")}.my_table`
+        );
         expect((t3.target.name = "my_table"));
         expect((t3.target.schema = schemaWithSuffix("test_schema")));
         expect(t3.type).equals("table");
@@ -417,7 +423,11 @@ describe("@dataform/core", () => {
       session.publish("b", ctx => `select * from ${ctx.ref("a")}`);
       session.publish("c", ctx => `select * from ${ctx.ref(undefined)}`);
       session.publish("d", ctx => `select * from ${ctx.ref({ schema: "schema", name: "a" })}`);
-      session.publish("foo.e", _ => `select 1 as test`);
+      session
+        .publish("e", {
+          schema: "foo"
+        })
+        .query(_ => "select 1 as test");
       session.publish("f", ctx => `select * from ${ctx.ref("e")}`);
 
       const graph = session.compile();
@@ -518,9 +528,9 @@ describe("@dataform/core", () => {
 
     it("same action names in different schemas (ambiguity)", () => {
       const session = new Session(path.dirname(__filename), TEST_CONFIG);
-      session.publish("foo.a");
-      session.publish("bar.a");
-      session.publish("foo.b").dependencies("a");
+      session.publish("a", { schema: "foo" });
+      session.publish("a", { schema: "bar" });
+      session.publish("b", { schema: "foo" }).dependencies("a");
       const cGraph = session.compile();
       const gErrors = utils.validate(cGraph);
       expect(gErrors)
@@ -534,8 +544,8 @@ describe("@dataform/core", () => {
 
     it("same action name in same schema", () => {
       const session = new Session(path.dirname(__filename), TEST_CONFIG);
-      session.publish("schema2.a").dependencies("b");
-      session.publish("schema2.a");
+      session.publish("a", { schema: "schema2" }).dependencies("b");
+      session.publish("a", { schema: "schema2" });
       session.publish("b");
       const cGraph = session.compile();
       const gErrors = utils.validate(cGraph);
@@ -551,8 +561,8 @@ describe("@dataform/core", () => {
     it("same action names in different schemas", () => {
       const session = new Session(path.dirname(__filename), TEST_CONFIG);
       session.publish("b");
-      session.publish("schema1.a").dependencies("b");
-      session.publish("schema2.a");
+      session.publish("a", { schema: "schema1" }).dependencies("b");
+      session.publish("a", { schema: "schema2" });
       const cGraph = session.compile();
       const gErrors = utils.validate(cGraph);
       expect(gErrors)

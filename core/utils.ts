@@ -13,8 +13,8 @@ import { dataform } from "@dataform/protos";
 
 const SQL_DATA_WAREHOUSE_DIST_HASH_REGEXP = new RegExp("HASH\\s*\\(\\s*\\w*\\s*\\)\\s*");
 
-export function relativePath(path: string, base: string) {
-  if (base.length == 0) {
+function relativePath(path: string, base: string) {
+  if (base.length === 0) {
     return path;
   }
   const stripped = path.substr(base.length);
@@ -30,32 +30,25 @@ export function baseFilename(path: string) {
   return pathSplits[pathSplits.length - 1].split(".")[0];
 }
 
-export function variableNameFriendly(value: string) {
-  return value
-    .replace("-", "")
-    .replace("@", "")
-    .replace("/", "");
-}
-
 export function matchPatterns(patterns: string[], values: string[]) {
-  const fQActs: string[] = [];
-  patterns.forEach(pat => {
-    if (pat.includes(".")) {
-      if (values.includes(pat)) {
-        fQActs.push(pat);
+  const fullyQualifiedActions: string[] = [];
+  patterns.forEach(pattern => {
+    if (pattern.includes(".")) {
+      if (values.includes(pattern)) {
+        fullyQualifiedActions.push(pattern);
       }
     } else {
-      const matchingActions = values.filter(value => pat === value.split(".").slice(-1)[0]);
+      const matchingActions = values.filter(value => pattern === value.split(".").slice(-1)[0]);
       if (matchingActions.length === 0) {
         return;
       }
       if (matchingActions.length > 1) {
-        throw new Error(ambiguousActionNameMsg(pat, matchingActions));
+        throw new Error(ambiguousActionNameMsg(pattern, matchingActions));
       }
-      fQActs.push(matchingActions[0]);
+      fullyQualifiedActions.push(matchingActions[0]);
     }
   });
-  return fQActs;
+  return fullyQualifiedActions;
 }
 
 export function getCallerFile(rootDir: string) {
@@ -119,17 +112,6 @@ function objectExistsOrIsNonEmpty(prop: any): boolean {
 
 export function validate(compiledGraph: dataform.ICompiledGraph): dataform.IGraphErrors {
   const validationErrors: dataform.IValidationError[] = [];
-
-  // Check there aren't any duplicate names.
-  const allActions = [].concat(
-    compiledGraph.tables,
-    compiledGraph.assertions,
-    compiledGraph.operations,
-    compiledGraph.declarations
-  );
-
-  const actionsByName: { [name: string]: dataform.IExecutionAction } = {};
-  allActions.forEach(action => (actionsByName[action.name] = action));
 
   // Table validation
   compiledGraph.tables.forEach(action => {
@@ -242,15 +224,6 @@ export function isResolvable(res: any) {
 
 export function stringifyResolvable(res: Resolvable) {
   return typeof res === "string" ? res : `${res.schema}.${res.name}`;
-}
-
-export function targetAsResolvable(t: dataform.ITarget) {
-  return { schema: t.schema, name: t.name };
-}
-
-export function appendSuffixToSchema(d: Resolvable, suffix: string) {
-  const dStr = stringifyResolvable(d);
-  return dStr.includes(".") ? `${dStr.split(".")[0]}${suffix}.${dStr.split(".")[1]}` : dStr;
 }
 
 export function ambiguousActionNameMsg(

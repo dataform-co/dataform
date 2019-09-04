@@ -157,13 +157,12 @@ export class Table {
     newDependencies.forEach((d: Resolvable) => {
       // TODO: This code fails to function correctly if the inline table has not yet
       // been attached to the session. This code probably needs to be moved to compile().
-      const depFinal = utils.appendSuffixToSchema(d, this.session.getSuffixWithUnderscore());
-      const allResolved = this.session.findActions(depFinal);
+      const allResolved = this.session.findActions(d);
       const resolved = allResolved.length > 0 ? allResolved[0] : undefined;
       if (!!resolved && resolved instanceof Table && resolved.proto.type === "inline") {
         resolved.proto.dependencies.forEach(childDep => this.addDependency(childDep));
       } else {
-        this.addDependency(depFinal);
+        this.addDependency(d);
       }
     });
     return this;
@@ -194,9 +193,7 @@ export class Table {
   }
 
   public schema(schema: string) {
-    if (schema !== this.session.config.defaultSchema) {
-      this.session.setNameAndTarget(this.proto, this.proto.target.name, schema);
-    }
+    this.session.setNameAndTarget(this.proto, this.proto.target.name, schema);
     return this;
   }
 
@@ -212,7 +209,7 @@ export class Table {
     this.contextablePreOps.forEach(contextablePreOps => {
       const appliedPres = context.apply(contextablePreOps);
       this.proto.preOps = (this.proto.preOps || []).concat(
-        typeof appliedPres == "string" ? [appliedPres] : appliedPres
+        typeof appliedPres === "string" ? [appliedPres] : appliedPres
       );
     });
     this.contextablePreOps = [];
@@ -220,7 +217,7 @@ export class Table {
     this.contextablePostOps.forEach(contextablePostOps => {
       const appliedPosts = context.apply(contextablePostOps);
       this.proto.postOps = (this.proto.postOps || []).concat(
-        typeof appliedPosts == "string" ? [appliedPosts] : appliedPosts
+        typeof appliedPosts === "string" ? [appliedPosts] : appliedPosts
       );
     });
     this.contextablePostOps = [];
