@@ -48,17 +48,11 @@ export class Test {
         this.proto.fileName
       );
     } else {
-      const datasetToTestFinal =
-        typeof this.datasetToTest === "string"
-          ? utils.targetAsResolvable(this.session.target(this.datasetToTest))
-          : utils.targetAsResolvable(
-              this.session.target(`${this.datasetToTest.schema}.${this.datasetToTest.name}`)
-            );
-
-      const allResolved = this.session.findActions(datasetToTestFinal);
+      const allResolved = this.session.findActions(this.datasetToTest);
       if (allResolved.length > 1) {
         this.session.compileError(
-          new Error(utils.ambiguousActionNameMsg(datasetToTestFinal, allResolved))
+          new Error(utils.ambiguousActionNameMsg(this.datasetToTest, allResolved)),
+          this.proto.fileName
         );
       }
       const dataset = allResolved.length > 0 ? allResolved[0] : undefined;

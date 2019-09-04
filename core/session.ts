@@ -212,23 +212,6 @@ export class Session {
     return action;
   }
 
-  public target(target: string, defaultSchema?: string): dataform.ITarget {
-    const adapter = this.adapter();
-    if (target.includes(".")) {
-      const [schema, name] = target.split(".");
-      return dataform.Target.create({
-        name: adapter.normalizeIdentifier(name),
-        schema: adapter.normalizeIdentifier(schema + this.getSuffixWithUnderscore())
-      });
-    }
-    return dataform.Target.create({
-      name: adapter.normalizeIdentifier(target),
-      schema: adapter.normalizeIdentifier(
-        (defaultSchema || this.config.defaultSchema) + this.getSuffixWithUnderscore()
-      )
-    });
-  }
-
   public resolve(ref: Resolvable): string {
     const allResolved = this.findActions(ref);
     if (allResolved.length > 1) {
@@ -247,15 +230,28 @@ export class Session {
       );
     }
 
-    // TODO: We fall back to using the plain 'name' here for backwards compatibility with projects that use .sql files.
-    // In these projects, this session may not know about all actions (yet), and thus we need to fall back to assuming
-    // that the target *will* exist in the future. Once we break backwards compatibility with .sql files, we should remove
-    // the code that calls 'this.target(...)' below, and append a compile error if we can't find a dataset whose name is 'name'.
-
-    const target = resolved
-      ? resolved.proto.target
-      : this.target(typeof ref === "string" ? ref : ref.name);
-    return this.adapter().resolveTarget(target);
+    if (resolved) {
+      if (resolved instanceof Declaration) {
+        return this.adapter().resolveTarget(resolved.proto.target);
+      }
+      return this.adapter().resolveTarget({
+        ...resolved.proto.target,
+        schema: `${resolved.proto.target.schema}${this.getSuffixWithUnderscore()}`
+      });
+    }
+    // TODO: Here we allow 'ref' to go unresolved. This is for backwards compatibility with projects
+    // that use .sql files. In these projects, this session may not know about all actions (yet), and
+    // thus we need to fall back to assuming that the target *will* exist in the future. Once we break
+    // backwards compatibility with .sql files, we should remove the below code, and append a compile
+    // error instead.
+    if (typeof ref === "string") {
+      return this.adapter().resolveTarget(
+        this.target(ref, `${this.config.defaultSchema}${this.getSuffixWithUnderscore()}`)
+      );
+    }
+    return this.adapter().resolveTarget(
+      this.target(ref.name, `${ref.schema}${this.getSuffixWithUnderscore()}`)
+    );
   }
 
   public operate(name: string, queries?: OContextable<string | string[]>): Operation {
@@ -304,18 +300,13 @@ export class Session {
   public declare(dataset: FullyQualifiedName): Declaration {
     const declaration = new Declaration();
     declaration.session = this;
-    // We intentionally do not use setNameAndTarget(...) here because that might add a schema suffix,
-    // which would be incorrect in the case of declarations.
-    this.checkTargetIsUnused(dataset);
-    declaration.proto.target = dataset;
-    declaration.proto.name = `${dataset.schema}.${dataset.name}`;
+    this.setNameAndTarget(declaration.proto, dataset.name, dataset.schema);
     declaration.proto.fileName = utils.getCallerFile(this.rootDir);
     this.actions.push(declaration);
     return declaration;
   }
 
   public test(name: string): test.Test {
-    this.checkTestNameIsUnused(name);
     const newTest = new test.Test();
     newTest.session = this;
     newTest.proto.name = name;
@@ -340,21 +331,6 @@ export class Session {
     this.graphErrors.compilationErrors.push(compileError);
   }
 
-  public compileGraphChunk<T>(actions: Array<{ proto: IActionProto; compile(): T }>): T[] {
-    const compiledChunks: T[] = [];
-
-    actions.forEach(action => {
-      try {
-        const compiledChunk = action.compile();
-        compiledChunks.push(compiledChunk);
-      } catch (e) {
-        this.compileError(e, action.proto.fileName);
-      }
-    });
-
-    return compiledChunks;
-  }
-
   public compile(): dataform.ICompiledGraph {
     const compiledGraph = dataform.CompiledGraph.create({
       projectConfig: this.config,
@@ -372,57 +348,29 @@ export class Session {
       graphErrors: this.graphErrors
     });
 
-    const allActionsByName: { [name: string]: IActionProto } = {};
-    ([] as IActionProto[])
-      .concat(
+    this.fullyQualifyDependencies(
+      [].concat(compiledGraph.tables, compiledGraph.assertions, compiledGraph.operations)
+    );
+
+    if (!!this.config.schemaSuffix) {
+      this.appendSchemaSuffix(
+        [].concat(compiledGraph.tables, compiledGraph.assertions, compiledGraph.operations)
+      );
+    }
+
+    this.checkActionNameUniqueness(
+      [].concat(
         compiledGraph.tables,
         compiledGraph.assertions,
         compiledGraph.operations,
         compiledGraph.declarations
       )
-      .forEach(action => (allActionsByName[action.name] = action));
+    );
+    this.checkTestNameUniqueness(compiledGraph.tests);
 
-    Object.values(allActionsByName).forEach(action => {
-      const fQDeps = (action.dependencies || []).map(act => {
-        const allActs = this.findActions(act);
-        if (allActs.length === 1) {
-          return `${allActs[0].proto.target.schema}.${allActs[0].proto.target.name}`;
-        } else if (allActs.length >= 1) {
-          this.compileError(new Error(utils.ambiguousActionNameMsg(act, allActs)));
-          return act;
-        } else {
-          this.compileError(
-            new Error(
-              `Missing dependency detected: Node "${action.name}" depends on "${act}" which does not exist.`
-            )
-          );
-          return act;
-        }
-      });
-      action.dependencies = [...new Set(fQDeps || [])];
-    });
-
-    // Check for circular dependencies.
-    const checkCircular = (action: IActionProto, dependents: IActionProto[]): boolean => {
-      if (dependents.indexOf(action) >= 0) {
-        const message = `Circular dependency detected in chain: [${dependents
-          .map(d => d.name)
-          .join(" > ")} > ${action.name}]`;
-        this.compileError(new Error(message));
-        return true;
-      }
-      return (action.dependencies || []).some(d => {
-        return (
-          allActionsByName[d] && checkCircular(allActionsByName[d], dependents.concat([action]))
-        );
-      });
-    };
-
-    for (const action of Object.values(allActionsByName)) {
-      if (checkCircular(action, [])) {
-        break;
-      }
-    }
+    this.checkCircularity(
+      [].concat(compiledGraph.tables, compiledGraph.assertions, compiledGraph.operations)
+    );
 
     return compiledGraph;
   }
@@ -445,33 +393,134 @@ export class Session {
     });
   }
 
-  public checkTargetIsUnused(target: dataform.ITarget) {
-    const duplicateActions = this.findActions({ schema: target.schema, name: target.name });
-    if (duplicateActions && duplicateActions.length > 0) {
-      this.compileError(
-        new Error(
-          `Duplicate action name detected. Names within a schema must be unique across tables, assertions, and operations: "${target.schema}.${target.name}"`
-        )
-      );
-    }
-  }
-
-  public getSuffixWithUnderscore() {
-    return !!this.config.schemaSuffix ? `_${this.config.schemaSuffix}` : "";
-  }
-
   public setNameAndTarget(action: IActionProto, name: string, overrideSchema?: string) {
-    const newTarget = overrideSchema ? this.target(name, overrideSchema) : this.target(name);
-    this.checkTargetIsUnused(newTarget);
-    action.target = newTarget;
+    action.target = this.target(name, overrideSchema || this.config.defaultSchema);
     action.name = `${action.target.schema}.${action.target.name}`;
   }
 
-  private checkTestNameIsUnused(name: string) {
-    // Check for duplicate names
-    if (this.tests[name]) {
-      const message = `Duplicate test name detected: "${name}"`;
-      this.compileError(new Error(message));
+  private getSuffixWithUnderscore() {
+    return !!this.config.schemaSuffix ? `_${this.config.schemaSuffix}` : "";
+  }
+
+  private compileGraphChunk<T>(actions: Array<{ proto: IActionProto; compile(): T }>): T[] {
+    const compiledChunks: T[] = [];
+
+    actions.forEach(action => {
+      try {
+        const compiledChunk = action.compile();
+        compiledChunks.push(compiledChunk);
+      } catch (e) {
+        this.compileError(e, action.proto.fileName);
+      }
+    });
+
+    return compiledChunks;
+  }
+
+  private target(name: string, schema: string): dataform.ITarget {
+    const adapter = this.adapter();
+    return dataform.Target.create({
+      name: adapter.normalizeIdentifier(name),
+      schema: adapter.normalizeIdentifier(schema)
+    });
+  }
+
+  private fullyQualifyDependencies(actions: IActionProto[]) {
+    const allActionsByName = keyByName(actions);
+    actions.forEach(action => {
+      action.dependencies = (action.dependencies || []).map(dependencyName => {
+        if (!!allActionsByName[dependencyName]) {
+          // Dependency is already fully-qualified.
+          return dependencyName;
+        }
+        const possibleDeps = this.findActions(dependencyName);
+        if (possibleDeps.length === 1) {
+          return possibleDeps[0].proto.name;
+        }
+        if (possibleDeps.length >= 1) {
+          this.compileError(new Error(utils.ambiguousActionNameMsg(dependencyName, possibleDeps)));
+        } else {
+          this.compileError(
+            new Error(
+              `Missing dependency detected: Action "${action.name}" depends on "${dependencyName}" which does not exist.`
+            ),
+            action.fileName
+          );
+        }
+        return dependencyName;
+      });
+    });
+  }
+
+  private appendSchemaSuffix(actions: IActionProto[]) {
+    const suffixedNames: { [originalName: string]: string } = {};
+    actions.forEach(action => {
+      const originalName = action.name;
+      action.target = {
+        ...action.target,
+        schema: `${action.target.schema}${this.getSuffixWithUnderscore()}`
+      };
+      action.name = `${action.target.schema}.${action.target.name}`;
+      suffixedNames[originalName] = action.name;
+    });
+
+    // Fix up dependencies in case those dependencies' names have changed.
+    actions.forEach(action => {
+      action.dependencies = (action.dependencies || []).map(
+        dependencyName => suffixedNames[dependencyName] || dependencyName
+      );
+    });
+  }
+
+  private checkActionNameUniqueness(actions: IActionProto[]) {
+    const allNames: string[] = [];
+    actions.forEach(action => {
+      if (allNames.includes(action.name)) {
+        this.compileError(
+          new Error(
+            `Duplicate action name detected. Names within a schema must be unique across tables, declarations, assertions, and operations: "${action.name}"`
+          ),
+          action.fileName
+        );
+      }
+      allNames.push(action.name);
+    });
+  }
+
+  private checkTestNameUniqueness(tests: dataform.ITest[]) {
+    const allNames: string[] = [];
+    tests.forEach(testProto => {
+      if (allNames.includes(testProto.name)) {
+        this.compileError(
+          new Error(`Duplicate test name detected: "${testProto.name}"`),
+          testProto.fileName
+        );
+      }
+      allNames.push(testProto.name);
+    });
+  }
+
+  private checkCircularity(actions: IActionProto[]) {
+    const allActionsByName = keyByName(actions);
+    const checkCircular = (action: IActionProto, dependents: IActionProto[]): boolean => {
+      if (dependents.indexOf(action) >= 0) {
+        const message = `Circular dependency detected in chain: [${dependents
+          .map(d => d.name)
+          .join(" > ")} > ${action.name}]`;
+        this.compileError(new Error(message), action.fileName);
+        return true;
+      }
+      return (action.dependencies || []).some(
+        dependencyName =>
+          allActionsByName[dependencyName] &&
+          checkCircular(allActionsByName[dependencyName], dependents.concat([action]))
+      );
+    };
+
+    for (const action of actions) {
+      if (checkCircular(action, [])) {
+        break;
+      }
     }
   }
 }
@@ -482,4 +531,10 @@ function declaresDataset(type: string, hasOutput?: boolean) {
 
 function definesDataset(type: string) {
   return type === "view" || type === "table" || type === "inline" || type === "incremental";
+}
+
+function keyByName(actions: IActionProto[]) {
+  const actionsByName: { [name: string]: IActionProto } = {};
+  actions.forEach(action => (actionsByName[action.name] = action));
+  return actionsByName;
 }

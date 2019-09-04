@@ -57,7 +57,7 @@ export class Operation {
   public dependencies(value: Resolvable | Resolvable[]) {
     const newDependencies = utils.isResolvable(value) ? [value] : (value as Resolvable[]);
     newDependencies.forEach((d: Resolvable) => {
-      const depName = utils.appendSuffixToSchema(d, this.session.getSuffixWithUnderscore());
+      const depName = utils.stringifyResolvable(d);
       if (this.proto.dependencies.indexOf(depName) < 0) {
         this.proto.dependencies.push(depName);
       }
@@ -97,9 +97,7 @@ export class Operation {
   }
 
   public schema(schema: string) {
-    if (schema !== this.session.config.defaultSchema) {
-      this.session.setNameAndTarget(this.proto, this.proto.target.name, schema);
-    }
+    this.session.setNameAndTarget(this.proto, this.proto.target.name, schema);
     return this;
   }
 
