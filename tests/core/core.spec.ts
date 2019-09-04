@@ -36,10 +36,30 @@ describe("@dataform/core", () => {
           .query(_ => "select 1 as test")
           .preOps(_ => ["pre_op"])
           .postOps(_ => ["post_op"]);
+        session
+          .publish("example", {
+            type: "table",
+            schema: "schema2",
+            dependencies: [{ schema: "schema", name: "example" }],
+            description: "test description"
+          })
+          .query(_ => "select 1 as test")
+          .preOps(_ => ["pre_op"])
+          .postOps(_ => ["post_op"]);
+        session
+          .publish("my_table", {
+            type: "table",
+            schema: "test_schema"
+          })
+          .query(_ => "SELECT 1 as one");
 
-        const t = session
-          .compile()
-          .tables.find(table => table.name === `${schemaWithSuffix("schema")}.example`);
+        const compiledGraph = session.compile();
+
+        expect(compiledGraph.graphErrors.compilationErrors).to.eql([]);
+
+        const t = compiledGraph.tables.find(
+          table => table.name === `${schemaWithSuffix("schema")}.example`
+        );
         expect(t.type).equals("table");
         expect(t.actionDescriptor).eql({
           description: "this is a table",
@@ -53,20 +73,9 @@ describe("@dataform/core", () => {
         expect(t.preOps).deep.equals(["pre_op"]);
         expect(t.postOps).deep.equals(["post_op"]);
 
-        session
-          .publish("example", {
-            type: "table",
-            schema: "schema2",
-            dependencies: [{ schema: "schema1", name: "example" }],
-            description: "test description"
-          })
-          .query(_ => "select 1 as test")
-          .preOps(_ => ["pre_op"])
-          .postOps(_ => ["post_op"]);
-
-        const t2 = session
-          .compile()
-          .tables.find(table => table.name === `${schemaWithSuffix("schema2")}.example`);
+        const t2 = compiledGraph.tables.find(
+          table => table.name === `${schemaWithSuffix("schema2")}.example`
+        );
         expect(t2.type).equals("table");
         expect(t.actionDescriptor).eql({
           description: "this is a table",
@@ -79,18 +88,11 @@ describe("@dataform/core", () => {
         });
         expect(t2.preOps).deep.equals(["pre_op"]);
         expect(t2.postOps).deep.equals(["post_op"]);
-        expect(t2.dependencies).includes(`${schemaWithSuffix("schema1")}.example`);
+        expect(t2.dependencies).includes(`${schemaWithSuffix("schema")}.example`);
 
-        session
-          .publish("my_table", {
-            type: "table",
-            schema: "test_schema"
-          })
-          .query(_ => "SELECT 1 as one");
-
-        const t3 = session
-          .compile()
-          .tables.find(table => table.name === `${schemaWithSuffix("test_schema")}.my_table`);
+        const t3 = compiledGraph.tables.find(
+          table => table.name === `${schemaWithSuffix("test_schema")}.my_table`
+        );
         expect((t3.target.name = "my_table"));
         expect((t3.target.schema = schemaWithSuffix("test_schema")));
         expect(t3.type).equals("table");
