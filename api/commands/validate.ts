@@ -37,13 +37,6 @@ export function validateSchedules(
   compiledGraph: dataform.ICompiledGraph
 ): string[] {
   const errors: string[] = [];
-  const allActions = new Array<{ name?: string }>().concat(
-    compiledGraph.tables,
-    compiledGraph.assertions,
-    compiledGraph.operations
-  );
-
-  const allActionNames = allActions.map(action => action.name);
 
   if (schedules.defaultNotification && schedules.defaultNotification.emails) {
     schedules.defaultNotification.emails.forEach(email => {
@@ -81,8 +74,18 @@ export function validateSchedules(
     }
 
     if (schedule.options && schedule.options.actions) {
+      const allActionNames: string[] = [].concat(
+        compiledGraph.tables.map(table => table.name),
+        compiledGraph.assertions.map(assertion => assertion.name),
+        compiledGraph.operations.map(operation => operation.name),
+        compiledGraph.tables.map(table => table.target.name),
+        compiledGraph.assertions.map(assertion => assertion.target.name),
+        compiledGraph.operations
+          .filter(operation => !!operation.target)
+          .map(operation => operation.target.name)
+      );
       schedule.options.actions.forEach(action => {
-        if (allActionNames.indexOf(action) < 0) {
+        if (!allActionNames.includes(action)) {
           errors.push(
             `Action "${action}" included on schedule ${schedule.name} doesn't exist in the project.`
           );
