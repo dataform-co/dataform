@@ -86,15 +86,15 @@ class CompileChildProcess {
     let timer;
     const timeout = new Promise(
       (resolve, reject) =>
-        (timer = setTimeout(() => reject(new Error("Compilation timed out")), 5000))
+        (timer = setTimeout(() => reject(new Error("Compilation timed out")), 500000))
     );
     try {
       await Promise.race([timeout, compileInChildProcess]);
       return await compileInChildProcess;
     } finally {
-      if (!this.childProcess.killed) {
-        this.childProcess.kill();
-      }
+      // if (!this.childProcess.killed) {
+      //   this.childProcess.kill();
+      // }
       if (timer) {
         clearTimeout(timer);
       }

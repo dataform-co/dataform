@@ -3,6 +3,7 @@ import * as legacyCompiler from "@dataform/api/vm/legacy_compiler";
 import { legacyGenIndex } from "@dataform/api/vm/legacy_gen_index";
 import { dataform } from "@dataform/protos";
 import * as fs from "fs";
+import * as inspector from "inspector";
 import * as path from "path";
 import { CompilerFunction, NodeVM } from "vm2";
 
@@ -66,12 +67,19 @@ export function compile(compileConfig: dataform.ICompileConfig) {
 }
 
 process.on("message", (compileConfig: dataform.ICompileConfig) => {
-  try {
-    const compiledResult = compile(compileConfig);
-    const writeable = fs.createWriteStream(null, { fd: 4 });
-    writeable.write(compiledResult, "utf8");
-  } catch (e) {
-    process.send(e);
-  }
-  process.exit();
+  inspector.open(9999, "localhost", true);
+  new Promise(resolve => setTimeout(resolve, 5000)).then(() => {
+    try {
+      const compiledResult = compile(compileConfig);
+      const writeable = fs.createWriteStream(null, { fd: 4 });
+      writeable.write(compiledResult, "utf8");
+      writeable.close();
+    } catch (e) {
+      process.send(e);
+    }
+    new Promise(resolve => setTimeout(resolve, 10000)).then(() => {
+      inspector.close();
+      process.exit();
+    });
+  });
 });
