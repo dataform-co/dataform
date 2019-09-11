@@ -697,6 +697,7 @@ describe("@dataform/api", () => {
             t.name === schemaWithSuffix("df_integration_test") + ".example_incremental"
         );
         expect(exampleIncremental).to.not.be.undefined;
+        expect(exampleIncremental.protected).eql(true);
         expect(exampleIncremental.query.trim()).equals("select current_timestamp() as ts");
         expect(exampleIncremental.where.trim()).equals(
           `ts > (select max(ts) from \`tada-analytics.${schemaWithSuffix(
