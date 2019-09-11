@@ -82,6 +82,9 @@ export class Table {
     if (config.disabled) {
       this.disabled();
     }
+    if (config.protected) {
+      this.protected();
+    }
     if (config.redshift) {
       this.redshift(config.redshift);
     }
@@ -134,6 +137,11 @@ export class Table {
 
   public disabled() {
     this.proto.disabled = true;
+    return this;
+  }
+
+  public protected() {
+    this.proto.protected = true;
     return this;
   }
 
