@@ -71,15 +71,11 @@ export class CompileChildProcess {
       // Handle errors returned by the child process.
       this.childProcess.on("message", (e: Error) => reject(e));
 
-      // Handle CompiledGraphs returned by the child process.
+      // Handle UTF-8 string chunks returned by the child process.
       const pipe = this.childProcess.stdio[4];
       const chunks: Buffer[] = [];
       pipe.on("data", (chunk: Buffer) => chunks.push(chunk));
-      pipe.on("end", () => {
-        // The child process returns a base64 encoded proto.
-        const allData = Buffer.concat(chunks).toString("utf8");
-        resolve(allData);
-      });
+      pipe.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
 
       // Trigger the child process to start compiling.
       this.childProcess.send(compileConfig);
