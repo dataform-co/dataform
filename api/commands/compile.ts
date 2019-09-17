@@ -42,14 +42,17 @@ export async function compile(
     throw new Error(`Compile Error: ProjectConfig ('dataform.json') is invalid. ${e}`);
   }
 
-  const compiledGraph = await CompileChildProcess.forkProcess().compile(compileConfig);
+  const encodedGraphInBase64 = await CompileChildProcess.forkProcess().compile(compileConfig);
+  const encodedGraphBytes = new Uint8Array(util.base64.length(encodedGraphInBase64));
+  util.base64.decode(encodedGraphInBase64, encodedGraphBytes, 0);
+  const compiledGraph = dataform.CompiledGraph.decode(encodedGraphBytes);
   return dataform.CompiledGraph.create({
     ...compiledGraph,
     graphErrors: validate(compiledGraph)
   });
 }
 
-class CompileChildProcess {
+export class CompileChildProcess {
   public static forkProcess() {
     // Run the bin_loader script if inside bazel, otherwise don't.
     const forkScript = process.env.BAZEL_TARGET ? "../vm/compile_bin_loader" : "../vm/compile";
@@ -64,21 +67,15 @@ class CompileChildProcess {
   }
 
   public async compile(compileConfig: dataform.ICompileConfig) {
-    const compileInChildProcess = new Promise<dataform.CompiledGraph>(async (resolve, reject) => {
+    const compileInChildProcess = new Promise<string>(async (resolve, reject) => {
       // Handle errors returned by the child process.
       this.childProcess.on("message", (e: Error) => reject(e));
 
-      // Handle CompiledGraphs returned by the child process.
+      // Handle UTF-8 string chunks returned by the child process.
       const pipe = this.childProcess.stdio[4];
       const chunks: Buffer[] = [];
       pipe.on("data", (chunk: Buffer) => chunks.push(chunk));
-      pipe.on("end", () => {
-        // The child process returns a base64 encoded proto.
-        const allData = Buffer.concat(chunks).toString("utf8");
-        const encodedGraphBytes = new Uint8Array(util.base64.length(allData));
-        util.base64.decode(allData, encodedGraphBytes, 0);
-        resolve(dataform.CompiledGraph.decode(encodedGraphBytes));
-      });
+      pipe.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
 
       // Trigger the child process to start compiling.
       this.childProcess.send(compileConfig);
