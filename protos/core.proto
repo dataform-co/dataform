@@ -29,6 +29,8 @@ message GenerateIndexConfig {
   CompileConfig compile_config = 1;
   repeated string include_paths = 2;
   repeated string definition_paths = 3;
+
+  // Deprecated.
   string return_override = 4;
 }
 
@@ -36,12 +38,15 @@ message CompileConfig {
   // Required.
   string project_dir = 1;
 
-  // Compile time configuration options.
-  // Deprecated.
-  string schema_suffix_override = 2;
-
   // Project configuration overrides (dataform.json).
   ProjectConfig project_config_override = 3;
+
+  // If supplied, only the compiled form of 'query' will be returned.
+  string query = 4;
+
+  // Deprecated.
+  string schema_suffix_override = 2;
+  string return_override = 5;
 }
 
 message Target {

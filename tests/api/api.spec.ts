@@ -1268,9 +1268,11 @@ describe("@dataform/api", () => {
   describe("query", () => {
     it("bigquery_example", () => {
       return query
-        .compile('select 1 as ${describe("test")}', { projectDir: "df/examples/bigquery" })
+        .compile('select 1 from ${ref("example_view")}', { projectDir: "df/examples/bigquery" })
         .then(compiledQuery => {
-          expect(compiledQuery).equals("select 1 as test");
+          expect(compiledQuery).equals(
+            "select 1 from `tada-analytics.df_integration_test.example_view`"
+          );
         });
     });
   });
