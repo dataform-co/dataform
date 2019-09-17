@@ -36,6 +36,19 @@ export function genIndex(base64EncodedConfig: string): string {
     dataform.ProjectConfig.create(config.compileConfig.projectConfigOverride).toJSON()
   );
 
+  const returnValue = !!config.compileConfig.query
+    ? `(function() {
+      try {
+        const ref = global.session.resolve.bind(global.session);
+        const resolve = global.session.resolve.bind(global.session);
+        const self = () => "";
+        return \`${config.compileConfig.query}\`;
+      } catch (e) {
+        return e.message;
+      }
+    })()`
+    : "base64EncodedGraphBytes";
+
   // NOTE:
   // - The returned script must be valid JavaScript (not TypeScript)
   // - The returned script may not require() any package that is not "@dataform/core"
@@ -44,14 +57,12 @@ export function genIndex(base64EncodedConfig: string): string {
     ${includeRequires}
     let projectConfig = require("./dataform.json");
     // For backwards compatibility, in case core version is ahead of api.
-    projectConfig.schemaSuffix = "${
-      config.compileConfig.schemaSuffixOverride
-    }" || projectConfig.schemaSuffix;
+    projectConfig.schemaSuffix = "${config.compileConfig.schemaSuffixOverride}" || projectConfig.schemaSuffix;
     // Merge in general project config overrides.
     projectConfig = { ...projectConfig, ...${projectOverridesJsonString} };
     global.session.init("${config.compileConfig.projectDir}", projectConfig);
     ${definitionRequires}
     // We return a base64 encoded proto via NodeVM, as returning a Uint8Array directly causes issues.
     const base64EncodedGraphBytes = global.session.compileToBase64();
-    return ${config.returnOverride || "base64EncodedGraphBytes"};`;
+    return ${returnValue};`;
 }
