@@ -7,6 +7,7 @@ import { dataform } from "@dataform/protos";
 
 export interface IAdapter {
   resolveTarget(target: dataform.ITarget): string;
+  normalizeIdentifier(identifier: string): string;
 
   publishTasks(
     table: dataform.ITable,

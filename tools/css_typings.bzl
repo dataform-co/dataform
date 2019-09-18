@@ -3,11 +3,14 @@ def _impl(ctx):
     for f in ctx.files.srcs:
         out = ctx.actions.declare_file(f.basename.replace(".css", ".css.d.ts"), sibling = f)
         outs.append(out)
+        patterns = [f.path]
+        if not f.root.path == '':
+          patterns = [f.short_path, f.root.path]
         ctx.actions.run(
             inputs = [f],
             outputs = [out],
             executable = ctx.executable._tool,
-            arguments = ["-o", out.root.path, "-p", f.path, "--silent"],
+            arguments = ["--silent", "--outDir", out.root.path, "--pattern"] + patterns,
             progress_message = "Generating CSS type definitions for %s" % f.path,
         )
 

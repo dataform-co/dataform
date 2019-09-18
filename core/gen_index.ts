@@ -36,25 +36,33 @@ export function genIndex(base64EncodedConfig: string): string {
     dataform.ProjectConfig.create(config.compileConfig.projectConfigOverride).toJSON()
   );
 
+  const returnValue = !!config.compileConfig.query
+    ? `(function() {
+      try {
+        const ref = global.session.resolve.bind(global.session);
+        const resolve = global.session.resolve.bind(global.session);
+        const self = () => "";
+        return \`${config.compileConfig.query}\`;
+      } catch (e) {
+        return e.message;
+      }
+    })()`
+    : "base64EncodedGraphBytes";
+
+  // NOTE:
+  // - The returned script must be valid JavaScript (not TypeScript)
+  // - The returned script may not require() any package that is not "@dataform/core"
   return `
     require("@dataform/core");
-    const protos = require("@dataform/protos");
-    const { util } = require("protobufjs");
     ${includeRequires}
     let projectConfig = require("./dataform.json");
     // For backwards compatibility, in case core version is ahead of api.
-    projectConfig.schemaSuffix = "${
-      config.compileConfig.schemaSuffixOverride
-    }" || projectConfig.schemaSuffix;
+    projectConfig.schemaSuffix = "${config.compileConfig.schemaSuffixOverride}" || projectConfig.schemaSuffix;
     // Merge in general project config overrides.
     projectConfig = { ...projectConfig, ...${projectOverridesJsonString} };
     global.session.init("${config.compileConfig.projectDir}", projectConfig);
     ${definitionRequires}
-    const compiledGraph = global.session.compile();
-    // Keep backwards compatibility with un-namespaced protobufs (i.e. before dataform protobufs were inside a package).
-    const protoNamespace = (protos.dataform) ? protos.dataform : protos;
     // We return a base64 encoded proto via NodeVM, as returning a Uint8Array directly causes issues.
-    const encodedGraphBytes = protoNamespace.CompiledGraph.encode(compiledGraph).finish();
-    const base64EncodedGraphBytes = util.base64.encode(encodedGraphBytes, 0, encodedGraphBytes.length);
-    return ${config.returnOverride || "base64EncodedGraphBytes"};`;
+    const base64EncodedGraphBytes = global.session.compileToBase64();
+    return ${returnValue};`;
 }
