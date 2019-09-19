@@ -7,6 +7,7 @@
     },
     "module": "commonjs",
     "noImplicitAny": true,
+    "noImplicitThis": true,
     "preserveConstEnums": true,
     "removeComments": true,
     "target": "es6",
