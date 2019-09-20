@@ -55,7 +55,7 @@ export class Runner {
 
   public async execute(): Promise<dataform.IExecutedGraph> {
     if (!!this.executionTask) {
-      throw Error("Executor already started.");
+      throw new Error("Executor already started.");
     }
 
     this.executionTask = new Promise(async (resolve, reject) => {

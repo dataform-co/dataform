@@ -3,7 +3,7 @@
 /*js
 type("table");
 
-throw Error('Error in multiline comment');
+throw new Error('Error in multiline comment');
 */
 --js var foo = () => "foo";
 select 1 as ${foo()}

@@ -1,10 +1,11 @@
-import { Session } from "@dataform/core/session";
+import { Resolvable, Session } from "@dataform/core/session";
+import * as utils from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
 
 export type AContextable<T> = T | ((ctx: AssertionContext) => T);
 
 export interface AConfig {
-  dependencies?: string | string[];
+  dependencies?: Resolvable | Resolvable[];
   tags?: string[];
   description?: string;
   schema?: string;
@@ -40,11 +41,12 @@ export class Assertion {
     return this;
   }
 
-  public dependencies(value: string | string[]) {
-    const newDependencies = typeof value === "string" ? [value] : value;
-    newDependencies.forEach(d => {
-      if (this.proto.dependencies.indexOf(d) < 0) {
-        this.proto.dependencies.push(d);
+  public dependencies(value: Resolvable | Resolvable[]) {
+    const newDependencies = utils.isResolvable(value) ? [value] : (value as Resolvable[]);
+    newDependencies.forEach((d: Resolvable) => {
+      const depName = utils.stringifyResolvable(d);
+      if (this.proto.dependencies.indexOf(depName) < 0) {
+        this.proto.dependencies.push(depName);
       }
     });
     return this;
@@ -66,7 +68,8 @@ export class Assertion {
   }
 
   public schema(schema: string) {
-    this.proto.target = this.session.target(schema, this.session.config.assertionSchema);
+    this.session.setNameAndTarget(this.proto, this.proto.target.name, schema);
+    return this;
   }
 
   public compile() {
@@ -86,16 +89,18 @@ export class AssertionContext {
     this.assertion = assertion;
   }
 
-  public ref(name: string) {
+  public ref(ref: Resolvable) {
+    const name =
+      typeof ref === "string" || typeof ref === "undefined" ? ref : `${ref.schema}.${ref.name}`;
     this.assertion.dependencies(name);
-    return this.resolve(name);
+    return this.resolve(ref);
   }
 
-  public resolve(name: string) {
-    return this.assertion.session.resolve(name);
+  public resolve(ref: Resolvable) {
+    return this.assertion.session.resolve(ref);
   }
 
-  public dependencies(name: string | string[]) {
+  public dependencies(name: Resolvable | Resolvable[]) {
     this.assertion.dependencies(name);
     return "";
   }

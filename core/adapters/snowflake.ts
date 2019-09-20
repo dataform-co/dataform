@@ -15,6 +15,10 @@ export class SnowflakeAdapter extends Adapter implements IAdapter {
     return `"${target.schema}"."${target.name}"`;
   }
 
+  public normalizeIdentifier(identifier: string) {
+    return identifier.toUpperCase();
+  }
+
   public publishTasks(
     table: dataform.ITable,
     runConfig: dataform.IRunConfig,

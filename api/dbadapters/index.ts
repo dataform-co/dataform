@@ -32,7 +32,7 @@ export function register(warehouseType: string, c: DbAdapterConstructor<IDbAdapt
 
 export function create(credentials: Credentials, warehouseType: string): IDbAdapter {
   if (!registry[warehouseType]) {
-    throw Error(`Unsupported warehouse: ${warehouseType}`);
+    throw new Error(`Unsupported warehouse: ${warehouseType}`);
   }
   return new registry[warehouseType](credentials);
 }

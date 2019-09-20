@@ -10,11 +10,14 @@ import * as guideCLI from "df/docs/pages/guides/command-line-interface.mdx";
 import * as guideConfiguration from "df/docs/pages/guides/configuration.mdx";
 import * as guideCoreConcepts from "df/docs/pages/guides/core-concepts.mdx";
 import * as guideDatasets from "df/docs/pages/guides/datasets.mdx";
+import * as guideDocumentation from "df/docs/pages/guides/documentation.mdx";
+import * as guideDeclarations from "df/docs/pages/guides/declarations.mdx";
 import * as guideIncludes from "df/docs/pages/guides/includes.mdx";
 import * as guideIncrementalDatasets from "df/docs/pages/guides/incremental-datasets.mdx";
 import * as guideInlineTables from "df/docs/pages/guides/inline-tables.mdx";
 import * as guideJsApi from "df/docs/pages/guides/js-api.mdx";
 import * as guideOperations from "df/docs/pages/guides/operations.mdx";
+import * as guideTags from "df/docs/pages/guides/tags.mdx";
 import * as guideTests from "df/docs/pages/guides/tests.mdx";
 
 // Framework warehouses.
@@ -49,10 +52,13 @@ export default class Navigation extends React.Component<IProps> {
             guideDatasets,
             guideIncrementalDatasets,
             guideInlineTables,
+            guideDeclarations,
             guideIncludes,
             guideOperations,
             guideAssertions,
+            guideDocumentation,
             guideTests,
+            guideTags,
             guideConfiguration,
             guideBuiltInFunctions,
             guideJsApi,

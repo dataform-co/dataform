@@ -59,45 +59,56 @@ describe("@dataform/integration/snowflake", () => {
     const actionMap = keyBy(executedGraph.actions, v => v.name);
 
     // Check the status of the s3 load operation.
-    expect(actionMap.load_from_s3.status).equals(dataform.ActionExecutionStatus.SUCCESSFUL);
+    expect(actionMap["DF_INTEGRATION_TEST.LOAD_FROM_S3"].status).equals(
+      dataform.ActionExecutionStatus.SUCCESSFUL
+    );
 
     // Check the s3 table has two rows, as per:
     // https://dataform-integration-tests.s3.us-east-2.amazonaws.com/sample-data/sample_data.csv
-    const s3Table = keyBy(compiledGraph.operations, t => t.name).load_from_s3;
+    const s3Table = keyBy(compiledGraph.operations, t => t.name)[
+      "DF_INTEGRATION_TEST.LOAD_FROM_S3"
+    ];
     const s3Rows = await getTableRows(s3Table.target, adapter, credentials, "snowflake");
     expect(s3Rows.length).equals(2);
 
     // Check the status of the two assertions.
-    expect(actionMap.example_assertion_fail.status).equals(dataform.ActionExecutionStatus.FAILED);
-    expect(actionMap.example_assertion_pass.status).equals(
+    expect(actionMap["DF_INTEGRATION_TEST_ASSERTIONS.EXAMPLE_ASSERTION_FAIL"].status).equals(
+      dataform.ActionExecutionStatus.FAILED
+    );
+    expect(actionMap["DF_INTEGRATION_TEST_ASSERTIONS.EXAMPLE_ASSERTION_PASS"].status).equals(
       dataform.ActionExecutionStatus.SUCCESSFUL
     );
 
     // Check the status of the two uniqueness assertions.
-    expect(actionMap.example_assertion_uniqueness_fail.status).equals(
-      dataform.ActionExecutionStatus.FAILED
-    );
-    expect(actionMap.example_assertion_uniqueness_fail.tasks[1].error).to.eql(
-      "Assertion failed: query returned 1 row(s)."
-    );
-    expect(actionMap.example_assertion_uniqueness_pass.status).equals(
-      dataform.ActionExecutionStatus.SUCCESSFUL
-    );
+    expect(
+      actionMap["DF_INTEGRATION_TEST_ASSERTIONS.EXAMPLE_ASSERTION_UNIQUENESS_FAIL"].status
+    ).equals(dataform.ActionExecutionStatus.FAILED);
+    expect(
+      actionMap["DF_INTEGRATION_TEST_ASSERTIONS.EXAMPLE_ASSERTION_UNIQUENESS_FAIL"].tasks[1].error
+    ).to.eql("Assertion failed: query returned 1 row(s).");
+    expect(
+      actionMap["DF_INTEGRATION_TEST_ASSERTIONS.EXAMPLE_ASSERTION_UNIQUENESS_PASS"].status
+    ).equals(dataform.ActionExecutionStatus.SUCCESSFUL);
 
     // Check the data in the incremental table.
-    let incrementalTable = keyBy(compiledGraph.tables, t => t.name).example_incremental;
+    let incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
+      "DF_INTEGRATION_TEST.EXAMPLE_INCREMENTAL"
+    ];
     let incrementalRows = await getTableRows(
       incrementalTable.target,
       adapter,
       credentials,
       "snowflake"
     );
+
     expect(incrementalRows.length).equals(1);
 
     // Re-run some of the actions.
     executionGraph = await dfapi.build(
       compiledGraph,
-      { actions: ["example_incremental", "example_table", "example_view"] },
+      {
+        actions: ["EXAMPLE_INCREMENTAL", "EXAMPLE_TABLE", "EXAMPLE_VIEW"]
+      },
       credentials
     );
 
@@ -105,12 +116,15 @@ describe("@dataform/integration/snowflake", () => {
     expect(executedGraph.ok).equals(true);
 
     // Check there is an extra row in the incremental table.
-    incrementalTable = keyBy(compiledGraph.tables, t => t.name).example_incremental;
+    incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
+      "DF_INTEGRATION_TEST.EXAMPLE_INCREMENTAL"
+    ];
     incrementalRows = await getTableRows(
       incrementalTable.target,
       adapter,
       credentials,
       "snowflake"
     );
+    expect(incrementalRows.length).equals(2);
   }).timeout(60000);
 });

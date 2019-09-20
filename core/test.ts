@@ -1,11 +1,12 @@
-import { Session } from "@dataform/core/session";
+import { Resolvable, Session } from "@dataform/core/session";
 import * as table from "@dataform/core/table";
+import * as utils from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
 
 export type TContextable<T> = T | ((ctx: TestContext) => T);
 
 export interface TConfig {
-  dataset?: string;
+  dataset?: Resolvable;
 }
 
 export class Test {
@@ -14,7 +15,7 @@ export class Test {
   public session: Session;
   public contextableInputs: { [refName: string]: TContextable<string> } = {};
 
-  private datasetToTest: string;
+  private datasetToTest: Resolvable;
   private contextableQuery: TContextable<string>;
 
   public config(config: TConfig) {
@@ -24,8 +25,8 @@ export class Test {
     return this;
   }
 
-  public dataset(datasetToTest: string) {
-    this.datasetToTest = datasetToTest;
+  public dataset(ref: Resolvable) {
+    this.datasetToTest = ref;
     return this;
   }
 
@@ -47,10 +48,17 @@ export class Test {
         this.proto.fileName
       );
     } else {
-      const dataset = this.session.tables[this.datasetToTest];
-      if (!dataset) {
+      const allResolved = this.session.findActions(this.datasetToTest);
+      if (allResolved.length > 1) {
         this.session.compileError(
-          new Error(`Dataset ${this.datasetToTest} could not be found.`),
+          new Error(utils.ambiguousActionNameMsg(this.datasetToTest, allResolved)),
+          this.proto.fileName
+        );
+      }
+      const dataset = allResolved.length > 0 ? allResolved[0] : undefined;
+      if (!(dataset && dataset instanceof table.Table)) {
+        this.session.compileError(
+          new Error(`Dataset ${utils.stringifyResolvable(this.datasetToTest)} could not be found.`),
           this.proto.fileName
         );
       } else if (dataset.proto.type === "incremental") {

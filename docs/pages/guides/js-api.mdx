@@ -16,6 +16,7 @@ To use the JavaScript API, create a `.js` file anywhere in the `definitions/` fo
 The JavaScript API exposes functions that create any of the actions that you would otherwise define in a SQL file:
 
 - Datasets
+- Declarations
 - Assertions
 - Operations
 - Tests
@@ -31,6 +32,11 @@ The following file is a simple example of creating actions in JavaScript:
 ```js
 publish("table1").query("SELECT 1 AS test");
 
+declare({
+  schema: "rawdata",
+  name: "input1"
+});
+
 assert("assertion1").query("SELECT * FROM source_table WHERE value IS NULL");
 
 operate("operation1").queries("INSERT INTO some_table (test) VALUES (2)");
@@ -41,11 +47,11 @@ test("test1")
   .expect("SELECT 1 AS test");
 ```
 
-This example creates a dataset, an assertion, an operation, and a test in a single file, which if written in SQL would have required 4 seperate files.
+This example creates a dataset, a declaration, an assertion, an operation, and a test in a single file, which if written in SQL would have required 5 seperate files.
 
 ## Setting properties on actions
 
-Each of the global methods - `publish()`, `operate()`, `assert()`, and `test()` - return an object that can be used to configure that action. The API follows a builder syntax which can be seen in the following example:
+Each of the global methods - `publish()`, `declare()`, `operate()`, `assert()`, and `test()` - return an object that can be used to configure that action. The API follows a builder syntax which can be seen in the following example:
 
 ```js
 publish("table1")
@@ -72,6 +78,7 @@ publish("table1", {
 Learn more about configuration options for each type of action:
 
 - [`publish()` (Datasets)](/guides/datasets)
+- [`declare()` (Declarations)](/guides/declarations)
 - [`assert()` (Assertions)](/guides/assertions)
 - [`operate()` (Operations)](/guides/operations)
 - [`test()` (Tests)](/guides/tests)

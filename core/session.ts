@@ -1,19 +1,30 @@
 import * as adapters from "@dataform/core/adapters";
 import { AConfig, AContextable, Assertion } from "@dataform/core/assertion";
+import { DConfig, Declaration } from "@dataform/core/declaration";
 import { OConfig, OContextable, Operation } from "@dataform/core/operation";
 import * as table from "@dataform/core/table";
 import * as test from "@dataform/core/test";
 import * as utils from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
+import { util } from "protobufjs";
 
 interface IActionProto {
   name?: string;
   fileName?: string;
   dependencies?: string[];
+  target?: dataform.ITarget;
 }
 
-interface ISqlxConfig extends table.TConfig, AConfig, OConfig, test.TConfig {
-  type: "view" | "table" | "inline" | "incremental" | "assertion" | "operations" | "test";
+interface ISqlxConfig extends table.TConfig, AConfig, OConfig, DConfig, test.TConfig {
+  type:
+    | "view"
+    | "table"
+    | "inline"
+    | "incremental"
+    | "assertion"
+    | "operations"
+    | "declaration"
+    | "test";
   name: string;
 }
 
@@ -65,14 +76,18 @@ function mapColumnDescriptionToProto(
   );
 }
 
+export interface FullyQualifiedName {
+  schema: string;
+  name: string;
+}
+export type Resolvable = string | FullyQualifiedName;
+
 export class Session {
   public rootDir: string;
 
   public config: dataform.IProjectConfig;
 
-  public tables: { [name: string]: table.Table };
-  public operations: { [name: string]: Operation };
-  public assertions: { [name: string]: Assertion };
+  public actions: Array<table.Table | Operation | Assertion | Declaration>;
   public tests: { [name: string]: test.Test };
 
   public graphErrors: dataform.IGraphErrors;
@@ -87,9 +102,7 @@ export class Session {
       defaultSchema: "dataform",
       assertionSchema: "dataform_assertions"
     };
-    this.tables = {};
-    this.operations = {};
-    this.assertions = {};
+    this.actions = [];
     this.tests = {};
     this.graphErrors = { compilationErrors: [] };
   }
@@ -113,8 +126,10 @@ export class Session {
     }
     if (
       actionOptions.sqlxConfig.hasOutput &&
-      (actionOptions.sqlxConfig.type !== "operations" ||
-        this.isDatasetType(actionOptions.sqlxConfig.type))
+      !(
+        actionOptions.sqlxConfig.type === "operations" ||
+        definesDataset(actionOptions.sqlxConfig.type)
+      )
     ) {
       this.compileError(
         "Actions may only specify 'hasOutput: true' if they are of type 'operations' or create a dataset."
@@ -122,9 +137,9 @@ export class Session {
     }
     if (
       actionOptions.sqlxConfig.columns &&
-      !(this.isDatasetType(actionOptions.sqlxConfig.type) || actionOptions.sqlxConfig.hasOutput)
+      !declaresDataset(actionOptions.sqlxConfig.type, actionOptions.sqlxConfig.hasOutput)
     ) {
-      this.compileError("Actions may only specify 'columns' if they create a dataset.");
+      this.compileError("Actions may only specify 'columns' if they create or declare a dataset.");
     }
     if (actionOptions.sqlxConfig.protected && actionOptions.sqlxConfig.type !== "incremental") {
       this.compileError(
@@ -136,6 +151,9 @@ export class Session {
         "Actions may only include incremental_where if they are of type 'incremental'."
       );
     }
+    if (!actionOptions.sqlxConfig.schema && actionOptions.sqlxConfig.type === "declaration") {
+      this.compileError("Actions of type 'declaration' must specify a value for 'schema'.");
+    }
     if (actionOptions.sqlxConfig.dataset && actionOptions.sqlxConfig.type !== "test") {
       this.compileError("Actions may only specify 'dataset' if they are of type 'test'.");
     }
@@ -145,27 +163,27 @@ export class Session {
     if (actionOptions.hasInputs && actionOptions.sqlxConfig.type !== "test") {
       this.compileError("Actions may only include input blocks if they are of type 'test'.");
     }
-    if (actionOptions.sqlxConfig.disabled && !this.isDatasetType(actionOptions.sqlxConfig.type)) {
+    if (actionOptions.sqlxConfig.disabled && !definesDataset(actionOptions.sqlxConfig.type)) {
       this.compileError("Actions may only specify 'disabled: true' if they create a dataset.");
     }
-    if (actionOptions.sqlxConfig.redshift && !this.isDatasetType(actionOptions.sqlxConfig.type)) {
+    if (actionOptions.sqlxConfig.redshift && !definesDataset(actionOptions.sqlxConfig.type)) {
       this.compileError("Actions may only specify 'redshift: { ... }' if they create a dataset.");
     }
     if (
       actionOptions.sqlxConfig.sqldatawarehouse &&
-      !this.isDatasetType(actionOptions.sqlxConfig.type)
+      !definesDataset(actionOptions.sqlxConfig.type)
     ) {
       this.compileError(
         "Actions may only specify 'sqldatawarehouse: { ... }' if they create a dataset."
       );
     }
-    if (actionOptions.sqlxConfig.bigquery && !this.isDatasetType(actionOptions.sqlxConfig.type)) {
+    if (actionOptions.sqlxConfig.bigquery && !definesDataset(actionOptions.sqlxConfig.type)) {
       this.compileError("Actions may only specify 'bigquery: { ... }' if they create a dataset.");
     }
-    if (actionOptions.hasPreOperations && !this.isDatasetType(actionOptions.sqlxConfig.type)) {
+    if (actionOptions.hasPreOperations && !definesDataset(actionOptions.sqlxConfig.type)) {
       this.compileError("Actions may only include pre_operations if they create a dataset.");
     }
-    if (actionOptions.hasPostOperations && !this.isDatasetType(actionOptions.sqlxConfig.type)) {
+    if (actionOptions.hasPostOperations && !definesDataset(actionOptions.sqlxConfig.type)) {
       this.compileError("Actions may only include post_operations if they create a dataset.");
     }
 
@@ -180,75 +198,71 @@ export class Session {
           return this.assert(actionOptions.sqlxConfig.name);
         case "operations":
           return this.operate(actionOptions.sqlxConfig.name);
+        case "declaration":
+          return this.declare({
+            schema: actionOptions.sqlxConfig.schema,
+            name: actionOptions.sqlxConfig.name
+          });
         case "test":
           return this.test(actionOptions.sqlxConfig.name);
         default:
           throw new Error(`Unrecognized action type: ${actionOptions.sqlxConfig.type}`);
       }
     })().config(actionOptions.sqlxConfig);
-
-    if (action instanceof test.Test) {
-      return action;
-    }
-
-    if (!(action instanceof Operation) || action.proto.hasOutput) {
-      const finalSchema =
-        actionOptions.sqlxConfig.schema ||
-        (actionOptions.sqlxConfig.type === "assertion"
-          ? this.config.assertionSchema
-          : this.config.defaultSchema);
-      action.proto.target = this.target(actionOptions.sqlxConfig.name, finalSchema);
-    } else {
-      delete action.proto.target;
-    }
     return action;
   }
 
-  public target(target: string, defaultSchema?: string): dataform.ITarget {
-    const suffix = !!this.config.schemaSuffix ? `_${this.config.schemaSuffix}` : "";
-
-    if (target.includes(".")) {
-      const [schema, name] = target.split(".");
-      return dataform.Target.create({ name, schema: schema + suffix });
+  public resolve(ref: Resolvable): string {
+    const allResolved = this.findActions(ref);
+    if (allResolved.length > 1) {
+      this.compileError(new Error(utils.ambiguousActionNameMsg(ref, allResolved)));
     }
-    return dataform.Target.create({
-      name: target,
-      schema: (defaultSchema || this.config.defaultSchema) + suffix
-    });
-  }
+    const resolved = allResolved.length > 0 ? allResolved[0] : undefined;
 
-  public resolve(name: string): string {
-    const table = this.tables[name];
-    const operation =
-      !!this.operations[name] && this.operations[name].hasOutput && this.operations[name];
-
-    if (table && table.proto.type === "inline") {
+    if (resolved && resolved instanceof table.Table && resolved.proto.type === "inline") {
       // TODO: Pretty sure this is broken as the proto.query value may not
       // be set yet as it happens during compilation. We should evalute the query here.
-      return `(${table.proto.query})`;
+      return `(${resolved.proto.query})`;
+    }
+    if (resolved && resolved instanceof Operation && !resolved.proto.hasOutput) {
+      this.compileError(
+        new Error("Actions cannot resolve operations which do not produce output.")
+      );
     }
 
-    const dataset = table || operation;
-    // TODO: We fall back to using the plain 'name' here for backwards compatibility with projects that use .sql files.
-    // In these projects, this session may not know about all actions (yet), and thus we need to fall back to assuming
-    // that the target *will* exist in the future. Once we break backwards compatibility with .sql files, we should remove
-    // the code that calls 'this.target(...)' below, and append a compile error if we can't find a dataset whose name is 'name'.
-    const target = dataset ? dataset.proto.target : this.target(name);
-    return this.adapter().resolveTarget(target);
+    if (resolved) {
+      if (resolved instanceof Declaration) {
+        return this.adapter().resolveTarget(resolved.proto.target);
+      }
+      return this.adapter().resolveTarget({
+        ...resolved.proto.target,
+        schema: `${resolved.proto.target.schema}${this.getSuffixWithUnderscore()}`
+      });
+    }
+    // TODO: Here we allow 'ref' to go unresolved. This is for backwards compatibility with projects
+    // that use .sql files. In these projects, this session may not know about all actions (yet), and
+    // thus we need to fall back to assuming that the target *will* exist in the future. Once we break
+    // backwards compatibility with .sql files, we should remove the below code, and append a compile
+    // error instead.
+    if (typeof ref === "string") {
+      return this.adapter().resolveTarget(
+        this.target(ref, `${this.config.defaultSchema}${this.getSuffixWithUnderscore()}`)
+      );
+    }
+    return this.adapter().resolveTarget(
+      this.target(ref.name, `${ref.schema}${this.getSuffixWithUnderscore()}`)
+    );
   }
 
   public operate(name: string, queries?: OContextable<string | string[]>): Operation {
-    this.checkActionNameIsUnused(name);
     const operation = new Operation();
     operation.session = this;
-    operation.proto.name = name;
-    operation.proto.target = this.target(name);
+    this.setNameAndTarget(operation.proto, name);
     if (queries) {
       operation.queries(queries);
     }
     operation.proto.fileName = utils.getCallerFile(this.rootDir);
-    // Add it to global index.
-    this.operations[name] = operation;
+    this.actions.push(operation);
     return operation;
   }
 
@@ -256,11 +270,9 @@ export class Session {
     name: string,
     queryOrConfig?: table.TContextable<string> | table.TConfig
   ): table.Table {
-    this.checkActionNameIsUnused(name);
     const newTable = new table.Table();
     newTable.session = this;
-    newTable.proto.name = name;
-    newTable.proto.target = this.target(name);
+    this.setNameAndTarget(newTable.proto, name);
     if (!!queryOrConfig) {
       if (typeof queryOrConfig === "object") {
         newTable.config(queryOrConfig);
@@ -269,28 +281,32 @@ export class Session {
       }
     }
     newTable.proto.fileName = utils.getCallerFile(this.rootDir);
-    // Add it to global index.
-    this.tables[name] = newTable;
+    this.actions.push(newTable);
     return newTable;
   }
 
   public assert(name: string, query?: AContextable<string>): Assertion {
-    this.checkActionNameIsUnused(name);
     const assertion = new Assertion();
     assertion.session = this;
-    assertion.proto.name = name;
-    assertion.proto.target = this.target(name, this.config.assertionSchema);
+    this.setNameAndTarget(assertion.proto, name, this.config.assertionSchema);
     if (query) {
       assertion.query(query);
     }
     assertion.proto.fileName = utils.getCallerFile(this.rootDir);
-    // Add it to global index.
-    this.assertions[name] = assertion;
+    this.actions.push(assertion);
     return assertion;
   }
 
+  public declare(dataset: FullyQualifiedName): Declaration {
+    const declaration = new Declaration();
+    declaration.session = this;
+    this.setNameAndTarget(declaration.proto, dataset.name, dataset.schema);
+    declaration.proto.fileName = utils.getCallerFile(this.rootDir);
+    this.actions.push(declaration);
+    return declaration;
+  }
+
   public test(name: string): test.Test {
-    this.checkTestNameIsUnused(name);
     const newTest = new test.Test();
     newTest.session = this;
     newTest.proto.name = name;
@@ -315,76 +331,210 @@ export class Session {
     this.graphErrors.compilationErrors.push(compileError);
   }
 
-  public compileGraphChunk<T>(part: {
-    [name: string]: { proto: IActionProto; compile(): T };
-  }): T[] {
+  public compile(): dataform.ICompiledGraph {
+    const compiledGraph = dataform.CompiledGraph.create({
+      projectConfig: this.config,
+      tables: this.compileGraphChunk(this.actions.filter(action => action instanceof table.Table)),
+      operations: this.compileGraphChunk(
+        this.actions.filter(action => action instanceof Operation)
+      ),
+      assertions: this.compileGraphChunk(
+        this.actions.filter(action => action instanceof Assertion)
+      ),
+      declarations: this.compileGraphChunk(
+        this.actions.filter(action => action instanceof Declaration)
+      ),
+      tests: this.compileGraphChunk(Object.values(this.tests)),
+      graphErrors: this.graphErrors
+    });
+
+    this.fullyQualifyDependencies(
+      [].concat(compiledGraph.tables, compiledGraph.assertions, compiledGraph.operations)
+    );
+
+    if (!!this.config.schemaSuffix) {
+      this.appendSchemaSuffix(
+        [].concat(compiledGraph.tables, compiledGraph.assertions, compiledGraph.operations)
+      );
+    }
+
+    this.checkActionNameUniqueness(
+      [].concat(
+        compiledGraph.tables,
+        compiledGraph.assertions,
+        compiledGraph.operations,
+        compiledGraph.declarations
+      )
+    );
+    this.checkTestNameUniqueness(compiledGraph.tests);
+
+    this.checkCircularity(
+      [].concat(compiledGraph.tables, compiledGraph.assertions, compiledGraph.operations)
+    );
+
+    return compiledGraph;
+  }
+
+  public compileToBase64() {
+    const encodedGraphBytes = dataform.CompiledGraph.encode(this.compile()).finish();
+    return util.base64.encode(encodedGraphBytes, 0, encodedGraphBytes.length);
+  }
+
+  public findActions(res: Resolvable) {
+    const adapter = this.adapter();
+    return this.actions.filter(action => {
+      if (typeof res === "string") {
+        return action.proto.target.name === adapter.normalizeIdentifier(res);
+      }
+      return (
+        action.proto.target.schema === adapter.normalizeIdentifier(res.schema) &&
+        action.proto.target.name === adapter.normalizeIdentifier(res.name)
+      );
+    });
+  }
+
+  public setNameAndTarget(action: IActionProto, name: string, overrideSchema?: string) {
+    action.target = this.target(name, overrideSchema || this.config.defaultSchema);
+    action.name = `${action.target.schema}.${action.target.name}`;
+  }
+
+  private getSuffixWithUnderscore() {
+    return !!this.config.schemaSuffix ? `_${this.config.schemaSuffix}` : "";
+  }
+
+  private compileGraphChunk<T>(actions: Array<{ proto: IActionProto; compile(): T }>): T[] {
     const compiledChunks: T[] = [];
 
-    Object.keys(part).forEach(key => {
+    actions.forEach(action => {
       try {
-        const compiledChunk = part[key].compile();
+        const compiledChunk = action.compile();
         compiledChunks.push(compiledChunk);
       } catch (e) {
-        this.compileError(e, part[key].proto.fileName);
+        this.compileError(e, action.proto.fileName);
       }
     });
 
     return compiledChunks;
   }
 
-  public compile(): dataform.ICompiledGraph {
-    const compiledGraph = dataform.CompiledGraph.create({
-      projectConfig: this.config,
-      tables: this.compileGraphChunk(this.tables),
-      operations: this.compileGraphChunk(this.operations),
-      assertions: this.compileGraphChunk(this.assertions),
-      tests: this.compileGraphChunk(this.tests),
-      graphErrors: this.graphErrors
+  private target(name: string, schema: string): dataform.ITarget {
+    const adapter = this.adapter();
+    return dataform.Target.create({
+      name: adapter.normalizeIdentifier(name),
+      schema: adapter.normalizeIdentifier(schema)
+    });
+  }
+
+  private fullyQualifyDependencies(actions: IActionProto[]) {
+    const allActionsByName = keyByName(actions);
+    actions.forEach(action => {
+      action.dependencies = (action.dependencies || []).map(dependencyName => {
+        if (!!allActionsByName[dependencyName]) {
+          // Dependency is already fully-qualified.
+          return dependencyName;
+        }
+        const possibleDeps = this.findActions(dependencyName);
+        if (possibleDeps.length === 1) {
+          return possibleDeps[0].proto.name;
+        }
+        if (possibleDeps.length >= 1) {
+          this.compileError(new Error(utils.ambiguousActionNameMsg(dependencyName, possibleDeps)));
+        } else {
+          this.compileError(
+            new Error(
+              `Missing dependency detected: Action "${action.name}" depends on "${dependencyName}" which does not exist.`
+            ),
+            action.fileName
+          );
+        }
+        return dependencyName;
+      });
+    });
+  }
+
+  private appendSchemaSuffix(actions: IActionProto[]) {
+    const suffixedNames: { [originalName: string]: string } = {};
+    actions.forEach(action => {
+      const originalName = action.name;
+      action.target = {
+        ...action.target,
+        schema: `${action.target.schema}${this.getSuffixWithUnderscore()}`
+      };
+      action.name = `${action.target.schema}.${action.target.name}`;
+      suffixedNames[originalName] = action.name;
     });
 
-    // Expand action dependency wildcards.
-
-    const allActions: IActionProto[] = [].concat(
-      compiledGraph.tables,
-      compiledGraph.assertions,
-      compiledGraph.operations
-    );
-    const allActionNames = allActions.map(action => action.name);
-
-    allActions.forEach(action => {
-      const uniqueDependencies: { [dependency: string]: boolean } = {};
-      const dependencies = action.dependencies || [];
-      // Add non-wildcard deps normally.
-      dependencies
-        .filter(dependency => !dependency.includes("*"))
-        .forEach(dependency => (uniqueDependencies[dependency] = true));
-      // Match wildcard deps against all action names.
-      utils
-        .matchPatterns(dependencies.filter(d => d.includes("*")), allActionNames)
-        .forEach(dependency => (uniqueDependencies[dependency] = true));
-      action.dependencies = Object.keys(uniqueDependencies);
+    // Fix up dependencies in case those dependencies' names have changed.
+    actions.forEach(action => {
+      action.dependencies = (action.dependencies || []).map(
+        dependencyName => suffixedNames[dependencyName] || dependencyName
+      );
     });
-
-    return compiledGraph;
   }
 
-  public isDatasetType(type: string) {
-    return type === "view" || type === "table" || type === "inline" || type === "incremental";
+  private checkActionNameUniqueness(actions: IActionProto[]) {
+    const allNames: string[] = [];
+    actions.forEach(action => {
+      if (allNames.includes(action.name)) {
+        this.compileError(
+          new Error(
+            `Duplicate action name detected. Names within a schema must be unique across tables, declarations, assertions, and operations: "${action.name}"`
+          ),
+          action.fileName
+        );
+      }
+      allNames.push(action.name);
+    });
   }
 
-  private checkActionNameIsUnused(name: string) {
-    // Check for duplicate names
-    if (this.tables[name] || this.operations[name] || this.assertions[name]) {
-      const message = `Duplicate action name detected. Names must be unique across tables, assertions, and operations: "${name}"`;
-      this.compileError(new Error(message));
+  private checkTestNameUniqueness(tests: dataform.ITest[]) {
+    const allNames: string[] = [];
+    tests.forEach(testProto => {
+      if (allNames.includes(testProto.name)) {
+        this.compileError(
+          new Error(`Duplicate test name detected: "${testProto.name}"`),
+          testProto.fileName
+        );
+      }
+      allNames.push(testProto.name);
+    });
+  }
+
+  private checkCircularity(actions: IActionProto[]) {
+    const allActionsByName = keyByName(actions);
+    const checkCircular = (action: IActionProto, dependents: IActionProto[]): boolean => {
+      if (dependents.indexOf(action) >= 0) {
+        const message = `Circular dependency detected in chain: [${dependents
+          .map(d => d.name)
+          .join(" > ")} > ${action.name}]`;
+        this.compileError(new Error(message), action.fileName);
+        return true;
+      }
+      return (action.dependencies || []).some(
+        dependencyName =>
+          allActionsByName[dependencyName] &&
+          checkCircular(allActionsByName[dependencyName], dependents.concat([action]))
+      );
+    };
+
+    for (const action of actions) {
+      if (checkCircular(action, [])) {
+        break;
+      }
     }
   }
+}
 
-  private checkTestNameIsUnused(name: string) {
-    // Check for duplicate names
-    if (this.tests[name]) {
-      const message = `Duplicate test name detected: "${name}"`;
-      this.compileError(new Error(message));
-    }
-  }
+function declaresDataset(type: string, hasOutput?: boolean) {
+  return definesDataset(type) || type === "declaration" || hasOutput;
+}
+
+function definesDataset(type: string) {
+  return type === "view" || type === "table" || type === "inline" || type === "incremental";
+}
+
+function keyByName(actions: IActionProto[]) {
+  const actionsByName: { [name: string]: IActionProto } = {};
+  actions.forEach(action => (actionsByName[action.name] = action));
+  return actionsByName;
 }

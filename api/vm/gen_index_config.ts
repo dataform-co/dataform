@@ -2,10 +2,7 @@ import { dataform } from "@dataform/protos";
 import * as glob from "glob";
 import { util } from "protobufjs";
 
-export function createGenIndexConfig(
-  compileConfig: dataform.ICompileConfig,
-  returnOverride?: string
-): string {
+export function createGenIndexConfig(compileConfig: dataform.ICompileConfig): string {
   const includePaths: string[] = [];
   glob.sync("includes/*.js", { cwd: compileConfig.projectDir }).forEach(path => {
     if (includePaths.indexOf(path) < 0) {
@@ -29,7 +26,8 @@ export function createGenIndexConfig(
     compileConfig,
     includePaths,
     definitionPaths,
-    returnOverride
+    // For backwards compatibility with old versions of @dataform/core.
+    returnOverride: compileConfig.returnOverride
   }).finish();
   return util.base64.encode(encodedConfigBytes, 0, encodedConfigBytes.length);
 }
