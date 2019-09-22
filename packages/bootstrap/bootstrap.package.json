@@ -1,0 +1,10 @@
+{
+  "name": "@dataform/bootstrap",
+  "description": "Bootstrap statistics UDF functions.",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "dependencies": {
+    "@types/seedrandom": "^2.4.28",
+    "alea": "^3.0.5"
+  }
+}

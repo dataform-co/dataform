@@ -3,7 +3,7 @@ package(default_visibility = ["//visibility:public"])
 load("@npm_bazel_typescript//:index.bzl", "ts_library")
 
 ts_library(
-    name = "js-to-string",
+    name = "json-merge",
     srcs = glob(["**/*.ts"]),
     deps = [
         "@npm//@types/node",
@@ -18,7 +18,7 @@ nodejs_binary(
     name = "bin",
     bootstrap = ["source-map-support/register"],
     data = [
-        ":js-to-string",
+        ":json-merge",
         "@npm//source-map-support",
     ],
     entry_point = ":index.ts",
