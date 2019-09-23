@@ -8,7 +8,7 @@ interface IBootstrapOptions {
 
 export interface IEstimate {
   lower: number;
-  estimate: number;
+  value: number;
   upper: number;
 }
 
@@ -16,6 +16,11 @@ const DEFAULT_OPTIONS: IBootstrapOptions = {
   iterations: 1000,
   seed: "random",
   confidenceInterval: 0.95
+};
+
+export const reducers = {
+  sum: (values: number[]) => values.reduce((acc, curr) => acc + curr, 0),
+  mean: (values: number[]) => reducers.sum(values) / values.length
 };
 
 export function estimate<T>(
@@ -30,7 +35,7 @@ export function estimate<T>(
     estimates.push(reducer(sample(values, rng)));
   }
   // Sort the estimates. Make sure these get ordered as numbers, not strings... #javascript
-  estimates.sort((a, b) => (+a) - (+b));
+  estimates.sort((a, b) => +a - +b);
 
   // Compute the top and bottom fractiles we are looking for from the interval.
   const remainderIntervalSize = 1 - options.confidenceInterval;
@@ -38,7 +43,7 @@ export function estimate<T>(
   const upperFractile = 1 - lowerFractile;
   return {
     lower: interpolatedFractile(estimates, lowerFractile),
-    estimate: reducer(values),
+    value: reducer(values),
     upper: interpolatedFractile(estimates, upperFractile)
   };
 }
@@ -55,7 +60,6 @@ function sample<T>(values: T[], rng: () => number): T[] {
 function interpolatedFractile(values: number[], fractile: number) {
   // We treat the last value as the fractile 1.0 otherwise it won't be symmetric, hence the -1.
   // With 1000 values, this maps the fractile range (0.0, 1.0) to the indices range (0, 999).
-  // Of course, it doesn't make much sense to actually ask for fractiles 0.0 or 1.0.
   const targetIndex = fractile * (values.length - 1);
   const floorIndex = Math.floor(targetIndex);
   const ceilIndex = Math.ceil(targetIndex);

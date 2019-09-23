@@ -15,13 +15,21 @@ ts_library(
 load("@build_bazel_rules_nodejs//:defs.bzl", "rollup_bundle")
 
 rollup_bundle(
-        name = "rollup",
-        entry_point = ":index.ts",
-        deps = [
-            ":bootstrap",
-            "@npm//alea",
-        ],
-    )
+    name = "bootstrap_rollup",
+    entry_point = ":index.ts",
+    deps = [
+       ":bootstrap",
+        "@npm//alea",
+    ],
+)
+
+genrule(
+    name = "bootstrap_rollup_meta",
+    srcs = ["bootstrap_rollup.min.js"],
+    outs = ["bootstrap_rollup_string.js", "bootstrap_rollup_string.d.ts"],
+    tools = ["//tools/js-to-string:bin"],
+    cmd = "$(location //tools/js-to-string:bin) --input-path $(location bootstrap_rollup.min.js) --output-path $(location bootstrap_rollup_string.js)"
+)
 
 load("//tools/npm:package.bzl", "dataform_npm_package")
 

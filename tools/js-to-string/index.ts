@@ -7,15 +7,19 @@ const argv = yargs
   .option("output-path", { type: "string", required: true }).argv;
 
 async function run() {
+  if (!argv["output-path"].endsWith(".js")) {
+    throw new Error("Output file path must end in .js");
+  }
   const inputFile = await promisify(fs.readFile)(argv["input-path"], "utf8");
   const inputFileStringified = JSON.stringify(inputFile);
   const newFile = `
-const contents = "${inputFileStringified}";
-export default contents;
+module.exports = ${inputFileStringified};
   `;
-  await promisify(fs.writeFile)(argv["output-path"], newFile);
+  await Promise.all([
+    promisify(fs.writeFile)(argv["output-path"], newFile),
+    promisify(fs.writeFile)(argv["output-path"].replace(/\.js$/, ".d.ts"), `export default string;`)
+  ]);
 }
-
 
 // tslint:disable-next-line: no-floating-promises
 run();
