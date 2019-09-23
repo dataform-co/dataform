@@ -1,6 +1,0 @@
-{
-  "name": "@dataform/bigquery-with-error",
-  "version": "0.1.0",
-  "description": "Example Dataform project (BigQuery with error).",
-  "private": true
-}
