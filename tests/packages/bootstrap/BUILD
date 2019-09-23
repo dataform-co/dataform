@@ -12,6 +12,7 @@ ts_library(
         "@npm//@types/mocha",
         "@npm//@types/node",
         "@npm//alea",
+        "@npm//reflect-metadata",
     ],
 )
 

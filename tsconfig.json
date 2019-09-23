@@ -16,7 +16,8 @@
     "experimentalDecorators": true,
     "jsx": "react",
     "lib": ["es2017" ,"dom"],
-    "esModuleInterop": true
+    "esModuleInterop": true,
+    "emitDecoratorMetadata": true
   },
   "exclude": ["bazel-*", "node_modules"]
 }

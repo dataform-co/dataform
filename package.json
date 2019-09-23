@@ -55,6 +55,7 @@
     "react-media": "^1.9.2",
     "react-transition-group": "^2.5.3",
     "readline-sync": "^1.4.9",
+    "reflect-metadata": "^0.1.13",
     "remark": "^10.0.1",
     "remark-highlight.js": "^5.1.0",
     "remark-react": "^5.0.1",

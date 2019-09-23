@@ -8,6 +8,7 @@ ts_library(
     module_name = "@dataform/packages/bootstrap",
     deps = [
         "@npm//alea",
+        "@npm//reflect-metadata"
     ],
 )
 
