@@ -1,6 +1,25 @@
-config {
-    type: "assertion",
-    tags: ["tag1", "tag2"]
+config { type: "assertion",
+                      tags: ["tag1", "tag2"]
 }
 
-select * from ${ref({ schema: "df_integration_test", name: "sample_data" })} where sample = 100
+select * from ${ref({ schema: "df_integration_test", name: "sample_data" })} 
+where sample = 100
+
+pre_operations {
+
+              grant reader on ${self()}
+       }
+
+
+incremental_where { col in (select * from ${ref("foo")})}
+
+
+input "something" {
+
+
+
+
+
+    select 1
+as test
+}
