@@ -42,11 +42,6 @@ export async function compile(
     throw new Error(`Compile Error: ProjectConfig ('dataform.json') is invalid. ${e}`);
   }
 
-  // Schema overrides field can be set in two places, projectConfigOverride is the source of truth.
-  if (compileConfig.projectConfigOverride && compileConfig.projectConfigOverride.schemaSuffix) {
-    compileConfig.schemaSuffixOverride = compileConfig.projectConfigOverride.schemaSuffix;
-  }
-
   const encodedGraphInBase64 = await CompileChildProcess.forkProcess().compile(compileConfig);
   const encodedGraphBytes = new Uint8Array(util.base64.length(encodedGraphInBase64));
   util.base64.decode(encodedGraphInBase64, encodedGraphBytes, 0);
