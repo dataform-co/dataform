@@ -2,6 +2,11 @@ config { type: "assertion",
                       tags: ["tag1", "tag2"]
 }
 
+js {
+           const foo = 
+           "something!";
+}
+
 select * from ${ref({ schema: "df_integration_test", name: "sample_data" })} 
 where sample = 100
 
