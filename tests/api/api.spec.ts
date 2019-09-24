@@ -796,6 +796,59 @@ describe("@dataform/api", () => {
       await format.formatFile(
         path.resolve("df/examples/common_v2/definitions/example_assertion_with_tags.sqlx")
       )
-    ).eql("");
+    ).eql(`config {
+  type: "assertion",
+  tags: ["tag1", "tag2"]
+}
+
+js {
+  const foo = "something!";
+}
+
+select
+  *
+from
+  \${
+    ref({
+      schema: "df_integration_test",
+      name: "sample_data"
+    })
+  }
+where
+  sample = 100
+
+---
+
+drop something
+
+pre_operations {
+  grant reader on \${
+    self()
+  }
+
+  ---
+
+  select
+    \${
+      foo
+    } as bar
+}
+
+incremental_where {
+  col in (
+    select
+      *
+    from
+      \${
+        ref("foo")
+      }
+  )
+}
+
+input "something" {
+  select
+    1 as test
+}
+`);
   });
 });
