@@ -1,4 +1,4 @@
-import { Builder, compile, credentials, query, Runner } from "@dataform/api";
+import { Builder, compile, credentials, format, query, Runner } from "@dataform/api";
 import { IDbAdapter } from "@dataform/api/dbadapters";
 import { BigQueryDbAdapter } from "@dataform/api/dbadapters/bigquery";
 import * as utils from "@dataform/core/utils";
@@ -784,5 +784,18 @@ describe("@dataform/api", () => {
       expect(result.actions[0].deprecatedOk).is.false;
       expect(result.actions[0].tasks[0].error).to.match(/cancelled/);
     });
+  });
+
+  it("formatter2", async () => {
+    expect(
+      await format.formatFile(
+        path.resolve("df/examples/never_finishes_compiling/definitions/test.js")
+      )
+    ).eql("");
+    expect(
+      await format.formatFile(
+        path.resolve("df/examples/common_v2/definitions/example_assertion_with_tags.sqlx")
+      )
+    ).eql("");
   });
 });
