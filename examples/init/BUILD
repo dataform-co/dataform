@@ -8,6 +8,7 @@ node_modules(
         "//core:package_tar",
         "//crossdb:package_tar",
         "//protos:package_tar",
+        "//sqlx:package_tar",
     ],
 )
 

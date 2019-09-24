@@ -14,5 +14,6 @@ node_modules(
     deps = [
         "//core:package_tar",
         "//protos:package_tar",
+        "//sqlx:package_tar",
     ],
 )
