@@ -89,6 +89,11 @@ export function constructSyntaxTree(code: string): ISyntaxTreeNode {
       nodeStack.push(newCurrentNode);
       currentNode.contents.push(newCurrentNode);
       currentNode = newCurrentNode;
+    } else if (token.type.endsWith("_statementSeparator")) {
+      currentNode.contents.push({
+        startTokenType: token.type,
+        contents: [token.value]
+      });
     } else {
       appendToNode(currentNode, token.value);
     }
