@@ -791,7 +791,7 @@ describe("@dataform/api", () => {
       await format.formatFile(
         path.resolve("df/examples/never_finishes_compiling/definitions/test.js")
       )
-    ).eql("");
+    ).eql("while (true) {}");
     expect(
       await format.formatFile(
         path.resolve("df/examples/common_v2/definitions/example_assertion_with_tags.sqlx")
