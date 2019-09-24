@@ -9,10 +9,15 @@ js {
 
 select * from ${ref({ schema: "df_integration_test", name: "sample_data" })} 
 where sample = 100
+   ---
+
+drop something
 
 pre_operations {
 
               grant reader on ${self()}
+              ---
+     select ${foo} as bar
        }
 
 
