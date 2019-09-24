@@ -99,7 +99,7 @@ export class CompileChildProcess {
   }
 }
 
-const checkDataformJsonValidity = (dataformJsonParsed: { [prop: string]: string }) => {
+export const checkDataformJsonValidity = (dataformJsonParsed: { [prop: string]: string }) => {
   const invalidWarehouseProp = () => {
     return dataformJsonParsed.warehouse && !validWarehouses.includes(dataformJsonParsed.warehouse)
       ? `Invalid value on property warehouse: ${
