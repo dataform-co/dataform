@@ -187,7 +187,7 @@ describe("@dataform/api/validate", () => {
         const project = await dfapi.init(
           projectDir,
           { warehouse: "redshift" },
-          { includeSchedules: true, skipInstall: true }
+          { includeSchedules: true, skipInstall: true, includeEnvironments: false }
         );
 
         fs.writeFileSync(filePath, JSON.stringify(invalidJson));
@@ -234,7 +234,9 @@ describe("@dataform/api/validate", () => {
           defaultSchema: "rock&roll",
           assertionSchema: "df_integration_test_assertions"
         })
-      ).to.throw(/Invalid value on property defaultSchema: rock&roll. Should only contain alphanumeric characters, underscores and\/or hyphens./);
+      ).to.throw(
+        /Invalid value on property defaultSchema: rock&roll. Should only contain alphanumeric characters, underscores and\/or hyphens./
+      );
     });
   });
 
