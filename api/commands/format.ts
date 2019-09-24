@@ -19,13 +19,17 @@ export async function formatFile(
   const fileText = await promisify(fs.readFile)(filename, "utf8");
   const fileExtension = filename.split(".").slice(-1)[0];
   const formattedText = (() => {
-    switch (fileExtension) {
-      case "sqlx":
-        return formatSqlx(constructSyntaxTree(fileText));
-      case "js":
-        return formatJavaScript(fileText);
-      default:
-        return fileText;
+    try {
+      switch (fileExtension) {
+        case "sqlx":
+          return formatSqlx(constructSyntaxTree(fileText));
+        case "js":
+          return formatJavaScript(fileText);
+        default:
+          return fileText;
+      }
+    } catch (e) {
+      throw new Error(`Unable to format "${filename}": ${e.message}`);
     }
   })();
   if (options && options.overwriteFile) {
