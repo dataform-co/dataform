@@ -4,7 +4,7 @@ const LEXER_STATE_NAMES = {
   SQL: "sql",
   JS_BLOCK: "jsBlock",
   JS_TEMPLATE_STRING: "jsTemplateString",
-  INNER_SQL_BLOCK: "incrementalBlock"
+  INNER_SQL_BLOCK: "innerSqlBlock"
 };
 
 const SQL_LEXER_TOKEN_NAMES = {
@@ -51,7 +51,7 @@ const INNER_SQL_BLOCK_LEXER_TOKEN_NAMES = {
   MULTI_LINE_COMMENT: LEXER_STATE_NAMES.INNER_SQL_BLOCK + "_multiLineComment",
   SINGLE_QUOTE_STRING: LEXER_STATE_NAMES.INNER_SQL_BLOCK + "_singleQuoteString",
   DOUBLE_QUOTE_STRING: LEXER_STATE_NAMES.INNER_SQL_BLOCK + "_doubleQuoteString",
-  START_JS_BLOCK: LEXER_STATE_NAMES.INNER_SQL_BLOCK + "_startJsBlock",
+  START_JS_PLACEHOLDER: LEXER_STATE_NAMES.INNER_SQL_BLOCK + "_startJsPlaceholder",
   CLOSE_BLOCK: LEXER_STATE_NAMES.INNER_SQL_BLOCK + "_closeBlock",
   ESCAPED_BACKTICK: LEXER_STATE_NAMES.INNER_SQL_BLOCK + "_escapedBacktick",
   BACKTICK: LEXER_STATE_NAMES.INNER_SQL_BLOCK + "_backtick",
@@ -59,6 +59,42 @@ const INNER_SQL_BLOCK_LEXER_TOKEN_NAMES = {
 };
 
 const lexer = moo.states(buildSqlxLexer());
+
+export interface ISyntaxTreeNode {
+  startTokenType: string;
+  contents: Array<string | ISyntaxTreeNode>;
+}
+
+function appendToNode(node: ISyntaxTreeNode, tokenValue: string) {
+  if (node.contents.length > 0 && typeof node.contents[node.contents.length - 1] === "string") {
+    node.contents[node.contents.length - 1] = node.contents[node.contents.length - 1] + tokenValue;
+    return;
+  }
+  node.contents.push(tokenValue);
+}
+
+export function constructSyntaxTree(code: string): ISyntaxTreeNode {
+  const parentNode: ISyntaxTreeNode = { startTokenType: "", contents: [] };
+  let currentNode = parentNode;
+  const nodeStack = [currentNode];
+  lexer.reset(code);
+  for (const token of lexer) {
+    if (token.type.includes("_close")) {
+      appendToNode(currentNode, token.value);
+      nodeStack.pop();
+      currentNode = nodeStack[nodeStack.length - 1];
+    } else if (token.type.includes("_start")) {
+      const newCurrentNode: ISyntaxTreeNode = { startTokenType: token.type, contents: [] };
+      appendToNode(newCurrentNode, token.value);
+      nodeStack.push(newCurrentNode);
+      currentNode.contents.push(newCurrentNode);
+      currentNode = newCurrentNode;
+    } else {
+      appendToNode(currentNode, token.value);
+    }
+  }
+  return parentNode;
+}
 
 export interface ISqlxParseResults {
   config: string;
@@ -70,7 +106,9 @@ export interface ISqlxParseResults {
   input: { [label: string]: string };
 }
 
+// TODO: Figure out if it's possible to bring parseSqlx() and constructSyntaxTree() together.
 export function parseSqlx(code: string): ISqlxParseResults {
+  const valueMappings = getValueMappings();
   const results: ISqlxParseResults = {
     config: "",
     js: "",
@@ -84,6 +122,9 @@ export function parseSqlx(code: string): ISqlxParseResults {
   const parseState = new SqlxParseState();
   lexer.reset(code);
   for (const token of lexer) {
+    if (valueMappings[token.type]) {
+      token.value = valueMappings[token.type](token.value);
+    }
     const previousState = parseState.currentState;
     const newState = parseState.computeState(token);
 
@@ -182,50 +223,61 @@ class SqlxParseState {
   }
 }
 
+function getValueMappings() {
+  const valueMappings: {
+    [tokenType: string]: (tokenValue: string) => string;
+  } = {};
+
+  valueMappings[SQL_LEXER_TOKEN_NAMES.START_CONFIG] = () => "{";
+  valueMappings[SQL_LEXER_TOKEN_NAMES.START_JS] = () => "";
+  valueMappings[SQL_LEXER_TOKEN_NAMES.START_INCREMENTAL] = () => "";
+  valueMappings[SQL_LEXER_TOKEN_NAMES.START_PRE_OPERATIONS] = () => "";
+  valueMappings[SQL_LEXER_TOKEN_NAMES.START_POST_OPERATIONS] = () => "";
+  valueMappings[SQL_LEXER_TOKEN_NAMES.START_INPUT] = (tokenValue: string) =>
+    tokenValue.split('"')[1];
+  valueMappings[SQL_LEXER_TOKEN_NAMES.STATEMENT_SEPERATOR] = () => "";
+  valueMappings[SQL_LEXER_TOKEN_NAMES.SINGLE_LINE_COMMENT] = (value: string) =>
+    value.replace(/`/g, "\\`").replace(/\${/g, "\\${");
+  valueMappings[SQL_LEXER_TOKEN_NAMES.MULTI_LINE_COMMENT] = (value: string) =>
+    value.replace(/`/g, "\\`").replace(/\${/g, "\\${");
+  valueMappings[SQL_LEXER_TOKEN_NAMES.BACKTICK] = () => "\\`";
+
+  valueMappings[INNER_SQL_BLOCK_LEXER_TOKEN_NAMES.STATEMENT_SEPERATOR] = () => "";
+  valueMappings[INNER_SQL_BLOCK_LEXER_TOKEN_NAMES.CLOSE_BLOCK] = () => "";
+  valueMappings[INNER_SQL_BLOCK_LEXER_TOKEN_NAMES.BACKTICK] = () => "\\`";
+
+  return valueMappings;
+}
+
 function buildSqlxLexer(): { [x: string]: moo.Rules } {
   const sqlLexer: moo.Rules = {};
   sqlLexer[SQL_LEXER_TOKEN_NAMES.START_CONFIG] = {
     match: "config {",
-    push: LEXER_STATE_NAMES.JS_BLOCK,
-    value: () => "{"
+    push: LEXER_STATE_NAMES.JS_BLOCK
   };
   sqlLexer[SQL_LEXER_TOKEN_NAMES.START_JS] = {
     match: "js {",
-    push: LEXER_STATE_NAMES.JS_BLOCK,
-    value: () => ""
+    push: LEXER_STATE_NAMES.JS_BLOCK
   };
   sqlLexer[SQL_LEXER_TOKEN_NAMES.START_INCREMENTAL] = {
     match: "incremental_where {",
-    push: LEXER_STATE_NAMES.INNER_SQL_BLOCK,
-    value: () => ""
+    push: LEXER_STATE_NAMES.INNER_SQL_BLOCK
   };
   sqlLexer[SQL_LEXER_TOKEN_NAMES.START_PRE_OPERATIONS] = {
     match: "pre_operations {",
-    push: LEXER_STATE_NAMES.INNER_SQL_BLOCK,
-    value: () => ""
+    push: LEXER_STATE_NAMES.INNER_SQL_BLOCK
   };
   sqlLexer[SQL_LEXER_TOKEN_NAMES.START_POST_OPERATIONS] = {
     match: "post_operations {",
-    push: LEXER_STATE_NAMES.INNER_SQL_BLOCK,
-    value: () => ""
+    push: LEXER_STATE_NAMES.INNER_SQL_BLOCK
   };
   sqlLexer[SQL_LEXER_TOKEN_NAMES.START_INPUT] = {
     match: /input "[a-zA-Z0-9_-]+" {/,
-    push: LEXER_STATE_NAMES.INNER_SQL_BLOCK,
-    value: (value: string) => value.split('"')[1]
+    push: LEXER_STATE_NAMES.INNER_SQL_BLOCK
   };
-  sqlLexer[SQL_LEXER_TOKEN_NAMES.STATEMENT_SEPERATOR] = {
-    match: /[^\S\r\n]*---[^\S\r\n]*$/,
-    value: () => ""
-  };
-  sqlLexer[SQL_LEXER_TOKEN_NAMES.SINGLE_LINE_COMMENT] = {
-    match: /--.*?$/,
-    value: (value: string) => value.replace(/`/g, "\\`").replace(/\${/g, "\\${")
-  };
-  sqlLexer[SQL_LEXER_TOKEN_NAMES.MULTI_LINE_COMMENT] = {
-    match: /\/\*[\s\S]*?\*\//,
-    value: (value: string) => value.replace(/`/g, "\\`").replace(/\${/g, "\\${")
-  };
+  sqlLexer[SQL_LEXER_TOKEN_NAMES.STATEMENT_SEPERATOR] = /[^\S\r\n]*---[^\S\r\n]*$/;
+  sqlLexer[SQL_LEXER_TOKEN_NAMES.SINGLE_LINE_COMMENT] = /--.*?$/;
+  sqlLexer[SQL_LEXER_TOKEN_NAMES.MULTI_LINE_COMMENT] = /\/\*[\s\S]*?\*\//;
   sqlLexer[SQL_LEXER_TOKEN_NAMES.SINGLE_QUOTE_STRING] = /'(?:\\['\\]|[^\n'\\])*'/;
   sqlLexer[SQL_LEXER_TOKEN_NAMES.DOUBLE_QUOTE_STRING] = /"(?:\\["\\]|[^\n"\\])*"/;
   sqlLexer[SQL_LEXER_TOKEN_NAMES.START_JS_PLACEHOLDER] = {
@@ -235,10 +287,7 @@ function buildSqlxLexer(): { [x: string]: moo.Rules } {
   sqlLexer[SQL_LEXER_TOKEN_NAMES.ESCAPED_BACKTICK] = {
     match: "\\`"
   };
-  sqlLexer[SQL_LEXER_TOKEN_NAMES.BACKTICK] = {
-    match: "`",
-    value: () => "\\`"
-  };
+  sqlLexer[SQL_LEXER_TOKEN_NAMES.BACKTICK] = "`";
   sqlLexer[SQL_LEXER_TOKEN_NAMES.CAPTURE_EVERYTHING_ELSE] = {
     match: /[\s\S]+?/,
     lineBreaks: true
@@ -278,10 +327,9 @@ function buildSqlxLexer(): { [x: string]: moo.Rules } {
   };
 
   const innerSqlBlockLexer: moo.Rules = {};
-  innerSqlBlockLexer[INNER_SQL_BLOCK_LEXER_TOKEN_NAMES.STATEMENT_SEPERATOR] = {
-    match: /[^\S\r\n]*---[^\S\r\n]*$/,
-    value: () => ""
-  };
+  innerSqlBlockLexer[
+    INNER_SQL_BLOCK_LEXER_TOKEN_NAMES.STATEMENT_SEPERATOR
+  ] = /[^\S\r\n]*---[^\S\r\n]*$/;
   innerSqlBlockLexer[INNER_SQL_BLOCK_LEXER_TOKEN_NAMES.SINGLE_LINE_COMMENT] = /--.*?$/;
   innerSqlBlockLexer[INNER_SQL_BLOCK_LEXER_TOKEN_NAMES.MULTI_LINE_COMMENT] = /\/\*[\s\S]*?\*\//;
   innerSqlBlockLexer[
@@ -290,22 +338,18 @@ function buildSqlxLexer(): { [x: string]: moo.Rules } {
   innerSqlBlockLexer[
     INNER_SQL_BLOCK_LEXER_TOKEN_NAMES.DOUBLE_QUOTE_STRING
   ] = /"(?:\\["\\]|[^\n"\\])*"/;
-  innerSqlBlockLexer[INNER_SQL_BLOCK_LEXER_TOKEN_NAMES.START_JS_BLOCK] = {
+  innerSqlBlockLexer[INNER_SQL_BLOCK_LEXER_TOKEN_NAMES.START_JS_PLACEHOLDER] = {
     match: "${",
     push: LEXER_STATE_NAMES.JS_BLOCK
   };
   innerSqlBlockLexer[INNER_SQL_BLOCK_LEXER_TOKEN_NAMES.CLOSE_BLOCK] = {
     match: "}",
-    pop: 1,
-    value: () => ""
+    pop: 1
   };
   innerSqlBlockLexer[INNER_SQL_BLOCK_LEXER_TOKEN_NAMES.ESCAPED_BACKTICK] = {
     match: "\\`"
   };
-  innerSqlBlockLexer[INNER_SQL_BLOCK_LEXER_TOKEN_NAMES.BACKTICK] = {
-    match: "`",
-    value: () => "\\`"
-  };
+  innerSqlBlockLexer[INNER_SQL_BLOCK_LEXER_TOKEN_NAMES.BACKTICK] = "`";
   innerSqlBlockLexer[INNER_SQL_BLOCK_LEXER_TOKEN_NAMES.CAPTURE_EVERYTHING_ELSE] = {
     match: /[\s\S]+?/,
     lineBreaks: true
