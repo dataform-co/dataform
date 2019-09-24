@@ -6,7 +6,6 @@
   "dependencies": {
     "@dataform/protos": "$DF_VERSION",
     "@dataform/sqlx": "$DF_VERSION",
-    "moo": "^0.5.0",
     "protobufjs": "^6.8.8"
   }
 }
