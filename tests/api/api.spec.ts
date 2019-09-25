@@ -824,26 +824,18 @@ drop something
 ---
 
 alter table
-  \${
-    tempTable
-  }
+  \${tempTable}
   rename to
-  \${
-    finalTableName
-  }
+  \${finalTableName}
 
 pre_operations {
   grant reader on
-  \${
-    self()
-  }
+  \${self()}
 
   ---
 
   select
-    \${
-      foo
-    }
+    \${foo}
     as bar
 }
 
@@ -852,9 +844,7 @@ incremental_where {
     select
       *
     from
-      \${
-        ref("foo")
-      }
+      \${ref("foo")}
   )
 }
 
