@@ -190,6 +190,13 @@ const builtYargs = createYargsCli({
             describe: "Whether to initialize a schedules.json file.",
             default: false
           }
+        },
+        {
+          name: "include-environments",
+          option: {
+            describe: "Whether to initialize a environments.json file.",
+            default: false
+          }
         }
       ],
       processFn: async argv => {
@@ -203,7 +210,8 @@ const builtYargs = createYargsCli({
             },
             {
               skipInstall: argv["skip-install"],
-              includeSchedules: argv["include-schedules"]
+              includeSchedules: argv["include-schedules"],
+              includeEnvironments: argv["include-environments"]
             }
           )
         );
