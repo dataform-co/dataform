@@ -824,19 +824,15 @@ drop something
 ---
 
 alter table
-  \${tempTable}
-  rename to
-  \${finalTableName}
+  \${tempTable} rename to \${finalTableName}
 
 pre_operations {
-  grant reader on
-  \${self()}
+  grant reader on \${self()}
 
   ---
 
   select
-    \${foo}
-    as bar
+    \${foo} as bar
 }
 
 incremental_where {
