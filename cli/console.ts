@@ -331,6 +331,25 @@ export function printExecutedAction(
   }
 }
 
+export function printFormatFilesResult(
+  formatResults: Array<{
+    filename: string;
+    err?: Error;
+  }>
+) {
+  const sorted = formatResults.sort((a, b) => a.filename.localeCompare(b.filename));
+  const successful = sorted.filter(result => !result.err);
+  const failed = sorted.filter(result => !!result.err);
+  if (successful.length > 0) {
+    printSuccess("Successfully formatted:");
+    successful.map(result => result.filename).forEach(filename => writeStdOut(filename, 1));
+  }
+  if (failed.length > 0) {
+    printError("Errors encountered during formatting:");
+    failed.forEach(failure => writeStdOut(`${failure.filename}: ${failure.err.message}`, 1));
+  }
+}
+
 export function printListTablesResult(tables: dataform.ITarget[]) {
   tables.forEach(foundTable => writeStdOut(`${foundTable.schema}.${foundTable.name}`));
 }
