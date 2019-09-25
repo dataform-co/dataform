@@ -821,8 +821,20 @@ where
 
 drop something
 
+---
+
+alter table
+  \${
+    tempTable
+  }
+  rename to
+  \${
+    finalTableName
+  }
+
 pre_operations {
-  grant reader on \${
+  grant reader on
+  \${
     self()
   }
 
@@ -831,7 +843,8 @@ pre_operations {
   select
     \${
       foo
-    } as bar
+    }
+    as bar
 }
 
 incremental_where {
