@@ -17,6 +17,24 @@ message ProjectConfig {
   string gcloud_project_id = 6;
 }
 
+message Environment {
+  string name = 1;
+  
+  message GitReference {
+    oneof git_reference {
+      string branch = 1;
+      string commit_sha = 2;
+    }
+  }
+
+  GitReference git_reference = 2;
+  ProjectConfig config_override = 3;
+}
+
+message Environments {
+  repeated Environment environments = 1;
+}
+
 message RunConfig {
   repeated string actions = 1;
   repeated string tags = 5;

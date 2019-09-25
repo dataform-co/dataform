@@ -19,8 +19,9 @@ export interface InitResult {
 }
 
 export interface InitOptions {
-  skipInstall?: boolean,
-  includeSchedules?: boolean
+  skipInstall?: boolean;
+  includeSchedules?: boolean;
+  includeEnvironments?: boolean;
 }
 
 export async function init(
@@ -32,6 +33,7 @@ export async function init(
   const packageJsonPath = path.join(projectDir, "package.json");
   const gitignorePath = path.join(projectDir, ".gitignore");
   const schedulesJsonPath = path.join(projectDir, "schedules.json");
+  const environmentsJsonPath = path.join(projectDir, "environments.json");
 
   if (fs.existsSync(dataformJsonPath) || fs.existsSync(packageJsonPath)) {
     throw new Error(
@@ -75,11 +77,13 @@ export async function init(
   if (options.includeSchedules) {
     fs.writeFileSync(
       schedulesJsonPath,
-      prettyJsonStringify(
-        dataform.schedules.SchedulesJSON.create({})
-      )
+      prettyJsonStringify(dataform.schedules.SchedulesJSON.create({}))
     );
     filesWritten.push(schedulesJsonPath);
+  }
+
+  if (options.includeEnvironments) {
+    fs.writeFileSync(environmentsJsonPath, prettyJsonStringify(dataform.Environments.create({})));
   }
 
   // Make the default models, includes folders.
