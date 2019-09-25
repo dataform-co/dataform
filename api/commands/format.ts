@@ -13,7 +13,7 @@ const JS_BEAUTIFY_OPTIONS: JsBeautifyOptions = {
 export async function formatFile(
   filename: string,
   options?: {
-    overwriteFile: boolean;
+    overwriteFile?: boolean;
   }
 ) {
   const fileText = await promisify(fs.readFile)(filename, "utf8");
@@ -33,32 +33,52 @@ export async function formatFile(
     }
   })();
   if (options && options.overwriteFile) {
-    await promisify(fs.writeFile)(filename, fileText);
+    await promisify(fs.writeFile)(filename, formattedText);
   }
   return formattedText;
 }
 
 function formatSqlx(node: ISyntaxTreeNode) {
-  const placeholders: {
-    [placeholderId: string]: ISyntaxTreeNode;
-  } = {};
-  const unformattedPlaceholderSql = node.contents
-    .map(child => {
-      if (typeof child !== "string") {
-        const placeholderId = crypto.randomBytes(16).toString("hex");
-        placeholders[placeholderId] = child;
-        return placeholderId;
-      }
-      return child;
-    })
-    .join("");
   return postProcessFormattedSqlx(
-    Object.keys(placeholders).reduce(
-      (partiallyFormattedSql, placeholderId) =>
-        formatPlaceholderInSqlx(placeholderId, placeholders[placeholderId], partiallyFormattedSql),
-      sqlFormatter.format(unformattedPlaceholderSql) as string
-    )
+    getIndividualSqlxStatements(node.contents)
+      .map(individualStatement => {
+        const placeholders: {
+          [placeholderId: string]: ISyntaxTreeNode;
+        } = {};
+        const unformattedPlaceholderSql = individualStatement
+          .map(child => {
+            if (typeof child !== "string") {
+              const placeholderId = crypto.randomBytes(16).toString("hex");
+              placeholders[placeholderId] = child;
+              return placeholderId;
+            }
+            return child;
+          })
+          .join("");
+        return Object.keys(placeholders).reduce(
+          (partiallyFormattedSql, placeholderId) =>
+            formatPlaceholderInSqlx(
+              placeholderId,
+              placeholders[placeholderId],
+              partiallyFormattedSql
+            ),
+          sqlFormatter.format(unformattedPlaceholderSql) as string
+        );
+      })
+      .join("\n\n---\n\n")
   );
+}
+
+function getIndividualSqlxStatements(nodeContents: Array<string | ISyntaxTreeNode>) {
+  const sqlxStatements: Array<Array<string | ISyntaxTreeNode>> = [[]];
+  nodeContents.forEach(child => {
+    if (typeof child !== "string" && child.startTokenType.endsWith("_statementSeparator")) {
+      sqlxStatements.push([]);
+    } else {
+      sqlxStatements[sqlxStatements.length - 1].push(child);
+    }
+  });
+  return sqlxStatements;
 }
 
 function formatJavaScript(text: string) {
@@ -71,16 +91,22 @@ function formatPlaceholderInSqlx(
   sqlx: string
 ) {
   const wholeLineContainingPlaceholderId = getWholeLineContainingPlaceholderId(placeholderId, sqlx);
-  // Figure out if the placeholder is on its own line; if so,
-  // replace the whole line, passing any necessary indentation.
-  const indentSize =
-    wholeLineContainingPlaceholderId.trim() === placeholderId
-      ? wholeLineContainingPlaceholderId.length - wholeLineContainingPlaceholderId.trimLeft().length
-      : 0;
+  // If the placeholder is the first non-whitespace on this line, use its current indentation.
+  const indentSize = wholeLineContainingPlaceholderId.trimLeft().startsWith(placeholderId)
+    ? wholeLineContainingPlaceholderId.length - wholeLineContainingPlaceholderId.trimLeft().length
+    : 0;
   const formattedChild = formatChildSyntaxTreeNode(placeholderSyntaxNode, indentSize);
+
+  // Figure out what text we need to replace.
+  // If the placeholder is the first non-whitespace text on this line, replace the placeholder
+  // and all preceding whitespace (on that line). Otherwise, replace just the placeholder.
+  const leftOfPlaceholder = wholeLineContainingPlaceholderId.slice(
+    0,
+    wholeLineContainingPlaceholderId.indexOf(placeholderId)
+  );
   const textToReplace =
-    wholeLineContainingPlaceholderId.trim() === placeholderId
-      ? wholeLineContainingPlaceholderId
+    leftOfPlaceholder.trim().length === 0
+      ? wholeLineContainingPlaceholderId.slice(0, leftOfPlaceholder.length + placeholderId.length)
       : placeholderId;
   return sqlx.replace(textToReplace, formattedChild);
 }
