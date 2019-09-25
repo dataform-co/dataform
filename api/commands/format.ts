@@ -90,28 +90,22 @@ function formatPlaceholderInSqlx(
   placeholderSyntaxNode: ISyntaxTreeNode,
   sqlx: string
 ) {
-  const wholeLineContainingPlaceholderId = getWholeLineContainingPlaceholderId(placeholderId, sqlx);
-  // If the placeholder is the first non-whitespace on this line, use its current indentation.
-  const indentSize = wholeLineContainingPlaceholderId.trimLeft().startsWith(placeholderId)
-    ? wholeLineContainingPlaceholderId.length - wholeLineContainingPlaceholderId.trimLeft().length
-    : 0;
-  const formattedChild = formatChildSyntaxTreeNode(placeholderSyntaxNode, indentSize);
-
-  // Figure out what text we need to replace.
-  // If the placeholder is the first non-whitespace text on this line, replace the placeholder
-  // and all preceding whitespace (on that line). Otherwise, replace just the placeholder.
-  const leftOfPlaceholder = wholeLineContainingPlaceholderId.slice(
-    0,
-    wholeLineContainingPlaceholderId.indexOf(placeholderId)
-  );
-  const textToReplace =
-    leftOfPlaceholder.trim().length === 0
-      ? wholeLineContainingPlaceholderId.slice(0, leftOfPlaceholder.length + placeholderId.length)
-      : placeholderId;
-  return sqlx.replace(textToReplace, formattedChild);
+  const wholeLine = getWholeLineContainingPlaceholderId(placeholderId, sqlx);
+  // Push placeholders to their own lines, if they're not already on one.
+  const [textBeforePlaceholder, textAfterPlaceholder] = wholeLine.split(placeholderId);
+  const newLines: string[] = [];
+  const indent = " ".repeat(wholeLine.length - wholeLine.trimLeft().length);
+  if (textBeforePlaceholder.trim().length > 0) {
+    newLines.push(`${indent}${textBeforePlaceholder.trim()}`);
+  }
+  newLines.push(formatChildSyntaxTreeNode(placeholderSyntaxNode, indent));
+  if (textAfterPlaceholder.trim().length > 0) {
+    newLines.push(`${indent}${textAfterPlaceholder.trim()}`);
+  }
+  return sqlx.replace(wholeLine, newLines.join("\n"));
 }
 
-function formatChildSyntaxTreeNode(node: ISyntaxTreeNode, jsIndent: number): string {
+function formatChildSyntaxTreeNode(node: ISyntaxTreeNode, jsIndent: string): string {
   switch (node.contentType) {
     case "jsPlaceholder":
       return formatJavaScriptPlaceholder(node, jsIndent);
@@ -145,12 +139,12 @@ ${lastBraceOnwards}
   }
 }
 
-function formatJavaScriptPlaceholder(node: ISyntaxTreeNode, jsIndent: number = 0) {
+function formatJavaScriptPlaceholder(node: ISyntaxTreeNode, jsIndent: string = "") {
   const formattedJs = formatJavaScript(concatenateSyntaxTreeContents(node));
   const afterFirstBrace = formattedJs.slice(formattedJs.indexOf("{") + 1);
   return `\${${afterFirstBrace}`
     .split("\n")
-    .map(line => `${" ".repeat(jsIndent)}${line}`)
+    .map(line => `${jsIndent}${line}`)
     .join("\n");
 }
 
