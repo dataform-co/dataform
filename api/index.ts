@@ -1,6 +1,7 @@
 import { build, Builder } from "./commands/build";
 import { compile } from "./commands/compile";
 import * as credentials from "./commands/credentials";
+import * as format from "./commands/format";
 import { init } from "./commands/init";
 import { install } from "./commands/install";
 import * as query from "./commands/query";
@@ -22,5 +23,6 @@ export {
   validateSchedules,
   validateSchedulesFileIfExists,
   Runner,
-  Builder
+  Builder,
+  format
 };
