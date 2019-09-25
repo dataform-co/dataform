@@ -72,7 +72,7 @@ function formatSqlx(node: ISyntaxTreeNode) {
 function getIndividualSqlxStatements(nodeContents: Array<string | ISyntaxTreeNode>) {
   const sqlxStatements: Array<Array<string | ISyntaxTreeNode>> = [[]];
   nodeContents.forEach(child => {
-    if (typeof child !== "string" && child.startTokenType.endsWith("_statementSeparator")) {
+    if (typeof child !== "string" && child.contentType === "sqlStatementSeparator") {
       sqlxStatements.push([]);
     } else {
       sqlxStatements[sqlxStatements.length - 1].push(child);
@@ -112,24 +112,24 @@ function formatPlaceholderInSqlx(
 }
 
 function formatChildSyntaxTreeNode(node: ISyntaxTreeNode, jsIndent: number): string {
-  if (node.startTokenType.endsWith("_startJsPlaceholder")) {
-    return formatJavaScriptPlaceholder(node, jsIndent);
-  }
-  if (node.startTokenType.endsWith("_startJs") || node.startTokenType.endsWith("_startConfig")) {
-    return `\n\n${formatJavaScript(concatenateSyntaxTreeContents(node))}\n\n`;
-  }
-  // This node must be an "inner" SQL block, e.g. "pre_operations { ... }",
-  // so strip out the declaration of that block, format the internals,
-  // then add the declaration back.
-  const firstPart = node.contents[0] as string;
-  const upToFirstBrace = firstPart.slice(0, firstPart.indexOf("{") + 1);
-  node.contents[0] = firstPart.slice(firstPart.indexOf("{") + 1);
+  switch (node.contentType) {
+    case "jsPlaceholder":
+      return formatJavaScriptPlaceholder(node, jsIndent);
+    case "js":
+      return `\n\n${formatJavaScript(concatenateSyntaxTreeContents(node))}\n\n`;
+    case "sql": {
+      // This node must be an "inner" SQL block, e.g. "pre_operations { ... }",
+      // so strip out the declaration of that block, format the internals,
+      // then add the declaration back.
+      const firstPart = node.contents[0] as string;
+      const upToFirstBrace = firstPart.slice(0, firstPart.indexOf("{") + 1);
+      node.contents[0] = firstPart.slice(firstPart.indexOf("{") + 1);
 
-  const lastPart = node.contents[node.contents.length - 1] as string;
-  const lastBraceOnwards = lastPart.slice(lastPart.lastIndexOf("}"));
-  node.contents[node.contents.length - 1] = lastPart.slice(0, lastPart.lastIndexOf("}"));
+      const lastPart = node.contents[node.contents.length - 1] as string;
+      const lastBraceOnwards = lastPart.slice(lastPart.lastIndexOf("}"));
+      node.contents[node.contents.length - 1] = lastPart.slice(0, lastPart.lastIndexOf("}"));
 
-  return `\n
+      return `\n
 ${upToFirstBrace}
 ${formatSqlx(node)
   .split("\n")
@@ -138,6 +138,11 @@ ${formatSqlx(node)
   .trimRight()}
 ${lastBraceOnwards}
 \n`;
+    }
+    default:
+      // This shouldn't happen, but if it does, handle it by simply returning unformatted text.
+      return concatenateSyntaxTreeContents(node);
+  }
 }
 
 function formatJavaScriptPlaceholder(node: ISyntaxTreeNode, jsIndent: number = 0) {

@@ -61,7 +61,7 @@ const INNER_SQL_BLOCK_LEXER_TOKEN_NAMES = {
 const lexer = moo.states(buildSqlxLexer());
 
 export interface ISyntaxTreeNode {
-  startTokenType: string;
+  contentType: "sql" | "js" | "jsPlaceholder" | "sqlStatementSeparator";
   contents: Array<string | ISyntaxTreeNode>;
 }
 
@@ -74,7 +74,7 @@ function appendToNode(node: ISyntaxTreeNode, tokenValue: string) {
 }
 
 export function constructSyntaxTree(code: string): ISyntaxTreeNode {
-  const parentNode: ISyntaxTreeNode = { startTokenType: "", contents: [] };
+  const parentNode: ISyntaxTreeNode = { contentType: "sql", contents: [] };
   let currentNode = parentNode;
   const nodeStack = [currentNode];
   lexer.reset(code);
@@ -84,14 +84,26 @@ export function constructSyntaxTree(code: string): ISyntaxTreeNode {
       nodeStack.pop();
       currentNode = nodeStack[nodeStack.length - 1];
     } else if (token.type.includes("_start")) {
-      const newCurrentNode: ISyntaxTreeNode = { startTokenType: token.type, contents: [] };
+      const contentType =
+        token.type.includes("_startJs") || token.type.includes("_startConfig")
+          ? token.type.includes("_startJsPlaceholder")
+            ? "jsPlaceholder"
+            : "js"
+          : "sql";
+      if (contentType === "sql" && currentNode.contentType !== "sql") {
+        throw new Error("'sql' syntax tree nodes may only be children of other 'sql' nodes.");
+      }
+      const newCurrentNode: ISyntaxTreeNode = {
+        contentType,
+        contents: []
+      };
       appendToNode(newCurrentNode, token.value);
       nodeStack.push(newCurrentNode);
       currentNode.contents.push(newCurrentNode);
       currentNode = newCurrentNode;
     } else if (token.type.endsWith("_statementSeparator")) {
       currentNode.contents.push({
-        startTokenType: token.type,
+        contentType: "sqlStatementSeparator",
         contents: [token.value]
       });
     } else {
