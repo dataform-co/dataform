@@ -791,7 +791,7 @@ describe("@dataform/api", () => {
       await format.formatFile(
         path.resolve("df/examples/never_finishes_compiling/definitions/test.js")
       )
-    ).eql("while (true) {}");
+    ).eql("while (true) {}\n");
     expect(
       await format.formatFile(
         path.resolve("df/examples/common_v2/definitions/example_assertion_with_tags.sqlx")
@@ -802,11 +802,17 @@ describe("@dataform/api", () => {
 }
 
 js {
-  const foo = "something!";
+  const foo =
+    "something!";
 }
 
 select
-  *
+  CAST(
+    REGEXP_EXTRACT(
+      "",
+      r'^/([0-9]+)\\'/.*'
+    ) AS INT64
+  ) AS project_id
 from
   \${
     ref({
@@ -832,7 +838,11 @@ pre_operations {
   ---
 
   select
-    \${foo} as bar
+    \${foo} as bar,
+    REGEXP_EXTRACT(
+      "",
+      r"^/([0-9]+)\\"/.*"
+    ) AS project_id
 }
 
 incremental_where {

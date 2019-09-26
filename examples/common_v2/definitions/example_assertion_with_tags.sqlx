@@ -7,7 +7,7 @@ js {
            "something!";
 }
 
-select * from ${ref({ schema: "df_integration_test", name: "sample_data" })} 
+select CAST(REGEXP_EXTRACT("", r'^/([0-9]+)\'/.*') AS INT64) AS project_id from ${ref({ schema: "df_integration_test", name: "sample_data" })} 
 where sample = 100
    ---
 
@@ -23,7 +23,7 @@ pre_operations {
 
               grant reader on ${self()}
               ---
-     select ${foo} as bar
+     select ${foo} as bar, REGEXP_EXTRACT("", r"^/([0-9]+)\"/.*") AS project_id
        }
 
 
