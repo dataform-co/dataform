@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { build, compile, credentials, init, run, table, test } from "@dataform/api";
+import { build, compile, credentials, format, init, run, table, test } from "@dataform/api";
 import { prettyJsonStringify } from "@dataform/api/utils";
 import {
   print,
@@ -8,6 +8,7 @@ import {
   printError,
   printExecutedAction,
   printExecutionGraph,
+  printFormatFilesResult,
   printGetTableResult,
   printInitCredsResult,
   printInitResult,
@@ -28,10 +29,15 @@ import { supportsCancel, WarehouseType } from "@dataform/core/adapters";
 import { dataform } from "@dataform/protos";
 import * as chokidar from "chokidar";
 import * as fs from "fs";
+import * as glob from "glob";
 import * as path from "path";
 import * as yargs from "yargs";
 
 const RECOMPILE_DELAY = 500;
+
+process.on("unhandledRejection", reason =>
+  printError("Unhandled promise rejection:", reason.stack || reason)
+);
 
 const projectDirOption: INamedOption<yargs.PositionalOptions> = {
   name: "project-dir",
@@ -507,6 +513,35 @@ const builtYargs = createYargsCli({
 
         runner.onChange(printExecutedGraph);
         printExecutedGraph(await runner.resultPromise());
+      }
+    },
+    {
+      format: "format [project-dir]",
+      description: "Format the dataform project's files.",
+      positionalOptions: [projectDirMustExistOption],
+      options: [],
+      processFn: async argv => {
+        const filenames = glob.sync("{definitions,includes}/**/*.{js,sqlx}", {
+          cwd: argv["project-dir"]
+        });
+        const results = await Promise.all(
+          filenames.map(async filename => {
+            try {
+              await format.formatFile(path.resolve(argv["project-dir"], filename), {
+                overwriteFile: true
+              });
+              return {
+                filename
+              };
+            } catch (e) {
+              return {
+                filename,
+                err: e
+              };
+            }
+          })
+        );
+        printFormatFilesResult(results);
       }
     },
     {
