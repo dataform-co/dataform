@@ -24,7 +24,7 @@ export async function formatFile(
         case "sqlx":
           return formatSqlx(constructSyntaxTree(fileText));
         case "js":
-          return formatJavaScript(fileText);
+          return `${formatJavaScript(fileText).trim()}\n`;
         default:
           return fileText;
       }
