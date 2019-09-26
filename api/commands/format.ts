@@ -11,6 +11,8 @@ const JS_BEAUTIFY_OPTIONS: JsBeautifyOptions = {
   max_preserve_newlines: 2
 };
 
+const TEXT_LIFT_PATTERNS = [/r'(\\['\\]|[^\n'\\])*'/, /"(\\["\\]|[^\n"\\])*"/];
+
 export async function formatFile(
   filename: string,
   options?: {
@@ -44,27 +46,14 @@ function formatSqlx(node: ISyntaxTreeNode) {
     getIndividualSqlxStatements(node.contents)
       .map(individualStatement => {
         const placeholders: {
-          [placeholderId: string]: ISyntaxTreeNode;
+          [placeholderId: string]: ISyntaxTreeNode | string;
         } = {};
-        const unformattedPlaceholderSql = individualStatement
-          .map(child => {
-            if (typeof child !== "string") {
-              const placeholderId = crypto.randomBytes(16).toString("hex");
-              placeholders[placeholderId] = child;
-              return placeholderId;
-            }
-            return child;
-          })
-          .join("");
-        return Object.keys(placeholders).reduce(
-          (partiallyFormattedSql, placeholderId) =>
-            formatPlaceholderInSqlx(
-              placeholderId,
-              placeholders[placeholderId],
-              partiallyFormattedSql
-            ),
-          sqlFormatter.format(unformattedPlaceholderSql) as string
-        );
+        const unformattedPlaceholderSql = stripUnformattableText(
+          individualStatement,
+          placeholders
+        ).join("");
+        const formattedPlaceholderSql = sqlFormatter.format(unformattedPlaceholderSql) as string;
+        return replacePlaceholders(formattedPlaceholderSql, placeholders);
       })
       .join("\n\n---\n\n")
   );
@@ -80,6 +69,48 @@ function getIndividualSqlxStatements(nodeContents: Array<string | ISyntaxTreeNod
     }
   });
   return sqlxStatements;
+}
+
+function stripUnformattableText(
+  sqlxStatementParts: Array<string | ISyntaxTreeNode>,
+  placeholders: {
+    [placeholderId: string]: ISyntaxTreeNode | string;
+  }
+) {
+  return sqlxStatementParts.map(part => {
+    if (typeof part !== "string") {
+      const placeholderId = generatePlaceholderId();
+      placeholders[placeholderId] = part;
+      return placeholderId;
+    }
+    for (const pattern of TEXT_LIFT_PATTERNS) {
+      while (part.match(pattern)) {
+        const placeholderId = generatePlaceholderId();
+        placeholders[placeholderId] = part.match(pattern)[0];
+        part = part.replace(pattern, placeholderId);
+      }
+    }
+    return part;
+  });
+}
+
+function generatePlaceholderId() {
+  return crypto.randomBytes(16).toString("hex");
+}
+
+function replacePlaceholders(
+  formattedSql: string,
+  placeholders: {
+    [placeholderId: string]: ISyntaxTreeNode | string;
+  }
+) {
+  return Object.keys(placeholders).reduce((partiallyFormattedSql, placeholderId) => {
+    const placeholderValue = placeholders[placeholderId];
+    if (typeof placeholderValue === "string") {
+      return partiallyFormattedSql.replace(placeholderId, placeholderValue);
+    }
+    return formatPlaceholderInSqlx(placeholderId, placeholderValue, partiallyFormattedSql);
+  }, formattedSql);
 }
 
 function formatJavaScript(text: string) {
