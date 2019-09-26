@@ -91,14 +91,19 @@ function formatPlaceholderInSqlx(
   sqlx: string
 ) {
   const wholeLine = getWholeLineContainingPlaceholderId(placeholderId, sqlx);
-  // Push placeholders to their own lines, if they're not already on one.
+  const indent = " ".repeat(wholeLine.length - wholeLine.trimLeft().length);
+  const formattedPlaceholder = formatChildSyntaxTreeNode(placeholderSyntaxNode, indent);
+  // If the formatted placeholder doesn't include linebreaks, just replace it entirely.
+  if (!formattedPlaceholder.includes("\n")) {
+    return sqlx.replace(placeholderId, formattedPlaceholder.trim());
+  }
+  // Push multi-line placeholders to their own lines, if they're not already on one.
   const [textBeforePlaceholder, textAfterPlaceholder] = wholeLine.split(placeholderId);
   const newLines: string[] = [];
-  const indent = " ".repeat(wholeLine.length - wholeLine.trimLeft().length);
   if (textBeforePlaceholder.trim().length > 0) {
     newLines.push(`${indent}${textBeforePlaceholder.trim()}`);
   }
-  newLines.push(formatChildSyntaxTreeNode(placeholderSyntaxNode, indent));
+  newLines.push(formattedPlaceholder);
   if (textAfterPlaceholder.trim().length > 0) {
     newLines.push(`${indent}${textAfterPlaceholder.trim()}`);
   }
@@ -141,8 +146,15 @@ ${lastBraceOnwards}
 
 function formatJavaScriptPlaceholder(node: ISyntaxTreeNode, jsIndent: string = "") {
   const formattedJs = formatJavaScript(concatenateSyntaxTreeContents(node));
-  const afterFirstBrace = formattedJs.slice(formattedJs.indexOf("{") + 1);
-  return `\${${afterFirstBrace}`
+  const textInsideBraces = formattedJs.slice(
+    formattedJs.indexOf("{") + 1,
+    formattedJs.lastIndexOf("}")
+  );
+  // If the formatted JS is only a single line, trim all whitespace so that it stays a single line.
+  const finalJs = textInsideBraces.trim().includes("\n")
+    ? `\${${textInsideBraces}}`
+    : `\${${textInsideBraces.trim()}}`;
+  return finalJs
     .split("\n")
     .map(line => `${jsIndent}${line}`)
     .join("\n");
