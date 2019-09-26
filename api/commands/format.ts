@@ -7,7 +7,8 @@ import { promisify } from "util";
 
 const JS_BEAUTIFY_OPTIONS: JsBeautifyOptions = {
   indent_size: 2,
-  preserve_newlines: false
+  preserve_newlines: true,
+  max_preserve_newlines: 2
 };
 
 export async function formatFile(
@@ -24,7 +25,7 @@ export async function formatFile(
         case "sqlx":
           return formatSqlx(constructSyntaxTree(fileText));
         case "js":
-          return formatJavaScript(fileText);
+          return `${formatJavaScript(fileText).trim()}\n`;
         default:
           return fileText;
       }
