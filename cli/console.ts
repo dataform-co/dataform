@@ -338,15 +338,17 @@ export function printFormatFilesResult(
   }>
 ) {
   const sorted = formatResults.sort((a, b) => a.filename.localeCompare(b.filename));
-  const successful = sorted.filter(result => !result.err);
-  const failed = sorted.filter(result => !!result.err);
-  if (successful.length > 0) {
+  const successfulFormatResults = sorted.filter(result => !result.err);
+  const failedFormatResults = sorted.filter(result => !!result.err);
+  if (successfulFormatResults.length > 0) {
     printSuccess("Successfully formatted:");
-    successful.map(result => result.filename).forEach(filename => writeStdOut(filename, 1));
+    successfulFormatResults.forEach(result => writeStdOut(result.filename, 1));
   }
-  if (failed.length > 0) {
+  if (failedFormatResults.length > 0) {
     printError("Errors encountered during formatting:");
-    failed.forEach(failure => writeStdOut(`${failure.filename}: ${failure.err.message}`, 1));
+    failedFormatResults.forEach(result =>
+      writeStdOut(`${result.filename}: ${result.err.message}`, 1)
+    );
   }
 }
 
