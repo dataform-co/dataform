@@ -7,7 +7,8 @@ import { promisify } from "util";
 
 const JS_BEAUTIFY_OPTIONS: JsBeautifyOptions = {
   indent_size: 2,
-  preserve_newlines: false
+  preserve_newlines: true,
+  max_preserve_newlines: 2
 };
 
 export async function formatFile(
