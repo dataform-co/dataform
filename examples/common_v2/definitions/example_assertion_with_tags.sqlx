@@ -25,6 +25,15 @@ drop something
 SELECT
     MAX((SELECT SUM(IF(track.event="event_viewed_project_with_connection",1,0)) FROM UNNEST(records)))>0 as created_project
 
+---
+
+SELECT
+  SUM(
+  IF
+    ( session_start_event,
+      1,
+      0 ) ) AS session_index
+
 pre_operations {
 
               grant reader on ${self()}
