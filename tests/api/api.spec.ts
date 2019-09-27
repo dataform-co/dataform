@@ -847,6 +847,11 @@ SELECT
     )
   ) > 0 as created_project
 
+---
+
+SELECT
+  SUM(IF (session_start_event, 1, 0)) AS session_index
+
 pre_operations {
   grant reader on \${self()}
 
