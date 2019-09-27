@@ -11,7 +11,7 @@ const JS_BEAUTIFY_OPTIONS: JsBeautifyOptions = {
   max_preserve_newlines: 2
 };
 
-const TEXT_LIFT_PATTERNS = [/r'(\\['\\]|[^\n'\\])*'/, /"(\\["\\]|[^\n"\\])*"/];
+const TEXT_LIFT_PATTERNS = [/r'(\\['\\]|[^\n'\\])*'/, /r"(\\["\\]|[^\n"\\])*"/];
 
 export async function formatFile(
   filename: string,
@@ -54,7 +54,7 @@ function formatSqlx(node: ISyntaxTreeNode, indent: string = "") {
         individualStatement,
         placeholders
       ).join("");
-      const formattedPlaceholderSql = sqlFormatter.format(unformattedPlaceholderSql) as string;
+      const formattedPlaceholderSql = formatSql(unformattedPlaceholderSql);
       return formatEveryLine(
         replacePlaceholders(formattedPlaceholderSql, placeholders),
         line => `${indent}${line}`
@@ -119,6 +119,10 @@ function replacePlaceholders(
 
 function formatJavaScript(text: string) {
   return jsBeautify.js(text, JS_BEAUTIFY_OPTIONS);
+}
+
+function formatSql(text: string) {
+  return sqlFormatter.format(text) as string;
 }
 
 function formatPlaceholderInSqlx(
