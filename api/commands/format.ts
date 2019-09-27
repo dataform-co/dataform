@@ -19,22 +19,25 @@ export async function formatFile(
     overwriteFile?: boolean;
   }
 ) {
-  const fileText = await promisify(fs.readFile)(filename, "utf8");
   const fileExtension = filename.split(".").slice(-1)[0];
-  const formattedText = (() => {
+  const format = (text: string) => {
     try {
       switch (fileExtension) {
         case "sqlx":
-          return formatSqlx(constructSyntaxTree(fileText));
+          return postProcessFormattedSqlx(formatSqlx(constructSyntaxTree(text)));
         case "js":
-          return `${formatJavaScript(fileText).trim()}\n`;
+          return `${formatJavaScript(text).trim()}\n`;
         default:
-          return fileText;
+          return text;
       }
     } catch (e) {
       throw new Error(`Unable to format "${filename}": ${e.message}`);
     }
-  })();
+  };
+  const formattedText = format(await promisify(fs.readFile)(filename, "utf8"));
+  if (formattedText !== format(formattedText)) {
+    throw new Error("Formatter unable to determine final formatted form.");
+  }
   if (options && options.overwriteFile) {
     await promisify(fs.writeFile)(filename, formattedText);
   }
@@ -42,21 +45,19 @@ export async function formatFile(
 }
 
 function formatSqlx(node: ISyntaxTreeNode) {
-  return postProcessFormattedSqlx(
-    getIndividualSqlxStatements(node.contents)
-      .map(individualStatement => {
-        const placeholders: {
-          [placeholderId: string]: ISyntaxTreeNode | string;
-        } = {};
-        const unformattedPlaceholderSql = stripUnformattableText(
-          individualStatement,
-          placeholders
-        ).join("");
-        const formattedPlaceholderSql = sqlFormatter.format(unformattedPlaceholderSql) as string;
-        return replacePlaceholders(formattedPlaceholderSql, placeholders);
-      })
-      .join("\n\n---\n\n")
-  );
+  return getIndividualSqlxStatements(node.contents)
+    .map(individualStatement => {
+      const placeholders: {
+        [placeholderId: string]: ISyntaxTreeNode | string;
+      } = {};
+      const unformattedPlaceholderSql = stripUnformattableText(
+        individualStatement,
+        placeholders
+      ).join("");
+      const formattedPlaceholderSql = sqlFormatter.format(unformattedPlaceholderSql) as string;
+      return replacePlaceholders(formattedPlaceholderSql, placeholders);
+    })
+    .join("\n\n---\n\n");
 }
 
 function getIndividualSqlxStatements(nodeContents: Array<string | ISyntaxTreeNode>) {
