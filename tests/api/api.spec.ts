@@ -808,10 +808,7 @@ js {
 
 select
   CAST(
-    REGEXP_EXTRACT(
-      "",
-      r'^/([0-9]+)\\'/.*'
-    ) AS INT64
+    REGEXP_EXTRACT("", r'^/([0-9]+)\\'/.*') AS INT64
   ) AS project_id
 from
   \${
@@ -832,6 +829,24 @@ drop something
 alter table
   \${tempTable} rename to \${finalTableName}
 
+---
+
+SELECT
+  MAX(
+    (
+      SELECT
+        SUM(
+          IF(
+            track.event = "event_viewed_project_with_connection",
+            1,
+            0
+          )
+        )
+      FROM
+        UNNEST(records)
+    )
+  ) > 0 as created_project
+
 pre_operations {
   grant reader on \${self()}
 
@@ -839,10 +854,7 @@ pre_operations {
 
   select
     \${foo} as bar,
-    REGEXP_EXTRACT(
-      "",
-      r"^/([0-9]+)\\"/.*"
-    ) AS project_id
+    REGEXP_EXTRACT("", r"^/([0-9]+)\\"/.*") AS project_id
 }
 
 incremental_where {
