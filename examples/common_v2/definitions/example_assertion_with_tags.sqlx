@@ -19,6 +19,12 @@ drop something
 
      alter table ${tempTable} rename to ${finalTableName}
 
+
+---
+
+SELECT
+    MAX((SELECT SUM(IF(track.event="event_viewed_project_with_connection",1,0)) FROM UNNEST(records)))>0 as created_project
+
 pre_operations {
 
               grant reader on ${self()}
