@@ -857,6 +857,10 @@ incremental_where {
 input "something" {
   select
     1 as test
+    /* something */
+    /* something
+    else      */
+    -- and another thing
 }
 `);
   });
