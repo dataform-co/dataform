@@ -61,7 +61,7 @@ const INNER_SQL_BLOCK_LEXER_TOKEN_NAMES = {
 const lexer = moo.states(buildSqlxLexer());
 
 export interface ISyntaxTreeNode {
-  contentType: "sql" | "js" | "jsPlaceholder" | "sqlStatementSeparator";
+  contentType: "sql" | "js" | "jsPlaceholder" | "sqlStatementSeparator" | "sqlComment";
   contents: Array<string | ISyntaxTreeNode>;
 }
 
@@ -104,6 +104,14 @@ export function constructSyntaxTree(code: string): ISyntaxTreeNode {
     } else if (token.type.endsWith("_statementSeparator")) {
       currentNode.contents.push({
         contentType: "sqlStatementSeparator",
+        contents: [token.value]
+      });
+    } else if (
+      (token.type.startsWith("sql") || token.type.startsWith("innerSqlBlock")) &&
+      token.type.endsWith("Comment")
+    ) {
+      currentNode.contents.push({
+        contentType: "sqlComment",
         contents: [token.value]
       });
     } else {
