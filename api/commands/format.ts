@@ -130,18 +130,26 @@ function stripUnformattableText(
 ) {
   return sqlxStatementParts.map(part => {
     if (typeof part !== "string") {
-      if (part.contentType !== "jsPlaceholder" && part.contentType !== "sqlComment") {
-        throw new Error(
-          `Misplaced syntax node content type inside SQLX query: ${part.contentType}`
-        );
+      const placeholderId = generatePlaceholderId();
+      switch (part.contentType) {
+        case "jsPlaceholder": {
+          placeholders[placeholderId] = part;
+          return placeholderId;
+        }
+        case "sqlComment": {
+          // sql-formatter knows how to format comments (as long as they keep to a single line);
+          // give it a hint.
+          const commentPlaceholderId = concatenateSyntaxTreeContents(part).startsWith("--")
+            ? `--${placeholderId}`
+            : `/*${placeholderId}*/`;
+          placeholders[commentPlaceholderId] = part;
+          return commentPlaceholderId;
+        }
+        default:
+          throw new Error(
+            `Misplaced syntax node content type inside SQLX query: ${part.contentType}`
+          );
       }
-      // sql-formatter knows how to format single-line comments; give it a hint.
-      const placeholderId =
-        part.contentType === "sqlComment"
-          ? `--${generatePlaceholderId()}`
-          : generatePlaceholderId();
-      placeholders[placeholderId] = part;
-      return placeholderId;
     }
     for (const pattern of TEXT_LIFT_PATTERNS) {
       while (part.match(pattern)) {
@@ -253,7 +261,8 @@ function formatEveryLine(text: string, mapFn: (line: string) => string) {
 }
 
 function getWholeLineContainingPlaceholderId(placeholderId: string, text: string) {
-  return text.match(new RegExp(".*" + placeholderId + ".*"))[0];
+  const regexpEscapedPlaceholderId = placeholderId.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return text.match(new RegExp(".*" + regexpEscapedPlaceholderId + ".*"))[0];
 }
 
 function concatenateSyntaxTreeContents(node: ISyntaxTreeNode): string {
