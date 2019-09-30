@@ -786,17 +786,13 @@ describe("@dataform/api", () => {
     });
   });
 
-  it("formatter2", async () => {
-    expect(
-      await format.formatFile(
-        path.resolve("df/examples/never_finishes_compiling/definitions/test.js")
-      )
-    ).eql("while (true) {}\n");
-    expect(
-      await format.formatFile(
-        path.resolve("df/examples/common_v2/definitions/example_assertion_with_tags.sqlx")
-      )
-    ).eql(`config {
+  describe("formatter", () => {
+    it("correctly formats a file", async () => {
+      expect(
+        await format.formatFile(
+          path.resolve("df/examples/formatter/definitions/example_assertion_with_tags.sqlx")
+        )
+      ).eql(`config {
   type: "assertion",
   tags: ["tag1", "tag2"]
 }
@@ -883,5 +879,6 @@ input "something" {
     -- and another thing
 }
 `);
+    });
   });
 });
