@@ -787,25 +787,20 @@ describe("@dataform/api", () => {
   });
 
   describe("formatter", () => {
-    it("correctly formats a file", async () => {
-      expect(
-        await format.formatFile(
-          path.resolve("df/examples/formatter/definitions/example_assertion_with_tags.sqlx")
-        )
-      ).eql(`config {
-  type: "assertion",
+    it("correctly formats simple.sqlx", async () => {
+      expect(await format.formatFile(path.resolve("df/examples/formatter/definitions/simple.sqlx")))
+        .eql(`config {
+  type: "view",
   tags: ["tag1", "tag2"]
 }
 
 js {
   const foo =
-    "something!";
+    jsFunction("table");
 }
 
 select
-  CAST(
-    REGEXP_EXTRACT("", r'^/([0-9]+)\\'/.*') AS INT64
-  ) AS project_id
+  1
 from
   \${
     ref({
@@ -813,10 +808,20 @@ from
       name: "sample_data"
     })
   }
-where
-  sample = 100
+`);
+    });
 
----
+    it("correctly formats multiple_queries.sqlx", async () => {
+      expect(
+        await format.formatFile(
+          path.resolve("df/examples/formatter/definitions/multiple_queries.sqlx")
+        )
+      ).eql(`js {
+  var tempTable = "yay"
+  const colname = "column";
+
+  let finalTableName = 'dkaodihwada';
+}
 
 drop something
 
@@ -826,6 +831,42 @@ alter table
   \${tempTable} rename to \${finalTableName}
 
 ---
+
+SELECT
+  SUM(IF (session_start_event, 1, 0)) AS session_index
+`);
+    });
+
+    it("correctly formats bigquery_regexps.sqlx", async () => {
+      expect(
+        await format.formatFile(
+          path.resolve("df/examples/formatter/definitions/bigquery_regexps.sqlx")
+        )
+      ).eql(`config {
+  type: "operation",
+  tags: ["tag1", "tag2"]
+}
+
+select
+  CAST(
+    REGEXP_EXTRACT("", r'^/([0-9]+)\\'/.*') AS INT64
+  ) AS id,
+  CAST(
+    REGEXP_EXTRACT("", r"^/([0-9]+)\\"/.*") AS INT64
+  ) AS id2
+from
+  \${ref("dab")}
+where
+  sample = 100
+`);
+    });
+
+    it("correctly formats comments.sqlx", async () => {
+      expect(
+        await format.formatFile(path.resolve("df/examples/formatter/definitions/comments.sqlx"))
+      ).eql(`config {
+  type: "test",
+}
 
 SELECT
   MAX(
@@ -845,30 +886,6 @@ SELECT
   /* multi line
   comment      */
   2 as foo
-
----
-
-SELECT
-  SUM(IF (session_start_event, 1, 0)) AS session_index
-
-pre_operations {
-  grant reader on \${self()}
-
-  ---
-
-  select
-    \${foo} as bar,
-    REGEXP_EXTRACT("", r"^/([0-9]+)\\"/.*") AS project_id
-}
-
-incremental_where {
-  col in (
-    select
-      *
-    from
-      \${ref("foo")}
-  )
-}
 
 input "something" {
   select
