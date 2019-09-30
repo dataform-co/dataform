@@ -11,7 +11,9 @@ const JS_BEAUTIFY_OPTIONS: JsBeautifyOptions = {
   max_preserve_newlines: 2
 };
 
-const TEXT_LIFT_PATTERNS = [/r'(\\['\\]|[^\n'\\])*'/, /"(\\["\\]|[^\n"\\])*"/];
+const MAX_SQL_FORMAT_ATTEMPTS = 5;
+
+const TEXT_LIFT_PATTERNS = [/r'(\\['\\]|[^\n'\\])*'/, /r"(\\["\\]|[^\n"\\])*"/];
 
 export async function formatFile(
   filename: string,
@@ -19,56 +21,105 @@ export async function formatFile(
     overwriteFile?: boolean;
   }
 ) {
-  const fileText = await promisify(fs.readFile)(filename, "utf8");
   const fileExtension = filename.split(".").slice(-1)[0];
-  const formattedText = (() => {
+  const format = (text: string) => {
     try {
       switch (fileExtension) {
         case "sqlx":
-          return formatSqlx(constructSyntaxTree(fileText));
+          return postProcessFormattedSqlx(formatSqlx(constructSyntaxTree(text)));
         case "js":
-          return `${formatJavaScript(fileText).trim()}\n`;
+          return `${formatJavaScript(text).trim()}\n`;
         default:
-          return fileText;
+          return text;
       }
     } catch (e) {
       throw new Error(`Unable to format "${filename}": ${e.message}`);
     }
-  })();
+  };
+  const formattedText = format(await promisify(fs.readFile)(filename, "utf8"));
+  if (formattedText !== format(formattedText)) {
+    throw new Error("Formatter unable to determine final formatted form.");
+  }
   if (options && options.overwriteFile) {
     await promisify(fs.writeFile)(filename, formattedText);
   }
   return formattedText;
 }
 
-function formatSqlx(node: ISyntaxTreeNode) {
-  return postProcessFormattedSqlx(
-    getIndividualSqlxStatements(node.contents)
-      .map(individualStatement => {
-        const placeholders: {
-          [placeholderId: string]: ISyntaxTreeNode | string;
-        } = {};
-        const unformattedPlaceholderSql = stripUnformattableText(
-          individualStatement,
-          placeholders
-        ).join("");
-        const formattedPlaceholderSql = sqlFormatter.format(unformattedPlaceholderSql) as string;
-        return replacePlaceholders(formattedPlaceholderSql, placeholders);
-      })
-      .join("\n\n---\n\n")
-  );
+function formatSqlx(node: ISyntaxTreeNode, indent: string = "") {
+  const { codeBlocks, sqlxStatements } = separateCodeBlocksAndSqlxStatements(node.contents);
+
+  // First, format the JS blocks (including the config block).
+  const formattedJsCodeBlocks = codeBlocks
+    .filter(codeBlock => codeBlock.contentType === "js")
+    .map(jsCodeBlock => formatJavaScript(concatenateSyntaxTreeContents(jsCodeBlock)));
+
+  // Second, format all the SQLX statements, replacing any placeholders with their formatted form.
+  const formattedSqlxStatements = sqlxStatements.map(sqlxStatement => {
+    const placeholders: {
+      [placeholderId: string]: ISyntaxTreeNode | string;
+    } = {};
+    const unformattedPlaceholderSql = stripUnformattableText(sqlxStatement, placeholders).join("");
+    const formattedPlaceholderSql = formatSql(unformattedPlaceholderSql);
+    return formatEveryLine(
+      replacePlaceholders(formattedPlaceholderSql, placeholders),
+      line => `${indent}${line}`
+    );
+  });
+
+  // Third, format all "inner" SQL blocks, e.g. "pre_operations { ... }".
+  const formattedSqlCodeBlocks = codeBlocks
+    .filter(codeBlock => codeBlock.contentType === "sql")
+    .map((sqlCodeBlock): string => {
+      // Strip out the declaration of this block, format the internals then add the declaration back.
+      const firstPart = sqlCodeBlock.contents[0] as string;
+      const upToFirstBrace = firstPart.slice(0, firstPart.indexOf("{") + 1);
+      sqlCodeBlock.contents[0] = firstPart.slice(firstPart.indexOf("{") + 1);
+
+      const lastPart = sqlCodeBlock.contents[sqlCodeBlock.contents.length - 1] as string;
+      const lastBraceOnwards = lastPart.slice(lastPart.lastIndexOf("}"));
+      sqlCodeBlock.contents[sqlCodeBlock.contents.length - 1] = lastPart.slice(
+        0,
+        lastPart.lastIndexOf("}")
+      );
+
+      return `${upToFirstBrace}
+${formatSqlx(sqlCodeBlock, "  ")}
+${lastBraceOnwards}`;
+    });
+
+  const finalText = `
+${formattedJsCodeBlocks.join("\n\n")}
+
+${formattedSqlxStatements.join(`\n\n${indent}---\n\n`)}
+
+${formattedSqlCodeBlocks.join("\n\n")}
+`;
+  return `${indent}${finalText.trim()}`;
 }
 
-function getIndividualSqlxStatements(nodeContents: Array<string | ISyntaxTreeNode>) {
+function separateCodeBlocksAndSqlxStatements(nodeContents: Array<string | ISyntaxTreeNode>) {
+  const codeBlocks: ISyntaxTreeNode[] = [];
   const sqlxStatements: Array<Array<string | ISyntaxTreeNode>> = [[]];
   nodeContents.forEach(child => {
-    if (typeof child !== "string" && child.contentType === "sqlStatementSeparator") {
-      sqlxStatements.push([]);
-    } else {
+    if (
+      typeof child === "string" ||
+      child.contentType === "jsPlaceholder" ||
+      child.contentType === "sqlComment"
+    ) {
       sqlxStatements[sqlxStatements.length - 1].push(child);
+      return;
     }
+    if (child.contentType === "sqlStatementSeparator") {
+      sqlxStatements.push([]);
+      return;
+    }
+    codeBlocks.push(child);
   });
-  return sqlxStatements;
+  return {
+    codeBlocks,
+    sqlxStatements
+  };
 }
 
 function stripUnformattableText(
@@ -80,8 +131,25 @@ function stripUnformattableText(
   return sqlxStatementParts.map(part => {
     if (typeof part !== "string") {
       const placeholderId = generatePlaceholderId();
-      placeholders[placeholderId] = part;
-      return placeholderId;
+      switch (part.contentType) {
+        case "jsPlaceholder": {
+          placeholders[placeholderId] = part;
+          return placeholderId;
+        }
+        case "sqlComment": {
+          // sql-formatter knows how to format comments (as long as they keep to a single line);
+          // give it a hint.
+          const commentPlaceholderId = concatenateSyntaxTreeContents(part).startsWith("--")
+            ? `--${placeholderId}`
+            : `/*${placeholderId}*/`;
+          placeholders[commentPlaceholderId] = part;
+          return commentPlaceholderId;
+        }
+        default:
+          throw new Error(
+            `Misplaced syntax node content type inside SQLX query: ${part.contentType}`
+          );
+      }
     }
     for (const pattern of TEXT_LIFT_PATTERNS) {
       while (part.match(pattern)) {
@@ -117,6 +185,21 @@ function formatJavaScript(text: string) {
   return jsBeautify.js(text, JS_BEAUTIFY_OPTIONS);
 }
 
+function formatSql(text: string) {
+  let formatted = sqlFormatter.format(text) as string;
+  // Unfortunately sql-formatter does not always produce final formatted output (even on plain SQL) in a single pass.
+  for (let attempts = 0; attempts < MAX_SQL_FORMAT_ATTEMPTS; attempts++) {
+    const newFormatted = sqlFormatter.format(formatted) as string;
+    if (newFormatted === formatted) {
+      return newFormatted;
+    }
+    formatted = newFormatted;
+  }
+  throw new Error(
+    `SQL formatter was unable to determine final formatted form within ${MAX_SQL_FORMAT_ATTEMPTS} attempts. Original text: ${text}`
+  );
+}
+
 function formatPlaceholderInSqlx(
   placeholderId: string,
   placeholderSyntaxNode: ISyntaxTreeNode,
@@ -124,9 +207,10 @@ function formatPlaceholderInSqlx(
 ) {
   const wholeLine = getWholeLineContainingPlaceholderId(placeholderId, sqlx);
   const indent = " ".repeat(wholeLine.length - wholeLine.trimLeft().length);
-  const formattedPlaceholder = formatChildSyntaxTreeNode(placeholderSyntaxNode, indent);
-  // If the formatted placeholder doesn't include linebreaks, just replace it entirely.
-  if (!formattedPlaceholder.includes("\n")) {
+  const formattedPlaceholder = formatSqlQueryPlaceholder(placeholderSyntaxNode, indent);
+  // Replace the placeholder entirely if (a) it fits on one line and (b) it isn't a comment.
+  // Otherwise, push the replacement onto its own line.
+  if (placeholderSyntaxNode.contentType !== "sqlComment" && !formattedPlaceholder.includes("\n")) {
     return sqlx.replace(placeholderId, formattedPlaceholder.trim());
   }
   // Push multi-line placeholders to their own lines, if they're not already on one.
@@ -142,41 +226,21 @@ function formatPlaceholderInSqlx(
   return sqlx.replace(wholeLine, newLines.join("\n"));
 }
 
-function formatChildSyntaxTreeNode(node: ISyntaxTreeNode, jsIndent: string): string {
+function formatSqlQueryPlaceholder(node: ISyntaxTreeNode, jsIndent: string): string {
   switch (node.contentType) {
     case "jsPlaceholder":
       return formatJavaScriptPlaceholder(node, jsIndent);
-    case "js":
-      return `\n\n${formatJavaScript(concatenateSyntaxTreeContents(node))}\n\n`;
-    case "sql": {
-      // This node must be an "inner" SQL block, e.g. "pre_operations { ... }",
-      // so strip out the declaration of that block, format the internals,
-      // then add the declaration back.
-      const firstPart = node.contents[0] as string;
-      const upToFirstBrace = firstPart.slice(0, firstPart.indexOf("{") + 1);
-      node.contents[0] = firstPart.slice(firstPart.indexOf("{") + 1);
-
-      const lastPart = node.contents[node.contents.length - 1] as string;
-      const lastBraceOnwards = lastPart.slice(lastPart.lastIndexOf("}"));
-      node.contents[node.contents.length - 1] = lastPart.slice(0, lastPart.lastIndexOf("}"));
-
-      return `\n
-${upToFirstBrace}
-${formatSqlx(node)
-  .split("\n")
-  .map(line => `  ${line}`)
-  .join("\n")
-  .trimRight()}
-${lastBraceOnwards}
-\n`;
-    }
+    case "sqlComment":
+      return formatEveryLine(
+        concatenateSyntaxTreeContents(node),
+        line => `${jsIndent}${line.trimLeft()}`
+      );
     default:
-      // This shouldn't happen, but if it does, handle it by simply returning unformatted text.
-      return concatenateSyntaxTreeContents(node);
+      throw new Error(`Unrecognized syntax node content type: ${node.contentType}`);
   }
 }
 
-function formatJavaScriptPlaceholder(node: ISyntaxTreeNode, jsIndent: string = "") {
+function formatJavaScriptPlaceholder(node: ISyntaxTreeNode, jsIndent: string) {
   const formattedJs = formatJavaScript(concatenateSyntaxTreeContents(node));
   const textInsideBraces = formattedJs.slice(
     formattedJs.indexOf("{") + 1,
@@ -186,14 +250,19 @@ function formatJavaScriptPlaceholder(node: ISyntaxTreeNode, jsIndent: string = "
   const finalJs = textInsideBraces.trim().includes("\n")
     ? `\${${textInsideBraces}}`
     : `\${${textInsideBraces.trim()}}`;
-  return finalJs
+  return formatEveryLine(finalJs, line => `${jsIndent}${line}`);
+}
+
+function formatEveryLine(text: string, mapFn: (line: string) => string) {
+  return text
     .split("\n")
-    .map(line => `${jsIndent}${line}`)
+    .map(mapFn)
     .join("\n");
 }
 
 function getWholeLineContainingPlaceholderId(placeholderId: string, text: string) {
-  return text.match(new RegExp(".*" + placeholderId + ".*"))[0];
+  const regexpEscapedPlaceholderId = placeholderId.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return text.match(new RegExp(".*" + regexpEscapedPlaceholderId + ".*"))[0];
 }
 
 function concatenateSyntaxTreeContents(node: ISyntaxTreeNode): string {
