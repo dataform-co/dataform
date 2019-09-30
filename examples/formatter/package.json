@@ -1,6 +1,6 @@
 {
-  "name": "@dataform/examples-bigquery",
+  "name": "@dataform/examples-formatter",
   "version": "0.1.0",
-  "description": "Example Dataform project (BigQuery).",
+  "description": "Example Dataform project (used for formatter tests).",
   "private": true
 }
