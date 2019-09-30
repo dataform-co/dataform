@@ -845,7 +845,10 @@ SELECT
       FROM
         UNNEST(records)
     )
-  ) > 0 as created_project
+  ) > 0 as created_project,
+  /* multi line
+  comment      */
+  2 as foo
 
 ---
 
