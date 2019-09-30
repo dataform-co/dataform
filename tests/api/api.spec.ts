@@ -1,4 +1,4 @@
-import { Builder, compile, credentials, query, Runner } from "@dataform/api";
+import { Builder, compile, credentials, format, query, Runner } from "@dataform/api";
 import { IDbAdapter } from "@dataform/api/dbadapters";
 import { BigQueryDbAdapter } from "@dataform/api/dbadapters/bigquery";
 import * as utils from "@dataform/core/utils";
@@ -783,6 +783,119 @@ describe("@dataform/api", () => {
       // The action should fail, and have an appropriate error message.
       expect(result.actions[0].deprecatedOk).is.false;
       expect(result.actions[0].tasks[0].error).to.match(/cancelled/);
+    });
+  });
+
+  describe("formatter", () => {
+    it("correctly formats simple.sqlx", async () => {
+      expect(await format.formatFile(path.resolve("df/examples/formatter/definitions/simple.sqlx")))
+        .eql(`config {
+  type: "view",
+  tags: ["tag1", "tag2"]
+}
+
+js {
+  const foo =
+    jsFunction("table");
+}
+
+select
+  1
+from
+  \${
+    ref({
+      schema: "df_integration_test",
+      name: "sample_data"
+    })
+  }
+`);
+    });
+
+    it("correctly formats multiple_queries.sqlx", async () => {
+      expect(
+        await format.formatFile(
+          path.resolve("df/examples/formatter/definitions/multiple_queries.sqlx")
+        )
+      ).eql(`js {
+  var tempTable = "yay"
+  const colname = "column";
+
+  let finalTableName = 'dkaodihwada';
+}
+
+drop something
+
+---
+
+alter table
+  \${tempTable} rename to \${finalTableName}
+
+---
+
+SELECT
+  SUM(IF (session_start_event, 1, 0)) AS session_index
+`);
+    });
+
+    it("correctly formats bigquery_regexps.sqlx", async () => {
+      expect(
+        await format.formatFile(
+          path.resolve("df/examples/formatter/definitions/bigquery_regexps.sqlx")
+        )
+      ).eql(`config {
+  type: "operation",
+  tags: ["tag1", "tag2"]
+}
+
+select
+  CAST(
+    REGEXP_EXTRACT("", r'^/([0-9]+)\\'/.*') AS INT64
+  ) AS id,
+  CAST(
+    REGEXP_EXTRACT("", r"^/([0-9]+)\\"/.*") AS INT64
+  ) AS id2
+from
+  \${ref("dab")}
+where
+  sample = 100
+`);
+    });
+
+    it("correctly formats comments.sqlx", async () => {
+      expect(
+        await format.formatFile(path.resolve("df/examples/formatter/definitions/comments.sqlx"))
+      ).eql(`config {
+  type: "test",
+}
+
+SELECT
+  MAX(
+    (
+      SELECT
+        SUM(
+          IF(
+            track.event = "event_viewed_project_with_connection",
+            1,
+            0
+          )
+        )
+      FROM
+        UNNEST(records)
+    )
+  ) > 0 as created_project,
+  /* multi line
+  comment      */
+  2 as foo
+
+input "something" {
+  select
+    1 as test
+    /* something */
+    /* something
+    else      */
+    -- and another thing
+}
+`);
     });
   });
 });
