@@ -50,7 +50,8 @@ export class RedshiftDbAdapter implements IDbAdapter {
          from information_schema.tables
          where table_schema != 'information_schema'
            and table_schema != 'pg_catalog'
-           and table_schema != 'pg_internal'`
+           and table_schema != 'pg_internal'
+           union select tablename as table_name, schemaname as table_schema from svv_external_tables`
         )
       )
       .then(rows =>
@@ -66,17 +67,25 @@ export class RedshiftDbAdapter implements IDbAdapter {
       this.execute(
         `select column_name, data_type, is_nullable
        from information_schema.columns
-       where table_schema = '${target.schema}' AND table_name = '${target.name}'`
+       where table_schema = '${target.schema}' and table_name = '${target.name}'
+       union
+       select columnname as column_name, external_type as data_type, 'not_available' as is_nullable 
+       from svv_external_columns 
+       where schemaname = '${target.schema}' and tablename = '${target.name}'`
       ),
       this.execute(
-        `select table_type from information_schema.tables where table_schema = '${target.schema}' AND table_name = '${target.name}'`
+        `select table_type from information_schema.tables where table_schema = '${target.schema}' and table_name = '${target.name}'`
+      ),
+      this.execute(
+        `select 'TABLE' as table_type from svv_external_tables where schemaname = '${target.schema}' and tablename = '${target.name}'`
       )
     ]).then(results => {
-      if (results[1].length > 0) {
+      if (results[1].length > 0 || results[2].length > 0) {
+        const data = results[1].length > 0 ? results[1] : results[2];
         // The table exists.
         return {
           target,
-          type: results[1][0].table_type == "VIEW" ? "view" : "table",
+          type: data[0].table_type == "VIEW" ? "view" : "table",
           fields: results[0].map(row => ({
             name: row.column_name,
             primitive: row.data_type,
