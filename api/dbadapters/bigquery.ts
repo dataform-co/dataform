@@ -223,7 +223,7 @@ function cleanRows(rows: any[]) {
       BIGQUERY_DATE_RELATED_FIELDS.includes(sampleData[key].constructor.name)
   );
   fieldsWithBigQueryDates.forEach(dateField => {
-    rows.forEach(row => (row[dateField] = row[dateField].value));
+    rows.forEach(row => (row[dateField] = row[dateField] ? row[dateField].value : row[dateField]));
   });
   return rows;
 }
