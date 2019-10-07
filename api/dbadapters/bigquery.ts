@@ -169,7 +169,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
     return new Promise<any[]>((resolve, reject) =>
       this.client.createQueryJob(
         { useLegacySql: false, query: statement, maxResults: 1000 },
-        async (err: any, job: any) => {
+        async (err, job) => {
           if (err) {
             return reject(err);
           }
@@ -185,7 +185,9 @@ export class BigQueryDbAdapter implements IDbAdapter {
               return reject(new Error("Query cancelled."));
             });
           }
-          job.getQueryResults((err: any, result: any[]) => {
+          // For non interactive queries, we can set a hard limit of 1000 results by disabling auto pagination.
+          // This will cause problems for unit tests that have more than 1000 rows to compare.
+          job.getQueryResults({ autoPaginate: false, maxResults: 1000 }, (err, result) => {
             if (err) {
               reject(err);
             }
