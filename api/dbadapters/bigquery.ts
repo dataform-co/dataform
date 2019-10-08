@@ -2,6 +2,7 @@ import { Credentials } from "@dataform/api/commands/credentials";
 import { IDbAdapter, OnCancel } from "@dataform/api/dbadapters/index";
 import { dataform } from "@dataform/protos";
 import { BigQuery } from "@google-cloud/bigquery";
+import { QueryResultsOptions } from "@google-cloud/bigquery/build/src/job";
 import * as PromisePool from "promise-pool-executor";
 
 const BIGQUERY_DATE_RELATED_FIELDS = [
@@ -29,6 +30,8 @@ interface IBigQueryFieldMetadata {
   type: string;
   fields?: IBigQueryFieldMetadata[];
 }
+
+const MAX_RESULTS = 1000;
 
 export class BigQueryDbAdapter implements IDbAdapter {
   private bigQueryCredentials: dataform.IBigQuery;
@@ -168,7 +171,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
 
     return new Promise<any[]>((resolve, reject) =>
       this.client.createQueryJob(
-        { useLegacySql: false, query: statement, maxResults: 1000 },
+        { useLegacySql: false, query: statement, maxResults: MAX_RESULTS },
         async (err, job) => {
           if (err) {
             return reject(err);
@@ -185,14 +188,31 @@ export class BigQueryDbAdapter implements IDbAdapter {
               return reject(new Error("Query cancelled."));
             });
           }
-          // For non interactive queries, we can set a hard limit of 1000 results by disabling auto pagination.
-          // This will cause problems for unit tests that have more than 1000 rows to compare.
-          job.getQueryResults({ autoPaginate: false, maxResults: 1000 }, (err, result) => {
-            if (err) {
-              reject(err);
+
+          let results: any[] = [];
+          const manualPaginationCallback = (
+            e: Error,
+            rows: any[],
+            nextQuery: QueryResultsOptions
+          ) => {
+            if (e) {
+              reject(e);
+              return;
             }
-            resolve(cleanRows(result));
-          });
+            results = results.concat(rows.slice(0, MAX_RESULTS - results.length));
+            if (nextQuery && results.length < MAX_RESULTS) {
+              // More results exist and we have space to consume them.
+              job.getQueryResults(nextQuery, manualPaginationCallback);
+            } else {
+              resolve(results);
+            }
+          };
+          // For non interactive queries, we can set a hard limit by disabling auto pagination.
+          // This will cause problems for unit tests that have more than MAX_RESULTS rows to compare.
+          job.getQueryResults(
+            { autoPaginate: false, maxResults: MAX_RESULTS },
+            manualPaginationCallback
+          );
         }
       )
     );
