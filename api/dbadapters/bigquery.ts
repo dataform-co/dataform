@@ -31,6 +31,8 @@ interface IBigQueryFieldMetadata {
   fields?: IBigQueryFieldMetadata[];
 }
 
+const MAX_RESULTS = 1000;
+
 export class BigQueryDbAdapter implements IDbAdapter {
   private bigQueryCredentials: dataform.IBigQuery;
   private client: BigQuery;
@@ -169,7 +171,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
 
     return new Promise<any[]>((resolve, reject) =>
       this.client.createQueryJob(
-        { useLegacySql: false, query: statement, maxResults: 1000 },
+        { useLegacySql: false, query: statement, maxResults: MAX_RESULTS },
         async (err, job) => {
           if (err) {
             return reject(err);
@@ -197,17 +199,20 @@ export class BigQueryDbAdapter implements IDbAdapter {
               reject(e);
               return;
             }
-            results = results.concat(rows);
-            if (nextQuery) {
-              // More results exist.
+            results = results.concat(rows.slice(0, MAX_RESULTS - results.length));
+            if (nextQuery && results.length < MAX_RESULTS) {
+              // More results exist and we have space to consume them.
               job.getQueryResults(nextQuery, manualPaginationCallback);
             } else {
               resolve(results);
             }
           };
-          // For non interactive queries, we can set a hard limit of 1000 results by disabling auto pagination.
-          // This will cause problems for unit tests that have more than 1000 rows to compare.
-          job.getQueryResults({ autoPaginate: false, maxResults: 1000 }, manualPaginationCallback);
+          // For non interactive queries, we can set a hard limit by disabling auto pagination.
+          // This will cause problems for unit tests that have more than MAX_RESULTS rows to compare.
+          job.getQueryResults(
+            { autoPaginate: false, maxResults: MAX_RESULTS },
+            manualPaginationCallback
+          );
         }
       )
     );
