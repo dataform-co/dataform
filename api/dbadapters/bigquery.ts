@@ -2,6 +2,7 @@ import { Credentials } from "@dataform/api/commands/credentials";
 import { IDbAdapter, OnCancel } from "@dataform/api/dbadapters/index";
 import { dataform } from "@dataform/protos";
 import { BigQuery } from "@google-cloud/bigquery";
+import { QueryResultsOptions } from "@google-cloud/bigquery/build/src/job";
 import * as PromisePool from "promise-pool-executor";
 
 const BIGQUERY_DATE_RELATED_FIELDS = [
@@ -185,14 +186,28 @@ export class BigQueryDbAdapter implements IDbAdapter {
               return reject(new Error("Query cancelled."));
             });
           }
+
+          let results: any[] = [];
+          const manualPaginationCallback = (
+            e: Error,
+            rows: any[],
+            nextQuery: QueryResultsOptions
+          ) => {
+            if (e) {
+              reject(e);
+              return;
+            }
+            results = results.concat(rows);
+            if (nextQuery) {
+              // More results exist.
+              job.getQueryResults(nextQuery, manualPaginationCallback);
+            } else {
+              resolve(results);
+            }
+          };
           // For non interactive queries, we can set a hard limit of 1000 results by disabling auto pagination.
           // This will cause problems for unit tests that have more than 1000 rows to compare.
-          job.getQueryResults({ autoPaginate: false, maxResults: 1000 }, (err, result) => {
-            if (err) {
-              reject(err);
-            }
-            resolve(cleanRows(result));
-          });
+          job.getQueryResults({ autoPaginate: false, maxResults: 1000 }, manualPaginationCallback);
         }
       )
     );
