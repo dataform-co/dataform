@@ -47,6 +47,7 @@
     "next-images": "^1.0.4",
     "pegjs": "^0.10.0",
     "pg": "^7.12.1",
+    "pg-cursor": "^2.0.0",
     "pg-query-stream": "^2.0.0",
     "prettier": "^1.14.2",
     "pretty-ms": "^4.0.0",

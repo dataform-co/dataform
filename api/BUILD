@@ -23,6 +23,7 @@ ts_library(
         "@npm//js-beautify",
         "@npm//mssql",
         "@npm//pg",
+        "@npm//pg-cursor",
         "@npm//pretty-ms",
         "@npm//promise-pool-executor",
         "@npm//protobufjs",

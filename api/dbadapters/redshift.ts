@@ -2,31 +2,65 @@ import { Credentials } from "@dataform/api/commands/credentials";
 import { IDbAdapter } from "@dataform/api/dbadapters/index";
 import { dataform } from "@dataform/protos";
 import * as pg from "pg";
+import * as Cursor from "pg-cursor";
+
+interface ICursor {
+  read: (rowCount: number, callback: (err: Error, rows: any[]) => void) => void;
+  close: (callback: (err: Error) => void) => void;
+}
 
 export class RedshiftDbAdapter implements IDbAdapter {
-  private client: Promise<pg.Client>;
+  private pool: pg.Pool;
 
   constructor(credentials: Credentials) {
     const redshiftCredentials = credentials as dataform.IJDBC;
-    this.client = new Promise((resolve, reject) => {
-      const client = new pg.Client({
-        host: redshiftCredentials.host,
-        port: redshiftCredentials.port,
-        user: redshiftCredentials.username,
-        password: redshiftCredentials.password,
-        database: redshiftCredentials.databaseName,
-        ssl: true
-      });
-      client
-        .connect()
-        .then(() => resolve(client))
-        .catch(e => reject(e));
+    this.pool = new pg.Pool({
+      host: redshiftCredentials.host,
+      port: redshiftCredentials.port,
+      user: redshiftCredentials.username,
+      password: redshiftCredentials.password,
+      database: redshiftCredentials.databaseName,
+      ssl: true
     });
   }
 
-  public async execute(statement: string) {
-    const result = await (await this.client).query(statement);
-    return result.rows;
+  public async execute(
+    statement: string,
+    options: {
+      maxResults?: number;
+    } = { maxResults: 1000 }
+  ) {
+    if (!options || !options.maxResults) {
+      const result = await this.pool.query(statement);
+      return result.rows;
+    }
+    const client = await this.pool.connect();
+    try {
+      // If we want to limit the returned results from redshift, we have two options:
+      // (1) use cursors, or (2) use JDBC and configure a fetch size parameter. We use cursors
+      // to avoid the need to run a JVM.
+      // See https://docs.aws.amazon.com/redshift/latest/dg/declare.html for more details.
+      const cursor: ICursor = client.query(new Cursor(statement));
+      const result = await new Promise<any[]>((resolve, reject) => {
+        cursor.read(options.maxResults, (err, rows) => {
+          if (err) {
+            reject(err);
+            return;
+          }
+          // Close the cursor after reading the first page of results.
+          cursor.close(closeErr => {
+            if (closeErr) {
+              reject(closeErr);
+            } else {
+              resolve(rows);
+            }
+          });
+        });
+      });
+      return result;
+    } finally {
+      client.release();
+    }
   }
 
   public async evaluate(statement: string) {
