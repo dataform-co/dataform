@@ -57,7 +57,7 @@ export class SQLDataWarehouseDBAdapter implements IDbAdapter {
 
       request
         .on("row", row => {
-          if (options && options.maxResults && rows.length === options.maxResults) {
+          if (options && options.maxResults && rows.length >= options.maxResults) {
             request.cancel();
             resolve(rows);
             return;
