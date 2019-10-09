@@ -40,15 +40,36 @@ export class SQLDataWarehouseDBAdapter implements IDbAdapter {
 
   public async execute(
     statement: string,
-    options?: {
+    options: {
       onCancel?: OnCancel;
-    }
+      maxResults?: number;
+    } = { maxResults: 1000 }
   ): Promise<any[]> {
     const request = (await this.pool).request();
     if (options && options.onCancel) {
       options.onCancel(() => request.cancel());
     }
-    return (await request.query(statement)).recordset;
+
+    return await new Promise<any[]>((resolve, reject) => {
+      request.stream = true;
+
+      const rows: any[] = [];
+
+      request
+        .on("row", row => {
+          if (options && options.maxResults && rows.length === options.maxResults) {
+            request.cancel();
+            resolve(rows);
+            return;
+          }
+          rows.push(row);
+        })
+        .on("error", err => reject(err))
+        .on("done", () => resolve(rows));
+
+      // tslint:disable-next-line: no-floating-promises
+      request.query(statement);
+    });
   }
 
   public async evaluate(statement: string) {
