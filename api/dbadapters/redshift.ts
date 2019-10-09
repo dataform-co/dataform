@@ -1,69 +1,55 @@
 import { Credentials } from "@dataform/api/commands/credentials";
 import { IDbAdapter } from "@dataform/api/dbadapters/index";
 import { dataform } from "@dataform/protos";
-
-const Redshift: IRedshiftType = require("node-redshift");
-
-interface IRedshiftConfig {
-  host?: string;
-  port?: number;
-  user?: string;
-  password?: string;
-  database?: string;
-  ssl: boolean;
-}
-
-interface IRedshiftType {
-  query: (query: string) => Promise<{ rows: any[] }>;
-  new (config: IRedshiftConfig): IRedshiftType;
-}
+import * as pg from "pg";
 
 export class RedshiftDbAdapter implements IDbAdapter {
-  private client: IRedshiftType;
+  private client: Promise<pg.Client>;
 
   constructor(credentials: Credentials) {
     const redshiftCredentials = credentials as dataform.IJDBC;
-    const config: IRedshiftConfig = {
-      host: redshiftCredentials.host,
-      port: redshiftCredentials.port,
-      user: redshiftCredentials.username,
-      password: redshiftCredentials.password,
-      database: redshiftCredentials.databaseName,
-      ssl: true
-    };
-    this.client = new Redshift(config);
+    this.client = new Promise((resolve, reject) => {
+      const client = new pg.Client({
+        host: redshiftCredentials.host,
+        port: redshiftCredentials.port,
+        user: redshiftCredentials.username,
+        password: redshiftCredentials.password,
+        database: redshiftCredentials.databaseName,
+        ssl: true
+      });
+      client
+        .connect()
+        .then(() => resolve(client))
+        .catch(e => reject(e));
+    });
   }
 
-  public execute(statement: string) {
-    return this.client.query(statement).then(result => result.rows);
+  public async execute(statement: string) {
+    const result = await (await this.client).query(statement);
+    return result.rows;
   }
 
-  public evaluate(statement: string) {
-    return this.client.query(`explain ${statement}`).then(() => {});
+  public async evaluate(statement: string) {
+    await this.execute(`explain ${statement}`);
   }
 
-  public tables(): Promise<dataform.ITarget[]> {
-    return Promise.resolve()
-      .then(() =>
-        this.execute(
-          `select table_name, table_schema
-         from information_schema.tables
-         where table_schema != 'information_schema'
-           and table_schema != 'pg_catalog'
-           and table_schema != 'pg_internal'
-           union select tablename as table_name, schemaname as table_schema from svv_external_tables`
-        )
-      )
-      .then(rows =>
-        rows.map(row => ({
-          schema: row.table_schema,
-          name: row.table_name
-        }))
-      );
+  public async tables(): Promise<dataform.ITarget[]> {
+    const rows = await this.execute(
+      `select table_name, table_schema
+     from information_schema.tables
+     where table_schema != 'information_schema'
+       and table_schema != 'pg_catalog'
+       and table_schema != 'pg_internal'
+       union select tablename as table_name, schemaname as table_schema from svv_external_tables`
+    );
+    return rows.map(row => ({
+      schema: row.table_schema,
+      name: row.table_name
+    }));
   }
 
-  public table(target: dataform.ITarget): Promise<dataform.ITableMetadata> {
-    return Promise.all([
+  public async table(target: dataform.ITarget): Promise<dataform.ITableMetadata> {
+    const [columnResults, tableResults, externalTableResults] = await Promise.all([
       this.execute(
         `select column_name, data_type, is_nullable
        from information_schema.columns
@@ -79,32 +65,29 @@ export class RedshiftDbAdapter implements IDbAdapter {
       this.execute(
         `select 'TABLE' as table_type from svv_external_tables where schemaname = '${target.schema}' and tablename = '${target.name}'`
       )
-    ]).then(results => {
-      if (results[1].length > 0 || results[2].length > 0) {
-        const data = results[1].length > 0 ? results[1] : results[2];
-        // The table exists.
-        return {
-          target,
-          type: data[0].table_type == "VIEW" ? "view" : "table",
-          fields: results[0].map(row => ({
-            name: row.column_name,
-            primitive: row.data_type,
-            flags: row.is_nullable && row.is_nullable == "YES" ? ["nullable"] : []
-          }))
-        };
-      } else {
-        throw new Error(`Could not find relation: ${target.schema}.${target.name}`);
-      }
-    });
+    ]);
+    const allTableResults = tableResults.concat(externalTableResults);
+    if (allTableResults.length > 0) {
+      // The table exists.
+      return {
+        target,
+        type: allTableResults[0].table_type === "VIEW" ? "view" : "table",
+        fields: columnResults.map(row => ({
+          name: row.column_name,
+          primitive: row.data_type,
+          flags: row.is_nullable && row.is_nullable === "YES" ? ["nullable"] : []
+        }))
+      };
+    } else {
+      throw new Error(`Could not find relation: ${target.schema}.${target.name}`);
+    }
   }
 
   public async preview(target: dataform.ITarget, limitRows: number = 10): Promise<any[]> {
     return this.execute(`SELECT * FROM "${target.schema}"."${target.name}" LIMIT ${limitRows}`);
   }
 
-  public prepareSchema(schema: string): Promise<void> {
-    return Promise.resolve().then(() =>
-      this.execute(`create schema if not exists "${schema}"`).then(() => {})
-    );
+  public async prepareSchema(schema: string): Promise<void> {
+    await this.execute(`create schema if not exists "${schema}"`);
   }
 }
