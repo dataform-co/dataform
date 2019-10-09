@@ -1,5 +1,5 @@
 {
-  "name": "@dataform/examples-bigquery",
+  "name": "@dataform/examples-common_v2",
   "version": "0.1.0",
   "description": "Example Dataform project (BigQuery).",
   "private": true
