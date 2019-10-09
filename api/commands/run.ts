@@ -154,7 +154,8 @@ export class Runner {
           try {
             // Create another promise chain for retries, if we allow them.
             const rows = await this.adapter.execute(task.statement, {
-              onCancel: handleCancel => this.eEmitter.on(CANCEL_EVENT, handleCancel)
+              onCancel: handleCancel => this.eEmitter.on(CANCEL_EVENT, handleCancel),
+              maxResults: 1
             });
             if (task.type === "assertion") {
               // We expect that an assertion query returns 1 row, with 1 field that is the row count.

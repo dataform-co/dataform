@@ -31,8 +31,6 @@ interface IBigQueryFieldMetadata {
   fields?: IBigQueryFieldMetadata[];
 }
 
-const MAX_RESULTS = 1000;
-
 export class BigQueryDbAdapter implements IDbAdapter {
   private bigQueryCredentials: dataform.IBigQuery;
   private client: BigQuery;
@@ -59,14 +57,19 @@ export class BigQueryDbAdapter implements IDbAdapter {
     options: {
       onCancel?: OnCancel;
       interactive?: boolean;
-    } = { interactive: false }
+      maxResults?: number;
+    } = { interactive: false, maxResults: 1000 }
   ) {
     return this.pool
       .addSingleTask({
         generator: () =>
           options && options.interactive
-            ? this.runQuery(statement)
-            : this.createQueryJob(statement, options && options.onCancel)
+            ? this.runQuery(statement, options && options.maxResults)
+            : this.createQueryJob(
+                statement,
+                options && options.maxResults,
+                options && options.onCancel
+              )
       })
       .promise();
   }
@@ -131,8 +134,9 @@ export class BigQueryDbAdapter implements IDbAdapter {
         .promise();
       return cleanRows(rowsResult[0]);
     }
-    return this.execute(
-      `SELECT * FROM \`${metadata.tableReference.projectId}.${metadata.tableReference.datasetId}.${metadata.tableReference.tableId}\` LIMIT ${limitRows}`
+    return this.runQuery(
+      `SELECT * FROM \`${metadata.tableReference.projectId}.${metadata.tableReference.datasetId}.${metadata.tableReference.tableId}\``,
+      limitRows
     );
   }
 
@@ -156,12 +160,14 @@ export class BigQueryDbAdapter implements IDbAdapter {
     }
   }
 
-  private async runQuery(statement: string) {
-    const data = await this.client.query(statement);
+  private async runQuery(statement: string, maxResults?: number) {
+    const data = await this.client.query(statement, {
+      maxResults
+    });
     return cleanRows(data[0]);
   }
 
-  private createQueryJob(statement: string, onCancel?: OnCancel) {
+  private createQueryJob(statement: string, maxResults?: number, onCancel?: OnCancel) {
     let isCancelled = false;
     if (onCancel) {
       onCancel(() => {
@@ -171,7 +177,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
 
     return new Promise<any[]>((resolve, reject) =>
       this.client.createQueryJob(
-        { useLegacySql: false, query: statement, maxResults: MAX_RESULTS },
+        { useLegacySql: false, query: statement, maxResults },
         async (err, job) => {
           if (err) {
             return reject(err);
@@ -199,8 +205,8 @@ export class BigQueryDbAdapter implements IDbAdapter {
               reject(e);
               return;
             }
-            results = results.concat(rows.slice(0, MAX_RESULTS - results.length));
-            if (nextQuery && results.length < MAX_RESULTS) {
+            results = results.concat(rows.slice(0, maxResults - results.length));
+            if (nextQuery && results.length < maxResults) {
               // More results exist and we have space to consume them.
               job.getQueryResults(nextQuery, manualPaginationCallback);
             } else {
@@ -209,10 +215,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
           };
           // For non interactive queries, we can set a hard limit by disabling auto pagination.
           // This will cause problems for unit tests that have more than MAX_RESULTS rows to compare.
-          job.getQueryResults(
-            { autoPaginate: false, maxResults: MAX_RESULTS },
-            manualPaginationCallback
-          );
+          job.getQueryResults({ autoPaginate: false, maxResults }, manualPaginationCallback);
         }
       )
     );
