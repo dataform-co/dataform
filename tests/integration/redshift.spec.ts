@@ -119,7 +119,7 @@ describe("@dataform/integration/redshift", () => {
       credentials
     );
     executedGraph = await dfapi.run(executionGraph, credentials).resultPromise();
-    expect(executedGraph.ok).equals(true);
+    expect(executedGraph.status).equals(dataform.GraphExecutionStatus.Enum.SUCCESSFUL);
 
     // Check there is an extra row in the incremental table.
     incrementalTable = keyBy(compiledGraph.tables, t => t.name)[

@@ -29,7 +29,7 @@ export class Runner {
 
   private changeListeners: Array<(graph: dataform.IExecutionGraph) => void> = [];
 
-  private executionTask: Promise<dataform.IExecutionGraph>;
+  private executionTask: Promise<dataform.ExecutionGraph>;
 
   private eEmitter: EventEmitter;
 
@@ -53,7 +53,7 @@ export class Runner {
     return this;
   }
 
-  public async execute(): Promise<dataform.IExecutionGraph> {
+  public async execute(): Promise<dataform.ExecutionGraph> {
     if (!!this.executionTask) {
       throw new Error("Executor already started.");
     }
@@ -74,7 +74,7 @@ export class Runner {
         );
 
         // Start the main execution loop.
-        const _ = this.loop(() => resolve(this.result), reject).catch(reject);
+        const _ = this.loop(() => resolve(dataform.ExecutionGraph.create(this.result)), reject).catch(reject);
       } catch (e) {
         reject(e);
       }
@@ -88,7 +88,7 @@ export class Runner {
     this.eEmitter.emit(CANCEL_EVENT);
   }
 
-  public resultPromise(): Promise<dataform.IExecutionGraph> {
+  public resultPromise(): Promise<dataform.ExecutionGraph> {
     return this.executionTask;
   }
 
@@ -142,7 +142,9 @@ export class Runner {
           (action.status === dataform.ActionExecutionStatus.Enum.SUCCESSFUL ||
             action.status === dataform.ActionExecutionStatus.Enum.DISABLED);
       });
-      this.result.status = ok
+      this.result.status = this.cancelled
+        ? dataform.GraphExecutionStatus.Enum.CANCELLED
+        : ok
         ? dataform.GraphExecutionStatus.Enum.SUCCESSFUL
         : dataform.GraphExecutionStatus.Enum.FAILED;
       resolve();
@@ -198,7 +200,9 @@ export class Runner {
               ...chainResults,
               {
                 ...task,
-                status: dataform.TaskExecutionStatus.Enum.FAILED,
+                status: this.cancelled
+                  ? dataform.TaskExecutionStatus.Enum.CANCELLED
+                  : dataform.TaskExecutionStatus.Enum.FAILED,
                 error: e.message,
                 timing: {
                   startTimeMillis: Long.fromNumber(taskStartTimeMillis),
@@ -216,12 +220,13 @@ export class Runner {
         );
         this.result.actions.push({
           ...action,
-          status:
-            results.length === 0
-              ? dataform.ActionExecutionStatus.Enum.DISABLED
-              : actionSuccessful
-              ? dataform.ActionExecutionStatus.Enum.SUCCESSFUL
-              : dataform.ActionExecutionStatus.Enum.FAILED,
+          status: this.cancelled
+            ? dataform.ActionExecutionStatus.Enum.CANCELLED
+            : results.length === 0
+            ? dataform.ActionExecutionStatus.Enum.DISABLED
+            : actionSuccessful
+            ? dataform.ActionExecutionStatus.Enum.SUCCESSFUL
+            : dataform.ActionExecutionStatus.Enum.FAILED,
           tasks: results,
           timing: {
             startTimeMillis: Long.fromNumber(actionStartTimeMillis),

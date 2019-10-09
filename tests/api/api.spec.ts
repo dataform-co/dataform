@@ -625,55 +625,98 @@ describe("@dataform/api", () => {
   });
 
   describe("run", () => {
-    const TEST_GRAPH: dataform.IExecutionGraph = dataform.ExecutionGraph.create({
-      projectConfig: {
-        warehouse: "bigquery",
-        defaultSchema: "foo",
-        assertionSchema: "bar"
-      },
-      runConfig: {
-        fullRefresh: true
-      },
-      warehouseState: {
-        tables: [{ type: "table" }]
-      },
-      actions: [
-        {
-          name: "action1",
-          dependencies: [],
-          tasks: [
-            {
-              type: "executionTaskType",
-              statement: "SELECT foo FROM bar"
-            }
-          ],
-          type: "table",
-          target: {
-            schema: "schema1",
-            name: "target1"
-          },
-          tableType: "someTableType"
-        },
-        {
-          name: "action2",
-          dependencies: ["action1"],
-          tasks: [
-            {
-              type: "executionTaskType2",
-              statement: "SELECT bar FROM baz"
-            }
-          ],
-          type: "assertion",
-          target: {
-            schema: "schema1",
-            name: "target1"
-          },
-          tableType: "someTableType"
-        }
-      ]
-    });
-
     it("execute", async () => {
+      const TEST_GRAPH = dataform.ExecutionGraph.create({
+        projectConfig: {
+          warehouse: "bigquery",
+          defaultSchema: "foo",
+          assertionSchema: "bar"
+        },
+        runConfig: {
+          fullRefresh: true
+        },
+        warehouseState: {
+          tables: [{ type: "table" }]
+        },
+        actions: [
+          {
+            name: "action1",
+            dependencies: [],
+            tasks: [
+              {
+                type: "executionTaskType",
+                statement: "SELECT foo FROM bar"
+              }
+            ],
+            type: "table",
+            target: {
+              schema: "schema1",
+              name: "target1"
+            },
+            tableType: "someTableType"
+          },
+          {
+            name: "action2",
+            dependencies: ["action1"],
+            tasks: [
+              {
+                type: "executionTaskType2",
+                statement: "SELECT bar FROM baz"
+              }
+            ],
+            type: "assertion",
+            target: {
+              schema: "schema1",
+              name: "target1"
+            },
+            tableType: "someTableType"
+          }
+        ]
+      });
+
+      const EXPECTED_GRAPH = dataform.ExecutionGraph.create({
+        ...TEST_GRAPH,
+        actions: [
+          {
+            name: "action1",
+            dependencies: [],
+            tasks: [
+              {
+                type: "executionTaskType",
+                statement: "SELECT foo FROM bar",
+                status: dataform.TaskExecutionStatus.Enum.SUCCESSFUL
+              }
+            ],
+            type: "table",
+            target: {
+              schema: "schema1",
+              name: "target1"
+            },
+            tableType: "someTableType",
+            status: dataform.ActionExecutionStatus.Enum.SUCCESSFUL
+          },
+          {
+            name: "action2",
+            dependencies: ["action1"],
+            tasks: [
+              {
+                type: "executionTaskType2",
+                statement: "SELECT bar FROM baz",
+                status: dataform.TaskExecutionStatus.Enum.FAILED,
+                error: "bad statement"
+              }
+            ],
+            type: "assertion",
+            target: {
+              schema: "schema1",
+              name: "target1"
+            },
+            tableType: "someTableType",
+            status: dataform.ActionExecutionStatus.Enum.FAILED
+          }
+        ],
+        status: dataform.GraphExecutionStatus.Enum.FAILED
+      });
       const mockedDbAdapter = mock(BigQueryDbAdapter);
       when(mockedDbAdapter.prepareSchema(anyString())).thenResolve(null);
       when(
@@ -689,47 +732,21 @@ describe("@dataform/api", () => {
 
       const timeCleanedActions = result.actions.map(action => {
         delete action.timing;
-        return action;
+        return {
+          ...action,
+          tasks: action.tasks.map(task => {
+            delete task.timing;
+            return task;
+          })
+        };
       });
       result.actions = timeCleanedActions;
 
-      expect(dataform.ExecutedGraph.create(result)).to.deep.equal(
-        dataform.ExecutedGraph.create({
-          projectConfig: TEST_GRAPH.projectConfig,
-          runConfig: TEST_GRAPH.runConfig,
-          warehouseState: TEST_GRAPH.warehouseState,
-          ok: false,
-          actions: [
-            {
-              name: TEST_GRAPH.actions[0].name,
-              tasks: [
-                {
-                  task: TEST_GRAPH.actions[0].tasks[0],
-                  ok: true
-                }
-              ],
-              status: dataform.ActionExecutionStatus.Enum.SUCCESSFUL,
-              deprecatedOk: true
-            },
-            {
-              name: TEST_GRAPH.actions[1].name,
-              tasks: [
-                {
-                  task: TEST_GRAPH.actions[1].tasks[0],
-                  ok: false,
-                  error: "bad statement"
-                }
-              ],
-              status: dataform.ActionExecutionStatus.Enum.FAILED,
-              deprecatedOk: false
-            }
-          ]
-        })
-      );
+      expect(result.toJSON()).to.deep.equal(EXPECTED_GRAPH.toJSON());
     });
 
     it("execute_with_cancel", async () => {
-      const TEST_GRAPH: dataform.IExecutionGraph = dataform.ExecutionGraph.create({
+      const TEST_GRAPH = dataform.ExecutionGraph.create({
         projectConfig: {
           warehouse: "bigquery",
           defaultSchema: "foo",
@@ -758,6 +775,32 @@ describe("@dataform/api", () => {
         ]
       });
 
+      const EXPECTED_GRAPH = dataform.ExecutionGraph.create({
+        ...TEST_GRAPH,
+        actions: [
+          {
+            name: "action1",
+            dependencies: [],
+            tasks: [
+              {
+                type: "statement",
+                statement: "some statement",
+                status: dataform.TaskExecutionStatus.Enum.CANCELLED,
+                error: "Run cancelled"
+              }
+            ],
+            type: "table",
+            target: {
+              schema: "schema1",
+              name: "target1"
+            },
+            tableType: "table",
+            status: dataform.ActionExecutionStatus.Enum.CANCELLED
+          }
+        ],
+        status: dataform.GraphExecutionStatus.Enum.CANCELLED
+      });
+
       let wasCancelled = false;
       const mockDbAdapter = {
         execute: (_, { onCancel }) =>
@@ -781,8 +824,19 @@ describe("@dataform/api", () => {
       expect(wasCancelled).is.true;
       // Cancelling a run doesn't actually throw at the top level.
       // The action should fail, and have an appropriate error message.
-      expect(result.actions[0].status).equals(dataform.ActionExecutionStatus.Enum.SKIPPED);
-      expect(result.actions[0].tasks[0].error).to.match(/cancelled/);
+      const timeCleanedActions = result.actions.map(action => {
+        delete action.timing;
+        return {
+          ...action,
+          tasks: action.tasks.map(task => {
+            delete task.timing;
+            return task;
+          })
+        };
+      });
+      result.actions = timeCleanedActions;
+
+      expect(result.toJSON()).to.deep.equal(EXPECTED_GRAPH.toJSON());
     });
   });
 

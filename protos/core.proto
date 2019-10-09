@@ -234,6 +234,7 @@ message GraphExecutionStatus {
     UNKNOWN = 0;
     SUCCESSFUL = 1;
     FAILED = 2;
+    CANCELLED = 3;
   }
 }
 
@@ -244,6 +245,7 @@ message ActionExecutionStatus {
     FAILED = 2;
     SKIPPED = 3;
     DISABLED = 4;
+    CANCELLED = 5;
   }
 }
 
@@ -253,6 +255,7 @@ message TaskExecutionStatus {
     SUCCESSFUL = 1;
     FAILED = 2;
     SKIPPED = 3;
+    CANCELLED = 4;
   }
 }
 
