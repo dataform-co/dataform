@@ -13,6 +13,7 @@ export interface IDbAdapter {
     options?: {
       onCancel?: OnCancel;
       interactive?: boolean;
+      maxResults?: number;
     }
   ): Promise<any[]>;
   evaluate(statement: string): Promise<void>;

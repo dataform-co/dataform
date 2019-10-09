@@ -15,9 +15,11 @@ async function runTest(
   dbadapter: dbadapters.IDbAdapter,
   testCase: dataform.ITest
 ): Promise<dataform.ITestResult> {
+  // TODO: Test results are currently limited to 1000 rows.
+  // We should paginate test results to remove this limit.
   const [actualResults, expectedResults] = await Promise.all([
-    dbadapter.execute(testCase.testQuery),
-    dbadapter.execute(testCase.expectedOutputQuery)
+    dbadapter.execute(testCase.testQuery, { maxResults: 1000 }),
+    dbadapter.execute(testCase.expectedOutputQuery, { maxResults: 1000 })
   ]);
 
   // Check row counts.

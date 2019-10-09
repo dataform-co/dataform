@@ -9,14 +9,21 @@ export function run(
   credentials: Credentials,
   warehouse: string,
   query: string,
-  compileConfig?: dataform.ICompileConfig
+  options?: {
+    compileConfig?: dataform.ICompileConfig;
+    maxResults?: number;
+  }
 ): CancellablePromise<any[]> {
   return new CancellablePromise(async (resolve, reject, onCancel) => {
     try {
-      const compiledQuery = await compile(query, compileConfig);
+      const compiledQuery = await compile(query, options && options.compileConfig);
       const results = await dbadapters
         .create(credentials, warehouse)
-        .execute(compiledQuery, { onCancel, interactive: true });
+        .execute(compiledQuery, {
+          onCancel,
+          interactive: true,
+          maxResults: options && options.maxResults
+        });
       resolve(results);
     } catch (e) {
       reject(e);
