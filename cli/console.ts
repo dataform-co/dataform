@@ -202,13 +202,9 @@ export function printExecutionGraph(executionGraph: dataform.IExecutionGraph, ve
   }
 }
 
-export function printExecutedAction(
-  executedAction: dataform.IExecutedAction,
-  executionAction: dataform.IExecutionAction,
-  verbose: boolean
-) {
-  switch (executedAction.status) {
-    case dataform.ActionExecutionStatus.SUCCESSFUL: {
+export function printExecutedAction(executionAction: dataform.IExecutionAction, verbose: boolean) {
+  switch (executionAction.status) {
+    case dataform.ActionExecutionStatus.Enum.SUCCESSFUL: {
       switch (executionAction.type) {
         case "table": {
           writeStdOut(
@@ -236,7 +232,7 @@ export function printExecutedAction(
         }
       }
     }
-    case dataform.ActionExecutionStatus.FAILED: {
+    case dataform.ActionExecutionStatus.Enum.FAILED: {
       switch (executionAction.type) {
         case "table": {
           writeStdErr(
@@ -263,10 +259,10 @@ export function printExecutedAction(
           break;
         }
       }
-      printExecutedActionErrors(executedAction, verbose);
+      printExecutedActionErrors(executionAction, verbose);
       return;
     }
-    case dataform.ActionExecutionStatus.SKIPPED: {
+    case dataform.ActionExecutionStatus.Enum.SKIPPED: {
       switch (executionAction.type) {
         case "table": {
           writeStdOut(
@@ -297,7 +293,7 @@ export function printExecutedAction(
       }
       return;
     }
-    case dataform.ActionExecutionStatus.DISABLED: {
+    case dataform.ActionExecutionStatus.Enum.DISABLED: {
       switch (executionAction.type) {
         case "table": {
           writeStdOut(
@@ -375,10 +371,12 @@ function targetString(target: dataform.ITarget) {
   return calloutOutput(`${target.schema}.${target.name}`);
 }
 
-function printExecutedActionErrors(executedAction: dataform.IExecutedAction, verbose: boolean) {
-  const failingTasks = executedAction.tasks.filter(task => !task.ok);
+function printExecutedActionErrors(executedAction: dataform.IExecutionAction, verbose: boolean) {
+  const failingTasks = executedAction.tasks.filter(
+    task => task.status === dataform.TaskExecutionStatus.Enum.FAILED
+  );
   failingTasks.forEach(task => {
-    task.task.statement.split("\n").forEach(line => {
+    task.statement.split("\n").forEach(line => {
       writeStdErr(`${DEFAULT_PROMPT}${line}`, 1);
     });
     printError(task.error, 1);

@@ -11,7 +11,7 @@ export function run(graph: dataform.IExecutionGraph, credentials: Credentials): 
     dbadapters.create(credentials, graph.projectConfig.warehouse),
     graph
   );
-  runner.execute();
+  runner.execute().catch(() => null);
   return runner;
 }
 
@@ -25,11 +25,11 @@ export class Runner {
   private pendingActions: dataform.IExecutionAction[];
 
   private cancelled = false;
-  private result: dataform.IExecutedGraph;
+  private result: dataform.IExecutionGraph;
 
-  private changeListeners: Array<(graph: dataform.IExecutedGraph) => void> = [];
+  private changeListeners: Array<(graph: dataform.IExecutionGraph) => void> = [];
 
-  private executionTask: Promise<dataform.IExecutedGraph>;
+  private executionTask: Promise<dataform.IExecutionGraph>;
 
   private eEmitter: EventEmitter;
 
@@ -48,12 +48,12 @@ export class Runner {
     this.eEmitter.setMaxListeners(0);
   }
 
-  public onChange(listener: (graph: dataform.IExecutedGraph) => Promise<void> | void): Runner {
+  public onChange(listener: (graph: dataform.IExecutionGraph) => Promise<void> | void): Runner {
     this.changeListeners.push(listener);
     return this;
   }
 
-  public async execute(): Promise<dataform.IExecutedGraph> {
+  public async execute(): Promise<dataform.IExecutionGraph> {
     if (!!this.executionTask) {
       throw new Error("Executor already started.");
     }
@@ -88,12 +88,12 @@ export class Runner {
     this.eEmitter.emit(CANCEL_EVENT);
   }
 
-  public resultPromise(): Promise<dataform.IExecutedGraph> {
+  public resultPromise(): Promise<dataform.IExecutionGraph> {
     return this.executionTask;
   }
 
   private triggerChange() {
-    return Promise.all(this.changeListeners.map(listener => listener(this.result)));
+    const ignored = Promise.all(this.changeListeners.map(listener => listener(this.result)));
   }
 
   private async loop(resolve: () => void, reject: (value: any) => void) {
@@ -104,32 +104,34 @@ export class Runner {
     const allSuccessfulDeps = this.result.actions
       .filter(
         action =>
-          action.status === dataform.ActionExecutionStatus.SUCCESSFUL ||
-          action.status == dataform.ActionExecutionStatus.DISABLED
+          action.status === dataform.ActionExecutionStatus.Enum.SUCCESSFUL ||
+          action.status === dataform.ActionExecutionStatus.Enum.DISABLED
       )
       .map(fn => fn.name);
 
     pendingActions.forEach(async action => {
       const finishedDeps = action.dependencies.filter(d => allFinishedDeps.indexOf(d) >= 0);
       const successfulDeps = action.dependencies.filter(d => allSuccessfulDeps.indexOf(d) >= 0);
-      if (!this.cancelled && successfulDeps.length == action.dependencies.length) {
+      if (!this.cancelled && successfulDeps.length === action.dependencies.length) {
         // All required deps are completed, start this action.
-        this.executeAction(action);
-      } else if (this.cancelled || finishedDeps.length == action.dependencies.length) {
+        const ignored = this.executeAction(action).catch(e => reject(e));
+      } else if (this.cancelled || finishedDeps.length === action.dependencies.length) {
         await this.triggerChange();
         // All deps are finished but they weren't all successful, or the run was cancelled.
         // skip this action.
         this.result.actions.push({
           name: action.name,
-          status: dataform.ActionExecutionStatus.SKIPPED,
-          deprecatedSkipped: true
+          status: dataform.ActionExecutionStatus.Enum.SKIPPED
         });
       } else {
         this.pendingActions.push(action);
       }
     });
 
-    if (this.pendingActions.length > 0 || this.result.actions.length != this.graph.actions.length) {
+    if (
+      this.pendingActions.length > 0 ||
+      this.result.actions.length !== this.graph.actions.length
+    ) {
       setTimeout(() => this.loop(resolve, reject), 100);
     } else {
       // Work out if this run was an overall success.
@@ -137,20 +139,35 @@ export class Runner {
       this.result.actions.forEach(action => {
         ok =
           ok &&
-          (action.status === dataform.ActionExecutionStatus.SUCCESSFUL ||
-            action.status == dataform.ActionExecutionStatus.DISABLED);
+          (action.status === dataform.ActionExecutionStatus.Enum.SUCCESSFUL ||
+            action.status === dataform.ActionExecutionStatus.Enum.DISABLED);
       });
-      this.result.ok = ok;
+      this.result.status = ok
+        ? dataform.GraphExecutionStatus.Enum.SUCCESSFUL
+        : dataform.GraphExecutionStatus.Enum.FAILED;
       resolve();
     }
   }
 
   private executeAction(action: dataform.IExecutionAction) {
-    const startTime = process.hrtime();
+    const actionStartTimeMillis = Date.now();
     // This creates a promise chain that executes all tasks in order.
-    action.tasks
+    // If a task fails, we keep processing tasks but mark them ask skipped.
+    let skipRemainingTasks = false;
+    return action.tasks
       .reduce((chain, task) => {
         return chain.then(async chainResults => {
+          const taskStartTimeMillis = Date.now();
+          if (skipRemainingTasks) {
+            return [
+              ...chainResults,
+              {
+                ...task,
+                status: dataform.TaskExecutionStatus.Enum.SKIPPED
+                // Omit timing information as it doesn't make sense for skipped tasks.
+              }
+            ];
+          }
           try {
             // Create another promise chain for retries, if we allow them.
             const rows = await this.adapter.execute(task.statement, {
@@ -164,38 +181,55 @@ export class Runner {
                 throw new Error(`Assertion failed: query returned ${rowCount} row(s).`);
               }
             }
-            return [...chainResults, { ok: true, task }];
+            return [
+              ...chainResults,
+              {
+                ...task,
+                status: dataform.TaskExecutionStatus.Enum.SUCCESSFUL,
+                timing: {
+                  startTimeMillis: Long.fromNumber(taskStartTimeMillis),
+                  endTimeMillis: Long.fromNumber(Date.now())
+                }
+              }
+            ];
           } catch (e) {
-            throw [...chainResults, { ok: false, error: e.message, task }];
+            skipRemainingTasks = true;
+            return [
+              ...chainResults,
+              {
+                ...task,
+                status: dataform.TaskExecutionStatus.Enum.FAILED,
+                error: e.message,
+                timing: {
+                  startTimeMillis: Long.fromNumber(taskStartTimeMillis),
+                  endTimeMillis: Long.fromNumber(Date.now())
+                }
+              }
+            ];
           }
         });
-      }, Promise.resolve([] as dataform.IExecutedTask[]))
-      .then(async (results: dataform.IExecutedTask[]) => {
-        const endTime = process.hrtime(startTime);
-        const executionTime = endTime[0] * 1000 + Math.round(endTime[1] / 1000000);
-        await this.triggerChange();
+      }, Promise.resolve([] as dataform.IExecutionTask[]))
+      .then(async (results: dataform.IExecutionTask[]) => {
+        const actionEndTimeMillis = Date.now();
+        const actionSuccessful = !results.some(
+          result => result.status === dataform.TaskExecutionStatus.Enum.FAILED
+        );
         this.result.actions.push({
-          name: action.name,
+          ...action,
           status:
-            results.length == 0
-              ? dataform.ActionExecutionStatus.DISABLED
-              : dataform.ActionExecutionStatus.SUCCESSFUL,
+            results.length === 0
+              ? dataform.ActionExecutionStatus.Enum.DISABLED
+              : actionSuccessful
+              ? dataform.ActionExecutionStatus.Enum.SUCCESSFUL
+              : dataform.ActionExecutionStatus.Enum.FAILED,
           tasks: results,
-          executionTime: Long.fromNumber(executionTime),
-          deprecatedOk: true
+          timing: {
+            startTimeMillis: Long.fromNumber(actionStartTimeMillis),
+            endTimeMillis: Long.fromNumber(actionEndTimeMillis)
+          }
         });
-      })
-      .catch(async (results: dataform.IExecutedTask[]) => {
-        const endTime = process.hrtime(startTime);
-        const executionTime = endTime[0] * 1000 + Math.round(endTime[1] / 1000000);
-        await this.triggerChange();
-        this.result.actions.push({
-          name: action.name,
-          status: dataform.ActionExecutionStatus.FAILED,
-          tasks: results,
-          executionTime: Long.fromNumber(executionTime),
-          deprecatedOk: false
-        });
+        // We don't care if users listener code throws here.
+        this.triggerChange();
       });
   }
 }

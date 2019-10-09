@@ -60,22 +60,22 @@ describe("@dataform/integration/bigquery", () => {
 
     // Check the status of the two assertions.
     expect(actionMap["df_integration_test_assertions.example_assertion_fail"].status).equals(
-      dataform.ActionExecutionStatus.FAILED
+      dataform.ActionExecutionStatus.Enum.FAILED
     );
     expect(actionMap["df_integration_test_assertions.example_assertion_pass"].status).equals(
-      dataform.ActionExecutionStatus.SUCCESSFUL
+      dataform.ActionExecutionStatus.Enum.SUCCESSFUL
     );
 
     // Check the status of the two uniqueness assertions.
     expect(
       actionMap["df_integration_test_assertions.example_assertion_uniqueness_fail"].status
-    ).equals(dataform.ActionExecutionStatus.FAILED);
+    ).equals(dataform.ActionExecutionStatus.Enum.FAILED);
     expect(
       actionMap["df_integration_test_assertions.example_assertion_uniqueness_fail"].tasks[1].error
     ).to.eql("Assertion failed: query returned 1 row(s).");
     expect(
       actionMap["df_integration_test_assertions.example_assertion_uniqueness_pass"].status
-    ).equals(dataform.ActionExecutionStatus.SUCCESSFUL);
+    ).equals(dataform.ActionExecutionStatus.Enum.SUCCESSFUL);
 
     // Check the data in the incremental table.
     let incrementalTable = keyBy(compiledGraph.tables, t => t.name)[

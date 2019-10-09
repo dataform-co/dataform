@@ -492,21 +492,13 @@ const builtYargs = createYargsCli({
           runner.cancel();
         });
 
-        const actionsByName = new Map<string, dataform.IExecutionAction>();
-        executionGraph.actions.forEach(action => {
-          actionsByName.set(action.name, action);
-        });
         const alreadyPrintedActions = new Set<string>();
 
-        const printExecutedGraph = (executedGraph: dataform.IExecutedGraph) => {
+        const printExecutedGraph = (executedGraph: dataform.IExecutionGraph) => {
           executedGraph.actions
             .filter(executedAction => !alreadyPrintedActions.has(executedAction.name))
             .forEach(executedAction => {
-              printExecutedAction(
-                executedAction,
-                actionsByName.get(executedAction.name),
-                argv.verbose
-              );
+              printExecutedAction(executedAction, argv.verbose);
               alreadyPrintedActions.add(executedAction.name);
             });
         };

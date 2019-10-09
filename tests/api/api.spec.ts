@@ -688,7 +688,7 @@ describe("@dataform/api", () => {
       const result = await runner.resultPromise();
 
       const timeCleanedActions = result.actions.map(action => {
-        delete action.executionTime;
+        delete action.timing;
         return action;
       });
       result.actions = timeCleanedActions;
@@ -708,7 +708,7 @@ describe("@dataform/api", () => {
                   ok: true
                 }
               ],
-              status: dataform.ActionExecutionStatus.SUCCESSFUL,
+              status: dataform.ActionExecutionStatus.Enum.SUCCESSFUL,
               deprecatedOk: true
             },
             {
@@ -720,7 +720,7 @@ describe("@dataform/api", () => {
                   error: "bad statement"
                 }
               ],
-              status: dataform.ActionExecutionStatus.FAILED,
+              status: dataform.ActionExecutionStatus.Enum.FAILED,
               deprecatedOk: false
             }
           ]
@@ -781,7 +781,7 @@ describe("@dataform/api", () => {
       expect(wasCancelled).is.true;
       // Cancelling a run doesn't actually throw at the top level.
       // The action should fail, and have an appropriate error message.
-      expect(result.actions[0].deprecatedOk).is.false;
+      expect(result.actions[0].status).equals(dataform.ActionExecutionStatus.Enum.SKIPPED);
       expect(result.actions[0].tasks[0].error).to.match(/cancelled/);
     });
   });

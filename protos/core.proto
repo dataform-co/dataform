@@ -229,9 +229,46 @@ message CompiledGraph {
   repeated CompilationError deprecated_compilation_errors = 6;
 }
 
+message GraphExecutionStatus {
+  enum Enum {
+    UNKNOWN = 0;
+    SUCCESSFUL = 1;
+    FAILED = 2;
+  }
+}
+
+message ActionExecutionStatus {
+  enum Enum {
+    UNKNOWN = 0;
+    SUCCESSFUL = 1;
+    FAILED = 2;
+    SKIPPED = 3;
+    DISABLED = 4;
+  }
+}
+
+message TaskExecutionStatus {
+  enum Enum {
+    UNKNOWN = 0;
+    SUCCESSFUL = 1;
+    FAILED = 2;
+    SKIPPED = 3;
+  }
+}
+
+message Timing {
+  int64 start_time_millis = 1;
+  int64 end_time_millis = 2;
+}
+
 message ExecutionTask {
   string type = 1;
   string statement = 2;
+
+  // Post execution information.
+  TaskExecutionStatus.Enum status = 3;
+  Timing timing = 4;
+  string error = 5;
 }
 
 message ExecutionAction {
@@ -241,6 +278,10 @@ message ExecutionAction {
   string type = 4;
   Target target = 5;
   string table_type = 6;
+
+  // Post execution information.
+  ActionExecutionStatus.Enum status = 7;
+  Timing timing = 8;
 }
 
 message WarehouseState {
@@ -253,8 +294,14 @@ message ExecutionGraph {
   WarehouseState warehouse_state = 4;
 
   repeated ExecutionAction actions = 3;
+
+  // Post execution information.
+  GraphExecutionStatus.Enum status = 5;
+  Timing timing = 6;
 }
 
+// The following Executed* message types are being deprecated.
+// Instead, we now populate the ExecutionGraph with status information.
 message ExecutedTask {
   ExecutionTask task = 1;
 
@@ -263,20 +310,12 @@ message ExecutedTask {
   string error = 3;
 }
 
-enum ActionExecutionStatus {
-  UNKNOWN_ACTION_EXECUTION_STATUS = 0;
-  SUCCESSFUL = 1;
-  FAILED = 2;
-  SKIPPED = 3;
-  DISABLED = 4;
-}
-
 message ExecutedAction {
   string name = 1;
   // May be empty, indicating that nothing was run as part of this Action.
   repeated ExecutedTask tasks = 2;
 
-  ActionExecutionStatus status = 6;
+  ActionExecutionStatus.Enum status = 6;
   int64 execution_time = 5;
 
   // Deprecated status fields. Prefer using the 'status' field.
