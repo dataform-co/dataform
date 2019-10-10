@@ -6,9 +6,10 @@ import { expect } from "chai";
 import { getTableRows, keyBy } from "df/tests/integration/utils";
 
 describe("@dataform/integration/redshift", () => {
-  it("run", async () => {
-    const credentials = dfapi.credentials.read("redshift", "df/test_credentials/redshift.json");
+  const credentials = dfapi.credentials.read("redshift", "df/test_credentials/redshift.json");
+  const dbadapter = dbadapters.create(credentials, "redshift");
 
+  it("run", async () => {
     const compiledGraph = await dfapi.compile({
       projectDir: "df/tests/integration/redshift_project"
     });
@@ -16,7 +17,6 @@ describe("@dataform/integration/redshift", () => {
     expect(compiledGraph.graphErrors.compilationErrors).to.eql([]);
     expect(compiledGraph.graphErrors.validationErrors).to.eql([]);
 
-    const dbadapter = dbadapters.create(credentials, "redshift");
     const adapter = adapters.create(compiledGraph.projectConfig);
 
     // Redshift transactions are giving us headaches here. Drop tables sequentially.
@@ -128,4 +128,26 @@ describe("@dataform/integration/redshift", () => {
     incrementalRows = await getTableRows(incrementalTable.target, adapter, credentials, "redshift");
     expect(incrementalRows.length).equals(2);
   }).timeout(60000);
+
+  describe("result limit works", async () => {
+    const query = `
+      select 1 union all
+      select 2 union all
+      select 3 union all
+      select 4 union all
+      select 5`;
+
+    for (const interactive of [true, false]) {
+      it(`with interactive=${interactive}`, async () => {
+        expect(await dbadapter.execute(query, { interactive, maxResults: 2 })).eql([
+          {
+            "?column?": 1
+          },
+          {
+            "?column?": 2
+          }
+        ]);
+      });
+    }
+  });
 });
