@@ -6,9 +6,10 @@ import { expect } from "chai";
 import { dropAllTables, getTableRows, keyBy } from "df/tests/integration/utils";
 
 describe("@dataform/integration/snowflake", () => {
-  it("run", async () => {
-    const credentials = dfapi.credentials.read("snowflake", "df/test_credentials/snowflake.json");
+  const credentials = dfapi.credentials.read("snowflake", "df/test_credentials/snowflake.json");
+  const dbadapter = dbadapters.create(credentials, "snowflake");
 
+  it("run", async () => {
     const compiledGraph = await dfapi.compile({
       projectDir: "df/tests/integration/snowflake_project"
     });
@@ -16,7 +17,6 @@ describe("@dataform/integration/snowflake", () => {
     expect(compiledGraph.graphErrors.compilationErrors).to.eql([]);
     expect(compiledGraph.graphErrors.validationErrors).to.eql([]);
 
-    const dbadapter = dbadapters.create(credentials, "snowflake");
     const adapter = adapters.create(compiledGraph.projectConfig);
 
     // Drop all the tables before we do anything.
@@ -127,4 +127,26 @@ describe("@dataform/integration/snowflake", () => {
     );
     expect(incrementalRows.length).equals(2);
   }).timeout(60000);
+
+  describe("result limit works", async () => {
+    const query = `
+      select 1 union all
+      select 2 union all
+      select 3 union all
+      select 4 union all
+      select 5`;
+
+    for (const interactive of [true, false]) {
+      it(`with interactive=${interactive}`, async () => {
+        expect(await dbadapter.execute(query, { interactive, maxResults: 2 })).eql([
+          {
+            1: 1
+          },
+          {
+            1: 2
+          }
+        ]);
+      });
+    }
+  });
 });
