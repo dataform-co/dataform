@@ -25,3 +25,15 @@ dataform_npm_package(
     ],
     deps = [],
 )
+
+load(":deploy_function.bzl", "deploy_gcloud_function")
+
+deploy_gcloud_function(
+    name = "foo",
+    function_name = "handleStackdriverEvent",
+    source_path = "bazel-bin/github-issue-webhook",
+    deps = [
+        ":github-issue-webhook",
+        ":package",
+    ],
+)
