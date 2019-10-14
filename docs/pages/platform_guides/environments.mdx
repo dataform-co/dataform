@@ -9,7 +9,9 @@ export default ({ children }) => <Documentation {...meta}>{children}</Documentat
 
 ## Introduction
 
-Environments can be used to configure different variations of your schedules.
+Environments can be used to configure different variations of your schedules. For each environment
+you define, Dataform will run all of the schedules defined in that environment, using that environment's
+version of the project's code.
 
 A common use-case for environments is to run a staged release process; you might
 want to push your code to a `staging` environment first, and then push it to a `production`
@@ -87,9 +89,9 @@ Once your team or project outgrows the default environment configuration, a typi
 }
 ```
 
-This configuration creates a `staging` environment which always runs the latest version of your project's code
-(as exists on the `master` branch). When you have confirmed that the code works as expected, you can push that to production
-by merging the `master` branch into the `production` branch.
+This configuration defines two environments. The `staging` environment runs the project's schedules at the latest version of the
+project's code (as exists on the `master` branch). When you have confirmed that the code works as expected, you can push those
+schedules to production by merging the `master` branch into the `production` branch.
 
 ### Enforcing tighter control on changes to an environment
 
