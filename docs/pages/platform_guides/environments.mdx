@@ -9,9 +9,9 @@ export default ({ children }) => <Documentation {...meta}>{children}</Documentat
 
 ## Introduction
 
-Environments can be used to configure different variations of your schedules. For each environment
-you define, Dataform will run all of the schedules defined in that environment, using that environment's
-version of the project's code.
+Environments can be used to configure different variations of your schedules. **For each environment
+you define, using that environment's version of the project code, Dataform will run all of the
+project's schedules.**
 
 A common use-case for environments is to run a staged release process; you might
 want to push your code to a `staging` environment first, and then push it to a `production`
