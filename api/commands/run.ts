@@ -6,6 +6,10 @@ import * as Long from "long";
 
 const CANCEL_EVENT = "jobCancel";
 
+const isSuccessfulAction = (action: dataform.IExecutedAction) =>
+  action.status === dataform.ActionExecutionStatus.SUCCESSFUL ||
+  action.status == dataform.ActionExecutionStatus.DISABLED;
+
 export function run(graph: dataform.IExecutionGraph, credentials: Credentials): Runner {
   const runner = Runner.create(
     dbadapters.create(credentials, graph.projectConfig.warehouse),
@@ -73,8 +77,8 @@ export class Runner {
           Object.keys(uniqueSchemas).map(schema => this.adapter.prepareSchema(schema))
         );
 
-        // Start the main execution loop.
-        const _ = this.loop(() => resolve(this.result), reject).catch(reject);
+        await this.executeGraph();
+        resolve(this.result);
       } catch (e) {
         reject(e);
       }
@@ -96,107 +100,83 @@ export class Runner {
     return Promise.all(this.changeListeners.map(listener => listener(this.result)));
   }
 
-  private async loop(resolve: () => void, reject: (value: any) => void) {
-    const pendingActions = this.pendingActions;
-    this.pendingActions = [];
+  private async executeGraph() {
+    // Recursively execute all actions as they become executable.
+    await this.executeAllActionsReadyForExecution();
 
-    const allFinishedDeps = this.result.actions.map(action => action.name);
-    const allSuccessfulDeps = this.result.actions
-      .filter(
-        action =>
-          action.status === dataform.ActionExecutionStatus.SUCCESSFUL ||
-          action.status == dataform.ActionExecutionStatus.DISABLED
-      )
-      .map(fn => fn.name);
-
-    pendingActions.forEach(async action => {
-      const finishedDeps = action.dependencies.filter(d => allFinishedDeps.indexOf(d) >= 0);
-      const successfulDeps = action.dependencies.filter(d => allSuccessfulDeps.indexOf(d) >= 0);
-      if (!this.cancelled && successfulDeps.length == action.dependencies.length) {
-        // All required deps are completed, start this action.
-        this.executeAction(action);
-      } else if (this.cancelled || finishedDeps.length == action.dependencies.length) {
-        await this.triggerChange();
-        // All deps are finished but they weren't all successful, or the run was cancelled.
-        // skip this action.
-        this.result.actions.push({
-          name: action.name,
-          status: dataform.ActionExecutionStatus.SKIPPED,
-          deprecatedSkipped: true
-        });
-      } else {
-        this.pendingActions.push(action);
-      }
+    let ok = true;
+    this.result.actions.forEach(action => {
+      ok = ok && isSuccessfulAction(action);
     });
-
-    if (this.pendingActions.length > 0 || this.result.actions.length != this.graph.actions.length) {
-      setTimeout(() => this.loop(resolve, reject), 100);
-    } else {
-      // Work out if this run was an overall success.
-      let ok = true;
-      this.result.actions.forEach(action => {
-        ok =
-          ok &&
-          (action.status === dataform.ActionExecutionStatus.SUCCESSFUL ||
-            action.status == dataform.ActionExecutionStatus.DISABLED);
-      });
-      this.result.ok = ok;
-      resolve();
-    }
+    this.result.ok = ok;
   }
 
-  private executeAction(action: dataform.IExecutionAction) {
-    const startTime = process.hrtime();
-    // This creates a promise chain that executes all tasks in order.
-    action.tasks
-      .reduce((chain, task) => {
-        return chain.then(async chainResults => {
-          try {
-            // Create another promise chain for retries, if we allow them.
-            const rows = await this.adapter.execute(task.statement, {
-              onCancel: handleCancel => this.eEmitter.on(CANCEL_EVENT, handleCancel),
-              maxResults: 1
-            });
-            if (task.type === "assertion") {
-              // We expect that an assertion query returns 1 row, with 1 field that is the row count.
-              // We don't really care what that field/column is called.
-              const rowCount = rows[0][Object.keys(rows[0])[0]];
-              if (rowCount > 0) {
-                throw new Error(`Assertion failed: query returned ${rowCount} row(s).`);
-              }
-            }
-            return [...chainResults, { ok: true, task }];
-          } catch (e) {
-            throw [...chainResults, { ok: false, error: e.message, task }];
-          }
-        });
-      }, Promise.resolve([] as dataform.IExecutedTask[]))
-      .then(async (results: dataform.IExecutedTask[]) => {
-        const endTime = process.hrtime(startTime);
-        const executionTime = endTime[0] * 1000 + Math.round(endTime[1] / 1000000);
+  private async executeAllActionsReadyForExecution() {
+    const allSuccessfulActions = this.result.actions.filter(isSuccessfulAction).map(fn => fn.name);
+    const isReadyForExecution = (action: dataform.IExecutionAction) => {
+      for (const dependency of action.dependencies) {
+        if (!allSuccessfulActions.includes(dependency)) {
+          return false;
+        }
+      }
+      return true;
+    };
+    const readyForExecutionActions = this.pendingActions.filter(isReadyForExecution);
+    this.pendingActions = this.pendingActions.filter(action => !isReadyForExecution(action));
+    return Promise.all(
+      readyForExecutionActions.map(async action => {
+        this.result.actions.push(await this.executeAction(action));
         await this.triggerChange();
-        this.result.actions.push({
-          name: action.name,
-          status:
-            results.length == 0
-              ? dataform.ActionExecutionStatus.DISABLED
-              : dataform.ActionExecutionStatus.SUCCESSFUL,
-          tasks: results,
-          executionTime: Long.fromNumber(executionTime),
-          deprecatedOk: true
-        });
+        await this.executeAllActionsReadyForExecution();
       })
-      .catch(async (results: dataform.IExecutedTask[]) => {
-        const endTime = process.hrtime(startTime);
-        const executionTime = endTime[0] * 1000 + Math.round(endTime[1] / 1000000);
-        await this.triggerChange();
-        this.result.actions.push({
-          name: action.name,
-          status: dataform.ActionExecutionStatus.FAILED,
-          tasks: results,
-          executionTime: Long.fromNumber(executionTime),
-          deprecatedOk: false
-        });
+    );
+  }
+
+  private async executeAction(action: dataform.IExecutionAction) {
+    const startTime = new Date().valueOf();
+
+    const executedTasks: dataform.IExecutedTask[] = [];
+    let allSuccessful = true;
+    for (const task of action.tasks) {
+      if (allSuccessful) {
+        const executedTask = await this.executeTask(task);
+        executedTasks.push(executedTask);
+        allSuccessful = allSuccessful && executedTask.ok;
+      }
+    }
+
+    const endTime = new Date().valueOf();
+    const executionTime = endTime - startTime;
+    return {
+      name: action.name,
+      status: allSuccessful
+        ? executedTasks.length == 0
+          ? dataform.ActionExecutionStatus.DISABLED
+          : dataform.ActionExecutionStatus.SUCCESSFUL
+        : dataform.ActionExecutionStatus.FAILED,
+      tasks: executedTasks,
+      executionTime: Long.fromNumber(executionTime),
+      deprecatedOk: allSuccessful
+    };
+  }
+
+  private async executeTask(task: dataform.IExecutionTask): Promise<dataform.IExecutedTask> {
+    try {
+      const rows = await this.adapter.execute(task.statement, {
+        onCancel: handleCancel => this.eEmitter.on(CANCEL_EVENT, handleCancel),
+        maxResults: 1
       });
+      if (task.type === "assertion") {
+        // We expect that an assertion query returns 1 row, with 1 field that is the row count.
+        // We don't really care what that field/column is called.
+        const rowCount = rows[0][Object.keys(rows[0])[0]];
+        if (rowCount > 0) {
+          throw new Error(`Assertion failed: query returned ${rowCount} row(s).`);
+        }
+      }
+      return { ok: true, task };
+    } catch (e) {
+      return { ok: false, error: e.message, task };
+    }
   }
 }
