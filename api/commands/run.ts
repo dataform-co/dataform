@@ -101,30 +101,8 @@ export class Runner {
   }
 
   private async executeGraph() {
-    const executeAllActionsReadyForExecution = async () => {
-      const allSuccessfulActions = this.result.actions
-        .filter(isSuccessfulAction)
-        .map(fn => fn.name);
-      const isReadyForExecution = (action: dataform.IExecutionAction) => {
-        for (const dependency of action.dependencies) {
-          if (!allSuccessfulActions.includes(dependency)) {
-            return false;
-          }
-        }
-        return true;
-      };
-      const readyForExecutionActions = this.pendingActions.filter(isReadyForExecution);
-      this.pendingActions = this.pendingActions.filter(action => !isReadyForExecution(action));
-      return Promise.all(
-        readyForExecutionActions.map(async action => {
-          this.result.actions.push(await this.executeAction(action));
-          await this.triggerChange();
-          await executeAllActionsReadyForExecution();
-        })
-      );
-    };
     // Recursively execute all actions as they become executable.
-    await executeAllActionsReadyForExecution();
+    await this.executeAllActionsReadyForExecution();
 
     let ok = true;
     this.result.actions.forEach(action => {
@@ -133,8 +111,29 @@ export class Runner {
     this.result.ok = ok;
   }
 
+  private async executeAllActionsReadyForExecution() {
+    const allSuccessfulActions = this.result.actions.filter(isSuccessfulAction).map(fn => fn.name);
+    const isReadyForExecution = (action: dataform.IExecutionAction) => {
+      for (const dependency of action.dependencies) {
+        if (!allSuccessfulActions.includes(dependency)) {
+          return false;
+        }
+      }
+      return true;
+    };
+    const readyForExecutionActions = this.pendingActions.filter(isReadyForExecution);
+    this.pendingActions = this.pendingActions.filter(action => !isReadyForExecution(action));
+    return Promise.all(
+      readyForExecutionActions.map(async action => {
+        this.result.actions.push(await this.executeAction(action));
+        await this.triggerChange();
+        await this.executeAllActionsReadyForExecution();
+      })
+    );
+  }
+
   private async executeAction(action: dataform.IExecutionAction) {
-    const startTime = process.hrtime();
+    const startTime = new Date().valueOf();
 
     const executedTasks: dataform.IExecutedTask[] = [];
     let allSuccessful = true;
@@ -146,8 +145,8 @@ export class Runner {
       }
     }
 
-    const endTime = process.hrtime(startTime);
-    const executionTime = endTime[0] * 1000 + Math.round(endTime[1] / 1000000);
+    const endTime = new Date().valueOf();
+    const executionTime = endTime - startTime;
     return {
       name: action.name,
       status: allSuccessful
