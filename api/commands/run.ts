@@ -163,7 +163,6 @@ export class Runner {
 
   private async executeTask(task: dataform.IExecutionTask): Promise<dataform.IExecutedTask> {
     try {
-      // Create another promise chain for retries, if we allow them.
       const rows = await this.adapter.execute(task.statement, {
         onCancel: handleCancel => this.eEmitter.on(CANCEL_EVENT, handleCancel),
         maxResults: 1
