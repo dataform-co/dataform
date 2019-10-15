@@ -178,7 +178,10 @@ export class Runner {
         allPendingActions.map(async pendingAction =>
           this.onActionExecutionComplete({
             name: pendingAction.name,
-            status: dataform.ActionResult.ExecutionStatus.CANCELLED
+            status: dataform.ActionResult.ExecutionStatus.CANCELLED,
+            tasks: pendingAction.tasks.map(() => ({
+              status: dataform.TaskResult.ExecutionStatus.CANCELLED
+            }))
           })
         )
       );
@@ -206,7 +209,10 @@ export class Runner {
         skippableActions.map(async skippableAction =>
           this.onActionExecutionComplete({
             name: skippableAction.name,
-            status: dataform.ActionResult.ExecutionStatus.SKIPPED
+            status: dataform.ActionResult.ExecutionStatus.SKIPPED,
+            tasks: skippableAction.tasks.map(() => ({
+              status: dataform.TaskResult.ExecutionStatus.SKIPPED
+            }))
           })
         )
       ),
