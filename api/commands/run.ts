@@ -30,6 +30,10 @@ actionExecutionStatusMap.set(
   dataform.ActionResult.ExecutionStatus.DISABLED,
   dataform.ActionExecutionStatus.DISABLED
 );
+actionExecutionStatusMap.set(
+  dataform.ActionResult.ExecutionStatus.CANCELLED,
+  dataform.ActionExecutionStatus.FAILED
+);
 
 export function run(graph: dataform.IExecutionGraph, credentials: Credentials): Runner {
   const runner = Runner.create(
@@ -146,25 +150,36 @@ export class Runner {
 
     this.runResult.timing = timer.end();
 
-    let allSuccessful = true;
-    this.runResult.actions.forEach(action => {
-      allSuccessful = allSuccessful && isSuccessfulAction(action);
-    });
-    this.runResult.status = allSuccessful
-      ? dataform.RunResult.ExecutionStatus.SUCCESSFUL
-      : dataform.RunResult.ExecutionStatus.FAILED;
+    this.runResult.status = dataform.RunResult.ExecutionStatus.SUCCESSFUL;
+    if (
+      this.runResult.actions.filter(
+        action => action.status === dataform.ActionResult.ExecutionStatus.CANCELLED
+      ).length > 0
+    ) {
+      this.runResult.status = dataform.RunResult.ExecutionStatus.CANCELLED;
+    }
+    if (
+      this.runResult.actions.filter(
+        action => action.status === dataform.ActionResult.ExecutionStatus.FAILED
+      ).length > 0
+    ) {
+      this.runResult.status = dataform.RunResult.ExecutionStatus.FAILED;
+    }
 
     return this.resultAsExecutedGraph();
   }
 
   private async executeAllActionsReadyForExecution() {
-    // If the run has been cancelled, skip all pending actions.
+    // If the run has been cancelled, cancel all pending actions.
     if (this.cancelled) {
       const allPendingActions = this.pendingActions;
       this.pendingActions = [];
       await Promise.all(
         allPendingActions.map(async pendingAction =>
-          this.onActionExecutionComplete(toSkippedAction(pendingAction))
+          this.onActionExecutionComplete({
+            name: pendingAction.name,
+            status: dataform.ActionResult.ExecutionStatus.CANCELLED
+          })
         )
       );
       return;
@@ -189,7 +204,10 @@ export class Runner {
     await Promise.all([
       Promise.all(
         skippableActions.map(async skippableAction =>
-          this.onActionExecutionComplete(toSkippedAction(skippableAction))
+          this.onActionExecutionComplete({
+            name: skippableAction.name,
+            status: dataform.ActionResult.ExecutionStatus.SKIPPED
+          })
         )
       ),
       Promise.all(
@@ -210,23 +228,25 @@ export class Runner {
     const timer = Timer.start();
 
     const executedTasks: dataform.ITaskResult[] = [];
-    let allSuccessful = true;
+    let status =
+      action.tasks.length === 0
+        ? dataform.ActionResult.ExecutionStatus.DISABLED
+        : dataform.ActionResult.ExecutionStatus.SUCCESSFUL;
     for (const task of action.tasks) {
-      if (allSuccessful) {
+      if (status === dataform.ActionResult.ExecutionStatus.SUCCESSFUL) {
         const executedTask = await this.executeTask(task);
         executedTasks.push(executedTask);
-        allSuccessful =
-          allSuccessful && executedTask.status === dataform.TaskResult.ExecutionStatus.SUCCESSFUL;
+        if (executedTask.status === dataform.TaskResult.ExecutionStatus.FAILED) {
+          status = dataform.ActionResult.ExecutionStatus.FAILED;
+        } else if (executedTask.status === dataform.TaskResult.ExecutionStatus.CANCELLED) {
+          status = dataform.ActionResult.ExecutionStatus.CANCELLED;
+        }
       }
     }
 
     return {
       name: action.name,
-      status: allSuccessful
-        ? executedTasks.length === 0
-          ? dataform.ActionResult.ExecutionStatus.DISABLED
-          : dataform.ActionResult.ExecutionStatus.SUCCESSFUL
-        : dataform.ActionResult.ExecutionStatus.FAILED,
+      status,
       tasks: executedTasks,
       timing: timer.end()
     };
@@ -253,7 +273,9 @@ export class Runner {
       };
     } catch (e) {
       return {
-        status: dataform.TaskResult.ExecutionStatus.FAILED,
+        status: this.cancelled
+          ? dataform.TaskResult.ExecutionStatus.CANCELLED
+          : dataform.TaskResult.ExecutionStatus.FAILED,
         errorMessage: e.message,
         timing: timer.end()
       };
@@ -270,13 +292,6 @@ function allDependenciesHaveBeenExecuted(actionResults: dataform.IActionResult[]
       }
     }
     return true;
-  };
-}
-
-function toSkippedAction(action: dataform.IExecutionAction): dataform.IActionResult {
-  return {
-    name: action.name,
-    status: dataform.ActionResult.ExecutionStatus.SKIPPED
   };
 }
 
