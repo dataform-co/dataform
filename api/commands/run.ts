@@ -6,9 +6,30 @@ import * as Long from "long";
 
 const CANCEL_EVENT = "jobCancel";
 
-const isSuccessfulAction = (action: dataform.IExecutedAction) =>
-  action.status === dataform.ActionExecutionStatus.SUCCESSFUL ||
-  action.status == dataform.ActionExecutionStatus.DISABLED;
+const isSuccessfulAction = (actionResult: dataform.IActionResult) =>
+  actionResult.status === dataform.ActionResult.ExecutionStatus.SUCCESSFUL ||
+  actionResult.status === dataform.ActionResult.ExecutionStatus.DISABLED;
+
+const actionExecutionStatusMap = new Map<
+  dataform.ActionResult.ExecutionStatus,
+  dataform.ActionExecutionStatus
+>();
+actionExecutionStatusMap.set(
+  dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
+  dataform.ActionExecutionStatus.SUCCESSFUL
+);
+actionExecutionStatusMap.set(
+  dataform.ActionResult.ExecutionStatus.FAILED,
+  dataform.ActionExecutionStatus.FAILED
+);
+actionExecutionStatusMap.set(
+  dataform.ActionResult.ExecutionStatus.SKIPPED,
+  dataform.ActionExecutionStatus.SKIPPED
+);
+actionExecutionStatusMap.set(
+  dataform.ActionResult.ExecutionStatus.DISABLED,
+  dataform.ActionExecutionStatus.DISABLED
+);
 
 export function run(graph: dataform.IExecutionGraph, credentials: Credentials): Runner {
   const runner = Runner.create(
@@ -29,7 +50,7 @@ export class Runner {
   private pendingActions: dataform.IExecutionAction[];
 
   private cancelled = false;
-  private result: dataform.IExecutedGraph;
+  private runResult: dataform.IRunResult;
 
   private changeListeners: Array<(graph: dataform.IExecutedGraph) => void> = [];
 
@@ -41,10 +62,7 @@ export class Runner {
     this.adapter = adapter;
     this.graph = graph;
     this.pendingActions = graph.actions;
-    this.result = {
-      projectConfig: this.graph.projectConfig,
-      runConfig: this.graph.runConfig,
-      warehouseState: this.graph.warehouseState,
+    this.runResult = {
       actions: []
     };
     this.eEmitter = new EventEmitter();
@@ -61,29 +79,7 @@ export class Runner {
     if (!!this.executionTask) {
       throw new Error("Executor already started.");
     }
-
-    this.executionTask = new Promise(async (resolve, reject) => {
-      try {
-        // Work out all the schemas we are going to need to create first.
-        const uniqueSchemas: { [schema: string]: boolean } = {};
-        this.graph.actions
-          .filter(action => !!action.target)
-          .map(action => action.target.schema)
-          .filter(schema => !!schema)
-          .forEach(schema => (uniqueSchemas[schema] = true));
-
-        // Wait for all schemas to be created.
-        await Promise.all(
-          Object.keys(uniqueSchemas).map(schema => this.adapter.prepareSchema(schema))
-        );
-
-        await this.executeGraph();
-        resolve(this.result);
-      } catch (e) {
-        reject(e);
-      }
-    });
-
+    this.executionTask = this.executeGraph();
     return this.executionTask;
   }
 
@@ -97,18 +93,68 @@ export class Runner {
   }
 
   private triggerChange() {
-    return Promise.all(this.changeListeners.map(listener => listener(this.result)));
+    const executedGraph = this.resultAsExecutedGraph();
+    return Promise.all(this.changeListeners.map(listener => listener(executedGraph)));
+  }
+
+  private resultAsExecutedGraph() {
+    const executedGraph: dataform.IExecutedGraph = {
+      projectConfig: this.graph.projectConfig,
+      runConfig: this.graph.runConfig,
+      warehouseState: this.graph.warehouseState,
+      actions: this.runResult.actions.map(actionResult => ({
+        name: actionResult.name,
+        status: actionExecutionStatusMap.get(actionResult.status),
+        tasks: actionResult.tasks.map((taskResult, i) => {
+          const executedTask: dataform.IExecutedTask = {
+            ok: taskResult.status === dataform.TaskResult.ExecutionStatus.SUCCESSFUL,
+            task: this.graph.actions.find(action => action.name === actionResult.name).tasks[i]
+          };
+          if (!!taskResult.errorMessage) {
+            executedTask.error = taskResult.errorMessage;
+          }
+          return executedTask;
+        }),
+        executionTime: actionResult.timing.endTimeMillis.subtract(
+          actionResult.timing.startTimeMillis
+        ),
+        deprecatedOk: isSuccessfulAction(actionResult)
+      }))
+    };
+    if (!!this.runResult.status) {
+      executedGraph.ok = this.runResult.status === dataform.RunResult.ExecutionStatus.SUCCESSFUL;
+    }
+    return executedGraph;
   }
 
   private async executeGraph() {
+    const timer = Timer.start();
+
+    // Work out all the schemas we are going to need to create first.
+    const uniqueSchemas: { [schema: string]: boolean } = {};
+    this.graph.actions
+      .filter(action => !!action.target)
+      .map(action => action.target.schema)
+      .filter(schema => !!schema)
+      .forEach(schema => (uniqueSchemas[schema] = true));
+
+    // Wait for all schemas to be created.
+    await Promise.all(Object.keys(uniqueSchemas).map(schema => this.adapter.prepareSchema(schema)));
+
     // Recursively execute all actions as they become executable.
     await this.executeAllActionsReadyForExecution();
 
-    let ok = true;
-    this.result.actions.forEach(action => {
-      ok = ok && isSuccessfulAction(action);
+    this.runResult.timing = timer.end();
+
+    let allSuccessful = true;
+    this.runResult.actions.forEach(action => {
+      allSuccessful = allSuccessful && isSuccessfulAction(action);
     });
-    this.result.ok = ok;
+    this.runResult.status = allSuccessful
+      ? dataform.RunResult.ExecutionStatus.SUCCESSFUL
+      : dataform.RunResult.ExecutionStatus.FAILED;
+
+    return this.resultAsExecutedGraph();
   }
 
   private async executeAllActionsReadyForExecution() {
@@ -126,7 +172,7 @@ export class Runner {
 
     // Determine what actions we can execute.
     const allDependenciesHaveExecutedSuccessfully = allDependenciesHaveBeenExecuted(
-      this.result.actions.filter(isSuccessfulAction)
+      this.runResult.actions.filter(isSuccessfulAction)
     );
     const executableActions = this.pendingActions.filter(allDependenciesHaveExecutedSuccessfully);
     this.pendingActions = this.pendingActions.filter(
@@ -134,7 +180,7 @@ export class Runner {
     );
 
     // Determine what actions we should skip (necessarily excluding executable actions).
-    const allDependenciesHaveExecuted = allDependenciesHaveBeenExecuted(this.result.actions);
+    const allDependenciesHaveExecuted = allDependenciesHaveBeenExecuted(this.runResult.actions);
     const skippableActions = this.pendingActions.filter(allDependenciesHaveExecuted);
     this.pendingActions = this.pendingActions.filter(
       action => !allDependenciesHaveExecuted(action)
@@ -154,41 +200,40 @@ export class Runner {
     ]);
   }
 
-  private async onActionExecutionComplete(executedAction: dataform.IExecutedAction) {
-    this.result.actions.push(executedAction);
+  private async onActionExecutionComplete(actionResult: dataform.IActionResult) {
+    this.runResult.actions.push(actionResult);
     await this.triggerChange();
     await this.executeAllActionsReadyForExecution();
   }
 
-  private async executeAction(action: dataform.IExecutionAction) {
-    const startTime = new Date().valueOf();
+  private async executeAction(action: dataform.IExecutionAction): Promise<dataform.IActionResult> {
+    const timer = Timer.start();
 
-    const executedTasks: dataform.IExecutedTask[] = [];
+    const executedTasks: dataform.ITaskResult[] = [];
     let allSuccessful = true;
     for (const task of action.tasks) {
       if (allSuccessful) {
         const executedTask = await this.executeTask(task);
         executedTasks.push(executedTask);
-        allSuccessful = allSuccessful && executedTask.ok;
+        allSuccessful =
+          allSuccessful && executedTask.status === dataform.TaskResult.ExecutionStatus.SUCCESSFUL;
       }
     }
 
-    const endTime = new Date().valueOf();
-    const executionTime = endTime - startTime;
     return {
       name: action.name,
       status: allSuccessful
-        ? executedTasks.length == 0
-          ? dataform.ActionExecutionStatus.DISABLED
-          : dataform.ActionExecutionStatus.SUCCESSFUL
-        : dataform.ActionExecutionStatus.FAILED,
+        ? executedTasks.length === 0
+          ? dataform.ActionResult.ExecutionStatus.DISABLED
+          : dataform.ActionResult.ExecutionStatus.SUCCESSFUL
+        : dataform.ActionResult.ExecutionStatus.FAILED,
       tasks: executedTasks,
-      executionTime: Long.fromNumber(executionTime),
-      deprecatedOk: allSuccessful
+      timing: timer.end()
     };
   }
 
-  private async executeTask(task: dataform.IExecutionTask): Promise<dataform.IExecutedTask> {
+  private async executeTask(task: dataform.IExecutionTask): Promise<dataform.ITaskResult> {
+    const timer = Timer.start();
     try {
       const rows = await this.adapter.execute(task.statement, {
         onCancel: handleCancel => this.eEmitter.on(CANCEL_EVENT, handleCancel),
@@ -202,15 +247,22 @@ export class Runner {
           throw new Error(`Assertion failed: query returned ${rowCount} row(s).`);
         }
       }
-      return { ok: true, task };
+      return {
+        status: dataform.TaskResult.ExecutionStatus.SUCCESSFUL,
+        timing: timer.end()
+      };
     } catch (e) {
-      return { ok: false, error: e.message, task };
+      return {
+        status: dataform.TaskResult.ExecutionStatus.FAILED,
+        errorMessage: e.message,
+        timing: timer.end()
+      };
     }
   }
 }
 
-function allDependenciesHaveBeenExecuted(executedActions: dataform.IExecutedAction[]) {
-  const executedActionNames = executedActions.map(action => action.name);
+function allDependenciesHaveBeenExecuted(actionResults: dataform.IActionResult[]) {
+  const executedActionNames = actionResults.map(action => action.name);
   return (action: dataform.IExecutionAction) => {
     for (const dependency of action.dependencies) {
       if (!executedActionNames.includes(dependency)) {
@@ -221,10 +273,23 @@ function allDependenciesHaveBeenExecuted(executedActions: dataform.IExecutedActi
   };
 }
 
-function toSkippedAction(action: dataform.IExecutionAction) {
+function toSkippedAction(action: dataform.IExecutionAction): dataform.IActionResult {
   return {
     name: action.name,
-    status: dataform.ActionExecutionStatus.SKIPPED,
-    deprecatedSkipped: true
+    status: dataform.ActionResult.ExecutionStatus.SKIPPED
   };
+}
+
+class Timer {
+  private constructor(readonly startTimeMillis: number) {}
+  public static start() {
+    return new Timer(new Date().valueOf());
+  }
+
+  public end(): dataform.ITiming {
+    return {
+      startTimeMillis: Long.fromNumber(this.startTimeMillis),
+      endTimeMillis: Long.fromNumber(new Date().valueOf())
+    };
+  }
 }
