@@ -112,24 +112,52 @@ export class Runner {
   }
 
   private async executeAllActionsReadyForExecution() {
-    const allSuccessfulActions = this.result.actions.filter(isSuccessfulAction).map(fn => fn.name);
-    const isReadyForExecution = (action: dataform.IExecutionAction) => {
-      for (const dependency of action.dependencies) {
-        if (!allSuccessfulActions.includes(dependency)) {
-          return false;
-        }
-      }
-      return true;
-    };
-    const readyForExecutionActions = this.pendingActions.filter(isReadyForExecution);
-    this.pendingActions = this.pendingActions.filter(action => !isReadyForExecution(action));
-    return Promise.all(
-      readyForExecutionActions.map(async action => {
-        this.result.actions.push(await this.executeAction(action));
-        await this.triggerChange();
-        await this.executeAllActionsReadyForExecution();
-      })
+    // If the run has been cancelled, skip all pending actions.
+    if (this.cancelled) {
+      const allPendingActions = this.pendingActions;
+      this.pendingActions = [];
+      await Promise.all(
+        allPendingActions.map(async pendingAction =>
+          this.onActionExecutionComplete(toSkippedAction(pendingAction))
+        )
+      );
+      return;
+    }
+
+    // Determine what actions we can execute.
+    const allDependenciesHaveExecutedSuccessfully = allDependenciesHaveBeenExecuted(
+      this.result.actions.filter(isSuccessfulAction)
     );
+    const executableActions = this.pendingActions.filter(allDependenciesHaveExecutedSuccessfully);
+    this.pendingActions = this.pendingActions.filter(
+      action => !allDependenciesHaveExecutedSuccessfully(action)
+    );
+
+    // Determine what actions we should skip (necessarily excluding executable actions).
+    const allDependenciesHaveExecuted = allDependenciesHaveBeenExecuted(this.result.actions);
+    const skippableActions = this.pendingActions.filter(allDependenciesHaveExecuted);
+    this.pendingActions = this.pendingActions.filter(
+      action => !allDependenciesHaveExecuted(action)
+    );
+
+    await Promise.all([
+      Promise.all(
+        skippableActions.map(async skippableAction =>
+          this.onActionExecutionComplete(toSkippedAction(skippableAction))
+        )
+      ),
+      Promise.all(
+        executableActions.map(async executableAction =>
+          this.onActionExecutionComplete(await this.executeAction(executableAction))
+        )
+      )
+    ]);
+  }
+
+  private async onActionExecutionComplete(executedAction: dataform.IExecutedAction) {
+    this.result.actions.push(executedAction);
+    await this.triggerChange();
+    await this.executeAllActionsReadyForExecution();
   }
 
   private async executeAction(action: dataform.IExecutionAction) {
@@ -179,4 +207,24 @@ export class Runner {
       return { ok: false, error: e.message, task };
     }
   }
+}
+
+function allDependenciesHaveBeenExecuted(executedActions: dataform.IExecutedAction[]) {
+  const executedActionNames = executedActions.map(action => action.name);
+  return (action: dataform.IExecutionAction) => {
+    for (const dependency of action.dependencies) {
+      if (!executedActionNames.includes(dependency)) {
+        return false;
+      }
+    }
+    return true;
+  };
+}
+
+function toSkippedAction(action: dataform.IExecutionAction) {
+  return {
+    name: action.name,
+    status: dataform.ActionExecutionStatus.SKIPPED,
+    deprecatedSkipped: true
+  };
 }
