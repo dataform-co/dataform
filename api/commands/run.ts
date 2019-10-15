@@ -233,7 +233,15 @@ export class Runner {
         ? dataform.ActionResult.ExecutionStatus.DISABLED
         : dataform.ActionResult.ExecutionStatus.SUCCESSFUL;
     for (const task of action.tasks) {
-      if (status === dataform.ActionResult.ExecutionStatus.SUCCESSFUL) {
+      if (this.cancelled) {
+        executedTasks.push({
+          status: dataform.TaskResult.ExecutionStatus.CANCELLED
+        });
+      } else if (status !== dataform.ActionResult.ExecutionStatus.SUCCESSFUL) {
+        executedTasks.push({
+          status: dataform.TaskResult.ExecutionStatus.SKIPPED
+        });
+      } else {
         const executedTask = await this.executeTask(task);
         executedTasks.push(executedTask);
         if (executedTask.status === dataform.TaskResult.ExecutionStatus.FAILED) {
