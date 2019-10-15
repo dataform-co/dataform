@@ -117,7 +117,9 @@ export class Runner {
       const allPendingActions = this.pendingActions;
       this.pendingActions = [];
       await Promise.all(
-        allPendingActions.map(async pendingAction => this.skipAction(pendingAction))
+        allPendingActions.map(async pendingAction =>
+          this.onActionExecutionComplete(toSkippedAction(pendingAction))
+        )
       );
       return;
     }
@@ -139,7 +141,11 @@ export class Runner {
     );
 
     await Promise.all([
-      Promise.all(skippableActions.map(async skippableAction => this.skipAction(skippableAction))),
+      Promise.all(
+        skippableActions.map(async skippableAction =>
+          this.onActionExecutionComplete(toSkippedAction(skippableAction))
+        )
+      ),
       Promise.all(
         executableActions.map(async executableAction =>
           this.onActionExecutionComplete(await this.executeAction(executableAction))
@@ -152,14 +158,6 @@ export class Runner {
     this.result.actions.push(executedAction);
     await this.triggerChange();
     await this.executeAllActionsReadyForExecution();
-  }
-
-  private skipAction(action: dataform.IExecutionAction) {
-    return {
-      name: action.name,
-      status: dataform.ActionExecutionStatus.SKIPPED,
-      deprecatedSkipped: true
-    };
   }
 
   private async executeAction(action: dataform.IExecutionAction) {
@@ -220,5 +218,13 @@ function allDependenciesHaveBeenExecuted(executedActions: dataform.IExecutedActi
       }
     }
     return true;
+  };
+}
+
+function toSkippedAction(action: dataform.IExecutionAction) {
+  return {
+    name: action.name,
+    status: dataform.ActionExecutionStatus.SKIPPED,
+    deprecatedSkipped: true
   };
 }
