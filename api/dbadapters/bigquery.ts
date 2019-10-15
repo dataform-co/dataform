@@ -177,7 +177,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
 
     return new Promise<any[]>((resolve, reject) =>
       this.client.createQueryJob(
-        { useLegacySql: false, query: statement, maxResults },
+        { useLegacySql: false, jobPrefix: "dataform-", query: statement, maxResults },
         async (err, job) => {
           if (err) {
             return reject(err);
