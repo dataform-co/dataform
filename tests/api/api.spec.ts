@@ -687,41 +687,36 @@ describe("@dataform/api", () => {
       await runner.execute();
       const result = await runner.resultPromise();
 
-      const timeCleanedActions = result.actions.map(action => {
-        delete action.executionTime;
-        return action;
+      delete result.timing;
+      result.actions.forEach(actionResult => {
+        delete actionResult.timing;
+        actionResult.tasks.forEach(taskResult => {
+          delete taskResult.timing;
+        });
       });
-      result.actions = timeCleanedActions;
 
-      expect(dataform.ExecutedGraph.create(result)).to.deep.equal(
-        dataform.ExecutedGraph.create({
-          projectConfig: TEST_GRAPH.projectConfig,
-          runConfig: TEST_GRAPH.runConfig,
-          warehouseState: TEST_GRAPH.warehouseState,
-          ok: false,
+      expect(dataform.RunResult.create(result)).to.deep.equal(
+        dataform.RunResult.create({
+          status: dataform.RunResult.ExecutionStatus.FAILED,
           actions: [
             {
               name: TEST_GRAPH.actions[0].name,
               tasks: [
                 {
-                  task: TEST_GRAPH.actions[0].tasks[0],
-                  ok: true
+                  status: dataform.TaskResult.ExecutionStatus.SUCCESSFUL
                 }
               ],
-              status: dataform.ActionExecutionStatus.SUCCESSFUL,
-              deprecatedOk: true
+              status: dataform.ActionResult.ExecutionStatus.SUCCESSFUL
             },
             {
               name: TEST_GRAPH.actions[1].name,
               tasks: [
                 {
-                  task: TEST_GRAPH.actions[1].tasks[0],
-                  ok: false,
-                  error: "bad statement"
+                  status: dataform.TaskResult.ExecutionStatus.FAILED,
+                  errorMessage: "bad statement"
                 }
               ],
-              status: dataform.ActionExecutionStatus.FAILED,
-              deprecatedOk: false
+              status: dataform.ActionResult.ExecutionStatus.FAILED
             }
           ]
         })
@@ -781,8 +776,10 @@ describe("@dataform/api", () => {
       expect(wasCancelled).is.true;
       // Cancelling a run doesn't actually throw at the top level.
       // The action should fail, and have an appropriate error message.
-      expect(result.actions[0].deprecatedOk).is.false;
-      expect(result.actions[0].tasks[0].error).to.match(/cancelled/);
+      expect(result.actions[0].tasks[0].status).equal(
+        dataform.TaskResult.ExecutionStatus.CANCELLED
+      );
+      expect(result.actions[0].tasks[0].errorMessage).to.match(/cancelled/);
     });
   });
 
