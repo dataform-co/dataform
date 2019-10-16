@@ -58,7 +58,7 @@ export class Runner {
 
   private changeListeners: Array<(graph: dataform.IExecutedGraph) => void> = [];
 
-  private executionTask: Promise<dataform.IExecutedGraph>;
+  private executionTask: Promise<dataform.IRunResult>;
 
   private eEmitter: EventEmitter;
 
@@ -84,7 +84,7 @@ export class Runner {
       throw new Error("Executor already started.");
     }
     this.executionTask = this.executeGraph();
-    return this.executionTask;
+    return this.resultPromise();
   }
 
   public cancel() {
@@ -92,8 +92,9 @@ export class Runner {
     this.eEmitter.emit(CANCEL_EVENT);
   }
 
-  public resultPromise(): Promise<dataform.IExecutedGraph> {
-    return this.executionTask;
+  public async resultPromise(): Promise<dataform.IExecutedGraph> {
+    await this.executionTask;
+    return this.resultAsExecutedGraph();
   }
 
   private triggerChange() {
@@ -172,7 +173,7 @@ export class Runner {
       this.runResult.status = dataform.RunResult.ExecutionStatus.FAILED;
     }
 
-    return this.resultAsExecutedGraph();
+    return this.runResult;
   }
 
   private async executeAllActionsReadyForExecution() {
