@@ -10,31 +10,6 @@ const isSuccessfulAction = (actionResult: dataform.IActionResult) =>
   actionResult.status === dataform.ActionResult.ExecutionStatus.SUCCESSFUL ||
   actionResult.status === dataform.ActionResult.ExecutionStatus.DISABLED;
 
-const actionExecutionStatusMap = new Map<
-  dataform.ActionResult.ExecutionStatus,
-  dataform.ActionExecutionStatus
->();
-actionExecutionStatusMap.set(
-  dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
-  dataform.ActionExecutionStatus.SUCCESSFUL
-);
-actionExecutionStatusMap.set(
-  dataform.ActionResult.ExecutionStatus.FAILED,
-  dataform.ActionExecutionStatus.FAILED
-);
-actionExecutionStatusMap.set(
-  dataform.ActionResult.ExecutionStatus.SKIPPED,
-  dataform.ActionExecutionStatus.SKIPPED
-);
-actionExecutionStatusMap.set(
-  dataform.ActionResult.ExecutionStatus.DISABLED,
-  dataform.ActionExecutionStatus.DISABLED
-);
-actionExecutionStatusMap.set(
-  dataform.ActionResult.ExecutionStatus.CANCELLED,
-  dataform.ActionExecutionStatus.FAILED
-);
-
 export function run(graph: dataform.IExecutionGraph, credentials: Credentials): Runner {
   const runner = Runner.create(
     dbadapters.create(credentials, graph.projectConfig.warehouse),
@@ -111,7 +86,7 @@ export class Runner {
         .filter(action => action.status !== dataform.ActionResult.ExecutionStatus.RUNNING)
         .map(actionResult => ({
           name: actionResult.name,
-          status: actionExecutionStatusMap.get(actionResult.status),
+          status: toActionExecutionStatus(actionResult.status),
           tasks: actionResult.tasks.map((taskResult, i) => {
             const executedTask: dataform.IExecutedTask = {
               ok: taskResult.status === dataform.TaskResult.ExecutionStatus.SUCCESSFUL,
@@ -184,9 +159,9 @@ export class Runner {
       allPendingActions.forEach(pendingAction =>
         this.runResult.actions.push({
           name: pendingAction.name,
-          status: dataform.ActionResult.ExecutionStatus.CANCELLED,
+          status: dataform.ActionResult.ExecutionStatus.SKIPPED,
           tasks: pendingAction.tasks.map(() => ({
-            status: dataform.TaskResult.ExecutionStatus.CANCELLED
+            status: dataform.TaskResult.ExecutionStatus.SKIPPED
           }))
         })
       );
@@ -194,25 +169,9 @@ export class Runner {
       return;
     }
 
-    // Determine what actions we can execute.
-    const allDependenciesHaveExecutedSuccessfully = allDependenciesHaveBeenExecuted(
-      this.runResult.actions.filter(isSuccessfulAction)
-    );
-    const executableActions = this.pendingActions.filter(allDependenciesHaveExecutedSuccessfully);
-    this.pendingActions = this.pendingActions.filter(
-      action => !allDependenciesHaveExecutedSuccessfully(action)
-    );
+    const executableActions = this.removeExecutableActionsFromPending();
+    const skippableActions = this.removeSkippableActionsFromPending();
 
-    // Determine what actions we should skip (necessarily excluding executable actions).
-    const allDependenciesHaveExecuted = allDependenciesHaveBeenExecuted(
-      this.runResult.actions.filter(
-        action => action.status !== dataform.ActionResult.ExecutionStatus.RUNNING
-      )
-    );
-    const skippableActions = this.pendingActions.filter(allDependenciesHaveExecuted);
-    this.pendingActions = this.pendingActions.filter(
-      action => !allDependenciesHaveExecuted(action)
-    );
     skippableActions.forEach(skippableAction => {
       this.runResult.actions.push({
         name: skippableAction.name,
@@ -240,6 +199,30 @@ export class Runner {
     ]);
   }
 
+  private removeExecutableActionsFromPending() {
+    const allDependenciesHaveExecutedSuccessfully = allDependenciesHaveBeenExecuted(
+      this.runResult.actions.filter(isSuccessfulAction)
+    );
+    const executableActions = this.pendingActions.filter(allDependenciesHaveExecutedSuccessfully);
+    this.pendingActions = this.pendingActions.filter(
+      action => !allDependenciesHaveExecutedSuccessfully(action)
+    );
+    return executableActions;
+  }
+
+  private removeSkippableActionsFromPending() {
+    const allDependenciesHaveExecuted = allDependenciesHaveBeenExecuted(
+      this.runResult.actions.filter(
+        action => action.status !== dataform.ActionResult.ExecutionStatus.RUNNING
+      )
+    );
+    const skippableActions = this.pendingActions.filter(allDependenciesHaveExecuted);
+    this.pendingActions = this.pendingActions.filter(
+      action => !allDependenciesHaveExecuted(action)
+    );
+    return skippableActions;
+  }
+
   private async executeAction(action: dataform.IExecutionAction): Promise<void> {
     if (action.tasks.length === 0) {
       this.runResult.actions.push({
@@ -262,23 +245,20 @@ export class Runner {
     await this.triggerChange();
 
     for (const task of action.tasks) {
-      if (this.cancelled) {
-        actionResult.tasks.push({
-          status: dataform.TaskResult.ExecutionStatus.CANCELLED
-        });
-        await this.triggerChange();
-      } else if (actionResult.status !== dataform.ActionResult.ExecutionStatus.RUNNING) {
-        actionResult.tasks.push({
-          status: dataform.TaskResult.ExecutionStatus.SKIPPED
-        });
-        await this.triggerChange();
-      } else {
+      if (
+        actionResult.status === dataform.ActionResult.ExecutionStatus.RUNNING &&
+        !this.cancelled
+      ) {
         const taskStatus = await this.executeTask(task, actionResult);
         if (taskStatus === dataform.TaskResult.ExecutionStatus.FAILED) {
           actionResult.status = dataform.ActionResult.ExecutionStatus.FAILED;
         } else if (taskStatus === dataform.TaskResult.ExecutionStatus.CANCELLED) {
           actionResult.status = dataform.ActionResult.ExecutionStatus.CANCELLED;
         }
+      } else {
+        actionResult.tasks.push({
+          status: dataform.TaskResult.ExecutionStatus.SKIPPED
+        });
       }
     }
 
@@ -355,5 +335,19 @@ class Timer {
       startTimeMillis: Long.fromNumber(this.startTimeMillis),
       endTimeMillis: Long.fromNumber(new Date().valueOf())
     };
+  }
+}
+
+function toActionExecutionStatus(actionResultStatus: dataform.ActionResult.ExecutionStatus) {
+  switch (actionResultStatus) {
+    case dataform.ActionResult.ExecutionStatus.SUCCESSFUL:
+      return dataform.ActionExecutionStatus.SUCCESSFUL;
+    case dataform.ActionResult.ExecutionStatus.CANCELLED:
+    case dataform.ActionResult.ExecutionStatus.FAILED:
+      return dataform.ActionExecutionStatus.FAILED;
+    case dataform.ActionResult.ExecutionStatus.SKIPPED:
+      return dataform.ActionExecutionStatus.SKIPPED;
+    case dataform.ActionResult.ExecutionStatus.DISABLED:
+      return dataform.ActionExecutionStatus.DISABLED;
   }
 }
