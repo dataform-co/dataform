@@ -271,9 +271,10 @@ message Timing {
 message RunResult {
   enum ExecutionStatus {
     UNKNOWN = 0;
-    SUCCESSFUL = 1;
-    FAILED = 2;
-    CANCELLED = 3;
+    RUNNING = 1;
+    SUCCESSFUL = 2;
+    FAILED = 3;
+    CANCELLED = 4;
   }
   ExecutionStatus status = 1;
   repeated ActionResult actions = 2;
@@ -285,11 +286,12 @@ message ActionResult {
 
   enum ExecutionStatus {
     UNKNOWN = 0;
-    SUCCESSFUL = 1;
-    FAILED = 2;
-    SKIPPED = 3;
-    DISABLED = 4;
-    CANCELLED = 5;
+    RUNNING = 1;
+    SUCCESSFUL = 2;
+    FAILED = 3;
+    SKIPPED = 4;
+    DISABLED = 5;
+    CANCELLED = 6;
   }
   ExecutionStatus status = 2;
 
@@ -300,10 +302,11 @@ message ActionResult {
 message TaskResult {
   enum ExecutionStatus {
       UNKNOWN = 0;
-      SUCCESSFUL = 1;
-      FAILED = 2;
-      SKIPPED = 3;
-      CANCELLED = 4;
+      RUNNING = 1;
+      SUCCESSFUL = 2;
+      FAILED = 3;
+      SKIPPED = 4;
+      CANCELLED = 5;
   }
   ExecutionStatus status = 1;
   string error_message = 2;
