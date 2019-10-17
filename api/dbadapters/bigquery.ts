@@ -161,10 +161,25 @@ export class BigQueryDbAdapter implements IDbAdapter {
   }
 
   private async runQuery(statement: string, maxResults?: number) {
-    const data = await this.client.query(statement, {
-      maxResults
+    const results = await new Promise<any[]>((resolve, reject) => {
+      const allRows: any[] = [];
+      const stream = this.client.createQueryStream(statement);
+      stream
+        .on("error", reject)
+        .on("data", row => {
+          if (!maxResults) {
+            allRows.push(row);
+          } else if (allRows.length < maxResults) {
+            allRows.push(row);
+          } else {
+            stream.end();
+          }
+        })
+        .on("end", () => {
+          resolve(allRows);
+        });
     });
-    return cleanRows(data[0]);
+    return cleanRows(results);
   }
 
   private createQueryJob(statement: string, maxResults?: number, onCancel?: OnCancel) {
