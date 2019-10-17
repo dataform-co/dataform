@@ -31,7 +31,7 @@ export class Runner {
   private cancelled = false;
   private runResult: dataform.IRunResult;
 
-  private changeListeners: Array<(graph: dataform.IExecutedGraph) => void> = [];
+  private changeListeners: Array<(graph: dataform.IRunResult) => void> = [];
 
   private executionTask: Promise<dataform.IRunResult>;
 
@@ -49,12 +49,12 @@ export class Runner {
     this.eEmitter.setMaxListeners(0);
   }
 
-  public onChange(listener: (graph: dataform.IExecutedGraph) => Promise<void> | void): Runner {
+  public onChange(listener: (graph: dataform.IRunResult) => Promise<void> | void): Runner {
     this.changeListeners.push(listener);
     return this;
   }
 
-  public async execute(): Promise<dataform.IExecutedGraph> {
+  public async execute(): Promise<dataform.IRunResult> {
     if (!!this.executionTask) {
       throw new Error("Executor already started.");
     }
@@ -67,46 +67,12 @@ export class Runner {
     this.eEmitter.emit(CANCEL_EVENT);
   }
 
-  public async resultPromise(): Promise<dataform.IExecutedGraph> {
-    await this.executionTask;
-    return this.resultAsExecutedGraph();
+  public async resultPromise(): Promise<dataform.IRunResult> {
+    return this.executionTask;
   }
 
   private triggerChange() {
-    const executedGraph = this.resultAsExecutedGraph();
-    return Promise.all(this.changeListeners.map(listener => listener(executedGraph)));
-  }
-
-  private resultAsExecutedGraph() {
-    const executedGraph: dataform.IExecutedGraph = {
-      projectConfig: this.graph.projectConfig,
-      runConfig: this.graph.runConfig,
-      warehouseState: this.graph.warehouseState,
-      actions: this.runResult.actions
-        .filter(action => action.status !== dataform.ActionResult.ExecutionStatus.RUNNING)
-        .map(actionResult => ({
-          name: actionResult.name,
-          status: toActionExecutionStatus(actionResult.status),
-          tasks: actionResult.tasks.map((taskResult, i) => {
-            const executedTask: dataform.IExecutedTask = {
-              ok: taskResult.status === dataform.TaskResult.ExecutionStatus.SUCCESSFUL,
-              task: this.graph.actions.find(action => action.name === actionResult.name).tasks[i]
-            };
-            if (!!taskResult.errorMessage) {
-              executedTask.error = taskResult.errorMessage;
-            }
-            return executedTask;
-          }),
-          executionTime: actionResult.timing.endTimeMillis.subtract(
-            actionResult.timing.startTimeMillis
-          ),
-          deprecatedOk: isSuccessfulAction(actionResult)
-        }))
-    };
-    if (!!this.runResult.status) {
-      executedGraph.ok = this.runResult.status === dataform.RunResult.ExecutionStatus.SUCCESSFUL;
-    }
-    return executedGraph;
+    return Promise.all(this.changeListeners.map(listener => listener(this.runResult)));
   }
 
   private async executeGraph() {
@@ -335,19 +301,5 @@ class Timer {
       startTimeMillis: Long.fromNumber(this.startTimeMillis),
       endTimeMillis: Long.fromNumber(new Date().valueOf())
     };
-  }
-}
-
-function toActionExecutionStatus(actionResultStatus: dataform.ActionResult.ExecutionStatus) {
-  switch (actionResultStatus) {
-    case dataform.ActionResult.ExecutionStatus.SUCCESSFUL:
-      return dataform.ActionExecutionStatus.SUCCESSFUL;
-    case dataform.ActionResult.ExecutionStatus.CANCELLED:
-    case dataform.ActionResult.ExecutionStatus.FAILED:
-      return dataform.ActionExecutionStatus.FAILED;
-    case dataform.ActionResult.ExecutionStatus.SKIPPED:
-      return dataform.ActionExecutionStatus.SKIPPED;
-    case dataform.ActionResult.ExecutionStatus.DISABLED:
-      return dataform.ActionExecutionStatus.DISABLED;
   }
 }

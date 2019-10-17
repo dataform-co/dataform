@@ -498,15 +498,14 @@ const builtYargs = createYargsCli({
         });
         const alreadyPrintedActions = new Set<string>();
 
-        const printExecutedGraph = (executedGraph: dataform.IExecutedGraph) => {
+        const printExecutedGraph = (executedGraph: dataform.IRunResult) => {
           executedGraph.actions
+            .filter(
+              actionResult => actionResult.status !== dataform.ActionResult.ExecutionStatus.RUNNING
+            )
             .filter(executedAction => !alreadyPrintedActions.has(executedAction.name))
             .forEach(executedAction => {
-              printExecutedAction(
-                executedAction,
-                actionsByName.get(executedAction.name),
-                argv.verbose
-              );
+              printExecutedAction(executedAction, actionsByName.get(executedAction.name));
               alreadyPrintedActions.add(executedAction.name);
             });
         };
