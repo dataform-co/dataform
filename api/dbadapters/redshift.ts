@@ -42,7 +42,10 @@ export class RedshiftDbAdapter implements IDbAdapter {
       // See https://docs.aws.amazon.com/redshift/latest/dg/declare.html for more details.
       const cursor: ICursor = client.query(new Cursor(statement));
       const result = await new Promise<any[]>((resolve, reject) => {
-        cursor.read(options.maxResults, (err, rows) => {
+        // It seems that when requesting one row back exactly, we run into some issues with
+        // the cursor. I've filed a bug (https://github.com/brianc/node-pg-cursor/issues/55),
+        // but setting a minimum of 2 resulting rows seems to do the trick.
+        cursor.read(Math.max(2, options.maxResults), (err, rows) => {
           if (err) {
             reject(err);
             return;
@@ -52,7 +55,8 @@ export class RedshiftDbAdapter implements IDbAdapter {
             if (closeErr) {
               reject(closeErr);
             } else {
-              resolve(rows);
+              // Limit results again, in case we had to increase the limit in the original request.
+              resolve(rows.slice(0, options.maxResults));
             }
           });
         });
