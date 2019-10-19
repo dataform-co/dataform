@@ -16,24 +16,18 @@ ts_library(
     ],
 )
 
-load("//tools/npm:package.bzl", "dataform_npm_package")
+load("@build_bazel_rules_nodejs//:defs.bzl", "npm_package")
 
-dataform_npm_package(
+npm_package(
     name = "package",
-    package_layers = [
-        "github-issue-webhook.package.json",
-    ],
-    deps = [],
+    srcs = ["package.json"],
+    deps = [":github-issue-webhook"],
 )
 
-load(":deploy_function.bzl", "deploy_gcloud_function")
+load(":gcloud_function.bzl", "nodejs_gcloud_function")
 
-deploy_gcloud_function(
-    name = "foo",
+nodejs_gcloud_function(
+    name = "gcloud_function",
     function_name = "handleStackdriverEvent",
-    source_path = "bazel-bin/github-issue-webhook",
-    deps = [
-        ":github-issue-webhook",
-        ":package",
-    ],
+    npm_package = ":package",
 )
