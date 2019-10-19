@@ -263,6 +263,56 @@ message ExecutedTask {
   string error = 3;
 }
 
+message Timing {
+  int64 start_time_millis = 1;
+  int64 end_time_millis = 2;
+}
+
+message RunResult {
+  enum ExecutionStatus {
+    UNKNOWN = 0;
+    RUNNING = 1;
+    SUCCESSFUL = 2;
+    FAILED = 3;
+    CANCELLED = 4;
+  }
+  ExecutionStatus status = 1;
+  repeated ActionResult actions = 2;
+  Timing timing = 3;
+}
+
+message ActionResult {
+  string name = 1;
+
+  enum ExecutionStatus {
+    UNKNOWN = 0;
+    RUNNING = 1;
+    SUCCESSFUL = 2;
+    FAILED = 3;
+    SKIPPED = 4;
+    DISABLED = 5;
+    CANCELLED = 6;
+  }
+  ExecutionStatus status = 2;
+
+  repeated TaskResult tasks = 3;
+  Timing timing = 4;
+}
+
+message TaskResult {
+  enum ExecutionStatus {
+      UNKNOWN = 0;
+      RUNNING = 1;
+      SUCCESSFUL = 2;
+      FAILED = 3;
+      SKIPPED = 4;
+      CANCELLED = 5;
+  }
+  ExecutionStatus status = 1;
+  string error_message = 2;
+  Timing timing = 3;
+}
+
 enum ActionExecutionStatus {
   UNKNOWN_ACTION_EXECUTION_STATUS = 0;
   SUCCESSFUL = 1;

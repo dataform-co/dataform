@@ -63,22 +63,23 @@ describe("@dataform/integration/sqldatawarehouse", () => {
 
     // Check the status of the two assertions.
     expect(actionMap["df_integration_test_assertions.example_assertion_fail"].status).equals(
-      dataform.ActionExecutionStatus.FAILED
+      dataform.ActionResult.ExecutionStatus.FAILED
     );
     expect(actionMap["df_integration_test_assertions.example_assertion_pass"].status).equals(
-      dataform.ActionExecutionStatus.SUCCESSFUL
+      dataform.ActionResult.ExecutionStatus.SUCCESSFUL
     );
 
     // Check the status of the two uniqueness assertions.
     expect(
       actionMap["df_integration_test_assertions.example_assertion_uniqueness_fail"].status
-    ).equals(dataform.ActionExecutionStatus.FAILED);
+    ).equals(dataform.ActionResult.ExecutionStatus.FAILED);
     expect(
-      actionMap["df_integration_test_assertions.example_assertion_uniqueness_fail"].tasks[2].error
+      actionMap["df_integration_test_assertions.example_assertion_uniqueness_fail"].tasks[2]
+        .errorMessage
     ).to.eql("Assertion failed: query returned 1 row(s).");
     expect(
       actionMap["df_integration_test_assertions.example_assertion_uniqueness_pass"].status
-    ).equals(dataform.ActionExecutionStatus.SUCCESSFUL);
+    ).equals(dataform.ActionResult.ExecutionStatus.SUCCESSFUL);
 
     // Check the data in the incremental table.
     let incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
@@ -102,7 +103,7 @@ describe("@dataform/integration/sqldatawarehouse", () => {
     );
 
     executedGraph = await dfapi.run(executionGraph, credentials).resultPromise();
-    expect(executedGraph.ok).equals(true);
+    expect(executedGraph.status).equals(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
 
     // Check there is an extra row in the incremental table.
     incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
