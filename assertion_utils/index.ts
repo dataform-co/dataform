@@ -5,6 +5,8 @@ export function forDataset(dataset: string) {
 export class DatasetAssertion {
   private readonly dataset: string;
   private groupCols: string[] = [];
+  private field: string;
+  private values: string[] = [];
   constructor(dataset: string) {
     this.dataset = dataset;
   }
@@ -33,6 +35,26 @@ export class DatasetAssertion {
       base
     WHERE
       row_count > 1
+    `
+  }
+
+  public getNotNullQuery(field: string): string {
+    return `
+    SELECT
+      *
+    FROM ${this.dataset}
+    WHERE
+      ${field} IS NULL
+    `
+  }
+
+  public getAcceptedValuesQuery(field: string, values: string | string[]): string {
+    return `
+    SELECT
+      *
+    FROM ${this.dataset}
+    WHERE
+      ${field} NOT IN ${values}
     `
   }
 }
