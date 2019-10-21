@@ -25,11 +25,14 @@ exports.handleStackdriverEvent = async (req: express.Request, res: express.Respo
     const incident: IIncident = req.body.incident;
     switch (incident.state) {
       case "open": {
-        await octokit.issues.create({
+        const response = await octokit.issues.create({
           ...repo,
           title: issueTitle(incident.incident_id),
           labels: ["stackdriver"]
         });
+        console.log(
+          `Issue created: https://github.com/${repo.owner}/${repo.repo}/issues/${response.data.number}`
+        );
         res.status(200).send();
         return;
       }
@@ -45,11 +48,14 @@ exports.handleStackdriverEvent = async (req: express.Request, res: express.Respo
         if (!openIssue) {
           throw new Error(`Could not find open issue for incident: ${incident.incident_id}`);
         }
-        await octokit.issues.update({
+        const response = await octokit.issues.update({
           ...repo,
           issue_number: openIssue.number,
           state: "closed"
         });
+        console.log(
+          `Issue closed: https://github.com/${repo.owner}/${repo.repo}/issues/${response.data.number}`
+        );
         return;
       }
       default:
