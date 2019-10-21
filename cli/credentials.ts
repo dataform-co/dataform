@@ -18,12 +18,17 @@ export function getBigQueryCredentials(): dataform.IBigQuery {
   const cloudCredentials = require(cloudCredentialsPath);
   const locationIndex = selectionQuestion("Enter the location of your datasets:", [
     "US (default)",
-    "EU"
+    "EU",
+    "other"
   ]);
+  let location = locationIndex === 0 ? "US" : "EU";
+  if (locationIndex === 2) {
+    location = question("Enter the location's region name (e.g. 'asia-south1'):");
+  }
   return {
     projectId: cloudCredentials.project_id,
     credentials: fs.readFileSync(cloudCredentialsPath, "utf8"),
-    location: locationIndex === 0 ? "US" : "EU"
+    location
   };
 }
 
@@ -36,6 +41,22 @@ export function getRedshiftCredentials() {
     "Enter the hostname of your Redshift instance (in the form 'name.id.region.redshift.amazonaws.com'):",
     5439
   );
+}
+
+export function getSQLDataWarehouseCredentials(): dataform.ISQLDataWarehouse {
+  const server = question("Enter your server name (for example 'name.database.windows.net'):");
+  const port = intQuestion("Enter your server port:", 1433);
+  const username = question("Enter your datawarehouse user:");
+  const password = passwordQuestion("Enter your datawarehouse password:");
+  const database = question("Enter the database name:");
+
+  return {
+    server,
+    port,
+    username,
+    password,
+    database
+  };
 }
 
 export function getSnowflakeCredentials(): dataform.ISnowflake {

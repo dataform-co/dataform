@@ -1,8 +1,13 @@
-import { Session } from "@dataform/core/session";
+import { Resolvable, Session } from "@dataform/core/session";
 import * as table from "@dataform/core/table";
+import * as utils from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
 
 export type TContextable<T> = T | ((ctx: TestContext) => T);
+
+export interface TConfig {
+  dataset?: Resolvable;
+}
 
 export class Test {
   public proto: dataform.ITest = dataform.Test.create();
@@ -10,11 +15,18 @@ export class Test {
   public session: Session;
   public contextableInputs: { [refName: string]: TContextable<string> } = {};
 
-  private datasetToTest: string;
+  private datasetToTest: Resolvable;
   private contextableQuery: TContextable<string>;
 
-  public dataset(datasetToTest: string) {
-    this.datasetToTest = datasetToTest;
+  public config(config: TConfig) {
+    if (config.dataset) {
+      this.dataset(config.dataset);
+    }
+    return this;
+  }
+
+  public dataset(ref: Resolvable) {
+    this.datasetToTest = ref;
     return this;
   }
 
@@ -29,24 +41,36 @@ export class Test {
   }
 
   public compile() {
-    if (!this.datasetToTest) {
-      this.session.compileError(new Error("Tests must operate upon a specified dataset."));
-      return;
-    }
-    const dataset = this.session.tables[this.datasetToTest];
-    if (!dataset) {
-      this.session.compileError(new Error(`Dataset ${this.datasetToTest} could not be found.`));
-      return;
-    }
-    if (dataset.proto.type === "incremental") {
-      this.session.compileError(
-        new Error(`Running tests on incremental datasets is not yet supported.`)
-      );
-      return;
-    }
     const testContext = new TestContext(this);
-    const refReplacingContext = new RefReplacingContext(testContext);
-    this.proto.testQuery = refReplacingContext.apply(dataset.contextableQuery);
+    if (!this.datasetToTest) {
+      this.session.compileError(
+        new Error("Tests must operate upon a specified dataset."),
+        this.proto.fileName
+      );
+    } else {
+      const allResolved = this.session.findActions(this.datasetToTest);
+      if (allResolved.length > 1) {
+        this.session.compileError(
+          new Error(utils.ambiguousActionNameMsg(this.datasetToTest, allResolved)),
+          this.proto.fileName
+        );
+      }
+      const dataset = allResolved.length > 0 ? allResolved[0] : undefined;
+      if (!(dataset && dataset instanceof table.Table)) {
+        this.session.compileError(
+          new Error(`Dataset ${utils.stringifyResolvable(this.datasetToTest)} could not be found.`),
+          this.proto.fileName
+        );
+      } else if (dataset.proto.type === "incremental") {
+        this.session.compileError(
+          new Error("Running tests on incremental datasets is not yet supported."),
+          this.proto.fileName
+        );
+      } else {
+        const refReplacingContext = new RefReplacingContext(testContext);
+        this.proto.testQuery = refReplacingContext.apply(dataset.contextableQuery);
+      }
+    }
     this.proto.expectedOutputQuery = testContext.apply(this.contextableQuery);
     return this.proto;
   }
@@ -104,6 +128,10 @@ class RefReplacingContext implements table.ITableContext {
     return "";
   }
 
+  public name() {
+    return "";
+  }
+
   public type(type: table.TableType) {
     return "";
   }
@@ -133,17 +161,6 @@ class RefReplacingContext implements table.ITableContext {
   }
 
   public dependencies(name: string) {
-    return "";
-  }
-
-  public descriptor(
-    keyOrKeysOrMap: string | string[] | { [key: string]: string },
-    description?: string
-  ): string {
-    return "";
-  }
-
-  public describe(key: string, description?: string) {
     return "";
   }
 

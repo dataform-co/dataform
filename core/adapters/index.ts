@@ -1,11 +1,13 @@
+import { BigQueryAdapter } from "@dataform/core/adapters/bigquery";
+import { RedshiftAdapter } from "@dataform/core/adapters/redshift";
+import { SnowflakeAdapter } from "@dataform/core/adapters/snowflake";
+import { SQLDataWarehouseAdapter } from "@dataform/core/adapters/sqldatawarehouse";
+import { Tasks } from "@dataform/core/tasks";
 import { dataform } from "@dataform/protos";
-import { Tasks } from "../tasks";
-import { BigQueryAdapter } from "./bigquery";
-import { RedshiftAdapter } from "./redshift";
-import { SnowflakeAdapter } from "./snowflake";
 
 export interface IAdapter {
   resolveTarget(target: dataform.ITarget): string;
+  normalizeIdentifier(identifier: string): string;
 
   publishTasks(
     table: dataform.ITable,
@@ -26,11 +28,16 @@ export enum WarehouseType {
   BIGQUERY = "bigquery",
   POSTGRES = "postgres",
   REDSHIFT = "redshift",
-  SNOWFLAKE = "snowflake"
+  SNOWFLAKE = "snowflake",
+  SQLDATAWAREHOUSE = "sqldatawarehouse"
 }
 
+const CANCELLATION_SUPPORTED = [WarehouseType.BIGQUERY, WarehouseType.SQLDATAWAREHOUSE];
+
 export function supportsCancel(warehouseType: WarehouseType) {
-  return warehouseType === WarehouseType.BIGQUERY;
+  return CANCELLATION_SUPPORTED.some(w => {
+    return w === warehouseType;
+  });
 }
 
 const requiredBigQueryWarehouseProps: Array<keyof dataform.IBigQuery> = [
@@ -52,12 +59,20 @@ const requiredSnowflakeWarehouseProps: Array<keyof dataform.ISnowflake> = [
   "databaseName",
   "warehouse"
 ];
+const requiredSQLDataWarehouseProps: Array<keyof dataform.ISQLDataWarehouse> = [
+  "server",
+  "port",
+  "username",
+  "password",
+  "database"
+];
 
 export const requiredWarehouseProps = {
   [WarehouseType.BIGQUERY]: requiredBigQueryWarehouseProps,
   [WarehouseType.POSTGRES]: requiredJdbcWarehouseProps,
   [WarehouseType.REDSHIFT]: requiredJdbcWarehouseProps,
-  [WarehouseType.SNOWFLAKE]: requiredSnowflakeWarehouseProps
+  [WarehouseType.SNOWFLAKE]: requiredSnowflakeWarehouseProps,
+  [WarehouseType.SQLDATAWAREHOUSE]: requiredSQLDataWarehouseProps
 };
 
 const registry: { [warehouseType: string]: AdapterConstructor<IAdapter> } = {};
@@ -68,7 +83,7 @@ export function register(warehouseType: string, c: AdapterConstructor<IAdapter>)
 
 export function create(projectConfig: dataform.IProjectConfig): IAdapter {
   if (!registry[projectConfig.warehouse]) {
-    throw Error(`Unsupported warehouse: ${projectConfig.warehouse}`);
+    throw new Error(`Unsupported warehouse: ${projectConfig.warehouse}`);
   }
   return new registry[projectConfig.warehouse](projectConfig);
 }
@@ -80,3 +95,4 @@ register("bigquery", BigQueryAdapter);
 register("postgres", RedshiftAdapter);
 register("redshift", RedshiftAdapter);
 register("snowflake", SnowflakeAdapter);
+register("sqldatawarehouse", SQLDataWarehouseAdapter);

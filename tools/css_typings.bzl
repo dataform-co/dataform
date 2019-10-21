@@ -1,17 +1,16 @@
 def _impl(ctx):
     outs = []
     for f in ctx.files.srcs:
-        # Only create outputs for css files.
-        if f.path[-4:] != ".css":
-            fail("Only .css file inputs are allowed.")
-
         out = ctx.actions.declare_file(f.basename.replace(".css", ".css.d.ts"), sibling = f)
         outs.append(out)
+        patterns = [f.path]
+        if not f.root.path == '':
+          patterns = [f.short_path, f.root.path]
         ctx.actions.run(
             inputs = [f],
             outputs = [out],
             executable = ctx.executable._tool,
-            arguments = ["-o", out.root.path, "-p", f.path, "--silent"],
+            arguments = ["--silent", "--outDir", out.root.path, "--pattern"] + patterns,
             progress_message = "Generating CSS type definitions for %s" % f.path,
         )
 
@@ -32,13 +31,13 @@ def _impl(ctx):
 css_typings = rule(
     implementation = _impl,
     attrs = {
-        "srcs": attr.label_list(doc = "css files", allow_files = True),
+        "srcs": attr.label_list(doc = "css files", allow_files = [".css"]),
         "packages": attr.string_list(),
         "_tool": attr.label(
             executable = True,
             cfg = "host",
             allow_files = True,
-            default = Label("//:tcm"),
+            default = Label("@npm//typed-css-modules/bin:tcm"),
         ),
     },
 )

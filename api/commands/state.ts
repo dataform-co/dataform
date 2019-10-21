@@ -1,9 +1,9 @@
+import { IDbAdapter } from "@dataform/api/dbadapters";
 import { dataform } from "@dataform/protos";
-import { DbAdapter } from "../dbadapters";
 
 export function state(
   compiledGraph: dataform.ICompiledGraph,
-  dbadapter: DbAdapter
+  dbadapter: IDbAdapter
 ): Promise<dataform.IWarehouseState> {
   const tables: dataform.ITableMetadata[] = [];
 

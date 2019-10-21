@@ -1,8 +1,8 @@
 import { AssertionContext } from "@dataform/core/assertion";
 import { OperationContext } from "@dataform/core/operation";
-import { ISqlxParseResults, parseSqlx } from "@dataform/core/sqlx_parser";
 import { TableContext } from "@dataform/core/table";
 import * as utils from "@dataform/core/utils";
+import { ISqlxParseResults, parseSqlx } from "@dataform/sqlx/lexer";
 
 export function compile(code: string, path: string) {
   if (path.endsWith(".sqlx")) {
@@ -118,7 +118,9 @@ switch (sqlxConfig.type) {
   case "incremental":
   case "inline": {
     action.query(ctx => {
-      ${["self", "ref", "resolve"].map(name => `const ${name} = ctx.${name}.bind(ctx);`).join("\n")}
+      ${["self", "ref", "resolve", "name"]
+        .map(name => `const ${name} = ctx.${name}.bind(ctx);`)
+        .join("\n")}
       ${results.js}
       if (hasIncremental) {
         action.where(\`${results.incremental}\`);
@@ -145,11 +147,16 @@ switch (sqlxConfig.type) {
   }
   case "operations": {
     action.queries(ctx => {
-      ${["self", "ref", "resolve"].map(name => `const ${name} = ctx.${name}.bind(ctx);`).join("\n")}
+      ${["self", "ref", "resolve", "name"]
+        .map(name => `const ${name} = ctx.${name}.bind(ctx);`)
+        .join("\n")}
       ${results.js}
       const operations = [${results.sql.map(sql => `\`${sql}\``)}];
       return operations;
     });
+    break;
+  }
+  case "declaration": {
     break;
   }
   case "test": {

@@ -38,7 +38,7 @@ export class Builder {
 
   public build(): dataform.ExecutionGraph {
     if (utils.graphHasErrors(this.compiledGraph)) {
-      throw Error(`Project has unresolved compilation or validation errors.`);
+      throw new Error(`Project has unresolved compilation or validation errors.`);
     }
 
     const tableStateByTarget: { [targetJson: string]: dataform.ITableMetadata } = {};
@@ -60,11 +60,40 @@ export class Builder {
     allActions.forEach(action => (actionNameMap[action.name] = action));
 
     // Determine which action should be included.
-    const includedActionNames =
+    let includedActionNames =
       this.runConfig.actions && this.runConfig.actions.length > 0
         ? utils.matchPatterns(this.runConfig.actions, allActionNames)
         : allActionNames;
-    let includedActions = allActions.filter(action => includedActionNames.indexOf(action.name) >= 0);
+    let includedActions = allActions.filter(
+      action => includedActionNames.indexOf(action.name) >= 0
+    );
+    // Determine ations selected with --tag option and update applicable actions
+    if (this.runConfig.tags && this.runConfig.tags.length > 0) {
+      const allTaggedActionNames: string[] = [].concat(
+        filteredTables
+          .filter(t => t.tags.some(t => this.runConfig.tags.includes(t)))
+          .map(t => t.name),
+        this.compiledGraph.operations
+          .filter(o => o.tags.some(t => this.runConfig.tags.includes(t)))
+          .map(t => t.name),
+        this.compiledGraph.assertions
+          .filter(a => a.tags.some(t => this.runConfig.tags.includes(t)))
+          .map(t => t.name)
+      );
+      const allTaggedActions = allActions.filter(a => allTaggedActionNames.includes(a.name));
+
+      if (this.runConfig.actions && this.runConfig.actions.length > 0) {
+        // Add up the actions specified by the tags to includedAction(Name).
+        const missingActNames = allTaggedActionNames.filter(n => !includedActionNames.includes(n));
+        const missingAct = allActions.filter(action => missingActNames.includes(action.name));
+        missingActNames.forEach(mn => includedActionNames.push(mn));
+        missingAct.forEach(ma => includedActions.push(ma));
+      } else {
+        // Leave only the actions specified by the tags
+        includedActionNames = allTaggedActionNames;
+        includedActions = allTaggedActions;
+      }
+    }
     if (this.runConfig.includeDependencies) {
       // Compute all transitive dependencies.
       for (let i = 0; i < allActions.length; i++) {
@@ -80,13 +109,17 @@ export class Builder {
             }
           });
           // Update included actions.
-          includedActions = allActions.filter(action => includedActionNames.indexOf(action.name) >= 0);
+          includedActions = allActions.filter(
+            action => includedActionNames.indexOf(action.name) >= 0
+          );
         });
       }
     }
     // Remove any excluded dependencies.
     includedActions.forEach(action => {
-      action.dependencies = action.dependencies.filter(dep => includedActionNames.indexOf(dep) >= 0);
+      action.dependencies = action.dependencies.filter(
+        dep => includedActionNames.indexOf(dep) >= 0
+      );
     });
     return dataform.ExecutionGraph.create({
       projectConfig: this.compiledGraph.projectConfig,
@@ -106,10 +139,10 @@ export class Builder {
     const tasks = t.disabled
       ? emptyTasks
       : emptyTasks.concat(
-        (t.preOps || []).map(pre => ({ statement: pre })),
-        this.adapter.publishTasks(t, this.runConfig, tableMetadata).build(),
-        (t.postOps || []).map(post => ({ statement: post }))
-      );
+          (t.preOps || []).map(pre => ({ statement: pre })),
+          this.adapter.publishTasks(t, this.runConfig, tableMetadata).build(),
+          (t.postOps || []).map(post => ({ statement: post }))
+        );
 
     return dataform.ExecutionAction.create({
       name: t.name,
@@ -127,10 +160,7 @@ export class Builder {
       dependencies: operation.dependencies,
       type: "operation",
       target: operation.target,
-      tasks: operation.queries.map(statement => ({
-        type: "statement",
-        statement
-      }))
+      tasks: operation.queries.map(statement => ({ type: "statement", statement }))
     });
   }
 

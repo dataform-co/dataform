@@ -6,6 +6,10 @@ import * as Long from "long";
 
 const CANCEL_EVENT = "jobCancel";
 
+const isSuccessfulAction = (actionResult: dataform.IActionResult) =>
+  actionResult.status === dataform.ActionResult.ExecutionStatus.SUCCESSFUL ||
+  actionResult.status === dataform.ActionResult.ExecutionStatus.DISABLED;
+
 export function run(graph: dataform.IExecutionGraph, credentials: Credentials): Runner {
   const runner = Runner.create(
     dbadapters.create(credentials, graph.projectConfig.warehouse),
@@ -16,31 +20,28 @@ export function run(graph: dataform.IExecutionGraph, credentials: Credentials): 
 }
 
 export class Runner {
-  public static create(adapter: dbadapters.DbAdapter, graph: dataform.IExecutionGraph) {
+  public static create(adapter: dbadapters.IDbAdapter, graph: dataform.IExecutionGraph) {
     return new Runner(adapter, graph);
   }
-  private adapter: dbadapters.DbAdapter;
+  private adapter: dbadapters.IDbAdapter;
   private graph: dataform.IExecutionGraph;
 
   private pendingActions: dataform.IExecutionAction[];
 
   private cancelled = false;
-  private result: dataform.IExecutedGraph;
+  private runResult: dataform.IRunResult;
 
-  private changeListeners: Array<(graph: dataform.IExecutedGraph) => void> = [];
+  private changeListeners: Array<(graph: dataform.IRunResult) => void> = [];
 
-  private executionTask: Promise<dataform.IExecutedGraph>;
+  private executionTask: Promise<dataform.IRunResult>;
 
   private eEmitter: EventEmitter;
 
-  constructor(adapter: dbadapters.DbAdapter, graph: dataform.IExecutionGraph) {
+  constructor(adapter: dbadapters.IDbAdapter, graph: dataform.IExecutionGraph) {
     this.adapter = adapter;
     this.graph = graph;
     this.pendingActions = graph.actions;
-    this.result = {
-      projectConfig: this.graph.projectConfig,
-      runConfig: this.graph.runConfig,
-      warehouseState: this.graph.warehouseState,
+    this.runResult = {
       actions: []
     };
     this.eEmitter = new EventEmitter();
@@ -48,39 +49,17 @@ export class Runner {
     this.eEmitter.setMaxListeners(0);
   }
 
-  public onChange(listener: (graph: dataform.IExecutedGraph) => Promise<void> | void): Runner {
+  public onChange(listener: (graph: dataform.IRunResult) => Promise<void> | void): Runner {
     this.changeListeners.push(listener);
     return this;
   }
 
-  public async execute(): Promise<dataform.IExecutedGraph> {
+  public async execute(): Promise<dataform.IRunResult> {
     if (!!this.executionTask) {
-      throw Error("Executor already started.");
+      throw new Error("Executor already started.");
     }
-
-    this.executionTask = new Promise(async (resolve, reject) => {
-      try {
-        // Work out all the schemas we are going to need to create first.
-        const uniqueSchemas = {};
-        this.graph.actions
-          .filter(action => !!action.target)
-          .map(action => action.target.schema)
-          .filter(schema => !!schema)
-          .forEach(schema => (uniqueSchemas[schema] = true));
-
-        // Wait for all schemas to be created.
-        await Promise.all(
-          Object.keys(uniqueSchemas).map(schema => this.adapter.prepareSchema(schema))
-        );
-
-        // Start the main execution loop.
-        const _ = this.loop(() => resolve(this.result), reject).catch(reject);
-      } catch (e) {
-        reject(e);
-      }
-    });
-
-    return this.executionTask;
+    this.executionTask = this.executeGraph();
+    return this.resultPromise();
   }
 
   public cancel() {
@@ -88,114 +67,239 @@ export class Runner {
     this.eEmitter.emit(CANCEL_EVENT);
   }
 
-  public resultPromise(): Promise<dataform.IExecutedGraph> {
+  public async resultPromise(): Promise<dataform.IRunResult> {
     return this.executionTask;
   }
 
   private triggerChange() {
-    return Promise.all(this.changeListeners.map(listener => listener(this.result)))
+    return Promise.all(this.changeListeners.map(listener => listener(this.runResult)));
   }
 
-  private async loop(resolve: () => void, reject: (value: any) => void) {
-    const pendingActions = this.pendingActions;
-    this.pendingActions = [];
+  private async executeGraph() {
+    const timer = Timer.start();
 
-    const allFinishedDeps = this.result.actions.map(action => action.name);
-    const allSuccessfulDeps = this.result.actions
-      .filter(
-        action =>
-          action.status === dataform.ActionExecutionStatus.SUCCESSFUL ||
-          action.status == dataform.ActionExecutionStatus.DISABLED
-      )
-      .map(fn => fn.name);
+    this.runResult.status = dataform.RunResult.ExecutionStatus.RUNNING;
+    this.runResult.timing = timer.current();
+    await this.triggerChange();
 
-    pendingActions.forEach(async (action) => {
-      const finishedDeps = action.dependencies.filter(d => allFinishedDeps.indexOf(d) >= 0);
-      const successfulDeps = action.dependencies.filter(d => allSuccessfulDeps.indexOf(d) >= 0);
-      if (!this.cancelled && successfulDeps.length == action.dependencies.length) {
-        // All required deps are completed, start this action.
-        this.executeAction(action);
-      } else if (this.cancelled || finishedDeps.length == action.dependencies.length) {
-        await this.triggerChange();
-        // All deps are finished but they weren't all successful, or the run was cancelled.
-        // skip this action.
-        this.result.actions.push({
-          name: action.name,
-          status: dataform.ActionExecutionStatus.SKIPPED,
-          deprecatedSkipped: true
-        });
-      } else {
-        this.pendingActions.push(action);
-      }
-    });
+    // Work out all the schemas we are going to need to create first.
+    const uniqueSchemas: { [schema: string]: boolean } = {};
+    this.graph.actions
+      .filter(action => !!action.target)
+      .map(action => action.target.schema)
+      .filter(schema => !!schema)
+      .forEach(schema => (uniqueSchemas[schema] = true));
 
-    if (this.pendingActions.length > 0 || this.result.actions.length != this.graph.actions.length) {
-      setTimeout(() => this.loop(resolve, reject), 100);
-    } else {
-      // Work out if this run was an overall success.
-      let ok = true;
-      this.result.actions.forEach(action => {
-        ok =
-          ok &&
-          (action.status === dataform.ActionExecutionStatus.SUCCESSFUL ||
-            action.status == dataform.ActionExecutionStatus.DISABLED);
-      });
-      this.result.ok = ok;
-      resolve();
+    // Wait for all schemas to be created.
+    await Promise.all(Object.keys(uniqueSchemas).map(schema => this.adapter.prepareSchema(schema)));
+
+    // Recursively execute all actions as they become executable.
+    await this.executeAllActionsReadyForExecution();
+
+    this.runResult.timing = timer.end();
+
+    this.runResult.status = dataform.RunResult.ExecutionStatus.SUCCESSFUL;
+    if (
+      this.runResult.actions.filter(
+        action => action.status === dataform.ActionResult.ExecutionStatus.CANCELLED
+      ).length > 0
+    ) {
+      this.runResult.status = dataform.RunResult.ExecutionStatus.CANCELLED;
     }
+    if (
+      this.runResult.actions.filter(
+        action => action.status === dataform.ActionResult.ExecutionStatus.FAILED
+      ).length > 0
+    ) {
+      this.runResult.status = dataform.RunResult.ExecutionStatus.FAILED;
+    }
+
+    return this.runResult;
   }
 
-  private executeAction(action: dataform.IExecutionAction) {
-    const startTime = process.hrtime();
-    // This creates a promise chain that executes all tasks in order.
-    action.tasks
-      .reduce((chain, task) => {
-        return chain.then(async chainResults => {
-          try {
-            // Create another promise chain for retries, if we allow them.
-            const rows = await this.adapter.execute(task.statement, handleCancel =>
-              this.eEmitter.on(CANCEL_EVENT, handleCancel)
-            );
-            if (task.type === "assertion") {
-              // We expect that an assertion query returns 1 row, with 1 field that is the row count.
-              // We don't really care what that field/column is called.
-              const rowCount = rows[0][Object.keys(rows[0])[0]];
-              if (rowCount > 0) {
-                throw new Error(`Assertion failed: query returned ${rowCount} row(s).`);
-              }
-            }
-            return [...chainResults, { ok: true, task }];
-          } catch (e) {
-            throw [...chainResults, { ok: false, error: e.message, task }];
-          }
-        });
-      }, Promise.resolve([] as dataform.IExecutedTask[]))
-      .then(async (results: dataform.IExecutedTask[]) => {
-        const endTime = process.hrtime(startTime);
-        const executionTime = endTime[0] * 1000 + Math.round(endTime[1] / 1000000);
-        await this.triggerChange();
-        this.result.actions.push({
-          name: action.name,
-          status:
-            results.length == 0
-              ? dataform.ActionExecutionStatus.DISABLED
-              : dataform.ActionExecutionStatus.SUCCESSFUL,
-          tasks: results,
-          executionTime: Long.fromNumber(executionTime),
-          deprecatedOk: true
-        });
-      })
-      .catch(async (results: dataform.IExecutedTask[]) => {
-        const endTime = process.hrtime(startTime);
-        const executionTime = endTime[0] * 1000 + Math.round(endTime[1] / 1000000);
-        await this.triggerChange();
-        this.result.actions.push({
-          name: action.name,
-          status: dataform.ActionExecutionStatus.FAILED,
-          tasks: results,
-          executionTime: Long.fromNumber(executionTime),
-          deprecatedOk: false
-        });
+  private async executeAllActionsReadyForExecution() {
+    // If the run has been cancelled, cancel all pending actions.
+    if (this.cancelled) {
+      const allPendingActions = this.pendingActions;
+      this.pendingActions = [];
+      allPendingActions.forEach(pendingAction =>
+        this.runResult.actions.push({
+          name: pendingAction.name,
+          status: dataform.ActionResult.ExecutionStatus.SKIPPED,
+          tasks: pendingAction.tasks.map(() => ({
+            status: dataform.TaskResult.ExecutionStatus.SKIPPED
+          }))
+        })
+      );
+      await this.triggerChange();
+      return;
+    }
+
+    const executableActions = this.removeExecutableActionsFromPending();
+    const skippableActions = this.removeSkippableActionsFromPending();
+
+    skippableActions.forEach(skippableAction => {
+      this.runResult.actions.push({
+        name: skippableAction.name,
+        status: dataform.ActionResult.ExecutionStatus.SKIPPED,
+        tasks: skippableAction.tasks.map(() => ({
+          status: dataform.TaskResult.ExecutionStatus.SKIPPED
+        }))
       });
+    });
+    const onActionsSkipped = async () => {
+      if (skippableActions.length > 0) {
+        await this.triggerChange();
+        await this.executeAllActionsReadyForExecution();
+      }
+    };
+
+    await Promise.all([
+      onActionsSkipped(),
+      Promise.all(
+        executableActions.map(async executableAction => {
+          await this.executeAction(executableAction);
+          await this.executeAllActionsReadyForExecution();
+        })
+      )
+    ]);
+  }
+
+  private removeExecutableActionsFromPending() {
+    const allDependenciesHaveExecutedSuccessfully = allDependenciesHaveBeenExecuted(
+      this.runResult.actions.filter(isSuccessfulAction)
+    );
+    const executableActions = this.pendingActions.filter(allDependenciesHaveExecutedSuccessfully);
+    this.pendingActions = this.pendingActions.filter(
+      action => !allDependenciesHaveExecutedSuccessfully(action)
+    );
+    return executableActions;
+  }
+
+  private removeSkippableActionsFromPending() {
+    const allDependenciesHaveExecuted = allDependenciesHaveBeenExecuted(
+      this.runResult.actions.filter(
+        action => action.status !== dataform.ActionResult.ExecutionStatus.RUNNING
+      )
+    );
+    const skippableActions = this.pendingActions.filter(allDependenciesHaveExecuted);
+    this.pendingActions = this.pendingActions.filter(
+      action => !allDependenciesHaveExecuted(action)
+    );
+    return skippableActions;
+  }
+
+  private async executeAction(action: dataform.IExecutionAction): Promise<void> {
+    if (action.tasks.length === 0) {
+      this.runResult.actions.push({
+        name: action.name,
+        status: dataform.ActionResult.ExecutionStatus.DISABLED,
+        tasks: []
+      });
+      await this.triggerChange();
+      return;
+    }
+
+    const timer = Timer.start();
+    const actionResult: dataform.IActionResult = {
+      name: action.name,
+      status: dataform.ActionResult.ExecutionStatus.RUNNING,
+      timing: timer.current(),
+      tasks: []
+    };
+    this.runResult.actions.push(actionResult);
+    await this.triggerChange();
+
+    for (const task of action.tasks) {
+      if (
+        actionResult.status === dataform.ActionResult.ExecutionStatus.RUNNING &&
+        !this.cancelled
+      ) {
+        const taskStatus = await this.executeTask(task, actionResult);
+        if (taskStatus === dataform.TaskResult.ExecutionStatus.FAILED) {
+          actionResult.status = dataform.ActionResult.ExecutionStatus.FAILED;
+        } else if (taskStatus === dataform.TaskResult.ExecutionStatus.CANCELLED) {
+          actionResult.status = dataform.ActionResult.ExecutionStatus.CANCELLED;
+        }
+      } else {
+        actionResult.tasks.push({
+          status: dataform.TaskResult.ExecutionStatus.SKIPPED
+        });
+      }
+    }
+
+    if (actionResult.status === dataform.ActionResult.ExecutionStatus.RUNNING) {
+      actionResult.status = dataform.ActionResult.ExecutionStatus.SUCCESSFUL;
+    }
+    actionResult.timing = timer.end();
+    await this.triggerChange();
+  }
+
+  private async executeTask(
+    task: dataform.IExecutionTask,
+    parentAction: dataform.IActionResult
+  ): Promise<dataform.TaskResult.ExecutionStatus> {
+    const timer = Timer.start();
+    const taskResult: dataform.ITaskResult = {
+      status: dataform.TaskResult.ExecutionStatus.RUNNING,
+      timing: timer.current()
+    };
+    parentAction.tasks.push(taskResult);
+    await this.triggerChange();
+    try {
+      const rows = await this.adapter.execute(task.statement, {
+        onCancel: handleCancel => this.eEmitter.on(CANCEL_EVENT, handleCancel),
+        maxResults: 1
+      });
+      if (task.type === "assertion") {
+        // We expect that an assertion query returns 1 row, with 1 field that is the row count.
+        // We don't really care what that field/column is called.
+        const rowCount = rows[0][Object.keys(rows[0])[0]];
+        if (rowCount > 0) {
+          throw new Error(`Assertion failed: query returned ${rowCount} row(s).`);
+        }
+      }
+      taskResult.status = dataform.TaskResult.ExecutionStatus.SUCCESSFUL;
+    } catch (e) {
+      taskResult.status = this.cancelled
+        ? dataform.TaskResult.ExecutionStatus.CANCELLED
+        : dataform.TaskResult.ExecutionStatus.FAILED;
+      taskResult.errorMessage = e.message;
+    }
+    taskResult.timing = timer.end();
+    await this.triggerChange();
+    return taskResult.status;
+  }
+}
+
+function allDependenciesHaveBeenExecuted(actionResults: dataform.IActionResult[]) {
+  const executedActionNames = actionResults.map(action => action.name);
+  return (action: dataform.IExecutionAction) => {
+    for (const dependency of action.dependencies) {
+      if (!executedActionNames.includes(dependency)) {
+        return false;
+      }
+    }
+    return true;
+  };
+}
+
+class Timer {
+  public static start() {
+    return new Timer(new Date().valueOf());
+  }
+  private constructor(readonly startTimeMillis: number) {}
+
+  public current(): dataform.ITiming {
+    return {
+      startTimeMillis: Long.fromNumber(this.startTimeMillis)
+    };
+  }
+
+  public end(): dataform.ITiming {
+    return {
+      startTimeMillis: Long.fromNumber(this.startTimeMillis),
+      endTimeMillis: Long.fromNumber(new Date().valueOf())
+    };
   }
 }

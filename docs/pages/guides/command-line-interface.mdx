@@ -17,7 +17,7 @@ npm i -g @dataform/cli
 
 ## Create a new project
 
-To create a new `bigquery`, `postgres`, `redshift`, or `snowflake` project in the `new_project` directory, run the respective command:
+To create a new `bigquery`, `postgres`, `redshift`, `snowflake`, or `sqldatawarehouse` project in the `new_project` directory, run the respective command:
 
 ```bash
 dataform init bigquery new_project --gcloud-project-id<your-google-cloud-project-id>
@@ -27,6 +27,8 @@ dataform init postgres new_project
 dataform init redshift new_project
 - or -
 dataform init snowflake new_project
+- or -
+dataform init sqldatawarehouse new_project
 ```
 
 ### Project structure
@@ -88,6 +90,8 @@ dataform init-creds postgres
 dataform init-creds redshift
 - or -
 dataform init-creds snowflake
+- or -
+dataform init-creds sqldatawarehouse
 ```
 
 A `.df-credentials.json` file will be written to disk containing your provided details.
@@ -138,6 +142,56 @@ Compiled successfully.
 Running...
 
 Dataset created:  dataform.example [view]
+```
+
+## Get help
+
+In addition to this guide, you can run the `help` command to get a short description of any Dataform command or option. For example, you can type:
+
+```bash
+dataform help
+```
+
+This will list all of the available commands and options:
+
+```bash
+Commands:
+  dataform help [command]                                 Show help. If [command] is specified, the help is for the given command.
+  dataform init <warehouse> [project-dir]                 Create a new dataform project.
+  dataform init-creds <warehouse> [project-dir]           Create a .df-credentials.json file for dataform to use when accessing your warehouse.
+  dataform compile [project-dir]                          Compile the dataform project. Produces JSON output describing the non-executable graph.
+  dataform test [project-dir]                             Run the dataform project\'s unit tests on the configured data warehouse.
+  dataform run [project-dir]                              Run the dataform project\'s scripts on the configured data warehouse.
+  dataform listtables <warehouse>                         List tables on the configured data warehouse.
+  dataform gettablemetadata <warehouse> <schema> <table>  Fetch metadata for a specified table.
+
+Options:
+  --help     Show help  [boolean]
+  --version  Show version number  [boolean]
+```
+
+If you want to get help for a specific command, you can type:
+
+```bash
+dataform help compile
+```
+
+You should see something similar to the following:
+
+```bash
+dataform compile [project-dir]
+
+Compile the dataform project. Produces JSON output describing the non-executable graph.
+
+Positionals:
+  project-dir  The Dataform project directory.  [default: \".\"]
+
+Options:
+  --help           Show help  [boolean]
+  --version        Show version number  [boolean]
+  --watch          Whether to watch the changes in the project directory.  [boolean] [default: false]
+  --schema-suffix  A suffix to be appended to output schema names.
+  --verbose        If true, the full contents of command output will be output (containing fully compiled SQL, etc).  [boolean] [default: false]
 ```
 
 ## Next steps

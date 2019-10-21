@@ -21,12 +21,11 @@ export class DatasetAssertion {
     WITH base AS (
     
     SELECT
-      ${this.groupCols.map((field, i) => `${field} as c_${i}`).join(", ")},
+      ${this.groupCols.join(", ")},
       SUM(1) as row_count
     FROM ${this.dataset}
     GROUP BY 
-      ${this.groupCols.map((field, i) => `${i+1}`).join(", ")}
-    
+      ${this.groupCols.join(", ")}
     )
   
     SELECT
@@ -35,7 +34,7 @@ export class DatasetAssertion {
       base
     WHERE
       row_count > 1
-    `
+    `;
   }
 
   public getNotNullQuery(field: string): string {

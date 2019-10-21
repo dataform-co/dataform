@@ -1,29 +1,10 @@
 import { dataform } from "@dataform/protos";
 
 export abstract class Adapter {
-  public where(query: string, where: string) {
-    return `select * from (
-        ${query})
-        where ${where}`;
-  }
+  public abstract resolveTarget(target: dataform.ITarget): string;
 
-  public baseTableType(type: string) {
-    if (type == "incremental") {
-      return "table";
-    }
-    return type;
-  }
-
-  public oppositeTableType(type: string) {
-    return this.baseTableType(type) == "table" ? "view" : "table";
-  }
-
-  public insertInto(target: dataform.ITarget, columns: string[], query: string) {
-    return `
-      insert into ${this.resolveTarget(target)}
-      (${columns.join(",")})
-      select ${columns.join(",")}
-      from (${query})`;
+  public normalizeIdentifier(identifier: string) {
+    return identifier;
   }
 
   public dropIfExists(target: dataform.ITarget, type: string) {
@@ -32,5 +13,27 @@ export abstract class Adapter {
     }`;
   }
 
-  public abstract resolveTarget(target: dataform.ITarget): string;
+  public baseTableType(type: string) {
+    if (type === "incremental") {
+      return "table";
+    }
+    return type;
+  }
+
+  protected insertInto(target: dataform.ITarget, columns: string[], query: string) {
+    return `
+      insert into ${this.resolveTarget(target)}
+      (${columns.join(",")})
+      select ${columns.join(",")}
+      from (${query}) as insertions`;
+  }
+
+  protected oppositeTableType(type: string) {
+    return this.baseTableType(type) === "table" ? "view" : "table";
+  }
+
+  protected where(query: string, where: string) {
+    return `select * from (${query}) as subquery
+        where ${where}`;
+  }
 }

@@ -1,4 +1,10 @@
-import { Session } from "@dataform/core/session";
+import {
+  IColumnsDescriptor,
+  mapToColumnProtoArray,
+  Resolvable,
+  Session
+} from "@dataform/core/session";
+import * as utils from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
 
 export enum TableTypes {
@@ -17,16 +23,18 @@ export enum SortStyleTypes {
   INTERLEAVED = "interleaved"
 }
 
-export const ignoredProps = {
+export const ignoredProps: {
+  [tableType: string]: Array<keyof dataform.ITable>;
+} = {
   [TableTypes.INLINE]: [
     "bigquery",
     "redshift",
+    "sqlDataWarehouse",
     "preOps",
     "postOps",
-    "descriptor",
+    "actionDescriptor",
     "disabled",
-    "where",
-    "fieldDescriptor"
+    "where"
   ]
 };
 
@@ -36,13 +44,16 @@ export type TableType = ValueOf<TableTypes>;
 
 export interface TConfig {
   type?: TableType;
-  dependencies?: string | string[];
+  dependencies?: Resolvable | Resolvable[];
   tags?: string[];
-  descriptor?: string[] | { [key: string]: string };
+  description?: string;
+  columns?: IColumnsDescriptor;
   disabled?: boolean;
   protected?: boolean;
   redshift?: dataform.IRedshiftOptions;
   bigquery?: dataform.IBigQueryOptions;
+  sqldatawarehouse?: dataform.ISQLDataWarehouseOptions;
+  schema?: string;
 }
 
 export class Table {
@@ -68,15 +79,11 @@ export class Table {
     if (config.dependencies) {
       this.dependencies(config.dependencies);
     }
-    if (config.descriptor) {
-      if (config.descriptor instanceof Array) {
-        this.descriptor(config.descriptor);
-      } else {
-        this.descriptor(config.descriptor);
-      }
-    }
     if (config.disabled) {
       this.disabled();
+    }
+    if (config.protected) {
+      this.protected();
     }
     if (config.redshift) {
       this.redshift(config.redshift);
@@ -84,8 +91,20 @@ export class Table {
     if (config.bigquery) {
       this.bigquery(config.bigquery);
     }
+    if (config.sqldatawarehouse) {
+      this.sqldatawarehouse(config.sqldatawarehouse);
+    }
     if (config.tags) {
       this.tags(config.tags);
+    }
+    if (config.description) {
+      this.description(config.description);
+    }
+    if (config.columns) {
+      this.columns(config.columns);
+    }
+    if (config.schema) {
+      this.schema(config.schema);
     }
 
     return this;
@@ -121,6 +140,16 @@ export class Table {
     return this;
   }
 
+  public protected() {
+    this.proto.protected = true;
+    return this;
+  }
+
+  public sqldatawarehouse(sqlDataWarehouse: dataform.ISQLDataWarehouseOptions) {
+    this.proto.sqlDataWarehouse = dataform.SQLDataWarehouseOptions.create(sqlDataWarehouse);
+    return this;
+  }
+
   public redshift(redshift: dataform.IRedshiftOptions) {
     this.proto.redshift = dataform.RedshiftOptions.create(redshift);
     return this;
@@ -131,13 +160,15 @@ export class Table {
     return this;
   }
 
-  public dependencies(value: string | string[]) {
-    const newDependencies = typeof value === "string" ? [value] : value;
-    newDependencies.forEach(d => {
-      const table = this.session.tables[d];
-
-      if (!!table && table.proto.type === "inline") {
-        table.proto.dependencies.forEach(childDep => this.addDependency(childDep));
+  public dependencies(value: Resolvable | Resolvable[]) {
+    const newDependencies = utils.isResolvable(value) ? [value] : (value as Resolvable[]);
+    newDependencies.forEach((d: Resolvable) => {
+      // TODO: This code fails to function correctly if the inline table has not yet
+      // been attached to the session. This code probably needs to be moved to compile().
+      const allResolved = this.session.findActions(d);
+      const resolved = allResolved.length > 0 ? allResolved[0] : undefined;
+      if (!!resolved && resolved instanceof Table && resolved.proto.type === "inline") {
+        resolved.proto.dependencies.forEach(childDep => this.addDependency(childDep));
       } else {
         this.addDependency(d);
       }
@@ -148,33 +179,29 @@ export class Table {
   public tags(value: string | string[]) {
     const newTags = typeof value === "string" ? [value] : value;
     newTags.forEach(t => {
-      const table = this.session.tables[t];
       this.proto.tags.push(t);
     });
     return this;
   }
 
-  public descriptor(key: string, description?: string): Table;
-  public descriptor(map: { [key: string]: string }): Table;
-  public descriptor(keys: string[]): Table;
-  public descriptor(
-    keyOrKeysOrMap: string | string[] | { [key: string]: string },
-    description?: string
-  ): Table {
-    if (!this.proto.fieldDescriptor) {
-      this.proto.fieldDescriptor = {};
+  public description(description: string) {
+    if (!this.proto.actionDescriptor) {
+      this.proto.actionDescriptor = {};
     }
-    if (typeof keyOrKeysOrMap === "string") {
-      this.proto.fieldDescriptor[keyOrKeysOrMap] = description || "";
-    } else if (keyOrKeysOrMap instanceof Array) {
-      keyOrKeysOrMap.forEach(key => {
-        this.proto.fieldDescriptor[key] = "";
-      });
-    } else {
-      Object.keys(keyOrKeysOrMap).forEach(key => {
-        this.proto.fieldDescriptor[key] = keyOrKeysOrMap[key] || "";
-      });
+    this.proto.actionDescriptor.description = description;
+    return this;
+  }
+
+  public columns(columns: IColumnsDescriptor) {
+    if (!this.proto.actionDescriptor) {
+      this.proto.actionDescriptor = {};
     }
+    this.proto.actionDescriptor.columns = mapToColumnProtoArray(columns);
+    return this;
+  }
+
+  public schema(schema: string) {
+    this.session.setNameAndTarget(this.proto, this.proto.target.name, schema);
     return this;
   }
 
@@ -190,7 +217,7 @@ export class Table {
     this.contextablePreOps.forEach(contextablePreOps => {
       const appliedPres = context.apply(contextablePreOps);
       this.proto.preOps = (this.proto.preOps || []).concat(
-        typeof appliedPres == "string" ? [appliedPres] : appliedPres
+        typeof appliedPres === "string" ? [appliedPres] : appliedPres
       );
     });
     this.contextablePreOps = [];
@@ -198,17 +225,17 @@ export class Table {
     this.contextablePostOps.forEach(contextablePostOps => {
       const appliedPosts = context.apply(contextablePostOps);
       this.proto.postOps = (this.proto.postOps || []).concat(
-        typeof appliedPosts == "string" ? [appliedPosts] : appliedPosts
+        typeof appliedPosts === "string" ? [appliedPosts] : appliedPosts
       );
     });
     this.contextablePostOps = [];
-
     return this.proto;
   }
 
-  private addDependency(dependency: string): void {
-    if (this.proto.dependencies.indexOf(dependency) < 0) {
-      this.proto.dependencies.push(dependency);
+  private addDependency(dependency: Resolvable): void {
+    const depName = utils.stringifyResolvable(dependency);
+    if (this.proto.dependencies.indexOf(depName) < 0) {
+      this.proto.dependencies.push(depName);
     }
   }
 }
@@ -216,6 +243,7 @@ export class Table {
 export interface ITableContext {
   config: (config: TConfig) => string;
   self: () => string;
+  name: () => string;
   ref: (name: string) => string;
   resolve: (name: string) => string;
   type: (type: TableType) => string;
@@ -225,12 +253,7 @@ export interface ITableContext {
   disabled: () => string;
   redshift: (redshift: dataform.IRedshiftOptions) => string;
   bigquery: (bigquery: dataform.IBigQueryOptions) => string;
-  dependencies: (name: string) => string;
-  descriptor: (
-    keyOrKeysOrMap: string | string[] | { [key: string]: string },
-    description?: string
-  ) => string;
-  describe: (key: string, description?: string) => string;
+  dependencies: (name: Resolvable) => string;
   apply: <T>(value: TContextable<T>) => T;
   tags: (name: string | string[]) => string;
 }
@@ -248,22 +271,30 @@ export class TableContext implements ITableContext {
   }
 
   public self(): string {
-    return this.resolve(this.table.proto.name);
+    return this.resolve({
+      schema: this.table.proto.target.schema,
+      name: this.table.proto.target.name
+    });
   }
 
-  public ref(name: string) {
+  public name(): string {
+    return this.table.proto.target.name;
+  }
+
+  public ref(ref: Resolvable) {
+    const name =
+      typeof ref === "string" || typeof ref === "undefined" ? ref : `${ref.schema}.${ref.name}`;
     if (!name) {
       const message = `Action name is not specified`;
       this.table.session.compileError(new Error(message));
       return "";
     }
-
     this.table.dependencies(name);
-    return this.resolve(name);
+    return this.resolve(ref);
   }
 
-  public resolve(name: string) {
-    return this.table.session.resolve(name);
+  public resolve(ref: Resolvable) {
+    return this.table.session.resolve(ref);
   }
 
   public type(type: TableType) {
@@ -301,25 +332,9 @@ export class TableContext implements ITableContext {
     return "";
   }
 
-  public dependencies(name: string) {
-    this.table.dependencies(name);
+  public dependencies(res: Resolvable) {
+    this.table.dependencies(res);
     return "";
-  }
-
-  public descriptor(key: string, description?: string): string;
-  public descriptor(map: { [key: string]: string }): string;
-  public descriptor(keys: string[]): string;
-  public descriptor(
-    keyOrKeysOrMap: string | string[] | { [key: string]: string },
-    description?: string
-  ): string {
-    this.table.descriptor(keyOrKeysOrMap as any, description);
-    return "";
-  }
-
-  public describe(key: string, description?: string) {
-    this.table.descriptor(key, description);
-    return key;
   }
 
   public apply<T>(value: TContextable<T>): T {

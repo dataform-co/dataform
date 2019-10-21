@@ -1,0 +1,7 @@
+config { type: "operation",
+                      tags: ["tag1", "tag2"]
+}
+
+select CAST(REGEXP_EXTRACT("", r'^/([0-9]+)\'/.*') AS INT64) AS id,
+       CAST(REGEXP_EXTRACT("", r"^/([0-9]+)\"/.*") AS INT64) AS id2 from ${ref("dab")} 
+where sample = 100

@@ -1,28 +1,32 @@
+import { CompileChildProcess } from "@dataform/api/commands/compile";
 import { Credentials } from "@dataform/api/commands/credentials";
 import * as dbadapters from "@dataform/api/dbadapters";
 import { CancellablePromise } from "@dataform/api/utils/cancellable_promise";
-import { fork } from "child_process";
+import { dataform } from "@dataform/protos";
 import * as path from "path";
-
-interface IOptions {
-  projectDir?: string;
-}
 
 export function run(
   credentials: Credentials,
   warehouse: string,
   query: string,
-  options?: IOptions
+  options?: {
+    compileConfig?: dataform.ICompileConfig;
+    maxResults?: number;
+  }
 ): CancellablePromise<any[]> {
-  return new CancellablePromise(async (_resolve, _reject, onCancel) => {
+  return new CancellablePromise(async (resolve, reject, onCancel) => {
     try {
-      const compiledQuery = await compile(query, options);
+      const compiledQuery = await compile(query, options && options.compileConfig);
       const results = await dbadapters
         .create(credentials, warehouse)
-        .execute(compiledQuery, onCancel);
-      _resolve(results);
+        .execute(compiledQuery, {
+          onCancel,
+          interactive: true,
+          maxResults: options && options.maxResults
+        });
+      resolve(results);
     } catch (e) {
-      _reject(e);
+      reject(e);
     }
   });
 }
@@ -31,48 +35,38 @@ export function evaluate(
   credentials: Credentials,
   warehouse: string,
   query: string,
-  options?: IOptions
+  compileConfig?: dataform.ICompileConfig
 ): Promise<void> {
-  return compile(query, options).then(compiledQuery =>
+  return compile(query, compileConfig).then(compiledQuery =>
     dbadapters.create(credentials, warehouse).evaluate(compiledQuery)
   );
 }
 
-export function compile(query: string, options?: IOptions): Promise<string> {
+export async function compile(
+  query: string,
+  compileConfig?: dataform.ICompileConfig
+): Promise<string> {
   // If there is no project directory, no need to compile the script.
-  if (!options || !options.projectDir) {
+  if (!compileConfig || !compileConfig.projectDir) {
     return Promise.resolve(query);
   }
   // Resolve the path in case it hasn't been resolved already.
-  const projectDir = path.resolve(options.projectDir);
-  // Run the bin_loader script if inside bazel, otherwise don't.
-  const forkScript = process.env.BAZEL_TARGET ? "../vm/query_bin_loader" : "../vm/query";
-  const child = fork(require.resolve(forkScript));
-  return new Promise((resolve, reject) => {
-    const timeout = 5000;
-    const timeoutStart = Date.now();
-    const checkTimeout = () => {
-      if (child.killed) {
-        return;
+  const projectDir = path.resolve(compileConfig.projectDir);
+
+  return await CompileChildProcess.forkProcess().compile({
+    ...compileConfig,
+    projectDir,
+    query,
+    // For backwards compatibility with old versions of @dataform/core.
+    returnOverride: `(function() {
+      try {
+        const ref = global.session.resolve.bind(global.session);
+        const resolve = global.session.resolve.bind(global.session);
+        const self = () => "";
+        return \`${query}\`;
+      } catch (e) {
+        return e.message;
       }
-      if (Date.now() > timeoutStart + timeout) {
-        child.kill();
-        reject(new Error("Compilation timed out"));
-      } else {
-        setTimeout(checkTimeout, 100);
-      }
-    };
-    checkTimeout();
-    child.on("message", obj => {
-      if (!child.killed) {
-        child.kill();
-      }
-      if (obj.err) {
-        reject(new Error(obj.err));
-      } else {
-        resolve(obj.result);
-      }
-    });
-    child.send({ query, projectDir });
+    })()`
   });
 }

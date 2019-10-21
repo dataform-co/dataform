@@ -10,17 +10,23 @@ import * as guideCLI from "df/docs/pages/guides/command-line-interface.mdx";
 import * as guideConfiguration from "df/docs/pages/guides/configuration.mdx";
 import * as guideCoreConcepts from "df/docs/pages/guides/core-concepts.mdx";
 import * as guideDatasets from "df/docs/pages/guides/datasets.mdx";
+import * as guideDeclarations from "df/docs/pages/guides/declarations.mdx";
+import * as guideDocumentation from "df/docs/pages/guides/documentation.mdx";
 import * as guideIncludes from "df/docs/pages/guides/includes.mdx";
 import * as guideIncrementalDatasets from "df/docs/pages/guides/incremental-datasets.mdx";
+import * as guideInlineTables from "df/docs/pages/guides/inline-tables.mdx";
 import * as guideJsApi from "df/docs/pages/guides/js-api.mdx";
 import * as guideOperations from "df/docs/pages/guides/operations.mdx";
+import * as guideTags from "df/docs/pages/guides/tags.mdx";
 import * as guideTests from "df/docs/pages/guides/tests.mdx";
 
 // Framework warehouses.
 import * as guideBigQuery from "df/docs/pages/guides/warehouses/bigquery.mdx";
 import * as guideRedshift from "df/docs/pages/guides/warehouses/redshift.mdx";
+import * as guideSqlDataWarehouse from "df/docs/pages/guides/warehouses/sqldatawarehouse.mdx";
 
 // Platform.
+import * as environments from "df/docs/pages/platform_guides/environments.mdx";
 import * as platformPublishTables from "df/docs/pages/platform_guides/publish_tables.mdx";
 import * as platformScheduling from "df/docs/pages/platform_guides/scheduling.mdx";
 import * as platformSetupDataWarehouse from "df/docs/pages/platform_guides/set_up_datawarehouse.mdx";
@@ -46,17 +52,23 @@ export default class Navigation extends React.Component<IProps> {
             guideCoreConcepts,
             guideDatasets,
             guideIncrementalDatasets,
+            guideInlineTables,
+            guideDeclarations,
             guideIncludes,
             guideOperations,
             guideAssertions,
+            guideDocumentation,
             guideTests,
+            guideTags,
             guideConfiguration,
             guideBuiltInFunctions,
             guideJsApi,
             guideCLI
           ].map(page => this.menuItem(page.meta))}
           <div className={styles.subtitle}>Warehouse integrations</div>
-          {[guideBigQuery, guideRedshift].map(page => this.menuItem(page.meta))}
+          {[guideBigQuery, guideRedshift, guideSqlDataWarehouse].map(page =>
+            this.menuItem(page.meta)
+          )}
         </Menu>
         <h4>Web</h4>
         <Menu className={styles.menu}>
@@ -64,7 +76,8 @@ export default class Navigation extends React.Component<IProps> {
             platformSetupDataWarehouse,
             platformPublishTables,
             platformVersionControl,
-            platformScheduling
+            platformScheduling,
+            environments
           ].map(page => this.menuItem(page.meta))}
         </Menu>
       </div>

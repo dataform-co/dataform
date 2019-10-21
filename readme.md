@@ -2,7 +2,7 @@
   <img src="https://github.com/dataform-co/dataform/blob/master/static/images/github_bg.png">
 </p>
 <p align="center">
-  The Dataform SDK is a tool for managing SQL based data operations in your warehouse.
+  <a href="https://dataform.co/?utm_medium=organic&utm_source=github_readme">Dataform</a> is a tool for managing SQL based data operations in your warehouse.
 </p>
 <div align="center">
   <img src="https://storage.googleapis.com/dataform-cloud-build-badges/build/status.svg" alt="Cloud build status"/>
@@ -20,7 +20,7 @@
 
 # Intro
 
-The Dataform SDK is an open source framework for managing SQL based data operations in your warehouse. It helps you pilot the T in ELT, with SQL code, and brings engineering best practices to analytics pipeline management.
+[Dataform](https://dataform.co/?utm_medium=organic&utm_source=github_readme) is an open source framework for managing SQL based data operations in your warehouse. It helps you pilot the T in ELT, with SQL code, and brings engineering best practices to analytics pipeline management.
 <br/>
 <br/>
 
@@ -39,7 +39,7 @@ The Dataform SDK is an open source framework for managing SQL based data operati
 
 ## With the CLI
 
-You can install the Dataform SDK using the following command line. Follow the [docs](https://docs.dataform.co/guides/command-line-interface/) to get started.
+You can install the Dataform SDK using the following command line. Follow the [docs](https://docs.dataform.co/guides/command-line-interface/?utm_medium=organic&utm_source=github_readme) to get started.
 
 ```
 npm i -g @dataform/cli
@@ -51,17 +51,12 @@ npm i -g @dataform/cli
 
 ## With Dataform web
 
-Dataform web is a development environment and production ready deployment tool for the Dataform SDK. You can learn more on [dataform.co](https://dataform.co)
-
-# Looking for support?
-
-For questions or support please join our [Slack Community](https://slack.dataform.co).
+Dataform web is a development environment and production ready deployment tool for the Dataform SDK. You can learn more on [dataform.co](https://dataform.co/?utm_medium=organic&utm_source=github_readme)
 
 # Want to report a bug or request a feature?
 
-Let us know on Slack, or open an issue!
+Open an issue or email us at opensource@dataform.co
 
 # Want to contribute?
 
 Check out our [contributors guide](https://github.com/dataform-co/dataform/blob/master/contributors.md) to get started with setting up the repo.
-If you have already joined Slack, join our #development channel and say hi!

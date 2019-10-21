@@ -1,5 +1,0 @@
-{
-    "warehouse": "redshift",
-    "defaultSchema": "test_schema",
-    "assertionSchema": "test_assertions"
-}

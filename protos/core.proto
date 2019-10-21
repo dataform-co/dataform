@@ -17,8 +17,27 @@ message ProjectConfig {
   string gcloud_project_id = 6;
 }
 
+message Environment {
+  string name = 1;
+  
+  message GitReference {
+    oneof git_reference {
+      string branch = 1;
+      string commit_sha = 2;
+    }
+  }
+
+  GitReference git_reference = 2;
+  ProjectConfig config_override = 3;
+}
+
+message Environments {
+  repeated Environment environments = 1;
+}
+
 message RunConfig {
   repeated string actions = 1;
+  repeated string tags = 5;
   bool include_dependencies = 3;
   bool full_refresh = 2;
   bool carry_on = 4;
@@ -28,6 +47,8 @@ message GenerateIndexConfig {
   CompileConfig compile_config = 1;
   repeated string include_paths = 2;
   repeated string definition_paths = 3;
+
+  // Deprecated.
   string return_override = 4;
 }
 
@@ -35,8 +56,15 @@ message CompileConfig {
   // Required.
   string project_dir = 1;
 
-  // Compile time configuration options.
+  // Project configuration overrides (dataform.json).
+  ProjectConfig project_config_override = 3;
+
+  // If supplied, only the compiled form of 'query' will be returned.
+  string query = 4;
+
+  // Deprecated.
   string schema_suffix_override = 2;
+  string return_override = 5;
 }
 
 message Target {
@@ -55,6 +83,10 @@ message RedshiftOptions {
   string sort_style = 4;
 }
 
+message SQLDataWarehouseOptions {
+  string distribution = 1;
+}
+
 message GraphErrors {
   repeated CompilationError compilation_errors = 1;
   repeated ValidationError validation_errors = 2;
@@ -71,8 +103,21 @@ message CompilationError {
   string stack = 3;
 }
 
+message ActionDescriptor {
+  string description = 1;
+  // For Operations, 'columns' may be set iff has_output == true.
+  // For Assertions, 'columns' will always be empty.
+  repeated ColumnDescriptor columns = 2;
+}
+
+message ColumnDescriptor {
+  string description = 1;
+  // For nested records, the path might look like e.g. [“record”, “column”].
+  // For simple columns, this will always contain a single entry e.g. ["column"].
+  repeated string path = 2; 
+}
+
 message Table {
-  string name = 1;
   repeated string dependencies = 2;
   bool disabled = 6;
 
@@ -81,7 +126,7 @@ message Table {
   string query = 5;
   bool protected = 9;
 
-  map<string, string> fieldDescriptor = 16;
+  ActionDescriptor action_descriptor = 24;
 
   repeated string tags = 23;
 
@@ -95,6 +140,7 @@ message Table {
   // Warehouse specific features.
   RedshiftOptions redshift = 21;
   BigQueryOptions bigquery = 22;
+  SQLDataWarehouseOptions sql_data_warehouse = 25;
 
   // Generated.
   string file_name = 18;
@@ -102,10 +148,12 @@ message Table {
   // Deprecated.
   repeated string deprecated_parsed_columns = 12;
   repeated ValidationError deprecated_validation_errors = 7;
+  string name = 1; // Preferred: Target
+
+  reserved 16;
 }
 
 message Operation {
-  string name = 1;
   repeated string dependencies = 2;
 
   Target target = 3;
@@ -113,23 +161,47 @@ message Operation {
 
   repeated string tags = 9;
 
+  ActionDescriptor action_descriptor = 10;
+
   // Generated.
   string file_name = 7;
 
   bool has_output = 8;
+
+  reserved 4, 5;
+  
+  // Deprecated.
+  string name = 1; // Preferred: Target
 }
 
 message Assertion {
-  string name = 1;
   repeated string dependencies = 2;
 
   Target target = 8;
   string query = 3;
 
   repeated string tags = 9;
+
+  ActionDescriptor action_descriptor = 10;
   
   // Generated.
   string file_name = 7;
+
+  reserved 4, 5, 6;
+
+  //Deprecated
+  string name = 1; // Preferred: Target
+}
+
+message Declaration {
+  string name = 1;
+
+  Target target = 2;
+
+  ActionDescriptor action_descriptor = 3;
+
+  // Generated.
+  string file_name = 4;
 }
 
 message Test {
@@ -148,6 +220,7 @@ message CompiledGraph {
   repeated Table tables = 1;
   repeated Operation operations = 2;
   repeated Assertion assertions = 3;
+  repeated Declaration declarations = 9;
   repeated Test tests = 8;
 
   GraphErrors graph_errors = 7;
@@ -190,6 +263,56 @@ message ExecutedTask {
   string error = 3;
 }
 
+message Timing {
+  int64 start_time_millis = 1;
+  int64 end_time_millis = 2;
+}
+
+message RunResult {
+  enum ExecutionStatus {
+    UNKNOWN = 0;
+    RUNNING = 1;
+    SUCCESSFUL = 2;
+    FAILED = 3;
+    CANCELLED = 4;
+  }
+  ExecutionStatus status = 1;
+  repeated ActionResult actions = 2;
+  Timing timing = 3;
+}
+
+message ActionResult {
+  string name = 1;
+
+  enum ExecutionStatus {
+    UNKNOWN = 0;
+    RUNNING = 1;
+    SUCCESSFUL = 2;
+    FAILED = 3;
+    SKIPPED = 4;
+    DISABLED = 5;
+    CANCELLED = 6;
+  }
+  ExecutionStatus status = 2;
+
+  repeated TaskResult tasks = 3;
+  Timing timing = 4;
+}
+
+message TaskResult {
+  enum ExecutionStatus {
+      UNKNOWN = 0;
+      RUNNING = 1;
+      SUCCESSFUL = 2;
+      FAILED = 3;
+      SKIPPED = 4;
+      CANCELLED = 5;
+  }
+  ExecutionStatus status = 1;
+  string error_message = 2;
+  Timing timing = 3;
+}
+
 enum ActionExecutionStatus {
   UNKNOWN_ACTION_EXECUTION_STATUS = 0;
   SUCCESSFUL = 1;
@@ -211,9 +334,9 @@ message ExecutedAction {
   bool deprecated_skipped = 4;
 }
 
-// TODO: Instead of returning this as a result of run(...), return an ExecutionGraph
-// along with something like a RunStatus message indicating the success/failure of executing
-// that graph on the data warehouse.
+// TODO: Instead of returning this as a result of run(...), return an
+// ExecutionGraph along with something like a RunStatus message indicating the
+// success/failure of executing that graph on the data warehouse.
 message ExecutedGraph {
   ProjectConfig project_config = 1;
   RunConfig run_config = 2;

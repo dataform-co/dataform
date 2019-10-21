@@ -8,9 +8,8 @@ ts_library(
     module_name = "@dataform/core",
     deps = [
         "//protos",
-        "@npm//@types/moo",
+        "//sqlx",
         "@npm//@types/node",
-        "@npm//moo",
         "@npm//protobufjs",
     ],
 )

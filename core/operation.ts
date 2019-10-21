@@ -1,7 +1,22 @@
-import { Session } from "@dataform/core/session";
+import {
+  IColumnsDescriptor,
+  mapToColumnProtoArray,
+  Resolvable,
+  Session
+} from "@dataform/core/session";
+import * as utils from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
 
 export type OContextable<T> = T | ((ctx: OperationContext) => T);
+
+export interface OConfig {
+  dependencies?: Resolvable | Resolvable[];
+  tags?: string[];
+  description?: string;
+  columns?: IColumnsDescriptor;
+  hasOutput?: boolean;
+  schema?: string;
+}
 
 export class Operation {
   public proto: dataform.IOperation = dataform.Operation.create();
@@ -12,16 +27,39 @@ export class Operation {
   // We delay contextification until the final compile step, so hold these here for now.
   private contextableQueries: OContextable<string | string[]>;
 
+  public config(config: OConfig) {
+    if (config.dependencies) {
+      this.dependencies(config.dependencies);
+    }
+    if (config.tags) {
+      this.tags(config.tags);
+    }
+    if (config.hasOutput) {
+      this.hasOutput(config.hasOutput);
+    }
+    if (config.description) {
+      this.description(config.description);
+    }
+    if (config.columns) {
+      this.columns(config.columns);
+    }
+    if (config.schema) {
+      this.schema(config.schema);
+    }
+    return this;
+  }
+
   public queries(queries: OContextable<string | string[]>) {
     this.contextableQueries = queries;
     return this;
   }
 
-  public dependencies(value: string | string[]) {
-    const newDependencies = typeof value === "string" ? [value] : value;
-    newDependencies.forEach(d => {
-      if (this.proto.dependencies.indexOf(d) < 0) {
-        this.proto.dependencies.push(d);
+  public dependencies(value: Resolvable | Resolvable[]) {
+    const newDependencies = utils.isResolvable(value) ? [value] : (value as Resolvable[]);
+    newDependencies.forEach((d: Resolvable) => {
+      const depName = utils.stringifyResolvable(d);
+      if (this.proto.dependencies.indexOf(depName) < 0) {
+        this.proto.dependencies.push(depName);
       }
     });
     return this;
@@ -42,11 +80,46 @@ export class Operation {
     return this;
   }
 
+  public description(description: string) {
+    if (!this.proto.actionDescriptor) {
+      this.proto.actionDescriptor = {};
+    }
+    this.proto.actionDescriptor.description = description;
+    return this;
+  }
+
+  public columns(columns: IColumnsDescriptor) {
+    if (!this.proto.actionDescriptor) {
+      this.proto.actionDescriptor = {};
+    }
+    this.proto.actionDescriptor.columns = mapToColumnProtoArray(columns);
+    return this;
+  }
+
+  public schema(schema: string) {
+    this.session.setNameAndTarget(this.proto, this.proto.target.name, schema);
+    return this;
+  }
+
   public compile() {
+    if (
+      this.proto.actionDescriptor &&
+      this.proto.actionDescriptor.columns &&
+      this.proto.actionDescriptor.columns.length > 0 &&
+      !this.proto.hasOutput
+    ) {
+      this.session.compileError(
+        new Error(
+          "Actions of type 'operations' may only describe columns if they specify 'hasOutput: true'."
+        ),
+        this.proto.fileName
+      );
+    }
+
     const context = new OperationContext(this);
 
     const appliedQueries = context.apply(this.contextableQueries);
-    this.proto.queries = typeof appliedQueries == "string" ? [appliedQueries] : appliedQueries;
+    this.proto.queries = typeof appliedQueries === "string" ? [appliedQueries] : appliedQueries;
 
     return this.proto;
   }
@@ -60,19 +133,28 @@ export class OperationContext {
   }
 
   public self(): string {
-    return this.resolve(this.operation.proto.name);
+    return this.resolve({
+      schema: this.operation.proto.target.schema,
+      name: this.operation.proto.target.name
+    });
   }
 
-  public ref(name: string) {
+  public name(): string {
+    return this.operation.proto.target.name;
+  }
+
+  public ref(ref: Resolvable) {
+    const name =
+      typeof ref === "string" || typeof ref === "undefined" ? ref : `${ref.schema}.${ref.name}`;
     this.operation.dependencies(name);
-    return this.resolve(name);
+    return this.resolve(ref);
   }
 
-  public resolve(name: string) {
-    return this.operation.session.resolve(name);
+  public resolve(ref: Resolvable) {
+    return this.operation.session.resolve(ref);
   }
 
-  public dependencies(name: string | string[]) {
+  public dependencies(name: Resolvable | Resolvable[]) {
     this.operation.dependencies(name);
     return "";
   }

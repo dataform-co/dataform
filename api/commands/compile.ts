@@ -1,32 +1,64 @@
-import { ICompileIPCResult } from "@dataform/api/vm/compile";
 import { validate } from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
 import { ChildProcess, fork } from "child_process";
 import * as fs from "fs";
 import * as path from "path";
+import { util } from "protobufjs";
+
+const validWarehouses = ["bigquery", "postgres", "redshift", "sqldatawarehouse", "snowflake"];
+const mandatoryProps: Array<keyof dataform.IProjectConfig> = ["warehouse", "defaultSchema"];
+const simpleCheckProps: Array<keyof dataform.IProjectConfig> = [
+  "assertionSchema",
+  "schemaSuffix",
+  "defaultSchema"
+];
 
 export async function compile(
-  compileConfig: dataform.ICompileConfig
+  compileConfig: dataform.ICompileConfig = {}
 ): Promise<dataform.CompiledGraph> {
   // Resolve the path in case it hasn't been resolved already.
   path.resolve(compileConfig.projectDir);
-  const returnedPath = await CompileChildProcess.forkProcess().compile(compileConfig);
-  const contents = fs.readFileSync(returnedPath);
-  let compiledGraph = dataform.CompiledGraph.decode(contents);
-  fs.unlinkSync(returnedPath);
-  // Merge graph errors into the compiled graph.
-  compiledGraph = dataform.CompiledGraph.create({
+
+  // Create an empty projectConfigOverride if not set.
+  compileConfig = { projectConfigOverride: {}, ...compileConfig };
+
+  // Schema overrides field can be set in two places, projectConfigOverride.schemaSuffix takes precedent.
+  if (compileConfig.schemaSuffixOverride) {
+    compileConfig.projectConfigOverride = {
+      schemaSuffix: compileConfig.schemaSuffixOverride,
+      ...compileConfig.projectConfigOverride
+    };
+  }
+
+  try {
+    // check dataformJson is valid before we try to compile
+    const dataformJson = fs.readFileSync(`${compileConfig.projectDir}/dataform.json`, "utf8");
+    const projectConfig = JSON.parse(dataformJson);
+    checkDataformJsonValidity({
+      ...projectConfig,
+      ...compileConfig.projectConfigOverride
+    });
+  } catch (e) {
+    throw new Error(`Compile Error: ProjectConfig ('dataform.json') is invalid. ${e}`);
+  }
+
+  const encodedGraphInBase64 = await CompileChildProcess.forkProcess().compile(compileConfig);
+  const encodedGraphBytes = new Uint8Array(util.base64.length(encodedGraphInBase64));
+  util.base64.decode(encodedGraphInBase64, encodedGraphBytes, 0);
+  const compiledGraph = dataform.CompiledGraph.decode(encodedGraphBytes);
+  return dataform.CompiledGraph.create({
     ...compiledGraph,
     graphErrors: validate(compiledGraph)
   });
-  return compiledGraph;
 }
 
-class CompileChildProcess {
+export class CompileChildProcess {
   public static forkProcess() {
     // Run the bin_loader script if inside bazel, otherwise don't.
     const forkScript = process.env.BAZEL_TARGET ? "../vm/compile_bin_loader" : "../vm/compile";
-    return new CompileChildProcess(fork(require.resolve(forkScript)));
+    return new CompileChildProcess(
+      fork(require.resolve(forkScript), [], { stdio: [0, 1, 2, "ipc", "pipe"] })
+    );
   }
   private readonly childProcess: ChildProcess;
 
@@ -36,14 +68,16 @@ class CompileChildProcess {
 
   public async compile(compileConfig: dataform.ICompileConfig) {
     const compileInChildProcess = new Promise<string>(async (resolve, reject) => {
-      this.childProcess.on("message", (result: ICompileIPCResult) => {
-        if (result.err) {
-          reject(new Error(result.err));
-        } else {
-          // We receive back a path where the compiled graph was written in proto format.
-          resolve(result.path);
-        }
-      });
+      // Handle errors returned by the child process.
+      this.childProcess.on("message", (e: Error) => reject(e));
+
+      // Handle UTF-8 string chunks returned by the child process.
+      const pipe = this.childProcess.stdio[4];
+      const chunks: Buffer[] = [];
+      pipe.on("data", (chunk: Buffer) => chunks.push(chunk));
+      pipe.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
+
+      // Trigger the child process to start compiling.
       this.childProcess.send(compileConfig);
     });
     let timer;
@@ -64,3 +98,31 @@ class CompileChildProcess {
     }
   }
 }
+
+export const checkDataformJsonValidity = (dataformJsonParsed: { [prop: string]: string }) => {
+  const invalidWarehouseProp = () => {
+    return dataformJsonParsed.warehouse && !validWarehouses.includes(dataformJsonParsed.warehouse)
+      ? `Invalid value on property warehouse: ${
+          dataformJsonParsed.warehouse
+        }. Should be one of: ${validWarehouses.join(", ")}.`
+      : null;
+  };
+  const invalidProp = () => {
+    const invProp = simpleCheckProps.find(prop => {
+      return prop in dataformJsonParsed && !/^[a-zA-Z_0-9\-]*$/.test(dataformJsonParsed[prop]);
+    });
+    return invProp
+      ? `Invalid value on property ${invProp}: ${dataformJsonParsed[invProp]}. Should only contain alphanumeric characters, underscores and/or hyphens.`
+      : null;
+  };
+  const missingMandatoryProp = () => {
+    const missMandatoryProp = mandatoryProps.find(prop => {
+      return !(prop in dataformJsonParsed);
+    });
+    return missMandatoryProp ? `Missing mandatory property: ${missMandatoryProp}.` : null;
+  };
+  const message = invalidWarehouseProp() || invalidProp() || missingMandatoryProp();
+  if (message) {
+    throw new Error(message);
+  }
+};

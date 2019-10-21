@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { build, compile, credentials, init, run, table, test } from "@dataform/api";
+import { build, compile, credentials, format, init, run, table, test } from "@dataform/api";
 import { prettyJsonStringify } from "@dataform/api/utils";
 import {
   print,
@@ -8,6 +8,7 @@ import {
   printError,
   printExecutedAction,
   printExecutionGraph,
+  printFormatFilesResult,
   printGetTableResult,
   printInitCredsResult,
   printInitResult,
@@ -19,7 +20,8 @@ import {
   getBigQueryCredentials,
   getPostgresCredentials,
   getRedshiftCredentials,
-  getSnowflakeCredentials
+  getSnowflakeCredentials,
+  getSQLDataWarehouseCredentials
 } from "@dataform/cli/credentials";
 import { actuallyResolve, assertPathExists, compiledGraphHasErrors } from "@dataform/cli/util";
 import { createYargsCli, INamedOption } from "@dataform/cli/yargswrapper";
@@ -27,10 +29,15 @@ import { supportsCancel, WarehouseType } from "@dataform/core/adapters";
 import { dataform } from "@dataform/protos";
 import * as chokidar from "chokidar";
 import * as fs from "fs";
+import * as glob from "glob";
 import * as path from "path";
 import * as yargs from "yargs";
 
 const RECOMPILE_DELAY = 500;
+
+process.on("unhandledRejection", reason =>
+  printError("Unhandled promise rejection:", reason.stack || reason)
+);
 
 const projectDirOption: INamedOption<yargs.PositionalOptions> = {
   name: "project-dir",
@@ -49,9 +56,7 @@ const projectDirMustExistOption = {
       assertPathExists(path.resolve(argv["project-dir"], "dataform.json"));
     } catch (e) {
       throw new Error(
-        `${
-          argv["project-dir"]
-        } does not appear to be a dataform directory (missing dataform.json file).`
+        `${argv["project-dir"]} does not appear to be a dataform directory (missing dataform.json file).`
       );
     }
   }
@@ -88,6 +93,14 @@ const includeDepsOption: INamedOption<yargs.Options> = {
   }
 };
 
+const tagsOption: INamedOption<yargs.Options> = {
+  name: "tags",
+  option: {
+    describe: "A list of tags to filter the actions to run.",
+    type: "array"
+  }
+};
+
 const schemaSuffixOverrideOption: INamedOption<yargs.Options> = {
   name: "schema-suffix",
   option: {
@@ -116,7 +129,7 @@ const warehouseOption: INamedOption<yargs.PositionalOptions> = {
   name: "warehouse",
   option: {
     describe: "The project's data warehouse type.",
-    choices: Object.keys(WarehouseType).map(warehouseType => WarehouseType[warehouseType])
+    choices: Object.values(WarehouseType)
   }
 };
 
@@ -132,6 +145,17 @@ const verboseOutputOption: INamedOption<yargs.Options> = {
 
 const builtYargs = createYargsCli({
   commands: [
+    {
+      // This dummy command is a hack with the only goal of displaying "help" as a command in the CLI
+      // and we need it because of the limitations of yargs considering "help" as an option and not as a command.
+      format: "help [command]",
+      description: "Show help. If [command] is specified, the help is for the given command.",
+      positionalOptions: [],
+      options: [],
+      processFn: async argv => {
+        return false;
+      }
+    },
     {
       format: "init <warehouse> [project-dir]",
       description: "Create a new dataform project.",
@@ -166,6 +190,13 @@ const builtYargs = createYargsCli({
             describe: "Whether to initialize a schedules.json file.",
             default: false
           }
+        },
+        {
+          name: "include-environments",
+          option: {
+            describe: "Whether to initialize a environments.json file.",
+            default: false
+          }
         }
       ],
       processFn: async argv => {
@@ -179,7 +210,8 @@ const builtYargs = createYargsCli({
             },
             {
               skipInstall: argv["skip-install"],
-              includeSchedules: argv["include-schedules"]
+              includeSchedules: argv["include-schedules"],
+              includeEnvironments: argv["include-environments"]
             }
           )
         );
@@ -187,9 +219,7 @@ const builtYargs = createYargsCli({
     },
     {
       format: "init-creds <warehouse> [project-dir]",
-      description: `Creates a ${
-        credentials.CREDENTIALS_FILENAME
-      } file for dataform to use when accessing your warehouse.`,
+      description: `Create a ${credentials.CREDENTIALS_FILENAME} file for Dataform to use when accessing your warehouse.`,
       positionalOptions: [warehouseOption, projectDirMustExistOption],
       options: [
         {
@@ -212,6 +242,9 @@ const builtYargs = createYargsCli({
             }
             case "redshift": {
               return getRedshiftCredentials();
+            }
+            case "sqldatawarehouse": {
+              return getSQLDataWarehouseCredentials();
             }
             case "snowflake": {
               return getSnowflakeCredentials();
@@ -283,7 +316,7 @@ const builtYargs = createYargsCli({
         await compileAndPrint();
 
         if (argv.watch) {
-          let timeoutID = null;
+          let timeoutID: NodeJS.Timer = null;
           let isCompiling = false;
 
           // Initialize watcher.
@@ -391,6 +424,7 @@ const builtYargs = createYargsCli({
         },
         fullRefreshOption,
         actionsOption,
+        tagsOption,
         includeDepsOption,
         schemaSuffixOverrideOption,
         credentialsOption,
@@ -416,7 +450,8 @@ const builtYargs = createYargsCli({
           {
             fullRefresh: argv["full-refresh"],
             actions: argv.actions,
-            includeDependencies: argv["include-deps"]
+            includeDependencies: argv["include-deps"],
+            tags: argv.tags
           },
           readCredentials
         );
@@ -447,7 +482,11 @@ const builtYargs = createYargsCli({
         print("Running...\n");
         const runner = run(executionGraph, readCredentials);
         process.on("SIGINT", () => {
-          if (!supportsCancel(WarehouseType[compiledGraph.projectConfig.warehouse])) {
+          if (
+            !supportsCancel(
+              WarehouseType[compiledGraph.projectConfig.warehouse as keyof typeof WarehouseType]
+            )
+          ) {
             process.exit();
           }
           runner.cancel();
@@ -459,21 +498,49 @@ const builtYargs = createYargsCli({
         });
         const alreadyPrintedActions = new Set<string>();
 
-        const printExecutedGraph = (executedGraph: dataform.IExecutedGraph) => {
+        const printExecutedGraph = (executedGraph: dataform.IRunResult) => {
           executedGraph.actions
+            .filter(
+              actionResult => actionResult.status !== dataform.ActionResult.ExecutionStatus.RUNNING
+            )
             .filter(executedAction => !alreadyPrintedActions.has(executedAction.name))
             .forEach(executedAction => {
-              printExecutedAction(
-                executedAction,
-                actionsByName.get(executedAction.name),
-                argv.verbose
-              );
+              printExecutedAction(executedAction, actionsByName.get(executedAction.name));
               alreadyPrintedActions.add(executedAction.name);
             });
         };
 
         runner.onChange(printExecutedGraph);
         printExecutedGraph(await runner.resultPromise());
+      }
+    },
+    {
+      format: "format [project-dir]",
+      description: "Format the dataform project's files.",
+      positionalOptions: [projectDirMustExistOption],
+      options: [],
+      processFn: async argv => {
+        const filenames = glob.sync("{definitions,includes}/**/*.{js,sqlx}", {
+          cwd: argv["project-dir"]
+        });
+        const results = await Promise.all(
+          filenames.map(async filename => {
+            try {
+              await format.formatFile(path.resolve(argv["project-dir"], filename), {
+                overwriteFile: true
+              });
+              return {
+                filename
+              };
+            } catch (e) {
+              return {
+                filename,
+                err: e
+              };
+            }
+          })
+        );
+        printFormatFilesResult(results);
       }
     },
     {
@@ -507,7 +574,7 @@ const builtYargs = createYargsCli({
   .strict()
   .wrap(null)
   .recommendCommands()
-  .fail((msg, err) => {
+  .fail((msg: string, err: Error) => {
     const message = err ? err.message.split("\n")[0] : msg;
     printError(`Dataform encountered an error: ${message}`);
     process.exit(1);
