@@ -5,8 +5,6 @@ export function forDataset(dataset: string) {
 export class DatasetAssertion {
   private readonly dataset: string;
   private groupCols: string[] = [];
-  private field: string;
-  private acceptedValues: string[] = [];
   constructor(dataset: string) {
     this.dataset = dataset;
   }
