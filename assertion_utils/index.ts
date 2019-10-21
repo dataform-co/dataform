@@ -6,7 +6,7 @@ export class DatasetAssertion {
   private readonly dataset: string;
   private groupCols: string[] = [];
   private field: string;
-  private values: string[] = [];
+  private acceptedValues: string[] = [];
   constructor(dataset: string) {
     this.dataset = dataset;
   }
@@ -47,13 +47,13 @@ export class DatasetAssertion {
     `
   }
 
-  public getAcceptedValuesQuery(field: string, values: string | string[]): string {
+  public getAcceptedValuesQuery(field: string, acceptedValues: string | string[]): string {
     return `
     SELECT
       *
     FROM ${this.dataset}
     WHERE
-      ${field} NOT IN ${values}
+      ${field} NOT IN ${acceptedValues}
     `
   }
 }
