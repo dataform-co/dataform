@@ -2,18 +2,23 @@ syntax="proto3";
 
 package dataform.schedules;
 
-import "protos/core.proto";
-
 message NotificationSettings {
   repeated string emails = 1;
   bool on_success = 2;
   bool on_failure = 3; 
 }
 
+message ScheduleOptions {	
+  repeated string actions = 1;	
+  repeated string tags = 4;	
+  bool include_dependencies = 2;	
+  bool full_refresh = 3;	
+}
+
 message Schedule {
   string name = 1; // required field
   bool disabled = 2;
-  RunConfig options = 3;
+  ScheduleOptions options = 3;
   string cron = 4; // required field
   NotificationSettings notification = 5;
 }
