@@ -38,14 +38,6 @@ export function validateSchedules(
 ): string[] {
   const errors: string[] = [];
 
-  if (schedules.defaultNotification && schedules.defaultNotification.emails) {
-    schedules.defaultNotification.emails.forEach(email => {
-      if (!validateEmail(email)) {
-        errors.push(`"${email}" is not a valid email address.`);
-      }
-    });
-  }
-
   const uniqueNames = new Set<string>();
   schedules.schedules.forEach(schedule => {
     if (!schedule.name) {
