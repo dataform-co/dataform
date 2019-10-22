@@ -2,7 +2,7 @@ syntax="proto3";
 
 package dataform.schedules;
 
-import "protos/dataform/core.proto";
+import "protos/core.proto";
 
 message NotificationSettings {
   repeated string emails = 1;
