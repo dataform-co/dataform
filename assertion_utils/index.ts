@@ -34,4 +34,24 @@ export class DatasetAssertion {
       row_count > 1
     `;
   }
+
+  public getNotNullQuery(field: string): string {
+    return `
+    SELECT
+      *
+    FROM ${this.dataset}
+    WHERE
+      ${field} IS NULL
+    `
+  }
+
+  public getAcceptedValuesQuery(field: string, acceptedValues: string | string[]): string {
+    return `
+    SELECT
+      *
+    FROM ${this.dataset}
+    WHERE
+      ${field} NOT IN ${acceptedValues}
+    `
+  }
 }
