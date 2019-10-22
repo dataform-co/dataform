@@ -150,7 +150,7 @@ async function connect(snowflakeCredentials: dataform.ISnowflake) {
       });
     });
   } catch (e) {
-    throw new Error(`Could not open HTTPS connection to ${url}`);
+    throw new Error(`Could not open HTTPS connection to ${url}: ${e.message}`);
   }
   try {
     return await new Promise<ISnowflakeConnection>((resolve, reject) => {
@@ -172,6 +172,6 @@ async function connect(snowflakeCredentials: dataform.ISnowflake) {
         });
     });
   } catch (e) {
-    throw new Error("Could not connect to Snowflake.");
+    throw new Error(`Could not connect to Snowflake: ${e.message}`);
   }
 }
