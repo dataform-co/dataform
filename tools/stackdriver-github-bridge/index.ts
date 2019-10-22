@@ -62,7 +62,7 @@ exports.handleStackdriverEvent = async (req: express.Request, res: express.Respo
         throw new Error(`Unrecognized incident state: ${incident.state}`);
     }
   } catch (e) {
-    console.log(e);
+    console.error(e);
     res.status(500).send(e.message);
   }
 };
