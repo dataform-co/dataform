@@ -35,35 +35,10 @@ interface ISnowflakeResultStream {
 const snowflake: ISnowflake = require("snowflake-sdk");
 
 export class SnowflakeDbAdapter implements IDbAdapter {
-  private connection: ISnowflakeConnection;
-  private connected: Promise<void>;
+  private connection: Promise<ISnowflakeConnection>;
 
   constructor(credentials: Credentials) {
-    const snowflakeCredentials = credentials as dataform.ISnowflake;
-    this.connection = snowflake.createConnection({
-      account: snowflakeCredentials.accountId,
-      username: snowflakeCredentials.username,
-      password: snowflakeCredentials.password,
-      database: snowflakeCredentials.databaseName,
-      warehouse: snowflakeCredentials.warehouse,
-      role: snowflakeCredentials.role
-    });
-    // We are forced to try our own HTTPS connection to the final <accountId>.snowflakecomputing.com URL
-    // in order to verify its certificate. If we don't do this, and pass an invalid account ID (which thus
-    // resolves to an invalid URL) to the snowflake connect() API, snowflake-sdk will not handle the
-    // resulting error correctly (and thus crash this process).
-    this.connected = this.verifyCertificate(snowflakeCredentials.accountId).then(
-      () =>
-        new Promise<void>((resolve, reject) => {
-          this.connection.connect((err, conn) => {
-            if (err) {
-              reject(err);
-            } else {
-              resolve();
-            }
-          });
-        })
-    );
+    this.connection = connect(credentials as dataform.ISnowflake);
   }
 
   public async execute(
@@ -72,9 +47,9 @@ export class SnowflakeDbAdapter implements IDbAdapter {
       maxResults?: number;
     } = { maxResults: 1000 }
   ) {
-    await this.connected;
+    const connection = await this.connection;
     return new Promise<any[]>((resolve, reject) => {
-      this.connection.execute({
+      connection.execute({
         sqlText: statement,
         streamResult: true,
         complete(err, stmt) {
@@ -156,10 +131,17 @@ export class SnowflakeDbAdapter implements IDbAdapter {
       await this.execute(`create schema if not exists "${schema}"`);
     }
   }
+}
 
-  private async verifyCertificate(accountId: string) {
-    return new Promise<void>((resolve, reject) => {
-      const req = https.request(`https://${accountId}.snowflakecomputing.com`);
+async function connect(snowflakeCredentials: dataform.ISnowflake) {
+  const url = `https://${snowflakeCredentials.accountId}.snowflakecomputing.com`;
+  try {
+    // We are forced to try our own HTTPS connection to the final <accountId>.snowflakecomputing.com URL
+    // in order to verify its certificate. If we don't do this, and pass an invalid account ID (which thus
+    // resolves to an invalid URL) to the snowflake connect() API, snowflake-sdk will not handle the
+    // resulting error correctly (and thus crash this process).
+    await new Promise<void>((resolve, reject) => {
+      const req = https.request(url);
       req.on("error", e => {
         reject(e);
       });
@@ -167,5 +149,29 @@ export class SnowflakeDbAdapter implements IDbAdapter {
         resolve();
       });
     });
+  } catch (e) {
+    throw new Error(`Could not open HTTPS connection to ${url}`);
+  }
+  try {
+    return await new Promise<ISnowflakeConnection>((resolve, reject) => {
+      snowflake
+        .createConnection({
+          account: snowflakeCredentials.accountId,
+          username: snowflakeCredentials.username,
+          password: snowflakeCredentials.password,
+          database: snowflakeCredentials.databaseName,
+          warehouse: snowflakeCredentials.warehouse,
+          role: snowflakeCredentials.role
+        })
+        .connect((err, conn) => {
+          if (err) {
+            reject(err);
+          } else {
+            resolve(conn);
+          }
+        });
+    });
+  } catch (e) {
+    throw new Error("Could not connect to Snowflake.");
   }
 }
