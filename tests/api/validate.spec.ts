@@ -38,11 +38,6 @@ describe("@dataform/api/validate", () => {
         ]
       });
       const validSchedule = dataform.schedules.SchedulesJSON.create({
-        defaultNotification: {
-          emails: ["team@dataform.co", "abc@test.com"],
-          onSuccess: true,
-          onFailure: true
-        },
         schedules: [
           {
             name: "name1",
@@ -89,9 +84,6 @@ describe("@dataform/api/validate", () => {
       });
 
       const invalidSchedule = dataform.schedules.SchedulesJSON.create({
-        defaultNotification: {
-          emails: ["test.com"]
-        },
         schedules: [
           {
             name: "name1",
@@ -119,7 +111,6 @@ describe("@dataform/api/validate", () => {
 
       const errors = validateSchedules(invalidSchedule, compiledGraph);
       const expectedErrors = [
-        '"test.com" is not a valid email address.',
         'Schedule "name1" contains an invalid cron expression "asdas".',
         'Action "action3" included on schedule name1 doesn\'t exist in the project.',
         'Schedule "name1" contains an invalid email address "test2.com".',
@@ -156,9 +147,6 @@ describe("@dataform/api/validate", () => {
           ]
         });
         const invalidJson = {
-          defaultNotification: {
-            emails: ["test.com"]
-          },
           schedules: [
             {
               name: "name1",
@@ -192,7 +180,6 @@ describe("@dataform/api/validate", () => {
 
         fs.writeFileSync(filePath, JSON.stringify(invalidJson));
         const expectedErrors = [
-          '"test.com" is not a valid email address.',
           'Schedule "name1" contains an invalid cron expression "asdas".',
           'Action "action3" included on schedule name1 doesn\'t exist in the project.',
           'Schedule "name1" contains an invalid email address "test2.com".',
