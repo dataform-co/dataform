@@ -22,6 +22,13 @@ export class RedshiftDbAdapter implements IDbAdapter {
       database: redshiftCredentials.databaseName,
       ssl: true
     });
+    // https://node-postgres.com/api/pool#events
+    // Idle clients in the pool are still connected to the remote host and as such can
+    // emit errors. If/when they do, they will automatically be removed from the pool,
+    // but we still need to handle the error to prevent crashing the process.
+    this.pool.on("error", err => {
+      console.error("pg.Pool idle client error", err.message, err.stack);
+    });
   }
 
   public async execute(
