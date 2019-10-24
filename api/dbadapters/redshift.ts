@@ -42,6 +42,9 @@ export class RedshiftDbAdapter implements IDbAdapter {
       return result.rows;
     }
     const client = await this.pool.connect();
+    client.on("error", err => {
+      console.error("pg.Client client error", err.message, err.stack);
+    });
     try {
       // If we want to limit the returned results from redshift, we have two options:
       // (1) use cursors, or (2) use JDBC and configure a fetch size parameter. We use cursors
