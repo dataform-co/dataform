@@ -3,6 +3,7 @@ syntax="proto3";
 package dataform.schedules;
 
 enum NotificationEventType {
+  ON_ANY = 0;
   ON_SUCCESS = 1;
   ON_FAILURE = 2;
 }
