@@ -14,8 +14,8 @@ message SlackNotificationChannel {
 message NotificationChannel {
  string name = 1;
  oneof channel {
-    EmailNotificationChannel email = 1;
-    SlackNotificationChannel slack = 2;
+    EmailNotificationChannel email = 2;
+    SlackNotificationChannel slack = 3;
   } 	
 }
 
