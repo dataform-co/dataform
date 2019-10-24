@@ -2,6 +2,10 @@ syntax="proto3";
 
 package dataform.schedules;
 
+enum NotificationEventType {
+  ON_SUCCESS = 1;
+  ON_FAILURE = 2;
+}
 
 message EmailNotificationChannel {
   repeated string to = 1;
@@ -21,6 +25,7 @@ message NotificationChannel {
 
 message ScheduleNotification {
  repeated string environments = 1;
+ // should consists of event type from NotificationEventType enum
  repeated string events = 2;
  repeated string channels = 3;
 }
