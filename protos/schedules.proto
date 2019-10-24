@@ -4,7 +4,7 @@ package dataform.schedules;
 
 
 message EmailNotificationChannel {
-  repeated string emails = 1;
+  repeated string to = 1;
 }
 
 message SlackNotificationChannel {
@@ -14,14 +14,14 @@ message SlackNotificationChannel {
 message NotificationChannel {
  string name = 1;
  oneof channel {
-    EmailNotificationChannel email_notification = 1;
-    SlackNotificationChannel slack_notification = 2;
+    EmailNotificationChannel email = 1;
+    SlackNotificationChannel slack = 2;
   } 	
 }
 
 message ScheduleNotification {
- repeated environments = 1;
- repeated string onEvent = 2;
+ repeated string environments = 1;
+ repeated string events = 2;
  repeated string channels = 3;
 }
 
@@ -44,7 +44,7 @@ message Schedule {
   bool disabled = 2;
   ScheduleOptions options = 3;
   string cron = 4; // required field
-  // to support legacy
+  // Deprecated
   NotificationSettings notification = 5;
 
   repeated ScheduleNotification notifications = 6;
