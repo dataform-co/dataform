@@ -35,10 +35,10 @@ interface ISnowflakeResultStream {
 const snowflake: ISnowflake = require("snowflake-sdk");
 
 export class SnowflakeDbAdapter implements IDbAdapter {
-  private connection: Promise<ISnowflakeConnection>;
+  private connectionPromise: Promise<ISnowflakeConnection>;
 
   constructor(credentials: Credentials) {
-    this.connection = connect(credentials as dataform.ISnowflake);
+    this.connectionPromise = connect(credentials as dataform.ISnowflake);
   }
 
   public async execute(
@@ -47,7 +47,7 @@ export class SnowflakeDbAdapter implements IDbAdapter {
       maxResults?: number;
     } = { maxResults: 1000 }
   ) {
-    const connection = await this.connection;
+    const connection = await this.connectionPromise;
     return new Promise<any[]>((resolve, reject) => {
       connection.execute({
         sqlText: statement,
@@ -134,24 +134,11 @@ export class SnowflakeDbAdapter implements IDbAdapter {
 }
 
 async function connect(snowflakeCredentials: dataform.ISnowflake) {
-  const url = `https://${snowflakeCredentials.accountId}.snowflakecomputing.com`;
-  try {
-    // We are forced to try our own HTTPS connection to the final <accountId>.snowflakecomputing.com URL
-    // in order to verify its certificate. If we don't do this, and pass an invalid account ID (which thus
-    // resolves to an invalid URL) to the snowflake connect() API, snowflake-sdk will not handle the
-    // resulting error correctly (and thus crash this process).
-    await new Promise<void>((resolve, reject) => {
-      const req = https.request(url);
-      req.on("error", e => {
-        reject(e);
-      });
-      req.end(() => {
-        resolve();
-      });
-    });
-  } catch (e) {
-    throw new Error(`Could not open HTTPS connection to ${url}: ${e.message}`);
-  }
+  // We are forced to try our own HTTPS connection to the final <accountId>.snowflakecomputing.com URL
+  // in order to verify its certificate. If we don't do this, and pass an invalid account ID (which thus
+  // resolves to an invalid URL) to the snowflake connect() API, snowflake-sdk will not handle the
+  // resulting error correctly (and thus crash this process).
+  await testHttpsConnection(`https://${snowflakeCredentials.accountId}.snowflakecomputing.com`);
   try {
     return await new Promise<ISnowflakeConnection>((resolve, reject) => {
       snowflake
@@ -173,5 +160,21 @@ async function connect(snowflakeCredentials: dataform.ISnowflake) {
     });
   } catch (e) {
     throw new Error(`Could not connect to Snowflake: ${e.message}`);
+  }
+}
+
+async function testHttpsConnection(url: string) {
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const req = https.request(url);
+      req.on("error", e => {
+        reject(e);
+      });
+      req.end(() => {
+        resolve();
+      });
+    });
+  } catch (e) {
+    throw new Error(`Could not open HTTPS connection to ${url}: ${e.message}`);
   }
 }
