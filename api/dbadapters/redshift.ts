@@ -10,25 +10,10 @@ interface ICursor {
 }
 
 export class RedshiftDbAdapter implements IDbAdapter {
-  private pool: pg.Pool;
+  private credentials: dataform.IJDBC;
 
   constructor(credentials: Credentials) {
-    const redshiftCredentials = credentials as dataform.IJDBC;
-    this.pool = new pg.Pool({
-      host: redshiftCredentials.host,
-      port: redshiftCredentials.port,
-      user: redshiftCredentials.username,
-      password: redshiftCredentials.password,
-      database: redshiftCredentials.databaseName,
-      ssl: true
-    });
-    // https://node-postgres.com/api/pool#events
-    // Idle clients in the pool are still connected to the remote host and as such can
-    // emit errors. If/when they do, they will automatically be removed from the pool,
-    // but we still need to handle the error to prevent crashing the process.
-    this.pool.on("error", err => {
-      console.error("pg.Pool idle client error", err.message, err.stack);
-    });
+    this.credentials = credentials as dataform.IJDBC;
   }
 
   public async execute(
@@ -37,21 +22,29 @@ export class RedshiftDbAdapter implements IDbAdapter {
       maxResults?: number;
     } = { maxResults: 1000 }
   ) {
-    if (!options || !options.maxResults) {
-      const result = await this.pool.query(statement);
-      return result.rows;
-    }
-    const client = await this.pool.connect();
+    const client = new pg.Client({
+      host: this.credentials.host,
+      port: this.credentials.port,
+      user: this.credentials.username,
+      password: this.credentials.password,
+      database: this.credentials.databaseName,
+      ssl: true
+    });
     client.on("error", err => {
       console.error("pg.Client client error", err.message, err.stack);
     });
+    await client.connect();
     try {
+      if (!options || !options.maxResults) {
+        const result = await client.query(statement);
+        return result.rows;
+      }
       // If we want to limit the returned results from redshift, we have two options:
       // (1) use cursors, or (2) use JDBC and configure a fetch size parameter. We use cursors
       // to avoid the need to run a JVM.
       // See https://docs.aws.amazon.com/redshift/latest/dg/declare.html for more details.
       const cursor: ICursor = client.query(new Cursor(statement));
-      const result = await new Promise<any[]>((resolve, reject) => {
+      return await new Promise<any[]>((resolve, reject) => {
         // It seems that when requesting one row back exactly, we run into some issues with
         // the cursor. I've filed a bug (https://github.com/brianc/node-pg-cursor/issues/55),
         // but setting a minimum of 2 resulting rows seems to do the trick.
@@ -71,9 +64,8 @@ export class RedshiftDbAdapter implements IDbAdapter {
           });
         });
       });
-      return result;
     } finally {
-      client.release();
+      await client.end();
     }
   }
 
