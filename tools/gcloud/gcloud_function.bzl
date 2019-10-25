@@ -1,4 +1,4 @@
-def _generate_deploy_script_impl(ctx):
+def _deploy_nodejs_gcloud_function_impl(ctx):
     function_name = ctx.attr.function_name
 
     npm_package = ctx.attr.npm_package
@@ -24,7 +24,7 @@ def _generate_deploy_script_impl(ctx):
     return [DefaultInfo(executable = out_file, runfiles = runfiles)]
 
 deploy_nodejs_gcloud_function = rule(
-    implementation = _generate_deploy_script_impl,
+    implementation = _deploy_nodejs_gcloud_function_impl,
     attrs = {
         "function_name": attr.string(default = "", mandatory = True, values = []),
         "npm_package": attr.label(mandatory = True),
