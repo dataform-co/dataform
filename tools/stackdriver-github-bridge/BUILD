@@ -23,10 +23,10 @@ npm_package(
     deps = [":stackdriver-github-bridge"],
 )
 
-load("//tools/gcloud:gcloud_function.bzl", "nodejs_gcloud_function")
+load("//tools/gcloud:gcloud_function.bzl", "deploy_nodejs_gcloud_function")
 
-nodejs_gcloud_function(
-    name = "gcloud_function",
+deploy_nodejs_gcloud_function(
+    name = "deploy",
     env_vars_file = "env.yaml",
     function_name = "handleStackdriverEvent",
     npm_package = ":package",
