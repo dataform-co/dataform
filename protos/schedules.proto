@@ -3,9 +3,9 @@ syntax="proto3";
 package dataform.schedules;
 
 enum NotificationEventType {
-  ON_ANY = 0;
-  ON_SUCCESS = 1;
-  ON_FAILURE = 2;
+  UNKNOWN = 0;
+  SUCCESS = 1;
+  FAILURE = 2;
 }
 
 message EmailNotificationChannel {
