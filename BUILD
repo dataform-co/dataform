@@ -62,8 +62,16 @@ load("@io_bazel_rules_docker//docker/util:run.bzl", "container_run_and_commit")
 
 load("@io_bazel_rules_docker//container:container.bzl", "container_layer", "container_image", "container_bundle", "container_push")
 
+# The following defines our base builder image for the dataform repo.
+# It creates a docker image with all dependencies, and then runs
+# bazel fetch ...
+# on a version of the repository specified in the WORKSPACE file to pre cache
+# bazel artifacts so they don't have to be downloaded and processed on every build.
+# This also effectively populates the yarn global cache to speed up builds.
+
 BUILDER_BAZEL_VERSION = "0.27.0"
 
+# The base builder image with bazel and other deps installed.
 container_run_and_commit(
     name = "builder_base",
     image = "@debian_base//image",
@@ -76,6 +84,7 @@ container_run_and_commit(
     ]
 )
 
+# The builder image with the locked repo archive pulled in.
 container_image(
     name = "builder_with_repo",
     base = ":builder_base",
@@ -83,20 +92,23 @@ container_image(
     directory = "/workspace-checkpoint-archive"
 )
 
+# The final image, where we warm up bazel on the extracted archive.
 container_run_and_commit(
-    name = "builder_final",
+    name = "builder",
     image = ":builder_with_repo.tar",
     commands = [
+        # Cloud build uses the root /workspace for actual builds.
         "mkdir /workspace-checkpoint",
         "tar xzf /workspace-checkpoint-archive/downloaded -C /workspace-checkpoint",
         # There is an archive prefix (subfolder), which we can cd straight into.
         "cd /workspace-checkpoint/*/",
+        # TODO: Can remove this once we lock to a commit after this flag is set.
         "bazel fetch ... --incompatible_disable_deprecated_attr_params=false"
     ]
 )
 
 container_push(
-    name = "builder_image.push",
+    name = "builder.push",
     format = "Docker",
     image = ":builder_final",
     registry = "gcr.io",
