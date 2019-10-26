@@ -1,7 +1,7 @@
 workspace(name = "df")
 
 load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
-load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive", "http_file")
 
 skylib_version = "0.8.0"
 
@@ -84,9 +84,9 @@ buildifier_dependencies()
 
 http_archive(
     name = "io_bazel_rules_docker",
-    sha256 = "3556d4972571f288f8c43378295d84ed64fef5b1a875211ee1046f9f6b4258fa",
-    strip_prefix = "rules_docker-0.8.0",
-    urls = ["https://github.com/bazelbuild/rules_docker/archive/v0.8.0.tar.gz"],
+    sha256 = "14ac30773fdb393ddec90e158c9ec7ebb3f8a4fd533ec2abbfd8789ad81a284b",
+    strip_prefix = "rules_docker-0.12.1",
+    urls = ["https://github.com/bazelbuild/rules_docker/releases/download/v0.12.1/rules_docker-v0.12.1.tar.gz"],
 )
 
 load(
@@ -95,6 +95,10 @@ load(
 )
 
 container_repositories()
+
+load("@io_bazel_rules_docker//repositories:deps.bzl", container_deps = "deps")
+
+container_deps()
 
 load(
     "@io_bazel_rules_docker//container:container.bzl",
@@ -106,4 +110,23 @@ container_pull(
     digest = "sha256:8c3cdb5acd050a5a46be0bb5637e23d192f4ef010b4fb6c5af40e45c5b7a0a71",
     registry = "index.docker.io",
     repository = "library/nginx",
+)
+
+container_pull(
+    name = "nginx_base",
+    digest = "sha256:8c3cdb5acd050a5a46be0bb5637e23d192f4ef010b4fb6c5af40e45c5b7a0a71",
+    registry = "index.docker.io",
+    repository = "library/nginx",
+)
+
+container_pull(
+    name = "debian_base",
+    tag = "10-slim",
+    registry = "index.docker.io",
+    repository = "library/debian",
+)
+
+http_file(
+    name = "builder_checkpoint_repo",
+    urls = ["https://github.com/dataform-co/dataform/archive/30fe8e7dad4b0fdc27b4661f4fcd5c71c318937a.tar.gz"],
 )

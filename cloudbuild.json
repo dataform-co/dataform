@@ -1,13 +1,9 @@
 {
   "steps": [
     {
-      "name": "gcr.io/cloud-builders/gcloud",
-      "entrypoint": "bash",
-      "args": ["./scripts/decode_credentials"]
-    },
-    {
-      "name": "l.gcr.io/google/bazel:0.27.0",
-      "args": ["test", "--config=remote-cache", "..."]
+      "name": "gcr.io/tada-analytics/builder-dataform:latest",
+      "entrypoint": "bazel",
+      "args": ["test", "--config=remote-cache", "tests/..."]
     }
   ],
   "timeout": "3600s",
