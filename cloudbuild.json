@@ -1,6 +1,11 @@
 {
   "steps": [
     {
+      "name": "gcr.io/cloud-builders/gcloud",
+      "entrypoint": "bash",
+      "args": ["./scripts/decode_credentials"]
+    },
+    {
       "name": "gcr.io/tada-analytics/builder-dataform:latest",
       "entrypoint": "bazel",
       "args": ["test", "--config=remote-cache", "tests/..."]
