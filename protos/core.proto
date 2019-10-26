@@ -12,6 +12,7 @@ message ProjectConfig {
   string assertion_schema = 5;
 
   string schema_suffix = 7;
+  string blah = 10;
 
   // BigQuery only.
   string gcloud_project_id = 6;
