@@ -122,7 +122,7 @@ container_pull(
 container_pull(
     name = "debian_base",
     # The following is locked from the tag "10-slim".
-    digest = "sha256:11253793361a12861562d1d7b15b8b7e25ac30dd631e3d206ed1ca969bf97b7d"
+    digest = "sha256:11253793361a12861562d1d7b15b8b7e25ac30dd631e3d206ed1ca969bf97b7d",
     registry = "index.docker.io",
     repository = "library/debian",
 )
