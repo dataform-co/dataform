@@ -1,4 +1,4 @@
-def _deploy_nodejs_gcloud_function_impl(ctx):
+def _deploy_nodejs_gcloud_function_impl(ctx, trigger_flag):
     function_name = ctx.attr.function_name
 
     npm_package = ctx.attr.npm_package
@@ -8,7 +8,7 @@ def _deploy_nodejs_gcloud_function_impl(ctx):
         "gcloud functions deploy %s" % function_name,
         "--source %s" % npm_package_path,
         "--runtime nodejs10",
-        "--trigger-http",
+        trigger_flag,
     ]
     runfiles = ctx.runfiles(files = ctx.files.npm_package)
 
@@ -23,10 +23,28 @@ def _deploy_nodejs_gcloud_function_impl(ctx):
 
     return [DefaultInfo(executable = out_file, runfiles = runfiles)]
 
-deploy_nodejs_gcloud_function = rule(
-    implementation = _deploy_nodejs_gcloud_function_impl,
+def _deploy_http_nodejs_gcloud_function_impl(ctx):
+    return _deploy_nodejs_gcloud_function_impl(ctx, "--trigger-http")
+
+def _deploy_pubsub_nodejs_gcloud_function_impl(ctx):
+    topic_name = ctx.attr.topic_name
+    return _deploy_nodejs_gcloud_function_impl(ctx, "--trigger-topic %s" % topic_name)
+
+deploy_http_nodejs_gcloud_function = rule(
+    implementation = _deploy_http_nodejs_gcloud_function_impl,
     attrs = {
         "function_name": attr.string(default = "", mandatory = True, values = []),
+        "npm_package": attr.label(mandatory = True),
+        "env_vars_file": attr.label(allow_single_file = True),
+    },
+    executable = True,
+)
+
+deploy_pubsub_nodejs_gcloud_function = rule(
+    implementation = _deploy_pubsub_nodejs_gcloud_function_impl,
+    attrs = {
+        "function_name": attr.string(default = "", mandatory = True, values = []),
+        "topic_name": attr.string(default = "", mandatory = True, values = []),
         "npm_package": attr.label(mandatory = True),
         "env_vars_file": attr.label(allow_single_file = True),
     },
