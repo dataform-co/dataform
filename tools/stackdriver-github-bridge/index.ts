@@ -28,7 +28,8 @@ exports.handleStackdriverEvent = async (req: express.Request, res: express.Respo
         const response = await octokit.issues.create({
           ...repo,
           title: issueTitle(incident.incident_id),
-          labels: ["stackdriver"]
+          labels: ["stackdriver"],
+          body: issueBody(incident)
         });
         console.log(
           `Issue created: https://github.com/${repo.owner}/${repo.repo}/issues/${response.data.number}`
@@ -69,4 +70,10 @@ exports.handleStackdriverEvent = async (req: express.Request, res: express.Respo
 
 function issueTitle(incidentId: string) {
   return `Stackdriver alert: ${incidentId}`;
+}
+
+function issueBody(incident: IIncident) {
+  return `Condition "${incident.condition_name}": ${incident.url}
+Summary:
+${incident.summary}`;
 }
