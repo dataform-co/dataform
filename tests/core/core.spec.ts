@@ -6,6 +6,8 @@ import { dataform } from "@dataform/protos";
 import { expect } from "chai";
 import { asPlainObject } from "df/tests/utils";
 import * as path from "path";
+// new comment
+
 
 const TEST_CONFIG: dataform.IProjectConfig = {
   warehouse: "redshift",
