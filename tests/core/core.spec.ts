@@ -9,6 +9,8 @@ import * as path from "path";
 // new comment
 
 
+// 2
+
 const TEST_CONFIG: dataform.IProjectConfig = {
   warehouse: "redshift",
   defaultSchema: "schema"
