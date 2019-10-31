@@ -40,7 +40,6 @@ def _run_pbts(actions, executable, js_file):
 def _ts_proto_library(ctx):
     sources = depset()
     for dep in ctx.attr.deps:
-        print(dep)
         if ProtoInfo not in dep:
             fail("ts_proto_library dep %s must be a proto_library rule" % dep.label)
 
