@@ -140,6 +140,10 @@ class RefReplacingContext implements table.ITableContext {
     return "";
   }
 
+  public isIncremental() {
+    return false;
+  }
+
   public preOps(statement: table.TContextable<string | string[]>) {
     return "";
   }

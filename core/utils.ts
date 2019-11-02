@@ -124,12 +124,6 @@ export function validate(compiledGraph: dataform.ICompiledGraph): dataform.IGrap
       validationErrors.push(dataform.ValidationError.create({ message, actionName }));
     }
 
-    // "where" property
-    if (action.type === TableTypes.INCREMENTAL && (!action.where || action.where.length === 0)) {
-      const message = `"where" property is not defined. With the type “incremental” you must also specify the property “where”!`;
-      validationErrors.push(dataform.ValidationError.create({ message, actionName }));
-    }
-
     // sqldatawarehouse config
     if (action.sqlDataWarehouse && action.sqlDataWarehouse.distribution) {
       const distribution = action.sqlDataWarehouse.distribution.toUpperCase();
