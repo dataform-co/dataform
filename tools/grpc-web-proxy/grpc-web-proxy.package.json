@@ -1,0 +1,12 @@
+{
+  "name": "@dataform/grpc-web-proxy",
+  "description": "A simple HTTP2 grpc-web-proxy for Node.",
+  "main": "index.js",
+  "bin": {
+    "grpc-web-proxy": "cli.js"
+  },
+  "types": "index.d.ts",
+  "publishConfig": {
+    "access": "public"
+  }
+}
