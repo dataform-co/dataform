@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { GrpcWebProxy, IGrpcWebProxyOptions } from "df/tools/grpc-web-proxy";
+import { GrpcWebProxy, IGrpcWebProxyOptions } from "@dataform/grpc-web-proxy";
 import * as fs from "fs";
 import * as yargs from "yargs";
 

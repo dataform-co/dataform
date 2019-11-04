@@ -4,6 +4,7 @@ load("@npm_bazel_typescript//:index.bzl", "ts_library")
 
 ts_library(
     name = "grpc-web-proxy",
+    module_name = "@dataform/grpc-web-proxy",
     srcs = glob(["**/*.ts"]),
     deps = [
         "@npm//@types/node",
@@ -24,11 +25,12 @@ nodejs_binary(
     entry_point = ":cli.ts",
 )
 
-# dataform_npm_package(
-#     name = "package",
-#     package_layers = [
-#         "//:common.package.json",
-#         "grpc-web-proxy.package.json",
-#     ],
-#     deps = [":grpc-web-proxy"],
-# )
+load("//tools/npm:package.bzl", "dataform_npm_package")
+
+dataform_npm_package(
+    name = "package",
+    package_layers = [
+        "grpc-web-proxy.package.json",
+    ],
+    deps = [":grpc-web-proxy"],
+)
