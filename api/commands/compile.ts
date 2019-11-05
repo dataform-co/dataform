@@ -83,7 +83,10 @@ export class CompileChildProcess {
     let timer;
     const timeout = new Promise(
       (resolve, reject) =>
-        (timer = setTimeout(() => reject(new Error("Compilation timed out")), 5000))
+        (timer = setTimeout(
+          () => reject(new Error("Compilation timed out")),
+          compileConfig.timeoutMillis || 5000
+        ))
     );
     try {
       await Promise.race([timeout, compileInChildProcess]);
