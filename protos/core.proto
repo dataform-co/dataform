@@ -62,6 +62,9 @@ message CompileConfig {
   // If supplied, only the compiled form of 'query' will be returned.
   string query = 4;
 
+  // Override compilation timeout settings.
+  int32 timeout_millis = 6;
+
   // Deprecated.
   string schema_suffix_override = 2;
   string return_override = 5;
