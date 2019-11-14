@@ -253,6 +253,7 @@ export interface ITableContext {
   type: (type: TableType) => string;
   where: (where: TContextable<string>) => string;
   isIncremental: () => boolean;
+  ifIncremental: (value: string) => string;
   preOps: (statement: TContextable<string | string[]>) => string;
   postOps: (statement: TContextable<string | string[]>) => string;
   disabled: () => string;
@@ -310,6 +311,10 @@ export class TableContext implements ITableContext {
 
   public isIncremental() {
     return !!this.incremental;
+  }
+
+  public ifIncremental(value: string) {
+    return this.isIncremental() ? value : "";
   }
 
   public preOps(statement: TContextable<string | string[]>) {

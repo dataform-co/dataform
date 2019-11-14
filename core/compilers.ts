@@ -123,7 +123,7 @@ switch (sqlxConfig.type) {
   case "incremental":
   case "inline": {
     action.query(ctx => {
-      ${["self", "ref", "resolve", "name", "isIncremental"]
+      ${["self", "ref", "resolve", "name", "isIncremental", "ifIncremental"]
         .map(name => `const ${name} = ctx.${name}.bind(ctx);`)
         .join("\n")}
       ${results.js}
