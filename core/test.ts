@@ -140,6 +140,15 @@ class RefReplacingContext implements table.ITableContext {
     return "";
   }
 
+  public isIncremental() {
+    return false;
+  }
+
+  public ifIncremental(value: string) {
+    // Use the non-incremental query for unit tests.
+    return "";
+  }
+
   public preOps(statement: table.TContextable<string | string[]>) {
     return "";
   }

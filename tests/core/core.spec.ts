@@ -99,6 +99,31 @@ describe("@dataform/core", () => {
       });
     });
 
+    it("incremental table", () => {
+      const session = new Session(path.dirname(__filename), TEST_CONFIG);
+      session
+        .publish("incremental", {
+          type: "incremental"
+        })
+        .query(ctx => `select ${ctx.isIncremental()} as incremental`);
+      const graph = session.compile();
+
+      expect(graph.toJSON().tables).deep.equals([
+        {
+          target: {
+            name: "incremental",
+            schema: TEST_CONFIG.defaultSchema
+          },
+          query: "select false as incremental",
+          incrementalQuery: "select true as incremental",
+          disabled: false,
+          fileName: "",
+          name: "schema.incremental",
+          type: "incremental"
+        }
+      ]);
+    });
+
     it("config_context", () => {
       const session = new Session(path.dirname(__filename), TEST_CONFIG);
       const t = session
@@ -147,37 +172,6 @@ describe("@dataform/core", () => {
       expect(cgSuccessErrors)
         .to.have.property("validationErrors")
         .to.be.an("array").that.is.empty;
-
-      const sessionFail = new Session(path.dirname(__filename), TEST_CONFIG);
-      const cases: { [key: string]: { table: Table; errorTest: RegExp } } = {
-        "schema.missing_where": {
-          table: sessionFail.publish("missing_where", {
-            type: "incremental"
-          }),
-          errorTest: /"where" property is not defined/
-        },
-        "schema.empty_where": {
-          table: sessionFail
-            .publish("empty_where", {
-              type: "incremental"
-            })
-            .where(""),
-          errorTest: /"where" property is not defined/
-        }
-      };
-      const cgFail = sessionFail.compile();
-      const cgFailErrors = utils.validate(cgFail);
-
-      expect(cgFailErrors)
-        .to.have.property("validationErrors")
-        .to.be.an("array").that.is.not.empty;
-
-      Object.keys(cases).forEach(key => {
-        const err = cgFailErrors.validationErrors.find(e => e.actionName === key);
-        expect(err)
-          .to.have.property("message")
-          .that.matches(cases[key].errorTest);
-      });
     });
 
     it("validation_type", () => {
