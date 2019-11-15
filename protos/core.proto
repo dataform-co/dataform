@@ -135,6 +135,7 @@ message Table {
 
   // Incremental only.
   string where = 8;
+  string incremental_query = 26;
 
   // Pre/post operations.
   repeated string pre_ops = 13;

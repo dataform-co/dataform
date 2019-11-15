@@ -90,6 +90,24 @@ describe("examples", () => {
           )}.example_incremental\`) is null`
         );
 
+        const exampleIsIncremental = graph.tables.filter(
+          (t: dataform.ITable) =>
+            t.name === schemaWithSuffix("df_integration_test") + ".example_is_incremental"
+        )[0];
+        expect(cleanSql(exampleIsIncremental.query.trim())).equals(
+          "select * from (select current_timestamp() as ts)"
+        );
+        expect(cleanSql(exampleIsIncremental.incrementalQuery)).equals(
+          cleanSql(
+            `select * from (select current_timestamp() as ts)
+           where ts > (select max(ts) from \`tada-analytics.${schemaWithSuffix(
+            "df_integration_test"
+          )}.example_is_incremental\`) or (select max(ts) from \`tada-analytics.${schemaWithSuffix(
+            "df_integration_test"
+          )}.example_is_incremental\`) is null`
+          )
+        );
+
         // Check tables defined in includes are not included.
         const exampleIgnore = graph.tables.find(
           (t: dataform.ITable) => t.name === "example_ignore"
