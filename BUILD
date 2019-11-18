@@ -7,6 +7,7 @@ exports_files([
     "package.json",
     "common.package.json",
     "readme.md",
+    "version.bzl",
 ])
 
 PROTOBUF_DEPS = [
