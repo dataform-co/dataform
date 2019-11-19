@@ -8399,6 +8399,11 @@ tar@^4:
     safe-buffer "^5.1.2"
     yallist "^3.0.3"
 
+tarjan-graph@^2.0.0:
+  version "2.0.0"
+  resolved "https://registry.yarnpkg.com/tarjan-graph/-/tarjan-graph-2.0.0.tgz#8d8e991f170600982f9b8081984112ea8390b4a3"
+  integrity sha512-fDe57nO2Ukw2A/jHwVeiEgERGrGHukf3aHmR/YZ9BrveOtHVlFs289AnVeb1wD2aj9g01ZZ6f7VyMJ2QxI2NBQ==
+
 tedious@^4.2.0:
   version "4.2.0"
   resolved "https://registry.yarnpkg.com/tedious/-/tedious-4.2.0.tgz#ced27d46c3e3c2f643888bb62f2ea4f463650793"

@@ -6,6 +6,7 @@
   "dependencies": {
     "@dataform/protos": "$DF_VERSION",
     "@dataform/sqlx": "$DF_VERSION",
-    "protobufjs": "^6.8.8"
+    "protobufjs": "^6.8.8",
+    "tarjan-graph": "^2.0.0"
   }
 }
