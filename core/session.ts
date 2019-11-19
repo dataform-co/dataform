@@ -8,9 +8,7 @@ import * as utils from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
 import { util } from "protobufjs";
 import { Graph as TarjanGraph } from "tarjan-graph";
-import * as Graph from "tarjan-graph";
-
-// const Graph = require("tarjan-graph");
+import * as TarjanGraphConstructor from "tarjan-graph";
 
 interface IActionProto {
   name?: string;
@@ -508,7 +506,7 @@ export class Session {
     const allActionsByName = keyByName(actions);
 
     // Type exports for tarjan-graph are unfortunately wrong, so we have to do this minor hack.
-    const tarjanGraph: TarjanGraph = new (Graph as any)();
+    const tarjanGraph: TarjanGraph = new (TarjanGraphConstructor as any)();
     actions.forEach(action => {
       const cleanedDependencies = (action.dependencies || []).filter(
         dependency => !!allActionsByName[dependency]
