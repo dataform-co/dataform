@@ -713,7 +713,7 @@ describe("@dataform/api", () => {
               tasks: [
                 {
                   status: dataform.TaskResult.ExecutionStatus.FAILED,
-                  errorMessage: "bad statement"
+                  errorMessage: "Bigquery error: bad statement"
                 }
               ],
               status: dataform.ActionResult.ExecutionStatus.FAILED

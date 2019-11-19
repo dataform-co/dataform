@@ -264,7 +264,9 @@ export class Runner {
       taskResult.status = this.cancelled
         ? dataform.TaskResult.ExecutionStatus.CANCELLED
         : dataform.TaskResult.ExecutionStatus.FAILED;
-      taskResult.errorMessage = e.message;
+      const warehouse = this.graph.projectConfig.warehouse;
+      const capitalisedWarehouse = `${warehouse.charAt(0).toUpperCase()}${warehouse.slice(1)}`;
+      taskResult.errorMessage = `${capitalisedWarehouse} error: ${e.message}`;
     }
     taskResult.timing = timer.end();
     await this.triggerChange();
