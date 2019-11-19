@@ -1,5 +1,6 @@
 import { validateSchedules } from "@dataform/api";
 import * as dfapi from "@dataform/api";
+import { checkDataformJsonValidity } from "@dataform/api/commands/compile";
 import { dataform } from "@dataform/protos";
 import { assert, config, expect } from "chai";
 import { TmpDirFixture } from "df/tests/utils/fixtures";
@@ -37,11 +38,6 @@ describe("@dataform/api/validate", () => {
         ]
       });
       const validSchedule = dataform.schedules.SchedulesJSON.create({
-        defaultNotification: {
-          emails: ["team@dataform.co", "abc@test.com"],
-          onSuccess: true,
-          onFailure: true
-        },
         schedules: [
           {
             name: "name1",
@@ -88,9 +84,6 @@ describe("@dataform/api/validate", () => {
       });
 
       const invalidSchedule = dataform.schedules.SchedulesJSON.create({
-        defaultNotification: {
-          emails: ["test.com"]
-        },
         schedules: [
           {
             name: "name1",
@@ -118,7 +111,6 @@ describe("@dataform/api/validate", () => {
 
       const errors = validateSchedules(invalidSchedule, compiledGraph);
       const expectedErrors = [
-        '"test.com" is not a valid email address.',
         'Schedule "name1" contains an invalid cron expression "asdas".',
         'Action "action3" included on schedule name1 doesn\'t exist in the project.',
         'Schedule "name1" contains an invalid email address "test2.com".',
@@ -155,9 +147,6 @@ describe("@dataform/api/validate", () => {
           ]
         });
         const invalidJson = {
-          defaultNotification: {
-            emails: ["test.com"]
-          },
           schedules: [
             {
               name: "name1",
@@ -186,12 +175,11 @@ describe("@dataform/api/validate", () => {
         const project = await dfapi.init(
           projectDir,
           { warehouse: "redshift" },
-          { includeSchedules: true, skipInstall: true }
+          { includeSchedules: true, skipInstall: true, includeEnvironments: false }
         );
 
         fs.writeFileSync(filePath, JSON.stringify(invalidJson));
         const expectedErrors = [
-          '"test.com" is not a valid email address.',
           'Schedule "name1" contains an invalid cron expression "asdas".',
           'Action "action3" included on schedule name1 doesn\'t exist in the project.',
           'Schedule "name1" contains an invalid email address "test2.com".',
@@ -201,5 +189,51 @@ describe("@dataform/api/validate", () => {
         expect(errors).to.be.eql(expectedErrors);
       });
     });
+  });
+
+  it("dataform.json validation", async () => {
+    it("fails on invalid warehouse", async () => {
+      expect(() =>
+        checkDataformJsonValidity({
+          warehouse: "dataform",
+          gcloudProjectId: "tada-analytics",
+          defaultSchema: "df_integration_test",
+          assertionSchema: "df_integration_test_assertions"
+        })
+      ).to.throw(/Invalid value on property warehouse: dataform/);
+    });
+
+    it("fails on missing warehouse", async () => {
+      expect(() =>
+        checkDataformJsonValidity({
+          aint_no_warehouse: "redshift",
+          defaultSchema: "df_integration_test",
+          assertionSchema: "df_integration_test_assertions"
+        })
+      ).to.throw(/Missing mandatory property: warehouse/);
+    });
+
+    it("fails on invalid default schema", async () => {
+      expect(() =>
+        checkDataformJsonValidity({
+          warehouse: "redshift",
+          gcloudProjectId: "tada-analytics",
+          defaultSchema: "rock&roll",
+          assertionSchema: "df_integration_test_assertions"
+        })
+      ).to.throw(
+        /Invalid value on property defaultSchema: rock&roll. Should only contain alphanumeric characters, underscores and\/or hyphens./
+      );
+    });
+  });
+
+  it("passes for valid config", async () => {
+    expect(() =>
+      checkDataformJsonValidity({
+        warehouse: "redshift",
+        defaultSchema: "df_integration_test-",
+        assertionSchema: ""
+      })
+    ).to.not.throw();
   });
 });

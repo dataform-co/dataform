@@ -30,7 +30,7 @@ export class SQLDataWarehouseAdapter extends Adapter implements IAdapter {
             this.insertInto(
               table.target,
               tableMetadata.fields.map(f => f.name),
-              this.where(table.query, table.where)
+              this.where(table.incrementalQuery || table.query, table.where)
             )
           )
         );

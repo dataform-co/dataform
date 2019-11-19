@@ -82,6 +82,9 @@ export class Table {
     if (config.disabled) {
       this.disabled();
     }
+    if (config.protected) {
+      this.protected();
+    }
     if (config.redshift) {
       this.redshift(config.redshift);
     }
@@ -134,6 +137,11 @@ export class Table {
 
   public disabled() {
     this.proto.disabled = true;
+    return this;
+  }
+
+  public protected() {
+    this.proto.protected = true;
     return this;
   }
 
@@ -199,8 +207,12 @@ export class Table {
 
   public compile() {
     const context = new TableContext(this);
+    const incrementalContext = new TableContext(this, true);
 
     this.proto.query = context.apply(this.contextableQuery);
+    if (this.proto.type === TableTypes.INCREMENTAL) {
+      this.proto.incrementalQuery = incrementalContext.apply(this.contextableQuery);
+    }
 
     if (this.contextableWhere) {
       this.proto.where = context.apply(this.contextableWhere);
@@ -240,6 +252,8 @@ export interface ITableContext {
   resolve: (name: string) => string;
   type: (type: TableType) => string;
   where: (where: TContextable<string>) => string;
+  isIncremental: () => boolean;
+  ifIncremental: (value: string) => string;
   preOps: (statement: TContextable<string | string[]>) => string;
   postOps: (statement: TContextable<string | string[]>) => string;
   disabled: () => string;
@@ -251,11 +265,7 @@ export interface ITableContext {
 }
 
 export class TableContext implements ITableContext {
-  private table?: Table;
-
-  constructor(table: Table) {
-    this.table = table;
-  }
+  constructor(private table: Table, private incremental = false) {}
 
   public config(config: TConfig) {
     this.table.config(config);
@@ -297,6 +307,14 @@ export class TableContext implements ITableContext {
   public where(where: TContextable<string>) {
     this.table.where(where);
     return "";
+  }
+
+  public isIncremental() {
+    return !!this.incremental;
+  }
+
+  public ifIncremental(value: string) {
+    return this.isIncremental() ? value : "";
   }
 
   public preOps(statement: TContextable<string | string[]>) {

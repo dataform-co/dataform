@@ -2,6 +2,7 @@ import { Credentials } from "@dataform/api/commands/credentials";
 import { IDbAdapter, OnCancel } from "@dataform/api/dbadapters/index";
 import { dataform } from "@dataform/protos";
 import { BigQuery } from "@google-cloud/bigquery";
+import { QueryResultsOptions } from "@google-cloud/bigquery/build/src/job";
 import * as PromisePool from "promise-pool-executor";
 
 const BIGQUERY_DATE_RELATED_FIELDS = [
@@ -56,14 +57,19 @@ export class BigQueryDbAdapter implements IDbAdapter {
     options: {
       onCancel?: OnCancel;
       interactive?: boolean;
-    } = { interactive: false }
+      maxResults?: number;
+    } = { interactive: false, maxResults: 1000 }
   ) {
     return this.pool
       .addSingleTask({
         generator: () =>
           options && options.interactive
-            ? this.runQuery(statement)
-            : this.createQueryJob(statement, options && options.onCancel)
+            ? this.runQuery(statement, options && options.maxResults)
+            : this.createQueryJob(
+                statement,
+                options && options.maxResults,
+                options && options.onCancel
+              )
       })
       .promise();
   }
@@ -128,8 +134,9 @@ export class BigQueryDbAdapter implements IDbAdapter {
         .promise();
       return cleanRows(rowsResult[0]);
     }
-    return this.execute(
-      `SELECT * FROM \`${metadata.tableReference.projectId}.${metadata.tableReference.datasetId}.${metadata.tableReference.tableId}\` LIMIT ${limitRows}`
+    return this.runQuery(
+      `SELECT * FROM \`${metadata.tableReference.projectId}.${metadata.tableReference.datasetId}.${metadata.tableReference.tableId}\``,
+      limitRows
     );
   }
 
@@ -153,12 +160,29 @@ export class BigQueryDbAdapter implements IDbAdapter {
     }
   }
 
-  private async runQuery(statement: string) {
-    const data = await this.client.query(statement);
-    return cleanRows(data[0]);
+  private async runQuery(statement: string, maxResults?: number) {
+    const results = await new Promise<any[]>((resolve, reject) => {
+      const allRows: any[] = [];
+      const stream = this.client.createQueryStream(statement);
+      stream
+        .on("error", reject)
+        .on("data", row => {
+          if (!maxResults) {
+            allRows.push(row);
+          } else if (allRows.length < maxResults) {
+            allRows.push(row);
+          } else {
+            stream.end();
+          }
+        })
+        .on("end", () => {
+          resolve(allRows);
+        });
+    });
+    return cleanRows(results);
   }
 
-  private createQueryJob(statement: string, onCancel?: OnCancel) {
+  private createQueryJob(statement: string, maxResults?: number, onCancel?: OnCancel) {
     let isCancelled = false;
     if (onCancel) {
       onCancel(() => {
@@ -168,8 +192,8 @@ export class BigQueryDbAdapter implements IDbAdapter {
 
     return new Promise<any[]>((resolve, reject) =>
       this.client.createQueryJob(
-        { useLegacySql: false, query: statement, maxResults: 1000 },
-        async (err: any, job: any) => {
+        { useLegacySql: false, jobPrefix: "dataform-", query: statement, maxResults },
+        async (err, job) => {
           if (err) {
             return reject(err);
           }
@@ -185,12 +209,28 @@ export class BigQueryDbAdapter implements IDbAdapter {
               return reject(new Error("Query cancelled."));
             });
           }
-          job.getQueryResults((err: any, result: any[]) => {
-            if (err) {
-              reject(err);
+
+          let results: any[] = [];
+          const manualPaginationCallback = (
+            e: Error,
+            rows: any[],
+            nextQuery: QueryResultsOptions
+          ) => {
+            if (e) {
+              reject(e);
+              return;
             }
-            resolve(cleanRows(result));
-          });
+            results = results.concat(rows.slice(0, maxResults - results.length));
+            if (nextQuery && results.length < maxResults) {
+              // More results exist and we have space to consume them.
+              job.getQueryResults(nextQuery, manualPaginationCallback);
+            } else {
+              resolve(results);
+            }
+          };
+          // For non interactive queries, we can set a hard limit by disabling auto pagination.
+          // This will cause problems for unit tests that have more than MAX_RESULTS rows to compare.
+          job.getQueryResults({ autoPaginate: false, maxResults }, manualPaginationCallback);
         }
       )
     );
@@ -223,7 +263,7 @@ function cleanRows(rows: any[]) {
       BIGQUERY_DATE_RELATED_FIELDS.includes(sampleData[key].constructor.name)
   );
   fieldsWithBigQueryDates.forEach(dateField => {
-    rows.forEach(row => (row[dateField] = row[dateField].value));
+    rows.forEach(row => (row[dateField] = row[dateField] ? row[dateField].value : row[dateField]));
   });
   return rows;
 }

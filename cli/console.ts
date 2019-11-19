@@ -203,12 +203,11 @@ export function printExecutionGraph(executionGraph: dataform.IExecutionGraph, ve
 }
 
 export function printExecutedAction(
-  executedAction: dataform.IExecutedAction,
-  executionAction: dataform.IExecutionAction,
-  verbose: boolean
+  executedAction: dataform.IActionResult,
+  executionAction: dataform.IExecutionAction
 ) {
   switch (executedAction.status) {
-    case dataform.ActionExecutionStatus.SUCCESSFUL: {
+    case dataform.ActionResult.ExecutionStatus.SUCCESSFUL: {
       switch (executionAction.type) {
         case "table": {
           writeStdOut(
@@ -236,7 +235,7 @@ export function printExecutedAction(
         }
       }
     }
-    case dataform.ActionExecutionStatus.FAILED: {
+    case dataform.ActionResult.ExecutionStatus.FAILED: {
       switch (executionAction.type) {
         case "table": {
           writeStdErr(
@@ -263,10 +262,10 @@ export function printExecutedAction(
           break;
         }
       }
-      printExecutedActionErrors(executedAction, verbose);
+      printExecutedActionErrors(executedAction, executionAction);
       return;
     }
-    case dataform.ActionExecutionStatus.SKIPPED: {
+    case dataform.ActionResult.ExecutionStatus.SKIPPED: {
       switch (executionAction.type) {
         case "table": {
           writeStdOut(
@@ -297,7 +296,7 @@ export function printExecutedAction(
       }
       return;
     }
-    case dataform.ActionExecutionStatus.DISABLED: {
+    case dataform.ActionResult.ExecutionStatus.DISABLED: {
       switch (executionAction.type) {
         case "table": {
           writeStdOut(
@@ -331,6 +330,27 @@ export function printExecutedAction(
   }
 }
 
+export function printFormatFilesResult(
+  formatResults: Array<{
+    filename: string;
+    err?: Error;
+  }>
+) {
+  const sorted = formatResults.sort((a, b) => a.filename.localeCompare(b.filename));
+  const successfulFormatResults = sorted.filter(result => !result.err);
+  const failedFormatResults = sorted.filter(result => !!result.err);
+  if (successfulFormatResults.length > 0) {
+    printSuccess("Successfully formatted:");
+    successfulFormatResults.forEach(result => writeStdOut(result.filename, 1));
+  }
+  if (failedFormatResults.length > 0) {
+    printError("Errors encountered during formatting:");
+    failedFormatResults.forEach(result =>
+      writeStdOut(`${result.filename}: ${result.err.message}`, 1)
+    );
+  }
+}
+
 export function printListTablesResult(tables: dataform.ITarget[]) {
   tables.forEach(foundTable => writeStdOut(`${foundTable.schema}.${foundTable.name}`));
 }
@@ -354,12 +374,17 @@ function targetString(target: dataform.ITarget) {
   return calloutOutput(`${target.schema}.${target.name}`);
 }
 
-function printExecutedActionErrors(executedAction: dataform.IExecutedAction, verbose: boolean) {
-  const failingTasks = executedAction.tasks.filter(task => !task.ok);
-  failingTasks.forEach(task => {
-    task.task.statement.split("\n").forEach(line => {
+function printExecutedActionErrors(
+  executedAction: dataform.IActionResult,
+  executionAction: dataform.IExecutionAction
+) {
+  const failingTasks = executedAction.tasks.filter(
+    task => task.status === dataform.ActionResult.ExecutionStatus.FAILED
+  );
+  failingTasks.forEach((task, i) => {
+    executionAction.tasks[i].statement.split("\n").forEach(line => {
       writeStdErr(`${DEFAULT_PROMPT}${line}`, 1);
     });
-    printError(task.error, 1);
+    printError(task.errorMessage, 1);
   });
 }

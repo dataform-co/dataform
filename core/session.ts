@@ -331,7 +331,7 @@ export class Session {
     this.graphErrors.compilationErrors.push(compileError);
   }
 
-  public compile(): dataform.ICompiledGraph {
+  public compile(): dataform.CompiledGraph {
     const compiledGraph = dataform.CompiledGraph.create({
       projectConfig: this.config,
       tables: this.compileGraphChunk(this.actions.filter(action => action instanceof table.Table)),

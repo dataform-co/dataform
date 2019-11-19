@@ -6,9 +6,10 @@ import { expect } from "chai";
 import { dropAllTables, getTableRows, keyBy } from "df/tests/integration/utils";
 
 describe("@dataform/integration/bigquery", () => {
-  it("run", async () => {
-    const credentials = dfapi.credentials.read("bigquery", "df/test_credentials/bigquery.json");
+  const credentials = dfapi.credentials.read("bigquery", "df/test_credentials/bigquery.json");
+  const dbadapter = dbadapters.create(credentials, "bigquery");
 
+  it("run", async () => {
     const compiledGraph = await dfapi.compile({
       projectDir: "df/tests/integration/bigquery_project"
     });
@@ -16,7 +17,6 @@ describe("@dataform/integration/bigquery", () => {
     expect(compiledGraph.graphErrors.compilationErrors).to.eql([]);
     expect(compiledGraph.graphErrors.validationErrors).to.eql([]);
 
-    const dbadapter = dbadapters.create(credentials, "bigquery");
     const adapter = adapters.create(compiledGraph.projectConfig);
 
     // Drop all the tables before we do anything.
@@ -60,22 +60,23 @@ describe("@dataform/integration/bigquery", () => {
 
     // Check the status of the two assertions.
     expect(actionMap["df_integration_test_assertions.example_assertion_fail"].status).equals(
-      dataform.ActionExecutionStatus.FAILED
+      dataform.ActionResult.ExecutionStatus.FAILED
     );
     expect(actionMap["df_integration_test_assertions.example_assertion_pass"].status).equals(
-      dataform.ActionExecutionStatus.SUCCESSFUL
+      dataform.ActionResult.ExecutionStatus.SUCCESSFUL
     );
 
     // Check the status of the two uniqueness assertions.
     expect(
       actionMap["df_integration_test_assertions.example_assertion_uniqueness_fail"].status
-    ).equals(dataform.ActionExecutionStatus.FAILED);
+    ).equals(dataform.ActionResult.ExecutionStatus.FAILED);
     expect(
-      actionMap["df_integration_test_assertions.example_assertion_uniqueness_fail"].tasks[1].error
+      actionMap["df_integration_test_assertions.example_assertion_uniqueness_fail"].tasks[1]
+        .errorMessage
     ).to.eql("Assertion failed: query returned 1 row(s).");
     expect(
       actionMap["df_integration_test_assertions.example_assertion_uniqueness_pass"].status
-    ).equals(dataform.ActionExecutionStatus.SUCCESSFUL);
+    ).equals(dataform.ActionResult.ExecutionStatus.SUCCESSFUL);
 
     // Check the data in the incremental table.
     let incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
@@ -101,7 +102,7 @@ describe("@dataform/integration/bigquery", () => {
     );
 
     executedGraph = await dfapi.run(executionGraph, credentials).resultPromise();
-    expect(executedGraph.ok).equals(true);
+    expect(executedGraph.status).equals(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
 
     // Check there is an extra row in the incremental table.
     incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
@@ -110,4 +111,26 @@ describe("@dataform/integration/bigquery", () => {
     incrementalRows = await getTableRows(incrementalTable.target, adapter, credentials, "bigquery");
     expect(incrementalRows.length).equals(2);
   }).timeout(60000);
+
+  describe("result limit works", async () => {
+    const query = `
+      select 1 union all
+      select 2 union all
+      select 3 union all
+      select 4 union all
+      select 5`;
+
+    for (const interactive of [true, false]) {
+      it(`with interactive=${interactive}`, async () => {
+        expect(await dbadapter.execute(query, { interactive, maxResults: 2 })).eql([
+          {
+            f0_: 1
+          },
+          {
+            f0_: 2
+          }
+        ]);
+      });
+    }
+  });
 });

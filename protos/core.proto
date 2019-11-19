@@ -17,18 +17,38 @@ message ProjectConfig {
   string gcloud_project_id = 6;
 }
 
+message Environment {
+  string name = 1;
+  
+  message GitReference {
+    oneof git_reference {
+      string branch = 1;
+      string commit_sha = 2;
+    }
+  }
+
+  GitReference git_reference = 2;
+  ProjectConfig config_override = 3;
+}
+
+message Environments {
+  repeated Environment environments = 1;
+}
+
 message RunConfig {
   repeated string actions = 1;
   repeated string tags = 5;
   bool include_dependencies = 3;
   bool full_refresh = 2;
-  bool carry_on = 4;
+  reserved 4;
 }
 
 message GenerateIndexConfig {
   CompileConfig compile_config = 1;
   repeated string include_paths = 2;
   repeated string definition_paths = 3;
+
+  // Deprecated.
   string return_override = 4;
 }
 
@@ -36,12 +56,18 @@ message CompileConfig {
   // Required.
   string project_dir = 1;
 
-  // Compile time configuration options.
-  // Deprecated.
-  string schema_suffix_override = 2;
-
   // Project configuration overrides (dataform.json).
   ProjectConfig project_config_override = 3;
+
+  // If supplied, only the compiled form of 'query' will be returned.
+  string query = 4;
+
+  // Override compilation timeout settings.
+  int32 timeout_millis = 6;
+
+  // Deprecated.
+  string schema_suffix_override = 2;
+  string return_override = 5;
 }
 
 message Target {
@@ -109,6 +135,7 @@ message Table {
 
   // Incremental only.
   string where = 8;
+  string incremental_query = 26;
 
   // Pre/post operations.
   repeated string pre_ops = 13;
@@ -238,6 +265,56 @@ message ExecutedTask {
   bool ok = 2;
   bool skipped = 5;
   string error = 3;
+}
+
+message Timing {
+  int64 start_time_millis = 1;
+  int64 end_time_millis = 2;
+}
+
+message RunResult {
+  enum ExecutionStatus {
+    UNKNOWN = 0;
+    RUNNING = 1;
+    SUCCESSFUL = 2;
+    FAILED = 3;
+    CANCELLED = 4;
+  }
+  ExecutionStatus status = 1;
+  repeated ActionResult actions = 2;
+  Timing timing = 3;
+}
+
+message ActionResult {
+  string name = 1;
+
+  enum ExecutionStatus {
+    UNKNOWN = 0;
+    RUNNING = 1;
+    SUCCESSFUL = 2;
+    FAILED = 3;
+    SKIPPED = 4;
+    DISABLED = 5;
+    CANCELLED = 6;
+  }
+  ExecutionStatus status = 2;
+
+  repeated TaskResult tasks = 3;
+  Timing timing = 4;
+}
+
+message TaskResult {
+  enum ExecutionStatus {
+      UNKNOWN = 0;
+      RUNNING = 1;
+      SUCCESSFUL = 2;
+      FAILED = 3;
+      SKIPPED = 4;
+      CANCELLED = 5;
+  }
+  ExecutionStatus status = 1;
+  string error_message = 2;
+  Timing timing = 3;
 }
 
 enum ActionExecutionStatus {

@@ -1,6 +1,0 @@
-{
-  "name": "@dataform/examples-redshift",
-  "version": "0.1.0",
-  "description": "Example Dataform project (Redshift).",
-  "private": true
-}
