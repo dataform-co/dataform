@@ -11,6 +11,7 @@ ts_library(
         "//sqlx",
         "@npm//@types/node",
         "@npm//protobufjs",
+        "@npm//tarjan-graph",
     ],
 )
 

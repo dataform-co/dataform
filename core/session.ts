@@ -7,6 +7,9 @@ import * as test from "@dataform/core/test";
 import * as utils from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
 import { util } from "protobufjs";
+import { Graph as TarjanGraph } from "tarjan-graph";
+
+const Graph = require("tarjan-graph");
 
 interface IActionProto {
   name?: string;
@@ -502,26 +505,42 @@ export class Session {
 
   private checkCircularity(actions: IActionProto[]) {
     const allActionsByName = keyByName(actions);
-    const checkCircular = (action: IActionProto, dependents: IActionProto[]): boolean => {
-      if (dependents.indexOf(action) >= 0) {
-        const message = `Circular dependency detected in chain: [${dependents
-          .map(d => d.name)
-          .join(" > ")} > ${action.name}]`;
-        this.compileError(new Error(message), action.fileName);
-        return true;
-      }
-      return (action.dependencies || []).some(
-        dependencyName =>
-          allActionsByName[dependencyName] &&
-          checkCircular(allActionsByName[dependencyName], dependents.concat([action]))
-      );
-    };
 
-    for (const action of actions) {
-      if (checkCircular(action, [])) {
-        break;
-      }
-    }
+    const tarjanGraph: TarjanGraph = new Graph();
+    actions.forEach(action => {
+      const cleanedDependencies = (action.dependencies || []).filter(
+        dependency => !!allActionsByName[dependency]
+      );
+      tarjanGraph.add(action.name, cleanedDependencies);
+    });
+    const cycles = tarjanGraph.getCycles();
+    cycles.forEach(cycle => {
+      const message = `Circular dependency detected in chain: [${cycle
+        .map(vertex => vertex.name)
+        .join(" > ")}]`;
+      this.compileError(new Error(message));
+    });
+
+    //   const checkCircular = (action: IActionProto, dependents: IActionProto[]): boolean => {
+    //     if (dependents.indexOf(action) >= 0) {
+    //       const message = `Circular dependency detected in chain: [${dependents
+    //         .map(d => d.name)
+    //         .join(" > ")} > ${action.name}]`;
+    //       this.compileError(new Error(message), action.fileName);
+    //       return true;
+    //     }
+    //     return (action.dependencies || []).some(
+    //       dependencyName =>
+    //         allActionsByName[dependencyName] &&
+    //         checkCircular(allActionsByName[dependencyName], dependents.concat([action]))
+    //     );
+    //   };
+
+    //   for (const action of actions) {
+    //     if (checkCircular(action, [])) {
+    //       break;
+    //     }
+    //   }
   }
 }
 
