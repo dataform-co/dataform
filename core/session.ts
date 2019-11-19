@@ -8,8 +8,9 @@ import * as utils from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
 import { util } from "protobufjs";
 import { Graph as TarjanGraph } from "tarjan-graph";
+import * as Graph from "tarjan-graph";
 
-const Graph = require("tarjan-graph");
+// const Graph = require("tarjan-graph");
 
 interface IActionProto {
   name?: string;
@@ -506,7 +507,8 @@ export class Session {
   private checkCircularity(actions: IActionProto[]) {
     const allActionsByName = keyByName(actions);
 
-    const tarjanGraph: TarjanGraph = new Graph();
+    // Type exports for tarjan-graph are unfortunately wrong, so we have to do this minor hack.
+    const tarjanGraph: TarjanGraph = new (Graph as any)();
     actions.forEach(action => {
       const cleanedDependencies = (action.dependencies || []).filter(
         dependency => !!allActionsByName[dependency]
@@ -515,32 +517,12 @@ export class Session {
     });
     const cycles = tarjanGraph.getCycles();
     cycles.forEach(cycle => {
+      const firstActionInCycle = allActionsByName[cycle[0].name];
       const message = `Circular dependency detected in chain: [${cycle
         .map(vertex => vertex.name)
-        .join(" > ")}]`;
-      this.compileError(new Error(message));
+        .join(" > ")} > ${firstActionInCycle.name}]`;
+      this.compileError(new Error(message), firstActionInCycle.fileName);
     });
-
-    //   const checkCircular = (action: IActionProto, dependents: IActionProto[]): boolean => {
-    //     if (dependents.indexOf(action) >= 0) {
-    //       const message = `Circular dependency detected in chain: [${dependents
-    //         .map(d => d.name)
-    //         .join(" > ")} > ${action.name}]`;
-    //       this.compileError(new Error(message), action.fileName);
-    //       return true;
-    //     }
-    //     return (action.dependencies || []).some(
-    //       dependencyName =>
-    //         allActionsByName[dependencyName] &&
-    //         checkCircular(allActionsByName[dependencyName], dependents.concat([action]))
-    //     );
-    //   };
-
-    //   for (const action of actions) {
-    //     if (checkCircular(action, [])) {
-    //       break;
-    //     }
-    //   }
   }
 }
 
