@@ -8,7 +8,8 @@ describe("retryPromise", () => {
       calledTimes += 1;
       return "success";
     };
-    await retryPromise(succeedingFunc, 2);
+    const result = await retryPromise(succeedingFunc, 2);
+    expect(result).to.eq("success");
     expect(calledTimes).eq(1);
   });
 
@@ -16,25 +17,40 @@ describe("retryPromise", () => {
     let calledTimes = 0;
     const failingFunc = async () => {
       calledTimes += 1;
-      return new Error("error");
+      throw new Error("an error");
     };
     try {
       await retryPromise(failingFunc, 0);
     } catch (e) {
-      expect(calledTimes).eq(1);
+      expect(e.toString()).to.eq("Error: an error");
     }
+    expect(calledTimes).eq(1);
   });
 
-  it("retries thrice if the function fails and retries is 3", async () => {
+  it("calls the function three times if the function fails and retries is 2", async () => {
     let calledTimes = 0;
     const failingFunc = async () => {
       calledTimes += 1;
-      return new Error("error");
+      throw new Error("an error");
     };
     try {
-      await retryPromise(failingFunc, 3);
-    } catch (e) {
-      expect(calledTimes).eq(3);
-    }
+      await retryPromise(failingFunc, 2);
+    } catch (e) {}
+    expect(calledTimes).eq(3);
+  });
+
+  it("will eventually return a success if the function has failed before", async () => {
+    let calledTimes = 0;
+    const failingFunc = async () => {
+      if (calledTimes > 1) {
+        return "success";
+      }
+      calledTimes += 1;
+      throw new Error("an error");
+    };
+    try {
+      await retryPromise(failingFunc, 2);
+    } catch (e) {}
+    expect(calledTimes).eq(2);
   });
 });

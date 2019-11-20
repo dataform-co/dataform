@@ -248,14 +248,13 @@ export class Runner {
     parentAction.tasks.push(taskResult);
     await this.triggerChange();
     try {
-      const executionFunc = () =>
-        this.adapter.execute(task.statement, {
-          onCancel: handleCancel => this.eEmitter.on(CANCEL_EVENT, handleCancel),
-          maxResults: 1
-        });
       // Retry this function a given number of times, configurable by user
       const rows = await retryPromise(
-        executionFunc,
+        () =>
+          this.adapter.execute(task.statement, {
+            onCancel: handleCancel => this.eEmitter.on(CANCEL_EVENT, handleCancel),
+            maxResults: 1
+          }),
         this.graph.projectConfig.idempotentActionRetries || 0
       );
       if (task.type === "assertion") {

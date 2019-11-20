@@ -723,6 +723,115 @@ describe("@dataform/api", () => {
       );
     });
 
+    context("execute with retry", () => {
+      it("should fail when execution fails too many times for the retry setting", async () => {
+        const mockedDbAdapter = mock(BigQueryDbAdapter);
+        const NEW_TEST_GRAPH = {
+          ...TEST_GRAPH,
+          projectConfig: { ...TEST_GRAPH.projectConfig, idempotentActionRetries: 1 }
+        };
+        when(mockedDbAdapter.prepareSchema(anyString())).thenResolve(null);
+        when(
+          mockedDbAdapter.execute(NEW_TEST_GRAPH.actions[0].tasks[0].statement, anything())
+        ).thenResolve([]);
+        when(mockedDbAdapter.execute(NEW_TEST_GRAPH.actions[1].tasks[0].statement, anything()))
+          .thenReject(new Error("bad statement"))
+          .thenReject(new Error("bad statement"))
+          .thenResolve([]);
+
+        const runner = new Runner(instance(mockedDbAdapter), NEW_TEST_GRAPH);
+        const result = await runner.execute();
+
+        delete result.timing;
+        result.actions.forEach(actionResult => {
+          delete actionResult.timing;
+          actionResult.tasks.forEach(taskResult => {
+            delete taskResult.timing;
+          });
+        });
+
+        expect(dataform.RunResult.create(result)).to.deep.equal(
+          dataform.RunResult.create({
+            status: dataform.RunResult.ExecutionStatus.FAILED,
+            actions: [
+              {
+                name: NEW_TEST_GRAPH.actions[0].name,
+                tasks: [
+                  {
+                    status: dataform.TaskResult.ExecutionStatus.SUCCESSFUL
+                  }
+                ],
+                status: dataform.ActionResult.ExecutionStatus.SUCCESSFUL
+              },
+              {
+                name: TEST_GRAPH.actions[1].name,
+                tasks: [
+                  {
+                    status: dataform.TaskResult.ExecutionStatus.FAILED,
+                    errorMessage: "Bigquery error: bad statement"
+                  }
+                ],
+                status: dataform.ActionResult.ExecutionStatus.FAILED
+              }
+            ]
+          })
+        );
+      });
+
+      it("should pass when execution fails initially, then passes with the number of allowed retries", async () => {
+        const mockedDbAdapter = mock(BigQueryDbAdapter);
+        const NEW_TEST_GRAPH = {
+          ...TEST_GRAPH,
+          projectConfig: { ...TEST_GRAPH.projectConfig, idempotentActionRetries: 2 }
+        };
+        when(mockedDbAdapter.prepareSchema(anyString())).thenResolve(null);
+        when(
+          mockedDbAdapter.execute(NEW_TEST_GRAPH.actions[0].tasks[0].statement, anything())
+        ).thenResolve([]);
+        when(mockedDbAdapter.execute(NEW_TEST_GRAPH.actions[1].tasks[0].statement, anything()))
+          .thenReject(new Error("bad statement"))
+          .thenReject(new Error("bad statement"))
+          .thenResolve([]);
+
+        const runner = new Runner(instance(mockedDbAdapter), NEW_TEST_GRAPH);
+        const result = await runner.execute();
+
+        delete result.timing;
+        result.actions.forEach(actionResult => {
+          delete actionResult.timing;
+          actionResult.tasks.forEach(taskResult => {
+            delete taskResult.timing;
+          });
+        });
+
+        expect(dataform.RunResult.create(result)).to.deep.equal(
+          dataform.RunResult.create({
+            status: dataform.RunResult.ExecutionStatus.SUCCESSFUL,
+            actions: [
+              {
+                name: NEW_TEST_GRAPH.actions[0].name,
+                tasks: [
+                  {
+                    status: dataform.TaskResult.ExecutionStatus.SUCCESSFUL
+                  }
+                ],
+                status: dataform.ActionResult.ExecutionStatus.SUCCESSFUL
+              },
+              {
+                name: NEW_TEST_GRAPH.actions[1].name,
+                tasks: [
+                  {
+                    status: dataform.TaskResult.ExecutionStatus.SUCCESSFUL
+                  }
+                ],
+                status: dataform.ActionResult.ExecutionStatus.SUCCESSFUL
+              }
+            ]
+          })
+        );
+      });
+    });
+
     it("execute_with_cancel", async () => {
       const TEST_GRAPH: dataform.IExecutionGraph = dataform.ExecutionGraph.create({
         projectConfig: {
