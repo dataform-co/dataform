@@ -1,14 +1,14 @@
-import { retryPromise } from "@dataform/api/utils/retry_promise";
+import { retry } from "@dataform/api/utils/retry";
 import { expect } from "chai";
 
-describe("retryPromise", () => {
+describe("retry", () => {
   it("doesn't retry if the function succeeds", async () => {
     let calledTimes = 0;
     const succeedingFunc = async () => {
       calledTimes += 1;
       return "success";
     };
-    const result = await retryPromise(succeedingFunc, 2);
+    const result = await retry(succeedingFunc, 2);
     expect(result).to.eq("success");
     expect(calledTimes).eq(1);
   });
@@ -20,7 +20,7 @@ describe("retryPromise", () => {
       throw new Error("an error");
     };
     try {
-      await retryPromise(failingFunc, 0);
+      await retry(failingFunc, 0);
     } catch (e) {
       expect(e.toString()).to.eq("Error: an error");
     }
@@ -34,7 +34,7 @@ describe("retryPromise", () => {
       throw new Error("an error");
     };
     try {
-      await retryPromise(failingFunc, 2);
+      await retry(failingFunc, 2);
     } catch (e) {}
     expect(calledTimes).eq(3);
   });
@@ -49,7 +49,7 @@ describe("retryPromise", () => {
       throw new Error("an error");
     };
     try {
-      await retryPromise(failingFunc, 2);
+      await retry(failingFunc, 2);
     } catch (e) {}
     expect(calledTimes).eq(2);
   });

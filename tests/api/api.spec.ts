@@ -713,7 +713,7 @@ describe("@dataform/api", () => {
               tasks: [
                 {
                   status: dataform.TaskResult.ExecutionStatus.FAILED,
-                  errorMessage: "Bigquery error: bad statement"
+                  errorMessage: "bigquery error: bad statement"
                 }
               ],
               status: dataform.ActionResult.ExecutionStatus.FAILED
@@ -768,7 +768,7 @@ describe("@dataform/api", () => {
                 tasks: [
                   {
                     status: dataform.TaskResult.ExecutionStatus.FAILED,
-                    errorMessage: "Bigquery error: bad statement"
+                    errorMessage: "bigquery error: bad statement"
                   }
                 ],
                 status: dataform.ActionResult.ExecutionStatus.FAILED

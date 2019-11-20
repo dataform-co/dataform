@@ -73,7 +73,7 @@ describe("@dataform/integration/bigquery", () => {
     expect(
       actionMap["df_integration_test_assertions.example_assertion_uniqueness_fail"].tasks[1]
         .errorMessage
-    ).to.eql("Bigquery error: Assertion failed: query returned 1 row(s).");
+    ).to.eql("bigquery error: Assertion failed: query returned 1 row(s).");
     expect(
       actionMap["df_integration_test_assertions.example_assertion_uniqueness_pass"].status
     ).equals(dataform.ActionResult.ExecutionStatus.SUCCESSFUL);
