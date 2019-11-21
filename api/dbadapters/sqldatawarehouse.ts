@@ -78,7 +78,8 @@ export class SQLDataWarehouseDBAdapter implements IDbAdapter {
 
   public async tables(): Promise<dataform.ITarget[]> {
     const result = await this.execute(
-      `select ${TABLE_SCHEMA_COL_NAME}, ${TABLE_NAME_COL_NAME} from ${INFORMATION_SCHEMA_SCHEMA_NAME}.tables`
+      `select ${TABLE_SCHEMA_COL_NAME}, ${TABLE_NAME_COL_NAME} from ${INFORMATION_SCHEMA_SCHEMA_NAME}.tables`,
+      { maxResults: 10000 }
     );
     return result.map(row => ({
       schema: row[TABLE_SCHEMA_COL_NAME],
