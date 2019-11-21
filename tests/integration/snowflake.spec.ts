@@ -86,7 +86,7 @@ describe("@dataform/integration/snowflake", () => {
     expect(
       actionMap["DF_INTEGRATION_TEST_ASSERTIONS.EXAMPLE_ASSERTION_UNIQUENESS_FAIL"].tasks[1]
         .errorMessage
-    ).to.eql("Assertion failed: query returned 1 row(s).");
+    ).to.eql("snowflake error: Assertion failed: query returned 1 row(s).");
     expect(
       actionMap["DF_INTEGRATION_TEST_ASSERTIONS.EXAMPLE_ASSERTION_UNIQUENESS_PASS"].status
     ).equals(dataform.ActionResult.ExecutionStatus.SUCCESSFUL);

@@ -10,6 +10,7 @@ message ProjectConfig {
   string warehouse = 1;
   string default_schema = 2;
   string assertion_schema = 5;
+  int32 idempotent_action_retries = 8;
 
   string schema_suffix = 7;
 

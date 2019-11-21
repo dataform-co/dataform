@@ -1,5 +1,6 @@
 import { Credentials } from "@dataform/api/commands/credentials";
 import * as dbadapters from "@dataform/api/dbadapters";
+import { retry } from "@dataform/api/utils/retry";
 import { dataform } from "@dataform/protos";
 import * as EventEmitter from "events";
 import * as Long from "long";
@@ -247,10 +248,15 @@ export class Runner {
     parentAction.tasks.push(taskResult);
     await this.triggerChange();
     try {
-      const rows = await this.adapter.execute(task.statement, {
-        onCancel: handleCancel => this.eEmitter.on(CANCEL_EVENT, handleCancel),
-        maxResults: 1
-      });
+      // Retry this function a given number of times, configurable by user
+      const rows = await retry(
+        () =>
+          this.adapter.execute(task.statement, {
+            onCancel: handleCancel => this.eEmitter.on(CANCEL_EVENT, handleCancel),
+            maxResults: 1
+          }),
+        task.type === "operation" ? 0 : this.graph.projectConfig.idempotentActionRetries || 0
+      );
       if (task.type === "assertion") {
         // We expect that an assertion query returns 1 row, with 1 field that is the row count.
         // We don't really care what that field/column is called.
@@ -264,7 +270,7 @@ export class Runner {
       taskResult.status = this.cancelled
         ? dataform.TaskResult.ExecutionStatus.CANCELLED
         : dataform.TaskResult.ExecutionStatus.FAILED;
-      taskResult.errorMessage = e.message;
+      taskResult.errorMessage = `${this.graph.projectConfig.warehouse} error: ${e.message}`;
     }
     taskResult.timing = timer.end();
     await this.triggerChange();
