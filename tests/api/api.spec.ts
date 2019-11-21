@@ -830,6 +830,70 @@ describe("@dataform/api", () => {
           })
         );
       });
+
+      it("should not retry when the task is an operation", async () => {
+        const mockedDbAdapter = mock(BigQueryDbAdapter);
+        const NEW_TEST_GRAPH_WITH_OPERATION = {
+          ...TEST_GRAPH,
+          projectConfig: { ...TEST_GRAPH.projectConfig, idempotentActionRetries: 3 }
+        };
+        NEW_TEST_GRAPH_WITH_OPERATION.actions[1].tasks[0].type = "operation";
+
+        when(mockedDbAdapter.prepareSchema(anyString())).thenResolve(null);
+        when(
+          mockedDbAdapter.execute(
+            NEW_TEST_GRAPH_WITH_OPERATION.actions[0].tasks[0].statement,
+            anything()
+          )
+        ).thenResolve([]);
+        when(
+          mockedDbAdapter.execute(
+            NEW_TEST_GRAPH_WITH_OPERATION.actions[1].tasks[0].statement,
+            anything()
+          )
+        )
+          .thenReject(new Error("bad statement"))
+          .thenReject(new Error("bad statement"))
+          .thenResolve([]);
+
+        const runner = new Runner(instance(mockedDbAdapter), NEW_TEST_GRAPH_WITH_OPERATION);
+        const result = await runner.execute();
+
+        delete result.timing;
+        result.actions.forEach(actionResult => {
+          delete actionResult.timing;
+          actionResult.tasks.forEach(taskResult => {
+            delete taskResult.timing;
+          });
+        });
+
+        expect(dataform.RunResult.create(result)).to.deep.equal(
+          dataform.RunResult.create({
+            status: dataform.RunResult.ExecutionStatus.FAILED,
+            actions: [
+              {
+                name: NEW_TEST_GRAPH_WITH_OPERATION.actions[0].name,
+                tasks: [
+                  {
+                    status: dataform.TaskResult.ExecutionStatus.SUCCESSFUL
+                  }
+                ],
+                status: dataform.ActionResult.ExecutionStatus.SUCCESSFUL
+              },
+              {
+                name: NEW_TEST_GRAPH_WITH_OPERATION.actions[1].name,
+                tasks: [
+                  {
+                    status: dataform.TaskResult.ExecutionStatus.FAILED,
+                    errorMessage: "bigquery error: bad statement"
+                  }
+                ],
+                status: dataform.ActionResult.ExecutionStatus.FAILED
+              }
+            ]
+          })
+        );
+      });
     });
 
     it("execute_with_cancel", async () => {

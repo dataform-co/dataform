@@ -1,10 +1,10 @@
-export async function retry(func: () => Promise<any>, retries: number): Promise<any> {
+export async function retry<T>(func: () => Promise<T>, retries: number): Promise<T> {
   try {
     return await func();
   } catch (e) {
     if (retries === 0) {
       throw e;
     }
-    return retry(func, retries - 1);
+    return await retry(func, retries - 1);
   }
 }
