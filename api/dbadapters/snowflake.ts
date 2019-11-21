@@ -80,7 +80,8 @@ export class SnowflakeDbAdapter implements IDbAdapter {
        from information_schema.tables
        where LOWER(table_schema) != 'information_schema'
          and LOWER(table_schema) != 'pg_catalog'
-         and LOWER(table_schema) != 'pg_internal'`
+         and LOWER(table_schema) != 'pg_internal'`,
+      { maxResults: 10000 }
     );
     return rows.map(row => ({
       schema: row.TABLE_SCHEMA,

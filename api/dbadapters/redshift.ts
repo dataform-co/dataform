@@ -48,7 +48,8 @@ export class RedshiftDbAdapter implements IDbAdapter {
      where table_schema != 'information_schema'
        and table_schema != 'pg_catalog'
        and table_schema != 'pg_internal'
-       union select tablename as table_name, schemaname as table_schema from svv_external_tables`
+       union select tablename as table_name, schemaname as table_schema from svv_external_tables`,
+      { maxResults: 10000 }
     );
     return rows.map(row => ({
       schema: row.table_schema,
