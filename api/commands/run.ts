@@ -13,7 +13,11 @@ const isSuccessfulAction = (actionResult: dataform.IActionResult) =>
 
 export function run(graph: dataform.IExecutionGraph, credentials: Credentials): Runner {
   const runner = Runner.create(
-    dbadapters.create(credentials, graph.projectConfig.warehouse),
+    dbadapters.create(
+      credentials,
+      graph.projectConfig.warehouse,
+      !!graph.runConfig.usePgPoolForRedshift
+    ),
     graph
   );
   runner.execute();
