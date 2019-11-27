@@ -41,7 +41,7 @@ export class SnowflakeDbAdapter implements IDbAdapter {
 
   constructor(credentials: Credentials) {
     this.connectionPromise = connect(credentials as dataform.ISnowflake);
-    // Unclear exactly what snowflakes limit's are here, we can experiment with increasing this.
+    // Unclear exactly what snowflakes limits are here, we can experiment with increasing this.
     this.pool = new PromisePool.PromisePoolExecutor({
       concurrencyLimit: 10,
       frequencyWindow: 1000,
