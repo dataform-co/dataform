@@ -2,6 +2,7 @@ import { Credentials } from "@dataform/api/commands/credentials";
 import { IDbAdapter } from "@dataform/api/dbadapters/index";
 import { dataform } from "@dataform/protos";
 import * as https from "https";
+import * as PromisePool from "promise-pool-executor";
 
 interface ISnowflake {
   createConnection: (options: {
@@ -36,9 +37,16 @@ const snowflake: ISnowflake = require("snowflake-sdk");
 
 export class SnowflakeDbAdapter implements IDbAdapter {
   private connectionPromise: Promise<ISnowflakeConnection>;
+  private pool: PromisePool.PromisePoolExecutor;
 
   constructor(credentials: Credentials) {
     this.connectionPromise = connect(credentials as dataform.ISnowflake);
+    // Unclear exactly what snowflakes limit's are here, we can experiment with increasing this.
+    this.pool = new PromisePool.PromisePoolExecutor({
+      concurrencyLimit: 10,
+      frequencyWindow: 1000,
+      frequencyLimit: 10
+    });
   }
 
   public async execute(
@@ -48,26 +56,33 @@ export class SnowflakeDbAdapter implements IDbAdapter {
     } = { maxResults: 1000 }
   ) {
     const connection = await this.connectionPromise;
-    return new Promise<any[]>((resolve, reject) => {
-      connection.execute({
-        sqlText: statement,
-        streamResult: true,
-        complete(err, stmt) {
-          if (err) {
-            reject(err);
-            return;
-          }
-          const rows: any[] = [];
-          const streamOptions =
-            !!options && !!options.maxResults ? { start: 0, end: options.maxResults - 1 } : {};
-          stmt
-            .streamRows(streamOptions)
-            .on("error", e => reject(e))
-            .on("data", row => rows.push(row))
-            .on("end", () => resolve(rows));
-        }
-      });
-    });
+    return this.pool
+      .addSingleTask({
+        generator: () =>
+          new Promise<any[]>((resolve, reject) => {
+            connection.execute({
+              sqlText: statement,
+              streamResult: true,
+              complete(err, stmt) {
+                if (err) {
+                  reject(err);
+                  return;
+                }
+                const rows: any[] = [];
+                const streamOptions =
+                  !!options && !!options.maxResults
+                    ? { start: 0, end: options.maxResults - 1 }
+                    : {};
+                stmt
+                  .streamRows(streamOptions)
+                  .on("error", e => reject(e))
+                  .on("data", row => rows.push(row))
+                  .on("end", () => resolve(rows));
+              }
+            });
+          })
+      })
+      .promise();
   }
 
   public evaluate(statement: string): Promise<void> {
