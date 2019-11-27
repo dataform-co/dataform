@@ -5,6 +5,7 @@ import * as dbadapters from "@dataform/api/dbadapters";
 import { adapters } from "@dataform/core";
 import * as utils from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
+import { prune } from "df/api/commands/prune";
 
 export async function build(
   compiledGraph: dataform.ICompiledGraph,
