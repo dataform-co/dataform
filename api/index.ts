@@ -4,6 +4,7 @@ import * as credentials from "./commands/credentials";
 import * as format from "./commands/format";
 import { init } from "./commands/init";
 import { install } from "./commands/install";
+import { prune } from "./commands/prune";
 import * as query from "./commands/query";
 import { run, Runner } from "./commands/run";
 import * as table from "./commands/table";
@@ -24,5 +25,6 @@ export {
   validateSchedulesFileIfExists,
   Runner,
   Builder,
-  format
+  format,
+  prune
 };
