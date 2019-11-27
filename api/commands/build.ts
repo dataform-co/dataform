@@ -4,18 +4,22 @@ import * as dbadapters from "@dataform/api/dbadapters";
 import { adapters } from "@dataform/core";
 import * as utils from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
+import { prune } from "df/api/commands/prune";
 
-export function build(
+export async function build(
   compiledGraph: dataform.ICompiledGraph,
   runConfig: dataform.IRunConfig,
-  credentials: Credentials
+  credentials: Credentials,
+  overrideState?: dataform.IWarehouseState
 ) {
-  return state(
-    compiledGraph,
-    dbadapters.create(credentials, compiledGraph.projectConfig.warehouse)
-  ).then(state => {
-    return new Builder(compiledGraph, runConfig, state).build();
-  });
+  const prunedGraph = prune(compiledGraph, runConfig);
+  const stateResult =
+    overrideState ||
+    (await state(
+      prunedGraph,
+      dbadapters.create(credentials, compiledGraph.projectConfig.warehouse)
+    ));
+  return new Builder(prunedGraph, runConfig, stateResult).build();
 }
 
 export class Builder {
@@ -46,86 +50,19 @@ export class Builder {
       tableStateByTarget[JSON.stringify(tableState.target)] = tableState;
     });
 
-    // Remove inline tables.
-    const filteredTables = this.compiledGraph.tables.filter(t => t.type !== "inline");
-
-    // Firstly, turn every thing into an execution action.
-    const allActions: dataform.IExecutionAction[] = [].concat(
-      filteredTables.map(t => this.buildTable(t, tableStateByTarget[JSON.stringify(t.target)])),
+    const actions: dataform.IExecutionAction[] = [].concat(
+      this.compiledGraph.tables.map(t =>
+        this.buildTable(t, tableStateByTarget[JSON.stringify(t.target)])
+      ),
       this.compiledGraph.operations.map(o => this.buildOperation(o)),
       this.compiledGraph.assertions.map(a => this.buildAssertion(a))
     );
-    const allActionNames = allActions.map(n => n.name);
-    const actionNameMap: { [name: string]: dataform.IExecutionAction } = {};
-    allActions.forEach(action => (actionNameMap[action.name] = action));
 
-    // Determine which action should be included.
-    let includedActionNames =
-      this.runConfig.actions && this.runConfig.actions.length > 0
-        ? utils.matchPatterns(this.runConfig.actions, allActionNames)
-        : allActionNames;
-    let includedActions = allActions.filter(
-      action => includedActionNames.indexOf(action.name) >= 0
-    );
-    // Determine ations selected with --tag option and update applicable actions
-    if (this.runConfig.tags && this.runConfig.tags.length > 0) {
-      const allTaggedActionNames: string[] = [].concat(
-        filteredTables
-          .filter(t => t.tags.some(t => this.runConfig.tags.includes(t)))
-          .map(t => t.name),
-        this.compiledGraph.operations
-          .filter(o => o.tags.some(t => this.runConfig.tags.includes(t)))
-          .map(t => t.name),
-        this.compiledGraph.assertions
-          .filter(a => a.tags.some(t => this.runConfig.tags.includes(t)))
-          .map(t => t.name)
-      );
-      const allTaggedActions = allActions.filter(a => allTaggedActionNames.includes(a.name));
-
-      if (this.runConfig.actions && this.runConfig.actions.length > 0) {
-        // Add up the actions specified by the tags to includedAction(Name).
-        const missingActNames = allTaggedActionNames.filter(n => !includedActionNames.includes(n));
-        const missingAct = allActions.filter(action => missingActNames.includes(action.name));
-        missingActNames.forEach(mn => includedActionNames.push(mn));
-        missingAct.forEach(ma => includedActions.push(ma));
-      } else {
-        // Leave only the actions specified by the tags
-        includedActionNames = allTaggedActionNames;
-        includedActions = allTaggedActions;
-      }
-    }
-    if (this.runConfig.includeDependencies) {
-      // Compute all transitive dependencies.
-      for (let i = 0; i < allActions.length; i++) {
-        includedActions.forEach(action => {
-          const matchingActionNames =
-            action.dependencies && action.dependencies.length > 0
-              ? utils.matchPatterns(action.dependencies, allActionNames)
-              : [];
-          // Update included action names.
-          matchingActionNames.forEach(actionName => {
-            if (includedActionNames.indexOf(actionName) < 0) {
-              includedActionNames.push(actionName);
-            }
-          });
-          // Update included actions.
-          includedActions = allActions.filter(
-            action => includedActionNames.indexOf(action.name) >= 0
-          );
-        });
-      }
-    }
-    // Remove any excluded dependencies.
-    includedActions.forEach(action => {
-      action.dependencies = action.dependencies.filter(
-        dep => includedActionNames.indexOf(dep) >= 0
-      );
-    });
     return dataform.ExecutionGraph.create({
       projectConfig: this.compiledGraph.projectConfig,
       runConfig: this.runConfig,
       warehouseState: this.state,
-      actions: includedActions
+      actions
     });
   }
 

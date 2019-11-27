@@ -1,4 +1,4 @@
-import { Builder, compile, credentials, format, query, Runner } from "@dataform/api";
+import { build, Builder, compile, credentials, format, query, Runner } from "@dataform/api";
 import { IDbAdapter } from "@dataform/api/dbadapters";
 import { BigQueryDbAdapter } from "@dataform/api/dbadapters/bigquery";
 import * as utils from "@dataform/core/utils";
@@ -49,25 +49,25 @@ describe("@dataform/api", () => {
 
     const TEST_STATE = dataform.WarehouseState.create({ tables: [] });
 
-    it("include_deps", () => {
-      const builder = new Builder(
+    it("include_deps", async () => {
+      const executionGraph = await build(
         TEST_GRAPH,
         { actions: ["schema.a"], includeDependencies: true },
+        null,
         TEST_STATE
       );
-      const executionGraph = builder.build();
       const includedActionNames = executionGraph.actions.map(n => n.name);
       expect(includedActionNames).includes("schema.a");
       expect(includedActionNames).includes("schema.b");
     });
 
-    it("exclude_deps", () => {
-      const builder = new Builder(
+    it("exclude_deps", async () => {
+      const executionGraph = await build(
         TEST_GRAPH,
         { actions: ["schema.a"], includeDependencies: false },
+        null,
         TEST_STATE
       );
-      const executionGraph = builder.build();
       const includedActionNames = executionGraph.actions.map(n => n.name);
       expect(includedActionNames).includes("schema.a");
       expect(includedActionNames).not.includes("schema.b");
@@ -162,7 +162,7 @@ describe("@dataform/api", () => {
       });
     });
 
-    it("inline_tables", () => {
+    it("inline_tables", async () => {
       const graph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
         projectConfig: { warehouse: "bigquery" },
         tables: [
@@ -177,8 +177,7 @@ describe("@dataform/api", () => {
         ]
       });
 
-      const builder = new Builder(graph, {}, TEST_STATE);
-      const executedGraph = builder.build();
+      const executedGraph = await build(graph, {}, null, TEST_STATE);
 
       expect(executedGraph).to.exist;
       expect(executedGraph)
@@ -230,17 +229,17 @@ describe("@dataform/api", () => {
         }
       ]
     });
-    it("build actions with --tags (with dependencies)", () => {
-      const builder = new Builder(
+    it("build actions with --tags (with dependencies)", async () => {
+      const executedGraph = await build(
         TEST_GRAPH_WITH_TAGS,
         {
           actions: ["op_b", "op_d"],
           tags: ["tag1", "tag2", "tag4"],
           includeDependencies: true
         },
+        null,
         TEST_STATE
       );
-      const executedGraph = builder.build();
       const actionNames = executedGraph.actions.map(n => n.name);
       expect(actionNames).includes("op_a");
       expect(actionNames).includes("op_b");
@@ -249,16 +248,16 @@ describe("@dataform/api", () => {
       expect(actionNames).includes("tab_a");
     });
 
-    it("build actions with --tags but without --actions (without dependencies)", () => {
-      const builder = new Builder(
+    it("build actions with --tags but without --actions (without dependencies)", async () => {
+      const executedGraph = await build(
         TEST_GRAPH_WITH_TAGS,
         {
           tags: ["tag1", "tag2", "tag4"],
           includeDependencies: false
         },
+        null,
         TEST_STATE
       );
-      const executedGraph = builder.build();
       const actionNames = executedGraph.actions.map(n => n.name);
       expect(actionNames).includes("op_a");
       expect(actionNames).includes("op_b");
