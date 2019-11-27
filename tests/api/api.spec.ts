@@ -1,78 +1,52 @@
-import { build, Builder, compile, credentials, format, query, Runner } from "@dataform/api";
+import { Builder, compile, credentials, format, prune, query, Runner } from "@dataform/api";
 import { IDbAdapter } from "@dataform/api/dbadapters";
 import { BigQueryDbAdapter } from "@dataform/api/dbadapters/bigquery";
 import * as utils from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
-import { fail } from "assert";
 import { assert, config, expect } from "chai";
 import { asPlainObject, cleanSql } from "df/tests/utils";
 import * as path from "path";
-import * as stackTrace from "stack-trace";
 import { anyString, anything, instance, mock, when } from "ts-mockito";
 
 config.truncateThreshold = 0;
 
 describe("@dataform/api", () => {
+  const TEST_GRAPH: dataform.ICompiledGraph = dataform.CompiledGraph.create({
+    projectConfig: { warehouse: "redshift" },
+    tables: [
+      {
+        name: "schema.a",
+        target: {
+          schema: "schema",
+          name: "a"
+        },
+        query: "query",
+        dependencies: ["schema.b"]
+      },
+      {
+        name: "schema.b",
+        target: {
+          schema: "schema",
+          name: "b"
+        },
+        query: "query",
+        dependencies: ["schema.c"],
+        disabled: true
+      },
+      {
+        name: "schema.c",
+        target: {
+          schema: "schema",
+          name: "c"
+        },
+        query: "query"
+      }
+    ]
+  });
+
+  const TEST_STATE = dataform.WarehouseState.create({ tables: [] });
+
   describe("build", () => {
-    const TEST_GRAPH: dataform.ICompiledGraph = dataform.CompiledGraph.create({
-      projectConfig: { warehouse: "redshift" },
-      tables: [
-        {
-          name: "schema.a",
-          target: {
-            schema: "schema",
-            name: "a"
-          },
-          query: "query",
-          dependencies: ["schema.b"]
-        },
-        {
-          name: "schema.b",
-          target: {
-            schema: "schema",
-            name: "b"
-          },
-          query: "query",
-          dependencies: ["schema.c"],
-          disabled: true
-        },
-        {
-          name: "schema.c",
-          target: {
-            schema: "schema",
-            name: "c"
-          },
-          query: "query"
-        }
-      ]
-    });
-
-    const TEST_STATE = dataform.WarehouseState.create({ tables: [] });
-
-    it("include_deps", async () => {
-      const executionGraph = await build(
-        TEST_GRAPH,
-        { actions: ["schema.a"], includeDependencies: true },
-        null,
-        TEST_STATE
-      );
-      const includedActionNames = executionGraph.actions.map(n => n.name);
-      expect(includedActionNames).includes("schema.a");
-      expect(includedActionNames).includes("schema.b");
-    });
-
-    it("exclude_deps", async () => {
-      const executionGraph = await build(
-        TEST_GRAPH,
-        { actions: ["schema.a"], includeDependencies: false },
-        null,
-        TEST_STATE
-      );
-      const includedActionNames = executionGraph.actions.map(n => n.name);
-      expect(includedActionNames).includes("schema.a");
-      expect(includedActionNames).not.includes("schema.b");
-    });
-
     it("exclude_disabled", () => {
       const builder = new Builder(TEST_GRAPH, { includeDependencies: true }, TEST_STATE);
       const executionGraph = builder.build();
@@ -161,36 +135,9 @@ describe("@dataform/api", () => {
         expect(action).to.include({ type: "assertion" });
       });
     });
+  });
 
-    it("inline_tables", async () => {
-      const graph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
-        projectConfig: { warehouse: "bigquery" },
-        tables: [
-          { name: "a", target: { schema: "schema", name: "a" }, type: "table", dependencies: [] },
-          {
-            name: "b",
-            target: { schema: "schema", name: "b" },
-            type: "inline",
-            dependencies: ["a"]
-          },
-          { name: "c", target: { schema: "schema", name: "c" }, type: "table", dependencies: ["a"] }
-        ]
-      });
-
-      const executedGraph = await build(graph, {}, null, TEST_STATE);
-
-      expect(executedGraph).to.exist;
-      expect(executedGraph)
-        .to.have.property("actions")
-        .to.be.an("array").that.is.not.empty;
-
-      const actionNames = executedGraph.actions.map(action => action.name);
-
-      expect(actionNames).includes("a");
-      expect(actionNames).not.includes("b");
-      expect(actionNames).includes("c");
-    });
-
+  describe("prune", () => {
     const TEST_GRAPH_WITH_TAGS: dataform.ICompiledGraph = dataform.CompiledGraph.create({
       projectConfig: { warehouse: "bigquery" },
       operations: [
@@ -229,18 +176,46 @@ describe("@dataform/api", () => {
         }
       ]
     });
-    it("build actions with --tags (with dependencies)", async () => {
-      const executedGraph = await build(
-        TEST_GRAPH_WITH_TAGS,
-        {
-          actions: ["op_b", "op_d"],
-          tags: ["tag1", "tag2", "tag4"],
-          includeDependencies: true
-        },
-        null,
-        TEST_STATE
-      );
-      const actionNames = executedGraph.actions.map(n => n.name);
+
+    it("prune removes inline tables", async () => {
+      const graph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
+        projectConfig: { warehouse: "bigquery" },
+        tables: [
+          { name: "a", target: { schema: "schema", name: "a" }, type: "table", dependencies: [] },
+          {
+            name: "b",
+            target: { schema: "schema", name: "b" },
+            type: "inline",
+            dependencies: ["a"]
+          },
+          { name: "c", target: { schema: "schema", name: "c" }, type: "table", dependencies: ["a"] }
+        ]
+      });
+
+      const prunedGraph = prune(graph, {});
+
+      expect(prunedGraph).to.exist;
+      expect(prunedGraph)
+        .to.have.property("tables")
+        .to.be.an("array").that.is.not.empty;
+
+      const actionNames = prunedGraph.tables.map(action => action.name);
+
+      expect(actionNames).includes("a");
+      expect(actionNames).not.includes("b");
+      expect(actionNames).includes("c");
+    });
+
+    it("prune actions with --tags (with dependencies)", () => {
+      const prunedGraph = prune(TEST_GRAPH_WITH_TAGS, {
+        actions: ["op_b", "op_d"],
+        tags: ["tag1", "tag2", "tag4"],
+        includeDependencies: true
+      });
+      const actionNames = [
+        ...prunedGraph.tables.map(action => action.name),
+        ...prunedGraph.operations.map(action => action.name)
+      ];
       expect(actionNames).includes("op_a");
       expect(actionNames).includes("op_b");
       expect(actionNames).not.includes("op_c");
@@ -248,22 +223,40 @@ describe("@dataform/api", () => {
       expect(actionNames).includes("tab_a");
     });
 
-    it("build actions with --tags but without --actions (without dependencies)", async () => {
-      const executedGraph = await build(
-        TEST_GRAPH_WITH_TAGS,
-        {
-          tags: ["tag1", "tag2", "tag4"],
-          includeDependencies: false
-        },
-        null,
-        TEST_STATE
-      );
-      const actionNames = executedGraph.actions.map(n => n.name);
+    it("prune actions with --tags but without --actions (without dependencies)", () => {
+      const prunedGraph = prune(TEST_GRAPH_WITH_TAGS, {
+        tags: ["tag1", "tag2", "tag4"],
+        includeDependencies: false
+      });
+      const actionNames = [
+        ...prunedGraph.tables.map(action => action.name),
+        ...prunedGraph.operations.map(action => action.name)
+      ];
       expect(actionNames).includes("op_a");
       expect(actionNames).includes("op_b");
       expect(actionNames).not.includes("op_c");
       expect(actionNames).not.includes("op_d");
       expect(actionNames).includes("tab_a");
+    });
+
+    it("prune actions with --actions with dependencies", () => {
+      const prunedGraph = prune(TEST_GRAPH, { actions: ["schema.a"], includeDependencies: true });
+      const actionNames = [
+        ...prunedGraph.tables.map(action => action.name),
+        ...prunedGraph.operations.map(action => action.name)
+      ];
+      expect(actionNames).includes("schema.a");
+      expect(actionNames).includes("schema.b");
+    });
+
+    it("prune actions with --actions without dependencies", () => {
+      const prunedGraph = prune(TEST_GRAPH, { actions: ["schema.a"], includeDependencies: false });
+      const actionNames = [
+        ...prunedGraph.tables.map(action => action.name),
+        ...prunedGraph.operations.map(action => action.name)
+      ];
+      expect(actionNames).includes("schema.a");
+      expect(actionNames).not.includes("schema.b");
     });
   });
 

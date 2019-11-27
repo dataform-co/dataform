@@ -9,16 +9,13 @@ import { prune } from "df/api/commands/prune";
 export async function build(
   compiledGraph: dataform.ICompiledGraph,
   runConfig: dataform.IRunConfig,
-  credentials: Credentials,
-  overrideState?: dataform.IWarehouseState
+  credentials: Credentials
 ) {
   const prunedGraph = prune(compiledGraph, runConfig);
-  const stateResult =
-    overrideState ||
-    (await state(
-      prunedGraph,
-      dbadapters.create(credentials, compiledGraph.projectConfig.warehouse)
-    ));
+  const stateResult = await state(
+    prunedGraph,
+    dbadapters.create(credentials, compiledGraph.projectConfig.warehouse)
+  );
   return new Builder(prunedGraph, runConfig, stateResult).build();
 }
 
