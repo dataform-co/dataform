@@ -6,11 +6,13 @@ export async function state(
   dbadapter: IDbAdapter
 ): Promise<dataform.IWarehouseState> {
   const allTables = await Promise.all(
-    compiledGraph.tables
-      .map(async t => dbadapter.table(t.target))
-      // Skip tables that don't exist.
-      .filter(async table => !!(await table).type)
+    compiledGraph.tables.map(async t => dbadapter.table(t.target))
   );
 
-  return { tables: allTables };
+  // filter out tables that don't exist
+  const tablesWithValues = allTables.filter(table => {
+    return !!table && !!table.type;
+  });
+
+  return { tables: tablesWithValues };
 }
