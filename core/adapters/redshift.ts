@@ -67,9 +67,8 @@ export class RedshiftAdapter extends Adapter implements IAdapter {
     const createQuery = `create or replace view ${this.resolveTarget(target)} as ${query}`;
     if (bind) {
       return createQuery;
-    } else {
-      return `${createQuery} with no schema binding`;
     }
+    return `${createQuery} with no schema binding`;
   }
 
   public createOrReplace(table: dataform.ITable) {
