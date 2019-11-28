@@ -1,23 +1,18 @@
 import { IDbAdapter } from "@dataform/api/dbadapters";
 import { dataform } from "@dataform/protos";
 
-export function state(
+export async function state(
   compiledGraph: dataform.ICompiledGraph,
   dbadapter: IDbAdapter
 ): Promise<dataform.IWarehouseState> {
-  const tables: dataform.ITableMetadata[] = [];
+  const allTables = await Promise.all(
+    compiledGraph.tables
+      .map(async t => {
+        const table = await dbadapter.table(t.target);
+        return table.type ? table : null;
+      })
+      .filter(async table => !!(await table))
+  );
 
-  return Promise.all(
-    compiledGraph.tables.map(t =>
-      dbadapter
-        .table(t.target)
-        .then(table => {
-          // Skip tables that don't exist.
-          if (table.type) {
-            tables.push(table);
-          }
-        })
-        .catch(_ => {})
-    )
-  ).then(() => ({ tables }));
+  return { tables: allTables };
 }
