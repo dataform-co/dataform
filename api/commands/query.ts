@@ -16,8 +16,10 @@ export function run(
 ): CancellablePromise<any[]> {
   return new CancellablePromise(async (resolve, reject, onCancel) => {
     try {
-      const compiledQuery = await compile(query, options && options.compileConfig);
-      const dbadapter = dbadapters.create(credentials, warehouse);
+      const [compiledQuery, dbadapter] = await Promise.all([
+        compile(query, options && options.compileConfig),
+        dbadapters.create(credentials, warehouse)
+      ]);
       const results = await dbadapter.execute(compiledQuery, {
         onCancel,
         interactive: true,
