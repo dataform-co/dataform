@@ -16,10 +16,8 @@ export function run(
 ): CancellablePromise<any[]> {
   return new CancellablePromise(async (resolve, reject, onCancel) => {
     try {
-      const [compiledQuery, dbadapter] = await Promise.all([
-        compile(query, options && options.compileConfig),
-        dbadapters.create(credentials, warehouse)
-      ]);
+      const compiledQuery = await compile(query, options && options.compileConfig);
+      const dbadapter = dbadapters.create(credentials, warehouse);
       const results = await dbadapter.execute(compiledQuery, {
         onCancel,
         interactive: true,
@@ -39,10 +37,8 @@ export async function evaluate(
   query: string,
   compileConfig?: dataform.ICompileConfig
 ): Promise<void> {
-  const [compiledQuery, dbadapter] = await Promise.all([
-    compile(query, compileConfig),
-    dbadapters.create(credentials, warehouse)
-  ]);
+  const compiledQuery = await compile(query, compileConfig);
+  const dbadapter = dbadapters.create(credentials, warehouse);
   await dbadapter.evaluate(compiledQuery);
   await dbadapter.close();
 }
