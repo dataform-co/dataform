@@ -19,8 +19,8 @@ export class RedshiftDbAdapter implements IDbAdapter {
     usePgPool: boolean
   ) {
     this.queryExecutor = usePgPool
-      ? new PgClientExecutor(credentials as dataform.IJDBC)
-      : new PgPoolExecutor(credentials as dataform.IJDBC);
+      ? new PgPoolExecutor(credentials as dataform.IJDBC)
+      : new PgClientExecutor(credentials as dataform.IJDBC);
   }
 
   public async execute(
