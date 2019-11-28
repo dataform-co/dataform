@@ -8,6 +8,7 @@ import { dropAllTables, getTableRows, keyBy } from "df/tests/integration/utils";
 describe("@dataform/integration/snowflake", () => {
   const credentials = dfapi.credentials.read("snowflake", "df/test_credentials/snowflake.json");
   const dbadapter = dbadapters.create(credentials, "snowflake");
+  after(() => dbadapter.close());
 
   it("run", async () => {
     const compiledGraph = await dfapi.compile({

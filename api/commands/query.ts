@@ -17,13 +17,13 @@ export function run(
   return new CancellablePromise(async (resolve, reject, onCancel) => {
     try {
       const compiledQuery = await compile(query, options && options.compileConfig);
-      const results = await dbadapters
-        .create(credentials, warehouse)
-        .execute(compiledQuery, {
-          onCancel,
-          interactive: true,
-          maxResults: options && options.maxResults
-        });
+      const dbadapter = dbadapters.create(credentials, warehouse);
+      const results = await dbadapter.execute(compiledQuery, {
+        onCancel,
+        interactive: true,
+        maxResults: options && options.maxResults
+      });
+      await dbadapter.close();
       resolve(results);
     } catch (e) {
       reject(e);
@@ -31,15 +31,18 @@ export function run(
   });
 }
 
-export function evaluate(
+export async function evaluate(
   credentials: Credentials,
   warehouse: string,
   query: string,
   compileConfig?: dataform.ICompileConfig
 ): Promise<void> {
-  return compile(query, compileConfig).then(compiledQuery =>
-    dbadapters.create(credentials, warehouse).evaluate(compiledQuery)
-  );
+  const [compiledQuery, dbadapter] = await Promise.all([
+    compile(query, compileConfig),
+    dbadapters.create(credentials, warehouse)
+  ]);
+  await dbadapter.evaluate(compiledQuery);
+  await dbadapter.close();
 }
 
 export async function compile(

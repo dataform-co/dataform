@@ -22,6 +22,7 @@ interface ISnowflakeConnection {
     streamResult?: boolean;
     complete: (err: any, statement: ISnowflakeStatement, rows: any[]) => void;
   }) => void;
+  destroy: (err: any) => void;
 }
 
 interface ISnowflakeStatement {
@@ -146,6 +147,19 @@ export class SnowflakeDbAdapter implements IDbAdapter {
     if (!schemas.includes(schema)) {
       await this.execute(`create schema if not exists "${schema}"`);
     }
+  }
+
+  public async close() {
+    const connection = await this.connectionPromise;
+    await new Promise((resolve, reject) => {
+      connection.destroy((err: any) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve();
+        }
+      });
+    });
   }
 }
 

@@ -2,23 +2,35 @@ import { Credentials } from "@dataform/api/commands/credentials";
 import * as dbadapters from "@dataform/api/dbadapters";
 import { dataform } from "@dataform/protos";
 
-export function list(credentials: Credentials, warehouse: string): Promise<dataform.ITarget[]> {
-  return dbadapters.create(credentials, warehouse).tables();
+export async function list(
+  credentials: Credentials,
+  warehouse: string
+): Promise<dataform.ITarget[]> {
+  const dbadapter = dbadapters.create(credentials, warehouse);
+  const tables = await dbadapter.tables();
+  await dbadapter.close();
+  return tables;
 }
 
-export function get(
+export async function get(
   credentials: Credentials,
   warehouse: string,
   target: dataform.ITarget
 ): Promise<dataform.ITableMetadata> {
-  return dbadapters.create(credentials, warehouse).table(target);
+  const dbadapter = dbadapters.create(credentials, warehouse);
+  const table = await dbadapter.table(target);
+  await dbadapter.close();
+  return table;
 }
 
-export function preview(
+export async function preview(
   credentials: Credentials,
   warehouse: string,
   target: dataform.ITarget,
   limitRows?: number
 ): Promise<any[]> {
-  return dbadapters.create(credentials, warehouse).preview(target, limitRows);
+  const dbadapter = dbadapters.create(credentials, warehouse);
+  const rows = await dbadapter.preview(target, limitRows);
+  await dbadapter.close();
+  return rows;
 }

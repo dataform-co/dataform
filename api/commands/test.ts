@@ -8,7 +8,9 @@ export async function test(
   tests: dataform.ITest[]
 ): Promise<dataform.ITestResult[]> {
   const dbadapter = dbadapters.create(credentials, warehouse);
-  return await Promise.all(tests.map(testCase => runTest(dbadapter, testCase)));
+  const results = await Promise.all(tests.map(testCase => runTest(dbadapter, testCase)));
+  await dbadapter.close();
+  return results;
 }
 
 async function runTest(
