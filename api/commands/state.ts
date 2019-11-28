@@ -7,11 +7,9 @@ export async function state(
 ): Promise<dataform.IWarehouseState> {
   const allTables = await Promise.all(
     compiledGraph.tables
-      .map(async t => {
-        const table = await dbadapter.table(t.target);
-        return table.type ? table : null;
-      })
-      .filter(async table => !!(await table))
+      .map(async t => dbadapter.table(t.target))
+      // Skip tables that don't exist.
+      .filter(async table => !!(await table).type)
   );
 
   return { tables: allTables };
