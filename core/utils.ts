@@ -140,21 +140,21 @@ export function validate(compiledGraph: dataform.ICompiledGraph): dataform.IGrap
 
     // redshift config
     if (!!action.redshift) {
-      if (
-        Object.keys(action.redshift).length === 0 ||
-        Object.values(action.redshift).every((value: string) => !value.length)
-      ) {
-        const message = `Missing properties in redshift config`;
-        validationErrors.push(dataform.ValidationError.create({ message, actionName }));
-      }
-
       const validatePropertyDefined = (
         opts: dataform.IRedshiftOptions,
         prop: keyof dataform.IRedshiftOptions
       ) => {
-        if (!opts[prop] || !opts[prop].length) {
-          const message = `Property "${prop}" is not defined`;
-          validationErrors.push(dataform.ValidationError.create({ message, actionName }));
+        const error = dataform.ValidationError.create({
+          message: `Property "${prop}" is not defined`,
+          actionName
+        });
+        const value = opts[prop];
+        if (!opts.hasOwnProperty(prop)) {
+          validationErrors.push(error);
+        } else if (value instanceof Array) {
+          if (value.length === 0) {
+            validationErrors.push(error);
+          }
         }
       };
       const validatePropertiesDefined = (

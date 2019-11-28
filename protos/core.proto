@@ -88,6 +88,7 @@ message RedshiftOptions {
   string dist_style = 2;
   repeated string sort_keys = 3;
   string sort_style = 4;
+  bool bind = 5;
 }
 
 message SQLDataWarehouseOptions {

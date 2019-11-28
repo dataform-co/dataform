@@ -283,35 +283,32 @@ describe("@dataform/core", () => {
           sortStyle: "wrong_sortStyle"
         }
       });
-      session.publish("example_empty_redshift", {
-        redshift: {}
-      });
 
       const expectedResults = [
-        { name: "schema.example_absent_distKey", message: /Property "distKey" is not defined/ },
-        { name: "schema.example_absent_distStyle", message: /Property "distStyle" is not defined/ },
-        { name: "schema.example_wrong_distStyle", message: /Wrong value of "distStyle" property/ },
-        { name: "schema.example_absent_sortKeys", message: /Property "sortKeys" is not defined/ },
-        { name: "schema.example_empty_sortKeys", message: /Property "sortKeys" is not defined/ },
-        { name: "schema.example_absent_sortStyle", message: /Property "sortStyle" is not defined/ },
-        { name: "schema.example_wrong_sortStyle", message: /Wrong value of "sortStyle" property/ },
-        { name: "schema.example_empty_redshift", message: /Missing properties in redshift config/ }
+        { name: "schema.example_absent_distKey", message: `Property "distKey" is not defined` },
+        { name: "schema.example_absent_distStyle", message: `Property "distStyle" is not defined` },
+        {
+          name: "schema.example_wrong_distStyle",
+          message: `Wrong value of "distStyle" property. Should only use predefined values: "even" | "key" | "all"`
+        },
+        { name: "schema.example_absent_sortKeys", message: `Property "sortKeys" is not defined` },
+        { name: "schema.example_empty_sortKeys", message: `Property "sortKeys" is not defined` },
+        { name: "schema.example_absent_sortStyle", message: `Property "sortStyle" is not defined` },
+        {
+          name: "schema.example_wrong_sortStyle",
+          message: `Wrong value of "sortStyle" property. Should only use predefined values: "compound" | "interleaved"`
+        }
       ];
 
       const graph = session.compile();
       const gErrors = utils.validate(graph);
 
-      expect(gErrors)
-        .to.have.property("validationErrors")
-        .to.be.an("array")
-        .to.have.lengthOf(8);
-
-      expectedResults.forEach(result => {
-        const err = gErrors.validationErrors.find(e => e.actionName === result.name);
-        expect(err)
-          .to.have.property("message")
-          .that.matches(result.message);
-      });
+      expect(
+        gErrors.validationErrors.map(validationError => ({
+          name: validationError.actionName,
+          message: validationError.message
+        }))
+      ).to.have.deep.members(expectedResults);
     });
 
     it("validation_type_inline", () => {

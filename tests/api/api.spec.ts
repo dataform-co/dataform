@@ -357,6 +357,27 @@ describe("@dataform/api", () => {
               name: "redshift_without_redshift"
             },
             query: "query"
+          },
+          {
+            name: "redshift_view",
+            type: "view",
+            target: {
+              schema: "schema",
+              name: "redshift_view"
+            },
+            query: "query"
+          },
+          {
+            name: "redshift_view_with_binding",
+            type: "view",
+            target: {
+              schema: "schema",
+              name: "redshift_view_with_binding"
+            },
+            query: "query",
+            redshift: {
+              bind: true
+            }
           }
         ]
       });
@@ -365,7 +386,9 @@ describe("@dataform/api", () => {
         'create table "schema"."redshift_all_temp" diststyle even distkey (column1) compound sortkey (column1, column2) as query',
         'create table "schema"."redshift_only_sort_temp" interleaved sortkey (column1) as query',
         'create table "schema"."redshift_only_dist_temp" diststyle even distkey (column1) as query',
-        'create table "schema"."redshift_without_redshift_temp" as query'
+        'create table "schema"."redshift_without_redshift_temp" as query',
+        'create or replace view "schema"."redshift_view" as query with no schema binding',
+        'create or replace view "schema"."redshift_view_with_binding" as query'
       ];
 
       const builder = new Builder(testGraph, {}, testState);
@@ -373,7 +396,7 @@ describe("@dataform/api", () => {
 
       expect(executionGraph.actions)
         .to.be.an("array")
-        .to.have.lengthOf(4);
+        .to.have.lengthOf(6);
 
       executionGraph.actions.forEach((action, index) => {
         expect(action)
