@@ -63,9 +63,12 @@ export class RedshiftAdapter extends Adapter implements IAdapter {
       .add(Task.assertion(`select sum(1) as row_count from ${this.resolveTarget(target)}`));
   }
 
-  public createOrReplaceView(target: dataform.ITarget, query: string) {
-    return `
-      create or replace view ${this.resolveTarget(target)} as ${query}`;
+  public createOrReplaceView(target: dataform.ITarget, query: string, bind = false) {
+    const createQuery = `create or replace view ${this.resolveTarget(target)} as ${query}`;
+    if (bind) {
+      return createQuery;
+    }
+    return `${createQuery} with no schema binding`;
   }
 
   public createOrReplace(table: dataform.ITable) {
@@ -75,9 +78,13 @@ export class RedshiftAdapter extends Adapter implements IAdapter {
           // Drop the view in case we are changing the number of column(s) (or their types).
           .add(Task.statement(this.dropIfExists(table.target, this.baseTableType(table.type))))
           .add(
-            Task.statement(`
-        create or replace view ${this.resolveTarget(table.target)}
-        as ${table.query}`)
+            Task.statement(
+              this.createOrReplaceView(
+                table.target,
+                table.query,
+                table.redshift && table.redshift.bind
+              )
+            )
           )
       );
     }
