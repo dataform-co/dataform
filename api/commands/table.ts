@@ -7,9 +7,11 @@ export async function list(
   warehouse: string
 ): Promise<dataform.ITarget[]> {
   const dbadapter = dbadapters.create(credentials, warehouse);
-  const tables = await dbadapter.tables();
-  await dbadapter.close();
-  return tables;
+  try {
+    return await dbadapter.tables();
+  } finally {
+    await dbadapter.close();
+  }
 }
 
 export async function get(
@@ -18,9 +20,11 @@ export async function get(
   target: dataform.ITarget
 ): Promise<dataform.ITableMetadata> {
   const dbadapter = dbadapters.create(credentials, warehouse);
-  const table = await dbadapter.table(target);
-  await dbadapter.close();
-  return table;
+  try {
+    return await dbadapter.table(target);
+  } finally {
+    await dbadapter.close();
+  }
 }
 
 export async function preview(
@@ -30,7 +34,9 @@ export async function preview(
   limitRows?: number
 ): Promise<any[]> {
   const dbadapter = dbadapters.create(credentials, warehouse);
-  const rows = await dbadapter.preview(target, limitRows);
-  await dbadapter.close();
-  return rows;
+  try {
+    return await dbadapter.preview(target, limitRows);
+  } finally {
+    await dbadapter.close();
+  }
 }

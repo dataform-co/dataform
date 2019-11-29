@@ -13,9 +13,12 @@ export async function build(
 ) {
   const prunedGraph = prune(compiledGraph, runConfig);
   const dbadapter = dbadapters.create(credentials, compiledGraph.projectConfig.warehouse);
-  const stateResult = await state(prunedGraph, dbadapter);
-  await dbadapter.close();
-  return new Builder(prunedGraph, runConfig, stateResult).build();
+  try {
+    const stateResult = await state(prunedGraph, dbadapter);
+    return new Builder(prunedGraph, runConfig, stateResult).build();
+  } finally {
+    await dbadapter.close();
+  }
 }
 
 export class Builder {

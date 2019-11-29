@@ -15,18 +15,19 @@ export function run(
   }
 ): CancellablePromise<any[]> {
   return new CancellablePromise(async (resolve, reject, onCancel) => {
+    const dbadapter = dbadapters.create(credentials, warehouse);
     try {
       const compiledQuery = await compile(query, options && options.compileConfig);
-      const dbadapter = dbadapters.create(credentials, warehouse);
       const results = await dbadapter.execute(compiledQuery, {
         onCancel,
         interactive: true,
         maxResults: options && options.maxResults
       });
-      await dbadapter.close();
       resolve(results);
     } catch (e) {
       reject(e);
+    } finally {
+      await dbadapter.close();
     }
   });
 }
@@ -39,8 +40,11 @@ export async function evaluate(
 ): Promise<void> {
   const compiledQuery = await compile(query, compileConfig);
   const dbadapter = dbadapters.create(credentials, warehouse);
-  await dbadapter.evaluate(compiledQuery);
-  await dbadapter.close();
+  try {
+    await dbadapter.evaluate(compiledQuery);
+  } finally {
+    await dbadapter.close();
+  }
 }
 
 export async function compile(
