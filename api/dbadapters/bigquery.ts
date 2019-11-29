@@ -109,6 +109,11 @@ export class BigQueryDbAdapter implements IDbAdapter {
 
   public async table(target: dataform.ITarget): Promise<dataform.ITableMetadata> {
     const metadata = await this.getMetadata(target);
+
+    if (!metadata) {
+      return null;
+    }
+
     return dataform.TableMetadata.create({
       type: String(metadata.type).toLowerCase(),
       target,
@@ -241,14 +246,25 @@ export class BigQueryDbAdapter implements IDbAdapter {
   private async getMetadata(target: dataform.ITarget): Promise<IBigQueryTableMetadata> {
     const metadataResult = await this.pool
       .addSingleTask({
-        generator: () =>
-          this.client
-            .dataset(target.schema)
-            .table(target.name)
-            .getMetadata()
+        generator: async () => {
+          try {
+            const table = await this.client
+              .dataset(target.schema)
+              .table(target.name)
+              .getMetadata();
+            return table;
+          } catch (e) {
+            if (e && e.errors && e.errors[0] && e.errors[0].reason === "notFound") {
+              // if the table can't be found, just return null
+              return null;
+            }
+            // otherwise throw the error as normal
+            throw e;
+          }
+        }
       })
       .promise();
-    return metadataResult[0];
+    return metadataResult && metadataResult[0];
   }
 }
 
