@@ -165,6 +165,8 @@ export class BigQueryDbAdapter implements IDbAdapter {
     }
   }
 
+  public async close() {}
+
   private async runQuery(statement: string, maxResults?: number) {
     const results = await new Promise<any[]>((resolve, reject) => {
       const allRows: any[] = [];

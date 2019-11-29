@@ -15,31 +15,36 @@ export function run(
   }
 ): CancellablePromise<any[]> {
   return new CancellablePromise(async (resolve, reject, onCancel) => {
+    const dbadapter = dbadapters.create(credentials, warehouse);
     try {
       const compiledQuery = await compile(query, options && options.compileConfig);
-      const results = await dbadapters
-        .create(credentials, warehouse)
-        .execute(compiledQuery, {
-          onCancel,
-          interactive: true,
-          maxResults: options && options.maxResults
-        });
+      const results = await dbadapter.execute(compiledQuery, {
+        onCancel,
+        interactive: true,
+        maxResults: options && options.maxResults
+      });
       resolve(results);
     } catch (e) {
       reject(e);
+    } finally {
+      await dbadapter.close();
     }
   });
 }
 
-export function evaluate(
+export async function evaluate(
   credentials: Credentials,
   warehouse: string,
   query: string,
   compileConfig?: dataform.ICompileConfig
 ): Promise<void> {
-  return compile(query, compileConfig).then(compiledQuery =>
-    dbadapters.create(credentials, warehouse).evaluate(compiledQuery)
-  );
+  const compiledQuery = await compile(query, compileConfig);
+  const dbadapter = dbadapters.create(credentials, warehouse);
+  try {
+    await dbadapter.evaluate(compiledQuery);
+  } finally {
+    await dbadapter.close();
+  }
 }
 
 export async function compile(

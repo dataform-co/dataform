@@ -128,4 +128,8 @@ export class SQLDataWarehouseDBAdapter implements IDbAdapter {
             end `
     );
   }
+
+  public async close() {
+    await (await this.pool).close();
+  }
 }

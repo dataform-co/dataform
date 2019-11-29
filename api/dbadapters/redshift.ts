@@ -94,6 +94,10 @@ export class RedshiftDbAdapter implements IDbAdapter {
   public async prepareSchema(schema: string): Promise<void> {
     await this.execute(`create schema if not exists "${schema}"`);
   }
+
+  public async close() {
+    await this.queryExecutor.close();
+  }
 }
 
 interface IPgQueryExecutor {
@@ -103,6 +107,7 @@ interface IPgQueryExecutor {
       maxResults?: number;
     }
   ): Promise<any[]>;
+  close(): Promise<void>;
 }
 
 class PgClientExecutor implements IPgQueryExecutor {
@@ -131,6 +136,8 @@ class PgClientExecutor implements IPgQueryExecutor {
       })
       .promise();
   }
+
+  public async close() {}
 
   private async executeInsidePool(
     statement: string,
@@ -250,5 +257,9 @@ class PgPoolExecutor implements IPgQueryExecutor {
     } finally {
       client.release();
     }
+  }
+
+  public async close() {
+    await this.pool.end();
   }
 }
