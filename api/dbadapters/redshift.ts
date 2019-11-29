@@ -83,7 +83,7 @@ export class RedshiftDbAdapter implements IDbAdapter {
         }))
       };
     } else {
-      throw new Error(`Could not find relation: ${target.schema}.${target.name}`);
+      return null;
     }
   }
 
