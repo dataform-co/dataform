@@ -16,7 +16,7 @@
     "js-beautify": "^1.10.2",
     "pg": "^7.12.1",
     "pg-cursor": "^2.0.0",
-    "mssql": "^5.1.0",
+    "mssql": "^6.0.1",
     "pretty-ms": "^4.0.0",
     "promise-pool-executor": "^1.1.1",
     "snowflake-sdk": "^1.1.5",

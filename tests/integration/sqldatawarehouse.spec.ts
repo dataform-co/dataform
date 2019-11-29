@@ -11,6 +11,7 @@ describe("@dataform/integration/sqldatawarehouse", () => {
     "df/test_credentials/sqldatawarehouse.json"
   );
   const dbadapter = dbadapters.create(credentials, "sqldatawarehouse");
+  after(() => dbadapter.close());
 
   it("run", async () => {
     const compiledGraph = await dfapi.compile({
