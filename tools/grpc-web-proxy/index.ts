@@ -73,8 +73,6 @@ export class GrpcWebProxy {
       const grpcRequestHeaders = cleanRequestHeaders(webHeaders);
       const grpcRequest = this.grpcClient.request(grpcRequestHeaders);
 
-      let responseHeaders = {};
-
       webStream.on("data", chunk => {
         grpcRequest.write(chunk);
       });
@@ -82,24 +80,18 @@ export class GrpcWebProxy {
         grpcRequest.end();
       });
       grpcRequest.on("response", headers => {
-        console.log("RESPONSE");
-        responseHeaders = cleanResponseHeaders(headers, webHeaders.origin);
-        // webStream.respond(cleanResponseHeaders(headers, webHeaders.origin));
+        webStream.respond(cleanResponseHeaders(headers, webHeaders.origin));
       });
       grpcRequest.on("trailers", headers => {
-        console.log("TRAILERS");
         webStream.write(trailersToPayload(headers));
       });
       grpcRequest.on("data", chunk => {
-        console.log("DATA");
         webStream.write(chunk);
       });
       grpcRequest.on("error", e => {
-        console.error(e);
         webStream.end();
       });
       grpcRequest.on("end", () => {
-        webStream.respond(responseHeaders);
         webStream.end();
         
       });
@@ -161,6 +153,7 @@ function cleanResponseHeaders(
   const newHeaders: http2.OutgoingHttpHeaders = { ...grpcHeaders };
   // Not entirely sure why this needs to be removed, but it does.
   delete newHeaders[":status"];
+  newHeaders["grpc-status"] = 0;
   // The original content type was grpc, change to web.
   newHeaders["content-type"] = GRPC_CONTENT_TYPE;
   newHeaders["access-control-allow-origin"] = origin;
