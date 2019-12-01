@@ -153,7 +153,8 @@ function cleanResponseHeaders(
   const newHeaders: http2.OutgoingHttpHeaders = { ...grpcHeaders };
   // Not entirely sure why this needs to be removed, but it does.
   delete newHeaders[":status"];
-  newHeaders["grpc-status"] = 0;
+  // Set grpc-status to 0 if it's not present in the server response.
+  newHeaders["grpc-status"] = newHeaders["grpc-status"] || 0;
   // The original content type was grpc, change to web.
   newHeaders["content-type"] = GRPC_CONTENT_TYPE;
   newHeaders["access-control-allow-origin"] = origin;
