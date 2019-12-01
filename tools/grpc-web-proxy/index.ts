@@ -73,6 +73,8 @@ export class GrpcWebProxy {
       const grpcRequestHeaders = cleanRequestHeaders(webHeaders);
       const grpcRequest = this.grpcClient.request(grpcRequestHeaders);
 
+      let responseHeaders = {};
+
       webStream.on("data", chunk => {
         grpcRequest.write(chunk);
       });
@@ -80,12 +82,16 @@ export class GrpcWebProxy {
         grpcRequest.end();
       });
       grpcRequest.on("response", headers => {
-        webStream.respond(cleanResponseHeaders(headers, webHeaders.origin));
+        console.log("RESPONSE");
+        responseHeaders = cleanResponseHeaders(headers, webHeaders.origin);
+        // webStream.respond(cleanResponseHeaders(headers, webHeaders.origin));
       });
       grpcRequest.on("trailers", headers => {
+        console.log("TRAILERS");
         webStream.write(trailersToPayload(headers));
       });
       grpcRequest.on("data", chunk => {
+        console.log("DATA");
         webStream.write(chunk);
       });
       grpcRequest.on("error", e => {
@@ -93,7 +99,9 @@ export class GrpcWebProxy {
         webStream.end();
       });
       grpcRequest.on("end", () => {
+        webStream.respond(responseHeaders);
         webStream.end();
+        
       });
     } catch (e) {
       webStream.end();
@@ -106,12 +114,15 @@ export class GrpcWebProxy {
  * Returns a lenient cors response, allowing any origin and all headers sent.
  */
 function corsResponseAllowOrigin(requestHeaders: http2.IncomingHttpHeaders) {
+  const allowRequestHeaders = requestHeaders["access-control-request-headers"];
+  const allowRequestHeadersList = typeof allowRequestHeaders === "string" ? [allowRequestHeaders] : allowRequestHeaders;
   return {
     "access-control-allow-credentials": "true",
     "access-control-allow-headers": [
       "x-grpc-web",
       "content-type",
-      ...Object.keys(requestHeaders)
+      ...Object.keys(requestHeaders),
+      ...allowRequestHeadersList
     ].join(", "),
     "access-control-allow-methods": "POST",
     "access-control-allow-origin": requestHeaders.origin,
