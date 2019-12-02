@@ -18,7 +18,7 @@ describe("@dataform/integration/redshift", () => {
     expect(compiledGraph.graphErrors.compilationErrors).to.eql([]);
     expect(compiledGraph.graphErrors.validationErrors).to.eql([]);
 
-    const adapter = adapters.create(compiledGraph.projectConfig);
+    const adapter = adapters.create(compiledGraph.projectConfig, compiledGraph.dataformCoreVersion);
 
     // Redshift transactions are giving us headaches here. Drop tables sequentially.
     const dropFunctions = [].concat(

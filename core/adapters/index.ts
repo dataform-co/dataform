@@ -21,7 +21,8 @@ export interface IAdapter {
 }
 
 export type AdapterConstructor<T extends IAdapter> = new (
-  projectConfig: dataform.IProjectConfig
+  projectConfig: dataform.IProjectConfig,
+  dataformCoreVersion: string
 ) => T;
 
 export enum WarehouseType {
@@ -81,11 +82,14 @@ export function register(warehouseType: string, c: AdapterConstructor<IAdapter>)
   registry[warehouseType] = c;
 }
 
-export function create(projectConfig: dataform.IProjectConfig): IAdapter {
+export function create(
+  projectConfig: dataform.IProjectConfig,
+  dataformCoreVersion: string
+): IAdapter {
   if (!registry[projectConfig.warehouse]) {
     throw new Error(`Unsupported warehouse: ${projectConfig.warehouse}`);
   }
-  return new registry[projectConfig.warehouse](projectConfig);
+  return new registry[projectConfig.warehouse](projectConfig, dataformCoreVersion);
 }
 
 register("bigquery", BigQueryAdapter);

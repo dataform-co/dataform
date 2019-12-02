@@ -1,14 +1,11 @@
+import { IAdapter } from "@dataform/core/adapters";
+import { Adapter } from "@dataform/core/adapters/base";
+import { Task, Tasks } from "@dataform/core/tasks";
 import { dataform } from "@dataform/protos";
-import { Task, Tasks } from "../tasks";
-import { Adapter } from "./base";
-import { IAdapter } from "./index";
 
 export class SnowflakeAdapter extends Adapter implements IAdapter {
-  private project: dataform.IProjectConfig;
-
-  constructor(project: dataform.IProjectConfig) {
+  constructor(private project: dataform.IProjectConfig, private dataformCoreVersion: string) {
     super();
-    this.project = project;
   }
 
   public resolveTarget(target: dataform.ITarget) {
