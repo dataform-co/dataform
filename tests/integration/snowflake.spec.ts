@@ -18,7 +18,7 @@ describe("@dataform/integration/snowflake", () => {
     expect(compiledGraph.graphErrors.compilationErrors).to.eql([]);
     expect(compiledGraph.graphErrors.validationErrors).to.eql([]);
 
-    const adapter = adapters.create(compiledGraph.projectConfig);
+    const adapter = adapters.create(compiledGraph.projectConfig, compiledGraph.dataformCoreVersion);
 
     // Drop all the tables before we do anything.
     await dropAllTables(compiledGraph, adapter, dbadapter);

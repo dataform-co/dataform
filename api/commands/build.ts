@@ -36,7 +36,10 @@ export class Builder {
     this.compiledGraph = compiledGraph;
     this.runConfig = runConfig;
     this.state = state;
-    this.adapter = adapters.create(compiledGraph.projectConfig);
+    this.adapter = adapters.create(
+      compiledGraph.projectConfig,
+      compiledGraph.dataformCoreVersion || "1.0.0"
+    );
   }
 
   public build(): dataform.ExecutionGraph {

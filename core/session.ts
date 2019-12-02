@@ -10,6 +10,9 @@ import { util } from "protobufjs";
 import { Graph as TarjanGraph } from "tarjan-graph";
 import * as TarjanGraphConstructor from "tarjan-graph";
 
+// Can't use resolveJsonModule with Bazel.
+const { version: dataformCoreVersion } = require("@dataform/core/package.json");
+
 interface IActionProto {
   name?: string;
   fileName?: string;
@@ -110,7 +113,7 @@ export class Session {
   }
 
   public adapter(): adapters.IAdapter {
-    return adapters.create(this.config);
+    return adapters.create(this.config, dataformCoreVersion);
   }
 
   public sqlxAction(actionOptions: {
@@ -347,7 +350,8 @@ export class Session {
         this.actions.filter(action => action instanceof Declaration)
       ),
       tests: this.compileGraphChunk(Object.values(this.tests)),
-      graphErrors: this.graphErrors
+      graphErrors: this.graphErrors,
+      dataformCoreVersion
     });
 
     this.fullyQualifyDependencies(
