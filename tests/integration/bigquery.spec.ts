@@ -8,6 +8,7 @@ import { dropAllTables, getTableRows, keyBy } from "df/tests/integration/utils";
 describe("@dataform/integration/bigquery", () => {
   const credentials = dfapi.credentials.read("bigquery", "df/test_credentials/bigquery.json");
   const dbadapter = dbadapters.create(credentials, "bigquery");
+  after(() => dbadapter.close());
 
   it("run", async () => {
     const compiledGraph = await dfapi.compile({

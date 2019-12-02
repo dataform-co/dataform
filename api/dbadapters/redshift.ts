@@ -18,7 +18,9 @@ export class RedshiftDbAdapter implements IDbAdapter {
     // Intended for temporary testing, not included in a permanent API.
     usePgPool: boolean
   ) {
-    this.queryExecutor = new PgClientExecutor(credentials as dataform.IJDBC);
+    this.queryExecutor = usePgPool
+      ? new PgPoolExecutor(credentials as dataform.IJDBC)
+      : new PgClientExecutor(credentials as dataform.IJDBC);
   }
 
   public async execute(
@@ -81,7 +83,7 @@ export class RedshiftDbAdapter implements IDbAdapter {
         }))
       };
     } else {
-      throw new Error(`Could not find relation: ${target.schema}.${target.name}`);
+      return null;
     }
   }
 
@@ -92,6 +94,10 @@ export class RedshiftDbAdapter implements IDbAdapter {
   public async prepareSchema(schema: string): Promise<void> {
     await this.execute(`create schema if not exists "${schema}"`);
   }
+
+  public async close() {
+    await this.queryExecutor.close();
+  }
 }
 
 interface IPgQueryExecutor {
@@ -101,6 +107,7 @@ interface IPgQueryExecutor {
       maxResults?: number;
     }
   ): Promise<any[]>;
+  close(): Promise<void>;
 }
 
 class PgClientExecutor implements IPgQueryExecutor {
@@ -129,6 +136,8 @@ class PgClientExecutor implements IPgQueryExecutor {
       })
       .promise();
   }
+
+  public async close() {}
 
   private async executeInsidePool(
     statement: string,
@@ -248,5 +257,9 @@ class PgPoolExecutor implements IPgQueryExecutor {
     } finally {
       client.release();
     }
+  }
+
+  public async close() {
+    await this.pool.end();
   }
 }

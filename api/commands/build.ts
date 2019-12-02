@@ -12,11 +12,13 @@ export async function build(
   credentials: Credentials
 ) {
   const prunedGraph = prune(compiledGraph, runConfig);
-  const stateResult = await state(
-    prunedGraph,
-    dbadapters.create(credentials, compiledGraph.projectConfig.warehouse)
-  );
-  return new Builder(prunedGraph, runConfig, stateResult).build();
+  const dbadapter = dbadapters.create(credentials, compiledGraph.projectConfig.warehouse);
+  try {
+    const stateResult = await state(prunedGraph, dbadapter);
+    return new Builder(prunedGraph, runConfig, stateResult).build();
+  } finally {
+    await dbadapter.close();
+  }
 }
 
 export class Builder {
