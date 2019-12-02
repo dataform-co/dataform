@@ -678,7 +678,7 @@ describe("examples", () => {
     }
   });
 
-  it("redshift compiles", async () => {
+  it("version is correctly set", async () => {
     const graph = await compile({
       projectDir: "df/examples/common_v2",
       projectConfigOverride: { warehouse: "bigquery" }
