@@ -106,12 +106,15 @@ export class GrpcWebProxy {
  * Returns a lenient cors response, allowing any origin and all headers sent.
  */
 function corsResponseAllowOrigin(requestHeaders: http2.IncomingHttpHeaders) {
+  const allowRequestHeaders = requestHeaders["access-control-request-headers"];
+  const allowRequestHeadersList = typeof allowRequestHeaders === "string" ? [allowRequestHeaders] : allowRequestHeaders;
   return {
     "access-control-allow-credentials": "true",
     "access-control-allow-headers": [
       "x-grpc-web",
       "content-type",
-      ...Object.keys(requestHeaders)
+      ...Object.keys(requestHeaders),
+      ...allowRequestHeadersList
     ].join(", "),
     "access-control-allow-methods": "POST",
     "access-control-allow-origin": requestHeaders.origin,
@@ -150,6 +153,8 @@ function cleanResponseHeaders(
   const newHeaders: http2.OutgoingHttpHeaders = { ...grpcHeaders };
   // Not entirely sure why this needs to be removed, but it does.
   delete newHeaders[":status"];
+  // Set grpc-status to 0 if it's not present in the server response.
+  newHeaders["grpc-status"] = newHeaders["grpc-status"] || 0;
   // The original content type was grpc, change to web.
   newHeaders["content-type"] = GRPC_CONTENT_TYPE;
   newHeaders["access-control-allow-origin"] = origin;
