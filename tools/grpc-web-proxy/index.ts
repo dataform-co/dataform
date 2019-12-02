@@ -89,11 +89,11 @@ export class GrpcWebProxy {
         webStream.write(chunk);
       });
       grpcRequest.on("error", e => {
+        console.error(e);
         webStream.end();
       });
       grpcRequest.on("end", () => {
         webStream.end();
-        
       });
     } catch (e) {
       webStream.end();
