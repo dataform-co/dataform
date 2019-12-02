@@ -101,10 +101,10 @@ describe("examples", () => {
           cleanSql(
             `select * from (select current_timestamp() as ts)
            where ts > (select max(ts) from \`tada-analytics.${schemaWithSuffix(
-            "df_integration_test"
-          )}.example_is_incremental\`) or (select max(ts) from \`tada-analytics.${schemaWithSuffix(
-            "df_integration_test"
-          )}.example_is_incremental\`) is null`
+             "df_integration_test"
+           )}.example_is_incremental\`) or (select max(ts) from \`tada-analytics.${schemaWithSuffix(
+              "df_integration_test"
+            )}.example_is_incremental\`) is null`
           )
         );
 
@@ -676,5 +676,14 @@ describe("examples", () => {
     } catch (e) {
       // OK
     }
+  });
+
+  it("redshift compiles", async () => {
+    const graph = await compile({
+      projectDir: "df/examples/common_v2",
+      projectConfigOverride: { warehouse: "bigquery" }
+    });
+    const { version: expectedVersion } = require("@dataform/core/package.json");
+    expect(graph.version).equals(expectedVersion);
   });
 });

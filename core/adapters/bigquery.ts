@@ -4,11 +4,8 @@ import { Adapter } from "./base";
 import { IAdapter } from "./index";
 
 export class BigQueryAdapter extends Adapter implements IAdapter {
-  private project: dataform.IProjectConfig;
-
-  constructor(project: dataform.IProjectConfig) {
+  constructor(private project: dataform.IProjectConfig, private version: string) {
     super();
-    this.project = project;
   }
 
   public resolveTarget(target: dataform.ITarget) {

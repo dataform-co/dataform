@@ -10,9 +10,14 @@ ts_library(
         "//protos",
         "//sqlx",
         "@npm//@types/node",
+        "@npm//@types/semver",
         "@npm//protobufjs",
+        "@npm//semver",
         "@npm//tarjan-graph",
     ],
+    data = [
+        ":package.json"
+    ]
 )
 
 load("//tools/npm:package.bzl", "dataform_npm_package")

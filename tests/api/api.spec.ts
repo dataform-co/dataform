@@ -311,6 +311,7 @@ describe("@dataform/api", () => {
     it("redshift_create", () => {
       const testGraph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
         projectConfig: { warehouse: "redshift" },
+        version: "1.4.1",
         tables: [
           {
             name: "redshift_all",

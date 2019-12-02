@@ -17,7 +17,7 @@ describe("@dataform/integration/bigquery", () => {
     expect(compiledGraph.graphErrors.compilationErrors).to.eql([]);
     expect(compiledGraph.graphErrors.validationErrors).to.eql([]);
 
-    const adapter = adapters.create(compiledGraph.projectConfig);
+    const adapter = adapters.create(compiledGraph.projectConfig, compiledGraph.version);
 
     // Drop all the tables before we do anything.
     await dropAllTables(compiledGraph, adapter, dbadapter);

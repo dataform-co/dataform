@@ -234,6 +234,8 @@ message CompiledGraph {
 
   GraphErrors graph_errors = 7;
 
+  string version = 10;
+
   repeated ValidationError deprecated_validation_errors = 5;
   repeated CompilationError deprecated_compilation_errors = 6;
 }
