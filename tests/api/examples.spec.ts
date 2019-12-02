@@ -684,6 +684,6 @@ describe("examples", () => {
       projectConfigOverride: { warehouse: "bigquery" }
     });
     const { version: expectedVersion } = require("@dataform/core/package.json");
-    expect(graph.version).equals(expectedVersion);
+    expect(graph.dataformCoreVersion).equals(expectedVersion);
   });
 });

@@ -1,11 +1,11 @@
+import { IAdapter } from "@dataform/core/adapters";
+import { Adapter } from "@dataform/core/adapters/base";
+import { Task, Tasks } from "@dataform/core/tasks";
 import { dataform } from "@dataform/protos";
 import * as semver from "semver";
-import { Task, Tasks } from "../tasks";
-import { Adapter } from "./base";
-import { IAdapter } from "./index";
 
 export class RedshiftAdapter extends Adapter implements IAdapter {
-  constructor(private project: dataform.IProjectConfig, private version: string) {
+  constructor(private project: dataform.IProjectConfig, private dataformCoreVersion: string) {
     super();
   }
 
@@ -72,7 +72,7 @@ export class RedshiftAdapter extends Adapter implements IAdapter {
   public createOrReplace(table: dataform.ITable) {
     if (table.type === "view") {
       const isBindDefined = table.redshift && table.redshift.hasOwnProperty("bind");
-      const bindDefaultValue = semver.gte(this.version, "1.4.1") ? false : true;
+      const bindDefaultValue = semver.gte(this.dataformCoreVersion, "1.4.1") ? false : true;
       const bind = isBindDefined ? table.redshift.bind : bindDefaultValue;
       return (
         Tasks.create()

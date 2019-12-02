@@ -4,7 +4,7 @@ import { Task, Tasks } from "@dataform/core/tasks";
 import { dataform } from "@dataform/protos";
 
 export class SQLDataWarehouseAdapter extends Adapter implements IAdapter {
-  constructor(private project: dataform.IProjectConfig, private version: string) {
+  constructor(private project: dataform.IProjectConfig, private dataformCoreVersion: string) {
     super();
   }
 
