@@ -1,4 +1,5 @@
 import * as http2 from "http2";
+import { promisify } from "util";
 
 const GRPC_CONTENT_TYPE = "application/grpc";
 const GRPC_WEB_CONTENT_TYPE = "application/grpc-web";
@@ -19,6 +20,7 @@ export interface IGrpcWebProxyOptions {
 export class GrpcWebProxy {
   private webServer: http2.Http2Server;
   private grpcClient: http2.ClientHttp2Session;
+  private isShutdown: boolean;
 
   constructor(options: IGrpcWebProxyOptions) {
     // Set defaults.
@@ -42,8 +44,18 @@ export class GrpcWebProxy {
     const _ = this.connectAndKeepAlive(options.backend);
   }
 
+  public shutdown() {
+    this.isShutdown = true;
+    if (this.webServer.listening) {
+      this.webServer.close();
+    }
+    if (!!this.grpcClient) {
+      this.grpcClient.close();
+    }
+  }
+
   private async connectAndKeepAlive(backend: string) {
-    while (true) {
+    while (!this.isShutdown) {
       if (!this.grpcClient || this.grpcClient.destroyed) {
         this.grpcClient = http2.connect(backend);
         this.grpcClient.on("connect", () => {
@@ -107,7 +119,8 @@ export class GrpcWebProxy {
  */
 function corsResponseAllowOrigin(requestHeaders: http2.IncomingHttpHeaders) {
   const allowRequestHeaders = requestHeaders["access-control-request-headers"];
-  const allowRequestHeadersList = typeof allowRequestHeaders === "string" ? [allowRequestHeaders] : allowRequestHeaders;
+  const allowRequestHeadersList =
+    typeof allowRequestHeaders === "string" ? [allowRequestHeaders] : allowRequestHeaders;
   return {
     "access-control-allow-credentials": "true",
     "access-control-allow-headers": [
