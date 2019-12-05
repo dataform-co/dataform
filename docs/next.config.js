@@ -47,7 +47,7 @@ let config = {
       use: [{ loader: require.resolve("umd-compat-loader") }]
     });
     // Tell webpack to preserve information about file names so we can use them for paths.
-    config.node = { __filename: true };
+    config.node = { __filename: true, fs: 'empty' };
     return config;
   }
 };
