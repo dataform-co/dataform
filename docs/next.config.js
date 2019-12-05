@@ -1,12 +1,4 @@
 const withTypescript = require("@zeit/next-typescript");
-const rehypePrism = require("@mapbox/rehype-prism");
-const remarkSlug = require("remark-slug");
-const withMDX = require("@zeit/next-mdx")({
-  options: {
-    hastPlugins: [rehypePrism],
-    mdPlugins: [remarkSlug]
-  }
-});
 const withImages = require("next-images");
 const withCSS = require("@zeit/next-css");
 const path = require("path");
@@ -47,14 +39,13 @@ let config = {
       use: [{ loader: require.resolve("umd-compat-loader") }]
     });
     // Tell webpack to preserve information about file names so we can use them for paths.
-    config.node = { __filename: true, fs: 'empty' };
+    config.node = { __filename: true, fs: "empty" };
     return config;
   }
 };
 
 config = withCSS(config);
 config = withImages(config);
-config = withMDX(config);
 config = withTypescript(config);
 
 module.exports = config;
