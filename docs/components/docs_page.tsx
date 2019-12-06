@@ -71,8 +71,6 @@ export class DocsPage extends React.Component<IProps> {
 async function computeTree(cms: ICms, version: string, path: string): Promise<IFileTree> {
   const children = await cms.list(version, path);
 
-  console.log(children);
-
   const getAttributes = async (path: string) => {
     try {
       const content = await cms.get(version, path);
