@@ -17,19 +17,24 @@ export default class Navigation extends React.Component<IProps> {
   public render() {
     return <div className={styles.navigation}>{this.renderTrees(this.props.tree.children)}</div>;
   }
-  private renderTrees(trees: IFileTree[]) {
-    return trees.map(tree =>
-      tree.children && tree.children.length > 0 ? (
-        <React.Fragment>
-          <h4>{tree.attributes.title}</h4>
-          <Menu className={styles.menu}>{this.renderTrees(tree.children)}</Menu>
-        </React.Fragment>
-      ) : (
-        <MenuItem
-          text={tree.attributes.title}
-          href={`/${this.props.version ? `v/${this.props.version}/` : ""}${tree.file.path}`}
-        />
-      )
+  private renderTrees(trees: IFileTree[], depth = 0) {
+    return (
+      <ul>
+        {trees.map(tree =>
+          tree.children && tree.children.length > 0 ? (
+            <React.Fragment>
+              <li className={styles[`level${depth}`]}>{tree.attributes.title}</li>
+              {this.renderTrees(tree.children, depth + 1)}
+            </React.Fragment>
+          ) : (
+            <li>
+              <a href={`/${this.props.version ? `v/${this.props.version}/` : ""}${tree.file.path}`}>
+                {tree.attributes.title}
+              </a>
+            </li>
+          )
+        )}
+      </ul>
     );
   }
 }
