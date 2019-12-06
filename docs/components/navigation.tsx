@@ -4,6 +4,7 @@ import * as styles from "df/docs/components/navigation.css";
 import * as React from "react";
 
 interface IProps {
+  version: string;
   tree: IFileTree;
 }
 
@@ -24,7 +25,10 @@ export default class Navigation extends React.Component<IProps> {
           <Menu className={styles.menu}>{this.renderTrees(tree.children)}</Menu>
         </React.Fragment>
       ) : (
-        <MenuItem text={tree.attributes.title} href={`/${tree.path}`} />
+        <MenuItem
+          text={tree.attributes.title}
+          href={`/${this.props.version ? `v/${this.props.version}/` : ""}${tree.path}`}
+        />
       )
     );
   }

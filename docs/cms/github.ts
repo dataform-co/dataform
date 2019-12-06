@@ -2,7 +2,7 @@ import * as Octokit from "@octokit/rest";
 import { ICms, IFile } from "df/docs/cms";
 import { join } from "path";
 
-const octokit = new Octokit();
+const octokit = new Octokit({ auth: "5e396250f7b4dd25c3519278faf28a447573aad0" });
 
 interface IOptions {
   owner: string;

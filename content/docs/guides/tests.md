@@ -65,4 +65,4 @@ provided for each input dataset.
 
 ## Running unit tests
 
-If you use the [Dataform CLI](/guides/command-line-interface), you can run all tests in your project directory with the `dataform test` command.
+If you use the [Dataform CLI](command-line-interface), you can run all tests in your project directory with the `dataform test` command.

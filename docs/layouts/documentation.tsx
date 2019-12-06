@@ -9,6 +9,7 @@ import * as styles from "df/docs/layouts/documentation.css";
 
 export interface IProps {
   attributes: IFrontMatter;
+  version: string;
   tree: IFileTree;
 }
 
@@ -42,7 +43,7 @@ export default class Documentation extends React.Component<IProps> {
         <div className={styles.container}>
           <div className={styles.sidebar}>
             <Search />
-            <Navigation tree={this.props.tree} />
+            <Navigation version={this.props.version} tree={this.props.tree} />
           </div>
           <div className={styles.mainContent}>
             <h1>{this.props.attributes.title}</h1>

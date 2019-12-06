@@ -10,15 +10,15 @@ Dataform makes it easy to manage complex SQL pipelines in your data warehouse. U
 
 Using Dataform you can:
 
-- [Publish datasets and views](/guides/datasets)
-- [Write assertions for your data](/guides/assertions)
-- [Execute arbitrary SQL operations](/guides/operations)
+- [Publish datasets and views](datasets)
+- [Write assertions for your data](assertions)
+- [Execute arbitrary SQL operations](operations)
 
 Dataform currently supports Google BigQuery, Postgres, Amazon Redshift, Snowflake, and Azure SQL Data Warehouse.
 
 ## How can I use it?
 
-You can get started quickly using <a target="_blank" rel="noopener" href="https://dataform.co">Dataform Web</a>, or if you prefer, check out our open source [command line interface](/guides/command-line-interface) to develop Dataform projects yourself.
+You can get started quickly using <a target="_blank" rel="noopener" href="https://dataform.co">Dataform Web</a>, or if you prefer, check out our open source [command line interface](command-line-interface) to develop Dataform projects yourself.
 
 ## How does it work?
 

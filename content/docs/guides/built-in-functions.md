@@ -10,7 +10,7 @@ When writing `.sqlx` files, Dataform makes a number of built-in functions availa
 
 `ref()` enables you to easily reference another dataset in your project without having to provide the full SQL dataset name. `ref()` also adds the referenced dataset to the set of dependencies for the query.
 
-An example of `ref()` being used to add a dependency is [here](https://docs.dataform.co/guides/datasets/#referencing-other-datasets).
+An example of `ref()` being used to add a dependency is [here](datasets/#referencing-other-datasets).
 
 ## `resolve()`
 
@@ -20,4 +20,4 @@ An example of `ref()` being used to add a dependency is [here](https://docs.data
 
 `self()` returns the name of the current dataset. If the default schema or dataset name is overridden in the `config{}` block, `self()` will return the full and correct dataset name.
 
-An example of `self()` being used to set up incremental tables is [here](/guides/incremental-datasets/#a-simple-example).
+An example of `self()` being used to set up incremental tables is [here](incremental-datasets/#a-simple-example).

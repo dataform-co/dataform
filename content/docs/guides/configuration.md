@@ -36,7 +36,7 @@ by changing the `defaultSchema` property to some other value. For example, to ch
 }
 ```
 
-[Assertions](/guides/assertions) are created inside a different schema as specified by the `assertionsSchema` property.
+[Assertions](assertions) are created inside a different schema as specified by the `assertionsSchema` property.
 
 ## `package.json`
 

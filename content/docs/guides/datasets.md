@@ -13,7 +13,7 @@ config { type: "view" }
 SELECT 1 AS TEST
 ```
 
-Upon running this query a **view** called `schema.example` will be created (where `schema` is the Dataform schema defined in your [`dataform.json`](/guides/configuration#dataform.json) file).
+Upon running this query a **view** called `schema.example` will be created (where `schema` is the Dataform schema defined in your [`dataform.json`](configuration#dataform.json) file).
 
 Note that non-SQL statements are stripped during query compilation, so the final executable query in this case would be:
 
@@ -148,18 +148,18 @@ SELECT * FROM ${ref("example")}
 
 ### BigQuery
 
-For more information on configuring BigQuery datasets, such as enabling dataset partitioning, check out the [BigQuery guide](/guides/warehouses/bigquery).
+For more information on configuring BigQuery datasets, such as enabling dataset partitioning, check out the [BigQuery guide](warehouses/bigquery).
 
 ### Redshift
 
-For more information on configuring Redshift datasets, such as sort keys and dist keys, check out the [Redshift guide](/guides/warehouses/redshift).
+For more information on configuring Redshift datasets, such as sort keys and dist keys, check out the [Redshift guide](warehouses/redshift).
 
 ### SQL Data Warehouse
 
-For more information on configuring SQL Data Warehouse datasets, such as distribution settings, check out the [SQL Data Warehouse guide](/guides/warehouses/sqldatawarehouse).
+For more information on configuring SQL Data Warehouse datasets, such as distribution settings, check out the [SQL Data Warehouse guide](warehouses/sqldatawarehouse).
 
 ## Further reading
 
-- [Testing data with assertions](/guides/assertions)
-- [Custom SQL operations](/guides/operations)
-- [JavaScript API](/guides/js-api)
+- [Testing data with assertions](assertions)
+- [Custom SQL operations](operations)
+- [JavaScript API](js-api)

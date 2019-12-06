@@ -25,6 +25,7 @@ interface IQuery {
 
 interface IProps {
   attributes: IFrontMatter;
+  version: string;
   content?: string;
   tree: IFileTree;
 }
@@ -40,7 +41,8 @@ export class DocsPage extends React.Component<IProps> {
   public static async getInitialProps({
     query
   }: NextPageContext & { query: IQuery }): Promise<IProps> {
-    const cms = !query.version || query.version === "local" ? localCms : gitHubCms;
+    const version = query.version;
+    const cms = !version || version === "local" ? localCms : gitHubCms;
 
     const queryPath = [query.path0, query.path1].filter(part => !!part).join("/");
 
@@ -49,12 +51,16 @@ export class DocsPage extends React.Component<IProps> {
 
     const parsedMarkdown = frontMatter(await cms.get(query.version, queryPath));
     const attributes = parsedMarkdown.attributes as IFrontMatter;
-    return { tree, attributes, content: parsedMarkdown.body };
+    return { tree, attributes, version, content: parsedMarkdown.body };
   }
 
   public render() {
     return (
-      <Documentation attributes={this.props.attributes} tree={this.props.tree}>
+      <Documentation
+        version={this.props.version}
+        attributes={this.props.attributes}
+        tree={this.props.tree}
+      >
         {this.props.content &&
           remark()
             .use(remarkRehype, { allowDangerousHTML: true })
@@ -70,8 +76,6 @@ export class DocsPage extends React.Component<IProps> {
 
 async function computeTree(cms: ICms, version: string, path: string): Promise<IFileTree> {
   const children = await cms.list(version, path);
-
-  console.log(children);
 
   const getAttributes = async (path: string) => {
     try {

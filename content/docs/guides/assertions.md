@@ -53,7 +53,7 @@ This query will find any keys where there exists more than 1 row for that key (a
 Dataform automatically creates a view in your warehouse containing the results of the compiled assertion query.
 This makes it easy to inspect the rows that caused the assertion to fail without increasing storage requirements or pulling any data out of your warehouse.
 
-Assertions create views in a seperate schema to your default schema. This is configured in your [`dataform.json`](/guides/configuration) file.
+Assertions create views in a seperate schema to your default schema. This is configured in your [`dataform.json`](configuration) file.
 
 Given a default assertion schema `dataform_assertions` and an assertion file called `definitions/some_assertion.sqlx`:
 
