@@ -8,9 +8,9 @@ import { BaseLayout } from "df/docs/layouts/base";
 import * as styles from "df/docs/layouts/documentation.css";
 
 export interface IProps {
-  attributes: IFrontMatter;
   version: string;
-  tree: IFileTree;
+  index: IFileTree;
+  current: IFileTree;
 }
 
 export default class Documentation extends React.Component<IProps> {
@@ -39,14 +39,14 @@ export default class Documentation extends React.Component<IProps> {
   public render() {
     // const currentHeaderLinks = this.getHeaderLinks(this.props.children as React.ReactElement<any>);
     return (
-      <BaseLayout title={`Dataform docs | ${this.props.attributes.title}`}>
+      <BaseLayout title={`Dataform docs | ${this.props.current.attributes.title}`}>
         <div className={styles.container}>
           <div className={styles.sidebar}>
             <Search />
-            <Navigation version={this.props.version} tree={this.props.tree} />
+            <Navigation version={this.props.version} tree={this.props.index} />
           </div>
           <div className={styles.mainContent}>
-            <h1>{this.props.attributes.title}</h1>
+            <h1>{this.props.current.attributes.title}</h1>
             {this.props.children}
           </div>
         </div>

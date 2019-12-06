@@ -8,12 +8,13 @@ export interface IFrontMatter {
 }
 
 export interface IFileTree {
-  path: string;
+  file: IFile;
   attributes: IFrontMatter;
+  content: string;
   children?: IFileTree[];
 }
 
 export interface ICms {
-  list(version: string, path?: string): Promise<IFile[]>;
-  get(version: string, path?: string): Promise<string>;
+  list(path?: string): Promise<IFile[]>;
+  get(path?: string): Promise<string>;
 }

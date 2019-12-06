@@ -27,7 +27,7 @@ export default class Navigation extends React.Component<IProps> {
       ) : (
         <MenuItem
           text={tree.attributes.title}
-          href={`/${this.props.version ? `v/${this.props.version}/` : ""}${tree.path}`}
+          href={`/${this.props.version ? `v/${this.props.version}/` : ""}${tree.file.path}`}
         />
       )
     );

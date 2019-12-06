@@ -8,24 +8,18 @@ interface IOptions {
   owner: string;
   repo: string;
   rootPath: string;
+  ref: string;
 }
 
 export class GitHubCms implements ICms {
   constructor(private options: IOptions) {}
 
-  public async list(version: string, directoryPath?: string) {
-    const isDir = await this.isDirectory(version, directoryPath);
-    console.log(join(this.options.rootPath, directoryPath));
-    console.log(isDir);
+  public async list(directoryPath?: string) {
+    const isDir = await this.isDirectory(directoryPath);
     if (!isDir) {
       return [];
     }
-    const result = await octokit.repos.getContents({
-      owner: this.options.owner,
-      repo: this.options.repo,
-      ref: version,
-      path: join(this.options.rootPath, directoryPath)
-    });
+    const result = await this.getContents(directoryPath);
 
     if (!(result.data instanceof Array)) {
       return [] as IFile[];
@@ -37,31 +31,34 @@ export class GitHubCms implements ICms {
         const cleanPath = fullPath.endsWith(".md")
           ? fullPath.substring(0, fullPath.length - 3)
           : fullPath;
-        return { path: cleanPath, hasChildren: file.type === "dir" } as IFile;
+        return {
+          path: cleanPath,
+          contentPath: fullPath,
+          hasChildren: file.type === "dir"
+        } as IFile;
       });
   }
 
-  public async get(version: string, filePath?: string) {
-    const isDir = await this.isDirectory(version, filePath);
+  public async get(filePath?: string) {
+    const isDir = await this.isDirectory(filePath);
     const resolvedPath = isDir ? join(filePath, "index.md") : `${filePath}.md`;
-    const result = await octokit.repos.getContents({
-      owner: this.options.owner,
-      repo: this.options.repo,
-      ref: version,
-      path: join(this.options.rootPath, resolvedPath)
-    });
+    const result = await this.getContents(resolvedPath);
     const buffer = new Buffer((result.data as any).content, "base64");
     return buffer.toString("utf8");
   }
 
-  private async isDirectory(version: string, filePath?: string): Promise<boolean> {
+  private async getContents(path: string) {
+    return await octokit.repos.getContents({
+      owner: this.options.owner,
+      repo: this.options.repo,
+      ref: this.options.ref,
+      path: join(this.options.rootPath, path)
+    });
+  }
+
+  private async isDirectory(filePath?: string): Promise<boolean> {
     try {
-      const result = await octokit.repos.getContents({
-        owner: this.options.owner,
-        repo: this.options.repo,
-        ref: version,
-        path: join(this.options.rootPath, filePath)
-      });
+      const result = await this.getContents(filePath);
       return result.data instanceof Array;
     } catch (e) {
       return false;
