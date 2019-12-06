@@ -4,7 +4,7 @@ title: Docs
 
 Dataform makes it easy to manage complex SQL pipelines in your data warehouse. Using Dataform's API you can power large, complex data transformations with just a few simple statements.
 
-<img src="/static/images/main_schema.svg" style={{ width: "100%", padding: "20px" }} />
+<img src="/static/images/main_schema.svg" style="width: 100%; padding: 20px;" />
 
 # Get started
 
