@@ -50,6 +50,11 @@
   color: #2f419b;
 }
 
+:global body a:hover {
+  text-decoration: none;
+  color: black;
+}
+
 :global body h1 {
   color: colorsTextMain;
   font-family: "Poppins";

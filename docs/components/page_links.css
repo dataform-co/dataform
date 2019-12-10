@@ -1,0 +1,9 @@
+ul.pageLinks {
+  list-style-type: none;
+  padding-inline-end: 10px;
+}
+
+.pageLinks li {
+    line-height: 20px;
+    padding: 5px 0px;
+}

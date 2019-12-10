@@ -30,59 +30,7 @@ filegroup(
     srcs = glob(["static/**/*.*"])
 )
 
-load("//tools:next_site.bzl", "next_site2")
-
-next_site2(
-    name = "docs",
-    srcs = [":sources"],
-    data = [
-        ":css_typings",
-        "//:package.json",
-        "//:tsconfig.json",
-        "//content",
-        "//fe:css",
-        "//static:files",
-        "@npm//typescript",
-        "@npm//@types/react",
-        "@npm//@types/node",
-        "@npm//@blueprintjs/core",
-        "@npm//@blueprintjs/select",
-        "@npm//@mapbox/rehype-prism",
-        "@npm//@zeit/next-css",
-        "@npm//@zeit/next-mdx",
-        "@npm//@zeit/next-typescript",
-        "@npm//algoliasearch",
-        "@npm//css-loader",
-        "@npm//front-matter",
-        "@npm//remark-rehype",
-        "@npm//rehype-raw",
-        "@npm//rehype-react",
-        "@npm//@octokit/rest",
-        "@npm//extracted-loader",
-        "@npm//next-images",
-        "@npm//react-instantsearch-dom",
-        "@npm//react-is",
-        "@npm//react-media",
-        "@npm//remark",
-        "@npm//rehype-slug",
-        "@npm//tsconfig-paths-webpack-plugin",
-        "@npm//umd-compat-loader",
-        "@npm//url-loader",
-    ],
-    port = 3001,
-    site_path = "docs",
-)
-
 load("@npm//next:index.bzl", "next")
-
-# npm_package_bin(
-#     name = ".next",
-#     output_dir = True,
-#     args = [
-#         "--src-dir=docs",
-#         "--dest-dir=$(@D)",
-#     ],
-#     tool = "//tools/next:build-bin",
 
 DEPS = [
         ":css_typings",
@@ -128,10 +76,7 @@ next(
         # This resolves to the output_dir, which is the name of this build rule.
         "$(@D)",
     ],
-    data = DEPS + glob(
-        ["**/*.*"],
-        exclude = EXCLUDE_PATTERNS,
-    ),
+    data = DEPS + [":sources"],
 )
 
 next(
@@ -143,11 +88,9 @@ next(
         "3001"
     ],
     data = DEPS + [
-        ":assets"
-    ] + glob(
-        ["**/*.*"],
-        exclude = EXCLUDE_PATTERNS,
-    )
+        ":assets",
+        ":sources"
+    ]
 )
 
 next(

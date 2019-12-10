@@ -37,13 +37,14 @@ const gitHubCms = (ref: string) =>
     ref
   });
 
-export class DocsPage extends React.Component<IProps> {
+export class Docs extends React.Component<IProps> {
   public static async getInitialProps({
     query
   }: NextPageContext & { query: IQuery }): Promise<IProps> {
-    const version = query.version || "local";
+    const version = query.version;
+    const effectiveVersion = query.version || "local";
 
-    const cms = version === "local" ? localCms : gitHubCms(version);
+    const cms = effectiveVersion === "local" ? localCms : gitHubCms(version);
     const path = [query.path0, query.path1, query.path2].filter(part => !!part).join("/");
 
     const tree = await Tree.create(cms);

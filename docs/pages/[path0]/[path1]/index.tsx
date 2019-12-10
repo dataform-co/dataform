@@ -1,3 +1,3 @@
-import { DocsPage } from "df/docs/components/docs_page";
+import { Docs } from "df/docs/pages/_docs";
 
-export default DocsPage;
+export default Docs;

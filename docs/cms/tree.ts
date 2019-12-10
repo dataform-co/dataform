@@ -44,9 +44,6 @@ export class Tree {
     );
   }
 
-  /**
-   * Returns a version of the tree without content, just metadata.
-   */
   public index(): IFileTree {
     return {
       ...this.tree,

@@ -6,7 +6,7 @@ title: Documenting datasets
 
 Dataform allows you to add documentation to the datasets defined in your project.
 
-# Adding table and field descriptions
+## Adding table and field descriptions
 
 Table and field descriptions are added using the config block.
 

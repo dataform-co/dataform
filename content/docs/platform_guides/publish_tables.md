@@ -37,7 +37,7 @@ Upon successful completion of the run, a new view named `dataform.onboarding_tab
 
 <div className="bp3-callout bp3-icon-info-sign bp3-intent-primary" markdown="1">
   By default, Dataform creates datasets and views under a schema named <code>dataform</code>. You
-  can change this in the <code>dataform.json</code> in your{" "}
+  can change this in the <code>dataform.json</code> in your
   <a href="../guides/configuration">project configuration</a>.
 </div>
 
