@@ -4,14 +4,13 @@
   justify-content: center;
 }
 
-
 .sidebar {
-  width: 320px;
+  min-width: 320px;
   height: calc(100vh - 60px);
   overflow-y: hidden;
   position: sticky;
   top: 60px;
-  padding-top: 48px;
+  padding-top: 30px;
   padding-right: 10px;
 }
 
@@ -20,13 +19,22 @@
 }
 
 .mainContent {
-  border-left: 1px solid rgba(120,134,156,0.2);
+  border-left: 1px solid rgba(120, 134, 156, 0.2);
   padding-left: 30px;
-  padding-right: 30px;
   padding-top: 30px;
   background-color: #fff;
   flex-grow: 1;
   border-left: 1px solid #e9e9e9;
-  max-width: 800px;
+  min-width: 500px;
   padding-bottom: 800px;
+}
+
+.titleBlock {
+  display: flex;
+  align-items: center;
+}
+
+.titleRight {
+  flex-grow: 1;
+  text-align: right;
 }

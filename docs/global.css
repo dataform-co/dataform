@@ -2,25 +2,9 @@
 @value colorsButtonBlue: #5e73e5;
 @value colorsButtonGreen: #00C37D;
 
-:global body .bp3-button {
-  font-weight: bold;
-  text-transform: uppercase;
-  background-color: #5e73e5;
-  padding: 8px 24px;
-  height: 40px;
-  margin-top: -8px;
-  border: none;
-  box-shadow: unset !important;
-  -webkit-box-shadow: unset !important;
-  border-radius: 4px;
-  background-image: unset !important;
+:global body {
+  overflow-y: scroll !important;
 }
-
-:global body .bp3-button * {
-  color: #fff;
-  font-size: 12px;
-}
-
 :global body .bp3-button.bp3-intent-primary {
   background-color: colorsButtonBlue;
 }
@@ -63,7 +47,7 @@
 
 :global body a {
   text-decoration: none;
-  color: #2F419B;
+  color: #2f419b;
 }
 
 :global body h1 {

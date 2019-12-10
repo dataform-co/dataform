@@ -27,7 +27,7 @@ interface IProps {
   version: string;
 }
 
-const localCms = new LocalCms("/home/lewis/workspace/dataform/content/docs");
+const localCms = new LocalCms("content/docs");
 
 const gitHubCms = (ref: string) =>
   new GitHubCms({
@@ -59,11 +59,6 @@ export class DocsPage extends React.Component<IProps> {
         current={this.props.current}
         index={this.props.index}
       >
-        <a
-          href={`https://github.com/dataform-co/dataform/blob/master/content/docs/${this.props.current.file.path}.md`}
-        >
-          edit
-        </a>
         {this.props.current.content &&
           remark()
             .use(remarkRehype, { allowDangerousHTML: true })

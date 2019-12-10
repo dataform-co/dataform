@@ -5,6 +5,7 @@ export interface IFile {
 
 export interface IFrontMatter {
   title?: string;
+  priority?: number;
 }
 
 export interface IFileTree {

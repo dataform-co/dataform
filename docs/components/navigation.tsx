@@ -6,6 +6,7 @@ import * as React from "react";
 interface IProps {
   version: string;
   tree: IFileTree;
+  currentPath: string;
 }
 
 export interface IHeaderLink {
@@ -20,20 +21,31 @@ export default class Navigation extends React.Component<IProps> {
   private renderTrees(trees: IFileTree[], depth = 0) {
     return (
       <ul>
-        {trees.map(tree =>
-          tree.children && tree.children.length > 0 ? (
-            <React.Fragment>
-              <li className={styles[`level${depth}`]}>{tree.attributes.title}</li>
-              {this.renderTrees(tree.children, depth + 1)}
+        {trees.map(tree => {
+          const classNames = [];
+          if (this.props.currentPath === tree.file.path) {
+            classNames.push(styles.active);
+          }
+          return (
+            <React.Fragment key={tree.file.path}>
+              <li
+                className={classNames.join(" ")}
+                style={{
+                  fontWeight: this.props.currentPath.startsWith(tree.file.path) ? "bold" : "normal"
+                }}
+              >
+                <a
+                  href={`/${this.props.version ? `v/${this.props.version}/` : ""}${tree.file.path}`}
+                >
+                  {tree.attributes.title}
+                </a>
+              </li>
+              {tree.children &&
+                tree.children.length > 0 &&
+                this.renderTrees(tree.children, depth + 1)}
             </React.Fragment>
-          ) : (
-            <li>
-              <a href={`/${this.props.version ? `v/${this.props.version}/` : ""}${tree.file.path}`}>
-                {tree.attributes.title}
-              </a>
-            </li>
-          )
-        )}
+          );
+        })}
       </ul>
     );
   }

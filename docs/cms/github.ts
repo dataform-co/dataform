@@ -1,6 +1,7 @@
-import * as Octokit from "@octokit/rest";
-import { ICms, IFile } from "df/docs/cms";
+import { ICms, IFile } from "df/docs/cms/index";
 import { join } from "path";
+
+const Octokit = require("@octokit/rest");
 
 const octokit = new Octokit({ auth: "" });
 

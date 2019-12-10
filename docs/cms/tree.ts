@@ -1,6 +1,7 @@
 import { ICms, IFileTree, IFrontMatter } from "df/docs/cms";
-import * as frontMatter from "front-matter";
 import { basename, join } from "path";
+
+const frontMatter = require("front-matter");
 
 export class Tree {
   public static async create(cms: ICms, path = ""): Promise<Tree> {

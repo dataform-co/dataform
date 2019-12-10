@@ -2,11 +2,13 @@ const withTypescript = require("@zeit/next-typescript");
 const withImages = require("next-images");
 const withCSS = require("@zeit/next-css");
 const path = require("path");
-const TsconfigPathsPlugin = require("tsconfig-paths-webpack-plugin");
+const fs = require("fs");
 
 let config = {
   pageExtensions: ["tsx", "md", "mdx"],
   cssModules: true,
+  // Next cannot handle absolute distDir's, so go up to the top of the workspace.
+  distDir: `../${process.argv.slice(-1)[0]}`,
   cssLoaderOptions: {
     importLoaders: 1,
     localIdentName: "[local]___[hash:base64:5]"
@@ -14,13 +16,13 @@ let config = {
   webpack: (config, options) => {
     // Use the module name mappings in tsconfig so imports resolve properly.
     config.resolve.plugins = config.resolve.plugins || [];
-    config.resolve.plugins.push(
-      new TsconfigPathsPlugin({ extensions: [".ts", ".tsx", ".js", ".css"] })
-    );
+
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      df: path.resolve(__dirname, "../")
+    };
     // Make sure webpack can resolve modules that live within our bazel managed deps.
-    const bazelNodeModulesPath = path.resolve("./external/npm/node_modules");
-    config.resolve.modules.push(bazelNodeModulesPath);
-    config.resolveLoader.modules.push(bazelNodeModulesPath);
+
     // Inline babel config for typescript compilation.
     options.defaultLoaders.babel.options.configFile = false;
     options.defaultLoaders.babel.options.presets = [

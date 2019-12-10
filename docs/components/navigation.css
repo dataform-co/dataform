@@ -1,21 +1,28 @@
-.navigation {
-}
-
-ul {
+.navigation ul {
   list-style-type: none;
   padding-inline-start: 0px;
 }
 
-li {
+.navigation li {
+  padding: 0px 8px;
 }
-
-li.level0 {
+.navigation li.level0 {
   text-transform: uppercase;
   font-weight: bold;
   margin-top: 15px;
 }
 
-li.level1 {
+.navigation li.level1 {
   text-transform: uppercase;
   margin-top: 10px;
+}
+
+.navigation li.active {
+  font-weight: bold;
+  background-color: #2f419b;
+  border-radius: 8px;
+}
+
+.navigation li.active * {
+  color: #fff;
 }

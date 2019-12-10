@@ -7,7 +7,7 @@ title: Publish datasets
 Create a new file by clicking on the + button next to the `definitions` folder and create a new SQLX file named `onboarding_table`.
 For now, ignore the other options; these are more advanced features which will be covered in later documentation.
 
-<img src="/static/images/platform_guides/publish_tables/new_file.png" style={{ width: "100%" }} />
+<img src="/static/images/platform_guides/publish_tables/new_file.png" style="width: 100%;" />
 
 ## Write a query
 
