@@ -153,7 +153,7 @@ const builtYargs = createYargsCli({
       positionalOptions: [],
       options: [],
       processFn: async argv => {
-        return false;
+        return 0;
       }
     },
     {
@@ -201,20 +201,20 @@ const builtYargs = createYargsCli({
       ],
       processFn: async argv => {
         print("Writing project files...\n");
-        printInitResult(
-          await init(
-            argv["project-dir"],
-            {
-              warehouse: argv.warehouse,
-              gcloudProjectId: argv["gcloud-project-id"]
-            },
-            {
-              skipInstall: argv["skip-install"],
-              includeSchedules: argv["include-schedules"],
-              includeEnvironments: argv["include-environments"]
-            }
-          )
+        const initResult = await init(
+          argv["project-dir"],
+          {
+            warehouse: argv.warehouse,
+            gcloudProjectId: argv["gcloud-project-id"]
+          },
+          {
+            skipInstall: argv["skip-install"],
+            includeSchedules: argv["include-schedules"],
+            includeEnvironments: argv["include-environments"]
+          }
         );
+        printInitResult(initResult);
+        return 0;
       }
     },
     {
@@ -278,6 +278,7 @@ const builtYargs = createYargsCli({
         const filePath = path.resolve(argv["project-dir"], credentials.CREDENTIALS_FILENAME);
         fs.writeFileSync(filePath, prettyJsonStringify(finalCredentials));
         printInitCredsResult(filePath);
+        return 0;
       }
     },
     {
@@ -311,58 +312,68 @@ const builtYargs = createYargsCli({
           if (compiledGraphHasErrors(compiledGraph)) {
             print("");
             printCompiledGraphErrors(compiledGraph.graphErrors);
+            return true;
           }
+          return false;
         };
-        await compileAndPrint();
+        const graphHasErrors = await compileAndPrint();
 
-        if (argv.watch) {
-          let timeoutID: NodeJS.Timer = null;
-          let isCompiling = false;
+        if (!argv.watch) {
+          return graphHasErrors ? 1 : 0;
+        }
 
-          // Initialize watcher.
-          const watcher = chokidar.watch(projectDir, {
-            ignored: /node_modules/,
-            persistent: true,
-            ignoreInitial: true,
-            awaitWriteFinish: {
-              stabilityThreshold: 1000,
-              pollInterval: 200
-            }
-          });
+        let watching = true;
 
-          let watching = true;
+        let timeoutID: NodeJS.Timer = null;
+        let isCompiling = false;
 
-          const printReady = () => {
-            print("\nWatching for changes...\n");
-          };
-          // Add event listeners.
-          watcher
-            .on("ready", printReady)
-            .on("error", error => printError(`Error: ${error}`))
-            .on("all", () => {
-              if (timeoutID || isCompiling) {
-                // don't recompile many times if we changed a lot of files
-                clearTimeout(timeoutID);
-              }
-
-              timeoutID = setTimeout(async () => {
-                clearTimeout(timeoutID);
-
-                if (!isCompiling) {
-                  isCompiling = true;
-                  await compileAndPrint();
-                  printReady();
-                  isCompiling = false;
-                }
-              }, RECOMPILE_DELAY);
-            });
-          process.on("SIGINT", () => {
-            watcher.close();
-            watching = false;
-          });
-          while (watching) {
-            await new Promise((resolve, reject) => setTimeout(() => resolve(), 100));
+        // Initialize watcher.
+        const watcher = chokidar.watch(projectDir, {
+          ignored: /node_modules/,
+          persistent: true,
+          ignoreInitial: true,
+          awaitWriteFinish: {
+            stabilityThreshold: 1000,
+            pollInterval: 200
           }
+        });
+
+        const printReady = () => {
+          print("\nWatching for changes...\n");
+        };
+        // Add event listeners.
+        watcher
+          .on("ready", printReady)
+          .on("error", error => {
+            // This error is caught not if there is a compilation error, but
+            // if the watcher fails; this indicates an failure on our side.
+            printError(`Error: ${error}`);
+            process.exit(1);
+          })
+          .on("all", () => {
+            if (timeoutID || isCompiling) {
+              // don't recompile many times if we changed a lot of files
+              clearTimeout(timeoutID);
+            }
+
+            timeoutID = setTimeout(async () => {
+              clearTimeout(timeoutID);
+
+              if (!isCompiling) {
+                isCompiling = true;
+                await compileAndPrint();
+                printReady();
+                isCompiling = false;
+              }
+            }, RECOMPILE_DELAY);
+          });
+        process.on("SIGINT", () => {
+          watcher.close();
+          watching = false;
+          process.exit(1);
+        });
+        while (watching) {
+          await new Promise((resolve, reject) => setTimeout(() => resolve(), 100));
         }
       }
     },
@@ -379,7 +390,7 @@ const builtYargs = createYargsCli({
         });
         if (compiledGraphHasErrors(compiledGraph)) {
           printCompiledGraphErrors(compiledGraph.graphErrors);
-          return;
+          return 1;
         }
         printSuccess("Compiled successfully.\n");
         const readCredentials = credentials.read(
@@ -389,7 +400,7 @@ const builtYargs = createYargsCli({
 
         if (!compiledGraph.tests.length) {
           printError("No unit tests found.");
-          return;
+          return 1;
         }
 
         print(`Running ${compiledGraph.tests.length} unit tests...\n`);
@@ -399,6 +410,7 @@ const builtYargs = createYargsCli({
           compiledGraph.tests
         );
         testResults.forEach(testResult => printTestResult(testResult));
+        return testResults.every(testResult => testResult.successful) ? 0 : 1;
       }
     },
     {
@@ -438,7 +450,7 @@ const builtYargs = createYargsCli({
         });
         if (compiledGraphHasErrors(compiledGraph)) {
           printCompiledGraphErrors(compiledGraph.graphErrors);
-          return;
+          return 1;
         }
         printSuccess("Compiled successfully.\n");
         const readCredentials = credentials.read(
@@ -461,7 +473,7 @@ const builtYargs = createYargsCli({
             "Dry run (--dry-run) mode is turned on; not running the following actions against your warehouse:\n"
           );
           printExecutionGraph(executionGraph, argv.verbose);
-          return;
+          return 0;
         }
 
         if (argv["run-tests"]) {
@@ -474,7 +486,7 @@ const builtYargs = createYargsCli({
           testResults.forEach(testResult => printTestResult(testResult));
           if (testResults.some(testResult => !testResult.successful)) {
             printError("\nUnit tests did not pass; aborting run.");
-            return;
+            return 1;
           }
           printSuccess("Unit tests completed successfully.\n");
         }
@@ -487,7 +499,7 @@ const builtYargs = createYargsCli({
               WarehouseType[compiledGraph.projectConfig.warehouse as keyof typeof WarehouseType]
             )
           ) {
-            process.exit();
+            process.exit(1);
           }
           runner.cancel();
         });
@@ -511,7 +523,9 @@ const builtYargs = createYargsCli({
         };
 
         runner.onChange(printExecutedGraph);
-        printExecutedGraph(await runner.resultPromise());
+        const runResult = await runner.resultPromise();
+        printExecutedGraph(runResult);
+        return runResult.status === dataform.RunResult.ExecutionStatus.SUCCESSFUL ? 0 : 1;
       }
     },
     {
@@ -541,6 +555,7 @@ const builtYargs = createYargsCli({
           })
         );
         printFormatFilesResult(results);
+        return 0;
       }
     },
     {
@@ -552,6 +567,7 @@ const builtYargs = createYargsCli({
         printListTablesResult(
           await table.list(credentials.read(argv.warehouse, argv.credentials), argv.warehouse)
         );
+        return 0;
       }
     },
     {
@@ -566,6 +582,7 @@ const builtYargs = createYargsCli({
             name: argv.table
           })
         );
+        return 0;
       }
     }
   ]
