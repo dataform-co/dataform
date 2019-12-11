@@ -61,12 +61,6 @@ function prompt(questionText: string, options?: readlineSync.BasicOptions) {
   });
 }
 
-export function conditionalPrint(willPrint: boolean, text: string) {
-  if (willPrint) {
-    print(text);
-  }
-}
-
 export function print(text: string) {
   writeStdOut(text);
 }

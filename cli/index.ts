@@ -2,7 +2,6 @@
 import { build, compile, credentials, format, init, run, table, test } from "@dataform/api";
 import { prettyJsonStringify } from "@dataform/api/utils";
 import {
-  conditionalPrint,
   print,
   printCompiledGraph,
   printCompiledGraphErrors,
@@ -138,7 +137,7 @@ const jsonOutputOption: INamedOption<yargs.Options> = {
   name: "json",
   option: {
     describe:
-      "If true, the JSON describing the non-executable graph will be outputted to the terminal.",
+      "Exclusively output a JSON describing the non-executable graph (other output is suppressed, excluding errors).",
     type: "boolean",
     default: false
   }
@@ -302,9 +301,10 @@ const builtYargs = createYargsCli({
         const projectDir = argv["project-dir"];
         const schemaSuffixOverride = argv["schema-suffix"];
 
-        // If JSON output is set, the only output is just the JSON.
         const compileAndPrint = async () => {
-          conditionalPrint(!argv.json, "Compiling...\n");
+          if (!argv.json) {
+            print("Compiling...\n");
+          }
           const compiledGraph = await compile({
             projectDir,
             schemaSuffixOverride
@@ -433,7 +433,9 @@ const builtYargs = createYargsCli({
         jsonOutputOption
       ],
       processFn: async argv => {
-        conditionalPrint(!argv.json, "Compiling...\n");
+        if (!argv.json) {
+          print("Compiling...\n");
+        }
         const compiledGraph = await compile({
           projectDir: argv["project-dir"],
           schemaSuffixOverride: argv["schema-suffix"]
@@ -461,10 +463,11 @@ const builtYargs = createYargsCli({
         );
 
         if (argv["dry-run"]) {
-          conditionalPrint(
-            !argv.json,
-            "Dry run (--dry-run) mode is turned on; not running the following actions against your warehouse:\n"
-          );
+          if (!argv.json) {
+            print(
+              "Dry run (--dry-run) mode is turned on; not running the following actions against your warehouse:\n"
+            );
+          }
           printExecutionGraph(executionGraph, argv.json);
           return;
         }
@@ -484,7 +487,9 @@ const builtYargs = createYargsCli({
           printSuccess("Unit tests completed successfully.\n");
         }
 
-        conditionalPrint(!argv.json, "Running...\n");
+        if (!argv.json) {
+          print("Running...\n");
+        }
         const runner = run(executionGraph, readCredentials);
         process.on("SIGINT", () => {
           if (
