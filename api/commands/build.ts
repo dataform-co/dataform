@@ -12,7 +12,11 @@ export async function build(
   credentials: Credentials
 ) {
   const prunedGraph = prune(compiledGraph, runConfig);
-  const dbadapter = dbadapters.create(credentials, compiledGraph.projectConfig.warehouse);
+  const dbadapter = dbadapters.create(
+    credentials,
+    compiledGraph.projectConfig.warehouse,
+    !!runConfig.usePgPoolForRedshift
+  );
   try {
     const stateResult = await state(prunedGraph, dbadapter);
     return new Builder(prunedGraph, runConfig, stateResult).build();

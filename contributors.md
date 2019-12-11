@@ -15,7 +15,7 @@ To check the project builds succesfully, run the following command:
 bazel build ...
 ```
 
-_Note: If you are running Bazel on a **Mac**, `bazel build...` may fail with a `Too many open files in system` error. This is [due to a limitation](https://github.com/angular/angular-bazel-example/issues/178) on the default maximum open file descriptors. On OS X Sierra or newer the limit can be increased with `sudo sysctl -w kern.maxfiles=20480`._
+_Note: If you are running Bazel on a **Mac**, `bazel build ...` may fail with a `Too many open files in system` error. This is [due to a limitation](https://github.com/angular/angular-bazel-example/issues/178) on the default maximum open file descriptors. You can increase the limit by running `sudo sysctl -w kern.maxfiles=<LARGE_NUMBER>` (we use `65536`)._
 
 ### Test
 
@@ -32,13 +32,13 @@ _Note: Some integration tests may fail due to missing credentials. If you need t
 Print out the default help information:
 
 ```bash
-bazel run cli:bin -- --help
+./scripts/run help
 ```
 
 Create a new `redshift` project in a temp directory:
 
 ```bash
-bazel run cli:bin -- init redshift /tmp/test_project
+./scripts/run init redshift /tmp/test_project
 ```
 
 See the [CLI documentation](https://docs.dataform.co/guides/command-line-interface/) for more commands.
@@ -51,4 +51,4 @@ This will run the documentation site in development mode with live reload.
 bazel run docs
 ```
 
-You can view the documentation site at [localhost:3001](http://localhost:3001)
+You can view the documentation site at [localhost:3001](http://localhost:3001).
