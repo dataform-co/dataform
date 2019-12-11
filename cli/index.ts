@@ -318,63 +318,62 @@ const builtYargs = createYargsCli({
         };
         const graphHasErrors = await compileAndPrint();
 
-        if (argv.watch) {
-          let timeoutID: NodeJS.Timer = null;
-          let isCompiling = false;
+        if (!argv.watch) {
+          return graphHasErrors ? 1 : 0;
+        }
 
-          // Initialize watcher.
-          const watcher = chokidar.watch(projectDir, {
-            ignored: /node_modules/,
-            persistent: true,
-            ignoreInitial: true,
-            awaitWriteFinish: {
-              stabilityThreshold: 1000,
-              pollInterval: 200
-            }
-          });
+        let watching = true;
 
-          let watching = true;
+        let timeoutID: NodeJS.Timer = null;
+        let isCompiling = false;
 
-          const printReady = () => {
-            print("\nWatching for changes...\n");
-          };
-          // Add event listeners.
-          watcher
-            .on("ready", printReady)
-            .on("error", error => {
-              // This error is caught not if there is a compilation error, but
-              // if the watcher fails; this indicates an failure on our side.
-              printError(`Error: ${error}`);
-              process.exit(1);
-            })
-            .on("all", () => {
-              if (timeoutID || isCompiling) {
-                // don't recompile many times if we changed a lot of files
-                clearTimeout(timeoutID);
-              }
+        // Initialize watcher.
+        const watcher = chokidar.watch(projectDir, {
+          ignored: /node_modules/,
+          persistent: true,
+          ignoreInitial: true,
+          awaitWriteFinish: {
+            stabilityThreshold: 1000,
+            pollInterval: 200
+          }
+        });
 
-              timeoutID = setTimeout(async () => {
-                clearTimeout(timeoutID);
-
-                if (!isCompiling) {
-                  isCompiling = true;
-                  await compileAndPrint();
-                  printReady();
-                  isCompiling = false;
-                }
-              }, RECOMPILE_DELAY);
-            });
-          process.on("SIGINT", () => {
-            watcher.close();
-            watching = false;
+        const printReady = () => {
+          print("\nWatching for changes...\n");
+        };
+        // Add event listeners.
+        watcher
+          .on("ready", printReady)
+          .on("error", error => {
+            // This error is caught not if there is a compilation error, but
+            // if the watcher fails; this indicates an failure on our side.
+            printError(`Error: ${error}`);
             process.exit(1);
+          })
+          .on("all", () => {
+            if (timeoutID || isCompiling) {
+              // don't recompile many times if we changed a lot of files
+              clearTimeout(timeoutID);
+            }
+
+            timeoutID = setTimeout(async () => {
+              clearTimeout(timeoutID);
+
+              if (!isCompiling) {
+                isCompiling = true;
+                await compileAndPrint();
+                printReady();
+                isCompiling = false;
+              }
+            }, RECOMPILE_DELAY);
           });
-          if (!watching) {
-            return graphHasErrors ? 1 : 0;
-          }
-          while (watching) {
-            await new Promise((resolve, reject) => setTimeout(() => resolve(), 100));
-          }
+        process.on("SIGINT", () => {
+          watcher.close();
+          watching = false;
+          process.exit(1);
+        });
+        while (watching) {
+          await new Promise((resolve, reject) => setTimeout(() => resolve(), 100));
         }
       }
     },
@@ -410,14 +409,8 @@ const builtYargs = createYargsCli({
           compiledGraph.projectConfig.warehouse,
           compiledGraph.tests
         );
-        let allTestsSuccessful = true;
-        testResults.forEach(testResult => {
-          printTestResult(testResult);
-          if (testResult.successful === false) {
-            allTestsSuccessful = false;
-          }
-        });
-        return allTestsSuccessful ? 0 : 1;
+        testResults.forEach(testResult => printTestResult(testResult));
+        return testResults.every(testResult => testResult.successful) ? 0 : 1;
       }
     },
     {
@@ -532,7 +525,7 @@ const builtYargs = createYargsCli({
         runner.onChange(printExecutedGraph);
         const runResult = await runner.resultPromise();
         printExecutedGraph(runResult);
-        return runResult.status === dataform.RunResult.ExecutionStatus.FAILED ? 1 : 0;
+        return runResult.status === dataform.RunResult.ExecutionStatus.SUCCESSFUL ? 0 : 1;
       }
     },
     {

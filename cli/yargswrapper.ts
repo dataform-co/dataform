@@ -26,8 +26,8 @@ export function createYargsCli(cli: ICli) {
       command.description,
       (yargsChainer: yargs.Argv) => createOptionsChain(yargsChainer, command),
       async (argv: { [argumentName: string]: any }) => {
-        const result = await command.processFn(argv);
-        process.exit(result);
+        const exitCode = await command.processFn(argv);
+        process.exit(exitCode);
       }
     );
   }
