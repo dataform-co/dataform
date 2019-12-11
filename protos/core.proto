@@ -120,7 +120,7 @@ message ActionDescriptor {
 
 message ColumnDescriptor {
   string description = 1;
-  // For nested records, the path might look like e.g. [“record”, “column”].
+  // For nested records, the path might look like e.g. ["record", "column"].
   // For simple columns, this will always contain a single entry e.g. ["column"].
   repeated string path = 2; 
 }
