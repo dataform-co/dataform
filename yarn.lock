@@ -980,15 +980,10 @@
   resolved "https://registry.yarnpkg.com/@bazel/ibazel/-/ibazel-0.9.1.tgz#d3248d60b7ef44ced1c2bdecda87ab2b6141a56e"
   integrity sha512-twdytcFr+zj7CQcJCDegrAAI2soRyL34yaxD+3g59W8u188iOsZ392gscFJufysoEQKvAon1UiI3DqCrS+qYDw==
 
-"@bazel/labs@^0.42.3":
-  version "0.42.3"
-  resolved "https://registry.yarnpkg.com/@bazel/labs/-/labs-0.42.3.tgz#ed97d2ad3abd2bd961f212ed6b66e1fb409739ad"
-  integrity sha512-dWTr8czg96i7rGQI6Jg/l5JsikWNWQCusDJ5db256NFKL+lbB6ii16+4zjKw/Ge3YmcMNZBP3481+4ahRCzTkA==
-
 "@bazel/typescript@^0.42.2":
-  version "0.42.2"
-  resolved "https://registry.yarnpkg.com/@bazel/typescript/-/typescript-0.42.2.tgz#6c8e2187e9f7f937650c8b4e2350dc7d46284cb1"
-  integrity sha512-9HS8W6Wv74zhjvyP2rwym05TwzB8/c3Pxxi4gfjwjwxaDAIZCQfC8UGSRxeCm5t0JNz485W1/0WScoACjcASCQ==
+  version "0.42.3"
+  resolved "https://registry.yarnpkg.com/@bazel/typescript/-/typescript-0.42.3.tgz#224d44bb32aa7b36908e01b2c58f68a0d22fe5b1"
+  integrity sha512-6cnB50Zu6avGZbBruV51YNLrYtze+bWocnK49tdCkvu9qNTUISZpKgzpOwXUFj81zjNp9ffStWR1qPasTAJDxw==
   dependencies:
     protobufjs "6.8.8"
     semver "5.6.0"
