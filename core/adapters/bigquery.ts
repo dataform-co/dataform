@@ -10,7 +10,7 @@ export class BigQueryAdapter extends Adapter implements IAdapter {
 
   public resolveTarget(target: dataform.ITarget) {
     return `\`${
-      this.project.gcloudProjectId ? `${this.project.gcloudProjectId}.` : ""
+      this.project.defaultDatabase ? `${this.project.defaultDatabase}.` : ""
     }${target.schema || this.project.defaultSchema}.${target.name}\``;
   }
 

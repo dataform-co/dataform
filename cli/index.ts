@@ -162,17 +162,20 @@ const builtYargs = createYargsCli({
       positionalOptions: [warehouseOption, projectDirOption],
       options: [
         {
-          name: "gcloud-project-id",
+          name: "default-database",
           option: {
-            describe: "The Google Cloud Project ID to use when accessing bigquery."
+            describe:
+              "The default database to use. For BigQuery, this is a Google Cloud Project ID."
           },
           check: (argv: yargs.Arguments) => {
-            if (argv["gcloud-project-id"] && argv.warehouse !== "bigquery") {
-              throw new Error("The --gcloud-project-id flag is only used for BigQuery projects.");
-            }
-            if (!argv["gcloud-project-id"] && argv.warehouse === "bigquery") {
+            if (argv["default-database"] && !["bigquery", "snowflake"].includes(argv.warehouse)) {
               throw new Error(
-                "The --gcloud-project-id flag is required for BigQuery projects. Please run 'dataform help init' for more information."
+                "The --default-database flag is only used for BigQuery and Snowflake projects."
+              );
+            }
+            if (!argv["default-database"] && argv.warehouse === "bigquery") {
+              throw new Error(
+                "The --default-database flag is required for BigQuery projects. Please run 'dataform help init' for more information."
               );
             }
           }
@@ -201,11 +204,12 @@ const builtYargs = createYargsCli({
       ],
       processFn: async argv => {
         print("Writing project files...\n");
+        // TODO: change this to take a "default-warehouse" flag, and require it in the case of BQ.
         const initResult = await init(
           argv["project-dir"],
           {
             warehouse: argv.warehouse,
-            gcloudProjectId: argv["gcloud-project-id"]
+            defaultDatabase: argv["default-database"]
           },
           {
             skipInstall: argv["skip-install"],

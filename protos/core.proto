@@ -8,13 +8,16 @@ option java_multiple_files = true;
 
 message ProjectConfig {
   string warehouse = 1;
+
+  string default_database = 9;
   string default_schema = 2;
   string assertion_schema = 5;
+
   int32 idempotent_action_retries = 8;
 
   string schema_suffix = 7;
 
-  // BigQuery only.
+  // Deprecated. Please use 'default_database' instead.
   string gcloud_project_id = 6;
 }
 
