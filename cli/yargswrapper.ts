@@ -9,7 +9,7 @@ export interface ICommand {
   description: string;
   positionalOptions: Array<INamedOption<yargs.PositionalOptions>>;
   options: Array<INamedOption<yargs.Options>>;
-  processFn: (argv: { [argumentName: string]: any }) => any;
+  processFn: (argv: { [argumentName: string]: any }) => Promise<number>;
 }
 
 export interface INamedOption<T> {
@@ -26,8 +26,8 @@ export function createYargsCli(cli: ICli) {
       command.description,
       (yargsChainer: yargs.Argv) => createOptionsChain(yargsChainer, command),
       async (argv: { [argumentName: string]: any }) => {
-        await command.processFn(argv);
-        process.exit();
+        const result = await command.processFn(argv);
+        process.exit(result);
       }
     );
   }
