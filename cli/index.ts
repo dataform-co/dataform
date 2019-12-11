@@ -338,7 +338,12 @@ const builtYargs = createYargsCli({
           // Add event listeners.
           watcher
             .on("ready", printReady)
-            .on("error", error => printError(`Error: ${error}`))
+            .on("error", error => {
+              // This error is caught not if there is a compilation error, but
+              // if the watcher fails; this indicates an failure on our side.
+              printError(`Error: ${error}`);
+              process.exit(1);
+            })
             .on("all", () => {
               if (timeoutID || isCompiling) {
                 // don't recompile many times if we changed a lot of files
@@ -364,6 +369,7 @@ const builtYargs = createYargsCli({
             await new Promise((resolve, reject) => setTimeout(() => resolve(), 100));
           }
         }
+        process.exit(0);
       }
     },
     {
@@ -379,7 +385,7 @@ const builtYargs = createYargsCli({
         });
         if (compiledGraphHasErrors(compiledGraph)) {
           printCompiledGraphErrors(compiledGraph.graphErrors);
-          return;
+          return 1;
         }
         printSuccess("Compiled successfully.\n");
         const readCredentials = credentials.read(
@@ -389,7 +395,7 @@ const builtYargs = createYargsCli({
 
         if (!compiledGraph.tests.length) {
           printError("No unit tests found.");
-          return;
+          return 1;
         }
 
         print(`Running ${compiledGraph.tests.length} unit tests...\n`);
@@ -399,6 +405,7 @@ const builtYargs = createYargsCli({
           compiledGraph.tests
         );
         testResults.forEach(testResult => printTestResult(testResult));
+        return 0;
       }
     },
     {
@@ -438,7 +445,7 @@ const builtYargs = createYargsCli({
         });
         if (compiledGraphHasErrors(compiledGraph)) {
           printCompiledGraphErrors(compiledGraph.graphErrors);
-          return;
+          return 1;
         }
         printSuccess("Compiled successfully.\n");
         const readCredentials = credentials.read(
@@ -461,7 +468,7 @@ const builtYargs = createYargsCli({
             "Dry run (--dry-run) mode is turned on; not running the following actions against your warehouse:\n"
           );
           printExecutionGraph(executionGraph, argv.verbose);
-          return;
+          return 0;
         }
 
         if (argv["run-tests"]) {
@@ -474,7 +481,7 @@ const builtYargs = createYargsCli({
           testResults.forEach(testResult => printTestResult(testResult));
           if (testResults.some(testResult => !testResult.successful)) {
             printError("\nUnit tests did not pass; aborting run.");
-            return;
+            return 1;
           }
           printSuccess("Unit tests completed successfully.\n");
         }
@@ -487,7 +494,7 @@ const builtYargs = createYargsCli({
               WarehouseType[compiledGraph.projectConfig.warehouse as keyof typeof WarehouseType]
             )
           ) {
-            process.exit();
+            process.exit(1);
           }
           runner.cancel();
         });
@@ -511,7 +518,9 @@ const builtYargs = createYargsCli({
         };
 
         runner.onChange(printExecutedGraph);
-        printExecutedGraph(await runner.resultPromise());
+        const runResult = await runner.resultPromise()
+        printExecutedGraph(runResult);
+        return ((runResult.status === dataform.RunResult.ExecutionStatus.FAILED) ? 1 : 0);
       }
     },
     {
