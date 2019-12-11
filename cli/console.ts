@@ -61,6 +61,12 @@ function prompt(questionText: string, options?: readlineSync.BasicOptions) {
   });
 }
 
+export function conditionalPrint(willPrint: boolean, text: string) {
+  if (willPrint) {
+    print(text);
+  }
+}
+
 export function print(text: string) {
   writeStdOut(text);
 }
@@ -161,9 +167,9 @@ export function printTestResult(testResult: dataform.ITestResult) {
   }
 }
 
-export function printExecutionGraph(executionGraph: dataform.IExecutionGraph, verbose: boolean) {
+export function printExecutionGraph(executionGraph: dataform.ExecutionGraph, verbose: boolean) {
   if (verbose) {
-    writeStdOut(prettyJsonStringify(executionGraph));
+    writeStdOut(prettyJsonStringify(executionGraph.toJSON()));
   } else {
     const actionsByType = {
       table: [] as dataform.IExecutionAction[],
