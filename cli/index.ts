@@ -204,7 +204,6 @@ const builtYargs = createYargsCli({
       ],
       processFn: async argv => {
         print("Writing project files...\n");
-        // TODO: change this to take a "default-warehouse" flag, and require it in the case of BQ.
         const initResult = await init(
           argv["project-dir"],
           {
