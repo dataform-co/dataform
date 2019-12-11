@@ -23,53 +23,64 @@ filegroup(
     srcs = glob(
         ["**/*.*"],
         exclude = EXCLUDE_PATTERNS,
-    )
+    ),
 )
+
 filegroup(
     name = "assets",
-    srcs = glob(["static/**/*.*"])
+    srcs = glob(["static/**/*.*"]),
 )
 
 load("@npm//next:index.bzl", "next")
 
 DEPS = [
-        ":css_typings",
-        "//:package.json",
-        "//:tsconfig.json",
-        "//content",
-        "//static:files",
-        "@npm//typescript",
-        "@npm//@types/react",
-        "@npm//@types/node",
-        "@npm//@blueprintjs/core",
-        "@npm//@blueprintjs/select",
-        "@npm//@mapbox/rehype-prism",
-        "@npm//@zeit/next-css",
-        "@npm//@zeit/next-mdx",
-        "@npm//@zeit/next-typescript",
-        "@npm//algoliasearch",
-        "@npm//css-loader",
-        "@npm//front-matter",
-        "@npm//remark-rehype",
-        "@npm//rehype-raw",
-        "@npm//rehype-react",
-        "@npm//@octokit/rest",
-        "@npm//extracted-loader",
-        "@npm//next-images",
-        "@npm//react-instantsearch-dom",
-        "@npm//react-is",
-        "@npm//react-media",
-        "@npm//remark",
-        "@npm//rehype-slug",
-        "@npm//tsconfig-paths-webpack-plugin",
-        "@npm//umd-compat-loader",
-        "@npm//url-loader",
-    ]
+    ":css_typings",
+    "//:package.json",
+    "//:tsconfig.json",
+    "//content",
+    "//static:files",
+    "@npm//typescript",
+    "@npm//@types/react",
+    "@npm//@types/node",
+    "@npm//@blueprintjs/core",
+    "@npm//@blueprintjs/select",
+    "@npm//@mapbox/rehype-prism",
+    "@npm//@zeit/next-css",
+    "@npm//@zeit/next-mdx",
+    "@npm//@zeit/next-typescript",
+    "@npm//algoliasearch",
+    "@npm//css-loader",
+    "@npm//front-matter",
+    "@npm//remark-rehype",
+    "@npm//rehype-raw",
+    "@npm//rehype-react",
+    "@npm//@octokit/rest",
+    "@npm//extracted-loader",
+    "@npm//next-images",
+    "@npm//react-instantsearch-dom",
+    "@npm//remark",
+    "@npm//rehype-slug",
+    "@npm//umd-compat-loader",
+    "@npm//url-loader",
+]
+
+next(
+    name = "docs",
+    args = [
+        "dev",
+        "docs",
+        "-p",
+        "3001",
+    ],
+    data = DEPS + [
+        ":assets",
+        ":sources",
+    ],
+)
 
 # This is the output build directory for the next project. It must be called .next because next is very opinionated on this.
 next(
     name = ".next",
-    output_dir = True,
     args = [
         "build",
         "docs",
@@ -77,20 +88,7 @@ next(
         "$(@D)",
     ],
     data = DEPS + [":sources"],
-)
-
-next(
-    name = "dev",
-    args = [
-        "dev",
-        "docs",
-        "-p",
-        "3001"
-    ],
-    data = DEPS + [
-        ":assets",
-        ":sources"
-    ]
+    output_dir = True,
 )
 
 next(
@@ -102,16 +100,24 @@ next(
     data = DEPS + [
         ":assets",
         ":.next",
-    ]
+    ],
 )
 
-load("@io_bazel_rules_docker//container:container.bzl", "container_image")
+load("@io_bazel_rules_docker//nodejs:image.bzl", "nodejs_image")
 
-container_image(
+nodejs_image(
     name = "image",
-    base = "//tools/nginx/static",
-    directory = "/usr/share/nginx/html",
-    tars = [":docs_pkg"],
+    args = [
+        "start",
+        "docs",
+    ],
+    data = DEPS + [
+        ":.next",
+        ":assets",
+        "@npm//next",
+    ],
+    entry_point = "@npm//:node_modules/next/dist/bin/next",
+    install_source_map_support = False,
 )
 
 load("@io_bazel_rules_docker//container:container.bzl", "container_push")
@@ -121,6 +127,6 @@ container_push(
     format = "Docker",
     image = ":image",
     registry = "gcr.io",
-    repository = "tada-analytics/static-docs",
+    repository = "tada-analytics/dataform-docs",
     tag = "latest",
 )

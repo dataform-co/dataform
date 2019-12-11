@@ -1,12 +1,10 @@
 import rehypePrism from "@mapbox/rehype-prism";
-import { ICms, IFile, IFileTree, IFrontMatter } from "df/docs/cms";
+import { IFileTree } from "df/docs/cms";
 import { GitHubCms } from "df/docs/cms/github";
 import { LocalCms } from "df/docs/cms/local";
 import { Tree } from "df/docs/cms/tree";
 import Documentation from "df/docs/layouts/documentation";
-import * as frontMatter from "front-matter";
 import { NextPageContext } from "next";
-import { basename } from "path";
 import * as React from "react";
 import rehypeRaw from "rehype-raw";
 import rehypeReact from "rehype-react";
@@ -72,3 +70,5 @@ export class Docs extends React.Component<IProps> {
     );
   }
 }
+
+export default Docs;

@@ -1,4 +1,4 @@
-import { Icon, Menu, MenuItem } from "@blueprintjs/core";
+import { Icon } from "@blueprintjs/core";
 import { IFileTree } from "df/docs/cms";
 import * as styles from "df/docs/components/navigation.css";
 import * as React from "react";
