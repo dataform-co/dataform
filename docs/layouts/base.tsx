@@ -5,16 +5,14 @@ import Head from "next/head";
 import { Header } from "df/docs/components/header";
 
 import * as globalStyles from "df/docs/global.css";
+import * as highlightStyles from "df/docs/highlight.css";
 import * as styles from "df/docs/layouts/base.css";
-import * as highlightStyles from "df/fe/highlight.css";
 
 export interface IProps {
   title: string;
 }
 
-const PAGES = [];
-
-const MAX_WIDTH = "1220px";
+const MAX_WIDTH = "1400px";
 
 export class BaseLayout extends React.Component<IProps, {}> {
   public render() {
@@ -23,7 +21,7 @@ export class BaseLayout extends React.Component<IProps, {}> {
         <Head>
           <title>{this.props.title}</title>
         </Head>
-        <Header pages={PAGES} invert={false} maxWidth={MAX_WIDTH} />
+        <Header maxWidth={MAX_WIDTH} />
         <div className={styles.leftBackground} />
         <div className={styles.container} style={{ maxWidth: MAX_WIDTH }}>
           {this.props.children}
