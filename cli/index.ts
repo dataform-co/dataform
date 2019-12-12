@@ -133,11 +133,10 @@ const warehouseOption: INamedOption<yargs.PositionalOptions> = {
   }
 };
 
-const verboseOutputOption: INamedOption<yargs.Options> = {
-  name: "verbose",
+const jsonOutputOption: INamedOption<yargs.Options> = {
+  name: "json",
   option: {
-    describe:
-      "If true, the full contents of command output will be output (containing fully compiled SQL, etc).",
+    describe: "Outputs a JSON representation of the compiled project.",
     type: "boolean",
     default: false
   }
@@ -296,19 +295,21 @@ const builtYargs = createYargsCli({
           }
         },
         schemaSuffixOverrideOption,
-        verboseOutputOption
+        jsonOutputOption
       ],
       processFn: async argv => {
         const projectDir = argv["project-dir"];
         const schemaSuffixOverride = argv["schema-suffix"];
 
         const compileAndPrint = async () => {
-          print("Compiling...\n");
+          if (!argv.json) {
+            print("Compiling...\n");
+          }
           const compiledGraph = await compile({
             projectDir,
             schemaSuffixOverride
           });
-          printCompiledGraph(compiledGraph, argv.verbose);
+          printCompiledGraph(compiledGraph, argv.json);
           if (compiledGraphHasErrors(compiledGraph)) {
             print("");
             printCompiledGraphErrors(compiledGraph.graphErrors);
@@ -440,10 +441,12 @@ const builtYargs = createYargsCli({
         includeDepsOption,
         schemaSuffixOverrideOption,
         credentialsOption,
-        verboseOutputOption
+        jsonOutputOption
       ],
       processFn: async argv => {
-        print("Compiling...\n");
+        if (!argv.json) {
+          print("Compiling...\n");
+        }
         const compiledGraph = await compile({
           projectDir: argv["project-dir"],
           schemaSuffixOverride: argv["schema-suffix"]
@@ -452,7 +455,9 @@ const builtYargs = createYargsCli({
           printCompiledGraphErrors(compiledGraph.graphErrors);
           return 1;
         }
-        printSuccess("Compiled successfully.\n");
+        if (!argv.json) {
+          printSuccess("Compiled successfully.\n");
+        }
         const readCredentials = credentials.read(
           compiledGraph.projectConfig.warehouse,
           argv.credentials
@@ -469,11 +474,13 @@ const builtYargs = createYargsCli({
         );
 
         if (argv["dry-run"]) {
-          print(
-            "Dry run (--dry-run) mode is turned on; not running the following actions against your warehouse:\n"
-          );
-          printExecutionGraph(executionGraph, argv.verbose);
-          return 0;
+          if (!argv.json) {
+            print(
+              "Dry run (--dry-run) mode is turned on; not running the following actions against your warehouse:\n"
+            );
+          }
+          printExecutionGraph(executionGraph, argv.json);
+          return;
         }
 
         if (argv["run-tests"]) {
@@ -491,7 +498,9 @@ const builtYargs = createYargsCli({
           printSuccess("Unit tests completed successfully.\n");
         }
 
-        print("Running...\n");
+        if (!argv.json) {
+          print("Running...\n");
+        }
         const runner = run(executionGraph, readCredentials);
         process.on("SIGINT", () => {
           if (

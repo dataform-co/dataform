@@ -161,9 +161,9 @@ export function printTestResult(testResult: dataform.ITestResult) {
   }
 }
 
-export function printExecutionGraph(executionGraph: dataform.IExecutionGraph, verbose: boolean) {
+export function printExecutionGraph(executionGraph: dataform.ExecutionGraph, verbose: boolean) {
   if (verbose) {
-    writeStdOut(prettyJsonStringify(executionGraph));
+    writeStdOut(prettyJsonStringify(executionGraph.toJSON()));
   } else {
     const actionsByType = {
       table: [] as dataform.IExecutionAction[],
