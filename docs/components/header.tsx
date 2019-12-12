@@ -13,11 +13,7 @@ interface IProps {
   maxWidth?: string;
 }
 
-interface IState {}
-
-export class Header extends React.Component<IProps, IState> {
-  public state: IState = {};
-
+export class Header extends React.Component<IProps> {
   public render() {
     const navClasses = [styles.nav];
     const maxWidth = this.props.maxWidth || "1200px";

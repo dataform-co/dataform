@@ -10,16 +10,12 @@ interface IProps {
   links: IHeaderLink[];
 }
 
-export class PageLinks extends React.Component<IProps> {
-  public render() {
-    return (
-      <ul className={styles.pageLinks}>
-        {this.props.links.map(link => (
-          <li>
-            <a href={`#${link.id}`}>{link.text}</a>
-          </li>
-        ))}
-      </ul>
-    );
-  }
-}
+export const PageLinks = (props: IProps) => (
+  <ul className={styles.pageLinks}>
+    {props.links.map(link => (
+      <li key={link.id}>
+        <a href={`#${link.id}`}>{link.text}</a>
+      </li>
+    ))}
+  </ul>
+);
