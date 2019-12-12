@@ -1,106 +1,47 @@
-import { Menu, MenuItem as BPMenuItem } from "@blueprintjs/core";
-import { pathFromFilename } from "df/docs/common/paths";
+import { Icon } from "@blueprintjs/core";
+import { IFileTree } from "df/docs/cms";
 import * as styles from "df/docs/components/navigation.css";
 import * as React from "react";
 
-// Framework guides.
-import * as guideAssertions from "df/docs/pages/guides/assertions.mdx";
-import * as guideBuiltInFunctions from "df/docs/pages/guides/built-in-functions.mdx";
-import * as guideCLI from "df/docs/pages/guides/command-line-interface.mdx";
-import * as guideConfiguration from "df/docs/pages/guides/configuration.mdx";
-import * as guideCoreConcepts from "df/docs/pages/guides/core-concepts.mdx";
-import * as guideDatasets from "df/docs/pages/guides/datasets.mdx";
-import * as guideDeclarations from "df/docs/pages/guides/declarations.mdx";
-import * as guideDocumentation from "df/docs/pages/guides/documentation.mdx";
-import * as guideIncludes from "df/docs/pages/guides/includes.mdx";
-import * as guideIncrementalDatasets from "df/docs/pages/guides/incremental-datasets.mdx";
-import * as guideInlineTables from "df/docs/pages/guides/inline-tables.mdx";
-import * as guideJsApi from "df/docs/pages/guides/js-api.mdx";
-import * as guideOperations from "df/docs/pages/guides/operations.mdx";
-import * as guideTags from "df/docs/pages/guides/tags.mdx";
-import * as guideTests from "df/docs/pages/guides/tests.mdx";
-
-// Framework warehouses.
-import * as guideBigQuery from "df/docs/pages/guides/warehouses/bigquery.mdx";
-import * as guideRedshift from "df/docs/pages/guides/warehouses/redshift.mdx";
-import * as guideSqlDataWarehouse from "df/docs/pages/guides/warehouses/sqldatawarehouse.mdx";
-
-// Platform.
-import * as environments from "df/docs/pages/platform_guides/environments.mdx";
-import * as platformPublishTables from "df/docs/pages/platform_guides/publish_tables.mdx";
-import * as platformScheduling from "df/docs/pages/platform_guides/scheduling.mdx";
-import * as platformSetupDataWarehouse from "df/docs/pages/platform_guides/set_up_datawarehouse.mdx";
-import * as platformVersionControl from "df/docs/pages/platform_guides/version_control.mdx";
-
 interface IProps {
+  version: string;
+  tree: IFileTree;
   currentPath: string;
-  currentHeaderLinks: IHeaderLink[];
-}
-
-export interface IHeaderLink {
-  id: string;
-  text: string;
 }
 
 export default class Navigation extends React.Component<IProps> {
   public render() {
+    return <div className={styles.navigation}>{this.renderTrees(this.props.tree.children)}</div>;
+  }
+  private renderTrees(trees: IFileTree[], depth = 0) {
     return (
-      <div className={styles.navigation}>
-        <h4>Framework</h4>
-        <Menu className={styles.menu}>
-          {[
-            guideCoreConcepts,
-            guideDatasets,
-            guideIncrementalDatasets,
-            guideInlineTables,
-            guideDeclarations,
-            guideIncludes,
-            guideOperations,
-            guideAssertions,
-            guideDocumentation,
-            guideTests,
-            guideTags,
-            guideConfiguration,
-            guideBuiltInFunctions,
-            guideJsApi,
-            guideCLI
-          ].map(page => this.menuItem(page.meta))}
-          <div className={styles.subtitle}>Warehouse integrations</div>
-          {[guideBigQuery, guideRedshift, guideSqlDataWarehouse].map(page =>
-            this.menuItem(page.meta)
-          )}
-        </Menu>
-        <h4>Web</h4>
-        <Menu className={styles.menu}>
-          {[
-            platformSetupDataWarehouse,
-            platformPublishTables,
-            platformVersionControl,
-            platformScheduling,
-            environments
-          ].map(page => this.menuItem(page.meta))}
-        </Menu>
-      </div>
+      <ul className={styles[`depth${depth}`]}>
+        {trees.map(tree => {
+          const classNames = [styles[`depth${depth}`]];
+          if (this.props.currentPath === tree.file.path) {
+            classNames.push(styles.active);
+          }
+          const hasChildren = tree.children && tree.children.length > 0;
+          if (hasChildren) {
+            classNames.push(styles.hasChildren);
+          }
+          return (
+            <React.Fragment key={tree.file.path}>
+              <li className={classNames.join(" ")}>
+                <a
+                  href={`/${this.props.version ? `v/${this.props.version}/` : ""}${tree.file.path}`}
+                >
+                  {tree.attributes.title}
+                  {hasChildren && depth > 0 && <Icon icon="chevron-right" />}
+                </a>
+              </li> 
+              {tree.children &&
+                tree.children.length > 0 &&
+                this.renderTrees(tree.children, depth + 1)}
+            </React.Fragment>
+          );
+        })}
+      </ul>
     );
   }
-  private menuItem = meta => {
-    const path = pathFromFilename(meta.__filename);
-    if (this.props.currentPath === path) {
-      return (
-        <React.Fragment key={path}>
-          <BPMenuItem
-            href={path}
-            text={meta.title}
-            style={{ backgroundColor: "rgba(167, 182, 194, 0.3)" }}
-          />
-          <div className={styles.indent1}>
-            {this.props.currentHeaderLinks.map(item => (
-              <BPMenuItem href={`#${item.id}`} text={item.text} key={item.id} />
-            ))}
-          </div>
-        </React.Fragment>
-      );
-    }
-    return <BPMenuItem key={path} href={path} text={meta.title} />;
-  };
 }
