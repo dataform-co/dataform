@@ -2,7 +2,7 @@
   "dependencies": {
     "@babel/runtime": "^7.2.0",
     "@bazel/ibazel": "^0.9.1",
-    "@bazel/typescript": "^0.32.2",
+    "@bazel/typescript": "^0.42.2",
     "@blueprintjs/core": "^3.15.1",
     "@blueprintjs/select": "^3.8.1",
     "@google-cloud/bigquery": "^4.1.1",

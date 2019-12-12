@@ -55,7 +55,7 @@ export async function compile(
 export class CompileChildProcess {
   public static forkProcess() {
     // Run the bin_loader script if inside bazel, otherwise don't.
-    const forkScript = process.env.BAZEL_TARGET ? "../vm/compile_bin_loader" : "../vm/compile";
+    const forkScript = process.env.BAZEL_TARGET ? "../vm/compile_loader" : "../vm/compile";
     return new CompileChildProcess(
       fork(require.resolve(forkScript), [], { stdio: [0, 1, 2, "ipc", "pipe"] })
     );

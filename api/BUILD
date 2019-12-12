@@ -37,8 +37,8 @@ ts_library(
     name = "api",
     srcs = [],
     data = [
-        ":vm/compile_bin_loader.js",
-        ":vm/query_bin_loader.js",
+        ":vm/compile_loader.js",
+        ":vm/query_loader.js",
     ],
     deps = [
         ":lib",

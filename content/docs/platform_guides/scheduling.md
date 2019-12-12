@@ -1,0 +1,29 @@
+---
+title: Scheduling runs
+---
+
+## Introduction
+
+Schedules can be used to run any selection of your datasets at a user-specified frequency. Running your scripts on a repeating schedule ensures output data is always kept up to date.
+
+<div className="bp3-callout bp3-icon-info-sign bp3-intent-warning" markdown="1">
+  Schedules{" "}
+  <b>
+    only run from the <code>production</code> branch
+  </b>
+  . Make sure you commit and push your changes to the production branch before configuring schedules.
+</div>
+
+## Create a schedule
+
+1. Navigate to the Scheduling page using the left menu
+2. Click `Add schedule`
+3. Enter your schedule's settings and click `Create schedule`
+
+<img src="/static/images/platform_guides/scheduling/create_schedule.png" style="width: 100%" />
+
+## View past runs
+
+You can find all current and historical scheduled runs in the _Run logs_ page, accessible using the left menu bar.
+
+<img src="/static/images/platform_guides/scheduling/run_logs.png" style="width: 100%" />

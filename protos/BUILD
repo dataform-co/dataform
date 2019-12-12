@@ -23,6 +23,9 @@ ts_library(
     name = "protos",
     srcs = glob(["index.ts"]),
     module_name = "@dataform/protos",
+    data = [
+        "//protos:protobufjs_lib",
+    ],
     deps = [
         "//protos:protobufjs_lib",
         "@npm//@types/node",
