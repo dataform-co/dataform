@@ -136,8 +136,7 @@ const warehouseOption: INamedOption<yargs.PositionalOptions> = {
 const jsonOutputOption: INamedOption<yargs.Options> = {
   name: "json",
   option: {
-    describe:
-      "Exclusively output a JSON describing the non-executable graph (other output is suppressed, excluding errors).",
+    describe: "Outputs a JSON representation of the compiled project.",
     type: "boolean",
     default: false
   }
