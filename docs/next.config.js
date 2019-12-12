@@ -1,20 +1,14 @@
 const withTypescript = require("@zeit/next-typescript");
-const rehypePrism = require("@mapbox/rehype-prism");
-const remarkSlug = require("remark-slug");
-const withMDX = require("@zeit/next-mdx")({
-  options: {
-    hastPlugins: [rehypePrism],
-    mdPlugins: [remarkSlug]
-  }
-});
 const withImages = require("next-images");
 const withCSS = require("@zeit/next-css");
 const path = require("path");
-const TsconfigPathsPlugin = require("tsconfig-paths-webpack-plugin");
+const fs = require("fs");
 
 let config = {
   pageExtensions: ["tsx", "md", "mdx"],
   cssModules: true,
+  // Next cannot handle absolute distDir's, so go up to the top of the workspace.
+  distDir: `../${process.argv.slice(-1)[0]}`,
   cssLoaderOptions: {
     importLoaders: 1,
     localIdentName: "[local]___[hash:base64:5]"
@@ -22,13 +16,13 @@ let config = {
   webpack: (config, options) => {
     // Use the module name mappings in tsconfig so imports resolve properly.
     config.resolve.plugins = config.resolve.plugins || [];
-    config.resolve.plugins.push(
-      new TsconfigPathsPlugin({ extensions: [".ts", ".tsx", ".js", ".css"] })
-    );
+
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      df: path.resolve(__dirname, "../")
+    };
     // Make sure webpack can resolve modules that live within our bazel managed deps.
-    const bazelNodeModulesPath = path.resolve("./external/npm/node_modules");
-    config.resolve.modules.push(bazelNodeModulesPath);
-    config.resolveLoader.modules.push(bazelNodeModulesPath);
+
     // Inline babel config for typescript compilation.
     options.defaultLoaders.babel.options.configFile = false;
     options.defaultLoaders.babel.options.presets = [
@@ -47,14 +41,13 @@ let config = {
       use: [{ loader: require.resolve("umd-compat-loader") }]
     });
     // Tell webpack to preserve information about file names so we can use them for paths.
-    config.node = { __filename: true };
+    config.node = { __filename: true, fs: "empty" };
     return config;
   }
 };
 
 config = withCSS(config);
 config = withImages(config);
-config = withMDX(config);
 config = withTypescript(config);
 
 module.exports = config;
