@@ -5,6 +5,14 @@ import * as utils from "@dataform/core/utils";
 import { ISqlxParseResults, parseSqlx } from "@dataform/sqlx/lexer";
 
 export function compile(code: string, path: string) {
+  // Forces new line so sqlx lexer can allow js blocks with no new line after
+  // the closing parenthesis.
+  if (code.length > 0) {
+    if (code.slice(-1) === "}") {
+      code += "\n";
+    }
+  }
+
   if (path.endsWith(".sqlx")) {
     return compileSqlx(parseSqlx(code), path);
   }
