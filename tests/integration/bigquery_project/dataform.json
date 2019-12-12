@@ -1,6 +1,6 @@
 {
   "warehouse": "bigquery",
-  "gcloudProjectId": "dataform-integration-tests",
+  "defaultDatabase": "dataform-integration-tests",
   "defaultSchema": "df_integration_test",
   "assertionSchema": "df_integration_test_assertions"
 }
