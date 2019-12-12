@@ -402,7 +402,7 @@ describe("examples", () => {
     it("bigquery compiles", async () => {
       const graph = await compile({
         projectDir: path.resolve("df/examples/common_v1"),
-        projectConfigOverride: { warehouse: "bigquery", gcloudProjectId: "tada-analytics" }
+        projectConfigOverride: { warehouse: "bigquery", defaultDatabase: "tada-analytics" }
       });
       const tableNames = graph.tables.map((t: dataform.ITable) => t.name);
 

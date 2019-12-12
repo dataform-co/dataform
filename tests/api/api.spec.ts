@@ -548,7 +548,7 @@ describe("@dataform/api", () => {
       return query
         .compile('select 1 from ${ref("example_view")}', {
           projectDir: "df/examples/common_v1",
-          projectConfigOverride: { warehouse: "bigquery", gcloudProjectId: "tada-analytics" }
+          projectConfigOverride: { warehouse: "bigquery", defaultDatabase: "tada-analytics" }
         })
         .then(compiledQuery => {
           expect(compiledQuery).equals(

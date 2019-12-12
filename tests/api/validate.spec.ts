@@ -196,7 +196,7 @@ describe("@dataform/api/validate", () => {
       expect(() =>
         checkDataformJsonValidity({
           warehouse: "dataform",
-          gcloudProjectId: "tada-analytics",
+          defaultDatabase: "tada-analytics",
           defaultSchema: "df_integration_test",
           assertionSchema: "df_integration_test_assertions"
         })
@@ -217,7 +217,7 @@ describe("@dataform/api/validate", () => {
       expect(() =>
         checkDataformJsonValidity({
           warehouse: "redshift",
-          gcloudProjectId: "tada-analytics",
+          defaultDatabase: "tada-analytics",
           defaultSchema: "rock&roll",
           assertionSchema: "df_integration_test_assertions"
         })
