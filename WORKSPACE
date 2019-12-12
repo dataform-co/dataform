@@ -45,7 +45,7 @@ yarn_install(
     name = "npm",
     package_json = "//:package.json",
     yarn_lock = "//:yarn.lock",
-    symlink_node_modules = False
+    symlink_node_modules = True
 )
 
 load("@npm//:install_bazel_dependencies.bzl", "install_bazel_dependencies")
