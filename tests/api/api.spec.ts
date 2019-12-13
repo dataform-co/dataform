@@ -520,7 +520,7 @@ describe("@dataform/api", () => {
   });
 
   describe("init", () => {
-    it("init", async function() {
+    it("init", async function () {
       this.timeout(30000);
 
       // create temp directory
@@ -1085,3 +1085,4 @@ input "something" {
     });
   });
 });
+
