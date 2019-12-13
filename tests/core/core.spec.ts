@@ -7,19 +7,18 @@ import { expect } from "chai";
 import { asPlainObject } from "df/tests/utils";
 import * as path from "path";
 
-class TEST_CONFIG {
-  public static REDSHIFT: dataform.IProjectConfig = {
+class TestConfigs {
+  public static redshift: dataform.IProjectConfig = {
     warehouse: "redshift",
     defaultSchema: "schema"
   };
 
-  public static REDSHIFT_WITH_SUFFIX: dataform.IProjectConfig = {
-    warehouse: "redshift",
-    defaultSchema: "schema",
+  public static redshiftWithSuffix: dataform.IProjectConfig = {
+    ...TestConfigs.redshift,
     schemaSuffix: "suffix"
   };
 
-  public static BIGQUERY: dataform.IProjectConfig = {
+  public static bigquery: dataform.IProjectConfig = {
     warehouse: "bigquery",
     defaultSchema: "schema"
   };
@@ -27,7 +26,7 @@ class TEST_CONFIG {
 
 describe("@dataform/core", () => {
   describe("publish", () => {
-    [TEST_CONFIG.REDSHIFT, TEST_CONFIG.REDSHIFT_WITH_SUFFIX].forEach(testConfig => {
+    [TestConfigs.redshift, TestConfigs.redshiftWithSuffix].forEach(testConfig => {
       it(`config with suffix "${testConfig.schemaSuffix}"`, () => {
         const schemaWithSuffix = (schema: string) =>
           testConfig.schemaSuffix ? `${schema}_${testConfig.schemaSuffix}` : schema;
@@ -108,7 +107,7 @@ describe("@dataform/core", () => {
     });
 
     it("incremental table", () => {
-      const session = new Session(path.dirname(__filename), TEST_CONFIG.REDSHIFT);
+      const session = new Session(path.dirname(__filename), TestConfigs.redshift);
       session
         .publish("incremental", {
           type: "incremental"
@@ -120,7 +119,7 @@ describe("@dataform/core", () => {
         {
           target: {
             name: "incremental",
-            schema: TEST_CONFIG.REDSHIFT.defaultSchema
+            schema: TestConfigs.redshift.defaultSchema
           },
           query: "select false as incremental",
           incrementalQuery: "select true as incremental",
@@ -133,7 +132,7 @@ describe("@dataform/core", () => {
     });
 
     it("config_context", () => {
-      const session = new Session(path.dirname(__filename), TEST_CONFIG.REDSHIFT);
+      const session = new Session(path.dirname(__filename), TestConfigs.redshift);
       const t = session
         .publish(
           "example",
@@ -152,7 +151,7 @@ describe("@dataform/core", () => {
     });
 
     it("validation_type_incremental", () => {
-      const sessionSuccess = new Session(path.dirname(__filename), TEST_CONFIG.REDSHIFT);
+      const sessionSuccess = new Session(path.dirname(__filename), TestConfigs.redshift);
       sessionSuccess
         .publish("exampleSuccess1", {
           type: "incremental"
@@ -183,7 +182,7 @@ describe("@dataform/core", () => {
     });
 
     it("validation_type", () => {
-      const sessionSuccess = new Session(path.dirname(__filename), TEST_CONFIG.REDSHIFT);
+      const sessionSuccess = new Session(path.dirname(__filename), TestConfigs.redshift);
       sessionSuccess.publish("exampleSuccess1", { type: "table" });
       sessionSuccess.publish("exampleSuccess2", { type: "view" });
       sessionSuccess.publish("exampleSuccess3", { type: "incremental" }).where("test");
@@ -194,7 +193,7 @@ describe("@dataform/core", () => {
         .to.have.property("validationErrors")
         .to.be.an("array").that.is.empty;
 
-      const sessionFail = new Session(path.dirname(__filename), TEST_CONFIG.REDSHIFT);
+      const sessionFail = new Session(path.dirname(__filename), TestConfigs.redshift);
       sessionFail.publish("exampleFail", JSON.parse('{"type": "ta ble"}'));
       const cgFail = sessionFail.compile();
       const cgFailErrors = utils.validate(cgFail);
@@ -210,7 +209,7 @@ describe("@dataform/core", () => {
     });
 
     it("validation_redshift_success", () => {
-      const session = new Session(path.dirname(__filename), TEST_CONFIG.REDSHIFT);
+      const session = new Session(path.dirname(__filename), TestConfigs.redshift);
       session.publish("example_without_dist", {
         redshift: {
           sortKeys: ["column1", "column2"],
@@ -238,7 +237,7 @@ describe("@dataform/core", () => {
     });
 
     it("validation_redshift_fail", () => {
-      const session = new Session(path.dirname(__filename), TEST_CONFIG.REDSHIFT);
+      const session = new Session(path.dirname(__filename), TestConfigs.redshift);
       session.publish("example_absent_distKey", {
         redshift: {
           distStyle: "even",
@@ -320,7 +319,7 @@ describe("@dataform/core", () => {
     });
 
     it("validation_bigquery_fail", () => {
-      const session = new Session(path.dirname(__filename), TEST_CONFIG.BIGQUERY);
+      const session = new Session(path.dirname(__filename), TestConfigs.bigquery);
       session.publish("example_partitionBy_view_fail", {
         type: "view",
         bigquery: {
@@ -347,7 +346,7 @@ describe("@dataform/core", () => {
     });
 
     it("validation_type_inline", () => {
-      const session = new Session(path.dirname(__filename), TEST_CONFIG.REDSHIFT);
+      const session = new Session(path.dirname(__filename), TestConfigs.redshift);
       session.publish("a", { type: "table" }).query(_ => "select 1 as test");
       session
         .publish("b", {
@@ -444,7 +443,7 @@ describe("@dataform/core", () => {
     });
 
     it("ref", () => {
-      const session = new Session(path.dirname(__filename), TEST_CONFIG.REDSHIFT);
+      const session = new Session(path.dirname(__filename), TestConfigs.redshift);
       session.publish("a", _ => "select 1 as test");
       session.publish("b", ctx => `select * from ${ctx.ref("a")}`);
       session.publish("c", ctx => `select * from ${ctx.ref(undefined)}`);
@@ -478,7 +477,7 @@ describe("@dataform/core", () => {
 
   describe("operate", () => {
     it("ref", () => {
-      const session = new Session(path.dirname(__filename), TEST_CONFIG.REDSHIFT);
+      const session = new Session(path.dirname(__filename), TestConfigs.redshift);
       session.operate("operate-1", () => `select 1 as sample`).hasOutput(true);
       session.operate("operate-2", ctx => `select * from ${ctx.ref("operate-1")}`).hasOutput(true);
 
@@ -508,7 +507,7 @@ describe("@dataform/core", () => {
 
   describe("graph", () => {
     it("circular_dependencies", () => {
-      const session = new Session(path.dirname(__filename), TEST_CONFIG.REDSHIFT);
+      const session = new Session(path.dirname(__filename), TestConfigs.redshift);
       session.publish("a").dependencies("b");
       session.publish("b").dependencies("a");
       const cGraph = session.compile();
@@ -522,7 +521,7 @@ describe("@dataform/core", () => {
     });
 
     it("missing_dependency", () => {
-      const session = new Session(path.dirname(__filename), TEST_CONFIG.REDSHIFT);
+      const session = new Session(path.dirname(__filename), TestConfigs.redshift);
       session.publish("a", ctx => `select * from ${ctx.ref("b")}`);
       const cGraph = session.compile();
       const gErrors = utils.validate(cGraph);
@@ -535,7 +534,7 @@ describe("@dataform/core", () => {
     });
 
     it("duplicate_action_names", () => {
-      const session = new Session(path.dirname(__filename), TEST_CONFIG.REDSHIFT);
+      const session = new Session(path.dirname(__filename), TestConfigs.redshift);
       session.publish("a").dependencies("b");
       session.publish("b");
       session.publish("a");
@@ -553,7 +552,7 @@ describe("@dataform/core", () => {
     });
 
     it("same action names in different schemas (ambiguity)", () => {
-      const session = new Session(path.dirname(__filename), TEST_CONFIG.REDSHIFT);
+      const session = new Session(path.dirname(__filename), TestConfigs.redshift);
       session.publish("a", { schema: "foo" });
       session.publish("a", { schema: "bar" });
       session.publish("b", { schema: "foo" }).dependencies("a");
@@ -569,7 +568,7 @@ describe("@dataform/core", () => {
     });
 
     it("same action name in same schema", () => {
-      const session = new Session(path.dirname(__filename), TEST_CONFIG.REDSHIFT);
+      const session = new Session(path.dirname(__filename), TestConfigs.redshift);
       session.publish("a", { schema: "schema2" }).dependencies("b");
       session.publish("a", { schema: "schema2" });
       session.publish("b");
@@ -585,7 +584,7 @@ describe("@dataform/core", () => {
     });
 
     it("same action names in different schemas", () => {
-      const session = new Session(path.dirname(__filename), TEST_CONFIG.REDSHIFT);
+      const session = new Session(path.dirname(__filename), TestConfigs.redshift);
       session.publish("b");
       session.publish("a", { schema: "schema1" }).dependencies("b");
       session.publish("a", { schema: "schema2" });
