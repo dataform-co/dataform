@@ -9,7 +9,7 @@ For help making changes, join our `#development` channel in [Slack](https://slac
 
 ## Getting Started
 
-First clone this repository, and navigate within.
+First :fork_and_knife: [fork this repository](https://github.com/dataform-co/dataform/fork), clone it to your desktop, and navigate within.
 
 ### Run the CLI
 
@@ -19,7 +19,7 @@ Print out the default help information:
 ./scripts/run help
 ```
 
-Create a new `redshift` project in a temp directory:
+Create a new `redshift` toy project:
 
 ```bash
 mkdir /tmp/test_project
@@ -30,7 +30,7 @@ More commands can be found by substituting `dataform` with `./scripts/run` in th
 
 ### Test
 
-To test the project, run the following command:
+To test the Dataform project, run the following command:
 
 ```bash
 bazel test -- tests/... -tests/integration/...
@@ -38,7 +38,7 @@ bazel test -- tests/... -tests/integration/...
 
 This runs all tests excluding the integration tests. If you need to run integration tests, please [get in touch](mailto:opensource@dataform.co) with the team.
 
-_Note: A `java failed` error suggests that java needs to be installed._
+_Note: A `java failed` error suggests that Java needs to be installed._
 
 ### Building
 
@@ -61,3 +61,11 @@ bazel run docs
 ```
 
 You can view the documentation site at [localhost:3001](http://localhost:3001).
+
+## Deciding what to contribute
+
+A good place to start is by solving [Issues](https://github.com/dataform-co/dataform/issues), with the aim of understanding the code base well enough to create new features.
+
+We also regularly run hackathons, but you'll have to [ask us directly](mailto:opensource@dataform.co) if you would like to participate.
+
+Come meet us at [one of our events](https://www.google.com/search?q=dataform+events)!
