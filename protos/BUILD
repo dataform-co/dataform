@@ -2,19 +2,24 @@ package(default_visibility = ["//visibility:public"])
 
 proto_library(
     name = "protos_lib",
-    srcs = glob(["**/*.proto"]),
+    srcs = ["core.proto", "profiles.proto"],
+)
+
+proto_library(
+    name = "protos_schedules_lib",
+    srcs = ["schedules.proto"],
 )
 
 java_proto_library(
     name = "java",
-    deps = [":protos_lib"],
+    deps = [":protos_lib", "protos_schedules_lib"],
 )
 
 load("//tools:ts_proto_library.bzl", "ts_proto_library")
 
 ts_proto_library(
     name = "protobufjs_lib",
-    deps = [":protos_lib"],
+    deps = [":protos_lib", ":protos_schedules_lib"],
 )
 
 load("@npm_bazel_typescript//:index.bzl", "ts_library")
