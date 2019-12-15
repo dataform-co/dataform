@@ -39,6 +39,7 @@ DEPS = [
     "//:tsconfig.json",
     "//content",
     "//static:files",
+    "@npm//axios",
     "@npm//typescript",
     "@npm//@types/react",
     "@npm//@types/node",

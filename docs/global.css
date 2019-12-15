@@ -98,13 +98,24 @@
   color: #2f2d44;
 }
 
+:global body h5 {
+  color: colorsTextMain;
+  font-family: "Poppins";
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 26px;
+  font-size: 14px;
+  margin: 0px;
+  color: #2f2d44;
+}
+
 :global body p,
 :global body code {
   font-style: normal;
   font-weight: normal;
   line-height: 30px;
-  color: #373e42;
 }
+
 :global body li {
   font-style: normal;
   font-weight: normal;

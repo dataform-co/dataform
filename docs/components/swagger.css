@@ -1,0 +1,57 @@
+.container {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+}
+
+.sidebar {
+  min-width: 320px;
+  height: calc(100vh - 60px);
+  overflow-y: hidden;
+  position: sticky;
+  top: 60px;
+  padding-top: 30px;
+  padding-right: 10px;
+}
+
+.sidebarRight {
+  composes: sidebar;
+  min-width: 250px;
+  text-align: right;
+}
+
+.mainContent {
+  border-left: 1px solid rgba(120, 134, 156, 0.2);
+  padding-left: 30px;
+  padding-top: 30px;
+  background-color: #fff;
+  flex-grow: 1;
+  border-left: 1px solid #e9e9e9;
+  min-width: 500px;
+  padding-bottom: 800px;
+}
+
+.definition {
+  border-bottom: 1px solid #e3e8ee;
+  padding-bottom: 20px;
+}
+
+.property {
+  border-top: 1px solid #e3e8ee;
+  padding: 10px 0px;
+}
+
+.properties {
+  
+}
+
+.propertyName {
+  max-width: 300px;
+  width: 50%;
+  display: inline-block;
+}
+
+.propertyDescription {
+  padding: 5px;
+  padding-left: 300px;
+}
