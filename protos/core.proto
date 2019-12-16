@@ -78,6 +78,7 @@ message CompileConfig {
 }
 
 message Target {
+  string database = 3;
   string schema = 1;
   string name = 2;
 }

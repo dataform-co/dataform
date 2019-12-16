@@ -54,6 +54,7 @@ export interface TConfig {
   bigquery?: dataform.IBigQueryOptions;
   sqldatawarehouse?: dataform.ISQLDataWarehouseOptions;
   schema?: string;
+  database?: string;
 }
 
 export class Table {
@@ -105,6 +106,10 @@ export class Table {
     }
     if (config.schema) {
       this.schema(config.schema);
+    }
+    // TODO: the same for other action types
+    if (config.database) {
+      this.database(config.database);
     }
 
     return this;
@@ -202,6 +207,17 @@ export class Table {
 
   public schema(schema: string) {
     this.session.setNameAndTarget(this.proto, this.proto.target.name, schema);
+    return this;
+  }
+
+  // TODO: the same for other action types
+  public database(database: string) {
+    this.session.setNameAndTarget(
+      this.proto,
+      this.proto.target.name,
+      this.proto.target.schema,
+      database
+    );
     return this;
   }
 

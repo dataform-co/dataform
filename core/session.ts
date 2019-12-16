@@ -81,11 +81,12 @@ function mapColumnDescriptionToProto(
   );
 }
 
-export interface FullyQualifiedName {
+interface IQualifiedName {
+  database?: string;
   schema: string;
   name: string;
 }
-export type Resolvable = string | FullyQualifiedName;
+export type Resolvable = string | IQualifiedName;
 
 export class Session {
   public rootDir: string;
@@ -124,6 +125,7 @@ export class Session {
     hasPostOperations: boolean;
     hasInputs: boolean;
   }) {
+    // TODO: add a validation that actions can only specify 'database' iff BQ or snowflake
     if (actionOptions.sqlStatementCount > 1 && actionOptions.sqlxConfig.type !== "operations") {
       this.compileError(
         "Actions may only contain more than one SQL statement if they are of type 'operations'."
@@ -302,7 +304,7 @@ export class Session {
     return assertion;
   }
 
-  public declare(dataset: FullyQualifiedName): Declaration {
+  public declare(dataset: IQualifiedName): Declaration {
     const declaration = new Declaration();
     declaration.session = this;
     this.setNameAndTarget(declaration.proto, dataset.name, dataset.schema);
@@ -393,15 +395,26 @@ export class Session {
         return action.proto.target.name === adapter.normalizeIdentifier(res);
       }
       return (
+        action.proto.target.database ===
+          adapter.normalizeIdentifier(res.database || this.config.defaultDatabase) &&
         action.proto.target.schema === adapter.normalizeIdentifier(res.schema) &&
         action.proto.target.name === adapter.normalizeIdentifier(res.name)
       );
     });
   }
 
-  public setNameAndTarget(action: IActionProto, name: string, overrideSchema?: string) {
-    action.target = this.target(name, overrideSchema || this.config.defaultSchema);
-    action.name = `${action.target.schema}.${action.target.name}`;
+  public setNameAndTarget(
+    action: IActionProto,
+    name: string,
+    overrideSchema?: string,
+    overrideDatabase?: string
+  ) {
+    action.target = this.target(
+      name,
+      overrideSchema || this.config.defaultSchema,
+      overrideDatabase || this.config.defaultDatabase
+    );
+    action.name = `${action.target.database}.${action.target.schema}.${action.target.name}`;
   }
 
   private getSuffixWithUnderscore() {
@@ -423,11 +436,12 @@ export class Session {
     return compiledChunks;
   }
 
-  private target(name: string, schema: string): dataform.ITarget {
+  private target(name: string, schema: string, database?: string): dataform.ITarget {
     const adapter = this.adapter();
     return dataform.Target.create({
       name: adapter.normalizeIdentifier(name),
-      schema: adapter.normalizeIdentifier(schema)
+      schema: adapter.normalizeIdentifier(schema),
+      database: database && adapter.normalizeIdentifier(database)
     });
   }
 
