@@ -1,7 +1,7 @@
 # Contributing
 
 Dataform is a TypeScript project, and is fairly easy to build and run locally.
-For help making changes, join our `#development` channel in [Slack](https://slack.dataform.co), or [email us](mailto:opensource@dataform.co) directly.
+For help making changes, join our `#development` channel in [Slack](https://slack.dataform.co), or [email us](mailto:team@dataform.co) directly.
 
 ## Requirements
 
@@ -67,6 +67,6 @@ You can view the documentation site at [localhost:3001](http://localhost:3001).
 
 A good place to start is by solving [Issues](https://github.com/dataform-co/dataform/issues), with the aim of understanding the code base well enough to create new features.
 
-We also regularly run hackathons, but you'll have to [ask us directly](mailto:opensource@dataform.co) if you would like to participate.
+We also regularly run hackathons, but you'll have to [ask us directly](mailto:team@dataform.co) if you would like to participate.
 
-Come meet us at [one of our events](https://www.google.com/search?q=dataform+events)!
+Come meet us at [one of our events](https://www.meetup.com/Data-First-London/)!
