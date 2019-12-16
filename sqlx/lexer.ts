@@ -21,6 +21,7 @@ const SQL_LEXER_TOKEN_NAMES = {
   DOUBLE_QUOTE_STRING: LEXER_STATE_NAMES.SQL + "_doubleQuoteString",
   START_JS_PLACEHOLDER: LEXER_STATE_NAMES.SQL + "_startJsPlaceholder",
   ESCAPED_BACKTICK: LEXER_STATE_NAMES.SQL + "_escapedBacktick",
+  BACKSLASH: LEXER_STATE_NAMES.SQL + "_backslash",
   BACKTICK: LEXER_STATE_NAMES.SQL + "_backtick",
   CAPTURE_EVERYTHING_ELSE: LEXER_STATE_NAMES.SQL + "_captureEverythingElse"
 };
@@ -58,7 +59,7 @@ const INNER_SQL_BLOCK_LEXER_TOKEN_NAMES = {
   CAPTURE_EVERYTHING_ELSE: LEXER_STATE_NAMES.INNER_SQL_BLOCK + "_captureEverythingElse"
 };
 
-const lexer = moo.states(buildSqlxLexer());
+export const lexer = moo.states(buildSqlxLexer());
 
 export interface ISyntaxTreeNode {
   contentType: "sql" | "js" | "jsPlaceholder" | "sqlStatementSeparator" | "sqlComment";
@@ -265,7 +266,12 @@ function getValueMappings() {
     value.replace(/`/g, "\\`").replace(/\${/g, "\\${");
   valueMappings[SQL_LEXER_TOKEN_NAMES.MULTI_LINE_COMMENT] = (value: string) =>
     value.replace(/`/g, "\\`").replace(/\${/g, "\\${");
+  valueMappings[SQL_LEXER_TOKEN_NAMES.SINGLE_QUOTE_STRING] = (value: string) =>
+    value.replace(/\\/g, "\\\\");
+  valueMappings[SQL_LEXER_TOKEN_NAMES.DOUBLE_QUOTE_STRING] = (value: string) =>
+    value.replace(/\\/g, "\\\\");
   valueMappings[SQL_LEXER_TOKEN_NAMES.BACKTICK] = () => "\\`";
+  valueMappings[SQL_LEXER_TOKEN_NAMES.BACKSLASH] = () => "\\\\";
 
   valueMappings[INNER_SQL_BLOCK_LEXER_TOKEN_NAMES.STATEMENT_SEPERATOR] = () => "";
   valueMappings[INNER_SQL_BLOCK_LEXER_TOKEN_NAMES.CLOSE_BLOCK] = () => "";
@@ -309,9 +315,10 @@ function buildSqlxLexer(): { [x: string]: moo.Rules } {
     match: "${",
     push: LEXER_STATE_NAMES.JS_BLOCK
   };
-  sqlLexer[SQL_LEXER_TOKEN_NAMES.ESCAPED_BACKTICK] = {
-    match: "\\`"
-  };
+  // sqlLexer[SQL_LEXER_TOKEN_NAMES.ESCAPED_BACKTICK] = {
+  //   match: "\\`"
+  // };
+  sqlLexer[SQL_LEXER_TOKEN_NAMES.BACKSLASH] = "\\";
   sqlLexer[SQL_LEXER_TOKEN_NAMES.BACKTICK] = "`";
   sqlLexer[SQL_LEXER_TOKEN_NAMES.CAPTURE_EVERYTHING_ELSE] = {
     match: /[\s\S]+?/,

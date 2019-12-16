@@ -396,13 +396,13 @@ describe("examples", () => {
         );
 
         // Check double back ticks don't get converted to singular.
-        const exampleDoubleBackticks = graph.tables.find(
+        const exampleDoubleBackslash = graph.tables.find(
           (t: dataform.ITable) =>
             t.name === schemaWithSuffix("df_integration_test") + ".example_double_backslash"
         );
-        expect(exampleDoubleBackticks).to.not.be.undefined;
-        console.log("Raw query:", exampleDoubleBackticks.query);
-        expect(cleanSql(exampleDoubleBackticks.query)).equals(
+        expect(exampleDoubleBackslash).to.not.be.undefined;
+        console.log("Raw query:", exampleDoubleBackslash.query);
+        expect(cleanSql(exampleDoubleBackslash.query)).equals(
           "select * from regexp_extract('01a_data_engine', '^(\\\\d{2}\\\\w)')"
         )
       });

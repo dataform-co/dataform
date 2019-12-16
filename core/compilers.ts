@@ -124,8 +124,8 @@ switch (sqlxConfig.type) {
   case "inline": {
     action.query(ctx => {
       ${["self", "ref", "resolve", "name", "isIncremental", "ifIncremental"]
-        .map(name => `const ${name} = ctx.${name}.bind(ctx);`)
-        .join("\n")}
+      .map(name => `const ${name} = ctx.${name}.bind(ctx);`)
+      .join("\n")}
       ${results.js}
       if (hasIncremental) {
         action.where(\`${results.incremental}\`);
@@ -153,8 +153,8 @@ switch (sqlxConfig.type) {
   case "operations": {
     action.queries(ctx => {
       ${["self", "ref", "resolve", "name"]
-        .map(name => `const ${name} = ctx.${name}.bind(ctx);`)
-        .join("\n")}
+      .map(name => `const ${name} = ctx.${name}.bind(ctx);`)
+      .join("\n")}
       ${results.js}
       const operations = [${results.sql.map(sql => `\`${sql}\``)}];
       return operations;
@@ -166,14 +166,14 @@ switch (sqlxConfig.type) {
   }
   case "test": {
     ${Object.keys(results.input).map(
-      inputLabel =>
-        `
+        inputLabel =>
+          `
         action.input("${inputLabel}", ctx => {
           ${results.js}
           return \`${results.input[inputLabel]}\`;
         });
         `
-    )}
+      )}
     action.expect(ctx => {
       ${results.js}
       return \`${results.sql}\`;

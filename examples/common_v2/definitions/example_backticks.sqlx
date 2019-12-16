@@ -4,8 +4,8 @@ config {
 }
 
 select * from
-`tada-analytics.df_integration_test.sample_data\`
+`tada-analytics.df_integration_test.sample_data`
 
 pre_operations {
-    GRANT SELECT ON `tada-analytics.df_integration_test.sample_data\` TO GROUP "allusers@dataform.co"
+    GRANT SELECT ON `tada-analytics.df_integration_test.sample_data` TO GROUP "allusers@dataform.co"
 }
