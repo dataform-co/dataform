@@ -18,7 +18,7 @@ export default class Api extends React.Component<IProps> {
   public render() {
     return (
       <BaseLayout title={"Dataform Web API"}>
-        <Swagger spec={this.props.spec} />
+        <Swagger spec={this.props.spec} apiHost={"api.dataform.co"}/>
       </BaseLayout>
     );
   }

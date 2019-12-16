@@ -10,6 +10,7 @@ import {
 } from "swagger-schema-official";
 
 interface IProps {
+  apiHost: string;
   spec: Spec;
 }
 
@@ -20,7 +21,7 @@ interface IOperationWithPath extends IOperation {
 
 export class Swagger extends React.Component<IProps> {
   public render() {
-    const { spec } = this.props;
+    const { spec, apiHost } = this.props;
     const allOperations: IOperationWithPath[] = Object.keys(spec.paths)
       .map(path => {
         const schema = spec.paths[path];
@@ -42,7 +43,7 @@ export class Swagger extends React.Component<IProps> {
           <div className={styles.titleBlock}>
             <h1>Dataform Web API</h1>
             {allOperations.map(operation => (
-              <Operation operation={operation} />
+              <Operation apiHost={apiHost} operation={operation} />
             ))}
             {Object.keys(spec.definitions).map(name => (
               <Definition name={name} schema={spec.definitions[name]} />
@@ -71,16 +72,16 @@ export class Swagger extends React.Component<IProps> {
   }
 }
 
-export class Operation extends React.Component<{ operation: IOperationWithPath }> {
+export class Operation extends React.Component<{ apiHost: string; operation: IOperationWithPath }> {
   public render() {
-    const { operation } = this.props;
+    const { operation, apiHost } = this.props;
     return (
       <div className={styles.definition}>
         <h2 id={operation.operationId}>
           {operation.operationId}
-          <code>{operation.method.toUpperCase()}</code>
+          <code className={styles.methodTag}>{operation.method.toUpperCase()}</code>
         </h2>
-        <code>{operation.path}</code>
+        <code>{apiHost + operation.path}</code>
         <p>{operation.summary}</p>
         <h3>Parameters</h3>
         {operation.parameters
