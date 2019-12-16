@@ -13,20 +13,17 @@ First :fork_and_knife: [fork this repository](https://github.com/dataform-co/dat
 
 ### Run the CLI
 
-Print out the default help information:
+You can run the project as you would the `npm` installation of `@dataform/cli`, but replace `dataform` with `./scripts/run`.
+
+For example, to print out the default help information:
 
 ```bash
 ./scripts/run help
 ```
 
-Create a new `redshift` toy project:
+Check the [docs](https://docs.dataform.co/guides/command-line-interface/) for more examples.
 
-```bash
-mkdir /tmp/test_project
-./scripts/run init redshift /tmp/test_project
-```
-
-More commands can be found by substituting `dataform` with `./scripts/run` in the [CLI documentation](https://docs.dataform.co/guides/command-line-interface).
+_Note: If you are running Bazel on a **Mac**, this or any step that requires building may fail with a `Too many open files in system` error. This is [due to a limitation](https://github.com/angular/angular-bazel-example/issues/178) on the default maximum open file descriptors. You can increase the limit by running `sudo sysctl -w kern.maxfiles=<LARGE_NUMBER>` (we use `65536`)._
 
 ### Test
 
@@ -42,15 +39,19 @@ _Note: A `java failed` error suggests that Java needs to be installed._
 
 ### Building
 
-Running the CLI will build the required components. To build other components, for example the api, use:
+Running the CLI will build the required components. To build all other components, use:
 
 ```bash
-bazel build api
+bazel build -- ... -tools/...
 ```
 
-_Note: Building the entire project with `Bazel build ...` will not work unless you have credentials provided by the team. A workaround to this is to create an empty `tools/stackdriver-github-bridge/env.yaml` file._
+or if you're using `zsh`, then
 
-_Note: If you are running Bazel on a **Mac**, `bazel build ...` may fail with a `Too many open files in system` error. This is [due to a limitation](https://github.com/angular/angular-bazel-example/issues/178) on the default maximum open file descriptors. You can increase the limit by running `sudo sysctl -w kern.maxfiles=<LARGE_NUMBER>` (we use `65536`)._
+```bash
+bazel build -- "..." -tools/...
+```
+
+The projects folder here is not built as it requires an environment file, which can be provided from the team.
 
 ### Run the documentation site
 
