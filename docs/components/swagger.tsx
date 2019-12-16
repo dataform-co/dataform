@@ -40,7 +40,7 @@ export class Swagger extends React.Component<IProps> {
         <div className={styles.sidebar}></div>
         <div className={styles.mainContent}>
           <div className={styles.titleBlock}>
-            <h1>{spec.info.title}</h1>
+            <h1>Dataform Web API</h1>
             {allOperations.map(operation => (
               <Operation operation={operation} />
             ))}
@@ -81,6 +81,7 @@ export class Operation extends React.Component<{ operation: IOperationWithPath }
           <code>{operation.method.toUpperCase()}</code>
         </h2>
         <code>{operation.path}</code>
+        <p>{operation.summary}</p>
         <h3>Parameters</h3>
         {operation.parameters
           // These types are a nightmare :(.
@@ -95,9 +96,23 @@ export class Operation extends React.Component<{ operation: IOperationWithPath }
                   {classname(parameter.schema.$ref.replace("#/definitions/", ""))}
                 </a>
               )}
+              {!parameter.schema && <code>string</code>}
               {parameter.description && (
                 <div className={styles.propertyDescription}>{parameter.description}</div>
               )}
+            </div>
+          ))}
+        <h3>Responses</h3>
+        {Object.keys(operation.responses)
+          .map(code => ({ code, ...operation.responses[code] }))
+          .map(response => (
+            <div className={styles.property}>
+              <div className={styles.propertyName}>
+                <code>{response.code}</code>
+              </div>
+              <a href={response.schema.$ref}>
+                {classname(response.schema.$ref.replace("#/definitions/", ""))}
+              </a>
             </div>
           ))}
       </div>
