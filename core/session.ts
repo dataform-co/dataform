@@ -352,7 +352,7 @@ export class Session {
       tests: this.compileGraphChunk(Object.values(this.tests)),
       graphErrors: this.graphErrors,
       dataformCoreVersion,
-      targets: this.actions.map(action => action.proto.target as dataform.ITarget)
+      targets: this.actions.map(action => action.proto.target)
     });
 
     this.fullyQualifyDependencies(
