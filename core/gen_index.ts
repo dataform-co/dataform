@@ -53,16 +53,34 @@ export function genIndex(base64EncodedConfig: string): string {
   // - The returned script must be valid JavaScript (not TypeScript)
   // - The returned script may not require() any package that is not "@dataform/core"
   return `
-    require("@dataform/core");
-    ${includeRequires}
-    let projectConfig = require("./dataform.json");
-    // For backwards compatibility, in case core version is ahead of api.
-    projectConfig.schemaSuffix = "${config.compileConfig.schemaSuffixOverride}" || projectConfig.schemaSuffix;
-    // Merge in general project config overrides.
-    projectConfig = { ...projectConfig, ...${projectOverridesJsonString} };
-    global.session.init("${config.compileConfig.projectDir}", projectConfig);
-    ${definitionRequires}
-    // We return a base64 encoded proto via NodeVM, as returning a Uint8Array directly causes issues.
-    const base64EncodedGraphBytes = global.session.compileToBase64();
-    return ${returnValue};`;
+// Bind various @dataform/core APIs to the 'global' object.
+require("@dataform/core");
+
+// Require "includes" *.js files.
+${includeRequires}
+
+// Read the project config.
+let projectConfig = require("./dataform.json");
+
+// Stop using the deprecated 'gcloudProjectId' field.
+if (!projectConfig.defaultDatabase) {
+  projectConfig.defaultDatabase = projectConfig.gcloudProjectId;
+}
+delete projectConfig.gcloudProjectId;
+
+// For backwards compatibility, in case core version is ahead of api.
+projectConfig.schemaSuffix = "${config.compileConfig.schemaSuffixOverride}" || projectConfig.schemaSuffix;
+
+// Merge in general project config overrides.
+projectConfig = { ...projectConfig, ...${projectOverridesJsonString} };
+
+// Initialize the compilation session.
+global.session.init("${config.compileConfig.projectDir}", projectConfig);
+
+// Require all "definitions" files (attaching them to the session).
+${definitionRequires}
+
+// Return a base64 encoded proto via NodeVM. Returning a Uint8Array directly causes issues.
+const base64EncodedGraphBytes = global.session.compileToBase64();
+return ${returnValue};`;
 }

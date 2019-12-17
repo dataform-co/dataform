@@ -20,6 +20,6 @@ genrule(
         "package.json",
         "dataform.json",
     ],
-    cmd = "$(location //cli:bin) init bigquery $$(dirname $(location dataform.json)) --gcloud-project-id=12345 --skip-install",
+    cmd = "$(location //cli:bin) init bigquery $$(dirname $(location dataform.json)) --default-database=12345 --skip-install",
     tools = ["//cli:bin"],
 )

@@ -1,8 +1,6 @@
 import Document, { Head, Main, NextScript } from "next/document";
 import * as React from "react";
 
-import faviconImage from "df/static/images/favicon.ico";
-
 export default class DefaultDocument extends Document {
   public render() {
     return (
@@ -26,7 +24,7 @@ export default class DefaultDocument extends Document {
             rel="stylesheet"
             href="https://unpkg.com/@blueprintjs/select@3.8.1/lib/css/blueprint-select.css"
           />
-          <link rel="shortcut icon" href={faviconImage} type="image/png" />
+          <link rel="shortcut icon" href={"/static/images/favicon.ico"} type="image/png" />
         </Head>
         <body>
           <Main />
