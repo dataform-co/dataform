@@ -59,4 +59,4 @@ Open an issue or email us at opensource@dataform.co
 
 # Want to contribute?
 
-Check out our [contributors guide](https://github.com/dataform-co/dataform/blob/master/contributors.md) to get started with setting up the repo.
+Check out our [contributors guide](https://github.com/dataform-co/dataform/blob/master/contributing.md) to get started with setting up the repo.

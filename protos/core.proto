@@ -242,6 +242,8 @@ message CompiledGraph {
 
   repeated ValidationError deprecated_validation_errors = 5;
   repeated CompilationError deprecated_compilation_errors = 6;
+
+  repeated Target targets = 11;
 }
 
 message ExecutionTask {
