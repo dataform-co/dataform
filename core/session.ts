@@ -125,7 +125,6 @@ export class Session {
     hasPostOperations: boolean;
     hasInputs: boolean;
   }) {
-    // TODO: add a validation that actions can only specify 'database' iff BQ or snowflake
     if (actionOptions.sqlStatementCount > 1 && actionOptions.sqlxConfig.type !== "operations") {
       this.compileError(
         "Actions may only contain more than one SQL statement if they are of type 'operations'."
@@ -192,6 +191,14 @@ export class Session {
     }
     if (actionOptions.hasPostOperations && !definesDataset(actionOptions.sqlxConfig.type)) {
       this.compileError("Actions may only include post_operations if they create a dataset.");
+    }
+    if (
+      !!actionOptions.sqlxConfig.database &&
+      !["bigquery", "snowflake"].includes(this.config.warehouse)
+    ) {
+      this.compileError(
+        "Actions may only specify 'database' in projects whose warehouse is 'BigQuery' or 'Snowflake'."
+      );
     }
 
     const action = (() => {
@@ -307,7 +314,7 @@ export class Session {
   public declare(dataset: IQualifiedName): Declaration {
     const declaration = new Declaration();
     declaration.session = this;
-    this.setNameAndTarget(declaration.proto, dataset.name, dataset.schema);
+    this.setNameAndTarget(declaration.proto, dataset.name, dataset.schema, dataset.database);
     declaration.proto.fileName = utils.getCallerFile(this.rootDir);
     this.actions.push(declaration);
     return declaration;
@@ -392,11 +399,19 @@ export class Session {
     const adapter = this.adapter();
     return this.actions.filter(action => {
       if (typeof res === "string") {
-        return action.proto.target.name === adapter.normalizeIdentifier(res);
+        const nameParts = res.split(".").reverse();
+        const nameMatches = action.proto.target.name === adapter.normalizeIdentifier(nameParts[0]);
+        const schemaMatches =
+          nameParts.length < 2 ||
+          action.proto.target.schema === adapter.normalizeIdentifier(nameParts[1]);
+        const databaseMatches =
+          nameParts.length < 3 ||
+          action.proto.target.schema === adapter.normalizeIdentifier(nameParts[2]);
+        return nameMatches && schemaMatches && databaseMatches;
       }
+      const database = res.database || this.config.defaultDatabase;
       return (
-        action.proto.target.database ===
-          adapter.normalizeIdentifier(res.database || this.config.defaultDatabase) &&
+        action.proto.target.database === (database && adapter.normalizeIdentifier(database)) &&
         action.proto.target.schema === adapter.normalizeIdentifier(res.schema) &&
         action.proto.target.name === adapter.normalizeIdentifier(res.name)
       );
@@ -414,7 +429,9 @@ export class Session {
       overrideSchema || this.config.defaultSchema,
       overrideDatabase || this.config.defaultDatabase
     );
-    action.name = `${action.target.database}.${action.target.schema}.${action.target.name}`;
+    action.name = `${!!action.target.database ? `${action.target.database}.` : ""}${
+      action.target.schema
+    }.${action.target.name}`;
   }
 
   private getSuffixWithUnderscore() {
@@ -462,7 +479,13 @@ export class Session {
         } else {
           this.compileError(
             new Error(
-              `Missing dependency detected: Action "${action.name}" depends on "${dependencyName}" which does not exist.`
+              `Missing dependency detected: Action "${
+                action.name
+              }" depends on "${dependencyName}" which does not exist. ::::: ${JSON.stringify(
+                action,
+                null,
+                4
+              )}`
             ),
             action.fileName
           );
@@ -480,7 +503,9 @@ export class Session {
         ...action.target,
         schema: `${action.target.schema}${this.getSuffixWithUnderscore()}`
       };
-      action.name = `${action.target.schema}.${action.target.name}`;
+      action.name = `${!!action.target.database ? `${action.target.database}.` : ""}${
+        action.target.schema
+      }.${action.target.name}`;
       suffixedNames[originalName] = action.name;
     });
 

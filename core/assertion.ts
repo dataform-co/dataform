@@ -8,6 +8,7 @@ export interface AConfig {
   dependencies?: Resolvable | Resolvable[];
   tags?: string[];
   description?: string;
+  database?: string;
   schema?: string;
 }
 
@@ -29,6 +30,9 @@ export class Assertion {
     }
     if (config.description) {
       this.description(config.description);
+    }
+    if (config.database) {
+      this.database(config.database);
     }
     if (config.schema) {
       this.schema(config.schema);
@@ -67,6 +71,16 @@ export class Assertion {
     return this;
   }
 
+  public database(database: string) {
+    this.session.setNameAndTarget(
+      this.proto,
+      this.proto.target.name,
+      this.proto.target.schema,
+      database
+    );
+    return this;
+  }
+
   public schema(schema: string) {
     this.session.setNameAndTarget(this.proto, this.proto.target.name, schema);
     return this;
@@ -90,8 +104,11 @@ export class AssertionContext {
   }
 
   public ref(ref: Resolvable) {
+    // TODO: this is kind of disgusting. and what if the user just specifies database & name, no schema? it'll break.
     const name =
-      typeof ref === "string" || typeof ref === "undefined" ? ref : `${ref.schema}.${ref.name}`;
+      typeof ref === "string" || typeof ref === "undefined"
+        ? ref
+        : `${!!ref.database ? `${ref.database}.` : ""}${ref.schema}.${ref.name}`;
     this.assertion.dependencies(name);
     return this.resolve(ref);
   }

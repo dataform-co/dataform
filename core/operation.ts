@@ -15,6 +15,7 @@ export interface OConfig {
   description?: string;
   columns?: IColumnsDescriptor;
   hasOutput?: boolean;
+  database?: string;
   schema?: string;
 }
 
@@ -42,6 +43,9 @@ export class Operation {
     }
     if (config.columns) {
       this.columns(config.columns);
+    }
+    if (config.database) {
+      this.database(config.database);
     }
     if (config.schema) {
       this.schema(config.schema);
@@ -96,6 +100,16 @@ export class Operation {
     return this;
   }
 
+  public database(database: string) {
+    this.session.setNameAndTarget(
+      this.proto,
+      this.proto.target.name,
+      this.proto.target.schema,
+      database
+    );
+    return this;
+  }
+
   public schema(schema: string) {
     this.session.setNameAndTarget(this.proto, this.proto.target.name, schema);
     return this;
@@ -145,7 +159,9 @@ export class OperationContext {
 
   public ref(ref: Resolvable) {
     const name =
-      typeof ref === "string" || typeof ref === "undefined" ? ref : `${ref.schema}.${ref.name}`;
+      typeof ref === "string" || typeof ref === "undefined"
+        ? ref
+        : `${!!ref.database ? `${ref.database}.` : ""}${ref.schema}.${ref.name}`;
     this.operation.dependencies(name);
     return this.resolve(ref);
   }

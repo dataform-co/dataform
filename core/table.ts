@@ -53,8 +53,8 @@ export interface TConfig {
   redshift?: dataform.IRedshiftOptions;
   bigquery?: dataform.IBigQueryOptions;
   sqldatawarehouse?: dataform.ISQLDataWarehouseOptions;
-  schema?: string;
   database?: string;
+  schema?: string;
 }
 
 export class Table {
@@ -104,12 +104,11 @@ export class Table {
     if (config.columns) {
       this.columns(config.columns);
     }
-    if (config.schema) {
-      this.schema(config.schema);
-    }
-    // TODO: the same for other action types
     if (config.database) {
       this.database(config.database);
+    }
+    if (config.schema) {
+      this.schema(config.schema);
     }
 
     return this;
@@ -205,18 +204,22 @@ export class Table {
     return this;
   }
 
-  public schema(schema: string) {
-    this.session.setNameAndTarget(this.proto, this.proto.target.name, schema);
-    return this;
-  }
-
-  // TODO: the same for other action types
   public database(database: string) {
     this.session.setNameAndTarget(
       this.proto,
       this.proto.target.name,
       this.proto.target.schema,
       database
+    );
+    return this;
+  }
+
+  public schema(schema: string) {
+    this.session.setNameAndTarget(
+      this.proto,
+      this.proto.target.name,
+      schema,
+      this.proto.target.database
     );
     return this;
   }
@@ -301,7 +304,9 @@ export class TableContext implements ITableContext {
 
   public ref(ref: Resolvable) {
     const name =
-      typeof ref === "string" || typeof ref === "undefined" ? ref : `${ref.schema}.${ref.name}`;
+      typeof ref === "string" || typeof ref === "undefined"
+        ? ref
+        : `${!!ref.database ? `${ref.database}.` : ""}${ref.schema}.${ref.name}`;
     if (!name) {
       const message = `Action name is not specified`;
       this.table.session.compileError(new Error(message));
