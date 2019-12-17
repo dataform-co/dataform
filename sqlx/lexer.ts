@@ -59,7 +59,7 @@ const INNER_SQL_BLOCK_LEXER_TOKEN_NAMES = {
   CAPTURE_EVERYTHING_ELSE: LEXER_STATE_NAMES.INNER_SQL_BLOCK + "_captureEverythingElse"
 };
 
-export const lexer = moo.states(buildSqlxLexer());
+const lexer = moo.states(buildSqlxLexer());
 
 export interface ISyntaxTreeNode {
   contentType: "sql" | "js" | "jsPlaceholder" | "sqlStatementSeparator" | "sqlComment";
@@ -315,9 +315,6 @@ function buildSqlxLexer(): { [x: string]: moo.Rules } {
     match: "${",
     push: LEXER_STATE_NAMES.JS_BLOCK
   };
-  // sqlLexer[SQL_LEXER_TOKEN_NAMES.ESCAPED_BACKTICK] = {
-  //   match: "\\`"
-  // };
   sqlLexer[SQL_LEXER_TOKEN_NAMES.BACKSLASH] = "\\";
   sqlLexer[SQL_LEXER_TOKEN_NAMES.BACKTICK] = "`";
   sqlLexer[SQL_LEXER_TOKEN_NAMES.CAPTURE_EVERYTHING_ELSE] = {

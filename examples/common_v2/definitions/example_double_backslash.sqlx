@@ -4,6 +4,8 @@ config {
 
 select * from regexp_extract('01a_data_engine', '^(\\d{2}\\w)')
 
-js {
+select * from regexp_extract('01a_data_engine', r'^(\\d{2}\\w)')
 
+pre_operations {
+    select * from regexp_extract('\\', '\\\\')
 }

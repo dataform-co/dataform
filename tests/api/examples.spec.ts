@@ -101,8 +101,8 @@ describe("examples", () => {
           cleanSql(
             `select * from (select current_timestamp() as ts)
            where ts > (select max(ts) from \`tada-analytics.${schemaWithSuffix(
-              "df_integration_test"
-            )}.example_is_incremental\`) or (select max(ts) from \`tada-analytics.${schemaWithSuffix(
+             "df_integration_test"
+           )}.example_is_incremental\`) or (select max(ts) from \`tada-analytics.${schemaWithSuffix(
               "df_integration_test"
             )}.example_is_incremental\`) is null`
           )
@@ -113,11 +113,11 @@ describe("examples", () => {
           (t: dataform.ITable) => t.name === "example_ignore"
         );
         expect(exampleIgnore).to.be.undefined;
-        const exampleIgnore2 = graph.tables.find(
+        const exampleIgnore_2 = graph.tables.find(
           (t: dataform.ITable) =>
             t.name === schemaWithSuffix("df_integration_test") + ".example_ignore"
         );
-        expect(exampleIgnore2).to.be.undefined;
+        expect(exampleIgnore).to.be.undefined;
 
         // Check SQL files with raw back-ticks get escaped.
         const exampleBackticks = graph.tables.find(
@@ -395,16 +395,15 @@ describe("examples", () => {
           "select 'hi' as faked union all\nselect 'ben' as faked union all\nselect 'sup?' as faked"
         );
 
-        // Check double back ticks don't get converted to singular.
+        // Check double backslashes don't get converted to singular.
         const exampleDoubleBackslash = graph.tables.find(
           (t: dataform.ITable) =>
             t.name === schemaWithSuffix("df_integration_test") + ".example_double_backslash"
         );
         expect(exampleDoubleBackslash).to.not.be.undefined;
-        console.log("Raw query:", exampleDoubleBackslash.query);
         expect(cleanSql(exampleDoubleBackslash.query)).equals(
-          "select * from regexp_extract('01a_data_engine', '^(\\\\d{2}\\\\w)')"
-        )
+          "select * from regexp_extract('01a_data_engine', '^(\\\\d{2}\\\\w)') select * from regexp_extract('01a_data_engine', r'^(\\\\d{2}\\\\w)')"
+        );
       });
     }
   });
