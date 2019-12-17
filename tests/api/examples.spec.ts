@@ -404,6 +404,9 @@ describe("examples", () => {
         expect(cleanSql(exampleDoubleBackslash.query)).equals(
           "select * from regexp_extract('01a_data_engine', '^(\\\\d{2}\\\\w)') select * from regexp_extract('01a_data_engine', r'^(\\\\d{2}\\\\w)')"
         );
+        expect(cleanSql(exampleDoubleBackslash.preOps[0])).equals(
+          "select * from regexp_extract('\\', '\\\\')"
+        );
       });
     }
   });

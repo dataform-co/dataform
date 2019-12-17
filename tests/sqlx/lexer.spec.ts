@@ -16,5 +16,23 @@ describe("@dataform/sqlx", () => {
         "SELECT regexp_extract('01a_data_engine', '^(\\\\\\\\d{2}\\\\\\\\w)')"
       ]);
     });
+    it("replaces single backslash with double backslashes in pre operation", () => {
+      const parsedSqlx = parseSqlx(
+        "pre_operations {SELECT regexp_extract('01a_data_engine', '^(\\d{2}\\w)')}"
+      );
+      // console.log("SQL:", parsedSqlx);
+      expect(parsedSqlx.preOperations).eql([
+        "SELECT regexp_extract('01a_data_engine', '^(\\\\d{2}\\\\w)')"
+      ]);
+    });
+    it("closing braces in inner sql quotes doesn't close block", () => {
+      const parsedSqlx = parseSqlx("pre_operations {SELECT '{}'}");
+      expect(parsedSqlx.preOperations).eql(["SELECT '{}'"]);
+    });
+    it("closing braces in inner sql quotes with backslashes after doesn't close block", () => {
+      const parsedSqlx = parseSqlx("pre_operations {SELECT '\\d{2}'}");
+      console.log("SQL:", parsedSqlx);
+      expect(parsedSqlx.preOperations).eql(["SELECT '\\\\d{2}'"]);
+    });
   });
 });
