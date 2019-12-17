@@ -20,7 +20,6 @@ describe("@dataform/sqlx", () => {
       const parsedSqlx = parseSqlx(
         "pre_operations {SELECT regexp_extract('01a_data_engine', '^(\\d{2}\\w)')}"
       );
-      // console.log("SQL:", parsedSqlx);
       expect(parsedSqlx.preOperations).eql([
         "SELECT regexp_extract('01a_data_engine', '^(\\\\d{2}\\\\w)')"
       ]);
@@ -31,9 +30,15 @@ describe("@dataform/sqlx", () => {
     });
     it("closing braces in inner sql quotes with backslashes after doesn't close block", () => {
       const parsedSqlx = parseSqlx("pre_operations {SELECT '\\d{2}'}");
-      console.log("SQL:", parsedSqlx);
       expect(parsedSqlx.preOperations).eql(["SELECT '\\\\d{2}'"]);
     });
-    // it("escaped single quote does not end single quote string")
+    it("escaped quotes do not close single quoted string", () => {
+      const parsedSqlx = parseSqlx("SELECT 'asd\\'123\"def'");
+      expect(parsedSqlx.sql).eql(["SELECT 'asd\\\\'123\"def'"]);
+    });
+    it("escaped quotes do not close double quoted string", () => {
+      const parsedSqlx = parseSqlx('SELECT "asd\\"123\'def"');
+      expect(parsedSqlx.sql).eql(['SELECT "asd\\\\"123\'def"']);
+    });
   });
 });
