@@ -57,19 +57,27 @@ const INNER_SQL_BLOCK_LEXER_TOKEN_NAMES = {
   CLOSE_BLOCK: LEXER_STATE_NAMES.INNER_SQL_BLOCK + "_closeBlock",
   BACKSLASH: LEXER_STATE_NAMES.INNER_SQL_BLOCK + "_backslash",
   BACKTICK: LEXER_STATE_NAMES.INNER_SQL_BLOCK + "_backtick",
-  CAPTURE_EVERYTHING_ELSE: LEXER_STATE_NAMES.INNER_SQL_BLOCK + "_captureEverythingElse"
+  CAPTURE_EVERYTHING_ELSE: LEXER_STATE_NAMES.INNER_SQL_BLOCK + "_captureEverythingElse",
+  START_QUOTE_SINGLE: LEXER_STATE_NAMES.INNER_SQL_BLOCK + "_startQuoteSingle",
+  START_QUOTE_DOUBLE: LEXER_STATE_NAMES.INNER_SQL_BLOCK + "_startQuoteDouble"
 };
 
 const INNER_SINGLE_QUOTE_LEXER_TOKEN_NAMES = {
-  START_PLACEHOLDER: LEXER_STATE_NAMES.INNER_SINGLE_QUOTE + "_startSingleQuote",
-  CLOSE_QUOTE: LEXER_STATE_NAMES.INNER_SINGLE_QUOTE + "_closeSingleQuote",
+  BACKSLASH: LEXER_STATE_NAMES.INNER_SINGLE_QUOTE + "_backslash",
+  CLOSE_QUOTE: LEXER_STATE_NAMES.INNER_SINGLE_QUOTE + "_closeQuoteSingle",
   CAPTURE_EVERYTHING_ELSE: LEXER_STATE_NAMES.INNER_SINGLE_QUOTE + "_captureEverythingElse"
+};
+
+const INNER_DOUBLE_QUOTE_LEXER_TOKEN_NAMES = {
+  BACKSLASH: LEXER_STATE_NAMES.INNER_DOUBLE_QUOTE + "_backslash",
+  CLOSE_QUOTE: LEXER_STATE_NAMES.INNER_DOUBLE_QUOTE + "_closeQuoteDouble",
+  CAPTURE_EVERYTHING_ELSE: LEXER_STATE_NAMES.INNER_DOUBLE_QUOTE + "_captureEverythingElse"
 };
 
 const lexer = moo.states(buildSqlxLexer());
 
 export interface ISyntaxTreeNode {
-  contentType: "sql" | "js" | "jsPlaceholder" | "sqlStatementSeparator" | "sqlComment";
+  contentType: "sql" | "js" | "jsPlaceholder" | "sqlStatementSeparator" | "sqlComment" | "quote";
   contents: Array<string | ISyntaxTreeNode>;
 }
 
@@ -95,7 +103,9 @@ export function constructSyntaxTree(code: string): ISyntaxTreeNode {
       const contentType =
         token.type.includes("_startJs") || token.type.includes("_startConfig")
           ? token.type.includes("_startJsPlaceholder")
-            ? "jsPlaceholder"
+            ? token.type.includes("_startQuote")
+              ? "quote"
+              : "jsPlaceholder"
             : "js"
           : "sql";
       if (contentType === "sql" && currentNode.contentType !== "sql") {
@@ -294,6 +304,10 @@ function getValueMappings() {
   valueMappings[INNER_SQL_BLOCK_LEXER_TOKEN_NAMES.BACKTICK] = () => "\\`";
   valueMappings[INNER_SQL_BLOCK_LEXER_TOKEN_NAMES.BACKSLASH] = () => "\\\\";
 
+  valueMappings[INNER_SINGLE_QUOTE_LEXER_TOKEN_NAMES.BACKSLASH] = () => "\\\\";
+
+  valueMappings[INNER_DOUBLE_QUOTE_LEXER_TOKEN_NAMES.BACKSLASH] = () => "\\\\";
+
   return valueMappings;
 }
 
@@ -394,19 +408,48 @@ function buildSqlxLexer(): { [x: string]: moo.Rules } {
   };
   innerSqlBlockLexer[INNER_SQL_BLOCK_LEXER_TOKEN_NAMES.BACKSLASH] = "\\";
   innerSqlBlockLexer[INNER_SQL_BLOCK_LEXER_TOKEN_NAMES.BACKTICK] = "`";
+  innerSqlBlockLexer[INNER_SQL_BLOCK_LEXER_TOKEN_NAMES.START_QUOTE_SINGLE] = {
+    match: "'",
+    push: LEXER_STATE_NAMES.INNER_SINGLE_QUOTE
+  };
+  innerSqlBlockLexer[INNER_SQL_BLOCK_LEXER_TOKEN_NAMES.START_QUOTE_DOUBLE] = {
+    match: '"',
+    push: LEXER_STATE_NAMES.INNER_DOUBLE_QUOTE
+  };
   innerSqlBlockLexer[INNER_SQL_BLOCK_LEXER_TOKEN_NAMES.CAPTURE_EVERYTHING_ELSE] = {
     match: /[\s\S]+?/,
     lineBreaks: true
   };
 
   const innerSingleQuoteLexer: moo.Rules = {};
-  innerSingleQuoteLexer[innerSingleQuoteLexer];
+  innerSingleQuoteLexer[INNER_SINGLE_QUOTE_LEXER_TOKEN_NAMES.CLOSE_QUOTE] = {
+    match: "'",
+    pop: 1
+  };
+  innerSingleQuoteLexer[INNER_SINGLE_QUOTE_LEXER_TOKEN_NAMES.BACKSLASH] = "\\";
+  innerSingleQuoteLexer[INNER_SINGLE_QUOTE_LEXER_TOKEN_NAMES.CAPTURE_EVERYTHING_ELSE] = {
+    match: /[\s\S]+?/,
+    lineBreaks: true
+  };
+
+  const innerDoubleQuoteLexer: moo.Rules = {};
+  innerDoubleQuoteLexer[INNER_DOUBLE_QUOTE_LEXER_TOKEN_NAMES.CLOSE_QUOTE] = {
+    match: '"',
+    pop: 1
+  };
+  innerDoubleQuoteLexer[INNER_DOUBLE_QUOTE_LEXER_TOKEN_NAMES.BACKSLASH] = "\\";
+  innerDoubleQuoteLexer[INNER_DOUBLE_QUOTE_LEXER_TOKEN_NAMES.CAPTURE_EVERYTHING_ELSE] = {
+    match: /[\s\S]+?/,
+    lineBreaks: true
+  };
 
   const lexerStates: { [x: string]: moo.Rules } = {};
   lexerStates[LEXER_STATE_NAMES.SQL] = sqlLexer;
   lexerStates[LEXER_STATE_NAMES.JS_BLOCK] = jsBlockLexer;
   lexerStates[LEXER_STATE_NAMES.JS_TEMPLATE_STRING] = jsTemplateStringLexer;
   lexerStates[LEXER_STATE_NAMES.INNER_SQL_BLOCK] = innerSqlBlockLexer;
+  lexerStates[LEXER_STATE_NAMES.INNER_SINGLE_QUOTE] = innerSingleQuoteLexer;
+  lexerStates[LEXER_STATE_NAMES.INNER_DOUBLE_QUOTE] = innerDoubleQuoteLexer;
 
   return lexerStates;
 }

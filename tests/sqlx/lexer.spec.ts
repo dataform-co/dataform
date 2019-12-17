@@ -34,5 +34,6 @@ describe("@dataform/sqlx", () => {
       console.log("SQL:", parsedSqlx);
       expect(parsedSqlx.preOperations).eql(["SELECT '\\\\d{2}'"]);
     });
+    // it("escaped single quote does not end single quote string")
   });
 });
