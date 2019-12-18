@@ -186,10 +186,22 @@ describe("examples", () => {
         expect(exampleView).to.not.be.undefined;
         expect(exampleView.type).equals("view");
         expect(exampleView.query.trim()).equals(
-          `select * from \`tada-analytics.${schemaWithSuffix("df_integration_test")}.sample_data\``
+          `select * from \`tada-analytics.${schemaWithSuffix(
+            "df_integration_test"
+          )}.sample_data\`\n` +
+            `inner join select * from \`tada-analytics.${schemaWithSuffix(
+              "override_schema"
+            )}.override_schema_example\`\n` +
+            `inner join select * from \`override_database.${schemaWithSuffix(
+              "df_integration_test"
+            )}.override_database_example\``
         );
         expect(exampleView.dependencies).deep.equals([
-          "tada-analytics." + schemaWithSuffix("df_integration_test") + ".sample_data"
+          "tada-analytics." + schemaWithSuffix("df_integration_test") + ".sample_data",
+          "tada-analytics." + schemaWithSuffix("override_schema") + ".override_schema_example",
+          "override_database." +
+            schemaWithSuffix("df_integration_test") +
+            ".override_database_example"
         ]);
         expect(exampleView.tags).to.eql([]);
 

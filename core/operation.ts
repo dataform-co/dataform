@@ -59,7 +59,7 @@ export class Operation {
   }
 
   public dependencies(value: Resolvable | Resolvable[]) {
-    const newDependencies = utils.isResolvable(value) ? [value] : value;
+    const newDependencies = Array.isArray(value) ? value : [value];
     newDependencies.forEach(resolvable => {
       this.proto.dependencyTargets.push(utils.resolvableAsTarget(resolvable));
     });
