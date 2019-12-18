@@ -72,6 +72,18 @@ describe("@dataform/integration/snowflake", () => {
     const s3Rows = await getTableRows(s3Table.target, adapter, credentials, "snowflake");
     expect(s3Rows.length).equals(2);
 
+    // Check the status of the view in the non-default database.
+    const tada2DatabaseView = keyBy(compiledGraph.tables, t => t.name)[
+      "TADA2.DF_INTEGRATION_TEST.SAMPLE_DATA_2"
+    ];
+    const tada2DatabaseViewRows = await getTableRows(
+      tada2DatabaseView.target,
+      adapter,
+      credentials,
+      "snowflake"
+    );
+    expect(tada2DatabaseViewRows.length).equals(3);
+
     // Check the status of the two assertions.
     expect(actionMap["DF_INTEGRATION_TEST_ASSERTIONS.EXAMPLE_ASSERTION_FAIL"].status).equals(
       dataform.ActionResult.ExecutionStatus.FAILED

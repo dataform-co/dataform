@@ -1,7 +1,8 @@
+import { adapters } from "@dataform/core";
 import { Assertion } from "@dataform/core/assertion";
 import { Declaration } from "@dataform/core/declaration";
 import { Operation } from "@dataform/core/operation";
-import { Resolvable } from "@dataform/core/session";
+import { IActionProto, Resolvable, Session } from "@dataform/core/session";
 import {
   DistStyleTypes,
   ignoredProps,
@@ -249,4 +250,37 @@ export function ambiguousActionNameMsg(
   return `Ambiguous Action name: ${stringifyResolvable(
     act
   )}. Did you mean one of: ${allActNames.join(", ")}.`;
+}
+
+export function target(
+  adapter: adapters.IAdapter,
+  name: string,
+  schema: string,
+  database?: string
+): dataform.ITarget {
+  return dataform.Target.create({
+    name: adapter.normalizeIdentifier(name),
+    schema: adapter.normalizeIdentifier(schema),
+    database: database && adapter.normalizeIdentifier(database)
+  });
+}
+
+export function setNameAndTarget(
+  session: Session,
+  action: IActionProto,
+  name: string,
+  overrideSchema?: string,
+  overrideDatabase?: string
+) {
+  action.target = target(
+    session.adapter(),
+    name,
+    overrideSchema || session.config.defaultSchema,
+    overrideDatabase || session.config.defaultDatabase
+  );
+  const nameParts = [action.target.name, action.target.schema];
+  if (!!action.target.database) {
+    nameParts.push(action.target.database);
+  }
+  action.name = nameParts.reverse().join(".");
 }

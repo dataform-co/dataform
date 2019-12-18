@@ -98,7 +98,8 @@ export class Operation {
   }
 
   public database(database: string) {
-    this.session.setNameAndTarget(
+    utils.setNameAndTarget(
+      this.session,
       this.proto,
       this.proto.target.name,
       this.proto.target.schema,
@@ -108,7 +109,7 @@ export class Operation {
   }
 
   public schema(schema: string) {
-    this.session.setNameAndTarget(this.proto, this.proto.target.name, schema);
+    utils.setNameAndTarget(this.session, this.proto, this.proto.target.name, schema);
     return this;
   }
 

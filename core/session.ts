@@ -13,7 +13,7 @@ import * as TarjanGraphConstructor from "tarjan-graph";
 // Can't use resolveJsonModule with Bazel.
 const { version: dataformCoreVersion } = require("@dataform/core/package.json");
 
-interface IActionProto {
+export interface IActionProto {
   name?: string;
   fileName?: string;
   dependencyTargets?: dataform.ITarget[];
@@ -256,18 +256,22 @@ export class Session {
     // error instead.
     if (typeof ref === "string") {
       return this.adapter().resolveTarget(
-        this.target(ref, `${this.config.defaultSchema}${this.getSuffixWithUnderscore()}`)
+        utils.target(
+          this.adapter(),
+          ref,
+          `${this.config.defaultSchema}${this.getSuffixWithUnderscore()}`
+        )
       );
     }
     return this.adapter().resolveTarget(
-      this.target(ref.name, `${ref.schema}${this.getSuffixWithUnderscore()}`)
+      utils.target(this.adapter(), ref.name, `${ref.schema}${this.getSuffixWithUnderscore()}`)
     );
   }
 
   public operate(name: string, queries?: OContextable<string | string[]>): Operation {
     const operation = new Operation();
     operation.session = this;
-    this.setNameAndTarget(operation.proto, name);
+    utils.setNameAndTarget(this, operation.proto, name);
     if (queries) {
       operation.queries(queries);
     }
@@ -282,7 +286,7 @@ export class Session {
   ): table.Table {
     const newTable = new table.Table();
     newTable.session = this;
-    this.setNameAndTarget(newTable.proto, name);
+    utils.setNameAndTarget(this, newTable.proto, name);
     if (!!queryOrConfig) {
       if (typeof queryOrConfig === "object") {
         newTable.config(queryOrConfig);
@@ -298,7 +302,7 @@ export class Session {
   public assert(name: string, query?: AContextable<string>): Assertion {
     const assertion = new Assertion();
     assertion.session = this;
-    this.setNameAndTarget(assertion.proto, name, this.config.assertionSchema);
+    utils.setNameAndTarget(this, assertion.proto, name, this.config.assertionSchema);
     if (query) {
       assertion.query(query);
     }
@@ -310,7 +314,7 @@ export class Session {
   public declare(dataset: dataform.ITarget): Declaration {
     const declaration = new Declaration();
     declaration.session = this;
-    this.setNameAndTarget(declaration.proto, dataset.name, dataset.schema, dataset.database);
+    utils.setNameAndTarget(this, declaration.proto, dataset.name, dataset.schema, dataset.database);
     declaration.proto.fileName = utils.getCallerFile(this.rootDir);
     this.actions.push(declaration);
     return declaration;
@@ -411,24 +415,6 @@ export class Session {
     });
   }
 
-  public setNameAndTarget(
-    action: IActionProto,
-    name: string,
-    overrideSchema?: string,
-    overrideDatabase?: string
-  ) {
-    action.target = this.target(
-      name,
-      overrideSchema || this.config.defaultSchema,
-      overrideDatabase || this.config.defaultDatabase
-    );
-    const nameParts = [action.target.name, action.target.schema];
-    if (!!action.target.database) {
-      nameParts.push(action.target.database);
-    }
-    action.name = nameParts.reverse().join(".");
-  }
-
   private getSuffixWithUnderscore() {
     return !!this.config.schemaSuffix ? `_${this.config.schemaSuffix}` : "";
   }
@@ -446,15 +432,6 @@ export class Session {
     });
 
     return compiledChunks;
-  }
-
-  private target(name: string, schema: string, database?: string): dataform.ITarget {
-    const adapter = this.adapter();
-    return dataform.Target.create({
-      name: adapter.normalizeIdentifier(name),
-      schema: adapter.normalizeIdentifier(schema),
-      database: database && adapter.normalizeIdentifier(database)
-    });
   }
 
   private fullyQualifyDependencies(actions: IActionProto[]) {

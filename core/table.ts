@@ -198,7 +198,8 @@ export class Table {
   }
 
   public database(database: string) {
-    this.session.setNameAndTarget(
+    utils.setNameAndTarget(
+      this.session,
       this.proto,
       this.proto.target.name,
       this.proto.target.schema,
@@ -208,7 +209,8 @@ export class Table {
   }
 
   public schema(schema: string) {
-    this.session.setNameAndTarget(
+    utils.setNameAndTarget(
+      this.session,
       this.proto,
       this.proto.target.name,
       schema,
