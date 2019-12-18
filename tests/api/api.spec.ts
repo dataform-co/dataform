@@ -263,7 +263,7 @@ describe("@dataform/api", () => {
   describe("sql_generating", () => {
     it("bigquery_incremental", () => {
       const graph = dataform.CompiledGraph.create({
-        projectConfig: { warehouse: "bigquery" },
+        projectConfig: { warehouse: "bigquery", defaultDatabase: "deeb" },
         tables: [
           {
             name: "incremental",
@@ -299,7 +299,7 @@ describe("@dataform/api", () => {
         cleanSql(executionGraph.actions.filter(n => n.name === "incremental")[0].tasks[0].statement)
       ).equals(
         cleanSql(
-          `insert into \`schema.incremental\` (existing_field)
+          `insert into \`deeb.schema.incremental\` (existing_field)
            select existing_field from (
              select * from (select 1 as test) as subquery
              where true
@@ -411,7 +411,7 @@ describe("@dataform/api", () => {
 
     it("bigquery_partitionby", () => {
       const testGraph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
-        projectConfig: { warehouse: "bigquery" },
+        projectConfig: { warehouse: "bigquery", defaultDatabase: "deeb" },
         tables: [
           {
             name: "partitionby",
@@ -449,7 +449,7 @@ describe("@dataform/api", () => {
             {
               type: "statement",
               statement:
-                "create or replace table `schema.name` partition by DATE(test) as select 1 as test"
+                "create or replace table `deeb.schema.name` partition by DATE(test) as select 1 as test"
             }
           ]
         },
@@ -464,7 +464,7 @@ describe("@dataform/api", () => {
           tasks: [
             {
               type: "statement",
-              statement: "create or replace table `schema.name`  as select 1 as test"
+              statement: "create or replace table `deeb.schema.name`  as select 1 as test"
             }
           ]
         }

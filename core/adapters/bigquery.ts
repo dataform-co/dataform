@@ -9,9 +9,8 @@ export class BigQueryAdapter extends Adapter implements IAdapter {
   }
 
   public resolveTarget(target: dataform.ITarget) {
-    return `\`${
-      this.project.defaultDatabase ? `${this.project.defaultDatabase}.` : ""
-    }${target.schema || this.project.defaultSchema}.${target.name}\``;
+    return `\`${target.database || this.project.defaultDatabase}.${target.schema ||
+      this.project.defaultSchema}.${target.name}\``;
   }
 
   public publishTasks(
