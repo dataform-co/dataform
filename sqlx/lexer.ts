@@ -198,6 +198,7 @@ export function parseSqlx(code: string): ISqlxParseResults {
         if (isStatementSeparator) {
           results.postOperations.push("");
         }
+        console.log(token);
         results.postOperations[results.postOperations.length - 1] += token.value;
         break;
       }

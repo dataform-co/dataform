@@ -6,7 +6,9 @@ import { ISqlxParseResults, parseSqlx } from "@dataform/sqlx/lexer";
 
 export function compile(code: string, path: string) {
   if (path.endsWith(".sqlx")) {
-    return compileSqlx(parseSqlx(code), path);
+    const x = compileSqlx(parseSqlx(code), path);
+    console.log(x);
+    return x;
   }
   if (path.endsWith(".assert.sql")) {
     return compileAssertionSql(code, path);

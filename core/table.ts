@@ -131,6 +131,7 @@ export class Table {
   }
 
   public postOps(posts: TContextable<string | string[]>) {
+    console.log("getting postops", posts);
     this.contextablePostOps.push(posts);
     return this;
   }
@@ -206,6 +207,7 @@ export class Table {
   }
 
   public compile() {
+    console.log("here");
     const context = new TableContext(this);
     const incrementalContext = new TableContext(this, true);
 
@@ -220,14 +222,17 @@ export class Table {
 
     this.contextablePreOps.forEach(contextablePreOps => {
       const appliedPres = context.apply(contextablePreOps);
+      console.log("preops sd", contextablePreOps, this.proto.preOps);
       this.proto.preOps = (this.proto.preOps || []).concat(
         typeof appliedPres === "string" ? [appliedPres] : appliedPres
       );
     });
     this.contextablePreOps = [];
 
+    console.log("contextablePostOps", this.contextablePostOps);
     this.contextablePostOps.forEach(contextablePostOps => {
       const appliedPosts = context.apply(contextablePostOps);
+      console.log("postops sd", contextablePostOps, this.proto.postOps);
       this.proto.postOps = (this.proto.postOps || []).concat(
         typeof appliedPosts === "string" ? [appliedPosts] : appliedPosts
       );
@@ -318,12 +323,17 @@ export class TableContext implements ITableContext {
   }
 
   public preOps(statement: TContextable<string | string[]>) {
-    this.table.preOps(statement);
+    if (!this.isIncremental()) {
+      this.table.preOps(statement);
+    }
     return "";
   }
 
   public postOps(statement: TContextable<string | string[]>) {
-    this.table.postOps(statement);
+    console.log("isIncremental", this.isIncremental());
+    if (!this.isIncremental()) {
+      this.table.postOps(statement);
+    }
     return "";
   }
 
