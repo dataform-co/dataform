@@ -566,7 +566,7 @@ describe("@dataform/core", () => {
           /Ambiguous Action name: {\"name\":\"a\"}. Did you mean one of: foo.a, bar.a./
         )
       );
-      expect(errors, JSON.stringify(gErrors, null, 4)).to.be.an("array").that.is.not.empty;
+      expect(errors).to.be.an("array").that.is.not.empty;
     });
 
     it("same action name in same schema", () => {
