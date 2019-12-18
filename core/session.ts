@@ -16,6 +16,7 @@ const { version: dataformCoreVersion } = require("@dataform/core/package.json");
 interface IActionProto {
   name?: string;
   fileName?: string;
+  dependencyTargets?: dataform.ITarget[];
   dependencies?: string[];
   target?: dataform.ITarget;
 }
@@ -81,12 +82,7 @@ function mapColumnDescriptionToProto(
   );
 }
 
-interface IQualifiedName {
-  database?: string;
-  schema: string;
-  name: string;
-}
-export type Resolvable = string | IQualifiedName;
+export type Resolvable = string | dataform.ITarget;
 
 export class Session {
   public rootDir: string;
@@ -227,7 +223,7 @@ export class Session {
   }
 
   public resolve(ref: Resolvable): string {
-    const allResolved = this.findActions(ref);
+    const allResolved = this.findActions(utils.resolvableAsTarget(ref));
     if (allResolved.length > 1) {
       this.compileError(new Error(utils.ambiguousActionNameMsg(ref, allResolved)));
     }
@@ -311,7 +307,7 @@ export class Session {
     return assertion;
   }
 
-  public declare(dataset: IQualifiedName): Declaration {
+  public declare(dataset: dataform.ITarget): Declaration {
     const declaration = new Declaration();
     declaration.session = this;
     this.setNameAndTarget(declaration.proto, dataset.name, dataset.schema, dataset.database);
@@ -396,26 +392,20 @@ export class Session {
     return util.base64.encode(encodedGraphBytes, 0, encodedGraphBytes.length);
   }
 
-  public findActions(res: Resolvable) {
+  public findActions(target: dataform.ITarget) {
     const adapter = this.adapter();
     return this.actions.filter(action => {
-      if (typeof res === "string") {
-        const nameParts = res.split(".").reverse();
-        const nameMatches = action.proto.target.name === adapter.normalizeIdentifier(nameParts[0]);
-        const schemaMatches =
-          nameParts.length < 2 ||
-          action.proto.target.schema === adapter.normalizeIdentifier(nameParts[1]);
-        const databaseMatches =
-          nameParts.length < 3 ||
-          action.proto.target.schema === adapter.normalizeIdentifier(nameParts[2]);
-        return nameMatches && schemaMatches && databaseMatches;
+      const database = target.database || this.config.defaultDatabase;
+      if (database && action.proto.target.database !== adapter.normalizeIdentifier(database)) {
+        return false;
       }
-      const database = res.database || this.config.defaultDatabase;
-      return (
-        action.proto.target.database === (database && adapter.normalizeIdentifier(database)) &&
-        action.proto.target.schema === adapter.normalizeIdentifier(res.schema) &&
-        action.proto.target.name === adapter.normalizeIdentifier(res.name)
-      );
+      if (
+        !!target.schema &&
+        action.proto.target.schema !== adapter.normalizeIdentifier(target.schema)
+      ) {
+        return false;
+      }
+      return action.proto.target.name === adapter.normalizeIdentifier(target.name);
     });
   }
 
@@ -464,35 +454,40 @@ export class Session {
   }
 
   private fullyQualifyDependencies(actions: IActionProto[]) {
-    const allActionsByName = keyByName(actions);
     actions.forEach(action => {
-      action.dependencies = (action.dependencies || []).map(dependencyName => {
-        if (!!allActionsByName[dependencyName]) {
-          // Dependency is already fully-qualified.
-          return dependencyName;
-        }
-        const possibleDeps = this.findActions(dependencyName);
-        if (possibleDeps.length === 1) {
-          return possibleDeps[0].proto.name;
-        }
-        if (possibleDeps.length >= 1) {
-          this.compileError(new Error(utils.ambiguousActionNameMsg(dependencyName, possibleDeps)));
-        } else {
+      const fullyQualifiedDependencies: { [name: string]: dataform.ITarget } = {};
+      for (const dependency of action.dependencyTargets) {
+        const possibleDeps = this.findActions(dependency);
+        if (possibleDeps.length === 0) {
+          // We couldn't find a matching target.
           this.compileError(
             new Error(
               `Missing dependency detected: Action "${
                 action.name
-              }" depends on "${dependencyName}" which does not exist. ::::: ${JSON.stringify(
-                action,
-                null,
-                4
-              )}`
+              }" depends on "${utils.stringifyResolvable(
+                dependency
+              )}" which does not exist. ::: ${JSON.stringify(action.dependencyTargets)}`
             ),
             action.fileName
           );
+        } else if (possibleDeps.length === 1) {
+          // We found a single matching target, and fully-qualify it if it's a normal dependency,
+          // or add all of its dependencies to ours if it's an 'inline' table.
+          const protoDep = possibleDeps[0].proto;
+          if (protoDep instanceof dataform.Table && protoDep.type === "inline") {
+            protoDep.dependencyTargets.forEach(inlineDep =>
+              action.dependencyTargets.push(inlineDep)
+            );
+          } else {
+            fullyQualifiedDependencies[protoDep.name] = protoDep.target;
+          }
+        } else {
+          // Too many targets matched the dependency.
+          this.compileError(new Error(utils.ambiguousActionNameMsg(dependency, possibleDeps)));
         }
-        return dependencyName;
-      });
+      }
+      action.dependencies = Object.keys(fullyQualifiedDependencies);
+      action.dependencyTargets = Object.values(fullyQualifiedDependencies);
     });
   }
 

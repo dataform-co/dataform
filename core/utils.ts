@@ -223,12 +223,21 @@ export function flatten<T>(nestedArray: T[][]) {
   }, []);
 }
 
-export function isResolvable(res: any) {
+export function isResolvable(res: any): res is Resolvable {
   return typeof res === "string" || (!!res.schema && !!res.name);
 }
 
+export function resolvableAsTarget(resolvable: Resolvable): dataform.ITarget {
+  if (typeof resolvable === "string") {
+    return {
+      name: resolvable
+    };
+  }
+  return resolvable;
+}
+
 export function stringifyResolvable(res: Resolvable) {
-  return typeof res === "string" ? res : `${res.schema}.${res.name}`;
+  return typeof res === "string" ? res : JSON.stringify(res);
 }
 
 export function ambiguousActionNameMsg(

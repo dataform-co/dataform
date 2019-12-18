@@ -46,12 +46,9 @@ export class Assertion {
   }
 
   public dependencies(value: Resolvable | Resolvable[]) {
-    const newDependencies = utils.isResolvable(value) ? [value] : (value as Resolvable[]);
-    newDependencies.forEach((d: Resolvable) => {
-      const depName = utils.stringifyResolvable(d);
-      if (this.proto.dependencies.indexOf(depName) < 0) {
-        this.proto.dependencies.push(depName);
-      }
+    const newDependencies = utils.isResolvable(value) ? [value] : value;
+    newDependencies.forEach(resolvable => {
+      this.proto.dependencyTargets.push(utils.resolvableAsTarget(resolvable));
     });
     return this;
   }
@@ -104,12 +101,12 @@ export class AssertionContext {
   }
 
   public ref(ref: Resolvable) {
-    // TODO: this is kind of disgusting. and what if the user just specifies database & name, no schema? it'll break.
-    const name =
-      typeof ref === "string" || typeof ref === "undefined"
-        ? ref
-        : `${!!ref.database ? `${ref.database}.` : ""}${ref.schema}.${ref.name}`;
-    this.assertion.dependencies(name);
+    if (!utils.resolvableAsTarget(ref)) {
+      const message = `Action name is not specified`;
+      this.assertion.session.compileError(new Error(message));
+      return "";
+    }
+    this.assertion.dependencies(ref);
     return this.resolve(ref);
   }
 

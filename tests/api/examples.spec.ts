@@ -337,8 +337,8 @@ describe("examples", () => {
           )}.override_schema_example\`\n`
         ]);
         expect(exampleOperations.dependencies).to.eql([
-          "tada-analytics." + schemaWithSuffix("df_integration_test") + ".example_inline",
-          "tada-analytics." + schemaWithSuffix("override_schema") + ".override_schema_example"
+          "tada-analytics." + schemaWithSuffix("override_schema") + ".override_schema_example",
+          "tada-analytics." + schemaWithSuffix("df_integration_test") + ".sample_data"
         ]);
         expect(exampleOperations.tags).to.eql([]);
 
@@ -488,7 +488,9 @@ describe("examples", () => {
       expect(exampleUsingInline.query).equals(
         "\nselect * from (\nselect * from `tada-analytics.df_integration_test.sample_data`)\nwhere true"
       );
-      expect(exampleUsingInline.dependencies).includes("tada-analytics.df_integration_test.sample_data");
+      expect(exampleUsingInline.dependencies).includes(
+        "tada-analytics.df_integration_test.sample_data"
+      );
 
       // Check view
       expect(tableNames).includes("tada-analytics.df_integration_test.example_view");
@@ -499,7 +501,9 @@ describe("examples", () => {
       expect(exampleView.query).equals(
         "\nselect * from `tada-analytics.df_integration_test.sample_data`"
       );
-      expect(exampleView.dependencies).deep.equals(["tada-analytics.df_integration_test.sample_data"]);
+      expect(exampleView.dependencies).deep.equals([
+        "tada-analytics.df_integration_test.sample_data"
+      ]);
 
       // Check table
       expect(tableNames).includes("tada-analytics.df_integration_test.example_table");
@@ -510,7 +514,9 @@ describe("examples", () => {
       expect(exampleTable.query).equals(
         "\nselect * from `tada-analytics.df_integration_test.sample_data`"
       );
-      expect(exampleTable.dependencies).deep.equals(["tada-analytics.df_integration_test.sample_data"]);
+      expect(exampleTable.dependencies).deep.equals([
+        "tada-analytics.df_integration_test.sample_data"
+      ]);
 
       // Check sample data
       expect(tableNames).includes("tada-analytics.df_integration_test.sample_data");

@@ -59,12 +59,9 @@ export class Operation {
   }
 
   public dependencies(value: Resolvable | Resolvable[]) {
-    const newDependencies = utils.isResolvable(value) ? [value] : (value as Resolvable[]);
-    newDependencies.forEach((d: Resolvable) => {
-      const depName = utils.stringifyResolvable(d);
-      if (this.proto.dependencies.indexOf(depName) < 0) {
-        this.proto.dependencies.push(depName);
-      }
+    const newDependencies = utils.isResolvable(value) ? [value] : value;
+    newDependencies.forEach(resolvable => {
+      this.proto.dependencyTargets.push(utils.resolvableAsTarget(resolvable));
     });
     return this;
   }
@@ -158,11 +155,12 @@ export class OperationContext {
   }
 
   public ref(ref: Resolvable) {
-    const name =
-      typeof ref === "string" || typeof ref === "undefined"
-        ? ref
-        : `${!!ref.database ? `${ref.database}.` : ""}${ref.schema}.${ref.name}`;
-    this.operation.dependencies(name);
+    if (!utils.resolvableAsTarget(ref)) {
+      const message = `Action name is not specified`;
+      this.operation.session.compileError(new Error(message));
+      return "";
+    }
+    this.operation.dependencies(ref);
     return this.resolve(ref);
   }
 
