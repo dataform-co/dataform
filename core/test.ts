@@ -48,7 +48,7 @@ export class Test {
         this.proto.fileName
       );
     } else {
-      const allResolved = this.session.findActions(this.datasetToTest);
+      const allResolved = this.session.findActions(utils.resolvableAsTarget(this.datasetToTest));
       if (allResolved.length > 1) {
         this.session.compileError(
           new Error(utils.ambiguousActionNameMsg(this.datasetToTest, allResolved)),

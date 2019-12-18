@@ -562,7 +562,9 @@ describe("@dataform/core", () => {
         .to.have.property("compilationErrors")
         .to.be.an("array").that.is.not.empty;
       const errors = gErrors.compilationErrors.filter(item =>
-        item.message.match(/Ambiguous Action name: a. Did you mean one of: foo.a, bar.a./)
+        item.message.match(
+          /Ambiguous Action name: {\"name\":\"a\"}. Did you mean one of: foo.a, bar.a./
+        )
       );
       expect(errors).to.be.an("array").that.is.not.empty;
     });

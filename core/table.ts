@@ -53,11 +53,12 @@ export interface TConfig {
   redshift?: dataform.IRedshiftOptions;
   bigquery?: dataform.IBigQueryOptions;
   sqldatawarehouse?: dataform.ISQLDataWarehouseOptions;
+  database?: string;
   schema?: string;
 }
 
 export class Table {
-  public proto: dataform.Table = dataform.Table.create({
+  public proto: dataform.ITable = dataform.Table.create({
     type: "view",
     disabled: false,
     tags: []
@@ -102,6 +103,9 @@ export class Table {
     }
     if (config.columns) {
       this.columns(config.columns);
+    }
+    if (config.database) {
+      this.database(config.database);
     }
     if (config.schema) {
       this.schema(config.schema);
@@ -161,18 +165,11 @@ export class Table {
   }
 
   public dependencies(value: Resolvable | Resolvable[]) {
-    const newDependencies = utils.isResolvable(value) ? [value] : (value as Resolvable[]);
-    newDependencies.forEach((d: Resolvable) => {
-      // TODO: This code fails to function correctly if the inline table has not yet
-      // been attached to the session. This code probably needs to be moved to compile().
-      const allResolved = this.session.findActions(d);
-      const resolved = allResolved.length > 0 ? allResolved[0] : undefined;
-      if (!!resolved && resolved instanceof Table && resolved.proto.type === "inline") {
-        resolved.proto.dependencies.forEach(childDep => this.addDependency(childDep));
-      } else {
-        this.addDependency(d);
-      }
+    const newDependencies = Array.isArray(value) ? value : [value];
+    newDependencies.forEach(resolvable => {
+      this.proto.dependencyTargets.push(utils.resolvableAsTarget(resolvable));
     });
+
     return this;
   }
 
@@ -200,8 +197,25 @@ export class Table {
     return this;
   }
 
+  public database(database: string) {
+    utils.setNameAndTarget(
+      this.session,
+      this.proto,
+      this.proto.target.name,
+      this.proto.target.schema,
+      database
+    );
+    return this;
+  }
+
   public schema(schema: string) {
-    this.session.setNameAndTarget(this.proto, this.proto.target.name, schema);
+    utils.setNameAndTarget(
+      this.session,
+      this.proto,
+      this.proto.target.name,
+      schema,
+      this.proto.target.database
+    );
     return this;
   }
 
@@ -234,13 +248,6 @@ export class Table {
     });
     this.contextablePostOps = [];
     return this.proto;
-  }
-
-  private addDependency(dependency: Resolvable): void {
-    const depName = utils.stringifyResolvable(dependency);
-    if (this.proto.dependencies.indexOf(depName) < 0) {
-      this.proto.dependencies.push(depName);
-    }
   }
 }
 
@@ -284,14 +291,12 @@ export class TableContext implements ITableContext {
   }
 
   public ref(ref: Resolvable) {
-    const name =
-      typeof ref === "string" || typeof ref === "undefined" ? ref : `${ref.schema}.${ref.name}`;
-    if (!name) {
+    if (!utils.resolvableAsTarget(ref)) {
       const message = `Action name is not specified`;
       this.table.session.compileError(new Error(message));
       return "";
     }
-    this.table.dependencies(name);
+    this.table.dependencies(ref);
     return this.resolve(ref);
   }
 

@@ -8,6 +8,7 @@ export interface AConfig {
   dependencies?: Resolvable | Resolvable[];
   tags?: string[];
   description?: string;
+  database?: string;
   schema?: string;
 }
 
@@ -30,6 +31,9 @@ export class Assertion {
     if (config.description) {
       this.description(config.description);
     }
+    if (config.database) {
+      this.database(config.database);
+    }
     if (config.schema) {
       this.schema(config.schema);
     }
@@ -42,12 +46,9 @@ export class Assertion {
   }
 
   public dependencies(value: Resolvable | Resolvable[]) {
-    const newDependencies = utils.isResolvable(value) ? [value] : (value as Resolvable[]);
-    newDependencies.forEach((d: Resolvable) => {
-      const depName = utils.stringifyResolvable(d);
-      if (this.proto.dependencies.indexOf(depName) < 0) {
-        this.proto.dependencies.push(depName);
-      }
+    const newDependencies = Array.isArray(value) ? value : [value];
+    newDependencies.forEach(resolvable => {
+      this.proto.dependencyTargets.push(utils.resolvableAsTarget(resolvable));
     });
     return this;
   }
@@ -67,8 +68,19 @@ export class Assertion {
     return this;
   }
 
+  public database(database: string) {
+    utils.setNameAndTarget(
+      this.session,
+      this.proto,
+      this.proto.target.name,
+      this.proto.target.schema,
+      database
+    );
+    return this;
+  }
+
   public schema(schema: string) {
-    this.session.setNameAndTarget(this.proto, this.proto.target.name, schema);
+    utils.setNameAndTarget(this.session, this.proto, this.proto.target.name, schema);
     return this;
   }
 
@@ -90,9 +102,12 @@ export class AssertionContext {
   }
 
   public ref(ref: Resolvable) {
-    const name =
-      typeof ref === "string" || typeof ref === "undefined" ? ref : `${ref.schema}.${ref.name}`;
-    this.assertion.dependencies(name);
+    if (!utils.resolvableAsTarget(ref)) {
+      const message = `Action name is not specified`;
+      this.assertion.session.compileError(new Error(message));
+      return "";
+    }
+    this.assertion.dependencies(ref);
     return this.resolve(ref);
   }
 

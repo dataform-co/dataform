@@ -15,6 +15,7 @@ export interface OConfig {
   description?: string;
   columns?: IColumnsDescriptor;
   hasOutput?: boolean;
+  database?: string;
   schema?: string;
 }
 
@@ -43,6 +44,9 @@ export class Operation {
     if (config.columns) {
       this.columns(config.columns);
     }
+    if (config.database) {
+      this.database(config.database);
+    }
     if (config.schema) {
       this.schema(config.schema);
     }
@@ -55,12 +59,9 @@ export class Operation {
   }
 
   public dependencies(value: Resolvable | Resolvable[]) {
-    const newDependencies = utils.isResolvable(value) ? [value] : (value as Resolvable[]);
-    newDependencies.forEach((d: Resolvable) => {
-      const depName = utils.stringifyResolvable(d);
-      if (this.proto.dependencies.indexOf(depName) < 0) {
-        this.proto.dependencies.push(depName);
-      }
+    const newDependencies = Array.isArray(value) ? value : [value];
+    newDependencies.forEach(resolvable => {
+      this.proto.dependencyTargets.push(utils.resolvableAsTarget(resolvable));
     });
     return this;
   }
@@ -96,8 +97,19 @@ export class Operation {
     return this;
   }
 
+  public database(database: string) {
+    utils.setNameAndTarget(
+      this.session,
+      this.proto,
+      this.proto.target.name,
+      this.proto.target.schema,
+      database
+    );
+    return this;
+  }
+
   public schema(schema: string) {
-    this.session.setNameAndTarget(this.proto, this.proto.target.name, schema);
+    utils.setNameAndTarget(this.session, this.proto, this.proto.target.name, schema);
     return this;
   }
 
@@ -144,9 +156,12 @@ export class OperationContext {
   }
 
   public ref(ref: Resolvable) {
-    const name =
-      typeof ref === "string" || typeof ref === "undefined" ? ref : `${ref.schema}.${ref.name}`;
-    this.operation.dependencies(name);
+    if (!utils.resolvableAsTarget(ref)) {
+      const message = `Action name is not specified`;
+      this.operation.session.compileError(new Error(message));
+      return "";
+    }
+    this.operation.dependencies(ref);
     return this.resolve(ref);
   }
 

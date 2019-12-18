@@ -13,9 +13,10 @@ import * as TarjanGraphConstructor from "tarjan-graph";
 // Can't use resolveJsonModule with Bazel.
 const { version: dataformCoreVersion } = require("@dataform/core/package.json");
 
-interface IActionProto {
+export interface IActionProto {
   name?: string;
   fileName?: string;
+  dependencyTargets?: dataform.ITarget[];
   dependencies?: string[];
   target?: dataform.ITarget;
 }
@@ -81,11 +82,7 @@ function mapColumnDescriptionToProto(
   );
 }
 
-export interface FullyQualifiedName {
-  schema: string;
-  name: string;
-}
-export type Resolvable = string | FullyQualifiedName;
+export type Resolvable = string | dataform.ITarget;
 
 export class Session {
   public rootDir: string;
@@ -191,6 +188,14 @@ export class Session {
     if (actionOptions.hasPostOperations && !definesDataset(actionOptions.sqlxConfig.type)) {
       this.compileError("Actions may only include post_operations if they create a dataset.");
     }
+    if (
+      !!actionOptions.sqlxConfig.database &&
+      !["bigquery", "snowflake"].includes(this.config.warehouse)
+    ) {
+      this.compileError(
+        "Actions may only specify 'database' in projects whose warehouse is 'BigQuery' or 'Snowflake'."
+      );
+    }
 
     const action = (() => {
       switch (actionOptions.sqlxConfig.type) {
@@ -218,7 +223,7 @@ export class Session {
   }
 
   public resolve(ref: Resolvable): string {
-    const allResolved = this.findActions(ref);
+    const allResolved = this.findActions(utils.resolvableAsTarget(ref));
     if (allResolved.length > 1) {
       this.compileError(new Error(utils.ambiguousActionNameMsg(ref, allResolved)));
     }
@@ -251,18 +256,22 @@ export class Session {
     // error instead.
     if (typeof ref === "string") {
       return this.adapter().resolveTarget(
-        this.target(ref, `${this.config.defaultSchema}${this.getSuffixWithUnderscore()}`)
+        utils.target(
+          this.adapter(),
+          ref,
+          `${this.config.defaultSchema}${this.getSuffixWithUnderscore()}`
+        )
       );
     }
     return this.adapter().resolveTarget(
-      this.target(ref.name, `${ref.schema}${this.getSuffixWithUnderscore()}`)
+      utils.target(this.adapter(), ref.name, `${ref.schema}${this.getSuffixWithUnderscore()}`)
     );
   }
 
   public operate(name: string, queries?: OContextable<string | string[]>): Operation {
     const operation = new Operation();
     operation.session = this;
-    this.setNameAndTarget(operation.proto, name);
+    utils.setNameAndTarget(this, operation.proto, name);
     if (queries) {
       operation.queries(queries);
     }
@@ -277,7 +286,7 @@ export class Session {
   ): table.Table {
     const newTable = new table.Table();
     newTable.session = this;
-    this.setNameAndTarget(newTable.proto, name);
+    utils.setNameAndTarget(this, newTable.proto, name);
     if (!!queryOrConfig) {
       if (typeof queryOrConfig === "object") {
         newTable.config(queryOrConfig);
@@ -293,7 +302,7 @@ export class Session {
   public assert(name: string, query?: AContextable<string>): Assertion {
     const assertion = new Assertion();
     assertion.session = this;
-    this.setNameAndTarget(assertion.proto, name, this.config.assertionSchema);
+    utils.setNameAndTarget(this, assertion.proto, name, this.config.assertionSchema);
     if (query) {
       assertion.query(query);
     }
@@ -302,10 +311,10 @@ export class Session {
     return assertion;
   }
 
-  public declare(dataset: FullyQualifiedName): Declaration {
+  public declare(dataset: dataform.ITarget): Declaration {
     const declaration = new Declaration();
     declaration.session = this;
-    this.setNameAndTarget(declaration.proto, dataset.name, dataset.schema);
+    utils.setNameAndTarget(this, declaration.proto, dataset.name, dataset.schema, dataset.database);
     declaration.proto.fileName = utils.getCallerFile(this.rootDir);
     this.actions.push(declaration);
     return declaration;
@@ -387,22 +396,23 @@ export class Session {
     return util.base64.encode(encodedGraphBytes, 0, encodedGraphBytes.length);
   }
 
-  public findActions(res: Resolvable) {
+  public findActions(target: dataform.ITarget) {
     const adapter = this.adapter();
     return this.actions.filter(action => {
-      if (typeof res === "string") {
-        return action.proto.target.name === adapter.normalizeIdentifier(res);
+      if (
+        !!target.database &&
+        action.proto.target.database !== adapter.normalizeIdentifier(target.database)
+      ) {
+        return false;
       }
-      return (
-        action.proto.target.schema === adapter.normalizeIdentifier(res.schema) &&
-        action.proto.target.name === adapter.normalizeIdentifier(res.name)
-      );
+      if (
+        !!target.schema &&
+        action.proto.target.schema !== adapter.normalizeIdentifier(target.schema)
+      ) {
+        return false;
+      }
+      return action.proto.target.name === adapter.normalizeIdentifier(target.name);
     });
-  }
-
-  public setNameAndTarget(action: IActionProto, name: string, overrideSchema?: string) {
-    action.target = this.target(name, overrideSchema || this.config.defaultSchema);
-    action.name = `${action.target.schema}.${action.target.name}`;
   }
 
   private getSuffixWithUnderscore() {
@@ -424,38 +434,39 @@ export class Session {
     return compiledChunks;
   }
 
-  private target(name: string, schema: string): dataform.ITarget {
-    const adapter = this.adapter();
-    return dataform.Target.create({
-      name: adapter.normalizeIdentifier(name),
-      schema: adapter.normalizeIdentifier(schema)
-    });
-  }
-
   private fullyQualifyDependencies(actions: IActionProto[]) {
-    const allActionsByName = keyByName(actions);
     actions.forEach(action => {
-      action.dependencies = (action.dependencies || []).map(dependencyName => {
-        if (!!allActionsByName[dependencyName]) {
-          // Dependency is already fully-qualified.
-          return dependencyName;
-        }
-        const possibleDeps = this.findActions(dependencyName);
-        if (possibleDeps.length === 1) {
-          return possibleDeps[0].proto.name;
-        }
-        if (possibleDeps.length >= 1) {
-          this.compileError(new Error(utils.ambiguousActionNameMsg(dependencyName, possibleDeps)));
-        } else {
+      const fullyQualifiedDependencies: { [name: string]: dataform.ITarget } = {};
+      for (const dependency of action.dependencyTargets) {
+        const possibleDeps = this.findActions(dependency);
+        if (possibleDeps.length === 0) {
+          // We couldn't find a matching target.
           this.compileError(
             new Error(
-              `Missing dependency detected: Action "${action.name}" depends on "${dependencyName}" which does not exist.`
+              `Missing dependency detected: Action "${
+                action.name
+              }" depends on "${utils.stringifyResolvable(dependency)}" which does not exist.`
             ),
             action.fileName
           );
+        } else if (possibleDeps.length === 1) {
+          // We found a single matching target, and fully-qualify it if it's a normal dependency,
+          // or add all of its dependencies to ours if it's an 'inline' table.
+          const protoDep = possibleDeps[0].proto;
+          if (protoDep instanceof dataform.Table && protoDep.type === "inline") {
+            protoDep.dependencyTargets.forEach(inlineDep =>
+              action.dependencyTargets.push(inlineDep)
+            );
+          } else {
+            fullyQualifiedDependencies[protoDep.name] = protoDep.target;
+          }
+        } else {
+          // Too many targets matched the dependency.
+          this.compileError(new Error(utils.ambiguousActionNameMsg(dependency, possibleDeps)));
         }
-        return dependencyName;
-      });
+      }
+      action.dependencies = Object.keys(fullyQualifiedDependencies);
+      action.dependencyTargets = Object.values(fullyQualifiedDependencies);
     });
   }
 
@@ -467,7 +478,9 @@ export class Session {
         ...action.target,
         schema: `${action.target.schema}${this.getSuffixWithUnderscore()}`
       };
-      action.name = `${action.target.schema}.${action.target.name}`;
+      action.name = `${!!action.target.database ? `${action.target.database}.` : ""}${
+        action.target.schema
+      }.${action.target.name}`;
       suffixedNames[originalName] = action.name;
     });
 
