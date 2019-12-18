@@ -252,6 +252,22 @@ describe("examples", () => {
           })
         );
 
+        // Check database override defined in "config {}".
+        const exampleUsingOverriddenDatabase = graph.tables.find(
+          (t: dataform.ITable) =>
+            t.name ===
+            "override_database." +
+              schemaWithSuffix("df_integration_test") +
+              ".override_database_example"
+        );
+
+        expect(exampleUsingOverriddenDatabase).to.not.be.undefined;
+        expect(exampleUsingOverriddenDatabase.target.database).equals("override_database");
+        expect(exampleUsingOverriddenDatabase.type).equals("view");
+        expect(exampleUsingOverriddenDatabase.query.trim()).equals(
+          "select 1 as test_database_override"
+        );
+
         // Check schema overrides defined in "config {}"
         const exampleUsingOverriddenSchema = graph.tables.find(
           (t: dataform.ITable) =>
@@ -334,10 +350,16 @@ describe("examples", () => {
           "\n\nCREATE OR REPLACE VIEW someschema.someview AS (SELECT 1 AS test)\n",
           `\nDROP VIEW IF EXISTS \`tada-analytics.${schemaWithSuffix(
             "override_schema"
-          )}.override_schema_example\`\n`
+          )}.override_schema_example\`\n`,
+          `\nDROP VIEW IF EXISTS \`override_database.${schemaWithSuffix(
+            "df_integration_test"
+          )}.override_database_example\`\n`
         ]);
         expect(exampleOperations.dependencies).to.eql([
           "tada-analytics." + schemaWithSuffix("override_schema") + ".override_schema_example",
+          "override_database." +
+            schemaWithSuffix("df_integration_test") +
+            ".override_database_example",
           "tada-analytics." + schemaWithSuffix("df_integration_test") + ".sample_data"
         ]);
         expect(exampleOperations.tags).to.eql([]);

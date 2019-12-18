@@ -395,8 +395,10 @@ export class Session {
   public findActions(target: dataform.ITarget) {
     const adapter = this.adapter();
     return this.actions.filter(action => {
-      const database = target.database || this.config.defaultDatabase;
-      if (database && action.proto.target.database !== adapter.normalizeIdentifier(database)) {
+      if (
+        !!target.database &&
+        action.proto.target.database !== adapter.normalizeIdentifier(target.database)
+      ) {
         return false;
       }
       if (
@@ -466,9 +468,7 @@ export class Session {
             new Error(
               `Missing dependency detected: Action "${
                 action.name
-              }" depends on "${utils.stringifyResolvable(
-                dependency
-              )}" which does not exist. ::: ${JSON.stringify(action.dependencyTargets)}`
+              }" depends on "${utils.stringifyResolvable(dependency)}" which does not exist.`
             ),
             action.fileName
           );
