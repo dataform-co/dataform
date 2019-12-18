@@ -420,9 +420,11 @@ export class Session {
       overrideSchema || this.config.defaultSchema,
       overrideDatabase || this.config.defaultDatabase
     );
-    action.name = `${!!action.target.database ? `${action.target.database}.` : ""}${
-      action.target.schema
-    }.${action.target.name}`;
+    const nameParts = [action.target.name, action.target.schema];
+    if (!!action.target.database) {
+      nameParts.push(action.target.database);
+    }
+    action.name = nameParts.reverse().join(".");
   }
 
   private getSuffixWithUnderscore() {
