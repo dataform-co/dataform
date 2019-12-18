@@ -155,7 +155,8 @@ export class OperationContext {
     return this.operation.proto.target.name;
   }
 
-  public ref(ref: Resolvable) {
+  public ref(ref: Resolvable | string[], ...rest: string[]) {
+    ref = utils.toResolvable(ref, rest);
     if (!utils.resolvableAsTarget(ref)) {
       const message = `Action name is not specified`;
       this.operation.session.compileError(new Error(message));
@@ -165,8 +166,8 @@ export class OperationContext {
     return this.resolve(ref);
   }
 
-  public resolve(ref: Resolvable) {
-    return this.operation.session.resolve(ref);
+  public resolve(ref: Resolvable | string[], ...rest: string[]) {
+    return this.operation.session.resolve(utils.toResolvable(ref, rest));
   }
 
   public dependencies(name: Resolvable | Resolvable[]) {

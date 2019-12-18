@@ -448,6 +448,8 @@ describe("@dataform/core", () => {
       session.publish("b", ctx => `select * from ${ctx.ref("a")}`);
       session.publish("c", ctx => `select * from ${ctx.ref(undefined)}`);
       session.publish("d", ctx => `select * from ${ctx.ref({ schema: "schema", name: "a" })}`);
+      session.publish("g", ctx => `select * from ${ctx.ref("schema", "a")}`);
+      session.publish("h", ctx => `select * from ${ctx.ref(["schema", "a"])}`);
       session
         .publish("e", {
           schema: "foo"
@@ -459,19 +461,27 @@ describe("@dataform/core", () => {
       const graphErrors = utils.validate(graph);
 
       const tableNames = graph.tables.map(item => item.name);
+      expect(tableNames).eql([
+        "schema.a",
+        "schema.b",
+        "schema.c",
+        "schema.d",
+        "schema.g",
+        "schema.h",
+        "foo.e",
+        "schema.f"
+      ]);
 
-      expect(tableNames).includes("schema.a");
-      expect(tableNames).includes("schema.b");
-      expect(tableNames).includes("schema.c");
-      expect(tableNames).includes("schema.d");
-      expect(tableNames).includes("foo.e");
-      expect(tableNames).includes("schema.f");
+      expect(graph.tables.find(table => table.name === "schema.b").dependencies).eql(["schema.a"]);
+      expect(graph.tables.find(table => table.name === "schema.d").dependencies).eql(["schema.a"]);
+      expect(graph.tables.find(table => table.name === "schema.g").dependencies).eql(["schema.a"]);
+      expect(graph.tables.find(table => table.name === "schema.h").dependencies).eql(["schema.a"]);
+      expect(graph.tables.find(table => table.name === "schema.f").dependencies).eql(["foo.e"]);
+
       const errors = graphErrors.compilationErrors.map(item => item.message);
       expect(errors).includes("Action name is not specified");
-      expect(graphErrors.compilationErrors.length === 1);
-      expect(graphErrors)
-        .to.have.property("validationErrors")
-        .to.be.an("array").that.is.empty;
+      expect(graphErrors.compilationErrors.length).eql(1);
+      expect(graphErrors.validationErrors.length).eql(0);
     });
   });
 

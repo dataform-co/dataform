@@ -101,7 +101,8 @@ export class AssertionContext {
     this.assertion = assertion;
   }
 
-  public ref(ref: Resolvable) {
+  public ref(ref: Resolvable | string[], ...rest: string[]) {
+    ref = utils.toResolvable(ref, rest);
     if (!utils.resolvableAsTarget(ref)) {
       const message = `Action name is not specified`;
       this.assertion.session.compileError(new Error(message));
@@ -111,8 +112,8 @@ export class AssertionContext {
     return this.resolve(ref);
   }
 
-  public resolve(ref: Resolvable) {
-    return this.assertion.session.resolve(ref);
+  public resolve(ref: Resolvable | string[], ...rest: string[]) {
+    return this.assertion.session.resolve(utils.toResolvable(ref, rest));
   }
 
   public dependencies(name: Resolvable | Resolvable[]) {
