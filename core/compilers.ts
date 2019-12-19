@@ -6,9 +6,7 @@ import { ISqlxParseResults, parseSqlx } from "@dataform/sqlx/lexer";
 
 export function compile(code: string, path: string) {
   if (path.endsWith(".sqlx")) {
-    const x = compileSqlx(parseSqlx(code), path);
-    //console.log(x);
-    return x;
+    return compileSqlx(parseSqlx(code), path);
   }
   if (path.endsWith(".assert.sql")) {
     return compileAssertionSql(code, path);
@@ -93,9 +91,6 @@ export function extractJsBlocks(code: string): { sql: string; js: string } {
 }
 
 function compileSqlx(results: ISqlxParseResults, path: string) {
-  if (path.endsWith("example_is_incremental.sqlx")) {
-    console.log(path, results);
-  }
   return `
 const parsedConfig = ${results.config || "{}"};
 // sqlxConfig should conform to the ISqlxConfig interface.
