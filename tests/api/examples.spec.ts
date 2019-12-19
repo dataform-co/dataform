@@ -392,10 +392,10 @@ describe("examples", () => {
         expect(exampleOperationWithOutput.queries).to.eql([
           `\nCREATE OR REPLACE VIEW \`tada-analytics.${schemaWithSuffix(
             "df_integration_test"
-          )}.example_operation_with_output\` AS (SELECT * FROM \`tada-analytics.some_external_schema_name.very_important_external_table\`)`
+          )}.example_operation_with_output\` AS (SELECT * FROM \`some_database_name.some_external_schema_name.very_important_external_table\`)`
         ]);
         expect(exampleOperationWithOutput.dependencies).to.eql([
-          "tada-analytics.some_external_schema_name.very_important_external_table"
+          "some_database_name.some_external_schema_name.very_important_external_table"
         ]);
         expect(exampleOperationWithOutput.actionDescriptor).to.eql(
           dataform.ActionDescriptor.create({
@@ -422,12 +422,13 @@ describe("examples", () => {
 
         // Check declaration.
         const exampleDeclaration = graph.declarations.find(
-          d => d.name === "tada-analytics.some_external_schema_name.very_important_external_table"
+          d =>
+            d.name === "some_database_name.some_external_schema_name.very_important_external_table"
         );
         expect(exampleDeclaration).to.not.be.undefined;
         expect(exampleDeclaration.target).eql(
           dataform.Target.create({
-            database: "tada-analytics",
+            database: "some_database_name",
             schema: "some_external_schema_name",
             name: "very_important_external_table"
           })
