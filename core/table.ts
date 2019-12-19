@@ -132,8 +132,6 @@ export class Table {
   }
 
   public postOps(posts: TContextable<string | string[]>) {
-    console.log("getting postops", posts);
-    console.trace();
     this.contextablePostOps.push(posts);
     return this;
   }
@@ -209,15 +207,11 @@ export class Table {
   }
 
   public compile() {
-    console.log("changed");
     const context = new TableContext(this);
     const incrementalContext = new TableContext(this, true);
-
     this.proto.query = context.apply(this.contextableQuery);
-    console.log("type", this.proto.type);
     if (this.proto.type === TableTypes.INCREMENTAL) {
       this.proto.incrementalQuery = incrementalContext.apply(this.contextableQuery);
-      console.log("incremental", this.proto.incrementalQuery);
     }
 
     if (this.contextableWhere) {
@@ -226,17 +220,14 @@ export class Table {
 
     this.contextablePreOps.forEach(contextablePreOps => {
       const appliedPres = context.apply(contextablePreOps);
-      console.log("preops sd", contextablePreOps, this.proto.preOps);
       this.proto.preOps = (this.proto.preOps || []).concat(
         typeof appliedPres === "string" ? [appliedPres] : appliedPres
       );
     });
     this.contextablePreOps = [];
 
-    console.log("contextablePostOps", this.contextablePostOps);
     this.contextablePostOps.forEach(contextablePostOps => {
       const appliedPosts = context.apply(contextablePostOps);
-      console.log("postops sd", contextablePostOps, this.proto.postOps);
       this.proto.postOps = (this.proto.postOps || []).concat(
         typeof appliedPosts === "string" ? [appliedPosts] : appliedPosts
       );
@@ -327,13 +318,14 @@ export class TableContext implements ITableContext {
   }
 
   public preOps(statement: TContextable<string | string[]>) {
-    console.log("isIncremental", this.isIncremental());
-    this.table.preOps(statement);
+    if (!this.isIncremental()) {
+      this.table.preOps(statement);
+    }
+
     return "";
   }
 
   public postOps(statement: TContextable<string | string[]>) {
-    console.log("isIncremental", this.isIncremental());
     this.table.postOps(statement);
     return "";
   }
@@ -360,7 +352,6 @@ export class TableContext implements ITableContext {
 
   public apply<T>(value: TContextable<T>): T {
     if (typeof value === "function") {
-      console.log(value.toString());
       return (value as any)(this);
     } else {
       return value;

@@ -131,32 +131,6 @@ describe("@dataform/core", () => {
       ]);
     });
 
-    it("incremental table with post_ops", () => {
-      const session = new Session(path.dirname(__filename), TestConfigs.redshift);
-      session
-        .publish("incremental", {
-          type: "incremental"
-        })
-        .query(ctx => `select ${ctx.isIncremental()} as incremental`)
-        .postOps(["select 1"]);
-      const graph = session.compile();
-      console.log(graph.toJSON());
-      expect(graph.toJSON().tables).deep.equals([
-        {
-          target: {
-            name: "incremental",
-            schema: TestConfigs.redshift.defaultSchema
-          },
-          query: "select false as incremental",
-          incrementalQuery: "select true as incremental",
-          disabled: false,
-          fileName: "",
-          name: "schema.incremental",
-          type: "incremental"
-        }
-      ]);
-    });
-
     it("config_context", () => {
       const session = new Session(path.dirname(__filename), TestConfigs.redshift);
       const t = session

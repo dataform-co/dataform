@@ -7,7 +7,7 @@ import { ISqlxParseResults, parseSqlx } from "@dataform/sqlx/lexer";
 export function compile(code: string, path: string) {
   if (path.endsWith(".sqlx")) {
     const x = compileSqlx(parseSqlx(code), path);
-    console.log(x);
+    //console.log(x);
     return x;
   }
   if (path.endsWith(".assert.sql")) {
@@ -93,7 +93,9 @@ export function extractJsBlocks(code: string): { sql: string; js: string } {
 }
 
 function compileSqlx(results: ISqlxParseResults, path: string) {
-  console.log(results);
+  if (path.endsWith("example_is_incremental.sqlx")) {
+    console.log(path, results);
+  }
   return `
 const parsedConfig = ${results.config || "{}"};
 // sqlxConfig should conform to the ISqlxConfig interface.
@@ -133,11 +135,11 @@ switch (sqlxConfig.type) {
       if (hasIncremental) {
         action.where(\`${results.incremental}\`);
       }
-      if (hasPreOperations && !isIncremental) {
+      if (hasPreOperations && !isIncremental()) {
         const preOperations = [${results.preOperations.map(sql => `\`${sql}\``)}];
         action.preOps(preOperations);
       }
-      if (hasPostOperations && !isIncremental) {
+      if (hasPostOperations && !isIncremental()) {
         const postOperations = [${results.postOperations.map(sql => `\`${sql}\``)}];
         action.postOps(postOperations);
       }
