@@ -22,7 +22,7 @@ describe("@dataform/sqlx", () => {
         },
         {
           in: 'select from regexp_extract("", r"[0-9]\\"*")',
-          expected: 'select from regexp_extract("", r"[0-9]\\"*")'
+          expected: 'select from regexp_extract("", r"[0-9]\\\\"*")'
         }
       ];
       tests.forEach(test => {
@@ -116,13 +116,13 @@ describe("@dataform/sqlx", () => {
     it("inline js blocks tokenized correctly", () => {
       const tree = constructSyntaxTree(
         `
-    config { type: "operation",
-            tags: ["tag1", "tag2"]
-    }
+config { type: "operation",
+        tags: ["tag1", "tag2"]
+}
 
-    select CAST(REGEXP_EXTRACT("", r'^/([0-9]+)\\'/.*') AS INT64) AS id,
-    CAST(REGEXP_EXTRACT("", r"^/([0-9]+)\\"/.*") AS INT64) AS id2 from \${ref("dab")}
-    where sample = 100`
+select CAST(REGEXP_EXTRACT("", r'^/([0-9]+)\\'/.*') AS INT64) AS id,
+CAST(REGEXP_EXTRACT("", r"^/([0-9]+)\\"/.*") AS INT64) AS id2 from \${ref("dab")} 
+where sample = 100`
       );
       const expected = {
         contentType: "sql",
