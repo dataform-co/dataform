@@ -6,7 +6,6 @@ import {
 } from "@dataform/core/session";
 import * as utils from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
-import { debug } from "util";
 
 export enum TableTypes {
   TABLE = "table",
@@ -318,10 +317,7 @@ export class TableContext implements ITableContext {
   }
 
   public preOps(statement: TContextable<string | string[]>) {
-    if (!this.isIncremental()) {
-      this.table.preOps(statement);
-    }
-
+    this.table.preOps(statement);
     return "";
   }
 
