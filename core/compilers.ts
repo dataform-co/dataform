@@ -130,11 +130,11 @@ switch (sqlxConfig.type) {
       if (hasIncremental) {
         action.where(\`${results.incremental}\`);
       }
-      if (hasPreOperations) {
+      if (hasPreOperations && !isIncremental()) {
         const preOperations = [${results.preOperations.map(sql => `\`${sql}\``)}];
         action.preOps(preOperations);
       }
-      if (hasPostOperations) {
+      if (hasPostOperations && !isIncremental()) {
         const postOperations = [${results.postOperations.map(sql => `\`${sql}\``)}];
         action.postOps(postOperations);
       }
