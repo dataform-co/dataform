@@ -224,6 +224,33 @@ export function flatten<T>(nestedArray: T[][]) {
   }, []);
 }
 
+const invalidRefInputMessage =
+  "Invalid input. Accepted inputs include: a single object containing " +
+  "an (optional) 'database', (optional) 'schema', and 'name', " +
+  "or 1-3 inputs consisting of an (optional) database, (optional) schema, and 'name'.";
+
+export function toResolvable(ref: Resolvable | string[], rest: string[]): Resolvable {
+  if (Array.isArray(ref) && rest.length > 0) {
+    throw new Error(invalidRefInputMessage);
+  }
+  if (rest.length === 0 && !Array.isArray(ref)) {
+    return ref;
+  }
+  const resolvableArray = Array.isArray(ref) ? ref.reverse() : [ref, ...rest].reverse();
+  if (!isResolvableArray(resolvableArray)) {
+    throw new Error(invalidRefInputMessage);
+  }
+  const [name, schema, database] = resolvableArray;
+  return { database, schema, name };
+}
+
+function isResolvableArray(parts: any[]): parts is [string, string?, string?] {
+  if (parts.some(part => typeof part !== "string")) {
+    return false;
+  }
+  return parts.length > 0 && parts.length <= 3;
+}
+
 export function resolvableAsTarget(resolvable: Resolvable): dataform.ITarget {
   if (typeof resolvable === "string") {
     return {

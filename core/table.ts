@@ -255,8 +255,8 @@ export interface ITableContext {
   config: (config: TConfig) => string;
   self: () => string;
   name: () => string;
-  ref: (name: string) => string;
-  resolve: (name: string) => string;
+  ref: (ref: Resolvable | string[], ...rest: string[]) => string;
+  resolve: (ref: Resolvable | string[], ...rest: string[]) => string;
   type: (type: TableType) => string;
   where: (where: TContextable<string>) => string;
   isIncremental: () => boolean;
@@ -290,7 +290,8 @@ export class TableContext implements ITableContext {
     return this.table.proto.target.name;
   }
 
-  public ref(ref: Resolvable) {
+  public ref(ref: Resolvable | string[], ...rest: string[]) {
+    ref = utils.toResolvable(ref, rest);
     if (!utils.resolvableAsTarget(ref)) {
       const message = `Action name is not specified`;
       this.table.session.compileError(new Error(message));
@@ -300,8 +301,8 @@ export class TableContext implements ITableContext {
     return this.resolve(ref);
   }
 
-  public resolve(ref: Resolvable) {
-    return this.table.session.resolve(ref);
+  public resolve(ref: Resolvable | string[], ...rest: string[]) {
+    return this.table.session.resolve(utils.toResolvable(ref, rest));
   }
 
   public type(type: TableType) {
