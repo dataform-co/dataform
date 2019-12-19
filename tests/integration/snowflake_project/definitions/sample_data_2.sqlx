@@ -1,4 +1,4 @@
-config { type: "view" }
+config { type: "view", database: "TADA2" }
 
 select 1 as val1, 1 as val2 union all
 select 1 as val1, 2 as val2 union all
