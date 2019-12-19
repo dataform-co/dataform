@@ -42,9 +42,9 @@ describe("@dataform/sqlx", () => {
     });
     it("js block in quoted string is interpreted just as a string", () => {
       const parsedSqlx = parseSqlx(
-        'select * from regexp_extract(\'js {\', "") js { const freaky_stuff = "js {"}'
+        'select * from regexp_extract(\'js {\', "") js { const freaky_stuff = "js {" }'
       );
-      expect(parsedSqlx.sql).eql(["select * from regexp_extract('js {', \"\")"]);
+      expect(parsedSqlx.sql).eql(["select * from regexp_extract('js {', \"\") "]);
     });
   });
 });
