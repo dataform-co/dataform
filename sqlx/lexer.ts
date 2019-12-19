@@ -5,8 +5,8 @@ const LEXER_STATE_NAMES = {
   JS_BLOCK: "jsBlock",
   JS_TEMPLATE_STRING: "jsTemplateString",
   INNER_SQL_BLOCK: "innerSqlBlock",
-  INNER_SINGLE_QUOTE: "innerSingleQuote",
-  INNER_DOUBLE_QUOTE: "innerDoubleQuote"
+  SQL_SINGLE_QUOTE_STRING: "innerSingleQuote",
+  SQL_DOUBLE_QUOTE_STRING: "innerDoubleQuote"
 };
 
 const SQL_LEXER_TOKEN_NAMES = {
@@ -57,27 +57,27 @@ const INNER_SQL_BLOCK_LEXER_TOKEN_NAMES = {
   CLOSE_BLOCK: LEXER_STATE_NAMES.INNER_SQL_BLOCK + "_closeBlock",
   BACKSLASH: LEXER_STATE_NAMES.INNER_SQL_BLOCK + "_backslash",
   BACKTICK: LEXER_STATE_NAMES.INNER_SQL_BLOCK + "_backtick",
-  CAPTURE_EVERYTHING_ELSE: LEXER_STATE_NAMES.INNER_SQL_BLOCK + "_captureEverythingElse",
   START_QUOTE_SINGLE: LEXER_STATE_NAMES.INNER_SQL_BLOCK + "_startQuoteSingle",
-  START_QUOTE_DOUBLE: LEXER_STATE_NAMES.INNER_SQL_BLOCK + "_startQuoteDouble"
+  START_QUOTE_DOUBLE: LEXER_STATE_NAMES.INNER_SQL_BLOCK + "_startQuoteDouble",
+  CAPTURE_EVERYTHING_ELSE: LEXER_STATE_NAMES.INNER_SQL_BLOCK + "_captureEverythingElse"
 };
 
-const INNER_SINGLE_QUOTE_LEXER_TOKEN_NAMES = {
-  BACKSLASH: LEXER_STATE_NAMES.INNER_SINGLE_QUOTE + "_backslash",
-  CLOSE_QUOTE: LEXER_STATE_NAMES.INNER_SINGLE_QUOTE + "_closeQuoteSingle",
-  CAPTURE_EVERYTHING_ELSE: LEXER_STATE_NAMES.INNER_SINGLE_QUOTE + "_captureEverythingElse"
+const SQL_SINGLE_QUOTE_STRING_LEXER_TOKEN_NAMES = {
+  BACKSLASH: LEXER_STATE_NAMES.SQL_SINGLE_QUOTE_STRING + "_backslash",
+  CLOSE_QUOTE: LEXER_STATE_NAMES.SQL_SINGLE_QUOTE_STRING + "_closeQuoteSingle",
+  CAPTURE_EVERYTHING_ELSE: LEXER_STATE_NAMES.SQL_SINGLE_QUOTE_STRING + "_captureEverythingElse"
 };
 
-const INNER_DOUBLE_QUOTE_LEXER_TOKEN_NAMES = {
-  BACKSLASH: LEXER_STATE_NAMES.INNER_DOUBLE_QUOTE + "_backslash",
-  CLOSE_QUOTE: LEXER_STATE_NAMES.INNER_DOUBLE_QUOTE + "_closeQuoteDouble",
-  CAPTURE_EVERYTHING_ELSE: LEXER_STATE_NAMES.INNER_DOUBLE_QUOTE + "_captureEverythingElse"
+const SQL_DOUBLE_QUOTE_STRING_LEXER_TOKEN_NAMES = {
+  BACKSLASH: LEXER_STATE_NAMES.SQL_DOUBLE_QUOTE_STRING + "_backslash",
+  CLOSE_QUOTE: LEXER_STATE_NAMES.SQL_DOUBLE_QUOTE_STRING + "_closeQuoteDouble",
+  CAPTURE_EVERYTHING_ELSE: LEXER_STATE_NAMES.SQL_DOUBLE_QUOTE_STRING + "_captureEverythingElse"
 };
 
 const lexer = moo.states(buildSqlxLexer());
 
 export interface ISyntaxTreeNode {
-  contentType: "sql" | "js" | "jsPlaceholder" | "sqlStatementSeparator" | "sqlComment" | "quote";
+  contentType: "sql" | "js" | "jsPlaceholder" | "sqlStatementSeparator" | "sqlComment";
   contents: Array<string | ISyntaxTreeNode>;
 }
 
@@ -103,9 +103,7 @@ export function constructSyntaxTree(code: string): ISyntaxTreeNode {
       const contentType =
         token.type.includes("_startJs") || token.type.includes("_startConfig")
           ? token.type.includes("_startJsPlaceholder")
-            ? token.type.includes("_startQuote")
-              ? "quote"
-              : "jsPlaceholder"
+            ? "jsPlaceholder"
             : "js"
           : "sql";
       if (contentType === "sql" && currentNode.contentType !== "sql") {
@@ -284,29 +282,17 @@ function getValueMappings() {
     value.replace(/`/g, "\\`").replace(/\${/g, "\\${");
   valueMappings[SQL_LEXER_TOKEN_NAMES.MULTI_LINE_COMMENT] = (value: string) =>
     value.replace(/`/g, "\\`").replace(/\${/g, "\\${");
-  valueMappings[SQL_LEXER_TOKEN_NAMES.SINGLE_QUOTE_STRING] = (value: string) =>
-    value.replace(/\\/g, "\\\\");
-  valueMappings[SQL_LEXER_TOKEN_NAMES.DOUBLE_QUOTE_STRING] = (value: string) =>
-    value.replace(/\\/g, "\\\\");
   valueMappings[SQL_LEXER_TOKEN_NAMES.BACKTICK] = () => "\\`";
   valueMappings[SQL_LEXER_TOKEN_NAMES.BACKSLASH] = () => "\\\\";
 
   valueMappings[INNER_SQL_BLOCK_LEXER_TOKEN_NAMES.STATEMENT_SEPERATOR] = () => "";
   valueMappings[INNER_SQL_BLOCK_LEXER_TOKEN_NAMES.CLOSE_BLOCK] = () => "";
-  valueMappings[INNER_SQL_BLOCK_LEXER_TOKEN_NAMES.SINGLE_LINE_COMMENT] = (value: string) =>
-    value.replace(/`/g, "\\`").replace(/\${/g, "\\${");
-  valueMappings[INNER_SQL_BLOCK_LEXER_TOKEN_NAMES.MULTI_LINE_COMMENT] = (value: string) =>
-    value.replace(/`/g, "\\`").replace(/\${/g, "\\${");
-  valueMappings[INNER_SQL_BLOCK_LEXER_TOKEN_NAMES.SINGLE_QUOTE_STRING] = (value: string) =>
-    value.replace(/\\/g, "\\\\");
-  valueMappings[INNER_SQL_BLOCK_LEXER_TOKEN_NAMES.DOUBLE_QUOTE_STRING] = (value: string) =>
-    value.replace(/\\/g, "\\\\");
   valueMappings[INNER_SQL_BLOCK_LEXER_TOKEN_NAMES.BACKTICK] = () => "\\`";
   valueMappings[INNER_SQL_BLOCK_LEXER_TOKEN_NAMES.BACKSLASH] = () => "\\\\";
 
-  valueMappings[INNER_SINGLE_QUOTE_LEXER_TOKEN_NAMES.BACKSLASH] = () => "\\\\";
+  valueMappings[SQL_SINGLE_QUOTE_STRING_LEXER_TOKEN_NAMES.BACKSLASH] = () => "\\\\";
 
-  valueMappings[INNER_DOUBLE_QUOTE_LEXER_TOKEN_NAMES.BACKSLASH] = () => "\\\\";
+  valueMappings[SQL_DOUBLE_QUOTE_STRING_LEXER_TOKEN_NAMES.BACKSLASH] = () => "\\\\";
 
   return valueMappings;
 }
@@ -340,8 +326,6 @@ function buildSqlxLexer(): { [x: string]: moo.Rules } {
   sqlLexer[SQL_LEXER_TOKEN_NAMES.STATEMENT_SEPERATOR] = /[^\S\r\n]*---[^\S\r\n]*$/;
   sqlLexer[SQL_LEXER_TOKEN_NAMES.SINGLE_LINE_COMMENT] = /--.*?$/;
   sqlLexer[SQL_LEXER_TOKEN_NAMES.MULTI_LINE_COMMENT] = /\/\*[\s\S]*?\*\//;
-  sqlLexer[SQL_LEXER_TOKEN_NAMES.SINGLE_QUOTE_STRING] = /'(?:\\['\\]|[^\n'\\])*'/;
-  sqlLexer[SQL_LEXER_TOKEN_NAMES.DOUBLE_QUOTE_STRING] = /"(?:\\["\\]|[^\n"\\])*"/;
   sqlLexer[SQL_LEXER_TOKEN_NAMES.START_JS_PLACEHOLDER] = {
     match: "${",
     push: LEXER_STATE_NAMES.JS_BLOCK
@@ -356,8 +340,6 @@ function buildSqlxLexer(): { [x: string]: moo.Rules } {
   const jsBlockLexer: moo.Rules = {};
   jsBlockLexer[JS_BLOCK_LEXER_TOKEN_NAMES.SINGLE_LINE_COMMENT] = /\/\/.*?$/;
   jsBlockLexer[JS_BLOCK_LEXER_TOKEN_NAMES.MULTI_LINE_COMMENT] = /\/\*[\s\S]*?\*\//;
-  jsBlockLexer[JS_BLOCK_LEXER_TOKEN_NAMES.SINGLE_QUOTE_STRING] = /'(?:\\['\\]|[^\n'\\])*'/;
-  jsBlockLexer[JS_BLOCK_LEXER_TOKEN_NAMES.DOUBLE_QUOTE_STRING] = /"(?:\\["\\]|[^\n"\\])*"/;
   jsBlockLexer[JS_BLOCK_LEXER_TOKEN_NAMES.START_JS_TEMPLATE_STRING] = {
     match: "`",
     push: LEXER_STATE_NAMES.JS_TEMPLATE_STRING
@@ -392,12 +374,6 @@ function buildSqlxLexer(): { [x: string]: moo.Rules } {
   ] = /[^\S\r\n]*---[^\S\r\n]*$/;
   innerSqlBlockLexer[INNER_SQL_BLOCK_LEXER_TOKEN_NAMES.SINGLE_LINE_COMMENT] = /--.*?$/;
   innerSqlBlockLexer[INNER_SQL_BLOCK_LEXER_TOKEN_NAMES.MULTI_LINE_COMMENT] = /\/\*[\s\S]*?\*\//;
-  innerSqlBlockLexer[
-    INNER_SQL_BLOCK_LEXER_TOKEN_NAMES.SINGLE_QUOTE_STRING
-  ] = /'(?:\\['\\]|[^\n'\\])*'/;
-  innerSqlBlockLexer[
-    INNER_SQL_BLOCK_LEXER_TOKEN_NAMES.DOUBLE_QUOTE_STRING
-  ] = /"(?:\\["\\]|[^\n"\\])*"/;
   innerSqlBlockLexer[INNER_SQL_BLOCK_LEXER_TOKEN_NAMES.START_JS_PLACEHOLDER] = {
     match: "${",
     push: LEXER_STATE_NAMES.JS_BLOCK
@@ -410,11 +386,11 @@ function buildSqlxLexer(): { [x: string]: moo.Rules } {
   innerSqlBlockLexer[INNER_SQL_BLOCK_LEXER_TOKEN_NAMES.BACKTICK] = "`";
   innerSqlBlockLexer[INNER_SQL_BLOCK_LEXER_TOKEN_NAMES.START_QUOTE_SINGLE] = {
     match: "'",
-    push: LEXER_STATE_NAMES.INNER_SINGLE_QUOTE
+    push: LEXER_STATE_NAMES.SQL_SINGLE_QUOTE_STRING
   };
   innerSqlBlockLexer[INNER_SQL_BLOCK_LEXER_TOKEN_NAMES.START_QUOTE_DOUBLE] = {
     match: '"',
-    push: LEXER_STATE_NAMES.INNER_DOUBLE_QUOTE
+    push: LEXER_STATE_NAMES.SQL_DOUBLE_QUOTE_STRING
   };
   innerSqlBlockLexer[INNER_SQL_BLOCK_LEXER_TOKEN_NAMES.CAPTURE_EVERYTHING_ELSE] = {
     match: /[\s\S]+?/,
@@ -422,23 +398,23 @@ function buildSqlxLexer(): { [x: string]: moo.Rules } {
   };
 
   const innerSingleQuoteLexer: moo.Rules = {};
-  innerSingleQuoteLexer[INNER_SINGLE_QUOTE_LEXER_TOKEN_NAMES.CLOSE_QUOTE] = {
+  innerSingleQuoteLexer[SQL_SINGLE_QUOTE_STRING_LEXER_TOKEN_NAMES.CLOSE_QUOTE] = {
     match: "'",
     pop: 1
   };
-  innerSingleQuoteLexer[INNER_SINGLE_QUOTE_LEXER_TOKEN_NAMES.BACKSLASH] = "\\";
-  innerSingleQuoteLexer[INNER_SINGLE_QUOTE_LEXER_TOKEN_NAMES.CAPTURE_EVERYTHING_ELSE] = {
+  innerSingleQuoteLexer[SQL_SINGLE_QUOTE_STRING_LEXER_TOKEN_NAMES.BACKSLASH] = "\\";
+  innerSingleQuoteLexer[SQL_SINGLE_QUOTE_STRING_LEXER_TOKEN_NAMES.CAPTURE_EVERYTHING_ELSE] = {
     match: /[\s\S]+?/,
     lineBreaks: true
   };
 
   const innerDoubleQuoteLexer: moo.Rules = {};
-  innerDoubleQuoteLexer[INNER_DOUBLE_QUOTE_LEXER_TOKEN_NAMES.CLOSE_QUOTE] = {
+  innerDoubleQuoteLexer[SQL_DOUBLE_QUOTE_STRING_LEXER_TOKEN_NAMES.CLOSE_QUOTE] = {
     match: '"',
     pop: 1
   };
-  innerDoubleQuoteLexer[INNER_DOUBLE_QUOTE_LEXER_TOKEN_NAMES.BACKSLASH] = "\\";
-  innerDoubleQuoteLexer[INNER_DOUBLE_QUOTE_LEXER_TOKEN_NAMES.CAPTURE_EVERYTHING_ELSE] = {
+  innerDoubleQuoteLexer[SQL_DOUBLE_QUOTE_STRING_LEXER_TOKEN_NAMES.BACKSLASH] = "\\";
+  innerDoubleQuoteLexer[SQL_DOUBLE_QUOTE_STRING_LEXER_TOKEN_NAMES.CAPTURE_EVERYTHING_ELSE] = {
     match: /[\s\S]+?/,
     lineBreaks: true
   };
@@ -448,8 +424,8 @@ function buildSqlxLexer(): { [x: string]: moo.Rules } {
   lexerStates[LEXER_STATE_NAMES.JS_BLOCK] = jsBlockLexer;
   lexerStates[LEXER_STATE_NAMES.JS_TEMPLATE_STRING] = jsTemplateStringLexer;
   lexerStates[LEXER_STATE_NAMES.INNER_SQL_BLOCK] = innerSqlBlockLexer;
-  lexerStates[LEXER_STATE_NAMES.INNER_SINGLE_QUOTE] = innerSingleQuoteLexer;
-  lexerStates[LEXER_STATE_NAMES.INNER_DOUBLE_QUOTE] = innerDoubleQuoteLexer;
+  lexerStates[LEXER_STATE_NAMES.SQL_SINGLE_QUOTE_STRING] = innerSingleQuoteLexer;
+  lexerStates[LEXER_STATE_NAMES.SQL_DOUBLE_QUOTE_STRING] = innerDoubleQuoteLexer;
 
   return lexerStates;
 }
