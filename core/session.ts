@@ -210,6 +210,7 @@ export class Session {
           return this.operate(actionOptions.sqlxConfig.name);
         case "declaration":
           return this.declare({
+            database: actionOptions.sqlxConfig.database,
             schema: actionOptions.sqlxConfig.schema,
             name: actionOptions.sqlxConfig.name
           });
