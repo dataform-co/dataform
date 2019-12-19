@@ -1,70 +1,77 @@
 import { constructSyntaxTree, parseSqlx } from "@dataform/sqlx/lexer";
 import { expect } from "chai";
+import { stringify } from "querystring";
 
 describe("@dataform/sqlx", () => {
   describe("outer SQL lexing", () => {
-    it("backslashes are duplicated so that they act as written in the IDE", () => {
+    it("backslashes are duplicated, so that they act literally when interpreted by javascript", () => {
       // If someone in SQLX SQL writes "\" in the regex, it should be
       // interpreted as "\".
-      const pairs = [
-        [
+      const tests: Array<{ in: string; expected: string }> = [
+        {
           // These look like groups of 2 backslashes, but are actually 1 (javascript).
-          "select regexp_extract('01a_data_engine', '^(\\d{2}\\w)')",
-          "select regexp_extract('01a_data_engine', '^(\\\\d{2}\\\\w)')"
-        ],
-        [
-          "select regexp_extract('01a_data_engine', '^(\\\\d{2}\\\\w)')",
-          "select regexp_extract('01a_data_engine', '^(\\\\\\\\d{2}\\\\\\\\w)')"
-        ],
-        ["select * from regexp_extract('\\\\', '')", "select * from regexp_extract('\\\\\\\\', '')"]
+          in: "select regexp_extract('01a_data_engine', '^(\\d{2}\\w)')",
+          expected: "select regexp_extract('01a_data_engine', '^(\\\\d{2}\\\\w)')"
+        },
+        {
+          in: "select regexp_extract('01a_data_engine', '^(\\\\d{2}\\\\w)')",
+          expected: "select regexp_extract('01a_data_engine', '^(\\\\\\\\d{2}\\\\\\\\w)')"
+        },
+        {
+          in: "select * from regexp_extract('\\\\', '')",
+          expected: "select * from regexp_extract('\\\\\\\\', '')"
+        }
       ];
-      pairs.forEach(pair => {
-        expect(parseSqlx(pair[0]).sql).eql([pair[1]]);
+      tests.forEach(test => {
+        expect(parseSqlx(test.in).sql).eql([test.expected]);
       });
     });
     it("nothing in a string is interpreted as a special term", () => {
-      const pairs = [
-        ['select "asd\\"123\'def"', 'select "asd\\\\"123\'def"'],
-        ["select 'asd\\'123\"def'", "select 'asd\\\\'123\"def'"],
-        ["select * from regexp_extract('js {', \"\")", "select * from regexp_extract('js {', \"\")"]
+      const tests: Array<{ in: string; expected: string }> = [
+        { in: 'select "asd\\"123\'def"', expected: 'select "asd\\\\"123\'def"' },
+        { in: "select 'asd\\'123\"def'", expected: "select 'asd\\\\'123\"def'" },
+        {
+          in: "select * from regexp_extract('js {', \"\")",
+          expected: "select * from regexp_extract('js {', \"\")"
+        }
       ];
-      pairs.forEach(pair => {
-        expect(parseSqlx(pair[0]).sql).eql([pair[1]]);
+      tests.forEach(test => {
+        expect(parseSqlx(test.in).sql).eql([test.expected]);
       });
     });
   });
   describe("inner SQL lexing", () => {
-    it("backslashes are duplicated so that they act as written in the IDE", () => {
-      const pairs = [
-        [
-          "pre_operations {select regexp_extract('01a_data_engine', '^(\\d{2}\\w)')}",
-          "select regexp_extract('01a_data_engine', '^(\\\\d{2}\\\\w)')"
-        ],
-        [
-          "pre_operations {select regexp_extract('01a_data_engine', '^(\\\\d{2}\\\\w)')}",
-          "select regexp_extract('01a_data_engine', '^(\\\\\\\\d{2}\\\\\\\\w)')"
-        ],
-        [
-          "pre_operations {select * from regexp_extract('\\\\', '')}",
-          "select * from regexp_extract('\\\\\\\\', '')"
-        ],
-        ["pre_operations {}", ""]
+    it("backslashes are duplicated, so that they act literally when interpreted by javascript", () => {
+      const tests: Array<{ in: string; expected: string }> = [
+        {
+          in: "pre_operations {select regexp_extract('01a_data_engine', '^(\\d{2}\\w)')}",
+          expected: "select regexp_extract('01a_data_engine', '^(\\\\d{2}\\\\w)')"
+        },
+        {
+          in: "pre_operations {select regexp_extract('01a_data_engine', '^(\\\\d{2}\\\\w)')}",
+          expected: "select regexp_extract('01a_data_engine', '^(\\\\\\\\d{2}\\\\\\\\w)')"
+        },
+        {
+          in: "pre_operations {select * from regexp_extract('\\\\', '')}",
+          expected: "select * from regexp_extract('\\\\\\\\', '')"
+        },
+        { in: "pre_operations {}", expected: "" }
       ];
-      pairs.forEach(pair => {
-        expect(parseSqlx(pair[0]).preOperations).eql([pair[1]]);
+      tests.forEach(test => {
+        expect(parseSqlx(test.in).preOperations).eql([test.expected]);
       });
     });
     it("nothing in a string is interpreted as a special term", () => {
-      const pairs = [
-        ['post_operations {select "asd\'123"}', 'select "asd\'123"'],
-        ["post_operations {select 'asd\"123'}", "select 'asd\"123'"],
-        [
-          "post_operations {select * from regexp_extract('js {', \"\")}",
-          "select * from regexp_extract('js {', \"\")"
-        ]
+      const tests: Array<{ in: string; expected: string }> = [
+        { in: 'post_operations {select "asd\'123"}', expected: 'select "asd\'123"' },
+        { in: "post_operations {select 'asd\"123'}", expected: "select 'asd\"123'" },
+        {
+          in: "post_operations {select * from regexp_extract('js {', \"\")}",
+          expected: "select * from regexp_extract('js {', \"\")"
+        }
       ];
-      pairs.forEach(pair => {
-        expect(parseSqlx(pair[0]).postOperations).eql([pair[1]]);
+      tests.forEach(test => {
+        expect(parseSqlx(test.in).postOperations).eql([test.expected]);
       });
     });
   });
