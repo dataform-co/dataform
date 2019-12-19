@@ -19,6 +19,10 @@ describe("@dataform/sqlx", () => {
         {
           in: "select * from regexp_extract('\\\\', '')",
           expected: "select * from regexp_extract('\\\\\\\\', '')"
+        },
+        {
+          in: 'select from regexp_extract("", r"[0-9]\\"*")',
+          expected: 'select from regexp_extract("", r"[0-9]\\"*")'
         }
       ];
       tests.forEach(test => {
@@ -89,18 +93,53 @@ describe("@dataform/sqlx", () => {
       };
       expect(tree).eql(expected);
     });
+    it("inline js blocks tokenized", () => {
+      const tree = constructSyntaxTree("select * from ${ref('dab')}");
+      const expected = {
+        contentType: "sql",
+        contents: ["select * from ", { contentType: "jsPlaceholder", contents: ["${ref('dab')}"] }]
+      };
+      expect(tree).eql(expected);
+    });
+    it("inline js blocks tokenized correctly if string present beforehand", () => {
+      const tree = constructSyntaxTree('select regexp("", ${ref("dab")})');
+      const expected = {
+        contentType: "sql",
+        contents: [
+          'select regexp("", ',
+          { contentType: "jsPlaceholder", contents: ['${ref("dab")}'] },
+          ")"
+        ]
+      };
+      expect(tree).eql(expected);
+    });
     it("inline js blocks tokenized correctly", () => {
       const tree = constructSyntaxTree(
         `
-config { type: "operation",
-        tags: ["tag1", "tag2"]
-}
+    config { type: "operation",
+            tags: ["tag1", "tag2"]
+    }
 
-select CAST(REGEXP_EXTRACT("", r'^/([0-9]+)\\'/.*') AS INT64) AS id,
-CAST(REGEXP_EXTRACT("", r"^/([0-9]+)\\"/.*") AS INT64) AS id2 from \${ref("dab")} 
-where sample = 100`
+    select CAST(REGEXP_EXTRACT("", r'^/([0-9]+)\\'/.*') AS INT64) AS id,
+    CAST(REGEXP_EXTRACT("", r"^/([0-9]+)\\"/.*") AS INT64) AS id2 from \${ref("dab")}
+    where sample = 100`
       );
-      const expected = {};
+      const expected = {
+        contentType: "sql",
+        contents: [
+          "\n",
+          {
+            contentType: "js",
+            contents: ['config { type: "operation",\n        tags: ["tag1", "tag2"]\n}']
+          },
+          '\n\nselect CAST(REGEXP_EXTRACT("", r\'^/([0-9]+)\\\'/.*\') AS INT64) AS id,\nCAST(REGEXP_EXTRACT("", r"^/([0-9]+)\\"/.*") AS INT64) AS id2 from ',
+          {
+            contentType: "jsPlaceholder",
+            contents: ['${ref("dab")}']
+          },
+          " \nwhere sample = 100"
+        ]
+      };
       console.log(tree);
       expect(tree).eql(expected);
     });
