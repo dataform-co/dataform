@@ -208,6 +208,7 @@ export class Table {
   public compile() {
     const context = new TableContext(this);
     const incrementalContext = new TableContext(this, true);
+
     this.proto.query = context.apply(this.contextableQuery);
     if (this.proto.type === TableTypes.INCREMENTAL) {
       this.proto.incrementalQuery = incrementalContext.apply(this.contextableQuery);
