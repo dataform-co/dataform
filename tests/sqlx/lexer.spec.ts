@@ -38,6 +38,9 @@ describe("@dataform/sqlx", () => {
         expect(parseSqlx(test.in).sql).eql([test.expected]);
       });
     });
+    it("javascript placeholder tokenized", () => {
+      expect(parseSqlx("select * from ${ref('dab')}").sql).eql(["select * from ${ref('dab')}"]);
+    });
   });
   describe("inner SQL lexing", () => {
     it("backslashes are duplicated, so that they act literally when interpreted by javascript", () => {
@@ -86,8 +89,17 @@ describe("@dataform/sqlx", () => {
       };
       expect(tree).eql(expected);
     });
-    it("inline js blocks don't affect the tree", () => {
-      const tree = constructSyntaxTree('select * from ${ref("dab")}');
+    it("inline js blocks tokenized correctly", () => {
+      const tree = constructSyntaxTree(
+        `
+config { type: "operation",
+        tags: ["tag1", "tag2"]
+}
+
+select CAST(REGEXP_EXTRACT("", r'^/([0-9]+)\\'/.*') AS INT64) AS id,
+CAST(REGEXP_EXTRACT("", r"^/([0-9]+)\\"/.*") AS INT64) AS id2 from \${ref("dab")} 
+where sample = 100`
+      );
       const expected = {};
       console.log(tree);
       expect(tree).eql(expected);
