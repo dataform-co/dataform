@@ -456,7 +456,10 @@ describe("examples", () => {
         // Check double backslashes don't get converted to singular.
         const exampleDoubleBackslash = graph.tables.find(
           (t: dataform.ITable) =>
-            t.name === schemaWithSuffix("df_integration_test") + ".example_double_backslash"
+            t.name ===
+            "tada-analytics." +
+              schemaWithSuffix("df_integration_test") +
+              ".example_double_backslash"
         );
         expect(exampleDoubleBackslash).to.not.be.undefined;
         expect(cleanSql(exampleDoubleBackslash.query)).equals(
