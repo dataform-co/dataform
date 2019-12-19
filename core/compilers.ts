@@ -93,6 +93,7 @@ export function extractJsBlocks(code: string): { sql: string; js: string } {
 }
 
 function compileSqlx(results: ISqlxParseResults, path: string) {
+  console.log(results);
   return `
 const parsedConfig = ${results.config || "{}"};
 // sqlxConfig should conform to the ISqlxConfig interface.
@@ -132,11 +133,11 @@ switch (sqlxConfig.type) {
       if (hasIncremental) {
         action.where(\`${results.incremental}\`);
       }
-      if (hasPreOperations) {
+      if (hasPreOperations && !isIncremental) {
         const preOperations = [${results.preOperations.map(sql => `\`${sql}\``)}];
         action.preOps(preOperations);
       }
-      if (hasPostOperations) {
+      if (hasPostOperations && !isIncremental) {
         const postOperations = [${results.postOperations.map(sql => `\`${sql}\``)}];
         action.postOps(postOperations);
       }
