@@ -1,6 +1,5 @@
 import { constructSyntaxTree, parseSqlx } from "@dataform/sqlx/lexer";
 import { expect } from "chai";
-import { stringify } from "querystring";
 
 describe("@dataform/sqlx", () => {
   describe("outer SQL lexing", () => {
@@ -73,6 +72,25 @@ describe("@dataform/sqlx", () => {
       tests.forEach(test => {
         expect(parseSqlx(test.in).postOperations).eql([test.expected]);
       });
+    });
+  });
+  describe("syntax tree construction", () => {
+    it("strings don't affect the tree", () => {
+      const tree = constructSyntaxTree("SELECT SUM(IF(track.event = 'example', 1, 0)) js { }");
+      const expected = {
+        contentType: "sql",
+        contents: [
+          "SELECT SUM(IF(track.event = 'example', 1, 0)) ",
+          { contentType: "js", contents: ["js { }"] }
+        ]
+      };
+      expect(tree).eql(expected);
+    });
+    it("inline js blocks don't affect the tree", () => {
+      const tree = constructSyntaxTree('select * from ${ref("dab")}');
+      const expected = {};
+      console.log(tree);
+      expect(tree).eql(expected);
     });
   });
 });

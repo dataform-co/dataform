@@ -92,11 +92,11 @@ export function constructSyntaxTree(code: string): ISyntaxTreeNode {
   const nodeStack = [currentNode];
   lexer.reset(code);
   for (const token of lexer) {
-    if (token.type.includes("_close")) {
+    if (token.type.includes("_close") && !token.type.includes("_closeQuote")) {
       appendToNode(currentNode, token.value);
       nodeStack.pop();
       currentNode = nodeStack[nodeStack.length - 1];
-    } else if (token.type.includes("_start")) {
+    } else if (token.type.includes("_start") && !token.type.includes("_startQuote")) {
       const contentType =
         token.type.includes("_startJs") || token.type.includes("_startConfig")
           ? token.type.includes("_startJsPlaceholder")
