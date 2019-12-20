@@ -455,6 +455,22 @@ describe("examples", () => {
         expect(testCaseFQ.expectedOutputQuery.trim()).equals(
           "select 'hi' as faked union all\nselect 'ben' as faked union all\nselect 'sup?' as faked"
         );
+
+        // Check double backslashes don't get converted to singular.
+        const exampleDoubleBackslash = graph.tables.find(
+          (t: dataform.ITable) =>
+            t.name ===
+            "tada-analytics." +
+              schemaWithSuffix("df_integration_test") +
+              ".example_double_backslash"
+        );
+        expect(exampleDoubleBackslash).to.not.be.undefined;
+        expect(cleanSql(exampleDoubleBackslash.query)).equals(
+          "select * from regexp_extract('01a_data_engine', '^(\\\\d{2}\\\\w)') select * from regexp_extract('01a_data_engine', r'^(\\d{2}\\w)')"
+        );
+        expect(cleanSql(exampleDoubleBackslash.preOps[0])).equals(
+          "select * from regexp_extract('\\\\\\\\', '\\\\')"
+        );
       });
     }
   });
