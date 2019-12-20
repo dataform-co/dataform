@@ -420,7 +420,6 @@ function buildSqlxLexer(): { [x: string]: moo.Rules } {
     match: "'",
     pop: 1
   };
-  // innerSingleQuoteLexer[SQL_SINGLE_QUOTE_STRING_LEXER_TOKEN_NAMES.BACKSLASH] = "\\";
   innerSingleQuoteLexer[SQL_SINGLE_QUOTE_STRING_LEXER_TOKEN_NAMES.CAPTURE_EVERYTHING_ELSE] = {
     match: /[\s\S]+?/,
     lineBreaks: true
@@ -435,7 +434,6 @@ function buildSqlxLexer(): { [x: string]: moo.Rules } {
     match: '"',
     pop: 1
   };
-  // innerDoubleQuoteLexer[SQL_DOUBLE_QUOTE_STRING_LEXER_TOKEN_NAMES.BACKSLASH] = "\\";
   innerDoubleQuoteLexer[SQL_DOUBLE_QUOTE_STRING_LEXER_TOKEN_NAMES.CAPTURE_EVERYTHING_ELSE] = {
     match: /[\s\S]+?/,
     lineBreaks: true

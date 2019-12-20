@@ -3,7 +3,7 @@ import { expect } from "chai";
 
 describe("@dataform/sqlx", () => {
   describe("outer SQL lexing", () => {
-    it("backslashes are duplicated, so that they act literally when interpreted by javascript", () => {
+    it("backslashes are duplicated, so that they act literally when included in a JavaScript template string", () => {
       // If someone in SQLX SQL writes "\" in the regex, it should be
       // interpreted as "\".
       const tests: Array<{ in: string; expected: string }> = [
@@ -47,7 +47,7 @@ describe("@dataform/sqlx", () => {
     });
   });
   describe("inner SQL lexing", () => {
-    it("backslashes are duplicated, so that they act literally when interpreted by javascript", () => {
+    it("backslashes are duplicated, so that they act literally when included in a JavaScript template string", () => {
       const tests: Array<{ in: string; expected: string }> = [
         {
           in: "pre_operations {select regexp_extract('01a_data_engine', '^(\\d{2}\\w)')}",
@@ -82,7 +82,7 @@ describe("@dataform/sqlx", () => {
     });
   });
   describe("syntax tree construction", () => {
-    it("strings don't affect the tree", () => {
+    it("SQL strings don't affect the tree", () => {
       const tree = constructSyntaxTree("SELECT SUM(IF(track.event = 'example', 1, 0)) js { }");
       const expected = {
         contentType: "sql",
@@ -102,45 +102,15 @@ describe("@dataform/sqlx", () => {
       expect(tree).eql(expected);
     });
     it("inline js blocks tokenized correctly if string present beforehand", () => {
-      const tree = constructSyntaxTree('select regexp("", ${ref("dab")})');
+      const tree = constructSyntaxTree('select regexp("^/([0-9]+)\\"/.*", ${ref("dab")})');
       const expected = {
         contentType: "sql",
         contents: [
-          'select regexp("", ',
+          'select regexp("^/([0-9]+)\\"/.*", ',
           { contentType: "jsPlaceholder", contents: ['${ref("dab")}'] },
           ")"
         ]
       };
-      expect(tree).eql(expected);
-    });
-    it("inline js blocks tokenized correctly", () => {
-      const tree = constructSyntaxTree(
-        `
-config { type: "operation",
-        tags: ["tag1", "tag2"]
-}
-
-select CAST(REGEXP_EXTRACT("", r'^/([0-9]+)\\'/.*') AS INT64) AS id,
-CAST(REGEXP_EXTRACT("", r"^/([0-9]+)\\"/.*") AS INT64) AS id2 from \${ref("dab")} 
-where sample = 100`
-      );
-      const expected = {
-        contentType: "sql",
-        contents: [
-          "\n",
-          {
-            contentType: "js",
-            contents: ['config { type: "operation",\n        tags: ["tag1", "tag2"]\n}']
-          },
-          '\n\nselect CAST(REGEXP_EXTRACT("", r\'^/([0-9]+)\\\'/.*\') AS INT64) AS id,\nCAST(REGEXP_EXTRACT("", r"^/([0-9]+)\\"/.*") AS INT64) AS id2 from ',
-          {
-            contentType: "jsPlaceholder",
-            contents: ['${ref("dab")}']
-          },
-          " \nwhere sample = 100"
-        ]
-      };
-      console.log(tree);
       expect(tree).eql(expected);
     });
   });
