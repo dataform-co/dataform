@@ -568,6 +568,16 @@ describe("@dataform/api", () => {
           );
         });
     });
+    it("bigquery example with a backslash in regex", () => {
+      return query
+        .compile("select regexp_extract('01a_data_engine', '^(\\d{2}\\w)')", {
+          projectDir: "df/examples/common_v1",
+          projectConfigOverride: { warehouse: "bigquery", defaultDatabase: "tada-analytics" }
+        })
+        .then(compiledQuery => {
+          expect(compiledQuery).equals("select regexp_extract('01a_data_engine', '^(\\d{2}\\w)')");
+        });
+    });
   });
 
   describe("credentials_config", () => {

@@ -58,9 +58,10 @@ export async function compile(
   // Resolve the path in case it hasn't been resolved already.
   const projectDir = path.resolve(compileConfig.projectDir);
 
+  console.log("RAW QUERY:", query);
   // This captures any single backticks that aren't escaped with a preceding \.
   const RAW_BACKTICKS_REGEX = /(?!\\)`/g;
-  query = query.replace(RAW_BACKTICKS_REGEX, "\\`");
+  query = query.replace(/\\/g, "\\\\").replace(RAW_BACKTICKS_REGEX, "\\`");
 
   return await CompileChildProcess.forkProcess().compile({
     ...compileConfig,
