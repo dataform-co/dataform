@@ -20,6 +20,8 @@ Dataform currently supports Google BigQuery, Postgres, Amazon Redshift, Snowflak
 
 You can get started quickly using <a target="_blank" rel="noopener" href="https://dataform.co">Dataform Web</a>, or if you prefer, check out our open source [command line interface](command-line-interface) to develop Dataform projects yourself.
 
+In addition to providing a nice graphical user interface, Dataform Web integrates many useful additional cloud services, making it the perfect data management tool for larger teams.
+
 ## How does it work?
 
 1. You write SQL files enriched with Dataform's API and templating functions.

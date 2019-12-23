@@ -6,7 +6,7 @@ import * as fs from "fs";
 export function getBigQueryCredentials(): dataform.IBigQuery {
   const cloudCredentialsPath = actuallyResolve(
     question(
-      "Please follow the instructions at https://docs.dataform.co/platform_guides/set_up_datawarehouse/\n" +
+      "Please follow the instructions at https://docs.dataform.co/how_to_guides/dataform_web/set_up_datawarehouse/\n" +
         "to create and download a private key from the Google Cloud Console in JSON format.\n" +
         "(You can delete this file after credential initialization is complete.)\n\n" +
         "Enter the path to your Google Cloud private key file:"

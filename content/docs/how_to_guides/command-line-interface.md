@@ -91,7 +91,7 @@ dataform init-creds sqldatawarehouse
 
 A `.df-credentials.json` file will be written to disk containing your provided details.
 
-Check out our [data warehouse setup guide](../platform_guides/set_up_datawarehouse) if you need help with the `init-creds` wizard.
+Check out our [data warehouse setup guide](../how_to_guides/dataform_web/set_up_datawarehouse) if you need help with the `init-creds` wizard.
 
 <div className="bp3-callout bp3-icon-info-sign bp3-intent-warning" markdown="1">
   If using a source control system, we strongly recommend that you do not commit the{" "}

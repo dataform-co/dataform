@@ -20,10 +20,10 @@ Schedules can be used to run any selection of your datasets at a user-specified 
 2. Click `Add schedule`
 3. Enter your schedule's settings and click `Create schedule`
 
-<img src="/static/images/platform_guides/scheduling/create_schedule.png" style="width: 100%" />
+<img src="/static/images/how_to_guides/dataform_web/scheduling/create_schedule.png" style="width: 100%" />
 
 ## View past runs
 
 You can find all current and historical scheduled runs in the _Run logs_ page, accessible using the left menu bar.
 
-<img src="/static/images/platform_guides/scheduling/run_logs.png" style="width: 100%" />
+<img src="/static/images/how_to_guides/dataform_web/scheduling/run_logs.png" style="width: 100%" />
