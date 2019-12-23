@@ -6,9 +6,11 @@ import { expect } from "chai";
 import { dropAllTables, getTableRows, keyBy } from "df/tests/integration/utils";
 
 describe("@dataform/integration/snowflake", () => {
-  it("run", async () => {
-    const credentials = dfapi.credentials.read("snowflake", "df/test_credentials/snowflake.json");
+  const credentials = dfapi.credentials.read("snowflake", "df/test_credentials/snowflake.json");
+  const dbadapter = dbadapters.create(credentials, "snowflake");
+  after(() => dbadapter.close());
 
+  it("run", async () => {
     const compiledGraph = await dfapi.compile({
       projectDir: "df/tests/integration/snowflake_project"
     });
@@ -16,8 +18,7 @@ describe("@dataform/integration/snowflake", () => {
     expect(compiledGraph.graphErrors.compilationErrors).to.eql([]);
     expect(compiledGraph.graphErrors.validationErrors).to.eql([]);
 
-    const dbadapter = dbadapters.create(credentials, "snowflake");
-    const adapter = adapters.create(compiledGraph.projectConfig);
+    const adapter = adapters.create(compiledGraph.projectConfig, compiledGraph.dataformCoreVersion);
 
     // Drop all the tables before we do anything.
     await dropAllTables(compiledGraph, adapter, dbadapter);
@@ -60,7 +61,7 @@ describe("@dataform/integration/snowflake", () => {
 
     // Check the status of the s3 load operation.
     expect(actionMap["DF_INTEGRATION_TEST.LOAD_FROM_S3"].status).equals(
-      dataform.ActionExecutionStatus.SUCCESSFUL
+      dataform.ActionResult.ExecutionStatus.SUCCESSFUL
     );
 
     // Check the s3 table has two rows, as per:
@@ -71,24 +72,37 @@ describe("@dataform/integration/snowflake", () => {
     const s3Rows = await getTableRows(s3Table.target, adapter, credentials, "snowflake");
     expect(s3Rows.length).equals(2);
 
+    // Check the status of the view in the non-default database.
+    const tada2DatabaseView = keyBy(compiledGraph.tables, t => t.name)[
+      "TADA2.DF_INTEGRATION_TEST.SAMPLE_DATA_2"
+    ];
+    const tada2DatabaseViewRows = await getTableRows(
+      tada2DatabaseView.target,
+      adapter,
+      credentials,
+      "snowflake"
+    );
+    expect(tada2DatabaseViewRows.length).equals(3);
+
     // Check the status of the two assertions.
     expect(actionMap["DF_INTEGRATION_TEST_ASSERTIONS.EXAMPLE_ASSERTION_FAIL"].status).equals(
-      dataform.ActionExecutionStatus.FAILED
+      dataform.ActionResult.ExecutionStatus.FAILED
     );
     expect(actionMap["DF_INTEGRATION_TEST_ASSERTIONS.EXAMPLE_ASSERTION_PASS"].status).equals(
-      dataform.ActionExecutionStatus.SUCCESSFUL
+      dataform.ActionResult.ExecutionStatus.SUCCESSFUL
     );
 
     // Check the status of the two uniqueness assertions.
     expect(
       actionMap["DF_INTEGRATION_TEST_ASSERTIONS.EXAMPLE_ASSERTION_UNIQUENESS_FAIL"].status
-    ).equals(dataform.ActionExecutionStatus.FAILED);
+    ).equals(dataform.ActionResult.ExecutionStatus.FAILED);
     expect(
-      actionMap["DF_INTEGRATION_TEST_ASSERTIONS.EXAMPLE_ASSERTION_UNIQUENESS_FAIL"].tasks[1].error
-    ).to.eql("Assertion failed: query returned 1 row(s).");
+      actionMap["DF_INTEGRATION_TEST_ASSERTIONS.EXAMPLE_ASSERTION_UNIQUENESS_FAIL"].tasks[1]
+        .errorMessage
+    ).to.eql("snowflake error: Assertion failed: query returned 1 row(s).");
     expect(
       actionMap["DF_INTEGRATION_TEST_ASSERTIONS.EXAMPLE_ASSERTION_UNIQUENESS_PASS"].status
-    ).equals(dataform.ActionExecutionStatus.SUCCESSFUL);
+    ).equals(dataform.ActionResult.ExecutionStatus.SUCCESSFUL);
 
     // Check the data in the incremental table.
     let incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
@@ -113,7 +127,7 @@ describe("@dataform/integration/snowflake", () => {
     );
 
     executedGraph = await dfapi.run(executionGraph, credentials).resultPromise();
-    expect(executedGraph.ok).equals(true);
+    expect(executedGraph.status).equals(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
 
     // Check there is an extra row in the incremental table.
     incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
@@ -127,4 +141,26 @@ describe("@dataform/integration/snowflake", () => {
     );
     expect(incrementalRows.length).equals(2);
   }).timeout(60000);
+
+  describe("result limit works", async () => {
+    const query = `
+      select 1 union all
+      select 2 union all
+      select 3 union all
+      select 4 union all
+      select 5`;
+
+    for (const interactive of [true, false]) {
+      it(`with interactive=${interactive}`, async () => {
+        expect(await dbadapter.execute(query, { interactive, maxResults: 2 })).eql([
+          {
+            1: 1
+          },
+          {
+            1: 2
+          }
+        ]);
+      });
+    }
+  });
 });

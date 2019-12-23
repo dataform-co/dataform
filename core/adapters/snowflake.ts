@@ -1,18 +1,15 @@
+import { IAdapter } from "@dataform/core/adapters";
+import { Adapter } from "@dataform/core/adapters/base";
+import { Task, Tasks } from "@dataform/core/tasks";
 import { dataform } from "@dataform/protos";
-import { Task, Tasks } from "../tasks";
-import { Adapter } from "./base";
-import { IAdapter } from "./index";
 
 export class SnowflakeAdapter extends Adapter implements IAdapter {
-  private project: dataform.IProjectConfig;
-
-  constructor(project: dataform.IProjectConfig) {
+  constructor(private project: dataform.IProjectConfig, private dataformCoreVersion: string) {
     super();
-    this.project = project;
   }
 
   public resolveTarget(target: dataform.ITarget) {
-    return `"${target.schema}"."${target.name}"`;
+    return `${!!target.database ? `"${target.database}".` : ""}"${target.schema}"."${target.name}"`;
   }
 
   public normalizeIdentifier(identifier: string) {
@@ -41,7 +38,7 @@ export class SnowflakeAdapter extends Adapter implements IAdapter {
             this.insertInto(
               table.target,
               tableMetadata.fields.map(f => f.name),
-              this.where(table.query, table.where)
+              this.where(table.incrementalQuery || table.query, table.where)
             )
           )
         );

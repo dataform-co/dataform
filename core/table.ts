@@ -53,11 +53,12 @@ export interface TConfig {
   redshift?: dataform.IRedshiftOptions;
   bigquery?: dataform.IBigQueryOptions;
   sqldatawarehouse?: dataform.ISQLDataWarehouseOptions;
+  database?: string;
   schema?: string;
 }
 
 export class Table {
-  public proto: dataform.Table = dataform.Table.create({
+  public proto: dataform.ITable = dataform.Table.create({
     type: "view",
     disabled: false,
     tags: []
@@ -102,6 +103,9 @@ export class Table {
     }
     if (config.columns) {
       this.columns(config.columns);
+    }
+    if (config.database) {
+      this.database(config.database);
     }
     if (config.schema) {
       this.schema(config.schema);
@@ -161,18 +165,11 @@ export class Table {
   }
 
   public dependencies(value: Resolvable | Resolvable[]) {
-    const newDependencies = utils.isResolvable(value) ? [value] : (value as Resolvable[]);
-    newDependencies.forEach((d: Resolvable) => {
-      // TODO: This code fails to function correctly if the inline table has not yet
-      // been attached to the session. This code probably needs to be moved to compile().
-      const allResolved = this.session.findActions(d);
-      const resolved = allResolved.length > 0 ? allResolved[0] : undefined;
-      if (!!resolved && resolved instanceof Table && resolved.proto.type === "inline") {
-        resolved.proto.dependencies.forEach(childDep => this.addDependency(childDep));
-      } else {
-        this.addDependency(d);
-      }
+    const newDependencies = Array.isArray(value) ? value : [value];
+    newDependencies.forEach(resolvable => {
+      this.proto.dependencyTargets.push(utils.resolvableAsTarget(resolvable));
     });
+
     return this;
   }
 
@@ -200,15 +197,36 @@ export class Table {
     return this;
   }
 
+  public database(database: string) {
+    utils.setNameAndTarget(
+      this.session,
+      this.proto,
+      this.proto.target.name,
+      this.proto.target.schema,
+      database
+    );
+    return this;
+  }
+
   public schema(schema: string) {
-    this.session.setNameAndTarget(this.proto, this.proto.target.name, schema);
+    utils.setNameAndTarget(
+      this.session,
+      this.proto,
+      this.proto.target.name,
+      schema,
+      this.proto.target.database
+    );
     return this;
   }
 
   public compile() {
     const context = new TableContext(this);
+    const incrementalContext = new TableContext(this, true);
 
     this.proto.query = context.apply(this.contextableQuery);
+    if (this.proto.type === TableTypes.INCREMENTAL) {
+      this.proto.incrementalQuery = incrementalContext.apply(this.contextableQuery);
+    }
 
     if (this.contextableWhere) {
       this.proto.where = context.apply(this.contextableWhere);
@@ -231,23 +249,18 @@ export class Table {
     this.contextablePostOps = [];
     return this.proto;
   }
-
-  private addDependency(dependency: Resolvable): void {
-    const depName = utils.stringifyResolvable(dependency);
-    if (this.proto.dependencies.indexOf(depName) < 0) {
-      this.proto.dependencies.push(depName);
-    }
-  }
 }
 
 export interface ITableContext {
   config: (config: TConfig) => string;
   self: () => string;
   name: () => string;
-  ref: (name: string) => string;
-  resolve: (name: string) => string;
+  ref: (ref: Resolvable | string[], ...rest: string[]) => string;
+  resolve: (ref: Resolvable | string[], ...rest: string[]) => string;
   type: (type: TableType) => string;
   where: (where: TContextable<string>) => string;
+  isIncremental: () => boolean;
+  ifIncremental: (value: string) => string;
   preOps: (statement: TContextable<string | string[]>) => string;
   postOps: (statement: TContextable<string | string[]>) => string;
   disabled: () => string;
@@ -259,11 +272,7 @@ export interface ITableContext {
 }
 
 export class TableContext implements ITableContext {
-  private table?: Table;
-
-  constructor(table: Table) {
-    this.table = table;
-  }
+  constructor(private table: Table, private incremental = false) {}
 
   public config(config: TConfig) {
     this.table.config(config);
@@ -281,20 +290,19 @@ export class TableContext implements ITableContext {
     return this.table.proto.target.name;
   }
 
-  public ref(ref: Resolvable) {
-    const name =
-      typeof ref === "string" || typeof ref === "undefined" ? ref : `${ref.schema}.${ref.name}`;
-    if (!name) {
+  public ref(ref: Resolvable | string[], ...rest: string[]) {
+    ref = utils.toResolvable(ref, rest);
+    if (!utils.resolvableAsTarget(ref)) {
       const message = `Action name is not specified`;
       this.table.session.compileError(new Error(message));
       return "";
     }
-    this.table.dependencies(name);
+    this.table.dependencies(ref);
     return this.resolve(ref);
   }
 
-  public resolve(ref: Resolvable) {
-    return this.table.session.resolve(ref);
+  public resolve(ref: Resolvable | string[], ...rest: string[]) {
+    return this.table.session.resolve(utils.toResolvable(ref, rest));
   }
 
   public type(type: TableType) {
@@ -305,6 +313,14 @@ export class TableContext implements ITableContext {
   public where(where: TContextable<string>) {
     this.table.where(where);
     return "";
+  }
+
+  public isIncremental() {
+    return !!this.incremental;
+  }
+
+  public ifIncremental(value: string) {
+    return this.isIncremental() ? value : "";
   }
 
   public preOps(statement: TContextable<string | string[]>) {

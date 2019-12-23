@@ -133,11 +133,10 @@ const warehouseOption: INamedOption<yargs.PositionalOptions> = {
   }
 };
 
-const verboseOutputOption: INamedOption<yargs.Options> = {
-  name: "verbose",
+const jsonOutputOption: INamedOption<yargs.Options> = {
+  name: "json",
   option: {
-    describe:
-      "If true, the full contents of command output will be output (containing fully compiled SQL, etc).",
+    describe: "Outputs a JSON representation of the compiled project.",
     type: "boolean",
     default: false
   }
@@ -153,7 +152,7 @@ const builtYargs = createYargsCli({
       positionalOptions: [],
       options: [],
       processFn: async argv => {
-        return false;
+        return 0;
       }
     },
     {
@@ -162,17 +161,20 @@ const builtYargs = createYargsCli({
       positionalOptions: [warehouseOption, projectDirOption],
       options: [
         {
-          name: "gcloud-project-id",
+          name: "default-database",
           option: {
-            describe: "The Google Cloud Project ID to use when accessing bigquery."
+            describe:
+              "The default database to use. For BigQuery, this is a Google Cloud Project ID."
           },
           check: (argv: yargs.Arguments) => {
-            if (argv["gcloud-project-id"] && argv.warehouse !== "bigquery") {
-              throw new Error("The --gcloud-project-id flag is only used for BigQuery projects.");
-            }
-            if (!argv["gcloud-project-id"] && argv.warehouse === "bigquery") {
+            if (argv["default-database"] && !["bigquery", "snowflake"].includes(argv.warehouse)) {
               throw new Error(
-                "The --gcloud-project-id flag is required for BigQuery projects. Please run 'dataform help init' for more information."
+                "The --default-database flag is only used for BigQuery and Snowflake projects."
+              );
+            }
+            if (!argv["default-database"] && argv.warehouse === "bigquery") {
+              throw new Error(
+                "The --default-database flag is required for BigQuery projects. Please run 'dataform help init' for more information."
               );
             }
           }
@@ -201,20 +203,20 @@ const builtYargs = createYargsCli({
       ],
       processFn: async argv => {
         print("Writing project files...\n");
-        printInitResult(
-          await init(
-            argv["project-dir"],
-            {
-              warehouse: argv.warehouse,
-              gcloudProjectId: argv["gcloud-project-id"]
-            },
-            {
-              skipInstall: argv["skip-install"],
-              includeSchedules: argv["include-schedules"],
-              includeEnvironments: argv["include-environments"]
-            }
-          )
+        const initResult = await init(
+          argv["project-dir"],
+          {
+            warehouse: argv.warehouse,
+            defaultDatabase: argv["default-database"]
+          },
+          {
+            skipInstall: argv["skip-install"],
+            includeSchedules: argv["include-schedules"],
+            includeEnvironments: argv["include-environments"]
+          }
         );
+        printInitResult(initResult);
+        return 0;
       }
     },
     {
@@ -278,6 +280,7 @@ const builtYargs = createYargsCli({
         const filePath = path.resolve(argv["project-dir"], credentials.CREDENTIALS_FILENAME);
         fs.writeFileSync(filePath, prettyJsonStringify(finalCredentials));
         printInitCredsResult(filePath);
+        return 0;
       }
     },
     {
@@ -295,74 +298,86 @@ const builtYargs = createYargsCli({
           }
         },
         schemaSuffixOverrideOption,
-        verboseOutputOption
+        jsonOutputOption
       ],
       processFn: async argv => {
         const projectDir = argv["project-dir"];
         const schemaSuffixOverride = argv["schema-suffix"];
 
         const compileAndPrint = async () => {
-          print("Compiling...\n");
+          if (!argv.json) {
+            print("Compiling...\n");
+          }
           const compiledGraph = await compile({
             projectDir,
             schemaSuffixOverride
           });
-          printCompiledGraph(compiledGraph, argv.verbose);
+          printCompiledGraph(compiledGraph, argv.json);
           if (compiledGraphHasErrors(compiledGraph)) {
             print("");
             printCompiledGraphErrors(compiledGraph.graphErrors);
+            return true;
           }
+          return false;
         };
-        await compileAndPrint();
+        const graphHasErrors = await compileAndPrint();
 
-        if (argv.watch) {
-          let timeoutID: NodeJS.Timer = null;
-          let isCompiling = false;
+        if (!argv.watch) {
+          return graphHasErrors ? 1 : 0;
+        }
 
-          // Initialize watcher.
-          const watcher = chokidar.watch(projectDir, {
-            ignored: /node_modules/,
-            persistent: true,
-            ignoreInitial: true,
-            awaitWriteFinish: {
-              stabilityThreshold: 1000,
-              pollInterval: 200
-            }
-          });
+        let watching = true;
 
-          let watching = true;
+        let timeoutID: NodeJS.Timer = null;
+        let isCompiling = false;
 
-          const printReady = () => {
-            print("\nWatching for changes...\n");
-          };
-          // Add event listeners.
-          watcher
-            .on("ready", printReady)
-            .on("error", error => printError(`Error: ${error}`))
-            .on("all", () => {
-              if (timeoutID || isCompiling) {
-                // don't recompile many times if we changed a lot of files
-                clearTimeout(timeoutID);
-              }
-
-              timeoutID = setTimeout(async () => {
-                clearTimeout(timeoutID);
-
-                if (!isCompiling) {
-                  isCompiling = true;
-                  await compileAndPrint();
-                  printReady();
-                  isCompiling = false;
-                }
-              }, RECOMPILE_DELAY);
-            });
-          process.on("SIGINT", () => {
-            watcher.close();
-            watching = false;
-          });
-          while (watching) {
-            await new Promise((resolve, reject) => setTimeout(() => resolve(), 100));
+        // Initialize watcher.
+        const watcher = chokidar.watch(projectDir, {
+          ignored: /node_modules/,
+          persistent: true,
+          ignoreInitial: true,
+          awaitWriteFinish: {
+            stabilityThreshold: 1000,
+            pollInterval: 200
           }
+        });
+
+        const printReady = () => {
+          print("\nWatching for changes...\n");
+        };
+        // Add event listeners.
+        watcher
+          .on("ready", printReady)
+          .on("error", error => {
+            // This error is caught not if there is a compilation error, but
+            // if the watcher fails; this indicates an failure on our side.
+            printError(`Error: ${error}`);
+            process.exit(1);
+          })
+          .on("all", () => {
+            if (timeoutID || isCompiling) {
+              // don't recompile many times if we changed a lot of files
+              clearTimeout(timeoutID);
+            }
+
+            timeoutID = setTimeout(async () => {
+              clearTimeout(timeoutID);
+
+              if (!isCompiling) {
+                isCompiling = true;
+                await compileAndPrint();
+                printReady();
+                isCompiling = false;
+              }
+            }, RECOMPILE_DELAY);
+          });
+        process.on("SIGINT", () => {
+          watcher.close();
+          watching = false;
+          process.exit(1);
+        });
+        while (watching) {
+          await new Promise((resolve, reject) => setTimeout(() => resolve(), 100));
         }
       }
     },
@@ -379,7 +394,7 @@ const builtYargs = createYargsCli({
         });
         if (compiledGraphHasErrors(compiledGraph)) {
           printCompiledGraphErrors(compiledGraph.graphErrors);
-          return;
+          return 1;
         }
         printSuccess("Compiled successfully.\n");
         const readCredentials = credentials.read(
@@ -389,7 +404,7 @@ const builtYargs = createYargsCli({
 
         if (!compiledGraph.tests.length) {
           printError("No unit tests found.");
-          return;
+          return 1;
         }
 
         print(`Running ${compiledGraph.tests.length} unit tests...\n`);
@@ -399,6 +414,7 @@ const builtYargs = createYargsCli({
           compiledGraph.tests
         );
         testResults.forEach(testResult => printTestResult(testResult));
+        return testResults.every(testResult => testResult.successful) ? 0 : 1;
       }
     },
     {
@@ -428,19 +444,23 @@ const builtYargs = createYargsCli({
         includeDepsOption,
         schemaSuffixOverrideOption,
         credentialsOption,
-        verboseOutputOption
+        jsonOutputOption
       ],
       processFn: async argv => {
-        print("Compiling...\n");
+        if (!argv.json) {
+          print("Compiling...\n");
+        }
         const compiledGraph = await compile({
           projectDir: argv["project-dir"],
           schemaSuffixOverride: argv["schema-suffix"]
         });
         if (compiledGraphHasErrors(compiledGraph)) {
           printCompiledGraphErrors(compiledGraph.graphErrors);
-          return;
+          return 1;
         }
-        printSuccess("Compiled successfully.\n");
+        if (!argv.json) {
+          printSuccess("Compiled successfully.\n");
+        }
         const readCredentials = credentials.read(
           compiledGraph.projectConfig.warehouse,
           argv.credentials
@@ -457,10 +477,12 @@ const builtYargs = createYargsCli({
         );
 
         if (argv["dry-run"]) {
-          print(
-            "Dry run (--dry-run) mode is turned on; not running the following actions against your warehouse:\n"
-          );
-          printExecutionGraph(executionGraph, argv.verbose);
+          if (!argv.json) {
+            print(
+              "Dry run (--dry-run) mode is turned on; not running the following actions against your warehouse:\n"
+            );
+          }
+          printExecutionGraph(executionGraph, argv.json);
           return;
         }
 
@@ -474,12 +496,14 @@ const builtYargs = createYargsCli({
           testResults.forEach(testResult => printTestResult(testResult));
           if (testResults.some(testResult => !testResult.successful)) {
             printError("\nUnit tests did not pass; aborting run.");
-            return;
+            return 1;
           }
           printSuccess("Unit tests completed successfully.\n");
         }
 
-        print("Running...\n");
+        if (!argv.json) {
+          print("Running...\n");
+        }
         const runner = run(executionGraph, readCredentials);
         process.on("SIGINT", () => {
           if (
@@ -487,7 +511,7 @@ const builtYargs = createYargsCli({
               WarehouseType[compiledGraph.projectConfig.warehouse as keyof typeof WarehouseType]
             )
           ) {
-            process.exit();
+            process.exit(1);
           }
           runner.cancel();
         });
@@ -498,21 +522,22 @@ const builtYargs = createYargsCli({
         });
         const alreadyPrintedActions = new Set<string>();
 
-        const printExecutedGraph = (executedGraph: dataform.IExecutedGraph) => {
+        const printExecutedGraph = (executedGraph: dataform.IRunResult) => {
           executedGraph.actions
+            .filter(
+              actionResult => actionResult.status !== dataform.ActionResult.ExecutionStatus.RUNNING
+            )
             .filter(executedAction => !alreadyPrintedActions.has(executedAction.name))
             .forEach(executedAction => {
-              printExecutedAction(
-                executedAction,
-                actionsByName.get(executedAction.name),
-                argv.verbose
-              );
+              printExecutedAction(executedAction, actionsByName.get(executedAction.name));
               alreadyPrintedActions.add(executedAction.name);
             });
         };
 
         runner.onChange(printExecutedGraph);
-        printExecutedGraph(await runner.resultPromise());
+        const runResult = await runner.resultPromise();
+        printExecutedGraph(runResult);
+        return runResult.status === dataform.RunResult.ExecutionStatus.SUCCESSFUL ? 0 : 1;
       }
     },
     {
@@ -542,6 +567,7 @@ const builtYargs = createYargsCli({
           })
         );
         printFormatFilesResult(results);
+        return 0;
       }
     },
     {
@@ -553,6 +579,7 @@ const builtYargs = createYargsCli({
         printListTablesResult(
           await table.list(credentials.read(argv.warehouse, argv.credentials), argv.warehouse)
         );
+        return 0;
       }
     },
     {
@@ -567,6 +594,7 @@ const builtYargs = createYargsCli({
             name: argv.table
           })
         );
+        return 0;
       }
     }
   ]

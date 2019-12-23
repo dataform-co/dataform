@@ -1,78 +1,52 @@
-import { Builder, compile, credentials, format, query, Runner } from "@dataform/api";
+import { Builder, compile, credentials, format, prune, query, Runner } from "@dataform/api";
 import { IDbAdapter } from "@dataform/api/dbadapters";
 import { BigQueryDbAdapter } from "@dataform/api/dbadapters/bigquery";
 import * as utils from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
-import { fail } from "assert";
 import { assert, config, expect } from "chai";
 import { asPlainObject, cleanSql } from "df/tests/utils";
 import * as path from "path";
-import * as stackTrace from "stack-trace";
 import { anyString, anything, instance, mock, when } from "ts-mockito";
 
 config.truncateThreshold = 0;
 
 describe("@dataform/api", () => {
+  const TEST_GRAPH: dataform.ICompiledGraph = dataform.CompiledGraph.create({
+    projectConfig: { warehouse: "redshift" },
+    tables: [
+      {
+        name: "schema.a",
+        target: {
+          schema: "schema",
+          name: "a"
+        },
+        query: "query",
+        dependencies: ["schema.b"]
+      },
+      {
+        name: "schema.b",
+        target: {
+          schema: "schema",
+          name: "b"
+        },
+        query: "query",
+        dependencies: ["schema.c"],
+        disabled: true
+      },
+      {
+        name: "schema.c",
+        target: {
+          schema: "schema",
+          name: "c"
+        },
+        query: "query"
+      }
+    ]
+  });
+
+  const TEST_STATE = dataform.WarehouseState.create({ tables: [] });
+
   describe("build", () => {
-    const TEST_GRAPH: dataform.ICompiledGraph = dataform.CompiledGraph.create({
-      projectConfig: { warehouse: "redshift" },
-      tables: [
-        {
-          name: "schema.a",
-          target: {
-            schema: "schema",
-            name: "a"
-          },
-          query: "query",
-          dependencies: ["schema.b"]
-        },
-        {
-          name: "schema.b",
-          target: {
-            schema: "schema",
-            name: "b"
-          },
-          query: "query",
-          dependencies: ["schema.c"],
-          disabled: true
-        },
-        {
-          name: "schema.c",
-          target: {
-            schema: "schema",
-            name: "c"
-          },
-          query: "query"
-        }
-      ]
-    });
-
-    const TEST_STATE = dataform.WarehouseState.create({ tables: [] });
-
-    it("include_deps", () => {
-      const builder = new Builder(
-        TEST_GRAPH,
-        { actions: ["schema.a"], includeDependencies: true },
-        TEST_STATE
-      );
-      const executionGraph = builder.build();
-      const includedActionNames = executionGraph.actions.map(n => n.name);
-      expect(includedActionNames).includes("schema.a");
-      expect(includedActionNames).includes("schema.b");
-    });
-
-    it("exclude_deps", () => {
-      const builder = new Builder(
-        TEST_GRAPH,
-        { actions: ["schema.a"], includeDependencies: false },
-        TEST_STATE
-      );
-      const executionGraph = builder.build();
-      const includedActionNames = executionGraph.actions.map(n => n.name);
-      expect(includedActionNames).includes("schema.a");
-      expect(includedActionNames).not.includes("schema.b");
-    });
-
     it("exclude_disabled", () => {
       const builder = new Builder(TEST_GRAPH, { includeDependencies: true }, TEST_STATE);
       const executionGraph = builder.build();
@@ -161,37 +135,9 @@ describe("@dataform/api", () => {
         expect(action).to.include({ type: "assertion" });
       });
     });
+  });
 
-    it("inline_tables", () => {
-      const graph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
-        projectConfig: { warehouse: "bigquery" },
-        tables: [
-          { name: "a", target: { schema: "schema", name: "a" }, type: "table", dependencies: [] },
-          {
-            name: "b",
-            target: { schema: "schema", name: "b" },
-            type: "inline",
-            dependencies: ["a"]
-          },
-          { name: "c", target: { schema: "schema", name: "c" }, type: "table", dependencies: ["a"] }
-        ]
-      });
-
-      const builder = new Builder(graph, {}, TEST_STATE);
-      const executedGraph = builder.build();
-
-      expect(executedGraph).to.exist;
-      expect(executedGraph)
-        .to.have.property("actions")
-        .to.be.an("array").that.is.not.empty;
-
-      const actionNames = executedGraph.actions.map(action => action.name);
-
-      expect(actionNames).includes("a");
-      expect(actionNames).not.includes("b");
-      expect(actionNames).includes("c");
-    });
-
+  describe("prune", () => {
     const TEST_GRAPH_WITH_TAGS: dataform.ICompiledGraph = dataform.CompiledGraph.create({
       projectConfig: { warehouse: "bigquery" },
       operations: [
@@ -230,18 +176,46 @@ describe("@dataform/api", () => {
         }
       ]
     });
-    it("build actions with --tags (with dependencies)", () => {
-      const builder = new Builder(
-        TEST_GRAPH_WITH_TAGS,
-        {
-          actions: ["op_b", "op_d"],
-          tags: ["tag1", "tag2", "tag4"],
-          includeDependencies: true
-        },
-        TEST_STATE
-      );
-      const executedGraph = builder.build();
-      const actionNames = executedGraph.actions.map(n => n.name);
+
+    it("prune removes inline tables", async () => {
+      const graph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
+        projectConfig: { warehouse: "bigquery" },
+        tables: [
+          { name: "a", target: { schema: "schema", name: "a" }, type: "table", dependencies: [] },
+          {
+            name: "b",
+            target: { schema: "schema", name: "b" },
+            type: "inline",
+            dependencies: ["a"]
+          },
+          { name: "c", target: { schema: "schema", name: "c" }, type: "table", dependencies: ["a"] }
+        ]
+      });
+
+      const prunedGraph = prune(graph, {});
+
+      expect(prunedGraph).to.exist;
+      expect(prunedGraph)
+        .to.have.property("tables")
+        .to.be.an("array").that.is.not.empty;
+
+      const actionNames = prunedGraph.tables.map(action => action.name);
+
+      expect(actionNames).includes("a");
+      expect(actionNames).not.includes("b");
+      expect(actionNames).includes("c");
+    });
+
+    it("prune actions with --tags (with dependencies)", () => {
+      const prunedGraph = prune(TEST_GRAPH_WITH_TAGS, {
+        actions: ["op_b", "op_d"],
+        tags: ["tag1", "tag2", "tag4"],
+        includeDependencies: true
+      });
+      const actionNames = [
+        ...prunedGraph.tables.map(action => action.name),
+        ...prunedGraph.operations.map(action => action.name)
+      ];
       expect(actionNames).includes("op_a");
       expect(actionNames).includes("op_b");
       expect(actionNames).not.includes("op_c");
@@ -249,29 +223,47 @@ describe("@dataform/api", () => {
       expect(actionNames).includes("tab_a");
     });
 
-    it("build actions with --tags but without --actions (without dependencies)", () => {
-      const builder = new Builder(
-        TEST_GRAPH_WITH_TAGS,
-        {
-          tags: ["tag1", "tag2", "tag4"],
-          includeDependencies: false
-        },
-        TEST_STATE
-      );
-      const executedGraph = builder.build();
-      const actionNames = executedGraph.actions.map(n => n.name);
+    it("prune actions with --tags but without --actions (without dependencies)", () => {
+      const prunedGraph = prune(TEST_GRAPH_WITH_TAGS, {
+        tags: ["tag1", "tag2", "tag4"],
+        includeDependencies: false
+      });
+      const actionNames = [
+        ...prunedGraph.tables.map(action => action.name),
+        ...prunedGraph.operations.map(action => action.name)
+      ];
       expect(actionNames).includes("op_a");
       expect(actionNames).includes("op_b");
       expect(actionNames).not.includes("op_c");
       expect(actionNames).not.includes("op_d");
       expect(actionNames).includes("tab_a");
     });
+
+    it("prune actions with --actions with dependencies", () => {
+      const prunedGraph = prune(TEST_GRAPH, { actions: ["schema.a"], includeDependencies: true });
+      const actionNames = [
+        ...prunedGraph.tables.map(action => action.name),
+        ...prunedGraph.operations.map(action => action.name)
+      ];
+      expect(actionNames).includes("schema.a");
+      expect(actionNames).includes("schema.b");
+    });
+
+    it("prune actions with --actions without dependencies", () => {
+      const prunedGraph = prune(TEST_GRAPH, { actions: ["schema.a"], includeDependencies: false });
+      const actionNames = [
+        ...prunedGraph.tables.map(action => action.name),
+        ...prunedGraph.operations.map(action => action.name)
+      ];
+      expect(actionNames).includes("schema.a");
+      expect(actionNames).not.includes("schema.b");
+    });
   });
 
   describe("sql_generating", () => {
     it("bigquery_incremental", () => {
       const graph = dataform.CompiledGraph.create({
-        projectConfig: { warehouse: "bigquery" },
+        projectConfig: { warehouse: "bigquery", defaultDatabase: "deeb" },
         tables: [
           {
             name: "incremental",
@@ -307,7 +299,7 @@ describe("@dataform/api", () => {
         cleanSql(executionGraph.actions.filter(n => n.name === "incremental")[0].tasks[0].statement)
       ).equals(
         cleanSql(
-          `insert into \`schema.incremental\` (existing_field)
+          `insert into \`deeb.schema.incremental\` (existing_field)
            select existing_field from (
              select * from (select 1 as test) as subquery
              where true
@@ -319,6 +311,7 @@ describe("@dataform/api", () => {
     it("redshift_create", () => {
       const testGraph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
         projectConfig: { warehouse: "redshift" },
+        dataformCoreVersion: "1.4.1",
         tables: [
           {
             name: "redshift_all",
@@ -365,6 +358,27 @@ describe("@dataform/api", () => {
               name: "redshift_without_redshift"
             },
             query: "query"
+          },
+          {
+            name: "redshift_view",
+            type: "view",
+            target: {
+              schema: "schema",
+              name: "redshift_view"
+            },
+            query: "query"
+          },
+          {
+            name: "redshift_view_with_binding",
+            type: "view",
+            target: {
+              schema: "schema",
+              name: "redshift_view_with_binding"
+            },
+            query: "query",
+            redshift: {
+              bind: true
+            }
           }
         ]
       });
@@ -373,7 +387,9 @@ describe("@dataform/api", () => {
         'create table "schema"."redshift_all_temp" diststyle even distkey (column1) compound sortkey (column1, column2) as query',
         'create table "schema"."redshift_only_sort_temp" interleaved sortkey (column1) as query',
         'create table "schema"."redshift_only_dist_temp" diststyle even distkey (column1) as query',
-        'create table "schema"."redshift_without_redshift_temp" as query'
+        'create table "schema"."redshift_without_redshift_temp" as query',
+        'create or replace view "schema"."redshift_view" as query with no schema binding',
+        'create or replace view "schema"."redshift_view_with_binding" as query'
       ];
 
       const builder = new Builder(testGraph, {}, testState);
@@ -381,7 +397,7 @@ describe("@dataform/api", () => {
 
       expect(executionGraph.actions)
         .to.be.an("array")
-        .to.have.lengthOf(4);
+        .to.have.lengthOf(6);
 
       executionGraph.actions.forEach((action, index) => {
         expect(action)
@@ -395,7 +411,7 @@ describe("@dataform/api", () => {
 
     it("bigquery_partitionby", () => {
       const testGraph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
-        projectConfig: { warehouse: "bigquery" },
+        projectConfig: { warehouse: "bigquery", defaultDatabase: "deeb" },
         tables: [
           {
             name: "partitionby",
@@ -433,7 +449,7 @@ describe("@dataform/api", () => {
             {
               type: "statement",
               statement:
-                "create or replace table `schema.name` partition by DATE(test) as select 1 as test"
+                "create or replace table `deeb.schema.name` partition by DATE(test) as select 1 as test"
             }
           ]
         },
@@ -448,7 +464,7 @@ describe("@dataform/api", () => {
           tasks: [
             {
               type: "statement",
-              statement: "create or replace table `schema.name`  as select 1 as test"
+              statement: "create or replace table `deeb.schema.name`  as select 1 as test"
             }
           ]
         }
@@ -532,7 +548,7 @@ describe("@dataform/api", () => {
       return query
         .compile('select 1 from ${ref("example_view")}', {
           projectDir: "df/examples/common_v1",
-          projectConfigOverride: { warehouse: "bigquery", gcloudProjectId: "tada-analytics" }
+          projectConfigOverride: { warehouse: "bigquery", defaultDatabase: "tada-analytics" }
         })
         .then(compiledQuery => {
           expect(compiledQuery).equals(
@@ -687,45 +703,213 @@ describe("@dataform/api", () => {
       await runner.execute();
       const result = await runner.resultPromise();
 
-      const timeCleanedActions = result.actions.map(action => {
-        delete action.executionTime;
-        return action;
+      delete result.timing;
+      result.actions.forEach(actionResult => {
+        delete actionResult.timing;
+        actionResult.tasks.forEach(taskResult => {
+          delete taskResult.timing;
+        });
       });
-      result.actions = timeCleanedActions;
 
-      expect(dataform.ExecutedGraph.create(result)).to.deep.equal(
-        dataform.ExecutedGraph.create({
-          projectConfig: TEST_GRAPH.projectConfig,
-          runConfig: TEST_GRAPH.runConfig,
-          warehouseState: TEST_GRAPH.warehouseState,
-          ok: false,
+      expect(dataform.RunResult.create(result)).to.deep.equal(
+        dataform.RunResult.create({
+          status: dataform.RunResult.ExecutionStatus.FAILED,
           actions: [
             {
               name: TEST_GRAPH.actions[0].name,
               tasks: [
                 {
-                  task: TEST_GRAPH.actions[0].tasks[0],
-                  ok: true
+                  status: dataform.TaskResult.ExecutionStatus.SUCCESSFUL
                 }
               ],
-              status: dataform.ActionExecutionStatus.SUCCESSFUL,
-              deprecatedOk: true
+              status: dataform.ActionResult.ExecutionStatus.SUCCESSFUL
             },
             {
               name: TEST_GRAPH.actions[1].name,
               tasks: [
                 {
-                  task: TEST_GRAPH.actions[1].tasks[0],
-                  ok: false,
-                  error: "bad statement"
+                  status: dataform.TaskResult.ExecutionStatus.FAILED,
+                  errorMessage: "bigquery error: bad statement"
                 }
               ],
-              status: dataform.ActionExecutionStatus.FAILED,
-              deprecatedOk: false
+              status: dataform.ActionResult.ExecutionStatus.FAILED
             }
           ]
         })
       );
+    });
+
+    context("execute with retry", () => {
+      it("should fail when execution fails too many times for the retry setting", async () => {
+        const mockedDbAdapter = mock(BigQueryDbAdapter);
+        const NEW_TEST_GRAPH = {
+          ...TEST_GRAPH,
+          projectConfig: { ...TEST_GRAPH.projectConfig, idempotentActionRetries: 1 }
+        };
+        when(mockedDbAdapter.prepareSchema(anyString())).thenResolve(null);
+        when(
+          mockedDbAdapter.execute(NEW_TEST_GRAPH.actions[0].tasks[0].statement, anything())
+        ).thenResolve([]);
+        when(mockedDbAdapter.execute(NEW_TEST_GRAPH.actions[1].tasks[0].statement, anything()))
+          .thenReject(new Error("bad statement"))
+          .thenReject(new Error("bad statement"))
+          .thenResolve([]);
+
+        const runner = new Runner(instance(mockedDbAdapter), NEW_TEST_GRAPH);
+        const result = await runner.execute();
+
+        delete result.timing;
+        result.actions.forEach(actionResult => {
+          delete actionResult.timing;
+          actionResult.tasks.forEach(taskResult => {
+            delete taskResult.timing;
+          });
+        });
+
+        expect(dataform.RunResult.create(result)).to.deep.equal(
+          dataform.RunResult.create({
+            status: dataform.RunResult.ExecutionStatus.FAILED,
+            actions: [
+              {
+                name: NEW_TEST_GRAPH.actions[0].name,
+                tasks: [
+                  {
+                    status: dataform.TaskResult.ExecutionStatus.SUCCESSFUL
+                  }
+                ],
+                status: dataform.ActionResult.ExecutionStatus.SUCCESSFUL
+              },
+              {
+                name: TEST_GRAPH.actions[1].name,
+                tasks: [
+                  {
+                    status: dataform.TaskResult.ExecutionStatus.FAILED,
+                    errorMessage: "bigquery error: bad statement"
+                  }
+                ],
+                status: dataform.ActionResult.ExecutionStatus.FAILED
+              }
+            ]
+          })
+        );
+      });
+
+      it("should pass when execution fails initially, then passes with the number of allowed retries", async () => {
+        const mockedDbAdapter = mock(BigQueryDbAdapter);
+        const NEW_TEST_GRAPH = {
+          ...TEST_GRAPH,
+          projectConfig: { ...TEST_GRAPH.projectConfig, idempotentActionRetries: 2 }
+        };
+        when(mockedDbAdapter.prepareSchema(anyString())).thenResolve(null);
+        when(
+          mockedDbAdapter.execute(NEW_TEST_GRAPH.actions[0].tasks[0].statement, anything())
+        ).thenResolve([]);
+        when(mockedDbAdapter.execute(NEW_TEST_GRAPH.actions[1].tasks[0].statement, anything()))
+          .thenReject(new Error("bad statement"))
+          .thenReject(new Error("bad statement"))
+          .thenResolve([]);
+
+        const runner = new Runner(instance(mockedDbAdapter), NEW_TEST_GRAPH);
+        const result = await runner.execute();
+
+        delete result.timing;
+        result.actions.forEach(actionResult => {
+          delete actionResult.timing;
+          actionResult.tasks.forEach(taskResult => {
+            delete taskResult.timing;
+          });
+        });
+
+        expect(dataform.RunResult.create(result)).to.deep.equal(
+          dataform.RunResult.create({
+            status: dataform.RunResult.ExecutionStatus.SUCCESSFUL,
+            actions: [
+              {
+                name: NEW_TEST_GRAPH.actions[0].name,
+                tasks: [
+                  {
+                    status: dataform.TaskResult.ExecutionStatus.SUCCESSFUL
+                  }
+                ],
+                status: dataform.ActionResult.ExecutionStatus.SUCCESSFUL
+              },
+              {
+                name: NEW_TEST_GRAPH.actions[1].name,
+                tasks: [
+                  {
+                    status: dataform.TaskResult.ExecutionStatus.SUCCESSFUL
+                  }
+                ],
+                status: dataform.ActionResult.ExecutionStatus.SUCCESSFUL
+              }
+            ]
+          })
+        );
+      });
+
+      it("should not retry when the task is an operation", async () => {
+        const mockedDbAdapter = mock(BigQueryDbAdapter);
+        const NEW_TEST_GRAPH_WITH_OPERATION = {
+          ...TEST_GRAPH,
+          projectConfig: { ...TEST_GRAPH.projectConfig, idempotentActionRetries: 3 }
+        };
+        NEW_TEST_GRAPH_WITH_OPERATION.actions[1].tasks[0].type = "operation";
+
+        when(mockedDbAdapter.prepareSchema(anyString())).thenResolve(null);
+        when(
+          mockedDbAdapter.execute(
+            NEW_TEST_GRAPH_WITH_OPERATION.actions[0].tasks[0].statement,
+            anything()
+          )
+        ).thenResolve([]);
+        when(
+          mockedDbAdapter.execute(
+            NEW_TEST_GRAPH_WITH_OPERATION.actions[1].tasks[0].statement,
+            anything()
+          )
+        )
+          .thenReject(new Error("bad statement"))
+          .thenReject(new Error("bad statement"))
+          .thenResolve([]);
+
+        const runner = new Runner(instance(mockedDbAdapter), NEW_TEST_GRAPH_WITH_OPERATION);
+        const result = await runner.execute();
+
+        delete result.timing;
+        result.actions.forEach(actionResult => {
+          delete actionResult.timing;
+          actionResult.tasks.forEach(taskResult => {
+            delete taskResult.timing;
+          });
+        });
+
+        expect(dataform.RunResult.create(result)).to.deep.equal(
+          dataform.RunResult.create({
+            status: dataform.RunResult.ExecutionStatus.FAILED,
+            actions: [
+              {
+                name: NEW_TEST_GRAPH_WITH_OPERATION.actions[0].name,
+                tasks: [
+                  {
+                    status: dataform.TaskResult.ExecutionStatus.SUCCESSFUL
+                  }
+                ],
+                status: dataform.ActionResult.ExecutionStatus.SUCCESSFUL
+              },
+              {
+                name: NEW_TEST_GRAPH_WITH_OPERATION.actions[1].name,
+                tasks: [
+                  {
+                    status: dataform.TaskResult.ExecutionStatus.FAILED,
+                    errorMessage: "bigquery error: bad statement"
+                  }
+                ],
+                status: dataform.ActionResult.ExecutionStatus.FAILED
+              }
+            ]
+          })
+        );
+      });
     });
 
     it("execute_with_cancel", async () => {
@@ -781,8 +965,10 @@ describe("@dataform/api", () => {
       expect(wasCancelled).is.true;
       // Cancelling a run doesn't actually throw at the top level.
       // The action should fail, and have an appropriate error message.
-      expect(result.actions[0].deprecatedOk).is.false;
-      expect(result.actions[0].tasks[0].error).to.match(/cancelled/);
+      expect(result.actions[0].tasks[0].status).equal(
+        dataform.TaskResult.ExecutionStatus.CANCELLED
+      );
+      expect(result.actions[0].tasks[0].errorMessage).to.match(/cancelled/);
     });
   });
 

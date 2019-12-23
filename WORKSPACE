@@ -28,13 +28,14 @@ http_archive(
 
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 http_archive(
     name = "build_bazel_rules_nodejs",
-    sha256 = "6d4edbf28ff6720aedf5f97f9b9a7679401bf7fca9d14a0fff80f644a99992b4",
-    urls = ["https://github.com/bazelbuild/rules_nodejs/releases/download/0.32.2/rules_nodejs-0.32.2.tar.gz"],
+    sha256 = "16fc00ab0d1e538e88f084272316c0693a2e9007d64f45529b82f6230aedb073",
+    urls = ["https://github.com/bazelbuild/rules_nodejs/releases/download/0.42.2/rules_nodejs-0.42.2.tar.gz"],
 )
 
-load("@build_bazel_rules_nodejs//:defs.bzl", "node_repositories")
+load("@build_bazel_rules_nodejs//:index.bzl", "node_repositories")
 
 node_repositories(package_json = ["//:package.json"])
 
@@ -44,7 +45,7 @@ yarn_install(
     name = "npm",
     package_json = "//:package.json",
     yarn_lock = "//:yarn.lock",
-    symlink_node_modules = False
+    symlink_node_modules = True
 )
 
 load("@npm//:install_bazel_dependencies.bzl", "install_bazel_dependencies")
@@ -84,9 +85,9 @@ buildifier_dependencies()
 
 http_archive(
     name = "io_bazel_rules_docker",
-    sha256 = "3556d4972571f288f8c43378295d84ed64fef5b1a875211ee1046f9f6b4258fa",
-    strip_prefix = "rules_docker-0.8.0",
-    urls = ["https://github.com/bazelbuild/rules_docker/archive/v0.8.0.tar.gz"],
+    sha256 = "14ac30773fdb393ddec90e158c9ec7ebb3f8a4fd533ec2abbfd8789ad81a284b",
+    strip_prefix = "rules_docker-0.12.1",
+    urls = ["https://github.com/bazelbuild/rules_docker/releases/download/v0.12.1/rules_docker-v0.12.1.tar.gz"],
 )
 
 load(
@@ -107,3 +108,10 @@ container_pull(
     registry = "index.docker.io",
     repository = "library/nginx",
 )
+
+load(
+    "@io_bazel_rules_docker//nodejs:image.bzl",
+    _nodejs_image_repos = "repositories",
+)
+
+_nodejs_image_repos()

@@ -21,9 +21,14 @@ export interface IDbAdapter {
   table(target: dataform.ITarget): Promise<dataform.ITableMetadata>;
   preview(target: dataform.ITarget, limitRows?: number): Promise<any[]>;
   prepareSchema(schema: string): Promise<void>;
+  close(): Promise<void>;
 }
 
-export type DbAdapterConstructor<T extends IDbAdapter> = new (credentials: Credentials) => T;
+export type DbAdapterConstructor<T extends IDbAdapter> = new (
+  credentials: Credentials,
+  // Intended for temporary testing, not included in a permanent API.
+  usePgPoolForRedshift?: boolean
+) => T;
 
 const registry: { [warehouseType: string]: DbAdapterConstructor<IDbAdapter> } = {};
 
@@ -31,11 +36,16 @@ export function register(warehouseType: string, c: DbAdapterConstructor<IDbAdapt
   registry[warehouseType] = c;
 }
 
-export function create(credentials: Credentials, warehouseType: string): IDbAdapter {
+export function create(
+  credentials: Credentials,
+  warehouseType: string,
+  // Intended for temporary testing, not included in a permanent API.
+  usePgPoolForRedshift?: boolean
+): IDbAdapter {
   if (!registry[warehouseType]) {
     throw new Error(`Unsupported warehouse: ${warehouseType}`);
   }
-  return new registry[warehouseType](credentials);
+  return new registry[warehouseType](credentials, usePgPoolForRedshift);
 }
 
 register("bigquery", BigQueryDbAdapter);

@@ -8,12 +8,16 @@ option java_multiple_files = true;
 
 message ProjectConfig {
   string warehouse = 1;
+
+  string default_database = 9;
   string default_schema = 2;
   string assertion_schema = 5;
 
+  int32 idempotent_action_retries = 8;
+
   string schema_suffix = 7;
 
-  // BigQuery only.
+  // Deprecated. Please use 'default_database' instead.
   string gcloud_project_id = 6;
 }
 
@@ -40,7 +44,10 @@ message RunConfig {
   repeated string tags = 5;
   bool include_dependencies = 3;
   bool full_refresh = 2;
-  bool carry_on = 4;
+
+  // Intended for temporary testing, not included in a permanent API.
+  bool use_pg_pool_for_redshift = 6;
+  reserved 4;
 }
 
 message GenerateIndexConfig {
@@ -62,12 +69,16 @@ message CompileConfig {
   // If supplied, only the compiled form of 'query' will be returned.
   string query = 4;
 
+  // Override compilation timeout settings.
+  int32 timeout_millis = 6;
+
   // Deprecated.
   string schema_suffix_override = 2;
   string return_override = 5;
 }
 
 message Target {
+  string database = 3;
   string schema = 1;
   string name = 2;
 }
@@ -81,6 +92,7 @@ message RedshiftOptions {
   string dist_style = 2;
   repeated string sort_keys = 3;
   string sort_style = 4;
+  bool bind = 5;
 }
 
 message SQLDataWarehouseOptions {
@@ -112,17 +124,18 @@ message ActionDescriptor {
 
 message ColumnDescriptor {
   string description = 1;
-  // For nested records, the path might look like e.g. [“record”, “column”].
+  // For nested records, the path might look like e.g. ["record", "column"].
   // For simple columns, this will always contain a single entry e.g. ["column"].
   repeated string path = 2; 
 }
 
 message Table {
-  repeated string dependencies = 2;
+  Target target = 4;
+  repeated Target dependency_targets = 27;
+  
   bool disabled = 6;
 
   string type = 3;
-  Target target = 4;
   string query = 5;
   bool protected = 9;
 
@@ -132,6 +145,7 @@ message Table {
 
   // Incremental only.
   string where = 8;
+  string incremental_query = 26;
 
   // Pre/post operations.
   repeated string pre_ops = 13;
@@ -148,17 +162,18 @@ message Table {
   // Deprecated.
   repeated string deprecated_parsed_columns = 12;
   repeated ValidationError deprecated_validation_errors = 7;
-  string name = 1; // Preferred: Target
+  string name = 1; // Use 'target' instead.
+  repeated string dependencies = 2; // Use 'dependency_targets' instead.
 
   reserved 16;
 }
 
 message Operation {
-  repeated string dependencies = 2;
-
   Target target = 3;
-  repeated string queries = 6;
+  repeated Target dependency_targets = 11;
 
+  repeated string queries = 6;
+  bool has_output = 8;
   repeated string tags = 9;
 
   ActionDescriptor action_descriptor = 10;
@@ -166,18 +181,17 @@ message Operation {
   // Generated.
   string file_name = 7;
 
-  bool has_output = 8;
+  // Deprecated.
+  string name = 1; // Use 'target' instead.
+  repeated string dependencies = 2; // Use 'dependency_targets' instead.
 
   reserved 4, 5;
-  
-  // Deprecated.
-  string name = 1; // Preferred: Target
 }
 
 message Assertion {
-  repeated string dependencies = 2;
-
   Target target = 8;
+  repeated Target dependency_targets = 11;
+
   string query = 3;
 
   repeated string tags = 9;
@@ -187,10 +201,11 @@ message Assertion {
   // Generated.
   string file_name = 7;
 
-  reserved 4, 5, 6;
+  // Deprecated.
+  string name = 1; // Use 'target' instead.
+  repeated string dependencies = 2; // Use 'dependency_targets' instead.
 
-  //Deprecated
-  string name = 1; // Preferred: Target
+  reserved 4, 5, 6;
 }
 
 message Declaration {
@@ -225,8 +240,12 @@ message CompiledGraph {
 
   GraphErrors graph_errors = 7;
 
+  string dataform_core_version = 10;
+
   repeated ValidationError deprecated_validation_errors = 5;
   repeated CompilationError deprecated_compilation_errors = 6;
+
+  repeated Target targets = 11;
 }
 
 message ExecutionTask {
@@ -261,6 +280,56 @@ message ExecutedTask {
   bool ok = 2;
   bool skipped = 5;
   string error = 3;
+}
+
+message Timing {
+  int64 start_time_millis = 1;
+  int64 end_time_millis = 2;
+}
+
+message RunResult {
+  enum ExecutionStatus {
+    UNKNOWN = 0;
+    RUNNING = 1;
+    SUCCESSFUL = 2;
+    FAILED = 3;
+    CANCELLED = 4;
+  }
+  ExecutionStatus status = 1;
+  repeated ActionResult actions = 2;
+  Timing timing = 3;
+}
+
+message ActionResult {
+  string name = 1;
+
+  enum ExecutionStatus {
+    UNKNOWN = 0;
+    RUNNING = 1;
+    SUCCESSFUL = 2;
+    FAILED = 3;
+    SKIPPED = 4;
+    DISABLED = 5;
+    CANCELLED = 6;
+  }
+  ExecutionStatus status = 2;
+
+  repeated TaskResult tasks = 3;
+  Timing timing = 4;
+}
+
+message TaskResult {
+  enum ExecutionStatus {
+      UNKNOWN = 0;
+      RUNNING = 1;
+      SUCCESSFUL = 2;
+      FAILED = 3;
+      SKIPPED = 4;
+      CANCELLED = 5;
+  }
+  ExecutionStatus status = 1;
+  string error_message = 2;
+  Timing timing = 3;
 }
 
 enum ActionExecutionStatus {

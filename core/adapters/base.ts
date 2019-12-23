@@ -34,6 +34,6 @@ export abstract class Adapter {
 
   protected where(query: string, where: string) {
     return `select * from (${query}) as subquery
-        where ${where}`;
+        where ${where || "true"}`;
   }
 }

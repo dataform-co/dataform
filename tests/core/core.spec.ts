@@ -7,19 +7,26 @@ import { expect } from "chai";
 import { asPlainObject } from "df/tests/utils";
 import * as path from "path";
 
-const TEST_CONFIG: dataform.IProjectConfig = {
-  warehouse: "redshift",
-  defaultSchema: "schema"
-};
+class TestConfigs {
+  public static redshift: dataform.IProjectConfig = {
+    warehouse: "redshift",
+    defaultSchema: "schema"
+  };
 
-const TEST_CONFIG_WITH_SUFFIX: dataform.IProjectConfig = {
-  ...TEST_CONFIG,
-  schemaSuffix: "suffix"
-};
+  public static redshiftWithSuffix: dataform.IProjectConfig = {
+    ...TestConfigs.redshift,
+    schemaSuffix: "suffix"
+  };
+
+  public static bigquery: dataform.IProjectConfig = {
+    warehouse: "bigquery",
+    defaultSchema: "schema"
+  };
+}
 
 describe("@dataform/core", () => {
   describe("publish", () => {
-    [TEST_CONFIG, TEST_CONFIG_WITH_SUFFIX].forEach(testConfig => {
+    [TestConfigs.redshift, TestConfigs.redshiftWithSuffix].forEach(testConfig => {
       it(`config with suffix "${testConfig.schemaSuffix}"`, () => {
         const schemaWithSuffix = (schema: string) =>
           testConfig.schemaSuffix ? `${schema}_${testConfig.schemaSuffix}` : schema;
@@ -99,8 +106,33 @@ describe("@dataform/core", () => {
       });
     });
 
+    it("incremental table", () => {
+      const session = new Session(path.dirname(__filename), TestConfigs.redshift);
+      session
+        .publish("incremental", {
+          type: "incremental"
+        })
+        .query(ctx => `select ${ctx.isIncremental()} as incremental`);
+      const graph = session.compile();
+
+      expect(graph.toJSON().tables).deep.equals([
+        {
+          target: {
+            name: "incremental",
+            schema: TestConfigs.redshift.defaultSchema
+          },
+          query: "select false as incremental",
+          incrementalQuery: "select true as incremental",
+          disabled: false,
+          fileName: "",
+          name: "schema.incremental",
+          type: "incremental"
+        }
+      ]);
+    });
+
     it("config_context", () => {
-      const session = new Session(path.dirname(__filename), TEST_CONFIG);
+      const session = new Session(path.dirname(__filename), TestConfigs.redshift);
       const t = session
         .publish(
           "example",
@@ -119,7 +151,7 @@ describe("@dataform/core", () => {
     });
 
     it("validation_type_incremental", () => {
-      const sessionSuccess = new Session(path.dirname(__filename), TEST_CONFIG);
+      const sessionSuccess = new Session(path.dirname(__filename), TestConfigs.redshift);
       sessionSuccess
         .publish("exampleSuccess1", {
           type: "incremental"
@@ -147,41 +179,10 @@ describe("@dataform/core", () => {
       expect(cgSuccessErrors)
         .to.have.property("validationErrors")
         .to.be.an("array").that.is.empty;
-
-      const sessionFail = new Session(path.dirname(__filename), TEST_CONFIG);
-      const cases: { [key: string]: { table: Table; errorTest: RegExp } } = {
-        "schema.missing_where": {
-          table: sessionFail.publish("missing_where", {
-            type: "incremental"
-          }),
-          errorTest: /"where" property is not defined/
-        },
-        "schema.empty_where": {
-          table: sessionFail
-            .publish("empty_where", {
-              type: "incremental"
-            })
-            .where(""),
-          errorTest: /"where" property is not defined/
-        }
-      };
-      const cgFail = sessionFail.compile();
-      const cgFailErrors = utils.validate(cgFail);
-
-      expect(cgFailErrors)
-        .to.have.property("validationErrors")
-        .to.be.an("array").that.is.not.empty;
-
-      Object.keys(cases).forEach(key => {
-        const err = cgFailErrors.validationErrors.find(e => e.actionName === key);
-        expect(err)
-          .to.have.property("message")
-          .that.matches(cases[key].errorTest);
-      });
     });
 
     it("validation_type", () => {
-      const sessionSuccess = new Session(path.dirname(__filename), TEST_CONFIG);
+      const sessionSuccess = new Session(path.dirname(__filename), TestConfigs.redshift);
       sessionSuccess.publish("exampleSuccess1", { type: "table" });
       sessionSuccess.publish("exampleSuccess2", { type: "view" });
       sessionSuccess.publish("exampleSuccess3", { type: "incremental" }).where("test");
@@ -192,7 +193,7 @@ describe("@dataform/core", () => {
         .to.have.property("validationErrors")
         .to.be.an("array").that.is.empty;
 
-      const sessionFail = new Session(path.dirname(__filename), TEST_CONFIG);
+      const sessionFail = new Session(path.dirname(__filename), TestConfigs.redshift);
       sessionFail.publish("exampleFail", JSON.parse('{"type": "ta ble"}'));
       const cgFail = sessionFail.compile();
       const cgFailErrors = utils.validate(cgFail);
@@ -208,7 +209,7 @@ describe("@dataform/core", () => {
     });
 
     it("validation_redshift_success", () => {
-      const session = new Session(path.dirname(__filename), TEST_CONFIG);
+      const session = new Session(path.dirname(__filename), TestConfigs.redshift);
       session.publish("example_without_dist", {
         redshift: {
           sortKeys: ["column1", "column2"],
@@ -236,7 +237,7 @@ describe("@dataform/core", () => {
     });
 
     it("validation_redshift_fail", () => {
-      const session = new Session(path.dirname(__filename), TEST_CONFIG);
+      const session = new Session(path.dirname(__filename), TestConfigs.redshift);
       session.publish("example_absent_distKey", {
         redshift: {
           distStyle: "even",
@@ -289,39 +290,63 @@ describe("@dataform/core", () => {
           sortStyle: "wrong_sortStyle"
         }
       });
-      session.publish("example_empty_redshift", {
-        redshift: {}
-      });
 
       const expectedResults = [
-        { name: "schema.example_absent_distKey", message: /Property "distKey" is not defined/ },
-        { name: "schema.example_absent_distStyle", message: /Property "distStyle" is not defined/ },
-        { name: "schema.example_wrong_distStyle", message: /Wrong value of "distStyle" property/ },
-        { name: "schema.example_absent_sortKeys", message: /Property "sortKeys" is not defined/ },
-        { name: "schema.example_empty_sortKeys", message: /Property "sortKeys" is not defined/ },
-        { name: "schema.example_absent_sortStyle", message: /Property "sortStyle" is not defined/ },
-        { name: "schema.example_wrong_sortStyle", message: /Wrong value of "sortStyle" property/ },
-        { name: "schema.example_empty_redshift", message: /Missing properties in redshift config/ }
+        { name: "schema.example_absent_distKey", message: `Property "distKey" is not defined` },
+        { name: "schema.example_absent_distStyle", message: `Property "distStyle" is not defined` },
+        {
+          name: "schema.example_wrong_distStyle",
+          message: `Wrong value of "distStyle" property. Should only use predefined values: "even" | "key" | "all"`
+        },
+        { name: "schema.example_absent_sortKeys", message: `Property "sortKeys" is not defined` },
+        { name: "schema.example_empty_sortKeys", message: `Property "sortKeys" is not defined` },
+        { name: "schema.example_absent_sortStyle", message: `Property "sortStyle" is not defined` },
+        {
+          name: "schema.example_wrong_sortStyle",
+          message: `Wrong value of "sortStyle" property. Should only use predefined values: "compound" | "interleaved"`
+        }
       ];
 
       const graph = session.compile();
       const gErrors = utils.validate(graph);
 
-      expect(gErrors)
-        .to.have.property("validationErrors")
-        .to.be.an("array")
-        .to.have.lengthOf(8);
+      expect(
+        gErrors.validationErrors.map(validationError => ({
+          name: validationError.actionName,
+          message: validationError.message
+        }))
+      ).to.have.deep.members(expectedResults);
+    });
 
-      expectedResults.forEach(result => {
-        const err = gErrors.validationErrors.find(e => e.actionName === result.name);
-        expect(err)
-          .to.have.property("message")
-          .that.matches(result.message);
+    it("validation_bigquery_fail", () => {
+      const session = new Session(path.dirname(__filename), TestConfigs.bigquery);
+      session.publish("example_partitionBy_view_fail", {
+        type: "view",
+        bigquery: {
+          partitionBy: "some_partition"
+        }
       });
+
+      const expectedResults = [
+        {
+          name: "schema.example_partitionBy_view_fail",
+          message: `partitionBy is not valid for BigQuery views; it is only valid for tables`
+        }
+      ];
+
+      const graph = session.compile();
+      const gErrors = utils.validate(graph);
+
+      expect(
+        gErrors.validationErrors.map(validationError => ({
+          name: validationError.actionName,
+          message: validationError.message
+        }))
+      ).to.have.deep.members(expectedResults);
     });
 
     it("validation_type_inline", () => {
-      const session = new Session(path.dirname(__filename), TEST_CONFIG);
+      const session = new Session(path.dirname(__filename), TestConfigs.redshift);
       session.publish("a", { type: "table" }).query(_ => "select 1 as test");
       session
         .publish("b", {
@@ -418,11 +443,13 @@ describe("@dataform/core", () => {
     });
 
     it("ref", () => {
-      const session = new Session(path.dirname(__filename), TEST_CONFIG);
+      const session = new Session(path.dirname(__filename), TestConfigs.redshift);
       session.publish("a", _ => "select 1 as test");
       session.publish("b", ctx => `select * from ${ctx.ref("a")}`);
       session.publish("c", ctx => `select * from ${ctx.ref(undefined)}`);
       session.publish("d", ctx => `select * from ${ctx.ref({ schema: "schema", name: "a" })}`);
+      session.publish("g", ctx => `select * from ${ctx.ref("schema", "a")}`);
+      session.publish("h", ctx => `select * from ${ctx.ref(["schema", "a"])}`);
       session
         .publish("e", {
           schema: "foo"
@@ -434,25 +461,33 @@ describe("@dataform/core", () => {
       const graphErrors = utils.validate(graph);
 
       const tableNames = graph.tables.map(item => item.name);
+      expect(tableNames).eql([
+        "schema.a",
+        "schema.b",
+        "schema.c",
+        "schema.d",
+        "schema.g",
+        "schema.h",
+        "foo.e",
+        "schema.f"
+      ]);
 
-      expect(tableNames).includes("schema.a");
-      expect(tableNames).includes("schema.b");
-      expect(tableNames).includes("schema.c");
-      expect(tableNames).includes("schema.d");
-      expect(tableNames).includes("foo.e");
-      expect(tableNames).includes("schema.f");
+      expect(graph.tables.find(table => table.name === "schema.b").dependencies).eql(["schema.a"]);
+      expect(graph.tables.find(table => table.name === "schema.d").dependencies).eql(["schema.a"]);
+      expect(graph.tables.find(table => table.name === "schema.g").dependencies).eql(["schema.a"]);
+      expect(graph.tables.find(table => table.name === "schema.h").dependencies).eql(["schema.a"]);
+      expect(graph.tables.find(table => table.name === "schema.f").dependencies).eql(["foo.e"]);
+
       const errors = graphErrors.compilationErrors.map(item => item.message);
       expect(errors).includes("Action name is not specified");
-      expect(graphErrors.compilationErrors.length === 1);
-      expect(graphErrors)
-        .to.have.property("validationErrors")
-        .to.be.an("array").that.is.empty;
+      expect(graphErrors.compilationErrors.length).eql(1);
+      expect(graphErrors.validationErrors.length).eql(0);
     });
   });
 
   describe("operate", () => {
     it("ref", () => {
-      const session = new Session(path.dirname(__filename), TEST_CONFIG);
+      const session = new Session(path.dirname(__filename), TestConfigs.redshift);
       session.operate("operate-1", () => `select 1 as sample`).hasOutput(true);
       session.operate("operate-2", ctx => `select * from ${ctx.ref("operate-1")}`).hasOutput(true);
 
@@ -482,7 +517,7 @@ describe("@dataform/core", () => {
 
   describe("graph", () => {
     it("circular_dependencies", () => {
-      const session = new Session(path.dirname(__filename), TEST_CONFIG);
+      const session = new Session(path.dirname(__filename), TestConfigs.redshift);
       session.publish("a").dependencies("b");
       session.publish("b").dependencies("a");
       const cGraph = session.compile();
@@ -496,7 +531,7 @@ describe("@dataform/core", () => {
     });
 
     it("missing_dependency", () => {
-      const session = new Session(path.dirname(__filename), TEST_CONFIG);
+      const session = new Session(path.dirname(__filename), TestConfigs.redshift);
       session.publish("a", ctx => `select * from ${ctx.ref("b")}`);
       const cGraph = session.compile();
       const gErrors = utils.validate(cGraph);
@@ -509,7 +544,7 @@ describe("@dataform/core", () => {
     });
 
     it("duplicate_action_names", () => {
-      const session = new Session(path.dirname(__filename), TEST_CONFIG);
+      const session = new Session(path.dirname(__filename), TestConfigs.redshift);
       session.publish("a").dependencies("b");
       session.publish("b");
       session.publish("a");
@@ -527,7 +562,7 @@ describe("@dataform/core", () => {
     });
 
     it("same action names in different schemas (ambiguity)", () => {
-      const session = new Session(path.dirname(__filename), TEST_CONFIG);
+      const session = new Session(path.dirname(__filename), TestConfigs.redshift);
       session.publish("a", { schema: "foo" });
       session.publish("a", { schema: "bar" });
       session.publish("b", { schema: "foo" }).dependencies("a");
@@ -537,13 +572,15 @@ describe("@dataform/core", () => {
         .to.have.property("compilationErrors")
         .to.be.an("array").that.is.not.empty;
       const errors = gErrors.compilationErrors.filter(item =>
-        item.message.match(/Ambiguous Action name: a. Did you mean one of: foo.a, bar.a./)
+        item.message.match(
+          /Ambiguous Action name: {\"name\":\"a\"}. Did you mean one of: foo.a, bar.a./
+        )
       );
       expect(errors).to.be.an("array").that.is.not.empty;
     });
 
     it("same action name in same schema", () => {
-      const session = new Session(path.dirname(__filename), TEST_CONFIG);
+      const session = new Session(path.dirname(__filename), TestConfigs.redshift);
       session.publish("a", { schema: "schema2" }).dependencies("b");
       session.publish("a", { schema: "schema2" });
       session.publish("b");
@@ -559,7 +596,7 @@ describe("@dataform/core", () => {
     });
 
     it("same action names in different schemas", () => {
-      const session = new Session(path.dirname(__filename), TEST_CONFIG);
+      const session = new Session(path.dirname(__filename), TestConfigs.redshift);
       session.publish("b");
       session.publish("a", { schema: "schema1" }).dependencies("b");
       session.publish("a", { schema: "schema2" });

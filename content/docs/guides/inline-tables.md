@@ -1,0 +1,82 @@
+---
+title: Inline tables
+---
+
+## Introduction
+
+Inline tables inject inline SQL into the calling query, but do not get created in your data warehouse.
+
+They are similar to subqueries, but by breaking up the original query into multiple SQLX files it makes managing particularly large queries a little easier.
+
+Like subqueries, inline tables can be nested inside places like `SELECT`, `FROM`, `WHERE` or inside another inline table or subquery.
+
+### Example: Using inline tables in the `FROM` clause of a large query
+
+Create a new file in your project under the `definitions/` folder such as:
+
+`definitions/inline_table.sqlx`:
+
+```sql
+config { type: "inline"}
+select * from ${ref("source_table")}
+```
+
+You can now reference the inline table from a normal table in the `FROM` clause in another file such as:
+
+`definitions/table_using_FROM.sqlx`:
+
+```sql
+select * from ${ref("inline_table")}
+where true
+```
+
+The resulting compiled SQL should be:
+
+```sql
+select * from (
+select * from "default_schema"."source_table"
+)
+where true
+```
+
+Since we are using `ref()`, any dependencies in the inline table should be passed along to the calling table, in this case `source_table`.
+
+### Example: Using inline tables in the `WHERE` clause of a large query
+
+We can create a new inline table to select a list of ids which will be used to filter out a calling table but this time we embed the inline table inside the `WHERE` clause.
+
+Create a new file in your project under the `definitions/` folder such as:
+
+`definitions/inline_table_ids.sqlx`:
+
+```sql
+config { type: "inline"}
+select id from ${ref("source_table")}
+```
+
+You can now reference the inline table from a normal table in the `WHERE` clause in another file such as:
+
+`definitions/table_using_WHERE.sqlx`:
+
+```sql
+select * from ${ref("outer_table")} where user_id in ${ref("inline_table_ids")}
+```
+
+The resulting compiled SQL should be:
+
+```sql
+select * from "default_schema"."outer_table" where user_id in
+(
+select id from "default_schema"."source_table"
+)
+```
+
+## Inline tables are not tables
+
+Inline tables are not normal tables and thus do not get created on your warehouse. The only way they can be used is when they are passed to the `ref()` or `resolve()` function of one or more calling tables.
+
+<div className="bp3-callout bp3-icon-info-sign bp3-intent-warning" markdown="1">
+Inline tables do not accept table methods and properties such as <code>preOps()</code>, <code>postOps()</code>, <code>disabled</code>, <code>descriptor</code>, <code>where</code>, <code>descriptor</code>, <code>fieldDescriptor</code>, etc.
+</div>
+
+<br />

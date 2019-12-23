@@ -2,6 +2,7 @@ import { Credentials } from "@dataform/api/commands/credentials";
 import { IDbAdapter } from "@dataform/api/dbadapters/index";
 import { dataform } from "@dataform/protos";
 import * as https from "https";
+import * as PromisePool from "promise-pool-executor";
 
 interface ISnowflake {
   createConnection: (options: {
@@ -21,6 +22,7 @@ interface ISnowflakeConnection {
     streamResult?: boolean;
     complete: (err: any, statement: ISnowflakeStatement, rows: any[]) => void;
   }) => void;
+  destroy: (err: any) => void;
 }
 
 interface ISnowflakeStatement {
@@ -35,35 +37,17 @@ interface ISnowflakeResultStream {
 const snowflake: ISnowflake = require("snowflake-sdk");
 
 export class SnowflakeDbAdapter implements IDbAdapter {
-  private connection: ISnowflakeConnection;
-  private connected: Promise<void>;
+  private connectionPromise: Promise<ISnowflakeConnection>;
+  private pool: PromisePool.PromisePoolExecutor;
 
   constructor(credentials: Credentials) {
-    const snowflakeCredentials = credentials as dataform.ISnowflake;
-    this.connection = snowflake.createConnection({
-      account: snowflakeCredentials.accountId,
-      username: snowflakeCredentials.username,
-      password: snowflakeCredentials.password,
-      database: snowflakeCredentials.databaseName,
-      warehouse: snowflakeCredentials.warehouse,
-      role: snowflakeCredentials.role
+    this.connectionPromise = connect(credentials as dataform.ISnowflake);
+    // Unclear exactly what snowflakes limit's are here, we can experiment with increasing this.
+    this.pool = new PromisePool.PromisePoolExecutor({
+      concurrencyLimit: 10,
+      frequencyWindow: 1000,
+      frequencyLimit: 10
     });
-    // We are forced to try our own HTTPS connection to the final <accountId>.snowflakecomputing.com URL
-    // in order to verify its certificate. If we don't do this, and pass an invalid account ID (which thus
-    // resolves to an invalid URL) to the snowflake connect() API, snowflake-sdk will not handle the
-    // resulting error correctly (and thus crash this process).
-    this.connected = this.verifyCertificate(snowflakeCredentials.accountId).then(
-      () =>
-        new Promise<void>((resolve, reject) => {
-          this.connection.connect((err, conn) => {
-            if (err) {
-              reject(err);
-            } else {
-              resolve();
-            }
-          });
-        })
-    );
   }
 
   public async execute(
@@ -72,27 +56,34 @@ export class SnowflakeDbAdapter implements IDbAdapter {
       maxResults?: number;
     } = { maxResults: 1000 }
   ) {
-    await this.connected;
-    return new Promise<any[]>((resolve, reject) => {
-      this.connection.execute({
-        sqlText: statement,
-        streamResult: true,
-        complete(err, stmt) {
-          if (err) {
-            reject(err);
-            return;
-          }
-          const rows: any[] = [];
-          const streamOptions =
-            !!options && !!options.maxResults ? { start: 0, end: options.maxResults - 1 } : {};
-          stmt
-            .streamRows(streamOptions)
-            .on("error", e => reject(e))
-            .on("data", row => rows.push(row))
-            .on("end", () => resolve(rows));
-        }
-      });
-    });
+    const connection = await this.connectionPromise;
+    return this.pool
+      .addSingleTask({
+        generator: () =>
+          new Promise<any[]>((resolve, reject) => {
+            connection.execute({
+              sqlText: statement,
+              streamResult: true,
+              complete(err, stmt) {
+                if (err) {
+                  reject(err);
+                  return;
+                }
+                const rows: any[] = [];
+                const streamOptions =
+                  !!options && !!options.maxResults
+                    ? { start: 0, end: options.maxResults - 1 }
+                    : {};
+                stmt
+                  .streamRows(streamOptions)
+                  .on("error", e => reject(e))
+                  .on("data", row => rows.push(row))
+                  .on("end", () => resolve(rows));
+              }
+            });
+          })
+      })
+      .promise();
   }
 
   public evaluate(statement: string): Promise<void> {
@@ -105,7 +96,8 @@ export class SnowflakeDbAdapter implements IDbAdapter {
        from information_schema.tables
        where LOWER(table_schema) != 'information_schema'
          and LOWER(table_schema) != 'pg_catalog'
-         and LOWER(table_schema) != 'pg_internal'`
+         and LOWER(table_schema) != 'pg_internal'`,
+      { maxResults: 10000 }
     );
     return rows.map(row => ({
       schema: row.TABLE_SCHEMA,
@@ -141,7 +133,7 @@ export class SnowflakeDbAdapter implements IDbAdapter {
           }))
         };
       } else {
-        throw new Error(`Could not find relation: ${target.schema}.${target.name}`);
+        return null;
       }
     });
   }
@@ -157,9 +149,54 @@ export class SnowflakeDbAdapter implements IDbAdapter {
     }
   }
 
-  private async verifyCertificate(accountId: string) {
-    return new Promise<void>((resolve, reject) => {
-      const req = https.request(`https://${accountId}.snowflakecomputing.com`);
+  public async close() {
+    const connection = await this.connectionPromise;
+    await new Promise((resolve, reject) => {
+      connection.destroy((err: any) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve();
+        }
+      });
+    });
+  }
+}
+
+async function connect(snowflakeCredentials: dataform.ISnowflake) {
+  // We are forced to try our own HTTPS connection to the final <accountId>.snowflakecomputing.com URL
+  // in order to verify its certificate. If we don't do this, and pass an invalid account ID (which thus
+  // resolves to an invalid URL) to the snowflake connect() API, snowflake-sdk will not handle the
+  // resulting error correctly (and thus crash this process).
+  await testHttpsConnection(`https://${snowflakeCredentials.accountId}.snowflakecomputing.com`);
+  try {
+    return await new Promise<ISnowflakeConnection>((resolve, reject) => {
+      snowflake
+        .createConnection({
+          account: snowflakeCredentials.accountId,
+          username: snowflakeCredentials.username,
+          password: snowflakeCredentials.password,
+          database: snowflakeCredentials.databaseName,
+          warehouse: snowflakeCredentials.warehouse,
+          role: snowflakeCredentials.role
+        })
+        .connect((err, conn) => {
+          if (err) {
+            reject(err);
+          } else {
+            resolve(conn);
+          }
+        });
+    });
+  } catch (e) {
+    throw new Error(`Could not connect to Snowflake: ${e.message}`);
+  }
+}
+
+async function testHttpsConnection(url: string) {
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const req = https.request(url);
       req.on("error", e => {
         reject(e);
       });
@@ -167,5 +204,7 @@ export class SnowflakeDbAdapter implements IDbAdapter {
         resolve();
       });
     });
+  } catch (e) {
+    throw new Error(`Could not open HTTPS connection to ${url}: ${e.message}`);
   }
 }

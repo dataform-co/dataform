@@ -20,10 +20,15 @@ export function compile(code: string, path: string) {
   return code;
 }
 
+// For older versions of @dataform/core, these functions may not actually exist so leave them as undefined.
+function safelyBindCtxFunction(name: string) {
+  return `ctx.${name} ? ctx.${name}.bind(ctx) : undefined`;
+}
+
 function compileTableSql(code: string, path: string) {
   const { sql, js } = extractJsBlocks(code);
   const functionsBindings = getFunctionPropertyNames(TableContext.prototype).map(
-    name => `const ${name} = ctx.${name}.bind(ctx);`
+    name => `const ${name} = ${safelyBindCtxFunction(name)};`
   );
 
   return `
@@ -37,7 +42,7 @@ function compileTableSql(code: string, path: string) {
 function compileOperationSql(code: string, path: string) {
   const { sql, js } = extractJsBlocks(code);
   const functionsBindings = getFunctionPropertyNames(OperationContext.prototype).map(
-    name => `const ${name} = ctx.${name}.bind(ctx);`
+    name => `const ${name} = ${safelyBindCtxFunction(name)};`
   );
 
   return `
@@ -51,7 +56,7 @@ function compileOperationSql(code: string, path: string) {
 function compileAssertionSql(code: string, path: string) {
   const { sql, js } = extractJsBlocks(code);
   const functionsBindings = getFunctionPropertyNames(AssertionContext.prototype).map(
-    name => `const ${name} = ctx.${name}.bind(ctx);`
+    name => `const ${name} = ${safelyBindCtxFunction(name)};`
   );
 
   return `
@@ -118,18 +123,18 @@ switch (sqlxConfig.type) {
   case "incremental":
   case "inline": {
     action.query(ctx => {
-      ${["self", "ref", "resolve", "name"]
+      ${["self", "ref", "resolve", "name", "isIncremental", "ifIncremental"]
         .map(name => `const ${name} = ctx.${name}.bind(ctx);`)
         .join("\n")}
       ${results.js}
       if (hasIncremental) {
         action.where(\`${results.incremental}\`);
       }
-      if (hasPreOperations) {
+      if (hasPreOperations && !isIncremental()) {
         const preOperations = [${results.preOperations.map(sql => `\`${sql}\``)}];
         action.preOps(preOperations);
       }
-      if (hasPostOperations) {
+      if (hasPostOperations && !isIncremental()) {
         const postOperations = [${results.postOperations.map(sql => `\`${sql}\``)}];
         action.postOps(postOperations);
       }

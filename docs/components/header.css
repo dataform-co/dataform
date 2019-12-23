@@ -1,5 +1,3 @@
-@value headerPadding: 20px 40px 0px;
-
 .nav {
   height: 60px;
   display: flex;
@@ -20,89 +18,37 @@
   display: flex;
 }
 
-.navInverted a {
-  color: #fff !important;
-}
-
-.pages {
+.navLeft {
   flex-grow: 1;
-  text-align: center;
-  margin-left: 70px;
 }
 
-.pages > * {
-  padding: 40px 24px;
-  display: inline-block;
-  font-weight: bold;
-  line-height: 22px;
-  font-size: 12px;
-  text-align: center;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+.navRight {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
 }
 
-.pageSelected {
-  background-image: url("df/static/images/selected_page_marker.svg");
-  background-repeat: no-repeat;
-  background-position: top center;
-}
-
-.actions {
-  padding: headerPadding;
-}
-
-.actions > * {
+.navRight > * {
   padding: 0px 12px;
+}
+
+.navRight a {
+  display: inline-flex;
 }
 
 .logoImage {
   padding-top: 20px;
-  padding-left: 40px;
+  padding-left: 10px;
   padding-right: 10px;
 }
 
-.menuCloseIcon {
-  z-index: 1001;
-}
-
-.nav :global .bp3-button.bp3-intent-primary.ghost {
-  background-color: white;
-  border: 2px solid #5e73e5;
-}
-.nav :global .bp3-button.bp3-intent-primary.ghost > span {
-  color: #5e73e5;
-}
-.nav :global .bp3-button.bp3-intent-primary.ghost:hover {
-  background-color: white;
-}
-
-.navInverted :global .bp3-button.bp3-intent-primary.ghost {
-  background-color: unset;
-  border: 2px solid white;
-}
-.navInverted :global .bp3-button.bp3-intent-primary.ghost > span {
-  color: white;
-}
-.navInverted :global .bp3-button.bp3-intent-primary.ghost:hover {
-  background-color: transparent;
-}
-
 .docs_tag {
-  color: #5e73e5;
   font-size: 20px;
   font-weight: 500;
   display: inline-block;
   vertical-align: top;
   margin-top: 18px;
-}
-
-@media (max-width: 800px) {
-  .navInverted > .navContent > span > a > .logoImage {
-    padding: headerPadding;
-  }
-  .logoImageWhite {
-    padding: headerPadding;
-  }
 }
 
 .githubLogo {

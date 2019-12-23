@@ -109,6 +109,11 @@ export class BigQueryDbAdapter implements IDbAdapter {
 
   public async table(target: dataform.ITarget): Promise<dataform.ITableMetadata> {
     const metadata = await this.getMetadata(target);
+
+    if (!metadata) {
+      return null;
+    }
+
     return dataform.TableMetadata.create({
       type: String(metadata.type).toLowerCase(),
       target,
@@ -160,11 +165,28 @@ export class BigQueryDbAdapter implements IDbAdapter {
     }
   }
 
+  public async close() {}
+
   private async runQuery(statement: string, maxResults?: number) {
-    const data = await this.client.query(statement, {
-      maxResults
+    const results = await new Promise<any[]>((resolve, reject) => {
+      const allRows: any[] = [];
+      const stream = this.client.createQueryStream(statement);
+      stream
+        .on("error", reject)
+        .on("data", row => {
+          if (!maxResults) {
+            allRows.push(row);
+          } else if (allRows.length < maxResults) {
+            allRows.push(row);
+          } else {
+            stream.end();
+          }
+        })
+        .on("end", () => {
+          resolve(allRows);
+        });
     });
-    return cleanRows(data[0]);
+    return cleanRows(results);
   }
 
   private createQueryJob(statement: string, maxResults?: number, onCancel?: OnCancel) {
@@ -177,7 +199,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
 
     return new Promise<any[]>((resolve, reject) =>
       this.client.createQueryJob(
-        { useLegacySql: false, query: statement, maxResults },
+        { useLegacySql: false, jobPrefix: "dataform-", query: statement, maxResults },
         async (err, job) => {
           if (err) {
             return reject(err);
@@ -224,14 +246,25 @@ export class BigQueryDbAdapter implements IDbAdapter {
   private async getMetadata(target: dataform.ITarget): Promise<IBigQueryTableMetadata> {
     const metadataResult = await this.pool
       .addSingleTask({
-        generator: () =>
-          this.client
-            .dataset(target.schema)
-            .table(target.name)
-            .getMetadata()
+        generator: async () => {
+          try {
+            const table = await this.client
+              .dataset(target.schema)
+              .table(target.name)
+              .getMetadata();
+            return table;
+          } catch (e) {
+            if (e && e.errors && e.errors[0] && e.errors[0].reason === "notFound") {
+              // if the table can't be found, just return null
+              return null;
+            }
+            // otherwise throw the error as normal
+            throw e;
+          }
+        }
       })
       .promise();
-    return metadataResult[0];
+    return metadataResult && metadataResult[0];
   }
 }
 

@@ -53,15 +53,10 @@ npm i -g @dataform/cli
 
 Dataform web is a development environment and production ready deployment tool for the Dataform SDK. You can learn more on [dataform.co](https://dataform.co/?utm_medium=organic&utm_source=github_readme)
 
-# Looking for support?
-
-For questions or support please join our [Slack Community](https://slack.dataform.co).
-
 # Want to report a bug or request a feature?
 
-Let us know on Slack, or open an issue!
+Open an issue or email us at opensource@dataform.co
 
 # Want to contribute?
 
-Check out our [contributors guide](https://github.com/dataform-co/dataform/blob/master/contributors.md) to get started with setting up the repo.
-If you have already joined Slack, join our #development channel and say hi!
+Check out our [contributors guide](https://github.com/dataform-co/dataform/blob/master/contributing.md) to get started with setting up the repo.
