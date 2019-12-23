@@ -95,6 +95,8 @@ message CompileConfig {
 
 // A reference to a relation, or object inside a warehouse.
 message Target {
+  // The database of the object.
+  string database = 3;
 
   // The schema of the object.
   string schema = 1;
@@ -150,11 +152,12 @@ message ColumnDescriptor {
 }
 
 message Table {
-  repeated string dependencies = 2;
+  Target target = 4;
+  repeated Target dependency_targets = 27;
+  
   bool disabled = 6;
 
   string type = 3;
-  Target target = 4;
   string query = 5;
   bool protected = 9;
 
@@ -181,17 +184,18 @@ message Table {
   // Deprecated.
   repeated string deprecated_parsed_columns = 12;
   repeated ValidationError deprecated_validation_errors = 7;
-  string name = 1; // Preferred: Target
+  string name = 1; // Use 'target' instead.
+  repeated string dependencies = 2; // Use 'dependency_targets' instead.
 
   reserved 16;
 }
 
 message Operation {
-  repeated string dependencies = 2;
-
   Target target = 3;
-  repeated string queries = 6;
+  repeated Target dependency_targets = 11;
 
+  repeated string queries = 6;
+  bool has_output = 8;
   repeated string tags = 9;
 
   ActionDescriptor action_descriptor = 10;
@@ -199,18 +203,17 @@ message Operation {
   // Generated.
   string file_name = 7;
 
-  bool has_output = 8;
+  // Deprecated.
+  string name = 1; // Use 'target' instead.
+  repeated string dependencies = 2; // Use 'dependency_targets' instead.
 
   reserved 4, 5;
-  
-  // Deprecated.
-  string name = 1; // Preferred: Target
 }
 
 message Assertion {
-  repeated string dependencies = 2;
-
   Target target = 8;
+  repeated Target dependency_targets = 11;
+
   string query = 3;
 
   repeated string tags = 9;
@@ -220,10 +223,11 @@ message Assertion {
   // Generated.
   string file_name = 7;
 
-  reserved 4, 5, 6;
+  // Deprecated.
+  string name = 1; // Use 'target' instead.
+  repeated string dependencies = 2; // Use 'dependency_targets' instead.
 
-  //Deprecated
-  string name = 1; // Preferred: Target
+  reserved 4, 5, 6;
 }
 
 message Declaration {
@@ -262,6 +266,8 @@ message CompiledGraph {
 
   repeated ValidationError deprecated_validation_errors = 5;
   repeated CompilationError deprecated_compilation_errors = 6;
+
+  repeated Target targets = 11;
 }
 
 // Describes an individual task (SQL query) that will be executed.

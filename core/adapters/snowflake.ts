@@ -9,7 +9,7 @@ export class SnowflakeAdapter extends Adapter implements IAdapter {
   }
 
   public resolveTarget(target: dataform.ITarget) {
-    return `"${target.schema}"."${target.name}"`;
+    return `${!!target.database ? `"${target.database}".` : ""}"${target.schema}"."${target.name}"`;
   }
 
   public normalizeIdentifier(identifier: string) {

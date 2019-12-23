@@ -48,7 +48,7 @@ export class Test {
         this.proto.fileName
       );
     } else {
-      const allResolved = this.session.findActions(this.datasetToTest);
+      const allResolved = this.session.findActions(utils.resolvableAsTarget(this.datasetToTest));
       if (allResolved.length > 1) {
         this.session.compileError(
           new Error(utils.ambiguousActionNameMsg(this.datasetToTest, allResolved)),
@@ -98,18 +98,25 @@ class RefReplacingContext implements table.ITableContext {
     this.testContext = testContext;
   }
 
-  public ref(name: string) {
-    return this.resolve(name);
+  public ref(ref: Resolvable | string[], ...rest: string[]) {
+    return this.resolve(ref, ...rest);
   }
 
-  public resolve(name: string) {
-    if (!this.testContext.test.contextableInputs[name]) {
+  public resolve(ref: Resolvable | string[], ...rest: string[]) {
+    ref = utils.toResolvable(ref, rest);
+    if (typeof ref !== "string") {
       this.testContext.test.session.compileError(
-        new Error(`Input for dataset "${name}" has not been provided.`)
+        new Error("Tests do not currently support referencing non-string inputs.")
       );
       return "";
     }
-    return `(${this.testContext.apply(this.testContext.test.contextableInputs[name])})`;
+    if (!this.testContext.test.contextableInputs[ref]) {
+      this.testContext.test.session.compileError(
+        new Error(`Input for dataset "${ref}" has not been provided.`)
+      );
+      return "";
+    }
+    return `(${this.testContext.apply(this.testContext.test.contextableInputs[ref])})`;
   }
 
   public apply<T>(value: table.TContextable<T>): T {

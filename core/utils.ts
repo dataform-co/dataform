@@ -1,7 +1,8 @@
+import { adapters } from "@dataform/core";
 import { Assertion } from "@dataform/core/assertion";
 import { Declaration } from "@dataform/core/declaration";
 import { Operation } from "@dataform/core/operation";
-import { Resolvable } from "@dataform/core/session";
+import { IActionProto, Resolvable, Session } from "@dataform/core/session";
 import {
   DistStyleTypes,
   ignoredProps,
@@ -223,12 +224,44 @@ export function flatten<T>(nestedArray: T[][]) {
   }, []);
 }
 
-export function isResolvable(res: any) {
-  return typeof res === "string" || (!!res.schema && !!res.name);
+const invalidRefInputMessage =
+  "Invalid input. Accepted inputs include: a single object containing " +
+  "an (optional) 'database', (optional) 'schema', and 'name', " +
+  "or 1-3 inputs consisting of an (optional) database, (optional) schema, and 'name'.";
+
+export function toResolvable(ref: Resolvable | string[], rest: string[]): Resolvable {
+  if (Array.isArray(ref) && rest.length > 0) {
+    throw new Error(invalidRefInputMessage);
+  }
+  if (rest.length === 0 && !Array.isArray(ref)) {
+    return ref;
+  }
+  const resolvableArray = Array.isArray(ref) ? ref.reverse() : [ref, ...rest].reverse();
+  if (!isResolvableArray(resolvableArray)) {
+    throw new Error(invalidRefInputMessage);
+  }
+  const [name, schema, database] = resolvableArray;
+  return { database, schema, name };
+}
+
+function isResolvableArray(parts: any[]): parts is [string, string?, string?] {
+  if (parts.some(part => typeof part !== "string")) {
+    return false;
+  }
+  return parts.length > 0 && parts.length <= 3;
+}
+
+export function resolvableAsTarget(resolvable: Resolvable): dataform.ITarget {
+  if (typeof resolvable === "string") {
+    return {
+      name: resolvable
+    };
+  }
+  return resolvable;
 }
 
 export function stringifyResolvable(res: Resolvable) {
-  return typeof res === "string" ? res : `${res.schema}.${res.name}`;
+  return typeof res === "string" ? res : JSON.stringify(res);
 }
 
 export function ambiguousActionNameMsg(
@@ -244,4 +277,37 @@ export function ambiguousActionNameMsg(
   return `Ambiguous Action name: ${stringifyResolvable(
     act
   )}. Did you mean one of: ${allActNames.join(", ")}.`;
+}
+
+export function target(
+  adapter: adapters.IAdapter,
+  name: string,
+  schema: string,
+  database?: string
+): dataform.ITarget {
+  return dataform.Target.create({
+    name: adapter.normalizeIdentifier(name),
+    schema: adapter.normalizeIdentifier(schema),
+    database: database && adapter.normalizeIdentifier(database)
+  });
+}
+
+export function setNameAndTarget(
+  session: Session,
+  action: IActionProto,
+  name: string,
+  overrideSchema?: string,
+  overrideDatabase?: string
+) {
+  action.target = target(
+    session.adapter(),
+    name,
+    overrideSchema || session.config.defaultSchema,
+    overrideDatabase || session.config.defaultDatabase
+  );
+  const nameParts = [action.target.name, action.target.schema];
+  if (!!action.target.database) {
+    nameParts.push(action.target.database);
+  }
+  action.name = nameParts.reverse().join(".");
 }
