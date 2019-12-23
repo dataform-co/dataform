@@ -556,6 +556,18 @@ describe("@dataform/api", () => {
           );
         });
     });
+    it("bigquery example with input backticks", () => {
+      return query
+        .compile("select 1 from `tada-analytics.df_integration_test.example_view`", {
+          projectDir: "df/examples/common_v1",
+          projectConfigOverride: { warehouse: "bigquery", defaultDatabase: "tada-analytics" }
+        })
+        .then(compiledQuery => {
+          expect(compiledQuery).equals(
+            "select 1 from `tada-analytics.df_integration_test.example_view`"
+          );
+        });
+    });
   });
 
   describe("credentials_config", () => {
