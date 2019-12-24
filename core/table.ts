@@ -42,6 +42,36 @@ type ValueOf<T> = T[keyof T];
 export type TContextable<T> = T | ((ctx: TableContext) => T);
 export type TableType = ValueOf<TableTypes>;
 
+// For documentation purposes, there should be no protos in public interfaces for the SQLX or JS API.
+// The following interfaces should be kept up to date and documented in line with protobuf interfaces.
+
+/**
+ * Redshift specific warehouse options.
+ */
+export interface IRedshiftOptions {
+  /**
+   * Sets the DISTKEY property when creating tables.
+   *
+   * For more information, read the AWS documentation [here](https://docs.aws.amazon.com/redshift/latest/dg/r_CREATE_TABLE_examples.html#r_CREATE_TABLE_NEW-diststyle-distkey-and-sortkey-options).
+   */
+  distKey?: string;
+  distStyle?: string;
+  sortKeys?: string[];
+  sortStyle?: string;
+  bind?: boolean;
+}
+
+export interface IBigQueryOptions {
+
+  /**
+   * Add some description.
+   */
+  partitionBy?: string;
+}
+
+/**
+ * Configuration options that can be provided to a table.
+ */
 export interface TConfig {
   type?: TableType;
   dependencies?: Resolvable | Resolvable[];
@@ -50,8 +80,8 @@ export interface TConfig {
   columns?: IColumnsDescriptor;
   disabled?: boolean;
   protected?: boolean;
-  redshift?: dataform.IRedshiftOptions;
-  bigquery?: dataform.IBigQueryOptions;
+  redshift?: IRedshiftOptions;
+  bigquery?: IBigQueryOptions;
   sqldatawarehouse?: dataform.ISQLDataWarehouseOptions;
   database?: string;
   schema?: string;
