@@ -1,5 +1,6 @@
 ---
 title: Getting Started
+priority: 0
 ---
 
 Dataform is designed to be powerful but easy to use. We force users to **maintain good data practices**, while providing the functionality to **integrate and analyse unbelievable quantities of data**.

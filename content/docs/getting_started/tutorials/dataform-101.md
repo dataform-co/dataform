@@ -8,6 +8,8 @@ Google Cloud is used as the data warehouse in this example, but [other warehouse
 
 ## 1. Log in or sign up
 
+After opening [the app](https://app.dataform.co/).
+
 <img src="/static/images/how_to_guides/dataform_101/1_sign_up.png" style="width: 100%;" />
 
 If not signing in with GitHub, Google or Microsoft then you will need to verify your email address.

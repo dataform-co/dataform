@@ -14,7 +14,17 @@ export default class Navigation extends React.Component<IProps> {
     return <div className={styles.navigation}>{this.renderTrees(this.props.tree.children)}</div>;
   }
   private renderTrees(trees: IFileTree[], depth = 0) {
-    console.log("THE TREE:", trees);
+    // If there's a priority, order by priority. If not, order alphabetically.
+    trees.sort((a: IFileTree, b: IFileTree) =>
+      a.attributes.priority == null || b.attributes.priority == null
+        ? a.attributes.title > b.attributes.title
+          ? 1
+          : -1
+        : a.attributes.priority > b.attributes.priority
+        ? 1
+        : -1
+    );
+
     return (
       <ul className={styles[`depth${depth}`]}>
         {trees.map(tree => {
@@ -28,11 +38,11 @@ export default class Navigation extends React.Component<IProps> {
           }
 
           let navItem;
-          if (hasChildren && depth > 0) {
+          if (hasChildren) {
             navItem = (
               <div>
                 {tree.attributes.title}
-                <Icon icon="chevron-right" />
+                {depth > 0 && <Icon icon="chevron-right" />}
               </div>
             );
           } else {

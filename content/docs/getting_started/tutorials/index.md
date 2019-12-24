@@ -1,3 +1,3 @@
 ---
-title: Examples
+title: Tutorials
 ---
