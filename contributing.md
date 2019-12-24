@@ -3,6 +3,8 @@
 Dataform is a TypeScript project, and is fairly easy to build and run locally.
 For help making changes, join our `#development` channel in [Slack](https://slack.dataform.co), or [email us](mailto:team@dataform.co) directly.
 
+Check out our [contribution guidelines](https://docs.dataform.co/community/contribution-guidelines) for more information.
+
 ## Requirements
 
 [Bazel](https://bazel.build) - Bazel is a build system, and this is the only dependency you need to build and run the entire project.
