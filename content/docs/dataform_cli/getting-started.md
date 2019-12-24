@@ -1,10 +1,10 @@
 ---
-title: Command line interface
+title: Getting Started with the CLI
 ---
 
 ## Installation
 
-Dataform can be installed using <a target="_blank" rel="noopener" href="https://www.npmjs.com/get-npm">NPM</a>:
+The Dataform CLI can be installed using <a target="_blank" rel="noopener" href="https://www.npmjs.com/get-npm">NPM</a>:
 
 ```bash
 npm i -g @dataform/cli

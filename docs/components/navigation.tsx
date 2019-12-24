@@ -34,7 +34,7 @@ export default class Navigation extends React.Component<IProps> {
                   {tree.attributes.title}
                   {hasChildren && depth > 0 && <Icon icon="chevron-right" />}
                 </a>
-              </li> 
+              </li>
               {tree.children &&
                 tree.children.length > 0 &&
                 this.renderTrees(tree.children, depth + 1)}

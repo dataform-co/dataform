@@ -83,7 +83,7 @@
     "tslint-config-prettier": "^1.18.0",
     "tslint-react": "^3.6.0",
     "typed-css-modules": "^0.3.7",
-    "typedoc": "^0.14.2",
+    "typedoc": "^0.15.5",
     "typescript": "^3.5.1",
     "uglify-es": "^3.3.9",
     "uglify-js": "^3.4.9",

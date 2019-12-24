@@ -8,19 +8,19 @@ SQLX is a powerful extension of SQL, written by the Dataform team. As it is an e
 
 ## Structure
 
-We recommend writing SQLX using the follow structure.
+SQLX contains the following components:
 
-- [Config](config): contains information on the purpose of the script, and what actions it is meant to take, such as `view` or `table`.
+- **[Config](#Config)**: contains information on the purpose of the script, and what actions it is meant to take, such as `view` or `table`.
 
-- [Pre-operations](pre_operations): Pre operations contain SQL to be executed before the main bulk of SQL.
+- [Pre-operations](#pre-operations): Pre operations contain SQL to be executed before the main bulk of SQL.
 
 - [SQL](sql): The central SQL operation to be performed. Later defined avascript can be injected here, or built in functions such as [`ref()`](TODO).
 
-- [Post-operations](post_operations): Post opertations contain SQL to be executed after the main bulk of SQL
+- [Post-operations](#post-operations): Post opertations contain SQL to be executed after the main bulk of SQL
 
-- [Javascript](javascript_blocks):
+- [Javascript](#javascript-blocks): These provide all the incredible functionality of Javascript written alongside SQL!
 
-In addition to these blocks, in-line javascript within SQL can be written by using `${}`, for examples `${console.log("foo")}`.
+- [In-line Javascript](#in-line-javascript) In addition to Javascript blocks, in-line javascript can be written within SQL by using `${}`, for example `${console.log("foo")}`.
 
 ### Config
 
@@ -30,25 +30,20 @@ All config properties, and the config itself, are optional.
 config {
 ```
 
-<!--
-export interface TConfig {
-  type?: TableType;
-  dependencies?: Resolvable | Resolvable[];
-  tags?: string[];
-  description?: string;
-  columns?: IColumnsDescriptor;
-  disabled?: boolean;
-  protected?: boolean;
-  redshift?: dataform.IRedshiftOptions;
-  bigquery?: dataform.IBigQueryOptions;
-  sqldatawarehouse?: dataform.ISQLDataWarehouseOptions;
-  database?: string;
-  schema?: string;
-} -->
+<!-- This is nicer hand written, as generating docs from `protobufjs_lib.d.ts`
+gives too much information in some places, but not enough in others. It would
+also not be laid out in a nice order, and would make users have to know
+javascript to a much deeper level (typescript) in order to be able to
+understand. Because of this, if docs are to be automatically generated then
+they should be placed somewhere else in addittion to these notes.-->
 
-> PARAMETER: `"type":` (string) - Action for the SQLX file to perform. Must take the form of one of:
+<!-- Found in core/table.ts -->
+
+<sqlx-config-info />
+
+> `"type":` - Action for the SQLX file to perform. Must take the form of one of:
 >
-> > VALUE: `"table"` - Create a table.
+> > `"table"` - Create a table.
 > >
 > > `"view"` - Retrieve/transform an existing table.
 > >
@@ -58,7 +53,37 @@ export interface TConfig {
 >
 > `"dependencies:"` - A "dependency", or ["list", "of", "dependencies"] that this SQLX file depends on.
 >
-> `"tags:"` -
+> `"tags:"` - TODO.
+>
+> `"description:"` - Description to attach to the table
+>
+> `"columns:"` - TODO.
+>
+> `"disabled:"`
+>
+> > `true` - Disables this SQLX script.
+>
+> `"protected:"` - TODO.
+>
+> `"redshift:"` - Redshift specific configuration options
+>
+> > `"distKey:"`
+> >
+> > ...
+>
+> `"bigquery:"` - Bigquery specific configuration options.
+>
+> > `""` -
+> >
+> > ...
+>
+> `"SQL Data Warehouse`
+>
+> > ...
+>
+> `"database:"` - TODO
+>
+> `"Schema:"` - TODO
 
 ... TODO
 

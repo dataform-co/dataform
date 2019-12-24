@@ -1,0 +1,6 @@
+{
+  "type": {
+    "value": "Action for the SQLX file to perform. Must take the form of one of:",
+    "children": [{}]
+  }
+}
