@@ -1,5 +1,5 @@
 ---
-title: SQLX
+title: Write Good SQLX
 ---
 
 ## Overview
@@ -24,72 +24,7 @@ SQLX contains the following components:
 
 ### Config
 
-All config properties, and the config itself, are optional.
-
-```javascript
-config {
-```
-
-<!-- This is nicer hand written, as generating docs from `protobufjs_lib.d.ts`
-gives too much information in some places, but not enough in others. It would
-also not be laid out in a nice order, and would make users have to know
-javascript to a much deeper level (typescript) in order to be able to
-understand. Because of this, if docs are to be automatically generated then
-they should be placed somewhere else in addittion to these notes.-->
-
-<!-- Found in core/table.ts -->
-
-<sqlx-config-info />
-
-> `"type":` - Action for the SQLX file to perform. Must take the form of one of:
->
-> > `"table"` - Create a table.
-> >
-> > `"view"` - Retrieve/transform an existing table.
-> >
-> > `"incremental"` - Create an incremental table.
-> >
-> > `"inline"` - TODO.
->
-> `"dependencies:"` - A "dependency", or ["list", "of", "dependencies"] that this SQLX file depends on.
->
-> `"tags:"` - TODO.
->
-> `"description:"` - Description to attach to the table
->
-> `"columns:"` - TODO.
->
-> `"disabled:"`
->
-> > `true` - Disables this SQLX script.
->
-> `"protected:"` - TODO.
->
-> `"redshift:"` - Redshift specific configuration options
->
-> > `"distKey:"`
-> >
-> > ...
->
-> `"bigquery:"` - Bigquery specific configuration options.
->
-> > `""` -
-> >
-> > ...
->
-> `"SQL Data Warehouse`
->
-> > ...
->
-> `"database:"` - TODO
->
-> `"Schema:"` - TODO
-
-... TODO
-
-```javascript
-}
-```
+All config properties, and the config itself, are optional. TODO: Add more detail.
 
 ### Pre-operations
 

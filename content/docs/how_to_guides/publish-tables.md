@@ -7,7 +7,7 @@ title: Publish datasets
 Create a new file by clicking on the + button next to the `definitions` folder and create a new SQLX file named `onboarding_table`.
 For now, ignore the other options; these are more advanced features which will be covered in later documentation.
 
-<img src="/static/images/how_to_guides/dataform_web/publish_tables/new_file.png" style="width: 100%;" />
+<img src="/static/images/how_to_guides/publish_tables/new_file.png" style="width: 100%;" />
 
 ## Write a query
 
@@ -25,7 +25,7 @@ You will see the right sidebar update with `onboarding_table` which is the name 
 The `Preview results` button executes the query in your warehouse and returns the output at the bottom of the page. This can be useful during query development to check that the query returns expected output.
 
 <img
-src="/static/images/how_to_guides/dataform_web/publish_tables/compilation.png"
+src="/static/images/how_to_guides/publish_tables/compilation.png"
 style="width: 100%"
 />
 
@@ -41,7 +41,7 @@ Upon successful completion of the run, a new view named `dataform.onboarding_tab
   <a href="../guides/configuration">project configuration</a>.
 </div>
 
-<img src="/static/images/how_to_guides/dataform_web/publish_tables/run_node.png" style="width: 100%" />
+<img src="/static/images/how_to_guides/publish_tables/run_node.png" style="width: 100%" />
 
 ## Create a table instead of a view
 
@@ -60,7 +60,7 @@ You will see the tag on the right sidebar update from `view` to `table`.
 </div>
 
 <img
-src="/static/images/how_to_guides/dataform_web/publish_tables/table_vs_view.png"
+src="/static/images/how_to_guides/publish_tables/table_vs_view.png"
 style="width: 100%"
 />
 
@@ -87,7 +87,7 @@ SELECT * FROM ${ref('onboarding_table')}
 ```
 
 <img
-src="/static/images/how_to_guides/dataform_web/publish_tables/ref_query.png"
+src="/static/images/how_to_guides/publish_tables/ref_query.png"
 style="width: 100%"
 />
 
@@ -108,7 +108,7 @@ _*Your compiled script will differ depending on your cloud data warehouse. This 
 The overview page (linked at the top left of Dataform) gives you an overview of your project. The overview includes a visualization of the dependency tree of your project, containing the two datasets created by your scripts.
 
 <img
-src="/static/images/how_to_guides/dataform_web/publish_tables/dependencies.png"
+src="/static/images/how_to_guides/publish_tables/dependencies.png"
 style="width: 100%"
 />
 
