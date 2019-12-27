@@ -1,5 +1,5 @@
 ---
-title: Getting Started with the CLI
+title: Getting started with the CLI
 ---
 
 ## Installation

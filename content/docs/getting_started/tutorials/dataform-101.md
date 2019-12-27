@@ -3,7 +3,7 @@ title: Dataform 101
 priority: 0
 ---
 
-This tutorial visually demonstrates the first few steps in configuring a new project.
+This tutorial demonstrates the first few steps in configuring a new project.
 
 Google Cloud is used as the data warehouse in this example, but [other warehouses](../how_to_guides/set-up-warehouse) are viable too.
 

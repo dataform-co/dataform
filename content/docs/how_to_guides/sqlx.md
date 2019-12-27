@@ -10,11 +10,11 @@ SQLX is a powerful extension of SQL, created by Dataform. As it is an extension,
 
 SQLX contains the following components:
 
-- [Config](#Config): contains information on the purpose of the script, and what actions it is meant to take, such as `view` or `table`.
+- [Config](#Config): contains information on the purpose of the script, such as `view` or `table`.
 
 - [Pre-operations](#pre-operations): Pre operations contain SQL to be executed before the main bulk of SQL.
 
-- [SQL](sql): The central SQL operation to be performed. Later defined avascript can be injected here, or built in functions such as [`ref()`](TODO).
+- (Central) [SQL](sql): The main SQL operation to be performed. Later defined Javascript can be injected here, or built in functions such as [`ref()`](TODO).
 
 - [Post-operations](#post-operations): Post opertations contain SQL to be executed after the main bulk of SQL
 
@@ -22,11 +22,11 @@ SQLX contains the following components:
 
 - [In-line Javascript](#in-line-javascript): In addition to Javascript blocks, in-line javascript can be written within SQL by using `${}`, for example `${console.log("foo")}`.
 
-- [Built-in functions](built-in-functions): There are various useful built-in functions that can be used, such as `ref` or `self`.
+- [Built-in functions](built-in-functions): There are various useful built-in functions that can be used, such as `ref()` or `self()`.
 
 ### Config
 
-All config properties, and the config itself, are optional. TODO: Add more detail.
+All config properties, and the config itself, are optional. TODO: Add more detail. Just link API reference?
 
 ### Pre-operations
 

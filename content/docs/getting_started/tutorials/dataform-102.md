@@ -3,6 +3,8 @@ title: Dataform 102
 priority: 1
 ---
 
+This tutorial demonstrates how dependency trees are made within a project.
+
 ## Create a new file
 
 Create a new file by clicking on the + button next to the `definitions` folder and create a new SQLX file named `onboarding_table`.
