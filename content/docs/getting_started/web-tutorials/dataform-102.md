@@ -10,7 +10,7 @@ This tutorial demonstrates how dependency trees are made within a project.
 Create a new file by clicking on the + button next to the `definitions` folder and create a new SQLX file named `onboarding_table`.
 For now, ignore the other options; these are more advanced features which will be covered in later documentation.
 
-<img src="/static/images/how_to_guides/publish_tables/new_file.png" style="width: 100%;" />
+![New file](/static/images/how_to_guides/publish_tables/new_file.png)
 
 ## Write a query
 
@@ -44,7 +44,7 @@ Upon successful completion of the run, a new view named `dataform.onboarding_tab
   <a href="../guides/configuration">project configuration</a>.
 </div>
 
-<img src="/static/images/how_to_guides/publish_tables/run_node.png" style="width: 100%" />
+![Run node](/static/images/how_to_guides/publish_tables/run_node.png)
 
 ## Create a table instead of a view
 

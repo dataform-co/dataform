@@ -2,6 +2,8 @@
 title: Getting started with the CLI
 ---
 
+The CLI enables you to initialize, compile test and run Dataform projects directly from your local machine or as part of other systems.
+
 ## Installation
 
 The Dataform CLI can be installed using <a target="_blank" rel="noopener" href="https://www.npmjs.com/get-npm">NPM</a>:

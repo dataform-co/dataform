@@ -44,7 +44,7 @@ If you delete a branch, any changes which have not yet been pushed to `productio
 
 Select the branch you would like to use to make your changes.
 
-<div className="bp3-callout bp3-icon-info-sign bp3-intent-warning" markdown="1" style="marginBottom: 10px">
+<div className="bp3-callout bp3-icon-info-sign bp3-intent-warning" markdown="1" style="margin-bottom: 10px">
   We recommend that each team member uses their own separate development branch.
 </div>
 
