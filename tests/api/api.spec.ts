@@ -545,38 +545,35 @@ describe("@dataform/api", () => {
 
   describe("query", () => {
     it("bigquery_example", async () => {
-      return await query
-        .compile('select 1 from ${ref("example_view")}', {
-          projectDir: "df/examples/common_v1",
-          projectConfigOverride: { warehouse: "bigquery", defaultDatabase: "tada-analytics" }
-        })
-        .then(compiledQuery => {
-          expect(compiledQuery).equals(
-            "select 1 from `tada-analytics.df_integration_test.example_view`"
-          );
-        });
+      const compiledQuery = await query.compile('select 1 from ${ref("example_view")}', {
+        projectDir: "df/examples/common_v1",
+        projectConfigOverride: { warehouse: "bigquery", defaultDatabase: "tada-analytics" }
+      });
+      expect(compiledQuery).equals(
+        "select 1 from `tada-analytics.df_integration_test.example_view`"
+      );
     });
     it("bigquery example with input backticks", async () => {
-      return await query
-        .compile("select 1 from `tada-analytics.df_integration_test.example_view`", {
+      const compiledQuery = await query.compile(
+        "select 1 from `tada-analytics.df_integration_test.example_view`",
+        {
           projectDir: "df/examples/common_v1",
           projectConfigOverride: { warehouse: "bigquery", defaultDatabase: "tada-analytics" }
-        })
-        .then(compiledQuery => {
-          expect(compiledQuery).equals(
-            "select 1 from `tada-analytics.df_integration_test.example_view`"
-          );
-        });
+        }
+      );
+      expect(compiledQuery).equals(
+        "select 1 from `tada-analytics.df_integration_test.example_view`"
+      );
     });
     it("bigquery example with a backslash in regex", async () => {
-      return await query
-        .compile("select regexp_extract('01a_data_engine', '^(\\d{2}\\w)')", {
+      const compiledQuery = await query.compile(
+        "select regexp_extract('01a_data_engine', '^(\\d{2}\\w)')",
+        {
           projectDir: "df/examples/common_v1",
           projectConfigOverride: { warehouse: "bigquery", defaultDatabase: "tada-analytics" }
-        })
-        .then(compiledQuery => {
-          expect(compiledQuery).equals("select regexp_extract('01a_data_engine', '^(\\d{2}\\w)')");
-        });
+        }
+      );
+      expect(compiledQuery).equals("select regexp_extract('01a_data_engine', '^(\\d{2}\\w)')");
     });
   });
 
