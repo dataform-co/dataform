@@ -1,5 +1,5 @@
 ---
-title: Testing data using assertions
+title: Assertions
 ---
 
 ## Introduction

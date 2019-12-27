@@ -191,4 +191,4 @@ Options:
 
 ## Next steps
 
-You have now seen how easy it is to use Dataform to publish simple datasets. Next, jump to our [guide](datasets) section.
+You have now seen how easy it is to use Dataform to publish simple datasets. Next, how about [publishing a dataset](../how_to_guides/datasets)?

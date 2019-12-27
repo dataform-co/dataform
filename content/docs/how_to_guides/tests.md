@@ -1,5 +1,5 @@
 ---
-title: Unit tests for dataset queries
+title: Unit tests
 ---
 
 ## Introduction

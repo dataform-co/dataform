@@ -1,5 +1,5 @@
 ---
-title: Building incremental datasets
+title: Incremental datasets
 ---
 
 ## Introduction

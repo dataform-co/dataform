@@ -1,5 +1,5 @@
 ---
-title: Using tags
+title: Tags
 ---
 
 ## Introduction

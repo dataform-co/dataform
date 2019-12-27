@@ -1,16 +1,16 @@
 ---
-title: Write Good SQLX
+title: SQLX
 ---
 
 ## Overview
 
-SQLX is a powerful extension of SQL, written by the Dataform team. As it is an extension, every SQL file is also a valid SQLX file!
+SQLX is a powerful extension of SQL, created by Dataform. As it is an extension, every SQL file is also a valid SQLX file!
 
 ## Structure
 
 SQLX contains the following components:
 
-- **[Config](#Config)**: contains information on the purpose of the script, and what actions it is meant to take, such as `view` or `table`.
+- [Config](#Config): contains information on the purpose of the script, and what actions it is meant to take, such as `view` or `table`.
 
 - [Pre-operations](#pre-operations): Pre operations contain SQL to be executed before the main bulk of SQL.
 
@@ -20,7 +20,9 @@ SQLX contains the following components:
 
 - [Javascript](#javascript-blocks): These provide all the incredible functionality of Javascript written alongside SQL!
 
-- [In-line Javascript](#in-line-javascript) In addition to Javascript blocks, in-line javascript can be written within SQL by using `${}`, for example `${console.log("foo")}`.
+- [In-line Javascript](#in-line-javascript): In addition to Javascript blocks, in-line javascript can be written within SQL by using `${}`, for example `${console.log("foo")}`.
+
+- [Built-in functions](built-in-functions): There are various useful built-in functions that can be used, such as `ref` or `self`.
 
 ### Config
 
@@ -64,6 +66,6 @@ For example,
 SELECT * FROM ${example}
 
 js {
-  const example =
+  const example = "foo";
 }
 ```

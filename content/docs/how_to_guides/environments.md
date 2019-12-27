@@ -1,5 +1,5 @@
 ---
-title: Configure environment
+title: Environments
 ---
 
 ## Introduction

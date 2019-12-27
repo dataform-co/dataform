@@ -1,5 +1,6 @@
 ---
-title: Dataform core concepts
+title: Core concepts
+priority: 1
 ---
 
 ## What is Dataform?
