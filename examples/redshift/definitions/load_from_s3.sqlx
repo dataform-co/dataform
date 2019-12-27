@@ -1,0 +1,30 @@
+config {
+  type: "operations",
+  hasOutput: true
+}
+
+js {
+  const tempTable = resolve(`${name()}_temp`);
+  const finalTable = self();
+  const finalTableName = name();
+}
+
+/* Drop the temporary table if it exists */
+drop table if exists ${tempTable};
+---
+/* Create the temp table with the correct schema */
+create table ${tempTable} (
+country varchar(256),
+revenue FLOAT8
+);
+---
+copy ${tempTable}
+from 's3://dataform-integration-tests-us-east-n-virginia/sample-data/sample_data.csv'
+iam_role 'arn:aws:iam::161427895535:role/RedshiftS3ReadRole'
+ignoreheader 1
+delimiter ','
+;
+---
+drop table if exists ${finalTable};
+---
+alter table ${tempTable} rename to ${finalTableName};
