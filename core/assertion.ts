@@ -1,17 +1,18 @@
-import { Resolvable, Session } from "@dataform/core/session";
+import { Session } from "@dataform/core/session";
 import * as utils from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
+import { ICommonContext, ICommonOutputConfig, Resolvable } from "df/core/common";
 
+/**
+ * @hidden
+ */
 export type AContextable<T> = T | ((ctx: AssertionContext) => T);
 
-export interface AConfig {
-  dependencies?: Resolvable | Resolvable[];
-  tags?: string[];
-  description?: string;
-  database?: string;
-  schema?: string;
-}
+export interface IAssertionConfig extends ICommonOutputConfig {}
 
+/**
+ * @hidden
+ */
 export class Assertion {
   public proto: dataform.IAssertion = dataform.Assertion.create();
 
@@ -21,7 +22,7 @@ export class Assertion {
   // We delay contextification until the final compile step, so hold these here for now.
   private contextableQuery: AContextable<string>;
 
-  public config(config: AConfig) {
+  public config(config: IAssertionConfig) {
     if (config.dependencies) {
       this.dependencies(config.dependencies);
     }
@@ -94,11 +95,24 @@ export class Assertion {
   }
 }
 
-export class AssertionContext {
+export interface IAssertionContext extends ICommonContext {}
+
+/**
+ * @hidden
+ */
+export class AssertionContext implements IAssertionContext {
   private assertion?: Assertion;
 
   constructor(assertion: Assertion) {
     this.assertion = assertion;
+  }
+
+  public self(): string {
+    return this.resolve(this.assertion.proto.target);
+  }
+
+  public name(): string {
+    return this.assertion.proto.target.name;
   }
 
   public ref(ref: Resolvable | string[], ...rest: string[]) {

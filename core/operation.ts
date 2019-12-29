@@ -1,24 +1,37 @@
-import {
-  IColumnsDescriptor,
-  mapToColumnProtoArray,
-  Resolvable,
-  Session
-} from "@dataform/core/session";
+import { mapToColumnProtoArray, Session } from "@dataform/core/session";
 import * as utils from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
+import {
+  IColumnsDescriptor,
+  ICommonContext,
+  ICommonOutputConfig,
+  Resolvable
+} from "df/core/common";
 
+/**
+ * @hidden
+ */
 export type OContextable<T> = T | ((ctx: OperationContext) => T);
 
-export interface OConfig {
-  dependencies?: Resolvable | Resolvable[];
-  tags?: string[];
-  description?: string;
-  columns?: IColumnsDescriptor;
+export interface IOperationConfig extends ICommonOutputConfig {
+  /**
+   * Tells Dataform whether this operations action creates an output table
+   * and is allowed to be referenced using the <code>ref</code> function.
+   *
+   * When set to true, the SQL operations should create a table or view of the given name.
+   * This can be accomplished using the <code>self()</code> context function.
+   *
+   * For example, an operation with output typically contains SQL such as:
+   * ```sql
+   * create or replace table ${self()} as select ...
+   * ```
+   */
   hasOutput?: boolean;
-  database?: string;
-  schema?: string;
 }
 
+/**
+ * @hidden
+ */
 export class Operation {
   public proto: dataform.IOperation = dataform.Operation.create();
 
@@ -28,7 +41,7 @@ export class Operation {
   // We delay contextification until the final compile step, so hold these here for now.
   private contextableQueries: OContextable<string | string[]>;
 
-  public config(config: OConfig) {
+  public config(config: IOperationConfig) {
     if (config.dependencies) {
       this.dependencies(config.dependencies);
     }
@@ -137,7 +150,12 @@ export class Operation {
   }
 }
 
-export class OperationContext {
+export interface IOperationContext extends ICommonContext {}
+
+/**
+ * @hidden
+ */
+export class OperationContext implements IOperationContext {
   private operation?: Operation;
 
   constructor(operation: Operation) {
@@ -145,10 +163,7 @@ export class OperationContext {
   }
 
   public self(): string {
-    return this.resolve({
-      schema: this.operation.proto.target.schema,
-      name: this.operation.proto.target.name
-    });
+    return this.resolve(this.operation.proto.target);
   }
 
   public name(): string {

@@ -1,52 +1,57 @@
-import {
-  IColumnsDescriptor,
-  mapToColumnProtoArray,
-  Resolvable,
-  Session
-} from "@dataform/core/session";
+import { mapToColumnProtoArray, Session } from "@dataform/core/session";
 import * as utils from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
+import {
+  IColumnsDescriptor,
+  ICommonContext,
+  ICommonOutputConfig,
+  Resolvable
+} from "df/core/common";
+
+// For documentation purposes, there should be no protos in public interfaces for the SQLX or JS API.
+// The following interfaces should be kept up to date and documented in line with protobuf interfaces.
 
 /**
  * @hidden
  */
 export const TableType = ["table", "view", "incremental", "inline"] as const;
+/**
+ * Supported types of table actions.
+ *
+ * Tables of type "view" will be created as views.
+ *
+ * Tables of type "table" will be created as tables.
+ *
+ * Tables of type "incremental" must have a where clause provided. For more information, see the [incremental tables guide](guides/incremental-datasets).
+ */
 export type TableType = typeof TableType[number];
 
 /**
  * @hidden
  */
 export const DistStyleType = ["even", "key", "all"] as const;
+/**
+ * Valid types for setting the distribution style for Redshift tables.
+ *
+ * View the [Redshift documentation](https://docs.aws.amazon.com/redshift/latest/dg/r_CREATE_TABLE_examples.html#r_CREATE_TABLE_NEW-diststyle-distkey-and-sortkey-options) for more information.
+ */
 export type DistStyleType = typeof DistStyleType[number];
 
 /**
  * @hidden
  */
 export const SortStyleType = ["compound", "interleaved"] as const;
+/**
+ * Valid types for setting the sort style for Redshift tables.
+ *
+ * View the [Redshift documentation](https://docs.aws.amazon.com/redshift/latest/dg/r_CREATE_TABLE_examples.html#r_CREATE_TABLE_NEW-diststyle-distkey-and-sortkey-options) for more information.
+ */
 export type SortStyleType = typeof SortStyleType[number];
 
 /**
  * @hidden
  */
-export const ignoredProps: {
-  [tableType: string]: Array<keyof dataform.ITable>;
-} = {
-  inline: [
-    "bigquery",
-    "redshift",
-    "sqlDataWarehouse",
-    "preOps",
-    "postOps",
-    "actionDescriptor",
-    "disabled",
-    "where"
-  ]
-};
-
 export type TContextable<T> = T | ((ctx: TableContext) => T);
-
-// For documentation purposes, there should be no protos in public interfaces for the SQLX or JS API.
-// The following interfaces should be kept up to date and documented in line with protobuf interfaces.
 
 /**
  * Redshift specific warehouse options.
@@ -64,33 +69,66 @@ export interface IRedshiftOptions {
   bind?: boolean;
 }
 
+/**
+ * Options for creating tables within Azure SQL Datawarehouse projects.
+ */
 export interface ISQLDataWarehouseOptions {
+  /**
+   * The distribution option value.
+   *
+   * For more information, read the Azure documentation [here](https://docs.microsoft.com/en-gb/sql/t-sql/statements/create-table-as-select-azure-sql-data-warehouse?view=aps-pdw-2016-au7#examples-for-table-distribution).
+   */
   distribution?: string;
 }
 
+/**
+ * Options for creating tables within BigQuery projects.
+ */
 export interface IBigQueryOptions {
   /**
-   * Add some description.
+   * The key for partitioning the table by, typically a timestamp or date.
+   *
+   * For more information, read the BigQuery documentation [here](https://cloud.google.com/bigquery/docs/partitioned-tables#next_steps).
    */
   partitionBy?: string;
 }
 
 /**
- * Configuration options that can be provided to a table.
+ * General options that can be provided to a table.
  */
-export interface ITableConfig {
+export interface ITableConfig extends ICommonOutputConfig {
+  /**
+   * The type of the table. For more information, check out the documentation [guides](guides).
+   */
   type?: TableType;
-  dependencies?: Resolvable | Resolvable[];
-  tags?: string[];
-  description?: string;
-  columns?: IColumnsDescriptor;
+
+  /**
+   * When set to true, the action and SQL queries will not be executed, however they will still be compiled
+   * and the action can still be dependend upon. Useful for temporarily turning off broken actions.
+   */
   disabled?: boolean;
+
+  /**
+   * Only allowed when the table type is <code>"incremental"</code>.
+   * When set to true, the full-refresh option will have no effect. This is useful for tables that
+   * Are built from datasources that are transient, and makes sure historical data can never be lost.
+   */
   protected?: boolean;
+
+  /**
+   * Redshift specific warehouse options.
+   */
   redshift?: IRedshiftOptions;
+
+  /**
+   * BigQuery specific warehouse options.
+   */
   bigquery?: IBigQueryOptions;
+
+  /**
+   * Azure SQL data warehouse specific warehouse options.
+   */
   sqldatawarehouse?: ISQLDataWarehouseOptions;
-  database?: string;
-  schema?: string;
 }
 
 /**
@@ -290,44 +328,7 @@ export class Table {
   }
 }
 
-export interface ITableContext {
-  /**
-   * Returns a valid SQL string that can be used to reference the dataset produced by this action.
-   */
-  self: () => string;
-
-  /**
-   * Returns the name of this dataset.
-   */
-  name: () => string;
-
-  /**
-   * References another action, returning valid SQL to be used in a `from` expression and adds it as a dependency to this action.
-   *
-   * This function can be called with a [[Resolvable]] object, for example:
-   *
-   * ```typescript
-   * ${ref({ name: "name", schema: "schema", database: "database" })}
-   * ```
-   *
-   * This function can also be called using individual arguments for the "database", "schema", and "name" values.
-   * When only two values are provided, the default database will be used and the values will be interpreted as "schema" and "name".
-   * When only one value is provided, the default data base schema will be used, with the provided value interpreted as "name".
-   *
-   * ```typescript
-   * ${ref("database", "schema", "name")}
-   * ${ref("schema", "name")}
-   * ${ref("name")}
-   * ```
-   */
-  ref: (ref: Resolvable | string[], ...rest: string[]) => string;
-
-  /**
-   * Similar to <code>ref</code> except that it does not add a dependency, but simply resolves the provided reference.
-   * See <code>ref</code> for usage.
-   */
-  resolve: (ref: Resolvable | string[], ...rest: string[]) => string;
-
+export interface ITableContext extends ICommonContext {
   /**
    * @hidden
    */
@@ -337,73 +338,6 @@ export interface ITableContext {
    * @hidden
    */
   ifIncremental: (value: string) => string;
-
-  // The following methods are deprecated since SQLX and will be removed in a future version of Dataform.
-
-  /**
-   * @deprecated
-   * @hidden
-   */
-  config: (config: ITableConfig) => string;
-
-  /**
-   * @deprecated
-   * @hidden
-   */
-  type: (type: TableType) => string;
-
-  /**
-   * @deprecated
-   * @hidden
-   */
-  where: (where: TContextable<string>) => string;
-
-  /**
-   * @deprecated
-   * @hidden
-   */
-  preOps: (statement: TContextable<string | string[]>) => string;
-
-  /**
-   * @deprecated
-   * @hidden
-   */
-  postOps: (statement: TContextable<string | string[]>) => string;
-
-  /**
-   * @deprecated
-   * @hidden
-   */
-  disabled: () => string;
-
-  /**
-   * @deprecated
-   * @hidden
-   */
-  redshift: (redshift: dataform.IRedshiftOptions) => string;
-
-  /**
-   * @deprecated
-   * @hidden
-   */
-  bigquery: (bigquery: dataform.IBigQueryOptions) => string;
-
-  /**
-   * @deprecated
-   * @hidden
-   */
-  dependencies: (name: Resolvable) => string;
-
-  /**
-   * @hidden
-   */
-  apply: <T>(value: TContextable<T>) => T;
-
-  /**
-   * @deprecated
-   * @hidden
-   */
-  tags: (name: string | string[]) => string;
 }
 
 /**
@@ -418,10 +352,7 @@ export class TableContext implements ITableContext {
   }
 
   public self(): string {
-    return this.resolve({
-      schema: this.table.proto.target.schema,
-      name: this.table.proto.target.name
-    });
+    return this.resolve(this.table.proto.target);
   }
 
   public name(): string {
@@ -504,3 +435,21 @@ export class TableContext implements ITableContext {
     return "";
   }
 }
+
+/**
+ * @hidden
+ */
+export const ignoredProps: {
+  [tableType: string]: Array<keyof dataform.ITable>;
+} = {
+  inline: [
+    "bigquery",
+    "redshift",
+    "sqlDataWarehouse",
+    "preOps",
+    "postOps",
+    "actionDescriptor",
+    "disabled",
+    "where"
+  ]
+};

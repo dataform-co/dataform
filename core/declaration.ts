@@ -1,19 +1,18 @@
-import { IColumnsDescriptor, mapToColumnProtoArray, Session } from "@dataform/core/session";
+import { mapToColumnProtoArray, Session } from "@dataform/core/session";
 import { dataform } from "@dataform/protos";
+import { IColumnsDescriptor, ICommonOutputConfig } from "df/core/common";
 
-export interface DConfig {
-  description?: string;
-  columns?: IColumnsDescriptor;
-  database?: string;
-  schema?: string;
-}
+export interface IDeclarationConfig extends ICommonOutputConfig {}
 
+/**
+ * @hidden
+ */
 export class Declaration {
   public proto: dataform.IDeclaration = dataform.Declaration.create();
 
   public session: Session;
 
-  public config(config: DConfig) {
+  public config(config: IDeclarationConfig) {
     if (config.description) {
       this.description(config.description);
     }

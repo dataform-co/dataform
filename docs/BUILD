@@ -46,7 +46,11 @@ typedoc(
         "\"table\"",
         "--excludeExternals",
         "core/table.ts",
-        "core/session.ts"
+        "core/assertion.ts",
+        "core/declaration.ts",
+        "core/operation.ts",
+        "core/test.ts",
+        "core/common.ts",
     ],
     data = ["//core:files"],
 )

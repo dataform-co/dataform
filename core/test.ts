@@ -1,24 +1,35 @@
-import { Resolvable, Session } from "@dataform/core/session";
+import { Session } from "@dataform/core/session";
 import * as table from "@dataform/core/table";
+import { ITableContext } from "@dataform/core/table";
 import * as utils from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
+import { Resolvable } from "df/core/common";
 
-export type TContextable<T> = T | ((ctx: TestContext) => T);
+/**
+ * @hidden
+ */
+export type TestContextable<T> = T | ((ctx: TestContext) => T);
 
-export interface TConfig {
+export interface ITestConfig {
+  /**
+   * The dataset that this unit test is to be run against.
+   */
   dataset?: Resolvable;
 }
 
+/**
+ * @hidden
+ */
 export class Test {
   public proto: dataform.ITest = dataform.Test.create();
 
   public session: Session;
-  public contextableInputs: { [refName: string]: TContextable<string> } = {};
+  public contextableInputs: { [refName: string]: TestContextable<string> } = {};
 
   private datasetToTest: Resolvable;
-  private contextableQuery: TContextable<string>;
+  private contextableQuery: TestContextable<string>;
 
-  public config(config: TConfig) {
+  public config(config: ITestConfig) {
     if (config.dataset) {
       this.dataset(config.dataset);
     }
@@ -30,12 +41,12 @@ export class Test {
     return this;
   }
 
-  public input(refName: string, contextableQuery: TContextable<string>) {
+  public input(refName: string, contextableQuery: TestContextable<string>) {
     this.contextableInputs[refName] = contextableQuery;
     return this;
   }
 
-  public expect(contextableQuery: TContextable<string>) {
+  public expect(contextableQuery: TestContextable<string>) {
     this.contextableQuery = contextableQuery;
     return this;
   }
@@ -76,13 +87,16 @@ export class Test {
   }
 }
 
+/**
+ * @hidden
+ */
 export class TestContext {
   public readonly test: Test;
   constructor(test: Test) {
     this.test = test;
   }
 
-  public apply<T>(value: TContextable<T>): T {
+  public apply<T>(value: TestContextable<T>): T {
     if (typeof value === "function") {
       return (value as any)(this);
     } else {
@@ -91,7 +105,10 @@ export class TestContext {
   }
 }
 
-class RefReplacingContext implements table.ITableContext {
+/**
+ * @hidden
+ */
+class RefReplacingContext implements ITableContext {
   private readonly testContext: TestContext;
 
   constructor(testContext: TestContext) {

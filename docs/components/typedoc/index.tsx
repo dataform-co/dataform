@@ -21,7 +21,7 @@ export class Typedoc extends React.Component<IProps> {
       const next = queue.shift();
       // Top level or module types.
       if (next.kind === 1 || next.kind === 0) {
-        next.children.forEach(child => queue.push(child));
+        (next.children || []).forEach(child => queue.push(child));
       } else {
         links.push({ id: next.name, text: next.name });
       }
@@ -66,9 +66,11 @@ const Property = (props: any) => (
     <div className={styles.propertyName}>
       <code>{props.name}</code>
     </div>
-    <div className={styles.propertyDescription}>
+    <div>
       <Type {...props.type} />
-      <Comment {...props.comment} />
+      <div className={styles.propertyComment}>
+        <Comment {...props.comment} />
+      </div>
     </div>
   </div>
 );
@@ -89,7 +91,7 @@ const SubType = (props: any) => {
   if (props.type === "stringLiteral") {
     return <>"{props.value}"</>;
   }
-  if (props.type === "reflection") {
+  if (props.type === "reflection" && props.declaration && props.declaration.signatures) {
     return (
       <>
         {props.declaration.signatures.map(signature => (
@@ -136,18 +138,23 @@ const IndexSignature = (props: any) => (
 
 const Comment = (props: any) => (
   <>
-    {props && <p>{props.shortText}</p>}
+    {props && props.shortText && (
+      <div>
+        <Markdown content={props.shortText} />
+      </div>
+    )}
     {props && props.text && (
       <div>
-        {
-          remark()
-            .use(remarkRehype, { allowDangerousHTML: true })
-            .use(rehypePrism)
-            .use(rehypeRaw)
-            .use(rehypeReact, { createElement: React.createElement })
-            .processSync(props.text).contents
-        }
+        <Markdown content={props.text} />
       </div>
     )}
   </>
 );
+
+const Markdown = (props: { content: string }) =>
+  remark()
+    .use(remarkRehype, { allowDangerousHTML: true })
+    .use(rehypePrism)
+    .use(rehypeRaw)
+    .use(rehypeReact, { createElement: React.createElement })
+    .processSync(props.content).contents;

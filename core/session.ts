@@ -1,11 +1,12 @@
 import * as adapters from "@dataform/core/adapters";
-import { AConfig, AContextable, Assertion } from "@dataform/core/assertion";
-import { DConfig, Declaration } from "@dataform/core/declaration";
-import { OConfig, OContextable, Operation } from "@dataform/core/operation";
+import { AContextable, Assertion, IAssertionConfig } from "@dataform/core/assertion";
+import { Declaration, IDeclarationConfig } from "@dataform/core/declaration";
+import { IOperationConfig, OContextable, Operation } from "@dataform/core/operation";
 import { ITableConfig, Table, TableType, TContextable } from "@dataform/core/table";
 import * as test from "@dataform/core/test";
 import * as utils from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
+import { IColumnsDescriptor, IRecordDescriptor, Resolvable } from "df/core/common";
 import { util } from "protobufjs";
 import { Graph as TarjanGraph } from "tarjan-graph";
 import * as TarjanGraphConstructor from "tarjan-graph";
@@ -26,25 +27,10 @@ export interface IActionProto {
 
 type SqlxConfig = (
   | ITableConfig & { type: TableType }
-  | AConfig & { type: "assertion" }
-  | OConfig & { type: "operations" }
-  | DConfig & { type: "declaration" }
-  | test.TConfig & { type: "test" }) & { name: string };
-
-/**
- * Describes columns in a dataset, used for populating the data catalog.
- */
-export interface IColumnsDescriptor {
-  [name: string]: string | IRecordDescriptor;
-}
-
-/**
- * Describes a struct, object or record in a dataset that has nested columns.
- */
-export interface IRecordDescriptor {
-  description?: string;
-  columns?: IColumnsDescriptor;
-}
+  | IAssertionConfig & { type: "assertion" }
+  | IOperationConfig & { type: "operations" }
+  | IDeclarationConfig & { type: "declaration" }
+  | test.ITestConfig & { type: "test" }) & { name: string };
 
 /**
  * @hidden
@@ -87,19 +73,6 @@ function mapColumnDescriptionToProto(
     )
   );
 }
-
-/**
- * A reference to a dataset within the warehouse.
- */
-export interface ITarget {
-  database?: string;
-
-  schema?: string;
-
-  name?: string;
-}
-
-export type Resolvable = string | ITarget;
 
 /**
  * @hidden

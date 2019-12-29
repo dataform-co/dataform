@@ -6,20 +6,16 @@
 .property {
   border-top: 1px solid #e3e8ee;
   padding: 10px 0px;
-}
-
-.properties {
+  display: flex;
 }
 
 .propertyName {
-  max-width: 300px;
-  width: 50%;
-  display: inline-block;
+  width: 200px;
+  min-width: 200px;
 }
 
-.propertyDescription {
+.propertyComment {
   padding: 5px;
-  padding-left: 300px;
 }
 
 .methodTag {
