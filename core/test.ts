@@ -127,7 +127,7 @@ class RefReplacingContext implements table.ITableContext {
     }
   }
 
-  public config(config: table.TConfig) {
+  public config(config: table.ITableConfig) {
     return "";
   }
 

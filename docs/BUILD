@@ -46,6 +46,7 @@ typedoc(
         "\"table\"",
         "--excludeExternals",
         "core/table.ts",
+        "core/session.ts"
     ],
     data = ["//core:files"],
 )

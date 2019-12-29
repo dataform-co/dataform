@@ -11,7 +11,7 @@ export interface IFrontMatter {
 export interface IFileTree {
   file: IFile;
   attributes: IFrontMatter;
-  content: string;
+  content?: string;
   children?: IFileTree[];
 }
 

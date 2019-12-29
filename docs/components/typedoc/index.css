@@ -1,0 +1,27 @@
+.definition {
+  border-bottom: 1px solid #e3e8ee;
+  padding-bottom: 20px;
+}
+
+.property {
+  border-top: 1px solid #e3e8ee;
+  padding: 10px 0px;
+}
+
+.properties {
+}
+
+.propertyName {
+  max-width: 300px;
+  width: 50%;
+  display: inline-block;
+}
+
+.propertyDescription {
+  padding: 5px;
+  padding-left: 300px;
+}
+
+.methodTag {
+  margin-left: 10px;
+}

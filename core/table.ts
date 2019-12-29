@@ -7,26 +7,31 @@ import {
 import * as utils from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
 
-export enum TableTypes {
-  TABLE = "table",
-  VIEW = "view",
-  INCREMENTAL = "incremental",
-  INLINE = "inline"
-}
-export enum DistStyleTypes {
-  EVEN = "even",
-  KEY = "key",
-  ALL = "all"
-}
-export enum SortStyleTypes {
-  COMPOUND = "compound",
-  INTERLEAVED = "interleaved"
-}
+/**
+ * @hidden
+ */
+export const TableType = ["table", "view", "incremental", "inline"] as const;
+export type TableType = typeof TableType[number];
 
+/**
+ * @hidden
+ */
+export const DistStyleType = ["even", "key", "all"] as const;
+export type DistStyleType = typeof DistStyleType[number];
+
+/**
+ * @hidden
+ */
+export const SortStyleType = ["compound", "interleaved"] as const;
+export type SortStyleType = typeof SortStyleType[number];
+
+/**
+ * @hidden
+ */
 export const ignoredProps: {
   [tableType: string]: Array<keyof dataform.ITable>;
 } = {
-  [TableTypes.INLINE]: [
+  inline: [
     "bigquery",
     "redshift",
     "sqlDataWarehouse",
@@ -38,9 +43,7 @@ export const ignoredProps: {
   ]
 };
 
-type ValueOf<T> = T[keyof T];
 export type TContextable<T> = T | ((ctx: TableContext) => T);
-export type TableType = ValueOf<TableTypes>;
 
 // For documentation purposes, there should be no protos in public interfaces for the SQLX or JS API.
 // The following interfaces should be kept up to date and documented in line with protobuf interfaces.
@@ -61,8 +64,11 @@ export interface IRedshiftOptions {
   bind?: boolean;
 }
 
-export interface IBigQueryOptions {
+export interface ISQLDataWarehouseOptions {
+  distribution?: string;
+}
 
+export interface IBigQueryOptions {
   /**
    * Add some description.
    */
@@ -72,7 +78,7 @@ export interface IBigQueryOptions {
 /**
  * Configuration options that can be provided to a table.
  */
-export interface TConfig {
+export interface ITableConfig {
   type?: TableType;
   dependencies?: Resolvable | Resolvable[];
   tags?: string[];
@@ -82,11 +88,14 @@ export interface TConfig {
   protected?: boolean;
   redshift?: IRedshiftOptions;
   bigquery?: IBigQueryOptions;
-  sqldatawarehouse?: dataform.ISQLDataWarehouseOptions;
+  sqldatawarehouse?: ISQLDataWarehouseOptions;
   database?: string;
   schema?: string;
 }
 
+/**
+ * @hidden
+ */
 export class Table {
   public proto: dataform.ITable = dataform.Table.create({
     type: "view",
@@ -103,7 +112,7 @@ export class Table {
   private contextablePreOps: Array<TContextable<string | string[]>> = [];
   private contextablePostOps: Array<TContextable<string | string[]>> = [];
 
-  public config(config: TConfig) {
+  public config(config: ITableConfig) {
     if (config.type) {
       this.type(config.type);
     }
@@ -254,7 +263,7 @@ export class Table {
     const incrementalContext = new TableContext(this, true);
 
     this.proto.query = context.apply(this.contextableQuery);
-    if (this.proto.type === TableTypes.INCREMENTAL) {
+    if (this.proto.type === "incremental") {
       this.proto.incrementalQuery = incrementalContext.apply(this.contextableQuery);
     }
 
@@ -282,29 +291,128 @@ export class Table {
 }
 
 export interface ITableContext {
-  config: (config: TConfig) => string;
+  /**
+   * Returns a valid SQL string that can be used to reference the dataset produced by this action.
+   */
   self: () => string;
+
+  /**
+   * Returns the name of this dataset.
+   */
   name: () => string;
+
+  /**
+   * References another action, returning valid SQL to be used in a `from` expression and adds it as a dependency to this action.
+   *
+   * This function can be called with a [[Resolvable]] object, for example:
+   *
+   * ```typescript
+   * ${ref({ name: "name", schema: "schema", database: "database" })}
+   * ```
+   *
+   * This function can also be called using individual arguments for the "database", "schema", and "name" values.
+   * When only two values are provided, the default database will be used and the values will be interpreted as "schema" and "name".
+   * When only one value is provided, the default data base schema will be used, with the provided value interpreted as "name".
+   *
+   * ```typescript
+   * ${ref("database", "schema", "name")}
+   * ${ref("schema", "name")}
+   * ${ref("name")}
+   * ```
+   */
   ref: (ref: Resolvable | string[], ...rest: string[]) => string;
+
+  /**
+   * Similar to <code>ref</code> except that it does not add a dependency, but simply resolves the provided reference.
+   * See <code>ref</code> for usage.
+   */
   resolve: (ref: Resolvable | string[], ...rest: string[]) => string;
-  type: (type: TableType) => string;
-  where: (where: TContextable<string>) => string;
+
+  /**
+   * @hidden
+   */
   isIncremental: () => boolean;
+
+  /**
+   * @hidden
+   */
   ifIncremental: (value: string) => string;
+
+  // The following methods are deprecated since SQLX and will be removed in a future version of Dataform.
+
+  /**
+   * @deprecated
+   * @hidden
+   */
+  config: (config: ITableConfig) => string;
+
+  /**
+   * @deprecated
+   * @hidden
+   */
+  type: (type: TableType) => string;
+
+  /**
+   * @deprecated
+   * @hidden
+   */
+  where: (where: TContextable<string>) => string;
+
+  /**
+   * @deprecated
+   * @hidden
+   */
   preOps: (statement: TContextable<string | string[]>) => string;
+
+  /**
+   * @deprecated
+   * @hidden
+   */
   postOps: (statement: TContextable<string | string[]>) => string;
+
+  /**
+   * @deprecated
+   * @hidden
+   */
   disabled: () => string;
+
+  /**
+   * @deprecated
+   * @hidden
+   */
   redshift: (redshift: dataform.IRedshiftOptions) => string;
+
+  /**
+   * @deprecated
+   * @hidden
+   */
   bigquery: (bigquery: dataform.IBigQueryOptions) => string;
+
+  /**
+   * @deprecated
+   * @hidden
+   */
   dependencies: (name: Resolvable) => string;
+
+  /**
+   * @hidden
+   */
   apply: <T>(value: TContextable<T>) => T;
+
+  /**
+   * @deprecated
+   * @hidden
+   */
   tags: (name: string | string[]) => string;
 }
 
+/**
+ * @hidden
+ */
 export class TableContext implements ITableContext {
   constructor(private table: Table, private incremental = false) {}
 
-  public config(config: TConfig) {
+  public config(config: ITableConfig) {
     this.table.config(config);
     return "";
   }
@@ -320,7 +428,7 @@ export class TableContext implements ITableContext {
     return this.table.proto.target.name;
   }
 
-  public ref(ref: Resolvable | string[], ...rest: string[]) {
+  public ref(ref: Resolvable | string[], ...rest: string[]): string {
     ref = utils.toResolvable(ref, rest);
     if (!utils.resolvableAsTarget(ref)) {
       const message = `Action name is not specified`;
@@ -390,6 +498,7 @@ export class TableContext implements ITableContext {
       return value;
     }
   }
+
   public tags(tags: string[]) {
     this.table.tags(tags);
     return "";
