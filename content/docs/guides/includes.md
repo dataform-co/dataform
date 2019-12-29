@@ -122,7 +122,7 @@ SELECT field1,
        field5,
        SUM(revenue) AS revenue
 FROM my_schema.my_table
-${groupBy(5)}
+${utils.groupBy(5)}
 ```
 
 The query will be compiled into the following SQL before it is run:
