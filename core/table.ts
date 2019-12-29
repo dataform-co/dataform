@@ -328,6 +328,9 @@ export class Table {
   }
 }
 
+/**
+ * @inheritdoc
+ */
 export interface ITableContext extends ICommonContext {
   /**
    * @hidden
