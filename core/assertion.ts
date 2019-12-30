@@ -1,11 +1,38 @@
-import { ICommonContext, ICommonOutputConfig, Resolvable } from "@dataform/core/common";
+import {
+  ICommonContext,
+  IDependenciesConfig,
+  ITargetableConfig,
+  Resolvable
+} from "@dataform/core/common";
 import { Session } from "@dataform/core/session";
 import * as utils from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
 
+/**
+ * Context methods are available when evaluating contextable SQL code, such as
+ * within SQLX files, or when using a [Contextable](#Contextable) argument with the JS API.
+ */
 export interface IAssertionContext extends ICommonContext {}
 
-export interface IAssertionConfig extends ICommonOutputConfig {}
+/**
+ * Configuration options for assertions.
+ */
+export interface IAssertionConfig extends ITargetableConfig, IDependenciesConfig {
+  /**
+   * The database where the corresponding view for this assertion should be created.
+   */
+  database?: string;
+
+  /**
+   * The schema where the corresponding view for this assertion should be created.
+   */
+  schema?: string;
+
+  /**
+   * A description for this assertion.
+   */
+  description?: string;
+}
 
 /**
  * @hidden

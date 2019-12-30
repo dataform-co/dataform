@@ -1,23 +1,29 @@
-import { mapToColumnProtoArray, Session } from "@dataform/core/session";
-import * as utils from "@dataform/core/utils";
-import { dataform } from "@dataform/protos";
 import {
   IColumnsDescriptor,
   ICommonContext,
-  ICommonOutputConfig,
+  IDependenciesConfig,
+  IDocumentableConfig,
+  ITargetableConfig,
   Resolvable
 } from "@dataform/core/common";
-import { Contextable } from "@dataform/core/contextable";
+import { Contextable } from "@dataform/core/common";
+import { mapToColumnProtoArray, Session } from "@dataform/core/session";
+import * as utils from "@dataform/core/utils";
+import { dataform } from "@dataform/protos";
 
-export interface IOperationConfig extends ICommonOutputConfig {
+/**
+ * Configuration options for operations.
+ */
+export interface IOperationConfig
+  extends ITargetableConfig,
+    IDocumentableConfig,
+    IDependenciesConfig {
   /**
-   * Tells Dataform whether this operations action creates an output table
-   * and is allowed to be referenced using the <code>ref</code> function.
+   * Declares that this `operations` action creates a dataset which should be referenceable using the `ref` function.
    *
-   * When set to true, the SQL operations should create a table or view of the given name.
-   * This can be accomplished using the <code>self()</code> context function.
+   * If set to true, this action should create a dataset with its configured name, using the `self()` context function.
    *
-   * For example, an operation with output typically contains SQL such as:
+   * For example:
    * ```sql
    * create or replace table ${self()} as select ...
    * ```
@@ -25,6 +31,10 @@ export interface IOperationConfig extends ICommonOutputConfig {
   hasOutput?: boolean;
 }
 
+/**
+ * Context methods are available when evaluating contextable SQL code, such as
+ * within SQLX files, or when using a [Contextable](#Contextable) argument with the JS API.
+ */
 export interface IOperationContext extends ICommonContext {}
 
 /**

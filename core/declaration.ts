@@ -1,8 +1,11 @@
+import { IColumnsDescriptor, IDocumentableConfig, ITargetableConfig } from "@dataform/core/common";
 import { mapToColumnProtoArray, Session } from "@dataform/core/session";
 import { dataform } from "@dataform/protos";
-import { IColumnsDescriptor, ICommonOutputConfig } from "@dataform/core/common";
 
-export interface IDeclarationConfig extends ICommonOutputConfig {}
+/**
+ * Configuration options for declarations.
+ */
+export interface IDeclarationConfig extends IDocumentableConfig, ITargetableConfig {}
 
 /**
  * @hidden

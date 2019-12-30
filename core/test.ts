@@ -1,18 +1,24 @@
+import { ICommonConfig, ICommonContext, Resolvable } from "@dataform/core/common";
+import { Contextable } from "@dataform/core/common";
 import { Session } from "@dataform/core/session";
 import * as table from "@dataform/core/table";
 import { ITableContext } from "@dataform/core/table";
 import * as utils from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
-import { Resolvable, ICommonConfig, ICommonContext } from "@dataform/core/common";
-import { Contextable } from "@dataform/core/contextable";
 
+/**
+ * Configuration options for unit tests.
+ */
 export interface ITestConfig {
   /**
-   * The dataset that this unit test is to be run against.
+   * The dataset that this unit test tests.
    */
   dataset?: Resolvable;
 }
 
+/**
+ * @hidden
+ */
 export interface ITestContext extends ICommonContext {}
 
 /**

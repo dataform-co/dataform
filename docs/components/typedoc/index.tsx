@@ -78,16 +78,16 @@ const Module = (props: ITypedoc) => (
 );
 
 const NonModule = (props: ITypedoc) => (
-  <div>
+  <div className={styles.definition}>
     <h2 id={props.name}>{props.name}</h2>
+    {props.comment && <Comment {...props.comment} />}
     {(props.kind === 256 || props.kind === 128) && <Interface {...(props as any)} />}
     {props.kind === 4194304 && <Type {...props.type} />}
   </div>
 );
 
 const Interface = (props: ITypedoc) => (
-  <div className={styles.definition}>
-    {props.comment && <Comment {...props.comment} />}
+  <div>
     {props.children && props.children.map((child, i) => <Property key={i} {...child} />)}
     {props.indexSignature &&
       props.indexSignature.map((indexSignature, i) => (
@@ -102,7 +102,9 @@ const Property = (props: any) => (
       <code>{props.name}</code>
     </div>
     <div>
-      <Type {...props.type} />
+      <code>
+        <Type {...props.type} />
+      </code>
       <div className={styles.propertyComment}>
         <Comment {...props.comment} />
       </div>
@@ -111,16 +113,8 @@ const Property = (props: any) => (
 );
 
 const Type = (props: ITypedocType) => {
-  return (
-    <code>
-      <SubType {...props} />
-    </code>
-  );
-};
-
-const SubType = (props: ITypedocType) => {
   if (props.type === "union") {
-    const subTypes = props.types.map((type: any, i: number) => <SubType key={i} {...type} />);
+    const subTypes = props.types.map((type: any, i: number) => <Type key={i} {...type} />);
     return (
       <>{subTypes.reduce((acc, curr) => (acc.length === 0 ? [curr] : [...acc, " | ", curr]), [])}</>
     );
@@ -138,11 +132,11 @@ const SubType = (props: ITypedocType) => {
               signature.parameters
                 .map((parameter, i) => (
                   <React.Fragment key={i}>
-                    {parameter.name}: <SubType {...parameter.type} />
+                    {parameter.name}: <Type {...parameter.type} />
                   </React.Fragment>
                 ))
                 .reduce((acc, curr) => (acc.length === 0 ? [curr] : [...acc, ", ", curr]), [])}
-            ) => <SubType {...signature.type} />
+            ) => <Type {...signature.type} />
           </React.Fragment>
         ))}
       </>
@@ -168,7 +162,7 @@ const SubType = (props: ITypedocType) => {
 
 const IndexSignature = (props: ITypedocSignature) => (
   <code>
-    {"{ "}[{props.parameters[0].name}]: <SubType {...props.type} />
+    {"{ "}[{props.parameters[0].name}]: <Type {...props.type} />
     {" }"}
   </code>
 );

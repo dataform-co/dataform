@@ -1,13 +1,13 @@
 import * as adapters from "@dataform/core/adapters";
 import { AContextable, Assertion, IAssertionConfig } from "@dataform/core/assertion";
+import { IColumnsDescriptor, IRecordDescriptor, Resolvable } from "@dataform/core/common";
+import { Contextable } from "@dataform/core/common";
 import { Declaration, IDeclarationConfig } from "@dataform/core/declaration";
 import { IOperationConfig, IOperationContext, Operation } from "@dataform/core/operation";
 import { ITableConfig, ITableContext, Table, TableType } from "@dataform/core/table";
 import * as test from "@dataform/core/test";
 import * as utils from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
-import { IColumnsDescriptor, IRecordDescriptor, Resolvable } from "@dataform/core/common";
-import { Contextable } from "@dataform/core/contextable";
 import { util } from "protobufjs";
 import { Graph as TarjanGraph } from "tarjan-graph";
 import * as TarjanGraphConstructor from "tarjan-graph";

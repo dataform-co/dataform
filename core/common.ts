@@ -3,6 +3,8 @@
  */
 export interface ICommonContext {
   /**
+   * Equivelant to `resolve(name())`.
+   *
    * Returns a valid SQL string that can be used to reference the dataset produced by this action.
    */
   self: () => string;
@@ -13,7 +15,7 @@ export interface ICommonContext {
   name: () => string;
 
   /**
-   * References another action, returning valid SQL to be used in a `from` expression and adds it as a dependency to this action.
+   * References another action, adding it as a dependency to this action, returning valid SQL to be used in a `from` expression.
    *
    * This function can be called with a [Resolvable](#Resolvable) object, for example:
    *
@@ -47,13 +49,7 @@ export interface ICommonContext {
  */
 export interface ICommonConfig {
   /**
-   * One or more explicit dependencies for the table action. This is typically not needed, as it is inferred from using
-   * the `ref` function within SQLX files.
-   */
-  dependencies?: Resolvable | Resolvable[];
-
-  /**
-   * A list of tags that should be applied to this action. This is useful for managing large projects.
+   * A list of user-defined tags with which the action should be labeled.
    */
   tags?: string[];
 }
@@ -61,30 +57,46 @@ export interface ICommonConfig {
 /**
  * @hidden
  */
-export interface ICommonOutputConfig extends ICommonConfig {
+export interface ITargetableConfig extends ICommonConfig {
   /**
-   * The database (or Google Cloud project ID) for this dataset.
+   * The database in which the output of this action should be created.
    */
   database?: string;
 
   /**
-   * The schema (or dataset, in BigQuery) for this dataset (or table / view, in BigQuery).
+   * The schema in which the output of this action should be created.
    */
   schema?: string;
-
-  /**
-   * A description of the dataset that will be used to populate the data catalog.
-   */
-  description?: string;
-
-  /**
-   * A descriptor for columns within the dataset.
-   */
-  columns?: IColumnsDescriptor;
 }
 
 /**
- * Describes columns in a dataset, used for populating the data catalog.
+ * @hidden
+ */
+export interface IDependenciesConfig {
+  /**
+   * One or more explicit dependencies for this action. Dependency actions will run before dependent actions.
+   * Typically this would remain unset, because most dependencies are declared as a by-product of using the `ref` function.
+   */
+  dependencies?: Resolvable | Resolvable[];
+}
+
+/**
+ * @hidden
+ */
+export interface IDocumentableConfig {
+  /**
+   * A description of columns within the dataset.
+   */
+  columns?: IColumnsDescriptor;
+
+  /**
+   * A description of the dataset.
+   */
+  description?: string;
+}
+
+/**
+ * Describes columns in a dataset.
  */
 export interface IColumnsDescriptor {
   [name: string]: string | IRecordDescriptor;
@@ -94,7 +106,14 @@ export interface IColumnsDescriptor {
  * Describes a struct, object or record in a dataset that has nested columns.
  */
 export interface IRecordDescriptor {
+  /**
+   * A description of the struct, object or record.
+   */
   description?: string;
+
+  /**
+   * A description of columns within the struct, object or record.
+   */
   columns?: IColumnsDescriptor;
 }
 
@@ -114,3 +133,10 @@ export interface ITarget {
  * an object that describes the full path to the relation.
  */
 export type Resolvable = string | ITarget;
+
+/**
+ * Contextable arguments can either pass a plain value for their
+ * generic type `T` or can pass a function that will be called
+ * with the context object for this type of operation.
+ */
+export type Contextable<Context, T> = T | ((ctx: Context) => T);

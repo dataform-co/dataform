@@ -1,13 +1,15 @@
-import { mapToColumnProtoArray, Session } from "@dataform/core/session";
-import * as utils from "@dataform/core/utils";
-import { dataform } from "@dataform/protos";
 import {
   IColumnsDescriptor,
   ICommonContext,
-  ICommonOutputConfig,
+  IDependenciesConfig,
+  IDocumentableConfig,
+  ITargetableConfig,
   Resolvable
 } from "@dataform/core/common";
-import { Contextable } from "@dataform/core/contextable";
+import { Contextable } from "@dataform/core/common";
+import { mapToColumnProtoArray, Session } from "@dataform/core/session";
+import * as utils from "@dataform/core/utils";
+import { dataform } from "@dataform/protos";
 
 /**
  * @hidden
@@ -53,23 +55,49 @@ export interface IRedshiftOptions {
   /**
    * Sets the DISTKEY property when creating tables.
    *
-   * For more information, read the AWS documentation [here](https://docs.aws.amazon.com/redshift/latest/dg/r_CREATE_TABLE_examples.html#r_CREATE_TABLE_NEW-diststyle-distkey-and-sortkey-options).
+   * For more information, read the [Redshift create table docs](https://docs.aws.amazon.com/redshift/latest/dg/r_CREATE_TABLE_examples.html#r_CREATE_TABLE_NEW-diststyle-distkey-and-sortkey-options).
    */
   distKey?: string;
+
+  /**
+   * Set the DISTSTYLE property when creating tables.
+   *
+   * For more information, read the [Redshift create table docs](https://docs.aws.amazon.com/redshift/latest/dg/r_CREATE_TABLE_examples.html#r_CREATE_TABLE_NEW-diststyle-distkey-and-sortkey-options).
+   */
   distStyle?: string;
+
+  /**
+   * A list of string values that will configure the SORTKEY property when creating tables.
+   *
+   * For more information, read the [Redshift create table docs](https://docs.aws.amazon.com/redshift/latest/dg/r_CREATE_TABLE_examples.html#r_CREATE_TABLE_NEW-diststyle-distkey-and-sortkey-options).
+   */
   sortKeys?: string[];
+
+  /**
+   * Sets the style of the sort key when using sort keys.
+   *
+   * For more information, read the [Redshift sort style article](https://docs.aws.amazon.com/redshift/latest/dg/t_Sorting_data-compare-sort-styles.html).
+   */
   sortStyle?: string;
+
+  /**
+   * By default, views are created as late binding views.
+   *
+   * When this is set to true, views will not be created as late binding views, and the `WITH SCHEMA BINDING` suffix is omitted.
+   *
+   * For more information, read the [Redshift create view docs](https://docs.aws.amazon.com/redshift/latest/dg/r_CREATE_VIEW.html).
+   */
   bind?: boolean;
 }
 
 /**
- * Options for creating tables within Azure SQL Datawarehouse projects.
+ * Options for creating tables within Azure SQL Data Warehouse projects.
  */
 export interface ISQLDataWarehouseOptions {
   /**
    * The distribution option value.
    *
-   * For more information, read the Azure documentation [here](https://docs.microsoft.com/en-gb/sql/t-sql/statements/create-table-as-select-azure-sql-data-warehouse?view=aps-pdw-2016-au7#examples-for-table-distribution).
+   * For more information, read the [Azure CTAS docs](https://docs.microsoft.com/en-gb/sql/t-sql/statements/create-table-as-select-azure-sql-data-warehouse?view=aps-pdw-2016-au7#examples-for-table-distribution).
    */
   distribution?: string;
 }
@@ -79,47 +107,49 @@ export interface ISQLDataWarehouseOptions {
  */
 export interface IBigQueryOptions {
   /**
-   * The key for partitioning the table by, typically a timestamp or date.
+   * The key with which to partition the table. Typically the name of a timestamp or date column.
    *
-   * For more information, read the BigQuery documentation [here](https://cloud.google.com/bigquery/docs/partitioned-tables#next_steps).
+   * For more information, read the [BigQuery partitioned tables docs](https://cloud.google.com/bigquery/docs/partitioned-tables).
    */
   partitionBy?: string;
 }
 
 /**
- * General options that can be provided to a table.
+ * Configuration options for datasets, including tables and views.
  */
-export interface ITableConfig extends ICommonOutputConfig {
+export interface ITableConfig extends ITargetableConfig, IDocumentableConfig, IDependenciesConfig {
   /**
-   * The type of the table. For more information, check out the documentation [guides](guides).
+   * The type of the dataset. For more information on how this setting works, check out some of the [guides](guides)
+   * on publishing different types of datasets with Dataform.
    */
   type?: TableType;
 
   /**
-   * When set to true, the action and SQL queries will not be executed, however they will still be compiled
-   * and the action can still be dependend upon. Useful for temporarily turning off broken actions.
+   * If set to true, this action will not be executed. However, the action may still be depended upon.
+   * Useful for temporarily turning off broken actions.
    */
   disabled?: boolean;
 
   /**
-   * Only allowed when the table type is <code>"incremental"</code>.
-   * When set to true, the full-refresh option will have no effect. This is useful for tables that
-   * Are built from datasources that are transient, and makes sure historical data can never be lost.
+   * Only allowed when the table type is `incremental`.
+   *
+   * If set to true, running this action will ignore the full-refresh option.
+   * This is useful for tables which are built from transient data, to ensure that historical data is never lost.
    */
   protected?: boolean;
 
   /**
-   * Redshift specific warehouse options.
+   * Redshift-specific warehouse options.
    */
   redshift?: IRedshiftOptions;
 
   /**
-   * BigQuery specific warehouse options.
+   * BigQuery-specific warehouse options.
    */
   bigquery?: IBigQueryOptions;
 
   /**
-   * Azure SQL data warehouse specific warehouse options.
+   * Azure SQL Data Warehouse-specific options.
    */
   sqldatawarehouse?: ISQLDataWarehouseOptions;
 }
@@ -127,7 +157,6 @@ export interface ITableConfig extends ICommonOutputConfig {
 /**
  * Context methods are available when evaluating contextable SQL code, such as
  * within SQLX files, or when using a [Contextable](#Contextable) argument with the JS API.
- *
  */
 export interface ITableContext extends ICommonContext {
   /**
