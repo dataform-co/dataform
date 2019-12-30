@@ -1,6 +1,5 @@
 ---
-title: Dataform 102
-priority: 1
+title: Dataform Web 102
 ---
 
 This tutorial demonstrates how dependency trees are made within a project.

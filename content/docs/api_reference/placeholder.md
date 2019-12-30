@@ -1,5 +1,3 @@
 ---
-title: Placeholder
+title: Coming soon...
 ---
-
-TODO: Generated docs will go here.

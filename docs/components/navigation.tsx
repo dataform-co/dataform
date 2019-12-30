@@ -20,9 +20,7 @@ export default class Navigation extends React.Component<IProps> {
         ? a.attributes.title > b.attributes.title
           ? 1
           : -1
-        : a.attributes.priority > b.attributes.priority
-        ? 1
-        : -1
+        : a.attributes.priority - b.attributes.priority
     );
 
     return (

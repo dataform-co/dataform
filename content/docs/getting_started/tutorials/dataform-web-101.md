@@ -1,6 +1,5 @@
 ---
-title: Dataform 101
-priority: 0
+title: Dataform Web 101
 ---
 
 This tutorial demonstrates the first few steps in configuring a new project.
@@ -59,6 +58,14 @@ This shows the exact affect it will have on the warehouse.
 
 ![Publish table](/static/images/how_to_guides/dataform_101/9_publish_table.png)
 
-## Feel proud
+## Next Steps
 
 You've taken the first steps towards improving your data pipeline!
+
+Some of the next features you could use next include:
+
+- Automating repeated runs using [scheduling](../../how_to_guides/scheduling).
+
+- Checking validity of data using [assertions](../../how_to_guides/assertions) or [unit tests](../../how_to_guides/tests).
+
+- [Documenting datasets](../../how_to_guides/documentation).

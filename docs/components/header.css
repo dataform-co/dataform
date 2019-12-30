@@ -39,7 +39,6 @@
 
 .logoImage {
   padding: 20px 10px 0 10px !important;
-  width: auto !important;
 }
 
 .docs_tag {
@@ -54,5 +53,4 @@
   filter: invert(100%);
   height: 25px;
   padding: 0 !important;
-  width: 25px !important;
 }
