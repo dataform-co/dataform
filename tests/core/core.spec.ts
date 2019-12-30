@@ -131,25 +131,6 @@ describe("@dataform/core", () => {
       ]);
     });
 
-    it("config_context", () => {
-      const session = new Session(path.dirname(__filename), TestConfigs.redshift);
-      const t = session
-        .publish(
-          "example",
-          ctx => `
-          ${ctx.type("table")}
-          ${ctx.preOps(["pre_op"])}
-          ${ctx.postOps(["post_op"])}
-        `
-        )
-        .compile();
-
-      expect(t.name).equals("schema.example");
-      expect(t.type).equals("table");
-      expect(t.preOps).deep.equals(["pre_op"]);
-      expect(t.postOps).deep.equals(["post_op"]);
-    });
-
     it("validation_type_incremental", () => {
       const sessionSuccess = new Session(path.dirname(__filename), TestConfigs.redshift);
       sessionSuccess
@@ -157,22 +138,10 @@ describe("@dataform/core", () => {
           type: "incremental"
         })
         .where("test1");
-      sessionSuccess.publish(
-        "exampleSuccess2",
-        ctx => `
-        ${ctx.where("test2")}
-        ${ctx.type("incremental")}
-        select field as 1
-      `
-      );
-      sessionSuccess.publish(
-        "exampleSuccess3",
-        ctx => `
-        ${ctx.type("incremental")}
-        ${ctx.where("test2")}
-        select field as 1
-      `
-      );
+      sessionSuccess
+        .publish("exampleSuccess2", ctx => `select field as 1`)
+        .where("test2")
+        .type("incremental");
       const cgSuccess = sessionSuccess.compile();
       const cgSuccessErrors = utils.validate(cgSuccess);
 

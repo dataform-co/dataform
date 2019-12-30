@@ -1,8 +1,10 @@
 import * as adapters from "@dataform/core/adapters";
-import { AConfig, AContextable, Assertion } from "@dataform/core/assertion";
-import { DConfig, Declaration } from "@dataform/core/declaration";
-import { OConfig, OContextable, Operation } from "@dataform/core/operation";
-import * as table from "@dataform/core/table";
+import { AContextable, Assertion, IAssertionConfig } from "@dataform/core/assertion";
+import { IColumnsDescriptor, IRecordDescriptor, Resolvable } from "@dataform/core/common";
+import { Contextable } from "@dataform/core/common";
+import { Declaration, IDeclarationConfig } from "@dataform/core/declaration";
+import { IOperationConfig, IOperationContext, Operation } from "@dataform/core/operation";
+import { ITableConfig, ITableContext, Table, TableType } from "@dataform/core/table";
 import * as test from "@dataform/core/test";
 import * as utils from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
@@ -13,6 +15,9 @@ import * as TarjanGraphConstructor from "tarjan-graph";
 // Can't use resolveJsonModule with Bazel.
 const { version: dataformCoreVersion } = require("@dataform/core/package.json");
 
+/**
+ * @hidden
+ */
 export interface IActionProto {
   name?: string;
   fileName?: string;
@@ -21,28 +26,16 @@ export interface IActionProto {
   target?: dataform.ITarget;
 }
 
-interface ISqlxConfig extends table.TConfig, AConfig, OConfig, DConfig, test.TConfig {
-  type:
-    | "view"
-    | "table"
-    | "inline"
-    | "incremental"
-    | "assertion"
-    | "operations"
-    | "declaration"
-    | "test";
-  name: string;
-}
+type SqlxConfig = (
+  | ITableConfig & { type: TableType }
+  | IAssertionConfig & { type: "assertion" }
+  | IOperationConfig & { type: "operations" }
+  | IDeclarationConfig & { type: "declaration" }
+  | test.ITestConfig & { type: "test" }) & { name: string };
 
-export interface IColumnsDescriptor {
-  [name: string]: string | IRecordDescriptor;
-}
-
-interface IRecordDescriptor {
-  description?: string;
-  columns?: IColumnsDescriptor;
-}
-
+/**
+ * @hidden
+ */
 export function mapToColumnProtoArray(columns: IColumnsDescriptor): dataform.IColumnDescriptor[] {
   return utils.flatten(
     Object.keys(columns).map(column => mapColumnDescriptionToProto([column], columns[column]))
@@ -82,14 +75,15 @@ function mapColumnDescriptionToProto(
   );
 }
 
-export type Resolvable = string | dataform.ITarget;
-
+/**
+ * @hidden
+ */
 export class Session {
   public rootDir: string;
 
   public config: dataform.IProjectConfig;
 
-  public actions: Array<table.Table | Operation | Assertion | Declaration>;
+  public actions: Array<Table | Operation | Assertion | Declaration>;
   public tests: { [name: string]: test.Test };
 
   public graphErrors: dataform.IGraphErrors;
@@ -114,82 +108,77 @@ export class Session {
   }
 
   public sqlxAction(actionOptions: {
-    sqlxConfig: ISqlxConfig;
+    sqlxConfig: SqlxConfig;
     sqlStatementCount: number;
     hasIncremental: boolean;
     hasPreOperations: boolean;
     hasPostOperations: boolean;
     hasInputs: boolean;
   }) {
-    if (actionOptions.sqlStatementCount > 1 && actionOptions.sqlxConfig.type !== "operations") {
+    const { sqlxConfig } = actionOptions;
+    if (actionOptions.sqlStatementCount > 1 && sqlxConfig.type !== "operations") {
       this.compileError(
         "Actions may only contain more than one SQL statement if they are of type 'operations'."
       );
     }
     if (
-      actionOptions.sqlxConfig.hasOutput &&
-      !(
-        actionOptions.sqlxConfig.type === "operations" ||
-        definesDataset(actionOptions.sqlxConfig.type)
-      )
+      sqlxConfig.hasOwnProperty("hasOutput") &&
+      !(sqlxConfig.type === "operations" || definesDataset(sqlxConfig.type))
     ) {
       this.compileError(
         "Actions may only specify 'hasOutput: true' if they are of type 'operations' or create a dataset."
       );
     }
     if (
-      actionOptions.sqlxConfig.columns &&
-      !declaresDataset(actionOptions.sqlxConfig.type, actionOptions.sqlxConfig.hasOutput)
+      sqlxConfig.hasOwnProperty("columns") &&
+      !declaresDataset(sqlxConfig.type, sqlxConfig.hasOwnProperty("hasOutput"))
     ) {
       this.compileError("Actions may only specify 'columns' if they create or declare a dataset.");
     }
-    if (actionOptions.sqlxConfig.protected && actionOptions.sqlxConfig.type !== "incremental") {
+    if (sqlxConfig.hasOwnProperty("protected") && sqlxConfig.type !== "incremental") {
       this.compileError(
         "Actions may only specify 'protected: true' if they are of type 'incremental'."
       );
     }
-    if (actionOptions.hasIncremental && actionOptions.sqlxConfig.type !== "incremental") {
+    if (actionOptions.hasIncremental && sqlxConfig.type !== "incremental") {
       this.compileError(
         "Actions may only include incremental_where if they are of type 'incremental'."
       );
     }
-    if (!actionOptions.sqlxConfig.schema && actionOptions.sqlxConfig.type === "declaration") {
+    if (!sqlxConfig.hasOwnProperty("schema") && sqlxConfig.type === "declaration") {
       this.compileError("Actions of type 'declaration' must specify a value for 'schema'.");
     }
-    if (actionOptions.sqlxConfig.dataset && actionOptions.sqlxConfig.type !== "test") {
+    if (sqlxConfig.hasOwnProperty("dataset") && sqlxConfig.type !== "test") {
       this.compileError("Actions may only specify 'dataset' if they are of type 'test'.");
     }
-    if (!actionOptions.sqlxConfig.dataset && actionOptions.sqlxConfig.type === "test") {
+    if (!sqlxConfig.hasOwnProperty("dataset") && sqlxConfig.type === "test") {
       this.compileError("Actions must specify 'dataset' if they are of type 'test'.");
     }
-    if (actionOptions.hasInputs && actionOptions.sqlxConfig.type !== "test") {
+    if (actionOptions.hasInputs && sqlxConfig.type !== "test") {
       this.compileError("Actions may only include input blocks if they are of type 'test'.");
     }
-    if (actionOptions.sqlxConfig.disabled && !definesDataset(actionOptions.sqlxConfig.type)) {
+    if (sqlxConfig.hasOwnProperty("disabled") && !definesDataset(sqlxConfig.type)) {
       this.compileError("Actions may only specify 'disabled: true' if they create a dataset.");
     }
-    if (actionOptions.sqlxConfig.redshift && !definesDataset(actionOptions.sqlxConfig.type)) {
+    if (sqlxConfig.hasOwnProperty("redshift") && !definesDataset(sqlxConfig.type)) {
       this.compileError("Actions may only specify 'redshift: { ... }' if they create a dataset.");
     }
-    if (
-      actionOptions.sqlxConfig.sqldatawarehouse &&
-      !definesDataset(actionOptions.sqlxConfig.type)
-    ) {
+    if (sqlxConfig.hasOwnProperty("sqldatawarehouse") && !definesDataset(sqlxConfig.type)) {
       this.compileError(
         "Actions may only specify 'sqldatawarehouse: { ... }' if they create a dataset."
       );
     }
-    if (actionOptions.sqlxConfig.bigquery && !definesDataset(actionOptions.sqlxConfig.type)) {
+    if (sqlxConfig.hasOwnProperty("bigquery") && !definesDataset(sqlxConfig.type)) {
       this.compileError("Actions may only specify 'bigquery: { ... }' if they create a dataset.");
     }
-    if (actionOptions.hasPreOperations && !definesDataset(actionOptions.sqlxConfig.type)) {
+    if (actionOptions.hasPreOperations && !definesDataset(sqlxConfig.type)) {
       this.compileError("Actions may only include pre_operations if they create a dataset.");
     }
-    if (actionOptions.hasPostOperations && !definesDataset(actionOptions.sqlxConfig.type)) {
+    if (actionOptions.hasPostOperations && !definesDataset(sqlxConfig.type)) {
       this.compileError("Actions may only include post_operations if they create a dataset.");
     }
     if (
-      !!actionOptions.sqlxConfig.database &&
+      !!sqlxConfig.hasOwnProperty("sqldatawarehouse") &&
       !["bigquery", "snowflake"].includes(this.config.warehouse)
     ) {
       this.compileError(
@@ -198,28 +187,28 @@ export class Session {
     }
 
     const action = (() => {
-      switch (actionOptions.sqlxConfig.type) {
+      switch (sqlxConfig.type) {
         case "view":
         case "table":
         case "inline":
         case "incremental":
-          return this.publish(actionOptions.sqlxConfig.name);
+          return this.publish(sqlxConfig.name).config(sqlxConfig);
         case "assertion":
-          return this.assert(actionOptions.sqlxConfig.name);
+          return this.assert(sqlxConfig.name).config(sqlxConfig);
         case "operations":
-          return this.operate(actionOptions.sqlxConfig.name);
+          return this.operate(sqlxConfig.name).config(sqlxConfig);
         case "declaration":
           return this.declare({
-            database: actionOptions.sqlxConfig.database,
-            schema: actionOptions.sqlxConfig.schema,
-            name: actionOptions.sqlxConfig.name
-          });
+            database: sqlxConfig.database,
+            schema: sqlxConfig.schema,
+            name: sqlxConfig.name
+          }).config(sqlxConfig);
         case "test":
-          return this.test(actionOptions.sqlxConfig.name);
+          return this.test(sqlxConfig.name).config(sqlxConfig);
         default:
-          throw new Error(`Unrecognized action type: ${actionOptions.sqlxConfig.type}`);
+          throw new Error(`Unrecognized action type: ${(sqlxConfig as SqlxConfig).type}`);
       }
-    })().config(actionOptions.sqlxConfig);
+    })();
     return action;
   }
 
@@ -230,7 +219,7 @@ export class Session {
     }
     const resolved = allResolved.length > 0 ? allResolved[0] : undefined;
 
-    if (resolved && resolved instanceof table.Table && resolved.proto.type === "inline") {
+    if (resolved && resolved instanceof Table && resolved.proto.type === "inline") {
       // TODO: Pretty sure this is broken as the proto.query value may not
       // be set yet as it happens during compilation. We should evalute the query here.
       return `(${resolved.proto.query})`;
@@ -269,7 +258,10 @@ export class Session {
     );
   }
 
-  public operate(name: string, queries?: OContextable<string | string[]>): Operation {
+  public operate(
+    name: string,
+    queries?: Contextable<IOperationContext, string | string[]>
+  ): Operation {
     const operation = new Operation();
     operation.session = this;
     utils.setNameAndTarget(this, operation.proto, name);
@@ -283,9 +275,9 @@ export class Session {
 
   public publish(
     name: string,
-    queryOrConfig?: table.TContextable<string> | table.TConfig
-  ): table.Table {
-    const newTable = new table.Table();
+    queryOrConfig?: Contextable<ITableContext, string> | ITableConfig
+  ): Table {
+    const newTable = new Table();
     newTable.session = this;
     utils.setNameAndTarget(this, newTable.proto, name);
     if (!!queryOrConfig) {
@@ -349,7 +341,7 @@ export class Session {
   public compile(): dataform.CompiledGraph {
     const compiledGraph = dataform.CompiledGraph.create({
       projectConfig: this.config,
-      tables: this.compileGraphChunk(this.actions.filter(action => action instanceof table.Table)),
+      tables: this.compileGraphChunk(this.actions.filter(action => action instanceof Table)),
       operations: this.compileGraphChunk(
         this.actions.filter(action => action instanceof Operation)
       ),
