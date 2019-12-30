@@ -42,6 +42,9 @@ export interface ICommonContext {
   resolve: (ref: Resolvable | string[], ...rest: string[]) => string;
 }
 
+/**
+ * @hidden
+ */
 export interface ICommonConfig {
   /**
    * One or more explicit dependencies for the table action. This is typically not needed, as it is inferred from using
@@ -55,6 +58,9 @@ export interface ICommonConfig {
   tags?: string[];
 }
 
+/**
+ * @hidden
+ */
 export interface ICommonOutputConfig extends ICommonConfig {
   /**
    * The database (or Google Cloud project ID) for this dataset.

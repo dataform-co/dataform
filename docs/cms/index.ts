@@ -9,8 +9,8 @@ export interface IFrontMatter {
 }
 
 export interface IFileTree {
-  file: IFile;
-  attributes: IFrontMatter;
+  file?: IFile;
+  attributes?: IFrontMatter;
   content?: string;
   children?: IFileTree[];
 }

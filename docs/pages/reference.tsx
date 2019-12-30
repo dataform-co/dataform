@@ -1,23 +1,17 @@
-import { Typedoc } from "df/docs/components/typedoc";
+import { ITypedoc, Typedoc } from "df/docs/components/typedoc";
 import Documentation from "df/docs/layouts/documentation";
 import { readFile } from "fs";
-import { NextPageContext } from "next";
 import * as React from "react";
-import { ContainerReflection } from "typedoc";
 import { promisify } from "util";
 
-interface IQuery {}
-
 interface IProps {
-  typedoc: ContainerReflection;
+  typedoc: ITypedoc;
 }
 
 export class Reference extends React.Component<IProps> {
-  public static async getInitialProps({
-    query
-  }: NextPageContext & { query: IQuery }): Promise<IProps> {
+  public static async getInitialProps(): Promise<IProps> {
     const typedocFile = await promisify(readFile)("docs/core.typedoc.json", "utf8");
-    const typedoc: ContainerReflection = JSON.parse(typedocFile);
+    const typedoc: ITypedoc = JSON.parse(typedocFile);
 
     return { typedoc };
   }
@@ -30,13 +24,11 @@ export class Reference extends React.Component<IProps> {
     return (
       <Documentation
         version=""
-        current={{ file: { path: "/reference", hasChildren: false }, attributes: {} }}
-        index={{
+        current={{
           file: { path: "/reference", hasChildren: false },
-          attributes: { title: "API Reference" },
-          content: "",
-          children: []
+          attributes: { title: "Reference" }
         }}
+        index={{ children: [] }}
         headerLinks={Typedoc.getHeaderLinks(typedocProps)}
       >
         <Typedoc {...typedocProps} />
