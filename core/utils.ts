@@ -3,7 +3,7 @@ import { Assertion } from "@dataform/core/assertion";
 import { Declaration } from "@dataform/core/declaration";
 import { Operation } from "@dataform/core/operation";
 import { IActionProto, Session } from "@dataform/core/session";
-import { DistStyleType, ignoredProps, SortStyleType, Table, TableType } from "@dataform/core/table";
+import { DistStyleType, SortStyleType, Table, TableType } from "@dataform/core/table";
 import { dataform } from "@dataform/protos";
 import { Resolvable } from "df/core/common";
 
@@ -195,8 +195,8 @@ export function validate(compiledGraph: dataform.ICompiledGraph): dataform.IGrap
     }
 
     // ignored properties in tables
-    if (!!ignoredProps[action.type]) {
-      ignoredProps[action.type].forEach(ignoredProp => {
+    if (!!Table.IGNORED_PROPS[action.type]) {
+      Table.IGNORED_PROPS[action.type].forEach(ignoredProp => {
         if (objectExistsOrIsNonEmpty(action[ignoredProp])) {
           const message = `Unused property was detected: "${ignoredProp}". This property is not used for tables with type "${action.type}" and will be ignored.`;
           validationErrors.push(dataform.ValidationError.create({ message, actionName }));

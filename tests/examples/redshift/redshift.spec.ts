@@ -1,4 +1,5 @@
 import * as dfapi from "@dataform/api";
+import { dataform } from "@dataform/protos";
 import { expect } from "chai";
 
 describe("@dataform/examples/redshift", () => {
@@ -16,6 +17,6 @@ describe("@dataform/examples/redshift", () => {
     const buildResult = await dfapi.build(compiledGraph, {}, credentials);
     const runResult = await dfapi.run(buildResult, credentials).resultPromise();
 
-    expect(runResult.ok).equals(true);
+    expect(runResult.status).equals(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
   });
 });

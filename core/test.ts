@@ -3,12 +3,8 @@ import * as table from "@dataform/core/table";
 import { ITableContext } from "@dataform/core/table";
 import * as utils from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
-import { Resolvable } from "df/core/common";
-
-/**
- * @hidden
- */
-export type TestContextable<T> = T | ((ctx: TestContext) => T);
+import { Resolvable, ICommonConfig, ICommonContext } from "df/core/common";
+import { Contextable } from "df/core/contextable";
 
 export interface ITestConfig {
   /**
@@ -17,6 +13,8 @@ export interface ITestConfig {
   dataset?: Resolvable;
 }
 
+export interface ITestContext extends ICommonContext {}
+
 /**
  * @hidden
  */
@@ -24,10 +22,10 @@ export class Test {
   public proto: dataform.ITest = dataform.Test.create();
 
   public session: Session;
-  public contextableInputs: { [refName: string]: TestContextable<string> } = {};
+  public contextableInputs: { [refName: string]: Contextable<ITestContext, string> } = {};
 
   private datasetToTest: Resolvable;
-  private contextableQuery: TestContextable<string>;
+  private contextableQuery: Contextable<ITestContext, string>;
 
   public config(config: ITestConfig) {
     if (config.dataset) {
@@ -41,12 +39,12 @@ export class Test {
     return this;
   }
 
-  public input(refName: string, contextableQuery: TestContextable<string>) {
+  public input(refName: string, contextableQuery: Contextable<ITestContext, string>) {
     this.contextableInputs[refName] = contextableQuery;
     return this;
   }
 
-  public expect(contextableQuery: TestContextable<string>) {
+  public expect(contextableQuery: Contextable<ITestContext, string>) {
     this.contextableQuery = contextableQuery;
     return this;
   }
@@ -96,7 +94,7 @@ export class TestContext {
     this.test = test;
   }
 
-  public apply<T>(value: TestContextable<T>): T {
+  public apply<T>(value: Contextable<ITestContext, T>): T {
     if (typeof value === "function") {
       return (value as any)(this);
     } else {
@@ -136,7 +134,7 @@ class RefReplacingContext implements ITableContext {
     return `(${this.testContext.apply(this.testContext.test.contextableInputs[ref])})`;
   }
 
-  public apply<T>(value: table.TContextable<T>): T {
+  public apply<T>(value: Contextable<ITableContext, T>): T {
     if (typeof value === "function") {
       return (value as any)(this);
     } else {
@@ -160,7 +158,7 @@ class RefReplacingContext implements ITableContext {
     return "";
   }
 
-  public where(where: table.TContextable<string>) {
+  public where(where: Contextable<ITableContext, string>) {
     return "";
   }
 
@@ -173,11 +171,11 @@ class RefReplacingContext implements ITableContext {
     return "";
   }
 
-  public preOps(statement: table.TContextable<string | string[]>) {
+  public preOps(statement: Contextable<ITableContext, string | string[]>) {
     return "";
   }
 
-  public postOps(statement: table.TContextable<string | string[]>) {
+  public postOps(statement: Contextable<ITableContext, string | string[]>) {
     return "";
   }
 

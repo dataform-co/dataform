@@ -1,12 +1,13 @@
 import * as adapters from "@dataform/core/adapters";
 import { AContextable, Assertion, IAssertionConfig } from "@dataform/core/assertion";
 import { Declaration, IDeclarationConfig } from "@dataform/core/declaration";
-import { IOperationConfig, OContextable, Operation } from "@dataform/core/operation";
-import { ITableConfig, Table, TableType, TContextable } from "@dataform/core/table";
+import { IOperationConfig, IOperationContext, Operation } from "@dataform/core/operation";
+import { ITableConfig, ITableContext, Table, TableType } from "@dataform/core/table";
 import * as test from "@dataform/core/test";
 import * as utils from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
 import { IColumnsDescriptor, IRecordDescriptor, Resolvable } from "df/core/common";
+import { Contextable } from "df/core/contextable";
 import { util } from "protobufjs";
 import { Graph as TarjanGraph } from "tarjan-graph";
 import * as TarjanGraphConstructor from "tarjan-graph";
@@ -257,7 +258,10 @@ export class Session {
     );
   }
 
-  public operate(name: string, queries?: OContextable<string | string[]>): Operation {
+  public operate(
+    name: string,
+    queries?: Contextable<IOperationContext, string | string[]>
+  ): Operation {
     const operation = new Operation();
     operation.session = this;
     utils.setNameAndTarget(this, operation.proto, name);
@@ -269,7 +273,10 @@ export class Session {
     return operation;
   }
 
-  public publish(name: string, queryOrConfig?: TContextable<string> | ITableConfig): Table {
+  public publish(
+    name: string,
+    queryOrConfig?: Contextable<ITableContext, string> | ITableConfig
+  ): Table {
     const newTable = new Table();
     newTable.session = this;
     utils.setNameAndTarget(this, newTable.proto, name);

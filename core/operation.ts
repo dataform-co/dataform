@@ -7,11 +7,7 @@ import {
   ICommonOutputConfig,
   Resolvable
 } from "df/core/common";
-
-/**
- * @hidden
- */
-export type OContextable<T> = T | ((ctx: OperationContext) => T);
+import { Contextable } from "df/core/contextable";
 
 export interface IOperationConfig extends ICommonOutputConfig {
   /**
@@ -29,6 +25,8 @@ export interface IOperationConfig extends ICommonOutputConfig {
   hasOutput?: boolean;
 }
 
+export interface IOperationContext extends ICommonContext {}
+
 /**
  * @hidden
  */
@@ -39,7 +37,7 @@ export class Operation {
   public session: Session;
 
   // We delay contextification until the final compile step, so hold these here for now.
-  private contextableQueries: OContextable<string | string[]>;
+  private contextableQueries: Contextable<IOperationContext, string | string[]>;
 
   public config(config: IOperationConfig) {
     if (config.dependencies) {
@@ -66,7 +64,7 @@ export class Operation {
     return this;
   }
 
-  public queries(queries: OContextable<string | string[]>) {
+  public queries(queries: Contextable<IOperationContext, string | string[]>) {
     this.contextableQueries = queries;
     return this;
   }
@@ -150,8 +148,6 @@ export class Operation {
   }
 }
 
-export interface IOperationContext extends ICommonContext {}
-
 /**
  * @hidden
  */
@@ -200,7 +196,7 @@ export class OperationContext implements IOperationContext {
     return "";
   }
 
-  public apply<T>(value: OContextable<T>): T {
+  public apply<T>(value: Contextable<IOperationContext, T>): T {
     if (typeof value === "function") {
       return (value as any)(this);
     } else {

@@ -7,9 +7,7 @@ import {
   ICommonOutputConfig,
   Resolvable
 } from "df/core/common";
-
-// For documentation purposes, there should be no protos in public interfaces for the SQLX or JS API.
-// The following interfaces should be kept up to date and documented in line with protobuf interfaces.
+import { Contextable } from "df/core/contextable";
 
 /**
  * @hidden
@@ -47,11 +45,6 @@ export const SortStyleType = ["compound", "interleaved"] as const;
  * View the [Redshift documentation](https://docs.aws.amazon.com/redshift/latest/dg/r_CREATE_TABLE_examples.html#r_CREATE_TABLE_NEW-diststyle-distkey-and-sortkey-options) for more information.
  */
 export type SortStyleType = typeof SortStyleType[number];
-
-/**
- * @hidden
- */
-export type TContextable<T> = T | ((ctx: TableContext) => T);
 
 /**
  * Redshift specific warehouse options.
@@ -132,9 +125,41 @@ export interface ITableConfig extends ICommonOutputConfig {
 }
 
 /**
+ * Context methods are available when evaluating contextable SQL code, such as
+ * within SQLX files, or when using a [Contextable](#Contextable) argument with the JS API.
+ *
+ */
+export interface ITableContext extends ICommonContext {
+  /**
+   * @hidden
+   */
+  isIncremental: () => boolean;
+
+  /**
+   * @hidden
+   */
+  ifIncremental: (value: string) => string;
+}
+
+/**
  * @hidden
  */
 export class Table {
+  public static readonly IGNORED_PROPS: {
+    [tableType: string]: Array<keyof dataform.ITable>;
+  } = {
+    inline: [
+      "bigquery",
+      "redshift",
+      "sqlDataWarehouse",
+      "preOps",
+      "postOps",
+      "actionDescriptor",
+      "disabled",
+      "where"
+    ]
+  };
+
   public proto: dataform.ITable = dataform.Table.create({
     type: "view",
     disabled: false,
@@ -145,10 +170,10 @@ export class Table {
   public session: Session;
 
   // We delay contextification until the final compile step, so hold these here for now.
-  public contextableQuery: TContextable<string>;
-  private contextableWhere: TContextable<string>;
-  private contextablePreOps: Array<TContextable<string | string[]>> = [];
-  private contextablePostOps: Array<TContextable<string | string[]>> = [];
+  public contextableQuery: Contextable<ITableContext, string>;
+  private contextableWhere: Contextable<ITableContext, string>;
+  private contextablePreOps: Array<Contextable<ITableContext, string | string[]>> = [];
+  private contextablePostOps: Array<Contextable<ITableContext, string | string[]>> = [];
 
   public config(config: ITableConfig) {
     if (config.type) {
@@ -196,22 +221,22 @@ export class Table {
     return this;
   }
 
-  public query(query: TContextable<string>) {
+  public query(query: Contextable<ITableContext, string>) {
     this.contextableQuery = query;
     return this;
   }
 
-  public where(where: TContextable<string>) {
+  public where(where: Contextable<ITableContext, string>) {
     this.contextableWhere = where;
     return this;
   }
 
-  public preOps(pres: TContextable<string | string[]>) {
+  public preOps(pres: Contextable<ITableContext, string | string[]>) {
     this.contextablePreOps.push(pres);
     return this;
   }
 
-  public postOps(posts: TContextable<string | string[]>) {
+  public postOps(posts: Contextable<ITableContext, string | string[]>) {
     this.contextablePostOps.push(posts);
     return this;
   }
@@ -329,21 +354,6 @@ export class Table {
 }
 
 /**
- * @inheritdoc
- */
-export interface ITableContext extends ICommonContext {
-  /**
-   * @hidden
-   */
-  isIncremental: () => boolean;
-
-  /**
-   * @hidden
-   */
-  ifIncremental: (value: string) => string;
-}
-
-/**
  * @hidden
  */
 export class TableContext implements ITableContext {
@@ -382,7 +392,7 @@ export class TableContext implements ITableContext {
     return "";
   }
 
-  public where(where: TContextable<string>) {
+  public where(where: Contextable<ITableContext, string>) {
     this.table.where(where);
     return "";
   }
@@ -395,12 +405,12 @@ export class TableContext implements ITableContext {
     return this.isIncremental() ? value : "";
   }
 
-  public preOps(statement: TContextable<string | string[]>) {
+  public preOps(statement: Contextable<ITableContext, string | string[]>) {
     this.table.preOps(statement);
     return "";
   }
 
-  public postOps(statement: TContextable<string | string[]>) {
+  public postOps(statement: Contextable<ITableContext, string | string[]>) {
     this.table.postOps(statement);
     return "";
   }
@@ -425,7 +435,7 @@ export class TableContext implements ITableContext {
     return "";
   }
 
-  public apply<T>(value: TContextable<T>): T {
+  public apply<T>(value: Contextable<ITableContext, T>): T {
     if (typeof value === "function") {
       return (value as any)(this);
     } else {
@@ -438,21 +448,3 @@ export class TableContext implements ITableContext {
     return "";
   }
 }
-
-/**
- * @hidden
- */
-export const ignoredProps: {
-  [tableType: string]: Array<keyof dataform.ITable>;
-} = {
-  inline: [
-    "bigquery",
-    "redshift",
-    "sqlDataWarehouse",
-    "preOps",
-    "postOps",
-    "actionDescriptor",
-    "disabled",
-    "where"
-  ]
-};
