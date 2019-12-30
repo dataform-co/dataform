@@ -15,9 +15,7 @@ SQLX contains the following components:
 
 - [SQL](#sql): The SQL operation(s) to be performed. [In-line Javascript](#in-line-javascript) or [built-in functions](#built-in-functions) can be injected here.
 
-- [Javascript](#javascript-blocks): These provide all the incredible functionality of Javascript written alongside SQL!
-
-- [In-line Javascript](#in-line-javascript): In addition to Javascript blocks, in-line Javascript can be written within SQL by using `${}`, for example `${console.log("foo")}`.
+- [Javascript](#javascript) (and in-line Javascript): These provide all the incredible functionality of Javascript written alongside SQL!
 
 - [Built-in functions](#built-in-functions): There are various useful built-in functions that can be used, such as `ref()` or `self()`.
 
@@ -29,25 +27,29 @@ All config properties, and the config itself, are optional. See the API referenc
 
 Anything written outside of control blocks (`{}`) is interpreted as SQL. Therefore to start an SQL block, just close off any prior blocks.
 
-### Javascript blocks
+### Javascript
 
-Javascript blocks are defined in SQLX by writing `js { }`.
+Javascript can be used within SQLX via a Javascript block, which can then be injected into the SQL using in-line Javascript in order to dynamically modify the query.
 
-Javascript blocks in SQLX provide all the incredible functionality of Javascript written alongside SQL!
-
-### In-line Javascript
-
-In-line Javascript can be used anywhere SQL is written in order to dynamically modify the query.
-
-For example,
+For example:
 
 ```SQL
-SELECT * FROM ${example}
-
 js {
   const example = "foo";
 }
+
+SELECT * FROM ${example}
 ```
+
+#### Javascript Blocks
+
+Javascript blocks are defined in SQLX by writing `js { }`.
+
+JavaScript blocks in SQLX can be used for defining reusable functions that can be used to generate repetitive parts of SQL code.
+
+#### In-line Javascript
+
+In-line Javascript can be used anywhere SQL is written in order to dynamically modify the query. It is injected by using `${}`, for example `${console.log("foo")}`.
 
 ### Built-in functions
 
