@@ -1,1 +1,0 @@
-vacuum ${ref("load_from_s3")} to 100 percent;
