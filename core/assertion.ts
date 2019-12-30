@@ -3,12 +3,14 @@ import * as utils from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
 import { ICommonContext, ICommonOutputConfig, Resolvable } from "df/core/common";
 
+export interface IAssertionContext extends ICommonContext {}
+
+export interface IAssertionConfig extends ICommonOutputConfig {}
+
 /**
  * @hidden
  */
 export type AContextable<T> = T | ((ctx: AssertionContext) => T);
-
-export interface IAssertionConfig extends ICommonOutputConfig {}
 
 /**
  * @hidden
@@ -94,8 +96,6 @@ export class Assertion {
     return this.proto;
   }
 }
-
-export interface IAssertionContext extends ICommonContext {}
 
 /**
  * @hidden
