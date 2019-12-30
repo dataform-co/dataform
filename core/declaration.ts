@@ -1,6 +1,6 @@
 import { mapToColumnProtoArray, Session } from "@dataform/core/session";
 import { dataform } from "@dataform/protos";
-import { IColumnsDescriptor, ICommonOutputConfig } from "df/core/common";
+import { IColumnsDescriptor, ICommonOutputConfig } from "@dataform/core/common";
 
 export interface IDeclarationConfig extends ICommonOutputConfig {}
 

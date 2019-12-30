@@ -3,8 +3,8 @@ import * as table from "@dataform/core/table";
 import { ITableContext } from "@dataform/core/table";
 import * as utils from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
-import { Resolvable, ICommonConfig, ICommonContext } from "df/core/common";
-import { Contextable } from "df/core/contextable";
+import { Resolvable, ICommonConfig, ICommonContext } from "@dataform/core/common";
+import { Contextable } from "@dataform/core/contextable";
 
 export interface ITestConfig {
   /**

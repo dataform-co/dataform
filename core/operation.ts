@@ -6,8 +6,8 @@ import {
   ICommonContext,
   ICommonOutputConfig,
   Resolvable
-} from "df/core/common";
-import { Contextable } from "df/core/contextable";
+} from "@dataform/core/common";
+import { Contextable } from "@dataform/core/contextable";
 
 export interface IOperationConfig extends ICommonOutputConfig {
   /**

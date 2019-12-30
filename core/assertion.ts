@@ -1,7 +1,7 @@
 import { Session } from "@dataform/core/session";
 import * as utils from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
-import { ICommonContext, ICommonOutputConfig, Resolvable } from "df/core/common";
+import { ICommonContext, ICommonOutputConfig, Resolvable } from "@dataform/core/common";
 
 export interface IAssertionContext extends ICommonContext {}
 

@@ -6,8 +6,8 @@ import { ITableConfig, ITableContext, Table, TableType } from "@dataform/core/ta
 import * as test from "@dataform/core/test";
 import * as utils from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
-import { IColumnsDescriptor, IRecordDescriptor, Resolvable } from "df/core/common";
-import { Contextable } from "df/core/contextable";
+import { IColumnsDescriptor, IRecordDescriptor, Resolvable } from "@dataform/core/common";
+import { Contextable } from "@dataform/core/contextable";
 import { util } from "protobufjs";
 import { Graph as TarjanGraph } from "tarjan-graph";
 import * as TarjanGraphConstructor from "tarjan-graph";

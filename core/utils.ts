@@ -5,7 +5,7 @@ import { Operation } from "@dataform/core/operation";
 import { IActionProto, Session } from "@dataform/core/session";
 import { DistStyleType, SortStyleType, Table, TableType } from "@dataform/core/table";
 import { dataform } from "@dataform/protos";
-import { Resolvable } from "df/core/common";
+import { Resolvable } from "@dataform/core/common";
 
 const SQL_DATA_WAREHOUSE_DIST_HASH_REGEXP = new RegExp("HASH\\s*\\(\\s*\\w*\\s*\\)\\s*");
 
