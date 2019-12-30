@@ -31,9 +31,34 @@ filegroup(
     srcs = glob(["static/**/*.*"]),
 )
 
+load("@npm//typedoc:index.bzl", "typedoc")
+
+typedoc(
+    name = "typedoc",
+    outs = ["core.typedoc.json"],
+    args = [
+        "--json",
+        "$(location :core.typedoc.json)",
+        "--excludePrivate",
+        "--excludeNotExported",
+        "--ignoreCompilerErrors",
+        "--entryPoint",
+        "\"table\"",
+        "--excludeExternals",
+        "core/table.ts",
+        "core/assertion.ts",
+        "core/declaration.ts",
+        "core/operation.ts",
+        "core/test.ts",
+        "core/common.ts",
+    ],
+    data = ["//core:files", "//:tsconfig.json"],
+)
+
 load("@npm//next:index.bzl", "next")
 
 DEPS = [
+    ":core.typedoc.json",
     ":css_typings",
     "//:package.json",
     "//:tsconfig.json",

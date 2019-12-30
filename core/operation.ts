@@ -1,24 +1,45 @@
 import {
   IColumnsDescriptor,
-  mapToColumnProtoArray,
-  Resolvable,
-  Session
-} from "@dataform/core/session";
+  ICommonContext,
+  IDependenciesConfig,
+  IDocumentableConfig,
+  ITargetableConfig,
+  Resolvable
+} from "@dataform/core/common";
+import { Contextable } from "@dataform/core/common";
+import { mapToColumnProtoArray, Session } from "@dataform/core/session";
 import * as utils from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
 
-export type OContextable<T> = T | ((ctx: OperationContext) => T);
-
-export interface OConfig {
-  dependencies?: Resolvable | Resolvable[];
-  tags?: string[];
-  description?: string;
-  columns?: IColumnsDescriptor;
+/**
+ * Configuration options for `operations` action types.
+ */
+export interface IOperationConfig
+  extends ITargetableConfig,
+    IDocumentableConfig,
+    IDependenciesConfig {
+  /**
+   * Declares that this `operations` action creates a dataset which should be referenceable using the `ref` function.
+   *
+   * If set to true, this action should create a dataset with its configured name, using the `self()` context function.
+   *
+   * For example:
+   * ```sql
+   * create or replace table ${self()} as select ...
+   * ```
+   */
   hasOutput?: boolean;
-  database?: string;
-  schema?: string;
 }
 
+/**
+ * Context methods are available when evaluating contextable SQL code, such as
+ * within SQLX files, or when using a [Contextable](#Contextable) argument with the JS API.
+ */
+export interface IOperationContext extends ICommonContext {}
+
+/**
+ * @hidden
+ */
 export class Operation {
   public proto: dataform.IOperation = dataform.Operation.create();
 
@@ -26,9 +47,9 @@ export class Operation {
   public session: Session;
 
   // We delay contextification until the final compile step, so hold these here for now.
-  private contextableQueries: OContextable<string | string[]>;
+  private contextableQueries: Contextable<IOperationContext, string | string[]>;
 
-  public config(config: OConfig) {
+  public config(config: IOperationConfig) {
     if (config.dependencies) {
       this.dependencies(config.dependencies);
     }
@@ -53,7 +74,7 @@ export class Operation {
     return this;
   }
 
-  public queries(queries: OContextable<string | string[]>) {
+  public queries(queries: Contextable<IOperationContext, string | string[]>) {
     this.contextableQueries = queries;
     return this;
   }
@@ -137,7 +158,10 @@ export class Operation {
   }
 }
 
-export class OperationContext {
+/**
+ * @hidden
+ */
+export class OperationContext implements IOperationContext {
   private operation?: Operation;
 
   constructor(operation: Operation) {
@@ -145,10 +169,7 @@ export class OperationContext {
   }
 
   public self(): string {
-    return this.resolve({
-      schema: this.operation.proto.target.schema,
-      name: this.operation.proto.target.name
-    });
+    return this.resolve(this.operation.proto.target);
   }
 
   public name(): string {
@@ -185,7 +206,7 @@ export class OperationContext {
     return "";
   }
 
-  public apply<T>(value: OContextable<T>): T {
+  public apply<T>(value: Contextable<IOperationContext, T>): T {
     if (typeof value === "function") {
       return (value as any)(this);
     } else {
