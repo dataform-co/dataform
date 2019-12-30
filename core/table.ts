@@ -18,11 +18,11 @@ export const TableType = ["table", "view", "incremental", "inline"] as const;
 /**
  * Supported types of table actions.
  *
- * Tables of type "view" will be created as views.
+ * Tables of type `view` will be created as views.
  *
- * Tables of type "table" will be created as tables.
+ * Tables of type `table` will be created as tables.
  *
- * Tables of type "incremental" must have a where clause provided. For more information, see the [incremental tables guide](guides/incremental-datasets).
+ * Tables of type `incremental` must have a where clause provided. For more information, see the [incremental tables guide](guides/incremental-datasets).
  */
 export type TableType = typeof TableType[number];
 

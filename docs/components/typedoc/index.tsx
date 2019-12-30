@@ -82,7 +82,11 @@ const NonModule = (props: ITypedoc) => (
     <h2 id={props.name}>{props.name}</h2>
     {props.comment && <Comment {...props.comment} />}
     {(props.kind === 256 || props.kind === 128) && <Interface {...(props as any)} />}
-    {props.kind === 4194304 && <Type {...props.type} />}
+    {props.kind === 4194304 && (
+      <code>
+        <Type {...props.type} />
+      </code>
+    )}
   </div>
 );
 
