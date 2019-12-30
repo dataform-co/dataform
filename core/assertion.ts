@@ -15,7 +15,7 @@ import { dataform } from "@dataform/protos";
 export interface IAssertionContext extends ICommonContext {}
 
 /**
- * Configuration options for assertions.
+ * Configuration options for `assertion` action types.
  */
 export interface IAssertionConfig extends ITargetableConfig, IDependenciesConfig {
   /**

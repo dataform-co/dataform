@@ -12,7 +12,7 @@ import * as utils from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
 
 /**
- * Configuration options for operations.
+ * Configuration options for `operations` action types.
  */
 export interface IOperationConfig
   extends ITargetableConfig,

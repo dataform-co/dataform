@@ -3,7 +3,7 @@ import { mapToColumnProtoArray, Session } from "@dataform/core/session";
 import { dataform } from "@dataform/protos";
 
 /**
- * Configuration options for declarations.
+ * Configuration options for `declaration` action types.
  */
 export interface IDeclarationConfig extends IDocumentableConfig, ITargetableConfig {}
 

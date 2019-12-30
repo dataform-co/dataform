@@ -115,7 +115,7 @@ export interface IBigQueryOptions {
 }
 
 /**
- * Configuration options for datasets, including tables and views.
+ * Configuration options for `dataset` actions, including `table`, `view` and `incremental` action types.
  */
 export interface ITableConfig extends ITargetableConfig, IDocumentableConfig, IDependenciesConfig {
   /**
