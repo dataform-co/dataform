@@ -984,6 +984,11 @@
     lodash "^4.17.13"
     to-fast-properties "^2.0.0"
 
+"@bazel/hide-bazel-files@latest":
+  version "1.0.0"
+  resolved "https://registry.yarnpkg.com/@bazel/hide-bazel-files/-/hide-bazel-files-1.0.0.tgz#779070dcb5ae121ff6c72d73bf3fb7bf68285d75"
+  integrity sha512-dfw2W7xDUPlRMcDMVO8gDkX9Xb7Thy3sP4PDODv+eiHOvwIi116X/wwy7mQUZISkJdEJ1zWy9ydpzvfetpYh4w==
+
 "@bazel/ibazel@^0.9.1":
   version "0.9.1"
   resolved "https://registry.yarnpkg.com/@bazel/ibazel/-/ibazel-0.9.1.tgz#d3248d60b7ef44ced1c2bdecda87ab2b6141a56e"
