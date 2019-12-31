@@ -53,8 +53,9 @@ nodejs_binary(
     templated_args = ["--node_options=--preserve-symlinks"],
 )
 
-load("@com_github_bazelbuild_buildtools//buildifier:def.bzl", "buildifier")
+load("@bazel_gazelle//:def.bzl", "gazelle")
 
-buildifier(
-    name = "buildifier",
-)
+# gazelle:prefix github.com/dataform-co/dataform
+# gazelle:proto package
+# gazelle:proto_group go_package
+gazelle(name = "gazelle")
