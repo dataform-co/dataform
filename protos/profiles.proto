@@ -2,6 +2,8 @@ syntax="proto3";
 
 package dataform;
 
+option go_package = "github.com/dataform-co/dataform/protos/dataform";
+
 message JDBC {
   string host = 2;
   int32 port = 3;

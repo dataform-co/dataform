@@ -52,7 +52,10 @@ typedoc(
         "core/test.ts",
         "core/common.ts",
     ],
-    data = ["//core:files", "//:tsconfig.json"],
+    data = [
+        "//core:files",
+        "//:tsconfig.json",
+    ],
 )
 
 load("@npm//next:index.bzl", "next")
