@@ -1,6 +1,7 @@
 {
   "dependencies": {
     "@babel/runtime": "^7.2.0",
+    "@bazel/hide-bazel-files": "1.0.0",
     "@bazel/ibazel": "^0.9.1",
     "@bazel/labs": "^0.42.3",
     "@bazel/typescript": "^0.42.2",
@@ -83,7 +84,7 @@
     "tslint-config-prettier": "^1.18.0",
     "tslint-react": "^3.6.0",
     "typed-css-modules": "^0.3.7",
-    "typedoc": "^0.15.5",
+    "typedoc": "^0.15.0",
     "typescript": "^3.5.1",
     "uglify-es": "^3.3.9",
     "uglify-js": "^3.4.9",

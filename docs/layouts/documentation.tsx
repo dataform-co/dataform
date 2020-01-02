@@ -10,6 +10,7 @@ export interface IProps {
   version: string;
   index: IFileTree;
   current: IFileTree;
+  headerLinks?: IHeaderLink[];
 }
 
 export default class Documentation extends React.Component<IProps> {
@@ -29,7 +30,7 @@ export default class Documentation extends React.Component<IProps> {
   }
 
   public render() {
-    const currentHeaderLinks = this.getHeaderLinks();
+    const currentHeaderLinks = this.props.headerLinks || this.getHeaderLinks();
     return (
       <BaseLayout title={`Dataform docs | ${this.props.current.attributes.title}`}>
         <div className={styles.container}>
