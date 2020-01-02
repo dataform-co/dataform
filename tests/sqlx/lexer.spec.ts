@@ -116,18 +116,9 @@ describe("@dataform/sqlx", () => {
   });
   describe("whitespace parsing", () => {
     it("whitespace not required after JS blocks at end of file.", () => {
-      const test = "select ${TEST}\njs {\n    const TEST = 'test';\n}";
-      const expectedSqlx = "select ${TEST}\njs {\n    const TEST = 'test';\n}";
-      console.log("PARSED", parseSqlx(test));
-      const expectedTree = {
-        contentType: "sql",
-        contents: [
-          "select ${TEST}",
-          { contentType: "js", contents: ["js {      const TEST = 'test' }"] }
-        ]
-      };
-      expect(parseSqlx(test).js).eql("\n    const TEST = 'test';\n");
-      // expect(constructSyntaxTree(test)).eql(expectedTree);
+      expect(parseSqlx("select ${TEST}\njs {\n    const TEST = 'test';\n}").js).eql(
+        "\n    const TEST = 'test';\n"
+      );
     });
   });
 });
