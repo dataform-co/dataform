@@ -239,6 +239,11 @@ export function parseSqlx(code: string): ISqlxParseResults {
       results.js = results.js.substring(0, results.js.length - 1);
     }
   }
+  // In the case where there are no characters after the JS block, the new
+  // state is not checked for, so the curly brace has to be removed here.
+  if (results.js.substr(results.js.length - 1) === "}") {
+    results.js = results.js.substring(0, results.js.length - 1);
+  }
   return results;
 }
 
