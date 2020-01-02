@@ -1,18 +1,21 @@
-import { IColumnsDescriptor, mapToColumnProtoArray, Session } from "@dataform/core/session";
+import { IColumnsDescriptor, IDocumentableConfig, ITargetableConfig } from "@dataform/core/common";
+import { mapToColumnProtoArray, Session } from "@dataform/core/session";
 import { dataform } from "@dataform/protos";
 
-export interface DConfig {
-  description?: string;
-  columns?: IColumnsDescriptor;
-  schema?: string;
-}
+/**
+ * Configuration options for `declaration` action types.
+ */
+export interface IDeclarationConfig extends IDocumentableConfig, ITargetableConfig {}
 
+/**
+ * @hidden
+ */
 export class Declaration {
   public proto: dataform.IDeclaration = dataform.Declaration.create();
 
   public session: Session;
 
-  public config(config: DConfig) {
+  public config(config: IDeclarationConfig) {
     if (config.description) {
       this.description(config.description);
     }

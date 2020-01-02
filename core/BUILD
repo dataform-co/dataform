@@ -2,9 +2,17 @@ package(default_visibility = ["//visibility:public"])
 
 load("@npm_bazel_typescript//:index.bzl", "ts_library")
 
+filegroup(
+    name = "files",
+    srcs = glob(["**/*.*"]),
+)
+
 ts_library(
     name = "core",
     srcs = glob(["**/*.ts"]),
+    data = [
+        ":package.json",
+    ],
     module_name = "@dataform/core",
     deps = [
         "//protos",
@@ -15,9 +23,6 @@ ts_library(
         "@npm//semver",
         "@npm//tarjan-graph",
     ],
-    data = [
-        ":package.json"
-    ]
 )
 
 load("//tools/npm:package.bzl", "dataform_npm_package")

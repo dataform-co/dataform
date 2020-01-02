@@ -1,24 +1,39 @@
-import { Resolvable, Session } from "@dataform/core/session";
+import { ICommonConfig, ICommonContext, Resolvable } from "@dataform/core/common";
+import { Contextable } from "@dataform/core/common";
+import { Session } from "@dataform/core/session";
 import * as table from "@dataform/core/table";
+import { ITableContext } from "@dataform/core/table";
 import * as utils from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
 
-export type TContextable<T> = T | ((ctx: TestContext) => T);
-
-export interface TConfig {
+/**
+ * Configuration options for unit tests.
+ */
+export interface ITestConfig {
+  /**
+   * The dataset that this unit test tests.
+   */
   dataset?: Resolvable;
 }
 
+/**
+ * @hidden
+ */
+export interface ITestContext extends ICommonContext {}
+
+/**
+ * @hidden
+ */
 export class Test {
   public proto: dataform.ITest = dataform.Test.create();
 
   public session: Session;
-  public contextableInputs: { [refName: string]: TContextable<string> } = {};
+  public contextableInputs: { [refName: string]: Contextable<ITestContext, string> } = {};
 
   private datasetToTest: Resolvable;
-  private contextableQuery: TContextable<string>;
+  private contextableQuery: Contextable<ITestContext, string>;
 
-  public config(config: TConfig) {
+  public config(config: ITestConfig) {
     if (config.dataset) {
       this.dataset(config.dataset);
     }
@@ -30,12 +45,12 @@ export class Test {
     return this;
   }
 
-  public input(refName: string, contextableQuery: TContextable<string>) {
+  public input(refName: string, contextableQuery: Contextable<ITestContext, string>) {
     this.contextableInputs[refName] = contextableQuery;
     return this;
   }
 
-  public expect(contextableQuery: TContextable<string>) {
+  public expect(contextableQuery: Contextable<ITestContext, string>) {
     this.contextableQuery = contextableQuery;
     return this;
   }
@@ -48,7 +63,7 @@ export class Test {
         this.proto.fileName
       );
     } else {
-      const allResolved = this.session.findActions(this.datasetToTest);
+      const allResolved = this.session.findActions(utils.resolvableAsTarget(this.datasetToTest));
       if (allResolved.length > 1) {
         this.session.compileError(
           new Error(utils.ambiguousActionNameMsg(this.datasetToTest, allResolved)),
@@ -76,13 +91,16 @@ export class Test {
   }
 }
 
+/**
+ * @hidden
+ */
 export class TestContext {
   public readonly test: Test;
   constructor(test: Test) {
     this.test = test;
   }
 
-  public apply<T>(value: TContextable<T>): T {
+  public apply<T>(value: Contextable<ITestContext, T>): T {
     if (typeof value === "function") {
       return (value as any)(this);
     } else {
@@ -91,28 +109,38 @@ export class TestContext {
   }
 }
 
-class RefReplacingContext implements table.ITableContext {
+/**
+ * @hidden
+ */
+class RefReplacingContext implements ITableContext {
   private readonly testContext: TestContext;
 
   constructor(testContext: TestContext) {
     this.testContext = testContext;
   }
 
-  public ref(name: string) {
-    return this.resolve(name);
+  public ref(ref: Resolvable | string[], ...rest: string[]) {
+    return this.resolve(ref, ...rest);
   }
 
-  public resolve(name: string) {
-    if (!this.testContext.test.contextableInputs[name]) {
+  public resolve(ref: Resolvable | string[], ...rest: string[]) {
+    ref = utils.toResolvable(ref, rest);
+    if (typeof ref !== "string") {
       this.testContext.test.session.compileError(
-        new Error(`Input for dataset "${name}" has not been provided.`)
+        new Error("Tests do not currently support referencing non-string inputs.")
       );
       return "";
     }
-    return `(${this.testContext.apply(this.testContext.test.contextableInputs[name])})`;
+    if (!this.testContext.test.contextableInputs[ref]) {
+      this.testContext.test.session.compileError(
+        new Error(`Input for dataset "${ref}" has not been provided.`)
+      );
+      return "";
+    }
+    return `(${this.testContext.apply(this.testContext.test.contextableInputs[ref])})`;
   }
 
-  public apply<T>(value: table.TContextable<T>): T {
+  public apply<T>(value: Contextable<ITableContext, T>): T {
     if (typeof value === "function") {
       return (value as any)(this);
     } else {
@@ -120,7 +148,7 @@ class RefReplacingContext implements table.ITableContext {
     }
   }
 
-  public config(config: table.TConfig) {
+  public config(config: table.ITableConfig) {
     return "";
   }
 
@@ -136,7 +164,7 @@ class RefReplacingContext implements table.ITableContext {
     return "";
   }
 
-  public where(where: table.TContextable<string>) {
+  public where(where: Contextable<ITableContext, string>) {
     return "";
   }
 
@@ -149,11 +177,11 @@ class RefReplacingContext implements table.ITableContext {
     return "";
   }
 
-  public preOps(statement: table.TContextable<string | string[]>) {
+  public preOps(statement: Contextable<ITableContext, string | string[]>) {
     return "";
   }
 
-  public postOps(statement: table.TContextable<string | string[]>) {
+  public postOps(statement: Contextable<ITableContext, string | string[]>) {
     return "";
   }
 

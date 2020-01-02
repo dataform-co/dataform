@@ -1,16 +1,47 @@
-import { Resolvable, Session } from "@dataform/core/session";
+import {
+  ICommonContext,
+  IDependenciesConfig,
+  ITargetableConfig,
+  Resolvable
+} from "@dataform/core/common";
+import { Session } from "@dataform/core/session";
 import * as utils from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
 
-export type AContextable<T> = T | ((ctx: AssertionContext) => T);
+/**
+ * Context methods are available when evaluating contextable SQL code, such as
+ * within SQLX files, or when using a [Contextable](#Contextable) argument with the JS API.
+ */
+export interface IAssertionContext extends ICommonContext {}
 
-export interface AConfig {
-  dependencies?: Resolvable | Resolvable[];
-  tags?: string[];
-  description?: string;
+/**
+ * Configuration options for `assertion` action types.
+ */
+export interface IAssertionConfig extends ITargetableConfig, IDependenciesConfig {
+  /**
+   * The database where the corresponding view for this assertion should be created.
+   */
+  database?: string;
+
+  /**
+   * The schema where the corresponding view for this assertion should be created.
+   */
   schema?: string;
+
+  /**
+   * A description for this assertion.
+   */
+  description?: string;
 }
 
+/**
+ * @hidden
+ */
+export type AContextable<T> = T | ((ctx: AssertionContext) => T);
+
+/**
+ * @hidden
+ */
 export class Assertion {
   public proto: dataform.IAssertion = dataform.Assertion.create();
 
@@ -20,7 +51,7 @@ export class Assertion {
   // We delay contextification until the final compile step, so hold these here for now.
   private contextableQuery: AContextable<string>;
 
-  public config(config: AConfig) {
+  public config(config: IAssertionConfig) {
     if (config.dependencies) {
       this.dependencies(config.dependencies);
     }
@@ -29,6 +60,9 @@ export class Assertion {
     }
     if (config.description) {
       this.description(config.description);
+    }
+    if (config.database) {
+      this.database(config.database);
     }
     if (config.schema) {
       this.schema(config.schema);
@@ -42,12 +76,9 @@ export class Assertion {
   }
 
   public dependencies(value: Resolvable | Resolvable[]) {
-    const newDependencies = utils.isResolvable(value) ? [value] : (value as Resolvable[]);
-    newDependencies.forEach((d: Resolvable) => {
-      const depName = utils.stringifyResolvable(d);
-      if (this.proto.dependencies.indexOf(depName) < 0) {
-        this.proto.dependencies.push(depName);
-      }
+    const newDependencies = Array.isArray(value) ? value : [value];
+    newDependencies.forEach(resolvable => {
+      this.proto.dependencyTargets.push(utils.resolvableAsTarget(resolvable));
     });
     return this;
   }
@@ -67,8 +98,19 @@ export class Assertion {
     return this;
   }
 
+  public database(database: string) {
+    utils.setNameAndTarget(
+      this.session,
+      this.proto,
+      this.proto.target.name,
+      this.proto.target.schema,
+      database
+    );
+    return this;
+  }
+
   public schema(schema: string) {
-    this.session.setNameAndTarget(this.proto, this.proto.target.name, schema);
+    utils.setNameAndTarget(this.session, this.proto, this.proto.target.name, schema);
     return this;
   }
 
@@ -82,22 +124,37 @@ export class Assertion {
   }
 }
 
-export class AssertionContext {
+/**
+ * @hidden
+ */
+export class AssertionContext implements IAssertionContext {
   private assertion?: Assertion;
 
   constructor(assertion: Assertion) {
     this.assertion = assertion;
   }
 
-  public ref(ref: Resolvable) {
-    const name =
-      typeof ref === "string" || typeof ref === "undefined" ? ref : `${ref.schema}.${ref.name}`;
-    this.assertion.dependencies(name);
+  public self(): string {
+    return this.resolve(this.assertion.proto.target);
+  }
+
+  public name(): string {
+    return this.assertion.proto.target.name;
+  }
+
+  public ref(ref: Resolvable | string[], ...rest: string[]) {
+    ref = utils.toResolvable(ref, rest);
+    if (!utils.resolvableAsTarget(ref)) {
+      const message = `Action name is not specified`;
+      this.assertion.session.compileError(new Error(message));
+      return "";
+    }
+    this.assertion.dependencies(ref);
     return this.resolve(ref);
   }
 
-  public resolve(ref: Resolvable) {
-    return this.assertion.session.resolve(ref);
+  public resolve(ref: Resolvable | string[], ...rest: string[]) {
+    return this.assertion.session.resolve(utils.toResolvable(ref, rest));
   }
 
   public dependencies(name: Resolvable | Resolvable[]) {

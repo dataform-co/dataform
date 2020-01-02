@@ -131,25 +131,6 @@ describe("@dataform/core", () => {
       ]);
     });
 
-    it("config_context", () => {
-      const session = new Session(path.dirname(__filename), TestConfigs.redshift);
-      const t = session
-        .publish(
-          "example",
-          ctx => `
-          ${ctx.type("table")}
-          ${ctx.preOps(["pre_op"])}
-          ${ctx.postOps(["post_op"])}
-        `
-        )
-        .compile();
-
-      expect(t.name).equals("schema.example");
-      expect(t.type).equals("table");
-      expect(t.preOps).deep.equals(["pre_op"]);
-      expect(t.postOps).deep.equals(["post_op"]);
-    });
-
     it("validation_type_incremental", () => {
       const sessionSuccess = new Session(path.dirname(__filename), TestConfigs.redshift);
       sessionSuccess
@@ -157,22 +138,10 @@ describe("@dataform/core", () => {
           type: "incremental"
         })
         .where("test1");
-      sessionSuccess.publish(
-        "exampleSuccess2",
-        ctx => `
-        ${ctx.where("test2")}
-        ${ctx.type("incremental")}
-        select field as 1
-      `
-      );
-      sessionSuccess.publish(
-        "exampleSuccess3",
-        ctx => `
-        ${ctx.type("incremental")}
-        ${ctx.where("test2")}
-        select field as 1
-      `
-      );
+      sessionSuccess
+        .publish("exampleSuccess2", ctx => `select field as 1`)
+        .where("test2")
+        .type("incremental");
       const cgSuccess = sessionSuccess.compile();
       const cgSuccessErrors = utils.validate(cgSuccess);
 
@@ -448,6 +417,8 @@ describe("@dataform/core", () => {
       session.publish("b", ctx => `select * from ${ctx.ref("a")}`);
       session.publish("c", ctx => `select * from ${ctx.ref(undefined)}`);
       session.publish("d", ctx => `select * from ${ctx.ref({ schema: "schema", name: "a" })}`);
+      session.publish("g", ctx => `select * from ${ctx.ref("schema", "a")}`);
+      session.publish("h", ctx => `select * from ${ctx.ref(["schema", "a"])}`);
       session
         .publish("e", {
           schema: "foo"
@@ -459,19 +430,27 @@ describe("@dataform/core", () => {
       const graphErrors = utils.validate(graph);
 
       const tableNames = graph.tables.map(item => item.name);
+      expect(tableNames).eql([
+        "schema.a",
+        "schema.b",
+        "schema.c",
+        "schema.d",
+        "schema.g",
+        "schema.h",
+        "foo.e",
+        "schema.f"
+      ]);
 
-      expect(tableNames).includes("schema.a");
-      expect(tableNames).includes("schema.b");
-      expect(tableNames).includes("schema.c");
-      expect(tableNames).includes("schema.d");
-      expect(tableNames).includes("foo.e");
-      expect(tableNames).includes("schema.f");
+      expect(graph.tables.find(table => table.name === "schema.b").dependencies).eql(["schema.a"]);
+      expect(graph.tables.find(table => table.name === "schema.d").dependencies).eql(["schema.a"]);
+      expect(graph.tables.find(table => table.name === "schema.g").dependencies).eql(["schema.a"]);
+      expect(graph.tables.find(table => table.name === "schema.h").dependencies).eql(["schema.a"]);
+      expect(graph.tables.find(table => table.name === "schema.f").dependencies).eql(["foo.e"]);
+
       const errors = graphErrors.compilationErrors.map(item => item.message);
       expect(errors).includes("Action name is not specified");
-      expect(graphErrors.compilationErrors.length === 1);
-      expect(graphErrors)
-        .to.have.property("validationErrors")
-        .to.be.an("array").that.is.empty;
+      expect(graphErrors.compilationErrors.length).eql(1);
+      expect(graphErrors.validationErrors.length).eql(0);
     });
   });
 
@@ -562,7 +541,9 @@ describe("@dataform/core", () => {
         .to.have.property("compilationErrors")
         .to.be.an("array").that.is.not.empty;
       const errors = gErrors.compilationErrors.filter(item =>
-        item.message.match(/Ambiguous Action name: a. Did you mean one of: foo.a, bar.a./)
+        item.message.match(
+          /Ambiguous Action name: {\"name\":\"a\"}. Did you mean one of: foo.a, bar.a./
+        )
       );
       expect(errors).to.be.an("array").that.is.not.empty;
     });
