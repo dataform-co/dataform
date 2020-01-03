@@ -4,7 +4,7 @@
 }
 
 .navigation ul:not(.depth0) {
-  padding-left: 8px;
+  padding-left: 16px;
 }
 
 .navigation li {
@@ -18,10 +18,13 @@
   margin-top: 15px;
 }
 
+.navigation li.depth1.hasChildren {
+  font-weight: bold;
+}
+
 .navigation li.active {
   font-weight: bold;
   background-color: #2f419b;
-  
 }
 
 .navigation li.active * {

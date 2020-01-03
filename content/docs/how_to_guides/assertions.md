@@ -1,5 +1,5 @@
 ---
-title: Testing data using assertions
+title: Assertions
 ---
 
 ## Introduction
@@ -8,7 +8,7 @@ Assertions enable you to check the state of data produced by other actions.
 
 An assertion query is written to find rows that violate one or more rules. If the query returns any rows, then the assertion will fail.
 
-<img src="/static/images/assertions.png" style="width: 100%; padding: 20px;" />
+![Assertions](/static/images/assertions.png)
 
 ## Example: Null checks
 

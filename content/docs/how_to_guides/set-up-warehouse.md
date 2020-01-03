@@ -1,5 +1,5 @@
 ---
-title: Configure data warehouse settings
+title: Set up a warehouse
 ---
 
 ## Introduction
