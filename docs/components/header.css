@@ -38,7 +38,7 @@
 }
 
 .logoImage {
-  padding: 20px 10px 0 10px !important;
+  padding: 20px 10px 0 10px;
 }
 
 .docs_tag {
@@ -52,5 +52,5 @@
 .githubLogo {
   filter: invert(100%);
   height: 25px;
-  padding: 0 !important;
+  padding: 0;
 }

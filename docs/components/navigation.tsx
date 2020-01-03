@@ -14,13 +14,16 @@ export default class Navigation extends React.Component<IProps> {
     return <div className={styles.navigation}>{this.renderTrees(this.props.tree.children)}</div>;
   }
   private renderTrees(trees: IFileTree[], depth = 0) {
-    // If there's a priority, order by priority. If not, order alphabetically.
     trees.sort((a: IFileTree, b: IFileTree) =>
-      a.attributes.priority == null || b.attributes.priority == null
+      a.attributes.priority == null && b.attributes.priority == null
         ? a.attributes.title > b.attributes.title
           ? 1
           : -1
-        : a.attributes.priority - b.attributes.priority
+        : !(a.attributes.priority == null || b.attributes.priority == null)
+        ? a.attributes.priority - b.attributes.priority
+        : a.attributes.priority == null
+        ? 1
+        : -1
     );
 
     return (
