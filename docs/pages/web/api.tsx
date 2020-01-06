@@ -11,14 +11,14 @@ export interface IProps {
 export default class Api extends React.Component<IProps> {
   public static async getInitialProps(): Promise<IProps> {
     return {
-      spec: (await axios.get("http://localhost:8005/swagger.json")).data
+      spec: (await axios.get("https://staging.api.dataform.co/swagger.json")).data
     };
   }
 
   public render() {
     return (
       <BaseLayout title={"Dataform Web API"}>
-        <Swagger spec={this.props.spec} apiHost={"api.dataform.co"}/>
+        <Swagger spec={this.props.spec} apiHost={"api.dataform.co"} />
       </BaseLayout>
     );
   }

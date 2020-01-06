@@ -38,15 +38,15 @@ export class Swagger extends React.Component<IProps> {
 
     return (
       <div className={styles.container}>
-        <div className={styles.sidebar}></div>
+        <div className={styles.sidebar} />
         <div className={styles.mainContent}>
           <div className={styles.titleBlock}>
             <h1>Dataform Web API</h1>
-            {allOperations.map(operation => (
-              <Operation apiHost={apiHost} operation={operation} />
+            {allOperations.map((operation, i) => (
+              <Operation key={i} apiHost={apiHost} operation={operation} />
             ))}
-            {Object.keys(spec.definitions).map(name => (
-              <Definition name={name} schema={spec.definitions[name]} />
+            {Object.keys(spec.definitions).map((name, i) => (
+              <Definition key={i} name={name} schema={spec.definitions[name]} />
             ))}
           </div>
           {this.props.children}
@@ -87,8 +87,8 @@ export class Operation extends React.Component<{ apiHost: string; operation: IOp
         {operation.parameters
           // These types are a nightmare :(.
           .map(parameter => parameter as any)
-          .map(parameter => (
-            <div className={styles.property}>
+          .map((parameter, i) => (
+            <div key={i} className={styles.property}>
               <div className={styles.propertyName}>
                 <code>{parameter.name}</code>
               </div>
@@ -106,8 +106,8 @@ export class Operation extends React.Component<{ apiHost: string; operation: IOp
         <h3>Responses</h3>
         {Object.keys(operation.responses)
           .map(code => ({ code, ...operation.responses[code] }))
-          .map(response => (
-            <div className={styles.property}>
+          .map((response, i) => (
+            <div key={i} className={styles.property}>
               <div className={styles.propertyName}>
                 <code>{response.code}</code>
               </div>
@@ -132,15 +132,15 @@ export class Definition extends React.Component<{ name: string; schema: Schema }
           <>
             <h3>Properties</h3>
             <div className={styles.properties}>
-              {Object.keys(schema.properties).map(propertyName => (
-                <Property name={propertyName} property={schema.properties[propertyName]} />
+              {Object.keys(schema.properties).map((propertyName, i) => (
+                <Property key={i} name={propertyName} property={schema.properties[propertyName]} />
               ))}
             </div>
           </>
         )}
         {schema.enum &&
-          schema.enum.map(enumValue => (
-            <li>
+          schema.enum.map((enumValue, i) => (
+            <li key={i}>
               <code>{enumValue}</code>
             </li>
           ))}
@@ -197,10 +197,6 @@ export class Property extends React.Component<{ name: string; property: Schema }
       </div>
     );
   }
-}
-
-function namespace(definitionName: string): string {
-  return definitionName.split(/[A-Z]/)[0];
 }
 
 function classname(definitionName: string): string {
