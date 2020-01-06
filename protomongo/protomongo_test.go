@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/dataform-co/dataform/protos/dataform"
+	pb "github.com/dataform-co/dataform/protomongo/example"
 	"github.com/golang/protobuf/proto"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -17,67 +17,85 @@ var (
 	}{
 		{
 			name: "simple message",
-			pb: &dataform.ProjectConfig{
-				Warehouse:               "foo",
-				DefaultSchema:           "bar",
-				IdempotentActionRetries: 32,
+			pb: &pb.SimpleMessage{
+				StringField: "foo",
+				Int32Field:  32525,
+				Int64Field:  1531541553141312315,
+				FloatField:  21541.3242,
+				DoubleField: 21535215136361617136.543858,
+				BoolField:   true,
+				EnumField:   pb.Enum_VAL_2,
 			},
 			new: func() proto.Message {
-				return new(dataform.ProjectConfig)
+				return new(pb.SimpleMessage)
 			},
 		},
 		{
 			name: "message with repeated fields",
-			pb: &dataform.RunConfig{
-				Actions:     []string{"foo", "bar"},
-				Tags:        []string{"baz", "qux"},
-				FullRefresh: true,
+			pb: &pb.RepeatedFieldMessage{
+				StringField: []string{"foo", "bar"},
+				Int32Field:  []int32{32525, 1958, 435},
+				Int64Field:  []int64{1531541553141312315, 13512516266},
+				FloatField:  []float32{21541.3242, 634214.2233, 3435.322},
+				DoubleField: []float64{21535215136361617136.543858, 213143343.76767},
+				BoolField:   []bool{true, false, true, true},
+				EnumField:   []pb.Enum{pb.Enum_VAL_2, pb.Enum_VAL_1},
 			},
 			new: func() proto.Message {
-				return new(dataform.RunConfig)
+				return new(pb.RepeatedFieldMessage)
 			},
 		},
 		{
 			name: "message with submessage",
-			pb: &dataform.CompileConfig{
-				ProjectDir: "foo",
-				ProjectConfigOverride: &dataform.ProjectConfig{
-					Warehouse:               "bar",
-					DefaultSchema:           "baz",
-					IdempotentActionRetries: 16,
+			pb: &pb.MessageWithSubMessage{
+				StringField: "baz",
+				SimpleMessage: &pb.SimpleMessage{
+					StringField: "foo",
+					Int32Field:  32525,
+					Int64Field:  1531541553141312315,
+					FloatField:  21541.3242,
+					DoubleField: 21535215136361617136.543858,
+					BoolField:   true,
+					EnumField:   pb.Enum_VAL_2,
 				},
 			},
 			new: func() proto.Message {
-				return new(dataform.CompileConfig)
+				return new(pb.MessageWithSubMessage)
 			},
 		},
 		{
 			name: "message with repeated submessage",
-			pb: &dataform.ActionDescriptor{
-				Description: "foo",
-				Columns: []*dataform.ColumnDescriptor{
-					&dataform.ColumnDescriptor{
-						Description: "bar",
+			pb: &pb.MessageWithRepeatedSubMessage{
+				StringField: "baz",
+				SimpleMessage: []*pb.SimpleMessage{
+					&pb.SimpleMessage{
+						StringField: "foo",
+						Int32Field:  32525,
+						Int64Field:  1531541553141312315,
+						FloatField:  21541.3242,
+						DoubleField: 21535215136361617136.543858,
+						BoolField:   true,
+						EnumField:   pb.Enum_VAL_2,
 					},
-					&dataform.ColumnDescriptor{
-						Description: "baz",
+					&pb.SimpleMessage{
+						StringField: "qux",
+						Int32Field:  22,
+						BoolField:   false,
 					},
 				},
 			},
 			new: func() proto.Message {
-				return new(dataform.ActionDescriptor)
+				return new(pb.MessageWithRepeatedSubMessage)
 			},
 		},
 		{
 			name: "message with oneof",
-			pb: &dataform.Field{
-				Name: "foo",
-				Type: &dataform.Field_Primitive{
-					"bar",
-				},
+			pb: &pb.MessageWithOneof{
+				StringField: "baz",
+				OneofField:  &pb.MessageWithOneof_Int32OneofField{3132},
 			},
 			new: func() proto.Message {
-				return new(dataform.Field)
+				return new(pb.MessageWithOneof)
 			},
 		},
 	}

@@ -15,7 +15,7 @@ import (
 type ProtobufCodec struct {
 }
 
-func (e *ProtobufCodec) EncodeValue(ectx bsoncodec.EncodeContext, vw bsonrw.ValueWriter, val reflect.Value) error {
+func (pc *ProtobufCodec) EncodeValue(ectx bsoncodec.EncodeContext, vw bsonrw.ValueWriter, val reflect.Value) error {
 	oneofs := oneofNames(val.Interface().(descriptor.Message))
 	for val.Kind() != reflect.Struct {
 		val = val.Elem()
@@ -59,7 +59,7 @@ func (e *ProtobufCodec) EncodeValue(ectx bsoncodec.EncodeContext, vw bsonrw.Valu
 	return dw.WriteDocumentEnd()
 }
 
-func (e *ProtobufCodec) DecodeValue(ectx bsoncodec.DecodeContext, vr bsonrw.ValueReader, val reflect.Value) error {
+func (pc *ProtobufCodec) DecodeValue(ectx bsoncodec.DecodeContext, vr bsonrw.ValueReader, val reflect.Value) error {
 	oneofs := oneofNames(val.Interface().(descriptor.Message))
 	if val.IsNil() {
 		val.Set(reflect.New(val.Type().Elem()))
