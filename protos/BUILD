@@ -52,7 +52,6 @@ load("@npm_bazel_typescript//:index.bzl", "ts_library")
 ts_library(
     name = "protos",
     srcs = glob(["index.ts"]),
-    module_name = "@dataform/protos",
     data = [
         "//protos:protobufjs_lib",
     ],

@@ -9,25 +9,17 @@ option java_multiple_files = true;
 option go_package = "github.com/dataform-co/dataform/protos/dataform";
 
 message ProjectConfig {
-  // The type of warehouse this project connects to. This is one of "bigquery", "snowflake", "redshift", "postgres".
   string warehouse = 1;
 
-  // The default database under which objects will be created. This setting only applies for BigQuery and Snowflake warehouses.
   string default_database = 9;
-
-  // The default schema in which all objects will be created.
   string default_schema = 2;
-
-  // The default schema in which assertion views will be created.
   string assertion_schema = 5;
 
-  // How many times should failed actions be retried. We strongly advise not setting this value.
   int32 idempotent_action_retries = 8;
 
-  // A suffix that will be applied to all schemas. This is useful for isolating development runs from production by setting a value such as "_dev".
   string schema_suffix = 7;
 
-  // Deprecated. Please use "defaultDatabase" instead.
+  // Deprecated. Please use 'default_database' instead.
   string gcloud_project_id = 6;
 }
 
@@ -50,21 +42,13 @@ message Environments {
 }
 
 message RunConfig {
-  // A list of action names that should be run. We recommend using tags instead where possible.
   repeated string actions = 1;
-
-  // A list of tags to run. Any actions with the given tags will be executed during this run.
   repeated string tags = 5;
-
-  // Whether any dependencies of the directly included tags or actions should also be executed.
   bool include_dependencies = 3;
-
-  // Indicates if incremental tables should be rebuilt from scratch, even if they exist.
   bool full_refresh = 2;
 
   // Intended for temporary testing, not included in a permanent API.
   bool use_pg_pool_for_redshift = 6;
-
   reserved 4;
 }
 
@@ -95,15 +79,9 @@ message CompileConfig {
   string return_override = 5;
 }
 
-// A reference to a relation, or object inside a warehouse.
 message Target {
-  // The database of the object.
   string database = 3;
-
-  // The schema of the object.
   string schema = 1;
-
-  // The name of the object within the schema.
   string name = 2;
 }
 
@@ -272,58 +250,29 @@ message CompiledGraph {
   repeated Target targets = 11;
 }
 
-// Describes an individual task (SQL query) that will be executed.
 message ExecutionTask {
-
-  // The type of the task, either "statement" or "assertion".
   string type = 1;
-
-  // The SQL statement for this task.
   string statement = 2;
 }
 
-// Describes information about an action that should be executed in the warehouse.
 message ExecutionAction {
-
-  // Name of the action.
   string name = 1;
-
-  // A list of names of actions this action depends upon.
   repeated string dependencies = 3;
-
-  // A list of tasks that must be performed as part of this action.
   repeated ExecutionTask tasks = 2;
-
-  // The type of the action. One of "table", "assertion", "test", "operation".
   string type = 4;
-
-  // The target relation for this action if it has one.
   Target target = 5;
-
-  // The type of table that will be created. Set for actions of type "table" only.
   string table_type = 6;
 }
 
-// Contains information about the state of the warehouse.
 message WarehouseState {
-
-  // A list of metadata about tables (and views) in the warehouse.
   repeated TableMetadata tables = 1;
 }
 
-// Describes the overall execution graph, containing actions and tasks that must be run.
 message ExecutionGraph {
-
-  // The project configuration for this run, including any overrides.
   ProjectConfig project_config = 1;
-
-  // The configuration for this run.
   RunConfig run_config = 2;
-
-  // The state of the warehouse when this graph was built (typically the start of a run).
   WarehouseState warehouse_state = 4;
 
-  // The actions that must be executed as part of this run.
   repeated ExecutionAction actions = 3;
 }
 
@@ -335,19 +284,12 @@ message ExecutedTask {
   string error = 3;
 }
 
-// Describes timing information for various actions inside dataform runs.
 message Timing {
-  // When the run, action or task started in milliseconds from the unix epoch.
   int64 start_time_millis = 1;
-
-  // When the run, action or task ended in milliseconds from the unix epoch.
   int64 end_time_millis = 2;
 }
 
-// Information about the result and status of a run.
 message RunResult {
-
-  // An enumeration of possible run execution statuses.
   enum ExecutionStatus {
     UNKNOWN = 0;
     RUNNING = 1;
@@ -355,24 +297,14 @@ message RunResult {
     FAILED = 3;
     CANCELLED = 4;
   }
-
-  // The execution status of this run.
   ExecutionStatus status = 1;
-
-  // A list of execution results for individual actions in the graph.
   repeated ActionResult actions = 2;
-
-  // Timing information for the run overall.
   Timing timing = 3;
 }
 
-// Information about the result and status of an action.
 message ActionResult {
-
-  // The name of the action.
   string name = 1;
 
-  // An enumeration of all possible action execution statuses.
   enum ExecutionStatus {
     UNKNOWN = 0;
     RUNNING = 1;
@@ -382,21 +314,13 @@ message ActionResult {
     DISABLED = 5;
     CANCELLED = 6;
   }
-
-  // The execution status of the action.
   ExecutionStatus status = 2;
 
-  // Results for individual tasks inside the action.
   repeated TaskResult tasks = 3;
-
-  // Timing information for the action.
   Timing timing = 4;
 }
 
-// Information about the result and status of an task.
 message TaskResult {
-
-  // An enumeration of all possible task execution statuses.
   enum ExecutionStatus {
       UNKNOWN = 0;
       RUNNING = 1;
@@ -405,14 +329,8 @@ message TaskResult {
       SKIPPED = 4;
       CANCELLED = 5;
   }
-
-  // The execution status of the task.
   ExecutionStatus status = 1;
-
-  // An error message that was returned for failed tasks.
   string error_message = 2;
-
-  // Timing information for the task.
   Timing timing = 3;
 }
 
@@ -455,40 +373,21 @@ message TestResult {
   repeated string messages = 3;
 }
 
-// Describes a field inside a table or view in the warehouse. Only one of "primitive" or "struct" will be set.
 message Field {
-
-  // The name of the field.
   string name = 1;
-
-  // Any warehouse specific flags or labels for this field.
   repeated string flags = 4;
-
   oneof type {
-    // The primitive type of the field, if it is primitive.
     string primitive = 2;
-
-    // A description of fields that have an object or struct type.
     Fields struct = 3;
   }
 }
 
-// Describes a set of fields or columns in a table or struct.
 message Fields {
-
-  // A list of individual fields.
   repeated Field fields = 1;
 }
 
-// Metadata about a table or view in the warehouse.
 message TableMetadata {
-
-  // The full spec of the table this metadata refers to.
   Target target = 1;
-
-  // The type of the table, either "table" or "view".
-  string type = 2;
-
-  // A list of fields contained within this table.
+  string type = 2; // "table" or "view"
   repeated Field fields = 3;
 }
