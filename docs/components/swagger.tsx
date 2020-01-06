@@ -40,7 +40,7 @@ export class Swagger extends React.Component<IProps> {
       <div className={styles.container}>
         <div className={styles.sidebar} />
         <div className={styles.mainContent}>
-          <div className={styles.titleBlock}>
+          <div>
             <h1>Dataform Web API</h1>
             {allOperations.map((operation, i) => (
               <Operation key={i} apiHost={apiHost} operation={operation} />
@@ -106,6 +106,7 @@ export class Operation extends React.Component<{ apiHost: string; operation: IOp
         <h3>Responses</h3>
         {Object.keys(operation.responses)
           .map(code => ({ code, ...operation.responses[code] }))
+          .map(code => code as any)
           .map((response, i) => (
             <div key={i} className={styles.property}>
               <div className={styles.propertyName}>
