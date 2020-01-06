@@ -39,23 +39,24 @@
 .property {
   border-top: 1px solid #e3e8ee;
   padding: 10px 0px;
+  display: flex;
 }
 
 .properties {
-  
 }
 
 .propertyName {
   max-width: 300px;
-  width: 50%;
-  display: inline-block;
+  min-width: 300px;
 }
 
 .propertyDescription {
-  padding: 5px;
-  padding-left: 300px;
+  flex-grow: 1;
 }
 
+.propertyComment {
+  padding: 5px;
+}
 
 .methodTag {
   margin-left: 10px;

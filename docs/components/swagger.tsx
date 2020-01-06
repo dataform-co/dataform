@@ -42,11 +42,11 @@ export class Swagger extends React.Component<IProps> {
         <div className={styles.mainContent}>
           <div>
             <h1>Dataform Web API</h1>
-            {allOperations.map((operation, i) => (
-              <Operation key={i} apiHost={apiHost} operation={operation} />
+            {allOperations.map(operation => (
+              <Operation key={operation.operationId} apiHost={apiHost} operation={operation} />
             ))}
-            {Object.keys(spec.definitions).map((name, i) => (
-              <Definition key={i} name={name} schema={spec.definitions[name]} />
+            {Object.keys(spec.definitions).map(name => (
+              <Definition key={name} name={name} schema={spec.definitions[name]} />
             ))}
           </div>
           {this.props.children}
@@ -87,28 +87,30 @@ export class Operation extends React.Component<{ apiHost: string; operation: IOp
         {operation.parameters
           // These types are a nightmare :(.
           .map(parameter => parameter as any)
-          .map((parameter, i) => (
-            <div key={i} className={styles.property}>
+          .map(parameter => (
+            <div key={parameter.name} className={styles.property}>
               <div className={styles.propertyName}>
                 <code>{parameter.name}</code>
               </div>
-              {parameter.schema && (
-                <a href={parameter.schema.$ref}>
-                  {classname(parameter.schema.$ref.replace("#/definitions/", ""))}
-                </a>
-              )}
-              {!parameter.schema && <code>string</code>}
-              {parameter.description && (
-                <div className={styles.propertyDescription}>{parameter.description}</div>
-              )}
+              <div className={styles.propertyDescription}>
+                {parameter.schema && (
+                  <a href={parameter.schema.$ref}>
+                    {classname(parameter.schema.$ref.replace("#/definitions/", ""))}
+                  </a>
+                )}
+                {!parameter.schema && <code>string</code>}
+                {parameter.description && (
+                  <div className={styles.propertyComment}>{parameter.description}</div>
+                )}
+              </div>
             </div>
           ))}
         <h3>Responses</h3>
         {Object.keys(operation.responses)
           .map(code => ({ code, ...operation.responses[code] }))
           .map(code => code as any)
-          .map((response, i) => (
-            <div key={i} className={styles.property}>
+          .map(response => (
+            <div key={response.code} className={styles.property}>
               <div className={styles.propertyName}>
                 <code>{response.code}</code>
               </div>
@@ -133,15 +135,19 @@ export class Definition extends React.Component<{ name: string; schema: Schema }
           <>
             <h3>Properties</h3>
             <div className={styles.properties}>
-              {Object.keys(schema.properties).map((propertyName, i) => (
-                <Property key={i} name={propertyName} property={schema.properties[propertyName]} />
+              {Object.keys(schema.properties).map(propertyName => (
+                <Property
+                  key={propertyName}
+                  name={propertyName}
+                  property={schema.properties[propertyName]}
+                />
               ))}
             </div>
           </>
         )}
         {schema.enum &&
-          schema.enum.map((enumValue, i) => (
-            <li key={i}>
+          schema.enum.map(enumValue => (
+            <li key={String(enumValue)}>
               <code>{enumValue}</code>
             </li>
           ))}
@@ -166,10 +172,12 @@ export class Parameter extends React.Component<{ name: string; property: Schema 
         <div className={styles.propertyName}>
           <code>{name}</code>
         </div>
-        {itemSchema.$ref ? <a href={itemSchema.$ref}>{typeTag}</a> : typeTag}
-        {property.description && (
-          <div className={styles.propertyDescription}>{property.description}</div>
-        )}
+        <div className={styles.propertyDescription}>
+          {itemSchema.$ref ? <a href={itemSchema.$ref}>{typeTag}</a> : typeTag}
+          {property.description && (
+            <div className={styles.propertyComment}>{property.description}</div>
+          )}
+        </div>
       </div>
     );
   }
@@ -191,10 +199,12 @@ export class Property extends React.Component<{ name: string; property: Schema }
         <div className={styles.propertyName}>
           <code>{name}</code>
         </div>
-        {itemSchema.$ref ? <a href={itemSchema.$ref}>{typeTag}</a> : typeTag}
-        {property.description && (
-          <div className={styles.propertyDescription}>{property.description}</div>
-        )}
+        <div className={styles.propertyDescription}>
+          {itemSchema.$ref ? <a href={itemSchema.$ref}>{typeTag}</a> : typeTag}
+          {property.description && (
+            <div className={styles.propertyComment}>{property.description}</div>
+          )}
+        </div>
       </div>
     );
   }
