@@ -11,7 +11,7 @@ export interface IProps {
 export default class Api extends React.Component<IProps> {
   public static async getInitialProps(): Promise<IProps> {
     return {
-      spec: (await axios.get("https://staging.api.dataform.co/swagger.json")).data
+      spec: (await axios.get("https://api.dataform.co/swagger.json")).data
     };
   }
 

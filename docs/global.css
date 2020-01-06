@@ -63,39 +63,30 @@
   font-family: "Poppins";
   letter-spacing: -0.03em;
   color: #2f2d44;
+  font-weight: 500;
 }
 
 :global body h1 {
-  font-weight: 500;
-  letter-spacing: -0.03em;
   line-height: 58px;
   font-size: 31px;
 }
 
 :global body h2 {
-  font-weight: 500;
-  letter-spacing: -0.02em;
   line-height: 22px;
   font-size: 22px;
 }
 
 :global body h3 {
-  font-weight: 500;
-  letter-spacing: -0.02em;
   line-height: 46px;
   font-size: 20px;
 }
 
 :global body h4 {
-  font-weight: 500;
-  letter-spacing: -0.02em;
   line-height: 36px;
   font-size: 17px;
 }
 
 :global body h5 {
-  font-weight: 500;
-  letter-spacing: -0.02em;
   line-height: 26px;
   font-size: 14px;
 }
