@@ -92,12 +92,10 @@ func TestMarshalUnmarshal(t *testing.T) {
 		b, err := bson.MarshalWithRegistry(reg, testCase.pb)
 		if err != nil {
 			t.Errorf("bson.MarshalWithRegistry error = %v", err)
-			return
 		}
 		out := testCase.new()
 		if err = bson.UnmarshalWithRegistry(reg, b, &out); err != nil {
 			t.Errorf("bson.UnmarshalWithRegistry error = %v", err)
-			return
 		}
 		if !proto.Equal(testCase.pb, out) {
 			t.Errorf("failed: in=%#v, out=%#v", testCase.pb, out)
@@ -114,12 +112,10 @@ func TestMarshalUnmarshalWithPointers(t *testing.T) {
 		b, err := bson.MarshalWithRegistry(reg, &testCase.pb)
 		if err != nil {
 			t.Errorf("bson.MarshalWithRegistry error = %v", err)
-			return
 		}
 		out := testCase.new()
 		if err = bson.UnmarshalWithRegistry(reg, b, &out); err != nil {
 			t.Errorf("bson.UnmarshalWithRegistry error = %v", err)
-			return
 		}
 		if !proto.Equal(testCase.pb, out) {
 			t.Errorf("failed: in=%#v, out=%#v", testCase.pb, out)
