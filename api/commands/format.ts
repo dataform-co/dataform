@@ -13,7 +13,7 @@ const JS_BEAUTIFY_OPTIONS: JsBeautifyOptions = {
 
 const MAX_SQL_FORMAT_ATTEMPTS = 5;
 
-const TEXT_LIFT_PATTERNS = [/r'.*'/, /r".*"/];
+const TEXT_LIFT_PATTERNS = [/r'.*?(?<!\\)'/g, /r".*?(?<!\\)"/g];
 
 export async function formatFile(
   filename: string,
