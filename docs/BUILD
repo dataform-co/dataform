@@ -53,8 +53,8 @@ typedoc(
         "core/common.ts",
     ],
     data = [
-        "//core:files",
         "//:tsconfig.json",
+        "//core:files",
     ],
 )
 
@@ -67,8 +67,10 @@ DEPS = [
     "//:tsconfig.json",
     "//content",
     "//static:files",
+    "@npm//axios",
     "@npm//typescript",
     "@npm//@types/react",
+    "@npm//@types/swagger-schema-official",
     "@npm//@types/node",
     "@npm//@blueprintjs/core",
     "@npm//@blueprintjs/select",
