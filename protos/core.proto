@@ -6,6 +6,8 @@ option java_package = "com.dataform.protos";
 option java_outer_classname = "CoreMeta";
 option java_multiple_files = true;
 
+option go_package = "github.com/dataform-co/dataform/protos/dataform";
+
 message ProjectConfig {
   // The type of warehouse this project connects to. This is one of "bigquery", "snowflake", "redshift", "postgres".
   string warehouse = 1;

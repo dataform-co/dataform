@@ -2,6 +2,8 @@ syntax="proto3";
 
 package dataform.schedules;
 
+option go_package = "github.com/dataform-co/dataform/protos/dataform/schedules";
+
 enum NotificationEventType {
   UNKNOWN = 0;
   SUCCESS = 1;

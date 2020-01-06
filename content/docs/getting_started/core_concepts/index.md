@@ -1,5 +1,6 @@
 ---
-title: Dataform core concepts
+title: Core concepts
+priority: 1
 ---
 
 ## What is Dataform?
@@ -19,6 +20,8 @@ Dataform currently supports Google BigQuery, Postgres, Amazon Redshift, Snowflak
 ## How can I use it?
 
 You can get started quickly using <a target="_blank" rel="noopener" href="https://dataform.co">Dataform Web</a>, or if you prefer, check out our open source [command line interface](command-line-interface) to develop Dataform projects yourself.
+
+In addition to providing a nice graphical user interface, Dataform Web integrates many useful additional cloud services, making it the perfect data management tool for larger teams.
 
 ## How does it work?
 

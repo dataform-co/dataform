@@ -2,15 +2,10 @@ import { adapters } from "@dataform/core";
 import { Assertion } from "@dataform/core/assertion";
 import { Declaration } from "@dataform/core/declaration";
 import { Operation } from "@dataform/core/operation";
-import { IActionProto, Resolvable, Session } from "@dataform/core/session";
-import {
-  DistStyleTypes,
-  ignoredProps,
-  SortStyleTypes,
-  Table,
-  TableTypes
-} from "@dataform/core/table";
+import { IActionProto, Session } from "@dataform/core/session";
+import { DistStyleType, SortStyleType, Table, TableType } from "@dataform/core/table";
 import { dataform } from "@dataform/protos";
+import { Resolvable } from "@dataform/core/common";
 
 const SQL_DATA_WAREHOUSE_DIST_HASH_REGEXP = new RegExp("HASH\\s*\\(\\s*\\w*\\s*\\)\\s*");
 
@@ -95,7 +90,7 @@ export function graphHasErrors(graph: dataform.ICompiledGraph) {
   );
 }
 
-function joinQuoted(values: string[]) {
+function joinQuoted(values: readonly string[]) {
   return values.map((value: string) => `"${value}"`).join(" | ");
 }
 
@@ -119,8 +114,8 @@ export function validate(compiledGraph: dataform.ICompiledGraph): dataform.IGrap
     const actionName = action.name;
 
     // type
-    if (!!action.type && !Object.values(TableTypes).includes(action.type)) {
-      const predefinedTypes = joinQuoted(Object.values(TableTypes));
+    if (!!action.type && !TableType.includes(action.type as TableType)) {
+      const predefinedTypes = joinQuoted(TableType);
       const message = `Wrong type of table detected. Should only use predefined types: ${predefinedTypes}`;
       validationErrors.push(dataform.ValidationError.create({ message, actionName }));
     }
@@ -165,7 +160,7 @@ export function validate(compiledGraph: dataform.ICompiledGraph): dataform.IGrap
       const validatePropertyValueInValues = (
         opts: dataform.IRedshiftOptions,
         prop: keyof dataform.IRedshiftOptions & ("distStyle" | "sortStyle"),
-        values: string[]
+        values: readonly string[]
       ) => {
         if (!!opts[prop] && !values.includes(opts[prop])) {
           const message = `Wrong value of "${prop}" property. Should only use predefined values: ${joinQuoted(
@@ -177,14 +172,14 @@ export function validate(compiledGraph: dataform.ICompiledGraph): dataform.IGrap
 
       if (action.redshift.distStyle || action.redshift.distKey) {
         validatePropertiesDefined(action.redshift, ["distStyle", "distKey"]);
-        validatePropertyValueInValues(action.redshift, "distStyle", Object.values(DistStyleTypes));
+        validatePropertyValueInValues(action.redshift, "distStyle", DistStyleType);
       }
       if (
         action.redshift.sortStyle ||
         (action.redshift.sortKeys && action.redshift.sortKeys.length)
       ) {
         validatePropertiesDefined(action.redshift, ["sortStyle", "sortKeys"]);
-        validatePropertyValueInValues(action.redshift, "sortStyle", Object.values(SortStyleTypes));
+        validatePropertyValueInValues(action.redshift, "sortStyle", SortStyleType);
       }
     }
 
@@ -200,8 +195,8 @@ export function validate(compiledGraph: dataform.ICompiledGraph): dataform.IGrap
     }
 
     // ignored properties in tables
-    if (!!ignoredProps[action.type]) {
-      ignoredProps[action.type].forEach(ignoredProp => {
+    if (!!Table.IGNORED_PROPS[action.type]) {
+      Table.IGNORED_PROPS[action.type].forEach(ignoredProp => {
         if (objectExistsOrIsNonEmpty(action[ignoredProp])) {
           const message = `Unused property was detected: "${ignoredProp}". This property is not used for tables with type "${action.type}" and will be ignored.`;
           validationErrors.push(dataform.ValidationError.create({ message, actionName }));

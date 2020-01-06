@@ -114,4 +114,11 @@ describe("@dataform/sqlx", () => {
       expect(tree).eql(expected);
     });
   });
+  describe("whitespace parsing", () => {
+    it("whitespace not required after JS blocks at end of file.", () => {
+      expect(parseSqlx("select ${TEST}\njs {\n    const TEST = 'test';\n}").js).eql(
+        "\n    const TEST = 'test';\n"
+      );
+    });
+  });
 });

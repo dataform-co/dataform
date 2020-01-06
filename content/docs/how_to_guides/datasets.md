@@ -2,7 +2,7 @@
 title: Publishing datasets
 ---
 
-<img src="/static/images/publishing_tables.png" style="width: 100%; padding: 20px;" />
+![Publishing tables](/static/images/publishing_tables.png)
 
 ## Create a view
 
