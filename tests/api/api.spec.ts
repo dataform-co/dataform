@@ -1105,7 +1105,7 @@ input "something" {
     it("Backslashes within regex don't cause 'r' prefix to separate.", async () => {
       expect(await format.formatFile(path.resolve("df/examples/formatter/definitions/regex.sqlx")))
         .equal(`select
-  regexp_extract("", r'abc\\defg')
+  regexp_extract("", r'abc\\de\\'fg')
 `);
     });
   });
