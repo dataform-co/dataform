@@ -38,25 +38,16 @@ export default class Navigation extends React.Component<IProps> {
             classNames.push(styles.hasChildren);
           }
 
-          let navItem;
-          if (hasChildren) {
-            navItem = (
-              <div>
-                {tree.attributes.title}
-                {depth > 0 && <Icon icon="chevron-right" />}
-              </div>
-            );
-          } else {
-            navItem = (
-              <a href={`/${this.props.version ? `v/${this.props.version}/` : ""}${tree.file.path}`}>
-                {tree.attributes.title}
-              </a>
-            );
-          }
-
           return (
             <React.Fragment key={tree.file.path}>
-              <li className={classNames.join(" ")}>{navItem}</li>
+              <li className={classNames.join(" ")}>
+                <a
+                  href={`/${this.props.version ? `v/${this.props.version}/` : ""}${tree.file.path}`}
+                >
+                  {tree.attributes.title}
+                  {depth > 0 && hasChildren && <Icon icon="chevron-right" />}
+                </a>
+              </li>
               {tree.children &&
                 tree.children.length > 0 &&
                 this.renderTrees(tree.children, depth + 1)}

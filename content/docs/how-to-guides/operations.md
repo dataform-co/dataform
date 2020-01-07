@@ -1,5 +1,6 @@
 ---
 title: Custom SQL operations
+priority: 3
 ---
 
 ## Introduction

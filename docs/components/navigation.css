@@ -12,9 +12,12 @@
   border-radius: 8px;
 }
 
-.navigation li.depth0.hasChildren {
+.navigation li.depth0 {
   text-transform: uppercase;
   font-weight: bold;
+}
+
+.navigation li.depth0:not(:first-child) {
   margin-top: 15px;
 }
 
@@ -29,8 +32,4 @@
 
 .navigation li.active * {
   color: #fff;
-}
-
-.navigation li.depth0.hasChildren:not(.active) a {
-  color: unset;
 }

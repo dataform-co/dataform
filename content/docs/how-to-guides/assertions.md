@@ -1,5 +1,6 @@
 ---
 title: Assertions
+priority: 2
 ---
 
 ## Introduction

@@ -1,5 +1,5 @@
 ---
-title: Docs
+title: Dataform
 ---
 
 Dataform makes it easy to manage complex SQL pipelines in your data warehouse. Using Dataform's API you can power large, complex data transformations with just a few simple statements.
@@ -8,13 +8,11 @@ Dataform makes it easy to manage complex SQL pipelines in your data warehouse. U
 
 # Get started
 
-For an overview of Dataform's core concepts, see our [core concepts](guides/core-concepts) page.
-
-To install and use Dataform locally, check out our [getting started guide](guides/command-line-interface).
+For an overview of setting up Dataform and it's core concepts, check out our [getting started guide](getting-started).
 
 To use Dataform web's development environment, create an account [here](https://dataform.co/signup).
 
-To start developing and publishing your first datasets, you can jump straight to our [guide](guides/datasets) section.
+To set up a local Dataform project using the CLI, follow our CLI instructuctions [here](dataform-cli).
 
 # Need help?
 

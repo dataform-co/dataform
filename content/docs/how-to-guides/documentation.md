@@ -1,5 +1,6 @@
 ---
 title: Documenting datasets
+priority: 5
 ---
 
 ## Introduction

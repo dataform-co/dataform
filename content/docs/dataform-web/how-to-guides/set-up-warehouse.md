@@ -31,15 +31,12 @@ Postgres and Redshift projects require the following configuration settings:
 
 <div className="bp3-callout bp3-icon-info-sign bp3-intent-warning" markdown="1">
   Dataform's IP addresses must be whitelisted in order to access your Redshift cluster. Please
-  follow{" "}
+  follow
   <a
     target="_blank"
     rel="noopener"
     href="https://docs.aws.amazon.com/redshift/latest/gsg/rs-gsg-authorize-cluster-access.html"
-  >
-    these instructions
-  </a>
-  . Dataform's IP addresses are <code>35.233.106.210</code> and <code>104.196.10.242</code>.
+  >these instructions</a>. Dataform's IP addresses are <code>35.233.106.210</code> and <code>104.196.10.242</code>.
 </div>
 
 ### How to find Redshift credentials
