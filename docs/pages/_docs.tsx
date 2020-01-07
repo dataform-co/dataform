@@ -46,6 +46,20 @@ export class Docs extends React.Component<IProps> {
     const path = [query.path0, query.path1, query.path2].filter(part => !!part).join("/");
 
     const tree = await Tree.create(cms);
+
+    // Add some custom paths to the tree.
+    tree.addChild({
+      attributes: {
+        title: "API Reference"
+      },
+      file: {
+        path: "reference",
+        hasChildren: true
+      },
+      content: "",
+      children: []
+    });
+
     const current = tree.get(path);
 
     return { index: tree.index(), current, version };

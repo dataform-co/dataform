@@ -1,5 +1,6 @@
 ---
 title: Incremental datasets
+priority: 6
 ---
 
 ## Introduction

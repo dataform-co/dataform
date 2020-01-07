@@ -1,5 +1,6 @@
 ---
-title: Getting started with the CLI
+title: Dataform CLI
+priority: 4
 ---
 
 The CLI enables you to initialize, compile test and run Dataform projects directly from your local machine or as part of other systems.
@@ -93,7 +94,7 @@ dataform init-creds sqldatawarehouse
 
 A `.df-credentials.json` file will be written to disk containing your provided details.
 
-Check out our [data warehouse setup guide](../how_to_guides/dataform_web/set_up_datawarehouse) if you need help with the `init-creds` wizard.
+Check out our [data warehouse setup guide](../how-to-guides/dataform_web/set_up_datawarehouse) if you need help with the `init-creds` wizard.
 
 <div className="bp3-callout bp3-icon-info-sign bp3-intent-warning" markdown="1">
   If using a source control system, we strongly recommend that you do not commit the{" "}
@@ -193,4 +194,4 @@ Options:
 
 ## Next steps
 
-You have now seen how easy it is to use Dataform to publish simple datasets. Next, how about [publishing a dataset](../how_to_guides/datasets)?
+You have now seen how easy it is to use Dataform to publish simple datasets. Next, how about [publishing a dataset](../how-to-guides/datasets)?

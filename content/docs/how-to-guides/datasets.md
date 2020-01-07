@@ -1,5 +1,6 @@
 ---
 title: Publishing datasets
+priority: 0
 ---
 
 ![Publishing tables](/static/images/publishing_tables.png)
