@@ -41,7 +41,8 @@ export async function contentTree(cms: ICms) {
   // Add some custom paths to the tree.
   tree.addChild({
     attributes: {
-      title: "API Reference"
+      title: "API Reference",
+      priority: 3
     },
     file: {
       path: "reference",
