@@ -1,0 +1,49 @@
+syntax="proto3";
+
+package protomongo.example;
+
+option go_package = "github.com/dataform-co/dataform/protomongo/example";
+
+enum Enum {
+  VAL_0 = 0;
+  VAL_1 = 17;
+  VAL_2 = 364;
+}
+
+message SimpleMessage {
+  string string_field = 1;
+  int32 int32_field = 2;
+  int64 int64_field = 3;
+  float float_field = 4;
+  double double_field = 5;
+  bool bool_field = 6;
+  Enum enum_field = 7;
+}
+
+message RepeatedFieldMessage {
+  repeated string string_field = 1;
+  repeated int32 int32_field = 2;
+  repeated int64 int64_field = 3;
+  repeated float float_field = 4;
+  repeated double double_field = 5;
+  repeated bool bool_field = 6;
+  repeated Enum enum_field = 7;
+}
+
+message MessageWithSubMessage {
+  string string_field = 1;
+  SimpleMessage simple_message = 2;
+}
+
+message MessageWithRepeatedSubMessage {
+  string string_field = 1;
+  repeated SimpleMessage simple_message = 2;
+}
+
+message MessageWithOneof {
+    string string_field = 1;
+    oneof oneof_field {
+        int32 int32_oneof_field = 2;
+        int64 int64_oneof_field = 3;
+    }
+}
