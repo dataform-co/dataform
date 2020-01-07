@@ -8,7 +8,7 @@ Dataform Web provides a fully managed environment for Dataform projects, where y
 
 It provides a number of features on top of the open-source framework that makes it a great choice for larger teams.
 
-To get started with Dataform Web, check out our [getting started tutorial](tutorials/101) or [sign up](https://dataform.co) and jump straight into a trial.
+To get started with Dataform Web, check out our [getting started tutorial](dataform-web/tutorials/101) or [sign up](https://dataform.co) and jump straight into a trial.
 
 ## Scheduling
 
