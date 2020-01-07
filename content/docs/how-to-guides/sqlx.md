@@ -1,6 +1,5 @@
 ---
 title: SQLX
-priority: 0
 ---
 
 ## Overview

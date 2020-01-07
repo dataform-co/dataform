@@ -44,6 +44,10 @@ export class Tree {
     );
   }
 
+  public addChild(child: IFileTree) {
+    this.tree.children.push(child);
+  }
+
   public index(): IFileTree {
     return {
       ...this.tree,

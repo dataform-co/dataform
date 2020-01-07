@@ -7,7 +7,7 @@ title: Scheduling runs
 Schedules can be used to run any selection of your datasets at a user-specified frequency. Running your scripts on a repeating schedule ensures output data is always kept up to date.
 
 <div className="bp3-callout bp3-icon-info-sign bp3-intent-warning" markdown="1">
-  Schedules{" "}
+  Schedules
   <b>
     only run from the <code>production</code> branch
   </b>
@@ -26,4 +26,4 @@ Schedules can be used to run any selection of your datasets at a user-specified 
 
 You can find all current and historical scheduled runs in the _Run logs_ page, accessible using the left menu bar.
 
-![Run logs)[/static/images/how_to_guides/scheduling/run_logs.png]
+![Run logs](/static/images/how_to_guides/scheduling/run_logs.png)

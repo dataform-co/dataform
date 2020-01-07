@@ -1,5 +1,6 @@
 ---
 title: Declaring external datasets
+priority: 4
 ---
 
 ## Introduction

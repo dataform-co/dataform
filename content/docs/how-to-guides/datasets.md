@@ -1,5 +1,6 @@
 ---
 title: Publishing datasets
+priority: 0
 ---
 
 ![Publishing tables](/static/images/publishing_tables.png)
@@ -21,6 +22,8 @@ Note that non-SQL statements are stripped during query compilation, so the final
 SELECT 1 AS TEST
 ```
 
+For a list of all configuration options for datasets, view the [`ITableConfig`](../reference#ITableConfig) reference documentation.
+
 <div className="bp3-callout bp3-icon-info-sign bp3-intent-warning" markdown="1">
   Trailing semi-colons should be omitted from queries.
 </div>
@@ -40,6 +43,8 @@ config { type: "table" }
 SELECT 1 AS TEST
 ```
 
+For a list of all configuration options for datasets, view the [`ITableConfig`](../reference#ITableConfig) reference documentation.
+
 ## Referencing other datasets
 
 Dataform provides methods that enable you to easily reference another dataset in your project without having to provide the full SQL dataset name.
@@ -57,6 +62,8 @@ SELECT * FROM ${ref("source")}
 ```
 
 In order to reference the dataset created by a `source.sql` file, the value that should be passed to the `ref()` function is `"source"`, i.e. the name of the file defining the dataset (_without_ the file extension).
+
+For a detailed description of how to use the `ref` function, check out the [`ITableContext`](../reference#ITableContext) reference documentation.
 
 The query will be compiled into the following SQL before it is run:
 
@@ -138,9 +145,9 @@ SELECT * FROM ${ref("example")}
 ```
 
 <div className="bp3-callout bp3-icon-info-sign bp3-intent-warning" markdown="1">
-  If a dataset's <code>name</code> is overridden, you should use that name when calling the{" "}
-  <code>ref()</code> function. For example, a dataset with{" "}
-  <code>config &#123; name: "overridden_name" &#125;</code> would be referenced using{" "}
+  If a dataset's <code>name</code> is overridden, you should use that name when calling the
+  <code>ref()</code> function. For example, a dataset with
+  <code>config &#123; name: "overridden_name" &#125;</code> would be referenced using
   <code>ref("overridden_name")</code>.
 </div>
 

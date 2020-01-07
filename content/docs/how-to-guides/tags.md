@@ -32,7 +32,7 @@ Tags can be added to datasets, assertions, operations and declarations. You can 
 
 ## Using tags
 
-Once you have assigned tags to actions, you can use the tags to define a run or [schedule](../how_to_guides/dataform_web/scheduling) . For example, in the schedule creation
+Once you have assigned tags to actions, you can use the tags to define a run or [schedule](../how-to-guides/dataform_web/scheduling) . For example, in the schedule creation
 screen, simply choose the tags you'd like to include in that schedule.
 
 Tags can also be used with the CLI using the `--tags` argument.
