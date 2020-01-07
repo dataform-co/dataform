@@ -1,5 +1,5 @@
 import rehypePrism from "@mapbox/rehype-prism";
-import { IFileTree } from "df/docs/cms";
+import { ICms, IFileTree } from "df/docs/cms";
 import { GitHubCms } from "df/docs/cms/github";
 import { LocalCms } from "df/docs/cms/local";
 import { Tree } from "df/docs/cms/tree";
@@ -25,7 +25,7 @@ interface IProps {
   version: string;
 }
 
-const localCms = new LocalCms("content/docs");
+export const localCms = new LocalCms("content/docs");
 
 const gitHubCms = (ref: string) =>
   new GitHubCms({
@@ -34,6 +34,25 @@ const gitHubCms = (ref: string) =>
     rootPath: "content/docs",
     ref
   });
+
+export async function contentTree(cms: ICms) {
+  const tree = await Tree.create(cms);
+
+  // Add some custom paths to the tree.
+  tree.addChild({
+    attributes: {
+      title: "API Reference"
+    },
+    file: {
+      path: "reference",
+      hasChildren: true
+    },
+    content: "",
+    children: []
+  });
+
+  return tree;
+}
 
 export class Docs extends React.Component<IProps> {
   public static async getInitialProps({
@@ -44,21 +63,7 @@ export class Docs extends React.Component<IProps> {
 
     const cms = effectiveVersion === "local" ? localCms : gitHubCms(version);
     const path = [query.path0, query.path1, query.path2].filter(part => !!part).join("/");
-
-    const tree = await Tree.create(cms);
-
-    // Add some custom paths to the tree.
-    tree.addChild({
-      attributes: {
-        title: "API Reference"
-      },
-      file: {
-        path: "reference",
-        hasChildren: true
-      },
-      content: "",
-      children: []
-    });
+    const tree = await contentTree(cms);
 
     const current = tree.get(path);
 
