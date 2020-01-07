@@ -3,7 +3,9 @@
   "start_urls": [
     "http://docs.dataform.co/"
   ],
-  "stop_urls": [],
+  "stop_urls": [
+    "http://docs.dataform.co/v/.*"
+  ],
   "selectors": {
     "lvl0": "h1",
     "lvl1": "h2",
