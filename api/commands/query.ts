@@ -13,7 +13,7 @@ export function run(
     compileConfig?: dataform.ICompileConfig;
     maxResults?: number;
   }
-): CancellablePromise<any> {
+): CancellablePromise<any[]> {
   return new CancellablePromise(async (resolve, reject, onCancel) => {
     const dbadapter = dbadapters.create(credentials, warehouse);
     try {
