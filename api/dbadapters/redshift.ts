@@ -1,5 +1,5 @@
 import { Credentials } from "@dataform/api/commands/credentials";
-import { IDbAdapter, IQueryResult } from "@dataform/api/dbadapters/index";
+import { IDbAdapter } from "@dataform/api/dbadapters/index";
 import { dataform } from "@dataform/protos";
 import * as pg from "pg";
 import * as Cursor from "pg-cursor";

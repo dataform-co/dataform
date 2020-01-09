@@ -1,5 +1,5 @@
 import { Credentials } from "@dataform/api/commands/credentials";
-import { IDbAdapter, IQueryResult, OnCancel } from "@dataform/api/dbadapters/index";
+import { IDbAdapter, IExecutionResult, OnCancel } from "@dataform/api/dbadapters/index";
 import { dataform } from "@dataform/protos";
 import { ConnectionPool } from "mssql";
 
@@ -44,13 +44,13 @@ export class SQLDataWarehouseDBAdapter implements IDbAdapter {
       onCancel?: OnCancel;
       maxResults?: number;
     } = { maxResults: 1000 }
-  ): Promise<IQueryResult> {
+  ): Promise<IExecutionResult> {
     const request = (await this.pool).request();
     if (options && options.onCancel) {
       options.onCancel(() => request.cancel());
     }
 
-    return await new Promise<IQueryResult>((resolve, reject) => {
+    return await new Promise<IExecutionResult>((resolve, reject) => {
       request.stream = true;
 
       const rows: any[] = [];

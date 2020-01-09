@@ -144,8 +144,8 @@ describe("@dataform/integration/bigquery", () => {
     }
   });
 
-  describe("bq metadata check", async () => {
-    it("should get jobReference and statistics as metadata", async () => {
+  describe("metadata", async () => {
+    it("includes jobReference and statistics", async () => {
       const query = `select 1 as test`;
       const { metadata } = await dbadapter.execute(query, { interactive: false, maxResults: 2 });
       console.log(metadata);
