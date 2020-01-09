@@ -7,9 +7,9 @@ import { dataform } from "@dataform/protos";
 
 export type OnCancel = (handleCancel: () => void) => void;
 
-export interface IQueryResult {
+export interface IExecutionResult {
   rows: any[];
-  metadata?: any;
+  metadata: dataform.IExecutionMetadata;
 }
 
 export interface IDbAdapter {
@@ -20,7 +20,7 @@ export interface IDbAdapter {
       interactive?: boolean;
       maxResults?: number;
     }
-  ): Promise<IQueryResult>;
+  ): Promise<IExecutionResult>;
   evaluate(statement: string): Promise<void>;
   tables(): Promise<dataform.ITarget[]>;
   table(target: dataform.ITarget): Promise<dataform.ITableMetadata>;

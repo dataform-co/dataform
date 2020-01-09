@@ -84,7 +84,8 @@ export class SnowflakeDbAdapter implements IDbAdapter {
               });
             })
         })
-        .promise()
+        .promise(),
+      metadata: {}
     };
   }
 

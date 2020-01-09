@@ -30,7 +30,7 @@ export class RedshiftDbAdapter implements IDbAdapter {
     } = { maxResults: 1000 }
   ) {
     const rows = await this.queryExecutor.execute(statement, options);
-    return { rows };
+    return { rows, metadata: {} };
   }
 
   public async evaluate(statement: string) {
@@ -82,7 +82,7 @@ export class RedshiftDbAdapter implements IDbAdapter {
         ? this.execute(
             `select 'TABLE' as table_type from svv_external_tables where schemaname = '${target.schema}' and tablename = '${target.name}'`
           )
-        : { rows: [] }
+        : { rows: [], metadata: {} }
     ]);
     const allTableResults = tableResults.rows.concat(externalTableResults.rows);
     if (allTableResults.length > 0) {

@@ -59,13 +59,13 @@ export class SQLDataWarehouseDBAdapter implements IDbAdapter {
         .on("row", row => {
           if (options && options.maxResults && rows.length >= options.maxResults) {
             request.cancel();
-            resolve({ rows });
+            resolve({ rows, metadata: {} });
             return;
           }
           rows.push(row);
         })
         .on("error", err => reject(err))
-        .on("done", () => resolve({ rows }));
+        .on("done", () => resolve({ rows, metadata: {} }));
 
       // tslint:disable-next-line: no-floating-promises
       request.query(statement);

@@ -148,14 +148,10 @@ describe("@dataform/integration/bigquery", () => {
     it("includes jobReference and statistics", async () => {
       const query = `select 1 as test`;
       const { metadata } = await dbadapter.execute(query, { interactive: false, maxResults: 2 });
-      console.log(metadata);
-      expect(metadata).to.have.property("jobReference");
-      expect(metadata.jobReference).to.have.property("jobId");
-
-      expect(metadata).to.have.property("statistics");
-      expect(metadata.statistics).to.have.property("query");
-      expect(metadata.statistics.query).to.have.property("totalBytesBilled");
-      expect(metadata.statistics.query).to.have.property("totalBytesProcessed");
+      const { bigquery: bqMetadata } = metadata;
+      expect(bqMetadata).to.have.property("jobId");
+      expect(bqMetadata).to.have.property("totalBytesBilled");
+      expect(bqMetadata).to.have.property("totalBytesProcessed");
     });
   });
 });
