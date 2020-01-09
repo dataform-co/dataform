@@ -258,7 +258,7 @@ export class Runner {
     await this.triggerChange();
     try {
       // Retry this function a given number of times, configurable by user
-      const rows = await retry(
+      const queryData = await retry(
         () =>
           this.adapter.execute(task.statement, {
             onCancel: handleCancel => this.eEmitter.on(CANCEL_EVENT, handleCancel),
@@ -266,6 +266,7 @@ export class Runner {
           }),
         task.type === "operation" ? 0 : this.graph.projectConfig.idempotentActionRetries || 0
       );
+      const { rows } = queryData;
       if (task.type === "assertion") {
         // We expect that an assertion query returns 1 row, with 1 field that is the row count.
         // We don't really care what that field/column is called.

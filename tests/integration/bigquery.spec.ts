@@ -60,23 +60,30 @@ describe("@dataform/integration/bigquery", () => {
     const actionMap = keyBy(executedGraph.actions, v => v.name);
 
     // Check the status of the two assertions.
-    expect(actionMap["dataform-integration-tests.df_integration_test_assertions.example_assertion_fail"].status).equals(
-      dataform.ActionResult.ExecutionStatus.FAILED
-    );
-    expect(actionMap["dataform-integration-tests.df_integration_test_assertions.example_assertion_pass"].status).equals(
-      dataform.ActionResult.ExecutionStatus.SUCCESSFUL
-    );
+    expect(
+      actionMap["dataform-integration-tests.df_integration_test_assertions.example_assertion_fail"]
+        .status
+    ).equals(dataform.ActionResult.ExecutionStatus.FAILED);
+    expect(
+      actionMap["dataform-integration-tests.df_integration_test_assertions.example_assertion_pass"]
+        .status
+    ).equals(dataform.ActionResult.ExecutionStatus.SUCCESSFUL);
 
     // Check the status of the two uniqueness assertions.
     expect(
-      actionMap["dataform-integration-tests.df_integration_test_assertions.example_assertion_uniqueness_fail"].status
+      actionMap[
+        "dataform-integration-tests.df_integration_test_assertions.example_assertion_uniqueness_fail"
+      ].status
     ).equals(dataform.ActionResult.ExecutionStatus.FAILED);
     expect(
-      actionMap["dataform-integration-tests.df_integration_test_assertions.example_assertion_uniqueness_fail"].tasks[1]
-        .errorMessage
+      actionMap[
+        "dataform-integration-tests.df_integration_test_assertions.example_assertion_uniqueness_fail"
+      ].tasks[1].errorMessage
     ).to.eql("bigquery error: Assertion failed: query returned 1 row(s).");
     expect(
-      actionMap["dataform-integration-tests.df_integration_test_assertions.example_assertion_uniqueness_pass"].status
+      actionMap[
+        "dataform-integration-tests.df_integration_test_assertions.example_assertion_uniqueness_pass"
+      ].status
     ).equals(dataform.ActionResult.ExecutionStatus.SUCCESSFUL);
 
     // Check the data in the incremental table.
@@ -123,7 +130,9 @@ describe("@dataform/integration/bigquery", () => {
 
     for (const interactive of [true, false]) {
       it(`with interactive=${interactive}`, async () => {
-        expect(await dbadapter.execute(query, { interactive, maxResults: 2 })).eql([
+        const { rows } = await dbadapter.execute(query, { interactive, maxResults: 2 });
+        console.log("rows", rows);
+        expect(rows).to.eql([
           {
             f0_: 1
           },
@@ -133,5 +142,20 @@ describe("@dataform/integration/bigquery", () => {
         ]);
       });
     }
+  });
+
+  describe("bq metadata check", async () => {
+    it("should get jobReference and statistics as metadata", async () => {
+      const query = `select 1 as test`;
+      const { metadata } = await dbadapter.execute(query, { interactive: false, maxResults: 2 });
+      console.log(metadata);
+      expect(metadata).to.have.property("jobReference");
+      expect(metadata.jobReference).to.have.property("jobId");
+
+      expect(metadata).to.have.property("statistics");
+      expect(metadata.statistics).to.have.property("query");
+      expect(metadata.statistics.query).to.have.property("totalBytesBilled");
+      expect(metadata.statistics.query).to.have.property("totalBytesProcessed");
+    });
   });
 });

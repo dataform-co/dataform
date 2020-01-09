@@ -139,10 +139,11 @@ export class BigQueryDbAdapter implements IDbAdapter {
         .promise();
       return cleanRows(rowsResult[0]);
     }
-    return this.runQuery(
+    const { rows } = await this.runQuery(
       `SELECT * FROM \`${metadata.tableReference.projectId}.${metadata.tableReference.datasetId}.${metadata.tableReference.tableId}\``,
       limitRows
     );
+    return rows;
   }
 
   public async prepareSchema(schema: string): Promise<void> {
@@ -186,7 +187,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
           resolve(allRows);
         });
     });
-    return cleanRows(results);
+    return { rows: cleanRows(results) };
   }
 
   private createQueryJob(statement: string, maxResults?: number, onCancel?: OnCancel) {
@@ -197,7 +198,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
       });
     }
 
-    return new Promise<any[]>((resolve, reject) =>
+    return new Promise<any>((resolve, reject) =>
       this.client.createQueryJob(
         { useLegacySql: false, jobPrefix: "dataform-", query: statement, maxResults },
         async (err, job) => {
@@ -232,7 +233,17 @@ export class BigQueryDbAdapter implements IDbAdapter {
               // More results exist and we have space to consume them.
               job.getQueryResults(nextQuery, manualPaginationCallback);
             } else {
-              resolve(results);
+              job.getMetadata().then(([bqMeta]) => {
+                const metadata = {
+                  jobReference: bqMeta.jobReference,
+                  statistics: bqMeta.statistics
+                };
+                const queryData = {
+                  rows: results,
+                  metadata
+                };
+                resolve(queryData);
+              });
             }
           };
           // For non interactive queries, we can set a hard limit by disabling auto pagination.
