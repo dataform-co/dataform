@@ -26,7 +26,7 @@ export class Reference extends React.Component<IProps> {
     const typedoc: ITypedoc = JSON.parse(typedocFile);
     const tree = await contentTree(localCms);
     return {
-      version: context.query.version || "local",
+      version: context.query.version,
       index: tree.index(),
       current: tree.get("reference"),
       typedoc
