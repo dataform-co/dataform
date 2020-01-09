@@ -160,14 +160,14 @@ export interface ITableConfig extends ITargetableConfig, IDocumentableConfig, ID
  */
 export interface ITableContext extends ICommonContext {
   /**
-   * @hidden
+   * Indicates whether the config indicates the file is dealing with an incremental table.
    */
   isIncremental: () => boolean;
 
   /**
-   * @hidden
+   * Returns the string or an optional alternative string if the config indicates the file is dealing with an incremental table.
    */
-  ifIncremental: (value: string) => string;
+  ifIncremental: (trueValue: string, falseValue?: string) => string;
 }
 
 /**
@@ -430,8 +430,8 @@ export class TableContext implements ITableContext {
     return !!this.incremental;
   }
 
-  public ifIncremental(value: string) {
-    return this.isIncremental() ? value : "";
+  public ifIncremental(trueValue: string, falseValue?: string) {
+    return this.isIncremental() ? trueValue : falseValue ? falseValue : "";
   }
 
   public preOps(statement: Contextable<ITableContext, string | string[]>) {

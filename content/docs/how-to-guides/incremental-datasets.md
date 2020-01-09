@@ -179,3 +179,16 @@ SELECT ...
 Since incremental datasets are usually timestamp based, it's a best practice to set up dataset partioning on the timestamp field to speed up downstream queries.
 
 For more information, check out the [BigQuery](warehouses/bigquery) and [Redshift](warehouses/redshift) guides.
+
+## Conditional code if incremental
+
+For functionality other than a `WHERE` clause, `ifIncremental()` can be used. For example if there was a separate field `weblogs.user_alternative_actions` containing an alternative set of user events which was desirable for the script to select only if incremental, then a neat way to manage this would be to use:
+
+```js
+config { type: "incremental" }
+
+SELECT timestamp, action
+FROM ${ ifIncremental(weblogs.user_actions, weblogs.user_alternative_actions) }
+```
+
+If checking whether the current set up is incremental in a javascript block then `isIncremental()` can be more preferable. For more info see the [API reference](/reference#ITableContext).

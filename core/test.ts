@@ -172,7 +172,7 @@ class RefReplacingContext implements ITableContext {
     return false;
   }
 
-  public ifIncremental(value: string) {
+  public ifIncremental(trueValue: string, falseValue?: string) {
     // Use the non-incremental query for unit tests.
     return "";
   }
