@@ -188,7 +188,11 @@ For functionality other than a `WHERE` clause, `ifIncremental()` can be used. Fo
 config { type: "incremental" }
 
 SELECT timestamp, action
-FROM ${ ifIncremental(weblogs.user_actions, weblogs.user_alternative_actions) }
+FROM ${ ifIncremental(weblogs.user_alternative_actions, weblogs.user_actions) }
+
+incremental_where {
+  timestamp > (SELECT MAX(timestamp) FROM ${self()})
+}
 ```
 
 If checking whether the current set up is incremental in a javascript block then `isIncremental()` can be more preferable. For more info see the [API reference](/reference#ITableContext).
