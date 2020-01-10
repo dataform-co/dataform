@@ -5,6 +5,8 @@ import * as pg from "pg";
 import * as Cursor from "pg-cursor";
 import * as PromisePool from "promise-pool-executor";
 
+const HOUR_IN_MILLIS = 60 * 60 * 1000;
+
 interface ICursor {
   read: (rowCount: number, callback: (err: Error, rows: any[]) => void) => void;
   close: (callback: (err: Error) => void) => void;
@@ -18,9 +20,20 @@ export class RedshiftDbAdapter implements IDbAdapter {
     // Intended for temporary testing, not included in a permanent API.
     usePgPool: boolean
   ) {
+    const jdbcCredentials = credentials as dataform.IJDBC;
+    const clientConfig: pg.ClientConfig = {
+      host: jdbcCredentials.host,
+      port: jdbcCredentials.port,
+      user: jdbcCredentials.username,
+      password: jdbcCredentials.password,
+      database: jdbcCredentials.databaseName,
+      ssl: true
+    };
+    (clientConfig as any).statement_timeout = HOUR_IN_MILLIS;
+    (clientConfig as any).query_timeout = HOUR_IN_MILLIS;
     this.queryExecutor = usePgPool
-      ? new PgPoolExecutor(credentials as dataform.IJDBC)
-      : new PgClientExecutor(credentials as dataform.IJDBC);
+      ? new PgPoolExecutor(clientConfig)
+      : new PgClientExecutor(clientConfig);
   }
 
   public async execute(
@@ -135,11 +148,11 @@ interface IPgQueryExecutor {
 }
 
 class PgClientExecutor implements IPgQueryExecutor {
-  private credentials: dataform.IJDBC;
+  private clientConfig: pg.ClientConfig;
   private pool: PromisePool.PromisePoolExecutor;
 
-  constructor(credentials: dataform.IJDBC) {
-    this.credentials = credentials;
+  constructor(clientConfig: pg.ClientConfig) {
+    this.clientConfig = clientConfig;
     // Limit DB client concurrency.
     this.pool = new PromisePool.PromisePoolExecutor({
       concurrencyLimit: 10,
@@ -169,14 +182,7 @@ class PgClientExecutor implements IPgQueryExecutor {
       maxResults?: number;
     } = { maxResults: 1000 }
   ) {
-    const client = new pg.Client({
-      host: this.credentials.host,
-      port: this.credentials.port,
-      user: this.credentials.username,
-      password: this.credentials.password,
-      database: this.credentials.databaseName,
-      ssl: true
-    });
+    const client = new pg.Client(this.clientConfig);
     client.on("error", err => {
       console.error("pg.Client client error", err.message, err.stack);
     });
@@ -219,15 +225,8 @@ class PgClientExecutor implements IPgQueryExecutor {
 
 class PgPoolExecutor implements IPgQueryExecutor {
   private pool: pg.Pool;
-  constructor(credentials: dataform.IJDBC) {
-    this.pool = new pg.Pool({
-      host: credentials.host,
-      port: credentials.port,
-      user: credentials.username,
-      password: credentials.password,
-      database: credentials.databaseName,
-      ssl: true
-    });
+  constructor(clientConfig: pg.ClientConfig) {
+    this.pool = new pg.Pool(clientConfig);
     // https://node-postgres.com/api/pool#events
     // Idle clients in the pool are still connected to the remote host and as such can
     // emit errors. If/when they do, they will automatically be removed from the pool,
