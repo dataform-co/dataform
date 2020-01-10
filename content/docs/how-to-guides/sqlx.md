@@ -64,7 +64,7 @@ For all built in functions, see [`ITableContext` in the API reference](/referenc
 
 ## Additional Features
 
-- **Post-operations**: defined in SQLX by writing `post_operations { }`, SQL writtin inside will be executed after the central SQL. This can be useful for granting permissions, as can be seen in the [publishing datasets guide](/how-to-guides/datasets/#example-granting-dataset-access-with-post_operations). **Actions may only include pre_operations if they create a dataset**, for example with `type: "table"` or `type: "view"` or `type: "incremental"` in their config.
+- **Post-operations**: defined in SQLX by writing `post_operations { }`, SQL written inside will be executed after the central SQL. This can be useful for granting permissions, as can be seen in the [publishing datasets guide](/how-to-guides/datasets/#example-granting-dataset-access-with-post_operations). **Actions may only include pre_operations if they create a dataset**, for example with `type: "table"` or `type: "view"` or `type: "incremental"` in their config.
 
 - **Pre-operations**: the same as post-operations, but defined with `pre_operations { }`, and takes place before the central SQL.
 
