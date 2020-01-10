@@ -23,7 +23,7 @@ For example, to print out the default help information:
 ./scripts/run help
 ```
 
-Check the [docs](https://docs.dataform.co/guides/command-line-interface/) for more examples.
+Check the [docs](https://docs.dataform.co/dataform-cli) for more examples.
 
 _Note: If you are running Bazel on a **Mac**, this or any step that requires building may fail with a `Too many open files in system` error. This is [due to a limitation](https://github.com/angular/angular-bazel-example/issues/178) on the default maximum open file descriptors. You can increase the limit by running `sudo sysctl -w kern.maxfiles=<LARGE_NUMBER>` (we use `65536`)._
 
