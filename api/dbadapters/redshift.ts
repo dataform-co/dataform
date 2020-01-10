@@ -5,6 +5,8 @@ import * as pg from "pg";
 import * as Cursor from "pg-cursor";
 import * as PromisePool from "promise-pool-executor";
 
+const HOUR_IN_MILLIS = 60 * 60 * 1000;
+
 interface ICursor {
   read: (rowCount: number, callback: (err: Error, rows: any[]) => void) => void;
   close: (callback: (err: Error) => void) => void;
@@ -175,7 +177,8 @@ class PgClientExecutor implements IPgQueryExecutor {
       user: this.credentials.username,
       password: this.credentials.password,
       database: this.credentials.databaseName,
-      ssl: true
+      ssl: true,
+      query_timeout: HOUR_IN_MILLIS
     });
     client.on("error", err => {
       console.error("pg.Client client error", err.message, err.stack);
@@ -226,7 +229,8 @@ class PgPoolExecutor implements IPgQueryExecutor {
       user: credentials.username,
       password: credentials.password,
       database: credentials.databaseName,
-      ssl: true
+      ssl: true,
+      query_timeout: HOUR_IN_MILLIS
     });
     // https://node-postgres.com/api/pool#events
     // Idle clients in the pool are still connected to the remote host and as such can
