@@ -4,132 +4,41 @@ load("@npm_bazel_typescript//:index.bzl", "ts_library")
 
 ts_library(
     name = "utils",
-    srcs = glob(["utils.ts"]),
+    srcs = ["utils.ts"],
     deps = [
         "//api",
         "//core",
         "//protos",
         "//tests/utils",
         "@npm//@types/chai",
-        "@npm//@types/mocha",
         "@npm//@types/node",
     ],
 )
 
-ts_library(
-    name = "bigquery_lib",
-    srcs = glob(["bigquery.spec.ts"]),
-    deps = [
-        ":utils",
-        "//api",
-        "//core",
-        "//protos",
-        "//tests/utils",
-        "@npm//@types/chai",
-        "@npm//@types/mocha",
-        "@npm//@types/node",
-    ],
-)
+load("//testing:index.bzl", "ts_test_suite")
 
-load("//tools/mocha:mocha_node_test.bzl", "mocha_node_test")
-
-mocha_node_test(
-    name = "bigquery",
-    srcs = [
-        ":bigquery_lib",
-    ],
+ts_test_suite(
+    srcs = glob(["*.spec.ts"]),
     data = [
         "//test_credentials",
         "//tests/integration/bigquery_project:files",
         "//tests/integration/bigquery_project:node_modules",
-        "@npm//chai",
-        "@npm//mocha",
-    ],
-)
-
-ts_library(
-    name = "redshift_lib",
-    srcs = glob(["redshift.spec.ts"]),
-    deps = [
-        ":utils",
-        "//api",
-        "//core",
-        "//protos",
-        "//tests/utils",
-        "@npm//@types/chai",
-        "@npm//@types/mocha",
-        "@npm//@types/node",
-    ],
-)
-
-mocha_node_test(
-    name = "redshift",
-    srcs = [
-        ":redshift_lib",
-    ],
-    data = [
-        "//test_credentials",
         "//tests/integration/redshift_project:files",
         "//tests/integration/redshift_project:node_modules",
-        "@npm//chai",
-        "@npm//mocha",
-    ],
-)
-
-ts_library(
-    name = "snowflake_lib",
-    srcs = glob(["snowflake.spec.ts"]),
-    deps = [
-        ":utils",
-        "//api",
-        "//core",
-        "//protos",
-        "//tests/utils",
-        "@npm//@types/chai",
-        "@npm//@types/mocha",
-        "@npm//@types/node",
-    ],
-)
-
-mocha_node_test(
-    name = "snowflake",
-    srcs = [
-        ":snowflake_lib",
-    ],
-    data = [
-        "//test_credentials",
         "//tests/integration/snowflake_project:files",
         "//tests/integration/snowflake_project:node_modules",
-        "@npm//chai",
-        "@npm//mocha",
+        "//tests/integration/sqldatawarehouse_project:files",
+        "//tests/integration/sqldatawarehouse_project:node_modules",
     ],
-)
-
-ts_library(
-    name = "sqldatawarehouse_lib",
-    srcs = glob(["sqldatawarehouse.spec.ts"]),
     deps = [
         ":utils",
         "//api",
         "//core",
         "//protos",
+        "//testing",
         "//tests/utils",
         "@npm//@types/chai",
-        "@npm//@types/mocha",
         "@npm//@types/node",
-    ],
-)
-
-mocha_node_test(
-    name = "sqldatawarehouse",
-    srcs = [
-        ":sqldatawarehouse_lib",
-    ],
-    data = [
-        "//test_credentials",
-        "//tests/integration/sqldatawarehouse_project:files",
-        "//tests/integration/sqldatawarehouse_project:node_modules",
         "@npm//chai",
-        "@npm//mocha",
     ],
 )

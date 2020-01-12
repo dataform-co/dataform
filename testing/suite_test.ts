@@ -1,6 +1,8 @@
 import { expect } from "chai";
 import { ISuiteContext, Runner, suite, test } from "df/testing";
 
+Runner.setNoExit(true);
+
 class ExampleFixture {
   public counter = 0;
   public register(ctx: ISuiteContext) {

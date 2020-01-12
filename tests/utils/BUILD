@@ -6,7 +6,7 @@ ts_library(
     name = "utils",
     srcs = glob(["**/*.ts"]),
     deps = [
-        "@npm//@types/mocha",
+        "//testing",
         "@npm//@types/node",
         "@npm//@types/rimraf",
         "@npm//rimraf",

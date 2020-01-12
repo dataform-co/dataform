@@ -1,11 +1,11 @@
 import { adapters } from "@dataform/core";
 import { Assertion } from "@dataform/core/assertion";
+import { Resolvable } from "@dataform/core/common";
 import { Declaration } from "@dataform/core/declaration";
 import { Operation } from "@dataform/core/operation";
 import { IActionProto, Session } from "@dataform/core/session";
 import { DistStyleType, SortStyleType, Table, TableType } from "@dataform/core/table";
 import { dataform } from "@dataform/protos";
-import { Resolvable } from "@dataform/core/common";
 
 const SQL_DATA_WAREHOUSE_DIST_HASH_REGEXP = new RegExp("HASH\\s*\\(\\s*\\w*\\s*\\)\\s*");
 
@@ -51,17 +51,20 @@ export function getCallerFile(rootDir: string) {
   let lastfile: string;
   const stack = getCurrentStack();
   while (stack.length) {
-    lastfile = stack.shift().getFileName();
-    if (!lastfile) {
+    const nextLastfile = stack.shift().getFileName();
+    if (!nextLastfile) {
       continue;
     }
-    if (!lastfile.includes(rootDir)) {
+    if (!nextLastfile.includes(rootDir)) {
       continue;
     }
-    if (lastfile.includes("node_modules")) {
+    if (nextLastfile.includes("node_modules")) {
       continue;
     }
-    if (!(lastfile.includes("definitions/") || lastfile.includes("models/"))) {
+    // If it's in the root directory we'll take it, but keep searching
+    // for a better match.
+    lastfile = nextLastfile;
+    if (!(nextLastfile.includes("definitions/") || nextLastfile.includes("models/"))) {
       continue;
     }
     break;

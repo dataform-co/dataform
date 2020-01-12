@@ -1,7 +1,14 @@
 import { default as chalk } from "chalk";
 import { promisify } from "util";
 
-export type IHook = () => any;
+export type IHookFunction = () => any;
+
+export interface IHook {
+  name: string;
+  fn: IHookFunction;
+}
+
+export type IHookHandler = (nameOrFn: string | IHookFunction, fn?: IHookFunction) => any;
 
 export interface IRunResult {
   path: string[];
@@ -23,10 +30,10 @@ export interface ISuiteOptions {
 export interface ISuiteContext {
   suite: typeof suite;
   test: typeof test;
-  beforeEach: (hook: IHook) => void;
-  afterEach: (hook: IHook) => void;
-  setUp: (hook: IHook) => void;
-  tearDown: (hook: IHook) => void;
+  beforeEach: IHookHandler;
+  afterEach: IHookHandler;
+  setUp: IHookHandler;
+  tearDown: IHookHandler;
 }
 
 class Suite {
@@ -73,17 +80,17 @@ class Suite {
     const path = [...ctx.path, this.options.name];
     const runTestOrSuite = async (testOrSuite: Suite | Test) => {
       for (const beforeEach of this.beforeEaches) {
-        await beforeEach();
+        await beforeEach.fn();
       }
       await testOrSuite.run({ ...ctx, path });
       for (const afterEach of this.afterEaches) {
-        await afterEach();
+        await afterEach.fn();
       }
     };
 
     try {
       for (const setUp of this.setUps) {
-        await setUp();
+        await setUp.fn();
       }
 
       if (this.options.parallel) {
@@ -94,7 +101,7 @@ class Suite {
         }
       }
       for (const tearDown of this.tearDowns) {
-        await tearDown();
+        await tearDown.fn();
       }
     } catch (e) {
       ctx.results.push({
@@ -114,13 +121,22 @@ class Suite {
   }
 
   private context(): ISuiteContext {
+    const getHook: (nameOrFn: string | IHookFunction, fn?: IHookFunction) => IHook = (
+      nameOrFn,
+      fn
+    ) => {
+      return {
+        name: typeof nameOrFn === "string" ? nameOrFn : "unknown",
+        fn: typeof nameOrFn === "function" ? nameOrFn : fn
+      };
+    };
     return {
       suite: (a, b, c) => this.addSuite(Suite.create(a, b, c)),
       test: (a, b, c) => this.addTest(Test.create(a, b, c)),
-      beforeEach: hook => this.beforeEaches.push(hook),
-      afterEach: hook => this.afterEaches.push(hook),
-      setUp: hook => this.setUps.push(hook),
-      tearDown: hook => this.tearDowns.push(hook)
+      beforeEach: (a, b) => this.beforeEaches.push(getHook(a, b)),
+      afterEach: (a, b) => this.afterEaches.push(getHook(a, b)),
+      setUp: (a, b) => this.setUps.push(getHook(a, b)),
+      tearDown: (a, b) => this.tearDowns.push(getHook(a, b))
     };
   }
 }
@@ -131,7 +147,7 @@ export function test(
   fn?: () => void
 ) {
   Suite.globalStack.slice(-1)[0].addTest(Test.create(nameOrOptions, optionsOrFn, fn));
-  Runner.queueRun();
+  Runner.queueRunAndExit();
 }
 
 export function suite(
@@ -140,11 +156,14 @@ export function suite(
   fn?: (ctx?: ISuiteContext) => void
 ) {
   Suite.globalStack.slice(-1)[0].addSuite(Suite.create(nameOrOptions, optionsOrFn, fn));
-  Runner.queueRun();
+  Runner.queueRunAndExit();
 }
 
 export class Runner {
-  public static queueRun() {
+  public static setNoExit(noExit: boolean) {
+    Runner.noExit = noExit;
+  }
+  public static queueRunAndExit() {
     if (!Runner.resultPromise) {
       Runner.resultPromise = Runner.run();
     }
@@ -182,7 +201,7 @@ export class Runner {
           ? chalk.green
           : chalk.yellow;
       console.info(
-        `${pathString}${new Array(Math.max(80 - pathString.length - outcomeString.length, 1))
+        `${pathString}${new Array(Math.max(80 - pathString.length - outcomeString.length - 1, 1))
           .fill(" ")
           .join("")}${colorFn(outcomeString)}`
       );
@@ -192,7 +211,7 @@ export class Runner {
               result.err.stack &&
               (result.err.stack as string).split("\n").map(line => `    ${line}`)
             ).join("\n")
-          : `    ${result.err}`;
+          : `    ${JSON.stringify(result.err, null, 4)}`;
 
         // tslint:disable-next-line: no-console
         console.error(`\n${errString}\n\n`);
@@ -202,10 +221,15 @@ export class Runner {
     const hasErrors = ctx.results.some(result => result.outcome !== "passed");
 
     if (hasErrors) {
-      process.exitCode = 1;
       console.log(`\nTests failed.`);
     } else {
       console.log(`\nTests passed.`);
+    }
+
+    process.exitCode = hasErrors ? 1 : 0;
+
+    if (!Runner.noExit) {
+      process.exit();
     }
 
     return ctx.results;
@@ -214,6 +238,7 @@ export class Runner {
   public static async result() {
     return await Runner.resultPromise;
   }
+  private static noExit = false;
 
   private static resultPromise: Promise<IRunResult[]>;
 }

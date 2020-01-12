@@ -3,15 +3,16 @@ import * as dfapi from "@dataform/api";
 import { checkDataformJsonValidity } from "@dataform/api/commands/compile";
 import { dataform } from "@dataform/protos";
 import { assert, config, expect } from "chai";
+import { suite, test } from "df/testing";
 import { TmpDirFixture } from "df/tests/utils/fixtures";
 import * as fs from "fs";
 import * as path from "path";
 
 const SCHEDULES_JSON_PATH = "schedules.json";
 
-describe("@dataform/api/validate", () => {
-  describe("validateSchedules", () => {
-    it("returns no errors for valid schedules object", () => {
+suite("@dataform/api/validate", () => {
+  suite("validateSchedules", () => {
+    test("returns no errors for valid schedules object", () => {
       const compiledGraph = dataform.CompiledGraph.create({
         tables: [
           {
@@ -63,7 +64,7 @@ describe("@dataform/api/validate", () => {
       expect(errors).to.eql([]);
     });
 
-    it("test all errors", () => {
+    test("test all errors", () => {
       const compiledGraph = dataform.CompiledGraph.create({
         tables: [
           {
@@ -119,11 +120,11 @@ describe("@dataform/api/validate", () => {
       expect(errors).to.eql(expectedErrors);
     });
 
-    describe("validate schedules.json file", () => {
+    suite("validate schedules.json file", ({ afterEach }) => {
       const tmpDirFixture = new TmpDirFixture(afterEach);
       const projectsRootDir = tmpDirFixture.createNewTmpDir();
 
-      it("test all errors", async () => {
+      test("test all errors", async () => {
         const projectName = "schedules-test";
         const projectDir = path.resolve(path.join(projectsRootDir, projectName));
         const filePath = path.resolve(path.join(projectDir, SCHEDULES_JSON_PATH));
@@ -191,8 +192,8 @@ describe("@dataform/api/validate", () => {
     });
   });
 
-  it("dataform.json validation", async () => {
-    it("fails on invalid warehouse", async () => {
+  suite("dataform.json validation", async () => {
+    test("fails on invalid warehouse", async () => {
       expect(() =>
         checkDataformJsonValidity({
           warehouse: "dataform",
@@ -203,7 +204,7 @@ describe("@dataform/api/validate", () => {
       ).to.throw(/Invalid value on property warehouse: dataform/);
     });
 
-    it("fails on missing warehouse", async () => {
+    test("fails on missing warehouse", async () => {
       expect(() =>
         checkDataformJsonValidity({
           aint_no_warehouse: "redshift",
@@ -213,7 +214,7 @@ describe("@dataform/api/validate", () => {
       ).to.throw(/Missing mandatory property: warehouse/);
     });
 
-    it("fails on invalid default schema", async () => {
+    test("fails on invalid default schema", async () => {
       expect(() =>
         checkDataformJsonValidity({
           warehouse: "redshift",
@@ -227,7 +228,7 @@ describe("@dataform/api/validate", () => {
     });
   });
 
-  it("passes for valid config", async () => {
+  test("passes for valid config", async () => {
     expect(() =>
       checkDataformJsonValidity({
         warehouse: "redshift",
