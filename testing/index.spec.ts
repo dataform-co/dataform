@@ -5,7 +5,7 @@ Runner.setNoExit(true);
 
 class ExampleFixture {
   public counter = 0;
-  public register(ctx: ISuiteContext) {
+  public constructor(ctx: ISuiteContext) {
     ctx.setUp("reset counter", () => {
       this.counter = 1;
     });
@@ -16,7 +16,7 @@ class ExampleFixture {
 }
 
 const _ = (async () => {
-  const exampleFixture = new ExampleFixture();
+  let exampleFixture: ExampleFixture;
   suite("suite", () => {
     test("passes", async () => true);
     test("fails on expectation", () => expect({ value: 1 }).deep.equals({ value: 2 }));
@@ -50,7 +50,7 @@ const _ = (async () => {
     });
 
     suite("with set up and tear down", ctx => {
-      exampleFixture.register(ctx);
+      exampleFixture = new ExampleFixture(ctx);
       test({ name: "set up is called" }, () => {
         expect(exampleFixture.counter).equals(1);
       });
