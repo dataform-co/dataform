@@ -6,10 +6,10 @@ Runner.setNoExit(true);
 class ExampleFixture {
   public counter = 0;
   public register(ctx: ISuiteContext) {
-    ctx.setUp(() => {
+    ctx.setUp("reset counter", () => {
       this.counter = 1;
     });
-    ctx.tearDown(() => {
+    ctx.tearDown("change counter", () => {
       this.counter = 2;
     });
   }
@@ -19,6 +19,7 @@ const _ = (async () => {
   const exampleFixture = new ExampleFixture();
   suite("suite", () => {
     test("passes", async () => true);
+    test("fails on expectation", () => expect({ value: 1 }).deep.equals({ value: 2 }));
     test("fails on throw", () => {
       throw new Error("fail-sync");
     });
@@ -32,10 +33,10 @@ const _ = (async () => {
     );
     suite("with before and after", ({ beforeEach, afterEach }) => {
       let counter = 0;
-      beforeEach(() => {
+      beforeEach("increment counter", () => {
         counter += 1;
       });
-      afterEach(() => {
+      afterEach("reset counter", () => {
         counter = 0;
       });
       test("passes on first test", () => {
@@ -68,6 +69,22 @@ const _ = (async () => {
         counter = 1;
       });
     });
+
+    suite("with failing before each hook", ({ beforeEach }) => {
+      beforeEach("hook that fails", () => {
+        throw new Error("fail-sync");
+      });
+
+      test("test", () => true);
+    });
+
+    suite("with failing tear down hook", ({ tearDown }) => {
+      tearDown("hook that fails", () => {
+        throw new Error("fail-sync");
+      });
+
+      test("test", () => true);
+    });
   });
 
   const results = await Runner.result();
@@ -81,15 +98,17 @@ const _ = (async () => {
     if (result.err) {
       newResult.err = result.err.message;
     }
-    if (result.hasOwnProperty("duration")) {
-      delete newResult.duration;
-    }
     return newResult;
   });
 
   try {
     expect(resultsClean).deep.members([
       { path: ["suite", "passes"], outcome: "passed" },
+      {
+        path: ["suite", "fails on expectation"],
+        outcome: "failed",
+        err: "expected { value: 1 } to deeply equal { value: 2 }"
+      },
       { path: ["suite", "fails on throw"], outcome: "failed", err: "fail-sync" },
       { path: ["suite", "fails on promise rejection"], outcome: "failed", err: "fail-async" },
       { path: ["suite", "times out"], outcome: "timeout", err: "Timed out (10ms)." },
@@ -97,13 +116,29 @@ const _ = (async () => {
       { path: ["suite", "with before and after", "passes on second test"], outcome: "passed" },
       { path: ["suite", "with set up and tear down", "set up is called"], outcome: "passed" },
       { path: ["suite", "can execute in parallel", "test1"], outcome: "passed" },
-      { path: ["suite", "can execute in parallel", "test2"], outcome: "passed" }
+      { path: ["suite", "can execute in parallel", "test2"], outcome: "passed" },
+      {
+        path: ["suite", "with failing before each hook", "test", "hook that fails (hook)"],
+        outcome: "failed",
+        err: "fail-sync"
+      },
+      {
+        path: ["suite", "with failing tear down hook", "test"],
+        outcome: "passed"
+      },
+      {
+        path: ["suite", "with failing tear down hook", "hook that fails (hook)"],
+        outcome: "failed",
+        err: "fail-sync"
+      }
     ]);
 
     // Tear down should have been called.
     expect(exampleFixture.counter).equals(2);
   } catch (e) {
-    console.log(e);
+    // tslint:disable-next-line: no-console
+    console.error(e);
+    console.log(`Actual: \n ${JSON.stringify(e.actual, null, 4)}`);
     process.exit(1);
   }
   process.exit(0);

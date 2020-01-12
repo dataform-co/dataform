@@ -1,5 +1,3 @@
-package(default_visibility = ["//visibility:public"])
-
 load("//testing:index.bzl", "ts_test_suite")
 
 ts_test_suite(

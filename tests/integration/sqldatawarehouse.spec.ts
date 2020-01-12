@@ -12,7 +12,7 @@ suite("@dataform/integration/sqldatawarehouse", ({ tearDown }) => {
     "test_credentials/sqldatawarehouse.json"
   );
   const dbadapter = dbadapters.create(credentials, "sqldatawarehouse");
-  tearDown(() => dbadapter.close());
+  tearDown("close adapter", () => dbadapter.close());
 
   test("run", { timeout: 60000 }, async () => {
     const compiledGraph = await dfapi.compile({

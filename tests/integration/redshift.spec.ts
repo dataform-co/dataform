@@ -9,7 +9,7 @@ import { getTableRows, keyBy } from "df/tests/integration/utils";
 suite("@dataform/integration/redshift", ({ tearDown }) => {
   const credentials = dfapi.credentials.read("redshift", "test_credentials/redshift.json");
   const dbadapter = dbadapters.create(credentials, "redshift");
-  // tearDown(() => dbadapter.close());
+  tearDown("close adapter", () => dbadapter.close());
 
   test("run", { timeout: 60000 }, async () => {
     const compiledGraph = await dfapi.compile({

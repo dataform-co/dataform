@@ -4,7 +4,10 @@ load("@npm_bazel_typescript//:index.bzl", "ts_library")
 
 ts_library(
     name = "testing",
-    srcs = ["index.ts"],
+    srcs = glob(
+        ["*.ts"],
+        exclude = ["*.spec.ts"],
+    ),
     deps = [
         "@npm//@types/node",
         "@npm//chalk",
@@ -14,7 +17,7 @@ ts_library(
 load("//testing:index.bzl", "ts_test_suite")
 
 ts_test_suite(
-    srcs = glob(["*_test.ts"]),
+    srcs = glob(["*.spec.ts"]),
     deps = [
         ":testing",
         "@npm//@types/chai",
