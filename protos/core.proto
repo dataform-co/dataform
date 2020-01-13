@@ -324,8 +324,8 @@ message ActionResult {
 message ExecutionMetadata {
   message BigqueryMetadata {
     string job_id = 1;
-    string total_bytes_processed = 2;
-    string total_bytes_billed = 3;  
+    int64 total_bytes_processed = 2;
+    int64 total_bytes_billed = 3;  
   }
   BigqueryMetadata bigquery = 1;
 }

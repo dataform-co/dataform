@@ -4,6 +4,7 @@ import * as adapters from "@dataform/core/adapters";
 import { dataform } from "@dataform/protos";
 import { expect } from "chai";
 import { dropAllTables, getTableRows, keyBy } from "df/tests/integration/utils";
+import * as Long from "long";
 
 describe("@dataform/integration/bigquery", () => {
   const credentials = dfapi.credentials.read("bigquery", "df/test_credentials/bigquery.json");
@@ -153,7 +154,9 @@ describe("@dataform/integration/bigquery", () => {
         /^dataform-[0-9A-Fa-f]{8}(?:-[0-9A-Fa-f]{4}){3}-[0-9A-Fa-f]{12}$/
       );
       expect(bqMetadata).to.have.property("totalBytesBilled");
+      expect(bqMetadata.totalBytesBilled).to.eql(Long.fromNumber(0));
       expect(bqMetadata).to.have.property("totalBytesProcessed");
+      expect(bqMetadata.totalBytesProcessed).to.eql(Long.fromNumber(0));
     });
   });
 });

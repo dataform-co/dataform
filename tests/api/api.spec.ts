@@ -7,6 +7,7 @@ import { assert, config, expect } from "chai";
 import { asPlainObject, cleanSql } from "df/tests/utils";
 import * as path from "path";
 import { anyString, anything, instance, mock, when } from "ts-mockito";
+import * as Long from "long";
 
 config.truncateThreshold = 0;
 
@@ -715,7 +716,13 @@ describe("@dataform/api", () => {
         mockedDbAdapter.execute(TEST_GRAPH.actions[0].tasks[0].statement, anything())
       ).thenResolve({
         rows: [],
-        metadata: { bigquery: { jobId: "abc", totalBytesBilled: "0", totalBytesProcessed: "0" } }
+        metadata: {
+          bigquery: {
+            jobId: "abc",
+            totalBytesBilled: Long.fromNumber(0),
+            totalBytesProcessed: Long.fromNumber(0)
+          }
+        }
       });
       when(
         mockedDbAdapter.execute(TEST_GRAPH.actions[1].tasks[0].statement, anything())
@@ -743,7 +750,11 @@ describe("@dataform/api", () => {
                 {
                   status: dataform.TaskResult.ExecutionStatus.SUCCESSFUL,
                   metadata: {
-                    bigquery: { jobId: "abc", totalBytesBilled: "0", totalBytesProcessed: "0" }
+                    bigquery: {
+                      jobId: "abc",
+                      totalBytesBilled: Long.fromNumber(0),
+                      totalBytesProcessed: Long.fromNumber(0)
+                    }
                   }
                 }
               ],
