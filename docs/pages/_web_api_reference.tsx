@@ -43,7 +43,11 @@ export default class WebApiReference extends React.Component<IProps> {
         index={this.props.index}
         headerLinks={Swagger.getHeaderLinks(this.props)}
       >
-        <Swagger spec={this.props.spec} apiHost={this.props.apiHost} />
+        <Swagger spec={this.props.spec} apiHost={this.props.apiHost}>
+          <div className="bp3-callout bp3-icon-info-sign bp3-intent-warning">
+            The Dataform Web API is currently in Alpha, and breaking changes are likely to happen.
+          </div>
+        </Swagger>
       </Documentation>
     );
   }

@@ -50,7 +50,6 @@ export class Swagger extends React.Component<IProps> {
 
     return (
       <div>
-        <h1>Dataform Web API</h1>
         <div>{this.props.children}</div>
         {allOperations.map(operation => (
           <Operation key={operation.operationId} apiHost={apiHost} operation={operation} />
