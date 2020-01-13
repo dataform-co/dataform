@@ -160,7 +160,7 @@ export interface ITableConfig extends ITargetableConfig, IDocumentableConfig, ID
  */
 export interface ITableContext extends ICommonContext {
   /**
-   * Shorthand if condition that uses an empty string in case of the condition not being satisfied.
+   * Shorthand if condition that uses an empty string in the case of the condition not being satisfied.
    */
   when: (cond: boolean, trueCase: string, falseCase?: string) => string;
 
