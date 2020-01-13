@@ -56,11 +56,11 @@ Built in functions have special functionality and can be executed either within 
 
 For all built in functions, see [`ITableContext` in the API reference](/reference#ITableContext). Some useful examples can be found here:
 
-- [Reference another dataset in your project with `ref()`](datasets/#referencing-other-datasets)
+- [Reference another dataset in your project with `ref()`](datasets/#referencing-other-datasets).
 
-- [Retrieve the name of the current dataset with `self()`](incremental-datasets/#a-simple-example)
+- [Retrieve the name of the current dataset with `self()`](incremental-datasets/#a-simple-example).
 
-- [Execute code only if the script is for an incremental dataset using `incremental()`](incremental-datasets/#conditional-code-if-incremental)
+- [Execute code only if the script is for an incremental dataset using `incremental()`](incremental-datasets/#conditional-code-if-incremental).
 
 ## Additional Features
 
