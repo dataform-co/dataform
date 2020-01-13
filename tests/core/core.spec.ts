@@ -112,7 +112,7 @@ describe("@dataform/core", () => {
         .publish("incremental", {
           type: "incremental"
         })
-        .query(ctx => `select ${ctx.isIncremental()} as incremental`);
+        .query(ctx => `select ${ctx.incremental()} as incremental`);
       const graph = session.compile();
 
       expect(graph.toJSON().tables).deep.equals([

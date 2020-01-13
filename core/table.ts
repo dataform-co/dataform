@@ -160,14 +160,14 @@ export interface ITableConfig extends ITargetableConfig, IDocumentableConfig, ID
  */
 export interface ITableContext extends ICommonContext {
   /**
-   * @hidden
+   * Shorthand if condition that uses an empty string in case of the condition not being satisfied.
    */
-  isIncremental: () => boolean;
+  when: (cond: boolean, trueCase: string, falseCase?: string) => string;
 
   /**
-   * @hidden
+   * Indicates whether the config indicates the file is dealing with an incremental table.
    */
-  ifIncremental: (value: string) => string;
+  incremental: () => boolean;
 }
 
 /**
@@ -386,7 +386,7 @@ export class Table {
  * @hidden
  */
 export class TableContext implements ITableContext {
-  constructor(private table: Table, private incremental = false) {}
+  constructor(private table: Table, private isIncremental = false) {}
 
   public config(config: ITableConfig) {
     this.table.config(config);
@@ -426,12 +426,12 @@ export class TableContext implements ITableContext {
     return "";
   }
 
-  public isIncremental() {
-    return !!this.incremental;
+  public when(cond: boolean, trueCase: string, falseCase?: string) {
+    return cond ? trueCase : falseCase ? falseCase : "";
   }
 
-  public ifIncremental(value: string) {
-    return this.isIncremental() ? value : "";
+  public incremental() {
+    return !!this.isIncremental;
   }
 
   public preOps(statement: Contextable<ITableContext, string | string[]>) {

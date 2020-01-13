@@ -123,18 +123,18 @@ switch (sqlxConfig.type) {
   case "incremental":
   case "inline": {
     action.query(ctx => {
-      ${["self", "ref", "resolve", "name", "isIncremental", "ifIncremental"]
+      ${["self", "ref", "resolve", "name", "when", "incremental"]
         .map(name => `const ${name} = ctx.${name}.bind(ctx);`)
         .join("\n")}
       ${results.js}
       if (hasIncremental) {
         action.where(\`${results.incremental}\`);
       }
-      if (hasPreOperations && !isIncremental()) {
+      if (hasPreOperations && !incremental()) {
         const preOperations = [${results.preOperations.map(sql => `\`${sql}\``)}];
         action.preOps(preOperations);
       }
-      if (hasPostOperations && !isIncremental()) {
+      if (hasPostOperations && !incremental()) {
         const postOperations = [${results.postOperations.map(sql => `\`${sql}\``)}];
         action.postOps(postOperations);
       }
