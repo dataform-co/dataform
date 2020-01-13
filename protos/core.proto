@@ -47,9 +47,7 @@ message RunConfig {
   bool include_dependencies = 3;
   bool full_refresh = 2;
 
-  // Intended for temporary testing, not included in a permanent API.
-  bool use_pg_pool_for_redshift = 6;
-  reserved 4;
+  reserved 4, 6;
 }
 
 message GenerateIndexConfig {

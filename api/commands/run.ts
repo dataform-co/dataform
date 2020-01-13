@@ -12,11 +12,7 @@ const isSuccessfulAction = (actionResult: dataform.IActionResult) =>
   actionResult.status === dataform.ActionResult.ExecutionStatus.DISABLED;
 
 export function run(graph: dataform.IExecutionGraph, credentials: Credentials): Runner {
-  const dbadapter = dbadapters.create(
-    credentials,
-    graph.projectConfig.warehouse,
-    !!graph.runConfig.usePgPoolForRedshift
-  );
+  const dbadapter = dbadapters.create(credentials, graph.projectConfig.warehouse);
   const runner = Runner.create(dbadapter, graph);
   const executeAndCloseDbAdapter = async () => {
     try {
