@@ -131,7 +131,6 @@ describe("@dataform/integration/bigquery", () => {
     for (const interactive of [true, false]) {
       it(`with interactive=${interactive}`, async () => {
         const { rows } = await dbadapter.execute(query, { interactive, maxResults: 2 });
-        console.log("rows", rows);
         expect(rows).to.eql([
           {
             f0_: 1
@@ -150,6 +149,9 @@ describe("@dataform/integration/bigquery", () => {
       const { metadata } = await dbadapter.execute(query, { interactive: false, maxResults: 2 });
       const { bigquery: bqMetadata } = metadata;
       expect(bqMetadata).to.have.property("jobId");
+      expect(bqMetadata.jobId).to.match(
+        /^dataform-[0-9A-Fa-f]{8}(?:-[0-9A-Fa-f]{4}){3}-[0-9A-Fa-f]{12}$/
+      );
       expect(bqMetadata).to.have.property("totalBytesBilled");
       expect(bqMetadata).to.have.property("totalBytesProcessed");
     });

@@ -187,7 +187,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
           resolve(allRows);
         });
     });
-    return { rows: cleanRows(results), metadata: { bigquery: {} } };
+    return { rows: cleanRows(results), metadata: {} };
   }
 
   private createQueryJob(statement: string, maxResults?: number, onCancel?: OnCancel) {
@@ -234,15 +234,14 @@ export class BigQueryDbAdapter implements IDbAdapter {
               job.getQueryResults(nextQuery, manualPaginationCallback);
             } else {
               job.getMetadata().then(([bqMeta]) => {
-                const metadata = {
-                  jobId: bqMeta.jobReference.jobId,
-                  totalBytesBilled: bqMeta.statistics.query.totalBytesBilled,
-                  totalBytesProcessed: bqMeta.statistics.query.totalBytesProcessed
-                };
                 const queryData = {
                   rows: results,
                   metadata: {
-                    bigquery: metadata
+                    bigquery: {
+                      jobId: bqMeta.jobReference.jobId,
+                      totalBytesBilled: bqMeta.statistics.query.totalBytesBilled,
+                      totalBytesProcessed: bqMeta.statistics.query.totalBytesProcessed
+                    }
                   }
                 };
                 resolve(queryData);

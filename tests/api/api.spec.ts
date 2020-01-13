@@ -847,7 +847,6 @@ describe("@dataform/api", () => {
             delete taskResult.timing;
           });
         });
-        console.log("result", result);
         expect(dataform.RunResult.create(result)).to.deep.equal(
           dataform.RunResult.create({
             status: dataform.RunResult.ExecutionStatus.SUCCESSFUL,
