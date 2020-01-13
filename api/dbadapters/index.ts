@@ -7,6 +7,11 @@ import { dataform } from "@dataform/protos";
 
 export type OnCancel = (handleCancel: () => void) => void;
 
+export interface IExecutionResult {
+  rows: any[];
+  metadata: dataform.IExecutionMetadata;
+}
+
 export interface IDbAdapter {
   execute(
     statement: string,
@@ -15,7 +20,7 @@ export interface IDbAdapter {
       interactive?: boolean;
       maxResults?: number;
     }
-  ): Promise<any[]>;
+  ): Promise<IExecutionResult>;
   evaluate(statement: string): Promise<void>;
   tables(): Promise<dataform.ITarget[]>;
   table(target: dataform.ITarget): Promise<dataform.ITableMetadata>;

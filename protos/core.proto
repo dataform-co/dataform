@@ -320,6 +320,16 @@ message ActionResult {
   Timing timing = 4;
 }
 
+
+message ExecutionMetadata {
+  message BigqueryMetadata {
+    string job_id = 1;
+    int64 total_bytes_processed = 2;
+    int64 total_bytes_billed = 3;  
+  }
+  BigqueryMetadata bigquery = 1;
+}
+
 message TaskResult {
   enum ExecutionStatus {
       UNKNOWN = 0;
@@ -332,6 +342,7 @@ message TaskResult {
   ExecutionStatus status = 1;
   string error_message = 2;
   Timing timing = 3;
+  ExecutionMetadata metadata = 4;
 }
 
 enum ActionExecutionStatus {

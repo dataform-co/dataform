@@ -23,7 +23,7 @@ export function run(
         interactive: true,
         maxResults: options && options.maxResults
       });
-      resolve(results);
+      resolve(results.rows);
     } catch (e) {
       reject(e);
     } finally {
