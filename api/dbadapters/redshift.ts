@@ -13,13 +13,9 @@ interface ICursor {
 }
 
 export class RedshiftDbAdapter implements IDbAdapter {
-  private queryExecutor: IPgQueryExecutor;
+  private queryExecutor: PgPoolExecutor;
 
-  constructor(
-    credentials: Credentials,
-    // Intended for temporary testing, not included in a permanent API.
-    usePgPool: boolean
-  ) {
+  constructor(credentials: Credentials) {
     const jdbcCredentials = credentials as dataform.IJDBC;
     const clientConfig: pg.ClientConfig = {
       host: jdbcCredentials.host,
@@ -31,9 +27,7 @@ export class RedshiftDbAdapter implements IDbAdapter {
     };
     (clientConfig as any).statement_timeout = HOUR_IN_MILLIS;
     (clientConfig as any).query_timeout = HOUR_IN_MILLIS;
-    this.queryExecutor = usePgPool
-      ? new PgPoolExecutor(clientConfig)
-      : new PgClientExecutor(clientConfig);
+    this.queryExecutor = new PgPoolExecutor(clientConfig);
   }
 
   public async execute(
@@ -142,93 +136,7 @@ export class RedshiftDbAdapter implements IDbAdapter {
   }
 }
 
-interface IPgQueryExecutor {
-  execute(
-    statement: string,
-    options: {
-      maxResults?: number;
-    }
-  ): Promise<any[]>;
-  close(): Promise<void>;
-}
-
-class PgClientExecutor implements IPgQueryExecutor {
-  private clientConfig: pg.ClientConfig;
-  private pool: PromisePool.PromisePoolExecutor;
-
-  constructor(clientConfig: pg.ClientConfig) {
-    this.clientConfig = clientConfig;
-    // Limit DB client concurrency.
-    this.pool = new PromisePool.PromisePoolExecutor({
-      concurrencyLimit: 10,
-      frequencyWindow: 1000,
-      frequencyLimit: 10
-    });
-  }
-
-  public async execute(
-    statement: string,
-    options: {
-      maxResults?: number;
-    } = { maxResults: 1000 }
-  ) {
-    return this.pool
-      .addSingleTask({
-        generator: () => this.executeInsidePool(statement, options)
-      })
-      .promise();
-  }
-
-  public async close() {}
-
-  private async executeInsidePool(
-    statement: string,
-    options: {
-      maxResults?: number;
-    } = { maxResults: 1000 }
-  ) {
-    const client = new pg.Client(this.clientConfig);
-    client.on("error", err => {
-      console.error("pg.Client client error", err.message, err.stack);
-    });
-    await client.connect();
-    try {
-      if (!options || !options.maxResults) {
-        const result = await client.query(statement);
-        return result.rows;
-      }
-      // If we want to limit the returned results from redshift, we have two options:
-      // (1) use cursors, or (2) use JDBC and configure a fetch size parameter. We use cursors
-      // to avoid the need to run a JVM.
-      // See https://docs.aws.amazon.com/redshift/latest/dg/declare.html for more details.
-      const cursor: ICursor = client.query(new Cursor(statement));
-      return await new Promise<any[]>((resolve, reject) => {
-        // It seems that when requesting one row back exactly, we run into some issues with
-        // the cursor. I've filed a bug (https://github.com/brianc/node-pg-cursor/issues/55),
-        // but setting a minimum of 2 resulting rows seems to do the trick.
-        cursor.read(Math.max(2, options.maxResults), (err, rows) => {
-          if (err) {
-            reject(err);
-            return;
-          }
-          // Close the cursor after reading the first page of results.
-          cursor.close(closeErr => {
-            if (closeErr) {
-              reject(closeErr);
-            } else {
-              // Limit results again, in case we had to increase the limit in the original request.
-              resolve(rows.slice(0, options.maxResults));
-            }
-          });
-        });
-      });
-    } finally {
-      await client.end();
-    }
-  }
-}
-
-class PgPoolExecutor implements IPgQueryExecutor {
+class PgPoolExecutor {
   private pool: pg.Pool;
   constructor(clientConfig: pg.ClientConfig) {
     this.pool = new pg.Pool(clientConfig);
@@ -255,23 +163,31 @@ class PgPoolExecutor implements IPgQueryExecutor {
     client.on("error", err => {
       console.error("pg.Client client error", err.message, err.stack);
     });
+
     try {
-      // If we want to limit the returned results from redshift, we have two options:
-      // (1) use cursors, or (2) use JDBC and configure a fetch size parameter. We use cursors
-      // to avoid the need to run a JVM.
-      // See https://docs.aws.amazon.com/redshift/latest/dg/declare.html for more details.
-      const cursor: ICursor = client.query(new Cursor(statement));
-      const result = await new Promise<any[]>((resolve, reject) => {
+      return await new Promise<any[]>((resolve, reject) => {
+        // If we want to limit the returned results from redshift, we have two options:
+        // (1) use cursors, or (2) use JDBC and configure a fetch size parameter. We use cursors
+        // to avoid the need to run a JVM.
+        // See https://docs.aws.amazon.com/redshift/latest/dg/declare.html for more details.
+        const cursor: ICursor = new Cursor(statement);
+        // Unfortunately, because of https://github.com/brianc/node-postgres/issues/1860 and the fact that
+        // we set a query_timeout parameter, we have to use the non-Promise version of the client.query(...) API.
+        client.query(cursor as any, (err: Error) => {
+          if (err) {
+            reject(err);
+          }
+        });
         // It seems that when requesting one row back exactly, we run into some issues with
         // the cursor. I've filed a bug (https://github.com/brianc/node-pg-cursor/issues/55),
         // but setting a minimum of 2 resulting rows seems to do the trick.
-        cursor.read(Math.max(2, options.maxResults), (err, rows) => {
+        cursor.read(Math.max(2, options.maxResults), (err: Error, rows: any[]) => {
           if (err) {
             reject(err);
             return;
           }
           // Close the cursor after reading the first page of results.
-          cursor.close(closeErr => {
+          cursor.close((closeErr: Error) => {
             if (closeErr) {
               reject(closeErr);
             } else {
@@ -281,7 +197,6 @@ class PgPoolExecutor implements IPgQueryExecutor {
           });
         });
       });
-      return result;
     } finally {
       client.release();
     }
