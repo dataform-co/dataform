@@ -115,24 +115,29 @@ export class Suite {
   }
 
   public addSuite(suite: Suite) {
-    if (this.runStarted) {
-      throw new Error("Cannot add a suite to a suite that has already started running.");
-    }
+    this.checkMutation();
     this.suites.push(suite);
   }
 
   public addTest(test: Test) {
-    if (this.runStarted) {
-      throw new Error("Cannot add a test to a suite that has already started running.");
-    }
+    this.checkMutation();
     this.tests.push(test);
   }
 
   private addHook(hookList: Hook[], hook: Hook) {
-    if (this.runStarted) {
-      throw new Error("Cannot add a hook to a suite that has already started running.");
-    }
+    this.checkMutation();
     hookList.push(hook);
+  }
+
+  private checkMutation() {
+    if (this.runStarted) {
+      throw new Error("Cannot mutate a suite that has already started running.");
+    }
+    if (Suite.globalStack.slice(-1)[0] !== this) {
+      throw new Error(
+        "Cannot mutate a suite that is not currently in scope (suite configuration must be synchronous)."
+      );
+    }
   }
 
   private context(): ISuiteContext {
