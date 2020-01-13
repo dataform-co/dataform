@@ -42,7 +42,8 @@ export class RedshiftDbAdapter implements IDbAdapter {
       maxResults?: number;
     } = { maxResults: 1000 }
   ) {
-    return this.queryExecutor.execute(statement, options);
+    const rows = await this.queryExecutor.execute(statement, options);
+    return { rows, metadata: {} };
   }
 
   public async evaluate(statement: string) {
@@ -51,7 +52,7 @@ export class RedshiftDbAdapter implements IDbAdapter {
 
   public async tables(): Promise<dataform.ITarget[]> {
     const hasSpectrumTables = await this.hasSpectrumTables();
-    const rows = await this.execute(
+    const queryResult = await this.execute(
       `select table_name, table_schema
      from information_schema.tables
      where table_schema != 'information_schema'
@@ -64,6 +65,7 @@ export class RedshiftDbAdapter implements IDbAdapter {
        }`,
       { maxResults: 10000 }
     );
+    const { rows } = queryResult;
     return rows.map(row => ({
       schema: row.table_schema,
       name: row.table_name
@@ -93,15 +95,15 @@ export class RedshiftDbAdapter implements IDbAdapter {
         ? this.execute(
             `select 'TABLE' as table_type from svv_external_tables where schemaname = '${target.schema}' and tablename = '${target.name}'`
           )
-        : []
+        : { rows: [], metadata: {} }
     ]);
-    const allTableResults = tableResults.concat(externalTableResults);
+    const allTableResults = tableResults.rows.concat(externalTableResults.rows);
     if (allTableResults.length > 0) {
       // The table exists.
       return {
         target,
         type: allTableResults[0].table_type === "VIEW" ? "view" : "table",
-        fields: columnResults.map(row => ({
+        fields: columnResults.rows.map(row => ({
           name: row.column_name,
           primitive: row.data_type,
           flags: row.is_nullable && row.is_nullable === "YES" ? ["nullable"] : []
@@ -113,7 +115,10 @@ export class RedshiftDbAdapter implements IDbAdapter {
   }
 
   public async preview(target: dataform.ITarget, limitRows: number = 10): Promise<any[]> {
-    return this.execute(`SELECT * FROM "${target.schema}"."${target.name}" LIMIT ${limitRows}`);
+    const { rows } = await this.execute(
+      `SELECT * FROM "${target.schema}"."${target.name}" LIMIT ${limitRows}`
+    );
+    return rows;
   }
 
   public async prepareSchema(schema: string): Promise<void> {
@@ -132,7 +137,7 @@ export class RedshiftDbAdapter implements IDbAdapter {
          where table_name = 'svv_external_tables'
            and table_schema = 'pg_catalog'`,
         { maxResults: 1 }
-      )).length > 0
+      )).rows.length > 0
     );
   }
 }

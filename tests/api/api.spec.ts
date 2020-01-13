@@ -7,6 +7,7 @@ import { assert, config, expect } from "chai";
 import { asPlainObject, cleanSql } from "df/tests/utils";
 import * as path from "path";
 import { anyString, anything, instance, mock, when } from "ts-mockito";
+import * as Long from "long";
 
 config.truncateThreshold = 0;
 
@@ -713,7 +714,16 @@ describe("@dataform/api", () => {
       when(mockedDbAdapter.prepareSchema(anyString())).thenResolve(null);
       when(
         mockedDbAdapter.execute(TEST_GRAPH.actions[0].tasks[0].statement, anything())
-      ).thenResolve([]);
+      ).thenResolve({
+        rows: [],
+        metadata: {
+          bigquery: {
+            jobId: "abc",
+            totalBytesBilled: Long.fromNumber(0),
+            totalBytesProcessed: Long.fromNumber(0)
+          }
+        }
+      });
       when(
         mockedDbAdapter.execute(TEST_GRAPH.actions[1].tasks[0].statement, anything())
       ).thenReject(new Error("bad statement"));
@@ -738,7 +748,14 @@ describe("@dataform/api", () => {
               name: TEST_GRAPH.actions[0].name,
               tasks: [
                 {
-                  status: dataform.TaskResult.ExecutionStatus.SUCCESSFUL
+                  status: dataform.TaskResult.ExecutionStatus.SUCCESSFUL,
+                  metadata: {
+                    bigquery: {
+                      jobId: "abc",
+                      totalBytesBilled: Long.fromNumber(0),
+                      totalBytesProcessed: Long.fromNumber(0)
+                    }
+                  }
                 }
               ],
               status: dataform.ActionResult.ExecutionStatus.SUCCESSFUL
@@ -748,6 +765,7 @@ describe("@dataform/api", () => {
               tasks: [
                 {
                   status: dataform.TaskResult.ExecutionStatus.FAILED,
+                  metadata: {},
                   errorMessage: "bigquery error: bad statement"
                 }
               ],
@@ -768,11 +786,11 @@ describe("@dataform/api", () => {
         when(mockedDbAdapter.prepareSchema(anyString())).thenResolve(null);
         when(
           mockedDbAdapter.execute(NEW_TEST_GRAPH.actions[0].tasks[0].statement, anything())
-        ).thenResolve([]);
+        ).thenResolve({ rows: [], metadata: {} });
         when(mockedDbAdapter.execute(NEW_TEST_GRAPH.actions[1].tasks[0].statement, anything()))
           .thenReject(new Error("bad statement"))
           .thenReject(new Error("bad statement"))
-          .thenResolve([]);
+          .thenResolve({ rows: [], metadata: {} });
 
         const runner = new Runner(instance(mockedDbAdapter), NEW_TEST_GRAPH);
         const result = await runner.execute();
@@ -793,7 +811,8 @@ describe("@dataform/api", () => {
                 name: NEW_TEST_GRAPH.actions[0].name,
                 tasks: [
                   {
-                    status: dataform.TaskResult.ExecutionStatus.SUCCESSFUL
+                    status: dataform.TaskResult.ExecutionStatus.SUCCESSFUL,
+                    metadata: {}
                   }
                 ],
                 status: dataform.ActionResult.ExecutionStatus.SUCCESSFUL
@@ -803,7 +822,8 @@ describe("@dataform/api", () => {
                 tasks: [
                   {
                     status: dataform.TaskResult.ExecutionStatus.FAILED,
-                    errorMessage: "bigquery error: bad statement"
+                    errorMessage: "bigquery error: bad statement",
+                    metadata: {}
                   }
                 ],
                 status: dataform.ActionResult.ExecutionStatus.FAILED
@@ -822,11 +842,11 @@ describe("@dataform/api", () => {
         when(mockedDbAdapter.prepareSchema(anyString())).thenResolve(null);
         when(
           mockedDbAdapter.execute(NEW_TEST_GRAPH.actions[0].tasks[0].statement, anything())
-        ).thenResolve([]);
+        ).thenResolve({ rows: [], metadata: {} });
         when(mockedDbAdapter.execute(NEW_TEST_GRAPH.actions[1].tasks[0].statement, anything()))
           .thenReject(new Error("bad statement"))
           .thenReject(new Error("bad statement"))
-          .thenResolve([]);
+          .thenResolve({ rows: [], metadata: {} });
 
         const runner = new Runner(instance(mockedDbAdapter), NEW_TEST_GRAPH);
         const result = await runner.execute();
@@ -838,7 +858,6 @@ describe("@dataform/api", () => {
             delete taskResult.timing;
           });
         });
-
         expect(dataform.RunResult.create(result)).to.deep.equal(
           dataform.RunResult.create({
             status: dataform.RunResult.ExecutionStatus.SUCCESSFUL,
@@ -847,7 +866,8 @@ describe("@dataform/api", () => {
                 name: NEW_TEST_GRAPH.actions[0].name,
                 tasks: [
                   {
-                    status: dataform.TaskResult.ExecutionStatus.SUCCESSFUL
+                    status: dataform.TaskResult.ExecutionStatus.SUCCESSFUL,
+                    metadata: {}
                   }
                 ],
                 status: dataform.ActionResult.ExecutionStatus.SUCCESSFUL
@@ -856,7 +876,8 @@ describe("@dataform/api", () => {
                 name: NEW_TEST_GRAPH.actions[1].name,
                 tasks: [
                   {
-                    status: dataform.TaskResult.ExecutionStatus.SUCCESSFUL
+                    status: dataform.TaskResult.ExecutionStatus.SUCCESSFUL,
+                    metadata: {}
                   }
                 ],
                 status: dataform.ActionResult.ExecutionStatus.SUCCESSFUL
@@ -880,7 +901,7 @@ describe("@dataform/api", () => {
             NEW_TEST_GRAPH_WITH_OPERATION.actions[0].tasks[0].statement,
             anything()
           )
-        ).thenResolve([]);
+        ).thenResolve({ rows: [], metadata: {} });
         when(
           mockedDbAdapter.execute(
             NEW_TEST_GRAPH_WITH_OPERATION.actions[1].tasks[0].statement,
@@ -889,7 +910,7 @@ describe("@dataform/api", () => {
         )
           .thenReject(new Error("bad statement"))
           .thenReject(new Error("bad statement"))
-          .thenResolve([]);
+          .thenResolve({ rows: [], metadata: {} });
 
         const runner = new Runner(instance(mockedDbAdapter), NEW_TEST_GRAPH_WITH_OPERATION);
         const result = await runner.execute();
@@ -910,7 +931,8 @@ describe("@dataform/api", () => {
                 name: NEW_TEST_GRAPH_WITH_OPERATION.actions[0].name,
                 tasks: [
                   {
-                    status: dataform.TaskResult.ExecutionStatus.SUCCESSFUL
+                    status: dataform.TaskResult.ExecutionStatus.SUCCESSFUL,
+                    metadata: {}
                   }
                 ],
                 status: dataform.ActionResult.ExecutionStatus.SUCCESSFUL
@@ -920,7 +942,8 @@ describe("@dataform/api", () => {
                 tasks: [
                   {
                     status: dataform.TaskResult.ExecutionStatus.FAILED,
-                    errorMessage: "bigquery error: bad statement"
+                    errorMessage: "bigquery error: bad statement",
+                    metadata: {}
                   }
                 ],
                 status: dataform.ActionResult.ExecutionStatus.FAILED
