@@ -147,7 +147,7 @@ describe("@dataform/integration/bigquery", () => {
   describe("metadata", async () => {
     it("includes jobReference and statistics", async () => {
       const query = `select 1 as test`;
-      const { metadata } = await dbadapter.execute(query, { interactive: false, maxResults: 2 });
+      const { metadata } = await dbadapter.execute(query);
       const { bigquery: bqMetadata } = metadata;
       expect(bqMetadata).to.have.property("jobId");
       expect(bqMetadata.jobId).to.match(
