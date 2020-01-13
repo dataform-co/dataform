@@ -1,13 +1,7 @@
-import { Tag } from "@blueprintjs/core";
-import { PageLinks } from "df/docs/components/page_links";
+import { IHeaderLink } from "df/docs/components/page_links";
 import * as styles from "df/docs/components/swagger.css";
 import React from "react";
-import {
-  Operation as IOperation,
-  Parameter as IParameter,
-  Schema,
-  Spec
-} from "swagger-schema-official";
+import { Operation as IOperation, Schema, Spec } from "swagger-schema-official";
 
 interface IProps {
   apiHost: string;
@@ -20,9 +14,8 @@ interface IOperationWithPath extends IOperation {
 }
 
 export class Swagger extends React.Component<IProps> {
-  public render() {
-    const { spec, apiHost } = this.props;
-    const allOperations: IOperationWithPath[] = Object.keys(spec.paths)
+  public static cleanOperations(spec: Spec) {
+    return Object.keys(spec.paths)
       .map(path => {
         const schema = spec.paths[path];
         return [
@@ -34,39 +27,36 @@ export class Swagger extends React.Component<IProps> {
           .filter(operation => !!operation.operationId)
           .map(operation => ({ path, ...operation }));
       })
-      .reduce((acc, curr) => [...acc, ...curr], []);
+      .reduce((acc, curr) => [...acc, ...curr], []) as IOperationWithPath[];
+  }
+
+  public static getHeaderLinks(props: IProps): IHeaderLink[] {
+    const allOperations = Swagger.cleanOperations(props.spec);
+    return [
+      ...allOperations.map(operation => ({
+        id: operation.operationId,
+        text: operation.operationId
+      })),
+      ...Object.keys(props.spec.definitions).map(name => ({
+        id: `/definitions/${name}`,
+        text: classname(name)
+      }))
+    ];
+  }
+
+  public render() {
+    const { spec, apiHost } = this.props;
+    const allOperations = Swagger.cleanOperations(spec);
 
     return (
-      <div className={styles.container}>
-        <div className={styles.sidebar} />
-        <div className={styles.mainContent}>
-          <div>
-            <h1>Dataform Web API</h1>
-            {allOperations.map(operation => (
-              <Operation key={operation.operationId} apiHost={apiHost} operation={operation} />
-            ))}
-            {Object.keys(spec.definitions).map(name => (
-              <Definition key={name} name={name} schema={spec.definitions[name]} />
-            ))}
-          </div>
-          {this.props.children}
-        </div>
-        <div className={styles.sidebarRight}>
-          <h5>Operations</h5>
-          <PageLinks
-            links={allOperations.map(operation => ({
-              id: operation.operationId,
-              text: operation.operationId
-            }))}
-          />
-          <h5>Types</h5>
-          <PageLinks
-            links={Object.keys(spec.definitions).map(name => ({
-              id: `/definitions/${name}`,
-              text: classname(name)
-            }))}
-          />
-        </div>
+      <div>
+        <div>{this.props.children}</div>
+        {allOperations.map(operation => (
+          <Operation key={operation.operationId} apiHost={apiHost} operation={operation} />
+        ))}
+        {Object.keys(spec.definitions).map(name => (
+          <Definition key={name} name={name} schema={spec.definitions[name]} />
+        ))}
       </div>
     );
   }
