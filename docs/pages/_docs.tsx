@@ -52,6 +52,19 @@ export async function contentTree(cms: ICms) {
     children: []
   });
 
+  tree.get("dataform-web").children.push({
+    attributes: {
+      title: "Web API Reference",
+      priority: 3
+    },
+    file: {
+      path: "dataform-web/api-reference",
+      hasChildren: true
+    },
+    content: "",
+    children: []
+  });
+
   return tree;
 }
 
