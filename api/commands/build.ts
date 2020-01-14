@@ -82,9 +82,13 @@ export class Builder {
     const tasks = t.disabled
       ? emptyTasks
       : emptyTasks.concat(
-          (t.preOps || []).map(pre => ({ statement: pre })),
+          t.incrementalQuery
+            ? (t.incPreOps || []).map(pre => ({ statement: pre }))
+            : (t.preOps || []).map(pre => ({ statement: pre })),
           this.adapter.publishTasks(t, this.runConfig, tableMetadata).build(),
-          (t.postOps || []).map(post => ({ statement: post }))
+          t.incrementalQuery
+            ? (t.incPostOps || []).map(post => ({ statement: post }))
+            : (t.postOps || []).map(pre => ({ statement: pre }))
         );
 
     return dataform.ExecutionAction.create({

@@ -110,8 +110,18 @@ describe("examples", () => {
             )}.example_is_incremental\`) is null`
           )
         );
-        expect(exampleIsIncremental.preOps).to.eql(["\n    select 2\n"]);
-        expect(exampleIsIncremental.postOps).to.eql(["\n    select 1\n"]);
+
+        console.log(
+          "EXAMPLE PREOPS:",
+          exampleIsIncremental.incPreOps,
+          "EXAMPLE POSTOPS:",
+          exampleIsIncremental.incPostOps
+        );
+
+        console.log("PRE PREOPS AND POST OPS HERE");
+        expect(exampleIsIncremental.preOps).to.eql(["\n    select 1\n"]);
+        expect(exampleIsIncremental.postOps).to.eql(["\n    select 15\n"]);
+        console.log("POST PREOPS AND POST OPS");
 
         // Check tables defined in includes are not included.
         const exampleIgnore = graph.tables.find(

@@ -9,9 +9,9 @@ select * from (
 ${when(incremental(), `where ts > (select max(ts) from ${self()}) or (select max(ts) from ${self()}) is null`)}
 
 pre_operations {
-    select 2
+    select ${when(incremental(), 1, 2)}
 }
 
 post_operations {
-    select 1
+    select ${when(incremental(), 15, 16)}
 }

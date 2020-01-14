@@ -20,13 +20,13 @@ export class BigQueryAdapter extends Adapter implements IAdapter {
   ): Tasks {
     const tasks = Tasks.create();
     // Drop views/tables first if they exist.
-    if (tableMetadata && tableMetadata.type != this.baseTableType(table.type)) {
+    if (tableMetadata && tableMetadata.type !== this.baseTableType(table.type)) {
       tasks.add(
         Task.statement(this.dropIfExists(table.target, this.oppositeTableType(table.type)))
       );
     }
-    if (table.type == "incremental") {
-      if (runConfig.fullRefresh || !tableMetadata || tableMetadata.type == "view") {
+    if (table.type === "incremental") {
+      if (runConfig.fullRefresh || !tableMetadata || tableMetadata.type === "view") {
         tasks.add(Task.statement(this.createOrReplace(table)));
       } else {
         tasks.add(

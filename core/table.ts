@@ -184,6 +184,8 @@ export class Table {
       "sqlDataWarehouse",
       "preOps",
       "postOps",
+      "incPreOps",
+      "incPostOps",
       "actionDescriptor",
       "disabled",
       "where"
@@ -204,6 +206,8 @@ export class Table {
   private contextableWhere: Contextable<ITableContext, string>;
   private contextablePreOps: Array<Contextable<ITableContext, string | string[]>> = [];
   private contextablePostOps: Array<Contextable<ITableContext, string | string[]>> = [];
+  private contextableIncPreOps: Array<Contextable<ITableContext, string | string[]>> = [];
+  private contextableIncPostOps: Array<Contextable<ITableContext, string | string[]>> = [];
 
   public config(config: ITableConfig) {
     if (config.type) {
@@ -268,6 +272,16 @@ export class Table {
 
   public postOps(posts: Contextable<ITableContext, string | string[]>) {
     this.contextablePostOps.push(posts);
+    return this;
+  }
+
+  public incPreOps(pres: Contextable<ITableContext, string | string[]>) {
+    this.contextableIncPreOps.push(pres);
+    return this;
+  }
+
+  public incPostOps(posts: Contextable<ITableContext, string | string[]>) {
+    this.contextableIncPostOps.push(posts);
     return this;
   }
 
@@ -358,6 +372,23 @@ export class Table {
     this.proto.query = context.apply(this.contextableQuery);
     if (this.proto.type === "incremental") {
       this.proto.incrementalQuery = incrementalContext.apply(this.contextableQuery);
+
+      // TODO: Extract this to a function.
+      this.contextableIncPreOps.forEach(contextableIncPreOps => {
+        const appliedPres = incrementalContext.apply(contextableIncPreOps);
+        this.proto.incPreOps = (this.proto.incPreOps || []).concat(
+          typeof appliedPres === "string" ? [appliedPres] : appliedPres
+        );
+      });
+      this.contextableIncPreOps = [];
+
+      this.contextableIncPostOps.forEach(contextableIncPostOps => {
+        const appliedPosts = incrementalContext.apply(contextableIncPostOps);
+        this.proto.postOps = (this.proto.postOps || []).concat(
+          typeof appliedPosts === "string" ? [appliedPosts] : appliedPosts
+        );
+      });
+      this.contextableIncPostOps = [];
     }
 
     if (this.contextableWhere) {
@@ -428,6 +459,7 @@ export class TableContext implements ITableContext {
   }
 
   public when(cond: boolean, trueCase: string, falseCase?: string) {
+    console.log("COND FOR INCREMENTAL:", cond);
     return cond ? trueCase : falseCase ? falseCase : "";
   }
 
@@ -442,6 +474,16 @@ export class TableContext implements ITableContext {
 
   public postOps(statement: Contextable<ITableContext, string | string[]>) {
     this.table.postOps(statement);
+    return "";
+  }
+
+  public incPreOps(statement: Contextable<ITableContext, string | string[]>) {
+    this.table.incPreOps(statement);
+    return "";
+  }
+
+  public incPostOps(statement: Contextable<ITableContext, string | string[]>) {
+    this.table.incPostOps(statement);
     return "";
   }
 
