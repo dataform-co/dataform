@@ -146,7 +146,7 @@ message Table {
   repeated string tags = 23;
 
   // Incremental only.
-  string where = 8;
+  string where = 8 [deprecated = true];
   string incremental_query = 26;
 
   // Pre/post operations.

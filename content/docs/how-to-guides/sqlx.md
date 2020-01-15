@@ -68,9 +68,9 @@ Some examples can be found [here](datasets/#referencing-other-datasets).
 
 #### `self()`
 
-`self()` returns the name of the current dataset. If the default schema or dataset name is overridden in the `config{}` block, `self()` will return the full and correct dataset name.
+`self()` returns the name of the current dataset. If the database, schema, or dataset name is overridden in the `config{}` block, `self()` will return the full and correct dataset name.
 
-An example of `self()` being used to set up incremental tables is [here](incremental-datasets/#a-simple-example).
+[Here](incremental-datasets/#a-simple-example) is an example of an incremental table using the `self()` function.
 
 - [Retrieve the name of the current dataset with `self()`](incremental-datasets/#a-simple-example).
 
@@ -78,6 +78,6 @@ An example of `self()` being used to set up incremental tables is [here](increme
 
 ## Additional Features
 
-- **Pre-operations**: defined in SQLX by writing `pre_operations { }`, SQL written inside will be executed before the central SQL. This can be useful for granting permissions, as can be seen in the [publishing datasets guide](/how-to-guides/datasets/#example-granting-dataset-access-with-post_operations). **Actions may only include pre_operations if they create a dataset**, for example with `type: "table"` or `type: "view"` or `type: "incremental"` in their config.
+- **Pre-operations**: defined in SQLX by writing `pre_operations { }`, SQL written inside will be executed before the main SQL. This can be useful for granting permissions, as can be seen in the [publishing datasets guide](/how-to-guides/datasets/#example-granting-dataset-access-with-post_operations). **Actions may only include pre_operations if they create a dataset**, for example with `type: "table"` or `type: "view"` or `type: "incremental"` in their config.
 
-- **Post-operations**: the same as pre-operations, but defined with `post_operations { }`, and takes place after the central SQL.
+- **Post-operations**: the same as pre-operations, but defined with `post_operations { }`, and runs after the main SQL.

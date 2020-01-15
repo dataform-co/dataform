@@ -377,17 +377,17 @@ export class Table {
     return this.proto;
   }
 
-  private contextifyOps = (
+  private contextifyOps(
     contextableOps: Array<Contextable<ITableContext, string | string[]>>,
     currentContext: TableContext
-  ) => {
+  ) {
     let protoOps: string[] = [];
     contextableOps.forEach(contextableOp => {
       const appliedOps = currentContext.apply(contextableOp);
       protoOps = protoOps.concat(typeof appliedOps === "string" ? [appliedOps] : appliedOps);
     });
     return protoOps;
-  };
+  }
 }
 
 /**

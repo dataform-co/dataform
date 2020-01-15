@@ -87,7 +87,7 @@ ${ when(incremental(), `WHERE timestamp > (SELECT MAX(timestamp) FROM ${self()})
 
 First the script sets the type of the dataset to `incremental`.
 
-It then specifies a `WHERE` clause using a `when(incremental(), ...)` in-line:
+It then specifies a `WHERE` clause using the `when()` and `incremental()` functions:
 
 ```js
 ${ when(incremental(), `WHERE timestamp > (SELECT MAX(timestamp) FROM ${self()})`) }
