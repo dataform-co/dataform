@@ -57,7 +57,7 @@ dataform_npm_package(
     deps = [":api"],
 )
 
-load("@build_bazel_rules_nodejs//:defs.bzl", "nodejs_binary")
+load("@build_bazel_rules_nodejs//:index.bzl", "nodejs_binary")
 
 # This is a bit nuts. As we fork a process when compiling projects, we
 # start a new node instance but within bazel, modules will fail to load in the

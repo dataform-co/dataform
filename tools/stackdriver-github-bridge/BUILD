@@ -15,7 +15,7 @@ ts_library(
     ],
 )
 
-load("@build_bazel_rules_nodejs//:defs.bzl", "npm_package")
+load("@build_bazel_rules_nodejs//:index.bzl", "pkg_npm")
 
 npm_package(
     name = "package",

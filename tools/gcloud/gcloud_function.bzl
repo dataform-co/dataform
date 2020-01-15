@@ -34,7 +34,7 @@ deploy_http_nodejs_gcloud_function = rule(
     implementation = _deploy_http_nodejs_gcloud_function_impl,
     attrs = {
         "function_name": attr.string(default = "", mandatory = True, values = []),
-        "npm_package": attr.label(mandatory = True),
+        "pkg_npm": attr.label(mandatory = True),
         "env_vars_file": attr.label(allow_single_file = True),
     },
     executable = True,
@@ -45,7 +45,7 @@ deploy_pubsub_nodejs_gcloud_function = rule(
     attrs = {
         "function_name": attr.string(default = "", mandatory = True, values = []),
         "topic_name": attr.string(default = "", mandatory = True, values = []),
-        "npm_package": attr.label(mandatory = True),
+        "pkg_npm": attr.label(mandatory = True),
         "env_vars_file": attr.label(allow_single_file = True),
     },
     executable = True,
