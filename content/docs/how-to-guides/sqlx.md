@@ -56,7 +56,21 @@ Built in functions have special functionality and can be executed either within 
 
 For all built in functions, see [`ITableContext` in the API reference](/reference#ITableContext). Some useful examples can be found here:
 
-- [Reference another dataset in your project with `ref()`](datasets/#referencing-other-datasets).
+#### `ref()`
+
+`ref()` enables you to easily reference another dataset in your project without having to provide the full SQL dataset name. `ref()` also adds the referenced dataset to the set of dependencies for the query.
+
+Some examples can be found [here](datasets/#referencing-other-datasets).
+
+#### `resolve()`
+
+`resolve()` works similarly to `ref()`, but doesn't add the dataset to the dependency list for the query.
+
+#### `self()`
+
+`self()` returns the name of the current dataset. If the default schema or dataset name is overridden in the `config{}` block, `self()` will return the full and correct dataset name.
+
+An example of `self()` being used to set up incremental tables is [here](incremental-datasets/#a-simple-example).
 
 - [Retrieve the name of the current dataset with `self()`](incremental-datasets/#a-simple-example).
 
@@ -64,8 +78,6 @@ For all built in functions, see [`ITableContext` in the API reference](/referenc
 
 ## Additional Features
 
-- **Post-operations**: defined in SQLX by writing `post_operations { }`, SQL written inside will be executed after the central SQL. This can be useful for granting permissions, as can be seen in the [publishing datasets guide](/how-to-guides/datasets/#example-granting-dataset-access-with-post_operations). **Actions may only include pre_operations if they create a dataset**, for example with `type: "table"` or `type: "view"` or `type: "incremental"` in their config.
+- **Pre-operations**: defined in SQLX by writing `pre_operations { }`, SQL written inside will be executed before the central SQL. This can be useful for granting permissions, as can be seen in the [publishing datasets guide](/how-to-guides/datasets/#example-granting-dataset-access-with-post_operations). **Actions may only include pre_operations if they create a dataset**, for example with `type: "table"` or `type: "view"` or `type: "incremental"` in their config.
 
-- **Pre-operations**: the same as post-operations, but defined with `pre_operations { }`, and takes place before the central SQL.
-
-- **Incremental where**: defined in SQLX by writing `incremental_where { }`. Only valid for incremental tables (those with `type: "incremental"` in the config). This wraps the main block of SQL in a `WHERE` clause, with the argument of whatever's inside the block. For examples see the [incremental datasets how to guide](http://localhost:3001/how-to-guides/incremental-datasets).
+- **Post-operations**: the same as pre-operations, but defined with `post_operations { }`, and takes place after the central SQL.

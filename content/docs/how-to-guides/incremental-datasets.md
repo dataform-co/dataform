@@ -82,26 +82,22 @@ config { type: "incremental" }
 SELECT timestamp, action
 FROM weblogs.user_actions
 
-incremental_where {
-  timestamp > (SELECT MAX(timestamp) FROM ${self()})
-}
+${ when(incremental(), `WHERE timestamp > (SELECT MAX(timestamp) FROM ${self()})` }
 ```
 
 First the script sets the type of the dataset to `incremental`.
 
-It then specifies a `WHERE` clause using an `incremental_where` block:
+It then specifies a `WHERE` clause using a `when(incremental(), ...)` in-line:
 
 ```js
-incremental_where {
-  timestamp > (SELECT MAX(timestamp) FROM ${self()})
-}
+${ when(incremental(), `WHERE timestamp > (SELECT MAX(timestamp) FROM ${self()})`) }
 ```
 
 This ensures that only rows from the source dataset with a <b>timestamp greater than the latest timestamp that has been processed so far</b> are selected in the incremental query.
 
 Note that `self()` is used here in order to get the name of the current dataset. Thus the compiled `WHERE` clause will be expanded to:
 
-```js
+```sql
 timestamp > (SELECT MAX(timestamp) FROM default_schema.example_incremental)
 ```
 
@@ -147,9 +143,7 @@ config { type: "incremental" }
 
 SELECT CURRENT_DATE() AS snapshot_date, customer_id, name, account_settings FROM productiondb.customers
 
-incremental_where {
-  snapshot_date > (SELECT MAX(snapshot_date) FROM ${self()})
-}
+${ when(incremental(), `WHERE snapshot_date > (SELECT MAX(snapshot_date) FROM ${self()})`) }
 ```
 
 - By selecting the current date as `snapshot_date`, this effectively appends a dated snapshot of the `productiondb.customers` dataset to the output dataset each day.
@@ -179,20 +173,3 @@ SELECT ...
 Since incremental datasets are usually timestamp based, it's a best practice to set up dataset partioning on the timestamp field to speed up downstream queries.
 
 For more information, check out the [BigQuery](warehouses/bigquery) and [Redshift](warehouses/redshift) guides.
-
-## Conditional code if incremental
-
-For functionality other than a `WHERE` clause, `when()` combined with `incremental()` can be used. For example if there was a separate field `weblogs.user_alternative_actions` containing an alternative set of user events, and it was desirable for the script to use this only when incremental, then a neat way to manage this would be to use:
-
-```js
-config { type: "incremental" }
-
-SELECT timestamp, action
-FROM ${ when(incremental(), weblogs.user_alternative_actions, weblogs.user_actions) }
-
-incremental_where {
-  timestamp > (SELECT MAX(timestamp) FROM ${self()})
-}
-```
-
-For more information on built-in conditionals, see [`ITableContext` in the API reference](/reference#ITableContext).
