@@ -82,12 +82,12 @@ export class Builder {
     const tasks = t.disabled
       ? emptyTasks
       : emptyTasks.concat(
-          t.incrementalQuery
-            ? (t.incPreOps || []).map(pre => ({ statement: pre }))
+          t.type === "incremental" && t.incrementalPreOps
+            ? (t.incrementalPreOps || []).map(pre => ({ statement: pre }))
             : (t.preOps || []).map(pre => ({ statement: pre })),
           this.adapter.publishTasks(t, this.runConfig, tableMetadata).build(),
-          t.incrementalQuery
-            ? (t.incPostOps || []).map(post => ({ statement: post }))
+          t.type === "incremental" && t.incrementalPostOps
+            ? (t.incrementalPostOps || []).map(post => ({ statement: post }))
             : (t.postOps || []).map(pre => ({ statement: pre }))
         );
 

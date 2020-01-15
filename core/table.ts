@@ -160,8 +160,8 @@ export interface ITableConfig extends ITargetableConfig, IDocumentableConfig, ID
  */
 export interface ITableContext extends ICommonContext {
   /**
-   * Shorthand if condition that uses an empty string in the case of the condition not being satisfied.
-   * `falseCase` is not required.
+   * Shorthand for an `if` condition. Equivalent to `cond ? trueCase : falseCase`.
+   * `falseCase` is optional, and defaults to an empty string.
    */
   when: (cond: boolean, trueCase: string, falseCase?: string) => string;
 
@@ -357,36 +357,37 @@ export class Table {
 
     this.proto.query = context.apply(this.contextableQuery);
 
-    const createOps = (
-      contextableOps: Array<Contextable<ITableContext, string | string[]>>,
-      currentContext: TableContext
-    ) => {
-      let protoOps = Array<string>();
-      contextableOps.forEach(contextableOp => {
-        const appliedOps = currentContext.apply(contextableOp);
-        protoOps = (protoOps || []).concat(
-          typeof appliedOps === "string" ? [appliedOps] : appliedOps
-        );
-      });
-      return protoOps;
-    };
-
     if (this.proto.type === "incremental") {
       this.proto.incrementalQuery = incrementalContext.apply(this.contextableQuery);
 
-      this.proto.incPreOps = createOps(this.contextablePreOps, incrementalContext);
-      this.proto.incPostOps = createOps(this.contextablePostOps, incrementalContext);
+      this.proto.incrementalPreOps = this.contextifyOps(this.contextablePreOps, incrementalContext);
+      this.proto.incrementalPostOps = this.contextifyOps(
+        this.contextablePostOps,
+        incrementalContext
+      );
     }
 
     if (this.contextableWhere) {
       this.proto.where = context.apply(this.contextableWhere);
     }
 
-    this.proto.preOps = createOps(this.contextablePreOps, context);
-    this.proto.postOps = createOps(this.contextablePostOps, context);
+    this.proto.preOps = this.contextifyOps(this.contextablePreOps, context);
+    this.proto.postOps = this.contextifyOps(this.contextablePostOps, context);
 
     return this.proto;
   }
+
+  private contextifyOps = (
+    contextableOps: Array<Contextable<ITableContext, string | string[]>>,
+    currentContext: TableContext
+  ) => {
+    let protoOps: string[] = [];
+    contextableOps.forEach(contextableOp => {
+      const appliedOps = currentContext.apply(contextableOp);
+      protoOps = protoOps.concat(typeof appliedOps === "string" ? [appliedOps] : appliedOps);
+    });
+    return protoOps;
+  };
 }
 
 /**
@@ -433,8 +434,8 @@ export class TableContext implements ITableContext {
     return "";
   }
 
-  public when(cond: boolean, trueCase: string, falseCase?: string) {
-    return cond ? trueCase : falseCase ? falseCase : "";
+  public when(cond: boolean, trueCase: string, falseCase: string = "") {
+    return cond ? trueCase : falseCase;
   }
 
   public incremental() {

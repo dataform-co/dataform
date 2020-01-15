@@ -111,8 +111,8 @@ describe("examples", () => {
           )
         );
 
-        expect(exampleIsIncremental.incPreOps).to.eql(["\n    select 1\n"]);
-        expect(exampleIsIncremental.incPostOps).to.eql(["\n    select 15\n"]);
+        expect(exampleIsIncremental.incrementalPreOps).to.eql(["\n    select 1\n"]);
+        expect(exampleIsIncremental.incrementalPostOps).to.eql(["\n    select 15\n"]);
 
         // Check tables defined in includes are not included.
         const exampleIgnore = graph.tables.find(

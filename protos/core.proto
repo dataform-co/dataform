@@ -152,8 +152,8 @@ message Table {
   // Pre/post operations.
   repeated string pre_ops = 13;
   repeated string post_ops = 14;
-  repeated string inc_pre_ops = 28;
-  repeated string inc_post_ops = 29;
+  repeated string incremental_pre_ops = 28;
+  repeated string incremental_post_ops = 29;
 
   // Warehouse specific features.
   RedshiftOptions redshift = 21;

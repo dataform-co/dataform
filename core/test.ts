@@ -168,8 +168,8 @@ class RefReplacingContext implements ITableContext {
     return "";
   }
 
-  public when(cond: boolean, trueCase: string, falseCase?: string) {
-    return "";
+  public when(cond: boolean, trueCase: string, falseCase: string = "") {
+    return cond ? trueCase : falseCase;
   }
 
   public incremental() {
