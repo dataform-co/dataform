@@ -3,9 +3,6 @@ import { IDbAdapter } from "@dataform/api/dbadapters/index";
 import { dataform } from "@dataform/protos";
 import * as pg from "pg";
 import * as Cursor from "pg-cursor";
-import * as PromisePool from "promise-pool-executor";
-
-const HOUR_IN_MILLIS = 60 * 60 * 1000;
 
 interface ICursor {
   read: (rowCount: number, callback: (err: Error, rows: any[]) => void) => void;
@@ -25,8 +22,6 @@ export class RedshiftDbAdapter implements IDbAdapter {
       database: jdbcCredentials.databaseName,
       ssl: true
     };
-    (clientConfig as any).statement_timeout = HOUR_IN_MILLIS;
-    (clientConfig as any).query_timeout = HOUR_IN_MILLIS;
     this.queryExecutor = new PgPoolExecutor(clientConfig);
   }
 
