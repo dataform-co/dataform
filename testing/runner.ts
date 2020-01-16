@@ -46,7 +46,7 @@ export class Runner {
     const indent = (value: string, levels = 4) =>
       value
         .split("\n")
-        .map(line => `${new Array(levels).fill(" ").join("")}${line}`)
+        .map(line => `${" ".repeat(4).join("")}${line}`)
         .join("\n");
 
     for (const result of ctx.results) {
