@@ -21,7 +21,7 @@ export class Hook {
     optionsOrFn: Omit<IHookOptions, "name"> | IHookFunction,
     fn?: IHookFunction
   ) {
-    let options: IHookOptions = { name: null };
+    let options: IHookOptions = typeof nameOrOptions === "string" ? { name: nameOrOptions } : nameOrOptions;
     if (typeof nameOrOptions === "string") {
       options.name = nameOrOptions;
     } else {
