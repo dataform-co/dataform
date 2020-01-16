@@ -251,6 +251,7 @@ message CompiledGraph {
 message ExecutionTask {
   string type = 1;
   string statement = 2;
+  ExecutionMetadata metadata = 3;
 }
 
 message ExecutionAction {
