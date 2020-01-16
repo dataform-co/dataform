@@ -9,6 +9,9 @@ export interface IAdapter {
   resolveTarget(target: dataform.ITarget): string;
   normalizeIdentifier(identifier: string): string;
 
+  mapPreOperations(table: dataform.ITable): Tasks;
+  mapPostOperations(table: dataform.ITable): Tasks;
+
   publishTasks(
     table: dataform.ITable,
     runConfig: dataform.IRunConfig,
