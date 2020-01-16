@@ -251,7 +251,6 @@ message CompiledGraph {
 message ExecutionTask {
   string type = 1;
   string statement = 2;
-  ExecutionMetadata metadata = 3;
 }
 
 message ExecutionAction {
@@ -277,6 +276,7 @@ message ExecutionGraph {
 
 message ExecutedTask {
   ExecutionTask task = 1;
+  ExecutionMetadata metadata = 6;
 
   bool ok = 2;
   bool skipped = 5;
