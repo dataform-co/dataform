@@ -15,7 +15,7 @@ export function test(
 }
 
 export class Test {
-  public static readonly DEFAULT_TIMEOUT = 30000;
+  public static readonly DEFAULT_TIMEOUT_MILLIS = 30000;
 
   public static create(
     nameOrOptions: ITestOptions | string,
