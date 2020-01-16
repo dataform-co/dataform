@@ -16,26 +16,16 @@ export class SnowflakeAdapter extends Adapter implements IAdapter {
     return identifier.toUpperCase();
   }
 
-  public mapPreOperations(table: dataform.ITable): Tasks {
-    const tasks = Tasks.create();
-    (table.incrementalPreOps || []).forEach(pre => tasks.add(Task.statement(pre)));
-    (table.preOps || []).forEach(pre => tasks.add(Task.statement(pre)));
-    return tasks;
-  }
-
-  public mapPostOperations(table: dataform.ITable): Tasks {
-    const tasks = Tasks.create();
-    (table.incrementalPostOps || []).forEach(post => tasks.add(Task.statement(post)));
-    (table.postOps || []).forEach(post => tasks.add(Task.statement(post)));
-    return tasks;
-  }
-
   public publishTasks(
     table: dataform.ITable,
     runConfig: dataform.IRunConfig,
     tableMetadata: dataform.ITableMetadata
   ): Tasks {
     const tasks = Tasks.create();
+
+    (table.incrementalPreOps || []).forEach(pre => tasks.add(Task.statement(pre)));
+    (table.preOps || []).forEach(pre => tasks.add(Task.statement(pre)));
+
     // Drop the existing view or table if we are changing it's type.
     if (tableMetadata && tableMetadata.type != this.baseTableType(table.type)) {
       tasks.add(
@@ -60,6 +50,10 @@ export class SnowflakeAdapter extends Adapter implements IAdapter {
     } else {
       tasks.add(Task.statement(this.createOrReplace(table)));
     }
+
+    (table.incrementalPostOps || []).forEach(post => tasks.add(Task.statement(post)));
+    (table.postOps || []).forEach(post => tasks.add(Task.statement(post)));
+
     return tasks;
   }
 

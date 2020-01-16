@@ -81,11 +81,7 @@ export class Builder {
 
     const tasks = t.disabled
       ? emptyTasks
-      : emptyTasks.concat(
-          this.adapter.mapPreOperations(t).build(),
-          this.adapter.publishTasks(t, this.runConfig, tableMetadata).build(),
-          this.adapter.mapPostOperations(t).build()
-        );
+      : this.adapter.publishTasks(t, this.runConfig, tableMetadata).build();
 
     return dataform.ExecutionAction.create({
       name: t.name,
