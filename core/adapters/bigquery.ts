@@ -20,35 +20,51 @@ export class BigQueryAdapter extends Adapter implements IAdapter {
   ): Tasks {
     const tasks = Tasks.create();
 
-    (table.incrementalPreOps || []).forEach(pre => tasks.add(Task.statement(pre)));
-    (table.preOps || []).forEach(pre => tasks.add(Task.statement(pre)));
-
-    // Drop views/tables first if they exist.
-    if (tableMetadata && tableMetadata.type !== this.baseTableType(table.type)) {
-      tasks.add(
-        Task.statement(this.dropIfExists(table.target, this.oppositeTableType(table.type)))
-      );
-    }
     if (table.type === "incremental") {
+      if (this.dataformCoreVersion >= "1.4.8") {
+        (table.incrementalPreOps || []).forEach(pre => tasks.add(Task.statement(pre)));
+      } else {
+        (table.preOps || []).forEach(pre => tasks.add(Task.statement(pre)));
+      }
+
+      if (tableMetadata && tableMetadata.type !== this.baseTableType(table.type)) {
+        tasks.add(
+          Task.statement(this.dropIfExists(table.target, this.oppositeTableType(table.type)))
+        );
+      }
+
       if (runConfig.fullRefresh || !tableMetadata || tableMetadata.type === "view") {
-        tasks.add(Task.statement(this.createOrReplace(table)));
+        tasks.add(Task.statement(this.createOrReplace(table, true)));
       } else {
         tasks.add(
           Task.statement(
             this.insertInto(
               table.target,
               tableMetadata.fields.map(f => f.name),
-              this.where(table.incrementalQuery || table.query, table.where)
+              this.where(table.incrementalQuery, table.where)
             )
           )
         );
       }
-    } else {
-      tasks.add(Task.statement(this.createOrReplace(table)));
-    }
 
-    (table.incrementalPostOps || []).forEach(post => tasks.add(Task.statement(post)));
-    (table.postOps || []).forEach(post => tasks.add(Task.statement(post)));
+      if (this.dataformCoreVersion >= "1.4.8") {
+        (table.incrementalPostOps || []).forEach(post => tasks.add(Task.statement(post)));
+      } else {
+        (table.postOps || []).forEach(post => tasks.add(Task.statement(post)));
+      }
+    } else {
+      (table.preOps || []).forEach(pre => tasks.add(Task.statement(pre)));
+
+      if (tableMetadata && tableMetadata.type !== this.baseTableType(table.type)) {
+        tasks.add(
+          Task.statement(this.dropIfExists(table.target, this.oppositeTableType(table.type)))
+        );
+      }
+
+      tasks.add(Task.statement(this.createOrReplace(table)));
+
+      (table.postOps || []).forEach(post => tasks.add(Task.statement(post)));
+    }
 
     return tasks;
   }
@@ -69,24 +85,14 @@ export class BigQueryAdapter extends Adapter implements IAdapter {
     return tasks;
   }
 
-  public createEmptyIfNotExists(table: dataform.ITable) {
-    return `create ${this.baseTableType(table.type)} if not exists ${this.resolveTarget(
-      table.target
-    )} ${
-      table.bigquery && table.bigquery.partitionBy
-        ? `partition by ${table.bigquery.partitionBy}`
-        : ""
-    } as ${this.where(table.query, "false")}`;
-  }
-
-  public createOrReplace(table: dataform.ITable) {
+  public createOrReplace(table: dataform.ITable, isIncremental: boolean = false) {
     return `create or replace ${this.baseTableType(table.type)} ${this.resolveTarget(
       table.target
     )} ${
       table.bigquery && table.bigquery.partitionBy
         ? `partition by ${table.bigquery.partitionBy}`
         : ""
-    } as ${table.query}`;
+    } as ${isIncremental ? table.incrementalQuery : table.query}`;
   }
 
   public createOrReplaceView(target: dataform.ITarget, query: string) {

@@ -3,6 +3,7 @@ import * as dbadapters from "@dataform/api/dbadapters";
 import * as adapters from "@dataform/core/adapters";
 import { dataform } from "@dataform/protos";
 import { expect } from "chai";
+import { BigQueryAdapter } from "df/core/adapters/bigquery";
 import { dropAllTables, getTableRows, keyBy } from "df/tests/integration/utils";
 import * as Long from "long";
 
@@ -58,6 +59,8 @@ describe("@dataform/integration/bigquery", () => {
     let executionGraph = await dfapi.build(compiledGraph, {}, credentials);
     let executedGraph = await dfapi.run(executionGraph, credentials).resultPromise();
 
+    console.log("PRE ACTION MAP");
+
     const actionMap = keyBy(executedGraph.actions, v => v.name);
 
     // Check the status of the two assertions.
@@ -87,10 +90,37 @@ describe("@dataform/integration/bigquery", () => {
       ].status
     ).equals(dataform.ActionResult.ExecutionStatus.SUCCESSFUL);
 
+    console.log(
+      "ACTION MAP",
+      actionMap["dataform-integration-tests.df_integration_test.example_incremental"]
+    );
+
+    // Check the status of tests expected to pass.
+    expect(
+      actionMap["dataform-integration-tests.df_integration_test.example_incremental"].status
+    ).equals(dataform.ActionResult.ExecutionStatus.SUCCESSFUL);
+    expect(actionMap["dataform-integration-tests.df_integration_test.example_table"].status).equals(
+      dataform.ActionResult.ExecutionStatus.SUCCESSFUL
+    );
+    expect(actionMap["dataform-integration-tests.df_integration_test.example_view"].status).equals(
+      dataform.ActionResult.ExecutionStatus.SUCCESSFUL
+    );
+    expect(actionMap["dataform-integration-tests.df_integration_test.sample_data_2"].status).equals(
+      dataform.ActionResult.ExecutionStatus.SUCCESSFUL
+    );
+    expect(actionMap["dataform-integration-tests.df_integration_test.sample_data"].status).equals(
+      dataform.ActionResult.ExecutionStatus.SUCCESSFUL
+    );
+
+    console.log("FINDING INCREMENTAL BY KEY");
+    compiledGraph.tables.forEach(table => console.log("TABLE NAME:", table.name));
+
     // Check the data in the incremental table.
     let incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
       "dataform-integration-tests.df_integration_test.example_incremental"
     ];
+
+    console.log("FOUND BY KEY, INCREMENTALTABLE", incrementalTable);
 
     let incrementalRows = await getTableRows(
       incrementalTable.target,
@@ -98,6 +128,8 @@ describe("@dataform/integration/bigquery", () => {
       credentials,
       "bigquery"
     );
+
+    console.log("INCREMENTAL ROWS:", incrementalRows);
 
     expect(incrementalRows.length).equals(1);
 
@@ -109,6 +141,8 @@ describe("@dataform/integration/bigquery", () => {
       },
       credentials
     );
+
+    console.log("EXECUTION GRAPH", executionGraph);
 
     executedGraph = await dfapi.run(executionGraph, credentials).resultPromise();
     expect(executedGraph.status).equals(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
@@ -142,6 +176,104 @@ describe("@dataform/integration/bigquery", () => {
         ]);
       });
     }
+  });
+
+  describe("publish tasks", async () => {
+    const projectConfig: dataform.IProjectConfig = {
+      warehouse: "bigquery",
+      defaultDatabase: "default_database"
+    };
+
+    const templateTable: dataform.ITable = {
+      type: "incremental",
+      incrementalQuery: "incrementalQuery",
+      target: {
+        schema: "df_integration_test",
+        name: "example_incremental",
+        database: "dataform-integration-tests"
+      }
+    };
+
+    const refreshRunConfig: dataform.IRunConfig = {
+      fullRefresh: true
+    };
+
+    const noRefreshRunConfig: dataform.IRunConfig = {
+      fullRefresh: false
+    };
+
+    const tableMetadata: dataform.ITableMetadata = {
+      fields: []
+    };
+
+    const expectedRefreshStatements = [
+      "preop task1",
+      "preop task2",
+      "drop view if exists `dataform-integration-tests.df_integration_test.example_incremental`",
+      "create or replace table `dataform-integration-tests.df_integration_test.example_incremental`  as incrementalQuery",
+      "postop task1",
+      "postop task2"
+    ];
+
+    const expectedIncrementStatements = [
+      "preop task1",
+      "preop task2",
+      "drop view if exists `dataform-integration-tests.df_integration_test.example_incremental`",
+      `
+      insert into \`dataform-integration-tests.df_integration_test.example_incremental\`
+      ()
+      select 
+      from (select * from (incrementalQuery) as subquery
+        where true) as insertions`,
+      "postop task1",
+      "postop task2"
+    ];
+
+    it("incremental, core version < 1.4.8", async () => {
+      const bqadapter = new BigQueryAdapter(projectConfig, "1.4.7");
+      const table = { ...templateTable };
+      table.preOps = ["preop task1", "preop task2"];
+      table.postOps = ["postop task1", "postop task2"];
+
+      const buildsFromRefresh = bqadapter
+        .publishTasks(table, refreshRunConfig, tableMetadata)
+        .build();
+
+      buildsFromRefresh.forEach((build, i) => {
+        expect(build.statement).to.eql(expectedRefreshStatements[i]);
+      });
+
+      const buildsFromIncrement = bqadapter
+        .publishTasks(table, noRefreshRunConfig, tableMetadata)
+        .build();
+
+      buildsFromIncrement.forEach((build, i) => {
+        expect(build.statement).to.eql(expectedIncrementStatements[i]);
+      });
+    });
+
+    it("incremental, core version >= 1.4.8", async () => {
+      const bqadapter = new BigQueryAdapter(projectConfig, "1.4.8");
+      const table = { ...templateTable };
+      table.incrementalPreOps = ["preop task1", "preop task2"];
+      table.incrementalPostOps = ["postop task1", "postop task2"];
+
+      const buildsFromRefresh = bqadapter
+        .publishTasks(table, refreshRunConfig, tableMetadata)
+        .build();
+
+      buildsFromRefresh.forEach((build, i) => {
+        expect(build.statement).to.eql(expectedRefreshStatements[i]);
+      });
+
+      const buildsFromIncrement = bqadapter
+        .publishTasks(table, noRefreshRunConfig, tableMetadata)
+        .build();
+
+      buildsFromIncrement.forEach((build, i) => {
+        expect(build.statement).to.eql(expectedIncrementStatements[i]);
+      });
+    });
   });
 
   describe("metadata", async () => {

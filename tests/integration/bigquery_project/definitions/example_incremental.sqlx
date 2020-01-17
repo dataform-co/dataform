@@ -1,0 +1,19 @@
+config {
+  type: "incremental"
+}
+
+pre_operations {
+  GRANT SELECT ON `tada-analytics.df_integration_test.sample_data` TO "allusers@dataform.co"
+}
+
+select ${crossdb.currentTimestampUTC()} as ts
+
+${ when(incremental(), `ts > (select max(ts) from ${self()}) or (select max(ts) from ${self()}) is null`) }
+
+post_operations {
+  REVOKE SELECT ON `tada-analytics.df_integration_test.sample_data` TO "allusers@dataform.co"
+}
+
+js {
+  const crossdb = require("@dataform/crossdb")
+}
