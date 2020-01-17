@@ -7,6 +7,11 @@ import { dataform } from "@dataform/protos";
 
 export type OnCancel = (handleCancel: () => void) => void;
 
+export interface IExecutionResult {
+  rows: any[];
+  metadata: dataform.IExecutionMetadata;
+}
+
 export interface IDbAdapter {
   execute(
     statement: string,
@@ -15,7 +20,7 @@ export interface IDbAdapter {
       interactive?: boolean;
       maxResults?: number;
     }
-  ): Promise<any[]>;
+  ): Promise<IExecutionResult>;
   evaluate(statement: string): Promise<void>;
   tables(): Promise<dataform.ITarget[]>;
   table(target: dataform.ITarget): Promise<dataform.ITableMetadata>;
@@ -24,11 +29,7 @@ export interface IDbAdapter {
   close(): Promise<void>;
 }
 
-export type DbAdapterConstructor<T extends IDbAdapter> = new (
-  credentials: Credentials,
-  // Intended for temporary testing, not included in a permanent API.
-  usePgPoolForRedshift?: boolean
-) => T;
+export type DbAdapterConstructor<T extends IDbAdapter> = new (credentials: Credentials) => T;
 
 const registry: { [warehouseType: string]: DbAdapterConstructor<IDbAdapter> } = {};
 
@@ -36,16 +37,11 @@ export function register(warehouseType: string, c: DbAdapterConstructor<IDbAdapt
   registry[warehouseType] = c;
 }
 
-export function create(
-  credentials: Credentials,
-  warehouseType: string,
-  // Intended for temporary testing, not included in a permanent API.
-  usePgPoolForRedshift?: boolean
-): IDbAdapter {
+export function create(credentials: Credentials, warehouseType: string): IDbAdapter {
   if (!registry[warehouseType]) {
     throw new Error(`Unsupported warehouse: ${warehouseType}`);
   }
-  return new registry[warehouseType](credentials, usePgPoolForRedshift);
+  return new registry[warehouseType](credentials);
 }
 
 register("bigquery", BigQueryDbAdapter);

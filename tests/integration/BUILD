@@ -28,6 +28,7 @@ ts_library(
         "@npm//@types/chai",
         "@npm//@types/mocha",
         "@npm//@types/node",
+        "@npm//@types/long"
     ],
 )
 
