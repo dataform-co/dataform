@@ -3,7 +3,6 @@ import { IDbAdapter } from "@dataform/api/dbadapters/index";
 import { dataform } from "@dataform/protos";
 import * as pg from "pg";
 import * as Cursor from "pg-cursor";
-import * as PromisePool from "promise-pool-executor";
 
 const HOUR_IN_MILLIS = 60 * 60 * 1000;
 
