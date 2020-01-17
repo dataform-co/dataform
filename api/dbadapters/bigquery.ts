@@ -4,6 +4,7 @@ import { dataform } from "@dataform/protos";
 import { BigQuery } from "@google-cloud/bigquery";
 import { QueryResultsOptions } from "@google-cloud/bigquery/build/src/job";
 import * as Long from "long";
+import * as PromisePool from "promise-pool-executor";
 
 const BIGQUERY_DATE_RELATED_FIELDS = [
   "BigQueryDate",
