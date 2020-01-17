@@ -59,8 +59,6 @@ describe("@dataform/integration/bigquery", () => {
     let executionGraph = await dfapi.build(compiledGraph, {}, credentials);
     let executedGraph = await dfapi.run(executionGraph, credentials).resultPromise();
 
-    console.log("PRE ACTION MAP");
-
     const actionMap = keyBy(executedGraph.actions, v => v.name);
 
     // Check the status of the two assertions.
@@ -90,11 +88,6 @@ describe("@dataform/integration/bigquery", () => {
       ].status
     ).equals(dataform.ActionResult.ExecutionStatus.SUCCESSFUL);
 
-    console.log(
-      "ACTION MAP",
-      actionMap["dataform-integration-tests.df_integration_test.example_incremental"]
-    );
-
     // Check the status of tests expected to pass.
     expect(
       actionMap["dataform-integration-tests.df_integration_test.example_incremental"].status
@@ -112,15 +105,10 @@ describe("@dataform/integration/bigquery", () => {
       dataform.ActionResult.ExecutionStatus.SUCCESSFUL
     );
 
-    console.log("FINDING INCREMENTAL BY KEY");
-    compiledGraph.tables.forEach(table => console.log("TABLE NAME:", table.name));
-
     // Check the data in the incremental table.
     let incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
       "dataform-integration-tests.df_integration_test.example_incremental"
     ];
-
-    console.log("FOUND BY KEY, INCREMENTALTABLE", incrementalTable);
 
     let incrementalRows = await getTableRows(
       incrementalTable.target,
@@ -128,8 +116,6 @@ describe("@dataform/integration/bigquery", () => {
       credentials,
       "bigquery"
     );
-
-    console.log("INCREMENTAL ROWS:", incrementalRows);
 
     expect(incrementalRows.length).equals(1);
 
@@ -142,9 +128,8 @@ describe("@dataform/integration/bigquery", () => {
       credentials
     );
 
-    console.log("EXECUTION GRAPH", executionGraph);
-
     executedGraph = await dfapi.run(executionGraph, credentials).resultPromise();
+
     expect(executedGraph.status).equals(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
 
     // Check there is an extra row in the incremental table.
@@ -186,7 +171,8 @@ describe("@dataform/integration/bigquery", () => {
 
     const templateTable: dataform.ITable = {
       type: "incremental",
-      incrementalQuery: "incrementalQuery",
+      query: "query",
+      incrementalQuery: "query where incremental",
       target: {
         schema: "df_integration_test",
         name: "example_incremental",
@@ -210,26 +196,27 @@ describe("@dataform/integration/bigquery", () => {
       "preop task1",
       "preop task2",
       "drop view if exists `dataform-integration-tests.df_integration_test.example_incremental`",
-      "create or replace table `dataform-integration-tests.df_integration_test.example_incremental`  as incrementalQuery",
-      "postop task1",
-      "postop task2"
-    ];
-
-    const expectedIncrementStatements = [
-      "preop task1",
-      "preop task2",
-      "drop view if exists `dataform-integration-tests.df_integration_test.example_incremental`",
-      `
-      insert into \`dataform-integration-tests.df_integration_test.example_incremental\`
-      ()
-      select 
-      from (select * from (incrementalQuery) as subquery
-        where true) as insertions`,
+      `create or replace table \`dataform-integration-tests.df_integration_test.example_incremental\`  as ${templateTable.query}`,
       "postop task1",
       "postop task2"
     ];
 
     it("incremental, core version < 1.4.8", async () => {
+      const expectedIncrementStatements = [
+        "preop task1",
+        "preop task2",
+        "drop view if exists `dataform-integration-tests.df_integration_test.example_incremental`",
+        `
+insert into \`dataform-integration-tests.df_integration_test.example_incremental\`
+()
+select 
+from (
+  select * from (${templateTable.incrementalQuery}) as subquery
+    where true) as insertions`,
+        "postop task1",
+        "postop task2"
+      ];
+
       const bqadapter = new BigQueryAdapter(projectConfig, "1.4.7");
       const table = { ...templateTable };
       table.preOps = ["preop task1", "preop task2"];
@@ -253,6 +240,19 @@ describe("@dataform/integration/bigquery", () => {
     });
 
     it("incremental, core version >= 1.4.8", async () => {
+      const expectedIncrementStatements = [
+        "preop task1",
+        "preop task2",
+        "drop view if exists `dataform-integration-tests.df_integration_test.example_incremental`",
+        `
+insert into \`dataform-integration-tests.df_integration_test.example_incremental\`
+()
+select 
+from (${templateTable.incrementalQuery}) as insertions`,
+        "postop task1",
+        "postop task2"
+      ];
+
       const bqadapter = new BigQueryAdapter(projectConfig, "1.4.8");
       const table = { ...templateTable };
       table.incrementalPreOps = ["preop task1", "preop task2"];

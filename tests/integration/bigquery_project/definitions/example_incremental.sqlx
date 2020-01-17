@@ -3,15 +3,15 @@ config {
 }
 
 pre_operations {
-  GRANT SELECT ON `tada-analytics.df_integration_test.sample_data` TO "allusers@dataform.co"
+  SELECT 372
 }
 
-select ${crossdb.currentTimestampUTC()} as ts
+select 1 as val1
 
-${ when(incremental(), `ts > (select max(ts) from ${self()}) or (select max(ts) from ${self()}) is null`) }
+${ when(incremental(), `, 2 as val2`) }
 
 post_operations {
-  REVOKE SELECT ON `tada-analytics.df_integration_test.sample_data` TO "allusers@dataform.co"
+  SELECT 613
 }
 
 js {

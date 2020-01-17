@@ -34,14 +34,16 @@ export class BigQueryAdapter extends Adapter implements IAdapter {
       }
 
       if (runConfig.fullRefresh || !tableMetadata || tableMetadata.type === "view") {
-        tasks.add(Task.statement(this.createOrReplace(table, true)));
+        tasks.add(Task.statement(this.createOrReplace(table)));
       } else {
         tasks.add(
           Task.statement(
             this.insertInto(
               table.target,
               tableMetadata.fields.map(f => f.name),
-              this.where(table.incrementalQuery, table.where)
+              this.dataformCoreVersion >= "1.4.8"
+                ? table.incrementalQuery
+                : this.where(table.incrementalQuery || table.query, table.where)
             )
           )
         );
@@ -85,14 +87,14 @@ export class BigQueryAdapter extends Adapter implements IAdapter {
     return tasks;
   }
 
-  public createOrReplace(table: dataform.ITable, isIncremental: boolean = false) {
+  public createOrReplace(table: dataform.ITable) {
     return `create or replace ${this.baseTableType(table.type)} ${this.resolveTarget(
       table.target
     )} ${
       table.bigquery && table.bigquery.partitionBy
         ? `partition by ${table.bigquery.partitionBy}`
         : ""
-    } as ${isIncremental ? table.incrementalQuery : table.query}`;
+    } as ${table.query}`;
   }
 
   public createOrReplaceView(target: dataform.ITarget, query: string) {
