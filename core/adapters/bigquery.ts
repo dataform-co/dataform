@@ -20,13 +20,9 @@ export class BigQueryAdapter extends Adapter implements IAdapter {
   ): Tasks {
     const tasks = Tasks.create();
 
-    if (table.type === "incremental") {
-      if (this.dataformCoreVersion >= "1.4.8") {
-        (table.incrementalPreOps || []).forEach(pre => tasks.add(Task.statement(pre)));
-      } else {
-        (table.preOps || []).forEach(pre => tasks.add(Task.statement(pre)));
-      }
+    this.addPreOps(table, this.dataformCoreVersion, tasks);
 
+    if (table.type === "incremental") {
       if (tableMetadata && tableMetadata.type !== this.baseTableType(table.type)) {
         tasks.add(
           Task.statement(this.dropIfExists(table.target, this.oppositeTableType(table.type)))
@@ -41,31 +37,22 @@ export class BigQueryAdapter extends Adapter implements IAdapter {
             this.insertInto(
               table.target,
               tableMetadata.fields.map(f => f.name),
-              this.dataformCoreVersion >= "1.4.8"
+              this.dataformCoreVersion > "1.4.8"
                 ? table.incrementalQuery
                 : this.where(table.incrementalQuery || table.query, table.where)
             )
           )
         );
       }
-
-      if (this.dataformCoreVersion >= "1.4.8") {
-        (table.incrementalPostOps || []).forEach(post => tasks.add(Task.statement(post)));
-      } else {
-        (table.postOps || []).forEach(post => tasks.add(Task.statement(post)));
-      }
     } else {
-      (table.preOps || []).forEach(pre => tasks.add(Task.statement(pre)));
-
       if (tableMetadata && tableMetadata.type !== this.baseTableType(table.type)) {
         tasks.add(
           Task.statement(this.dropIfExists(table.target, this.oppositeTableType(table.type)))
         );
       }
-
       tasks.add(Task.statement(this.createOrReplace(table)));
 
-      (table.postOps || []).forEach(post => tasks.add(Task.statement(post)));
+      this.addPostOps(table, this.dataformCoreVersion, tasks);
     }
 
     return tasks;

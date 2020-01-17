@@ -164,44 +164,34 @@ describe("@dataform/integration/bigquery", () => {
   });
 
   describe("publish tasks", async () => {
-    const projectConfig: dataform.IProjectConfig = {
-      warehouse: "bigquery",
-      defaultDatabase: "default_database"
-    };
+    it("incremental, core version <= 1.4.8", async () => {
+      const projectConfig: dataform.IProjectConfig = {
+        warehouse: "bigquery",
+        defaultDatabase: "default_database"
+      };
 
-    const templateTable: dataform.ITable = {
-      type: "incremental",
-      query: "query",
-      incrementalQuery: "query where incremental",
-      target: {
-        schema: "df_integration_test",
-        name: "example_incremental",
-        database: "dataform-integration-tests"
-      }
-    };
+      const table: dataform.ITable = {
+        type: "incremental",
+        query: "query",
+        preOps: ["preop task1", "preop task2"],
+        incrementalQuery: "query where incremental",
+        postOps: ["postop task1", "postop task2"],
+        target: {
+          schema: "df_integration_test",
+          name: "example_incremental",
+          database: "dataform-integration-tests"
+        }
+      };
 
-    const refreshRunConfig: dataform.IRunConfig = {
-      fullRefresh: true
-    };
+      const expectedRefreshStatements = [
+        "preop task1",
+        "preop task2",
+        "drop view if exists `dataform-integration-tests.df_integration_test.example_incremental`",
+        `create or replace table \`dataform-integration-tests.df_integration_test.example_incremental\`  as ${table.query}`,
+        "postop task1",
+        "postop task2"
+      ];
 
-    const noRefreshRunConfig: dataform.IRunConfig = {
-      fullRefresh: false
-    };
-
-    const tableMetadata: dataform.ITableMetadata = {
-      fields: []
-    };
-
-    const expectedRefreshStatements = [
-      "preop task1",
-      "preop task2",
-      "drop view if exists `dataform-integration-tests.df_integration_test.example_incremental`",
-      `create or replace table \`dataform-integration-tests.df_integration_test.example_incremental\`  as ${templateTable.query}`,
-      "postop task1",
-      "postop task2"
-    ];
-
-    it("incremental, core version < 1.4.8", async () => {
       const expectedIncrementStatements = [
         "preop task1",
         "preop task2",
@@ -211,19 +201,16 @@ insert into \`dataform-integration-tests.df_integration_test.example_incremental
 ()
 select 
 from (
-  select * from (${templateTable.incrementalQuery}) as subquery
+  select * from (${table.incrementalQuery}) as subquery
     where true) as insertions`,
         "postop task1",
         "postop task2"
       ];
 
       const bqadapter = new BigQueryAdapter(projectConfig, "1.4.7");
-      const table = { ...templateTable };
-      table.preOps = ["preop task1", "preop task2"];
-      table.postOps = ["postop task1", "postop task2"];
 
       const buildsFromRefresh = bqadapter
-        .publishTasks(table, refreshRunConfig, tableMetadata)
+        .publishTasks(table, { fullRefresh: true }, { fields: [] })
         .build();
 
       buildsFromRefresh.forEach((build, i) => {
@@ -231,43 +218,7 @@ from (
       });
 
       const buildsFromIncrement = bqadapter
-        .publishTasks(table, noRefreshRunConfig, tableMetadata)
-        .build();
-
-      buildsFromIncrement.forEach((build, i) => {
-        expect(build.statement).to.eql(expectedIncrementStatements[i]);
-      });
-    });
-
-    it("incremental, core version >= 1.4.8", async () => {
-      const expectedIncrementStatements = [
-        "preop task1",
-        "preop task2",
-        "drop view if exists `dataform-integration-tests.df_integration_test.example_incremental`",
-        `
-insert into \`dataform-integration-tests.df_integration_test.example_incremental\`
-()
-select 
-from (${templateTable.incrementalQuery}) as insertions`,
-        "postop task1",
-        "postop task2"
-      ];
-
-      const bqadapter = new BigQueryAdapter(projectConfig, "1.4.8");
-      const table = { ...templateTable };
-      table.incrementalPreOps = ["preop task1", "preop task2"];
-      table.incrementalPostOps = ["postop task1", "postop task2"];
-
-      const buildsFromRefresh = bqadapter
-        .publishTasks(table, refreshRunConfig, tableMetadata)
-        .build();
-
-      buildsFromRefresh.forEach((build, i) => {
-        expect(build.statement).to.eql(expectedRefreshStatements[i]);
-      });
-
-      const buildsFromIncrement = bqadapter
-        .publishTasks(table, noRefreshRunConfig, tableMetadata)
+        .publishTasks(table, { fullRefresh: false }, { fields: [] })
         .build();
 
       buildsFromIncrement.forEach((build, i) => {

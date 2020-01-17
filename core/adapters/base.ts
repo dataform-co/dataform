@@ -1,3 +1,4 @@
+import { Task, Tasks } from "@dataform/core/tasks";
 import { dataform } from "@dataform/protos";
 
 export abstract class Adapter {
@@ -36,5 +37,19 @@ from (${query}) as insertions`;
     return `
   select * from (${query}) as subquery
     where ${where || "true"}`;
+  }
+
+  protected addPreOps(table: dataform.ITable, dataformCoreVersion: string, tasks: Tasks) {
+    (dataformCoreVersion > "1.4.8" && table.type === "incremental"
+      ? table.incrementalPreOps
+      : table.preOps || []
+    ).forEach(pre => tasks.add(Task.statement(pre)));
+  }
+
+  protected addPostOps(table: dataform.ITable, dataformCoreVersion: string, tasks: Tasks) {
+    (dataformCoreVersion > "1.4.8" && table.type === "incremental"
+      ? table.incrementalPostOps
+      : table.postOps || []
+    ).forEach(post => tasks.add(Task.statement(post)));
   }
 }
