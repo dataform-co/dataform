@@ -17,7 +17,7 @@ ts_library(
 
 load("@build_bazel_rules_nodejs//:index.bzl", "pkg_npm")
 
-npm_package(
+pkg_npm(
     name = "package",
     srcs = ["package.json"],
     deps = [":stackdriver-github-bridge"],
@@ -29,5 +29,5 @@ deploy_http_nodejs_gcloud_function(
     name = "deploy",
     env_vars_file = "env.yaml",
     function_name = "handleStackdriverEvent",
-    npm_package = ":package",
+    pkg_npm = ":package",
 )

@@ -24,6 +24,6 @@ load("//tools/gcloud:gcloud_function.bzl", "deploy_pubsub_nodejs_gcloud_function
 deploy_pubsub_nodejs_gcloud_function(
     name = "deploy",
     function_name = "updateCloudBuildStatusBadge",
-    npm_package = ":package",
+    pkg_npm = ":package",
     topic_name = "cloud-builds",
 )

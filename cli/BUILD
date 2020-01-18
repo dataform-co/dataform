@@ -27,7 +27,7 @@ load("@build_bazel_rules_nodejs//:index.bzl", "nodejs_binary")
 
 nodejs_binary(
     name = "bin",
-    bootstrap = ["source-map-support/register"],
+    templated_args = ["--node_options=--require=source-map-support/register"],
     data = [
         ":cli",
         "@npm//source-map-support",
