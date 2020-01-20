@@ -69,10 +69,12 @@ export class Runner {
       throw new Error("Executor already started.");
     }
     this.executionTask = this.executeGraph();
-    this.timeout = setTimeout(() => {
-      this.timedOut = true;
-      this.cancel();
-    }, RUN_TIMEOUT);
+    if (!!this.graph.runConfig && !!this.graph.runConfig.timeoutMillis) {
+      this.timeout = setTimeout(() => {
+        this.timedOut = true;
+        this.cancel();
+      }, RUN_TIMEOUT);
+    }
     return this.resultPromise();
   }
 

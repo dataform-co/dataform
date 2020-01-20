@@ -46,6 +46,7 @@ message RunConfig {
   repeated string tags = 5;
   bool include_dependencies = 3;
   bool full_refresh = 2;
+  int32 timeout_millis = 7;
 
   reserved 4, 6;
 }
