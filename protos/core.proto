@@ -295,6 +295,7 @@ message RunResult {
     SUCCESSFUL = 2;
     FAILED = 3;
     CANCELLED = 4;
+    TIMED_OUT = 5;
   }
   ExecutionStatus status = 1;
   repeated ActionResult actions = 2;
