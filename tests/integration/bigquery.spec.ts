@@ -184,30 +184,30 @@ describe("@dataform/integration/bigquery", () => {
       };
 
       const expectedRefreshStatements = [
-        "preop task1",
-        "preop task2",
-        "drop view if exists `dataform-integration-tests.df_integration_test.example_incremental`",
-        `create or replace table \`dataform-integration-tests.df_integration_test.example_incremental\`  as ${table.query}`,
-        "postop task1",
-        "postop task2"
+        table.preOps[0],
+        table.preOps[1],
+        `drop view if exists \`${table.target.database}.${table.target.schema}.${table.target.name}\``,
+        `create or replace table \`${table.target.database}.${table.target.schema}.${table.target.name}\`  as ${table.query}`,
+        table.postOps[0],
+        table.postOps[1]
       ];
 
       const expectedIncrementStatements = [
-        "preop task1",
-        "preop task2",
-        "drop view if exists `dataform-integration-tests.df_integration_test.example_incremental`",
+        table.preOps[0],
+        table.preOps[1],
+        `drop view if exists \`${table.target.database}.${table.target.schema}.${table.target.name}\``,
         `
-insert into \`dataform-integration-tests.df_integration_test.example_incremental\`
+insert into \`${table.target.database}.${table.target.schema}.${table.target.name}\`
 ()
 select 
 from (
   select * from (${table.incrementalQuery}) as subquery
     where true) as insertions`,
-        "postop task1",
-        "postop task2"
+        table.postOps[0],
+        table.postOps[1]
       ];
 
-      const bqadapter = new BigQueryAdapter(projectConfig, "1.4.7");
+      const bqadapter = new BigQueryAdapter(projectConfig, "1.4.8");
 
       const buildsFromRefresh = bqadapter
         .publishTasks(table, { fullRefresh: true }, { fields: [] })

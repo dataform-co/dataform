@@ -3,6 +3,7 @@ import * as dbadapters from "@dataform/api/dbadapters";
 import * as adapters from "@dataform/core/adapters";
 import { dataform } from "@dataform/protos";
 import { expect } from "chai";
+import { SQLDataWarehouseAdapter } from "df/core/adapters/sqldatawarehouse";
 import { dropAllTables, getTableRows, keyBy } from "df/tests/integration/utils";
 
 describe("@dataform/integration/sqldatawarehouse", () => {
@@ -141,5 +142,76 @@ describe("@dataform/integration/sqldatawarehouse", () => {
         ]);
       });
     }
+  });
+
+  describe("publish tasks", async () => {
+    it("incremental, core version <= 1.4.8", async () => {
+      const projectConfig: dataform.IProjectConfig = {
+        warehouse: "bigquery",
+        defaultDatabase: "default_database"
+      };
+
+      const table: dataform.ITable = {
+        type: "incremental",
+        query: "query",
+        preOps: ["preop task1", "preop task2"],
+        incrementalQuery: "query where incremental",
+        postOps: ["postop task1", "postop task2"],
+        target: {
+          schema: "df_integration_test",
+          name: "example_incremental",
+          database: "dataform-integration-tests"
+        }
+      };
+
+      const expectedRefreshStatements = [
+        table.preOps[0],
+        table.preOps[1],
+        `drop view if exists "${table.target.schema}"."${table.target.name}" `,
+        `if object_id ('"${table.target.schema}"."${table.target.name}_temp"','U') is not null drop table "${table.target.schema}"."${table.target.name}_temp"`,
+        `create table "${table.target.schema}"."${table.target.name}_temp"
+     with(
+       distribution = ROUND_ROBIN
+     ) 
+     as query`,
+        `if object_id ('"${table.target.schema}"."${table.target.name}"','U') is not null drop table "${table.target.schema}"."${table.target.name}"`,
+        `rename object "${table.target.schema}"."${table.target.name}_temp" to ${table.target.name} `,
+        table.postOps[0],
+        table.postOps[1]
+      ];
+
+      const expectedIncrementStatements = [
+        table.preOps[0],
+        table.preOps[1],
+        `drop view if exists "${table.target.schema}"."${table.target.name}" `,
+        `
+insert into "${table.target.schema}"."${table.target.name}"
+()
+select 
+from (
+  select * from (${table.incrementalQuery}) as subquery
+    where true) as insertions`,
+        table.postOps[0],
+        table.postOps[1]
+      ];
+
+      const bqadapter = new SQLDataWarehouseAdapter(projectConfig, "1.4.8");
+
+      const buildsFromRefresh = bqadapter
+        .publishTasks(table, { fullRefresh: true }, { fields: [] })
+        .build();
+
+      buildsFromRefresh.forEach((build, i) => {
+        expect(build.statement).to.eql(expectedRefreshStatements[i]);
+      });
+
+      const buildsFromIncrement = bqadapter
+        .publishTasks(table, { fullRefresh: false }, { fields: [] })
+        .build();
+
+      buildsFromIncrement.forEach((build, i) => {
+        expect(build.statement).to.eql(expectedIncrementStatements[i]);
+      });
+    });
   });
 });

@@ -20,26 +20,26 @@ export class RedshiftAdapter extends Adapter implements IAdapter {
   ): Tasks {
     const tasks = Tasks.create();
 
-    (table.incrementalPreOps || []).forEach(pre => tasks.add(Task.statement(pre)));
-    (table.preOps || []).forEach(pre => tasks.add(Task.statement(pre)));
+    this.addPreOps(table, this.dataformCoreVersion, tasks);
 
-    // Drop the existing view or table if we are changing it's type.
     if (tableMetadata && tableMetadata.type !== this.baseTableType(table.type)) {
       tasks.add(
         Task.statement(this.dropIfExists(table.target, this.oppositeTableType(table.type)))
       );
     }
+
     if (table.type === "incremental") {
       if (runConfig.fullRefresh || !tableMetadata || tableMetadata.type === "view") {
         tasks.addAll(this.createOrReplace(table));
       } else {
-        // The table exists, insert new rows.
         tasks.add(
           Task.statement(
             this.insertInto(
               table.target,
               tableMetadata.fields.map(f => f.name),
-              this.where(table.incrementalQuery || table.query, table.where)
+              this.dataformCoreVersion > "1.4.8"
+                ? table.incrementalQuery
+                : this.where(table.incrementalQuery || table.query, table.where)
             )
           )
         );
@@ -48,8 +48,7 @@ export class RedshiftAdapter extends Adapter implements IAdapter {
       tasks.addAll(this.createOrReplace(table));
     }
 
-    (table.incrementalPostOps || []).forEach(post => tasks.add(Task.statement(post)));
-    (table.postOps || []).forEach(post => tasks.add(Task.statement(post)));
+    this.addPostOps(table, this.dataformCoreVersion, tasks);
 
     return tasks;
   }
