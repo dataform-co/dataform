@@ -16,7 +16,12 @@ export function test(
   optionsOrFn: Omit<ITestOptions, "name"> | (() => void),
   fn?: () => void
 ): void {
-  throw new Error("Cannot create a top level test, must be created in a suite.");
+  const test = Test.create(nameOrOptions, optionsOrFn, fn);
+  if (Suite.globalStack.length > 0) {
+    Suite.globalStack.slice(-1)[0].addTest(test);
+  } else {
+    throw new Error("Cannot create a top level test, must be created in a suite.");
+  }
 }
 
 export class Test {

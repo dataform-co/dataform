@@ -16,7 +16,7 @@ export interface IRunContext {
 export class Runner {
   public static readonly topLevelSuites: Set<Suite> = new Set();
 
-  public static register(suite: Suite) {
+  public static registerTopLevelSuite(suite: Suite) {
     Runner.topLevelSuites.add(suite);
     Runner.queueRun();
   }

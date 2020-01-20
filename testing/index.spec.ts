@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { ISuiteContext, Runner, suite } from "df/testing";
+import { ISuiteContext, Runner, suite, test } from "df/testing";
 
 Runner.setNoExit(true);
 
@@ -18,7 +18,7 @@ class ExampleFixture {
 const _ = (async () => {
   try {
     let exampleFixture: ExampleFixture;
-    suite("suite", ({ test, suite }) => {
+    suite("suite", () => {
       test("passes", async () => true);
       test("fails on expectation", () => expect({ value: 1 }).deep.equals({ value: 2 }));
       test("fails on throw", () => {
@@ -32,7 +32,7 @@ const _ = (async () => {
         { timeout: 10 },
         async () => await new Promise(resolve => setTimeout(resolve, 100000))
       );
-      suite("with before and after", ({ test, beforeEach, afterEach }) => {
+      suite("with before and after", ({ beforeEach, afterEach }) => {
         let counter = 0;
         beforeEach("increment counter", () => {
           counter += 1;
@@ -58,7 +58,7 @@ const _ = (async () => {
         });
       });
 
-      suite("can execute in parallel", { parallel: true }, async ({ test }) => {
+      suite("can execute in parallel", { parallel: true }, async () => {
         let counter = 0;
         test({ name: "test1" }, async () => {
           expect(counter).equals(0);
@@ -72,7 +72,7 @@ const _ = (async () => {
         });
       });
 
-      suite("with failing before each hook", ({ beforeEach, test }) => {
+      suite("with failing before each hook", ({ beforeEach }) => {
         beforeEach("hook that fails", () => {
           throw new Error("fail-sync");
         });
@@ -80,7 +80,7 @@ const _ = (async () => {
         test("test", () => true);
       });
 
-      suite("with failing tear down hook", ({ after, test }) => {
+      suite("with failing tear down hook", ({ after }) => {
         after("hook that fails", () => {
           throw new Error("fail-sync");
         });

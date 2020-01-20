@@ -25,10 +25,12 @@ export function suite(
   optionsOrFn: Omit<ISuiteOptions, "name"> | ((ctx?: ISuiteContext) => void),
   fn?: (ctx?: ISuiteContext) => void
 ) {
+  const suite = Suite.create(nameOrOptions, optionsOrFn, fn);
   if (Suite.globalStack.length > 0) {
-    throw new Error("Cannot create a top level suite inside a suite. Call ctx.suite instead.");
+    Suite.globalStack.slice(-1)[0].addSuite(suite);
+  } else {
+    Runner.registerTopLevelSuite(suite);
   }
-  Runner.register(Suite.create(nameOrOptions, optionsOrFn, fn));
 }
 
 export class Suite {
