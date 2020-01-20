@@ -35,10 +35,12 @@ export class Runner {
   private pendingActions: dataform.IExecutionAction[];
 
   private cancelled = false;
+  private timedOut = false;
   private runResult: dataform.IRunResult;
 
   private changeListeners: Array<(graph: dataform.IRunResult) => void> = [];
 
+  private timeout: NodeJS.Timer;
   private executionTask: Promise<dataform.IRunResult>;
 
   private eEmitter: EventEmitter;
@@ -65,6 +67,12 @@ export class Runner {
       throw new Error("Executor already started.");
     }
     this.executionTask = this.executeGraph();
+    if (!!this.graph.runConfig && !!this.graph.runConfig.timeoutMillis) {
+      this.timeout = setTimeout(() => {
+        this.timedOut = true;
+        this.cancel();
+      }, this.graph.runConfig.timeoutMillis);
+    }
     return this.resultPromise();
   }
 
@@ -74,7 +82,13 @@ export class Runner {
   }
 
   public async resultPromise(): Promise<dataform.IRunResult> {
-    return this.executionTask;
+    try {
+      return await this.executionTask;
+    } finally {
+      if (!!this.timeout) {
+        clearTimeout(this.timeout);
+      }
+    }
   }
 
   private triggerChange() {
@@ -105,17 +119,14 @@ export class Runner {
     this.runResult.timing = timer.end();
 
     this.runResult.status = dataform.RunResult.ExecutionStatus.SUCCESSFUL;
-    if (
-      this.runResult.actions.filter(
-        action => action.status === dataform.ActionResult.ExecutionStatus.CANCELLED
-      ).length > 0
-    ) {
+    if (this.timedOut) {
+      this.runResult.status = dataform.RunResult.ExecutionStatus.TIMED_OUT;
+    } else if (this.cancelled) {
       this.runResult.status = dataform.RunResult.ExecutionStatus.CANCELLED;
-    }
-    if (
-      this.runResult.actions.filter(
+    } else if (
+      this.runResult.actions.some(
         action => action.status === dataform.ActionResult.ExecutionStatus.FAILED
-      ).length > 0
+      )
     ) {
       this.runResult.status = dataform.RunResult.ExecutionStatus.FAILED;
     }
