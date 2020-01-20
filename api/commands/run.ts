@@ -5,8 +5,6 @@ import { dataform } from "@dataform/protos";
 import * as EventEmitter from "events";
 import * as Long from "long";
 
-// TODO: Make this configurable.
-const RUN_TIMEOUT = 3 * 60 * 60 * 1000;
 const CANCEL_EVENT = "jobCancel";
 
 const isSuccessfulAction = (actionResult: dataform.IActionResult) =>
@@ -73,7 +71,7 @@ export class Runner {
       this.timeout = setTimeout(() => {
         this.timedOut = true;
         this.cancel();
-      }, RUN_TIMEOUT);
+      }, this.graph.runConfig.timeoutMillis);
     }
     return this.resultPromise();
   }
