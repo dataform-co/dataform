@@ -85,7 +85,9 @@ export class Runner {
     try {
       return await this.executionTask;
     } finally {
-      clearTimeout(this.timeout);
+      if (!!this.timeout) {
+        clearTimeout(this.timeout);
+      }
     }
   }
 
