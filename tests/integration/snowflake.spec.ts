@@ -6,10 +6,10 @@ import { expect } from "chai";
 import { suite, test } from "df/testing";
 import { dropAllTables, getTableRows, keyBy } from "df/tests/integration/utils";
 
-suite("@dataform/integration/snowflake", ({ tearDown }) => {
+suite("@dataform/integration/snowflake", ({ after }) => {
   const credentials = dfapi.credentials.read("snowflake", "test_credentials/snowflake.json");
   const dbadapter = dbadapters.create(credentials, "snowflake");
-  tearDown("close adapter", () => dbadapter.close());
+  after("close adapter", () => dbadapter.close());
 
   test("run", { timeout: 60000 }, async () => {
     const compiledGraph = await dfapi.compile({

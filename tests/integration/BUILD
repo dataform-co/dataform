@@ -1,25 +1,10 @@
 package(default_visibility = ["//visibility:public"])
 
-load("@npm_bazel_typescript//:index.bzl", "ts_library")
-
-ts_library(
-    name = "utils",
-    srcs = ["utils.ts"],
-    deps = [
-        "//api",
-        "//core",
-        "//protos",
-        "//tests/utils",
-        "@npm//@types/chai",
-        "@npm//@types/node",
-    ],
-)
-
 load("//testing:index.bzl", "ts_test_suite")
 
 ts_test_suite(
     name = "tests",
-    srcs = glob(["*.spec.ts"]),
+    srcs = glob(["*.ts"]),
     data = [
         "//test_credentials",
         "//tests/integration/bigquery_project:files",
@@ -32,13 +17,13 @@ ts_test_suite(
         "//tests/integration/sqldatawarehouse_project:node_modules",
     ],
     deps = [
-        ":utils",
         "//api",
         "//core",
         "//protos",
         "//testing",
         "//tests/utils",
         "@npm//@types/chai",
+        "@npm//@types/long",
         "@npm//@types/node",
         "@npm//chai",
     ],

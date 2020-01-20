@@ -6,13 +6,13 @@ import { expect } from "chai";
 import { suite, test } from "df/testing";
 import { dropAllTables, getTableRows, keyBy } from "df/tests/integration/utils";
 
-suite("@dataform/integration/sqldatawarehouse", ({ tearDown }) => {
+suite("@dataform/integration/sqldatawarehouse", ({ after }) => {
   const credentials = dfapi.credentials.read(
     "sqldatawarehouse",
     "test_credentials/sqldatawarehouse.json"
   );
   const dbadapter = dbadapters.create(credentials, "sqldatawarehouse");
-  tearDown("close adapter", () => dbadapter.close());
+  after("close adapter", () => dbadapter.close());
 
   test("run", { timeout: 60000 }, async () => {
     const compiledGraph = await dfapi.compile({

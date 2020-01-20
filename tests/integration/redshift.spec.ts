@@ -6,10 +6,10 @@ import { expect } from "chai";
 import { suite, test } from "df/testing";
 import { getTableRows, keyBy } from "df/tests/integration/utils";
 
-suite("@dataform/integration/redshift", ({ tearDown }) => {
+suite("@dataform/integration/redshift", ({ after }) => {
   const credentials = dfapi.credentials.read("redshift", "test_credentials/redshift.json");
   const dbadapter = dbadapters.create(credentials, "redshift");
-  tearDown("close adapter", () => dbadapter.close());
+  after("close adapter", () => dbadapter.close());
 
   test("run", { timeout: 60000 }, async () => {
     const compiledGraph = await dfapi.compile({

@@ -7,10 +7,10 @@ import { suite, test } from "df/testing";
 import { dropAllTables, getTableRows, keyBy } from "df/tests/integration/utils";
 import * as Long from "long";
 
-suite("@dataform/integration/bigquery", ({ tearDown }) => {
+suite("@dataform/integration/bigquery", ({ after }) => {
   const credentials = dfapi.credentials.read("bigquery", "test_credentials/bigquery.json");
   const dbadapter = dbadapters.create(credentials, "bigquery");
-  tearDown("close adapter", () => dbadapter.close());
+  after("close adapter", () => dbadapter.close());
 
   test("run", { timeout: 60000 }, async () => {
     const compiledGraph = await dfapi.compile({
@@ -144,8 +144,8 @@ suite("@dataform/integration/bigquery", ({ tearDown }) => {
     }
   });
 
-  describe("metadata", async () => {
-    it("includes jobReference and statistics", async () => {
+  suite("metadata", async () => {
+    test("includes jobReference and statistics", async () => {
       const query = `select 1 as test`;
       const { metadata } = await dbadapter.execute(query);
       const { bigquery: bqMetadata } = metadata;
