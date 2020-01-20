@@ -1,5 +1,5 @@
 load("@npm_bazel_typescript//:index.bzl", "ts_library")
-load("@build_bazel_rules_nodejs//:defs.bzl", "nodejs_test")
+load("@build_bazel_rules_nodejs//:index.bzl", "nodejs_test")
 
 def ts_test(name, entry_point, data = [], **kwargs):
     ts_library(
