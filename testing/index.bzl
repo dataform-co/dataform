@@ -16,9 +16,9 @@ def ts_test(name, entry_point, data = [], **kwargs):
         entry_point = entry_point,
     )
 
-def ts_test_suite(srcs, data = [], **kwargs):
+def ts_test_suite(name, srcs, data = [], **kwargs):
     ts_library(
-        name = "test_suite_library",
+        name = name,
         data = data,
         srcs = srcs,
         **kwargs
@@ -28,7 +28,7 @@ def ts_test_suite(srcs, data = [], **kwargs):
             nodejs_test(
                 name = src[:-3],
                 data = data + [
-                    ":test_suite_library",
+                    ":{name}".format(name = name),
                 ],
                 entry_point = ":" + src,
             )

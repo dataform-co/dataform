@@ -5,29 +5,35 @@ interface ITestOptions {
   timeout?: number;
 }
 
+export function test(name: string | ITestOptions, fn: (ctx?: ITestOptions) => void): void;
+export function test(
+  name: string,
+  options: Omit<ITestOptions, "name">,
+  fn: (ctx?: ITestOptions) => void
+): void;
 export function test(
   nameOrOptions: ITestOptions | string,
   optionsOrFn: Omit<ITestOptions, "name"> | (() => void),
   fn?: () => void
 ): void {
-  Suite.globalStack.slice(-1)[0].addTest(Test.create(nameOrOptions, optionsOrFn, fn));
-  Runner.queueRunAndExit();
+  const test = Test.create(nameOrOptions, optionsOrFn, fn);
+  if (Suite.globalStack.length > 0) {
+    Suite.globalStack.slice(-1)[0].addTest(test);
+  } else {
+    throw new Error("Cannot create a top level test, must be created in a suite.");
+  }
 }
 
 export class Test {
-  public static readonly DEFAULT_TIMEOUT = 30000;
+  public static readonly DEFAULT_TIMEOUT_MILLIS = 30000;
 
   public static create(
     nameOrOptions: ITestOptions | string,
     optionsOrFn: Omit<ITestOptions, "name"> | (() => void),
     fn?: () => void
   ) {
-    let options: ITestOptions = { name: null };
-    if (typeof nameOrOptions === "string") {
-      options.name = nameOrOptions;
-    } else {
-      options = { ...nameOrOptions };
-    }
+    let options: ITestOptions =
+      typeof nameOrOptions === "string" ? { name: nameOrOptions } : { ...nameOrOptions };
     if (typeof optionsOrFn === "function") {
       fn = optionsOrFn;
     } else {
@@ -40,9 +46,10 @@ export class Test {
 
   public async run(ctx: IRunContext) {
     let timer: NodeJS.Timer;
-    const timeout = this.options.timeout || Test.DEFAULT_TIMEOUT;
-    const result: Partial<IRunResult> = {
-      path: [...ctx.path, this.options.name]
+    const timeout = this.options.timeout || Test.DEFAULT_TIMEOUT_MILLIS;
+    const result: IRunResult = {
+      path: [...ctx.path, this.options.name],
+      outcome: "failed"
     };
     try {
       await Promise.race([
@@ -56,14 +63,11 @@ export class Test {
       ]);
       result.outcome = "passed";
     } catch (e) {
-      if (result.outcome !== "timeout") {
-        result.outcome = "failed";
-      }
       result.err = e;
+    } finally {
+      clearTimeout(timer);
     }
 
-    clearTimeout(timer);
-
-    ctx.results.push(result as IRunResult);
+    ctx.results.push(result);
   }
 }

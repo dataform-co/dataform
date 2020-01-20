@@ -47,9 +47,7 @@ message RunConfig {
   bool include_dependencies = 3;
   bool full_refresh = 2;
 
-  // Intended for temporary testing, not included in a permanent API.
-  bool use_pg_pool_for_redshift = 6;
-  reserved 4;
+  reserved 4, 6;
 }
 
 message GenerateIndexConfig {
@@ -278,6 +276,7 @@ message ExecutionGraph {
 
 message ExecutedTask {
   ExecutionTask task = 1;
+  ExecutionMetadata metadata = 6;
 
   bool ok = 2;
   bool skipped = 5;
@@ -320,6 +319,16 @@ message ActionResult {
   Timing timing = 4;
 }
 
+
+message ExecutionMetadata {
+  message BigqueryMetadata {
+    string job_id = 1;
+    int64 total_bytes_processed = 2;
+    int64 total_bytes_billed = 3;  
+  }
+  BigqueryMetadata bigquery = 1;
+}
+
 message TaskResult {
   enum ExecutionStatus {
       UNKNOWN = 0;
@@ -332,6 +341,7 @@ message TaskResult {
   ExecutionStatus status = 1;
   string error_message = 2;
   Timing timing = 3;
+  ExecutionMetadata metadata = 4;
 }
 
 enum ActionExecutionStatus {

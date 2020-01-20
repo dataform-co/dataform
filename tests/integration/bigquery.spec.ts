@@ -5,6 +5,7 @@ import { dataform } from "@dataform/protos";
 import { expect } from "chai";
 import { suite, test } from "df/testing";
 import { dropAllTables, getTableRows, keyBy } from "df/tests/integration/utils";
+import * as Long from "long";
 
 suite("@dataform/integration/bigquery", ({ tearDown }) => {
   const credentials = dfapi.credentials.read("bigquery", "test_credentials/bigquery.json");
@@ -141,5 +142,21 @@ suite("@dataform/integration/bigquery", ({ tearDown }) => {
         ]);
       });
     }
+  });
+
+  describe("metadata", async () => {
+    it("includes jobReference and statistics", async () => {
+      const query = `select 1 as test`;
+      const { metadata } = await dbadapter.execute(query);
+      const { bigquery: bqMetadata } = metadata;
+      expect(bqMetadata).to.have.property("jobId");
+      expect(bqMetadata.jobId).to.match(
+        /^dataform-[0-9A-Fa-f]{8}(?:-[0-9A-Fa-f]{4}){3}-[0-9A-Fa-f]{12}$/
+      );
+      expect(bqMetadata).to.have.property("totalBytesBilled");
+      expect(bqMetadata.totalBytesBilled).to.eql(Long.fromNumber(0));
+      expect(bqMetadata).to.have.property("totalBytesProcessed");
+      expect(bqMetadata.totalBytesProcessed).to.eql(Long.fromNumber(0));
+    });
   });
 });

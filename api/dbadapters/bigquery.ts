@@ -3,6 +3,7 @@ import { IDbAdapter, OnCancel } from "@dataform/api/dbadapters/index";
 import { dataform } from "@dataform/protos";
 import { BigQuery } from "@google-cloud/bigquery";
 import { QueryResultsOptions } from "@google-cloud/bigquery/build/src/job";
+import * as Long from "long";
 import * as PromisePool from "promise-pool-executor";
 
 const BIGQUERY_DATE_RELATED_FIELDS = [
@@ -139,10 +140,11 @@ export class BigQueryDbAdapter implements IDbAdapter {
         .promise();
       return cleanRows(rowsResult[0]);
     }
-    return this.runQuery(
+    const { rows } = await this.runQuery(
       `SELECT * FROM \`${metadata.tableReference.projectId}.${metadata.tableReference.datasetId}.${metadata.tableReference.tableId}\``,
       limitRows
     );
+    return rows;
   }
 
   public async prepareSchema(schema: string): Promise<void> {
@@ -186,7 +188,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
           resolve(allRows);
         });
     });
-    return cleanRows(results);
+    return { rows: cleanRows(results), metadata: {} };
   }
 
   private createQueryJob(statement: string, maxResults?: number, onCancel?: OnCancel) {
@@ -197,7 +199,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
       });
     }
 
-    return new Promise<any[]>((resolve, reject) =>
+    return new Promise<any>((resolve, reject) =>
       this.client.createQueryJob(
         { useLegacySql: false, jobPrefix: "dataform-", query: statement, maxResults },
         async (err, job) => {
@@ -232,7 +234,21 @@ export class BigQueryDbAdapter implements IDbAdapter {
               // More results exist and we have space to consume them.
               job.getQueryResults(nextQuery, manualPaginationCallback);
             } else {
-              resolve(results);
+              job.getMetadata().then(([bqMeta]) => {
+                const queryData = {
+                  rows: results,
+                  metadata: {
+                    bigquery: {
+                      jobId: bqMeta.jobReference.jobId,
+                      totalBytesBilled: Long.fromString(bqMeta.statistics.query.totalBytesBilled),
+                      totalBytesProcessed: Long.fromString(
+                        bqMeta.statistics.query.totalBytesProcessed
+                      )
+                    }
+                  }
+                };
+                resolve(queryData);
+              });
             }
           };
           // For non interactive queries, we can set a hard limit by disabling auto pagination.

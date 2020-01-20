@@ -4,8 +4,8 @@ import { promisify } from "util";
 
 export interface IRunResult {
   path: string[];
-  err: any;
   outcome: "passed" | "timeout" | "failed";
+  err?: any;
 }
 
 export interface IRunContext {
@@ -14,10 +14,17 @@ export interface IRunContext {
 }
 
 export class Runner {
+  public static readonly topLevelSuites: Set<Suite> = new Set();
+
+  public static registerTopLevelSuite(suite: Suite) {
+    Runner.topLevelSuites.add(suite);
+    Runner.queueRun();
+  }
+
   public static setNoExit(noExit: boolean) {
     Runner.noExit = noExit;
   }
-  public static queueRunAndExit() {
+  public static queueRun() {
     if (!Runner.resultPromise) {
       Runner.resultPromise = Runner.run();
     }
@@ -27,14 +34,14 @@ export class Runner {
   public static async run() {
     // We tell the runner to start running at the end of current block of
     // synchronously executed code. This will typically be after all the
-    // suite definitions are evaluated.
+    // suite definitions are evaluated. This is equivelant to setTimeout(..., 0).
     await promisify(process.nextTick)();
     const ctx: IRunContext = {
       path: [],
       results: []
     };
 
-    await Suite.globalStack[0].run(ctx);
+    await Promise.all([...this.topLevelSuites].map(suite => suite.run(ctx)));
 
     if (ctx.results.length === 0) {
       ctx.results.push({
@@ -46,7 +53,7 @@ export class Runner {
     const indent = (value: string, levels = 4) =>
       value
         .split("\n")
-        .map(line => `${new Array(levels).fill(" ").join("")}${line}`)
+        .map(line => `${" ".repeat(4)}${line}`)
         .join("\n");
 
     for (const result of ctx.results) {

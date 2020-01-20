@@ -7,26 +7,28 @@ export interface IHookOptions {
   timeout?: number;
 }
 
-export type IHookHandler = (
+export function hook(name: string | IHookOptions, fn: IHookFunction): Hook;
+export function hook(name: string, options: Omit<IHookOptions, "name">, fn: IHookFunction): Hook;
+export function hook(
   nameOrOptions: IHookOptions | string,
   optionsOrFn: Omit<IHookOptions, "name"> | IHookFunction,
   fn?: IHookFunction
-) => void;
+): Hook {
+  return Hook.create(nameOrOptions, optionsOrFn, fn);
+}
+
+export type IHookHandler = typeof Hook.create;
 
 export class Hook {
-  public static readonly DEFAULT_TIMEOUT = 30000;
+  public static readonly DEFAULT_TIMEOUT_MILLIS = 30000;
 
   public static create(
     nameOrOptions: IHookOptions | string,
     optionsOrFn: Omit<IHookOptions, "name"> | IHookFunction,
     fn?: IHookFunction
-  ) {
-    let options: IHookOptions = { name: null };
-    if (typeof nameOrOptions === "string") {
-      options.name = nameOrOptions;
-    } else {
-      options = { ...nameOrOptions };
-    }
+  ): Hook {
+    let options: IHookOptions =
+      typeof nameOrOptions === "string" ? { name: nameOrOptions } : nameOrOptions;
     if (typeof optionsOrFn === "function") {
       fn = optionsOrFn;
     } else {
@@ -39,9 +41,10 @@ export class Hook {
 
   public async run(ctx: IRunContext) {
     let timer: NodeJS.Timer;
-    const timeout = this.options.timeout || Hook.DEFAULT_TIMEOUT;
-    const result: Partial<IRunResult> = {
-      path: [...ctx.path, `${this.options.name} (hook)`]
+    const timeout = this.options.timeout || Hook.DEFAULT_TIMEOUT_MILLIS;
+    const result: IRunResult = {
+      path: [...ctx.path, `${this.options.name} (hook)`],
+      outcome: "failed"
     };
     try {
       await Promise.race([
@@ -54,16 +57,12 @@ export class Hook {
         })
       ]);
       result.outcome = "passed";
-    } catch (e) {
-      if (result.outcome !== "timeout") {
-        result.outcome = "failed";
-      }
-      result.err = e;
-      ctx.results.push(result as IRunResult);
+    } catch (err) {
+      ctx.results.push({ ...result, err });
       // If hooks fail, we throw anyway.
-      throw e;
+      throw err;
+    } finally {
+      clearTimeout(timer);
     }
-
-    clearTimeout(timer);
   }
 }

@@ -6,102 +6,103 @@ Runner.setNoExit(true);
 class ExampleFixture {
   public counter = 0;
   public constructor(ctx: ISuiteContext) {
-    ctx.setUp("reset counter", () => {
+    ctx.before("reset counter", () => {
       this.counter = 1;
     });
-    ctx.tearDown("change counter", () => {
+    ctx.after("change counter", () => {
       this.counter = 2;
     });
   }
 }
 
 const _ = (async () => {
-  let exampleFixture: ExampleFixture;
-  suite("suite", () => {
-    test("passes", async () => true);
-    test("fails on expectation", () => expect({ value: 1 }).deep.equals({ value: 2 }));
-    test("fails on throw", () => {
-      throw new Error("fail-sync");
-    });
-    test("fails on promise rejection", async () => {
-      await Promise.reject(new Error("fail-async"));
-    });
-    test(
-      "times out",
-      { timeout: 10 },
-      async () => await new Promise(resolve => setTimeout(resolve, 100000))
-    );
-    suite("with before and after", ({ beforeEach, afterEach }) => {
-      let counter = 0;
-      beforeEach("increment counter", () => {
-        counter += 1;
-      });
-      afterEach("reset counter", () => {
-        counter = 0;
-      });
-      test("passes on first test", () => {
-        expect(counter).equals(1);
-        counter = 2;
-      });
-      test("passes on second test", () => {
-        expect(counter).equals(1);
-        counter = 2;
-      });
-    });
-
-    suite("with set up and tear down", ctx => {
-      exampleFixture = new ExampleFixture(ctx);
-      test({ name: "set up is called" }, () => {
-        expect(exampleFixture.counter).equals(1);
-      });
-    });
-
-    suite("can execute in parallel", { parallel: true }, async () => {
-      let counter = 0;
-      test({ name: "test1" }, async () => {
-        expect(counter).equals(0);
-        await new Promise(resolve => setTimeout(resolve, 10));
-        counter = 1;
-      });
-      test({ name: "test2" }, async () => {
-        expect(counter).equals(0);
-        await new Promise(resolve => setTimeout(resolve, 10));
-        counter = 1;
-      });
-    });
-
-    suite("with failing before each hook", ({ beforeEach }) => {
-      beforeEach("hook that fails", () => {
-        throw new Error("fail-sync");
-      });
-
-      test("test", () => true);
-    });
-
-    suite("with failing tear down hook", ({ tearDown }) => {
-      tearDown("hook that fails", () => {
-        throw new Error("fail-sync");
-      });
-
-      test("test", () => true);
-    });
-  });
-
-  const results = await Runner.result();
-
-  // Override the test exit code behaviour.
-  process.exitCode = 0;
-
-  // Clean up the rest results.
-  const resultsClean = results.map(result => {
-    const newResult = { ...result };
-    if (result.err) {
-      newResult.err = result.err.message;
-    }
-    return newResult;
-  });
-
   try {
+    let exampleFixture: ExampleFixture;
+    suite("suite", () => {
+      test("passes", async () => true);
+      test("fails on expectation", () => expect({ value: 1 }).deep.equals({ value: 2 }));
+      test("fails on throw", () => {
+        throw new Error("fail-sync");
+      });
+      test("fails on promise rejection", async () => {
+        await Promise.reject(new Error("fail-async"));
+      });
+      test(
+        "times out",
+        { timeout: 10 },
+        async () => await new Promise(resolve => setTimeout(resolve, 100000))
+      );
+      suite("with before and after", ({ beforeEach, afterEach }) => {
+        let counter = 0;
+        beforeEach("increment counter", () => {
+          counter += 1;
+        });
+        afterEach("reset counter", () => {
+          counter = 0;
+        });
+        test("passes on first test", () => {
+          expect(counter).equals(1);
+          counter = 2;
+        });
+        test("passes on second test", () => {
+          expect(counter).equals(1);
+          counter = 2;
+        });
+      });
+
+      suite("with set up and tear down", ctx => {
+        const { test } = ctx;
+        exampleFixture = new ExampleFixture(ctx);
+        test({ name: "set up is called" }, () => {
+          expect(exampleFixture.counter).equals(1);
+        });
+      });
+
+      suite("can execute in parallel", { parallel: true }, async () => {
+        let counter = 0;
+        test({ name: "test1" }, async () => {
+          expect(counter).equals(0);
+          await new Promise(resolve => setTimeout(resolve, 10));
+          counter = 1;
+        });
+        test({ name: "test2" }, async () => {
+          expect(counter).equals(0);
+          await new Promise(resolve => setTimeout(resolve, 10));
+          counter = 1;
+        });
+      });
+
+      suite("with failing before each hook", ({ beforeEach }) => {
+        beforeEach("hook that fails", () => {
+          throw new Error("fail-sync");
+        });
+
+        test("test", () => true);
+      });
+
+      suite("with failing tear down hook", ({ after }) => {
+        after("hook that fails", () => {
+          throw new Error("fail-sync");
+        });
+
+        test("test", () => true);
+      });
+    });
+
+    const results = await Runner.result();
+
+    // Override the test exit code behaviour.
+    process.exitCode = 0;
+
+    // Clean up the rest results.
+    const resultsClean = results.map(result => {
+      const newResult = { ...result };
+      if (result.err) {
+        newResult.err = result.err.message;
+      }
+      return newResult;
+    });
+
     expect(resultsClean).deep.members([
       { path: ["suite", "passes"], outcome: "passed" },
       {

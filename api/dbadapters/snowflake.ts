@@ -57,33 +57,36 @@ export class SnowflakeDbAdapter implements IDbAdapter {
     } = { maxResults: 1000 }
   ) {
     const connection = await this.connectionPromise;
-    return this.pool
-      .addSingleTask({
-        generator: () =>
-          new Promise<any[]>((resolve, reject) => {
-            connection.execute({
-              sqlText: statement,
-              streamResult: true,
-              complete(err, stmt) {
-                if (err) {
-                  reject(err);
-                  return;
+    return {
+      rows: await this.pool
+        .addSingleTask({
+          generator: () =>
+            new Promise<any[]>((resolve, reject) => {
+              connection.execute({
+                sqlText: statement,
+                streamResult: true,
+                complete(err, stmt) {
+                  if (err) {
+                    reject(err);
+                    return;
+                  }
+                  const rows: any[] = [];
+                  const streamOptions =
+                    !!options && !!options.maxResults
+                      ? { start: 0, end: options.maxResults - 1 }
+                      : {};
+                  stmt
+                    .streamRows(streamOptions)
+                    .on("error", e => reject(e))
+                    .on("data", row => rows.push(row))
+                    .on("end", () => resolve(rows));
                 }
-                const rows: any[] = [];
-                const streamOptions =
-                  !!options && !!options.maxResults
-                    ? { start: 0, end: options.maxResults - 1 }
-                    : {};
-                stmt
-                  .streamRows(streamOptions)
-                  .on("error", e => reject(e))
-                  .on("data", row => rows.push(row))
-                  .on("end", () => resolve(rows));
-              }
-            });
-          })
-      })
-      .promise();
+              });
+            })
+        })
+        .promise(),
+      metadata: {}
+    };
   }
 
   public evaluate(statement: string): Promise<void> {
@@ -91,7 +94,7 @@ export class SnowflakeDbAdapter implements IDbAdapter {
   }
 
   public async tables(): Promise<dataform.ITarget[]> {
-    const rows = await this.execute(
+    const { rows } = await this.execute(
       `select table_name, table_schema
        from information_schema.tables
        where LOWER(table_schema) != 'information_schema'
@@ -106,7 +109,7 @@ export class SnowflakeDbAdapter implements IDbAdapter {
   }
 
   public async schemas(): Promise<string[]> {
-    const rows = await this.execute(`select SCHEMA_NAME from information_schema.schemata`);
+    const { rows } = await this.execute(`select SCHEMA_NAME from information_schema.schemata`);
     return rows.map(row => row.SCHEMA_NAME);
   }
 
@@ -121,12 +124,12 @@ export class SnowflakeDbAdapter implements IDbAdapter {
         `select table_type from information_schema.tables where table_schema = '${target.schema}' AND table_name = '${target.name}'`
       )
     ]).then(results => {
-      if (results[1].length > 0) {
+      if (results[1].rows.length > 0) {
         // The table exists.
         return {
           target,
-          type: results[1][0].TABLE_TYPE == "VIEW" ? "view" : "table",
-          fields: results[0].map(row => ({
+          type: results[1].rows[0].TABLE_TYPE == "VIEW" ? "view" : "table",
+          fields: results[0].rows.map(row => ({
             name: row.COLUMN_NAME,
             primitive: row.DATA_TYPE,
             flags: row.IS_NULLABLE && row.IS_NULLABLE == "YES" ? ["nullable"] : []
@@ -139,7 +142,10 @@ export class SnowflakeDbAdapter implements IDbAdapter {
   }
 
   public async preview(target: dataform.ITarget, limitRows: number = 10): Promise<any[]> {
-    return this.execute(`SELECT * FROM "${target.schema}"."${target.name}" LIMIT ${limitRows}`);
+    const { rows } = await this.execute(
+      `SELECT * FROM "${target.schema}"."${target.name}" LIMIT ${limitRows}`
+    );
+    return rows;
   }
 
   public async prepareSchema(schema: string): Promise<void> {

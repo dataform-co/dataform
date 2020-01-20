@@ -17,6 +17,7 @@ ts_library(
 load("//testing:index.bzl", "ts_test_suite")
 
 ts_test_suite(
+    name = "tests",
     srcs = glob(["*.spec.ts"]),
     deps = [
         ":testing",

@@ -1,4 +1,4 @@
-import { Hook, IHookHandler, IRunContext, Runner, test, Test } from "df/testing";
+import { Hook, hook, IRunContext, Runner, test, Test } from "df/testing";
 
 export interface ISuiteOptions {
   name: string;
@@ -8,35 +8,41 @@ export interface ISuiteOptions {
 export interface ISuiteContext {
   suite: typeof suite;
   test: typeof test;
-  beforeEach: IHookHandler;
-  afterEach: IHookHandler;
-  setUp: IHookHandler;
-  tearDown: IHookHandler;
+  beforeEach: typeof hook;
+  afterEach: typeof hook;
+  before: typeof hook;
+  after: typeof hook;
 }
 
+export function suite(name: string | ISuiteOptions, fn: (ctx?: ISuiteContext) => void): void;
+export function suite(
+  name: string,
+  options: Omit<ISuiteOptions, "name">,
+  fn: (ctx?: ISuiteContext) => void
+): void;
 export function suite(
   nameOrOptions: ISuiteOptions | string,
   optionsOrFn: Omit<ISuiteOptions, "name"> | ((ctx?: ISuiteContext) => void),
   fn?: (ctx?: ISuiteContext) => void
-): void {
-  Suite.globalStack.slice(-1)[0].addSuite(Suite.create(nameOrOptions, optionsOrFn, fn));
-  Runner.queueRunAndExit();
+) {
+  const suite = Suite.create(nameOrOptions, optionsOrFn, fn);
+  if (Suite.globalStack.length > 0) {
+    Suite.globalStack.slice(-1)[0].addSuite(suite);
+  } else {
+    Runner.registerTopLevelSuite(suite);
+  }
 }
 
 export class Suite {
-  public static readonly globalStack: Suite[] = [new Suite({ name: undefined }, () => null)];
+  public static readonly globalStack: Suite[] = [];
 
   public static create(
     nameOrOptions: ISuiteOptions | string,
     optionsOrFn: Omit<ISuiteOptions, "name"> | ((ctx?: ISuiteContext) => void),
     fn?: (ctx?: ISuiteContext) => void
-  ) {
-    let options: ISuiteOptions = { name: null };
-    if (typeof nameOrOptions === "string") {
-      options.name = nameOrOptions;
-    } else {
-      options = { ...nameOrOptions };
-    }
+  ): Suite {
+    let options: ISuiteOptions =
+      typeof nameOrOptions === "string" ? { name: nameOrOptions } : { ...nameOrOptions };
     if (typeof optionsOrFn === "function") {
       fn = optionsOrFn;
     } else {
@@ -131,23 +137,28 @@ export class Suite {
 
   private checkMutation() {
     if (this.runStarted) {
-      throw new Error("Cannot mutate a suite that has already started running.");
+      throw new Error("Cannot add to a suite that has already started running.");
     }
     if (Suite.globalStack.slice(-1)[0] !== this) {
       throw new Error(
-        "Cannot mutate a suite that is not currently in scope (suite configuration must be synchronous)."
+        "Cannot add to a suite that is not currently in scope. Call ctx.suite, ctx.test, ctx.before/after instead."
       );
     }
   }
 
   private context(): ISuiteContext {
+    // The any types here are required due to method overloads.
     return {
-      suite: (...args) => this.addSuite(Suite.create(...args)),
-      test: (...args) => this.addTest(Test.create(...args)),
-      beforeEach: (...args) => this.addHook(this.beforeEaches, Hook.create(...args)),
-      afterEach: (...args) => this.addHook(this.afterEaches, Hook.create(...args)),
-      setUp: (...args) => this.addHook(this.setUps, Hook.create(...args)),
-      tearDown: (...args) => this.addHook(this.tearDowns, Hook.create(...args))
+      suite: ((...args: [any, any, any]) => this.addSuite(Suite.create(...args))) as typeof suite,
+      test: ((...args: [any, any, any]) => this.addTest(Test.create(...args))) as typeof test,
+      beforeEach: ((...args: [any, any, any]) =>
+        this.addHook(this.beforeEaches, Hook.create(...args))) as typeof hook,
+      afterEach: ((...args: [any, any, any]) =>
+        this.addHook(this.afterEaches, Hook.create(...args))) as typeof hook,
+      before: ((...args: [any, any, any]) =>
+        this.addHook(this.setUps, Hook.create(...args))) as typeof hook,
+      after: ((...args: [any, any, any]) =>
+        this.addHook(this.tearDowns, Hook.create(...args))) as typeof hook
     };
   }
 }
