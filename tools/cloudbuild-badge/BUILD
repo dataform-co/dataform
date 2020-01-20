@@ -11,9 +11,9 @@ ts_library(
     ],
 )
 
-load("@build_bazel_rules_nodejs//:defs.bzl", "npm_package")
+load("@build_bazel_rules_nodejs//:index.bzl", "pkg_npm")
 
-npm_package(
+pkg_npm(
     name = "package",
     srcs = ["package.json"],
     deps = [":cloudbuild-badge"],
@@ -24,6 +24,6 @@ load("//tools/gcloud:gcloud_function.bzl", "deploy_pubsub_nodejs_gcloud_function
 deploy_pubsub_nodejs_gcloud_function(
     name = "deploy",
     function_name = "updateCloudBuildStatusBadge",
-    npm_package = ":package",
+    pkg_npm = ":package",
     topic_name = "cloud-builds",
 )

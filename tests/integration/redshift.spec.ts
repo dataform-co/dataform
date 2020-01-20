@@ -4,16 +4,17 @@ import * as adapters from "@dataform/core/adapters";
 import { dataform } from "@dataform/protos";
 import { expect } from "chai";
 import { RedshiftAdapter } from "df/core/adapters/redshift";
+import { suite, test } from "df/testing";
 import { getTableRows, keyBy } from "df/tests/integration/utils";
 
-describe("@dataform/integration/redshift", () => {
-  const credentials = dfapi.credentials.read("redshift", "df/test_credentials/redshift.json");
+suite("@dataform/integration/redshift", ({ after }) => {
+  const credentials = dfapi.credentials.read("redshift", "test_credentials/redshift.json");
   const dbadapter = dbadapters.create(credentials, "redshift");
-  after(() => dbadapter.close());
+  after("close adapter", () => dbadapter.close());
 
-  it("run", async () => {
+  test("run", { timeout: 60000 }, async () => {
     const compiledGraph = await dfapi.compile({
-      projectDir: "df/tests/integration/redshift_project"
+      projectDir: "tests/integration/redshift_project"
     });
 
     expect(compiledGraph.graphErrors.compilationErrors).to.eql([]);
@@ -150,9 +151,9 @@ describe("@dataform/integration/redshift", () => {
     ];
     incrementalRows = await getTableRows(incrementalTable.target, adapter, credentials, "redshift");
     expect(incrementalRows.length).equals(2);
-  }).timeout(60000);
+  });
 
-  describe("result limit works", async () => {
+  suite("result limit works", async () => {
     const query = `
       select 1 union all
       select 2 union all
@@ -161,7 +162,7 @@ describe("@dataform/integration/redshift", () => {
       select 5`;
 
     for (const interactive of [true, false]) {
-      it(`with interactive=${interactive}`, async () => {
+      test(`with interactive=${interactive}`, async () => {
         const { rows } = await dbadapter.execute(query, { interactive, maxResults: 2 });
         expect(rows).eql([
           {
@@ -175,8 +176,8 @@ describe("@dataform/integration/redshift", () => {
     }
   });
 
-  describe("publish tasks", async () => {
-    it("incremental, core version <= 1.4.8", async () => {
+  suite("publish tasks", async () => {
+    test("incremental, core version <= 1.4.8", async () => {
       const projectConfig: dataform.IProjectConfig = {
         warehouse: "bigquery",
         defaultDatabase: "default_database"

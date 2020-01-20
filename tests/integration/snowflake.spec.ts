@@ -4,16 +4,17 @@ import * as adapters from "@dataform/core/adapters";
 import { dataform } from "@dataform/protos";
 import { expect } from "chai";
 import { SnowflakeAdapter } from "df/core/adapters/snowflake";
+import { suite, test } from "df/testing";
 import { dropAllTables, getTableRows, keyBy } from "df/tests/integration/utils";
 
-describe("@dataform/integration/snowflake", () => {
-  const credentials = dfapi.credentials.read("snowflake", "df/test_credentials/snowflake.json");
+suite("@dataform/integration/snowflake", ({ after }) => {
+  const credentials = dfapi.credentials.read("snowflake", "test_credentials/snowflake.json");
   const dbadapter = dbadapters.create(credentials, "snowflake");
-  after(() => dbadapter.close());
+  after("close adapter", () => dbadapter.close());
 
-  it("run", async () => {
+  test("run", { timeout: 60000 }, async () => {
     const compiledGraph = await dfapi.compile({
-      projectDir: "df/tests/integration/snowflake_project"
+      projectDir: "tests/integration/snowflake_project"
     });
 
     expect(compiledGraph.graphErrors.compilationErrors).to.eql([]);
@@ -161,9 +162,9 @@ describe("@dataform/integration/snowflake", () => {
       "snowflake"
     );
     expect(incrementalRows.length).equals(2);
-  }).timeout(60000);
+  });
 
-  describe("result limit works", async () => {
+  suite("result limit works", async () => {
     const query = `
       select 1 union all
       select 2 union all
@@ -172,7 +173,7 @@ describe("@dataform/integration/snowflake", () => {
       select 5`;
 
     for (const interactive of [true, false]) {
-      it(`with interactive=${interactive}`, async () => {
+      test(`with interactive=${interactive}`, async () => {
         const { rows } = await dbadapter.execute(query, { interactive, maxResults: 2 });
         expect(rows).eql([
           {
@@ -186,8 +187,8 @@ describe("@dataform/integration/snowflake", () => {
     }
   });
 
-  describe("publish tasks", async () => {
-    it("incremental, core version <= 1.4.8", async () => {
+  suite("publish tasks", async () => {
+    test("incremental, core version <= 1.4.8", async () => {
       const projectConfig: dataform.IProjectConfig = {
         warehouse: "bigquery",
         defaultDatabase: "default_database"
