@@ -88,7 +88,7 @@ describe("@dataform/integration/bigquery", () => {
       ].status
     ).equals(dataform.ActionResult.ExecutionStatus.SUCCESSFUL);
 
-    // Check the status of tests expected to pass.
+    // Check the status of files expected to execute successfully.
     expect(
       actionMap["dataform-integration-tests.df_integration_test.example_incremental"].status
     ).equals(dataform.ActionResult.ExecutionStatus.SUCCESSFUL);

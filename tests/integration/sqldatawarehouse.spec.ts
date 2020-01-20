@@ -83,6 +83,23 @@ describe("@dataform/integration/sqldatawarehouse", () => {
       actionMap["df_integration_test_assertions.example_assertion_uniqueness_pass"].status
     ).equals(dataform.ActionResult.ExecutionStatus.SUCCESSFUL);
 
+    // Check the status of files expected to execute successfully.
+    expect(actionMap["df_integration_test.example_incremental"].status).equals(
+      dataform.ActionResult.ExecutionStatus.SUCCESSFUL
+    );
+    expect(actionMap["df_integration_test.example_table"].status).equals(
+      dataform.ActionResult.ExecutionStatus.SUCCESSFUL
+    );
+    expect(actionMap["df_integration_test.example_view"].status).equals(
+      dataform.ActionResult.ExecutionStatus.SUCCESSFUL
+    );
+    expect(actionMap["df_integration_test.sample_data_2"].status).equals(
+      dataform.ActionResult.ExecutionStatus.SUCCESSFUL
+    );
+    expect(actionMap["df_integration_test.sample_data"].status).equals(
+      dataform.ActionResult.ExecutionStatus.SUCCESSFUL
+    );
+
     // Check the data in the incremental table.
     let incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
       "df_integration_test.example_incremental"

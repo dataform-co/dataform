@@ -105,6 +105,26 @@ describe("@dataform/integration/snowflake", () => {
       actionMap["DF_INTEGRATION_TEST_ASSERTIONS.EXAMPLE_ASSERTION_UNIQUENESS_PASS"].status
     ).equals(dataform.ActionResult.ExecutionStatus.SUCCESSFUL);
 
+    // Check the status of files expected to execute successfully.
+    expect(actionMap["DF_INTEGRATION_TEST.EXAMPLE_INCREMENTAL"].status).equals(
+      dataform.ActionResult.ExecutionStatus.SUCCESSFUL
+    );
+    expect(actionMap["DF_INTEGRATION_TEST.EXAMPLE_TABLE"].status).equals(
+      dataform.ActionResult.ExecutionStatus.SUCCESSFUL
+    );
+    expect(actionMap["DF_INTEGRATION_TEST.EXAMPLE_VIEW"].status).equals(
+      dataform.ActionResult.ExecutionStatus.SUCCESSFUL
+    );
+    expect(actionMap["DF_INTEGRATION_TEST.LOAD_FROM_S3"].status).equals(
+      dataform.ActionResult.ExecutionStatus.SUCCESSFUL
+    );
+    expect(actionMap["TADA2.DF_INTEGRATION_TEST.SAMPLE_DATA_2"].status).equals(
+      dataform.ActionResult.ExecutionStatus.SUCCESSFUL
+    );
+    expect(actionMap["DF_INTEGRATION_TEST.SAMPLE_DATA"].status).equals(
+      dataform.ActionResult.ExecutionStatus.SUCCESSFUL
+    );
+
     // Check the data in the incremental table.
     let incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
       "DF_INTEGRATION_TEST.EXAMPLE_INCREMENTAL"
