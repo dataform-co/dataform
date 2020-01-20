@@ -4,8 +4,6 @@ import { dataform } from "@dataform/protos";
 import * as pg from "pg";
 import * as Cursor from "pg-cursor";
 
-const QUERY_TIMEOUT_MILLIS = 2 * 60 * 60 * 1000;
-
 interface ICursor {
   read: (rowCount: number, callback: (err: Error, rows: any[]) => void) => void;
   close: (callback: (err: Error) => void) => void;
@@ -24,8 +22,6 @@ export class RedshiftDbAdapter implements IDbAdapter {
       database: jdbcCredentials.databaseName,
       ssl: true
     };
-    (clientConfig as any).statement_timeout = QUERY_TIMEOUT_MILLIS;
-    (clientConfig as any).query_timeout = QUERY_TIMEOUT_MILLIS;
     this.queryExecutor = new PgPoolExecutor(clientConfig);
   }
 
@@ -162,31 +158,23 @@ class PgPoolExecutor {
     client.on("error", err => {
       console.error("pg.Client client error", err.message, err.stack);
     });
-
     try {
-      return await new Promise<any[]>((resolve, reject) => {
-        // If we want to limit the returned results from redshift, we have two options:
-        // (1) use cursors, or (2) use JDBC and configure a fetch size parameter. We use cursors
-        // to avoid the need to run a JVM.
-        // See https://docs.aws.amazon.com/redshift/latest/dg/declare.html for more details.
-        const cursor: ICursor = new Cursor(statement);
-        // Unfortunately, because of https://github.com/brianc/node-postgres/issues/1860 and the fact that
-        // we set a query_timeout parameter, we have to use the non-Promise version of the client.query(...) API.
-        client.query(cursor as any, (err: Error) => {
-          if (err) {
-            reject(err);
-          }
-        });
+      // If we want to limit the returned results from redshift, we have two options:
+      // (1) use cursors, or (2) use JDBC and configure a fetch size parameter. We use cursors
+      // to avoid the need to run a JVM.
+      // See https://docs.aws.amazon.com/redshift/latest/dg/declare.html for more details.
+      const cursor: ICursor = client.query(new Cursor(statement));
+      const result = await new Promise<any[]>((resolve, reject) => {
         // It seems that when requesting one row back exactly, we run into some issues with
         // the cursor. I've filed a bug (https://github.com/brianc/node-pg-cursor/issues/55),
         // but setting a minimum of 2 resulting rows seems to do the trick.
-        cursor.read(Math.max(2, options.maxResults), (err: Error, rows: any[]) => {
+        cursor.read(Math.max(2, options.maxResults), (err, rows) => {
           if (err) {
             reject(err);
             return;
           }
           // Close the cursor after reading the first page of results.
-          cursor.close((closeErr: Error) => {
+          cursor.close(closeErr => {
             if (closeErr) {
               reject(closeErr);
             } else {
@@ -196,6 +184,7 @@ class PgPoolExecutor {
           });
         });
       });
+      return result;
     } finally {
       client.release();
     }
