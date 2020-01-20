@@ -3,19 +3,20 @@ import * as dbadapters from "@dataform/api/dbadapters";
 import * as adapters from "@dataform/core/adapters";
 import { dataform } from "@dataform/protos";
 import { expect } from "chai";
+import { suite, test } from "df/testing";
 import { dropAllTables, getTableRows, keyBy } from "df/tests/integration/utils";
 
-describe("@dataform/integration/sqldatawarehouse", () => {
+suite("@dataform/integration/sqldatawarehouse", ({ after }) => {
   const credentials = dfapi.credentials.read(
     "sqldatawarehouse",
-    "df/test_credentials/sqldatawarehouse.json"
+    "test_credentials/sqldatawarehouse.json"
   );
   const dbadapter = dbadapters.create(credentials, "sqldatawarehouse");
-  after(() => dbadapter.close());
+  after("close adapter", () => dbadapter.close());
 
-  it("run", async () => {
+  test("run", { timeout: 60000 }, async () => {
     const compiledGraph = await dfapi.compile({
-      projectDir: "df/tests/integration/sqldatawarehouse_project"
+      projectDir: "tests/integration/sqldatawarehouse_project"
     });
 
     expect(compiledGraph.graphErrors.compilationErrors).to.eql([]);
@@ -118,9 +119,9 @@ describe("@dataform/integration/sqldatawarehouse", () => {
     );
 
     expect(incrementalRows.length).equals(2);
-  }).timeout(60000);
+  });
 
-  describe("result limit works", async () => {
+  suite("result limit works", async () => {
     const query = `
       select 1 union all
       select 2 union all
@@ -129,7 +130,7 @@ describe("@dataform/integration/sqldatawarehouse", () => {
       select 5`;
 
     for (const interactive of [true, false]) {
-      it(`with interactive=${interactive}`, async () => {
+      test(`with interactive=${interactive}`, async () => {
         const { rows } = await dbadapter.execute(query, { interactive, maxResults: 2 });
         expect(rows).eql([
           {

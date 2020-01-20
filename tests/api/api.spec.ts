@@ -4,6 +4,7 @@ import { BigQueryDbAdapter } from "@dataform/api/dbadapters/bigquery";
 import * as utils from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
 import { assert, config, expect } from "chai";
+import { suite, test } from "df/testing";
 import { asPlainObject, cleanSql } from "df/tests/utils";
 import * as path from "path";
 import { anyString, anything, instance, mock, when } from "ts-mockito";
@@ -11,7 +12,7 @@ import * as Long from "long";
 
 config.truncateThreshold = 0;
 
-describe("@dataform/api", () => {
+suite("@dataform/api", () => {
   const TEST_GRAPH: dataform.ICompiledGraph = dataform.CompiledGraph.create({
     projectConfig: { warehouse: "redshift" },
     tables: [
@@ -47,8 +48,8 @@ describe("@dataform/api", () => {
 
   const TEST_STATE = dataform.WarehouseState.create({ tables: [] });
 
-  describe("build", () => {
-    it("exclude_disabled", () => {
+  suite("build", () => {
+    test("exclude_disabled", () => {
       const builder = new Builder(TEST_GRAPH, { includeDependencies: true }, TEST_STATE);
       const executionGraph = builder.build();
 
@@ -71,7 +72,7 @@ describe("@dataform/api", () => {
         .to.be.an("array").that.not.is.empty;
     });
 
-    it("build_with_errors", () => {
+    test("build_with_errors", () => {
       expect(() => {
         const graphWithErrors: dataform.ICompiledGraph = dataform.CompiledGraph.create({
           projectConfig: { warehouse: "redshift" },
@@ -84,14 +85,14 @@ describe("@dataform/api", () => {
       }).to.throw();
     });
 
-    it("trying to fully refresh a protected dataset fails", () => {
+    test("trying to fully refresh a protected dataset fails", () => {
       const testGraph = dataform.CompiledGraph.create(TEST_GRAPH);
       testGraph.tables[0].protected = true;
       const builder = new Builder(TEST_GRAPH, { fullRefresh: true }, TEST_STATE);
       expect(() => builder.build()).to.throw();
     });
 
-    it("action_types", () => {
+    test("action_types", () => {
       const graph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
         projectConfig: { warehouse: "redshift" },
         tables: [
@@ -138,7 +139,7 @@ describe("@dataform/api", () => {
     });
   });
 
-  describe("prune", () => {
+  suite("prune", () => {
     const TEST_GRAPH_WITH_TAGS: dataform.ICompiledGraph = dataform.CompiledGraph.create({
       projectConfig: { warehouse: "bigquery" },
       operations: [
@@ -178,7 +179,7 @@ describe("@dataform/api", () => {
       ]
     });
 
-    it("prune removes inline tables", async () => {
+    test("prune removes inline tables", async () => {
       const graph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
         projectConfig: { warehouse: "bigquery" },
         tables: [
@@ -207,7 +208,7 @@ describe("@dataform/api", () => {
       expect(actionNames).includes("c");
     });
 
-    it("prune actions with --tags (with dependencies)", () => {
+    test("prune actions with --tags (with dependencies)", () => {
       const prunedGraph = prune(TEST_GRAPH_WITH_TAGS, {
         actions: ["op_b", "op_d"],
         tags: ["tag1", "tag2", "tag4"],
@@ -224,7 +225,7 @@ describe("@dataform/api", () => {
       expect(actionNames).includes("tab_a");
     });
 
-    it("prune actions with --tags but without --actions (without dependencies)", () => {
+    test("prune actions with --tags but without --actions (without dependencies)", () => {
       const prunedGraph = prune(TEST_GRAPH_WITH_TAGS, {
         tags: ["tag1", "tag2", "tag4"],
         includeDependencies: false
@@ -240,7 +241,7 @@ describe("@dataform/api", () => {
       expect(actionNames).includes("tab_a");
     });
 
-    it("prune actions with --actions with dependencies", () => {
+    test("prune actions with --actions with dependencies", () => {
       const prunedGraph = prune(TEST_GRAPH, { actions: ["schema.a"], includeDependencies: true });
       const actionNames = [
         ...prunedGraph.tables.map(action => action.name),
@@ -250,7 +251,7 @@ describe("@dataform/api", () => {
       expect(actionNames).includes("schema.b");
     });
 
-    it("prune actions with --actions without dependencies", () => {
+    test("prune actions with --actions without dependencies", () => {
       const prunedGraph = prune(TEST_GRAPH, { actions: ["schema.a"], includeDependencies: false });
       const actionNames = [
         ...prunedGraph.tables.map(action => action.name),
@@ -261,8 +262,8 @@ describe("@dataform/api", () => {
     });
   });
 
-  describe("sql_generating", () => {
-    it("bigquery_incremental", () => {
+  suite("sql_generating", () => {
+    test("bigquery_incremental", () => {
       const graph = dataform.CompiledGraph.create({
         projectConfig: { warehouse: "bigquery", defaultDatabase: "deeb" },
         tables: [
@@ -309,7 +310,7 @@ describe("@dataform/api", () => {
       );
     });
 
-    it("redshift_create", () => {
+    test("redshift_create", () => {
       const testGraph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
         projectConfig: { warehouse: "redshift" },
         dataformCoreVersion: "1.4.1",
@@ -410,7 +411,7 @@ describe("@dataform/api", () => {
       });
     });
 
-    it("bigquery_partitionby", () => {
+    test("bigquery_partitionby", () => {
       const testGraph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
         projectConfig: { warehouse: "bigquery", defaultDatabase: "deeb" },
         tables: [
@@ -476,7 +477,7 @@ describe("@dataform/api", () => {
       );
     });
 
-    it("snowflake", () => {
+    test("snowflake", () => {
       const testGraph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
         projectConfig: { warehouse: "snowflake" },
         tables: [
@@ -520,12 +521,10 @@ describe("@dataform/api", () => {
     });
   });
 
-  describe("init", () => {
-    it("init", async function() {
-      this.timeout(30000);
-
+  suite("init", () => {
+    test("init", { timeout: 30000 }, async function() {
       // create temp directory
-      const projectDir = "df/examples/init";
+      const projectDir = "examples/init";
 
       // Project has already been initialized via the tests script, check data is valid.
 
@@ -544,21 +543,21 @@ describe("@dataform/api", () => {
     });
   });
 
-  describe("query", () => {
-    it("bigquery_example", async () => {
+  suite("query", () => {
+    test("bigquery_example", async () => {
       const compiledQuery = await query.compile('select 1 from ${ref("example_view")}', {
-        projectDir: "df/examples/common_v1",
+        projectDir: "examples/common_v1",
         projectConfigOverride: { warehouse: "bigquery", defaultDatabase: "tada-analytics" }
       });
       expect(compiledQuery).equals(
         "select 1 from `tada-analytics.df_integration_test.example_view`"
       );
     });
-    it("bigquery example with input backticks", async () => {
+    test("bigquery example with input backticks", async () => {
       const compiledQuery = await query.compile(
         "select 1 from `tada-analytics.df_integration_test.example_view`",
         {
-          projectDir: "df/examples/common_v1",
+          projectDir: "examples/common_v1",
           projectConfigOverride: { warehouse: "bigquery", defaultDatabase: "tada-analytics" }
         }
       );
@@ -566,11 +565,11 @@ describe("@dataform/api", () => {
         "select 1 from `tada-analytics.df_integration_test.example_view`"
       );
     });
-    it("bigquery example with a backslash in regex", async () => {
+    test("bigquery example with a backslash in regex", async () => {
       const compiledQuery = await query.compile(
         "select regexp_extract('01a_data_engine', '^(\\d{2}\\w)')",
         {
-          projectDir: "df/examples/common_v1",
+          projectDir: "examples/common_v1",
           projectConfigOverride: { warehouse: "bigquery", defaultDatabase: "tada-analytics" }
         }
       );
@@ -578,7 +577,7 @@ describe("@dataform/api", () => {
     });
   });
 
-  describe("credentials_config", () => {
+  suite("credentials_config", () => {
     const bigqueryCredentials = { projectId: "", credentials: "" };
     const redshiftCredentials = {
       host: "",
@@ -597,7 +596,7 @@ describe("@dataform/api", () => {
     };
 
     ["bigquery", "redshift", "snowflake"].forEach(warehouse => {
-      it(`${warehouse}_empty_credentials`, () => {
+      test(`${warehouse}_empty_credentials`, () => {
         expect(() => credentials.coerce(warehouse, null)).to.throw(
           /Credentials JSON object does not conform to protobuf requirements: object expected/
         );
@@ -605,7 +604,7 @@ describe("@dataform/api", () => {
       });
     });
 
-    it("warehouse_check", () => {
+    test("warehouse_check", () => {
       expect(() => credentials.coerce("bigquery", bigqueryCredentials)).to.not.throw();
       expect(() => credentials.coerce("redshift", redshiftCredentials)).to.not.throw();
       expect(() => credentials.coerce("snowflake", snowflakeCredentials)).to.not.throw();
@@ -615,7 +614,7 @@ describe("@dataform/api", () => {
     });
 
     [{}, { wrongProperty: "" }, { projectId: "" }].forEach(bigquery => {
-      it("bigquery_properties_check", () => {
+      test("bigquery_properties_check", () => {
         expect(() =>
           credentials.coerce("bigquery", JSON.parse(JSON.stringify(bigquery)))
         ).to.throw();
@@ -630,7 +629,7 @@ describe("@dataform/api", () => {
     });
 
     [{}, { wrongProperty: "" }, { host: "" }].forEach(redshift => {
-      it("redshift_properties_check", () => {
+      test("redshift_properties_check", () => {
         expect(() =>
           credentials.coerce("redshift", JSON.parse(JSON.stringify(redshift)))
         ).to.throw();
@@ -645,7 +644,7 @@ describe("@dataform/api", () => {
     });
 
     [{}, { wrongProperty: "" }, { accountId: "" }].forEach(snowflake => {
-      it("snowflake_properties_check", () => {
+      test("snowflake_properties_check", () => {
         expect(() =>
           credentials.coerce("snowflake", JSON.parse(JSON.stringify(snowflake)))
         ).to.throw();
@@ -660,7 +659,7 @@ describe("@dataform/api", () => {
     });
   });
 
-  describe("run", () => {
+  suite("run", () => {
     const TEST_GRAPH: dataform.IExecutionGraph = dataform.ExecutionGraph.create({
       projectConfig: {
         warehouse: "bigquery",
@@ -709,7 +708,7 @@ describe("@dataform/api", () => {
       ]
     });
 
-    it("execute", async () => {
+    test("execute", async () => {
       const mockedDbAdapter = mock(BigQueryDbAdapter);
       when(mockedDbAdapter.prepareSchema(anyString())).thenResolve(null);
       when(
@@ -776,8 +775,8 @@ describe("@dataform/api", () => {
       );
     });
 
-    context("execute with retry", () => {
-      it("should fail when execution fails too many times for the retry setting", async () => {
+    suite("execute with retry", () => {
+      test("should fail when execution fails too many times for the retry setting", async () => {
         const mockedDbAdapter = mock(BigQueryDbAdapter);
         const NEW_TEST_GRAPH = {
           ...TEST_GRAPH,
@@ -833,7 +832,7 @@ describe("@dataform/api", () => {
         );
       });
 
-      it("should pass when execution fails initially, then passes with the number of allowed retries", async () => {
+      test("should pass when execution fails initially, then passes with the number of allowed retries", async () => {
         const mockedDbAdapter = mock(BigQueryDbAdapter);
         const NEW_TEST_GRAPH = {
           ...TEST_GRAPH,
@@ -887,7 +886,7 @@ describe("@dataform/api", () => {
         );
       });
 
-      it("should not retry when the task is an operation", async () => {
+      test("should not retry when the task is an operation", async () => {
         const mockedDbAdapter = mock(BigQueryDbAdapter);
         const NEW_TEST_GRAPH_WITH_OPERATION = {
           ...TEST_GRAPH,
@@ -954,7 +953,7 @@ describe("@dataform/api", () => {
       });
     });
 
-    it("execute_with_cancel", async () => {
+    test("execute_with_cancel", async () => {
       const TEST_GRAPH: dataform.IExecutionGraph = dataform.ExecutionGraph.create({
         projectConfig: {
           warehouse: "bigquery",
@@ -1014,9 +1013,9 @@ describe("@dataform/api", () => {
     });
   });
 
-  describe("formatter", () => {
-    it("correctly formats simple.sqlx", async () => {
-      expect(await format.formatFile(path.resolve("df/examples/formatter/definitions/simple.sqlx")))
+  suite("formatter", () => {
+    test("correctly formats simple.sqlx", async () => {
+      expect(await format.formatFile(path.resolve("examples/formatter/definitions/simple.sqlx")))
         .eql(`config {
   type: "view",
   tags: ["tag1", "tag2"]
@@ -1039,10 +1038,10 @@ from
 `);
     });
 
-    it("correctly formats multiple_queries.sqlx", async () => {
+    test("correctly formats multiple_queries.sqlx", async () => {
       expect(
         await format.formatFile(
-          path.resolve("df/examples/formatter/definitions/multiple_queries.sqlx")
+          path.resolve("examples/formatter/definitions/multiple_queries.sqlx")
         )
       ).eql(`js {
   var tempTable = "yay"
@@ -1065,10 +1064,10 @@ SELECT
 `);
     });
 
-    it("correctly formats bigquery_regexps.sqlx", async () => {
+    test("correctly formats bigquery_regexps.sqlx", async () => {
       expect(
         await format.formatFile(
-          path.resolve("df/examples/formatter/definitions/bigquery_regexps.sqlx")
+          path.resolve("examples/formatter/definitions/bigquery_regexps.sqlx")
         )
       ).eql(`config {
   type: "operation",
@@ -1089,9 +1088,9 @@ where
 `);
     });
 
-    it("correctly formats comments.sqlx", async () => {
+    test("correctly formats comments.sqlx", async () => {
       expect(
-        await format.formatFile(path.resolve("df/examples/formatter/definitions/comments.sqlx"))
+        await format.formatFile(path.resolve("examples/formatter/definitions/comments.sqlx"))
       ).eql(`config {
   type: "test",
 }
@@ -1125,8 +1124,8 @@ input "something" {
 }
 `);
     });
-    it("Backslashes within regex don't cause 'r' prefix to separate.", async () => {
-      expect(await format.formatFile(path.resolve("df/examples/formatter/definitions/regex.sqlx")))
+    test("Backslashes within regex don't cause 'r' prefix to separate.", async () => {
+      expect(await format.formatFile(path.resolve("examples/formatter/definitions/regex.sqlx")))
         .equal(`select
   regexp_extract("", r'abc\\de\\'fg select * from self()'),
   'bar'

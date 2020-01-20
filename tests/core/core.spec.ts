@@ -1,9 +1,9 @@
 import * as compilers from "@dataform/core/compilers";
 import { Session } from "@dataform/core/session";
-import { Table } from "@dataform/core/table";
 import * as utils from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
 import { expect } from "chai";
+import { suite, test } from "df/testing";
 import { asPlainObject } from "df/tests/utils";
 import * as path from "path";
 
@@ -24,10 +24,10 @@ class TestConfigs {
   };
 }
 
-describe("@dataform/core", () => {
-  describe("publish", () => {
+suite("@dataform/core", () => {
+  suite("publish", () => {
     [TestConfigs.redshift, TestConfigs.redshiftWithSuffix].forEach(testConfig => {
-      it(`config with suffix "${testConfig.schemaSuffix}"`, () => {
+      test(`config with suffix "${testConfig.schemaSuffix}"`, () => {
         const schemaWithSuffix = (schema: string) =>
           testConfig.schemaSuffix ? `${schema}_${testConfig.schemaSuffix}` : schema;
         const session = new Session(path.dirname(__filename), testConfig);
@@ -106,7 +106,7 @@ describe("@dataform/core", () => {
       });
     });
 
-    it("incremental table", () => {
+    test("incremental table", () => {
       const session = new Session(path.dirname(__filename), TestConfigs.redshift);
       session
         .publish("incremental", {
@@ -115,7 +115,7 @@ describe("@dataform/core", () => {
         .query(ctx => `select ${ctx.isIncremental()} as incremental`);
       const graph = session.compile();
 
-      expect(graph.toJSON().tables).deep.equals([
+      expect(graph.toJSON().tables).deep.members([
         {
           target: {
             name: "incremental",
@@ -124,14 +124,14 @@ describe("@dataform/core", () => {
           query: "select false as incremental",
           incrementalQuery: "select true as incremental",
           disabled: false,
-          fileName: "",
+          fileName: path.basename(__filename),
           name: "schema.incremental",
           type: "incremental"
         }
       ]);
     });
 
-    it("validation_type_incremental", () => {
+    test("validation_type_incremental", () => {
       const sessionSuccess = new Session(path.dirname(__filename), TestConfigs.redshift);
       sessionSuccess
         .publish("exampleSuccess1", {
@@ -150,7 +150,7 @@ describe("@dataform/core", () => {
         .to.be.an("array").that.is.empty;
     });
 
-    it("validation_type", () => {
+    test("validation_type", () => {
       const sessionSuccess = new Session(path.dirname(__filename), TestConfigs.redshift);
       sessionSuccess.publish("exampleSuccess1", { type: "table" });
       sessionSuccess.publish("exampleSuccess2", { type: "view" });
@@ -177,7 +177,7 @@ describe("@dataform/core", () => {
         .that.matches(/Wrong type of table/);
     });
 
-    it("validation_redshift_success", () => {
+    test("validation_redshift_success", () => {
       const session = new Session(path.dirname(__filename), TestConfigs.redshift);
       session.publish("example_without_dist", {
         redshift: {
@@ -205,7 +205,7 @@ describe("@dataform/core", () => {
         .to.be.an("array").that.is.empty;
     });
 
-    it("validation_redshift_fail", () => {
+    test("validation_redshift_fail", () => {
       const session = new Session(path.dirname(__filename), TestConfigs.redshift);
       session.publish("example_absent_distKey", {
         redshift: {
@@ -287,7 +287,7 @@ describe("@dataform/core", () => {
       ).to.have.deep.members(expectedResults);
     });
 
-    it("validation_bigquery_fail", () => {
+    test("validation_bigquery_fail", () => {
       const session = new Session(path.dirname(__filename), TestConfigs.bigquery);
       session.publish("example_partitionBy_view_fail", {
         type: "view",
@@ -314,7 +314,7 @@ describe("@dataform/core", () => {
       ).to.have.deep.members(expectedResults);
     });
 
-    it("validation_type_inline", () => {
+    test("validation_type_inline", () => {
       const session = new Session(path.dirname(__filename), TestConfigs.redshift);
       session.publish("a", { type: "table" }).query(_ => "select 1 as test");
       session
@@ -411,7 +411,7 @@ describe("@dataform/core", () => {
       expect(errors).that.matches(/Unused property was detected: "where"/);
     });
 
-    it("ref", () => {
+    test("ref", () => {
       const session = new Session(path.dirname(__filename), TestConfigs.redshift);
       session.publish("a", _ => "select 1 as test");
       session.publish("b", ctx => `select * from ${ctx.ref("a")}`);
@@ -454,8 +454,8 @@ describe("@dataform/core", () => {
     });
   });
 
-  describe("operate", () => {
-    it("ref", () => {
+  suite("operate", () => {
+    test("ref", () => {
       const session = new Session(path.dirname(__filename), TestConfigs.redshift);
       session.operate("operate-1", () => `select 1 as sample`).hasOutput(true);
       session.operate("operate-2", ctx => `select * from ${ctx.ref("operate-1")}`).hasOutput(true);
@@ -484,8 +484,8 @@ describe("@dataform/core", () => {
     });
   });
 
-  describe("graph", () => {
-    it("circular_dependencies", () => {
+  suite("graph", () => {
+    test("circular_dependencies", () => {
       const session = new Session(path.dirname(__filename), TestConfigs.redshift);
       session.publish("a").dependencies("b");
       session.publish("b").dependencies("a");
@@ -499,7 +499,7 @@ describe("@dataform/core", () => {
       ).to.be.an("array").that.is.not.empty;
     });
 
-    it("missing_dependency", () => {
+    test("missing_dependency", () => {
       const session = new Session(path.dirname(__filename), TestConfigs.redshift);
       session.publish("a", ctx => `select * from ${ctx.ref("b")}`);
       const cGraph = session.compile();
@@ -512,7 +512,7 @@ describe("@dataform/core", () => {
       ).to.be.an("array").that.is.not.empty;
     });
 
-    it("duplicate_action_names", () => {
+    test("duplicate_action_names", () => {
       const session = new Session(path.dirname(__filename), TestConfigs.redshift);
       session.publish("a").dependencies("b");
       session.publish("b");
@@ -530,7 +530,7 @@ describe("@dataform/core", () => {
       expect(errors).to.be.an("array").that.is.not.empty;
     });
 
-    it("same action names in different schemas (ambiguity)", () => {
+    test("same action names in different schemas (ambiguity)", () => {
       const session = new Session(path.dirname(__filename), TestConfigs.redshift);
       session.publish("a", { schema: "foo" });
       session.publish("a", { schema: "bar" });
@@ -548,7 +548,7 @@ describe("@dataform/core", () => {
       expect(errors).to.be.an("array").that.is.not.empty;
     });
 
-    it("same action name in same schema", () => {
+    test("same action name in same schema", () => {
       const session = new Session(path.dirname(__filename), TestConfigs.redshift);
       session.publish("a", { schema: "schema2" }).dependencies("b");
       session.publish("a", { schema: "schema2" });
@@ -564,7 +564,7 @@ describe("@dataform/core", () => {
       expect(errors).to.be.an("array").that.is.not.empty;
     });
 
-    it("same action names in different schemas", () => {
+    test("same action names in different schemas", () => {
       const session = new Session(path.dirname(__filename), TestConfigs.redshift);
       session.publish("b");
       session.publish("a", { schema: "schema1" }).dependencies("b");
@@ -577,8 +577,8 @@ describe("@dataform/core", () => {
     });
   });
 
-  describe("compilers", () => {
-    it("extract_blocks", () => {
+  suite("compilers", () => {
+    test("extract_blocks", () => {
       const TEST_SQL_FILE = `
         /*js
         var a = 1;
