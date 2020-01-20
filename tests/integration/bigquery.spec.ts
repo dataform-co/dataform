@@ -3,17 +3,18 @@ import * as dbadapters from "@dataform/api/dbadapters";
 import * as adapters from "@dataform/core/adapters";
 import { dataform } from "@dataform/protos";
 import { expect } from "chai";
+import { suite, test } from "df/testing";
 import { dropAllTables, getTableRows, keyBy } from "df/tests/integration/utils";
 import * as Long from "long";
 
-describe("@dataform/integration/bigquery", () => {
-  const credentials = dfapi.credentials.read("bigquery", "df/test_credentials/bigquery.json");
+suite("@dataform/integration/bigquery", ({ after }) => {
+  const credentials = dfapi.credentials.read("bigquery", "test_credentials/bigquery.json");
   const dbadapter = dbadapters.create(credentials, "bigquery");
-  after(() => dbadapter.close());
+  after("close adapter", () => dbadapter.close());
 
-  it("run", async () => {
+  test("run", { timeout: 60000 }, async () => {
     const compiledGraph = await dfapi.compile({
-      projectDir: "df/tests/integration/bigquery_project"
+      projectDir: "tests/integration/bigquery_project"
     });
 
     expect(compiledGraph.graphErrors.compilationErrors).to.eql([]);
@@ -119,9 +120,9 @@ describe("@dataform/integration/bigquery", () => {
     ];
     incrementalRows = await getTableRows(incrementalTable.target, adapter, credentials, "bigquery");
     expect(incrementalRows.length).equals(2);
-  }).timeout(60000);
+  });
 
-  describe("result limit works", async () => {
+  suite("result limit works", async () => {
     const query = `
       select 1 union all
       select 2 union all
@@ -130,7 +131,7 @@ describe("@dataform/integration/bigquery", () => {
       select 5`;
 
     for (const interactive of [true, false]) {
-      it(`with interactive=${interactive}`, async () => {
+      test(`with interactive=${interactive}`, async () => {
         const { rows } = await dbadapter.execute(query, { interactive, maxResults: 2 });
         expect(rows).to.eql([
           {
@@ -144,8 +145,8 @@ describe("@dataform/integration/bigquery", () => {
     }
   });
 
-  describe("metadata", async () => {
-    it("includes jobReference and statistics", async () => {
+  suite("metadata", async () => {
+    test("includes jobReference and statistics", async () => {
       const query = `select 1 as test`;
       const { metadata } = await dbadapter.execute(query);
       const { bigquery: bqMetadata } = metadata;

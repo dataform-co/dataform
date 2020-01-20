@@ -1,8 +1,9 @@
 import { retry } from "@dataform/api/utils/retry";
 import { expect } from "chai";
+import { suite, test } from "df/testing";
 
-describe("retry", () => {
-  it("doesn't retry if the function succeeds", async () => {
+suite("retry", () => {
+  test("doesn't retry if the function succeeds", async () => {
     let calledTimes = 0;
     const succeedingFunc = async () => {
       calledTimes += 1;
@@ -13,7 +14,7 @@ describe("retry", () => {
     expect(calledTimes).eq(1);
   });
 
-  it("doesn't retry if the function fails and retries is 0", async () => {
+  test("doesn't retry if the function fails and retries is 0", async () => {
     let calledTimes = 0;
     const failingFunc = async () => {
       calledTimes += 1;
@@ -27,7 +28,7 @@ describe("retry", () => {
     expect(calledTimes).eq(1);
   });
 
-  it("calls the function three times if the function fails and retries is 2", async () => {
+  test("calls the function three times if the function fails and retries is 2", async () => {
     let calledTimes = 0;
     const failingFunc = async () => {
       calledTimes += 1;
@@ -39,7 +40,7 @@ describe("retry", () => {
     expect(calledTimes).eq(3);
   });
 
-  it("will eventually return a success if the function has failed before", async () => {
+  test("will eventually return a success if the function has failed before", async () => {
     let calledTimes = 0;
     const failingFunc = async () => {
       if (calledTimes > 1) {

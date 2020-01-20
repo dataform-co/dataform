@@ -1,3 +1,4 @@
+import { IHookHandler } from "df/testing";
 import * as fs from "fs";
 import * as path from "path";
 import * as rimraf from "rimraf";
@@ -9,7 +10,7 @@ export class TmpDirFixture {
 
   private tmpDirPaths: Set<string>;
 
-  constructor(tearDown: Mocha.HookFunction) {
+  constructor(tearDown: IHookHandler) {
     this.tmpDirPaths = new Set<string>();
     tearDown("delete tmp directories", () => this.rmTmpDirs());
   }

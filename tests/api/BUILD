@@ -1,33 +1,8 @@
-package(default_visibility = ["//visibility:public"])
+load("//testing:index.bzl", "ts_test_suite")
 
-load("@npm_bazel_typescript//:index.bzl", "ts_library")
-
-ts_library(
-    name = "lib",
+ts_test_suite(
+    name = "tests",
     srcs = glob(["**/*.ts"]),
-    deps = [
-        "//api",
-        "//core",
-        "//protos",
-        "//tests/utils",
-        "@npm//@types/chai",
-        "@npm//@types/long",
-        "@npm//@types/mocha",
-        "@npm//@types/node",
-        "@npm//@types/stack-trace",
-        "@npm//rimraf",
-        "@npm//stack-trace",
-        "@npm//ts-mockito",
-    ],
-)
-
-load("//tools/mocha:mocha_node_test.bzl", "mocha_node_test")
-
-mocha_node_test(
-    name = "api",
-    srcs = [
-        ":lib",
-    ],
     data = [
         "//examples/backwards_compatibility:files",
         "//examples/backwards_compatibility:node_modules",
@@ -43,7 +18,20 @@ mocha_node_test(
         "//examples/invalid_dataform_json:node_modules",
         "//examples/never_finishes_compiling:files",
         "//examples/never_finishes_compiling:node_modules",
+    ],
+    deps = [
+        "//api",
+        "//core",
+        "//protos",
+        "//testing",
+        "//tests/utils",
+        "@npm//@types/chai",
+        "@npm//@types/long",
+        "@npm//@types/node",
+        "@npm//@types/stack-trace",
         "@npm//chai",
-        "@npm//mocha",
+        "@npm//rimraf",
+        "@npm//stack-trace",
+        "@npm//ts-mockito",
     ],
 )
