@@ -131,7 +131,8 @@ suite("@dataform/integration/sqldatawarehouse", ({ after }) => {
 
     for (const interactive of [true, false]) {
       test(`with interactive=${interactive}`, async () => {
-        expect(await dbadapter.execute(query, { interactive, maxResults: 2 })).eql([
+        const { rows } = await dbadapter.execute(query, { interactive, maxResults: 2 });
+        expect(rows).eql([
           {
             "": 1
           },
