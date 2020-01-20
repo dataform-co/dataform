@@ -12,11 +12,11 @@ ts_library(
     ],
 )
 
-load("@build_bazel_rules_nodejs//:defs.bzl", "nodejs_binary")
+load("@build_bazel_rules_nodejs//:index.bzl", "nodejs_binary")
 
 nodejs_binary(
     name = "bin",
-    bootstrap = ["source-map-support/register"],
+    templated_args = ["--node_options=--require=source-map-support/register"],
     data = [
         ":json-merge",
         "@npm//source-map-support",

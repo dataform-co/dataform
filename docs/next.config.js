@@ -26,7 +26,6 @@ let config = {
     // Inline babel config for typescript compilation.
     options.defaultLoaders.babel.options.configFile = false;
     options.defaultLoaders.babel.options.presets = [
-      require.resolve("next/babel"),
       [require.resolve("@zeit/next-typescript/babel"), { extensions: [".ts", ".tsx", ".mdx"] }]
     ];
     // Another hack for bazel to make sure our typescript code in here actually gets compiled.

@@ -57,7 +57,7 @@ dataform_npm_package(
     deps = [":api"],
 )
 
-load("@build_bazel_rules_nodejs//:defs.bzl", "nodejs_binary")
+load("@build_bazel_rules_nodejs//:index.bzl", "nodejs_binary")
 
 # This is a bit nuts. As we fork a process when compiling projects, we
 # start a new node instance but within bazel, modules will fail to load in the
@@ -67,7 +67,7 @@ load("@build_bazel_rules_nodejs//:defs.bzl", "nodejs_binary")
 
 nodejs_binary(
     name = "vm/compile",
-    bootstrap = ["source-map-support/register"],
+    templated_args = ["--node_options=--require=source-map-support/register"],
     data = [
         ":lib",
         "@npm//source-map-support",
@@ -77,7 +77,7 @@ nodejs_binary(
 
 nodejs_binary(
     name = "vm/query",
-    bootstrap = ["source-map-support/register"],
+    templated_args = ["--node_options=--require=source-map-support/register"],
     data = [
         ":lib",
         "@npm//source-map-support",

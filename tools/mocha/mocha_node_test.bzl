@@ -1,4 +1,4 @@
-load("@build_bazel_rules_nodejs//:defs.bzl", "nodejs_test")
+load("@build_bazel_rules_nodejs//:index.bzl", "nodejs_test")
 load("@build_bazel_rules_nodejs//internal/common:devmode_js_sources.bzl", "devmode_js_sources")
 
 def mocha_node_test(
@@ -9,6 +9,7 @@ def mocha_node_test(
         data = [],
         tags = [],
         expected_exit_code = 0,
+        templated_args = [],
         **kwargs):
     """Runs tests in NodeJS using the Mocha test framework.
     To debug the test, see debugging notes in `nodejs_test`.
@@ -36,7 +37,7 @@ def mocha_node_test(
         name = name,
         data = all_data,
         entry_point = entry_point,
-        templated_args = ["$(location :%s_devmode_srcs.MF)" % name],
+        templated_args = ["$(location :%s_devmode_srcs.MF)" % name] + templated_args,
         configuration_env_vars = ["TEST_SRCDIR", "TEST_TIMEOUT", "TESTBRIDGE_TEST_ONLY"],
         expected_exit_code = expected_exit_code,
         tags = tags,
