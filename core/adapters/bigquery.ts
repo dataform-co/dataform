@@ -22,13 +22,13 @@ export class BigQueryAdapter extends Adapter implements IAdapter {
 
     this.addPreOps(table, this.dataformCoreVersion, tasks);
 
-    if (table.type === "incremental") {
-      if (tableMetadata && tableMetadata.type !== this.baseTableType(table.type)) {
-        tasks.add(
-          Task.statement(this.dropIfExists(table.target, this.oppositeTableType(table.type)))
-        );
-      }
+    if (tableMetadata && tableMetadata.type !== this.baseTableType(table.type)) {
+      tasks.add(
+        Task.statement(this.dropIfExists(table.target, this.oppositeTableType(table.type)))
+      );
+    }
 
+    if (table.type === "incremental") {
       if (runConfig.fullRefresh || !tableMetadata || tableMetadata.type === "view") {
         tasks.add(Task.statement(this.createOrReplace(table)));
       } else {
@@ -45,15 +45,10 @@ export class BigQueryAdapter extends Adapter implements IAdapter {
         );
       }
     } else {
-      if (tableMetadata && tableMetadata.type !== this.baseTableType(table.type)) {
-        tasks.add(
-          Task.statement(this.dropIfExists(table.target, this.oppositeTableType(table.type)))
-        );
-      }
       tasks.add(Task.statement(this.createOrReplace(table)));
-
-      this.addPostOps(table, this.dataformCoreVersion, tasks);
     }
+
+    this.addPostOps(table, this.dataformCoreVersion, tasks);
 
     return tasks;
   }
