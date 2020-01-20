@@ -39,15 +39,32 @@ from (${query}) as insertions`;
     where ${where || "true"}`;
   }
 
-  protected addPreOps(table: dataform.ITable, dataformCoreVersion: string, tasks: Tasks) {
-    (dataformCoreVersion > "1.4.8" && table.type === "incremental"
+  protected refreshIncrementCondition(
+    runConfig: dataform.IRunConfig,
+    tableMetadata: dataform.ITableMetadata
+  ) {
+    return runConfig.fullRefresh || !tableMetadata || tableMetadata.type === "view";
+  }
+
+  protected addPreOps(
+    table: dataform.ITable,
+    dataformCoreVersion: string,
+    tasks: Tasks,
+    refreshIncrementCondition: boolean
+  ) {
+    (dataformCoreVersion > "1.4.8" && table.type === "incremental" && !refreshIncrementCondition
       ? table.incrementalPreOps
       : table.preOps || []
     ).forEach(pre => tasks.add(Task.statement(pre)));
   }
 
-  protected addPostOps(table: dataform.ITable, dataformCoreVersion: string, tasks: Tasks) {
-    (dataformCoreVersion > "1.4.8" && table.type === "incremental"
+  protected addPostOps(
+    table: dataform.ITable,
+    dataformCoreVersion: string,
+    tasks: Tasks,
+    refreshIncrementCondition: boolean
+  ) {
+    (dataformCoreVersion > "1.4.8" && table.type === "incremental" && !refreshIncrementCondition
       ? table.incrementalPostOps
       : table.postOps || []
     ).forEach(post => tasks.add(Task.statement(post)));

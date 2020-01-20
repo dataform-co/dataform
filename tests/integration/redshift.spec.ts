@@ -69,6 +69,37 @@ suite("@dataform/integration/redshift", ({ after }) => {
 
     const actionMap = keyBy(executedGraph.actions, v => v.name);
 
+    // Check the status of file execution.
+    const expectedRunStatuses = {
+      successful: [
+        "df_integration_test_assertions.example_assertion_pass",
+        "df_integration_test_assertions.example_assertion_uniqueness_pass",
+        "df_integration_test.example_incremental",
+        "df_integration_test.example_table",
+        "df_integration_test.example_view",
+        "df_integration_test.load_from_s3",
+        "df_integration_test.sample_data_2",
+        "df_integration_test.sample_data"
+      ],
+      failed: [
+        "df_integration_test_assertions.example_assertion_uniqueness_fail",
+        "df_integration_test_assertions.example_assertion_fail"
+      ]
+    };
+
+    expectedRunStatuses.successful.forEach(actionName =>
+      expect(actionMap[actionName].status).equals(dataform.ActionResult.ExecutionStatus.SUCCESSFUL)
+    );
+
+    expectedRunStatuses.failed.forEach(actionName =>
+      expect(actionMap[actionName].status).equals(dataform.ActionResult.ExecutionStatus.FAILED)
+    );
+
+    expect(
+      actionMap["df_integration_test_assertions.example_assertion_uniqueness_fail"].tasks[1]
+        .errorMessage
+    ).to.eql("redshift error: Assertion failed: query returned 1 row(s).");
+
     // Check the status of the s3 load operation.
     expect(actionMap["df_integration_test.load_from_s3"].status).equals(
       dataform.ActionResult.ExecutionStatus.SUCCESSFUL
@@ -81,46 +112,6 @@ suite("@dataform/integration/redshift", ({ after }) => {
     ];
     const s3Rows = await getTableRows(s3Table.target, adapter, credentials, "redshift");
     expect(s3Rows.length).equals(2);
-
-    // Check the status of the two assertions.
-    expect(actionMap["df_integration_test_assertions.example_assertion_fail"].status).equals(
-      dataform.ActionResult.ExecutionStatus.FAILED
-    );
-    expect(actionMap["df_integration_test_assertions.example_assertion_pass"].status).equals(
-      dataform.ActionResult.ExecutionStatus.SUCCESSFUL
-    );
-
-    // Check the status of the two uniqueness assertions.
-    expect(
-      actionMap["df_integration_test_assertions.example_assertion_uniqueness_fail"].status
-    ).equals(dataform.ActionResult.ExecutionStatus.FAILED);
-    expect(
-      actionMap["df_integration_test_assertions.example_assertion_uniqueness_fail"].tasks[1]
-        .errorMessage
-    ).to.eql("redshift error: Assertion failed: query returned 1 row(s).");
-    expect(
-      actionMap["df_integration_test_assertions.example_assertion_uniqueness_pass"].status
-    ).equals(dataform.ActionResult.ExecutionStatus.SUCCESSFUL);
-
-    // Check the status of files expected to execute successfully.
-    expect(actionMap["df_integration_test.example_incremental"].status).equals(
-      dataform.ActionResult.ExecutionStatus.SUCCESSFUL
-    );
-    expect(actionMap["df_integration_test.example_table"].status).equals(
-      dataform.ActionResult.ExecutionStatus.SUCCESSFUL
-    );
-    expect(actionMap["df_integration_test.example_view"].status).equals(
-      dataform.ActionResult.ExecutionStatus.SUCCESSFUL
-    );
-    expect(actionMap["df_integration_test.load_from_s3"].status).equals(
-      dataform.ActionResult.ExecutionStatus.SUCCESSFUL
-    );
-    expect(actionMap["df_integration_test.sample_data_2"].status).equals(
-      dataform.ActionResult.ExecutionStatus.SUCCESSFUL
-    );
-    expect(actionMap["df_integration_test.sample_data"].status).equals(
-      dataform.ActionResult.ExecutionStatus.SUCCESSFUL
-    );
 
     // Check the data in the incremental table.
     let incrementalTable = keyBy(compiledGraph.tables, t => t.name)[

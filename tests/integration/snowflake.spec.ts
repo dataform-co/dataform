@@ -61,6 +61,37 @@ suite("@dataform/integration/snowflake", ({ after }) => {
 
     const actionMap = keyBy(executedGraph.actions, v => v.name);
 
+    // Check the status of file execution.
+    const expectedRunStatuses = {
+      successful: [
+        "DF_INTEGRATION_TEST_ASSERTIONS.EXAMPLE_ASSERTION_PASS",
+        "DF_INTEGRATION_TEST_ASSERTIONS.EXAMPLE_ASSERTION_UNIQUENESS_PASS",
+        "DF_INTEGRATION_TEST.EXAMPLE_INCREMENTAL",
+        "DF_INTEGRATION_TEST.EXAMPLE_TABLE",
+        "DF_INTEGRATION_TEST.EXAMPLE_VIEW",
+        "DF_INTEGRATION_TEST.LOAD_FROM_S3",
+        "TADA2.DF_INTEGRATION_TEST.SAMPLE_DATA_2",
+        "DF_INTEGRATION_TEST.SAMPLE_DATA"
+      ],
+      failed: [
+        "DF_INTEGRATION_TEST_ASSERTIONS.EXAMPLE_ASSERTION_UNIQUENESS_FAIL",
+        "DF_INTEGRATION_TEST_ASSERTIONS.EXAMPLE_ASSERTION_FAIL"
+      ]
+    };
+
+    expectedRunStatuses.successful.forEach(actionName =>
+      expect(actionMap[actionName].status).equals(dataform.ActionResult.ExecutionStatus.SUCCESSFUL)
+    );
+
+    expectedRunStatuses.failed.forEach(actionName =>
+      expect(actionMap[actionName].status).equals(dataform.ActionResult.ExecutionStatus.FAILED)
+    );
+
+    expect(
+      actionMap["DF_INTEGRATION_TEST_ASSERTIONS.EXAMPLE_ASSERTION_UNIQUENESS_FAIL"].tasks[1]
+        .errorMessage
+    ).to.eql("snowflake error: Assertion failed: query returned 1 row(s).");
+
     // Check the status of the s3 load operation.
     expect(actionMap["DF_INTEGRATION_TEST.LOAD_FROM_S3"].status).equals(
       dataform.ActionResult.ExecutionStatus.SUCCESSFUL
@@ -85,46 +116,6 @@ suite("@dataform/integration/snowflake", ({ after }) => {
       "snowflake"
     );
     expect(tada2DatabaseViewRows.length).equals(3);
-
-    // Check the status of the two assertions.
-    expect(actionMap["DF_INTEGRATION_TEST_ASSERTIONS.EXAMPLE_ASSERTION_FAIL"].status).equals(
-      dataform.ActionResult.ExecutionStatus.FAILED
-    );
-    expect(actionMap["DF_INTEGRATION_TEST_ASSERTIONS.EXAMPLE_ASSERTION_PASS"].status).equals(
-      dataform.ActionResult.ExecutionStatus.SUCCESSFUL
-    );
-
-    // Check the status of the two uniqueness assertions.
-    expect(
-      actionMap["DF_INTEGRATION_TEST_ASSERTIONS.EXAMPLE_ASSERTION_UNIQUENESS_FAIL"].status
-    ).equals(dataform.ActionResult.ExecutionStatus.FAILED);
-    expect(
-      actionMap["DF_INTEGRATION_TEST_ASSERTIONS.EXAMPLE_ASSERTION_UNIQUENESS_FAIL"].tasks[1]
-        .errorMessage
-    ).to.eql("snowflake error: Assertion failed: query returned 1 row(s).");
-    expect(
-      actionMap["DF_INTEGRATION_TEST_ASSERTIONS.EXAMPLE_ASSERTION_UNIQUENESS_PASS"].status
-    ).equals(dataform.ActionResult.ExecutionStatus.SUCCESSFUL);
-
-    // Check the status of files expected to execute successfully.
-    expect(actionMap["DF_INTEGRATION_TEST.EXAMPLE_INCREMENTAL"].status).equals(
-      dataform.ActionResult.ExecutionStatus.SUCCESSFUL
-    );
-    expect(actionMap["DF_INTEGRATION_TEST.EXAMPLE_TABLE"].status).equals(
-      dataform.ActionResult.ExecutionStatus.SUCCESSFUL
-    );
-    expect(actionMap["DF_INTEGRATION_TEST.EXAMPLE_VIEW"].status).equals(
-      dataform.ActionResult.ExecutionStatus.SUCCESSFUL
-    );
-    expect(actionMap["DF_INTEGRATION_TEST.LOAD_FROM_S3"].status).equals(
-      dataform.ActionResult.ExecutionStatus.SUCCESSFUL
-    );
-    expect(actionMap["TADA2.DF_INTEGRATION_TEST.SAMPLE_DATA_2"].status).equals(
-      dataform.ActionResult.ExecutionStatus.SUCCESSFUL
-    );
-    expect(actionMap["DF_INTEGRATION_TEST.SAMPLE_DATA"].status).equals(
-      dataform.ActionResult.ExecutionStatus.SUCCESSFUL
-    );
 
     // Check the data in the incremental table.
     let incrementalTable = keyBy(compiledGraph.tables, t => t.name)[

@@ -22,8 +22,9 @@ export class SnowflakeAdapter extends Adapter implements IAdapter {
     tableMetadata: dataform.ITableMetadata
   ): Tasks {
     const tasks = Tasks.create();
+    const refreshIncrementCondition = this.refreshIncrementCondition(runConfig, tableMetadata);
 
-    this.addPreOps(table, this.dataformCoreVersion, tasks);
+    this.addPreOps(table, this.dataformCoreVersion, tasks, refreshIncrementCondition);
 
     if (tableMetadata && tableMetadata.type !== this.baseTableType(table.type)) {
       tasks.add(
@@ -32,7 +33,7 @@ export class SnowflakeAdapter extends Adapter implements IAdapter {
     }
 
     if (table.type === "incremental") {
-      if (runConfig.fullRefresh || !tableMetadata || tableMetadata.type === "view") {
+      if (refreshIncrementCondition) {
         tasks.add(Task.statement(this.createOrReplace(table)));
       } else {
         tasks.add(
@@ -51,7 +52,7 @@ export class SnowflakeAdapter extends Adapter implements IAdapter {
       tasks.add(Task.statement(this.createOrReplace(table)));
     }
 
-    this.addPostOps(table, this.dataformCoreVersion, tasks);
+    this.addPostOps(table, this.dataformCoreVersion, tasks, refreshIncrementCondition);
 
     return tasks;
   }

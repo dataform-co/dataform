@@ -18,8 +18,9 @@ export class SQLDataWarehouseAdapter extends Adapter implements IAdapter {
     tableMetadata: dataform.ITableMetadata
   ): Tasks {
     const tasks = Tasks.create();
+    const refreshIncrementCondition = this.refreshIncrementCondition(runConfig, tableMetadata);
 
-    this.addPreOps(table, this.dataformCoreVersion, tasks);
+    this.addPreOps(table, this.dataformCoreVersion, tasks, refreshIncrementCondition);
 
     if (tableMetadata && tableMetadata.type !== this.baseTableType(table.type)) {
       tasks.add(
@@ -28,7 +29,7 @@ export class SQLDataWarehouseAdapter extends Adapter implements IAdapter {
     }
 
     if (table.type === "incremental") {
-      if (runConfig.fullRefresh || !tableMetadata || tableMetadata.type === "view") {
+      if (refreshIncrementCondition) {
         tasks.addAll(this.createOrReplace(table, !!tableMetadata));
       } else {
         tasks.add(
@@ -47,7 +48,7 @@ export class SQLDataWarehouseAdapter extends Adapter implements IAdapter {
       tasks.addAll(this.createOrReplace(table, !!tableMetadata));
     }
 
-    this.addPostOps(table, this.dataformCoreVersion, tasks);
+    this.addPostOps(table, this.dataformCoreVersion, tasks, refreshIncrementCondition);
 
     return tasks;
   }
