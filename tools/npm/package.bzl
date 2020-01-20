@@ -1,4 +1,4 @@
-load("@build_bazel_rules_nodejs//:defs.bzl", "npm_package")
+load("@build_bazel_rules_nodejs//:index.bzl", "pkg_npm")
 load("//:version.bzl", "DF_VERSION")
 
 def dataform_npm_package(name, deps, srcs = [], package_layers = []):
@@ -10,7 +10,7 @@ def dataform_npm_package(name, deps, srcs = [], package_layers = []):
         cmd = "$(location //tools/json-merge:bin) --output-path $(OUTS) --layer-paths $(SRCS) --substitutions '{{ \"$$DF_VERSION\": \"{df_version}\" }}'".format(df_version = DF_VERSION),
     )
 
-    npm_package(
+    pkg_npm(
         name = name,
         srcs = srcs,
         deps = deps + [name + "_gen_package_json"],
