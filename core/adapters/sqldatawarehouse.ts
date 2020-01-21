@@ -18,9 +18,10 @@ export class SQLDataWarehouseAdapter extends Adapter implements IAdapter {
     tableMetadata: dataform.ITableMetadata
   ): Tasks {
     const tasks = Tasks.create();
-    const refreshIncrementCondition = this.refreshIncrementCondition(runConfig, tableMetadata);
+    const shouldWriteIncrementally = this.shouldWriteIncrementally(runConfig, tableMetadata);
 
-    this.addPreOps(table, this.dataformCoreVersion, tasks, refreshIncrementCondition);
+    const preOps = this.addPreOps(table, this.dataformCoreVersion, runConfig, tableMetadata);
+    preOps.forEach(statement => tasks.add(statement));
 
     if (tableMetadata && tableMetadata.type !== this.baseTableType(table.type)) {
       tasks.add(
@@ -29,7 +30,7 @@ export class SQLDataWarehouseAdapter extends Adapter implements IAdapter {
     }
 
     if (table.type === "incremental") {
-      if (refreshIncrementCondition) {
+      if (!shouldWriteIncrementally) {
         tasks.addAll(this.createOrReplace(table, !!tableMetadata));
       } else {
         tasks.add(
@@ -37,9 +38,7 @@ export class SQLDataWarehouseAdapter extends Adapter implements IAdapter {
             this.insertInto(
               table.target,
               tableMetadata.fields.map(f => f.name),
-              this.dataformCoreVersion > "1.4.8"
-                ? table.incrementalQuery
-                : this.where(table.incrementalQuery || table.query, table.where)
+              this.where(table.incrementalQuery || table.query, table.where)
             )
           )
         );
@@ -48,7 +47,8 @@ export class SQLDataWarehouseAdapter extends Adapter implements IAdapter {
       tasks.addAll(this.createOrReplace(table, !!tableMetadata));
     }
 
-    this.addPostOps(table, this.dataformCoreVersion, tasks, refreshIncrementCondition);
+    const postOps = this.addPostOps(table, this.dataformCoreVersion, runConfig, tableMetadata);
+    postOps.forEach(statement => tasks.add(statement));
 
     return tasks;
   }

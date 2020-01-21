@@ -39,34 +39,38 @@ from (${query}) as insertions`;
     where ${where || "true"}`;
   }
 
-  protected refreshIncrementCondition(
+  protected shouldWriteIncrementally(
     runConfig: dataform.IRunConfig,
-    tableMetadata: dataform.ITableMetadata
+    tableMetadata?: dataform.ITableMetadata
   ) {
-    return runConfig.fullRefresh || !tableMetadata || tableMetadata.type === "view";
+    return !runConfig.fullRefresh && tableMetadata && tableMetadata.type !== "view";
   }
 
   protected addPreOps(
     table: dataform.ITable,
     dataformCoreVersion: string,
-    tasks: Tasks,
-    refreshIncrementCondition: boolean
-  ) {
-    (dataformCoreVersion > "1.4.8" && table.type === "incremental" && !refreshIncrementCondition
-      ? table.incrementalPreOps
+    runConfig: dataform.IRunConfig,
+    tableMetadata: dataform.ITableMetadata
+  ): Task[] {
+    return (dataformCoreVersion > "1.4.8" &&
+    table.type === "incremental" &&
+    this.shouldWriteIncrementally(runConfig, tableMetadata)
+      ? table.incrementalPreOps || []
       : table.preOps || []
-    ).forEach(pre => tasks.add(Task.statement(pre)));
+    ).map(pre => Task.statement(pre));
   }
 
   protected addPostOps(
     table: dataform.ITable,
     dataformCoreVersion: string,
-    tasks: Tasks,
-    refreshIncrementCondition: boolean
-  ) {
-    (dataformCoreVersion > "1.4.8" && table.type === "incremental" && !refreshIncrementCondition
-      ? table.incrementalPostOps
+    runConfig: dataform.IRunConfig,
+    tableMetadata: dataform.ITableMetadata
+  ): Task[] {
+    return (dataformCoreVersion > "1.4.8" &&
+    table.type === "incremental" &&
+    this.shouldWriteIncrementally(runConfig, tableMetadata)
+      ? table.incrementalPostOps || []
       : table.postOps || []
-    ).forEach(post => tasks.add(Task.statement(post)));
+    ).map(post => Task.statement(post));
   }
 }
