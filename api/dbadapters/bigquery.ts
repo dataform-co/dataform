@@ -76,11 +76,29 @@ export class BigQueryDbAdapter implements IDbAdapter {
   }
 
   public async evaluate(statement: string) {
-    await this.client.query({
-      useLegacySql: false,
-      query: statement,
-      dryRun: true
-    });
+    try {
+      await this.client.query({
+        useLegacySql: false,
+        query: statement,
+        dryRun: true
+      });
+    } catch (e) {
+      // expected error format:
+      // // e.message = Syntax error: Unexpected identifier "asda" at [2:1]
+
+      // extract all characters between '[' and ']' (inclusive)
+      const matches = e.message.match(/\[(.*?)\]/g);
+      // ensure that only one bracket has been extracted
+      // if so, we can't parse this properly
+      if (matches.length > 1) {
+        throw e;
+      }
+      // get rid of the brackets []
+      const errorLocation = matches[0].replace(/[\[\]]+/g, "");
+      const [line, column] = errorLocation.split(":");
+      e.errorLocation = { line: Number(line), column: Number(column) };
+      throw e;
+    }
   }
 
   public tables(): Promise<dataform.ITarget[]> {
