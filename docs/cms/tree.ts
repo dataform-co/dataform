@@ -1,58 +1,60 @@
-import { ICms, IFileTree, IFrontMatter } from "df/docs/cms";
 import { basename, join } from "path";
 
 const frontMatter = require("front-matter");
 
-export class Tree {
-  public static async create(cms: ICms, path = ""): Promise<Tree> {
-    return new Tree(await Tree.build(cms, path));
-  }
-  private static async build(cms: ICms, path: string): Promise<IFileTree> {
-    const children = await cms.list(path);
+export interface IFrontMatter {
+  title?: string;
+  priority?: number;
+}
 
+export interface ITree {
+  readonly path: string;
+  readonly name: string;
+  readonly content: string;
+  readonly attributes?: IFrontMatter;
+  readonly children?: ITree[];
+}
+
+export class Tree implements ITree {
+  public static create(path: string, rawContent: string): Tree {
     let content: string = null;
     let attributes: IFrontMatter = { title: basename(path) };
 
-    try {
-      const rawContent = await cms.get(path);
-      const parsedContent = frontMatter(rawContent);
-      content = parsedContent.body;
-      attributes = parsedContent.attributes;
-    } catch (e) {
-      // File doesn't exist.
-    }
+    const parsedContent = frontMatter(rawContent);
+    content = parsedContent.body;
+    attributes = parsedContent.attributes;
 
-    return {
-      file: { path, hasChildren: children.length > 0 },
-      content,
-      attributes,
-      children: await Promise.all(children.map(child => Tree.build(cms, child.path)))
-    };
+    return new Tree(path, content, attributes, []);
+  }
+  public readonly name: string;
+  constructor(
+    public readonly path: string,
+    public readonly content: string,
+    public readonly attributes?: IFrontMatter,
+    public readonly children: Tree[] = []
+  ) {
+    const base = basename(path);
+    this.name = base.includes(".md") ? base.substring(0, base.length - 3) : base;
   }
 
-  private constructor(private tree: IFileTree) {}
-
-  public get(path = "") {
-    if (!path) {
-      return this.tree;
-    }
+  public getChild(path: string): Tree {
     const pathParts = path.split("/");
     return pathParts.reduce(
-      (acc: IFileTree, curr: string) =>
-        !curr ? acc : acc.children.find(child => child.file.path === join(acc.file.path, curr)),
-      this.tree
+      (acc: Tree, curr: string) =>
+        !curr ? acc : acc.children.find(child => child.path === join(acc.path, curr)),
+      this
     );
   }
 
-  public addChild(child: IFileTree) {
-    this.tree.children.push(child);
+  public addChild(child: Tree) {
+    this.children.push(child);
   }
 
-  public index(): IFileTree {
+  public index(): ITree {
     return {
-      ...this.tree,
+      ...this,
       content: undefined,
-      children: this.tree.children.map(child => new Tree(child).index())
+      children: this.children.map(child => child.index())
     };
   }
 }

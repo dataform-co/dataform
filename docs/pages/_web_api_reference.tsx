@@ -1,8 +1,8 @@
 import axios from "axios";
-import { IFileTree } from "df/docs/cms";
+import { ITree } from "df/docs/cms/tree";
 import { Swagger } from "df/docs/components/swagger";
+import { getContentTree } from "df/docs/content_tree";
 import Documentation from "df/docs/layouts/documentation";
-import { contentTree, localCms } from "df/docs/pages/_docs";
 import { NextPageContext } from "next";
 import * as React from "react";
 import { Spec } from "swagger-schema-official";
@@ -13,8 +13,8 @@ interface IQuery {
 
 interface IProps {
   version: string;
-  index: IFileTree;
-  current: IFileTree;
+  index: ITree;
+  current: ITree;
   spec: Spec;
   apiHost: string;
 }
@@ -23,13 +23,12 @@ export default class WebApiReference extends React.Component<IProps> {
   public static async getInitialProps(
     context: NextPageContext & { query: IQuery }
   ): Promise<IProps> {
-    const tree = await contentTree(localCms);
+    const tree = await getContentTree(context.query.version);
     const apiHost = "api.dataform.co";
-
     return {
-      version: context.query.version || "local",
       index: tree.index(),
-      current: tree.get("dataform-web/api-reference"),
+      version: context.query.version,
+      current: tree.getChild("dataform-web/api-reference"),
       spec: (await axios.get(`https://${apiHost}/swagger.json`)).data,
       apiHost
     };
