@@ -6,7 +6,11 @@ import { ISqlxParseResults, parseSqlx } from "@dataform/sqlx/lexer";
 
 export function compile(code: string, path: string) {
   if (path.endsWith(".sqlx")) {
-    return compileSqlx(parseSqlx(code), path);
+    if (path.includes("includes/")) {
+      return compileIncludesSqlx(code);
+    } else {
+      return compileSqlx(parseSqlx(code), path);
+    }
   }
   if (path.endsWith(".assert.sql")) {
     return compileAssertionSql(code, path);
@@ -201,4 +205,10 @@ function getFunctionPropertyNames(prototype: any) {
       })
     )
   ];
+}
+
+function compileIncludesSqlx(code: string) {
+  return `
+module.exports = (params) => \`${code}\`;
+`;
 }

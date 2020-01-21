@@ -13,11 +13,45 @@ Note: Functions, constants or macros defined in this way will only be available 
 If you are new to JavaScript, the examples below should cover some common use cases.
 <a target="_blank" rel="noopener" href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/A_re-introduction_to_JavaScript">MDN</a> is a useful learning resource if you'd like to learn more.
 
-## Example: Defining and using constants
+## Example: Defining and using a SQLX template
+
+<div className="bp3-callout bp3-icon-info-sign bp3-intent-warning" markdown="1">
+  SQLX includes are oly supported from Dataform version `1.4.9`.
+</div>
+
+SQLX files in the `includes/` folder can be used as snippets in other queries. Parameters can be passed to the template through a `params` object.
 
 Create a new file in your project under the `includes/` folder, such as:
 
-`definitions/constants.js`:
+`includes/mytemplate.sqlx`:
+
+```js
+select ${params.value} as value
+```
+
+You can reference any sqlx files inside the `includes` folder by their file name, or by explicitly importing them using the `require` function.
+
+`definitions/table.sqlx`
+
+```js
+config {
+  type: "table"
+}
+
+${mytemplate({ value: 1 })}
+```
+
+This will result in the follwing compiled query:
+
+```sql
+select 1 as test
+```
+
+## Example: Defining and using JS includes
+
+Create a new file in your project under the `includes/` folder, such as:
+
+`includes/constants.js`:
 
 ```js
 const PROJECT_ID = "my_project_name";
@@ -28,8 +62,6 @@ module.exports = { PROJECT_ID };
   Note that in order to use functions or constants elsewhere in the project, they must be exported
   using the <code>module.exports = {"{}"}</code> syntax.
 </div>
-
-## Example: Using an include
 
 You can reference any `include` function, constant, or macro by using its file name without the `.js` extension, followed by the name of the exported function or constant.
 

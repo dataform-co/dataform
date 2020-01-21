@@ -4,7 +4,7 @@ import { util } from "protobufjs";
 
 export function createGenIndexConfig(compileConfig: dataform.ICompileConfig): string {
   const includePaths: string[] = [];
-  glob.sync("includes/*.js", { cwd: compileConfig.projectDir }).forEach(path => {
+  glob.sync("includes/*.{js,sqlx}", { cwd: compileConfig.projectDir }).forEach(path => {
     if (includePaths.indexOf(path) < 0) {
       includePaths.push(path);
     }

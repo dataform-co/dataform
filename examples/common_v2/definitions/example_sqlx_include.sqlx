@@ -1,0 +1,5 @@
+config {
+    type: "table"
+}
+
+${example_sqlx_template({ value: 1 })}

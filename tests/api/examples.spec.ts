@@ -471,6 +471,14 @@ suite("examples", () => {
         expect(cleanSql(exampleDoubleBackslash.preOps[0])).equals(
           "select * from regexp_extract('\\\\\\\\', '\\\\')"
         );
+
+        // Check SQLX includes.
+        const sqlxIncludesTable = graph.tables.find(
+          (t: dataform.ITable) =>
+            t.name ===
+            "tada-analytics." + schemaWithSuffix("df_integration_test") + ".example_sqlx_include"
+        );
+        expect(sqlxIncludesTable.query.trim()).equals("select 1 as value");
       });
     }
   });
