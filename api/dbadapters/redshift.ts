@@ -44,6 +44,9 @@ export class RedshiftDbAdapter implements IDbAdapter {
       // // e.position = "123" - position is the number of characters into the query that the error was found at
       // // including \n characters
 
+      if (!e.position) {
+        throw e;
+      }
       // split statement into lines
       const statementSplitByLine = statementWithExplain.split("\n");
       // remove the part of the statement before the error position

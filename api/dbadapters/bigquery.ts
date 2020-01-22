@@ -85,6 +85,9 @@ export class BigQueryDbAdapter implements IDbAdapter {
     } catch (e) {
       // expected error format:
       // // e.message = Syntax error: Unexpected identifier "asda" at [2:1]
+      if (!e.message) {
+        throw e;
+      }
 
       // extract all characters between '[' and ']' (inclusive)
       const matches = e.message.match(/\[(.*?)\]/g);
