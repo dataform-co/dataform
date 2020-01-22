@@ -1,21 +1,5 @@
-export interface IFile {
-  path: string;
-  hasChildren: boolean;
-}
-
-export interface IFrontMatter {
-  title?: string;
-  priority?: number;
-}
-
-export interface IFileTree {
-  file?: IFile;
-  attributes?: IFrontMatter;
-  content?: string;
-  children?: IFileTree[];
-}
+import { Tree } from "df/docs/cms/tree";
 
 export interface ICms {
-  list(path?: string): Promise<IFile[]>;
-  get(path?: string): Promise<string>;
+  get(): Promise<Tree>;
 }
