@@ -13,10 +13,11 @@ export interface ITree {
   readonly content: string;
   readonly attributes?: IFrontMatter;
   readonly children?: ITree[];
+  editLink?: string;
 }
 
 export class Tree implements ITree {
-  public static create(path: string, rawContent: string): Tree {
+  public static create(path: string, rawContent: string, editLink?: string): Tree {
     let content: string = null;
     let attributes: IFrontMatter = { title: basename(path) };
 
@@ -24,13 +25,15 @@ export class Tree implements ITree {
     content = parsedContent.body;
     attributes = parsedContent.attributes;
 
-    return new Tree(path, content, attributes, []);
+    return new Tree(path, content, attributes, editLink, []);
   }
   public readonly name: string;
+
   constructor(
     public readonly path: string,
     public readonly content: string,
     public readonly attributes?: IFrontMatter,
+    public readonly editLink?: string,
     public readonly children: Tree[] = []
   ) {
     const base = basename(path);
@@ -48,6 +51,7 @@ export class Tree implements ITree {
 
   public addChild(child: Tree) {
     this.children.push(child);
+    return this;
   }
 
   public index(): ITree {

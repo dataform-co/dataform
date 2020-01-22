@@ -49,11 +49,11 @@ export default class Documentation extends React.Component<IProps> {
           </div>
           <div className={styles.sidebarRight}>
             <div className={styles.titleRight}>
-              <a
-                href={`https://github.com/dataform-co/dataform/blob/master/content/docs/${this.props.current.path}.md`}
-              >
-                <Button text="Suggest edits" rightIcon={"annotation"} minimal={true} />
-              </a>
+              {this.props.current.editLink && (
+                <a href={this.props.current.editLink}>
+                  <Button text="Suggest edits" rightIcon={"annotation"} minimal={true} />
+                </a>
+              )}
             </div>
             <PageLinks links={currentHeaderLinks} />
           </div>

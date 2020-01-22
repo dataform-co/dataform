@@ -1,10 +1,9 @@
+import { default as Octokit } from "@octokit/rest";
 import { ICms } from "df/docs/cms/index";
 import { Tree } from "df/docs/cms/tree";
 import { join } from "path";
 
-const Octokit = require("@octokit/rest");
-
-const octokit = new Octokit({ auth: process.env.GITHUB_OAUTH_TOKEN });
+const octokit = new Octokit({ auth: process.env.GITHUB_AUTH_TOKEN });
 
 interface IOptions {
   owner: string;
@@ -29,10 +28,14 @@ export class GitHubCms implements ICms {
       ? join(this.options.rootPath, path, "index.md")
       : join(this.options.rootPath, path);
 
-    const tree = Tree.create(path, await this.content(actualFilePath).catch(e => ""));
+    const tree = Tree.create(
+      path,
+      await this.content(actualFilePath).catch(e => ""),
+      `https://github.com/${this.options.owner}/${this.options.repo}/blob/master/${actualFilePath}`
+    );
 
-    if (isDir) {
-      const files: any[] = result.data.filter(file => file.name !== "index.md");
+    if (result.data instanceof Array) {
+      const files = result.data.filter(file => file.name !== "index.md");
       const children = await Promise.all(files.map(async file => this.get(join(path, file.name))));
       children.forEach(child => tree.addChild(child));
     }

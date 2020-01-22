@@ -47,15 +47,21 @@ async function getPackageTrees(): Promise<Tree[]> {
         title: "Segment"
       }
     ].map(async ({ owner, repo, title }) => {
-      const content = await new GitHubCms({
+      const tree = await new GitHubCms({
         owner,
         repo,
         rootPath: "",
         ref: "master"
-      }).content("README.md");
-      return new Tree(`packages/${repo}`, content, {
-        title
-      });
+      }).get("README.md");
+
+      return new Tree(
+        `packages/${repo}`,
+        tree.content,
+        {
+          title
+        },
+        tree.editLink
+      );
     })
   );
 
