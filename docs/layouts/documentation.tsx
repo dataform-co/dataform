@@ -1,5 +1,5 @@
 import { Button } from "@blueprintjs/core";
-import { IFileTree } from "df/docs/cms";
+import { ITree } from "df/docs/cms/tree";
 import Navigation from "df/docs/components/navigation";
 import { IHeaderLink, PageLinks } from "df/docs/components/page_links";
 import { BaseLayout } from "df/docs/layouts/base";
@@ -8,8 +8,8 @@ import * as React from "react";
 
 export interface IProps {
   version: string;
-  index: IFileTree;
-  current: IFileTree;
+  index: ITree;
+  current: ITree;
   headerLinks?: IHeaderLink[];
 }
 
@@ -36,7 +36,7 @@ export default class Documentation extends React.Component<IProps> {
         <div className={styles.container}>
           <div className={styles.sidebar}>
             <Navigation
-              currentPath={this.props.current.file.path}
+              currentPath={this.props.current.path}
               version={this.props.version}
               tree={this.props.index}
             />
@@ -49,11 +49,11 @@ export default class Documentation extends React.Component<IProps> {
           </div>
           <div className={styles.sidebarRight}>
             <div className={styles.titleRight}>
-              <a
-                href={`https://github.com/dataform-co/dataform/blob/master/content/docs/${this.props.current.file.path}.md`}
-              >
-                <Button text="Suggest edits" rightIcon={"annotation"} minimal={true} />
-              </a>
+              {this.props.current.editLink && (
+                <a href={this.props.current.editLink}>
+                  <Button text="Suggest edits" rightIcon={"annotation"} minimal={true} />
+                </a>
+              )}
             </div>
             <PageLinks links={currentHeaderLinks} />
           </div>

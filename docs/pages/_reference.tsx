@@ -1,7 +1,7 @@
-import { IFileTree } from "df/docs/cms";
+import { ITree } from "df/docs/cms/tree";
 import { ITypedoc, Typedoc } from "df/docs/components/typedoc";
+import { getContentTree } from "df/docs/content_tree";
 import Documentation from "df/docs/layouts/documentation";
-import { contentTree, localCms } from "df/docs/pages/_docs";
 import { readFile } from "fs";
 import { NextPageContext } from "next";
 import * as React from "react";
@@ -13,8 +13,8 @@ interface IQuery {
 
 interface IProps {
   version: string;
-  index: IFileTree;
-  current: IFileTree;
+  index: ITree;
+  current: ITree;
   typedoc: ITypedoc;
 }
 
@@ -24,12 +24,12 @@ export class Reference extends React.Component<IProps> {
   ): Promise<IProps> {
     const typedocFile = await promisify(readFile)("docs/core.typedoc.json", "utf8");
     const typedoc: ITypedoc = JSON.parse(typedocFile);
-    const tree = await contentTree(localCms);
+    const tree = await getContentTree(context.query.version);
     return {
-      version: context.query.version,
+      typedoc,
       index: tree.index(),
-      current: tree.get("reference"),
-      typedoc
+      current: tree.getChild("reference"),
+      version: context.query.version
     };
   }
 

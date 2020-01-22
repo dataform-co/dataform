@@ -1,10 +1,12 @@
 import rehypePrism from "@mapbox/rehype-prism";
-import { ICms, IFileTree } from "df/docs/cms";
+import { ICms } from "df/docs/cms";
 import { GitHubCms } from "df/docs/cms/github";
 import { LocalCms } from "df/docs/cms/local";
-import { Tree } from "df/docs/cms/tree";
+import { ITree, Tree } from "df/docs/cms/tree";
+import { getContentTree } from "df/docs/content_tree";
 import Documentation from "df/docs/layouts/documentation";
 import { NextPageContext } from "next";
+import * as NodeCache from "node-cache";
 import * as React from "react";
 import rehypeRaw from "rehype-raw";
 import rehypeReact from "rehype-react";
@@ -20,68 +22,19 @@ interface IQuery {
 }
 
 interface IProps {
-  index: IFileTree;
-  current: IFileTree;
+  index: ITree;
+  current: ITree;
   version: string;
-}
-
-export const localCms = new LocalCms("content/docs");
-
-const gitHubCms = (ref: string) =>
-  new GitHubCms({
-    owner: "dataform-co",
-    repo: "dataform",
-    rootPath: "content/docs",
-    ref
-  });
-
-export async function contentTree(cms: ICms) {
-  const tree = await Tree.create(cms);
-
-  // Add some custom paths to the tree.
-  tree.addChild({
-    attributes: {
-      title: "API Reference",
-      priority: 3
-    },
-    file: {
-      path: "reference",
-      hasChildren: true
-    },
-    content: "",
-    children: []
-  });
-
-  tree.get("dataform-web").children.push({
-    attributes: {
-      title: "Web API Reference",
-      priority: 3
-    },
-    file: {
-      path: "dataform-web/api-reference",
-      hasChildren: true
-    },
-    content: "",
-    children: []
-  });
-
-  return tree;
 }
 
 export class Docs extends React.Component<IProps> {
   public static async getInitialProps({
     query
   }: NextPageContext & { query: IQuery }): Promise<IProps> {
-    const version = query.version;
-    const effectiveVersion = query.version || "local";
-
-    const cms = effectiveVersion === "local" ? localCms : gitHubCms(version);
     const path = [query.path0, query.path1, query.path2].filter(part => !!part).join("/");
-    const tree = await contentTree(cms);
-
-    const current = tree.get(path);
-
-    return { index: tree.index(), current, version };
+    const tree = await getContentTree(query.version);
+    const current = tree.getChild(path);
+    return { index: tree.index(), current, version: query.version };
   }
 
   public render() {
