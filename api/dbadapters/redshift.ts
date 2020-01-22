@@ -36,9 +36,31 @@ export class RedshiftDbAdapter implements IDbAdapter {
   }
 
   public async evaluate(statement: string) {
-    await this.execute(`explain ${statement}`);
-  }
+    const statementWithExplain = `explain ${statement}`;
+    try {
+      await this.execute(statementWithExplain);
+    } catch (e) {
+      // expected error format:
+      // // e.position = "123" - position is the number of characters into the query that the error was found at
+      // // including \n characters
 
+      // split statement into lines
+      const statementSplitByLine = statementWithExplain.split("\n");
+      // remove the part of the statement before the error position
+      const statementAfterError = statementWithExplain.substring(Number(e.position - 1));
+      // split what's left by line
+      const statementAfterErrorSplit = statementAfterError.split("\n");
+      // original length - the statement after error is the index of the error
+      const errorIndex = statementSplitByLine.length - statementAfterErrorSplit.length;
+
+      if (errorIndex > 0) {
+        // difference + 1 for zero-indexing
+        e.errorLocation = { line: errorIndex + 1 };
+      }
+
+      throw e;
+    }
+  }
   public async tables(): Promise<dataform.ITarget[]> {
     const hasSpectrumTables = await this.hasSpectrumTables();
     const queryResult = await this.execute(
