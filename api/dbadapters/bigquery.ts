@@ -1,5 +1,6 @@
 import { Credentials } from "@dataform/api/commands/credentials";
 import { IDbAdapter, OnCancel } from "@dataform/api/dbadapters/index";
+import { BigqueryEvalErrorParser } from "@dataform/api/utils/error_parsing";
 import { dataform } from "@dataform/protos";
 import { BigQuery } from "@google-cloud/bigquery";
 import { QueryResultsOptions } from "@google-cloud/bigquery/build/src/job";
@@ -83,24 +84,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
         dryRun: true
       });
     } catch (e) {
-      // expected error format:
-      // // e.message = Syntax error: Unexpected identifier "asda" at [2:1]
-      if (!e.message) {
-        throw e;
-      }
-
-      // extract all characters between '[' and ']' (inclusive)
-      const matches = e.message.match(/\[(.*?)\]/g);
-      // ensure that only one bracket has been extracted
-      // if so, we can't parse this properly
-      if (matches.length > 1) {
-        throw e;
-      }
-      // get rid of the brackets []
-      const errorLocation = matches[0].replace(/[\[\]]+/g, "");
-      const [line, column] = errorLocation.split(":");
-      e.errorLocation = { line: Number(line), column: Number(column) };
-      throw e;
+      BigqueryEvalErrorParser(e);
     }
   }
 

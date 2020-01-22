@@ -1,5 +1,6 @@
 import { Credentials } from "@dataform/api/commands/credentials";
 import { IDbAdapter } from "@dataform/api/dbadapters/index";
+import { RedshiftEvalErrorParser } from "@dataform/api/utils/error_parsing";
 import { dataform } from "@dataform/protos";
 import * as pg from "pg";
 import * as Cursor from "pg-cursor";
@@ -40,28 +41,7 @@ export class RedshiftDbAdapter implements IDbAdapter {
     try {
       await this.execute(statementWithExplain);
     } catch (e) {
-      // expected error format:
-      // // e.position = "123" - position is the number of characters into the query that the error was found at
-      // // including \n characters
-
-      if (!e.position) {
-        throw e;
-      }
-      // split statement into lines
-      const statementSplitByLine = statementWithExplain.split("\n");
-      // remove the part of the statement before the error position
-      const statementAfterError = statementWithExplain.substring(Number(e.position - 1));
-      // split what's left by line
-      const statementAfterErrorSplit = statementAfterError.split("\n");
-      // original length - the statement after error is the index of the error
-      const errorIndex = statementSplitByLine.length - statementAfterErrorSplit.length;
-
-      if (errorIndex > 0) {
-        // difference + 1 for zero-indexing
-        e.errorLocation = { line: errorIndex + 1 };
-      }
-
-      throw e;
+      RedshiftEvalErrorParser(statementWithExplain, e);
     }
   }
   public async tables(): Promise<dataform.ITarget[]> {

@@ -1,5 +1,6 @@
 import { Credentials } from "@dataform/api/commands/credentials";
 import { IDbAdapter, IExecutionResult, OnCancel } from "@dataform/api/dbadapters/index";
+import { AzureEvalErrorParser } from "@dataform/api/utils/error_parsing";
 import { dataform } from "@dataform/protos";
 import { ConnectionPool } from "mssql";
 
@@ -77,36 +78,7 @@ export class SQLDataWarehouseDBAdapter implements IDbAdapter {
     try {
       await this.execute(statementWithExplain);
     } catch (e) {
-      // expected error format:
-      // // Parse error at line: 14, column: 13: Incorrect syntax near 'current_date'.
-      if (e.originalError && e.originalError.info && e.originalError.info.message) {
-        const message = e.originalError.info.message;
-        // extract all characters between line: and , inclusive
-        const lineMatch = message.match(/line:(.*?),/g);
-        // if we get more than one match, bail out
-        if (lineMatch.length !== 1) {
-          throw e;
-        }
-        // get rid of `line: `
-        const lineLess = lineMatch[0].replace(/[line: ]/g, "");
-        // get rid of trailing comma
-        const lineNumber = lineLess.replace(/[,]/g, "");
-
-        // extract all characters between column: and , inclusive
-        const columnMatch = message.match(/column:(.*?):/g);
-        // if we get more than one match, bail out, but keep the line number
-        if (columnMatch.length !== 1) {
-          e.errorLocation = { line: Number(lineNumber) };
-          throw e;
-        }
-        // get rid of `column: `
-        const columnLess = columnMatch[0].replace(/[column: ]/g, "");
-        // get rid of trailing :
-        const columnNumber = columnLess.replace(/[:]/g, "");
-
-        e.errorLocation = { line: Number(lineNumber), column: Number(columnNumber) };
-      }
-      throw e;
+      AzureEvalErrorParser(e);
     }
   }
 
