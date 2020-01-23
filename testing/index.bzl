@@ -23,6 +23,7 @@ def ts_test_suite(name, srcs, args = [], templated_args = [], data = [], **kwarg
         name = name,
         data = data,
         srcs = srcs,
+        testonly = 1,
         **kwargs
     )
     for src in srcs:
