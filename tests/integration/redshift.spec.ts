@@ -169,11 +169,6 @@ suite("@dataform/integration/redshift", ({ after }) => {
 
   suite("publish tasks", async () => {
     test("incremental pre and post ops, core version <= 1.4.8", async () => {
-      const projectConfig: dataform.IProjectConfig = {
-        warehouse: "redshift",
-        defaultDatabase: ""
-      };
-
       // 1.4.8 used `preOps` and `postOps` instead of `incrementalPreOps` and `incrementalPostOps`.
       const table: dataform.ITable = {
         type: "incremental",
@@ -184,7 +179,7 @@ suite("@dataform/integration/redshift", ({ after }) => {
         target: { schema: "", name: "", database: "" }
       };
 
-      const bqadapter = new RedshiftAdapter(projectConfig, "1.4.8");
+      const bqadapter = new RedshiftAdapter({ warehouse: "redshift" }, "1.4.8");
 
       const refresh = bqadapter.publishTasks(table, { fullRefresh: true }, { fields: [] }).build();
 

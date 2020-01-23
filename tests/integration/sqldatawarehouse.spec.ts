@@ -157,11 +157,6 @@ suite("@dataform/integration/sqldatawarehouse", ({ after }) => {
 
   suite("publish tasks", async () => {
     test("incremental pre and post ops, core version <= 1.4.8", async () => {
-      const projectConfig: dataform.IProjectConfig = {
-        warehouse: "sqldatawarehouse",
-        defaultDatabase: ""
-      };
-
       // 1.4.8 used `preOps` and `postOps` instead of `incrementalPreOps` and `incrementalPostOps`.
       const table: dataform.ITable = {
         type: "incremental",
@@ -172,7 +167,7 @@ suite("@dataform/integration/sqldatawarehouse", ({ after }) => {
         target: { schema: "", name: "", database: "" }
       };
 
-      const bqadapter = new SQLDataWarehouseAdapter(projectConfig, "1.4.8");
+      const bqadapter = new SQLDataWarehouseAdapter({ warehouse: "sqldatawarehouse" }, "1.4.8");
 
       const refresh = bqadapter.publishTasks(table, { fullRefresh: true }, { fields: [] }).build();
 

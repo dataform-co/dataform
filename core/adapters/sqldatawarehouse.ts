@@ -1,11 +1,11 @@
+import { IAdapter } from "@dataform/core/adapters";
 import { Adapter } from "@dataform/core/adapters/base";
-import { IAdapter } from "@dataform/core/adapters/index";
 import { Task, Tasks } from "@dataform/core/tasks";
 import { dataform } from "@dataform/protos";
 
 export class SQLDataWarehouseAdapter extends Adapter implements IAdapter {
-  constructor(private project: dataform.IProjectConfig, private dataformCoreVersion: string) {
-    super();
+  constructor(private readonly project: dataform.IProjectConfig, dataformCoreVersion: string) {
+    super(dataformCoreVersion);
   }
 
   public resolveTarget(target: dataform.ITarget) {
@@ -18,10 +18,8 @@ export class SQLDataWarehouseAdapter extends Adapter implements IAdapter {
     tableMetadata: dataform.ITableMetadata
   ): Tasks {
     const tasks = Tasks.create();
-    const shouldWriteIncrementally = this.shouldWriteIncrementally(runConfig, tableMetadata);
 
-    const preOps = this.addPreOps(table, this.dataformCoreVersion, runConfig, tableMetadata);
-    preOps.forEach(statement => tasks.add(statement));
+    this.preOps(table, runConfig, tableMetadata).forEach(statement => tasks.add(statement));
 
     if (tableMetadata && tableMetadata.type !== this.baseTableType(table.type)) {
       tasks.add(
@@ -30,7 +28,7 @@ export class SQLDataWarehouseAdapter extends Adapter implements IAdapter {
     }
 
     if (table.type === "incremental") {
-      if (!shouldWriteIncrementally) {
+      if (!this.shouldWriteIncrementally(runConfig, tableMetadata)) {
         tasks.addAll(this.createOrReplace(table, !!tableMetadata));
       } else {
         tasks.add(
@@ -47,8 +45,7 @@ export class SQLDataWarehouseAdapter extends Adapter implements IAdapter {
       tasks.addAll(this.createOrReplace(table, !!tableMetadata));
     }
 
-    const postOps = this.addPostOps(table, this.dataformCoreVersion, runConfig, tableMetadata);
-    postOps.forEach(statement => tasks.add(statement));
+    this.postOps(table, runConfig, tableMetadata).forEach(statement => tasks.add(statement));
 
     return tasks;
   }

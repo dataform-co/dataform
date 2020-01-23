@@ -2,6 +2,8 @@ import { Task, Tasks } from "@dataform/core/tasks";
 import { dataform } from "@dataform/protos";
 
 export abstract class Adapter {
+  constructor(protected readonly dataformCoreVersion: string) {}
+
   public abstract resolveTarget(target: dataform.ITarget): string;
 
   public normalizeIdentifier(identifier: string) {
@@ -10,7 +12,7 @@ export abstract class Adapter {
 
   public dropIfExists(target: dataform.ITarget, type: string) {
     return `drop ${this.baseTableType(type)} if exists ${this.resolveTarget(target)} ${
-      this.baseTableType(type) == "table" ? "cascade" : ""
+      this.baseTableType(type) === "table" ? "cascade" : ""
     }`;
   }
 
@@ -48,31 +50,35 @@ from (${query}) as insertions`;
     return !runConfig.fullRefresh && tableMetadata && tableMetadata.type !== "view";
   }
 
-  protected addPreOps(
+  protected preOps(
     table: dataform.ITable,
-    dataformCoreVersion: string,
     runConfig: dataform.IRunConfig,
     tableMetadata: dataform.ITableMetadata
   ): Task[] {
-    return (dataformCoreVersion > "1.4.8" &&
-    table.type === "incremental" &&
-    this.shouldWriteIncrementally(runConfig, tableMetadata)
-      ? table.incrementalPreOps || []
-      : table.preOps || []
-    ).map(pre => Task.statement(pre));
+    let preOps = table.preOps;
+    if (
+      this.dataformCoreVersion > "1.4.8" &&
+      table.type === "incremental" &&
+      this.shouldWriteIncrementally(runConfig, tableMetadata)
+    ) {
+      preOps = table.incrementalPreOps;
+    }
+    return (preOps || []).map(pre => Task.statement(pre));
   }
 
-  protected addPostOps(
+  protected postOps(
     table: dataform.ITable,
-    dataformCoreVersion: string,
     runConfig: dataform.IRunConfig,
     tableMetadata: dataform.ITableMetadata
   ): Task[] {
-    return (dataformCoreVersion > "1.4.8" &&
-    table.type === "incremental" &&
-    this.shouldWriteIncrementally(runConfig, tableMetadata)
-      ? table.incrementalPostOps || []
-      : table.postOps || []
-    ).map(post => Task.statement(post));
+    let postOps = table.postOps;
+    if (
+      this.dataformCoreVersion > "1.4.8" &&
+      table.type === "incremental" &&
+      this.shouldWriteIncrementally(runConfig, tableMetadata)
+    ) {
+      postOps = table.incrementalPreOps;
+    }
+    return (postOps || []).map(post => Task.statement(post));
   }
 }
