@@ -3,7 +3,7 @@ import * as dfapi from "@dataform/api";
 import { checkDataformJsonValidity } from "@dataform/api/commands/compile";
 import { dataform } from "@dataform/protos";
 import { assert, config, expect } from "chai";
-import { suite, test } from "df/testing";
+import { suite, test } from "@dataform/testing";
 import { TmpDirFixture } from "df/tests/utils/fixtures";
 import * as fs from "fs";
 import * as path from "path";

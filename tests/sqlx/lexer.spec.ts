@@ -1,6 +1,6 @@
 import { constructSyntaxTree, parseSqlx } from "@dataform/sqlx/lexer";
 import { expect } from "chai";
-import { suite, test } from "df/testing";
+import { suite, test } from "@dataform/testing";
 
 suite("@dataform/sqlx", () => {
   suite("outer SQL lexing", () => {
