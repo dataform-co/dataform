@@ -1,6 +1,6 @@
 import { CancellablePromise } from "@dataform/api/utils/cancellable_promise";
 import { expect } from "chai";
-import { suite, test } from "df/testing";
+import { suite, test } from "@dataform/testing";
 
 suite("cancellable_promise", () => {
   test("cancel is called", () => {
