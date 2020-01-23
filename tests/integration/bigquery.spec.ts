@@ -3,7 +3,7 @@ import * as dbadapters from "@dataform/api/dbadapters";
 import * as adapters from "@dataform/core/adapters";
 import { dataform } from "@dataform/protos";
 import { expect } from "chai";
-import { suite, test } from "df/testing";
+import { suite, test } from "@dataform/testing";
 import { dropAllTables, getTableRows, keyBy } from "df/tests/integration/utils";
 import * as Long from "long";
 

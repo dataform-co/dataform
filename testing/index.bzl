@@ -1,7 +1,7 @@
 load("@npm_bazel_typescript//:index.bzl", "ts_library")
 load("@build_bazel_rules_nodejs//:index.bzl", "nodejs_test")
 
-def ts_test(name, entry_point, data = [], **kwargs):
+def ts_test(name, entry_point, args = [], templated_args = [], data = [], **kwargs):
     ts_library(
         name = name + "_library",
         data = data,
@@ -14,9 +14,11 @@ def ts_test(name, entry_point, data = [], **kwargs):
             ":{name}_library".format(name = name),
         ],
         entry_point = entry_point,
+        args = args,
+        templated_args = templated_args,
     )
 
-def ts_test_suite(name, srcs, data = [], **kwargs):
+def ts_test_suite(name, srcs, args = [], templated_args = [], data = [], **kwargs):
     ts_library(
         name = name,
         data = data,
@@ -24,11 +26,14 @@ def ts_test_suite(name, srcs, data = [], **kwargs):
         **kwargs
     )
     for src in srcs:
-        if (src[-8:] == ".spec.ts" or src[-8:] == "_test.ts"):
+        basename = ".".join(src.split(".")[0:-1])
+        if (basename[-5:] == ".spec" or basename[-5:] == "_test"):
             nodejs_test(
-                name = src[:-3],
+                name = basename,
                 data = data + [
                     ":{name}".format(name = name),
                 ],
                 entry_point = ":" + src,
+                args = args,
+                templated_args = templated_args,
             )
