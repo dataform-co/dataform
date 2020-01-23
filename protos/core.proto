@@ -116,6 +116,25 @@ message CompilationError {
   string stack = 3;
 }
 
+
+message EvaluationError {
+  message ErrorLocation {
+    int32 line = 1;
+    int32 column = 2;
+  }
+  string message = 1;
+  ErrorLocation error_location = 2;
+}
+
+message EvaluationResponse {
+  enum EvaluationStatus {
+    SUCCESS = 0;
+    FAILURE = 1;
+  }
+  EvaluationStatus status = 1;
+  EvaluationError error = 2;
+}
+
 message ActionDescriptor {
   string description = 1;
   // For Operations, 'columns' may be set iff has_output == true.

@@ -89,8 +89,15 @@ export class SnowflakeDbAdapter implements IDbAdapter {
     };
   }
 
-  public evaluate(statement: string): Promise<void> {
-    throw new Error("Unimplemented");
+  public evaluate(statement: string): Promise<dataform.EvaluationResponse> {
+    return new Promise(resolve =>
+      resolve(
+        dataform.EvaluationResponse.create({
+          status: dataform.EvaluationResponse.EvaluationStatus.FAILURE,
+          error: { message: "Unimplemented" }
+        })
+      )
+    );
   }
 
   public async tables(): Promise<dataform.ITarget[]> {
