@@ -178,64 +178,39 @@ suite("@dataform/integration/snowflake", ({ after }) => {
   });
 
   suite("publish tasks", async () => {
-    test("incremental, core version <= 1.4.8", async () => {
+    test("incremental pre and post ops, core version <= 1.4.8", async () => {
       const projectConfig: dataform.IProjectConfig = {
-        warehouse: "bigquery",
-        defaultDatabase: "default_database"
+        warehouse: "redshift",
+        defaultDatabase: ""
       };
 
+      // 1.4.8 used `preOps` and `postOps` instead of `incrementalPreOps` and `incrementalPostOps`.
       const table: dataform.ITable = {
         type: "incremental",
         query: "query",
         preOps: ["preop task1", "preop task2"],
-        incrementalQuery: "query where incremental",
+        incrementalQuery: "",
         postOps: ["postop task1", "postop task2"],
-        target: {
-          schema: "df_integration_test",
-          name: "example_incremental",
-          database: "dataform-integration-tests"
-        }
+        target: { schema: "", name: "", database: "" }
       };
-
-      const expectedRefreshStatements = [
-        table.preOps[0],
-        table.preOps[1],
-        `drop view if exists "${table.target.database}"."${table.target.schema}"."${table.target.name}" `,
-        `create or replace table "${table.target.database}"."${table.target.schema}"."${table.target.name}" as ${table.query}`,
-        table.postOps[0],
-        table.postOps[1]
-      ];
-
-      const expectedIncrementStatements = [
-        table.preOps[0],
-        table.preOps[1],
-        `drop view if exists "${table.target.database}"."${table.target.schema}"."${table.target.name}" `,
-        `
-insert into "${table.target.database}"."${table.target.schema}"."${table.target.name}"
-()
-select 
-from (${table.incrementalQuery}) as insertions`,
-        table.postOps[0],
-        table.postOps[1]
-      ];
 
       const bqadapter = new SnowflakeAdapter(projectConfig, "1.4.8");
 
-      const buildsFromRefresh = bqadapter
-        .publishTasks(table, { fullRefresh: true }, { fields: [] })
-        .build();
+      const refresh = bqadapter.publishTasks(table, { fullRefresh: true }, { fields: [] }).build();
 
-      buildsFromRefresh.forEach((build, i) => {
-        expect(build.statement).to.eql(expectedRefreshStatements[i]);
-      });
+      expect(refresh[0].statement).to.equal(table.preOps[0]);
+      expect(refresh[1].statement).to.equal(table.preOps[1]);
+      expect(refresh[refresh.length - 2].statement).to.equal(table.postOps[0]);
+      expect(refresh[refresh.length - 1].statement).to.equal(table.postOps[1]);
 
-      const buildsFromIncrement = bqadapter
+      const increment = bqadapter
         .publishTasks(table, { fullRefresh: false }, { fields: [] })
         .build();
 
-      buildsFromIncrement.forEach((build, i) => {
-        expect(build.statement).to.eql(expectedIncrementStatements[i]);
-      });
+      expect(increment[0].statement).to.equal(table.preOps[0]);
+      expect(increment[1].statement).to.equal(table.preOps[1]);
+      expect(increment[increment.length - 2].statement).to.equal(table.postOps[0]);
+      expect(increment[increment.length - 1].statement).to.equal(table.postOps[1]);
     });
   });
 });
