@@ -37,7 +37,7 @@ def mocha_node_test(
         name = name,
         data = all_data,
         entry_point = entry_point,
-        templated_args = ["$(location :%s_devmode_srcs.MF)" % name],
+        templated_args = templated_args + ["$(location :%s_devmode_srcs.MF)" % name],
         configuration_env_vars = ["TEST_SRCDIR", "TEST_TIMEOUT", "TESTBRIDGE_TEST_ONLY"],
         expected_exit_code = expected_exit_code,
         tags = tags,
