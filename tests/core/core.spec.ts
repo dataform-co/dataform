@@ -3,7 +3,7 @@ import { Session } from "@dataform/core/session";
 import * as utils from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
 import { expect } from "chai";
-import { suite, test } from "df/testing";
+import { suite, test } from "@dataform/testing";
 import { asPlainObject } from "df/tests/utils";
 import * as path from "path";
 

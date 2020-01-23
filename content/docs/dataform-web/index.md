@@ -1,5 +1,6 @@
 ---
 title: Dataform Web
+priority: 7
 ---
 
 Dataform Web provides a fully managed environment for Dataform projects, where your data team can work together to develop your core analytics infrastructure.

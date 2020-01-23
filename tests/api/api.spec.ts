@@ -4,7 +4,7 @@ import { BigQueryDbAdapter } from "@dataform/api/dbadapters/bigquery";
 import * as utils from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
 import { assert, config, expect } from "chai";
-import { suite, test } from "df/testing";
+import { suite, test } from "@dataform/testing";
 import { asPlainObject, cleanSql } from "df/tests/utils";
 import * as path from "path";
 import { anyString, anything, instance, mock, when } from "ts-mockito";

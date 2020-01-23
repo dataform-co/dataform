@@ -1,11 +1,11 @@
 import { Icon } from "@blueprintjs/core";
-import { IFileTree } from "df/docs/cms";
+import { ITree } from "df/docs/cms/tree";
 import * as styles from "df/docs/components/navigation.css";
 import * as React from "react";
 
 interface IProps {
   version: string;
-  tree: IFileTree;
+  tree: ITree;
   currentPath: string;
 }
 
@@ -13,8 +13,8 @@ export default class Navigation extends React.Component<IProps> {
   public render() {
     return <div className={styles.navigation}>{this.renderTrees(this.props.tree.children)}</div>;
   }
-  private renderTrees(trees: IFileTree[], depth = 0) {
-    trees.sort((a: IFileTree, b: IFileTree) =>
+  private renderTrees(trees: ITree[], depth = 0) {
+    trees.sort((a: ITree, b: ITree) =>
       a.attributes.priority == null && b.attributes.priority == null
         ? a.attributes.title > b.attributes.title
           ? 1
@@ -30,7 +30,7 @@ export default class Navigation extends React.Component<IProps> {
       <ul className={styles[`depth${depth}`]}>
         {trees.map(tree => {
           const classNames = [styles[`depth${depth}`]];
-          if (this.props.currentPath === tree.file.path) {
+          if (this.props.currentPath === tree.path) {
             classNames.push(styles.active);
           }
           const hasChildren = tree.children && tree.children.length > 0;
@@ -39,11 +39,9 @@ export default class Navigation extends React.Component<IProps> {
           }
 
           return (
-            <React.Fragment key={tree.file.path}>
+            <React.Fragment key={tree.path}>
               <li className={classNames.join(" ")}>
-                <a
-                  href={`/${this.props.version ? `v/${this.props.version}/` : ""}${tree.file.path}`}
-                >
+                <a href={`/${this.props.version ? `v/${this.props.version}/` : ""}${tree.path}`}>
                   {tree.attributes.title}
                   {depth > 0 && hasChildren && <Icon icon="chevron-right" />}
                 </a>

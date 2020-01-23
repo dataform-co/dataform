@@ -1,5 +1,5 @@
 import chalk from "chalk";
-import { Suite } from "df/testing";
+import { Suite } from "@dataform/testing";
 import { promisify } from "util";
 
 export interface IRunResult {

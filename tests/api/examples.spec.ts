@@ -3,7 +3,7 @@ import * as utils from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
 import { fail } from "assert";
 import { expect } from "chai";
-import { suite, test } from "df/testing";
+import { suite, test } from "@dataform/testing";
 import { cleanSql } from "df/tests/utils";
 import * as path from "path";
 

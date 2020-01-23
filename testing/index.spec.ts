@@ -1,5 +1,5 @@
+import { ISuiteContext, Runner, suite, test } from "@dataform/testing";
 import { expect } from "chai";
-import { ISuiteContext, Runner, suite, test } from "df/testing";
 
 Runner.setNoExit(true);
 
@@ -87,6 +87,19 @@ const _ = (async () => {
 
         test("test", () => true);
       });
+
+      suite("with retries", () => {
+        let counter = 0;
+        test("passes second time", { retries: 1 }, () => {
+          const previousCounter = counter;
+          counter++;
+          expect(previousCounter).equals(1);
+        });
+
+        test("never passes", { retries: 1 }, () => {
+          throw new Error("fail-sync");
+        });
+      });
     });
 
     const results = await Runner.result();
@@ -131,7 +144,9 @@ const _ = (async () => {
         path: ["suite", "with failing tear down hook", "hook that fails (hook)"],
         outcome: "failed",
         err: "fail-sync"
-      }
+      },
+      { path: ["suite", "with retries", "passes second time"], outcome: "passed" },
+      { path: ["suite", "with retries", "never passes"], outcome: "failed", err: "fail-sync" }
     ]);
 
     // Tear down should have been called.
