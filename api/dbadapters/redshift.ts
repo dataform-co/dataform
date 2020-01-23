@@ -41,7 +41,7 @@ export class RedshiftDbAdapter implements IDbAdapter {
     try {
       await this.execute(statementWithExplain);
     } catch (e) {
-      RedshiftEvalErrorParser(statementWithExplain, e);
+      throw RedshiftEvalErrorParser(statementWithExplain, e);
     }
   }
   public async tables(): Promise<dataform.ITarget[]> {

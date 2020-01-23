@@ -78,7 +78,7 @@ export class SQLDataWarehouseDBAdapter implements IDbAdapter {
     try {
       await this.execute(statementWithExplain);
     } catch (e) {
-      AzureEvalErrorParser(e);
+      throw AzureEvalErrorParser(e);
     }
   }
 

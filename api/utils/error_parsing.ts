@@ -21,7 +21,7 @@ export const AzureEvalErrorParser = (error: IAzureEvalError) => {
     const lineMatch = message.match(/line:(.*?),/g);
     // if we get more than one match, bail out
     if (lineMatch.length !== 1) {
-      throw error;
+      return error;
     }
     // get rid of `line: `
     const lineLess = lineMatch[0].replace(/[line: ]/g, "");
@@ -33,7 +33,7 @@ export const AzureEvalErrorParser = (error: IAzureEvalError) => {
     // if we get more than one match, bail out, but keep the line number
     if (columnMatch.length !== 1) {
       error.errorLocation = { line: Number(lineNumber) };
-      throw error;
+      return error;
     }
     // get rid of `column: `
     const columnLess = columnMatch[0].replace(/[column: ]/g, "");
@@ -42,10 +42,11 @@ export const AzureEvalErrorParser = (error: IAzureEvalError) => {
 
     error.errorLocation = { line: Number(lineNumber), column: Number(columnNumber) };
   }
-  throw error;
+  return error;
 };
 
 interface IRedshiftEvalError {
+  message: string;
   position?: string;
   errorLocation?: IErrorLocation;
 }
@@ -56,7 +57,7 @@ export const RedshiftEvalErrorParser = (statement: string, error: IRedshiftEvalE
   // // including \n characters
 
   if (!error.position) {
-    throw error;
+    return error;
   }
   // split statement into lines
   const statementSplitByLine = statement.split("\n");
@@ -67,12 +68,9 @@ export const RedshiftEvalErrorParser = (statement: string, error: IRedshiftEvalE
   // original length - the statement after error is the index of the error
   const errorIndex = statementSplitByLine.length - statementAfterErrorSplit.length;
 
-  if (errorIndex > 0) {
-    // difference + 1 for zero-indexing
-    error.errorLocation = { line: errorIndex + 1 };
-  }
-
-  throw error;
+  // difference + 1 for zero-indexing
+  error.errorLocation = { line: errorIndex + 1 };
+  return error;
 };
 
 interface IBigqueryEvalError {
@@ -84,7 +82,7 @@ export const BigqueryEvalErrorParser = (error: IBigqueryEvalError) => {
   // expected error format:
   // // e.message = Syntax error: Unexpected identifier "asda" at [2:1]
   if (!error.message) {
-    throw error;
+    return error;
   }
 
   // extract all characters between '[' and ']' (inclusive)
@@ -92,11 +90,11 @@ export const BigqueryEvalErrorParser = (error: IBigqueryEvalError) => {
   // ensure that only one bracket has been extracted
   // if so, we can't parse this properly
   if (matches.length > 1) {
-    throw error;
+    return error;
   }
   // get rid of the brackets []
   const errorLocation = matches[0].replace(/[\[\]]+/g, "");
   const [line, column] = errorLocation.split(":");
   error.errorLocation = { line: Number(line), column: Number(column) };
-  throw error;
+  return error;
 };

@@ -84,7 +84,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
         dryRun: true
       });
     } catch (e) {
-      BigqueryEvalErrorParser(e);
+      throw BigqueryEvalErrorParser(e);
     }
   }
 
