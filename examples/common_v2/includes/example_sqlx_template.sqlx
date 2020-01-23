@@ -1,1 +1,4 @@
-select ${params.value} as value
+js {
+    const valueStr = "value";
+}
+select ${params.value} as ${valueStr}

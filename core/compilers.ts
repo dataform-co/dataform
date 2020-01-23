@@ -3,11 +3,12 @@ import { OperationContext } from "@dataform/core/operation";
 import { TableContext } from "@dataform/core/table";
 import * as utils from "@dataform/core/utils";
 import { ISqlxParseResults, parseSqlx } from "@dataform/sqlx/lexer";
+import { sep } from "path";
 
 export function compile(code: string, path: string) {
   if (path.endsWith(".sqlx")) {
-    if (path.includes("includes/")) {
-      return compileIncludesSqlx(code);
+    if (path.split(sep).includes("includes")) {
+      return compileIncludesSqlx(parseSqlx(code));
     } else {
       return compileSqlx(parseSqlx(code), path);
     }
@@ -207,8 +208,11 @@ function getFunctionPropertyNames(prototype: any) {
   ];
 }
 
-function compileIncludesSqlx(code: string) {
+function compileIncludesSqlx(results: ISqlxParseResults) {
   return `
-module.exports = (params) => \`${code}\`;
+module.exports = (params) => {
+  ${results.js}
+  return \`${results.sql[0]}\`;
+};
 `;
 }
