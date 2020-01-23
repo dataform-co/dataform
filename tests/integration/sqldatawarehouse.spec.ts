@@ -116,14 +116,6 @@ suite("@dataform/integration/sqldatawarehouse", ({ after }) => {
     );
 
     executedGraph = await dfapi.run(executionGraph, credentials).resultPromise();
-    console.log(
-      "EXECUTED STATUS OF INCREMENTAL:",
-      executedGraph.status,
-      "EXPECTS:",
-      dataform.RunResult.ExecutionStatus.SUCCESSFUL
-    );
-    console.log("EXECUTION GRAPH FAILING TASK:", executionGraph.actions[0].tasks[1].statement);
-    console.log("EXECUTED GRAPH FAILING TASK:", executedGraph.actions[0].tasks[1]);
     expect(executedGraph.status).equals(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
 
     // Check there is an extra row in the incremental table.
@@ -207,9 +199,7 @@ suite("@dataform/integration/sqldatawarehouse", ({ after }) => {
 insert into "${table.target.schema}"."${table.target.name}"
 ()
 select 
-from (
-  select * from (${table.incrementalQuery}) as subquery
-    where true) as insertions`,
+from (${table.incrementalQuery}) as insertions`,
         table.postOps[0],
         table.postOps[1]
       ];

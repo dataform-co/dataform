@@ -2,18 +2,12 @@ config {
   type: "incremental"
 }
 
-pre_operations {
-  SELECT 372
-}
-
-select 1 as val1
-
-${ when(incremental(), `, 2 as val2`) }
-
-post_operations {
-  SELECT 613
-}
-
 js {
-  const crossdb = require("@dataform/crossdb")
+  const crossdb = require("@dataform/crossdb");
 }
+
+${ when(incremental(), "select * from (") }
+
+select ${crossdb.currentTimestampUTC()} as ts
+
+${ when(incremental(), `) as subquery where ts > (select max(ts) from ${self()}) or (select max(ts) from ${self()}) is null`) }

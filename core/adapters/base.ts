@@ -34,9 +34,11 @@ from (${query}) as insertions`;
   }
 
   protected where(query: string, where: string) {
-    return `
+    return where
+      ? `
   select * from (${query}) as subquery
-    where ${where || "true"}`;
+    where ${where}`
+      : query;
   }
 
   protected shouldWriteIncrementally(

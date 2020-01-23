@@ -127,8 +127,7 @@ suite("@dataform/integration/snowflake", ({ after }) => {
       credentials,
       "snowflake"
     );
-
-    expect(incrementalRows.length).equals(1);
+    expect(incrementalRows.length).equals(3);
 
     // Re-run some of the actions.
     executionGraph = await dfapi.build(
@@ -142,7 +141,7 @@ suite("@dataform/integration/snowflake", ({ after }) => {
     executedGraph = await dfapi.run(executionGraph, credentials).resultPromise();
     expect(executedGraph.status).equals(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
 
-    // Check there is an extra row in the incremental table.
+    // Check there are the expected number of extra rows in the incremental table.
     incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
       "DF_INTEGRATION_TEST.EXAMPLE_INCREMENTAL"
     ];
@@ -152,7 +151,7 @@ suite("@dataform/integration/snowflake", ({ after }) => {
       credentials,
       "snowflake"
     );
-    expect(incrementalRows.length).equals(2);
+    expect(incrementalRows.length).equals(5);
   });
 
   suite("result limit works", async () => {
@@ -215,9 +214,7 @@ suite("@dataform/integration/snowflake", ({ after }) => {
 insert into "${table.target.database}"."${table.target.schema}"."${table.target.name}"
 ()
 select 
-from (
-  select * from (${table.incrementalQuery}) as subquery
-    where true) as insertions`,
+from (${table.incrementalQuery}) as insertions`,
         table.postOps[0],
         table.postOps[1]
       ];
