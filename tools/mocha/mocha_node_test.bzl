@@ -1,4 +1,4 @@
-load("@build_bazel_rules_nodejs//:defs.bzl", "nodejs_test")
+load("@build_bazel_rules_nodejs//:index.bzl", "nodejs_test")
 load("@build_bazel_rules_nodejs//internal/common:devmode_js_sources.bzl", "devmode_js_sources")
 
 def mocha_node_test(
