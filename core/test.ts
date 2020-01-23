@@ -168,13 +168,12 @@ class RefReplacingContext implements ITableContext {
     return "";
   }
 
-  public isIncremental() {
-    return false;
+  public when(cond: boolean, trueCase: string, falseCase: string = "") {
+    return cond ? trueCase : falseCase;
   }
 
-  public ifIncremental(value: string) {
-    // Use the non-incremental query for unit tests.
-    return "";
+  public incremental() {
+    return false;
   }
 
   public preOps(statement: Contextable<ITableContext, string | string[]>) {

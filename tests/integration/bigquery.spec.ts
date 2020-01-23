@@ -3,7 +3,8 @@ import * as dbadapters from "@dataform/api/dbadapters";
 import * as adapters from "@dataform/core/adapters";
 import { dataform } from "@dataform/protos";
 import { expect } from "chai";
-import { suite, test } from "@dataform/testing";
+import { BigQueryAdapter } from "df/core/adapters/bigquery";
+import { suite, test } from "df/testing";
 import { dropAllTables, getTableRows, keyBy } from "df/tests/integration/utils";
 import * as Long from "long";
 
@@ -61,46 +62,48 @@ suite("@dataform/integration/bigquery", ({ after }) => {
 
     const actionMap = keyBy(executedGraph.actions, v => v.name);
 
-    // Check the status of the two assertions.
-    expect(
-      actionMap["dataform-integration-tests.df_integration_test_assertions.example_assertion_fail"]
-        .status
-    ).equals(dataform.ActionResult.ExecutionStatus.FAILED);
-    expect(
-      actionMap["dataform-integration-tests.df_integration_test_assertions.example_assertion_pass"]
-        .status
-    ).equals(dataform.ActionResult.ExecutionStatus.SUCCESSFUL);
+    // Check the status of file execution.
+    const expectedRunStatuses = {
+      successful: [
+        "dataform-integration-tests.df_integration_test_assertions.example_assertion_pass",
+        "dataform-integration-tests.df_integration_test_assertions.example_assertion_uniqueness_pass",
+        "dataform-integration-tests.df_integration_test.example_incremental",
+        "dataform-integration-tests.df_integration_test.example_table",
+        "dataform-integration-tests.df_integration_test.example_view",
+        "dataform-integration-tests.df_integration_test.sample_data_2",
+        "dataform-integration-tests.df_integration_test.sample_data"
+      ],
+      failed: [
+        "dataform-integration-tests.df_integration_test_assertions.example_assertion_uniqueness_fail",
+        "dataform-integration-tests.df_integration_test_assertions.example_assertion_fail"
+      ]
+    };
 
-    // Check the status of the two uniqueness assertions.
-    expect(
-      actionMap[
-        "dataform-integration-tests.df_integration_test_assertions.example_assertion_uniqueness_fail"
-      ].status
-    ).equals(dataform.ActionResult.ExecutionStatus.FAILED);
+    expectedRunStatuses.successful.forEach(actionName =>
+      expect(actionMap[actionName].status).equals(dataform.ActionResult.ExecutionStatus.SUCCESSFUL)
+    );
+
+    expectedRunStatuses.failed.forEach(actionName =>
+      expect(actionMap[actionName].status).equals(dataform.ActionResult.ExecutionStatus.FAILED)
+    );
+
     expect(
       actionMap[
         "dataform-integration-tests.df_integration_test_assertions.example_assertion_uniqueness_fail"
       ].tasks[1].errorMessage
     ).to.eql("bigquery error: Assertion failed: query returned 1 row(s).");
-    expect(
-      actionMap[
-        "dataform-integration-tests.df_integration_test_assertions.example_assertion_uniqueness_pass"
-      ].status
-    ).equals(dataform.ActionResult.ExecutionStatus.SUCCESSFUL);
 
     // Check the data in the incremental table.
     let incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
       "dataform-integration-tests.df_integration_test.example_incremental"
     ];
-
     let incrementalRows = await getTableRows(
       incrementalTable.target,
       adapter,
       credentials,
       "bigquery"
     );
-
-    expect(incrementalRows.length).equals(1);
+    expect(incrementalRows.length).equals(3);
 
     // Re-run some of the actions.
     executionGraph = await dfapi.build(
@@ -114,12 +117,12 @@ suite("@dataform/integration/bigquery", ({ after }) => {
     executedGraph = await dfapi.run(executionGraph, credentials).resultPromise();
     expect(executedGraph.status).equals(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
 
-    // Check there is an extra row in the incremental table.
+    // Check there are the expected number of extra rows in the incremental table.
     incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
       "dataform-integration-tests.df_integration_test.example_incremental"
     ];
     incrementalRows = await getTableRows(incrementalTable.target, adapter, credentials, "bigquery");
-    expect(incrementalRows.length).equals(2);
+    expect(incrementalRows.length).equals(5);
   });
 
   suite("result limit works", async () => {
@@ -143,6 +146,38 @@ suite("@dataform/integration/bigquery", ({ after }) => {
         ]);
       });
     }
+  });
+
+  suite("publish tasks", async () => {
+    test("incremental pre and post ops, core version <= 1.4.8", async () => {
+      // 1.4.8 used `preOps` and `postOps` instead of `incrementalPreOps` and `incrementalPostOps`.
+      const table: dataform.ITable = {
+        type: "incremental",
+        query: "query",
+        preOps: ["preop task1", "preop task2"],
+        incrementalQuery: "",
+        postOps: ["postop task1", "postop task2"],
+        target: { schema: "", name: "", database: "" }
+      };
+
+      const bqadapter = new BigQueryAdapter({ warehouse: "bigquery" }, "1.4.8");
+
+      const refresh = bqadapter.publishTasks(table, { fullRefresh: true }, { fields: [] }).build();
+
+      expect(refresh[0].statement).to.equal(table.preOps[0]);
+      expect(refresh[1].statement).to.equal(table.preOps[1]);
+      expect(refresh[refresh.length - 2].statement).to.equal(table.postOps[0]);
+      expect(refresh[refresh.length - 1].statement).to.equal(table.postOps[1]);
+
+      const increment = bqadapter
+        .publishTasks(table, { fullRefresh: false }, { fields: [] })
+        .build();
+
+      expect(increment[0].statement).to.equal(table.preOps[0]);
+      expect(increment[1].statement).to.equal(table.preOps[1]);
+      expect(increment[increment.length - 2].statement).to.equal(table.postOps[0]);
+      expect(increment[increment.length - 1].statement).to.equal(table.postOps[1]);
+    });
   });
 
   suite("metadata", async () => {

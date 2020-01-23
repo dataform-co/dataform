@@ -160,14 +160,15 @@ export interface ITableConfig extends ITargetableConfig, IDocumentableConfig, ID
  */
 export interface ITableContext extends ICommonContext {
   /**
-   * @hidden
+   * Shorthand for an `if` condition. Equivalent to `cond ? trueCase : falseCase`.
+   * `falseCase` is optional, and defaults to an empty string.
    */
-  isIncremental: () => boolean;
+  when: (cond: boolean, trueCase: string, falseCase?: string) => string;
 
   /**
-   * @hidden
+   * Indicates whether the config indicates the file is dealing with an incremental table.
    */
-  ifIncremental: (value: string) => string;
+  incremental: () => boolean;
 }
 
 /**
@@ -355,30 +356,37 @@ export class Table {
     const incrementalContext = new TableContext(this, true);
 
     this.proto.query = context.apply(this.contextableQuery);
+
     if (this.proto.type === "incremental") {
       this.proto.incrementalQuery = incrementalContext.apply(this.contextableQuery);
+
+      this.proto.incrementalPreOps = this.contextifyOps(this.contextablePreOps, incrementalContext);
+      this.proto.incrementalPostOps = this.contextifyOps(
+        this.contextablePostOps,
+        incrementalContext
+      );
     }
 
     if (this.contextableWhere) {
       this.proto.where = context.apply(this.contextableWhere);
     }
 
-    this.contextablePreOps.forEach(contextablePreOps => {
-      const appliedPres = context.apply(contextablePreOps);
-      this.proto.preOps = (this.proto.preOps || []).concat(
-        typeof appliedPres === "string" ? [appliedPres] : appliedPres
-      );
-    });
-    this.contextablePreOps = [];
+    this.proto.preOps = this.contextifyOps(this.contextablePreOps, context);
+    this.proto.postOps = this.contextifyOps(this.contextablePostOps, context);
 
-    this.contextablePostOps.forEach(contextablePostOps => {
-      const appliedPosts = context.apply(contextablePostOps);
-      this.proto.postOps = (this.proto.postOps || []).concat(
-        typeof appliedPosts === "string" ? [appliedPosts] : appliedPosts
-      );
-    });
-    this.contextablePostOps = [];
     return this.proto;
+  }
+
+  private contextifyOps(
+    contextableOps: Array<Contextable<ITableContext, string | string[]>>,
+    currentContext: TableContext
+  ) {
+    let protoOps: string[] = [];
+    contextableOps.forEach(contextableOp => {
+      const appliedOps = currentContext.apply(contextableOp);
+      protoOps = protoOps.concat(typeof appliedOps === "string" ? [appliedOps] : appliedOps);
+    });
+    return protoOps;
   }
 }
 
@@ -386,7 +394,7 @@ export class Table {
  * @hidden
  */
 export class TableContext implements ITableContext {
-  constructor(private table: Table, private incremental = false) {}
+  constructor(private table: Table, private isIncremental = false) {}
 
   public config(config: ITableConfig) {
     this.table.config(config);
@@ -426,12 +434,12 @@ export class TableContext implements ITableContext {
     return "";
   }
 
-  public isIncremental() {
-    return !!this.incremental;
+  public when(cond: boolean, trueCase: string, falseCase: string = "") {
+    return cond ? trueCase : falseCase;
   }
 
-  public ifIncremental(value: string) {
-    return this.isIncremental() ? value : "";
+  public incremental() {
+    return !!this.isIncremental;
   }
 
   public preOps(statement: Contextable<ITableContext, string | string[]>) {
