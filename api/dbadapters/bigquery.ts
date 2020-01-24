@@ -1,6 +1,6 @@
 import { Credentials } from "@dataform/api/commands/credentials";
 import { IDbAdapter, OnCancel } from "@dataform/api/dbadapters/index";
-import { BigqueryEvalErrorParser } from "@dataform/api/utils/error_parsing";
+import { parseBigqueryEvalError } from "@dataform/api/utils/error_parsing";
 import { dataform } from "@dataform/protos";
 import { BigQuery } from "@google-cloud/bigquery";
 import { QueryResultsOptions } from "@google-cloud/bigquery/build/src/job";
@@ -83,13 +83,13 @@ export class BigQueryDbAdapter implements IDbAdapter {
         query: statement,
         dryRun: true
       });
-      return dataform.EvaluationResponse.create({
-        status: dataform.EvaluationResponse.EvaluationStatus.SUCCESS
+      return dataform.QueryEvaluationResponse.create({
+        status: dataform.QueryEvaluationResponse.QueryEvaluationStatus.SUCCESS
       });
     } catch (e) {
-      return dataform.EvaluationResponse.create({
-        status: dataform.EvaluationResponse.EvaluationStatus.FAILURE,
-        error: BigqueryEvalErrorParser(e)
+      return dataform.QueryEvaluationResponse.create({
+        status: dataform.QueryEvaluationResponse.QueryEvaluationStatus.FAILURE,
+        error: parseBigqueryEvalError(e)
       });
     }
   }

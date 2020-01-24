@@ -1,6 +1,6 @@
 import { Credentials } from "@dataform/api/commands/credentials";
 import { IDbAdapter } from "@dataform/api/dbadapters/index";
-import { RedshiftEvalErrorParser } from "@dataform/api/utils/error_parsing";
+import { parseRedshiftEvalError } from "@dataform/api/utils/error_parsing";
 import { dataform } from "@dataform/protos";
 import * as pg from "pg";
 import * as Cursor from "pg-cursor";
@@ -40,13 +40,13 @@ export class RedshiftDbAdapter implements IDbAdapter {
     const statementWithExplain = `explain ${statement}`;
     try {
       await this.execute(statementWithExplain);
-      return dataform.EvaluationResponse.create({
-        status: dataform.EvaluationResponse.EvaluationStatus.SUCCESS
+      return dataform.QueryEvaluationResponse.create({
+        status: dataform.QueryEvaluationResponse.QueryEvaluationStatus.SUCCESS
       });
     } catch (e) {
-      return dataform.EvaluationResponse.create({
-        status: dataform.EvaluationResponse.EvaluationStatus.FAILURE,
-        error: RedshiftEvalErrorParser(statementWithExplain, e)
+      return dataform.QueryEvaluationResponse.create({
+        status: dataform.QueryEvaluationResponse.QueryEvaluationStatus.FAILURE,
+        error: parseRedshiftEvalError(statementWithExplain, e)
       });
     }
   }

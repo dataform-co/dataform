@@ -21,7 +21,7 @@ export interface IDbAdapter {
       maxResults?: number;
     }
   ): Promise<IExecutionResult>;
-  evaluate(statement: string): Promise<dataform.IEvaluationResponse>;
+  evaluate(statement: string): Promise<dataform.IQueryEvaluationResponse>;
   tables(): Promise<dataform.ITarget[]>;
   table(target: dataform.ITarget): Promise<dataform.ITableMetadata>;
   preview(target: dataform.ITarget, limitRows?: number): Promise<any[]>;

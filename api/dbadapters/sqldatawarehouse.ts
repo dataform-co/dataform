@@ -1,6 +1,6 @@
 import { Credentials } from "@dataform/api/commands/credentials";
 import { IDbAdapter, IExecutionResult, OnCancel } from "@dataform/api/dbadapters/index";
-import { AzureEvalErrorParser } from "@dataform/api/utils/error_parsing";
+import { parseAzureEvaluationError } from "@dataform/api/utils/error_parsing";
 import { dataform } from "@dataform/protos";
 import { ConnectionPool } from "mssql";
 
@@ -74,16 +74,15 @@ export class SQLDataWarehouseDBAdapter implements IDbAdapter {
   }
 
   public async evaluate(statement: string) {
-    const statementWithExplain = `explain ${statement}`;
     try {
-      await this.execute(statementWithExplain);
-      return dataform.EvaluationResponse.create({
-        status: dataform.EvaluationResponse.EvaluationStatus.SUCCESS
+      await this.execute(`explain ${statement}`);
+      return dataform.QueryEvaluationResponse.create({
+        status: dataform.QueryEvaluationResponse.QueryEvaluationStatus.SUCCESS
       });
     } catch (e) {
-      return dataform.EvaluationResponse.create({
-        status: dataform.EvaluationResponse.EvaluationStatus.FAILURE,
-        error: AzureEvalErrorParser(e)
+      return dataform.QueryEvaluationResponse.create({
+        status: dataform.QueryEvaluationResponse.QueryEvaluationStatus.FAILURE,
+        error: parseAzureEvaluationError(e)
       });
     }
   }

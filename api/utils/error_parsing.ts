@@ -1,100 +1,81 @@
-interface IErrorLocation {
-  line?: number;
-  column?: number;
-}
+import { dataform } from "@dataform/protos";
 
-interface IAzureEvalError {
+interface IAzureEvaluationError {
   originalError?: {
     info?: {
       message?: string;
     };
   };
-  errorLocation?: IErrorLocation;
 }
 
-export const AzureEvalErrorParser = (error: IAzureEvalError) => {
+export function parseAzureEvaluationError(error: IAzureEvaluationError) {
   // expected error format:
-  // // Parse error at line: 14, column: 13: Incorrect syntax near 'current_date'.
-  if (error.originalError && error.originalError.info && error.originalError.info.message) {
-    const message = error.originalError.info.message;
-    // extract all characters between line: and , inclusive
-    const lineMatch = message.match(/line:(.*?),/g);
-    // if we get more than one match, bail out
-    if (lineMatch.length !== 1) {
-      return error;
+  // Parse error at line: 14, column: 13: Incorrect syntax near 'current_date'.
+  const evalError = dataform.QueryEvaluationError.create({
+    message: String(error)
+  });
+  try {
+    if (error.originalError && error.originalError.info && error.originalError.info.message) {
+      const message = error.originalError.info.message;
+      evalError.message = message;
+
+      // extract line and column number
+      // assumes the first two numbers in the message are line followed by column
+      const [_, lineNumber, columnNumber] = message.match(/[^0-9]*([0-9]*)[^0-9]*([0-9]*).*/);
+
+      evalError.errorLocation = { line: Number(lineNumber), column: Number(columnNumber) };
+      return evalError;
     }
-    // get rid of `line: `
-    const lineLess = lineMatch[0].replace(/[line: ]/g, "");
-    // get rid of trailing comma
-    const lineNumber = lineLess.replace(/[,]/g, "");
+  } catch (_) {}
+  return evalError;
+}
 
-    // extract all characters between column: and , inclusive
-    const columnMatch = message.match(/column:(.*?):/g);
-    // if we get more than one match, bail out, but keep the line number
-    if (columnMatch.length !== 1) {
-      error.errorLocation = { line: Number(lineNumber) };
-      return error;
-    }
-    // get rid of `column: `
-    const columnLess = columnMatch[0].replace(/[column: ]/g, "");
-    // get rid of trailing :
-    const columnNumber = columnLess.replace(/[:]/g, "");
-
-    error.errorLocation = { line: Number(lineNumber), column: Number(columnNumber) };
-  }
-  return error;
-};
-
-interface IRedshiftEvalError {
-  message: string;
+interface IRedshiftEvaluationError {
   position?: string;
-  errorLocation?: IErrorLocation;
 }
 
-export const RedshiftEvalErrorParser = (statement: string, error: IRedshiftEvalError) => {
+export function parseRedshiftEvalError(statement: string, error: IRedshiftEvaluationError) {
   // expected error format:
-  // // e.position = "123" - position is the number of characters into the query that the error was found at
-  // // including \n characters
+  // e.position = "123" - position is the number of characters into the query that the error was found at
+  // including \n characters
 
-  if (!error.position) {
-    return error;
-  }
-  // split statement into lines
-  const statementSplitByLine = statement.split("\n");
-  // remove the part of the statement before the error position
-  const statementAfterError = statement.substring(Number(error.position) - 1);
-  // split what's left by line
-  const statementAfterErrorSplit = statementAfterError.split("\n");
-  // original length - the statement after error is the index of the error
-  const errorIndex = statementSplitByLine.length - statementAfterErrorSplit.length;
+  const evalError = dataform.QueryEvaluationError.create({
+    message: String(error)
+  });
+  try {
+    if (!error.position) {
+      return evalError;
+    }
 
-  // difference + 1 for zero-indexing
-  error.errorLocation = { line: errorIndex + 1 };
-  return error;
-};
+    const statementBeforeError = statement.substring(0, Number(error.position));
+    const lineNumber = statementBeforeError.split("\n").length;
+    const lineIncludingError = statementBeforeError.split("\n").slice(-1)[0];
+    const colNumber = lineIncludingError.length + 1;
+    evalError.errorLocation = { line: lineNumber, column: colNumber };
+  } catch (_) {}
 
-interface IBigqueryEvalError {
+  return evalError;
+}
+
+interface IBigqueryEvaluationError {
   message?: string;
-  errorLocation?: IErrorLocation;
 }
 
-export const BigqueryEvalErrorParser = (error: IBigqueryEvalError) => {
+export function parseBigqueryEvalError(error: IBigqueryEvaluationError) {
   // expected error format:
-  // // e.message = Syntax error: Unexpected identifier "asda" at [2:1]
-  if (!error.message) {
-    return error;
-  }
+  // e.message = Syntax error: Unexpected identifier "asda" at [2:1]
+  const evalError = dataform.QueryEvaluationError.create({
+    message: String(error)
+  });
+  try {
+    if (!error.message) {
+      return evalError;
+    }
 
-  // extract all characters between '[' and ']' (inclusive)
-  const matches = error.message.match(/\[(.*?)\]/g);
-  // ensure that only one bracket has been extracted
-  // if so, we can't parse this properly
-  if (matches.length > 1) {
-    return error;
-  }
-  // get rid of the brackets []
-  const errorLocation = matches[0].replace(/[\[\]]+/g, "");
-  const [line, column] = errorLocation.split(":");
-  error.errorLocation = { line: Number(line), column: Number(column) };
-  return error;
-};
+    // extract everything after the very last [ in the string
+    const bracketsString = error.message.split("[").slice(-1)[0];
+    const [_, lineNumber, columnNumber] = bracketsString.match(/([0-9]*)[^0-9]*([0-9]*).*/);
+    evalError.errorLocation = { line: Number(lineNumber), column: Number(columnNumber) };
+  } catch (_) {}
+  return evalError;
+}

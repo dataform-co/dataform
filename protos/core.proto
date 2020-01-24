@@ -116,23 +116,23 @@ message CompilationError {
   string stack = 3;
 }
 
-
-message EvaluationError {
+message QueryEvaluationError {
+  string message = 1;
   message ErrorLocation {
     int32 line = 1;
     int32 column = 2;
   }
-  string message = 1;
+  // will not be set if error_location can't be determined
   ErrorLocation error_location = 2;
 }
 
-message EvaluationResponse {
-  enum EvaluationStatus {
+message QueryEvaluationResponse {
+  enum QueryEvaluationStatus {
     SUCCESS = 0;
     FAILURE = 1;
   }
-  EvaluationStatus status = 1;
-  EvaluationError error = 2;
+  QueryEvaluationStatus status = 1;
+  QueryEvaluationError error = 2;
 }
 
 message ActionDescriptor {
