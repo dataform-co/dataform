@@ -28,8 +28,9 @@ export class GitHubCms implements ICms {
       ? join(this.options.rootPath, path, "index.md")
       : join(this.options.rootPath, path);
 
+    const cleanPath = path.endsWith(".md") ? path.substring(0, path.length - 3) : path;
     const tree = Tree.create(
-      path,
+      cleanPath,
       await this.content(actualFilePath).catch(e => ""),
       `https://github.com/${this.options.owner}/${this.options.repo}/blob/master/${actualFilePath}`
     );

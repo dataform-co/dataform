@@ -14,8 +14,9 @@ export class LocalCms implements ICms {
       : join(this.rootPath, path);
     const rawContent = await promisify(fs.readFile)(actualFilePath, "utf8");
 
+    const cleanPath = path.endsWith(".md") ? path.substring(0, path.length - 3) : path;
     const tree = Tree.create(
-      path,
+      cleanPath,
       rawContent,
       `https://github.com/dataform-co/dataform/blob/master/${actualFilePath}`
     );
