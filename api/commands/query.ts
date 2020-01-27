@@ -41,7 +41,7 @@ export async function evaluate(
   const compiledQuery = await compile(query, compileConfig);
   const dbadapter = dbadapters.create(credentials, warehouse);
   try {
-    return dbadapter.evaluate(compiledQuery);
+    return await dbadapter.evaluate(compiledQuery);
   } finally {
     await dbadapter.close();
   }
