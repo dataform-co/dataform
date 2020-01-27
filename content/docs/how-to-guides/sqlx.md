@@ -52,7 +52,7 @@ In-line JavaScript can be used anywhere SQL is written in order to dynamically m
 
 ### Built-in functions
 
-Built in functions have special functionality and can be executed either within [in-line JavaScript](#in-line-javascript) or [javaScript blocks](#javascript-blocks).
+Built in functions have special functionality and can be executed either within [in-line JavaScript](#in-line-javascript) or [JavaScript blocks](#javascript-blocks).
 
 For all built in functions, see [`ITableContext` in the API reference](/reference#ITableContext). Some useful examples can be found here:
 
