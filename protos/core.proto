@@ -164,12 +164,14 @@ message Table {
   repeated string tags = 23;
 
   // Incremental only.
-  string where = 8;
+  string where = 8 [deprecated = true];
   string incremental_query = 26;
 
   // Pre/post operations.
   repeated string pre_ops = 13;
   repeated string post_ops = 14;
+  repeated string incremental_pre_ops = 28;
+  repeated string incremental_post_ops = 29;
 
   // Warehouse specific features.
   RedshiftOptions redshift = 21;

@@ -1,6 +1,6 @@
 import { retry } from "@dataform/api/utils/retry";
 import { expect } from "chai";
-import { suite, test } from "df/testing";
+import { suite, test } from "@dataform/testing";
 
 suite("retry", () => {
   test("doesn't retry if the function succeeds", async () => {

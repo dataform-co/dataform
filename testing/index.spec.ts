@@ -1,5 +1,5 @@
+import { ISuiteContext, Runner, suite, test } from "@dataform/testing";
 import { expect } from "chai";
-import { ISuiteContext, Runner, suite, test } from "df/testing";
 
 Runner.setNoExit(true);
 
@@ -44,9 +44,11 @@ const _ = (async () => {
           expect(counter).equals(1);
           counter = 2;
         });
-        test("passes on second test", () => {
-          expect(counter).equals(1);
-          counter = 2;
+        suite("in sub suite", () => {
+          test("passes on second test", () => {
+            expect(counter).equals(1);
+            counter = 2;
+          });
         });
       });
 
@@ -87,6 +89,19 @@ const _ = (async () => {
 
         test("test", () => true);
       });
+
+      suite("with retries", () => {
+        let counter = 0;
+        test("passes second time", { retries: 1 }, () => {
+          const previousCounter = counter;
+          counter++;
+          expect(previousCounter).equals(1);
+        });
+
+        test("never passes", { retries: 1 }, () => {
+          throw new Error("fail-sync");
+        });
+      });
     });
 
     const results = await Runner.result();
@@ -114,12 +129,20 @@ const _ = (async () => {
       { path: ["suite", "fails on promise rejection"], outcome: "failed", err: "fail-async" },
       { path: ["suite", "times out"], outcome: "timeout", err: "Timed out (10ms)." },
       { path: ["suite", "with before and after", "passes on first test"], outcome: "passed" },
-      { path: ["suite", "with before and after", "passes on second test"], outcome: "passed" },
+      {
+        path: ["suite", "with before and after", "in sub suite", "passes on second test"],
+        outcome: "passed"
+      },
       { path: ["suite", "with set up and tear down", "set up is called"], outcome: "passed" },
       { path: ["suite", "can execute in parallel", "test1"], outcome: "passed" },
       { path: ["suite", "can execute in parallel", "test2"], outcome: "passed" },
       {
         path: ["suite", "with failing before each hook", "test", "hook that fails (hook)"],
+        outcome: "failed",
+        err: "fail-sync"
+      },
+      {
+        path: ["suite", "with failing before each hook", "test"],
         outcome: "failed",
         err: "fail-sync"
       },
@@ -131,7 +154,9 @@ const _ = (async () => {
         path: ["suite", "with failing tear down hook", "hook that fails (hook)"],
         outcome: "failed",
         err: "fail-sync"
-      }
+      },
+      { path: ["suite", "with retries", "passes second time"], outcome: "passed" },
+      { path: ["suite", "with retries", "never passes"], outcome: "failed", err: "fail-sync" }
     ]);
 
     // Tear down should have been called.

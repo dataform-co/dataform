@@ -20,7 +20,7 @@ SQLX contains the following components:
 
 ### Config
 
-All config properties, and the config itself, are optional. See the API reference for exact options.
+All config properties, and the config itself, are optional. See [`ITableConfig` in the API reference](/reference#ITableConfig) for exact options.
 
 ### SQL
 
@@ -52,13 +52,15 @@ In-line Javascript can be used anywhere SQL is written in order to dynamically m
 
 ### Built-in functions
 
-Built in functions have special functionality should be executed within [in-line Javascript](#in-line-javascript).
+Built in functions have special functionality and can be executed either within [in-line Javascript](#in-line-javascript) or [javascript blocks](#javascript-blocks).
+
+For all built in functions, see [`ITableContext` in the API reference](/reference#ITableContext). Some useful examples can be found here:
 
 #### `ref()`
 
 `ref()` enables you to easily reference another dataset in your project without having to provide the full SQL dataset name. `ref()` also adds the referenced dataset to the set of dependencies for the query.
 
-An example of `ref()` being used to add a dependency is [here](datasets/#referencing-other-datasets).
+Some examples can be found [here](datasets/#referencing-other-datasets).
 
 #### `resolve()`
 
@@ -66,18 +68,16 @@ An example of `ref()` being used to add a dependency is [here](datasets/#referen
 
 #### `self()`
 
-`self()` returns the name of the current dataset. If the default schema or dataset name is overridden in the `config{}` block, `self()` will return the full and correct dataset name.
+`self()` returns the name of the current dataset. If the database, schema, or dataset name is overridden in the `config{}` block, `self()` will return the full and correct dataset name.
 
-An example of `self()` being used to set up incremental tables is [here](incremental-datasets/#a-simple-example).
+[Here](incremental-datasets/#a-simple-example) is an example of an incremental table using the `self()` function.
+
+- [Retrieve the name of the current dataset with `self()`](incremental-datasets/#a-simple-example).
+
+- [Execute code only if the script is for an incremental dataset using `incremental()`](incremental-datasets/#conditional-code-if-incremental).
 
 ## Additional Features
 
-- [Pre-operations and post-operations](#pre-operations-and-post-operations): Pre and post operations are only valid for some table types.
+- **Pre-operations**: defined in SQLX by writing `pre_operations { }`, SQL written inside will be executed before the main SQL. This can be useful for granting permissions, as can be seen in the [publishing datasets guide](/how-to-guides/datasets/#example-granting-dataset-access-with-post_operations). **Actions may only include pre_operations if they create a dataset**, for example with `type: "table"` or `type: "view"` or `type: "incremental"` in their config.
 
-### Pre-operations and post-operations
-
-Pre-operation and post-operation blocks are defined in SQLX by writing `pre_operations { }` and `post_operations { }` respectively.
-
-SQL written in pre-operation blocks is executed before the central chunk of SQL, while post-operation blocks are executed afterwards.
-
-They are useful for purposes such as setting permissions. An example can be found in the [publishing datasets guide](datasets).
+- **Post-operations**: the same as pre-operations, but defined with `post_operations { }`, and runs after the main SQL.

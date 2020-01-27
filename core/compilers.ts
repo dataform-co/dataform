@@ -123,23 +123,33 @@ switch (sqlxConfig.type) {
   case "incremental":
   case "inline": {
     action.query(ctx => {
-      ${["self", "ref", "resolve", "name", "isIncremental", "ifIncremental"]
+      ${["self", "ref", "resolve", "name", "when", "incremental"]
         .map(name => `const ${name} = ctx.${name}.bind(ctx);`)
         .join("\n")}
       ${results.js}
       if (hasIncremental) {
         action.where(\`${results.incremental}\`);
       }
-      if (hasPreOperations && !isIncremental()) {
-        const preOperations = [${results.preOperations.map(sql => `\`${sql}\``)}];
-        action.preOps(preOperations);
-      }
-      if (hasPostOperations && !isIncremental()) {
-        const postOperations = [${results.postOperations.map(sql => `\`${sql}\``)}];
-        action.postOps(postOperations);
-      }
       return \`${results.sql[0]}\`;
     });
+    if (hasPreOperations) {
+      action.preOps(ctx => {
+        ${["self", "ref", "resolve", "name", "when", "incremental"]
+          .map(name => `const ${name} = ctx.${name}.bind(ctx);`)
+          .join("\n")}
+        ${results.js}
+        return [${results.preOperations.map(sql => `\`${sql}\``)}];
+      });
+    }
+    if (hasPostOperations) {
+      action.postOps(ctx => {
+        ${["self", "ref", "resolve", "name", "when", "incremental"]
+          .map(name => `const ${name} = ctx.${name}.bind(ctx);`)
+          .join("\n")}
+        ${results.js}
+        return [${results.postOperations.map(sql => `\`${sql}\``)}];
+      });
+    }
     break;
   }
   case "assertion": {

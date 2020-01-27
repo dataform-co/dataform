@@ -1,8 +1,9 @@
-import { IRunContext, IRunResult, Runner, Suite } from "df/testing";
+import { IRunContext, IRunResult, Runner, Suite } from "@dataform/testing";
 
 interface ITestOptions {
   name: string;
   timeout?: number;
+  retries?: number;
 }
 
 export function test(name: string | ITestOptions, fn: (ctx?: ITestOptions) => void): void;
@@ -45,29 +46,58 @@ export class Test {
   constructor(public readonly options: ITestOptions, private readonly fn: () => any) {}
 
   public async run(ctx: IRunContext) {
-    let timer: NodeJS.Timer;
-    const timeout = this.options.timeout || Test.DEFAULT_TIMEOUT_MILLIS;
-    const result: IRunResult = {
-      path: [...ctx.path, this.options.name],
-      outcome: "failed"
-    };
-    try {
-      await Promise.race([
-        this.fn(),
-        new Promise((_, reject) => {
-          timer = setTimeout(() => {
-            result.outcome = "timeout";
-            reject(new Error(`Timed out (${timeout}ms).`));
-          }, timeout);
-        })
-      ]);
-      result.outcome = "passed";
-    } catch (e) {
-      result.err = e;
-    } finally {
-      clearTimeout(timer);
+    let lastResult: IRunResult;
+    const path = [...ctx.path, this.options.name];
+    const retries = this.options.retries || 0;
+    for (let i = 0; i <= retries; i++) {
+      let timer: NodeJS.Timer;
+      const timeout = this.options.timeout || Test.DEFAULT_TIMEOUT_MILLIS;
+      const result: IRunResult = {
+        path,
+        outcome: "failed"
+      };
+      try {
+        await Promise.race([
+          (async () => {
+            const hookCtx = {
+              ...ctx,
+              path
+            };
+            for (const beforeEach of ctx.beforeEaches) {
+              await beforeEach.run(hookCtx);
+            }
+            try {
+              // Run the test.
+              await this.fn();
+            } catch (e) {
+              throw e;
+            } finally {
+              // Always run the after eaches.
+              for (const afterEach of ctx.afterEaches) {
+                await afterEach.run(hookCtx);
+              }
+            }
+          })(),
+          new Promise((_, reject) => {
+            timer = setTimeout(() => {
+              result.outcome = "timeout";
+              reject(new Error(`Timed out (${timeout}ms).`));
+            }, timeout);
+          })
+        ]);
+        result.outcome = "passed";
+      } catch (e) {
+        result.err = e;
+      } finally {
+        clearTimeout(timer);
+      }
+
+      lastResult = result;
+      if (result.outcome === "passed") {
+        break;
+      }
     }
 
-    ctx.results.push(result);
+    ctx.results.push(lastResult);
   }
 }

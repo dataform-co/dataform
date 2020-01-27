@@ -1,4 +1,4 @@
-import { IRunContext, IRunResult } from "df/testing";
+import { IRunContext, IRunResult } from "@dataform/testing";
 
 export type IHookFunction = () => any;
 

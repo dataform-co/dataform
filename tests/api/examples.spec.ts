@@ -3,7 +3,7 @@ import * as utils from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
 import { fail } from "assert";
 import { expect } from "chai";
-import { suite, test } from "df/testing";
+import { suite, test } from "@dataform/testing";
 import { cleanSql } from "df/tests/utils";
 import * as path from "path";
 
@@ -110,8 +110,9 @@ suite("examples", () => {
             )}.example_is_incremental\`) is null`
           )
         );
-        expect(exampleIsIncremental.preOps).to.eql(["\n    select 2\n"]);
-        expect(exampleIsIncremental.postOps).to.eql(["\n    select 1\n"]);
+
+        expect(exampleIsIncremental.incrementalPreOps).to.eql(["\n    select 1\n"]);
+        expect(exampleIsIncremental.incrementalPostOps).to.eql(["\n    select 15\n"]);
 
         // Check tables defined in includes are not included.
         const exampleIgnore = graph.tables.find(

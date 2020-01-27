@@ -3,7 +3,7 @@ import { Session } from "@dataform/core/session";
 import * as utils from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
 import { expect } from "chai";
-import { suite, test } from "df/testing";
+import { suite, test } from "@dataform/testing";
 import { asPlainObject } from "df/tests/utils";
 import * as path from "path";
 
@@ -112,7 +112,7 @@ suite("@dataform/core", () => {
         .publish("incremental", {
           type: "incremental"
         })
-        .query(ctx => `select ${ctx.isIncremental()} as incremental`);
+        .query(ctx => `select ${ctx.incremental()} as incremental`);
       const graph = session.compile();
 
       expect(graph.toJSON().tables).deep.members([

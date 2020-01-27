@@ -1,5 +1,5 @@
+import { Hook, Suite } from "@dataform/testing";
 import chalk from "chalk";
-import { Suite } from "df/testing";
 import { promisify } from "util";
 
 export interface IRunResult {
@@ -11,6 +11,8 @@ export interface IRunResult {
 export interface IRunContext {
   path: string[];
   results: IRunResult[];
+  beforeEaches: Hook[];
+  afterEaches: Hook[];
 }
 
 export class Runner {
@@ -38,7 +40,9 @@ export class Runner {
     await promisify(process.nextTick)();
     const ctx: IRunContext = {
       path: [],
-      results: []
+      results: [],
+      beforeEaches: [],
+      afterEaches: []
     };
 
     await Promise.all([...this.topLevelSuites].map(suite => suite.run(ctx)));

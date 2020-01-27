@@ -69,19 +69,13 @@ export class Builder {
   }
 
   public buildTable(t: dataform.ITable, tableMetadata: dataform.ITableMetadata) {
-    const emptyTasks = [] as dataform.IExecutionTask[];
-
     if (t.protected && this.runConfig.fullRefresh) {
       throw new Error("Protected datasets cannot be fully refreshed.");
     }
 
     const tasks = t.disabled
-      ? emptyTasks
-      : emptyTasks.concat(
-          (t.preOps || []).map(pre => ({ statement: pre })),
-          this.adapter.publishTasks(t, this.runConfig, tableMetadata).build(),
-          (t.postOps || []).map(post => ({ statement: post }))
-        );
+      ? ([] as dataform.IExecutionTask[])
+      : this.adapter.publishTasks(t, this.runConfig, tableMetadata).build();
 
     return dataform.ExecutionAction.create({
       name: t.name,

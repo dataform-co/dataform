@@ -1,4 +1,4 @@
-import { Hook, hook, IRunContext, Runner, test, Test } from "df/testing";
+import { Hook, hook, IRunContext, Runner, test, Test } from "@dataform/testing";
 
 export interface ISuiteOptions {
   name: string;
@@ -74,26 +74,10 @@ export class Suite {
   public async run(ctx: IRunContext) {
     const testsAndSuites = [...this.suites, ...this.tests];
     const path = this.options.name === undefined ? ctx.path : [...ctx.path, this.options.name];
+    const beforeEaches = [...ctx.beforeEaches, ...this.beforeEaches];
+    const afterEaches = [...ctx.afterEaches, ...this.afterEaches];
     const runTestOrSuite = async (testOrSuite: Suite | Test) => {
-      const testCtx = {
-        ...ctx,
-        path: [...path, testOrSuite.options.name]
-      };
-      try {
-        for (const beforeEach of this.beforeEaches) {
-          await beforeEach.run(testCtx);
-        }
-        await testOrSuite.run({ ...ctx, path });
-      } catch (e) {
-        // If a before each fails, we should still run the after eaches.
-      }
-      try {
-        for (const afterEach of this.afterEaches) {
-          await afterEach.run(testCtx);
-        }
-      } catch (e) {
-        // If an after each fails, carry on.
-      }
+      await testOrSuite.run({ ...ctx, path, beforeEaches, afterEaches });
     };
 
     try {
