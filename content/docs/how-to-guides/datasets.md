@@ -28,12 +28,6 @@ For a list of all configuration options for datasets, view the [`ITableConfig`](
   Trailing semi-colons should be omitted from queries.
 </div>
 
-<div className="bp3-callout bp3-icon-info-sign bp3-intent-warning" markdown="1">
-  File names must be unique within your <code>definitions/</code> folder, even across different
-  directories, because these determine the name of the dataset or view created within your
-  warehouse.
-</div>
-
 ## Create a table
 
 To create a table, i.e. a full independent copy of the query result, set the `type` of the query to `table`.
