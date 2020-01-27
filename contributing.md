@@ -83,7 +83,7 @@ You can view the documentation site at [localhost:3001](http://localhost:3001).
 
    1. If you're solving an issue, be sure to comment to make it known that you are currently solving it. Unless we have worked with you before, it is unlikely that we will lock the issue to you.
 
-1. Begin materiasing your masterpiece.
+1. Begin materialising your masterpiece.
 
 1. Once done, merge from master, review your code, run the tests, **[check for common mistakes](#common-pull-request-mistakes)** and then open a pull request.
 

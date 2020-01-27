@@ -37,11 +37,11 @@ export async function evaluate(
   warehouse: string,
   query: string,
   compileConfig?: dataform.ICompileConfig
-): Promise<void> {
+): Promise<dataform.IQueryEvaluationResponse> {
   const compiledQuery = await compile(query, compileConfig);
   const dbadapter = dbadapters.create(credentials, warehouse);
   try {
-    await dbadapter.evaluate(compiledQuery);
+    return await dbadapter.evaluate(compiledQuery);
   } finally {
     await dbadapter.close();
   }
