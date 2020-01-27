@@ -1,5 +1,6 @@
 import { Credentials } from "@dataform/api/commands/credentials";
 import { IDbAdapter } from "@dataform/api/dbadapters/index";
+import { parseRedshiftEvalError } from "@dataform/api/utils/error_parsing";
 import { dataform } from "@dataform/protos";
 import * as pg from "pg";
 import * as Cursor from "pg-cursor";
@@ -36,9 +37,19 @@ export class RedshiftDbAdapter implements IDbAdapter {
   }
 
   public async evaluate(statement: string) {
-    await this.execute(`explain ${statement}`);
+    const statementWithExplain = `explain ${statement}`;
+    try {
+      await this.execute(statementWithExplain);
+      return dataform.QueryEvaluationResponse.create({
+        status: dataform.QueryEvaluationResponse.QueryEvaluationStatus.SUCCESS
+      });
+    } catch (e) {
+      return dataform.QueryEvaluationResponse.create({
+        status: dataform.QueryEvaluationResponse.QueryEvaluationStatus.FAILURE,
+        error: parseRedshiftEvalError(statementWithExplain, e)
+      });
+    }
   }
-
   public async tables(): Promise<dataform.ITarget[]> {
     const hasSpectrumTables = await this.hasSpectrumTables();
     const queryResult = await this.execute(

@@ -89,7 +89,7 @@ export class SnowflakeDbAdapter implements IDbAdapter {
     };
   }
 
-  public evaluate(statement: string): Promise<void> {
+  public evaluate(statement: string): Promise<dataform.QueryEvaluationResponse> {
     throw new Error("Unimplemented");
   }
 
