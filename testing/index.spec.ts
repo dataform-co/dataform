@@ -44,9 +44,11 @@ const _ = (async () => {
           expect(counter).equals(1);
           counter = 2;
         });
-        test("passes on second test", () => {
-          expect(counter).equals(1);
-          counter = 2;
+        suite("in sub suite", () => {
+          test("passes on second test", () => {
+            expect(counter).equals(1);
+            counter = 2;
+          });
         });
       });
 
@@ -127,12 +129,20 @@ const _ = (async () => {
       { path: ["suite", "fails on promise rejection"], outcome: "failed", err: "fail-async" },
       { path: ["suite", "times out"], outcome: "timeout", err: "Timed out (10ms)." },
       { path: ["suite", "with before and after", "passes on first test"], outcome: "passed" },
-      { path: ["suite", "with before and after", "passes on second test"], outcome: "passed" },
+      {
+        path: ["suite", "with before and after", "in sub suite", "passes on second test"],
+        outcome: "passed"
+      },
       { path: ["suite", "with set up and tear down", "set up is called"], outcome: "passed" },
       { path: ["suite", "can execute in parallel", "test1"], outcome: "passed" },
       { path: ["suite", "can execute in parallel", "test2"], outcome: "passed" },
       {
         path: ["suite", "with failing before each hook", "test", "hook that fails (hook)"],
+        outcome: "failed",
+        err: "fail-sync"
+      },
+      {
+        path: ["suite", "with failing before each hook", "test"],
         outcome: "failed",
         err: "fail-sync"
       },
