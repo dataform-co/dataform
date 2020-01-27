@@ -47,17 +47,37 @@ export class Test {
 
   public async run(ctx: IRunContext) {
     let lastResult: IRunResult;
+    const path = [...ctx.path, this.options.name];
     const retries = this.options.retries || 0;
     for (let i = 0; i <= retries; i++) {
       let timer: NodeJS.Timer;
       const timeout = this.options.timeout || Test.DEFAULT_TIMEOUT_MILLIS;
       const result: IRunResult = {
-        path: [...ctx.path, this.options.name],
+        path,
         outcome: "failed"
       };
       try {
         await Promise.race([
-          this.fn(),
+          (async () => {
+            const hookCtx = {
+              ...ctx,
+              path
+            };
+            for (const beforeEach of ctx.beforeEaches) {
+              await beforeEach.run(hookCtx);
+            }
+            try {
+              // Run the test.
+              await this.fn();
+            } catch (e) {
+              throw e;
+            } finally {
+              // Always run the after eaches.
+              for (const afterEach of ctx.afterEaches) {
+                await afterEach.run(hookCtx);
+              }
+            }
+          })(),
           new Promise((_, reject) => {
             timer = setTimeout(() => {
               result.outcome = "timeout";
