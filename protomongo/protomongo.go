@@ -1,8 +1,10 @@
 package protomongo
 
 import (
+	"fmt"
 	"reflect"
 	"strconv"
+	"strings"
 
 	"github.com/golang/protobuf/descriptor"
 	"github.com/golang/protobuf/proto"
@@ -42,7 +44,7 @@ func (pc *ProtobufCodec) EncodeValue(ectx bsoncodec.EncodeContext, vw bsonrw.Val
 			}
 
 			// Actually encode the tag/value.
-			fvw, err := dw.WriteDocumentElement(strconv.Itoa(tag))
+			fvw, err := dw.WriteDocumentElement(TagToElementName(tag))
 			if err != nil {
 				return err
 			}
@@ -90,8 +92,9 @@ func (pc *ProtobufCodec) DecodeValue(ectx bsoncodec.DecodeContext, vr bsonrw.Val
 			return err
 		}
 
-		prop, isProp := indexedProps[f]
-		oneof, isOneof := indexedOneofProps[f]
+		tag := elementNameToTag(f)
+		prop, isProp := indexedProps[tag]
+		oneof, isOneof := indexedOneofProps[tag]
 
 		// Skip any field that we don't recognize.
 		if !isProp && !isOneof {
@@ -131,4 +134,16 @@ func oneofNames(pb descriptor.Message) map[string]bool {
 		names[*oneof.Name] = true
 	}
 	return names
+}
+
+const (
+	tagPrefix = "PBTag_"
+)
+
+func TagToElementName(tag int) string {
+	return fmt.Sprintf("%v%v", tagPrefix, tag)
+}
+
+func elementNameToTag(elementName string) string {
+	return strings.Replace(elementName, tagPrefix, "", 1)
 }
