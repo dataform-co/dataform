@@ -1,5 +1,6 @@
+import * as http from "http";
 import * as http2 from "http2";
-import { promisify } from "util";
+import * as url from "url";
 
 const GRPC_CONTENT_TYPE = "application/grpc";
 const GRPC_WEB_CONTENT_TYPE = "application/grpc-web";
@@ -9,6 +10,7 @@ export interface IGrpcWebProxyOptions {
   backend: string;
   port: number;
   secure?:
+    | "http1"
     | "fake-https"
     | "insecure"
     | {
@@ -18,18 +20,22 @@ export interface IGrpcWebProxyOptions {
 }
 
 export class GrpcWebProxy {
-  private webServer: http2.Http2Server;
+  private webServer: http2.Http2Server | http.Server;
   private grpcClient: http2.ClientHttp2Session;
   private isShutdown: boolean;
 
   constructor(options: IGrpcWebProxyOptions) {
     // Set defaults.
-    options = { secure: "fake-https", ...options };
+    options = { secure: "http1", ...options };
 
     // Create the server.
     this.webServer =
-      // As this is http2 server, most browsers require it to be https, so this is the default.
-      options.secure === "fake-https"
+      options.secure === "http1"
+        ? http
+            .createServer((req, res) => this.handleHttp1GrpcWebRequest(req, res))
+            .listen(options.port)
+        : // As this is http2 server, most browsers require it to be https, so this is the default.
+        options.secure === "fake-https"
         ? http2.createSecureServer({ key: FAKE_KEY, cert: FAKE_CERT }).listen(options.port)
         : options.secure === "insecure"
         ? http2.createServer().listen(options.port)
@@ -37,7 +43,7 @@ export class GrpcWebProxy {
 
     // Handle requests.
     this.webServer.on("stream", (stream, headers) => {
-      this.handleGrpcWebRequest(stream, headers);
+      this.handleHttp2GrpcWebRequest(stream, headers);
     });
 
     // Constantly try to connect to the backend.
@@ -69,7 +75,72 @@ export class GrpcWebProxy {
     }
   }
 
-  private handleGrpcWebRequest(
+  private handleHttp1GrpcWebRequest(
+    webRequest: http.IncomingMessage,
+    webResponse: http.ServerResponse
+  ) {
+    const webHeaders = webRequest.headers;
+    try {
+      // CORS requests.
+      if (webRequest.method === "OPTIONS") {
+        webResponse.writeHead(200, corsResponseAllowOrigin(webHeaders));
+        webResponse.end();
+        return;
+      }
+
+      // gRPC-web requests.
+      const grpcRequestHeaders = {
+        ...cleanRequestHeaders(webHeaders),
+        // Copy over some sudo HTTP2 headers.
+        ":path": url.parse(webRequest.url).pathname,
+        ":method": webRequest.method
+      };
+      const grpcRequest = this.grpcClient.request(grpcRequestHeaders);
+
+      // We can't write immediately, as we need to write HTTP1 headers first.
+      // Save up response chunks and write them when we can.
+      const earlyChunks: any[] = [];
+      let writtenHead = false;
+      webRequest.pipe(grpcRequest);
+
+      webRequest.on("close", () => {
+        grpcRequest.end();
+      });
+
+      grpcRequest.on("response", headers => {
+        // Write out headers.
+        writtenHead = true;
+        webResponse.writeHead(200, cleanResponseHeaders(headers, webHeaders.origin));
+        earlyChunks.forEach(chunk => webResponse.write(chunk));
+      });
+      grpcRequest.on("trailers", headers => {
+        const trailerChunk = trailersToPayload(headers);
+        if (writtenHead) {
+          webResponse.write(trailerChunk);
+        } else {
+          earlyChunks.push(trailerChunk);
+        }
+      });
+      grpcRequest.on("data", chunk => {
+        if (writtenHead) {
+          webResponse.write(chunk);
+        } else {
+          earlyChunks.push(chunk);
+        }
+      });
+      grpcRequest.on("error", e => {
+        webResponse.end();
+      });
+      grpcRequest.on("end", () => {
+        webResponse.end();
+      });
+    } catch (e) {
+      webResponse.end();
+      console.error(e);
+    }
+  }
+
+  private handleHttp2GrpcWebRequest(
     webStream: http2.ServerHttp2Stream,
     webHeaders: http2.IncomingHttpHeaders
   ) {
@@ -150,6 +221,10 @@ function cleanRequestHeaders(webHeaders: http2.IncomingHttpHeaders): http2.Outgo
   const grpcRequestHeaders: http2.OutgoingHttpHeaders = { ...webHeaders };
   grpcRequestHeaders["content-type"] = contentType.replace(incomingContentType, GRPC_CONTENT_TYPE);
   delete grpcRequestHeaders["content-length"];
+  // These are HTTP1 headers that aren't allowed in a HTTP2 request.
+  delete grpcRequestHeaders.host;
+  delete grpcRequestHeaders.connection;
+
   grpcRequestHeaders.protomajor = 2;
   grpcRequestHeaders.protominor = 0;
   grpcRequestHeaders.te = "trailers";

@@ -22,8 +22,10 @@ if (argv.secure === "insecure") {
     key: fs.readFileSync(argv["ssl-key-path"], "utf8"),
     cert: fs.readFileSync(argv["ssl-cert-path"], "utf8")
   };
-} else {
+} else if (argv.secure === "fake-https") {
   options.secure = "fake-https";
+} else {
+  options.secure = "http1";
 }
 
 const _ = new GrpcWebProxy(options);
