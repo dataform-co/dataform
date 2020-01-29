@@ -6,17 +6,15 @@ const GRPC_CONTENT_TYPE = "application/grpc";
 const GRPC_WEB_CONTENT_TYPE = "application/grpc-web";
 const GRPC_WEB_TEXT_CONTENT_TYPE = "application/grpc-web-text";
 
+export const Mode = ["http1-insecure", "http2-insecure", "http2-fake-https", "http2-secure"] as const;
+export type Mode = typeof Mode[number];
+
 export interface IGrpcWebProxyOptions {
   backend: string;
   port: number;
-  secure?:
-    | "http1"
-    | "fake-https"
-    | "insecure"
-    | {
-        key: string;
-        cert: string;
-      };
+  mode?: Mode;
+  key?: string;
+  cert?: string;
 }
 
 export class GrpcWebProxy {
@@ -26,20 +24,20 @@ export class GrpcWebProxy {
 
   constructor(options: IGrpcWebProxyOptions) {
     // Set defaults.
-    options = { secure: "http1", ...options };
+    options = { mode: "http1-insecure", ...options };
 
     // Create the server.
     this.webServer =
-      options.secure === "http1"
+      options.mode === "http1-insecure"
         ? http
             .createServer((req, res) => this.handleHttp1GrpcWebRequest(req, res))
             .listen(options.port)
         : // As this is http2 server, most browsers require it to be https, so this is the default.
-        options.secure === "fake-https"
+        options.mode === "http2-fake-https"
         ? http2.createSecureServer({ key: FAKE_KEY, cert: FAKE_CERT }).listen(options.port)
-        : options.secure === "insecure"
+        : options.mode === "http2-insecure"
         ? http2.createServer().listen(options.port)
-        : http2.createSecureServer({ ...options.secure }).listen(options.port);
+        : http2.createSecureServer({ key: options.key, cert: options.cert }).listen(options.port);
 
     // Handle requests.
     this.webServer.on("stream", (stream, headers) => {
