@@ -24,18 +24,18 @@ To start the proxy, you must set a backend address (the gRPC service you want to
 npx grpc-web-proxy --backend http://localhost:1234 --port 8000
 ```
 
-By default this will run an HTTPS server using fake credentials, as most browsers require HTTPS for HTTP2.
+By default this will run an insecure HTTP/1 server.
 
-To run a normal http server anyway:
+To run an insecure HTTP2 server:
 
 ```bash
-npx grpc-web-proxy --backend http://localhost:1234 --port 8000 --secure insecure
+npx grpc-web-proxy --backend http://localhost:1234 --port 8000 --mode http2-insecure
 ```
 
-To provide your own certs:
+To provide your own certs for a HTTP/2 server:
 
 ```bash
-npx grpc-web-proxy --backend http://localhost:1234 --port 8000 --ssl-key-path somekey.key --ssl-cert-path somecert.crt
+npx grpc-web-proxy --backend http://localhost:1234 --port 8000 --mode http2-secure --ssl-key-path somekey.key --ssl-cert-path somecert.crt
 ```
 
 ## Usage (Code)
@@ -45,27 +45,33 @@ If you want to run the proxy inside an existing node server, you can do the foll
 ```js
 import { GrpcWebProxy } from "@dataform/grpc-web-proxy";
 
-// Fake HTTPS.
+// Insecure HTTP/1.
 new GrpcWebProxy({
     backend: "http://localhost:1234",
     port: 8000
 });
 
-// Secure.
+// Fake HTTPS/2.
 new GrpcWebProxy({
     backend: "http://localhost:1234",
     port: 8000,
-    secure: {
-        key: ...,
-        cert: ...
-    }
+    mode: "http2-fake-https"
 });
 
-// Insecure.
+// Secure HTTPS/2.
 new GrpcWebProxy({
     backend: "http://localhost:1234",
     port: 8000,
-    secure: "insecure"
+    mode: "http2-secure",
+    key: ...,
+    cert: ...
+});
+
+// Insecure HTTPS/2.
+new GrpcWebProxy({
+    backend: "http://localhost:1234",
+    port: 8000,
+    mode: "http2-insecure"
 });
 ```
 
