@@ -19,7 +19,7 @@ const options: IGrpcWebProxyOptions = {
 };
 
 if (argv.mode) {
-  options.mode = argv.mode;
+  options.mode = argv.mode as any;
 }
 
 if (argv["ssl-key-path"]) {
