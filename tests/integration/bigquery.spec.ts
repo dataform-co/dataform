@@ -62,30 +62,17 @@ suite("@dataform/integration/bigquery", ({ after }) => {
 
     const actionMap = keyBy(executedGraph.actions, v => v.name);
 
-    // Check the status of file execution.
-    const expectedRunStatuses = {
-      successful: [
-        "dataform-integration-tests.df_integration_test_assertions.example_assertion_pass",
-        "dataform-integration-tests.df_integration_test_assertions.example_assertion_uniqueness_pass",
-        "dataform-integration-tests.df_integration_test.example_incremental",
-        "dataform-integration-tests.df_integration_test.example_table",
-        "dataform-integration-tests.df_integration_test.example_view",
-        "dataform-integration-tests.df_integration_test.sample_data_2",
-        "dataform-integration-tests.df_integration_test.sample_data"
-      ],
-      failed: [
-        "dataform-integration-tests.df_integration_test_assertions.example_assertion_uniqueness_fail",
-        "dataform-integration-tests.df_integration_test_assertions.example_assertion_fail"
-      ]
-    };
-
-    expectedRunStatuses.successful.forEach(actionName =>
-      expect(actionMap[actionName].status).equals(dataform.ActionResult.ExecutionStatus.SUCCESSFUL)
-    );
-
-    expectedRunStatuses.failed.forEach(actionName =>
-      expect(actionMap[actionName].status).equals(dataform.ActionResult.ExecutionStatus.FAILED)
-    );
+    // Check the status of action execution.
+    const expectedFailedActions = [
+      "dataform-integration-tests.df_integration_test_assertions.example_assertion_uniqueness_fail",
+      "dataform-integration-tests.df_integration_test_assertions.example_assertion_fail"
+    ];
+    for (const actionName of Object.keys(actionMap)) {
+      const expectedResult = expectedFailedActions.includes(actionName)
+        ? dataform.ActionResult.ExecutionStatus.FAILED
+        : dataform.ActionResult.ExecutionStatus.SUCCESSFUL;
+      expect(actionMap[actionName].status).equals(expectedResult);
+    }
 
     expect(
       actionMap[

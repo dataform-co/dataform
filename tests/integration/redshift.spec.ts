@@ -69,31 +69,17 @@ suite("@dataform/integration/redshift", ({ after }) => {
 
     const actionMap = keyBy(executedGraph.actions, v => v.name);
 
-    // Check the status of file execution.
-    const expectedRunStatuses = {
-      successful: [
-        "df_integration_test_assertions.example_assertion_pass",
-        "df_integration_test_assertions.example_assertion_uniqueness_pass",
-        "df_integration_test.example_incremental",
-        "df_integration_test.example_table",
-        "df_integration_test.example_view",
-        "df_integration_test.load_from_s3",
-        "df_integration_test.sample_data_2",
-        "df_integration_test.sample_data"
-      ],
-      failed: [
-        "df_integration_test_assertions.example_assertion_uniqueness_fail",
-        "df_integration_test_assertions.example_assertion_fail"
-      ]
-    };
-
-    expectedRunStatuses.successful.forEach(actionName =>
-      expect(actionMap[actionName].status).equals(dataform.ActionResult.ExecutionStatus.SUCCESSFUL)
-    );
-
-    expectedRunStatuses.failed.forEach(actionName =>
-      expect(actionMap[actionName].status).equals(dataform.ActionResult.ExecutionStatus.FAILED)
-    );
+    // Check the status of action execution.
+    const expectedFailedActions = [
+      "df_integration_test_assertions.example_assertion_uniqueness_fail",
+      "df_integration_test_assertions.example_assertion_fail"
+    ];
+    for (const actionName of Object.keys(actionMap)) {
+      const expectedResult = expectedFailedActions.includes(actionName)
+        ? dataform.ActionResult.ExecutionStatus.FAILED
+        : dataform.ActionResult.ExecutionStatus.SUCCESSFUL;
+      expect(actionMap[actionName].status).equals(expectedResult);
+    }
 
     expect(
       actionMap["df_integration_test_assertions.example_assertion_uniqueness_fail"].tasks[1]

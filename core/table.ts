@@ -10,6 +10,7 @@ import { Contextable } from "@dataform/core/common";
 import { mapToColumnProtoArray, Session } from "@dataform/core/session";
 import * as utils from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
+import { AssertionContext } from "df/core/assertion";
 
 /**
  * @hidden
@@ -152,7 +153,15 @@ export interface ITableConfig extends ITargetableConfig, IDocumentableConfig, ID
    * Azure SQL Data Warehouse-specific options.
    */
   sqldatawarehouse?: ISQLDataWarehouseOptions;
+
+  assertions?: {
+    uniqueKeys?: StringOrStrings[];
+    nonNull?: string[];
+    rowConditions?: string[];
+  };
 }
+
+type StringOrStrings = string | string[];
 
 /**
  * Context methods are available when evaluating contextable SQL code, such as
@@ -241,6 +250,9 @@ export class Table {
     }
     if (config.schema) {
       this.schema(config.schema);
+    }
+    if (config.assertions) {
+      this.assertions(config.assertions);
     }
 
     return this;
@@ -348,6 +360,44 @@ export class Table {
       schema,
       this.proto.target.database
     );
+    return this;
+  }
+
+  public assertions({
+    uniqueKeys,
+    nonNull,
+    rowConditions
+  }: {
+    uniqueKeys?: StringOrStrings[];
+    nonNull?: string[];
+    rowConditions?: string[];
+  }) {
+    for (const uniqueKey of uniqueKeys || []) {
+      const allCols = typeof uniqueKey === "string" ? [uniqueKey] : uniqueKey;
+      const commaSeparatedColumns = allCols.join(", ");
+      this.session.assert(
+        `${this.proto.target.name}_assertions_uniqueKeys_${allCols.join("_")}`,
+        ctx =>
+          `SELECT * FROM (SELECT ${commaSeparatedColumns}, COUNT(1) AS unique_key_count FROM ${ctx.ref(
+            this.proto.target
+          )} GROUP BY ${commaSeparatedColumns}) AS data WHERE unique_key_count > 1`
+      );
+    }
+    for (const nonNullCol of nonNull || []) {
+      this.session.assert(
+        `${this.proto.target.name}_assertions_nonNull_${nonNullCol}`,
+        ctx => `SELECT ${nonNullCol} FROM ${ctx.ref(this.proto.target)} WHERE ${nonNullCol} IS NULL`
+      );
+    }
+    if (!!rowConditions) {
+      this.session.assert(
+        `${this.proto.target.name}_assertions_rowConditions`,
+        ctx =>
+          `SELECT * FROM ${ctx.ref(this.proto.target)} WHERE ${rowConditions
+            .map(rowCondition => `NOT (${rowCondition})`)
+            .join(" OR ")}`
+      );
+    }
     return this;
   }
 
