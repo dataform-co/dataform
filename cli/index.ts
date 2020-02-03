@@ -36,7 +36,7 @@ import * as yargs from "yargs";
 const RECOMPILE_DELAY = 500;
 
 process.on("unhandledRejection", reason =>
-  printError("Unhandled promise rejection:", reason.stack || reason)
+  printError(`Unhandled promise rejection: ${reason.stack || reason}`)
 );
 
 const projectDirOption: INamedOption<yargs.PositionalOptions> = {
