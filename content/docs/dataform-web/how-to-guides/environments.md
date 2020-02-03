@@ -2,6 +2,10 @@
 title: Environments
 ---
 
+<div className="bp3-callout bp3-icon-info-sign" markdown="1">
+  Environments require <code>@dataform/core >= 1.4.9</code>.
+</div>
+
 ## Introduction
 
 Environments can be used to configure different variations of your schedules. **For each environment
