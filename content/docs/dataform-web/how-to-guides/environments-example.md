@@ -12,7 +12,7 @@ This guide will show you how to configure a project with two environments. One e
 
 ## Creating a project with environments
 
-- Create an empty remote repository on a git provider, for example on [GitHub](https://github.com/new). **The repository must be empty** (don't create a README file).
+- Create an empty remote repository on a git provider, for example on [GitHub](https://github.com/new). The repository must be empty (don't create a README file). Alternatively if adding environments to a project that is already linked to a remote git provider, skip to adding the environments file.
 
 - Go on the [dataform web app](https://app.dataform.co/).
 
@@ -71,6 +71,6 @@ This file descibes <b>replacing the production branch on dataform as a staging e
 
 - In the remote repository, merge master (the staging environment) in to the production branch (the production environment). Both production and staging will now be running the same files on the same schedule, as they are identical.
 
-  - The modelling overview page will show both the staging and production environment schedules.
+  - The modelling overview page will now show both the staging and production environment schedules.
 
   - The run logs will now indicate the environment as either staging or production, dependant on where the run was triggered from.
