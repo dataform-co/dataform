@@ -50,7 +50,7 @@ project-dir
 
 ## Define a dataset
 
-The `definitions/` directory should be used for files that define [tables](datasets), [assertions](assertions), and [operations](operations).
+The `definitions/` directory should be used for files that define [tables](../how-to-guides/datasets), [assertions](../how-to-guides/assertions), and [operations](../how-to-guides/operations).
 
 To create a new dataset, create a new file `definitions/example.sqlx`:
 
