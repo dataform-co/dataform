@@ -69,7 +69,7 @@ The concept is that a `production` environment holds the current stable version 
 
 This process has the nice property of requiring that any change to `production` is recorded in an audit trail (i.e. your project's Git commits).
 
-The easiest way to differentiate staging and production data is by using different databases. This is done in the examples by overriding the project config. This is however **not valid in Redshift**; see [Recommended Redshift config overriding](#recommended-redshift-config-overriding).
+The easiest way to differentiate staging and production data is by using different databases. This is done in the examples by overriding the project config. This is however **not valid in Redshift or Snowflake**; see [Config schema overriding](#config-schema-overriding).
 
 ### Configuration via commit SHA
 
@@ -145,9 +145,9 @@ In this configuration:
 
 To update the version of the project running in `production`, merge the `master` branch in to the `production` branch.
 
-### Recommended Redshift config overriding
+### Config schema overriding
 
-Redshift does not configure multiple databases like alternative providers. Overriding schemas instead of databases are a good solution to this. For example:
+Redshift and Snowflake do not configure multiple databases like alternative providers. Overriding the schema suffix instead of databases are a good solution to this. For example:
 
 ```json
 {
@@ -158,8 +158,7 @@ Redshift does not configure multiple databases like alternative providers. Overr
         "branch": "master"
       },
       "configOverride": {
-        "defaultSchema": "dataform_staging",
-        "assertionSchema": "dataform_assertions_staging"
+        "schemaSuffix": "dataform_staging"
       }
     },
     {
@@ -168,8 +167,7 @@ Redshift does not configure multiple databases like alternative providers. Overr
         "branch": "production"
       },
       "configOverride": {
-        "defaultSchema": "dataform_prod",
-        "assertionSchema": "dataform_assertions_prod"
+        "schemaSuffix": "dataform_production"
       }
     }
   ]
