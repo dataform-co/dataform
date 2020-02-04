@@ -69,11 +69,13 @@ The concept is that a `production` environment holds the current stable version 
 
 This process has the nice property of requiring that any change to `production` is recorded in an audit trail (i.e. your project's Git commits).
 
+The easiest way to differentiate staging and production data is by using different databases. This is done in the examples by overriding the project config. This is however **not valid in Redshift**; see [Recommended Redshift config overriding](#recommended-redshift-config-overriding).
+
 ### Configuration via commit SHA
 
 In this configuration:
 
-- the `production` environment is locked to a specific Git commit
+- the `production` environment is locked to a specific Git commitproduction data
 
 - the `staging` environment runs the project's schedules at the latest version of the project's code (as exists on the `master` branch)
 
@@ -86,8 +88,7 @@ In this configuration:
         "branch": "master"
       },
       "configOverride": {
-        "defaultSchema": "dataform_staging",
-        "assertionSchema": "dataform_assertions_staging"
+        "defaultDatabase": "dataform_staging"
       }
     },
     {
@@ -96,20 +97,19 @@ In this configuration:
         "commitSha": -[Production commit sha here]-
       },
       "configOverride": {
-        "defaultSchema": "dataform_prod",
-        "assertionSchema": "dataform_assertions_prod"
+        "defaultDatabase": "dataform_production"
       }
     }
   ]
 }
 ```
 
-To update the version of the project running in `production`, change the value of `commitSha`, and then push that change to your `master` branch.
+To update the version of the project running in `production`, change the value of `commitSha`, and then push that change to your `master` branch. On GitHub the commit sha can be found by opening the project page, clicking commits, then copying the desired sha from the presented list of commits.
 
 ### Configuration via branches
 
 <div className="bp3-callout bp3-icon-info-sign" markdown="1">
-  Branches seen on dataform are not remote git branches, but part of our interal data pipeline system. Because of this, a <code>branch</code> specified in a <code>gitReference</code> won't point a branch on dataform, with the exception of the master branch.
+  Branches seen on dataform are not remote git branches, but are only used for local development. Because of this, a <code>branch</code> specified in a <code>gitReference</code> won't point a branch on dataform, with the exception of the master branch.
 </div>
 
 In this configuration:
@@ -117,6 +117,37 @@ In this configuration:
 - the `production` environment is locked to a specific remote git branch
 
 - the `staging` environment runs the project's schedules at the latest version of the project's code (as exists on the `master` branch)
+
+```json
+{
+  "environments": [
+    {
+      "name": "staging",
+      "gitReference": {
+        "branch": "master"
+      },
+      "configOverride": {
+        "defaultDatabase": "dataform_staging"
+      }
+    },
+    {
+      "name": "production",
+      "gitReference": {
+        "branch": "production"
+      },
+      "configOverride": {
+        "defaultDatabase": "dataform_production"
+      }
+    }
+  ]
+}
+```
+
+To update the version of the project running in `production`, merge the `master` branch in to the `production` branch.
+
+### Recommended Redshift config overriding
+
+Redshift does not configure multiple databases like alternative providers. Overriding schemas instead of databases are a good solution to this. For example:
 
 ```json
 {
@@ -144,5 +175,3 @@ In this configuration:
   ]
 }
 ```
-
-To update the version of the project running in `production`, merge the `master` branch in to the `production` branch.
