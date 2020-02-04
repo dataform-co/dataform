@@ -6,6 +6,10 @@ title: Environments
   Environments require <code>@dataform/core >= 1.4.9</code>.
 </div>
 
+<div className="bp3-callout bp3-icon-info-sign" markdown="1">
+  Environments are an advanced feature. To get the most out of them, the <b>use of an external remote git provider is recommended</b>. This will make it easier to view specific commit SHAs, create remote git branches, create pull requests and code review, and manage a staging to production configuration.
+</div>
+
 ## Introduction
 
 Environments can be used to configure different variations of your schedules. **For each environment
@@ -49,7 +53,7 @@ This `staging` environment runs the code (and schedules) on the project's `maste
 `defaultSchema` and `assertionSchema` to isolate `staging` schedule runs from those in other environments.
 
 Note that Dataform uses the `environments.json` file on your `master` branch to determine your project's environments.
-Any changes to your environments must be pushed to `master` before Dataform will take note of those changes.
+**Any changes to your environments must be pushed to `master` before Dataform will take note of those changes**.
 
 <div className="bp3-callout bp3-icon-info-sign bp3-intent-warning" markdown="1">
   If your project has a missing or empty <code>environments.json</code> file, Dataform uses a
@@ -57,9 +61,62 @@ Any changes to your environments must be pushed to `master` before Dataform will
   configuration overrides.
 </div>
 
-## Multiple environments
+## Example staging to production using environments
 
-Once your team or project outgrows the default environment configuration, a typical configuration might look like the following:
+In these paradigms, changes to the `production` environment are tightly controlled.
+
+The concept is that a `production` environment holds the current stable version being used, while recent changes are stored in a `staging` environment. Once stable, `staging` can be merged in to `production` (which may require a pull request, depending on your project's settings).
+
+This process has the nice property of requiring that any change to `production` is recorded in an audit trail (i.e. your project's Git commits).
+
+### Configuration via commit SHA
+
+In this configuration:
+
+- the `production` environment is locked to a specific Git commit
+
+- the `staging` environment runs the project's schedules at the latest version of the project's code (as exists on the `master` branch)
+
+```json
+{
+  "environments": [
+    {
+      "name": "staging",
+      "gitReference": {
+        "branch": "master"
+      },
+      "configOverride": {
+        "defaultSchema": "dataform_staging",
+        "assertionSchema": "dataform_assertions_staging"
+      }
+    },
+    {
+      "name": "production",
+      "gitReference": {
+        "commitSha": -[Production commit sha here]-
+      },
+      "configOverride": {
+        "defaultSchema": "dataform_prod",
+        "assertionSchema": "dataform_assertions_prod"
+      }
+    }
+  ]
+}
+```
+
+To update the version of the project running in `production`, change the value of `commitSha`, and then push that change to your `master` branch.
+
+### Configuration via branches
+
+<div className="bp3-callout bp3-icon-info-sign" markdown="1">
+  Branches seen on dataform are not remote git branches, but part of our interal data pipeline system. Because of this, a <code>branch</code> specified in a <code>gitReference</code> won't point a branch on dataform, with the exception of the master branch.
+</div>
+
+In this configuration:
+
+- the `production` environment is locked to a specific remote git branch
+
+- the `staging` environment runs the project's schedules at the latest version of the project's code (as exists on the `master` branch)
 
 ```json
 {
@@ -88,29 +145,4 @@ Once your team or project outgrows the default environment configuration, a typi
 }
 ```
 
-This configuration defines two environments. The `staging` environment runs the project's schedules at the latest version of the
-project's code (as exists on the `master` branch). When you have confirmed that the code works as expected, you can push those
-schedules to production by merging the `master` branch into the `production` branch.
-
-### Enforcing tighter control on changes to an environment
-
-In some cases it may be preferred to tightly control changes to an environment. For example, you might want to enforce
-that code is only pushed to a `production` environment after a pull request and/or code review.
-
-```json
-{
-  "environments": [
-    {
-      "name": "production",
-      "gitReference": {
-        "commitSha": "67bed6bd4205ce97fa0284086ed70e5bc7f6dd75"
-      }
-    }
-  ]
-}
-```
-
-This example locks the `production` environment to a specific Git commit. To update the version of the project running in
-`production`, you must change the value of `commitSha`, and then push that change to your `master` branch (which may
-require a pull request, depending on your project's settings). This process has the nice property of requiring that any
-change to `production` is recorded in an audit trail (i.e. your project's Git commits).
+To update the version of the project running in `production`, merge the `master` branch in to the `production` branch.
