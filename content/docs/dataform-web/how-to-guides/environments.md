@@ -38,24 +38,23 @@ A simple example of an `environments.json` file is:
     {
       "name": "staging",
       "gitReference": {
-        "branch": "master"
+        "commitSha": "67bed6bd4205ce97fa0284086ed70e5bc7f6dd75"
       },
       "configOverride": {
-        "defaultSchema": "dataform_staging",
-        "assertionSchema": "dataform_assertions_staging"
+        "defaultDatabase": "dataform_staging"
       }
     }
   ]
 }
 ```
 
-This `staging` environment runs the code (and schedules) on the project's `master` branch. It also overrides the values of
-`defaultSchema` and `assertionSchema` to isolate `staging` schedule runs from those in other environments.
+This `staging` environment runs the code (and schedules) on a particular commit sha. It also overrides the values of
+`defaultDatabase` to isolate `staging` schedule runs from those in other environments.
 
 Note that Dataform uses the `environments.json` file on your `master` branch to determine your project's environments.
 **Any changes to your environments must be pushed to `master` before Dataform will take note of those changes**.
 
-<div className="bp3-callout bp3-icon-info-sign bp3-intent-warning" markdown="1">
+<div className="bp3-callout bp3-icon-info-sign" markdown="1">
   If your project has a missing or empty <code>environments.json</code> file, Dataform uses a
   default environment which runs the code on your <code>master</code> branch with no project
   configuration overrides.
@@ -106,48 +105,17 @@ In this configuration:
 
 To update the version of the project running in `production`, change the value of `commitSha`, and then push that change to your `master` branch. On GitHub the commit sha can be found by opening the project page, clicking commits, then copying the desired sha from the presented list of commits.
 
-### Configuration via branches
-
 <div className="bp3-callout bp3-icon-info-sign" markdown="1">
-  Branches seen on dataform are not remote git branches, but are only used for local development. Because of this, a <code>branch</code> specified in a <code>gitReference</code> won't point a branch on dataform, with the exception of the master branch.
+  A branch can be specified instead of a commit sha by using <code>"gitReference": { "branch": -[branch name]- }</code>. This method is <b>strongly not recommended</b> for this paradigm though.
 </div>
 
-In this configuration:
-
-- the `production` environment is locked to a specific remote git branch
-
-- the `staging` environment runs the project's schedules at the latest version of the project's code (as exists on the `master` branch)
-
-```json
-{
-  "environments": [
-    {
-      "name": "staging",
-      "gitReference": {
-        "branch": "master"
-      },
-      "configOverride": {
-        "defaultDatabase": "dataform_staging"
-      }
-    },
-    {
-      "name": "production",
-      "gitReference": {
-        "branch": "production"
-      },
-      "configOverride": {
-        "defaultDatabase": "dataform_production"
-      }
-    }
-  ]
-}
-```
-
-To update the version of the project running in `production`, merge the `master` branch in to the `production` branch.
+<div className="bp3-callout bp3-icon-info-sign" markdown="1">
+  Branches seen on dataform are not remote git branches, but are only used for local development. Because of this, a <code>branch</code> specified in a <code>gitReference</code> won't point to a branch on dataform, with the exception of the master branch.
+</div>
 
 ### Config schema overriding
 
-Redshift and Snowflake do not configure multiple databases like alternative providers. Overriding the schema suffix instead of databases are a good solution to this. For example:
+Another approach to separating production and staging data is to append a suffix to schemas in the `staging` environment. For example
 
 ```json
 {
