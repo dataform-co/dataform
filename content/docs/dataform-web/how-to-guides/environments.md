@@ -110,7 +110,7 @@ To update the version of the project running in `production`, change the value o
 </div>
 
 <div className="bp3-callout bp3-icon-info-sign" markdown="1">
-  Branches seen on dataform are not remote git branches, but are only used for local development. Because of this, a <code>branch</code> specified in a <code>gitReference</code> won't point to a branch on dataform, with the exception of the master branch.
+  Branches seen on dataform are different to remote branches (e.g. a repository branch on GitHub). Because of this, a <code>branch</code> specified in a <code>gitReference</code> won't point to a branch on dataform, with the exception of the master branch.
 </div>
 
 ### Config schema overriding
