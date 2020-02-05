@@ -1,12 +1,15 @@
 #!/usr/bin/env node
-import { GrpcWebProxy, IGrpcWebProxyOptions } from "@dataform/grpc-web-proxy";
+import { GrpcWebProxy, IGrpcWebProxyOptions, Mode } from "@dataform/grpc-web-proxy";
 import * as fs from "fs";
 import * as yargs from "yargs";
 
 const argv = yargs
-  .option("backend", { type: "string" })
+  .option("backend", {
+    type: "string",
+    describe: "URL to the backend such as http://localhost:8000"
+  })
   .option("port", { type: "number" })
-  .option("secure", { type: "string" })
+  .option("mode", { type: "string", choices: [...Mode] })
   .option("ssl-key-path", { type: "string" })
   .option("ssl-cert-path", { type: "string" }).argv;
 
@@ -15,15 +18,13 @@ const options: IGrpcWebProxyOptions = {
   port: argv.port
 };
 
-if (argv.secure === "insecure") {
-  options.secure = "insecure";
-} else if (argv["ssl-key-path"]) {
-  options.secure = {
-    key: fs.readFileSync(argv["ssl-key-path"], "utf8"),
-    cert: fs.readFileSync(argv["ssl-cert-path"], "utf8")
-  };
-} else {
-  options.secure = "fake-https";
+if (argv.mode) {
+  options.mode = argv.mode as any;
+}
+
+if (argv["ssl-key-path"]) {
+  options.key = fs.readFileSync(argv["ssl-key-path"], "utf8");
+  options.cert = fs.readFileSync(argv["ssl-cert-path"], "utf8");
 }
 
 const _ = new GrpcWebProxy(options);
