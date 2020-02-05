@@ -1,5 +1,6 @@
 import { Task, Tasks } from "@dataform/core/tasks";
 import { dataform } from "@dataform/protos";
+import * as semver from "semver";
 
 export abstract class Adapter {
   constructor(protected readonly dataformCoreVersion: string) {}
@@ -57,7 +58,7 @@ from (${query}) as insertions`;
   ): Task[] {
     let preOps = table.preOps;
     if (
-      this.dataformCoreVersion > "1.4.8" &&
+      semver.gt(this.dataformCoreVersion, "1.4.8") &&
       table.type === "incremental" &&
       this.shouldWriteIncrementally(runConfig, tableMetadata)
     ) {
@@ -73,11 +74,11 @@ from (${query}) as insertions`;
   ): Task[] {
     let postOps = table.postOps;
     if (
-      this.dataformCoreVersion > "1.4.8" &&
+      semver.gt(this.dataformCoreVersion, "1.4.8") &&
       table.type === "incremental" &&
       this.shouldWriteIncrementally(runConfig, tableMetadata)
     ) {
-      postOps = table.incrementalPreOps;
+      postOps = table.incrementalPostOps;
     }
     return (postOps || []).map(post => Task.statement(post));
   }
