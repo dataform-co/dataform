@@ -9,6 +9,7 @@ export interface IRunResult {
 }
 
 export interface IRunContext {
+  testNameMatcher: RegExp;
   path: string[];
   results: IRunResult[];
   beforeEaches: Hook[];
@@ -37,9 +38,10 @@ export class Runner {
     try {
       // We tell the runner to start running at the end of current block of
       // synchronously executed code. This will typically be after all the
-      // suite definitions are evaluated. This is equivelant to setTimeout(..., 0).
+      // suite definitions are evaluated. This is equivalent to setTimeout(..., 0).
       await promisify(process.nextTick)();
       const ctx: IRunContext = {
+        testNameMatcher: new RegExp(process.env.TESTBRIDGE_TEST_ONLY) || /.*/,
         path: [],
         results: [],
         beforeEaches: [],
@@ -48,13 +50,6 @@ export class Runner {
 
       await Promise.all([...this.topLevelSuites].map(suite => suite.run(ctx)));
 
-      if (ctx.results.length === 0) {
-        ctx.results.push({
-          path: [],
-          err: new Error("No tests found in top level test suite."),
-          outcome: "failed"
-        });
-      }
       const indent = (value: string, levels = 4) =>
         value
           .split("\n")

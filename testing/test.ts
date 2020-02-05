@@ -46,9 +46,12 @@ export class Test {
   constructor(public readonly options: ITestOptions, private readonly fn: () => any) {}
 
   public async run(ctx: IRunContext) {
-    let lastResult: IRunResult;
     const path = [...ctx.path, this.options.name];
+    if (!path.some(pathPart => pathPart.match(ctx.testNameMatcher))) {
+      return;
+    }
     const retries = this.options.retries || 0;
+    let lastResult: IRunResult;
     for (let i = 0; i <= retries; i++) {
       let timer: NodeJS.Timer;
       const timeout = this.options.timeout || Test.DEFAULT_TIMEOUT_MILLIS;
