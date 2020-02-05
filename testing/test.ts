@@ -47,7 +47,7 @@ export class Test {
 
   public async run(ctx: IRunContext) {
     const path = [...ctx.path, this.options.name];
-    if (!path.some(pathPart => pathPart.match(ctx.testNameMatcher))) {
+    if (!path.join(" > ").match(ctx.testNameMatcher)) {
       return;
     }
     const retries = this.options.retries || 0;
