@@ -148,10 +148,10 @@ export class SnowflakeDbAdapter implements IDbAdapter {
     return rows;
   }
 
-  public async prepareSchema(schema: string): Promise<void> {
+  public async prepareSchema(database: string, schema: string): Promise<void> {
     const schemas = await this.schemas();
     if (!schemas.includes(schema)) {
-      await this.execute(`create schema if not exists "${schema}"`);
+      await this.execute(`create schema if not exists "${database}"."${schema}"`);
     }
   }
 

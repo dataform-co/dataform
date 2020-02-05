@@ -103,15 +103,27 @@ export class Runner {
     await this.triggerChange();
 
     // Work out all the schemas we are going to need to create first.
-    const uniqueSchemas: { [schema: string]: boolean } = {};
+    const databaseSchemas = new Map<string, Set<string>>();
     this.graph.actions
-      .filter(action => !!action.target)
-      .map(action => action.target.schema)
-      .filter(schema => !!schema)
-      .forEach(schema => (uniqueSchemas[schema] = true));
+      .filter(action => !!action.target && !!action.target.schema)
+      .forEach(({ target }) => {
+        // This field may not be present for older versions of dataform.
+        const trueDatabase = target.database || this.graph.projectConfig.defaultDatabase;
+        if (databaseSchemas.has(target.database)) {
+          databaseSchemas.set(trueDatabase, new Set<string>());
+        }
+        databaseSchemas.get(trueDatabase).add(target.schema);
+      });
 
     // Wait for all schemas to be created.
-    await Promise.all(Object.keys(uniqueSchemas).map(schema => this.adapter.prepareSchema(schema)));
+    await Promise.all(
+      Array.from(databaseSchemas).map(
+        async ([database, schemas]) =>
+          await Promise.all(
+            Array.from(schemas).map(schema => this.adapter.prepareSchema(database, schema))
+          )
+      )
+    );
 
     // Recursively execute all actions as they become executable.
     await this.executeAllActionsReadyForExecution();

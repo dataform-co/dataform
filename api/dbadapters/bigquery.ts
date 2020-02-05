@@ -158,16 +158,16 @@ export class BigQueryDbAdapter implements IDbAdapter {
     return rows;
   }
 
-  public async prepareSchema(schema: string): Promise<void> {
+  public async prepareSchema(database: string, schema: string): Promise<void> {
     const location = this.bigQueryCredentials.location || "US";
 
     let metadata;
     try {
-      const data = await this.client.dataset(schema).getMetadata();
+      const data = await this.client.dataset(`${database}:${schema}`).getMetadata();
       metadata = data[0];
     } catch (e) {
       // If metadata call fails, it probably doesn't exist. So try to create it.
-      await this.client.createDataset(schema, { location });
+      await this.client.createDataset(`${database}:${schema}`, { location });
       return;
     }
 
