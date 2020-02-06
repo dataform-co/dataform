@@ -27,6 +27,6 @@ ts_test_suite(
         "@npm//@types/diff",
         "@npm//@types/chai",
         "@npm//diff",
-        "@npm//chai",
+        "@npm//chai"
     ],
 )

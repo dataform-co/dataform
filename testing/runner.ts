@@ -97,16 +97,22 @@ export class Runner {
               console.error(`\n    Actual:\n`);
               console.error(indent(JSON.stringify(result.err.actual, null, 4), 8));
             }
-            console.error(`\n    Overall diff:`);
-            Diff.diffLines(
-              indent(JSON.stringify(result.err.expected)),
-              indent(JSON.stringify(result.err.actual))
-            ).forEach(diff => {
+            if (result.err.actual && result.err.expected) {
               console.error(
-                `Line ${diff.count}, ${diff.removed ? "expected" : "but instead got"}:`
+                `\n    Overall diff (\x1b[32mexpected\x1b[0m, \x1b[31mactual\x1b[0m):\n`
               );
-              console.error(`${diff.value}`);
-            });
+              const diffs = Diff.diffLines(
+                indent(JSON.stringify(result.err.expected, null, 4)),
+                indent(JSON.stringify(result.err.actual, null, 4))
+              );
+              diffs.forEach(diff => {
+                // This diff won't show well for users with either default green or red text.
+                const colorPrefix = diff.added ? `\x1b[31m` : diff.removed ? "\x1b[32m" : "\x1b[0m";
+                console.error(`${colorPrefix}${diff.value.replace(/^|\n$/g, "")}`);
+              });
+            }
+            // Ensure color is reset.
+            console.error(`\x1b[0m`);
           }
         }
       }
