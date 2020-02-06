@@ -287,7 +287,7 @@ suite("@dataform/core", () => {
       ).to.have.deep.members(expectedResults);
     });
 
-    suite("validation_bigquery_fail", () => {
+    test("validation_bigquery_fail", () => {
       const session = new Session(path.dirname(__filename), TestConfigs.bigquery);
       session.publish("example_partitionBy_view_fail", {
         type: "view",
@@ -308,16 +308,16 @@ suite("@dataform/core", () => {
       expect(
         gErrors.validationErrors
           .filter(item => item.actionName === "schema.example_partitionBy_view_fail")
-          .map(item => item.message)[0]
-      ).to.deep.equal(
+          .map(item => item.message)
+      ).to.deep.equal([
         `partitionBy/clusterBy are not valid for BigQuery views; they are only valid for tables`
-      );
+      ]);
 
       expect(
         gErrors.validationErrors
           .filter(item => item.actionName === "schema.example_clusterBy_but_no_partitionBy_fail")
-          .map(item => item.message)[0]
-      ).to.deep.equal(`clusterBy is not valid without partitionBy`);
+          .map(item => item.message)
+      ).to.deep.equal([`clusterBy is not valid without partitionBy`]);
     });
 
     test("validation_type_inline", () => {

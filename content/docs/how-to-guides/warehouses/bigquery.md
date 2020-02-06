@@ -30,7 +30,7 @@ PARTITION BY DATE(ts)
 AS (SELECT CURRENT_TIMESTAMP() AS ts)
 ```
 
-If desired, partitions can be clustered by using the `clusterBy` field, for example:
+If desired, partitions can be clustered by using the `clusterBy` option, for example:
 
 ```js
 config {
