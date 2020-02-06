@@ -102,6 +102,13 @@ const _ = (async () => {
           throw new Error("fail-sync");
         });
       });
+
+      test("git diffs flagged", () => {
+        const actual = { test: `123\nasd`, test2: `1231`, test3: `12313` };
+        const expected = { test: `143\nasd`, test2: `1231` };
+        expect(actual).to.deep.equal(expected);
+        expect(true).to.equal(false);
+      });
     });
 
     const results = await Runner.result();

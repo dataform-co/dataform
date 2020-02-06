@@ -101,15 +101,17 @@ export class Runner {
               console.error(
                 `\n    Overall diff (\x1b[32mexpected\x1b[0m, \x1b[31mactual\x1b[0m):\n`
               );
-              const diffs = Diff.diffLines(
+              const diffs = Diff.diffChars(
                 indent(JSON.stringify(result.err.expected, null, 4)),
                 indent(JSON.stringify(result.err.actual, null, 4))
               );
+              let toLog = "";
               diffs.forEach(diff => {
                 // This diff won't show well for users with either default green or red text.
                 const colorPrefix = diff.added ? `\x1b[31m` : diff.removed ? "\x1b[32m" : "\x1b[0m";
-                console.error(`${colorPrefix}${diff.value.replace(/^|\n$/g, "")}`);
+                toLog += `${colorPrefix}${diff.value}`;
               });
+              console.error(toLog);
             }
             // Ensure color is reset.
             console.error(`\x1b[0m`);
