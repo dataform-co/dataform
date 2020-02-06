@@ -1,5 +1,6 @@
 import { Hook, Suite } from "@dataform/testing";
 import chalk from "chalk";
+import * as Diff from "diff";
 import { promisify } from "util";
 
 export interface IRunResult {
@@ -96,7 +97,16 @@ export class Runner {
               console.error(`\n    Actual:\n`);
               console.error(indent(JSON.stringify(result.err.actual, null, 4), 8));
             }
-            console.error("\n");
+            console.error(`\n    Overall diff:`);
+            Diff.diffLines(
+              indent(JSON.stringify(result.err.expected)),
+              indent(JSON.stringify(result.err.actual))
+            ).forEach(diff => {
+              console.error(
+                `Line ${diff.count}, ${diff.removed ? "expected" : "but instead got"}:`
+              );
+              console.error(`${diff.value}`);
+            });
           }
         }
       }
