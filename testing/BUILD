@@ -14,6 +14,8 @@ ts_library(
         "@npm//chalk",
         "@npm//@types/diff",
         "@npm//diff",
+        "@npm//@types/json-stable-stringify",
+        "@npm//json-stable-stringify",
     ],
 )
 
@@ -26,7 +28,9 @@ ts_test_suite(
         ":testing",
         "@npm//@types/diff",
         "@npm//@types/chai",
+        "@npm//@types/json-stable-stringify",
+        "@npm//json-stable-stringify",
         "@npm//diff",
-        "@npm//chai"
+        "@npm//chai",
     ],
 )
