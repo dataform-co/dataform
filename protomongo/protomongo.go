@@ -45,7 +45,7 @@ func (pc *protobufCodec) EncodeValue(ectx bsoncodec.EncodeContext, vw bsonrw.Val
 	for _, prop := range ph.oneofFieldWrapperProps {
 		fVal := val.FieldByName(prop.Name)
 		if !fVal.IsZero() {
-			// If this field is a oneof, we need to get the single Go value stored inside its oneof struct,
+			// Since this field is a oneof, we need to get the single Go value stored inside its oneof wrapper struct,
 			// instead of simply using the value as-is.
 			oneof := fVal.Elem().Elem()
 			singleProp := proto.GetProperties(oneof.Type()).Prop[0]
