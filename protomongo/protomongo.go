@@ -14,7 +14,6 @@ import (
 
 type protobufCodec struct {
 	protoHelpers map[string]*protoHelper
-	// oneOfNamesCache map[string]map[string]bool
 }
 
 // Returns a new instance of protobufCodec. protobufCodec is a MongoDB codec. It encodes protobuf objects using the protobuf
@@ -35,22 +34,8 @@ func (pc *protobufCodec) EncodeValue(ectx bsoncodec.EncodeContext, vw bsonrw.Val
 	}
 
 	ph := pc.protoHelper(origAsDescMsg, val.Type())
-	props := proto.GetProperties(val.Type())
-	indexedProps := make(map[string]*proto.Properties)
-	indexedGoOneofWrapperProps := make([]*proto.Properties, 0)
-	indexedOneofProps := make(map[string]*proto.OneofProperties)
-	for _, prop := range props.Prop {
-		if ph.isOneOf(prop) {
-			indexedGoOneofWrapperProps = append(indexedGoOneofWrapperProps, prop)
-		} else {
-			indexedProps[strconv.Itoa(prop.Tag)] = prop
-		}
-	}
-	for _, oneof := range props.OneofTypes {
-		indexedOneofProps[strconv.Itoa(oneof.Prop.Tag)] = oneof
-	}
 
-	for _, prop := range indexedProps {
+	for _, prop := range ph.nonOneofPropsByTag {
 		fVal := val.FieldByName(prop.Name)
 		if !fVal.IsZero() {
 			// Figure out what tag and what value we are encoding.
@@ -71,7 +56,7 @@ func (pc *protobufCodec) EncodeValue(ectx bsoncodec.EncodeContext, vw bsonrw.Val
 		}
 	}
 
-	for _, prop := range indexedGoOneofWrapperProps {
+	for _, prop := range ph.oneofFieldWrapperProps {
 		fVal := val.FieldByName(prop.Name)
 		if !fVal.IsZero() {
 			// If this field is a oneof, we need to get the single Go value stored inside its oneof struct,
@@ -114,29 +99,14 @@ func (pc *protobufCodec) DecodeValue(ectx bsoncodec.DecodeContext, vr bsonrw.Val
 	}
 
 	ph := pc.protoHelper(origAsDescMsg, val.Type())
-	props := proto.GetProperties(val.Type())
-	indexedProps := make(map[string]*proto.Properties)
-	indexedGoOneofWrapperProps := make([]*proto.Properties, 0)
-	indexedOneofProps := make(map[string]*proto.OneofProperties)
-	for _, prop := range props.Prop {
-		if ph.isOneOf(prop) {
-			indexedGoOneofWrapperProps = append(indexedGoOneofWrapperProps, prop)
-		} else {
-			indexedProps[strconv.Itoa(prop.Tag)] = prop
-		}
-	}
-	for _, oneof := range props.OneofTypes {
-		indexedOneofProps[strconv.Itoa(oneof.Prop.Tag)] = oneof
-	}
-
 	for f, fvr, err := dr.ReadElement(); err != bsonrw.ErrEOD; f, fvr, err = dr.ReadElement() {
 		if err != nil {
 			return err
 		}
 
 		tag := elementNameToTag(f)
-		prop, isProp := indexedProps[tag]
-		oneof, isOneof := indexedOneofProps[tag]
+		prop, isProp := ph.nonOneofPropsByTag[tag]
+		oneof, isOneof := ph.oneofPropsByTag[tag]
 
 		// Skip any field that we don't recognize.
 		if !isProp && !isOneof {
@@ -169,49 +139,51 @@ func (pc *protobufCodec) DecodeValue(ectx bsoncodec.DecodeContext, vr bsonrw.Val
 	return nil
 }
 
+type protoHelper struct {
+	// Properties corresponding to 'normal' (non-oneof) protobuf fields.
+	// Indexed by protobuf tag number (as a string).
+	nonOneofPropsByTag map[string]*proto.Properties
+	// OneofProperties corresponding to oneof protobuf fields.
+	// Indexed by protobuf tag number (as a string).
+	oneofPropsByTag map[string]*proto.OneofProperties
+
+	// Properties corresponding to Go wrapper types for protobuf oneof declarations.
+	oneofFieldWrapperProps []*proto.Properties
+}
+
 func (pc *protobufCodec) protoHelper(pb descriptor.Message, t reflect.Type) *protoHelper {
+	// Try to load a pre-existing protoHelper from cache, if it exists.
 	messageName := proto.MessageName(pb)
 	if ph, ok := pc.protoHelpers[messageName]; ok {
 		return ph
 	}
-	oneofNames := oneofNames(pb)
 
+	// Find the names of all oneofs.
+	_, msgDescriptor := descriptor.ForMessage(pb)
+	oneofNames := make(map[string]bool)
+	for _, oneof := range msgDescriptor.OneofDecl {
+		oneofNames[*oneof.Name] = true
+	}
+
+	// Get the corresponding Go type's Properties, and divide them into three groups.
+	// See comments on 'protoHelper' for details.
 	props := proto.GetProperties(t)
-	indexedProps := make(map[string]*proto.Properties)
-	indexedGoOneofWrapperProps := make([]*proto.Properties, 0)
-	indexedOneofProps := make(map[string]*proto.OneofProperties)
+	oneofFieldWrapperProps := make([]*proto.Properties, 0)
+	nonOneofPropsByTag := make(map[string]*proto.Properties)
 	for _, prop := range props.Prop {
-		if oneofNames[prop.Name] {
-			indexedGoOneofWrapperProps = append(indexedGoOneofWrapperProps, prop)
+		if oneofNames[prop.OrigName] {
+			oneofFieldWrapperProps = append(oneofFieldWrapperProps, prop)
 		} else {
-			indexedProps[strconv.Itoa(prop.Tag)] = prop
+			nonOneofPropsByTag[strconv.Itoa(prop.Tag)] = prop
 		}
 	}
+	oneofPropsByTag := make(map[string]*proto.OneofProperties)
 	for _, oneof := range props.OneofTypes {
-		indexedOneofProps[strconv.Itoa(oneof.Prop.Tag)] = oneof
+		oneofPropsByTag[strconv.Itoa(oneof.Prop.Tag)] = oneof
 	}
-	for _, oneof := range props.OneofTypes {
-		indexedOneofProps[strconv.Itoa(oneof.Prop.Tag)] = oneof
-	}
-	ph := &protoHelper{oneofNames}
+	ph := &protoHelper{nonOneofPropsByTag, oneofPropsByTag, oneofFieldWrapperProps}
+	pc.protoHelpers[messageName] = ph
 	return ph
-}
-
-func oneofNames(pb descriptor.Message) map[string]bool {
-	_, msgDescriptor := descriptor.ForMessage(pb)
-	names := make(map[string]bool)
-	for _, oneof := range msgDescriptor.OneofDecl {
-		names[*oneof.Name] = true
-	}
-	return names
-}
-
-type protoHelper struct {
-	oneOfNames map[string]bool
-}
-
-func (ph *protoHelper) isOneOf(p *proto.Properties) bool {
-	return ph.oneOfNames[p.OrigName]
 }
 
 const (
