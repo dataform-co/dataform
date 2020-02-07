@@ -12,6 +12,10 @@ ts_library(
     deps = [
         "@npm//@types/node",
         "@npm//chalk",
+        "@npm//@types/diff",
+        "@npm//diff",
+        "@npm//@types/json-stable-stringify",
+        "@npm//json-stable-stringify",
     ],
 )
 
@@ -22,7 +26,11 @@ ts_test_suite(
     srcs = glob(["*.spec.ts"]),
     deps = [
         ":testing",
+        "@npm//@types/diff",
         "@npm//@types/chai",
+        "@npm//@types/json-stable-stringify",
+        "@npm//json-stable-stringify",
+        "@npm//diff",
         "@npm//chai",
     ],
 )

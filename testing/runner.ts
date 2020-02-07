@@ -1,5 +1,7 @@
 import { Hook, Suite } from "@dataform/testing";
 import chalk from "chalk";
+import * as Diff from "diff";
+import * as DeterministicStringify from "json-stable-stringify";
 import { promisify } from "util";
 
 export interface IRunResult {
@@ -96,7 +98,26 @@ export class Runner {
               console.error(`\n    Actual:\n`);
               console.error(indent(JSON.stringify(result.err.actual, null, 4), 8));
             }
-            console.error("\n");
+            const green = "\x1b[32m";
+            const red = "\x1b[31m";
+            const reset = "\x1b[0m";
+            if (result.err.actual && result.err.expected) {
+              console.error(
+                `\n    Overall diff (${green}expected${reset}, ${red}actual${reset}):\n`
+              );
+              const diffs = Diff.diffJson(
+                DeterministicStringify(result.err.expected, { space: "  " }),
+                DeterministicStringify(result.err.actual, { space: "  " })
+              );
+              let toLog = "";
+              diffs.forEach(diff => {
+                // This diff won't show well for users with either default green or red text.
+                const colorPrefix = diff.added ? red : diff.removed ? green : reset;
+                toLog += `${colorPrefix}${diff.value}`;
+              });
+              console.error(toLog);
+            }
+            console.error(reset);
           }
         }
       }
