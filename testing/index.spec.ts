@@ -167,5 +167,6 @@ const _ = (async () => {
     console.log(`Actual: \n ${JSON.stringify(e.actual, null, 4)}`);
     process.exit(1);
   }
+
   process.exit(0);
 })();
