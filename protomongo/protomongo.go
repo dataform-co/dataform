@@ -35,24 +35,10 @@ func (pc *protobufCodec) EncodeValue(ectx bsoncodec.EncodeContext, vw bsonrw.Val
 
 	ph := pc.protoHelper(origAsDescMsg, val.Type())
 
-	for _, prop := range ph.nonOneofPropsByTag {
+	for _, prop := range ph.normalPropsByTag {
 		fVal := val.FieldByName(prop.Name)
 		if !fVal.IsZero() {
-			// Figure out what tag and what value we are encoding.
-			tag := prop.Tag
-
-			// Actually encode the tag/value.
-			fvw, err := dw.WriteDocumentElement(TagToElementName(tag))
-			if err != nil {
-				return err
-			}
-			enc, err := ectx.LookupEncoder(fVal.Type())
-			if err != nil {
-				return err
-			}
-			if err = enc.EncodeValue(ectx, fvw, fVal); err != nil {
-				return err
-			}
+			encodeField(ectx, dw, prop.Tag, fVal)
 		}
 	}
 
@@ -63,25 +49,24 @@ func (pc *protobufCodec) EncodeValue(ectx bsoncodec.EncodeContext, vw bsonrw.Val
 			// instead of simply using the value as-is.
 			oneof := fVal.Elem().Elem()
 			singleProp := proto.GetProperties(oneof.Type()).Prop[0]
-			tag := singleProp.Tag
 			fVal = oneof.Field(0)
-
-			// Actually encode the tag/value.
-			fvw, err := dw.WriteDocumentElement(TagToElementName(tag))
-			if err != nil {
-				return err
-			}
-			enc, err := ectx.LookupEncoder(fVal.Type())
-			if err != nil {
-				return err
-			}
-			if err = enc.EncodeValue(ectx, fvw, fVal); err != nil {
-				return err
-			}
+			encodeField(ectx, dw, singleProp.Tag, fVal)
 		}
 	}
 
 	return dw.WriteDocumentEnd()
+}
+
+func encodeField(ectx bsoncodec.EncodeContext, dw bsonrw.DocumentWriter, tag int, fVal reflect.Value) error {
+	fvw, err := dw.WriteDocumentElement(TagToElementName(tag))
+	if err != nil {
+		return err
+	}
+	enc, err := ectx.LookupEncoder(fVal.Type())
+	if err != nil {
+		return err
+	}
+	return enc.EncodeValue(ectx, fvw, fVal)
 }
 
 func (pc *protobufCodec) DecodeValue(ectx bsoncodec.DecodeContext, vr bsonrw.ValueReader, val reflect.Value) error {
@@ -105,7 +90,7 @@ func (pc *protobufCodec) DecodeValue(ectx bsoncodec.DecodeContext, vr bsonrw.Val
 		}
 
 		tag := elementNameToTag(f)
-		prop, isProp := ph.nonOneofPropsByTag[tag]
+		prop, isProp := ph.normalPropsByTag[tag]
 		oneof, isOneof := ph.oneofPropsByTag[tag]
 
 		// Skip any field that we don't recognize.
@@ -142,7 +127,7 @@ func (pc *protobufCodec) DecodeValue(ectx bsoncodec.DecodeContext, vr bsonrw.Val
 type protoHelper struct {
 	// Properties corresponding to 'normal' (non-oneof) protobuf fields.
 	// Indexed by protobuf tag number (as a string).
-	nonOneofPropsByTag map[string]*proto.Properties
+	normalPropsByTag map[string]*proto.Properties
 	// OneofProperties corresponding to oneof protobuf fields.
 	// Indexed by protobuf tag number (as a string).
 	oneofPropsByTag map[string]*proto.OneofProperties
@@ -169,19 +154,19 @@ func (pc *protobufCodec) protoHelper(pb descriptor.Message, t reflect.Type) *pro
 	// See comments on 'protoHelper' for details.
 	props := proto.GetProperties(t)
 	oneofFieldWrapperProps := make([]*proto.Properties, 0)
-	nonOneofPropsByTag := make(map[string]*proto.Properties)
+	normalPropsByTag := make(map[string]*proto.Properties)
 	for _, prop := range props.Prop {
 		if oneofNames[prop.OrigName] {
 			oneofFieldWrapperProps = append(oneofFieldWrapperProps, prop)
 		} else {
-			nonOneofPropsByTag[strconv.Itoa(prop.Tag)] = prop
+			normalPropsByTag[strconv.Itoa(prop.Tag)] = prop
 		}
 	}
 	oneofPropsByTag := make(map[string]*proto.OneofProperties)
 	for _, oneof := range props.OneofTypes {
 		oneofPropsByTag[strconv.Itoa(oneof.Prop.Tag)] = oneof
 	}
-	ph := &protoHelper{nonOneofPropsByTag, oneofPropsByTag, oneofFieldWrapperProps}
+	ph := &protoHelper{normalPropsByTag, oneofPropsByTag, oneofFieldWrapperProps}
 	pc.protoHelpers[messageName] = ph
 	return ph
 }
