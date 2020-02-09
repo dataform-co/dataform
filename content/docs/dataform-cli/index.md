@@ -50,7 +50,7 @@ project-dir
 
 ## Define a dataset
 
-The `definitions/` directory should be used for files that define [tables](../how-to-guides/datasets), [assertions](../how-to-guides/assertions), and [operations](../how-to-guides/operations).
+The `definitions/` directory should be used for files that define [tables](../guides/datasets), [assertions](../guides/assertions), and [operations](../guides/operations).
 
 To create a new dataset, create a new file `definitions/example.sqlx`:
 
@@ -94,7 +94,7 @@ dataform init-creds sqldatawarehouse
 
 A `.df-credentials.json` file will be written to disk containing your provided details.
 
-Check out our [data warehouse setup guide](../dataform-web/how-to-guides/set-up-warehouse) if you need help with the `init-creds` wizard.
+Check out our [data warehouse setup guide](../dataform-web/guides/set-up-warehouse) if you need help with the `init-creds` wizard.
 
 <div className="bp3-callout bp3-icon-info-sign bp3-intent-warning" markdown="1">
   If using a source control system, we strongly recommend that you do not commit the{" "}
@@ -194,4 +194,4 @@ Options:
 
 ## Next steps
 
-You have now seen how easy it is to use Dataform to publish simple datasets. Next, how about [publishing a dataset](../how-to-guides/datasets)?
+You have now seen how easy it is to use Dataform to publish simple datasets. Next, how about [publishing a dataset](../guides/datasets)?
