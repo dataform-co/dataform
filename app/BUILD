@@ -29,7 +29,7 @@ css_typings(
 load("@npm_bazel_typescript//:index.bzl", "ts_library")
 
 ts_library(
-    name = "client",
+    name = "app",
     srcs = glob(
         [
             "**/*.ts",
@@ -67,7 +67,7 @@ webpack_dev_server(
     ],
     data = [
         ":assets",
-        ":client",
+        ":app",
         ":sass",
         ":webpack.config.js",
         "@npm//webpack-cli",
@@ -83,7 +83,7 @@ webpack(
     name = "bundler",
     data = [
         ":assets",
-        ":client",
+        ":app",
         ":sass",
         ":webpack.config.js",
         "@npm//webpack-cli",
