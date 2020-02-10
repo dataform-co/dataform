@@ -36,7 +36,7 @@ protobufjs.Root.prototype.resolvePath = (unusedPath, filename) => {
 };
 
 protobufjs
-  .load(argv.protos.map(protoPath => String(protoPath)))
+  .load((argv.protos as string[]).map(protoPath => String(protoPath)))
   .then(root => {
     const processedRoot = processPackage(argv.root, root);
     writeAllServices([processedRoot.name], processedRoot);

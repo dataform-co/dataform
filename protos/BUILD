@@ -23,6 +23,9 @@ proto_library(
 proto_library(
     name = "server_proto",
     srcs = ["server.proto"],
+    deps = [
+        ":dataform_proto",
+    ],
 )
 
 java_proto_library(

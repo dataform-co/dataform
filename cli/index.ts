@@ -50,7 +50,7 @@ const projectDirOption: INamedOption<yargs.PositionalOptions> = {
 
 const projectDirMustExistOption = {
   ...projectDirOption,
-  check: (argv: yargs.Arguments<{ "project-dir": string }>) => {
+  check: (argv: yargs.Arguments) => {
     assertPathExists(argv["project-dir"]);
     try {
       assertPathExists(path.resolve(argv["project-dir"], "dataform.json"));
@@ -106,7 +106,7 @@ const schemaSuffixOverrideOption: INamedOption<yargs.Options> = {
   option: {
     describe: "A suffix to be appended to output schema names."
   },
-  check: (argv: yargs.Arguments<{ schemaSuffix: string }>) => {
+  check: (argv: yargs.Arguments) => {
     if (argv.schemaSuffix && !/^[a-zA-Z_0-9]+$/.test(argv.schemaSuffix)) {
       throw new Error(
         "--schema-suffix should contain only alphanumeric characters and/or underscores."
@@ -122,7 +122,7 @@ const credentialsOption: INamedOption<yargs.Options> = {
     default: credentials.CREDENTIALS_FILENAME,
     coerce: actuallyResolve
   },
-  check: (argv: yargs.Arguments<{ credentials: string }>) => assertPathExists(argv.credentials)
+  check: (argv: yargs.Arguments) => assertPathExists(argv.credentials)
 };
 
 const warehouseOption: INamedOption<yargs.PositionalOptions> = {
@@ -166,7 +166,7 @@ const builtYargs = createYargsCli({
             describe:
               "The default database to use. For BigQuery, this is a Google Cloud Project ID."
           },
-          check: (argv: yargs.Arguments<{ warehouse: string }>) => {
+          check: (argv: yargs.Arguments) => {
             if (argv["default-database"] && !["bigquery", "snowflake"].includes(argv.warehouse)) {
               throw new Error(
                 "The --default-database flag is only used for BigQuery and Snowflake projects."
