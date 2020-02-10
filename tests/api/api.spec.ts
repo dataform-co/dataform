@@ -3,12 +3,12 @@ import { IDbAdapter } from "@dataform/api/dbadapters";
 import { BigQueryDbAdapter } from "@dataform/api/dbadapters/bigquery";
 import * as utils from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
-import { assert, config, expect } from "chai";
 import { suite, test } from "@dataform/testing";
+import { assert, config, expect } from "chai";
 import { asPlainObject, cleanSql } from "df/tests/utils";
+import * as Long from "long";
 import * as path from "path";
 import { anyString, anything, instance, mock, when } from "ts-mockito";
-import * as Long from "long";
 
 config.truncateThreshold = 0;
 
@@ -136,6 +136,72 @@ suite("@dataform/api", () => {
         const action = executedGraph.actions.find(item => item.name === a.name);
         expect(action).to.include({ type: "assertion" });
       });
+    });
+
+    suite("pre and post ops", () => {
+      for (const warehouse of [
+        "bigquery",
+        "postgres",
+        "redshift",
+        "sqldatawarehouse",
+        "snowflake"
+      ]) {
+        const graph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
+          projectConfig: { warehouse: "redshift" },
+          tables: [
+            {
+              name: "a",
+              target: { schema: "schema", name: "a" },
+              type: "incremental",
+              query: "foo",
+              incrementalQuery: "incremental foo",
+              preOps: ["preOp"],
+              incrementalPreOps: ["incremental preOp"],
+              postOps: ["postOp"],
+              incrementalPostOps: ["incremental postOp"]
+            }
+          ],
+          dataformCoreVersion: "1.4.9"
+        });
+
+        test(`${warehouse} when running non incrementally`, () => {
+          const action = new Builder(graph, {}, TEST_STATE).build().actions[0];
+          expect(action.tasks[0]).eql(
+            dataform.ExecutionTask.create({
+              type: "statement",
+              statement: "preOp"
+            })
+          );
+          expect(action.tasks.slice(-1)[0]).eql(
+            dataform.ExecutionTask.create({
+              type: "statement",
+              statement: "postOp"
+            })
+          );
+        });
+
+        test(`${warehouse} when running incrementally`, () => {
+          const action = new Builder(
+            graph,
+            {},
+            dataform.WarehouseState.create({
+              tables: [{ target: graph.tables[0].target, fields: [] }]
+            })
+          ).build().actions[0];
+          expect(action.tasks[0]).eql(
+            dataform.ExecutionTask.create({
+              type: "statement",
+              statement: "incremental preOp"
+            })
+          );
+          expect(action.tasks.slice(-1)[0]).eql(
+            dataform.ExecutionTask.create({
+              type: "statement",
+              statement: "incremental postOp"
+            })
+          );
+        });
+      }
     });
   });
 
@@ -466,7 +532,74 @@ suite("@dataform/api", () => {
           tasks: [
             {
               type: "statement",
-              statement: "create or replace table `deeb.schema.name`  as select 1 as test"
+              statement: "create or replace table `deeb.schema.name` as select 1 as test"
+            }
+          ]
+        }
+      ];
+      const executionGraph = new Builder(testGraph, {}, dataform.WarehouseState.create({})).build();
+      expect(asPlainObject(executionGraph.actions)).deep.equals(
+        asPlainObject(expectedExecutionActions)
+      );
+    });
+
+    test("bigquery_clusterby", () => {
+      const testGraph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
+        projectConfig: { warehouse: "bigquery", defaultDatabase: "deeb" },
+        tables: [
+          {
+            name: "partitionby",
+            target: {
+              schema: "schema",
+              name: "name"
+            },
+            type: "table",
+            query: "select 1 as test",
+            bigquery: {
+              partitionBy: "DATE(test)",
+              clusterBy: ["name", "revenue"]
+            }
+          },
+          {
+            name: "plain",
+            target: {
+              schema: "schema",
+              name: "name"
+            },
+            type: "table",
+            query: "select 1 as test"
+          }
+        ]
+      });
+      const expectedExecutionActions: dataform.IExecutionAction[] = [
+        {
+          name: "partitionby",
+          type: "table",
+          tableType: "table",
+          target: {
+            schema: "schema",
+            name: "name"
+          },
+          tasks: [
+            {
+              type: "statement",
+              statement:
+                "create or replace table `deeb.schema.name` partition by DATE(test) cluster by name, revenue as select 1 as test"
+            }
+          ]
+        },
+        {
+          name: "plain",
+          type: "table",
+          tableType: "table",
+          target: {
+            schema: "schema",
+            name: "name"
+          },
+          tasks: [
+            {
+              type: "statement",
+              statement: "create or replace table `deeb.schema.name` as select 1 as test"
             }
           ]
         }
@@ -1089,9 +1222,8 @@ where
     });
 
     test("correctly formats comments.sqlx", async () => {
-      expect(
-        await format.formatFile(path.resolve("examples/formatter/definitions/comments.sqlx"))
-      ).eql(`config {
+      expect(await format.formatFile(path.resolve("examples/formatter/definitions/comments.sqlx")))
+        .eql(`config {
   type: "test",
 }
 

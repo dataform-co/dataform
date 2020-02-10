@@ -86,6 +86,7 @@ message Target {
 
 message BigQueryOptions {
   string partition_by = 1;
+  repeated string cluster_by = 2;
 }
 
 message RedshiftOptions {
