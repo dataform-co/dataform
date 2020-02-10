@@ -320,6 +320,33 @@ suite("@dataform/core", () => {
       ).to.deep.equal([`clusterBy is not valid without partitionBy`]);
     });
 
+    test("validation_bigquery_pass", () => {
+      const session = new Session(path.dirname(__filename), TestConfigs.bigquery);
+      session.publish("example_partitionBy_view_fail", {
+        type: "table",
+        bigquery: {
+          partitionBy: "some_partition",
+          clusterBy: ["some_column", "some_other_column"]
+        }
+      });
+
+      const graph = session.compile();
+      const gValid = utils.validate(graph);
+
+      expect(graph.tables[0].bigquery).to.deep.equal(
+        dataform.BigQueryOptions.create({
+          clusterBy: ["some_column", "some_other_column"],
+          partitionBy: "some_partition"
+        })
+      );
+      expect(gValid).to.deep.equal(
+        dataform.GraphErrors.create({
+          compilationErrors: [],
+          validationErrors: []
+        })
+      );
+    });
+
     test("validation_type_inline", () => {
       const session = new Session(path.dirname(__filename), TestConfigs.redshift);
       session.publish("a", { type: "table" }).query(_ => "select 1 as test");

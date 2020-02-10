@@ -40,5 +40,5 @@ config {
     clusterBy: ["name", "revenue"]
   }
 }
-SELECT CURRENT_TIMESTAMP() AS ts
+SELECT CURRENT_TIMESTAMP(), name, revenue AS ts
 ```
