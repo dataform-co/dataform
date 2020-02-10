@@ -13,7 +13,7 @@ export default class ErrorPage extends React.Component<IProps> {
   public static async getInitialProps(ctx: NextPageContext): Promise<IProps> {
     // Strip trailing slashes and redirect permanently, preserving search params.
     const url = new URL(ctx.asPath, "https://docs.dataform.co");
-    if (url.pathname.endsWith("/")) {
+    if (url.pathname !== "/" && url.pathname.endsWith("/")) {
       ctx.res.writeHead(301, {
         Location: url.pathname.substring(0, url.pathname.length - 1) + url.search
       });
