@@ -190,7 +190,14 @@ export function validate(compiledGraph: dataform.ICompiledGraph): dataform.IGrap
     if (!!action.bigquery) {
       if (action.bigquery.partitionBy && action.type === "view") {
         const error = dataform.ValidationError.create({
-          message: `partitionBy is not valid for BigQuery views; it is only valid for tables`,
+          message: `partitionBy/clusterBy are not valid for BigQuery views; they are only valid for tables`,
+          actionName
+        });
+        validationErrors.push(error);
+      }
+      if (!!action.bigquery.clusterBy && !action.bigquery.partitionBy) {
+        const error = dataform.ValidationError.create({
+          message: `clusterBy is not valid without partitionBy`,
           actionName
         });
         validationErrors.push(error);

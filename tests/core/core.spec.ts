@@ -2,8 +2,8 @@ import * as compilers from "@dataform/core/compilers";
 import { Session } from "@dataform/core/session";
 import * as utils from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
-import { expect } from "chai";
 import { suite, test } from "@dataform/testing";
+import { expect } from "chai";
 import { asPlainObject } from "df/tests/utils";
 import * as path from "path";
 
@@ -295,23 +295,56 @@ suite("@dataform/core", () => {
           partitionBy: "some_partition"
         }
       });
-
-      const expectedResults = [
-        {
-          name: "schema.example_partitionBy_view_fail",
-          message: `partitionBy is not valid for BigQuery views; it is only valid for tables`
+      session.publish("example_clusterBy_but_no_partitionBy_fail", {
+        type: "table",
+        bigquery: {
+          clusterBy: ["some_column", "some_other_column"]
         }
-      ];
+      });
 
       const graph = session.compile();
       const gErrors = utils.validate(graph);
 
       expect(
-        gErrors.validationErrors.map(validationError => ({
-          name: validationError.actionName,
-          message: validationError.message
-        }))
-      ).to.have.deep.members(expectedResults);
+        gErrors.validationErrors
+          .filter(item => item.actionName === "schema.example_partitionBy_view_fail")
+          .map(item => item.message)
+      ).to.deep.equal([
+        `partitionBy/clusterBy are not valid for BigQuery views; they are only valid for tables`
+      ]);
+
+      expect(
+        gErrors.validationErrors
+          .filter(item => item.actionName === "schema.example_clusterBy_but_no_partitionBy_fail")
+          .map(item => item.message)
+      ).to.deep.equal([`clusterBy is not valid without partitionBy`]);
+    });
+
+    test("validation_bigquery_pass", () => {
+      const session = new Session(path.dirname(__filename), TestConfigs.bigquery);
+      session.publish("example_partitionBy_view_fail", {
+        type: "table",
+        bigquery: {
+          partitionBy: "some_partition",
+          clusterBy: ["some_column", "some_other_column"]
+        }
+      });
+
+      const graph = session.compile();
+      const gValid = utils.validate(graph);
+
+      expect(graph.tables[0].bigquery).to.deep.equal(
+        dataform.BigQueryOptions.create({
+          clusterBy: ["some_column", "some_other_column"],
+          partitionBy: "some_partition"
+        })
+      );
+      expect(gValid).to.deep.equal(
+        dataform.GraphErrors.create({
+          compilationErrors: [],
+          validationErrors: []
+        })
+      );
     });
 
     test("validation_type_inline", () => {

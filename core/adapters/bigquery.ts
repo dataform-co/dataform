@@ -72,9 +72,13 @@ export class BigQueryAdapter extends Adapter implements IAdapter {
       table.target
     )} ${
       table.bigquery && table.bigquery.partitionBy
-        ? `partition by ${table.bigquery.partitionBy}`
+        ? `partition by ${table.bigquery.partitionBy} `
         : ""
-    } as ${table.query}`;
+    }${
+      table.bigquery && table.bigquery.clusterBy
+        ? `cluster by ${table.bigquery.clusterBy.join(", ")} `
+        : ""
+    }as ${table.query}`;
   }
 
   public createOrReplaceView(target: dataform.ITarget, query: string) {

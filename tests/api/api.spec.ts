@@ -532,7 +532,74 @@ suite("@dataform/api", () => {
           tasks: [
             {
               type: "statement",
-              statement: "create or replace table `deeb.schema.name`  as select 1 as test"
+              statement: "create or replace table `deeb.schema.name` as select 1 as test"
+            }
+          ]
+        }
+      ];
+      const executionGraph = new Builder(testGraph, {}, dataform.WarehouseState.create({})).build();
+      expect(asPlainObject(executionGraph.actions)).deep.equals(
+        asPlainObject(expectedExecutionActions)
+      );
+    });
+
+    test("bigquery_clusterby", () => {
+      const testGraph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
+        projectConfig: { warehouse: "bigquery", defaultDatabase: "deeb" },
+        tables: [
+          {
+            name: "partitionby",
+            target: {
+              schema: "schema",
+              name: "name"
+            },
+            type: "table",
+            query: "select 1 as test",
+            bigquery: {
+              partitionBy: "DATE(test)",
+              clusterBy: ["name", "revenue"]
+            }
+          },
+          {
+            name: "plain",
+            target: {
+              schema: "schema",
+              name: "name"
+            },
+            type: "table",
+            query: "select 1 as test"
+          }
+        ]
+      });
+      const expectedExecutionActions: dataform.IExecutionAction[] = [
+        {
+          name: "partitionby",
+          type: "table",
+          tableType: "table",
+          target: {
+            schema: "schema",
+            name: "name"
+          },
+          tasks: [
+            {
+              type: "statement",
+              statement:
+                "create or replace table `deeb.schema.name` partition by DATE(test) cluster by name, revenue as select 1 as test"
+            }
+          ]
+        },
+        {
+          name: "plain",
+          type: "table",
+          tableType: "table",
+          target: {
+            schema: "schema",
+            name: "name"
+          },
+          tasks: [
+            {
+              type: "statement",
+              statement: "create or replace table `deeb.schema.name` as select 1 as test"
             }
           ]
         }
