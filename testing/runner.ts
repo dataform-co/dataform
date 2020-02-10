@@ -108,7 +108,7 @@ export class Runner {
               );
               if (diffs.length === 1 && !diffs[0].added && !diffs[0].removed) {
                 console.error(
-                  `\n    ${green}JSONs appear identical! Have all protobufs been casted?`
+                  `\n    ${green}Objects appear identical! Are you comparing objects with functions?`
                 );
               } else {
                 let toLog = "";
