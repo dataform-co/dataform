@@ -103,7 +103,7 @@ var (
 
 func TestMarshalUnmarshal(t *testing.T) {
 	rb := bson.NewRegistryBuilder()
-	rb.RegisterCodec(reflect.TypeOf((*proto.Message)(nil)).Elem(), &ProtobufCodec{})
+	rb.RegisterCodec(reflect.TypeOf((*proto.Message)(nil)).Elem(), NewProtobufCodec())
 	reg := rb.Build()
 
 	for _, testCase := range tests {
@@ -123,7 +123,7 @@ func TestMarshalUnmarshal(t *testing.T) {
 
 func TestMarshalUnmarshalWithPointers(t *testing.T) {
 	rb := bson.NewRegistryBuilder()
-	rb.RegisterCodec(reflect.TypeOf((*proto.Message)(nil)).Elem(), &ProtobufCodec{})
+	rb.RegisterCodec(reflect.TypeOf((*proto.Message)(nil)).Elem(), NewProtobufCodec())
 	reg := rb.Build()
 
 	for _, testCase := range tests {
