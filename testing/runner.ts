@@ -1,5 +1,7 @@
 import { Hook, Suite } from "@dataform/testing";
 import chalk from "chalk";
+import * as Diff from "diff";
+import * as DeterministicStringify from "json-stable-stringify";
 import { promisify } from "util";
 
 export interface IRunResult {
@@ -84,19 +86,44 @@ export class Runner {
         if (result.err) {
           const errString = result.err.stack
             ? result.err.stack && indent(result.err.stack as string)
-            : `    ${JSON.stringify(result.err, null, 4)}`;
+            : `    ${DeterministicStringify(result.err, { space: "  " })}`;
 
           console.error(`\n${errString}\n`);
           if (result.err.showDiff) {
             if (result.err.expected) {
               console.error(`    Expected:\n`);
-              console.error(indent(JSON.stringify(result.err.expected, null, 4), 8));
+              console.error(indent(DeterministicStringify(result.err.expected, { space: "  " })));
             }
             if (result.err.actual) {
               console.error(`\n    Actual:\n`);
-              console.error(indent(JSON.stringify(result.err.actual, null, 4), 8));
+              console.error(indent(DeterministicStringify(result.err.actual, { space: "  " })));
             }
-            console.error("\n");
+            const green = "\x1b[32m";
+            const red = "\x1b[31m";
+            const reset = "\x1b[0m";
+            if (result.err.actual && result.err.expected) {
+              const diffs = Diff.diffJson(
+                DeterministicStringify(result.err.expected, { space: "  " }),
+                DeterministicStringify(result.err.actual, { space: "  " })
+              );
+              if (diffs.length === 1 && !diffs[0].added && !diffs[0].removed) {
+                console.error(
+                  `\n    ${green}Objects appear identical! Are you comparing objects with functions?`
+                );
+              } else {
+                let toLog = "";
+                console.error(
+                  `\n    Overall diff (${green}expected${reset}, ${red}actual${reset}):\n`
+                );
+                diffs.forEach(diff => {
+                  // This diff won't show well for users with either default green or red text.
+                  const colorPrefix = diff.added ? red : diff.removed ? green : reset;
+                  toLog += indent(`${colorPrefix}${diff.value}`);
+                });
+                console.error(toLog);
+              }
+            }
+            console.error(reset);
           }
         }
       }
