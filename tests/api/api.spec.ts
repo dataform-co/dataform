@@ -8,7 +8,7 @@ import { assert, config, expect } from "chai";
 import { asPlainObject, cleanSql } from "df/tests/utils";
 import * as Long from "long";
 import * as path from "path";
-import { anyString, anything, instance, mock, when } from "ts-mockito";
+import { anyString, anything, instance, mock, verify, when } from "ts-mockito";
 
 config.truncateThreshold = 0;
 
@@ -843,7 +843,7 @@ suite("@dataform/api", () => {
 
     test("execute", async () => {
       const mockedDbAdapter = mock(BigQueryDbAdapter);
-      when(mockedDbAdapter.prepareSchema(anyString())).thenResolve(null);
+      when(mockedDbAdapter.prepareSchema(anyString(), anyString())).thenResolve(null);
       when(
         mockedDbAdapter.execute(TEST_GRAPH.actions[0].tasks[0].statement, anything())
       ).thenResolve({
@@ -906,6 +906,8 @@ suite("@dataform/api", () => {
           ]
         })
       );
+
+      verify(mockedDbAdapter.prepareSchema("bigquery", "schema1")).once();
     });
 
     suite("execute with retry", () => {
@@ -915,7 +917,7 @@ suite("@dataform/api", () => {
           ...TEST_GRAPH,
           projectConfig: { ...TEST_GRAPH.projectConfig, idempotentActionRetries: 1 }
         };
-        when(mockedDbAdapter.prepareSchema(anyString())).thenResolve(null);
+        when(mockedDbAdapter.prepareSchema(anyString(), anyString())).thenResolve(null);
         when(
           mockedDbAdapter.execute(NEW_TEST_GRAPH.actions[0].tasks[0].statement, anything())
         ).thenResolve({ rows: [], metadata: {} });
@@ -971,7 +973,7 @@ suite("@dataform/api", () => {
           ...TEST_GRAPH,
           projectConfig: { ...TEST_GRAPH.projectConfig, idempotentActionRetries: 2 }
         };
-        when(mockedDbAdapter.prepareSchema(anyString())).thenResolve(null);
+        when(mockedDbAdapter.prepareSchema(anyString(), anyString())).thenResolve(null);
         when(
           mockedDbAdapter.execute(NEW_TEST_GRAPH.actions[0].tasks[0].statement, anything())
         ).thenResolve({ rows: [], metadata: {} });
@@ -1027,7 +1029,7 @@ suite("@dataform/api", () => {
         };
         NEW_TEST_GRAPH_WITH_OPERATION.actions[1].tasks[0].type = "operation";
 
-        when(mockedDbAdapter.prepareSchema(anyString())).thenResolve(null);
+        when(mockedDbAdapter.prepareSchema(anyString(), anyString())).thenResolve(null);
         when(
           mockedDbAdapter.execute(
             NEW_TEST_GRAPH_WITH_OPERATION.actions[0].tasks[0].statement,
@@ -1125,7 +1127,7 @@ suite("@dataform/api", () => {
               reject(new Error("Run cancelled"));
             });
           }),
-        prepareSchema: _ => {
+        prepareSchema: (_, __) => {
           return Promise.resolve();
         }
       } as IDbAdapter;
