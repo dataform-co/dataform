@@ -28,12 +28,22 @@ interface IProps {
 }
 
 export class Docs extends React.Component<IProps> {
-  public static async getInitialProps({
-    query
-  }: NextPageContext & { query: IQuery }): Promise<IProps> {
+  public static async getInitialProps(ctx: NextPageContext & { query: IQuery }): Promise<IProps> {
+    // Strip trailing slashes and redirect permanently, preserving search params.
+    // If our URLs have trailing slashes, then our relative paths break.
+    const url = new URL(ctx.asPath, "https://docs.dataform.co");
+    if (url.pathname !== "/" && url.pathname.endsWith("/")) {
+      ctx.res.writeHead(301, {
+        Location: url.pathname.substring(0, url.pathname.length - 1) + url.search
+      });
+      ctx.res.end();
+    }
+
+    const { query } = ctx;
     const path = [query.path0, query.path1, query.path2].filter(part => !!part).join("/");
     const tree = await getContentTree(query.version);
     const current = tree.getChild(path);
+
     return { index: tree.index(), current, version: query.version };
   }
 

@@ -60,7 +60,7 @@ For all built in functions, see [`ITableContext` in the API reference](/referenc
 
 `ref()` enables you to easily reference another dataset in your project without having to provide the full SQL dataset name. `ref()` also adds the referenced dataset to the set of dependencies for the query.
 
-Some examples can be found [here](datasets/#referencing-other-datasets).
+Some examples can be found [here](datasets#referencing-other-datasets).
 
 #### `resolve()`
 
@@ -72,12 +72,12 @@ Some examples can be found [here](datasets/#referencing-other-datasets).
 
 [Here](incremental-datasets/#a-simple-example) is an example of an incremental table using the `self()` function.
 
-- [Retrieve the name of the current dataset with `self()`](incremental-datasets/#a-simple-example).
+- [Retrieve the name of the current dataset with `self()`](incremental-datasets#a-simple-example).
 
-- [Execute code only if the script is for an incremental dataset using `incremental()`](incremental-datasets/#conditional-code-if-incremental).
+- [Execute code only if the script is for an incremental dataset using `incremental()`](incremental-datasets#conditional-code-if-incremental).
 
 ## Additional Features
 
-- **Pre-operations**: defined in SQLX by writing `pre_operations { }`, SQL written inside will be executed before the main SQL. This can be useful for granting permissions, as can be seen in the [publishing datasets guide](/how-to-guides/datasets/#example-granting-dataset-access-with-post_operations). **Actions may only include pre_operations if they create a dataset**, for example with `type: "table"` or `type: "view"` or `type: "incremental"` in their config.
+- **Pre-operations**: defined in SQLX by writing `pre_operations { }`, SQL written inside will be executed before the main SQL. This can be useful for granting permissions, as can be seen in the [publishing datasets guide](datasets#example-granting-dataset-access-with-post_operations). **Actions may only include pre_operations if they create a dataset**, for example with `type: "table"` or `type: "view"` or `type: "incremental"` in their config.
 
 - **Post-operations**: the same as pre-operations, but defined with `post_operations { }`, and runs after the main SQL.
