@@ -27,12 +27,12 @@ load("@build_bazel_rules_nodejs//:index.bzl", "nodejs_binary")
 
 nodejs_binary(
     name = "bin",
-    templated_args = ["--node_options=--require=source-map-support/register"],
     data = [
         ":cli",
         "@npm//source-map-support",
     ],
     entry_point = ":index.ts",
+    templated_args = ["--node_options=--require=source-map-support/register"],
 )
 
 load("//tools/common:copy.bzl", "copy_file")
@@ -55,4 +55,37 @@ dataform_npm_package(
         ":cli",
         ":readme",
     ],
+)
+
+load("@io_bazel_rules_docker//nodejs:image.bzl", "nodejs_image")
+
+nodejs_image(
+    name = "image",
+    data = [
+        ":cli",
+        "@npm//source-map-support",
+    ],
+    entry_point = ":index.ts",
+    templated_args = ["--node_options=--require=source-map-support/register"],
+)
+
+load("@io_bazel_rules_docker//container:container.bzl", "container_push")
+load("//:version.bzl", "DF_VERSION")
+
+container_push(
+    name = "push-version",
+    format = "Docker",
+    image = ":image",
+    registry = "docker.io",
+    repository = "dataformco/dataform",
+    tag = DF_VERSION,
+)
+
+container_push(
+    name = "push-latest",
+    format = "Docker",
+    image = ":image",
+    registry = "docker.io",
+    repository = "dataformco/dataform",
+    tag = latest,
 )
