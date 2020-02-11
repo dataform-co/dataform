@@ -2,6 +2,11 @@ load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
 
 package(default_visibility = ["//visibility:public"])
 
+filegroup(
+    name = "files",
+    srcs = glob(["**/*.proto"]),
+)
+
 proto_library(
     name = "dataform_proto",
     srcs = [
@@ -13,6 +18,14 @@ proto_library(
 proto_library(
     name = "schedules_proto",
     srcs = ["schedules.proto"],
+)
+
+proto_library(
+    name = "server_proto",
+    srcs = ["server.proto"],
+    deps = [
+        ":dataform_proto",
+    ],
 )
 
 java_proto_library(
@@ -44,6 +57,7 @@ ts_proto_library(
     deps = [
         ":dataform_proto",
         ":schedules_proto",
+        ":server_proto",
     ],
 )
 
