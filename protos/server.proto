@@ -7,7 +7,7 @@ import "protos/core.proto";
 message Empty {}
 
 message MetadataResponse {
-    string project_dir = 2;
+    string project_dir = 1;
 }
 
 service Service {
