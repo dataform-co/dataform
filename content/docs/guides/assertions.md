@@ -19,10 +19,14 @@ To assert that fields `a`, `b`, and `c` are never `NULL` in a dataset named `som
 ```js
 config { type: "assertion" }
 
-SELECT * FROM ${ref("sometable")}
-WHERE a IS NOT NULL
-  AND b IS NOT NULL
-  AND c IS NOT NULL
+SELECT 
+  * 
+FROM 
+  ${ref("sometable")}
+WHERE 
+  a IS NULL
+  OR b IS NULL
+  OR c IS NULL
 ```
 
 If `a`, `b`, or `c` are null for any row in `sometable`, then this assertion will fail.
