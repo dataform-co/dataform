@@ -115,14 +115,10 @@ export class Runner {
         databaseSchemas.get(trueDatabase).add(target.schema);
       });
 
-    console.log(databaseSchemas);
     // Wait for all schemas to be created.
     await Promise.all(
-      Array.from(databaseSchemas).map(
-        async ([database, schemas]) =>
-          await Promise.all(
-            Array.from(schemas).map(schema => this.adapter.prepareSchema(database, schema))
-          )
+      Array.from(databaseSchemas).map(([database, schemas]) =>
+        Promise.all(Array.from(schemas).map(schema => this.adapter.prepareSchema(database, schema)))
       )
     );
 
