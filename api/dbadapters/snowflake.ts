@@ -95,7 +95,7 @@ export class SnowflakeDbAdapter implements IDbAdapter {
 
   public async tables(): Promise<dataform.ITarget[]> {
     const { rows } = await this.execute(
-      `select table_name, table_schema
+      `select table_name, table_schema, table_catalog
        from information_schema.tables
        where LOWER(table_schema) != 'information_schema'
          and LOWER(table_schema) != 'pg_catalog'
@@ -103,6 +103,7 @@ export class SnowflakeDbAdapter implements IDbAdapter {
       { maxResults: 10000 }
     );
     return rows.map(row => ({
+      database: row.TABLE_CATALOG,
       schema: row.TABLE_SCHEMA,
       name: row.TABLE_NAME
     }));
@@ -117,11 +118,17 @@ export class SnowflakeDbAdapter implements IDbAdapter {
     return Promise.all([
       this.execute(
         `select column_name, data_type, is_nullable
-       from information_schema.columns
-       where table_schema = '${target.schema}' AND table_name = '${target.name}'`
+         from information_schema.columns
+         where table_schema = '${target.schema}' 
+           and table_name = '${target.name}' 
+           ${target.database ? `and table_catalog = '${target.database}'` : ""}`
       ),
       this.execute(
-        `select table_type from information_schema.tables where table_schema = '${target.schema}' AND table_name = '${target.name}'`
+        `select table_type
+         from information_schema.tables
+         where table_schema = '${target.schema}'
+           and table_name = '${target.name}' 
+           ${target.database ? `and table_catalog = '${target.database}'` : ""}`
       )
     ]).then(results => {
       if (results[1].rows.length > 0) {
