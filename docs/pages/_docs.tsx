@@ -44,6 +44,11 @@ export class Docs extends React.Component<IProps> {
     const tree = await getContentTree(query.version);
     const current = tree.getChild(path);
 
+    if (!current) {
+      ctx.res.writeHead(404);
+      ctx.res.end();
+    }
+
     return { index: tree.index(), current, version: query.version };
   }
 
