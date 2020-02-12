@@ -115,6 +115,7 @@ export class Runner {
         databaseSchemas.get(trueDatabase).add(target.schema);
       });
 
+    console.log(databaseSchemas);
     // Wait for all schemas to be created.
     await Promise.all(
       Array.from(databaseSchemas).map(

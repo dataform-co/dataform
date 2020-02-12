@@ -798,7 +798,8 @@ suite("@dataform/api", () => {
       projectConfig: {
         warehouse: "bigquery",
         defaultSchema: "foo",
-        assertionSchema: "bar"
+        assertionSchema: "bar",
+        defaultDatabase: "database"
       },
       runConfig: {
         fullRefresh: true
@@ -834,8 +835,9 @@ suite("@dataform/api", () => {
           ],
           type: "assertion",
           target: {
-            schema: "schema1",
-            name: "target1"
+            database: "database2",
+            schema: "schema2",
+            name: "target2"
           },
           tableType: "someTableType"
         }
@@ -908,7 +910,8 @@ suite("@dataform/api", () => {
         })
       );
 
-      verify(mockedDbAdapter.prepareSchema("bigquery", "schema1")).once();
+      verify(mockedDbAdapter.prepareSchema("database", "schema1")).once();
+      verify(mockedDbAdapter.prepareSchema("database2", "schema2")).once();
     });
 
     suite("execute with retry", () => {
