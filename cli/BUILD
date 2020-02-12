@@ -73,19 +73,10 @@ load("@io_bazel_rules_docker//container:container.bzl", "container_push")
 load("//:version.bzl", "DF_VERSION")
 
 container_push(
-    name = "push-version",
+    name = "push",
     format = "Docker",
     image = ":image",
     registry = "docker.io",
     repository = "dataformco/dataform",
     tag = DF_VERSION,
-)
-
-container_push(
-    name = "push-latest",
-    format = "Docker",
-    image = ":image",
-    registry = "docker.io",
-    repository = "dataformco/dataform",
-    tag = latest,
 )
