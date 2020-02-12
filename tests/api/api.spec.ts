@@ -490,7 +490,8 @@ suite("@dataform/api", () => {
             type: "table",
             query: "select 1 as test",
             bigquery: {
-              partitionBy: "DATE(test)"
+              partitionBy: "DATE(test)",
+              clusterBy: []
             }
           },
           {

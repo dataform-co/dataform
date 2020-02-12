@@ -75,7 +75,7 @@ export class BigQueryAdapter extends Adapter implements IAdapter {
         ? `partition by ${table.bigquery.partitionBy} `
         : ""
     }${
-      table.bigquery && table.bigquery.clusterBy
+      table.bigquery && table.bigquery.clusterBy && table.bigquery.clusterBy.length > 0
         ? `cluster by ${table.bigquery.clusterBy.join(", ")} `
         : ""
     }as ${table.query}`;
