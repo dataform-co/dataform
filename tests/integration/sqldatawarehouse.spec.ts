@@ -26,7 +26,8 @@ suite("@dataform/integration/sqldatawarehouse", ({ after }) => {
     const adapter = adapters.create(compiledGraph.projectConfig, compiledGraph.dataformCoreVersion);
 
     // Drop all the tables before we do anything.
-    await dropAllTables(compiledGraph, adapter, dbadapter);
+    const tablesToDelete = (await dfapi.build(compiledGraph, {}, credentials)).warehouseState.tables;
+    await dropAllTables(tablesToDelete, adapter, dbadapter);
 
     // Run the tests.
     const testResults = await dfapi.test(credentials, "sqldatawarehouse", compiledGraph.tests);

@@ -158,7 +158,9 @@ export class SnowflakeDbAdapter implements IDbAdapter {
   public async prepareSchema(database: string, schema: string): Promise<void> {
     const schemas = await this.schemas();
     if (!schemas.includes(schema)) {
-      await this.execute(`create schema if not exists "${database}"."${schema}"`);
+      await this.execute(
+        `create schema if not exists ${database ? `"${database}".` : ""}"${schema}"`
+      );
     }
   }
 

@@ -175,6 +175,19 @@ export class BigQueryDbAdapter implements IDbAdapter {
     }
   }
 
+  public async dropSchema(database: string, schema: string): Promise<void> {
+    const client = this.getClient(database);
+    try {
+      await client.dataset(schema).getMetadata();
+    } catch (e) {
+      // If metadata call fails, it probably doesn't exist, so don't do anything.
+      return;
+    }
+    await this.getClient(database)
+      .dataset(schema)
+      .delete({ force: true });
+  }
+
   public async close() {}
 
   private getClient(projectId = this.bigQueryCredentials.projectId) {
