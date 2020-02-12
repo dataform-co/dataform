@@ -28,11 +28,21 @@ publish("users")
   .tags(["daily"]);
 ```
 
-Tags can be added to datasets, assertions, operations and declarations. You can add more than one tag to each action.
+Tags can be added to datasets, assertions, operations and declarations. 
+
+You can add more than one tag to each action like so:
+
+```js
+config {
+  type: "view",
+  name: "user_counts",
+  tags: ["daily", "view"]
+}
+```
 
 ## Using tags
 
-Once you have assigned tags to actions, you can use the tags to define a run or [schedule](../dataform-web/how-to-guides/scheduling) . For example, in the schedule creation
+Once you have assigned tags to actions, you can use the tags to define a run or [schedule](../dataform-web/guides/scheduling) . For example, in the schedule creation
 screen, simply choose the tags you'd like to include in that schedule.
 
 Tags can also be used with the CLI using the `--tags` argument.

@@ -20,6 +20,7 @@ export default class Documentation extends React.Component<IProps> {
       .filter(child => !!child.props.children)
       .map(child =>
         React.Children.toArray(child.props.children)
+          .map(child => child as React.ReactElement<any>)
           .filter(child => child.type === "h2")
           .map(child => ({
             id: child.props.id,
