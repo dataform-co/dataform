@@ -1,9 +1,9 @@
 import { Builder, compile } from "@dataform/api";
 import * as utils from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
+import { suite, test } from "@dataform/testing";
 import { fail } from "assert";
 import { expect } from "chai";
-import { suite, test } from "@dataform/testing";
 import { cleanSql } from "df/tests/utils";
 import * as path from "path";
 
