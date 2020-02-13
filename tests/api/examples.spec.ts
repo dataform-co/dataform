@@ -600,6 +600,21 @@ suite("examples", () => {
       );
     });
 
+    test("bigquery compiles with database override", async () => {
+      const graph = await compile({
+        projectDir: path.resolve("examples/common_v2"),
+        projectConfigOverride: {
+          warehouse: "bigquery",
+          defaultDatabase: "overridden-database"
+        }
+      });
+      expect(graph.projectConfig.defaultDatabase).to.equal("overridden-database");
+      const exampleTable = graph.tables.find(
+        table => table.name === "overridden-database.df_integration_test.example_table"
+      );
+      expect(exampleTable.target.database).equals("overridden-database");
+    });
+
     test("redshift compiles", () => {
       return compile({
         projectDir: "examples/common_v1",
