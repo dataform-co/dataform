@@ -7,6 +7,8 @@ import { QueryResultsOptions } from "@google-cloud/bigquery/build/src/job";
 import * as Long from "long";
 import * as PromisePool from "promise-pool-executor";
 
+const EXTRA_GOOGLE_SCOPES = ["https://www.googleapis.com/auth/drive"];
+
 const BIGQUERY_DATE_RELATED_FIELDS = [
   "BigQueryDate",
   "BigQueryTime",
@@ -183,9 +185,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
       // If metadata call fails, it probably doesn't exist, so don't do anything.
       return;
     }
-    await this.getClient(database)
-      .dataset(schema)
-      .delete({ force: true });
+    await client.dataset(schema).delete({ force: true });
   }
 
   public async close() {}
@@ -197,7 +197,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
         new BigQuery({
           projectId,
           credentials: JSON.parse(this.bigQueryCredentials.credentials),
-          scopes: ["https://www.googleapis.com/auth/drive"]
+          scopes: EXTRA_GOOGLE_SCOPES
         })
       );
     }
