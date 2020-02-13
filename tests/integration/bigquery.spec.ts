@@ -3,6 +3,7 @@ import * as dbadapters from "@dataform/api/dbadapters";
 import * as adapters from "@dataform/core/adapters";
 import { dataform } from "@dataform/protos";
 import { expect } from "chai";
+import { BigQueryDbAdapter } from "df/api/dbadapters/bigquery";
 import { BigQueryAdapter } from "df/core/adapters/bigquery";
 import { suite, test } from "df/testing";
 import { dropAllTables, getTableRows, keyBy } from "df/tests/integration/utils";
@@ -10,7 +11,7 @@ import * as Long from "long";
 
 suite("@dataform/integration/bigquery", ({ after }) => {
   const credentials = dfapi.credentials.read("bigquery", "test_credentials/bigquery.json");
-  const dbadapter = dbadapters.create(credentials, "bigquery");
+  const dbadapter = dbadapters.create(credentials, "bigquery") as BigQueryDbAdapter;
   after("close adapter", () => dbadapter.close());
 
   test("run", { timeout: 60000 }, async () => {
@@ -24,7 +25,11 @@ suite("@dataform/integration/bigquery", ({ after }) => {
     const adapter = adapters.create(compiledGraph.projectConfig, compiledGraph.dataformCoreVersion);
 
     // Drop all the tables before we do anything.
-    await dropAllTables(compiledGraph, adapter, dbadapter);
+    const tablesToDelete = (await dfapi.build(compiledGraph, {}, credentials)).warehouseState.tables;
+    await dropAllTables(tablesToDelete, adapter, dbadapter);
+
+    // Drop schemas to make sure schema creation works.
+    await dbadapter.dropSchema("dataform-integration-tests", "df_integration_test");
 
     // Run the tests.
     const testResults = await dfapi.test(credentials, "bigquery", compiledGraph.tests);

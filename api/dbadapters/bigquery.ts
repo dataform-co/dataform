@@ -7,6 +7,8 @@ import { QueryResultsOptions } from "@google-cloud/bigquery/build/src/job";
 import * as Long from "long";
 import * as PromisePool from "promise-pool-executor";
 
+const EXTRA_GOOGLE_SCOPES = ["https://www.googleapis.com/auth/drive"];
+
 const BIGQUERY_DATE_RELATED_FIELDS = [
   "BigQueryDate",
   "BigQueryTime",
@@ -35,16 +37,12 @@ interface IBigQueryFieldMetadata {
 
 export class BigQueryDbAdapter implements IDbAdapter {
   private bigQueryCredentials: dataform.IBigQuery;
-  private client: BigQuery;
   private pool: PromisePool.PromisePoolExecutor;
+
+  private readonly clients = new Map<string, BigQuery>();
 
   constructor(credentials: Credentials) {
     this.bigQueryCredentials = credentials as dataform.IBigQuery;
-    this.client = new BigQuery({
-      projectId: this.bigQueryCredentials.projectId,
-      credentials: JSON.parse(this.bigQueryCredentials.credentials),
-      scopes: ["https://www.googleapis.com/auth/drive"]
-    });
     // Bigquery allows 50 concurrent queries, and a rate limit of 100/user/second by default.
     // These limits should be safely low enough for most projects.
     this.pool = new PromisePool.PromisePoolExecutor({
@@ -78,7 +76,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
 
   public async evaluate(statement: string) {
     try {
-      await this.client.query({
+      await this.getClient().query({
         useLegacySql: false,
         query: statement,
         dryRun: true
@@ -95,7 +93,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
   }
 
   public tables(): Promise<dataform.ITarget[]> {
-    return this.client
+    return this.getClient()
       .getDatasets({ autoPaginate: true })
       .then((result: any) => {
         return Promise.all(
@@ -141,7 +139,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
       const rowsResult = await this.pool
         .addSingleTask({
           generator: () =>
-            this.client
+            this.getClient(target.database)
               .dataset(target.schema)
               .table(target.name)
               .getRows({
@@ -158,16 +156,17 @@ export class BigQueryDbAdapter implements IDbAdapter {
     return rows;
   }
 
-  public async prepareSchema(schema: string): Promise<void> {
+  public async prepareSchema(database: string, schema: string): Promise<void> {
     const location = this.bigQueryCredentials.location || "US";
+    const client = this.getClient(database);
 
     let metadata;
     try {
-      const data = await this.client.dataset(schema).getMetadata();
+      const data = await client.dataset(schema).getMetadata();
       metadata = data[0];
     } catch (e) {
       // If metadata call fails, it probably doesn't exist. So try to create it.
-      await this.client.createDataset(schema, { location });
+      await client.createDataset(schema, { location });
       return;
     }
 
@@ -178,12 +177,37 @@ export class BigQueryDbAdapter implements IDbAdapter {
     }
   }
 
+  public async dropSchema(database: string, schema: string): Promise<void> {
+    const client = this.getClient(database);
+    try {
+      await client.dataset(schema).getMetadata();
+    } catch (e) {
+      // If metadata call fails, it probably doesn't exist, so don't do anything.
+      return;
+    }
+    await client.dataset(schema).delete({ force: true });
+  }
+
   public async close() {}
+
+  private getClient(projectId = this.bigQueryCredentials.projectId) {
+    if (!this.clients.has(projectId)) {
+      this.clients.set(
+        projectId,
+        new BigQuery({
+          projectId,
+          credentials: JSON.parse(this.bigQueryCredentials.credentials),
+          scopes: EXTRA_GOOGLE_SCOPES
+        })
+      );
+    }
+    return this.clients.get(projectId);
+  }
 
   private async runQuery(statement: string, maxResults?: number) {
     const results = await new Promise<any[]>((resolve, reject) => {
       const allRows: any[] = [];
-      const stream = this.client.createQueryStream(statement);
+      const stream = this.getClient().createQueryStream(statement);
       stream
         .on("error", reject)
         .on("data", row => {
@@ -211,7 +235,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
     }
 
     return new Promise<any>((resolve, reject) =>
-      this.client.createQueryJob(
+      this.getClient().createQueryJob(
         { useLegacySql: false, jobPrefix: "dataform-", query: statement, maxResults },
         async (err, job) => {
           if (err) {
@@ -275,7 +299,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
       .addSingleTask({
         generator: async () => {
           try {
-            const table = await this.client
+            const table = await this.getClient(target.database)
               .dataset(target.schema)
               .table(target.name)
               .getMetadata();

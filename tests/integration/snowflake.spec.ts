@@ -22,8 +22,14 @@ suite("@dataform/integration/snowflake", ({ after }) => {
 
     const adapter = adapters.create(compiledGraph.projectConfig, compiledGraph.dataformCoreVersion);
 
+    const tablesToDelete = (await dfapi.build(compiledGraph, {}, credentials)).warehouseState.tables;
+
     // Drop all the tables before we do anything.
-    await dropAllTables(compiledGraph, adapter, dbadapter);
+    await dropAllTables(tablesToDelete, adapter, dbadapter);
+
+    // Drop schemas to make sure schema creation works.
+    await dbadapter.execute(`drop schema if exists "TADA"."df_integration_test"`);
+    await dbadapter.execute(`drop schema if exists "TADA2"."df_integration_test"`);
 
     // Run the tests.
     const testResults = await dfapi.test(credentials, "snowflake", compiledGraph.tests);
