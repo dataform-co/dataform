@@ -190,7 +190,8 @@ export class BigQueryDbAdapter implements IDbAdapter {
 
   public async close() {}
 
-  private getClient(projectId = this.bigQueryCredentials.projectId) {
+  private getClient(projectId?: string) {
+    projectId = projectId || this.bigQueryCredentials.projectId;
     if (!this.clients.has(projectId)) {
       this.clients.set(
         projectId,
