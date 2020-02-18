@@ -1230,6 +1230,11 @@ from
 where
   sample = 100
 `);
+
+      // expect({ asd: 143, def: { 123: 910, 564: 123 } }).to.equal({
+      //   asd: 123,
+      //   def: { 123: 810, 564: 456 }
+      // });
     });
 
     test("correctly formats comments.sqlx", async () => {

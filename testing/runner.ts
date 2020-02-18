@@ -37,6 +37,8 @@ export class Runner {
 
   // tslint:disable: no-console
   public static async run() {
+    chalk.enabled = true;
+    chalk.level = 3;
     try {
       // We tell the runner to start running at the end of current block of
       // synchronously executed code. This will typically be after all the
@@ -118,28 +120,25 @@ export class Runner {
   private static resultPromise: Promise<IRunResult[]>;
 
   private static indent(value: string, levels = 4) {
-    value
+    return value
       .split("\n")
-      .map(line => `${" ".repeat(4)}${line}`)
+      .map(line => `${" ".repeat(levels)}${line}`)
       .join("\n");
   }
 
   private static logExpectedVsActual(result: IRunResult) {
-    const green = "\x1b[32m";
-    const red = "\x1b[31m";
-    const reset = "\x1b[0m";
     const expected = result.err.expected;
     const actual = result.err.actual;
-    const comparingObjects = expected.substr(expected.length - 1) === "}";
+    const comparingObjects = !(typeof expected === "string");
 
     if (expected) {
-      console.error(`    ${green}Expected${reset}:\n`);
+      console.error(`\n    ${chalk.green("Expected")}:\n`);
       console.error(
         comparingObjects ? this.indent(DeterministicStringify(expected, { space: "  " })) : expected
       );
     }
     if (actual) {
-      console.error(`\n    ${red}Actual${reset}:\n`);
+      console.error(`\n    ${chalk.red("Actual")}:\n`);
       console.error(
         comparingObjects ? this.indent(DeterministicStringify(actual, { space: "  " })) : actual
       );
@@ -153,20 +152,33 @@ export class Runner {
         : Diff.diffLines(expected, actual);
       if (diffs.length === 1 && !diffs[0].added && !diffs[0].removed) {
         console.error(
-          `\n    ${green}Objects appear identical! Are you comparing objects with functions?`
+          `\n    ${chalk.green(
+            "Objects appear identical! Are you comparing objects with functions?"
+          )}`
         );
       } else {
-        console.error(`\n    Overall diff (${green}expected${reset}, ${red}actual${reset}):\n`);
+        console.error(
+          `\n    Overall diff (${chalk.green("expected -")}, ${chalk.red("actual +")}):\n`
+        );
         let toLog = "";
-        diffs.forEach(diff => {
+        diffs.forEach((diff, diffIndex, diffArr) => {
           // This diff won't show well for users with either default green or red text.
-          const colorPrefix = diff.added ? red : diff.removed ? green : reset;
-          const coloredText = `${colorPrefix}${diff.value}`;
-          toLog += comparingObjects ? this.indent(coloredText) : coloredText;
+          const colorFn = diff.added ? chalk.red : diff.removed ? chalk.green : chalk.reset;
+          const indentMarker = `${diff.added ? "+" : diff.removed ? "-" : " "}${
+            comparingObjects ? " " : "|"
+          }`;
+          toLog += diff.value
+            .split("\n")
+            // Add indent markers and colors only once per line.
+            .map((line, splitIndex, splitArr) =>
+              splitIndex < splitArr.length - 1 || diffIndex === diffArr.length - 1
+                ? colorFn(`${indentMarker}${line}`)
+                : line
+            )
+            .join("\n");
         });
-        console.error(toLog);
+        console.error(`${comparingObjects ? this.indent(toLog) : toLog}\n`);
       }
     }
-    console.error(reset);
   }
 }
