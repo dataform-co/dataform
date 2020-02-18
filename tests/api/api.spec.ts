@@ -1215,10 +1215,10 @@ SELECT
 
 select
   CAST(
-    REGEXP_EXTRACT("", r'^/([0-9]+)\\'/.*') AS INT64
+    REGEXP_EXTRACT("", r'^/([0-9]+)\\'\\"/.*') AS INT64
   ) AS id,
   CAST(
-    REGEXP_EXTRACT("", r"^/([0-9]+)\\"/.*") AS INT64
+    REGEXP_EXTRACT("", r"^/([0-9]+)\\"\\'/.*") AS INT64
   ) AS id2,
   IFNULL (
     regexp_extract('', r'\\a?query=([^&]+)&*'),
@@ -1230,11 +1230,6 @@ from
 where
   sample = 100
 `);
-
-      // expect({ asd: 143, def: { 123: 910, 564: 123 } }).to.equal({
-      //   asd: 123,
-      //   def: { 123: 810, 564: 456 }
-      // });
     });
 
     test("correctly formats comments.sqlx", async () => {

@@ -94,9 +94,9 @@ export class Runner {
       const hasErrors = ctx.results.some(result => result.outcome !== "passed");
 
       if (hasErrors) {
-        console.log(`\nTests failed.`);
+        console.info(chalk.green(`\nTests failed.`));
       } else {
-        console.log(`\nTests passed.`);
+        console.info(chalk.red(`\nTests passed.`));
       }
 
       process.exitCode = hasErrors ? 1 : 0;
@@ -152,7 +152,7 @@ export class Runner {
         : Diff.diffLines(expected, actual);
       if (diffs.length === 1 && !diffs[0].added && !diffs[0].removed) {
         console.error(
-          `\n    ${chalk.green(
+          `\n    ${chalk.yellow(
             "Objects appear identical! Are you comparing objects with functions?"
           )}`
         );
@@ -165,7 +165,7 @@ export class Runner {
           // This diff won't show well for users with either default green or red text.
           const colorFn = diff.added ? chalk.red : diff.removed ? chalk.green : chalk.reset;
           const indentMarker = `${diff.added ? "+" : diff.removed ? "-" : " "}${
-            comparingObjects ? " " : "|"
+            comparingObjects ? "   " : "|"
           }`;
           toLog += diff.value
             .split("\n")
