@@ -52,12 +52,6 @@ export class Runner {
 
       await Promise.all([...this.topLevelSuites].map(suite => suite.run(ctx)));
 
-      const indent = (value: string, levels = 4) =>
-        value
-          .split("\n")
-          .map(line => `${" ".repeat(4)}${line}`)
-          .join("\n");
-
       for (const result of ctx.results) {
         const outcomeString = (result.outcome || "unknown").toUpperCase();
         const pathString = result.path.join(" > ");
@@ -85,45 +79,12 @@ export class Runner {
 
         if (result.err) {
           const errString = result.err.stack
-            ? result.err.stack && indent(result.err.stack as string)
+            ? result.err.stack && this.indent(result.err.stack as string)
             : `    ${DeterministicStringify(result.err, { space: "  " })}`;
 
           console.error(`\n${errString}\n`);
           if (result.err.showDiff) {
-            if (result.err.expected) {
-              console.error(`    Expected:\n`);
-              console.error(indent(DeterministicStringify(result.err.expected, { space: "  " })));
-            }
-            if (result.err.actual) {
-              console.error(`\n    Actual:\n`);
-              console.error(indent(DeterministicStringify(result.err.actual, { space: "  " })));
-            }
-            const green = "\x1b[32m";
-            const red = "\x1b[31m";
-            const reset = "\x1b[0m";
-            if (result.err.actual && result.err.expected) {
-              const diffs = Diff.diffJson(
-                DeterministicStringify(result.err.expected, { space: "  " }),
-                DeterministicStringify(result.err.actual, { space: "  " })
-              );
-              if (diffs.length === 1 && !diffs[0].added && !diffs[0].removed) {
-                console.error(
-                  `\n    ${green}Objects appear identical! Are you comparing objects with functions?`
-                );
-              } else {
-                let toLog = "";
-                console.error(
-                  `\n    Overall diff (${green}expected${reset}, ${red}actual${reset}):\n`
-                );
-                diffs.forEach(diff => {
-                  // This diff won't show well for users with either default green or red text.
-                  const colorPrefix = diff.added ? red : diff.removed ? green : reset;
-                  toLog += indent(`${colorPrefix}${diff.value}`);
-                });
-                console.error(toLog);
-              }
-            }
-            console.error(reset);
+            this.logExpectedVsActual(result);
           }
         }
       }
@@ -155,4 +116,57 @@ export class Runner {
   private static noExit = false;
 
   private static resultPromise: Promise<IRunResult[]>;
+
+  private static indent(value: string, levels = 4) {
+    value
+      .split("\n")
+      .map(line => `${" ".repeat(4)}${line}`)
+      .join("\n");
+  }
+
+  private static logExpectedVsActual(result: IRunResult) {
+    const green = "\x1b[32m";
+    const red = "\x1b[31m";
+    const reset = "\x1b[0m";
+    const expected = result.err.expected;
+    const actual = result.err.actual;
+    const comparingObjects = expected.substr(expected.length - 1) === "}";
+
+    if (expected) {
+      console.error(`    ${green}Expected${reset}:\n`);
+      console.error(
+        comparingObjects ? this.indent(DeterministicStringify(expected, { space: "  " })) : expected
+      );
+    }
+    if (actual) {
+      console.error(`\n    ${red}Actual${reset}:\n`);
+      console.error(
+        comparingObjects ? this.indent(DeterministicStringify(actual, { space: "  " })) : actual
+      );
+    }
+    if (actual && expected) {
+      const diffs = comparingObjects
+        ? Diff.diffJson(
+            DeterministicStringify(expected, { space: "  " }),
+            DeterministicStringify(actual, { space: "  " })
+          )
+        : Diff.diffLines(expected, actual);
+      if (diffs.length === 1 && !diffs[0].added && !diffs[0].removed) {
+        console.error(
+          `\n    ${green}Objects appear identical! Are you comparing objects with functions?`
+        );
+      } else {
+        console.error(`\n    Overall diff (${green}expected${reset}, ${red}actual${reset}):\n`);
+        let toLog = "";
+        diffs.forEach(diff => {
+          // This diff won't show well for users with either default green or red text.
+          const colorPrefix = diff.added ? red : diff.removed ? green : reset;
+          const coloredText = `${colorPrefix}${diff.value}`;
+          toLog += comparingObjects ? this.indent(coloredText) : coloredText;
+        });
+        console.error(toLog);
+      }
+    }
+    console.error(reset);
+  }
 }

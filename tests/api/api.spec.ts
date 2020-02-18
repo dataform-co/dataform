@@ -1219,7 +1219,12 @@ select
   ) AS id,
   CAST(
     REGEXP_EXTRACT("", r"^/([0-9]+)\\"/.*") AS INT64
-  ) AS id2
+  ) AS id2,
+  IFNULL (
+    regexp_extract('', r'\\a?query=([^&]+)&*'),
+    regexp_extract('', r'\\a?q=([^&]+)&*')
+  ) AS id3,
+  regexp_extract('bar', r'bar') as ID4
 from
   \${ref("dab")}
 where
