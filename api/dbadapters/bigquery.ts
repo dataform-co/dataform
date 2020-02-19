@@ -208,17 +208,8 @@ export class BigQueryDbAdapter implements IDbAdapter {
       });
       return peristedMetadata || [];
     } catch (err) {
-      console.log(err);
       return [];
     }
-  }
-
-  public async persistStateMetadata(executionGraph : dataform.IExecutionGraph){
-    if(!tables || tables.length === 0){
-      return;
-    }
-    const table = tables[0].table
-    const metadataTableCreateQuery = 
   }
 
   private getClient(projectId = this.bigQueryCredentials.projectId) {
