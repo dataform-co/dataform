@@ -29,7 +29,7 @@ export interface IDbAdapter {
   preview(target: dataform.ITarget, limitRows?: number): Promise<any[]>;
   prepareSchema(database: string, schema: string): Promise<void>;
   persistedStateMetadata(
-    projectConfig: dataform.IProjectConfig
+    compiledGraph: dataform.ICompiledGraph
   ): Promise<dataform.IPersistedTableMetadata[]>;
   close(): Promise<void>;
 }

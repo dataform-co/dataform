@@ -1,4 +1,5 @@
 import { Credentials } from "@dataform/api/commands/credentials";
+import { adapters } from "@dataform/core";
 import { IDbAdapter, OnCancel } from "@dataform/api/dbadapters/index";
 import { parseBigqueryEvalError } from "@dataform/api/utils/error_parsing";
 import { dataform } from "@dataform/protos";
@@ -195,11 +196,15 @@ export class BigQueryDbAdapter implements IDbAdapter {
   public async close() {}
 
   public async persistedStateMetadata(
-    projectConfig: dataform.IProjectConfig
+    compiledGraph: dataform.ICompiledGraph
   ): Promise<dataform.IPersistedTableMetadata[]> {
+    const adapter = adapters.create(
+      compiledGraph.projectConfig,
+      compiledGraph.dataformCoreVersion || "1.0.0"
+    );
     try {
       const { rows } = await this.runQuery(
-        `SELECT * FROM \`${projectConfig.defaultDatabase}.${projectConfig.defaultSchema}.${STATE_PERSIST_TABLE_NAME}\``,
+        `SELECT * FROM \`${adapter.resolveTarget({ name: STATE_PERSIST_TABLE_NAME })}\``,
         5000 // not expecting to have more dataset than this
       );
       const peristedMetadata = rows.map(row => {

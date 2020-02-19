@@ -148,7 +148,7 @@ export class SQLDataWarehouseDBAdapter implements IDbAdapter {
   }
 
   public async persistedStateMetadata(
-    projectConfig: dataform.IProjectConfig
+    compiledGraph: dataform.ICompiledGraph
   ): Promise<dataform.IPersistedTableMetadata[]> {
     const persistedMetadata: dataform.IPersistedTableMetadata[] = [];
     return persistedMetadata;
