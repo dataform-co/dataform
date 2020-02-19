@@ -429,12 +429,17 @@ message TableMetadata {
   Target target = 1;
   string type = 2; // "table" or "view"
   repeated Field fields = 3;
-  int64 lastUpdatedMillis = 4;
+  int64 last_updated_millis = 4;
+}
+
+message PersistedTableDependency{
+  Target target = 1;
+  int64 last_updated_millis = 2;
 }
 
 message PersistedTableMetadata {
-  TableMetadata table = 1;
-  string create_query = 2;
-  int64 lastUpdatedMillis = 3;
-  repeated PersistedTableMetadata dependencies = 4;
+  Target target = 1;
+  string create_query_hash = 2;
+  int64 last_updated_millis = 3;
+  repeated PersistedTableDependency dependencies = 4;
 }
