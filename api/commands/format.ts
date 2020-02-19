@@ -13,7 +13,10 @@ const JS_BEAUTIFY_OPTIONS: JsBeautifyOptions = {
 
 const MAX_SQL_FORMAT_ATTEMPTS = 5;
 
-const TEXT_LIFT_PATTERNS = [/r'.*?(?<!\\)'/g, /r".*?(?<!\\)"/g];
+// TODO: currently r'...' are only lifted if there is a whitespace beforehand due to
+// the positive lookbehind. Instead the regex should be matched regardless of a prior
+// whitespace. Does this require matching a reversed string? @ekrekr.
+const TEXT_LIFT_PATTERNS = [/(?<=[ ])r'.*?(?<!\\)'/, /(?<=[ ])r".*?(?<!\\)"/];
 
 export async function formatFile(
   filename: string,
