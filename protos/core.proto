@@ -19,8 +19,12 @@ message ProjectConfig {
 
   string schema_suffix = 7;
 
+  bool use_run_cache = 10;
+
   // Deprecated. Please use 'default_database' instead.
   string gcloud_project_id = 6;
+
+  
 }
 
 message Environment {
@@ -47,6 +51,7 @@ message RunConfig {
   bool include_dependencies = 3;
   bool full_refresh = 2;
   int32 timeout_millis = 7;
+  bool use_run_cache = 8;
 
   reserved 4, 6;
 }
@@ -424,4 +429,12 @@ message TableMetadata {
   Target target = 1;
   string type = 2; // "table" or "view"
   repeated Field fields = 3;
+  int64 lastUpdatedMillis = 4;
+}
+
+message PersistedTableMetadata {
+  TableMetadata table = 1;
+  string create_query = 2;
+  int64 lastUpdatedMillis = 3;
+  repeated PersistedTableMetadata dependencies = 4;
 }

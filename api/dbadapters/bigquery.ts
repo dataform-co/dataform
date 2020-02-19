@@ -7,6 +7,8 @@ import { QueryResultsOptions } from "@google-cloud/bigquery/build/src/job";
 import * as Long from "long";
 import * as PromisePool from "promise-pool-executor";
 
+import { STATE_PERSIST_TABLE_NAME } from "@dataform/api/dbadapters/index";
+
 const EXTRA_GOOGLE_SCOPES = ["https://www.googleapis.com/auth/drive"];
 
 const BIGQUERY_DATE_RELATED_FIELDS = [
@@ -26,6 +28,7 @@ interface IBigQueryTableMetadata {
     datasetId: string;
     tableId: string;
   };
+  lastModifiedTime: string;
 }
 
 interface IBigQueryFieldMetadata {
@@ -127,7 +130,8 @@ export class BigQueryDbAdapter implements IDbAdapter {
     return dataform.TableMetadata.create({
       type: String(metadata.type).toLowerCase(),
       target,
-      fields: metadata.schema.fields.map(field => convertField(field))
+      fields: metadata.schema.fields.map(field => convertField(field)),
+      lastUpdatedMillis: Long.fromString(metadata.lastModifiedTime)
     });
   }
 
@@ -189,6 +193,33 @@ export class BigQueryDbAdapter implements IDbAdapter {
   }
 
   public async close() {}
+
+  public async persistedStateMetadata(
+    projectConfig: dataform.IProjectConfig
+  ): Promise<dataform.IPersistedTableMetadata[]> {
+    try {
+      const { rows } = await this.runQuery(
+        `SELECT * FROM \`${projectConfig.defaultDatabase}.${projectConfig.defaultSchema}.${STATE_PERSIST_TABLE_NAME}\``,
+        5000 // not expecting to have more dataset than this
+      );
+      const peristedMetadata = rows.map(row => {
+        const encodedProto = Buffer.from(row.proto, "base64");
+        return dataform.PersistedTableMetadata.decode(encodedProto);
+      });
+      return peristedMetadata || [];
+    } catch (err) {
+      console.log(err);
+      return [];
+    }
+  }
+
+  public async persistStateMetadata(executionGraph : dataform.IExecutionGraph){
+    if(!tables || tables.length === 0){
+      return;
+    }
+    const table = tables[0].table
+    const metadataTableCreateQuery = 
+  }
 
   private getClient(projectId = this.bigQueryCredentials.projectId) {
     if (!this.clients.has(projectId)) {

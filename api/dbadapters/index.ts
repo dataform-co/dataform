@@ -7,6 +7,8 @@ import { dataform } from "@dataform/protos";
 
 export type OnCancel = (handleCancel: () => void) => void;
 
+export const STATE_PERSIST_TABLE_NAME = "dataform-state-metadata";
+
 export interface IExecutionResult {
   rows: any[];
   metadata: dataform.IExecutionMetadata;
@@ -26,6 +28,9 @@ export interface IDbAdapter {
   table(target: dataform.ITarget): Promise<dataform.ITableMetadata>;
   preview(target: dataform.ITarget, limitRows?: number): Promise<any[]>;
   prepareSchema(database: string, schema: string): Promise<void>;
+  persistedStateMetadata(
+    projectConfig: dataform.IProjectConfig
+  ): Promise<dataform.IPersistedTableMetadata[]>;
   close(): Promise<void>;
 }
 
