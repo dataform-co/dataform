@@ -23,8 +23,6 @@ message ProjectConfig {
 
   // Deprecated. Please use 'default_database' instead.
   string gcloud_project_id = 6;
-
-  
 }
 
 message Environment {
