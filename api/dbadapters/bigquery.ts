@@ -204,7 +204,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
     );
     try {
       const { rows } = await this.runQuery(
-        `SELECT * FROM \`${adapter.resolveTarget({ name: STATE_PERSIST_TABLE_NAME })}\``,
+        `SELECT * FROM ${adapter.resolveTarget({ name: STATE_PERSIST_TABLE_NAME })}`,
         5000 // not expecting to have more dataset than this
       );
       const peristedMetadata = rows.map(row => {
@@ -215,6 +215,22 @@ export class BigQueryDbAdapter implements IDbAdapter {
     } catch (err) {
       return [];
     }
+  }
+
+  public async persistStateMetadata(compiledGraph: dataform.ICompiledGraph) {
+    const { projectConfig, dataformCoreVersion, tables } = compiledGraph;
+    const adapter = adapters.create(projectConfig, dataformCoreVersion || "1.0.0");
+    const metadataTableCreateQuery = `
+      CREATE TABLE IF NOT EXISTS ${adapter.resolveTarget({ name: STATE_PERSIST_TABLE_NAME })} (
+        target_name STRING,
+        metadata_json STRING,
+        metadata_proto STRING
+      )
+    `;
+
+    try {
+      await this.runQuery(metadataTableCreateQuery);
+    } catch (err) {}
   }
 
   private getClient(projectId?: string) {

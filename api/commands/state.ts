@@ -9,6 +9,8 @@ export async function state(
     compiledGraph.tables.map(async t => dbadapter.table(t.target))
   );
 
+  await dbadapter.persistedStateMetadata(compiledGraph);
+
   // filter out tables that don't exist
   const tablesWithValues = allTables.filter(table => {
     return !!table && !!table.type;

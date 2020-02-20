@@ -7,7 +7,7 @@ import { dataform } from "@dataform/protos";
 
 export type OnCancel = (handleCancel: () => void) => void;
 
-export const STATE_PERSIST_TABLE_NAME = "dataform-state-metadata";
+export const STATE_PERSIST_TABLE_NAME = "dataform_state_metadata";
 
 export interface IExecutionResult {
   rows: any[];
@@ -31,6 +31,7 @@ export interface IDbAdapter {
   persistedStateMetadata(
     compiledGraph: dataform.ICompiledGraph
   ): Promise<dataform.IPersistedTableMetadata[]>;
+  persistStateMetadata(compiledGraph: dataform.ICompiledGraph): Promise<void>;
   close(): Promise<void>;
 }
 

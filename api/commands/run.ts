@@ -106,7 +106,7 @@ export class Runner {
 
     // Recursively execute all actions as they become executable.
     await this.executeAllActionsReadyForExecution();
-
+    
     this.runResult.timing = timer.end();
 
     this.runResult.status = dataform.RunResult.ExecutionStatus.SUCCESSFUL;
