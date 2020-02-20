@@ -23,8 +23,6 @@ message ProjectConfig {
 
   // Deprecated. Please use 'default_database' instead.
   string gcloud_project_id = 6;
-
-  
 }
 
 message Environment {
@@ -432,14 +430,14 @@ message TableMetadata {
   int64 last_updated_millis = 4;
 }
 
-message PersistedTableDependency{
+message PersistedTableDependency {
   Target target = 1;
   int64 last_updated_millis = 2;
 }
 
 message PersistedTableMetadata {
   Target target = 1;
-  string create_query_hash = 2;
+  string definition_hash = 2;
   int64 last_updated_millis = 3;
   repeated PersistedTableDependency dependencies = 4;
 }
