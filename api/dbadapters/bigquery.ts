@@ -7,7 +7,6 @@ import { BigQuery } from "@google-cloud/bigquery";
 import { QueryResultsOptions } from "@google-cloud/bigquery/build/src/job";
 import * as Long from "long";
 import * as PromisePool from "promise-pool-executor";
-
 import { STATE_PERSIST_TABLE_TARGET } from "@dataform/api/dbadapters/index";
 
 const EXTRA_GOOGLE_SCOPES = ["https://www.googleapis.com/auth/drive"];
