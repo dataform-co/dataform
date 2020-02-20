@@ -8,7 +8,7 @@ import { QueryResultsOptions } from "@google-cloud/bigquery/build/src/job";
 import * as Long from "long";
 import * as PromisePool from "promise-pool-executor";
 
-import { STATE_PERSIST_TABLE_NAME } from "@dataform/api/dbadapters/index";
+import { STATE_PERSIST_TABLE_TARGET } from "@dataform/api/dbadapters/index";
 
 const EXTRA_GOOGLE_SCOPES = ["https://www.googleapis.com/auth/drive"];
 
@@ -204,7 +204,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
     );
     try {
       const { rows } = await this.runQuery(
-        `SELECT * FROM \`${adapter.resolveTarget({ name: STATE_PERSIST_TABLE_NAME })}\``,
+        `SELECT * FROM ${adapter.resolveTarget(STATE_PERSIST_TABLE_TARGET)}`,
         5000 // not expecting to have more dataset than this
       );
       const peristedMetadata = rows.map(row => {
