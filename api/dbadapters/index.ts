@@ -7,7 +7,10 @@ import { dataform } from "@dataform/protos";
 
 export type OnCancel = (handleCancel: () => void) => void;
 
-export const STATE_PERSIST_TABLE_NAME = "dataform-state-metadata";
+export const STATE_PERSIST_TABLE_NAME: dataform.ITarget = {
+  schema: "dataform_meta",
+  name: "cache_state"
+};
 
 export interface IExecutionResult {
   rows: any[];
