@@ -8,6 +8,7 @@ import { QueryResultsOptions } from "@google-cloud/bigquery/build/src/job";
 import * as Long from "long";
 import * as PromisePool from "promise-pool-executor";
 import { STATE_PERSIST_TABLE_TARGET } from "@dataform/api/dbadapters/index";
+import { hashTableDefinition } from "@dataform/api/utils/hash_object";
 
 const EXTRA_GOOGLE_SCOPES = ["https://www.googleapis.com/auth/drive"];
 
@@ -216,9 +217,10 @@ export class BigQueryDbAdapter implements IDbAdapter {
     }
   }
 
-  public async persistStateMetadata(compiledGraph: dataform.ICompiledGraph) {
-    const { projectConfig, dataformCoreVersion, tables } = compiledGraph;
+  public async persistStateMetadata(executionGraph: dataform.IExecutionGraph) {
+    const { projectConfig, dataformCoreVersion, tables } = executionGraph;
     const adapter = adapters.create(projectConfig, dataformCoreVersion || "1.0.0");
+    const tables = executionGraph.actions.filter(action => action.)
     const metadataTableCreateQuery = `
       CREATE TABLE IF NOT EXISTS ${adapter.resolveTarget(STATE_PERSIST_TABLE_TARGET)} (
         target_name STRING,
@@ -226,9 +228,36 @@ export class BigQueryDbAdapter implements IDbAdapter {
         metadata_proto STRING
       )
     `;
-
     try {
       await this.runQuery(metadataTableCreateQuery);
+      const tableMetadataMap = new Map<dataform.ITarget, IBigQueryTableMetadata>();
+      await Promise.all(
+        tables.map(async table => {
+          tableMetadataMap.set(table.target, await this.getMetadata(table.target));
+        })
+      );
+
+      await Promise.all(
+        tables.map(table => {
+          const definitionHash = hashTableDefinition(table);
+          const dependencies = table.dependencyTargets.map(dependencyTarget => {
+            const metadata = tableMetadataMap.get(dependencyTarget);
+            return dataform.PersistedTableDependency.create({
+              target: dependencyTarget,
+              lastUpdatedMillis: Long.fromString(metadata.lastModifiedTime)
+            });
+          });
+          const metadata = tableMetadataMap.get(table.target);
+          const persistTable = dataform.PersistedTableMetadata.create({
+            target: table.target,
+            lastUpdatedMillis: Long.fromString(metadata.lastModifiedTime),
+            definitionHash,
+            dependencies
+          });
+
+          console.log(persistTable);
+        })
+      );
     } catch (err) {}
   }
 

@@ -8,13 +8,14 @@ export async function state(
   const allTables = await Promise.all(
     compiledGraph.tables.map(async t => dbadapter.table(t.target))
   );
-
-  await dbadapter.persistedStateMetadata(compiledGraph);
-
   // filter out tables that don't exist
   const tablesWithValues = allTables.filter(table => {
     return !!table && !!table.type;
   });
 
-  return { tables: tablesWithValues };
+  const cachedStates = compiledGraph.projectConfig.useRunCache
+    ? await dbadapter.persistedStateMetadata(compiledGraph)
+    : [];
+
+  return { tables: tablesWithValues, cachedStates };
 }

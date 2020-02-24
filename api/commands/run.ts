@@ -106,7 +106,9 @@ export class Runner {
 
     // Recursively execute all actions as they become executable.
     await this.executeAllActionsReadyForExecution();
-    
+
+    await this.adapter.persistStateMetadata(this.graph);
+
     this.runResult.timing = timer.end();
 
     this.runResult.status = dataform.RunResult.ExecutionStatus.SUCCESSFUL;

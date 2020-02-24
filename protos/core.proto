@@ -290,6 +290,7 @@ message ExecutionAction {
 
 message WarehouseState {
   repeated TableMetadata tables = 1;
+  repeated PersistedTableMetadata cached_states = 2;
 }
 
 message ExecutionGraph {
@@ -430,14 +431,13 @@ message TableMetadata {
   int64 last_updated_millis = 4;
 }
 
-message PersistedTableDependency {
-  Target target = 1;
-  int64 last_updated_millis = 2;
-}
-
 message PersistedTableMetadata {
   Target target = 1;
-  string definition_hash = 2;
-  int64 last_updated_millis = 3;
-  repeated PersistedTableDependency dependencies = 4;
+  message CacheKey {
+    string definition_hash = 1;
+    int64 last_updated_millis = 2;
+  }
+  CacheKey cache_key = 2; 
+  repeated Target dependencies = 3;
+  ActionResult.ExecutionStatus execution_status = 4;
 }
