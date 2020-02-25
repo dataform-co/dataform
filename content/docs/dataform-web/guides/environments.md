@@ -74,7 +74,7 @@ The easiest way to differentiate staging and production data is by using differe
 
 In this configuration:
 
-- the `production` environment is locked to a specific Git commitproduction data
+- the `production` environment is locked to a specific Git commit
 
 - the `staging` environment runs the project's schedules at the latest version of the project's code (as exists on the `master` branch)
 
