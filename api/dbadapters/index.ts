@@ -7,7 +7,7 @@ import { dataform } from "@dataform/protos";
 
 export type OnCancel = (handleCancel: () => void) => void;
 
-export const STATE_PERSIST_TABLE_TARGET: dataform.ITarget = {
+export const CACHED_STATE_TABLE_TARGET: dataform.ITarget = {
   schema: "dataform_meta",
   name: "cache_state"
 };
@@ -31,10 +31,8 @@ export interface IDbAdapter {
   table(target: dataform.ITarget): Promise<dataform.ITableMetadata>;
   preview(target: dataform.ITarget, limitRows?: number): Promise<any[]>;
   prepareSchema(database: string, schema: string): Promise<void>;
-  persistedStateMetadata(
-    compiledGraph: dataform.ICompiledGraph
-  ): Promise<dataform.IPersistedTableMetadata[]>;
   persistStateMetadata(executionGraph: dataform.IExecutionGraph): Promise<void>;
+  persistedStateMetadata(database: string): Promise<dataform.IPersistedTableMetadata[]>;
   close(): Promise<void>;
 }
 

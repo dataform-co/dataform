@@ -1,5 +1,4 @@
 import { Credentials } from "@dataform/api/commands/credentials";
-import { adapters } from "@dataform/core";
 import { IDbAdapter, OnCancel } from "@dataform/api/dbadapters/index";
 import { parseBigqueryEvalError } from "@dataform/api/utils/error_parsing";
 import { dataform } from "@dataform/protos";
@@ -7,8 +6,10 @@ import { BigQuery } from "@google-cloud/bigquery";
 import { QueryResultsOptions } from "@google-cloud/bigquery/build/src/job";
 import * as Long from "long";
 import * as PromisePool from "promise-pool-executor";
-import { STATE_PERSIST_TABLE_TARGET } from "@dataform/api/dbadapters/index";
 import { hashTableDefinition } from "@dataform/api/utils/hash_object";
+import { CACHED_STATE_TABLE_TARGET } from "@dataform/api/dbadapters/index";
+
+const CACHED_STATE_TABLE_NAME = `${CACHED_STATE_TABLE_TARGET.schema}.${CACHED_STATE_TABLE_TARGET.name}`;
 
 const EXTRA_GOOGLE_SCOPES = ["https://www.googleapis.com/auth/drive"];
 
@@ -196,25 +197,17 @@ export class BigQueryDbAdapter implements IDbAdapter {
   public async close() {}
 
   public async persistedStateMetadata(
-    compiledGraph: dataform.ICompiledGraph
+    database: string
   ): Promise<dataform.IPersistedTableMetadata[]> {
-    const adapter = adapters.create(
-      compiledGraph.projectConfig,
-      compiledGraph.dataformCoreVersion || "1.0.0"
+    const { rows } = await this.runQuery(
+      `SELECT * FROM ${database}.${CACHED_STATE_TABLE_NAME}`,
+      5000 // TODO: Add pagination for 5000+ rows
     );
-    try {
-      const { rows } = await this.runQuery(
-        `SELECT * FROM ${adapter.resolveTarget(STATE_PERSIST_TABLE_TARGET)}`,
-        5000 // not expecting to have more dataset than this
-      );
-      const peristedMetadata = rows.map(row => {
-        const encodedProto = Buffer.from(row.metadata_proto, "base64");
-        return dataform.PersistedTableMetadata.decode(encodedProto);
-      });
-      return peristedMetadata || [];
-    } catch (err) {
-      return [];
-    }
+    const persistedMetadata = rows.map(row => {
+      const encodedProto = Buffer.from(row.proto, "base64");
+      return dataform.PersistedTableMetadata.decode(encodedProto);
+    });
+    return persistedMetadata;
   }
 
   public async persistStateMetadata(executionGraph: dataform.IExecutionGraph): Promise<void> {
