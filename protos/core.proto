@@ -432,8 +432,8 @@ message TableMetadata {
 
 message PersistedTableMetadata {
   Target target = 1;
-  string definition_hash = 2;
-  int64 last_updated_millis = 3;
+  string definition_hash = 2; // sha1 hash of ExectionAction object
+  int64 last_updated_millis = 3; // when the table/view last updated, extracted from warehouse
   repeated Target dependencies = 4;
   ActionResult.ExecutionStatus execution_status = 5;
 }
