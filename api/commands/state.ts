@@ -13,9 +13,9 @@ export async function state(
     return !!table && !!table.type;
   });
 
-  const cachedStates = compiledGraph.projectConfig.useRunCache
-    ? await dbadapter.persistedStateMetadata(compiledGraph)
-    : [];
+  const cachedStates = await dbadapter.persistedStateMetadata(compiledGraph);
+
+  console.log(compiledGraph.projectConfig, cachedStates);
 
   return { tables: tablesWithValues, cachedStates };
 }

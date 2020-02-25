@@ -79,6 +79,7 @@ export class Builder {
 
     return dataform.ExecutionAction.create({
       name: t.name,
+      dependencyTargets: t.dependencyTargets,
       dependencies: t.dependencies,
       type: "table",
       target: t.target,
@@ -90,6 +91,7 @@ export class Builder {
   public buildOperation(operation: dataform.IOperation) {
     return dataform.ExecutionAction.create({
       name: operation.name,
+      dependencyTargets: operation.dependencyTargets,
       dependencies: operation.dependencies,
       type: "operation",
       target: operation.target,
@@ -100,6 +102,7 @@ export class Builder {
   public buildAssertion(assertion: dataform.IAssertion) {
     return dataform.ExecutionAction.create({
       name: assertion.name,
+      dependencyTargets: assertion.dependencyTargets,
       dependencies: assertion.dependencies,
       type: "assertion",
       target: assertion.target,

@@ -208,7 +208,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
         5000 // not expecting to have more dataset than this
       );
       const peristedMetadata = rows.map(row => {
-        const encodedProto = Buffer.from(row.proto, "base64");
+        const encodedProto = Buffer.from(row.metadata_proto, "base64");
         return dataform.PersistedTableMetadata.decode(encodedProto);
       });
       return peristedMetadata || [];
@@ -217,10 +217,9 @@ export class BigQueryDbAdapter implements IDbAdapter {
     }
   }
 
-  public async persistStateMetadata(executionGraph: dataform.IExecutionGraph) {
-    const { projectConfig, dataformCoreVersion, tables } = executionGraph;
-    const adapter = adapters.create(projectConfig, dataformCoreVersion || "1.0.0");
-    const tables = executionGraph.actions.filter(action => action.)
+  public async persistStateMetadata(executionGraph: dataform.IExecutionGraph): Promise<void> {
+    const { projectConfig, actions } = executionGraph;
+    const adapter = adapters.create(projectConfig, null);
     const metadataTableCreateQuery = `
       CREATE TABLE IF NOT EXISTS ${adapter.resolveTarget(STATE_PERSIST_TABLE_TARGET)} (
         target_name STRING,
@@ -229,36 +228,57 @@ export class BigQueryDbAdapter implements IDbAdapter {
       )
     `;
     try {
+      console.log(metadataTableCreateQuery);
       await this.runQuery(metadataTableCreateQuery);
+      console.log("done", metadataTableCreateQuery);
       const tableMetadataMap = new Map<dataform.ITarget, IBigQueryTableMetadata>();
       await Promise.all(
-        tables.map(async table => {
-          tableMetadataMap.set(table.target, await this.getMetadata(table.target));
+        actions.map(async action => {
+          tableMetadataMap.set(action.target, await this.getMetadata(action.target));
         })
       );
 
       await Promise.all(
-        tables.map(table => {
-          const definitionHash = hashTableDefinition(table);
-          const dependencies = table.dependencyTargets.map(dependencyTarget => {
-            const metadata = tableMetadataMap.get(dependencyTarget);
-            return dataform.PersistedTableDependency.create({
-              target: dependencyTarget,
-              lastUpdatedMillis: Long.fromString(metadata.lastModifiedTime)
-            });
-          });
-          const metadata = tableMetadataMap.get(table.target);
+        actions.map(action => {
+          const definitionHash = hashTableDefinition(action);
+          const dependencies = action.dependencyTargets;
+          const metadata =
+            action.type === "operation"
+              ? { lastModifiedTime: `${new Date().valueOf()}` }
+              : tableMetadataMap.get(action.target);
           const persistTable = dataform.PersistedTableMetadata.create({
-            target: table.target,
-            lastUpdatedMillis: Long.fromString(metadata.lastModifiedTime),
-            definitionHash,
+            target: action.target,
+            cacheKey: {
+              lastUpdatedMillis: Long.fromString(metadata.lastModifiedTime),
+              definitionHash
+            },
             dependencies
           });
 
-          console.log(persistTable);
+          const encodedProtoBuffer = new Buffer(
+            dataform.PersistedTableMetadata.encode(persistTable).finish()
+          );
+
+          const updateQuery = `MERGE ${adapter.resolveTarget(STATE_PERSIST_TABLE_TARGET)} T
+          USING ${adapter.resolveTarget(STATE_PERSIST_TABLE_TARGET)} S
+          ON (T.target_name = S.target_name AND T.target_name = ${adapter.resolveTarget(
+            action.target
+          )})
+          WHEN NOT MATCHED THEN
+            INSERT (target_name, metadata_json, metadata_proto)
+            VALUES('${adapter.resolveTarget(STATE_PERSIST_TABLE_TARGET)}', '${JSON.stringify(
+            persistTable.toJSON()
+          )}', '${encodedProtoBuffer.toString("base64")}')
+          WHEN MATCHED THEN
+            UPDATE SET metadata_json = '${JSON.stringify(persistTable.toJSON())}',
+                metadata_proto = '${encodedProtoBuffer.toString("base64")}'
+          `;
+          this.runQuery(updateQuery);
         })
       );
-    } catch (err) {}
+    } catch (err) {
+      console.log(err);
+    }
   }
 
   private getClient(projectId?: string) {

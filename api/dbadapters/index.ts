@@ -34,7 +34,7 @@ export interface IDbAdapter {
   persistedStateMetadata(
     compiledGraph: dataform.ICompiledGraph
   ): Promise<dataform.IPersistedTableMetadata[]>;
-  persistStateMetadata(executionGraph: dataform.IExecutedGraph): Promise<void>;
+  persistStateMetadata(executionGraph: dataform.IExecutionGraph): Promise<void>;
   close(): Promise<void>;
 }
 

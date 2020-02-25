@@ -281,12 +281,12 @@ message ExecutionTask {
 
 message ExecutionAction {
   string name = 1;
-  repeated Target dependencies = 7;
+  repeated string dependencies = 3;
+  repeated Target dependency_targets = 7;
   repeated ExecutionTask tasks = 2;
   string type = 4;
   Target target = 5;
   string table_type = 6;
-  reserved 3;
 }
 
 message WarehouseState {
