@@ -7,7 +7,7 @@ import { BigQuery } from "@google-cloud/bigquery";
 import { QueryResultsOptions } from "@google-cloud/bigquery/build/src/job";
 import * as Long from "long";
 import * as PromisePool from "promise-pool-executor";
-import { STATE_PERSIST_TABLE_TARGET } from "@dataform/api/dbadapters/index";
+import { CACHED_STATE_TABLE_TARGET } from "@dataform/api/dbadapters/index";
 
 const EXTRA_GOOGLE_SCOPES = ["https://www.googleapis.com/auth/drive"];
 
@@ -203,14 +203,14 @@ export class BigQueryDbAdapter implements IDbAdapter {
     );
     try {
       const { rows } = await this.runQuery(
-        `SELECT * FROM ${adapter.resolveTarget(STATE_PERSIST_TABLE_TARGET)}`,
+        `SELECT * FROM ${adapter.resolveTarget(CACHED_STATE_TABLE_TARGET)}`,
         5000 // not expecting to have more dataset than this
       );
-      const peristedMetadata = rows.map(row => {
+      const persistedMetadata = rows.map(row => {
         const encodedProto = Buffer.from(row.proto, "base64");
         return dataform.PersistedTableMetadata.decode(encodedProto);
       });
-      return peristedMetadata || [];
+      return persistedMetadata;
     } catch (err) {
       return [];
     }

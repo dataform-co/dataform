@@ -432,11 +432,8 @@ message TableMetadata {
 
 message PersistedTableMetadata {
   Target target = 1;
-  message CacheKey{
-    string definition_hash = 1;
-    int64 last_updated_millis = 2;
-  }
-  CacheKey cache_key = 2;
-  repeated Target dependencies = 3;
-  ActionResult.ExecutionStatus execution_status = 4;
+  string definition_hash = 2;
+  int64 last_updated_millis = 3;
+  repeated Target dependencies = 4;
+  ActionResult.ExecutionStatus execution_status = 5;
 }

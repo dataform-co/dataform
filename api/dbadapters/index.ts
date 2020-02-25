@@ -7,7 +7,7 @@ import { dataform } from "@dataform/protos";
 
 export type OnCancel = (handleCancel: () => void) => void;
 
-export const STATE_PERSIST_TABLE_TARGET: dataform.ITarget = {
+export const CACHED_STATE_TABLE_TARGET: dataform.ITarget = {
   schema: "dataform_meta",
   name: "cache_state"
 };
