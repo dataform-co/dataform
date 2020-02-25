@@ -181,7 +181,7 @@ where table_schema = '${target.schema}'
   }
 
   public async persistedStateMetadata(
-    compiledGraph: dataform.ICompiledGraph
+    database: string
   ): Promise<dataform.IPersistedTableMetadata[]> {
     const persistedMetadata: dataform.IPersistedTableMetadata[] = [];
     return persistedMetadata;

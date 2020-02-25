@@ -130,7 +130,7 @@ export class RedshiftDbAdapter implements IDbAdapter {
   }
 
   public async persistedStateMetadata(
-    compiledGraph: dataform.ICompiledGraph
+    database: string
   ): Promise<dataform.IPersistedTableMetadata[]> {
     const persistedMetadata: dataform.IPersistedTableMetadata[] = [];
     return persistedMetadata;
