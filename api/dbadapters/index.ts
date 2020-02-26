@@ -12,6 +12,12 @@ export const CACHED_STATE_TABLE_TARGET: dataform.ITarget = {
   name: "cache_state"
 };
 
+export interface IMetadataRow {
+  target_name: string;
+  metadata_json: string;
+  metadata_proto: string;
+}
+
 export interface IExecutionResult {
   rows: any[];
   metadata: dataform.IExecutionMetadata;

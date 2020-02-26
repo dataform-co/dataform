@@ -141,6 +141,13 @@ export class Runner {
         databaseSchemas.get(trueDatabase).add(target.schema);
       });
 
+    if (!databaseSchemas.has(this.graph.projectConfig.defaultDatabase)) {
+      databaseSchemas.set(this.graph.projectConfig.defaultDatabase, new Set<string>());
+    }
+    databaseSchemas
+      .get(this.graph.projectConfig.defaultDatabase)
+      .add(dbadapters.CACHED_STATE_TABLE_TARGET.schema);
+
     // Wait for all schemas to be created.
     await Promise.all(
       Array.from(databaseSchemas).map(([database, schemas]) =>

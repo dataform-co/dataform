@@ -1,5 +1,5 @@
 import { Credentials } from "@dataform/api/commands/credentials";
-import { IDbAdapter, OnCancel } from "@dataform/api/dbadapters/index";
+import { IDbAdapter, OnCancel, IMetadataRow } from "@dataform/api/dbadapters/index";
 import { parseBigqueryEvalError } from "@dataform/api/utils/error_parsing";
 import { dataform } from "@dataform/protos";
 import { BigQuery } from "@google-cloud/bigquery";
@@ -7,9 +7,8 @@ import { QueryResultsOptions } from "@google-cloud/bigquery/build/src/job";
 import * as Long from "long";
 import * as PromisePool from "promise-pool-executor";
 import { hashTableDefinition } from "@dataform/api/utils/hash_object";
-import { CACHED_STATE_TABLE_TARGET } from "@dataform/api/dbadapters/index";
 
-const CACHED_STATE_TABLE_NAME = `${CACHED_STATE_TABLE_TARGET.schema}.${CACHED_STATE_TABLE_TARGET.name}`;
+const CACHED_STATE_TABLE_NAME = `dataform_meta.cache_state`;
 
 const EXTRA_GOOGLE_SCOPES = ["https://www.googleapis.com/auth/drive"];
 
@@ -200,78 +199,69 @@ export class BigQueryDbAdapter implements IDbAdapter {
     database: string
   ): Promise<dataform.IPersistedTableMetadata[]> {
     const { rows } = await this.runQuery(
-      `SELECT * FROM ${database}.${CACHED_STATE_TABLE_NAME}`,
+      `SELECT * FROM \`${database}.${CACHED_STATE_TABLE_NAME}\``,
       5000 // TODO: Add pagination for 5000+ rows
     );
-    const persistedMetadata = rows.map(row => {
-      const encodedProto = Buffer.from(row.proto, "base64");
+    const persistedMetadata = rows.map((row: IMetadataRow) => {
+      const encodedProto = Buffer.from(row.metadata_proto, "base64");
       return dataform.PersistedTableMetadata.decode(encodedProto);
     });
     return persistedMetadata;
   }
 
   public async persistStateMetadata(executionGraph: dataform.IExecutionGraph): Promise<void> {
-    const { projectConfig, actions } = executionGraph;
-    const adapter = adapters.create(projectConfig, null);
+    const { actions } = executionGraph;
     const metadataTableCreateQuery = `
-      CREATE TABLE IF NOT EXISTS ${adapter.resolveTarget(STATE_PERSIST_TABLE_TARGET)} (
+      CREATE TABLE IF NOT EXISTS \`${CACHED_STATE_TABLE_NAME}\` (
         target_name STRING,
         metadata_json STRING,
         metadata_proto STRING
       )
     `;
-    try {
-      console.log(metadataTableCreateQuery);
-      await this.runQuery(metadataTableCreateQuery);
-      console.log("done", metadataTableCreateQuery);
-      const tableMetadataMap = new Map<dataform.ITarget, IBigQueryTableMetadata>();
-      await Promise.all(
-        actions.map(async action => {
-          tableMetadataMap.set(action.target, await this.getMetadata(action.target));
-        })
-      );
+    await this.runQuery(metadataTableCreateQuery);
+    const tableMetadataMap = new Map<dataform.ITarget, IBigQueryTableMetadata>();
+    await Promise.all(
+      actions.map(async action => {
+        tableMetadataMap.set(action.target, await this.getMetadata(action.target));
+      })
+    );
 
-      await Promise.all(
-        actions.map(action => {
-          const definitionHash = hashTableDefinition(action);
-          const dependencies = action.dependencyTargets;
-          const metadata =
-            action.type === "operation"
-              ? { lastModifiedTime: `${new Date().valueOf()}` }
-              : tableMetadataMap.get(action.target);
-          const persistTable = dataform.PersistedTableMetadata.create({
-            target: action.target,
-            cacheKey: {
-              lastUpdatedMillis: Long.fromString(metadata.lastModifiedTime),
-              definitionHash
-            },
-            dependencies
-          });
+    await Promise.all(
+      actions.map(async action => {
+        const definitionHash = hashTableDefinition(action);
+        const dependencies = action.dependencyTargets;
+        const metadata =
+          action.type === "operation"
+            ? { lastModifiedTime: `${new Date().valueOf()}` }
+            : tableMetadataMap.get(action.target);
+        const persistTable = dataform.PersistedTableMetadata.create({
+          target: action.target,
+          lastUpdatedMillis: Long.fromString(metadata.lastModifiedTime),
+          definitionHash,
+          dependencies
+        });
 
-          const encodedProtoBuffer = new Buffer(
-            dataform.PersistedTableMetadata.encode(persistTable).finish()
-          );
+        const encodedProtoBuffer = new Buffer(
+          dataform.PersistedTableMetadata.encode(persistTable).finish()
+        );
 
-          const updateQuery = `MERGE ${adapter.resolveTarget(STATE_PERSIST_TABLE_TARGET)} T
-          USING ${adapter.resolveTarget(STATE_PERSIST_TABLE_TARGET)} S
-          ON (T.target_name = S.target_name AND T.target_name = ${adapter.resolveTarget(
-            action.target
-          )})
+        const targetName = `${action.target.database}.${action.target.schema}.${action.target.name}`;
+
+        const updateQuery = `MERGE INTO \`${CACHED_STATE_TABLE_NAME}\` T
+          USING (select '${targetName}' as target_name) S
+          ON (T.target_name = S.target_name AND T.target_name = '${targetName}')
           WHEN NOT MATCHED THEN
             INSERT (target_name, metadata_json, metadata_proto)
-            VALUES('${adapter.resolveTarget(STATE_PERSIST_TABLE_TARGET)}', '${JSON.stringify(
-            persistTable.toJSON()
-          )}', '${encodedProtoBuffer.toString("base64")}')
+            VALUES('${targetName}', '${JSON.stringify(
+          persistTable.toJSON()
+        )}', '${encodedProtoBuffer.toString("base64")}')
           WHEN MATCHED THEN
             UPDATE SET metadata_json = '${JSON.stringify(persistTable.toJSON())}',
                 metadata_proto = '${encodedProtoBuffer.toString("base64")}'
           `;
-          this.runQuery(updateQuery);
-        })
-      );
-    } catch (err) {
-      console.log(err);
-    }
+        await this.runQuery(updateQuery);
+      })
+    );
   }
 
   private getClient(projectId?: string) {
