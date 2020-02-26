@@ -179,6 +179,11 @@ where table_schema = '${target.schema}'
       });
     });
   }
+
+  public async persistedStateMetadata(): Promise<dataform.IPersistedTableMetadata[]> {
+    const persistedMetadata: dataform.IPersistedTableMetadata[] = [];
+    return persistedMetadata;
+  }
 }
 
 async function connect(snowflakeCredentials: dataform.ISnowflake) {
