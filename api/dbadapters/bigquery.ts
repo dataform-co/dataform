@@ -8,7 +8,7 @@ import * as Long from "long";
 import * as PromisePool from "promise-pool-executor";
 import { hashTableDefinition } from "@dataform/api/utils/hash_object";
 
-const CACHED_STATE_TABLE_NAME = `dataform_meta.cache_state`;
+const CACHED_STATE_TABLE_NAME = "dataform_meta.cache_state";
 
 const EXTRA_GOOGLE_SCOPES = ["https://www.googleapis.com/auth/drive"];
 
@@ -195,11 +195,9 @@ export class BigQueryDbAdapter implements IDbAdapter {
 
   public async close() {}
 
-  public async persistedStateMetadata(
-    database: string
-  ): Promise<dataform.IPersistedTableMetadata[]> {
+  public async persistedStateMetadata(): Promise<dataform.IPersistedTableMetadata[]> {
     const { rows } = await this.runQuery(
-      `SELECT * FROM \`${database}.${CACHED_STATE_TABLE_NAME}\``,
+      `SELECT * FROM ${CACHED_STATE_TABLE_NAME}`,
       5000 // TODO: Add pagination for 5000+ rows
     );
     const persistedMetadata = rows.map((row: IMetadataRow) => {
