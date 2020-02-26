@@ -14,15 +14,13 @@ export async function state(
   });
 
   let cachedStates: dataform.IPersistedTableMetadata[] = null;
-  try {
-    cachedStates = await dbadapter.persistedStateMetadata(
-      compiledGraph.projectConfig.defaultDatabase
-    );
-  } catch (err) {
-    cachedStates = [];
+
+  if (compiledGraph.projectConfig.useRunCache) {
+    try {
+      cachedStates = await dbadapter.persistedStateMetadata();
+    } catch (err) {
+      cachedStates = [];
+    }
   }
-
-  console.log(compiledGraph.projectConfig, cachedStates);
-
   return { tables: tablesWithValues, cachedStates };
 }

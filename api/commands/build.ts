@@ -59,10 +59,15 @@ export class Builder {
       this.compiledGraph.operations.map(o => this.buildOperation(o)),
       this.compiledGraph.assertions.map(a => this.buildAssertion(a))
     );
-
     return dataform.ExecutionGraph.create({
       projectConfig: this.compiledGraph.projectConfig,
-      runConfig: this.runConfig,
+      runConfig: {
+        ...this.runConfig,
+        useRunCache:
+          typeof this.runConfig.useRunCache === "undefined"
+            ? this.compiledGraph.projectConfig.useRunCache
+            : this.runConfig.useRunCache
+      },
       warehouseState: this.state,
       actions
     });

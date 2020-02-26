@@ -223,43 +223,43 @@ export class BigQueryDbAdapter implements IDbAdapter {
         tableMetadataMap.set(action.target, await this.getMetadata(action.target));
       })
     );
+    const updateQueries = actions.map(action => {
+      const definitionHash = hashTableDefinition(action);
+      const dependencies = action.dependencyTargets;
+      const metadata =
+        action.type === "operation"
+          ? { lastModifiedTime: `${new Date().valueOf()}` }
+          : tableMetadataMap.get(action.target);
+      const persistTable = dataform.PersistedTableMetadata.create({
+        target: action.target,
+        lastUpdatedMillis: Long.fromString(metadata.lastModifiedTime),
+        definitionHash,
+        dependencies
+      });
 
-    await Promise.all(
-      actions.map(async action => {
-        const definitionHash = hashTableDefinition(action);
-        const dependencies = action.dependencyTargets;
-        const metadata =
-          action.type === "operation"
-            ? { lastModifiedTime: `${new Date().valueOf()}` }
-            : tableMetadataMap.get(action.target);
-        const persistTable = dataform.PersistedTableMetadata.create({
-          target: action.target,
-          lastUpdatedMillis: Long.fromString(metadata.lastModifiedTime),
-          definitionHash,
-          dependencies
-        });
+      const encodedProtoBuffer = new Buffer(
+        dataform.PersistedTableMetadata.encode(persistTable).finish()
+      );
 
-        const encodedProtoBuffer = new Buffer(
-          dataform.PersistedTableMetadata.encode(persistTable).finish()
-        );
+      const targetName = `${action.target.database}.${action.target.schema}.${action.target.name}`;
 
-        const targetName = `${action.target.database}.${action.target.schema}.${action.target.name}`;
-
-        const updateQuery = `MERGE INTO \`${CACHED_STATE_TABLE_NAME}\` T
+      const updateQuery = `MERGE INTO \`${CACHED_STATE_TABLE_NAME}\` T
           USING (select '${targetName}' as target_name) S
           ON (T.target_name = S.target_name AND T.target_name = '${targetName}')
           WHEN NOT MATCHED THEN
             INSERT (target_name, metadata_json, metadata_proto)
             VALUES('${targetName}', '${JSON.stringify(
-          persistTable.toJSON()
-        )}', '${encodedProtoBuffer.toString("base64")}')
+        persistTable.toJSON()
+      )}', '${encodedProtoBuffer.toString("base64")}')
           WHEN MATCHED THEN
             UPDATE SET metadata_json = '${JSON.stringify(persistTable.toJSON())}',
                 metadata_proto = '${encodedProtoBuffer.toString("base64")}'
-          `;
-        await this.runQuery(updateQuery);
-      })
-    );
+          ;`;
+
+      return updateQuery;
+    });
+    const batchQuery = updateQueries.join("\n");
+    await this.runQuery(batchQuery);
   }
 
   private getClient(projectId?: string) {

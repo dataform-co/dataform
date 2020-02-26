@@ -25,7 +25,8 @@ suite("@dataform/integration/bigquery", ({ after }) => {
     const adapter = adapters.create(compiledGraph.projectConfig, compiledGraph.dataformCoreVersion);
 
     // Drop all the tables before we do anything.
-    const tablesToDelete = (await dfapi.build(compiledGraph, {}, credentials)).warehouseState.tables;
+    const tablesToDelete = (await dfapi.build(compiledGraph, {}, credentials)).warehouseState
+      .tables;
     await dropAllTables(tablesToDelete, adapter, dbadapter);
 
     // Drop schemas to make sure schema creation works.
@@ -198,6 +199,21 @@ suite("@dataform/integration/bigquery", ({ after }) => {
       expect(bqMetadata.totalBytesBilled).to.eql(Long.fromNumber(0));
       expect(bqMetadata).to.have.property("totalBytesProcessed");
       expect(bqMetadata.totalBytesProcessed).to.eql(Long.fromNumber(0));
+    });
+  });
+
+  suite("run cache", async () => {
+    test("cache metadata is written successfully", { timeout: 60000 }, async () => {
+      const compiledGraph = await dfapi.compile({
+        projectDir: "tests/integration/bigquery_project"
+      });
+      await dbadapter.dropSchema("dataform-integration-tests", "dataform_meta"); // Drop the meta schema
+      let executionGraph = await dfapi.build(compiledGraph, {}, credentials);
+      let executedGraph = await dfapi.run(executionGraph, credentials).resultPromise();
+      const data = await dbadapter.persistedStateMetadata();
+      const exampleView = data.find(table => table.target.name === "example_view");
+      expect(exampleView).to.have.property("definitionHash");
+      expect(exampleView.definitionHash).to.eql("f4e5aec383ad6202638dcdc062ed57d706271120");
     });
   });
 });

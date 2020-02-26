@@ -107,7 +107,9 @@ export class Runner {
     // Recursively execute all actions as they become executable.
     await this.executeAllActionsReadyForExecution();
 
-    await this.adapter.persistStateMetadata(this.graph);
+    if (this.graph.runConfig.useRunCache) {
+      await this.adapter.persistStateMetadata(this.graph);
+    }
 
     this.runResult.timing = timer.end();
 
