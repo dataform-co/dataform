@@ -180,9 +180,7 @@ where table_schema = '${target.schema}'
     });
   }
 
-  public async persistedStateMetadata(
-    database: string
-  ): Promise<dataform.IPersistedTableMetadata[]> {
+  public async persistedStateMetadata(): Promise<dataform.IPersistedTableMetadata[]> {
     const persistedMetadata: dataform.IPersistedTableMetadata[] = [];
     return persistedMetadata;
   }
