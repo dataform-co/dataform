@@ -7,6 +7,8 @@ import { QueryResultsOptions } from "@google-cloud/bigquery/build/src/job";
 import * as Long from "long";
 import * as PromisePool from "promise-pool-executor";
 
+const CACHED_STATE_TABLE_NAME = "dataform_meta.cache_state";
+
 const EXTRA_GOOGLE_SCOPES = ["https://www.googleapis.com/auth/drive"];
 
 const BIGQUERY_DATE_RELATED_FIELDS = [
@@ -26,6 +28,7 @@ interface IBigQueryTableMetadata {
     datasetId: string;
     tableId: string;
   };
+  lastModifiedTime: string;
 }
 
 interface IBigQueryFieldMetadata {
@@ -127,7 +130,8 @@ export class BigQueryDbAdapter implements IDbAdapter {
     return dataform.TableMetadata.create({
       type: String(metadata.type).toLowerCase(),
       target,
-      fields: metadata.schema.fields.map(field => convertField(field))
+      fields: metadata.schema.fields.map(field => convertField(field)),
+      lastUpdatedMillis: Long.fromString(metadata.lastModifiedTime)
     });
   }
 
@@ -189,6 +193,18 @@ export class BigQueryDbAdapter implements IDbAdapter {
   }
 
   public async close() {}
+
+  public async persistedStateMetadata(): Promise<dataform.IPersistedTableMetadata[]> {
+    const { rows } = await this.runQuery(
+      `SELECT * FROM ${CACHED_STATE_TABLE_NAME}`,
+      5000 // TODO: Add pagination for 5000+ rows
+    );
+    const persistedMetadata = rows.map(row => {
+      const encodedProto = Buffer.from(row.proto, "base64");
+      return dataform.PersistedTableMetadata.decode(encodedProto);
+    });
+    return persistedMetadata;
+  }
 
   private getClient(projectId?: string) {
     projectId = projectId || this.bigQueryCredentials.projectId;

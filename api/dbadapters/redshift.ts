@@ -129,6 +129,11 @@ export class RedshiftDbAdapter implements IDbAdapter {
     await this.queryExecutor.close();
   }
 
+  public async persistedStateMetadata(): Promise<dataform.IPersistedTableMetadata[]> {
+    const persistedMetadata: dataform.IPersistedTableMetadata[] = [];
+    return persistedMetadata;
+  }
+
   private async hasSpectrumTables() {
     return (
       (await this.execute(
