@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/golang/protobuf/descriptor"
 	"github.com/golang/protobuf/proto"
@@ -13,13 +14,14 @@ import (
 )
 
 type protobufCodec struct {
+	mux          sync.Mutex
 	protoHelpers map[string]*protoHelper
 }
 
 // Returns a new instance of protobufCodec. protobufCodec is a MongoDB codec. It encodes protobuf objects using the protobuf
 // field numbers as document keys. This means that stored protobufs can survive normal protobuf definition changes, e.g. renaming a field.
 func NewProtobufCodec() *protobufCodec {
-	return &protobufCodec{make(map[string]*protoHelper)}
+	return &protobufCodec{protoHelpers: make(map[string]*protoHelper)}
 }
 
 func (pc *protobufCodec) EncodeValue(ectx bsoncodec.EncodeContext, vw bsonrw.ValueWriter, val reflect.Value) error {
@@ -139,8 +141,12 @@ type protoHelper struct {
 func (pc *protobufCodec) protoHelper(pb descriptor.Message, t reflect.Type) *protoHelper {
 	// Try to load a pre-existing protoHelper from cache, if it exists.
 	messageName := proto.MessageName(pb)
-	if ph, ok := pc.protoHelpers[messageName]; ok {
-		return ph
+
+	pc.mux.Lock()
+	phr, ok := pc.protoHelpers[messageName];
+	pc.mux.Unlock()
+	if ok {
+		return phr
 	}
 
 	// Find the names of all oneofs.
@@ -167,7 +173,11 @@ func (pc *protobufCodec) protoHelper(pb descriptor.Message, t reflect.Type) *pro
 		oneofPropsByTag[strconv.Itoa(oneof.Prop.Tag)] = oneof
 	}
 	ph := &protoHelper{normalPropsByTag, oneofPropsByTag, oneofFieldWrapperProps}
+
+	pc.mux.Lock()
 	pc.protoHelpers[messageName] = ph
+	pc.mux.Unlock()
+
 	return ph
 }
 
