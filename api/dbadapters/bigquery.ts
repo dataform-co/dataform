@@ -6,9 +6,8 @@ import { BigQuery } from "@google-cloud/bigquery";
 import { QueryResultsOptions } from "@google-cloud/bigquery/build/src/job";
 import * as Long from "long";
 import * as PromisePool from "promise-pool-executor";
-import { CACHED_STATE_TABLE_TARGET } from "@dataform/api/dbadapters/index";
 
-const CACHED_STATE_TABLE_NAME = `${CACHED_STATE_TABLE_TARGET.schema}.${CACHED_STATE_TABLE_TARGET.name}`;
+const CACHED_STATE_TABLE_NAME = "dataform_meta.cache_state";
 
 const EXTRA_GOOGLE_SCOPES = ["https://www.googleapis.com/auth/drive"];
 
