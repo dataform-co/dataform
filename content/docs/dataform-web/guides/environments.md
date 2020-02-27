@@ -6,12 +6,12 @@ title: Environments
 
 By default, Dataform runs all of your project code directly off your project's `master` Git branch. Configuring environments allows you to control this behaviour, enabling you to run multiple different versions of your project code.
 
-**An environment is effectively a wrapper around that environment's version of your project code (including the `schedules.json` file)**. Once you have defined an environment, Dataform runs all of the schedules defined inside that environment 'wrapper', using that environment's version of the project code.
+**An environment is effectively a wrapper around a version of your project code (including the `schedules.json` file)**. Once you have defined an environment, Dataform runs all of the schedules defined inside that environment 'wrapper', using that version of the project code.
 
 A common use-case for environments is to run a staged release process. Code is first run in a `staging` environment, and after being sufficiently tested, is then later pushed to a `production` environment.
 
 <div className="bp3-callout bp3-icon-info-sign" markdown="1">
-  If you would like to use environments, please check that the version of <code>@dataform/core</code> that your project uses is at least <code>1.4.9</code>.
+  If you would like to use environments, please verify that the version of <code>@dataform/core</code> that your project uses is at least <code>1.4.9</code>.
 </div>
 
 <div className="bp3-callout bp3-icon-info-sign" markdown="1">
