@@ -90,11 +90,11 @@ func (pc *protobufCodec) DecodeValue(ectx bsoncodec.DecodeContext, vr bsonrw.Val
 		}
 
 		tag := elementNameToTag(f)
-		prop, isProp := ph.normalPropsByTag[tag]
+		prop, isNotOneOf := ph.normalPropsByTag[tag]
 		oneof, isOneof := ph.oneofPropsByTag[tag]
 
 		// Skip any field that we don't recognize.
-		if !isProp && !isOneof {
+		if !isNotOneOf && !isOneof {
 			if err = vr.Skip(); err != nil {
 				return err
 			}
@@ -103,7 +103,7 @@ func (pc *protobufCodec) DecodeValue(ectx bsoncodec.DecodeContext, vr bsonrw.Val
 
 		// Figure out what field we need to decode into.
 		var fVal reflect.Value
-		if isProp {
+		if isNotOneOf {
 			fVal = val.FieldByName(prop.Name)
 		} else if isOneof {
 			oneofVal := reflect.New(oneof.Type.Elem())
@@ -112,16 +112,45 @@ func (pc *protobufCodec) DecodeValue(ectx bsoncodec.DecodeContext, vr bsonrw.Val
 		}
 
 		// Actually decode the value.
-		enc, err := ectx.LookupDecoder(fVal.Type())
-		if err != nil {
-			return err
-		}
-		if err = enc.DecodeValue(ectx, fvr, fVal); err != nil {
-			return err
+		if err = lookupDecoderAndDecode(ectx, fvr, fVal); err != nil && isNotOneOf {
+			// It's possible that this value was encoded as a repeated field and is now being decoded as non-repeated field,
+			// or vice-versa. Since this would count as a valid protobuf change, we try to decode as the opposite type.
+			// If this decoding attempt fails, we return the original decode error.
+			if prop.Repeated {
+				singleVal := reflect.New(fVal.Type().Elem()).Elem()
+				if backupDecodeErr := lookupDecoderAndDecode(ectx, fvr, singleVal); backupDecodeErr != nil {
+					return err
+				}
+				fVal.Set(reflect.Append(fVal, singleVal))
+			} else {
+				repeatedVal := reflect.New(reflect.SliceOf(fVal.Type())).Elem()
+				if backupDecodeErr := lookupDecoderAndDecode(ectx, fvr, repeatedVal); backupDecodeErr != nil {
+					return err
+				}
+
+				for i := 0; i < repeatedVal.Len(); i++ {
+					singleVal := repeatedVal.Index(i)
+					// Following the rules here at https://developers.google.com/protocol-buffers/docs/proto#updating,
+					// repeated Message values must be merged into a single value.
+					if _, fieldIsMessage := fVal.Interface().(proto.Message); fieldIsMessage {
+						proto.Merge(fVal.Interface().(proto.Message), singleVal.Interface().(proto.Message))
+					} else {
+						fVal.Set(singleVal)
+					}
+				}
+			}
 		}
 	}
 
 	return nil
+}
+
+func lookupDecoderAndDecode(ectx bsoncodec.DecodeContext, vr bsonrw.ValueReader, val reflect.Value) error {
+	enc, err := ectx.LookupDecoder(val.Type())
+	if err != nil {
+		return err
+	}
+	return enc.DecodeValue(ectx, vr, val)
 }
 
 type protoHelper struct {
