@@ -2,23 +2,21 @@
 title: Environments
 ---
 
-<div className="bp3-callout bp3-icon-info-sign" markdown="1">
-  Environments require <code>@dataform/core >= 1.4.9</code>.
-</div>
-
-<div className="bp3-callout bp3-icon-info-sign" markdown="1">
-  Environments are an advanced feature. To get the most out of them, the <b>use of an external remote git provider is recommended</b>. This will make it easier to view specific commit SHAs, create remote git branches, create pull requests and code review, and manage a staging to production configuration.
-</div>
-
 ## Introduction
 
-Environments can be used to configure different variations of your schedules. **For each environment
-you define, using that environment's version of the project code, Dataform will run all of the
-project's schedules.**
+By default, Dataform runs all of your project code directly off your project's `master` Git branch. Configuring environments allows you to control this behaviour, enabling you to run multiple different versions of your project code.
 
-A common use-case for environments is to run a staged release process; you might
-want to push your code to a `staging` environment first, and then push it to a `production`
-environment once the code has been tested.
+**An environment is effectively a wrapper around that environment's version of your project code (including the `schedules.json` file)**. Once you have defined an environment, Dataform runs all of the schedules defined inside that environment 'wrapper', using that environment's version of the project code.
+
+A common use-case for environments is to run a staged release process. Code is first run in a `staging` environment, and after being sufficiently tested, is then later pushed to a `production` environment.
+
+<div className="bp3-callout bp3-icon-info-sign" markdown="1">
+  If you would like to use environments, please check that the version of <code>@dataform/core</code> that your project uses is at least <code>1.4.9</code>.
+</div>
+
+<div className="bp3-callout bp3-icon-info-sign" markdown="1">
+  Environments are an advanced feature. To get the most out of them, the <b>use of an external Git provider is recommended</b>. This makes it easier to view specific commit SHAs, manage Git branches, and control your release process.
+</div>
 
 ## Configuring environments
 
@@ -29,6 +27,10 @@ An environment consists of:
 - a name
 - a Git reference at which the code should be run (either a branch name or a commit SHA)
 - (optionally) overridden values for the project's configuration (the settings in `dataform.json`)
+
+<div className="bp3-callout bp3-icon-info-sign bp3-intent-warning" markdown="1">
+  Note that <b>Dataform branches are not Git branches.</b> If an environment is configured using a branch, that branch must exist on the project's remote Git project (e.g. GitHub, if the project is stored there).
+</div>
 
 A simple example of an `environments.json` file is:
 
@@ -48,35 +50,32 @@ A simple example of an `environments.json` file is:
 }
 ```
 
-This `staging` environment runs the code (and schedules) on a particular commit sha. It also overrides the values of
+This `staging` environment runs the code (and schedules) at the `67bed6bd4205ce97fa0284086ed70e5bc7f6dd75` Git commit SHA. It also overrides the values of
 `defaultDatabase` to isolate `staging` schedule runs from those in other environments.
 
-Note that Dataform uses the `environments.json` file on your `master` branch to determine your project's environments.
-**Any changes to your environments must be pushed to `master` before Dataform will take note of those changes**.
+Note that Dataform uses the `environments.json` file on your `master` branch to determine your project's environments. **Any changes to your environments must be pushed to `master` before Dataform will take note of those changes**.
 
 <div className="bp3-callout bp3-icon-info-sign" markdown="1">
-  If your project has a missing or empty <code>environments.json</code> file, Dataform uses a
-  default environment which runs the code on your <code>master</code> branch with no project
-  configuration overrides.
+  If your project has a missing or empty <code>environments.json</code> file, Dataform uses a default environment which runs the code on your <code>master</code> branch with no configuration overrides.
 </div>
 
-## Example staging to production using environments
+## Example: manage a production release process using environments
 
-In these paradigms, changes to the `production` environment are tightly controlled.
+More advanced Dataform projects typically have a tightly-controlled `production` environment. All changes to project code go into a `staging` environment which is intentionally kept separate from `production`. Once the code in `staging` has been verified to be sufficiently stable, that version of the code is then pushed into the `production` environment.
 
-The concept is that a `production` environment holds the current stable version being used, while recent changes are stored in a `staging` environment. Once stable, `staging` can be merged in to `production` (which may require a pull request, depending on your project's settings).
+Note that, unless you want Dataform to run schedules in `staging`, it may not be a requirement to define an explicit `staging` environment. Instead, you could maintain a single `production` environment and simply run all code under development using the project's default settings (as defined in `dataform.json`).
 
-This process has the nice property of requiring that any change to `production` is recorded in an audit trail (i.e. your project's Git commits).
-
-The easiest way to differentiate staging and production data is by using different databases. This is done in the examples by overriding the project config. This is however **not valid in Redshift or Snowflake**; see [Config schema overriding](#config-schema-overriding).
+A clean and simple way to separate staging and production data is to use a different database for each environment. However, this is only supported for BigQuery and Snowflake, so we recommend using per-environment schema suffixes for other warehouse types. The examples below show how to do both by overriding project configuration settings.
 
 ### Configuration via commit SHA
 
-In this configuration:
+In the below example:
 
 - the `production` environment is locked to a specific Git commit
 
 - the `staging` environment runs the project's schedules at the latest version of the project's code (as exists on the `master` branch)
+
+A nice property of this configuration is that any change to the `production` environment leaves an audit trail (by being recorded in your project's Git history).
 
 ```json
 {
@@ -93,7 +92,7 @@ In this configuration:
     {
       "name": "production",
       "gitReference": {
-        "commitSha": -[Production commit sha here]-
+        "commitSha": "PRODUCTION_GIT_COMMIT_SHA_GOES_HERE"
       },
       "configOverride": {
         "defaultDatabase": "dataform_production"
@@ -103,19 +102,24 @@ In this configuration:
 }
 ```
 
-To update the version of the project running in `production`, change the value of `commitSha`, and then push that change to your `master` branch. On GitHub the commit sha can be found by opening the project page, clicking commits, then copying the desired sha from the presented list of commits.
+To update the version of the project running in `production`, change the value of `commitSha`, and then push that change to your `master` branch. On GitHub, Git commit SHAs can be found by opening the project page and clicking 'commits'.
 
 <div className="bp3-callout bp3-icon-info-sign" markdown="1">
-  A branch can be specified instead of a commit sha by using <code>"gitReference": { "branch": -[branch name]- }</code>. This method is <b>strongly not recommended</b> for this paradigm though.
+  <p>A Git branch can be specified instead of a commit SHA: <code>"gitReference": { "branch": "GIT_BRANCH_NAME_GOES_HERE" }</code></p>
+
+<p>
+However, we do not recommend using Git branches to manage a <code>production</code> environment:
+
+  <ul>
+    <li>Managing merges across Git branches can be tricky and occasionally produces confusing results</li>
+    <li>Consequently, the audit trail of changes made to the environment can be harder to follow</li>
+  </ul>
+</p>
 </div>
 
-<div className="bp3-callout bp3-icon-info-sign" markdown="1">
-  Branches seen on dataform are different to remote branches (e.g. a repository branch on GitHub). Because of this, a <code>branch</code> specified in a <code>gitReference</code> won't point to a branch on dataform, with the exception of the master branch.
-</div>
+### Per-environment schema suffixes
 
-### Config schema overriding
-
-Another approach to separating production and staging data is to append a suffix to schemas in the `staging` environment. For example
+An alternative approach to separating production and staging data is to append a suffix to schemas in each environment. For example:
 
 ```json
 {
@@ -126,16 +130,16 @@ Another approach to separating production and staging data is to append a suffix
         "branch": "master"
       },
       "configOverride": {
-        "schemaSuffix": "dataform_staging"
+        "schemaSuffix": "_staging"
       }
     },
     {
       "name": "production",
       "gitReference": {
-        "branch": "production"
+        "commitSha": "PRODUCTION_GIT_COMMIT_SHA_GOES_HERE"
       },
       "configOverride": {
-        "schemaSuffix": "dataform_production"
+        "schemaSuffix": "_production"
       }
     }
   ]
