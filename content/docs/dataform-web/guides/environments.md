@@ -29,7 +29,7 @@ An environment consists of:
 - (optionally) overridden values for the project's configuration (the settings in `dataform.json`)
 
 <div className="bp3-callout bp3-icon-info-sign bp3-intent-warning" markdown="1">
-  Note that <b>Dataform branches are not Git branches.</b> If an environment is configured using a branch, that branch must exist on the project's remote Git project (e.g. GitHub, if the project is stored there).
+If an environment is configured using a branch, that branch must exist on the project's remote Git repo (e.g. GitHub, if the project is stored there). Note that <b>Dataform branches are not remote Git branches.</b>
 </div>
 
 A simple example of an `environments.json` file is:
