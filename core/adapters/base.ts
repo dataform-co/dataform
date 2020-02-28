@@ -29,6 +29,36 @@ export abstract class Adapter {
     return type;
   }
 
+  public indexAssertion(dataset: string, indexCols: string[]) {
+    const commaSeparatedColumns = indexCols.join(", ");
+    return `
+SELECT
+  *
+FROM (
+  SELECT
+    ${commaSeparatedColumns},
+    COUNT(1) AS index_row_count
+  FROM ${dataset}
+  GROUP BY ${commaSeparatedColumns}
+  ) AS data
+WHERE index_row_count > 1
+`;
+  }
+
+  public rowConditionsAssertion(dataset: string, rowConditions: string[]) {
+    return rowConditions
+      .map(
+        (rowCondition: string) => `
+SELECT
+  ${this.sqlString(rowCondition)} AS failing_row_condition,
+  *
+FROM ${dataset}
+WHERE NOT (${rowCondition})
+`
+      )
+      .join(`UNION ALL`);
+  }
+
   protected insertInto(target: dataform.ITarget, columns: string[], query: string) {
     return `
 insert into ${this.resolveTarget(target)}

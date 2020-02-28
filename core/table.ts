@@ -139,7 +139,7 @@ export interface ITableAssertions {
    *
    * If set, the resulting assertion will fail if any row contains `NULL` values for these column(s).
    */
-  nonNull?: string[];
+  nonNull?: string | string[];
 
   /**
    * General condition(s) which should hold true for all rows in the dataset.
@@ -400,21 +400,19 @@ export class Table {
     if (!!index) {
       const indexCols = typeof index === "string" ? [index] : index;
       this.session.assert(`${this.proto.target.name}_assertions_index`, ctx =>
-        indexAssertionSql(ctx, this.proto.target, indexCols)
+        this.session.adapter().indexAssertion(ctx.ref(this.proto.target), indexCols)
       );
     }
     const mergedRowConditions = rowConditions || [];
     if (!!nonNull) {
-      nonNull.forEach(nonNullCol => mergedRowConditions.push(`${nonNullCol} IS NOT NULL`));
+      const nonNullCols = typeof nonNull === "string" ? [nonNull] : nonNull;
+      nonNullCols.forEach(nonNullCol => mergedRowConditions.push(`${nonNullCol} IS NOT NULL`));
     }
     if (!!mergedRowConditions) {
       this.session.assert(`${this.proto.target.name}_assertions_rowConditions`, ctx =>
-        rowConditionsAssertionSql(
-          ctx,
-          this.session.adapter(),
-          this.proto.target,
-          mergedRowConditions
-        )
+        this.session
+          .adapter()
+          .rowConditionsAssertion(ctx.ref(this.proto.target), mergedRowConditions)
       );
     }
     return this;
@@ -553,39 +551,4 @@ export class TableContext implements ITableContext {
     this.table.tags(tags);
     return "";
   }
-}
-
-function indexAssertionSql(ctx: AssertionContext, table: dataform.ITarget, indexCols: string[]) {
-  const commaSeparatedColumns = indexCols.join(", ");
-  return `
-SELECT
-  *
-FROM (
-  SELECT
-    COUNT(1) AS index_row_count,
-    ${commaSeparatedColumns}
-  FROM ${ctx.ref(table)}
-  GROUP BY ${commaSeparatedColumns}
-  ) AS data
-WHERE index_row_count > 1
-`;
-}
-
-function rowConditionsAssertionSql(
-  ctx: AssertionContext,
-  adapter: IAdapter,
-  table: dataform.ITarget,
-  rowConditions: string[]
-) {
-  return rowConditions
-    .map(
-      (rowCondition: string) => `
-SELECT
-  ${adapter.sqlString(rowCondition)} AS failing_row_condition,
-  *
-FROM ${ctx.ref(table)}
-WHERE NOT (${rowCondition})
-`
-    )
-    .join(`UNION ALL`);
 }

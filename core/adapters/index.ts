@@ -20,6 +20,9 @@ export interface IAdapter {
 
   dropIfExists(target: dataform.ITarget, type: string): string;
   baseTableType(type: string): string;
+
+  indexAssertion(dataset: string, indexCols: string[]): string;
+  rowConditionsAssertion(dataset: string, rowConditions: string[]): string;
 }
 
 export type AdapterConstructor<T extends IAdapter> = new (
