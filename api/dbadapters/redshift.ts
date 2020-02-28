@@ -121,12 +121,17 @@ export class RedshiftDbAdapter implements IDbAdapter {
     return rows;
   }
 
-  public async prepareSchema(schema: string): Promise<void> {
+  public async prepareSchema(database: string, schema: string): Promise<void> {
     await this.execute(`create schema if not exists "${schema}"`);
   }
 
   public async close() {
     await this.queryExecutor.close();
+  }
+
+  public async persistedStateMetadata(): Promise<dataform.IPersistedTableMetadata[]> {
+    const persistedMetadata: dataform.IPersistedTableMetadata[] = [];
+    return persistedMetadata;
   }
 
   private async hasSpectrumTables() {

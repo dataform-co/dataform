@@ -113,6 +113,13 @@ export interface IBigQueryOptions {
    * For more information, read the [BigQuery partitioned tables docs](https://cloud.google.com/bigquery/docs/partitioned-tables).
    */
   partitionBy?: string;
+
+  /**
+   * The keys by which to cluster partitions by.
+   *
+   * For more information, read the [BigQuery clustered tables docs](https://cloud.google.com/bigquery/docs/clustered-tables).
+   */
+  clusterBy?: string[];
 }
 
 /**

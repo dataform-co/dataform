@@ -19,6 +19,8 @@ message ProjectConfig {
 
   string schema_suffix = 7;
 
+  bool use_run_cache = 10;
+
   // Deprecated. Please use 'default_database' instead.
   string gcloud_project_id = 6;
 }
@@ -47,6 +49,7 @@ message RunConfig {
   bool include_dependencies = 3;
   bool full_refresh = 2;
   int32 timeout_millis = 7;
+  bool use_run_cache = 8;
 
   reserved 4, 6;
 }
@@ -86,6 +89,7 @@ message Target {
 
 message BigQueryOptions {
   string partition_by = 1;
+  repeated string cluster_by = 2;
 }
 
 message RedshiftOptions {
@@ -423,4 +427,13 @@ message TableMetadata {
   Target target = 1;
   string type = 2; // "table" or "view"
   repeated Field fields = 3;
+  int64 last_updated_millis = 4;
+}
+
+message PersistedTableMetadata {
+  Target target = 1;
+  string definition_hash = 2; // sha1 hash of ExectionAction object
+  int64 last_updated_millis = 3; // Timestamp of the last modification to this dataset (where that modification happened as a result of a Dataform run).
+  repeated Target dependencies = 4;
+  ActionResult.ExecutionStatus execution_status = 5;
 }

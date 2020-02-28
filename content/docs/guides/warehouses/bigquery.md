@@ -29,3 +29,16 @@ CREATE OR REPLACE TABLE dataform.example
 PARTITION BY DATE(ts)
 AS (SELECT CURRENT_TIMESTAMP() AS ts)
 ```
+
+If desired, partitions can be clustered by using the `clusterBy` option, for example:
+
+```js
+config {
+  type: "table",
+  bigquery: {
+    partitionBy: "DATE(ts)",
+    clusterBy: ["name", "revenue"]
+  }
+}
+SELECT CURRENT_TIMESTAMP() as ts, name, revenue
+```

@@ -1,9 +1,9 @@
 import { Builder, compile } from "@dataform/api";
 import * as utils from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
+import { suite, test } from "@dataform/testing";
 import { fail } from "assert";
 import { expect } from "chai";
-import { suite, test } from "@dataform/testing";
 import { cleanSql } from "df/tests/utils";
 import * as path from "path";
 
@@ -598,6 +598,21 @@ suite("examples", () => {
           /^(df_integration_test_suffix|override_schema_suffix)$/
         )
       );
+    });
+
+    test("bigquery compiles with database override", async () => {
+      const graph = await compile({
+        projectDir: path.resolve("examples/common_v2"),
+        projectConfigOverride: {
+          warehouse: "bigquery",
+          defaultDatabase: "overridden-database"
+        }
+      });
+      expect(graph.projectConfig.defaultDatabase).to.equal("overridden-database");
+      const exampleTable = graph.tables.find(
+        table => table.name === "overridden-database.df_integration_test.example_table"
+      );
+      expect(exampleTable.target.database).equals("overridden-database");
     });
 
     test("redshift compiles", () => {

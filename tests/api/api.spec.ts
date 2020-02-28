@@ -8,7 +8,7 @@ import { assert, config, expect } from "chai";
 import { asPlainObject, cleanSql } from "df/tests/utils";
 import * as Long from "long";
 import * as path from "path";
-import { anyString, anything, instance, mock, when } from "ts-mockito";
+import { anyString, anything, instance, mock, verify, when } from "ts-mockito";
 
 config.truncateThreshold = 0;
 
@@ -490,7 +490,8 @@ suite("@dataform/api", () => {
             type: "table",
             query: "select 1 as test",
             bigquery: {
-              partitionBy: "DATE(test)"
+              partitionBy: "DATE(test)",
+              clusterBy: []
             }
           },
           {
@@ -532,7 +533,74 @@ suite("@dataform/api", () => {
           tasks: [
             {
               type: "statement",
-              statement: "create or replace table `deeb.schema.name`  as select 1 as test"
+              statement: "create or replace table `deeb.schema.name` as select 1 as test"
+            }
+          ]
+        }
+      ];
+      const executionGraph = new Builder(testGraph, {}, dataform.WarehouseState.create({})).build();
+      expect(asPlainObject(executionGraph.actions)).deep.equals(
+        asPlainObject(expectedExecutionActions)
+      );
+    });
+
+    test("bigquery_clusterby", () => {
+      const testGraph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
+        projectConfig: { warehouse: "bigquery", defaultDatabase: "deeb" },
+        tables: [
+          {
+            name: "partitionby",
+            target: {
+              schema: "schema",
+              name: "name"
+            },
+            type: "table",
+            query: "select 1 as test",
+            bigquery: {
+              partitionBy: "DATE(test)",
+              clusterBy: ["name", "revenue"]
+            }
+          },
+          {
+            name: "plain",
+            target: {
+              schema: "schema",
+              name: "name"
+            },
+            type: "table",
+            query: "select 1 as test"
+          }
+        ]
+      });
+      const expectedExecutionActions: dataform.IExecutionAction[] = [
+        {
+          name: "partitionby",
+          type: "table",
+          tableType: "table",
+          target: {
+            schema: "schema",
+            name: "name"
+          },
+          tasks: [
+            {
+              type: "statement",
+              statement:
+                "create or replace table `deeb.schema.name` partition by DATE(test) cluster by name, revenue as select 1 as test"
+            }
+          ]
+        },
+        {
+          name: "plain",
+          type: "table",
+          tableType: "table",
+          target: {
+            schema: "schema",
+            name: "name"
+          },
+          tasks: [
+            {
+              type: "statement",
+              statement: "create or replace table `deeb.schema.name` as select 1 as test"
             }
           ]
         }
@@ -730,7 +798,8 @@ suite("@dataform/api", () => {
       projectConfig: {
         warehouse: "bigquery",
         defaultSchema: "foo",
-        assertionSchema: "bar"
+        assertionSchema: "bar",
+        defaultDatabase: "database"
       },
       runConfig: {
         fullRefresh: true
@@ -766,8 +835,9 @@ suite("@dataform/api", () => {
           ],
           type: "assertion",
           target: {
-            schema: "schema1",
-            name: "target1"
+            database: "database2",
+            schema: "schema2",
+            name: "target2"
           },
           tableType: "someTableType"
         }
@@ -776,7 +846,7 @@ suite("@dataform/api", () => {
 
     test("execute", async () => {
       const mockedDbAdapter = mock(BigQueryDbAdapter);
-      when(mockedDbAdapter.prepareSchema(anyString())).thenResolve(null);
+      when(mockedDbAdapter.prepareSchema(anyString(), anyString())).thenResolve(null);
       when(
         mockedDbAdapter.execute(TEST_GRAPH.actions[0].tasks[0].statement, anything())
       ).thenResolve({
@@ -839,6 +909,9 @@ suite("@dataform/api", () => {
           ]
         })
       );
+
+      verify(mockedDbAdapter.prepareSchema("database", "schema1")).once();
+      verify(mockedDbAdapter.prepareSchema("database2", "schema2")).once();
     });
 
     suite("execute with retry", () => {
@@ -848,7 +921,7 @@ suite("@dataform/api", () => {
           ...TEST_GRAPH,
           projectConfig: { ...TEST_GRAPH.projectConfig, idempotentActionRetries: 1 }
         };
-        when(mockedDbAdapter.prepareSchema(anyString())).thenResolve(null);
+        when(mockedDbAdapter.prepareSchema(anyString(), anyString())).thenResolve(null);
         when(
           mockedDbAdapter.execute(NEW_TEST_GRAPH.actions[0].tasks[0].statement, anything())
         ).thenResolve({ rows: [], metadata: {} });
@@ -904,7 +977,7 @@ suite("@dataform/api", () => {
           ...TEST_GRAPH,
           projectConfig: { ...TEST_GRAPH.projectConfig, idempotentActionRetries: 2 }
         };
-        when(mockedDbAdapter.prepareSchema(anyString())).thenResolve(null);
+        when(mockedDbAdapter.prepareSchema(anyString(), anyString())).thenResolve(null);
         when(
           mockedDbAdapter.execute(NEW_TEST_GRAPH.actions[0].tasks[0].statement, anything())
         ).thenResolve({ rows: [], metadata: {} });
@@ -960,7 +1033,7 @@ suite("@dataform/api", () => {
         };
         NEW_TEST_GRAPH_WITH_OPERATION.actions[1].tasks[0].type = "operation";
 
-        when(mockedDbAdapter.prepareSchema(anyString())).thenResolve(null);
+        when(mockedDbAdapter.prepareSchema(anyString(), anyString())).thenResolve(null);
         when(
           mockedDbAdapter.execute(
             NEW_TEST_GRAPH_WITH_OPERATION.actions[0].tasks[0].statement,
@@ -1058,7 +1131,7 @@ suite("@dataform/api", () => {
               reject(new Error("Run cancelled"));
             });
           }),
-        prepareSchema: _ => {
+        prepareSchema: (_, __) => {
           return Promise.resolve();
         }
       } as IDbAdapter;
@@ -1142,11 +1215,16 @@ SELECT
 
 select
   CAST(
-    REGEXP_EXTRACT("", r'^/([0-9]+)\\'/.*') AS INT64
+    REGEXP_EXTRACT("", r'^/([0-9]+)\\'\\"/.*') AS INT64
   ) AS id,
   CAST(
-    REGEXP_EXTRACT("", r"^/([0-9]+)\\"/.*") AS INT64
-  ) AS id2
+    REGEXP_EXTRACT("", r"^/([0-9]+)\\"\\'/.*") AS INT64
+  ) AS id2,
+  IFNULL (
+    regexp_extract('', r'\\a?query=([^&]+)&*'),
+    regexp_extract('', r'\\a?q=([^&]+)&*')
+  ) AS id3,
+  regexp_extract('bar', r'bar') as ID4
 from
   \${ref("dab")}
 where

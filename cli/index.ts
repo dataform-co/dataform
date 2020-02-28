@@ -207,7 +207,8 @@ const builtYargs = createYargsCli({
           argv["project-dir"],
           {
             warehouse: argv.warehouse,
-            defaultDatabase: argv["default-database"]
+            defaultDatabase: argv["default-database"],
+            useRunCache: false
           },
           {
             skipInstall: argv["skip-install"],

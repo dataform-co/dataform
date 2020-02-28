@@ -15,18 +15,13 @@ export function keyBy<V>(values: V[], keyFn: (value: V) => string): { [key: stri
 }
 
 export async function dropAllTables(
-  compiledGraph: dataform.ICompiledGraph,
+  tables: dataform.ITableMetadata[],
   adapter: adapters.IAdapter,
   dbadapter: dbadapters.IDbAdapter
 ) {
   await Promise.all(
-    [].concat(
-      compiledGraph.tables.map(table =>
-        dbadapter.execute(adapter.dropIfExists(table.target, adapter.baseTableType(table.type)))
-      ),
-      compiledGraph.assertions.map(assertion =>
-        dbadapter.execute(adapter.dropIfExists(assertion.target, "view"))
-      )
+    tables.map(table =>
+      dbadapter.execute(adapter.dropIfExists(table.target, adapter.baseTableType(table.type)))
     )
   );
 }

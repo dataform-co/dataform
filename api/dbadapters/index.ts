@@ -7,6 +7,11 @@ import { dataform } from "@dataform/protos";
 
 export type OnCancel = (handleCancel: () => void) => void;
 
+export const CACHED_STATE_TABLE_TARGET: dataform.ITarget = {
+  schema: "dataform_meta",
+  name: "cache_state"
+};
+
 export interface IExecutionResult {
   rows: any[];
   metadata: dataform.IExecutionMetadata;
@@ -25,7 +30,8 @@ export interface IDbAdapter {
   tables(): Promise<dataform.ITarget[]>;
   table(target: dataform.ITarget): Promise<dataform.ITableMetadata>;
   preview(target: dataform.ITarget, limitRows?: number): Promise<any[]>;
-  prepareSchema(schema: string): Promise<void>;
+  prepareSchema(database: string, schema: string): Promise<void>;
+  persistedStateMetadata(): Promise<dataform.IPersistedTableMetadata[]>;
   close(): Promise<void>;
 }
 

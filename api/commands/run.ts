@@ -102,16 +102,7 @@ export class Runner {
     this.runResult.timing = timer.current();
     await this.triggerChange();
 
-    // Work out all the schemas we are going to need to create first.
-    const uniqueSchemas: { [schema: string]: boolean } = {};
-    this.graph.actions
-      .filter(action => !!action.target)
-      .map(action => action.target.schema)
-      .filter(schema => !!schema)
-      .forEach(schema => (uniqueSchemas[schema] = true));
-
-    // Wait for all schemas to be created.
-    await Promise.all(Object.keys(uniqueSchemas).map(schema => this.adapter.prepareSchema(schema)));
+    await this.prepareAllSchemas();
 
     // Recursively execute all actions as they become executable.
     await this.executeAllActionsReadyForExecution();
@@ -134,6 +125,27 @@ export class Runner {
     return this.runResult;
   }
 
+  private async prepareAllSchemas() {
+    // Work out all the schemas we are going to need to create first.
+    const databaseSchemas = new Map<string, Set<string>>();
+    this.graph.actions
+      .filter(action => !!action.target && !!action.target.schema)
+      .forEach(({ target }) => {
+        // This field may not be present for older versions of dataform.
+        const trueDatabase = target.database || this.graph.projectConfig.defaultDatabase;
+        if (!databaseSchemas.has(target.database)) {
+          databaseSchemas.set(trueDatabase, new Set<string>());
+        }
+        databaseSchemas.get(trueDatabase).add(target.schema);
+      });
+
+    // Wait for all schemas to be created.
+    await Promise.all(
+      Array.from(databaseSchemas).map(([database, schemas]) =>
+        Promise.all(Array.from(schemas).map(schema => this.adapter.prepareSchema(database, schema)))
+      )
+    );
+  }
   private async executeAllActionsReadyForExecution() {
     // If the run has been cancelled, cancel all pending actions.
     if (this.cancelled) {
