@@ -162,9 +162,31 @@ export interface ITableConfig extends ITargetableConfig, IDocumentableConfig, ID
    */
   sqldatawarehouse?: ISQLDataWarehouseOptions;
 
+  /**
+   * Assertions to be run on the dataset.
+   *
+   * If configured, relevant assertions will automatically be created and run as a dependency of this dataset.
+   */
   assertions?: {
+    /**
+     * Column(s) which constitute the dataset's index.
+     *
+     * If set, the resulting assertion will fail if there is more than one row in the dataset with the same values for all of these column(s).
+     */
     index?: string | string[];
+
+    /**
+     * Column(s) which may never be `NULL`.
+     *
+     * If set, the resulting assertion will fail if any row contains `NULL` values for these column(s).
+     */
     nonNull?: string[];
+
+    /**
+     * General condition(s) which should hold true for all rows in the dataset.
+     *
+     * If set, the resulting assertion will fail if any row violates any of these condition(s).
+     */
     rowConditions?: string[];
   };
 }
