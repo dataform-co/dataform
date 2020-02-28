@@ -11,6 +11,11 @@ export abstract class Adapter {
     return identifier;
   }
 
+  public sqlString(stringContents: string) {
+    // Escape escape characters, then escape single quotes, then wrap the string in single quotes.
+    return `'${stringContents.replace(/\\/g, "\\\\").replace(/'/g, "\\'")}'`;
+  }
+
   public dropIfExists(target: dataform.ITarget, type: string) {
     return `drop ${this.baseTableType(type)} if exists ${this.resolveTarget(target)} ${
       this.baseTableType(type) === "table" ? "cascade" : ""

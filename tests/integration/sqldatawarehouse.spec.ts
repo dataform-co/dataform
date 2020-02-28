@@ -76,7 +76,9 @@ suite("@dataform/integration/sqldatawarehouse", ({ after }) => {
       const expectedResult = expectedFailedActions.includes(actionName)
         ? dataform.ActionResult.ExecutionStatus.FAILED
         : dataform.ActionResult.ExecutionStatus.SUCCESSFUL;
-      expect(actionMap[actionName].status).equals(expectedResult);
+      expect(actionMap[actionName].status, JSON.stringify(executionGraph, null, 4)).equals(
+        expectedResult
+      );
     }
 
     expect(

@@ -9,6 +9,8 @@ export interface IAdapter {
   resolveTarget(target: dataform.ITarget): string;
   normalizeIdentifier(identifier: string): string;
 
+  sqlString(stringContents: string): string;
+
   publishTasks(
     table: dataform.ITable,
     runConfig: dataform.IRunConfig,

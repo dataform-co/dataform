@@ -1,3 +1,4 @@
+import { IAdapter } from "@dataform/core/adapters";
 import {
   IColumnsDescriptor,
   ICommonContext,
@@ -389,7 +390,12 @@ export class Table {
     }
     if (!!mergedRowConditions) {
       this.session.assert(`${this.proto.target.name}_assertions_rowConditions`, ctx =>
-        rowConditionsAssertionSql(ctx, this.proto.target, mergedRowConditions)
+        rowConditionsAssertionSql(
+          ctx,
+          this.session.adapter(),
+          this.proto.target,
+          mergedRowConditions
+        )
       );
     }
     return this;
@@ -544,11 +550,11 @@ FROM (
   ) AS data
 WHERE index_row_count > 1
 `;
-  // TODO: try collapsing this to just HAVING
 }
 
 function rowConditionsAssertionSql(
   ctx: AssertionContext,
+  adapter: IAdapter,
   table: dataform.ITarget,
   rowConditions: string[]
 ) {
@@ -556,7 +562,7 @@ function rowConditionsAssertionSql(
     .map(
       (rowCondition: string) => `
 SELECT
-  '${rowCondition.replace(/\\/g, "\\\\").replace(/'/g, "\\'")}' AS failing_row_condition,
+  ${adapter.sqlString(rowCondition)} AS failing_row_condition,
   *
 FROM ${ctx.ref(table)}
 WHERE NOT (${rowCondition})

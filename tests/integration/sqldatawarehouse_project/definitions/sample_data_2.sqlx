@@ -8,7 +8,7 @@ config {
         rowConditions: [
             "val1 > 0",
             "val3 IS NULL AND val2 >= val1",
-            "'fo\\'o' = 'fo\\'o'"
+            "'fo''o' = 'fo''o'"
         ]
     }
 }
