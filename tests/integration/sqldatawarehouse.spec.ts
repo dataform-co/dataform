@@ -26,7 +26,8 @@ suite("@dataform/integration/sqldatawarehouse", ({ after }) => {
     const adapter = adapters.create(compiledGraph.projectConfig, compiledGraph.dataformCoreVersion);
 
     // Drop all the tables before we do anything.
-    const tablesToDelete = (await dfapi.build(compiledGraph, {}, credentials)).warehouseState.tables;
+    const tablesToDelete = (await dfapi.build(compiledGraph, {}, credentials)).warehouseState
+      .tables;
     await dropAllTables(tablesToDelete, adapter, dbadapter);
 
     // Run the tests.
@@ -64,6 +65,7 @@ suite("@dataform/integration/sqldatawarehouse", ({ after }) => {
     let executedGraph = await dfapi.run(executionGraph, credentials).resultPromise();
 
     const actionMap = keyBy(executedGraph.actions, v => v.name);
+    expect(Object.keys(actionMap).length).eql(11);
 
     // Check the status of action execution.
     const expectedFailedActions = [

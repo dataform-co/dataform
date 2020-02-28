@@ -162,13 +162,11 @@ export interface ITableConfig extends ITargetableConfig, IDocumentableConfig, ID
   sqldatawarehouse?: ISQLDataWarehouseOptions;
 
   assertions?: {
-    uniqueKeys?: StringOrStrings[];
+    index?: string | string[];
     nonNull?: string[];
     rowConditions?: string[];
   };
 }
-
-type StringOrStrings = string | string[];
 
 /**
  * Context methods are available when evaluating contextable SQL code, such as
@@ -371,38 +369,27 @@ export class Table {
   }
 
   public assertions({
-    uniqueKeys,
+    index,
     nonNull,
     rowConditions
   }: {
-    uniqueKeys?: StringOrStrings[];
+    index?: string | string[];
     nonNull?: string[];
     rowConditions?: string[];
   }) {
-    for (const uniqueKey of uniqueKeys || []) {
-      const allCols = typeof uniqueKey === "string" ? [uniqueKey] : uniqueKey;
-      const commaSeparatedColumns = allCols.join(", ");
-      this.session.assert(
-        `${this.proto.target.name}_assertions_uniqueKeys_${allCols.join("_")}`,
-        ctx =>
-          `SELECT * FROM (SELECT ${commaSeparatedColumns}, COUNT(1) AS unique_key_count FROM ${ctx.ref(
-            this.proto.target
-          )} GROUP BY ${commaSeparatedColumns}) AS data WHERE unique_key_count > 1`
+    if (!!index) {
+      const indexCols = typeof index === "string" ? [index] : index;
+      this.session.assert(`${this.proto.target.name}_assertions_index`, ctx =>
+        indexAssertionSql(ctx, this.proto.target, indexCols)
       );
     }
-    for (const nonNullCol of nonNull || []) {
-      this.session.assert(
-        `${this.proto.target.name}_assertions_nonNull_${nonNullCol}`,
-        ctx => `SELECT ${nonNullCol} FROM ${ctx.ref(this.proto.target)} WHERE ${nonNullCol} IS NULL`
-      );
+    const mergedRowConditions = rowConditions || [];
+    if (!!nonNull) {
+      nonNull.forEach(nonNullCol => mergedRowConditions.push(`${nonNullCol} IS NOT NULL`));
     }
-    if (!!rowConditions) {
-      this.session.assert(
-        `${this.proto.target.name}_assertions_rowConditions`,
-        ctx =>
-          `SELECT * FROM ${ctx.ref(this.proto.target)} WHERE ${rowConditions
-            .map(rowCondition => `NOT (${rowCondition})`)
-            .join(" OR ")}`
+    if (!!mergedRowConditions) {
+      this.session.assert(`${this.proto.target.name}_assertions_rowConditions`, ctx =>
+        rowConditionsAssertionSql(ctx, this.proto.target, mergedRowConditions)
       );
     }
     return this;
@@ -541,4 +528,32 @@ export class TableContext implements ITableContext {
     this.table.tags(tags);
     return "";
   }
+}
+
+function indexAssertionSql(ctx: AssertionContext, table: dataform.ITarget, indexCols: string[]) {
+  const commaSeparatedColumns = indexCols.join(", ");
+  return `
+SELECT
+  *
+FROM (
+  SELECT
+    ${commaSeparatedColumns},
+    COUNT(1) AS row_count
+  FROM ${ctx.ref(table)}
+  GROUP BY ${commaSeparatedColumns}
+  ) AS data
+WHERE row_count > 1
+`;
+}
+
+function rowConditionsAssertionSql(
+  ctx: AssertionContext,
+  table: dataform.ITarget,
+  rowConditions: string[]
+) {
+  return `
+SELECT
+  *
+FROM ${ctx.ref(table)}
+WHERE ${rowConditions.map(rowCondition => `NOT (${rowCondition})`).join(" OR ")}`;
 }

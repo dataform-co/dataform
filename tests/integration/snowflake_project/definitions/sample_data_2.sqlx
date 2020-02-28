@@ -2,10 +2,7 @@ config {
     type: "view",
     database: "TADA2",
     assertions: {
-        uniqueKeys: [
-            "val2",
-            ["val1", "val2"]
-        ],
+        index: ["val1", "val2"],
         nonNull: [
             "val2"
         ],

@@ -22,7 +22,8 @@ suite("@dataform/integration/snowflake", ({ after }) => {
 
     const adapter = adapters.create(compiledGraph.projectConfig, compiledGraph.dataformCoreVersion);
 
-    const tablesToDelete = (await dfapi.build(compiledGraph, {}, credentials)).warehouseState.tables;
+    const tablesToDelete = (await dfapi.build(compiledGraph, {}, credentials)).warehouseState
+      .tables;
 
     // Drop all the tables before we do anything.
     await dropAllTables(tablesToDelete, adapter, dbadapter);
@@ -66,6 +67,7 @@ suite("@dataform/integration/snowflake", ({ after }) => {
     let executedGraph = await dfapi.run(executionGraph, credentials).resultPromise();
 
     const actionMap = keyBy(executedGraph.actions, v => v.name);
+    expect(Object.keys(actionMap).length).eql(12);
 
     // Check the status of action execution.
     const expectedFailedActions = [

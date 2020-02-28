@@ -68,6 +68,7 @@ suite("@dataform/integration/redshift", ({ after }) => {
     let executedGraph = await dfapi.run(executionGraph, credentials).resultPromise();
 
     const actionMap = keyBy(executedGraph.actions, v => v.name);
+    expect(Object.keys(actionMap).length).eql(12);
 
     // Check the status of action execution.
     const expectedFailedActions = [
