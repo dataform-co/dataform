@@ -1,3 +1,4 @@
+import { IAdapter } from "@dataform/core/adapters";
 import {
   IColumnsDescriptor,
   ICommonContext,
@@ -10,6 +11,7 @@ import { Contextable } from "@dataform/core/common";
 import { mapToColumnProtoArray, Session } from "@dataform/core/session";
 import * as utils from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
+import { AssertionContext } from "df/core/assertion";
 
 /**
  * @hidden
@@ -122,6 +124,32 @@ export interface IBigQueryOptions {
 }
 
 /**
+ * Options for creating assertions as part of a dataset definition.
+ */
+export interface ITableAssertions {
+  /**
+   * Column(s) which constitute the dataset's index.
+   *
+   * If set, the resulting assertion will fail if there is more than one row in the dataset with the same values for all of these column(s).
+   */
+  index?: string | string[];
+
+  /**
+   * Column(s) which may never be `NULL`.
+   *
+   * If set, the resulting assertion will fail if any row contains `NULL` values for these column(s).
+   */
+  nonNull?: string | string[];
+
+  /**
+   * General condition(s) which should hold true for all rows in the dataset.
+   *
+   * If set, the resulting assertion will fail if any row violates any of these condition(s).
+   */
+  rowConditions?: string[];
+}
+
+/**
  * Configuration options for `dataset` actions, including `table`, `view` and `incremental` action types.
  */
 export interface ITableConfig extends ITargetableConfig, IDocumentableConfig, IDependenciesConfig {
@@ -159,6 +187,13 @@ export interface ITableConfig extends ITargetableConfig, IDocumentableConfig, ID
    * Azure SQL Data Warehouse-specific options.
    */
   sqldatawarehouse?: ISQLDataWarehouseOptions;
+
+  /**
+   * Assertions to be run on the dataset.
+   *
+   * If configured, relevant assertions will automatically be created and run as a dependency of this dataset.
+   */
+  assertions?: ITableAssertions;
 }
 
 /**
@@ -248,6 +283,9 @@ export class Table {
     }
     if (config.schema) {
       this.schema(config.schema);
+    }
+    if (config.assertions) {
+      this.assertions(config.assertions);
     }
 
     return this;
@@ -355,6 +393,28 @@ export class Table {
       schema,
       this.proto.target.database
     );
+    return this;
+  }
+
+  public assertions({ index, nonNull, rowConditions }: ITableAssertions) {
+    if (!!index) {
+      const indexCols = typeof index === "string" ? [index] : index;
+      this.session.assert(`${this.proto.target.name}_assertions_index`, ctx =>
+        this.session.adapter().indexAssertion(ctx.ref(this.proto.target), indexCols)
+      );
+    }
+    const mergedRowConditions = rowConditions || [];
+    if (!!nonNull) {
+      const nonNullCols = typeof nonNull === "string" ? [nonNull] : nonNull;
+      nonNullCols.forEach(nonNullCol => mergedRowConditions.push(`${nonNullCol} IS NOT NULL`));
+    }
+    if (!!mergedRowConditions) {
+      this.session.assert(`${this.proto.target.name}_assertions_rowConditions`, ctx =>
+        this.session
+          .adapter()
+          .rowConditionsAssertion(ctx.ref(this.proto.target), mergedRowConditions)
+      );
+    }
     return this;
   }
 

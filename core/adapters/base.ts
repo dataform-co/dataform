@@ -11,6 +11,11 @@ export abstract class Adapter {
     return identifier;
   }
 
+  public sqlString(stringContents: string) {
+    // Escape escape characters, then escape single quotes, then wrap the string in single quotes.
+    return `'${stringContents.replace(/\\/g, "\\\\").replace(/'/g, "\\'")}'`;
+  }
+
   public dropIfExists(target: dataform.ITarget, type: string) {
     return `drop ${this.baseTableType(type)} if exists ${this.resolveTarget(target)} ${
       this.baseTableType(type) === "table" ? "cascade" : ""
@@ -22,6 +27,36 @@ export abstract class Adapter {
       return "table";
     }
     return type;
+  }
+
+  public indexAssertion(dataset: string, indexCols: string[]) {
+    const commaSeparatedColumns = indexCols.join(", ");
+    return `
+SELECT
+  *
+FROM (
+  SELECT
+    ${commaSeparatedColumns},
+    COUNT(1) AS index_row_count
+  FROM ${dataset}
+  GROUP BY ${commaSeparatedColumns}
+  ) AS data
+WHERE index_row_count > 1
+`;
+  }
+
+  public rowConditionsAssertion(dataset: string, rowConditions: string[]) {
+    return rowConditions
+      .map(
+        (rowCondition: string) => `
+SELECT
+  ${this.sqlString(rowCondition)} AS failing_row_condition,
+  *
+FROM ${dataset}
+WHERE NOT (${rowCondition})
+`
+      )
+      .join(`UNION ALL`);
   }
 
   protected insertInto(target: dataform.ITarget, columns: string[], query: string) {
