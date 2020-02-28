@@ -22,7 +22,8 @@ suite("@dataform/integration/snowflake", ({ after }) => {
 
     const adapter = adapters.create(compiledGraph.projectConfig, compiledGraph.dataformCoreVersion);
 
-    const tablesToDelete = (await dfapi.build(compiledGraph, {}, credentials)).warehouseState.tables;
+    const tablesToDelete = (await dfapi.build(compiledGraph, {}, credentials)).warehouseState
+      .tables;
 
     // Drop all the tables before we do anything.
     await dropAllTables(tablesToDelete, adapter, dbadapter);
@@ -123,7 +124,7 @@ suite("@dataform/integration/snowflake", ({ after }) => {
     );
     expect(tada2DatabaseViewRows.length).equals(3);
 
-    // Check the data in the incremental table.
+    // Check the data in the incremental tables.
     let incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
       "DF_INTEGRATION_TEST.EXAMPLE_INCREMENTAL"
     ];
@@ -135,11 +136,27 @@ suite("@dataform/integration/snowflake", ({ after }) => {
     );
     expect(incrementalRows.length).equals(3);
 
+    let incrementalTable2 = keyBy(compiledGraph.tables, t => t.name)[
+      "TADA2.DF_INTEGRATION_TEST.EXAMPLE_INCREMENTAL_TADA2"
+    ];
+    let incrementalRows2 = await getTableRows(
+      incrementalTable2.target,
+      adapter,
+      credentials,
+      "snowflake"
+    );
+    expect(incrementalRows2.length).equals(3);
+
     // Re-run some of the actions.
     executionGraph = await dfapi.build(
       compiledGraph,
       {
-        actions: ["EXAMPLE_INCREMENTAL", "EXAMPLE_TABLE", "EXAMPLE_VIEW"]
+        actions: [
+          "EXAMPLE_INCREMENTAL",
+          "EXAMPLE_INCREMENTAL_TADA2",
+          "EXAMPLE_TABLE",
+          "EXAMPLE_VIEW"
+        ]
       },
       credentials
     );
@@ -147,7 +164,7 @@ suite("@dataform/integration/snowflake", ({ after }) => {
     executedGraph = await dfapi.run(executionGraph, credentials).resultPromise();
     expect(executedGraph.status).equals(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
 
-    // Check there are the expected number of extra rows in the incremental table.
+    // Check there are the expected number of extra rows in the incremental tables.
     incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
       "DF_INTEGRATION_TEST.EXAMPLE_INCREMENTAL"
     ];
@@ -158,6 +175,17 @@ suite("@dataform/integration/snowflake", ({ after }) => {
       "snowflake"
     );
     expect(incrementalRows.length).equals(5);
+
+    incrementalTable2 = keyBy(compiledGraph.tables, t => t.name)[
+      "TADA2.DF_INTEGRATION_TEST.EXAMPLE_INCREMENTAL_TADA2"
+    ];
+    incrementalRows2 = await getTableRows(
+      incrementalTable2.target,
+      adapter,
+      credentials,
+      "snowflake"
+    );
+    expect(incrementalRows2.length).equals(5);
   });
 
   suite("result limit works", async () => {
