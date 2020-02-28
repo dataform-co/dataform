@@ -537,13 +537,14 @@ SELECT
   *
 FROM (
   SELECT
-    ${commaSeparatedColumns},
-    COUNT(1) AS row_count
+    COUNT(1) AS index_row_count,
+    ${commaSeparatedColumns}
   FROM ${ctx.ref(table)}
   GROUP BY ${commaSeparatedColumns}
   ) AS data
-WHERE row_count > 1
+WHERE index_row_count > 1
 `;
+  // TODO: try collapsing this to just HAVING
 }
 
 function rowConditionsAssertionSql(
@@ -551,9 +552,15 @@ function rowConditionsAssertionSql(
   table: dataform.ITarget,
   rowConditions: string[]
 ) {
-  return `
+  return rowConditions
+    .map(
+      (rowCondition: string) => `
 SELECT
+  '${rowCondition.replace(/\\/g, "\\\\").replace(/'/g, "\\'")}' AS failing_row_condition,
   *
 FROM ${ctx.ref(table)}
-WHERE ${rowConditions.map(rowCondition => `NOT (${rowCondition})`).join(" OR ")}`;
+WHERE NOT (${rowCondition})
+`
+    )
+    .join(`UNION ALL`);
 }
