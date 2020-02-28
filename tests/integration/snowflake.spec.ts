@@ -67,32 +67,19 @@ suite("@dataform/integration/snowflake", ({ after }) => {
     let executedGraph = await dfapi.run(executionGraph, credentials).resultPromise();
 
     const actionMap = keyBy(executedGraph.actions, v => v.name);
+    expect(Object.keys(actionMap).length).eql(12);
 
-    // Check the status of file execution.
-    const expectedRunStatuses = {
-      successful: [
-        "DF_INTEGRATION_TEST_ASSERTIONS.EXAMPLE_ASSERTION_PASS",
-        "DF_INTEGRATION_TEST_ASSERTIONS.EXAMPLE_ASSERTION_UNIQUENESS_PASS",
-        "DF_INTEGRATION_TEST.EXAMPLE_INCREMENTAL",
-        "DF_INTEGRATION_TEST.EXAMPLE_TABLE",
-        "DF_INTEGRATION_TEST.EXAMPLE_VIEW",
-        "DF_INTEGRATION_TEST.LOAD_FROM_S3",
-        "TADA2.DF_INTEGRATION_TEST.SAMPLE_DATA_2",
-        "DF_INTEGRATION_TEST.SAMPLE_DATA"
-      ],
-      failed: [
-        "DF_INTEGRATION_TEST_ASSERTIONS.EXAMPLE_ASSERTION_UNIQUENESS_FAIL",
-        "DF_INTEGRATION_TEST_ASSERTIONS.EXAMPLE_ASSERTION_FAIL"
-      ]
-    };
-
-    expectedRunStatuses.successful.forEach(actionName =>
-      expect(actionMap[actionName].status).equals(dataform.ActionResult.ExecutionStatus.SUCCESSFUL)
-    );
-
-    expectedRunStatuses.failed.forEach(actionName =>
-      expect(actionMap[actionName].status).equals(dataform.ActionResult.ExecutionStatus.FAILED)
-    );
+    // Check the status of action execution.
+    const expectedFailedActions = [
+      "DF_INTEGRATION_TEST_ASSERTIONS.EXAMPLE_ASSERTION_UNIQUENESS_FAIL",
+      "DF_INTEGRATION_TEST_ASSERTIONS.EXAMPLE_ASSERTION_FAIL"
+    ];
+    for (const actionName of Object.keys(actionMap)) {
+      const expectedResult = expectedFailedActions.includes(actionName)
+        ? dataform.ActionResult.ExecutionStatus.FAILED
+        : dataform.ActionResult.ExecutionStatus.SUCCESSFUL;
+      expect(actionMap[actionName].status).equals(expectedResult);
+    }
 
     expect(
       actionMap["DF_INTEGRATION_TEST_ASSERTIONS.EXAMPLE_ASSERTION_UNIQUENESS_FAIL"].tasks[1]
