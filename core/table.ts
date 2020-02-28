@@ -124,6 +124,32 @@ export interface IBigQueryOptions {
 }
 
 /**
+ * Options for creating assertions as part of a dataset definition.
+ */
+export interface ITableAssertions {
+  /**
+   * Column(s) which constitute the dataset's index.
+   *
+   * If set, the resulting assertion will fail if there is more than one row in the dataset with the same values for all of these column(s).
+   */
+  index?: string | string[];
+
+  /**
+   * Column(s) which may never be `NULL`.
+   *
+   * If set, the resulting assertion will fail if any row contains `NULL` values for these column(s).
+   */
+  nonNull?: string[];
+
+  /**
+   * General condition(s) which should hold true for all rows in the dataset.
+   *
+   * If set, the resulting assertion will fail if any row violates any of these condition(s).
+   */
+  rowConditions?: string[];
+}
+
+/**
  * Configuration options for `dataset` actions, including `table`, `view` and `incremental` action types.
  */
 export interface ITableConfig extends ITargetableConfig, IDocumentableConfig, IDependenciesConfig {
@@ -167,28 +193,7 @@ export interface ITableConfig extends ITargetableConfig, IDocumentableConfig, ID
    *
    * If configured, relevant assertions will automatically be created and run as a dependency of this dataset.
    */
-  assertions?: {
-    /**
-     * Column(s) which constitute the dataset's index.
-     *
-     * If set, the resulting assertion will fail if there is more than one row in the dataset with the same values for all of these column(s).
-     */
-    index?: string | string[];
-
-    /**
-     * Column(s) which may never be `NULL`.
-     *
-     * If set, the resulting assertion will fail if any row contains `NULL` values for these column(s).
-     */
-    nonNull?: string[];
-
-    /**
-     * General condition(s) which should hold true for all rows in the dataset.
-     *
-     * If set, the resulting assertion will fail if any row violates any of these condition(s).
-     */
-    rowConditions?: string[];
-  };
+  assertions?: ITableAssertions;
 }
 
 /**
@@ -391,15 +396,7 @@ export class Table {
     return this;
   }
 
-  public assertions({
-    index,
-    nonNull,
-    rowConditions
-  }: {
-    index?: string | string[];
-    nonNull?: string[];
-    rowConditions?: string[];
-  }) {
+  public assertions({ index, nonNull, rowConditions }: ITableAssertions) {
     if (!!index) {
       const indexCols = typeof index === "string" ? [index] : index;
       this.session.assert(`${this.proto.target.name}_assertions_index`, ctx =>
