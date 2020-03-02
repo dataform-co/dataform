@@ -281,7 +281,7 @@ message ExecutionTask {
 
 message ExecutionAction {
   string name = 1;
-  repeated string dependencies = 3;
+  repeated string dependencies = 3 [deprecated = true];
   repeated Target dependency_targets = 7;
   repeated ExecutionTask tasks = 2;
   string type = 4;
