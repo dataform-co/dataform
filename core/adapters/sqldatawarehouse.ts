@@ -8,6 +8,11 @@ export class SQLDataWarehouseAdapter extends Adapter implements IAdapter {
     super(dataformCoreVersion);
   }
 
+  public sqlString(stringContents: string) {
+    // Double single quotes (effectively escaping them), then wrap the string in single quotes.
+    return `'${stringContents.replace(/'/g, "''")}'`;
+  }
+
   public resolveTarget(target: dataform.ITarget) {
     return `"${target.schema}"."${target.name}"`;
   }

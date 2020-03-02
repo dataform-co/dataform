@@ -22,6 +22,10 @@ Without a valid access token, the scheduler will not be able to read the content
 
 They must have **read** access to your remote repository.
 
+<div className="bp3-callout bp3-icon-info-sign bp3-intent-warning" markdown="1">
+  GitHub doesn't support read-only access to the repo. You should use the <code>repo</code> <a target="_blank" rel="noopener" href="https://developer.github.com/apps/building-oauth-apps/understanding-scopes-for-oauth-apps">scope</a>
+</div>
+
 They can be updated on the **project settings page**, within the app.
 
 For projects with only a few collaborators (e.g. 3), it's ok to use a user's personal access token to authenticate the scheduler, but for larger teams a **machine user** is recommended. If you have a DevOps team, ask them about whether a machine user already exists.

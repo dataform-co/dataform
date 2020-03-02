@@ -9,6 +9,8 @@ export interface IAdapter {
   resolveTarget(target: dataform.ITarget): string;
   normalizeIdentifier(identifier: string): string;
 
+  sqlString(stringContents: string): string;
+
   publishTasks(
     table: dataform.ITable,
     runConfig: dataform.IRunConfig,
@@ -18,6 +20,9 @@ export interface IAdapter {
 
   dropIfExists(target: dataform.ITarget, type: string): string;
   baseTableType(type: string): string;
+
+  indexAssertion(dataset: string, indexCols: string[]): string;
+  rowConditionsAssertion(dataset: string, rowConditions: string[]): string;
 }
 
 export type AdapterConstructor<T extends IAdapter> = new (
