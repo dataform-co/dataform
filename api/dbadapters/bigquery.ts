@@ -228,7 +228,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
       })
     );
     const updateQueries = actions
-      .filter(action => action.type !== "operation")
+      .filter(action => action.type !== "operation") // Currently, we don't support caching for operation and its dependents
       .map(action => {
         const definitionHash = hashExecutionAction(action);
         const dependencies = action.dependencyTargets;
