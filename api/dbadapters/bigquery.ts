@@ -1,12 +1,17 @@
 import { Credentials } from "@dataform/api/commands/credentials";
-import { IDbAdapter, OnCancel, IMetadataRow } from "@dataform/api/dbadapters/index";
+import { IDbAdapter, OnCancel } from "@dataform/api/dbadapters/index";
 import { parseBigqueryEvalError } from "@dataform/api/utils/error_parsing";
 import { dataform } from "@dataform/protos";
 import { BigQuery } from "@google-cloud/bigquery";
 import { QueryResultsOptions } from "@google-cloud/bigquery/build/src/job";
 import * as Long from "long";
 import * as PromisePool from "promise-pool-executor";
-import { hashTableDefinition } from "@dataform/api/utils/hash_object";
+import {
+  hashExecutionAction,
+  IMetadataRow,
+  decodePersistedTableMetadata,
+  encodePersistedTableMetadata
+} from "@dataform/api/utils/run_cache";
 
 const CACHED_STATE_TABLE_NAME = "dataform_meta.cache_state";
 
@@ -200,10 +205,9 @@ export class BigQueryDbAdapter implements IDbAdapter {
       `SELECT * FROM ${CACHED_STATE_TABLE_NAME}`,
       5000 // TODO: Add pagination for 5000+ rows
     );
-    const persistedMetadata = rows.map((row: IMetadataRow) => {
-      const encodedProto = Buffer.from(row.metadata_proto, "base64");
-      return dataform.PersistedTableMetadata.decode(encodedProto);
-    });
+    const persistedMetadata = rows.map((row: IMetadataRow) =>
+      decodePersistedTableMetadata(row.metadata_proto)
+    );
     return persistedMetadata;
   }
 
@@ -223,41 +227,38 @@ export class BigQueryDbAdapter implements IDbAdapter {
         tableMetadataMap.set(action.target, await this.getMetadata(action.target));
       })
     );
-    const updateQueries = actions.map(action => {
-      const definitionHash = hashTableDefinition(action);
-      const dependencies = action.dependencyTargets;
-      const metadata =
-        action.type === "operation"
-          ? { lastModifiedTime: `${new Date().valueOf()}` }
-          : tableMetadataMap.get(action.target);
-      const persistTable = dataform.PersistedTableMetadata.create({
-        target: action.target,
-        lastUpdatedMillis: Long.fromString(metadata.lastModifiedTime),
-        definitionHash,
-        dependencies
-      });
+    const updateQueries = actions
+      .filter(action => action.type !== "operation")
+      .map(action => {
+        const definitionHash = hashExecutionAction(action);
+        const dependencies = action.dependencyTargets;
+        const metadata = tableMetadataMap.get(action.target);
+        const persistTable = dataform.PersistedTableMetadata.create({
+          target: action.target,
+          lastUpdatedMillis: Long.fromString(metadata.lastModifiedTime),
+          definitionHash,
+          dependencies
+        });
 
-      const encodedProtoBuffer = new Buffer(
-        dataform.PersistedTableMetadata.encode(persistTable).finish()
-      );
+        const encodedProtoString = encodePersistedTableMetadata(persistTable);
 
-      const targetName = `${action.target.database}.${action.target.schema}.${action.target.name}`;
+        const targetName = `${action.target.database}.${action.target.schema}.${action.target.name}`;
 
-      const updateQuery = `MERGE INTO \`${CACHED_STATE_TABLE_NAME}\` T
+        const updateQuery = `MERGE INTO \`${CACHED_STATE_TABLE_NAME}\` T
           USING (select '${targetName}' as target_name) S
           ON (T.target_name = S.target_name AND T.target_name = '${targetName}')
           WHEN NOT MATCHED THEN
             INSERT (target_name, metadata_json, metadata_proto)
             VALUES('${targetName}', '${JSON.stringify(
-        persistTable.toJSON()
-      )}', '${encodedProtoBuffer.toString("base64")}')
+          persistTable.toJSON()
+        )}', '${encodedProtoString}')
           WHEN MATCHED THEN
             UPDATE SET metadata_json = '${JSON.stringify(persistTable.toJSON())}',
-                metadata_proto = '${encodedProtoBuffer.toString("base64")}'
+                metadata_proto = '${encodedProtoString}'
           ;`;
 
-      return updateQuery;
-    });
+        return updateQuery;
+      });
     const batchQuery = updateQueries.join("\n");
     await this.runQuery(batchQuery);
   }
