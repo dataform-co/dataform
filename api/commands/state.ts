@@ -19,6 +19,9 @@ export async function state(
     try {
       cachedStates = await dbadapter.persistedStateMetadata();
     } catch (err) {
+      // if the table doesn't exist or for some network error
+      // cache state is not fetchable, then return empty array
+      // which implies no caching will be done
       cachedStates = [];
     }
   }
