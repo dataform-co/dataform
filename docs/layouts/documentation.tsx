@@ -1,9 +1,9 @@
 import { Button } from "@blueprintjs/core";
-import { ITree } from "df/docs/cms/tree";
 import Navigation from "df/docs/components/navigation";
 import { IHeaderLink, PageLinks } from "df/docs/components/page_links";
 import { BaseLayout } from "df/docs/layouts/base";
 import * as styles from "df/docs/layouts/documentation.css";
+import { ITree } from "df/tools/markdown-cms/tree";
 import * as React from "react";
 
 export interface IProps {
@@ -33,7 +33,7 @@ export default class Documentation extends React.Component<IProps> {
   public render() {
     const currentHeaderLinks = this.props.headerLinks || this.getHeaderLinks();
     return (
-      <BaseLayout title={`Dataform docs | ${this.props.current.attributes.title}`}>
+      <BaseLayout title={`${this.props.current.attributes.title} | Dataform`}>
         <div className={styles.container}>
           <div className={styles.sidebar}>
             <Navigation
