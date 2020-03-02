@@ -211,7 +211,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
     return persistedMetadata;
   }
 
-  public async persistStateMetadata(actions: dataform.IExecutedAction[]): Promise<void> {
+  public async persistStateMetadata(actions: dataform.IExecutionAction[]): Promise<void> {
     const metadataTableCreateQuery = `
       CREATE TABLE IF NOT EXISTS \`${CACHED_STATE_TABLE_NAME}\` (
         target_name STRING,

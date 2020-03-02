@@ -183,7 +183,7 @@ where table_schema = '${target.schema}'
     return persistedMetadata;
   }
 
-  public async persistStateMetadata(actions: dataform.IExecutedAction[]) {}
+  public async persistStateMetadata(actions: dataform.IExecutionAction[]) {}
 }
 
 async function connect(snowflakeCredentials: dataform.ISnowflake) {

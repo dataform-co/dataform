@@ -152,5 +152,5 @@ export class SQLDataWarehouseDBAdapter implements IDbAdapter {
     return persistedMetadata;
   }
 
-  public async persistStateMetadata(actions: dataform.IExecutedAction[]) {}
+  public async persistStateMetadata(actions: dataform.IExecutionAction[]) {}
 }

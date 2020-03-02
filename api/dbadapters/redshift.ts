@@ -134,7 +134,7 @@ export class RedshiftDbAdapter implements IDbAdapter {
     return persistedMetadata;
   }
 
-  public async persistStateMetadata(actions: dataform.IExecutedAction[]) {}
+  public async persistStateMetadata(actions: dataform.IExecutionAction[]) {}
 
   private async hasSpectrumTables() {
     return (
