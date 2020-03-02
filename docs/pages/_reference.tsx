@@ -1,7 +1,7 @@
 import { ITypedoc, Typedoc } from "df/docs/components/typedoc";
 import { getContentTree } from "df/docs/content_tree";
 import Documentation from "df/docs/layouts/documentation";
-import { ITree } from "df/tools/markdown-cms/tree-cms/tree";
+import { ITree } from "df/tools/markdown-cms/tree";
 import { readFile } from "fs";
 import { NextPageContext } from "next";
 import * as React from "react";
