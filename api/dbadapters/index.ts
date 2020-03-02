@@ -12,12 +12,6 @@ export const CACHED_STATE_TABLE_TARGET: dataform.ITarget = {
   name: "cache_state"
 };
 
-export interface IMetadataRow {
-  target_name: string;
-  metadata_json: string;
-  metadata_proto: string;
-}
-
 export interface IExecutionResult {
   rows: any[];
   metadata: dataform.IExecutionMetadata;
@@ -37,7 +31,7 @@ export interface IDbAdapter {
   table(target: dataform.ITarget): Promise<dataform.ITableMetadata>;
   preview(target: dataform.ITarget, limitRows?: number): Promise<any[]>;
   prepareSchema(database: string, schema: string): Promise<void>;
-  persistStateMetadata(executionGraph: dataform.IExecutionGraph): Promise<void>;
+  persistStateMetadata(actions: dataform.IExecutedAction[]): Promise<void>;
   persistedStateMetadata(): Promise<dataform.IPersistedTableMetadata[]>;
   close(): Promise<void>;
 }
