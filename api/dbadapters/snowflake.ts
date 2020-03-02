@@ -120,18 +120,16 @@ where LOWER(table_schema) != 'information_schema'
       this.execute(
         `
 select column_name, data_type, is_nullable
-from information_schema.columns
+from ${target.database ? `"${target.database}".` : ""}information_schema.columns
 where table_schema = '${target.schema}' 
-  and table_name = '${target.name}' 
-   ${target.database ? `and table_catalog = '${target.database}'` : ""}`
+  and table_name = '${target.name}'`
       ),
       this.execute(
         `
 select table_type
-from information_schema.tables
+from ${target.database ? `"${target.database}".` : ""}information_schema.tables
 where table_schema = '${target.schema}'
-  and table_name = '${target.name}' 
-  ${target.database ? `and table_catalog = '${target.database}'` : ""}`
+  and table_name = '${target.name}'`
       )
     ]).then(results => {
       if (results[1].rows.length > 0) {
