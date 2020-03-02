@@ -227,7 +227,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
         tableMetadataMap.set(action.target, await this.getMetadata(action.target));
       })
     );
-    const updateQueries = actions
+    const queries = actions
       .filter(action => action.type !== "operation") // Currently, we don't support caching for operation and its dependents
       .map(action => {
         const definitionHash = hashExecutionAction(action);
@@ -244,23 +244,24 @@ export class BigQueryDbAdapter implements IDbAdapter {
 
         const targetName = `${action.target.database}.${action.target.schema}.${action.target.name}`;
 
-        const updateQuery = `MERGE INTO \`${CACHED_STATE_TABLE_NAME}\` T
-          USING (select '${targetName}' as target_name) S
-          ON (T.target_name = S.target_name AND T.target_name = '${targetName}')
-          WHEN NOT MATCHED THEN
-            INSERT (target_name, metadata_json, metadata_proto)
-            VALUES('${targetName}', '${JSON.stringify(
-          persistTable.toJSON()
-        )}', '${encodedProtoString}')
-          WHEN MATCHED THEN
-            UPDATE SET metadata_json = '${JSON.stringify(persistTable.toJSON())}',
-                metadata_proto = '${encodedProtoString}'
-          ;`;
-
-        return updateQuery;
+        const selectQuery = `SELECT 
+          '${targetName}' AS target_name,
+          '${JSON.stringify(persistTable.toJSON())}' AS metadata_json,
+          '${encodedProtoString}' as metadata_proto`;
+        return selectQuery;
       });
-    const batchQuery = updateQueries.join("\n");
-    await this.runQuery(batchQuery);
+    const unionQuery = queries.join(" UNION ALL ");
+
+    const updateQuery = `MERGE INTO \`${CACHED_STATE_TABLE_NAME}\` T
+    USING (${unionQuery}) S
+    ON (T.target_name = S.target_name)
+    WHEN NOT MATCHED THEN
+      INSERT (target_name, metadata_json, metadata_proto)
+      VALUES(S.target_name, S.metadata_json, S.metadata_proto)
+    WHEN MATCHED THEN
+      UPDATE SET metadata_json = S.metadata_json,
+          metadata_proto = S.metadata_proto;`;
+    await this.runQuery(updateQuery);
   }
 
   private getClient(projectId?: string) {
