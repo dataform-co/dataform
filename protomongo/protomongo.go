@@ -170,7 +170,6 @@ type protoHelper struct {
 func (pc *protobufCodec) protoHelper(pb descriptor.Message, t reflect.Type) *protoHelper {
 	// Try to load a pre-existing protoHelper from cache, if it exists.
 	messageName := proto.MessageName(pb)
-
 	if ph, ok := pc.protoHelpers[messageName]; ok {
 		return ph
 	}
