@@ -109,8 +109,10 @@ next(
     ],
 )
 
+load("@build_bazel_rules_nodejs//:index.bzl", "npm_package_bin")
+
 # This is the output build directory for the next project. It must be called .next because next is very opinionated on this.
-next(
+npm_package_bin(
     name = ".next",
     args = [
         "build",
@@ -118,8 +120,14 @@ next(
         # This resolves to the output_dir, which is the name of this build rule.
         "$(@D)",
     ],
-    data = DEPS + [":sources"],
+    data = DEPS + [
+        ":sources",
+        ":assets",
+    ],
     output_dir = True,
+    # The number of input files to this rule exceeds the cap of 50K.
+    tags = ["no-remote-exec"],
+    tool = ":docs",
 )
 
 next(
