@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/golang/protobuf/descriptor"
 	"github.com/golang/protobuf/proto"
@@ -13,13 +14,14 @@ import (
 )
 
 type protobufCodec struct {
+	m            *sync.Mutex
 	protoHelpers map[string]*protoHelper
 }
 
 // Returns a new instance of protobufCodec. protobufCodec is a MongoDB codec. It encodes protobuf objects using the protobuf
 // field numbers as document keys. This means that stored protobufs can survive normal protobuf definition changes, e.g. renaming a field.
 func NewProtobufCodec() *protobufCodec {
-	return &protobufCodec{make(map[string]*protoHelper)}
+	return &protobufCodec{protoHelpers: make(map[string]*protoHelper), m: &sync.Mutex{}}
 }
 
 func (pc *protobufCodec) EncodeValue(ectx bsoncodec.EncodeContext, vw bsonrw.ValueWriter, val reflect.Value) error {
@@ -196,7 +198,11 @@ func (pc *protobufCodec) protoHelper(pb descriptor.Message, t reflect.Type) *pro
 		oneofPropsByTag[strconv.Itoa(oneof.Prop.Tag)] = oneof
 	}
 	ph := &protoHelper{normalPropsByTag, oneofPropsByTag, oneofFieldWrapperProps}
+
+	pc.m.Lock()
+	defer pc.m.Unlock()
 	pc.protoHelpers[messageName] = ph
+
 	return ph
 }
 
