@@ -32,6 +32,9 @@ suite("@dataform/integration/bigquery", ({ after }) => {
     // Drop schemas to make sure schema creation works.
     await dbadapter.dropSchema("dataform-integration-tests", "df_integration_test");
 
+    // Drop the meta schema
+    await dbadapter.dropSchema("dataform-integration-tests", "dataform_meta");
+
     // Run the tests.
     const testResults = await dfapi.test(credentials, "bigquery", compiledGraph.tests);
     expect(testResults).to.eql([
@@ -129,6 +132,12 @@ suite("@dataform/integration/bigquery", ({ after }) => {
     ];
     incrementalRows = await getTableRows(incrementalTable.target, adapter, credentials, "bigquery");
     expect(incrementalRows.length).equals(5);
+
+    // run cache assertions
+    const data = await dbadapter.persistedStateMetadata();
+    const exampleView = data.find(table => table.target.name === "example_view");
+    expect(exampleView).to.have.property("definitionHash");
+    expect(exampleView.definitionHash).to.eql("1c60b4a7c0ef5a079db163d52cc7fdea9b78f58b");
   });
 
   suite("result limit works", async () => {
@@ -199,21 +208,6 @@ suite("@dataform/integration/bigquery", ({ after }) => {
       expect(bqMetadata.totalBytesBilled).to.eql(Long.fromNumber(0));
       expect(bqMetadata).to.have.property("totalBytesProcessed");
       expect(bqMetadata.totalBytesProcessed).to.eql(Long.fromNumber(0));
-    });
-  });
-
-  suite("run cache", async () => {
-    test("cache metadata is written successfully", { timeout: 60000 }, async () => {
-      const compiledGraph = await dfapi.compile({
-        projectDir: "tests/integration/bigquery_project"
-      });
-      await dbadapter.dropSchema("dataform-integration-tests", "dataform_meta"); // Drop the meta schema
-      let executionGraph = await dfapi.build(compiledGraph, {}, credentials);
-      let executedGraph = await dfapi.run(executionGraph, credentials).resultPromise();
-      const data = await dbadapter.persistedStateMetadata();
-      const exampleView = data.find(table => table.target.name === "example_view");
-      expect(exampleView).to.have.property("definitionHash");
-      expect(exampleView.definitionHash).to.eql("f4e5aec383ad6202638dcdc062ed57d706271120");
     });
   });
 });
