@@ -1,4 +1,3 @@
-import { IAdapter } from "@dataform/core/adapters";
 import {
   IColumnsDescriptor,
   ICommonContext,
@@ -11,7 +10,6 @@ import { Contextable } from "@dataform/core/common";
 import { mapToColumnProtoArray, Session } from "@dataform/core/session";
 import * as utils from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
-import { AssertionContext } from "df/core/assertion";
 
 /**
  * @hidden
