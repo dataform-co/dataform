@@ -19,7 +19,7 @@ let config = {
 
     config.resolve.alias = {
       ...config.resolve.alias,
-      df: path.resolve(__dirname, "../")
+      df: path.resolve(path.join(process.env.RUNFILES, "df"))
     };
     // Make sure webpack can resolve modules that live within our bazel managed deps.
 

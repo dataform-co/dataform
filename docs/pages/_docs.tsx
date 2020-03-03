@@ -1,12 +1,8 @@
 import rehypePrism from "@mapbox/rehype-prism";
-import { ICms } from "df/docs/cms";
-import { GitHubCms } from "df/docs/cms/github";
-import { LocalCms } from "df/docs/cms/local";
-import { ITree, Tree } from "df/docs/cms/tree";
 import { getContentTree } from "df/docs/content_tree";
 import Documentation from "df/docs/layouts/documentation";
+import { ITree } from "df/tools/markdown-cms/tree";
 import { NextPageContext } from "next";
-import * as NodeCache from "node-cache";
 import * as React from "react";
 import rehypeRaw from "rehype-raw";
 import rehypeReact from "rehype-react";

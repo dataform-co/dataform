@@ -1,6 +1,6 @@
-import { GitHubCms } from "df/docs/cms/github";
-import { LocalCms } from "df/docs/cms/local";
-import { Tree } from "df/docs/cms/tree";
+import { GitHubCms } from "df/tools/markdown-cms/github";
+import { LocalCms } from "df/tools/markdown-cms/local";
+import { Tree } from "df/tools/markdown-cms/tree";
 import NodeCache from "node-cache";
 
 export const localCms = new LocalCms("content/docs");
