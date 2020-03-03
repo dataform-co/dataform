@@ -125,7 +125,7 @@ suite("@dataform/integration/bigquery", ({ after }) => {
     const data = await dbadapter.persistedStateMetadata();
     const exampleView = data.find(table => table.target.name === "example_view");
     expect(exampleView).to.have.property("definitionHash");
-    expect(exampleView.definitionHash).to.eql("1c60b4a7c0ef5a079db163d52cc7fdea9b78f58b");
+    expect(exampleView.definitionHash).to.eql("988c32e8dd7f513fc8982d36bc444a7da18469fd");
   });
 
   suite("result limit works", async () => {

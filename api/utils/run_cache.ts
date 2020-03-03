@@ -20,3 +20,12 @@ export const encodePersistedTableMetadata = (table: dataform.PersistedTableMetad
   const encodedProtoBuffer = new Buffer(dataform.PersistedTableMetadata.encode(table).finish());
   return encodedProtoBuffer.toString("base64");
 };
+
+export const buildQuery = (targetName: string, table: dataform.PersistedTableMetadata) => {
+  const encodedProtoString = encodePersistedTableMetadata(table);
+  const query = `SELECT 
+          '${targetName}' AS target_name,
+          '${JSON.stringify(table.toJSON())}' AS metadata_json,
+          '${encodedProtoString}' as metadata_proto`;
+  return query;
+};

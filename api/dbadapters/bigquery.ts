@@ -10,7 +10,7 @@ import {
   hashExecutionAction,
   IMetadataRow,
   decodePersistedTableMetadata,
-  encodePersistedTableMetadata
+  buildQuery
 } from "@dataform/api/utils/run_cache";
 
 const CACHED_STATE_TABLE_NAME = "dataform_meta.cache_state";
@@ -239,16 +239,11 @@ export class BigQueryDbAdapter implements IDbAdapter {
           dependencies
         });
 
-        const encodedProtoString = encodePersistedTableMetadata(persistTable);
-
         const targetName = `${action.target.database}.${action.target.schema}.${action.target.name}`;
 
-        const selectQuery = `SELECT 
-          '${targetName}' AS target_name,
-          '${JSON.stringify(persistTable.toJSON())}' AS metadata_json,
-          '${encodedProtoString}' as metadata_proto`;
-        return selectQuery;
+        return buildQuery(targetName, persistTable);
       });
+
     const unionQuery = queries.join(" UNION ALL ");
 
     const updateQuery = `MERGE INTO \`${CACHED_STATE_TABLE_NAME}\` T
