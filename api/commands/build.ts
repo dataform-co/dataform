@@ -64,6 +64,7 @@ export class Builder {
       runConfig: {
         ...this.runConfig,
         useRunCache:
+          this.runConfig.hasOwnProperty("useRunCache") === false ||
           typeof this.runConfig.useRunCache === "undefined"
             ? this.compiledGraph.projectConfig.useRunCache
             : this.runConfig.useRunCache
