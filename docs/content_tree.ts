@@ -1,6 +1,6 @@
 import { GitHubCms } from "@dataform-tools/markdown-cms/github";
 import { LocalCms } from "@dataform-tools/markdown-cms/local";
-import { IBaseAttributes, Tree } from "@dataform-tools/markdown-cms/tree";
+import { Tree } from "@dataform-tools/markdown-cms/tree";
 import NodeCache from "node-cache";
 
 export interface IExtraAttributes {
