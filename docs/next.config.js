@@ -19,7 +19,9 @@ let config = {
 
     config.resolve.alias = {
       ...config.resolve.alias,
-      df: path.resolve(path.join(process.env.RUNFILES, "df"))
+      df: path.resolve(path.join(process.env.RUNFILES, "df")),
+      "@dataform": path.resolve(path.join(process.env.RUNFILES, "df")),
+      "@dataform-tools": path.resolve(path.join(process.env.RUNFILES, "df/tools"))
     };
     // Make sure webpack can resolve modules that live within our bazel managed deps.
 

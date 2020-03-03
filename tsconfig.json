@@ -3,7 +3,8 @@
     "baseUrl": ".",
     "paths": {
       "df/*": ["*", "bazel-bin/*", "bazel-genfiles/*"],
-      "@dataform/*": ["*", "bazel-bin/*", "bazel-genfiles/*"]
+      "@dataform/*": ["*", "bazel-bin/*", "bazel-genfiles/*"],
+      "@dataform-tools/*": ["tools/*", "bazel-bin/tools/*", "bazel-genfiles/tools/*"]
     },
     "module": "commonjs",
     "noImplicitAny": true,
@@ -15,7 +16,7 @@
     "skipLibCheck": true,
     "experimentalDecorators": true,
     "jsx": "react",
-    "lib": ["es2017" ,"dom"]
+    "lib": ["es2017", "dom"]
   },
   "exclude": ["bazel-*", "node_modules"]
 }

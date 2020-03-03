@@ -1,6 +1,6 @@
+import { ICms } from "@dataform-tools/markdown-cms/index";
+import { Tree } from "@dataform-tools/markdown-cms/tree";
 import * as Octokit from "@octokit/rest";
-import { ICms } from "df/tools/markdown-cms/index";
-import { Tree } from "df/tools/markdown-cms/tree";
 import { join } from "path";
 
 const octokit = new Octokit({ auth: process.env.GITHUB_AUTH_TOKEN });
@@ -12,7 +12,7 @@ interface IOptions {
   ref: string;
 }
 
-export class GitHubCms implements ICms {
+export class GitHubCms<T> implements ICms<T> {
   constructor(private options: IOptions) {}
 
   public async get(path = "") {
@@ -29,7 +29,7 @@ export class GitHubCms implements ICms {
       : join(this.options.rootPath, path);
 
     const cleanPath = path.endsWith(".md") ? path.substring(0, path.length - 3) : path;
-    const tree = Tree.create(
+    const tree = Tree.create<T>(
       cleanPath,
       await this.content(actualFilePath).catch(e => ""),
       `https://github.com/${this.options.owner}/${this.options.repo}/blob/master/${actualFilePath}`
