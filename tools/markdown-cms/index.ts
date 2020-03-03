@@ -1,4 +1,4 @@
-import { Tree } from "df/docs/cms/tree";
+import { Tree } from "df/tools/markdown-cms/tree";
 
 export interface ICms {
   get(): Promise<Tree>;

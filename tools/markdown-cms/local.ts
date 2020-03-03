@@ -1,5 +1,5 @@
-import { ICms } from "df/docs/cms";
-import { Tree } from "df/docs/cms/tree";
+import { ICms } from "df/tools/markdown-cms";
+import { Tree } from "df/tools/markdown-cms/tree";
 import * as fs from "fs";
 import { basename, dirname, join } from "path";
 import { promisify } from "util";

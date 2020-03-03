@@ -1,5 +1,5 @@
 ---
-title: Dataform
+title: Documentation
 ---
 
 Dataform makes it easy to manage complex SQL pipelines in your data warehouse. Using Dataform's API you can power large, complex data transformations with just a few simple statements.
