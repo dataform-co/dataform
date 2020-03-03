@@ -182,6 +182,8 @@ where table_schema = '${target.schema}'
     const persistedMetadata: dataform.IPersistedTableMetadata[] = [];
     return persistedMetadata;
   }
+
+  public async persistStateMetadata(actions: dataform.IExecutionAction[]) {}
 }
 
 async function connect(snowflakeCredentials: dataform.ISnowflake) {

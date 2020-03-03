@@ -107,6 +107,10 @@ export class Runner {
     // Recursively execute all actions as they become executable.
     await this.executeAllActionsReadyForExecution();
 
+    if (this.graph.runConfig && this.graph.runConfig.useRunCache) {
+      await this.adapter.persistStateMetadata(this.graph.actions);
+    }
+
     this.runResult.timing = timer.end();
 
     this.runResult.status = dataform.RunResult.ExecutionStatus.SUCCESSFUL;
@@ -138,6 +142,16 @@ export class Runner {
         }
         databaseSchemas.get(trueDatabase).add(target.schema);
       });
+
+    if (!databaseSchemas.has(this.graph.projectConfig.defaultDatabase)) {
+      databaseSchemas.set(this.graph.projectConfig.defaultDatabase, new Set<string>());
+    }
+
+    if (this.graph.projectConfig.useRunCache) {
+      databaseSchemas
+        .get(this.graph.projectConfig.defaultDatabase)
+        .add(dbadapters.CACHED_STATE_TABLE_TARGET.schema);
+    }
 
     // Wait for all schemas to be created.
     await Promise.all(

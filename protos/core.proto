@@ -281,15 +281,19 @@ message ExecutionTask {
 
 message ExecutionAction {
   string name = 1;
-  repeated string dependencies = 3;
+  repeated Target dependency_targets = 7;
   repeated ExecutionTask tasks = 2;
   string type = 4;
   Target target = 5;
   string table_type = 6;
+
+  // Deprecated.
+  repeated string dependencies = 3 [deprecated = true]; // Use dependency_targets instead
 }
 
 message WarehouseState {
   repeated TableMetadata tables = 1;
+  repeated PersistedTableMetadata cached_states = 2;
 }
 
 message ExecutionGraph {
