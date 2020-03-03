@@ -32,6 +32,9 @@ suite("@dataform/integration/bigquery", ({ after }) => {
     // Drop schemas to make sure schema creation works.
     await dbadapter.dropSchema("dataform-integration-tests", "df_integration_test");
 
+    // Drop the meta schema
+    await dbadapter.dropSchema("dataform-integration-tests", "dataform_meta");
+
     // Run the tests.
     const testResults = await dfapi.test(credentials, "bigquery", compiledGraph.tests);
     expect(testResults).to.eql([
@@ -117,6 +120,12 @@ suite("@dataform/integration/bigquery", ({ after }) => {
     ];
     incrementalRows = await getTableRows(incrementalTable.target, adapter, credentials, "bigquery");
     expect(incrementalRows.length).equals(5);
+
+    // run cache assertions
+    const data = await dbadapter.persistedStateMetadata();
+    const exampleView = data.find(table => table.target.name === "example_view");
+    expect(exampleView).to.have.property("definitionHash");
+    expect(exampleView.definitionHash).to.eql("988c32e8dd7f513fc8982d36bc444a7da18469fd");
   });
 
   suite("result limit works", async () => {

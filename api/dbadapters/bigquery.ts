@@ -6,6 +6,12 @@ import { BigQuery } from "@google-cloud/bigquery";
 import { QueryResultsOptions } from "@google-cloud/bigquery/build/src/job";
 import * as Long from "long";
 import * as PromisePool from "promise-pool-executor";
+import {
+  hashExecutionAction,
+  IMetadataRow,
+  decodePersistedTableMetadata,
+  buildQuery
+} from "@dataform/api/utils/run_cache";
 
 const CACHED_STATE_TABLE_NAME = "dataform_meta.cache_state";
 
@@ -199,11 +205,57 @@ export class BigQueryDbAdapter implements IDbAdapter {
       `SELECT * FROM ${CACHED_STATE_TABLE_NAME}`,
       5000 // TODO: Add pagination for 5000+ rows
     );
-    const persistedMetadata = rows.map(row => {
-      const encodedProto = Buffer.from(row.proto, "base64");
-      return dataform.PersistedTableMetadata.decode(encodedProto);
-    });
+    const persistedMetadata = rows.map((row: IMetadataRow) =>
+      decodePersistedTableMetadata(row.metadata_proto)
+    );
     return persistedMetadata;
+  }
+
+  public async persistStateMetadata(actions: dataform.IExecutionAction[]): Promise<void> {
+    const metadataTableCreateQuery = `
+      CREATE TABLE IF NOT EXISTS \`${CACHED_STATE_TABLE_NAME}\` (
+        target_name STRING,
+        metadata_json STRING,
+        metadata_proto STRING
+      )
+    `;
+    await this.runQuery(metadataTableCreateQuery);
+    const tableMetadataMap = new Map<dataform.ITarget, IBigQueryTableMetadata>();
+    await Promise.all(
+      actions.map(async action => {
+        tableMetadataMap.set(action.target, await this.getMetadata(action.target));
+      })
+    );
+    const queries = actions
+      .filter(action => action.type !== "operation") // Currently, we don't support caching for operation and its dependents
+      .map(action => {
+        const definitionHash = hashExecutionAction(action);
+        const dependencies = action.dependencyTargets;
+        const metadata = tableMetadataMap.get(action.target);
+        const persistTable = dataform.PersistedTableMetadata.create({
+          target: action.target,
+          lastUpdatedMillis: Long.fromString(metadata.lastModifiedTime),
+          definitionHash,
+          dependencies
+        });
+
+        const targetName = `${action.target.database}.${action.target.schema}.${action.target.name}`;
+
+        return buildQuery(targetName, persistTable);
+      });
+
+    const unionQuery = queries.join(" UNION ALL ");
+
+    const updateQuery = `MERGE INTO \`${CACHED_STATE_TABLE_NAME}\` T
+    USING (${unionQuery}) S
+    ON (T.target_name = S.target_name)
+    WHEN NOT MATCHED THEN
+      INSERT (target_name, metadata_json, metadata_proto)
+      VALUES(S.target_name, S.metadata_json, S.metadata_proto)
+    WHEN MATCHED THEN
+      UPDATE SET metadata_json = S.metadata_json,
+          metadata_proto = S.metadata_proto;`;
+    await this.runQuery(updateQuery);
   }
 
   private getClient(projectId?: string) {
