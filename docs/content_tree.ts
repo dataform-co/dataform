@@ -1,7 +1,11 @@
-import { GitHubCms } from "df/tools/markdown-cms/github";
-import { LocalCms } from "df/tools/markdown-cms/local";
-import { Tree } from "df/tools/markdown-cms/tree";
+import { GitHubCms } from "@dataform-tools/markdown-cms/github";
+import { LocalCms } from "@dataform-tools/markdown-cms/local";
+import { IBaseAttributes, Tree } from "@dataform-tools/markdown-cms/tree";
 import NodeCache from "node-cache";
+
+export interface IExtraAttributes {
+  priority?: number;
+}
 
 export const localCms = new LocalCms("content/docs");
 
@@ -9,11 +13,11 @@ const githubTreeCache = new NodeCache({
   stdTTL: 5 * 60 * 1000 // 5 Minutes.
 });
 
-async function getGithubTree(version: string): Promise<Tree> {
+async function getGithubTree(version: string): Promise<Tree<IExtraAttributes>> {
   const cachedTree = githubTreeCache.get(version);
   if (version === "master") {
     if (cachedTree) {
-      return cachedTree as Tree;
+      return cachedTree as Tree<IExtraAttributes>;
     }
   }
   const tree = await new GitHubCms({
@@ -32,10 +36,10 @@ async function getGithubTree(version: string): Promise<Tree> {
 const packageTreesCache = new NodeCache({
   stdTTL: 5 * 60 * 1000 // 5 Minutes.
 });
-async function getPackageTrees(): Promise<Tree[]> {
+async function getPackageTrees(): Promise<Array<Tree<IExtraAttributes>>> {
   const cachedTree = packageTreesCache.get("packages");
   if (cachedTree) {
-    return cachedTree as Tree[];
+    return cachedTree as Array<Tree<IExtraAttributes>>;
   }
 
   const trees = await Promise.all(
@@ -47,14 +51,14 @@ async function getPackageTrees(): Promise<Tree[]> {
         title: "Segment"
       }
     ].map(async ({ owner, repo, title }) => {
-      const tree = await new GitHubCms({
+      const tree = await new GitHubCms<IExtraAttributes>({
         owner,
         repo,
         rootPath: "",
         ref: "master"
       }).get("README.md");
 
-      return new Tree(
+      return new Tree<IExtraAttributes>(
         `packages/${repo}`,
         tree.content,
         {
@@ -70,7 +74,7 @@ async function getPackageTrees(): Promise<Tree[]> {
   return trees;
 }
 
-export async function getContentTree(version = "local"): Promise<Tree> {
+export async function getContentTree(version = "local"): Promise<Tree<IExtraAttributes>> {
   const tree = await (version === "local" ? localCms.get() : getGithubTree(version));
 
   // Add some custom paths to the tree.

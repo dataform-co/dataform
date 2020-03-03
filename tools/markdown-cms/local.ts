@@ -1,10 +1,10 @@
-import { ICms } from "df/tools/markdown-cms";
-import { Tree } from "df/tools/markdown-cms/tree";
+import { ICms } from "@dataform-tools/markdown-cms";
+import { Tree } from "@dataform-tools/markdown-cms/tree";
 import * as fs from "fs";
-import { basename, dirname, join } from "path";
+import { join } from "path";
 import { promisify } from "util";
 
-export class LocalCms implements ICms {
+export class LocalCms<T> implements ICms<T> {
   constructor(private rootPath: string) {}
 
   public async get(path = "") {
@@ -12,10 +12,12 @@ export class LocalCms implements ICms {
     const actualFilePath = isDir
       ? join(this.rootPath, path, "index.md")
       : join(this.rootPath, path);
-    const rawContent = await promisify(fs.readFile)(actualFilePath, "utf8");
+    const rawContent = (await promisify(fs.exists)(actualFilePath))
+      ? await promisify(fs.readFile)(actualFilePath, "utf8")
+      : "";
 
     const cleanPath = path.endsWith(".md") ? path.substring(0, path.length - 3) : path;
-    const tree = Tree.create(
+    const tree = Tree.create<T>(
       cleanPath,
       rawContent,
       `https://github.com/dataform-co/dataform/blob/master/${actualFilePath}`
