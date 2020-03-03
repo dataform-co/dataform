@@ -1,11 +1,12 @@
 import { Icon } from "@blueprintjs/core";
+import { ITree } from "@dataform-tools/markdown-cms/tree";
 import * as styles from "df/docs/components/navigation.css";
-import { ITree } from "df/tools/markdown-cms/tree";
+import { IExtraAttributes } from "df/docs/content_tree";
 import * as React from "react";
 
 interface IProps {
   version: string;
-  tree: ITree;
+  tree: ITree<IExtraAttributes>;
   currentPath: string;
 }
 
@@ -13,8 +14,8 @@ export default class Navigation extends React.Component<IProps> {
   public render() {
     return <div className={styles.navigation}>{this.renderTrees(this.props.tree.children)}</div>;
   }
-  private renderTrees(trees: ITree[], depth = 0) {
-    trees.sort((a: ITree, b: ITree) =>
+  private renderTrees(trees: Array<ITree<IExtraAttributes>>, depth = 0) {
+    trees.sort((a: ITree<IExtraAttributes>, b: ITree<IExtraAttributes>) =>
       a.attributes.priority == null && b.attributes.priority == null
         ? a.attributes.title > b.attributes.title
           ? 1

@@ -1,8 +1,8 @@
+import { ITree } from "@dataform-tools/markdown-cms/tree";
 import axios from "axios";
 import { Swagger } from "df/docs/components/swagger";
-import { getContentTree } from "df/docs/content_tree";
+import { getContentTree, IExtraAttributes } from "df/docs/content_tree";
 import Documentation from "df/docs/layouts/documentation";
-import { ITree } from "df/tools/markdown-cms/tree";
 import { NextPageContext } from "next";
 import * as React from "react";
 import { Spec } from "swagger-schema-official";
@@ -13,8 +13,8 @@ interface IQuery {
 
 interface IProps {
   version: string;
-  index: ITree;
-  current: ITree;
+  index: ITree<IExtraAttributes>;
+  current: ITree<IExtraAttributes>;
   spec: Spec;
   apiHost: string;
 }
