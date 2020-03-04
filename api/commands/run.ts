@@ -110,8 +110,10 @@ export class Runner {
     this.runResult.timing = timer.end();
 
     if (this.graph.runConfig && this.graph.runConfig.useRunCache) {
+      // Currently, we don't support caching for operation and its dependents)
+      // And we can't cache disabled tasks as metadata will not be available
       await this.adapter.persistStateMetadata(
-        this.graph.actions.filter(action => !!action.tasks.length) // filter out enabled actions only
+        this.graph.actions.filter(action => !!action.tasks.length && action.type !== "operation")
       );
     }
 

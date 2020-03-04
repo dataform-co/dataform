@@ -226,23 +226,21 @@ export class BigQueryDbAdapter implements IDbAdapter {
         tableMetadataMap.set(action.target, await this.getMetadata(action.target));
       })
     );
-    const queries = actions
-      .filter(action => action.type !== "operation") // Currently, we don't support caching for operation and its dependents
-      .map(action => {
-        const definitionHash = hashExecutionAction(action);
-        const dependencies = action.dependencyTargets;
-        const metadata = tableMetadataMap.get(action.target);
-        const persistTable = dataform.PersistedTableMetadata.create({
-          target: action.target,
-          lastUpdatedMillis: Long.fromString(metadata.lastModifiedTime),
-          definitionHash,
-          dependencies
-        });
-
-        const targetName = `${action.target.database}.${action.target.schema}.${action.target.name}`;
-
-        return buildQuery(targetName, persistTable);
+    const queries = actions.map(action => {
+      const definitionHash = hashExecutionAction(action);
+      const dependencies = action.dependencyTargets;
+      const metadata = tableMetadataMap.get(action.target);
+      const persistTable = dataform.PersistedTableMetadata.create({
+        target: action.target,
+        lastUpdatedMillis: Long.fromString(metadata.lastModifiedTime),
+        definitionHash,
+        dependencies
       });
+
+      const targetName = `${action.target.database}.${action.target.schema}.${action.target.name}`;
+
+      return buildQuery(targetName, persistTable);
+    });
 
     const unionQuery = queries.join(" UNION ALL ");
 
