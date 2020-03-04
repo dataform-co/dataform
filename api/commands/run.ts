@@ -110,7 +110,11 @@ export class Runner {
     this.runResult.timing = timer.end();
 
     if (this.graph.runConfig && this.graph.runConfig.useRunCache) {
-      await this.adapter.persistStateMetadata(this.graph.actions);
+      // Currently, we don't support caching for operations (and any dependents)
+      // And we can't cache disabled tasks as metadata will not be available
+      await this.adapter.persistStateMetadata(
+        this.graph.actions.filter(action => !!action.tasks.length && action.type !== "operation")
+      );
     }
 
     this.runResult.status = dataform.RunResult.ExecutionStatus.SUCCESSFUL;
