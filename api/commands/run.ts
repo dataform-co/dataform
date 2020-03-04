@@ -110,7 +110,9 @@ export class Runner {
     this.runResult.timing = timer.end();
 
     if (this.graph.runConfig && this.graph.runConfig.useRunCache) {
-      await this.adapter.persistStateMetadata(this.graph.actions);
+      await this.adapter.persistStateMetadata(
+        this.graph.actions.filter(action => !!action.tasks.length) // filter out enabled actions only
+      );
     }
 
     this.runResult.status = dataform.RunResult.ExecutionStatus.SUCCESSFUL;
