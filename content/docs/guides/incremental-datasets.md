@@ -82,7 +82,7 @@ config { type: "incremental" }
 SELECT timestamp, action
 FROM weblogs.user_actions
 
-${ when(incremental(), `WHERE timestamp > (SELECT MAX(timestamp) FROM ${self()})` }
+${ when(incremental(), `WHERE timestamp > (SELECT MAX(timestamp) FROM ${self()})`) }
 ```
 
 First the script sets the type of the dataset to `incremental`.
