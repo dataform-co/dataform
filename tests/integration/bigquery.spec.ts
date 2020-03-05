@@ -126,11 +126,11 @@ suite("@dataform/integration/bigquery", ({ after }) => {
     const data = await dbadapter.persistedStateMetadata();
     const exampleView = data.find(table => table.target.name === "example_view");
     expect(exampleView).to.have.property("definitionHash");
-    const executionAction = executionGraph.actions.find(
+    const exampleViewExecutionAction = executionGraph.actions.find(
       action => action.name === "dataform-integration-tests.df_integration_test.example_view"
     );
 
-    expect(exampleView.definitionHash).to.eql(hashExecutionAction(executionAction));
+    expect(exampleView.definitionHash).to.eql(hashExecutionAction(exampleViewExecutionAction));
   });
 
   suite("result limit works", async () => {
