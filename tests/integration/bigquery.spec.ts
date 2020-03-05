@@ -4,6 +4,7 @@ import * as adapters from "@dataform/core/adapters";
 import { dataform } from "@dataform/protos";
 import { expect } from "chai";
 import { BigQueryDbAdapter } from "df/api/dbadapters/bigquery";
+import { hashExecutionAction } from "df/api/utils/run_cache";
 import { BigQueryAdapter } from "df/core/adapters/bigquery";
 import { suite, test } from "df/testing";
 import { dropAllTables, getTableRows, keyBy } from "df/tests/integration/utils";
@@ -125,7 +126,11 @@ suite("@dataform/integration/bigquery", ({ after }) => {
     const data = await dbadapter.persistedStateMetadata();
     const exampleView = data.find(table => table.target.name === "example_view");
     expect(exampleView).to.have.property("definitionHash");
-    expect(exampleView.definitionHash).to.eql("988c32e8dd7f513fc8982d36bc444a7da18469fd");
+    const exampleViewExecutionAction = executionGraph.actions.find(
+      action => action.name === "dataform-integration-tests.df_integration_test.example_view"
+    );
+
+    expect(exampleView.definitionHash).to.eql(hashExecutionAction(exampleViewExecutionAction));
   });
 
   suite("result limit works", async () => {
