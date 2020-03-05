@@ -286,6 +286,7 @@ message ExecutionAction {
   string type = 4;
   Target target = 5;
   string table_type = 6;
+  string file_name = 8;
 
   // Deprecated.
   repeated string dependencies = 3 [deprecated = true]; // Use dependency_targets instead
@@ -389,8 +390,11 @@ message ExecutedAction {
   repeated ExecutedTask tasks = 2;
 
   ActionExecutionStatus status = 6;
-  int64 execution_time = 5;
 
+  Timing timing = 7;
+
+  // Deprecated execution_time. Prefer using "timing".
+  int64 execution_time = 5;
   // Deprecated status fields. Prefer using the 'status' field.
   bool deprecated_ok = 3;
   bool deprecated_skipped = 4;
