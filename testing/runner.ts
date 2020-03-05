@@ -94,9 +94,9 @@ export class Runner {
       const hasErrors = ctx.results.some(result => result.outcome !== "passed");
 
       if (hasErrors) {
-        console.info(chalk.green(`\nTests failed.`));
+        console.info(chalk.red(`\nTests failed.`));
       } else {
-        console.info(chalk.red(`\nTests passed.`));
+        console.info(chalk.green(`\nTests passed.`));
       }
 
       process.exitCode = hasErrors ? 1 : 0;
