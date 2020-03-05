@@ -126,11 +126,11 @@ export interface IBigQueryOptions {
  */
 export interface ITableAssertions {
   /**
-   * Column(s) which constitute the dataset's key.
+   * Column(s) which constitute the dataset's index.
    *
    * If set, the resulting assertion will fail if there is more than one row in the dataset with the same values for all of these column(s).
    */
-  uniqueKey?: string | string[];
+  index?: string | string[];
 
   /**
    * Column(s) which may never be `NULL`.
@@ -394,10 +394,10 @@ export class Table {
     return this;
   }
 
-  public assertions({ uniqueKey, nonNull, rowConditions }: ITableAssertions) {
-    if (!!uniqueKey) {
-      const indexCols = typeof uniqueKey === "string" ? [uniqueKey] : uniqueKey;
-      this.session.assert(`${this.proto.target.name}_assertions_key`, ctx =>
+  public assertions({ index, nonNull, rowConditions }: ITableAssertions) {
+    if (!!index) {
+      const indexCols = typeof index === "string" ? [index] : index;
+      this.session.assert(`${this.proto.target.name}_assertions_index`, ctx =>
         this.session.adapter().indexAssertion(ctx.ref(this.proto.target), indexCols)
       );
     }
