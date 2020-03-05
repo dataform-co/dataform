@@ -60,7 +60,7 @@ The generated assertion will be called: `<original_table_name>_assertions_unique
 
 ## Non-null checks
 
-To quickly enforce that a set of columns are never null, provide an array of the column names with the `nonNull` propery:
+To quickly enforce that a set of columns are never null, provide an array of the column names with the `nonNull` property:
 
 ```js
 config {
