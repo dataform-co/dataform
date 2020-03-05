@@ -129,8 +129,10 @@ suite("@dataform/integration/bigquery", ({ after }) => {
     const exampleViewExecutionAction = executionGraph.actions.find(
       action => action.name === "dataform-integration-tests.df_integration_test.example_view"
     );
-
     expect(exampleView.definitionHash).to.eql(hashExecutionAction(exampleViewExecutionAction));
+
+    const exampleAssertionFail = data.find(table => table.target.name === "example_assertion_fail");
+    expect(exampleAssertionFail).to.be.eql(undefined);
   });
 
   suite("result limit works", async () => {
