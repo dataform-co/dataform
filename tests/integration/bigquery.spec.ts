@@ -123,14 +123,20 @@ suite("@dataform/integration/bigquery", ({ after }) => {
     expect(incrementalRows.length).equals(5);
 
     // run cache assertions
-    const data = await dbadapter.persistedStateMetadata();
-    const exampleView = data.find(table => table.target.name === "example_view");
+    const persistedMetaData = await dbadapter.persistedStateMetadata();
+    const exampleView = persistedMetaData.find(table => table.target.name === "example_view");
     expect(exampleView).to.have.property("definitionHash");
     const exampleViewExecutionAction = executionGraph.actions.find(
       action => action.name === "dataform-integration-tests.df_integration_test.example_view"
     );
-
     expect(exampleView.definitionHash).to.eql(hashExecutionAction(exampleViewExecutionAction));
+
+    const exampleAssertionFail = persistedMetaData.find(
+      table => table.target.name === "example_assertion_fail"
+    );
+    expect(exampleAssertionFail).to.be.eql(undefined);
+
+    expect(persistedMetaData.length).to.be.eql(9);
   });
 
   suite("result limit works", async () => {
