@@ -11,27 +11,120 @@ An assertion query is written to find rows that violate one or more rules. If th
 
 ![Assertions](/static/images/assertions.png)
 
-## Example: Null checks
+## Auto-generated assertions
 
-Modern warehouses often don't have a way to strongly enforce non-null fields.
-To assert that fields `a`, `b`, and `c` are never `NULL` in a dataset named `sometable`, create a file `definitions/assert_sometable_not_null.sqlx`:
+<div className="bp3-callout bp3-icon-info-sign" markdown="1">
+  Auto generated assertions are only supported from <code>@dataform/core</code> version <code>1.4.13</code>.
+</div>
+
+Dataform provides a convenient way to define assertions as part of a dataset's `config` settings.
+
+Here's a complete example:
+
+`definitions/my_table.sqlx:`
+
+```js
+config {
+  type: "table",
+  assertions: {
+    uniqueKey: ["user_id"],
+    nonNull: ["user_id", "customer_id"],
+    rowConditions: [
+      'signup_date is null or signup_date > "2019-01-01"',
+      'email like "%@%.%"'
+    ]
+  }
+}
+select ...
+```
+
+For all configuration options, view the [reference documentation for dataset assertions](/reference#ITableAssertions).
+
+## Unique keys
+
+If the `uniqueKey` property is set, the resulting assertion will fail if there is more than one row in the dataset with the same values for all of the column(s).
+
+```js
+config {
+  type: "table",
+  assertions: {
+    uniqueKey: ["user_id"]
+  }
+}
+select ...
+```
+
+Multiple key columns can be provided.
+
+The generated assertion will be called `<original_dataset_name>_assertions_uniqueKey`.
+
+## Non-nullness
+
+To assert that a set of columns are never null, provide an array of the column names with the `nonNull` property:
+
+```js
+config {
+  type: "table",
+  assertions: {
+    nonNull: ["user_id", "customer_id", "email"]
+  }
+}
+select ...
+```
+
+The generated assertion will be called `<original_dataset_name>_assertions_rowConditions`, because `nonNull` is just shorthand for custom row conditions (see below).
+
+## Custom row conditions
+
+For assertions that require custom logic to be evaluated against rows, use the `rowConditions` property. Each row condition should be a SQL expression that is expected to evaluate to `true` if the assertion should pass.
+
+```js
+config {
+  type: "table",
+  assertions: {
+    rowConditions: [
+      'signup_date is null or signup_date > "2019-01-01"',
+      'email like "%@%.%"'
+    ]
+  }
+}
+select ...
+```
+
+Each row will be evaluated against each condition, and all rows must pass all conditions for the assertion to pass.
+
+The generated assertion will be called: `<original_dataset_name>_assertions_rowConditions`.
+
+## Manual assertions
+
+Assertions can also be defined manually for more advanced use cases, or for testing datasets that aren't created by Dataform.
+
+To write a manual assertion, create a new SQLX file and set the type to `assertion` in the `config` block:
+
+`definitions/custom_assertion.sqlx`
+
+```js
+config {
+  type: "assertion"
+}
+```
+
+To write the assertion, write a new SQL query below the config block that should return zero rows. The best way to think about writing this queries is that they are **queries that look for errors**.
+
+For example, to assert that fields `a`, `b`, and `c` are never `NULL` in a dataset named `sometable`, create a file `definitions/assert_sometable_not_null.sqlx`:
 
 ```js
 config { type: "assertion" }
 
-SELECT 
-  * 
-FROM 
+SELECT
+  *
+FROM
   ${ref("sometable")}
-WHERE 
+WHERE
   a IS NULL
   OR b IS NULL
   OR c IS NULL
 ```
-
-If `a`, `b`, or `c` are null for any row in `sometable`, then this assertion will fail.
-
-## Example: Key uniqueness checks
 
 Another common requirement is to check that all values for a particular field or combination of fields are unique in a dataset.
 For example, in a `daily_customer_stats` dataset, there should only ever be a single row for each combination of the `date` and `customer_id` fields.
