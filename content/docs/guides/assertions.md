@@ -38,7 +38,7 @@ config {
 select ...
 ```
 
-For complete and up to date configuration options, view the [reference documentation for table assertions](/reference#ITableAssertions).
+For all configuration options, view the [reference documentation for table assertions](/reference#ITableAssertions).
 
 ## Unique keys
 
@@ -60,7 +60,7 @@ The generated assertion will be called `<original_table_name>_assertions_uniqueK
 
 ## Non-nullness
 
-To quickly enforce that a set of columns are never null, provide an array of the column names with the `nonNull` property:
+To assert that a set of columns are never null, provide an array of the column names with the `nonNull` property:
 
 ```js
 config {
@@ -99,10 +99,19 @@ The generated assertion will be called: `<original_table_name>_assertions_rowCon
 
 Assertions can also be defined manually for more advanced use cases, or for testing tables that aren't created by Dataform.
 
-## Null checks (manual)
+To write a manual assertion, create a new SQLX file and set the type to `assertion` in the `config` block:
 
-Modern warehouses often don't have a way to strongly enforce non-null fields.
-To assert that fields `a`, `b`, and `c` are never `NULL` in a dataset named `sometable`, create a file `definitions/assert_sometable_not_null.sqlx`:
+`definitions/custom_assertion.sqlx`
+
+```js
+config {
+  type: "assertion"
+}
+```
+
+To write the assertion, write a new SQL query below the config block that should return zero rows. The best way to think about writing this queries is that they are **queries that look for errors**.
+
+For example, to assert that fields `a`, `b`, and `c` are never `NULL` in a dataset named `sometable`, create a file `definitions/assert_sometable_not_null.sqlx`:
 
 ```js
 config { type: "assertion" }
@@ -116,10 +125,6 @@ WHERE
   OR b IS NULL
   OR c IS NULL
 ```
-
-If `a`, `b`, or `c` are null for any row in `sometable`, then this assertion will fail.
-
-## Unique keys (manual)
 
 Another common requirement is to check that all values for a particular field or combination of fields are unique in a dataset.
 For example, in a `daily_customer_stats` dataset, there should only ever be a single row for each combination of the `date` and `customer_id` fields.
