@@ -11,13 +11,13 @@ An assertion query is written to find rows that violate one or more rules. If th
 
 ![Assertions](/static/images/assertions.png)
 
-## Auto generated assertions
+## Auto-generated assertions
 
 <div className="bp3-callout bp3-icon-info-sign" markdown="1">
   Auto generated assertions are only supported from <code>@dataform/core</code> version <code>1.4.13</code>.
 </div>
 
-Dataform provides a convenient way to define assertions for tables, views and incremental tables as part of the `config` block of the table's SQLX file.
+Dataform provides a convenient way to define assertions as part of a dataset's `config` settings.
 
 Here's a complete example:
 
@@ -54,11 +54,11 @@ config {
 select ...
 ```
 
-Multiple key values can be provided.
+Multiple key columns can be provided.
 
-The generated assertion will be called: `<original_table_name>_assertions_uniqueKey`.
+The generated assertion will be called `<original_table_name>_assertions_uniqueKey`.
 
-## Non-null checks
+## Non-nullness
 
 To quickly enforce that a set of columns are never null, provide an array of the column names with the `nonNull` property:
 
@@ -72,11 +72,11 @@ config {
 select ...
 ```
 
-The generated assertion will be called: `<original_table_name>_assertions_rowConditions`, as this is just a shorthand for custom row conditions (see below).
+The generated assertion will be called `<original_table_name>_assertions_rowConditions`, because `nonNull` is just shorthand for custom row conditions (see below).
 
 ## Custom row conditions
 
-For assertions that require custom logic to be evaluated against rows, use the `rowConditions` property. Each row condition should be a SQL expression that is expected to evaluate to `true` if the assertion passes.
+For assertions that require custom logic to be evaluated against rows, use the `rowConditions` property. Each row condition should be a SQL expression that is expected to evaluate to `true` if the assertion should pass.
 
 ```js
 config {
@@ -91,7 +91,7 @@ config {
 select ...
 ```
 
-Each row will be evaluated against the given conditions, and all rows must pass all checks for the assertion to pass.
+Each row will be evaluated against each condition, and all rows must pass all conditions for the assertion to pass.
 
 The generated assertion will be called: `<original_table_name>_assertions_rowConditions`.
 
