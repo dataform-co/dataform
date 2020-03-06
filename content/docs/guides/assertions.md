@@ -38,7 +38,7 @@ config {
 select ...
 ```
 
-For all configuration options, view the [reference documentation for table assertions](/reference#ITableAssertions).
+For all configuration options, view the [reference documentation for dataset assertions](/reference#ITableAssertions).
 
 ## Unique keys
 
@@ -56,7 +56,7 @@ select ...
 
 Multiple key columns can be provided.
 
-The generated assertion will be called `<original_table_name>_assertions_uniqueKey`.
+The generated assertion will be called `<original_dataset_name>_assertions_uniqueKey`.
 
 ## Non-nullness
 
@@ -72,7 +72,7 @@ config {
 select ...
 ```
 
-The generated assertion will be called `<original_table_name>_assertions_rowConditions`, because `nonNull` is just shorthand for custom row conditions (see below).
+The generated assertion will be called `<original_dataset_name>_assertions_rowConditions`, because `nonNull` is just shorthand for custom row conditions (see below).
 
 ## Custom row conditions
 
@@ -93,11 +93,11 @@ select ...
 
 Each row will be evaluated against each condition, and all rows must pass all conditions for the assertion to pass.
 
-The generated assertion will be called: `<original_table_name>_assertions_rowConditions`.
+The generated assertion will be called: `<original_dataset_name>_assertions_rowConditions`.
 
 ## Manual assertions
 
-Assertions can also be defined manually for more advanced use cases, or for testing tables that aren't created by Dataform.
+Assertions can also be defined manually for more advanced use cases, or for testing datasets that aren't created by Dataform.
 
 To write a manual assertion, create a new SQLX file and set the type to `assertion` in the `config` block:
 
