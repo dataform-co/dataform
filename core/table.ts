@@ -406,7 +406,7 @@ export class Table {
       const nonNullCols = typeof nonNull === "string" ? [nonNull] : nonNull;
       nonNullCols.forEach(nonNullCol => mergedRowConditions.push(`${nonNullCol} IS NOT NULL`));
     }
-    if (!!mergedRowConditions) {
+    if (!!mergedRowConditions && mergedRowConditions.length > 0) {
       this.session.assert(`${this.proto.target.name}_assertions_rowConditions`, ctx =>
         this.session
           .adapter()
