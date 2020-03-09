@@ -1,5 +1,15 @@
 #!/usr/bin/env node
-import { build, compile, credentials, format, init, run, table, test } from "@dataform/api";
+import {
+  build,
+  compile,
+  credentials,
+  format,
+  init,
+  install,
+  run,
+  table,
+  test
+} from "@dataform/api";
 import { prettyJsonStringify } from "@dataform/api/utils";
 import {
   print,
@@ -217,6 +227,18 @@ const builtYargs = createYargsCli({
           }
         );
         printInitResult(initResult);
+        return 0;
+      }
+    },
+    {
+      format: "install [project-dir]",
+      description: "Install a project's NPM dependencies.",
+      positionalOptions: [projectDirMustExistOption],
+      options: [],
+      processFn: async argv => {
+        print("Installing NPM dependencies...\n");
+        await install(argv["project-dir"]);
+        printSuccess("Project dependencies successfully installed.");
         return 0;
       }
     },
@@ -604,9 +626,13 @@ const builtYargs = createYargsCli({
   .strict()
   .wrap(null)
   .recommendCommands()
-  .fail((msg: string, err: Error) => {
-    const message = err ? err.message.split("\n")[0] : msg;
-    printError(`Dataform encountered an error: ${message}`);
+  .fail((msg: string, err: any) => {
+    if (!!err && err.name === "VMError" && err.code === "ENOTFOUND") {
+      printError("Could not find NPM dependencies. Have you run 'dataform install'?");
+    } else {
+      const message = err && err.message ? err.message.split("\n")[0] : msg;
+      printError(`Dataform encountered an error: ${message}`);
+    }
     process.exit(1);
   }).argv;
 

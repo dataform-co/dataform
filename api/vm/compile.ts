@@ -32,6 +32,7 @@ export function compile(compileConfig: dataform.ICompileConfig) {
       return legacyGenIndex;
     }
   };
+  const genIndex = findGenIndex();
   const findCompiler = (): CompilerFunction => {
     try {
       return (
@@ -59,7 +60,7 @@ export function compile(compileConfig: dataform.ICompileConfig) {
   });
 
   const res: string = userCodeVm.run(
-    findGenIndex()(createGenIndexConfig(compileConfig)),
+    genIndex(createGenIndexConfig(compileConfig)),
     vmIndexFileName
   );
   return res;
