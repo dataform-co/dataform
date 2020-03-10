@@ -133,8 +133,7 @@ const credentialsOption: INamedOption<yargs.Options> = {
     default: null
   },
   check: (argv: yargs.Arguments) =>
-    !argv.credentials ||
-    assertPathExists(getDefaultCredentialsPath(argv.projectDir, argv.credentials))
+    !argv.credentials || assertPathExists(getCredentialsPath(argv.projectDir, argv.credentials))
 };
 
 const warehouseOption: INamedOption<yargs.PositionalOptions> = {
@@ -154,7 +153,7 @@ const jsonOutputOption: INamedOption<yargs.Options> = {
   }
 };
 
-const getDefaultCredentialsPath = (projectDir: string, credentialsPath: string) =>
+const getCredentialsPath = (projectDir: string, credentialsPath: string) =>
   actuallyResolve(credentialsPath || path.join(projectDir, CREDENTIALS_FILENAME));
 
 const builtYargs = createYargsCli({
@@ -427,7 +426,7 @@ const builtYargs = createYargsCli({
         printSuccess("Compiled successfully.\n");
         const readCredentials = credentials.read(
           compiledGraph.projectConfig.warehouse,
-          getDefaultCredentialsPath(argv.projectDir, argv.credentials)
+          getCredentialsPath(argv.projectDir, argv.credentials)
         );
 
         if (!compiledGraph.tests.length) {
@@ -491,7 +490,7 @@ const builtYargs = createYargsCli({
         }
         const readCredentials = credentials.read(
           compiledGraph.projectConfig.warehouse,
-          getDefaultCredentialsPath(argv.projectDir, argv.credentials)
+          getCredentialsPath(argv.projectDir, argv.credentials)
         );
         const executionGraph = await build(
           compiledGraph,
@@ -606,10 +605,7 @@ const builtYargs = createYargsCli({
       processFn: async argv => {
         printListTablesResult(
           await table.list(
-            credentials.read(
-              argv.warehouse,
-              getDefaultCredentialsPath(argv.projectDir, argv.credentials)
-            ),
+            credentials.read(argv.warehouse, getCredentialsPath(argv.projectDir, argv.credentials)),
             argv.warehouse
           )
         );
@@ -624,10 +620,7 @@ const builtYargs = createYargsCli({
       processFn: async argv => {
         printGetTableResult(
           await table.get(
-            credentials.read(
-              argv.warehouse,
-              getDefaultCredentialsPath(argv.projectDir, argv.credentials)
-            ),
+            credentials.read(argv.warehouse, getCredentialsPath(argv.projectDir, argv.credentials)),
             argv.warehouse,
             {
               schema: argv.schema,
