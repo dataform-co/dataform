@@ -75,8 +75,11 @@ export function parseBigqueryEvalError(error: IBigqueryEvaluationError) {
     // extract everything after the very last [ in the string
     const bracketsString = error.message.split("[").slice(-1)[0];
     const [_, lineNumber, columnNumber] = bracketsString.match(/([0-9]*)[^0-9]*([0-9]*).*/);
-    if (lineNumber && columnNumber) {
-      evalError.errorLocation = { line: Number(lineNumber), column: Number(columnNumber) };
+    const line = Number(lineNumber);
+    const column = Number(columnNumber);
+    if (line || line === 0) {
+      // Column defaults to 0 if not found.
+      evalError.errorLocation = { line, column };
     }
   } catch (_) {}
   return evalError;
