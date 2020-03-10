@@ -38,6 +38,7 @@ import { createYargsCli, INamedOption } from "@dataform/cli/yargswrapper";
 import { supportsCancel, WarehouseType } from "@dataform/core/adapters";
 import { dataform } from "@dataform/protos";
 import * as chokidar from "chokidar";
+import { CREDENTIALS_FILENAME } from "df/api/commands/credentials";
 import * as fs from "fs";
 import * as glob from "glob";
 import * as path from "path";
@@ -129,10 +130,10 @@ const credentialsOption: INamedOption<yargs.Options> = {
   name: "credentials",
   option: {
     describe: "The location of the credentials JSON file to use.",
-    default: credentials.CREDENTIALS_FILENAME,
-    coerce: actuallyResolve
+    default: null
   },
-  check: (argv: yargs.Arguments) => assertPathExists(argv.credentials)
+  check: (argv: yargs.Arguments) =>
+    !argv.credentials || assertPathExists(getCredentialsPath(argv.projectDir, argv.credentials))
 };
 
 const warehouseOption: INamedOption<yargs.PositionalOptions> = {
@@ -151,6 +152,9 @@ const jsonOutputOption: INamedOption<yargs.Options> = {
     default: false
   }
 };
+
+const getCredentialsPath = (projectDir: string, credentialsPath: string) =>
+  actuallyResolve(credentialsPath || path.join(projectDir, CREDENTIALS_FILENAME));
 
 const builtYargs = createYargsCli({
   commands: [
@@ -422,7 +426,7 @@ const builtYargs = createYargsCli({
         printSuccess("Compiled successfully.\n");
         const readCredentials = credentials.read(
           compiledGraph.projectConfig.warehouse,
-          argv.credentials
+          getCredentialsPath(argv.projectDir, argv.credentials)
         );
 
         if (!compiledGraph.tests.length) {
@@ -486,7 +490,7 @@ const builtYargs = createYargsCli({
         }
         const readCredentials = credentials.read(
           compiledGraph.projectConfig.warehouse,
-          argv.credentials
+          getCredentialsPath(argv.projectDir, argv.credentials)
         );
         const executionGraph = await build(
           compiledGraph,
@@ -600,7 +604,10 @@ const builtYargs = createYargsCli({
       options: [credentialsOption],
       processFn: async argv => {
         printListTablesResult(
-          await table.list(credentials.read(argv.warehouse, argv.credentials), argv.warehouse)
+          await table.list(
+            credentials.read(argv.warehouse, getCredentialsPath(argv.projectDir, argv.credentials)),
+            argv.warehouse
+          )
         );
         return 0;
       }
@@ -612,10 +619,14 @@ const builtYargs = createYargsCli({
       options: [credentialsOption],
       processFn: async argv => {
         printGetTableResult(
-          await table.get(credentials.read(argv.warehouse, argv.credentials), argv.warehouse, {
-            schema: argv.schema,
-            name: argv.table
-          })
+          await table.get(
+            credentials.read(argv.warehouse, getCredentialsPath(argv.projectDir, argv.credentials)),
+            argv.warehouse,
+            {
+              schema: argv.schema,
+              name: argv.table
+            }
+          )
         );
         return 0;
       }
@@ -632,6 +643,9 @@ const builtYargs = createYargsCli({
     } else {
       const message = err && err.message ? err.message.split("\n")[0] : msg;
       printError(`Dataform encountered an error: ${message}`);
+      if (err.stack) {
+        printError(err.stack);
+      }
     }
     process.exit(1);
   }).argv;
