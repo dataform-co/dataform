@@ -38,6 +38,7 @@ export function parseRedshiftEvalError(statement: string, error: IRedshiftEvalua
   // expected error format:
   // e.position = "123" - position is the number of characters into the query that the error was found at
   // including \n characters
+
   const evalError = dataform.QueryEvaluationError.create({
     message: String(error)
   });
