@@ -38,7 +38,6 @@ export function parseRedshiftEvalError(statement: string, error: IRedshiftEvalua
   // expected error format:
   // e.position = "123" - position is the number of characters into the query that the error was found at
   // including \n characters
-
   const evalError = dataform.QueryEvaluationError.create({
     message: String(error)
   });
@@ -75,7 +74,9 @@ export function parseBigqueryEvalError(error: IBigqueryEvaluationError) {
     // extract everything after the very last [ in the string
     const bracketsString = error.message.split("[").slice(-1)[0];
     const [_, lineNumber, columnNumber] = bracketsString.match(/([0-9]*)[^0-9]*([0-9]*).*/);
-    evalError.errorLocation = { line: Number(lineNumber), column: Number(columnNumber) };
+    if (lineNumber && columnNumber) {
+      evalError.errorLocation = { line: Number(lineNumber), column: Number(columnNumber) };
+    }
   } catch (_) {}
   return evalError;
 }
