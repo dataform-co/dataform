@@ -69,7 +69,9 @@ if (!projectConfig.defaultDatabase) {
 delete projectConfig.gcloudProjectId;
 
 // For backwards compatibility, in case core version is ahead of api.
-projectConfig.schemaSuffix = "${config.compileConfig.schemaSuffixOverride}" || projectConfig.schemaSuffix;
+projectConfig.schemaSuffix = "${
+    config.compileConfig.schemaSuffixOverride
+  }" || projectConfig.schemaSuffix;
 
 // Merge in general project config overrides.
 projectConfig = { ...projectConfig, ...${projectOverridesJsonString} };

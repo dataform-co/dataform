@@ -7,7 +7,6 @@ import { IActionProto, Session } from "@dataform/core/session";
 import { DistStyleType, SortStyleType, Table, TableType } from "@dataform/core/table";
 import { dataform } from "@dataform/protos";
 import * as path from "path";
-import * as stackTrace from "stack-trace";
 
 const SQL_DATA_WAREHOUSE_DIST_HASH_REGEXP = new RegExp("HASH\\s*\\(\\s*\\w*\\s*\\)\\s*");
 
@@ -73,11 +72,16 @@ export function getCallerFile(rootDir: string) {
   return relativePath(lastfile, rootDir);
 }
 
-function getCurrentStack(): stackTrace.StackFrame[] {
-  // Preferably we'd just call stackTrace.get(). However, for some reason,
-  // the v8 stack trace API (used by Error.prepareStackTrace) doesn't work
-  // on Windows. So instead, create an Error and then parse the stack back.
-  return stackTrace.parse(new Error());
+function getCurrentStack(): NodeJS.CallSite[] {
+  const originalPrepareStackTrace = Error.prepareStackTrace;
+  try {
+    Error.prepareStackTrace = (err, stack) => {
+      return stack;
+    };
+    return (new Error().stack as unknown) as NodeJS.CallSite[];
+  } finally {
+    Error.prepareStackTrace = originalPrepareStackTrace;
+  }
 }
 
 export function graphHasErrors(graph: dataform.ICompiledGraph) {

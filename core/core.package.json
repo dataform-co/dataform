@@ -8,7 +8,6 @@
     "@dataform/sqlx": "$DF_VERSION",
     "protobufjs": "^6.8.8",
     "tarjan-graph": "^2.0.0",
-    "semver": "^5.6.0",
-    "stack-trace": "^0.0.10"
+    "semver": "^5.6.0"
   }
 }
