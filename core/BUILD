@@ -19,8 +19,10 @@ ts_library(
         "//sqlx",
         "@npm//@types/node",
         "@npm//@types/semver",
+        "@npm//@types/stack-trace",
         "@npm//protobufjs",
         "@npm//semver",
+        "@npm//stack-trace",
         "@npm//tarjan-graph",
     ],
 )

@@ -97,6 +97,7 @@
     "snowflake-sdk": "^1.1.11",
     "source-map-loader": "^0.2.0",
     "sql-formatter": "^2.3.3",
+    "stack-trace": "^0.0.10",
     "style-loader": "^1.0.0",
     "tarjan-graph": "^2.0.0",
     "tmp": "0.0.33",
