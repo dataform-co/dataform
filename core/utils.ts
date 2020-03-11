@@ -6,24 +6,24 @@ import { Operation } from "@dataform/core/operation";
 import { IActionProto, Session } from "@dataform/core/session";
 import { DistStyleType, SortStyleType, Table, TableType } from "@dataform/core/table";
 import { dataform } from "@dataform/protos";
+import * as path from "path";
 
 const SQL_DATA_WAREHOUSE_DIST_HASH_REGEXP = new RegExp("HASH\\s*\\(\\s*\\w*\\s*\\)\\s*");
 
-function relativePath(path: string, base: string) {
+function relativePath(fullPath: string, base: string) {
   if (base.length === 0) {
-    return path;
+    return fullPath;
   }
-  const stripped = path.substr(base.length);
-  if (stripped.startsWith("/")) {
+  const stripped = fullPath.substr(base.length);
+  if (stripped.startsWith(path.sep)) {
     return stripped.substr(1);
   } else {
     return stripped;
   }
 }
 
-export function baseFilename(path: string) {
-  const pathSplits = path.split("/");
-  return pathSplits[pathSplits.length - 1].split(".")[0];
+export function baseFilename(fullPath: string) {
+  return path.basename(fullPath).split(".")[0];
 }
 
 export function matchPatterns(patterns: string[], values: string[]) {
@@ -64,7 +64,7 @@ export function getCallerFile(rootDir: string) {
     // If it's in the root directory we'll take it, but keep searching
     // for a better match.
     lastfile = nextLastfile;
-    if (!(nextLastfile.includes("definitions/") || nextLastfile.includes("models/"))) {
+    if (!(nextLastfile.includes(`definitions${path.sep}`) || nextLastfile.includes(`models${path.sep}`))) {
       continue;
     }
     break;
@@ -277,8 +277,8 @@ export function ambiguousActionNameMsg(
     typeof allActs[0] === "string"
       ? allActs
       : (allActs as Array<Table | Operation | Assertion>).map(
-          r => `${r.proto.target.schema}.${r.proto.target.name}`
-        );
+        r => `${r.proto.target.schema}.${r.proto.target.name}`
+      );
   return `Ambiguous Action name: ${stringifyResolvable(
     act
   )}. Did you mean one of: ${allActNames.join(", ")}.`;
