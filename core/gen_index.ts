@@ -77,7 +77,7 @@ projectConfig.schemaSuffix = "${
 projectConfig = { ...projectConfig, ...${projectOverridesJsonString} };
 
 // Initialize the compilation session.
-global.session.init("${JSON.stringify(config.compileConfig.projectDir)}", projectConfig);
+global.session.init("${config.compileConfig.projectDir.replace(/\\/g, "\\\\")}", projectConfig);
 
 // Require all "definitions" files (attaching them to the session).
 ${definitionRequires}
