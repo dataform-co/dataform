@@ -69,13 +69,15 @@ if (!projectConfig.defaultDatabase) {
 delete projectConfig.gcloudProjectId;
 
 // For backwards compatibility, in case core version is ahead of api.
-projectConfig.schemaSuffix = "${config.compileConfig.schemaSuffixOverride}" || projectConfig.schemaSuffix;
+projectConfig.schemaSuffix = "${
+    config.compileConfig.schemaSuffixOverride
+  }" || projectConfig.schemaSuffix;
 
 // Merge in general project config overrides.
 projectConfig = { ...projectConfig, ...${projectOverridesJsonString} };
 
 // Initialize the compilation session.
-global.session.init("${config.compileConfig.projectDir}", projectConfig);
+global.session.init("${config.compileConfig.projectDir.replace(/\\/g, "\\\\")}", projectConfig);
 
 // Require all "definitions" files (attaching them to the session).
 ${definitionRequires}
