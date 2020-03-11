@@ -14,7 +14,8 @@ export function compile(compileConfig: dataform.ICompileConfig) {
     require: {
       context: "sandbox",
       root: compileConfig.projectDir,
-      external: true
+      external: true,
+      builtin: ["path"]
     }
   });
 
@@ -53,7 +54,8 @@ export function compile(compileConfig: dataform.ICompileConfig) {
     require: {
       context: "sandbox",
       root: compileConfig.projectDir,
-      external: true
+      external: true,
+      builtin: ["path"]
     },
     sourceExtensions: ["js", "sql", "sqlx"],
     compiler
