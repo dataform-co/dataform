@@ -1,6 +1,7 @@
 def helm_template_impl(ctx):
     inputs = [ctx.file.chart_tar]
-    helm_cmd = "%s template %s" % (ctx.executable.helm_tool.path, ctx.file.chart_tar.path)
+    release_name = ctx.attr.name if ctx.attr.release_name == "" else ctx.attr.release_name
+    helm_cmd = "%s template %s %s" % (ctx.executable.helm_tool.path, release_name, ctx.file.chart_tar.path)
     if len(ctx.attr.namespace) > 0:
         helm_cmd = "%s --namespace %s" % (helm_cmd, ctx.attr.namespace)
     for variable, value in ctx.attr.values.items():
@@ -23,6 +24,7 @@ helm_template = rule(
     implementation = helm_template_impl,
     attrs = {
         "chart_tar": attr.label(allow_single_file = True, mandatory = True),
+        "release_name": attr.string(),
         "namespace": attr.string(),
         "values": attr.string_dict(),
         "values_yaml_file": attr.label(allow_single_file = True),
