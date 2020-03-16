@@ -1,11 +1,7 @@
 import { Credentials } from "@dataform/api/commands/credentials";
 import * as dbadapters from "@dataform/api/dbadapters";
 import { retry } from "@dataform/api/utils/retry";
-import {
-  buildTableMetadataMap,
-  buildCacheStateMap,
-  hashExecutionAction
-} from "@dataform/api/utils/run_cache";
+import { hashExecutionAction } from "@dataform/api/utils/run_cache";
 import { dataform } from "@dataform/protos";
 import * as EventEmitter from "events";
 import * as Long from "long";
@@ -51,9 +47,6 @@ export class Runner {
 
   private eEmitter: EventEmitter;
 
-  private cacheStateMap: Map<dataform.ITarget, dataform.IPersistedTableMetadata>;
-  private tableMetadataMap: Map<dataform.ITarget, dataform.ITableMetadata>;
-
   constructor(adapter: dbadapters.IDbAdapter, graph: dataform.IExecutionGraph) {
     this.adapter = adapter;
     this.graph = graph;
@@ -64,15 +57,6 @@ export class Runner {
     this.eEmitter = new EventEmitter();
     // There could feasibly be thousands of listeners to this, 0 makes the limit infinite.
     this.eEmitter.setMaxListeners(0);
-
-    if (this.graph.runConfig.useRunCache) {
-      this.cacheStateMap = buildCacheStateMap(
-        this.graph.warehouseState.cachedStates.filter(
-          state => !!this.graph.actions.find(action => _.isEqual(action.target, state.target)) // filter out the table which exist in the graph
-        )
-      );
-      this.tableMetadataMap = buildTableMetadataMap(this.graph.warehouseState.tables);
-    }
   }
 
   public onChange(listener: (graph: dataform.IRunResult) => Promise<void> | void): Runner {
@@ -283,7 +267,6 @@ export class Runner {
     }
 
     if (this.isActionCacheable(action)) {
-      console.log("checking", action);
       this.runResult.actions.push({
         name: action.name,
         status: dataform.ActionResult.ExecutionStatus.CACHE_SKIPPED,
@@ -404,8 +387,12 @@ export class Runner {
         return false;
       }
 
-      const cachedState = this.cacheStateMap.get(dependencyTarget);
-      const tableMetadata = this.tableMetadataMap.get(dependencyTarget);
+      const cachedState = this.graph.warehouseState.cachedStates.find(state =>
+        _.isEqual(state.target, dependencyTarget)
+      );
+      const tableMetadata = this.graph.warehouseState.tables.find(table =>
+        _.isEqual(table.target, dependencyTarget)
+      );
 
       if (!cachedState || !tableMetadata) {
         // No data found, can be a new action
@@ -417,10 +404,13 @@ export class Runner {
       }
     }
 
-    const cachedState = this.cacheStateMap.get(action.target);
-    const tableMetadata = this.tableMetadataMap.get(action.target);
+    const cachedState = this.graph.warehouseState.cachedStates.find(state =>
+      _.isEqual(state.target, action.target)
+    );
+    const tableMetadata = this.graph.warehouseState.tables.find(table =>
+      _.isEqual(table.target, action.target)
+    );
 
-    console.log("found", cachedState, tableMetadata);
     if (!cachedState || !tableMetadata) {
       return false;
     }

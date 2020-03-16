@@ -327,6 +327,37 @@ export function printExecutedAction(
       }
       return;
     }
+    case dataform.ActionResult.ExecutionStatus.CACHE_SKIPPED: {
+      switch (executionAction.type) {
+        case "table": {
+          writeStdOut(
+            `${warningOutput("Cached dataset creation: ")} ${datasetString(
+              executionAction.target,
+              executionAction.tableType
+            )}`
+          );
+          return;
+        }
+        case "assertion": {
+          writeStdOut(
+            `${warningOutput("Cached assertion execution : ")} ${targetString(
+              executionAction.target
+            )}`
+          );
+          return;
+        }
+        case "operation": {
+          writeStdOut(
+            `${warningOutput("Cached operation execution: ")} ${operationString(
+              executionAction.name,
+              executionAction.target
+            )}`
+          );
+          return;
+        }
+      }
+      return;
+    }
   }
 }
 
