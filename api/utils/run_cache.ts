@@ -29,3 +29,15 @@ export const buildQuery = (targetName: string, table: dataform.PersistedTableMet
           '${encodedProtoString}' as metadata_proto`;
   return query;
 };
+
+export const buildCacheStateMap = (tables: dataform.IPersistedTableMetadata[]) => {
+  const map = new Map<dataform.ITarget, dataform.IPersistedTableMetadata>();
+  tables.forEach(table => map.set(table.target, table));
+  return map;
+};
+
+export const buildTableMetadataMap = (tables: dataform.ITableMetadata[]) => {
+  const map = new Map<dataform.ITarget, dataform.ITableMetadata>();
+  tables.forEach(table => map.set(table.target, table));
+  return map;
+};

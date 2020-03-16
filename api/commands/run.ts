@@ -1,9 +1,15 @@
 import { Credentials } from "@dataform/api/commands/credentials";
 import * as dbadapters from "@dataform/api/dbadapters";
 import { retry } from "@dataform/api/utils/retry";
+import {
+  buildTableMetadataMap,
+  buildCacheStateMap,
+  hashExecutionAction
+} from "@dataform/api/utils/run_cache";
 import { dataform } from "@dataform/protos";
 import * as EventEmitter from "events";
 import * as Long from "long";
+import * as _ from "lodash";
 
 const CANCEL_EVENT = "jobCancel";
 
@@ -45,6 +51,9 @@ export class Runner {
 
   private eEmitter: EventEmitter;
 
+  private cacheStateMap: Map<dataform.ITarget, dataform.IPersistedTableMetadata>;
+  private tableMetadataMap: Map<dataform.ITarget, dataform.ITableMetadata>;
+
   constructor(adapter: dbadapters.IDbAdapter, graph: dataform.IExecutionGraph) {
     this.adapter = adapter;
     this.graph = graph;
@@ -55,6 +64,15 @@ export class Runner {
     this.eEmitter = new EventEmitter();
     // There could feasibly be thousands of listeners to this, 0 makes the limit infinite.
     this.eEmitter.setMaxListeners(0);
+
+    if (this.graph.runConfig.useRunCache) {
+      this.cacheStateMap = buildCacheStateMap(
+        this.graph.warehouseState.cachedStates.filter(
+          state => !!this.graph.actions.find(action => _.isEqual(action.target, state.target)) // filter out the table which exist in the graph
+        )
+      );
+      this.tableMetadataMap = buildTableMetadataMap(this.graph.warehouseState.tables);
+    }
   }
 
   public onChange(listener: (graph: dataform.IRunResult) => Promise<void> | void): Runner {
@@ -118,7 +136,19 @@ export class Runner {
 
       // Currently, we don't support caching for operations (and any dependents)
       await this.adapter.persistStateMetadata(
-        successfulActions.filter(action => action.type !== "operation")
+        successfulActions.filter(action => action && action.type !== "operation")
+      );
+      await this.adapter.deleteStateMetadata(
+        this.runResult.actions
+          .filter(
+            action =>
+              action.status !== dataform.ActionResult.ExecutionStatus.SUCCESSFUL &&
+              action.status !== dataform.ActionResult.ExecutionStatus.CACHE_SKIPPED
+          )
+          .map(action =>
+            this.graph.actions.find(executionAction => action.name === executionAction.name)
+          )
+          .filter(action => !!action)
       );
     }
 
@@ -252,6 +282,17 @@ export class Runner {
       return;
     }
 
+    if (this.isActionCacheable(action)) {
+      console.log("checking", action);
+      this.runResult.actions.push({
+        name: action.name,
+        status: dataform.ActionResult.ExecutionStatus.CACHE_SKIPPED,
+        tasks: []
+      });
+      await this.triggerChange();
+      return;
+    }
+
     const timer = Timer.start();
     const actionResult: dataform.IActionResult = {
       name: action.name,
@@ -328,6 +369,71 @@ export class Runner {
     taskResult.timing = timer.end();
     await this.triggerChange();
     return taskResult.status;
+  }
+
+  private isActionCacheable(action: dataform.IExecutionAction): boolean {
+    if (!this.graph.runConfig.useRunCache) {
+      return false;
+    }
+
+    if (action.type === "operation") {
+      return false;
+    }
+
+    for (const dependencyTarget of action.dependencyTargets) {
+      const dependencyAction = this.graph.actions.find(
+        action => action.target === dependencyTarget
+      );
+      if (!dependencyAction) {
+        continue;
+      }
+
+      if (dependencyAction.type === "operation") {
+        // operation type action is not cacheable
+        return false;
+      }
+
+      const runResultAction = this.runResult.actions.find(
+        action => action.name === dependencyAction.name
+      );
+
+      if (
+        runResultAction &&
+        runResultAction.status !== dataform.ActionResult.ExecutionStatus.CACHE_SKIPPED
+      ) {
+        return false;
+      }
+
+      const cachedState = this.cacheStateMap.get(dependencyTarget);
+      const tableMetadata = this.tableMetadataMap.get(dependencyTarget);
+
+      if (!cachedState || !tableMetadata) {
+        // No data found, can be a new action
+        return false;
+      }
+
+      if (cachedState.lastUpdatedMillis < tableMetadata.lastUpdatedMillis) {
+        return false;
+      }
+    }
+
+    const cachedState = this.cacheStateMap.get(action.target);
+    const tableMetadata = this.tableMetadataMap.get(action.target);
+
+    console.log("found", cachedState, tableMetadata);
+    if (!cachedState || !tableMetadata) {
+      return false;
+    }
+
+    if (cachedState.lastUpdatedMillis < tableMetadata.lastUpdatedMillis) {
+      return false;
+    }
+
+    if (hashExecutionAction(action) !== cachedState.definitionHash) {
+      return false;
+    }
+
+    return true;
   }
 }
 

@@ -256,6 +256,17 @@ export class BigQueryDbAdapter implements IDbAdapter {
     await this.runQuery(updateQuery);
   }
 
+  public async deleteStateMetadata(targets: dataform.ITarget[]): Promise<void> {
+    if (targets.length === 0) {
+      return;
+    }
+    const targetNames = targets
+      .map(target => `${target.database}.${target.schema}.${target.name}`)
+      .join(",");
+    const rowDeleteQuery = `DELETE \`${CACHED_STATE_TABLE_NAME}\` WHERE target_name IN (${targetNames})`;
+    await this.runQuery(rowDeleteQuery);
+  }
+
   private getClient(projectId?: string) {
     projectId = projectId || this.bigQueryCredentials.projectId;
     if (!this.clients.has(projectId)) {

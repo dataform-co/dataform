@@ -153,4 +153,6 @@ export class SQLDataWarehouseDBAdapter implements IDbAdapter {
   }
 
   public async persistStateMetadata(actions: dataform.IExecutionAction[]) {}
+
+  public async deleteStateMetadata(targets: dataform.ITarget[]): Promise<void> {}
 }

@@ -184,6 +184,8 @@ where table_schema = '${target.schema}'
   }
 
   public async persistStateMetadata(actions: dataform.IExecutionAction[]) {}
+
+  public async deleteStateMetadata(targets: dataform.ITarget[]): Promise<void> {}
 }
 
 async function connect(snowflakeCredentials: dataform.ISnowflake) {
