@@ -352,7 +352,7 @@ export class Runner {
   }
 
   private actionHasCacheHit(action: dataform.IExecutionAction): boolean {
-    if (!this.graph.runConfig.useRunCache) {
+    if (!(this.graph.runConfig && this.graph.runConfig.useRunCache)) {
       return false;
     }
 
