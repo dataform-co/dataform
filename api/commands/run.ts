@@ -106,18 +106,23 @@ export class Runner {
 
     await this.prepareAllSchemas();
 
-    if (this.graph.runConfig && this.graph.runConfig.useRunCache) {
-      await this.adapter.deleteStateMetadata(this.graph.actions);
-    }
-
     // Recursively execute all actions as they become executable.
     await this.executeAllActionsReadyForExecution();
 
     this.runResult.timing = timer.end();
 
     if (this.graph.runConfig && this.graph.runConfig.useRunCache) {
+      await this.adapter.prepareStateMetadataTable();
+
+      await this.adapter.deleteStateMetadata(this.graph.actions);
+
       const successfulActions = this.runResult.actions
-        .filter(action => action.status === dataform.ActionResult.ExecutionStatus.SUCCESSFUL)
+        .filter(action =>
+          [
+            dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
+            dataform.ActionResult.ExecutionStatus.CACHE_SKIPPED
+          ].includes(action.status)
+        )
         .map(action =>
           this.graph.actions.find(executionAction => action.name === executionAction.name)
         );
@@ -258,7 +263,7 @@ export class Runner {
       return;
     }
 
-    if (this.isActionCacheable(action)) {
+    if (this.actionHasCacheHit(action)) {
       this.runResult.actions.push({
         name: action.name,
         status: dataform.ActionResult.ExecutionStatus.CACHE_SKIPPED,
@@ -346,7 +351,7 @@ export class Runner {
     return taskResult.status;
   }
 
-  private isActionCacheable(action: dataform.IExecutionAction): boolean {
+  private actionHasCacheHit(action: dataform.IExecutionAction): boolean {
     if (!this.graph.runConfig.useRunCache) {
       return false;
     }
@@ -363,11 +368,6 @@ export class Runner {
         continue;
       }
 
-      if (dependencyAction.type === "operation") {
-        // operation type action is not cacheable
-        return false;
-      }
-
       const runResultAction = this.runResult.actions.find(
         action => action.name === dependencyAction.name
       );
@@ -376,22 +376,6 @@ export class Runner {
         runResultAction &&
         runResultAction.status !== dataform.ActionResult.ExecutionStatus.CACHE_SKIPPED
       ) {
-        return false;
-      }
-
-      const cachedState = this.graph.warehouseState.cachedStates.find(state =>
-        Lodash.isEqual(state.target, dependencyTarget)
-      );
-      const tableMetadata = this.graph.warehouseState.tables.find(table =>
-        Lodash.isEqual(table.target, dependencyTarget)
-      );
-
-      if (!cachedState || !tableMetadata) {
-        // No data found, can be a new action
-        return false;
-      }
-
-      if (cachedState.lastUpdatedMillis < tableMetadata.lastUpdatedMillis) {
         return false;
       }
     }

@@ -162,8 +162,10 @@ suite("@dataform/integration/bigquery", ({ after }) => {
 
     const persistedMetaData = await dbadapter.persistedStateMetadata();
     expect(persistedMetaData.length).to.be.eql(9);
+
     const exampleView = persistedMetaData.find(table => table.target.name === "example_view");
     expect(exampleView).to.have.property("definitionHash");
+
     const exampleViewExecutionAction = executionGraph.actions.find(
       action => action.name === "dataform-integration-tests.df_integration_test.example_view"
     );

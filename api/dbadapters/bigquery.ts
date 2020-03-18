@@ -200,6 +200,17 @@ export class BigQueryDbAdapter implements IDbAdapter {
 
   public async close() {}
 
+  public async prepareStateMetadataTable(): Promise<void> {
+    const metadataTableCreateQuery = `
+      CREATE TABLE IF NOT EXISTS \`${CACHED_STATE_TABLE_NAME}\` (
+        target_name STRING,
+        metadata_json STRING,
+        metadata_proto STRING
+      )
+    `;
+    await this.runQuery(metadataTableCreateQuery);
+  }
+
   public async persistedStateMetadata(): Promise<dataform.IPersistedTableMetadata[]> {
     const { rows } = await this.runQuery(
       `SELECT * FROM ${CACHED_STATE_TABLE_NAME}`,
@@ -215,15 +226,6 @@ export class BigQueryDbAdapter implements IDbAdapter {
     if (actions.length === 0) {
       return;
     }
-
-    const metadataTableCreateQuery = `
-      CREATE TABLE IF NOT EXISTS \`${CACHED_STATE_TABLE_NAME}\` (
-        target_name STRING,
-        metadata_json STRING,
-        metadata_proto STRING
-      )
-    `;
-    await this.runQuery(metadataTableCreateQuery);
     const tableMetadataMap = new Map<dataform.ITarget, IBigQueryTableMetadata>();
     await Promise.all(
       actions.map(async action => {

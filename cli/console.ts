@@ -331,7 +331,7 @@ export function printExecutedAction(
       switch (executionAction.type) {
         case "table": {
           writeStdOut(
-            `${warningOutput("Cached dataset creation: ")} ${datasetString(
+            `${warningOutput("Skipped dataset creation (cache hit): ")} ${datasetString(
               executionAction.target,
               executionAction.tableType
             )}`
@@ -340,7 +340,7 @@ export function printExecutedAction(
         }
         case "assertion": {
           writeStdOut(
-            `${warningOutput("Cached assertion execution : ")} ${targetString(
+            `${warningOutput("Skipped assertion execution (cache hit): ")} ${targetString(
               executionAction.target
             )}`
           );
@@ -348,7 +348,7 @@ export function printExecutedAction(
         }
         case "operation": {
           writeStdOut(
-            `${warningOutput("Cached operation execution: ")} ${operationString(
+            `${warningOutput("Skipped operation execution (cache hit): ")} ${operationString(
               executionAction.name,
               executionAction.target
             )}`
