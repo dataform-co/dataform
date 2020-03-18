@@ -5,7 +5,7 @@ import { hashExecutionAction } from "@dataform/api/utils/run_cache";
 import { dataform } from "@dataform/protos";
 import * as EventEmitter from "events";
 import * as Long from "long";
-import * as Lodash from "lodash";
+import * as lodash from "lodash";
 
 const CANCEL_EVENT = "jobCancel";
 
@@ -129,7 +129,7 @@ export class Runner {
 
       // Currently, we don't support caching for operations (and any dependents)
       await this.adapter.persistStateMetadata(
-        successfulActions.filter(action => action && action.type !== "operation")
+        successfulActions.filter(action => action.type !== "operation")
       );
     }
 
@@ -372,19 +372,16 @@ export class Runner {
         action => action.name === dependencyAction.name
       );
 
-      if (
-        runResultAction &&
-        runResultAction.status !== dataform.ActionResult.ExecutionStatus.CACHE_SKIPPED
-      ) {
+      if (runResultAction.status !== dataform.ActionResult.ExecutionStatus.CACHE_SKIPPED) {
         return false;
       }
     }
 
     const cachedState = this.graph.warehouseState.cachedStates.find(state =>
-      Lodash.isEqual(state.target, action.target)
+      lodash.isEqual(state.target, action.target)
     );
     const tableMetadata = this.graph.warehouseState.tables.find(table =>
-      Lodash.isEqual(table.target, action.target)
+      lodash.isEqual(table.target, action.target)
     );
 
     if (!cachedState || !tableMetadata) {
