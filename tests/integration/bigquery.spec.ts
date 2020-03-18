@@ -137,6 +137,47 @@ suite("@dataform/integration/bigquery", ({ after }) => {
     expect(exampleAssertionFail).to.be.eql(undefined);
 
     expect(persistedMetaData.length).to.be.eql(9);
+
+    // metadata
+    const target = {
+      schema: "df_integration_test",
+      name: "example_incremental",
+      database: "dataform-integration-tests"
+    };
+    const expectedSchema = {
+      fields: [
+        {
+          description: "the timestamp",
+          name: "user_timestamp",
+          type: "INTEGER"
+        },
+        {
+          description: "the id",
+          name: "user_id",
+          type: "INTEGER"
+        },
+        {
+          name: "nested_data",
+          description: "some nested data with duplicate fields",
+          type: "RECORD",
+          fields: [
+            {
+              description: "nested timestamp",
+              name: "user_timestamp",
+              type: "INTEGER"
+            },
+            {
+              description: "nested id",
+              name: "user_id",
+              type: "INTEGER"
+            }
+          ]
+        }
+      ]
+    };
+    const metadata = await dbadapter.getMetadata(target);
+    expect(metadata.schema).to.deep.equal(expectedSchema);
+    expect(metadata.description).to.equal("An incremental table");
   });
 
   suite("result limit works", async () => {

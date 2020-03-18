@@ -287,6 +287,7 @@ message ExecutionAction {
   Target target = 5;
   string table_type = 6;
   string file_name = 8;
+  ActionDescriptor action_descriptor = 9;
 
   // Deprecated.
   repeated string dependencies = 3 [deprecated = true]; // Use dependency_targets instead

@@ -280,6 +280,10 @@ export class Runner {
       }
     }
 
+    if (action.actionDescriptor) {
+      await this.adapter.setMetadata(action);
+    }
+
     if (actionResult.status === dataform.ActionResult.ExecutionStatus.RUNNING) {
       actionResult.status = dataform.ActionResult.ExecutionStatus.SUCCESSFUL;
     }

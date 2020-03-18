@@ -33,6 +33,7 @@ export interface IDbAdapter {
   prepareSchema(database: string, schema: string): Promise<void>;
   persistStateMetadata(actions: dataform.IExecutionAction[]): Promise<void>;
   persistedStateMetadata(): Promise<dataform.IPersistedTableMetadata[]>;
+  setMetadata(action: dataform.IExecutionAction): Promise<void>;
   close(): Promise<void>;
 }
 

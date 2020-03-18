@@ -1,17 +1,17 @@
 import { Credentials } from "@dataform/api/commands/credentials";
 import { IDbAdapter, OnCancel } from "@dataform/api/dbadapters/index";
 import { parseBigqueryEvalError } from "@dataform/api/utils/error_parsing";
+import {
+  buildQuery,
+  decodePersistedTableMetadata,
+  hashExecutionAction,
+  IMetadataRow
+} from "@dataform/api/utils/run_cache";
 import { dataform } from "@dataform/protos";
 import { BigQuery } from "@google-cloud/bigquery";
 import { QueryResultsOptions } from "@google-cloud/bigquery/build/src/job";
 import * as Long from "long";
 import * as PromisePool from "promise-pool-executor";
-import {
-  hashExecutionAction,
-  IMetadataRow,
-  decodePersistedTableMetadata,
-  buildQuery
-} from "@dataform/api/utils/run_cache";
 
 const CACHED_STATE_TABLE_NAME = "dataform_meta.cache_state";
 
@@ -35,6 +35,7 @@ interface IBigQueryTableMetadata {
     tableId: string;
   };
   lastModifiedTime: string;
+  description?: string;
 }
 
 interface IBigQueryFieldMetadata {
@@ -42,6 +43,7 @@ interface IBigQueryFieldMetadata {
   mode: string;
   type: string;
   fields?: IBigQueryFieldMetadata[];
+  description?: string;
 }
 
 export class BigQueryDbAdapter implements IDbAdapter {
@@ -256,6 +258,61 @@ export class BigQueryDbAdapter implements IDbAdapter {
     await this.runQuery(updateQuery);
   }
 
+  public async setMetadata(action: dataform.IExecutionAction): Promise<void> {
+    const { target, actionDescriptor } = action;
+
+    await this.pool
+      .addSingleTask({
+        generator: async () => {
+          try {
+            const metaData = await this.getMetadata(target);
+            const schemaWithDescription = addDescriptionToMetadata(actionDescriptor?.columns, metaData.schema.fields)
+            
+            const table = await this.getClient(target.database)
+              .dataset(target.schema)
+              .table(target.name)
+              .setMetadata({
+                description: actionDescriptor.description,
+                schema: schemaWithDescription
+              });
+            return table;
+          } catch (e) {
+            if (e && e.errors && e.errors[0] && e.errors[0].reason === "notFound") {
+              // if the table can't be found, just return null
+              return null;
+            }
+            // otherwise throw the error as normal
+            throw e;
+          }
+        }
+      })
+      .promise();
+  }
+
+  public async getMetadata(target: dataform.ITarget): Promise<IBigQueryTableMetadata> {
+    const metadataResult = await this.pool
+      .addSingleTask({
+        generator: async () => {
+          try {
+            const table = await this.getClient(target.database)
+              .dataset(target.schema)
+              .table(target.name)
+              .getMetadata();
+            return table;
+          } catch (e) {
+            if (e && e.errors && e.errors[0] && e.errors[0].reason === "notFound") {
+              // if the table can't be found, just return null
+              return null;
+            }
+            // otherwise throw the error as normal
+            throw e;
+          }
+        }
+      })
+      .promise();
+    return metadataResult && metadataResult[0];
+  }
+
   private getClient(projectId?: string) {
     projectId = projectId || this.bigQueryCredentials.projectId;
     if (!this.clients.has(projectId)) {
@@ -360,30 +417,6 @@ export class BigQueryDbAdapter implements IDbAdapter {
       )
     );
   }
-
-  private async getMetadata(target: dataform.ITarget): Promise<IBigQueryTableMetadata> {
-    const metadataResult = await this.pool
-      .addSingleTask({
-        generator: async () => {
-          try {
-            const table = await this.getClient(target.database)
-              .dataset(target.schema)
-              .table(target.name)
-              .getMetadata();
-            return table;
-          } catch (e) {
-            if (e && e.errors && e.errors[0] && e.errors[0].reason === "notFound") {
-              // if the table can't be found, just return null
-              return null;
-            }
-            // otherwise throw the error as normal
-            throw e;
-          }
-        }
-      })
-      .promise();
-    return metadataResult && metadataResult[0];
-  }
 }
 
 function cleanRows(rows: any[]) {
@@ -416,3 +449,33 @@ function convertField(field: IBigQueryFieldMetadata): dataform.IField {
   }
   return result;
 }
+
+function addDescriptionToMetadata (
+  columnDescriptions: dataform.IColumnDescriptor[],
+  metadataArray: IBigQueryFieldMetadata[]
+): IBigQueryFieldMetadata[]  {
+  const findNextField = (fields: IBigQueryFieldMetadata[], path: string[]) => fields?.find((field) => field.name === path[0])
+
+  const appendDescriptionToField = (nestedMetadata: IBigQueryFieldMetadata, path: string[], description: string) => {
+    if(nestedMetadata.name !== path[0]) {
+      return;
+    }
+    if (path.length === 1) {
+      nestedMetadata.description = description
+      return;
+    }
+    const nextPath = path.slice(1);
+    const nextField = findNextField(nestedMetadata.fields, nextPath);
+    if (nextField) {
+      appendDescriptionToField(nextField, nextPath, description);
+    }
+  };
+
+  columnDescriptions.forEach(col => {
+    metadataArray.forEach((metadata) => {
+        appendDescriptionToField(metadata, col.path, col.description)
+    })
+  });
+
+  return metadataArray;
+};
