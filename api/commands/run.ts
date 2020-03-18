@@ -5,7 +5,7 @@ import { hashExecutionAction } from "@dataform/api/utils/run_cache";
 import { dataform } from "@dataform/protos";
 import * as EventEmitter from "events";
 import * as Long from "long";
-import * as _ from "lodash";
+import * as Lodash from "lodash";
 
 const CANCEL_EVENT = "jobCancel";
 
@@ -106,6 +106,10 @@ export class Runner {
 
     await this.prepareAllSchemas();
 
+    if (this.graph.runConfig && this.graph.runConfig.useRunCache) {
+      await this.adapter.deleteStateMetadata(this.graph.actions);
+    }
+
     // Recursively execute all actions as they become executable.
     await this.executeAllActionsReadyForExecution();
 
@@ -121,18 +125,6 @@ export class Runner {
       // Currently, we don't support caching for operations (and any dependents)
       await this.adapter.persistStateMetadata(
         successfulActions.filter(action => action && action.type !== "operation")
-      );
-      await this.adapter.deleteStateMetadata(
-        this.runResult.actions
-          .filter(
-            action =>
-              action.status !== dataform.ActionResult.ExecutionStatus.SUCCESSFUL &&
-              action.status !== dataform.ActionResult.ExecutionStatus.CACHE_SKIPPED
-          )
-          .map(action =>
-            this.graph.actions.find(executionAction => action.name === executionAction.name)
-          )
-          .filter(action => !!action)
       );
     }
 
@@ -388,10 +380,10 @@ export class Runner {
       }
 
       const cachedState = this.graph.warehouseState.cachedStates.find(state =>
-        _.isEqual(state.target, dependencyTarget)
+        Lodash.isEqual(state.target, dependencyTarget)
       );
       const tableMetadata = this.graph.warehouseState.tables.find(table =>
-        _.isEqual(table.target, dependencyTarget)
+        Lodash.isEqual(table.target, dependencyTarget)
       );
 
       if (!cachedState || !tableMetadata) {
@@ -405,10 +397,10 @@ export class Runner {
     }
 
     const cachedState = this.graph.warehouseState.cachedStates.find(state =>
-      _.isEqual(state.target, action.target)
+      Lodash.isEqual(state.target, action.target)
     );
     const tableMetadata = this.graph.warehouseState.tables.find(table =>
-      _.isEqual(table.target, action.target)
+      Lodash.isEqual(table.target, action.target)
     );
 
     if (!cachedState || !tableMetadata) {
