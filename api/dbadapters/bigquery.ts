@@ -261,7 +261,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
   public async setMetadata(action: dataform.IExecutionAction): Promise<void> {
     const { target, actionDescriptor } = action;
 
-    if(!action.actionDescriptor) {
+    if (!action.actionDescriptor) {
       return;
     }
 
@@ -269,8 +269,11 @@ export class BigQueryDbAdapter implements IDbAdapter {
       .addSingleTask({
         generator: async () => {
           const metadata = await this.getMetadata(target);
-          const schemaWithDescription = addDescriptionToMetadata(actionDescriptor?.columns, metadata.schema.fields)
-          
+          const schemaWithDescription = addDescriptionToMetadata(
+            actionDescriptor.columns,
+            metadata.schema.fields
+          );
+
           const table = await this.getClient(target.database)
             .dataset(target.schema)
             .table(target.name)
@@ -445,32 +448,29 @@ function convertField(field: IBigQueryFieldMetadata): dataform.IField {
   return result;
 }
 
-function addDescriptionToMetadata (
+function addDescriptionToMetadata(
   columnDescriptions: dataform.IColumnDescriptor[],
   metadataArray: IBigQueryFieldMetadata[]
-): IBigQueryFieldMetadata[]  {
-  const findNextField = (fields: IBigQueryFieldMetadata[], path: string[]) => fields?.find((field) => field.name === path[0])
+): IBigQueryFieldMetadata[] {
+  const findDescription = (path: string[]) =>
+    columnDescriptions.find(column => column.path.join("") === path.join(""));
 
-  const appendDescriptionToField = (nestedMetadata: IBigQueryFieldMetadata, path: string[], description: string) => {
-    if(nestedMetadata.name !== path[0]) {
-      return;
+  const mapDescriptionToMetadata = (metadata: IBigQueryFieldMetadata, previousPath: string[]) => {
+    if (findDescription(previousPath)) {
+      metadata.description = findDescription(previousPath).description;
     }
-    if (path.length === 1) {
-      nestedMetadata.description = description
-      return;
+
+    if (metadata.fields) {
+      metadata.fields = metadata.fields.map(nestedMetadata =>
+        mapDescriptionToMetadata(nestedMetadata, [...previousPath, nestedMetadata.name])
+      );
     }
-    const nextPath = path.slice(1);
-    const nextField = findNextField(nestedMetadata.fields, nextPath);
-    if (nextField) {
-      appendDescriptionToField(nextField, nextPath, description);
-    }
+
+    return metadata;
   };
 
-  columnDescriptions.forEach(col => {
-    metadataArray.forEach((metadata) => {
-        appendDescriptionToField(metadata, col.path, col.description)
-    })
-  });
-
-  return metadataArray;
-};
+  const newMetadata = metadataArray.map(metaItem =>
+    mapDescriptionToMetadata(metaItem, [metaItem.name])
+  );
+  return newMetadata;
+}
