@@ -1,0 +1,15 @@
+WITH example_data AS (
+SELECT timestamp AS timestamp, id_1 AS id_1, id_2 AS id_2, value AS value
+FROM 
+  (SELECT 1 AS timestamp,	21	AS id_1, 31 AS id_2, 'original' AS value) UNION ALL
+  (SELECT 2 AS timestamp,	22	AS id_1, 32 AS id_2, 'original' AS value) UNION ALL
+  (SELECT 3 AS timestamp,	21	AS id_1, 31 AS id_2, 'new' AS value) UNION ALL
+  (SELECT 4 AS timestamp,	22	AS id_1, 32 AS id_2, 'new' AS value)
+)
+
+config { type: "incremental", uniqueKey: ["id_1", "id_2"] }
+
+SELECT timestamp, id_1, id_2, value
+FROM example_data
+
+${ when(incremental(), `WHERE timestamp >= 3`, `WHERE timestamp <= 2`) }

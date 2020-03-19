@@ -59,7 +59,7 @@ WHERE NOT (${rowCondition})
       .join(`UNION ALL`);
   }
 
-  protected insertInto(target: dataform.ITarget, columns: string[], query: string) {
+  protected insertInto(target: dataform.ITarget, columns: string[], query: string, uniqueKey?: string[]) {
     return `
 insert into ${this.resolveTarget(target)}
 (${columns.join(",")})

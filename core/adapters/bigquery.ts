@@ -37,7 +37,8 @@ export class BigQueryAdapter extends Adapter implements IAdapter {
             this.insertInto(
               table.target,
               tableMetadata.fields.map(f => f.name),
-              this.where(table.incrementalQuery || table.query, table.where)
+              this.where(table.incrementalQuery || table.query, table.where),
+              table.uniqueKey
             )
           )
         );
@@ -88,5 +89,23 @@ export class BigQueryAdapter extends Adapter implements IAdapter {
 
   public dropIfExists(target: dataform.ITarget, type: string) {
     return `drop ${this.baseTableType(type)} if exists ${this.resolveTarget(target)}`;
+  }
+
+  public insertInto(
+    target: dataform.ITarget,
+    columns: string[],
+    query: string,
+    uniqueKey: string[]
+  ) {
+    const tmp = `
+merge ${this.resolveTarget(target)} T
+using (${query}) S
+on ${uniqueKey && uniqueKey.length > 0 ? uniqueKey.map(uk => `T.${uk} = S.${uk}`) : `false`}
+when matched then
+  update set ${columns.map(c => `${c} = S.${c}`).join(",")}
+when not matched then
+  insert (${columns.join(",")}) values (${columns.join(",")})`;
+    console.log("BigQueryAdapter -> tmp", tmp);
+    return tmp;
   }
 }
