@@ -10,7 +10,9 @@ import {
   table,
   test
 } from "@dataform/api";
+import { CREDENTIALS_FILENAME } from "@dataform/api/commands/credentials";
 import { prettyJsonStringify } from "@dataform/api/utils";
+import { maybeConfigureAnalytics, trackError } from "@dataform/cli/analytics";
 import {
   print,
   printCompiledGraph,
@@ -24,7 +26,9 @@ import {
   printInitResult,
   printListTablesResult,
   printSuccess,
-  printTestResult
+  printTestResult,
+  question,
+  selectionQuestion
 } from "@dataform/cli/console";
 import {
   getBigQueryCredentials,
@@ -38,7 +42,6 @@ import { createYargsCli, INamedOption } from "@dataform/cli/yargswrapper";
 import { supportsCancel, WarehouseType } from "@dataform/core/adapters";
 import { dataform } from "@dataform/protos";
 import * as chokidar from "chokidar";
-import { CREDENTIALS_FILENAME } from "df/api/commands/credentials";
 import * as fs from "fs";
 import * as glob from "glob";
 import * as path from "path";
@@ -46,9 +49,10 @@ import * as yargs from "yargs";
 
 const RECOMPILE_DELAY = 500;
 
-process.on("unhandledRejection", reason =>
-  printError(`Unhandled promise rejection: ${reason.stack || reason}`)
-);
+process.on("unhandledRejection", async reason => {
+  printError(`Unhandled promise rejection: ${reason.stack || reason}`);
+  await trackError(reason);
+});
 
 const projectDirOption: INamedOption<yargs.PositionalOptions> = {
   name: "project-dir",
@@ -216,6 +220,7 @@ const builtYargs = createYargsCli({
         }
       ],
       processFn: async argv => {
+        await maybeConfigureAnalytics();
         print("Writing project files...\n");
         const initResult = await init(
           argv["project-dir"],
@@ -328,6 +333,10 @@ const builtYargs = createYargsCli({
         jsonOutputOption
       ],
       processFn: async argv => {
+        if (!argv.json && !argv.watch) {
+          await maybeConfigureAnalytics();
+        }
+
         const projectDir = argv["project-dir"];
         const schemaSuffixOverride = argv["schema-suffix"];
 
@@ -475,6 +484,7 @@ const builtYargs = createYargsCli({
       ],
       processFn: async argv => {
         if (!argv.json) {
+          await maybeConfigureAnalytics();
           print("Compiling...\n");
         }
         const compiledGraph = await compile({
@@ -637,12 +647,13 @@ const builtYargs = createYargsCli({
   .strict()
   .wrap(null)
   .recommendCommands()
-  .fail((msg: string, err: any) => {
+  .fail(async (msg: string, err: any) => {
     if (!!err && err.name === "VMError" && err.code === "ENOTFOUND") {
       printError("Could not find NPM dependencies. Have you run 'dataform install'?");
     } else {
       const message = err && err.message ? err.message.split("\n")[0] : msg;
       printError(`Dataform encountered an error: ${message}`);
+      await trackError(message);
       if (err.stack) {
         printError(err.stack);
       }

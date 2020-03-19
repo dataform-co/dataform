@@ -1,3 +1,4 @@
+import { trackCommand } from "df/cli/analytics";
 import * as yargs from "yargs";
 
 export interface ICli {
@@ -26,7 +27,10 @@ export function createYargsCli(cli: ICli) {
       command.description,
       (yargsChainer: yargs.Argv) => createOptionsChain(yargsChainer, command),
       async (argv: { [argumentName: string]: any }) => {
+        const analyticsTrack = trackCommand(command.format.split(" ")[0]);
         const exitCode = await command.processFn(argv);
+        // These can take a while, so wait up to 2 seconds for them to finish.
+        await analyticsTrack;
         process.exit(exitCode);
       }
     );
