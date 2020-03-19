@@ -97,15 +97,17 @@ export class BigQueryAdapter extends Adapter implements IAdapter {
     query: string,
     uniqueKey: string[]
   ) {
-    const tmp = `
+    return `
 merge ${this.resolveTarget(target)} T
 using (${query}) S
-on ${uniqueKey && uniqueKey.length > 0 ? uniqueKey.map(uk => `T.${uk} = S.${uk}`) : `false`}
+on ${
+      uniqueKey && uniqueKey.length > 0
+        ? uniqueKey.map(uk => `T.${uk} = S.${uk}`).join(` and `)
+        : `false`
+    }
 when matched then
   update set ${columns.map(c => `${c} = S.${c}`).join(",")}
 when not matched then
   insert (${columns.join(",")}) values (${columns.join(",")})`;
-    console.log("BigQueryAdapter -> tmp", tmp);
-    return tmp;
   }
 }

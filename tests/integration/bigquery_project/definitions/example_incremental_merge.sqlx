@@ -12,4 +12,4 @@ config { type: "incremental", uniqueKey: ["id_1", "id_2"] }
 SELECT timestamp, id_1, id_2, value
 FROM example_data
 
-${ when(incremental(), `WHERE timestamp >= 3`, `WHERE timestamp <= 2`) }
+${ when(incremental(), `WHERE timestamp > 2`, `WHERE timestamp <= 2`) }

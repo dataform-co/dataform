@@ -192,6 +192,13 @@ export interface ITableConfig extends ITargetableConfig, IDocumentableConfig, ID
    * If configured, relevant assertions will automatically be created and run as a dependency of this dataset.
    */
   assertions?: ITableAssertions;
+
+  /**
+   * Unique keys for merge criteria for incremental tables.
+   *
+   * If configured, records with matching unique key(s) will be updated, rather than new rows being inserted.
+   */
+  uniqueKey?: string[];
 }
 
 /**
@@ -285,6 +292,9 @@ export class Table {
     if (config.assertions) {
       this.assertions(config.assertions);
     }
+    if (config.uniqueKey) {
+      this.uniqueKey(config.uniqueKey);
+    }
 
     return this;
   }
@@ -322,6 +332,10 @@ export class Table {
   public protected() {
     this.proto.protected = true;
     return this;
+  }
+
+  public uniqueKey(uk: string[]) {
+    this.proto.uniqueKey = uk;
   }
 
   public sqldatawarehouse(sqlDataWarehouse: dataform.ISQLDataWarehouseOptions) {

@@ -130,6 +130,7 @@ suite("@dataform/integration/bigquery", ({ after }) => {
     );
 
     executedGraph = await dfapi.run(executionGraph, credentials).resultPromise();
+
     expect(executedGraph.status).equals(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
 
     // Check there are the expected number of extra rows in the incremental table.
@@ -158,6 +159,7 @@ suite("@dataform/integration/bigquery", ({ after }) => {
       {
         actions: [
           "example_incremental",
+          "example_incremental_merge",
           "example_table",
           "example_view",
           "example_assertion_fail",
@@ -175,6 +177,8 @@ suite("@dataform/integration/bigquery", ({ after }) => {
     const expectedActionStatus: { [index: string]: dataform.ActionResult.ExecutionStatus } = {
       "dataform-integration-tests.df_integration_test.example_incremental":
         dataform.ActionResult.ExecutionStatus.CACHE_SKIPPED,
+      "dataform-integration-tests.df_integration_test.example_incremental_merge":
+        dataform.ActionResult.ExecutionStatus.CACHE_SKIPPED,
       "dataform-integration-tests.df_integration_test.example_table":
         dataform.ActionResult.ExecutionStatus.CACHE_SKIPPED,
       "dataform-integration-tests.df_integration_test.example_view":
@@ -190,7 +194,7 @@ suite("@dataform/integration/bigquery", ({ after }) => {
     }
 
     const persistedMetaData = await dbadapter.persistedStateMetadata();
-    expect(persistedMetaData.length).to.be.eql(9);
+    expect(persistedMetaData.length).to.be.eql(10);
 
     const exampleView = persistedMetaData.find(table => table.target.name === "example_view");
     expect(exampleView).to.have.property("definitionHash");
