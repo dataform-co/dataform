@@ -38,7 +38,7 @@ import { createYargsCli, INamedOption } from "@dataform/cli/yargswrapper";
 import { supportsCancel, WarehouseType } from "@dataform/core/adapters";
 import { dataform } from "@dataform/protos";
 import * as chokidar from "chokidar";
-import { CREDENTIALS_FILENAME } from "df/api/commands/credentials";
+import { CREDENTIALS_FILENAME } from "@dataform/api/commands/credentials";
 import * as fs from "fs";
 import * as glob from "glob";
 import * as path from "path";

@@ -2,7 +2,7 @@
   "name": "@dataform/grpc-web-proxy",
   "version": "0.2.0",
   "description": "A simple HTTP2 grpc-web-proxy for Node.",
-  "homepage": "https://github.com/dataform-co/dataform/tools/grpc-web-proxy",
+  "homepage": "https://github.com/dataform-co/dataform/grpc-web-proxy",
   "license": "MIT",
   "main": "index.js",
   "bin": {
