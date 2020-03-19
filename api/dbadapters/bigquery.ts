@@ -200,6 +200,17 @@ export class BigQueryDbAdapter implements IDbAdapter {
 
   public async close() {}
 
+  public async prepareStateMetadataTable(): Promise<void> {
+    const metadataTableCreateQuery = `
+      CREATE TABLE IF NOT EXISTS \`${CACHED_STATE_TABLE_NAME}\` (
+        target_name STRING,
+        metadata_json STRING,
+        metadata_proto STRING
+      )
+    `;
+    await this.runQuery(metadataTableCreateQuery);
+  }
+
   public async persistedStateMetadata(): Promise<dataform.IPersistedTableMetadata[]> {
     const { rows } = await this.runQuery(
       `SELECT * FROM ${CACHED_STATE_TABLE_NAME}`,
@@ -212,14 +223,9 @@ export class BigQueryDbAdapter implements IDbAdapter {
   }
 
   public async persistStateMetadata(actions: dataform.IExecutionAction[]): Promise<void> {
-    const metadataTableCreateQuery = `
-      CREATE TABLE IF NOT EXISTS \`${CACHED_STATE_TABLE_NAME}\` (
-        target_name STRING,
-        metadata_json STRING,
-        metadata_proto STRING
-      )
-    `;
-    await this.runQuery(metadataTableCreateQuery);
+    if (actions.length === 0) {
+      return;
+    }
     const tableMetadataMap = new Map<dataform.ITarget, IBigQueryTableMetadata>();
     await Promise.all(
       actions.map(async action => {
@@ -254,6 +260,17 @@ export class BigQueryDbAdapter implements IDbAdapter {
       UPDATE SET metadata_json = S.metadata_json,
           metadata_proto = S.metadata_proto;`;
     await this.runQuery(updateQuery);
+  }
+
+  public async deleteStateMetadata(actions: dataform.IExecutionAction[]): Promise<void> {
+    if (actions.length === 0) {
+      return;
+    }
+    const targetNames = actions
+      .map(({ target }) => `"${target.database}.${target.schema}.${target.name}"`)
+      .join(",");
+    const rowDeleteQuery = `DELETE \`${CACHED_STATE_TABLE_NAME}\` WHERE target_name IN (${targetNames})`;
+    await this.runQuery(rowDeleteQuery);
   }
 
   private getClient(projectId?: string) {

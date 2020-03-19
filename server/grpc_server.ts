@@ -1,6 +1,6 @@
+import { GrpcWebProxy } from "@dataform/grpc-web-proxy";
 import * as Service from "@dataform/server/grpc_service";
-import { ServiceImpl } from "df/server/service_impl";
-import { GrpcWebProxy } from "df/tools/grpc-web-proxy";
+import { ServiceImpl } from "@dataform/server/service_impl";
 import * as grpc from "grpc";
 
 interface IProps {

@@ -178,12 +178,16 @@ where table_schema = '${target.schema}'
     });
   }
 
+  public async prepareStateMetadataTable(): Promise<void> {}
+
   public async persistedStateMetadata(): Promise<dataform.IPersistedTableMetadata[]> {
     const persistedMetadata: dataform.IPersistedTableMetadata[] = [];
     return persistedMetadata;
   }
 
   public async persistStateMetadata(actions: dataform.IExecutionAction[]) {}
+
+  public async deleteStateMetadata(actions: dataform.IExecutionAction[]): Promise<void> {}
 }
 
 async function connect(snowflakeCredentials: dataform.ISnowflake) {

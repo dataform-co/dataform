@@ -38,6 +38,7 @@ ts_library(
         exclude = ["webpack.ts"],
     ),
     data = [":sass"],
+    module_name = "@dataform/app",
     deps = [
         ":css_typings",
         "//protos",
@@ -66,8 +67,8 @@ webpack_dev_server(
         "--history-api-fallback",
     ],
     data = [
-        ":assets",
         ":app",
+        ":assets",
         ":sass",
         ":webpack.config.js",
         "@npm//webpack-cli",
@@ -82,8 +83,8 @@ load("@npm//webpack:index.bzl", "webpack")
 webpack(
     name = "bundler",
     data = [
-        ":assets",
         ":app",
+        ":assets",
         ":sass",
         ":webpack.config.js",
         "@npm//webpack-cli",
