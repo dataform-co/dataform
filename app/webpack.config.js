@@ -36,6 +36,7 @@ module.exports = (env, argv) => {
       extensions: [".ts", ".tsx", ".js", ".jsx", ".json", ".css"],
       alias: {
         "@dataform": path.resolve(process.env.RUNFILES, "df"),
+        "@dataform-tools": path.resolve(process.env.RUNFILES, "df/tools"),
         df: path.resolve(process.env.RUNFILES, "df")
       }
     },

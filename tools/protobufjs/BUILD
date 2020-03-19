@@ -9,9 +9,10 @@ exports_files([
 
 ts_library(
     name = "grpc_web_rpc_impl",
-    srcs = glob([
+    srcs = [
         "grpc_web_rpc_impl.ts",
-    ]),
+    ],
+    module_name = "@dataform-tools/protobufjs",
     deps = [
         "//protos",
         "@npm//grpc-web-client",
