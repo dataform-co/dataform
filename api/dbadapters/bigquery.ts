@@ -265,9 +265,9 @@ export class BigQueryDbAdapter implements IDbAdapter {
   }
 
   public async setMetadata(action: dataform.IExecutionAction): Promise<void> {
-    const { target, actionDescriptor } = action;
+    const { target, actionDescriptor, type } = action;
 
-    if (!action.actionDescriptor) {
+    if (!actionDescriptor || !["view", "table"].includes(type)) {
       return;
     }
 
@@ -472,14 +472,14 @@ function addDescriptionToMetadata(
   const findDescription = (path: string[]) =>
     columnDescriptions.find(column => column.path.join("") === path.join(""));
 
-  const mapDescriptionToMetadata = (metadata: IBigQueryFieldMetadata, previousPath: string[]) => {
-    if (findDescription(previousPath)) {
-      metadata.description = findDescription(previousPath).description;
+  const mapDescriptionToMetadata = (metadata: IBigQueryFieldMetadata, path: string[]) => {
+    if (findDescription(path)) {
+      metadata.description = findDescription(path).description;
     }
 
     if (metadata.fields) {
       metadata.fields = metadata.fields.map(nestedMetadata =>
-        mapDescriptionToMetadata(nestedMetadata, [...previousPath, nestedMetadata.name])
+        mapDescriptionToMetadata(nestedMetadata, [...path, nestedMetadata.name])
       );
     }
 
