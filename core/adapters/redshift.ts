@@ -13,6 +13,10 @@ export class RedshiftAdapter extends Adapter implements IAdapter {
     return `"${target.schema}"."${target.name}"`;
   }
 
+  public resolveIncrementalTempTarget(target: dataform.ITarget) {
+    return `"${target.schema}"."${target.name}_incremental_temp"`;
+  }
+
   public publishTasks(
     table: dataform.ITable,
     runConfig: dataform.IRunConfig,
@@ -37,7 +41,8 @@ export class RedshiftAdapter extends Adapter implements IAdapter {
             this.insertInto(
               table.target,
               tableMetadata.fields.map(f => f.name),
-              this.where(table.incrementalQuery || table.query, table.where)
+              this.where(table.incrementalQuery || table.query, table.where),
+              table.uniqueKey
             )
           )
         );
@@ -123,5 +128,37 @@ export class RedshiftAdapter extends Adapter implements IAdapter {
 
   public dropIfExists(target: dataform.ITarget, type: string) {
     return `drop ${this.baseTableType(type)} if exists ${this.resolveTarget(target)} cascade`;
+  }
+
+  public insertInto(
+    target: dataform.ITarget,
+    columns: string[],
+    query: string,
+    uniqueKey: string[]
+  ) {
+    const finalTarget = this.resolveTarget(target);
+    const tempTarget = this.resolveIncrementalTempTarget(target);
+    return `
+drop table if exists ${tempTarget};
+
+create temp table ${tempTarget} as
+select * from (${query});
+
+begin transaction;
+
+delete from ${finalTarget}
+using ${tempTarget}
+where ${
+      uniqueKey && uniqueKey.length > 0
+        ? uniqueKey.map(uk => `${finalTarget}."${uk}" = ${tempTarget}."${uk}"`).join(` and `)
+        : `false`
+    };
+
+insert into ${finalTarget}
+select * from ${tempTarget};
+
+end transaction;
+
+drop table ${tempTarget};`;
   }
 }
