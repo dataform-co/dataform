@@ -1,11 +1,3 @@
-WITH example_data AS (
-SELECT user_timestamp AS user_timestamp, user_id AS user_id, user_action AS user_action, nested_data as nested_data
-FROM 
-  (SELECT 1502920304 AS user_timestamp,	03940	AS user_id, 'create_project' AS user_action, STRUCT(1 AS user_timestamp, 2 as user_id) as nested_data) UNION ALL
-  (SELECT 1502930293 AS user_timestamp,	20492	AS user_id, 'logout' AS user_action, STRUCT(1 AS user_timestamp, 2 as user_id) as nested_data) UNION ALL
-  (SELECT 1502940292 AS user_timestamp,	30920	AS user_id, 'login' AS user_action, STRUCT(1 AS user_timestamp, 2 as user_id) as nested_data)
-)
-
 config { 
     type: "incremental",
     description: "An incremental table",
@@ -18,9 +10,18 @@ config {
             user_timestamp: "nested timestamp",
             user_id: "nested id"
           }
-        }
+        },
+        not_a_column_name: "shouldn't appear"
     }
 }
+
+WITH example_data AS (
+SELECT user_timestamp AS user_timestamp, user_id AS user_id, user_action AS user_action, nested_data as nested_data
+FROM 
+  (SELECT 1502920304 AS user_timestamp,	03940	AS user_id, 'create_project' AS user_action, STRUCT(1 AS user_timestamp, 2 as user_id) as nested_data) UNION ALL
+  (SELECT 1502930293 AS user_timestamp,	20492	AS user_id, 'logout' AS user_action, STRUCT(1 AS user_timestamp, 2 as user_id) as nested_data) UNION ALL
+  (SELECT 1502940292 AS user_timestamp,	30920	AS user_id, 'login' AS user_action, STRUCT(1 AS user_timestamp, 2 as user_id) as nested_data)
+)
 
 SELECT user_timestamp, user_id, nested_data
 FROM example_data

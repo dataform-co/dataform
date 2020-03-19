@@ -261,29 +261,24 @@ export class BigQueryDbAdapter implements IDbAdapter {
   public async setMetadata(action: dataform.IExecutionAction): Promise<void> {
     const { target, actionDescriptor } = action;
 
+    if(!action.actionDescriptor) {
+      return;
+    }
+
     await this.pool
       .addSingleTask({
         generator: async () => {
-          try {
-            const metaData = await this.getMetadata(target);
-            const schemaWithDescription = addDescriptionToMetadata(actionDescriptor?.columns, metaData.schema.fields)
-            
-            const table = await this.getClient(target.database)
-              .dataset(target.schema)
-              .table(target.name)
-              .setMetadata({
-                description: actionDescriptor.description,
-                schema: schemaWithDescription
-              });
-            return table;
-          } catch (e) {
-            if (e && e.errors && e.errors[0] && e.errors[0].reason === "notFound") {
-              // if the table can't be found, just return null
-              return null;
-            }
-            // otherwise throw the error as normal
-            throw e;
-          }
+          const metadata = await this.getMetadata(target);
+          const schemaWithDescription = addDescriptionToMetadata(actionDescriptor?.columns, metadata.schema.fields)
+          
+          const table = await this.getClient(target.database)
+            .dataset(target.schema)
+            .table(target.name)
+            .setMetadata({
+              description: actionDescriptor.description,
+              schema: schemaWithDescription
+            });
+          return table;
         }
       })
       .promise();

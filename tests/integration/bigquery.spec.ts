@@ -138,13 +138,11 @@ suite("@dataform/integration/bigquery", ({ after }) => {
 
     expect(persistedMetaData.length).to.be.eql(9);
 
-    // metadata
-    const target = {
-      schema: "df_integration_test",
-      name: "example_incremental",
-      database: "dataform-integration-tests"
-    };
-    const expectedSchema = {
+    // incremental metadata
+    const incrementalAction = executionGraph.actions.find(
+      action => action.name === "dataform-integration-tests.df_integration_test.example_incremental"
+    );
+    const expectedIncrementalSchema = {
       fields: [
         {
           description: "the timestamp",
@@ -175,9 +173,26 @@ suite("@dataform/integration/bigquery", ({ after }) => {
         }
       ]
     };
-    const metadata = await dbadapter.getMetadata(target);
-    expect(metadata.schema).to.deep.equal(expectedSchema);
-    expect(metadata.description).to.equal("An incremental table");
+    const incrementalMetadata = await dbadapter.getMetadata(incrementalAction.target);
+    expect(incrementalMetadata.schema).to.deep.equal(expectedIncrementalSchema);
+    expect(incrementalMetadata.description).to.equal("An incremental table");
+
+    // view metadata
+    const viewAction = executionGraph.actions.find(
+      action => action.name === "dataform-integration-tests.df_integration_test.example_view"
+    );
+    const expectedViewSchema = {
+      fields: [
+        {
+          description: "val doc",
+          name: "val",
+          type: "INTEGER"
+        }
+      ]
+    };
+    const viewMetadata = await dbadapter.getMetadata(viewAction.target);
+    expect(viewMetadata.schema).to.deep.equal(expectedViewSchema);
+    expect(viewMetadata.description).to.equal("An example view");
   });
 
   suite("result limit works", async () => {

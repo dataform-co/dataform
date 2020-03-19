@@ -280,12 +280,15 @@ export class Runner {
       }
     }
 
-    if (action.actionDescriptor) {
-      await this.adapter.setMetadata(action);
-    }
-
     if (actionResult.status === dataform.ActionResult.ExecutionStatus.RUNNING) {
       actionResult.status = dataform.ActionResult.ExecutionStatus.SUCCESSFUL;
+    }
+
+    if (
+      action.actionDescriptor &&
+      actionResult.status === dataform.ActionResult.ExecutionStatus.SUCCESSFUL
+    ) {
+      await this.adapter.setMetadata(action);
     }
     actionResult.timing = timer.end();
     await this.triggerChange();
