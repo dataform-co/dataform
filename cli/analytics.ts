@@ -11,6 +11,8 @@ import { v4 as uuidv4 } from "uuid";
 
 const analytics = new Analytics("eR24ln3MniE3TKZXkvAkOGkiSN02xXqw");
 
+let currentCommand: string;
+
 export async function maybeConfigureAnalytics() {
   const settings = await getConfigSettings();
   // We should only ask if users want to track analytics if they are in an interactive terminal;
@@ -35,6 +37,7 @@ Would you like to opt-in to anonymous usage and error tracking?`,
 }
 
 export async function trackCommand(command: string) {
+  currentCommand = command;
   const config = await getConfigSettings();
   if (!config.allowAnonymousAnalytics) {
     return;
@@ -48,7 +51,7 @@ export async function trackCommand(command: string) {
           command
         }
       },
-      e => {
+      () => {
         resolve();
         // Silently fail on tracking errors.
       }
@@ -56,7 +59,7 @@ export async function trackCommand(command: string) {
   });
 }
 
-export async function trackError(e: any) {
+export async function trackError() {
   const config = await getConfigSettings();
   if (!config.allowAnonymousAnalytics) {
     return;
@@ -67,7 +70,7 @@ export async function trackError(e: any) {
         userId: config.anonymousUserId,
         event: "event_dataform_cli_error",
         properties: {
-          message: e && e.message ? e.message : String(e)
+          currentCommand
         }
       },
       () => {

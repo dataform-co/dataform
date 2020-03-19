@@ -51,7 +51,7 @@ const RECOMPILE_DELAY = 500;
 
 process.on("unhandledRejection", async reason => {
   printError(`Unhandled promise rejection: ${reason.stack || reason}`);
-  await trackError(reason);
+  await trackError();
 });
 
 const projectDirOption: INamedOption<yargs.PositionalOptions> = {
@@ -647,7 +647,7 @@ const builtYargs = createYargsCli({
     } else {
       const message = err && err.message ? err.message.split("\n")[0] : msg;
       printError(`Dataform encountered an error: ${message}`);
-      await trackError(message);
+      await trackError();
       if (err.stack) {
         printError(err.stack);
       }
