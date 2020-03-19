@@ -26,9 +26,7 @@ import {
   printInitResult,
   printListTablesResult,
   printSuccess,
-  printTestResult,
-  question,
-  selectionQuestion
+  printTestResult
 } from "@dataform/cli/console";
 import {
   getBigQueryCredentials,
