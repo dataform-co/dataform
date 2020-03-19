@@ -5,7 +5,7 @@ import { promisify } from "util";
 
 export interface IConfigSettings {
   allowAnonymousAnalytics?: boolean;
-  userId?: string;
+  anonymousUserId?: string;
 }
 
 export function getConfigDirPath() {
@@ -24,7 +24,7 @@ export async function getConfigSettings(): Promise<IConfigSettings> {
       ) as IConfigSettings;
     }
   } catch (e) {
-    // If we can't get the config, just return the default.
+    // If something goes wrong, return a default.
   }
   return {};
 }

@@ -12,7 +12,7 @@ import {
 } from "@dataform/api";
 import { CREDENTIALS_FILENAME } from "@dataform/api/commands/credentials";
 import { prettyJsonStringify } from "@dataform/api/utils";
-import { maybeConfigureAnalytics, trackError } from "@dataform/cli/analytics";
+import { trackError } from "@dataform/cli/analytics";
 import {
   print,
   printCompiledGraph,
@@ -220,7 +220,6 @@ const builtYargs = createYargsCli({
         }
       ],
       processFn: async argv => {
-        await maybeConfigureAnalytics();
         print("Writing project files...\n");
         const initResult = await init(
           argv["project-dir"],
@@ -333,10 +332,6 @@ const builtYargs = createYargsCli({
         jsonOutputOption
       ],
       processFn: async argv => {
-        if (!argv.json && !argv.watch) {
-          await maybeConfigureAnalytics();
-        }
-
         const projectDir = argv["project-dir"];
         const schemaSuffixOverride = argv["schema-suffix"];
 
@@ -484,7 +479,6 @@ const builtYargs = createYargsCli({
       ],
       processFn: async argv => {
         if (!argv.json) {
-          await maybeConfigureAnalytics();
           print("Compiling...\n");
         }
         const compiledGraph = await compile({
