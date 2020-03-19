@@ -2,7 +2,8 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "df/*": ["*", "bazel-bin/*", "bazel-genfiles/*"],
+      "df/docs/*": ["docs/*", "bazel-bin/docs/*", "bazel-genfiles/docs/*"],
+      "df/tests/*": ["tests/*", "bazel-bin/tests/*", "bazel-genfiles/tests/*"],
       "@dataform/*": ["*", "bazel-bin/*", "bazel-genfiles/*"],
       "@dataform-tools/*": ["tools/*", "bazel-bin/tools/*", "bazel-genfiles/tools/*"]
     },

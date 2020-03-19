@@ -1,9 +1,11 @@
 import { Credentials } from "@dataform/api/commands/credentials";
 import * as dbadapters from "@dataform/api/dbadapters";
 import { retry } from "@dataform/api/utils/retry";
+import { hashExecutionAction } from "@dataform/api/utils/run_cache";
 import { dataform } from "@dataform/protos";
 import * as EventEmitter from "events";
 import * as Long from "long";
+import * as lodash from "lodash";
 
 const CANCEL_EVENT = "jobCancel";
 
@@ -110,8 +112,17 @@ export class Runner {
     this.runResult.timing = timer.end();
 
     if (this.graph.runConfig && this.graph.runConfig.useRunCache) {
+      await this.adapter.prepareStateMetadataTable();
+
+      await this.adapter.deleteStateMetadata(this.graph.actions);
+
       const successfulActions = this.runResult.actions
-        .filter(action => action.status === dataform.ActionResult.ExecutionStatus.SUCCESSFUL)
+        .filter(action =>
+          [
+            dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
+            dataform.ActionResult.ExecutionStatus.CACHE_SKIPPED
+          ].includes(action.status)
+        )
         .map(action =>
           this.graph.actions.find(executionAction => action.name === executionAction.name)
         );
@@ -252,6 +263,16 @@ export class Runner {
       return;
     }
 
+    if (this.actionHasCacheHit(action)) {
+      this.runResult.actions.push({
+        name: action.name,
+        status: dataform.ActionResult.ExecutionStatus.CACHE_SKIPPED,
+        tasks: []
+      });
+      await this.triggerChange();
+      return;
+    }
+
     const timer = Timer.start();
     const actionResult: dataform.IActionResult = {
       name: action.name,
@@ -335,6 +356,54 @@ export class Runner {
     taskResult.timing = timer.end();
     await this.triggerChange();
     return taskResult.status;
+  }
+
+  private actionHasCacheHit(action: dataform.IExecutionAction): boolean {
+    if (!(this.graph.runConfig && this.graph.runConfig.useRunCache)) {
+      return false;
+    }
+
+    if (action.type === "operation") {
+      return false;
+    }
+
+    for (const dependencyTarget of action.dependencyTargets) {
+      const dependencyAction = this.graph.actions.find(
+        action => action.target === dependencyTarget
+      );
+      if (!dependencyAction) {
+        continue;
+      }
+
+      const runResultAction = this.runResult.actions.find(
+        action => action.name === dependencyAction.name
+      );
+
+      if (runResultAction.status !== dataform.ActionResult.ExecutionStatus.CACHE_SKIPPED) {
+        return false;
+      }
+    }
+
+    const cachedState = this.graph.warehouseState.cachedStates.find(state =>
+      lodash.isEqual(state.target, action.target)
+    );
+    const tableMetadata = this.graph.warehouseState.tables.find(table =>
+      lodash.isEqual(table.target, action.target)
+    );
+
+    if (!cachedState || !tableMetadata) {
+      return false;
+    }
+
+    if (cachedState.lastUpdatedMillis < tableMetadata.lastUpdatedMillis) {
+      return false;
+    }
+
+    if (hashExecutionAction(action) !== cachedState.definitionHash) {
+      return false;
+    }
+
+    return true;
   }
 }
 

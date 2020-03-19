@@ -70,8 +70,8 @@ suite("@dataform/integration/bigquery", ({ after }) => {
     let executionGraph = await dfapi.build(compiledGraph, {}, credentials);
     let executedGraph = await dfapi.run(executionGraph, credentials).resultPromise();
 
-    const actionMap = keyBy(executedGraph.actions, v => v.name);
-    expect(Object.keys(actionMap).length).eql(11);
+    let actionMap = keyBy(executedGraph.actions, v => v.name);
+    expect(Object.keys(actionMap).length).eql(12);
 
     // Check the status of action execution.
     const expectedFailedActions = [
@@ -123,9 +123,49 @@ suite("@dataform/integration/bigquery", ({ after }) => {
     expect(incrementalRows.length).equals(5);
 
     // run cache assertions
+
+    executionGraph = await dfapi.build(
+      compiledGraph,
+      {
+        actions: [
+          "example_incremental",
+          "example_table",
+          "example_view",
+          "example_assertion_fail",
+          "example_operation"
+        ]
+      },
+      credentials
+    );
+
+    executedGraph = await dfapi.run(executionGraph, credentials).resultPromise();
+    actionMap = keyBy(executedGraph.actions, v => v.name);
+
+    expect(executedGraph.status).equals(dataform.RunResult.ExecutionStatus.FAILED);
+
+    const expectedActionStatus: { [index: string]: dataform.ActionResult.ExecutionStatus } = {
+      "dataform-integration-tests.df_integration_test.example_incremental":
+        dataform.ActionResult.ExecutionStatus.CACHE_SKIPPED,
+      "dataform-integration-tests.df_integration_test.example_table":
+        dataform.ActionResult.ExecutionStatus.CACHE_SKIPPED,
+      "dataform-integration-tests.df_integration_test.example_view":
+        dataform.ActionResult.ExecutionStatus.CACHE_SKIPPED,
+      "dataform-integration-tests.df_integration_test_assertions.example_assertion_fail":
+        dataform.ActionResult.ExecutionStatus.FAILED,
+      "dataform-integration-tests.df_integration_test.example_operation":
+        dataform.ActionResult.ExecutionStatus.SUCCESSFUL
+    };
+
+    for (const actionName of Object.keys(actionMap)) {
+      expect(actionMap[actionName].status).equals(expectedActionStatus[actionName]);
+    }
+
     const persistedMetaData = await dbadapter.persistedStateMetadata();
+    expect(persistedMetaData.length).to.be.eql(9);
+
     const exampleView = persistedMetaData.find(table => table.target.name === "example_view");
     expect(exampleView).to.have.property("definitionHash");
+
     const exampleViewExecutionAction = executionGraph.actions.find(
       action => action.name === "dataform-integration-tests.df_integration_test.example_view"
     );

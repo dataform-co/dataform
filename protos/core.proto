@@ -345,6 +345,7 @@ message ActionResult {
     SKIPPED = 4;
     DISABLED = 5;
     CANCELLED = 6;
+    CACHE_SKIPPED = 7;
   }
   ExecutionStatus status = 2;
 
@@ -444,5 +445,6 @@ message PersistedTableMetadata {
   string definition_hash = 2; // sha1 hash of ExectionAction object
   int64 last_updated_millis = 3; // Timestamp of the last modification to this dataset (where that modification happened as a result of a Dataform run).
   repeated Target dependencies = 4;
-  ActionResult.ExecutionStatus execution_status = 5;
+  
+  reserved 5;
 }
