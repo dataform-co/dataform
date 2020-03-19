@@ -1,5 +1,5 @@
-import { Overview } from "df/app/overview";
-import { Service } from "df/app/service";
+import { Overview } from "@dataform/app/overview";
+import { Service } from "@dataform/app/service";
 import * as React from "react";
 import * as ReactDOM from "react-dom";
 import { Route } from "react-router";
