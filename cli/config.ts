@@ -3,6 +3,9 @@ import { homedir } from "os";
 import { join } from "path";
 import { promisify } from "util";
 
+/**
+ * These settings are stored as JSON on disk, as a result names must not be changed.
+ */
 export interface IConfigSettings {
   allowAnonymousAnalytics?: boolean;
   anonymousUserId?: string;
