@@ -32,6 +32,14 @@ export function passwordQuestion(questionText: string) {
   });
 }
 
+export function ynQuestion(questionText: string, defaultValue: boolean = false): boolean {
+  const response = readlineSync.keyInYN(questionText);
+  if (typeof response === "string") {
+    return defaultValue;
+  }
+  return response;
+}
+
 export function intQuestion(questionText: string, defaultValue?: number) {
   return parseInt(
     prompt(questionText, {
