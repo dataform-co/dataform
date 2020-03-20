@@ -130,35 +130,36 @@ export class SQLDataWarehouseAdapter extends Adapter implements IAdapter {
     query: string,
     uniqueKey: string[]
   ) {
+    const finalTarget = this.resolveTarget(target);
+    // Schema name not allowed for temporary tables.
+    const tempTarget = `"#${target.name}_incremental_temp"`;
     return `
-if object_id('#some_table_name_incremental_temp') is not null
+if object_id(${tempTarget}) is not null
 begin
-    drop table "#some_table_name_incremental_temp"
+    drop table ${tempTarget}
 end
 
-create table "#some_table_name_incremental_temp" with (distribution = ROUND_ROBIN)
-as
-SELECT "unique_id", "timestamp", "action"
-FROM "weblogs"."user_actions"
-WHERE timestamp > (SELECT MAX(timestamp) FROM "some_table_name")
+create table ${tempTarget} with (distribution = ROUND_ROBIN)
+as ${query}
 
--- Update existing rows
-update "some_table_name"
+${
+  uniqueKey && uniqueKey.length > 0
+    ? `
+update ${finalTarget}
 set
-  "some_table_name"."timestamp" = "#some_table_name_incremental_temp"."timestamp", 
-  "some_table_name"."action" = "#some_table_name_incremental_temp"."action"
+  ${columns.map(c => `${finalTarget}."${c}" = ${tempTarget}."${c}"`).join(",")}
 where
-  "some_table_name"."unique_id" = "#some_table_name_incremental_temp"."unique_id";
+  ${uniqueKey.map(uk => `${finalTarget}."${uk}" = ${tempTarget}."${uk}"`).join(` and `)}`
+    : ""
+}
 
--- Insert new rows
-insert into “some_table_name” (unique_id, timestamp, action)
-select unique_id, timestamp, action from #some_table_name_incremental_temp
+insert into ${finalTarget} (${columns.join(",")})
+select ${columns.join(",")} from ${tempTarget}
 except
-select unique_id, timestamp, action from #some_table_name
+select ${columns.join(",")} from ${finalTarget}
 
 commit;
 
-drop table "#some_table_name_incremental_temp";
-    `;
+drop table ${tempTarget};`;
   }
 }
