@@ -59,14 +59,6 @@ WHERE NOT (${rowCondition})
       .join(`UNION ALL`);
   }
 
-  protected insertInto(target: dataform.ITarget, columns: string[], query: string, uniqueKey?: string[]) {
-    return `
-insert into ${this.resolveTarget(target)}
-(${columns.join(",")})
-select ${columns.join(",")}
-from (${query}) as insertions`;
-  }
-
   protected oppositeTableType(type: string) {
     return this.baseTableType(type) === "table" ? "view" : "table";
   }

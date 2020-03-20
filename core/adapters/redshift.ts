@@ -13,10 +13,6 @@ export class RedshiftAdapter extends Adapter implements IAdapter {
     return `"${target.schema}"."${target.name}"`;
   }
 
-  public resolveIncrementalTempTarget(target: dataform.ITarget) {
-    return `"${target.schema}"."${target.name}_incremental_temp"`;
-  }
-
   public publishTasks(
     table: dataform.ITable,
     runConfig: dataform.IRunConfig,
@@ -36,14 +32,12 @@ export class RedshiftAdapter extends Adapter implements IAdapter {
       if (!this.shouldWriteIncrementally(runConfig, tableMetadata)) {
         tasks.addAll(this.createOrReplace(table));
       } else {
-        tasks.add(
-          Task.statement(
-            this.insertInto(
-              table.target,
-              tableMetadata.fields.map(f => f.name),
-              this.where(table.incrementalQuery || table.query, table.where),
-              table.uniqueKey
-            )
+        tasks.addAll(
+          this.insertInto(
+            table.target,
+            tableMetadata.fields.map(f => f.name),
+            this.where(table.incrementalQuery || table.query, table.where),
+            table.uniqueKey
           )
         );
       }
@@ -137,28 +131,23 @@ export class RedshiftAdapter extends Adapter implements IAdapter {
     uniqueKey: string[]
   ) {
     const finalTarget = this.resolveTarget(target);
-    const tempTarget = this.resolveIncrementalTempTarget(target);
-    return `
-drop table if exists ${tempTarget};
-
-create temp table ${tempTarget} as
-select * from (${query});
-
-begin transaction;
-
-delete from ${finalTarget}
-using ${tempTarget}
-where ${
-      uniqueKey && uniqueKey.length > 0
-        ? uniqueKey.map(uk => `${finalTarget}."${uk}" = ${tempTarget}."${uk}"`).join(` and `)
-        : `false`
-    };
-
-insert into ${finalTarget}
-select * from ${tempTarget};
-
-end transaction;
-
-drop table ${tempTarget};`;
+    // Schema name not allowed for temporary tables.
+    const tempTarget = `"${target.name}_incremental_temp"`;
+    return Tasks.create()
+      .add(Task.statement(`drop table if exists ${tempTarget};`))
+      .add(Task.statement(`create temp table ${tempTarget} as select * from (${query});`))
+      .add(Task.statement(`begin transaction;`))
+      .add(
+        Task.statement(
+          `delete from ${finalTarget} using ${tempTarget} where ${
+            uniqueKey && uniqueKey.length > 0
+              ? uniqueKey.map(uk => `${finalTarget}."${uk}" = ${tempTarget}."${uk}"`).join(` and `)
+              : `false`
+          };`
+        )
+      )
+      .add(Task.statement(`insert into ${finalTarget} select * from ${tempTarget};`))
+      .add(Task.statement(`end transaction;`))
+      .add(Task.statement(`drop table ${tempTarget};`));
   }
 }

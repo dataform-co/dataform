@@ -41,7 +41,8 @@ export class SQLDataWarehouseAdapter extends Adapter implements IAdapter {
             this.insertInto(
               table.target,
               tableMetadata.fields.map(f => f.name),
-              this.where(table.incrementalQuery || table.query, table.where)
+              this.where(table.incrementalQuery || table.query, table.where),
+              table.uniqueKey
             )
           )
         );
@@ -85,7 +86,7 @@ export class SQLDataWarehouseAdapter extends Adapter implements IAdapter {
     )}','U') is not null drop table ${this.resolveTarget(target)}`;
   }
 
-  private createOrReplace(table: dataform.ITable, alreadyExists: boolean) {
+  public createOrReplace(table: dataform.ITable, alreadyExists: boolean) {
     if (table.type === "view") {
       return Tasks.create().add(
         Task.statement(
@@ -111,7 +112,7 @@ export class SQLDataWarehouseAdapter extends Adapter implements IAdapter {
       );
   }
 
-  private createTable(table: dataform.ITable, target: dataform.ITarget) {
+  public createTable(table: dataform.ITable, target: dataform.ITarget) {
     const distribution =
       table.sqlDataWarehouse && table.sqlDataWarehouse.distribution
         ? table.sqlDataWarehouse.distribution
@@ -121,5 +122,43 @@ export class SQLDataWarehouseAdapter extends Adapter implements IAdapter {
        distribution = ${distribution}
      ) 
      as ${table.query}`;
+  }
+
+  public insertInto(
+    target: dataform.ITarget,
+    columns: string[],
+    query: string,
+    uniqueKey: string[]
+  ) {
+    return `
+if object_id('#some_table_name_incremental_temp') is not null
+begin
+    drop table "#some_table_name_incremental_temp"
+end
+
+create table "#some_table_name_incremental_temp" with (distribution = ROUND_ROBIN)
+as
+SELECT "unique_id", "timestamp", "action"
+FROM "weblogs"."user_actions"
+WHERE timestamp > (SELECT MAX(timestamp) FROM "some_table_name")
+
+-- Update existing rows
+update "some_table_name"
+set
+  "some_table_name"."timestamp" = "#some_table_name_incremental_temp"."timestamp", 
+  "some_table_name"."action" = "#some_table_name_incremental_temp"."action"
+where
+  "some_table_name"."unique_id" = "#some_table_name_incremental_temp"."unique_id";
+
+-- Insert new rows
+insert into “some_table_name” (unique_id, timestamp, action)
+select unique_id, timestamp, action from #some_table_name_incremental_temp
+except
+select unique_id, timestamp, action from #some_table_name
+
+commit;
+
+drop table "#some_table_name_incremental_temp";
+    `;
   }
 }
