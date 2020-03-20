@@ -91,7 +91,8 @@ export class Builder {
       target: t.target,
       tableType: t.type,
       tasks,
-      fileName: t.fileName
+      fileName: t.fileName,
+      actionDescriptor: t.actionDescriptor
     });
   }
 
@@ -103,7 +104,8 @@ export class Builder {
       type: "operation",
       target: operation.target,
       tasks: operation.queries.map(statement => ({ type: "statement", statement })),
-      fileName: operation.fileName
+      fileName: operation.fileName,
+      actionDescriptor: operation.actionDescriptor
     });
   }
 
@@ -115,7 +117,8 @@ export class Builder {
       type: "assertion",
       target: assertion.target,
       tasks: this.adapter.assertTasks(assertion, this.compiledGraph.projectConfig).build(),
-      fileName: assertion.fileName
+      fileName: assertion.fileName,
+      actionDescriptor: assertion.actionDescriptor
     });
   }
 }

@@ -34,6 +34,7 @@ export interface IDbAdapter {
   prepareStateMetadataTable(): Promise<void>;
   persistStateMetadata(actions: dataform.IExecutionAction[]): Promise<void>;
   persistedStateMetadata(): Promise<dataform.IPersistedTableMetadata[]>;
+  setMetadata(action: dataform.IExecutionAction): Promise<void>;
   deleteStateMetadata(actions: dataform.IExecutionAction[]): Promise<void>;
   close(): Promise<void>;
 }
