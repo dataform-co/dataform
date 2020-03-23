@@ -132,11 +132,7 @@ suite("@dataform/integration/redshift", ({ after }) => {
       },
       credentials
     );
-    const tmp1 = keyBy(executionGraph.actions, v => v.name);
-    console.log("tmp1", tmp1["df_integration_test.example_incremental_merge"]);
     executedGraph = await dfapi.run(executionGraph, credentials).resultPromise();
-    const tmp2 = keyBy(executedGraph.actions, v => v.name);
-    console.log("MERGE", tmp2["df_integration_test.example_incremental_merge"]);
     expect(executedGraph.status).equals(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
 
     // Check there are the expected number of extra rows in the incremental table.

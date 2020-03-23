@@ -107,11 +107,7 @@ suite("@dataform/integration/sqldatawarehouse", ({ after }) => {
       credentials
     );
 
-    const tmp1 = keyBy(executionGraph.actions, v => v.name);
-    console.log("tmp1", tmp1["df_integration_test.example_incremental"]);
     executedGraph = await dfapi.run(executionGraph, credentials).resultPromise();
-    const tmp2 = keyBy(executedGraph.actions, v => v.name);
-    console.log("MERGE", tmp2["df_integration_test.example_incremental"]);
     expect(executedGraph.status).equals(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
 
     // Check there is an extra row in the incremental table.
