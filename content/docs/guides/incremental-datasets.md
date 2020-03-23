@@ -113,6 +113,11 @@ This dataset may not exist in the warehouse yet. That's OK, because the `WHERE` 
 
 ## A merge modification
 
+<div className="bp3-callout bp3-icon-info-sign" markdown="1">
+  Incremental merging requires <code>@dataform/core</code> version <code>1.4.21</code>.<br>
+  Incremental merging is not current supported for Azure SQLDataWarehouse.
+</div>
+
 In order to modify the above table to only contain only the most recent user actions, a `uniqueKey` could be specified.
 
 When an incremental update appears, if each unique key specified within a row matches that of existing data, then the row will be updated with the newly arriving values.
