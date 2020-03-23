@@ -41,8 +41,7 @@ export class SQLDataWarehouseAdapter extends Adapter implements IAdapter {
             this.insertInto(
               table.target,
               tableMetadata.fields.map(f => f.name),
-              this.where(table.incrementalQuery || table.query, table.where),
-              table.uniqueKey
+              this.where(table.incrementalQuery || table.query, table.where)
             )
           )
         );
@@ -124,42 +123,11 @@ export class SQLDataWarehouseAdapter extends Adapter implements IAdapter {
      as ${table.query}`;
   }
 
-  public insertInto(
-    target: dataform.ITarget,
-    columns: string[],
-    query: string,
-    uniqueKey: string[]
-  ) {
-    const finalTarget = this.resolveTarget(target);
-    // Schema name not allowed for temporary tables.
-    const tempTarget = `"#${target.name}_incremental_temp"`;
+  public insertInto(target: dataform.ITarget, columns: string[], query: string) {
     return `
-if object_id(${tempTarget}) is not null
-begin
-    drop table ${tempTarget}
-end
-
-create table ${tempTarget} with (distribution = ROUND_ROBIN)
-as ${query}
-
-${
-  uniqueKey && uniqueKey.length > 0
-    ? `
-update ${finalTarget}
-set
-  ${columns.map(c => `${finalTarget}."${c}" = ${tempTarget}."${c}"`).join(",")}
-where
-  ${uniqueKey.map(uk => `${finalTarget}."${uk}" = ${tempTarget}."${uk}"`).join(` and `)}`
-    : ""
-}
-
-insert into ${finalTarget} (${columns.join(",")})
-select ${columns.join(",")} from ${tempTarget}
-except
-select ${columns.join(",")} from ${finalTarget}
-
-commit;
-
-drop table ${tempTarget};`;
+insert into ${this.resolveTarget(target)}
+(${columns.join(",")})
+select ${columns.join(",")}
+from (${query}) as insertions`;
   }
 }

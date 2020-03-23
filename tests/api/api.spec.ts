@@ -366,13 +366,14 @@ suite("@dataform/api", () => {
       expect(
         cleanSql(executionGraph.actions.filter(n => n.name === "incremental")[0].tasks[0].statement)
       ).equals(
-        cleanSql(
-          `insert into \`deeb.schema.incremental\` (existing_field)
-           select existing_field from (
-             select * from (select 1 as test) as subquery
-             where true
-           ) as insertions`
-        )
+        cleanSql(`
+merge \`deeb.schema.incremental\` T
+using (select * from (select 1 as test) as subquery where true) S
+on false
+when matched then
+  update set existing_field = S.existing_field
+when not matched then
+  insert (existing_field) values (existing_field)`)
       );
     });
 
