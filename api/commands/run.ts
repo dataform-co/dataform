@@ -11,6 +11,7 @@ const CANCEL_EVENT = "jobCancel";
 
 const isSuccessfulAction = (actionResult: dataform.IActionResult) =>
   actionResult.status === dataform.ActionResult.ExecutionStatus.SUCCESSFUL ||
+  actionResult.status === dataform.ActionResult.ExecutionStatus.CACHE_SKIPPED ||
   actionResult.status === dataform.ActionResult.ExecutionStatus.DISABLED;
 
 export function run(graph: dataform.IExecutionGraph, credentials: Credentials): Runner {
