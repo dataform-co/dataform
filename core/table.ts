@@ -137,7 +137,7 @@ export interface ITableAssertions {
    *
    * If set, the resulting assertion will fail if there is more than one row in the dataset with the same values for all of these column(s).
    */
-  uniqueKey?: string | string[];
+  uniqueKeys?: string | string[];
 
   /**
    * Column(s) which may never be `NULL`.
@@ -205,7 +205,7 @@ export interface ITableConfig extends ITargetableConfig, IDocumentableConfig, ID
    *
    * If configured, records with matching unique key(s) will be updated, rather than new rows being inserted.
    */
-  uniqueKey?: string[];
+  uniqueKeys?: string[];
 }
 
 /**
@@ -299,8 +299,8 @@ export class Table {
     if (config.assertions) {
       this.assertions(config.assertions);
     }
-    if (config.uniqueKey) {
-      this.uniqueKey(config.uniqueKey);
+    if (config.uniqueKeys) {
+      this.uniqueKeys(config.uniqueKeys);
     }
 
     return this;
@@ -341,8 +341,8 @@ export class Table {
     return this;
   }
 
-  public uniqueKey(uk: string[]) {
-    this.proto.uniqueKey = uk;
+  public uniqueKeys(uniqueKeys: string[]) {
+    this.proto.uniqueKeys = uniqueKeys;
   }
 
   public sqldatawarehouse(sqlDataWarehouse: dataform.ISQLDataWarehouseOptions) {
@@ -415,10 +415,10 @@ export class Table {
     return this;
   }
 
-  public assertions({ uniqueKey, nonNull, rowConditions }: ITableAssertions) {
-    if (!!uniqueKey) {
-      const indexCols = typeof uniqueKey === "string" ? [uniqueKey] : uniqueKey;
-      this.session.assert(`${this.proto.target.name}_assertions_uniqueKey`, ctx =>
+  public assertions({ uniqueKeys, nonNull, rowConditions }: ITableAssertions) {
+    if (!!uniqueKeys) {
+      const indexCols = typeof uniqueKeys === "string" ? [uniqueKeys] : uniqueKeys;
+      this.session.assert(`${this.proto.target.name}_assertions_uniqueKeys`, ctx =>
         this.session.adapter().indexAssertion(ctx.ref(this.proto.target), indexCols)
       );
     }

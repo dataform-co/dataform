@@ -27,7 +27,7 @@ Here's a complete example:
 config {
   type: "table",
   assertions: {
-    uniqueKey: ["user_id"],
+    uniqueKeys: ["user_id"],
     nonNull: ["user_id", "customer_id"],
     rowConditions: [
       'signup_date is null or signup_date > "2019-01-01"',
@@ -42,13 +42,13 @@ For all configuration options, view the [reference documentation for dataset ass
 
 ## Unique keys
 
-If the `uniqueKey` property is set, the resulting assertion will fail if there is more than one row in the dataset with the same values for all of the column(s).
+If the `uniqueKeys` property is set, the resulting assertion will fail if there is more than one row in the dataset with the same values for all of the column(s).
 
 ```js
 config {
   type: "table",
   assertions: {
-    uniqueKey: ["user_id"]
+    uniqueKeys: ["user_id"]
   }
 }
 select ...
@@ -56,7 +56,7 @@ select ...
 
 Multiple key columns can be provided.
 
-The generated assertion will be called `<original_dataset_name>_assertions_uniqueKey`.
+The generated assertion will be called `<original_dataset_name>_assertions_uniqueKeys`.
 
 ## Non-nullness
 
