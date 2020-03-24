@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import * as fs from "fs";
+import { join } from "path";
 import * as protobufjs from "protobufjs";
 import * as yargs from "yargs";
 
@@ -9,6 +10,12 @@ function camelToLowerCamel(value: string) {
 
 const argv = yargs
   .option("protos", { required: true, description: "Source .proto files.", type: "array" })
+  .option("root-paths", {
+    required: false,
+    type: "array",
+    default: ["."],
+    description: "Paths from which to resolve proto imports."
+  })
   .option("service", {
     required: true,
     type: "string",
@@ -30,9 +37,16 @@ const argv = yargs
     description: "The import to use for the generated protobufs library."
   }).argv;
 
-const oldResolvePath = protobufjs.Root.prototype.resolvePath;
-protobufjs.Root.prototype.resolvePath = (unusedPath, filename) => {
-  return oldResolvePath(".", filename);
+protobufjs.Root.prototype.resolvePath = (_, fileName) => {
+  for (const rootPath of argv["root-paths"]) {
+    const path = join(rootPath, fileName);
+    if (fs.existsSync(path)) {
+      return path;
+    }
+  }
+  throw new Error(
+    `Could not find proto import ${fileName} in roots: ${JSON.stringify(argv["root-paths"])}`
+  );
 };
 
 protobufjs
@@ -180,16 +194,10 @@ export interface Service {
     .map(method => {
       return `
   ${camelToLowerCamel(method.name)}(call: grpc.ServerUnaryCall<${fullyQualify(
-        currentPackage,
         currentNamespaceParts,
         method.requestType,
         true
-      )}>): Promise<${fullyQualify(
-        currentPackage,
-        currentNamespaceParts,
-        method.responseType,
-        true
-      )}>;`;
+      )}>): Promise<${fullyQualify(currentNamespaceParts, method.responseType, true)}>;`;
     })
     .join("")}
 }
@@ -218,12 +226,10 @@ export class ServicePromiseWrapper {
     .map(method => {
       return `
   public ${camelToLowerCamel(method.name)}(call: grpc.ServerUnaryCall<${fullyQualify(
-        currentPackage,
         currentNamespaceParts,
         method.requestType,
         true
       )}>, callback: (err: any, response: ${fullyQualify(
-        currentPackage,
         currentNamespaceParts,
         method.responseType,
         true
@@ -261,12 +267,10 @@ export class Client {
     .map(method => {
       return `
   public ${camelToLowerCamel(method.name)}(request: ${fullyQualify(
-        currentPackage,
         currentNamespaceParts,
         method.requestType,
         true
       )}, options?: grpc.CallOptions): Promise<${fullyQualify(
-        currentPackage,
         currentNamespaceParts,
         method.responseType,
         true
@@ -298,38 +302,32 @@ ${camelToLowerCamel(method.name)}: {
     .join("")}${service.name}/${method.name}',
   requestStream: ${!!method.requestStream},
   responseStream: ${!!method.responseStream},
-  requestType: ${fullyQualify(currentPackage, currentNamespaceParts, method.requestType, false)},
-  responseType: ${fullyQualify(currentPackage, currentNamespaceParts, method.responseType, false)},
+  requestType: ${fullyQualify(currentNamespaceParts, method.requestType, false)},
+  responseType: ${fullyQualify(currentNamespaceParts, method.responseType, false)},
   requestSerialize: (v: ${fullyQualify(
-    currentPackage,
     currentNamespaceParts,
     method.requestType,
     true
   )}) => new Buffer(${fullyQualify(
-      currentPackage,
       currentNamespaceParts,
       method.requestType,
       false
     )}.encode(v).finish()),
   requestDeserialize: (v: Buffer) => ${fullyQualify(
-    currentPackage,
     currentNamespaceParts,
     method.requestType,
     false
   )}.decode(new Uint8Array(v)),
   responseSerialize: (v: ${fullyQualify(
-    currentPackage,
     currentNamespaceParts,
     method.responseType,
     true
   )}) => new Buffer(${fullyQualify(
-      currentPackage,
       currentNamespaceParts,
       method.responseType,
       false
     )}.encode(v).finish()),
   responseDeserialize: (v: Buffer) => ${fullyQualify(
-    currentPackage,
     currentNamespaceParts,
     method.responseType,
     false
@@ -349,43 +347,32 @@ export const UNNAMESPACED_SERVICE_DEFINITION = {
     path: '/${service.name}/${method.name}',
     requestStream: ${!!method.requestStream},
     responseStream: ${!!method.responseStream},
-    requestType: ${fullyQualify(currentPackage, currentNamespaceParts, method.requestType, false)},
-    responseType: ${fullyQualify(
-      currentPackage,
-      currentNamespaceParts,
-      method.responseType,
-      false
-    )},
+    requestType: ${fullyQualify(currentNamespaceParts, method.requestType, false)},
+    responseType: ${fullyQualify(currentNamespaceParts, method.responseType, false)},
     requestSerialize: (v: ${fullyQualify(
-      currentPackage,
       currentNamespaceParts,
       method.requestType,
       true
     )}) => new Buffer(${fullyQualify(
-        currentPackage,
         currentNamespaceParts,
         method.requestType,
         false
       )}.encode(v).finish()),
     requestDeserialize: (v: Buffer) => ${fullyQualify(
-      currentPackage,
       currentNamespaceParts,
       method.requestType,
       false
     )}.decode(new Uint8Array(v)),
     responseSerialize: (v: ${fullyQualify(
-      currentPackage,
       currentNamespaceParts,
       method.responseType,
       true
     )}) => new Buffer(${fullyQualify(
-        currentPackage,
         currentNamespaceParts,
         method.responseType,
         false
       )}.encode(v).finish()),
     responseDeserialize: (v: Buffer) => ${fullyQualify(
-      currentPackage,
       currentNamespaceParts,
       method.responseType,
       false
@@ -405,35 +392,20 @@ function fullyQualifyService(foundService: IFoundService) {
     .join("")}${foundService.service.name}`;
 }
 
-function fullyQualify(
-  currentPackage: IPackage,
-  currentNamespaceParts: string[],
-  type: string,
-  asInterface: boolean
-) {
-  const fullPackageString = determinePackagePath(currentPackage, currentNamespaceParts, type).join(
-    "."
-  );
+function fullyQualify(currentNamespaceParts: string[], type: string, asInterface: boolean) {
+  const fullPackageString = determinePackagePath(currentNamespaceParts, type).join(".");
   const typeWithoutPackage = type.split(".").slice(-1)[0];
   const iTypeString = `${asInterface ? "I" : ""}${typeWithoutPackage}`;
   return `${fullPackageString}.${iTypeString}`;
 }
 
-function determinePackagePath(
-  currentPackage: IPackage,
-  currentNamespaceParts: string[],
-  type: string
-) {
+function determinePackagePath(currentNamespaceParts: string[], type: string) {
   const typeParts = type.split(".");
   if (typeParts.length > 1) {
     // This type is already package-qualified, thus it must live outside of the current package,
     // and we can just use the value more or less as-is.
     return [].concat([argv.root], typeParts.slice(0, -1));
   }
-  // The type is un-namespaced. Thus it must either be in the current package or in no package (i.e. at the root).
-  if (currentPackage.messages.find(message => message.name === type)) {
-    return currentNamespaceParts;
-  }
-  // If we can't find it in this package, the type must exist in the root package.
-  return [argv.root];
+  // The type is un-namespaced. Thus it must be in the current package.
+  return currentNamespaceParts;
 }
