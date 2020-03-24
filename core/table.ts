@@ -119,6 +119,13 @@ export interface IBigQueryOptions {
    * For more information, read the [BigQuery clustered tables docs](https://cloud.google.com/bigquery/docs/clustered-tables).
    */
   clusterBy?: string[];
+
+  /**
+   * SQL based filter for when incremental updates are applied.
+   *
+   * For more information, see our [incremental dataset docs](https://docs.dataform.co/guides/incremental-datasets).
+   */
+  updatePartitionFilter?: string;
 }
 
 /**

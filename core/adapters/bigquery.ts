@@ -39,7 +39,8 @@ export class BigQueryAdapter extends Adapter implements IAdapter {
                   table.target,
                   tableMetadata.fields.map(f => f.name),
                   this.where(table.incrementalQuery || table.query, table.where),
-                  table.uniqueKey
+                  table.uniqueKey,
+                  table.bigquery && table.bigquery.updatePartitionFilter
                 )
               : this.insertInto(
                   table.target,
@@ -101,12 +102,14 @@ export class BigQueryAdapter extends Adapter implements IAdapter {
     target: dataform.ITarget,
     columns: string[],
     query: string,
-    uniqueKey: string[]
+    uniqueKey: string[],
+    updatePartitionFilter: string
   ) {
     return `
 merge ${this.resolveTarget(target)} T
 using (${query}) S
 on ${uniqueKey.map(uk => `T.${uk} = S.${uk}`).join(` and `)}
+  ${updatePartitionFilter ? `and T.${updatePartitionFilter}` : ""}
 when matched then
   update set ${columns.map(c => `${c} = S.${c}`).join(",")}
 when not matched then
