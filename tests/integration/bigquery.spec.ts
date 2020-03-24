@@ -125,7 +125,6 @@ suite("@dataform/integration/bigquery", ({ after }) => {
     );
 
     executedGraph = await dfapi.run(executionGraph, credentials).resultPromise();
-
     expect(executedGraph.status).equals(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
 
     // Check there are the expected number of extra rows in the incremental table.

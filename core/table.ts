@@ -137,7 +137,7 @@ export interface ITableAssertions {
    *
    * If set, the resulting assertion will fail if there is more than one row in the dataset with the same values for all of these column(s).
    */
-  uniqueKeys?: string | string[];
+  uniqueKey?: string | string[];
 
   /**
    * Column(s) which may never be `NULL`.
@@ -415,9 +415,9 @@ export class Table {
     return this;
   }
 
-  public assertions({ uniqueKeys, nonNull, rowConditions }: ITableAssertions) {
-    if (!!uniqueKeys) {
-      const indexCols = typeof uniqueKeys === "string" ? [uniqueKeys] : uniqueKeys;
+  public assertions({ uniqueKey, nonNull, rowConditions }: ITableAssertions) {
+    if (!!uniqueKey) {
+      const indexCols = typeof uniqueKey === "string" ? [uniqueKey] : uniqueKey;
       this.session.assert(`${this.proto.target.name}_assertions_uniqueKeys`, ctx =>
         this.session.adapter().indexAssertion(ctx.ref(this.proto.target), indexCols)
       );
