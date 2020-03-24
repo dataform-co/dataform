@@ -8,6 +8,10 @@
     {
       "name": "l.gcr.io/google/bazel:1.1.0",
       "args": ["test", "--config=remote-cache", "..."]
+    },
+    {
+      "name": "securego/gosec",
+      "args": ["./..."]
     }
   ],
   "timeout": "3600s",
