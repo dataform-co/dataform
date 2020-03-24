@@ -7,7 +7,8 @@ ts_grpc_service(
     name = "grpc_service",
     srcs = ["//protos:files"],
     protos_import = "@dataform/protos",
-    root = "protos",
+    root_name = "protos",
+    root_paths = ["."],
     service = "dataform.server.Service",
 )
 
