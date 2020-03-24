@@ -8,8 +8,8 @@ def _impl(ctx):
         args.add("--root-paths")
         for root_path in ctx.attr.root_paths:
             args.add(root_path)
-    args.add("--root")
-    args.add(ctx.attr.root)
+    args.add("--root-name")
+    args.add(ctx.attr.root_name)
     args.add("--protos-import")
     args.add(ctx.attr.protos_import)
     args.add("--output-path")
@@ -34,7 +34,7 @@ ts_grpc_service = rule(
         "srcs": attr.label_list(doc = "proto files", allow_files = [".proto"]),
         "root_paths": attr.string_list(),
         "protos_import": attr.string(),
-        "root": attr.string(),
+        "root_name": attr.string(default = "protos"),
         "service": attr.string(),
         "_tool": attr.label(
             executable = True,

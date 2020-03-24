@@ -26,15 +26,15 @@ const argv = yargs
     type: "string",
     description: "Output typescript file path."
   })
-  .option("root", {
+  .option("root-name", {
     type: "string",
     required: true,
-    description: "The root path or parent directory of the protos."
+    description: "The name of the root object where protos live (e.g. rootName.MyProto)."
   })
   .option("protos-import", {
     type: "string",
     required: true,
-    description: "The import to use for the generated protobufs library."
+    description: "The import to use for the generated protobufs library (e.g. import protos from 'protosImport')."
   }).argv;
 
 protobufjs.Root.prototype.resolvePath = (_, fileName) => {
@@ -52,7 +52,7 @@ protobufjs.Root.prototype.resolvePath = (_, fileName) => {
 protobufjs
   .load((argv.protos as string[]).map(protoPath => String(protoPath)))
   .then(root => {
-    const processedRoot = processPackage(argv.root, root);
+    const processedRoot = processPackage(argv["root-name"], root);
     writeAllServices([processedRoot.name], processedRoot);
   })
   .catch(e => console.log(e));
@@ -296,7 +296,7 @@ ${service.methods
     return `
 ${camelToLowerCamel(method.name)}: {
   path: '/${currentNamespaceParts
-    // We need to skip the first entry (argv.root), because it refers to protobuf type namespaces, not actual package names as specified in .proto files.
+    // We need to skip the first entry (argv["root-name"]), because it refers to protobuf type namespaces, not actual package names as specified in .proto files.
     .slice(1)
     .map(part => `${part}.`)
     .join("")}${service.name}/${method.name}',
@@ -404,7 +404,7 @@ function determinePackagePath(currentNamespaceParts: string[], type: string) {
   if (typeParts.length > 1) {
     // This type is already package-qualified, thus it must live outside of the current package,
     // and we can just use the value more or less as-is.
-    return [].concat([argv.root], typeParts.slice(0, -1));
+    return [].concat([argv["root-name"]], typeParts.slice(0, -1));
   }
   // The type is un-namespaced. Thus it must be in the current package.
   return currentNamespaceParts;
