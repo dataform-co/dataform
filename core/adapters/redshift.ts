@@ -33,12 +33,22 @@ export class RedshiftAdapter extends Adapter implements IAdapter {
         tasks.addAll(this.createOrReplace(table));
       } else {
         tasks.addAll(
-          this.insertInto(
-            table.target,
-            tableMetadata.fields.map(f => f.name),
-            this.where(table.incrementalQuery || table.query, table.where),
-            table.uniqueKey
-          )
+          table.uniqueKey && table.uniqueKey.length > 0
+            ? this.mergeInto(
+                table.target,
+                tableMetadata.fields.map(f => f.name),
+                this.where(table.incrementalQuery || table.query, table.where),
+                table.uniqueKey
+              )
+            : Tasks.create().add(
+                Task.statement(
+                  this.insertInto(
+                    table.target,
+                    tableMetadata.fields.map(f => f.name),
+                    this.where(table.incrementalQuery || table.query, table.where)
+                  )
+                )
+              )
         );
       }
     } else {
@@ -124,7 +134,7 @@ export class RedshiftAdapter extends Adapter implements IAdapter {
     return `drop ${this.baseTableType(type)} if exists ${this.resolveTarget(target)} cascade`;
   }
 
-  public insertInto(
+  public mergeInto(
     target: dataform.ITarget,
     columns: string[],
     query: string,
@@ -139,11 +149,9 @@ export class RedshiftAdapter extends Adapter implements IAdapter {
       .add(Task.statement(`begin transaction;`))
       .add(
         Task.statement(
-          `delete from ${finalTarget} using ${tempTarget} where ${
-            uniqueKey && uniqueKey.length > 0
-              ? uniqueKey.map(uk => `${finalTarget}."${uk}" = ${tempTarget}."${uk}"`).join(` and `)
-              : `false`
-          };`
+          `delete from ${finalTarget} using ${tempTarget} where ${uniqueKey
+            .map(uk => `${finalTarget}."${uk}" = ${tempTarget}."${uk}"`)
+            .join(` and `)};`
         )
       )
       .add(Task.statement(`insert into ${finalTarget} select * from ${tempTarget};`))

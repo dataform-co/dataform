@@ -34,12 +34,18 @@ export class BigQueryAdapter extends Adapter implements IAdapter {
       } else {
         tasks.add(
           Task.statement(
-            this.insertInto(
-              table.target,
-              tableMetadata.fields.map(f => f.name),
-              this.where(table.incrementalQuery || table.query, table.where),
-              table.uniqueKey
-            )
+            table.uniqueKey && table.uniqueKey.length > 0
+              ? this.mergeInto(
+                  table.target,
+                  tableMetadata.fields.map(f => f.name),
+                  this.where(table.incrementalQuery || table.query, table.where),
+                  table.uniqueKey
+                )
+              : this.insertInto(
+                  table.target,
+                  tableMetadata.fields.map(f => f.name),
+                  this.where(table.incrementalQuery || table.query, table.where)
+                )
           )
         );
       }
@@ -91,7 +97,7 @@ export class BigQueryAdapter extends Adapter implements IAdapter {
     return `drop ${this.baseTableType(type)} if exists ${this.resolveTarget(target)}`;
   }
 
-  public insertInto(
+  public mergeInto(
     target: dataform.ITarget,
     columns: string[],
     query: string,
@@ -100,11 +106,7 @@ export class BigQueryAdapter extends Adapter implements IAdapter {
     return `
 merge ${this.resolveTarget(target)} T
 using (${query}) S
-on ${
-      uniqueKey && uniqueKey.length > 0
-        ? uniqueKey.map(uk => `T.${uk} = S.${uk}`).join(` and `)
-        : `false`
-    }
+on ${uniqueKey.map(uk => `T.${uk} = S.${uk}`).join(` and `)}
 when matched then
   update set ${columns.map(c => `${c} = S.${c}`).join(",")}
 when not matched then
