@@ -68,7 +68,7 @@ suite("@dataform/integration/redshift", ({ after }) => {
     let executedGraph = await dfapi.run(executionGraph, credentials).resultPromise();
 
     const actionMap = keyBy(executedGraph.actions, v => v.name);
-    expect(Object.keys(actionMap).length).eql(12);
+    expect(Object.keys(actionMap).length).eql(13);
 
     // Check the status of action execution.
     const expectedFailedActions = [
@@ -112,11 +112,23 @@ suite("@dataform/integration/redshift", ({ after }) => {
     );
     expect(incrementalRows.length).equals(3);
 
+    // Check the data in the incremental merge table.
+    incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
+      "df_integration_test.example_incremental_merge"
+    ];
+    incrementalRows = await getTableRows(incrementalTable.target, adapter, credentials, "redshift");
+    expect(incrementalRows.length).equals(2);
+
     // Re-run some of the actions.
     executionGraph = await dfapi.build(
       compiledGraph,
       {
-        actions: ["example_incremental", "example_table", "example_view"]
+        actions: [
+          "example_incremental",
+          "example_incremental_merge",
+          "example_table",
+          "example_view"
+        ]
       },
       credentials
     );
@@ -129,6 +141,13 @@ suite("@dataform/integration/redshift", ({ after }) => {
     ];
     incrementalRows = await getTableRows(incrementalTable.target, adapter, credentials, "redshift");
     expect(incrementalRows.length).equals(5);
+
+    // Check there are the expected number of extra rows in the incremental merge table.
+    incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
+      "df_integration_test.example_incremental_merge"
+    ];
+    incrementalRows = await getTableRows(incrementalTable.target, adapter, credentials, "redshift");
+    expect(incrementalRows.length).equals(2);
   });
 
   suite("result limit works", async () => {

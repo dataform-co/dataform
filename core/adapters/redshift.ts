@@ -32,14 +32,23 @@ export class RedshiftAdapter extends Adapter implements IAdapter {
       if (!this.shouldWriteIncrementally(runConfig, tableMetadata)) {
         tasks.addAll(this.createOrReplace(table));
       } else {
-        tasks.add(
-          Task.statement(
-            this.insertInto(
-              table.target,
-              tableMetadata.fields.map(f => f.name),
-              this.where(table.incrementalQuery || table.query, table.where)
-            )
-          )
+        tasks.addAll(
+          table.uniqueKey && table.uniqueKey.length > 0
+            ? this.mergeInto(
+                table.target,
+                tableMetadata.fields.map(f => f.name),
+                this.where(table.incrementalQuery || table.query, table.where),
+                table.uniqueKey
+              )
+            : Tasks.create().add(
+                Task.statement(
+                  this.insertInto(
+                    table.target,
+                    tableMetadata.fields.map(f => f.name),
+                    this.where(table.incrementalQuery || table.query, table.where)
+                  )
+                )
+              )
         );
       }
     } else {
@@ -123,5 +132,30 @@ export class RedshiftAdapter extends Adapter implements IAdapter {
 
   public dropIfExists(target: dataform.ITarget, type: string) {
     return `drop ${this.baseTableType(type)} if exists ${this.resolveTarget(target)} cascade`;
+  }
+
+  public mergeInto(
+    target: dataform.ITarget,
+    columns: string[],
+    query: string,
+    uniqueKey: string[]
+  ) {
+    const finalTarget = this.resolveTarget(target);
+    // Schema name not allowed for temporary tables.
+    const tempTarget = `"${target.name}_incremental_temp"`;
+    return Tasks.create()
+      .add(Task.statement(`drop table if exists ${tempTarget};`))
+      .add(Task.statement(`create temp table ${tempTarget} as select * from (${query});`))
+      .add(Task.statement(`begin transaction;`))
+      .add(
+        Task.statement(
+          `delete from ${finalTarget} using ${tempTarget} where ${uniqueKey
+            .map(uniqueKey => `${finalTarget}."${uniqueKey}" = ${tempTarget}."${uniqueKey}"`)
+            .join(` and `)};`
+        )
+      )
+      .add(Task.statement(`insert into ${finalTarget} select * from ${tempTarget};`))
+      .add(Task.statement(`end transaction;`))
+      .add(Task.statement(`drop table ${tempTarget};`));
   }
 }

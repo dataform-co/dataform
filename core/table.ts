@@ -119,6 +119,13 @@ export interface IBigQueryOptions {
    * For more information, read the [BigQuery clustered tables docs](https://cloud.google.com/bigquery/docs/clustered-tables).
    */
   clusterBy?: string[];
+
+  /**
+   * SQL based filter for when incremental updates are applied.
+   *
+   * For more information, see our [incremental dataset docs](https://docs.dataform.co/guides/incremental-datasets).
+   */
+  updatePartitionFilter?: string;
 }
 
 /**
@@ -192,6 +199,13 @@ export interface ITableConfig extends ITargetableConfig, IDocumentableConfig, ID
    * If configured, relevant assertions will automatically be created and run as a dependency of this dataset.
    */
   assertions?: ITableAssertions;
+
+  /**
+   * Unique keys for merge criteria for incremental tables.
+   *
+   * If configured, records with matching unique key(s) will be updated, rather than new rows being inserted.
+   */
+  uniqueKey?: string[];
 }
 
 /**
@@ -285,6 +299,9 @@ export class Table {
     if (config.assertions) {
       this.assertions(config.assertions);
     }
+    if (config.uniqueKey) {
+      this.uniqueKey(config.uniqueKey);
+    }
 
     return this;
   }
@@ -322,6 +339,10 @@ export class Table {
   public protected() {
     this.proto.protected = true;
     return this;
+  }
+
+  public uniqueKey(uniqueKey: string[]) {
+    this.proto.uniqueKey = uniqueKey;
   }
 
   public sqldatawarehouse(sqlDataWarehouse: dataform.ISQLDataWarehouseOptions) {

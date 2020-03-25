@@ -71,7 +71,7 @@ suite("@dataform/integration/bigquery", ({ after }) => {
     let executedGraph = await dfapi.run(executionGraph, credentials).resultPromise();
 
     let actionMap = keyBy(executedGraph.actions, v => v.name);
-    expect(Object.keys(actionMap).length).eql(12);
+    expect(Object.keys(actionMap).length).eql(13);
 
     // Check the status of action execution.
     const expectedFailedActions = [
@@ -103,11 +103,23 @@ suite("@dataform/integration/bigquery", ({ after }) => {
     );
     expect(incrementalRows.length).equals(3);
 
+    // Check the data in the incremental merge table.
+    incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
+      "dataform-integration-tests.df_integration_test.example_incremental_merge"
+    ];
+    incrementalRows = await getTableRows(incrementalTable.target, adapter, credentials, "bigquery");
+    expect(incrementalRows.length).equals(2);
+
     // Re-run some of the actions.
     executionGraph = await dfapi.build(
       compiledGraph,
       {
-        actions: ["example_incremental", "example_table", "example_view"]
+        actions: [
+          "example_incremental",
+          "example_incremental_merge",
+          "example_table",
+          "example_view"
+        ]
       },
       credentials
     );
@@ -122,6 +134,13 @@ suite("@dataform/integration/bigquery", ({ after }) => {
     incrementalRows = await getTableRows(incrementalTable.target, adapter, credentials, "bigquery");
     expect(incrementalRows.length).equals(5);
 
+    // Check there are the expected number of extra rows in the incremental merge table.
+    incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
+      "dataform-integration-tests.df_integration_test.example_incremental_merge"
+    ];
+    incrementalRows = await getTableRows(incrementalTable.target, adapter, credentials, "bigquery");
+    expect(incrementalRows.length).equals(2);
+
     // run cache assertions
 
     executionGraph = await dfapi.build(
@@ -129,6 +148,7 @@ suite("@dataform/integration/bigquery", ({ after }) => {
       {
         actions: [
           "example_incremental",
+          "example_incremental_merge",
           "example_table",
           "example_view",
           "example_assertion_fail",
@@ -146,6 +166,8 @@ suite("@dataform/integration/bigquery", ({ after }) => {
     const expectedActionStatus: { [index: string]: dataform.ActionResult.ExecutionStatus } = {
       "dataform-integration-tests.df_integration_test.example_incremental":
         dataform.ActionResult.ExecutionStatus.CACHE_SKIPPED,
+      "dataform-integration-tests.df_integration_test.example_incremental_merge":
+        dataform.ActionResult.ExecutionStatus.CACHE_SKIPPED,
       "dataform-integration-tests.df_integration_test.example_table":
         dataform.ActionResult.ExecutionStatus.CACHE_SKIPPED,
       "dataform-integration-tests.df_integration_test.example_view":
@@ -161,7 +183,7 @@ suite("@dataform/integration/bigquery", ({ after }) => {
     }
 
     const persistedMetaData = await dbadapter.persistedStateMetadata();
-    expect(persistedMetaData.length).to.be.eql(9);
+    expect(persistedMetaData.length).to.be.eql(10);
 
     const exampleView = persistedMetaData.find(table => table.target.name === "example_view");
     expect(exampleView).to.have.property("definitionHash");
@@ -176,7 +198,7 @@ suite("@dataform/integration/bigquery", ({ after }) => {
     );
     expect(exampleAssertionFail).to.be.eql(undefined);
 
-    expect(persistedMetaData.length).to.be.eql(9);
+    expect(persistedMetaData.length).to.be.eql(10);
 
     // incremental metadata
     const incrementalAction = executionGraph.actions.find(
