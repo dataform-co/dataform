@@ -64,7 +64,12 @@ export function getCallerFile(rootDir: string) {
     // If it's in the root directory we'll take it, but keep searching
     // for a better match.
     lastfile = nextLastfile;
-    if (!(nextLastfile.includes(`definitions${path.sep}`) || nextLastfile.includes(`models${path.sep}`))) {
+    if (
+      !(
+        nextLastfile.includes(`definitions${path.sep}`) ||
+        nextLastfile.includes(`models${path.sep}`)
+      )
+    ) {
       continue;
     }
     break;
@@ -124,16 +129,26 @@ export function validate(compiledGraph: dataform.ICompiledGraph): dataform.IGrap
     }
 
     // sqldatawarehouse config
-    if (action.sqlDataWarehouse && action.sqlDataWarehouse.distribution) {
-      const distribution = action.sqlDataWarehouse.distribution.toUpperCase();
+    if (!!action.sqlDataWarehouse) {
+      if (action.uniqueKey) {
+        validationErrors.push(
+          dataform.ValidationError.create({
+            message: "Merging using unique keys for SQLDataWarehouse has not yet been implemented.",
+            actionName
+          })
+        );
+      }
 
-      if (
-        distribution !== "REPLICATE" &&
-        distribution !== "ROUND_ROBIN" &&
-        !SQL_DATA_WAREHOUSE_DIST_HASH_REGEXP.test(distribution)
-      ) {
-        const message = `Invalid value for sqldatawarehouse distribution: "${distribution}"`;
-        validationErrors.push(dataform.ValidationError.create({ message, actionName }));
+      if (action.sqlDataWarehouse.distribution) {
+        const distribution = action.sqlDataWarehouse.distribution.toUpperCase();
+        if (
+          distribution !== "REPLICATE" &&
+          distribution !== "ROUND_ROBIN" &&
+          !SQL_DATA_WAREHOUSE_DIST_HASH_REGEXP.test(distribution)
+        ) {
+          const message = `Invalid value for sqldatawarehouse distribution: "${distribution}"`;
+          validationErrors.push(dataform.ValidationError.create({ message, actionName }));
+        }
       }
     }
 
@@ -277,8 +292,8 @@ export function ambiguousActionNameMsg(
     typeof allActs[0] === "string"
       ? allActs
       : (allActs as Array<Table | Operation | Assertion>).map(
-        r => `${r.proto.target.schema}.${r.proto.target.name}`
-      );
+          r => `${r.proto.target.schema}.${r.proto.target.name}`
+        );
   return `Ambiguous Action name: ${stringifyResolvable(
     act
   )}. Did you mean one of: ${allActNames.join(", ")}.`;

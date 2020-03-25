@@ -60,10 +60,10 @@ WHERE NOT (${rowCondition})
   }
 
   protected insertInto(target: dataform.ITarget, columns: string[], query: string) {
-    return `
-insert into ${this.resolveTarget(target)}
-(${columns.join(",")})
-select ${columns.join(",")}
+    return `	
+insert into ${this.resolveTarget(target)}	
+(${columns.join(",")})	
+select ${columns.join(",")}	
 from (${query}) as insertions`;
   }
 

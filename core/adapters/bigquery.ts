@@ -34,11 +34,19 @@ export class BigQueryAdapter extends Adapter implements IAdapter {
       } else {
         tasks.add(
           Task.statement(
-            this.insertInto(
-              table.target,
-              tableMetadata.fields.map(f => f.name),
-              this.where(table.incrementalQuery || table.query, table.where)
-            )
+            table.uniqueKey && table.uniqueKey.length > 0
+              ? this.mergeInto(
+                  table.target,
+                  tableMetadata.fields.map(f => f.name),
+                  this.where(table.incrementalQuery || table.query, table.where),
+                  table.uniqueKey,
+                  table.bigquery && table.bigquery.updatePartitionFilter
+                )
+              : this.insertInto(
+                  table.target,
+                  tableMetadata.fields.map(f => f.name),
+                  this.where(table.incrementalQuery || table.query, table.where)
+                )
           )
         );
       }
@@ -88,5 +96,23 @@ export class BigQueryAdapter extends Adapter implements IAdapter {
 
   public dropIfExists(target: dataform.ITarget, type: string) {
     return `drop ${this.baseTableType(type)} if exists ${this.resolveTarget(target)}`;
+  }
+
+  public mergeInto(
+    target: dataform.ITarget,
+    columns: string[],
+    query: string,
+    uniqueKey: string[],
+    updatePartitionFilter: string
+  ) {
+    return `
+merge ${this.resolveTarget(target)} T
+using (${query}) S
+on ${uniqueKey.map(uniqueKey => `T.${uniqueKey} = S.${uniqueKey}`).join(` and `)}
+  ${updatePartitionFilter ? `and T.${updatePartitionFilter}` : ""}
+when matched then
+  update set ${columns.map(column => `${column} = S.${column}`).join(",")}
+when not matched then
+  insert (${columns.join(",")}) values (${columns.join(",")})`;
   }
 }

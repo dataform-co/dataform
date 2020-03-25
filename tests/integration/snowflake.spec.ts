@@ -67,7 +67,7 @@ suite("@dataform/integration/snowflake", ({ after }) => {
     let executedGraph = await dfapi.run(executionGraph, credentials).resultPromise();
 
     const actionMap = keyBy(executedGraph.actions, v => v.name);
-    expect(Object.keys(actionMap).length).eql(13);
+    expect(Object.keys(actionMap).length).eql(14);
 
     // Check the status of action execution.
     const expectedFailedActions = [
@@ -123,10 +123,10 @@ suite("@dataform/integration/snowflake", ({ after }) => {
     );
     expect(incrementalRows.length).equals(3);
 
-    let incrementalTable2 = keyBy(compiledGraph.tables, t => t.name)[
+    const incrementalTable2 = keyBy(compiledGraph.tables, t => t.name)[
       "TADA2.DF_INTEGRATION_TEST.EXAMPLE_INCREMENTAL_TADA2"
     ];
-    let incrementalRows2 = await getTableRows(
+    const incrementalRows2 = await getTableRows(
       incrementalTable2.target,
       adapter,
       credentials,
@@ -134,12 +134,25 @@ suite("@dataform/integration/snowflake", ({ after }) => {
     );
     expect(incrementalRows2.length).equals(3);
 
+    // Check the data in the incremental merge table.
+    incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
+      "DF_INTEGRATION_TEST.EXAMPLE_INCREMENTAL_MERGE"
+    ];
+    incrementalRows = await getTableRows(
+      incrementalTable.target,
+      adapter,
+      credentials,
+      "snowflake"
+    );
+    expect(incrementalRows.length).equals(2);
+
     // Re-run some of the actions.
     executionGraph = await dfapi.build(
       compiledGraph,
       {
         actions: [
           "EXAMPLE_INCREMENTAL",
+          "EXAMPLE_INCREMENTAL_MERGE",
           "EXAMPLE_INCREMENTAL_TADA2",
           "EXAMPLE_TABLE",
           "EXAMPLE_VIEW"
@@ -163,16 +176,28 @@ suite("@dataform/integration/snowflake", ({ after }) => {
     );
     expect(incrementalRows.length).equals(5);
 
-    incrementalTable2 = keyBy(compiledGraph.tables, t => t.name)[
+    incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
       "TADA2.DF_INTEGRATION_TEST.EXAMPLE_INCREMENTAL_TADA2"
     ];
-    incrementalRows2 = await getTableRows(
+    incrementalRows = await getTableRows(
       incrementalTable2.target,
       adapter,
       credentials,
       "snowflake"
     );
-    expect(incrementalRows2.length).equals(5);
+    expect(incrementalRows.length).equals(5);
+
+    // Check the data in the incremental merge table.
+    incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
+      "DF_INTEGRATION_TEST.EXAMPLE_INCREMENTAL_MERGE"
+    ];
+    incrementalRows = await getTableRows(
+      incrementalTable.target,
+      adapter,
+      credentials,
+      "snowflake"
+    );
+    expect(incrementalRows.length).equals(2);
   });
 
   suite("result limit works", async () => {

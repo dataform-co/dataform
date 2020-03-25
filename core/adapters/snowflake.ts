@@ -37,11 +37,18 @@ export class SnowflakeAdapter extends Adapter implements IAdapter {
       } else {
         tasks.add(
           Task.statement(
-            this.insertInto(
-              table.target,
-              tableMetadata.fields.map(f => f.name),
-              this.where(table.incrementalQuery || table.query, table.where)
-            )
+            table.uniqueKey && table.uniqueKey.length > 0
+              ? this.mergeInto(
+                  table.target,
+                  tableMetadata.fields.map(f => f.name),
+                  this.where(table.incrementalQuery || table.query, table.where),
+                  table.uniqueKey
+                )
+              : this.insertInto(
+                  table.target,
+                  tableMetadata.fields.map(f => f.name),
+                  this.where(table.incrementalQuery || table.query, table.where)
+                )
           )
         );
       }
@@ -79,5 +86,21 @@ export class SnowflakeAdapter extends Adapter implements IAdapter {
     return `create or replace ${this.baseTableType(table.type || "table")} ${this.resolveTarget(
       table.target
     )} as ${table.query}`;
+  }
+
+  public mergeInto(
+    target: dataform.ITarget,
+    columns: string[],
+    query: string,
+    uniqueKey: string[]
+  ) {
+    return `
+merge into ${this.resolveTarget(target)} T
+using (${query}) S
+on ${uniqueKey.map(uniqueKey => `T.${uniqueKey} = S.${uniqueKey}`).join(` and `)}
+when matched then
+  update set ${columns.map(column => `${column} = S.${column}`).join(",")}
+when not matched then
+  insert (${columns.join(",")}) values (${columns.join(",")})`;
   }
 }
