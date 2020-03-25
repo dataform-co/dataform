@@ -40,7 +40,9 @@ func (pc *protobufCodec) EncodeValue(ectx bsoncodec.EncodeContext, vw bsonrw.Val
 	for _, prop := range ph.normalPropsByTag {
 		fVal := val.FieldByName(prop.Name)
 		if !fVal.IsZero() {
-			encodeField(ectx, dw, prop.Tag, fVal)
+			if err := encodeField(ectx, dw, prop.Tag, fVal); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -52,7 +54,9 @@ func (pc *protobufCodec) EncodeValue(ectx bsoncodec.EncodeContext, vw bsonrw.Val
 			oneof := fVal.Elem().Elem()
 			singleProp := proto.GetProperties(oneof.Type()).Prop[0]
 			fVal = oneof.Field(0)
-			encodeField(ectx, dw, singleProp.Tag, fVal)
+			if err := encodeField(ectx, dw, singleProp.Tag, fVal); err != nil {
+				return err
+			}
 		}
 	}
 

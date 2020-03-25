@@ -11,6 +11,7 @@ const CANCEL_EVENT = "jobCancel";
 
 const isSuccessfulAction = (actionResult: dataform.IActionResult) =>
   actionResult.status === dataform.ActionResult.ExecutionStatus.SUCCESSFUL ||
+  actionResult.status === dataform.ActionResult.ExecutionStatus.CACHE_SKIPPED ||
   actionResult.status === dataform.ActionResult.ExecutionStatus.DISABLED;
 
 export function run(graph: dataform.IExecutionGraph, credentials: Credentials): Runner {
@@ -303,6 +304,13 @@ export class Runner {
 
     if (actionResult.status === dataform.ActionResult.ExecutionStatus.RUNNING) {
       actionResult.status = dataform.ActionResult.ExecutionStatus.SUCCESSFUL;
+    }
+
+    if (
+      action.actionDescriptor &&
+      actionResult.status === dataform.ActionResult.ExecutionStatus.SUCCESSFUL
+    ) {
+      await this.adapter.setMetadata(action);
     }
     actionResult.timing = timer.end();
     await this.triggerChange();

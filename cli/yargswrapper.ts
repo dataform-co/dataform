@@ -1,3 +1,4 @@
+import { maybeConfigureAnalytics, trackCommand } from "df/cli/analytics";
 import * as yargs from "yargs";
 
 export interface ICli {
@@ -26,7 +27,16 @@ export function createYargsCli(cli: ICli) {
       command.description,
       (yargsChainer: yargs.Argv) => createOptionsChain(yargsChainer, command),
       async (argv: { [argumentName: string]: any }) => {
+        await maybeConfigureAnalytics();
+        const analyticsTrack = trackCommand(command.format.split(" ")[0]);
         const exitCode = await command.processFn(argv);
+        let timer: NodeJS.Timer;
+        // Analytics tracking can take a while, so wait up to 2 seconds for them to finish.
+        await Promise.race([
+          analyticsTrack,
+          new Promise(resolve => (timer = setTimeout(resolve, 2000)))
+        ]);
+        clearTimeout(timer);
         process.exit(exitCode);
       }
     );
