@@ -367,6 +367,12 @@ export class Session {
       );
     }
 
+    if (!!this.config.tablePrefix) {
+      this.prependTablePrefix(
+        [].concat(compiledGraph.tables, compiledGraph.assertions, compiledGraph.operations)
+      );
+    }
+
     this.checkActionNameUniqueness(
       [].concat(
         compiledGraph.tables,
@@ -460,6 +466,32 @@ export class Session {
       }
       action.dependencies = Object.keys(fullyQualifiedDependencies);
       action.dependencyTargets = Object.values(fullyQualifiedDependencies);
+    });
+  }
+
+  private getTablePrefixWithUnderscore() {
+    return !!this.config.tablePrefix ? `${this.config.tablePrefix}_` : "";
+  }
+
+  private prependTablePrefix(actions: IActionProto[]) {
+    const prefixedNames: { [originalName: string]: string } = {};
+    actions.forEach(action => {
+      const originalName = action.name;
+      action.target = {
+        ...action.target,
+        name: `${this.getTablePrefixWithUnderscore()}${action.target.name}`
+      };
+      action.name = `${!!action.target.database ? `${action.target.database}.` : ""}${
+        action.target.schema
+      }.${action.target.name}`;
+      prefixedNames[originalName] = action.name;
+    });
+
+    // Fix up dependencies in case those dependencies' names have changed.
+    actions.forEach(action => {
+      action.dependencies = (action.dependencies || []).map(
+        dependencyName => prefixedNames[dependencyName] || dependencyName
+      );
     });
   }
 

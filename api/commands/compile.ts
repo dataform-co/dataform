@@ -10,6 +10,7 @@ const mandatoryProps: Array<keyof dataform.IProjectConfig> = ["warehouse", "defa
 const simpleCheckProps: Array<keyof dataform.IProjectConfig> = [
   "assertionSchema",
   "schemaSuffix",
+  "tablePrefix",
   "defaultSchema"
 ];
 

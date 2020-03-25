@@ -18,7 +18,8 @@ message ProjectConfig {
   int32 idempotent_action_retries = 8;
 
   string schema_suffix = 7;
-
+  string table_prefix = 11;
+  
   bool use_run_cache = 10;
 
   // Deprecated. Please use 'default_database' instead.
