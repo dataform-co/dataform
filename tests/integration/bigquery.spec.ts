@@ -198,7 +198,7 @@ suite("@dataform/integration/bigquery", ({ after }) => {
     );
     expect(exampleAssertionFail).to.be.eql(undefined);
 
-    expect(persistedMetaData.length).to.be.eql(9);
+    expect(persistedMetaData.length).to.be.eql(10);
 
     // incremental metadata
     const incrementalAction = executionGraph.actions.find(
