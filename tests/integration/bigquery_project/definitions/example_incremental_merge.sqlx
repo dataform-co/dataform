@@ -11,7 +11,7 @@ FROM
 
 config {
   type: "incremental",
-  uniqueKeys: ["id_1", "id_2"],
+  uniqueKey: ["id_1", "id_2"],
   bigquery: {
     partitionBy: "RANGE_BUCKET(ts, GENERATE_ARRAY(0, 6, 2))",
     updatePartitionFilter: "ts > 2"

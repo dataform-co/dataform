@@ -37,12 +37,12 @@ export class SnowflakeAdapter extends Adapter implements IAdapter {
       } else {
         tasks.add(
           Task.statement(
-            table.uniqueKeys && table.uniqueKeys.length > 0
+            table.uniqueKey && table.uniqueKey.length > 0
               ? this.mergeInto(
                   table.target,
                   tableMetadata.fields.map(f => f.name),
                   this.where(table.incrementalQuery || table.query, table.where),
-                  table.uniqueKeys
+                  table.uniqueKey
                 )
               : this.insertInto(
                   table.target,
@@ -92,12 +92,12 @@ export class SnowflakeAdapter extends Adapter implements IAdapter {
     target: dataform.ITarget,
     columns: string[],
     query: string,
-    uniqueKeys: string[]
+    uniqueKey: string[]
   ) {
     return `
 merge into ${this.resolveTarget(target)} T
 using (${query}) S
-on ${uniqueKeys.map(uniqueKey => `T.${uniqueKey} = S.${uniqueKey}`).join(` and `)}
+on ${uniqueKey.map(uniqueKey => `T.${uniqueKey} = S.${uniqueKey}`).join(` and `)}
 when matched then
   update set ${columns.map(column => `${column} = S.${column}`).join(",")}
 when not matched then

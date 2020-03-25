@@ -7,7 +7,7 @@ FROM
   (SELECT 4 AS ts,	22	AS id_1, 32 AS id_2, 'new' AS val)
 )
 
-config { type: "incremental", uniqueKeys: ["id_1", "id_2"] }
+config { type: "incremental", uniqueKey: ["id_1", "id_2"] }
 
 SELECT ts, id_1, id_2, val
 FROM example_data

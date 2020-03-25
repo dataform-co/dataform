@@ -129,25 +129,26 @@ export function validate(compiledGraph: dataform.ICompiledGraph): dataform.IGrap
     }
 
     // sqldatawarehouse config
-    if (action.sqlDataWarehouse && action.sqlDataWarehouse.distribution) {
-      const distribution = action.sqlDataWarehouse.distribution.toUpperCase();
-
-      if (
-        distribution !== "REPLICATE" &&
-        distribution !== "ROUND_ROBIN" &&
-        !SQL_DATA_WAREHOUSE_DIST_HASH_REGEXP.test(distribution)
-      ) {
-        const message = `Invalid value for sqldatawarehouse distribution: "${distribution}"`;
-        validationErrors.push(dataform.ValidationError.create({ message, actionName }));
-      }
-
-      if (action.uniqueKeys) {
+    if (!!action.sqlDataWarehouse) {
+      if (action.uniqueKey) {
         validationErrors.push(
           dataform.ValidationError.create({
             message: "Merging using unique keys for SQLDataWarehouse has not yet been implemented.",
             actionName
           })
         );
+      }
+
+      if (action.sqlDataWarehouse.distribution) {
+        const distribution = action.sqlDataWarehouse.distribution.toUpperCase();
+        if (
+          distribution !== "REPLICATE" &&
+          distribution !== "ROUND_ROBIN" &&
+          !SQL_DATA_WAREHOUSE_DIST_HASH_REGEXP.test(distribution)
+        ) {
+          const message = `Invalid value for sqldatawarehouse distribution: "${distribution}"`;
+          validationErrors.push(dataform.ValidationError.create({ message, actionName }));
+        }
       }
     }
 

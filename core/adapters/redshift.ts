@@ -33,12 +33,12 @@ export class RedshiftAdapter extends Adapter implements IAdapter {
         tasks.addAll(this.createOrReplace(table));
       } else {
         tasks.addAll(
-          table.uniqueKeys && table.uniqueKeys.length > 0
+          table.uniqueKey && table.uniqueKey.length > 0
             ? this.mergeInto(
                 table.target,
                 tableMetadata.fields.map(f => f.name),
                 this.where(table.incrementalQuery || table.query, table.where),
-                table.uniqueKeys
+                table.uniqueKey
               )
             : Tasks.create().add(
                 Task.statement(
@@ -138,7 +138,7 @@ export class RedshiftAdapter extends Adapter implements IAdapter {
     target: dataform.ITarget,
     columns: string[],
     query: string,
-    uniqueKeys: string[]
+    uniqueKey: string[]
   ) {
     const finalTarget = this.resolveTarget(target);
     // Schema name not allowed for temporary tables.
@@ -149,7 +149,7 @@ export class RedshiftAdapter extends Adapter implements IAdapter {
       .add(Task.statement(`begin transaction;`))
       .add(
         Task.statement(
-          `delete from ${finalTarget} using ${tempTarget} where ${uniqueKeys
+          `delete from ${finalTarget} using ${tempTarget} where ${uniqueKey
             .map(uniqueKey => `${finalTarget}."${uniqueKey}" = ${tempTarget}."${uniqueKey}"`)
             .join(` and `)};`
         )
