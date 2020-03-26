@@ -361,17 +361,9 @@ export class Session {
       [].concat(compiledGraph.tables, compiledGraph.assertions, compiledGraph.operations)
     );
 
-    if (!!this.config.schemaSuffix) {
-      this.appendSchemaSuffix(
-        [].concat(compiledGraph.tables, compiledGraph.assertions, compiledGraph.operations)
-      );
-    }
-
-    if (!!this.config.tablePrefix) {
-      this.prependTablePrefix(
-        [].concat(compiledGraph.tables, compiledGraph.assertions, compiledGraph.operations)
-      );
-    }
+    this.alterActionName(
+      [].concat(compiledGraph.tables, compiledGraph.assertions, compiledGraph.operations)
+    );
 
     this.checkActionNameUniqueness(
       [].concat(
@@ -473,46 +465,32 @@ export class Session {
     return !!this.config.tablePrefix ? `${this.config.tablePrefix}_` : "";
   }
 
-  private prependTablePrefix(actions: IActionProto[]) {
-    const prefixedNames: { [originalName: string]: string } = {};
+  private alterActionName(actions: IActionProto[]) {
+    const { tablePrefix, schemaSuffix } = this.config;
+
+    if (!tablePrefix && !schemaSuffix) {
+      return;
+    }
+
+    const actionNames: { [originalName: string]: string } = {};
+
     actions.forEach(action => {
       const originalName = action.name;
       action.target = {
         ...action.target,
-        name: `${this.getTablePrefixWithUnderscore()}${action.target.name}`
-      };
-      action.name = `${!!action.target.database ? `${action.target.database}.` : ""}${
-        action.target.schema
-      }.${action.target.name}`;
-      prefixedNames[originalName] = action.name;
-    });
-
-    // Fix up dependencies in case those dependencies' names have changed.
-    actions.forEach(action => {
-      action.dependencies = (action.dependencies || []).map(
-        dependencyName => prefixedNames[dependencyName] || dependencyName
-      );
-    });
-  }
-
-  private appendSchemaSuffix(actions: IActionProto[]) {
-    const suffixedNames: { [originalName: string]: string } = {};
-    actions.forEach(action => {
-      const originalName = action.name;
-      action.target = {
-        ...action.target,
+        name: `${this.getTablePrefixWithUnderscore()}${action.target.name}`,
         schema: `${action.target.schema}${this.getSuffixWithUnderscore()}`
       };
       action.name = `${!!action.target.database ? `${action.target.database}.` : ""}${
         action.target.schema
       }.${action.target.name}`;
-      suffixedNames[originalName] = action.name;
+      actionNames[originalName] = action.name;
     });
 
     // Fix up dependencies in case those dependencies' names have changed.
     actions.forEach(action => {
       action.dependencies = (action.dependencies || []).map(
-        dependencyName => suffixedNames[dependencyName] || dependencyName
+        dependencyName => actionNames[dependencyName] || dependencyName
       );
     });
   }
