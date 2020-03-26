@@ -18,6 +18,11 @@ class TestConfigs {
     schemaSuffix: "suffix"
   };
 
+  public static redshiftWithPrefix: dataform.IProjectConfig = {
+    ...TestConfigs.redshift,
+    tablePrefix: "prefix"
+  };
+
   public static bigquery: dataform.IProjectConfig = {
     warehouse: "bigquery",
     defaultSchema: "schema"
@@ -26,6 +31,86 @@ class TestConfigs {
 
 suite("@dataform/core", () => {
   suite("publish", () => {
+    [TestConfigs.redshift, TestConfigs.redshiftWithPrefix].forEach(testConfig => {
+      test(`config with prefix "${testConfig.tablePrefix}"`, () => {
+        const tableWithPrefix = (table: string) =>
+          testConfig.tablePrefix ? `${testConfig.tablePrefix}_${table}` : table;
+        const session = new Session(path.dirname(__filename), testConfig);
+        session
+          .publish("example", {
+            type: "table",
+            dependencies: [],
+            description: "this is a table",
+            columns: {
+              test: "test description"
+            }
+          })
+          .query(_ => "select 1 as test")
+          .preOps(_ => ["pre_op"])
+          .postOps(_ => ["post_op"]);
+        session
+          .publish("example", {
+            type: "table",
+            schema: "schema2",
+            dependencies: [{ schema: "schema", name: "example" }],
+            description: "test description"
+          })
+          .query(_ => "select 1 as test")
+          .preOps(_ => ["pre_op"])
+          .postOps(_ => ["post_op"]);
+        session
+          .publish("my_table", {
+            type: "table",
+            schema: "test_schema"
+          })
+          .query(_ => "SELECT 1 as one");
+
+        const compiledGraph = session.compile();
+
+        expect(compiledGraph.graphErrors.compilationErrors).to.eql([]);
+
+        const t = compiledGraph.tables.find(
+          table => table.name === `schema.${tableWithPrefix("example")}`
+        );
+        expect(t.type).equals("table");
+        expect(t.actionDescriptor).eql({
+          description: "this is a table",
+          columns: [
+            dataform.ColumnDescriptor.create({
+              description: "test description",
+              path: ["test"]
+            })
+          ]
+        });
+        expect(t.preOps).deep.equals(["pre_op"]);
+        expect(t.postOps).deep.equals(["post_op"]);
+
+        const t2 = compiledGraph.tables.find(
+          table => table.name === `schema2.${tableWithPrefix("example")}`
+        );
+        expect(t2.type).equals("table");
+        expect(t.actionDescriptor).eql({
+          description: "this is a table",
+          columns: [
+            dataform.ColumnDescriptor.create({
+              description: "test description",
+              path: ["test"]
+            })
+          ]
+        });
+        expect(t2.preOps).deep.equals(["pre_op"]);
+        expect(t2.postOps).deep.equals(["post_op"]);
+        expect(t2.dependencies).includes(`schema.${tableWithPrefix("example")}`);
+
+        const t3 = compiledGraph.tables.find(
+          table => table.name === `test_schema.${tableWithPrefix("my_table")}`
+        );
+        expect((t3.target.name = `${tableWithPrefix("my_table")}`));
+        expect((t3.target.schema = "test_schema"));
+        expect(t3.type).equals("table");
+      });
+    });
+
     [TestConfigs.redshift, TestConfigs.redshiftWithSuffix].forEach(testConfig => {
       test(`config with suffix "${testConfig.schemaSuffix}"`, () => {
         const schemaWithSuffix = (schema: string) =>
