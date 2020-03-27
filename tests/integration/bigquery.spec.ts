@@ -158,9 +158,7 @@ suite("@dataform/integration/bigquery", ({ after }) => {
       name: 'dataform-integration-tests.df_integration_test.depends_on_example_view',
       type: 'view',
       target: testTarget,
-      query: '\n' +
-        '\n' +
-        'select * from `dataform-integration-tests.df_integration_test.example_view`'
+      query: 'select * from `dataform-integration-tests.df_integration_test.example_view`'
     })
     compiledGraph.targets.push(testTarget)
 
