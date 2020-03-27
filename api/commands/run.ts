@@ -364,7 +364,7 @@ export class Runner {
 
     for (const dependencyTarget of action.dependencyTargets) {
       const dependencyAction = this.graph.actions.find(
-        action => action.target === dependencyTarget
+        action => lodash.isEqual(action.target, dependencyTarget)
       );
       if (!dependencyAction) {
         continue;
@@ -377,6 +377,7 @@ export class Runner {
       if (runResultAction.status !== dataform.ActionResult.ExecutionStatus.CACHE_SKIPPED) {
         return false;
       }
+
     }
 
     const cachedState = this.graph.warehouseState.cachedStates.find(state =>
@@ -386,8 +387,14 @@ export class Runner {
       lodash.isEqual(table.target, action.target)
     );
 
+
+
     if (!cachedState || !tableMetadata) {
       return false;
+    }
+
+    if (action.name.includes('depends_on_example_view')) {
+      console.log("check", cachedState, tableMetadata)
     }
 
     if (cachedState.lastUpdatedMillis < tableMetadata.lastUpdatedMillis) {
@@ -418,7 +425,7 @@ class Timer {
   public static start() {
     return new Timer(new Date().valueOf());
   }
-  private constructor(readonly startTimeMillis: number) {}
+  private constructor(readonly startTimeMillis: number) { }
 
   public current(): dataform.ITiming {
     return {
