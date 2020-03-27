@@ -49,6 +49,11 @@ async function getPackageTrees(): Promise<Array<Tree<IExtraAttributes>>> {
         owner: "dataform-co",
         repo: "dataform-segment",
         title: "Segment"
+      },
+      {
+        owner: "dataform-co",
+        repo: "dataform-bq-audit-logs",
+        title: "BigQuery Audit Logs"
       }
     ].map(async ({ owner, repo, title }) => {
       const tree = await new GitHubCms<IExtraAttributes>({
