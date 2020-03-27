@@ -20,6 +20,7 @@ export class TmpDirFixture {
     const tmpDirPath = path.resolve(
       path.join(process.env.TEST_TMPDIR, `tmp_dir_${TmpDirFixture.dirCounter++}`)
     );
+    // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
     fs.mkdirSync(tmpDirPath);
     this.tmpDirPaths.add(tmpDirPath);
     return tmpDirPath;

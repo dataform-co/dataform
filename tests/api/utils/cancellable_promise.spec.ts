@@ -1,6 +1,6 @@
 import { CancellablePromise } from "@dataform/api/utils/cancellable_promise";
-import { expect } from "chai";
 import { suite, test } from "@dataform/testing";
+import { expect } from "chai";
 
 suite("cancellable_promise", () => {
   test("cancel is called", () => {
@@ -11,7 +11,7 @@ suite("cancellable_promise", () => {
       });
     });
     promise.cancel();
-    expect(wasCancelled).is.true;
+    expect(wasCancelled).equals(true);
   });
 
   test("cancel called early", async () => {
@@ -28,7 +28,7 @@ suite("cancellable_promise", () => {
     });
     promise.cancel();
     await promise;
-    expect(wasCancelled).is.true;
+    expect(wasCancelled).equals(true);
   });
 
   test("resolves", async () => {

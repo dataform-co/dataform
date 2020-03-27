@@ -21,7 +21,7 @@ suite("error_parsing", () => {
         message: ""
       };
       const parsedError = parseBigqueryEvalError(SAMPLE_BIGQUERY_ERROR);
-      expect(parsedError.errorLocation).to.be.null;
+      expect(parsedError.errorLocation).equals(null);
     });
   });
 
@@ -43,7 +43,7 @@ suite("error_parsing", () => {
       };
       const SAMPLE_REDSHIFT_STATEMENT = `\nsomething\nasda\n123`;
       const parsedError = parseRedshiftEvalError(SAMPLE_REDSHIFT_STATEMENT, SAMPLE_REDSHIFT_ERROR);
-      expect(parsedError.errorLocation).to.be.null;
+      expect(parsedError.errorLocation).equals(null);
     });
   });
 
@@ -67,7 +67,7 @@ suite("error_parsing", () => {
         }
       };
       const parsedError = parseAzureEvaluationError(SAMPLE_AZURE_ERROR);
-      expect(parsedError.errorLocation).to.be.null;
+      expect(parsedError.errorLocation).equals(null);
     });
   });
 });
