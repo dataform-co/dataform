@@ -42,3 +42,10 @@ config {
 }
 SELECT CURRENT_TIMESTAMP() as ts, name, revenue
 ```
+
+## Configuring access to Google Sheets
+
+In order to be able to query Google Sheets tables via BigQuery, you'll need to share the sheet with the service account that is used by Dataform.
+
+- Find the email address of the service account you connected Dataform with by looking in the `.df-credetials.json` file locally, or by finding the account from the [Google Cloud IAM service accounts console](https://console.cloud.google.com/iam-admin/serviceaccounts).
+- Share the Google sheet with the email address of the service account as you would a colleage, through the sheets sharing settings and make sure it has access.
