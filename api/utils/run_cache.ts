@@ -1,5 +1,5 @@
-import * as objectHash from "object-hash";
 import { dataform } from "@dataform/protos";
+import * as objectHash from "object-hash";
 
 export interface IMetadataRow {
   target_name: string;

@@ -1,10 +1,10 @@
 import { Button } from "@blueprintjs/core";
+import { ITree } from "@dataform-tools/markdown-cms/tree";
 import Navigation from "df/docs/components/navigation";
 import { IHeaderLink, PageLinks } from "df/docs/components/page_links";
 import { IExtraAttributes } from "df/docs/content_tree";
 import { BaseLayout } from "df/docs/layouts/base";
 import * as styles from "df/docs/layouts/documentation.css";
-import { ITree } from "@dataform-tools/markdown-cms/tree";
 import * as React from "react";
 
 export interface IProps {
