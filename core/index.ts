@@ -11,9 +11,9 @@ export { adapters };
 
 // Install extensions for SQL files.
 if (require.extensions) {
-  require.extensions[".sql"] = function(module: any, file: string) {
+  require.extensions[".sql"] = (module: any, file: string) => {
     const oldCompile = module._compile;
-    module._compile = function(code: any, file: any) {
+    module._compile = (code: any, file: any) => {
       module._compile = oldCompile;
       const transformedCode = compilers.compile(code, file);
       module._compile(transformedCode, file);

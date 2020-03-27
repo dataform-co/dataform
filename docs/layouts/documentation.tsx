@@ -21,11 +21,11 @@ export default class Documentation extends React.Component<IProps> {
       .filter(child => !!child.props.children)
       .map(child =>
         React.Children.toArray(child.props.children)
-          .map(child => child as React.ReactElement<any>)
-          .filter(child => child.type === "h2")
-          .map(child => ({
-            id: child.props.id,
-            text: child.props.children[0]
+          .map(grandChild => grandChild as React.ReactElement<any>)
+          .filter(grandChild => grandChild.type === "h2")
+          .map(grandChild => ({
+            id: grandChild.props.id,
+            text: grandChild.props.children[0]
           }))
       )
       .reduce((acc, curr) => [...acc, ...curr], []);
