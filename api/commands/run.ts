@@ -387,14 +387,8 @@ export class Runner {
       lodash.isEqual(table.target, action.target)
     );
 
-
-
     if (!cachedState || !tableMetadata) {
       return false;
-    }
-
-    if (action.name.includes('depends_on_example_view')) {
-      console.log("check", cachedState, tableMetadata)
     }
 
     if (cachedState.lastUpdatedMillis < tableMetadata.lastUpdatedMillis) {
