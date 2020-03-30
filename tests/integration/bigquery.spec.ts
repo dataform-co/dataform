@@ -67,7 +67,26 @@ suite("@dataform/integration/bigquery", ({ after }) => {
     ]);
 
     // Run the project.
-    let executionGraph = await dfapi.build(compiledGraph, {}, credentials);
+
+    const actionsToRun = [
+      ...compiledGraph.tables
+        .filter(
+          table =>
+            table.name !== "dataform-integration-tests.df_integration_test.depends_on_example_view"
+        )
+        .map(table => table.name),
+      ...compiledGraph.assertions.map(assertion => assertion.name),
+      ...compiledGraph.operations.map(operation => operation.name)
+    ];
+
+    let executionGraph = await dfapi.build(
+      compiledGraph,
+      {
+        actions: actionsToRun
+      },
+      credentials
+    );
+
     let executedGraph = await dfapi.run(executionGraph, credentials).result();
 
     let actionMap = keyBy(executedGraph.actions, v => v.name);
@@ -142,7 +161,6 @@ suite("@dataform/integration/bigquery", ({ after }) => {
     expect(incrementalRows.length).equals(2);
 
     // run cache assertions
-
     executionGraph = await dfapi.build(
       compiledGraph,
       {
@@ -152,7 +170,8 @@ suite("@dataform/integration/bigquery", ({ after }) => {
           "example_table",
           "example_view",
           "example_assertion_fail",
-          "example_operation"
+          "example_operation",
+          "depends_on_example_view"
         ]
       },
       credentials
@@ -163,7 +182,7 @@ suite("@dataform/integration/bigquery", ({ after }) => {
 
     expect(executedGraph.status).equals(dataform.RunResult.ExecutionStatus.FAILED);
 
-    const expectedActionStatus: { [index: string]: dataform.ActionResult.ExecutionStatus } = {
+    let expectedActionStatus: { [index: string]: dataform.ActionResult.ExecutionStatus } = {
       "dataform-integration-tests.df_integration_test.example_incremental":
         dataform.ActionResult.ExecutionStatus.CACHE_SKIPPED,
       "dataform-integration-tests.df_integration_test.example_incremental_merge":
@@ -175,6 +194,8 @@ suite("@dataform/integration/bigquery", ({ after }) => {
       "dataform-integration-tests.df_integration_test_assertions.example_assertion_fail":
         dataform.ActionResult.ExecutionStatus.FAILED,
       "dataform-integration-tests.df_integration_test.example_operation":
+        dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
+      "dataform-integration-tests.df_integration_test.depends_on_example_view":
         dataform.ActionResult.ExecutionStatus.SUCCESSFUL
     };
 
@@ -183,7 +204,7 @@ suite("@dataform/integration/bigquery", ({ after }) => {
     }
 
     const persistedMetaData = await dbadapter.persistedStateMetadata();
-    expect(persistedMetaData.length).to.be.eql(10);
+    expect(persistedMetaData.length).to.be.eql(11);
 
     const exampleView = persistedMetaData.find(table => table.target.name === "example_view");
     expect(exampleView).to.have.property("definitionHash");
@@ -198,7 +219,36 @@ suite("@dataform/integration/bigquery", ({ after }) => {
     );
     expect(exampleAssertionFail).to.be.eql(undefined);
 
-    expect(persistedMetaData.length).to.be.eql(10);
+    expect(persistedMetaData.length).to.be.eql(11);
+
+    compiledGraph.tables = compiledGraph.tables.map(table => {
+      if (table.name === "dataform-integration-tests.df_integration_test.example_view") {
+        table.query = "select 1 as test";
+      }
+      return table;
+    });
+
+    executionGraph = await dfapi.build(
+      compiledGraph,
+      {
+        actions: ["example_view", "depends_on_example_view"]
+      },
+      credentials
+    );
+
+    executedGraph = await dfapi.run(executionGraph, credentials).result();
+    expect(executedGraph.status).equals(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
+    actionMap = keyBy(executedGraph.actions, v => v.name);
+    expectedActionStatus = {
+      "dataform-integration-tests.df_integration_test.example_view":
+        dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
+      "dataform-integration-tests.df_integration_test.depends_on_example_view":
+        dataform.ActionResult.ExecutionStatus.SUCCESSFUL
+    };
+
+    for (const actionName of Object.keys(actionMap)) {
+      expect(actionMap[actionName].status).equals(expectedActionStatus[actionName]);
+    }
   });
 
   suite("result limit works", async () => {
