@@ -5,6 +5,7 @@ import { dataform } from "@dataform/protos";
 import * as fs from "fs";
 import * as path from "path";
 
+// tslint:disable-next-line: no-var-requires
 const { version } = require("../package.json");
 
 const gitIgnoreContents = `
