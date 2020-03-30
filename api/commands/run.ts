@@ -364,7 +364,7 @@ export class Runner {
 
     for (const dependencyTarget of action.dependencyTargets) {
       const dependencyAction = this.graph.actions.find(
-        action => action.target === dependencyTarget
+        action => lodash.isEqual(action.target, dependencyTarget)
       );
       if (!dependencyAction) {
         continue;
@@ -377,6 +377,7 @@ export class Runner {
       if (runResultAction.status !== dataform.ActionResult.ExecutionStatus.CACHE_SKIPPED) {
         return false;
       }
+
     }
 
     const cachedState = this.graph.warehouseState.cachedStates.find(state =>
@@ -418,7 +419,7 @@ class Timer {
   public static start() {
     return new Timer(new Date().valueOf());
   }
-  private constructor(readonly startTimeMillis: number) {}
+  private constructor(readonly startTimeMillis: number) { }
 
   public current(): dataform.ITiming {
     return {
