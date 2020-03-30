@@ -189,12 +189,13 @@ function write(
     // tslint:disable-next-line: tsr-detect-sql-literal-injection
     `// GENERATED CODE.
 import * as grpc from "grpc";
-import * as protos from "${argv["protos-import"]}";
 import { promisify } from "util";
+
+import * as protos from "${argv["protos-import"]}";
 
 export const NAME = "${service.name}";
 
-export interface Service {
+export interface IService {
   ${service.methods
     .map(method => {
       return `
@@ -218,11 +219,11 @@ function computeElapsedNanosSince(hrtimeStart: [number, number]) {
 }
 
 export class ServicePromiseWrapper {
-  private impl: Service;
+  private impl: IService;
   private afterInterceptor: (method: string, call: grpc.ServerUnaryCall<any>, grpcMethodCallResults: IGrpcMethodCallResults) => void;
 
   // Note that the 'any' typings here are required because we don't know the request type in advance (it depends on the API method which is called).
-  constructor(impl: Service, afterInterceptor?: (method: string, call: grpc.ServerUnaryCall<any>, grpcMethodCallResults: IGrpcMethodCallResults) => void) {
+  constructor(impl: IService, afterInterceptor?: (method: string, call: grpc.ServerUnaryCall<any>, grpcMethodCallResults: IGrpcMethodCallResults) => void) {
     this.impl = impl;
     this.afterInterceptor = afterInterceptor || (() => undefined);
   }
@@ -255,7 +256,8 @@ export class ServicePromiseWrapper {
         callback(err, null);
       }
     };
-    asyncInner();
+    // tslint:disable-next-line: no-console
+    asyncInner().catch(e => console.log("Unhandled gRPC error!" + e.message));
   }
   `;
     })
@@ -313,7 +315,7 @@ ${camelToLowerCamel(method.name)}: {
     currentNamespaceParts,
     method.requestType,
     true
-  )}) => new Buffer(${fullyQualify(
+  )}) => Buffer.from(${fullyQualify(
       currentNamespaceParts,
       method.requestType,
       false
@@ -327,7 +329,7 @@ ${camelToLowerCamel(method.name)}: {
     currentNamespaceParts,
     method.responseType,
     true
-  )}) => new Buffer(${fullyQualify(
+  )}) => Buffer.from(${fullyQualify(
       currentNamespaceParts,
       method.responseType,
       false
@@ -358,7 +360,7 @@ export const UNNAMESPACED_SERVICE_DEFINITION = {
       currentNamespaceParts,
       method.requestType,
       true
-    )}) => new Buffer(${fullyQualify(
+    )}) => Buffer.from(${fullyQualify(
         currentNamespaceParts,
         method.requestType,
         false
@@ -372,7 +374,7 @@ export const UNNAMESPACED_SERVICE_DEFINITION = {
       currentNamespaceParts,
       method.responseType,
       true
-    )}) => new Buffer(${fullyQualify(
+    )}) => Buffer.from(${fullyQualify(
         currentNamespaceParts,
         method.responseType,
         false

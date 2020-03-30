@@ -26,7 +26,9 @@ export function parseAzureEvaluationError(error: IAzureEvaluationError) {
       evalError.errorLocation = { line: Number(lineNumber), column: Number(columnNumber) };
       return evalError;
     }
-  } catch (_) {}
+  } catch (_) {
+    // Do nothing.
+  }
   return evalError;
 }
 
@@ -52,7 +54,9 @@ export function parseRedshiftEvalError(statement: string, error: IRedshiftEvalua
     const lineIncludingError = statementBeforeError.split("\n").slice(-1)[0];
     const colNumber = lineIncludingError.length + 1;
     evalError.errorLocation = { line: lineNumber, column: colNumber };
-  } catch (_) {}
+  } catch (_) {
+    // Do nothing.
+  }
 
   return evalError;
 }
@@ -81,6 +85,8 @@ export function parseBigqueryEvalError(error: IBigqueryEvaluationError) {
       // Column defaults to 0 if not found.
       evalError.errorLocation = { line, column };
     }
-  } catch (_) {}
+  } catch (_) {
+    // Do nothing.
+  }
   return evalError;
 }

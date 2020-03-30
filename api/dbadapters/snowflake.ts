@@ -136,11 +136,11 @@ where table_schema = '${target.schema}'
         // The table exists.
         return {
           target,
-          type: results[1].rows[0].TABLE_TYPE == "VIEW" ? "view" : "table",
+          type: results[1].rows[0].TABLE_TYPE === "VIEW" ? "view" : "table",
           fields: results[0].rows.map(row => ({
             name: row.COLUMN_NAME,
             primitive: row.DATA_TYPE,
-            flags: row.IS_NULLABLE && row.IS_NULLABLE == "YES" ? ["nullable"] : []
+            flags: row.IS_NULLABLE && row.IS_NULLABLE === "YES" ? ["nullable"] : []
           }))
         };
       } else {
@@ -178,16 +178,24 @@ where table_schema = '${target.schema}'
     });
   }
 
-  public async prepareStateMetadataTable(): Promise<void> {}
+  public async prepareStateMetadataTable(): Promise<void> {
+    // Unimplemented.
+  }
 
   public async persistedStateMetadata(): Promise<dataform.IPersistedTableMetadata[]> {
     const persistedMetadata: dataform.IPersistedTableMetadata[] = [];
     return persistedMetadata;
   }
 
-  public async persistStateMetadata(actions: dataform.IExecutionAction[]) {}
-  public async setMetadata(action: dataform.IExecutionAction): Promise<void> {}
-  public async deleteStateMetadata(actions: dataform.IExecutionAction[]): Promise<void> {}
+  public async persistStateMetadata(actions: dataform.IExecutionAction[]) {
+    // Unimplemented.
+  }
+  public async setMetadata(action: dataform.IExecutionAction): Promise<void> {
+    // Unimplemented.
+  }
+  public async deleteStateMetadata(actions: dataform.IExecutionAction[]): Promise<void> {
+    // Unimplemented.
+  }
 }
 
 async function connect(snowflakeCredentials: dataform.ISnowflake) {

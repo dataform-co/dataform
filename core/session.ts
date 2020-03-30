@@ -1,9 +1,14 @@
 import * as adapters from "@dataform/core/adapters";
 import { AContextable, Assertion, IAssertionConfig } from "@dataform/core/assertion";
-import { IColumnsDescriptor, IRecordDescriptor, Resolvable } from "@dataform/core/common";
+import {
+  IColumnsDescriptor,
+  ICommonContext,
+  IRecordDescriptor,
+  Resolvable
+} from "@dataform/core/common";
 import { Contextable } from "@dataform/core/common";
 import { Declaration, IDeclarationConfig } from "@dataform/core/declaration";
-import { IOperationConfig, IOperationContext, Operation } from "@dataform/core/operation";
+import { IOperationConfig, Operation } from "@dataform/core/operation";
 import { ITableConfig, ITableContext, Table, TableType } from "@dataform/core/table";
 import * as test from "@dataform/core/test";
 import * as utils from "@dataform/core/utils";
@@ -13,6 +18,7 @@ import { Graph as TarjanGraph } from "tarjan-graph";
 import * as TarjanGraphConstructor from "tarjan-graph";
 
 // Can't use resolveJsonModule with Bazel.
+// tslint:disable-next-line: no-var-requires
 const { version: dataformCoreVersion } = require("@dataform/core/package.json");
 
 /**
@@ -260,7 +266,7 @@ export class Session {
 
   public operate(
     name: string,
-    queries?: Contextable<IOperationContext, string | string[]>
+    queries?: Contextable<ICommonContext, string | string[]>
   ): Operation {
     const operation = new Operation();
     operation.session = this;
