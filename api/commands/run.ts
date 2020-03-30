@@ -347,16 +347,16 @@ export class Runner {
     return taskResult.status;
   }
 
-  private actionHasCacheHit(action: dataform.IExecutionAction): boolean {
+  private actionHasCacheHit(executionAction: dataform.IExecutionAction): boolean {
     if (!(this.graph.runConfig && this.graph.runConfig.useRunCache)) {
       return false;
     }
 
-    if (action.type === "operation") {
+    if (executionAction.type === "operation") {
       return false;
     }
 
-    for (const dependencyTarget of action.dependencyTargets) {
+    for (const dependencyTarget of executionAction.dependencyTargets) {
       const dependencyAction = this.graph.actions.find(
         action => action.target === dependencyTarget
       );
@@ -374,10 +374,10 @@ export class Runner {
     }
 
     const cachedState = this.graph.warehouseState.cachedStates.find(state =>
-      lodash.isEqual(state.target, action.target)
+      lodash.isEqual(state.target, executionAction.target)
     );
     const tableMetadata = this.graph.warehouseState.tables.find(table =>
-      lodash.isEqual(table.target, action.target)
+      lodash.isEqual(table.target, executionAction.target)
     );
 
     if (!cachedState || !tableMetadata) {
@@ -388,7 +388,8 @@ export class Runner {
       return false;
     }
 
-    if (hashExecutionAction(action) !== cachedState.definitionHash) {
+    // tslint:disable-next-line: tsr-detect-possible-timing-attacks
+    if (hashExecutionAction(executionAction) !== cachedState.definitionHash) {
       return false;
     }
 
