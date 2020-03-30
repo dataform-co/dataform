@@ -4,8 +4,8 @@ import { retry } from "@dataform/api/utils/retry";
 import { hashExecutionAction } from "@dataform/api/utils/run_cache";
 import { dataform } from "@dataform/protos";
 import * as EventEmitter from "events";
-import * as lodash from "lodash";
 import * as Long from "long";
+import * as lodash from "lodash";
 
 const CANCEL_EVENT = "jobCancel";
 
@@ -306,6 +306,12 @@ export class Runner {
       actionResult.status = dataform.ActionResult.ExecutionStatus.SUCCESSFUL;
     }
 
+    if (
+      action.actionDescriptor &&
+      actionResult.status === dataform.ActionResult.ExecutionStatus.SUCCESSFUL
+    ) {
+      await this.adapter.setMetadata(action);
+    }
     actionResult.timing = timer.end();
     await this.triggerChange();
   }
