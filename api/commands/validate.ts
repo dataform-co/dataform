@@ -4,6 +4,7 @@ import * as fs from "fs";
 import * as path from "path";
 
 const SCHEDULES_JSON_PATH = "schedules.json";
+// tslint:disable-next-line: tsr-detect-unsafe-regexp
 const EMAIL_REGEX = /^(([^<>()\[\]\.,;:\s@\"]+(\.[^<>()\[\]\.,;:\s@\"]+)*)|(\".+\"))@(([^<>()[\]\.,;:\s@\"]+\.)+[^<>()[\]\.,;:\s@\"]{2,})$/i;
 
 function validateEmail(email: string) {

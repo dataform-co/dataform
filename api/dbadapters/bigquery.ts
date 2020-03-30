@@ -200,7 +200,9 @@ export class BigQueryDbAdapter implements IDbAdapter {
     await client.dataset(schema).delete({ force: true });
   }
 
-  public async close() {}
+  public async close() {
+    // Unimplemented.
+  }
 
   public async prepareStateMetadataTable(): Promise<void> {
     const metadataTableCreateQuery = `
@@ -394,7 +396,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
           }
 
           let results: any[] = [];
-          const manualPaginationCallback = (
+          const manualPaginationCallback = async (
             e: Error,
             rows: any[],
             nextQuery: QueryResultsOptions
@@ -408,21 +410,22 @@ export class BigQueryDbAdapter implements IDbAdapter {
               // More results exist and we have space to consume them.
               job.getQueryResults(nextQuery, manualPaginationCallback);
             } else {
-              job.getMetadata().then(([bqMeta]) => {
-                const queryData = {
-                  rows: results,
-                  metadata: {
-                    bigquery: {
-                      jobId: bqMeta.jobReference.jobId,
-                      totalBytesBilled: Long.fromString(bqMeta.statistics.query.totalBytesBilled),
-                      totalBytesProcessed: Long.fromString(
-                        bqMeta.statistics.query.totalBytesProcessed
-                      )
-                    }
+              const [jobMetadata] = await job.getMetadata();
+              const queryData = {
+                rows: results,
+                metadata: {
+                  bigquery: {
+                    jobId: jobMetadata.jobReference.jobId,
+                    totalBytesBilled: Long.fromString(
+                      jobMetadata.statistics.query.totalBytesBilled
+                    ),
+                    totalBytesProcessed: Long.fromString(
+                      jobMetadata.statistics.query.totalBytesProcessed
+                    )
                   }
-                };
-                resolve(queryData);
-              });
+                }
+              };
+              resolve(queryData);
             }
           };
           // For non interactive queries, we can set a hard limit by disabling auto pagination.

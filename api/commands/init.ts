@@ -12,13 +12,13 @@ ${CREDENTIALS_FILENAME}
 node_modules/
 `;
 
-export interface InitResult {
+export interface IInitResult {
   filesWritten: string[];
   dirsCreated: string[];
   installedNpmPackages: boolean;
 }
 
-export interface InitOptions {
+export interface IInitOptions {
   skipInstall?: boolean;
   includeSchedules?: boolean;
   includeEnvironments?: boolean;
@@ -27,8 +27,8 @@ export interface InitOptions {
 export async function init(
   projectDir: string,
   projectConfig: dataform.IProjectConfig,
-  options: InitOptions = {}
-): Promise<InitResult> {
+  options: IInitOptions = {}
+): Promise<IInitResult> {
   const dataformJsonPath = path.join(projectDir, "dataform.json");
   const packageJsonPath = path.join(projectDir, "package.json");
   const gitignorePath = path.join(projectDir, ".gitignore");

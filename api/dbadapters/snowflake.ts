@@ -3,6 +3,7 @@ import { IDbAdapter } from "@dataform/api/dbadapters/index";
 import { dataform } from "@dataform/protos";
 import * as https from "https";
 import * as PromisePool from "promise-pool-executor";
+import * as snowflake from "snowflake-sdk";
 
 interface ISnowflake {
   createConnection: (options: {
@@ -33,8 +34,6 @@ interface ISnowflakeStatement {
 interface ISnowflakeResultStream {
   on: (event: "error" | "data" | "end", handler: (data: Error | any[]) => void) => this;
 }
-
-const snowflake: ISnowflake = require("snowflake-sdk");
 
 export class SnowflakeDbAdapter implements IDbAdapter {
   private connectionPromise: Promise<ISnowflakeConnection>;
@@ -206,7 +205,7 @@ async function connect(snowflakeCredentials: dataform.ISnowflake) {
   await testHttpsConnection(`https://${snowflakeCredentials.accountId}.snowflakecomputing.com`);
   try {
     return await new Promise<ISnowflakeConnection>((resolve, reject) => {
-      snowflake
+      (snowflake as ISnowflake)
         .createConnection({
           account: snowflakeCredentials.accountId,
           username: snowflakeCredentials.username,

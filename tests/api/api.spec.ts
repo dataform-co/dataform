@@ -843,8 +843,7 @@ suite("@dataform/api", () => {
       ).thenReject(new Error("bad statement"));
 
       const runner = new Runner(instance(mockedDbAdapter), RUN_TEST_GRAPH);
-      await runner.execute();
-      const result = await runner.resultPromise();
+      const result = await runner.execute().result();
 
       delete result.timing;
       result.actions.forEach(actionResult => {
@@ -910,7 +909,7 @@ suite("@dataform/api", () => {
           .thenResolve({ rows: [], metadata: {} });
 
         const runner = new Runner(instance(mockedDbAdapter), NEW_TEST_GRAPH);
-        const result = await runner.execute();
+        const result = await runner.execute().result();
 
         delete result.timing;
         result.actions.forEach(actionResult => {
@@ -966,7 +965,7 @@ suite("@dataform/api", () => {
           .thenResolve({ rows: [], metadata: {} });
 
         const runner = new Runner(instance(mockedDbAdapter), NEW_TEST_GRAPH);
-        const result = await runner.execute();
+        const result = await runner.execute().result();
 
         delete result.timing;
         result.actions.forEach(actionResult => {
@@ -1030,7 +1029,7 @@ suite("@dataform/api", () => {
           .thenResolve({ rows: [], metadata: {} });
 
         const runner = new Runner(instance(mockedDbAdapter), NEW_TEST_GRAPH_WITH_OPERATION);
-        const result = await runner.execute();
+        const result = await runner.execute().result();
 
         delete result.timing;
         result.actions.forEach(actionResult => {
@@ -1112,11 +1111,12 @@ suite("@dataform/api", () => {
           }),
         prepareSchema: (_, __) => {
           return Promise.resolve();
-        }
+        },
+        close: () => undefined
       } as IDbAdapter;
 
       const runner = new Runner(mockDbAdapter, CANCEL_TEST_GRAPH);
-      const execution = runner.execute();
+      const execution = runner.execute().result();
       // We want to await the return promise before we actually call cancel.
       // Setting a short (10ms) timeout on calling cancel accomplishes this.
       setTimeout(() => runner.cancel(), 10);

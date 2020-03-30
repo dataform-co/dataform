@@ -26,16 +26,16 @@ export class Builder {
   private runConfig: dataform.IRunConfig;
 
   private adapter: adapters.IAdapter;
-  private state: dataform.IWarehouseState;
+  private warehouseState: dataform.IWarehouseState;
 
   constructor(
     compiledGraph: dataform.ICompiledGraph,
     runConfig: dataform.IRunConfig,
-    state: dataform.IWarehouseState
+    warehouseState: dataform.IWarehouseState
   ) {
     this.compiledGraph = compiledGraph;
     this.runConfig = runConfig;
-    this.state = state;
+    this.warehouseState = warehouseState;
     this.adapter = adapters.create(
       compiledGraph.projectConfig,
       compiledGraph.dataformCoreVersion || "1.0.0"
@@ -48,7 +48,7 @@ export class Builder {
     }
 
     const tableStateByTarget: { [targetJson: string]: dataform.ITableMetadata } = {};
-    this.state.tables.forEach(tableState => {
+    this.warehouseState.tables.forEach(tableState => {
       tableStateByTarget[JSON.stringify(tableState.target)] = tableState;
     });
 
@@ -69,7 +69,7 @@ export class Builder {
             ? this.compiledGraph.projectConfig.useRunCache
             : this.runConfig.useRunCache
       },
-      warehouseState: this.state,
+      warehouseState: this.warehouseState,
       actions
     });
   }

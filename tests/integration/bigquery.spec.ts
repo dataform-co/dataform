@@ -68,7 +68,7 @@ suite("@dataform/integration/bigquery", ({ after }) => {
 
     // Run the project.
     let executionGraph = await dfapi.build(compiledGraph, {}, credentials);
-    let executedGraph = await dfapi.run(executionGraph, credentials).resultPromise();
+    let executedGraph = await dfapi.run(executionGraph, credentials).result();
 
     let actionMap = keyBy(executedGraph.actions, v => v.name);
     expect(Object.keys(actionMap).length).eql(13);
@@ -124,7 +124,7 @@ suite("@dataform/integration/bigquery", ({ after }) => {
       credentials
     );
 
-    executedGraph = await dfapi.run(executionGraph, credentials).resultPromise();
+    executedGraph = await dfapi.run(executionGraph, credentials).result();
     expect(executedGraph.status).equals(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
 
     // Check there are the expected number of extra rows in the incremental table.
@@ -158,7 +158,7 @@ suite("@dataform/integration/bigquery", ({ after }) => {
       credentials
     );
 
-    executedGraph = await dfapi.run(executionGraph, credentials).resultPromise();
+    executedGraph = await dfapi.run(executionGraph, credentials).result();
     actionMap = keyBy(executedGraph.actions, v => v.name);
 
     expect(executedGraph.status).equals(dataform.RunResult.ExecutionStatus.FAILED);

@@ -16,16 +16,7 @@ const isSuccessfulAction = (actionResult: dataform.IActionResult) =>
 
 export function run(graph: dataform.IExecutionGraph, credentials: Credentials): Runner {
   const dbadapter = dbadapters.create(credentials, graph.projectConfig.warehouse);
-  const runner = Runner.create(dbadapter, graph);
-  const executeAndCloseDbAdapter = async () => {
-    try {
-      await runner.execute();
-    } finally {
-      await dbadapter.close();
-    }
-  };
-  executeAndCloseDbAdapter();
-  return runner;
+  return Runner.create(dbadapter, graph).execute();
 }
 
 export class Runner {
@@ -65,7 +56,7 @@ export class Runner {
     return this;
   }
 
-  public async execute(): Promise<dataform.IRunResult> {
+  public execute(): this {
     if (!!this.executionTask) {
       throw new Error("Executor already started.");
     }
@@ -76,7 +67,7 @@ export class Runner {
         this.cancel();
       }, this.graph.runConfig.timeoutMillis);
     }
-    return this.resultPromise();
+    return this;
   }
 
   public cancel() {
@@ -84,12 +75,15 @@ export class Runner {
     this.eEmitter.emit(CANCEL_EVENT);
   }
 
-  public async resultPromise(): Promise<dataform.IRunResult> {
+  public async result(): Promise<dataform.IRunResult> {
     try {
       return await this.executionTask;
     } finally {
       if (!!this.timeout) {
         clearTimeout(this.timeout);
+      }
+      if (!!this.adapter) {
+        await this.adapter.close();
       }
     }
   }
