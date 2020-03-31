@@ -17,9 +17,9 @@ export function test(
   optionsOrFn: Omit<ITestOptions, "name"> | (() => void),
   fn?: () => void
 ): void {
-  const test = Test.create(nameOrOptions, optionsOrFn, fn);
+  const newTest = Test.create(nameOrOptions, optionsOrFn, fn);
   if (Suite.globalStack.length > 0) {
-    Suite.globalStack.slice(-1)[0].addTest(test);
+    Suite.globalStack.slice(-1)[0].addTest(newTest);
   } else {
     throw new Error("Cannot create a top level test, must be created in a suite.");
   }

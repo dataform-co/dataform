@@ -1,5 +1,10 @@
 {
-  "extends": ["tslint:recommended", "tslint-react", "tslint-config-prettier"],
+  "extends": [
+    "tslint:recommended",
+    "tslint-react",
+    "tslint-config-prettier",
+    "tslint-config-security"
+  ],
   "rules": {
     "object-literal-sort-keys": false,
     "max-classes-per-file": [false, 1],

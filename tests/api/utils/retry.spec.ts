@@ -1,6 +1,6 @@
 import { retry } from "@dataform/api/utils/retry";
-import { expect } from "chai";
 import { suite, test } from "@dataform/testing";
+import { expect } from "chai";
 
 suite("retry", () => {
   test("doesn't retry if the function succeeds", async () => {
@@ -36,7 +36,9 @@ suite("retry", () => {
     };
     try {
       await retry(failingFunc, 2);
-    } catch (e) {}
+    } catch (e) {
+      expect(e.message).equal("an error");
+    }
     expect(calledTimes).eq(3);
   });
 
@@ -51,7 +53,9 @@ suite("retry", () => {
     };
     try {
       await retry(failingFunc, 2);
-    } catch (e) {}
+    } catch (e) {
+      expect(e.message).equal("an error");
+    }
     expect(calledTimes).eq(2);
   });
 });

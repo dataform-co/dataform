@@ -71,12 +71,13 @@ suite("@dataform/integration/bigquery", ({ after }) => {
     const actionsToRun = [
       ...compiledGraph.tables
         .filter(
-          table => table.name !== "dataform-integration-tests.df_integration_test.depends_on_example_view"
+          table =>
+            table.name !== "dataform-integration-tests.df_integration_test.depends_on_example_view"
         )
         .map(table => table.name),
       ...compiledGraph.assertions.map(assertion => assertion.name),
       ...compiledGraph.operations.map(operation => operation.name)
-    ]
+    ];
 
     let executionGraph = await dfapi.build(
       compiledGraph,
@@ -86,7 +87,7 @@ suite("@dataform/integration/bigquery", ({ after }) => {
       credentials
     );
 
-    let executedGraph = await dfapi.run(executionGraph, credentials).resultPromise();
+    let executedGraph = await dfapi.run(executionGraph, credentials).result();
 
     let actionMap = keyBy(executedGraph.actions, v => v.name);
     expect(Object.keys(actionMap).length).eql(13);
@@ -142,7 +143,7 @@ suite("@dataform/integration/bigquery", ({ after }) => {
       credentials
     );
 
-    executedGraph = await dfapi.run(executionGraph, credentials).resultPromise();
+    executedGraph = await dfapi.run(executionGraph, credentials).result();
     expect(executedGraph.status).equals(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
 
     // Check there are the expected number of extra rows in the incremental table.
@@ -176,7 +177,7 @@ suite("@dataform/integration/bigquery", ({ after }) => {
       credentials
     );
 
-    executedGraph = await dfapi.run(executionGraph, credentials).resultPromise();
+    executedGraph = await dfapi.run(executionGraph, credentials).result();
     actionMap = keyBy(executedGraph.actions, v => v.name);
 
     expect(executedGraph.status).equals(dataform.RunResult.ExecutionStatus.FAILED);
@@ -235,7 +236,7 @@ suite("@dataform/integration/bigquery", ({ after }) => {
       credentials
     );
 
-    executedGraph = await dfapi.run(executionGraph, credentials).resultPromise();
+    executedGraph = await dfapi.run(executionGraph, credentials).result();
     expect(executedGraph.status).equals(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
     actionMap = keyBy(executedGraph.actions, v => v.name);
     expectedActionStatus = {

@@ -1,4 +1,4 @@
-import { ICommonConfig, ICommonContext, Resolvable } from "@dataform/core/common";
+import { ICommonContext, Resolvable } from "@dataform/core/common";
 import { Contextable } from "@dataform/core/common";
 import { Session } from "@dataform/core/session";
 import * as table from "@dataform/core/table";
@@ -19,19 +19,14 @@ export interface ITestConfig {
 /**
  * @hidden
  */
-export interface ITestContext extends ICommonContext {}
-
-/**
- * @hidden
- */
 export class Test {
   public proto: dataform.ITest = dataform.Test.create();
 
   public session: Session;
-  public contextableInputs: { [refName: string]: Contextable<ITestContext, string> } = {};
+  public contextableInputs: { [refName: string]: Contextable<ICommonContext, string> } = {};
 
   private datasetToTest: Resolvable;
-  private contextableQuery: Contextable<ITestContext, string>;
+  private contextableQuery: Contextable<ICommonContext, string>;
 
   public config(config: ITestConfig) {
     if (config.dataset) {
@@ -45,12 +40,12 @@ export class Test {
     return this;
   }
 
-  public input(refName: string, contextableQuery: Contextable<ITestContext, string>) {
+  public input(refName: string, contextableQuery: Contextable<ICommonContext, string>) {
     this.contextableInputs[refName] = contextableQuery;
     return this;
   }
 
-  public expect(contextableQuery: Contextable<ITestContext, string>) {
+  public expect(contextableQuery: Contextable<ICommonContext, string>) {
     this.contextableQuery = contextableQuery;
     return this;
   }
@@ -100,7 +95,7 @@ export class TestContext {
     this.test = test;
   }
 
-  public apply<T>(value: Contextable<ITestContext, T>): T {
+  public apply<T>(value: Contextable<ICommonContext, T>): T {
     if (typeof value === "function") {
       return (value as any)(this);
     } else {

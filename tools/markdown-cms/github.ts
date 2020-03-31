@@ -53,7 +53,7 @@ export class GitHubCms<T> implements ICms<T> {
         path
       })
       .then(result => {
-        const buffer = new Buffer((result.data as any).content, "base64");
+        const buffer = Buffer.from((result.data as any).content, "base64");
         return buffer.toString("utf8");
       });
   }

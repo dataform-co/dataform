@@ -150,7 +150,9 @@ export class RedshiftAdapter extends Adapter implements IAdapter {
       .add(
         Task.statement(
           `delete from ${finalTarget} using ${tempTarget} where ${uniqueKey
-            .map(uniqueKey => `${finalTarget}."${uniqueKey}" = ${tempTarget}."${uniqueKey}"`)
+            .map(
+              uniqueKeyCol => `${finalTarget}."${uniqueKeyCol}" = ${tempTarget}."${uniqueKeyCol}"`
+            )
             .join(` and `)};`
         )
       )

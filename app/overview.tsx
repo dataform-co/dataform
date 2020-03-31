@@ -1,7 +1,7 @@
 import { Button, Navbar, NavbarGroup, Tag } from "@blueprintjs/core";
-import { dataform } from "@dataform/protos";
 import * as styles from "@dataform/app/overview.css";
 import { Service } from "@dataform/app/service";
+import { dataform } from "@dataform/protos";
 import * as React from "react";
 
 interface IProps {

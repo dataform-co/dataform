@@ -1,5 +1,5 @@
-import * as objectHash from "object-hash";
 import { dataform } from "@dataform/protos";
+import * as objectHash from "object-hash";
 
 export interface IMetadataRow {
   target_name: string;
@@ -17,7 +17,7 @@ export const decodePersistedTableMetadata = (protoString: string) => {
 };
 
 export const encodePersistedTableMetadata = (table: dataform.PersistedTableMetadata) => {
-  const encodedProtoBuffer = new Buffer(dataform.PersistedTableMetadata.encode(table).finish());
+  const encodedProtoBuffer = Buffer.from(dataform.PersistedTableMetadata.encode(table).finish());
   return encodedProtoBuffer.toString("base64");
 };
 

@@ -15,7 +15,7 @@ export function getBigQueryCredentials(): dataform.IBigQuery {
   if (!fs.existsSync(cloudCredentialsPath)) {
     throw new Error(`Google Cloud private key file "${cloudCredentialsPath}" does not exist!`);
   }
-  const cloudCredentials = require(cloudCredentialsPath);
+  const cloudCredentials = JSON.parse(fs.readFileSync(cloudCredentialsPath, "utf8"));
   const locationIndex = selectionQuestion("Enter the location of your datasets:", [
     "US (default)",
     "EU",

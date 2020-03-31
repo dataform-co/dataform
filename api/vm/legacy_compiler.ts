@@ -111,8 +111,8 @@ export function extractJsBlocks(code: string): { sql: string; js: string } {
 }
 
 export function getFunctionPropertyNames(prototype: any) {
-  return Object.getOwnPropertyNames(prototype).filter(function(e, i, arr) {
-    if (e != arr[i + 1] && typeof prototype[e] == "function") {
+  return Object.getOwnPropertyNames(prototype).filter((e, i, arr) => {
+    if (e !== arr[i + 1] && typeof prototype[e] === "function") {
       return true;
     }
   });

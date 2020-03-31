@@ -16,16 +16,7 @@ const isSuccessfulAction = (actionResult: dataform.IActionResult) =>
 
 export function run(graph: dataform.IExecutionGraph, credentials: Credentials): Runner {
   const dbadapter = dbadapters.create(credentials, graph.projectConfig.warehouse);
-  const runner = Runner.create(dbadapter, graph);
-  const executeAndCloseDbAdapter = async () => {
-    try {
-      await runner.execute();
-    } finally {
-      await dbadapter.close();
-    }
-  };
-  executeAndCloseDbAdapter();
-  return runner;
+  return Runner.create(dbadapter, graph).execute();
 }
 
 export class Runner {
@@ -65,7 +56,7 @@ export class Runner {
     return this;
   }
 
-  public async execute(): Promise<dataform.IRunResult> {
+  public execute(): this {
     if (!!this.executionTask) {
       throw new Error("Executor already started.");
     }
@@ -76,7 +67,7 @@ export class Runner {
         this.cancel();
       }, this.graph.runConfig.timeoutMillis);
     }
-    return this.resultPromise();
+    return this;
   }
 
   public cancel() {
@@ -84,12 +75,15 @@ export class Runner {
     this.eEmitter.emit(CANCEL_EVENT);
   }
 
-  public async resultPromise(): Promise<dataform.IRunResult> {
+  public async result(): Promise<dataform.IRunResult> {
     try {
       return await this.executionTask;
     } finally {
       if (!!this.timeout) {
         clearTimeout(this.timeout);
+      }
+      if (!!this.adapter) {
+        await this.adapter.close();
       }
     }
   }
@@ -353,16 +347,16 @@ export class Runner {
     return taskResult.status;
   }
 
-  private actionHasCacheHit(action: dataform.IExecutionAction): boolean {
+  private actionHasCacheHit(executionAction: dataform.IExecutionAction): boolean {
     if (!(this.graph.runConfig && this.graph.runConfig.useRunCache)) {
       return false;
     }
 
-    if (action.type === "operation") {
+    if (executionAction.type === "operation") {
       return false;
     }
 
-    for (const dependencyTarget of action.dependencyTargets) {
+    for (const dependencyTarget of executionAction.dependencyTargets) {
       const dependencyAction = this.graph.actions.find(
         action => lodash.isEqual(action.target, dependencyTarget)
       );
@@ -381,10 +375,10 @@ export class Runner {
     }
 
     const cachedState = this.graph.warehouseState.cachedStates.find(state =>
-      lodash.isEqual(state.target, action.target)
+      lodash.isEqual(state.target, executionAction.target)
     );
     const tableMetadata = this.graph.warehouseState.tables.find(table =>
-      lodash.isEqual(table.target, action.target)
+      lodash.isEqual(table.target, executionAction.target)
     );
 
     if (!cachedState || !tableMetadata) {
@@ -395,7 +389,8 @@ export class Runner {
       return false;
     }
 
-    if (hashExecutionAction(action) !== cachedState.definitionHash) {
+    // tslint:disable-next-line: tsr-detect-possible-timing-attacks
+    if (hashExecutionAction(executionAction) !== cachedState.definitionHash) {
       return false;
     }
 
