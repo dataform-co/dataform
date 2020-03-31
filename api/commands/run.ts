@@ -300,6 +300,13 @@ export class Runner {
       actionResult.status = dataform.ActionResult.ExecutionStatus.SUCCESSFUL;
     }
 
+    if (
+      action.actionDescriptor &&
+      actionResult.status === dataform.ActionResult.ExecutionStatus.SUCCESSFUL &&
+      !(this.graph.runConfig && this.graph.runConfig.disableSetMetadata)
+    ) {
+      await this.adapter.setMetadata(action);
+    }
     actionResult.timing = timer.end();
     await this.triggerChange();
   }
@@ -357,8 +364,8 @@ export class Runner {
     }
 
     for (const dependencyTarget of executionAction.dependencyTargets) {
-      const dependencyAction = this.graph.actions.find(
-        action => lodash.isEqual(action.target, dependencyTarget)
+      const dependencyAction = this.graph.actions.find(action =>
+        lodash.isEqual(action.target, dependencyTarget)
       );
       if (!dependencyAction) {
         continue;
@@ -371,7 +378,6 @@ export class Runner {
       if (runResultAction.status !== dataform.ActionResult.ExecutionStatus.CACHE_SKIPPED) {
         return false;
       }
-
     }
 
     const cachedState = this.graph.warehouseState.cachedStates.find(state =>
@@ -414,7 +420,7 @@ class Timer {
   public static start() {
     return new Timer(new Date().valueOf());
   }
-  private constructor(readonly startTimeMillis: number) { }
+  private constructor(readonly startTimeMillis: number) {}
 
   public current(): dataform.ITiming {
     return {

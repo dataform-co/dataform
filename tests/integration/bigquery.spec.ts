@@ -228,6 +228,63 @@ suite("@dataform/integration/bigquery", ({ after }) => {
       return table;
     });
 
+    // metadata
+    const incrementalAction = executionGraph.actions.find(
+      action => action.name === "dataform-integration-tests.df_integration_test.example_incremental"
+    );
+
+    const expectedIncrementalSchema = {
+      fields: [
+        {
+          description: "the timestamp",
+          name: "user_timestamp",
+          type: "INTEGER"
+        },
+        {
+          description: "the id",
+          name: "user_id",
+          type: "INTEGER"
+        },
+        {
+          name: "nested_data",
+          description: "some nested data with duplicate fields",
+          type: "RECORD",
+          fields: [
+            {
+              description: "nested timestamp",
+              name: "user_timestamp",
+              type: "INTEGER"
+            },
+            {
+              description: "nested id",
+              name: "user_id",
+              type: "INTEGER"
+            }
+          ]
+        }
+      ]
+    };
+    const incrementalMetadata = await dbadapter.getMetadata(incrementalAction.target);
+    expect(incrementalMetadata.schema).to.deep.equal(expectedIncrementalSchema);
+    expect(incrementalMetadata.description).to.equal("An incremental table");
+
+    // view metadata
+    const viewAction = executionGraph.actions.find(
+      action => action.name === "dataform-integration-tests.df_integration_test.example_view"
+    );
+    const expectedViewSchema = {
+      fields: [
+        {
+          description: "val doc",
+          name: "val",
+          type: "INTEGER"
+        }
+      ]
+    };
+    const viewMetadata = await dbadapter.getMetadata(viewAction.target);
+    expect(viewMetadata.schema).to.deep.equal(expectedViewSchema);
+    expect(viewMetadata.description).to.equal("An example view");
+
     executionGraph = await dfapi.build(
       compiledGraph,
       {
