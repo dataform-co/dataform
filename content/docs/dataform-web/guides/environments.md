@@ -153,8 +153,8 @@ Some teams may not be at the stage where they require a `staging` environment, b
 In the example below:
 
 - any code deployed during development will use the `defaultDatabase` from the `dataform.json`
-- any code deployed by schedules will run in the `production` environment and so use the `defaultDatabase` from the `configOverride` in `environments.json`
-- schedules will use the version of the code from the `master` branch
+- schedules only run in the single `production` environment, and so use the `defaultDatabase` from that environment's `configOverride`
+- the `production` environment specifies the `master` Git branch, so all of its schedules will run using that version of the code
 
 `dataform.json`:
 ```json
