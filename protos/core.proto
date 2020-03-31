@@ -51,6 +51,7 @@ message RunConfig {
   bool full_refresh = 2;
   int32 timeout_millis = 7;
   bool use_run_cache = 8;
+  bool disable_set_metadata = 9;
 
   reserved 4, 6;
 }
@@ -430,6 +431,7 @@ message Field {
     string primitive = 2;
     Fields struct = 3;
   }
+  string description  = 5;
 }
 
 message Fields {
@@ -441,6 +443,7 @@ message TableMetadata {
   string type = 2; // "table" or "view"
   repeated Field fields = 3;
   int64 last_updated_millis = 4;
+  string description = 5;
 }
 
 message PersistedTableMetadata {

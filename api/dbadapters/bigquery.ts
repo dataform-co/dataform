@@ -139,7 +139,8 @@ export class BigQueryDbAdapter implements IDbAdapter {
       type: String(metadata.type).toLowerCase(),
       target,
       fields: metadata.schema.fields.map(field => convertField(field)),
-      lastUpdatedMillis: Long.fromString(metadata.lastModifiedTime)
+      lastUpdatedMillis: Long.fromString(metadata.lastModifiedTime),
+      description: metadata.description
     });
   }
 
@@ -266,17 +267,17 @@ export class BigQueryDbAdapter implements IDbAdapter {
     await this.runQuery(updateQuery);
   }
 
-  public async setMetadata(action: dataform.IExecutionAction): Promise<void> {
+  public async setMetadata(action: dataform.IExecutionAction): Promise<any> {
     const { target, actionDescriptor, type } = action;
 
     if (!actionDescriptor || !["view", "table"].includes(type)) {
       return;
     }
 
-    await this.pool
+    return this.pool
       .addSingleTask({
         generator: async () => {
-          const metadata = await this.getMetadata(target);
+          const metadata = await this.getMetadataOutsidePromisePool(target);
           const schemaWithDescription = addDescriptionToMetadata(
             actionDescriptor.columns,
             metadata.schema.fields
@@ -296,27 +297,11 @@ export class BigQueryDbAdapter implements IDbAdapter {
   }
 
   public async getMetadata(target: dataform.ITarget): Promise<IBigQueryTableMetadata> {
-    const metadataResult = await this.pool
+    return this.pool
       .addSingleTask({
-        generator: async () => {
-          try {
-            const table = await this.getClient(target.database)
-              .dataset(target.schema)
-              .table(target.name)
-              .getMetadata();
-            return table;
-          } catch (e) {
-            if (e && e.errors && e.errors[0] && e.errors[0].reason === "notFound") {
-              // if the table can't be found, just return null
-              return null;
-            }
-            // otherwise throw the error as normal
-            throw e;
-          }
-        }
+        generator: async () => this.getMetadataOutsidePromisePool(target)
       })
       .promise();
-    return metadataResult && metadataResult[0];
   }
 
   public async deleteStateMetadata(actions: dataform.IExecutionAction[]): Promise<void> {
@@ -328,6 +313,25 @@ export class BigQueryDbAdapter implements IDbAdapter {
       .join(",");
     const rowDeleteQuery = `DELETE \`${CACHED_STATE_TABLE_NAME}\` WHERE target_name IN (${targetNames})`;
     await this.runQuery(rowDeleteQuery);
+  }
+
+  private async getMetadataOutsidePromisePool(
+    target: dataform.ITarget
+  ): Promise<IBigQueryTableMetadata> {
+    try {
+      const table = await this.getClient(target.database)
+        .dataset(target.schema)
+        .table(target.name)
+        .getMetadata();
+      return table && table[0];
+    } catch (e) {
+      if (e && e.errors && e.errors[0] && e.errors[0].reason === "notFound") {
+        // if the table can't be found, just return null
+        return null;
+      }
+      // otherwise throw the error as normal
+      throw e;
+    }
   }
 
   private getClient(projectId?: string) {
@@ -458,7 +462,8 @@ function cleanRows(rows: any[]) {
 function convertField(field: IBigQueryFieldMetadata): dataform.IField {
   const result: dataform.IField = {
     name: field.name,
-    flags: !!field.mode ? [field.mode] : []
+    flags: !!field.mode ? [field.mode] : [],
+    description: field.description
   };
   if (field.type === "RECORD") {
     result.struct = { fields: field.fields.map(innerField => convertField(innerField)) };
