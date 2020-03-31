@@ -145,3 +145,40 @@ An alternative approach to separating production and staging data is to append a
   ]
 }
 ```
+
+## Example: use separate databases for development and production data
+
+Some teams may not be at the stage where they require a `staging` environment, but still would like to keep development and production data separated. This can be done using a `configOverride` in the `production` environment.
+
+In the example below:
+
+- any code deployed during development will use the `defaultDatabase` from the `dataform.json`
+- schedules only run in the single `production` environment, and so use the `defaultDatabase` from that environment's `configOverride`
+- the `production` environment specifies the `master` Git branch, so all of its schedules will run using that version of the code
+
+`dataform.json`:
+```json
+{
+    "warehouse": "bigquery",
+    "defaultSchema": "dataform_data",
+    "defaultDatabase": "analytics-development",
+}
+```
+
+
+`environments.json`:
+```json
+ {
+    "environments": [
+        {
+            "name": "production",
+            "gitReference": {
+                "branch": "master"
+            },
+            "configOverride": { "defaultDatabase": "analytics-production" }
+        }
+    ]
+}
+```
+
+Note, this is only supported for BigQuery and Snowflake. For other warehouses, we recommend overriding schema suffixes instead of `defaultDatabase`.
