@@ -10,7 +10,7 @@
       "args": ["./..."]
     },
     {
-      "name": "l.gcr.io/google/bazel:1.1.0",
+      "name": "l.gcr.io/google/bazel:2.0.0",
       "entrypoint": "bash",
       "args": ["./scripts/cloudbuild/bazel_test"]
     }
