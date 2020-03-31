@@ -4,8 +4,8 @@ import { retry } from "@dataform/api/utils/retry";
 import { hashExecutionAction } from "@dataform/api/utils/run_cache";
 import { dataform } from "@dataform/protos";
 import * as EventEmitter from "events";
-import * as Long from "long";
 import * as lodash from "lodash";
+import * as Long from "long";
 
 const CANCEL_EVENT = "jobCancel";
 
@@ -363,8 +363,8 @@ export class Runner {
     }
 
     for (const dependencyTarget of executionAction.dependencyTargets) {
-      const dependencyAction = this.graph.actions.find(
-        action => lodash.isEqual(action.target, dependencyTarget)
+      const dependencyAction = this.graph.actions.find(action =>
+        lodash.isEqual(action.target, dependencyTarget)
       );
       if (!dependencyAction) {
         continue;
@@ -377,7 +377,6 @@ export class Runner {
       if (runResultAction.status !== dataform.ActionResult.ExecutionStatus.CACHE_SKIPPED) {
         return false;
       }
-
     }
 
     const cachedState = this.graph.warehouseState.cachedStates.find(state =>
@@ -420,7 +419,7 @@ class Timer {
   public static start() {
     return new Timer(new Date().valueOf());
   }
-  private constructor(readonly startTimeMillis: number) { }
+  private constructor(readonly startTimeMillis: number) {}
 
   public current(): dataform.ITiming {
     return {
