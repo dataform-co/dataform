@@ -146,7 +146,7 @@ An alternative approach to separating production and staging data is to append a
 }
 ```
 
-## Example: separating development and production data into two databases
+## Example: use separate databases for development and production data
 
 Some teams may not be at the stage where they require a `staging` environment, but still would like to keep development and production data separated. This can be done using a `configOverride` in the `production` environment.
 
