@@ -430,6 +430,7 @@ message Field {
     string primitive = 2;
     Fields struct = 3;
   }
+  string description  = 5;
 }
 
 message Fields {
@@ -441,6 +442,7 @@ message TableMetadata {
   string type = 2; // "table" or "view"
   repeated Field fields = 3;
   int64 last_updated_millis = 4;
+  string description = 5;
 }
 
 message PersistedTableMetadata {
