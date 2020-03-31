@@ -71,7 +71,6 @@ suite("examples", () => {
             t.name ===
             "tada-analytics." + schemaWithSuffix("df_integration_test") + ".example_js_blocks"
         );
-        expect(exampleJsBlocks).to.not.be.undefined;
         expect(exampleJsBlocks.type).equals("table");
         expect(exampleJsBlocks.query.trim()).equals("select 1 as foo");
 
@@ -81,7 +80,6 @@ suite("examples", () => {
             t.name ===
             "tada-analytics." + schemaWithSuffix("df_integration_test") + ".example_incremental"
         );
-        expect(exampleIncremental).to.not.be.undefined;
         expect(exampleIncremental.protected).eql(true);
         expect(exampleIncremental.query.trim()).equals("select current_timestamp() as ts");
         expect(exampleIncremental.where.trim()).equals(
@@ -118,13 +116,13 @@ suite("examples", () => {
         const exampleIgnore = graph.tables.find(
           (t: dataform.ITable) => t.name === "example_ignore"
         );
-        expect(exampleIgnore).to.be.undefined;
-        const exampleIgnore_2 = graph.tables.find(
+        expect(exampleIgnore).equal(undefined);
+        const exampleIgnore2 = graph.tables.find(
           (t: dataform.ITable) =>
             t.name ===
             "tada-analytics." + schemaWithSuffix("df_integration_test") + ".example_ignore"
         );
-        expect(exampleIgnore).to.be.undefined;
+        expect(exampleIgnore2).equal(undefined);
 
         // Check SQL files with raw back-ticks get escaped.
         const exampleBackticks = graph.tables.find(
@@ -132,7 +130,6 @@ suite("examples", () => {
             t.name ===
             "tada-analytics." + schemaWithSuffix("df_integration_test") + ".example_backticks"
         );
-        expect(exampleBackticks).to.not.be.undefined;
         expect(cleanSql(exampleBackticks.query)).equals(
           "select * from `tada-analytics.df_integration_test.sample_data`"
         );
@@ -147,7 +144,6 @@ suite("examples", () => {
             t.name ===
             "tada-analytics." + schemaWithSuffix("df_integration_test") + ".example_deferred"
         );
-        expect(exampleDeferred).to.not.be.undefined;
         expect(exampleDeferred.fileName).includes("definitions/example_deferred.js");
 
         // Check inline tables
@@ -156,7 +152,6 @@ suite("examples", () => {
             t.name ===
             "tada-analytics." + schemaWithSuffix("df_integration_test") + ".example_inline"
         );
-        expect(exampleInline).to.not.be.undefined;
         expect(exampleInline.type).equals("inline");
         expect(exampleInline.query.trim()).equals(
           `select * from \`tada-analytics.${schemaWithSuffix("df_integration_test")}.sample_data\``
@@ -170,7 +165,6 @@ suite("examples", () => {
             t.name ===
             "tada-analytics." + schemaWithSuffix("df_integration_test") + ".example_using_inline"
         );
-        expect(exampleUsingInline).to.not.be.undefined;
         expect(exampleUsingInline.type).equals("table");
         expect(exampleUsingInline.query.trim()).equals(
           `select * from (\n\nselect * from \`tada-analytics.${schemaWithSuffix(
@@ -186,7 +180,6 @@ suite("examples", () => {
           (t: dataform.ITable) =>
             t.name === "tada-analytics." + schemaWithSuffix("df_integration_test") + ".example_view"
         );
-        expect(exampleView).to.not.be.undefined;
         expect(exampleView.type).equals("view");
         expect(exampleView.query.trim()).equals(
           `select * from \`tada-analytics.${schemaWithSuffix(
@@ -214,7 +207,6 @@ suite("examples", () => {
             t.name ===
             "tada-analytics." + schemaWithSuffix("df_integration_test") + ".example_table"
         );
-        expect(exampleTable).to.not.be.undefined;
         expect(exampleTable.type).equals("table");
         expect(exampleTable.query.trim()).equals(
           `select * from \`tada-analytics.${schemaWithSuffix(
@@ -241,7 +233,6 @@ suite("examples", () => {
             t.name ===
             "tada-analytics." + schemaWithSuffix("df_integration_test") + ".example_table_with_tags"
         );
-        expect(exampleTableWithTags).to.not.be.undefined;
         expect(exampleTableWithTags.tags).to.eql(["tag1", "tag2", "tag3"]);
 
         // Check sample data
@@ -249,7 +240,6 @@ suite("examples", () => {
           (t: dataform.ITable) =>
             t.name === "tada-analytics." + schemaWithSuffix("df_integration_test") + ".sample_data"
         );
-        expect(exampleSampleData).to.not.be.undefined;
         expect(exampleSampleData.type).equals("view");
         expect(exampleSampleData.query.trim()).equals(
           "select 1 as sample union all\nselect 2 as sample union all\nselect 3 as sample"
@@ -276,7 +266,6 @@ suite("examples", () => {
               ".override_database_example"
         );
 
-        expect(exampleUsingOverriddenDatabase).to.not.be.undefined;
         expect(exampleUsingOverriddenDatabase.target.database).equals("override_database");
         expect(exampleUsingOverriddenDatabase.type).equals("view");
         expect(exampleUsingOverriddenDatabase.query.trim()).equals(
@@ -290,7 +279,6 @@ suite("examples", () => {
             "tada-analytics." + schemaWithSuffix("override_schema") + ".override_schema_example"
         );
 
-        expect(exampleUsingOverriddenSchema).to.not.be.undefined;
         expect(exampleUsingOverriddenSchema.target.schema).equals(
           schemaWithSuffix("override_schema")
         );
@@ -308,7 +296,6 @@ suite("examples", () => {
               ".override_schema_example_unchanged"
         );
 
-        expect(exampleUsingOverriddenSchemaUnchanged).to.not.be.undefined;
         expect(exampleUsingOverriddenSchemaUnchanged.target.schema).equals(
           schemaWithSuffix("df_integration_test")
         );
@@ -322,7 +309,6 @@ suite("examples", () => {
           (a: dataform.IAssertion) =>
             a.name === "tada-analytics." + schemaWithSuffix("hi_there") + ".example_assertion"
         );
-        expect(exampleAssertion).to.not.be.undefined;
         expect(exampleAssertion.target.schema).equals(schemaWithSuffix("hi_there"));
         expect(exampleAssertion.query.trim()).equals(
           `select * from \`tada-analytics.${schemaWithSuffix(
@@ -347,7 +333,6 @@ suite("examples", () => {
               schemaWithSuffix("df_integration_test_assertions") +
               ".example_assertion_with_tags"
         );
-        expect(exampleAssertionWithTags).to.not.be.undefined;
         expect(exampleAssertionWithTags.target.schema).equals(
           schemaWithSuffix("df_integration_test_assertions")
         );
@@ -359,8 +344,7 @@ suite("examples", () => {
             o.name ===
             "tada-analytics." + schemaWithSuffix("df_integration_test") + ".example_operations"
         );
-        expect(exampleOperations).to.not.be.undefined;
-        expect(exampleOperations.hasOutput).is.false;
+        expect(exampleOperations.hasOutput).equals(false);
         expect(exampleOperations.queries).to.eql([
           "\n\nCREATE OR REPLACE VIEW someschema.someview AS (SELECT 1 AS test)\n",
           `\nDROP VIEW IF EXISTS \`tada-analytics.${schemaWithSuffix(
@@ -387,7 +371,6 @@ suite("examples", () => {
               schemaWithSuffix("df_integration_test") +
               ".example_operation_with_output"
         );
-        expect(exampleOperationWithOutput).to.not.be.undefined;
         expect(exampleOperationWithOutput.target.schema).equals(
           schemaWithSuffix("df_integration_test")
         );
@@ -420,7 +403,6 @@ suite("examples", () => {
               schemaWithSuffix("df_integration_test") +
               ".example_operations_with_tags"
         );
-        expect(exampleOperationsWithTags).to.not.be.undefined;
         expect(exampleOperationsWithTags.tags).to.eql(["tag1"]);
 
         // Check declaration.
@@ -428,7 +410,6 @@ suite("examples", () => {
           d =>
             d.name === "some_database_name.some_external_schema_name.very_important_external_table"
         );
-        expect(exampleDeclaration).to.not.be.undefined;
         expect(exampleDeclaration.target).eql(
           dataform.Target.create({
             database: "some_database_name",
@@ -465,7 +446,6 @@ suite("examples", () => {
               schemaWithSuffix("df_integration_test") +
               ".example_double_backslash"
         );
-        expect(exampleDoubleBackslash).to.not.be.undefined;
         expect(cleanSql(exampleDoubleBackslash.query)).equals(
           "select * from regexp_extract('01a_data_engine', '^(\\\\d{2}\\\\w)') select * from regexp_extract('01a_data_engine', r'^(\\d{2}\\w)')"
         );
@@ -659,12 +639,7 @@ suite("examples", () => {
 
       const gErrors = utils.validate(graph);
 
-      expect(gErrors)
-        .to.have.property("compilationErrors")
-        .to.be.an("array").that.is.empty;
-      expect(gErrors)
-        .to.have.property("validationErrors")
-        .to.be.an("array").that.is.empty;
+      expect(gErrors).deep.equals(dataform.GraphErrors.create({}));
 
       const mNames = graph.tables.map((t: dataform.ITable) => t.name);
 
@@ -676,7 +651,7 @@ suite("examples", () => {
       expect(mIncremental.query).equals(
         "select convert_timezone('UTC', current_timestamp())::timestamp as ts"
       );
-      expect(mIncremental.dependencies).to.be.an("array").that.is.empty;
+      expect(mIncremental.dependencies).deep.equals([]);
 
       expect(mNames).includes("DF_INTEGRATION_TEST.EXAMPLE_TABLE");
       const mTable = graph.tables.filter(
@@ -702,7 +677,7 @@ suite("examples", () => {
       expect(mSampleData.query).equals(
         "select 1 as sample union all\nselect 2 as sample union all\nselect 3 as sample"
       );
-      expect(mSampleData.dependencies).to.be.an("array").that.is.empty;
+      expect(mSampleData.dependencies).deep.equals([]);
 
       // Check inline tables
       expect(mNames).includes("DF_INTEGRATION_TEST.EXAMPLE_INLINE");

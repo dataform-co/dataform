@@ -25,11 +25,11 @@ export function suite(
   optionsOrFn: Omit<ISuiteOptions, "name"> | ((ctx?: ISuiteContext) => void),
   fn?: (ctx?: ISuiteContext) => void
 ) {
-  const suite = Suite.create(nameOrOptions, optionsOrFn, fn);
+  const newSuite = Suite.create(nameOrOptions, optionsOrFn, fn);
   if (Suite.globalStack.length > 0) {
-    Suite.globalStack.slice(-1)[0].addSuite(suite);
+    Suite.globalStack.slice(-1)[0].addSuite(newSuite);
   } else {
-    Runner.registerTopLevelSuite(suite);
+    Runner.registerTopLevelSuite(newSuite);
   }
 }
 
@@ -104,19 +104,19 @@ export class Suite {
     }
   }
 
-  public addSuite(suite: Suite) {
+  public addSuite(newSuite: Suite) {
     this.checkMutation();
-    this.suites.push(suite);
+    this.suites.push(newSuite);
   }
 
-  public addTest(test: Test) {
+  public addTest(newTest: Test) {
     this.checkMutation();
-    this.tests.push(test);
+    this.tests.push(newTest);
   }
 
-  private addHook(hookList: Hook[], hook: Hook) {
+  private addHook(hookList: Hook[], newHook: Hook) {
     this.checkMutation();
-    hookList.push(hook);
+    hookList.push(newHook);
   }
 
   private checkMutation() {

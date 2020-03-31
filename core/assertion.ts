@@ -9,12 +9,6 @@ import * as utils from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
 
 /**
- * Context methods are available when evaluating contextable SQL code, such as
- * within SQLX files, or when using a [Contextable](#Contextable) argument with the JS API.
- */
-export interface IAssertionContext extends ICommonContext {}
-
-/**
  * Configuration options for `assertion` action types.
  */
 export interface IAssertionConfig extends ITargetableConfig, IDependenciesConfig {
@@ -127,7 +121,7 @@ export class Assertion {
 /**
  * @hidden
  */
-export class AssertionContext implements IAssertionContext {
+export class AssertionContext implements ICommonContext {
   private assertion?: Assertion;
 
   constructor(assertion: Assertion) {

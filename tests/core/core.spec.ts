@@ -230,9 +230,7 @@ suite("@dataform/core", () => {
       const cgSuccess = sessionSuccess.compile();
       const cgSuccessErrors = utils.validate(cgSuccess);
 
-      expect(cgSuccessErrors)
-        .to.have.property("validationErrors")
-        .to.be.an("array").that.is.empty;
+      expect(cgSuccessErrors.validationErrors).deep.equals([]);
     });
 
     test("validation_type", () => {
@@ -243,18 +241,20 @@ suite("@dataform/core", () => {
       const cgSuccess = sessionSuccess.compile();
       const cgSuccessErrors = utils.validate(cgSuccess);
 
-      expect(cgSuccessErrors)
-        .to.have.property("validationErrors")
-        .to.be.an("array").that.is.empty;
+      expect(cgSuccessErrors.validationErrors).deep.equals([]);
 
       const sessionFail = new Session(path.dirname(__filename), TestConfigs.redshift);
       sessionFail.publish("exampleFail", JSON.parse('{"type": "ta ble"}'));
       const cgFail = sessionFail.compile();
       const cgFailErrors = utils.validate(cgFail);
 
-      expect(cgFailErrors)
-        .to.have.property("validationErrors")
-        .to.be.an("array").that.is.not.empty;
+      expect(cgFailErrors.validationErrors).deep.equals([
+        dataform.ValidationError.create({
+          actionName: "schema.exampleFail",
+          message:
+            'Wrong type of table detected. Should only use predefined types: "table" | "view" | "incremental" | "inline"'
+        })
+      ]);
 
       const err = cgFailErrors.validationErrors.find(e => e.actionName === "schema.exampleFail");
       expect(err)
@@ -285,9 +285,7 @@ suite("@dataform/core", () => {
         .to.be.an("array")
         .to.have.lengthOf(2);
 
-      expect(gErrors)
-        .to.have.property("validationErrors")
-        .to.be.an("array").that.is.empty;
+      expect(gErrors.validationErrors).deep.equals([]);
     });
 
     test("validation_redshift_fail", () => {
@@ -394,7 +392,7 @@ suite("@dataform/core", () => {
         gErrors.validationErrors
           .filter(item => item.actionName === "schema.example_partitionBy_view_fail")
           .map(item => item.message)
-      ).to.deep.equal([
+      ).to.deep.equals([
         `partitionBy/clusterBy are not valid for BigQuery views; they are only valid for tables`
       ]);
 
@@ -402,7 +400,7 @@ suite("@dataform/core", () => {
         gErrors.validationErrors
           .filter(item => item.actionName === "schema.example_clusterBy_but_no_partitionBy_fail")
           .map(item => item.message)
-      ).to.deep.equal([`clusterBy is not valid without partitionBy`]);
+      ).to.deep.equals([`clusterBy is not valid without partitionBy`]);
     });
 
     test("validation_bigquery_pass", () => {
@@ -418,13 +416,13 @@ suite("@dataform/core", () => {
       const graph = session.compile();
       const gValid = utils.validate(graph);
 
-      expect(graph.tables[0].bigquery).to.deep.equal(
+      expect(graph.tables[0].bigquery).to.deep.equals(
         dataform.BigQueryOptions.create({
           clusterBy: ["some_column", "some_other_column"],
           partitionBy: "some_partition"
         })
       );
-      expect(gValid).to.deep.equal(
+      expect(gValid).to.deep.equals(
         dataform.GraphErrors.create({
           compilationErrors: [],
           validationErrors: []
@@ -464,13 +462,11 @@ suite("@dataform/core", () => {
       const graphErrors = utils.validate(graph);
 
       const tableA = graph.tables.find(item => item.name === "schema.a");
-      expect(tableA).to.exist;
       expect(tableA.type).equals("table");
-      expect(tableA.dependencies).to.be.an("array").that.is.empty;
+      expect(tableA.dependencies).deep.equals([]);
       expect(tableA.query).equals("select 1 as test");
 
       const tableB = graph.tables.find(item => item.name === "schema.b");
-      expect(tableB).to.exist;
       expect(tableB.type).equals("inline");
       expect(tableB.dependencies).includes("schema.a");
       expect(tableB.actionDescriptor).eql({
@@ -491,12 +487,11 @@ suite("@dataform/core", () => {
           sortStyle: "compound"
         })
       );
-      expect(tableB.disabled).to.be.true;
+      expect(tableB.disabled).equals(true);
       expect(tableB.where).equals("test_where");
       expect(tableB.query).equals('select * from "schema"."a"');
 
       const tableC = graph.tables.find(item => item.name === "schema.c");
-      expect(tableC).to.exist;
       expect(tableC.type).equals("table");
       expect(tableC.dependencies).includes("schema.a");
       expect(tableC.actionDescriptor).eql({
@@ -509,14 +504,10 @@ suite("@dataform/core", () => {
       });
       expect(tableC.preOps).deep.equals(["pre_op_c"]);
       expect(tableC.postOps).deep.equals(["post_op_c"]);
-      expect(tableC.redshift).to.not.exist;
-      expect(tableC.disabled).to.be.false;
+      expect(tableC.redshift).equals(null);
+      expect(tableC.disabled).equals(false);
       expect(tableC.where).equals("");
       expect(tableC.query).equals('select * from (select * from "schema"."a")');
-
-      expect(graphErrors)
-        .to.have.property("validationErrors")
-        .to.be.an("array").that.is.not.empty;
 
       const errors = graphErrors.validationErrors
         .filter(item => item.actionName === "schema.b")
@@ -581,19 +572,15 @@ suite("@dataform/core", () => {
       const graph = session.compile();
       const gErrors = utils.validate(graph);
 
-      expect(gErrors)
-        .to.have.property("compilationErrors")
-        .to.be.an("array").that.is.empty;
-      expect(gErrors)
-        .to.have.property("validationErrors")
-        .to.be.an("array").that.is.empty;
+      expect(gErrors.compilationErrors).deep.equals([]);
+      expect(gErrors.validationErrors).deep.equals([]);
       expect(graph)
         .to.have.property("operations")
         .to.be.an("array")
         .to.have.lengthOf(2);
 
       expect(graph.operations[0].name).equals("schema.operate-1");
-      expect(graph.operations[0].dependencies).to.be.an("array").that.is.empty;
+      expect(graph.operations[0].dependencies).deep.equals([]);
       expect(graph.operations[0].queries).deep.equals(["select 1 as sample"]);
 
       expect(graph.operations[1].name).equals("schema.operate-2");
@@ -609,12 +596,9 @@ suite("@dataform/core", () => {
       session.publish("b").dependencies("a");
       const cGraph = session.compile();
       const gErrors = utils.validate(cGraph);
-      expect(gErrors)
-        .to.have.property("compilationErrors")
-        .to.be.an("array").that.is.not.empty;
       expect(
-        gErrors.compilationErrors.filter(item => item.message.match(/Circular dependency/))
-      ).to.be.an("array").that.is.not.empty;
+        gErrors.compilationErrors.filter(item => item.message.match(/Circular dependency/)).length
+      ).greaterThan(0);
     });
 
     test("missing_dependency", () => {
@@ -622,12 +606,9 @@ suite("@dataform/core", () => {
       session.publish("a", ctx => `select * from ${ctx.ref("b")}`);
       const cGraph = session.compile();
       const gErrors = utils.validate(cGraph);
-      expect(gErrors)
-        .to.have.property("compilationErrors")
-        .to.be.an("array").that.is.not.empty;
       expect(
-        gErrors.compilationErrors.filter(item => item.message.match(/Missing dependency/))
-      ).to.be.an("array").that.is.not.empty;
+        gErrors.compilationErrors.filter(item => item.message.match(/Missing dependency/)).length
+      ).greaterThan(0);
     });
 
     test("duplicate_action_names", () => {
@@ -638,14 +619,9 @@ suite("@dataform/core", () => {
       const cGraph = session.compile();
       const gErrors = utils.validate(cGraph);
 
-      expect(gErrors)
-        .to.have.property("compilationErrors")
-        .to.be.an("array").that.is.not.empty;
-
-      const errors = gErrors.compilationErrors.filter(item =>
-        item.message.match(/Duplicate action name/)
-      );
-      expect(errors).to.be.an("array").that.is.not.empty;
+      expect(
+        gErrors.compilationErrors.filter(item => item.message.match(/Duplicate action name/)).length
+      ).greaterThan(0);
     });
 
     test("same action names in different schemas (ambiguity)", () => {
@@ -655,15 +631,13 @@ suite("@dataform/core", () => {
       session.publish("b", { schema: "foo" }).dependencies("a");
       const cGraph = session.compile();
       const gErrors = utils.validate(cGraph);
-      expect(gErrors)
-        .to.have.property("compilationErrors")
-        .to.be.an("array").that.is.not.empty;
-      const errors = gErrors.compilationErrors.filter(item =>
-        item.message.match(
-          /Ambiguous Action name: {\"name\":\"a\"}. Did you mean one of: foo.a, bar.a./
-        )
-      );
-      expect(errors).to.be.an("array").that.is.not.empty;
+      expect(
+        gErrors.compilationErrors.filter(item =>
+          item.message.match(
+            /Ambiguous Action name: {\"name\":\"a\"}. Did you mean one of: foo.a, bar.a./
+          )
+        ).length
+      ).greaterThan(0);
     });
 
     test("same action name in same schema", () => {
@@ -673,13 +647,11 @@ suite("@dataform/core", () => {
       session.publish("b");
       const cGraph = session.compile();
       const gErrors = utils.validate(cGraph);
-      expect(gErrors)
-        .to.have.property("compilationErrors")
-        .to.be.an("array").that.is.not.empty;
-      const errors = gErrors.compilationErrors.filter(item =>
-        item.message.match(/Duplicate action name detected. Names within a schema must be unique/)
-      );
-      expect(errors).to.be.an("array").that.is.not.empty;
+      expect(
+        gErrors.compilationErrors.filter(item =>
+          item.message.match(/Duplicate action name detected. Names within a schema must be unique/)
+        ).length
+      ).greaterThan(0);
     });
 
     test("same action names in different schemas", () => {
@@ -689,9 +661,7 @@ suite("@dataform/core", () => {
       session.publish("a", { schema: "schema2" });
       const cGraph = session.compile();
       const gErrors = utils.validate(cGraph);
-      expect(gErrors)
-        .to.have.property("compilationErrors")
-        .to.be.an("array").that.is.empty;
+      expect(gErrors.compilationErrors).deep.equals([]);
     });
   });
 

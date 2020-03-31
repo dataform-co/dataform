@@ -1,10 +1,10 @@
 import { Button } from "@blueprintjs/core";
+import { ITree } from "@dataform-tools/markdown-cms/tree";
 import Navigation from "df/docs/components/navigation";
 import { IHeaderLink, PageLinks } from "df/docs/components/page_links";
 import { IExtraAttributes } from "df/docs/content_tree";
 import { BaseLayout } from "df/docs/layouts/base";
 import * as styles from "df/docs/layouts/documentation.css";
-import { ITree } from "@dataform-tools/markdown-cms/tree";
 import * as React from "react";
 
 export interface IProps {
@@ -21,11 +21,11 @@ export default class Documentation extends React.Component<IProps> {
       .filter(child => !!child.props.children)
       .map(child =>
         React.Children.toArray(child.props.children)
-          .map(child => child as React.ReactElement<any>)
-          .filter(child => child.type === "h2")
-          .map(child => ({
-            id: child.props.id,
-            text: child.props.children[0]
+          .map(grandChild => grandChild as React.ReactElement<any>)
+          .filter(grandChild => grandChild.type === "h2")
+          .map(grandChild => ({
+            id: grandChild.props.id,
+            text: grandChild.props.children[0]
           }))
       )
       .reduce((acc, curr) => [...acc, ...curr], []);

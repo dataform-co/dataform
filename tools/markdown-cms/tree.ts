@@ -1,6 +1,5 @@
+import * as frontMatter from "front-matter";
 import { basename, join } from "path";
-
-const frontMatter = require("front-matter");
 
 export interface IBaseAttributes {
   title: string;
@@ -24,7 +23,7 @@ export class Tree<T> implements ITree<T> {
 
     const parsedContent = frontMatter(rawContent);
     content = parsedContent.body;
-    attributes = parsedContent.attributes;
+    attributes = parsedContent.attributes as IBaseAttributes;
 
     return new Tree(path, content, attributes as any, editLink, []);
   }

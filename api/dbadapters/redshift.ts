@@ -129,16 +129,24 @@ export class RedshiftDbAdapter implements IDbAdapter {
     await this.queryExecutor.close();
   }
 
-  public async prepareStateMetadataTable(): Promise<void> {}
+  public async prepareStateMetadataTable(): Promise<void> {
+    // Unimplemented.
+  }
 
   public async persistedStateMetadata(): Promise<dataform.IPersistedTableMetadata[]> {
     const persistedMetadata: dataform.IPersistedTableMetadata[] = [];
     return persistedMetadata;
   }
 
-  public async persistStateMetadata(actions: dataform.IExecutionAction[]) {}
-  public async setMetadata(action: dataform.IExecutionAction): Promise<void> {}
-  public async deleteStateMetadata(actions: dataform.IExecutionAction[]): Promise<void> {}
+  public async persistStateMetadata(actions: dataform.IExecutionAction[]) {
+    // Unimplemented.
+  }
+  public async setMetadata(action: dataform.IExecutionAction): Promise<void> {
+    // Unimplemented.
+  }
+  public async deleteStateMetadata(actions: dataform.IExecutionAction[]): Promise<void> {
+    // Unimplemented.
+  }
 
   private async hasSpectrumTables() {
     return (
@@ -162,6 +170,7 @@ class PgPoolExecutor {
     // emit errors. If/when they do, they will automatically be removed from the pool,
     // but we still need to handle the error to prevent crashing the process.
     this.pool.on("error", err => {
+      // tslint:disable-next-line: no-console
       console.error("pg.Pool idle client error", err.message, err.stack);
     });
   }
@@ -178,6 +187,7 @@ class PgPoolExecutor {
     }
     const client = await this.pool.connect();
     client.on("error", err => {
+      // tslint:disable-next-line: no-console
       console.error("pg.Client client error", err.message, err.stack);
     });
     try {

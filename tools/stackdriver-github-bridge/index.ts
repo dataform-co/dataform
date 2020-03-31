@@ -21,6 +21,7 @@ exports.handleStackdriverEvent = async (req: express.Request, res: express.Respo
     owner: process.env.REPOSITORY_OWNER,
     repo: process.env.REPOSITORY_NAME
   };
+  // tslint:disable: no-console
   try {
     const incident: IIncident = req.body.incident;
     switch (incident.state) {
@@ -66,6 +67,7 @@ exports.handleStackdriverEvent = async (req: express.Request, res: express.Respo
     console.error(e);
     res.status(500).send(e.message);
   }
+  // tslint:enable
 };
 
 function issueTitle(incidentId: string) {

@@ -45,6 +45,7 @@ export class Runner {
       // suite definitions are evaluated. This is equivalent to setTimeout(..., 0).
       await promisify(process.nextTick)();
       const ctx: IRunContext = {
+        // tslint:disable-next-line: tsr-detect-non-literal-regexp
         testNameMatcher: new RegExp(process.env.TESTBRIDGE_TEST_ONLY) || /.*/,
         path: [],
         results: [],
