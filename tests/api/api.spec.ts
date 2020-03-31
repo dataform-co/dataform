@@ -61,15 +61,9 @@ suite("@dataform/api", () => {
       assert.exists(actionB);
       assert.exists(actionC);
 
-      expect(actionA)
-        .to.have.property("tasks")
-        .to.be.an("array").that.not.is.empty;
-      expect(actionB)
-        .to.have.property("tasks")
-        .to.be.an("array").that.is.empty;
-      expect(actionC)
-        .to.have.property("tasks")
-        .to.be.an("array").that.not.is.empty;
+      expect(actionA.tasks.length).greaterThan(0);
+      expect(actionB.tasks).deep.equal([]);
+      expect(actionC.tasks.length).greaterThan(0);
     });
 
     test("build_with_errors", () => {
@@ -118,9 +112,7 @@ suite("@dataform/api", () => {
       const builder = new Builder(graph, {}, TEST_STATE);
       const executedGraph = builder.build();
 
-      expect(executedGraph)
-        .to.have.property("actions")
-        .to.be.an("array").that.is.not.empty;
+      expect(executedGraph.actions.length).greaterThan(0);
 
       graph.tables.forEach((t: dataform.ITable) => {
         const action = executedGraph.actions.find(item => item.name === t.name);
@@ -262,10 +254,7 @@ suite("@dataform/api", () => {
 
       const prunedGraph = prune(graph, {});
 
-      expect(prunedGraph).to.exist;
-      expect(prunedGraph)
-        .to.have.property("tables")
-        .to.be.an("array").that.is.not.empty;
+      expect(prunedGraph.tables.length).greaterThan(0);
 
       const actionNames = prunedGraph.tables.map(action => action.name);
 
@@ -362,7 +351,6 @@ suite("@dataform/api", () => {
         ]
       });
       const executionGraph = new Builder(graph, {}, state).build();
-      expect(executionGraph.actions.filter(n => n.name === "incremental")).is.not.empty;
       expect(
         cleanSql(executionGraph.actions.filter(n => n.name === "incremental")[0].tasks[0].statement)
       ).equals(
@@ -468,9 +456,7 @@ suite("@dataform/api", () => {
         .to.have.lengthOf(6);
 
       executionGraph.actions.forEach((action, index) => {
-        expect(action)
-          .to.have.property("tasks")
-          .to.be.an("array").that.is.not.empty;
+        expect(action.tasks.length).greaterThan(0);
 
         const statements = action.tasks.map(item => item.statement);
         expect(statements).includes(expectedSQL[index]);
@@ -643,9 +629,7 @@ suite("@dataform/api", () => {
         .to.have.lengthOf(2);
 
       executionGraph.actions.forEach((action, index) => {
-        expect(action)
-          .to.have.property("tasks")
-          .to.be.an("array").that.is.not.empty;
+        expect(action.tasks.length).greaterThan(0);
 
         const statements = action.tasks.map(item => item.statement);
         expect(statements).includes(
@@ -656,7 +640,7 @@ suite("@dataform/api", () => {
   });
 
   suite("init", () => {
-    test("init", { timeout: 30000 }, async function() {
+    test("init", { timeout: 30000 }, async () => {
       // create temp directory
       const projectDir = "examples/init";
 
@@ -668,12 +652,7 @@ suite("@dataform/api", () => {
 
       const gErrors = utils.validate(graph);
 
-      expect(gErrors)
-        .to.have.property("compilationErrors")
-        .to.be.an("array").that.is.empty;
-      expect(gErrors)
-        .to.have.property("validationErrors")
-        .to.be.an("array").that.is.empty;
+      expect(gErrors).deep.equal(dataform.GraphErrors.create());
     });
   });
 
@@ -794,7 +773,7 @@ suite("@dataform/api", () => {
   });
 
   suite("run", () => {
-    const TEST_GRAPH: dataform.IExecutionGraph = dataform.ExecutionGraph.create({
+    const RUN_TEST_GRAPH: dataform.IExecutionGraph = dataform.ExecutionGraph.create({
       projectConfig: {
         warehouse: "bigquery",
         defaultSchema: "foo",
@@ -848,7 +827,7 @@ suite("@dataform/api", () => {
       const mockedDbAdapter = mock(BigQueryDbAdapter);
       when(mockedDbAdapter.prepareSchema(anyString(), anyString())).thenResolve(null);
       when(
-        mockedDbAdapter.execute(TEST_GRAPH.actions[0].tasks[0].statement, anything())
+        mockedDbAdapter.execute(RUN_TEST_GRAPH.actions[0].tasks[0].statement, anything())
       ).thenResolve({
         rows: [],
         metadata: {
@@ -860,12 +839,11 @@ suite("@dataform/api", () => {
         }
       });
       when(
-        mockedDbAdapter.execute(TEST_GRAPH.actions[1].tasks[0].statement, anything())
+        mockedDbAdapter.execute(RUN_TEST_GRAPH.actions[1].tasks[0].statement, anything())
       ).thenReject(new Error("bad statement"));
 
-      const runner = new Runner(instance(mockedDbAdapter), TEST_GRAPH);
-      await runner.execute();
-      const result = await runner.resultPromise();
+      const runner = new Runner(instance(mockedDbAdapter), RUN_TEST_GRAPH);
+      const result = await runner.execute().result();
 
       delete result.timing;
       result.actions.forEach(actionResult => {
@@ -880,7 +858,7 @@ suite("@dataform/api", () => {
           status: dataform.RunResult.ExecutionStatus.FAILED,
           actions: [
             {
-              name: TEST_GRAPH.actions[0].name,
+              name: RUN_TEST_GRAPH.actions[0].name,
               tasks: [
                 {
                   status: dataform.TaskResult.ExecutionStatus.SUCCESSFUL,
@@ -896,7 +874,7 @@ suite("@dataform/api", () => {
               status: dataform.ActionResult.ExecutionStatus.SUCCESSFUL
             },
             {
-              name: TEST_GRAPH.actions[1].name,
+              name: RUN_TEST_GRAPH.actions[1].name,
               tasks: [
                 {
                   status: dataform.TaskResult.ExecutionStatus.FAILED,
@@ -918,8 +896,8 @@ suite("@dataform/api", () => {
       test("should fail when execution fails too many times for the retry setting", async () => {
         const mockedDbAdapter = mock(BigQueryDbAdapter);
         const NEW_TEST_GRAPH = {
-          ...TEST_GRAPH,
-          projectConfig: { ...TEST_GRAPH.projectConfig, idempotentActionRetries: 1 }
+          ...RUN_TEST_GRAPH,
+          projectConfig: { ...RUN_TEST_GRAPH.projectConfig, idempotentActionRetries: 1 }
         };
         when(mockedDbAdapter.prepareSchema(anyString(), anyString())).thenResolve(null);
         when(
@@ -931,7 +909,7 @@ suite("@dataform/api", () => {
           .thenResolve({ rows: [], metadata: {} });
 
         const runner = new Runner(instance(mockedDbAdapter), NEW_TEST_GRAPH);
-        const result = await runner.execute();
+        const result = await runner.execute().result();
 
         delete result.timing;
         result.actions.forEach(actionResult => {
@@ -956,7 +934,7 @@ suite("@dataform/api", () => {
                 status: dataform.ActionResult.ExecutionStatus.SUCCESSFUL
               },
               {
-                name: TEST_GRAPH.actions[1].name,
+                name: RUN_TEST_GRAPH.actions[1].name,
                 tasks: [
                   {
                     status: dataform.TaskResult.ExecutionStatus.FAILED,
@@ -974,8 +952,8 @@ suite("@dataform/api", () => {
       test("should pass when execution fails initially, then passes with the number of allowed retries", async () => {
         const mockedDbAdapter = mock(BigQueryDbAdapter);
         const NEW_TEST_GRAPH = {
-          ...TEST_GRAPH,
-          projectConfig: { ...TEST_GRAPH.projectConfig, idempotentActionRetries: 2 }
+          ...RUN_TEST_GRAPH,
+          projectConfig: { ...RUN_TEST_GRAPH.projectConfig, idempotentActionRetries: 2 }
         };
         when(mockedDbAdapter.prepareSchema(anyString(), anyString())).thenResolve(null);
         when(
@@ -987,7 +965,7 @@ suite("@dataform/api", () => {
           .thenResolve({ rows: [], metadata: {} });
 
         const runner = new Runner(instance(mockedDbAdapter), NEW_TEST_GRAPH);
-        const result = await runner.execute();
+        const result = await runner.execute().result();
 
         delete result.timing;
         result.actions.forEach(actionResult => {
@@ -1028,8 +1006,8 @@ suite("@dataform/api", () => {
       test("should not retry when the task is an operation", async () => {
         const mockedDbAdapter = mock(BigQueryDbAdapter);
         const NEW_TEST_GRAPH_WITH_OPERATION = {
-          ...TEST_GRAPH,
-          projectConfig: { ...TEST_GRAPH.projectConfig, idempotentActionRetries: 3 }
+          ...RUN_TEST_GRAPH,
+          projectConfig: { ...RUN_TEST_GRAPH.projectConfig, idempotentActionRetries: 3 }
         };
         NEW_TEST_GRAPH_WITH_OPERATION.actions[1].tasks[0].type = "operation";
 
@@ -1051,7 +1029,7 @@ suite("@dataform/api", () => {
           .thenResolve({ rows: [], metadata: {} });
 
         const runner = new Runner(instance(mockedDbAdapter), NEW_TEST_GRAPH_WITH_OPERATION);
-        const result = await runner.execute();
+        const result = await runner.execute().result();
 
         delete result.timing;
         result.actions.forEach(actionResult => {
@@ -1093,7 +1071,7 @@ suite("@dataform/api", () => {
     });
 
     test("execute_with_cancel", async () => {
-      const TEST_GRAPH: dataform.IExecutionGraph = dataform.ExecutionGraph.create({
+      const CANCEL_TEST_GRAPH: dataform.IExecutionGraph = dataform.ExecutionGraph.create({
         projectConfig: {
           warehouse: "bigquery",
           defaultSchema: "foo",
@@ -1125,7 +1103,7 @@ suite("@dataform/api", () => {
       let wasCancelled = false;
       const mockDbAdapter = {
         execute: (_, { onCancel }) =>
-          new Promise((_, reject) => {
+          new Promise((__, reject) => {
             onCancel(() => {
               wasCancelled = true;
               reject(new Error("Run cancelled"));
@@ -1133,16 +1111,17 @@ suite("@dataform/api", () => {
           }),
         prepareSchema: (_, __) => {
           return Promise.resolve();
-        }
+        },
+        close: () => undefined
       } as IDbAdapter;
 
-      const runner = new Runner(mockDbAdapter, TEST_GRAPH);
-      const execution = runner.execute();
+      const runner = new Runner(mockDbAdapter, CANCEL_TEST_GRAPH);
+      const execution = runner.execute().result();
       // We want to await the return promise before we actually call cancel.
       // Setting a short (10ms) timeout on calling cancel accomplishes this.
       setTimeout(() => runner.cancel(), 10);
       const result = await execution;
-      expect(wasCancelled).is.true;
+      expect(wasCancelled).equals(true);
       // Cancelling a run doesn't actually throw at the top level.
       // The action should fail, and have an appropriate error message.
       expect(result.actions[0].tasks[0].status).equal(

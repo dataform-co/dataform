@@ -9,19 +9,6 @@ export const indexFileGenerator = genIndex;
 export const compiler = compilers.compile;
 export { adapters };
 
-// Install extensions for SQL files.
-if (require.extensions) {
-  require.extensions[".sql"] = function(module: any, file: string) {
-    const oldCompile = module._compile;
-    module._compile = function(code: any, file: any) {
-      module._compile = oldCompile;
-      const transformedCode = compilers.compile(code, file);
-      module._compile(transformedCode, file);
-    };
-    require.extensions[".js"](module, file);
-  };
-}
-
 // Create static session object and bind global functions.
 // This hack just enforces the singleton session object to
 // be the same, regardless of the @dataform/core package that is running.

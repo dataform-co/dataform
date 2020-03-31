@@ -1,7 +1,7 @@
+import { ITree } from "@dataform-tools/markdown-cms/tree";
 import rehypePrism from "@mapbox/rehype-prism";
 import { getContentTree, IExtraAttributes } from "df/docs/content_tree";
 import Documentation from "df/docs/layouts/documentation";
-import { ITree } from "@dataform-tools/markdown-cms/tree";
 import { NextPageContext } from "next";
 import * as React from "react";
 import rehypeRaw from "rehype-raw";

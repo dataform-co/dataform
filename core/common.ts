@@ -1,5 +1,6 @@
 /**
- * @hidden
+ * Context methods are available when evaluating contextable SQL code, such as
+ * within SQLX files, or when using a [Contextable](#Contextable) argument with the JS API.
  */
 export interface ICommonContext {
   /**

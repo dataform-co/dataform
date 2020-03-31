@@ -1,4 +1,4 @@
-import { InitResult } from "@dataform/api/commands/init";
+import { IInitResult } from "@dataform/api/commands/init";
 import { prettyJsonStringify } from "@dataform/api/utils";
 import { dataform } from "@dataform/protos";
 import * as readlineSync from "readline-sync";
@@ -81,7 +81,7 @@ export function printError(errorText: string, indentCount: number = 0) {
   writeStdErr(errorOutput(errorText), indentCount);
 }
 
-export function printInitResult(result: InitResult) {
+export function printInitResult(result: IInitResult) {
   if (result.dirsCreated && result.dirsCreated.length) {
     writeStdOut(successOutput("Directories successfully created:"));
     result.dirsCreated.forEach(dir => writeStdOut(dir, 1));

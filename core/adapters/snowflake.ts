@@ -97,7 +97,7 @@ export class SnowflakeAdapter extends Adapter implements IAdapter {
     return `
 merge into ${this.resolveTarget(target)} T
 using (${query}) S
-on ${uniqueKey.map(uniqueKey => `T.${uniqueKey} = S.${uniqueKey}`).join(` and `)}
+on ${uniqueKey.map(uniqueKeyCol => `T.${uniqueKeyCol} = S.${uniqueKeyCol}`).join(` and `)}
 when matched then
   update set ${columns.map(column => `${column} = S.${column}`).join(",")}
 when not matched then

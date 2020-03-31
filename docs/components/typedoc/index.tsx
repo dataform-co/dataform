@@ -134,8 +134,8 @@ const Type = (props: ITypedocType) => {
             (
             {signature.parameters &&
               signature.parameters
-                .map((parameter, i) => (
-                  <React.Fragment key={i}>
+                .map((parameter, parameterIndex) => (
+                  <React.Fragment key={parameterIndex}>
                     {parameter.name}: <Type {...parameter.type} />
                   </React.Fragment>
                 ))

@@ -564,7 +564,7 @@ const builtYargs = createYargsCli({
         };
 
         runner.onChange(printExecutedGraph);
-        const runResult = await runner.resultPromise();
+        const runResult = await runner.result();
         printExecutedGraph(runResult);
         return runResult.status === dataform.RunResult.ExecutionStatus.SUCCESSFUL ? 0 : 1;
       }

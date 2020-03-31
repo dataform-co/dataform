@@ -16,6 +16,7 @@ const MAX_SQL_FORMAT_ATTEMPTS = 5;
 // TODO: currently r'...' are only lifted if there is a whitespace beforehand due to
 // the positive lookbehind. Instead the regex should be matched regardless of a prior
 // whitespace. Does this require matching a reversed string? @ekrekr.
+// tslint:disable-next-line: tsr-detect-unsafe-regexp
 const TEXT_LIFT_PATTERNS = [/(?<=[ ])r'.*?(?<!\\)'/, /(?<=[ ])r".*?(?<!\\)"/];
 
 export async function formatFile(
@@ -265,6 +266,8 @@ function formatEveryLine(text: string, mapFn: (line: string) => string) {
 
 function getWholeLineContainingPlaceholderId(placeholderId: string, text: string) {
   const regexpEscapedPlaceholderId = placeholderId.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  // This RegExp is safe because we only use a 'placeholderId' that this file has generated.
+  // tslint:disable-next-line: tsr-detect-non-literal-regexp
   return text.match(new RegExp(".*" + regexpEscapedPlaceholderId + ".*"))[0];
 }
 

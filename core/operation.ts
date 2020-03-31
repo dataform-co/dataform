@@ -32,12 +32,6 @@ export interface IOperationConfig
 }
 
 /**
- * Context methods are available when evaluating contextable SQL code, such as
- * within SQLX files, or when using a [Contextable](#Contextable) argument with the JS API.
- */
-export interface IOperationContext extends ICommonContext {}
-
-/**
  * @hidden
  */
 export class Operation {
@@ -47,7 +41,7 @@ export class Operation {
   public session: Session;
 
   // We delay contextification until the final compile step, so hold these here for now.
-  private contextableQueries: Contextable<IOperationContext, string | string[]>;
+  private contextableQueries: Contextable<ICommonContext, string | string[]>;
 
   public config(config: IOperationConfig) {
     if (config.dependencies) {
@@ -74,7 +68,7 @@ export class Operation {
     return this;
   }
 
-  public queries(queries: Contextable<IOperationContext, string | string[]>) {
+  public queries(queries: Contextable<ICommonContext, string | string[]>) {
     this.contextableQueries = queries;
     return this;
   }
@@ -161,7 +155,7 @@ export class Operation {
 /**
  * @hidden
  */
-export class OperationContext implements IOperationContext {
+export class OperationContext implements ICommonContext {
   private operation?: Operation;
 
   constructor(operation: Operation) {
@@ -206,7 +200,7 @@ export class OperationContext implements IOperationContext {
     return "";
   }
 
-  public apply<T>(value: Contextable<IOperationContext, T>): T {
+  public apply<T>(value: Contextable<ICommonContext, T>): T {
     if (typeof value === "function") {
       return (value as any)(this);
     } else {

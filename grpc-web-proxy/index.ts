@@ -1,3 +1,4 @@
+import * as bunyan from "bunyan";
 import * as http from "http";
 import * as http2 from "http2";
 import * as url from "url";
@@ -6,7 +7,18 @@ const GRPC_CONTENT_TYPE = "application/grpc";
 const GRPC_WEB_CONTENT_TYPE = "application/grpc-web";
 const GRPC_WEB_TEXT_CONTENT_TYPE = "application/grpc-web-text";
 
-export const Mode = ["http1-insecure", "http2-insecure", "http2-fake-https", "http2-secure"] as const;
+const logger = bunyan.createLogger({
+  name,
+  streams: [{ stream: process.stdout }],
+  serializers: bunyan.stdSerializers
+});
+
+export const Mode = [
+  "http1-insecure",
+  "http2-insecure",
+  "http2-fake-https",
+  "http2-secure"
+] as const;
 export type Mode = typeof Mode[number];
 
 export interface IGrpcWebProxyOptions {
@@ -63,10 +75,10 @@ export class GrpcWebProxy {
       if (!this.grpcClient || this.grpcClient.destroyed) {
         this.grpcClient = http2.connect(backend);
         this.grpcClient.on("connect", () => {
-          console.info(`Successfully connected to backend: ${backend}`);
+          logger.info(`Successfully connected to backend: ${backend}`);
         });
         this.grpcClient.on("error", error => {
-          console.error(`Failed to connect to backend: ${backend}\n${error}`);
+          logger.error(`Failed to connect to backend: ${backend}\n${error}`);
         });
       }
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -134,7 +146,7 @@ export class GrpcWebProxy {
       });
     } catch (e) {
       webResponse.end();
-      console.error(e);
+      logger.error(e);
     }
   }
 
@@ -170,7 +182,7 @@ export class GrpcWebProxy {
         webStream.write(chunk);
       });
       grpcRequest.on("error", e => {
-        console.error(e);
+        logger.error(e);
         webStream.end();
       });
       grpcRequest.on("end", () => {
@@ -178,7 +190,7 @@ export class GrpcWebProxy {
       });
     } catch (e) {
       webStream.end();
-      console.error(e);
+      logger.error(e);
     }
   }
 }

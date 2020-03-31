@@ -65,7 +65,7 @@ suite("@dataform/integration/redshift", ({ after }) => {
 
     // Run the project.
     let executionGraph = await dfapi.build(compiledGraph, {}, credentials);
-    let executedGraph = await dfapi.run(executionGraph, credentials).resultPromise();
+    let executedGraph = await dfapi.run(executionGraph, credentials).result();
 
     const actionMap = keyBy(executedGraph.actions, v => v.name);
     expect(Object.keys(actionMap).length).eql(13);
@@ -132,7 +132,7 @@ suite("@dataform/integration/redshift", ({ after }) => {
       },
       credentials
     );
-    executedGraph = await dfapi.run(executionGraph, credentials).resultPromise();
+    executedGraph = await dfapi.run(executionGraph, credentials).result();
     expect(executedGraph.status).equals(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
 
     // Check there are the expected number of extra rows in the incremental table.
