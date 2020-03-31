@@ -277,7 +277,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
     return this.pool
       .addSingleTask({
         generator: async () => {
-          const metadata = await this.getMetadata(target);
+          const metadata = await this.getMetadataOutsidePromisePool(target);
           const schemaWithDescription = addDescriptionToMetadata(
             actionDescriptor.columns,
             metadata.schema.fields
@@ -297,6 +297,27 @@ export class BigQueryDbAdapter implements IDbAdapter {
   }
 
   public async getMetadata(target: dataform.ITarget): Promise<IBigQueryTableMetadata> {
+    return this.pool
+      .addSingleTask({
+        generator: async () => this.getMetadataOutsidePromisePool(target)
+      })
+      .promise();
+  }
+
+  public async deleteStateMetadata(actions: dataform.IExecutionAction[]): Promise<void> {
+    if (actions.length === 0) {
+      return;
+    }
+    const targetNames = actions
+      .map(({ target }) => `"${target.database}.${target.schema}.${target.name}"`)
+      .join(",");
+    const rowDeleteQuery = `DELETE \`${CACHED_STATE_TABLE_NAME}\` WHERE target_name IN (${targetNames})`;
+    await this.runQuery(rowDeleteQuery);
+  }
+
+  private async getMetadataOutsidePromisePool(
+    target: dataform.ITarget
+  ): Promise<IBigQueryTableMetadata> {
     try {
       const table = await this.getClient(target.database)
         .dataset(target.schema)
@@ -311,17 +332,6 @@ export class BigQueryDbAdapter implements IDbAdapter {
       // otherwise throw the error as normal
       throw e;
     }
-  }
-
-  public async deleteStateMetadata(actions: dataform.IExecutionAction[]): Promise<void> {
-    if (actions.length === 0) {
-      return;
-    }
-    const targetNames = actions
-      .map(({ target }) => `"${target.database}.${target.schema}.${target.name}"`)
-      .join(",");
-    const rowDeleteQuery = `DELETE \`${CACHED_STATE_TABLE_NAME}\` WHERE target_name IN (${targetNames})`;
-    await this.runQuery(rowDeleteQuery);
   }
 
   private getClient(projectId?: string) {

@@ -302,7 +302,8 @@ export class Runner {
 
     if (
       action.actionDescriptor &&
-      actionResult.status === dataform.ActionResult.ExecutionStatus.SUCCESSFUL
+      actionResult.status === dataform.ActionResult.ExecutionStatus.SUCCESSFUL &&
+      !(this.graph.runConfig && this.graph.runConfig.disableSetMetadata)
     ) {
       await this.adapter.setMetadata(action);
     }

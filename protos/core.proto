@@ -51,6 +51,7 @@ message RunConfig {
   bool full_refresh = 2;
   int32 timeout_millis = 7;
   bool use_run_cache = 8;
+  bool disable_set_metadata = 9;
 
   reserved 4, 6;
 }
