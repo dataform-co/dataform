@@ -175,7 +175,7 @@ In the example below:
             "gitReference": {
                 "branch": "master"
             },
-            "configOverride": {"defaultDatabase": "analytics-production"}
+            "configOverride": { "defaultDatabase": "analytics-production" }
         }
     ]
 }
