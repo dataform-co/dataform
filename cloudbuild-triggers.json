@@ -1,0 +1,12 @@
+{
+  "name": "deploy",
+  "description": "Deploy docs site and other artifacts on merge to master.",
+  "github": {
+    "owner": "dataform-co",
+    "name": "dataform",
+    "push": {
+      "branch": "master"
+    }
+  },
+  "filename": "cloudbuild-deploy.json"
+}
