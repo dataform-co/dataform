@@ -11,7 +11,7 @@
 </div>
 <div align="center">
   <img src="https://david-dm.org/dataform-co/dataform.svg" alt="NPM dependency status" />
-  <!-- <img src="https://slack.dataform.co/badge.svg" alt="Dataform Slack" /> -->
+  <!-- <img src="https://join.slack.com/t/dataform-users/shared_invite/zt-dark6b7k-r5~12LjYL1a17Vgma2ru2A/badge.svg" alt="Dataform Slack" /> -->
   <img src="https://img.shields.io/github/license/dataform-co/dataform.svg" alt="License information" />
 </div>
 <div align="center">
