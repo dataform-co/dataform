@@ -1,7 +1,7 @@
 # Contributing
 
 Dataform is a TypeScript project, and is fairly easy to build and run locally.
-For help making changes, join our `#development` channel in [Slack](https://slack.dataform.co), or [email us](mailto:team@dataform.co) directly.
+For help making changes, join our `#development` channel in [Slack](https://join.slack.com/t/dataform-users/shared_invite/zt-dark6b7k-r5~12LjYL1a17Vgma2ru2A), or [email us](mailto:team@dataform.co) directly.
 
 Dataform operates similar to most open source projects on GitHub. If you've never done this before, here's [a nice project to get you up to speed](https://github.com/firstcontributions/first-contributions).
 
@@ -75,7 +75,7 @@ You can view the documentation site at [localhost:3001](http://localhost:3001).
 
 1. Plan out the change, and whether it is feasible.
 
-   1. If you're unsure of the scope of the change, then message us on [Slack](https://slack.dataform.co).
+   1. If you're unsure of the scope of the change, then message us on [Slack](https://join.slack.com/t/dataform-users/shared_invite/zt-dark6b7k-r5~12LjYL1a17Vgma2ru2A).
 
    1. We'd much prefer multiple smaller code changes than a single large one.
 
