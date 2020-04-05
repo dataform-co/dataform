@@ -72,7 +72,7 @@
     "jsdoc": "^3.5.5",
     "json-stable-stringify": "^1.0.1",
     "lodash": "^4.17.15",
-    "minimist": "^1.2.2",
+    "minimist": "^1.2.3",
     "moo": "^0.5.0",
     "mssql": "^6.0.1",
     "next": "^9.3.2",
