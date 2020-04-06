@@ -212,7 +212,8 @@ async function connect(snowflakeCredentials: dataform.ISnowflake) {
           password: snowflakeCredentials.password,
           database: snowflakeCredentials.databaseName,
           warehouse: snowflakeCredentials.warehouse,
-          role: snowflakeCredentials.role
+          role: snowflakeCredentials.role,
+          application: "Dataform"
         })
         .connect((err, conn) => {
           if (err) {
