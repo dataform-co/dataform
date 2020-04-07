@@ -77,7 +77,8 @@ export class RedshiftAdapter extends Adapter implements IAdapter {
 
   public createOrReplaceView(target: dataform.ITarget, query: string, bind: boolean) {
     const createQuery = `create or replace view ${this.resolveTarget(target)} as ${query}`;
-    if (bind) {
+    // Postgres doesn't support with no schema binding.
+    if (bind || this.project.warehouse === "postgres") {
       return createQuery;
     }
     return `${createQuery} with no schema binding`;
