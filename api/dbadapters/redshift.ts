@@ -30,10 +30,18 @@ export class RedshiftDbAdapter implements IDbAdapter {
     statement: string,
     options: {
       maxResults?: number;
+      includeQueryInError?: boolean;
     } = { maxResults: 1000 }
   ) {
-    const rows = await this.queryExecutor.execute(statement, options);
-    return { rows, metadata: {} };
+    try {
+      const rows = await this.queryExecutor.execute(statement, options);
+      return { rows, metadata: {} };
+    } catch (e) {
+      if (options.includeQueryInError) {
+        throw new Error(`Error encountered while running "${statement}": ${e.message}`);
+      }
+      throw e;
+    }
   }
 
   public async evaluate(statement: string) {
@@ -63,7 +71,7 @@ export class RedshiftDbAdapter implements IDbAdapter {
            ? "union select tablename as table_name, schemaname as table_schema from svv_external_tables"
            : ""
        }`,
-      { maxResults: 10000 }
+      { maxResults: 10000, includeQueryInError: true }
     );
     const { rows } = queryResult;
     return rows.map(row => ({
@@ -86,14 +94,17 @@ export class RedshiftDbAdapter implements IDbAdapter {
        from svv_external_columns 
        where schemaname = '${target.schema}' and tablename = '${target.name}'`
            : ""
-       }`
+       }`,
+        { includeQueryInError: true }
       ),
       this.execute(
-        `select table_type from information_schema.tables where table_schema = '${target.schema}' and table_name = '${target.name}'`
+        `select table_type from information_schema.tables where table_schema = '${target.schema}' and table_name = '${target.name}'`,
+        { includeQueryInError: true }
       ),
       hasSpectrumTables
         ? this.execute(
-            `select 'TABLE' as table_type from svv_external_tables where schemaname = '${target.schema}' and tablename = '${target.name}'`
+            `select 'TABLE' as table_type from svv_external_tables where schemaname = '${target.schema}' and tablename = '${target.name}'`,
+            { includeQueryInError: true }
           )
         : { rows: [], metadata: {} }
     ]);
@@ -122,7 +133,7 @@ export class RedshiftDbAdapter implements IDbAdapter {
   }
 
   public async prepareSchema(database: string, schema: string): Promise<void> {
-    await this.execute(`create schema if not exists "${schema}"`);
+    await this.execute(`create schema if not exists "${schema}"`, { includeQueryInError: true });
   }
 
   public async close() {
@@ -155,7 +166,7 @@ export class RedshiftDbAdapter implements IDbAdapter {
          from information_schema.tables
          where table_name = 'svv_external_tables'
            and table_schema = 'pg_catalog'`,
-        { maxResults: 1 }
+        { maxResults: 1, includeQueryInError: true }
       )).rows.length > 0
     );
   }
