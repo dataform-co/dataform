@@ -44,7 +44,8 @@ Postgres and Redshift projects require the following configuration settings:
 1. Go to `Redshift` in your AWS console.
 2. Select your cluster under `Clusters`.
 3. The hostname is the endpoint listed at the top of the page. Username and database name are listed under cluster database properties.
-   You may prefer to create a separate username and password for Dataform to use - please contact our team if you need help.
+
+The Redshift user should have permissions to `CREATE` schemas and `SELECT` from `INFORMATION_SCHEMAS.TABLES` and `INFORMATION_SCHEMAS.COLUMNS` . Please contact our team [via slack](https://join.slack.com/t/dataform-users/shared_invite/zt-dark6b7k-r5~12LjYL1a17Vgma2ru2A) if you need help.
 
 ## Snowflake
 
