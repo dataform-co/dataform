@@ -481,7 +481,7 @@ suite("@dataform/api", () => {
       });
       const testState = dataform.WarehouseState.create({});
       const expectedSQL = [
-        'create or replace view "schema"."redshift_view" as query',
+        'create or replace view "schema"."postgres_view" as query',
       ];
 
       const builder = new Builder(testGraph, {}, testState);
