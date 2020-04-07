@@ -463,6 +463,42 @@ suite("@dataform/api", () => {
       });
     });
 
+    test("postgres_create", () => {
+      const testGraph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
+        projectConfig: { warehouse: "postgres" },
+        dataformCoreVersion: "1.4.1",
+        tables: [
+          {
+            name: "postgres_view",
+            type: "view",
+            target: {
+              schema: "schema",
+              name: "postgres_view"
+            },
+            query: "query"
+          },
+        ]
+      });
+      const testState = dataform.WarehouseState.create({});
+      const expectedSQL = [
+        'create or replace view "schema"."redshift_view" as query',
+      ];
+
+      const builder = new Builder(testGraph, {}, testState);
+      const executionGraph = builder.build();
+
+      expect(executionGraph.actions)
+        .to.be.an("array")
+        .to.have.lengthOf(1);
+
+      executionGraph.actions.forEach((action, index) => {
+        expect(action.tasks.length).greaterThan(0);
+
+        const statements = action.tasks.map(item => item.statement);
+        expect(statements).includes(expectedSQL[index]);
+      });
+    });
+
     test("bigquery_partitionby", () => {
       const testGraph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
         projectConfig: { warehouse: "bigquery", defaultDatabase: "deeb" },
