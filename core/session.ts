@@ -93,18 +93,23 @@ function mapAggregation(aggregation: string) {
       return dataform.ColumnDescriptor.Aggregation.DISTINCT;
     case "derived":
       return dataform.ColumnDescriptor.Aggregation.DERIVED;
+    case undefined:
+      return undefined;
     default:
-      return null;
+      throw new Error(`'${aggregation}' is not a valid aggregation option.`);
   }
 }
+
 function mapDimensionType(dimensionType: string) {
   switch (dimensionType) {
     case "category":
       return dataform.ColumnDescriptor.DimensionType.CATEGORY;
     case "timestamp":
       return dataform.ColumnDescriptor.DimensionType.TIMESTAMP;
+    case undefined:
+      return undefined;
     default:
-      return null;
+      throw new Error(`'${dimensionType}' is not a valid dimension type.`);
   }
 }
 
