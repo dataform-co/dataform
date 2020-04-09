@@ -151,9 +151,30 @@ message ActionDescriptor {
 
 message ColumnDescriptor {
   string description = 1;
+
   // For nested records, the path might look like e.g. ["record", "column"].
   // For simple columns, this will always contain a single entry e.g. ["column"].
-  repeated string path = 2; 
+  repeated string path = 2;
+
+  string display_name = 3;
+
+  enum DimensionType {
+    CATEGORY = 0;
+    TIMESTAMP = 1;
+  }
+
+  enum Aggregation {
+    SUM = 0;
+    DISTINCT = 1;
+    DERIVED = 2;
+  }
+
+  oneof dimension_or_metric {
+    DimensionType dimension_type = 4;
+    Aggregation aggregation = 5;
+  }
+
+  string expression = 6;
 }
 
 message Table {

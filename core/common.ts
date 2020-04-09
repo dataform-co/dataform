@@ -116,6 +116,26 @@ export interface IRecordDescriptor {
    * A description of columns within the struct, object or record.
    */
   columns?: IColumnsDescriptor;
+
+  /**
+   * @hidden
+   */
+  displayName?: string;
+
+  /**
+   * @hidden
+   */
+  dimension?: "category" | "timestamp";
+
+  /**
+   * @hidden
+   */
+  aggregation?: "sum" | "distinct" | "derived";
+
+  /**
+   * @hidden
+   */
+  expression?: "string";
 }
 
 /**
