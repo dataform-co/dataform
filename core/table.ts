@@ -437,8 +437,6 @@ export class Table {
     return this;
   }
 
-  public navigatorColumns() {}
-
   public compile() {
     const context = new TableContext(this);
     const incrementalContext = new TableContext(this, true);
