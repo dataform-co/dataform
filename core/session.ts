@@ -63,8 +63,12 @@ function mapColumnDescriptionToProto(
   const columnDescriptor: dataform.IColumnDescriptor[] = description.description
     ? [
         dataform.ColumnDescriptor.create({
+          path: currentPath,
           description: description.description,
-          path: currentPath
+          displayName: description.displayName,
+          dimensionType: mapDimensionType(description.dimension),
+          aggregation: mapAggregation(description.aggregation),
+          expression: description.expression
         })
       ]
     : [];
@@ -79,6 +83,29 @@ function mapColumnDescriptionToProto(
       )
     )
   );
+}
+
+function mapAggregation(aggregation: string) {
+  switch (aggregation) {
+    case "sum":
+      return dataform.ColumnDescriptor.Aggregation.SUM;
+    case "distinct":
+      return dataform.ColumnDescriptor.Aggregation.DISTINCT;
+    case "derived":
+      return dataform.ColumnDescriptor.Aggregation.DERIVED;
+    default:
+      return null;
+  }
+}
+function mapDimensionType(dimensionType: string) {
+  switch (dimensionType) {
+    case "category":
+      return dataform.ColumnDescriptor.DimensionType.CATEGORY;
+    case "timestamp":
+      return dataform.ColumnDescriptor.DimensionType.TIMESTAMP;
+    default:
+      return null;
+  }
 }
 
 /**
