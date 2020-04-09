@@ -105,8 +105,6 @@ export interface IColumnsDescriptor {
 
 /**
  * Describes a struct, object or record in a dataset that has nested columns.
- *
- * TODO: Improve descriptions.
  */
 export interface IRecordDescriptor {
   /**
@@ -120,22 +118,22 @@ export interface IRecordDescriptor {
   columns?: IColumnsDescriptor;
 
   /**
-   * Display name to use for the description in the navigator.
+   * @hidden
    */
   displayName?: string;
 
   /**
-   * Dimension mapping attribute.
+   * @hidden
    */
   dimension?: "category" | "timestamp";
 
   /**
-   * Aggregation for values in the column.
+   * @hidden
    */
   aggregation?: "sum" | "distinct" | "derived";
 
   /**
-   * Compiled expression for the visualization.
+   * @hidden
    */
   expression?: "string";
 }
