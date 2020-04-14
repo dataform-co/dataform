@@ -331,15 +331,6 @@ message ExecutionGraph {
   repeated ExecutionAction actions = 3;
 }
 
-message ExecutedTask {
-  ExecutionTask task = 1;
-  ExecutionMetadata metadata = 6;
-
-  bool ok = 2;
-  bool skipped = 5;
-  string error = 3;
-}
-
 message Timing {
   int64 start_time_millis = 1;
   int64 end_time_millis = 2;
@@ -401,42 +392,6 @@ message TaskResult {
   string error_message = 2;
   Timing timing = 3;
   ExecutionMetadata metadata = 4;
-}
-
-enum ActionExecutionStatus {
-  UNKNOWN_ACTION_EXECUTION_STATUS = 0;
-  SUCCESSFUL = 1;
-  FAILED = 2;
-  SKIPPED = 3;
-  DISABLED = 4;
-}
-
-message ExecutedAction {
-  string name = 1;
-  // May be empty, indicating that nothing was run as part of this Action.
-  repeated ExecutedTask tasks = 2;
-
-  ActionExecutionStatus status = 6;
-
-  Timing timing = 7;
-
-  // Deprecated execution_time. Prefer using "timing".
-  int64 execution_time = 5;
-  // Deprecated status fields. Prefer using the 'status' field.
-  bool deprecated_ok = 3;
-  bool deprecated_skipped = 4;
-}
-
-// TODO: Instead of returning this as a result of run(...), return an
-// ExecutionGraph along with something like a RunStatus message indicating the
-// success/failure of executing that graph on the data warehouse.
-message ExecutedGraph {
-  ProjectConfig project_config = 1;
-  RunConfig run_config = 2;
-  WarehouseState warehouse_state = 4;
-
-  bool ok = 5;
-  repeated ExecutedAction actions = 3;
 }
 
 message TestResult {
