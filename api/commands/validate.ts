@@ -85,7 +85,7 @@ export function validateSchedules(
         const prefixedActionName = tablePrefix ? `${tablePrefix}_${action}` : action;
         if (!allActionNames.includes(prefixedActionName)) {
           errors.push(
-            `Action "${prefixedActionName}" included on schedule ${schedule.name} doesn't exist in the project.`
+            `Action "${prefixedActionName}" included in schedule ${schedule.name} doesn't exist in the project.`
           );
         }
       });
