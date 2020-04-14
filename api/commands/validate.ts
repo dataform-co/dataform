@@ -13,7 +13,8 @@ function validateEmail(email: string) {
 
 export function validateSchedulesFileIfExists(
   compiledGraph: dataform.ICompiledGraph,
-  projectDir: string
+  projectDir: string,
+  tablePrefix?: string
 ): string[] {
   if (!compiledGraph) {
     return ["Compiled graph not provided."];
@@ -24,7 +25,8 @@ export function validateSchedulesFileIfExists(
     const scheduleJsonObj = JSON.parse(content);
     return validateSchedules(
       dataform.schedules.SchedulesJSON.create(scheduleJsonObj),
-      compiledGraph
+      compiledGraph,
+      tablePrefix
     );
   } catch (err) {
     return [
@@ -35,7 +37,8 @@ export function validateSchedulesFileIfExists(
 
 export function validateSchedules(
   schedules: dataform.schedules.ISchedulesJSON,
-  compiledGraph: dataform.ICompiledGraph
+  compiledGraph: dataform.ICompiledGraph,
+  tablePrefix?: string
 ): string[] {
   const errors: string[] = [];
 
@@ -77,10 +80,12 @@ export function validateSchedules(
           .filter(operation => !!operation.target)
           .map(operation => operation.target.name)
       );
+
       schedule.options.actions.forEach(action => {
-        if (!allActionNames.includes(action)) {
+        const prefixedActionName = tablePrefix ? `${tablePrefix}_${action}` : action;
+        if (!allActionNames.includes(prefixedActionName)) {
           errors.push(
-            `Action "${action}" included on schedule ${schedule.name} doesn't exist in the project.`
+            `Action "${prefixedActionName}" included on schedule ${schedule.name} doesn't exist in the project.`
           );
         }
       });
