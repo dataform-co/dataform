@@ -3245,6 +3245,11 @@ before-after-hook@^2.0.0:
   resolved "https://registry.yarnpkg.com/before-after-hook/-/before-after-hook-2.1.0.tgz#b6c03487f44e24200dd30ca5e6a1979c5d2fb635"
   integrity sha512-IWIbu7pMqyw3EAJHzzHbWa85b6oud/yfKYg5rqB5hNE8CeMi3nX+2C2sj0HswfblST86hpVEOAb9x34NZd6P7A==
 
+big-integer@^1.6.43:
+  version "1.6.48"
+  resolved "https://registry.yarnpkg.com/big-integer/-/big-integer-1.6.48.tgz#8fd88bd1632cba4a1c8c3e3d7159f08bb95b4b9e"
+  integrity sha512-j51egjPa7/i+RdiRuJbPdJ2FIUYYPhvYLjzoYbcMMm62ooO6F94fETG4MTs46zPAF9Brs04OajboA/qTGuz78w==
+
 big.js@^5.2.2:
   version "5.2.2"
   resolved "https://registry.yarnpkg.com/big.js/-/big.js-5.2.2.tgz#65f0af382f578bcdc742bd9c281e9cb2d7768328"
@@ -8031,12 +8036,17 @@ mkdirp@^0.5.0, mkdirp@^0.5.1, mkdirp@~0.5.0, mkdirp@~0.5.1:
   dependencies:
     minimist "0.0.8"
 
-moment-timezone@^0.4.1:
-  version "0.4.1"
-  resolved "https://registry.yarnpkg.com/moment-timezone/-/moment-timezone-0.4.1.tgz#81f598c3ad5e22cdad796b67ecd8d88d0f5baa06"
-  integrity sha1-gfWYw61eIs2teWtn7NjYjQ9bqgY=
+mkdirp@^1.0.3:
+  version "1.0.4"
+  resolved "https://registry.yarnpkg.com/mkdirp/-/mkdirp-1.0.4.tgz#3eb5ed62622756d79a5f0e2a221dfebad75c2f7e"
+  integrity sha512-vVqVZQyf3WLx2Shd0qJ9xuvqgAyKPLAiqITEtqW0oIUjzo3PePDd6fW9iFz30ef7Ysp/oiWqbhszeGWW2T6Gzw==
+
+moment-timezone@^0.5.15:
+  version "0.5.28"
+  resolved "https://registry.yarnpkg.com/moment-timezone/-/moment-timezone-0.5.28.tgz#f093d789d091ed7b055d82aa81a82467f72e4338"
+  integrity sha512-TDJkZvAyKIVWg5EtVqRzU97w0Rb0YVbfpqyjgu6GwXCAohVRqwZjf4fOzDE6p1Ch98Sro/8hQQi65WDXW5STPw==
   dependencies:
-    moment ">= 2.6.0"
+    moment ">= 2.9.0"
 
 moment-timezone@^0.5.23:
   version "0.5.25"
@@ -8045,7 +8055,7 @@ moment-timezone@^0.5.23:
   dependencies:
     moment ">= 2.9.0"
 
-"moment@>= 2.6.0", "moment@>= 2.9.0", moment@^2.10.6, moment@^2.23.0:
+"moment@>= 2.9.0", moment@^2.10.6, moment@^2.23.0:
   version "2.24.0"
   resolved "https://registry.yarnpkg.com/moment/-/moment-2.24.0.tgz#0d055d53f5052aa653c9f6eb68bb5d12bf5c2b5b"
   integrity sha512-bV7f+6l2QigeBBZSM/6yTNq4P2fNpSWj/0e7jQcy87A8e7o2nAfP/34/2ky5Vw4B9S446EtIhodAzkFCcR4dQg==
@@ -10992,20 +11002,23 @@ snapdragon@^0.8.1:
     use "^3.1.0"
 
 snowflake-sdk@^1.1.11:
-  version "1.1.14"
-  resolved "https://registry.yarnpkg.com/snowflake-sdk/-/snowflake-sdk-1.1.14.tgz#1445bbe426ce8a2963f7a033fc7b31086b10bc8a"
-  integrity sha512-LYSsMyMjI82vEy1den9XkqEwbinmUx2Pn7PFkFOembyY715UFkYbH0UCwdhrauTmZ7mXWOADP2ZqjRbRCaMvxg==
+  version "1.5.1"
+  resolved "https://registry.yarnpkg.com/snowflake-sdk/-/snowflake-sdk-1.5.1.tgz#76c252d38711069c7490aa8be685cd508d954e44"
+  integrity sha512-eUrbkramUXZ5UnxpMxYHBhkwy6YEkfi/AS6QBmNhq5QBqotP79E0RBhjIjbS8ZoaCjzW4NZ506KPhjSmE5L+0Q==
   dependencies:
     agent-base "^2.1.1"
     asn1.js-rfc2560 "^5.0.0"
     asn1.js-rfc5280 "^3.0.0"
+    big-integer "^1.6.43"
     bignumber.js "^2.4.0"
     browser-request "^0.3.3"
     debug "^3.2.6"
     extend "^3.0.2"
-    https-proxy-agent "^2.2.1"
+    https-proxy-agent "^3.0.0"
+    lodash "^4.17.15"
+    mkdirp "^1.0.3"
     moment "^2.23.0"
-    moment-timezone "^0.4.1"
+    moment-timezone "^0.5.15"
     ocsp "^1.2.0"
     request "^2.88.0"
     simple-lru-cache "^0.0.2"

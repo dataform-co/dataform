@@ -3,7 +3,6 @@ import { IDbAdapter } from "@dataform/api/dbadapters/index";
 import { dataform } from "@dataform/protos";
 import * as https from "https";
 import * as PromisePool from "promise-pool-executor";
-import * as snowflake from "snowflake-sdk";
 
 interface ISnowflake {
   createConnection: (options: {
@@ -205,7 +204,21 @@ async function connect(snowflakeCredentials: dataform.ISnowflake) {
   await testHttpsConnection(`https://${snowflakeCredentials.accountId}.snowflakecomputing.com`);
   try {
     return await new Promise<ISnowflakeConnection>((resolve, reject) => {
-      (snowflake as ISnowflake)
+      // This is horrible. However, it allows us to set the 'APPLICATION' parameter on client.environment,
+      // which is passed all the way through to Snowflake's connection code. Pending a fix for
+      // https://github.com/snowflakedb/snowflake-connector-nodejs/issues/100, this is the only way
+      // we can achieve that.
+      (require("snowflake-sdk/lib/core")({
+        httpClientClass: require("snowflake-sdk/lib/http/node"),
+        loggerClass: require("snowflake-sdk/lib/logger/node"),
+        client: {
+          version: require("snowflake-sdk/lib/util").driverVersion,
+          environment: {
+            ...process.versions,
+            APPLICATION: "Dataform"
+          }
+        }
+      }) as ISnowflake)
         .createConnection({
           account: snowflakeCredentials.accountId,
           username: snowflakeCredentials.username,
