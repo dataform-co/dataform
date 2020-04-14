@@ -113,7 +113,7 @@ suite("@dataform/api/validate", () => {
       const errors = validateSchedules(invalidSchedule, compiledGraph);
       const expectedErrors = [
         'Schedule "name1" contains an invalid cron expression "asdas".',
-        'Action "action3" included on schedule name1 doesn\'t exist in the project.',
+        'Action "action3" included in schedule name1 doesn\'t exist in the project.',
         'Schedule "name1" contains an invalid email address "test2.com".',
         'Schedule name "name1" is not unique. All schedule names must be unique.'
       ];
@@ -182,7 +182,7 @@ suite("@dataform/api/validate", () => {
         fs.writeFileSync(filePath, JSON.stringify(invalidJson));
         const expectedErrors = [
           'Schedule "name1" contains an invalid cron expression "asdas".',
-          'Action "action3" included on schedule name1 doesn\'t exist in the project.',
+          'Action "action3" included in schedule name1 doesn\'t exist in the project.',
           'Schedule "name1" contains an invalid email address "test2.com".',
           'Schedule name "name1" is not unique. All schedule names must be unique.'
         ];
