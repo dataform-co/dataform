@@ -135,7 +135,7 @@ export interface IRecordDescriptor {
   /**
    * @hidden
    */
-  expression?: "string";
+  expression?: string;
 }
 
 /**
