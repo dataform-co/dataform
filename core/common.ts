@@ -130,7 +130,7 @@ export interface IRecordDescriptor {
   /**
    * @hidden
    */
-  aggregation?: "sum" | "distinct" | "derived";
+  aggregator?: "sum" | "distinct" | "derived";
 
   /**
    * @hidden
