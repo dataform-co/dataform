@@ -77,65 +77,112 @@ const SQL_DOUBLE_QUOTE_STRING_LEXER_TOKEN_NAMES = {
 
 const lexer = moo.states(buildSqlxLexer());
 
-export interface ISyntaxTreeNode {
-  contentType: "sql" | "js" | "jsPlaceholder" | "sqlStatementSeparator" | "sqlComment";
-  contents: Array<string | ISyntaxTreeNode>;
+export enum SyntaxTreeNodeType {
+  SQL,
+  JAVASCRIPT,
+  JAVASCRIPT_TEMPLATE_STRING_PLACEHOLDER,
+  SQL_STATEMENT_SEPARATOR,
+  SQL_COMMENT
 }
 
-function appendToNode(node: ISyntaxTreeNode, tokenValue: string) {
-  if (node.contents.length > 0 && typeof node.contents[node.contents.length - 1] === "string") {
-    node.contents[node.contents.length - 1] = node.contents[node.contents.length - 1] + tokenValue;
-    return;
-  }
-  node.contents.push(tokenValue);
-}
-
-export function constructSyntaxTree(code: string): ISyntaxTreeNode {
-  const parentNode: ISyntaxTreeNode = { contentType: "sql", contents: [] };
-  let currentNode = parentNode;
-  const nodeStack = [currentNode];
-  lexer.reset(code);
-  for (const token of lexer) {
-    if (token.type.includes("_close") && !token.type.includes("_closeQuote")) {
-      appendToNode(currentNode, token.value);
-      nodeStack.pop();
-      currentNode = nodeStack[nodeStack.length - 1];
-    } else if (token.type.includes("_start") && !token.type.includes("_startQuote")) {
-      const contentType =
-        token.type.includes("_startJs") || token.type.includes("_startConfig")
-          ? token.type.includes("_startJsPlaceholder")
-            ? "jsPlaceholder"
-            : "js"
-          : "sql";
-      if (contentType === "sql" && currentNode.contentType !== "sql") {
-        throw new Error("'sql' syntax tree nodes may only be children of other 'sql' nodes.");
+export class SyntaxTreeNode {
+  public static create(code: string) {
+    const parentNode = new SyntaxTreeNode(SyntaxTreeNodeType.SQL);
+    let currentNode = parentNode;
+    const nodeStack = [currentNode];
+    lexer.reset(code);
+    for (const token of lexer) {
+      if (token.type.includes("_close") && !token.type.includes("_closeQuote")) {
+        currentNode.push(token.value);
+        nodeStack.pop();
+        currentNode = nodeStack[nodeStack.length - 1];
+      } else if (token.type.includes("_start") && !token.type.includes("_startQuote")) {
+        const childType =
+          token.type.includes("_startJs") || token.type.includes("_startConfig")
+            ? token.type.includes("_startJsPlaceholder")
+              ? SyntaxTreeNodeType.JAVASCRIPT_TEMPLATE_STRING_PLACEHOLDER
+              : SyntaxTreeNodeType.JAVASCRIPT
+            : SyntaxTreeNodeType.SQL;
+        if (childType === SyntaxTreeNodeType.SQL && currentNode.type !== SyntaxTreeNodeType.SQL) {
+          throw new Error("'sql' syntax tree nodes may only be children of other 'sql' nodes.");
+        }
+        const newCurrentNode = new SyntaxTreeNode(childType);
+        newCurrentNode.push(token.value);
+        nodeStack.push(newCurrentNode);
+        currentNode.push(newCurrentNode);
+        currentNode = newCurrentNode;
+      } else if (token.type.endsWith("_statementSeparator")) {
+        currentNode.push(
+          new SyntaxTreeNode(SyntaxTreeNodeType.SQL_STATEMENT_SEPARATOR).push(token.value)
+        );
+      } else if (
+        (token.type.startsWith("sql") || token.type.startsWith("innerSqlBlock")) &&
+        token.type.endsWith("Comment")
+      ) {
+        currentNode.push(new SyntaxTreeNode(SyntaxTreeNodeType.SQL_COMMENT).push(token.value));
+      } else {
+        currentNode.push(token.value);
       }
-      const newCurrentNode: ISyntaxTreeNode = {
-        contentType,
-        contents: []
-      };
-      appendToNode(newCurrentNode, token.value);
-      nodeStack.push(newCurrentNode);
-      currentNode.contents.push(newCurrentNode);
-      currentNode = newCurrentNode;
-    } else if (token.type.endsWith("_statementSeparator")) {
-      currentNode.contents.push({
-        contentType: "sqlStatementSeparator",
-        contents: [token.value]
-      });
-    } else if (
-      (token.type.startsWith("sql") || token.type.startsWith("innerSqlBlock")) &&
-      token.type.endsWith("Comment")
-    ) {
-      currentNode.contents.push({
-        contentType: "sqlComment",
-        contents: [token.value]
-      });
-    } else {
-      appendToNode(currentNode, token.value);
     }
+    return parentNode;
   }
-  return parentNode;
+
+  public constructor(
+    public readonly type: SyntaxTreeNodeType,
+    private allChildren: Array<string | SyntaxTreeNode> = []
+  ) {}
+
+  public children() {
+    return this.allChildren.slice();
+  }
+
+  public concatenate(): string {
+    return this.allChildren
+      .map(child => {
+        if (typeof child === "string") {
+          return child;
+        }
+        return child.concatenate();
+      })
+      .join("");
+  }
+
+  public push(child: string | SyntaxTreeNode): this {
+    if (
+      this.allChildren.length > 0 &&
+      typeof child === "string" &&
+      typeof this.allChildren[this.allChildren.length - 1] === "string"
+    ) {
+      this.allChildren[this.allChildren.length - 1] =
+        this.allChildren[this.allChildren.length - 1] + child;
+      return;
+    }
+    this.allChildren.push(child);
+    return this;
+  }
+
+  public equals(other: SyntaxTreeNode): boolean {
+    if (this.type !== other.type) {
+      return false;
+    }
+    if (this.allChildren.length !== other.children().length) {
+      return false;
+    }
+
+    const areEqual = (first: string | SyntaxTreeNode, second: string | SyntaxTreeNode) => {
+      if (typeof first !== typeof second) {
+        return false;
+      }
+      if (typeof first === "string" || typeof second === "string") {
+        return first === second;
+      }
+      return first.equals(second);
+    };
+    if (this.allChildren.some((child, index) => !areEqual(child, other.children()[index]))) {
+      return false;
+    }
+    return true;
+  }
 }
 
 export interface ISqlxParseResults {
