@@ -221,9 +221,9 @@ export function parseSqlx(code: string): ISqlxParseResults {
     .forEach(node => {
       const concatenated = node.concatenate();
       if (concatenated.startsWith("config")) {
-        results.config = concatenated.slice("config {".length - 1);
+        results.config = concatenated.slice("config ".length);
       } else {
-        // results.js += concatenated.slice("js {".length + 1, -1 * "}".length);
+        results.js += concatenated.slice("js {".length, -1 * "}".length);
       }
     });
 
@@ -248,11 +248,9 @@ export function parseSqlx(code: string): ISqlxParseResults {
 
     switch (newState) {
       case "config": {
-        // results.config += token.value;
         break;
       }
       case "js": {
-        results.js += token.value;
         break;
       }
       case "sql": {
@@ -298,18 +296,6 @@ export function parseSqlx(code: string): ISqlxParseResults {
       default:
         throw new Error(`Unrecognized parse state: ${newState}`);
     }
-
-    if (previousState === "js" && newState !== "js") {
-      // If we're closing off a JS block, cut off the last closing brace.
-      // We have to do this because we intentionally cut off the starting brace during lexing.
-      // We can't keep them because the user's JS must not be run inside a scoped block.
-      results.js = results.js.substring(0, results.js.length - 1);
-    }
-  }
-  // In the case where there are no characters after the JS block, the new
-  // state is not checked for, so the curly brace has to be removed here.
-  if (results.js.substr(results.js.length - 1) === "}") {
-    results.js = results.js.substring(0, results.js.length - 1);
   }
   return results;
 }
