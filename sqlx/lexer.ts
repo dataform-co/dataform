@@ -199,7 +199,6 @@ export interface ISqlxParseResults {
   input: { [label: string]: string };
 }
 
-// TODO: Figure out if it's possible to bring parseSqlx() and constructSyntaxTree() together.
 export function parseSqlx(code: string): ISqlxParseResults {
   const valueMappings = getValueMappings();
   const results: ISqlxParseResults = {
@@ -234,7 +233,6 @@ export function parseSqlx(code: string): ISqlxParseResults {
     if (valueMappings[token.type]) {
       token.value = valueMappings[token.type](token.value);
     }
-    const previousState = parseState.currentState;
     const newState = parseState.computeState(token);
 
     if (token.type === SQL_LEXER_TOKEN_NAMES.START_INPUT) {
@@ -328,16 +326,16 @@ function getValueMappings() {
     [tokenType: string]: (tokenValue: string) => string;
   } = {};
 
-  valueMappings[SQL_LEXER_TOKEN_NAMES.START_CONFIG] = () => "{";
-  valueMappings[SQL_LEXER_TOKEN_NAMES.START_JS] = () => "";
   valueMappings[SQL_LEXER_TOKEN_NAMES.START_INCREMENTAL] = () => "";
   valueMappings[SQL_LEXER_TOKEN_NAMES.START_PRE_OPERATIONS] = () => "";
   valueMappings[SQL_LEXER_TOKEN_NAMES.START_POST_OPERATIONS] = () => "";
   valueMappings[SQL_LEXER_TOKEN_NAMES.START_INPUT] = (tokenValue: string) =>
     tokenValue.split('"')[1];
   valueMappings[SQL_LEXER_TOKEN_NAMES.STATEMENT_SEPERATOR] = () => "";
+  // TODO this should exist for inner blocks too
   valueMappings[SQL_LEXER_TOKEN_NAMES.SINGLE_LINE_COMMENT] = (value: string) =>
     value.replace(/`/g, "\\`").replace(/\${/g, "\\${");
+  // TODO this should exist for inner blocks too
   valueMappings[SQL_LEXER_TOKEN_NAMES.MULTI_LINE_COMMENT] = (value: string) =>
     value.replace(/`/g, "\\`").replace(/\${/g, "\\${");
   valueMappings[SQL_LEXER_TOKEN_NAMES.BACKTICK] = () => "\\`";
