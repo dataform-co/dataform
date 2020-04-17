@@ -127,6 +127,10 @@ export class SyntaxTreeNode {
     return parentNode;
   }
 
+  public static isSyntaxTreeNode(node: string | SyntaxTreeNode): node is SyntaxTreeNode {
+    return typeof node !== "string";
+  }
+
   public constructor(
     public readonly type: SyntaxTreeNodeType,
     private allChildren: Array<string | SyntaxTreeNode> = []
@@ -207,6 +211,22 @@ export function parseSqlx(code: string): ISqlxParseResults {
     postOperations: [""],
     input: {}
   };
+
+  const rootNode = SyntaxTreeNode.create(code);
+
+  rootNode
+    .children()
+    .filter(SyntaxTreeNode.isSyntaxTreeNode)
+    .filter(node => node.type === SyntaxTreeNodeType.JAVASCRIPT)
+    .forEach(node => {
+      const concatenated = node.concatenate();
+      if (concatenated.startsWith("config")) {
+        results.config = concatenated.slice("config {".length - 1);
+      } else {
+        // results.js += concatenated.slice("js {".length + 1, -1 * "}".length);
+      }
+    });
+
   let currentInputLabel;
   const parseState = new SqlxParseState();
   lexer.reset(code);
@@ -228,7 +248,7 @@ export function parseSqlx(code: string): ISqlxParseResults {
 
     switch (newState) {
       case "config": {
-        results.config += token.value;
+        // results.config += token.value;
         break;
       }
       case "js": {
