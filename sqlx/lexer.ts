@@ -237,6 +237,24 @@ export interface ISqlxParseResults {
   input: { [label: string]: string };
 }
 
+function escapeSqlxNodeForJavaScriptTemplateString(node: string | SyntaxTreeNode) {
+  if (typeof node === "string") {
+    return node.replace(/\\/g, "\\\\").replace(/\`/g, "\\`");
+  }
+  switch (node.type) {
+    case SyntaxTreeNodeType.SQL_COMMENT:
+      // Any code (i.e. JavaScript placeholder strings) inside comments should not run, so escape it.
+      return node
+        .concatenate()
+        .replace(/`/g, "\\`")
+        .replace(/\${/g, "\\${");
+    case SyntaxTreeNodeType.SQL_LITERAL_STRING:
+      // Literal strings may contain escapes, which we need to double-escape.
+      return node.concatenate().replace(/\\/g, "\\\\");
+  }
+  return node;
+}
+
 export function parseSqlx(code: string): ISqlxParseResults {
   const valueMappings = getValueMappings();
   const results: ISqlxParseResults = {
@@ -260,8 +278,29 @@ export function parseSqlx(code: string): ISqlxParseResults {
       if (concatenated.startsWith("config")) {
         results.config = concatenated.slice("config ".length);
       } else {
-        results.js += concatenated.slice("js {".length, -1 * "}".length);
+        results.js += concatenated.slice("js {".length, "}".length * -1);
       }
+    });
+
+  rootNode
+    .children()
+    .filter(
+      node =>
+        typeof node === "string" ||
+        [
+          SyntaxTreeNodeType.JAVASCRIPT_TEMPLATE_STRING_PLACEHOLDER,
+          SyntaxTreeNodeType.SQL_COMMENT,
+          SyntaxTreeNodeType.SQL_LITERAL_STRING,
+          SyntaxTreeNodeType.SQL_STATEMENT_SEPARATOR
+        ].includes(node.type)
+    )
+    .map(escapeSqlxNodeForJavaScriptTemplateString)
+    .forEach(node => {
+      if (typeof node !== "string" && node.type === SyntaxTreeNodeType.SQL_STATEMENT_SEPARATOR) {
+        results.sql.push("");
+        return;
+      }
+      results.sql[results.sql.length - 1] += typeof node === "string" ? node : node.concatenate();
     });
 
   let currentInputLabel;
@@ -290,10 +329,6 @@ export function parseSqlx(code: string): ISqlxParseResults {
         break;
       }
       case "sql": {
-        if (isStatementSeparator) {
-          results.sql.push("");
-        }
-        results.sql[results.sql.length - 1] += token.value;
         break;
       }
       case "incremental": {
@@ -369,15 +404,6 @@ function getValueMappings() {
   valueMappings[SQL_LEXER_TOKEN_NAMES.START_POST_OPERATIONS] = () => "";
   valueMappings[SQL_LEXER_TOKEN_NAMES.START_INPUT] = (tokenValue: string) =>
     tokenValue.split('"')[1];
-  valueMappings[SQL_LEXER_TOKEN_NAMES.STATEMENT_SEPERATOR] = () => "";
-  // TODO this should exist for inner blocks too
-  valueMappings[SQL_LEXER_TOKEN_NAMES.SINGLE_LINE_COMMENT] = (value: string) =>
-    value.replace(/`/g, "\\`").replace(/\${/g, "\\${");
-  // TODO this should exist for inner blocks too
-  valueMappings[SQL_LEXER_TOKEN_NAMES.MULTI_LINE_COMMENT] = (value: string) =>
-    value.replace(/`/g, "\\`").replace(/\${/g, "\\${");
-  valueMappings[SQL_LEXER_TOKEN_NAMES.BACKTICK] = () => "\\`";
-  valueMappings[SQL_LEXER_TOKEN_NAMES.BACKSLASH] = () => "\\\\";
 
   valueMappings[INNER_SQL_BLOCK_LEXER_TOKEN_NAMES.STATEMENT_SEPERATOR] = () => "";
   valueMappings[INNER_SQL_BLOCK_LEXER_TOKEN_NAMES.CLOSE_BLOCK] = () => "";
