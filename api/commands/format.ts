@@ -13,12 +13,6 @@ const JS_BEAUTIFY_OPTIONS: JsBeautifyOptions = {
 
 const MAX_SQL_FORMAT_ATTEMPTS = 5;
 
-// TODO: currently r'...' are only lifted if there is a whitespace beforehand due to
-// the positive lookbehind. Instead the regex should be matched regardless of a prior
-// whitespace. Does this require matching a reversed string? @ekrekr.
-// tslint:disable-next-line: tsr-detect-unsafe-regexp
-const TEXT_LIFT_PATTERNS = [/(?<=[ ])r'.*?(?<!\\)'/, /(?<=[ ])r".*?(?<!\\)"/];
-
 export async function formatFile(
   filename: string,
   options?: {
@@ -51,12 +45,14 @@ export async function formatFile(
 }
 
 function formatSqlx(node: SyntaxTreeNode, indent: string = "") {
-  const { codeBlocks, sqlxStatements } = separateCodeBlocksAndSqlxStatements(node.children());
+  const { sqlxStatements, javascriptBlocks, innerSqlBlocks } = separateSqlxIntoParts(
+    node.children()
+  );
 
   // First, format the JS blocks (including the config block).
-  const formattedJsCodeBlocks = codeBlocks
-    .filter(codeBlock => codeBlock.type === SyntaxTreeNodeType.JAVASCRIPT)
-    .map(jsCodeBlock => formatJavaScript(jsCodeBlock.concatenate()));
+  const formattedJsCodeBlocks = javascriptBlocks.map(jsCodeBlock =>
+    formatJavaScript(jsCodeBlock.concatenate())
+  );
 
   // Second, format all the SQLX statements, replacing any placeholders with their formatted form.
   const formattedSqlxStatements = sqlxStatements.map(sqlxStatement => {
@@ -72,28 +68,26 @@ function formatSqlx(node: SyntaxTreeNode, indent: string = "") {
   });
 
   // Third, format all "inner" SQL blocks, e.g. "pre_operations { ... }".
-  const formattedSqlCodeBlocks = codeBlocks
-    .filter(codeBlock => codeBlock.type === SyntaxTreeNodeType.SQL)
-    .map((sqlCodeBlock): string => {
-      // Strip out the declaration of this block, format the internals then add the declaration back.
-      const firstPart = sqlCodeBlock.children()[0] as string;
-      const upToFirstBrace = firstPart.slice(0, firstPart.indexOf("{") + 1);
+  const formattedSqlCodeBlocks = innerSqlBlocks.map((sqlCodeBlock): string => {
+    // Strip out the declaration of this block, format the internals then add the declaration back.
+    const firstPart = sqlCodeBlock.children()[0] as string;
+    const upToFirstBrace = firstPart.slice(0, firstPart.indexOf("{") + 1);
 
-      const lastPart = sqlCodeBlock.children()[sqlCodeBlock.children().length - 1] as string;
-      const lastBraceOnwards = lastPart.slice(lastPart.lastIndexOf("}"));
+    const lastPart = sqlCodeBlock.children()[sqlCodeBlock.children().length - 1] as string;
+    const lastBraceOnwards = lastPart.slice(lastPart.lastIndexOf("}"));
 
-      const sqlCodeBlockWithoutOuterBraces = new SyntaxTreeNode(sqlCodeBlock.type);
-      sqlCodeBlockWithoutOuterBraces.push(firstPart.slice(firstPart.indexOf("{") + 1));
-      sqlCodeBlock
-        .children()
-        .slice(1, -1)
-        .forEach(child => sqlCodeBlockWithoutOuterBraces.push(child));
-      sqlCodeBlockWithoutOuterBraces.push(lastPart.slice(0, lastPart.lastIndexOf("}")));
+    const sqlCodeBlockWithoutOuterBraces = new SyntaxTreeNode(sqlCodeBlock.type);
+    sqlCodeBlockWithoutOuterBraces.push(firstPart.slice(firstPart.indexOf("{") + 1));
+    sqlCodeBlock
+      .children()
+      .slice(1, -1)
+      .forEach(child => sqlCodeBlockWithoutOuterBraces.push(child));
+    sqlCodeBlockWithoutOuterBraces.push(lastPart.slice(0, lastPart.lastIndexOf("}")));
 
-      return `${upToFirstBrace}
+    return `${upToFirstBrace}
 ${formatSqlx(sqlCodeBlockWithoutOuterBraces, "  ")}
 ${lastBraceOnwards}`;
-    });
+  });
 
   const finalText = `
 ${formattedJsCodeBlocks.join("\n\n")}
@@ -105,27 +99,30 @@ ${formattedSqlCodeBlocks.join("\n\n")}
   return `${indent}${finalText.trim()}`;
 }
 
-function separateCodeBlocksAndSqlxStatements(nodeContents: Array<string | SyntaxTreeNode>) {
-  const codeBlocks: SyntaxTreeNode[] = [];
+function separateSqlxIntoParts(nodeContents: Array<string | SyntaxTreeNode>) {
   const sqlxStatements: Array<Array<string | SyntaxTreeNode>> = [[]];
+  const javascriptBlocks: SyntaxTreeNode[] = [];
+  const innerSqlBlocks: SyntaxTreeNode[] = [];
   nodeContents.forEach(child => {
-    if (
-      typeof child === "string" ||
-      child.type === SyntaxTreeNodeType.JAVASCRIPT_TEMPLATE_STRING_PLACEHOLDER ||
-      child.type === SyntaxTreeNodeType.SQL_COMMENT
-    ) {
-      sqlxStatements[sqlxStatements.length - 1].push(child);
-      return;
+    if (typeof child !== "string") {
+      switch (child.type) {
+        case SyntaxTreeNodeType.JAVASCRIPT:
+          javascriptBlocks.push(child);
+          return;
+        case SyntaxTreeNodeType.SQL:
+          innerSqlBlocks.push(child);
+          return;
+        case SyntaxTreeNodeType.SQL_STATEMENT_SEPARATOR:
+          sqlxStatements.push([]);
+          return;
+      }
     }
-    if (child.type === SyntaxTreeNodeType.SQL_STATEMENT_SEPARATOR) {
-      sqlxStatements.push([]);
-      return;
-    }
-    codeBlocks.push(child);
+    sqlxStatements[sqlxStatements.length - 1].push(child);
   });
   return {
-    codeBlocks,
-    sqlxStatements
+    sqlxStatements,
+    javascriptBlocks,
+    innerSqlBlocks
   };
 }
 
@@ -139,6 +136,7 @@ function stripUnformattableText(
     if (typeof part !== "string") {
       const placeholderId = generatePlaceholderId();
       switch (part.type) {
+        case SyntaxTreeNodeType.SQL_LITERAL_STRING:
         case SyntaxTreeNodeType.JAVASCRIPT_TEMPLATE_STRING_PLACEHOLDER: {
           placeholders[placeholderId] = part;
           return placeholderId;
@@ -153,14 +151,7 @@ function stripUnformattableText(
           return commentPlaceholderId;
         }
         default:
-          throw new Error(`Misplaced syntax node content type inside SQLX query: ${part.type}`);
-      }
-    }
-    for (const pattern of TEXT_LIFT_PATTERNS) {
-      while (part.match(pattern)) {
-        const placeholderId = generatePlaceholderId();
-        placeholders[placeholderId] = part.match(pattern)[0];
-        part = part.replace(pattern, placeholderId);
+          throw new Error(`Misplaced SyntaxTreeNodeType inside SQLX: ${part.type}`);
       }
     }
     return part;
@@ -168,7 +159,7 @@ function stripUnformattableText(
 }
 
 function generatePlaceholderId() {
-  return crypto.randomBytes(16).toString("hex");
+  return crypto.randomBytes(8).toString("hex");
 }
 
 function replacePlaceholders(
@@ -238,10 +229,11 @@ function formatSqlQueryPlaceholder(node: SyntaxTreeNode, jsIndent: string): stri
   switch (node.type) {
     case SyntaxTreeNodeType.JAVASCRIPT_TEMPLATE_STRING_PLACEHOLDER:
       return formatJavaScriptPlaceholder(node, jsIndent);
+    case SyntaxTreeNodeType.SQL_LITERAL_STRING:
     case SyntaxTreeNodeType.SQL_COMMENT:
       return formatEveryLine(node.concatenate(), line => `${jsIndent}${line.trimLeft()}`);
     default:
-      throw new Error(`Unrecognized syntax node content type: ${node.type}`);
+      throw new Error(`Unrecognized SyntaxTreeNodeType: ${node.type}`);
   }
 }
 
