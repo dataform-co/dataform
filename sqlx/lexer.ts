@@ -127,11 +127,10 @@ export class SyntaxTreeNode {
     return parentNode;
   }
 
-  private allChildren: Array<string | SyntaxTreeNode>;
-
-  public constructor(public readonly type: SyntaxTreeNodeType) {
-    this.allChildren = [];
-  }
+  public constructor(
+    public readonly type: SyntaxTreeNodeType,
+    private allChildren: Array<string | SyntaxTreeNode> = []
+  ) {}
 
   public children() {
     return this.allChildren.slice();
@@ -160,6 +159,29 @@ export class SyntaxTreeNode {
     }
     this.allChildren.push(child);
     return this;
+  }
+
+  public equals(other: SyntaxTreeNode): boolean {
+    if (this.type !== other.type) {
+      return false;
+    }
+    if (this.allChildren.length !== other.children().length) {
+      return false;
+    }
+
+    const areEqual = (first: string | SyntaxTreeNode, second: string | SyntaxTreeNode) => {
+      if (typeof first !== typeof second) {
+        return false;
+      }
+      if (typeof first === "string" || typeof second === "string") {
+        return first === second;
+      }
+      return first.equals(second);
+    };
+    if (this.allChildren.some((child, index) => !areEqual(child, other.children()[index]))) {
+      return false;
+    }
+    return true;
   }
 }
 
