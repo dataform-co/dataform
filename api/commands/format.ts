@@ -76,13 +76,16 @@ function formatSqlx(node: SyntaxTreeNode, indent: string = "") {
     const lastPart = sqlCodeBlock.children()[sqlCodeBlock.children().length - 1] as string;
     const lastBraceOnwards = lastPart.slice(lastPart.lastIndexOf("}"));
 
-    const sqlCodeBlockWithoutOuterBraces = new SyntaxTreeNode(sqlCodeBlock.type);
-    sqlCodeBlockWithoutOuterBraces.push(firstPart.slice(firstPart.indexOf("{") + 1));
-    sqlCodeBlock
-      .children()
-      .slice(1, -1)
-      .forEach(child => sqlCodeBlockWithoutOuterBraces.push(child));
-    sqlCodeBlockWithoutOuterBraces.push(lastPart.slice(0, lastPart.lastIndexOf("}")));
+    const sqlCodeBlockWithoutOuterBraces =
+      sqlCodeBlock.children().length === 1
+        ? new SyntaxTreeNode(SyntaxTreeNodeType.SQL, [
+            firstPart.slice(firstPart.indexOf("{") + 1, firstPart.lastIndexOf("}"))
+          ])
+        : new SyntaxTreeNode(SyntaxTreeNodeType.SQL, [
+            firstPart.slice(firstPart.indexOf("{") + 1),
+            ...sqlCodeBlock.children().slice(1, -1),
+            lastPart.slice(0, lastPart.lastIndexOf("}"))
+          ]);
 
     return `${upToFirstBrace}
 ${formatSqlx(sqlCodeBlockWithoutOuterBraces, "  ")}

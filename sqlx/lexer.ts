@@ -237,6 +237,20 @@ export interface ISqlxParseResults {
   input: { [label: string]: string };
 }
 
+function getEscapedSqlxStatementsForJavaScriptTemplateString(
+  nodes: Array<string | SyntaxTreeNode>
+) {
+  const results = [""];
+  nodes.map(escapeSqlxNodeForJavaScriptTemplateString).forEach(node => {
+    if (typeof node !== "string" && node.type === SyntaxTreeNodeType.SQL_STATEMENT_SEPARATOR) {
+      results.push("");
+      return;
+    }
+    results[results.length - 1] += typeof node === "string" ? node : node.concatenate();
+  });
+  return results;
+}
+
 function escapeSqlxNodeForJavaScriptTemplateString(node: string | SyntaxTreeNode) {
   if (typeof node === "string") {
     return node.replace(/\\/g, "\\\\").replace(/\`/g, "\\`");
@@ -256,7 +270,6 @@ function escapeSqlxNodeForJavaScriptTemplateString(node: string | SyntaxTreeNode
 }
 
 export function parseSqlx(code: string): ISqlxParseResults {
-  const valueMappings = getValueMappings();
   const results: ISqlxParseResults = {
     config: "",
     js: "",
@@ -282,147 +295,62 @@ export function parseSqlx(code: string): ISqlxParseResults {
       }
     });
 
+  results.sql = getEscapedSqlxStatementsForJavaScriptTemplateString(
+    rootNode
+      .children()
+      .filter(
+        node =>
+          typeof node === "string" ||
+          [
+            SyntaxTreeNodeType.JAVASCRIPT_TEMPLATE_STRING_PLACEHOLDER,
+            SyntaxTreeNodeType.SQL_COMMENT,
+            SyntaxTreeNodeType.SQL_LITERAL_STRING,
+            SyntaxTreeNodeType.SQL_STATEMENT_SEPARATOR
+          ].includes(node.type)
+      )
+  );
+
   rootNode
     .children()
-    .filter(
-      node =>
-        typeof node === "string" ||
-        [
-          SyntaxTreeNodeType.JAVASCRIPT_TEMPLATE_STRING_PLACEHOLDER,
-          SyntaxTreeNodeType.SQL_COMMENT,
-          SyntaxTreeNodeType.SQL_LITERAL_STRING,
-          SyntaxTreeNodeType.SQL_STATEMENT_SEPARATOR
-        ].includes(node.type)
-    )
-    .map(escapeSqlxNodeForJavaScriptTemplateString)
+    .filter(SyntaxTreeNode.isSyntaxTreeNode)
+    .filter(node => node.type === SyntaxTreeNodeType.SQL)
     .forEach(node => {
-      if (typeof node !== "string" && node.type === SyntaxTreeNodeType.SQL_STATEMENT_SEPARATOR) {
-        results.sql.push("");
-        return;
-      }
-      results.sql[results.sql.length - 1] += typeof node === "string" ? node : node.concatenate();
-    });
+      const firstChild = node.children()[0] as string;
+      const lastChild = node.children().slice(-1)[0] as string;
 
-  let currentInputLabel;
-  const parseState = new SqlxParseState();
-  lexer.reset(code);
-  for (const token of lexer) {
-    if (valueMappings[token.type]) {
-      token.value = valueMappings[token.type](token.value);
-    }
-    const newState = parseState.computeState(token);
+      const sqlCodeBlockWithoutOuterBraces =
+        node.children().length === 1
+          ? new SyntaxTreeNode(SyntaxTreeNodeType.SQL, [
+              firstChild.slice(firstChild.indexOf("{") + 1, firstChild.lastIndexOf("}"))
+            ])
+          : new SyntaxTreeNode(SyntaxTreeNodeType.SQL, [
+              firstChild.slice(firstChild.indexOf("{") + 1),
+              ...node.children().slice(1, -1),
+              lastChild.slice(0, lastChild.lastIndexOf("}"))
+            ]);
+      const statements = getEscapedSqlxStatementsForJavaScriptTemplateString(
+        sqlCodeBlockWithoutOuterBraces.children()
+      );
 
-    if (token.type === SQL_LEXER_TOKEN_NAMES.START_INPUT) {
-      currentInputLabel = token.value;
-      token.value = "";
-    }
-
-    const isStatementSeparator =
-      token.type === SQL_LEXER_TOKEN_NAMES.STATEMENT_SEPERATOR ||
-      token.type === INNER_SQL_BLOCK_LEXER_TOKEN_NAMES.STATEMENT_SEPERATOR;
-
-    switch (newState) {
-      case "config": {
-        break;
-      }
-      case "js": {
-        break;
-      }
-      case "sql": {
-        break;
-      }
-      case "incremental": {
-        if (isStatementSeparator) {
+      if (firstChild.startsWith("incremental_where")) {
+        if (statements.length > 1) {
           throw new Error(
-            "Incremental code blocks may not contain SQL statement separators ('---')."
+            "'incremental_where' code blocks may only contain a single SQL statement."
           );
         }
-        results.incremental += token.value;
-        break;
-      }
-      case "preOperations": {
-        if (isStatementSeparator) {
-          results.preOperations.push("");
+        results.incremental = statements[0];
+      } else if (firstChild.startsWith("pre_operations")) {
+        results.preOperations = statements;
+      } else if (firstChild.startsWith("post_operations")) {
+        results.postOperations = statements;
+      } else if (firstChild.startsWith("input")) {
+        if (statements.length > 1) {
+          throw new Error("'input' code blocks may only contain a single SQL statement.");
         }
-        results.preOperations[results.preOperations.length - 1] += token.value;
-        break;
+        results.input[firstChild.split('"')[1]] = statements[0];
       }
-      case "postOperations": {
-        if (isStatementSeparator) {
-          results.postOperations.push("");
-        }
-        results.postOperations[results.postOperations.length - 1] += token.value;
-        break;
-      }
-      case "input": {
-        if (isStatementSeparator) {
-          throw new Error("Input code blocks may not contain SQL statement separators ('---').");
-        }
-        if (!results.input[currentInputLabel]) {
-          results.input[currentInputLabel] = "";
-        }
-        results.input[currentInputLabel] += token.value;
-        break;
-      }
-      default:
-        throw new Error(`Unrecognized parse state: ${newState}`);
-    }
-  }
+    });
   return results;
-}
-
-const tokenTypeStateMapping = new Map<string, keyof ISqlxParseResults>();
-tokenTypeStateMapping.set(SQL_LEXER_TOKEN_NAMES.START_CONFIG, "config");
-tokenTypeStateMapping.set(SQL_LEXER_TOKEN_NAMES.START_JS, "js");
-tokenTypeStateMapping.set(SQL_LEXER_TOKEN_NAMES.START_INCREMENTAL, "incremental");
-tokenTypeStateMapping.set(SQL_LEXER_TOKEN_NAMES.START_PRE_OPERATIONS, "preOperations");
-tokenTypeStateMapping.set(SQL_LEXER_TOKEN_NAMES.START_POST_OPERATIONS, "postOperations");
-tokenTypeStateMapping.set(SQL_LEXER_TOKEN_NAMES.START_INPUT, "input");
-
-class SqlxParseState {
-  public currentState: keyof ISqlxParseResults = "sql";
-
-  public computeState(token: moo.Token): keyof ISqlxParseResults {
-    if (!token.type.startsWith(LEXER_STATE_NAMES.SQL)) {
-      return this.currentState;
-    }
-    this.currentState = "sql";
-    if (tokenTypeStateMapping.has(token.type)) {
-      this.currentState = tokenTypeStateMapping.get(token.type);
-    }
-    return this.currentState;
-  }
-}
-
-function getValueMappings() {
-  const valueMappings: {
-    [tokenType: string]: (tokenValue: string) => string;
-  } = {};
-
-  valueMappings[SQL_LEXER_TOKEN_NAMES.START_INCREMENTAL] = () => "";
-  valueMappings[SQL_LEXER_TOKEN_NAMES.START_PRE_OPERATIONS] = () => "";
-  valueMappings[SQL_LEXER_TOKEN_NAMES.START_POST_OPERATIONS] = () => "";
-  valueMappings[SQL_LEXER_TOKEN_NAMES.START_INPUT] = (tokenValue: string) =>
-    tokenValue.split('"')[1];
-
-  valueMappings[INNER_SQL_BLOCK_LEXER_TOKEN_NAMES.STATEMENT_SEPERATOR] = () => "";
-  valueMappings[INNER_SQL_BLOCK_LEXER_TOKEN_NAMES.CLOSE_BLOCK] = () => "";
-  valueMappings[INNER_SQL_BLOCK_LEXER_TOKEN_NAMES.BACKTICK] = () => "\\`";
-  valueMappings[INNER_SQL_BLOCK_LEXER_TOKEN_NAMES.BACKSLASH] = () => "\\\\";
-
-  valueMappings[SQL_SINGLE_QUOTE_STRING_LEXER_TOKEN_NAMES.ESCAPED_BACKSLASH] = () => "\\\\\\\\";
-  valueMappings[SQL_SINGLE_QUOTE_STRING_LEXER_TOKEN_NAMES.ESCAPED_QUOTE] = () => "\\\\'";
-  valueMappings[SQL_SINGLE_QUOTE_STRING_LEXER_TOKEN_NAMES.CAPTURE_EVERYTHING_ELSE] = (
-    value: string
-  ) => value.replace(/\\/g, "\\\\");
-
-  valueMappings[SQL_DOUBLE_QUOTE_STRING_LEXER_TOKEN_NAMES.ESCAPED_BACKSLASH] = () => "\\\\\\\\";
-  valueMappings[SQL_DOUBLE_QUOTE_STRING_LEXER_TOKEN_NAMES.ESCAPED_QUOTE] = () => '\\\\"';
-  valueMappings[SQL_DOUBLE_QUOTE_STRING_LEXER_TOKEN_NAMES.CAPTURE_EVERYTHING_ELSE] = (
-    value: string
-  ) => value.replace(/\\/g, "\\\\");
-
-  return valueMappings;
 }
 
 function buildSqlxLexer(): { [x: string]: moo.Rules } {
