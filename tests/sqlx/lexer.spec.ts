@@ -1,4 +1,4 @@
-import { constructSyntaxTree, parseSqlx } from "@dataform/sqlx/lexer";
+import { parseSqlx, SyntaxTreeNode, SyntaxTreeNodeType } from "@dataform/sqlx/lexer";
 import { suite, test } from "@dataform/testing";
 import { expect } from "chai";
 
@@ -84,35 +84,33 @@ suite("@dataform/sqlx", () => {
   });
   suite("syntax tree construction", () => {
     test("SQL strings don't affect the tree", () => {
-      const tree = constructSyntaxTree("SELECT SUM(IF(track.event = 'example', 1, 0)) js { }");
-      const expected = {
-        contentType: "sql",
-        contents: [
-          "SELECT SUM(IF(track.event = 'example', 1, 0)) ",
-          { contentType: "js", contents: ["js { }"] }
-        ]
-      };
-      expect(tree).eql(expected);
+      const actual = SyntaxTreeNode.create("SELECT SUM(IF(track.event = 'example', 1, 0)) js { }");
+      const expected = new SyntaxTreeNode(SyntaxTreeNodeType.SQL, [
+        "SELECT SUM(IF(track.event = 'example', 1, 0)) ",
+        new SyntaxTreeNode(SyntaxTreeNodeType.JAVASCRIPT, ["js { }"])
+      ]);
+      expect(actual.equals(expected)).equals(true);
     });
     test("inline js blocks tokenized", () => {
-      const tree = constructSyntaxTree("select * from ${ref('dab')}");
-      const expected = {
-        contentType: "sql",
-        contents: ["select * from ", { contentType: "jsPlaceholder", contents: ["${ref('dab')}"] }]
-      };
-      expect(tree).eql(expected);
+      const actual = SyntaxTreeNode.create("select * from ${ref('dab')}");
+      const expected = new SyntaxTreeNode(SyntaxTreeNodeType.SQL, [
+        "select * from ",
+        new SyntaxTreeNode(SyntaxTreeNodeType.JAVASCRIPT_TEMPLATE_STRING_PLACEHOLDER, [
+          "${ref('dab')}"
+        ])
+      ]);
+      expect(actual.equals(expected)).equals(true);
     });
     test("inline js blocks tokenized correctly if string present beforehand", () => {
-      const tree = constructSyntaxTree('select regexp("^/([0-9]+)\\"/.*", ${ref("dab")})');
-      const expected = {
-        contentType: "sql",
-        contents: [
-          'select regexp("^/([0-9]+)\\"/.*", ',
-          { contentType: "jsPlaceholder", contents: ['${ref("dab")}'] },
-          ")"
-        ]
-      };
-      expect(tree).eql(expected);
+      const actual = SyntaxTreeNode.create('select regexp("^/([0-9]+)\\"/.*", ${ref("dab")})');
+      const expected = new SyntaxTreeNode(SyntaxTreeNodeType.SQL, [
+        'select regexp("^/([0-9]+)\\"/.*", ',
+        new SyntaxTreeNode(SyntaxTreeNodeType.JAVASCRIPT_TEMPLATE_STRING_PLACEHOLDER, [
+          '${ref("dab")}'
+        ]),
+        ")"
+      ]);
+      expect(actual.equals(expected)).equals(true);
     });
   });
   suite("whitespace parsing", () => {

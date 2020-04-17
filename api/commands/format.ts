@@ -1,4 +1,4 @@
-import { constructSyntaxTree, ISyntaxTreeNode } from "@dataform/sqlx/lexer";
+import { SyntaxTreeNode, SyntaxTreeNodeType } from "@dataform/sqlx/lexer";
 import * as crypto from "crypto";
 import * as fs from "fs";
 import * as jsBeautify from "js-beautify";
@@ -30,7 +30,7 @@ export async function formatFile(
     try {
       switch (fileExtension) {
         case "sqlx":
-          return postProcessFormattedSqlx(formatSqlx(constructSyntaxTree(text)));
+          return postProcessFormattedSqlx(formatSqlx(SyntaxTreeNode.create(text)));
         case "js":
           return `${formatJavaScript(text).trim()}\n`;
         default:
@@ -50,18 +50,18 @@ export async function formatFile(
   return formattedText;
 }
 
-function formatSqlx(node: ISyntaxTreeNode, indent: string = "") {
-  const { codeBlocks, sqlxStatements } = separateCodeBlocksAndSqlxStatements(node.contents);
+function formatSqlx(node: SyntaxTreeNode, indent: string = "") {
+  const { codeBlocks, sqlxStatements } = separateCodeBlocksAndSqlxStatements(node.children());
 
   // First, format the JS blocks (including the config block).
   const formattedJsCodeBlocks = codeBlocks
-    .filter(codeBlock => codeBlock.contentType === "js")
-    .map(jsCodeBlock => formatJavaScript(concatenateSyntaxTreeContents(jsCodeBlock)));
+    .filter(codeBlock => codeBlock.type === SyntaxTreeNodeType.JAVASCRIPT)
+    .map(jsCodeBlock => formatJavaScript(jsCodeBlock.concatenate()));
 
   // Second, format all the SQLX statements, replacing any placeholders with their formatted form.
   const formattedSqlxStatements = sqlxStatements.map(sqlxStatement => {
     const placeholders: {
-      [placeholderId: string]: ISyntaxTreeNode | string;
+      [placeholderId: string]: SyntaxTreeNode | string;
     } = {};
     const unformattedPlaceholderSql = stripUnformattableText(sqlxStatement, placeholders).join("");
     const formattedPlaceholderSql = formatSql(unformattedPlaceholderSql);
@@ -73,22 +73,25 @@ function formatSqlx(node: ISyntaxTreeNode, indent: string = "") {
 
   // Third, format all "inner" SQL blocks, e.g. "pre_operations { ... }".
   const formattedSqlCodeBlocks = codeBlocks
-    .filter(codeBlock => codeBlock.contentType === "sql")
+    .filter(codeBlock => codeBlock.type === SyntaxTreeNodeType.SQL)
     .map((sqlCodeBlock): string => {
       // Strip out the declaration of this block, format the internals then add the declaration back.
-      const firstPart = sqlCodeBlock.contents[0] as string;
+      const firstPart = sqlCodeBlock.children()[0] as string;
       const upToFirstBrace = firstPart.slice(0, firstPart.indexOf("{") + 1);
-      sqlCodeBlock.contents[0] = firstPart.slice(firstPart.indexOf("{") + 1);
 
-      const lastPart = sqlCodeBlock.contents[sqlCodeBlock.contents.length - 1] as string;
+      const lastPart = sqlCodeBlock.children()[sqlCodeBlock.children().length - 1] as string;
       const lastBraceOnwards = lastPart.slice(lastPart.lastIndexOf("}"));
-      sqlCodeBlock.contents[sqlCodeBlock.contents.length - 1] = lastPart.slice(
-        0,
-        lastPart.lastIndexOf("}")
-      );
+
+      const sqlCodeBlockWithoutOuterBraces = new SyntaxTreeNode(sqlCodeBlock.type);
+      sqlCodeBlockWithoutOuterBraces.push(firstPart.slice(firstPart.indexOf("{") + 1));
+      sqlCodeBlock
+        .children()
+        .slice(1, -1)
+        .forEach(child => sqlCodeBlockWithoutOuterBraces.push(child));
+      sqlCodeBlockWithoutOuterBraces.push(lastPart.slice(0, lastPart.lastIndexOf("}")));
 
       return `${upToFirstBrace}
-${formatSqlx(sqlCodeBlock, "  ")}
+${formatSqlx(sqlCodeBlockWithoutOuterBraces, "  ")}
 ${lastBraceOnwards}`;
     });
 
@@ -102,19 +105,19 @@ ${formattedSqlCodeBlocks.join("\n\n")}
   return `${indent}${finalText.trim()}`;
 }
 
-function separateCodeBlocksAndSqlxStatements(nodeContents: Array<string | ISyntaxTreeNode>) {
-  const codeBlocks: ISyntaxTreeNode[] = [];
-  const sqlxStatements: Array<Array<string | ISyntaxTreeNode>> = [[]];
+function separateCodeBlocksAndSqlxStatements(nodeContents: Array<string | SyntaxTreeNode>) {
+  const codeBlocks: SyntaxTreeNode[] = [];
+  const sqlxStatements: Array<Array<string | SyntaxTreeNode>> = [[]];
   nodeContents.forEach(child => {
     if (
       typeof child === "string" ||
-      child.contentType === "jsPlaceholder" ||
-      child.contentType === "sqlComment"
+      child.type === SyntaxTreeNodeType.JAVASCRIPT_TEMPLATE_STRING_PLACEHOLDER ||
+      child.type === SyntaxTreeNodeType.SQL_COMMENT
     ) {
       sqlxStatements[sqlxStatements.length - 1].push(child);
       return;
     }
-    if (child.contentType === "sqlStatementSeparator") {
+    if (child.type === SyntaxTreeNodeType.SQL_STATEMENT_SEPARATOR) {
       sqlxStatements.push([]);
       return;
     }
@@ -127,32 +130,30 @@ function separateCodeBlocksAndSqlxStatements(nodeContents: Array<string | ISynta
 }
 
 function stripUnformattableText(
-  sqlxStatementParts: Array<string | ISyntaxTreeNode>,
+  sqlxStatementParts: Array<string | SyntaxTreeNode>,
   placeholders: {
-    [placeholderId: string]: ISyntaxTreeNode | string;
+    [placeholderId: string]: SyntaxTreeNode | string;
   }
 ) {
   return sqlxStatementParts.map(part => {
     if (typeof part !== "string") {
       const placeholderId = generatePlaceholderId();
-      switch (part.contentType) {
-        case "jsPlaceholder": {
+      switch (part.type) {
+        case SyntaxTreeNodeType.JAVASCRIPT_TEMPLATE_STRING_PLACEHOLDER: {
           placeholders[placeholderId] = part;
           return placeholderId;
         }
-        case "sqlComment": {
+        case SyntaxTreeNodeType.SQL_COMMENT: {
           // sql-formatter knows how to format comments (as long as they keep to a single line);
           // give it a hint.
-          const commentPlaceholderId = concatenateSyntaxTreeContents(part).startsWith("--")
+          const commentPlaceholderId = part.concatenate().startsWith("--")
             ? `--${placeholderId}`
             : `/*${placeholderId}*/`;
           placeholders[commentPlaceholderId] = part;
           return commentPlaceholderId;
         }
         default:
-          throw new Error(
-            `Misplaced syntax node content type inside SQLX query: ${part.contentType}`
-          );
+          throw new Error(`Misplaced syntax node content type inside SQLX query: ${part.type}`);
       }
     }
     for (const pattern of TEXT_LIFT_PATTERNS) {
@@ -173,7 +174,7 @@ function generatePlaceholderId() {
 function replacePlaceholders(
   formattedSql: string,
   placeholders: {
-    [placeholderId: string]: ISyntaxTreeNode | string;
+    [placeholderId: string]: SyntaxTreeNode | string;
   }
 ) {
   return Object.keys(placeholders).reduce((partiallyFormattedSql, placeholderId) => {
@@ -206,7 +207,7 @@ function formatSql(text: string) {
 
 function formatPlaceholderInSqlx(
   placeholderId: string,
-  placeholderSyntaxNode: ISyntaxTreeNode,
+  placeholderSyntaxNode: SyntaxTreeNode,
   sqlx: string
 ) {
   const wholeLine = getWholeLineContainingPlaceholderId(placeholderId, sqlx);
@@ -214,7 +215,10 @@ function formatPlaceholderInSqlx(
   const formattedPlaceholder = formatSqlQueryPlaceholder(placeholderSyntaxNode, indent);
   // Replace the placeholder entirely if (a) it fits on one line and (b) it isn't a comment.
   // Otherwise, push the replacement onto its own line.
-  if (placeholderSyntaxNode.contentType !== "sqlComment" && !formattedPlaceholder.includes("\n")) {
+  if (
+    placeholderSyntaxNode.type !== SyntaxTreeNodeType.SQL_COMMENT &&
+    !formattedPlaceholder.includes("\n")
+  ) {
     return sqlx.replace(placeholderId, formattedPlaceholder.trim());
   }
   // Push multi-line placeholders to their own lines, if they're not already on one.
@@ -230,22 +234,19 @@ function formatPlaceholderInSqlx(
   return sqlx.replace(wholeLine, newLines.join("\n"));
 }
 
-function formatSqlQueryPlaceholder(node: ISyntaxTreeNode, jsIndent: string): string {
-  switch (node.contentType) {
-    case "jsPlaceholder":
+function formatSqlQueryPlaceholder(node: SyntaxTreeNode, jsIndent: string): string {
+  switch (node.type) {
+    case SyntaxTreeNodeType.JAVASCRIPT_TEMPLATE_STRING_PLACEHOLDER:
       return formatJavaScriptPlaceholder(node, jsIndent);
-    case "sqlComment":
-      return formatEveryLine(
-        concatenateSyntaxTreeContents(node),
-        line => `${jsIndent}${line.trimLeft()}`
-      );
+    case SyntaxTreeNodeType.SQL_COMMENT:
+      return formatEveryLine(node.concatenate(), line => `${jsIndent}${line.trimLeft()}`);
     default:
-      throw new Error(`Unrecognized syntax node content type: ${node.contentType}`);
+      throw new Error(`Unrecognized syntax node content type: ${node.type}`);
   }
 }
 
-function formatJavaScriptPlaceholder(node: ISyntaxTreeNode, jsIndent: string) {
-  const formattedJs = formatJavaScript(concatenateSyntaxTreeContents(node));
+function formatJavaScriptPlaceholder(node: SyntaxTreeNode, jsIndent: string) {
+  const formattedJs = formatJavaScript(node.concatenate());
   const textInsideBraces = formattedJs.slice(
     formattedJs.indexOf("{") + 1,
     formattedJs.lastIndexOf("}")
@@ -269,17 +270,6 @@ function getWholeLineContainingPlaceholderId(placeholderId: string, text: string
   // This RegExp is safe because we only use a 'placeholderId' that this file has generated.
   // tslint:disable-next-line: tsr-detect-non-literal-regexp
   return text.match(new RegExp(".*" + regexpEscapedPlaceholderId + ".*"))[0];
-}
-
-function concatenateSyntaxTreeContents(node: ISyntaxTreeNode): string {
-  return node.contents
-    .map(content => {
-      if (typeof content === "string") {
-        return content;
-      }
-      return concatenateSyntaxTreeContents(content);
-    })
-    .join("");
 }
 
 function postProcessFormattedSqlx(formattedSql: string) {
