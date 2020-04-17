@@ -85,6 +85,47 @@ export enum SyntaxTreeNodeType {
   SQL_COMMENT
 }
 
+const START_TOKEN_NODE_MAPPINGS = new Map<string, SyntaxTreeNodeType>([
+  [SQL_LEXER_TOKEN_NAMES.START_CONFIG, SyntaxTreeNodeType.JAVASCRIPT],
+  [SQL_LEXER_TOKEN_NAMES.START_JS, SyntaxTreeNodeType.JAVASCRIPT],
+  [JS_BLOCK_LEXER_TOKEN_NAMES.START_JS_TEMPLATE_STRING, SyntaxTreeNodeType.JAVASCRIPT],
+  [JS_BLOCK_LEXER_TOKEN_NAMES.START_JS_BLOCK, SyntaxTreeNodeType.JAVASCRIPT],
+  [JS_TEMPLATE_STRING_LEXER_TOKEN_NAMES.START_JS_BLOCK, SyntaxTreeNodeType.JAVASCRIPT],
+
+  [SQL_LEXER_TOKEN_NAMES.START_INCREMENTAL, SyntaxTreeNodeType.SQL],
+  [SQL_LEXER_TOKEN_NAMES.START_PRE_OPERATIONS, SyntaxTreeNodeType.SQL],
+  [SQL_LEXER_TOKEN_NAMES.START_POST_OPERATIONS, SyntaxTreeNodeType.SQL],
+  [SQL_LEXER_TOKEN_NAMES.START_INPUT, SyntaxTreeNodeType.SQL],
+
+  [
+    SQL_LEXER_TOKEN_NAMES.START_JS_PLACEHOLDER,
+    SyntaxTreeNodeType.JAVASCRIPT_TEMPLATE_STRING_PLACEHOLDER
+  ],
+  [
+    INNER_SQL_BLOCK_LEXER_TOKEN_NAMES.START_JS_PLACEHOLDER,
+    SyntaxTreeNodeType.JAVASCRIPT_TEMPLATE_STRING_PLACEHOLDER
+  ]
+]);
+
+const CLOSE_TOKEN_TYPES = new Set<string>([
+  JS_BLOCK_LEXER_TOKEN_NAMES.CLOSE_BLOCK,
+  JS_TEMPLATE_STRING_LEXER_TOKEN_NAMES.CLOSE_STRING,
+  INNER_SQL_BLOCK_LEXER_TOKEN_NAMES.CLOSE_BLOCK
+]);
+
+const WHOLE_TOKEN_NODE_MAPPINGS = new Map<string, SyntaxTreeNodeType>([
+  [SQL_LEXER_TOKEN_NAMES.SINGLE_LINE_COMMENT, SyntaxTreeNodeType.SQL_COMMENT],
+  [SQL_LEXER_TOKEN_NAMES.MULTI_LINE_COMMENT, SyntaxTreeNodeType.SQL_COMMENT],
+  [INNER_SQL_BLOCK_LEXER_TOKEN_NAMES.SINGLE_LINE_COMMENT, SyntaxTreeNodeType.SQL_COMMENT],
+  [INNER_SQL_BLOCK_LEXER_TOKEN_NAMES.MULTI_LINE_COMMENT, SyntaxTreeNodeType.SQL_COMMENT],
+
+  [SQL_LEXER_TOKEN_NAMES.STATEMENT_SEPERATOR, SyntaxTreeNodeType.SQL_STATEMENT_SEPARATOR],
+  [
+    INNER_SQL_BLOCK_LEXER_TOKEN_NAMES.STATEMENT_SEPERATOR,
+    SyntaxTreeNodeType.SQL_STATEMENT_SEPARATOR
+  ]
+]);
+
 export class SyntaxTreeNode {
   public static create(code: string) {
     const parentNode = new SyntaxTreeNode(SyntaxTreeNodeType.SQL);
@@ -92,34 +133,23 @@ export class SyntaxTreeNode {
     const nodeStack = [currentNode];
     lexer.reset(code);
     for (const token of lexer) {
-      if (token.type.includes("_close") && !token.type.includes("_closeQuote")) {
-        currentNode.push(token.value);
-        nodeStack.pop();
-        currentNode = nodeStack[nodeStack.length - 1];
-      } else if (token.type.includes("_start") && !token.type.includes("_startQuote")) {
-        const childType =
-          token.type.includes("_startJs") || token.type.includes("_startConfig")
-            ? token.type.includes("_startJsPlaceholder")
-              ? SyntaxTreeNodeType.JAVASCRIPT_TEMPLATE_STRING_PLACEHOLDER
-              : SyntaxTreeNodeType.JAVASCRIPT
-            : SyntaxTreeNodeType.SQL;
+      if (START_TOKEN_NODE_MAPPINGS.has(token.type)) {
+        const childType = START_TOKEN_NODE_MAPPINGS.get(token.type);
         if (childType === SyntaxTreeNodeType.SQL && currentNode.type !== SyntaxTreeNodeType.SQL) {
-          throw new Error("'sql' syntax tree nodes may only be children of other 'sql' nodes.");
+          throw new Error("SQL syntax tree nodes may only be children of other SQL nodes.");
         }
-        const newCurrentNode = new SyntaxTreeNode(childType);
-        newCurrentNode.push(token.value);
+        const newCurrentNode = new SyntaxTreeNode(childType, [token.value]);
         nodeStack.push(newCurrentNode);
         currentNode.push(newCurrentNode);
         currentNode = newCurrentNode;
-      } else if (token.type.endsWith("_statementSeparator")) {
+      } else if (CLOSE_TOKEN_TYPES.has(token.type)) {
+        currentNode.push(token.value);
+        nodeStack.pop();
+        currentNode = nodeStack[nodeStack.length - 1];
+      } else if (WHOLE_TOKEN_NODE_MAPPINGS.has(token.type)) {
         currentNode.push(
-          new SyntaxTreeNode(SyntaxTreeNodeType.SQL_STATEMENT_SEPARATOR).push(token.value)
+          new SyntaxTreeNode(WHOLE_TOKEN_NODE_MAPPINGS.get(token.type)).push(token.value)
         );
-      } else if (
-        (token.type.startsWith("sql") || token.type.startsWith("innerSqlBlock")) &&
-        token.type.endsWith("Comment")
-      ) {
-        currentNode.push(new SyntaxTreeNode(SyntaxTreeNodeType.SQL_COMMENT).push(token.value));
       } else {
         currentNode.push(token.value);
       }
