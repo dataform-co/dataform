@@ -1,0 +1,115 @@
+
+const parsedConfig = {};
+// sqlxConfig should conform to the ISqlxConfig interface.
+const sqlxConfig = {
+  name: "file",
+  type: "operations",
+  dependencies: [],
+  tags: [],
+  ...parsedConfig
+};
+
+const sqlStatementCount = 1;
+const hasIncremental = false;
+const hasPreOperations = false;
+const hasPostOperations = false;
+const hasInputs = false;
+
+const action = session.sqlxAction({
+  sqlxConfig,
+  sqlStatementCount,
+  hasIncremental,
+  hasPreOperations,
+  hasPostOperations,
+  hasInputs
+});
+
+switch (sqlxConfig.type) {
+  case "view":
+  case "table":
+  case "incremental":
+  case "inline": {
+    action.query(ctx => {
+      const self = ctx.self.bind(ctx);
+const ref = ctx.ref.bind(ctx);
+const resolve = ctx.resolve.bind(ctx);
+const name = ctx.name.bind(ctx);
+const when = ctx.when.bind(ctx);
+const incremental = ctx.incremental.bind(ctx);
+      
+      if (hasIncremental) {
+        action.where(``);
+      }
+      return `
+select * from ${ref('dab')}
+`;
+    });
+    if (hasPreOperations) {
+      action.preOps(ctx => {
+        const self = ctx.self.bind(ctx);
+const ref = ctx.ref.bind(ctx);
+const resolve = ctx.resolve.bind(ctx);
+const name = ctx.name.bind(ctx);
+const when = ctx.when.bind(ctx);
+const incremental = ctx.incremental.bind(ctx);
+        
+        return [``];
+      });
+    }
+    if (hasPostOperations) {
+      action.postOps(ctx => {
+        const self = ctx.self.bind(ctx);
+const ref = ctx.ref.bind(ctx);
+const resolve = ctx.resolve.bind(ctx);
+const name = ctx.name.bind(ctx);
+const when = ctx.when.bind(ctx);
+const incremental = ctx.incremental.bind(ctx);
+        
+        return [``];
+      });
+    }
+    break;
+  }
+  case "assertion": {
+    action.query(ctx => {
+      const ref = ctx.ref.bind(ctx);
+const resolve = ctx.resolve.bind(ctx);
+      
+      return `
+select * from ${ref('dab')}
+`;
+    });
+    break;
+  }
+  case "operations": {
+    action.queries(ctx => {
+      const self = ctx.self.bind(ctx);
+const ref = ctx.ref.bind(ctx);
+const resolve = ctx.resolve.bind(ctx);
+const name = ctx.name.bind(ctx);
+      
+      const operations = [`
+select * from ${ref('dab')}
+`];
+      return operations;
+    });
+    break;
+  }
+  case "declaration": {
+    break;
+  }
+  case "test": {
+    
+    action.expect(ctx => {
+      
+      return `
+select * from ${ref('dab')}
+`;
+    });
+    break;
+  }
+  default: {
+    session.compileError(new Error(`Unrecognized action type: ${sqlxConfig.type}`));
+    break;
+  }
+}

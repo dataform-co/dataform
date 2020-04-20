@@ -5,6 +5,7 @@ import { dataform } from "@dataform/protos";
 import { suite, test } from "@dataform/testing";
 import { expect } from "chai";
 import { asPlainObject } from "df/tests/utils";
+import * as fs from "fs-extra";
 import * as path from "path";
 
 class TestConfigs {
@@ -705,6 +706,57 @@ suite("@dataform/core", () => {
       const { sql, js } = compilers.extractJsBlocks(TEST_SQL_FILE);
       expect(sql).equals(EXPECTED_SQL);
       expect(js).equals(EXPECTED_JS);
+    });
+
+    test("basic syntax", async () => {
+      expect(
+        compilers.compile(
+          `
+select * from \${ref('dab')}
+`,
+          "file.sqlx"
+        )
+      ).eql(await fs.readFile("tests/core/basic-syntax.js.test", "utf8"));
+    });
+    test("backslashes act literally", async () => {
+      expect(
+        compilers.compile(
+          `
+select
+  regexp_extract('01a_data_engine', '^(\\d{2}\\w)'),
+  regexp_extract('01a_data_engine', '^(\\\\d{2}\\\\w)'),
+  regexp_extract('\\\\', ''),
+  regexp_extract("", r"[0-9]\\"*"),
+
+pre_operations {
+  select
+    regexp_extract('01a_data_engine', '^(\\d{2}\\w)'),
+    regexp_extract('01a_data_engine', '^(\\\\d{2}\\\\w)'),
+    regexp_extract('\\\\', ''),
+    regexp_extract("", r"[0-9]\\"*"),
+}
+`,
+          "file.sqlx"
+        )
+      ).eql(await fs.readFile("tests/core/backslashes-act-literally.js.test", "utf8"));
+    });
+    test("strings act literally", async () => {
+      expect(
+        compilers.compile(
+          `
+select
+  "asd\\"123'def",
+  'asd\\'123"def',
+
+post_operations {
+  select
+    "asd\\"123'def",
+    'asd\\'123"def',
+}
+`,
+          "file.sqlx"
+        )
+      ).eql(await fs.readFile("tests/core/strings-act-literally.js.test", "utf8"));
     });
   });
 });

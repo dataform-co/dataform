@@ -267,7 +267,8 @@ switch (sqlxConfig.type) {
     session.compileError(new Error(\`Unrecognized action type: \${sqlxConfig.type}\`));
     break;
   }
-}`;
+}
+`;
 }
 
 function getFunctionPropertyNames(prototype: any) {
