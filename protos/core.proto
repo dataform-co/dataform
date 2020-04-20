@@ -159,13 +159,13 @@ message ColumnDescriptor {
   string display_name = 3;
 
   enum DimensionType {
-    UNKNOWN = 0;
+    UNKNOWN_DIMENSION = 0;
     CATEGORY = 1;
     TIMESTAMP = 2;
   }
 
   enum Aggregation {
-    UNKNOWN = 0;
+    UNKNOWN_AGGREGATION = 0;
     SUM = 1;
     DISTINCT = 2;
     DERIVED = 3;
