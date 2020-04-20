@@ -78,12 +78,59 @@ const SQL_DOUBLE_QUOTE_STRING_LEXER_TOKEN_NAMES = {
 const lexer = moo.states(buildSqlxLexer());
 
 export enum SyntaxTreeNodeType {
-  SQL,
   JAVASCRIPT,
   JAVASCRIPT_TEMPLATE_STRING_PLACEHOLDER,
-  SQL_STATEMENT_SEPARATOR,
-  SQL_COMMENT
+  SQL,
+  SQL_COMMENT,
+  SQL_LITERAL_STRING,
+  SQL_STATEMENT_SEPARATOR
 }
+
+const START_TOKEN_NODE_MAPPINGS = new Map<string, SyntaxTreeNodeType>([
+  [SQL_LEXER_TOKEN_NAMES.START_CONFIG, SyntaxTreeNodeType.JAVASCRIPT],
+  [SQL_LEXER_TOKEN_NAMES.START_INCREMENTAL, SyntaxTreeNodeType.SQL],
+  [SQL_LEXER_TOKEN_NAMES.START_INPUT, SyntaxTreeNodeType.SQL],
+  [SQL_LEXER_TOKEN_NAMES.START_JS, SyntaxTreeNodeType.JAVASCRIPT],
+  [
+    SQL_LEXER_TOKEN_NAMES.START_JS_PLACEHOLDER,
+    SyntaxTreeNodeType.JAVASCRIPT_TEMPLATE_STRING_PLACEHOLDER
+  ],
+  [SQL_LEXER_TOKEN_NAMES.START_POST_OPERATIONS, SyntaxTreeNodeType.SQL],
+  [SQL_LEXER_TOKEN_NAMES.START_PRE_OPERATIONS, SyntaxTreeNodeType.SQL],
+  [SQL_LEXER_TOKEN_NAMES.START_QUOTE_SINGLE, SyntaxTreeNodeType.SQL_LITERAL_STRING],
+  [SQL_LEXER_TOKEN_NAMES.START_QUOTE_DOUBLE, SyntaxTreeNodeType.SQL_LITERAL_STRING],
+
+  [JS_BLOCK_LEXER_TOKEN_NAMES.START_JS_BLOCK, SyntaxTreeNodeType.JAVASCRIPT],
+
+  [JS_TEMPLATE_STRING_LEXER_TOKEN_NAMES.START_JS_BLOCK, SyntaxTreeNodeType.JAVASCRIPT],
+
+  [
+    INNER_SQL_BLOCK_LEXER_TOKEN_NAMES.START_JS_PLACEHOLDER,
+    SyntaxTreeNodeType.JAVASCRIPT_TEMPLATE_STRING_PLACEHOLDER
+  ],
+  [INNER_SQL_BLOCK_LEXER_TOKEN_NAMES.START_QUOTE_SINGLE, SyntaxTreeNodeType.SQL_LITERAL_STRING],
+  [INNER_SQL_BLOCK_LEXER_TOKEN_NAMES.START_QUOTE_DOUBLE, SyntaxTreeNodeType.SQL_LITERAL_STRING]
+]);
+
+const CLOSE_TOKEN_TYPES = new Set<string>([
+  JS_BLOCK_LEXER_TOKEN_NAMES.CLOSE_BLOCK,
+  INNER_SQL_BLOCK_LEXER_TOKEN_NAMES.CLOSE_BLOCK,
+  SQL_SINGLE_QUOTE_STRING_LEXER_TOKEN_NAMES.CLOSE_QUOTE,
+  SQL_DOUBLE_QUOTE_STRING_LEXER_TOKEN_NAMES.CLOSE_QUOTE
+]);
+
+const WHOLE_TOKEN_NODE_MAPPINGS = new Map<string, SyntaxTreeNodeType>([
+  [SQL_LEXER_TOKEN_NAMES.MULTI_LINE_COMMENT, SyntaxTreeNodeType.SQL_COMMENT],
+  [SQL_LEXER_TOKEN_NAMES.SINGLE_LINE_COMMENT, SyntaxTreeNodeType.SQL_COMMENT],
+  [SQL_LEXER_TOKEN_NAMES.STATEMENT_SEPERATOR, SyntaxTreeNodeType.SQL_STATEMENT_SEPARATOR],
+
+  [INNER_SQL_BLOCK_LEXER_TOKEN_NAMES.MULTI_LINE_COMMENT, SyntaxTreeNodeType.SQL_COMMENT],
+  [INNER_SQL_BLOCK_LEXER_TOKEN_NAMES.SINGLE_LINE_COMMENT, SyntaxTreeNodeType.SQL_COMMENT],
+  [
+    INNER_SQL_BLOCK_LEXER_TOKEN_NAMES.STATEMENT_SEPERATOR,
+    SyntaxTreeNodeType.SQL_STATEMENT_SEPARATOR
+  ]
+]);
 
 export class SyntaxTreeNode {
   public static create(code: string) {
@@ -92,39 +139,32 @@ export class SyntaxTreeNode {
     const nodeStack = [currentNode];
     lexer.reset(code);
     for (const token of lexer) {
-      if (token.type.includes("_close") && !token.type.includes("_closeQuote")) {
-        currentNode.push(token.value);
-        nodeStack.pop();
-        currentNode = nodeStack[nodeStack.length - 1];
-      } else if (token.type.includes("_start") && !token.type.includes("_startQuote")) {
-        const childType =
-          token.type.includes("_startJs") || token.type.includes("_startConfig")
-            ? token.type.includes("_startJsPlaceholder")
-              ? SyntaxTreeNodeType.JAVASCRIPT_TEMPLATE_STRING_PLACEHOLDER
-              : SyntaxTreeNodeType.JAVASCRIPT
-            : SyntaxTreeNodeType.SQL;
+      if (START_TOKEN_NODE_MAPPINGS.has(token.type)) {
+        const childType = START_TOKEN_NODE_MAPPINGS.get(token.type);
         if (childType === SyntaxTreeNodeType.SQL && currentNode.type !== SyntaxTreeNodeType.SQL) {
-          throw new Error("'sql' syntax tree nodes may only be children of other 'sql' nodes.");
+          throw new Error("SQL syntax tree nodes may only be children of other SQL nodes.");
         }
-        const newCurrentNode = new SyntaxTreeNode(childType);
-        newCurrentNode.push(token.value);
+        const newCurrentNode = new SyntaxTreeNode(childType, [token.value]);
         nodeStack.push(newCurrentNode);
         currentNode.push(newCurrentNode);
         currentNode = newCurrentNode;
-      } else if (token.type.endsWith("_statementSeparator")) {
+      } else if (CLOSE_TOKEN_TYPES.has(token.type)) {
+        currentNode.push(token.value);
+        nodeStack.pop();
+        currentNode = nodeStack[nodeStack.length - 1];
+      } else if (WHOLE_TOKEN_NODE_MAPPINGS.has(token.type)) {
         currentNode.push(
-          new SyntaxTreeNode(SyntaxTreeNodeType.SQL_STATEMENT_SEPARATOR).push(token.value)
+          new SyntaxTreeNode(WHOLE_TOKEN_NODE_MAPPINGS.get(token.type)).push(token.value)
         );
-      } else if (
-        (token.type.startsWith("sql") || token.type.startsWith("innerSqlBlock")) &&
-        token.type.endsWith("Comment")
-      ) {
-        currentNode.push(new SyntaxTreeNode(SyntaxTreeNodeType.SQL_COMMENT).push(token.value));
       } else {
         currentNode.push(token.value);
       }
     }
     return parentNode;
+  }
+
+  public static isSyntaxTreeNode(node: string | SyntaxTreeNode): node is SyntaxTreeNode {
+    return typeof node !== "string";
   }
 
   public constructor(
@@ -183,178 +223,6 @@ export class SyntaxTreeNode {
     }
     return true;
   }
-}
-
-export interface ISqlxParseResults {
-  config: string;
-  js: string;
-  sql: string[];
-  incremental: string;
-  preOperations: string[];
-  postOperations: string[];
-  input: { [label: string]: string };
-}
-
-// TODO: Figure out if it's possible to bring parseSqlx() and constructSyntaxTree() together.
-export function parseSqlx(code: string): ISqlxParseResults {
-  const valueMappings = getValueMappings();
-  const results: ISqlxParseResults = {
-    config: "",
-    js: "",
-    sql: [""],
-    incremental: "",
-    preOperations: [""],
-    postOperations: [""],
-    input: {}
-  };
-  let currentInputLabel;
-  const parseState = new SqlxParseState();
-  lexer.reset(code);
-  for (const token of lexer) {
-    if (valueMappings[token.type]) {
-      token.value = valueMappings[token.type](token.value);
-    }
-    const previousState = parseState.currentState;
-    const newState = parseState.computeState(token);
-
-    if (token.type === SQL_LEXER_TOKEN_NAMES.START_INPUT) {
-      currentInputLabel = token.value;
-      token.value = "";
-    }
-
-    const isStatementSeparator =
-      token.type === SQL_LEXER_TOKEN_NAMES.STATEMENT_SEPERATOR ||
-      token.type === INNER_SQL_BLOCK_LEXER_TOKEN_NAMES.STATEMENT_SEPERATOR;
-
-    switch (newState) {
-      case "config": {
-        results.config += token.value;
-        break;
-      }
-      case "js": {
-        results.js += token.value;
-        break;
-      }
-      case "sql": {
-        if (isStatementSeparator) {
-          results.sql.push("");
-        }
-        results.sql[results.sql.length - 1] += token.value;
-        break;
-      }
-      case "incremental": {
-        if (isStatementSeparator) {
-          throw new Error(
-            "Incremental code blocks may not contain SQL statement separators ('---')."
-          );
-        }
-        results.incremental += token.value;
-        break;
-      }
-      case "preOperations": {
-        if (isStatementSeparator) {
-          results.preOperations.push("");
-        }
-        results.preOperations[results.preOperations.length - 1] += token.value;
-        break;
-      }
-      case "postOperations": {
-        if (isStatementSeparator) {
-          results.postOperations.push("");
-        }
-        results.postOperations[results.postOperations.length - 1] += token.value;
-        break;
-      }
-      case "input": {
-        if (isStatementSeparator) {
-          throw new Error("Input code blocks may not contain SQL statement separators ('---').");
-        }
-        if (!results.input[currentInputLabel]) {
-          results.input[currentInputLabel] = "";
-        }
-        results.input[currentInputLabel] += token.value;
-        break;
-      }
-      default:
-        throw new Error(`Unrecognized parse state: ${newState}`);
-    }
-
-    if (previousState === "js" && newState !== "js") {
-      // If we're closing off a JS block, cut off the last closing brace.
-      // We have to do this because we intentionally cut off the starting brace during lexing.
-      // We can't keep them because the user's JS must not be run inside a scoped block.
-      results.js = results.js.substring(0, results.js.length - 1);
-    }
-  }
-  // In the case where there are no characters after the JS block, the new
-  // state is not checked for, so the curly brace has to be removed here.
-  if (results.js.substr(results.js.length - 1) === "}") {
-    results.js = results.js.substring(0, results.js.length - 1);
-  }
-  return results;
-}
-
-const tokenTypeStateMapping = new Map<string, keyof ISqlxParseResults>();
-tokenTypeStateMapping.set(SQL_LEXER_TOKEN_NAMES.START_CONFIG, "config");
-tokenTypeStateMapping.set(SQL_LEXER_TOKEN_NAMES.START_JS, "js");
-tokenTypeStateMapping.set(SQL_LEXER_TOKEN_NAMES.START_INCREMENTAL, "incremental");
-tokenTypeStateMapping.set(SQL_LEXER_TOKEN_NAMES.START_PRE_OPERATIONS, "preOperations");
-tokenTypeStateMapping.set(SQL_LEXER_TOKEN_NAMES.START_POST_OPERATIONS, "postOperations");
-tokenTypeStateMapping.set(SQL_LEXER_TOKEN_NAMES.START_INPUT, "input");
-
-class SqlxParseState {
-  public currentState: keyof ISqlxParseResults = "sql";
-
-  public computeState(token: moo.Token): keyof ISqlxParseResults {
-    if (!token.type.startsWith(LEXER_STATE_NAMES.SQL)) {
-      return this.currentState;
-    }
-    this.currentState = "sql";
-    if (tokenTypeStateMapping.has(token.type)) {
-      this.currentState = tokenTypeStateMapping.get(token.type);
-    }
-    return this.currentState;
-  }
-}
-
-function getValueMappings() {
-  const valueMappings: {
-    [tokenType: string]: (tokenValue: string) => string;
-  } = {};
-
-  valueMappings[SQL_LEXER_TOKEN_NAMES.START_CONFIG] = () => "{";
-  valueMappings[SQL_LEXER_TOKEN_NAMES.START_JS] = () => "";
-  valueMappings[SQL_LEXER_TOKEN_NAMES.START_INCREMENTAL] = () => "";
-  valueMappings[SQL_LEXER_TOKEN_NAMES.START_PRE_OPERATIONS] = () => "";
-  valueMappings[SQL_LEXER_TOKEN_NAMES.START_POST_OPERATIONS] = () => "";
-  valueMappings[SQL_LEXER_TOKEN_NAMES.START_INPUT] = (tokenValue: string) =>
-    tokenValue.split('"')[1];
-  valueMappings[SQL_LEXER_TOKEN_NAMES.STATEMENT_SEPERATOR] = () => "";
-  valueMappings[SQL_LEXER_TOKEN_NAMES.SINGLE_LINE_COMMENT] = (value: string) =>
-    value.replace(/`/g, "\\`").replace(/\${/g, "\\${");
-  valueMappings[SQL_LEXER_TOKEN_NAMES.MULTI_LINE_COMMENT] = (value: string) =>
-    value.replace(/`/g, "\\`").replace(/\${/g, "\\${");
-  valueMappings[SQL_LEXER_TOKEN_NAMES.BACKTICK] = () => "\\`";
-  valueMappings[SQL_LEXER_TOKEN_NAMES.BACKSLASH] = () => "\\\\";
-
-  valueMappings[INNER_SQL_BLOCK_LEXER_TOKEN_NAMES.STATEMENT_SEPERATOR] = () => "";
-  valueMappings[INNER_SQL_BLOCK_LEXER_TOKEN_NAMES.CLOSE_BLOCK] = () => "";
-  valueMappings[INNER_SQL_BLOCK_LEXER_TOKEN_NAMES.BACKTICK] = () => "\\`";
-  valueMappings[INNER_SQL_BLOCK_LEXER_TOKEN_NAMES.BACKSLASH] = () => "\\\\";
-
-  valueMappings[SQL_SINGLE_QUOTE_STRING_LEXER_TOKEN_NAMES.ESCAPED_BACKSLASH] = () => "\\\\\\\\";
-  valueMappings[SQL_SINGLE_QUOTE_STRING_LEXER_TOKEN_NAMES.ESCAPED_QUOTE] = () => "\\\\'";
-  valueMappings[SQL_SINGLE_QUOTE_STRING_LEXER_TOKEN_NAMES.CAPTURE_EVERYTHING_ELSE] = (
-    value: string
-  ) => value.replace(/\\/g, "\\\\");
-
-  valueMappings[SQL_DOUBLE_QUOTE_STRING_LEXER_TOKEN_NAMES.ESCAPED_BACKSLASH] = () => "\\\\\\\\";
-  valueMappings[SQL_DOUBLE_QUOTE_STRING_LEXER_TOKEN_NAMES.ESCAPED_QUOTE] = () => '\\\\"';
-  valueMappings[SQL_DOUBLE_QUOTE_STRING_LEXER_TOKEN_NAMES.CAPTURE_EVERYTHING_ELSE] = (
-    value: string
-  ) => value.replace(/\\/g, "\\\\");
-
-  return valueMappings;
 }
 
 function buildSqlxLexer(): { [x: string]: moo.Rules } {

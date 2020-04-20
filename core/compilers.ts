@@ -2,11 +2,11 @@ import { AssertionContext } from "@dataform/core/assertion";
 import { OperationContext } from "@dataform/core/operation";
 import { TableContext } from "@dataform/core/table";
 import * as utils from "@dataform/core/utils";
-import { ISqlxParseResults, parseSqlx } from "@dataform/sqlx/lexer";
+import { SyntaxTreeNode, SyntaxTreeNodeType } from "@dataform/sqlx/lexer";
 
 export function compile(code: string, path: string) {
   if (path.endsWith(".sqlx")) {
-    return compileSqlx(parseSqlx(code), path);
+    return compileSqlx(SyntaxTreeNode.create(code), path);
   }
   if (path.endsWith(".assert.sql")) {
     return compileAssertionSql(code, path);
@@ -90,9 +90,82 @@ export function extractJsBlocks(code: string): { sql: string; js: string } {
   };
 }
 
-function compileSqlx(results: ISqlxParseResults, path: string) {
+function compileSqlx(rootNode: SyntaxTreeNode, path: string) {
+  let config = "";
+  let js = "";
+  rootNode
+    .children()
+    .filter(SyntaxTreeNode.isSyntaxTreeNode)
+    .filter(node => node.type === SyntaxTreeNodeType.JAVASCRIPT)
+    .forEach(node => {
+      const concatenated = node.concatenate();
+      if (concatenated.startsWith("config")) {
+        config = concatenated.slice("config ".length);
+      } else {
+        js += concatenated.slice("js {".length, "}".length * -1);
+      }
+    });
+
+  const sql = createEscapedStatements(
+    rootNode
+      .children()
+      .filter(
+        node =>
+          typeof node === "string" ||
+          [
+            SyntaxTreeNodeType.JAVASCRIPT_TEMPLATE_STRING_PLACEHOLDER,
+            SyntaxTreeNodeType.SQL_COMMENT,
+            SyntaxTreeNodeType.SQL_LITERAL_STRING,
+            SyntaxTreeNodeType.SQL_STATEMENT_SEPARATOR
+          ].includes(node.type)
+      )
+  );
+
+  let incremental = "";
+  let preOperations = [""];
+  let postOperations = [""];
+  const inputs: { [label: string]: string } = {};
+  rootNode
+    .children()
+    .filter(SyntaxTreeNode.isSyntaxTreeNode)
+    .filter(node => node.type === SyntaxTreeNodeType.SQL)
+    .forEach(node => {
+      const firstChild = node.children()[0] as string;
+      const lastChild = node.children().slice(-1)[0] as string;
+
+      const sqlCodeBlockWithoutOuterBraces =
+        node.children().length === 1
+          ? new SyntaxTreeNode(SyntaxTreeNodeType.SQL, [
+              firstChild.slice(firstChild.indexOf("{") + 1, firstChild.lastIndexOf("}"))
+            ])
+          : new SyntaxTreeNode(SyntaxTreeNodeType.SQL, [
+              firstChild.slice(firstChild.indexOf("{") + 1),
+              ...node.children().slice(1, -1),
+              lastChild.slice(0, lastChild.lastIndexOf("}"))
+            ]);
+      const statements = createEscapedStatements(sqlCodeBlockWithoutOuterBraces.children());
+
+      if (firstChild.startsWith("incremental_where")) {
+        if (statements.length > 1) {
+          throw new Error(
+            "'incremental_where' code blocks may only contain a single SQL statement."
+          );
+        }
+        incremental = statements[0];
+      } else if (firstChild.startsWith("pre_operations")) {
+        preOperations = statements;
+      } else if (firstChild.startsWith("post_operations")) {
+        postOperations = statements;
+      } else if (firstChild.startsWith("input")) {
+        if (statements.length > 1) {
+          throw new Error("'input' code blocks may only contain a single SQL statement.");
+        }
+        inputs[firstChild.split('"')[1]] = statements[0];
+      }
+    });
+
   return `
-const parsedConfig = ${results.config || "{}"};
+const parsedConfig = ${config || "{}"};
 // sqlxConfig should conform to the ISqlxConfig interface.
 const sqlxConfig = {
   name: "${utils.baseFilename(path)}",
@@ -102,11 +175,11 @@ const sqlxConfig = {
   ...parsedConfig
 };
 
-const sqlStatementCount = ${results.sql.length};
-const hasIncremental = ${!!results.incremental};
-const hasPreOperations = ${results.preOperations.length > 1 || results.preOperations[0] !== ""};
-const hasPostOperations = ${results.postOperations.length > 1 || results.postOperations[0] !== ""};
-const hasInputs = ${Object.keys(results.input).length > 0};
+const sqlStatementCount = ${sql.length};
+const hasIncremental = ${!!incremental};
+const hasPreOperations = ${preOperations.length > 1 || preOperations[0] !== ""};
+const hasPostOperations = ${postOperations.length > 1 || postOperations[0] !== ""};
+const hasInputs = ${Object.keys(inputs).length > 0};
 
 const action = session.sqlxAction({
   sqlxConfig,
@@ -126,19 +199,19 @@ switch (sqlxConfig.type) {
       ${["self", "ref", "resolve", "name", "when", "incremental"]
         .map(name => `const ${name} = ctx.${name}.bind(ctx);`)
         .join("\n")}
-      ${results.js}
+      ${js}
       if (hasIncremental) {
-        action.where(\`${results.incremental}\`);
+        action.where(\`${incremental}\`);
       }
-      return \`${results.sql[0]}\`;
+      return \`${sql[0]}\`;
     });
     if (hasPreOperations) {
       action.preOps(ctx => {
         ${["self", "ref", "resolve", "name", "when", "incremental"]
           .map(name => `const ${name} = ctx.${name}.bind(ctx);`)
           .join("\n")}
-        ${results.js}
-        return [${results.preOperations.map(sql => `\`${sql}\``)}];
+        ${js}
+        return [${preOperations.map(preOpSql => `\`${preOpSql}\``)}];
       });
     }
     if (hasPostOperations) {
@@ -146,8 +219,8 @@ switch (sqlxConfig.type) {
         ${["self", "ref", "resolve", "name", "when", "incremental"]
           .map(name => `const ${name} = ctx.${name}.bind(ctx);`)
           .join("\n")}
-        ${results.js}
-        return [${results.postOperations.map(sql => `\`${sql}\``)}];
+        ${js}
+        return [${postOperations.map(postOpSql => `\`${postOpSql}\``)}];
       });
     }
     break;
@@ -155,8 +228,8 @@ switch (sqlxConfig.type) {
   case "assertion": {
     action.query(ctx => {
       ${["ref", "resolve"].map(name => `const ${name} = ctx.${name}.bind(ctx);`).join("\n")}
-      ${results.js}
-      return \`${results.sql[0]}\`;
+      ${js}
+      return \`${sql[0]}\`;
     });
     break;
   }
@@ -165,8 +238,8 @@ switch (sqlxConfig.type) {
       ${["self", "ref", "resolve", "name"]
         .map(name => `const ${name} = ctx.${name}.bind(ctx);`)
         .join("\n")}
-      ${results.js}
-      const operations = [${results.sql.map(sql => `\`${sql}\``)}];
+      ${js}
+      const operations = [${sql.map(sqlOp => `\`${sqlOp}\``)}];
       return operations;
     });
     break;
@@ -175,18 +248,18 @@ switch (sqlxConfig.type) {
     break;
   }
   case "test": {
-    ${Object.keys(results.input).map(
+    ${Object.keys(inputs).map(
       inputLabel =>
         `
         action.input("${inputLabel}", ctx => {
-          ${results.js}
-          return \`${results.input[inputLabel]}\`;
+          ${js}
+          return \`${inputs[inputLabel]}\`;
         });
         `
     )}
     action.expect(ctx => {
-      ${results.js}
-      return \`${results.sql}\`;
+      ${js}
+      return \`${sql}\`;
     });
     break;
   }
@@ -194,7 +267,8 @@ switch (sqlxConfig.type) {
     session.compileError(new Error(\`Unrecognized action type: \${sqlxConfig.type}\`));
     break;
   }
-}`;
+}
+`;
 }
 
 function getFunctionPropertyNames(prototype: any) {
@@ -211,4 +285,34 @@ function getFunctionPropertyNames(prototype: any) {
       })
     )
   ];
+}
+
+function createEscapedStatements(nodes: Array<string | SyntaxTreeNode>) {
+  const results = [""];
+  nodes.map(escapeNode).forEach(node => {
+    if (typeof node !== "string" && node.type === SyntaxTreeNodeType.SQL_STATEMENT_SEPARATOR) {
+      results.push("");
+      return;
+    }
+    results[results.length - 1] += typeof node === "string" ? node : node.concatenate();
+  });
+  return results;
+}
+
+function escapeNode(node: string | SyntaxTreeNode) {
+  if (typeof node === "string") {
+    return node.replace(/\\/g, "\\\\").replace(/\`/g, "\\`");
+  }
+  switch (node.type) {
+    case SyntaxTreeNodeType.SQL_COMMENT:
+      // Any code (i.e. JavaScript placeholder strings) inside comments should not run, so escape it.
+      return node
+        .concatenate()
+        .replace(/`/g, "\\`")
+        .replace(/\${/g, "\\${");
+    case SyntaxTreeNodeType.SQL_LITERAL_STRING:
+      // Literal strings may contain escapes, which we need to double-escape.
+      return node.concatenate().replace(/\\/g, "\\\\");
+  }
+  return node;
 }

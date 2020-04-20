@@ -476,13 +476,11 @@ suite("@dataform/api", () => {
               name: "postgres_view"
             },
             query: "query"
-          },
+          }
         ]
       });
       const testState = dataform.WarehouseState.create({});
-      const expectedSQL = [
-        'create or replace view "schema"."postgres_view" as query',
-      ];
+      const expectedSQL = ['create or replace view "schema"."postgres_view" as query'];
 
       const builder = new Builder(testGraph, {}, testState);
       const executionGraph = builder.build();
@@ -1257,13 +1255,7 @@ SELECT
   MAX(
     (
       SELECT
-        SUM(
-          IF(
-            track.event = "event_viewed_project_with_connection",
-            1,
-            0
-          )
-        )
+        SUM(IF(track.event = "event_viewed_project_with_connection", 1, 0))
       FROM
         UNNEST(records)
     )
