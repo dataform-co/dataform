@@ -520,6 +520,58 @@ suite("@dataform/core", () => {
       expect(errors).that.matches(/Unused property was detected: "where"/);
     });
 
+    test("validation_navigator_descriptors", () => {
+      const session = new Session(path.dirname(__filename), TestConfigs.redshift);
+      session
+        .publish("a", {
+          type: "table",
+          columns: {
+            dimension_column: {
+              description: "Dimension description",
+              displayName: "Dimension",
+              dimension: "timestamp"
+            },
+            aggregator_column: {
+              description: "Aggregator description",
+              displayName: "Aggregator",
+              aggregator: "distinct"
+            }
+          }
+        })
+        .query(_ => "select 1 as test");
+
+      const graph = session.compile();
+      const graphErrors = utils.validate(graph);
+      expect(graphErrors.compilationErrors).deep.equals([]);
+      expect(graphErrors.validationErrors).deep.equals([]);
+
+      const schema = graph.tables.find(table => table.name === "schema.a");
+
+      const dimensionColumn = schema.actionDescriptor.columns.find(
+        column => column.displayName === "Dimension"
+      );
+      expect(dimensionColumn).to.eql(
+        dataform.ColumnDescriptor.create({
+          description: "Dimension description",
+          dimensionType: dataform.ColumnDescriptor.DimensionType.TIMESTAMP,
+          displayName: "Dimension",
+          path: ["dimension_column"]
+        })
+      );
+
+      const aggregationColumn = schema.actionDescriptor.columns.find(
+        column => column.displayName === "Aggregator"
+      );
+      expect(aggregationColumn).to.eql(
+        dataform.ColumnDescriptor.create({
+          description: "Aggregator description",
+          aggregation: dataform.ColumnDescriptor.Aggregation.DISTINCT,
+          displayName: "Aggregator",
+          path: ["aggregator_column"]
+        })
+      );
+    });
+
     test("ref", () => {
       const session = new Session(path.dirname(__filename), TestConfigs.redshift);
       session.publish("a", _ => "select 1 as test");
