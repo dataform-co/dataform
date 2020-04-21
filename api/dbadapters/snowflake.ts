@@ -87,8 +87,38 @@ export class SnowflakeDbAdapter implements IDbAdapter {
     };
   }
 
-  public evaluate(statement: string): Promise<dataform.QueryEvaluationResponse> {
-    throw new Error("Unimplemented");
+  public async evaluate(statement: string): Promise<dataform.QueryEvaluationResponse> {
+    const getErrorLocation = (value: string) => {
+      try {
+        const regex = /line ([0-9]+) at position ([0-9]+)/;
+        const match = value.match(regex);
+        if (!match) {
+          return null;
+        }
+        return {
+          line: Number(match[1]) - 1,
+          column: Number(match[2])
+        };
+      } catch (e) {
+        return null;
+      }
+    };
+    try {
+      await this.execute(`select system$explain_plan_json($$
+${statement}
+        $$)`);
+      return dataform.QueryEvaluationResponse.create({
+        status: dataform.QueryEvaluationResponse.QueryEvaluationStatus.SUCCESS
+      });
+    } catch (e) {
+      return dataform.QueryEvaluationResponse.create({
+        status: dataform.QueryEvaluationResponse.QueryEvaluationStatus.FAILURE,
+        error: {
+          message: String(e),
+          errorLocation: getErrorLocation(String(e))
+        }
+      });
+    }
   }
 
   public async tables(): Promise<dataform.ITarget[]> {
