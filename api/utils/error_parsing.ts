@@ -90,3 +90,23 @@ export function parseBigqueryEvalError(error: IBigqueryEvaluationError) {
   }
   return evalError;
 }
+
+export function parseSnowflakeEvalError(error: string) {
+  const evalError = dataform.QueryEvaluationError.create({
+    message: error
+  });
+  try {
+    const regex = /line ([0-9]+) at position ([0-9]+)/;
+    const match = error.match(regex);
+    if (!match) {
+      // Do nothing.
+    }
+    evalError.errorLocation = {
+      line: Number(match[1]) - 1,
+      column: Number(match[2])
+    };
+  } catch (e) {
+    // Do nothing.
+  }
+  return evalError;
+}

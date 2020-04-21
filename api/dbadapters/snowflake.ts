@@ -3,6 +3,7 @@ import { IDbAdapter } from "@dataform/api/dbadapters/index";
 import { dataform } from "@dataform/protos";
 import * as https from "https";
 import * as PromisePool from "promise-pool-executor";
+import { parseSnowflakeEvalError } from "@dataform/api/utils/error_parsing";
 
 interface ISnowflake {
   createConnection: (options: {
@@ -88,21 +89,6 @@ export class SnowflakeDbAdapter implements IDbAdapter {
   }
 
   public async evaluate(statement: string): Promise<dataform.QueryEvaluationResponse> {
-    const getErrorLocation = (value: string) => {
-      try {
-        const regex = /line ([0-9]+) at position ([0-9]+)/;
-        const match = value.match(regex);
-        if (!match) {
-          return null;
-        }
-        return {
-          line: Number(match[1]) - 1,
-          column: Number(match[2])
-        };
-      } catch (e) {
-        return null;
-      }
-    };
     try {
       await this.execute(`select system$explain_plan_json($$
 ${statement}
@@ -113,10 +99,7 @@ ${statement}
     } catch (e) {
       return dataform.QueryEvaluationResponse.create({
         status: dataform.QueryEvaluationResponse.QueryEvaluationStatus.FAILURE,
-        error: {
-          message: String(e),
-          errorLocation: getErrorLocation(String(e))
-        }
+        error: parseSnowflakeEvalError(String(e))
       });
     }
   }
