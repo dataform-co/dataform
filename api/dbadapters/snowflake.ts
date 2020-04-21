@@ -1,9 +1,9 @@
 import { Credentials } from "@dataform/api/commands/credentials";
 import { IDbAdapter } from "@dataform/api/dbadapters/index";
+import { parseSnowflakeEvalError } from "@dataform/api/utils/error_parsing";
 import { dataform } from "@dataform/protos";
 import * as https from "https";
 import * as PromisePool from "promise-pool-executor";
-import { parseSnowflakeEvalError } from "@dataform/api/utils/error_parsing";
 
 interface ISnowflake {
   createConnection: (options: {
