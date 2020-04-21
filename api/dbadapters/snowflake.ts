@@ -1,5 +1,6 @@
 import { Credentials } from "@dataform/api/commands/credentials";
 import { IDbAdapter } from "@dataform/api/dbadapters/index";
+import { parseSnowflakeEvalError } from "@dataform/api/utils/error_parsing";
 import { dataform } from "@dataform/protos";
 import * as https from "https";
 import * as PromisePool from "promise-pool-executor";
@@ -87,8 +88,20 @@ export class SnowflakeDbAdapter implements IDbAdapter {
     };
   }
 
-  public evaluate(statement: string): Promise<dataform.QueryEvaluationResponse> {
-    throw new Error("Unimplemented");
+  public async evaluate(statement: string): Promise<dataform.QueryEvaluationResponse> {
+    try {
+      await this.execute(`select system$explain_plan_json($$
+${statement}
+        $$)`);
+      return dataform.QueryEvaluationResponse.create({
+        status: dataform.QueryEvaluationResponse.QueryEvaluationStatus.SUCCESS
+      });
+    } catch (e) {
+      return dataform.QueryEvaluationResponse.create({
+        status: dataform.QueryEvaluationResponse.QueryEvaluationStatus.FAILURE,
+        error: parseSnowflakeEvalError(String(e))
+      });
+    }
   }
 
   public async tables(): Promise<dataform.ITarget[]> {
