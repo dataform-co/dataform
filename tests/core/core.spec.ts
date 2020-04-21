@@ -573,47 +573,98 @@ suite("@dataform/core", () => {
       );
     });
 
-    test("ref", () => {
-      const session = new Session(path.dirname(__filename), TestConfigs.redshift);
-      session.publish("a", _ => "select 1 as test");
-      session.publish("b", ctx => `select * from ${ctx.ref("a")}`);
-      session.publish("c", ctx => `select * from ${ctx.ref(undefined)}`);
-      session.publish("d", ctx => `select * from ${ctx.ref({ schema: "schema", name: "a" })}`);
-      session.publish("g", ctx => `select * from ${ctx.ref("schema", "a")}`);
-      session.publish("h", ctx => `select * from ${ctx.ref(["schema", "a"])}`);
-      session
-        .publish("e", {
-          schema: "foo"
-        })
-        .query(_ => "select 1 as test");
-      session.publish("f", ctx => `select * from ${ctx.ref("e")}`);
+    [TestConfigs.redshift, TestConfigs.redshiftWithPrefix, TestConfigs.redshiftWithSuffix].forEach(
+      testConfig => {
+        test(`ref with prefix "${testConfig.tablePrefix}" and suffix "${testConfig.schemaSuffix}"`, () => {
+          const session = new Session(path.dirname(__filename), testConfig);
+          const suffix = testConfig.schemaSuffix ? `_${testConfig.schemaSuffix}` : "";
+          const prefix = testConfig.tablePrefix ? `${testConfig.tablePrefix}_` : "";
 
-      const graph = session.compile();
-      const graphErrors = utils.validate(graph);
+          session.publish(`a`, _ => "select 1 as test");
+          session.publish(`b`, ctx => `select * from ${ctx.ref("a")}`);
+          session.publish(`c`, ctx => `select * from ${ctx.ref(undefined)}`);
+          session.publish(`d`, ctx => `select * from ${ctx.ref({ schema: "schema", name: "a" })}`);
+          session.publish(`g`, ctx => `select * from ${ctx.ref("schema", "a")}`);
+          session.publish(`h`, ctx => `select * from ${ctx.ref(["schema", "a"])}`);
+          session
+            .publish("e", {
+              schema: "foo"
+            })
+            .query(_ => "select 1 as test");
+          session.publish("f", ctx => `select * from ${ctx.ref("e")}`);
 
-      const tableNames = graph.tables.map(item => item.name);
-      expect(tableNames).eql([
-        "schema.a",
-        "schema.b",
-        "schema.c",
-        "schema.d",
-        "schema.g",
-        "schema.h",
-        "foo.e",
-        "schema.f"
-      ]);
+          const graph = session.compile();
+          const graphErrors = utils.validate(graph);
 
-      expect(graph.tables.find(table => table.name === "schema.b").dependencies).eql(["schema.a"]);
-      expect(graph.tables.find(table => table.name === "schema.d").dependencies).eql(["schema.a"]);
-      expect(graph.tables.find(table => table.name === "schema.g").dependencies).eql(["schema.a"]);
-      expect(graph.tables.find(table => table.name === "schema.h").dependencies).eql(["schema.a"]);
-      expect(graph.tables.find(table => table.name === "schema.f").dependencies).eql(["foo.e"]);
+          const tableNames = graph.tables.map(item => item.name);
 
-      const errors = graphErrors.compilationErrors.map(item => item.message);
-      expect(errors).includes("Action name is not specified");
-      expect(graphErrors.compilationErrors.length).eql(1);
-      expect(graphErrors.validationErrors.length).eql(0);
-    });
+          const baseEqlArray = [
+            "schema.a",
+            "schema.b",
+            "schema.c",
+            "schema.d",
+            "schema.g",
+            "schema.h",
+            "foo.e",
+            "schema.f"
+          ];
+
+          expect(tableNames).eql(
+            baseEqlArray.map(item => {
+              if (testConfig.tablePrefix) {
+                const separatedItems = item.split(".");
+                separatedItems[1] = `${prefix}${separatedItems[1]}`;
+                return separatedItems.join(".");
+              }
+
+              if (testConfig.schemaSuffix) {
+                const separatedItems = item.split(".");
+                separatedItems[0] = `${separatedItems[0]}${suffix}`;
+                return separatedItems.join(".");
+              }
+
+              return item;
+            })
+          );
+
+          expect(
+            graph.tables.find(table => table.name === `schema${suffix}.${prefix}b`).dependencies
+          ).eql([`schema${suffix}.${prefix}a`]);
+          expect(
+            graph.tables.find(table => table.name === `schema${suffix}.${prefix}d`).dependencies
+          ).eql([`schema${suffix}.${prefix}a`]);
+          expect(
+            graph.tables.find(table => table.name === `schema${suffix}.${prefix}g`).dependencies
+          ).eql([`schema${suffix}.${prefix}a`]);
+          expect(
+            graph.tables.find(table => table.name === `schema${suffix}.${prefix}h`).dependencies
+          ).eql([`schema${suffix}.${prefix}a`]);
+          expect(
+            graph.tables.find(table => table.name === `schema${suffix}.${prefix}f`).dependencies
+          ).eql([`foo${suffix}.${prefix}e`]);
+
+          const errors = graphErrors.compilationErrors.map(item => item.message);
+          expect(errors).includes("Action name is not specified");
+          expect(graphErrors.compilationErrors.length).eql(1);
+          expect(graphErrors.validationErrors.length).eql(0);
+        });
+      }
+    );
+  });
+
+  suite("resolve", () => {
+    [TestConfigs.redshift, TestConfigs.redshiftWithPrefix, TestConfigs.redshiftWithSuffix].forEach(
+      testConfig => {
+        test(`resolve with prefix "${testConfig.tablePrefix}" and suffix "${testConfig.schemaSuffix}"`, () => {
+          const session = new Session(path.dirname(__filename), testConfig);
+          const suffix = testConfig.schemaSuffix ? `_${testConfig.schemaSuffix}` : "";
+          const prefix = testConfig.tablePrefix ? `${testConfig.tablePrefix}_` : "";
+
+          const resolvedRef = session.resolve("e");
+          expect(resolvedRef).to.equal(`"schema${suffix}"."${prefix}e"`);
+        });
+      }
+    );
   });
 
   suite("operate", () => {
