@@ -235,6 +235,42 @@ suite("examples", () => {
         );
         expect(exampleTableWithTags.tags).to.eql(["tag1", "tag2", "tag3"]);
 
+        // Check table-with-tags's unique key assertion
+        const exampleTableWithTagsUniqueKeyAssertion = graph.assertions.filter(
+          t =>
+            t.name ===
+            "tada-analytics." +
+              schemaWithSuffix("df_integration_test_assertions") +
+              ".example_table_with_tags_assertions_uniqueKey"
+        )[0];
+        expect(cleanSql(exampleTableWithTagsUniqueKeyAssertion.query)).equals(
+          "select * from (select sample, count(1) as index_row_count from `tada-analytics." +
+            schemaWithSuffix("df_integration_test") +
+            ".example_table_with_tags` group by sample) as data where index_row_count > 1"
+        );
+        expect(exampleTableWithTagsUniqueKeyAssertion.dependencies).deep.equals([
+          "tada-analytics." + schemaWithSuffix("df_integration_test") + ".example_table_with_tags"
+        ]);
+        expect(exampleTableWithTagsUniqueKeyAssertion.tags).eql(["tag1", "tag2", "tag3"]);
+
+        // Check table-with-tags's row conditions assertion
+        const exampleTableWithTagsRowConditionsAssertion = graph.assertions.filter(
+          t =>
+            t.name ===
+            "tada-analytics." +
+              schemaWithSuffix("df_integration_test_assertions") +
+              ".example_table_with_tags_assertions_rowConditions"
+        )[0];
+        expect(cleanSql(exampleTableWithTagsRowConditionsAssertion.query)).equals(
+          "select 'sample is not null' as failing_row_condition, * from `tada-analytics." +
+            schemaWithSuffix("df_integration_test") +
+            ".example_table_with_tags` where not (sample is not null)"
+        );
+        expect(exampleTableWithTagsRowConditionsAssertion.dependencies).deep.equals([
+          "tada-analytics." + schemaWithSuffix("df_integration_test") + ".example_table_with_tags"
+        ]);
+        expect(exampleTableWithTagsRowConditionsAssertion.tags).eql(["tag1", "tag2", "tag3"]);
+
         // Check sample data
         const exampleSampleData = graph.tables.find(
           (t: dataform.ITable) =>
