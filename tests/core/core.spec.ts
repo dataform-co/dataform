@@ -536,9 +536,6 @@ suite("@dataform/core", () => {
               description: "Aggregator description",
               displayName: "Aggregator",
               aggregator: "distinct"
-            },
-            minimal_column: {
-              dimension: "category"
             }
           }
         })
