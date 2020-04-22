@@ -60,7 +60,7 @@ function mapColumnDescriptionToProto(
       })
     ];
   }
-  const columnDescriptor: dataform.IColumnDescriptor[] = description.description
+  const columnDescriptor: dataform.IColumnDescriptor[] = !!description
     ? [
         dataform.ColumnDescriptor.create({
           path: currentPath,
