@@ -68,7 +68,7 @@ function mapColumnDescriptionToProto(
           displayName: description.displayName,
           dimensionType: mapDimensionType(description.dimension),
           aggregation: mapAggregation(description.aggregator),
-          expression: description.expression
+          expression: description.expression || currentPath[currentPath.length - 1]
         })
       ]
     : [];

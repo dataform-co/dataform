@@ -536,6 +536,9 @@ suite("@dataform/core", () => {
               description: "Aggregator description",
               displayName: "Aggregator",
               aggregator: "distinct"
+            },
+            minimal_column: {
+              dimension: "category"
             }
           }
         })
@@ -556,6 +559,7 @@ suite("@dataform/core", () => {
           description: "Dimension description",
           dimensionType: dataform.ColumnDescriptor.DimensionType.TIMESTAMP,
           displayName: "Dimension",
+          expression: "dimension_column",
           path: ["dimension_column"]
         })
       );
@@ -568,6 +572,7 @@ suite("@dataform/core", () => {
           description: "Aggregator description",
           aggregation: dataform.ColumnDescriptor.Aggregation.DISTINCT,
           displayName: "Aggregator",
+          expression: "aggregator_column",
           path: ["aggregator_column"]
         })
       );
