@@ -274,7 +274,8 @@ export class Session {
       }
       return this.adapter().resolveTarget({
         ...resolved.proto.target,
-        schema: `${resolved.proto.target.schema}${this.getSuffixWithUnderscore()}`
+        schema: `${resolved.proto.target.schema}${this.getSuffixWithUnderscore()}`,
+        name: `${this.getTablePrefixWithUnderscore()}${resolved.proto.target.name}`
       });
     }
     // TODO: Here we allow 'ref' to go unresolved. This is for backwards compatibility with projects
@@ -286,13 +287,17 @@ export class Session {
       return this.adapter().resolveTarget(
         utils.target(
           this.adapter(),
-          ref,
+          `${this.getTablePrefixWithUnderscore()}${ref}`,
           `${this.config.defaultSchema}${this.getSuffixWithUnderscore()}`
         )
       );
     }
     return this.adapter().resolveTarget(
-      utils.target(this.adapter(), ref.name, `${ref.schema}${this.getSuffixWithUnderscore()}`)
+      utils.target(
+        this.adapter(),
+        `${this.getTablePrefixWithUnderscore()}${ref.name}`,
+        `${ref.schema}${this.getSuffixWithUnderscore()}`
+      )
     );
   }
 
