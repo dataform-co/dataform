@@ -60,18 +60,16 @@ function mapColumnDescriptionToProto(
       })
     ];
   }
-  const columnDescriptor: dataform.IColumnDescriptor[] = description.description
-    ? [
-        dataform.ColumnDescriptor.create({
-          path: currentPath,
-          description: description.description,
-          displayName: description.displayName,
-          dimensionType: mapDimensionType(description.dimension),
-          aggregation: mapAggregation(description.aggregator),
-          expression: description.expression
-        })
-      ]
-    : [];
+  const columnDescriptor: dataform.IColumnDescriptor[] = [
+    dataform.ColumnDescriptor.create({
+      path: currentPath,
+      description: description.description,
+      displayName: description.displayName,
+      dimensionType: mapDimensionType(description.dimension),
+      aggregation: mapAggregation(description.aggregator),
+      expression: description.expression
+    })
+  ];
   const nestedColumns = description.columns ? Object.keys(description.columns) : [];
   return columnDescriptor.concat(
     utils.flatten(
