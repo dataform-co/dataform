@@ -528,7 +528,6 @@ suite("@dataform/core", () => {
           type: "table",
           columns: {
             dimension_column: {
-              description: "Dimension description",
               displayName: "Dimension",
               dimension: "timestamp"
             },
@@ -553,7 +552,6 @@ suite("@dataform/core", () => {
       );
       expect(dimensionColumn).to.eql(
         dataform.ColumnDescriptor.create({
-          description: "Dimension description",
           dimensionType: dataform.ColumnDescriptor.DimensionType.TIMESTAMP,
           displayName: "Dimension",
           path: ["dimension_column"]
