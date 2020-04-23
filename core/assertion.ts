@@ -5,7 +5,13 @@ import {
   Resolvable
 } from "@dataform/core/common";
 import { Session } from "@dataform/core/session";
-import * as utils from "@dataform/core/utils";
+import {
+  checkExcessProperties,
+  resolvableAsTarget,
+  setNameAndTarget,
+  strictKeysOf,
+  toResolvable
+} from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
 
 /**
@@ -28,6 +34,16 @@ export interface IAssertionConfig extends ITargetableConfig, IDependenciesConfig
   description?: string;
 }
 
+export const IAssertionConfigProperties = strictKeysOf<IAssertionConfig>()([
+  "database",
+  "schema",
+  "name",
+  "description",
+  "type",
+  "tags",
+  "dependencies"
+]);
+
 /**
  * @hidden
  */
@@ -46,6 +62,7 @@ export class Assertion {
   private contextableQuery: AContextable<string>;
 
   public config(config: IAssertionConfig) {
+    checkExcessProperties(config, IAssertionConfigProperties, "assertion config");
     if (config.dependencies) {
       this.dependencies(config.dependencies);
     }
@@ -72,7 +89,7 @@ export class Assertion {
   public dependencies(value: Resolvable | Resolvable[]) {
     const newDependencies = Array.isArray(value) ? value : [value];
     newDependencies.forEach(resolvable => {
-      this.proto.dependencyTargets.push(utils.resolvableAsTarget(resolvable));
+      this.proto.dependencyTargets.push(resolvableAsTarget(resolvable));
     });
     return this;
   }
@@ -93,7 +110,7 @@ export class Assertion {
   }
 
   public database(database: string) {
-    utils.setNameAndTarget(
+    setNameAndTarget(
       this.session,
       this.proto,
       this.proto.target.name,
@@ -104,7 +121,7 @@ export class Assertion {
   }
 
   public schema(schema: string) {
-    utils.setNameAndTarget(this.session, this.proto, this.proto.target.name, schema);
+    setNameAndTarget(this.session, this.proto, this.proto.target.name, schema);
     return this;
   }
 
@@ -137,8 +154,8 @@ export class AssertionContext implements ICommonContext {
   }
 
   public ref(ref: Resolvable | string[], ...rest: string[]) {
-    ref = utils.toResolvable(ref, rest);
-    if (!utils.resolvableAsTarget(ref)) {
+    ref = toResolvable(ref, rest);
+    if (!resolvableAsTarget(ref)) {
       const message = `Action name is not specified`;
       this.assertion.session.compileError(new Error(message));
       return "";
@@ -148,7 +165,7 @@ export class AssertionContext implements ICommonContext {
   }
 
   public resolve(ref: Resolvable | string[], ...rest: string[]) {
-    return this.assertion.session.resolve(utils.toResolvable(ref, rest));
+    return this.assertion.session.resolve(toResolvable(ref, rest));
   }
 
   public dependencies(name: Resolvable | Resolvable[]) {

@@ -331,3 +331,28 @@ export function setNameAndTarget(
   }
   action.name = nameParts.reverse().join(".");
 }
+
+/**
+ * Checks that the given list of keys completely covers all supported keys in the given interface.
+ */
+export function strictKeysOf<T>() {
+  return <U extends Array<keyof T>>(
+    array: U & ([keyof T] extends [U[number]] ? unknown : Array<["Needs to be all of", T]>)
+  ) => array;
+}
+
+/**
+ * Will throw an error if the provided object contains any properties that aren't in the provided list.
+ */
+export function checkExcessProperties<T>(object: T, supportedProperties: string[], name?: string) {
+  const extraProperties = Object.keys(object).filter(
+    key => !(supportedProperties as string[]).includes(key)
+  );
+  if (extraProperties.length > 0) {
+    throw new Error(
+      `Unexpected property "${extraProperties[0]}"${
+        !!name ? ` in ${name}` : ""
+      }. Supported properties are: ${JSON.stringify(supportedProperties)}`
+    );
+  }
+}
