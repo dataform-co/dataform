@@ -3,6 +3,7 @@ import { Session } from "@dataform/core/session";
 import * as utils from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
 import { suite, test } from "@dataform/testing";
+import { fail } from "assert";
 import { expect } from "chai";
 import { asPlainObject } from "df/tests/utils";
 import * as fs from "fs-extra";
@@ -569,6 +570,26 @@ suite("@dataform/core", () => {
           path: ["aggregator_column"]
         })
       );
+    });
+
+    test("does not allow extra column descriptors", () => {
+      const session = new Session(path.dirname(__filename), TestConfigs.redshift);
+      try {
+        session
+          .publish("a", {
+            type: "table",
+            columns: {
+              dimension_column: {
+                unknownProperty: "unknown"
+              } as any
+            }
+          })
+          .query(_ => "select 1 as test");
+      } catch (e) {
+        expect(String(e)).matches(/Unexpected property "unknownProperty"/);
+        return;
+      }
+      fail();
     });
 
     [TestConfigs.redshift, TestConfigs.redshiftWithPrefix, TestConfigs.redshiftWithSuffix].forEach(

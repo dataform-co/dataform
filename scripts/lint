@@ -1,6 +1,3 @@
 #!/bin/bash
 
-set -e
-
-bazel build //:tslint
-./bazel-bin/tslint "ts/**/*.{ts,tsx}"
+bazel build @npm//tslint/bin:tslint && bazel-bin/external/npm/tslint/bin/tslint.sh --project .

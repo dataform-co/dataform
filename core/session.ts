@@ -1,12 +1,6 @@
 import * as adapters from "@dataform/core/adapters";
 import { AContextable, Assertion, IAssertionConfig } from "@dataform/core/assertion";
-import {
-  IColumnsDescriptor,
-  ICommonContext,
-  IRecordDescriptor,
-  Resolvable
-} from "@dataform/core/common";
-import { Contextable } from "@dataform/core/common";
+import { Contextable, ICommonContext, Resolvable } from "@dataform/core/common";
 import { Declaration, IDeclarationConfig } from "@dataform/core/declaration";
 import { IOperationConfig, Operation } from "@dataform/core/operation";
 import { ITableConfig, ITableContext, Table, TableType } from "@dataform/core/table";
@@ -14,8 +8,8 @@ import * as test from "@dataform/core/test";
 import * as utils from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
 import { util } from "protobufjs";
-import { Graph as TarjanGraph } from "tarjan-graph";
 import * as TarjanGraphConstructor from "tarjan-graph";
+import { Graph as TarjanGraph } from "tarjan-graph";
 
 // Can't use resolveJsonModule with Bazel.
 // tslint:disable-next-line: no-var-requires
@@ -38,80 +32,6 @@ type SqlxConfig = (
   | IOperationConfig & { type: "operations" }
   | IDeclarationConfig & { type: "declaration" }
   | test.ITestConfig & { type: "test" }) & { name: string };
-
-/**
- * @hidden
- */
-export function mapToColumnProtoArray(columns: IColumnsDescriptor): dataform.IColumnDescriptor[] {
-  return utils.flatten(
-    Object.keys(columns).map(column => mapColumnDescriptionToProto([column], columns[column]))
-  );
-}
-
-function mapColumnDescriptionToProto(
-  currentPath: string[],
-  description: string | IRecordDescriptor
-): dataform.IColumnDescriptor[] {
-  if (typeof description === "string") {
-    return [
-      dataform.ColumnDescriptor.create({
-        description,
-        path: currentPath
-      })
-    ];
-  }
-  const columnDescriptor: dataform.IColumnDescriptor[] = !!description
-    ? [
-        dataform.ColumnDescriptor.create({
-          path: currentPath,
-          description: description.description,
-          displayName: description.displayName,
-          dimensionType: mapDimensionType(description.dimension),
-          aggregation: mapAggregation(description.aggregator),
-          expression: description.expression
-        })
-      ]
-    : [];
-  const nestedColumns = description.columns ? Object.keys(description.columns) : [];
-  return columnDescriptor.concat(
-    utils.flatten(
-      nestedColumns.map(nestedColumn =>
-        mapColumnDescriptionToProto(
-          currentPath.concat([nestedColumn]),
-          description.columns[nestedColumn]
-        )
-      )
-    )
-  );
-}
-
-function mapAggregation(aggregation: string) {
-  switch (aggregation) {
-    case "sum":
-      return dataform.ColumnDescriptor.Aggregation.SUM;
-    case "distinct":
-      return dataform.ColumnDescriptor.Aggregation.DISTINCT;
-    case "derived":
-      return dataform.ColumnDescriptor.Aggregation.DERIVED;
-    case undefined:
-      return undefined;
-    default:
-      throw new Error(`'${aggregation}' is not a valid aggregation option.`);
-  }
-}
-
-function mapDimensionType(dimensionType: string) {
-  switch (dimensionType) {
-    case "category":
-      return dataform.ColumnDescriptor.DimensionType.CATEGORY;
-    case "timestamp":
-      return dataform.ColumnDescriptor.DimensionType.TIMESTAMP;
-    case undefined:
-      return undefined;
-    default:
-      throw new Error(`'${dimensionType}' is not a valid dimension type.`);
-  }
-}
 
 /**
  * @hidden

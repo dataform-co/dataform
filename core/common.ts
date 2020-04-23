@@ -1,3 +1,5 @@
+import { strictKeysOf } from "@dataform/core/utils";
+
 /**
  * Context methods are available when evaluating contextable SQL code, such as
  * within SQLX files, or when using a [Contextable](#Contextable) argument with the JS API.
@@ -50,9 +52,30 @@ export interface ICommonContext {
  */
 export interface ICommonConfig {
   /**
+   * The type of the action.
+   *
+   * @hidden
+   */
+  type?: string;
+
+  /**
    * A list of user-defined tags with which the action should be labeled.
    */
   tags?: string[];
+
+  /**
+   * The name of the action.
+   *
+   * @hidden
+   */
+  name?: string;
+
+  /**
+   * Dependencies of the action.
+   *
+   * @hidden
+   */
+  dependencies?: Resolvable | Resolvable[];
 }
 
 /**
@@ -137,6 +160,21 @@ export interface IRecordDescriptor {
    */
   expression?: string;
 }
+
+/**
+ * @hidden
+ *
+ * TODO: This needs to be a method, I'm really not sure why, but it hits a runtime failure otherwise.
+ */
+export const IRecordDescriptorProperties = () =>
+  strictKeysOf<IRecordDescriptor>()([
+    "description",
+    "columns",
+    "displayName",
+    "dimension",
+    "aggregator",
+    "expression"
+  ]);
 
 /**
  * A reference to a dataset within the warehouse.
