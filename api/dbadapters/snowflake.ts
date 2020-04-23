@@ -36,6 +36,10 @@ interface ISnowflakeResultStream {
 }
 
 export class SnowflakeDbAdapter implements IDbAdapter {
+  public static async create(credentials: Credentials) {
+    return new SnowflakeDbAdapter(credentials);
+  }
+
   private connectionPromise: Promise<ISnowflakeConnection>;
   private pool: PromisePool.PromisePoolExecutor;
 

@@ -1,18 +1,11 @@
-import { Credentials } from "@dataform/api/commands/credentials";
 import * as dbadapters from "@dataform/api/dbadapters";
 import { dataform } from "@dataform/protos";
 
 export async function test(
-  credentials: Credentials,
-  warehouse: string,
+  dbadapter: dbadapters.IDbAdapter,
   tests: dataform.ITest[]
 ): Promise<dataform.ITestResult[]> {
-  const dbadapter = dbadapters.create(credentials, warehouse);
-  try {
-    return await Promise.all(tests.map(testCase => runTest(dbadapter, testCase)));
-  } finally {
-    await dbadapter.close();
-  }
+  return await Promise.all(tests.map(testCase => runTest(dbadapter, testCase)));
 }
 
 async function runTest(

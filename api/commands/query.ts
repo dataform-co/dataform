@@ -1,13 +1,11 @@
 import { CompileChildProcess } from "@dataform/api/commands/compile";
-import { Credentials } from "@dataform/api/commands/credentials";
 import * as dbadapters from "@dataform/api/dbadapters";
 import { CancellablePromise } from "@dataform/api/utils/cancellable_promise";
 import { dataform } from "@dataform/protos";
 import * as path from "path";
 
 export function run(
-  credentials: Credentials,
-  warehouse: string,
+  dbadapter: dbadapters.IDbAdapter,
   query: string,
   options?: {
     compileConfig?: dataform.ICompileConfig;
@@ -15,7 +13,6 @@ export function run(
   }
 ): CancellablePromise<any[]> {
   return new CancellablePromise(async (resolve, reject, onCancel) => {
-    const dbadapter = dbadapters.create(credentials, warehouse);
     try {
       const compiledQuery = await compile(query, options && options.compileConfig);
       const results = await dbadapter.execute(compiledQuery, {
@@ -26,25 +23,17 @@ export function run(
       resolve(results.rows);
     } catch (e) {
       reject(e);
-    } finally {
-      await dbadapter.close();
     }
   });
 }
 
 export async function evaluate(
-  credentials: Credentials,
-  warehouse: string,
+  dbadapter: dbadapters.IDbAdapter,
   query: string,
   compileConfig?: dataform.ICompileConfig
 ): Promise<dataform.IQueryEvaluationResponse> {
   const compiledQuery = await compile(query, compileConfig);
-  const dbadapter = dbadapters.create(credentials, warehouse);
-  try {
-    return await dbadapter.evaluate(compiledQuery);
-  } finally {
-    await dbadapter.close();
-  }
+  return await dbadapter.evaluate(compiledQuery);
 }
 
 export async function compile(

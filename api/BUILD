@@ -14,13 +14,15 @@ ts_library(
         "@npm//@google-cloud/bigquery",
         "@npm//@types/glob",
         "@npm//@types/js-beautify",
-        "@npm//@types/long",
         "@npm//@types/lodash",
+        "@npm//@types/long",
         "@npm//@types/mssql",
         "@npm//@types/node",
         "@npm//@types/object-hash",
         "@npm//@types/pg",
+        "@npm//@types/ssh2",
         "@npm//cron-parser",
+        "@npm//get-port",
         "@npm//glob",
         "@npm//js-beautify",
         "@npm//lodash",
@@ -33,6 +35,7 @@ ts_library(
         "@npm//protobufjs",
         "@npm//snowflake-sdk",
         "@npm//sql-formatter",
+        "@npm//ssh2",
         "@npm//vm2",
     ],
 )
@@ -71,20 +74,20 @@ load("@build_bazel_rules_nodejs//:index.bzl", "nodejs_binary")
 
 nodejs_binary(
     name = "vm/compile",
-    templated_args = ["--node_options=--require=source-map-support/register"],
     data = [
         ":lib",
         "@npm//source-map-support",
     ],
     entry_point = ":vm/compile.ts",
+    templated_args = ["--node_options=--require=source-map-support/register"],
 )
 
 nodejs_binary(
     name = "vm/query",
-    templated_args = ["--node_options=--require=source-map-support/register"],
     data = [
         ":lib",
         "@npm//source-map-support",
     ],
     entry_point = ":vm/query.ts",
+    templated_args = ["--node_options=--require=source-map-support/register"],
 )

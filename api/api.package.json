@@ -25,6 +25,7 @@
     "promise-pool-executor": "^1.1.1",
     "snowflake-sdk": "^1.1.5",
     "sql-formatter": "^2.3.3",
+    "ssh2": "^0.8.9",
     "vm2": "^3.6.3"
   }
 }

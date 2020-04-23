@@ -9,16 +9,11 @@ import { dataform } from "@dataform/protos";
 export async function build(
   compiledGraph: dataform.ICompiledGraph,
   runConfig: dataform.IRunConfig,
-  credentials: Credentials
+  dbadapter: dbadapters.IDbAdapter
 ) {
   const prunedGraph = prune(compiledGraph, runConfig);
-  const dbadapter = dbadapters.create(credentials, compiledGraph.projectConfig.warehouse);
-  try {
-    const stateResult = await state(prunedGraph, dbadapter);
-    return new Builder(prunedGraph, runConfig, stateResult).build();
-  } finally {
-    await dbadapter.close();
-  }
+  const stateResult = await state(prunedGraph, dbadapter);
+  return new Builder(prunedGraph, runConfig, stateResult).build();
 }
 
 export class Builder {
