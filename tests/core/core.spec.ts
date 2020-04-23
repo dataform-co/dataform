@@ -586,6 +586,7 @@ suite("@dataform/core", () => {
           })
           .query(_ => "select 1 as test");
       } catch (e) {
+        expect(String(e)).matches(/Unexpected property "unknownProperty"/);
         return;
       }
       fail();
