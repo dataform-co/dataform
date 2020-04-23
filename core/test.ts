@@ -1,4 +1,4 @@
-import { Contextable, ICommonContext, Resolvable, ICommonConfig } from "@dataform/core/common";
+import { Contextable, ICommonConfig, ICommonContext, Resolvable } from "@dataform/core/common";
 import { Session } from "@dataform/core/session";
 import * as table from "@dataform/core/table";
 import { ITableContext } from "@dataform/core/table";

@@ -98,6 +98,9 @@ export interface IRedshiftOptions {
   bind?: boolean;
 }
 
+export const IRedshiftOptionsProperties = () =>
+  strictKeysOf<IRedshiftOptions>()(["distKey", "distStyle", "sortKeys", "sortStyle", "bind"]);
+
 /**
  * Options for creating tables within Azure SQL Data Warehouse projects.
  */
@@ -109,6 +112,8 @@ export interface ISQLDataWarehouseOptions {
    */
   distribution?: string;
 }
+export const ISQLDataWarehouseOptionsProperties = () =>
+  strictKeysOf<ISQLDataWarehouseOptions>()(["distribution"]);
 
 /**
  * Options for creating tables within BigQuery projects.
@@ -135,6 +140,9 @@ export interface IBigQueryOptions {
    */
   updatePartitionFilter?: string;
 }
+
+export const IBigQueryOptionsProperties = () =>
+  strictKeysOf<IBigQueryOptions>()(["partitionBy", "clusterBy", "updatePartitionFilter"]);
 
 /**
  * Options for creating assertions as part of a dataset definition.
@@ -377,16 +385,23 @@ export class Table {
   }
 
   public sqldatawarehouse(sqlDataWarehouse: dataform.ISQLDataWarehouseOptions) {
+    checkExcessProperties(
+      sqlDataWarehouse,
+      ISQLDataWarehouseOptionsProperties(),
+      "sqldatawarehouse config"
+    );
     this.proto.sqlDataWarehouse = dataform.SQLDataWarehouseOptions.create(sqlDataWarehouse);
     return this;
   }
 
   public redshift(redshift: dataform.IRedshiftOptions) {
+    checkExcessProperties(redshift, IRedshiftOptionsProperties(), "redshift config");
     this.proto.redshift = dataform.RedshiftOptions.create(redshift);
     return this;
   }
 
   public bigquery(bigquery: dataform.IBigQueryOptions) {
+    checkExcessProperties(bigquery, IBigQueryOptionsProperties(), "bigquery config");
     this.proto.bigquery = dataform.BigQueryOptions.create(bigquery);
     return this;
   }

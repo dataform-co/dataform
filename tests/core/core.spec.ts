@@ -3,11 +3,11 @@ import { Session } from "@dataform/core/session";
 import * as utils from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
 import { suite, test } from "@dataform/testing";
+import { fail } from "assert";
 import { expect } from "chai";
 import { asPlainObject } from "df/tests/utils";
 import * as fs from "fs-extra";
 import * as path from "path";
-import { fail } from "assert";
 
 class TestConfigs {
   public static redshift: dataform.IProjectConfig = {
