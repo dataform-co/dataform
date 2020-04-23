@@ -1,4 +1,6 @@
+import { ColumnDescriptors } from "@dataform/core/column_descriptors";
 import {
+  Contextable,
   IColumnsDescriptor,
   ICommonContext,
   IDependenciesConfig,
@@ -6,11 +8,9 @@ import {
   ITargetableConfig,
   Resolvable
 } from "@dataform/core/common";
-import { Contextable } from "@dataform/core/common";
 import { Session } from "@dataform/core/session";
 import * as utils from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
-import { ColumnDescriptors } from "@dataform/core/column_descriptors";
 
 /**
  * Configuration options for `operations` action types.

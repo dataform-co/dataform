@@ -1,7 +1,7 @@
 import {
   IColumnsDescriptor,
   IRecordDescriptor,
-  IRecordDescriptorFields
+  IRecordDescriptorProperties
 } from "@dataform/core/common";
 import * as utils from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
@@ -30,14 +30,11 @@ export class ColumnDescriptors {
         })
       ];
     }
-    const extraFields = Object.keys(description).filter(
-      key => !IRecordDescriptorFields.includes(key)
+    utils.checkExcessProperties(
+      description,
+      IRecordDescriptorProperties(),
+      `${currentPath.join(".")} column descriptor`
     );
-    if (extraFields.length > 0) {
-      throw new Error(
-        `Unknown property "${extraFields[0]}" in column descriptor. Allowed properties are: ${IRecordDescriptorFields}`
-      );
-    }
     const columnDescriptor: dataform.IColumnDescriptor[] = !!description
       ? [
           dataform.ColumnDescriptor.create({

@@ -1,20 +1,34 @@
-import { ICommonContext, Resolvable } from "@dataform/core/common";
-import { Contextable } from "@dataform/core/common";
+import { Contextable, ICommonContext, Resolvable, ICommonConfig } from "@dataform/core/common";
 import { Session } from "@dataform/core/session";
 import * as table from "@dataform/core/table";
 import { ITableContext } from "@dataform/core/table";
-import * as utils from "@dataform/core/utils";
+import {
+  ambiguousActionNameMsg,
+  checkExcessProperties,
+  resolvableAsTarget,
+  strictKeysOf,
+  stringifyResolvable,
+  toResolvable
+} from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
 
 /**
  * Configuration options for unit tests.
  */
-export interface ITestConfig {
+export interface ITestConfig extends ICommonConfig {
   /**
    * The dataset that this unit test tests.
    */
   dataset?: Resolvable;
 }
+
+const ITestConfigProperties = strictKeysOf<ITestConfig>()([
+  "type",
+  "dataset",
+  "name",
+  "tags",
+  "dependencies"
+]);
 
 /**
  * @hidden
@@ -29,6 +43,7 @@ export class Test {
   private contextableQuery: Contextable<ICommonContext, string>;
 
   public config(config: ITestConfig) {
+    checkExcessProperties(config, ITestConfigProperties, "test config");
     if (config.dataset) {
       this.dataset(config.dataset);
     }
@@ -58,17 +73,17 @@ export class Test {
         this.proto.fileName
       );
     } else {
-      const allResolved = this.session.findActions(utils.resolvableAsTarget(this.datasetToTest));
+      const allResolved = this.session.findActions(resolvableAsTarget(this.datasetToTest));
       if (allResolved.length > 1) {
         this.session.compileError(
-          new Error(utils.ambiguousActionNameMsg(this.datasetToTest, allResolved)),
+          new Error(ambiguousActionNameMsg(this.datasetToTest, allResolved)),
           this.proto.fileName
         );
       }
       const dataset = allResolved.length > 0 ? allResolved[0] : undefined;
       if (!(dataset && dataset instanceof table.Table)) {
         this.session.compileError(
-          new Error(`Dataset ${utils.stringifyResolvable(this.datasetToTest)} could not be found.`),
+          new Error(`Dataset ${stringifyResolvable(this.datasetToTest)} could not be found.`),
           this.proto.fileName
         );
       } else if (dataset.proto.type === "incremental") {
@@ -119,7 +134,7 @@ class RefReplacingContext implements ITableContext {
   }
 
   public resolve(ref: Resolvable | string[], ...rest: string[]) {
-    ref = utils.toResolvable(ref, rest);
+    ref = toResolvable(ref, rest);
     if (typeof ref !== "string") {
       this.testContext.test.session.compileError(
         new Error("Tests do not currently support referencing non-string inputs.")

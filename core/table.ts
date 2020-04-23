@@ -1,5 +1,7 @@
 import { Assertion } from "@dataform/core/assertion";
+import { ColumnDescriptors } from "@dataform/core/column_descriptors";
 import {
+  Contextable,
   IColumnsDescriptor,
   ICommonContext,
   IDependenciesConfig,
@@ -7,11 +9,15 @@ import {
   ITargetableConfig,
   Resolvable
 } from "@dataform/core/common";
-import { Contextable } from "@dataform/core/common";
 import { Session } from "@dataform/core/session";
-import * as utils from "@dataform/core/utils";
+import {
+  checkExcessProperties,
+  resolvableAsTarget,
+  setNameAndTarget,
+  strictKeysOf,
+  toResolvable
+} from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
-import { ColumnDescriptors } from "@dataform/core/column_descriptors";
 
 /**
  * @hidden
@@ -210,6 +216,26 @@ export interface ITableConfig extends ITargetableConfig, IDocumentableConfig, ID
   uniqueKey?: string[];
 }
 
+// TODO: This needs to be a method, I'm really not sure why, but it hits a runtime failure otherwise.
+export const ITableConfigProperties = () =>
+  strictKeysOf<ITableConfig>()([
+    "type",
+    "disabled",
+    "protected",
+    "name",
+    "redshift",
+    "bigquery",
+    "sqldatawarehouse",
+    "tags",
+    "uniqueKey",
+    "dependencies",
+    "schema",
+    "assertions",
+    "database",
+    "columns",
+    "description"
+  ]);
+
 /**
  * Context methods are available when evaluating contextable SQL code, such as
  * within SQLX files, or when using a [Contextable](#Contextable) argument with the JS API.
@@ -264,6 +290,7 @@ export class Table {
   private mergedRowConditionsAssertion?: Assertion;
 
   public config(config: ITableConfig) {
+    checkExcessProperties(config, ITableConfigProperties(), "table config");
     if (config.type) {
       this.type(config.type);
     }
@@ -367,7 +394,7 @@ export class Table {
   public dependencies(value: Resolvable | Resolvable[]) {
     const newDependencies = Array.isArray(value) ? value : [value];
     newDependencies.forEach(resolvable => {
-      this.proto.dependencyTargets.push(utils.resolvableAsTarget(resolvable));
+      this.proto.dependencyTargets.push(resolvableAsTarget(resolvable));
     });
 
     return this;
@@ -404,7 +431,7 @@ export class Table {
   }
 
   public database(database: string) {
-    utils.setNameAndTarget(
+    setNameAndTarget(
       this.session,
       this.proto,
       this.proto.target.name,
@@ -415,7 +442,7 @@ export class Table {
   }
 
   public schema(schema: string) {
-    utils.setNameAndTarget(
+    setNameAndTarget(
       this.session,
       this.proto,
       this.proto.target.name,
@@ -510,8 +537,8 @@ export class TableContext implements ITableContext {
   }
 
   public ref(ref: Resolvable | string[], ...rest: string[]): string {
-    ref = utils.toResolvable(ref, rest);
-    if (!utils.resolvableAsTarget(ref)) {
+    ref = toResolvable(ref, rest);
+    if (!resolvableAsTarget(ref)) {
       const message = `Action name is not specified`;
       this.table.session.compileError(new Error(message));
       return "";
@@ -521,7 +548,7 @@ export class TableContext implements ITableContext {
   }
 
   public resolve(ref: Resolvable | string[], ...rest: string[]) {
-    return this.table.session.resolve(utils.toResolvable(ref, rest));
+    return this.table.session.resolve(toResolvable(ref, rest));
   }
 
   public type(type: TableType) {
