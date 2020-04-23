@@ -1,3 +1,8 @@
+// This is used for type checked runtime type checking.
+const strictKeysOf = <T>() => <U extends T[]>(
+  ...array: U & ([T] extends [U[number]] ? unknown : Array<["Needs to be all of", T]>)
+) => array as string[];
+
 /**
  * Context methods are available when evaluating contextable SQL code, such as
  * within SQLX files, or when using a [Contextable](#Contextable) argument with the JS API.
@@ -137,6 +142,18 @@ export interface IRecordDescriptor {
    */
   expression?: string;
 }
+
+/**
+ * @hidden
+ */
+export const IRecordDescriptorFields = strictKeysOf<keyof IRecordDescriptor>()(
+  "description",
+  "columns",
+  "displayName",
+  "dimension",
+  "aggregator",
+  "expression"
+);
 
 /**
  * A reference to a dataset within the warehouse.

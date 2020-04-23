@@ -7,9 +7,10 @@ import {
   Resolvable
 } from "@dataform/core/common";
 import { Contextable } from "@dataform/core/common";
-import { mapToColumnProtoArray, Session } from "@dataform/core/session";
+import { Session } from "@dataform/core/session";
 import * as utils from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
+import { ColumnDescriptors } from "@dataform/core/column_descriptors";
 
 /**
  * Configuration options for `operations` action types.
@@ -108,7 +109,7 @@ export class Operation {
     if (!this.proto.actionDescriptor) {
       this.proto.actionDescriptor = {};
     }
-    this.proto.actionDescriptor.columns = mapToColumnProtoArray(columns);
+    this.proto.actionDescriptor.columns = ColumnDescriptors.mapToColumnProtoArray(columns);
     return this;
   }
 

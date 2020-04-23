@@ -7,6 +7,7 @@ import { expect } from "chai";
 import { asPlainObject } from "df/tests/utils";
 import * as fs from "fs-extra";
 import * as path from "path";
+import { fail } from "assert";
 
 class TestConfigs {
   public static redshift: dataform.IProjectConfig = {
@@ -569,6 +570,25 @@ suite("@dataform/core", () => {
           path: ["aggregator_column"]
         })
       );
+    });
+
+    test("does not allow extra column descriptors", () => {
+      const session = new Session(path.dirname(__filename), TestConfigs.redshift);
+      try {
+        session
+          .publish("a", {
+            type: "table",
+            columns: {
+              dimension_column: {
+                unknownProperty: "unknown"
+              } as any
+            }
+          })
+          .query(_ => "select 1 as test");
+      } catch (e) {
+        return;
+      }
+      fail();
     });
 
     [TestConfigs.redshift, TestConfigs.redshiftWithPrefix, TestConfigs.redshiftWithSuffix].forEach(

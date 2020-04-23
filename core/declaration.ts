@@ -1,6 +1,7 @@
 import { IColumnsDescriptor, IDocumentableConfig, ITargetableConfig } from "@dataform/core/common";
-import { mapToColumnProtoArray, Session } from "@dataform/core/session";
+import { Session } from "@dataform/core/session";
 import { dataform } from "@dataform/protos";
+import { ColumnDescriptors } from "@dataform/core/column_descriptors";
 
 /**
  * Configuration options for `declaration` action types.
@@ -37,7 +38,7 @@ export class Declaration {
     if (!this.proto.actionDescriptor) {
       this.proto.actionDescriptor = {};
     }
-    this.proto.actionDescriptor.columns = mapToColumnProtoArray(columns);
+    this.proto.actionDescriptor.columns = ColumnDescriptors.mapToColumnProtoArray(columns);
     return this;
   }
 
