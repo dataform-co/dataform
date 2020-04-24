@@ -151,7 +151,7 @@ In order to optimise this merge on **BigQuery**, an update partition filter is s
 config {
   type: "incremental",
   uniqueKey: ["transaction_id"],
-  bigQuery: {
+  bigquery: {
     partitionBy: "DATE(timestamp)",
     updatePartitionFilter:
         "timestamp >= timestamp_sub(current_timestamp(), interval 24 hour)"
