@@ -47,12 +47,16 @@ interface IBigQueryFieldMetadata {
 }
 
 export class BigQueryDbAdapter implements IDbAdapter {
+  public static async create(credentials: Credentials) {
+    return new BigQueryDbAdapter(credentials);
+  }
+
   private bigQueryCredentials: dataform.IBigQuery;
   private pool: PromisePool.PromisePoolExecutor;
 
   private readonly clients = new Map<string, BigQuery>();
 
-  constructor(credentials: Credentials) {
+  private constructor(credentials: Credentials) {
     this.bigQueryCredentials = credentials as dataform.IBigQuery;
     // Bigquery allows 50 concurrent queries, and a rate limit of 100/user/second by default.
     // These limits should be safely low enough for most projects.

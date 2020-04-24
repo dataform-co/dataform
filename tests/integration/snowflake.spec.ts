@@ -7,9 +7,14 @@ import { SnowflakeAdapter } from "df/core/adapters/snowflake";
 import { suite, test } from "df/testing";
 import { dropAllTables, getTableRows, keyBy } from "df/tests/integration/utils";
 
-suite("@dataform/integration/snowflake", ({ after }) => {
+suite("@dataform/integration/snowflake", ({ before, after }) => {
   const credentials = dfapi.credentials.read("snowflake", "test_credentials/snowflake.json");
-  const dbadapter = dbadapters.create(credentials, "snowflake");
+  let dbadapter: dbadapters.IDbAdapter;
+
+  before("create adapter", async () => {
+    dbadapter = await dbadapters.create(credentials, "snowflake");
+  });
+
   after("close adapter", () => dbadapter.close());
 
   test("run", { timeout: 60000 }, async () => {
@@ -22,8 +27,7 @@ suite("@dataform/integration/snowflake", ({ after }) => {
 
     const adapter = adapters.create(compiledGraph.projectConfig, compiledGraph.dataformCoreVersion);
 
-    const tablesToDelete = (await dfapi.build(compiledGraph, {}, credentials)).warehouseState
-      .tables;
+    const tablesToDelete = (await dfapi.build(compiledGraph, {}, dbadapter)).warehouseState.tables;
 
     // Drop all the tables before we do anything.
     await dropAllTables(tablesToDelete, adapter, dbadapter);
@@ -33,7 +37,7 @@ suite("@dataform/integration/snowflake", ({ after }) => {
     await dbadapter.execute(`drop schema if exists "TADA2"."df_integration_test"`);
 
     // Run the tests.
-    const testResults = await dfapi.test(credentials, "snowflake", compiledGraph.tests);
+    const testResults = await dfapi.test(dbadapter, compiledGraph.tests);
     expect(testResults).to.eql([
       { name: "successful", successful: true },
       {
@@ -63,8 +67,8 @@ suite("@dataform/integration/snowflake", ({ after }) => {
     ]);
 
     // Run the project.
-    let executionGraph = await dfapi.build(compiledGraph, {}, credentials);
-    let executedGraph = await dfapi.run(executionGraph, credentials).result();
+    let executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
+    let executedGraph = await dfapi.run(executionGraph, dbadapter).result();
 
     const actionMap = keyBy(executedGraph.actions, v => v.name);
     expect(Object.keys(actionMap).length).eql(14);
@@ -96,54 +100,34 @@ suite("@dataform/integration/snowflake", ({ after }) => {
     const s3Table = keyBy(compiledGraph.operations, t => t.name)[
       "DF_INTEGRATION_TEST.LOAD_FROM_S3"
     ];
-    const s3Rows = await getTableRows(s3Table.target, adapter, credentials, "snowflake");
+    const s3Rows = await getTableRows(s3Table.target, adapter, dbadapter);
     expect(s3Rows.length).equals(2);
 
     // Check the status of the view in the non-default database.
     const tada2DatabaseView = keyBy(compiledGraph.tables, t => t.name)[
       "TADA2.DF_INTEGRATION_TEST.SAMPLE_DATA_2"
     ];
-    const tada2DatabaseViewRows = await getTableRows(
-      tada2DatabaseView.target,
-      adapter,
-      credentials,
-      "snowflake"
-    );
+    const tada2DatabaseViewRows = await getTableRows(tada2DatabaseView.target, adapter, dbadapter);
     expect(tada2DatabaseViewRows.length).equals(3);
 
     // Check the data in the incremental tables.
     let incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
       "DF_INTEGRATION_TEST.EXAMPLE_INCREMENTAL"
     ];
-    let incrementalRows = await getTableRows(
-      incrementalTable.target,
-      adapter,
-      credentials,
-      "snowflake"
-    );
+    let incrementalRows = await getTableRows(incrementalTable.target, adapter, dbadapter);
     expect(incrementalRows.length).equals(3);
 
     const incrementalTable2 = keyBy(compiledGraph.tables, t => t.name)[
       "TADA2.DF_INTEGRATION_TEST.EXAMPLE_INCREMENTAL_TADA2"
     ];
-    const incrementalRows2 = await getTableRows(
-      incrementalTable2.target,
-      adapter,
-      credentials,
-      "snowflake"
-    );
+    const incrementalRows2 = await getTableRows(incrementalTable2.target, adapter, dbadapter);
     expect(incrementalRows2.length).equals(3);
 
     // Check the data in the incremental merge table.
     incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
       "DF_INTEGRATION_TEST.EXAMPLE_INCREMENTAL_MERGE"
     ];
-    incrementalRows = await getTableRows(
-      incrementalTable.target,
-      adapter,
-      credentials,
-      "snowflake"
-    );
+    incrementalRows = await getTableRows(incrementalTable.target, adapter, dbadapter);
     expect(incrementalRows.length).equals(2);
 
     // Re-run some of the actions.
@@ -158,45 +142,30 @@ suite("@dataform/integration/snowflake", ({ after }) => {
           "EXAMPLE_VIEW"
         ]
       },
-      credentials
+      dbadapter
     );
 
-    executedGraph = await dfapi.run(executionGraph, credentials).result();
+    executedGraph = await dfapi.run(executionGraph, dbadapter).result();
     expect(executedGraph.status).equals(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
 
     // Check there are the expected number of extra rows in the incremental tables.
     incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
       "DF_INTEGRATION_TEST.EXAMPLE_INCREMENTAL"
     ];
-    incrementalRows = await getTableRows(
-      incrementalTable.target,
-      adapter,
-      credentials,
-      "snowflake"
-    );
+    incrementalRows = await getTableRows(incrementalTable.target, adapter, dbadapter);
     expect(incrementalRows.length).equals(5);
 
     incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
       "TADA2.DF_INTEGRATION_TEST.EXAMPLE_INCREMENTAL_TADA2"
     ];
-    incrementalRows = await getTableRows(
-      incrementalTable2.target,
-      adapter,
-      credentials,
-      "snowflake"
-    );
+    incrementalRows = await getTableRows(incrementalTable2.target, adapter, dbadapter);
     expect(incrementalRows.length).equals(5);
 
     // Check the data in the incremental merge table.
     incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
       "DF_INTEGRATION_TEST.EXAMPLE_INCREMENTAL_MERGE"
     ];
-    incrementalRows = await getTableRows(
-      incrementalTable.target,
-      adapter,
-      credentials,
-      "snowflake"
-    );
+    incrementalRows = await getTableRows(incrementalTable.target, adapter, dbadapter);
     expect(incrementalRows.length).equals(2);
   });
 

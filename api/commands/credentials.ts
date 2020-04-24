@@ -70,8 +70,7 @@ export interface ITestResult {
 }
 
 export async function test(
-  credentials: Credentials,
-  warehouse: string,
+  dbadapter: dbadapters.IDbAdapter,
   timeoutMs: number = 10000
 ): Promise<ITestResult> {
   let timer;
@@ -79,10 +78,7 @@ export async function test(
     const timeout = new Promise<TestResultStatus>(
       resolve => (timer = setTimeout(() => resolve(TestResultStatus.TIMED_OUT), timeoutMs))
     );
-    const executeQuery = dbadapters
-      .create(credentials, warehouse)
-      .execute("SELECT 1 AS x")
-      .then(() => TestResultStatus.SUCCESSFUL);
+    const executeQuery = dbadapter.execute("SELECT 1 AS x").then(() => TestResultStatus.SUCCESSFUL);
     return {
       status: await Promise.race([executeQuery, timeout])
     };

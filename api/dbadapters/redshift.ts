@@ -1,5 +1,6 @@
 import { Credentials } from "@dataform/api/commands/credentials";
 import { IDbAdapter } from "@dataform/api/dbadapters/index";
+import { SSHTunnelProxy } from "@dataform/api/ssh_tunnel_proxy";
 import { parseRedshiftEvalError } from "@dataform/api/utils/error_parsing";
 import { dataform } from "@dataform/protos";
 import * as pg from "pg";
@@ -11,20 +12,37 @@ interface ICursor {
 }
 
 export class RedshiftDbAdapter implements IDbAdapter {
-  private queryExecutor: PgPoolExecutor;
-
-  constructor(credentials: Credentials) {
+  public static async create(credentials: Credentials) {
     const jdbcCredentials = credentials as dataform.IJDBC;
-    const clientConfig: pg.ClientConfig = {
-      host: jdbcCredentials.host,
-      port: jdbcCredentials.port,
+    const baseClientConfig: Partial<pg.ClientConfig> = {
       user: jdbcCredentials.username,
       password: jdbcCredentials.password,
       database: jdbcCredentials.databaseName,
       ssl: true
     };
-    this.queryExecutor = new PgPoolExecutor(clientConfig);
+    if (jdbcCredentials.sshTunnel) {
+      const sshTunnel = await SSHTunnelProxy.create(jdbcCredentials.sshTunnel, {
+        host: jdbcCredentials.host,
+        port: jdbcCredentials.port
+      });
+      const queryExecutor = new PgPoolExecutor({
+        ...baseClientConfig,
+        host: "127.0.0.1",
+        port: sshTunnel.localPort
+      });
+      return new RedshiftDbAdapter(queryExecutor, sshTunnel);
+    } else {
+      const clientConfig: pg.ClientConfig = {
+        ...baseClientConfig,
+        host: jdbcCredentials.host,
+        port: jdbcCredentials.port
+      };
+      const queryExecutor = new PgPoolExecutor(clientConfig);
+      return new RedshiftDbAdapter(queryExecutor);
+    }
   }
+
+  private constructor(private queryExecutor: PgPoolExecutor, private sshTunnel?: SSHTunnelProxy) {}
 
   public async execute(
     statement: string,
@@ -138,6 +156,9 @@ export class RedshiftDbAdapter implements IDbAdapter {
 
   public async close() {
     await this.queryExecutor.close();
+    if (this.sshTunnel) {
+      await this.sshTunnel.close();
+    }
   }
 
   public async prepareStateMetadataTable(): Promise<void> {

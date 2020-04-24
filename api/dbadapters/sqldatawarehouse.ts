@@ -13,6 +13,10 @@ const DATA_TYPE_COL_NAME = "data_type";
 const IS_NULLABLE_COL_NAME = "is_nullable";
 
 export class SQLDataWarehouseDBAdapter implements IDbAdapter {
+  public static async create(credentials: Credentials) {
+    return new SQLDataWarehouseDBAdapter(credentials);
+  }
+
   private pool: Promise<ConnectionPool>;
 
   constructor(credentials: Credentials) {

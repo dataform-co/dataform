@@ -36,18 +36,19 @@ interface ISnowflakeResultStream {
 }
 
 export class SnowflakeDbAdapter implements IDbAdapter {
-  private connectionPromise: Promise<ISnowflakeConnection>;
-  private pool: PromisePool.PromisePoolExecutor;
-
-  constructor(credentials: Credentials) {
-    this.connectionPromise = connect(credentials as dataform.ISnowflake);
-    // Unclear exactly what snowflakes limit's are here, we can experiment with increasing this.
-    this.pool = new PromisePool.PromisePoolExecutor({
-      concurrencyLimit: 10,
-      frequencyWindow: 1000,
-      frequencyLimit: 10
-    });
+  public static async create(credentials: Credentials) {
+    const connection = await connect(credentials as dataform.ISnowflake);
+    return new SnowflakeDbAdapter(connection);
   }
+
+  // Unclear exactly what snowflakes limit's are here, we can experiment with increasing this.
+  private pool: PromisePool.PromisePoolExecutor = new PromisePool.PromisePoolExecutor({
+    concurrencyLimit: 10,
+    frequencyWindow: 1000,
+    frequencyLimit: 10
+  });
+
+  constructor(private readonly connection: ISnowflakeConnection) {}
 
   public async execute(
     statement: string,
@@ -55,13 +56,12 @@ export class SnowflakeDbAdapter implements IDbAdapter {
       maxResults?: number;
     } = { maxResults: 1000 }
   ) {
-    const connection = await this.connectionPromise;
     return {
       rows: await this.pool
         .addSingleTask({
           generator: () =>
             new Promise<any[]>((resolve, reject) => {
-              connection.execute({
+              this.connection.execute({
                 sqlText: statement,
                 streamResult: true,
                 complete(err, stmt) {
@@ -177,9 +177,8 @@ where table_schema = '${target.schema}'
   }
 
   public async close() {
-    const connection = await this.connectionPromise;
     await new Promise((resolve, reject) => {
-      connection.destroy((err: any) => {
+      this.connection.destroy((err: any) => {
         if (err) {
           reject(err);
         } else {

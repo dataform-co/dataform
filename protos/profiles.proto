@@ -11,6 +11,8 @@ message JDBC {
   string password = 5;
   string database_name = 6;
 
+  SSHTunnel ssh_tunnel = 7;
+
   reserved 1;
 }
 
@@ -40,4 +42,13 @@ message SQLDataWarehouse {
   string username = 3;
   string password = 4;
   string database = 5;
+}
+
+
+message SSHTunnel {
+  string private_key = 1;
+  string username = 2;
+  string password = 3;
+  string host = 4;
+  int32 port = 5;
 }
