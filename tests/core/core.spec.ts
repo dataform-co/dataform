@@ -528,14 +528,12 @@ suite("@dataform/core", () => {
         .publish("a", {
           type: "table",
           columns: {
-            dimension_column: {
-              displayName: "Dimension",
-              dimension: "timestamp"
-            },
-            aggregator_column: {
-              description: "Aggregator description",
-              displayName: "Aggregator",
-              aggregator: "distinct"
+            colly: {
+              displayName: "colly display name",
+              description: "colly description",
+              dimension: "timestamp",
+              aggregator: "distinct",
+              expression: "1"
             }
           }
         })
@@ -548,26 +546,17 @@ suite("@dataform/core", () => {
 
       const schema = graph.tables.find(table => table.name === "schema.a");
 
-      const dimensionColumn = schema.actionDescriptor.columns.find(
-        column => column.displayName === "Dimension"
+      const collyColumn = schema.actionDescriptor.columns.find(
+        column => column.displayName === "colly display name"
       );
-      expect(dimensionColumn).to.eql(
+      expect(collyColumn).to.eql(
         dataform.ColumnDescriptor.create({
+          path: ["colly"],
+          displayName: "colly display name",
+          description: "colly description",
           dimensionType: dataform.ColumnDescriptor.DimensionType.TIMESTAMP,
-          displayName: "Dimension",
-          path: ["dimension_column"]
-        })
-      );
-
-      const aggregationColumn = schema.actionDescriptor.columns.find(
-        column => column.displayName === "Aggregator"
-      );
-      expect(aggregationColumn).to.eql(
-        dataform.ColumnDescriptor.create({
-          description: "Aggregator description",
           aggregation: dataform.ColumnDescriptor.Aggregation.DISTINCT,
-          displayName: "Aggregator",
-          path: ["aggregator_column"]
+          expression: "1"
         })
       );
     });
