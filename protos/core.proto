@@ -163,6 +163,7 @@ message ColumnDescriptor {
     CATEGORY = 1;
     TIMESTAMP = 2;
   }
+  DimensionType dimension_type = 4;
 
   enum Aggregation {
     UNKNOWN_AGGREGATION = 0;
@@ -170,11 +171,7 @@ message ColumnDescriptor {
     DISTINCT = 2;
     DERIVED = 3;
   }
-
-  oneof dimension_or_metric {
-    DimensionType dimension_type = 4;
-    Aggregation aggregation = 5;
-  }
+  Aggregation aggregation = 5;
 
   string expression = 6;
 }
