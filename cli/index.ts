@@ -11,6 +11,7 @@ import {
   test
 } from "@dataform/api";
 import { CREDENTIALS_FILENAME } from "@dataform/api/commands/credentials";
+import * as dbadapters from "@dataform/api/dbadapters";
 import { prettyJsonStringify } from "@dataform/api/utils";
 import { trackError } from "@dataform/cli/analytics";
 import {
@@ -44,7 +45,6 @@ import * as fs from "fs";
 import * as glob from "glob";
 import * as path from "path";
 import * as yargs from "yargs";
-import * as dbadapters from "@dataform/api/dbadapters";
 
 const RECOMPILE_DELAY = 500;
 
