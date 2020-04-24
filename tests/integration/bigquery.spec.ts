@@ -10,9 +10,14 @@ import { suite, test } from "df/testing";
 import { dropAllTables, getTableRows, keyBy } from "df/tests/integration/utils";
 import * as Long from "long";
 
-suite("@dataform/integration/bigquery", ({ after }) => {
+suite("@dataform/integration/bigquery", ({ before, after }) => {
   const credentials = dfapi.credentials.read("bigquery", "test_credentials/bigquery.json");
-  const dbadapter = dbadapters.create(credentials, "bigquery") as BigQueryDbAdapter;
+  let dbadapter: BigQueryDbAdapter;
+
+  before("create adapter", async () => {
+    dbadapter = (await dbadapters.create(credentials, "bigquery")) as BigQueryDbAdapter;
+  });
+
   after("close adapter", () => dbadapter.close());
 
   test("run", { timeout: 60000 }, async () => {
@@ -26,8 +31,7 @@ suite("@dataform/integration/bigquery", ({ after }) => {
     const adapter = adapters.create(compiledGraph.projectConfig, compiledGraph.dataformCoreVersion);
 
     // Drop all the tables before we do anything.
-    const tablesToDelete = (await dfapi.build(compiledGraph, {}, credentials)).warehouseState
-      .tables;
+    const tablesToDelete = (await dfapi.build(compiledGraph, {}, dbadapter)).warehouseState.tables;
     await dropAllTables(tablesToDelete, adapter, dbadapter);
 
     // Drop schemas to make sure schema creation works.
@@ -37,7 +41,7 @@ suite("@dataform/integration/bigquery", ({ after }) => {
     await dbadapter.dropSchema("dataform-integration-tests", "dataform_meta");
 
     // Run the tests.
-    const testResults = await dfapi.test(credentials, "bigquery", compiledGraph.tests);
+    const testResults = await dfapi.test(dbadapter, compiledGraph.tests);
     expect(testResults).to.eql([
       { name: "successful", successful: true },
       {
@@ -84,10 +88,10 @@ suite("@dataform/integration/bigquery", ({ after }) => {
       {
         actions: actionsToRun
       },
-      credentials
+      dbadapter
     );
 
-    let executedGraph = await dfapi.run(executionGraph, credentials).result();
+    let executedGraph = await dfapi.run(executionGraph, dbadapter).result();
 
     let actionMap = keyBy(executedGraph.actions, v => v.name);
     expect(Object.keys(actionMap).length).eql(13);
@@ -114,19 +118,14 @@ suite("@dataform/integration/bigquery", ({ after }) => {
     let incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
       "dataform-integration-tests.df_integration_test.example_incremental"
     ];
-    let incrementalRows = await getTableRows(
-      incrementalTable.target,
-      adapter,
-      credentials,
-      "bigquery"
-    );
+    let incrementalRows = await getTableRows(incrementalTable.target, adapter, dbadapter);
     expect(incrementalRows.length).equals(3);
 
     // Check the data in the incremental merge table.
     incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
       "dataform-integration-tests.df_integration_test.example_incremental_merge"
     ];
-    incrementalRows = await getTableRows(incrementalTable.target, adapter, credentials, "bigquery");
+    incrementalRows = await getTableRows(incrementalTable.target, adapter, dbadapter);
     expect(incrementalRows.length).equals(2);
 
     // Re-run some of the actions.
@@ -140,24 +139,24 @@ suite("@dataform/integration/bigquery", ({ after }) => {
           "example_view"
         ]
       },
-      credentials
+      dbadapter
     );
 
-    executedGraph = await dfapi.run(executionGraph, credentials).result();
+    executedGraph = await dfapi.run(executionGraph, dbadapter).result();
     expect(executedGraph.status).equals(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
 
     // Check there are the expected number of extra rows in the incremental table.
     incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
       "dataform-integration-tests.df_integration_test.example_incremental"
     ];
-    incrementalRows = await getTableRows(incrementalTable.target, adapter, credentials, "bigquery");
+    incrementalRows = await getTableRows(incrementalTable.target, adapter, dbadapter);
     expect(incrementalRows.length).equals(5);
 
     // Check there are the expected number of extra rows in the incremental merge table.
     incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
       "dataform-integration-tests.df_integration_test.example_incremental_merge"
     ];
-    incrementalRows = await getTableRows(incrementalTable.target, adapter, credentials, "bigquery");
+    incrementalRows = await getTableRows(incrementalTable.target, adapter, dbadapter);
     expect(incrementalRows.length).equals(2);
 
     // run cache assertions
@@ -174,10 +173,10 @@ suite("@dataform/integration/bigquery", ({ after }) => {
           "depends_on_example_view"
         ]
       },
-      credentials
+      dbadapter
     );
 
-    executedGraph = await dfapi.run(executionGraph, credentials).result();
+    executedGraph = await dfapi.run(executionGraph, dbadapter).result();
     actionMap = keyBy(executedGraph.actions, v => v.name);
 
     expect(executedGraph.status).equals(dataform.RunResult.ExecutionStatus.FAILED);
@@ -290,10 +289,10 @@ suite("@dataform/integration/bigquery", ({ after }) => {
       {
         actions: ["example_view", "depends_on_example_view"]
       },
-      credentials
+      dbadapter
     );
 
-    executedGraph = await dfapi.run(executionGraph, credentials).result();
+    executedGraph = await dfapi.run(executionGraph, dbadapter).result();
     expect(executedGraph.status).equals(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
     actionMap = keyBy(executedGraph.actions, v => v.name);
     expectedActionStatus = {

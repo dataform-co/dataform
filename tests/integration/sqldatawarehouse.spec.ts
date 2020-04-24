@@ -7,12 +7,16 @@ import { SQLDataWarehouseAdapter } from "df/core/adapters/sqldatawarehouse";
 import { suite, test } from "df/testing";
 import { dropAllTables, getTableRows, keyBy } from "df/tests/integration/utils";
 
-suite("@dataform/integration/sqldatawarehouse", ({ after }) => {
+suite("@dataform/integration/sqldatawarehouse", ({ before, after }) => {
   const credentials = dfapi.credentials.read(
     "sqldatawarehouse",
     "test_credentials/sqldatawarehouse.json"
   );
-  const dbadapter = dbadapters.create(credentials, "sqldatawarehouse");
+  let dbadapter: dbadapters.IDbAdapter;
+
+  before("create adapter", async () => {
+    dbadapter = await dbadapters.create(credentials, "sqldatawarehouse");
+  });
   after("close adapter", () => dbadapter.close());
 
   test("run", { timeout: 60000 }, async () => {
@@ -26,12 +30,11 @@ suite("@dataform/integration/sqldatawarehouse", ({ after }) => {
     const adapter = adapters.create(compiledGraph.projectConfig, compiledGraph.dataformCoreVersion);
 
     // Drop all the tables before we do anything.
-    const tablesToDelete = (await dfapi.build(compiledGraph, {}, credentials)).warehouseState
-      .tables;
+    const tablesToDelete = (await dfapi.build(compiledGraph, {}, dbadapter)).warehouseState.tables;
     await dropAllTables(tablesToDelete, adapter, dbadapter);
 
     // Run the tests.
-    const testResults = await dfapi.test(credentials, "sqldatawarehouse", compiledGraph.tests);
+    const testResults = await dfapi.test(dbadapter, compiledGraph.tests);
     expect(testResults).to.eql([
       { name: "successful", successful: true },
       {
@@ -61,8 +64,8 @@ suite("@dataform/integration/sqldatawarehouse", ({ after }) => {
     ]);
 
     // Run the project.
-    let executionGraph = await dfapi.build(compiledGraph, {}, credentials);
-    let executedGraph = await dfapi.run(executionGraph, credentials).result();
+    let executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
+    let executedGraph = await dfapi.run(executionGraph, dbadapter).result();
 
     const actionMap = keyBy(executedGraph.actions, v => v.name);
     expect(Object.keys(actionMap).length).eql(11);
@@ -90,12 +93,7 @@ suite("@dataform/integration/sqldatawarehouse", ({ after }) => {
     let incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
       "df_integration_test.example_incremental"
     ];
-    let incrementalRows = await getTableRows(
-      incrementalTable.target,
-      adapter,
-      credentials,
-      "sqldatawarehouse"
-    );
+    let incrementalRows = await getTableRows(incrementalTable.target, adapter, dbadapter);
     expect(incrementalRows.length).equals(1);
 
     // Re-run some of the actions.
@@ -104,22 +102,17 @@ suite("@dataform/integration/sqldatawarehouse", ({ after }) => {
       {
         actions: ["example_incremental", "example_table", "example_view"]
       },
-      credentials
+      dbadapter
     );
 
-    executedGraph = await dfapi.run(executionGraph, credentials).result();
+    executedGraph = await dfapi.run(executionGraph, dbadapter).result();
     expect(executedGraph.status).equals(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
 
     // Check there is an extra row in the incremental table.
     incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
       "df_integration_test.example_incremental"
     ];
-    incrementalRows = await getTableRows(
-      incrementalTable.target,
-      adapter,
-      credentials,
-      "sqldatawarehouse"
-    );
+    incrementalRows = await getTableRows(incrementalTable.target, adapter, dbadapter);
 
     expect(incrementalRows.length).equals(2);
   });

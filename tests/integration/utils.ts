@@ -29,8 +29,7 @@ export async function dropAllTables(
 export async function getTableRows(
   target: dataform.ITarget,
   adapter: adapters.IAdapter,
-  credentials: Credentials,
-  warehouse: string
+  dbadapter: dbadapters.IDbAdapter
 ) {
-  return query.run(credentials, warehouse, `SELECT * FROM ${adapter.resolveTarget(target)}`);
+  return (await dbadapter.execute(`SELECT * FROM ${adapter.resolveTarget(target)}`)).rows;
 }

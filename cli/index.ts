@@ -11,6 +11,7 @@ import {
   test
 } from "@dataform/api";
 import { CREDENTIALS_FILENAME } from "@dataform/api/commands/credentials";
+import * as dbadapters from "@dataform/api/dbadapters";
 import { prettyJsonStringify } from "@dataform/api/utils";
 import { trackError } from "@dataform/cli/analytics";
 import {
@@ -288,20 +289,26 @@ const builtYargs = createYargsCli({
         const finalCredentials = credentialsFn();
         if (argv["test-connection"]) {
           print("\nRunning connection test...");
-          const testResult = await credentials.test(finalCredentials, argv.warehouse);
-          switch (testResult.status) {
-            case credentials.TestResultStatus.SUCCESSFUL: {
-              printSuccess("\nWarehouse test query completed successfully.\n");
-              break;
+          const dbadapter = await dbadapters.create(finalCredentials, argv.warehouse);
+          try {
+            const testResult = await credentials.test(dbadapter);
+            switch (testResult.status) {
+              case credentials.TestResultStatus.SUCCESSFUL: {
+                printSuccess("\nWarehouse test query completed successfully.\n");
+                break;
+              }
+              case credentials.TestResultStatus.TIMED_OUT: {
+                throw new Error("Warehouse test connection timed out.");
+              }
+              case credentials.TestResultStatus.OTHER_ERROR: {
+                throw new Error(
+                  `Warehouse test query failed: ${testResult.error.stack ||
+                    testResult.error.message}`
+                );
+              }
             }
-            case credentials.TestResultStatus.TIMED_OUT: {
-              throw new Error("Warehouse test connection timed out.");
-            }
-            case credentials.TestResultStatus.OTHER_ERROR: {
-              throw new Error(
-                `Warehouse test query failed: ${testResult.error.stack || testResult.error.message}`
-              );
-            }
+          } finally {
+            await dbadapter.close();
           }
         } else {
           print("\nWarehouse test query was not run.\n");
@@ -437,13 +444,14 @@ const builtYargs = createYargsCli({
         }
 
         print(`Running ${compiledGraph.tests.length} unit tests...\n`);
-        const testResults = await test(
-          readCredentials,
-          compiledGraph.projectConfig.warehouse,
-          compiledGraph.tests
-        );
-        testResults.forEach(testResult => printTestResult(testResult));
-        return testResults.every(testResult => testResult.successful) ? 0 : 1;
+        const dbadapter = await dbadapters.create(readCredentials, argv.warehouse);
+        try {
+          const testResults = await test(dbadapter, compiledGraph.tests);
+          testResults.forEach(testResult => printTestResult(testResult));
+          return testResults.every(testResult => testResult.successful) ? 0 : 1;
+        } finally {
+          await dbadapter.close();
+        }
       }
     },
     {
@@ -494,79 +502,82 @@ const builtYargs = createYargsCli({
           compiledGraph.projectConfig.warehouse,
           getCredentialsPath(argv.projectDir, argv.credentials)
         );
-        const executionGraph = await build(
-          compiledGraph,
-          {
-            fullRefresh: argv["full-refresh"],
-            actions: argv.actions,
-            includeDependencies: argv["include-deps"],
-            tags: argv.tags
-          },
-          readCredentials
-        );
 
-        if (argv["dry-run"]) {
-          if (!argv.json) {
-            print(
-              "Dry run (--dry-run) mode is turned on; not running the following actions against your warehouse:\n"
-            );
-          }
-          printExecutionGraph(executionGraph, argv.json);
-          return;
-        }
-
-        if (argv["run-tests"]) {
-          print(`Running ${compiledGraph.tests.length} unit tests...\n`);
-          const testResults = await test(
-            readCredentials,
-            compiledGraph.projectConfig.warehouse,
-            compiledGraph.tests
+        const dbadapter = await dbadapters.create(readCredentials, argv.warehouse);
+        try {
+          const executionGraph = await build(
+            compiledGraph,
+            {
+              fullRefresh: argv["full-refresh"],
+              actions: argv.actions,
+              includeDependencies: argv["include-deps"],
+              tags: argv.tags
+            },
+            dbadapter
           );
-          testResults.forEach(testResult => printTestResult(testResult));
-          if (testResults.some(testResult => !testResult.successful)) {
-            printError("\nUnit tests did not pass; aborting run.");
-            return 1;
+
+          if (argv["dry-run"]) {
+            if (!argv.json) {
+              print(
+                "Dry run (--dry-run) mode is turned on; not running the following actions against your warehouse:\n"
+              );
+            }
+            printExecutionGraph(executionGraph, argv.json);
+            return;
           }
-          printSuccess("Unit tests completed successfully.\n");
-        }
 
-        if (!argv.json) {
-          print("Running...\n");
-        }
-        const runner = run(executionGraph, readCredentials);
-        process.on("SIGINT", () => {
-          if (
-            !supportsCancel(
-              WarehouseType[compiledGraph.projectConfig.warehouse as keyof typeof WarehouseType]
-            )
-          ) {
-            process.exit(1);
+          if (argv["run-tests"]) {
+            print(`Running ${compiledGraph.tests.length} unit tests...\n`);
+            const testResults = await test(dbadapter, compiledGraph.tests);
+            testResults.forEach(testResult => printTestResult(testResult));
+            if (testResults.some(testResult => !testResult.successful)) {
+              printError("\nUnit tests did not pass; aborting run.");
+              return 1;
+            }
+            printSuccess("Unit tests completed successfully.\n");
           }
-          runner.cancel();
-        });
 
-        const actionsByName = new Map<string, dataform.IExecutionAction>();
-        executionGraph.actions.forEach(action => {
-          actionsByName.set(action.name, action);
-        });
-        const alreadyPrintedActions = new Set<string>();
+          if (!argv.json) {
+            print("Running...\n");
+          }
+          const runner = run(executionGraph, dbadapter);
+          process.on("SIGINT", () => {
+            if (
+              !supportsCancel(
+                WarehouseType[compiledGraph.projectConfig.warehouse as keyof typeof WarehouseType]
+              )
+            ) {
+              process.exit(1);
+            }
+            runner.cancel();
+          });
 
-        const printExecutedGraph = (executedGraph: dataform.IRunResult) => {
-          executedGraph.actions
-            .filter(
-              actionResult => actionResult.status !== dataform.ActionResult.ExecutionStatus.RUNNING
-            )
-            .filter(executedAction => !alreadyPrintedActions.has(executedAction.name))
-            .forEach(executedAction => {
-              printExecutedAction(executedAction, actionsByName.get(executedAction.name));
-              alreadyPrintedActions.add(executedAction.name);
-            });
-        };
+          const actionsByName = new Map<string, dataform.IExecutionAction>();
+          executionGraph.actions.forEach(action => {
+            actionsByName.set(action.name, action);
+          });
+          const alreadyPrintedActions = new Set<string>();
 
-        runner.onChange(printExecutedGraph);
-        const runResult = await runner.result();
-        printExecutedGraph(runResult);
-        return runResult.status === dataform.RunResult.ExecutionStatus.SUCCESSFUL ? 0 : 1;
+          const printExecutedGraph = (executedGraph: dataform.IRunResult) => {
+            executedGraph.actions
+              .filter(
+                actionResult =>
+                  actionResult.status !== dataform.ActionResult.ExecutionStatus.RUNNING
+              )
+              .filter(executedAction => !alreadyPrintedActions.has(executedAction.name))
+              .forEach(executedAction => {
+                printExecutedAction(executedAction, actionsByName.get(executedAction.name));
+                alreadyPrintedActions.add(executedAction.name);
+              });
+          };
+
+          runner.onChange(printExecutedGraph);
+          const runResult = await runner.result();
+          printExecutedGraph(runResult);
+          return runResult.status === dataform.RunResult.ExecutionStatus.SUCCESSFUL ? 0 : 1;
+        } finally {
+          await dbadapter.close();
+        }
       }
     },
     {
@@ -605,12 +616,12 @@ const builtYargs = createYargsCli({
       positionalOptions: [warehouseOption],
       options: [credentialsOption],
       processFn: async argv => {
-        printListTablesResult(
-          await table.list(
-            credentials.read(argv.warehouse, getCredentialsPath(argv.projectDir, argv.credentials)),
-            argv.warehouse
-          )
-        );
+        const dbadapter = await dbadapters.create(argv.credentials, argv.warehouse);
+        try {
+          printListTablesResult(await table.list(dbadapter));
+        } finally {
+          await dbadapter.close();
+        }
         return 0;
       }
     },
@@ -620,16 +631,17 @@ const builtYargs = createYargsCli({
       positionalOptions: [warehouseOption],
       options: [credentialsOption],
       processFn: async argv => {
-        printGetTableResult(
-          await table.get(
-            credentials.read(argv.warehouse, getCredentialsPath(argv.projectDir, argv.credentials)),
-            argv.warehouse,
-            {
+        const dbadapter = await dbadapters.create(argv.credentials, argv.warehouse);
+        try {
+          printGetTableResult(
+            await table.get(dbadapter, {
               schema: argv.schema,
               name: argv.table
-            }
-          )
-        );
+            })
+          );
+        } finally {
+          await dbadapter.close();
+        }
         return 0;
       }
     }

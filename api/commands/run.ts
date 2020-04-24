@@ -14,8 +14,7 @@ const isSuccessfulAction = (actionResult: dataform.IActionResult) =>
   actionResult.status === dataform.ActionResult.ExecutionStatus.CACHE_SKIPPED ||
   actionResult.status === dataform.ActionResult.ExecutionStatus.DISABLED;
 
-export function run(graph: dataform.IExecutionGraph, credentials: Credentials): Runner {
-  const dbadapter = dbadapters.create(credentials, graph.projectConfig.warehouse);
+export function run(graph: dataform.IExecutionGraph, dbadapter: dbadapters.IDbAdapter): Runner {
   return Runner.create(dbadapter, graph).execute();
 }
 
@@ -81,9 +80,6 @@ export class Runner {
     } finally {
       if (!!this.timeout) {
         clearTimeout(this.timeout);
-      }
-      if (!!this.adapter) {
-        await this.adapter.close();
       }
     }
   }

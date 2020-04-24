@@ -7,10 +7,15 @@ import { RedshiftAdapter } from "df/core/adapters/redshift";
 import { suite, test } from "df/testing";
 import { getTableRows, keyBy } from "df/tests/integration/utils";
 
-suite("@dataform/integration/redshift", ({ after }) => {
+suite("@dataform/integration/redshift", ({ before, after }) => {
   const credentials = dfapi.credentials.read("redshift", "test_credentials/redshift.json");
-  const dbadapter = dbadapters.create(credentials, "redshift");
-  after("close adapter", () => dbadapter.close());
+  let dbadapter: dbadapters.IDbAdapter;
+
+  before("create adapter", async () => {
+    dbadapter = await dbadapters.create(credentials, "redshift");
+  });
+
+  after("close adapter", async () => dbadapter.close());
 
   test("run", { timeout: 60000 }, async () => {
     const compiledGraph = await dfapi.compile({
@@ -34,7 +39,7 @@ suite("@dataform/integration/redshift", ({ after }) => {
     await dropFunctions.reduce((promiseChain, fn) => promiseChain.then(fn), Promise.resolve());
 
     // Run the tests.
-    const testResults = await dfapi.test(credentials, "redshift", compiledGraph.tests);
+    const testResults = await dfapi.test(dbadapter, compiledGraph.tests);
     expect(testResults).to.eql([
       { name: "successful", successful: true },
       {
@@ -64,8 +69,8 @@ suite("@dataform/integration/redshift", ({ after }) => {
     ]);
 
     // Run the project.
-    let executionGraph = await dfapi.build(compiledGraph, {}, credentials);
-    let executedGraph = await dfapi.run(executionGraph, credentials).result();
+    let executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
+    let executedGraph = await dfapi.run(executionGraph, dbadapter).result();
 
     const actionMap = keyBy(executedGraph.actions, v => v.name);
     expect(Object.keys(actionMap).length).eql(13);
@@ -97,26 +102,21 @@ suite("@dataform/integration/redshift", ({ after }) => {
     const s3Table = keyBy(compiledGraph.operations, t => t.name)[
       "df_integration_test.load_from_s3"
     ];
-    const s3Rows = await getTableRows(s3Table.target, adapter, credentials, "redshift");
+    const s3Rows = await getTableRows(s3Table.target, adapter, dbadapter);
     expect(s3Rows.length).equals(2);
 
     // Check the data in the incremental table.
     let incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
       "df_integration_test.example_incremental"
     ];
-    let incrementalRows = await getTableRows(
-      incrementalTable.target,
-      adapter,
-      credentials,
-      "redshift"
-    );
+    let incrementalRows = await getTableRows(incrementalTable.target, adapter, dbadapter);
     expect(incrementalRows.length).equals(3);
 
     // Check the data in the incremental merge table.
     incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
       "df_integration_test.example_incremental_merge"
     ];
-    incrementalRows = await getTableRows(incrementalTable.target, adapter, credentials, "redshift");
+    incrementalRows = await getTableRows(incrementalTable.target, adapter, dbadapter);
     expect(incrementalRows.length).equals(2);
 
     // Re-run some of the actions.
@@ -130,23 +130,23 @@ suite("@dataform/integration/redshift", ({ after }) => {
           "example_view"
         ]
       },
-      credentials
+      dbadapter
     );
-    executedGraph = await dfapi.run(executionGraph, credentials).result();
+    executedGraph = await dfapi.run(executionGraph, dbadapter).result();
     expect(executedGraph.status).equals(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
 
     // Check there are the expected number of extra rows in the incremental table.
     incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
       "df_integration_test.example_incremental"
     ];
-    incrementalRows = await getTableRows(incrementalTable.target, adapter, credentials, "redshift");
+    incrementalRows = await getTableRows(incrementalTable.target, adapter, dbadapter);
     expect(incrementalRows.length).equals(5);
 
     // Check there are the expected number of extra rows in the incremental merge table.
     incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
       "df_integration_test.example_incremental_merge"
     ];
-    incrementalRows = await getTableRows(incrementalTable.target, adapter, credentials, "redshift");
+    incrementalRows = await getTableRows(incrementalTable.target, adapter, dbadapter);
     expect(incrementalRows.length).equals(2);
   });
 
