@@ -4,9 +4,8 @@ import * as net from "net";
 import * as ssh2 from "ssh2";
 
 /**
- * To connect to databases via an SSH tunnel we create a local socket on this machine
- * on a random port, and forward traffic through an SSH tunnel to the remote SSH server
- * where it then exits the tunnel and connect to a database on e.g. a private network.
+ * Creates a local socket on this machine on a random port and forwards traffic
+ * through an SSH tunnel to the remote server.
  */
 export class SSHTunnelProxy {
   public static async create(
@@ -25,7 +24,7 @@ export class SSHTunnelProxy {
         destination.port,
         (err, stream) => {
           if (err) {
-            return sock.destroy();
+            return sock.destroy(err);
           }
           sock.pipe(stream);
           stream.pipe(sock);
@@ -49,12 +48,12 @@ export class SSHTunnelProxy {
 
   // We need to keep track of connections so we can destroy them, as the proxy server won't close
   // when there are keep-alive connections going on.
-  private connections = new Set<net.Socket>();
+  private readonly connections = new Set<net.Socket>();
 
   private constructor(
-    private sshClient: ssh2.Client,
-    private proxy: net.Server,
-    public localPort: number
+    private readonly sshClient: ssh2.Client,
+    private readonly proxy: net.Server,
+    public readonly localPort: number
   ) {
     proxy.on("connection", socket => {
       this.connections.add(socket);
