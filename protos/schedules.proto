@@ -4,6 +4,9 @@ package dataform.schedules;
 
 option go_package = "github.com/dataform-co/dataform/protos/dataform/schedules";
 
+// NOTE ON THIS FILE: All messages are deprecated in favour of the variants in 'core.proto'.
+// Please do not make any further updates to the contents of this file.
+
 enum NotificationEventType {
   UNKNOWN = 0;
   SUCCESS = 1;
