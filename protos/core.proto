@@ -46,10 +46,14 @@ message Environments {
       string cron = 2;
       repeated string tags = 3;
   
+      // This is a subset of RunConfig.
+      message Options {
+        bool include_dependencies = 4;
+        bool full_refresh = 5;
+      }
       // Optional.
-      bool include_dependencies = 4;
-      bool full_refresh = 5;
-      bool disabled = 6;
+      Options options = 4;
+      bool disabled = 5;
   
       message NotificationRequirement {
         repeated string channels = 1;
@@ -61,7 +65,7 @@ message Environments {
         }
         repeated CompletionStatus statuses = 2;
       }
-      repeated NotificationRequirement notify = 7;
+      repeated NotificationRequirement notify = 6;
     }
     repeated Schedule schedules = 4;  
   }
@@ -84,6 +88,7 @@ message Environments {
   repeated NotificationChannel notification_channels = 2;
 }
 
+// This is a superset of Schedule.Options.
 message RunConfig {
   repeated string actions = 1;
   repeated string tags = 5;
