@@ -26,22 +26,62 @@ message ProjectConfig {
   string gcloud_project_id = 6;
 }
 
-message Environment {
-  string name = 1;
+message Environments {
+  message Environment {
+    string name = 1;
+    
+    message GitReference {
+      oneof git_reference {
+        string branch = 1;
+        string commit_sha = 2;
+      }
+    }
   
-  message GitReference {
-    oneof git_reference {
-      string branch = 1;
-      string commit_sha = 2;
+    GitReference git_reference = 2;
+    ProjectConfig config_override = 3;
+
+    message Schedule {
+      // Required fields.
+      string name = 1;
+      string cron = 2;
+      repeated string tags = 3;
+  
+      // Optional.
+      bool include_dependencies = 4;
+      bool full_refresh = 5;
+      bool disabled = 6;
+  
+      message NotificationRequirement {
+        repeated string channels = 1;
+  
+        enum CompletionStatus {
+          UNKNOWN = 0;
+          SUCCESS = 1;
+          FAILURE = 2;
+        }
+        repeated CompletionStatus statuses = 2;
+      }
+      repeated NotificationRequirement notify = 7;
+    }
+    repeated Schedule schedules = 4;  
+  }
+  repeated Environment environments = 1;
+
+  message NotificationChannel {
+    string name = 1;
+
+    message EmailNotificationChannel {
+      repeated string to = 1;
+    }
+    message SlackNotificationChannel {
+      string webhook_url = 1;
+    }
+    oneof channel {
+      EmailNotificationChannel email = 2;
+      SlackNotificationChannel slack = 3;
     }
   }
-
-  GitReference git_reference = 2;
-  ProjectConfig config_override = 3;
-}
-
-message Environments {
-  repeated Environment environments = 1;
+  repeated NotificationChannel notification_channels = 2;
 }
 
 message RunConfig {
