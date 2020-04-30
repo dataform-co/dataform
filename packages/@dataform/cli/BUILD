@@ -58,6 +58,7 @@ pkg_json(
 
 pkg_bundle(
     name = "bundle",
+    args = ["--banner='#!/usr/bin/env node'"],
     entry_point = "index.ts",
     externals = externals,
     deps = [
