@@ -673,23 +673,6 @@ suite("@dataform/api", () => {
     });
   });
 
-  suite("init", () => {
-    test("init", { timeout: 30000 }, async () => {
-      // create temp directory
-      const projectDir = "examples/init";
-
-      // Project has already been initialized via the tests script, check data is valid.
-
-      // compile project
-      const graph = await compile({ projectDir }).catch(error => error);
-      expect(graph).to.not.be.an.instanceof(Error);
-
-      const gErrors = utils.validate(graph);
-
-      expect(gErrors).deep.equal(dataform.GraphErrors.create());
-    });
-  });
-
   suite("query", () => {
     test("bigquery_example", async () => {
       const compiledQuery = await query.compile('select 1 from ${ref("example_view")}', {

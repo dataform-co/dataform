@@ -5,7 +5,6 @@ load("@build_bazel_rules_nodejs//:index.bzl", "nodejs_binary")
 exports_files([
     "tsconfig.json",
     "package.json",
-    "common.package.json",
     "readme.md",
     "version.bzl",
 ])
