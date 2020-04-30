@@ -1,5 +1,5 @@
-import { Assertion } from "@dataform/core/assertion";
-import { ColumnDescriptors } from "@dataform/core/column_descriptors";
+import { Assertion } from "df/core/assertion";
+import { ColumnDescriptors } from "df/core/column_descriptors";
 import {
   Contextable,
   IColumnsDescriptor,
@@ -8,16 +8,16 @@ import {
   IDocumentableConfig,
   ITargetableConfig,
   Resolvable
-} from "@dataform/core/common";
-import { Session } from "@dataform/core/session";
+} from "df/core/common";
+import { Session } from "df/core/session";
 import {
   checkExcessProperties,
   resolvableAsTarget,
   setNameAndTarget,
   strictKeysOf,
   toResolvable
-} from "@dataform/core/utils";
-import { dataform } from "@dataform/protos";
+} from "df/core/utils";
+import { dataform } from "df/protos";
 
 /**
  * @hidden

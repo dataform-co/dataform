@@ -4,7 +4,7 @@
   "dependencies": {
     "@dataform/core": "$DF_VERSION"
   },
-  "main": "index.js",
+  "main": "bundle.js",
   "types": "index.d.ts",
   "publishConfig": {
     "access": "public"

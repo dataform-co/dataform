@@ -1,5 +1,5 @@
-import { ICms } from "@dataform-tools/markdown-cms/index";
-import { Tree } from "@dataform-tools/markdown-cms/tree";
+import { ICms } from "df/tools/markdown-cms/index";
+import { Tree } from "df/tools/markdown-cms/tree";
 import * as Octokit from "@octokit/rest";
 import { join } from "path";
 

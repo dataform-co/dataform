@@ -1,5 +1,5 @@
-import { retry } from "@dataform/api/utils/retry";
-import { suite, test } from "@dataform/testing";
+import { retry } from "df/api/utils/retry";
+import { suite, test } from "df/testing";
 import { expect } from "chai";
 
 suite("retry", () => {

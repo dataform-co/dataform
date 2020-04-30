@@ -1,4 +1,4 @@
-import { ITree } from "@dataform-tools/markdown-cms/tree";
+import { ITree } from "df/tools/markdown-cms/tree";
 import axios from "axios";
 import { Swagger } from "df/docs/components/swagger";
 import { getContentTree, IExtraAttributes } from "df/docs/content_tree";

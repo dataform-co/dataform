@@ -1,8 +1,8 @@
-import * as compilers from "@dataform/core/compilers";
-import { Session } from "@dataform/core/session";
-import * as utils from "@dataform/core/utils";
-import { dataform } from "@dataform/protos";
-import { suite, test } from "@dataform/testing";
+import * as compilers from "df/core/compilers";
+import { Session } from "df/core/session";
+import * as utils from "df/core/utils";
+import { dataform } from "df/protos";
+import { suite, test } from "df/testing";
 import { fail } from "assert";
 import { expect } from "chai";
 import { asPlainObject } from "df/tests/utils";

@@ -1,10 +1,10 @@
-import { Credentials } from "@dataform/api/commands/credentials";
-import { IDbAdapter } from "@dataform/api/dbadapters/index";
-import { SSHTunnelProxy } from "@dataform/api/ssh_tunnel_proxy";
-import { parseRedshiftEvalError } from "@dataform/api/utils/error_parsing";
-import { dataform } from "@dataform/protos";
+import { Credentials } from "df/api/commands/credentials";
+import { IDbAdapter } from "df/api/dbadapters/index";
+import { SSHTunnelProxy } from "df/api/ssh_tunnel_proxy";
+import { parseRedshiftEvalError } from "df/api/utils/error_parsing";
+import { dataform } from "df/protos";
 import * as pg from "pg";
-import * as Cursor from "pg-cursor";
+import Cursor from "pg-cursor";
 
 interface ICursor {
   read: (rowCount: number, callback: (err: Error, rows: any[]) => void) => void;

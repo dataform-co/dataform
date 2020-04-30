@@ -1,5 +1,5 @@
-import { validate } from "@dataform/core/utils";
-import { dataform } from "@dataform/protos";
+import { validate } from "df/core/utils";
+import { dataform } from "df/protos";
 import { ChildProcess, fork } from "child_process";
 import * as fs from "fs";
 import * as path from "path";

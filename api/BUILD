@@ -5,8 +5,6 @@ load("@npm_bazel_typescript//:index.bzl", "ts_library")
 ts_library(
     name = "lib",
     srcs = glob(["**/*.ts"]),
-    data = ["package.json"],
-    module_name = "@dataform/api",
     deps = [
         "//core",
         "//protos",
@@ -51,17 +49,6 @@ ts_library(
         ":lib",
         "@npm//source-map-support",
     ],
-)
-
-load("//tools/npm:package.bzl", "dataform_npm_package")
-
-dataform_npm_package(
-    name = "package",
-    package_layers = [
-        "//:common.package.json",
-        "api.package.json",
-    ],
-    deps = [":api"],
 )
 
 load("@build_bazel_rules_nodejs//:index.bzl", "nodejs_binary")

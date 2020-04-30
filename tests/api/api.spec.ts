@@ -1,12 +1,12 @@
-import { Builder, compile, credentials, format, prune, query, Runner } from "@dataform/api";
-import { IDbAdapter } from "@dataform/api/dbadapters";
-import { BigQueryDbAdapter } from "@dataform/api/dbadapters/bigquery";
-import * as utils from "@dataform/core/utils";
-import { dataform } from "@dataform/protos";
-import { suite, test } from "@dataform/testing";
 import { assert, config, expect } from "chai";
+import { Builder, compile, credentials, format, prune, query, Runner } from "df/api";
+import { IDbAdapter } from "df/api/dbadapters";
+import { BigQueryDbAdapter } from "df/api/dbadapters/bigquery";
+import * as utils from "df/core/utils";
+import { dataform } from "df/protos";
+import { suite, test } from "df/testing";
 import { asPlainObject, cleanSql } from "df/tests/utils";
-import * as Long from "long";
+import Long from "long";
 import * as path from "path";
 import { anyString, anything, instance, mock, verify, when } from "ts-mockito";
 

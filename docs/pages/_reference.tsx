@@ -1,4 +1,4 @@
-import { ITree } from "@dataform-tools/markdown-cms/tree";
+import { ITree } from "df/tools/markdown-cms/tree";
 import { ITypedoc, Typedoc } from "df/docs/components/typedoc";
 import { getContentTree, IExtraAttributes } from "df/docs/content_tree";
 import Documentation from "df/docs/layouts/documentation";

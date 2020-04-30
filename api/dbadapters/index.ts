@@ -1,9 +1,9 @@
-import { Credentials } from "@dataform/api/commands/credentials";
-import { BigQueryDbAdapter } from "@dataform/api/dbadapters/bigquery";
-import { RedshiftDbAdapter } from "@dataform/api/dbadapters/redshift";
-import { SnowflakeDbAdapter } from "@dataform/api/dbadapters/snowflake";
-import { SQLDataWarehouseDBAdapter } from "@dataform/api/dbadapters/sqldatawarehouse";
-import { dataform } from "@dataform/protos";
+import { Credentials } from "df/api/commands/credentials";
+import { BigQueryDbAdapter } from "df/api/dbadapters/bigquery";
+import { RedshiftDbAdapter } from "df/api/dbadapters/redshift";
+import { SnowflakeDbAdapter } from "df/api/dbadapters/snowflake";
+import { SQLDataWarehouseDBAdapter } from "df/api/dbadapters/sqldatawarehouse";
+import { dataform } from "df/protos";
 
 export type OnCancel = (handleCancel: () => void) => void;
 

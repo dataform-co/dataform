@@ -1,5 +1,5 @@
-import { ICms } from "@dataform-tools/markdown-cms";
-import { Tree } from "@dataform-tools/markdown-cms/tree";
+import { ICms } from "df/tools/markdown-cms";
+import { Tree } from "df/tools/markdown-cms/tree";
 import * as fs from "fs";
 import { join } from "path";
 import { promisify } from "util";

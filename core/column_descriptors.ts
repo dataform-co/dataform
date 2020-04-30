@@ -2,9 +2,9 @@ import {
   IColumnsDescriptor,
   IRecordDescriptor,
   IRecordDescriptorProperties
-} from "@dataform/core/common";
-import * as utils from "@dataform/core/utils";
-import { dataform } from "@dataform/protos";
+} from "df/core/common";
+import * as utils from "df/core/utils";
+import { dataform } from "df/protos";
 
 /**
  * @hidden

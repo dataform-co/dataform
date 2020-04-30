@@ -1,7 +1,7 @@
-import { Hook, Suite } from "@dataform/testing";
 import chalk from "chalk";
+import { Hook, Suite } from "df/testing";
 import * as Diff from "diff";
-import * as DeterministicStringify from "json-stable-stringify";
+import DeterministicStringify from "json-stable-stringify";
 import { promisify } from "util";
 
 export interface IRunResult {

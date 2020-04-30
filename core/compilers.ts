@@ -1,8 +1,8 @@
-import { AssertionContext } from "@dataform/core/assertion";
-import { OperationContext } from "@dataform/core/operation";
-import { TableContext } from "@dataform/core/table";
-import * as utils from "@dataform/core/utils";
-import { SyntaxTreeNode, SyntaxTreeNodeType } from "@dataform/sqlx/lexer";
+import { AssertionContext } from "df/core/assertion";
+import { OperationContext } from "df/core/operation";
+import { TableContext } from "df/core/table";
+import * as utils from "df/core/utils";
+import { SyntaxTreeNode, SyntaxTreeNodeType } from "df/sqlx/lexer";
 
 export function compile(code: string, path: string) {
   if (path.endsWith(".sqlx")) {

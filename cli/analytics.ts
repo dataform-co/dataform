@@ -1,12 +1,6 @@
-import {
-  getConfigSettings,
-  getConfigSettingsPath,
-  upsertConfigSettings
-} from "@dataform/cli/config";
-import { question, ynQuestion } from "@dataform/cli/console";
-import Analytics = require("analytics-node");
-import { readFile, stat } from "fs";
-import { promisify } from "util";
+import Analytics from "analytics-node";
+import { getConfigSettings, getConfigSettingsPath, upsertConfigSettings } from "df/cli/config";
+import { ynQuestion } from "df/cli/console";
 import { v4 as uuidv4 } from "uuid";
 
 const analytics = new Analytics("eR24ln3MniE3TKZXkvAkOGkiSN02xXqw");

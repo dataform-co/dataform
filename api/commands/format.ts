@@ -1,4 +1,4 @@
-import { SyntaxTreeNode, SyntaxTreeNodeType } from "@dataform/sqlx/lexer";
+import { SyntaxTreeNode, SyntaxTreeNodeType } from "df/sqlx/lexer";
 import * as crypto from "crypto";
 import * as fs from "fs";
 import * as jsBeautify from "js-beautify";

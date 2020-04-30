@@ -1,4 +1,4 @@
-import { ISuiteContext, Runner, suite, test } from "@dataform/testing";
+import { ISuiteContext, Runner, suite, test } from "df/testing";
 import { expect } from "chai";
 
 Runner.setNoExit(true);

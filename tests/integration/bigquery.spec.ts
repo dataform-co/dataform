@@ -1,14 +1,14 @@
-import * as dfapi from "@dataform/api";
-import * as dbadapters from "@dataform/api/dbadapters";
-import * as adapters from "@dataform/core/adapters";
-import { dataform } from "@dataform/protos";
 import { expect } from "chai";
+import * as dfapi from "df/api";
+import * as dbadapters from "df/api/dbadapters";
 import { BigQueryDbAdapter } from "df/api/dbadapters/bigquery";
 import { hashExecutionAction } from "df/api/utils/run_cache";
+import * as adapters from "df/core/adapters";
 import { BigQueryAdapter } from "df/core/adapters/bigquery";
+import { dataform } from "df/protos";
 import { suite, test } from "df/testing";
 import { dropAllTables, getTableRows, keyBy } from "df/tests/integration/utils";
-import * as Long from "long";
+import Long from "long";
 
 suite("@dataform/integration/bigquery", ({ before, after }) => {
   const credentials = dfapi.credentials.read("bigquery", "test_credentials/bigquery.json");

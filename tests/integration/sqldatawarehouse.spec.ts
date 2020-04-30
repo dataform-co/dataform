@@ -1,7 +1,7 @@
-import * as dfapi from "@dataform/api";
-import * as dbadapters from "@dataform/api/dbadapters";
-import * as adapters from "@dataform/core/adapters";
-import { dataform } from "@dataform/protos";
+import * as dfapi from "df/api";
+import * as dbadapters from "df/api/dbadapters";
+import * as adapters from "df/core/adapters";
+import { dataform } from "df/protos";
 import { expect } from "chai";
 import { SQLDataWarehouseAdapter } from "df/core/adapters/sqldatawarehouse";
 import { suite, test } from "df/testing";

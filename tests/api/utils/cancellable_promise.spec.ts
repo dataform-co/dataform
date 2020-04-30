@@ -1,5 +1,5 @@
-import { CancellablePromise } from "@dataform/api/utils/cancellable_promise";
-import { suite, test } from "@dataform/testing";
+import { CancellablePromise } from "df/api/utils/cancellable_promise";
+import { suite, test } from "df/testing";
 import { expect } from "chai";
 
 suite("cancellable_promise", () => {

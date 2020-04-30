@@ -1,8 +1,8 @@
-import { validateSchedules } from "@dataform/api";
-import * as dfapi from "@dataform/api";
-import { checkDataformJsonValidity } from "@dataform/api/commands/compile";
-import { dataform } from "@dataform/protos";
-import { suite, test } from "@dataform/testing";
+import { validateSchedules } from "df/api";
+import * as dfapi from "df/api";
+import { checkDataformJsonValidity } from "df/api/commands/compile";
+import { dataform } from "df/protos";
+import { suite, test } from "df/testing";
 import { expect } from "chai";
 import { TmpDirFixture } from "df/tests/utils/fixtures";
 import * as fs from "fs";

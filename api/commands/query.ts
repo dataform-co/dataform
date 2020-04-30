@@ -1,7 +1,7 @@
-import { CompileChildProcess } from "@dataform/api/commands/compile";
-import * as dbadapters from "@dataform/api/dbadapters";
-import { CancellablePromise } from "@dataform/api/utils/cancellable_promise";
-import { dataform } from "@dataform/protos";
+import { CompileChildProcess } from "df/api/commands/compile";
+import * as dbadapters from "df/api/dbadapters";
+import { CancellablePromise } from "df/api/utils/cancellable_promise";
+import { dataform } from "df/protos";
 import * as path from "path";
 
 export function run(

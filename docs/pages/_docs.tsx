@@ -1,4 +1,4 @@
-import { ITree } from "@dataform-tools/markdown-cms/tree";
+import { ITree } from "df/tools/markdown-cms/tree";
 import rehypePrism from "@mapbox/rehype-prism";
 import { getContentTree, IExtraAttributes } from "df/docs/content_tree";
 import Documentation from "df/docs/layouts/documentation";

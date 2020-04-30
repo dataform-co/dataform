@@ -3,16 +3,16 @@ import {
   IDependenciesConfig,
   ITargetableConfig,
   Resolvable
-} from "@dataform/core/common";
-import { Session } from "@dataform/core/session";
+} from "df/core/common";
+import { Session } from "df/core/session";
 import {
   checkExcessProperties,
   resolvableAsTarget,
   setNameAndTarget,
   strictKeysOf,
   toResolvable
-} from "@dataform/core/utils";
-import { dataform } from "@dataform/protos";
+} from "df/core/utils";
+import { dataform } from "df/protos";
 
 /**
  * Configuration options for `assertion` action types.

@@ -5,7 +5,6 @@ load("@npm_bazel_typescript//:index.bzl", "ts_library")
 ts_library(
     name = "grpc-web-proxy",
     srcs = glob(["**/*.ts"]),
-    module_name = "@dataform/grpc-web-proxy",
     deps = [
         "@npm//@types/bunyan",
         "@npm//@types/node",

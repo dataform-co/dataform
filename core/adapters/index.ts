@@ -1,9 +1,9 @@
-import { BigQueryAdapter } from "@dataform/core/adapters/bigquery";
-import { RedshiftAdapter } from "@dataform/core/adapters/redshift";
-import { SnowflakeAdapter } from "@dataform/core/adapters/snowflake";
-import { SQLDataWarehouseAdapter } from "@dataform/core/adapters/sqldatawarehouse";
-import { Tasks } from "@dataform/core/tasks";
-import { dataform } from "@dataform/protos";
+import { BigQueryAdapter } from "df/core/adapters/bigquery";
+import { RedshiftAdapter } from "df/core/adapters/redshift";
+import { SnowflakeAdapter } from "df/core/adapters/snowflake";
+import { SQLDataWarehouseAdapter } from "df/core/adapters/sqldatawarehouse";
+import { Tasks } from "df/core/tasks";
+import { dataform } from "df/protos";
 
 export interface IAdapter {
   resolveTarget(target: dataform.ITarget): string;

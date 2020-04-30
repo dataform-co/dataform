@@ -1,4 +1,4 @@
-import { Hook, hook, IRunContext, Runner, test, Test } from "@dataform/testing";
+import { Hook, hook, IRunContext, Runner, test, Test } from "df/testing";
 
 export interface ISuiteOptions {
   name: string;

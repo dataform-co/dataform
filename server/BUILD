@@ -6,7 +6,7 @@ load("//tools/protobufjs:ts_grpc_service.bzl", "ts_grpc_service")
 ts_grpc_service(
     name = "grpc_service",
     srcs = ["//protos:files"],
-    protos_import = "@dataform/protos",
+    protos_import = "df/protos",
     root_name = "protos",
     root_paths = ["."],
     service = "dataform.server.Service",
@@ -21,7 +21,6 @@ ts_library(
         "//app:app.bundle.js",
         "//app:assets",
     ],
-    module_name = "@dataform/server",
     deps = [
         "//api",
         "//core",

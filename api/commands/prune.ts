@@ -1,5 +1,5 @@
-import * as utils from "@dataform/core/utils";
-import { dataform } from "@dataform/protos";
+import * as utils from "df/core/utils";
+import { dataform } from "df/protos";
 
 type CompileAction = dataform.ITable | dataform.IOperation | dataform.IAssertion;
 
