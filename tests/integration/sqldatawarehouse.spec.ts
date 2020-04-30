@@ -1,9 +1,9 @@
+import { expect } from "chai";
 import * as dfapi from "df/api";
 import * as dbadapters from "df/api/dbadapters";
 import * as adapters from "df/core/adapters";
-import { dataform } from "df/protos";
-import { expect } from "chai";
 import { SQLDataWarehouseAdapter } from "df/core/adapters/sqldatawarehouse";
+import { dataform } from "df/protos";
 import { suite, test } from "df/testing";
 import { dropAllTables, getTableRows, keyBy } from "df/tests/integration/utils";
 

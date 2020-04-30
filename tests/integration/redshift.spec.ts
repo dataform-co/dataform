@@ -1,9 +1,9 @@
+import { expect } from "chai";
 import * as dfapi from "df/api";
 import * as dbadapters from "df/api/dbadapters";
 import * as adapters from "df/core/adapters";
-import { dataform } from "df/protos";
-import { expect } from "chai";
 import { RedshiftAdapter } from "df/core/adapters/redshift";
+import { dataform } from "df/protos";
 import { suite, test } from "df/testing";
 import { getTableRows, keyBy } from "df/tests/integration/utils";
 

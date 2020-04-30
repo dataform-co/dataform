@@ -1,6 +1,6 @@
+import { expect } from "chai";
 import { CancellablePromise } from "df/api/utils/cancellable_promise";
 import { suite, test } from "df/testing";
-import { expect } from "chai";
 
 suite("cancellable_promise", () => {
   test("cancel is called", () => {

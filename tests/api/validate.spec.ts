@@ -1,9 +1,9 @@
-import { validateSchedules } from "df/api";
+import { expect } from "chai";
 import * as dfapi from "df/api";
+import { validateSchedules } from "df/api";
 import { checkDataformJsonValidity } from "df/api/commands/compile";
 import { dataform } from "df/protos";
 import { suite, test } from "df/testing";
-import { expect } from "chai";
 import { TmpDirFixture } from "df/tests/utils/fixtures";
 import * as fs from "fs";
 import * as path from "path";
