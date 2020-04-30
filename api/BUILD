@@ -43,7 +43,6 @@ ts_library(
     srcs = [],
     data = [
         ":vm/compile_loader.js",
-        ":vm/query_loader.js",
     ],
     deps = [
         ":lib",
@@ -66,15 +65,5 @@ nodejs_binary(
         "@npm//source-map-support",
     ],
     entry_point = ":vm/compile.ts",
-    templated_args = ["--node_options=--require=source-map-support/register"],
-)
-
-nodejs_binary(
-    name = "vm/query",
-    data = [
-        ":lib",
-        "@npm//source-map-support",
-    ],
-    entry_point = ":vm/query.ts",
     templated_args = ["--node_options=--require=source-map-support/register"],
 )

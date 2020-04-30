@@ -8,6 +8,7 @@ ts_library(
     name = "cli",
     srcs = glob(["*.ts"]),
     deps = [
+        "//api",
         "//cli",
     ],
 )
@@ -66,10 +67,21 @@ pkg_bundle(
     ],
 )
 
+pkg_bundle(
+    name = "worker_bundle",
+    args = ["--banner='#!/usr/bin/env node'"],
+    entry_point = "worker.ts",
+    externals = externals,
+    deps = [
+        ":cli",
+    ],
+)
+
 pkg_npm_tar(
     name = "package",
     deps = [
         ":bundle",
         ":package.json",
+        ":worker_bundle",
     ],
 )

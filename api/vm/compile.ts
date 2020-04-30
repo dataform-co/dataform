@@ -68,14 +68,20 @@ export function compile(compileConfig: dataform.ICompileConfig) {
   return res;
 }
 
-process.on("message", (compileConfig: dataform.ICompileConfig) => {
-  try {
-    const compiledResult = compile(compileConfig);
-    // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
-    const writeable = fs.createWriteStream(null, { fd: 4 });
-    writeable.write(compiledResult, "utf8");
-  } catch (e) {
-    process.send(e);
-  }
-  process.exit();
-});
+export function listen() {
+  process.on("message", (compileConfig: dataform.ICompileConfig) => {
+    try {
+      const compiledResult = compile(compileConfig);
+      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
+      const writeable = fs.createWriteStream(null, { fd: 4 });
+      writeable.write(compiledResult, "utf8");
+    } catch (e) {
+      process.send(e);
+    }
+    process.exit();
+  });
+}
+
+if (require.main === module) {
+  listen();
+}
