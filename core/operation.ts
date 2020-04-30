@@ -48,6 +48,9 @@ export class Operation {
     if (config.dependencies) {
       this.dependencies(config.dependencies);
     }
+    if (config.hermetic !== undefined) {
+      this.hermetic(config.hermetic);
+    }
     if (config.tags) {
       this.tags(config.tags);
     }
@@ -80,6 +83,12 @@ export class Operation {
       this.proto.dependencyTargets.push(utils.resolvableAsTarget(resolvable));
     });
     return this;
+  }
+
+  public hermetic(hermetic: boolean) {
+    this.proto.hermeticity = hermetic
+      ? dataform.ActionHermeticity.HERMETIC
+      : dataform.ActionHermeticity.NON_HERMETIC;
   }
 
   public tags(value: string | string[]) {

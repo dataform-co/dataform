@@ -41,7 +41,8 @@ export const IAssertionConfigProperties = strictKeysOf<IAssertionConfig>()([
   "description",
   "type",
   "tags",
-  "dependencies"
+  "dependencies",
+  "hermetic"
 ]);
 
 /**
@@ -65,6 +66,9 @@ export class Assertion {
     checkExcessProperties(config, IAssertionConfigProperties, "assertion config");
     if (config.dependencies) {
       this.dependencies(config.dependencies);
+    }
+    if (config.hermetic !== undefined) {
+      this.hermetic(config.hermetic);
     }
     if (config.tags) {
       this.tags(config.tags);
@@ -92,6 +96,12 @@ export class Assertion {
       this.proto.dependencyTargets.push(resolvableAsTarget(resolvable));
     });
     return this;
+  }
+
+  public hermetic(hermetic: boolean) {
+    this.proto.hermeticity = hermetic
+      ? dataform.ActionHermeticity.HERMETIC
+      : dataform.ActionHermeticity.NON_HERMETIC;
   }
 
   public tags(value: string | string[]) {
