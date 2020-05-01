@@ -10,6 +10,7 @@ import {
 } from "@dataform/core/common";
 import { Session } from "@dataform/core/session";
 import * as utils from "@dataform/core/utils";
+import { checkExcessProperties, strictKeysOf } from "@dataform/core/utils";
 import { dataform } from "@dataform/protos";
 
 /**
@@ -32,6 +33,19 @@ export interface IOperationConfig
   hasOutput?: boolean;
 }
 
+export const IIOperationConfigProperties = strictKeysOf<IOperationConfig>()([
+  "type",
+  "name",
+  "tags",
+  "schema",
+  "database",
+  "columns",
+  "description",
+  "dependencies",
+  "hermetic",
+  "hasOutput"
+]);
+
 /**
  * @hidden
  */
@@ -45,6 +59,12 @@ export class Operation {
   private contextableQueries: Contextable<ICommonContext, string | string[]>;
 
   public config(config: IOperationConfig) {
+    checkExcessProperties(
+      (e: Error) => this.session.compileError(e),
+      config,
+      IIOperationConfigProperties,
+      "operation config"
+    );
     if (config.dependencies) {
       this.dependencies(config.dependencies);
     }
