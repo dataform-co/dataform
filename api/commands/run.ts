@@ -1,11 +1,10 @@
-import { Credentials } from "@dataform/api/commands/credentials";
-import * as dbadapters from "@dataform/api/dbadapters";
-import { retry } from "@dataform/api/utils/retry";
-import { hashExecutionAction } from "@dataform/api/utils/run_cache";
-import { dataform } from "@dataform/protos";
-import * as EventEmitter from "events";
-import * as lodash from "lodash";
-import * as Long from "long";
+import * as dbadapters from "df/api/dbadapters";
+import { retry } from "df/api/utils/retry";
+import { hashExecutionAction } from "df/api/utils/run_cache";
+import { dataform } from "df/protos";
+import EventEmitter from "events";
+import lodash from "lodash";
+import Long from "long";
 
 const CANCEL_EVENT = "jobCancel";
 

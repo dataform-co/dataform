@@ -1,9 +1,9 @@
-import { Builder, compile } from "@dataform/api";
-import * as utils from "@dataform/core/utils";
-import { dataform } from "@dataform/protos";
-import { suite, test } from "@dataform/testing";
 import { fail } from "assert";
 import { expect } from "chai";
+import { Builder, compile } from "df/api";
+import * as utils from "df/core/utils";
+import { dataform } from "df/protos";
+import { suite, test } from "df/testing";
 import { cleanSql } from "df/tests/utils";
 import * as path from "path";
 
@@ -822,7 +822,7 @@ suite("examples", () => {
       projectDir: "examples/common_v2",
       projectConfigOverride: { warehouse: "bigquery" }
     });
-    const { version: expectedVersion } = require("@dataform/core/package.json");
+    const { version: expectedVersion } = require("df/core/version");
     expect(graph.dataformCoreVersion).equals(expectedVersion);
   });
 });

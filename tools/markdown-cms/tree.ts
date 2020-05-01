@@ -1,4 +1,4 @@
-import * as frontMatter from "front-matter";
+import frontMatter from "front-matter";
 import { basename, join } from "path";
 
 export interface IBaseAttributes {

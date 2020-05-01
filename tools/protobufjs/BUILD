@@ -12,7 +12,6 @@ ts_library(
     srcs = [
         "grpc_web_rpc_impl.ts",
     ],
-    module_name = "@dataform-tools/protobufjs",
     deps = [
         "//protos",
         "@npm//grpc-web-client",

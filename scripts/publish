@@ -15,13 +15,10 @@ fi
 
 bazel test //...
 
-bazel run //api:package.publish
-bazel run //assertion_utils:package.publish
-bazel run //core:package.publish
-bazel run //cli:package.publish
-bazel run //crossdb:package.publish
-bazel run //protos:package.publish
-bazel run //sqlx:package.publish
+bazel run packages/@dataform/assertion_utils:package.publish
+bazel run packages/@dataform/cli:package.publish
+bazel run packages/@dataform/core:package.publish
+bazel run packages/@dataform/crossdb:package.publish
 
 VERSION=$(cat version.bzl | grep DF_VERSION | awk '{ print $3 }' | sed "s/\"//g")
 git tag $VERSION

@@ -1,6 +1,6 @@
-import { ICms } from "@dataform-tools/markdown-cms/index";
-import { Tree } from "@dataform-tools/markdown-cms/tree";
-import * as Octokit from "@octokit/rest";
+import Octokit from "@octokit/rest";
+import { ICms } from "df/tools/markdown-cms/index";
+import { Tree } from "df/tools/markdown-cms/tree";
 import { join } from "path";
 
 const octokit = new Octokit({ auth: process.env.GITHUB_AUTH_TOKEN });

@@ -1,8 +1,8 @@
-import { ColumnDescriptors } from "@dataform/core/column_descriptors";
-import { IColumnsDescriptor, IDocumentableConfig, ITargetableConfig } from "@dataform/core/common";
-import { Session } from "@dataform/core/session";
-import { checkExcessProperties, strictKeysOf } from "@dataform/core/utils";
-import { dataform } from "@dataform/protos";
+import { ColumnDescriptors } from "df/core/column_descriptors";
+import { IColumnsDescriptor, IDocumentableConfig, ITargetableConfig } from "df/core/common";
+import { Session } from "df/core/session";
+import { checkExcessProperties, strictKeysOf } from "df/core/utils";
+import { dataform } from "df/protos";
 /**
  * Configuration options for `declaration` action types.
  */

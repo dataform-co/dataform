@@ -1,7 +1,7 @@
-import { Contextable, ICommonConfig, ICommonContext, Resolvable } from "@dataform/core/common";
-import { Session } from "@dataform/core/session";
-import * as table from "@dataform/core/table";
-import { ITableContext } from "@dataform/core/table";
+import { Contextable, ICommonConfig, ICommonContext, Resolvable } from "df/core/common";
+import { Session } from "df/core/session";
+import * as table from "df/core/table";
+import { ITableContext } from "df/core/table";
 import {
   ambiguousActionNameMsg,
   checkExcessProperties,
@@ -9,8 +9,8 @@ import {
   strictKeysOf,
   stringifyResolvable,
   toResolvable
-} from "@dataform/core/utils";
-import { dataform } from "@dataform/protos";
+} from "df/core/utils";
+import { dataform } from "df/protos";
 
 /**
  * Configuration options for unit tests.

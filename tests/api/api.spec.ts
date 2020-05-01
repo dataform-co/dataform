@@ -1,12 +1,12 @@
-import { Builder, compile, credentials, format, prune, query, Runner } from "@dataform/api";
-import { IDbAdapter } from "@dataform/api/dbadapters";
-import { BigQueryDbAdapter } from "@dataform/api/dbadapters/bigquery";
-import * as utils from "@dataform/core/utils";
-import { dataform } from "@dataform/protos";
-import { suite, test } from "@dataform/testing";
 import { assert, config, expect } from "chai";
+import { Builder, compile, credentials, format, prune, query, Runner } from "df/api";
+import { IDbAdapter } from "df/api/dbadapters";
+import { BigQueryDbAdapter } from "df/api/dbadapters/bigquery";
+import * as utils from "df/core/utils";
+import { dataform } from "df/protos";
+import { suite, test } from "df/testing";
 import { asPlainObject, cleanSql } from "df/tests/utils";
-import * as Long from "long";
+import Long from "long";
 import * as path from "path";
 import { anyString, anything, instance, mock, verify, when } from "ts-mockito";
 
@@ -670,23 +670,6 @@ suite("@dataform/api", () => {
           `create or replace table "schema"."${action.name}" as select 1 as test`
         );
       });
-    });
-  });
-
-  suite("init", () => {
-    test("init", { timeout: 30000 }, async () => {
-      // create temp directory
-      const projectDir = "examples/init";
-
-      // Project has already been initialized via the tests script, check data is valid.
-
-      // compile project
-      const graph = await compile({ projectDir }).catch(error => error);
-      expect(graph).to.not.be.an.instanceof(Error);
-
-      const gErrors = utils.validate(graph);
-
-      expect(gErrors).deep.equal(dataform.GraphErrors.create());
     });
   });
 

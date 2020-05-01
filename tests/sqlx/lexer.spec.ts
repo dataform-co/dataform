@@ -1,6 +1,6 @@
-import { SyntaxTreeNode, SyntaxTreeNodeType } from "@dataform/sqlx/lexer";
-import { suite, test } from "@dataform/testing";
 import { expect } from "chai";
+import { SyntaxTreeNode, SyntaxTreeNodeType } from "df/sqlx/lexer";
+import { suite, test } from "df/testing";
 
 suite("@dataform/sqlx", () => {
   suite("syntax tree construction", () => {

@@ -43,7 +43,7 @@ npx grpc-web-proxy --backend http://localhost:1234 --port 8000 --mode http2-secu
 If you want to run the proxy inside an existing node server, you can do the following:
 
 ```js
-import { GrpcWebProxy } from "@dataform/grpc-web-proxy";
+import { GrpcWebProxy } from "df/grpc-web-proxy";
 
 // Insecure HTTP/1.
 new GrpcWebProxy({

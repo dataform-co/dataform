@@ -1,5 +1,5 @@
-import { Task, Tasks } from "@dataform/core/tasks";
-import { dataform } from "@dataform/protos";
+import { Task, Tasks } from "df/core/tasks";
+import { dataform } from "df/protos";
 import * as semver from "semver";
 
 export abstract class Adapter {

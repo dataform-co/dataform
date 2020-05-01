@@ -5,7 +5,6 @@ load("@npm_bazel_typescript//:index.bzl", "ts_library")
 ts_library(
     name = "cli",
     srcs = glob(["**/*.ts"]),
-    module_name = "@dataform/cli",
     deps = [
         "//api",
         "//core",
@@ -45,20 +44,6 @@ copy_file(
     name = "readme",
     src = "//:readme.md",
     out = "readme.md",
-)
-
-load("//tools/npm:package.bzl", "dataform_npm_package")
-
-dataform_npm_package(
-    name = "package",
-    package_layers = [
-        "//:common.package.json",
-        "cli.package.json",
-    ],
-    deps = [
-        ":cli",
-        ":readme",
-    ],
 )
 
 load("@io_bazel_rules_docker//nodejs:image.bzl", "nodejs_image")

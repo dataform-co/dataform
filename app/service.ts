@@ -1,5 +1,5 @@
-import { rpcImpl } from "@dataform-tools/protobufjs/grpc_web_rpc_impl";
-import { dataform } from "@dataform/protos";
+import { dataform } from "df/protos";
+import { rpcImpl } from "df/tools/protobufjs/grpc_web_rpc_impl";
 
 export class Service extends dataform.server.Service {
   public static get(): Service {

@@ -1,5 +1,5 @@
-import { dataform as protos } from "@dataform/protos";
-import { IService } from "@dataform/server/grpc_service";
+import { dataform as protos } from "df/protos";
+import { IService } from "df/server/grpc_service";
 import * as grpc from "grpc";
 
 export class ServiceImpl implements IService {

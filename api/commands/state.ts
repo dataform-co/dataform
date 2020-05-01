@@ -1,5 +1,5 @@
-import { IDbAdapter } from "@dataform/api/dbadapters";
-import { dataform } from "@dataform/protos";
+import { IDbAdapter } from "df/api/dbadapters";
+import { dataform } from "df/protos";
 
 export async function state(
   compiledGraph: dataform.ICompiledGraph,

@@ -1,4 +1,4 @@
-import { IHookHandler } from "@dataform/testing";
+import { IHookHandler } from "df/testing";
 import * as fs from "fs";
 import * as path from "path";
 import * as rimraf from "rimraf";

@@ -1,5 +1,5 @@
-import { dataform } from "@dataform/protos";
-import * as getPort from "get-port";
+import { dataform } from "df/protos";
+import getPort from "get-port";
 import * as net from "net";
 import * as ssh2 from "ssh2";
 

@@ -1,7 +1,7 @@
-import { dataform } from "@dataform/protos";
+import { dataform } from "df/protos";
 import * as fs from "fs";
 import * as path from "path";
-import untildify = require("untildify");
+import untildify from "untildify";
 
 export const actuallyResolve = (filePath: string) => path.resolve(untildify(filePath));
 

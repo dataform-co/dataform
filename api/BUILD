@@ -5,8 +5,6 @@ load("@npm_bazel_typescript//:index.bzl", "ts_library")
 ts_library(
     name = "lib",
     srcs = glob(["**/*.ts"]),
-    data = ["package.json"],
-    module_name = "@dataform/api",
     deps = [
         "//core",
         "//protos",
@@ -45,23 +43,11 @@ ts_library(
     srcs = [],
     data = [
         ":vm/compile_loader.js",
-        ":vm/query_loader.js",
     ],
     deps = [
         ":lib",
         "@npm//source-map-support",
     ],
-)
-
-load("//tools/npm:package.bzl", "dataform_npm_package")
-
-dataform_npm_package(
-    name = "package",
-    package_layers = [
-        "//:common.package.json",
-        "api.package.json",
-    ],
-    deps = [":api"],
 )
 
 load("@build_bazel_rules_nodejs//:index.bzl", "nodejs_binary")
@@ -79,15 +65,5 @@ nodejs_binary(
         "@npm//source-map-support",
     ],
     entry_point = ":vm/compile.ts",
-    templated_args = ["--node_options=--require=source-map-support/register"],
-)
-
-nodejs_binary(
-    name = "vm/query",
-    data = [
-        ":lib",
-        "@npm//source-map-support",
-    ],
-    entry_point = ":vm/query.ts",
     templated_args = ["--node_options=--require=source-map-support/register"],
 )

@@ -1,11 +1,11 @@
-import { adapters } from "@dataform/core";
-import { Assertion } from "@dataform/core/assertion";
-import { Resolvable } from "@dataform/core/common";
-import { Declaration } from "@dataform/core/declaration";
-import { Operation } from "@dataform/core/operation";
-import { IActionProto, Session } from "@dataform/core/session";
-import { DistStyleType, SortStyleType, Table, TableType } from "@dataform/core/table";
-import { dataform } from "@dataform/protos";
+import { adapters } from "df/core";
+import { Assertion } from "df/core/assertion";
+import { Resolvable } from "df/core/common";
+import { Declaration } from "df/core/declaration";
+import { Operation } from "df/core/operation";
+import { IActionProto, Session } from "df/core/session";
+import { DistStyleType, SortStyleType, Table, TableType } from "df/core/table";
+import { dataform } from "df/protos";
 import * as path from "path";
 
 const SQL_DATA_WAREHOUSE_DIST_HASH_REGEXP = new RegExp("HASH\\s*\\(\\s*\\w*\\s*\\)\\s*");

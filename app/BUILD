@@ -38,7 +38,6 @@ ts_library(
         exclude = ["webpack.ts"],
     ),
     data = [":sass"],
-    module_name = "@dataform/app",
     deps = [
         ":css_typings",
         "//protos",

@@ -1,7 +1,7 @@
-import { createGenIndexConfig } from "@dataform/api/vm/gen_index_config";
-import * as legacyCompiler from "@dataform/api/vm/legacy_compiler";
-import { legacyGenIndex } from "@dataform/api/vm/legacy_gen_index";
-import { dataform } from "@dataform/protos";
+import { createGenIndexConfig } from "df/api/vm/gen_index_config";
+import * as legacyCompiler from "df/api/vm/legacy_compiler";
+import { legacyGenIndex } from "df/api/vm/legacy_gen_index";
+import { dataform } from "df/protos";
 import * as fs from "fs";
 import * as path from "path";
 import { CompilerFunction, NodeVM } from "vm2";
@@ -68,14 +68,20 @@ export function compile(compileConfig: dataform.ICompileConfig) {
   return res;
 }
 
-process.on("message", (compileConfig: dataform.ICompileConfig) => {
-  try {
-    const compiledResult = compile(compileConfig);
-    // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
-    const writeable = fs.createWriteStream(null, { fd: 4 });
-    writeable.write(compiledResult, "utf8");
-  } catch (e) {
-    process.send(e);
-  }
-  process.exit();
-});
+export function listenForCompileRequest() {
+  process.on("message", (compileConfig: dataform.ICompileConfig) => {
+    try {
+      const compiledResult = compile(compileConfig);
+      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
+      const writeable = fs.createWriteStream(null, { fd: 4 });
+      writeable.write(compiledResult, "utf8");
+    } catch (e) {
+      process.send(e);
+    }
+    process.exit();
+  });
+}
+
+if (require.main === module) {
+  listenForCompileRequest();
+}

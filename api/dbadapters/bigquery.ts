@@ -1,17 +1,17 @@
-import { Credentials } from "@dataform/api/commands/credentials";
-import { IDbAdapter, OnCancel } from "@dataform/api/dbadapters/index";
-import { parseBigqueryEvalError } from "@dataform/api/utils/error_parsing";
+import { BigQuery } from "@google-cloud/bigquery";
+import { QueryResultsOptions } from "@google-cloud/bigquery/build/src/job";
+import { Credentials } from "df/api/commands/credentials";
+import { IDbAdapter, OnCancel } from "df/api/dbadapters/index";
+import { parseBigqueryEvalError } from "df/api/utils/error_parsing";
 import {
   buildQuery,
   decodePersistedTableMetadata,
   hashExecutionAction,
   IMetadataRow
-} from "@dataform/api/utils/run_cache";
-import { dataform } from "@dataform/protos";
-import { BigQuery } from "@google-cloud/bigquery";
-import { QueryResultsOptions } from "@google-cloud/bigquery/build/src/job";
-import * as Long from "long";
-import * as PromisePool from "promise-pool-executor";
+} from "df/api/utils/run_cache";
+import { dataform } from "df/protos";
+import Long from "long";
+import { PromisePoolExecutor } from "promise-pool-executor";
 
 const CACHED_STATE_TABLE_NAME = "dataform_meta.cache_state";
 
@@ -52,7 +52,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
   }
 
   private bigQueryCredentials: dataform.IBigQuery;
-  private pool: PromisePool.PromisePoolExecutor;
+  private pool: PromisePoolExecutor;
 
   private readonly clients = new Map<string, BigQuery>();
 
@@ -60,7 +60,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
     this.bigQueryCredentials = credentials as dataform.IBigQuery;
     // Bigquery allows 50 concurrent queries, and a rate limit of 100/user/second by default.
     // These limits should be safely low enough for most projects.
-    this.pool = new PromisePool.PromisePoolExecutor({
+    this.pool = new PromisePoolExecutor({
       concurrencyLimit: 16,
       frequencyWindow: 1000,
       frequencyLimit: 30

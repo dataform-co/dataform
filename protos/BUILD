@@ -69,22 +69,9 @@ ts_library(
     data = [
         "//protos:protobufjs_lib",
     ],
-    module_name = "@dataform/protos",
     deps = [
         "//protos:protobufjs_lib",
         "@npm//@types/node",
         "@npm//protobufjs",
     ],
-)
-
-load("//tools/npm:package.bzl", "dataform_npm_package")
-
-dataform_npm_package(
-    name = "package",
-    srcs = glob(["**/*.proto"]),
-    package_layers = [
-        "//:common.package.json",
-        "protos.package.json",
-    ],
-    deps = [":protos"],
 )
