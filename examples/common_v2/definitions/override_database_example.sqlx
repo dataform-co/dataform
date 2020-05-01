@@ -1,6 +1,7 @@
 config {
     database: "override_database",
-    type: "view"
+    type: "view",
+    hermetic: false
 }
 
 select 1 as test_database_override

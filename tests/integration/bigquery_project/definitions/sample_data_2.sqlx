@@ -10,7 +10,8 @@ config {
             "val3 IS NULL AND val2 >= val1",
             "'fo\\'o' = 'fo\\'o'"
         ]
-    }
+    },
+    hermetic: false
 }
 
 select 1 as val1, 1 as val2, NULL as val3 union all

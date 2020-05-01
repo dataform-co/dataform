@@ -15,7 +15,8 @@ config {
   bigquery: {
     partitionBy: "RANGE_BUCKET(ts, GENERATE_ARRAY(0, 6, 2))",
     updatePartitionFilter: "ts > 2"
-  }
+  },
+  hermetic: false
 }
 
 SELECT ts, id_1, id_2, val

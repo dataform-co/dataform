@@ -102,6 +102,12 @@ export interface IDependenciesConfig {
    * Typically this would remain unset, because most dependencies are declared as a by-product of using the `ref` function.
    */
   dependencies?: Resolvable | Resolvable[];
+
+  /**
+   * Asserts that it is correct for this action to have zero dependencies. This is required to be set to `true` for
+   * actions with zero dependencies when the run caching feature is turned on.
+   */
+  hermetic?: boolean;
 }
 
 /**
