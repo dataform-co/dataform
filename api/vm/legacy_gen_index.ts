@@ -1,5 +1,5 @@
-import * as utils from "@dataform/core/utils";
-import { dataform } from "@dataform/protos";
+import * as utils from "df/core/utils";
+import { dataform } from "df/protos";
 import { util } from "protobufjs";
 
 export function legacyGenIndex(base64EncodedConfig: string): string {

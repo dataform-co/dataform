@@ -12,8 +12,6 @@ ts_test_suite(
         "//examples/common_v2:node_modules",
         "//examples/formatter:files",
         "//examples/formatter:node_modules",
-        "//examples/init",
-        "//examples/init:node_modules",
         "//examples/invalid_dataform_json:files",
         "//examples/invalid_dataform_json:node_modules",
         "//examples/never_finishes_compiling:files",

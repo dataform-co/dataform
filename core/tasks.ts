@@ -1,4 +1,4 @@
-import { dataform } from "@dataform/protos";
+import { dataform } from "df/protos";
 
 export class Tasks {
   public static create() {

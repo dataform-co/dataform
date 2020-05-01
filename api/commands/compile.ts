@@ -1,6 +1,6 @@
-import { validate } from "@dataform/core/utils";
-import { dataform } from "@dataform/protos";
 import { ChildProcess, fork } from "child_process";
+import { validate } from "df/core/utils";
+import { dataform } from "df/protos";
 import * as fs from "fs";
 import * as path from "path";
 import { util } from "protobufjs";
@@ -55,8 +55,17 @@ export async function compile(
 
 export class CompileChildProcess {
   public static forkProcess() {
-    // Run the bin_loader script if inside bazel, otherwise don't.
-    const forkScript = process.env.BAZEL_TARGET ? "../vm/compile_loader" : "../vm/compile";
+    // Runs the worker_bundle script we generate for the package (see packages/@dataform/cli/BUILD)
+    // if it exists, otherwise run the bazel compile loader target.
+    const findForkScript = () => {
+      try {
+        const workerBundlePath = require.resolve("./worker_bundle");
+        return workerBundlePath;
+      } catch (e) {
+        return require.resolve("../vm/compile_loader");
+      }
+    };
+    const forkScript = findForkScript();
     return new CompileChildProcess(
       fork(require.resolve(forkScript), [], { stdio: [0, 1, 2, "ipc", "pipe"] })
     );

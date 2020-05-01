@@ -1,7 +1,7 @@
 import { Icon } from "@blueprintjs/core";
-import { ITree } from "@dataform-tools/markdown-cms/tree";
 import * as styles from "df/docs/components/navigation.css";
 import { IExtraAttributes } from "df/docs/content_tree";
+import { ITree } from "df/tools/markdown-cms/tree";
 import * as React from "react";
 
 interface IProps {

@@ -8,7 +8,7 @@ const GRPC_WEB_CONTENT_TYPE = "application/grpc-web";
 const GRPC_WEB_TEXT_CONTENT_TYPE = "application/grpc-web-text";
 
 const logger = bunyan.createLogger({
-  name,
+  name: "grpc-web-proxy",
   streams: [{ stream: process.stdout }],
   serializers: bunyan.stdSerializers
 });

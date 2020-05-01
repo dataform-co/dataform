@@ -1,4 +1,4 @@
-import { ColumnDescriptors } from "@dataform/core/column_descriptors";
+import { ColumnDescriptors } from "df/core/column_descriptors";
 import {
   Contextable,
   IColumnsDescriptor,
@@ -7,11 +7,11 @@ import {
   IDocumentableConfig,
   ITargetableConfig,
   Resolvable
-} from "@dataform/core/common";
-import { Session } from "@dataform/core/session";
-import * as utils from "@dataform/core/utils";
-import { checkExcessProperties, strictKeysOf } from "@dataform/core/utils";
-import { dataform } from "@dataform/protos";
+} from "df/core/common";
+import { Session } from "df/core/session";
+import * as utils from "df/core/utils";
+import { checkExcessProperties, strictKeysOf } from "df/core/utils";
+import { dataform } from "df/protos";
 
 /**
  * Configuration options for `operations` action types.

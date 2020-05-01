@@ -1,5 +1,5 @@
-import { ExpressServer } from "@dataform/server/express_server";
-import { GrpcServer } from "@dataform/server/grpc_server";
+import { ExpressServer } from "df/server/express_server";
+import { GrpcServer } from "df/server/grpc_server";
 import * as yargs from "yargs";
 
 interface IServerProps {

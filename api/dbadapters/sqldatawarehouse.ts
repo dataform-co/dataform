@@ -1,7 +1,7 @@
-import { Credentials } from "@dataform/api/commands/credentials";
-import { IDbAdapter, IExecutionResult, OnCancel } from "@dataform/api/dbadapters/index";
-import { parseAzureEvaluationError } from "@dataform/api/utils/error_parsing";
-import { dataform } from "@dataform/protos";
+import { Credentials } from "df/api/commands/credentials";
+import { IDbAdapter, IExecutionResult, OnCancel } from "df/api/dbadapters/index";
+import { parseAzureEvaluationError } from "df/api/utils/error_parsing";
+import { dataform } from "df/protos";
 import { ConnectionPool } from "mssql";
 
 const INFORMATION_SCHEMA_SCHEMA_NAME = "information_schema";

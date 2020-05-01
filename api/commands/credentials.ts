@@ -1,6 +1,6 @@
-import * as dbadapters from "@dataform/api/dbadapters";
-import { requiredWarehouseProps, WarehouseType } from "@dataform/core/adapters";
-import { dataform } from "@dataform/protos";
+import * as dbadapters from "df/api/dbadapters";
+import { requiredWarehouseProps, WarehouseType } from "df/core/adapters";
+import { dataform } from "df/protos";
 import * as fs from "fs";
 
 export const CREDENTIALS_FILENAME = ".df-credentials.json";

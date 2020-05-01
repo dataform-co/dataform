@@ -2,10 +2,7 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "df/docs/*": ["docs/*", "bazel-bin/docs/*", "bazel-genfiles/docs/*"],
-      "df/tests/*": ["tests/*", "bazel-bin/tests/*", "bazel-genfiles/tests/*"],
-      "@dataform/*": ["*", "bazel-bin/*", "bazel-genfiles/*"],
-      "@dataform-tools/*": ["tools/*", "bazel-bin/tools/*", "bazel-genfiles/tools/*"]
+      "df/*": ["*", "bazel-bin/*", "bazel-genfiles/*"],
     },
     "module": "commonjs",
     "noImplicitAny": true,
@@ -17,7 +14,9 @@
     "skipLibCheck": true,
     "experimentalDecorators": true,
     "jsx": "react",
-    "lib": ["es2017", "dom"]
+    "lib": ["es2017", "dom"],
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true
   },
   "exclude": ["bazel-*", "node_modules"]
 }

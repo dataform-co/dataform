@@ -1,9 +1,9 @@
+import { expect } from "chai";
 import {
   parseAzureEvaluationError,
   parseBigqueryEvalError,
   parseRedshiftEvalError
-} from "@dataform/api/utils/error_parsing";
-import { expect } from "chai";
+} from "df/api/utils/error_parsing";
 import { suite, test } from "df/testing";
 
 suite("error_parsing", () => {

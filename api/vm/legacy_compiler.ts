@@ -1,4 +1,4 @@
-import * as utils from "@dataform/core/utils";
+import * as utils from "df/core/utils";
 
 export function compile(code: string, path: string) {
   if (path.endsWith(".assert.sql")) {

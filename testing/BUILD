@@ -8,7 +8,6 @@ ts_library(
         ["*.ts"],
         exclude = ["*.spec.ts"],
     ),
-    module_name = "@dataform/testing",
     deps = [
         "@npm//@types/node",
         "@npm//chalk",

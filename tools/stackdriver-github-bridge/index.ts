@@ -1,5 +1,5 @@
-import * as Octokit from "@octokit/rest";
-import * as express from "express";
+import Octokit from "@octokit/rest";
+import express from "express";
 
 interface IIncident {
   incident_id: string;

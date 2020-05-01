@@ -1,12 +1,10 @@
-import { CREDENTIALS_FILENAME } from "@dataform/api/commands/credentials";
-import { install } from "@dataform/api/commands/install";
-import { prettyJsonStringify } from "@dataform/api/utils";
-import { dataform } from "@dataform/protos";
+import { CREDENTIALS_FILENAME } from "df/api/commands/credentials";
+import { install } from "df/api/commands/install";
+import { prettyJsonStringify } from "df/api/utils";
+import { version } from "df/core/version";
+import { dataform } from "df/protos";
 import * as fs from "fs";
 import * as path from "path";
-
-// tslint:disable-next-line: no-var-requires
-const { version } = require("../package.json");
 
 const gitIgnoreContents = `
 ${CREDENTIALS_FILENAME}

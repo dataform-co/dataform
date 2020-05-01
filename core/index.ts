@@ -1,7 +1,7 @@
-import * as adapters from "@dataform/core/adapters";
-import * as compilers from "@dataform/core/compilers";
-import { genIndex } from "@dataform/core/gen_index";
-import { Session } from "@dataform/core/session";
+import * as adapters from "df/core/adapters";
+import * as compilers from "df/core/compilers";
+import { genIndex } from "df/core/gen_index";
+import { Session } from "df/core/session";
 
 // These exports constitute the public API of @dataform/core.
 // Changes to these will break @dataform/api, so take care!

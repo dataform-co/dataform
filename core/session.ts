@@ -1,19 +1,15 @@
-import * as adapters from "@dataform/core/adapters";
-import { AContextable, Assertion, IAssertionConfig } from "@dataform/core/assertion";
-import { Contextable, ICommonContext, Resolvable } from "@dataform/core/common";
-import { Declaration, IDeclarationConfig } from "@dataform/core/declaration";
-import { IOperationConfig, Operation } from "@dataform/core/operation";
-import { ITableConfig, ITableContext, Table, TableType } from "@dataform/core/table";
-import * as test from "@dataform/core/test";
-import * as utils from "@dataform/core/utils";
-import { dataform } from "@dataform/protos";
+import * as adapters from "df/core/adapters";
+import { AContextable, Assertion, IAssertionConfig } from "df/core/assertion";
+import { Contextable, ICommonContext, Resolvable } from "df/core/common";
+import { Declaration, IDeclarationConfig } from "df/core/declaration";
+import { IOperationConfig, Operation } from "df/core/operation";
+import { ITableConfig, ITableContext, Table, TableType } from "df/core/table";
+import * as test from "df/core/test";
+import * as utils from "df/core/utils";
+import { version as dataformCoreVersion } from "df/core/version";
+import { dataform } from "df/protos";
 import { util } from "protobufjs";
-import * as TarjanGraphConstructor from "tarjan-graph";
-import { Graph as TarjanGraph } from "tarjan-graph";
-
-// Can't use resolveJsonModule with Bazel.
-// tslint:disable-next-line: no-var-requires
-const { version: dataformCoreVersion } = require("@dataform/core/package.json");
+import { default as TarjanGraphConstructor, Graph as TarjanGraph } from "tarjan-graph";
 
 /**
  * @hidden

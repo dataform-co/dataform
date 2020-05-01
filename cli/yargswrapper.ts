@@ -1,5 +1,5 @@
 import { maybeConfigureAnalytics, trackCommand } from "df/cli/analytics";
-import * as yargs from "yargs";
+import yargs from "yargs";
 
 export interface ICli {
   commands: ICommand[];
