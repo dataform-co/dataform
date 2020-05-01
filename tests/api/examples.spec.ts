@@ -86,6 +86,11 @@ suite("examples", () => {
             fileName: "definitions/has_compile_errors/view_with_multiple_statements.sqlx",
             message:
               "Actions may only contain more than one SQL statement if they are of type 'operations'."
+          },
+          {
+            fileName: "definitions/has_compile_errors/view_without_hermetic.sqlx",
+            message:
+              "Zero-dependency actions which create datasets are required to explicitly declare 'hermetic: (true|false)' when run caching is turned on."
           }
         ]);
 

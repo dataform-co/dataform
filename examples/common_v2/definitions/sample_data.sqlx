@@ -3,7 +3,8 @@ config {
   description: "This is some sample data.",
   columns: {
       sample: "Sample integers."
-  }
+  },
+  hermetic: false
 }
 
 select 1 as sample union all

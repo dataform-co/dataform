@@ -118,7 +118,10 @@ export class Operation {
     if (!this.proto.actionDescriptor) {
       this.proto.actionDescriptor = {};
     }
-    this.proto.actionDescriptor.columns = ColumnDescriptors.mapToColumnProtoArray(columns);
+    this.proto.actionDescriptor.columns = ColumnDescriptors.mapToColumnProtoArray(
+      columns,
+      (e: Error) => this.session.compileError(e)
+    );
     return this;
   }
 

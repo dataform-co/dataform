@@ -43,7 +43,12 @@ export class Test {
   private contextableQuery: Contextable<ICommonContext, string>;
 
   public config(config: ITestConfig) {
-    checkExcessProperties(config, ITestConfigProperties, "test config");
+    checkExcessProperties(
+      (e: Error) => this.session.compileError(e),
+      config,
+      ITestConfigProperties,
+      "test config"
+    );
     if (config.dataset) {
       this.dataset(config.dataset);
     }

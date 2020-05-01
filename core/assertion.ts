@@ -63,7 +63,12 @@ export class Assertion {
   private contextableQuery: AContextable<string>;
 
   public config(config: IAssertionConfig) {
-    checkExcessProperties(config, IAssertionConfigProperties, "assertion config");
+    checkExcessProperties(
+      (e: Error) => this.session.compileError(e),
+      config,
+      IAssertionConfigProperties,
+      "assertion config"
+    );
     if (config.dependencies) {
       this.dependencies(config.dependencies);
     }

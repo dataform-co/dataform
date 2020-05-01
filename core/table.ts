@@ -299,7 +299,12 @@ export class Table {
   private mergedRowConditionsAssertion?: Assertion;
 
   public config(config: ITableConfig) {
-    checkExcessProperties(config, ITableConfigProperties(), "table config");
+    checkExcessProperties(
+      (e: Error) => this.session.compileError(e),
+      config,
+      ITableConfigProperties(),
+      "table config"
+    );
     if (config.type) {
       this.type(config.type);
     }
@@ -390,6 +395,7 @@ export class Table {
 
   public sqldatawarehouse(sqlDataWarehouse: dataform.ISQLDataWarehouseOptions) {
     checkExcessProperties(
+      (e: Error) => this.session.compileError(e),
       sqlDataWarehouse,
       ISQLDataWarehouseOptionsProperties(),
       "sqldatawarehouse config"
@@ -399,13 +405,23 @@ export class Table {
   }
 
   public redshift(redshift: dataform.IRedshiftOptions) {
-    checkExcessProperties(redshift, IRedshiftOptionsProperties(), "redshift config");
+    checkExcessProperties(
+      (e: Error) => this.session.compileError(e),
+      redshift,
+      IRedshiftOptionsProperties(),
+      "redshift config"
+    );
     this.proto.redshift = dataform.RedshiftOptions.create(redshift);
     return this;
   }
 
   public bigquery(bigquery: dataform.IBigQueryOptions) {
-    checkExcessProperties(bigquery, IBigQueryOptionsProperties(), "bigquery config");
+    checkExcessProperties(
+      (e: Error) => this.session.compileError(e),
+      bigquery,
+      IBigQueryOptionsProperties(),
+      "bigquery config"
+    );
     this.proto.bigquery = dataform.BigQueryOptions.create(bigquery);
     return this;
   }
@@ -451,7 +467,10 @@ export class Table {
     if (!this.proto.actionDescriptor) {
       this.proto.actionDescriptor = {};
     }
-    this.proto.actionDescriptor.columns = ColumnDescriptors.mapToColumnProtoArray(columns);
+    this.proto.actionDescriptor.columns = ColumnDescriptors.mapToColumnProtoArray(
+      columns,
+      (e: Error) => this.session.compileError(e)
+    );
     return this;
   }
 

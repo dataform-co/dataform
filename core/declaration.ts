@@ -28,7 +28,12 @@ export class Declaration {
   public session: Session;
 
   public config(config: IDeclarationConfig) {
-    checkExcessProperties(config, IDeclarationConfigProperties, "declaration config");
+    checkExcessProperties(
+      (e: Error) => this.session.compileError(e),
+      config,
+      IDeclarationConfigProperties,
+      "declaration config"
+    );
     if (config.description) {
       this.description(config.description);
     }
@@ -50,7 +55,10 @@ export class Declaration {
     if (!this.proto.actionDescriptor) {
       this.proto.actionDescriptor = {};
     }
-    this.proto.actionDescriptor.columns = ColumnDescriptors.mapToColumnProtoArray(columns);
+    this.proto.actionDescriptor.columns = ColumnDescriptors.mapToColumnProtoArray(
+      columns,
+      (e: Error) => this.session.compileError(e)
+    );
     return this;
   }
 
