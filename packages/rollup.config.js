@@ -21,7 +21,7 @@ const checkImports = imports => {
     if (pattern instanceof RegExp) {
       return pattern;
     }
-    // If it's a string, turn it into a regex.
+    // If it's a string, turn it into a regex, by escaping any regex characters in the string.
     const normalized = pattern.replace(/[\\^$*+?.()|[\]{}]/g, "\\$&");
     return new RegExp(`^${normalized}$`);
   });
