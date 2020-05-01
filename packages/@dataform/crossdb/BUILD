@@ -20,6 +20,8 @@ pkg_json(
         "//:package.json",
         "//packages/@dataform:package.layer.json",
     ],
+    main = "index.js",
+    types = "index.d.ts",
     version = DF_VERSION,
 )
 

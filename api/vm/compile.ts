@@ -68,7 +68,7 @@ export function compile(compileConfig: dataform.ICompileConfig) {
   return res;
 }
 
-export function listen() {
+export function listenForCompileRequest() {
   process.on("message", (compileConfig: dataform.ICompileConfig) => {
     try {
       const compiledResult = compile(compileConfig);
@@ -83,5 +83,5 @@ export function listen() {
 }
 
 if (require.main === module) {
-  listen();
+  listenForCompileRequest();
 }

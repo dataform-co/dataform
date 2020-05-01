@@ -148,7 +148,7 @@ const jsonOutputOption: INamedOption<yargs.Options> = {
 const getCredentialsPath = (projectDir: string, credentialsPath: string) =>
   actuallyResolve(credentialsPath || path.join(projectDir, CREDENTIALS_FILENAME));
 
-export function cli() {
+export function runCli() {
   const builtYargs = createYargsCli({
     commands: [
       {
@@ -662,5 +662,5 @@ export function cli() {
 }
 
 if (require.main === module) {
-  cli();
+  runCli();
 }

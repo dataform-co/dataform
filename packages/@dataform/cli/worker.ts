@@ -1,2 +1,2 @@
-import { listen } from "df/api/vm/compile";
-listen();
+import { listenForCompileRequest } from "df/api/vm/compile";
+listenForCompileRequest();
