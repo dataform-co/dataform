@@ -1,2 +1,2 @@
-config { type: "assertion", redshift: { distKey: "something" } }
+config { type: "assertion", redshift: { distKey: "something" }, hermetic: false }
 SELECT 1 as test

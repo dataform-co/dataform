@@ -1,7 +1,7 @@
 minApprovals:
-  COLLABORATOR: 1
+  MEMBER: 1
 maxRequestedChanges:
-  COLLABORATOR: 0
+  MEMBER: 0
 requiredLabels:
   - auto-merge
 reportStatus: true

@@ -31,7 +31,7 @@ suite("examples", () => {
           {
             fileName: "definitions/has_compile_errors/assertion_with_bigquery.sqlx",
             message:
-              'Unexpected property "bigquery" in assertion config. Supported properties are: ["database","schema","name","description","type","tags","dependencies"]'
+              'Unexpected property "bigquery" in assertion config. Supported properties are: ["database","schema","name","description","type","tags","dependencies","hermetic"]'
           },
           {
             fileName: "definitions/has_compile_errors/assertion_with_output.sqlx",
@@ -41,7 +41,7 @@ suite("examples", () => {
           {
             fileName: "definitions/has_compile_errors/assertion_with_output.sqlx",
             message:
-              'Unexpected property "hasOutput" in assertion config. Supported properties are: ["database","schema","name","description","type","tags","dependencies"]'
+              'Unexpected property "hasOutput" in assertion config. Supported properties are: ["database","schema","name","description","type","tags","dependencies","hermetic"]'
           },
           {
             fileName: "definitions/has_compile_errors/assertion_with_postops.sqlx",
@@ -58,7 +58,7 @@ suite("examples", () => {
           {
             fileName: "definitions/has_compile_errors/assertion_with_redshift.sqlx",
             message:
-              'Unexpected property "redshift" in assertion config. Supported properties are: ["database","schema","name","description","type","tags","dependencies"]'
+              'Unexpected property "redshift" in assertion config. Supported properties are: ["database","schema","name","description","type","tags","dependencies","hermetic"]'
           },
           {
             fileName: "definitions/has_compile_errors/disabled_assertion.sqlx",
@@ -67,7 +67,7 @@ suite("examples", () => {
           {
             fileName: "definitions/has_compile_errors/disabled_assertion.sqlx",
             message:
-              'Unexpected property "disabled" in assertion config. Supported properties are: ["database","schema","name","description","type","tags","dependencies"]'
+              'Unexpected property "disabled" in assertion config. Supported properties are: ["database","schema","name","description","type","tags","dependencies","hermetic"]'
           },
           {
             fileName: "definitions/has_compile_errors/protected_assertion.sqlx",
@@ -76,7 +76,7 @@ suite("examples", () => {
           {
             fileName: "definitions/has_compile_errors/protected_assertion.sqlx",
             message:
-              'Unexpected property "protected" in assertion config. Supported properties are: ["database","schema","name","description","type","tags","dependencies"]'
+              'Unexpected property "protected" in assertion config. Supported properties are: ["database","schema","name","description","type","tags","dependencies","hermetic"]'
           },
           {
             fileName: "definitions/has_compile_errors/view_with_incremental.sqlx",
@@ -86,6 +86,11 @@ suite("examples", () => {
             fileName: "definitions/has_compile_errors/view_with_multiple_statements.sqlx",
             message:
               "Actions may only contain more than one SQL statement if they are of type 'operations'."
+          },
+          {
+            fileName: "definitions/has_compile_errors/view_without_hermetic.sqlx",
+            message:
+              "Zero-dependency actions which create datasets are required to explicitly declare 'hermetic: (true|false)' when run caching is turned on."
           }
         ]);
 

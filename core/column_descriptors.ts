@@ -10,17 +10,21 @@ import { dataform } from "df/protos";
  * @hidden
  */
 export class ColumnDescriptors {
-  public static mapToColumnProtoArray(columns: IColumnsDescriptor): dataform.IColumnDescriptor[] {
+  public static mapToColumnProtoArray(
+    columns: IColumnsDescriptor,
+    reportError: (e: Error) => void
+  ): dataform.IColumnDescriptor[] {
     return utils.flatten(
       Object.keys(columns).map(column =>
-        ColumnDescriptors.mapColumnDescriptionToProto([column], columns[column])
+        ColumnDescriptors.mapColumnDescriptionToProto([column], columns[column], reportError)
       )
     );
   }
 
   public static mapColumnDescriptionToProto(
     currentPath: string[],
-    description: string | IRecordDescriptor
+    description: string | IRecordDescriptor,
+    reportError: (e: Error) => void
   ): dataform.IColumnDescriptor[] {
     if (typeof description === "string") {
       return [
@@ -31,6 +35,7 @@ export class ColumnDescriptors {
       ];
     }
     utils.checkExcessProperties(
+      reportError,
       description,
       IRecordDescriptorProperties(),
       `${currentPath.join(".")} column descriptor`
@@ -53,7 +58,8 @@ export class ColumnDescriptors {
         nestedColumns.map(nestedColumn =>
           ColumnDescriptors.mapColumnDescriptionToProto(
             currentPath.concat([nestedColumn]),
-            description.columns[nestedColumn]
+            description.columns[nestedColumn],
+            reportError
           )
         )
       )

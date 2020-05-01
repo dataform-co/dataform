@@ -223,7 +223,9 @@ message ColumnDescriptor {
 
 message Table {
   Target target = 4;
+
   repeated Target dependency_targets = 27;
+  ActionHermeticity hermeticity = 31;
   
   bool disabled = 6;
 
@@ -265,7 +267,9 @@ message Table {
 
 message Operation {
   Target target = 3;
+
   repeated Target dependency_targets = 11;
+  ActionHermeticity hermeticity = 12;
 
   repeated string queries = 6;
   bool has_output = 8;
@@ -285,7 +289,9 @@ message Operation {
 
 message Assertion {
   Target target = 8;
+
   repeated Target dependency_targets = 11;
+  ActionHermeticity hermeticity = 12;
 
   string query = 3;
 
@@ -301,6 +307,12 @@ message Assertion {
   repeated string dependencies = 2; // Use 'dependency_targets' instead.
 
   reserved 4, 5, 6;
+}
+
+enum ActionHermeticity {
+  UNKNOWN = 0;
+  HERMETIC = 1;
+  NON_HERMETIC = 2;
 }
 
 message Declaration {
