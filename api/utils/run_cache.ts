@@ -1,4 +1,4 @@
-import { dataform } from "df/protos";
+import { dataform } from "df/protos/ts";
 import * as objectHash from "object-hash";
 
 export interface IMetadataRow {

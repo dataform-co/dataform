@@ -3,7 +3,7 @@ import { BigQueryDbAdapter } from "df/api/dbadapters/bigquery";
 import { RedshiftDbAdapter } from "df/api/dbadapters/redshift";
 import { SnowflakeDbAdapter } from "df/api/dbadapters/snowflake";
 import { SQLDataWarehouseDBAdapter } from "df/api/dbadapters/sqldatawarehouse";
-import { dataform } from "df/protos";
+import { dataform } from "df/protos/ts";
 
 export type OnCancel = (handleCancel: () => void) => void;
 

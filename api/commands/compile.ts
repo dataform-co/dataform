@@ -1,6 +1,6 @@
 import { ChildProcess, fork } from "child_process";
 import { validate } from "df/core/utils";
-import { dataform } from "df/protos";
+import { dataform } from "df/protos/ts";
 import * as fs from "fs";
 import * as path from "path";
 import { util } from "protobufjs";

@@ -1,6 +1,6 @@
 import { intQuestion, passwordQuestion, question, selectionQuestion } from "df/cli/console";
 import { actuallyResolve } from "df/cli/util";
-import { dataform } from "df/protos";
+import { dataform } from "df/protos/ts";
 import * as fs from "fs";
 
 export function getBigQueryCredentials(): dataform.IBigQuery {

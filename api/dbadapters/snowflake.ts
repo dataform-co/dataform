@@ -1,7 +1,7 @@
 import { Credentials } from "df/api/commands/credentials";
 import { IDbAdapter } from "df/api/dbadapters/index";
 import { parseSnowflakeEvalError } from "df/api/utils/error_parsing";
-import { dataform } from "df/protos";
+import { dataform } from "df/protos/ts";
 import * as https from "https";
 import * as PromisePool from "promise-pool-executor";
 

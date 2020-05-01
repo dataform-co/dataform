@@ -2,7 +2,7 @@ import { CREDENTIALS_FILENAME } from "df/api/commands/credentials";
 import { install } from "df/api/commands/install";
 import { prettyJsonStringify } from "df/api/utils";
 import { version } from "df/core/version";
-import { dataform } from "df/protos";
+import { dataform } from "df/protos/ts";
 import * as fs from "fs";
 import * as path from "path";
 

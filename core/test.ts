@@ -10,7 +10,7 @@ import {
   stringifyResolvable,
   toResolvable
 } from "df/core/utils";
-import { dataform } from "df/protos";
+import { dataform } from "df/protos/ts";
 
 /**
  * Configuration options for unit tests.

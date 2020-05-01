@@ -40,7 +40,7 @@ ts_library(
     data = [":sass"],
     deps = [
         ":css_typings",
-        "//protos",
+        "//protos:ts",
         "//tools/protobufjs:grpc_web_rpc_impl",
         "@npm//@blueprintjs/core",
         "@npm//@types/node",
