@@ -3,7 +3,10 @@ load("@build_bazel_rules_nodejs//:index.bzl", "nodejs_binary")
 
 package(default_visibility = ["//visibility:public"])
 
-exports_files(["rollup.config.js"])
+exports_files([
+    "rollup.config.js",
+    "rollup_dts.config.js",
+])
 
 ts_library(
     name = "gen-package-json",
@@ -17,10 +20,10 @@ ts_library(
 
 nodejs_binary(
     name = "gen-package-json-bin",
-    templated_args = ["--node_options=--require=source-map-support/register"],
     data = [
         ":gen-package-json",
         "@npm//source-map-support",
     ],
     entry_point = ":gen_package_json.ts",
+    templated_args = ["--node_options=--require=source-map-support/register"],
 )
