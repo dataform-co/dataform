@@ -1,6 +1,11 @@
 load("@build_bazel_rules_nodejs//:providers.bzl", "DeclarationInfo", "JSEcmaScriptModuleInfo", "NodeContextInfo", "NpmPackageInfo", "node_modules_aspect", "run_node")
 load("@build_bazel_rules_nodejs//internal/linker:link_node_modules.bzl", "module_mappings_aspect")
 
+# This is a fork of https://github.com/bazelbuild/rules_nodejs/blob/master/packages/rollup/src/rollup_bundle.bzl
+# with a few small changes to support bundling .d.ts files. Instead of collecting es6 sources, it collects
+# typescript declarations. It also changes the logic for resolving js inputs to support resolving .d.ts files instead.
+# TODO: Move this upstream into rules_nodejs.
+
 _DOC = """Runs the Rollup.js CLI under Bazel.
 See https://rollupjs.org/guide/en/#command-line-reference
 Typical example:
@@ -225,7 +230,7 @@ def _resolve_js_input(f, inputs):
     no_ext = _no_ext(f)
     for i in inputs:
         if i.extension == "js" or i.extension == "mjs" or i.extension == "ts":
-            if _no_ext(i) == no_ext:
+            if _no_ext(i) == no_ext or _no_ext(i) == (no_ext + ".d"):
                 return i
 
     return f
@@ -267,6 +272,7 @@ def _rollup_bundle(ctx):
     for dep in ctx.attr.deps:
         if DeclarationInfo in dep:
             deps_depsets.append(dep[DeclarationInfo].transitive_declarations)
+
         # if JSEcmaScriptModuleInfo in dep:
         #     deps_depsets.append(dep[JSEcmaScriptModuleInfo].sources)
         # elif hasattr(dep, "files"):
