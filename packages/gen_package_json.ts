@@ -1,6 +1,5 @@
 import * as fs from "fs";
-import * as yargs from "yargs";
-
+import yargs from "yargs";
 
 const argv = yargs
   .option("package-version", { required: true, type: "string" })
@@ -13,7 +12,6 @@ const argv = yargs
   .option("external-dependencies", {
     array: true
   }).argv;
-
 
 const outputPath = argv.outputPath as string;
 const layerPaths = argv.layerPaths as string[];

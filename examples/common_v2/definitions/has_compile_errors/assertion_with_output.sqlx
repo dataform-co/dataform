@@ -1,2 +1,2 @@
-config { type: "assertion", hasOutput: true }
+config { type: "assertion", hasOutput: true, hermetic: false }
 SELECT 1 as test

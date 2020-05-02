@@ -1,1 +1,1 @@
-macros.deferredPublish("example_deferred", "select 1 as test");
+macros.deferredPublish("example_deferred", "select 1 as test").hermetic(false);

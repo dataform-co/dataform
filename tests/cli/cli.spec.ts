@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { execFile, fork } from "child_process";
+import { ChildProcess, execFile } from "child_process";
 import { version } from "df/core/version";
 import { suite, test } from "df/testing";
 import * as fs from "fs";
@@ -16,32 +16,21 @@ suite(__filename, () => {
 
   test("init and compile", async () => {
     // Initialize a project using the CLI, don't install packages.
-    const initChildProcess = fork(cliEntryPointPath, [
-      "init",
-      "redshift",
-      projectDir,
-      "--skip-install"
-    ]);
-
-    await new Promise(resolve => {
-      initChildProcess.on("close", resolve);
-    });
+    await getProcessResult(
+      execFile(nodePath, [cliEntryPointPath, "init", "redshift", projectDir, "--skip-install"])
+    );
 
     // Install packages manually to get around bazel sandbox issues.
-    const installChildProcess = execFile(npmPath, [
-      "install",
-      "--prefix",
-      projectDir,
-      "--cache",
-      npmCacheDir,
-      corePackageTarPath
-    ]);
-    installChildProcess.stdout.pipe(process.stdout);
-    installChildProcess.stderr.pipe(process.stderr);
-
-    await new Promise(resolve => {
-      installChildProcess.on("close", resolve);
-    });
+    await getProcessResult(
+      execFile(npmPath, [
+        "install",
+        "--prefix",
+        projectDir,
+        "--cache",
+        npmCacheDir,
+        corePackageTarPath
+      ])
+    );
 
     // Write a simple file to the project.
     fs.writeFileSync(
@@ -53,24 +42,13 @@ select 1 as test
     );
 
     // Compile the project using the CLI.
-    const compileChildProcess = execFile(nodePath, [
-      cliEntryPointPath,
-      "compile",
-      projectDir,
-      "--json"
-    ]);
-    compileChildProcess.stdout.pipe(process.stdout);
-    compileChildProcess.stderr.pipe(process.stderr);
-    let chunks = "";
-    compileChildProcess.stdout.on("data", chunk => (chunks += String(chunk)));
+    const { exitCode, stdout } = await getProcessResult(
+      execFile(nodePath, [cliEntryPointPath, "compile", projectDir, "--json"])
+    );
 
-    expect(
-      await new Promise(resolve => {
-        compileChildProcess.on("close", resolve);
-      })
-    ).equals(0);
+    expect(exitCode).equals(0);
 
-    expect(JSON.parse(chunks)).deep.equals({
+    expect(JSON.parse(stdout)).deep.equals({
       tables: [
         {
           name: "dataform.example",
@@ -101,3 +79,12 @@ select 1 as test
     });
   });
 });
+
+async function getProcessResult(childProcess: ChildProcess) {
+  let stdout = "";
+  childProcess.stdout.on("data", chunk => (stdout += String(chunk)));
+  const exitCode: number = await new Promise(resolve => {
+    childProcess.on("close", resolve);
+  });
+  return { exitCode, stdout };
+}

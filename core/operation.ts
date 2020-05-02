@@ -10,6 +10,7 @@ import {
 } from "df/core/common";
 import { Session } from "df/core/session";
 import * as utils from "df/core/utils";
+import { checkExcessProperties, strictKeysOf } from "df/core/utils";
 import { dataform } from "df/protos";
 
 /**
@@ -32,6 +33,19 @@ export interface IOperationConfig
   hasOutput?: boolean;
 }
 
+export const IIOperationConfigProperties = strictKeysOf<IOperationConfig>()([
+  "type",
+  "name",
+  "tags",
+  "schema",
+  "database",
+  "columns",
+  "description",
+  "dependencies",
+  "hermetic",
+  "hasOutput"
+]);
+
 /**
  * @hidden
  */
@@ -45,8 +59,17 @@ export class Operation {
   private contextableQueries: Contextable<ICommonContext, string | string[]>;
 
   public config(config: IOperationConfig) {
+    checkExcessProperties(
+      (e: Error) => this.session.compileError(e),
+      config,
+      IIOperationConfigProperties,
+      "operation config"
+    );
     if (config.dependencies) {
       this.dependencies(config.dependencies);
+    }
+    if (config.hermetic !== undefined) {
+      this.hermetic(config.hermetic);
     }
     if (config.tags) {
       this.tags(config.tags);
@@ -82,6 +105,12 @@ export class Operation {
     return this;
   }
 
+  public hermetic(hermetic: boolean) {
+    this.proto.hermeticity = hermetic
+      ? dataform.ActionHermeticity.HERMETIC
+      : dataform.ActionHermeticity.NON_HERMETIC;
+  }
+
   public tags(value: string | string[]) {
     const newTags = typeof value === "string" ? [value] : value;
     newTags.forEach(t => {
@@ -109,7 +138,10 @@ export class Operation {
     if (!this.proto.actionDescriptor) {
       this.proto.actionDescriptor = {};
     }
-    this.proto.actionDescriptor.columns = ColumnDescriptors.mapToColumnProtoArray(columns);
+    this.proto.actionDescriptor.columns = ColumnDescriptors.mapToColumnProtoArray(
+      columns,
+      (e: Error) => this.session.compileError(e)
+    );
     return this;
   }
 

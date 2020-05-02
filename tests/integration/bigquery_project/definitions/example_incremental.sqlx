@@ -12,7 +12,8 @@ config {
           }
         },
         not_a_column_name: "shouldn't appear"
-    }
+    },
+    hermetic: false
 }
 
 WITH example_data AS (

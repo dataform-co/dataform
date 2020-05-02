@@ -1,4 +1,4 @@
-config { type: "incremental", protected: true }
+config { type: "incremental", protected: true, hermetic: false }
 
 js {  const crossdb = require("@dataform/crossdb"); }
 

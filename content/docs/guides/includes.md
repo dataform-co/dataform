@@ -17,7 +17,7 @@ If you are new to JavaScript, the examples below should cover some common use ca
 
 Create a new file in your project under the `includes/` folder, such as:
 
-`definitions/constants.js`:
+`includes/constants.js`:
 
 ```js
 const PROJECT_ID = "my_project_name";

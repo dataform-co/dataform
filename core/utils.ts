@@ -344,15 +344,22 @@ export function strictKeysOf<T>() {
 /**
  * Will throw an error if the provided object contains any properties that aren't in the provided list.
  */
-export function checkExcessProperties<T>(object: T, supportedProperties: string[], name?: string) {
+export function checkExcessProperties<T>(
+  reportError: (e: Error) => void,
+  object: T,
+  supportedProperties: string[],
+  name?: string
+) {
   const extraProperties = Object.keys(object).filter(
     key => !(supportedProperties as string[]).includes(key)
   );
   if (extraProperties.length > 0) {
-    throw new Error(
-      `Unexpected property "${extraProperties[0]}"${
-        !!name ? ` in ${name}` : ""
-      }. Supported properties are: ${JSON.stringify(supportedProperties)}`
+    reportError(
+      new Error(
+        `Unexpected property "${extraProperties[0]}"${
+          !!name ? ` in ${name}` : ""
+        }. Supported properties are: ${JSON.stringify(supportedProperties)}`
+      )
     );
   }
 }
