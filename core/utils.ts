@@ -5,7 +5,7 @@ import { Declaration } from "df/core/declaration";
 import { Operation } from "df/core/operation";
 import { IActionProto, Session } from "df/core/session";
 import { DistStyleType, SortStyleType, Table, TableType } from "df/core/table";
-import { dataform } from "df/protos";
+import { dataform } from "df/protos/ts";
 import * as path from "path";
 
 const SQL_DATA_WAREHOUSE_DIST_HASH_REGEXP = new RegExp("HASH\\s*\\(\\s*\\w*\\s*\\)\\s*");

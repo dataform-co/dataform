@@ -11,7 +11,7 @@ import {
 import { Session } from "df/core/session";
 import * as utils from "df/core/utils";
 import { checkExcessProperties, strictKeysOf } from "df/core/utils";
-import { dataform } from "df/protos";
+import { dataform } from "df/protos/ts";
 
 /**
  * Configuration options for `operations` action types.

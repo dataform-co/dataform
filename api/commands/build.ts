@@ -4,7 +4,7 @@ import { state } from "df/api/commands/state";
 import * as dbadapters from "df/api/dbadapters";
 import { adapters } from "df/core";
 import * as utils from "df/core/utils";
-import { dataform } from "df/protos";
+import { dataform } from "df/protos/ts";
 
 export async function build(
   compiledGraph: dataform.ICompiledGraph,

@@ -1,11 +1,13 @@
+load("@build_bazel_rules_nodejs//:providers.bzl", "DeclarationInfo")
+
 def _impl(ctx):
     outs = []
     for f in ctx.files.srcs:
         out = ctx.actions.declare_file(f.basename.replace(".css", ".css.d.ts"), sibling = f)
         outs.append(out)
         patterns = [f.path]
-        if not f.root.path == '':
-          patterns = [f.short_path, f.root.path]
+        if not f.root.path == "":
+            patterns = [f.short_path, f.root.path]
         ctx.actions.run(
             inputs = [f],
             outputs = [out],
@@ -16,11 +18,15 @@ def _impl(ctx):
 
     # Return a structure that is compatible with the deps[] of a ts_library.
     return struct(
+        providers = [DeclarationInfo(
+            declarations = depset(outs),
+            transitive_declarations = depset(outs),
+            type_blacklisted_declarations = depset(),
+        )],
         files = depset(outs),
         typescript = struct(
             declarations = depset(outs),
             transitive_declarations = depset(outs),
-            type_blacklisted_declarations = depset(),
             es5_sources = depset(),
             es6_sources = depset(),
             transitive_es5_sources = depset(),

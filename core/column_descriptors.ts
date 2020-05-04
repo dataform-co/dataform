@@ -4,7 +4,7 @@ import {
   IRecordDescriptorProperties
 } from "df/core/common";
 import * as utils from "df/core/utils";
-import { dataform } from "df/protos";
+import { dataform } from "df/protos/ts";
 
 /**
  * @hidden

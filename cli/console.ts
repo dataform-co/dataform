@@ -1,6 +1,6 @@
 import { IInitResult } from "df/api/commands/init";
 import { prettyJsonStringify } from "df/api/utils";
-import { dataform } from "df/protos";
+import { dataform } from "df/protos/ts";
 import * as readlineSync from "readline-sync";
 
 // Uses ANSI escape color codes.

@@ -8,7 +8,7 @@ ts_library(
     deps = [
         "//api",
         "//core",
-        "//protos",
+        "//protos:ts",
         "@npm//@types/analytics-node",
         "@npm//@types/glob",
         "@npm//@types/long",

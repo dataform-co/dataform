@@ -53,25 +53,10 @@ go_proto_library(
 load("//tools:ts_proto_library.bzl", "ts_proto_library")
 
 ts_proto_library(
-    name = "protobufjs_lib",
+    name = "ts",
     deps = [
         ":dataform_proto",
         ":schedules_proto",
         ":server_proto",
-    ],
-)
-
-load("@npm_bazel_typescript//:index.bzl", "ts_library")
-
-ts_library(
-    name = "protos",
-    srcs = glob(["index.ts"]),
-    data = [
-        "//protos:protobufjs_lib",
-    ],
-    deps = [
-        "//protos:protobufjs_lib",
-        "@npm//@types/node",
-        "@npm//protobufjs",
     ],
 )

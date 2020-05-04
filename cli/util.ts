@@ -1,4 +1,4 @@
-import { dataform } from "df/protos";
+import { dataform } from "df/protos/ts";
 import * as fs from "fs";
 import * as path from "path";
 import untildify from "untildify";
