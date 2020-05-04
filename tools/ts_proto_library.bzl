@@ -84,6 +84,7 @@ def _ts_proto_library(ctx):
             DeclarationInfo(
                 declarations = declarations,
                 transitive_declarations = declarations,
+                type_blacklisted_declarations = depset(),
             ),
             JSNamedModuleInfo(
                 direct_sources = es5_sources,
@@ -97,7 +98,6 @@ def _ts_proto_library(ctx):
         typescript = struct(
             declarations = declarations,
             transitive_declarations = declarations,
-            type_blacklisted_declarations = depset(),
             es5_sources = es5_sources,
             es6_sources = es6_sources,
             transitive_es5_sources = es5_sources,

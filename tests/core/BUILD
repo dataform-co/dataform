@@ -6,7 +6,7 @@ ts_test_suite(
     data = glob(["*.js.test"]),
     deps = [
         "//core",
-        "//protos",
+        "//protos:ts",
         "//testing",
         "//tests/utils",
         "@npm//@types/chai",

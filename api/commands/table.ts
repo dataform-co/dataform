@@ -1,5 +1,5 @@
 import * as dbadapters from "df/api/dbadapters";
-import { dataform } from "df/protos";
+import { dataform } from "df/protos/ts";
 
 export async function list(dbadapter: dbadapters.IDbAdapter): Promise<dataform.ITarget[]> {
   return await dbadapter.tables();

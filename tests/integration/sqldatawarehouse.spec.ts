@@ -3,7 +3,7 @@ import * as dfapi from "df/api";
 import * as dbadapters from "df/api/dbadapters";
 import * as adapters from "df/core/adapters";
 import { SQLDataWarehouseAdapter } from "df/core/adapters/sqldatawarehouse";
-import { dataform } from "df/protos";
+import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
 import { dropAllTables, getTableRows, keyBy } from "df/tests/integration/utils";
 

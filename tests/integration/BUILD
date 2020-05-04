@@ -19,7 +19,7 @@ ts_test_suite(
     deps = [
         "//api",
         "//core",
-        "//protos",
+        "//protos:ts",
         "//testing",
         "//tests/utils",
         "@npm//@types/chai",

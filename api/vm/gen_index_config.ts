@@ -1,4 +1,4 @@
-import { dataform } from "df/protos";
+import { dataform } from "df/protos/ts";
 import * as glob from "glob";
 import { util } from "protobufjs";
 

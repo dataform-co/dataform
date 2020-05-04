@@ -5,7 +5,7 @@ import { BigQueryDbAdapter } from "df/api/dbadapters/bigquery";
 import { hashExecutionAction } from "df/api/utils/run_cache";
 import * as adapters from "df/core/adapters";
 import { BigQueryAdapter } from "df/core/adapters/bigquery";
-import { dataform } from "df/protos";
+import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
 import { dropAllTables, getTableRows, keyBy } from "df/tests/integration/utils";
 import Long from "long";

@@ -58,3 +58,13 @@ load("@bazel_gazelle//:def.bzl", "gazelle")
 # gazelle:proto package
 # gazelle:proto_group go_package
 gazelle(name = "gazelle")
+
+load("@npm_bazel_typescript//:index.bzl", "ts_library")
+
+# TODO: This is only here in order to workaround a bug in the way bazel resolves
+# workspace imports when in nested repositories, and can be removed once that is fixed.
+ts_library(
+    name = "modules-fix",
+    srcs = [],
+    module_name = "df",
+)
