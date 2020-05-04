@@ -102,6 +102,7 @@ def _ts_proto_library(ctx):
             es6_sources = es6_sources,
             transitive_es5_sources = es5_sources,
             transitive_es6_sources = es6_sources,
+            type_blacklisted_declarations = depset(),
         ),
     )
 
