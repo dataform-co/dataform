@@ -2,7 +2,7 @@ import { fail } from "assert";
 import { expect } from "chai";
 import { Builder, compile } from "df/api";
 import * as utils from "df/core/utils";
-import { dataform } from "df/protos";
+import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
 import { cleanSql } from "df/tests/utils";
 import * as path from "path";

@@ -3,7 +3,7 @@ import { Builder, compile, credentials, format, prune, query, Runner } from "df/
 import { IDbAdapter } from "df/api/dbadapters";
 import { BigQueryDbAdapter } from "df/api/dbadapters/bigquery";
 import * as utils from "df/core/utils";
-import { dataform } from "df/protos";
+import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
 import { asPlainObject, cleanSql } from "df/tests/utils";
 import Long from "long";

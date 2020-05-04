@@ -13,7 +13,8 @@ ts_library(
         "grpc_web_rpc_impl.ts",
     ],
     deps = [
-        "//protos",
+        "//:modules-fix",
+        "//protos:ts",
         "@npm//grpc-web-client",
         "@npm//protobufjs",
     ],

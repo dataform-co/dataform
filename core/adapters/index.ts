@@ -3,7 +3,7 @@ import { RedshiftAdapter } from "df/core/adapters/redshift";
 import { SnowflakeAdapter } from "df/core/adapters/snowflake";
 import { SQLDataWarehouseAdapter } from "df/core/adapters/sqldatawarehouse";
 import { Tasks } from "df/core/tasks";
-import { dataform } from "df/protos";
+import { dataform } from "df/protos/ts";
 
 export interface IAdapter {
   resolveTarget(target: dataform.ITarget): string;

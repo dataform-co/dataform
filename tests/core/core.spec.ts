@@ -3,7 +3,7 @@ import { expect } from "chai";
 import * as compilers from "df/core/compilers";
 import { Session } from "df/core/session";
 import * as utils from "df/core/utils";
-import { dataform } from "df/protos";
+import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
 import { asPlainObject } from "df/tests/utils";
 import * as fs from "fs-extra";

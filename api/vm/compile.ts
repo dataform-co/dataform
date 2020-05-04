@@ -1,7 +1,7 @@
 import { createGenIndexConfig } from "df/api/vm/gen_index_config";
 import * as legacyCompiler from "df/api/vm/legacy_compiler";
 import { legacyGenIndex } from "df/api/vm/legacy_gen_index";
-import { dataform } from "df/protos";
+import { dataform } from "df/protos/ts";
 import * as fs from "fs";
 import * as path from "path";
 import { CompilerFunction, NodeVM } from "vm2";

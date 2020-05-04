@@ -7,7 +7,7 @@ ts_library(
     srcs = glob(["**/*.ts"]),
     deps = [
         "//core",
-        "//protos",
+        "//protos:ts",
         "//sqlx",
         "@npm//@google-cloud/bigquery",
         "@npm//@types/glob",

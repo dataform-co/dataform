@@ -9,7 +9,7 @@ import {
   hashExecutionAction,
   IMetadataRow
 } from "df/api/utils/run_cache";
-import { dataform } from "df/protos";
+import { dataform } from "df/protos/ts";
 import Long from "long";
 import { PromisePoolExecutor } from "promise-pool-executor";
 

@@ -7,7 +7,7 @@ import { ITableConfig, ITableContext, Table, TableType } from "df/core/table";
 import * as test from "df/core/test";
 import * as utils from "df/core/utils";
 import { version as dataformCoreVersion } from "df/core/version";
-import { dataform } from "df/protos";
+import { dataform } from "df/protos/ts";
 import { util } from "protobufjs";
 import { default as TarjanGraphConstructor, Graph as TarjanGraph } from "tarjan-graph";
 

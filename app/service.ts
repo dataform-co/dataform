@@ -1,4 +1,4 @@
-import { dataform } from "df/protos";
+import { dataform } from "df/protos/ts";
 import { rpcImpl } from "df/tools/protobufjs/grpc_web_rpc_impl";
 
 export class Service extends dataform.server.Service {

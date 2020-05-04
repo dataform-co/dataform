@@ -1,4 +1,4 @@
-import { dataform as protos } from "df/protos";
+import { dataform as protos } from "df/protos/ts";
 import { IService } from "df/server/grpc_service";
 import * as grpc from "grpc";
 

@@ -2,7 +2,7 @@ import { ColumnDescriptors } from "df/core/column_descriptors";
 import { IColumnsDescriptor, IDocumentableConfig, ITargetableConfig } from "df/core/common";
 import { Session } from "df/core/session";
 import { checkExcessProperties, strictKeysOf } from "df/core/utils";
-import { dataform } from "df/protos";
+import { dataform } from "df/protos/ts";
 /**
  * Configuration options for `declaration` action types.
  */
