@@ -186,10 +186,15 @@ const Comment = (props: ITypedocComment) => (
   </>
 );
 
-const Markdown = (props: { content: string }) =>
-  remark()
-    .use(remarkRehype, { allowDangerousHTML: true })
-    .use(rehypePrism)
-    .use(rehypeRaw)
-    .use(rehypeReact, { createElement: React.createElement })
-    .processSync(props.content).contents;
+const Markdown = (props: { content: string }) => (
+  <>
+    {
+      remark()
+        .use(remarkRehype, { allowDangerousHTML: true })
+        .use(rehypePrism)
+        .use(rehypeRaw)
+        .use(rehypeReact, { createElement: React.createElement })
+        .processSync(props.content).contents
+    }
+  </>
+);
