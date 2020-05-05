@@ -103,7 +103,7 @@ export class CompileChildProcess {
       return await compileInChildProcess;
     } finally {
       if (!this.childProcess.killed) {
-        this.childProcess.kill();
+        this.childProcess.kill("SIGKILL");
       }
       if (timer) {
         clearTimeout(timer);
