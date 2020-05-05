@@ -1,6 +1,6 @@
 load("@npm_bazel_typescript//:index.bzl", "ts_library")
 load("//:version.bzl", "DF_VERSION")
-load("//packages:index.bzl", "pkg_bundle", "pkg_json", "pkg_npm_tar")
+load("//packages:index.bzl", "pkg_bundle", "pkg_bundle_dts", "pkg_json", "pkg_npm_tar")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -29,6 +29,7 @@ pkg_json(
         "//packages/@dataform:package.layer.json",
     ],
     main = "bundle.js",
+    types = "bundle.d.ts",
     version = DF_VERSION,
 )
 
@@ -41,10 +42,20 @@ pkg_bundle(
     ],
 )
 
+pkg_bundle_dts(
+    name = "bundle.d",
+    entry_point = "index.ts",
+    externals = externals,
+    deps = [
+        ":core",
+    ],
+)
+
 pkg_npm_tar(
     name = "package",
     deps = [
         ":bundle",
+        ":bundle.d",
         ":package.json",
     ],
 )

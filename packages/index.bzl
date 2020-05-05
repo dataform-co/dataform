@@ -1,4 +1,5 @@
 load("@npm_bazel_rollup//:index.bzl", "rollup_bundle")
+load(":rollup_bundle_dts.bzl", "rollup_bundle_dts")
 load("@build_bazel_rules_nodejs//:index.bzl", "pkg_npm")
 
 def pkg_json(name, package_name, description, version, external_deps = [], layers = [], main = "", types = ""):
@@ -34,6 +35,18 @@ def pkg_bundle(deps, externals, args = [], **kwargs):
         sourcemap = "false",
         deps = [
             "@npm//@rollup/plugin-node-resolve",
+        ] + deps,
+        **kwargs
+    )
+
+def pkg_bundle_dts(deps, externals, args = [], **kwargs):
+    rollup_bundle_dts(
+        config_file = "//packages:rollup_dts.config.js",
+        args = ["--external={}".format(",".join(externals))] + args,
+        format = "cjs",
+        sourcemap = "false",
+        deps = [
+            "@npm//rollup-plugin-dts",
         ] + deps,
         **kwargs
     )
