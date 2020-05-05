@@ -31,6 +31,7 @@ def _impl(ctx):
             es6_sources = depset(),
             transitive_es5_sources = depset(),
             transitive_es6_sources = depset(),
+            type_blacklisted_declarations = depset(),
         ),
     )
 
