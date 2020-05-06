@@ -280,7 +280,7 @@ export class Client {
       )}, options?: grpc.CallOptions): Promise<${fullyQualify(
         currentNamespaceParts,
         method.responseType,
-        true
+        false
       )}> {
     return promisify(this.client.makeUnaryRequest.bind(this.client))(
       DEFINITION.${camelToLowerCamel(method.name)}.path,
