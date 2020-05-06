@@ -47,12 +47,10 @@ ts_library(
         "@npm//@types/react",
         "@npm//@types/react-dom",
         "@npm//@types/react-router",
-        "@npm//@types/react-router-dom",
         "@npm//protobufjs",
         "@npm//react",
         "@npm//react-dom",
         "@npm//react-router",
-        "@npm//react-router-dom",
     ],
 )
 
