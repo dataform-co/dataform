@@ -98,7 +98,7 @@ export interface IRedshiftOptions {
   bind?: boolean;
 }
 
-export const IRedshiftOptionsProperties = () =>
+const IRedshiftOptionsProperties = () =>
   strictKeysOf<IRedshiftOptions>()(["distKey", "distStyle", "sortKeys", "sortStyle", "bind"]);
 
 /**
@@ -112,7 +112,7 @@ export interface ISQLDataWarehouseOptions {
    */
   distribution?: string;
 }
-export const ISQLDataWarehouseOptionsProperties = () =>
+const ISQLDataWarehouseOptionsProperties = () =>
   strictKeysOf<ISQLDataWarehouseOptions>()(["distribution"]);
 
 /**
@@ -141,7 +141,7 @@ export interface IBigQueryOptions {
   updatePartitionFilter?: string;
 }
 
-export const IBigQueryOptionsProperties = () =>
+const IBigQueryOptionsProperties = () =>
   strictKeysOf<IBigQueryOptions>()(["partitionBy", "clusterBy", "updatePartitionFilter"]);
 
 /**
@@ -169,6 +169,9 @@ export interface ITableAssertions {
    */
   rowConditions?: string[];
 }
+
+const ITableAssertionsProperties = () =>
+  strictKeysOf<ITableAssertions>()(["uniqueKey", "nonNull", "rowConditions"]);
 
 /**
  * Configuration options for `dataset` actions, including `table`, `view` and `incremental` action types.
@@ -496,18 +499,26 @@ export class Table {
     return this;
   }
 
-  public assertions({ uniqueKey, nonNull, rowConditions }: ITableAssertions) {
-    if (!!uniqueKey) {
-      const indexCols = typeof uniqueKey === "string" ? [uniqueKey] : uniqueKey;
+  public assertions(assertions: ITableAssertions) {
+    checkExcessProperties(
+      (e: Error) => this.session.compileError(e),
+      assertions,
+      ITableAssertionsProperties(),
+      "assertions config"
+    );
+    if (!!assertions.uniqueKey) {
+      const indexCols =
+        typeof assertions.uniqueKey === "string" ? [assertions.uniqueKey] : assertions.uniqueKey;
       this.uniqueKeyAssertion = this.session
         .assert(`${this.proto.target.name}_assertions_uniqueKey`, ctx =>
           this.session.adapter().indexAssertion(ctx.ref(this.proto.target), indexCols)
         )
         .tags(this.proto.tags);
     }
-    const mergedRowConditions = rowConditions || [];
-    if (!!nonNull) {
-      const nonNullCols = typeof nonNull === "string" ? [nonNull] : nonNull;
+    const mergedRowConditions = assertions.rowConditions || [];
+    if (!!assertions.nonNull) {
+      const nonNullCols =
+        typeof assertions.nonNull === "string" ? [assertions.nonNull] : assertions.nonNull;
       nonNullCols.forEach(nonNullCol => mergedRowConditions.push(`${nonNullCol} IS NOT NULL`));
     }
     if (!!mergedRowConditions && mergedRowConditions.length > 0) {
