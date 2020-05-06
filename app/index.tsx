@@ -2,21 +2,19 @@ import { Overview } from "df/app/overview";
 import { Service } from "df/app/service";
 import * as React from "react";
 import * as ReactDOM from "react-dom";
-import { Route } from "react-router";
-import { BrowserRouter } from "react-router-dom";
+import { browserHistory, Route, Router } from "react-router";
 
 const service = Service.get();
 
 async function render() {
   const metadata = await service.metadata({});
   ReactDOM.render(
-    <BrowserRouter>
+    <Router history={browserHistory}>
       <Route
         path={"/"}
-        exact={true}
         component={(props: any) => <Overview {...props} service={service} metadata={metadata} />}
       />
-    </BrowserRouter>,
+    </Router>,
     document.getElementById("root")
   );
 }
