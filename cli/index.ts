@@ -42,6 +42,8 @@ process.on("unhandledRejection", async reason => {
   await trackError();
 });
 
+// TODO: Since yargs launched an actually well typed API in version 12, let's use it as this file is currently not type checked.
+
 const projectDirOption: INamedOption<yargs.PositionalOptions> = {
   name: "project-dir",
   option: {
@@ -53,7 +55,7 @@ const projectDirOption: INamedOption<yargs.PositionalOptions> = {
 
 const projectDirMustExistOption = {
   ...projectDirOption,
-  check: (argv: yargs.Arguments) => {
+  check: (argv: yargs.Arguments<any>) => {
     assertPathExists(argv["project-dir"]);
     try {
       assertPathExists(path.resolve(argv["project-dir"], "dataform.json"));
@@ -109,7 +111,7 @@ const schemaSuffixOverrideOption: INamedOption<yargs.Options> = {
   option: {
     describe: "A suffix to be appended to output schema names."
   },
-  check: (argv: yargs.Arguments) => {
+  check: (argv: yargs.Arguments<any>) => {
     if (argv.schemaSuffix && !/^[a-zA-Z_0-9]+$/.test(argv.schemaSuffix)) {
       throw new Error(
         "--schema-suffix should contain only alphanumeric characters and/or underscores."
@@ -124,7 +126,7 @@ const credentialsOption: INamedOption<yargs.Options> = {
     describe: "The location of the credentials JSON file to use.",
     default: null
   },
-  check: (argv: yargs.Arguments) =>
+  check: (argv: yargs.Arguments<any>) =>
     !argv.credentials || assertPathExists(getCredentialsPath(argv.projectDir, argv.credentials))
 };
 
@@ -173,7 +175,7 @@ export function runCli() {
               describe:
                 "The default database to use. For BigQuery, this is a Google Cloud Project ID."
             },
-            check: (argv: yargs.Arguments) => {
+            check: (argv: yargs.Arguments<any>) => {
               if (argv["default-database"] && !["bigquery", "snowflake"].includes(argv.warehouse)) {
                 throw new Error(
                   "The --default-database flag is only used for BigQuery and Snowflake projects."
