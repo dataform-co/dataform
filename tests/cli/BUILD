@@ -21,7 +21,9 @@ ts_test_suite(
         "//core",
         "//testing",
         "@npm//@types/chai",
+        "@npm//@types/fs-extra",
         "@npm//@types/node",
         "@npm//chai",
+        "@npm//fs-extra",
     ],
 )

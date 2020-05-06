@@ -2,12 +2,14 @@ import { expect } from "chai";
 import { ChildProcess, execFile } from "child_process";
 import { version } from "df/core/version";
 import { suite, test } from "df/testing";
-import * as fs from "fs";
+import * as fs from "fs-extra";
+import * as os from "os";
 import * as path from "path";
 
 suite(__filename, () => {
-  const nodePath = "external/nodejs_linux_amd64/bin/node";
-  const npmPath = "external/nodejs_linux_amd64/bin/npm";
+  const platformPath = os.platform() === "darwin" ? "nodejs_darwin_amd64" : "nodejs_linux_amd64";
+  const nodePath = `external/${platformPath}/bin/node`;
+  const npmPath = `external/${platformPath}/bin/npm`;
   const corePackageTarPath = "packages/@dataform/core/package.tgz";
   const cliEntryPointPath = "tests/cli/node_modules/@dataform/cli/bundle.js";
 
@@ -33,8 +35,10 @@ suite(__filename, () => {
     );
 
     // Write a simple file to the project.
+    const filePath = path.join(projectDir, "definitions", "example.sqlx");
+    fs.ensureFileSync(filePath);
     fs.writeFileSync(
-      path.join(projectDir, "definitions", "example.sqlx"),
+      filePath,
       `
 config { type: "table" }
 select 1 as test
