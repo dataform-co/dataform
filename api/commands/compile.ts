@@ -14,6 +14,8 @@ const simpleCheckProps: Array<keyof dataform.IProjectConfig> = [
   "defaultSchema"
 ];
 
+export class CompilationTimeoutError extends Error {}
+
 export async function compile(
   compileConfig: dataform.ICompileConfig = {}
 ): Promise<dataform.CompiledGraph> {
@@ -94,7 +96,7 @@ export class CompileChildProcess {
     const timeout = new Promise(
       (resolve, reject) =>
         (timer = setTimeout(
-          () => reject(new Error("Compilation timed out")),
+          () => reject(new CompilationTimeoutError("Compilation timed out")),
           compileConfig.timeoutMillis || 5000
         ))
     );
