@@ -1,4 +1,4 @@
-import Octokit from "@octokit/rest";
+import { Octokit } from "@octokit/rest";
 import express from "express";
 
 interface IIncident {
