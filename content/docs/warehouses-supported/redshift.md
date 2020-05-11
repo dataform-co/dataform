@@ -31,6 +31,8 @@ The Redshift user should have permissions to `CREATE` schemas and `SELECT` from 
 
 # Configuration options
 
+Redshift specific options can be applied to tables using the `redshift` configuration parameter.
+
 ## Distributing data
 
 You can configure how Redshift <a target="_blank" rel="noopener" href="https://docs.aws.amazon.com/redshift/latest/dg/t_Distributing_data.html#t_data_distribution_concepts">distributes data</a> in your cluster by configuring the `distStyle` and `distKey` properties.

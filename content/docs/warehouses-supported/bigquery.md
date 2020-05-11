@@ -12,11 +12,11 @@ Dataform will connect to BigQuery using a service account. You’ll need to crea
 3. Create a key for your new service account (in JSON format). You will upload this file to Dataform. Read
    <a target="_blank" rel="noopener" href="https://cloud.google.com/iam/docs/creating-managing-service-account-keys#creating_service_account_keys">this</a> if you need help.
 
-BigQuery specific options can be applied to tables using the `bigquery` configuration parameter.
-
 # Configuration options
 
 ## Setting table partitions
+
+BigQuery specific options can be applied to tables using the `bigquery` configuration parameter.
 
 BigQuery supports <a target="_blank" rel="noopener" href="https://cloud.google.com/bigquery/docs/partitioned-tables">partitioned tables</a>.
 These can be useful when you have data spread across many different dates but usually query the table on only a small range of dates.
