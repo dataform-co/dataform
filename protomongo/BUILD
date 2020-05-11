@@ -5,6 +5,7 @@ go_test(
     name = "go_default_test",
     srcs = ["protomongo_test.go"],
     embed = [":go_default_library"],
+    race = "on",
     deps = [
         ":example_go_proto",
         "@com_github_golang_protobuf//proto:go_default_library",
