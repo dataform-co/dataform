@@ -6,6 +6,7 @@ ts_library(
     name = "grpc-web-proxy",
     srcs = glob(["**/*.ts"]),
     deps = [
+        "//:modules-fix",
         "@npm//@types/bunyan",
         "@npm//@types/node",
         "@npm//@types/yargs",
