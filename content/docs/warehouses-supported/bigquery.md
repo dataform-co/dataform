@@ -96,15 +96,19 @@ You can configure separate project-ids for development and production in your `e
 
 Dataform validates the compiled script you are editing against BigQuery in real time. It will let you know if the query is valid (or won’t run) before having to run it.
 
+<video autoplay controls loop  muted  width="680" ><source src="https://assets.dataform.co/docs/compilation.mp4" type="video/mp4" ><span>Real time compilation video</span></video>
+
 ## Bytes processed
 
 Dataform displays Bytes processed and Bytes billed for every run you do in Dataform in the run logs page. You can then estimate the cost of those queries by multiplying the bytes billed by your company price per Byte.
+
+<img src="https://assets.dataform.co/docs/bigquery_billing.png" width="858" height="832" alt="" />
 
 # Packages
 
 ## BigQuery Audit Logs
 
-We published a package that helps the analysis of BigQuery usage logs. You can find more information by reading the related blog post or the package page.
+We published a package that helps the analysis of BigQuery usage logs. You can find more information by reading the related [blog post](https://dataform.co/blog/exporting-bigquery-usage-logs) or the [package page](http://localhost:3001/packages/dataform-bq-audit-logs).
 
 # Blog posts
 

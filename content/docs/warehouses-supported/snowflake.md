@@ -61,6 +61,8 @@ You can configure separate databases for development and production in your `env
 
 Dataform validates the compiled script you are editing against Snowflake in real time. It will let you know if the query is valid (or won’t run) before having to run it.
 
+<video autoplay controls loop  muted  width="680" ><source src="https://assets.dataform.co/docs/compilation.mp4" type="video/mp4" ><span>Real time compilation video</span></video>
+
 # Getting help
 
 If you are using Dataform web and are having trouble connecting to Snowflake, please reach out to us by using the intercom messenger at the bottom right.

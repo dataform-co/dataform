@@ -89,6 +89,8 @@ SELECT 1 AS ts
 
 Dataform validates the compiled script you are editing against Redshift in real time. It will let you know if the query is valid (or won’t run) before having to run it.
 
+<video autoplay controls loop  muted  width="680" ><source src="https://assets.dataform.co/docs/compilation.mp4" type="video/mp4" ><span>Real time compilation video</span></video>
+
 # Blog posts
 
 ## Import data from S3 to Redshift using Dataform
