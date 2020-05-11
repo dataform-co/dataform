@@ -27,7 +27,7 @@ You may also need to whitelist Dataform's IP addresses to let Dataform access yo
 
 ## Querying different databases
 
-You can both read from and publish to two separate snowflake databases within a single Dataform project. For example, you may have a database called `RAW_SOURCE` that contains raw data loaded in your warehouse and a database called `ANALYTICS` in which you create data tables you use for analytics and reporting.
+You can read from and publish to an unlimited number of snowflake databases within a single Dataform project. For example, you may have a database called `RAW_SOURCE` that contains raw data loaded in your warehouse and a database called `ANALYTICS` in which you create data tables you use for analytics and reporting.
 
 You can define a default database in your `dataform.json` file.
 
