@@ -100,7 +100,7 @@ Dataform validates the compiled script you are editing against BigQuery in real 
 
 ## Bytes processed
 
-Dataform displays Bytes processed and Bytes billed for every run you do in Dataform in the run logs page. You can then estimate the cost of those queries by multiplying the bytes billed by your company price per Byte.
+Dataform displays Bytes processed and Bytes billed for every run you do in Dataform in the run logs page. You can then estimate the cost of those queries by multiplying the bytes billed by your project's [price per TB](https://cloud.google.com/bigquery/pricing#queries).
 
 <img src="https://assets.dataform.co/docs/bigquery_billing.png" width="858" height="832" alt="" />
 
