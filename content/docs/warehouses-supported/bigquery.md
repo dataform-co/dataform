@@ -64,7 +64,7 @@ In order to be able to query Google Sheets tables via BigQuery, you'll need to s
 
 ## Using different project_ids within the same project
 
-You can both read from and publish to two separate GCP project_ids within a single Dataform project. For example, you may have a project_id called `raw` that contains raw data loaded in your warehouse and a project_id called `analytics` in which you create data tables you use for analytics and reporting.
+You can both read from and publish to an unlimited number of GCP project_ids within a single Dataform project. For example, you may have a project_id called `raw` that contains raw data loaded in your warehouse and a project_id called `analytics` in which you create data tables you use for analytics and reporting.
 
 Your default project id is defined in the `defaultDatabase` field in your `dataform.json` file.
 
