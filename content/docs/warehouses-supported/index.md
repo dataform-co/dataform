@@ -1,3 +1,3 @@
 ---
-title: Warehouse integrations
+title: Warehouses supported
 ---

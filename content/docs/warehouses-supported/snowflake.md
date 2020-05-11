@@ -49,8 +49,11 @@ config {
     database: “RAW_SOURCE”
 }
 
-
 ```
+
+### Using separate databases for development and production
+
+You can configure separate databases for development and production in your `environment.json` file. The process is described on [this page](https://docs.dataform.co/dataform-web/guides/environments#example-use-separate-databases-for-development-and-production-data).
 
 # Dataform web features
 
