@@ -2,7 +2,17 @@
 title: Azure SQL Data Warehouse
 ---
 
-Azure SQL Data Warehouse specific options can be applied to tables using the `sqldatawarehouse` configuration parameter.
+# Authentification
+
+Azure SQL data warehouse connections require the following elements:
+
+- Server
+- Port
+- Username
+- Password
+- Database name
+
+# Configuration options
 
 ## Setting table distribution
 
@@ -28,3 +38,11 @@ CREATE TABLE "dataform"."example"
 WITH (distribution = REPLICATE)
 AS SELECT CURRENT_TIMESTAMP() AS ts
 ```
+
+# Getting help
+
+If you are using Dataform web and are having trouble connecting to Azure SQL Data Warehouse, please reach out to us by using the intercom messenger at the bottom right.
+
+If you have other questions, you can join our slack community and ask question to get help.
+
+<a href="https://slack.dataform.co"><button>Join dataform-users on slack</button></a>
