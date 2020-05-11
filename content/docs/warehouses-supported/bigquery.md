@@ -59,7 +59,7 @@ SELECT CURRENT_TIMESTAMP() as ts, name, revenue
 
 In order to be able to query Google Sheets tables via BigQuery, you'll need to share the sheet with the service account that is used by Dataform.
 
-- Find the email address of the service account you connected Dataform with by looking in the `.df-credentials.json` file locally, or by finding the account from the [Google Cloud IAM service accounts console](https://console.cloud.google.com/iam-admin/serviceaccounts).
+- Find the email address of the service account through which you connected to Dataform. You can find this on the [Google Cloud IAM service accounts console page](https://console.cloud.google.com/iam-admin/serviceaccounts). If you're developing your Dataform project locally (as opposed to using Dataform Web), you can find the service accounts email in the `.df-credentials.json` file.
 - Share the Google sheet with the email address of the service account as you would a colleague, through the sheets sharing settings and make sure it has access.
 
 ## Using different project_ids within the same project
