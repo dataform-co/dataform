@@ -1,9 +1,7 @@
 import * as bp from "@blueprintjs/core";
 import * as styles from "df/components/flex.css";
+import { Resizable } from "re-resizable";
 import * as React from "react";
-
-// tslint:disable-next-line: no-var-requires
-const Resizable = require("re-resizable");
 
 export interface IFlexItemProps extends React.HTMLAttributes<HTMLDivElement> {
   width?: number;
