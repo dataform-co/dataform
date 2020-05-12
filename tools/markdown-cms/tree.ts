@@ -3,6 +3,7 @@ import { basename, join } from "path";
 
 export interface IBaseAttributes {
   title: string;
+  subtitle?: string;
 }
 
 type IWithBaseAttributes<T> = T & IBaseAttributes;
@@ -44,7 +45,7 @@ export class Tree<T> implements ITree<T> {
     const pathParts = path.split("/");
     return pathParts.reduce(
       (acc: Tree<T>, curr: string) =>
-        !curr ? acc : acc.children.find(child => child.path === join(acc.path, curr)),
+        !curr ? acc : acc.children.find((child) => child.path === join(acc.path, curr)),
       this
     );
   }
@@ -58,7 +59,7 @@ export class Tree<T> implements ITree<T> {
     return {
       ...this,
       content: undefined,
-      children: this.children.map(child => child.index())
+      children: this.children.map((child) => child.index()),
     };
   }
 }

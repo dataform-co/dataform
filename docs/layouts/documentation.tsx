@@ -17,15 +17,15 @@ export interface IProps {
 export default class Documentation extends React.Component<IProps> {
   public getHeaderLinks(): IHeaderLink[] {
     return React.Children.toArray(this.props.children || [])
-      .map(child => child as React.ReactElement<any>)
-      .filter(child => !!child.props.children)
-      .map(child =>
+      .map((child) => child as React.ReactElement<any>)
+      .filter((child) => !!child.props.children)
+      .map((child) =>
         React.Children.toArray(child.props.children)
-          .map(grandChild => grandChild as React.ReactElement<any>)
-          .filter(grandChild => grandChild.type === "h2")
-          .map(grandChild => ({
+          .map((grandChild) => grandChild as React.ReactElement<any>)
+          .filter((grandChild) => grandChild.type === "h2")
+          .map((grandChild) => ({
             id: grandChild.props.id,
-            text: grandChild.props.children[0]
+            text: grandChild.props.children[0],
           }))
       )
       .reduce((acc, curr) => [...acc, ...curr], []);
@@ -46,6 +46,7 @@ export default class Documentation extends React.Component<IProps> {
           <div className={styles.mainContent}>
             <div className={styles.titleBlock}>
               <h1>{this.props.current.attributes.title}</h1>
+              <div className={styles.subheader}>{this.props.current.attributes.subtitle}</div>
             </div>
             {this.props.children}
           </div>

@@ -10,7 +10,7 @@ export interface IExtraAttributes {
 export const localCms = new LocalCms("content/docs");
 
 const githubTreeCache = new NodeCache({
-  stdTTL: 5 * 60 * 1000 // 5 Minutes.
+  stdTTL: 5 * 60 * 1000, // 5 Minutes.
 });
 
 async function getGithubTree(version: string): Promise<Tree<IExtraAttributes>> {
@@ -24,7 +24,7 @@ async function getGithubTree(version: string): Promise<Tree<IExtraAttributes>> {
     owner: "dataform-co",
     repo: "dataform",
     rootPath: "content/docs",
-    ref: version
+    ref: version,
   }).get();
 
   if (version === "master") {
@@ -34,7 +34,7 @@ async function getGithubTree(version: string): Promise<Tree<IExtraAttributes>> {
 }
 
 const packageTreesCache = new NodeCache({
-  stdTTL: 5 * 60 * 1000 // 5 Minutes.
+  stdTTL: 5 * 60 * 1000, // 5 Minutes.
 });
 async function getPackageTrees(): Promise<Array<Tree<IExtraAttributes>>> {
   const cachedTree = packageTreesCache.get("packages");
@@ -48,26 +48,26 @@ async function getPackageTrees(): Promise<Array<Tree<IExtraAttributes>>> {
       {
         owner: "dataform-co",
         repo: "dataform-segment",
-        title: "Segment"
+        title: "Segment",
       },
       {
         owner: "dataform-co",
         repo: "dataform-bq-audit-logs",
-        title: "BigQuery Audit Logs"
-      }
+        title: "BigQuery Audit Logs",
+      },
     ].map(async ({ owner, repo, title }) => {
       const tree = await new GitHubCms<IExtraAttributes>({
         owner,
         repo,
         rootPath: "",
-        ref: "master"
+        ref: "master",
       }).get("README.md");
 
       return new Tree<IExtraAttributes>(
         `packages/${repo}`,
         tree.content,
         {
-          title
+          title,
         },
         tree.editLink
       );
@@ -87,20 +87,22 @@ export async function getContentTree(version = "local"): Promise<Tree<IExtraAttr
   tree.addChild(
     new Tree("reference", "", {
       title: "API Reference",
-      priority: 3
+      priority: 3,
     })
   );
 
   tree.getChild("dataform-web").addChild(
     new Tree("dataform-web/api-reference", "", {
       title: "Web API Reference",
-      priority: 3
+      priority: 3,
     })
   );
 
   // Add packages to the tree.
 
-  (await getPackageTrees()).forEach(packageTree => tree.getChild("packages").addChild(packageTree));
+  (await getPackageTrees()).forEach((packageTree) =>
+    tree.getChild("packages").addChild(packageTree)
+  );
 
   return tree;
 }

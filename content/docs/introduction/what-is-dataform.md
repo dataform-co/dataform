@@ -1,5 +1,6 @@
 ---
 title: Getting Started
+subtitle: Manage data in your warehouse with Dataform and SQLX
 priority: 0
 ---
 

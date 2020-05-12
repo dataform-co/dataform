@@ -47,15 +47,22 @@
 }
 
 .titleBlock {
-  display: flex;
   align-items: center;
 }
 
 .titleBlock h1 {
   margin-top: 0px;
   padding-top: 0px;
+  margin-bottom: 0px;
 }
 
 .titleRight {
   margin-top: 10px;
+}
+
+.subheader {
+  color: #6c6c6c;
+  font-family: "Open Sans", sans-serif;
+  font-size: 18px;
+  line-height: 28px;
 }
