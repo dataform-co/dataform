@@ -1,6 +1,6 @@
 import * as bp from "@blueprintjs/core";
 import * as styles from "df/components/flex.css";
-import { Resizable } from "re-resizable";
+import Resizable from "re-resizable";
 import * as React from "react";
 
 export interface IFlexItemProps extends React.HTMLAttributes<HTMLDivElement> {

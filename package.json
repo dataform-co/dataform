@@ -93,7 +93,7 @@
     "pretty-ms": "^4.0.0",
     "promise-pool-executor": "^1.1.1",
     "protobufjs": "6.8.8",
-    "re-resizable": "^6.3.2",
+    "re-resizable": "^4.7.1",
     "react": "^16.12.0",
     "react-dom": "^16.12.0",
     "react-instantsearch-dom": "^5.5.0",
