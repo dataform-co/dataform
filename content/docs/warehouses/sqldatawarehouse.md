@@ -41,7 +41,11 @@ AS SELECT CURRENT_TIMESTAMP() AS ts
 
 # Getting help
 
+<<<<<<< HEAD:content/docs/warehouses/sqldatawarehouse.md
 If you are using Dataform web and are having trouble connecting to Azure SQL Data Warehouse, please reach out to us by using the intercom messenger icon at the bottom right of the app.
+=======
+If you are using Dataform web and are having trouble connecting to Azure SQL Data Warehouse, please reach out to us by using the intercom messenger at the bottom right.
+>>>>>>> origin/master:content/docs/warehouses-supported/sqldatawarehouse.md
 
 If you have other questions, you can join our slack community and ask question to get help.
 
