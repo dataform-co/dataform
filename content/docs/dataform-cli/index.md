@@ -1,5 +1,5 @@
 ---
-title: Dataform CLI
+title: Use the Dataform CLI
 priority: 4
 ---
 

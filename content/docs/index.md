@@ -8,7 +8,7 @@ Dataform makes it easy to manage complex SQL pipelines in your data warehouse. U
 
 # Get started
 
-For an overview of setting up Dataform and it's core concepts, check out our [getting started guide](getting-started).
+For an overview of setting up Dataform and it's core concepts, check out our [getting started guide](introduction/getting-started).
 
 To use Dataform web's development environment, create an account [here](https://app.dataform.co).
 
