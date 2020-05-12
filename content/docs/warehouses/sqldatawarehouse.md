@@ -1,5 +1,6 @@
 ---
 title: Azure SQL Data Warehouse
+subtitle: Authentification and configuration options for Azure SQL Data Warehouse
 ---
 
 # Authentification

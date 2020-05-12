@@ -1,5 +1,6 @@
 ---
 title: Create new packages
+subtitle: Learn how to create packages
 priority: 1
 ---
 

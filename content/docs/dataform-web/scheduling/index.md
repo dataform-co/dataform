@@ -1,5 +1,6 @@
 ---
 title: Schedule runs
+subtitle: Learn how to schedule runs and view logs
 priority: 2
 ---
 

@@ -1,5 +1,6 @@
 ---
 title: Google BigQuery
+subtitle: Authentification, configuration options, and content for BigQuery
 priority: 1
 ---
 
@@ -93,7 +94,7 @@ config {
 
 You can configure separate project-ids for development and production in your `environment.json` file. The process is described on [this page](https://docs.dataform.co/dataform-web/guides/environments#example-use-separate-databases-for-development-and-production-data).
 
-# Dataform web features
+# Dataform web features for BigQuery
 
 ## Real time query validation
 

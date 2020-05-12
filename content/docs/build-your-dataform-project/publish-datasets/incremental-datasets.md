@@ -1,5 +1,6 @@
 ---
 title: Incremental datasets
+subtitle: Learn how to configure tables that update incrementally
 priority: 2
 ---
 

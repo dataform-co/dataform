@@ -1,5 +1,6 @@
 ---
 title: Postgres
+subtitle: Authentification and configuration options for Postgres
 ---
 
 # Authentification
@@ -15,7 +16,7 @@ Postgres projects require the following configuration settings:
   Dataform's IP addresses must be whitelisted in order to access your Postgres instance. Dataform's IP addresses are <code>35.233.106.210</code> and <code>104.196.10.242</code>.
 </div>
 
-# Dataform web features
+# Dataform web features for Postgres
 
 ## Real time query validation
 

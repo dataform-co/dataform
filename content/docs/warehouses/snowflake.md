@@ -1,5 +1,6 @@
 ---
 title: Snowflake
+subtitle: Authentification, configuration options, and content for Snowflake
 priority: 0
 ---
 
@@ -54,7 +55,7 @@ config {
 
 You can configure separate databases for development and production in your `environment.json` file. The process is described on [this page](https://docs.dataform.co/dataform-web/guides/environments#example-use-separate-databases-for-development-and-production-data).
 
-# Dataform web features
+# Dataform web features for Snowflake
 
 ## Real time query validation
 

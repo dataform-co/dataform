@@ -1,5 +1,6 @@
 ---
 title: Configure your project
+subtitle: Learn how to configure your Dataform project
 priority: 5
 ---
 

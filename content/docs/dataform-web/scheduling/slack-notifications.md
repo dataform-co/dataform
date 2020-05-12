@@ -1,5 +1,6 @@
 ---
 title: Slack Notifications
+subtitle: Learn about configuring slack notifications with Dataform web
 ---
 
 ## Introduction
@@ -21,7 +22,7 @@ up notifications to a [Slack](https://www.slack.com) channel.
 2. Navigate to the scheduling page using the left menu.
 3. Open the "Notification Channels" tab.
 4. Click "Add Channel". Give the channel a name, choose the "Slack" notification type, and copy in the "Webhook URL" from
-the previous step.
+   the previous step.
 5. Click "Create Channel".
 
 ## Add the notification channel to a schedule
