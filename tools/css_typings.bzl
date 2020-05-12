@@ -7,12 +7,13 @@ def _impl(ctx):
         outs.append(out)
         patterns = [f.path]
         if not f.root.path == "":
-            patterns = [f.short_path, f.root.path]
+            patterns = [f.short_path, f.root.path + ("/" + ctx.label.workspace_root if ctx.label.workspace_root else "")]
+        out_dir =  out.root.path + ("/" + ctx.label.workspace_root if ctx.label.workspace_root else "")
         ctx.actions.run(
             inputs = [f],
             outputs = [out],
             executable = ctx.executable._tool,
-            arguments = ["--silent", "--outDir", out.root.path, "--pattern"] + patterns,
+            arguments = ["--silent", "--outDir", out_dir, "--pattern"] + patterns,
             progress_message = "Generating CSS type definitions for %s" % f.path,
         )
 
