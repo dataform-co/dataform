@@ -34,6 +34,13 @@ export class ValidationRules {
       message: "One of the emails is in an invalid format."
     };
   }
+
+  public static noWhitespace(): IValidationRule<string> {
+    return {
+      predicate: v => !v?.match(/\s/),
+      message: "May not contain whitespace."
+    };
+  }
 }
 
 /**
