@@ -1,0 +1,19 @@
+/*!
+
+Copyright 2017-present Palantir Technologies, Inc. All rights reserved.
+Licensed under the Apache License, Version 2.0.
+
+*/
+
+.bp3-table-container {
+  -webkit-box-shadow: none !important;
+  box-shadow: none !important;
+}
+
+.bp3-tree-node-label a {
+  color: inherit;
+}
+
+.bp3-tree-node-label a:hover {
+  text-decoration: none;
+}
