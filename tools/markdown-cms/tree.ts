@@ -28,6 +28,17 @@ export class Tree<T> implements ITree<T> {
 
     return new Tree(path, content, attributes as any, editLink, []);
   }
+
+  public static createFromIndex<T>(index: ITree<T>): Tree<T> {
+    return new Tree<T>(
+      index.path,
+      "",
+      index.attributes,
+      index.editLink,
+      (index.children || []).map(child => Tree.createFromIndex(child))
+    );
+  }
+
   public readonly name: string;
 
   constructor(
@@ -45,7 +56,7 @@ export class Tree<T> implements ITree<T> {
     const pathParts = path.split("/");
     return pathParts.reduce(
       (acc: Tree<T>, curr: string) =>
-        !curr ? acc : acc.children.find((child) => child.path === join(acc.path, curr)),
+        !curr ? acc : acc.children.find(child => child.path === join(acc.path, curr)),
       this
     );
   }
@@ -59,7 +70,7 @@ export class Tree<T> implements ITree<T> {
     return {
       ...this,
       content: undefined,
-      children: this.children.map((child) => child.index()),
+      children: this.children.map(child => child.index())
     };
   }
 }

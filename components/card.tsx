@@ -83,12 +83,13 @@ export const CardGrid = ({
   minWidth = 400,
   children,
   className,
+  style,
   ...rest
 }: ICardGridProps & React.PropsWithChildren<{}> & React.HTMLAttributes<HTMLDivElement>) => {
   return (
     <div
       className={[styles.cardGrid, className].join(" ")}
-      style={{ gridTemplateColumns: `repeat(auto-fit, minmax(${minWidth}px, 1fr))` }}
+      style={{ ...style, gridTemplateColumns: `repeat(auto-fit, minmax(${minWidth}px, 1fr))` }}
       {...rest}
     >
       {children}

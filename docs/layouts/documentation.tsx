@@ -1,10 +1,11 @@
 import { Button } from "@blueprintjs/core";
-import Navigation from "df/docs/components/navigation";
+import { Card, CardActions, CardGrid } from "df/components/card";
+import Navigation, { getLink } from "df/docs/components/navigation";
 import { IHeaderLink, PageLinks } from "df/docs/components/page_links";
 import { IExtraAttributes } from "df/docs/content_tree";
 import { BaseLayout } from "df/docs/layouts/base";
 import * as styles from "df/docs/layouts/documentation.css";
-import { ITree } from "df/tools/markdown-cms/tree";
+import { ITree, Tree } from "df/tools/markdown-cms/tree";
 import * as React from "react";
 
 export interface IProps {
@@ -17,15 +18,15 @@ export interface IProps {
 export default class Documentation extends React.Component<IProps> {
   public getHeaderLinks(): IHeaderLink[] {
     return React.Children.toArray(this.props.children || [])
-      .map((child) => child as React.ReactElement<any>)
-      .filter((child) => !!child.props.children)
-      .map((child) =>
+      .map(child => child as React.ReactElement<any>)
+      .filter(child => !!child.props?.children)
+      .map(child =>
         React.Children.toArray(child.props.children)
-          .map((grandChild) => grandChild as React.ReactElement<any>)
-          .filter((grandChild) => grandChild.type === "h2")
-          .map((grandChild) => ({
+          .map(grandChild => grandChild as React.ReactElement<any>)
+          .filter(grandChild => grandChild.type === "h2")
+          .map(grandChild => ({
             id: grandChild.props.id,
-            text: grandChild.props.children[0],
+            text: grandChild.props.children[0]
           }))
       )
       .reduce((acc, curr) => [...acc, ...curr], []);
@@ -33,6 +34,8 @@ export default class Documentation extends React.Component<IProps> {
 
   public render() {
     const currentHeaderLinks = this.props.headerLinks || this.getHeaderLinks();
+    const tree = Tree.createFromIndex(this.props.index);
+    const current = tree.getChild(this.props.current.path);
     return (
       <BaseLayout title={`${this.props.current.attributes.title} | Dataform`}>
         <div className={styles.container}>
@@ -49,6 +52,18 @@ export default class Documentation extends React.Component<IProps> {
               <div className={styles.subheader}>{this.props.current.attributes.subtitle}</div>
             </div>
             {this.props.children}
+            <CardGrid minWidth={250} style={{ margin: "60px 0px 20px" }}>
+              {(current.children?.length > 0 ? current.children : []).map(child => (
+                <Card header={child.attributes?.title}>
+                  <p>{child.attributes?.subtitle}</p>
+                  <CardActions align="right">
+                    <a href={getLink(child.path, this.props.version)}>
+                      <Button minimal={true} text="Read more" />
+                    </a>
+                  </CardActions>
+                </Card>
+              ))}
+            </CardGrid>
           </div>
           <div className={styles.sidebarRight}>
             <div className={styles.titleRight}>

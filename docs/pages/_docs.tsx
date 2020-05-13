@@ -1,3 +1,4 @@
+import { Button, Callout } from "@blueprintjs/core";
 import rehypePrism from "@mapbox/rehype-prism";
 import { getContentTree, IExtraAttributes } from "df/docs/content_tree";
 import Documentation from "df/docs/layouts/documentation";
@@ -17,7 +18,7 @@ interface IQuery {
   path2: string;
 }
 
-interface IProps {
+export interface IProps {
   index: ITree<IExtraAttributes>;
   current: ITree<IExtraAttributes>;
   version: string;
@@ -61,8 +62,12 @@ export class Docs extends React.Component<IProps> {
             .use(rehypeSlug)
             .use(rehypePrism)
             .use(rehypeRaw)
-            .use(rehypeReact, { createElement: React.createElement })
+            .use(rehypeReact, {
+              createElement: React.createElement,
+              components: { button: Button, callout: Callout }
+            })
             .processSync(this.props.current.content).contents}
+        {this.props.children}
       </Documentation>
     );
   }

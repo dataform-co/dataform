@@ -4,91 +4,11 @@
 
 :global body {
   overflow-y: scroll !important;
-}
-:global body .bp3-button.bp3-intent-primary {
-  background-color: colorsButtonBlue;
-}
-
-:global body .bp3-button.bp3-intent-primary:hover {
-  background-color: colorsButtonBlue;
-}
-
-:global body .bp3-button.bp3-intent-success {
-  background-color: colorsButtonGreen;
-}
-
-:global body .bp3-button.bp3-intent-success:hover {
-  background-color: colorsButtonGreen;
-}
-
-:global body .bp3-input {
-  height: 42px;
-  line-height: 42px;
   font-size: 16px;
 }
 
 :global body .bp3-menu {
   background-color: transparent;
-}
-
-:global body {
-  font-family: "Open Sans";
-  color: colorsTextMain;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  font-size: 14px;
-}
-
-:global body input {
-  font-family: "Open Sans";
-  color: colorsTextMain;
-  font-size: 16px;
-}
-
-:global body a {
-  text-decoration: none;
-  color: #2f419b;
-}
-
-:global body a:hover {
-  text-decoration: none;
-  color: black;
-}
-
-:global h1,
-:global h2,
-:global h3,
-:global h4,
-:global h5 {
-  font-family: "Poppins";
-  letter-spacing: -0.03em;
-  color: #2f2d44;
-  font-weight: 500;
-}
-
-:global body h1 {
-  line-height: 58px;
-  font-size: 31px;
-}
-
-:global body h2 {
-  line-height: 22px;
-  font-size: 22px;
-}
-
-:global body h3 {
-  line-height: 46px;
-  font-size: 20px;
-}
-
-:global body h4 {
-  line-height: 36px;
-  font-size: 17px;
-}
-
-:global body h5 {
-  line-height: 26px;
-  font-size: 14px;
 }
 
 :global body p,

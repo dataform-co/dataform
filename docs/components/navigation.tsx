@@ -42,7 +42,7 @@ export default class Navigation extends React.Component<IProps> {
           return (
             <React.Fragment key={tree.path}>
               <li className={classNames.join(" ")}>
-                <a href={`/${this.props.version ? `v/${this.props.version}/` : ""}${tree.path}`}>
+                <a href={getLink(tree.path, this.props.version)}>
                   {tree.attributes.title}
                   {depth > 0 && hasChildren && <Icon icon="chevron-right" />}
                 </a>
@@ -56,4 +56,8 @@ export default class Navigation extends React.Component<IProps> {
       </ul>
     );
   }
+}
+
+export function getLink(path: string, version: string) {
+  return `/${version ? `v/${version}/` : ""}${path}`;
 }

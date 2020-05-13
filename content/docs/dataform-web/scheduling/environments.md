@@ -11,13 +11,15 @@ By default, Dataform runs all of your project code directly off your project's `
 
 A common use-case for environments is to run a staged release process. Code is first run in a `staging` environment, and after being sufficiently tested, is then later pushed to a `production` environment.
 
-<div className="bp3-callout bp3-icon-info-sign" markdown="1">
+<callout intent="info">
   If you would like to use environments, please verify that the version of <code>@dataform/core</code> that your project uses is at least <code>1.4.9</code>.
-</div>
+</callout>
 
-<div className="bp3-callout bp3-icon-info-sign" markdown="1">
+<br />
+
+<callout intent="info">
   Environments are an advanced feature. To get the most out of them, the <b>use of an external Git provider is recommended</b>. This makes it easier to view specific commit SHAs, manage Git branches, and control your release process.
-</div>
+</callout>
 
 ## Configuring environments
 
@@ -29,9 +31,9 @@ An environment consists of:
 - a Git reference at which the code should be run (either a branch name or a commit SHA)
 - (optionally) overridden values for the project's configuration (the settings in `dataform.json`)
 
-<div className="bp3-callout bp3-icon-info-sign bp3-intent-warning" markdown="1">
+<callout intent="warning">
 If an environment is configured using a branch, that branch must exist on the project's remote Git repository (e.g. GitHub, if the project is stored there). Note that <b>Dataform branches are not remote Git branches.</b>
-</div>
+</callout>
 
 A simple example of an `environments.json` file is:
 
@@ -56,9 +58,9 @@ This `staging` environment runs the code (and schedules) at the `67bed6bd4205ce9
 
 Note that Dataform uses the `environments.json` file on your `master` branch to determine your project's environments. **Any changes to your environments must be pushed to `master` before Dataform will take note of those changes**.
 
-<div className="bp3-callout bp3-icon-info-sign" markdown="1">
+<callout>
   If your project has a missing or empty <code>environments.json</code> file, Dataform uses a default environment which runs the code on your <code>master</code> branch with no configuration overrides.
-</div>
+</callout>
 
 ## Example: manage a production release process using environments
 
@@ -105,8 +107,11 @@ A nice property of this configuration is that any change to the `production` env
 
 To update the version of the project running in `production`, change the value of `commitSha`, and then push that change to your `master` branch. On GitHub, Git commit SHAs can be found by opening the project page and clicking 'commits'.
 
-<div className="bp3-callout bp3-icon-info-sign" markdown="1">
-  <p>A Git branch can be specified instead of a commit SHA: <code>"gitReference": { "branch": "GIT_BRANCH_NAME_GOES_HERE" }</code></p>
+<callout>
+  <p>A Git branch can be specified instead of a commit SHA:</p>
+  <p>
+  <code>"gitReference": { "branch": "GIT_BRANCH_NAME_GOES_HERE" }</code>
+  </p>
 
 <p>
 However, we do not recommend using Git branches to manage a <code>production</code> environment:
@@ -116,7 +121,7 @@ However, we do not recommend using Git branches to manage a <code>production</co
     <li>Consequently, the audit trail of changes made to the environment can be harder to follow</li>
   </ul>
 </p>
-</div>
+</callout>
 
 ### Per-environment schema suffixes
 
