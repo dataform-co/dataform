@@ -38,7 +38,7 @@ export const Card = ({
       )}
       <div
         className={`${styles.cardContentContainer} ${
-          fullWidth ? styles.fullWithCardContentContainer : ""
+          fullWidth ? styles.fullWidthCardContentContainer : ""
         }`}
       >
         {children}
@@ -103,6 +103,19 @@ export const CardList = ({
 }: React.PropsWithChildren<{}> & React.HTMLAttributes<HTMLDivElement>) => {
   return (
     <div className={[styles.cardList, className].join(" ")} {...rest}>
+      {children}
+    </div>
+  );
+};
+
+export const CardMasonry = ({
+  minWidth = 200,
+  children,
+  className,
+  ...rest
+}: ICardGridProps & React.PropsWithChildren<{}> & React.HTMLAttributes<HTMLDivElement>) => {
+  return (
+    <div className={[styles.cardMasonry, className].join(" ")} {...rest}>
       {children}
     </div>
   );

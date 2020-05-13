@@ -1,5 +1,10 @@
 .cardContainer {
-  display: flex;
+  display: inline-block;
+  margin: 10px;
+  width: 100%;
+  width: -moz-available;
+  width: -webkit-fill-available;
+  width: fill-available;
   overflow: auto;
   max-width: 100%;
   border-radius: 5px;
@@ -81,17 +86,20 @@
   padding: 0px 20px 12px;
 }
 
-.fullWithCardContentContainer {
+.fullWidthCardContentContainer {
   padding: 0px;
 }
 
 .cardGrid {
   display: grid;
-  grid-row-gap: 20px;
-  grid-column-gap: 20px;
-  margin: 20px;
 }
 
 .cardList > * {
   margin-bottom: 20px;
+}
+
+.cardMasonry {
+  columns: 2 200px;
+  column-gap: 10px;
+  margin: 10px;
 }
