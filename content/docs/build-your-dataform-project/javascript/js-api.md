@@ -1,5 +1,6 @@
 ---
-title: Use JavaScript files to define several actions
+title: Use JavaScript files
+subtitle: Learn how to define several actions in a single Javascript file
 priority: 2
 ---
 

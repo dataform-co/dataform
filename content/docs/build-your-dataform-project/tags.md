@@ -1,5 +1,6 @@
 ---
 title: Organise your project with tags
+subtitle: Learn how to organise your project with tags
 priority: 7
 ---
 

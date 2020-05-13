@@ -1,5 +1,6 @@
 ---
 title: Declare external datasets with declarations
+subtitle: Learn how to declare external datasets with declarations
 priority: 4
 ---
 

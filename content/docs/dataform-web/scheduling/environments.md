@@ -1,5 +1,6 @@
 ---
 title: Environments
+subtitle: Learn about environments in Dataform web and how to configure them
 ---
 
 ## Introduction
@@ -157,27 +158,28 @@ In the example below:
 - the `production` environment specifies the `master` Git branch, so all of its schedules will run using that version of the code
 
 `dataform.json`:
+
 ```json
 {
-    "warehouse": "bigquery",
-    "defaultSchema": "dataform_data",
-    "defaultDatabase": "analytics-development",
+  "warehouse": "bigquery",
+  "defaultSchema": "dataform_data",
+  "defaultDatabase": "analytics-development"
 }
 ```
 
-
 `environments.json`:
+
 ```json
- {
-    "environments": [
-        {
-            "name": "production",
-            "gitReference": {
-                "branch": "master"
-            },
-            "configOverride": { "defaultDatabase": "analytics-production" }
-        }
-    ]
+{
+  "environments": [
+    {
+      "name": "production",
+      "gitReference": {
+        "branch": "master"
+      },
+      "configOverride": { "defaultDatabase": "analytics-production" }
+    }
+  ]
 }
 ```
 

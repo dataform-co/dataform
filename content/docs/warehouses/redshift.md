@@ -1,5 +1,6 @@
 ---
 title: Amazon Redshift
+subtitle: Authentification, configuration options, and content for Redshift
 priority: 2
 ---
 
@@ -86,7 +87,7 @@ config {
 SELECT 1 AS ts
 ```
 
-# Dataform web features
+# Dataform web features for Redshift
 
 ## Real time query validation
 

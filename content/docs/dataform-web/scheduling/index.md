@@ -1,5 +1,6 @@
 ---
 title: Schedule runs
+subtitle: Learn how to schedule runs and view logs
 priority: 2
 ---
 
@@ -21,13 +22,11 @@ Schedules can be used to run any selection of your datasets at a user-specified 
 2. Click `Add schedule`
 3. Enter your schedule's settings and click `Create schedule`
 
-![Create schedule](/static/images/how_to_guides/scheduling/create_schedule.png)
-
 ## View past runs
 
 You can find all current and historical scheduled runs in the _Run logs_ page, accessible using the left menu bar.
 
-![Run logs](/static/images/how_to_guides/scheduling/run_logs.png)
+![Run logs](https://assets.dataform.co/docs/bigquery_billing.png)
 
 ## Scheduler access tokens
 
