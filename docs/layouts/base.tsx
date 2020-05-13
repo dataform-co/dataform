@@ -12,7 +12,7 @@ export interface IProps {
   title: string;
 }
 
-const MAX_WIDTH = "1400px";
+const MAX_WIDTH = "1600px";
 
 export class BaseLayout extends React.Component<IProps, {}> {
   public render() {

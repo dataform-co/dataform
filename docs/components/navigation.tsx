@@ -31,7 +31,7 @@ export default class Navigation extends React.Component<IProps> {
       <ul className={styles[`depth${depth}`]}>
         {trees.map(tree => {
           const classNames = [styles[`depth${depth}`]];
-          if (this.props.currentPath === tree.path) {
+          if (this.props.currentPath.includes(tree.path)) {
             classNames.push(styles.active);
           }
           const hasChildren = tree.children && tree.children.length > 0;
@@ -42,13 +42,17 @@ export default class Navigation extends React.Component<IProps> {
           return (
             <React.Fragment key={tree.path}>
               <li className={classNames.join(" ")}>
-                <a href={getLink(tree.path, this.props.version)}>
-                  {tree.attributes.title}
-                  {depth > 0 && hasChildren && <Icon icon="chevron-right" />}
+                <a href={getLink(tree.path, this.props.version)} className={styles.title}>
+                  <div className={styles.icon}>
+                    {" "}
+                    {tree.attributes.icon && <Icon iconSize={20} icon={tree.attributes.icon as any} />}
+                  </div>
+                  <div>{tree.attributes.title}</div>
                 </a>
               </li>
               {tree.children &&
                 tree.children.length > 0 &&
+                (this.props.currentPath.includes(tree.path)) &&
                 this.renderTrees(tree.children, depth + 1)}
             </React.Fragment>
           );

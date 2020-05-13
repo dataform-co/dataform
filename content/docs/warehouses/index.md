@@ -1,6 +1,7 @@
 ---
 title: Warehouses supported
 priority: 1
+icon: database
 ---
 
 # Supported data warehouses

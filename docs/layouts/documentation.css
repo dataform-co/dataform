@@ -5,12 +5,12 @@
 }
 
 .sidebar {
-  min-width: 320px;
+  min-width: 360px;
+  max-width: 360px;
   height: calc(100vh - 60px);
   overflow-y: hidden;
   position: sticky;
   top: 60px;
-  padding-top: 30px;
   padding-right: 10px;
 }
 
@@ -20,7 +20,7 @@
   text-align: right;
 }
 
-@media (max-width: 1100px) {
+@media (max-width: 1300px) {
   .sidebarRight {
     display: none;
   }

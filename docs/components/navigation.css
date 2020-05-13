@@ -1,6 +1,14 @@
+.navigation {
+  font-family: "Poppins";
+}
+
 .navigation ul {
   list-style-type: none;
   padding-inline-start: 0px;
+}
+
+.navigation a {
+  color: unset;
 }
 
 .navigation ul:not(.depth0) {
@@ -8,17 +16,16 @@
 }
 
 .navigation li {
-  padding: 0px 8px;
+  padding: 8px 8px;
   border-radius: 8px;
 }
 
 .navigation li.depth0 {
-  text-transform: uppercase;
   font-weight: bold;
 }
 
-.navigation li.depth0:not(:first-child) {
-  margin-top: 15px;
+.navigation li.depth2 {
+  color: var(--textSecondary);
 }
 
 .navigation li.depth1.hasChildren {
@@ -27,9 +34,17 @@
 
 .navigation li.active {
   font-weight: bold;
-  background-color: #2f419b;
+  color: var(--primary);
 }
 
-.navigation li.active * {
-  color: #fff;
+.navigation .title {
+  display: flex;
+  align-items: center;
+}
+
+.navigation .icon {
+  width: 40px;
+  justify-content: center;
+  display: inline-flex;
+  color: var(--primarySubtle);
 }

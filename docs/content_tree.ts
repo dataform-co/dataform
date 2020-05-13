@@ -5,6 +5,7 @@ import NodeCache from "node-cache";
 
 export interface IExtraAttributes {
   priority?: number;
+  icon?: string;
 }
 
 export const localCms = new LocalCms("content/docs");
