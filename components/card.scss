@@ -1,10 +1,5 @@
 .cardContainer {
-  display: inline-block;
-  margin: 10px;
-  width: 100%;
-  width: -moz-available;
-  width: -webkit-fill-available;
-  width: fill-available;
+  display: flex;
   overflow: auto;
   max-width: 100%;
   border-radius: 5px;
@@ -17,6 +12,19 @@
     padding-top: 20px;
   }
   word-wrap: break-word;
+}
+
+.flexCardContainer {
+  display: flex;
+}
+
+.masonryCardContainer {
+  display: inline-block;
+  margin: 10px;
+  width: 100%;
+  width: -moz-available;
+  width: -webkit-fill-available;
+  width: fill-available;
 }
 
 .cardActions {
@@ -100,6 +108,5 @@
 
 .cardMasonry {
   columns: 2 200px;
-  column-gap: 10px;
   margin: 10px;
 }
