@@ -26,9 +26,18 @@ filegroup(
     ),
 )
 
+genrule(
+    name = "blueprint",
+    srcs = [
+        "//components/blueprint:sass",
+    ],
+    outs = ["public/blueprint.css"],
+    cmd = "cat $(SRCS) > $(OUTS)",
+)
+
 filegroup(
     name = "assets",
-    srcs = glob(["static/**/*.*"]),
+    srcs = glob(["static/**/*.*"]) + [":public/blueprint.css"],
 )
 
 load("@npm//typedoc:index.bzl", "typedoc")
@@ -67,6 +76,9 @@ DEPS = [
     "//:tsconfig.json",
     "//content",
     "//static:files",
+    "//components",
+    "//components:sass",
+    "//components/blueprint:sass",
     "//tools/markdown-cms",
     "@npm//axios",
     "@npm//node-cache",

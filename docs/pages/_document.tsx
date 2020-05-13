@@ -18,15 +18,11 @@ export default class DefaultDocument extends Document {
           />
           <link
             rel="stylesheet"
-            href="https://unpkg.com/@blueprintjs/core@3.15.1/lib/css/blueprint.css"
-          />
-          <link
-            rel="stylesheet"
-            href="https://unpkg.com/@blueprintjs/select@3.8.1/lib/css/blueprint-select.css"
+            href="/blueprint.css"
           />
           <link rel="shortcut icon" href={"/static/images/favicon.ico"} type="image/png" />
         </Head>
-        <body>
+        <body className="light">
           <Main />
           <NextScript />
           {SCRIPTS.map((scriptContent, i) => (
