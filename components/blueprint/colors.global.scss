@@ -135,27 +135,3 @@ $theme-dark: (
 
   --invert: invert(1);
 }
-
-// Old mappings left here until components not in app are migrated.
-:export {
-  text: var(--textPrimary);
-
-  background: var(--shade0);
-  backgroundDark: var(--shade0);
-
-  primary: var(--primary);
-  primaryBackground: var(--primaryActive);
-
-  success: var(--success);
-  successBackground: var(--successActive);
-
-  warning: var(--warning);
-  warningBackground: var(--warningActive);
-
-  danger: var(--danger);
-  dangerBackground: var(--dangerActive);
-
-  gitGreen: var(--gitGreen);
-  gitOrange: var(--gitOrange);
-  gitRed: var(--gitRed);
-}
