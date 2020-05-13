@@ -11,7 +11,7 @@ let config = {
   distDir: `../${process.argv.slice(-1)[0]}`,
   cssLoaderOptions: {
     importLoaders: 1,
-    localIdentName: "[local]___[hash:base64:5]"
+    localIdentName: "[name]___[hash:base64:5]"
   },
   webpack: (config, options) => {
     // Use the module name mappings in tsconfig so imports resolve properly.
