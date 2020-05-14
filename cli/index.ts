@@ -647,7 +647,7 @@ export function runCli() {
       if (!!err && err.name === "VMError" && err.code === "ENOTFOUND") {
         printError("Could not find NPM dependencies. Have you run 'dataform install'?");
       } else {
-        const message = err && err.message ? err.message.split("\n")[0] : msg;
+        const message = err?.message ? err.message.split("\n")[0] : msg;
         printError(`Dataform encountered an error: ${message}`);
         await trackError();
         if (err?.stack) {
