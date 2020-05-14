@@ -30,6 +30,7 @@ genrule(
     name = "blueprint",
     srcs = [
         "//components/blueprint:sass",
+        "//components/code:sass",
     ],
     outs = ["public/blueprint.css"],
     cmd = "cat $(SRCS) > $(OUTS)",

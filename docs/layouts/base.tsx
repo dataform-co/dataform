@@ -17,7 +17,7 @@ const MAX_WIDTH = "1600px";
 export class BaseLayout extends React.Component<IProps, {}> {
   public render() {
     return (
-      <div className={`${globalStyles.root} ${highlightStyles.root}`}>
+      <div className={`${globalStyles.root}`}>
         <Head>
           <title>{this.props.title}</title>
         </Head>

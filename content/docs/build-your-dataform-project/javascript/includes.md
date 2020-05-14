@@ -25,11 +25,11 @@ Create a new file in your project under the `includes/` folder, such as:
 const PROJECT_ID = "my_project_name";
 module.exports = { PROJECT_ID };
 ```
-
-<div className="bp3-callout bp3-icon-info-sign bp3-intent-warning" markdown="1">
+<br />
+<callout intent="warning">
   Note that in order to use functions or constants elsewhere in the project, they must be exported
   using the <code>module.exports = {"{}"}</code> syntax.
-</div>
+</callout>
 
 ## Example: Using an include
 
