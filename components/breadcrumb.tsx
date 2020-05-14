@@ -11,7 +11,7 @@ export function BreadCrumb({ pathParts }: IBreadcrumbProps) {
     <>
       <div className={styles.container}>
         {pathParts.map((pathPart, index) => (
-          <>
+          <React.Fragment key={index}>
             <H6
               onClick={() => {
                 if (index < pathParts.length - 1) {
@@ -22,7 +22,7 @@ export function BreadCrumb({ pathParts }: IBreadcrumbProps) {
               {pathPart.label}
             </H6>
             {index < pathParts.length - 1 && " > "}
-          </>
+          </React.Fragment>
         ))}
       </div>
     </>
