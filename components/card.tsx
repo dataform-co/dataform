@@ -112,7 +112,6 @@ export const CardList = ({
 };
 
 export const CardMasonry = ({
-  minWidth = 200,
   children,
   className,
   ...rest

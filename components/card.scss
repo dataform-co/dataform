@@ -20,11 +20,8 @@
 
 .masonryCardContainer {
   display: inline-block;
-  margin: 10px;
+  margin: 10px 0;
   width: 100%;
-  width: -moz-available;
-  width: -webkit-fill-available;
-  width: fill-available;
 }
 
 .cardActions {
@@ -100,6 +97,9 @@
 
 .cardGrid {
   display: grid;
+  grid-row-gap: 20px;
+  grid-column-gap: 20px;
+  margin: 20px;
 }
 
 .cardList > * {
@@ -108,6 +108,6 @@
 
 .cardMasonry {
   columns: 2 200px;
-  column-gap: 0px;
-  margin: 10px;
+  column-gap: 20px;
+  margin: 10px 20px 10px;
 }
