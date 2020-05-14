@@ -1,6 +1,7 @@
 import { fail } from "assert";
 import { expect } from "chai";
 import { Builder, compile } from "df/api";
+import { ProtoUtils } from "df/common/protos/proto_utils";
 import * as utils from "df/core/utils";
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
@@ -221,6 +222,22 @@ suite("examples", () => {
               "df_integration_test"
             )}.override_database_example\``
         );
+        expect(exampleView.target).deep.equals({
+          name: "example_view",
+          schema: schemaWithSuffix("df_integration_test"),
+          database: "tada-analytics"
+        });
+        expect(exampleView.canonicalTarget).equals(
+          ProtoUtils.encode(
+            dataform.Target,
+            dataform.Target.create({
+              name: "example_view",
+              schema: "df_integration_test",
+              database: "tada-analytics"
+            })
+          )
+        );
+
         expect(exampleView.dependencies).deep.equals([
           "tada-analytics." + schemaWithSuffix("df_integration_test") + ".sample_data",
           "tada-analytics." + schemaWithSuffix("override_schema") + ".override_schema_example",

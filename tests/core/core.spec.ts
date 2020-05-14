@@ -1,5 +1,6 @@
 import { fail } from "assert";
 import { expect } from "chai";
+import { ProtoUtils } from "df/common/protos/proto_utils";
 import * as compilers from "df/core/compilers";
 import { Session } from "df/core/session";
 import * as utils from "df/core/utils";
@@ -103,6 +104,12 @@ suite("@dataform/core", () => {
         expect(t2.preOps).deep.equals(["pre_op"]);
         expect(t2.postOps).deep.equals(["post_op"]);
         expect(t2.dependencies).includes(`schema.${tableWithPrefix("example")}`);
+        expect(t2.canonicalTarget).equals(
+          ProtoUtils.encode(
+            dataform.Target,
+            dataform.Target.create({ name: "example", schema: "schema2" })
+          )
+        );
 
         const t3 = compiledGraph.tables.find(
           table => table.name === `test_schema.${tableWithPrefix("my_table")}`
@@ -208,6 +215,13 @@ suite("@dataform/core", () => {
             name: "incremental",
             schema: TestConfigs.redshift.defaultSchema
           },
+          canonicalTarget: ProtoUtils.encode(
+            dataform.Target,
+            dataform.Target.create({
+              name: "incremental",
+              schema: TestConfigs.redshift.defaultSchema
+            })
+          ),
           query: "select false as incremental",
           incrementalQuery: "select true as incremental",
           disabled: false,

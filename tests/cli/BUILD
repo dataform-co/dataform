@@ -19,7 +19,9 @@ ts_test_suite(
         "@nodejs//:npm",
     ],
     deps = [
+        "//common/protos",
         "//core",
+        "//protos:ts",
         "//testing",
         "@npm//@types/chai",
         "@npm//@types/fs-extra",

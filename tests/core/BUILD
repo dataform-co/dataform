@@ -5,6 +5,7 @@ ts_test_suite(
     srcs = glob(["**/*.ts"]),
     data = glob(["*.js.test"]),
     deps = [
+        "//common/protos",
         "//core",
         "//protos:ts",
         "//testing",

@@ -1,6 +1,8 @@
 import { expect } from "chai";
 import { ChildProcess, execFile } from "child_process";
+import { ProtoUtils } from "df/common/protos/proto_utils";
 import { version } from "df/core/version";
+import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
 import * as fs from "fs-extra";
 import * as os from "os";
@@ -61,6 +63,13 @@ select 1 as test
             schema: "dataform",
             name: "example"
           },
+          canonicalTarget: ProtoUtils.encode(
+            dataform.Target,
+            dataform.Target.create({
+              schema: "dataform",
+              name: "example"
+            })
+          ),
           query: "\n\nselect 1 as test\n",
           disabled: false,
           fileName: "definitions/example.sqlx"

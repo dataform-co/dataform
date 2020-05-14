@@ -1,3 +1,4 @@
+import { ProtoUtils } from "df/common/protos/proto_utils";
 import { adapters } from "df/core";
 import { Assertion } from "df/core/assertion";
 import { Resolvable } from "df/core/common";
@@ -301,14 +302,16 @@ export function ambiguousActionNameMsg(
 
 export function target(
   adapter: adapters.IAdapter,
+  config: dataform.IProjectConfig,
   name: string,
   schema: string,
   database?: string
 ): dataform.ITarget {
+  const resolvedDatabase = database || config.defaultDatabase;
   return dataform.Target.create({
     name: adapter.normalizeIdentifier(name),
-    schema: adapter.normalizeIdentifier(schema),
-    database: database && adapter.normalizeIdentifier(database)
+    schema: adapter.normalizeIdentifier(schema || config.defaultSchema),
+    database: resolvedDatabase && adapter.normalizeIdentifier(resolvedDatabase)
   });
 }
 
@@ -319,11 +322,10 @@ export function setNameAndTarget(
   overrideSchema?: string,
   overrideDatabase?: string
 ) {
-  action.target = target(
-    session.adapter(),
-    name,
-    overrideSchema || session.config.defaultSchema,
-    overrideDatabase || session.config.defaultDatabase
+  action.target = target(session.adapter(), session.config, name, overrideSchema, overrideDatabase);
+  action.canonicalTarget = ProtoUtils.encode(
+    dataform.Target,
+    target(session.adapter(), session.config, name, overrideSchema, overrideDatabase)
   );
   const nameParts = [action.target.name, action.target.schema];
   if (!!action.target.database) {

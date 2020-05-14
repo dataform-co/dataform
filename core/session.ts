@@ -11,6 +11,11 @@ import { dataform } from "df/protos/ts";
 import { util } from "protobufjs";
 import { default as TarjanGraphConstructor, Graph as TarjanGraph } from "tarjan-graph";
 
+const DEFAULT_CONFIG = {
+  defaultSchema: "dataform",
+  assertionSchema: "dataform_assertions"
+};
+
 /**
  * @hidden
  */
@@ -21,14 +26,16 @@ export interface IActionProto {
   dependencies?: string[];
   hermeticity?: dataform.ActionHermeticity;
   target?: dataform.ITarget;
+  canonicalTarget?: string;
 }
 
 type SqlxConfig = (
-  | ITableConfig & { type: TableType }
-  | IAssertionConfig & { type: "assertion" }
-  | IOperationConfig & { type: "operations" }
-  | IDeclarationConfig & { type: "declaration" }
-  | test.ITestConfig & { type: "test" }) & { name: string };
+  | (ITableConfig & { type: TableType })
+  | (IAssertionConfig & { type: "assertion" })
+  | (IOperationConfig & { type: "operations" })
+  | (IDeclarationConfig & { type: "declaration" })
+  | (test.ITestConfig & { type: "test" })
+) & { name: string };
 
 /**
  * @hidden
@@ -37,22 +44,29 @@ export class Session {
   public rootDir: string;
 
   public config: dataform.IProjectConfig;
+  public canonicalConfig: dataform.IProjectConfig;
 
   public actions: Array<Table | Operation | Assertion | Declaration>;
   public tests: { [name: string]: test.Test };
 
   public graphErrors: dataform.IGraphErrors;
 
-  constructor(rootDir: string, projectConfig?: dataform.IProjectConfig) {
-    this.init(rootDir, projectConfig);
+  constructor(
+    rootDir: string,
+    projectConfig?: dataform.IProjectConfig,
+    canonicalProjectConfig?: dataform.IProjectConfig
+  ) {
+    this.init(rootDir, projectConfig, canonicalProjectConfig);
   }
 
-  public init(rootDir: string, projectConfig?: dataform.IProjectConfig) {
+  public init(
+    rootDir: string,
+    projectConfig?: dataform.IProjectConfig,
+    canonicalProjectConfig?: dataform.IProjectConfig
+  ) {
     this.rootDir = rootDir;
-    this.config = projectConfig || {
-      defaultSchema: "dataform",
-      assertionSchema: "dataform_assertions"
-    };
+    this.config = projectConfig || DEFAULT_CONFIG;
+    this.canonicalConfig = canonicalProjectConfig || DEFAULT_CONFIG;
     this.actions = [];
     this.tests = {};
     this.graphErrors = { compilationErrors: [] };
@@ -204,6 +218,7 @@ export class Session {
       return this.adapter().resolveTarget(
         utils.target(
           this.adapter(),
+          this.config,
           `${this.getTablePrefixWithUnderscore()}${ref}`,
           `${this.config.defaultSchema}${this.getSuffixWithUnderscore()}`
         )
@@ -212,6 +227,7 @@ export class Session {
     return this.adapter().resolveTarget(
       utils.target(
         this.adapter(),
+        this.config,
         `${this.getTablePrefixWithUnderscore()}${ref.name}`,
         `${ref.schema}${this.getSuffixWithUnderscore()}`
       )
@@ -519,14 +535,20 @@ export class Session {
       if (action.dependencies?.length > 0) {
         return;
       }
-      if ([dataform.ActionHermeticity.HERMETIC, dataform.ActionHermeticity.NON_HERMETIC].includes(action.hermeticity)) {
+      if (
+        [dataform.ActionHermeticity.HERMETIC, dataform.ActionHermeticity.NON_HERMETIC].includes(
+          action.hermeticity
+        )
+      ) {
         return;
       }
       this.compileError(
-        new Error("Zero-dependency actions which create datasets are required to explicitly declare 'hermetic: (true|false)' when run caching is turned on."),
+        new Error(
+          "Zero-dependency actions which create datasets are required to explicitly declare 'hermetic: (true|false)' when run caching is turned on."
+        ),
         action.fileName
       );
-    })
+    });
   }
 }
 
