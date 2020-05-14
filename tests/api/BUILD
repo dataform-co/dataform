@@ -19,6 +19,7 @@ ts_test_suite(
     ],
     deps = [
         "//api",
+        "//common/protos",
         "//core",
         "//protos:ts",
         "//testing",

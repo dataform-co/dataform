@@ -222,7 +222,7 @@ suite("examples", () => {
               "df_integration_test"
             )}.override_database_example\``
         );
-        expect(exampleView.target).deep.equals({
+        expect(dataform.Target.create(exampleView.target).toJSON()).deep.equals({
           name: "example_view",
           schema: schemaWithSuffix("df_integration_test"),
           database: "tada-analytics"
