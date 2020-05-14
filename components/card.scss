@@ -14,6 +14,16 @@
   word-wrap: break-word;
 }
 
+.flexCardContainer {
+  display: flex;
+}
+
+.masonryCardContainer {
+  display: inline-block;
+  margin: 10px 0;
+  width: 100%;
+}
+
 .cardActions {
   display: flex;
 
@@ -54,7 +64,7 @@
   display: inline-flex;
   flex-direction: column;
   flex-grow: 1;
-  max-width: 100%;
+  width: 100%;
 }
 
 .cardSecondaryActionsContainer {
@@ -81,7 +91,7 @@
   padding: 0px 20px 12px;
 }
 
-.fullWithCardContentContainer {
+.fullWidthCardContentContainer {
   padding: 0px;
 }
 
@@ -94,4 +104,10 @@
 
 .cardList > * {
   margin-bottom: 20px;
+}
+
+.cardMasonry {
+  columns: 2 200px;
+  column-gap: 20px;
+  margin: 10px 20px 10px;
 }
