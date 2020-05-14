@@ -77,6 +77,7 @@ DEPS = [
     "//content",
     "//static:files",
     "//components",
+    "//components/code",
     "//components:sass",
     "//components/blueprint:sass",
     "//tools/markdown-cms",

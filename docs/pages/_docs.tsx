@@ -1,5 +1,6 @@
 import { Button, Callout } from "@blueprintjs/core";
 import rehypePrism from "@mapbox/rehype-prism";
+import { Code } from "df/components/code";
 import { getContentTree, IExtraAttributes } from "df/docs/content_tree";
 import Documentation from "df/docs/layouts/documentation";
 import { ITree } from "df/tools/markdown-cms/tree";
@@ -22,6 +23,13 @@ export interface IProps {
   index: ITree<IExtraAttributes>;
   current: ITree<IExtraAttributes>;
   version: string;
+}
+
+function MaybeCode(props: React.PropsWithChildren<{ className: string }>) {
+  if (props.className && props.className.startsWith("language")) {
+    return <Code>{String(props.children).trim()}</Code>;
+  }
+  return <code {...props}>{props.children} </code>;
 }
 
 export class Docs extends React.Component<IProps> {
@@ -60,11 +68,11 @@ export class Docs extends React.Component<IProps> {
           remark()
             .use(remarkRehype, { allowDangerousHTML: true })
             .use(rehypeSlug)
-            .use(rehypePrism)
+            // .use(rehypePrism)
             .use(rehypeRaw)
             .use(rehypeReact, {
               createElement: React.createElement,
-              components: { button: Button, callout: Callout }
+              components: { button: Button, callout: Callout, code: MaybeCode }
             })
             .processSync(this.props.current.content).contents}
         {this.props.children}

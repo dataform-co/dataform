@@ -12,7 +12,7 @@
 }
 
 :global code[class*="language-"],
-:global pre[class*="language-"] {
+:global pre.hljs {
   font-family: Consolas, Monaco, "Andale Mono", monospace;
   direction: ltr;
   text-align: left;
@@ -55,7 +55,7 @@
 }
 
 /* :global code blocks */
-:global pre[class*="language-"] {
+:global pre.hljs {
   padding: 1em;
   margin: 15px 0px;
   overflow: auto;
