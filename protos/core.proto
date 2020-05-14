@@ -37,7 +37,12 @@ message Environments {
       }
     }
   
-    GitReference git_reference = 2;
+    oneof git_settings {
+      string git = 5;
+      // Deprecated. Please use 'git' instead.
+      GitReference git_reference = 2;
+    }
+
     ProjectConfig config_override = 3;
 
     message Schedule {
