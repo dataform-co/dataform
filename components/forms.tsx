@@ -41,6 +41,10 @@ export class ValidationRules {
       message: "May not contain whitespace."
     };
   }
+
+  public static errors<T>(value: T, ...rules: Array<IValidationRule<T>>): string[] {
+    return rules.filter(rule => !rule.predicate(value)).map(rule => rule.message);
+  }
 }
 
 /**
@@ -112,9 +116,7 @@ class FormItemState<T> {
   }
 
   public valid = () => {
-    const validationErrors = this.rules
-      .filter(rule => !rule.predicate(this.valueState[0]))
-      .map(rule => rule.message);
+    const validationErrors = ValidationRules.errors(this.valueState[0], ...this.rules);
     return validationErrors && validationErrors.length === 0;
   };
 
@@ -129,10 +131,7 @@ class FormItemState<T> {
   public set = (value: T) => {
     const [_, setState] = this.valueState;
     const [__, setErrors] = this.errorsState;
-    const validationErrors = this.rules
-      .filter(rule => !rule.predicate(value))
-      .map(rule => rule.message);
-
+    const validationErrors = ValidationRules.errors(value, ...this.rules);
     const ___ = Promise.all([setState(value), setErrors(validationErrors)]);
   };
 
