@@ -108,11 +108,24 @@ Dataform displays Bytes processed and Bytes billed for every run you do in Dataf
 
 <img src="https://assets.dataform.co/docs/bigquery_billing.png" width="858" height="832" alt="" />
 
+# Sample Dataform project with BigQuery
+
+This project shows bla
+
+<img src="https://assets.dataform.co/landing/bigquery_sample_project_dag.png" width="1100"  alt="Sample bigquery Dataform project DAG" />
+<em>Dependency tree of the BigQuery sample project</em>
+
+<a href="https://app.dataform.co/#/6470156092964864/overview"><button>See the example on GitHub</button></a>
+
+<a href="https://app.dataform.co/#/6470156092964864/overview"><button intent="primary">See the example on Dataform web</button></a> _(Viewing the example project on Dataform web requires sign up)_
+
 # Packages
 
 ## BigQuery Audit Logs
 
-We published a package that helps the analysis of BigQuery usage logs. You can find more information by reading the related [blog post](https://dataform.co/blog/exporting-bigquery-usage-logs) or the [package page](http://localhost:3001/packages/dataform-bq-audit-logs).
+We published a package that helps the analysis of BigQuery usage logs. You can find more information by reading the related blog post or the package page.
+
+<a href="https://dataform.co/blog/exporting-bigquery-usage-logs"><button>Visit the package page</button></a> <a href="https:///docs.dataform.co/packages/dataform-bq-audit-logsw"><button>Read the blog post</button></a>
 
 # Blog posts
 
