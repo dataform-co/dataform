@@ -1,0 +1,40 @@
+{
+  "name": "dataform",
+  "displayName": "Dataform",
+  "description": "Dataform description",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.45.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onCommand:dataform.helloWorld"
+  ],
+  "main": "extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "dataform.helloWorld",
+        "title": "Hello World"
+      }
+    ],
+    "languages": [
+      {
+        "id": "SQLX",
+        "extensions": [
+          ".sqlx"
+        ],
+        "configuration": "language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "SQLX",
+        "scopeName": "source.sqlx",
+        "path": "sqlx.grammar.json"
+      }
+    ]
+  }
+}
