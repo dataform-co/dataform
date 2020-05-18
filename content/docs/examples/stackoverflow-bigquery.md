@@ -1,6 +1,6 @@
 ---
 title: Stackoverflow data on BigQuery
-subtitle: A simple project turning Stackoverflow public raw data into reporting tables
+subtitle: A simple project turning Stackoverflow public raw data into reporting tables in a BigQuery data warehouse
 priority: 0
 ---
 
@@ -10,7 +10,7 @@ This project transforms four raw datasets (`posts_answers`, `posts_questions`, `
 
 # Dependency tree of the project
 
-<img src="https://assets.dataform.co/landing/bigquery_sample_project_dag.png" width="1100"  alt="Sample bigquery Dataform project DAG" />
+<img src="https://assets.dataform.co/docs/sample_projects/bigquery_sample_project_dag.png"  width="1100"  alt="Sample bigquery Dataform project DAG" />
 <em>Dependency tree of the BigQuery sample project</em>
 
 # View the project

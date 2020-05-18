@@ -112,7 +112,7 @@ Dataform displays Bytes processed and Bytes billed for every run you do in Dataf
 
 We prepared the following sample project using the Stackoverflow public dataset.
 
-<img src="https://assets.dataform.co/landing/bigquery_sample_project_dag.png" width="1100"  alt="Sample bigquery Dataform project DAG" />
+<img src="https://assets.dataform.co/docs/sample_projects/bigquery_sample_project_dag.png" width="1100"  alt="Sample bigquery Dataform project DAG" />
 <em>Dependency tree of the BigQuery sample project</em>
 
 This project transforms four raw datasets (`posts_answers`, `posts_questions`, `badges` and `users`) into two summary reporting tables. `posts_combined` brings stackoverflow posts and answers into a single table, with a “type” field for differentiating between the two. `user_stats` provides an overview of each users engagement: when they signed up, how many badges they have, and how many posts and answers they’ve made.
