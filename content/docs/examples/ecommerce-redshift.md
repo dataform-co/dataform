@@ -1,5 +1,5 @@
 ---
-title: Fictional ecommerce store on Redshift
+title: Ecommerce store on Redshift
 subtitle: A fictional ecommerce store project on a  Redshift data warehouse
 priority: 2
 ---

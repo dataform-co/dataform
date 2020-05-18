@@ -6,7 +6,10 @@ priority: 0
 
 # Summary
 
-This project transforms four raw datasets (`posts_answers`, `posts_questions`, `badges` and `users`) into two summary reporting tables. `posts_combined` brings stackoverflow posts and answers into a single table, with a “type” field for differentiating between the two. `user_stats` provides an overview of each users engagement: when they signed up, how many badges they have, and how many posts and answers they’ve made.
+This project transforms four raw datasets (`posts_answers`, `posts_questions`, `badges` and `users`) into two summary reporting tables.
+
+- `posts_combined` brings stackoverflow posts and answers into a single table, with a “type” field for differentiating between the two.
+- `user_stats` provides an overview of each users engagement: when they signed up, how many badges they have, and how many posts and answers they’ve made.
 
 # Dependency tree of the project
 

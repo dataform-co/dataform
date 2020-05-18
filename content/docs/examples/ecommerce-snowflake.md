@@ -1,5 +1,5 @@
 ---
-title: Fictional ecommerce store on Snowflake
+title: Ecommerce store on Snowflake
 subtitle: A fictional ecommerce store project on a Snowflake data warehouse
 priority: 1
 ---
