@@ -10,7 +10,8 @@
     "Other"
   ],
   "activationEvents": [
-    "onCommand:dataform.helloWorld"
+    "onCommand:dataform.helloWorld",
+    "onCommand:dataform.showsidebar"
   ],
   "main": "extension.js",
   "contributes": {

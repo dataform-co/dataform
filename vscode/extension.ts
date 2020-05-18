@@ -19,25 +19,17 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.window.showInformationMessage("Hello World from dataform!");
   });
 
-  const showsidebar = showSidebar(context);
+  let currentPanel: vscode.WebviewPanel | undefined;
 
-  context.subscriptions.push(showsidebar, disposable);
-}
-
-// this method is called when your extension is deactivated
-export function deactivate() {}
-
-function showSidebar(context: vscode.ExtensionContext) {
-  return vscode.commands.registerCommand("dataform.showsidebar", () => {
+  const showsidebar = vscode.commands.registerCommand("dataform.showsidebar", () => {
     // Track current webview panel
-    let currentPanel: vscode.WebviewPanel | undefined;
-    // const columnToShowIn = vscode.window.activeTextEditor
-    //   ? vscode.window.activeTextEditor.viewColumn
-    //   : undefined;
+    const columnToShowIn = vscode.window.activeTextEditor
+      ? vscode.window.activeTextEditor.viewColumn
+      : undefined;
     // // // Create and show a new webview
     if (currentPanel) {
       // If we already have a panel, show it in the target column
-      currentPanel.reveal(vscode.ViewColumn.Two);
+      currentPanel.reveal(columnToShowIn);
     } else {
       const panel = vscode.window.createWebviewPanel(
         "dataform", // Identifies the type of the webview. Used internally
@@ -57,7 +49,12 @@ function showSidebar(context: vscode.ExtensionContext) {
       );
     }
   });
+
+  context.subscriptions.push(showsidebar, disposable);
 }
+
+// this method is called when your extension is deactivated
+export function deactivate() {}
 
 function getWebviewContent() {
   return `<!DOCTYPE html>
