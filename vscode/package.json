@@ -18,6 +18,11 @@
       {
         "command": "dataform.helloWorld",
         "title": "Hello World"
+      },
+      {
+        "command": "dataform.showsidebar",
+        "title": "Show sidebar",
+        "category": "sidebar"
       }
     ],
     "languages": [
