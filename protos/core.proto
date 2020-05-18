@@ -38,8 +38,8 @@ message Environments {
     }
   
     oneof git_settings {
-      string git = 5;
-      // Deprecated. Please use 'git' instead.
+      string git_ref = 5;
+      // Deprecated. Please use 'ref' instead.
       GitReference git_reference = 2;
     }
 
