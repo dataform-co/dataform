@@ -11,7 +11,8 @@
   ],
   "activationEvents": [
     "onCommand:dataform.helloWorld",
-    "onCommand:dataform.showsidebar"
+    "onCommand:dataform.showSidebar",
+    "onCommand:dataform.addToPanel"
   ],
   "main": "extension.js",
   "contributes": {
@@ -21,8 +22,13 @@
         "title": "Hello World"
       },
       {
-        "command": "dataform.showsidebar",
+        "command": "dataform.showSidebar",
         "title": "Show sidebar",
+        "category": "sidebar"
+      },
+      {
+        "command": "dataform.addToPanel",
+        "title": "Add to sidebar",
         "category": "sidebar"
       }
     ],
