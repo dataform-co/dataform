@@ -1,7 +1,7 @@
 ---
 title: Packages
 priority: 5
-icon: inbox-search
+icon: code-block
 ---
 
 Dataform packages are collections of code that help other analysts work with data. Some packages help model specific datasets (for example the [Segment package](https://docs.dataform.co/packages/dataform-segment)), and other packages make helpful utility functions available for others to use.
