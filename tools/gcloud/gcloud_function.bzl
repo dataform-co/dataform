@@ -4,13 +4,14 @@ def _deploy_nodejs_gcloud_function_impl(ctx, trigger_flag):
     pkg_npm = ctx.attr.pkg_npm
     pkg_npm_path = pkg_npm.label.package + "/" + pkg_npm.label.name
 
+    gcloud = ctx.attr.gcloud.label.workspace_root + ctx.attr.gcloud.label.package + "/" + ctx.attr.gcloud.label.name
     file_content = [
-        "gcloud functions deploy %s" % function_name,
+        "%s functions deploy %s" % (gcloud, function_name),
         "--source %s" % pkg_npm_path,
         "--runtime nodejs10",
         trigger_flag,
     ]
-    runfiles = ctx.runfiles(files = ctx.files.pkg_npm)
+    runfiles = ctx.runfiles(files = ctx.files.gcloud + ctx.files.pkg_npm)
 
     env_vars_file = ctx.attr.env_vars_file
     if (env_vars_file):
@@ -33,6 +34,7 @@ def _deploy_pubsub_nodejs_gcloud_function_impl(ctx):
 deploy_http_nodejs_gcloud_function = rule(
     implementation = _deploy_http_nodejs_gcloud_function_impl,
     attrs = {
+        "gcloud": attr.label(default = "@gcloud_sdk//:google-cloud-sdk/bin/gcloud", allow_single_file = True),
         "function_name": attr.string(default = "", mandatory = True, values = []),
         "pkg_npm": attr.label(mandatory = True),
         "env_vars_file": attr.label(allow_single_file = True),
@@ -43,6 +45,7 @@ deploy_http_nodejs_gcloud_function = rule(
 deploy_pubsub_nodejs_gcloud_function = rule(
     implementation = _deploy_pubsub_nodejs_gcloud_function_impl,
     attrs = {
+        "gcloud": attr.label(default = "@gcloud_sdk//:google-cloud-sdk/bin/gcloud", allow_single_file = True),
         "function_name": attr.string(default = "", mandatory = True, values = []),
         "topic_name": attr.string(default = "", mandatory = True, values = []),
         "pkg_npm": attr.label(mandatory = True),
