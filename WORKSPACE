@@ -119,6 +119,34 @@ load(
 
 _nodejs_image_repos()
 
+# Sass requirements.
+http_archive(
+    name = "io_bazel_rules_sass",
+    sha256 = "77e241148f26d5dbb98f96fe0029d8f221c6cb75edbb83e781e08ac7f5322c5f",
+    strip_prefix = "rules_sass-1.24.0",
+    url = "https://github.com/bazelbuild/rules_sass/archive/1.24.0.zip",
+)
+
+# Fetch required transitive dependencies. This is an optional step because you
+# can always fetch the required NodeJS transitive dependency on your own.
+load("@io_bazel_rules_sass//:package.bzl", "rules_sass_dependencies")
+
+rules_sass_dependencies()
+
+# Setup repositories which are needed for the Sass rules.
+load("@io_bazel_rules_sass//:defs.bzl", "sass_repositories")
+
+sass_repositories()
+
+# Gcloud SDK binaries.
+load("//tools/gcloud:repository_rules.bzl", "gcloud_sdk")
+
+gcloud_sdk(
+    name = "gcloud_sdk",
+)
+
+# Go dependencies.
+
 go_repository(
     name = "com_github_go_stack_stack",
     importpath = "github.com/go-stack/stack",
@@ -139,21 +167,3 @@ go_repository(
     sum = "h1:6fhXjXSzzXRQdqtFKOI1CDw6Gw5x6VflovRpfbrlVi0=",
     version = "v1.2.0",
 )
-
-http_archive(
-    name = "io_bazel_rules_sass",
-    sha256 = "77e241148f26d5dbb98f96fe0029d8f221c6cb75edbb83e781e08ac7f5322c5f",
-    strip_prefix = "rules_sass-1.24.0",
-    url = "https://github.com/bazelbuild/rules_sass/archive/1.24.0.zip",
-)
-
-# Fetch required transitive dependencies. This is an optional step because you
-# can always fetch the required NodeJS transitive dependency on your own.
-load("@io_bazel_rules_sass//:package.bzl", "rules_sass_dependencies")
-
-rules_sass_dependencies()
-
-# Setup repositories which are needed for the Sass rules.
-load("@io_bazel_rules_sass//:defs.bzl", "sass_repositories")
-
-sass_repositories()
