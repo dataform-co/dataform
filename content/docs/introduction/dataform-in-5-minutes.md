@@ -1,7 +1,7 @@
 ---
-title: Understand Dataform and SQLX in 5 minutes
+title: Dataform and SQLX in 5 minutes
 subtitle: Learn how Dataform and SQLX can help your team manage data in your warehouse
-priority: 1
+priority: 2
 ---
 
 # Introduction
@@ -46,7 +46,7 @@ SQL is the de facto language for processing data in cloud data warehouses and SQ
 - It’s easy to introspect when something goes wrong.
 - It enables faster development thanks to fast feedback loops.
 
-## SQL has a few limitations
+## The few limitations of SQL
 
 Current SQL workflows don’t necessarily follow engineering best practices. Several key features of writing code are missing in current SQL implementations.
 
@@ -63,16 +63,16 @@ SQLX is an open source extension of SQL. As it is an extension, every SQL file i
 
 In practice, SQLX is mostly composed of SQL in the dialect of your data warehouse (Standard SQL if you are using BigQuery, SnowSQL if you are using Snowflake…).
 
-<img src="https://assets.dataform.co/docs/introduction/sqlx_simple_example.png" width="661"  alt="SQLX example" />
+<img src="https://assets.dataform.co/docs/introduction/sqlx_simple_example.png" max-width="661"  alt="SQLX example" />
 <em>This illustration uses BigQuery Standard SQL. SQLX works the same way with all SQL dialects.</em>
 
-### 1. Config block
+<span className="numberTitle">2</span> **Config block**
 
 In SQLX, you only write SELECT statements. You specify what you want the output of the script to be in the config block, like a `view` or a `table` as well as other types available.
 
 Dataform takes care of adding boilerplate statements like `CREATE OR REPLACE` or `INSERT`.
 
-### 2. The Ref function and dependency management
+<span className="numberTitle">2</span> **The Ref function and dependency management**
 
 The `ref` function is a critical concept in Dataform. Instead of hard coding the schema and table names of your data tables, the `ref` function enables you to reference tables and views defined in your dataform project.
 
@@ -80,11 +80,11 @@ Dataform uses that `ref` function to build a dependency tree of all the tables t
 
 The following images illustrate a simple Dataform project and its dependency tree. In practice, a Dataform project can have dependency trees with hundreds of tables.
 
-<img src="https://assets.dataform.co/docs/introduction/ref_illustration_code.png" width="426" alt="Ref function illustration" />
-<em>Scripts in your Dataform project</em>
+<img src="https://assets.dataform.co/docs/introduction/ref_illustration_code.png" max-width="426" alt="Ref function illustration" />
+<em>Scripts in a Dataform project</em>
 
-<img src="https://assets.dataform.co/docs/introduction/simple_dag.png" width="885" alt="dependency tree" />
-<em>Dependency tree</em>
+<img src="https://assets.dataform.co/docs/introduction/simple_dag.png" max-width="885" alt="dependency tree" />
+<em>Dependency tree in a Dataform project</em>
 
 Managing dependencies with the `ref` function has numerous advantages.
 
@@ -97,24 +97,14 @@ Managing dependencies with the `ref` function has numerous advantages.
 One of the powerful attributes of SQLX is that you can define the transformation logic, data quality testing rules, and your table documentation all within a single file.
 
 <div className="bp3-callout bp3-icon-info-sign bp3-intent-primary" markdown="1">
-All SQLX features can be adopted incrementally. In practice, we often see teams starting with simple scripts like our previous example and progressively adopting more and more SQLX features as their pipeline complexity grows.
+All SQLX features can be adopted incrementally. We often see teams starting with simple scripts and progressively adopting more and more SQLX features as their pipeline complexity grows.
 </div>
 
-<img src="https://assets.dataform.co/docs/introduction/sqlx_second_example.png" width="481" alt="SQLX second example" />
+<img src="https://assets.dataform.co/docs/introduction/sqlx_second_example.png" max-width="481" alt="SQLX second example" />
 
-This example illustrates a SQLX file using data documentation and data quality testing features.
+<em>This example illustrates a SQLX file using data documentation and data quality testing features.</em>
 
-### Data quality tests
-
-You can define data quality tests, called assertions, directly from the config block of your SQLX file. Assertions can be used to check for uniqueness, null values or any custom row condition.
-
-Assertions defined in the config block get added onto your project’s dependency tree after the table creation.
-
-<img src="https://assets.dataform.co/docs/introduction/assertion_dag.png" width="605" alt="DAG with assertions" />
-
-For more advanced use cases, assertions can also be defined in separate SQLX files. See the [assertion page](http://docs.dataform.co/build-your-dataform-project/assertions) on documentation.
-
-### Data documentation
+<span className="numberTitle">1</span> **Data documentation**
 
 You can add a description of your table and its fields directly in the config block of your SQLX file. Description of your tables is available in the Dataform data catalog.
 
@@ -123,6 +113,17 @@ Defining description within the same file makes it easy to maintain data documen
 <div className="bp3-callout bp3-icon-info-sign bp3-intent-none" markdown="1">
 The documentation you add to Dataform is machine readable. This allows you to parse this documentation, and push it out to other tools.
 </div>
+
+<span className="numberTitle">2</span> **Data quality tests**
+
+You can define data quality tests, called assertions, directly from the config block of your SQLX file. Assertions can be used to check for uniqueness, null values or any custom row condition.
+
+Assertions defined in the config block get added onto your project’s dependency tree after the table creation.
+
+<img src="https://assets.dataform.co/docs/introduction/assertion_dag.png" max-width="605" alt="DAG with assertions" />
+<em>Assertions defined in the config block are added to the dependency tree of your project. They will run after the table creation / update.</em>
+
+For more advanced use cases, assertions can also be defined in separate SQLX files. See the [assertion page](http://docs.dataform.co/build-your-dataform-project/assertions) on documentation.
 
 ## Other SQLX features
 
@@ -137,7 +138,7 @@ Check the docs to learn more.
 
 # How do you develop in SQLX
 
-<img src="https://assets.dataform.co/docs/introduction/how%20it%20works.png" width="1265"  alt="" />
+<img src="https://assets.dataform.co/docs/introduction/how%20it%20works.png" max-width="1265"  alt="" />
 
 **Step 1.** You develop your pipelines in SQLX files, locally or using the Dataform web editor.
 
@@ -152,21 +153,23 @@ Check the docs to learn more.
 The SQLX compiler and runner is open source, you can run it locally or on your own servers.
 </div>
 <br/>
-<div className="bp3-callout bp3-icon-info-sign bp3-intent-primary" markdown="1">
-Want to see how Dataform works in more details?
+<div className="bp3-callout bp3-icon-info-sign" markdown="1">
+Lean how Dataform works in more details.
 
-<a href="https://docs.dataform.co/introduction/modern-data-stack"><button  intent="primary">Understand how Dataform works</button></a></div>
+<a href="https://docs.dataform.co/introduction/modern-data-stack"><button>Understand how Dataform works</button></a></div>
 
 # Enable all your team to adopt best practices and be more productive with Dataform web
 
 Dataform web is a web application made for data teams. It packages a rich Integrated Development Environment (IDE), a pipeline scheduler, a logs viewer and a data catalog.
 
-<img src="https://assets.dataform.co/landing/ide-mockup.png" width="1230" alt="" />
+<img src="https://assets.dataform.co/landing/ide-mockup.png" max-width="1230" alt="" />
 
-Dataform web enables data teams to collaborate in a single environment. It's intuitive UX lowers the barrier to entry of engineering best practices like version control and development environments.
+Dataform web enables data teams to collaborate in a single environment and brings the following benefits:
 
-Developers are more productive. They get instant feedback while developing their project and can explore all the data pipelines in their company quickly.
-
-Lastly, Dataform removes the need to manage dedicated infrastructure for data management and helps teams minimize the time spent on pipeline maintenance.
+- **Managed infrastructure** to run data pipelines in the data warehouse.
+- An alerting system and detailed logs to **minimize the time spent on pipeline maintenance**.
+- An intuitive UX that **lowers the barrier to entry of engineering best practices** like version control and development environments.
+- Instant feedback while developing their project for **more productivity**
+- A **data catalog** to explore data tables and existing pipelines quickly.
 
 To learn more about Dataform web, you can check [dataform.co/product](https://dataform.co/product).

@@ -23,3 +23,16 @@
   background-color: #f6f8fa;
   z-index: -1;
 }
+
+.numberTitle {
+  display: inline-block;
+  height: 30px;
+  width: 30px;
+  line-height: 30px;
+  -moz-border-radius: 30px;
+  border-radius: 30px;
+  background-color: var(--primary);
+  color: white;
+  text-align: center;
+  font-weight: 600;
+}

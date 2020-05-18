@@ -6,34 +6,69 @@ priority: 0
 
 ## What is Dataform?
 
-Dataform makes it easy to manage complex SQL pipelines in your data warehouse. Using Dataform's API you can power large, complex data transformations with just a few simple statements.
+Dataform is a platform to manage data in BigQuery, Snowflake, Redshift, and other data warehouses.
+
+It helps data teams build data pipelines that turn raw data into new tables and views that can be used for analytics. Dataform does the T in ELT (Extract, Load, Transform) processes. It doesn’t extract or load data in your warehouse but it’s very powerful to transform data already loaded in your warehouse.
+
+<div className="bp3-callout bp3-icon-info-sign bp3-intent" markdown="1">
+Learn more about ELT and where Dataform fits in the modern data stack.
+
+<a href="https://docs.dataform.co/introduction/modern-data-stack"><button>See where Dataform fits in the modern data stack</button></a></div>
+
+By using Dataform and its best practices, data teams are more productive and build new data tables that are well defined, tested and documented for use by the entire company.
+
+<img src="https://assets.dataform.co/blog/datastack_horizontal.png" width="2254"  alt="" />
 
 ## What can it do?
 
-Using Dataform you can:
+In its simplest form, Dataform helps you run SQL commands in your data warehouse to create new tables and views. Dataform ships many features made to improve the way you manage data and make your team more productive.
 
-- [Publish datasets and views](guides/datasets)
-- [Write assertions for your data](guides/assertions)
-- [Execute arbitrary SQL operations](guides/operations)
-
-Dataform currently supports Google BigQuery, Postgres, Amazon Redshift, Snowflake, and Azure SQL Data Warehouse.
-
-## How can I use it?
-
-You can get started quickly using <a target="_blank" rel="noopener" href="https://dataform.co">Dataform Web</a>, or if you prefer, check out our open source [command line interface](dataform-cli) to develop Dataform projects yourself.
-
-In addition to providing a nice graphical user interface, Dataform Web integrates many useful additional cloud services, making it the perfect data management tool for larger teams.
+- **Define tables and views** to be created in your data warehouse
+- **Add documentation** to tables and views
+- Define assertions to **test the quality of your data**
+- **Reuse code** across multiple scripts
+- Run arbitrary **SQL operations**
+- Take **snapshots** of your data
+- Use **ready-made SQL packages** to help you model your data
 
 ## How does it work?
 
-1. You write SQL files enriched with Dataform's API and templating functions.
-2. Dataform compiles, validates, and executes the generated SQL statements against your warehouse, automatically adding boilerplate such as `CREATE TABLE` and `INSERT` statements.
-3. Clean, well-defined datasets are created in your data warehouse, which the rest of your team can use for anything from dashboards to machine learning.
+1. You define new tables and views to be built in your data warehouse.
+2. As you develop, Dataform builds a dependency tree of all actions to be run in your warehouse. This dependency tree determines the order of the actions to be run and ensures that tables are created and updated in the right order.
+3. Dataform runs this dependency tree in your warehouse to create new tables, views, and run other SQL commands.
 
-Dataform's enriched SQL format allows you to:
+<div className="bp3-callout bp3-icon-info-sign" markdown="1">
+Learn more about how Dataform works.
 
-- Reference and declare dependencies between datasets
-- Re-use common SQL across any number of queries
-- Write assertions against your data
-- Document your dataset fields
-- Write custom functions in JavaScript
+<a href="https://docs.dataform.co/introduction/dataform-5-minutes"><button intent="primary">5 min overview of Dataform</button></a>
+<a href="https://docs.dataform.co/introduction/how-dataform-works"><button>How Dataform works technically</button></a>
+
+</div>
+
+## How can I use it?
+
+They are two main ways to work with Dataform. You can use <a target="_blank" rel="noopener" href="https://dataform.co">Dataform web</a> application with an Integrated Development Environment (IDE). You can also use Dataform locally using the Command Line Interface (CLI).
+
+The core of Dataform is open source (Dataform compiler and runner) and can be used with the CLI.
+
+## Who should use Dataform?
+
+Dataform is built for data professionals who interact with a cloud data warehouse. That includes anyone who knows how to write SQL queries, including data analysts, data engineers and data scientists.
+
+Using Dataform requires an understanding of SQL. If you're unfamiliar with SQL, check out the Khan Academy [Introduction to SQL course](https://www.khanacademy.org/computing/computer-programming/sql) or [Codeacademy](https://www.codecademy.com/learn/learn-sql).
+
+Knowledge of Javascript can be useful to use Dataform most advanced features. Those are totally optional but can make developing faster and easier. If you are unfamiliar with Javascript, check the re-introduction to Javascript on [MDN](https://developer.mozilla.org/en-US/docs/Web/JavaScript/A_re-introduction_to_JavaScript).
+
+## Why should I use Dataform?
+
+Dataform helps data teams adopt best practices and software engineering workflows to manage tables in their data warehouse.
+
+By using Dataform and its best practices, data teams are able to manage data significantly faster and deliver data that is trusted and understood by the entire organization.
+
+## Need help?
+
+You can join our Slack group and discuss with our team and hundreds of other data professionals using Dataform.
+
+<a href="https://slack.dataform.co" target="_blank" rel="noopener"><button intent="primary">Join Dataform slack</button></a></div>
+
+If you are encountering any issue on the Dataform web app, please contact our team using the intercom messenger icon on the bottom right of the page.
