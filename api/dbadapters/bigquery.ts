@@ -74,7 +74,10 @@ export class BigQueryDbAdapter implements IDbAdapter {
       interactive?: boolean;
       maxResults?: number;
     } = { interactive: false, maxResults: 1000 }
-  ) {
+  ): Promise<{
+    rows: any[];
+    metadata: any;
+  }> {
     return this.pool
       .addSingleTask({
         generator: () =>

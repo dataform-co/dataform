@@ -1,7 +1,10 @@
-package(default_visibility = ["//tests:__subpackages__"])
+package(default_visibility = [
+    "//visibility:public",
+])
 
 filegroup(
     name = "test_credentials",
+    testonly = 1,
     srcs = glob([
         "*.json",
     ]),
