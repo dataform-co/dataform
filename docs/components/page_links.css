@@ -1,9 +1,32 @@
 ul.pageLinks {
   list-style-type: none;
-  padding-right: 10px;
+  padding-right: 0px;
 }
 
 .pageLinks li {
   line-height: 20px;
   padding: 5px 0px;
+  font-size: 15px;
+}
+
+.pageLinks > li > a {
+  color: var(--textSecondary);
+}
+
+.pageLinks > li > a:hover {
+  color: var(--textPrimary);
+}
+
+.onThisPage {
+  /* This the standard h5 so it should have been implemented elsewhere*/
+  color: var(--textPrimary);
+  font-family: Poppins, sans-serif;
+  font-style: normal;
+  font-weight: 500;
+  font-size: 14px;
+  line-height: 25px;
+
+  text-align: right;
+  letter-spacing: 0.035em;
+  text-transform: uppercase;
 }

@@ -92,7 +92,7 @@ Managing dependencies with the `ref` function has numerous advantages.
 - It enables us to write smaller, more reusable and more modular queries instead of thousand lines long queries. That makes pipelines easier to debug.
 - You get alerted in real time about issues like missing or circular dependencies
 
-## Transformation logic, data quality testing, and table documentation in one place
+## SQLX = transformation logic + data quality testing + documentation
 
 One of the powerful attributes of SQLX is that you can define the transformation logic, data quality testing rules, and your table documentation all within a single file.
 

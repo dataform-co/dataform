@@ -68,9 +68,7 @@ export default class Documentation extends React.Component<IProps> {
           <div className={styles.sidebarRight}>
             <div className={styles.titleRight}>
               {this.props.current.editLink && (
-                <a href={this.props.current.editLink}>
-                  <Button text="Suggest edits" rightIcon={"annotation"} minimal={true} />
-                </a>
+                <a href={this.props.current.editLink}>✎ Edit this page on GitHub</a>
               )}
             </div>
             <PageLinks links={currentHeaderLinks} />
