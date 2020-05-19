@@ -63,6 +63,15 @@ Dataform validates the compiled script you are editing against Snowflake in real
 
 <video autoplay controls loop  muted  width="680" ><source src="https://assets.dataform.co/docs/compilation.mp4" type="video/mp4" ><span>Real time compilation video</span></video>
 
+# Sample Dataform project with Snowflake
+
+We prepared the following sample project of a fictional ecommerce store using using Snowflake.
+
+<img src="https://assets.dataform.co/docs/sample_projects/snowflake_sample_project_dag.png" width="1100"  alt="Sample bigquery Dataform project DAG" />
+<em>Dependency tree of the Snowflake sample project</em>
+
+<a href="examples/projects/ecommerce-snowflake"><button>View the example page</button></a>
+
 # Getting help
 
 If you are using Dataform web and are having trouble connecting to Snowflake, please reach out to us by using the intercom messenger icon at the bottom right of the app.

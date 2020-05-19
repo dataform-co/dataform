@@ -115,11 +115,7 @@ We prepared the following sample project using the Stackoverflow public dataset.
 <img src="https://assets.dataform.co/docs/sample_projects/bigquery_sample_project_dag.png" width="1100"  alt="Sample bigquery Dataform project DAG" />
 <em>Dependency tree of the BigQuery sample project</em>
 
-This project transforms four raw datasets (`posts_answers`, `posts_questions`, `badges` and `users`) into two summary reporting tables. `posts_combined` brings stackoverflow posts and answers into a single table, with a “type” field for differentiating between the two. `user_stats` provides an overview of each users engagement: when they signed up, how many badges they have, and how many posts and answers they’ve made.
-
-<a href="https://app.dataform.co/#/6470156092964864/overview"><button>See the example on GitHub</button></a>
-
-<a href="https://app.dataform.co/#/6470156092964864/overview"><button intent="primary">See the example on Dataform web</button></a> _(Viewing the example project on Dataform web requires sign up)_
+<a href="examples/projects/stackoverflow-bigquery"><button>View the example page</button></a>
 
 # Packages
 
@@ -127,7 +123,7 @@ This project transforms four raw datasets (`posts_answers`, `posts_questions`, `
 
 We published a package that helps the analysis of BigQuery usage logs. You can find more information by reading the related blog post or the package page.
 
-<a href="https://dataform.co/blog/exporting-bigquery-usage-logs"><button>Visit the package page</button></a> <a href="https:///docs.dataform.co/packages/dataform-bq-audit-logsw"><button>Read the blog post</button></a>
+<a href="https://dataform.co/blog/exporting-bigquery-usage-logs"><button>Visit the package page</button></a> <a href="packages/dataform-bq-audit-logsw"><button>Read the blog post</button></a>
 
 # Blog posts
 

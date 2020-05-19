@@ -19,7 +19,6 @@ This project transforms four raw datasets (`CUSTOMER`, `NATION`, `LINEITEM` and 
 
 # View the project
 
-<a href="https://app.dataform.co/#/6478728478588928/overview"><button>See the example on GitHub</button></a>
+<a href="https://github.com/dataform-co/dataform-example-project-snowflake" target="_blank"><button>See the example on GitHub</button></a>
 
-<a href="https://app.dataform.co/#/6478728478588928/overview"><button intent="primary">See the example on Dataform web</button></a>
-<em>(Viewing the example project on Dataform web requires sign up)</em>
+<a href="https://app.dataform.co/#/6478728478588928/overview" target="_blank"><button intent="primary">See the example on Dataform web</button></a> (Viewing the example project on Dataform web requires sign up)
