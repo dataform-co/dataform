@@ -2,6 +2,7 @@
  * Copyright (c) Microsoft Corporation. All rights reserved.
  * Licensed under the MIT License. See License.txt in the project root for license information.
  * ------------------------------------------------------------------------------------------ */
+import { ChildProcess, exec } from "child_process";
 import {
   CompletionItem,
   CompletionItemKind,
@@ -22,7 +23,7 @@ import { TextDocument } from "vscode-languageserver-textdocument";
 const connection = createConnection(ProposedFeatures.all);
 // Create a simple text document manager. The text document manager
 // supports full document sync only
-let documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument);
+const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument);
 let hasConfigurationCapability: boolean = false;
 let hasWorkspaceFolderCapability: boolean = false;
 let hasDiagnosticRelatedInformationCapability: boolean = false;
@@ -110,21 +111,42 @@ documents.onDidClose(e => {
 // The content of a text document has changed. This event is emitted
 // when the text document first opened or when its content has changed.
 documents.onDidChangeContent(change => {
-  validateTextDocument(change.document);
+  const _ = compileAndValidate();
 });
+
+async function compileAndValidate() {
+  const compileResult = await getProcessResult(exec("dataform compile --json"));
+  const parsedCompileResult = JSON.parse(compileResult.stdout) as any;
+  if (parsedCompileResult.graphErrors && parsedCompileResult.graphErrors.compilationErrors) {
+    parsedCompileResult.graphErrors.compilationErrors.forEach((compilationError: any) => {
+      connection.sendNotification("error", compilationError.message);
+    });
+  }
+}
+
+async function getProcessResult(childProcess: ChildProcess) {
+  let stdout = "";
+  childProcess.stderr.pipe(process.stderr);
+  childProcess.stdout.pipe(process.stdout);
+  childProcess.stdout.on("data", chunk => (stdout += String(chunk)));
+  const exitCode: number = await new Promise(resolve => {
+    childProcess.on("close", resolve);
+  });
+  return { exitCode, stdout };
+}
+
 async function validateTextDocument(textDocument: TextDocument): Promise<void> {
-  console.log("VALIDATING DOCUMENT");
   // In this simple example we get the settings for every validate run.
-  let settings = await getDocumentSettings(textDocument.uri);
+  const settings = await getDocumentSettings(textDocument.uri);
   // The validator creates diagnostics for all uppercase words length 2 and more
-  let text = textDocument.getText();
-  let pattern = /\b[A-Z]{2,}\b/g;
+  const text = textDocument.getText();
+  const pattern = /\b[A-Z]{2,}\b/g;
   let m: RegExpExecArray | null;
   let problems = 0;
-  let diagnostics: Diagnostic[] = [];
+  const diagnostics: Diagnostic[] = [];
   while ((m = pattern.exec(text)) && problems < settings.maxNumberOfProblems) {
     problems++;
-    let diagnostic: Diagnostic = {
+    const diagnostic: Diagnostic = {
       severity: DiagnosticSeverity.Warning,
       range: {
         start: textDocument.positionAt(m.index),

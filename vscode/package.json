@@ -13,7 +13,7 @@
     "onCommand:dataform.helloWorld",
     "onCommand:dataform.showSidebar",
     "onCommand:dataform.addToPanel",
-    "onLanguage:plaintext"
+    "onLanguage:sqlx"
   ],
   "main": "extension.js",
   "contributes": {
@@ -58,7 +58,7 @@
     ],
     "languages": [
       {
-        "id": "SQLX",
+        "id": "sqlx",
         "extensions": [
           ".sqlx"
         ],
@@ -67,7 +67,7 @@
     ],
     "grammars": [
       {
-        "language": "SQLX",
+        "language": "sqlx",
         "scopeName": "source.sqlx",
         "path": "sqlx.grammar.json"
       }
