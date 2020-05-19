@@ -4,8 +4,6 @@ subtitle: A list of examples of scripts to use in your Dataform projects
 priority: 1
 ---
 
-_This page is quite long, use the table of content on the right (or CTRL+F) to find what you are looking for_
-
 # Basic examples
 
 ## Create a view
@@ -390,7 +388,8 @@ operate(`create table`, 'create table if not exists backfill_table (`fields`) `)
 // step 2: insert into the table
 
 dateArr.forEach((day, i) =>
-  operate(`backfill ${day}`, `INSERT INTO backfill_table SELECT fields WHERE day = '${day}'`)
+  operate(`backfill ${day}`
+   `insert into backfill_table select fields where day = '${day}'`)
 );
 ```
 
