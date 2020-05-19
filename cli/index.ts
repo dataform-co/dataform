@@ -662,7 +662,3 @@ export function runCli() {
     yargs.showHelp();
   }
 }
-
-if (require.main === module) {
-  runCli();
-}
