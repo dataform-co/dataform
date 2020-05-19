@@ -6,7 +6,11 @@ ts_library(
     name = "vscode",
     srcs = glob(["**/*.ts"]),
     deps = [
+        "@npm//@types/node",
         "@npm//@types/vscode",
+        "@npm//vscode-languageclient",
+        "@npm//vscode-languageserver",
+        "@npm//vscode-languageserver-textdocument",
     ],
 )
 
