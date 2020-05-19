@@ -107,7 +107,7 @@ post_operations {
 
 ```
 
-# Examples of incremental tables
+# Incremental tables examples
 
 ## Add new rows dates for new dates in source data
 
@@ -145,9 +145,126 @@ ${ when(incremental(), `where snapshot_date > (select max(snapshot_date) from ${
 
 ## Use global variables
 
+`includes/contants.js`
+
+```js
+const project_id = "project_id";
+const first_date = "'1970-01-01'";
+module.exports = {
+  project_id,
+  first_date
+};
+```
+
+`definitions/new_table.sqlx`
+
+```sql
+config {type: "table"}
+
+select * from source_table where date > ${contants.first_date}
+```
+
 ## Create a country mapping
 
+`includes/mapping.js`
+
+```sql
+function country_group(country){
+  return `
+  case
+    when ${country} in ('US', 'CA') then 'NA'
+    when ${country} in ('GB', 'FR', 'DE', 'IT', 'PL', 'SE') then 'EU'
+    when ${country} in ('AU') then ${country}
+    else 'Other'
+  end`;
+```
+
+`definitions/new_table.sqlx`
+
+```sql
+config { type: "table"}
+
+select
+  country as country,
+  ${mapping.country_group("country")} as country_group,
+  device_type as device_type,
+  sum(revenue) as revenue,
+  sum(pageviews) as pageviews,
+  sum(sessions) as sessions
+
+from ${ref("source_table")}
+
+group by 1, 2, 3
+```
+
+`compiled output`
+
+```sql
+select
+  country as country,
+  case
+    when country in ('US', 'CA') then 'NA'
+    when country in ('GB', 'FR', 'DE', 'IT', 'PL', 'SE') then 'EU'
+    when country in ('AU') then country
+    else 'Other'
+  end as country_group,
+  device_type as device_type,
+  sum(revenue) as revenue,
+  sum(pageviews) as pageviews,
+  sum(sessions) as sessions
+
+from "dataform"."source_table"
+
+group by 1, 2, 3
+```
+
 ## Generate a SQL script with a custom function
+
+`includes/script_builder.js`
+
+```js
+function render_script(table, dimensions, metrics) {
+  return `
+      select
+      ${dimensions.map(field => `${field} as ${field}`).join(",")},
+      ${metrics.map(field => `sum(${field}) as ${field}`).join(",\n")}
+      from ${table}
+      group by ${dimensions.map((field, i) => `${i + 1}`).join(", ")}
+    `;
+}
+
+module.exports = { render_script };
+```
+
+`definitions/new_table.sqlx`
+
+```sql
+config {
+    type: "table",
+    tags: ["advanced", "hourly"],
+    disabled: true
+}
+
+${script_builder.render_script(ref("source_table"),
+                               ["country", "device_type"],
+                               ["revenue", "pageviews", "sessions"]
+                               )}
+```
+
+`compiled output`
+
+```sql
+select
+  country as country,
+  device_type as device_type,
+  sum(revenue) as revenue,
+  sum(pageviews) as pageviews,
+  sum(sessions) as sessions
+
+from "dataform"."source_table"
+
+group by 1, 2
+```
 
 # Examples using the JS API
 
@@ -188,6 +305,18 @@ declare({
 
 ## Deleting sensitive information in all tables containing PII
 
+```js
+const pii_tables = ["users", "customers", "leads"];
+pii_tables.forEach(table =>
+  operate(`gdpr_cleanup: ${table}`,
+    ctx => `
+      delete from raw_data.${table}
+      where user_id in (select * from users_who_requested_deletion)`)
+      .tags(["gdpr_deletion"]))
+);
+
+```
+
 # Misc
 
 ## Use inline variables and functions
@@ -206,6 +335,37 @@ select
 ```
 
 ## Perfom a unit test on a SQL query
+
+`definitions/query_to_be_tested.sqlx`
+
+```sql
+select
+  floor(age / 5) * 5 as age_group,
+  count(1) as user_count
+from ${ref("source_table")}
+group by age_group
+order by age_group
+```
+
+`definitions/unit_test_on_query.sqlx`
+
+```sql
+config {
+  type: "test",
+  dataset: "source_table"
+}
+
+input "ages" {
+  select 15 as age union all
+  select 21 as age union all
+  select 24 as age union all
+  select 34 as age
+}
+
+select 15 as age_group, '1' as user_count union all
+select 20 as age_group, '2' as user_count union all
+select 30 as age_group, '1' as user_count
+```
 
 ## Backfill a daily table
 
@@ -226,14 +386,26 @@ var getDateArray = function(start, end) {
 var dateArr = getDateArray("2020-03-01", "2020-04-01");
 
 // step 1: create table
-
+operate(`create table`, 'create table if not exists backfill_table (`fields`) `);
 // step 2: insert into the table
 
 dateArr.forEach((day, i) =>
-  operate(`backfill ${day}`, `INSERT INTO table SELECT 1 AS test WHERE day = '${day}'`)
+  operate(`backfill ${day}`, `INSERT INTO backfill_table SELECT fields WHERE day = '${day}'`)
 );
 ```
 
 ## Build a rolling 30-days table that update incrementally
 
-## jean
+```sql
+config {type: "incremental"}
+
+postOperations {
+  delete from ${self()} where date < (date_add(Day, -30, CURRENT_DATE))
+}
+
+select
+ date(timestamp) as date,
+ order_id,
+from source_table
+  ${ when(incremental(), `where timestamp > (select max(date) from ${self()})`) }
+```
