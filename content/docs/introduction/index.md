@@ -7,9 +7,9 @@ icon: menu-open
 
 ## What is Dataform?
 
-Dataform is a platform to manage data in BigQuery, Snowflake, Redshift, and other data warehouses.
+Dataform is a platform to manage data in BigQuery, Snowflake, Redshift, and other data warehouses. It helps data teams build data pipelines that turn raw data into new tables and views that can be used for analytics.
 
-It helps data teams build data pipelines that turn raw data into new tables and views that can be used for analytics. Dataform does the T in ELT (Extract, Load, Transform) processes. It doesn’t extract or load data in your warehouse but it’s very powerful to transform data already loaded in your warehouse.
+Dataform **does the T in ELT** (Extract, Load, Transform) processes. It doesn’t extract or load data in your warehouse but it’s very powerful to transform data already loaded in your warehouse.
 
 <div className="bp3-callout bp3-icon-info-sign bp3-intent" markdown="1">
 Learn more about ELT and where Dataform fits in the modern data stack.
@@ -58,7 +58,7 @@ Dataform is built for data professionals who interact with a cloud data warehous
 
 Using Dataform requires an understanding of SQL. If you're unfamiliar with SQL, check out the Khan Academy [Introduction to SQL course](https://www.khanacademy.org/computing/computer-programming/sql) or [Codeacademy](https://www.codecademy.com/learn/learn-sql).
 
-Knowledge of Javascript can be useful to use Dataform most advanced features. Those are totally optional but can make developing faster and easier. If you are unfamiliar with Javascript, check the re-introduction to Javascript on [MDN](https://developer.mozilla.org/en-US/docs/Web/JavaScript/A_re-introduction_to_JavaScript).
+Knowledge of Javascript can be useful to use Dataform most advanced features. Those are totally optional but can make developing faster and easier. If you are unfamiliar with Javascript, check the [re-introduction to Javascript](https://developer.mozilla.org/en-US/docs/Web/JavaScript/A_re-introduction_to_JavaScript) on MDN.
 
 ## Why should I use Dataform?
 

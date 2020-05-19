@@ -66,7 +66,7 @@ In practice, SQLX is mostly composed of SQL in the dialect of your data warehous
 <img src="https://assets.dataform.co/docs/introduction/sqlx_simple_example.png" max-width="661"  alt="SQLX example" />
 <em>This illustration uses BigQuery Standard SQL. SQLX works the same way with all SQL dialects.</em>
 
-<span className="numberTitle">2</span> **Config block**
+<span className="numberTitle">1</span> **Config block**
 
 In SQLX, you only write SELECT statements. You specify what you want the output of the script to be in the config block, like a `view` or a `table` as well as other types available.
 

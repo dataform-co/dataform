@@ -7,7 +7,14 @@
 :global body code {
   font-style: normal;
   font-weight: normal;
+}
+
+:global body p {
   line-height: 30px;
+}
+
+:global body code {
+  line-height: 20px;
 }
 
 :global body li {

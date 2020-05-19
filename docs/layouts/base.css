@@ -24,7 +24,7 @@
   z-index: -1;
 }
 
-.numberTitle {
+:global .numberTitle {
   display: inline-block;
   height: 30px;
   width: 30px;
@@ -35,4 +35,19 @@
   color: white;
   text-align: center;
   font-weight: 600;
+}
+
+p > code {
+  font-family: "Source Code Pro", monospace;
+  -webkit-border-radius: 3px;
+  -moz-border-radius: 3px;
+  border-radius: 3px;
+  -moz-background-clip: padding;
+  -webkit-background-clip: padding-box;
+  background-clip: padding-box;
+  border: 1px solid #ccc;
+  background-color: #f6f8fa;
+  padding: 0px 3px;
+  display: inline-block;
+  margin: 0px;
 }

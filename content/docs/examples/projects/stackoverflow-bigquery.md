@@ -1,7 +1,7 @@
 ---
 title: Stackoverflow data on BigQuery
 subtitle: A simple project turning Stackoverflow public raw data into reporting tables in a BigQuery data warehouse
-priority: 0
+priority: 1
 ---
 
 # Summary

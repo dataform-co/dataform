@@ -1,12 +1,16 @@
 ---
 title: Ecommerce store on Snowflake
 subtitle: A fictional ecommerce store project on a Snowflake data warehouse
-priority: 1
+priority: 2
 ---
 
 # Summary
 
-To complete
+This project transforms four raw datasets (`CUSTOMER`, `NATION`, `LINEITEM` and `ORDERS`) into three summary reporting tables.
+
+- `CUSTOMER_STATS` provides a single view of all customers: how many orders they’ve made, how much they’ve spent, where they’re from.
+- `ORDER_STATS` provides a single view of every order, adding the number of line-items it included.
+- `DAILY_COUNTRY_STATS` provides an aggregate view of total daily order volumes by country.
 
 # Dependency tree of the project
 
