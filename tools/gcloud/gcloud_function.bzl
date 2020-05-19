@@ -3,6 +3,8 @@ def _deploy_nodejs_gcloud_function_impl(ctx, trigger_flag):
 
     pkg_npm = ctx.attr.pkg_npm
     pkg_npm_path = pkg_npm.label.package + "/" + pkg_npm.label.name
+    if len(pkg_npm.label.workspace_root) > 0:
+        pkg_npm_path = pkg_npm.label.workspace_root + "/" + pkg_npm_path
 
     gcloud = ctx.attr.gcloud.label.workspace_root + ctx.attr.gcloud.label.package + "/" + ctx.attr.gcloud.label.name
     file_content = [
