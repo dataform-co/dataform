@@ -37,7 +37,7 @@
   font-weight: 600;
 }
 
-p > code {
+:not(pre) > code {
   font-family: "Source Code Pro", monospace;
   -webkit-border-radius: 3px;
   -moz-border-radius: 3px;
