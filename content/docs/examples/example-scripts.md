@@ -4,9 +4,9 @@ subtitle: A list of examples of scripts to use in your Dataform projects
 priority: 1
 ---
 
-# Basic examples
+## Basic examples
 
-## Create a view
+### Create a view
 
 ```sql
 config { type: "view" }
@@ -14,7 +14,7 @@ config { type: "view" }
 select * from source_data
 ```
 
-## Create a table
+### Create a table
 
 ```sql
 config { type: "table" }
@@ -22,7 +22,7 @@ config { type: "table" }
 select * from source_data
 ```
 
-## Use the ref function
+### Use the ref function
 
 ```sql
 config { type: "table" }
@@ -30,7 +30,7 @@ config { type: "table" }
 select * from ${ref("source_data")}
 ```
 
-## Run several SQL operations
+### Run several SQL operations
 
 ```sql
 config { type: "operations" }
@@ -40,7 +40,7 @@ delete from datatable where country = 'GB'
 delete from datatable where country = 'FR'
 ```
 
-## Add documentation to a table, view, or declaration
+### Add documentation to a table, view, or declaration
 
 ```sql
 config { type: "table",
@@ -53,7 +53,7 @@ config { type: "table",
 select user_name, user_id from ${ref("source_data")}
 ```
 
-## Add assertions to a table, view, or declaration
+### Add assertions to a table, view, or declaration
 
 ```sql
 config {
@@ -70,7 +70,7 @@ config {
 select ...
 ```
 
-## Add a custom assertion
+### Add a custom assertion
 
 ```sql
 config { type: "assertion" }
@@ -85,7 +85,7 @@ where
   or c is null
 ```
 
-## Run custom SQL before or after creating a table
+### Run custom SQL before or after creating a table
 
 ```sql
 
@@ -105,20 +105,9 @@ post_operations {
 
 ```
 
-# Incremental tables examples
+## Incremental tables examples
 
-## Add new rows dates for new dates in source data
-
-```sql
-config { type: "incremental" }
-
-select date(timestamp) as date, action
-from weblogs.user_actions
-
-${ when(incremental(), `where timestamp > (select max(date) from ${self()})`)
-```
-
-## Take a snapshot of a table periodically
+### Add new rows dates for new dates in source data
 
 ```sql
 config { type: "incremental" }
@@ -129,7 +118,18 @@ from weblogs.user_actions
 ${ when(incremental(), `where timestamp > (select max(date) from ${self()})`)
 ```
 
-# Examples of assertions - data quality tests
+### Take a snapshot of a table periodically
+
+```sql
+config { type: "incremental" }
+
+select date(timestamp) as date, action
+from weblogs.user_actions
+
+${ when(incremental(), `where timestamp > (select max(date) from ${self()})`)
+```
+
+## Examples of assertions - data quality tests
 
 ```sql
 config { type: "incremental" }
@@ -139,9 +139,9 @@ SELECT current_date() AS snapshot_date, customer_id, name, account_settings FROM
 ${ when(incremental(), `where snapshot_date > (select max(snapshot_date) from ${self()})`) }
 ```
 
-# Examples of includes
+## Examples of includes
 
-## Use global variables
+### Use global variables
 
 `includes/contants.js`
 
@@ -162,7 +162,7 @@ config {type: "table"}
 select * from source_table where date > ${contants.first_date}
 ```
 
-## Create a country mapping
+### Create a country mapping
 
 `includes/mapping.js`
 
@@ -216,7 +216,7 @@ from "dataform"."source_table"
 group by 1, 2, 3
 ```
 
-## Generate a SQL script with a custom function
+### Generate a SQL script with a custom function
 
 `includes/script_builder.js`
 
@@ -264,9 +264,9 @@ from "dataform"."source_table"
 group by 1, 2
 ```
 
-# Examples using the JS API
+## Examples using the JS API
 
-## Generating one table per country
+### Generating one table per country
 
 ```js
 const countries = ["GB", "US", "FR", "TH", "NG"];
@@ -282,7 +282,7 @@ countries.forEach(country => {
 });
 ```
 
-## Declaring multiple sources within one file
+### Declaring multiple sources within one file
 
 ```js
 declare({
@@ -301,7 +301,7 @@ declare({
 });
 ```
 
-## Deleting sensitive information in all tables containing PII
+### Deleting sensitive information in all tables containing PII
 
 ```js
 const pii_tables = ["users", "customers", "leads"];
@@ -315,9 +315,9 @@ pii_tables.forEach(table =>
 
 ```
 
-# Misc
+## Misc
 
-## Use inline variables and functions
+### Use inline variables and functions
 
 ```sql
 js {
@@ -332,7 +332,7 @@ select
  ${bar(foo)} as two
 ```
 
-## Perfom a unit test on a SQL query
+### Perfom a unit test on a SQL query
 
 `definitions/query_to_be_tested.sqlx`
 
@@ -365,7 +365,7 @@ select 20 as age_group, '2' as user_count union all
 select 30 as age_group, '1' as user_count
 ```
 
-## Backfill a daily table
+### Backfill a daily table
 
 ```js
 var getDateArray = function(start, end) {
@@ -393,7 +393,7 @@ dateArr.forEach((day, i) =>
 );
 ```
 
-## Build a rolling 30-days table that update incrementally
+### Build a rolling 30-days table that update incrementally
 
 ```sql
 config {type: "incremental"}

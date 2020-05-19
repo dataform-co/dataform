@@ -4,7 +4,7 @@ subtitle: Authentification, configuration options, and content for Redshift
 priority: 2
 ---
 
-# Authentification
+## Authentification
 
 Redshift projects require the following configuration settings:
 
@@ -23,7 +23,7 @@ Redshift projects require the following configuration settings:
   >these instructions</a>. Dataform's IP addresses are <code>35.233.106.210</code> and <code>104.196.10.242</code>.
 </div>
 
-### How to find Redshift credentials
+#### How to find Redshift credentials
 
 1. Go to `Redshift` in your AWS console.
 2. Select your cluster under `Clusters`.
@@ -31,11 +31,11 @@ Redshift projects require the following configuration settings:
 
 The Redshift user should have permissions to `CREATE` schemas and `SELECT` from `INFORMATION_SCHEMAS.TABLES` and `INFORMATION_SCHEMAS.COLUMNS` . Please contact our team [via slack](https://join.slack.com/t/dataform-users/shared_invite/zt-dark6b7k-r5~12LjYL1a17Vgma2ru2A) if you need help.
 
-# Configuration options
+## Configuration options
 
 Redshift specific options can be applied to tables using the `redshift` configuration parameter.
 
-## Distributing data
+### Distributing data
 
 You can configure how Redshift <a target="_blank" rel="noopener" href="https://docs.aws.amazon.com/redshift/latest/dg/t_Distributing_data.html#t_data_distribution_concepts">distributes data</a> in your cluster by configuring the `distStyle` and `distKey` properties.
 
@@ -59,7 +59,7 @@ DISTSTYLE even
 AS SELECT user_id FROM ...
 ```
 
-## Sorting data
+### Sorting data
 
 You can also configure how Redshift <a target="_blank" rel="noopener" href="https://docs.aws.amazon.com/redshift/latest/dg/t_Sorting_data.html">sorts data</a> in your datasets with the `sortKeys` and `sortStyle` properties.
 
@@ -73,7 +73,7 @@ config {
 SELECT 1 AS ts
 ```
 
-## Binding views
+### Binding views
 
 By default, all views in Redshift are created as late binding views. This can be changed by setting the `bind` property in the redshift configuration block.
 
@@ -87,15 +87,15 @@ config {
 SELECT 1 AS ts
 ```
 
-# Dataform web features for Redshift
+## Dataform web features for Redshift
 
-## Real time query validation
+### Real time query validation
 
 Dataform validates the compiled script you are editing against Redshift in real time. It will let you know if the query is valid (or won’t run) before having to run it.
 
 <video autoplay controls loop  muted  width="680" ><source src="https://assets.dataform.co/docs/compilation.mp4" type="video/mp4" ><span>Real time compilation video</span></video>
 
-# Sample Dataform project with Redshift
+## Sample Dataform project with Redshift
 
 We prepared the following sample project of a fictional ecommerce store using using Redshift.
 
@@ -104,15 +104,15 @@ We prepared the following sample project of a fictional ecommerce store using us
 
 <a href="examples/projects/ecommerce-redshift"><button>View the example page</button></a>
 
-# Blog posts
+## Blog posts
 
-## Import data from S3 to Redshift using Dataform
+### Import data from S3 to Redshift using Dataform
 
 The blog post offers a walkthrough to load data from S3 to Redshift.
 
 <a href="https://dataform.co/blog/import-data-s3-to-redshift"><button>Read the article on the blog</button></a>
 
-# Getting help
+## Getting help
 
 If you are using Dataform web and are having trouble connecting to Redshift, please reach out to us by using the intercom messenger icon at the bottom right of the app.
 

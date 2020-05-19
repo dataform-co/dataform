@@ -4,7 +4,7 @@ subtitle: Authentification, configuration options, and content for Snowflake
 priority: 0
 ---
 
-# Authentification
+## Authentification
 
 Snowflake connections require the following elements:
 
@@ -23,9 +23,9 @@ You may also need to whitelist Dataform's IP addresses to let Dataform access yo
   >these instructions</a>. Dataform's IP addresses are <code>35.233.106.210</code> and <code>104.196.10.242</code>.
 </div>
 
-# Configuration options
+## Configuration options
 
-## Querying different databases
+### Querying different databases
 
 You can both read from and publish to two separate snowflake databases within a single Dataform project. For example, you may have a database called `RAW_SOURCE` that contains raw data loaded in your warehouse and a database called `ANALYTICS` in which you create data tables you use for analytics and reporting.
 
@@ -51,19 +51,19 @@ config {
 
 ```
 
-### Using separate databases for development and production
+#### Using separate databases for development and production
 
 You can configure separate databases for development and production in your `environment.json` file. The process is described on [this page](https://docs.dataform.co/dataform-web/guides/environments#example-use-separate-databases-for-development-and-production-data).
 
-# Dataform web features for Snowflake
+## Dataform web features for Snowflake
 
-## Real time query validation
+### Real time query validation
 
 Dataform validates the compiled script you are editing against Snowflake in real time. It will let you know if the query is valid (or won’t run) before having to run it.
 
 <video autoplay controls loop  muted  width="680" ><source src="https://assets.dataform.co/docs/compilation.mp4" type="video/mp4" ><span>Real time compilation video</span></video>
 
-# Sample Dataform project with Snowflake
+## Sample Dataform project with Snowflake
 
 We prepared the following sample project of a fictional ecommerce store using using Snowflake.
 
@@ -72,7 +72,7 @@ We prepared the following sample project of a fictional ecommerce store using us
 
 <a href="examples/projects/ecommerce-snowflake"><button>View the example page</button></a>
 
-# Getting help
+## Getting help
 
 If you are using Dataform web and are having trouble connecting to Snowflake, please reach out to us by using the intercom messenger icon at the bottom right of the app.
 

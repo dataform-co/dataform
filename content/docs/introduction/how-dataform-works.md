@@ -4,7 +4,7 @@ subtitle: Learn how Dataform compiles your project and runs it in your warehouse
 priority: 3
 ---
 
-# Overview of a Dataform project
+## Overview of a Dataform project
 
 Each Dataform project is a repository with a collection of JSON configuration files, SQLX files, and sometimes JS files. Dataform projects contain three types of files:
 
@@ -21,11 +21,11 @@ Each Dataform project is a repository with a collection of JSON configuration fi
 <img src="https://assets.dataform.co/docs/introduction/sample_folder.png" width="993"  alt="Dataform project files" />
 <em>A Dataform project in GitHub</em>
 
-# How Dataform works
+## How Dataform works
 
 <img src="https://assets.dataform.co/docs/introduction/how%20it%20works.png" max-width="1265"  alt="" />
 
-## Step 1. Develop in SQLX
+### Step 1. Develop in SQLX
 
 In Dataform, you develop in SQLX. SQLX being an extension of SQL, any SQL file is a valid SQLX file. A typical SQLX file will contain a SELECT statement defining a new table or a view and a config block at the top.
 
@@ -53,7 +53,7 @@ You only need to write `SELECT` statements in SQLX. Dataform takes care of addin
 
 </div>
 
-## Step 2. Dataform compiles your project in real time
+### Step 2. Dataform compiles your project in real time
 
 Dataform compiles your entire project in real-time, regardless of the number of tables you define. During this step, all SQLX is converted into pure SQL, in the dialect of your data warehouse. The following actions are happening during compilation:
 
@@ -90,7 +90,7 @@ group by 1, 2
 <video  controls loop  muted  width="680" ><source src="https://assets.dataform.co/docs/compilation_cli.mp4" type="video/mp4" ><span>Real time compilation on Dataform web</span></video>
 <em>Compiling 111 actions in less than 1s with the Dataform CLI</em>
 
-## Step 3. Dataform connects to your data warehouse to run the dependency tree (or a subset)
+### Step 3. Dataform connects to your data warehouse to run the dependency tree (or a subset)
 
 Dataform connects to your data warehouse to run SQL commands in your data warehouse, following the order of the dependency tree.
 
@@ -98,13 +98,13 @@ Dataform connects to your data warehouse to run SQL commands in your data wareho
 - Assertions queries are run against your tables and views to check that the data is correct
 - Other SQL operations are run
 
-### Consult logs
+#### Consult logs
 
 After the run, you can consult logs to see what tables were created, if assertions passed or failed, how long each action took to complete, and other information. You can also consult the exact SQL code that was run in your warehouse.
 
 <img src="https://assets.dataform.co/docs/introduction/run_logs.png" width="995"  alt="" />
 <em>Run logs on Dataform web</em>
 
-## Step 4. Tables are created or updated in your data warehouse
+### Step 4. Tables are created or updated in your data warehouse
 
 You can use your tables for all your analytics purposes.

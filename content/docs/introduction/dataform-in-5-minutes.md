@@ -4,11 +4,11 @@ subtitle: Learn how Dataform and SQLX can help your team manage data in your war
 priority: 2
 ---
 
-# Introduction
+## Introduction
 
 The modern analytics approach consists of centralising all the raw data from a company onto a single data warehouse. Once the raw data is there, it needs to be transformed, aggregated, normalized, joined and filtered before being usable in BI tools and other analytics projects. Dataform helps data teams transform raw data into well defined, reliable, tested and documented data tables that will power your company’s analytics.
 
-## From ETL to ELT
+### From ETL to ELT
 
 The traditional ETL, which stands for Extraction, Transformation, and Loading, has now evolved into ELT:
 
@@ -22,7 +22,7 @@ Learn more about ELT with our page on where Dataform fits in the modern data sta
 
 <a href="https://docs.dataform.co/introduction/modern-data-stack"><button intent="primary">See where Dataform fits in the modern data stack</button></a></div>
 
-## Build a single source of truth of data
+### Build a single source of truth of data
 
 Once raw data is loaded into your warehouse, your team transforms it into a single source of truth of data across your organisation. Dataform enables your team to follow industry best practices:
 
@@ -36,7 +36,7 @@ Once raw data is loaded into your warehouse, your team transforms it into a sing
 Graphical User Interfaces (GUI) are often easy to get started with and can help less technical users build data pipelines. In practice, we find that past 10 or 20 data tables, pipelines become extremely difficult to manage, search and reason about. SQL is one of the best abstraction to express complex data logic.
 </div>
 
-# Introducing SQLX
+## Introducing SQLX
 
 SQL is the de facto language for processing data in cloud data warehouses and SQL has many advantages.
 
@@ -46,7 +46,7 @@ SQL is the de facto language for processing data in cloud data warehouses and SQ
 - It’s easy to introspect when something goes wrong.
 - It enables faster development thanks to fast feedback loops.
 
-## The few limitations of SQL
+### The few limitations of SQL
 
 Current SQL workflows don’t necessarily follow engineering best practices. Several key features of writing code are missing in current SQL implementations.
 
@@ -55,11 +55,11 @@ Current SQL workflows don’t necessarily follow engineering best practices. Sev
 - **Managing dependencies is hard** because it requires separate systems. In practice many teams write 1000 lines long queries to ensure data processing happens in the right order.
 - **Data is often not documented** because documentation is needs to be managed outside of the code, in a separate system. It makes it hard for teams to keep it updated.
 
-## What is SQLX
+### What is SQLX
 
 SQLX is an open source extension of SQL. As it is an extension, every SQL file is also a valid SQLX file. **SQLX brings additional features to SQL to make development faster, more reliable, and scalable**. It includes many functions including dependencies management, automated data quality testing, and data documentation.
 
-## What does SQLX look like?
+### What does SQLX look like?
 
 In practice, SQLX is mostly composed of SQL in the dialect of your data warehouse (Standard SQL if you are using BigQuery, SnowSQL if you are using Snowflake…).
 
@@ -92,7 +92,7 @@ Managing dependencies with the `ref` function has numerous advantages.
 - It enables us to write smaller, more reusable and more modular queries instead of thousand lines long queries. That makes pipelines easier to debug.
 - You get alerted in real time about issues like missing or circular dependencies
 
-## SQLX = transformation logic + data quality testing + documentation
+### SQLX = transformation logic + data quality testing + documentation
 
 One of the powerful attributes of SQLX is that you can define the transformation logic, data quality testing rules, and your table documentation all within a single file.
 
@@ -125,7 +125,7 @@ Assertions defined in the config block get added onto your project’s dependenc
 
 For more advanced use cases, assertions can also be defined in separate SQLX files. See the [assertion page](http://docs.dataform.co/build-your-dataform-project/assertions) on documentation.
 
-## Other SQLX features
+### Other SQLX features
 
 SQLX has numerous additional features to help you manage data in your warehouse and build more reliable data pipelines faster.
 
@@ -136,7 +136,7 @@ SQLX has numerous additional features to help you manage data in your warehouse 
 
 Check the docs to learn more.
 
-# How do you develop in SQLX
+## How do you develop in SQLX
 
 <img src="https://assets.dataform.co/docs/introduction/how%20it%20works.png" max-width="1265"  alt="" />
 
@@ -158,7 +158,7 @@ Lean how Dataform works in more details.
 
 <a href="https://docs.dataform.co/introduction/modern-data-stack"><button>Understand how Dataform works</button></a></div>
 
-# Enable all your team to adopt best practices and be more productive with Dataform web
+## Enable all your team to adopt best practices and be more productive with Dataform web
 
 Dataform web is a web application made for data teams. It packages a rich Integrated Development Environment (IDE), a pipeline scheduler, a logs viewer and a data catalog.
 

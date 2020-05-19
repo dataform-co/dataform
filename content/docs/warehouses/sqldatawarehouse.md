@@ -3,7 +3,7 @@ title: Azure SQL Data Warehouse
 subtitle: Authentification and configuration options for Azure SQL Data Warehouse
 ---
 
-# Authentification
+## Authentification
 
 Azure SQL data warehouse connections require the following elements:
 
@@ -13,9 +13,9 @@ Azure SQL data warehouse connections require the following elements:
 - Password
 - Database name
 
-# Configuration options
+## Configuration options
 
-## Setting table distribution
+### Setting table distribution
 
 SQL Data Warehouse supports table <a target="_blank" rel="noopener" href="https://docs.microsoft.com/en-us/azure/sql-data-warehouse/massively-parallel-processing-mpp-architecture#distributions">distributions</a>.
 Manually tuning this parameter can help to optimize query performance.
@@ -40,13 +40,9 @@ WITH (distribution = REPLICATE)
 AS SELECT CURRENT_TIMESTAMP() AS ts
 ```
 
-# Getting help
+## Getting help
 
-<<<<<<< HEAD:content/docs/warehouses/sqldatawarehouse.md
-If you are using Dataform web and are having trouble connecting to Azure SQL Data Warehouse, please reach out to us by using the intercom messenger icon at the bottom right of the app.
-=======
 If you are using Dataform web and are having trouble connecting to Azure SQL Data Warehouse, please reach out to us by using the intercom messenger at the bottom right.
->>>>>>> origin/master:content/docs/warehouses-supported/sqldatawarehouse.md
 
 If you have other questions, you can join our slack community and ask question to get help.
 

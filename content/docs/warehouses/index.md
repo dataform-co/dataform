@@ -4,7 +4,7 @@ priority: 1
 icon: database
 ---
 
-# Supported data warehouses
+## Supported data warehouses
 
 Dataform supports the following data warehouses
 
@@ -14,6 +14,6 @@ Dataform supports the following data warehouses
 - [Azure SQL Data Warehouse](warehouses/sqldatawarehouse)
 - [Postgres ](warehouses/postgres)
 
-# Adding support to new data warehouses
+## Adding support to new data warehouses
 
 Support for new data warehouses can be added to Dataform. If you are interested in adding support for a new data warehosuse to Dataform, please [open an issue](https://github.com/dataform-co/dataform/issues/new) and our team will assist.

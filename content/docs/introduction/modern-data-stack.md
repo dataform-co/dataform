@@ -4,11 +4,11 @@ subtitle: An introduction to ELT and where Dataform fits in
 priority: 1
 ---
 
-# From ETL to ELT
+## From ETL to ELT
 
 The traditional ETL, which stands for Extraction, Transformation, and Loading, has now evolved onto ELT. Data is Extracted from source systems, Loaded into the data warehouse and then Transformed within the data warehouse. Dataform helps you manage that last part, the transformation in your data warehouse.
 
-# A simple ELT example
+## A simple ELT example
 
 Imagine you want to build the data stack of an ecommerce shop. This business has three data sources: Shopify for the web store, Stripe to process payments, and Salesforce as their CRM. You want to use all that data to build reports to track KPIs, create dashboards and conduct ad hocs analysis to understand the business. One of the fist tasks would be to create a dashboard in a BI tool with all your customers information for everyone in the company to know about your customers. This dashboard will have all the data you have about your customers.
 
@@ -16,7 +16,7 @@ Imagine you want to build the data stack of an ecommerce shop. This business has
 
 In this example, you want to use all the data you have (coming from Shopify, Stripe, and Salesforce) to create a unified dashboard.
 
-## The data warehouse
+### The data warehouse
 
 The data warehouse is the epicenter of modern stacks. Raw data from across the company is centralized in the warehouse. Data is transformed in the warehouse. BI and analytics tools read data from the warehouse.
 
@@ -24,7 +24,7 @@ The data warehouse is the epicenter of modern stacks. Raw data from across the c
 
 Most businesses today will use cloud data warehouses like Google BigQuery, Snowflake, or AWS Redshift.
 
-## Extraction and Loading
+### Extraction and Loading
 
 The first step in building a data stack is to Extract raw data from all sources and load it in the data warehouse. You can achieve this with third party tools, or by writing custom scripts.
 
@@ -32,7 +32,7 @@ The first step in building a data stack is to Extract raw data from all sources 
 
 The data loaded in your warehouse is raw and unprocessed. Each of those sources will generate dozens of tables in your data warehouse. At this stage, the data is not really usable for analytics. Answering simple questions like **“Which customers order the most products?"** would probably take several hours and writing complex queries.
 
-## Transform the data
+### Transform the data
 
 The next step is to transform the data. You want to turn the hundreds of tables of raw data loaded in your warehouse into a single source of truth that will represent your business.
 
@@ -48,7 +48,7 @@ Dataform helps you and your team turn the raw data in your warehouse into a suit
 
 It helps you build tables that are **well defined**, **tested** and **documented** to power your entire analytics.</a></div>
 
-## Use transformed data in your analytics
+### Use transformed data in your analytics
 
 After your data is transformed, you can use BI and other analytics tools to build dashboards and conduct analysis.
 

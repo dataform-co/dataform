@@ -4,7 +4,7 @@ subtitle: A fictional ecommerce store project on a  Redshift data warehouse
 priority: 3
 ---
 
-# Summary
+## Summary
 
 This project transforms four raw data tables (`orders` from Shopify, `charges` from Stripe, and `customer` from a CRM) into three summary reporting tables.
 
@@ -12,12 +12,12 @@ This project transforms four raw data tables (`orders` from Shopify, `charges` f
 - `customer_stats` brings all customer information into a single table
 - `daily_country_stats` provides an overview of stats aggregated by country
 
-# Dependency tree of the project
+## Dependency tree of the project
 
 <img src="https://assets.dataform.co/docs/sample_projects/redshift_sample_project_dag.png"  width="1100"  alt="Sample bigquery Dataform project DAG" />
 <em>Dependency tree of the Redshift sample project</em>
 
-# View the project
+## View the project
 
 <a href="https://github.com/dataform-co/dataform-example-project" target="_blank"><button>See the example on GitHub</button></a>
 
