@@ -56,7 +56,7 @@ export class AggregateBuilder<S extends ISelectSchema> implements ISelectBuilder
           : "") +
         `${Object.keys(this.selectedDimensions)
           .map(alias => `  ${this.selectedDimensions[alias]} as ${alias}`)
-          .join(",\n")}${Object.keys(this.selectedDimensions).length > 0 ? ",\n" : ""}` +
+          .join(",\n")}${Object.keys(this.selectedMetrics).length > 0 ? ",\n" : ""}` +
         `${Object.keys(this.selectedMetrics)
           .map(alias => `  ${this.selectedMetrics[alias]} as ${alias}`)
           .join(",\n")}\n` +
@@ -66,8 +66,7 @@ export class AggregateBuilder<S extends ISelectSchema> implements ISelectBuilder
           this.whereClauses.length > 0 ? `\nwhere\n  ${this.whereClauses.join(" and\n  ")}` : ""
         }` +
         `${
-          Object.keys(this.selectedDimensions).length > 0 &&
-          Object.keys(this.selectedMetrics).length > 0
+          Object.keys(this.selectedDimensions).length > 0
             ? `\ngroup by\n  ${Array.from(new Array(this.selectedDimensions.length).keys())
                 .map(i => i + 1)
                 .join(", ")}`
