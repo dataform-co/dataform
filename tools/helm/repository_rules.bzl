@@ -50,8 +50,13 @@ def _helm_chart_impl(ctx):
     ctx.delete("repositories.lock")
 
     # Rename the downloaded chart to 'chart.tgz'.
-    filename = ctx.execute(["ls"]).stdout.strip()
-    ctx.execute(["mv", filename, "chart.tgz"])
+    result = ctx.execute(["ls"])
+    if result.return_code != 0:
+        fail("Unable to run 'ls'.")
+    filename = result.stdout.strip()
+    result = ctx.execute(["mv", filename, "chart.tgz"])
+    if result.return_code != 0:
+        fail("Unable to rename Helm chart to chart.tgz.")
 
     ctx.file("BUILD", 'exports_files(["chart.tgz"])')
 
