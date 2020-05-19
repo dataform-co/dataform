@@ -15,19 +15,20 @@ ts_library(
     ],
 )
 
-load("@build_bazel_rules_nodejs//:index.bzl", "pkg_npm")
-
-pkg_npm(
-    name = "package",
-    srcs = ["package.json"],
-    deps = [":stackdriver-github-bridge"],
+filegroup(
+    name = "index.js",
+    srcs = ["stackdriver-github-bridge"],
+    output_group = "es5_sources",
 )
 
 load("//tools/gcloud:gcloud_function.bzl", "deploy_http_nodejs_gcloud_function")
 
 deploy_http_nodejs_gcloud_function(
     name = "deploy",
+    srcs = [
+        ":index.js",
+        ":package.json",
+    ],
     env_vars_file = "env.yaml",
     function_name = "handleStackdriverEvent",
-    pkg_npm = ":package",
 )
