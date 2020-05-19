@@ -6,6 +6,7 @@ ts_library(
     name = "vscode",
     srcs = glob(["**/*.ts"]),
     deps = [
+        "//api",
         "@npm//@types/node",
         "@npm//@types/vscode",
         "@npm//vscode-languageclient",
@@ -15,7 +16,7 @@ ts_library(
 )
 
 filegroup(
-    name = "extension.js",
+    name = "vscode-sources",
     srcs = [":vscode"],
     output_group = "es5_sources",
 )
@@ -24,9 +25,9 @@ sh_binary(
     name = "bin",
     srcs = ["run.sh"],
     data = [
-        ":extension.js",
         ":language-configuration.json",
         ":package.json",
         ":sqlx.grammar.json",
+        ":vscode-sources",
     ],
 )
