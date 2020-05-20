@@ -90,7 +90,7 @@ export class Sql {
     return `sum(1)`;
   }
 
-  public coalese(...expressions: string[]) {
+  public coalesce(...expressions: string[]) {
     return `coalesce(${expressions.join(", ")})`;
   }
 

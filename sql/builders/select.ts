@@ -31,11 +31,6 @@ export function build(selectOrBuilder: ISelectOrBuilder<any>) {
   return selectOrBuilder.build();
 }
 
-export interface IOrdering {
-  expression: string;
-  descending?: boolean;
-}
-
 export function indent(value: string | Select<any>) {
   return String(value)
     .split("\n")

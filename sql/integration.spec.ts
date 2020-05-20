@@ -27,7 +27,10 @@ suite("builders", { parallel: true }, ({ before, after }) => {
 
   after("close snowflake", () => snowflake.close());
 
-  const createSuite = (name: string, dbadapter: () => dbadapters.IDbAdapter, sql: Sql) => {
+  for (const { name, dbadapter, sql } of [
+    { name: "bigquery", dbadapter: () => bigquery, sql: new Sql() },
+    { name: "snowflake", dbadapter: () => snowflake, sql: new Sql() }
+  ]) {
     suite(name, { parallel: true }, () => {
       const execute = async <S extends ISelectSchema>(select: ISelectOrBuilder<S>) => {
         const query = build(select).query;
@@ -262,8 +265,5 @@ suite("builders", { parallel: true }, ({ before, after }) => {
         ]);
       });
     });
-  };
-
-  createSuite("bigquery", () => bigquery, new Sql());
-  createSuite("snowflake", () => snowflake, new Sql());
+  }
 });

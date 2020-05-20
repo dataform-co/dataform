@@ -1,7 +1,7 @@
+import { IOrdering } from "df/sql/builders";
 import {
   build,
   indent,
-  IOrdering,
   ISelectBuilder,
   ISelectOrBuilder,
   ISelectSchema,
@@ -32,12 +32,7 @@ export class AggregateBuilder<S extends ISelectSchema> implements ISelectBuilder
     return this;
   }
 
-  public where(where: string) {
-    this.whereClauses.push(where);
-    return this;
-  }
-
-  public wheres(wheres: string[]) {
+  public where(...wheres: string[]) {
     wheres.forEach(where => this.whereClauses.push(where));
     return this;
   }
@@ -48,40 +43,39 @@ export class AggregateBuilder<S extends ISelectSchema> implements ISelectBuilder
   }
 
   public build() {
+    const hasDimensions = Object.keys(this.selectedDimensions).length > 0;
+    const hasMetrics = Object.keys(this.selectedMetrics).length > 0;
+    const whereExpression =
+      this.whereClauses.length > 0 ? `\nwhere\n${indent(this.whereClauses.join(" and\n"))}` : "";
+    const orderingExpression = this.selectedOrdering
+      ? `\norder by\n  ${this.selectedOrdering.expression} ${
+          this.selectedOrdering.descending ? "desc" : "asc"
+        }`
+      : "";
+    const limitExpression = this.selectedLimit ? `\nlimit ${this.selectedLimit}` : "";
     return Select.create<S>(
       `select\n` +
-        (Object.keys(this.selectedDimensions).length + Object.keys(this.selectedMetrics).length ===
-        0
-          ? "*"
-          : "") +
+        (!hasDimensions && !hasMetrics ? indent("*") : "") +
         `${Object.keys(this.selectedDimensions)
-          .map(alias => `  ${this.selectedDimensions[alias]} as ${alias}`)
-          .join(",\n")}${Object.keys(this.selectedMetrics).length > 0 ? ",\n" : ""}` +
+          .map(alias => indent(`${this.selectedDimensions[alias]} as ${alias}`))
+          .join(",\n")}${hasDimensions ? ",\n" : ""}` +
         `${Object.keys(this.selectedMetrics)
-          .map(alias => `  ${this.selectedMetrics[alias]} as ${alias}`)
+          .map(alias => indent(`${this.selectedMetrics[alias]} as ${alias}`))
           .join(",\n")}\n` +
         `from\n` +
         `${indent(build(this.from))}` +
+        `${whereExpression}` +
         `${
-          this.whereClauses.length > 0 ? `\nwhere\n  ${this.whereClauses.join(" and\n  ")}` : ""
-        }` +
-        `${
-          Object.keys(this.selectedDimensions).length > 0
-            ? `\ngroup by\n  ${Array.from(
+          hasDimensions
+            ? `\ngroup by ${Array.from(
                 new Array(Object.keys(this.selectedDimensions).length).keys()
               )
                 .map(i => i + 1)
                 .join(", ")}`
             : ""
         }` +
-        `${
-          this.selectedOrdering
-            ? `\norder by\n  ${this.selectedOrdering.expression} ${
-                this.selectedOrdering.descending ? "desc" : "asc"
-              }`
-            : ""
-        }` +
-        `${this.selectedLimit ? `\nlimit ${this.selectedLimit}` : ""}`
+        `${orderingExpression}` +
+        `${limitExpression}`
     );
   }
 }

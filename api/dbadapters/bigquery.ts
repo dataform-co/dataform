@@ -1,7 +1,7 @@
 import { BigQuery } from "@google-cloud/bigquery";
 import { QueryResultsOptions } from "@google-cloud/bigquery/build/src/job";
 import { Credentials } from "df/api/commands/credentials";
-import { IDbAdapter, OnCancel } from "df/api/dbadapters/index";
+import { IDbAdapter, IExecutionResult, OnCancel } from "df/api/dbadapters/index";
 import { parseBigqueryEvalError } from "df/api/utils/error_parsing";
 import {
   buildQuery,
@@ -74,10 +74,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
       interactive?: boolean;
       maxResults?: number;
     } = { interactive: false, maxResults: 1000 }
-  ): Promise<{
-    rows: any[];
-    metadata: any;
-  }> {
+  ): Promise<IExecutionResult> {
     return this.pool
       .addSingleTask({
         generator: () =>

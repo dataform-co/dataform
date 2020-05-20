@@ -1,7 +1,7 @@
+import { IOrdering } from "df/sql/builders";
 import {
   build,
   indent,
-  IOrdering,
   ISelectBuilder,
   ISelectOrBuilder,
   ISelectSchema,
@@ -30,12 +30,7 @@ export class FromBuilder<S extends ISelectSchema> implements ISelectBuilder<S> {
     return this;
   }
 
-  public where(where: string) {
-    this.whereClauses.push(where);
-    return this;
-  }
-
-  public wheres(...wheres: string[]) {
+  public where(...wheres: string[]) {
     wheres.forEach(where => this.whereClauses.push(where));
     return this;
   }
@@ -46,26 +41,27 @@ export class FromBuilder<S extends ISelectSchema> implements ISelectBuilder<S> {
   }
 
   public build() {
+    const hasColumns = Object.keys(this.columns).length > 0;
+    const whereExpression =
+      this.whereClauses.length > 0 ? `\nwhere\n${indent(this.whereClauses.join(" and\n  "))}` : "";
+    const orderingExpression = this.selectedOrdering
+      ? `\norder by\n  ${this.selectedOrdering.expression} ${
+          this.selectedOrdering.descending ? "desc" : "asc"
+        }`
+      : "";
+    const limitExpression = this.selectedLimit ? `\nlimit ${this.selectedLimit}` : "";
     return Select.create<S>(
       `select\n` +
-        (Object.keys(this.columns).length === 0
-          ? "  *"
-          : `${Object.keys(this.columns)
+        (hasColumns
+          ? `${Object.keys(this.columns)
               .map(alias => `  ${this.columns[alias]} as ${alias}`)
-              .join(",\n")}`) +
+              .join(",\n")}`
+          : indent("*")) +
         `\nfrom\n` +
         `${indent(build(this.from))}` +
-        `${
-          this.whereClauses.length > 0 ? `\nwhere\n  ${this.whereClauses.join(" and\n  ")}` : ""
-        }` +
-        `${
-          this.selectedOrdering
-            ? `\norder by\n  ${this.selectedOrdering.expression} ${
-                this.selectedOrdering.descending ? "desc" : "asc"
-              }`
-            : ""
-        }` +
-        `${this.selectedLimit ? `\nlimit ${this.selectedLimit}` : ""}`
+        `${whereExpression}` +
+        `${orderingExpression}` +
+        `${limitExpression}`
     );
   }
 }
