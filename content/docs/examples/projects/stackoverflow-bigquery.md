@@ -14,7 +14,7 @@ This project transforms four raw datasets (`posts_answers`, `posts_questions`, `
 ## Dependency tree of the project
 
 <img src="https://assets.dataform.co/docs/sample_projects/bigquery_sample_project_dag.png"  width="1100"  alt="Sample bigquery Dataform project DAG" />
-<caption>Dependency tree of the BigQuery sample project</caption>
+<figcaption>Dependency tree of the BigQuery sample project</figcaption>
 
 ## View the project
 
