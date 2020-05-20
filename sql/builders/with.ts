@@ -1,4 +1,4 @@
-import { build, ISelectOrBuilder, ISelectSchema, Select, indent } from "df/sql/builders/select";
+import { build, indent, ISelectOrBuilder, ISelectSchema, Select } from "df/sql/builders/select";
 
 export interface IWiths {
   [alias: string]: ISelectOrBuilder<any>;

@@ -1,15 +1,15 @@
 import {
   build,
+  indent,
   ISelectBuilder,
   ISelectOrBuilder,
   ISelectSchema,
-  Select,
-  indent
+  Select
 } from "df/sql/builders/select";
 
 export interface IJoin<S extends ISelectSchema> {
   select: ISelectOrBuilder<S>;
-  using?: string;
+  on?: [string, string];
   type?: "base" | "left" | "right" | "inner" | "outer";
 }
 
@@ -27,15 +27,15 @@ export class JoinBuilder<J extends IJoins>
     const joinAliases = Object.keys(this.joins).filter(alias => alias !== baseAlias);
     return Select.create<{ [K in keyof J]: J[K] extends IJoin<infer JS> ? JS : {} }>(`(
 select
-  ${Object.keys(this.joins).join(", ")}
+  *
 from 
   ${indent(build(baseSelect.select))} ${baseAlias}
 ${joinAliases
   .map(
     alias => `${this.joins[alias].type} join
 ${indent(build(this.joins[alias].select))} ${alias} on (${baseAlias}.${
-      this.joins[alias].using
-    } = ${alias}.${this.joins[alias].using})`
+      this.joins[alias].on[0]
+    } = ${alias}.${this.joins[alias].on[1]})`
   )
   .join(`\n`)}
 )`);

@@ -1,11 +1,11 @@
 import {
   build,
+  indent,
   IOrdering,
   ISelectBuilder,
   ISelectOrBuilder,
   ISelectSchema,
-  Select,
-  indent
+  Select
 } from "df/sql/builders/select";
 
 export class AggregateBuilder<S extends ISelectSchema> implements ISelectBuilder<S> {

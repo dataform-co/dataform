@@ -1,5 +1,5 @@
 import { Sql } from "df/sql";
-import { ISelectBuilder, ISelectSchema, Select, indent } from "df/sql/builders/select";
+import { indent, ISelectBuilder, ISelectSchema, Select } from "df/sql/builders/select";
 
 export class JSONBuilder<S extends ISelectSchema> implements ISelectBuilder<S> {
   constructor(private sql: Sql, private data: S[]) {}

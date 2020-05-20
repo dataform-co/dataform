@@ -1,10 +1,10 @@
-import { JoinBuilder, IJoins } from "df/sql/builders/join";
+import { AggregateBuilder } from "df/sql/builders/aggregate";
+import { FromBuilder } from "df/sql/builders/from";
+import { IJoins, JoinBuilder } from "df/sql/builders/join";
 import { JSONBuilder } from "df/sql/builders/json";
 import { ISelectOrBuilder, ISelectSchema } from "df/sql/builders/select";
 import { UnionBuilder } from "df/sql/builders/union";
 import { IWiths, WithBuilder } from "df/sql/builders/with";
-import { AggregateBuilder } from "df/sql/builders/aggregate";
-import { FromBuilder } from "df/sql/builders/from";
 
 export type DurationUnit = "day" | "week" | "month" | "quarter" | "year";
 
@@ -14,14 +14,10 @@ export interface IConditional {
   else?: string;
 }
 
-type Dialect = "bigquery" | "postgres";
-
 export class Sql {
-  public static create(dialect?: Dialect) {
-    return new Sql(dialect);
+  public static create() {
+    return new Sql();
   }
-
-  constructor(public dialect?: Dialect) {}
 
   public literal(value: string | number) {
     if (value === null) {
