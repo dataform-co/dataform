@@ -14,7 +14,7 @@ Snowflake connections require the following elements:
 - Database: Click "Databases" from within your Snowflake console to view a list of databases.
 
 <div className="bp3-callout bp3-icon-info-sign bp3-intent-warning" markdown="1">
-You may also need to whitelist Dataform's IP addresses to let Dataform access your Snowflake instanced. Please
+You may also need to whitelist Dataform's IP addresses to let Dataform access your Snowflake instance. Please
   follow
   <a
     target="_blank"
