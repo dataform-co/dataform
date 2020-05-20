@@ -15,18 +15,6 @@ export default class Navigation extends React.Component<IProps> {
     return <div className={styles.navigation}>{this.renderTrees(this.props.tree.children)}</div>;
   }
   private renderTrees(trees: Array<ITree<IExtraAttributes>>, depth = 0) {
-    trees.sort((a: ITree<IExtraAttributes>, b: ITree<IExtraAttributes>) =>
-      a.attributes.priority == null && b.attributes.priority == null
-        ? a.attributes.title > b.attributes.title
-          ? 1
-          : -1
-        : !(a.attributes.priority == null || b.attributes.priority == null)
-        ? a.attributes.priority - b.attributes.priority
-        : a.attributes.priority == null
-        ? 1
-        : -1
-    );
-
     return (
       <ul className={styles[`depth${depth}`]}>
         {trees.map(tree => {
@@ -45,14 +33,16 @@ export default class Navigation extends React.Component<IProps> {
                 <a href={getLink(tree.path, this.props.version)} className={styles.title}>
                   <div className={styles.icon}>
                     {" "}
-                    {tree.attributes.icon && <Icon iconSize={20} icon={tree.attributes.icon as any} />}
+                    {tree.attributes.icon && (
+                      <Icon iconSize={20} icon={tree.attributes.icon as any} />
+                    )}
                   </div>
                   <div>{tree.attributes.title}</div>
                 </a>
               </li>
               {tree.children &&
                 tree.children.length > 0 &&
-                (this.props.currentPath.includes(tree.path)) &&
+                this.props.currentPath.includes(tree.path) &&
                 this.renderTrees(tree.children, depth + 1)}
             </React.Fragment>
           );

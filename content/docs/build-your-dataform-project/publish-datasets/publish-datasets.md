@@ -11,6 +11,7 @@ priority: 0
 Create a new `example.sqlx` file in your project under the `definitions/` folder:
 
 ```js
+// example.sqlx
 config { type: "view" }
 SELECT 1 AS TEST
 ```
@@ -44,15 +45,15 @@ For a list of all configuration options for datasets, view the [`ITableConfig`](
 
 Dataform provides methods that enable you to easily reference another dataset in your project without having to provide the full SQL dataset name.
 
-`definitions/source.sql`:
 
 ```js
+// definitions/source.sqlx
 SELECT 1 AS sourcedata
 ```
-
-`definitions/ref_example.sql`:
+<br />
 
 ```js
+// definitions/ref_example.sqlx
 SELECT * FROM ${ref("source")}
 ```
 

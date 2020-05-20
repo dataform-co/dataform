@@ -1,5 +1,4 @@
 import { Button, Callout } from "@blueprintjs/core";
-import rehypePrism from "@mapbox/rehype-prism";
 import { Code } from "df/components/code";
 import { getContentTree, IExtraAttributes } from "df/docs/content_tree";
 import Documentation from "df/docs/layouts/documentation";
@@ -27,7 +26,15 @@ export interface IProps {
 
 function MaybeCode(props: React.PropsWithChildren<{ className: string }>) {
   if (props.className && props.className.startsWith("language")) {
-    return <Code>{String(props.children).trim()}</Code>;
+    const content = String(props.children).trim();
+    const lines = content.split("\n");
+    const firstLine = lines[0].trim();
+    const matches = firstLine.match(/(\/\/|\-\-)\s+(\S+\.\w+)/);
+    if (matches) {
+      const fileName = matches[2];
+      return <Code fileName={fileName}>{lines.slice(1).join("\n")}</Code>;
+    }
+    return <Code>{content}</Code>;
   }
   return <code {...props}>{props.children} </code>;
 }
@@ -68,7 +75,6 @@ export class Docs extends React.Component<IProps> {
           remark()
             .use(remarkRehype, { allowDangerousHTML: true })
             .use(rehypeSlug)
-            // .use(rehypePrism)
             .use(rehypeRaw)
             .use(rehypeReact, {
               createElement: React.createElement,

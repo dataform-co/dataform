@@ -1,3 +1,13 @@
+div.hljs-filename {
+  background-color: #222f6f;
+  border-radius: 5px 5px 0px 0px;
+  padding: 10px;
+  margin-bottom: -5px;
+  color: #eee;
+  position: relative;
+  z-index: 1;
+}
+
 pre.hljs {
   padding: 10px;
   border-radius: 5px;

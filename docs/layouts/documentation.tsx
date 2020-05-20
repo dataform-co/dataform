@@ -52,17 +52,19 @@ export default class Documentation extends React.Component<IProps> {
               <div className={styles.subheader}>{this.props.current.attributes.subtitle}</div>
             </div>
             {this.props.children}
-            <CardGrid minWidth={250} style={{ margin: "60px 0px 20px" }}>
-              {(current.children?.length > 0 ? current.children : []).map(child => (
-                <Card header={child.attributes?.title}>
-                  <p>{child.attributes?.subtitle}</p>
-                  <CardActions align="right">
-                    <a href={getLink(child.path, this.props.version)}>
-                      <Button minimal={true} text="Read more" />
-                    </a>
-                  </CardActions>
-                </Card>
-              ))}
+            <CardGrid minWidth={300} style={{ margin: "60px 0px 20px" }}>
+              {(current.children?.length > 0 ? current.children : [])
+                .filter(child => !!child.path)
+                .map(child => (
+                  <Card header={child.attributes?.title}>
+                    <p>{child.attributes?.subtitle}</p>
+                    <CardActions align="right">
+                      <a href={getLink(child.path, this.props.version)}>
+                        <Button minimal={true} text="Read more" />
+                      </a>
+                    </CardActions>
+                  </Card>
+                ))}
             </CardGrid>
           </div>
           <div className={styles.sidebarRight}>

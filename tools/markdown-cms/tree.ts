@@ -4,6 +4,7 @@ import { basename, join } from "path";
 export interface IBaseAttributes {
   title: string;
   subtitle?: string;
+  priority?: number;
 }
 
 type IWithBaseAttributes<T> = T & IBaseAttributes;
@@ -50,6 +51,7 @@ export class Tree<T> implements ITree<T> {
   ) {
     const base = basename(path);
     this.name = base.includes(".md") ? base.substring(0, base.length - 3) : base;
+    this.sort();
   }
 
   public getChild(path: string): Tree<T> {
@@ -63,6 +65,7 @@ export class Tree<T> implements ITree<T> {
 
   public addChild(child: Tree<T>) {
     this.children.push(child);
+    this.sort();
     return this;
   }
 
@@ -72,5 +75,20 @@ export class Tree<T> implements ITree<T> {
       content: undefined,
       children: this.children.map(child => child.index())
     };
+  }
+
+  public sort() {
+    this.children.sort((a: ITree<T>, b: ITree<T>) =>
+      a.attributes.priority == null && b.attributes.priority == null
+        ? a.attributes.title > b.attributes.title
+          ? 1
+          : -1
+        : !(a.attributes.priority == null || b.attributes.priority == null)
+        ? a.attributes.priority - b.attributes.priority
+        : a.attributes.priority == null
+        ? 1
+        : -1
+    );
+    this.children.forEach(child => child.sort());
   }
 }

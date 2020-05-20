@@ -143,9 +143,8 @@ ${ when(incremental(), `where snapshot_date > (select max(snapshot_date) from ${
 
 ### Use global variables
 
-`includes/contants.js`
-
 ```js
+// includes/contants.js
 const project_id = "project_id";
 const first_date = "'1970-01-01'";
 module.exports = {
@@ -154,9 +153,10 @@ module.exports = {
 };
 ```
 
-`definitions/new_table.sqlx`
+<br />
 
 ```sql
+-- definitions/new_table.sqlx
 config {type: "table"}
 
 select * from source_table where date > ${contants.first_date}
@@ -164,9 +164,8 @@ select * from source_table where date > ${contants.first_date}
 
 ### Create a country mapping
 
-`includes/mapping.js`
-
 ```sql
+-- includes/mapping.js
 function country_group(country){
   return `
   case
@@ -177,9 +176,10 @@ function country_group(country){
   end`;
 ```
 
-`definitions/new_table.sqlx`
+<br />
 
 ```sql
+-- definitions/new_table.sqlx
 config { type: "table"}
 
 select
@@ -195,9 +195,10 @@ from ${ref("source_table")}
 group by 1, 2, 3
 ```
 
-`compiled output`
+<br />
 
 ```sql
+-- compiled.sql
 select
   country as country,
   case
@@ -218,9 +219,8 @@ group by 1, 2, 3
 
 ### Generate a SQL script with a custom function
 
-`includes/script_builder.js`
-
 ```js
+// includes/script_builder.js
 function render_script(table, dimensions, metrics) {
   return `
       select
@@ -234,9 +234,10 @@ function render_script(table, dimensions, metrics) {
 module.exports = { render_script };
 ```
 
-`definitions/new_table.sqlx`
+<br />
 
 ```sql
+-- definitions/new_table.sqlx
 config {
     type: "table",
     tags: ["advanced", "hourly"],
@@ -249,9 +250,10 @@ ${script_builder.render_script(ref("source_table"),
                                )}
 ```
 
-`compiled output`
+<br />
 
 ```sql
+-- compiled.sql
 select
   country as country,
   device_type as device_type,
@@ -334,9 +336,8 @@ select
 
 ### Perfom a unit test on a SQL query
 
-`definitions/query_to_be_tested.sqlx`
-
 ```sql
+-- definitions/query_to_be_tested.sqlx
 select
   floor(age / 5) * 5 as age_group,
   count(1) as user_count
@@ -345,9 +346,10 @@ group by age_group
 order by age_group
 ```
 
-`definitions/unit_test_on_query.sqlx`
+<br />
 
 ```sql
+-- definitions/unit_test_on_query.sqlx
 config {
   type: "test",
   dataset: "source_table"
@@ -396,6 +398,7 @@ dateArr.forEach((day, i) =>
 ### Build a rolling 30-days table that update incrementally
 
 ```sql
+-- definitions/incremental_example.sql
 config {type: "incremental"}
 
 postOperations {

@@ -12,7 +12,7 @@ interface IProps {
 
 export const PageLinks = (props: IProps) => (
   <>
-    <h5 className={styles.onThisPage}>On this page</h5>
+    {props.links?.length > 0 && <h5 className={styles.onThisPage}>On this page</h5>}
     <ul className={styles.pageLinks}>
       {props.links.map(link => (
         <li key={link.id}>

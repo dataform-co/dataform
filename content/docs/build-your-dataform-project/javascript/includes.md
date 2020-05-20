@@ -19,9 +19,8 @@ If you are new to JavaScript, the examples below should cover some common use ca
 
 Create a new file in your project under the `includes/` folder, such as:
 
-`includes/constants.js`:
-
 ```js
+// includes/constants.js
 const PROJECT_ID = "my_project_name";
 module.exports = { PROJECT_ID };
 ```
@@ -37,9 +36,8 @@ You can reference any `include` function, constant, or macro by using its file n
 
 For example, to reference the constant `PROJECT_ID` in the file `includes/constants.js`:
 
-`definitions/query.sqlx`:
-
 ```js
+// definitions/query.sqlx
 SELECT * FROM ${constants.PROJECT_ID}.my_schema_name.my_table_name
 ```
 
@@ -55,9 +53,8 @@ Functions enable you to reuse the same block of SQL logic across many different 
 
 In the example below, the function `countryGroup()` takes as input the name of the country code field and returns a CASE statement that maps country codes to country groups.
 
-`includes/country_mapping.js`:
-
 ```js
+// includes/country_mapping.js
 function countryGroup(countryCodeField) {
   return `CASE
           WHEN ${countryCodeField} IN ("US", "CA") THEN "NA"
@@ -70,9 +67,10 @@ function countryGroup(countryCodeField) {
 module.exports = { countryGroup };
 ```
 
-This function can be used in a SQL query `definitions/revenue_by_country_group.sqlx`:
+This function can be used in a SQLX file:
 
 ```js
+// definitions/revenue_by_country_group.sqlx
 SELECT
   ${country_mapping.countryGroup("country_code")} AS country_group,
   SUM(revenue) AS revenue
@@ -100,9 +98,8 @@ GROUP BY 1
 
 The example below defines a `groupBy()` function that takes as input a number of fields to group by and generates a corresponding `GROUP BY` statement:
 
-`includes/utils.js`:
-
 ```js
+// includes/utils.js
 function groupBy(n) {
   var indices = [];
   for (var i = 1; i <= n; i++) {
@@ -146,9 +143,8 @@ Functions can be used to generate entire queries. This is a powerful feature tha
 
 The example below includes a function that aggregates all metrics (using `SUM`) and groups by every dimension.
 
-`includes/script_builder.js`:
-
 ```js
+// includes/script_builder.js
 function renderScript(table, dimensions, metrics) {
   return `
       SELECT

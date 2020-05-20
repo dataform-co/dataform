@@ -82,9 +82,10 @@ Learn more about configuration options for each type of action:
 
 ## Using built-in functions
 
-When writing `.sqlx` files, Dataform makes a number of built-in functions such as `ref()` and `self()` available to use within the main query. For example in `definitions/example.sqlx`:
+When writing `.sqlx` files, Dataform makes a number of built-in functions such as `ref()` and `self()` available to use within the main query. For example:
 
 ```js
+// definitions/example.sqlx
 config { type: "view" }
 SELECT * FROM ${ref("other_table")}
 ```
@@ -122,9 +123,8 @@ One of the most common use cases for using the JavaScript API is to perform a si
 For example, imagine you have several datasets, all of which have a `user_id` field. Perhaps you would like to create a view of each dataset with certain blacklisted user IDs removed.
 You could perform this action across all datasets using a JavaScript `forEach()` statement:
 
-`definitions/blacklist_views.js`:
-
 ```js
+// definitions/blacklist_views.js
 const datasetNames = ["user_events", "user_settings", "user_logs"];
 
 datasetNames.forEach((datasetNames) => {

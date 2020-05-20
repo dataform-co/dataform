@@ -44,6 +44,7 @@
 
 .navigation .icon {
   width: 40px;
+  flex-shrink: 0;
   justify-content: center;
   display: inline-flex;
   color: var(--primarySubtle);

@@ -103,6 +103,7 @@ DEPS = [
     "@npm//extracted-loader",
     "@npm//next-images",
     "@npm//react-instantsearch-dom",
+    "@npm//react-syntax-highlighter",
     "@npm//remark",
     "@npm//rehype-slug",
     "@npm//umd-compat-loader",
