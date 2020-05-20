@@ -67,7 +67,9 @@ export class AggregateBuilder<S extends ISelectSchema> implements ISelectBuilder
         }` +
         `${
           Object.keys(this.selectedDimensions).length > 0
-            ? `\ngroup by\n  ${Array.from(new Array(this.selectedDimensions.length).keys())
+            ? `\ngroup by\n  ${Array.from(
+                new Array(Object.keys(this.selectedDimensions).length).keys()
+              )
                 .map(i => i + 1)
                 .join(", ")}`
             : ""
