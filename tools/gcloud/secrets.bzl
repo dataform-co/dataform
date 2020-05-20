@@ -22,7 +22,7 @@ def _gcloud_secret_impl(ctx):
 gcloud_secret = rule(
     implementation = _gcloud_secret_impl,
     attrs = {
-        "gcloud": attr.label(default = "@gcloud_sdk//:google-cloud-sdk/bin/gcloud", allow_single_file = True),
+        "gcloud": attr.label(default = "@gcloud_sdk//:bin/gcloud", allow_single_file = True),
         "ciphertext_file": attr.label(allow_single_file = True),
         "keyring": attr.string(default = "", mandatory = True),
         "key": attr.string(default = "", mandatory = True),
