@@ -100,7 +100,7 @@ Dataform validates the compiled script you are editing against Redshift in real 
 We prepared the following sample project of a fictional ecommerce store using using Redshift.
 
 <img src="https://assets.dataform.co/docs/sample_projects/redshift_sample_project_dag.png" width="1100"  alt="Sample bigquery Dataform project DAG" />
-<em>Dependency tree of the Redshift sample project</em>
+<caption>Dependency tree of the Redshift sample project</caption>
 
 <a href="examples/projects/ecommerce-redshift"><button>View the example page</button></a>
 

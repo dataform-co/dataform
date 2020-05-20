@@ -15,7 +15,7 @@ This project transforms four raw datasets (`CUSTOMER`, `NATION`, `LINEITEM` and 
 ## Dependency tree of the project
 
 <img src="https://assets.dataform.co/docs/sample_projects/snowflake_sample_project_dag.png"  width="1100"  alt="Sample Snowflae Dataform project DAG" />
-<em>Dependency tree of the Snowflake sample project</em>
+<caption>Dependency tree of the Snowflake sample project</caption>
 
 ## View the project
 

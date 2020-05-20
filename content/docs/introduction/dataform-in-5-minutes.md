@@ -64,7 +64,7 @@ SQLX is an open source extension of SQL. As it is an extension, every SQL file i
 In practice, SQLX is mostly composed of SQL in the dialect of your data warehouse (Standard SQL if you are using BigQuery, SnowSQL if you are using Snowflake…).
 
 <img src="https://assets.dataform.co/docs/introduction/sqlx_simple_example.png" max-width="661"  alt="SQLX example" />
-<em>This illustration uses BigQuery Standard SQL. SQLX works the same way with all SQL dialects.</em>
+<caption>This illustration uses BigQuery Standard SQL. SQLX works the same way with all SQL dialects.</caption>
 
 <span className="numberTitle">1</span> **Config block**
 
@@ -81,10 +81,10 @@ Dataform uses that `ref` function to build a dependency tree of all the tables t
 The following images illustrate a simple Dataform project and its dependency tree. In practice, a Dataform project can have dependency trees with hundreds of tables.
 
 <img src="https://assets.dataform.co/docs/introduction/ref_illustration_code.png" max-width="426" alt="Ref function illustration" />
-<em>Scripts in a Dataform project</em>
+<caption>Scripts in a Dataform project</caption>
 
 <img src="https://assets.dataform.co/docs/introduction/simple_dag.png" max-width="885" alt="dependency tree" />
-<em>Dependency tree in a Dataform project</em>
+<caption>Dependency tree in a Dataform project</caption>
 
 Managing dependencies with the `ref` function has numerous advantages.
 
@@ -102,7 +102,7 @@ All SQLX features can be adopted incrementally. We often see teams starting with
 
 <img src="https://assets.dataform.co/docs/introduction/sqlx_second_example.png" max-width="481" alt="SQLX second example" />
 
-<em>This example illustrates a SQLX file using data documentation and data quality testing features.</em>
+<caption>This example illustrates a SQLX file using data documentation and data quality testing features.</caption>
 
 <span className="numberTitle">1</span> **Data documentation**
 
@@ -121,7 +121,7 @@ You can define data quality tests, called assertions, directly from the config b
 Assertions defined in the config block get added onto your project’s dependency tree after the table creation.
 
 <img src="https://assets.dataform.co/docs/introduction/assertion_dag.png" max-width="605" alt="DAG with assertions" />
-<em>Assertions defined in the config block are added to the dependency tree of your project. They will run after the table creation / update.</em>
+<caption>Assertions defined in the config block are added to the dependency tree of your project. They will run after the table creation / update.</caption>
 
 For more advanced use cases, assertions can also be defined in separate SQLX files. See the [assertion page](http://docs.dataform.co/build-your-dataform-project/assertions) on documentation.
 

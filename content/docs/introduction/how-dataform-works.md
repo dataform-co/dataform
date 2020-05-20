@@ -19,7 +19,7 @@ Each Dataform project is a repository with a collection of JSON configuration fi
 **Includes** is where you can add JS files where you define variables and functions that you can use across your entire project. You can learn more about includes on [this page]().
 
 <img src="https://assets.dataform.co/docs/introduction/sample_folder.png" width="993"  alt="Dataform project files" />
-<em>A Dataform project in GitHub</em>
+<caption>A Dataform project in GitHub</caption>
 
 ## How Dataform works
 
@@ -44,7 +44,7 @@ from ${ref("store_clean")}
 group by 1, 2
 ```
 
-<em>Sample SQLX file</em>
+<caption>Sample SQLX file</caption>
 
 <div className="bp3-callout bp3-icon-info-sign bp3-intent-primary" markdown="1">
 You only need to write `SELECT` statements in SQLX. Dataform takes care of adding boilerplate statements like `CREATE OR REPLACE` or `INSERT` in the following step.
@@ -65,7 +65,7 @@ Dataform compiles your entire project in real-time, regardless of the number of 
 
 <img src="https://assets.dataform.co/docs/introduction/simple_dag.png" max-width="885" alt="dependency tree" />
 
-<em>Example of a dependency tree</em>
+<caption>Example of a dependency tree</caption>
 
 ```sql
 create or replace table "dataform"."orders" as
@@ -82,13 +82,15 @@ from "dataform_stg"."store_clean"
 group by 1, 2
 ```
 
-<em>Example of a compiled SQLX file</em>
+<caption>Example of a compiled SQLX file</caption>
 
 <video  controls loop  muted  width="680" ><source src="https://assets.dataform.co/docs/compilation.mp4" type="video/mp4" ><span>Real time compilation on Dataform web</span></video>
-<em>Autosave and real-time compilation on Dataform web</em>
+
+<caption>Autosave and real-time compilation on Dataform web</caption>
 
 <video  controls loop  muted  width="680" ><source src="https://assets.dataform.co/docs/compilation_cli.mp4" type="video/mp4" ><span>Real time compilation on Dataform web</span></video>
-<em>Compiling 111 actions in less than 1s with the Dataform CLI</em>
+
+<caption>Compiling 111 actions in less than 1s with the Dataform CLI</caption>
 
 ### Step 3. Dataform connects to your data warehouse to run the dependency tree (or a subset)
 
@@ -103,7 +105,7 @@ Dataform connects to your data warehouse to run SQL commands in your data wareho
 After the run, you can consult logs to see what tables were created, if assertions passed or failed, how long each action took to complete, and other information. You can also consult the exact SQL code that was run in your warehouse.
 
 <img src="https://assets.dataform.co/docs/introduction/run_logs.png" width="995"  alt="" />
-<em>Run logs on Dataform web</em>
+<caption>Run logs on Dataform web</caption>
 
 ### Step 4. Tables are created or updated in your data warehouse
 

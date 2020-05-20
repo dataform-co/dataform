@@ -15,7 +15,7 @@ This project transforms four raw data tables (`orders` from Shopify, `charges` f
 ## Dependency tree of the project
 
 <img src="https://assets.dataform.co/docs/sample_projects/redshift_sample_project_dag.png"  width="1100"  alt="Sample bigquery Dataform project DAG" />
-<em>Dependency tree of the Redshift sample project</em>
+<caption>Dependency tree of the Redshift sample project</caption>
 
 ## View the project
 

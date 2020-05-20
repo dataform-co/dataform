@@ -113,7 +113,7 @@ Dataform displays Bytes processed and Bytes billed for every run you do in Dataf
 We prepared the following sample project using the Stackoverflow public dataset.
 
 <img src="https://assets.dataform.co/docs/sample_projects/bigquery_sample_project_dag.png" width="1100"  alt="Sample bigquery Dataform project DAG" />
-<em>Dependency tree of the BigQuery sample project</em>
+<caption>Dependency tree of the BigQuery sample project</caption>
 
 <a href="examples/projects/stackoverflow-big"><button>View the example page</button></a>
 
