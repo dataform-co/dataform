@@ -225,6 +225,80 @@ suite("@dataform/core", () => {
       ]);
     });
 
+    test("canonical targets", () => {
+      const originalConfig = {
+        warehouse: "bigquery",
+        defaultSchema: "schema",
+        defaultDatabase: "database",
+        schemaSuffix: "dev",
+        tablePrefix: "dev"
+      };
+      const overrideConfig = {
+        ...originalConfig,
+        defaultSchema: "otherschema",
+        defaultDatabase: "otherdatabase"
+      };
+      const session = new Session(path.dirname(__filename), overrideConfig, originalConfig);
+      session.publish("dataset");
+      session.assert("assertion");
+      session.declare({ name: "declaration" });
+      session.operate("operation");
+
+      const graph = session.compile();
+      expect(
+        [
+          ...graph.tables,
+          ...graph.assertions,
+          ...graph.declarations,
+          ...graph.operations
+        ].map(action => dataform.Target.create(action.canonicalTarget).toJSON())
+      ).deep.equals([
+        {
+          database: "database",
+          name: "dataset",
+          schema: "schema"
+        },
+        {
+          database: "database",
+          name: "assertion",
+          schema: "schema"
+        },
+        {
+          database: "database",
+          name: "declaration",
+          schema: "schema"
+        },
+        {
+          database: "database",
+          name: "operation",
+          schema: "schema"
+        }
+      ]);
+    });
+
+    test("non-unique canonical targets fails", () => {
+      const originalConfig = {
+        warehouse: "bigquery",
+        defaultSchema: "schema",
+        defaultDatabase: "database"
+      };
+      const overrideConfig = { ...originalConfig, defaultSchema: "otherschema" };
+      const session = new Session(path.dirname(__filename), overrideConfig, originalConfig);
+      session
+        .publish("view", {
+          type: "view"
+        })
+        .query("query");
+      session.publish("view", {
+        type: "view",
+        schema: "schema"
+      });
+      const graph = session.compile();
+      expect(graph.graphErrors.compilationErrors.map(error => error.message)).deep.equals([
+        'Duplicate canonical target detected. Canonical targets must be unique across tables, declarations, assertions, and operations:\n"{"schema":"schema","name":"view","database":"database"}"'
+      ]);
+    });
+
     test("validation_type_incremental", () => {
       const sessionSuccess = new Session(path.dirname(__filename), TestConfigs.redshift);
       sessionSuccess

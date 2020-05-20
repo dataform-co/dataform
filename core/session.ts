@@ -10,6 +10,7 @@ import { version as dataformCoreVersion } from "df/core/version";
 import { dataform } from "df/protos/ts";
 import { util } from "protobufjs";
 import { default as TarjanGraphConstructor, Graph as TarjanGraph } from "tarjan-graph";
+import { JSONObjectStringifier, StringifiedMap } from "df/common/strings/stringifier";
 
 const DEFAULT_CONFIG = {
   defaultSchema: "dataform",
@@ -353,6 +354,15 @@ export class Session {
     );
     this.checkTestNameUniqueness(compiledGraph.tests);
 
+    this.checkCanonicalTargetUniqueness(
+      [].concat(
+        compiledGraph.tables,
+        compiledGraph.assertions,
+        compiledGraph.operations,
+        compiledGraph.declarations
+      )
+    );
+
     this.checkCircularity(
       [].concat(compiledGraph.tables, compiledGraph.assertions, compiledGraph.operations)
     );
@@ -499,17 +509,21 @@ export class Session {
   }
 
   private checkCanonicalTargetUniqueness(actions: IActionProto[]) {
-    const allNames: StringifiedMap.c
+    const allCanonicalTargets = new StringifiedMap<dataform.ITarget, boolean>(
+      JSONObjectStringifier.create()
+    );
     actions.forEach(action => {
-      if (allNames.includes(action.name)) {
+      if (allCanonicalTargets.has(action.canonicalTarget)) {
         this.compileError(
           new Error(
-            `Duplicate action name detected. Names within a schema must be unique across tables, declarations, assertions, and operations: "${action.name}"`
+            `Duplicate canonical target detected. Canonical targets must be unique across tables, declarations, assertions, and operations:\n"${JSON.stringify(
+              action.canonicalTarget
+            )}"`
           ),
           action.fileName
         );
       }
-      allNames.push(action.name);
+      allCanonicalTargets.set(action.canonicalTarget, true);
     });
   }
 
