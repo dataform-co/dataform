@@ -1,4 +1,3 @@
-import { ProtoUtils } from "df/common/protos/proto_utils";
 import { adapters } from "df/core";
 import { Assertion } from "df/core/assertion";
 import { Resolvable } from "df/core/common";
@@ -323,9 +322,12 @@ export function setNameAndTarget(
   overrideDatabase?: string
 ) {
   action.target = target(session.adapter(), session.config, name, overrideSchema, overrideDatabase);
-  action.canonicalTarget = ProtoUtils.encode(
-    dataform.Target,
-    target(session.adapter(), session.config, name, overrideSchema, overrideDatabase)
+  action.canonicalTarget = target(
+    session.adapter(),
+    session.canonicalConfig,
+    name,
+    overrideSchema,
+    overrideDatabase
   );
   const nameParts = [action.target.name, action.target.schema];
   if (!!action.target.database) {

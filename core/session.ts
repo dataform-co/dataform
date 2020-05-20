@@ -26,7 +26,7 @@ export interface IActionProto {
   dependencies?: string[];
   hermeticity?: dataform.ActionHermeticity;
   target?: dataform.ITarget;
-  canonicalTarget?: string;
+  canonicalTarget?: dataform.ITarget;
 }
 
 type SqlxConfig = (
@@ -54,19 +54,21 @@ export class Session {
   constructor(
     rootDir: string,
     projectConfig?: dataform.IProjectConfig,
-    canonicalProjectConfig?: dataform.IProjectConfig
+    originalProjectConfig?: dataform.IProjectConfig
   ) {
-    this.init(rootDir, projectConfig, canonicalProjectConfig);
+    this.init(rootDir, projectConfig, originalProjectConfig);
   }
 
   public init(
     rootDir: string,
     projectConfig?: dataform.IProjectConfig,
-    canonicalProjectConfig?: dataform.IProjectConfig
+    originalProjectConfig?: dataform.IProjectConfig
   ) {
     this.rootDir = rootDir;
     this.config = projectConfig || DEFAULT_CONFIG;
-    this.canonicalConfig = canonicalProjectConfig || DEFAULT_CONFIG;
+    this.canonicalConfig = getCanonicalProjectConfig(
+      originalProjectConfig || projectConfig || DEFAULT_CONFIG
+    );
     this.actions = [];
     this.tests = {};
     this.graphErrors = { compilationErrors: [] };
@@ -564,4 +566,13 @@ function keyByName(actions: IActionProto[]) {
   const actionsByName: { [name: string]: IActionProto } = {};
   actions.forEach(action => (actionsByName[action.name] = action));
   return actionsByName;
+}
+
+function getCanonicalProjectConfig(originalProjectConfig: dataform.IProjectConfig) {
+  return {
+    warehouse: originalProjectConfig.warehouse,
+    defaultSchema: originalProjectConfig.defaultSchema,
+    defaultDatabase: originalProjectConfig.defaultDatabase,
+    assertionSchema: originalProjectConfig.assertionSchema
+  };
 }

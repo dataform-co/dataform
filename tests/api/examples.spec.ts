@@ -1,7 +1,6 @@
 import { fail } from "assert";
 import { expect } from "chai";
 import { Builder, compile } from "df/api";
-import { ProtoUtils } from "df/common/protos/proto_utils";
 import * as utils from "df/core/utils";
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
@@ -227,16 +226,11 @@ suite("examples", () => {
           schema: schemaWithSuffix("df_integration_test"),
           database: "tada-analytics"
         });
-        expect(exampleView.canonicalTarget).equals(
-          ProtoUtils.encode(
-            dataform.Target,
-            dataform.Target.create({
-              name: "example_view",
-              schema: "df_integration_test",
-              database: "tada-analytics"
-            })
-          )
-        );
+        expect(dataform.Target.create(exampleView.canonicalTarget).toJSON()).deep.equals({
+          name: "example_view",
+          schema: "df_integration_test",
+          database: "tada-analytics"
+        });
 
         expect(exampleView.dependencies).deep.equals([
           "tada-analytics." + schemaWithSuffix("df_integration_test") + ".sample_data",
