@@ -498,6 +498,21 @@ export class Session {
     });
   }
 
+  private checkCanonicalTargetUniqueness(actions: IActionProto[]) {
+    const allNames: StringifiedMap.c
+    actions.forEach(action => {
+      if (allNames.includes(action.name)) {
+        this.compileError(
+          new Error(
+            `Duplicate action name detected. Names within a schema must be unique across tables, declarations, assertions, and operations: "${action.name}"`
+          ),
+          action.fileName
+        );
+      }
+      allNames.push(action.name);
+    });
+  }
+
   private checkTestNameUniqueness(tests: dataform.ITest[]) {
     const allNames: string[] = [];
     tests.forEach(testProto => {
