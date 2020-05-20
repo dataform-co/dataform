@@ -1,6 +1,6 @@
 ---
 title: Introduction
-subtitle: Manage data in your warehouse with Dataform and SQLX
+subtitle: Learn the basics of Dataform, how it works, and where it fits in your data stack.
 priority: 0
 icon: menu-open
 ---
