@@ -13,6 +13,7 @@
     "onCommand:dataform.helloWorld",
     "onCommand:dataform.showSidebar",
     "onCommand:dataform.addToPanel",
+    "onCommand:dataform.run",
     "onLanguage:sqlx"
   ],
   "main": "extension.js",
@@ -54,6 +55,11 @@
         "command": "dataform.addToPanel",
         "title": "Add to sidebar",
         "category": "sidebar"
+      },
+      {
+        "command": "dataform.run",
+        "title": "Execute dataform run",
+        "category": "cli"
       }
     ],
     "languages": [

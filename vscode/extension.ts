@@ -67,8 +67,6 @@ export async function activate(context: vscode.ExtensionContext) {
     currentPanel.webview.postMessage({ bodyContent: "SOME BODY CONTENT" });
   });
 
-  context.subscriptions.push(showSidebar, addThingToPanel, disposable);
-
   // Language server stuff.
   // The server is implemented in node
   const serverModule = context.asAbsolutePath("server.js");
@@ -105,6 +103,12 @@ export async function activate(context: vscode.ExtensionContext) {
     clientOptions
   );
 
+  const requestRun = vscode.commands.registerCommand("dataform.run", () => {
+    const _ = client.sendRequest("run");
+  });
+
+  context.subscriptions.push(showSidebar, addThingToPanel, disposable, requestRun);
+
   // Start the client. This will also launch the server
   client.start();
 
@@ -112,6 +116,9 @@ export async function activate(context: vscode.ExtensionContext) {
   await client.onReady();
   client.onNotification("error", errorMessage => {
     vscode.window.showErrorMessage(errorMessage);
+  });
+  client.onNotification("success", message => {
+    vscode.window.showInformationMessage(message);
   });
   console.log('Congratulations, your extension "dataform" is now active!');
 }

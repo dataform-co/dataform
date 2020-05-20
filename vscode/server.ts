@@ -69,6 +69,7 @@ connection.onInitialized(() => {
     });
   }
 });
+
 // The example settings
 interface ExampleSettings {
   maxNumberOfProblems: number;
@@ -108,6 +109,21 @@ function getDocumentSettings(resource: string): Thenable<ExampleSettings> {
 documents.onDidClose(e => {
   documentSettings.delete(e.document.uri);
 });
+
+// doesn't work at the moment
+connection.onRequest("run", async () => {
+  connection.sendNotification("success", "Trying to run!");
+  try {
+    const dryRun = await getProcessResult(exec("dataform run --dry-run --json"));
+    console.log("exit code", dryRun.exitCode);
+    const parsedDryRunResult = await JSON.parse(dryRun.stdout);
+    connection.sendNotification("success", "Successful dry run!");
+  } catch (e) {
+    console.log(e);
+    connection.sendNotification("error", e);
+  }
+});
+
 // The content of a text document has changed. This event is emitted
 // when the text document first opened or when its content has changed.
 documents.onDidChangeContent(change => {
@@ -116,7 +132,7 @@ documents.onDidChangeContent(change => {
 
 async function compileAndValidate() {
   const compileResult = await getProcessResult(exec("dataform compile --json"));
-  const parsedCompileResult = JSON.parse(compileResult.stdout) as any;
+  const parsedCompileResult = JSON.parse(compileResult.stdout);
   if (parsedCompileResult.graphErrors && parsedCompileResult.graphErrors.compilationErrors) {
     parsedCompileResult.graphErrors.compilationErrors.forEach((compilationError: any) => {
       connection.sendNotification("error", compilationError.message);
