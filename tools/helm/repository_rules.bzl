@@ -22,7 +22,7 @@ def _helm_chart_impl(ctx):
 
     # Run 'helm repo add' to add the helm repository to the repository config.
     reponame = ctx.attr.name
-    ctx.execute([
+    result = ctx.execute([
         ctx.path(Label("@helm_tool//:helm")),
         "repo",
         "add",
@@ -30,9 +30,11 @@ def _helm_chart_impl(ctx):
         ctx.attr.repo_url,
         "--repository-config=repositories.yaml",
     ])
+    if result.return_code != 0:
+        fail("Failed to add Helm repository '%s': %s" % (reponame, result.stderr))
 
     # Run 'helm pull' to fetch the helm chart.
-    ctx.execute([
+    result = ctx.execute([
         ctx.path(Label("@helm_tool//:helm")),
         "pull",
         reponame + "/" + ctx.attr.chartname,
@@ -40,14 +42,21 @@ def _helm_chart_impl(ctx):
         ctx.attr.version,
         "--repository-config=repositories.yaml",
     ], timeout = 600)
+    if result.return_code != 0:
+        fail("Failed to pull Helm chart '%s': %s" % (ctx.attr.chartname, result.stderr))
 
     # Delete repository config.
     ctx.delete("repositories.yaml")
     ctx.delete("repositories.lock")
 
     # Rename the downloaded chart to 'chart.tgz'.
-    filename = ctx.execute(["ls"]).stdout.strip()
-    ctx.execute(["mv", filename, "chart.tgz"])
+    result = ctx.execute(["ls"])
+    if result.return_code != 0:
+        fail("Unable to run 'ls'.")
+    filename = result.stdout.strip()
+    result = ctx.execute(["mv", filename, "chart.tgz"])
+    if result.return_code != 0:
+        fail("Unable to rename Helm chart to chart.tgz.")
 
     ctx.file("BUILD", 'exports_files(["chart.tgz"])')
 

@@ -1,11 +1,6 @@
 {
   "steps": [
     {
-      "name": "gcr.io/cloud-builders/gcloud",
-      "entrypoint": "bash",
-      "args": ["./scripts/decode_credentials"]
-    },
-    {
       "name": "securego/gosec",
       "args": ["./..."]
     },

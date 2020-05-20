@@ -14,7 +14,7 @@ ts_test_suite(
     data = [
         ":node_modules",
         "//packages/@dataform/core:package_tar",
-        "//test_credentials",
+        "//test_credentials:redshift.json",
         "@nodejs//:node",
         "@nodejs//:npm",
     ],
