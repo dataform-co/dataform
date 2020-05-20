@@ -20,6 +20,7 @@ ts_test_suite(
     ],
     deps = [
         "//core",
+        "//protos:ts",
         "//testing",
         "@npm//@types/chai",
         "@npm//@types/fs-extra",

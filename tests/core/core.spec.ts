@@ -1,4 +1,3 @@
-import { fail } from "assert";
 import { expect } from "chai";
 import * as compilers from "df/core/compilers";
 import { Session } from "df/core/session";
@@ -103,6 +102,10 @@ suite("@dataform/core", () => {
         expect(t2.preOps).deep.equals(["pre_op"]);
         expect(t2.postOps).deep.equals(["post_op"]);
         expect(t2.dependencies).includes(`schema.${tableWithPrefix("example")}`);
+        expect(dataform.Target.create(t2.canonicalTarget).toJSON()).deep.equals({
+          name: "example",
+          schema: "schema2"
+        });
 
         const t3 = compiledGraph.tables.find(
           table => table.name === `test_schema.${tableWithPrefix("my_table")}`
@@ -208,6 +211,10 @@ suite("@dataform/core", () => {
             name: "incremental",
             schema: TestConfigs.redshift.defaultSchema
           },
+          canonicalTarget: {
+            name: "incremental",
+            schema: TestConfigs.redshift.defaultSchema
+          },
           query: "select false as incremental",
           incrementalQuery: "select true as incremental",
           disabled: false,
@@ -215,6 +222,80 @@ suite("@dataform/core", () => {
           name: "schema.incremental",
           type: "incremental"
         }
+      ]);
+    });
+
+    test("canonical targets", () => {
+      const originalConfig = {
+        warehouse: "bigquery",
+        defaultSchema: "schema",
+        defaultDatabase: "database",
+        schemaSuffix: "dev",
+        tablePrefix: "dev"
+      };
+      const overrideConfig = {
+        ...originalConfig,
+        defaultSchema: "otherschema",
+        defaultDatabase: "otherdatabase"
+      };
+      const session = new Session(path.dirname(__filename), overrideConfig, originalConfig);
+      session.publish("dataset");
+      session.assert("assertion");
+      session.declare({ name: "declaration" });
+      session.operate("operation");
+
+      const graph = session.compile();
+      expect(
+        [
+          ...graph.tables,
+          ...graph.assertions,
+          ...graph.declarations,
+          ...graph.operations
+        ].map(action => dataform.Target.create(action.canonicalTarget).toJSON())
+      ).deep.equals([
+        {
+          database: "database",
+          name: "dataset",
+          schema: "schema"
+        },
+        {
+          database: "database",
+          name: "assertion",
+          schema: "schema"
+        },
+        {
+          database: "database",
+          name: "declaration",
+          schema: "schema"
+        },
+        {
+          database: "database",
+          name: "operation",
+          schema: "schema"
+        }
+      ]);
+    });
+
+    test("non-unique canonical targets fails", () => {
+      const originalConfig = {
+        warehouse: "bigquery",
+        defaultSchema: "schema",
+        defaultDatabase: "database"
+      };
+      const overrideConfig = { ...originalConfig, defaultSchema: "otherschema" };
+      const session = new Session(path.dirname(__filename), overrideConfig, originalConfig);
+      session
+        .publish("view", {
+          type: "view"
+        })
+        .query("query");
+      session.publish("view", {
+        type: "view",
+        schema: "schema"
+      });
+      const graph = session.compile();
+      expect(graph.graphErrors.compilationErrors.map(error => error.message)).deep.equals([
+        'Duplicate canonical target detected. Canonical targets must be unique across tables, declarations, assertions, and operations:\n"{"schema":"schema","name":"view","database":"database"}"'
       ]);
     });
 
