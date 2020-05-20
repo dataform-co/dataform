@@ -1,3 +1,4 @@
+import { JSONObjectStringifier, StringifiedMap } from "df/common/strings/stringifier";
 import * as adapters from "df/core/adapters";
 import { AContextable, Assertion, IAssertionConfig } from "df/core/assertion";
 import { Contextable, ICommonContext, Resolvable } from "df/core/common";
@@ -11,6 +12,11 @@ import { dataform } from "df/protos/ts";
 import { util } from "protobufjs";
 import { default as TarjanGraphConstructor, Graph as TarjanGraph } from "tarjan-graph";
 
+const DEFAULT_CONFIG = {
+  defaultSchema: "dataform",
+  assertionSchema: "dataform_assertions"
+};
+
 /**
  * @hidden
  */
@@ -21,14 +27,16 @@ export interface IActionProto {
   dependencies?: string[];
   hermeticity?: dataform.ActionHermeticity;
   target?: dataform.ITarget;
+  canonicalTarget?: dataform.ITarget;
 }
 
 type SqlxConfig = (
-  | ITableConfig & { type: TableType }
-  | IAssertionConfig & { type: "assertion" }
-  | IOperationConfig & { type: "operations" }
-  | IDeclarationConfig & { type: "declaration" }
-  | test.ITestConfig & { type: "test" }) & { name: string };
+  | (ITableConfig & { type: TableType })
+  | (IAssertionConfig & { type: "assertion" })
+  | (IOperationConfig & { type: "operations" })
+  | (IDeclarationConfig & { type: "declaration" })
+  | (test.ITestConfig & { type: "test" })
+) & { name: string };
 
 /**
  * @hidden
@@ -37,22 +45,31 @@ export class Session {
   public rootDir: string;
 
   public config: dataform.IProjectConfig;
+  public canonicalConfig: dataform.IProjectConfig;
 
   public actions: Array<Table | Operation | Assertion | Declaration>;
   public tests: { [name: string]: test.Test };
 
   public graphErrors: dataform.IGraphErrors;
 
-  constructor(rootDir: string, projectConfig?: dataform.IProjectConfig) {
-    this.init(rootDir, projectConfig);
+  constructor(
+    rootDir: string,
+    projectConfig?: dataform.IProjectConfig,
+    originalProjectConfig?: dataform.IProjectConfig
+  ) {
+    this.init(rootDir, projectConfig, originalProjectConfig);
   }
 
-  public init(rootDir: string, projectConfig?: dataform.IProjectConfig) {
+  public init(
+    rootDir: string,
+    projectConfig?: dataform.IProjectConfig,
+    originalProjectConfig?: dataform.IProjectConfig
+  ) {
     this.rootDir = rootDir;
-    this.config = projectConfig || {
-      defaultSchema: "dataform",
-      assertionSchema: "dataform_assertions"
-    };
+    this.config = projectConfig || DEFAULT_CONFIG;
+    this.canonicalConfig = getCanonicalProjectConfig(
+      originalProjectConfig || projectConfig || DEFAULT_CONFIG
+    );
     this.actions = [];
     this.tests = {};
     this.graphErrors = { compilationErrors: [] };
@@ -204,6 +221,7 @@ export class Session {
       return this.adapter().resolveTarget(
         utils.target(
           this.adapter(),
+          this.config,
           `${this.getTablePrefixWithUnderscore()}${ref}`,
           `${this.config.defaultSchema}${this.getSuffixWithUnderscore()}`
         )
@@ -212,6 +230,7 @@ export class Session {
     return this.adapter().resolveTarget(
       utils.target(
         this.adapter(),
+        this.config,
         `${this.getTablePrefixWithUnderscore()}${ref.name}`,
         `${ref.schema}${this.getSuffixWithUnderscore()}`
       )
@@ -334,6 +353,15 @@ export class Session {
       )
     );
     this.checkTestNameUniqueness(compiledGraph.tests);
+
+    this.checkCanonicalTargetUniqueness(
+      [].concat(
+        compiledGraph.tables,
+        compiledGraph.assertions,
+        compiledGraph.operations,
+        compiledGraph.declarations
+      )
+    );
 
     this.checkCircularity(
       [].concat(compiledGraph.tables, compiledGraph.assertions, compiledGraph.operations)
@@ -480,6 +508,25 @@ export class Session {
     });
   }
 
+  private checkCanonicalTargetUniqueness(actions: IActionProto[]) {
+    const allCanonicalTargets = new StringifiedMap<dataform.ITarget, boolean>(
+      JSONObjectStringifier.create()
+    );
+    actions.forEach(action => {
+      if (allCanonicalTargets.has(action.canonicalTarget)) {
+        this.compileError(
+          new Error(
+            `Duplicate canonical target detected. Canonical targets must be unique across tables, declarations, assertions, and operations:\n"${JSON.stringify(
+              action.canonicalTarget
+            )}"`
+          ),
+          action.fileName
+        );
+      }
+      allCanonicalTargets.set(action.canonicalTarget, true);
+    });
+  }
+
   private checkTestNameUniqueness(tests: dataform.ITest[]) {
     const allNames: string[] = [];
     tests.forEach(testProto => {
@@ -519,14 +566,20 @@ export class Session {
       if (action.dependencies?.length > 0) {
         return;
       }
-      if ([dataform.ActionHermeticity.HERMETIC, dataform.ActionHermeticity.NON_HERMETIC].includes(action.hermeticity)) {
+      if (
+        [dataform.ActionHermeticity.HERMETIC, dataform.ActionHermeticity.NON_HERMETIC].includes(
+          action.hermeticity
+        )
+      ) {
         return;
       }
       this.compileError(
-        new Error("Zero-dependency actions which create datasets are required to explicitly declare 'hermetic: (true|false)' when run caching is turned on."),
+        new Error(
+          "Zero-dependency actions which create datasets are required to explicitly declare 'hermetic: (true|false)' when run caching is turned on."
+        ),
         action.fileName
       );
-    })
+    });
   }
 }
 
@@ -542,4 +595,13 @@ function keyByName(actions: IActionProto[]) {
   const actionsByName: { [name: string]: IActionProto } = {};
   actions.forEach(action => (actionsByName[action.name] = action));
   return actionsByName;
+}
+
+function getCanonicalProjectConfig(originalProjectConfig: dataform.IProjectConfig) {
+  return {
+    warehouse: originalProjectConfig.warehouse,
+    defaultSchema: originalProjectConfig.defaultSchema,
+    defaultDatabase: originalProjectConfig.defaultDatabase,
+    assertionSchema: originalProjectConfig.assertionSchema
+  };
 }

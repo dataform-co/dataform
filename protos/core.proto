@@ -228,6 +228,7 @@ message ColumnDescriptor {
 
 message Table {
   Target target = 4;
+  Target canonical_target = 32;
 
   repeated Target dependency_targets = 27;
   ActionHermeticity hermeticity = 31;
@@ -272,6 +273,7 @@ message Table {
 
 message Operation {
   Target target = 3;
+  Target canonical_target = 13;
 
   repeated Target dependency_targets = 11;
   ActionHermeticity hermeticity = 12;
@@ -294,6 +296,7 @@ message Operation {
 
 message Assertion {
   Target target = 8;
+  Target canonical_target = 13;
 
   repeated Target dependency_targets = 11;
   ActionHermeticity hermeticity = 12;
@@ -324,6 +327,7 @@ message Declaration {
   string name = 1;
 
   Target target = 2;
+  Target canonical_target = 5;
 
   ActionDescriptor action_descriptor = 3;
 
