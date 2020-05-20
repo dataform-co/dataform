@@ -115,7 +115,7 @@ We prepared the following sample project using the Stackoverflow public dataset.
 <img src="https://assets.dataform.co/docs/sample_projects/bigquery_sample_project_dag.png" width="1100"  alt="Sample bigquery Dataform project DAG" />
 <figcaption>Dependency tree of the BigQuery sample project</figcaption>
 
-<a href="examples/projects/stackoverflow-big"><button>View the example page</button></a>
+<a href="../examples/projects/stackoverflow-bigquery"><button>View project page</button></a>
 
 ## Packages
 
@@ -123,7 +123,7 @@ We prepared the following sample project using the Stackoverflow public dataset.
 
 We published a package that helps the analysis of BigQuery usage logs. You can find more information by reading the related blog post or the package page.
 
-<a href="https://dataform.co/blog/exporting-bigquery-usage-logs"><button>Visit the package page</button></a> <a href="packages/dataform-bq-audit-logsw"><button>Read the blog post</button></a>
+<a href="https://dataform.co/blog/exporting-bigquery-usage-logs"><button>Visit the package page</button></a> <a href="../packages/dataform-bq-audit-logs"><button>Read the blog post</button></a>
 
 ## Blog posts
 

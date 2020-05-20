@@ -102,7 +102,7 @@ We prepared the following sample project of a fictional ecommerce store using us
 <img src="https://assets.dataform.co/docs/sample_projects/redshift_sample_project_dag.png" width="1100"  alt="Sample bigquery Dataform project DAG" />
 <figcaption>Dependency tree of the Redshift sample project</figcaption>
 
-<a href="examples/projects/ecommerce-redshift"><button>View the example page</button></a>
+<a href="../examples/projects/ecommerce-redshift"><button>View project page</button></a>
 
 ## Blog posts
 
