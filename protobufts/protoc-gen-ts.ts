@@ -111,7 +111,7 @@ function getMessage(
 ): string {
   const message = `export class ${descriptorProto.name} {
 ${descriptorProto.field
-  .map(fieldDescriptorProto => `  public ${fieldDescriptorProto.jsonName}: number = 0;`)
+  .map(fieldDescriptorProto => `  public ${fieldDescriptorProto.jsonName}: number = null;`)
   .join("\n")}
 }`;
   if (descriptorProto.nestedType.length === 0 && descriptorProto.enumType.length === 0) {
