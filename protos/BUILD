@@ -50,6 +50,14 @@ go_proto_library(
     proto = ":schedules_proto",
 )
 
+go_proto_library(
+    name = "server_go_proto",
+    compilers = ["@io_bazel_rules_go//proto:go_grpc"],
+    importpath = "github.com/dataform-co/dataform/protos",
+    proto = ":server_proto",
+    deps = [":dataform_go_proto"],
+)
+
 load("//tools:ts_proto_library.bzl", "ts_proto_library")
 
 ts_proto_library(
@@ -57,23 +65,6 @@ ts_proto_library(
     deps = [
         ":dataform_proto",
         ":schedules_proto",
-        ":server_proto",
-    ],
-)
-
-load("//protobufts:ts_proto_library.bzl", new_ts_proto_library = "ts_proto_library")
-
-new_ts_proto_library(
-    name = "dataform_ts_proto",
-    protos = [
-        ":dataform_proto",
-    ],
-)
-
-new_ts_proto_library(
-    name = "server_ts_proto",
-    import_prefix = "df",
-    protos = [
         ":server_proto",
     ],
 )

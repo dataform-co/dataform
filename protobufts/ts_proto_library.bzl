@@ -1,6 +1,7 @@
+load("@npm_bazel_typescript//:index.bzl", "ts_library")
 load("@rules_proto//proto:defs.bzl", "ProtoInfo")
 
-def _ts_proto_library_impl(ctx):
+def _protoc_gen_ts_impl(ctx):
     src_proto_files = []
     import_proto_files = []
     for proto in ctx.attr.protos:
@@ -20,8 +21,8 @@ def _ts_proto_library_impl(ctx):
     )
     return [DefaultInfo(files = depset(outs))]
 
-ts_proto_library = rule(
-    implementation = _ts_proto_library_impl,
+protoc_gen_ts = rule(
+    implementation = _protoc_gen_ts_impl,
     attrs = {
         "protos": attr.label_list(allow_empty = False, mandatory = True),
         "import_prefix": attr.string(default = ""),
@@ -29,3 +30,11 @@ ts_proto_library = rule(
         "_protoc_gen_ts": attr.label(default = "//protobufts:bin", executable = True, allow_single_file = None, cfg = "host"),
     },
 )
+
+def ts_proto_library(name, protos, import_prefix = ""):
+    protoc_gen_ts(name = name + "-gen", protos = protos, import_prefix = import_prefix)
+
+    ts_library(
+        name = name,
+        srcs = [":" + name + "-gen"],
+    )

@@ -1,3 +1,5 @@
+load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
+
 package(default_visibility = ["//visibility:public"])
 
 load("@npm_bazel_typescript//:index.bzl", "ts_library")
@@ -25,11 +27,28 @@ nodejs_binary(
 )
 
 proto_library(
-    name = "protoc-protos",
-    srcs = [
-        "descriptor.proto",
-        "plugin.proto",
-    ],
+    name = "descriptor_proto",
+    srcs = ["descriptor.proto"],
+)
+
+proto_library(
+    name = "plugin_go_proto",
+    srcs = ["plugin.proto"],
+    deps = [":descriptor_proto"],
+)
+
+go_proto_library(
+    name = "descriptor_go_proto",
+    compilers = ["@io_bazel_rules_go//proto:go_grpc"],
+    importpath = "github.com/golang/protobuf/protoc-gen-go/descriptor",
+    proto = ":descriptor_proto",
+)
+
+go_proto_library(
+    name = "plugin_go_go_proto",
+    importpath = "github.com/golang/protobuf/protoc-gen-go/plugin",
+    proto = ":plugin_go_proto",
+    deps = [":descriptor_go_proto"],
 )
 
 load("//tools:ts_proto_library.bzl", "ts_proto_library")
@@ -37,6 +56,7 @@ load("//tools:ts_proto_library.bzl", "ts_proto_library")
 ts_proto_library(
     name = "ts-protoc-protos",
     deps = [
-        ":protoc-protos",
+        ":descriptor_proto",
+        ":plugin_go_proto",
     ],
 )
