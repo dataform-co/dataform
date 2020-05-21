@@ -119,21 +119,18 @@ function getFileContent(
     }
     return false;
   };
-  return `// AUTOMATICALLY GENERATED CODE. DO NOT EDIT.
+  return `// Code generated automatically by protoc-gen-ts.
 
-// IMPORTS
 ${getImportLines(
   fileDescriptorProto.dependency,
   fileDescriptorProto.messageType.some(needsLongImport),
   parameters.importPrefix
 ).join("\n")}
 
-// MESSAGES
 ${fileDescriptorProto.messageType
   .map(descriptorProto => getMessage(descriptorProto, fileTypeMapping, fileDescriptorProto.name))
   .join("\n\n")}
 
-// ENUMS
 ${fileDescriptorProto.enumType
   .map(enumDescriptorProto => getEnum(enumDescriptorProto))
   .join("\n\n")}
@@ -188,22 +185,20 @@ ${descriptorProto.field
   if (descriptorProto.nestedType.length === 0 && descriptorProto.enumType.length === 0) {
     return maybeIndent(message, indent);
   }
+  const nestedMessages = descriptorProto.nestedType
+    .map(nestedDescriptorProto =>
+      maybeIndent(getMessage(nestedDescriptorProto, fileTypeMapping, currentProtoFile), true)
+    )
+    .join("\n\n");
+  const nestedEnums = descriptorProto.enumType
+    .map(nestedEnumDescriptorProto => maybeIndent(getEnum(nestedEnumDescriptorProto), true))
+    .join("\n\n");
   return maybeIndent(
     `${message}
 
-export namespace ${descriptorProto.name} {
-  // MESSAGES
-${descriptorProto.nestedType
-  .map(nestedDescriptorProto =>
-    maybeIndent(getMessage(nestedDescriptorProto, fileTypeMapping, currentProtoFile), true)
-  )
-  .join("\n\n")}
-
-  // ENUMS
-${descriptorProto.enumType
-  .map(nestedEnumDescriptorProto => maybeIndent(getEnum(nestedEnumDescriptorProto), true))
-  .join("\n\n")}
-}`,
+export namespace ${descriptorProto.name} {${
+      descriptorProto.nestedType.length > 0 ? `\n${nestedMessages}\n` : ""
+    }${descriptorProto.enumType.length > 0 ? `\n${nestedEnums}\n` : ""}}`,
     indent
   );
 }
@@ -236,15 +231,13 @@ function type(
     case google.protobuf.FieldDescriptorProto.Type.TYPE_GROUP:
       throw new Error("GROUP is unsupported.");
     case google.protobuf.FieldDescriptorProto.Type.TYPE_MESSAGE:
+    case google.protobuf.FieldDescriptorProto.Type.TYPE_ENUM:
       const typeLocation = fileTypeMapping.get(typeName.slice(1));
       return typeLocation.importProtoFile === currentProtoFile
         ? typeLocation.typescriptTypeName
         : `${typeLocation.importName}.${typeLocation.typescriptTypeName}`;
     case google.protobuf.FieldDescriptorProto.Type.TYPE_BYTES:
       return "Uint8Array";
-    case google.protobuf.FieldDescriptorProto.Type.TYPE_ENUM:
-      // TODO
-      return "number /* " + typeName + " */";
     default:
       throw new Error(`Unrecognized field type: ${typeValue}`);
   }
