@@ -31,7 +31,7 @@ protoc_gen_ts = rule(
     },
 )
 
-def ts_proto_library(name, protos, import_prefix = ""):
+def ts_proto_library(name, protos, deps = [], import_prefix = ""):
     protoc_gen_ts(
         name = name + "-gen",
         protos = protos,
@@ -41,4 +41,5 @@ def ts_proto_library(name, protos, import_prefix = ""):
     ts_library(
         name = name,
         srcs = [":" + name + "-gen"],
+        deps = deps,
     )

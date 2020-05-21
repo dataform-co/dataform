@@ -76,4 +76,7 @@ new_ts_proto_library(
     protos = [
         ":dataform_proto",
     ],
+    deps = [
+        "@npm//@types/long",
+    ],
 )
