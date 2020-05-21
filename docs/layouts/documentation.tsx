@@ -34,7 +34,7 @@ export default class Documentation extends React.Component<IProps> {
 
   public render() {
     const currentHeaderLinks = this.props.headerLinks || this.getHeaderLinks();
-    const tree = Tree.createFromIndex(this.props.index);
+    const tree = Tree.createFromIndex<IExtraAttributes>(this.props.index);
     const current = tree.getChild(this.props.current.path);
     return (
       <BaseLayout title={`${this.props.current.attributes.title} | Dataform`}>
@@ -69,7 +69,9 @@ export default class Documentation extends React.Component<IProps> {
 
             <CardMasonry minWidth={300} style={{ margin: "60px 0px 20px" }}>
               {(current.children?.length > 0 ? current.children : [])
-                .filter(child => !!child.path)
+                .filter(
+                  child => !!child.path && !!child.attributes.title && !child.attributes?.redirect
+                )
                 .map(child => (
                   <Card masonryCard={true} header={child.attributes?.title}>
                     <p>{child.attributes?.subtitle}</p>
