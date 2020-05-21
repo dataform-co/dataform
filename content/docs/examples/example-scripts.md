@@ -9,6 +9,7 @@ priority: 1
 ### Create a view
 
 ```sql
+-- definitions/new_view.sqlx
 config { type: "view" }
 
 select * from source_data
@@ -17,6 +18,7 @@ select * from source_data
 ### Create a table
 
 ```sql
+-- definitions/new_table.sqlx
 config { type: "table" }
 
 select * from source_data
@@ -25,6 +27,7 @@ select * from source_data
 ### Use the ref function
 
 ```sql
+-- definitions/new_table_with_ref.sqlx
 config { type: "table" }
 
 select * from ${ref("source_data")}
@@ -33,6 +36,8 @@ select * from ${ref("source_data")}
 ### Run several SQL operations
 
 ```sql
+-- definitions/operations.sqlx
+
 config { type: "operations" }
 
 delete from datatable where country = 'GB'
@@ -43,6 +48,8 @@ delete from datatable where country = 'FR'
 ### Add documentation to a table, view, or declaration
 
 ```sql
+-- definitions/documented_table.sqlx
+
 config { type: "table",
          description: "This table is an example",
          columns:{
@@ -56,6 +63,8 @@ select user_name, user_id from ${ref("source_data")}
 ### Add assertions to a table, view, or declaration
 
 ```sql
+-- definitions/tested_table.sqlx
+
 config {
   type: "table",
   assertions: {
@@ -73,6 +82,8 @@ select ...
 ### Add a custom assertion
 
 ```sql
+-- definitions/custom_assertion.sqlx
+
 config { type: "assertion" }
 
 select
@@ -88,6 +99,7 @@ where
 ### Run custom SQL before or after creating a table
 
 ```sql
+-- definitions/table_with_preops_and_postops.sqlx
 
 config {type: "table"}
 
@@ -110,6 +122,8 @@ post_operations {
 ### Add new rows dates for new dates in source data
 
 ```sql
+-- definitions/incremental_table.sqlx
+
 config { type: "incremental" }
 
 select date(timestamp) as date, action
@@ -121,17 +135,8 @@ ${ when(incremental(), `where timestamp > (select max(date) from ${self()})`)
 ### Take a snapshot of a table periodically
 
 ```sql
-config { type: "incremental" }
+-- definitions/snapshots_table.sqlx
 
-select date(timestamp) as date, action
-from weblogs.user_actions
-
-${ when(incremental(), `where timestamp > (select max(date) from ${self()})`)
-```
-
-## Examples of assertions - data quality tests
-
-```sql
 config { type: "incremental" }
 
 SELECT current_date() AS snapshot_date, customer_id, name, account_settings FROM productiondb.customers
@@ -271,6 +276,8 @@ group by 1, 2
 ### Generating one table per country
 
 ```js
+// definitions/one_table_per_country.js
+
 const countries = ["GB", "US", "FR", "TH", "NG"];
 
 countries.forEach(country => {
@@ -287,6 +294,8 @@ countries.forEach(country => {
 ### Declaring multiple sources within one file
 
 ```js
+// definitions/external_dependencies.js
+
 declare({
   schema: "stripe",
   name: "charges"
@@ -306,6 +315,8 @@ declare({
 ### Deleting sensitive information in all tables containing PII
 
 ```js
+// definitions/delete_pii.js
+
 const pii_tables = ["users", "customers", "leads"];
 pii_tables.forEach(table =>
   operate(`gdpr_cleanup: ${table}`,
@@ -322,6 +333,8 @@ pii_tables.forEach(table =>
 ### Use inline variables and functions
 
 ```sql
+-- definitions/script_with_variables.sqlx
+
 js {
  const foo = 1;
  function bar(number){
@@ -370,6 +383,8 @@ select 30 as age_group, '1' as user_count
 ### Backfill a daily table
 
 ```js
+-- definitions/backfill_daily_data.js
+
 var getDateArray = function(start, end) {
   var startDate = new Date(start); //YYYY-MM-DD
   var endDate = new Date(end); //YYYY-MM-DD

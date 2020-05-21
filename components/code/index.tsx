@@ -7,7 +7,7 @@ SyntaxHighlighter.registerLanguage("sql", sql);
 export function Code({ fileName, children }: React.PropsWithChildren<{ fileName?: string }>) {
   return (
     <>
-      {fileName && <div className={"hljs-filename"}>{fileName}</div>}
+      {fileName && <div className={`hljs-filename`}>{fileName}</div>}
       <SyntaxHighlighter
         language="sql"
         showLineNumbers={true}

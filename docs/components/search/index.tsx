@@ -1,4 +1,4 @@
-import { Button, Menu, MenuItem } from "@blueprintjs/core";
+import { Button, Icon, Menu, MenuItem } from "@blueprintjs/core";
 import { IItemRendererProps, Omnibar } from "@blueprintjs/select";
 import algoliasearch from "algoliasearch/lite";
 import * as styles from "df/docs/components/search/index.css";
@@ -75,7 +75,13 @@ class SearchWidget extends React.Component<IWidgetProps, IWidgetState> {
   public render() {
     return (
       <>
-        <Button icon="search" minimal={true} onClick={() => this.setState({ isOpen: true })} />
+        <Button
+          icon="search"
+          color="#6c6c6c"
+          text="Search documentation"
+          onClick={() => this.setState({ isOpen: true })}
+          minimal={true}
+        />
         <SearchOmnibar
           className={styles.omnibar}
           onQueryChange={query => this.props.refine(query)}

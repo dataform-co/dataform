@@ -47,7 +47,7 @@ group by 1, 2
 <figcaption>Sample SQLX file</figcaption>
 
 <div className="bp3-callout bp3-icon-info-sign bp3-intent-primary" markdown="1">
-You only need to write `SELECT` statements in SQLX. Dataform takes care of adding boilerplate statements like `CREATE OR REPLACE` or `INSERT` in the following step.
+You only need to write <code>SELECT</code> statements in SQLX. Dataform takes care of adding boilerplate statements like <code>CREATE OR REPLACE</code> or <code>INSERT</code> in the following step.
 
 <a href="https://docs.dataform.co/introduction/dataform-5-minutes"><button intent="primary">5 min overview of Dataform and SQLX</button></a></div>
 

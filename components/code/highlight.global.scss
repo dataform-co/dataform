@@ -1,17 +1,21 @@
 div.hljs-filename {
-  background-color: #222f6f;
+  background-color: #383a42;
   border-radius: 5px 5px 0px 0px;
   padding: 10px;
   margin-bottom: -5px;
-  color: #eee;
+  color: #f5fbff;
   position: relative;
   z-index: 1;
 }
 
+.react-syntax-highlighter-line-number {
+  opacity: 0.6;
+}
+
 pre.hljs {
-  padding: 10px;
+  padding: 6px 10px;
   border-radius: 5px;
-  background-color: var(--primary);
+  background-color: #454c60;
   overflow: auto;
   position: relative;
   text-align: left;
@@ -19,8 +23,8 @@ pre.hljs {
   word-spacing: normal;
   word-break: normal;
   word-wrap: normal;
-  color: #eee;
-  font-family: Roboto Mono, monospace;
+  color: #f5fbff;
+  font-family: "Source Code Pro", monospace;
   -moz-tab-size: 4;
   -o-tab-size: 4;
   tab-size: 4;
@@ -36,11 +40,11 @@ pre.hljs {
 
 [class*="language-"] {
   .token.atrule {
-    color: #c792ea;
+    color: #a4cdfe;
   }
 
   .token.attr-name {
-    color: #ffcb6b;
+    color: #85d99e;
   }
 
   .token.attr-value {
@@ -52,11 +56,11 @@ pre.hljs {
   }
 
   .token.boolean {
-    color: #c792ea;
+    color: #a4cdfe;
   }
 
   .token.builtin {
-    color: #ffcb6b;
+    color: #85d99e;
   }
 
   .token.cdata {
@@ -68,7 +72,7 @@ pre.hljs {
   }
 
   .token.class {
-    color: #ffcb6b;
+    color: #85d99e;
   }
 
   .token.class-name {
@@ -76,15 +80,16 @@ pre.hljs {
   }
 
   .token.comment {
-    color: #616161;
+    color: #f5fbff;
+    opacity: 0.6;
   }
 
   .token.constant {
-    color: #c792ea;
+    color: #a4cdfe;
   }
 
   .token.deleted {
-    color: #ff6666;
+    color: #fbb5b2;
   }
 
   .token.doctype {
@@ -92,11 +97,11 @@ pre.hljs {
   }
 
   .token.entity {
-    color: #ff6666;
+    color: #fbb5b2;
   }
 
   .token.function {
-    color: #c792ea;
+    color: #a4cdfe;
   }
 
   .token.hexcode {
@@ -104,12 +109,12 @@ pre.hljs {
   }
 
   .token.id {
-    color: #c792ea;
+    color: #a4cdfe;
     font-weight: bold;
   }
 
   .token.important {
-    color: #c792ea;
+    color: #a4cdfe;
     font-weight: bold;
   }
 
@@ -118,7 +123,7 @@ pre.hljs {
   }
 
   .token.keyword {
-    color: #c792ea;
+    color: #a4cdfe;
   }
 
   .token.number {
@@ -154,7 +159,7 @@ pre.hljs {
   }
 
   .token.selector {
-    color: #ff6666;
+    color: #fbb5b2;
   }
 
   .token.string {
@@ -162,11 +167,11 @@ pre.hljs {
   }
 
   .token.symbol {
-    color: #c792ea;
+    color: #a4cdfe;
   }
 
   .token.tag {
-    color: #ff6666;
+    color: #fbb5b2;
   }
 
   .token.unit {
@@ -174,10 +179,10 @@ pre.hljs {
   }
 
   .token.url {
-    color: #ff6666;
+    color: #fbb5b2;
   }
 
   .token.variable {
-    color: #ff6666;
+    color: #fbb5b2;
   }
 }

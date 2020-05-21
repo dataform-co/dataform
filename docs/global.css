@@ -34,3 +34,7 @@
 
 .root {
 }
+
+:global pre {
+  font-size: 0.95em;
+}
