@@ -170,7 +170,7 @@ function getMessage(
   descriptorProto: google.protobuf.IDescriptorProto,
   fileTypeMapping: Map<string, ITypeLocation>,
   currentProtoFile: string,
-  indentCount: number = 0
+  indent: boolean = false
 ): string {
   const message = `export class ${descriptorProto.name} {
 ${descriptorProto.field
@@ -186,25 +186,25 @@ ${descriptorProto.field
   .join("\n")}
 }`;
   if (descriptorProto.nestedType.length === 0 && descriptorProto.enumType.length === 0) {
-    return indent(message, indentCount);
+    return maybeIndent(message, indent);
   }
-  return indent(
+  return maybeIndent(
     `${message}
 
 export namespace ${descriptorProto.name} {
   // MESSAGES
 ${descriptorProto.nestedType
   .map(nestedDescriptorProto =>
-    getMessage(nestedDescriptorProto, fileTypeMapping, currentProtoFile, indentCount + 1)
+    maybeIndent(getMessage(nestedDescriptorProto, fileTypeMapping, currentProtoFile), true)
   )
   .join("\n\n")}
 
   // ENUMS
 ${descriptorProto.enumType
-  .map(nestedEnumDescriptorProto => getEnum(nestedEnumDescriptorProto, indentCount + 1))
+  .map(nestedEnumDescriptorProto => maybeIndent(getEnum(nestedEnumDescriptorProto), true))
   .join("\n\n")}
 }`,
-    indentCount
+    indent
   );
 }
 
@@ -286,12 +286,18 @@ function defaultValue(typeValue: google.protobuf.FieldDescriptorProto.Type, type
 
 function getEnum(
   enumDescriptorProto: google.protobuf.IEnumDescriptorProto,
-  indentCount: number = 0
+  indent: boolean = false
 ) {
-  return indent(
+  return maybeIndent(
     `export enum ${enumDescriptorProto.name} {
+${enumDescriptorProto.value
+  .map(
+    enumValueDescriptorProto =>
+      `  ${enumValueDescriptorProto.name} = ${enumValueDescriptorProto.number},`
+  )
+  .join("\n")}
 }`,
-    indentCount
+    indent
   );
 }
 
@@ -299,10 +305,10 @@ function getGeneratedTypescriptFilename(protoFilename: string) {
   return protoFilename.replace(".proto", ".ts");
 }
 
-function indent(lines: string, indentCount: number) {
+function maybeIndent(lines: string, indent: boolean) {
   return lines
     .split("\n")
-    .map(line => `${"  ".repeat(indentCount)}${line}`.trimRight())
+    .map(line => `${"  ".repeat(indent ? 1 : 0)}${line}`.trimRight())
     .join("\n");
 }
 
