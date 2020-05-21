@@ -14,7 +14,7 @@ def _ts_proto_library_impl(ctx):
         tools = [ctx.executable._protoc_gen_ts],
         executable = ctx.executable._protoc,
         arguments = [proto_file.path for proto_file in src_proto_files] + [
-            "--ts_out=%s" % ctx.genfiles_dir.path,
+            "--ts_out=import_prefix=%s:%s" % (ctx.attr.import_prefix, ctx.genfiles_dir.path),
             "--plugin=protoc-gen-ts=%s" % ctx.executable._protoc_gen_ts.path,
         ],
     )
@@ -24,6 +24,7 @@ ts_proto_library = rule(
     implementation = _ts_proto_library_impl,
     attrs = {
         "protos": attr.label_list(allow_empty = False, mandatory = True),
+        "import_prefix": attr.string(default = ""),
         "_protoc": attr.label(default = "@com_google_protobuf//:protoc", executable = True, allow_single_file = None, cfg = "host"),
         "_protoc_gen_ts": attr.label(default = "//protobufts:bin", executable = True, allow_single_file = None, cfg = "host"),
     },

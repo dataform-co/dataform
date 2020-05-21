@@ -11,10 +11,12 @@ function generateFiles(
     fileDescriptorMapping.set(fileDescriptorProto.name, fileDescriptorProto)
   );
 
+  const parameters = parseGeneratorParameters(request.parameter);
+
   return {
     file: request.fileToGenerate.map(file => ({
       name: getGeneratedTypescriptFilename(file),
-      content: getFileContent(fileDescriptorMapping.get(file), fileTypeMapping)
+      content: getFileContent(fileDescriptorMapping.get(file), fileTypeMapping, parameters)
     }))
   };
 }
@@ -54,26 +56,45 @@ function getTypeFileMapping(fileDescriptorProtos: google.protobuf.IFileDescripto
   return typeFileMapping;
 }
 
+interface IGeneratorParameters {
+  importPrefix?: string;
+}
+
+function parseGeneratorParameters(parameters: string) {
+  const parsed: IGeneratorParameters = {};
+  parameters.split(",").forEach(parameter => {
+    const [key, value] = parameter.split("=");
+    if (key === "import_prefix") {
+      parsed.importPrefix = value;
+    }
+  });
+  return parsed;
+}
+
 function getFileContent(
   fileDescriptorProto: google.protobuf.IFileDescriptorProto,
-  fileTypeMapping: Map<string, string>
+  fileTypeMapping: Map<string, string>,
+  parameters: IGeneratorParameters
 ) {
   return `// AUTOMATICALLY GENERATED CODE.
 
 // IMPORTS
-${getImportLines(fileDescriptorProto.dependency).join("\n")}
+${getImportLines(fileDescriptorProto.dependency, parameters.importPrefix).join("\n")}
 `;
 }
 
-function getImportLines(protoDependencies: string[]) {
-  return protoDependencies.map(
-    dependency =>
-      `import * as ${dependency
-        .split("/")
-        .slice(-1)[0]
-        .split(".")
-        .slice(0, -1)} from "${getGeneratedTypescriptFilename(dependency)}"`
-  );
+function getImportLines(protoDependencies: string[], importPrefix?: string) {
+  return protoDependencies.map(dependency => {
+    let importPath = getGeneratedTypescriptFilename(dependency);
+    if (importPrefix) {
+      importPath = `${importPrefix}/${importPath}`;
+    }
+    return `import * as ${dependency
+      .split("/")
+      .slice(-1)[0]
+      .split(".")
+      .slice(0, -1)} from "${importPath}"`;
+  });
 }
 
 function getGeneratedTypescriptFilename(protoFilename: string) {

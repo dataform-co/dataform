@@ -72,6 +72,7 @@ new_ts_proto_library(
 
 new_ts_proto_library(
     name = "server_ts_proto",
+    import_prefix = "df",
     protos = [
         ":server_proto",
     ],
