@@ -1,11 +1,18 @@
 div.hljs-filename {
   background-color: #1b1d24;
   border-radius: 5px 5px 0px 0px;
-  padding: 10px;
+  padding: 8px 10px;
   margin-bottom: -5px;
   color: #f5fbff;
   position: relative;
   z-index: 1;
+  font-family: "Poppins", sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  background-image: url(https://assets.dataform.co/docs/icons/file_icon.svg);
+  background-position: 1% 50%;
+  background-repeat: no-repeat;
+  padding-left: 25px;
 }
 
 .react-syntax-highlighter-line-number {
@@ -13,7 +20,7 @@ div.hljs-filename {
 }
 
 pre.hljs {
-  padding: 6px 10px;
+  padding: 10px;
   border-radius: 5px;
   background-color: #242837;
   overflow: auto;
