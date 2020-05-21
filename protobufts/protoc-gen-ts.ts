@@ -173,7 +173,7 @@ function getMessage(
 ${descriptorProto.field
   .map(
     fieldDescriptorProto =>
-      `    ${fieldDescriptorProto.jsonName}: ${type(
+      `    ${fieldDescriptorProto.jsonName}?: ${type(
         fieldDescriptorProto.type,
         fieldDescriptorProto.typeName,
         fileTypeMapping,
