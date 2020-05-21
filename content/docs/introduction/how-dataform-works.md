@@ -30,6 +30,8 @@ Each Dataform project is a repository with a collection of JSON configuration fi
 In Dataform, you develop in SQLX. SQLX being an extension of SQL, any SQL file is a valid SQLX file. A typical SQLX file will contain a SELECT statement defining a new table or a view and a config block at the top.
 
 ```sql
+-- definitions/new_table.sqlx
+
 config { type: "table" }
 
 select
@@ -68,6 +70,7 @@ Dataform compiles your entire project in real-time, regardless of the number of 
 <figcaption>Example of a dependency tree</figcaption>
 
 ```sql
+-- compiled.sql
 create or replace table "dataform"."orders" as
 
 select
