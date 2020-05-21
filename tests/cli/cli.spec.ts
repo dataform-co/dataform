@@ -46,18 +46,22 @@ select 1 as test
     );
 
     // Compile the project using the CLI.
-    const { exitCode, stdout } = await getProcessResult(
+    const compileResult = await getProcessResult(
       execFile(nodePath, [cliEntryPointPath, "compile", projectDir, "--json"])
     );
 
-    expect(exitCode).equals(0);
+    expect(compileResult.exitCode).equals(0);
 
-    expect(JSON.parse(stdout)).deep.equals({
+    expect(JSON.parse(compileResult.stdout)).deep.equals({
       tables: [
         {
           name: "dataform.example",
           type: "table",
           target: {
+            schema: "dataform",
+            name: "example"
+          },
+          canonicalTarget: {
             schema: "dataform",
             name: "example"
           },
@@ -81,11 +85,72 @@ select 1 as test
         }
       ]
     });
+
+    // Dry run the project.
+    const runResult = await getProcessResult(
+      execFile(nodePath, [
+        cliEntryPointPath,
+        "run",
+        projectDir,
+        "--credentials",
+        "test_credentials/redshift.json",
+        "--dry-run",
+        "--json"
+      ])
+    );
+
+    expect(runResult.exitCode).equals(0);
+
+    expect(JSON.parse(runResult.stdout)).deep.equals({
+      actions: [
+        {
+          fileName: "definitions/example.sqlx",
+          name: "dataform.example",
+          tableType: "table",
+          target: {
+            name: "example",
+            schema: "dataform"
+          },
+          tasks: [
+            {
+              statement: 'drop table if exists "dataform"."example_temp" cascade',
+              type: "statement"
+            },
+            {
+              statement: 'create table "dataform"."example_temp" as \n\nselect 1 as test\n',
+              type: "statement"
+            },
+            {
+              statement: 'drop table if exists "dataform"."example" cascade',
+              type: "statement"
+            },
+            {
+              statement: 'alter table "dataform"."example_temp" rename to "example"',
+              type: "statement"
+            }
+          ],
+          type: "table"
+        }
+      ],
+      projectConfig: {
+        assertionSchema: "dataform_assertions",
+        defaultSchema: "dataform",
+        useRunCache: false,
+        warehouse: "redshift"
+      },
+      runConfig: {
+        fullRefresh: false,
+        useRunCache: false
+      },
+      warehouseState: {}
+    });
   });
 });
 
 async function getProcessResult(childProcess: ChildProcess) {
   let stdout = "";
+  childProcess.stderr.pipe(process.stderr);
+  childProcess.stdout.pipe(process.stdout);
   childProcess.stdout.on("data", chunk => (stdout += String(chunk)));
   const exitCode: number = await new Promise(resolve => {
     childProcess.on("close", resolve);

@@ -58,7 +58,7 @@ export class Tree<T> implements ITree<T> {
     const pathParts = path.split("/");
     return pathParts.reduce(
       (acc: Tree<T>, curr: string) =>
-        !curr ? acc : acc.children.find(child => child.path === join(acc.path, curr)),
+        !curr ? acc : acc?.children.find(child => child.path === join(acc.path, curr)),
       this
     );
   }

@@ -61,6 +61,13 @@ export class Docs extends React.Component<IProps> {
       ctx.res.end();
     }
 
+    if (current.attributes.redirect) {
+      const redirectedUrl = new URL(current.attributes.redirect, url.href);
+      ctx.res.writeHead(301, {
+        Location: redirectedUrl.pathname + url.search + url.hash
+      });
+      ctx.res.end();
+    }
     return { index: tree.index(), current, version: query.version };
   }
 

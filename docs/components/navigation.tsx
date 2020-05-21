@@ -18,6 +18,9 @@ export default class Navigation extends React.Component<IProps> {
     return (
       <ul className={styles[`depth${depth}`]}>
         {trees.map(tree => {
+          if (tree.attributes.redirect) {
+            return null;
+          }
           const classNames = [styles[`depth${depth}`]];
           if (
             (!!tree.path && this.props.currentPath.includes(tree.path)) ||

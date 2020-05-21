@@ -23,7 +23,9 @@ export function generateAxis({
   // TODO: Update the nivo.rocks library to calculate spacing for axis properly.
 
   const longestCategoryAxisValue = Math.min(
-    categoryAxisValues.reduce((acc, val) => (acc > val.length ? acc : val.length), 0),
+    categoryAxisValues
+      .filter(val => !!val)
+      .reduce((acc, val) => (acc > val.length ? acc : val.length), 0),
     maxLabelLength
   );
 
@@ -50,7 +52,7 @@ export function generateAxis({
 }
 
 export function formatStringValue(value: React.ReactText, maxLength = 14): string {
-  const stringValue = value.toString();
+  const stringValue = String(value);
   return stringValue.length > maxLength
     ? `${stringValue.substring(0, maxLength - 3)}...`
     : stringValue;

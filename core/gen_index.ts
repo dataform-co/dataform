@@ -60,13 +60,15 @@ require("@dataform/core");
 ${includeRequires}
 
 // Read the project config.
-let projectConfig = require("./dataform.json");
+const originalProjectConfig = require("./dataform.json");
 
 // Stop using the deprecated 'gcloudProjectId' field.
-if (!projectConfig.defaultDatabase) {
-  projectConfig.defaultDatabase = projectConfig.gcloudProjectId;
+if (!originalProjectConfig.defaultDatabase) {
+  originalProjectConfig.defaultDatabase = originalProjectConfig.gcloudProjectId;
 }
-delete projectConfig.gcloudProjectId;
+delete originalProjectConfig.gcloudProjectId;
+
+let projectConfig = { ...originalProjectConfig };
 
 // For backwards compatibility, in case core version is ahead of api.
 projectConfig.schemaSuffix = "${
@@ -77,7 +79,10 @@ projectConfig.schemaSuffix = "${
 projectConfig = { ...projectConfig, ...${projectOverridesJsonString} };
 
 // Initialize the compilation session.
-global.session.init("${config.compileConfig.projectDir.replace(/\\/g, "\\\\")}", projectConfig);
+global.session.init("${config.compileConfig.projectDir.replace(
+    /\\/g,
+    "\\\\"
+  )}", projectConfig, originalProjectConfig);
 
 // Require all "definitions" files (attaching them to the session).
 ${definitionRequires}

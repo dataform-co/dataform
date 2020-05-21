@@ -301,14 +301,16 @@ export function ambiguousActionNameMsg(
 
 export function target(
   adapter: adapters.IAdapter,
+  config: dataform.IProjectConfig,
   name: string,
   schema: string,
   database?: string
 ): dataform.ITarget {
+  const resolvedDatabase = database || config.defaultDatabase;
   return dataform.Target.create({
     name: adapter.normalizeIdentifier(name),
-    schema: adapter.normalizeIdentifier(schema),
-    database: database && adapter.normalizeIdentifier(database)
+    schema: adapter.normalizeIdentifier(schema || config.defaultSchema),
+    database: resolvedDatabase && adapter.normalizeIdentifier(resolvedDatabase)
   });
 }
 
@@ -319,11 +321,13 @@ export function setNameAndTarget(
   overrideSchema?: string,
   overrideDatabase?: string
 ) {
-  action.target = target(
+  action.target = target(session.adapter(), session.config, name, overrideSchema, overrideDatabase);
+  action.canonicalTarget = target(
     session.adapter(),
+    session.canonicalConfig,
     name,
-    overrideSchema || session.config.defaultSchema,
-    overrideDatabase || session.config.defaultDatabase
+    overrideSchema,
+    overrideDatabase
   );
   const nameParts = [action.target.name, action.target.schema];
   if (!!action.target.database) {

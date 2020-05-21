@@ -301,7 +301,7 @@ Licensed under the Apache License, Version 2.0.
   outline: 0;
   border: 0;
   border-radius: 3px;
-  background: var(--primary);
+  background: var(--shade0);
   width: 33px;
   height: 28px;
   padding: 0;
@@ -309,7 +309,7 @@ Licensed under the Apache License, Version 2.0.
   color: var(--textPrimary);
 }
 .bp3-timepicker .bp3-timepicker-input:focus {
-  background: var(--primaryActive);
+  background: var(--shade1);
 }
 .bp3-timepicker .bp3-timepicker-ampm-select {
   margin-left: 5px;
