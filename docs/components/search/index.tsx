@@ -77,10 +77,10 @@ class SearchWidget extends React.Component<IWidgetProps, IWidgetState> {
       <>
         <Button
           icon="search"
-          color="#6c6c6c"
           text="Search documentation"
           onClick={() => this.setState({ isOpen: true })}
           minimal={true}
+          className={styles.searchBlock}</Button>
         />
         <SearchOmnibar
           className={styles.omnibar}
