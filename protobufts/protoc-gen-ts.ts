@@ -166,10 +166,25 @@ function getImportName(dependency: string) {
 function getMessage(
   descriptorProto: google.protobuf.IDescriptorProto,
   fileTypeMapping: Map<string, ITypeLocation>,
-  currentProtoFile: string,
-  indent: boolean = false
+  currentProtoFile: string
 ): string {
   const message = `export class ${descriptorProto.name} {
+  public static create(params: {
+${descriptorProto.field
+  .map(
+    fieldDescriptorProto =>
+      `    ${fieldDescriptorProto.jsonName}: ${type(
+        fieldDescriptorProto.type,
+        fieldDescriptorProto.typeName,
+        fileTypeMapping,
+        currentProtoFile
+      )};`
+  )
+  .join("\n")}
+  }) {
+    const newProto = new ${descriptorProto.name}();
+    return newProto;
+  }
 ${descriptorProto.field
   .map(
     fieldDescriptorProto =>
@@ -183,7 +198,7 @@ ${descriptorProto.field
   .join("\n")}
 }`;
   if (descriptorProto.nestedType.length === 0 && descriptorProto.enumType.length === 0) {
-    return maybeIndent(message, indent);
+    return message;
   }
   const nestedMessages = descriptorProto.nestedType
     .map(nestedDescriptorProto =>
@@ -193,14 +208,11 @@ ${descriptorProto.field
   const nestedEnums = descriptorProto.enumType
     .map(nestedEnumDescriptorProto => maybeIndent(getEnum(nestedEnumDescriptorProto), true))
     .join("\n\n");
-  return maybeIndent(
-    `${message}
+  return `${message}
 
 export namespace ${descriptorProto.name} {${
-      descriptorProto.nestedType.length > 0 ? `\n${nestedMessages}\n` : ""
-    }${descriptorProto.enumType.length > 0 ? `\n${nestedEnums}\n` : ""}}`,
-    indent
-  );
+    descriptorProto.nestedType.length > 0 ? `\n${nestedMessages}\n` : ""
+  }${descriptorProto.enumType.length > 0 ? `\n${nestedEnums}\n` : ""}}`;
 }
 
 function type(
