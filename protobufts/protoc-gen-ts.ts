@@ -76,10 +76,18 @@ function getFileContent(
   fileTypeMapping: Map<string, string>,
   parameters: IGeneratorParameters
 ) {
-  return `// AUTOMATICALLY GENERATED CODE.
+  return `// AUTOMATICALLY GENERATED CODE. DO NOT EDIT.
 
 // IMPORTS
 ${getImportLines(fileDescriptorProto.dependency, parameters.importPrefix).join("\n")}
+
+// MESSAGES
+${fileDescriptorProto.messageType.map(descriptorProto => getMessage(descriptorProto)).join("\n\n")}
+
+// ENUMS
+${fileDescriptorProto.enumType
+  .map(enumDescriptorProto => getEnum(enumDescriptorProto))
+  .join("\n\n")}
 `;
 }
 
@@ -97,8 +105,40 @@ function getImportLines(protoDependencies: string[], importPrefix?: string) {
   });
 }
 
+function getMessage(descriptorProto: google.protobuf.IDescriptorProto, indentCount: number = 0) {
+  return indent(
+    `export class ${descriptorProto.name} {
+${indent(
+  descriptorProto.field
+    .map(fieldDescriptorProto => `public ${fieldDescriptorProto.jsonName}: number = 0;`)
+    .join("\n"),
+  indentCount + 1
+)}
+}`,
+    indentCount
+  );
+}
+
+function getEnum(
+  enumDescriptorProto: google.protobuf.IEnumDescriptorProto,
+  indentCount: number = 0
+) {
+  return indent(
+    `export enum ${enumDescriptorProto} {
+}`,
+    indentCount
+  );
+}
+
 function getGeneratedTypescriptFilename(protoFilename: string) {
   return protoFilename.replace(".proto", ".ts");
+}
+
+function indent(lines: string, indentCount: number) {
+  return lines
+    .split("\n")
+    .map(line => `${"  ".repeat(indentCount)}${line}`)
+    .join("\n");
 }
 
 process.stdout.write(
