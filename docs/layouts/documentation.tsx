@@ -1,5 +1,5 @@
-import { Button } from "@blueprintjs/core";
-import { Card, CardActions, CardGrid } from "df/components/card";
+import { Button, Switch } from "@blueprintjs/core";
+import { Card, CardActions, CardMasonry } from "df/components/card";
 import Navigation, { getLink } from "df/docs/components/navigation";
 import { IHeaderLink, PageLinks } from "df/docs/components/page_links";
 import { IExtraAttributes } from "df/docs/content_tree";
@@ -45,6 +45,20 @@ export default class Documentation extends React.Component<IProps> {
               version={this.props.version}
               tree={this.props.index}
             />
+            <div className={styles.flexFiller} />
+            <div className={styles.darkMode}>
+              <Switch
+                defaultChecked={
+                  typeof document !== "undefined" && document.body.classList.contains("dark")
+                }
+                label="Dark mode"
+                onClick={() =>
+                  !document.body.classList.contains("dark")
+                    ? document.body.classList.add("dark")
+                    : document.body.classList.remove("dark")
+                }
+              />
+            </div>
           </div>
           <div className={styles.mainContent}>
             <div className={styles.titleBlock}>
@@ -53,11 +67,11 @@ export default class Documentation extends React.Component<IProps> {
             </div>
             {this.props.children}
 
-            <CardGrid minWidth={300} style={{ margin: "60px 0px 20px" }}>
+            <CardMasonry minWidth={300} style={{ margin: "60px 0px 20px" }}>
               {(current.children?.length > 0 ? current.children : [])
                 .filter(child => !!child.path)
                 .map(child => (
-                  <Card header={child.attributes?.title}>
+                  <Card masonryCard={true} header={child.attributes?.title}>
                     <p>{child.attributes?.subtitle}</p>
                     <CardActions align="right">
                       <a href={getLink(child.path, this.props.version)}>
@@ -66,7 +80,7 @@ export default class Documentation extends React.Component<IProps> {
                     </CardActions>
                   </Card>
                 ))}
-            </CardGrid>
+            </CardMasonry>
           </div>
           <div className={styles.sidebarRight}>
             <div className={styles.titleRight}>

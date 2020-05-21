@@ -20,7 +20,17 @@
   position: fixed;
   width: 50vw;
   height: 100vh;
-  background-color: #f6f8fa;
+  background-color: var(--shade1);
+  z-index: -1;
+}
+
+.rightBackground {
+  position: fixed;
+  width: 50vw;
+  height: 100vh;
+  right: 0;
+  top: 0;
+  background-color: var(--shade0);
   z-index: -1;
 }
 
@@ -38,18 +48,17 @@
 }
 
 :not(pre) > code {
-  font-family: "Source Code Pro", monospace;
+  font-family: "Roboto Mono", monospace;
   font-weight: 600;
   font-size: 15px;
   -webkit-border-radius: 3px;
   -moz-border-radius: 3px;
-  border-radius: 3px;
+  border-radius: 5px;
   -moz-background-clip: padding;
   -webkit-background-clip: padding-box;
   background-clip: padding-box;
-  border: 1px solid #ccc;
-  background-color: #f6f8fa;
-  padding: 0px 3px;
+  background-color: var(--noneHover);
+  padding: 1px 7px 3px;
   display: inline-block;
   margin: 0px;
 }

@@ -8,7 +8,7 @@
 }
 
 .navigation a {
-  color: unset;
+  color: var(--textSecondary);
 }
 
 .navigation ul:not(.depth0) {
@@ -32,9 +32,9 @@
   font-weight: bold;
 }
 
-.navigation li.active {
+.navigation li.active, .navigation li.active a {
   font-weight: bold;
-  color: var(--primary);
+  color: var(--linkColor);
 }
 
 .navigation .title {
@@ -48,4 +48,8 @@
   justify-content: center;
   display: inline-flex;
   color: var(--primarySubtle);
+}
+
+.navigation .active .icon {
+  color: var(--primary);
 }

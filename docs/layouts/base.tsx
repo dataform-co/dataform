@@ -26,6 +26,7 @@ export class BaseLayout extends React.Component<IProps, {}> {
         <div className={styles.container} style={{ maxWidth: MAX_WIDTH }}>
           {this.props.children}
         </div>
+        <div className={styles.rightBackground} />
       </div>
     );
   }

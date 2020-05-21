@@ -19,7 +19,10 @@ export default class Navigation extends React.Component<IProps> {
       <ul className={styles[`depth${depth}`]}>
         {trees.map(tree => {
           const classNames = [styles[`depth${depth}`]];
-          if (this.props.currentPath.includes(tree.path)) {
+          if (
+            (!!tree.path && this.props.currentPath.includes(tree.path)) ||
+            (!tree.path && !this.props.currentPath)
+          ) {
             classNames.push(styles.active);
           }
           const hasChildren = tree.children && tree.children.length > 0;
@@ -42,7 +45,8 @@ export default class Navigation extends React.Component<IProps> {
               </li>
               {tree.children &&
                 tree.children.length > 0 &&
-                this.props.currentPath.includes(tree.path) &&
+                (this.props.currentPath.includes(tree.path) ||
+                  (!this.props.currentPath && tree.path.startsWith("introduction"))) &&
                 this.renderTrees(tree.children, depth + 1)}
             </React.Fragment>
           );
