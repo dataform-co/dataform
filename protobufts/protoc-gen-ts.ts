@@ -245,8 +245,8 @@ function type(
 
 function defaultValue(typeValue: google.protobuf.FieldDescriptorProto.Type, typeName: string) {
   switch (typeValue) {
-    case google.protobuf.FieldDescriptorProto.Type.TYPE_DOUBLE: // TODO: is this right?
-    case google.protobuf.FieldDescriptorProto.Type.TYPE_FLOAT: // TODO: is this right?
+    case google.protobuf.FieldDescriptorProto.Type.TYPE_DOUBLE:
+    case google.protobuf.FieldDescriptorProto.Type.TYPE_FLOAT:
     case google.protobuf.FieldDescriptorProto.Type.TYPE_INT32:
     case google.protobuf.FieldDescriptorProto.Type.TYPE_FIXED32:
     case google.protobuf.FieldDescriptorProto.Type.TYPE_UINT32:
@@ -270,7 +270,6 @@ function defaultValue(typeValue: google.protobuf.FieldDescriptorProto.Type, type
     case google.protobuf.FieldDescriptorProto.Type.TYPE_BYTES:
       return "new Uint8Array()";
     case google.protobuf.FieldDescriptorProto.Type.TYPE_ENUM:
-      // TODO
       return "0";
     default:
       throw new Error(`Unrecognized field type: ${typeValue}`);
