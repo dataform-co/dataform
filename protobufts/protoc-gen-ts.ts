@@ -4,12 +4,14 @@ import * as fs from "fs";
 const request = google.protobuf.compiler.CodeGeneratorRequest.decode(fs.readFileSync("/dev/stdin"));
 
 const response = google.protobuf.compiler.CodeGeneratorResponse.create({
-  file: [
-    {
-      name: "protos/dataform_ts_proto",
-      content: "content: " + request.fileToGenerate.join(",")
-    }
-  ]
+  file: request.fileToGenerate.map(file => ({
+    name: file.replace(".proto", ".ts"),
+    content:
+      "fileToGenerate: " +
+      request.fileToGenerate.join(",") +
+      " protoFile: " +
+      request.protoFile.map(f => f.name).join(",")
+  }))
 });
 
 const buf = Buffer.from(google.protobuf.compiler.CodeGeneratorResponse.encode(response).finish());

@@ -69,3 +69,10 @@ new_ts_proto_library(
         ":dataform_proto",
     ],
 )
+
+new_ts_proto_library(
+    name = "server_ts_proto",
+    protos = [
+        ":server_proto",
+    ],
+)
