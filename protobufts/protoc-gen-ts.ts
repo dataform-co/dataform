@@ -100,12 +100,7 @@ function getFileContent(
     if (
       descriptorProto.field.some(
         fieldDescriptorProto =>
-          type(
-            fieldDescriptorProto.type,
-            fieldDescriptorProto.typeName,
-            fileTypeMapping,
-            fileDescriptorProto.name
-          ) === "Long"
+          type(fieldDescriptorProto, fileTypeMapping, fileDescriptorProto.name) === "Long"
       )
     ) {
       return true;
@@ -174,8 +169,7 @@ ${descriptorProto.field
   .map(
     fieldDescriptorProto =>
       `    ${fieldDescriptorProto.jsonName}?: ${type(
-        fieldDescriptorProto.type,
-        fieldDescriptorProto.typeName,
+        fieldDescriptorProto,
         fileTypeMapping,
         currentProtoFile
       )};`
@@ -194,12 +188,11 @@ ${descriptorProto.field
 ${descriptorProto.field
   .map(
     fieldDescriptorProto =>
-      `  public ${fieldDescriptorProto.jsonName}: ${type(
-        fieldDescriptorProto.type,
-        fieldDescriptorProto.typeName,
-        fileTypeMapping,
-        currentProtoFile
-      )} = ${defaultValue(fieldDescriptorProto.type, fieldDescriptorProto.typeName)};`
+      `  public ${fieldDescriptorProto.jsonName}${
+        hasDefaultValue(fieldDescriptorProto) ? "" : "?"
+      }: ${type(fieldDescriptorProto, fileTypeMapping, currentProtoFile)}${
+        hasDefaultValue(fieldDescriptorProto) ? ` = ${defaultValue(fieldDescriptorProto)}` : ""
+      };`
   )
   .join("\n")}
 }`;
@@ -222,47 +215,62 @@ export namespace ${descriptorProto.name} {${
 }
 
 function type(
-  typeValue: google.protobuf.FieldDescriptorProto.Type,
-  typeName: string,
+  fieldDescriptorProto: google.protobuf.IFieldDescriptorProto,
   fileTypeMapping: Map<string, ITypeLocation>,
   currentProtoFile: string
 ) {
-  switch (typeValue) {
-    case google.protobuf.FieldDescriptorProto.Type.TYPE_DOUBLE: // TODO: is this right?
-    case google.protobuf.FieldDescriptorProto.Type.TYPE_FLOAT: // TODO: is this right?
-    case google.protobuf.FieldDescriptorProto.Type.TYPE_INT32:
-    case google.protobuf.FieldDescriptorProto.Type.TYPE_FIXED32:
-    case google.protobuf.FieldDescriptorProto.Type.TYPE_UINT32:
-    case google.protobuf.FieldDescriptorProto.Type.TYPE_SFIXED32:
-    case google.protobuf.FieldDescriptorProto.Type.TYPE_SINT32:
-      return "number";
-    case google.protobuf.FieldDescriptorProto.Type.TYPE_INT64:
-    case google.protobuf.FieldDescriptorProto.Type.TYPE_UINT64:
-    case google.protobuf.FieldDescriptorProto.Type.TYPE_FIXED64:
-    case google.protobuf.FieldDescriptorProto.Type.TYPE_SFIXED64:
-    case google.protobuf.FieldDescriptorProto.Type.TYPE_SINT64:
-      return "Long";
-    case google.protobuf.FieldDescriptorProto.Type.TYPE_BOOL:
-      return "boolean";
-    case google.protobuf.FieldDescriptorProto.Type.TYPE_STRING:
-      return "string";
-    case google.protobuf.FieldDescriptorProto.Type.TYPE_GROUP:
-      throw new Error("GROUP is unsupported.");
-    case google.protobuf.FieldDescriptorProto.Type.TYPE_MESSAGE:
-    case google.protobuf.FieldDescriptorProto.Type.TYPE_ENUM:
-      const typeLocation = fileTypeMapping.get(typeName.slice(1));
-      return typeLocation.importProtoFile === currentProtoFile
-        ? typeLocation.typescriptTypeName
-        : `${typeLocation.importName}.${typeLocation.typescriptTypeName}`;
-    case google.protobuf.FieldDescriptorProto.Type.TYPE_BYTES:
-      return "Uint8Array";
-    default:
-      throw new Error(`Unrecognized field type: ${typeValue}`);
+  const baseType = () => {
+    switch (fieldDescriptorProto.type) {
+      case google.protobuf.FieldDescriptorProto.Type.TYPE_DOUBLE: // TODO: is this right?
+      case google.protobuf.FieldDescriptorProto.Type.TYPE_FLOAT: // TODO: is this right?
+      case google.protobuf.FieldDescriptorProto.Type.TYPE_INT32:
+      case google.protobuf.FieldDescriptorProto.Type.TYPE_FIXED32:
+      case google.protobuf.FieldDescriptorProto.Type.TYPE_UINT32:
+      case google.protobuf.FieldDescriptorProto.Type.TYPE_SFIXED32:
+      case google.protobuf.FieldDescriptorProto.Type.TYPE_SINT32:
+        return "number";
+      case google.protobuf.FieldDescriptorProto.Type.TYPE_INT64:
+      case google.protobuf.FieldDescriptorProto.Type.TYPE_UINT64:
+      case google.protobuf.FieldDescriptorProto.Type.TYPE_FIXED64:
+      case google.protobuf.FieldDescriptorProto.Type.TYPE_SFIXED64:
+      case google.protobuf.FieldDescriptorProto.Type.TYPE_SINT64:
+        return "Long";
+      case google.protobuf.FieldDescriptorProto.Type.TYPE_BOOL:
+        return "boolean";
+      case google.protobuf.FieldDescriptorProto.Type.TYPE_STRING:
+        return "string";
+      case google.protobuf.FieldDescriptorProto.Type.TYPE_GROUP:
+        throw new Error("GROUP is unsupported.");
+      case google.protobuf.FieldDescriptorProto.Type.TYPE_MESSAGE:
+      case google.protobuf.FieldDescriptorProto.Type.TYPE_ENUM:
+        const typeLocation = fileTypeMapping.get(fieldDescriptorProto.typeName.slice(1));
+        return typeLocation.importProtoFile === currentProtoFile
+          ? typeLocation.typescriptTypeName
+          : `${typeLocation.importName}.${typeLocation.typescriptTypeName}`;
+      case google.protobuf.FieldDescriptorProto.Type.TYPE_BYTES:
+        return "Uint8Array";
+      default:
+        throw new Error(`Unrecognized field type: ${fieldDescriptorProto.type}`);
+    }
+  };
+  if (fieldDescriptorProto.label !== google.protobuf.FieldDescriptorProto.Label.LABEL_REPEATED) {
+    return baseType();
   }
+  return `${baseType()}[]`;
 }
 
-function defaultValue(typeValue: google.protobuf.FieldDescriptorProto.Type, typeName: string) {
-  switch (typeValue) {
+function hasDefaultValue(fieldDescriptorProto: google.protobuf.IFieldDescriptorProto) {
+  if (fieldDescriptorProto.label === google.protobuf.FieldDescriptorProto.Label.LABEL_REPEATED) {
+    return true;
+  }
+  return !fieldDescriptorProto.typeName;
+}
+
+function defaultValue(fieldDescriptorProto: google.protobuf.IFieldDescriptorProto) {
+  if (fieldDescriptorProto.label === google.protobuf.FieldDescriptorProto.Label.LABEL_REPEATED) {
+    return "[]";
+  }
+  switch (fieldDescriptorProto.type) {
     case google.protobuf.FieldDescriptorProto.Type.TYPE_DOUBLE:
     case google.protobuf.FieldDescriptorProto.Type.TYPE_FLOAT:
     case google.protobuf.FieldDescriptorProto.Type.TYPE_INT32:
@@ -270,6 +278,7 @@ function defaultValue(typeValue: google.protobuf.FieldDescriptorProto.Type, type
     case google.protobuf.FieldDescriptorProto.Type.TYPE_UINT32:
     case google.protobuf.FieldDescriptorProto.Type.TYPE_SFIXED32:
     case google.protobuf.FieldDescriptorProto.Type.TYPE_SINT32:
+    case google.protobuf.FieldDescriptorProto.Type.TYPE_ENUM:
       return "0";
     case google.protobuf.FieldDescriptorProto.Type.TYPE_INT64:
     case google.protobuf.FieldDescriptorProto.Type.TYPE_UINT64:
@@ -283,14 +292,10 @@ function defaultValue(typeValue: google.protobuf.FieldDescriptorProto.Type, type
       return '""';
     case google.protobuf.FieldDescriptorProto.Type.TYPE_GROUP:
       throw new Error("GROUP is unsupported.");
-    case google.protobuf.FieldDescriptorProto.Type.TYPE_MESSAGE:
-      return "null";
     case google.protobuf.FieldDescriptorProto.Type.TYPE_BYTES:
       return "new Uint8Array()";
-    case google.protobuf.FieldDescriptorProto.Type.TYPE_ENUM:
-      return "0";
     default:
-      throw new Error(`Unrecognized field type: ${typeValue}`);
+      throw new Error(`Unrecognized field type: ${fieldDescriptorProto.type}`);
   }
 }
 
