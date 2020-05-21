@@ -68,3 +68,12 @@ ts_proto_library(
         ":server_proto",
     ],
 )
+
+load("//protobufts:ts_proto_library.bzl", new_ts_proto_library = "ts_proto_library")
+
+new_ts_proto_library(
+    name = "dataform_ts_proto",
+    protos = [
+        ":dataform_proto",
+    ],
+)

@@ -32,7 +32,11 @@ protoc_gen_ts = rule(
 )
 
 def ts_proto_library(name, protos, import_prefix = ""):
-    protoc_gen_ts(name = name + "-gen", protos = protos, import_prefix = import_prefix)
+    protoc_gen_ts(
+        name = name + "-gen",
+        protos = protos,
+        import_prefix = import_prefix,
+    )
 
     ts_library(
         name = name,

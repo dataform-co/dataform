@@ -124,7 +124,7 @@ function getEnum(
   indentCount: number = 0
 ) {
   return indent(
-    `export enum ${enumDescriptorProto} {
+    `export enum ${enumDescriptorProto.name} {
 }`,
     indentCount
   );
