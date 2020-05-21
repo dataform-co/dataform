@@ -7,6 +7,7 @@ import { BaseLayout } from "df/docs/layouts/base";
 import * as styles from "df/docs/layouts/documentation.css";
 import { ITree, Tree } from "df/tools/markdown-cms/tree";
 import * as React from "react";
+import { Footer } from "df/docs/components/footer";
 
 export interface IProps {
   version: string;
@@ -73,7 +74,7 @@ export default class Documentation extends React.Component<IProps> {
                   child => !!child.path && !!child.attributes.title && !child.attributes?.redirect
                 )
                 .map(child => (
-                  <Card masonryCard={true} header={child.attributes?.title}>
+                  <Card masonryCard={true} header={child.attributes?.title} key={child.path}>
                     <p>{child.attributes?.subtitle}</p>
                     <CardActions align="right">
                       <a href={getLink(child.path, this.props.version)}>
@@ -83,6 +84,7 @@ export default class Documentation extends React.Component<IProps> {
                   </Card>
                 ))}
             </CardMasonry>
+            <Footer tree={this.props.index} />
           </div>
           <div className={styles.sidebarRight}>
             <div className={styles.titleRight}>

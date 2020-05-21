@@ -59,6 +59,7 @@ export class Docs extends React.Component<IProps> {
     if (!current) {
       ctx.res.writeHead(404);
       ctx.res.end();
+      return;
     }
 
     if (current.attributes.redirect) {
