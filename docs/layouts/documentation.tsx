@@ -37,6 +37,9 @@ export default class Documentation extends React.Component<IProps> {
     const currentHeaderLinks = this.props.headerLinks || this.getHeaderLinks();
     const tree = Tree.createFromIndex<IExtraAttributes>(this.props.index);
     const current = tree.getChild(this.props.current.path);
+    const pathParts = this.props.current.path.split("/");
+    const parentPath = pathParts.slice(0, Math.max(pathParts.length - 1, 0)).join("/");
+    const parent = tree.getChild(parentPath);
     return (
       <BaseLayout title={`${this.props.current.attributes.title} | Dataform`}>
         <div className={styles.container}>
@@ -67,11 +70,15 @@ export default class Documentation extends React.Component<IProps> {
               <div className={styles.subheader}>{this.props.current.attributes.subtitle}</div>
             </div>
             {this.props.children}
-
-            <CardMasonry minWidth={300} style={{ margin: "60px 0px 20px" }}>
-              {(current.children?.length > 0 ? current.children : [])
+            <h2>What's next</h2>
+            <CardMasonry style={{ margin: "0px 0px 20px" }}>
+              {(current.children?.length > 0 ? current.children : parent.children)
                 .filter(
-                  child => !!child.path && !!child.attributes.title && !child.attributes?.redirect
+                  child =>
+                    !!child.path &&
+                    !!child.attributes.title &&
+                    !child.attributes?.redirect &&
+                    current.path !== child.path
                 )
                 .map(child => (
                   <Card masonryCard={true} header={child.attributes?.title} key={child.path}>

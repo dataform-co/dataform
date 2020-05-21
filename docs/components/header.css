@@ -18,7 +18,7 @@
 }
 
 .navLeft {
-  flex-grow: 1;
+  width: 350px;
 }
 
 .navRight {
@@ -53,4 +53,14 @@
   filter: var(--uninvert);
   height: 25px;
   padding: 0;
+}
+
+.links {
+  display: flex;
+  flex-grow: 1;
+  align-items: center;
+}
+
+.links > * {
+  margin-right: 20px;
 }
