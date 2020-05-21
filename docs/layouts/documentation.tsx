@@ -40,6 +40,11 @@ export default class Documentation extends React.Component<IProps> {
     const pathParts = this.props.current.path.split("/");
     const parentPath = pathParts.slice(0, Math.max(pathParts.length - 1, 0)).join("/");
     const parent = tree.getChild(parentPath);
+    const darkModeSaved =
+      typeof localStorage !== "undefined" && Boolean(localStorage.getItem("dataform-dark-mode"));
+    if (darkModeSaved) {
+      document.body.classList.add("dark");
+    }
     return (
       <BaseLayout title={`${this.props.current.attributes.title} | Dataform`}>
         <div className={styles.container}>
@@ -52,15 +57,17 @@ export default class Documentation extends React.Component<IProps> {
             <div className={styles.flexFiller} />
             <div className={styles.darkMode}>
               <Switch
-                defaultChecked={
-                  typeof document !== "undefined" && document.body.classList.contains("dark")
-                }
+                defaultChecked={darkModeSaved}
                 label="Dark mode"
-                onClick={() =>
-                  !document.body.classList.contains("dark")
-                    ? document.body.classList.add("dark")
-                    : document.body.classList.remove("dark")
-                }
+                onClick={(e) => {
+                  if (!e.currentTarget.checked) {
+                    localStorage.setItem("dataform-dark-mode", "false");
+                    document.body.classList.remove("dark");
+                  } else {
+                    localStorage.setItem("dataform-dark-mode", "true");
+                    document.body.classList.add("dark");
+                  }
+                }}
               />
             </div>
           </div>
