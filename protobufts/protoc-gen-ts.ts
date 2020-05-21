@@ -183,6 +183,12 @@ ${descriptorProto.field
   .join("\n")}
   }) {
     const newProto = new ${descriptorProto.name}();
+${descriptorProto.field
+  .map(
+    fieldDescriptorProto =>
+      `    if ('${fieldDescriptorProto.jsonName}' in params) { newProto.${fieldDescriptorProto.jsonName} = params.${fieldDescriptorProto.jsonName}; }`
+  )
+  .join("\n")}
     return newProto;
   }
 ${descriptorProto.field
