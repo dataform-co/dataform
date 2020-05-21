@@ -10,7 +10,7 @@ import {
 export interface IJoin<S extends ISelectSchema> {
   select: ISelectOrBuilder<S>;
   on?: [string, string];
-  type?: "base" | "left" | "right" | "inner" | "outer";
+  type?: "base" | "left" | "right" | "inner" | "outer" | "cross" | "full outer";
 }
 
 export interface IJoins {
@@ -25,19 +25,18 @@ export class JoinBuilder<J extends IJoins>
     const baseAlias = Object.keys(this.joins).find(key => !!key || key === "base");
     const baseSelect = this.joins[baseAlias];
     const joinAliases = Object.keys(this.joins).filter(alias => alias !== baseAlias);
-    return Select.create<{ [K in keyof J]: J[K] extends IJoin<infer JS> ? JS : {} }>(`(
-select
-  *
-from 
-  ${indent(build(baseSelect.select))} ${baseAlias}
+    return Select.create<{ [K in keyof J]: J[K] extends IJoin<infer JS> ? JS : {} }>(`${indent(
+      build(baseSelect.select)
+    )} ${baseAlias}
 ${joinAliases
   .map(
     alias => `${this.joins[alias].type} join
-${indent(build(this.joins[alias].select))} ${alias} on (${baseAlias}.${
-      this.joins[alias].on[0]
-    } = ${alias}.${this.joins[alias].on[1]})`
+${build(this.joins[alias].select)} ${alias} ${
+      !!this.joins[alias].on
+        ? `on (${baseAlias}.${this.joins[alias].on[0]} = ${alias}.${this.joins[alias].on[1]})`
+        : ""
+    }`
   )
-  .join(`\n`)}
-)`);
+  .join(`\n`)}`);
   }
 }

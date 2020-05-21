@@ -50,8 +50,7 @@ export class FromBuilder<S extends ISelectSchema> implements ISelectBuilder<S> {
         }`
       : "";
     const limitExpression = this.selectedLimit ? `\nlimit ${this.selectedLimit}` : "";
-    return Select.create<S>(
-      `select\n` +
+    return Select.create<S>(`(\n${indent(`select\n` +
         (hasColumns
           ? `${Object.keys(this.columns)
               .map(alias => `  ${this.columns[alias]} as ${alias}`)
@@ -61,7 +60,7 @@ export class FromBuilder<S extends ISelectSchema> implements ISelectBuilder<S> {
         `${indent(build(this.from))}` +
         `${whereExpression}` +
         `${orderingExpression}` +
-        `${limitExpression}`
+        `${limitExpression}`)}\n)`
     );
   }
 }
