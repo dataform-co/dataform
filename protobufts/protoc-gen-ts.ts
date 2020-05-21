@@ -105,15 +105,31 @@ function getImportLines(protoDependencies: string[], importPrefix?: string) {
   });
 }
 
-function getMessage(descriptorProto: google.protobuf.IDescriptorProto, indentCount: number = 0) {
+function getMessage(
+  descriptorProto: google.protobuf.IDescriptorProto,
+  indentCount: number = 0
+): string {
+  const message = `export class ${descriptorProto.name} {
+${descriptorProto.field
+  .map(fieldDescriptorProto => `  public ${fieldDescriptorProto.jsonName}: number = 0;`)
+  .join("\n")}
+}`;
+  if (descriptorProto.nestedType.length === 0 && descriptorProto.enumType.length === 0) {
+    return indent(message, indentCount);
+  }
   return indent(
-    `export class ${descriptorProto.name} {
-${indent(
-  descriptorProto.field
-    .map(fieldDescriptorProto => `public ${fieldDescriptorProto.jsonName}: number = 0;`)
-    .join("\n"),
-  indentCount + 1
-)}
+    `${message}
+
+export namespace ${descriptorProto.name} {
+  // MESSAGES
+${descriptorProto.nestedType
+  .map(nestedDescriptorProto => `  ${getMessage(nestedDescriptorProto, indentCount + 1)}`)
+  .join("\n\n")}
+
+  // ENUMS
+${descriptorProto.enumType
+  .map(nestedEnumDescriptorProto => `  ${getEnum(nestedEnumDescriptorProto, indentCount + 1)}`)
+  .join("\n\n")}
 }`,
     indentCount
   );
@@ -137,7 +153,7 @@ function getGeneratedTypescriptFilename(protoFilename: string) {
 function indent(lines: string, indentCount: number) {
   return lines
     .split("\n")
-    .map(line => `${"  ".repeat(indentCount)}${line}`)
+    .map(line => `${"  ".repeat(indentCount)}${line}`.trimRight())
     .join("\n");
 }
 
