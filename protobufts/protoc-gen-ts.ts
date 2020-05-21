@@ -22,6 +22,7 @@ function generateFiles(
 }
 
 interface ITypeLocation {
+  importProtoFile: string;
   importName: string;
   typescriptTypeName: string;
 }
@@ -40,6 +41,7 @@ function getTypeFileMapping(fileDescriptorProtos: google.protobuf.IFileDescripto
     descriptorProtos.forEach(descriptorProto => {
       const typescriptTypeName = nestedTypeParts.concat(descriptorProto.name).join(".");
       typeFileMapping.set(packageParts.concat(typescriptTypeName).join("."), {
+        importProtoFile: filename,
         importName,
         typescriptTypeName
       });
@@ -54,6 +56,7 @@ function getTypeFileMapping(fileDescriptorProtos: google.protobuf.IFileDescripto
     enumDescriptorProtos.forEach(enumDescriptorProto => {
       const typescriptTypeName = nestedTypeParts.concat(enumDescriptorProto.name).join(".");
       typeFileMapping.set(packageParts.concat(typescriptTypeName).join("."), {
+        importProtoFile: filename,
         importName,
         typescriptTypeName
       });
@@ -97,7 +100,12 @@ function getFileContent(
     if (
       descriptorProto.field.some(
         fieldDescriptorProto =>
-          type(fieldDescriptorProto.type, fieldDescriptorProto.typeName, fileTypeMapping) === "Long"
+          type(
+            fieldDescriptorProto.type,
+            fieldDescriptorProto.typeName,
+            fileTypeMapping,
+            fileDescriptorProto.name
+          ) === "Long"
       )
     ) {
       return true;
@@ -122,7 +130,7 @@ ${getImportLines(
 
 // MESSAGES
 ${fileDescriptorProto.messageType
-  .map(descriptorProto => getMessage(descriptorProto, fileTypeMapping))
+  .map(descriptorProto => getMessage(descriptorProto, fileTypeMapping, fileDescriptorProto.name))
   .join("\n\n")}
 
 // ENUMS
@@ -161,6 +169,7 @@ function getImportName(dependency: string) {
 function getMessage(
   descriptorProto: google.protobuf.IDescriptorProto,
   fileTypeMapping: Map<string, ITypeLocation>,
+  currentProtoFile: string,
   indentCount: number = 0
 ): string {
   const message = `export class ${descriptorProto.name} {
@@ -170,7 +179,8 @@ ${descriptorProto.field
       `  public ${fieldDescriptorProto.jsonName}: ${type(
         fieldDescriptorProto.type,
         fieldDescriptorProto.typeName,
-        fileTypeMapping
+        fileTypeMapping,
+        currentProtoFile
       )} = ${defaultValue(fieldDescriptorProto.type, fieldDescriptorProto.typeName)};`
   )
   .join("\n")}
@@ -184,7 +194,9 @@ ${descriptorProto.field
 export namespace ${descriptorProto.name} {
   // MESSAGES
 ${descriptorProto.nestedType
-  .map(nestedDescriptorProto => getMessage(nestedDescriptorProto, fileTypeMapping, indentCount + 1))
+  .map(nestedDescriptorProto =>
+    getMessage(nestedDescriptorProto, fileTypeMapping, currentProtoFile, indentCount + 1)
+  )
   .join("\n\n")}
 
   // ENUMS
@@ -199,7 +211,8 @@ ${descriptorProto.enumType
 function type(
   typeValue: google.protobuf.FieldDescriptorProto.Type,
   typeName: string,
-  fileTypeMapping: Map<string, ITypeLocation>
+  fileTypeMapping: Map<string, ITypeLocation>,
+  currentProtoFile: string
 ) {
   switch (typeValue) {
     case google.protobuf.FieldDescriptorProto.Type.TYPE_DOUBLE: // TODO: is this right?
@@ -223,14 +236,10 @@ function type(
     case google.protobuf.FieldDescriptorProto.Type.TYPE_GROUP:
       throw new Error("GROUP is unsupported.");
     case google.protobuf.FieldDescriptorProto.Type.TYPE_MESSAGE:
-      // TODO
-      return (
-        "number /* " +
-        typeName +
-        " ::: " +
-        JSON.stringify(fileTypeMapping.get(typeName.slice(1))) +
-        " */"
-      );
+      const typeLocation = fileTypeMapping.get(typeName.slice(1));
+      return typeLocation.importProtoFile === currentProtoFile
+        ? typeLocation.typescriptTypeName
+        : `${typeLocation.importName}.${typeLocation.typescriptTypeName}`;
     case google.protobuf.FieldDescriptorProto.Type.TYPE_BYTES:
       return "Uint8Array";
     case google.protobuf.FieldDescriptorProto.Type.TYPE_ENUM:
