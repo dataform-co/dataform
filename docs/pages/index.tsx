@@ -49,11 +49,14 @@ export class Docs extends React.Component<IProps> {
           }
         }}
       >
-        <h2>What is Dataform</h2>
-        <p>If you are new to Dataform, start here.</p>
+        <h2>Getting started with Dataform</h2>
+        <p>
+          Learn about Dataform, discover where it fits in the modern data stack, learn about
+          features, and understand how it works.
+        </p>
         <CardActions>
           <Button intent="primary">Read the introduction</Button>
-          <Button>Watch the 2 minute video</Button>
+          <Button>Understand Dataform and SQLX in 5 min</Button>
         </CardActions>
 
         <h2>Join our community</h2>

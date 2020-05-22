@@ -46,10 +46,7 @@ export class Header extends React.Component<IProps> {
               </a>
             </span>
             <span className={styles.navRight}>
-              <Search />
-              <a target="_blank" rel="noopener" href="https://github.com/dataform-co/dataform">
-                <img className={styles.githubLogo} src="/static/images/github_logo.png" />
-              </a>
+              <Search />{" "}
             </span>
           </span>
         </nav>
