@@ -3,21 +3,30 @@
  * Licensed under the MIT License. See License.txt in the project root for license information.
  * ------------------------------------------------------------------------------------------ */
 import { ChildProcess, exec } from "child_process";
+import { dataform } from "df/protos/ts";
 import {
-  CompletionItem,
-  CompletionItemKind,
   createConnection,
-  Diagnostic,
-  DiagnosticSeverity,
   DidChangeConfigurationNotification,
+  HandlerResult,
   InitializeParams,
   InitializeResult,
+  Location,
   ProposedFeatures,
-  TextDocumentPositionParams,
   TextDocuments,
   TextDocumentSyncKind
 } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
+
+const types = ["dataset", "assertion", "operation", "declaration"] as const;
+export type Type = typeof types[number];
+interface IAction {
+  name: string;
+  type: Type;
+  fileName: string;
+  dependencies?: string[];
+  target?: dataform.ITarget;
+}
+
 // Create a connection for the server. The connection uses Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
 const connection = createConnection(ProposedFeatures.all);
@@ -46,7 +55,8 @@ connection.onInitialize((params: InitializeParams) => {
       // Tell the client that the server supports code completion
       completionProvider: {
         resolveProvider: true
-      }
+      },
+      definitionProvider: true
     }
   };
   if (hasWorkspaceFolderCapability) {
@@ -68,6 +78,7 @@ connection.onInitialized(() => {
       connection.console.log("Workspace folder change event received.");
     });
   }
+  const _ = compileAndValidate();
 });
 
 // The example settings
@@ -88,23 +99,7 @@ connection.onDidChangeConfiguration(change => {
   } else {
     globalSettings = (change.settings.languageServerExample || defaultSettings) as ExampleSettings;
   }
-  // Revalidate all open text documents
-  documents.all().forEach(validateTextDocument);
 });
-function getDocumentSettings(resource: string): Thenable<ExampleSettings> {
-  if (!hasConfigurationCapability) {
-    return Promise.resolve(globalSettings);
-  }
-  let result = documentSettings.get(resource);
-  if (!result) {
-    result = connection.workspace.getConfiguration({
-      scopeUri: resource,
-      section: "languageServerExample"
-    });
-    documentSettings.set(resource, result);
-  }
-  return result;
-}
 // Only keep settings for open documents
 documents.onDidClose(e => {
   documentSettings.delete(e.document.uri);
@@ -126,18 +121,23 @@ connection.onRequest("run", async () => {
 
 // The content of a text document has changed. This event is emitted
 // when the text document first opened or when its content has changed.
-documents.onDidChangeContent(change => {
+documents.onDidSave(change => {
   const _ = compileAndValidate();
 });
 
+let CACHED_COMPILE_GRAPH: dataform.ICompiledGraph = null;
+
 async function compileAndValidate() {
   const compileResult = await getProcessResult(exec("dataform compile --json"));
-  const parsedCompileResult = JSON.parse(compileResult.stdout);
-  if (parsedCompileResult.graphErrors && parsedCompileResult.graphErrors.compilationErrors) {
-    parsedCompileResult.graphErrors.compilationErrors.forEach((compilationError: any) => {
+  const parsedResult: dataform.ICompiledGraph = JSON.parse(compileResult.stdout);
+  if (parsedResult?.graphErrors?.compilationErrors) {
+    parsedResult.graphErrors.compilationErrors.forEach(compilationError => {
       connection.sendNotification("error", compilationError.message);
     });
+  } else {
+    connection.sendNotification("success", "Compile successful!");
   }
+  CACHED_COMPILE_GRAPH = parsedResult;
 }
 
 async function getProcessResult(childProcess: ChildProcess) {
@@ -151,87 +151,52 @@ async function getProcessResult(childProcess: ChildProcess) {
   return { exitCode, stdout };
 }
 
-async function validateTextDocument(textDocument: TextDocument): Promise<void> {
-  // In this simple example we get the settings for every validate run.
-  const settings = await getDocumentSettings(textDocument.uri);
-  // The validator creates diagnostics for all uppercase words length 2 and more
-  const text = textDocument.getText();
-  const pattern = /\b[A-Z]{2,}\b/g;
-  let m: RegExpExecArray | null;
-  let problems = 0;
-  const diagnostics: Diagnostic[] = [];
-  while ((m = pattern.exec(text)) && problems < settings.maxNumberOfProblems) {
-    problems++;
-    const diagnostic: Diagnostic = {
-      severity: DiagnosticSeverity.Warning,
-      range: {
-        start: textDocument.positionAt(m.index),
-        end: textDocument.positionAt(m.index + m[0].length)
-      },
-      message: `${m[0]} is all uppercase.`,
-      source: "ex"
-    };
-    if (hasDiagnosticRelatedInformationCapability) {
-      diagnostic.relatedInformation = [
-        {
-          location: {
-            uri: textDocument.uri,
-            range: Object.assign({}, diagnostic.range)
-          },
-          message: "Spelling matters"
-        },
-        {
-          location: {
-            uri: textDocument.uri,
-            range: Object.assign({}, diagnostic.range)
-          },
-          message: "Particularly for names"
-        }
-      ];
-    }
-    diagnostics.push(diagnostic);
-  }
-  // Send the computed diagnostics to VSCode.
-  connection.sendDiagnostics({ uri: textDocument.uri, diagnostics });
+function convertGraphToActions(graph = CACHED_COMPILE_GRAPH) {
+  return [].concat(
+    (graph.tables || []).map(t => ({ ...t, type: "dataset" })),
+    (graph.operations || []).map(o => ({ ...o, type: "operation" })),
+    (graph.assertions || []).map(o => ({ ...o, type: "assertion" })),
+    (graph.declarations || []).map(o => ({ ...o, type: "declaration" }))
+  ) as IAction[];
 }
-connection.onDidChangeWatchedFiles(_change => {
-  // Monitored files have change in VSCode
-  connection.console.log("We received an file change event");
-});
-// This handler provides the initial list of the completion items.
-connection.onCompletion((_textDocumentPosition: TextDocumentPositionParams): CompletionItem[] => {
-  // The pass parameter contains the position of the text document in
-  // which code complete got requested. For the example we ignore this
-  // info and always provide the same completion items.
-  return [
-    {
-      label: "TypeScript",
-      kind: CompletionItemKind.Text,
-      data: 1
-    },
-    {
-      label: "JavaScript",
-      kind: CompletionItemKind.Text,
-      data: 2
+
+function retrieveLinkedFileName(ref: string) {
+  const actionGraph = convertGraphToActions();
+  const foundCompileAction = actionGraph.find(
+    action => action.name.split(".").slice(-1)[0] === ref
+  );
+  return foundCompileAction.fileName;
+}
+
+// this may be the right way to do things...
+connection.onDefinition(
+  (params): HandlerResult<Location, void> => {
+    const currentFile = documents.get(params.textDocument.uri);
+    const lineWithRef = currentFile.getText({
+      start: { line: params.position.line, character: 0 },
+      end: { line: params.position.line + 1, character: 0 }
+    });
+    const refRegex = new RegExp(/(?<=ref\(\"|'\s*).*?(?=\s*\"|'\))/g);
+    const refContents = lineWithRef.match(refRegex);
+    if (!refContents || refContents.length === 0) {
+      return null;
     }
-  ];
-});
-// This handler resolves additional information for the item selected in
-// the completion list.
-connection.onCompletionResolve(
-  (item: CompletionItem): CompletionItem => {
-    if (item.data === 1) {
-      item.detail = "TypeScript details";
-      item.documentation = "TypeScript documentation";
-    } else if (item.data === 2) {
-      item.detail = "JavaScript details";
-      item.documentation = "JavaScript documentation";
-    }
-    return item;
+    const linkedFileName = retrieveLinkedFileName(refContents.join(""));
+    // TODO: Make this not george specific
+    const fileString = `/Users/georgemcgowan/Work/clones/dataform-data/${linkedFileName}`;
+    return {
+      uri: `file://${fileString}`,
+      // just go to the top of the file and select nothing
+      range: {
+        start: { line: 0, character: 0 },
+        end: { line: 1, character: 0 }
+      }
+    } as Location;
   }
 );
+
 // Make the text document manager listen on the connection
-// for open, change and close text document events
+// for open, change and close document events
 documents.listen(connection);
 // Listen on the connection
 connection.listen();
