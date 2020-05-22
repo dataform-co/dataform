@@ -1,12 +1,8 @@
-import * as React from "react";
-
-import Head from "next/head";
-
 import { Header } from "df/docs/components/header";
-
 import * as globalStyles from "df/docs/global.css";
-import * as highlightStyles from "df/docs/highlight.css";
 import * as styles from "df/docs/layouts/base.css";
+import Head from "next/head";
+import * as React from "react";
 
 export interface IProps {
   title: string;

@@ -26,11 +26,21 @@ filegroup(
     ),
 )
 
+load("@io_bazel_rules_sass//:defs.bzl", "multi_sass_binary")
+
+multi_sass_binary(
+    name = "code_sass",
+    srcs = glob(["components/code/*.scss"]),
+    output_style = "expanded",
+    sourcemap = False,
+)
+
+
 genrule(
     name = "blueprint",
     srcs = [
         "//components/blueprint:sass",
-        "//docs/components/code:sass",
+        ":code_sass",
     ],
     outs = ["public/global.css"],
     cmd = "cat $(SRCS) > $(OUTS)",

@@ -1,5 +1,5 @@
 import { Button, Callout } from "@blueprintjs/core";
-import { Code } from "df/components/code";
+import { Code } from "df/docs/components/code";
 import { getContentTree, IExtraAttributes } from "df/docs/content_tree";
 import Documentation from "df/docs/layouts/documentation";
 import { ITree } from "df/tools/markdown-cms/tree";
