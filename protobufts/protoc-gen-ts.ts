@@ -147,6 +147,7 @@ function getImportLines(
   if (needsLongImport) {
     imports.push('import Long from "long";');
   }
+  imports.push('import { Serializer } from "df/protobufts/serialize";');
   return imports;
 }
 
@@ -195,17 +196,33 @@ ${descriptorProto.field
       };`
   )
   .join("\n")}
+
+  public serialize(): Uint8Array {
+    return new Serializer()
+${descriptorProto.field
+  .filter(
+    fieldDescriptorProto =>
+      fieldDescriptorProto.type === google.protobuf.FieldDescriptorProto.Type.TYPE_STRING &&
+      fieldDescriptorProto.label !== google.protobuf.FieldDescriptorProto.Label.LABEL_REPEATED
+  )
+  .map(
+    fieldDescriptorProto =>
+      `      .string(${fieldDescriptorProto.number}, this.${fieldDescriptorProto.jsonName})`
+  )
+  .join("\n")}
+      .finish();
+  }
 }`;
   if (descriptorProto.nestedType.length === 0 && descriptorProto.enumType.length === 0) {
     return message;
   }
   const nestedMessages = descriptorProto.nestedType
     .map(nestedDescriptorProto =>
-      maybeIndent(getMessage(nestedDescriptorProto, fileTypeMapping, currentProtoFile), true)
+      indent(getMessage(nestedDescriptorProto, fileTypeMapping, currentProtoFile))
     )
     .join("\n\n");
   const nestedEnums = descriptorProto.enumType
-    .map(nestedEnumDescriptorProto => maybeIndent(getEnum(nestedEnumDescriptorProto), true))
+    .map(nestedEnumDescriptorProto => indent(getEnum(nestedEnumDescriptorProto)))
     .join("\n\n");
   return `${message}
 
@@ -299,31 +316,25 @@ function defaultValue(fieldDescriptorProto: google.protobuf.IFieldDescriptorProt
   }
 }
 
-function getEnum(
-  enumDescriptorProto: google.protobuf.IEnumDescriptorProto,
-  indent: boolean = false
-) {
-  return maybeIndent(
-    `export enum ${enumDescriptorProto.name} {
+function getEnum(enumDescriptorProto: google.protobuf.IEnumDescriptorProto) {
+  return `export enum ${enumDescriptorProto.name} {
 ${enumDescriptorProto.value
   .map(
     enumValueDescriptorProto =>
       `  ${enumValueDescriptorProto.name} = ${enumValueDescriptorProto.number},`
   )
   .join("\n")}
-}`,
-    indent
-  );
+}`;
 }
 
 function getGeneratedTypescriptFilename(protoFilename: string) {
   return protoFilename.replace(".proto", ".ts");
 }
 
-function maybeIndent(lines: string, indent: boolean) {
+function indent(lines: string) {
   return lines
     .split("\n")
-    .map(line => `${"  ".repeat(indent ? 1 : 0)}${line}`.trimRight())
+    .map(line => `  ${line}`.trimRight())
     .join("\n");
 }
 

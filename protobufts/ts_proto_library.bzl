@@ -41,5 +41,5 @@ def ts_proto_library(name, protos, deps = [], import_prefix = ""):
     ts_library(
         name = name,
         srcs = [":" + name + "-gen"],
-        deps = deps,
+        deps = deps + ["//protobufts:runtime-support"],
     )
