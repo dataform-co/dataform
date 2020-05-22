@@ -20,7 +20,7 @@
   position: fixed;
   width: 50vw;
   height: 100vh;
-  background-color: var(--shade1);
+  background-color: var(--shade0);
   z-index: -1;
 }
 
@@ -30,7 +30,7 @@
   height: 100vh;
   right: 0;
   top: 0;
-  background-color: var(--shade0);
+  background-color: var(--shade1);
   z-index: -1;
 }
 

@@ -28,7 +28,7 @@
   composes: sidebar;
   min-width: 250px;
   text-align: right;
-  background-color: var(--shade0);
+  background-color: var(--shade1);
 }
 
 @media (max-width: 1300px) {
@@ -48,7 +48,7 @@
   flex-grow: 1;
   min-width: 500px;
   padding-bottom: 300px;
-  background-color: var(--shade0);
+  background-color: var(--shade1);
 }
 
 .mainContent img {
