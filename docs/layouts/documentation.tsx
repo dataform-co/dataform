@@ -24,7 +24,7 @@ export default class Documentation extends React.Component<IProps> {
       .map(child =>
         React.Children.toArray(child.props.children)
           .map(grandChild => grandChild as React.ReactElement<any>)
-          .filter(grandChild => grandChild.type === "h2")
+          .filter(grandChild => grandChild.type === "h2" || grandChild.type === "h3")
           .map(grandChild => ({
             id: grandChild.props.id,
             text: grandChild.props.children[0]
