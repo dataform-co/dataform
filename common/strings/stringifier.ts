@@ -5,7 +5,7 @@ export interface IStringifier<T> {
   parse: (value: string) => T;
 }
 
-export type IJSONPrimitive = string | number | boolean | string[] | number[] | boolean[];
+export type IJSONPrimitive = string | number | boolean | string[] | number[] | boolean[] | null;
 
 export class JSONStringifier<T extends IJSONPrimitive> implements IStringifier<T> {
   public static create<T extends IJSONPrimitive>() {

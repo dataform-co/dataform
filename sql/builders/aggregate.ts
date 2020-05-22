@@ -54,28 +54,30 @@ export class AggregateBuilder<S extends ISelectSchema> implements ISelectBuilder
       : "";
     const limitExpression = this.selectedLimit ? `\nlimit ${this.selectedLimit}` : "";
     return Select.create<S>(
-      `select\n` +
-        (!hasDimensions && !hasMetrics ? indent("*") : "") +
-        `${Object.keys(this.selectedDimensions)
-          .map(alias => indent(`${this.selectedDimensions[alias]} as ${alias}`))
-          .join(",\n")}${hasDimensions ? ",\n" : ""}` +
-        `${Object.keys(this.selectedMetrics)
-          .map(alias => indent(`${this.selectedMetrics[alias]} as ${alias}`))
-          .join(",\n")}\n` +
-        `from\n` +
-        `${indent(build(this.from))}` +
-        `${whereExpression}` +
-        `${
-          hasDimensions
-            ? `\ngroup by ${Array.from(
-                new Array(Object.keys(this.selectedDimensions).length).keys()
-              )
-                .map(i => i + 1)
-                .join(", ")}`
-            : ""
-        }` +
-        `${orderingExpression}` +
-        `${limitExpression}`
+      `(\n${indent(
+        `select\n` +
+          (!hasDimensions && !hasMetrics ? indent("*") : "") +
+          `${Object.keys(this.selectedDimensions)
+            .map(alias => indent(`${this.selectedDimensions[alias]} as ${alias}`))
+            .join(",\n")}${hasDimensions ? ",\n" : ""}` +
+          `${Object.keys(this.selectedMetrics)
+            .map(alias => indent(`${this.selectedMetrics[alias]} as ${alias}`))
+            .join(",\n")}\n` +
+          `from\n` +
+          `${indent(build(this.from))}` +
+          `${whereExpression}` +
+          `${
+            hasDimensions
+              ? `\ngroup by ${Array.from(
+                  new Array(Object.keys(this.selectedDimensions).length).keys()
+                )
+                  .map(i => i + 1)
+                  .join(", ")}`
+              : ""
+          }` +
+          `${orderingExpression}` +
+          `${limitExpression}`
+      )}\n)`
     );
   }
 }
