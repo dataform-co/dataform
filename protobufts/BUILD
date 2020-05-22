@@ -1,5 +1,3 @@
-load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
-
 package(default_visibility = ["//visibility:public"])
 
 load("@npm_bazel_typescript//:index.bzl", "ts_library")
@@ -45,20 +43,6 @@ proto_library(
     deps = [":descriptor_proto"],
 )
 
-go_proto_library(
-    name = "descriptor_go_proto",
-    compilers = ["@io_bazel_rules_go//proto:go_grpc"],
-    importpath = "github.com/golang/protobuf/protoc-gen-go/descriptor",
-    proto = ":descriptor_proto",
-)
-
-go_proto_library(
-    name = "plugin_go_go_proto",
-    importpath = "github.com/golang/protobuf/protoc-gen-go/plugin",
-    proto = ":plugin_go_proto",
-    deps = [":descriptor_go_proto"],
-)
-
 load("//tools:ts_proto_library.bzl", "ts_proto_library")
 
 ts_proto_library(
@@ -66,5 +50,19 @@ ts_proto_library(
     deps = [
         ":descriptor_proto",
         ":plugin_go_proto",
+    ],
+)
+
+load("//testing:index.bzl", "ts_test_suite")
+
+ts_test_suite(
+    name = "tests",
+    srcs = glob(["*.spec.ts"]),
+    deps = [
+        "//protos:dataform_ts_proto",
+        "//protos:ts",
+        "//testing",
+        "@npm//@types/chai",
+        "@npm//chai",
     ],
 )

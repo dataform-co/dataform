@@ -16,7 +16,7 @@ export class Serializer {
 
   public message(fieldNumber: number, val?: Message): this {
     if (val) {
-      const writer = this.newTag(fieldNumber, WireType.LENGTH_DELIMITED);
+      const writer = this.newTag(fieldNumber, WireType.LENGTH_DELIMITED).fork();
       val.serializeInternal(new Serializer(writer));
       writer.ldelim();
     }
