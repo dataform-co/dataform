@@ -45,6 +45,7 @@
   border-left: var(--border);
   padding-left: 30px;
   padding-top: 30px;
+  padding-right: 5px;
   flex-grow: 1;
   min-width: 500px;
   padding-bottom: 300px;

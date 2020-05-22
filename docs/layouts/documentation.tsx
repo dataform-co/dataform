@@ -41,7 +41,8 @@ export default class Documentation extends React.Component<IProps> {
     const parentPath = pathParts.slice(0, Math.max(pathParts.length - 1, 0)).join("/");
     const parent = tree.getChild(parentPath);
     const darkModeSaved =
-      typeof localStorage !== "undefined" && Boolean(localStorage.getItem("dataform-dark-mode"));
+      typeof localStorage !== "undefined" &&
+      Boolean(localStorage.getItem("dataform-dark-mode") === "true");
     if (darkModeSaved) {
       document.body.classList.add("dark");
     }
@@ -59,7 +60,7 @@ export default class Documentation extends React.Component<IProps> {
               <Switch
                 defaultChecked={darkModeSaved}
                 label="Dark mode"
-                onClick={(e) => {
+                onClick={e => {
                   if (!e.currentTarget.checked) {
                     localStorage.setItem("dataform-dark-mode", "false");
                     document.body.classList.remove("dark");
