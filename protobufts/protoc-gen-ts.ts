@@ -147,7 +147,7 @@ function getImportLines(
   if (needsLongImport) {
     imports.push('import Long from "long";');
   }
-  imports.push('import { Serializer } from "df/protobufts/serialize";');
+  imports.push('import { Message, Serializer } from "df/protobufts/serialize";');
   return imports;
 }
 
@@ -198,19 +198,27 @@ ${descriptorProto.field
   .join("\n")}
 
   public serialize(): Uint8Array {
-    return new Serializer()
+    return this.serializeInternal(new Serializer()).finish();
+  }
+
+  private serializeInternal(serializer: Serializer): Serializer {
+    return serializer
 ${descriptorProto.field
   .filter(
     fieldDescriptorProto =>
-      fieldDescriptorProto.type === google.protobuf.FieldDescriptorProto.Type.TYPE_STRING &&
+      [
+        google.protobuf.FieldDescriptorProto.Type.TYPE_STRING,
+        google.protobuf.FieldDescriptorProto.Type.TYPE_MESSAGE
+      ].includes(fieldDescriptorProto.type) &&
       fieldDescriptorProto.label !== google.protobuf.FieldDescriptorProto.Label.LABEL_REPEATED
   )
   .map(
     fieldDescriptorProto =>
-      `      .string(${fieldDescriptorProto.number}, this.${fieldDescriptorProto.jsonName})`
+      `      .${serializerMethodName(fieldDescriptorProto)}(${fieldDescriptorProto.number}, this.${
+        fieldDescriptorProto.jsonName
+      }${fieldDescriptorProto.typeName ? " as unknown as Message" : ""})`
   )
   .join("\n")}
-      .finish();
   }
 }`;
   if (descriptorProto.nestedType.length === 0 && descriptorProto.enumType.length === 0) {
@@ -311,6 +319,19 @@ function defaultValue(fieldDescriptorProto: google.protobuf.IFieldDescriptorProt
       throw new Error("GROUP is unsupported.");
     case google.protobuf.FieldDescriptorProto.Type.TYPE_BYTES:
       return "new Uint8Array()";
+    default:
+      throw new Error(`Unrecognized field type: ${fieldDescriptorProto.type}`);
+  }
+}
+
+function serializerMethodName(fieldDescriptorProto: google.protobuf.IFieldDescriptorProto) {
+  switch (fieldDescriptorProto.type) {
+    case google.protobuf.FieldDescriptorProto.Type.TYPE_STRING:
+      return "string";
+    case google.protobuf.FieldDescriptorProto.Type.TYPE_GROUP:
+      throw new Error("GROUP is unsupported.");
+    case google.protobuf.FieldDescriptorProto.Type.TYPE_MESSAGE:
+      return "message";
     default:
       throw new Error(`Unrecognized field type: ${fieldDescriptorProto.type}`);
   }
