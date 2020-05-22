@@ -1,4 +1,4 @@
-import { Icon } from "@blueprintjs/core";
+import { Button, Icon } from "@blueprintjs/core";
 import * as styles from "df/docs/components/navigation.css";
 import { IExtraAttributes } from "df/docs/content_tree";
 import { ITree } from "df/tools/markdown-cms/tree";
@@ -10,7 +10,15 @@ interface IProps {
   currentPath: string;
 }
 
-export default class Navigation extends React.Component<IProps> {
+interface IState {
+  expandedPaths: string[];
+}
+
+export default class Navigation extends React.Component<IProps, IState> {
+  constructor(props: IProps) {
+    super(props);
+    this.state = { expandedPaths: [] };
+  }
   public render() {
     return <div className={styles.navigation}>{this.renderTrees(this.props.tree.children)}</div>;
   }
@@ -18,14 +26,14 @@ export default class Navigation extends React.Component<IProps> {
     return (
       <ul className={styles[`depth${depth}`]}>
         {trees.map(tree => {
-          if (tree.attributes.redirect) {
+          if (tree.attributes.redirect || !tree.attributes.title) {
             return null;
           }
           const classNames = [styles[`depth${depth}`]];
-          if (
+          const active =
             (!!tree.path && this.props.currentPath.includes(tree.path)) ||
-            (!tree.path && !this.props.currentPath)
-          ) {
+            (!tree.path && !this.props.currentPath);
+          if (active) {
             classNames.push(styles.active);
           }
           const hasChildren = tree.children && tree.children.length > 0;
@@ -45,11 +53,32 @@ export default class Navigation extends React.Component<IProps> {
                   </div>
                   <div>{tree.attributes.title}</div>
                 </a>
+                {tree.children?.length > 0 && !active && (
+                  <Button
+                    className={styles.expandButton}
+                    minimal={true}
+                    icon={
+                      this.state.expandedPaths.includes(tree.path) ? "chevron-up" : "chevron-down"
+                    }
+                    onClick={() =>
+                      this.setState(state => {
+                        if (state.expandedPaths.includes(tree.path)) {
+                          this.setState({
+                            expandedPaths: state.expandedPaths.filter(path => path !== tree.path)
+                          });
+                        } else {
+                          this.setState({ expandedPaths: [...state.expandedPaths, tree.path] });
+                        }
+                      })
+                    }
+                  />
+                )}
               </li>
               {tree.children &&
                 tree.children.length > 0 &&
                 (this.props.currentPath.includes(tree.path) ||
-                  (!this.props.currentPath && tree.path.startsWith("introduction"))) &&
+                  (!this.props.currentPath && tree.path.startsWith("introduction")) ||
+                  this.state.expandedPaths.includes(tree.path)) &&
                 this.renderTrees(tree.children, depth + 1)}
             </React.Fragment>
           );
