@@ -49,8 +49,8 @@ Compile hundreds of data models in under a second using SQLX. SQLX extends your 
 
 <div align="center">
   <img src="https://assets.dataform.co/docs/introduction/simple_dag.png" alt="Dependency tree in a Dataform project">
+<i>Dependency tree in a Dataform project</i>
 </div>
-*Dependency tree in a Dataform project*
 
 ### More examples and packages
 
