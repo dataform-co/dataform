@@ -1,5 +1,6 @@
 import { Button, Switch } from "@blueprintjs/core";
 import { Card, CardActions, CardMasonry } from "df/components/card";
+import { Footer } from "df/docs/components/footer";
 import Navigation, { getLink } from "df/docs/components/navigation";
 import { IHeaderLink, PageLinks } from "df/docs/components/page_links";
 import { IExtraAttributes } from "df/docs/content_tree";
@@ -7,7 +8,6 @@ import { BaseLayout } from "df/docs/layouts/base";
 import * as styles from "df/docs/layouts/documentation.css";
 import { ITree, Tree } from "df/tools/markdown-cms/tree";
 import * as React from "react";
-import { Footer } from "df/docs/components/footer";
 
 export interface IProps {
   version: string;
