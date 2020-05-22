@@ -1,5 +1,7 @@
 ---
-title: Project configuration
+title: Configure your project
+subtitle: Learn how to configure your Dataform project
+priority: 5
 ---
 
 ## Introduction
@@ -8,7 +10,7 @@ A Dataform project is primarily configured through the `dataform.json` file that
 
 In addition, `package.json` is used to control NPM dependency versions, including the current Dataform version.
 
-## `dataform.json`
+## dataform.json
 
 This file contains information about the project. These settings, such as the warehouse type, default schema names, and so on, are used to compile final SQL.
 
@@ -38,7 +40,7 @@ by changing the `defaultSchema` property to some other value. For example, to ch
 
 [Assertions](assertions) are created inside a different schema as specified by the `assertionsSchema` property.
 
-## `package.json`
+## package.json
 
 This is a standard NPM package file which may be used to include JavaScript packages within your project.
 

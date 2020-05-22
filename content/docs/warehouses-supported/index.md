@@ -1,3 +1,3 @@
 ---
-title: Warehouses supported
+redirect: ./warehouses
 ---
