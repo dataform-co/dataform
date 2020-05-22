@@ -1,6 +1,6 @@
+import * as styles from "df/docs/components/footer.css";
 import { IExtraAttributes } from "df/docs/content_tree";
 import { ITree } from "df/tools/markdown-cms/tree";
-import * as styles from "df/docs/components/footer.css";
 
 export function Footer({ tree }: { tree: ITree<IExtraAttributes> }) {
   return (

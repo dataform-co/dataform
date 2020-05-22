@@ -30,15 +30,15 @@ genrule(
     name = "blueprint",
     srcs = [
         "//components/blueprint:sass",
-        "//components/code:sass",
+        "//docs/components/code:sass",
     ],
-    outs = ["public/blueprint.css"],
+    outs = ["public/global.css"],
     cmd = "cat $(SRCS) > $(OUTS)",
 )
 
 filegroup(
     name = "assets",
-    srcs = glob(["static/**/*.*"]) + [":public/blueprint.css"],
+    srcs = glob(["static/**/*.*"]) + [":public/global.css"],
 )
 
 load("@npm//typedoc:index.bzl", "typedoc")
@@ -78,7 +78,6 @@ DEPS = [
     "//content",
     "//static:files",
     "//components",
-    "//components/code",
     "//components:sass",
     "//components/blueprint:sass",
     "//tools/markdown-cms",
