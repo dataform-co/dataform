@@ -66,13 +66,13 @@ In practice, SQLX is mostly composed of SQL in the dialect of your data warehous
 <img src="https://assets.dataform.co/docs/introduction/sqlx_simple_example.png" max-width="661"  alt="SQLX example" />
 <figcaption>This illustration uses BigQuery Standard SQL. SQLX works the same way with all SQL dialects.</figcaption>
 
-<span className="numberTitle">1</span> **Config block**
+<h4><span className="numberTitle">1</span> Config block</h4>
 
 In SQLX, you only write SELECT statements. You specify what you want the output of the script to be in the config block, like a `view` or a `table` as well as other types available.
 
 Dataform takes care of adding boilerplate statements like `CREATE OR REPLACE` or `INSERT`.
 
-<span className="numberTitle">2</span> **The Ref function and dependency management**
+<h4><span className="numberTitle">2</span> The Ref function and dependency management<h4>
 
 The `ref` function is a critical concept in Dataform. Instead of hard coding the schema and table names of your data tables, the `ref` function enables you to reference tables and views defined in your dataform project.
 
@@ -104,7 +104,7 @@ All SQLX features can be adopted incrementally. We often see teams starting with
 
 <figcaption>This example illustrates a SQLX file using data documentation and data quality testing features.</figcaption>
 
-<span className="numberTitle">1</span> **Data documentation**
+<h4><span className="numberTitle">1</span> Data documentation</h4>
 
 You can add a description of your table and its fields directly in the config block of your SQLX file. Description of your tables is available in the Dataform data catalog.
 
@@ -114,7 +114,7 @@ Defining description within the same file makes it easy to maintain data documen
 The documentation you add to Dataform is machine readable. This allows you to parse this documentation, and push it out to other tools.
 </div>
 
-<span className="numberTitle">2</span> **Data quality tests**
+<h4><span className="numberTitle">2</span> Data quality tests</h4>
 
 You can define data quality tests, called assertions, directly from the config block of your SQLX file. Assertions can be used to check for uniqueness, null values or any custom row condition.
 
