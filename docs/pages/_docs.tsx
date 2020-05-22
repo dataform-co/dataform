@@ -1,4 +1,5 @@
-import rehypePrism from "@mapbox/rehype-prism";
+import { Button, Callout } from "@blueprintjs/core";
+import { Code } from "df/components/code";
 import { getContentTree, IExtraAttributes } from "df/docs/content_tree";
 import Documentation from "df/docs/layouts/documentation";
 import { ITree } from "df/tools/markdown-cms/tree";
@@ -17,10 +18,25 @@ interface IQuery {
   path2: string;
 }
 
-interface IProps {
+export interface IProps {
   index: ITree<IExtraAttributes>;
   current: ITree<IExtraAttributes>;
   version: string;
+}
+
+function MaybeCode(props: React.PropsWithChildren<{ className: string }>) {
+  if (props.className && props.className.startsWith("language")) {
+    const content = String(props.children).trim();
+    const lines = content.split("\n");
+    const firstLine = lines[0].trim();
+    const matches = firstLine.match(/(\/\/|\-\-)\s+(\S+\.\w+)/);
+    if (matches) {
+      const fileName = matches[2];
+      return <Code fileName={fileName}>{lines.slice(1).join("\n")}</Code>;
+    }
+    return <Code>{content}</Code>;
+  }
+  return <code {...props}>{props.children} </code>;
 }
 
 export class Docs extends React.Component<IProps> {
@@ -43,6 +59,7 @@ export class Docs extends React.Component<IProps> {
     if (!current) {
       ctx.res.writeHead(404);
       ctx.res.end();
+      return;
     }
 
     if (current.attributes.redirect) {
@@ -66,10 +83,13 @@ export class Docs extends React.Component<IProps> {
           remark()
             .use(remarkRehype, { allowDangerousHTML: true })
             .use(rehypeSlug)
-            .use(rehypePrism)
             .use(rehypeRaw)
-            .use(rehypeReact, { createElement: React.createElement })
+            .use(rehypeReact, {
+              createElement: React.createElement,
+              components: { button: Button, callout: Callout, code: MaybeCode }
+            })
             .processSync(this.props.current.content).contents}
+        {this.props.children}
       </Documentation>
     );
   }

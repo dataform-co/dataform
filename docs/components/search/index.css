@@ -24,6 +24,12 @@
   left: calc(50% - 350px);
 }
 
+.searchBlock {
+  color: #6c6c6c;
+  font-weight: normal;
+  text-transform: none;
+  font-size: 15px;
+}
 
 @media (max-width: 700px) {
   .omnibar {

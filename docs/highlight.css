@@ -12,7 +12,7 @@
 }
 
 :global code[class*="language-"],
-:global pre[class*="language-"] {
+:global pre.hljs {
   font-family: Consolas, Monaco, "Andale Mono", monospace;
   direction: ltr;
   text-align: left;
@@ -20,7 +20,7 @@
   word-spacing: normal;
   word-break: normal;
   line-height: 1.6;
-  font-size: 14px;
+  font-size: 15px;
 
   white-space: pre-wrap; /* Since CSS 2.1 */
   white-space: -moz-pre-wrap; /* Mozilla, since 1999 */
@@ -55,7 +55,7 @@
 }
 
 /* :global code blocks */
-:global pre[class*="language-"] {
+:global pre.hljs {
   padding: 1em;
   margin: 15px 0px;
   overflow: auto;

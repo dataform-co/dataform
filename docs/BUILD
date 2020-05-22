@@ -30,6 +30,7 @@ genrule(
     name = "blueprint",
     srcs = [
         "//components/blueprint:sass",
+        "//components/code:sass",
     ],
     outs = ["public/blueprint.css"],
     cmd = "cat $(SRCS) > $(OUTS)",
@@ -77,6 +78,7 @@ DEPS = [
     "//content",
     "//static:files",
     "//components",
+    "//components/code",
     "//components:sass",
     "//components/blueprint:sass",
     "//tools/markdown-cms",
@@ -101,6 +103,7 @@ DEPS = [
     "@npm//extracted-loader",
     "@npm//next-images",
     "@npm//react-instantsearch-dom",
+    "@npm//react-syntax-highlighter",
     "@npm//remark",
     "@npm//rehype-slug",
     "@npm//umd-compat-loader",

@@ -113,6 +113,7 @@ $theme-dark: (
   --border: 2px solid var(--shade0);
 
   --invert: none;
+  --uninvert: invert(1);
 }
 
 .dark {
@@ -134,4 +135,5 @@ $theme-dark: (
   --border: 2px solid var(--shade2);
 
   --invert: invert(1);
+  --uninvert: none;
 }

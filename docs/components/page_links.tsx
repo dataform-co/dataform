@@ -11,11 +11,14 @@ interface IProps {
 }
 
 export const PageLinks = (props: IProps) => (
-  <ul className={styles.pageLinks}>
-    {props.links.map(link => (
-      <li key={link.id}>
-        <a href={`#${link.id}`}>{link.text}</a>
-      </li>
-    ))}
-  </ul>
+  <>
+    {props.links?.length > 0 && <h5 className={styles.onThisPage}>On this page</h5>}
+    <ul className={styles.pageLinks}>
+      {props.links.map(link => (
+        <li key={link.id}>
+          <a href={`#${link.id}`}>{link.text}</a>
+        </li>
+      ))}
+    </ul>
+  </>
 );
