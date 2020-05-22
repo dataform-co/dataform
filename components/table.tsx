@@ -24,7 +24,7 @@ export const Row = (
     children: React.ReactElement;
   } & IRow
 ) => {
-  if (row.href) {
+  if (row.href || row.onClick) {
     return (
       <a className={styles.tableRowLink} {...row}>
         {row.children}
