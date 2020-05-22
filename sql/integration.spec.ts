@@ -142,17 +142,19 @@ suite("builders", { parallel: true }, ({ before, after }) => {
           }
         ]);
 
-        const join = sql.join({
-          a: {
-            select: sourceA,
-            type: "base"
-          },
-          b: {
-            select: sourceB,
-            type: "left",
-            on: ["v1", "v2"]
-          }
-        });
+        const join = sql.from(
+          sql.join({
+            a: {
+              select: sourceA,
+              type: "base"
+            },
+            b: {
+              select: sourceB,
+              type: "left",
+              on: ["v1", "v2"]
+            }
+          })
+        );
 
         const result = await execute(join);
         expect(result).deep.equals([
