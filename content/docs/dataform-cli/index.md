@@ -1,8 +1,6 @@
 ---
-title: Use the Dataform CLI
-subtitle: Guide to learn how to use the Dataform command line interface tool.
+title: Dataform CLI
 priority: 4
-icon: console
 ---
 
 The CLI enables you to initialize, compile test and run Dataform projects directly from your local machine or as part of other systems.
