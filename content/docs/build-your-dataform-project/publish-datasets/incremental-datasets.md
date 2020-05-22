@@ -31,7 +31,7 @@ There are 2 parts to an incremental dataset that you must configure:
 - The main query that selects all rows
 - A `WHERE` clause that determines which subset of rows should be processed for each incremental run
 
-### `WHERE` clause
+## WHERE clause
 
 The `WHERE` clause is applied to the main query and is used to ensure that only new data is added to the incremental dataset. For example:
 
