@@ -49,7 +49,6 @@
 
 :not(pre) > code {
   font-family: "Roboto Mono", monospace;
-  font-weight: 600;
   font-size: 15px;
   -webkit-border-radius: 3px;
   -moz-border-radius: 3px;
