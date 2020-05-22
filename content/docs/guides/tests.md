@@ -1,5 +1,7 @@
 ---
-title: Unit tests
+title: Run unit tests on your queries
+subtitle: Learn how to run unit tests on your queries
+priority: 8
 ---
 
 ## Introduction

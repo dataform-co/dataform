@@ -1,6 +1,7 @@
 ---
-title: Custom SQL operations
-priority: 3
+title: Write custom SQL operations
+subtitle: Learn how to define custom SQL operations in Dataform
+priority: 4
 ---
 
 ## Introduction
@@ -12,6 +13,7 @@ An `operations` file defines a set of SQL commands that will be executed in orde
 To define a new `operations` action, create a file such as `definitions/example_operation.sqlx`:
 
 ```js
+// definitions/example_operation.sqlx
 CREATE OR REPLACE VIEW someschema.someview AS (SELECT 1 AS test)
 ```
 
@@ -39,9 +41,10 @@ CREATE OR REPLACE VIEW sometable.someschema AS (SELECT 1 AS TEST)
 
 If an operation creates a dataset or view that you would like to make available to other scripts, you can reference this operation as you would a normal dataset by using the `ref()` function. Note that operations may use `self()` to create a dataset or view that matches the current file name.
 
-For example, in `definitions/customview.sqlx`:
+For example, in `definitions/custom_view.sqlx`:
 
 ```js
+// definitions/custom_view.sqlx
 config { hasOutput: true }
 CREATE OR REPLACE VIEW ${self()} AS (SELECT 1 AS TEST)
 ```
