@@ -47,11 +47,11 @@ Compile hundreds of data models in under a second using SQLX. SQLX extends your 
 * [Document datasets](https://docs.dataform.co/guides/documentation?utm_medium=organic&utm_source=github_readme) in code alongside your SQL
 * Enable [scripting](https://docs.dataform.co/guides/js-api?utm_medium=organic&utm_source=github_readme) and code re-use with a JavaScript API
 
-<figure class="image" align="center">
+<div align="center">
   <img src="https://assets.dataform.co/docs/introduction/simple_dag.png" alt="Dependency tree in a Dataform project">
-  <figcaption>Dependency tree in a Dataform project</figcaption>
-</figure>
-
+  _Dependency tree in a Dataform project_
+</div>
+_Dependency tree in a Dataform project_
 
 ### More examples and packages
 
