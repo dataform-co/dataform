@@ -43,10 +43,6 @@
     },
     "commands": [
       {
-        "command": "dataform.helloWorld",
-        "title": "Hello World"
-      },
-      {
         "command": "dataform.showSidebar",
         "title": "Show sidebar",
         "category": "sidebar"
@@ -59,6 +55,11 @@
       {
         "command": "dataform.run",
         "title": "Execute dataform run",
+        "category": "cli"
+      },
+      {
+        "command": "dataform.compile",
+        "title": "Recompile dataform",
         "category": "cli"
       }
     ],

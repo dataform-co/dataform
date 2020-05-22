@@ -119,6 +119,10 @@ connection.onRequest("run", async () => {
   }
 });
 
+connection.onRequest("compile", async () => {
+  const _ = compileAndValidate();
+});
+
 // The content of a text document has changed. This event is emitted
 // when the text document first opened or when its content has changed.
 documents.onDidSave(change => {
@@ -135,7 +139,7 @@ async function compileAndValidate() {
       connection.sendNotification("error", compilationError.message);
     });
   } else {
-    connection.sendNotification("success", "Compile successful!");
+    connection.sendNotification("success", "Project compiled successfully");
   }
   CACHED_COMPILE_GRAPH = parsedResult;
 }
