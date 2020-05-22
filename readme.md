@@ -47,6 +47,11 @@ Compile hundreds of data models in under a second using SQLX. SQLX extends your 
 * [Document datasets](https://docs.dataform.co/guides/documentation?utm_medium=organic&utm_source=github_readme) in code alongside your SQL
 * Enable [scripting](https://docs.dataform.co/guides/js-api?utm_medium=organic&utm_source=github_readme) and code re-use with a JavaScript API
 
+<div align="center">
+  <img src="https://assets.dataform.co/docs/introduction/simple_dag.png" alt="Dependency tree in a Dataform project">
+<i>Dependency tree in a Dataform project</i>
+</div>
+
 ### More examples and packages
 
 * [Reading and writing data from S3](https://dataform.co/blog/import-data-s3-to-redshift?utm_medium=organic&utm_source=github_readme)
