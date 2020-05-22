@@ -76,7 +76,7 @@ npm i -g @dataform/cli
 
 ## With Dataform web
 
-Dataform web is a development environment and production ready deployment application for the Dataform SDK. You can learn more on [dataform.co](https://dataform.co/?utm_medium=organic&utm_source=github_readme?utm_medium=organic&utm_source=github_readme)
+Dataform web is a development environment and production ready application for the Dataform SDK. You can learn more on [dataform.co](https://dataform.co/?utm_medium=organic&utm_source=github_readme?utm_medium=organic&utm_source=github_readme)
 
 ## How it works
 
