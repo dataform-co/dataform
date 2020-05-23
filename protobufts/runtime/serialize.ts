@@ -38,24 +38,28 @@ export class Serializer {
 
   public uint32(fieldNumber: number, val?: number): this {
     if (val) {
+      this.newTag(fieldNumber, WireType.VARINT).uint32(val);
     }
     return this;
   }
 
   public sfixed32(fieldNumber: number, val?: number): this {
     if (val) {
+      this.newTag(fieldNumber, WireType.THIRTY_TWO_BIT).sfixed32(val);
     }
     return this;
   }
 
   public sint32(fieldNumber: number, val?: number): this {
     if (val) {
+      this.newTag(fieldNumber, WireType.VARINT).sint32(val);
     }
     return this;
   }
 
   public enum(fieldNumber: number, val?: number): this {
     if (val) {
+      this.newTag(fieldNumber, WireType.VARINT).int32(val);
     }
     return this;
   }
@@ -83,24 +87,28 @@ export class Serializer {
 
   public sfixed64(fieldNumber: number, val?: Long): this {
     if (val && !val.isZero()) {
+      this.newTag(fieldNumber, WireType.SIXTY_FOUR_BIT).sfixed64(val);
     }
     return this;
   }
 
   public sint64(fieldNumber: number, val?: Long): this {
     if (val && !val.isZero()) {
+      this.newTag(fieldNumber, WireType.VARINT).sint64(val);
     }
     return this;
   }
 
   public bool(fieldNumber: number, val?: boolean): this {
     if (val) {
+      this.newTag(fieldNumber, WireType.VARINT).bool(val);
     }
     return this;
   }
 
   public bytes(fieldNumber: number, val?: Uint8Array): this {
     if (val) {
+      this.newTag(fieldNumber, WireType.LENGTH_DELIMITED).bytes(val);
     }
     return this;
   }

@@ -16,6 +16,7 @@ suite(__filename, () => {
           uint64Field: Long.fromNumber(13315566123232),
           fixed64Field: Long.fromNumber(78576569),
           fixed32Field: 96989,
+          boolField: true,
           int32Field: 45,
           stringField: "foo",
           messageField: protobuftsProtos.TestMessage.create({
@@ -25,9 +26,24 @@ suite(__filename, () => {
             uint64Field: Long.fromNumber(21323),
             fixed64Field: Long.fromNumber(12381608099),
             fixed32Field: 7875,
+            boolField: true,
             int32Field: 12,
-            stringField: "bar"
-          })
+            stringField: "bar",
+            bytesField: new Uint8Array([2, 3, 8, 9]),
+            uint32Field: 907,
+            enumField: protobuftsProtos.TestEnum.VAL1,
+            sfixed32Field: 13219,
+            sfixed6Field: Long.fromNumber(-151512323),
+            sint32Field: 1937291863,
+            sint64Field: Long.fromNumber(-918747183)
+          }),
+          bytesField: new Uint8Array([1, 3, 5, 6]),
+          uint32Field: 1223,
+          enumField: protobuftsProtos.TestEnum.VAL2,
+          sfixed32Field: -7896,
+          sfixed6Field: Long.fromNumber(92796),
+          sint32Field: -1315123,
+          sint64Field: Long.fromNumber(-140977666)
         }),
         deserialize: protobufjsProtos.testprotos.TestMessage.decode,
         out: protobufjsProtos.testprotos.TestMessage.create({
@@ -37,6 +53,7 @@ suite(__filename, () => {
           uint64Field: Long.fromNumber(13315566123232),
           fixed64Field: Long.fromNumber(78576569),
           fixed32Field: 96989,
+          boolField: true,
           int32Field: 45,
           stringField: "foo",
           messageField: protobufjsProtos.testprotos.TestMessage.create({
@@ -46,9 +63,24 @@ suite(__filename, () => {
             uint64Field: Long.fromNumber(21323),
             fixed64Field: Long.fromNumber(12381608099),
             fixed32Field: 7875,
+            boolField: true,
             int32Field: 12,
-            stringField: "bar"
-          })
+            stringField: "bar",
+            bytesField: new Uint8Array([2, 3, 8, 9]),
+            uint32Field: 907,
+            enumField: protobufjsProtos.testprotos.TestEnum.VAL1,
+            sfixed32Field: 13219,
+            sfixed6Field: Long.fromNumber(-151512323),
+            sint32Field: 1937291863,
+            sint64Field: Long.fromNumber(-918747183)
+          }),
+          bytesField: new Uint8Array([1, 3, 5, 6]),
+          uint32Field: 1223,
+          enumField: protobufjsProtos.testprotos.TestEnum.VAL2,
+          sfixed32Field: -7896,
+          sfixed6Field: Long.fromNumber(92796),
+          sint32Field: -1315123,
+          sint64Field: Long.fromNumber(-140977666)
         })
       }
     ];
