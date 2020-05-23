@@ -31,6 +31,7 @@ export class Serializer {
 
   public fixed32(fieldNumber: number, val?: number): this {
     if (val) {
+      this.newTag(fieldNumber, WireType.THIRTY_TWO_BIT).fixed32(val);
     }
     return this;
   }
@@ -60,32 +61,34 @@ export class Serializer {
   }
 
   public int64(fieldNumber: number, val?: Long): this {
-    if (val) {
+    if (val && !val.isZero()) {
       this.newTag(fieldNumber, WireType.VARINT).int64(val);
     }
     return this;
   }
 
   public uint64(fieldNumber: number, val?: Long): this {
-    if (val) {
+    if (val && !val.isZero()) {
+      this.newTag(fieldNumber, WireType.VARINT).uint64(val);
     }
     return this;
   }
 
   public fixed64(fieldNumber: number, val?: Long): this {
-    if (val) {
+    if (val && !val.isZero()) {
+      this.newTag(fieldNumber, WireType.SIXTY_FOUR_BIT).fixed64(val);
     }
     return this;
   }
 
   public sfixed64(fieldNumber: number, val?: Long): this {
-    if (val) {
+    if (val && !val.isZero()) {
     }
     return this;
   }
 
   public sint64(fieldNumber: number, val?: Long): this {
-    if (val) {
+    if (val && !val.isZero()) {
     }
     return this;
   }
