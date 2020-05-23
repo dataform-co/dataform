@@ -10,12 +10,20 @@ suite(__filename, () => {
         name: "simple",
         in: protobuftsProtos.TestMessage.create({
           stringField: "foo",
-          int32Field: 45
+          int32Field: 45,
+          messageField: protobuftsProtos.TestMessage.create({
+            stringField: "foo",
+            int32Field: 45
+          })
         }),
         deserialize: protobufjsProtos.testprotos.TestMessage.decode,
         out: protobufjsProtos.testprotos.TestMessage.create({
           stringField: "foo",
-          int32Field: 45
+          int32Field: 45,
+          messageField: protobufjsProtos.testprotos.TestMessage.create({
+            stringField: "foo",
+            int32Field: 45
+          })
         })
       }
     ];
