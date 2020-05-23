@@ -147,7 +147,7 @@ function getImportLines(
   if (needsLongImport) {
     imports.push('import Long from "long";');
   }
-  imports.push('import { IMessage, Serializer } from "df/protobufts/serialize";');
+  imports.push('import { IMessage, Serializer } from "df/protobufts/runtime/serialize";');
   return imports;
 }
 
