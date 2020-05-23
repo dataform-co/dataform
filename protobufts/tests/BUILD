@@ -35,6 +35,7 @@ ts_test_suite(
         ":testprotos_ts_proto",
         "//testing",
         "@npm//@types/chai",
+        "@npm//@types/long",
         "@npm//chai",
     ],
 )

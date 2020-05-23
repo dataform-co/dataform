@@ -6,6 +6,7 @@ ts_library(
     name = "runtime",
     srcs = glob(["*.ts"]),
     deps = [
+        "@npm//@types/long",
         "@npm//protobufjs",
     ],
 )

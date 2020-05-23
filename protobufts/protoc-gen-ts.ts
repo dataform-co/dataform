@@ -206,18 +206,17 @@ ${descriptorProto.field
 ${descriptorProto.field
   .filter(
     fieldDescriptorProto =>
-      [
-        google.protobuf.FieldDescriptorProto.Type.TYPE_INT32,
-        google.protobuf.FieldDescriptorProto.Type.TYPE_STRING,
-        google.protobuf.FieldDescriptorProto.Type.TYPE_MESSAGE
-      ].includes(fieldDescriptorProto.type) &&
       fieldDescriptorProto.label !== google.protobuf.FieldDescriptorProto.Label.LABEL_REPEATED
   )
   .map(
     fieldDescriptorProto =>
       `      .${serializerMethodName(fieldDescriptorProto)}(${fieldDescriptorProto.number}, this.${
         fieldDescriptorProto.jsonName
-      }${fieldDescriptorProto.typeName ? " as unknown as IMessage" : ""})`
+      }${
+        fieldDescriptorProto.type === google.protobuf.FieldDescriptorProto.Type.TYPE_MESSAGE
+          ? " as unknown as IMessage"
+          : ""
+      })`
   )
   .join("\n")}
   }
@@ -316,6 +315,8 @@ function defaultValue(fieldDescriptorProto: google.protobuf.IFieldDescriptorProt
       return false;
     case google.protobuf.FieldDescriptorProto.Type.TYPE_STRING:
       return '""';
+    case google.protobuf.FieldDescriptorProto.Type.TYPE_MESSAGE:
+      throw new Error("Message fields have no default value.");
     case google.protobuf.FieldDescriptorProto.Type.TYPE_GROUP:
       throw new Error("GROUP is unsupported.");
     case google.protobuf.FieldDescriptorProto.Type.TYPE_BYTES:
@@ -326,18 +327,8 @@ function defaultValue(fieldDescriptorProto: google.protobuf.IFieldDescriptorProt
 }
 
 function serializerMethodName(fieldDescriptorProto: google.protobuf.IFieldDescriptorProto) {
-  switch (fieldDescriptorProto.type) {
-    case google.protobuf.FieldDescriptorProto.Type.TYPE_INT32:
-      return "int32";
-    case google.protobuf.FieldDescriptorProto.Type.TYPE_STRING:
-      return "string";
-    case google.protobuf.FieldDescriptorProto.Type.TYPE_GROUP:
-      throw new Error("GROUP is unsupported.");
-    case google.protobuf.FieldDescriptorProto.Type.TYPE_MESSAGE:
-      return "message";
-    default:
-      throw new Error(`Unrecognized field type: ${fieldDescriptorProto.type}`);
-  }
+  const typeString = google.protobuf.FieldDescriptorProto.Type[fieldDescriptorProto.type];
+  return typeString.replace("TYPE_", "").toLowerCase();
 }
 
 function getEnum(enumDescriptorProto: google.protobuf.IEnumDescriptorProto) {
