@@ -204,10 +204,6 @@ ${descriptorProto.field
   private serializeInternal(serializer: Serializer): Serializer {
     return serializer
 ${descriptorProto.field
-  .filter(
-    fieldDescriptorProto =>
-      fieldDescriptorProto.label !== google.protobuf.FieldDescriptorProto.Label.LABEL_REPEATED
-  )
   .map(
     fieldDescriptorProto =>
       `      .${serializerMethodName(fieldDescriptorProto)}(${fieldDescriptorProto.number}, this.${
