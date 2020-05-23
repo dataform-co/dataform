@@ -4,21 +4,26 @@ import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
 
 suite(__filename, () => {
-  test("serialize", () => {
-    expect(
-      newProtos.Environments.Environment.create({
-        name: "environment",
-        configOverride: newProtos.ProjectConfig.create({
-          schemaSuffix: "foo"
+  suite("protobufjs serialization compatibility", () => {
+    const testCases = [
+      {
+        name: "simple",
+        in: newProtos.ProjectConfig.create({
+          schemaSuffix: "foo",
+          idempotentActionRetries: 5
+        }),
+        deserialize: dataform.ProjectConfig.decode,
+        out: dataform.ProjectConfig.create({
+          schemaSuffix: "foo",
+          idempotentActionRetries: 5
         })
-      }).serialize()
-    ).eql(
-      dataform.Environments.Environment.encode({
-        name: "environment",
-        configOverride: {
-          schemaSuffix: "foo"
-        }
-      }).finish()
-    );
+      }
+    ];
+
+    for (const testCase of testCases) {
+      test(testCase.name, () => {
+        expect(testCase.deserialize(testCase.in.serialize())).eql(testCase.out);
+      });
+    }
   });
 });

@@ -1,11 +1,18 @@
 import { Writer } from "protobufjs";
 
-export interface Message {
+export interface IMessage {
   serializeInternal: (serializer: Serializer) => Serializer;
 }
 
 export class Serializer {
   constructor(private readonly writer: Writer = new Writer()) {}
+
+  public int32(fieldNumber: number, val?: number): this {
+    if (val) {
+      this.newTag(fieldNumber, WireType.VARINT).int32(val);
+    }
+    return this;
+  }
 
   public string(fieldNumber: number, val?: string): this {
     if (val) {
@@ -14,7 +21,7 @@ export class Serializer {
     return this;
   }
 
-  public message(fieldNumber: number, val?: Message): this {
+  public message(fieldNumber: number, val?: IMessage): this {
     if (val) {
       const writer = this.newTag(fieldNumber, WireType.LENGTH_DELIMITED).fork();
       val.serializeInternal(new Serializer(writer));

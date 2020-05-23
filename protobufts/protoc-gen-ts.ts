@@ -147,7 +147,7 @@ function getImportLines(
   if (needsLongImport) {
     imports.push('import Long from "long";');
   }
-  imports.push('import { Message, Serializer } from "df/protobufts/serialize";');
+  imports.push('import { IMessage, Serializer } from "df/protobufts/serialize";');
   return imports;
 }
 
@@ -207,6 +207,7 @@ ${descriptorProto.field
   .filter(
     fieldDescriptorProto =>
       [
+        google.protobuf.FieldDescriptorProto.Type.TYPE_INT32,
         google.protobuf.FieldDescriptorProto.Type.TYPE_STRING,
         google.protobuf.FieldDescriptorProto.Type.TYPE_MESSAGE
       ].includes(fieldDescriptorProto.type) &&
@@ -216,7 +217,7 @@ ${descriptorProto.field
     fieldDescriptorProto =>
       `      .${serializerMethodName(fieldDescriptorProto)}(${fieldDescriptorProto.number}, this.${
         fieldDescriptorProto.jsonName
-      }${fieldDescriptorProto.typeName ? " as unknown as Message" : ""})`
+      }${fieldDescriptorProto.typeName ? " as unknown as IMessage" : ""})`
   )
   .join("\n")}
   }
@@ -326,6 +327,8 @@ function defaultValue(fieldDescriptorProto: google.protobuf.IFieldDescriptorProt
 
 function serializerMethodName(fieldDescriptorProto: google.protobuf.IFieldDescriptorProto) {
   switch (fieldDescriptorProto.type) {
+    case google.protobuf.FieldDescriptorProto.Type.TYPE_INT32:
+      return "int32";
     case google.protobuf.FieldDescriptorProto.Type.TYPE_STRING:
       return "string";
     case google.protobuf.FieldDescriptorProto.Type.TYPE_GROUP:
