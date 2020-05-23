@@ -1,0 +1,29 @@
+syntax="proto3";
+
+package testprotos;
+
+enum TestEnum {
+    VAL0 = 0;
+    VAL1 = 1;
+    VAL2 = 2;
+}
+
+message TestMessage {
+  double double_field = 1;
+  float float_field = 2;
+  int64 int64_field = 3;
+  uint64 uint64_field = 4;
+  int32 int32_field = 5;
+  fixed64 fixed64_field = 6;
+  fixed32 fixed32_field = 7;
+  bool bool_field = 8;
+  string string_field = 9;
+  TestMessage message_field = 10;
+  bytes bytes_field = 11;
+  uint32 uint32_field = 12;
+  TestEnum enum_field = 13;
+  sfixed32 sfixed32_field = 14;
+  sfixed64 sfixed6_field = 15;
+  sint32 sint32_field = 16;
+  sint64 sint64_field = 17;
+}

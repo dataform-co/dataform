@@ -44,17 +44,3 @@ ts_proto_library(
         ":plugin_go_proto",
     ],
 )
-
-load("//testing:index.bzl", "ts_test_suite")
-
-ts_test_suite(
-    name = "tests",
-    srcs = glob(["*.spec.ts"]),
-    deps = [
-        "//protos:dataform_ts_proto",
-        "//protos:ts",
-        "//testing",
-        "@npm//@types/chai",
-        "@npm//chai",
-    ],
-)
