@@ -1,4 +1,4 @@
-import { H5, H6 } from "@blueprintjs/core";
+import { H6 } from "@blueprintjs/core";
 import * as styles from "df/components/breadcrumb.css";
 import * as React from "react";
 
