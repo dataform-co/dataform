@@ -1,6 +1,6 @@
 import { HTMLTable } from "@blueprintjs/core";
-import * as React from "react";
 import * as styles from "df/components/table.css";
+import * as React from "react";
 
 export interface IRow {
   cells?: Array<React.ReactElement | string>;
