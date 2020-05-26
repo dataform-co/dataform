@@ -32,7 +32,7 @@ export class Header extends React.Component<IProps> {
               </a>
             </span>
             <span className={styles.links}>
-              <a href="/build-your-dataform-project">
+              <a href="/guides">
                 <Button minimal={true}>Docs</Button>
               </a>
               <a href="/introduction/dataform-in-5-minutes">

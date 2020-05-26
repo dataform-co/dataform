@@ -51,7 +51,7 @@ group by 1, 2
 <div className="bp3-callout bp3-icon-info-sign bp3-intent-primary" markdown="1">
 You only need to write <code>SELECT</code> statements in SQLX. Dataform takes care of adding boilerplate statements like <code>CREATE OR REPLACE</code> or <code>INSERT</code> in the following step.
 
-<a href="https://docs.dataform.co/introduction/dataform-5-minutes"><button intent="primary">5 min overview of Dataform and SQLX</button></a></div>
+<a href="/introduction/dataform-in-5-minutes"><button intent="primary">5 min overview of Dataform and SQLX</button></a></div>
 
 </div>
 

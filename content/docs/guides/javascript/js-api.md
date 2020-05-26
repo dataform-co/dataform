@@ -74,11 +74,11 @@ publish("table1", {
 
 Learn more about configuration options for each type of action:
 
-- [`publish()` (Datasets)](datasets)
-- [`declare()` (Declarations)](declarations)
-- [`assert()` (Assertions)](assertions)
-- [`operate()` (Operations)](operations)
-- [`test()` (Tests)](tests)
+- [`publish()` (Datasets)](../datasets/publish)
+- [`declare()` (Declarations)](../declarations)
+- [`assert()` (Assertions)](../assertions)
+- [`operate()` (Operations)](../operations)
+- [`test()` (Tests)](../tests)
 
 ## Using built-in functions
 

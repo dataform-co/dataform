@@ -92,7 +92,7 @@ config {
 
 #### Using separate project-ids for development and production
 
-You can configure separate project-ids for development and production in your `environment.json` file. The process is described on [this page](https://docs.dataform.co/dataform-web/guides/environments#example-use-separate-databases-for-development-and-production-data).
+You can configure separate project-ids for development and production in your `environment.json` file. The process is described on [this page](/dataform-web/scheduling/environments#example-use-separate-databases-for-development-and-production-data).
 
 ## Dataform web features for BigQuery
 

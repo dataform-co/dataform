@@ -230,4 +230,4 @@ SELECT ...
 
 Since incremental datasets are usually timestamp based, it's a best practice to set up dataset partioning on the timestamp field to speed up downstream queries.
 
-For more information, check out the [BigQuery](warehouses/bigquery) and [Redshift](warehouses/redshift) guides.
+For more information, check out the [BigQuery](/warehouses/bigquery) and [Redshift](/warehouses/redshift) guides.

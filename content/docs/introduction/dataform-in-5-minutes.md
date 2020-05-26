@@ -20,7 +20,7 @@ You use Dataform to manage that last part: data transformation in your data ware
 <div className="bp3-callout bp3-icon-info-sign bp3-intent-primary" markdown="1">
 Learn more about ELT with our page on where Dataform fits in the modern data stack.
 
-<a href="https://docs.dataform.co/introduction/modern-data-stack"><button intent="primary">See where Dataform fits in the modern data stack</button></a></div>
+<a href="/introduction/modern-data-stack"><button intent="primary">See where Dataform fits in the modern data stack</button></a></div>
 
 ### Build a single source of truth of data
 
@@ -123,7 +123,7 @@ Assertions defined in the config block get added onto your project’s dependenc
 <img src="https://assets.dataform.co/docs/introduction/assertion_dag.png" max-width="605" alt="DAG with assertions" />
 <figcaption>Assertions defined in the config block are added to the dependency tree of your project. They will run after the table creation / update.</figcaption>
 
-For more advanced use cases, assertions can also be defined in separate SQLX files. See the [assertion page](http://docs.dataform.co/build-your-dataform-project/assertions) on documentation.
+For more advanced use cases, assertions can also be defined in separate SQLX files. See the [assertion page](/guides/assertions) on documentation.
 
 ### Other SQLX features
 
@@ -156,7 +156,7 @@ The SQLX compiler and runner is open source, you can run it locally or on your o
 <div className="bp3-callout bp3-icon-info-sign" markdown="1">
 Lean how Dataform works in more details.
 
-<a href="https://docs.dataform.co/introduction/modern-data-stack"><button>Understand how Dataform works</button></a></div>
+<a href="/introduction/modern-data-stack"><button>Understand how Dataform works</button></a></div>
 
 ## Enable all your team to adopt best practices and be more productive with Dataform web
 

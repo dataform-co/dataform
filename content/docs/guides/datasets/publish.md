@@ -16,7 +16,7 @@ config { type: "view" }
 SELECT 1 AS TEST
 ```
 
-Upon running this query a **view** called `schema.example` will be created (where `schema` is the Dataform schema defined in your [`dataform.json`](configuration#dataform.json) file).
+Upon running this query a **view** called `schema.example` will be created (where `schema` is the Dataform schema defined in your [`dataform.json`](../configuration#dataform.json) file).
 
 Note that non-SQL statements are stripped during query compilation, so the final executable query in this case would be:
 
@@ -24,7 +24,7 @@ Note that non-SQL statements are stripped during query compilation, so the final
 SELECT 1 AS TEST
 ```
 
-For a list of all configuration options for datasets, view the [`ITableConfig`](../reference#ITableConfig) reference documentation.
+For a list of all configuration options for datasets, view the [`ITableConfig`](/reference#ITableConfig) reference documentation.
 
 <div className="bp3-callout bp3-icon-info-sign bp3-intent-warning" markdown="1">
   Trailing semi-colons should be omitted from queries.
@@ -39,7 +39,7 @@ config { type: "table" }
 SELECT 1 AS TEST
 ```
 
-For a list of all configuration options for datasets, view the [`ITableConfig`](../reference#ITableConfig) reference documentation.
+For a list of all configuration options for datasets, view the [`ITableConfig`](/reference#ITableConfig) reference documentation.
 
 ## Referencing other datasets
 
@@ -59,7 +59,7 @@ SELECT * FROM ${ref("source")}
 
 In order to reference the dataset created by a `source.sql` file, the value that should be passed to the `ref()` function is `"source"`, i.e. the name of the file defining the dataset (_without_ the file extension).
 
-For a detailed description of how to use the `ref` function, check out the [`ITableContext`](../reference#ITableContext) reference documentation.
+For a detailed description of how to use the `ref` function, check out the [`ITableContext`](/reference#ITableContext) reference documentation.
 
 The query will be compiled into the following SQL before it is run:
 
@@ -151,12 +151,12 @@ SELECT * FROM ${ref("example")}
 
 ### BigQuery
 
-For more information on configuring BigQuery datasets, such as enabling dataset partitioning, check out the [BigQuery guide](../warehouses-supported/bigquery).
+For more information on configuring BigQuery datasets, such as enabling dataset partitioning, check out the [BigQuery guide](/warehouses/bigquery).
 
 ### Redshift
 
-For more information on configuring Redshift datasets, such as sort keys and dist keys, check out the [Redshift guide](../warehouses-supported/redshift).
+For more information on configuring Redshift datasets, such as sort keys and dist keys, check out the [Redshift guide](/warehouses/redshift).
 
 ### SQL Data Warehouse
 
-For more information on configuring SQL Data Warehouse datasets, such as distribution settings, check out the [SQL Data Warehouse guide](../warehouses-supported/sqldatawarehouse).
+For more information on configuring SQL Data Warehouse datasets, such as distribution settings, check out the [SQL Data Warehouse guide](/warehouses/sqldatawarehouse).

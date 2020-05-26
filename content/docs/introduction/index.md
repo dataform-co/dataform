@@ -14,7 +14,7 @@ Dataform **does the T in ELT** (Extract, Load, Transform) processes. It doesn’
 <div className="bp3-callout bp3-icon-info-sign bp3-intent" markdown="1">
 Learn more about ELT and where Dataform fits in the modern data stack.
 
-<a href="https://docs.dataform.co/introduction/modern-data-stack"><button>See where Dataform fits in the modern data stack</button></a></div>
+<a href="/introduction/modern-data-stack"><button>See where Dataform fits in the modern data stack</button></a></div>
 
 By using Dataform and its best practices, data teams are more productive and build new data tables that are well defined, tested and documented for use by the entire company.
 
@@ -41,8 +41,8 @@ In its simplest form, Dataform helps you run SQL commands in your data warehouse
 <div className="bp3-callout bp3-icon-info-sign" markdown="1">
 Learn more about how Dataform works.
 
-<a href="https://docs.dataform.co/introduction/dataform-5-minutes"><button intent="primary">5 min overview of Dataform</button></a>
-<a href="https://docs.dataform.co/introduction/how-dataform-works"><button>How Dataform works technically</button></a>
+<a href="/introduction/dataform-in-5-minutes"><button intent="primary">5 min overview of Dataform</button></a>
+<a href="/introduction/how-dataform-works"><button>How Dataform works technically</button></a>
 
 </div>
 

@@ -26,7 +26,7 @@ curl -H "Authorization: Bearer 5235783003799552|s+N8gAs72qbi90pFEv7yW/KBImTshRdB
 
 Runs can be created by making a `POST` call to the `RunCreate` method.
 
-For detailed documentation on supported parameters, see the [`RunCreate`](../api-reference#RunCreate) reference documentation.
+For detailed documentation on supported parameters, see the [`RunCreate`](api-reference#RunCreate) reference documentation.
 
 For example, to create a run for the project ID `1234` and to trigger a specific schedule name:
 
@@ -34,7 +34,7 @@ For example, to create a run for the project ID `1234` and to trigger a specific
 curl -H "Authorization: Bearer 5235783003799552|s+N8gAs72qbi90pFEv7yW/KBImTshRdBoVKjjFA7lD0=|1" -X POST -d '{ "scheduleName": "some_schedule" }' https://api.dataform.co/v1/project/1234/run
 ```
 
-This will return a [RunGetResponse](../api-reference#/definitions/v1RunCreateResponse), that includes the created run's ID:
+This will return a [RunGetResponse](api-reference#/definitions/v1RunCreateResponse), that includes the created run's ID:
 
 ```json
 {
@@ -44,7 +44,7 @@ This will return a [RunGetResponse](../api-reference#/definitions/v1RunCreateRes
 
 ## Getting run information
 
-After creating a run, the status of the run can be checked with the [`RunGet`](../api-reference#RunGet) method.
+After creating a run, the status of the run can be checked with the [`RunGet`](api-reference#RunGet) method.
 
 This should be a `GET` request to the appropriate path, for example for project ID `1234` and a run ID `5678`:
 
@@ -52,7 +52,7 @@ This should be a `GET` request to the appropriate path, for example for project 
 curl -H "Authorization: Bearer 5235783003799552|s+N8gAs72qbi90pFEv7yW/KBImTshRdBoVKjjFA7lD0=|1" https://api.dataform.co/v1/project/1234/run/5678
 ```
 
-This will return a [`RunGetResponse`](../api-reference#/definitions/v1RunGetResponse) such as:
+This will return a [`RunGetResponse`](api-reference#/definitions/v1RunGetResponse) such as:
 
 ```json
 {
