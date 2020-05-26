@@ -14,7 +14,7 @@
     "onCommand:dataform.showSidebar",
     "onCommand:dataform.addToPanel",
     "onCommand:dataform.run",
-    "onLanguage:sqlx"
+    "workspaceContains:**/*.sqlx"
   ],
   "main": "extension.js",
   "contributes": {
