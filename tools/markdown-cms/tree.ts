@@ -80,12 +80,15 @@ export class Tree<T> implements ITree<T> {
   public sort() {
     this.children.sort((a: ITree<T>, b: ITree<T>) =>
       a.attributes.priority == null && b.attributes.priority == null
-        ? a.attributes.title > b.attributes.title
+        ? // If no priorities, compare titles.
+          a.attributes.title > b.attributes.title
           ? 1
           : -1
         : !(a.attributes.priority == null || b.attributes.priority == null)
-        ? a.attributes.priority - b.attributes.priority
-        : a.attributes.priority == null
+        ? // If both have priorities set, compare priority.
+          a.attributes.priority - b.attributes.priority
+        : // Take any priority set as higher priority than one without.
+        a.attributes.priority == null
         ? 1
         : -1
     );

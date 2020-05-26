@@ -18,7 +18,6 @@ ul.pageLinks {
 }
 
 .onThisPage {
-  /* This the standard h5 so it should have been implemented elsewhere*/
   color: var(--textPrimary);
   font-family: Poppins, sans-serif;
   font-style: normal;

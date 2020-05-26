@@ -25,7 +25,7 @@ export interface IProps {
 }
 
 function MaybeCode(props: React.PropsWithChildren<{ className: string }>) {
-  if (props.className && props.className.startsWith("language")) {
+  if (props.className?.startsWith("language")) {
     const content = String(props.children).trim();
     const lines = content.split("\n");
     const firstLine = lines[0].trim();
