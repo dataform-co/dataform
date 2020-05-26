@@ -1,6 +1,6 @@
 ---
 title: Re-use code with includes
-subtitle: Learn how to re-use code across your project with includes
+subtitle: Learn how to re-use code across your project with includes.
 priority: 1
 ---
 

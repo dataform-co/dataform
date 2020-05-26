@@ -1,6 +1,6 @@
 ---
 title: Amazon Redshift
-subtitle: Authentification, configuration options, and content for Redshift
+subtitle: Authentification, configuration options, and content for Redshift.
 priority: 2
 ---
 

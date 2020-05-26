@@ -1,6 +1,6 @@
 ---
 title: Postgres
-subtitle: Authentification and configuration options for Postgres
+subtitle: Authentification and configuration options for Postgres.
 ---
 
 ## Authentification

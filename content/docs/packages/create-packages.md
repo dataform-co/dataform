@@ -1,6 +1,6 @@
 ---
 title: Create new packages
-subtitle: Learn how to create new packages on Dataform
+subtitle: Learn how to create new packages on Dataform.
 priority: 1
 ---
 

@@ -1,6 +1,6 @@
 ---
 title: Publish datasets
-subtitle: Learn how to publish tables and views in your warehouse
+subtitle: Learn how to publish tables and views in your warehouse.
 priority: 0
 ---
 

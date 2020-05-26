@@ -1,6 +1,6 @@
 ---
 title: Ecommerce store on Redshift
-subtitle: A fictional ecommerce store project on a  Redshift data warehouse
+subtitle: A fictional ecommerce store project on a Redshift data warehouse.
 priority: 3
 ---
 

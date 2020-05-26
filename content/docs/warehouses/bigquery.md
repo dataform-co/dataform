@@ -1,6 +1,6 @@
 ---
 title: Google BigQuery
-subtitle: Authentification, configuration options, and content for BigQuery
+subtitle: Authentification, configuration options, and content for BigQuery.
 priority: 1
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: Warehouses supported
+title: Supported warehouses
 subtitle: Learn about which data warehouses Dataform work with and how to configure them.
 priority: 1
 icon: database

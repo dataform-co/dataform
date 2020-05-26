@@ -1,6 +1,6 @@
 ---
 title: ELT and the modern data stack
-subtitle: An introduction to ELT and where Dataform fits in
+subtitle: An introduction to ELT and where Dataform fits in.
 priority: 1
 ---
 

@@ -1,6 +1,6 @@
 ---
 title: Document datasets
-subtitle: Learn how to add data documentation for your tables and views
+subtitle: Learn how to add data documentation for your tables and views.
 priority: 3
 ---
 

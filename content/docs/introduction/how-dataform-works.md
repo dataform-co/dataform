@@ -1,6 +1,6 @@
 ---
 title: How Dataform works
-subtitle: Learn how Dataform compiles your project and runs it in your warehouse
+subtitle: Learn how Dataform compiles your project and runs it in your warehouse.
 priority: 3
 ---
 

@@ -1,6 +1,6 @@
 ---
 title: Snowflake
-subtitle: Authentification, configuration options, and content for Snowflake
+subtitle: Authentification, configuration options, and content for Snowflake.
 priority: 0
 ---
 

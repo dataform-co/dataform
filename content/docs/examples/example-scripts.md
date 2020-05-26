@@ -1,6 +1,6 @@
 ---
 title: Example scripts
-subtitle: A list of examples of scripts to use in your Dataform projects
+subtitle: A list of examples of scripts to use in your Dataform projects.
 priority: 1
 ---
 

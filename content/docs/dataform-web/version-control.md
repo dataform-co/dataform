@@ -1,6 +1,6 @@
 ---
 title: Version control
-subtitle: Learn how to use version control in Dataform web
+subtitle: Learn how to use version control in Dataform Web.
 priority: 0
 ---
 

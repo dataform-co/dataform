@@ -1,6 +1,6 @@
 ---
 title: SQLX
-subtitle: Learn about the structure and features of SQLX files
+subtitle: Learn about the structure and features of SQLX files.
 priority: 1
 ---
 

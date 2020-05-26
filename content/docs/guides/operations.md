@@ -1,6 +1,6 @@
 ---
 title: Write custom SQL operations
-subtitle: Learn how to define custom SQL operations in Dataform
+subtitle: Learn how to define custom SQL operations in Dataform.
 priority: 4
 ---
 

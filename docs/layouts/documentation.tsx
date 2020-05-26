@@ -88,7 +88,7 @@ export default class Documentation extends React.Component<IProps> {
                     current.path !== child.path
                 )
                 .map(child => (
-                  <Card masonryCard={true} header={child.attributes?.title} key={child.path}>
+                  <Card masonryCard={true} header={child.attributes?.title} key={child.path} className={styles.whatsNextCard}>
                     <p>{child.attributes?.subtitle}</p>
                     <CardActions align="right">
                       <a href={getLink(child.path, this.props.version)}>

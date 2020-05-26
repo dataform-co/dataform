@@ -1,6 +1,6 @@
 ---
 title: Ecommerce store on Snowflake
-subtitle: A fictional ecommerce store project on a Snowflake data warehouse
+subtitle: A fictional ecommerce store project on a Snowflake data warehouse.
 priority: 2
 ---
 

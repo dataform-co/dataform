@@ -1,6 +1,6 @@
 ---
 title: Git access tokens
-subtitle: Learn how to use Git access tokens
+subtitle: Learn how to use Git access tokens for connecting to git providers.
 priority: 1
 ---
 

@@ -1,6 +1,6 @@
 ---
 title: Test data quality with assertions
-subtitle: Learn how to test data quality with assertions
+subtitle: Learn how to test data quality with assertions.
 priority: 3
 ---
 
