@@ -118,4 +118,4 @@ If you are using Dataform web and are having trouble connecting to Redshift, ple
 
 If you have other questions related to Redshift, you can join our slack community and ask question on the #Redshift channel.
 
-<a href="https://slack.dataform.co"><button>Join dataform-users on slack</button></a>
+<a href="https://join.slack.com/t/dataform-users/shared_invite/zt-dark6b7k-r5~12LjYL1a17Vgma2ru2A"><button>Join dataform-users on slack</button></a>

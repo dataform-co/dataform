@@ -70,6 +70,6 @@ By using Dataform and its best practices, data teams are able to manage data sig
 
 You can join our Slack group and discuss with our team and hundreds of other data professionals using Dataform.
 
-<a href="https://slack.dataform.co" target="_blank" rel="noopener"><button intent="primary">Join Dataform slack</button></a></div>
+<a href="https://join.slack.com/t/dataform-users/shared_invite/zt-dark6b7k-r5~12LjYL1a17Vgma2ru2A" target="_blank" rel="noopener"><button intent="primary">Join Dataform slack</button></a></div>
 
 If you are encountering any issue on the Dataform web app, please contact our team using the intercom messenger icon on the bottom right of the page.

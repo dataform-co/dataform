@@ -55,8 +55,8 @@ export class Docs extends React.Component<IProps> {
           features, and understand how it works.
         </p>
         <CardActions>
-          <Button intent="primary">Read the introduction</Button>
-          <Button>Understand Dataform and SQLX in 5 min</Button>
+         <a href="introduction"><Button intent="primary">Read the introduction</Button></a>
+         <a href="introduction/dataform-in-5-minutes"><Button>Understand Dataform and SQLX in 5 min</Button></a>
         </CardActions>
 
         <h2>Join our community</h2>
@@ -65,7 +65,9 @@ export class Docs extends React.Component<IProps> {
           troubleshoot problems.
         </p>
         <CardActions>
-          <Button intent="primary">Join dataform-users on slack</Button>
+          <a href="https://join.slack.com/t/dataform-users/shared_invite/zt-dark6b7k-r5~12LjYL1a17Vgma2ru2A">
+            <Button intent="primary">Join dataform-users on slack</Button>
+          </a>
         </CardActions>
       </Documentation>
     );
