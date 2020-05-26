@@ -1,0 +1,19 @@
+.sitemapMasonry {
+  columns: 3 150px;
+  column-gap: 20px;
+  margin: 10px 0px 10px;
+}
+
+.sitemapLevel0 {
+  display: inline-block;
+  width: 100%;
+  padding: 10px 0px;
+}
+
+.sitemapLevel1 {
+  padding: 5px 0px;
+}
+
+.sitemapMasonry > a {
+  color: var(--linkColor);
+}

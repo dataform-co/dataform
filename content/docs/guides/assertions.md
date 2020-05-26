@@ -1,6 +1,7 @@
 ---
-title: Assertions
-priority: 2
+title: Test data quality with assertions
+subtitle: Learn how to test data quality with assertions.
+priority: 3
 ---
 
 ## Introduction
@@ -21,9 +22,8 @@ Dataform provides a convenient way to define assertions as part of a dataset's `
 
 Here's a complete example:
 
-`definitions/my_table.sqlx:`
-
 ```js
+// definitions/my_table.sqlx
 config {
   type: "table",
   assertions: {
@@ -101,9 +101,8 @@ Assertions can also be defined manually for more advanced use cases, or for test
 
 To write a manual assertion, create a new SQLX file and set the type to `assertion` in the `config` block:
 
-`definitions/custom_assertion.sqlx`
-
 ```js
+// definitions/custom_assertion.sqlx
 config {
   type: "assertion"
 }
@@ -114,6 +113,7 @@ To write the assertion, write a new SQL query below the config block that should
 For example, to assert that fields `a`, `b`, and `c` are never `NULL` in a dataset named `sometable`, create a file `definitions/assert_sometable_not_null.sqlx`:
 
 ```js
+// definitions/assert_sometable_not_null.sqlx
 config { type: "assertion" }
 
 SELECT
@@ -178,6 +178,7 @@ For example, given two datasets called `table1` and `table2`, and an assertion c
 runs if `table1_not_null` passes, you could add it as a dependency in `definitions/table2.sqlx`:
 
 ```js
+// definitions/table2.sqlx
 config {
   type: "view",
   dependencies: [ "table1_not_null" ]

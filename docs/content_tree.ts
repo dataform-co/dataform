@@ -4,7 +4,7 @@ import { Tree } from "df/tools/markdown-cms/tree";
 import NodeCache from "node-cache";
 
 export interface IExtraAttributes {
-  priority?: number;
+  icon?: string;
   redirect?: string;
 }
 
@@ -55,6 +55,11 @@ async function getPackageTrees(): Promise<Array<Tree<IExtraAttributes>>> {
         owner: "dataform-co",
         repo: "dataform-bq-audit-logs",
         title: "BigQuery Audit Logs"
+      },
+      {
+        owner: "dataform-co",
+        repo: "dataform-scd",
+        title: "Slowly changing dimensions"
       }
     ].map(async ({ owner, repo, title }) => {
       const tree = await new GitHubCms<IExtraAttributes>({
@@ -86,9 +91,18 @@ export async function getContentTree(version = "local"): Promise<Tree<IExtraAttr
   // Add some custom paths to the tree.
 
   tree.addChild(
+    new Tree("", "", {
+      title: "Home",
+      priority: -1,
+      icon: "home"
+    })
+  );
+
+  tree.addChild(
     new Tree("reference", "", {
       title: "API Reference",
-      priority: 3
+      priority: 10,
+      icon: "git-repo"
     })
   );
 
