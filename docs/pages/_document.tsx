@@ -18,7 +18,7 @@ export default class DefaultDocument extends Document {
           />
           <link
             rel="stylesheet"
-            href="/blueprint.css"
+            href="/global.css"
           />
           <link rel="shortcut icon" href={"/static/images/favicon.ico"} type="image/png" />
         </Head>

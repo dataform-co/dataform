@@ -1,3 +1,3 @@
 ---
-redirect: ../../warehouses-supported
+redirect: ../../warehouses
 ---
