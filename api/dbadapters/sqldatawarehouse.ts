@@ -11,6 +11,10 @@ const TABLE_TYPE_COL_NAME = "table_type";
 const COLUMN_NAME_COL_NAME = "column_name";
 const DATA_TYPE_COL_NAME = "data_type";
 const IS_NULLABLE_COL_NAME = "is_nullable";
+const DB_CONNECTION_TIMEOUT = 300000; //5 minute connection timeout
+const DB_REQUEST_TIMEOUT = 3600000; //1 hour request timeout
+const DB_CON_LIMIT = 10; //mssql default value of 10 concurrent requests
+
 
 export class SQLDataWarehouseDBAdapter implements IDbAdapter {
   public static async create(credentials: Credentials) {
@@ -28,6 +32,12 @@ export class SQLDataWarehouseDBAdapter implements IDbAdapter {
         user: sqlDataWarehouseCredentials.username,
         password: sqlDataWarehouseCredentials.password,
         database: sqlDataWarehouseCredentials.database,
+        connectionTimeout: DB_CONNECTION_TIMEOUT,
+        requestTimeout: DB_REQUEST_TIMEOUT,
+        pool:{
+          min: 0,
+          max: DB_CON_LIMIT
+        },
         options: {
           encrypt: true
         }
@@ -105,7 +115,7 @@ export class SQLDataWarehouseDBAdapter implements IDbAdapter {
   public async table(target: dataform.ITarget): Promise<dataform.ITableMetadata> {
     const [tableData, columnData] = await Promise.all([
       this.execute(
-        `select ${TABLE_TYPE_COL_NAME} from ${INFORMATION_SCHEMA_SCHEMA_NAME}.tables 
+        `select ${TABLE_TYPE_COL_NAME} from ${INFORMATION_SCHEMA_SCHEMA_NAME}.tables
           where ${TABLE_SCHEMA_COL_NAME} = '${target.schema}' AND ${TABLE_NAME_COL_NAME} = '${target.name}'`
       ),
       this.execute(
@@ -140,7 +150,7 @@ export class SQLDataWarehouseDBAdapter implements IDbAdapter {
 
   public async prepareSchema(database: string, schema: string): Promise<void> {
     await this.execute(
-      `if not exists ( select schema_name from ${INFORMATION_SCHEMA_SCHEMA_NAME}.schemata where schema_name = '${schema}' ) 
+      `if not exists ( select schema_name from ${INFORMATION_SCHEMA_SCHEMA_NAME}.schemata where schema_name = '${schema}' )
             begin
               exec sp_executesql N'create schema ${schema}'
             end `
