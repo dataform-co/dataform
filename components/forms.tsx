@@ -14,7 +14,7 @@ import { useState } from "react";
 
 export interface IValidationRule<T> {
   predicate: (val: T) => boolean;
-  message: string;
+  message: string | ((val: T) => string);
 }
 
 export class ValidationRules {
@@ -33,6 +33,42 @@ export class ValidationRules {
       predicate: v => !v || emailRegex.test(v),
       message: "One of the emails is in an invalid format."
     };
+  }
+
+  public static url(): IValidationRule<string> {
+    return {
+      // tslint:disable-next-line: tsr-detect-unsafe-regexp
+      predicate: v => !v || !!v.match(/^https:\/\/(-\.)?([^\s\/?\.#-]+\.?)+(\/[^\s]*)?$/i),
+      message: "URL is invalid."
+    };
+  }
+
+  public static noWhitespace(): IValidationRule<string> {
+    return {
+      predicate: v => !v?.match(/\s/),
+      message: "May not contain whitespace."
+    };
+  }
+
+  public static forArray<T>(validationRule: IValidationRule<T>): IValidationRule<T[]> {
+    return {
+      predicate: values => values.every(value => validationRule.predicate(value)),
+      message: values =>
+        values
+          .filter(value => !validationRule.predicate(value))
+          .map(value =>
+            typeof validationRule.message === "string"
+              ? validationRule.message
+              : validationRule.message(value)
+          )
+          .join(" ")
+    };
+  }
+
+  public static errors<T>(value: T, ...rules: Array<IValidationRule<T>>): string[] {
+    return rules
+      .filter(rule => !rule.predicate(value))
+      .map(rule => (typeof rule.message === "string" ? rule.message : rule.message(value)));
   }
 }
 
@@ -105,9 +141,7 @@ class FormItemState<T> {
   }
 
   public valid = () => {
-    const validationErrors = this.rules
-      .filter(rule => !rule.predicate(this.valueState[0]))
-      .map(rule => rule.message);
+    const validationErrors = ValidationRules.errors(this.valueState[0], ...this.rules);
     return validationErrors && validationErrors.length === 0;
   };
 
@@ -122,10 +156,7 @@ class FormItemState<T> {
   public set = (value: T) => {
     const [_, setState] = this.valueState;
     const [__, setErrors] = this.errorsState;
-    const validationErrors = this.rules
-      .filter(rule => !rule.predicate(value))
-      .map(rule => rule.message);
-
+    const validationErrors = ValidationRules.errors(value, ...this.rules);
     const ___ = Promise.all([setState(value), setErrors(validationErrors)]);
   };
 
