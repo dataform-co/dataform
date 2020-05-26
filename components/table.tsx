@@ -3,7 +3,7 @@ import * as styles from "df/components/table.css";
 import * as React from "react";
 
 export interface IRow {
-  cells?: Array<React.ReactElement | string>;
+  cells: Array<React.ReactElement | string>;
   colspans?: number[];
   href?: string;
   onClick?: () => void;
@@ -19,20 +19,21 @@ export interface ITableProps {
   columnWidths?: number[];
 }
 
-export const Row = (
-  row: {
-    children: React.ReactElement;
-  } & IRow
-) => {
-  if (row.href || row.onClick) {
+export const Row = ({
+  colspans,
+  ...rest
+}: {
+  children: React.ReactElement;
+} & IRow) => {
+  if (rest.href || rest.onClick) {
     return (
-      <a className={styles.tableRowLink} {...row}>
-        {row.children}
+      <a className={styles.tableRowLink} {...rest}>
+        {rest.children}
       </a>
     );
   }
 
-  return <tr>{row.children}</tr>;
+  return <tr>{rest.children}</tr>;
 };
 
 export const Table = ({ columnWidths, headers, rows, className, condensed }: ITableProps) => (
