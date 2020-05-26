@@ -21,4 +21,4 @@ This project transforms four raw data tables (`orders` from Shopify, `charges` f
 
 <a href="https://github.com/dataform-co/dataform-example-project" target="_blank"><button>See the example on GitHub</button></a>
 
-<a href="https://app.dataform.co/#/6470156092964864/overview"><button intent="primary">See the example on Dataform web</button></a> (Viewing the example project on Dataform web requires sign up)
+<a href="https://app.dataform.co/#/5702806545629184/overview"><button intent="primary">See the example on Dataform web</button></a> (Viewing the example project on Dataform web requires sign up)
