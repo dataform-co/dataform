@@ -61,7 +61,7 @@ message Environments {
       bool disabled = 5;
   
       message NotificationRequirement {
-        repeated string channels = 1;
+        string channel = 1;
   
         enum CompletionStatus {
           UNKNOWN = 0;
