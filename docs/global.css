@@ -37,3 +37,10 @@
 :global pre {
   font-size: 0.95em;
 }
+
+figcaption {
+  display: block;
+  text-align: center;
+  font-size: 14px;
+  margin-bottom: 20px;
+}

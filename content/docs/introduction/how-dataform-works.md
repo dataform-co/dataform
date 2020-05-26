@@ -9,8 +9,8 @@ priority: 3
 Each Dataform project is a repository with a collection of JSON configuration files, SQLX files, and sometimes JS files. Dataform projects contain three types of files:
 
 - Config files
-- 📁Definitions
-- 📁Includes
+- Definitions
+- Includes
 
 **Config files** let you configure your Dataform project. It includes general configuration like the type of warehouse you are using or what schema Dataform should use when creating new tables and views. It also includes configuration for schedules and more advanced use-cases like packages and environments.
 
