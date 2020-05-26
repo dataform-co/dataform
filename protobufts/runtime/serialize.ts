@@ -177,6 +177,103 @@ export class Serializer {
   }
 }
 
+export class NewSerializer {
+  private readonly output: number[] = [];
+
+  public double(fieldNumber: number, val?: number | number[]): this {
+    return this;
+  }
+
+  public float(fieldNumber: number, val?: number | number[]): this {
+    return this;
+  }
+
+  public int32(fieldNumber: number, val?: number | number[]): this {
+    this.newTag(fieldNumber, WireType.VARINT);
+    if (Array.isArray(val)) {
+    } else {
+      this.writeVarInt(val);
+    }
+    return this;
+  }
+
+  public fixed32(fieldNumber: number, val?: number | number[]): this {
+    return this;
+  }
+
+  public uint32(fieldNumber: number, val?: number | number[]): this {
+    return this;
+  }
+
+  public sfixed32(fieldNumber: number, val?: number | number[]): this {
+    return this;
+  }
+
+  public sint32(fieldNumber: number, val?: number | number[]): this {
+    return this;
+  }
+
+  public enum(fieldNumber: number, val?: number | number[]): this {
+    return this;
+  }
+
+  public int64(fieldNumber: number, val?: Long | Long[]): this {
+    return this;
+  }
+
+  public uint64(fieldNumber: number, val?: Long | Long[]): this {
+    return this;
+  }
+
+  public fixed64(fieldNumber: number, val?: Long | Long[]): this {
+    return this;
+  }
+
+  public sfixed64(fieldNumber: number, val?: Long | Long[]): this {
+    return this;
+  }
+
+  public sint64(fieldNumber: number, val?: Long | Long[]): this {
+    return this;
+  }
+
+  public bool(fieldNumber: number, val?: boolean | boolean[]): this {
+    return this;
+  }
+
+  public bytes(fieldNumber: number, val?: Uint8Array | Uint8Array[]): this {
+    return this;
+  }
+
+  public string(fieldNumber: number, val?: string | string[]): this {
+    return this;
+  }
+
+  public message(fieldNumber: number, val?: IMessage | IMessage[]): this {
+    return this;
+  }
+
+  public finish(): Uint8Array {
+    return Uint8Array.from(this.output);
+  }
+
+  private newTag(fieldNumber: number, wireType: WireType) {
+    // See https://developers.google.com/protocol-buffers/docs/encoding#structure.
+    this.writeVarInt((fieldNumber << 3) | wireType);
+  }
+
+  private writeVarInt(varint: number) {
+    while (varint) {
+      let nextByte = varint & 0b111111;
+      varint >>>= 7;
+      if (varint) {
+        nextByte = 0b1000000 | nextByte;
+      }
+      this.output.push(nextByte);
+    }
+  }
+}
+
 enum WireType {
   VARINT = 0,
   SIXTY_FOUR_BIT = 1,

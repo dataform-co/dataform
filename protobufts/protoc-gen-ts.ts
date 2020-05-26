@@ -147,7 +147,9 @@ function getImportLines(
   if (needsLongImport) {
     imports.push('import Long from "long";');
   }
-  imports.push('import { IMessage, Serializer } from "df/protobufts/runtime/serialize";');
+  imports.push(
+    'import { IMessage, Serializer, NewSerializer } from "df/protobufts/runtime/serialize";'
+  );
   return imports;
 }
 
@@ -198,10 +200,10 @@ ${descriptorProto.field
   .join("\n")}
 
   public serialize(): Uint8Array {
-    return this.serializeInternal(new Serializer()).finish();
+    return this.serializeInternal(new NewSerializer()).finish();
   }
 
-  private serializeInternal(serializer: Serializer): Serializer {
+  private serializeInternal(serializer: NewSerializer): NewSerializer {
     return serializer
 ${descriptorProto.field
   .map(
