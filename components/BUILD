@@ -5,13 +5,6 @@ load("@df//tools:css_typings.bzl", "css_typings")
 load("@io_bazel_rules_sass//:defs.bzl", "multi_sass_binary")
 load("@io_bazel_rules_sass//:defs.bzl", "sass_library")
 
-sass_library(
-    name = "colors",
-    srcs = [
-        "_colors.scss",
-    ],
-)
-
 multi_sass_binary(
     name = "sass",
     srcs = glob(["*.scss"]),
@@ -31,7 +24,6 @@ ts_library(
     srcs = glob(["*.tsx"]),
     data = [
         ":sass",
-        "//components/blueprint:sass",
     ],
     deps = [
         ":css_typings",

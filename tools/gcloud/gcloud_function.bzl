@@ -1,21 +1,26 @@
+def _fullPath(label):
+    path = label.name
+    if len(label.package) > 0:
+        path = label.package + "/" + path
+    if len(label.workspace_root) > 0:
+        path = label.workspace_root + "/" + path
+    return path
+
 def _deploy_nodejs_gcloud_function_impl(ctx, trigger_flag):
     function_name = ctx.attr.function_name
 
-    pkg_npm = ctx.attr.pkg_npm
-    pkg_npm_path = pkg_npm.label.package + "/" + pkg_npm.label.name
-
     file_content = [
-        "gcloud functions deploy %s" % function_name,
-        "--source %s" % pkg_npm_path,
+        "%s functions deploy %s" % (_fullPath(ctx.attr.gcloud.label), function_name),
+        "--source %s" % ctx.build_file_path[:-6],
         "--runtime nodejs10",
         trigger_flag,
     ]
-    runfiles = ctx.runfiles(files = ctx.files.pkg_npm)
+    runfiles = ctx.runfiles(files = ctx.files.gcloud + ctx.files.srcs)
 
     env_vars_file = ctx.attr.env_vars_file
     if (env_vars_file):
-        env_vars_file_path = env_vars_file.label.package + "/" + env_vars_file.label.name
-        file_content.append("--env-vars-file %s" % env_vars_file_path)
+        env_vars_file_path = _fullPath(env_vars_file.label)
+        file_content += ["--env-vars-file", env_vars_file_path]
         runfiles = runfiles.merge(ctx.runfiles(transitive_files = env_vars_file.files))
 
     out_file = ctx.actions.declare_file(ctx.attr.name)
@@ -33,8 +38,12 @@ def _deploy_pubsub_nodejs_gcloud_function_impl(ctx):
 deploy_http_nodejs_gcloud_function = rule(
     implementation = _deploy_http_nodejs_gcloud_function_impl,
     attrs = {
+        "gcloud": attr.label(default = "@gcloud_sdk//:bin/gcloud", allow_single_file = True),
         "function_name": attr.string(default = "", mandatory = True, values = []),
-        "pkg_npm": attr.label(mandatory = True),
+        # TODO: This rule currently assumes that all srcs are inside the calling BUILD file's package.
+        # We should fix that somehow, possibly by trying to use rollup to obtain a single file, or perhaps
+        # by experimenting with uploading a zip file containing all required source files.
+        "srcs": attr.label_list(mandatory = True, allow_files = True),
         "env_vars_file": attr.label(allow_single_file = True),
     },
     executable = True,
@@ -43,9 +52,13 @@ deploy_http_nodejs_gcloud_function = rule(
 deploy_pubsub_nodejs_gcloud_function = rule(
     implementation = _deploy_pubsub_nodejs_gcloud_function_impl,
     attrs = {
+        "gcloud": attr.label(default = "@gcloud_sdk//:bin/gcloud", allow_single_file = True),
         "function_name": attr.string(default = "", mandatory = True, values = []),
         "topic_name": attr.string(default = "", mandatory = True, values = []),
-        "pkg_npm": attr.label(mandatory = True),
+        # TODO: This rule currently assumes that all srcs are inside the calling BUILD file's package.
+        # We should fix that somehow, possibly by trying to use rollup to obtain a single file, or perhaps
+        # by experimenting with uploading a zip file containing all required source files.
+        "srcs": attr.label_list(mandatory = True, allow_files = True),
         "env_vars_file": attr.label(allow_single_file = True),
     },
     executable = True,

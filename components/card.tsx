@@ -7,6 +7,7 @@ export interface ICardProps {
   headerRight?: React.ReactNode;
   minimal?: boolean;
   fullWidth?: boolean;
+  masonryCard?: boolean;
 }
 
 export const Card = ({
@@ -16,6 +17,7 @@ export const Card = ({
   className,
   minimal,
   fullWidth,
+  masonryCard,
   ...rest
 }: React.PropsWithChildren<ICardProps> & React.HTMLAttributes<HTMLDivElement>) => (
   <div
@@ -24,7 +26,8 @@ export const Card = ({
       className,
       styles.cardContainer,
       minimal ? styles.minimal : "",
-      !header && !headerRight ? styles.headerless : ""
+      !header && !headerRight ? styles.headerless : "",
+      masonryCard ? styles.masonryCardContainer : styles.flexCardContainer
     ].join(" ")}
   >
     <div className={styles.cardMainContainer}>
@@ -38,7 +41,7 @@ export const Card = ({
       )}
       <div
         className={`${styles.cardContentContainer} ${
-          fullWidth ? styles.fullWithCardContentContainer : ""
+          fullWidth ? styles.fullWidthCardContentContainer : ""
         }`}
       >
         {children}
@@ -103,6 +106,18 @@ export const CardList = ({
 }: React.PropsWithChildren<{}> & React.HTMLAttributes<HTMLDivElement>) => {
   return (
     <div className={[styles.cardList, className].join(" ")} {...rest}>
+      {children}
+    </div>
+  );
+};
+
+export const CardMasonry = ({
+  children,
+  className,
+  ...rest
+}: ICardGridProps & React.PropsWithChildren<{}> & React.HTMLAttributes<HTMLDivElement>) => {
+  return (
+    <div className={[styles.cardMasonry, className].join(" ")} {...rest}>
       {children}
     </div>
   );
