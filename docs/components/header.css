@@ -47,6 +47,7 @@
   display: inline-block;
   vertical-align: top;
   margin-top: 18px;
+  color: var(--primary);
 }
 
 .githubLogo {

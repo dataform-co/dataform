@@ -29,6 +29,7 @@ function MaybeCode(props: React.PropsWithChildren<{ className: string }>) {
     const content = String(props.children).trim();
     const lines = content.split("\n");
     const firstLine = lines[0].trim();
+    // If the first line is a comment following a filename pattern, create a file header.
     const matches = firstLine.match(/(\/\/|\-\-)\s+(\S+\.\w+)/);
     if (matches) {
       const fileName = matches[2];
