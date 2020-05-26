@@ -41,8 +41,7 @@ export default class Documentation extends React.Component<IProps> {
     const parentPath = pathParts.slice(0, Math.max(pathParts.length - 1, 0)).join("/");
     const parent = tree.getChild(parentPath);
     const darkModeSaved =
-      typeof localStorage !== "undefined" &&
-      Boolean(localStorage.getItem("dataform-dark-mode") === "true");
+      typeof localStorage !== "undefined" && localStorage.getItem("dataform-dark-mode") === "true";
     if (darkModeSaved) {
       document.body.classList.add("dark");
     }

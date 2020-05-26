@@ -7,8 +7,9 @@ Licensed under the Apache License, Version 2.0.
 
 .bp3-callout {
   line-height: 1.5;
+  font-size: 14px;
   position: relative;
-  border-radius: 5px;
+  border-radius: 3px;
   background-color: rgba(138, 155, 168, 0.25);
   width: unset;
   padding: 10px 12px 9px;
@@ -25,8 +26,8 @@ Licensed under the Apache License, Version 2.0.
   -moz-osx-font-smoothing: grayscale;
   -webkit-font-smoothing: antialiased;
   position: absolute;
-  top: 23px;
-  left: 13px;
+  top: 10px;
+  left: 10px;
   color: var(--textSecondary);
 }
 .bp3-callout.bp3-callout-icon {
@@ -34,8 +35,8 @@ Licensed under the Apache License, Version 2.0.
 }
 .bp3-callout.bp3-callout-icon > .bp3-icon:first-child {
   position: absolute;
-  top: 23px;
-  left: 13px;
+  top: 10px;
+  left: 10px;
   color: var(--textSecondary);
 }
 .bp3-callout .bp3-heading {
