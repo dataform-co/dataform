@@ -243,7 +243,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
     );
     const queries = actions.map(action => {
       const definitionHash = hashExecutionAction(action);
-      const dependencies = action.dependencyTargets;
+      const dependencies = action.transitiveInputs;
       const metadata = tableMetadataMap.get(action.target);
       const persistTable = dataform.PersistedTableMetadata.create({
         target: action.target,

@@ -1,8 +1,8 @@
 import { assert, config, expect } from "chai";
-import { Builder, compile, credentials, format, prune, query, Runner } from "df/api";
+import { Builder, credentials, format, prune, query, Runner } from "df/api";
 import { IDbAdapter } from "df/api/dbadapters";
 import { BigQueryDbAdapter } from "df/api/dbadapters/bigquery";
-import * as utils from "df/core/utils";
+import { actionsByStringifiedTarget } from "df/api/utils/graphs";
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
 import { asPlainObject, cleanSql } from "df/tests/utils";
@@ -46,11 +46,18 @@ suite("@dataform/api", () => {
     ]
   });
 
+  const TEST_ACTIONS = actionsByStringifiedTarget(TEST_GRAPH);
+
   const TEST_STATE = dataform.WarehouseState.create({ tables: [] });
 
   suite("build", () => {
     test("exclude_disabled", () => {
-      const builder = new Builder(TEST_GRAPH, { includeDependencies: true }, TEST_STATE);
+      const builder = new Builder(
+        TEST_GRAPH,
+        TEST_ACTIONS,
+        { includeDependencies: true },
+        TEST_STATE
+      );
       const executionGraph = builder.build();
 
       const actionA = executionGraph.actions.find(n => n.name === "schema.a");
@@ -74,7 +81,12 @@ suite("@dataform/api", () => {
           tables: [{ name: "a", target: { schema: "schema", name: "a" } }]
         });
 
-        const builder = new Builder(graphWithErrors, {}, TEST_STATE);
+        const builder = new Builder(
+          graphWithErrors,
+          actionsByStringifiedTarget(graphWithErrors),
+          {},
+          TEST_STATE
+        );
         builder.build();
       }).to.throw();
     });
@@ -82,7 +94,7 @@ suite("@dataform/api", () => {
     test("trying to fully refresh a protected dataset fails", () => {
       const testGraph = dataform.CompiledGraph.create(TEST_GRAPH);
       testGraph.tables[0].protected = true;
-      const builder = new Builder(TEST_GRAPH, { fullRefresh: true }, TEST_STATE);
+      const builder = new Builder(TEST_GRAPH, TEST_ACTIONS, { fullRefresh: true }, TEST_STATE);
       expect(() => builder.build()).to.throw();
     });
 
@@ -109,7 +121,7 @@ suite("@dataform/api", () => {
         assertions: [{ name: "e", target: { schema: "schema", name: "d" } }]
       });
 
-      const builder = new Builder(graph, {}, TEST_STATE);
+      const builder = new Builder(graph, actionsByStringifiedTarget(graph), {}, TEST_STATE);
       const executedGraph = builder.build();
 
       expect(executedGraph.actions.length).greaterThan(0);
@@ -155,9 +167,10 @@ suite("@dataform/api", () => {
           ],
           dataformCoreVersion: "1.4.9"
         });
+        const actionMap = actionsByStringifiedTarget(graph);
 
         test(`${warehouse} when running non incrementally`, () => {
-          const action = new Builder(graph, {}, TEST_STATE).build().actions[0];
+          const action = new Builder(graph, actionMap, {}, TEST_STATE).build().actions[0];
           expect(action.tasks[0]).eql(
             dataform.ExecutionTask.create({
               type: "statement",
@@ -175,6 +188,7 @@ suite("@dataform/api", () => {
         test(`${warehouse} when running incrementally`, () => {
           const action = new Builder(
             graph,
+            actionMap,
             {},
             dataform.WarehouseState.create({
               tables: [{ target: graph.tables[0].target, fields: [] }]
@@ -350,7 +364,12 @@ suite("@dataform/api", () => {
           }
         ]
       });
-      const executionGraph = new Builder(graph, {}, state).build();
+      const executionGraph = new Builder(
+        graph,
+        actionsByStringifiedTarget(graph),
+        {},
+        state
+      ).build();
       expect(
         cleanSql(executionGraph.actions.filter(n => n.name === "incremental")[0].tasks[0].statement)
       ).equals(
@@ -448,7 +467,7 @@ suite("@dataform/api", () => {
         'create or replace view "schema"."redshift_view_with_binding" as query'
       ];
 
-      const builder = new Builder(testGraph, {}, testState);
+      const builder = new Builder(testGraph, actionsByStringifiedTarget(testGraph), {}, testState);
       const executionGraph = builder.build();
 
       expect(executionGraph.actions)
@@ -482,7 +501,7 @@ suite("@dataform/api", () => {
       const testState = dataform.WarehouseState.create({});
       const expectedSQL = ['create or replace view "schema"."postgres_view" as query'];
 
-      const builder = new Builder(testGraph, {}, testState);
+      const builder = new Builder(testGraph, actionsByStringifiedTarget(testGraph), {}, testState);
       const executionGraph = builder.build();
 
       expect(executionGraph.actions)
@@ -558,7 +577,12 @@ suite("@dataform/api", () => {
           ]
         }
       ];
-      const executionGraph = new Builder(testGraph, {}, dataform.WarehouseState.create({})).build();
+      const executionGraph = new Builder(
+        testGraph,
+        actionsByStringifiedTarget(testGraph),
+        {},
+        dataform.WarehouseState.create({})
+      ).build();
       expect(asPlainObject(executionGraph.actions)).deep.equals(
         asPlainObject(expectedExecutionActions)
       );
@@ -625,7 +649,12 @@ suite("@dataform/api", () => {
           ]
         }
       ];
-      const executionGraph = new Builder(testGraph, {}, dataform.WarehouseState.create({})).build();
+      const executionGraph = new Builder(
+        testGraph,
+        actionsByStringifiedTarget(testGraph),
+        {},
+        dataform.WarehouseState.create({})
+      ).build();
       expect(asPlainObject(executionGraph.actions)).deep.equals(
         asPlainObject(expectedExecutionActions)
       );
@@ -655,7 +684,7 @@ suite("@dataform/api", () => {
         ]
       });
       const testState = dataform.WarehouseState.create({});
-      const builder = new Builder(testGraph, {}, testState);
+      const builder = new Builder(testGraph, actionsByStringifiedTarget(testGraph), {}, testState);
       const executionGraph = builder.build();
 
       expect(executionGraph.actions)
