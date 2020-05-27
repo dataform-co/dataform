@@ -12,7 +12,7 @@ const COLUMN_NAME_COL_NAME = "column_name";
 const DATA_TYPE_COL_NAME = "data_type";
 const IS_NULLABLE_COL_NAME = "is_nullable";
 const DB_CONNECTION_TIMEOUT_MILLIS = 5 * 60 * 1000; //5 minute connection timeout
-const DB_REQUEST_TIMEOUT = 3600000; //1 hour request timeout
+const DB_REQUEST_TIMEOUT_MILLIS = 1 * 60 * 60 * 1000; //1 hour request timeout
 const DB_CON_LIMIT = 10; //mssql default value of 10 concurrent requests
 
 
@@ -32,8 +32,8 @@ export class SQLDataWarehouseDBAdapter implements IDbAdapter {
         user: sqlDataWarehouseCredentials.username,
         password: sqlDataWarehouseCredentials.password,
         database: sqlDataWarehouseCredentials.database,
-        connectionTimeout: DB_CONNECTION_TIMEOUT,
-        requestTimeout: DB_REQUEST_TIMEOUT,
+        connectionTimeout: DB_CONNECTION_TIMEOUT_MILLIS,
+        requestTimeout: DB_REQUEST_TIMEOUT_MILLIS,
         pool:{
           min: 0,
           max: DB_CON_LIMIT
