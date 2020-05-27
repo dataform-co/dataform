@@ -2,7 +2,7 @@ import { IActionProto } from "df/core/session";
 import { dataform } from "df/protos/ts";
 
 export function actionsByStringifiedTarget(compiledGraph: dataform.ICompiledGraph) {
-  return new Map<string, IActionProto>(
+  return new Map(
     ([] as IActionProto[])
       .concat(
         compiledGraph.tables,
