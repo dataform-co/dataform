@@ -133,7 +133,7 @@
     "umd-compat-loader": "^2.1.2",
     "untildify": "^4.0.0",
     "uuid": "^7.0.2",
-    "vm2": "^3.8.1",
+    "vm2": "^3.9.2",
     "webpack": "4.20.2",
     "webpack-cli": "^3.3.10",
     "webpack-dev-server": "^3.8.2",

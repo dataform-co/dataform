@@ -6,5 +6,5 @@ export async function install(projectDir: string, skipInstall?: boolean) {
   if (skipInstall) {
     return;
   }
-  await promisify(childProcess.exec)("npm i", { cwd: path.resolve(projectDir) });
+  await promisify(childProcess.exec)("npm i --ignore-scripts", { cwd: path.resolve(projectDir) });
 }
