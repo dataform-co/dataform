@@ -2,7 +2,7 @@ import { assert, config, expect } from "chai";
 import { Builder, credentials, format, prune, query, Runner } from "df/api";
 import { IDbAdapter } from "df/api/dbadapters";
 import { BigQueryDbAdapter } from "df/api/dbadapters/bigquery";
-import { actionsByStringifiedTarget } from "df/api/utils/graphs";
+import { actionsByTarget } from "df/api/utils/graphs";
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
 import { asPlainObject, cleanSql } from "df/tests/utils";
@@ -46,7 +46,7 @@ suite("@dataform/api", () => {
     ]
   });
 
-  const TEST_ACTIONS = actionsByStringifiedTarget(TEST_GRAPH);
+  const TEST_ACTIONS = actionsByTarget(TEST_GRAPH);
 
   const TEST_STATE = dataform.WarehouseState.create({ tables: [] });
 
@@ -83,7 +83,7 @@ suite("@dataform/api", () => {
 
         const builder = new Builder(
           graphWithErrors,
-          actionsByStringifiedTarget(graphWithErrors),
+          actionsByTarget(graphWithErrors),
           {},
           TEST_STATE
         );
@@ -121,7 +121,7 @@ suite("@dataform/api", () => {
         assertions: [{ name: "e", target: { schema: "schema", name: "d" } }]
       });
 
-      const builder = new Builder(graph, actionsByStringifiedTarget(graph), {}, TEST_STATE);
+      const builder = new Builder(graph, actionsByTarget(graph), {}, TEST_STATE);
       const executedGraph = builder.build();
 
       expect(executedGraph.actions.length).greaterThan(0);
@@ -167,7 +167,7 @@ suite("@dataform/api", () => {
           ],
           dataformCoreVersion: "1.4.9"
         });
-        const actionMap = actionsByStringifiedTarget(graph);
+        const actionMap = actionsByTarget(graph);
 
         test(`${warehouse} when running non incrementally`, () => {
           const action = new Builder(graph, actionMap, {}, TEST_STATE).build().actions[0];
@@ -364,12 +364,7 @@ suite("@dataform/api", () => {
           }
         ]
       });
-      const executionGraph = new Builder(
-        graph,
-        actionsByStringifiedTarget(graph),
-        {},
-        state
-      ).build();
+      const executionGraph = new Builder(graph, actionsByTarget(graph), {}, state).build();
       expect(
         cleanSql(executionGraph.actions.filter(n => n.name === "incremental")[0].tasks[0].statement)
       ).equals(
@@ -467,7 +462,7 @@ suite("@dataform/api", () => {
         'create or replace view "schema"."redshift_view_with_binding" as query'
       ];
 
-      const builder = new Builder(testGraph, actionsByStringifiedTarget(testGraph), {}, testState);
+      const builder = new Builder(testGraph, actionsByTarget(testGraph), {}, testState);
       const executionGraph = builder.build();
 
       expect(executionGraph.actions)
@@ -501,7 +496,7 @@ suite("@dataform/api", () => {
       const testState = dataform.WarehouseState.create({});
       const expectedSQL = ['create or replace view "schema"."postgres_view" as query'];
 
-      const builder = new Builder(testGraph, actionsByStringifiedTarget(testGraph), {}, testState);
+      const builder = new Builder(testGraph, actionsByTarget(testGraph), {}, testState);
       const executionGraph = builder.build();
 
       expect(executionGraph.actions)
@@ -579,7 +574,7 @@ suite("@dataform/api", () => {
       ];
       const executionGraph = new Builder(
         testGraph,
-        actionsByStringifiedTarget(testGraph),
+        actionsByTarget(testGraph),
         {},
         dataform.WarehouseState.create({})
       ).build();
@@ -651,7 +646,7 @@ suite("@dataform/api", () => {
       ];
       const executionGraph = new Builder(
         testGraph,
-        actionsByStringifiedTarget(testGraph),
+        actionsByTarget(testGraph),
         {},
         dataform.WarehouseState.create({})
       ).build();
@@ -684,7 +679,7 @@ suite("@dataform/api", () => {
         ]
       });
       const testState = dataform.WarehouseState.create({});
-      const builder = new Builder(testGraph, actionsByStringifiedTarget(testGraph), {}, testState);
+      const builder = new Builder(testGraph, actionsByTarget(testGraph), {}, testState);
       const executionGraph = builder.build();
 
       expect(executionGraph.actions)

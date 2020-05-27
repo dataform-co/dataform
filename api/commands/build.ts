@@ -1,7 +1,8 @@
 import { prune } from "df/api/commands/prune";
 import { state } from "df/api/commands/state";
 import * as dbadapters from "df/api/dbadapters";
-import { actionsByStringifiedTarget } from "df/api/utils/graphs";
+import { actionsByTarget } from "df/api/utils/graphs";
+import { JSONObjectStringifier, StringifiedMap } from "df/common/strings/stringifier";
 import { adapters } from "df/core";
 import { IActionProto } from "df/core/session";
 import * as utils from "df/core/utils";
@@ -14,12 +15,7 @@ export async function build(
 ) {
   const prunedGraph = prune(compiledGraph, runConfig);
   const stateResult = await state(prunedGraph, dbadapter);
-  return new Builder(
-    prunedGraph,
-    actionsByStringifiedTarget(compiledGraph),
-    runConfig,
-    stateResult
-  ).build();
+  return new Builder(prunedGraph, actionsByTarget(compiledGraph), runConfig, stateResult).build();
 }
 
 export class Builder {
@@ -27,7 +23,7 @@ export class Builder {
 
   constructor(
     private readonly prunedGraph: dataform.ICompiledGraph,
-    private readonly allActions: Map<string, IActionProto>,
+    private readonly allActions: StringifiedMap<dataform.ITarget, IActionProto>,
     private readonly runConfig: dataform.IRunConfig,
     private readonly warehouseState: dataform.IWarehouseState
   ) {
@@ -43,19 +39,19 @@ export class Builder {
       throw new Error(`Project has unresolved compilation or validation errors.`);
     }
 
-    const tableMetadataByTarget = new Map<string, dataform.ITableMetadata>();
+    const tableMetadataByTarget = new StringifiedMap<dataform.ITarget, dataform.ITableMetadata>(
+      JSONObjectStringifier.create()
+    );
     this.warehouseState.tables.forEach(tableState => {
-      tableMetadataByTarget.set(JSON.stringify(tableState.target), tableState);
+      tableMetadataByTarget.set(tableState.target, tableState);
     });
 
-    const transitiveInputsByTarget = new Map<string, dataform.ITarget[]>();
+    const transitiveInputsByTarget = new StringifiedMap<dataform.ITarget, dataform.ITarget[]>(
+      JSONObjectStringifier.create()
+    );
     const actions: dataform.IExecutionAction[] = [].concat(
       this.prunedGraph.tables.map(t =>
-        this.buildTable(
-          t,
-          tableMetadataByTarget.get(JSON.stringify(t.target)),
-          transitiveInputsByTarget
-        )
+        this.buildTable(t, tableMetadataByTarget.get(t.target), transitiveInputsByTarget)
       ),
       this.prunedGraph.operations.map(o => this.buildOperation(o, transitiveInputsByTarget)),
       this.prunedGraph.assertions.map(a => this.buildAssertion(a, transitiveInputsByTarget))
@@ -78,7 +74,7 @@ export class Builder {
   private buildTable(
     table: dataform.ITable,
     tableMetadata: dataform.ITableMetadata,
-    transitiveInputsByTarget: Map<string, dataform.ITarget[]>
+    transitiveInputsByTarget: StringifiedMap<dataform.ITarget, dataform.ITarget[]>
   ) {
     if (table.protected && this.runConfig.fullRefresh) {
       throw new Error("Protected datasets cannot be fully refreshed.");
@@ -103,7 +99,7 @@ export class Builder {
 
   private buildOperation(
     operation: dataform.IOperation,
-    transitiveInputsByTarget: Map<string, dataform.ITarget[]>
+    transitiveInputsByTarget: StringifiedMap<dataform.ITarget, dataform.ITarget[]>
   ) {
     return dataform.ExecutionAction.create({
       name: operation.name,
@@ -119,7 +115,7 @@ export class Builder {
 
   private buildAssertion(
     assertion: dataform.IAssertion,
-    transitiveInputsByTarget: Map<string, dataform.ITarget[]>
+    transitiveInputsByTarget: StringifiedMap<dataform.ITarget, dataform.ITarget[]>
   ) {
     return dataform.ExecutionAction.create({
       name: assertion.name,
@@ -135,16 +131,21 @@ export class Builder {
 
   private getAllTransitiveInputs(
     action: dataform.ITable | dataform.IOperation | dataform.IAssertion,
-    transitiveInputsByTarget: Map<string, dataform.ITarget[]>
+    transitiveInputsByTarget: StringifiedMap<dataform.ITarget, dataform.ITarget[]>
   ) {
-    const actionTargetKey = JSON.stringify(action.target);
-    if (!transitiveInputsByTarget.has(actionTargetKey)) {
+    if (!action.target) {
+      return [];
+    }
+    if (!transitiveInputsByTarget.has(action.target)) {
       let transitiveInputTargets = action.dependencyTargets;
       for (const transitiveInputTarget of action.dependencyTargets || []) {
-        const transitiveInputAction = this.allActions.get(JSON.stringify(transitiveInputTarget));
+        const transitiveInputAction = this.allActions.get(transitiveInputTarget);
+        // Recursively add transitive inputs for all dependencies that are not tables or declarations.
+        // (i.e. recurse through all dependency views, operations, etc.)
         if (
           !(
-            transitiveInputAction instanceof dataform.Table ||
+            (transitiveInputAction instanceof dataform.Table &&
+              ["table", "incremental"].includes(transitiveInputAction.type)) ||
             transitiveInputAction instanceof dataform.Declaration
           )
         ) {
@@ -153,8 +154,8 @@ export class Builder {
           );
         }
       }
-      transitiveInputsByTarget.set(actionTargetKey, transitiveInputTargets);
+      transitiveInputsByTarget.set(action.target, transitiveInputTargets);
     }
-    return transitiveInputsByTarget.get(actionTargetKey);
+    return transitiveInputsByTarget.get(action.target);
   }
 }

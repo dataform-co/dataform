@@ -1,8 +1,10 @@
+import { JSONObjectStringifier, StringifiedMap } from "df/common/strings/stringifier";
 import { IActionProto } from "df/core/session";
 import { dataform } from "df/protos/ts";
 
-export function actionsByStringifiedTarget(compiledGraph: dataform.ICompiledGraph) {
-  return new Map(
+export function actionsByTarget(compiledGraph: dataform.ICompiledGraph) {
+  return new StringifiedMap(
+    JSONObjectStringifier.create<dataform.ITarget>(),
     ([] as IActionProto[])
       .concat(
         compiledGraph.tables,
@@ -10,6 +12,8 @@ export function actionsByStringifiedTarget(compiledGraph: dataform.ICompiledGrap
         compiledGraph.assertions,
         compiledGraph.declarations
       )
-      .map(action => [JSON.stringify(action.target), action])
+      // Required for backwards compatibility with old versions of @dataform/core.
+      .filter(action => !!action.target)
+      .map(action => [action.target, action])
   );
 }

@@ -1,7 +1,7 @@
 import { fail } from "assert";
 import { expect } from "chai";
 import { Builder, compile } from "df/api";
-import { actionsByStringifiedTarget } from "df/api/utils/graphs";
+import { actionsByTarget } from "df/api/utils/graphs";
 import * as utils from "df/core/utils";
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
@@ -806,7 +806,7 @@ suite("examples", () => {
     expect(example.query.trim()).equals("select 1 as foo_bar");
 
     // Make sure we can dry run.
-    new Builder(graph, actionsByStringifiedTarget(graph), {}, { tables: [] }).build();
+    new Builder(graph, actionsByTarget(graph), {}, { tables: [] }).build();
   });
 
   test("times out after timeout period during compilation", async () => {
