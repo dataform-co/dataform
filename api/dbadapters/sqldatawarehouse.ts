@@ -34,7 +34,7 @@ export class SQLDataWarehouseDBAdapter implements IDbAdapter {
         database: sqlDataWarehouseCredentials.database,
         connectionTimeout: DB_CONNECTION_TIMEOUT_MILLIS,
         requestTimeout: DB_REQUEST_TIMEOUT_MILLIS,
-        pool:{
+        pool: {
           min: 0,
           max: DB_CON_LIMIT
         },
