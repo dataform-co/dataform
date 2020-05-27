@@ -3,6 +3,8 @@ import { basename, join } from "path";
 
 export interface IBaseAttributes {
   title: string;
+  subtitle?: string;
+  priority?: number;
 }
 
 type IWithBaseAttributes<T> = T & IBaseAttributes;
@@ -27,6 +29,17 @@ export class Tree<T> implements ITree<T> {
 
     return new Tree(path, content, attributes as any, editLink, []);
   }
+
+  public static createFromIndex<T>(index: ITree<T>): Tree<T> {
+    return new Tree<T>(
+      index.path,
+      "",
+      index.attributes,
+      index.editLink,
+      (index.children || []).map(child => Tree.createFromIndex(child))
+    );
+  }
+
   public readonly name: string;
 
   constructor(
@@ -38,6 +51,7 @@ export class Tree<T> implements ITree<T> {
   ) {
     const base = basename(path);
     this.name = base.includes(".md") ? base.substring(0, base.length - 3) : base;
+    this.sort();
   }
 
   public getChild(path: string): Tree<T> {
@@ -51,6 +65,7 @@ export class Tree<T> implements ITree<T> {
 
   public addChild(child: Tree<T>) {
     this.children.push(child);
+    this.sort();
     return this;
   }
 
@@ -60,5 +75,23 @@ export class Tree<T> implements ITree<T> {
       content: undefined,
       children: this.children.map(child => child.index())
     };
+  }
+
+  public sort() {
+    this.children.sort((a: ITree<T>, b: ITree<T>) =>
+      a.attributes.priority == null && b.attributes.priority == null
+        ? // If no priorities, compare titles.
+          a.attributes.title > b.attributes.title
+          ? 1
+          : -1
+        : !(a.attributes.priority == null || b.attributes.priority == null)
+        ? // If both have priorities set, compare priority.
+          a.attributes.priority - b.attributes.priority
+        : // Take any priority set as higher priority than one without.
+        a.attributes.priority == null
+        ? 1
+        : -1
+    );
+    this.children.forEach(child => child.sort());
   }
 }

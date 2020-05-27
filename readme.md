@@ -1,9 +1,6 @@
 <p align="center">
   <img src="https://github.com/dataform-co/dataform/blob/master/static/images/github_bg.png">
 </p>
-<p align="center">
-  <a href="https://dataform.co/?utm_medium=organic&utm_source=github_readme">Dataform</a> is a tool for managing SQL based data operations in your warehouse.
-</p>
 <div align="center">
   <img src="https://storage.googleapis.com/dataform-cloud-build-badges/build/status.svg" alt="Cloud build status"/>
   <a href="https://www.npmjs.com/package/@dataform/cli"><img src="https://badge.fury.io/js/%40dataform%2Fcli.svg" alt="NPM package version" /></a>
@@ -20,7 +17,7 @@
 
 # Intro
 
-[Dataform](https://dataform.co/?utm_medium=organic&utm_source=github_readme) is a platform to manage data in BigQuery, Snowflake, Redshift, and other data warehouses. It enables data teams to build scalable, tested, SQL based data transformation pipelines using version control and engineering inspired best practices. 
+[Dataform](https://dataform.co/?utm_medium=organic&utm_source=github_readme) is an application to manage data in BigQuery, Snowflake, Redshift, and other data warehouses. It enables data teams to build scalable, tested, SQL based data transformation pipelines using version control and engineering inspired best practices. 
 
 Compile hundreds of data models in under a second using SQLX. SQLX extends your existing SQL warehouse dialect to add features that support dependency management, testing, documentation and more.
 
@@ -46,6 +43,11 @@ Compile hundreds of data models in under a second using SQLX. SQLX extends your 
 * Generate a [DAG](https://docs.dataform.co/guides/datasets#referencing-other-datasets?utm_medium=organic&utm_source=github_readme) automatically from dataset dependencies
 * [Document datasets](https://docs.dataform.co/guides/documentation?utm_medium=organic&utm_source=github_readme) in code alongside your SQL
 * Enable [scripting](https://docs.dataform.co/guides/js-api?utm_medium=organic&utm_source=github_readme) and code re-use with a JavaScript API
+
+<div align="center">
+  <img src="https://assets.dataform.co/docs/introduction/simple_dag.png" alt="Dependency tree in a Dataform project">
+<i>Dependency tree in a Dataform project</i>
+</div>
 
 ### More examples and packages
 
@@ -74,7 +76,7 @@ npm i -g @dataform/cli
 
 ## With Dataform web
 
-Dataform web is a development environment and production ready deployment tool for the Dataform SDK. You can learn more on [dataform.co](https://dataform.co/?utm_medium=organic&utm_source=github_readme?utm_medium=organic&utm_source=github_readme)
+Dataform web is a development environment and production ready application for the Dataform SDK. You can learn more on [dataform.co](https://dataform.co/?utm_medium=organic&utm_source=github_readme?utm_medium=organic&utm_source=github_readme)
 
 ## How it works
 

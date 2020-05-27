@@ -26,18 +26,29 @@ filegroup(
     ),
 )
 
+load("@io_bazel_rules_sass//:defs.bzl", "multi_sass_binary")
+
+multi_sass_binary(
+    name = "code_sass",
+    srcs = glob(["components/code/*.scss"]),
+    output_style = "expanded",
+    sourcemap = False,
+)
+
+
 genrule(
     name = "blueprint",
     srcs = [
         "//components/blueprint:sass",
+        ":code_sass",
     ],
-    outs = ["public/blueprint.css"],
+    outs = ["public/global.css"],
     cmd = "cat $(SRCS) > $(OUTS)",
 )
 
 filegroup(
     name = "assets",
-    srcs = glob(["static/**/*.*"]) + [":public/blueprint.css"],
+    srcs = glob(["static/**/*.*"]) + [":public/global.css"],
 )
 
 load("@npm//typedoc:index.bzl", "typedoc")
@@ -101,6 +112,7 @@ DEPS = [
     "@npm//extracted-loader",
     "@npm//next-images",
     "@npm//react-instantsearch-dom",
+    "@npm//react-syntax-highlighter",
     "@npm//remark",
     "@npm//rehype-slug",
     "@npm//umd-compat-loader",

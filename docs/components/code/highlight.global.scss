@@ -1,0 +1,198 @@
+div.hljs-filename {
+  background-color: #1b1d24;
+  border-radius: 5px 5px 0px 0px;
+  padding: 8px 10px;
+  margin-bottom: -5px;
+  color: #f5fbff;
+  position: relative;
+  z-index: 1;
+  font-family: "Poppins", sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  background-image: url(https://assets.dataform.co/docs/icons/file_icon.svg);
+  background-position: 1% 50%;
+  background-repeat: no-repeat;
+  padding-left: 25px;
+}
+
+.react-syntax-highlighter-line-number {
+  opacity: 0.6;
+}
+
+pre.hljs {
+  padding: 10px;
+  border-radius: 5px;
+  background-color: #242837;
+  overflow: auto;
+  position: relative;
+  text-align: left;
+  white-space: pre;
+  word-spacing: normal;
+  word-break: normal;
+  word-wrap: normal;
+  color: #f5fbff;
+  -moz-tab-size: 4;
+  -o-tab-size: 4;
+  tab-size: 4;
+  -webkit-hyphens: none;
+  -moz-hyphens: none;
+  -ms-hyphens: none;
+  hyphens: none;
+}
+
+pre.hljs, pre.hljs > code {
+  font-family: "Roboto Mono", monospace;
+}
+
+[class*="language-"] .namespace {
+  opacity: 0.7;
+}
+
+[class*="language-"] {
+  .token.atrule {
+    color: #a4cdfe;
+  }
+
+  .token.attr-name {
+    color: #85d99e;
+  }
+
+  .token.attr-value {
+    color: #a5e844;
+  }
+
+  .token.attribute {
+    color: #a5e844;
+  }
+
+  .token.boolean {
+    color: #a4cdfe;
+  }
+
+  .token.builtin {
+    color: #85d99e;
+  }
+
+  .token.cdata {
+    color: #80cbc4;
+  }
+
+  .token.char {
+    color: #80cbc4;
+  }
+
+  .token.class {
+    color: #85d99e;
+  }
+
+  .token.class-name {
+    color: #f2ff00;
+  }
+
+  .token.comment {
+    color: #f5fbff;
+    opacity: 0.6;
+  }
+
+  .token.constant {
+    color: #a4cdfe;
+  }
+
+  .token.deleted {
+    color: #fbb5b2;
+  }
+
+  .token.doctype {
+    color: #616161;
+  }
+
+  .token.entity {
+    color: #fbb5b2;
+  }
+
+  .token.function {
+    color: #a4cdfe;
+  }
+
+  .token.hexcode {
+    color: #f2ff00;
+  }
+
+  .token.id {
+    color: #a4cdfe;
+    font-weight: bold;
+  }
+
+  .token.important {
+    color: #a4cdfe;
+    font-weight: bold;
+  }
+
+  .token.inserted {
+    color: #80cbc4;
+  }
+
+  .token.keyword {
+    color: #a4cdfe;
+  }
+
+  .token.number {
+    color: #fd9170;
+  }
+
+  .token.operator {
+    color: #89ddff;
+  }
+
+  .token.prolog {
+    color: #616161;
+  }
+
+  .token.property {
+    color: #80cbc4;
+  }
+
+  .token.pseudo-class {
+    color: #a5e844;
+  }
+
+  .token.pseudo-element {
+    color: #a5e844;
+  }
+
+  .token.punctuation {
+    color: #89ddff;
+  }
+
+  .token.regex {
+    color: #f2ff00;
+  }
+
+  .token.selector {
+    color: #fbb5b2;
+  }
+
+  .token.string {
+    color: #a5e844;
+  }
+
+  .token.symbol {
+    color: #a4cdfe;
+  }
+
+  .token.tag {
+    color: #fbb5b2;
+  }
+
+  .token.unit {
+    color: #fd9170;
+  }
+
+  .token.url {
+    color: #fbb5b2;
+  }
+
+  .token.variable {
+    color: #fbb5b2;
+  }
+}

@@ -61,6 +61,10 @@ select 1 as test
             schema: "dataform",
             name: "example"
           },
+          canonicalTarget: {
+            schema: "dataform",
+            name: "example"
+          },
           query: "\n\nselect 1 as test\n",
           disabled: false,
           fileName: "definitions/example.sqlx"

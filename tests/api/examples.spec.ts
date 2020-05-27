@@ -221,6 +221,17 @@ suite("examples", () => {
               "df_integration_test"
             )}.override_database_example\``
         );
+        expect(dataform.Target.create(exampleView.target).toJSON()).deep.equals({
+          name: "example_view",
+          schema: schemaWithSuffix("df_integration_test"),
+          database: "tada-analytics"
+        });
+        expect(dataform.Target.create(exampleView.canonicalTarget).toJSON()).deep.equals({
+          name: "example_view",
+          schema: "df_integration_test",
+          database: "tada-analytics"
+        });
+
         expect(exampleView.dependencies).deep.equals([
           "tada-analytics." + schemaWithSuffix("df_integration_test") + ".sample_data",
           "tada-analytics." + schemaWithSuffix("override_schema") + ".override_schema_example",

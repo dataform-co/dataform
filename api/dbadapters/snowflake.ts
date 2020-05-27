@@ -121,8 +121,10 @@ where LOWER(table_schema) != 'information_schema'
     }));
   }
 
-  public async schemas(): Promise<string[]> {
-    const { rows } = await this.execute(`select SCHEMA_NAME from information_schema.schemata`);
+  public async schemas(database: string): Promise<string[]> {
+    const { rows } = await this.execute(
+      `select SCHEMA_NAME from ${database ? `"${database}".` : ""}information_schema.schemata`
+    );
     return rows.map(row => row.SCHEMA_NAME);
   }
 
@@ -168,7 +170,7 @@ where table_schema = '${target.schema}'
   }
 
   public async prepareSchema(database: string, schema: string): Promise<void> {
-    const schemas = await this.schemas();
+    const schemas = await this.schemas(database);
     if (!schemas.includes(schema)) {
       await this.execute(
         `create schema if not exists ${database ? `"${database}".` : ""}"${schema}"`

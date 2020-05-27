@@ -1,3 +1,3 @@
 ---
-redirect: ../../warehouses-supported/bigquery
+redirect: ../../warehouses/bigquery
 ---
