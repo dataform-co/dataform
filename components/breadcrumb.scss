@@ -1,0 +1,13 @@
+.container {
+  display: flex;
+  text-transform: uppercase;
+  white-space: pre;
+}
+
+.container > :not(:last-child) {
+  cursor: pointer;
+}
+
+.container > :last-child {
+  font-weight: bold;
+}

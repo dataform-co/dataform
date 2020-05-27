@@ -1,5 +1,7 @@
 ---
-title: Tags
+title: Organise your project with tags
+subtitle: Learn how to organise your project with tags.
+priority: 7
 ---
 
 ## Introduction
@@ -23,12 +25,10 @@ config {
 Alternatively you can use the JavaScript API:
 
 ```js
-publish("users")
-  .query("SELECT ...")
-  .tags(["daily"]);
+publish("users").query("SELECT ...").tags(["daily"]);
 ```
 
-Tags can be added to datasets, assertions, operations and declarations. 
+Tags can be added to datasets, assertions, operations and declarations.
 
 You can add more than one tag to each action like so:
 

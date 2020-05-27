@@ -1,4 +1,3 @@
 ---
-title: How to guides
-priority: 1
+redirect: ./dataform-web
 ---
