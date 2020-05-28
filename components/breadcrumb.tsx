@@ -2,11 +2,11 @@ import { H6 } from "@blueprintjs/core";
 import * as styles from "df/components/breadcrumb.css";
 import * as React from "react";
 
-interface IBreadcrumbProps {
+export interface IBreadCrumbProps {
   pathParts: Array<{ label: string; onClick: () => void }>;
 }
 
-export function BreadCrumb({ pathParts }: IBreadcrumbProps) {
+export function BreadCrumb({ pathParts }: IBreadCrumbProps) {
   return (
     <div className={styles.container}>
       {pathParts.map((pathPart, index) => (
