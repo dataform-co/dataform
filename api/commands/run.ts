@@ -358,7 +358,7 @@ export class Runner {
       return false;
     }
 
-    for (const dependencyTarget of executionAction.dependencyTargets) {
+    for (const dependencyTarget of executionAction.transitiveInputs) {
       const dependencyAction = this.graph.actions.find(action =>
         lodash.isEqual(action.target, dependencyTarget)
       );
