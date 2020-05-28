@@ -371,7 +371,7 @@ message ExecutionTask {
 
 message ExecutionAction {
   string name = 1;
-  repeated Target dependency_targets = 7;
+  repeated Target transitive_inputs = 7;
   repeated ExecutionTask tasks = 2;
   string type = 4;
   Target target = 5;
