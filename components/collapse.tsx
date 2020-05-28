@@ -5,18 +5,18 @@ import * as React from "react";
 
 interface ISimpleCollapseProps {
   message: React.ReactNode;
-  style?: string;
+  className?: string;
 }
 
 export function SimpleCollapse({
   message,
-  style,
+  className,
   children
 }: React.PropsWithChildren<ISimpleCollapseProps>) {
   const [show, updateShow] = useState(false);
   const cssStyles = [styles.messageContainer];
-  if (style) {
-    cssStyles.push(style);
+  if (className) {
+    cssStyles.push(className);
   }
   return (
     <>
