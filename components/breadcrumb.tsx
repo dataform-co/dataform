@@ -20,7 +20,7 @@ export function BreadCrumb({ pathParts }: IBreadcrumbProps) {
           >
             {pathPart.label}
           </H6>
-          {index < pathParts.length - 1 && " > "}
+          {index < pathParts.length - 1 && "  >  "}
         </React.Fragment>
       ))}
     </div>
