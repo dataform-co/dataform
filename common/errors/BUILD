@@ -9,11 +9,6 @@ ts_library(
         ["*.ts"],
         exclude = ["*.spec.ts"],
     ),
-    deps = [
-        # "//:modules-fix",
-        # "@npm//@types/long",
-        # "@npm//long",
-    ],
 )
 
 ts_test_suite(
@@ -27,7 +22,6 @@ ts_test_suite(
         ":errors",
         "@df//testing",
         "@npm//@types/chai",
-        # "@npm//@types/long",
         "@npm//@types/node",
         "@npm//chai",
     ],
