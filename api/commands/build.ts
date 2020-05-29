@@ -2,7 +2,11 @@ import { prune } from "df/api/commands/prune";
 import { state } from "df/api/commands/state";
 import * as dbadapters from "df/api/dbadapters";
 import { actionsByTarget } from "df/api/utils/graphs";
-import { JSONObjectStringifier, StringifiedMap } from "df/common/strings/stringifier";
+import {
+  JSONObjectStringifier,
+  StringifiedMap,
+  StringifiedSet
+} from "df/common/strings/stringifier";
 import { adapters } from "df/core";
 import { IActionProto } from "df/core/session";
 import * as utils from "df/core/utils";
@@ -46,9 +50,10 @@ export class Builder {
       tableMetadataByTarget.set(tableState.target, tableState);
     });
 
-    const transitiveInputsByTarget = new StringifiedMap<dataform.ITarget, dataform.ITarget[]>(
-      JSONObjectStringifier.create()
-    );
+    const transitiveInputsByTarget = new StringifiedMap<
+      dataform.ITarget,
+      StringifiedSet<dataform.ITarget>
+    >(JSONObjectStringifier.create());
     const actions: dataform.IExecutionAction[] = [].concat(
       this.prunedGraph.tables.map(t =>
         this.buildTable(t, tableMetadataByTarget.get(t.target), transitiveInputsByTarget)
@@ -74,7 +79,7 @@ export class Builder {
   private buildTable(
     table: dataform.ITable,
     tableMetadata: dataform.ITableMetadata,
-    transitiveInputsByTarget: StringifiedMap<dataform.ITarget, dataform.ITarget[]>
+    transitiveInputsByTarget: StringifiedMap<dataform.ITarget, StringifiedSet<dataform.ITarget>>
   ) {
     if (table.protected && this.runConfig.fullRefresh) {
       throw new Error("Protected datasets cannot be fully refreshed.");
@@ -86,7 +91,7 @@ export class Builder {
 
     return dataform.ExecutionAction.create({
       name: table.name,
-      transitiveInputs: this.getAllTransitiveInputs(table, transitiveInputsByTarget),
+      transitiveInputs: Array.from(this.getAllTransitiveInputs(table, transitiveInputsByTarget)),
       dependencies: table.dependencies,
       type: "table",
       target: table.target,
@@ -99,11 +104,13 @@ export class Builder {
 
   private buildOperation(
     operation: dataform.IOperation,
-    transitiveInputsByTarget: StringifiedMap<dataform.ITarget, dataform.ITarget[]>
+    transitiveInputsByTarget: StringifiedMap<dataform.ITarget, StringifiedSet<dataform.ITarget>>
   ) {
     return dataform.ExecutionAction.create({
       name: operation.name,
-      transitiveInputs: this.getAllTransitiveInputs(operation, transitiveInputsByTarget),
+      transitiveInputs: Array.from(
+        this.getAllTransitiveInputs(operation, transitiveInputsByTarget)
+      ),
       dependencies: operation.dependencies,
       type: "operation",
       target: operation.target,
@@ -115,11 +122,13 @@ export class Builder {
 
   private buildAssertion(
     assertion: dataform.IAssertion,
-    transitiveInputsByTarget: StringifiedMap<dataform.ITarget, dataform.ITarget[]>
+    transitiveInputsByTarget: StringifiedMap<dataform.ITarget, StringifiedSet<dataform.ITarget>>
   ) {
     return dataform.ExecutionAction.create({
       name: assertion.name,
-      transitiveInputs: this.getAllTransitiveInputs(assertion, transitiveInputsByTarget),
+      transitiveInputs: Array.from(
+        this.getAllTransitiveInputs(assertion, transitiveInputsByTarget)
+      ),
       dependencies: assertion.dependencies,
       type: "assertion",
       target: assertion.target,
@@ -131,13 +140,14 @@ export class Builder {
 
   private getAllTransitiveInputs(
     action: dataform.ITable | dataform.IOperation | dataform.IAssertion,
-    transitiveInputsByTarget: StringifiedMap<dataform.ITarget, dataform.ITarget[]>
-  ) {
+    transitiveInputsByTarget: StringifiedMap<dataform.ITarget, StringifiedSet<dataform.ITarget>>
+  ): StringifiedSet<dataform.ITarget> {
+    const transitiveInputTargets = new StringifiedSet(JSONObjectStringifier.create());
     if (!action.target) {
-      return [];
+      return transitiveInputTargets;
     }
     if (!transitiveInputsByTarget.has(action.target)) {
-      let transitiveInputTargets = action.dependencyTargets;
+      action.dependencyTargets.forEach(target => transitiveInputTargets.add(target));
       for (const transitiveInputTarget of action.dependencyTargets || []) {
         const transitiveInputAction = this.allActions.get(transitiveInputTarget);
         // Recursively add transitive inputs for all dependencies that are not tables or declarations.
@@ -149,8 +159,8 @@ export class Builder {
             transitiveInputAction instanceof dataform.Declaration
           )
         ) {
-          transitiveInputTargets = transitiveInputTargets.concat(
-            this.getAllTransitiveInputs(transitiveInputAction, transitiveInputsByTarget)
+          this.getAllTransitiveInputs(transitiveInputAction, transitiveInputsByTarget).forEach(
+            target => transitiveInputTargets.add(target)
           );
         }
       }
