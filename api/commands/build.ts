@@ -147,8 +147,8 @@ export class Builder {
       return transitiveInputTargets;
     }
     if (!transitiveInputsByTarget.has(action.target)) {
-      action.dependencyTargets.forEach(target => transitiveInputTargets.add(target));
       for (const transitiveInputTarget of action.dependencyTargets || []) {
+        transitiveInputTargets.add(transitiveInputTarget);
         const transitiveInputAction = this.allActions.get(transitiveInputTarget);
         // Recursively add transitive inputs for all dependencies that are not tables or declarations.
         // (i.e. recurse through all dependency views, operations, etc.)
