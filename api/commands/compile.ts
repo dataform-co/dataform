@@ -1,4 +1,5 @@
 import { ChildProcess, fork } from "child_process";
+import { ErrorWithCause } from "df/common/errors/errors";
 import { validate } from "df/core/utils";
 import { dataform } from "df/protos/ts";
 import * as fs from "fs";
@@ -42,7 +43,7 @@ export async function compile(
       ...compileConfig.projectConfigOverride
     });
   } catch (e) {
-    throw new Error(`Compile Error: ProjectConfig ('dataform.json') is invalid. ${e}`);
+    throw new ErrorWithCause("Compilation failed: ProjectConfig ('dataform.json') is invalid.", e);
   }
 
   const encodedGraphInBase64 = await CompileChildProcess.forkProcess().compile(compileConfig);

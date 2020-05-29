@@ -1,6 +1,7 @@
 import { Credentials } from "df/api/commands/credentials";
 import { IDbAdapter } from "df/api/dbadapters/index";
 import { parseSnowflakeEvalError } from "df/api/utils/error_parsing";
+import { ErrorWithCause } from "df/common/errors/errors";
 import { dataform } from "df/protos/ts";
 import * as https from "https";
 import * as PromisePool from "promise-pool-executor";
@@ -250,7 +251,7 @@ async function connect(snowflakeCredentials: dataform.ISnowflake) {
         });
     });
   } catch (e) {
-    throw new Error(`Could not connect to Snowflake: ${e.message}`);
+    throw new ErrorWithCause(`Could not connect to Snowflake: ${e.message}`, e);
   }
 }
 
@@ -266,6 +267,6 @@ async function testHttpsConnection(url: string) {
       });
     });
   } catch (e) {
-    throw new Error(`Could not open HTTPS connection to ${url}: ${e.message}`);
+    throw new ErrorWithCause(`Could not open HTTPS connection to ${url}.`, e);
   }
 }
