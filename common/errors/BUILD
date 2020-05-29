@@ -9,6 +9,9 @@ ts_library(
         ["*.ts"],
         exclude = ["*.spec.ts"],
     ),
+    deps = [
+        "//:modules-fix",
+    ],
 )
 
 ts_test_suite(
