@@ -37,8 +37,8 @@ import yargs from "yargs";
 
 const RECOMPILE_DELAY = 500;
 
-process.on("unhandledRejection", async reason => {
-  printError(`Unhandled promise rejection: ${reason.stack || reason}`);
+process.on("unhandledRejection", async (reason: any) => {
+  printError(`Unhandled promise rejection: ${reason?.stack || reason}`);
   await trackError();
 });
 
@@ -436,7 +436,10 @@ export function runCli() {
           }
 
           print(`Running ${compiledGraph.tests.length} unit tests...\n`);
-          const dbadapter = await dbadapters.create(readCredentials, compiledGraph.projectConfig.warehouse);
+          const dbadapter = await dbadapters.create(
+            readCredentials,
+            compiledGraph.projectConfig.warehouse
+          );
           try {
             const testResults = await test(dbadapter, compiledGraph.tests);
             testResults.forEach(testResult => printTestResult(testResult));
@@ -495,7 +498,10 @@ export function runCli() {
             getCredentialsPath(argv.projectDir, argv.credentials)
           );
 
-          const dbadapter = await dbadapters.create(readCredentials, compiledGraph.projectConfig.warehouse);
+          const dbadapter = await dbadapters.create(
+            readCredentials,
+            compiledGraph.projectConfig.warehouse
+          );
           try {
             const executionGraph = await build(
               compiledGraph,

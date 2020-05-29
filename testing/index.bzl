@@ -15,7 +15,7 @@ def ts_test(name, entry_point, args = [], templated_args = [], data = [], tags =
         ],
         entry_point = entry_point,
         args = args,
-        templated_args = templated_args,
+        templated_args = ["--node_options=--async-stack-traces"] + templated_args,
         tags = tags,
     )
 
@@ -37,6 +37,6 @@ def ts_test_suite(name, srcs, args = [], templated_args = [], data = [], tags = 
                 ],
                 entry_point = ":" + src,
                 args = args,
-                templated_args = templated_args,
+                templated_args = ["--node_options=--async-stack-traces"] + templated_args,
                 tags = tags,
             )
