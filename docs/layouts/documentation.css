@@ -75,13 +75,19 @@
   line-height: 28px;
 }
 
-:global(.dark) .whatsNextCard {
-  background-color: var(--shade0);
-}
-
 .next {
   background-color: var(--shade0);
   border-radius: 5px;
   padding: 0px 30px 30px 30px;
   margin: 60px 0px 0px -30px;
+}
+
+.whatsNextCard h3 {
+  font-size: 18px;
+  padding: 0;
+  padding-top: 15px;
+}
+
+.whatsNextCard p {
+  color: var(--textSecondary);
 }
