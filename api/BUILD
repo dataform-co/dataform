@@ -6,6 +6,8 @@ ts_library(
     name = "lib",
     srcs = glob(["**/*.ts"]),
     deps = [
+        "//common/errors",
+        "//common/strings",
         "//core",
         "//protos:ts",
         "//sqlx",
