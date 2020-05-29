@@ -360,7 +360,7 @@ export class Runner {
 
     for (const dependencyTarget of executionAction.transitiveInputs) {
       const dependencyAction = this.graph.actions.find(action =>
-        lodash.isEqual(action.target, dependencyTarget)
+        lodash.isEqual(action.target, dataform.Target.create(dependencyTarget))
       );
       if (!dependencyAction) {
         continue;
