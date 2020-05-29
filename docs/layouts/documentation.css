@@ -82,6 +82,11 @@
   margin: 60px 0px 0px -30px;
 }
 
+.whatsNextCard {
+  margin: 20px 20px 0 0;
+  width: 360px;
+}
+
 .whatsNextCard h3 {
   font-size: 18px;
   padding: 0;

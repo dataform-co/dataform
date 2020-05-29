@@ -79,7 +79,7 @@ export default class Documentation extends React.Component<IProps> {
             {this.props.children}
             <div className={styles.next}>
               <h2>What's next</h2>
-              <CardMasonry style={{ margin: "0px 0px 20px" }}>
+              <CardMasonry style={{ margin: "0px 0px 20px", display: "flex", flexWrap: "wrap" }}>
                 {(current.children?.length > 0 ? current.children : parent.children)
                   .filter(
                     child =>
