@@ -35,7 +35,7 @@ http_archive(
 load("@build_bazel_rules_nodejs//:index.bzl", "node_repositories", "yarn_install")
 
 node_repositories(
-    node_version = "10.13.0",
+    node_version = "12.13.0",
     package_json = ["//:package.json"],
     yarn_version = "1.13.0",
 )
