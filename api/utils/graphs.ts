@@ -7,10 +7,10 @@ export function actionsByTarget(compiledGraph: dataform.ICompiledGraph) {
     JSONObjectStringifier.create<dataform.ITarget>(),
     ([] as IActionProto[])
       .concat(
-        compiledGraph.tables,
-        compiledGraph.operations,
-        compiledGraph.assertions,
-        compiledGraph.declarations
+        compiledGraph.tables || [],
+        compiledGraph.operations || [],
+        compiledGraph.assertions || [],
+        compiledGraph.declarations || []
       )
       // Required for backwards compatibility with old versions of @dataform/core.
       .filter(action => !!action.target)

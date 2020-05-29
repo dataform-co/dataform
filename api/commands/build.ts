@@ -27,7 +27,6 @@ export class Builder {
     private readonly runConfig: dataform.IRunConfig,
     private readonly warehouseState: dataform.IWarehouseState
   ) {
-    this.warehouseState = warehouseState;
     this.adapter = adapters.create(
       prunedGraph.projectConfig,
       prunedGraph.dataformCoreVersion || "1.0.0"
