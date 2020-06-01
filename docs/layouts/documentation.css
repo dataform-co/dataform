@@ -46,7 +46,7 @@
   flex-grow: 1;
   min-width: 500px;
   background-color: var(--shade1);
-  padding: 30px 5px 300px 30px;
+  padding: 30px 5px 300px 60px;
 }
 
 .mainContent img {
@@ -75,6 +75,24 @@
   line-height: 28px;
 }
 
-:global(.dark) .whatsNextCard {
+.next {
   background-color: var(--shade0);
+  border-radius: 5px;
+  padding: 0px 30px 30px 30px;
+  margin: 60px 0px 0px -30px;
+}
+
+.whatsNextCard {
+  margin: 20px 20px 0 0;
+  width: 360px;
+}
+
+.whatsNextCard h3 {
+  font-size: 18px;
+  padding: 0;
+  padding-top: 15px;
+}
+
+.whatsNextCard p {
+  color: var(--textSecondary);
 }

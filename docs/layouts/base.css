@@ -8,12 +8,15 @@
 .container h4,
 .container > p {
   padding: 15px 0px;
+  margin-bottom: 0;
 }
 
-/* This makes sure that the on this page anchors scroll correctly */
 .container h2 {
-  padding-top: 130px;
-  margin-top: -100px;
+  padding-top: 30px;
+}
+
+.container h3 {
+  padding: 30px 0 15px 0;
 }
 
 .leftBackground {

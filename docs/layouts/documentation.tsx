@@ -77,27 +77,34 @@ export default class Documentation extends React.Component<IProps> {
               <div className={styles.subheader}>{this.props.current.attributes.subtitle}</div>
             </div>
             {this.props.children}
-            <h2>What's next</h2>
-            <CardMasonry style={{ margin: "0px 0px 20px" }}>
-              {(current.children?.length > 0 ? current.children : parent.children)
-                .filter(
-                  child =>
-                    !!child.path &&
-                    !!child.attributes.title &&
-                    !child.attributes?.redirect &&
-                    current.path !== child.path
-                )
-                .map(child => (
-                  <Card masonryCard={true} header={child.attributes?.title} key={child.path} className={styles.whatsNextCard}>
-                    <p>{child.attributes?.subtitle}</p>
-                    <CardActions align="right">
-                      <a href={getLink(child.path, this.props.version)}>
-                        <Button minimal={true} text="Read more" />
-                      </a>
-                    </CardActions>
-                  </Card>
-                ))}
-            </CardMasonry>
+            <div className={styles.next}>
+              <h2>What's next</h2>
+              <CardMasonry style={{ margin: "0px 0px 20px", display: "flex", flexWrap: "wrap" }}>
+                {(current.children?.length > 0 ? current.children : parent.children)
+                  .filter(
+                    child =>
+                      !!child.path &&
+                      !!child.attributes.title &&
+                      !child.attributes?.redirect &&
+                      current.path !== child.path
+                  )
+                  .map(child => (
+                    <Card
+                      masonryCard={true}
+                      header={child.attributes?.title}
+                      key={child.path}
+                      className={styles.whatsNextCard}
+                    >
+                      <p>{child.attributes?.subtitle}</p>
+                      <CardActions align="right">
+                        <a href={getLink(child.path, this.props.version)}>
+                          <Button minimal={true} text="Read more" />
+                        </a>
+                      </CardActions>
+                    </Card>
+                  ))}
+              </CardMasonry>
+            </div>
             <Footer tree={this.props.index} />
           </div>
           <div className={styles.sidebarRight}>
