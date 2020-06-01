@@ -329,11 +329,15 @@ export function setNameAndTarget(
     overrideSchema,
     overrideDatabase
   );
-  const nameParts = [action.target.name, action.target.schema];
-  if (!!action.target.database) {
-    nameParts.push(action.target.database);
+  action.name = targetToName(action.target);
+}
+
+export function targetToName(actionTarget: dataform.ITarget) {
+  const nameParts = [actionTarget.name, actionTarget.schema];
+  if (!!actionTarget.database) {
+    nameParts.push(actionTarget.database);
   }
-  action.name = nameParts.reverse().join(".");
+  return nameParts.reverse().join(".");
 }
 
 /**

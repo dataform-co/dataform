@@ -72,8 +72,6 @@ export class Test {
             try {
               // Run the test.
               await this.fn();
-            } catch (e) {
-              throw e;
             } finally {
               // Always run the after eaches.
               for (const afterEach of ctx.afterEaches) {

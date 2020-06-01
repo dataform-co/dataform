@@ -6,6 +6,7 @@ ts_library(
     name = "lib",
     srcs = glob(["**/*.ts"]),
     deps = [
+        "//common/errors",
         "//common/strings",
         "//core",
         "//protos:ts",
@@ -19,6 +20,7 @@ ts_library(
         "@npm//@types/node",
         "@npm//@types/object-hash",
         "@npm//@types/pg",
+        "@npm//@types/semver",
         "@npm//@types/ssh2",
         "@npm//cron-parser",
         "@npm//get-port",
@@ -32,6 +34,7 @@ ts_library(
         "@npm//pretty-ms",
         "@npm//promise-pool-executor",
         "@npm//protobufjs",
+        "@npm//semver",
         "@npm//snowflake-sdk",
         "@npm//sql-formatter",
         "@npm//ssh2",
