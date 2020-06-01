@@ -39,6 +39,8 @@ export class ControlledDialog extends React.Component<IProps, IState> {
       confirmHidden,
       confirmButtonProps,
       cancelButtonText,
+      onClose,
+      onConfirm,
       width,
       children
     } = this.props;
@@ -57,7 +59,9 @@ export class ControlledDialog extends React.Component<IProps, IState> {
           title={title}
           onClose={e => {
             this.setState({ isOpen: false });
-            this.props?.onClose(e);
+            if (onClose) {
+              onClose(e);
+            }
           }}
           hasBackdrop={true}
           usePortal={true}
@@ -68,7 +72,9 @@ export class ControlledDialog extends React.Component<IProps, IState> {
             onKeyDown={e => {
               if (e.key === "Enter" && !confirmButtonProps?.disabled) {
                 e.preventDefault();
-                this.props?.onConfirm();
+                if (onConfirm) {
+                  onConfirm();
+                }
                 this.setState({ isOpen: false });
               }
             }}
@@ -79,7 +85,9 @@ export class ControlledDialog extends React.Component<IProps, IState> {
             <Button
               minimal={true}
               onClick={(e: React.MouseEvent<HTMLElement, MouseEvent>) => {
-                this.props?.onClose(e);
+                if (onClose) {
+                  onClose(e);
+                }
                 this.setState({ isOpen: false });
               }}
               text={cancelButtonText || "Cancel"}
@@ -90,7 +98,9 @@ export class ControlledDialog extends React.Component<IProps, IState> {
                 name="confirm"
                 intent={confirmButtonProps?.intent || Intent.PRIMARY}
                 onClick={() => {
-                  this.props?.onConfirm();
+                  if (onConfirm) {
+                    onConfirm();
+                  }
                   this.setState({ isOpen: false });
                 }}
                 text={confirmButtonProps?.text || "Confirm"}
