@@ -72,7 +72,7 @@ In SQLX, you only write SELECT statements. You specify what you want the output 
 
 Dataform takes care of adding boilerplate statements like `CREATE OR REPLACE` or `INSERT`.
 
-<h4><span className="numberTitle">2</span> The Ref function and dependency management<h4>
+<h4><span className="numberTitle">2</span> The Ref function and dependency management</h4>
 
 The `ref` function is a critical concept in Dataform. Instead of hard coding the schema and table names of your data tables, the `ref` function enables you to reference tables and views defined in your dataform project.
 

@@ -14,6 +14,20 @@
   padding: 5px 0px;
 }
 
-.sitemapMasonry > a {
+.sitemapTitle {
+  padding-bottom: 10px;
+}
+.sitemapTitle a {
+  font-family: Poppins, sans-serif;
+  color: var(--textPrimary);
+  font-size: 16px;
+}
+
+.sitemapLevel1 a {
+  color: var(--textSecondary);
+  font-size: 15px;
+}
+
+.sitemapLevel1 a:hover {
   color: var(--linkColor);
 }

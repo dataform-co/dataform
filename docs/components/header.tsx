@@ -36,7 +36,7 @@ export class Header extends React.Component<IProps> {
                 <Button minimal={true}>Docs</Button>
               </a>
               <a href="/introduction/dataform-in-5-minutes">
-                <Button minimal={true}>Tutorial</Button>
+                <Button minimal={true}>Introduction</Button>
               </a>
               <a href="/examples/projects">
                 <Button minimal={true}>Examples</Button>
