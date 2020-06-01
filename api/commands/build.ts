@@ -11,6 +11,7 @@ import { adapters } from "df/core";
 import { IActionProto } from "df/core/session";
 import * as utils from "df/core/utils";
 import { dataform } from "df/protos/ts";
+import * as semver from "semver";
 
 export async function build(
   compiledGraph: dataform.ICompiledGraph,
@@ -142,7 +143,10 @@ export class Builder {
     transitiveInputsByTarget: StringifiedMap<dataform.ITarget, StringifiedSet<dataform.ITarget>>
   ): StringifiedSet<dataform.ITarget> {
     const transitiveInputTargets = new StringifiedSet(JSONObjectStringifier.create());
-    if (!action.target) {
+    if (
+      !this.prunedGraph.dataformCoreVersion ||
+      semver.lt(this.prunedGraph.dataformCoreVersion, "1.6.11")
+    ) {
       return transitiveInputTargets;
     }
     if (!transitiveInputsByTarget.has(action.target)) {
@@ -158,9 +162,10 @@ export class Builder {
             transitiveInputAction instanceof dataform.Declaration
           )
         ) {
-          this.getAllTransitiveInputs(transitiveInputAction, transitiveInputsByTarget).forEach(
-            target => transitiveInputTargets.add(target)
-          );
+          this.getAllTransitiveInputs(
+            transitiveInputAction,
+            transitiveInputsByTarget
+          ).forEach(target => transitiveInputTargets.add(target));
         }
       }
       transitiveInputsByTarget.set(action.target, transitiveInputTargets);
