@@ -49,3 +49,8 @@ a .listItem:hover {
   color: var(--textPrimary);
   text-decoration: none;
 }
+
+.verticalListItemFlex {
+  display: flex;
+  flex-direction: column;
+}
