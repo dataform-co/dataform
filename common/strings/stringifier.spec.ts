@@ -3,7 +3,8 @@ import {
   ArrayStringifier,
   JSONObjectStringifier,
   LongStringifier,
-  StringifiedMap
+  StringifiedMap,
+  StringifiedSet
 } from "df/common/strings/stringifier";
 import { suite, test } from "df/testing";
 import Long from "long";
@@ -98,6 +99,44 @@ suite(basename(__filename), () => {
           b: 2
         })
       ).equals("test");
+    });
+  });
+
+  suite("stringified set", () => {
+    const jsonStringifiedSet = new StringifiedSet<IKey>(JSONObjectStringifier.create(), [
+      { a: "1", b: 2 },
+      { a: "2", b: 2 },
+      { a: "2", b: 3 }
+    ]);
+
+    test("has correct stringified values", () => {
+      expect([...jsonStringifiedSet.values()]).deep.equals([
+        { a: "1", b: 2 },
+        { a: "2", b: 2 },
+        { a: "2", b: 3 }
+      ]);
+    });
+
+    test("has correct stringified iterator", () => {
+      expect([...jsonStringifiedSet]).deep.equals([
+        { a: "1", b: 2 },
+        { a: "2", b: 2 },
+        { a: "2", b: 3 }
+      ]);
+    });
+
+    test("add and has", () => {
+      const set = new StringifiedSet<IKey>(JSONObjectStringifier.create());
+      set.add({
+        a: "1",
+        b: 2
+      });
+      expect(
+        set.has({
+          a: "1",
+          b: 2
+        })
+      ).equals(true);
     });
   });
 });
