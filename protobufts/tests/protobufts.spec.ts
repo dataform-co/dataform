@@ -106,22 +106,83 @@ suite(__filename, () => {
   //   }
   // });
 
-  suite("protobufjs single-field serialization exact match", () => {
+  suite("single-field serialization", () => {
     const testCases = [
       {
-        type: "int32",
-        protobufts: protobuftsProtos.TestMessage.create({
-          int32Field: 45
-        }).serialize(),
-        protobufjs: protobufjsProtos.testprotos.TestMessage.encode({
-          int32Field: 45
-        }).finish()
+        type: "double 4.940656458412465441765687928682213723651e-324",
+        proto: protobuftsProtos.TestMessage.create({
+          doubleField: 4.940656458412465441765687928682213723651e-324
+        }),
+        encoded: new Uint8Array([9, 1, 0, 0, 0, 0, 0, 0, 0])
+      },
+      {
+        type: "double 1.797693134862315708145274237317043567981e+308",
+        proto: protobuftsProtos.TestMessage.create({
+          doubleField: 1.797693134862315708145274237317043567981e308
+        }),
+        encoded: new Uint8Array([9, 255, 255, 255, 255, 255, 255, 239, 127])
+      },
+      {
+        type: "float 1.401298464324817070923729583289916131280e-45",
+        proto: protobuftsProtos.TestMessage.create({
+          floatField: 1.40129846432481707092372958328991613128e-45
+        }),
+        encoded: new Uint8Array([21, 1, 0, 0, 0])
+      },
+      {
+        type: "float 3.40282346638528859811704183484516925440e+38",
+        proto: protobuftsProtos.TestMessage.create({
+          floatField: 3.4028234663852885981170418348451692544e38
+        }),
+        encoded: new Uint8Array([21, 255, 255, 127, 127])
+      },
+      {
+        type: "int32 -2147483648",
+        proto: protobuftsProtos.TestMessage.create({
+          int32Field: -2147483648
+        }),
+        encoded: new Uint8Array([40, 128, 128, 128, 128, 248, 255, 255, 255, 255, 1])
+      },
+      {
+        type: "int32 2147483647",
+        proto: protobuftsProtos.TestMessage.create({
+          int32Field: 2147483647
+        }),
+        encoded: new Uint8Array([40, 255, 255, 255, 255, 7])
+      },
+      {
+        type: "fixed32 0",
+        proto: protobuftsProtos.TestMessage.create({
+          fixed32Field: 0
+        }),
+        encoded: new Uint8Array([])
+      },
+      {
+        type: "fixed32 4294967295",
+        proto: protobuftsProtos.TestMessage.create({
+          fixed32Field: 4294967295
+        }),
+        encoded: new Uint8Array([61, 255, 255, 255, 255])
+      },
+      {
+        type: "int64 -9223372036854775808",
+        proto: protobuftsProtos.TestMessage.create({
+          int64Field: Long.fromString("-9223372036854775808")
+        }),
+        encoded: new Uint8Array([24, 128, 128, 128, 128, 128, 128, 128, 128, 128, 1])
+      },
+      {
+        type: "int64 9223372036854775807",
+        proto: protobuftsProtos.TestMessage.create({
+          int64Field: Long.fromString("9223372036854775807")
+        }),
+        encoded: new Uint8Array([24, 255, 255, 255, 255, 255, 255, 255, 255, 127])
       }
     ];
 
     for (const testCase of testCases) {
       test(testCase.type, () => {
-        expect(testCase.protobufts).eql(testCase.protobufjs);
+        expect(testCase.proto.serialize()).eql(testCase.encoded);
       });
     }
   });

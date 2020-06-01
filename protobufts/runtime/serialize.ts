@@ -181,23 +181,38 @@ export class NewSerializer {
   private readonly output: number[] = [];
 
   public double(fieldNumber: number, val?: number | number[]): this {
+    if (Array.isArray(val)) {
+      // TODO: default checks should really be moved into the protobuf Message code to allow for proto2.
+    } else if (val) {
+      this.newTag(fieldNumber, WireType.SIXTY_FOUR_BIT).writeNonVarInt(val, true, true);
+    }
     return this;
   }
 
   public float(fieldNumber: number, val?: number | number[]): this {
+    if (Array.isArray(val)) {
+      // TODO: default checks should really be moved into the protobuf Message code to allow for proto2.
+    } else if (val) {
+      this.newTag(fieldNumber, WireType.THIRTY_TWO_BIT).writeNonVarInt(val, false, true);
+    }
     return this;
   }
 
   public int32(fieldNumber: number, val?: number | number[]): this {
-    this.newTag(fieldNumber, WireType.VARINT);
     if (Array.isArray(val)) {
-    } else {
-      this.writeVarInt(val);
+      // TODO: default checks should really be moved into the protobuf Message code to allow for proto2.
+    } else if (val) {
+      this.newTag(fieldNumber, WireType.VARINT).writeVarInt(val);
     }
     return this;
   }
 
   public fixed32(fieldNumber: number, val?: number | number[]): this {
+    if (Array.isArray(val)) {
+      // TODO: default checks should really be moved into the protobuf Message code to allow for proto2.
+    } else if (val) {
+      this.newTag(fieldNumber, WireType.THIRTY_TWO_BIT).writeNonVarInt(val, false, false);
+    }
     return this;
   }
 
@@ -218,6 +233,11 @@ export class NewSerializer {
   }
 
   public int64(fieldNumber: number, val?: Long | Long[]): this {
+    if (Array.isArray(val)) {
+      // TODO: default checks should really be moved into the protobuf Message code to allow for proto2.
+    } else if (!val.isZero()) {
+      this.newTag(fieldNumber, WireType.VARINT).writeLongVarInt(val);
+    }
     return this;
   }
 
@@ -257,20 +277,63 @@ export class NewSerializer {
     return Uint8Array.from(this.output);
   }
 
-  private newTag(fieldNumber: number, wireType: WireType) {
+  private newTag(fieldNumber: number, wireType: WireType): this {
     // See https://developers.google.com/protocol-buffers/docs/encoding#structure.
     this.writeVarInt((fieldNumber << 3) | wireType);
+    return this;
   }
 
   private writeVarInt(varint: number) {
-    while (varint) {
-      let nextByte = varint & 0b111111;
-      varint >>>= 7;
-      if (varint) {
-        nextByte = 0b1000000 | nextByte;
+    if (varint >= 0) {
+      while (varint) {
+        let nextByte = varint & 0b01111111;
+        varint >>= 7;
+        if (varint) {
+          nextByte |= 0b10000000;
+        }
+        this.output.push(nextByte);
       }
-      this.output.push(nextByte);
+    } else {
+      for (let i = 0; i < 10; i++) {
+        const nextByte = i === 9 ? 1 : (varint & 0b01111111) | 0b10000000;
+        varint >>= 7;
+        this.output.push(nextByte);
+      }
     }
+  }
+
+  private writeLongVarInt(varint: Long) {
+    if (varint.greaterThanOrEqual(0)) {
+      while (!varint.isZero()) {
+        let nextByte = varint.getLowBits() & 0b01111111;
+        varint = varint.shiftRight(7);
+        if (!varint.isZero()) {
+          nextByte |= 0b10000000;
+        }
+        this.output.push(nextByte);
+      }
+    } else {
+      for (let i = 0; i < 10; i++) {
+        const nextByte = i === 9 ? 1 : (varint.getLowBits() & 0b01111111) | 0b10000000;
+        varint = varint.shiftRight(7);
+        this.output.push(nextByte);
+      }
+    }
+  }
+
+  private writeNonVarInt(num: number, sixtyFourBit: boolean, float: boolean) {
+    const bytes = new Uint8Array(sixtyFourBit ? 8 : 4);
+    const dataView = new DataView(bytes.buffer);
+    if (float) {
+      if (sixtyFourBit) {
+        dataView.setFloat64(0, num, true);
+      } else {
+        dataView.setFloat32(0, num, true);
+      }
+    } else {
+      dataView.setInt32(0, num, true);
+    }
+    bytes.forEach(byte => this.output.push(byte));
   }
 }
 

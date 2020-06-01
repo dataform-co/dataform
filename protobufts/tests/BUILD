@@ -1,3 +1,5 @@
+load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
+
 proto_library(
     name = "testprotos_proto",
     srcs = ["test1.proto"],
@@ -38,4 +40,11 @@ ts_test_suite(
         "@npm//@types/long",
         "@npm//chai",
     ],
+)
+
+go_proto_library(
+    name = "testprotos_go_proto",
+    importpath = "github.com/dataform-co/dataform/protobufts/tests",
+    proto = ":testprotos_proto",
+    visibility = ["//visibility:public"],
 )
