@@ -164,7 +164,7 @@ class FormItemState<T> {
 }
 
 interface IFormProps extends React.HTMLProps<HTMLFormElement> {
-  onSubmit: () => void;
+  onSubmit?: () => void;
 }
 
 export function Form({ onSubmit, children, ...rest }: React.PropsWithChildren<IFormProps>) {
