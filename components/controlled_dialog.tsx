@@ -7,13 +7,13 @@ import { Dialog } from "df/components/dialog";
 export interface IProps {
   title?: string;
   ref?: React.RefObject<ControlledDialog>;
-  button?: React.ReactElement<any>;
+  openButton?: React.ReactElement<Element>;
   onConfirm?: () => void;
   onClose?: (e: any) => void;
-  confirmButtonProps?: IButtonProps & React.ButtonHTMLAttributes<HTMLButtonElement>;
   cancelButtonText?: string;
+  confirmButtonProps?: IButtonProps & React.ButtonHTMLAttributes<HTMLButtonElement>;
   confirmHidden?: boolean;
-  ignore?: boolean;
+  disable?: boolean;
   width?: string;
 }
 
@@ -32,63 +32,68 @@ export class ControlledDialog extends React.Component<IProps, IState> {
   }
 
   public render() {
+    const {
+      disable,
+      openButton,
+      title,
+      confirmHidden,
+      confirmButtonProps,
+      cancelButtonText,
+      width,
+      children
+    } = this.props;
     return (
       <>
         <span
           onClick={e => {
-            this.setState({ isOpen: this.props.ignore ? false : true });
+            this.setState({ isOpen: disable ? false : true });
             e.stopPropagation();
           }}
         >
-          {this.props.button}
+          {openButton}
         </span>
         <Dialog
           isOpen={this.state.isOpen}
-          title={this.props.title}
+          title={title}
           onClose={e => {
             this.setState({ isOpen: false });
-            if (!!this.props.onClose) {
-              this.props.onClose(e);
-            }
+            this.props?.onClose(e);
           }}
           hasBackdrop={true}
           usePortal={true}
           autoFocus={true}
-          style={{ width: this.props.width || "600px" }}
+          style={{ width: width || "600px" }}
         >
           <div
             onKeyDown={e => {
-              if (e.key === "Enter" && !this.props.confirmButtonProps?.disabled) {
+              if (e.key === "Enter" && !confirmButtonProps?.disabled) {
                 e.preventDefault();
-                this.props.onConfirm();
+                this.props?.onConfirm();
                 this.setState({ isOpen: false });
               }
             }}
           >
-            {this.props.children}
+            {children}
           </div>
           <CardActions align="right">
             <Button
               minimal={true}
               onClick={(e: React.MouseEvent<HTMLElement, MouseEvent>) => {
+                this.props?.onClose(e);
                 this.setState({ isOpen: false });
-                if (!!this.props.onClose) {
-                  this.props.onClose(e);
-                }
               }}
-            >
-              {this.props.cancelButtonText || "Cancel"}
-            </Button>
-            {!this.props.confirmHidden && (
+              text={cancelButtonText || "Cancel"}
+            />
+            {!confirmHidden && (
               <Button
-                {...this.props.confirmButtonProps}
+                {...confirmButtonProps}
                 name="confirm"
-                intent={this.props.confirmButtonProps?.intent || Intent.PRIMARY}
+                intent={confirmButtonProps?.intent || Intent.PRIMARY}
                 onClick={() => {
                   this.props?.onConfirm();
                   this.setState({ isOpen: false });
                 }}
-                text={this.props.confirmButtonProps?.text || "Confirm"}
+                text={confirmButtonProps?.text || "Confirm"}
               />
             )}
           </CardActions>
