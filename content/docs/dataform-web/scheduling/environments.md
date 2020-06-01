@@ -5,11 +5,11 @@ subtitle: Learn about environments in Dataform web and how to configure them
 
 ## Introduction
 
-By default, Dataform runs all of your project code directly off your project's `master` Git branch. Configuring environments allows you to control this behaviour, enabling you to run multiple different versions of your project code.
+By default, Dataform runs all of your project code from your project's `master` Git branch. Configuring environments allows you to control this behaviour, enabling you to run multiple different versions of your project code.
 
-**An environment is effectively a wrapper around a version of your project code (including the `schedules.json` file)**. Once you have defined an environment, Dataform runs all of the schedules defined inside that environment 'wrapper', using that version of the project code.
+**An environment is effectively a wrapper around a version of your project code.** Once you have defined an environment, and added some schedules to that environment, Dataform runs all of those schedules using the environment's version of the project code.
 
-A common use-case for environments is to run a staged release process. Code is first run in a `staging` environment, and after being sufficiently tested, is then later pushed to a `production` environment.
+A common use-case for environments is to run a staged release process. After testing code in a `staging` environment, the code is promoted to a stable `production` environment.
 
 <callout intent="info">
   If you would like to use environments, please verify that the version of <code>@dataform/core</code> that your project uses is at least <code>1.4.9</code>.
@@ -18,7 +18,7 @@ A common use-case for environments is to run a staged release process. Code is f
 <br />
 
 <callout intent="info">
-  Environments are an advanced feature. To get the most out of them, the <b>use of an external Git provider is recommended</b>. This makes it easier to view specific commit SHAs, manage Git branches, and control your release process.
+  Environments are an advanced feature. To get the most out of them, the <b>use of an external Git provider is recommended</b>. This makes it easier to view specific commit SHAs, manage Git branches and tags, and control your release process.
 </callout>
 
 ## Configuring environments
@@ -28,11 +28,12 @@ Environments are configured in your Dataform project's `environments.json` file.
 An environment consists of:
 
 - a name
-- a Git reference at which the code should be run (either a branch name or a commit SHA)
+- a Git reference at which the code should be run (one of: a branch name, tag name, or a commit SHA)
 - (optionally) overridden values for the project's configuration (the settings in `dataform.json`)
+- (optionally) some schedules
 
 <callout intent="warning">
-If an environment is configured using a branch, that branch must exist on the project's remote Git repository (e.g. GitHub, if the project is stored there). Note that <b>Dataform branches are not remote Git branches.</b>
+If an environment is configured using a tag or branch, that tag or branch must exist in the project's remote Git repository (e.g. GitHub, if the project is stored there). Note that <b>Dataform branches are not equivalent to remote Git branches</b>.
 </callout>
 
 A simple example of an `environments.json` file is:
@@ -42,31 +43,31 @@ A simple example of an `environments.json` file is:
   "environments": [
     {
       "name": "staging",
-      "gitReference": {
-        "commitSha": "67bed6bd4205ce97fa0284086ed70e5bc7f6dd75"
-      },
+      "gitRef": "67bed6bd4205ce97fa0284086ed70e5bc7f6dd75",
       "configOverride": {
         "defaultDatabase": "dataform_staging"
-      }
+      },
+      "schedules": [
+        {
+          "name": "run_everything_once_per_day",
+          "cron": "0 10 * * *"
+        }
+      ]
     }
   ]
 }
 ```
 
-This `staging` environment runs the code (and schedules) at the `67bed6bd4205ce97fa0284086ed70e5bc7f6dd75` Git commit SHA. It also overrides the values of
+This `staging` environment runs the `run_everything_once_per_day` schedule at the `67bed6bd...` Git commit SHA. It also overrides the value of
 `defaultDatabase` to isolate `staging` schedule runs from those in other environments.
 
 Note that Dataform uses the `environments.json` file on your `master` branch to determine your project's environments. **Any changes to your environments must be pushed to `master` before Dataform will take note of those changes**.
 
-<callout>
-  If your project has a missing or empty <code>environments.json</code> file, Dataform uses a default environment which runs the code on your <code>master</code> branch with no configuration overrides.
-</callout>
-
 ## Example: manage a production release process using environments
 
-More advanced Dataform projects typically have a tightly-controlled `production` environment. All changes to project code go into a `staging` environment which is intentionally kept separate from `production`. Once the code in `staging` has been verified to be sufficiently stable, that version of the code is then pushed into the `production` environment.
+More advanced Dataform projects typically have a tightly-controlled `production` environment. All changes to project code go into a `staging` environment which is intentionally kept separate from `production`. Once the code in `staging` has been verified to be sufficiently stable, that version of the code is then promoted to the `production` environment.
 
-Note that, unless you want Dataform to run schedules in `staging`, it may not be a requirement to define an explicit `staging` environment. Instead, you could maintain a single `production` environment and simply run all code under development using the project's default settings (as defined in `dataform.json`).
+Note that a `staging` environment is typically not useful for code development. Usually during development you would simply run all code using the project's default settings (as defined in `dataform.json`). Thus, unless you want Dataform to run schedules in a `staging` environment, it may not be useful to define one.
 
 A clean and simple way to separate staging and production data is to use a different database for each environment. However, this is only supported for BigQuery and Snowflake, so we recommend using per-environment schema suffixes for other warehouse types. The examples below show how to do both by overriding project configuration settings.
 
@@ -84,22 +85,20 @@ A nice property of this configuration is that any change to the `production` env
 {
   "environments": [
     {
-      "name": "staging",
-      "gitReference": {
-        "branch": "master"
-      },
-      "configOverride": {
-        "defaultDatabase": "dataform_staging"
-      }
-    },
-    {
       "name": "production",
-      "gitReference": {
-        "commitSha": "PRODUCTION_GIT_COMMIT_SHA_GOES_HERE"
-      },
+      "gitRef": "PRODUCTION_GIT_COMMIT_SHA_GOES_HERE",
       "configOverride": {
         "defaultDatabase": "dataform_production"
-      }
+      },
+      "schedules": [ ... ]
+    },
+    {
+      "name": "staging",
+      "gitRef": "master",
+      "configOverride": {
+        "defaultDatabase": "dataform_staging"
+      },
+      "schedules": [ ... ]
     }
   ]
 }
@@ -108,9 +107,9 @@ A nice property of this configuration is that any change to the `production` env
 To update the version of the project running in `production`, change the value of `commitSha`, and then push that change to your `master` branch. On GitHub, Git commit SHAs can be found by opening the project page and clicking 'commits'.
 
 <callout>
-  <p>A Git branch can be specified instead of a commit SHA:</p>
+  <p>A Git branch or tag can be specified instead of a commit SHA:</p>
   <p>
-  <code>"gitReference": { "branch": "GIT_BRANCH_NAME_GOES_HERE" }</code>
+  <code>"gitRef": "GIT_BRANCH_OR_TAG_NAME_GOES_HERE"</code>
   </p>
 
 <p>
@@ -131,22 +130,20 @@ An alternative approach to separating production and staging data is to append a
 {
   "environments": [
     {
-      "name": "staging",
-      "gitReference": {
-        "branch": "master"
-      },
-      "configOverride": {
-        "schemaSuffix": "_staging"
-      }
-    },
-    {
       "name": "production",
-      "gitReference": {
-        "commitSha": "PRODUCTION_GIT_COMMIT_SHA_GOES_HERE"
-      },
+      "gitRef": "PRODUCTION_GIT_COMMIT_SHA_GOES_HERE",
       "configOverride": {
         "schemaSuffix": "_production"
-      }
+      },
+      "schedules": [ ... ]
+    },
+    {
+      "name": "staging",
+      "gitRef": "master",
+      "configOverride": {
+        "schemaSuffix": "_staging"
+      },
+      "schedules": [ ... ]
     }
   ]
 }
@@ -158,9 +155,9 @@ Some teams may not be at the stage where they require a `staging` environment, b
 
 In the example below:
 
-- any code deployed during development will use the `defaultDatabase` from the `dataform.json`
-- schedules only run in the single `production` environment, and so use the `defaultDatabase` from that environment's `configOverride`
-- the `production` environment specifies the `master` Git branch, so all of its schedules will run using that version of the code
+- any code deployed during development will use `defaultDatabase` from the `dataform.json` file
+- schedules are defined in the `production` environment, and so use the `defaultDatabase` from that environment's `configOverride`
+- the `production` environment specifies the `master` Git branch, so all of its schedules will run using the latest version of the code
 
 `dataform.json`:
 
@@ -179,13 +176,12 @@ In the example below:
   "environments": [
     {
       "name": "production",
-      "gitReference": {
-        "branch": "master"
-      },
-      "configOverride": { "defaultDatabase": "analytics-production" }
+      "gitRef": "master",
+      "configOverride": { "defaultDatabase": "analytics-production" },
+      "schedules": [ ... ]
     }
   ]
 }
 ```
 
-Note, this is only supported for BigQuery and Snowflake. For other warehouses, we recommend overriding schema suffixes instead of `defaultDatabase`.
+Note that the `defaultDatabase` setting is only supported for BigQuery and Snowflake. For other warehouses, we recommend overriding schema suffixes (as described above).
