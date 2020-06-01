@@ -341,7 +341,7 @@ export class Session {
     );
 
     this.alterActionName(
-      [].concat(compiledGraph.tables, compiledGraph.assertions, compiledGraph.operations)
+      [].concat(compiledGraph.tables, compiledGraph.assertions, compiledGraph.operations), [].concat(compiledGraph.declarations.map(declaration => declaration.target))
     );
 
     this.checkActionNameUniqueness(
@@ -463,32 +463,35 @@ export class Session {
     return !!this.config.tablePrefix ? `${this.config.tablePrefix}_` : "";
   }
 
-  private alterActionName(actions: IActionProto[]) {
+  private alterActionName(actions: IActionProto[], declarationTargets: dataform.ITarget[]) {
     const { tablePrefix, schemaSuffix } = this.config;
 
     if (!tablePrefix && !schemaSuffix) {
       return;
     }
 
-    const actionNames: { [originalName: string]: string } = {};
+    const newTargetByOriginalTarget = new StringifiedMap<dataform.ITarget, dataform.ITarget>(JSONObjectStringifier.create());
+    declarationTargets.forEach(declarationTarget =>
+      newTargetByOriginalTarget.set(declarationTarget, declarationTarget)
+    );
 
     actions.forEach(action => {
-      const originalName = action.name;
-      action.target = {
+      newTargetByOriginalTarget.set(action.target, {
         ...action.target,
+        schema: `${action.target.schema}${this.getSuffixWithUnderscore()}`,
         name: `${this.getTablePrefixWithUnderscore()}${action.target.name}`,
-        schema: `${action.target.schema}${this.getSuffixWithUnderscore()}`
-      };
-      action.name = `${!!action.target.database ? `${action.target.database}.` : ""}${
-        action.target.schema
-      }.${action.target.name}`;
-      actionNames[originalName] = action.name;
+      });
+      action.target = newTargetByOriginalTarget.get(action.target);
+      action.name = utils.targetToName(action.target);
     });
 
     // Fix up dependencies in case those dependencies' names have changed.
     actions.forEach(action => {
-      action.dependencies = (action.dependencies || []).map(
-        dependencyName => actionNames[dependencyName] || dependencyName
+      action.dependencyTargets = (action.dependencyTargets || []).map(dependencyTarget =>
+        newTargetByOriginalTarget.get(dependencyTarget)
+      );
+      action.dependencies = (action.dependencyTargets || []).map(dependencyTarget =>
+        utils.targetToName(dependencyTarget)
       );
     });
   }
