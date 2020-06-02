@@ -6,21 +6,17 @@ priority: 2
 
 ## Introduction
 
-Schedules can be used to run any selection of your datasets at a user-specified frequency. Running your scripts on a repeating schedule ensures output data is always kept up to date.
-
-<div className="bp3-callout bp3-icon-info-sign bp3-intent-warning" markdown="1">
-  Schedules
-  <b>
-    only run from the <code>production</code> branch
-  </b> (if there is no environment configured)
-  . Make sure you commit and push your changes to the production branch after configuring schedules.
-</div>
+Schedules can be used to run any selection of your datasets at a user-specified frequency. Running your code on a repeating schedule ensures output data is always kept up to date.
 
 ## Create a schedule
 
-1. Navigate to the Scheduling page using the left menu
-2. Click `Add schedule`
-3. Enter your schedule's settings and click `Create schedule`
+Schedules are created as part of an [environment](scheduling/environments).
+
+1. Navigate to your `environments.json` file
+2. Click `Edit` on the environment in which the schedule should run (by default you will only have a single `production` environment)
+3. Click `Create new schedule`
+4. Enter your schedule's settings
+5. Commit your changes to `environments.json` and push these to `master`
 
 ## View past runs
 
