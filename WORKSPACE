@@ -106,6 +106,14 @@ load(
 )
 
 container_pull(
+    name = "nodejs_slim_base",
+    # This digest is for tag "12.13.0-buster-slim".
+    digest = "sha256:b63713d51d3a655e476d33b72b1f13d61edfd2b51e7dea1124c4cc1f604c0f69",
+    registry = "index.docker.io",
+    repository = "library/node",
+)
+
+container_pull(
     name = "nginx_base",
     digest = "sha256:8c3cdb5acd050a5a46be0bb5637e23d192f4ef010b4fb6c5af40e45c5b7a0a71",
     registry = "index.docker.io",
