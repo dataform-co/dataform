@@ -13,10 +13,9 @@ Schedules can be used to run any selection of your datasets at a user-specified 
 Schedules are created as part of an [environment](scheduling/environments).
 
 1. Navigate to your `environments.json` file
-2. Click `Edit` on the environment in which the schedule should run (by default you will only have a single `production` environment)
-3. Click `Create new schedule`
-4. Enter your schedule's settings
-5. Commit your changes to `environments.json` and push these to `master`
+2. Click `Create new schedule` on the environment in which the schedule should run (by default you will only have a single `production` environment)
+3. Enter your schedule's settings
+4. Commit your changes to `environments.json` and push these to `master`
 
 ## View past runs
 
