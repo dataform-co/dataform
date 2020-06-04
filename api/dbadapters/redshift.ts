@@ -1,11 +1,12 @@
+import * as pg from "pg";
+import Cursor from "pg-cursor";
+
 import { Credentials } from "df/api/commands/credentials";
 import { IDbAdapter } from "df/api/dbadapters/index";
 import { SSHTunnelProxy } from "df/api/ssh_tunnel_proxy";
 import { parseRedshiftEvalError } from "df/api/utils/error_parsing";
-import { dataform } from "df/protos/ts";
-import * as pg from "pg";
-import Cursor from "pg-cursor";
 import { ErrorWithCause } from "df/common/errors/errors";
+import { dataform } from "df/protos/ts";
 
 interface ICursor {
   read: (rowCount: number, callback: (err: Error, rows: any[]) => void) => void;
