@@ -21,6 +21,7 @@ message ProjectConfig {
   string table_prefix = 11;
   
   bool use_run_cache = 10;
+  bool use_contextual_ops = 12;
 
   // Deprecated. Please use 'default_database' instead.
   string gcloud_project_id = 6;
@@ -102,6 +103,7 @@ message RunConfig {
   int32 timeout_millis = 7;
   bool use_run_cache = 8;
   bool disable_set_metadata = 9;
+  bool use_contextual_ops = 10;
 
   reserved 4, 6;
 }

@@ -150,62 +150,94 @@ suite("@dataform/api", () => {
         "sqldatawarehouse",
         "snowflake"
       ]) {
-        const graph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
-          projectConfig: { warehouse: "redshift" },
-          tables: [
-            {
-              name: "a",
-              target: { schema: "schema", name: "a" },
-              type: "incremental",
-              query: "foo",
-              incrementalQuery: "incremental foo",
-              preOps: ["preOp"],
-              incrementalPreOps: ["incremental preOp"],
-              postOps: ["postOp"],
-              incrementalPostOps: ["incremental postOp"]
-            }
-          ],
-          dataformCoreVersion: "1.4.9"
-        });
-        const actionMap = actionsByTarget(graph);
+        suite("non-contextual and incremental ops", () => {
+          const graph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
+            projectConfig: { warehouse: "redshift", useContextualOps: false },
+            tables: [
+              {
+                name: "a",
+                target: { schema: "schema", name: "a" },
+                type: "incremental",
+                query: "foo",
+                incrementalQuery: "incremental foo",
+                preOps: ["preOp"],
+                incrementalPreOps: ["incremental preOp"],
+                postOps: ["postOp"],
+                incrementalPostOps: ["incremental postOp"]
+              }
+            ],
+            dataformCoreVersion: "1.4.9"
+          });
+          const actionMap = actionsByTarget(graph);
 
-        test(`${warehouse} when running non incrementally`, () => {
-          const action = new Builder(graph, actionMap, {}, TEST_STATE).build().actions[0];
-          expect(action.tasks[0]).eql(
-            dataform.ExecutionTask.create({
-              type: "statement",
-              statement: "preOp"
-            })
-          );
-          expect(action.tasks.slice(-1)[0]).eql(
-            dataform.ExecutionTask.create({
-              type: "statement",
-              statement: "postOp"
-            })
-          );
+          test(`${warehouse} when running non incrementally`, () => {
+            const action = new Builder(graph, actionMap, {}, TEST_STATE).build().actions[0];
+            expect(action.tasks[0]).eql(
+              dataform.ExecutionTask.create({
+                type: "statement",
+                statement: "preOp"
+              })
+            );
+            expect(action.tasks.slice(-1)[0]).eql(
+              dataform.ExecutionTask.create({
+                type: "statement",
+                statement: "postOp"
+              })
+            );
+          });
+
+          test(`${warehouse} when running incrementally`, () => {
+            const action = new Builder(
+              graph,
+              actionMap,
+              {},
+              dataform.WarehouseState.create({
+                tables: [{ target: graph.tables[0].target, fields: [] }]
+              })
+            ).build().actions[0];
+            expect(action.tasks[0]).eql(
+              dataform.ExecutionTask.create({
+                type: "statement",
+                statement: "incremental preOp"
+              })
+            );
+            expect(action.tasks.slice(-1)[0]).eql(
+              dataform.ExecutionTask.create({
+                type: "statement",
+                statement: "incremental postOp"
+              })
+            );
+          });
         });
 
-        test(`${warehouse} when running incrementally`, () => {
-          const action = new Builder(
-            graph,
-            actionMap,
-            {},
-            dataform.WarehouseState.create({
-              tables: [{ target: graph.tables[0].target, fields: [] }]
-            })
-          ).build().actions[0];
-          expect(action.tasks[0]).eql(
-            dataform.ExecutionTask.create({
-              type: "statement",
-              statement: "incremental preOp"
-            })
-          );
-          expect(action.tasks.slice(-1)[0]).eql(
-            dataform.ExecutionTask.create({
-              type: "statement",
-              statement: "incremental postOp"
-            })
-          );
+        suite("contextual ops", () => {
+          const graph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
+            projectConfig: { warehouse: "redshift", useContextualOps: true },
+            tables: [
+              {
+                name: "a",
+                target: { schema: "schema", name: "a" },
+                type: "view",
+                query: "foo",
+                preOps: ["preOp"],
+                postOps: ["postOp"]
+              }
+            ],
+            dataformCoreVersion: "1.6.12"
+          });
+          const actionMap = actionsByTarget(graph);
+
+          test(`${warehouse} non incremental`, () => {
+            const action = new Builder(graph, actionMap, {}, TEST_STATE).build().actions[0];
+            expect(action.tasks.length).eql(1);
+            expect(action.tasks[0]).eql(
+              dataform.ExecutionTask.create({
+                type: "statement",
+                statement:
+                  'preOp;\ndrop view if exists "schema"."a" cascade;\ncreate or replace view "schema"."a" as foo with no schema binding;\npostOp'
+              })
+            );
+          });
         });
       }
     });

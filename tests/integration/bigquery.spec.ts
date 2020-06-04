@@ -360,6 +360,33 @@ suite("@dataform/integration/bigquery", ({ before, after }) => {
       expect(increment[increment.length - 2].statement).to.equal(table.postOps[0]);
       expect(increment[increment.length - 1].statement).to.equal(table.postOps[1]);
     });
+
+    // test("contextual pre and post ops", async () => {
+    //   const table: dataform.ITable = {
+    //     type: "incremental",
+    //     query: "query",
+    //     preOps: ["preOps"],
+    //     incrementalQuery: "incrementalQuery",
+    //     postOps: ["postOps"],
+    //     target: { schema: "", name: "", database: "" }
+    //   };
+
+    //   const bqadapter = new BigQueryAdapter(
+    //     { warehouse: "bigquery", useContextualOps: true },
+    //     "1.6.12"
+    //   );
+    //   const refresh = bqadapter.publishTasks(table, { fullRefresh: true }, { fields: [] }).build();
+
+    //   expect(refresh.length).to.equal(1);
+    //   expect(refresh[0].statement).to.equal(`preOps;\nquery;\npostOps`);
+
+    //   const increment = bqadapter
+    //     .publishTasks(table, { fullRefresh: false }, { fields: [] })
+    //     .build();
+
+    //   expect(increment.length).to.equal(1);
+    //   expect(increment[0].statement).to.equal(`preOps;\nincrementalQuery;\npostOps`);
+    // });
   });
 
   suite("metadata", async () => {

@@ -19,6 +19,12 @@ export class Tasks {
   public build() {
     return this.tasks.map(task => task.build());
   }
+
+  public contextualize() {
+    return Tasks.create().add(
+      Task.statement(this.tasks.map(task => task.getStatement()).join(";\n"))
+    );
+  }
 }
 
 export class Task {
@@ -47,6 +53,10 @@ export class Task {
   public statement(v: string) {
     this.proto.statement = v;
     return this;
+  }
+
+  public getStatement() {
+    return this.proto.statement;
   }
 
   public build() {

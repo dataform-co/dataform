@@ -50,6 +50,13 @@ export class Builder {
       tableMetadataByTarget.set(tableState.target, tableState);
     });
 
+    if (
+      !this.runConfig.hasOwnProperty("useContextualOps") ||
+      typeof this.runConfig.useContextualOps === "undefined"
+    ) {
+      this.runConfig.useContextualOps = this.prunedGraph.projectConfig.useContextualOps;
+    }
+
     const transitiveInputsByTarget = new StringifiedMap<
       dataform.ITarget,
       StringifiedSet<dataform.ITarget>
