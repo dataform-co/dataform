@@ -4,8 +4,12 @@ load("@npm_bazel_typescript//:index.bzl", "ts_library")
 
 ts_library(
     name = "lib",
-    srcs = glob(["**/*.ts"]),
+    srcs = glob(
+        ["**/*.ts"],
+        exclude = ["utils/**/*.*"],
+    ),
     deps = [
+        "//api/utils",
         "//common/errors",
         "//common/strings",
         "//core",
