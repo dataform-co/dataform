@@ -1,5 +1,6 @@
-import * as styles from "df/docs/components/page_links.css";
 import React from "react";
+
+import * as styles from "df/docs/components/page_links.css";
 
 export interface IHeaderLink {
   id: string;

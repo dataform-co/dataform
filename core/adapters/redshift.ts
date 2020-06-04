@@ -1,8 +1,9 @@
+import * as semver from "semver";
+
 import { IAdapter } from "df/core/adapters";
 import { Adapter } from "df/core/adapters/base";
 import { Task, Tasks } from "df/core/tasks";
 import { dataform } from "df/protos/ts";
-import * as semver from "semver";
 
 export class RedshiftAdapter extends Adapter implements IAdapter {
   constructor(private readonly project: dataform.IProjectConfig, dataformCoreVersion: string) {

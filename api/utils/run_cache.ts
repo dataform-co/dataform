@@ -1,5 +1,6 @@
-import { dataform } from "df/protos/ts";
 import * as objectHash from "object-hash";
+
+import { dataform } from "df/protos/ts";
 
 export interface IMetadataRow {
   target_name: string;

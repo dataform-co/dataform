@@ -1,5 +1,6 @@
-import * as styles from "df/components/list.css";
 import * as React from "react";
+
+import * as styles from "df/components/list.css";
 
 interface IListProps extends React.HTMLProps<HTMLUListElement> {
   condensed?: boolean;

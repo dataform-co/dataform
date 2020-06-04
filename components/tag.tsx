@@ -1,6 +1,7 @@
 import { Tag as BlueprintTag } from "@blueprintjs/core";
-import * as styles from "df/components/tag.css";
 import * as React from "react";
+
+import * as styles from "df/components/tag.css";
 
 export const Tag = BlueprintTag;
 
