@@ -111,9 +111,14 @@ export interface ISQLDataWarehouseOptions {
    * For more information, read the [Azure CTAS docs](https://docs.microsoft.com/en-gb/sql/t-sql/statements/create-table-as-select-azure-sql-data-warehouse?view=aps-pdw-2016-au7#examples-for-table-distribution).
    */
   distribution?: string;
+
+  /**
+   * If set as true, pre and post operations are merged into a single query context. Requires @dataform/core version > 1.6.12.
+   */
+  useContextualOps?: boolean;
 }
 const ISQLDataWarehouseOptionsProperties = () =>
-  strictKeysOf<ISQLDataWarehouseOptions>()(["distribution"]);
+  strictKeysOf<ISQLDataWarehouseOptions>()(["distribution", "useContextualOps"]);
 
 /**
  * Options for creating tables within BigQuery projects.
@@ -139,10 +144,20 @@ export interface IBigQueryOptions {
    * For more information, see our [incremental dataset docs](https://docs.dataform.co/guides/incremental-datasets).
    */
   updatePartitionFilter?: string;
+
+  /**
+   * If set as true, pre and post operations are merged into a single query context. Requires @dataform/core version > 1.6.12.
+   */
+  useContextualOps?: boolean;
 }
 
 const IBigQueryOptionsProperties = () =>
-  strictKeysOf<IBigQueryOptions>()(["partitionBy", "clusterBy", "updatePartitionFilter"]);
+  strictKeysOf<IBigQueryOptions>()([
+    "partitionBy",
+    "clusterBy",
+    "updatePartitionFilter",
+    "useContextualOps"
+  ]);
 
 /**
  * Options for creating assertions as part of a dataset definition.
@@ -225,11 +240,6 @@ export interface ITableConfig extends ITargetableConfig, IDocumentableConfig, ID
    * If configured, records with matching unique key(s) will be updated, rather than new rows being inserted.
    */
   uniqueKey?: string[];
-
-  /**
-   * If set as true, pre and post operations are merged into a single query context. Requires @dataform/core version > 1.6.12.
-   */
-  useContextualOps?: boolean;
 }
 
 // TODO: This needs to be a method, I'm really not sure why, but it hits a runtime failure otherwise.
@@ -250,8 +260,7 @@ export const ITableConfigProperties = () =>
     "assertions",
     "database",
     "columns",
-    "description",
-    "useContextualOps"
+    "description"
   ]);
 
 /**
@@ -358,9 +367,6 @@ export class Table {
     }
     if (config.uniqueKey) {
       this.uniqueKey(config.uniqueKey);
-    }
-    if (config.useContextualOps) {
-      this.useContextualOps(config.useContextualOps);
     }
 
     return this;

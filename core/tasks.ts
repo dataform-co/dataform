@@ -22,7 +22,7 @@ export class Tasks {
 
   public contextualize() {
     return Tasks.create().add(
-      Task.statement(this.tasks.map(task => task.getStatement()).join(";\n"))
+      Task.statement(this.tasks.map(task => task.getStatement()).join(";"))
     );
   }
 }

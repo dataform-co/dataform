@@ -86,7 +86,7 @@ export class Builder {
       throw new Error("Protected datasets cannot be fully refreshed.");
     }
 
-    const tasks = table.disabled
+    let tasks = table.disabled
       ? Tasks.create()
       : this.adapter.publishTasks(table, this.runConfig, tableMetadata);
 
@@ -97,6 +97,9 @@ export class Builder {
     if (table.hasOwnProperty("useContextualOps")) {
       useContextualOps = table.useContextualOps;
     }
+    if (useContextualOps) {
+      tasks = tasks.contextualize();
+    }
 
     return dataform.ExecutionAction.create({
       name: table.name,
@@ -105,7 +108,7 @@ export class Builder {
       type: "table",
       target: table.target,
       tableType: table.type,
-      tasks: (useContextualOps ? tasks.contextualize() : tasks).build(),
+      tasks: tasks.build(),
       fileName: table.fileName,
       actionDescriptor: table.actionDescriptor
     });

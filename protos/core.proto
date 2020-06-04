@@ -144,6 +144,7 @@ message BigQueryOptions {
   string partition_by = 1;
   repeated string cluster_by = 2;
   string update_partition_filter = 3;
+  bool use_contextual_ops = 4;
 }
 
 message RedshiftOptions {
@@ -156,6 +157,7 @@ message RedshiftOptions {
 
 message SQLDataWarehouseOptions {
   string distribution = 1;
+  bool use_contextual_ops = 2;
 }
 
 message GraphErrors {
