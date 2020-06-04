@@ -11,6 +11,7 @@ ts_library(
         "//core",
         "//protos:ts",
         "//sqlx",
+        "//api/utils",
         "@npm//@google-cloud/bigquery",
         "@npm//@types/glob",
         "@npm//@types/js-beautify",
