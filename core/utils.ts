@@ -130,7 +130,7 @@ export function validate(compiledGraph: dataform.ICompiledGraph): dataform.IGrap
 
     // sqldatawarehouse config
     if (!!action.sqlDataWarehouse) {
-      if (action.uniqueKey) {
+      if (!!action.uniqueKey && action.uniqueKey.length > 0) {
         validationErrors.push(
           dataform.ValidationError.create({
             message: "Merging using unique keys for SQLDataWarehouse has not yet been implemented.",
@@ -210,7 +210,11 @@ export function validate(compiledGraph: dataform.ICompiledGraph): dataform.IGrap
         });
         validationErrors.push(error);
       }
-      if (!!action.bigquery.clusterBy && !action.bigquery.partitionBy) {
+      if (
+        !!action.bigquery.clusterBy &&
+        action.bigquery.clusterBy.length > 0 &&
+        !action.bigquery.partitionBy
+      ) {
         const error = dataform.ValidationError.create({
           message: `clusterBy is not valid without partitionBy`,
           actionName

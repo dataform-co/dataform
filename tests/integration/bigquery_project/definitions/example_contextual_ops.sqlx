@@ -1,6 +1,8 @@
 config { 
     type: "table",
-    useContextualOps: true,
+    bigquery: {
+        useContextualOps: true
+    },
     hermetic: false
 }
 

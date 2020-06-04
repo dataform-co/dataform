@@ -397,10 +397,6 @@ export class Table {
     return this;
   }
 
-  public useContextualOps(useContextualOps: boolean) {
-    this.proto.useContextualOps = useContextualOps;
-  }
-
   public disabled() {
     this.proto.disabled = true;
     return this;

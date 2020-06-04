@@ -91,11 +91,14 @@ export class Builder {
       : this.adapter.publishTasks(table, this.runConfig, tableMetadata);
 
     let useContextualOps = false;
-    if (this.prunedGraph.projectConfig.hasOwnProperty("useContextualOps")) {
+    if (this.prunedGraph.projectConfig?.hasOwnProperty("useContextualOps")) {
       useContextualOps = this.prunedGraph.projectConfig.useContextualOps;
     }
-    if (table.hasOwnProperty("useContextualOps")) {
-      useContextualOps = table.useContextualOps;
+    if (table.bigquery?.hasOwnProperty("useContextualOps")) {
+      useContextualOps = table.bigquery.useContextualOps;
+    }
+    if (table.sqlDataWarehouse?.hasOwnProperty("useContextualOps")) {
+      useContextualOps = table.sqlDataWarehouse.useContextualOps;
     }
     if (useContextualOps) {
       tasks = tasks.contextualize();
