@@ -1,11 +1,12 @@
 import rehypePrism from "@mapbox/rehype-prism";
-import { IHeaderLink } from "df/docs/components/page_links";
-import * as styles from "df/docs/components/typedoc/index.css";
 import * as React from "react";
 import rehypeRaw from "rehype-raw";
 import rehypeReact from "rehype-react";
 import remark from "remark";
 import remarkRehype from "remark-rehype";
+
+import { IHeaderLink } from "df/docs/components/page_links";
+import * as styles from "df/docs/components/typedoc/index.css";
 
 interface ITypedocSignature {
   parameters: Array<{

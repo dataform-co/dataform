@@ -1,7 +1,8 @@
 import { grpc } from "grpc-web-client";
+import { Method, RPCImpl, RPCImplCallback } from "protobufjs";
+
 import { ProtobufMessage } from "grpc-web-client/dist/message";
 import { UnaryOutput } from "grpc-web-client/dist/unary";
-import { Method, RPCImpl, RPCImplCallback } from "protobufjs";
 
 export class ProtobufMessageBytes implements grpc.ProtobufMessage {
   public static deserializeBinary(bytes: Uint8Array): ProtobufMessageBytes {

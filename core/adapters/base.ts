@@ -1,6 +1,7 @@
+import * as semver from "semver";
+
 import { Task, Tasks } from "df/core/tasks";
 import { dataform } from "df/protos/ts";
-import * as semver from "semver";
 
 export abstract class Adapter {
   constructor(protected readonly dataformCoreVersion: string) {}

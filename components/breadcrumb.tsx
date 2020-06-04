@@ -1,6 +1,7 @@
 import { H6 } from "@blueprintjs/core";
-import * as styles from "df/components/breadcrumb.css";
 import * as React from "react";
+
+import * as styles from "df/components/breadcrumb.css";
 
 export interface IBreadCrumbProps {
   pathParts: Array<{ label: string; onClick: () => void }>;

@@ -1,7 +1,8 @@
 import { Button, Collapse } from "@blueprintjs/core";
-import * as styles from "df/components/collapse.css";
 import { useState } from "react";
 import * as React from "react";
+
+import * as styles from "df/components/collapse.css";
 
 interface ISimpleCollapseProps {
   message: React.ReactNode;

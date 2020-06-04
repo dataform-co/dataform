@@ -1,7 +1,8 @@
 import { expect } from "chai";
+import { basename } from "path";
+
 import { ErrorWithCause } from "df/common/errors/errors";
 import { suite, test } from "df/testing";
-import { basename } from "path";
 
 suite(basename(__filename), () => {
   suite("ErrorWithCause", () => {
