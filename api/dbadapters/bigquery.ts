@@ -9,6 +9,7 @@ import {
   hashExecutionAction,
   IMetadataRow
 } from "df/api/utils/run_cache";
+import { JSONObjectStringifier, StringifiedMap } from "df/common/strings/stringifier";
 import { dataform } from "df/protos/ts";
 import Long from "long";
 import { PromisePoolExecutor } from "promise-pool-executor";
@@ -235,21 +236,24 @@ export class BigQueryDbAdapter implements IDbAdapter {
     if (actions.length === 0) {
       return;
     }
-    const tableMetadataMap = new Map<dataform.ITarget, IBigQueryTableMetadata>();
+    const tableMetadataByTarget = new StringifiedMap<dataform.ITarget, IBigQueryTableMetadata>(
+      JSONObjectStringifier.create()
+    );
     await Promise.all(
       actions.map(async action => {
-        tableMetadataMap.set(action.target, await this.getMetadata(action.target));
+        tableMetadataByTarget.set(action.target, await this.getMetadata(action.target));
       })
     );
     const queries = actions.map(action => {
-      const definitionHash = hashExecutionAction(action);
-      const dependencies = action.transitiveInputs;
-      const metadata = tableMetadataMap.get(action.target);
       const persistTable = dataform.PersistedTableMetadata.create({
         target: action.target,
-        lastUpdatedMillis: Long.fromString(metadata.lastModifiedTime),
-        definitionHash,
-        dependencies
+        lastUpdatedMillis: Long.fromString(
+          tableMetadataByTarget.get(action.target).lastModifiedTime
+        ),
+        definitionHash: hashExecutionAction(action),
+        transitiveInputTables: action.transitiveInputs.map(transitiveInput =>
+          tableMetadataByTarget.get(transitiveInput)
+        )
       });
 
       const targetName = `${action.target.database}.${action.target.schema}.${action.target.name}`;

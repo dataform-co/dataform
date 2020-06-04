@@ -89,52 +89,48 @@ export class Builder {
       ? ([] as dataform.IExecutionTask[])
       : this.adapter.publishTasks(table, this.runConfig, tableMetadata).build();
 
-    return dataform.ExecutionAction.create({
-      name: table.name,
-      transitiveInputs: Array.from(this.getAllTransitiveInputs(table, transitiveInputsByTarget)),
-      dependencies: table.dependencies,
+    return {
+      ...this.toPartialExecutionAction(table, transitiveInputsByTarget),
       type: "table",
-      target: table.target,
       tableType: table.type,
-      tasks,
-      fileName: table.fileName,
-      actionDescriptor: table.actionDescriptor
-    });
+      tasks
+    };
   }
 
   private buildOperation(
     operation: dataform.IOperation,
     transitiveInputsByTarget: StringifiedMap<dataform.ITarget, StringifiedSet<dataform.ITarget>>
   ) {
-    return dataform.ExecutionAction.create({
-      name: operation.name,
-      transitiveInputs: Array.from(
-        this.getAllTransitiveInputs(operation, transitiveInputsByTarget)
-      ),
-      dependencies: operation.dependencies,
+    return {
+      ...this.toPartialExecutionAction(operation, transitiveInputsByTarget),
       type: "operation",
-      target: operation.target,
-      tasks: operation.queries.map(statement => ({ type: "statement", statement })),
-      fileName: operation.fileName,
-      actionDescriptor: operation.actionDescriptor
-    });
+      tasks: operation.queries.map(statement => ({ type: "statement", statement }))
+    };
   }
 
   private buildAssertion(
     assertion: dataform.IAssertion,
     transitiveInputsByTarget: StringifiedMap<dataform.ITarget, StringifiedSet<dataform.ITarget>>
   ) {
-    return dataform.ExecutionAction.create({
-      name: assertion.name,
-      transitiveInputs: Array.from(
-        this.getAllTransitiveInputs(assertion, transitiveInputsByTarget)
-      ),
-      dependencies: assertion.dependencies,
+    return {
+      ...this.toPartialExecutionAction(assertion, transitiveInputsByTarget),
       type: "assertion",
-      target: assertion.target,
-      tasks: this.adapter.assertTasks(assertion, this.prunedGraph.projectConfig).build(),
-      fileName: assertion.fileName,
-      actionDescriptor: assertion.actionDescriptor
+      tasks: this.adapter.assertTasks(assertion, this.prunedGraph.projectConfig).build()
+    };
+  }
+
+  private toPartialExecutionAction(
+    action: dataform.ITable | dataform.IOperation | dataform.IAssertion,
+    transitiveInputsByTarget: StringifiedMap<dataform.ITarget, StringifiedSet<dataform.ITarget>>
+  ) {
+    return dataform.ExecutionAction.create({
+      name: action.name,
+      target: action.target,
+      fileName: action.fileName,
+      dependencies: action.dependencies,
+      transitiveInputs: Array.from(this.getAllTransitiveInputs(action, transitiveInputsByTarget)),
+      hermeticity: action.hermeticity,
+      actionDescriptor: action.actionDescriptor
     });
   }
 

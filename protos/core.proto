@@ -371,16 +371,20 @@ message ExecutionTask {
 
 message ExecutionAction {
   string name = 1;
-  repeated Target transitive_inputs = 7;
-  repeated ExecutionTask tasks = 2;
-  string type = 4;
   Target target = 5;
-  string table_type = 6;
   string file_name = 8;
-  ActionDescriptor action_descriptor = 9;
 
-  // Deprecated.
-  repeated string dependencies = 3 [deprecated = true]; // Use dependency_targets instead
+  string type = 4;
+  string table_type = 6;
+
+  // TODO: Replace this with a dependency_targets field.
+  repeated string dependencies = 3;
+  repeated Target transitive_inputs = 7;
+  ActionHermeticity hermeticity = 10;
+
+  repeated ExecutionTask tasks = 2;
+
+  ActionDescriptor action_descriptor = 9;
 }
 
 message WarehouseState {
@@ -491,7 +495,7 @@ message PersistedTableMetadata {
   Target target = 1;
   string definition_hash = 2; // sha1 hash of ExectionAction object
   int64 last_updated_millis = 3; // Timestamp of the last modification to this dataset (where that modification happened as a result of a Dataform run).
-  repeated Target dependencies = 4;
+  repeated TableMetadata transitive_input_tables = 6;
   
-  reserved 5;
+  reserved 4, 5;
 }

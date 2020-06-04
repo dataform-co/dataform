@@ -1,9 +1,9 @@
 import * as dbadapters from "df/api/dbadapters";
 import { retry } from "df/api/utils/retry";
 import { hashExecutionAction } from "df/api/utils/run_cache";
+import { JSONObjectStringifier, StringifiedMap } from "df/common/strings/stringifier";
 import { dataform } from "df/protos/ts";
 import EventEmitter from "events";
-import lodash from "lodash";
 import Long from "long";
 
 const CANCEL_EVENT = "jobCancel";
@@ -18,32 +18,47 @@ export function run(graph: dataform.IExecutionGraph, dbadapter: dbadapters.IDbAd
 }
 
 export class Runner {
-  public static create(adapter: dbadapters.IDbAdapter, graph: dataform.IExecutionGraph) {
-    return new Runner(adapter, graph);
+  public static create(dbadapter: dbadapters.IDbAdapter, graph: dataform.IExecutionGraph) {
+    return new Runner(dbadapter, graph);
   }
-  private adapter: dbadapters.IDbAdapter;
-  private graph: dataform.IExecutionGraph;
+
+  private readonly warehouseStateByTarget: StringifiedMap<
+    dataform.ITarget,
+    dataform.ITableMetadata
+  >;
+  private readonly persistedStateByTarget: StringifiedMap<
+    dataform.ITarget,
+    dataform.IPersistedTableMetadata
+  >;
+  private readonly runResult: dataform.IRunResult = {
+    actions: []
+  };
+  private readonly changeListeners: Array<(graph: dataform.IRunResult) => void> = [];
+  private readonly eEmitter: EventEmitter;
 
   private pendingActions: dataform.IExecutionAction[];
-
   private cancelled = false;
-  private timedOut = false;
-  private runResult: dataform.IRunResult;
-
-  private changeListeners: Array<(graph: dataform.IRunResult) => void> = [];
-
   private timeout: NodeJS.Timer;
+  private timedOut = false;
   private executionTask: Promise<dataform.IRunResult>;
 
-  private eEmitter: EventEmitter;
+  constructor(
+    private readonly dbadapter: dbadapters.IDbAdapter,
+    private readonly graph: dataform.IExecutionGraph
+  ) {
+    this.warehouseStateByTarget = new StringifiedMap(
+      JSONObjectStringifier.create(),
+      graph.warehouseState.tables.map(tableMetadata => [tableMetadata.target, tableMetadata])
+    );
+    this.persistedStateByTarget = new StringifiedMap(
+      JSONObjectStringifier.create(),
+      graph.warehouseState.cachedStates?.map(persistedTableMetadata => [
+        persistedTableMetadata.target,
+        persistedTableMetadata
+      ])
+    );
 
-  constructor(adapter: dbadapters.IDbAdapter, graph: dataform.IExecutionGraph) {
-    this.adapter = adapter;
-    this.graph = graph;
     this.pendingActions = graph.actions;
-    this.runResult = {
-      actions: []
-    };
     this.eEmitter = new EventEmitter();
     // There could feasibly be thousands of listeners to this, 0 makes the limit infinite.
     this.eEmitter.setMaxListeners(0);
@@ -102,9 +117,9 @@ export class Runner {
     this.runResult.timing = timer.end();
 
     if (this.graph.runConfig && this.graph.runConfig.useRunCache) {
-      await this.adapter.prepareStateMetadataTable();
+      await this.dbadapter.prepareStateMetadataTable();
 
-      await this.adapter.deleteStateMetadata(this.graph.actions);
+      await this.dbadapter.deleteStateMetadata(this.graph.actions);
 
       const successfulActions = this.runResult.actions
         .filter(action =>
@@ -118,7 +133,7 @@ export class Runner {
         );
 
       // Currently, we don't support caching for operations (and any dependents)
-      await this.adapter.persistStateMetadata(
+      await this.dbadapter.persistStateMetadata(
         successfulActions.filter(action => action.type !== "operation")
       );
     }
@@ -166,7 +181,9 @@ export class Runner {
     // Wait for all schemas to be created.
     await Promise.all(
       Array.from(databaseSchemas).map(([database, schemas]) =>
-        Promise.all(Array.from(schemas).map(schema => this.adapter.prepareSchema(database, schema)))
+        Promise.all(
+          Array.from(schemas).map(schema => this.dbadapter.prepareSchema(database, schema))
+        )
       )
     );
   }
@@ -253,7 +270,7 @@ export class Runner {
       return;
     }
 
-    if (this.actionHasCacheHit(action)) {
+    if (this.shouldCacheSkip(action)) {
       this.runResult.actions.push({
         name: action.name,
         status: dataform.ActionResult.ExecutionStatus.CACHE_SKIPPED,
@@ -300,7 +317,7 @@ export class Runner {
       actionResult.status === dataform.ActionResult.ExecutionStatus.SUCCESSFUL &&
       !(this.graph.runConfig && this.graph.runConfig.disableSetMetadata)
     ) {
-      await this.adapter.setMetadata(action);
+      await this.dbadapter.setMetadata(action);
     }
     actionResult.timing = timer.end();
     await this.triggerChange();
@@ -322,7 +339,7 @@ export class Runner {
       // Retry this function a given number of times, configurable by user
       const { rows, metadata } = await retry(
         () =>
-          this.adapter.execute(task.statement, {
+          this.dbadapter.execute(task.statement, {
             onCancel: handleCancel => this.eEmitter.on(CANCEL_EVENT, handleCancel),
             maxResults: 1
           }),
@@ -349,50 +366,90 @@ export class Runner {
     return taskResult.status;
   }
 
-  private actionHasCacheHit(executionAction: dataform.IExecutionAction): boolean {
-    if (!(this.graph.runConfig && this.graph.runConfig.useRunCache)) {
+  private shouldCacheSkip(executionAction: dataform.IExecutionAction): boolean {
+    // Run caching must be turned on.
+    if (!this.graph.runConfig?.useRunCache) {
       return false;
     }
 
+    // If the action is non-hermetic, always run it.
+    if (executionAction.hermeticity === dataform.ActionHermeticity.NON_HERMETIC) {
+      return false;
+    }
+
+    // If the action is of type "operation", always run it.
     if (executionAction.type === "operation") {
       return false;
     }
 
+    // All dependencies, if they were included in the run, must have completed with
+    // CACHE_SKIPPED status.
     for (const dependencyTarget of executionAction.transitiveInputs) {
-      const dependencyAction = this.graph.actions.find(action =>
-        lodash.isEqual(action.target, dataform.Target.create(dependencyTarget))
+      const dependencyAction = this.graph.actions.find(
+        action =>
+          action.target.database === dependencyTarget.database &&
+          action.target.schema === dependencyTarget.schema &&
+          action.target.name === dependencyTarget.name
       );
       if (!dependencyAction) {
         continue;
       }
 
-      const runResultAction = this.runResult.actions.find(
-        action => action.name === dependencyAction.name
-      );
-
-      if (runResultAction.status !== dataform.ActionResult.ExecutionStatus.CACHE_SKIPPED) {
+      if (
+        this.runResult.actions.find(action => action.name === dependencyAction.name).status !==
+        dataform.ActionResult.ExecutionStatus.CACHE_SKIPPED
+      ) {
         return false;
       }
     }
 
-    const cachedState = this.graph.warehouseState.cachedStates.find(state =>
-      lodash.isEqual(state.target, executionAction.target)
-    );
-    const tableMetadata = this.graph.warehouseState.tables.find(table =>
-      lodash.isEqual(table.target, executionAction.target)
-    );
-
-    if (!cachedState || !tableMetadata) {
+    // Persisted state for this action must exist, and the persisted action hash must match this action's hash.
+    if (!this.persistedStateByTarget.has(executionAction.target)) {
       return false;
     }
-
-    if (cachedState.lastUpdatedMillis < tableMetadata.lastUpdatedMillis) {
-      return false;
-    }
-
+    const persistedTableMetadata = this.persistedStateByTarget.get(executionAction.target);
     // tslint:disable-next-line: tsr-detect-possible-timing-attacks
-    if (hashExecutionAction(executionAction) !== cachedState.definitionHash) {
+    if (hashExecutionAction(executionAction) !== persistedTableMetadata.definitionHash) {
       return false;
+    }
+
+    // The target table for this action must exist, and the table metadata's last update timestamp must match
+    // the persisted last update timestamp.
+    if (!this.warehouseStateByTarget.has(executionAction.target)) {
+      return false;
+    }
+    if (
+      persistedTableMetadata.lastUpdatedMillis.notEquals(
+        this.warehouseStateByTarget.get(executionAction.target).lastUpdatedMillis
+      )
+    ) {
+      return false;
+    }
+
+    // All transitive inputs' last change timestamps must match the corresponding timestamps stored
+    // in persisted state.
+    const persistedTransitiveInputUpdateTimestamps = new StringifiedMap(
+      JSONObjectStringifier.create<dataform.ITarget>(),
+      persistedTableMetadata.transitiveInputTables.map(transitiveInputTable => [
+        transitiveInputTable.target,
+        transitiveInputTable.lastUpdatedMillis
+      ])
+    );
+    for (const transitiveInput of executionAction.transitiveInputs) {
+      if (!persistedTransitiveInputUpdateTimestamps.has(transitiveInput)) {
+        return false;
+      }
+      const persistedTransitiveInputUpdateTimestamp = persistedTransitiveInputUpdateTimestamps.get(
+        transitiveInput
+      );
+      if (!this.warehouseStateByTarget.has(transitiveInput)) {
+        return false;
+      }
+      const latestTransitiveInputUpdateTimestamp = this.warehouseStateByTarget.get(transitiveInput)
+        .lastUpdatedMillis;
+      if (persistedTransitiveInputUpdateTimestamp.notEquals(latestTransitiveInputUpdateTimestamp)) {
+        return false;
+      }
     }
 
     return true;
