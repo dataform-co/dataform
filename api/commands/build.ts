@@ -9,6 +9,7 @@ import {
 } from "df/common/strings/stringifier";
 import { adapters } from "df/core";
 import { IActionProto } from "df/core/session";
+import { Tasks } from "df/core/tasks";
 import * as utils from "df/core/utils";
 import { dataform } from "df/protos/ts";
 import * as semver from "semver";
@@ -50,13 +51,6 @@ export class Builder {
       tableMetadataByTarget.set(tableState.target, tableState);
     });
 
-    if (
-      !this.runConfig.hasOwnProperty("useContextualOps") ||
-      typeof this.runConfig.useContextualOps === "undefined"
-    ) {
-      this.runConfig.useContextualOps = this.prunedGraph.projectConfig.useContextualOps;
-    }
-
     const transitiveInputsByTarget = new StringifiedMap<
       dataform.ITarget,
       StringifiedSet<dataform.ITarget>
@@ -93,8 +87,16 @@ export class Builder {
     }
 
     const tasks = table.disabled
-      ? ([] as dataform.IExecutionTask[])
-      : this.adapter.publishTasks(table, this.runConfig, tableMetadata).build();
+      ? Tasks.create()
+      : this.adapter.publishTasks(table, this.runConfig, tableMetadata);
+
+    let useContextualOps = false;
+    if (this.prunedGraph.projectConfig.hasOwnProperty("useContextualOps")) {
+      useContextualOps = this.prunedGraph.projectConfig.useContextualOps;
+    }
+    if (table.hasOwnProperty("useContextualOps")) {
+      useContextualOps = table.useContextualOps;
+    }
 
     return dataform.ExecutionAction.create({
       name: table.name,
@@ -103,7 +105,7 @@ export class Builder {
       type: "table",
       target: table.target,
       tableType: table.type,
-      tasks,
+      tasks: (useContextualOps ? tasks.contextualize() : tasks).build(),
       fileName: table.fileName,
       actionDescriptor: table.actionDescriptor
     });

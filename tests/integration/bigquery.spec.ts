@@ -94,7 +94,7 @@ suite("@dataform/integration/bigquery", ({ before, after }) => {
     let executedGraph = await dfapi.run(executionGraph, dbadapter).result();
 
     let actionMap = keyBy(executedGraph.actions, v => v.name);
-    expect(Object.keys(actionMap).length).eql(13);
+    expect(Object.keys(actionMap).length).eql(14);
 
     // Check the status of action execution.
     const expectedFailedActions = [
@@ -113,6 +113,12 @@ suite("@dataform/integration/bigquery", ({ before, after }) => {
         "dataform-integration-tests.df_integration_test_assertions.example_assertion_uniqueness_fail"
       ].tasks[1].errorMessage
     ).to.eql("bigquery error: Assertion failed: query returned 1 row(s).");
+
+    // Check contextual ops have been correctly applied.
+    const contextualTable = keyBy(executionGraph.actions, a => a.name)[
+      "dataform-integration-tests.df_integration_test.example_contextual_ops"
+    ];
+    expect(contextualTable.tasks.length).to.equal(1);
 
     // Check the data in the incremental table.
     let incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
@@ -203,7 +209,7 @@ suite("@dataform/integration/bigquery", ({ before, after }) => {
     }
 
     const persistedMetaData = await dbadapter.persistedStateMetadata();
-    expect(persistedMetaData.length).to.be.eql(11);
+    expect(persistedMetaData.length).to.be.eql(12);
 
     const exampleView = persistedMetaData.find(table => table.target.name === "example_view");
     expect(exampleView).to.have.property("definitionHash");
@@ -218,7 +224,7 @@ suite("@dataform/integration/bigquery", ({ before, after }) => {
     );
     expect(exampleAssertionFail).to.be.eql(undefined);
 
-    expect(persistedMetaData.length).to.be.eql(11);
+    expect(persistedMetaData.length).to.be.eql(12);
 
     compiledGraph.tables = compiledGraph.tables.map(table => {
       if (table.name === "dataform-integration-tests.df_integration_test.example_view") {

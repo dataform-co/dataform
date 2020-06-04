@@ -73,7 +73,18 @@ suite("@dataform/integration/redshift", ({ before, after }) => {
     let executedGraph = await dfapi.run(executionGraph, dbadapter).result();
 
     const actionMap = keyBy(executedGraph.actions, v => v.name);
-    expect(Object.keys(actionMap).length).eql(13);
+    expect(Object.keys(actionMap).length).eql(14);
+
+    // Check contextual ops have been correctly applied.
+    const contextualTable = keyBy(executionGraph.actions, a => a.name)[
+      "df_integration_test.example_contextual_ops"
+    ];
+    console.log("executionGraph.actions", contextualTable);
+    expect(contextualTable.tasks.length).to.equal(1);
+    console.log(
+      "actionMap[df_integration_test.example_contextual_ops]",
+      actionMap["df_integration_test.example_contextual_ops"]
+    );
 
     // Check the status of action execution.
     const expectedFailedActions = [

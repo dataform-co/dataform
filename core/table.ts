@@ -225,6 +225,11 @@ export interface ITableConfig extends ITargetableConfig, IDocumentableConfig, ID
    * If configured, records with matching unique key(s) will be updated, rather than new rows being inserted.
    */
   uniqueKey?: string[];
+
+  /**
+   * If set as true, pre and post operations are merged into a single query context. Requires @dataform/core version > 1.6.12.
+   */
+  useContextualOps?: boolean;
 }
 
 // TODO: This needs to be a method, I'm really not sure why, but it hits a runtime failure otherwise.
@@ -245,7 +250,8 @@ export const ITableConfigProperties = () =>
     "assertions",
     "database",
     "columns",
-    "description"
+    "description",
+    "useContextualOps"
   ]);
 
 /**
@@ -353,6 +359,9 @@ export class Table {
     if (config.uniqueKey) {
       this.uniqueKey(config.uniqueKey);
     }
+    if (config.useContextualOps) {
+      this.useContextualOps(config.useContextualOps);
+    }
 
     return this;
   }
@@ -380,6 +389,10 @@ export class Table {
   public postOps(posts: Contextable<ITableContext, string | string[]>) {
     this.contextablePostOps.push(posts);
     return this;
+  }
+
+  public useContextualOps(useContextualOps: boolean) {
+    this.proto.useContextualOps = useContextualOps;
   }
 
   public disabled() {

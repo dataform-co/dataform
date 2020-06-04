@@ -52,14 +52,6 @@ export class SQLDataWarehouseAdapter extends Adapter implements IAdapter {
 
     this.postOps(table, runConfig, tableMetadata).forEach(statement => tasks.add(statement));
 
-    console.log(
-      "SQLDataWarehouseAdapter -> runConfig.useContextualOps",
-      runConfig.useContextualOps
-    );
-    if (!!runConfig.useContextualOps) {
-      return tasks.contextualize();
-    }
-
     return tasks;
   }
 

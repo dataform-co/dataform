@@ -68,7 +68,7 @@ suite("@dataform/integration/sqldatawarehouse", ({ before, after }) => {
     let executedGraph = await dfapi.run(executionGraph, dbadapter).result();
 
     const actionMap = keyBy(executedGraph.actions, v => v.name);
-    expect(Object.keys(actionMap).length).eql(11);
+    expect(Object.keys(actionMap).length).eql(12);
 
     // Check the status of action execution.
     const expectedFailedActions = [
@@ -88,6 +88,12 @@ suite("@dataform/integration/sqldatawarehouse", ({ before, after }) => {
       actionMap["df_integration_test_assertions.example_assertion_uniqueness_fail"].tasks[2]
         .errorMessage
     ).to.eql("sqldatawarehouse error: Assertion failed: query returned 1 row(s).");
+
+    // Check contextual ops have been correctly applied.
+    const contextualTable = keyBy(executionGraph.actions, a => a.name)[
+      "df_integration_test.example_contextual_ops"
+    ];
+    expect(contextualTable.tasks.length).to.equal(1);
 
     // Check the data in the incremental table.
     let incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
