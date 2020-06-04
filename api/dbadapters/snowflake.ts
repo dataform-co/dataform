@@ -1,10 +1,11 @@
+import * as https from "https";
+import * as PromisePool from "promise-pool-executor";
+
 import { Credentials } from "df/api/commands/credentials";
 import { IDbAdapter } from "df/api/dbadapters/index";
 import { parseSnowflakeEvalError } from "df/api/utils/error_parsing";
 import { ErrorWithCause } from "df/common/errors/errors";
 import { dataform } from "df/protos/ts";
-import * as https from "https";
-import * as PromisePool from "promise-pool-executor";
 
 interface ISnowflake {
   createConnection: (options: {

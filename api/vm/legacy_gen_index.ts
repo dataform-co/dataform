@@ -1,6 +1,7 @@
+import { util } from "protobufjs";
+
 import * as utils from "df/core/utils";
 import { dataform } from "df/protos/ts";
-import { util } from "protobufjs";
 
 export function legacyGenIndex(base64EncodedConfig: string): string {
   const encodedGraphBytes = new Uint8Array(util.base64.length(base64EncodedConfig));

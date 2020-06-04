@@ -1,9 +1,10 @@
 import { LineSvgProps, ResponsiveLine } from "@nivo/line";
 import { Serie } from "@nivo/line";
+import * as React from "react";
+
 import { IChartProps, nivoTheme } from "df/components/charts/common";
 import { generateAxis } from "df/components/charts/common";
 import * as styles from "df/components/charts/line.css";
-import * as React from "react";
 
 export const Line = (props: LineSvgProps & IChartProps) => {
   const { data, horizontal, formatCountValue, margin } = props;

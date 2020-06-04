@@ -1,7 +1,8 @@
-import { IHookHandler } from "df/testing";
 import * as fs from "fs";
 import * as path from "path";
 import * as rimraf from "rimraf";
+
+import { IHookHandler } from "df/testing";
 
 // TmpDirFixture can be used to create unique temporary directories which will be cleaned up
 // at the end of a test run. Intended for use within bazel tests.

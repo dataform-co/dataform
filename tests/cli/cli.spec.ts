@@ -1,10 +1,11 @@
 import { expect } from "chai";
-import { ChildProcess, execFile } from "child_process";
-import { version } from "df/core/version";
-import { suite, test } from "df/testing";
 import * as fs from "fs-extra";
 import * as os from "os";
 import * as path from "path";
+
+import { ChildProcess, execFile } from "child_process";
+import { version } from "df/core/version";
+import { suite, test } from "df/testing";
 
 suite(__filename, () => {
   const platformPath = os.platform() === "darwin" ? "nodejs_darwin_amd64" : "nodejs_linux_amd64";

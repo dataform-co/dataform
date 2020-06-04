@@ -1,7 +1,8 @@
 import { Button } from "@blueprintjs/core";
+import * as React from "react";
+
 import * as styles from "df/docs/components/header.css";
 import { Search } from "df/docs/components/search";
-import * as React from "react";
 
 // tslint:disable-next-line: no-var-requires
 const logoImage = require("df/static/images/new_logo_with_text.svg");

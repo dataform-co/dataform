@@ -1,6 +1,6 @@
+import { Button, IButtonProps, Intent } from "@blueprintjs/core";
 import * as React from "react";
 
-import { Button, IButtonProps, Intent } from "@blueprintjs/core";
 import { CardActions } from "df/components/card";
 import { Dialog } from "df/components/dialog";
 

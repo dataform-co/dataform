@@ -1,3 +1,8 @@
+import * as fs from "fs";
+import * as glob from "glob";
+import * as path from "path";
+import yargs from "yargs";
+
 import * as chokidar from "chokidar";
 import { build, compile, credentials, format, init, install, run, table, test } from "df/api";
 import { CREDENTIALS_FILENAME } from "df/api/commands/credentials";
@@ -30,10 +35,6 @@ import { actuallyResolve, assertPathExists, compiledGraphHasErrors } from "df/cl
 import { createYargsCli, INamedOption } from "df/cli/yargswrapper";
 import { supportsCancel, WarehouseType } from "df/core/adapters";
 import { dataform } from "df/protos/ts";
-import * as fs from "fs";
-import * as glob from "glob";
-import * as path from "path";
-import yargs from "yargs";
 
 const RECOMPILE_DELAY = 500;
 

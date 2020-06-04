@@ -1,5 +1,6 @@
 import * as React from "react";
 import { PrismLight as SyntaxHighlighter } from "react-syntax-highlighter";
+
 import sql from "react-syntax-highlighter/dist/cjs/languages/prism/sql";
 
 SyntaxHighlighter.registerLanguage("sql", sql);

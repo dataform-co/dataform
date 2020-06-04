@@ -1,3 +1,6 @@
+import Long from "long";
+import { PromisePoolExecutor } from "promise-pool-executor";
+
 import { BigQuery } from "@google-cloud/bigquery";
 import { QueryResultsOptions } from "@google-cloud/bigquery/build/src/job";
 import { Credentials } from "df/api/commands/credentials";
@@ -10,8 +13,6 @@ import {
   IMetadataRow
 } from "df/api/utils/run_cache";
 import { dataform } from "df/protos/ts";
-import Long from "long";
-import { PromisePoolExecutor } from "promise-pool-executor";
 
 const CACHED_STATE_TABLE_NAME = "dataform_meta.cache_state";
 

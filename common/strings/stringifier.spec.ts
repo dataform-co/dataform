@@ -1,4 +1,7 @@
 import { expect } from "chai";
+import Long from "long";
+import { basename } from "path";
+
 import {
   ArrayStringifier,
   JSONObjectStringifier,
@@ -7,8 +10,6 @@ import {
   StringifiedSet
 } from "df/common/strings/stringifier";
 import { suite, test } from "df/testing";
-import Long from "long";
-import { basename } from "path";
 
 interface IKey {
   a: string;
