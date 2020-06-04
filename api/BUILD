@@ -4,15 +4,17 @@ load("@npm_bazel_typescript//:index.bzl", "ts_library")
 
 ts_library(
     name = "lib",
-    srcs = glob(["**/*.ts"],
-    exclude=["utils/**/*.*"]),
+    srcs = glob(
+        ["**/*.ts"],
+        exclude = ["utils/**/*.*"],
+    ),
     deps = [
+        "//api/utils",
         "//common/errors",
         "//common/strings",
         "//core",
         "//protos:ts",
         "//sqlx",
-        "//api/utils",
         "@npm//@google-cloud/bigquery",
         "@npm//@types/glob",
         "@npm//@types/js-beautify",
