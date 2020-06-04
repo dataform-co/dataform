@@ -12,6 +12,7 @@ import {
   hashExecutionAction,
   IMetadataRow
 } from "df/api/utils/run_cache";
+import { ErrorWithCause } from "df/common/errors/errors";
 import { dataform } from "df/protos/ts";
 
 const CACHED_STATE_TABLE_NAME = "dataform_meta.cache_state";
@@ -335,7 +336,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
         return null;
       }
       // otherwise throw the error as normal
-      throw e;
+      throw new ErrorWithCause("Error getting BigQuery metadata.", e);
     }
   }
 
@@ -359,7 +360,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
       const allRows: any[] = [];
       const stream = this.getClient().createQueryStream(statement);
       stream
-        .on("error", reject)
+        .on("error", e => reject(new ErrorWithCause("Error running query.", e)))
         .on("data", row => {
           if (!maxResults) {
             allRows.push(row);
@@ -388,58 +389,70 @@ export class BigQueryDbAdapter implements IDbAdapter {
       this.getClient().createQueryJob(
         { useLegacySql: false, jobPrefix: "dataform-", query: statement, maxResults },
         async (err, job) => {
-          if (err) {
-            return reject(err);
-          }
-          // Cancelled before it was created, kill it now.
-          if (isCancelled) {
-            await job.cancel();
-            return reject(new Error("Query cancelled."));
-          }
-          if (onCancel) {
-            onCancel(async () => {
-              // Cancelled while running.
+          try {
+            if (err) {
+              return reject(new ErrorWithCause("Error running query job", err));
+            }
+            // Cancelled before it was created, kill it now.
+            if (isCancelled) {
               await job.cancel();
               return reject(new Error("Query cancelled."));
-            });
-          }
-
-          let results: any[] = [];
-          const manualPaginationCallback = async (
-            e: Error,
-            rows: any[],
-            nextQuery: QueryResultsOptions
-          ) => {
-            if (e) {
-              reject(e);
-              return;
             }
-            results = results.concat(rows.slice(0, maxResults - results.length));
-            if (nextQuery && results.length < maxResults) {
-              // More results exist and we have space to consume them.
-              job.getQueryResults(nextQuery, manualPaginationCallback);
-            } else {
-              const [jobMetadata] = await job.getMetadata();
-              const queryData = {
-                rows: results,
-                metadata: {
-                  bigquery: {
-                    jobId: jobMetadata.jobReference.jobId,
-                    totalBytesBilled: Long.fromString(
-                      jobMetadata.statistics.query.totalBytesBilled
-                    ),
-                    totalBytesProcessed: Long.fromString(
-                      jobMetadata.statistics.query.totalBytesProcessed
-                    )
-                  }
+            if (onCancel) {
+              onCancel(async () => {
+                // Cancelled while running.
+                try {
+                  await job.cancel();
+                  reject(new Error("Query cancelled."));
+                } catch (e) {
+                  reject(new ErrorWithCause("Error trying to cancel query.", e));
                 }
-              };
-              resolve(queryData);
+              });
             }
-          };
-          // For non interactive queries, we can set a hard limit by disabling auto pagination.
-          // This will cause problems for unit tests that have more than MAX_RESULTS rows to compare.
-          job.getQueryResults({ autoPaginate: false, maxResults }, manualPaginationCallback);
+
+            let results: any[] = [];
+            const manualPaginationCallback = async (
+              e: Error,
+              rows: any[],
+              nextQuery: QueryResultsOptions
+            ) => {
+              try {
+                if (e) {
+                  reject(e);
+                  return;
+                }
+                results = results.concat(rows.slice(0, maxResults - results.length));
+                if (nextQuery && results.length < maxResults) {
+                  // More results exist and we have space to consume them.
+                  job.getQueryResults(nextQuery, manualPaginationCallback);
+                } else {
+                  const [jobMetadata] = await job.getMetadata();
+                  const queryData = {
+                    rows: results,
+                    metadata: {
+                      bigquery: {
+                        jobId: jobMetadata.jobReference.jobId,
+                        totalBytesBilled: Long.fromString(
+                          jobMetadata.statistics.query.totalBytesBilled
+                        ),
+                        totalBytesProcessed: Long.fromString(
+                          jobMetadata.statistics.query.totalBytesProcessed
+                        )
+                      }
+                    }
+                  };
+                  resolve(queryData);
+                }
+              } catch (e) {
+                reject(new ErrorWithCause("Error paginating query results.", e));
+              }
+            };
+            // For non interactive queries, we can set a hard limit by disabling auto pagination.
+            // This will cause problems for unit tests that have more than MAX_RESULTS rows to compare.
+            job.getQueryResults({ autoPaginate: false, maxResults }, manualPaginationCallback);
+          } catch (e) {
+            reject(new ErrorWithCause("Error handling results of query job.", e));
+          }
         }
       )
     );

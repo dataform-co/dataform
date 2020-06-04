@@ -18,7 +18,7 @@ suite("@dataform/integration/snowflake", ({ before, after }) => {
 
   after("close adapter", () => dbadapter.close());
 
-  test("run", { timeout: 60000 }, async () => {
+  test("run", { timeout: 90000 }, async () => {
     const compiledGraph = await dfapi.compile({
       projectDir: "tests/integration/snowflake_project"
     });
