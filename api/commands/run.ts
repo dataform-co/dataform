@@ -48,7 +48,7 @@ export class Runner {
   ) {
     this.warehouseStateByTarget = new StringifiedMap(
       JSONObjectStringifier.create(),
-      graph.warehouseState.tables.map(tableMetadata => [tableMetadata.target, tableMetadata])
+      graph.warehouseState.tables?.map(tableMetadata => [tableMetadata.target, tableMetadata])
     );
     this.persistedStateByTarget = new StringifiedMap(
       JSONObjectStringifier.create(),
@@ -430,10 +430,12 @@ export class Runner {
     // in persisted state.
     const persistedTransitiveInputUpdateTimestamps = new StringifiedMap(
       JSONObjectStringifier.create<dataform.ITarget>(),
-      persistedTableMetadata.transitiveInputTables.map(transitiveInputTable => [
-        transitiveInputTable.target,
-        transitiveInputTable.lastUpdatedMillis
-      ])
+      persistedTableMetadata.transitiveInputTables.map(transitiveInputTable => {
+        // if (!transitiveInputTable.target) {
+        //   throw new Error("hi en");
+        // }
+        return [transitiveInputTable.target, transitiveInputTable.lastUpdatedMillis];
+      })
     );
     for (const transitiveInput of executionAction.transitiveInputs) {
       if (!persistedTransitiveInputUpdateTimestamps.has(transitiveInput)) {

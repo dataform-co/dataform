@@ -9,7 +9,12 @@ import {
   hashExecutionAction,
   IMetadataRow
 } from "df/api/utils/run_cache";
-import { JSONObjectStringifier, StringifiedMap } from "df/common/strings/stringifier";
+import { ErrorWithCause } from "df/common/errors/errors";
+import {
+  JSONObjectStringifier,
+  StringifiedMap,
+  StringifiedSet
+} from "df/common/strings/stringifier";
 import { dataform } from "df/protos/ts";
 import Long from "long";
 import { PromisePoolExecutor } from "promise-pool-executor";
@@ -236,12 +241,18 @@ export class BigQueryDbAdapter implements IDbAdapter {
     if (actions.length === 0) {
       return;
     }
+    const allInvolvedTargets = new StringifiedSet(JSONObjectStringifier.create<dataform.ITarget>());
+    actions.forEach(action => {
+      allInvolvedTargets.add(action.target);
+      action.transitiveInputs.forEach(transitiveInput => allInvolvedTargets.add(transitiveInput));
+    });
+
     const tableMetadataByTarget = new StringifiedMap<dataform.ITarget, IBigQueryTableMetadata>(
       JSONObjectStringifier.create()
     );
     await Promise.all(
-      actions.map(async action => {
-        tableMetadataByTarget.set(action.target, await this.getMetadata(action.target));
+      Array.from(allInvolvedTargets).map(async target => {
+        tableMetadataByTarget.set(target, await this.getMetadata(target));
       })
     );
     const queries = actions.map(action => {
@@ -251,9 +262,12 @@ export class BigQueryDbAdapter implements IDbAdapter {
           tableMetadataByTarget.get(action.target).lastModifiedTime
         ),
         definitionHash: hashExecutionAction(action),
-        transitiveInputTables: action.transitiveInputs.map(transitiveInput =>
-          tableMetadataByTarget.get(transitiveInput)
-        )
+        transitiveInputTables: action.transitiveInputs.map(transitiveInput => {
+          if (!tableMetadataByTarget.has(transitiveInput)) {
+            throw new Error(`Could not find table metadata for ${JSON.stringify(transitiveInput)}`);
+          }
+          return tableMetadataByTarget.get(transitiveInput);
+        })
       });
 
       const targetName = `${action.target.database}.${action.target.schema}.${action.target.name}`;

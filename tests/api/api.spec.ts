@@ -554,7 +554,9 @@ suite("@dataform/api", () => {
               statement:
                 "create or replace table `deeb.schema.name` partition by DATE(test) as select 1 as test"
             }
-          ]
+          ],
+          dependencies: [],
+          transitiveInputs: []
         },
         {
           name: "plain",
@@ -569,7 +571,9 @@ suite("@dataform/api", () => {
               type: "statement",
               statement: "create or replace table `deeb.schema.name` as select 1 as test"
             }
-          ]
+          ],
+          dependencies: [],
+          transitiveInputs: []
         }
       ];
       const executionGraph = new Builder(
@@ -626,7 +630,9 @@ suite("@dataform/api", () => {
               statement:
                 "create or replace table `deeb.schema.name` partition by DATE(test) cluster by name, revenue as select 1 as test"
             }
-          ]
+          ],
+          dependencies: [],
+          transitiveInputs: []
         },
         {
           name: "plain",
@@ -641,7 +647,9 @@ suite("@dataform/api", () => {
               type: "statement",
               statement: "create or replace table `deeb.schema.name` as select 1 as test"
             }
-          ]
+          ],
+          dependencies: [],
+          transitiveInputs: []
         }
       ];
       const executionGraph = new Builder(
@@ -825,7 +833,15 @@ suite("@dataform/api", () => {
         fullRefresh: true
       },
       warehouseState: {
-        tables: [{ type: "table" }]
+        tables: [
+          {
+            type: "table",
+            target: {
+              schema: "schema1",
+              name: "target1"
+            }
+          }
+        ]
       },
       actions: [
         {
