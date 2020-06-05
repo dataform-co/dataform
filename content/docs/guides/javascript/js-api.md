@@ -116,6 +116,19 @@ The following methods and configuration options accept a function taking a `Cont
 - `preOps()`
 - `postOps()`
 
+## Referencing includes files
+
+Just like in `.sqlx` files, you can reference any `includes` function, macro or constant inside a `.js` file. However, the syntax differs slightly.
+
+For example, if you would like to reference `SERIVCE_NAME` and `SERVICE_ID` from the `includes/service` file, you must declare these constants using the JavaScript builtin `require` function.
+
+```js
+const {SERIVCE_NAME, SERVICE_ID} = require("../../includes/service");
+...
+```
+
+Once declared, these constants are available without any additional notation (i.e.. you don't need to wrap the constants in `${}`).
+
 ## Example: Dynamic dataset generation
 
 One of the most common use cases for using the JavaScript API is to perform a similar action repeatedly.
