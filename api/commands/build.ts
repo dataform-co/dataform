@@ -86,23 +86,16 @@ export class Builder {
       throw new Error("Protected datasets cannot be fully refreshed.");
     }
 
-    let tasks = table.disabled
-      ? Tasks.create()
-      : this.adapter.publishTasks(table, this.runConfig, tableMetadata);
-
     let useContextualOps = false;
     if (this.prunedGraph.projectConfig?.hasOwnProperty("useContextualOps")) {
       useContextualOps = this.prunedGraph.projectConfig.useContextualOps;
     }
-    if (table.bigquery?.hasOwnProperty("useContextualOps")) {
-      useContextualOps = table.bigquery.useContextualOps;
-    }
-    if (table.sqlDataWarehouse?.hasOwnProperty("useContextualOps")) {
-      useContextualOps = table.sqlDataWarehouse.useContextualOps;
-    }
-    if (useContextualOps) {
-      tasks = tasks.contextualize();
-    }
+
+    const tasks = table.disabled
+      ? ([] as dataform.IExecutionTask[])
+      : this.adapter
+          .publishTasks(table, { ...this.runConfig, useContextualOps }, tableMetadata)
+          .build();
 
     return dataform.ExecutionAction.create({
       name: table.name,
@@ -111,7 +104,7 @@ export class Builder {
       type: "table",
       target: table.target,
       tableType: table.type,
-      tasks: tasks.build(),
+      tasks,
       fileName: table.fileName,
       actionDescriptor: table.actionDescriptor
     });

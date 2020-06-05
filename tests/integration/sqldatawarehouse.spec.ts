@@ -68,7 +68,7 @@ suite("@dataform/integration/sqldatawarehouse", ({ before, after }) => {
     let executedGraph = await dfapi.run(executionGraph, dbadapter).result();
 
     const actionMap = keyBy(executedGraph.actions, v => v.name);
-    expect(Object.keys(actionMap).length).eql(12);
+    expect(Object.keys(actionMap).length).eql(11);
 
     // Check the status of action execution.
     const expectedFailedActions = [
@@ -88,12 +88,6 @@ suite("@dataform/integration/sqldatawarehouse", ({ before, after }) => {
       actionMap["df_integration_test_assertions.example_assertion_uniqueness_fail"].tasks[2]
         .errorMessage
     ).to.eql("sqldatawarehouse error: Assertion failed: query returned 1 row(s).");
-
-    // Check contextual ops have been correctly applied.
-    const contextualTable = keyBy(executionGraph.actions, a => a.name)[
-      "df_integration_test.example_contextual_ops"
-    ];
-    expect(contextualTable.tasks.length).to.equal(1);
 
     // Check the data in the incremental table.
     let incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
@@ -158,23 +152,44 @@ suite("@dataform/integration/sqldatawarehouse", ({ before, after }) => {
         target: { schema: "", name: "", database: "" }
       };
 
-      const bqadapter = new SQLDataWarehouseAdapter({ warehouse: "sqldatawarehouse" }, "1.4.8");
+      const adapter = new SQLDataWarehouseAdapter({ warehouse: "sqldatawarehouse" }, "1.4.8");
 
-      const refresh = bqadapter.publishTasks(table, { fullRefresh: true }, { fields: [] }).build();
+      const refresh = adapter.publishTasks(table, { fullRefresh: true }, { fields: [] }).build();
 
       expect(refresh[0].statement).to.equal(table.preOps[0]);
       expect(refresh[1].statement).to.equal(table.preOps[1]);
       expect(refresh[refresh.length - 2].statement).to.equal(table.postOps[0]);
       expect(refresh[refresh.length - 1].statement).to.equal(table.postOps[1]);
 
-      const increment = bqadapter
-        .publishTasks(table, { fullRefresh: false }, { fields: [] })
-        .build();
+      const increment = adapter.publishTasks(table, { fullRefresh: false }, { fields: [] }).build();
 
       expect(increment[0].statement).to.equal(table.preOps[0]);
       expect(increment[1].statement).to.equal(table.preOps[1]);
       expect(increment[increment.length - 2].statement).to.equal(table.postOps[0]);
       expect(increment[increment.length - 1].statement).to.equal(table.postOps[1]);
+    });
+
+    test("contextual pre and post ops", async () => {
+      const table: dataform.ITable = {
+        type: "incremental",
+        query: "query",
+        preOps: ["preOps"],
+        incrementalQuery: "incrementalQuery",
+        postOps: ["postOps"],
+        target: { schema: "", name: "", database: "" }
+      };
+
+      const adapter = new SQLDataWarehouseAdapter({ warehouse: "sqldatawarehouse" }, "1.6.12");
+
+      const refresh = adapter
+        .publishTasks(table, { fullRefresh: true, useContextualOps: true }, { fields: [] })
+        .build();
+      expect(refresh.length).to.equal(1);
+
+      const increment = adapter
+        .publishTasks(table, { fullRefresh: false, useContextualOps: true }, { fields: [] })
+        .build();
+      expect(increment.length).to.equal(1);
     });
   });
 });

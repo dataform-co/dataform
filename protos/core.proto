@@ -104,6 +104,8 @@ message RunConfig {
   bool use_run_cache = 8;
   bool disable_set_metadata = 9;
 
+  bool use_contextual_ops = 10;
+
   reserved 4, 6;
 }
 
@@ -144,7 +146,6 @@ message BigQueryOptions {
   string partition_by = 1;
   repeated string cluster_by = 2;
   string update_partition_filter = 3;
-  bool use_contextual_ops = 4;
 }
 
 message RedshiftOptions {
@@ -157,7 +158,6 @@ message RedshiftOptions {
 
 message SQLDataWarehouseOptions {
   string distribution = 1;
-  bool use_contextual_ops = 2;
 }
 
 message GraphErrors {
@@ -256,6 +256,7 @@ message Table {
   repeated string post_ops = 14;
   repeated string incremental_pre_ops = 28;
   repeated string incremental_post_ops = 29;
+  bool use_contextual_ops = 33;
 
   // Warehouse specific features.
   RedshiftOptions redshift = 21;

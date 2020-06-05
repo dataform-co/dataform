@@ -151,14 +151,11 @@ export class Session {
     }
     if (
       !!sqlxConfig.hasOwnProperty("sqldatawarehouse") &&
-      !!sqlxConfig.hasOwnProperty("database") &&
       !["bigquery", "snowflake"].includes(this.config.warehouse)
     ) {
-      if (!!sqlxConfig) {
-        this.compileError(
-          "Actions may only specify 'database' in projects whose warehouse is 'BigQuery' or 'Snowflake'."
-        );
-      }
+      this.compileError(
+        "Actions may only specify 'database' in projects whose warehouse is 'BigQuery' or 'Snowflake'."
+      );
     }
 
     const action = (() => {
