@@ -1,4 +1,6 @@
 import { expect } from "chai";
+import Long from "long";
+
 import * as dfapi from "df/api";
 import * as dbadapters from "df/api/dbadapters";
 import { BigQueryDbAdapter } from "df/api/dbadapters/bigquery";
@@ -8,7 +10,6 @@ import { BigQueryAdapter } from "df/core/adapters/bigquery";
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
 import { dropAllTables, getTableRows, keyBy } from "df/tests/integration/utils";
-import Long from "long";
 
 suite("@dataform/integration/bigquery", ({ before, after }) => {
   const credentials = dfapi.credentials.read("bigquery", "test_credentials/bigquery.json");

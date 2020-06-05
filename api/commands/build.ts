@@ -1,3 +1,5 @@
+import * as semver from "semver";
+
 import { prune } from "df/api/commands/prune";
 import { state } from "df/api/commands/state";
 import * as dbadapters from "df/api/dbadapters";
@@ -12,7 +14,6 @@ import { IActionProto } from "df/core/session";
 import { Tasks } from "df/core/tasks";
 import * as utils from "df/core/utils";
 import { dataform } from "df/protos/ts";
-import * as semver from "semver";
 
 export async function build(
   compiledGraph: dataform.ICompiledGraph,

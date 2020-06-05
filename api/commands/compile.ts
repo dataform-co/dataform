@@ -1,10 +1,11 @@
+import * as fs from "fs";
+import * as path from "path";
+import { util } from "protobufjs";
+
 import { ChildProcess, fork } from "child_process";
 import { ErrorWithCause } from "df/common/errors/errors";
 import { validate } from "df/core/utils";
 import { dataform } from "df/protos/ts";
-import * as fs from "fs";
-import * as path from "path";
-import { util } from "protobufjs";
 
 const validWarehouses = ["bigquery", "postgres", "redshift", "sqldatawarehouse", "snowflake"];
 const mandatoryProps: Array<keyof dataform.IProjectConfig> = ["warehouse", "defaultSchema"];

@@ -1,6 +1,7 @@
+import * as grpc from "grpc";
+
 import { dataform as protos } from "df/protos/ts";
 import { IService } from "df/server/grpc_service";
-import * as grpc from "grpc";
 
 export class ServiceImpl implements IService {
   constructor(private readonly projectDir: string) {}

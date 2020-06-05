@@ -8,9 +8,10 @@ import {
   ITagInputProps,
   TagInput
 } from "@blueprintjs/core";
-import * as styles from "df/components/forms.css";
 import * as React from "react";
 import { useState } from "react";
+
+import * as styles from "df/components/forms.css";
 
 export interface IValidationRule<T> {
   predicate: (val: T) => boolean;

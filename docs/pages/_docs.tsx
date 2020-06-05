@@ -1,8 +1,4 @@
 import { Button, Callout } from "@blueprintjs/core";
-import { Code } from "df/docs/components/code";
-import { getContentTree, IExtraAttributes } from "df/docs/content_tree";
-import Documentation from "df/docs/layouts/documentation";
-import { ITree } from "df/tools/markdown-cms/tree";
 import { NextPageContext } from "next";
 import * as React from "react";
 import rehypeRaw from "rehype-raw";
@@ -10,6 +6,11 @@ import rehypeReact from "rehype-react";
 import rehypeSlug from "rehype-slug";
 import remark from "remark";
 import remarkRehype from "remark-rehype";
+
+import { Code } from "df/docs/components/code";
+import { getContentTree, IExtraAttributes } from "df/docs/content_tree";
+import Documentation from "df/docs/layouts/documentation";
+import { ITree } from "df/tools/markdown-cms/tree";
 
 interface IQuery {
   version: string;
