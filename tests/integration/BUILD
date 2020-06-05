@@ -6,7 +6,10 @@ ts_test_suite(
     name = "tests",
     srcs = glob(["*.ts"]),
     data = [
-        "//test_credentials",
+        "//test_credentials:bigquery.json",
+        "//test_credentials:redshift.json",
+        "//test_credentials:snowflake.json",
+        "//test_credentials:sqldatawarehouse.json",
         "//tests/integration/bigquery_project:files",
         "//tests/integration/bigquery_project:node_modules",
         "//tests/integration/redshift_project:files",
@@ -18,6 +21,7 @@ ts_test_suite(
     ],
     deps = [
         "//api",
+        "//api/utils",
         "//core",
         "//protos:ts",
         "//testing",

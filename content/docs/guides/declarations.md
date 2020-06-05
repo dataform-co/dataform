@@ -1,5 +1,6 @@
 ---
-title: Declaring external datasets
+title: Declare external datasets with declarations
+subtitle: Learn how to declare external datasets with declarations.
 priority: 4
 ---
 
@@ -27,7 +28,7 @@ Alternatively you can use the JavaScript API:
 ```js
 declare({
   schema: "input",
-  name: "data"
+  name: "data",
 });
 ```
 

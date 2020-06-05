@@ -1,5 +1,7 @@
 ---
 title: SQLX
+subtitle: Learn about the structure and features of SQLX files.
+priority: 1
 ---
 
 ## Overview
@@ -56,17 +58,17 @@ Built in functions have special functionality and can be executed either within 
 
 For all built in functions, see [`ITableContext` in the API reference](/reference#ITableContext). Some useful examples can be found here:
 
-#### `ref()`
+#### ref()
 
 `ref()` enables you to easily reference another dataset in your project without having to provide the full SQL dataset name. `ref()` also adds the referenced dataset to the set of dependencies for the query.
 
 Some examples can be found [here](datasets#referencing-other-datasets).
 
-#### `resolve()`
+#### resolve()
 
 `resolve()` works similarly to `ref()`, but doesn't add the dataset to the dependency list for the query.
 
-#### `self()`
+#### self()
 
 `self()` returns the name of the current dataset. If the database, schema, or dataset name is overridden in the `config{}` block, `self()` will return the full and correct dataset name.
 

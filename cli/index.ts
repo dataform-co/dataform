@@ -1,3 +1,8 @@
+import * as fs from "fs";
+import * as glob from "glob";
+import * as path from "path";
+import yargs from "yargs";
+
 import * as chokidar from "chokidar";
 import { build, compile, credentials, format, init, install, run, table, test } from "df/api";
 import { CREDENTIALS_FILENAME } from "df/api/commands/credentials";
@@ -30,15 +35,11 @@ import { actuallyResolve, assertPathExists, compiledGraphHasErrors } from "df/cl
 import { createYargsCli, INamedOption } from "df/cli/yargswrapper";
 import { supportsCancel, WarehouseType } from "df/core/adapters";
 import { dataform } from "df/protos/ts";
-import * as fs from "fs";
-import * as glob from "glob";
-import * as path from "path";
-import yargs from "yargs";
 
 const RECOMPILE_DELAY = 500;
 
-process.on("unhandledRejection", async reason => {
-  printError(`Unhandled promise rejection: ${reason.stack || reason}`);
+process.on("unhandledRejection", async (reason: any) => {
+  printError(`Unhandled promise rejection: ${reason?.stack || reason}`);
   await trackError();
 });
 
@@ -436,7 +437,10 @@ export function runCli() {
           }
 
           print(`Running ${compiledGraph.tests.length} unit tests...\n`);
-          const dbadapter = await dbadapters.create(readCredentials, compiledGraph.projectConfig.warehouse);
+          const dbadapter = await dbadapters.create(
+            readCredentials,
+            compiledGraph.projectConfig.warehouse
+          );
           try {
             const testResults = await test(dbadapter, compiledGraph.tests);
             testResults.forEach(testResult => printTestResult(testResult));
@@ -495,7 +499,10 @@ export function runCli() {
             getCredentialsPath(argv.projectDir, argv.credentials)
           );
 
-          const dbadapter = await dbadapters.create(readCredentials, compiledGraph.projectConfig.warehouse);
+          const dbadapter = await dbadapters.create(
+            readCredentials,
+            compiledGraph.projectConfig.warehouse
+          );
           try {
             const executionGraph = await build(
               compiledGraph,
@@ -661,8 +668,4 @@ export function runCli() {
   if (!builtYargs._[0]) {
     yargs.showHelp();
   }
-}
-
-if (require.main === module) {
-  runCli();
 }

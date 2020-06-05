@@ -1,5 +1,6 @@
-import Document, { Head, Main, NextScript } from "next/document";
 import * as React from "react";
+
+import Document, { Head, Main, NextScript } from "next/document";
 
 export default class DefaultDocument extends Document {
   public render() {
@@ -18,7 +19,7 @@ export default class DefaultDocument extends Document {
           />
           <link
             rel="stylesheet"
-            href="/blueprint.css"
+            href="/global.css"
           />
           <link rel="shortcut icon" href={"/static/images/favicon.ico"} type="image/png" />
         </Head>

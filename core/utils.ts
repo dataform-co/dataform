@@ -1,3 +1,5 @@
+import * as path from "path";
+
 import { adapters } from "df/core";
 import { Assertion } from "df/core/assertion";
 import { Resolvable } from "df/core/common";
@@ -6,7 +8,6 @@ import { Operation } from "df/core/operation";
 import { IActionProto, Session } from "df/core/session";
 import { DistStyleType, SortStyleType, Table, TableType } from "df/core/table";
 import { dataform } from "df/protos/ts";
-import * as path from "path";
 
 const SQL_DATA_WAREHOUSE_DIST_HASH_REGEXP = new RegExp("HASH\\s*\\(\\s*\\w*\\s*\\)\\s*");
 
@@ -301,14 +302,16 @@ export function ambiguousActionNameMsg(
 
 export function target(
   adapter: adapters.IAdapter,
+  config: dataform.IProjectConfig,
   name: string,
   schema: string,
   database?: string
 ): dataform.ITarget {
+  const resolvedDatabase = database || config.defaultDatabase;
   return dataform.Target.create({
     name: adapter.normalizeIdentifier(name),
-    schema: adapter.normalizeIdentifier(schema),
-    database: database && adapter.normalizeIdentifier(database)
+    schema: adapter.normalizeIdentifier(schema || config.defaultSchema),
+    database: resolvedDatabase && adapter.normalizeIdentifier(resolvedDatabase)
   });
 }
 
@@ -319,17 +322,23 @@ export function setNameAndTarget(
   overrideSchema?: string,
   overrideDatabase?: string
 ) {
-  action.target = target(
+  action.target = target(session.adapter(), session.config, name, overrideSchema, overrideDatabase);
+  action.canonicalTarget = target(
     session.adapter(),
+    session.canonicalConfig,
     name,
-    overrideSchema || session.config.defaultSchema,
-    overrideDatabase || session.config.defaultDatabase
+    overrideSchema,
+    overrideDatabase
   );
-  const nameParts = [action.target.name, action.target.schema];
-  if (!!action.target.database) {
-    nameParts.push(action.target.database);
+  action.name = targetToName(action.target);
+}
+
+export function targetToName(actionTarget: dataform.ITarget) {
+  const nameParts = [actionTarget.name, actionTarget.schema];
+  if (!!actionTarget.database) {
+    nameParts.push(actionTarget.database);
   }
-  action.name = nameParts.reverse().join(".");
+  return nameParts.reverse().join(".");
 }
 
 /**

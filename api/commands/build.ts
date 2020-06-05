@@ -1,8 +1,16 @@
-import { Credentials } from "df/api/commands/credentials";
+import * as semver from "semver";
+
 import { prune } from "df/api/commands/prune";
 import { state } from "df/api/commands/state";
 import * as dbadapters from "df/api/dbadapters";
+import { actionsByTarget } from "df/api/utils/graphs";
+import {
+  JSONObjectStringifier,
+  StringifiedMap,
+  StringifiedSet
+} from "df/common/strings/stringifier";
 import { adapters } from "df/core";
+import { IActionProto } from "df/core/session";
 import * as utils from "df/core/utils";
 import { dataform } from "df/protos/ts";
 
@@ -13,55 +21,55 @@ export async function build(
 ) {
   const prunedGraph = prune(compiledGraph, runConfig);
   const stateResult = await state(prunedGraph, dbadapter);
-  return new Builder(prunedGraph, runConfig, stateResult).build();
+  return new Builder(prunedGraph, actionsByTarget(compiledGraph), runConfig, stateResult).build();
 }
 
 export class Builder {
-  private compiledGraph: dataform.ICompiledGraph;
-  private runConfig: dataform.IRunConfig;
-
-  private adapter: adapters.IAdapter;
-  private warehouseState: dataform.IWarehouseState;
+  private readonly adapter: adapters.IAdapter;
 
   constructor(
-    compiledGraph: dataform.ICompiledGraph,
-    runConfig: dataform.IRunConfig,
-    warehouseState: dataform.IWarehouseState
+    private readonly prunedGraph: dataform.ICompiledGraph,
+    private readonly allActions: StringifiedMap<dataform.ITarget, IActionProto>,
+    private readonly runConfig: dataform.IRunConfig,
+    private readonly warehouseState: dataform.IWarehouseState
   ) {
-    this.compiledGraph = compiledGraph;
-    this.runConfig = runConfig;
-    this.warehouseState = warehouseState;
     this.adapter = adapters.create(
-      compiledGraph.projectConfig,
-      compiledGraph.dataformCoreVersion || "1.0.0"
+      prunedGraph.projectConfig,
+      prunedGraph.dataformCoreVersion || "1.0.0"
     );
   }
 
   public build(): dataform.ExecutionGraph {
-    if (utils.graphHasErrors(this.compiledGraph)) {
+    if (utils.graphHasErrors(this.prunedGraph)) {
       throw new Error(`Project has unresolved compilation or validation errors.`);
     }
 
-    const tableStateByTarget: { [targetJson: string]: dataform.ITableMetadata } = {};
+    const tableMetadataByTarget = new StringifiedMap<dataform.ITarget, dataform.ITableMetadata>(
+      JSONObjectStringifier.create()
+    );
     this.warehouseState.tables.forEach(tableState => {
-      tableStateByTarget[JSON.stringify(tableState.target)] = tableState;
+      tableMetadataByTarget.set(tableState.target, tableState);
     });
 
+    const transitiveInputsByTarget = new StringifiedMap<
+      dataform.ITarget,
+      StringifiedSet<dataform.ITarget>
+    >(JSONObjectStringifier.create());
     const actions: dataform.IExecutionAction[] = [].concat(
-      this.compiledGraph.tables.map(t =>
-        this.buildTable(t, tableStateByTarget[JSON.stringify(t.target)])
+      this.prunedGraph.tables.map(t =>
+        this.buildTable(t, tableMetadataByTarget.get(t.target), transitiveInputsByTarget)
       ),
-      this.compiledGraph.operations.map(o => this.buildOperation(o)),
-      this.compiledGraph.assertions.map(a => this.buildAssertion(a))
+      this.prunedGraph.operations.map(o => this.buildOperation(o, transitiveInputsByTarget)),
+      this.prunedGraph.assertions.map(a => this.buildAssertion(a, transitiveInputsByTarget))
     );
     return dataform.ExecutionGraph.create({
-      projectConfig: this.compiledGraph.projectConfig,
+      projectConfig: this.prunedGraph.projectConfig,
       runConfig: {
         ...this.runConfig,
         useRunCache:
           !this.runConfig.hasOwnProperty("useRunCache") ||
           typeof this.runConfig.useRunCache === "undefined"
-            ? this.compiledGraph.projectConfig.useRunCache
+            ? this.prunedGraph.projectConfig.useRunCache
             : this.runConfig.useRunCache
       },
       warehouseState: this.warehouseState,
@@ -69,32 +77,41 @@ export class Builder {
     });
   }
 
-  public buildTable(t: dataform.ITable, tableMetadata: dataform.ITableMetadata) {
-    if (t.protected && this.runConfig.fullRefresh) {
+  private buildTable(
+    table: dataform.ITable,
+    tableMetadata: dataform.ITableMetadata,
+    transitiveInputsByTarget: StringifiedMap<dataform.ITarget, StringifiedSet<dataform.ITarget>>
+  ) {
+    if (table.protected && this.runConfig.fullRefresh) {
       throw new Error("Protected datasets cannot be fully refreshed.");
     }
 
-    const tasks = t.disabled
+    const tasks = table.disabled
       ? ([] as dataform.IExecutionTask[])
-      : this.adapter.publishTasks(t, this.runConfig, tableMetadata).build();
+      : this.adapter.publishTasks(table, this.runConfig, tableMetadata).build();
 
     return dataform.ExecutionAction.create({
-      name: t.name,
-      dependencyTargets: t.dependencyTargets,
-      dependencies: t.dependencies,
+      name: table.name,
+      transitiveInputs: Array.from(this.getAllTransitiveInputs(table, transitiveInputsByTarget)),
+      dependencies: table.dependencies,
       type: "table",
-      target: t.target,
-      tableType: t.type,
+      target: table.target,
+      tableType: table.type,
       tasks,
-      fileName: t.fileName,
-      actionDescriptor: t.actionDescriptor
+      fileName: table.fileName,
+      actionDescriptor: table.actionDescriptor
     });
   }
 
-  public buildOperation(operation: dataform.IOperation) {
+  private buildOperation(
+    operation: dataform.IOperation,
+    transitiveInputsByTarget: StringifiedMap<dataform.ITarget, StringifiedSet<dataform.ITarget>>
+  ) {
     return dataform.ExecutionAction.create({
       name: operation.name,
-      dependencyTargets: operation.dependencyTargets,
+      transitiveInputs: Array.from(
+        this.getAllTransitiveInputs(operation, transitiveInputsByTarget)
+      ),
       dependencies: operation.dependencies,
       type: "operation",
       target: operation.target,
@@ -104,16 +121,56 @@ export class Builder {
     });
   }
 
-  public buildAssertion(assertion: dataform.IAssertion) {
+  private buildAssertion(
+    assertion: dataform.IAssertion,
+    transitiveInputsByTarget: StringifiedMap<dataform.ITarget, StringifiedSet<dataform.ITarget>>
+  ) {
     return dataform.ExecutionAction.create({
       name: assertion.name,
-      dependencyTargets: assertion.dependencyTargets,
+      transitiveInputs: Array.from(
+        this.getAllTransitiveInputs(assertion, transitiveInputsByTarget)
+      ),
       dependencies: assertion.dependencies,
       type: "assertion",
       target: assertion.target,
-      tasks: this.adapter.assertTasks(assertion, this.compiledGraph.projectConfig).build(),
+      tasks: this.adapter.assertTasks(assertion, this.prunedGraph.projectConfig).build(),
       fileName: assertion.fileName,
       actionDescriptor: assertion.actionDescriptor
     });
+  }
+
+  private getAllTransitiveInputs(
+    action: dataform.ITable | dataform.IOperation | dataform.IAssertion,
+    transitiveInputsByTarget: StringifiedMap<dataform.ITarget, StringifiedSet<dataform.ITarget>>
+  ): StringifiedSet<dataform.ITarget> {
+    const transitiveInputTargets = new StringifiedSet(JSONObjectStringifier.create());
+    if (
+      !this.prunedGraph.dataformCoreVersion ||
+      semver.lt(this.prunedGraph.dataformCoreVersion, "1.6.11")
+    ) {
+      return transitiveInputTargets;
+    }
+    if (!transitiveInputsByTarget.has(action.target)) {
+      for (const transitiveInputTarget of action.dependencyTargets || []) {
+        transitiveInputTargets.add(transitiveInputTarget);
+        const transitiveInputAction = this.allActions.get(transitiveInputTarget);
+        // Recursively add transitive inputs for all dependencies that are not tables or declarations.
+        // (i.e. recurse through all dependency views, operations, etc.)
+        if (
+          !(
+            (transitiveInputAction instanceof dataform.Table &&
+              ["table", "incremental"].includes(transitiveInputAction.type)) ||
+            transitiveInputAction instanceof dataform.Declaration
+          )
+        ) {
+          this.getAllTransitiveInputs(
+            transitiveInputAction,
+            transitiveInputsByTarget
+          ).forEach(target => transitiveInputTargets.add(target));
+        }
+      }
+      transitiveInputsByTarget.set(action.target, transitiveInputTargets);
+    }
+    return transitiveInputsByTarget.get(action.target);
   }
 }

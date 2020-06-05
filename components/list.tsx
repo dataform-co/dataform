@@ -1,5 +1,6 @@
-import * as styles from "df/components/list.css";
 import * as React from "react";
+
+import * as styles from "df/components/list.css";
 
 interface IListProps extends React.HTMLProps<HTMLUListElement> {
   condensed?: boolean;
@@ -18,6 +19,7 @@ interface IListItemProps {
   left?: React.ReactNode;
   disabled?: boolean;
   right?: React.ReactNode;
+  leftFlex?: "vertical" | "horizontal";
 }
 
 export const ListItem = ({
@@ -26,6 +28,7 @@ export const ListItem = ({
   children,
   className,
   right,
+  leftFlex,
   ...rest
 }: IListItemProps & Omit<React.HTMLAttributes<HTMLLIElement>, "title">) => {
   const classes = [className, styles.listItem];
@@ -34,7 +37,7 @@ export const ListItem = ({
   }
   return (
     <li {...rest} className={classes.join(" ")}>
-      {left}
+      {leftFlex === "vertical" ? <div className={styles.verticalListItemFlex}>{left}</div> : left}
       {children}
       {right && (
         <>

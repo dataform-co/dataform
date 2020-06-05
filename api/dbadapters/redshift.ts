@@ -1,10 +1,12 @@
+import * as pg from "pg";
+import Cursor from "pg-cursor";
+
 import { Credentials } from "df/api/commands/credentials";
 import { IDbAdapter } from "df/api/dbadapters/index";
 import { SSHTunnelProxy } from "df/api/ssh_tunnel_proxy";
 import { parseRedshiftEvalError } from "df/api/utils/error_parsing";
+import { ErrorWithCause } from "df/common/errors/errors";
 import { dataform } from "df/protos/ts";
-import * as pg from "pg";
-import Cursor from "pg-cursor";
 
 interface ICursor {
   read: (rowCount: number, callback: (err: Error, rows: any[]) => void) => void;
@@ -58,7 +60,7 @@ export class RedshiftDbAdapter implements IDbAdapter {
       if (options.includeQueryInError) {
         throw new Error(`Error encountered while running "${statement}": ${e.message}`);
       }
-      throw e;
+      throw new ErrorWithCause("Error executing Redshift query.", e);
     }
   }
 
@@ -182,13 +184,15 @@ export class RedshiftDbAdapter implements IDbAdapter {
 
   private async hasSpectrumTables() {
     return (
-      (await this.execute(
-        `select 1
+      (
+        await this.execute(
+          `select 1
          from information_schema.tables
          where table_name = 'svv_external_tables'
            and table_schema = 'pg_catalog'`,
-        { maxResults: 1, includeQueryInError: true }
-      )).rows.length > 0
+          { maxResults: 1, includeQueryInError: true }
+        )
+      ).rows.length > 0
     );
   }
 }

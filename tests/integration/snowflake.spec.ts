@@ -1,4 +1,5 @@
 import { expect } from "chai";
+
 import * as dfapi from "df/api";
 import * as dbadapters from "df/api/dbadapters";
 import * as adapters from "df/core/adapters";
@@ -17,7 +18,7 @@ suite("@dataform/integration/snowflake", ({ before, after }) => {
 
   after("close adapter", () => dbadapter.close());
 
-  test("run", { timeout: 60000 }, async () => {
+  test("run", { timeout: 90000 }, async () => {
     const compiledGraph = await dfapi.compile({
       projectDir: "tests/integration/snowflake_project"
     });

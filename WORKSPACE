@@ -35,7 +35,7 @@ http_archive(
 load("@build_bazel_rules_nodejs//:index.bzl", "node_repositories", "yarn_install")
 
 node_repositories(
-    node_version = "10.13.0",
+    node_version = "12.13.0",
     package_json = ["//:package.json"],
     yarn_version = "1.13.0",
 )
@@ -106,6 +106,14 @@ load(
 )
 
 container_pull(
+    name = "nodejs_slim_base",
+    # This digest is for tag "12.13.0-buster-slim".
+    digest = "sha256:b63713d51d3a655e476d33b72b1f13d61edfd2b51e7dea1124c4cc1f604c0f69",
+    registry = "index.docker.io",
+    repository = "library/node",
+)
+
+container_pull(
     name = "nginx_base",
     digest = "sha256:8c3cdb5acd050a5a46be0bb5637e23d192f4ef010b4fb6c5af40e45c5b7a0a71",
     registry = "index.docker.io",
@@ -118,6 +126,34 @@ load(
 )
 
 _nodejs_image_repos()
+
+# Sass requirements.
+http_archive(
+    name = "io_bazel_rules_sass",
+    sha256 = "77e241148f26d5dbb98f96fe0029d8f221c6cb75edbb83e781e08ac7f5322c5f",
+    strip_prefix = "rules_sass-1.24.0",
+    url = "https://github.com/bazelbuild/rules_sass/archive/1.24.0.zip",
+)
+
+# Fetch required transitive dependencies. This is an optional step because you
+# can always fetch the required NodeJS transitive dependency on your own.
+load("@io_bazel_rules_sass//:package.bzl", "rules_sass_dependencies")
+
+rules_sass_dependencies()
+
+# Setup repositories which are needed for the Sass rules.
+load("@io_bazel_rules_sass//:defs.bzl", "sass_repositories")
+
+sass_repositories()
+
+# Gcloud SDK binaries.
+load("//tools/gcloud:repository_rules.bzl", "gcloud_sdk")
+
+gcloud_sdk(
+    name = "gcloud_sdk",
+)
+
+# Go dependencies.
 
 go_repository(
     name = "com_github_go_stack_stack",
@@ -139,21 +175,3 @@ go_repository(
     sum = "h1:6fhXjXSzzXRQdqtFKOI1CDw6Gw5x6VflovRpfbrlVi0=",
     version = "v1.2.0",
 )
-
-http_archive(
-    name = "io_bazel_rules_sass",
-    sha256 = "77e241148f26d5dbb98f96fe0029d8f221c6cb75edbb83e781e08ac7f5322c5f",
-    strip_prefix = "rules_sass-1.24.0",
-    url = "https://github.com/bazelbuild/rules_sass/archive/1.24.0.zip",
-)
-
-# Fetch required transitive dependencies. This is an optional step because you
-# can always fetch the required NodeJS transitive dependency on your own.
-load("@io_bazel_rules_sass//:package.bzl", "rules_sass_dependencies")
-
-rules_sass_dependencies()
-
-# Setup repositories which are needed for the Sass rules.
-load("@io_bazel_rules_sass//:defs.bzl", "sass_repositories")
-
-sass_repositories()

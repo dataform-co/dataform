@@ -3,39 +3,38 @@ import * as React from "react";
 
 import * as styles from "df/components/table.css";
 
-export type TRow = Array<{
+export interface IRow {
   cells: Array<React.ReactElement | string>;
   colspans?: number[];
   href?: string;
   onClick?: () => void;
-}>;
+  onMouseEnter?: (event: React.MouseEvent<HTMLAnchorElement, MouseEvent>) => void;
+  onMouseLeave?: (event: React.MouseEvent<HTMLAnchorElement, MouseEvent>) => void;
+}
 
 export interface ITableProps {
   headers: Array<React.ReactElement | string>;
-  rows: TRow;
+  rows: IRow[];
   className?: string;
   condensed?: boolean;
   columnWidths?: number[];
 }
 
 export const Row = ({
-  children,
-  href,
-  onClick
+  colspans,
+  ...rest
 }: {
   children: React.ReactElement;
-  href?: string;
-  onClick?: () => void;
-}) => {
-  if (href) {
+} & IRow) => {
+  if (rest.href || rest.onClick) {
     return (
-      <a className={styles.tableRowLink} onClick={onClick} href={href}>
-        {children}
+      <a className={styles.tableRowLink} {...rest}>
+        {rest.children}
       </a>
     );
   }
 
-  return <tr>{children}</tr>;
+  return <tr>{rest.children}</tr>;
 };
 
 export const Table = ({ columnWidths, headers, rows, className, condensed }: ITableProps) => (
@@ -55,12 +54,12 @@ export const Table = ({ columnWidths, headers, rows, className, condensed }: ITa
       </tr>
     </thead>
     <tbody>
-      {rows.map(({ href, cells, colspans }, rowIndex) => (
-        <Row key={rowIndex} href={href}>
+      {rows.map((row, rowIndex) => (
+        <Row key={rowIndex} {...row}>
           <>
-            {cells.map((cell, cellIndex) => (
+            {row.cells.map((cell, cellIndex) => (
               <td
-                colSpan={colspans && colspans[cellIndex]}
+                colSpan={row.colspans && row.colspans[cellIndex]}
                 key={cellIndex}
                 className={styles.tableCell}
               >

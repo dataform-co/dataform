@@ -1,6 +1,7 @@
-import { GrpcWebProxy, IGrpcWebProxyOptions, Mode } from "df/grpc-web-proxy";
 import * as fs from "fs";
 import * as yargs from "yargs";
+
+import { GrpcWebProxy, IGrpcWebProxyOptions, Mode } from "df/grpc-web-proxy";
 
 const argv = yargs
   .option("backend", {

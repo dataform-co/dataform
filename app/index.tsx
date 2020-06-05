@@ -1,8 +1,9 @@
+import * as React from "react";
+import { browserHistory, Route, Router } from "react-router";
+
 import { Overview } from "df/app/overview";
 import { Service } from "df/app/service";
-import * as React from "react";
 import * as ReactDOM from "react-dom";
-import { browserHistory, Route, Router } from "react-router";
 
 const service = Service.get();
 

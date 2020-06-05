@@ -1,8 +1,35 @@
-package(default_visibility = ["//tests:__subpackages__"])
+load("//tools/gcloud:secrets.bzl", "gcloud_secret")
 
-filegroup(
-    name = "test_credentials",
-    srcs = glob([
-        "*.json",
-    ]),
+package(default_visibility = ["//visibility:public"])
+
+gcloud_secret(
+    name = "bigquery.json",
+    testonly = 1,
+    ciphertext_file = ":bigquery.json.enc",
+    key = "dataform-co-build",
+    keyring = "dataform-co-build",
+)
+
+gcloud_secret(
+    name = "redshift.json",
+    testonly = 1,
+    ciphertext_file = ":redshift.json.enc",
+    key = "dataform-co-build",
+    keyring = "dataform-co-build",
+)
+
+gcloud_secret(
+    name = "snowflake.json",
+    testonly = 1,
+    ciphertext_file = ":snowflake.json.enc",
+    key = "dataform-co-build",
+    keyring = "dataform-co-build",
+)
+
+gcloud_secret(
+    name = "sqldatawarehouse.json",
+    testonly = 1,
+    ciphertext_file = ":sqldatawarehouse.json.enc",
+    key = "dataform-co-build",
+    keyring = "dataform-co-build",
 )

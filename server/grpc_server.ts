@@ -1,7 +1,8 @@
+import * as grpc from "grpc";
+
 import { GrpcWebProxy } from "df/grpc-web-proxy";
 import * as Service from "df/server/grpc_service";
 import { ServiceImpl } from "df/server/service_impl";
-import * as grpc from "grpc";
 
 interface IProps {
   grpcPort: number;

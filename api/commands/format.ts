@@ -1,9 +1,11 @@
 import * as crypto from "crypto";
-import { SyntaxTreeNode, SyntaxTreeNodeType } from "df/sqlx/lexer";
 import * as fs from "fs";
 import * as jsBeautify from "js-beautify";
 import * as sqlFormatter from "sql-formatter";
 import { promisify } from "util";
+
+import { ErrorWithCause } from "df/common/errors/errors";
+import { SyntaxTreeNode, SyntaxTreeNodeType } from "df/sqlx/lexer";
 
 const JS_BEAUTIFY_OPTIONS: JsBeautifyOptions = {
   indent_size: 2,
@@ -31,7 +33,7 @@ export async function formatFile(
           return text;
       }
     } catch (e) {
-      throw new Error(`Unable to format "${filename}": ${e.message}`);
+      throw new ErrorWithCause(`Unable to format "${filename}".`, e);
     }
   };
   const formattedText = format(await promisify(fs.readFile)(filename, "utf8"));

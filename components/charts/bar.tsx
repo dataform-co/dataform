@@ -1,8 +1,9 @@
 import { BarSvgProps, ResponsiveBar } from "@nivo/bar";
+import * as React from "react";
+
 import * as styles from "df/components/charts/bar.css";
 import { IChartProps, nivoTheme } from "df/components/charts/common";
 import { generateAxis } from "df/components/charts/common";
-import * as React from "react";
 
 // Required as Nivo bar data is just `object[]`.
 type BarData = Array<{

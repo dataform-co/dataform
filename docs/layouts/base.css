@@ -8,18 +8,59 @@
 .container h4,
 .container > p {
   padding: 15px 0px;
+  margin-bottom: 0;
 }
 
-/* This makes sure that the on this page anchors scroll correctly */
 .container h2 {
-  padding-top: 130px;
-  margin-top: -100px;
+  padding-top: 30px;
+}
+
+.container h3 {
+  padding: 30px 0 15px 0;
 }
 
 .leftBackground {
   position: fixed;
   width: 50vw;
   height: 100vh;
-  background-color: #f6f8fa;
+  background-color: var(--shade0);
   z-index: -1;
+}
+
+.rightBackground {
+  position: fixed;
+  width: 50vw;
+  height: 100vh;
+  right: 0;
+  top: 0;
+  background-color: var(--shade1);
+  z-index: -1;
+}
+
+:global .numberTitle {
+  display: inline-block;
+  height: 30px;
+  width: 30px;
+  line-height: 30px;
+  -moz-border-radius: 30px;
+  border-radius: 30px;
+  background-color: var(--primary);
+  color: white;
+  text-align: center;
+  font-weight: 600;
+}
+
+:not(pre) > code {
+  font-family: "Roboto Mono", monospace;
+  font-size: 15px;
+  -webkit-border-radius: 3px;
+  -moz-border-radius: 3px;
+  border-radius: 5px;
+  -moz-background-clip: padding;
+  -webkit-background-clip: padding-box;
+  background-clip: padding-box;
+  background-color: var(--noneHover);
+  padding: 1px 7px 3px;
+  display: inline-block;
+  margin: 0px;
 }

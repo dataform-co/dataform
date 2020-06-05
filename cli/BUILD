@@ -26,18 +26,6 @@ ts_library(
     ],
 )
 
-load("@build_bazel_rules_nodejs//:index.bzl", "nodejs_binary")
-
-nodejs_binary(
-    name = "bin",
-    data = [
-        ":cli",
-        "@npm//source-map-support",
-    ],
-    entry_point = ":index.ts",
-    templated_args = ["--node_options=--require=source-map-support/register"],
-)
-
 load("//tools/common:copy.bzl", "copy_file")
 
 copy_file(
@@ -46,25 +34,35 @@ copy_file(
     out = "readme.md",
 )
 
-load("@io_bazel_rules_docker//nodejs:image.bzl", "nodejs_image")
+load("//:version.bzl", "DF_VERSION")
+load("@io_bazel_rules_docker//docker/util:run.bzl", "container_run_and_commit")
 
-nodejs_image(
-    name = "image",
-    data = [
-        ":cli",
-        "@npm//source-map-support",
+container_run_and_commit(
+    name = "image_with_dataform_cli",
+    commands = [
+        "npm i -g @dataform/cli@{dataform_version}".format(dataform_version = DF_VERSION),
     ],
-    entry_point = ":index.ts",
-    templated_args = ["--node_options=--require=source-map-support/register"],
+    image = "@nodejs_slim_base//image",
+    tags = [
+        "no-remote",
+    ],
 )
 
-load("@io_bazel_rules_docker//container:container.bzl", "container_push")
-load("//:version.bzl", "DF_VERSION")
+load("@io_bazel_rules_docker//container:container.bzl", "container_image", "container_push")
+
+container_image(
+    name = "image_with_dataform_entrypoint",
+    base = ":image_with_dataform_cli_commit.tar",
+    entrypoint = ["dataform"],
+    tags = [
+        "no-remote",
+    ],
+)
 
 container_push(
     name = "push",
     format = "Docker",
-    image = ":image",
+    image = ":image_with_dataform_entrypoint",
     registry = "docker.io",
     repository = "dataformco/dataform",
     tag = DF_VERSION,

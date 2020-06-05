@@ -1,9 +1,11 @@
+import * as https from "https";
+import * as PromisePool from "promise-pool-executor";
+
 import { Credentials } from "df/api/commands/credentials";
 import { IDbAdapter } from "df/api/dbadapters/index";
 import { parseSnowflakeEvalError } from "df/api/utils/error_parsing";
+import { ErrorWithCause } from "df/common/errors/errors";
 import { dataform } from "df/protos/ts";
-import * as https from "https";
-import * as PromisePool from "promise-pool-executor";
 
 interface ISnowflake {
   createConnection: (options: {
@@ -121,8 +123,10 @@ where LOWER(table_schema) != 'information_schema'
     }));
   }
 
-  public async schemas(): Promise<string[]> {
-    const { rows } = await this.execute(`select SCHEMA_NAME from information_schema.schemata`);
+  public async schemas(database: string): Promise<string[]> {
+    const { rows } = await this.execute(
+      `select SCHEMA_NAME from ${database ? `"${database}".` : ""}information_schema.schemata`
+    );
     return rows.map(row => row.SCHEMA_NAME);
   }
 
@@ -168,7 +172,7 @@ where table_schema = '${target.schema}'
   }
 
   public async prepareSchema(database: string, schema: string): Promise<void> {
-    const schemas = await this.schemas();
+    const schemas = await this.schemas(database);
     if (!schemas.includes(schema)) {
       await this.execute(
         `create schema if not exists ${database ? `"${database}".` : ""}"${schema}"`
@@ -248,7 +252,7 @@ async function connect(snowflakeCredentials: dataform.ISnowflake) {
         });
     });
   } catch (e) {
-    throw new Error(`Could not connect to Snowflake: ${e.message}`);
+    throw new ErrorWithCause(`Could not connect to Snowflake: ${e.message}`, e);
   }
 }
 
@@ -264,6 +268,6 @@ async function testHttpsConnection(url: string) {
       });
     });
   } catch (e) {
-    throw new Error(`Could not open HTTPS connection to ${url}: ${e.message}`);
+    throw new ErrorWithCause(`Could not open HTTPS connection to ${url}.`, e);
   }
 }

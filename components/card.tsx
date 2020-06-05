@@ -1,6 +1,8 @@
 import { Alignment, H3 } from "@blueprintjs/core";
-import * as styles from "df/components/card.css";
 import * as React from "react";
+
+import { BreadCrumb, IBreadCrumbProps } from "df/components/breadcrumb";
+import * as styles from "df/components/card.css";
 
 export interface ICardProps {
   header?: React.ReactNode;
@@ -8,6 +10,7 @@ export interface ICardProps {
   minimal?: boolean;
   fullWidth?: boolean;
   masonryCard?: boolean;
+  breadCrumbs?: IBreadCrumbProps;
 }
 
 export const Card = ({
@@ -18,6 +21,7 @@ export const Card = ({
   minimal,
   fullWidth,
   masonryCard,
+  breadCrumbs,
   ...rest
 }: React.PropsWithChildren<ICardProps> & React.HTMLAttributes<HTMLDivElement>) => (
   <div
@@ -31,9 +35,14 @@ export const Card = ({
     ].join(" ")}
   >
     <div className={styles.cardMainContainer}>
+      {breadCrumbs && (
+        <span className={styles.cardHeaderContainer}>
+          <BreadCrumb {...breadCrumbs} />
+        </span>
+      )}
       {(header || headerRight) && (
         <span className={styles.cardHeaderContainer}>
-          <H3>{header}</H3>
+          {header && <H3>{header}</H3>}
           {headerRight && (
             <span className={styles.cardSecondaryActionsContainer}>{headerRight}</span>
           )}
