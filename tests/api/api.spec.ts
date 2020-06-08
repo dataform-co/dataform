@@ -1,4 +1,8 @@
 import { assert, config, expect } from "chai";
+import Long from "long";
+import * as path from "path";
+import { anyString, anything, instance, mock, verify, when } from "ts-mockito";
+
 import { Builder, credentials, format, prune, query, Runner } from "df/api";
 import { IDbAdapter } from "df/api/dbadapters";
 import { BigQueryDbAdapter } from "df/api/dbadapters/bigquery";
@@ -6,9 +10,6 @@ import { actionsByTarget } from "df/api/utils/graphs";
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
 import { asPlainObject, cleanSql } from "df/tests/utils";
-import Long from "long";
-import * as path from "path";
-import { anyString, anything, instance, mock, verify, when } from "ts-mockito";
 
 config.truncateThreshold = 0;
 

@@ -1,7 +1,8 @@
-import { IHeaderLink } from "df/docs/components/page_links";
-import * as styles from "df/docs/components/swagger.css";
 import React from "react";
 import { Operation as IOperation, Schema, Spec } from "swagger-schema-official";
+
+import { IHeaderLink } from "df/docs/components/page_links";
+import * as styles from "df/docs/components/swagger.css";
 
 interface IProps {
   apiHost: string;

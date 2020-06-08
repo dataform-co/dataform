@@ -1,12 +1,13 @@
 import { fail } from "assert";
 import { expect } from "chai";
+import * as path from "path";
+
 import { Builder, compile } from "df/api";
 import { actionsByTarget } from "df/api/utils/graphs";
 import * as utils from "df/core/utils";
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
 import { cleanSql } from "df/tests/utils";
-import * as path from "path";
 
 suite("examples", () => {
   suite("common_v2 bigquery", async () => {

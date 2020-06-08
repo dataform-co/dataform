@@ -1,8 +1,9 @@
+import * as path from "path";
+
 import { CompileChildProcess } from "df/api/commands/compile";
 import * as dbadapters from "df/api/dbadapters";
 import { CancellablePromise } from "df/api/utils/cancellable_promise";
 import { dataform } from "df/protos/ts";
-import * as path from "path";
 
 export function run(
   dbadapter: dbadapters.IDbAdapter,

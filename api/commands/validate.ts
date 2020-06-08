@@ -1,7 +1,8 @@
 import cronParser from "cron-parser";
-import { dataform } from "df/protos/ts";
 import * as fs from "fs";
 import * as path from "path";
+
+import { dataform } from "df/protos/ts";
 
 const SCHEDULES_JSON_PATH = "schedules.json";
 // tslint:disable-next-line: tsr-detect-unsafe-regexp

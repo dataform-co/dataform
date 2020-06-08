@@ -1,8 +1,9 @@
+import { ConnectionPool } from "mssql";
+
 import { Credentials } from "df/api/commands/credentials";
 import { IDbAdapter, IExecutionResult, OnCancel } from "df/api/dbadapters/index";
 import { parseAzureEvaluationError } from "df/api/utils/error_parsing";
 import { dataform } from "df/protos/ts";
-import { ConnectionPool } from "mssql";
 
 const INFORMATION_SCHEMA_SCHEMA_NAME = "information_schema";
 const TABLE_NAME_COL_NAME = "table_name";

@@ -1,10 +1,11 @@
 import { Button } from "@blueprintjs/core";
+import { NextPageContext } from "next";
+import * as React from "react";
+
 import { Card, CardActions, CardGrid } from "df/components/card";
 import { getContentTree, IExtraAttributes } from "df/docs/content_tree";
 import Documentation from "df/docs/layouts/documentation";
 import { ITree } from "df/tools/markdown-cms/tree";
-import { NextPageContext } from "next";
-import * as React from "react";
 
 interface IQuery {
   version: string;
