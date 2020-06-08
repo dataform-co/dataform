@@ -86,7 +86,8 @@ connection.onDefinition(
       start: { line: params.position.line, character: 0 },
       end: { line: params.position.line + 1, character: 0 }
     });
-    const refRegex = new RegExp(/(?<=ref\(\"|'\s*).*?(?=\s*\"|'\))/g);
+
+    const refRegex = new RegExp(/(?<=ref\(\"|'\s*).*?(?=\s*\"|'\))/g); // tslint:disable-line
     const refContents = lineWithRef.match(refRegex);
     if (!refContents || refContents.length === 0) {
       return null;

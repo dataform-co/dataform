@@ -54,5 +54,3 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.window.showInformationMessage(message);
   });
 }
-
-export function deactivate() {}
