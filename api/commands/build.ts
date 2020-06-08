@@ -106,7 +106,8 @@ export class Builder {
       ...this.toPartialExecutionAction(table, transitiveInputsByTarget),
       type: "table",
       tableType: table.type,
-      tasks
+      tasks,
+      hermeticity: table.hermeticity || dataform.ActionHermeticity.HERMETIC
     };
   }
 
@@ -117,7 +118,8 @@ export class Builder {
     return {
       ...this.toPartialExecutionAction(operation, transitiveInputsByTarget),
       type: "operation",
-      tasks: operation.queries.map(statement => ({ type: "statement", statement }))
+      tasks: operation.queries.map(statement => ({ type: "statement", statement })),
+      hermeticity: operation.hermeticity || dataform.ActionHermeticity.NON_HERMETIC
     };
   }
 
@@ -128,7 +130,8 @@ export class Builder {
     return {
       ...this.toPartialExecutionAction(assertion, transitiveInputsByTarget),
       type: "assertion",
-      tasks: this.adapter.assertTasks(assertion, this.compiledGraph.projectConfig).build()
+      tasks: this.adapter.assertTasks(assertion, this.compiledGraph.projectConfig).build(),
+      hermeticity: assertion.hermeticity || dataform.ActionHermeticity.HERMETIC
     };
   }
 
@@ -142,7 +145,6 @@ export class Builder {
       fileName: action.fileName,
       dependencies: action.dependencies,
       transitiveInputs: Array.from(this.getAllTransitiveInputs(action, transitiveInputsByTarget)),
-      hermeticity: action.hermeticity,
       actionDescriptor: action.actionDescriptor
     });
   }

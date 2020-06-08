@@ -106,7 +106,7 @@ select 1 as test
       actions: [
         {
           fileName: "definitions/example.sqlx",
-          hermeticity: "UNKNOWN",
+          hermeticity: "HERMETIC",
           name: "dataform.example",
           tableType: "table",
           target: {

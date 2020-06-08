@@ -207,11 +207,9 @@ suite("@dataform/integration/bigquery", ({ before, after }) => {
     }
 
     const persistedMetaData = await dbadapter.persistedStateMetadata();
-    expect(persistedMetaData.length).to.be.eql(11);
+    expect(persistedMetaData.length).to.be.eql(7);
 
     const exampleView = persistedMetaData.find(table => table.target.name === "example_view");
-    expect(exampleView).to.have.property("definitionHash");
-
     const exampleViewExecutionAction = executionGraph.actions.find(
       action => action.name === "dataform-integration-tests.df_integration_test.example_view"
     );
@@ -221,8 +219,6 @@ suite("@dataform/integration/bigquery", ({ before, after }) => {
       table => table.target.name === "example_assertion_fail"
     );
     expect(exampleAssertionFail).to.be.eql(undefined);
-
-    expect(persistedMetaData.length).to.be.eql(11);
 
     compiledGraph.tables = compiledGraph.tables.map(table => {
       if (table.name === "dataform-integration-tests.df_integration_test.example_view") {

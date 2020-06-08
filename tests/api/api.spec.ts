@@ -557,7 +557,8 @@ suite("@dataform/api", () => {
             }
           ],
           dependencies: [],
-          transitiveInputs: []
+          transitiveInputs: [],
+          hermeticity: dataform.ActionHermeticity.HERMETIC
         },
         {
           name: "plain",
@@ -574,7 +575,8 @@ suite("@dataform/api", () => {
             }
           ],
           dependencies: [],
-          transitiveInputs: []
+          transitiveInputs: [],
+          hermeticity: dataform.ActionHermeticity.HERMETIC
         }
       ];
       const executionGraph = new Builder(
@@ -633,7 +635,8 @@ suite("@dataform/api", () => {
             }
           ],
           dependencies: [],
-          transitiveInputs: []
+          transitiveInputs: [],
+          hermeticity: dataform.ActionHermeticity.HERMETIC
         },
         {
           name: "plain",
@@ -650,7 +653,8 @@ suite("@dataform/api", () => {
             }
           ],
           dependencies: [],
-          transitiveInputs: []
+          transitiveInputs: [],
+          hermeticity: dataform.ActionHermeticity.HERMETIC
         }
       ];
       const executionGraph = new Builder(

@@ -119,24 +119,28 @@ export class Runner {
 
     if (this.graph.runConfig && this.graph.runConfig.useRunCache) {
       await this.dbadapter.prepareStateMetadataTable();
-
       await this.dbadapter.deleteStateMetadata(this.graph.actions);
-
-      const successfulActions = this.runResult.actions
-        .filter(action =>
-          [
-            dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
-            dataform.ActionResult.ExecutionStatus.CACHE_SKIPPED
-          ].includes(action.status)
-        )
-        .map(action =>
-          this.graph.actions.find(executionAction => action.name === executionAction.name)
-        );
-
-      // Currently, we don't support caching for operations (and any dependents)
       await this.dbadapter.persistStateMetadata(
-        // TODO: remove this filter?
-        successfulActions.filter(action => action.type !== "operation")
+        this.graph.actions.filter(executionAction => {
+          if (executionAction.hermeticity !== dataform.ActionHermeticity.HERMETIC) {
+            return false;
+          }
+          const executionActionResult = this.runResult.actions.find(
+            actionResult => actionResult.name === executionAction.name
+          );
+          if (!executionActionResult) {
+            return false;
+          }
+          if (
+            ![
+              dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
+              dataform.ActionResult.ExecutionStatus.CACHE_SKIPPED
+            ].includes(executionActionResult.status)
+          ) {
+            return false;
+          }
+          return true;
+        })
       );
     }
 
