@@ -40,6 +40,20 @@ by changing the `defaultSchema` property to some other value. For example, to ch
 
 [Assertions](assertions) are created inside a different schema as specified by the `assertionsSchema` property.
 
+### Running pre and post operations in context
+
+By default, pre and post operations aren't run in the same context as the main query. Because of this, variables declared in pre-operations won't be valid in the main query. Currently for BigQuery and SQL Data Warehouse there is the option to enable contextual pre and post operations by adding the following flag:
+
+```json
+{
+  ...
+  "useSingleQueryPerAction": true,
+  ...
+}
+```
+
+In future, this functionality is likely to become the default.
+
 ## package.json
 
 This is a standard NPM package file which may be used to include JavaScript packages within your project.

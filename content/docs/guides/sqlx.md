@@ -83,3 +83,7 @@ Some examples can be found [here](datasets#referencing-other-datasets).
 - **Pre-operations**: defined in SQLX by writing `pre_operations { }`, SQL written inside will be executed before the main SQL. This can be useful for granting permissions, as can be seen in the [publishing datasets guide](datasets#example-granting-dataset-access-with-post_operations). **Actions may only include pre_operations if they create a dataset**, for example with `type: "table"` or `type: "view"` or `type: "incremental"` in their config.
 
 - **Post-operations**: the same as pre-operations, but defined with `post_operations { }`, and runs after the main SQL.
+
+<div className="bp3-callout bp3-icon-info-sign" markdown="1">
+  By default, pre and post operations aren't run in the same context as the main query. To enable this, see <a href="./datasets">here</a>.
+</div>
