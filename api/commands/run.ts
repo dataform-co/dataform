@@ -385,11 +385,6 @@ export class Runner {
       return false;
     }
 
-    // If the action is of type "operation", always run it.
-    if (executionAction.type === "operation") {
-      return false;
-    }
-
     // All inputs, if they were included in the run, must have completed with
     // CACHE_SKIPPED status.
     for (const dependencyTarget of executionAction.transitiveInputs) {
