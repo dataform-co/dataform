@@ -11,6 +11,7 @@ import {
 } from "df/common/strings/stringifier";
 import { adapters } from "df/core";
 import { IActionProto } from "df/core/session";
+import { Tasks } from "df/core/tasks";
 import * as utils from "df/core/utils";
 import { dataform } from "df/protos/ts";
 
@@ -51,27 +52,34 @@ export class Builder {
       tableMetadataByTarget.set(tableState.target, tableState);
     });
 
+    const runConfig: dataform.IRunConfig = {
+      ...this.runConfig,
+      useRunCache:
+        !this.runConfig.hasOwnProperty("useRunCache") ||
+        typeof this.runConfig.useRunCache === "undefined"
+          ? this.prunedGraph.projectConfig.useRunCache
+          : this.runConfig.useRunCache,
+      useSingleQueryPerAction:
+        !this.prunedGraph.projectConfig?.hasOwnProperty("useSingleQueryPerAction") ||
+        typeof this.prunedGraph.projectConfig?.useSingleQueryPerAction === "undefined"
+          ? this.prunedGraph.projectConfig.useSingleQueryPerAction
+          : this.prunedGraph.projectConfig.useSingleQueryPerAction
+    };
+
     const transitiveInputsByTarget = new StringifiedMap<
       dataform.ITarget,
       StringifiedSet<dataform.ITarget>
     >(JSONObjectStringifier.create());
     const actions: dataform.IExecutionAction[] = [].concat(
       this.prunedGraph.tables.map(t =>
-        this.buildTable(t, tableMetadataByTarget.get(t.target), transitiveInputsByTarget)
+        this.buildTable(t, tableMetadataByTarget.get(t.target), transitiveInputsByTarget, runConfig)
       ),
       this.prunedGraph.operations.map(o => this.buildOperation(o, transitiveInputsByTarget)),
       this.prunedGraph.assertions.map(a => this.buildAssertion(a, transitiveInputsByTarget))
     );
     return dataform.ExecutionGraph.create({
       projectConfig: this.prunedGraph.projectConfig,
-      runConfig: {
-        ...this.runConfig,
-        useRunCache:
-          !this.runConfig.hasOwnProperty("useRunCache") ||
-          typeof this.runConfig.useRunCache === "undefined"
-            ? this.prunedGraph.projectConfig.useRunCache
-            : this.runConfig.useRunCache
-      },
+      runConfig,
       warehouseState: this.warehouseState,
       actions
     });
@@ -80,7 +88,8 @@ export class Builder {
   private buildTable(
     table: dataform.ITable,
     tableMetadata: dataform.ITableMetadata,
-    transitiveInputsByTarget: StringifiedMap<dataform.ITarget, StringifiedSet<dataform.ITarget>>
+    transitiveInputsByTarget: StringifiedMap<dataform.ITarget, StringifiedSet<dataform.ITarget>>,
+    runConfig: dataform.IRunConfig
   ) {
     if (table.protected && this.runConfig.fullRefresh) {
       throw new Error("Protected datasets cannot be fully refreshed.");
@@ -88,7 +97,7 @@ export class Builder {
 
     const tasks = table.disabled
       ? ([] as dataform.IExecutionTask[])
-      : this.adapter.publishTasks(table, this.runConfig, tableMetadata).build();
+      : this.adapter.publishTasks(table, runConfig, tableMetadata).build();
 
     return dataform.ExecutionAction.create({
       name: table.name,

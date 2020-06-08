@@ -342,7 +342,8 @@ export class Session {
     );
 
     this.alterActionName(
-      [].concat(compiledGraph.tables, compiledGraph.assertions, compiledGraph.operations), [].concat(compiledGraph.declarations.map(declaration => declaration.target))
+      [].concat(compiledGraph.tables, compiledGraph.assertions, compiledGraph.operations),
+      [].concat(compiledGraph.declarations.map(declaration => declaration.target))
     );
 
     this.checkActionNameUniqueness(
@@ -471,7 +472,9 @@ export class Session {
       return;
     }
 
-    const newTargetByOriginalTarget = new StringifiedMap<dataform.ITarget, dataform.ITarget>(JSONObjectStringifier.create());
+    const newTargetByOriginalTarget = new StringifiedMap<dataform.ITarget, dataform.ITarget>(
+      JSONObjectStringifier.create()
+    );
     declarationTargets.forEach(declarationTarget =>
       newTargetByOriginalTarget.set(declarationTarget, declarationTarget)
     );
@@ -480,7 +483,7 @@ export class Session {
       newTargetByOriginalTarget.set(action.target, {
         ...action.target,
         schema: `${action.target.schema}${this.getSuffixWithUnderscore()}`,
-        name: `${this.getTablePrefixWithUnderscore()}${action.target.name}`,
+        name: `${this.getTablePrefixWithUnderscore()}${action.target.name}`
       });
       action.target = newTargetByOriginalTarget.get(action.target);
       action.name = utils.targetToName(action.target);

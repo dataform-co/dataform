@@ -153,18 +153,16 @@ suite("@dataform/integration/sqldatawarehouse", ({ before, after }) => {
         target: { schema: "", name: "", database: "" }
       };
 
-      const bqadapter = new SQLDataWarehouseAdapter({ warehouse: "sqldatawarehouse" }, "1.4.8");
+      const adapter = new SQLDataWarehouseAdapter({ warehouse: "sqldatawarehouse" }, "1.4.8");
 
-      const refresh = bqadapter.publishTasks(table, { fullRefresh: true }, { fields: [] }).build();
+      const refresh = adapter.publishTasks(table, { fullRefresh: true }, { fields: [] }).build();
 
       expect(refresh[0].statement).to.equal(table.preOps[0]);
       expect(refresh[1].statement).to.equal(table.preOps[1]);
       expect(refresh[refresh.length - 2].statement).to.equal(table.postOps[0]);
       expect(refresh[refresh.length - 1].statement).to.equal(table.postOps[1]);
 
-      const increment = bqadapter
-        .publishTasks(table, { fullRefresh: false }, { fields: [] })
-        .build();
+      const increment = adapter.publishTasks(table, { fullRefresh: false }, { fields: [] }).build();
 
       expect(increment[0].statement).to.equal(table.preOps[0]);
       expect(increment[1].statement).to.equal(table.preOps[1]);
