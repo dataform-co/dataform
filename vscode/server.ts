@@ -17,6 +17,8 @@ import {
 } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
+const DIRECTORY_OF_TEST_REPO = "/Users/georgemcgowan/Work/clones/dataform-data/";
+
 const types = ["dataset", "assertion", "operation", "declaration"] as const;
 export type Type = typeof types[number];
 interface IAction {
@@ -187,7 +189,7 @@ connection.onDefinition(
     }
     const linkedFileName = retrieveLinkedFileName(refContents.join(""));
     // TODO: Make this not george specific
-    const fileString = `/Users/georgemcgowan/Work/clones/dataform-data/${linkedFileName}`;
+    const fileString = `${DIRECTORY_OF_TEST_REPO}${linkedFileName}`;
     return {
       uri: `file://${fileString}`,
       // just go to the top of the file and select nothing
