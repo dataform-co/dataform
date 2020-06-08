@@ -19,28 +19,27 @@ export async function build(
   runConfig: dataform.IRunConfig,
   dbadapter: dbadapters.IDbAdapter
 ) {
-  const prunedGraph = prune(compiledGraph, runConfig);
-  const stateResult = await state(prunedGraph, dbadapter);
-  return new Builder(prunedGraph, actionsByTarget(compiledGraph), runConfig, stateResult).build();
+  const stateResult = await state(compiledGraph, dbadapter);
+  return new Builder(compiledGraph, actionsByTarget(compiledGraph), runConfig, stateResult).build();
 }
 
 export class Builder {
   private readonly adapter: adapters.IAdapter;
 
   constructor(
-    private readonly prunedGraph: dataform.ICompiledGraph,
+    private readonly compiledGraph: dataform.ICompiledGraph,
     private readonly allActions: StringifiedMap<dataform.ITarget, IActionProto>,
     private readonly runConfig: dataform.IRunConfig,
     private readonly warehouseState: dataform.IWarehouseState
   ) {
     this.adapter = adapters.create(
-      prunedGraph.projectConfig,
-      prunedGraph.dataformCoreVersion || "1.0.0"
+      compiledGraph.projectConfig,
+      compiledGraph.dataformCoreVersion || "1.0.0"
     );
   }
 
   public build(): dataform.ExecutionGraph {
-    if (utils.graphHasErrors(this.prunedGraph)) {
+    if (utils.graphHasErrors(this.compiledGraph)) {
       throw new Error(`Project has unresolved compilation or validation errors.`);
     }
 
@@ -55,21 +54,22 @@ export class Builder {
       dataform.ITarget,
       StringifiedSet<dataform.ITarget>
     >(JSONObjectStringifier.create());
+    const prunedGraph = prune(this.compiledGraph, this.runConfig);
     const actions: dataform.IExecutionAction[] = [].concat(
-      this.prunedGraph.tables.map(t =>
+      prunedGraph.tables.map(t =>
         this.buildTable(t, tableMetadataByTarget.get(t.target), transitiveInputsByTarget)
       ),
-      this.prunedGraph.operations.map(o => this.buildOperation(o, transitiveInputsByTarget)),
-      this.prunedGraph.assertions.map(a => this.buildAssertion(a, transitiveInputsByTarget))
+      prunedGraph.operations.map(o => this.buildOperation(o, transitiveInputsByTarget)),
+      prunedGraph.assertions.map(a => this.buildAssertion(a, transitiveInputsByTarget))
     );
     return dataform.ExecutionGraph.create({
-      projectConfig: this.prunedGraph.projectConfig,
+      projectConfig: this.compiledGraph.projectConfig,
       runConfig: {
         ...this.runConfig,
         useRunCache:
           !this.runConfig.hasOwnProperty("useRunCache") ||
           typeof this.runConfig.useRunCache === "undefined"
-            ? this.prunedGraph.projectConfig.useRunCache
+            ? this.compiledGraph.projectConfig.useRunCache
             : this.runConfig.useRunCache
       },
       warehouseState: this.warehouseState,
@@ -116,7 +116,7 @@ export class Builder {
     return {
       ...this.toPartialExecutionAction(assertion, transitiveInputsByTarget),
       type: "assertion",
-      tasks: this.adapter.assertTasks(assertion, this.prunedGraph.projectConfig).build()
+      tasks: this.adapter.assertTasks(assertion, this.compiledGraph.projectConfig).build()
     };
   }
 
@@ -141,8 +141,8 @@ export class Builder {
   ): StringifiedSet<dataform.ITarget> {
     const transitiveInputTargets = new StringifiedSet(JSONObjectStringifier.create());
     if (
-      !this.prunedGraph.dataformCoreVersion ||
-      semver.lt(this.prunedGraph.dataformCoreVersion, "1.6.11")
+      !this.compiledGraph.dataformCoreVersion ||
+      semver.lt(this.compiledGraph.dataformCoreVersion, "1.6.11")
     ) {
       return transitiveInputTargets;
     }

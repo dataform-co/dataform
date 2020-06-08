@@ -135,6 +135,7 @@ export class Runner {
 
       // Currently, we don't support caching for operations (and any dependents)
       await this.dbadapter.persistStateMetadata(
+        // TODO: remove this filter?
         successfulActions.filter(action => action.type !== "operation")
       );
     }
@@ -238,6 +239,7 @@ export class Runner {
 
   private removeExecutableActionsFromPending() {
     const allDependenciesHaveExecutedSuccessfully = allDependenciesHaveBeenExecuted(
+      this.graph,
       this.runResult.actions.filter(isSuccessfulAction)
     );
     const executableActions = this.pendingActions.filter(allDependenciesHaveExecutedSuccessfully);
@@ -249,6 +251,7 @@ export class Runner {
 
   private removeSkippableActionsFromPending() {
     const allDependenciesHaveExecuted = allDependenciesHaveBeenExecuted(
+      this.graph,
       this.runResult.actions.filter(
         action => action.status !== dataform.ActionResult.ExecutionStatus.RUNNING
       )
@@ -383,7 +386,7 @@ export class Runner {
       return false;
     }
 
-    // All dependencies, if they were included in the run, must have completed with
+    // All inputs, if they were included in the run, must have completed with
     // CACHE_SKIPPED status.
     for (const dependencyTarget of executionAction.transitiveInputs) {
       const dependencyAction = this.graph.actions.find(
@@ -431,12 +434,10 @@ export class Runner {
     // in persisted state.
     const persistedTransitiveInputUpdateTimestamps = new StringifiedMap(
       JSONObjectStringifier.create<dataform.ITarget>(),
-      persistedTableMetadata.transitiveInputTables.map(transitiveInputTable => {
-        // if (!transitiveInputTable.target) {
-        //   throw new Error("hi en");
-        // }
-        return [transitiveInputTable.target, transitiveInputTable.lastUpdatedMillis];
-      })
+      persistedTableMetadata.transitiveInputTables.map(transitiveInputTable => [
+        transitiveInputTable.target,
+        transitiveInputTable.lastUpdatedMillis
+      ])
     );
     for (const transitiveInput of executionAction.transitiveInputs) {
       if (!persistedTransitiveInputUpdateTimestamps.has(transitiveInput)) {
@@ -459,11 +460,15 @@ export class Runner {
   }
 }
 
-function allDependenciesHaveBeenExecuted(actionResults: dataform.IActionResult[]) {
-  const executedActionNames = actionResults.map(action => action.name);
+function allDependenciesHaveBeenExecuted(
+  executionGraph: dataform.IExecutionGraph,
+  actionResults: dataform.IActionResult[]
+) {
+  const allActionNames = new Set<string>(executionGraph.actions.map(action => action.name));
+  const executedActionNames = new Set<string>(actionResults.map(action => action.name));
   return (action: dataform.IExecutionAction) => {
     for (const dependency of action.dependencies) {
-      if (!executedActionNames.includes(dependency)) {
+      if (allActionNames.has(dependency) && !executedActionNames.has(dependency)) {
         return false;
       }
     }

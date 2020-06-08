@@ -248,20 +248,18 @@ export class BigQueryDbAdapter implements IDbAdapter {
       action.transitiveInputs.forEach(transitiveInput => allInvolvedTargets.add(transitiveInput));
     });
 
-    const tableMetadataByTarget = new StringifiedMap<dataform.ITarget, IBigQueryTableMetadata>(
+    const tableMetadataByTarget = new StringifiedMap<dataform.ITarget, dataform.ITableMetadata>(
       JSONObjectStringifier.create()
     );
     await Promise.all(
       Array.from(allInvolvedTargets).map(async target => {
-        tableMetadataByTarget.set(target, await this.getMetadata(target));
+        tableMetadataByTarget.set(target, await this.table(target));
       })
     );
     const queries = actions.map(action => {
       const persistTable = dataform.PersistedTableMetadata.create({
         target: action.target,
-        lastUpdatedMillis: Long.fromString(
-          tableMetadataByTarget.get(action.target).lastModifiedTime
-        ),
+        lastUpdatedMillis: tableMetadataByTarget.get(action.target).lastUpdatedMillis,
         definitionHash: hashExecutionAction(action),
         transitiveInputTables: action.transitiveInputs.map(transitiveInput => {
           if (!tableMetadataByTarget.has(transitiveInput)) {

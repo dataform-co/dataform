@@ -184,9 +184,9 @@ suite("@dataform/integration/bigquery", ({ before, after }) => {
 
     let expectedActionStatus: { [index: string]: dataform.ActionResult.ExecutionStatus } = {
       "dataform-integration-tests.df_integration_test.example_incremental":
-        dataform.ActionResult.ExecutionStatus.CACHE_SKIPPED,
+        dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
       "dataform-integration-tests.df_integration_test.example_incremental_merge":
-        dataform.ActionResult.ExecutionStatus.CACHE_SKIPPED,
+        dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
       "dataform-integration-tests.df_integration_test.example_table":
         dataform.ActionResult.ExecutionStatus.CACHE_SKIPPED,
       "dataform-integration-tests.df_integration_test.example_view":
@@ -200,7 +200,10 @@ suite("@dataform/integration/bigquery", ({ before, after }) => {
     };
 
     for (const actionName of Object.keys(actionMap)) {
-      expect(actionMap[actionName].status).equals(expectedActionStatus[actionName]);
+      expect(
+        dataform.ActionResult.ExecutionStatus[actionMap[actionName].status],
+        `ActionResult ExecutionStatus for action "${actionName}"`
+      ).equals(dataform.ActionResult.ExecutionStatus[expectedActionStatus[actionName]]);
     }
 
     const persistedMetaData = await dbadapter.persistedStateMetadata();
