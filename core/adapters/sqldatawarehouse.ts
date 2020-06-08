@@ -52,6 +52,10 @@ export class SQLDataWarehouseAdapter extends Adapter implements IAdapter {
 
     this.postOps(table, runConfig, tableMetadata).forEach(statement => tasks.add(statement));
 
+    if (runConfig.useSingleQueryPerAction) {
+      return tasks.concatenate();
+    }
+
     return tasks;
   }
 
