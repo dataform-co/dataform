@@ -11,7 +11,6 @@ import {
 } from "df/common/strings/stringifier";
 import { adapters } from "df/core";
 import { IActionProto } from "df/core/session";
-import { Tasks } from "df/core/tasks";
 import * as utils from "df/core/utils";
 import { dataform } from "df/protos/ts";
 

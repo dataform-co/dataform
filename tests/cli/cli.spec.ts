@@ -106,6 +106,7 @@ select 1 as test
       actions: [
         {
           fileName: "definitions/example.sqlx",
+          hermeticity: "UNKNOWN",
           name: "dataform.example",
           tableType: "table",
           target: {
