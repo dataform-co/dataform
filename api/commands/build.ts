@@ -19,8 +19,12 @@ export async function build(
   runConfig: dataform.IRunConfig,
   dbadapter: dbadapters.IDbAdapter
 ) {
-  const stateResult = await state(compiledGraph, dbadapter);
-  return new Builder(compiledGraph, actionsByTarget(compiledGraph), runConfig, stateResult).build();
+  return new Builder(
+    compiledGraph,
+    actionsByTarget(compiledGraph),
+    runConfig,
+    await state(compiledGraph, dbadapter)
+  ).build();
 }
 
 export class Builder {
