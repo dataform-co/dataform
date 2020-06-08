@@ -385,27 +385,6 @@ export class Runner {
       return false;
     }
 
-    // All inputs, if they were included in the run, must have completed with
-    // CACHE_SKIPPED status.
-    for (const dependencyTarget of executionAction.transitiveInputs) {
-      const dependencyAction = this.graph.actions.find(
-        action =>
-          action.target.database === dependencyTarget.database &&
-          action.target.schema === dependencyTarget.schema &&
-          action.target.name === dependencyTarget.name
-      );
-      if (!dependencyAction) {
-        continue;
-      }
-
-      if (
-        this.runResult.actions.find(action => action.name === dependencyAction.name).status !==
-        dataform.ActionResult.ExecutionStatus.CACHE_SKIPPED
-      ) {
-        return false;
-      }
-    }
-
     // Persisted state for this action must exist, and the persisted action hash must match this action's hash.
     if (!this.persistedStateByTarget.has(executionAction.target)) {
       return false;
@@ -428,9 +407,6 @@ export class Runner {
     ) {
       return false;
     }
-
-    // All transitive inputs' last change timestamps must match the corresponding timestamps stored
-    // in persisted state.
     const persistedTransitiveInputUpdateTimestamps = new StringifiedMap(
       JSONObjectStringifier.create<dataform.ITarget>(),
       persistedTableMetadata.transitiveInputTables.map(transitiveInputTable => [
@@ -439,6 +415,8 @@ export class Runner {
       ])
     );
     for (const transitiveInput of executionAction.transitiveInputs) {
+      // All transitive inputs' last change timestamps must match the corresponding timestamps stored
+      // in persisted state.
       if (!persistedTransitiveInputUpdateTimestamps.has(transitiveInput)) {
         return false;
       }
@@ -451,6 +429,22 @@ export class Runner {
       const latestTransitiveInputUpdateTimestamp = this.warehouseStateByTarget.get(transitiveInput)
         .lastUpdatedMillis;
       if (persistedTransitiveInputUpdateTimestamp.notEquals(latestTransitiveInputUpdateTimestamp)) {
+        return false;
+      }
+
+      // All transitive inputs, if they were included in the run, must have completed with
+      // CACHE_SKIPPED status.
+      const transitiveInputAction = this.graph.actions.find(
+        action =>
+          action.target.database === transitiveInput.database &&
+          action.target.schema === transitiveInput.schema &&
+          action.target.name === transitiveInput.name
+      );
+      if (
+        transitiveInputAction &&
+        this.runResult.actions.find(action => action.name === transitiveInputAction.name).status !==
+          dataform.ActionResult.ExecutionStatus.CACHE_SKIPPED
+      ) {
         return false;
       }
     }
