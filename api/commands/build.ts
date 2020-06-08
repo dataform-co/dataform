@@ -87,15 +87,21 @@ export class Builder {
       throw new Error("Protected datasets cannot be fully refreshed.");
     }
 
-    let useContextualOps = false;
-    if (this.prunedGraph.projectConfig?.hasOwnProperty("useContextualOps")) {
-      useContextualOps = this.prunedGraph.projectConfig.useContextualOps;
-    }
-
     const tasks = table.disabled
       ? ([] as dataform.IExecutionTask[])
       : this.adapter
-          .publishTasks(table, { ...this.runConfig, useContextualOps }, tableMetadata)
+          .publishTasks(
+            table,
+            {
+              ...this.runConfig,
+              useSingleQueryPerAction:
+                !this.prunedGraph.projectConfig?.hasOwnProperty("useSingleQueryPerAction") ||
+                typeof this.prunedGraph.projectConfig?.useSingleQueryPerAction === "undefined"
+                  ? this.prunedGraph.projectConfig.useSingleQueryPerAction
+                  : this.prunedGraph.projectConfig.useSingleQueryPerAction
+            },
+            tableMetadata
+          )
           .build();
 
     return dataform.ExecutionAction.create({

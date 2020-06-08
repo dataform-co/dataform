@@ -169,28 +169,5 @@ suite("@dataform/integration/sqldatawarehouse", ({ before, after }) => {
       expect(increment[increment.length - 2].statement).to.equal(table.postOps[0]);
       expect(increment[increment.length - 1].statement).to.equal(table.postOps[1]);
     });
-
-    test("contextual pre and post ops", async () => {
-      const table: dataform.ITable = {
-        type: "incremental",
-        query: "query",
-        preOps: ["preOps"],
-        incrementalQuery: "incrementalQuery",
-        postOps: ["postOps"],
-        target: { schema: "", name: "", database: "" }
-      };
-
-      const adapter = new SQLDataWarehouseAdapter({ warehouse: "sqldatawarehouse" }, "1.6.12");
-
-      const refresh = adapter
-        .publishTasks(table, { fullRefresh: true, useContextualOps: true }, { fields: [] })
-        .build();
-      expect(refresh.length).to.equal(1);
-
-      const increment = adapter
-        .publishTasks(table, { fullRefresh: false, useContextualOps: true }, { fields: [] })
-        .build();
-      expect(increment.length).to.equal(1);
-    });
   });
 });

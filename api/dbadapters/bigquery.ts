@@ -249,7 +249,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
       const metadata = tableMetadataMap.get(action.target);
       const persistTable = dataform.PersistedTableMetadata.create({
         target: action.target,
-        lastUpdatedMillis: Long.fromString(metadata?.lastModifiedTime || "0"),
+        lastUpdatedMillis: Long.fromString(metadata.lastModifiedTime),
         definitionHash,
         dependencies
       });

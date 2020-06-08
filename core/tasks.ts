@@ -20,7 +20,7 @@ export class Tasks {
     return this.tasks.map(task => task.build());
   }
 
-  public contextualize() {
+  public concatenate() {
     return Tasks.create().add(
       Task.statement(this.tasks.map(task => task.getStatement()).join(";"))
     );

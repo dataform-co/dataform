@@ -21,7 +21,7 @@ message ProjectConfig {
   string table_prefix = 11;
   
   bool use_run_cache = 10;
-  bool use_contextual_ops = 12;
+  bool use_single_query_per_action = 12;
 
   // Deprecated. Please use 'default_database' instead.
   string gcloud_project_id = 6;
@@ -104,7 +104,7 @@ message RunConfig {
   bool use_run_cache = 8;
   bool disable_set_metadata = 9;
 
-  bool use_contextual_ops = 10;
+  bool use_single_query_per_action = 10;
 
   reserved 4, 6;
 }
@@ -256,7 +256,7 @@ message Table {
   repeated string post_ops = 14;
   repeated string incremental_pre_ops = 28;
   repeated string incremental_post_ops = 29;
-  bool use_contextual_ops = 33;
+  bool use_single_query_per_action = 33;
 
   // Warehouse specific features.
   RedshiftOptions redshift = 21;
