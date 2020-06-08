@@ -3,6 +3,9 @@ import * as path from "path";
 import { CompileChildProcess } from "df/api/commands/compile";
 import * as dbadapters from "df/api/dbadapters";
 import { CancellablePromise } from "df/api/utils/cancellable_promise";
+import { ErrorWithCause } from "df/common/errors/errors";
+import { BigQueryAdapter } from "df/core/adapters/bigquery";
+import { version } from "df/core/version";
 import { dataform } from "df/protos/ts";
 
 export function run(
@@ -30,10 +33,29 @@ export function run(
 
 export async function evaluate(
   dbadapter: dbadapters.IDbAdapter,
-  query: string,
-  compileConfig?: dataform.ICompileConfig
+  queryStringOrTable: string | dataform.ITable,
+  compileConfig?: dataform.ICompileConfig,
+  projectConfig?: dataform.IProjectConfig
 ): Promise<dataform.IQueryEvaluationResponse> {
-  const compiledQuery = await compile(query, compileConfig);
+  console.log("queryStringOrTable", queryStringOrTable);
+  let queryString = "";
+  if (typeof queryStringOrTable === "string") {
+    queryString = queryStringOrTable;
+  } else {
+    try {
+      queryString = new BigQueryAdapter(projectConfig, version)
+        .publishTasks(
+          queryStringOrTable,
+          { useSingleQueryPerAction: projectConfig.useSingleQueryPerAction },
+          {}
+        )
+        .build()[0].statement;
+    } catch (e) {
+      throw new ErrorWithCause("Error building table for evaluation.", e);
+    }
+  }
+  console.log("queryString", queryString);
+  const compiledQuery = await compile(queryString, compileConfig);
   return await dbadapter.evaluate(compiledQuery);
 }
 
