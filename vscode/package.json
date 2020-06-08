@@ -1,62 +1,15 @@
 {
   "name": "dataform",
-  "displayName": "Dataform",
-  "description": "Dataform description",
   "version": "0.0.1",
   "engines": {
     "vscode": "^1.45.0"
   },
-  "categories": [
-    "Other"
-  ],
   "activationEvents": [
-    "onCommand:dataform.helloWorld",
-    "onCommand:dataform.showSidebar",
-    "onCommand:dataform.addToPanel",
-    "onCommand:dataform.run",
     "workspaceContains:**/*.sqlx"
   ],
   "main": "extension.js",
   "contributes": {
-    "configuration": {
-      "type": "object",
-      "title": "Example configuration",
-      "properties": {
-        "languageServerExample.maxNumberOfProblems": {
-          "scope": "resource",
-          "type": "number",
-          "default": 100,
-          "description": "Controls the maximum number of problems produced by the server."
-        },
-        "languageServerExample.trace.server": {
-          "scope": "window",
-          "type": "string",
-          "enum": [
-            "off",
-            "messages",
-            "verbose"
-          ],
-          "default": "on",
-          "description": "Traces the communication between VS Code and the language server."
-        }
-      }
-    },
     "commands": [
-      {
-        "command": "dataform.showSidebar",
-        "title": "Show sidebar",
-        "category": "sidebar"
-      },
-      {
-        "command": "dataform.addToPanel",
-        "title": "Add to sidebar",
-        "category": "sidebar"
-      },
-      {
-        "command": "dataform.run",
-        "title": "Execute dataform run",
-        "category": "cli"
-      },
       {
         "command": "dataform.compile",
         "title": "Recompile dataform",
