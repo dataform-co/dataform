@@ -52,7 +52,7 @@ By default, pre and post operations aren't run in the same context as the main q
 }
 ```
 
-In future, this functionality is likely to become the default.
+This will join pre-operations, the main query, and post operations with a `;`. In future, this functionality is likely to become the default.
 
 ## package.json
 
