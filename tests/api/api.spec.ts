@@ -697,21 +697,21 @@ suite("@dataform/api", () => {
       });
     });
 
-    test("contextual pre and post ops", async () => {
-      [
-        {
-          warehouse: "bigquery",
-          statement: "preOps;create or replace table `database.schema.b` as query;postOps"
-        },
-        {
-          warehouse: "sqldatawarehouse",
-          statement: `preOps;if object_id ('"schema"."b_temp"','U') is not null drop table "schema"."b_temp";create table "schema"."b_temp"
+    [
+      {
+        warehouse: "bigquery",
+        expectedQuery: "preOps;create or replace table `database.schema.b` as query;postOps"
+      },
+      {
+        warehouse: "sqldatawarehouse",
+        expectedQuery: `preOps;if object_id ('"schema"."b_temp"','U') is not null drop table "schema"."b_temp";create table "schema"."b_temp"
      with(
        distribution = ROUND_ROBIN
      ) 
      as query;if object_id ('"schema"."b"','U') is not null drop table "schema"."b";rename object "schema"."b_temp" to b ;postOps`
-        }
-      ].forEach(({ warehouse, statement }) => {
+      }
+    ].forEach(({ warehouse, expectedQuery }) => {
+      test(`${warehouse}_useSingleQueryPerAction`, async () => {
         const testGraph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
           projectConfig: { warehouse, useSingleQueryPerAction: true },
           tables: [
@@ -735,7 +735,7 @@ suite("@dataform/api", () => {
 
         const tasks = executionGraph.actions[0].tasks;
         expect(tasks.length).to.equal(1);
-        expect(tasks[0].statement).to.equal(statement);
+        expect(tasks[0].statement).to.equal(expectedQuery);
       });
     });
   });
