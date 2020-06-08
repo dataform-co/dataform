@@ -735,8 +735,6 @@ suite("@dataform/api", () => {
 
         const tasks = executionGraph.actions[0].tasks;
         expect(tasks.length).to.equal(1);
-        console.log(tasks[0].statement.split(" ").join("#"));
-        console.log(statement.split(" ").join("#"));
         expect(tasks[0].statement).to.equal(statement);
       });
     });
