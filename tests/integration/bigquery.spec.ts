@@ -315,29 +315,6 @@ suite("@dataform/integration/bigquery", ({ before, after }) => {
     ]);
   });
 
-  suite("result limit works", async () => {
-    const query = `
-      select 1 union all
-      select 2 union all
-      select 3 union all
-      select 4 union all
-      select 5`;
-
-    for (const interactive of [true, false]) {
-      test(`with interactive=${interactive}`, async () => {
-        const { rows } = await dbadapter.execute(query, { interactive, maxResults: 2 });
-        expect(rows).to.eql([
-          {
-            f0_: 1
-          },
-          {
-            f0_: 2
-          }
-        ]);
-      });
-    }
-  });
-
   suite("publish tasks", async () => {
     test("incremental pre and post ops, core version <= 1.4.8", async () => {
       // 1.4.8 used `preOps` and `postOps` instead of `incrementalPreOps` and `incrementalPostOps`.
@@ -383,6 +360,29 @@ suite("@dataform/integration/bigquery", ({ before, after }) => {
       expect(bqMetadata.totalBytesBilled).to.eql(Long.fromNumber(0));
       expect(bqMetadata).to.have.property("totalBytesProcessed");
       expect(bqMetadata.totalBytesProcessed).to.eql(Long.fromNumber(0));
+    });
+
+    suite("result limit works", async () => {
+      const query = `
+        select 1 union all
+        select 2 union all
+        select 3 union all
+        select 4 union all
+        select 5`;
+
+      for (const interactive of [true, false]) {
+        test(`with interactive=${interactive}`, async () => {
+          const { rows } = await dbadapter.execute(query, { interactive, maxResults: 2 });
+          expect(rows).to.eql([
+            {
+              f0_: 1
+            },
+            {
+              f0_: 2
+            }
+          ]);
+        });
+      }
     });
   });
 });
