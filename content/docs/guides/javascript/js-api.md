@@ -120,10 +120,10 @@ The following methods and configuration options accept a function taking a `Cont
 
 Just like in `.sqlx` files, you can reference any `includes` function, macro or constant inside a `.js` file. However, the syntax differs slightly.
 
-For example, if you would like to reference `SERIVCE_NAME` and `SERVICE_ID` from the `includes/service` file, you must declare these constants using the JavaScript builtin `require` function.
+For example, if you would like to reference `SERVICE_NAME` and `SERVICE_ID` from the `includes/service` file, you must declare these constants using the JavaScript builtin `require` function.
 
 ```js
-const {SERIVCE_NAME, SERVICE_ID} = require("../../includes/service");
+const {SERVICE_NAME, SERVICE_ID} = require("../../includes/service");
 ...
 ```
 
