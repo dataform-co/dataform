@@ -77,7 +77,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
       const executedGraph = await dfapi.run(executionGraph, dbadapter).result();
 
       const actionMap = keyBy(executedGraph.actions, v => v.name);
-      expect(Object.keys(actionMap).length).eql(14);
+      expect(Object.keys(actionMap).length).eql(16);
 
       // Check the status of action execution.
       const expectedFailedActions = [
@@ -125,7 +125,15 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
         )
       );
 
-      // Re-run the project, checking caching results.
+      // Manually change some datasets (to model a change happening outside of a DF run).
+      await dbadapter.execute(
+        "create or replace view `dataform-integration-tests.df_integration_test_run_caching.sample_data_2` as select 'new' as foo"
+      );
+      await dbadapter.execute(
+        "create or replace view `dataform-integration-tests.df_integration_test_run_caching.sample_data_3` as select 'old' as bar"
+      );
+
+      // Make a change to 'example_view's query (to model an ExecutionAction hash change).
       compiledGraph.tables = compiledGraph.tables.map(table => {
         if (
           table.name === "dataform-integration-tests.df_integration_test_run_caching.example_view"
@@ -134,6 +142,8 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
         }
         return table;
       });
+
+      // Re-run the project, checking caching results.
       executionGraph = await dfapi.build(
         compiledGraph,
         {
@@ -142,7 +152,9 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
             "example_table",
             "example_assertion_fail",
             "example_view",
-            "depends_on_example_view"
+            "depends_on_example_view",
+            "sample_data_2",
+            "depends_on_sample_data_3"
           ]
         },
         dbadapter
@@ -162,6 +174,12 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
           dataform.ActionResult.ExecutionStatus.FAILED,
         // Should run because its query definition (and thus ExecutionAction hash) has changed.
         "dataform-integration-tests.df_integration_test_run_caching.example_view":
+          dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
+        // Should run because the dataset has changed in the warehouse.
+        "dataform-integration-tests.df_integration_test_run_caching.sample_data_2":
+          dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
+        // Should run because an input to dataset has changed in the warehouse.
+        "dataform-integration-tests.df_integration_test_run_caching.depends_on_sample_data_3":
           dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
         // Should run because a transitive input (included in the run) did not cache.
         "dataform-integration-tests.df_integration_test_run_caching.depends_on_example_view":
