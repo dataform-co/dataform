@@ -118,16 +118,30 @@ The following methods and configuration options accept a function taking a `Cont
 
 ## Referencing includes files
 
-Just like in `.sqlx` files, you can reference any `includes` function, macro or constant inside a `.js` file. However, the syntax differs slightly.
+Just like in `.sqlx` files, you can reference any `includes` function, macro or constant inside a `.js` file. However, the syntax differs slightly and varies depending on the `includes` file location.
 
-For example, if you would like to reference `SERVICE_NAME` and `SERVICE_ID` from the `includes/service` file, you must declare these constants using the JavaScript builtin `require` function.
+### Top-Level includes
+When importing from a top-level `includes` file, you can simply reference the file name when declaring your variables.
+
+For example, if you would like to reference `SERVICE_NAME` and `SERVICE_ID` from the `includes/service.js` file, you can reference the file name directly. This is because Dataform automatically imports
+all top-level `includes` files.
 
 ```js
-const {SERVICE_NAME, SERVICE_ID} = require("../../includes/service");
+const {SERVICE_NAME, SERVICE_ID} = service;
 ...
 ```
 
-Once declared, these constants are available without any additional notation (i.e.. you don't need to wrap the constants in `${}`).
+### Nested includes
+When importing from a nested `includes` file, you must declare these constants using the JavaScript builtin `require` function 
+
+For example, if you would like to reference `SERVICE_NAME` and `SERVICE_ID` from the `includes/all_services/service.js` file, you must use `require` and navigate to the appropriate directory level.
+
+```js
+const {SERVICE_NAME, SERVICE_ID} = require("../../includes/all_services/service.js");
+...
+```
+
+Regardless of whether the source file is top-level or nested, once declared, these variables are available without any additional notation (i.e.. you don't need to wrap the constants in `${}`).
 
 ## Example: Dynamic dataset generation
 
