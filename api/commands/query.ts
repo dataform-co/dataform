@@ -34,30 +34,11 @@ export function run(
 
 export async function evaluate(
   dbadapter: dbadapters.IDbAdapter,
-  queryStringOrTable: string | dataform.ITable,
-  compileConfig?: dataform.ICompileConfig,
-  projectConfig?: dataform.IProjectConfig
-): Promise<dataform.IQueryEvaluation[]> {
-  if (typeof queryStringOrTable !== "string") {
-    try {
-      const coreAdapter = await coreadapters.create(projectConfig, version);
-      const executionTasks = coreAdapter
-        .publishTasks(
-          queryStringOrTable,
-          { useSingleQueryPerAction: projectConfig?.useSingleQueryPerAction },
-          {}
-        )
-        .build();
-      const evaluations = await Promise.all(
-        executionTasks.map(async executionTask => await dbadapter.evaluate(executionTask.statement))
-      );
-      return evaluations;
-    } catch (e) {
-      throw new ErrorWithCause(`Error building table for evaluation. ${e.message}`, e);
-    }
-  }
-  const compiledQuery = await compile(queryStringOrTable, compileConfig);
-  return [await dbadapter.evaluate(compiledQuery)];
+  query: string,
+  compileConfig?: dataform.ICompileConfig
+): Promise<dataform.IQueryEvaluation> {
+  const compiledQuery = await compile(query, compileConfig);
+  return await dbadapter.evaluate(compiledQuery);
 }
 
 export async function compile(

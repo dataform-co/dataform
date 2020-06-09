@@ -26,7 +26,10 @@ export interface IDbAdapter {
       maxResults?: number;
     }
   ): Promise<IExecutionResult>;
-  evaluate(statement: string): Promise<dataform.IQueryEvaluation>;
+  evaluate(
+    queryOrTable: string | dataform.ITable | dataform.IOperation | dataform.IAssertion,
+    projectConfig?: dataform.IProjectConfig
+  ): Promise<dataform.IQueryEvaluation>;
   tables(): Promise<dataform.ITarget[]>;
   table(target: dataform.ITarget): Promise<dataform.ITableMetadata>;
   preview(target: dataform.ITarget, limitRows?: number): Promise<any[]>;

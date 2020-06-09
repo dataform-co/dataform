@@ -5,6 +5,8 @@ import { Credentials } from "df/api/commands/credentials";
 import { IDbAdapter } from "df/api/dbadapters/index";
 import { parseSnowflakeEvalError } from "df/api/utils/error_parsing";
 import { ErrorWithCause } from "df/common/errors/errors";
+import { SnowflakeAdapter } from "df/core/adapters/snowflake";
+import { version } from "df/core/version";
 import { dataform } from "df/protos/ts";
 
 interface ISnowflake {
@@ -90,22 +92,47 @@ export class SnowflakeDbAdapter implements IDbAdapter {
     };
   }
 
-  public async evaluate(statement: string): Promise<dataform.QueryEvaluation> {
-    try {
-      await this.execute(`select system$explain_plan_json($$
-${statement}
-        $$)`);
-      return dataform.QueryEvaluation.create({
-        status: dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS,
-        query: statement
-      });
-    } catch (e) {
-      return dataform.QueryEvaluation.create({
-        status: dataform.QueryEvaluation.QueryEvaluationStatus.FAILURE,
-        error: parseSnowflakeEvalError(String(e)),
-        query: statement
-      });
+  public async evaluate(
+    queryOrTable: string | dataform.ITable | dataform.IOperation | dataform.IAssertion,
+    projectConfig?: dataform.IProjectConfig
+  ) {
+    let executionTasks: dataform.ExecutionTask[];
+    if (typeof queryOrTable !== "string") {
+      try {
+        const coreAdapter = new SnowflakeAdapter(projectConfig, version);
+        executionTasks = coreAdapter
+          .publishTasks(
+            queryOrTable,
+            { useSingleQueryPerAction: projectConfig?.useSingleQueryPerAction },
+            {}
+          )
+          .build();
+      } catch (e) {
+        throw new ErrorWithCause(`Error building table for evaluation. ${e.message}`, e);
+      }
+    } else {
+      executionTasks = [dataform.ExecutionTask.create({ statement: queryOrTable })];
     }
+
+    executionTasks.forEach(async executionTask => {
+      const wrappedStatement = `select system$explain_plan_json($$
+        ${executionTask.statement}
+                $$)`;
+      try {
+        await this.execute(wrappedStatement);
+        return dataform.QueryEvaluation.create({
+          status: dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
+        });
+      } catch (e) {
+        return dataform.QueryEvaluation.create({
+          status: dataform.QueryEvaluation.QueryEvaluationStatus.FAILURE,
+          error: parseSnowflakeEvalError(e)
+        });
+      }
+    });
+    return dataform.QueryEvaluation.create({
+      status: dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
+    });
   }
 
   public async tables(): Promise<dataform.ITarget[]> {

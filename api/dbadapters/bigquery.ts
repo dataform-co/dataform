@@ -13,6 +13,8 @@ import {
   IMetadataRow
 } from "df/api/utils/run_cache";
 import { ErrorWithCause } from "df/common/errors/errors";
+import { BigQueryAdapter } from "df/core/adapters/bigquery";
+import { version } from "df/core/version";
 import { dataform } from "df/protos/ts";
 
 const CACHED_STATE_TABLE_NAME = "dataform_meta.cache_state";
@@ -91,22 +93,44 @@ export class BigQueryDbAdapter implements IDbAdapter {
       .promise();
   }
 
-  public async evaluate(statement: string) {
+  public async evaluate(
+    queryOrTable: string | dataform.ITable | dataform.IOperation | dataform.IAssertion,
+    projectConfig?: dataform.IProjectConfig
+  ) {
+    let executionTasks: dataform.ExecutionTask[];
+    if (typeof queryOrTable !== "string") {
+      try {
+        const coreAdapter = new BigQueryAdapter(projectConfig, version);
+        executionTasks = coreAdapter
+          .publishTasks(
+            queryOrTable,
+            { useSingleQueryPerAction: projectConfig?.useSingleQueryPerAction },
+            {}
+          )
+          .build();
+      } catch (e) {
+        throw new ErrorWithCause(`Error building table for evaluation. ${e.message}`, e);
+      }
+    } else {
+      executionTasks = [dataform.ExecutionTask.create({ statement: queryOrTable })];
+    }
+
     try {
-      await this.getClient().query({
-        useLegacySql: false,
-        query: statement,
-        dryRun: true
+      // TODO: Don't run the query if it's pure whitespace?
+      executionTasks.forEach(async executionTask => {
+        await this.getClient().query({
+          useLegacySql: false,
+          query: executionTask.statement,
+          dryRun: true
+        });
       });
       return dataform.QueryEvaluation.create({
-        status: dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS,
-        query: statement
+        status: dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
       });
     } catch (e) {
       return dataform.QueryEvaluation.create({
         status: dataform.QueryEvaluation.QueryEvaluationStatus.FAILURE,
-        error: parseBigqueryEvalError(e),
-        query: statement
+        error: parseBigqueryEvalError(e)
       });
     }
   }

@@ -193,7 +193,6 @@ message QueryEvaluation {
   }
   QueryEvaluationStatus status = 1;
   QueryEvaluationError error = 2;
-  string query = 3;
 }
 
 message ActionDescriptor {
