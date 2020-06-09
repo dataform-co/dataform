@@ -52,7 +52,7 @@ const EXPECTED_EXAMPLE_VIEW_SCHEMA = {
   ]
 };
 
-suite({ name: "@dataform/integration/bigquery", parallel: true }, ({ before, after }) => {
+suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) => {
   const credentials = dfapi.credentials.read("bigquery", "test_credentials/bigquery.json");
   let dbadapter: BigQueryDbAdapter;
 
@@ -62,7 +62,7 @@ suite({ name: "@dataform/integration/bigquery", parallel: true }, ({ before, aft
 
   after("close adapter", () => dbadapter.close());
 
-  suite({ name: "run", parallel: true }, () => {
+  suite("run", { parallel: true }, () => {
     test("e2e", { timeout: 60000 }, async () => {
       const compiledGraph = await dfapi.compile({
         projectDir: "tests/integration/bigquery_project"
@@ -89,36 +89,6 @@ suite({ name: "@dataform/integration/bigquery", parallel: true }, ({ before, aft
       // Drop the meta schema
       await dbadapter.dropSchema("dataform-integration-tests", "dataform_meta");
 
-      // Run the tests.
-      const testResults = await dfapi.test(dbadapter, compiledGraph.tests);
-      expect(testResults).to.eql([
-        { name: "successful", successful: true },
-        {
-          name: "expected more rows than got",
-          successful: false,
-          messages: ["Expected 3 rows, but saw 2 rows."]
-        },
-        {
-          name: "expected fewer columns than got",
-          successful: false,
-          messages: ['Expected columns "col1,col2,col3", but saw "col1,col2,col3,col4".']
-        },
-        {
-          name: "wrong columns",
-          successful: false,
-          messages: ['Expected columns "col1,col2,col3,col4", but saw "col1,col2,col3,col5".']
-        },
-        {
-          name: "wrong row contents",
-          successful: false,
-          messages: [
-            'For row 0 and column "col2": expected "1" (number), but saw "5" (number).',
-            'For row 1 and column "col3": expected "6.5" (number), but saw "12" (number).',
-            'For row 2 and column "col1": expected "sup?" (string), but saw "WRONG" (string).'
-          ]
-        }
-      ]);
-
       // Run the project.
       let executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
       let executedGraph = await dfapi.run(executionGraph, dbadapter).result();
@@ -143,30 +113,6 @@ suite({ name: "@dataform/integration/bigquery", parallel: true }, ({ before, aft
           "dataform-integration-tests.df_integration_test_assertions.example_assertion_uniqueness_fail"
         ].tasks[1].errorMessage
       ).to.eql("bigquery error: Assertion failed: query returned 1 row(s).");
-
-      // Check that dataset metadata has been set correctly.
-      await Promise.all([
-        expectDatasetMetadata(
-          dbadapter,
-          {
-            database: "dataform-integration-tests",
-            schema: "df_integration_test",
-            name: "example_incremental"
-          },
-          "An incremental table",
-          EXPECTED_INCREMENTAL_EXAMPLE_SCHEMA
-        ),
-        expectDatasetMetadata(
-          dbadapter,
-          {
-            database: "dataform-integration-tests",
-            schema: "df_integration_test",
-            name: "example_view"
-          },
-          "An example view",
-          EXPECTED_EXAMPLE_VIEW_SCHEMA
-        )
-      ]);
 
       // run cache assertions
       executionGraph = await dfapi.build(
@@ -273,13 +219,25 @@ suite({ name: "@dataform/integration/bigquery", parallel: true }, ({ before, aft
       );
 
       // Drop all the tables before we do anything.
-      const tablesToDelete = (await dfapi.build(compiledGraph, {}, dbadapter)).warehouseState
-        .tables;
-      await dropAllTables(tablesToDelete, adapter, dbadapter);
+      await dropAllTables(
+        (await dfapi.build(compiledGraph, {}, dbadapter)).warehouseState.tables,
+        adapter,
+        dbadapter
+      );
 
       // Run the project.
-      let executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
-      let executedGraph = await dfapi.run(executionGraph, dbadapter).result();
+      let executionGraph = await dfapi.build(
+        compiledGraph,
+        {
+          actions: ["example_incremental", "example_incremental_merge"],
+          includeDependencies: true
+        },
+        dbadapter
+      );
+      let runResult = await dfapi.run(executionGraph, dbadapter).result();
+      expect(dataform.RunResult.ExecutionStatus[runResult.status]).eql(
+        dataform.RunResult.ExecutionStatus[dataform.RunResult.ExecutionStatus.SUCCESSFUL]
+      );
 
       // Check the data in the incremental tables.
       const [incrementalRows, incrementalMergeRows] = await Promise.all([
@@ -313,9 +271,10 @@ suite({ name: "@dataform/integration/bigquery", parallel: true }, ({ before, aft
         },
         dbadapter
       );
-
-      executedGraph = await dfapi.run(executionGraph, dbadapter).result();
-      expect(executedGraph.status).equals(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
+      runResult = await dfapi.run(executionGraph, dbadapter).result();
+      expect(dataform.RunResult.ExecutionStatus[runResult.status]).eql(
+        dataform.RunResult.ExecutionStatus[dataform.RunResult.ExecutionStatus.SUCCESSFUL]
+      );
 
       // Check there are the expected number of extra rows in the incremental tables.
       const [incrementalRowsAfterSecondRun, incrementalMergeRowsAfterSecondRun] = await Promise.all(
@@ -343,9 +302,61 @@ suite({ name: "@dataform/integration/bigquery", parallel: true }, ({ before, aft
       expect(incrementalRowsAfterSecondRun.length).equals(5);
       expect(incrementalMergeRowsAfterSecondRun.length).equals(2);
     });
+
+    test("dataset metadata set correctly", { timeout: 60000 }, async () => {
+      const compiledGraph = await dfapi.compile({
+        projectDir: "tests/integration/bigquery_project",
+        schemaSuffixOverride: "dataset_metadata"
+      });
+      expect(compiledGraph.graphErrors.compilationErrors).to.eql([]);
+      expect(compiledGraph.graphErrors.validationErrors).to.eql([]);
+
+      const adapter = adapters.create(
+        compiledGraph.projectConfig,
+        compiledGraph.dataformCoreVersion
+      );
+
+      // Drop all the tables before we do anything.
+      await dropAllTables(
+        (await dfapi.build(compiledGraph, {}, dbadapter)).warehouseState.tables,
+        adapter,
+        dbadapter
+      );
+
+      // Run the project.
+      const executionGraph = await dfapi.build(
+        compiledGraph,
+        {
+          actions: ["example_incremental", "example_view"],
+          includeDependencies: true
+        },
+        dbadapter
+      );
+      const runResult = await dfapi.run(executionGraph, dbadapter).result();
+      expect(dataform.RunResult.ExecutionStatus[runResult.status]).eql(
+        dataform.RunResult.ExecutionStatus[dataform.RunResult.ExecutionStatus.SUCCESSFUL]
+      );
+
+      // Check expected metadata.
+      const incrementalMetadata = await dbadapter.getMetadata({
+        database: "dataform-integration-tests",
+        schema: "df_integration_test_dataset_metadata",
+        name: "example_incremental"
+      });
+      expect(incrementalMetadata.description).to.equal("An incremental table");
+      expect(incrementalMetadata.schema).to.deep.equal(EXPECTED_INCREMENTAL_EXAMPLE_SCHEMA);
+
+      const viewMetadata = await dbadapter.getMetadata({
+        database: "dataform-integration-tests",
+        schema: "df_integration_test_dataset_metadata",
+        name: "example_view"
+      });
+      expect(viewMetadata.description).to.equal("An example view");
+      expect(viewMetadata.schema).to.deep.equal(EXPECTED_EXAMPLE_VIEW_SCHEMA);
+    });
   });
 
-  suite("publish tasks", async () => {
+  suite("publish tasks", { parallel: true }, async () => {
     test("incremental pre and post ops, core version <= 1.4.8", async () => {
       // 1.4.8 used `preOps` and `postOps` instead of `incrementalPreOps` and `incrementalPostOps`.
       const table: dataform.ITable = {
@@ -377,7 +388,7 @@ suite({ name: "@dataform/integration/bigquery", parallel: true }, ({ before, aft
     });
   });
 
-  suite("execute", async () => {
+  suite("execute", { parallel: true }, async () => {
     test("returned metadata includes jobReference and statistics", async () => {
       const query = `select 1 as test`;
       const { metadata } = await dbadapter.execute(query);
@@ -392,7 +403,7 @@ suite({ name: "@dataform/integration/bigquery", parallel: true }, ({ before, aft
       expect(bqMetadata.totalBytesProcessed).to.eql(Long.fromNumber(0));
     });
 
-    suite("result limit works", async () => {
+    suite("result limit works", { parallel: true }, async () => {
       const query = `
         select 1 union all
         select 2 union all
@@ -415,15 +426,42 @@ suite({ name: "@dataform/integration/bigquery", parallel: true }, ({ before, aft
       }
     });
   });
-});
 
-async function expectDatasetMetadata(
-  dbadapter: BigQueryDbAdapter,
-  target: dataform.ITarget,
-  expectedDescription: string,
-  expectedSchema: any
-) {
-  const incrementalMetadata = await dbadapter.getMetadata(target);
-  expect(incrementalMetadata.description).to.equal(expectedDescription);
-  expect(incrementalMetadata.schema).to.deep.equal(expectedSchema);
-}
+  test("run unit tests", async () => {
+    const compiledGraph = await dfapi.compile({
+      projectDir: "tests/integration/bigquery_project"
+    });
+    expect(compiledGraph.graphErrors.compilationErrors).to.eql([]);
+    expect(compiledGraph.graphErrors.validationErrors).to.eql([]);
+
+    // Run the tests.
+    const testResults = await dfapi.test(dbadapter, compiledGraph.tests);
+    expect(testResults).to.eql([
+      { name: "successful", successful: true },
+      {
+        name: "expected more rows than got",
+        successful: false,
+        messages: ["Expected 3 rows, but saw 2 rows."]
+      },
+      {
+        name: "expected fewer columns than got",
+        successful: false,
+        messages: ['Expected columns "col1,col2,col3", but saw "col1,col2,col3,col4".']
+      },
+      {
+        name: "wrong columns",
+        successful: false,
+        messages: ['Expected columns "col1,col2,col3,col4", but saw "col1,col2,col3,col5".']
+      },
+      {
+        name: "wrong row contents",
+        successful: false,
+        messages: [
+          'For row 0 and column "col2": expected "1" (number), but saw "5" (number).',
+          'For row 1 and column "col3": expected "6.5" (number), but saw "12" (number).',
+          'For row 2 and column "col1": expected "sup?" (string), but saw "WRONG" (string).'
+        ]
+      }
+    ]);
+  });
+});
