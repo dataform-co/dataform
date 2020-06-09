@@ -62,232 +62,264 @@ suite({ name: "@dataform/integration/bigquery", parallel: true }, ({ before, aft
 
   after("close adapter", () => dbadapter.close());
 
-  suite(
-    {
-      name: "run",
-      parallel: true
-    },
-    () => {
-      test("e2e", { timeout: 60000 }, async () => {
-        const compiledGraph = await dfapi.compile({
-          projectDir: "tests/integration/bigquery_project"
-        });
+  suite({ name: "run", parallel: true }, () => {
+    test("e2e", { timeout: 60000 }, async () => {
+      const compiledGraph = await dfapi.compile({
+        projectDir: "tests/integration/bigquery_project"
+      });
 
-        compiledGraph.projectConfig.useRunCache = true;
+      compiledGraph.projectConfig.useRunCache = true;
 
-        expect(compiledGraph.graphErrors.compilationErrors).to.eql([]);
-        expect(compiledGraph.graphErrors.validationErrors).to.eql([]);
+      expect(compiledGraph.graphErrors.compilationErrors).to.eql([]);
+      expect(compiledGraph.graphErrors.validationErrors).to.eql([]);
 
-        const adapter = adapters.create(
-          compiledGraph.projectConfig,
-          compiledGraph.dataformCoreVersion
-        );
+      const adapter = adapters.create(
+        compiledGraph.projectConfig,
+        compiledGraph.dataformCoreVersion
+      );
 
-        // Drop all the tables before we do anything.
-        const tablesToDelete = (await dfapi.build(compiledGraph, {}, dbadapter)).warehouseState
-          .tables;
-        await dropAllTables(tablesToDelete, adapter, dbadapter);
+      // Drop all the tables before we do anything.
+      const tablesToDelete = (await dfapi.build(compiledGraph, {}, dbadapter)).warehouseState
+        .tables;
+      await dropAllTables(tablesToDelete, adapter, dbadapter);
 
-        // Drop schemas to make sure schema creation works.
-        await dbadapter.dropSchema("dataform-integration-tests", "df_integration_test");
+      // Drop schemas to make sure schema creation works.
+      await dbadapter.dropSchema("dataform-integration-tests", "df_integration_test");
 
-        // Drop the meta schema
-        await dbadapter.dropSchema("dataform-integration-tests", "dataform_meta");
+      // Drop the meta schema
+      await dbadapter.dropSchema("dataform-integration-tests", "dataform_meta");
 
-        // Run the tests.
-        const testResults = await dfapi.test(dbadapter, compiledGraph.tests);
-        expect(testResults).to.eql([
-          { name: "successful", successful: true },
-          {
-            name: "expected more rows than got",
-            successful: false,
-            messages: ["Expected 3 rows, but saw 2 rows."]
-          },
-          {
-            name: "expected fewer columns than got",
-            successful: false,
-            messages: ['Expected columns "col1,col2,col3", but saw "col1,col2,col3,col4".']
-          },
-          {
-            name: "wrong columns",
-            successful: false,
-            messages: ['Expected columns "col1,col2,col3,col4", but saw "col1,col2,col3,col5".']
-          },
-          {
-            name: "wrong row contents",
-            successful: false,
-            messages: [
-              'For row 0 and column "col2": expected "1" (number), but saw "5" (number).',
-              'For row 1 and column "col3": expected "6.5" (number), but saw "12" (number).',
-              'For row 2 and column "col1": expected "sup?" (string), but saw "WRONG" (string).'
-            ]
-          }
-        ]);
-
-        // Run the project.
-        let executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
-        let executedGraph = await dfapi.run(executionGraph, dbadapter).result();
-
-        let actionMap = keyBy(executedGraph.actions, v => v.name);
-        expect(Object.keys(actionMap).length).eql(14);
-
-        // Check the status of action execution.
-        const expectedFailedActions = [
-          "dataform-integration-tests.df_integration_test_assertions.example_assertion_uniqueness_fail",
-          "dataform-integration-tests.df_integration_test_assertions.example_assertion_fail"
-        ];
-        for (const actionName of Object.keys(actionMap)) {
-          const expectedResult = expectedFailedActions.includes(actionName)
-            ? dataform.ActionResult.ExecutionStatus.FAILED
-            : dataform.ActionResult.ExecutionStatus.SUCCESSFUL;
-          expect(actionMap[actionName].status).equals(expectedResult);
+      // Run the tests.
+      const testResults = await dfapi.test(dbadapter, compiledGraph.tests);
+      expect(testResults).to.eql([
+        { name: "successful", successful: true },
+        {
+          name: "expected more rows than got",
+          successful: false,
+          messages: ["Expected 3 rows, but saw 2 rows."]
+        },
+        {
+          name: "expected fewer columns than got",
+          successful: false,
+          messages: ['Expected columns "col1,col2,col3", but saw "col1,col2,col3,col4".']
+        },
+        {
+          name: "wrong columns",
+          successful: false,
+          messages: ['Expected columns "col1,col2,col3,col4", but saw "col1,col2,col3,col5".']
+        },
+        {
+          name: "wrong row contents",
+          successful: false,
+          messages: [
+            'For row 0 and column "col2": expected "1" (number), but saw "5" (number).',
+            'For row 1 and column "col3": expected "6.5" (number), but saw "12" (number).',
+            'For row 2 and column "col1": expected "sup?" (string), but saw "WRONG" (string).'
+          ]
         }
+      ]);
 
+      // Run the project.
+      let executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
+      let executedGraph = await dfapi.run(executionGraph, dbadapter).result();
+
+      let actionMap = keyBy(executedGraph.actions, v => v.name);
+      expect(Object.keys(actionMap).length).eql(14);
+
+      // Check the status of action execution.
+      const expectedFailedActions = [
+        "dataform-integration-tests.df_integration_test_assertions.example_assertion_uniqueness_fail",
+        "dataform-integration-tests.df_integration_test_assertions.example_assertion_fail"
+      ];
+      for (const actionName of Object.keys(actionMap)) {
+        const expectedResult = expectedFailedActions.includes(actionName)
+          ? dataform.ActionResult.ExecutionStatus.FAILED
+          : dataform.ActionResult.ExecutionStatus.SUCCESSFUL;
+        expect(actionMap[actionName].status).equals(expectedResult);
+      }
+
+      expect(
+        actionMap[
+          "dataform-integration-tests.df_integration_test_assertions.example_assertion_uniqueness_fail"
+        ].tasks[1].errorMessage
+      ).to.eql("bigquery error: Assertion failed: query returned 1 row(s).");
+
+      // Check that dataset metadata has been set correctly.
+      await Promise.all([
+        expectDatasetMetadata(
+          dbadapter,
+          {
+            database: "dataform-integration-tests",
+            schema: "df_integration_test",
+            name: "example_incremental"
+          },
+          "An incremental table",
+          EXPECTED_INCREMENTAL_EXAMPLE_SCHEMA
+        ),
+        expectDatasetMetadata(
+          dbadapter,
+          {
+            database: "dataform-integration-tests",
+            schema: "df_integration_test",
+            name: "example_view"
+          },
+          "An example view",
+          EXPECTED_EXAMPLE_VIEW_SCHEMA
+        )
+      ]);
+
+      // run cache assertions
+      executionGraph = await dfapi.build(
+        compiledGraph,
+        {
+          actions: [
+            "example_incremental",
+            "example_incremental_merge",
+            "example_table",
+            "example_view",
+            "example_assertion_fail",
+            "example_operation",
+            "depends_on_example_view"
+          ]
+        },
+        dbadapter
+      );
+
+      executedGraph = await dfapi.run(executionGraph, dbadapter).result();
+      actionMap = keyBy(executedGraph.actions, v => v.name);
+
+      expect(executedGraph.status).equals(dataform.RunResult.ExecutionStatus.FAILED);
+
+      let expectedActionStatus: { [index: string]: dataform.ActionResult.ExecutionStatus } = {
+        "dataform-integration-tests.df_integration_test.example_incremental":
+          dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
+        "dataform-integration-tests.df_integration_test.example_incremental_merge":
+          dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
+        "dataform-integration-tests.df_integration_test.example_table":
+          dataform.ActionResult.ExecutionStatus.CACHE_SKIPPED,
+        "dataform-integration-tests.df_integration_test.example_view":
+          dataform.ActionResult.ExecutionStatus.CACHE_SKIPPED,
+        "dataform-integration-tests.df_integration_test_assertions.example_assertion_fail":
+          dataform.ActionResult.ExecutionStatus.FAILED,
+        "dataform-integration-tests.df_integration_test.example_operation":
+          dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
+        "dataform-integration-tests.df_integration_test.depends_on_example_view":
+          dataform.ActionResult.ExecutionStatus.CACHE_SKIPPED
+      };
+
+      for (const actionName of Object.keys(actionMap)) {
         expect(
-          actionMap[
-            "dataform-integration-tests.df_integration_test_assertions.example_assertion_uniqueness_fail"
-          ].tasks[1].errorMessage
-        ).to.eql("bigquery error: Assertion failed: query returned 1 row(s).");
+          dataform.ActionResult.ExecutionStatus[actionMap[actionName].status],
+          `ActionResult ExecutionStatus for action "${actionName}"`
+        ).equals(dataform.ActionResult.ExecutionStatus[expectedActionStatus[actionName]]);
+      }
 
-        // Check that dataset metadata has been set correctly.
-        await Promise.all([
-          expectDatasetMetadata(
-            dbadapter,
-            {
-              database: "dataform-integration-tests",
-              schema: "df_integration_test",
-              name: "example_incremental"
-            },
-            "An incremental table",
-            EXPECTED_INCREMENTAL_EXAMPLE_SCHEMA
-          ),
-          expectDatasetMetadata(
-            dbadapter,
-            {
-              database: "dataform-integration-tests",
-              schema: "df_integration_test",
-              name: "example_view"
-            },
-            "An example view",
-            EXPECTED_EXAMPLE_VIEW_SCHEMA
-          )
-        ]);
+      const persistedMetaData = await dbadapter.persistedStateMetadata();
+      expect(persistedMetaData.length).to.be.eql(7);
 
-        // run cache assertions
-        executionGraph = await dfapi.build(
-          compiledGraph,
-          {
-            actions: [
-              "example_incremental",
-              "example_incremental_merge",
-              "example_table",
-              "example_view",
-              "example_assertion_fail",
-              "example_operation",
-              "depends_on_example_view"
-            ]
-          },
-          dbadapter
-        );
+      const exampleView = persistedMetaData.find(table => table.target.name === "example_view");
+      const exampleViewExecutionAction = executionGraph.actions.find(
+        action => action.name === "dataform-integration-tests.df_integration_test.example_view"
+      );
+      expect(exampleView.definitionHash).to.eql(hashExecutionAction(exampleViewExecutionAction));
 
-        executedGraph = await dfapi.run(executionGraph, dbadapter).result();
-        actionMap = keyBy(executedGraph.actions, v => v.name);
+      const exampleAssertionFail = persistedMetaData.find(
+        table => table.target.name === "example_assertion_fail"
+      );
+      expect(exampleAssertionFail).to.be.eql(undefined);
 
-        expect(executedGraph.status).equals(dataform.RunResult.ExecutionStatus.FAILED);
-
-        let expectedActionStatus: { [index: string]: dataform.ActionResult.ExecutionStatus } = {
-          "dataform-integration-tests.df_integration_test.example_incremental":
-            dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
-          "dataform-integration-tests.df_integration_test.example_incremental_merge":
-            dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
-          "dataform-integration-tests.df_integration_test.example_table":
-            dataform.ActionResult.ExecutionStatus.CACHE_SKIPPED,
-          "dataform-integration-tests.df_integration_test.example_view":
-            dataform.ActionResult.ExecutionStatus.CACHE_SKIPPED,
-          "dataform-integration-tests.df_integration_test_assertions.example_assertion_fail":
-            dataform.ActionResult.ExecutionStatus.FAILED,
-          "dataform-integration-tests.df_integration_test.example_operation":
-            dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
-          "dataform-integration-tests.df_integration_test.depends_on_example_view":
-            dataform.ActionResult.ExecutionStatus.CACHE_SKIPPED
-        };
-
-        for (const actionName of Object.keys(actionMap)) {
-          expect(
-            dataform.ActionResult.ExecutionStatus[actionMap[actionName].status],
-            `ActionResult ExecutionStatus for action "${actionName}"`
-          ).equals(dataform.ActionResult.ExecutionStatus[expectedActionStatus[actionName]]);
+      compiledGraph.tables = compiledGraph.tables.map(table => {
+        if (table.name === "dataform-integration-tests.df_integration_test.example_view") {
+          table.query = "select 1 as val";
         }
-
-        const persistedMetaData = await dbadapter.persistedStateMetadata();
-        expect(persistedMetaData.length).to.be.eql(7);
-
-        const exampleView = persistedMetaData.find(table => table.target.name === "example_view");
-        const exampleViewExecutionAction = executionGraph.actions.find(
-          action => action.name === "dataform-integration-tests.df_integration_test.example_view"
-        );
-        expect(exampleView.definitionHash).to.eql(hashExecutionAction(exampleViewExecutionAction));
-
-        const exampleAssertionFail = persistedMetaData.find(
-          table => table.target.name === "example_assertion_fail"
-        );
-        expect(exampleAssertionFail).to.be.eql(undefined);
-
-        compiledGraph.tables = compiledGraph.tables.map(table => {
-          if (table.name === "dataform-integration-tests.df_integration_test.example_view") {
-            table.query = "select 1 as val";
-          }
-          return table;
-        });
-
-        executionGraph = await dfapi.build(
-          compiledGraph,
-          {
-            actions: ["example_view", "depends_on_example_view"]
-          },
-          dbadapter
-        );
-
-        executedGraph = await dfapi.run(executionGraph, dbadapter).result();
-        expect(executedGraph.status).equals(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
-        actionMap = keyBy(executedGraph.actions, v => v.name);
-        expectedActionStatus = {
-          "dataform-integration-tests.df_integration_test.example_view":
-            dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
-          "dataform-integration-tests.df_integration_test.depends_on_example_view":
-            dataform.ActionResult.ExecutionStatus.SUCCESSFUL
-        };
-
-        for (const actionName of Object.keys(actionMap)) {
-          expect(actionMap[actionName].status).equals(expectedActionStatus[actionName]);
-        }
+        return table;
       });
 
-      test("incremental tables", { timeout: 60000 }, async () => {
-        const compiledGraph = await dfapi.compile({
-          projectDir: "tests/integration/bigquery_project",
-          schemaSuffixOverride: "incremental_tables"
-        });
+      executionGraph = await dfapi.build(
+        compiledGraph,
+        {
+          actions: ["example_view", "depends_on_example_view"]
+        },
+        dbadapter
+      );
 
-        expect(compiledGraph.graphErrors.compilationErrors).to.eql([]);
-        expect(compiledGraph.graphErrors.validationErrors).to.eql([]);
+      executedGraph = await dfapi.run(executionGraph, dbadapter).result();
+      expect(executedGraph.status).equals(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
+      actionMap = keyBy(executedGraph.actions, v => v.name);
+      expectedActionStatus = {
+        "dataform-integration-tests.df_integration_test.example_view":
+          dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
+        "dataform-integration-tests.df_integration_test.depends_on_example_view":
+          dataform.ActionResult.ExecutionStatus.SUCCESSFUL
+      };
 
-        const adapter = adapters.create(
-          compiledGraph.projectConfig,
-          compiledGraph.dataformCoreVersion
-        );
+      for (const actionName of Object.keys(actionMap)) {
+        expect(actionMap[actionName].status).equals(expectedActionStatus[actionName]);
+      }
+    });
 
-        // Drop all the tables before we do anything.
-        const tablesToDelete = (await dfapi.build(compiledGraph, {}, dbadapter)).warehouseState
-          .tables;
-        await dropAllTables(tablesToDelete, adapter, dbadapter);
+    test("incremental tables", { timeout: 60000 }, async () => {
+      const compiledGraph = await dfapi.compile({
+        projectDir: "tests/integration/bigquery_project",
+        schemaSuffixOverride: "incremental_tables"
+      });
 
-        // Run the project.
-        let executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
-        let executedGraph = await dfapi.run(executionGraph, dbadapter).result();
+      expect(compiledGraph.graphErrors.compilationErrors).to.eql([]);
+      expect(compiledGraph.graphErrors.validationErrors).to.eql([]);
 
-        // Check the data in the incremental tables.
-        const [incrementalRows, incrementalMergeRows] = await Promise.all([
+      const adapter = adapters.create(
+        compiledGraph.projectConfig,
+        compiledGraph.dataformCoreVersion
+      );
+
+      // Drop all the tables before we do anything.
+      const tablesToDelete = (await dfapi.build(compiledGraph, {}, dbadapter)).warehouseState
+        .tables;
+      await dropAllTables(tablesToDelete, adapter, dbadapter);
+
+      // Run the project.
+      let executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
+      let executedGraph = await dfapi.run(executionGraph, dbadapter).result();
+
+      // Check the data in the incremental tables.
+      const [incrementalRows, incrementalMergeRows] = await Promise.all([
+        getTableRows(
+          {
+            database: "dataform-integration-tests",
+            schema: "df_integration_test_incremental_tables",
+            name: "example_incremental"
+          },
+          adapter,
+          dbadapter
+        ),
+        getTableRows(
+          {
+            database: "dataform-integration-tests",
+            schema: "df_integration_test_incremental_tables",
+            name: "example_incremental_merge"
+          },
+          adapter,
+          dbadapter
+        )
+      ]);
+      expect(incrementalRows.length).equals(3);
+      expect(incrementalMergeRows.length).equals(2);
+
+      // Re-run incremental actions.
+      executionGraph = await dfapi.build(
+        compiledGraph,
+        {
+          actions: ["example_incremental", "example_incremental_merge"]
+        },
+        dbadapter
+      );
+
+      executedGraph = await dfapi.run(executionGraph, dbadapter).result();
+      expect(executedGraph.status).equals(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
+
+      // Check there are the expected number of extra rows in the incremental tables.
+      const [incrementalRowsAfterSecondRun, incrementalMergeRowsAfterSecondRun] = await Promise.all(
+        [
           getTableRows(
             {
               database: "dataform-integration-tests",
@@ -306,51 +338,12 @@ suite({ name: "@dataform/integration/bigquery", parallel: true }, ({ before, aft
             adapter,
             dbadapter
           )
-        ]);
-        expect(incrementalRows.length).equals(3);
-        expect(incrementalMergeRows.length).equals(2);
-
-        // Re-run incremental actions.
-        executionGraph = await dfapi.build(
-          compiledGraph,
-          {
-            actions: ["example_incremental", "example_incremental_merge"]
-          },
-          dbadapter
-        );
-
-        executedGraph = await dfapi.run(executionGraph, dbadapter).result();
-        expect(executedGraph.status).equals(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
-
-        // Check there are the expected number of extra rows in the incremental tables.
-        const [
-          incrementalRowsAfterSecondRun,
-          incrementalMergeRowsAfterSecondRun
-        ] = await Promise.all([
-          getTableRows(
-            {
-              database: "dataform-integration-tests",
-              schema: "df_integration_test_incremental_tables",
-              name: "example_incremental"
-            },
-            adapter,
-            dbadapter
-          ),
-          getTableRows(
-            {
-              database: "dataform-integration-tests",
-              schema: "df_integration_test_incremental_tables",
-              name: "example_incremental_merge"
-            },
-            adapter,
-            dbadapter
-          )
-        ]);
-        expect(incrementalRowsAfterSecondRun.length).equals(5);
-        expect(incrementalMergeRowsAfterSecondRun.length).equals(2);
-      });
-    }
-  );
+        ]
+      );
+      expect(incrementalRowsAfterSecondRun.length).equals(5);
+      expect(incrementalMergeRowsAfterSecondRun.length).equals(2);
+    });
+  });
 
   suite("publish tasks", async () => {
     test("incremental pre and post ops, core version <= 1.4.8", async () => {
