@@ -90,19 +90,23 @@ export class SQLDataWarehouseDBAdapter implements IDbAdapter {
   public async evaluate(statement: string) {
     try {
       await this.execute(`explain ${statement}`);
-      return dataform.QueryEvaluationResponse.create({
-        status: dataform.QueryEvaluationResponse.QueryEvaluationStatus.SUCCESS
+      return dataform.QueryEvaluation.create({
+        status: dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS,
+        query: statement
       });
     } catch (e) {
-      return dataform.QueryEvaluationResponse.create({
-        status: dataform.QueryEvaluationResponse.QueryEvaluationStatus.FAILURE,
-        error: parseAzureEvaluationError(e)
+      return dataform.QueryEvaluation.create({
+        status: dataform.QueryEvaluation.QueryEvaluationStatus.FAILURE,
+        error: parseAzureEvaluationError(e),
+        query: statement
       });
     }
   }
 
   public async tables(): Promise<dataform.ITarget[]> {
-    const { rows } = await this.execute(
+    const {
+      rows
+    } = await this.execute(
       `select ${TABLE_SCHEMA_COL_NAME}, ${TABLE_NAME_COL_NAME} from ${INFORMATION_SCHEMA_SCHEMA_NAME}.tables`,
       { maxResults: 10000 }
     );

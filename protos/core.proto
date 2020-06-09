@@ -186,13 +186,14 @@ message QueryEvaluationError {
   ErrorLocation error_location = 2;
 }
 
-message QueryEvaluationResponse {
+message QueryEvaluation {
   enum QueryEvaluationStatus {
     SUCCESS = 0;
     FAILURE = 1;
   }
   QueryEvaluationStatus status = 1;
   QueryEvaluationError error = 2;
+  string query = 3;
 }
 
 message ActionDescriptor {

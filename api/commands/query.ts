@@ -4,6 +4,7 @@ import { CompileChildProcess } from "df/api/commands/compile";
 import * as dbadapters from "df/api/dbadapters";
 import { CancellablePromise } from "df/api/utils/cancellable_promise";
 import { ErrorWithCause } from "df/common/errors/errors";
+import * as coreadapters from "df/core/adapters";
 import { BigQueryAdapter } from "df/core/adapters/bigquery";
 import { version } from "df/core/version";
 import { dataform } from "df/protos/ts";
@@ -36,27 +37,27 @@ export async function evaluate(
   queryStringOrTable: string | dataform.ITable,
   compileConfig?: dataform.ICompileConfig,
   projectConfig?: dataform.IProjectConfig
-): Promise<dataform.IQueryEvaluationResponse> {
-  console.log("queryStringOrTable", queryStringOrTable);
-  let queryString = "";
-  if (typeof queryStringOrTable === "string") {
-    queryString = queryStringOrTable;
-  } else {
+): Promise<dataform.IQueryEvaluation[]> {
+  if (typeof queryStringOrTable !== "string") {
     try {
-      queryString = new BigQueryAdapter(projectConfig, version)
+      const coreAdapter = await coreadapters.create(projectConfig, version);
+      const executionTasks = coreAdapter
         .publishTasks(
           queryStringOrTable,
-          { useSingleQueryPerAction: projectConfig.useSingleQueryPerAction },
+          { useSingleQueryPerAction: projectConfig?.useSingleQueryPerAction },
           {}
         )
-        .build()[0].statement;
+        .build();
+      const evaluations = await Promise.all(
+        executionTasks.map(async executionTask => await dbadapter.evaluate(executionTask.statement))
+      );
+      return evaluations;
     } catch (e) {
-      throw new ErrorWithCause("Error building table for evaluation.", e);
+      throw new ErrorWithCause(`Error building table for evaluation. ${e.message}`, e);
     }
   }
-  console.log("queryString", queryString);
-  const compiledQuery = await compile(queryString, compileConfig);
-  return await dbadapter.evaluate(compiledQuery);
+  const compiledQuery = await compile(queryStringOrTable, compileConfig);
+  return [await dbadapter.evaluate(compiledQuery)];
 }
 
 export async function compile(

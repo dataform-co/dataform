@@ -90,18 +90,20 @@ export class SnowflakeDbAdapter implements IDbAdapter {
     };
   }
 
-  public async evaluate(statement: string): Promise<dataform.QueryEvaluationResponse> {
+  public async evaluate(statement: string): Promise<dataform.QueryEvaluation> {
     try {
       await this.execute(`select system$explain_plan_json($$
 ${statement}
         $$)`);
-      return dataform.QueryEvaluationResponse.create({
-        status: dataform.QueryEvaluationResponse.QueryEvaluationStatus.SUCCESS
+      return dataform.QueryEvaluation.create({
+        status: dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS,
+        query: statement
       });
     } catch (e) {
-      return dataform.QueryEvaluationResponse.create({
-        status: dataform.QueryEvaluationResponse.QueryEvaluationStatus.FAILURE,
-        error: parseSnowflakeEvalError(String(e))
+      return dataform.QueryEvaluation.create({
+        status: dataform.QueryEvaluation.QueryEvaluationStatus.FAILURE,
+        error: parseSnowflakeEvalError(String(e)),
+        query: statement
       });
     }
   }

@@ -98,13 +98,15 @@ export class BigQueryDbAdapter implements IDbAdapter {
         query: statement,
         dryRun: true
       });
-      return dataform.QueryEvaluationResponse.create({
-        status: dataform.QueryEvaluationResponse.QueryEvaluationStatus.SUCCESS
+      return dataform.QueryEvaluation.create({
+        status: dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS,
+        query: statement
       });
     } catch (e) {
-      return dataform.QueryEvaluationResponse.create({
-        status: dataform.QueryEvaluationResponse.QueryEvaluationStatus.FAILURE,
-        error: parseBigqueryEvalError(e)
+      return dataform.QueryEvaluation.create({
+        status: dataform.QueryEvaluation.QueryEvaluationStatus.FAILURE,
+        error: parseBigqueryEvalError(e),
+        query: statement
       });
     }
   }
