@@ -52,7 +52,7 @@ const EXPECTED_EXAMPLE_VIEW_SCHEMA = {
   ]
 };
 
-suite("@dataform/integration/bigquery", ({ before, after }) => {
+suite({ name: "@dataform/integration/bigquery", parallel: true }, ({ before, after }) => {
   const credentials = dfapi.credentials.read("bigquery", "test_credentials/bigquery.json");
   let dbadapter: BigQueryDbAdapter;
 
