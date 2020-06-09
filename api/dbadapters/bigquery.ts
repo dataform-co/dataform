@@ -375,7 +375,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
       const allRows: any[] = [];
       const stream = this.getClient().createQueryStream(statement);
       stream
-        .on("error", e => reject(new ErrorWithCause("Error running query.", e)))
+        .on("error", e => reject(new ErrorWithCause("Error running query." + statement, e)))
         .on("data", row => {
           if (!maxResults) {
             allRows.push(row);
