@@ -370,8 +370,8 @@ suite("@dataform/integration/bigquery", ({ before, after }) => {
     });
   });
 
-  suite("metadata", async () => {
-    test("includes jobReference and statistics", async () => {
+  suite("execute", async () => {
+    test("returned metadata includes jobReference and statistics", async () => {
       const query = `select 1 as test`;
       const { metadata } = await dbadapter.execute(query);
       const { bigquery: bqMetadata } = metadata;
