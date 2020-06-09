@@ -63,9 +63,60 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
   after("close adapter", () => dbadapter.close());
 
   suite("run", { parallel: true }, () => {
-    test("e2e", { timeout: 60000 }, async () => {
+    test("project e2e", { timeout: 60000 }, async () => {
       const compiledGraph = await dfapi.compile({
-        projectDir: "tests/integration/bigquery_project"
+        projectDir: "tests/integration/bigquery_project",
+        schemaSuffixOverride: "project_e2e"
+      });
+
+      expect(compiledGraph.graphErrors.compilationErrors).to.eql([]);
+      expect(compiledGraph.graphErrors.validationErrors).to.eql([]);
+
+      const adapter = adapters.create(
+        compiledGraph.projectConfig,
+        compiledGraph.dataformCoreVersion
+      );
+
+      // Drop all the tables before we do anything.
+      await dropAllTables(
+        (await dfapi.build(compiledGraph, {}, dbadapter)).warehouseState.tables,
+        adapter,
+        dbadapter
+      );
+
+      // Drop schemas to make sure schema creation works.
+      await dbadapter.dropSchema("dataform-integration-tests", "df_integration_test_project_e2e");
+
+      // Run the project.
+      const executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
+      const executedGraph = await dfapi.run(executionGraph, dbadapter).result();
+
+      const actionMap = keyBy(executedGraph.actions, v => v.name);
+      expect(Object.keys(actionMap).length).eql(14);
+
+      // Check the status of action execution.
+      const expectedFailedActions = [
+        "dataform-integration-tests.df_integration_test_assertions_project_e2e.example_assertion_uniqueness_fail",
+        "dataform-integration-tests.df_integration_test_assertions_project_e2e.example_assertion_fail"
+      ];
+      for (const actionName of Object.keys(actionMap)) {
+        const expectedResult = expectedFailedActions.includes(actionName)
+          ? dataform.ActionResult.ExecutionStatus.FAILED
+          : dataform.ActionResult.ExecutionStatus.SUCCESSFUL;
+        expect(actionMap[actionName].status).equals(expectedResult);
+      }
+
+      expect(
+        actionMap[
+          "dataform-integration-tests.df_integration_test_assertions_project_e2e.example_assertion_uniqueness_fail"
+        ].tasks[1].errorMessage
+      ).to.eql("bigquery error: Assertion failed: query returned 1 row(s).");
+    });
+
+    test("run caching", { timeout: 60000 }, async () => {
+      const compiledGraph = await dfapi.compile({
+        projectDir: "tests/integration/bigquery_project",
+        schemaSuffixOverride: "run_caching"
       });
 
       compiledGraph.projectConfig.useRunCache = true;
@@ -79,12 +130,11 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
       );
 
       // Drop all the tables before we do anything.
-      const tablesToDelete = (await dfapi.build(compiledGraph, {}, dbadapter)).warehouseState
-        .tables;
-      await dropAllTables(tablesToDelete, adapter, dbadapter);
-
-      // Drop schemas to make sure schema creation works.
-      await dbadapter.dropSchema("dataform-integration-tests", "df_integration_test");
+      await dropAllTables(
+        (await dfapi.build(compiledGraph, {}, dbadapter)).warehouseState.tables,
+        adapter,
+        dbadapter
+      );
 
       // Drop the meta schema
       await dbadapter.dropSchema("dataform-integration-tests", "dataform_meta");
@@ -92,27 +142,6 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
       // Run the project.
       let executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
       let executedGraph = await dfapi.run(executionGraph, dbadapter).result();
-
-      let actionMap = keyBy(executedGraph.actions, v => v.name);
-      expect(Object.keys(actionMap).length).eql(14);
-
-      // Check the status of action execution.
-      const expectedFailedActions = [
-        "dataform-integration-tests.df_integration_test_assertions.example_assertion_uniqueness_fail",
-        "dataform-integration-tests.df_integration_test_assertions.example_assertion_fail"
-      ];
-      for (const actionName of Object.keys(actionMap)) {
-        const expectedResult = expectedFailedActions.includes(actionName)
-          ? dataform.ActionResult.ExecutionStatus.FAILED
-          : dataform.ActionResult.ExecutionStatus.SUCCESSFUL;
-        expect(actionMap[actionName].status).equals(expectedResult);
-      }
-
-      expect(
-        actionMap[
-          "dataform-integration-tests.df_integration_test_assertions.example_assertion_uniqueness_fail"
-        ].tasks[1].errorMessage
-      ).to.eql("bigquery error: Assertion failed: query returned 1 row(s).");
 
       // run cache assertions
       executionGraph = await dfapi.build(
@@ -132,24 +161,24 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
       );
 
       executedGraph = await dfapi.run(executionGraph, dbadapter).result();
-      actionMap = keyBy(executedGraph.actions, v => v.name);
+      let actionMap = keyBy(executedGraph.actions, v => v.name);
 
       expect(executedGraph.status).equals(dataform.RunResult.ExecutionStatus.FAILED);
 
       let expectedActionStatus: { [index: string]: dataform.ActionResult.ExecutionStatus } = {
-        "dataform-integration-tests.df_integration_test.example_incremental":
+        "dataform-integration-tests.df_integration_test_run_caching.example_incremental":
           dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
-        "dataform-integration-tests.df_integration_test.example_incremental_merge":
+        "dataform-integration-tests.df_integration_test_run_caching.example_incremental_merge":
           dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
-        "dataform-integration-tests.df_integration_test.example_table":
+        "dataform-integration-tests.df_integration_test_run_caching.example_table":
           dataform.ActionResult.ExecutionStatus.CACHE_SKIPPED,
-        "dataform-integration-tests.df_integration_test.example_view":
+        "dataform-integration-tests.df_integration_test_run_caching.example_view":
           dataform.ActionResult.ExecutionStatus.CACHE_SKIPPED,
-        "dataform-integration-tests.df_integration_test_assertions.example_assertion_fail":
+        "dataform-integration-tests.df_integration_test_assertions_run_caching.example_assertion_fail":
           dataform.ActionResult.ExecutionStatus.FAILED,
-        "dataform-integration-tests.df_integration_test.example_operation":
+        "dataform-integration-tests.df_integration_test_run_caching.example_operation":
           dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
-        "dataform-integration-tests.df_integration_test.depends_on_example_view":
+        "dataform-integration-tests.df_integration_test_run_caching.depends_on_example_view":
           dataform.ActionResult.ExecutionStatus.CACHE_SKIPPED
       };
 
@@ -165,7 +194,8 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
 
       const exampleView = persistedMetaData.find(table => table.target.name === "example_view");
       const exampleViewExecutionAction = executionGraph.actions.find(
-        action => action.name === "dataform-integration-tests.df_integration_test.example_view"
+        action =>
+          action.name === "dataform-integration-tests.df_integration_test_run_caching.example_view"
       );
       expect(exampleView.definitionHash).to.eql(hashExecutionAction(exampleViewExecutionAction));
 
@@ -175,7 +205,9 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
       expect(exampleAssertionFail).to.be.eql(undefined);
 
       compiledGraph.tables = compiledGraph.tables.map(table => {
-        if (table.name === "dataform-integration-tests.df_integration_test.example_view") {
+        if (
+          table.name === "dataform-integration-tests.df_integration_test_run_caching.example_view"
+        ) {
           table.query = "select 1 as val";
         }
         return table;
@@ -193,9 +225,9 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
       expect(executedGraph.status).equals(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
       actionMap = keyBy(executedGraph.actions, v => v.name);
       expectedActionStatus = {
-        "dataform-integration-tests.df_integration_test.example_view":
+        "dataform-integration-tests.df_integration_test_run_caching.example_view":
           dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
-        "dataform-integration-tests.df_integration_test.depends_on_example_view":
+        "dataform-integration-tests.df_integration_test_run_caching.depends_on_example_view":
           dataform.ActionResult.ExecutionStatus.SUCCESSFUL
       };
 
