@@ -210,64 +210,34 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
       // Drop all the tables before we do anything.
       await cleanWarehouse(compiledGraph, dbadapter);
 
-      // Run the project.
-      let executionGraph = await dfapi.build(
-        compiledGraph,
-        {
-          actions: ["example_incremental", "example_incremental_merge"],
-          includeDependencies: true
-        },
-        dbadapter
-      );
-      let runResult = await dfapi.run(executionGraph, dbadapter).result();
-      expect(dataform.RunResult.ExecutionStatus[runResult.status]).eql(
-        dataform.RunResult.ExecutionStatus[dataform.RunResult.ExecutionStatus.SUCCESSFUL]
-      );
-
-      // Check the data in the incremental tables.
+      // Run two iterations of the project.
       const adapter = adapters.create(
         compiledGraph.projectConfig,
         compiledGraph.dataformCoreVersion
       );
-      const [incrementalRows, incrementalMergeRows] = await Promise.all([
-        getTableRows(
-          {
-            database: "dataform-integration-tests",
-            schema: "df_integration_test_incremental_tables",
-            name: "example_incremental"
-          },
-          adapter,
-          dbadapter
-        ),
-        getTableRows(
-          {
-            database: "dataform-integration-tests",
-            schema: "df_integration_test_incremental_tables",
-            name: "example_incremental_merge"
-          },
-          adapter,
-          dbadapter
-        )
-      ]);
-      expect(incrementalRows.length).equals(3);
-      expect(incrementalMergeRows.length).equals(2);
-
-      // Re-run incremental actions.
-      executionGraph = await dfapi.build(
-        compiledGraph,
+      for (const runIteration of [
         {
-          actions: ["example_incremental", "example_incremental_merge"]
+          runConfig: {
+            actions: ["example_incremental", "example_incremental_merge"],
+            includeDependencies: true
+          },
+          expectedIncrementalRows: 3,
+          expectedIncrementalMergeRows: 2
         },
-        dbadapter
-      );
-      runResult = await dfapi.run(executionGraph, dbadapter).result();
-      expect(dataform.RunResult.ExecutionStatus[runResult.status]).eql(
-        dataform.RunResult.ExecutionStatus[dataform.RunResult.ExecutionStatus.SUCCESSFUL]
-      );
-
-      // Check there are the expected number of extra rows in the incremental tables.
-      const [incrementalRowsAfterSecondRun, incrementalMergeRowsAfterSecondRun] = await Promise.all(
-        [
+        {
+          runConfig: {
+            actions: ["example_incremental", "example_incremental_merge"]
+          },
+          expectedIncrementalRows: 5,
+          expectedIncrementalMergeRows: 2
+        }
+      ]) {
+        const executionGraph = await dfapi.build(compiledGraph, runIteration.runConfig, dbadapter);
+        const runResult = await dfapi.run(executionGraph, dbadapter).result();
+        expect(dataform.RunResult.ExecutionStatus[runResult.status]).eql(
+          dataform.RunResult.ExecutionStatus[dataform.RunResult.ExecutionStatus.SUCCESSFUL]
+        );
+        const [incrementalRows, incrementalMergeRows] = await Promise.all([
           getTableRows(
             {
               database: "dataform-integration-tests",
@@ -286,10 +256,10 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
             adapter,
             dbadapter
           )
-        ]
-      );
-      expect(incrementalRowsAfterSecondRun.length).equals(5);
-      expect(incrementalMergeRowsAfterSecondRun.length).equals(2);
+        ]);
+        expect(incrementalRows.length).equals(runIteration.expectedIncrementalRows);
+        expect(incrementalMergeRows.length).equals(runIteration.expectedIncrementalMergeRows);
+      }
     });
 
     test("dataset metadata set correctly", { timeout: 60000 }, async () => {
@@ -313,21 +283,30 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
       );
 
       // Check expected metadata.
-      const incrementalMetadata = await dbadapter.getMetadata({
-        database: "dataform-integration-tests",
-        schema: "df_integration_test_dataset_metadata",
-        name: "example_incremental"
-      });
-      expect(incrementalMetadata.description).to.equal("An incremental table");
-      expect(incrementalMetadata.schema).to.deep.equal(EXPECTED_INCREMENTAL_EXAMPLE_SCHEMA);
-
-      const viewMetadata = await dbadapter.getMetadata({
-        database: "dataform-integration-tests",
-        schema: "df_integration_test_dataset_metadata",
-        name: "example_view"
-      });
-      expect(viewMetadata.description).to.equal("An example view");
-      expect(viewMetadata.schema).to.deep.equal(EXPECTED_EXAMPLE_VIEW_SCHEMA);
+      for (const expectedMetadata of [
+        {
+          target: {
+            database: "dataform-integration-tests",
+            schema: "df_integration_test_dataset_metadata",
+            name: "example_incremental"
+          },
+          expectedDescription: "An incremental table",
+          expectedSchema: EXPECTED_INCREMENTAL_EXAMPLE_SCHEMA
+        },
+        {
+          target: {
+            database: "dataform-integration-tests",
+            schema: "df_integration_test_dataset_metadata",
+            name: "example_view"
+          },
+          expectedDescription: "An example view",
+          expectedSchema: EXPECTED_EXAMPLE_VIEW_SCHEMA
+        }
+      ]) {
+        const metadata = await dbadapter.getMetadata(expectedMetadata.target);
+        expect(metadata.description).to.equal(expectedMetadata.expectedDescription);
+        expect(metadata.schema).to.deep.equal(expectedMetadata.expectedSchema);
+      }
     });
   });
 
