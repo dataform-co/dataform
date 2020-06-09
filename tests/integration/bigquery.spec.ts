@@ -113,26 +113,7 @@ suite("@dataform/integration/bigquery", ({ before, after }) => {
     ]);
 
     // Run the project.
-
-    const actionsToRun = [
-      ...compiledGraph.tables
-        // .filter(
-        //   table =>
-        //     table.name !== "dataform-integration-tests.df_integration_test.depends_on_example_view"
-        // )
-        .map(table => table.name),
-      ...compiledGraph.assertions.map(assertion => assertion.name),
-      ...compiledGraph.operations.map(operation => operation.name)
-    ];
-
-    let executionGraph = await dfapi.build(
-      compiledGraph,
-      {
-        actions: actionsToRun
-      },
-      dbadapter
-    );
-
+    let executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
     let executedGraph = await dfapi.run(executionGraph, dbadapter).result();
 
     let actionMap = keyBy(executedGraph.actions, v => v.name);
