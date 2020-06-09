@@ -68,6 +68,7 @@ suite("@dataform/integration/sqldatawarehouse", ({ before, after }) => {
     let executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
     let executedGraph = await dfapi.run(executionGraph, dbadapter).result();
 
+    const executionActionMap = keyBy(executionGraph.actions, v => v.name);
     const actionMap = keyBy(executedGraph.actions, v => v.name);
     expect(Object.keys(actionMap).length).eql(11);
 
@@ -80,9 +81,10 @@ suite("@dataform/integration/sqldatawarehouse", ({ before, after }) => {
       const expectedResult = expectedFailedActions.includes(actionName)
         ? dataform.ActionResult.ExecutionStatus.FAILED
         : dataform.ActionResult.ExecutionStatus.SUCCESSFUL;
-      expect(actionMap[actionName].status, JSON.stringify(executionGraph, null, 4)).equals(
-        expectedResult
-      );
+      expect(
+        actionMap[actionName].status,
+        JSON.stringify([executionActionMap[actionName], actionMap[actionName].tasks], null, 4)
+      ).equals(expectedResult);
     }
 
     expect(

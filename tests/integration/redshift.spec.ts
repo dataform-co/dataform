@@ -37,7 +37,11 @@ suite("@dataform/integration/redshift", ({ before, after }) => {
         dbadapter.execute(adapter.dropIfExists(assertion.target, "view"))
       )
     );
+    try {
     await dropFunctions.reduce((promiseChain, fn) => promiseChain.then(fn), Promise.resolve());
+    } catch (e) {
+      // This seems to throw even if the tables don't exist.
+    }
 
     // Run the tests.
     const testResults = await dfapi.test(dbadapter, compiledGraph.tests);

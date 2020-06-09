@@ -34,8 +34,8 @@ suite("@dataform/integration/snowflake", ({ before, after }) => {
     await dropAllTables(tablesToDelete, adapter, dbadapter);
 
     // Drop schemas to make sure schema creation works.
-    await dbadapter.execute(`drop schema if exists "TADA"."df_integration_test"`);
-    await dbadapter.execute(`drop schema if exists "TADA2"."df_integration_test"`);
+    await dbadapter.execute(`drop schema if exists "INTEGRATION_TESTS"."df_integration_test"`);
+    await dbadapter.execute(`drop schema if exists "INTEGRATION_TESTS2"."df_integration_test"`);
 
     // Run the tests.
     const testResults = await dfapi.test(dbadapter, compiledGraph.tests);
@@ -71,6 +71,7 @@ suite("@dataform/integration/snowflake", ({ before, after }) => {
     let executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
     let executedGraph = await dfapi.run(executionGraph, dbadapter).result();
 
+    const executionActionMap = keyBy(executionGraph.actions, v => v.name);
     const actionMap = keyBy(executedGraph.actions, v => v.name);
     expect(Object.keys(actionMap).length).eql(14);
 
@@ -83,7 +84,10 @@ suite("@dataform/integration/snowflake", ({ before, after }) => {
       const expectedResult = expectedFailedActions.includes(actionName)
         ? dataform.ActionResult.ExecutionStatus.FAILED
         : dataform.ActionResult.ExecutionStatus.SUCCESSFUL;
-      expect(actionMap[actionName].status).equals(expectedResult);
+      expect(
+        actionMap[actionName].status,
+        JSON.stringify([executionActionMap[actionName], actionMap[actionName].tasks], null, 4)
+      ).equals(expectedResult);
     }
 
     expect(
@@ -106,7 +110,7 @@ suite("@dataform/integration/snowflake", ({ before, after }) => {
 
     // Check the status of the view in the non-default database.
     const tada2DatabaseView = keyBy(compiledGraph.tables, t => t.name)[
-      "TADA2.DF_INTEGRATION_TEST.SAMPLE_DATA_2"
+      "INTEGRATION_TESTS2.DF_INTEGRATION_TEST.SAMPLE_DATA_2"
     ];
     const tada2DatabaseViewRows = await getTableRows(tada2DatabaseView.target, adapter, dbadapter);
     expect(tada2DatabaseViewRows.length).equals(3);
@@ -119,7 +123,7 @@ suite("@dataform/integration/snowflake", ({ before, after }) => {
     expect(incrementalRows.length).equals(3);
 
     const incrementalTable2 = keyBy(compiledGraph.tables, t => t.name)[
-      "TADA2.DF_INTEGRATION_TEST.EXAMPLE_INCREMENTAL_TADA2"
+      "INTEGRATION_TESTS2.DF_INTEGRATION_TEST.EXAMPLE_INCREMENTAL_TADA2"
     ];
     const incrementalRows2 = await getTableRows(incrementalTable2.target, adapter, dbadapter);
     expect(incrementalRows2.length).equals(3);
@@ -157,7 +161,7 @@ suite("@dataform/integration/snowflake", ({ before, after }) => {
     expect(incrementalRows.length).equals(5);
 
     incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
-      "TADA2.DF_INTEGRATION_TEST.EXAMPLE_INCREMENTAL_TADA2"
+      "INTEGRATION_TESTS2.DF_INTEGRATION_TEST.EXAMPLE_INCREMENTAL_TADA2"
     ];
     incrementalRows = await getTableRows(incrementalTable2.target, adapter, dbadapter);
     expect(incrementalRows.length).equals(5);
