@@ -4,7 +4,6 @@ import Long from "long";
 import * as dfapi from "df/api";
 import * as dbadapters from "df/api/dbadapters";
 import { BigQueryDbAdapter } from "df/api/dbadapters/bigquery";
-import { hashExecutionAction } from "df/api/utils/run_cache";
 import * as adapters from "df/core/adapters";
 import { BigQueryAdapter } from "df/core/adapters/bigquery";
 import { dataform } from "df/protos/ts";
@@ -111,29 +110,41 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
       let executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
       let executedGraph = await dfapi.run(executionGraph, dbadapter).result();
 
-      // Check persisted metadata.
-      const persistedMetaData = await dbadapter.persistedStateMetadata();
-      expect(
-        persistedMetaData.find(table => table.target.name === "example_table").definitionHash
-      ).to.eql(
-        hashExecutionAction(
-          executionGraph.actions.find(
-            action =>
-              action.name ===
-              "dataform-integration-tests.df_integration_test_run_caching.example_table"
-          )
+      // Re-run (some of) the project. Each included action should cache.
+      executionGraph = await dfapi.build(
+        compiledGraph,
+        {
+          actions: [
+            "example_table",
+            "example_view",
+            "depends_on_example_view",
+            "sample_data_2",
+            "depends_on_sample_data_3"
+          ]
+        },
+        dbadapter
+      );
+      executedGraph = await dfapi.run(executionGraph, dbadapter).result();
+      for (const action of executedGraph.actions) {
+        expect(
+          dataform.ActionResult.ExecutionStatus[action.status],
+          `ActionResult ExecutionStatus for action "${action.name}"`
+        ).equals(
+          dataform.ActionResult.ExecutionStatus[dataform.ActionResult.ExecutionStatus.CACHE_SKIPPED]
+        );
+      }
+
+      // Manually change some datasets (to model a data change happening outside of a DF run).
+      await Promise.all([
+        dbadapter.execute(
+          "create or replace view `dataform-integration-tests.df_integration_test_run_caching.sample_data_2` as select 'new' as foo"
+        ),
+        dbadapter.execute(
+          "create or replace view `dataform-integration-tests.df_integration_test_run_caching.sample_data_3` as select 'old' as bar"
         )
-      );
+      ]);
 
-      // Manually change some datasets (to model a change happening outside of a DF run).
-      await dbadapter.execute(
-        "create or replace view `dataform-integration-tests.df_integration_test_run_caching.sample_data_2` as select 'new' as foo"
-      );
-      await dbadapter.execute(
-        "create or replace view `dataform-integration-tests.df_integration_test_run_caching.sample_data_3` as select 'old' as bar"
-      );
-
-      // Make a change to 'example_view's query (to model an ExecutionAction hash change).
+      // Make a change to the 'example_view' query (to model an ExecutionAction hash change).
       compiledGraph.tables = compiledGraph.tables.map(table => {
         if (
           table.name === "dataform-integration-tests.df_integration_test_run_caching.example_view"
@@ -162,8 +173,6 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
 
       executedGraph = await dfapi.run(executionGraph, dbadapter).result();
       const actionMap = keyBy(executedGraph.actions, v => v.name);
-
-      expect(executedGraph.status).equals(dataform.RunResult.ExecutionStatus.FAILED);
 
       const expectedActionStatus: { [index: string]: dataform.ActionResult.ExecutionStatus } = {
         // Should run because it is non-hermetic.
