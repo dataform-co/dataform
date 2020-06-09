@@ -64,13 +64,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
 
   suite("run", { parallel: true }, () => {
     test("project e2e", { timeout: 60000 }, async () => {
-      const compiledGraph = await dfapi.compile({
-        projectDir: "tests/integration/bigquery_project",
-        schemaSuffixOverride: "project_e2e"
-      });
-
-      expect(compiledGraph.graphErrors.compilationErrors).to.eql([]);
-      expect(compiledGraph.graphErrors.validationErrors).to.eql([]);
+      const compiledGraph = await compile("project_e2e");
 
       const adapter = adapters.create(
         compiledGraph.projectConfig,
@@ -114,15 +108,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
     });
 
     test("run caching", { timeout: 60000 }, async () => {
-      const compiledGraph = await dfapi.compile({
-        projectDir: "tests/integration/bigquery_project",
-        schemaSuffixOverride: "run_caching"
-      });
-
-      compiledGraph.projectConfig.useRunCache = true;
-
-      expect(compiledGraph.graphErrors.compilationErrors).to.eql([]);
-      expect(compiledGraph.graphErrors.validationErrors).to.eql([]);
+      const compiledGraph = await compile("run_caching", { useRunCache: true });
 
       const adapter = adapters.create(
         compiledGraph.projectConfig,
@@ -237,13 +223,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
     });
 
     test("incremental tables", { timeout: 60000 }, async () => {
-      const compiledGraph = await dfapi.compile({
-        projectDir: "tests/integration/bigquery_project",
-        schemaSuffixOverride: "incremental_tables"
-      });
-
-      expect(compiledGraph.graphErrors.compilationErrors).to.eql([]);
-      expect(compiledGraph.graphErrors.validationErrors).to.eql([]);
+      const compiledGraph = await compile("incremental_tables");
 
       const adapter = adapters.create(
         compiledGraph.projectConfig,
@@ -336,12 +316,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
     });
 
     test("dataset metadata set correctly", { timeout: 60000 }, async () => {
-      const compiledGraph = await dfapi.compile({
-        projectDir: "tests/integration/bigquery_project",
-        schemaSuffixOverride: "dataset_metadata"
-      });
-      expect(compiledGraph.graphErrors.compilationErrors).to.eql([]);
-      expect(compiledGraph.graphErrors.validationErrors).to.eql([]);
+      const compiledGraph = await compile("dataset_metadata");
 
       const adapter = adapters.create(
         compiledGraph.projectConfig,
@@ -386,6 +361,40 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
       expect(viewMetadata.description).to.equal("An example view");
       expect(viewMetadata.schema).to.deep.equal(EXPECTED_EXAMPLE_VIEW_SCHEMA);
     });
+  });
+
+  test("run unit tests", async () => {
+    const compiledGraph = await compile("unit_tests");
+
+    // Run the tests.
+    const testResults = await dfapi.test(dbadapter, compiledGraph.tests);
+    expect(testResults).to.eql([
+      { name: "successful", successful: true },
+      {
+        name: "expected more rows than got",
+        successful: false,
+        messages: ["Expected 3 rows, but saw 2 rows."]
+      },
+      {
+        name: "expected fewer columns than got",
+        successful: false,
+        messages: ['Expected columns "col1,col2,col3", but saw "col1,col2,col3,col4".']
+      },
+      {
+        name: "wrong columns",
+        successful: false,
+        messages: ['Expected columns "col1,col2,col3,col4", but saw "col1,col2,col3,col5".']
+      },
+      {
+        name: "wrong row contents",
+        successful: false,
+        messages: [
+          'For row 0 and column "col2": expected "1" (number), but saw "5" (number).',
+          'For row 1 and column "col3": expected "6.5" (number), but saw "12" (number).',
+          'For row 2 and column "col1": expected "sup?" (string), but saw "WRONG" (string).'
+        ]
+      }
+    ]);
   });
 
   suite("publish tasks", { parallel: true }, async () => {
@@ -458,42 +467,23 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
       }
     });
   });
-
-  test("run unit tests", async () => {
-    const compiledGraph = await dfapi.compile({
-      projectDir: "tests/integration/bigquery_project"
-    });
-    expect(compiledGraph.graphErrors.compilationErrors).to.eql([]);
-    expect(compiledGraph.graphErrors.validationErrors).to.eql([]);
-
-    // Run the tests.
-    const testResults = await dfapi.test(dbadapter, compiledGraph.tests);
-    expect(testResults).to.eql([
-      { name: "successful", successful: true },
-      {
-        name: "expected more rows than got",
-        successful: false,
-        messages: ["Expected 3 rows, but saw 2 rows."]
-      },
-      {
-        name: "expected fewer columns than got",
-        successful: false,
-        messages: ['Expected columns "col1,col2,col3", but saw "col1,col2,col3,col4".']
-      },
-      {
-        name: "wrong columns",
-        successful: false,
-        messages: ['Expected columns "col1,col2,col3,col4", but saw "col1,col2,col3,col5".']
-      },
-      {
-        name: "wrong row contents",
-        successful: false,
-        messages: [
-          'For row 0 and column "col2": expected "1" (number), but saw "5" (number).',
-          'For row 1 and column "col3": expected "6.5" (number), but saw "12" (number).',
-          'For row 2 and column "col1": expected "sup?" (string), but saw "WRONG" (string).'
-        ]
-      }
-    ]);
-  });
 });
+
+async function compile(
+  schemaSuffixOverride: string,
+  projectConfigOverrides?: dataform.IProjectConfig
+) {
+  const compiledGraph = await dfapi.compile({
+    projectDir: "tests/integration/bigquery_project",
+    schemaSuffixOverride
+  });
+
+  expect(compiledGraph.graphErrors.compilationErrors).to.eql([]);
+  expect(compiledGraph.graphErrors.validationErrors).to.eql([]);
+
+  compiledGraph.projectConfig = {
+    ...compiledGraph.projectConfig,
+    ...projectConfigOverrides
+  };
+  return compiledGraph;
+}
