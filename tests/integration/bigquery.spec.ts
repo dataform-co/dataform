@@ -11,6 +11,47 @@ import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
 import { dropAllTables, getTableRows, keyBy } from "df/tests/integration/utils";
 
+const EXPECTED_INCREMENTAL_EXAMPLE_SCHEMA = {
+  fields: [
+    {
+      description: "the timestamp",
+      name: "user_timestamp",
+      type: "INTEGER"
+    },
+    {
+      description: "the id",
+      name: "user_id",
+      type: "INTEGER"
+    },
+    {
+      name: "nested_data",
+      description: "some nested data with duplicate fields",
+      type: "RECORD",
+      fields: [
+        {
+          description: "nested timestamp",
+          name: "user_timestamp",
+          type: "INTEGER"
+        },
+        {
+          description: "nested id",
+          name: "user_id",
+          type: "INTEGER"
+        }
+      ]
+    }
+  ]
+};
+const EXPECTED_EXAMPLE_VIEW_SCHEMA = {
+  fields: [
+    {
+      description: "val doc",
+      name: "val",
+      type: "INTEGER"
+    }
+  ]
+};
+
 suite("@dataform/integration/bigquery", ({ before, after }) => {
   const credentials = dfapi.credentials.read("bigquery", "test_credentials/bigquery.json");
   let dbadapter: BigQueryDbAdapter;
@@ -222,67 +263,10 @@ suite("@dataform/integration/bigquery", ({ before, after }) => {
 
     compiledGraph.tables = compiledGraph.tables.map(table => {
       if (table.name === "dataform-integration-tests.df_integration_test.example_view") {
-        table.query = "select 1 as test";
+        table.query = "select 1 as val";
       }
       return table;
     });
-
-    // metadata
-    const incrementalAction = executionGraph.actions.find(
-      action => action.name === "dataform-integration-tests.df_integration_test.example_incremental"
-    );
-
-    const expectedIncrementalSchema = {
-      fields: [
-        {
-          description: "the timestamp",
-          name: "user_timestamp",
-          type: "INTEGER"
-        },
-        {
-          description: "the id",
-          name: "user_id",
-          type: "INTEGER"
-        },
-        {
-          name: "nested_data",
-          description: "some nested data with duplicate fields",
-          type: "RECORD",
-          fields: [
-            {
-              description: "nested timestamp",
-              name: "user_timestamp",
-              type: "INTEGER"
-            },
-            {
-              description: "nested id",
-              name: "user_id",
-              type: "INTEGER"
-            }
-          ]
-        }
-      ]
-    };
-    const incrementalMetadata = await dbadapter.getMetadata(incrementalAction.target);
-    expect(incrementalMetadata.schema).to.deep.equal(expectedIncrementalSchema);
-    expect(incrementalMetadata.description).to.equal("An incremental table");
-
-    // view metadata
-    const viewAction = executionGraph.actions.find(
-      action => action.name === "dataform-integration-tests.df_integration_test.example_view"
-    );
-    const expectedViewSchema = {
-      fields: [
-        {
-          description: "val doc",
-          name: "val",
-          type: "INTEGER"
-        }
-      ]
-    };
-    const viewMetadata = await dbadapter.getMetadata(viewAction.target);
-    expect(viewMetadata.schema).to.deep.equal(expectedViewSchema);
-    expect(viewMetadata.description).to.equal("An example view");
 
     executionGraph = await dfapi.build(
       compiledGraph,
@@ -305,6 +289,30 @@ suite("@dataform/integration/bigquery", ({ before, after }) => {
     for (const actionName of Object.keys(actionMap)) {
       expect(actionMap[actionName].status).equals(expectedActionStatus[actionName]);
     }
+
+    // metadata
+    await Promise.all([
+      expectDatasetMetadata(
+        dbadapter,
+        {
+          database: "dataform-integration-tests",
+          schema: "df_integration_test",
+          name: "example_incremental"
+        },
+        "An incremental table",
+        EXPECTED_INCREMENTAL_EXAMPLE_SCHEMA
+      ),
+      expectDatasetMetadata(
+        dbadapter,
+        {
+          database: "dataform-integration-tests",
+          schema: "df_integration_test",
+          name: "example_view"
+        },
+        "An example view",
+        EXPECTED_EXAMPLE_VIEW_SCHEMA
+      )
+    ]);
   });
 
   suite("result limit works", async () => {
@@ -378,3 +386,14 @@ suite("@dataform/integration/bigquery", ({ before, after }) => {
     });
   });
 });
+
+async function expectDatasetMetadata(
+  dbadapter: BigQueryDbAdapter,
+  target: dataform.ITarget,
+  expectedDescription: string,
+  expectedSchema: any
+) {
+  const incrementalMetadata = await dbadapter.getMetadata(target);
+  expect(incrementalMetadata.description).to.equal(expectedDescription);
+  expect(incrementalMetadata.schema).to.deep.equal(expectedSchema);
+}
