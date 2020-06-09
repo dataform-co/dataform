@@ -111,17 +111,37 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
       let executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
       let executedGraph = await dfapi.run(executionGraph, dbadapter).result();
 
-      // run cache assertions
+      // Check persisted metadata.
+      const persistedMetaData = await dbadapter.persistedStateMetadata();
+      expect(
+        persistedMetaData.find(table => table.target.name === "example_table").definitionHash
+      ).to.eql(
+        hashExecutionAction(
+          executionGraph.actions.find(
+            action =>
+              action.name ===
+              "dataform-integration-tests.df_integration_test_run_caching.example_table"
+          )
+        )
+      );
+
+      // Re-run the project, checking caching results.
+      compiledGraph.tables = compiledGraph.tables.map(table => {
+        if (
+          table.name === "dataform-integration-tests.df_integration_test_run_caching.example_view"
+        ) {
+          table.query = "select 1 as test";
+        }
+        return table;
+      });
       executionGraph = await dfapi.build(
         compiledGraph,
         {
           actions: [
             "example_incremental",
-            "example_incremental_merge",
             "example_table",
-            "example_view",
             "example_assertion_fail",
-            "example_operation",
+            "example_view",
             "depends_on_example_view"
           ]
         },
@@ -129,24 +149,25 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
       );
 
       executedGraph = await dfapi.run(executionGraph, dbadapter).result();
-      let actionMap = keyBy(executedGraph.actions, v => v.name);
+      const actionMap = keyBy(executedGraph.actions, v => v.name);
 
       expect(executedGraph.status).equals(dataform.RunResult.ExecutionStatus.FAILED);
 
-      let expectedActionStatus: { [index: string]: dataform.ActionResult.ExecutionStatus } = {
+      const expectedActionStatus: { [index: string]: dataform.ActionResult.ExecutionStatus } = {
+        // Should run because it is non-hermetic.
         "dataform-integration-tests.df_integration_test_run_caching.example_incremental":
           dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
-        "dataform-integration-tests.df_integration_test_run_caching.example_incremental_merge":
-          dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
-        "dataform-integration-tests.df_integration_test_run_caching.example_table":
-          dataform.ActionResult.ExecutionStatus.CACHE_SKIPPED,
-        "dataform-integration-tests.df_integration_test_run_caching.example_view":
-          dataform.ActionResult.ExecutionStatus.CACHE_SKIPPED,
+        // Should run because it failed on the last run.
         "dataform-integration-tests.df_integration_test_assertions_run_caching.example_assertion_fail":
           dataform.ActionResult.ExecutionStatus.FAILED,
-        "dataform-integration-tests.df_integration_test_run_caching.example_operation":
+        // Should run because its query definition (and thus ExecutionAction hash) has changed.
+        "dataform-integration-tests.df_integration_test_run_caching.example_view":
           dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
+        // Should run because a transitive input (included in the run) did not cache.
         "dataform-integration-tests.df_integration_test_run_caching.depends_on_example_view":
+          dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
+        // Should cache because it is unchanged and its singular transitive input has also not changed.
+        "dataform-integration-tests.df_integration_test_run_caching.example_table":
           dataform.ActionResult.ExecutionStatus.CACHE_SKIPPED
       };
 
@@ -155,52 +176,6 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
           dataform.ActionResult.ExecutionStatus[actionMap[actionName].status],
           `ActionResult ExecutionStatus for action "${actionName}"`
         ).equals(dataform.ActionResult.ExecutionStatus[expectedActionStatus[actionName]]);
-      }
-
-      const persistedMetaData = await dbadapter.persistedStateMetadata();
-      expect(persistedMetaData.length).to.be.eql(7);
-
-      const exampleView = persistedMetaData.find(table => table.target.name === "example_view");
-      const exampleViewExecutionAction = executionGraph.actions.find(
-        action =>
-          action.name === "dataform-integration-tests.df_integration_test_run_caching.example_view"
-      );
-      expect(exampleView.definitionHash).to.eql(hashExecutionAction(exampleViewExecutionAction));
-
-      const exampleAssertionFail = persistedMetaData.find(
-        table => table.target.name === "example_assertion_fail"
-      );
-      expect(exampleAssertionFail).to.be.eql(undefined);
-
-      compiledGraph.tables = compiledGraph.tables.map(table => {
-        if (
-          table.name === "dataform-integration-tests.df_integration_test_run_caching.example_view"
-        ) {
-          table.query = "select 1 as val";
-        }
-        return table;
-      });
-
-      executionGraph = await dfapi.build(
-        compiledGraph,
-        {
-          actions: ["example_view", "depends_on_example_view"]
-        },
-        dbadapter
-      );
-
-      executedGraph = await dfapi.run(executionGraph, dbadapter).result();
-      expect(executedGraph.status).equals(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
-      actionMap = keyBy(executedGraph.actions, v => v.name);
-      expectedActionStatus = {
-        "dataform-integration-tests.df_integration_test_run_caching.example_view":
-          dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
-        "dataform-integration-tests.df_integration_test_run_caching.depends_on_example_view":
-          dataform.ActionResult.ExecutionStatus.SUCCESSFUL
-      };
-
-      for (const actionName of Object.keys(actionMap)) {
-        expect(actionMap[actionName].status).equals(expectedActionStatus[actionName]);
       }
     });
 
