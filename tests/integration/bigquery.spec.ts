@@ -66,17 +66,8 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
     test("project e2e", { timeout: 60000 }, async () => {
       const compiledGraph = await compile("project_e2e");
 
-      const adapter = adapters.create(
-        compiledGraph.projectConfig,
-        compiledGraph.dataformCoreVersion
-      );
-
       // Drop all the tables before we do anything.
-      await dropAllTables(
-        (await dfapi.build(compiledGraph, {}, dbadapter)).warehouseState.tables,
-        adapter,
-        dbadapter
-      );
+      await cleanWarehouse(compiledGraph, dbadapter);
 
       // Drop schemas to make sure schema creation works.
       await dbadapter.dropSchema("dataform-integration-tests", "df_integration_test_project_e2e");
@@ -110,17 +101,8 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
     test("run caching", { timeout: 60000 }, async () => {
       const compiledGraph = await compile("run_caching", { useRunCache: true });
 
-      const adapter = adapters.create(
-        compiledGraph.projectConfig,
-        compiledGraph.dataformCoreVersion
-      );
-
       // Drop all the tables before we do anything.
-      await dropAllTables(
-        (await dfapi.build(compiledGraph, {}, dbadapter)).warehouseState.tables,
-        adapter,
-        dbadapter
-      );
+      await cleanWarehouse(compiledGraph, dbadapter);
 
       // Drop the meta schema
       await dbadapter.dropSchema("dataform-integration-tests", "dataform_meta");
@@ -225,17 +207,8 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
     test("incremental tables", { timeout: 60000 }, async () => {
       const compiledGraph = await compile("incremental_tables");
 
-      const adapter = adapters.create(
-        compiledGraph.projectConfig,
-        compiledGraph.dataformCoreVersion
-      );
-
       // Drop all the tables before we do anything.
-      await dropAllTables(
-        (await dfapi.build(compiledGraph, {}, dbadapter)).warehouseState.tables,
-        adapter,
-        dbadapter
-      );
+      await cleanWarehouse(compiledGraph, dbadapter);
 
       // Run the project.
       let executionGraph = await dfapi.build(
@@ -252,6 +225,10 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
       );
 
       // Check the data in the incremental tables.
+      const adapter = adapters.create(
+        compiledGraph.projectConfig,
+        compiledGraph.dataformCoreVersion
+      );
       const [incrementalRows, incrementalMergeRows] = await Promise.all([
         getTableRows(
           {
@@ -318,17 +295,8 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
     test("dataset metadata set correctly", { timeout: 60000 }, async () => {
       const compiledGraph = await compile("dataset_metadata");
 
-      const adapter = adapters.create(
-        compiledGraph.projectConfig,
-        compiledGraph.dataformCoreVersion
-      );
-
       // Drop all the tables before we do anything.
-      await dropAllTables(
-        (await dfapi.build(compiledGraph, {}, dbadapter)).warehouseState.tables,
-        adapter,
-        dbadapter
-      );
+      await cleanWarehouse(compiledGraph, dbadapter);
 
       // Run the project.
       const executionGraph = await dfapi.build(
@@ -486,4 +454,15 @@ async function compile(
     ...projectConfigOverrides
   };
   return compiledGraph;
+}
+
+async function cleanWarehouse(
+  compiledGraph: dataform.CompiledGraph,
+  dbadapter: dbadapters.IDbAdapter
+) {
+  await dropAllTables(
+    (await dfapi.build(compiledGraph, {}, dbadapter)).warehouseState.tables,
+    adapters.create(compiledGraph.projectConfig, compiledGraph.dataformCoreVersion),
+    dbadapter
+  );
 }
