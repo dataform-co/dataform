@@ -116,10 +116,10 @@ suite("@dataform/integration/bigquery", ({ before, after }) => {
 
     const actionsToRun = [
       ...compiledGraph.tables
-        .filter(
-          table =>
-            table.name !== "dataform-integration-tests.df_integration_test.depends_on_example_view"
-        )
+        // .filter(
+        //   table =>
+        //     table.name !== "dataform-integration-tests.df_integration_test.depends_on_example_view"
+        // )
         .map(table => table.name),
       ...compiledGraph.assertions.map(assertion => assertion.name),
       ...compiledGraph.operations.map(operation => operation.name)
@@ -136,7 +136,7 @@ suite("@dataform/integration/bigquery", ({ before, after }) => {
     let executedGraph = await dfapi.run(executionGraph, dbadapter).result();
 
     let actionMap = keyBy(executedGraph.actions, v => v.name);
-    expect(Object.keys(actionMap).length).eql(13);
+    expect(Object.keys(actionMap).length).eql(14);
 
     // Check the status of action execution.
     const expectedFailedActions = [
@@ -237,7 +237,7 @@ suite("@dataform/integration/bigquery", ({ before, after }) => {
       "dataform-integration-tests.df_integration_test.example_operation":
         dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
       "dataform-integration-tests.df_integration_test.depends_on_example_view":
-        dataform.ActionResult.ExecutionStatus.SUCCESSFUL
+        dataform.ActionResult.ExecutionStatus.CACHE_SKIPPED
     };
 
     for (const actionName of Object.keys(actionMap)) {
