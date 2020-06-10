@@ -3,10 +3,6 @@ import * as path from "path";
 import { CompileChildProcess } from "df/api/commands/compile";
 import * as dbadapters from "df/api/dbadapters";
 import { CancellablePromise } from "df/api/utils/cancellable_promise";
-import { ErrorWithCause } from "df/common/errors/errors";
-import * as coreadapters from "df/core/adapters";
-import { BigQueryAdapter } from "df/core/adapters/bigquery";
-import { version } from "df/core/version";
 import { dataform } from "df/protos/ts";
 
 export function run(

@@ -1,5 +1,7 @@
 import { expect } from "chai";
+import * as fs from "fs";
 import Long from "long";
+import * as path from "path";
 
 import * as dfapi from "df/api";
 import * as dbadapters from "df/api/dbadapters";
@@ -306,6 +308,39 @@ suite("@dataform/integration/bigquery", ({ before, after }) => {
     for (const actionName of Object.keys(actionMap)) {
       expect(actionMap[actionName].status).equals(expectedActionStatus[actionName]);
     }
+  });
+
+  test("evaluate", { timeout: 60000 }, async () => {
+    const compiledGraph = await dfapi.compile({
+      projectDir: "tests/integration/bigquery_project"
+    });
+
+    const table = keyBy(compiledGraph.tables, t => t.name)[
+      "dataform-integration-tests.df_integration_test.example_table"
+    ];
+    let evaluation = await dbadapter.evaluate(
+      dataform.Table.create(table),
+      compiledGraph.projectConfig
+    );
+    expect(evaluation.status).to.equal(dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS);
+
+    const operation = keyBy(compiledGraph.operations, t => t.name)[
+      "dataform-integration-tests.df_integration_test.example_operation"
+    ];
+    evaluation = await dbadapter.evaluate(
+      dataform.Operation.create(operation),
+      compiledGraph.projectConfig
+    );
+    expect(evaluation.status).to.equal(dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS);
+
+    const assertion = keyBy(compiledGraph.operations, t => t.name)[
+      "dataform-integration-tests.df_integration_test.example_assertion_pass"
+    ];
+    evaluation = await dbadapter.evaluate(
+      dataform.Assertion.create(assertion),
+      compiledGraph.projectConfig
+    );
+    expect(evaluation.status).to.equal(dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS);
   });
 
   suite("result limit works", async () => {

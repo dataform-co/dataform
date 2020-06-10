@@ -92,9 +92,6 @@ export class RedshiftDbAdapter implements IDbAdapter {
       const statementWithExplain = `explain ${executionTask.statement}`;
       try {
         await this.execute(statementWithExplain);
-        return dataform.QueryEvaluation.create({
-          status: dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
-        });
       } catch (e) {
         return dataform.QueryEvaluation.create({
           status: dataform.QueryEvaluation.QueryEvaluationStatus.FAILURE,

@@ -116,15 +116,15 @@ export class SQLDataWarehouseDBAdapter implements IDbAdapter {
       executionTasks.forEach(async executionTask => {
         await this.execute(`explain ${executionTask.statement}`);
       });
-      return dataform.QueryEvaluation.create({
-        status: dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
-      });
     } catch (e) {
       return dataform.QueryEvaluation.create({
         status: dataform.QueryEvaluation.QueryEvaluationStatus.FAILURE,
         error: parseAzureEvaluationError(e)
       });
     }
+    return dataform.QueryEvaluation.create({
+      status: dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
+    });
   }
 
   public async tables(): Promise<dataform.ITarget[]> {

@@ -7,7 +7,7 @@ import { actionsByTarget } from "df/api/utils/graphs";
 import {
   JSONObjectStringifier,
   StringifiedMap,
-  StringifiedSet
+  StringifiedSet,
 } from "df/common/strings/stringifier";
 import { adapters } from "df/core";
 import { IActionProto } from "df/core/session";
@@ -48,7 +48,7 @@ export class Builder {
     const tableMetadataByTarget = new StringifiedMap<dataform.ITarget, dataform.ITableMetadata>(
       JSONObjectStringifier.create()
     );
-    this.warehouseState.tables.forEach(tableState => {
+    this.warehouseState.tables.forEach((tableState) => {
       tableMetadataByTarget.set(tableState.target, tableState);
     });
 
@@ -62,8 +62,8 @@ export class Builder {
       useSingleQueryPerAction:
         !this.prunedGraph.projectConfig?.hasOwnProperty("useSingleQueryPerAction") ||
         typeof this.prunedGraph.projectConfig?.useSingleQueryPerAction === "undefined"
-          ? this.prunedGraph.projectConfig.useSingleQueryPerAction
-          : this.prunedGraph.projectConfig.useSingleQueryPerAction
+          ? true
+          : this.prunedGraph.projectConfig.useSingleQueryPerAction,
     };
 
     const transitiveInputsByTarget = new StringifiedMap<
@@ -71,17 +71,17 @@ export class Builder {
       StringifiedSet<dataform.ITarget>
     >(JSONObjectStringifier.create());
     const actions: dataform.IExecutionAction[] = [].concat(
-      this.prunedGraph.tables.map(t =>
+      this.prunedGraph.tables.map((t) =>
         this.buildTable(t, tableMetadataByTarget.get(t.target), transitiveInputsByTarget, runConfig)
       ),
-      this.prunedGraph.operations.map(o => this.buildOperation(o, transitiveInputsByTarget)),
-      this.prunedGraph.assertions.map(a => this.buildAssertion(a, transitiveInputsByTarget))
+      this.prunedGraph.operations.map((o) => this.buildOperation(o, transitiveInputsByTarget)),
+      this.prunedGraph.assertions.map((a) => this.buildAssertion(a, transitiveInputsByTarget))
     );
     return dataform.ExecutionGraph.create({
       projectConfig: this.prunedGraph.projectConfig,
       runConfig,
       warehouseState: this.warehouseState,
-      actions
+      actions,
     });
   }
 
@@ -108,7 +108,7 @@ export class Builder {
       tableType: table.type,
       tasks,
       fileName: table.fileName,
-      actionDescriptor: table.actionDescriptor
+      actionDescriptor: table.actionDescriptor,
     });
   }
 
@@ -124,9 +124,9 @@ export class Builder {
       dependencies: operation.dependencies,
       type: "operation",
       target: operation.target,
-      tasks: operation.queries.map(statement => ({ type: "statement", statement })),
+      tasks: operation.queries.map((statement) => ({ type: "statement", statement })),
       fileName: operation.fileName,
-      actionDescriptor: operation.actionDescriptor
+      actionDescriptor: operation.actionDescriptor,
     });
   }
 
@@ -144,7 +144,7 @@ export class Builder {
       target: assertion.target,
       tasks: this.adapter.assertTasks(assertion, this.prunedGraph.projectConfig).build(),
       fileName: assertion.fileName,
-      actionDescriptor: assertion.actionDescriptor
+      actionDescriptor: assertion.actionDescriptor,
     });
   }
 
@@ -175,7 +175,7 @@ export class Builder {
           this.getAllTransitiveInputs(
             transitiveInputAction,
             transitiveInputsByTarget
-          ).forEach(target => transitiveInputTargets.add(target));
+          ).forEach((target) => transitiveInputTargets.add(target));
         }
       }
       transitiveInputsByTarget.set(action.target, transitiveInputTargets);

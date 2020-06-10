@@ -4,6 +4,7 @@ import { PromisePoolExecutor } from "promise-pool-executor";
 import { BigQuery } from "@google-cloud/bigquery";
 import { QueryResultsOptions } from "@google-cloud/bigquery/build/src/job";
 import { Credentials } from "df/api/commands/credentials";
+import { compile } from "df/api/commands/query";
 import { IDbAdapter, IExecutionResult, OnCancel } from "df/api/dbadapters/index";
 import { parseBigqueryEvalError } from "df/api/utils/error_parsing";
 import {
@@ -94,45 +95,59 @@ export class BigQueryDbAdapter implements IDbAdapter {
   }
 
   public async evaluate(
-    queryOrTable: string | dataform.ITable | dataform.IOperation | dataform.IAssertion,
+    query: string | dataform.Table | dataform.Operation | dataform.Assertion,
     projectConfig?: dataform.IProjectConfig
   ) {
     let executionTasks: dataform.ExecutionTask[];
-    if (typeof queryOrTable !== "string") {
+    if (typeof query === "string") {
+      executionTasks = [dataform.ExecutionTask.create({ statement: query })];
+    } else {
       try {
         const coreAdapter = new BigQueryAdapter(projectConfig, version);
-        executionTasks = coreAdapter
-          .publishTasks(
-            queryOrTable,
-            { useSingleQueryPerAction: projectConfig?.useSingleQueryPerAction },
-            {}
-          )
-          .build();
+        if (query instanceof dataform.Table) {
+          executionTasks = coreAdapter
+            .publishTasks(
+              query,
+              { useSingleQueryPerAction: projectConfig?.useSingleQueryPerAction },
+              {}
+            )
+            .build();
+        } else if (query instanceof dataform.Operation) {
+          executionTasks = query.queries.map(statement =>
+            dataform.ExecutionTask.create({ type: "statement", statement })
+          );
+        } else if (query instanceof dataform.Assertion) {
+          executionTasks = coreAdapter.assertTasks(query, projectConfig).build();
+        } else {
+          throw new Error("Unrecognized evaluate type.");
+        }
       } catch (e) {
-        throw new ErrorWithCause(`Error building table for evaluation. ${e.message}`, e);
+        throw new ErrorWithCause(`Error building tasks for evaluation. ${e.message}`, e);
       }
-    } else {
-      executionTasks = [dataform.ExecutionTask.create({ statement: queryOrTable })];
     }
 
-    try {
-      // TODO: Don't run the query if it's pure whitespace?
-      executionTasks.forEach(async executionTask => {
-        await this.getClient().query({
+    let evaluationResponse: dataform.IQueryEvaluation = {
+      status: dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
+    };
+    for (const executionTask of executionTasks) {
+      try {
+        console.log("BigQueryDbAdapter -> executionTask", executionTask);
+        const response = await this.getClient().query({
           useLegacySql: false,
           query: executionTask.statement,
           dryRun: true
         });
-      });
-      return dataform.QueryEvaluation.create({
-        status: dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
-      });
-    } catch (e) {
-      return dataform.QueryEvaluation.create({
-        status: dataform.QueryEvaluation.QueryEvaluationStatus.FAILURE,
-        error: parseBigqueryEvalError(e)
-      });
+        console.log("BigQueryDbAdapter -> response", response);
+      } catch (e) {
+        console.log("BigQueryDbAdapter -> e", e);
+        evaluationResponse = {
+          status: dataform.QueryEvaluation.QueryEvaluationStatus.FAILURE,
+          error: parseBigqueryEvalError(e)
+        };
+        break;
+      }
     }
+    return dataform.QueryEvaluation.create(evaluationResponse);
   }
 
   public tables(): Promise<dataform.ITarget[]> {
@@ -369,14 +384,12 @@ export class BigQueryDbAdapter implements IDbAdapter {
   private getClient(projectId?: string) {
     projectId = projectId || this.bigQueryCredentials.projectId;
     if (!this.clients.has(projectId)) {
-      this.clients.set(
+      const bq = new BigQuery({
         projectId,
-        new BigQuery({
-          projectId,
-          credentials: JSON.parse(this.bigQueryCredentials.credentials),
-          scopes: EXTRA_GOOGLE_SCOPES
-        })
-      );
+        credentials: JSON.parse(this.bigQueryCredentials.credentials),
+        scopes: EXTRA_GOOGLE_SCOPES
+      });
+      this.clients.set(projectId, bq);
     }
     return this.clients.get(projectId);
   }

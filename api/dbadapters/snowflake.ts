@@ -120,9 +120,6 @@ export class SnowflakeDbAdapter implements IDbAdapter {
                 $$)`;
       try {
         await this.execute(wrappedStatement);
-        return dataform.QueryEvaluation.create({
-          status: dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
-        });
       } catch (e) {
         return dataform.QueryEvaluation.create({
           status: dataform.QueryEvaluation.QueryEvaluationStatus.FAILURE,
