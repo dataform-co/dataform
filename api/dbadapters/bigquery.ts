@@ -375,7 +375,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
       const allRows: any[] = [];
       const stream = this.getClient().createQueryStream(statement);
       stream
-        .on("error", e => reject(new ErrorWithCause("Error running query.", e)))
+        .on("error", e => reject(new ErrorWithCause(`Error running query: ${e}`, e)))
         .on("data", row => {
           if (!maxResults) {
             allRows.push(row);
@@ -406,7 +406,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
         async (err, job) => {
           try {
             if (err) {
-              return reject(new ErrorWithCause("Error running query job.", err));
+              return reject(new ErrorWithCause(`Error running query job: ${err}`, err));
             }
             // Cancelled before it was created, kill it now.
             if (isCancelled) {
