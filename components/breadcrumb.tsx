@@ -10,20 +10,15 @@ export interface IBreadCrumbProps {
 export function BreadCrumb({ pathParts }: IBreadCrumbProps) {
   return (
     <div className={styles.container}>
-      {pathParts.map((pathPart, index) => (
+      {pathParts.slice(0, -1).map((pathPart, index) => (
         <React.Fragment key={index}>
-          <H6
-            onClick={() => {
-              if (index < pathParts.length - 1) {
-                pathPart.onClick();
-              }
-            }}
-          >
-            {pathPart.label}
+          <H6>
+            <a onClick={pathPart.onClick}>{pathPart.label}</a>
           </H6>
-          {index < pathParts.length - 1 && "  >  "}
+          {"  >  "}
         </React.Fragment>
       ))}
+      <H6>{pathParts.slice(-1)[0].label}</H6>
     </div>
   );
 }
