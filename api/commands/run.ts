@@ -4,6 +4,7 @@ import Long from "long";
 import * as dbadapters from "df/api/dbadapters";
 import { retry } from "df/api/utils/retry";
 import { hashExecutionAction } from "df/api/utils/run_cache";
+import { timingSafeEqual } from "df/common/strings";
 import { JSONObjectStringifier, StringifiedMap } from "df/common/strings/stringifier";
 import { dataform } from "df/protos/ts";
 
@@ -390,8 +391,9 @@ export class Runner {
       return false;
     }
     const persistedTableMetadata = this.persistedStateByTarget.get(executionAction.target);
-    // tslint:disable-next-line: tsr-detect-possible-timing-attacks
-    if (hashExecutionAction(executionAction) !== persistedTableMetadata.definitionHash) {
+    if (
+      !timingSafeEqual(hashExecutionAction(executionAction), persistedTableMetadata.definitionHash)
+    ) {
       return false;
     }
 

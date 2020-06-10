@@ -19,11 +19,41 @@ export async function build(
   runConfig: dataform.IRunConfig,
   dbadapter: dbadapters.IDbAdapter
 ) {
+  runConfig = {
+    ...runConfig,
+    useRunCache:
+      runConfig.hasOwnProperty("useRunCache") && typeof runConfig.useRunCache !== "undefined"
+        ? runConfig.useRunCache
+        : compiledGraph.projectConfig.useRunCache,
+    useSingleQueryPerAction:
+      runConfig.hasOwnProperty("useSingleQueryPerAction") &&
+      typeof runConfig.useSingleQueryPerAction !== "undefined"
+        ? runConfig.useSingleQueryPerAction
+        : compiledGraph.projectConfig.useSingleQueryPerAction
+  };
+
+  const prunedGraph = prune(compiledGraph, runConfig);
+  const transitiveInputsByTarget = computeAllTransitiveInputs(compiledGraph);
+
+  const allInvolvedTargets = new StringifiedSet<dataform.ITarget>(JSONObjectStringifier.create());
+  for (const includedAction of [
+    ...prunedGraph.tables,
+    ...prunedGraph.operations,
+    ...prunedGraph.assertions
+  ]) {
+    allInvolvedTargets.add(includedAction.target);
+    if (versionValidForTransitiveInputs(compiledGraph)) {
+      transitiveInputsByTarget
+        .get(includedAction.target)
+        .forEach(transitiveInputTarget => allInvolvedTargets.add(transitiveInputTarget));
+    }
+  }
+
   return new Builder(
-    compiledGraph,
-    actionsByTarget(compiledGraph),
+    prunedGraph,
     runConfig,
-    await state(compiledGraph, dbadapter)
+    await state(dbadapter, Array.from(allInvolvedTargets), runConfig.useRunCache),
+    transitiveInputsByTarget
   ).build();
 }
 
@@ -31,19 +61,22 @@ export class Builder {
   private readonly adapter: adapters.IAdapter;
 
   constructor(
-    private readonly compiledGraph: dataform.ICompiledGraph,
-    private readonly allActions: StringifiedMap<dataform.ITarget, IActionProto>,
+    private readonly prunedGraph: dataform.ICompiledGraph,
     private readonly runConfig: dataform.IRunConfig,
-    private readonly warehouseState: dataform.IWarehouseState
+    private readonly warehouseState: dataform.IWarehouseState,
+    private readonly transitiveInputsByTarget: StringifiedMap<
+      dataform.ITarget,
+      StringifiedSet<dataform.ITarget>
+    >
   ) {
     this.adapter = adapters.create(
-      compiledGraph.projectConfig,
-      compiledGraph.dataformCoreVersion || "1.0.0"
+      prunedGraph.projectConfig,
+      prunedGraph.dataformCoreVersion || "1.0.0"
     );
   }
 
   public build(): dataform.ExecutionGraph {
-    if (utils.graphHasErrors(this.compiledGraph)) {
+    if (utils.graphHasErrors(this.prunedGraph)) {
       throw new Error(`Project has unresolved compilation or validation errors.`);
     }
 
@@ -54,35 +87,16 @@ export class Builder {
       tableMetadataByTarget.set(tableState.target, tableState);
     });
 
-    const runConfig: dataform.IRunConfig = {
-      ...this.runConfig,
-      useRunCache:
-        !this.runConfig.hasOwnProperty("useRunCache") ||
-        typeof this.runConfig.useRunCache === "undefined"
-          ? this.compiledGraph.projectConfig.useRunCache
-          : this.runConfig.useRunCache,
-      useSingleQueryPerAction:
-        !this.compiledGraph.projectConfig?.hasOwnProperty("useSingleQueryPerAction") ||
-        typeof this.compiledGraph.projectConfig?.useSingleQueryPerAction === "undefined"
-          ? this.compiledGraph.projectConfig.useSingleQueryPerAction
-          : this.compiledGraph.projectConfig.useSingleQueryPerAction
-    };
-
-    const prunedGraph = prune(this.compiledGraph, this.runConfig);
-    const transitiveInputsByTarget = new StringifiedMap<
-      dataform.ITarget,
-      StringifiedSet<dataform.ITarget>
-    >(JSONObjectStringifier.create());
     const actions: dataform.IExecutionAction[] = [].concat(
-      prunedGraph.tables.map(t =>
-        this.buildTable(t, tableMetadataByTarget.get(t.target), transitiveInputsByTarget, runConfig)
+      this.prunedGraph.tables.map(t =>
+        this.buildTable(t, tableMetadataByTarget.get(t.target), this.runConfig)
       ),
-      prunedGraph.operations.map(o => this.buildOperation(o, transitiveInputsByTarget)),
-      prunedGraph.assertions.map(a => this.buildAssertion(a, transitiveInputsByTarget))
+      this.prunedGraph.operations.map(o => this.buildOperation(o)),
+      this.prunedGraph.assertions.map(a => this.buildAssertion(a))
     );
     return dataform.ExecutionGraph.create({
-      projectConfig: this.compiledGraph.projectConfig,
-      runConfig,
+      projectConfig: this.prunedGraph.projectConfig,
+      runConfig: this.runConfig,
       warehouseState: this.warehouseState,
       actions
     });
@@ -91,7 +105,6 @@ export class Builder {
   private buildTable(
     table: dataform.ITable,
     tableMetadata: dataform.ITableMetadata,
-    transitiveInputsByTarget: StringifiedMap<dataform.ITarget, StringifiedSet<dataform.ITarget>>,
     runConfig: dataform.IRunConfig
   ) {
     if (table.protected && this.runConfig.fullRefresh) {
@@ -103,7 +116,7 @@ export class Builder {
       : this.adapter.publishTasks(table, runConfig, tableMetadata).build();
 
     return {
-      ...this.toPartialExecutionAction(table, transitiveInputsByTarget),
+      ...this.toPartialExecutionAction(table),
       type: "table",
       tableType: table.type,
       tasks,
@@ -111,76 +124,103 @@ export class Builder {
     };
   }
 
-  private buildOperation(
-    operation: dataform.IOperation,
-    transitiveInputsByTarget: StringifiedMap<dataform.ITarget, StringifiedSet<dataform.ITarget>>
-  ) {
+  private buildOperation(operation: dataform.IOperation) {
     return {
-      ...this.toPartialExecutionAction(operation, transitiveInputsByTarget),
+      ...this.toPartialExecutionAction(operation),
       type: "operation",
       tasks: operation.queries.map(statement => ({ type: "statement", statement })),
       hermeticity: operation.hermeticity || dataform.ActionHermeticity.NON_HERMETIC
     };
   }
 
-  private buildAssertion(
-    assertion: dataform.IAssertion,
-    transitiveInputsByTarget: StringifiedMap<dataform.ITarget, StringifiedSet<dataform.ITarget>>
-  ) {
+  private buildAssertion(assertion: dataform.IAssertion) {
     return {
-      ...this.toPartialExecutionAction(assertion, transitiveInputsByTarget),
+      ...this.toPartialExecutionAction(assertion),
       type: "assertion",
-      tasks: this.adapter.assertTasks(assertion, this.compiledGraph.projectConfig).build(),
+      tasks: this.adapter.assertTasks(assertion, this.prunedGraph.projectConfig).build(),
       hermeticity: assertion.hermeticity || dataform.ActionHermeticity.HERMETIC
     };
   }
 
   private toPartialExecutionAction(
-    action: dataform.ITable | dataform.IOperation | dataform.IAssertion,
-    transitiveInputsByTarget: StringifiedMap<dataform.ITarget, StringifiedSet<dataform.ITarget>>
+    action: dataform.ITable | dataform.IOperation | dataform.IAssertion
   ) {
     return dataform.ExecutionAction.create({
       name: action.name,
       target: action.target,
       fileName: action.fileName,
       dependencies: action.dependencies,
-      transitiveInputs: Array.from(this.getAllTransitiveInputs(action, transitiveInputsByTarget)),
+      transitiveInputs: versionValidForTransitiveInputs(this.prunedGraph)
+        ? Array.from(this.transitiveInputsByTarget.get(action.target))
+        : [],
       actionDescriptor: action.actionDescriptor
     });
   }
+}
 
-  private getAllTransitiveInputs(
-    action: dataform.ITable | dataform.IOperation | dataform.IAssertion,
-    transitiveInputsByTarget: StringifiedMap<dataform.ITarget, StringifiedSet<dataform.ITarget>>
-  ): StringifiedSet<dataform.ITarget> {
-    const transitiveInputTargets = new StringifiedSet(JSONObjectStringifier.create());
-    if (
-      !this.compiledGraph.dataformCoreVersion ||
-      semver.lt(this.compiledGraph.dataformCoreVersion, "1.6.11")
-    ) {
-      return transitiveInputTargets;
-    }
-    if (!transitiveInputsByTarget.has(action.target)) {
-      for (const transitiveInputTarget of action.dependencyTargets || []) {
-        transitiveInputTargets.add(transitiveInputTarget);
-        const transitiveInputAction = this.allActions.get(transitiveInputTarget);
-        // Recursively add transitive inputs for all dependencies that are not tables or declarations.
-        // (i.e. recurse through all dependency views, operations, etc.)
-        if (
-          !(
-            (transitiveInputAction instanceof dataform.Table &&
-              ["table", "incremental"].includes(transitiveInputAction.type)) ||
-            transitiveInputAction instanceof dataform.Declaration
-          )
-        ) {
-          this.getAllTransitiveInputs(
-            transitiveInputAction,
-            transitiveInputsByTarget
-          ).forEach(target => transitiveInputTargets.add(target));
-        }
-      }
-      transitiveInputsByTarget.set(action.target, transitiveInputTargets);
-    }
-    return transitiveInputsByTarget.get(action.target);
+function versionValidForTransitiveInputs(compiledGraph: dataform.ICompiledGraph) {
+  return (
+    compiledGraph.dataformCoreVersion && semver.gte(compiledGraph.dataformCoreVersion, "1.6.11")
+  );
+}
+
+export function computeAllTransitiveInputs(compiledGraph: dataform.ICompiledGraph) {
+  const transitiveInputsByTarget = new StringifiedMap<
+    dataform.ITarget,
+    StringifiedSet<dataform.ITarget>
+  >(JSONObjectStringifier.create());
+
+  if (!versionValidForTransitiveInputs(compiledGraph)) {
+    return transitiveInputsByTarget;
   }
+
+  const actionsByTargetMap = actionsByTarget(compiledGraph);
+  for (const action of [
+    ...compiledGraph.tables,
+    ...compiledGraph.operations,
+    ...compiledGraph.assertions
+  ]) {
+    if (!transitiveInputsByTarget.has(action.target)) {
+      transitiveInputsByTarget.set(
+        action.target,
+        computeTransitiveInputsForAction(action, actionsByTargetMap, transitiveInputsByTarget)
+      );
+    }
+  }
+
+  return transitiveInputsByTarget;
+}
+
+function computeTransitiveInputsForAction(
+  action: dataform.ITable | dataform.IOperation | dataform.IAssertion,
+  actionByTarget: StringifiedMap<
+    dataform.ITarget,
+    dataform.IAssertion | dataform.ITable | dataform.IOperation | dataform.IDeclaration
+  >,
+  transitiveInputsByTarget: StringifiedMap<dataform.ITarget, StringifiedSet<dataform.ITarget>>
+) {
+  const transitiveInputTargets = new StringifiedSet(JSONObjectStringifier.create());
+  if (!transitiveInputsByTarget.has(action.target)) {
+    for (const transitiveInputTarget of action.dependencyTargets || []) {
+      transitiveInputTargets.add(transitiveInputTarget);
+      const transitiveInputAction = actionByTarget.get(transitiveInputTarget);
+      // Recursively add transitive inputs for all dependencies that are not tables or declarations.
+      // (i.e. recurse through all dependency views, operations, etc.)
+      if (
+        !(
+          (transitiveInputAction instanceof dataform.Table &&
+            ["table", "incremental"].includes(transitiveInputAction.type)) ||
+          transitiveInputAction instanceof dataform.Declaration
+        )
+      ) {
+        computeTransitiveInputsForAction(
+          transitiveInputAction,
+          actionByTarget,
+          transitiveInputsByTarget
+        ).forEach(target => transitiveInputTargets.add(target));
+      }
+    }
+    transitiveInputsByTarget.set(action.target, transitiveInputTargets);
+  }
+  return transitiveInputsByTarget.get(action.target);
 }
