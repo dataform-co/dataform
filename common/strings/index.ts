@@ -1,4 +1,4 @@
-export function timingSafeEqual(a: string, b: string, encoding: string) {
+export function timingSafeEqual(a: string, b: string) {
   let result = 0;
 
   if (a.length !== b.length) {

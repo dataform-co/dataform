@@ -1,17 +1,12 @@
-import { query } from "df/api";
-import { Credentials } from "df/api/commands/credentials";
 import * as dbadapters from "df/api/dbadapters";
 import * as adapters from "df/core/adapters";
 import { dataform } from "df/protos/ts";
 
 export function keyBy<V>(values: V[], keyFn: (value: V) => string): { [key: string]: V } {
-  return values.reduce(
-    (map, value) => {
-      map[keyFn(value)] = value;
-      return map;
-    },
-    {} as { [key: string]: V }
-  );
+  return values.reduce((map, value) => {
+    map[keyFn(value)] = value;
+    return map;
+  }, {} as { [key: string]: V });
 }
 
 export async function dropAllTables(

@@ -11,7 +11,7 @@ config {
             "'fo\\'o' = 'fo\\'o'"
         ]
     },
-    hermetic: false
+    hermetic: true
 }
 
 select 1 as val1, 1 as val2, NULL as val3 union all
