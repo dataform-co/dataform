@@ -122,6 +122,10 @@ export class Sql {
     return `(${expression})`;
   }
 
+  public asString(castableToString: string) {
+    return `cast(${castableToString} as string)`;
+  }
+
   // Convenience methods for builders.
   public json<S extends ISelectSchema>(data: S[]) {
     return new JSONBuilder<S>(this, data);
