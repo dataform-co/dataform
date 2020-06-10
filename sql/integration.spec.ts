@@ -105,6 +105,79 @@ suite("builders", { parallel: true }, ({ before, after }) => {
         ]);
       });
 
+      test("safe divide", async () => {
+        const rows = [
+          {
+            a: 4,
+            b: 2
+          },
+          {
+            a: 4,
+            b: 0
+          }
+        ];
+        const query = sql.from(sql.json(rows)).select({
+          v: sql.safeDivide("a", "b")
+        });
+
+        const result = await execute(query);
+        expect(result).deep.equals([
+          {
+            v: 2
+          },
+          {
+            v: null
+          }
+        ]);
+      });
+
+      test("safe divide", async () => {
+        const rows = [
+          {
+            a: 4,
+            b: 2
+          },
+          {
+            a: 4,
+            b: 0
+          }
+        ];
+        const query = sql.from(sql.json(rows)).select({
+          v: sql.safeDivide("a", "b")
+        });
+
+        const result = await execute(query);
+        expect(result).deep.equals([
+          {
+            v: 2
+          },
+          {
+            v: null
+          }
+        ]);
+      });
+
+      test("as string", async () => {
+        const rows = [
+          {
+            a: 1,
+            b: "b"
+          }
+        ];
+        const query = sql.from(sql.json(rows)).select({
+          a: sql.asString("a"),
+          b: sql.asString("b")
+        });
+
+        const result = await execute(query);
+        expect(result).deep.equals([
+          {
+            a: "1",
+            b: "b"
+          }
+        ]);
+      });
+
       test("json", async () => {
         const rows = [
           {
