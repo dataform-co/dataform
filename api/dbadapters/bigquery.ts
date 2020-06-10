@@ -13,6 +13,11 @@ import {
   IMetadataRow
 } from "df/api/utils/run_cache";
 import { ErrorWithCause } from "df/common/errors/errors";
+import {
+  JSONObjectStringifier,
+  StringifiedMap,
+  StringifiedSet
+} from "df/common/strings/stringifier";
 import { dataform } from "df/protos/ts";
 
 const CACHED_STATE_TABLE_NAME = "dataform_meta.cache_state";
@@ -237,21 +242,31 @@ export class BigQueryDbAdapter implements IDbAdapter {
     if (actions.length === 0) {
       return;
     }
-    const tableMetadataMap = new Map<dataform.ITarget, IBigQueryTableMetadata>();
+    const allInvolvedTargets = new StringifiedSet(JSONObjectStringifier.create<dataform.ITarget>());
+    actions.forEach(action => {
+      allInvolvedTargets.add(action.target);
+      action.transitiveInputs.forEach(transitiveInput => allInvolvedTargets.add(transitiveInput));
+    });
+
+    const tableMetadataByTarget = new StringifiedMap<dataform.ITarget, dataform.ITableMetadata>(
+      JSONObjectStringifier.create()
+    );
     await Promise.all(
-      actions.map(async action => {
-        tableMetadataMap.set(action.target, await this.getMetadata(action.target));
+      Array.from(allInvolvedTargets).map(async target => {
+        tableMetadataByTarget.set(target, await this.table(target));
       })
     );
     const queries = actions.map(action => {
-      const definitionHash = hashExecutionAction(action);
-      const dependencies = action.transitiveInputs;
-      const metadata = tableMetadataMap.get(action.target);
       const persistTable = dataform.PersistedTableMetadata.create({
         target: action.target,
-        lastUpdatedMillis: Long.fromString(metadata.lastModifiedTime),
-        definitionHash,
-        dependencies
+        lastUpdatedMillis: tableMetadataByTarget.get(action.target).lastUpdatedMillis,
+        definitionHash: hashExecutionAction(action),
+        transitiveInputTables: action.transitiveInputs.map(transitiveInput => {
+          if (!tableMetadataByTarget.has(transitiveInput)) {
+            throw new Error(`Could not find table metadata for ${JSON.stringify(transitiveInput)}`);
+          }
+          return tableMetadataByTarget.get(transitiveInput);
+        })
       });
 
       const targetName = `${action.target.database}.${action.target.schema}.${action.target.name}`;
@@ -391,7 +406,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
         async (err, job) => {
           try {
             if (err) {
-              return reject(new ErrorWithCause("Error running query job", err));
+              return reject(new ErrorWithCause("Error running query job.", err));
             }
             // Cancelled before it was created, kill it now.
             if (isCancelled) {
