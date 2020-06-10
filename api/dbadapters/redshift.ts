@@ -13,8 +13,21 @@ interface ICursor {
   close: (callback: (err: Error) => void) => void;
 }
 
+const maybeInitializePg = (() => {
+  let initialized = false;
+  return () => {
+    if (!initialized) {
+      initialized = true;
+      // Decode BigInt types as Numbers, instead of strings.
+      // TODO: This will truncate large values, but is consistent with other adapters. We should change these to all use Long.
+      pg.types.setTypeParser(20, Number);
+    }
+  };
+})();
+
 export class RedshiftDbAdapter implements IDbAdapter {
   public static async create(credentials: Credentials) {
+    maybeInitializePg();
     const jdbcCredentials = credentials as dataform.IJDBC;
     const baseClientConfig: Partial<pg.ClientConfig> = {
       user: jdbcCredentials.username,
@@ -60,7 +73,7 @@ export class RedshiftDbAdapter implements IDbAdapter {
       if (options.includeQueryInError) {
         throw new Error(`Error encountered while running "${statement}": ${e.message}`);
       }
-      throw new ErrorWithCause("Error executing Redshift query.", e);
+      throw new ErrorWithCause(`Error executing Redshift query: ${e.message}`, e);
     }
   }
 

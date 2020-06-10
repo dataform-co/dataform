@@ -9,6 +9,7 @@ import { suite, test } from "df/testing";
 suite("builders", { parallel: true }, ({ before, after }) => {
   let bigquery: dbadapters.IDbAdapter;
   let snowflake: dbadapters.IDbAdapter;
+  let redshift: dbadapters.IDbAdapter;
 
   before("create bigquery", async () => {
     bigquery = await dbadapters.create(
@@ -28,9 +29,19 @@ suite("builders", { parallel: true }, ({ before, after }) => {
 
   after("close snowflake", () => snowflake.close());
 
+  before("create redshift", async () => {
+    redshift = await dbadapters.create(
+      dfapi.credentials.read("redshift", "test_credentials/redshift.json"),
+      "redshift"
+    );
+  });
+
+  after("close redshift", () => redshift.close());
+
   for (const { name, dbadapter, sql } of [
-    { name: "bigquery", dbadapter: () => bigquery, sql: new Sql() },
-    { name: "snowflake", dbadapter: () => snowflake, sql: new Sql() }
+    { name: "bigquery", dbadapter: () => bigquery, sql: new Sql("standard") },
+    { name: "snowflake", dbadapter: () => snowflake, sql: new Sql("snowflake") },
+    { name: "redshift", dbadapter: () => redshift, sql: new Sql("postgres") }
   ]) {
     suite(name, { parallel: true }, () => {
       const execute = async <S extends ISelectSchema>(select: ISelectOrBuilder<S>) => {
@@ -48,6 +59,51 @@ suite("builders", { parallel: true }, ({ before, after }) => {
           throw new Error(`Error during query: ${e}\n${query}`);
         }
       };
+
+      test("timestamps", async () => {
+        const rows = [
+          {
+            millis: 1591786375000,
+            truncated_millis: 1591747200000
+          }
+        ];
+        const query = sql.from(sql.json(rows)).select({
+          millis: sql.timestampToMillis(sql.asTimestamp(sql.millisToTimestamp("millis"))),
+          truncated_millis: sql.timestampToMillis(
+            sql.timestampTruncate(sql.asTimestamp(sql.millisToTimestamp("millis")), "day")
+          )
+        });
+
+        const result = await execute(query);
+        expect(result).deep.equals(rows);
+      });
+
+      test("conditionals", async () => {
+        const rows = [
+          {
+            v: "a"
+          },
+          {
+            v: "b"
+          }
+        ];
+        const query = sql.from(sql.json(rows)).select({
+          ifac: sql.conditional(sql.in("v", [sql.literal("a")]), sql.literal("c"), "v"),
+          ifbd: sql.conditional(sql.equals("v", sql.literal("b")), sql.literal("d"), "v")
+        });
+
+        const result = await execute(query);
+        expect(result).deep.equals([
+          {
+            ifac: "c",
+            ifbd: "a"
+          },
+          {
+            ifac: "b",
+            ifbd: "d"
+          }
+        ]);
+      });
 
       test("json", async () => {
         const rows = [
@@ -205,7 +261,7 @@ suite("builders", { parallel: true }, ({ before, after }) => {
         const aggregate = sql
           .with({
             filtered: sql.from(source).where(sql.equals("d2", sql.literal("c"))),
-            top: sql
+            top_values: sql
               .aggregate("filtered")
               .dimensions({
                 d1t: "d1"
@@ -224,8 +280,8 @@ suite("builders", { parallel: true }, ({ before, after }) => {
               sql
                 .aggregate(
                   sql.join({
-                    top: {
-                      select: "top",
+                    top_values: {
+                      select: "top_values",
                       type: "base"
                     },
                     vals: {
@@ -244,7 +300,7 @@ suite("builders", { parallel: true }, ({ before, after }) => {
               sql
                 .aggregate("filtered")
                 .dimensions({
-                  d1: sql.literal("<total>")
+                  d1: sql.literal("d")
                 })
                 .metrics({
                   m1: sql.sum("m1")
@@ -262,7 +318,7 @@ suite("builders", { parallel: true }, ({ before, after }) => {
             m1: 1
           },
           {
-            d1: "<total>",
+            d1: "d",
             m1: 3
           }
         ]);
