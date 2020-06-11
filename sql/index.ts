@@ -106,6 +106,10 @@ export class Sql {
     return `(${expression})`;
   }
 
+  public safeDivide(numerator: string, denominator: string) {
+    return `${numerator} / nullif(${denominator}, 0)`;
+  }
+
   // Conversion functions.
 
   public millisToTimestamp(timestampMillis: string) {
@@ -145,6 +149,9 @@ export class Sql {
   }
 
   public asString(castableToString: string) {
+    if (this.dialect === "postgres") {
+      return `cast(${castableToString} as varchar)`;  
+    }
     return `cast(${castableToString} as string)`;
   }
 
