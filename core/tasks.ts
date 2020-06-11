@@ -25,7 +25,7 @@ export class Tasks {
       Task.statement(
         this.tasks
           .map(task => task.getStatement())
-          // Two ";" in a row are invalid; remove a single training ';' if needed.
+          // Two ";" in a row are invalid; remove a single trailing ';' if needed.
           .map(statement => statement.trim())
           .map(statement =>
             statement.length > 0 && statement.charAt(statement.length - 1) === ";"

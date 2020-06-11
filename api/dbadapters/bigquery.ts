@@ -4,7 +4,6 @@ import { PromisePoolExecutor } from "promise-pool-executor";
 import { BigQuery } from "@google-cloud/bigquery";
 import { QueryResultsOptions } from "@google-cloud/bigquery/build/src/job";
 import { Credentials } from "df/api/commands/credentials";
-import { compile } from "df/api/commands/query";
 import { IDbAdapter, IExecutionResult, OnCancel } from "df/api/dbadapters/index";
 import { parseBigqueryEvalError } from "df/api/utils/error_parsing";
 import {
@@ -126,21 +125,17 @@ export class BigQueryDbAdapter implements IDbAdapter {
       }
     }
 
-    console.log("BigQueryDbAdapter -> executionTasks", executionTasks);
     let evaluationResponse: dataform.IQueryEvaluation = {
       status: dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
     };
     for (const executionTask of executionTasks) {
       try {
-        console.log("BigQueryDbAdapter -> executionTask", executionTask);
-        const response = await this.getClient().query({
+        await this.getClient().query({
           useLegacySql: false,
           query: executionTask.statement,
           dryRun: true
         });
-        console.log("BigQueryDbAdapter -> response", response);
       } catch (e) {
-        console.log("BigQueryDbAdapter -> e", e);
         evaluationResponse = {
           status: dataform.QueryEvaluation.QueryEvaluationStatus.FAILURE,
           error: parseBigqueryEvalError(e)

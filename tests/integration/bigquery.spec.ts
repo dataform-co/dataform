@@ -1,7 +1,5 @@
 import { expect } from "chai";
-import * as fs from "fs";
 import Long from "long";
-import * as path from "path";
 
 import * as dfapi from "df/api";
 import * as dbadapters from "df/api/dbadapters";
@@ -310,37 +308,85 @@ suite("@dataform/integration/bigquery", ({ before, after }) => {
     }
   });
 
-  test("evaluate", { timeout: 60000 }, async () => {
-    const compiledGraph = await dfapi.compile({
-      projectDir: "tests/integration/bigquery_project"
+  suite("evaluate", async () => {
+    test("evaluate from valid compiled graph as valid", async () => {
+      const compiledGraph = await dfapi.compile({
+        projectDir: "tests/integration/bigquery_project"
+      });
+
+      const view = keyBy(compiledGraph.tables, t => t.name)[
+        "dataform-integration-tests.df_integration_test.example_view"
+      ];
+      let evaluation = await dbadapter.evaluate(
+        dataform.Table.create(view),
+        compiledGraph.projectConfig
+      );
+      expect(evaluation.status).to.equal(dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS);
+
+      const table = keyBy(compiledGraph.tables, t => t.name)[
+        "dataform-integration-tests.df_integration_test.example_table"
+      ];
+      evaluation = await dbadapter.evaluate(
+        dataform.Table.create(table),
+        compiledGraph.projectConfig
+      );
+      expect(evaluation.status).to.equal(dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS);
+
+      const operation = keyBy(compiledGraph.operations, t => t.name)[
+        "dataform-integration-tests.df_integration_test.example_operation"
+      ];
+      evaluation = await dbadapter.evaluate(
+        dataform.Operation.create(operation),
+        compiledGraph.projectConfig
+      );
+      expect(evaluation.status).to.equal(dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS);
     });
 
-    const view = keyBy(compiledGraph.tables, t => t.name)[
-      "dataform-integration-tests.df_integration_test.example_view"
-    ];
-    let evaluation = await dbadapter.evaluate(
-      dataform.Table.create(view),
-      compiledGraph.projectConfig
-    );
-    expect(evaluation.status).to.equal(dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS);
+    test("variable persistence validated correctly", async () => {
+      const target = (name: string) => ({
+        schema: "df_integration_test",
+        name,
+        database: "dataform-integration-tests"
+      });
 
-    const table = keyBy(compiledGraph.tables, t => t.name)[
-      "dataform-integration-tests.df_integration_test.example_table"
-    ];
-    evaluation = await dbadapter.evaluate(
-      dataform.Table.create(table),
-      compiledGraph.projectConfig
-    );
-    expect(evaluation.status).to.equal(dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS);
+      let evaluation = await dbadapter.evaluate(
+        dataform.Table.create({
+          type: "table",
+          preOps: ["declare var string; set var = 'val';"],
+          query: "select var as col;",
+          target: target("example_valid_variable")
+        }),
+        { useSingleQueryPerAction: true }
+      );
+      expect(evaluation.status).to.equal(dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS);
 
-    const operation = keyBy(compiledGraph.operations, t => t.name)[
-      "dataform-integration-tests.df_integration_test.example_operation"
-    ];
-    evaluation = await dbadapter.evaluate(
-      dataform.Operation.create(operation),
-      compiledGraph.projectConfig
-    );
-    expect(evaluation.status).to.equal(dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS);
+      evaluation = await dbadapter.evaluate(
+        dataform.Table.create({
+          type: "table",
+          query: "select var as col;",
+          target: target("example_invalid_variable")
+        }),
+        { useSingleQueryPerAction: true }
+      );
+      expect(evaluation.status).to.equal(dataform.QueryEvaluation.QueryEvaluationStatus.FAILURE);
+    });
+
+    test("invalid variables throw", async () => {
+      const evaluation = await dbadapter.evaluate(
+        dataform.Table.create({
+          type: "table",
+          preOps: ["declare var string; set var = 'val';"],
+          query: "select var as col;",
+          target: {
+            schema: "df_integration_test",
+            name: "example_incremental",
+            database: "dataform-integration-tests"
+          }
+        }),
+        { useSingleQueryPerAction: true }
+      );
+      expect(evaluation.status).to.equal(dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS);
+    });
   });
 
   suite("result limit works", async () => {

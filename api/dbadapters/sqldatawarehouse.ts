@@ -3,9 +3,6 @@ import { ConnectionPool } from "mssql";
 import { Credentials } from "df/api/commands/credentials";
 import { IDbAdapter, IExecutionResult, OnCancel } from "df/api/dbadapters/index";
 import { parseAzureEvaluationError } from "df/api/utils/error_parsing";
-import { ErrorWithCause } from "df/common/errors/errors";
-import { SQLDataWarehouseAdapter } from "df/core/adapters/sqldatawarehouse";
-import { version } from "df/core/version";
 import { dataform } from "df/protos/ts";
 
 const INFORMATION_SCHEMA_SCHEMA_NAME = "information_schema";
@@ -90,31 +87,11 @@ export class SQLDataWarehouseDBAdapter implements IDbAdapter {
     });
   }
 
-  public async evaluate(
-    queryOrTable: string | dataform.ITable | dataform.IOperation | dataform.IAssertion,
-    projectConfig?: dataform.IProjectConfig
-  ) {
-    let executionTasks: dataform.ExecutionTask[];
-    if (typeof queryOrTable !== "string") {
-      try {
-        const coreAdapter = new SQLDataWarehouseAdapter(projectConfig, version);
-        executionTasks = coreAdapter
-          .publishTasks(
-            queryOrTable,
-            { useSingleQueryPerAction: projectConfig?.useSingleQueryPerAction },
-            {}
-          )
-          .build();
-      } catch (e) {
-        throw new ErrorWithCause(`Error building table for evaluation. ${e.message}`, e);
-      }
-    } else {
-      executionTasks = [dataform.ExecutionTask.create({ statement: queryOrTable })];
-    }
-
+  public async evaluate(statement: string) {
     try {
-      executionTasks.forEach(async executionTask => {
-        await this.execute(`explain ${executionTask.statement}`);
+      await this.execute(`explain ${statement}`);
+      return dataform.QueryEvaluation.create({
+        status: dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
       });
     } catch (e) {
       return dataform.QueryEvaluation.create({
@@ -122,9 +99,6 @@ export class SQLDataWarehouseDBAdapter implements IDbAdapter {
         error: parseAzureEvaluationError(e)
       });
     }
-    return dataform.QueryEvaluation.create({
-      status: dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
-    });
   }
 
   public async tables(): Promise<dataform.ITarget[]> {

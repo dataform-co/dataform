@@ -76,9 +76,6 @@ export class BigQueryAdapter extends Adapter implements IAdapter {
       });
     tasks.add(Task.statement(this.createOrReplaceView(target, assertion.query)));
     tasks.add(Task.assertion(`select sum(1) as row_count from ${this.resolveTarget(target)}`));
-    if (projectConfig.useSingleQueryPerAction) {
-      return tasks.concatenate();
-    }
     return tasks;
   }
 

@@ -6,8 +6,6 @@ import { IDbAdapter } from "df/api/dbadapters/index";
 import { SSHTunnelProxy } from "df/api/ssh_tunnel_proxy";
 import { parseRedshiftEvalError } from "df/api/utils/error_parsing";
 import { ErrorWithCause } from "df/common/errors/errors";
-import { RedshiftAdapter } from "df/core/adapters/redshift";
-import { version } from "df/core/version";
 import { dataform } from "df/protos/ts";
 
 interface ICursor {
@@ -66,44 +64,20 @@ export class RedshiftDbAdapter implements IDbAdapter {
     }
   }
 
-  public async evaluate(
-    queryOrTable: string | dataform.ITable | dataform.IOperation | dataform.IAssertion,
-    projectConfig?: dataform.IProjectConfig
-  ) {
-    let executionTasks: dataform.ExecutionTask[];
-    if (typeof queryOrTable !== "string") {
-      try {
-        const coreAdapter = new RedshiftAdapter(projectConfig, version);
-        executionTasks = coreAdapter
-          .publishTasks(
-            queryOrTable,
-            { useSingleQueryPerAction: projectConfig?.useSingleQueryPerAction },
-            {}
-          )
-          .build();
-      } catch (e) {
-        throw new ErrorWithCause(`Error building table for evaluation. ${e.message}`, e);
-      }
-    } else {
-      executionTasks = [dataform.ExecutionTask.create({ statement: queryOrTable })];
+  public async evaluate(statement: string) {
+    const statementWithExplain = `explain ${statement}`;
+    try {
+      await this.execute(statementWithExplain);
+      return dataform.QueryEvaluation.create({
+        status: dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
+      });
+    } catch (e) {
+      return dataform.QueryEvaluation.create({
+        status: dataform.QueryEvaluation.QueryEvaluationStatus.FAILURE,
+        error: parseRedshiftEvalError(statementWithExplain, e)
+      });
     }
-
-    executionTasks.forEach(async executionTask => {
-      const statementWithExplain = `explain ${executionTask.statement}`;
-      try {
-        await this.execute(statementWithExplain);
-      } catch (e) {
-        return dataform.QueryEvaluation.create({
-          status: dataform.QueryEvaluation.QueryEvaluationStatus.FAILURE,
-          error: parseRedshiftEvalError(statementWithExplain, e)
-        });
-      }
-    });
-    return dataform.QueryEvaluation.create({
-      status: dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
-    });
   }
-
   public async tables(): Promise<dataform.ITarget[]> {
     const hasSpectrumTables = await this.hasSpectrumTables();
     const queryResult = await this.execute(
