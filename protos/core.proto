@@ -193,6 +193,13 @@ message QueryEvaluation {
   }
   QueryEvaluationStatus status = 1;
   QueryEvaluationError error = 2;
+  bool incremental = 3;
+  string query = 4;
+}
+
+message ValidationQuery {
+  string query = 1;
+  bool incremental = 2;
 }
 
 message ActionDescriptor {

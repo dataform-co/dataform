@@ -18,8 +18,7 @@ import {
   StringifiedMap,
   StringifiedSet
 } from "df/common/strings/stringifier";
-import { BigQueryAdapter } from "df/core/adapters/bigquery";
-import { version } from "df/core/version";
+import { concatenateQueries } from "df/core/tasks";
 import { dataform } from "df/protos/ts";
 
 const CACHED_STATE_TABLE_NAME = "dataform_meta.cache_state";
@@ -99,29 +98,34 @@ export class BigQueryDbAdapter implements IDbAdapter {
   }
 
   public async evaluate(
-    queryOrAction: string | dataform.Table | dataform.Operation | dataform.Assertion,
-    projectConfig: dataform.IProjectConfig
+    queryOrAction: string | dataform.Table | dataform.Operation | dataform.Assertion
   ) {
-    let executionTasks: dataform.ExecutionTask[];
+    let validationQueries = new Array<dataform.IValidationQuery>();
     if (typeof queryOrAction === "string") {
-      executionTasks = [dataform.ExecutionTask.create({ statement: queryOrAction })];
+      validationQueries.push({ query: queryOrAction });
     } else {
       try {
-        const coreAdapter = new BigQueryAdapter(projectConfig, version);
         if (queryOrAction instanceof dataform.Table) {
-          executionTasks = coreAdapter
-            .publishTasks(
-              queryOrAction,
-              { useSingleQueryPerAction: projectConfig?.useSingleQueryPerAction },
-              null
+          if (queryOrAction.type === "incremental") {
+            validationQueries.push({
+              query: concatenateQueries(
+                queryOrAction.incrementalPreOps.concat(
+                  queryOrAction.incrementalQuery,
+                  queryOrAction.incrementalPostOps
+                )
+              ),
+              incremental: true
+            });
+          }
+          validationQueries.push({
+            query: concatenateQueries(
+              queryOrAction.preOps.concat(queryOrAction.query, queryOrAction.postOps)
             )
-            .build();
+          });
         } else if (queryOrAction instanceof dataform.Operation) {
-          executionTasks = queryOrAction.queries.map(statement =>
-            dataform.ExecutionTask.create({ type: "statement", statement })
-          );
+          queryOrAction.queries.forEach(query => validationQueries.push({ query }));
         } else if (queryOrAction instanceof dataform.Assertion) {
-          executionTasks = coreAdapter.assertTasks(queryOrAction, projectConfig).build();
+          validationQueries.push({ query: queryOrAction.query });
         } else {
           throw new Error("Unrecognized evaluate type.");
         }
@@ -130,14 +134,16 @@ export class BigQueryDbAdapter implements IDbAdapter {
       }
     }
 
-    let evaluationResponse: dataform.IQueryEvaluation = {
-      status: dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
-    };
-    for (const executionTask of executionTasks) {
+    const queryEvaluations = new Array<dataform.IQueryEvaluation>();
+    validationQueries = validationQueries.filter(({ query }) => !!query);
+    for (const { query, incremental } of validationQueries) {
+      let evaluationResponse: dataform.IQueryEvaluation = {
+        status: dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
+      };
       try {
         await this.getClient().query({
           useLegacySql: false,
-          query: executionTask.statement,
+          query,
           dryRun: true
         });
       } catch (e) {
@@ -145,10 +151,12 @@ export class BigQueryDbAdapter implements IDbAdapter {
           status: dataform.QueryEvaluation.QueryEvaluationStatus.FAILURE,
           error: parseBigqueryEvalError(e)
         };
-        break;
       }
+      queryEvaluations.push(
+        dataform.QueryEvaluation.create({ ...evaluationResponse, incremental, query })
+      );
     }
-    return dataform.QueryEvaluation.create(evaluationResponse);
+    return queryEvaluations;
   }
 
   public tables(): Promise<dataform.ITarget[]> {

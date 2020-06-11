@@ -1,5 +1,17 @@
 import { dataform } from "df/protos/ts";
 
+export function concatenateQueries(statements: string[]) {
+  return statements
+    .filter(statement => !!statement)
+    .map(statement => statement.trim())
+    .map(statement =>
+      statement.length > 0 && statement.charAt(statement.length - 1) === ";"
+        ? statement.substring(0, statement.length - 1)
+        : statement
+    )
+    .join(";");
+}
+
 export class Tasks {
   public static create() {
     return new Tasks();
@@ -22,18 +34,7 @@ export class Tasks {
 
   public concatenate() {
     return Tasks.create().add(
-      Task.statement(
-        this.tasks
-          .map(task => task.getStatement())
-          // Two ";" in a row are invalid; remove a single trailing ';' if needed.
-          .map(statement => statement.trim())
-          .map(statement =>
-            statement.length > 0 && statement.charAt(statement.length - 1) === ";"
-              ? statement.substring(0, statement.length - 1)
-              : statement
-          )
-          .join(";")
-      )
+      Task.statement(concatenateQueries(this.tasks.map(task => task.getStatement())))
     );
   }
 }

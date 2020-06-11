@@ -91,8 +91,7 @@ export class SnowflakeDbAdapter implements IDbAdapter {
   }
 
   public async evaluate(
-    queryOrAction: string | dataform.Table | dataform.Operation | dataform.Assertion,
-    projectConfig: dataform.IProjectConfig
+    queryOrAction: string | dataform.Table | dataform.Operation | dataform.Assertion
   ) {
     // TODO: Implement this before using `dbadapter.evaluate` anywhere.
     if (typeof queryOrAction !== "string") {
@@ -102,14 +101,18 @@ export class SnowflakeDbAdapter implements IDbAdapter {
       await this.execute(`select system$explain_plan_json($$
 ${queryOrAction}
         $$)`);
-      return dataform.QueryEvaluation.create({
-        status: dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
-      });
+      return [
+        dataform.QueryEvaluation.create({
+          status: dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
+        })
+      ];
     } catch (e) {
-      return dataform.QueryEvaluation.create({
-        status: dataform.QueryEvaluation.QueryEvaluationStatus.FAILURE,
-        error: parseSnowflakeEvalError(String(e))
-      });
+      return [
+        dataform.QueryEvaluation.create({
+          status: dataform.QueryEvaluation.QueryEvaluationStatus.FAILURE,
+          error: parseSnowflakeEvalError(String(e))
+        })
+      ];
     }
   }
 
