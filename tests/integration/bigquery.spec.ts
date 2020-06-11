@@ -348,10 +348,16 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
 
   suite("evaluate", { parallel: true }, async () => {
     test("evaluate from valid compiled graph as valid", async () => {
-      const compiledGraph = await compile("evaluate", { useSingleQueryPerAction: true });
+      // Create and run the project.
+      const compiledGraph = await compile("evaluate", {
+        useSingleQueryPerAction: true,
+        useRunCache: false
+      });
+      const executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
+      const executedGraph = await dfapi.run(executionGraph, dbadapter).result();
 
       const view = keyBy(compiledGraph.tables, t => t.name)[
-        "dataform-integration-tests.df_integration_test.example_view"
+        "dataform-integration-tests.df_integration_test_evaluate.example_view"
       ];
       let evaluation = await dbadapter.evaluate(
         dataform.Table.create(view),
@@ -360,7 +366,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
       expect(evaluation.status).to.equal(dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS);
 
       const table = keyBy(compiledGraph.tables, t => t.name)[
-        "dataform-integration-tests.df_integration_test.example_table"
+        "dataform-integration-tests.df_integration_test_evaluate.example_table"
       ];
       evaluation = await dbadapter.evaluate(
         dataform.Table.create(table),
@@ -369,7 +375,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
       expect(evaluation.status).to.equal(dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS);
 
       const operation = keyBy(compiledGraph.operations, t => t.name)[
-        "dataform-integration-tests.df_integration_test.example_operation"
+        "dataform-integration-tests.df_integration_test_evaluate.example_operation"
       ];
       evaluation = await dbadapter.evaluate(
         dataform.Operation.create(operation),
