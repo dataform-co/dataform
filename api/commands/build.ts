@@ -10,7 +10,6 @@ import {
   StringifiedSet
 } from "df/common/strings/stringifier";
 import { adapters } from "df/core";
-import { IActionProto } from "df/core/session";
 import * as utils from "df/core/utils";
 import { dataform } from "df/protos/ts";
 
@@ -87,34 +86,20 @@ export class Builder {
       tableMetadataByTarget.set(tableState.target, tableState);
     });
 
-    const runConfig: dataform.IRunConfig = {
-      ...this.runConfig,
-      useRunCache:
-        !this.runConfig.hasOwnProperty("useRunCache") ||
-        typeof this.runConfig.useRunCache === "undefined"
-          ? this.prunedGraph.projectConfig.useRunCache
-          : this.runConfig.useRunCache,
-      useSingleQueryPerAction:
-        !this.prunedGraph.projectConfig?.hasOwnProperty("useSingleQueryPerAction") ||
-        typeof this.prunedGraph.projectConfig?.useSingleQueryPerAction === "undefined"
-          ? false
-          : this.prunedGraph.projectConfig.useSingleQueryPerAction
-    };
-
     const transitiveInputsByTarget = new StringifiedMap<
       dataform.ITarget,
       StringifiedSet<dataform.ITarget>
     >(JSONObjectStringifier.create());
     const actions: dataform.IExecutionAction[] = [].concat(
       this.prunedGraph.tables.map(t =>
-        this.buildTable(t, tableMetadataByTarget.get(t.target), runConfig)
+        this.buildTable(t, tableMetadataByTarget.get(t.target), this.runConfig)
       ),
       this.prunedGraph.operations.map(o => this.buildOperation(o)),
       this.prunedGraph.assertions.map(a => this.buildAssertion(a))
     );
     return dataform.ExecutionGraph.create({
       projectConfig: this.prunedGraph.projectConfig,
-      runConfig,
+      runConfig: this.runConfig,
       warehouseState: this.warehouseState,
       actions
     });

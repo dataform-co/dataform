@@ -77,8 +77,15 @@ export class RedshiftDbAdapter implements IDbAdapter {
     }
   }
 
-  public async evaluate(statement: string) {
-    const statementWithExplain = `explain ${statement}`;
+  public async evaluate(
+    queryOrAction: string | dataform.Table | dataform.Operation | dataform.Assertion,
+    projectConfig: dataform.IProjectConfig
+  ) {
+    // TODO: Implement this before using `dbadapter.evaluate` anywhere.
+    if (typeof queryOrAction !== "string") {
+      throw new Error("Evaluate not yet implemented for non strings.");
+    }
+    const statementWithExplain = `explain ${queryOrAction}`;
     try {
       await this.execute(statementWithExplain);
       return dataform.QueryEvaluation.create({
@@ -91,6 +98,7 @@ export class RedshiftDbAdapter implements IDbAdapter {
       });
     }
   }
+
   public async tables(): Promise<dataform.ITarget[]> {
     const hasSpectrumTables = await this.hasSpectrumTables();
     const queryResult = await this.execute(

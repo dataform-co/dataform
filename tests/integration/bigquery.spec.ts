@@ -346,11 +346,9 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
     ]);
   });
 
-  suite("evaluate", async () => {
+  suite("evaluate", { parallel: true }, async () => {
     test("evaluate from valid compiled graph as valid", async () => {
-      const compiledGraph = await dfapi.compile({
-        projectDir: "tests/integration/bigquery_project"
-      });
+      const compiledGraph = await compile("evaluate", { useSingleQueryPerAction: true });
 
       const view = keyBy(compiledGraph.tables, t => t.name)[
         "dataform-integration-tests.df_integration_test.example_view"
@@ -450,7 +448,6 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
     }
   });
 
-  suite("publish tasks", async () => {
   suite("publish tasks", { parallel: true }, async () => {
     test("incremental pre and post ops, core version <= 1.4.8", async () => {
       // 1.4.8 used `preOps` and `postOps` instead of `incrementalPreOps` and `incrementalPostOps`.

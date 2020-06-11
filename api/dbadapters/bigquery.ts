@@ -99,29 +99,29 @@ export class BigQueryDbAdapter implements IDbAdapter {
   }
 
   public async evaluate(
-    query: string | dataform.Table | dataform.Operation | dataform.Assertion,
-    projectConfig?: dataform.IProjectConfig
+    queryOrAction: string | dataform.Table | dataform.Operation | dataform.Assertion,
+    projectConfig: dataform.IProjectConfig
   ) {
     let executionTasks: dataform.ExecutionTask[];
-    if (typeof query === "string") {
-      executionTasks = [dataform.ExecutionTask.create({ statement: query })];
+    if (typeof queryOrAction === "string") {
+      executionTasks = [dataform.ExecutionTask.create({ statement: queryOrAction })];
     } else {
       try {
         const coreAdapter = new BigQueryAdapter(projectConfig, version);
-        if (query instanceof dataform.Table) {
+        if (queryOrAction instanceof dataform.Table) {
           executionTasks = coreAdapter
             .publishTasks(
-              query,
+              queryOrAction,
               { useSingleQueryPerAction: projectConfig?.useSingleQueryPerAction },
               null
             )
             .build();
-        } else if (query instanceof dataform.Operation) {
-          executionTasks = query.queries.map(statement =>
+        } else if (queryOrAction instanceof dataform.Operation) {
+          executionTasks = queryOrAction.queries.map(statement =>
             dataform.ExecutionTask.create({ type: "statement", statement })
           );
-        } else if (query instanceof dataform.Assertion) {
-          executionTasks = coreAdapter.assertTasks(query, projectConfig).build();
+        } else if (queryOrAction instanceof dataform.Assertion) {
+          executionTasks = coreAdapter.assertTasks(queryOrAction, projectConfig).build();
         } else {
           throw new Error("Unrecognized evaluate type.");
         }

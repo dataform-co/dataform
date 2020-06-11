@@ -34,7 +34,7 @@ export async function evaluate(
   compileConfig?: dataform.ICompileConfig
 ): Promise<dataform.IQueryEvaluation> {
   const compiledQuery = await compile(query, compileConfig);
-  return await dbadapter.evaluate(compiledQuery);
+  return await dbadapter.evaluate(compiledQuery, {});
 }
 
 export async function compile(

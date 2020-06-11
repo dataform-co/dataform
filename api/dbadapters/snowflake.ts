@@ -90,10 +90,17 @@ export class SnowflakeDbAdapter implements IDbAdapter {
     };
   }
 
-  public async evaluate(statement: string): Promise<dataform.QueryEvaluation> {
+  public async evaluate(
+    queryOrAction: string | dataform.Table | dataform.Operation | dataform.Assertion,
+    projectConfig: dataform.IProjectConfig
+  ) {
+    // TODO: Implement this before using `dbadapter.evaluate` anywhere.
+    if (typeof queryOrAction !== "string") {
+      throw new Error("Evaluate not yet implemented for non strings.");
+    }
     try {
       await this.execute(`select system$explain_plan_json($$
-${statement}
+${queryOrAction}
         $$)`);
       return dataform.QueryEvaluation.create({
         status: dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
