@@ -59,7 +59,7 @@ export class AggregateBuilder<S extends ISelectSchema> implements ISelectBuilder
           (!hasDimensions && !hasMetrics ? indent("*") : "") +
           `${Object.keys(this.selectedDimensions)
             .map(alias => indent(`${this.selectedDimensions[alias]} as ${alias}`))
-            .join(",\n")}${hasDimensions ? ",\n" : ""}` +
+            .join(",\n")}${hasDimensions && hasMetrics ? ",\n" : ""}` +
           `${Object.keys(this.selectedMetrics)
             .map(alias => indent(`${this.selectedMetrics[alias]} as ${alias}`))
             .join(",\n")}\n` +
