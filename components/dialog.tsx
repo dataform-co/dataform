@@ -14,6 +14,7 @@ export const Dialog = ({
     <BlueprintDialog
       className={styles.dialog}
       isCloseButtonShown={false}
+      title=""
       canOutsideClickClose={true}
       hasBackdrop={true}
       usePortal={true}

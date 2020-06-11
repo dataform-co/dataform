@@ -4,7 +4,12 @@ import { PromisePoolExecutor } from "promise-pool-executor";
 import { BigQuery } from "@google-cloud/bigquery";
 import { QueryResultsOptions } from "@google-cloud/bigquery/build/src/job";
 import { Credentials } from "df/api/commands/credentials";
-import { IDbAdapter, IExecutionResult, OnCancel } from "df/api/dbadapters/index";
+import {
+  constructEvaluationFromQueryOrAction,
+  IDbAdapter,
+  IExecutionResult,
+  OnCancel
+} from "df/api/dbadapters/index";
 import { parseBigqueryEvalError } from "df/api/utils/error_parsing";
 import {
   buildQuery,
@@ -18,6 +23,7 @@ import {
   StringifiedMap,
   StringifiedSet
 } from "df/common/strings/stringifier";
+import { concatenateQueries } from "df/core/tasks";
 import { dataform } from "df/protos/ts";
 
 const CACHED_STATE_TABLE_NAME = "dataform_meta.cache_state";
@@ -96,22 +102,32 @@ export class BigQueryDbAdapter implements IDbAdapter {
       .promise();
   }
 
-  public async evaluate(statement: string) {
-    try {
-      await this.getClient().query({
-        useLegacySql: false,
-        query: statement,
-        dryRun: true
-      });
-      return dataform.QueryEvaluationResponse.create({
-        status: dataform.QueryEvaluationResponse.QueryEvaluationStatus.SUCCESS
-      });
-    } catch (e) {
-      return dataform.QueryEvaluationResponse.create({
-        status: dataform.QueryEvaluationResponse.QueryEvaluationStatus.FAILURE,
-        error: parseBigqueryEvalError(e)
-      });
+  public async evaluate(
+    queryOrAction: string | dataform.Table | dataform.Operation | dataform.Assertion
+  ) {
+    const validationQueries = constructEvaluationFromQueryOrAction(queryOrAction, true);
+    const queryEvaluations = new Array<dataform.IQueryEvaluation>();
+    for (const { query, incremental } of validationQueries) {
+      let evaluationResponse: dataform.IQueryEvaluation = {
+        status: dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
+      };
+      try {
+        await this.getClient().query({
+          useLegacySql: false,
+          query,
+          dryRun: true
+        });
+      } catch (e) {
+        evaluationResponse = {
+          status: dataform.QueryEvaluation.QueryEvaluationStatus.FAILURE,
+          error: parseBigqueryEvalError(e)
+        };
+      }
+      queryEvaluations.push(
+        dataform.QueryEvaluation.create({ ...evaluationResponse, incremental, query })
+      );
     }
+    return queryEvaluations;
   }
 
   public tables(): Promise<dataform.ITarget[]> {

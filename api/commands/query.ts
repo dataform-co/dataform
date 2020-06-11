@@ -32,9 +32,9 @@ export async function evaluate(
   dbadapter: dbadapters.IDbAdapter,
   query: string,
   compileConfig?: dataform.ICompileConfig
-): Promise<dataform.IQueryEvaluationResponse> {
+): Promise<dataform.IQueryEvaluation> {
   const compiledQuery = await compile(query, compileConfig);
-  return await dbadapter.evaluate(compiledQuery);
+  return (await dbadapter.evaluate(compiledQuery))[0];
 }
 
 export async function compile(
