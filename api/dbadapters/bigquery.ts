@@ -380,12 +380,14 @@ export class BigQueryDbAdapter implements IDbAdapter {
   private getClient(projectId?: string) {
     projectId = projectId || this.bigQueryCredentials.projectId;
     if (!this.clients.has(projectId)) {
-      const bq = new BigQuery({
+      this.clients.set(
         projectId,
-        credentials: JSON.parse(this.bigQueryCredentials.credentials),
-        scopes: EXTRA_GOOGLE_SCOPES
-      });
-      this.clients.set(projectId, bq);
+        new BigQuery({
+          projectId,
+          credentials: JSON.parse(this.bigQueryCredentials.credentials),
+          scopes: EXTRA_GOOGLE_SCOPES
+        })
+      );
     }
     return this.clients.get(projectId);
   }
