@@ -86,10 +86,6 @@ export class Builder {
       tableMetadataByTarget.set(tableState.target, tableState);
     });
 
-    const transitiveInputsByTarget = new StringifiedMap<
-      dataform.ITarget,
-      StringifiedSet<dataform.ITarget>
-    >(JSONObjectStringifier.create());
     const actions: dataform.IExecutionAction[] = [].concat(
       this.prunedGraph.tables.map(t =>
         this.buildTable(t, tableMetadataByTarget.get(t.target), this.runConfig)
