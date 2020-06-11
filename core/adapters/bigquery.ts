@@ -16,7 +16,7 @@ export class BigQueryAdapter extends Adapter implements IAdapter {
   public publishTasks(
     table: dataform.ITable,
     runConfig: dataform.IRunConfig,
-    tableMetadata: dataform.ITableMetadata
+    tableMetadata?: dataform.ITableMetadata
   ): Tasks {
     const tasks = Tasks.create();
 
@@ -37,14 +37,14 @@ export class BigQueryAdapter extends Adapter implements IAdapter {
             table.uniqueKey && table.uniqueKey.length > 0
               ? this.mergeInto(
                   table.target,
-                  tableMetadata.fields.map(f => f.name),
+                  tableMetadata?.fields.map(f => f.name),
                   this.where(table.incrementalQuery || table.query, table.where),
                   table.uniqueKey,
                   table.bigquery && table.bigquery.updatePartitionFilter
                 )
               : this.insertInto(
                   table.target,
-                  tableMetadata.fields.map(f => f.name),
+                  tableMetadata?.fields.map(f => f.name),
                   this.where(table.incrementalQuery || table.query, table.where)
                 )
           )
@@ -76,6 +76,9 @@ export class BigQueryAdapter extends Adapter implements IAdapter {
       });
     tasks.add(Task.statement(this.createOrReplaceView(target, assertion.query)));
     tasks.add(Task.assertion(`select sum(1) as row_count from ${this.resolveTarget(target)}`));
+    if (projectConfig.useSingleQueryPerAction) {
+      return tasks.concatenate();
+    }
     return tasks;
   }
 

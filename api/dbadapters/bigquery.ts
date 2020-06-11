@@ -109,7 +109,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
             .publishTasks(
               query,
               { useSingleQueryPerAction: projectConfig?.useSingleQueryPerAction },
-              {}
+              null
             )
             .build();
         } else if (query instanceof dataform.Operation) {
@@ -126,6 +126,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
       }
     }
 
+    console.log("BigQueryDbAdapter -> executionTasks", executionTasks);
     let evaluationResponse: dataform.IQueryEvaluation = {
       status: dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
     };
