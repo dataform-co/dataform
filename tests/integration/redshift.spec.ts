@@ -174,6 +174,80 @@ suite("@dataform/integration/redshift", ({ before, after }) => {
     }
   });
 
+  suite("redshift/evaluate", async () => {
+    test("evaluate from valid compiled graph as valid", async () => {
+      const compiledGraph = await dfapi.compile({
+        projectDir: "tests/integration/redshift_project"
+      });
+      const executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
+      await dfapi.run(executionGraph, dbadapter).result();
+
+      const view = keyBy(compiledGraph.tables, t => t.name)["df_integration_test.example_view"];
+      let evaluations = await dbadapter.evaluate(dataform.Table.create(view));
+      expect(evaluations.length).to.equal(1);
+      expect(evaluations[0].status).to.equal(
+        dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
+      );
+
+      const table = keyBy(compiledGraph.tables, t => t.name)["df_integration_test.example_table"];
+      evaluations = await dbadapter.evaluate(dataform.Table.create(table));
+      expect(evaluations.length).to.equal(1);
+      expect(evaluations[0].status).to.equal(
+        dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
+      );
+
+      const operation = keyBy(compiledGraph.operations, t => t.name)[
+        "df_integration_test.load_from_s3"
+      ];
+      evaluations = await dbadapter.evaluate(dataform.Operation.create(operation));
+      expect(evaluations.length).to.equal(1);
+      evaluations.forEach(evaluation =>
+        expect(evaluation.status).to.equal(dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS)
+      );
+
+      const assertion = keyBy(compiledGraph.assertions, t => t.name)[
+        "df_integration_test.example_assertion_pass"
+      ];
+      evaluations = await dbadapter.evaluate(dataform.Assertion.create(assertion));
+      expect(evaluations.length).to.equal(1);
+      expect(evaluations[0].status).to.equal(
+        dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
+      );
+
+      const incremental = keyBy(compiledGraph.tables, t => t.name)[
+        "df_integration_test.example_incremental"
+      ];
+      evaluations = await dbadapter.evaluate(dataform.Table.create(incremental));
+      expect(evaluations.length).to.equal(2);
+      expect(evaluations[0].status).to.equal(
+        dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
+      );
+      expect(evaluations[1].status).to.equal(
+        dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
+      );
+    });
+
+    test("invalid table fails validation", async () => {
+      const target = (name: string) => ({
+        schema: "df_integration_test",
+        name,
+        database: "dataform-integration-tests"
+      });
+
+      const evaluations = await dbadapter.evaluate(
+        dataform.Table.create({
+          type: "table",
+          query: "thisisillegal",
+          target: target("example_valid_variable")
+        })
+      );
+      expect(evaluations.length).to.equal(1);
+      expect(evaluations[0].status).to.equal(
+        dataform.QueryEvaluation.QueryEvaluationStatus.FAILURE
+      );
+    });
+  });
+
   suite("publish tasks", async () => {
     test("incremental pre and post ops, core version <= 1.4.8", async () => {
       // 1.4.8 used `preOps` and `postOps` instead of `incrementalPreOps` and `incrementalPostOps`.
