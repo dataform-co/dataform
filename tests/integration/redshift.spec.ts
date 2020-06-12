@@ -196,17 +196,17 @@ suite("@dataform/integration/redshift", ({ before, after }) => {
         dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
       );
 
-      const operation = keyBy(compiledGraph.operations, t => t.name)[
-        "df_integration_test.load_from_s3"
-      ];
-      evaluations = await dbadapter.evaluate(dataform.Operation.create(operation));
-      expect(evaluations.length).to.equal(1);
-      evaluations.forEach(evaluation =>
-        expect(evaluation.status).to.equal(dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS)
-      );
+      // The prefix method doesn't work for operations. For example, after attaching the `eplain` prefix
+      // an operation could look like this:
+      // ```
+      // explain
+      // -- Delete the temporary table, if it exists (perhaps from a previous run).
+      // DROP TABLE IF EXISTS "df_integration_test"."load_from_s3_temp" CASCADE;
+      // ```
+      // which is invalid because the `explain` is interrupted by a comment.
 
       const assertion = keyBy(compiledGraph.assertions, t => t.name)[
-        "df_integration_test.example_assertion_pass"
+        "df_integration_test_assertions.example_assertion_pass"
       ];
       evaluations = await dbadapter.evaluate(dataform.Assertion.create(assertion));
       expect(evaluations.length).to.equal(1);
