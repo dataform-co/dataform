@@ -174,7 +174,7 @@ suite("@dataform/integration/redshift", ({ before, after }) => {
     }
   });
 
-  suite("redshift/evaluate", async () => {
+  suite("evaluate", async () => {
     test("evaluate from valid compiled graph as valid", async () => {
       const compiledGraph = await dfapi.compile({
         projectDir: "tests/integration/redshift_project"
@@ -195,15 +195,6 @@ suite("@dataform/integration/redshift", ({ before, after }) => {
       expect(evaluations[0].status).to.equal(
         dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
       );
-
-      // The prefix method doesn't work for operations. For example, after attaching the `eplain` prefix
-      // an operation could look like this:
-      // ```
-      // explain
-      // -- Delete the temporary table, if it exists (perhaps from a previous run).
-      // DROP TABLE IF EXISTS "df_integration_test"."load_from_s3_temp" CASCADE;
-      // ```
-      // which is invalid because the `explain` is interrupted by a comment.
 
       const assertion = keyBy(compiledGraph.assertions, t => t.name)[
         "df_integration_test_assertions.example_assertion_pass"
