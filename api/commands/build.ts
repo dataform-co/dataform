@@ -10,7 +10,6 @@ import {
   StringifiedSet
 } from "df/common/strings/stringifier";
 import { adapters } from "df/core";
-import { IActionProto } from "df/core/session";
 import * as utils from "df/core/utils";
 import { dataform } from "df/protos/ts";
 

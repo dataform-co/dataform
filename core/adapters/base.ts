@@ -90,7 +90,7 @@ from (${query}) as insertions`;
   protected preOps(
     table: dataform.ITable,
     runConfig: dataform.IRunConfig,
-    tableMetadata: dataform.ITableMetadata
+    tableMetadata?: dataform.ITableMetadata
   ): Task[] {
     let preOps = table.preOps;
     if (
@@ -106,7 +106,7 @@ from (${query}) as insertions`;
   protected postOps(
     table: dataform.ITable,
     runConfig: dataform.IRunConfig,
-    tableMetadata: dataform.ITableMetadata
+    tableMetadata?: dataform.ITableMetadata
   ): Task[] {
     let postOps = table.postOps;
     if (
