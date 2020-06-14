@@ -255,6 +255,20 @@ suite(__filename, () => {
           bytesField: new Uint8Array([0x5, 0xff])
         }),
         encoded: new Uint8Array([90, 2, 5, 255])
+      },
+      {
+        type: "uint32 0",
+        proto: protobuftsProtos.TestMessage.create({
+          uint32Field: 0
+        }),
+        encoded: new Uint8Array([])
+      },
+      {
+        type: "uint32 4294967295",
+        proto: protobuftsProtos.TestMessage.create({
+          uint32Field: 4294967295
+        }),
+        encoded: new Uint8Array([96, 255, 255, 255, 255, 15])
       }
     ];
 

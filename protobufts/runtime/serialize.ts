@@ -218,6 +218,11 @@ export class NewSerializer {
   }
 
   public uint32(fieldNumber: number, val?: number | number[]): this {
+    if (Array.isArray(val)) {
+      // TODO: default checks should really be moved into the protobuf Message code to allow for proto2.
+    } else if (val) {
+      this.newTag(fieldNumber, WireType.VARINT).writeVarInt(val);
+    }
     return this;
   }
 

@@ -11,7 +11,8 @@ import (
 func main() {
 	bytes, err := proto.Marshal(&testprotos.TestMessage{
 		// BytesField: []byte{0x5, 0xFF},
-		BytesField: []byte{},
+		// BytesField: []byte{},
+		Uint32Field: 4294967295,
 	})
 	if err != nil {
 		log.Fatalf("Failed to marshal protobuf: %v", err)
