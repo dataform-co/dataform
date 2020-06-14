@@ -269,6 +269,20 @@ suite(__filename, () => {
           uint32Field: 4294967295
         }),
         encoded: new Uint8Array([96, 255, 255, 255, 255, 15])
+      },
+      {
+        type: "enum VAL0",
+        proto: protobuftsProtos.TestMessage.create({
+          enumField: protobuftsProtos.TestEnum.VAL0
+        }),
+        encoded: new Uint8Array([])
+      },
+      {
+        type: "enum VAL1",
+        proto: protobuftsProtos.TestMessage.create({
+          enumField: protobuftsProtos.TestEnum.VAL1
+        }),
+        encoded: new Uint8Array([104, 1])
       }
     ];
 
