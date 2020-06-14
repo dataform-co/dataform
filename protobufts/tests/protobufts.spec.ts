@@ -1,8 +1,9 @@
 import { expect } from "chai";
+import Long from "long";
+
 import * as protobufjsProtos from "df/protobufts/tests/protobufjs_testprotos_ts_proto";
 import * as protobuftsProtos from "df/protobufts/tests/test1";
 import { suite, test } from "df/testing";
-import Long from "long";
 
 suite(__filename, () => {
   // suite("protobufjs serialization compatibility", () => {
@@ -137,6 +138,20 @@ suite(__filename, () => {
         encoded: new Uint8Array([21, 255, 255, 127, 127])
       },
       {
+        type: "int64 -9223372036854775808",
+        proto: protobuftsProtos.TestMessage.create({
+          int64Field: Long.fromString("-9223372036854775808")
+        }),
+        encoded: new Uint8Array([24, 128, 128, 128, 128, 128, 128, 128, 128, 128, 1])
+      },
+      {
+        type: "int64 9223372036854775807",
+        proto: protobuftsProtos.TestMessage.create({
+          int64Field: Long.fromString("9223372036854775807")
+        }),
+        encoded: new Uint8Array([24, 255, 255, 255, 255, 255, 255, 255, 255, 127])
+      },
+      {
         type: "int32 -2147483648",
         proto: protobuftsProtos.TestMessage.create({
           int32Field: -2147483648
@@ -163,20 +178,6 @@ suite(__filename, () => {
           fixed32Field: 4294967295
         }),
         encoded: new Uint8Array([61, 255, 255, 255, 255])
-      },
-      {
-        type: "int64 -9223372036854775808",
-        proto: protobuftsProtos.TestMessage.create({
-          int64Field: Long.fromString("-9223372036854775808")
-        }),
-        encoded: new Uint8Array([24, 128, 128, 128, 128, 128, 128, 128, 128, 128, 1])
-      },
-      {
-        type: "int64 9223372036854775807",
-        proto: protobuftsProtos.TestMessage.create({
-          int64Field: Long.fromString("9223372036854775807")
-        }),
-        encoded: new Uint8Array([24, 255, 255, 255, 255, 255, 255, 255, 255, 127])
       }
     ];
 
