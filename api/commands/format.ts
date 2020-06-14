@@ -1,10 +1,11 @@
 import * as crypto from "crypto";
-import { ErrorWithCause } from "df/common/errors/errors";
-import { SyntaxTreeNode, SyntaxTreeNodeType } from "df/sqlx/lexer";
 import * as fs from "fs";
 import * as jsBeautify from "js-beautify";
 import * as sqlFormatter from "sql-formatter";
 import { promisify } from "util";
+
+import { ErrorWithCause } from "df/common/errors/errors";
+import { SyntaxTreeNode, SyntaxTreeNodeType } from "df/sqlx/lexer";
 
 const JS_BEAUTIFY_OPTIONS: JsBeautifyOptions = {
   indent_size: 2,

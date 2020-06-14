@@ -12,12 +12,14 @@ export function Footer({ tree }: { tree: ITree<IExtraAttributes> }) {
           .map(subTree => {
             return (
               <div key={subTree.path} className={styles.sitemapLevel0}>
-                <a href={`/${subTree.path}`}>
-                  <b>{subTree.attributes.title}</b>
-                </a>
+                <div className={styles.sitemapTitle}>
+                  <a href={`/${subTree.path}`}>
+                    <b>{subTree.attributes.title}</b>
+                  </a>
+                </div>
 
                 {(subTree.children || []).map(subSubTree => (
-                  <div key={subSubTree.path}  className={styles.sitemapLevel1}>
+                  <div key={subSubTree.path} className={styles.sitemapLevel1}>
                     <a href={`/${subSubTree.path}`}>{subSubTree.attributes.title}</a>
                   </div>
                 ))}

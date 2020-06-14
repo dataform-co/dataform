@@ -1,6 +1,7 @@
 import { Button, Callout, Card, Collapse, H4, Intent } from "@blueprintjs/core";
-import * as styles from "df/components/error_boundary.css";
 import * as React from "react";
+
+import * as styles from "df/components/error_boundary.css";
 
 interface IBaseErrorProps {
   customTitle?: React.ReactNode | string;

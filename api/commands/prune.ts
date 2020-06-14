@@ -10,25 +10,9 @@ export function prune(
   const includedActionNames = computeIncludedActionNames(compiledGraph, runConfig);
   return {
     ...compiledGraph,
-    tables: compiledGraph.tables
-      .filter(action => includedActionNames.has(action.name))
-      .map(action => cleanDependencies(action, includedActionNames)),
-    assertions: compiledGraph.assertions
-      .filter(action => includedActionNames.has(action.name))
-      .map(action => cleanDependencies(action, includedActionNames)),
-    operations: compiledGraph.operations
-      .filter(action => includedActionNames.has(action.name))
-      .map(action => cleanDependencies(action, includedActionNames))
-  };
-}
-function cleanDependencies<T extends CompileAction>(
-  action: T,
-  includedActionNames: Set<string>
-): T {
-  // Remove any excluded dependencies.
-  return {
-    ...action,
-    dependencies: (action.dependencies || []).filter(dep => includedActionNames.has(dep))
+    tables: compiledGraph.tables.filter(action => includedActionNames.has(action.name)),
+    assertions: compiledGraph.assertions.filter(action => includedActionNames.has(action.name)),
+    operations: compiledGraph.operations.filter(action => includedActionNames.has(action.name))
   };
 }
 

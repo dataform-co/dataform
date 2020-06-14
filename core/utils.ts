@@ -1,3 +1,5 @@
+import * as path from "path";
+
 import { adapters } from "df/core";
 import { Assertion } from "df/core/assertion";
 import { Resolvable } from "df/core/common";
@@ -6,7 +8,6 @@ import { Operation } from "df/core/operation";
 import { IActionProto, Session } from "df/core/session";
 import { DistStyleType, SortStyleType, Table, TableType } from "df/core/table";
 import { dataform } from "df/protos/ts";
-import * as path from "path";
 
 const SQL_DATA_WAREHOUSE_DIST_HASH_REGEXP = new RegExp("HASH\\s*\\(\\s*\\w*\\s*\\)\\s*");
 
@@ -130,7 +131,7 @@ export function validate(compiledGraph: dataform.ICompiledGraph): dataform.IGrap
 
     // sqldatawarehouse config
     if (!!action.sqlDataWarehouse) {
-      if (action.uniqueKey) {
+      if (!!action.uniqueKey && action.uniqueKey.length > 0) {
         validationErrors.push(
           dataform.ValidationError.create({
             message: "Merging using unique keys for SQLDataWarehouse has not yet been implemented.",
@@ -210,7 +211,11 @@ export function validate(compiledGraph: dataform.ICompiledGraph): dataform.IGrap
         });
         validationErrors.push(error);
       }
-      if (!!action.bigquery.clusterBy && !action.bigquery.partitionBy) {
+      if (
+        !!action.bigquery.clusterBy &&
+        action.bigquery.clusterBy.length > 0 &&
+        !action.bigquery.partitionBy
+      ) {
         const error = dataform.ValidationError.create({
           message: `clusterBy is not valid without partitionBy`,
           actionName
@@ -329,11 +334,15 @@ export function setNameAndTarget(
     overrideSchema,
     overrideDatabase
   );
-  const nameParts = [action.target.name, action.target.schema];
-  if (!!action.target.database) {
-    nameParts.push(action.target.database);
+  action.name = targetToName(action.target);
+}
+
+export function targetToName(actionTarget: dataform.ITarget) {
+  const nameParts = [actionTarget.name, actionTarget.schema];
+  if (!!actionTarget.database) {
+    nameParts.push(actionTarget.database);
   }
-  action.name = nameParts.reverse().join(".");
+  return nameParts.reverse().join(".");
 }
 
 /**

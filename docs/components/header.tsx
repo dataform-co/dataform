@@ -1,7 +1,8 @@
 import { Button } from "@blueprintjs/core";
+import * as React from "react";
+
 import * as styles from "df/docs/components/header.css";
 import { Search } from "df/docs/components/search";
-import * as React from "react";
 
 // tslint:disable-next-line: no-var-requires
 const logoImage = require("df/static/images/new_logo_with_text.svg");
@@ -36,7 +37,7 @@ export class Header extends React.Component<IProps> {
                 <Button minimal={true}>Docs</Button>
               </a>
               <a href="/introduction/dataform-in-5-minutes">
-                <Button minimal={true}>Tutorial</Button>
+                <Button minimal={true}>Introduction</Button>
               </a>
               <a href="/examples/projects">
                 <Button minimal={true}>Examples</Button>

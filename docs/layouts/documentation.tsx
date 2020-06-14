@@ -1,4 +1,6 @@
 import { Button, Switch } from "@blueprintjs/core";
+import * as React from "react";
+
 import { Card, CardActions, CardMasonry } from "df/components/card";
 import { Footer } from "df/docs/components/footer";
 import Navigation, { getLink } from "df/docs/components/navigation";
@@ -7,7 +9,6 @@ import { IExtraAttributes } from "df/docs/content_tree";
 import { BaseLayout } from "df/docs/layouts/base";
 import * as styles from "df/docs/layouts/documentation.css";
 import { ITree, Tree } from "df/tools/markdown-cms/tree";
-import * as React from "react";
 
 export interface IProps {
   version: string;
@@ -77,27 +78,34 @@ export default class Documentation extends React.Component<IProps> {
               <div className={styles.subheader}>{this.props.current.attributes.subtitle}</div>
             </div>
             {this.props.children}
-            <h2>What's next</h2>
-            <CardMasonry style={{ margin: "0px 0px 20px" }}>
-              {(current.children?.length > 0 ? current.children : parent.children)
-                .filter(
-                  child =>
-                    !!child.path &&
-                    !!child.attributes.title &&
-                    !child.attributes?.redirect &&
-                    current.path !== child.path
-                )
-                .map(child => (
-                  <Card masonryCard={true} header={child.attributes?.title} key={child.path} className={styles.whatsNextCard}>
-                    <p>{child.attributes?.subtitle}</p>
-                    <CardActions align="right">
-                      <a href={getLink(child.path, this.props.version)}>
-                        <Button minimal={true} text="Read more" />
-                      </a>
-                    </CardActions>
-                  </Card>
-                ))}
-            </CardMasonry>
+            <div className={styles.next}>
+              <h2>What's next</h2>
+              <CardMasonry style={{ margin: "0px 0px 20px", display: "flex", flexWrap: "wrap" }}>
+                {(current.children?.length > 0 ? current.children : parent.children)
+                  .filter(
+                    child =>
+                      !!child.path &&
+                      !!child.attributes.title &&
+                      !child.attributes?.redirect &&
+                      current.path !== child.path
+                  )
+                  .map(child => (
+                    <Card
+                      masonryCard={true}
+                      header={child.attributes?.title}
+                      key={child.path}
+                      className={styles.whatsNextCard}
+                    >
+                      <p>{child.attributes?.subtitle}</p>
+                      <CardActions align="right">
+                        <a href={getLink(child.path, this.props.version)}>
+                          <Button minimal={true} text="Read more" />
+                        </a>
+                      </CardActions>
+                    </Card>
+                  ))}
+              </CardMasonry>
+            </div>
             <Footer tree={this.props.index} />
           </div>
           <div className={styles.sidebarRight}>

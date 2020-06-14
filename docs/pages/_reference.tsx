@@ -1,11 +1,12 @@
-import { ITypedoc, Typedoc } from "df/docs/components/typedoc";
-import { getContentTree, IExtraAttributes } from "df/docs/content_tree";
-import Documentation from "df/docs/layouts/documentation";
-import { ITree } from "df/tools/markdown-cms/tree";
 import { readFile } from "fs";
 import { NextPageContext } from "next";
 import * as React from "react";
 import { promisify } from "util";
+
+import { ITypedoc, Typedoc } from "df/docs/components/typedoc";
+import { getContentTree, IExtraAttributes } from "df/docs/content_tree";
+import Documentation from "df/docs/layouts/documentation";
+import { ITree } from "df/tools/markdown-cms/tree";
 
 interface IQuery {
   version: string;

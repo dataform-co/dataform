@@ -1,8 +1,9 @@
 import { Button, Icon, Menu, MenuItem } from "@blueprintjs/core";
 import { IItemRendererProps, Omnibar } from "@blueprintjs/select";
 import algoliasearch from "algoliasearch/lite";
-import * as styles from "df/docs/components/search/index.css";
 import * as React from "react";
+
+import * as styles from "df/docs/components/search/index.css";
 import { connectHits, createConnector, InstantSearch } from "react-instantsearch-dom";
 
 const searchClient = algoliasearch("Q9QS39IFO0", "153e21a16f649c7f9ec28185683415cf");

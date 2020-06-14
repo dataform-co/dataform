@@ -1,12 +1,13 @@
 import { expect } from "chai";
+import * as fs from "fs-extra";
+import * as path from "path";
+
 import * as compilers from "df/core/compilers";
 import { Session } from "df/core/session";
 import * as utils from "df/core/utils";
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
 import { asPlainObject } from "df/tests/utils";
-import * as fs from "fs-extra";
-import * as path from "path";
 
 class TestConfigs {
   public static redshift: dataform.IProjectConfig = {
