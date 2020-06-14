@@ -236,6 +236,11 @@ export class NewSerializer {
   }
 
   public sint32(fieldNumber: number, val?: number | number[]): this {
+    if (Array.isArray(val)) {
+      // TODO: default checks should really be moved into the protobuf Message code to allow for proto2.
+    } else if (val) {
+      this.newTag(fieldNumber, WireType.VARINT).writeVarInt(((val << 1) ^ (val >> 31)) >>> 0);
+    }
     return this;
   }
 
@@ -285,6 +290,13 @@ export class NewSerializer {
   }
 
   public sint64(fieldNumber: number, val?: Long | Long[]): this {
+    if (Array.isArray(val)) {
+      // TODO: default checks should really be moved into the protobuf Message code to allow for proto2.
+    } else if (!val.isZero()) {
+      this.newTag(fieldNumber, WireType.VARINT).writeLongVarInt(
+        val.shiftLeft(1).xor(val.shiftRight(63))
+      );
+    }
     return this;
   }
 

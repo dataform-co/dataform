@@ -311,6 +311,34 @@ suite(__filename, () => {
           sfixed64Field: Long.MAX_VALUE
         }),
         encoded: new Uint8Array([121, 255, 255, 255, 255, 255, 255, 255, 127])
+      },
+      {
+        type: "sint32 -2147483648",
+        proto: protobuftsProtos.TestMessage.create({
+          sint32Field: -2147483648
+        }),
+        encoded: new Uint8Array([128, 1, 255, 255, 255, 255, 15])
+      },
+      {
+        type: "sint32 2147483647",
+        proto: protobuftsProtos.TestMessage.create({
+          sint32Field: 2147483647
+        }),
+        encoded: new Uint8Array([128, 1, 254, 255, 255, 255, 15])
+      },
+      {
+        type: "sint64 -9223372036854775808",
+        proto: protobuftsProtos.TestMessage.create({
+          sint64Field: Long.MIN_VALUE
+        }),
+        encoded: new Uint8Array([136, 1, 255, 255, 255, 255, 255, 255, 255, 255, 255, 1])
+      },
+      {
+        type: "sint64 9223372036854775807",
+        proto: protobuftsProtos.TestMessage.create({
+          sint64Field: Long.MAX_VALUE
+        }),
+        encoded: new Uint8Array([136, 1, 254, 255, 255, 255, 255, 255, 255, 255, 255, 1])
       }
     ];
 
