@@ -23,7 +23,7 @@ message TestMessage {
   uint32 uint32_field = 12;
   TestEnum enum_field = 13;
   sfixed32 sfixed32_field = 14;
-  sfixed64 sfixed6_field = 15;
+  sfixed64 sfixed64_field = 15;
   sint32 sint32_field = 16;
   sint64 sint64_field = 17;
 }

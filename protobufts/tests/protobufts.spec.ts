@@ -283,6 +283,34 @@ suite(__filename, () => {
           enumField: protobuftsProtos.TestEnum.VAL1
         }),
         encoded: new Uint8Array([104, 1])
+      },
+      {
+        type: "sfixed32 -2147483648",
+        proto: protobuftsProtos.TestMessage.create({
+          sfixed32Field: -2147483648
+        }),
+        encoded: new Uint8Array([117, 0, 0, 0, 128])
+      },
+      {
+        type: "sfixed32 2147483647",
+        proto: protobuftsProtos.TestMessage.create({
+          sfixed32Field: 2147483647
+        }),
+        encoded: new Uint8Array([117, 255, 255, 255, 127])
+      },
+      {
+        type: "sfixed64 -9223372036854775808",
+        proto: protobuftsProtos.TestMessage.create({
+          sfixed64Field: Long.MIN_VALUE
+        }),
+        encoded: new Uint8Array([121, 0, 0, 0, 0, 0, 0, 0, 128])
+      },
+      {
+        type: "int64 9223372036854775807",
+        proto: protobuftsProtos.TestMessage.create({
+          sfixed64Field: Long.MAX_VALUE
+        }),
+        encoded: new Uint8Array([121, 255, 255, 255, 255, 255, 255, 255, 127])
       }
     ];
 

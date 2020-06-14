@@ -13,7 +13,7 @@ func main() {
 		// BytesField: []byte{0x5, 0xFF},
 		// BytesField: []byte{},
 		// Uint32Field: 4294967295,
-		EnumField: testprotos.TestEnum_VAL1,
+		Sfixed64Field: 9223372036854775807,
 	})
 	if err != nil {
 		log.Fatalf("Failed to marshal protobuf: %v", err)
