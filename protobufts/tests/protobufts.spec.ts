@@ -140,16 +140,30 @@ suite(__filename, () => {
       {
         type: "int64 -9223372036854775808",
         proto: protobuftsProtos.TestMessage.create({
-          int64Field: Long.fromString("-9223372036854775808")
+          int64Field: Long.MIN_VALUE
         }),
         encoded: new Uint8Array([24, 128, 128, 128, 128, 128, 128, 128, 128, 128, 1])
       },
       {
         type: "int64 9223372036854775807",
         proto: protobuftsProtos.TestMessage.create({
-          int64Field: Long.fromString("9223372036854775807")
+          int64Field: Long.MAX_VALUE
         }),
         encoded: new Uint8Array([24, 255, 255, 255, 255, 255, 255, 255, 255, 127])
+      },
+      {
+        type: "uint64 0",
+        proto: protobuftsProtos.TestMessage.create({
+          uint64Field: Long.UZERO
+        }),
+        encoded: new Uint8Array([])
+      },
+      {
+        type: "uint64 18446744073709551615",
+        proto: protobuftsProtos.TestMessage.create({
+          uint64Field: Long.MAX_UNSIGNED_VALUE
+        }),
+        encoded: new Uint8Array([32, 255, 255, 255, 255, 255, 255, 255, 255, 255, 1])
       },
       {
         type: "int32 -2147483648",
@@ -166,6 +180,20 @@ suite(__filename, () => {
         encoded: new Uint8Array([40, 255, 255, 255, 255, 7])
       },
       {
+        type: "fixed64 0",
+        proto: protobuftsProtos.TestMessage.create({
+          fixed64Field: Long.UZERO
+        }),
+        encoded: new Uint8Array([])
+      },
+      {
+        type: "fixed64 18446744073709551615",
+        proto: protobuftsProtos.TestMessage.create({
+          fixed64Field: Long.MAX_UNSIGNED_VALUE
+        }),
+        encoded: new Uint8Array([49, 255, 255, 255, 255, 255, 255, 255, 255])
+      },
+      {
         type: "fixed32 0",
         proto: protobuftsProtos.TestMessage.create({
           fixed32Field: 0
@@ -178,6 +206,55 @@ suite(__filename, () => {
           fixed32Field: 4294967295
         }),
         encoded: new Uint8Array([61, 255, 255, 255, 255])
+      },
+      {
+        type: "bool false",
+        proto: protobuftsProtos.TestMessage.create({
+          boolField: false
+        }),
+        encoded: new Uint8Array([])
+      },
+      {
+        type: "bool true",
+        proto: protobuftsProtos.TestMessage.create({
+          boolField: true
+        }),
+        encoded: new Uint8Array([64, 1])
+      },
+      {
+        type: "string ''",
+        proto: protobuftsProtos.TestMessage.create({
+          stringField: ""
+        }),
+        encoded: new Uint8Array([])
+      },
+      {
+        type: "string 'hello world'",
+        proto: protobuftsProtos.TestMessage.create({
+          stringField: "hello world"
+        }),
+        encoded: new Uint8Array([74, 11, 104, 101, 108, 108, 111, 32, 119, 111, 114, 108, 100])
+      },
+      {
+        type: "embedded message ''",
+        proto: protobuftsProtos.TestMessage.create({
+          messageField: protobuftsProtos.TestMessage.create({})
+        }),
+        encoded: new Uint8Array([82, 0])
+      },
+      {
+        type: "bytes []",
+        proto: protobuftsProtos.TestMessage.create({
+          bytesField: new Uint8Array([])
+        }),
+        encoded: new Uint8Array([])
+      },
+      {
+        type: "bytes [0x5, 0xFF]",
+        proto: protobuftsProtos.TestMessage.create({
+          bytesField: new Uint8Array([0x5, 0xff])
+        }),
+        encoded: new Uint8Array([90, 2, 5, 255])
       }
     ];
 

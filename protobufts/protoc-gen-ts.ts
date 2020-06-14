@@ -304,11 +304,12 @@ function defaultValue(fieldDescriptorProto: google.protobuf.IFieldDescriptorProt
     case google.protobuf.FieldDescriptorProto.Type.TYPE_ENUM:
       return "0";
     case google.protobuf.FieldDescriptorProto.Type.TYPE_INT64:
-    case google.protobuf.FieldDescriptorProto.Type.TYPE_UINT64:
-    case google.protobuf.FieldDescriptorProto.Type.TYPE_FIXED64:
     case google.protobuf.FieldDescriptorProto.Type.TYPE_SFIXED64:
     case google.protobuf.FieldDescriptorProto.Type.TYPE_SINT64:
-      return "Long.fromNumber(0)";
+      return "Long.ZERO";
+    case google.protobuf.FieldDescriptorProto.Type.TYPE_UINT64:
+    case google.protobuf.FieldDescriptorProto.Type.TYPE_FIXED64:
+      return "Long.UZERO";
     case google.protobuf.FieldDescriptorProto.Type.TYPE_BOOL:
       return false;
     case google.protobuf.FieldDescriptorProto.Type.TYPE_STRING:

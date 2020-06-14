@@ -2,6 +2,7 @@ import Long from "long";
 import { Writer } from "protobufjs";
 
 export interface IMessage {
+  serialize: () => Uint8Array;
   serializeInternal: (serializer: Serializer) => Serializer;
 }
 
@@ -242,10 +243,20 @@ export class NewSerializer {
   }
 
   public uint64(fieldNumber: number, val?: Long | Long[]): this {
+    if (Array.isArray(val)) {
+      // TODO: default checks should really be moved into the protobuf Message code to allow for proto2.
+    } else if (!val.isZero()) {
+      this.newTag(fieldNumber, WireType.VARINT).writeLongVarInt(val);
+    }
     return this;
   }
 
   public fixed64(fieldNumber: number, val?: Long | Long[]): this {
+    if (Array.isArray(val)) {
+      // TODO: default checks should really be moved into the protobuf Message code to allow for proto2.
+    } else if (!val.isZero()) {
+      this.newTag(fieldNumber, WireType.SIXTY_FOUR_BIT).writeLongNonVarInt(val);
+    }
     return this;
   }
 
@@ -258,18 +269,46 @@ export class NewSerializer {
   }
 
   public bool(fieldNumber: number, val?: boolean | boolean[]): this {
+    if (Array.isArray(val)) {
+      // TODO: default checks should really be moved into the protobuf Message code to allow for proto2.
+    } else if (val) {
+      this.newTag(fieldNumber, WireType.VARINT).writeVarInt(1);
+    }
     return this;
   }
 
   public bytes(fieldNumber: number, val?: Uint8Array | Uint8Array[]): this {
+    if (Array.isArray(val)) {
+      // TODO: default checks should really be moved into the protobuf Message code to allow for proto2.
+    } else if (val && val.length > 0) {
+      this.newTag(fieldNumber, WireType.LENGTH_DELIMITED)
+        .writeVarInt(val.length)
+        .writeBytes(val);
+    }
     return this;
   }
 
   public string(fieldNumber: number, val?: string | string[]): this {
+    if (Array.isArray(val)) {
+      // TODO: default checks should really be moved into the protobuf Message code to allow for proto2.
+    } else if (val) {
+      const buffer = Buffer.from(val);
+      this.newTag(fieldNumber, WireType.LENGTH_DELIMITED)
+        .writeVarInt(buffer.byteLength)
+        .writeBytes(buffer);
+    }
     return this;
   }
 
   public message(fieldNumber: number, val?: IMessage | IMessage[]): this {
+    if (Array.isArray(val)) {
+      // TODO: default checks should really be moved into the protobuf Message code to allow for proto2.
+    } else if (val) {
+      const bytes = val.serialize();
+      this.newTag(fieldNumber, WireType.LENGTH_DELIMITED)
+        .writeVarInt(bytes.length)
+        .writeBytes(bytes);
+    }
     return this;
   }
 
@@ -283,11 +322,13 @@ export class NewSerializer {
     return this;
   }
 
-  private writeVarInt(varint: number) {
-    if (varint >= 0) {
+  private writeVarInt(varint: number): this {
+    if (varint === 0) {
+      this.output.push(0);
+    } else if (varint > 0) {
       while (varint) {
         let nextByte = varint & 0b01111111;
-        varint >>= 7;
+        varint >>>= 7;
         if (varint) {
           nextByte |= 0b10000000;
         }
@@ -300,13 +341,16 @@ export class NewSerializer {
         this.output.push(nextByte);
       }
     }
+    return this;
   }
 
-  private writeLongVarInt(varint: Long) {
-    if (varint.greaterThanOrEqual(0)) {
+  private writeLongVarInt(varint: Long): this {
+    if (varint.isZero()) {
+      this.output.push(0);
+    } else if (varint.greaterThan(0)) {
       while (!varint.isZero()) {
         let nextByte = varint.getLowBits() & 0b01111111;
-        varint = varint.shiftRight(7);
+        varint = varint.shiftRightUnsigned(7);
         if (!varint.isZero()) {
           nextByte |= 0b10000000;
         }
@@ -319,9 +363,10 @@ export class NewSerializer {
         this.output.push(nextByte);
       }
     }
+    return this;
   }
 
-  private writeNonVarInt(num: number, sixtyFourBit: boolean, float: boolean) {
+  private writeNonVarInt(num: number, sixtyFourBit: boolean, float: boolean): this {
     const bytes = new Uint8Array(sixtyFourBit ? 8 : 4);
     const dataView = new DataView(bytes.buffer);
     if (float) {
@@ -333,7 +378,20 @@ export class NewSerializer {
     } else {
       dataView.setInt32(0, num, true);
     }
+    return this.writeBytes(bytes);
+  }
+
+  private writeLongNonVarInt(num: Long): this {
+    const bytes = new Uint8Array(8);
+    const dataView = new DataView(bytes.buffer);
+    dataView.setInt32(0, num.getLowBits(), true);
+    dataView.setInt32(4, num.getHighBits(), true);
+    return this.writeBytes(bytes);
+  }
+
+  private writeBytes(bytes: Uint8Array): this {
     bytes.forEach(byte => this.output.push(byte));
+    return this;
   }
 }
 

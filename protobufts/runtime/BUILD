@@ -7,6 +7,7 @@ ts_library(
     srcs = glob(["*.ts"]),
     deps = [
         "@npm//@types/long",
+        "@npm//@types/node",
         "@npm//protobufjs",
     ],
 )
