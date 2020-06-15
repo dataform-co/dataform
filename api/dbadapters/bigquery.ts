@@ -4,7 +4,12 @@ import { PromisePoolExecutor } from "promise-pool-executor";
 import { BigQuery } from "@google-cloud/bigquery";
 import { QueryResultsOptions } from "@google-cloud/bigquery/build/src/job";
 import { Credentials } from "df/api/commands/credentials";
-import { IDbAdapter, IExecutionResult, OnCancel } from "df/api/dbadapters/index";
+import {
+  collectEvaluationQueries,
+  IDbAdapter,
+  IExecutionResult,
+  OnCancel
+} from "df/api/dbadapters/index";
 import { parseBigqueryEvalError } from "df/api/utils/error_parsing";
 import {
   buildQuery,
@@ -100,42 +105,8 @@ export class BigQueryDbAdapter implements IDbAdapter {
   public async evaluate(
     queryOrAction: string | dataform.Table | dataform.Operation | dataform.Assertion
   ) {
-    let validationQueries = new Array<dataform.IValidationQuery>();
-    if (typeof queryOrAction === "string") {
-      validationQueries.push({ query: queryOrAction });
-    } else {
-      try {
-        if (queryOrAction instanceof dataform.Table) {
-          if (queryOrAction.type === "incremental") {
-            validationQueries.push({
-              query: concatenateQueries(
-                queryOrAction.incrementalPreOps.concat(
-                  queryOrAction.incrementalQuery,
-                  queryOrAction.incrementalPostOps
-                )
-              ),
-              incremental: true
-            });
-          }
-          validationQueries.push({
-            query: concatenateQueries(
-              queryOrAction.preOps.concat(queryOrAction.query, queryOrAction.postOps)
-            )
-          });
-        } else if (queryOrAction instanceof dataform.Operation) {
-          queryOrAction.queries.forEach(query => validationQueries.push({ query }));
-        } else if (queryOrAction instanceof dataform.Assertion) {
-          validationQueries.push({ query: queryOrAction.query });
-        } else {
-          throw new Error("Unrecognized evaluate type.");
-        }
-      } catch (e) {
-        throw new ErrorWithCause(`Error building tasks for evaluation. ${e.message}`, e);
-      }
-    }
-
+    const validationQueries = collectEvaluationQueries(queryOrAction, true);
     const queryEvaluations = new Array<dataform.IQueryEvaluation>();
-    validationQueries = validationQueries.filter(({ query }) => !!query);
     for (const { query, incremental } of validationQueries) {
       let evaluationResponse: dataform.IQueryEvaluation = {
         status: dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS

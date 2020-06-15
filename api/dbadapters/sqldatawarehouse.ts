@@ -1,7 +1,12 @@
 import { ConnectionPool } from "mssql";
 
 import { Credentials } from "df/api/commands/credentials";
-import { IDbAdapter, IExecutionResult, OnCancel } from "df/api/dbadapters/index";
+import {
+  collectEvaluationQueries,
+  IDbAdapter,
+  IExecutionResult,
+  OnCancel
+} from "df/api/dbadapters/index";
 import { parseAzureEvaluationError } from "df/api/utils/error_parsing";
 import { dataform } from "df/protos/ts";
 
@@ -90,25 +95,28 @@ export class SQLDataWarehouseDBAdapter implements IDbAdapter {
   public async evaluate(
     queryOrAction: string | dataform.Table | dataform.Operation | dataform.Assertion
   ) {
-    // TODO: Implement this before using `dbadapter.evaluate` anywhere.
-    if (typeof queryOrAction !== "string") {
-      throw new Error("Evaluate not yet implemented for non strings.");
-    }
-    try {
-      await this.execute(`explain ${queryOrAction}`);
-      return [
-        dataform.QueryEvaluation.create({
-          status: dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
-        })
-      ];
-    } catch (e) {
-      return [
-        dataform.QueryEvaluation.create({
+    // TODO: Using `explain` before declaring a variable is not valid in SQL Data Warehouse.
+    const validationQueries = collectEvaluationQueries(queryOrAction, true, (query: string) =>
+      !!query ? `explain ${query}` : ""
+    );
+    const queryEvaluations = new Array<dataform.IQueryEvaluation>();
+    for (const { query, incremental } of validationQueries) {
+      let evaluationResponse: dataform.IQueryEvaluation = {
+        status: dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
+      };
+      try {
+        await this.execute(query);
+      } catch (e) {
+        evaluationResponse = {
           status: dataform.QueryEvaluation.QueryEvaluationStatus.FAILURE,
           error: parseAzureEvaluationError(e)
-        })
-      ];
+        };
+      }
+      queryEvaluations.push(
+        dataform.QueryEvaluation.create({ ...evaluationResponse, incremental, query })
+      );
     }
+    return queryEvaluations;
   }
 
   public async tables(): Promise<dataform.ITarget[]> {
