@@ -141,7 +141,7 @@ suite("@dataform/integration/sqldatawarehouse", ({ before, after }) => {
     }
   });
 
-  suite("azure/evaluate", async () => {
+  suite("evaluate", async () => {
     test("evaluate from valid compiled graph as valid", async () => {
       // Create and run the project.
       const compiledGraph = await dfapi.compile({
@@ -193,7 +193,7 @@ suite("@dataform/integration/sqldatawarehouse", ({ before, after }) => {
           query: "thisisillegal",
           target: {
             schema: "df_integration_test",
-            name: "example_valid_variable",
+            name: "example_illegal_table",
             database: "dataform-integration-tests"
           }
         })

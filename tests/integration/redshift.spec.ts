@@ -219,17 +219,15 @@ suite("@dataform/integration/redshift", ({ before, after }) => {
     });
 
     test("invalid table fails validation", async () => {
-      const target = (name: string) => ({
-        schema: "df_integration_test",
-        name,
-        database: "dataform-integration-tests"
-      });
-
       const evaluations = await dbadapter.evaluate(
         dataform.Table.create({
           type: "table",
           query: "thisisillegal",
-          target: target("example_valid_variable")
+          target: {
+            schema: "df_integration_test",
+            name: "example_illegal_table",
+            database: "dataform-integration-tests"
+          }
         })
       );
       expect(evaluations.length).to.equal(1);
