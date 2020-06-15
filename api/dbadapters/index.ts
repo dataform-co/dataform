@@ -1,3 +1,5 @@
+import { query } from "..";
+
 import { Credentials } from "df/api/commands/credentials";
 import { BigQueryDbAdapter } from "df/api/dbadapters/bigquery";
 import { RedshiftDbAdapter } from "df/api/dbadapters/redshift";
@@ -72,8 +74,8 @@ register("sqldatawarehouse", SQLDataWarehouseDBAdapter);
 export function collectEvaluationQueries(
   queryOrAction: string | dataform.Table | dataform.Operation | dataform.Assertion,
   concatenate: boolean,
-  queryModifier: (mod: string) => string = (query: string) => query
-) {
+  queryModifier: (mod: string) => string = (q: string) => q
+): dataform.ValidationQuery[] {
   // TODO: The prefix method (via `queryModifier`) is a bit sketchy. For example after
   // attaching the `explain` prefix, a table or operation could look like this:
   // ```
@@ -134,5 +136,9 @@ export function collectEvaluationQueries(
       throw new ErrorWithCause(`Error building tasks for evaluation. ${e.message}`, e);
     }
   }
-  return validationQueries.map(({ query }) => query.trim()).filter(query => !!query);
+  return validationQueries
+    .map(validationQuery =>
+      dataform.ValidationQuery.create({ query: validationQuery.query.trim(), ...validationQuery })
+    )
+    .filter(validationQuery => !!validationQuery.query);
 }
