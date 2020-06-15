@@ -101,8 +101,8 @@ export function collectEvaluationQueries(
               incremental: true
             });
           } else {
-            incrementalTableQueries.forEach(query =>
-              validationQueries.push({ query: queryModifier(query), incremental: true })
+            incrementalTableQueries.forEach(q =>
+              validationQueries.push({ query: queryModifier(q), incremental: true })
             );
           }
         }
@@ -115,7 +115,7 @@ export function collectEvaluationQueries(
             query: concatenateQueries(tableQueries, queryModifier)
           });
         } else {
-          tableQueries.forEach(query => validationQueries.push({ query: queryModifier(query) }));
+          tableQueries.forEach(q => validationQueries.push({ query: queryModifier(q) }));
         }
       } else if (queryOrAction instanceof dataform.Operation) {
         if (concatenate) {
@@ -123,9 +123,7 @@ export function collectEvaluationQueries(
             query: concatenateQueries(queryOrAction.queries, queryModifier)
           });
         } else {
-          queryOrAction.queries.forEach(query =>
-            validationQueries.push({ query: queryModifier(query) })
-          );
+          queryOrAction.queries.forEach(q => validationQueries.push({ query: queryModifier(q) }));
         }
       } else if (queryOrAction instanceof dataform.Assertion) {
         validationQueries.push({ query: queryModifier(queryOrAction.query) });
