@@ -2,7 +2,7 @@ import * as https from "https";
 import * as PromisePool from "promise-pool-executor";
 
 import { Credentials } from "df/api/commands/credentials";
-import { constructEvaluationFromQueryOrAction, IDbAdapter } from "df/api/dbadapters/index";
+import { collectEvaluationQueries, IDbAdapter } from "df/api/dbadapters/index";
 import { parseSnowflakeEvalError } from "df/api/utils/error_parsing";
 import { ErrorWithCause } from "df/common/errors/errors";
 import { dataform } from "df/protos/ts";
@@ -93,10 +93,8 @@ export class SnowflakeDbAdapter implements IDbAdapter {
   public async evaluate(
     queryOrAction: string | dataform.Table | dataform.Operation | dataform.Assertion
   ) {
-    const validationQueries = constructEvaluationFromQueryOrAction(
-      queryOrAction,
-      false,
-      (query: string) => (!!query ? `select system$explain_plan_json($$${query}$$)` : "")
+    const validationQueries = collectEvaluationQueries(queryOrAction, false, (query: string) =>
+      !!query ? `select system$explain_plan_json($$${query}$$)` : ""
     );
     const queryEvaluations = new Array<dataform.IQueryEvaluation>();
     for (const { query, incremental } of validationQueries) {

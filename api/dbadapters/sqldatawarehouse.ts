@@ -2,7 +2,7 @@ import { ConnectionPool } from "mssql";
 
 import { Credentials } from "df/api/commands/credentials";
 import {
-  constructEvaluationFromQueryOrAction,
+  collectEvaluationQueries,
   IDbAdapter,
   IExecutionResult,
   OnCancel
@@ -96,10 +96,8 @@ export class SQLDataWarehouseDBAdapter implements IDbAdapter {
     queryOrAction: string | dataform.Table | dataform.Operation | dataform.Assertion
   ) {
     // TODO: Using `explain` before declaring a variable is not valid in SQL Data Warehouse.
-    const validationQueries = constructEvaluationFromQueryOrAction(
-      queryOrAction,
-      true,
-      (query: string) => (!!query ? `explain ${query}` : "")
+    const validationQueries = collectEvaluationQueries(queryOrAction, true, (query: string) =>
+      !!query ? `explain ${query}` : ""
     );
     const queryEvaluations = new Array<dataform.IQueryEvaluation>();
     for (const { query, incremental } of validationQueries) {

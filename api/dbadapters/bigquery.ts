@@ -5,7 +5,7 @@ import { BigQuery } from "@google-cloud/bigquery";
 import { QueryResultsOptions } from "@google-cloud/bigquery/build/src/job";
 import { Credentials } from "df/api/commands/credentials";
 import {
-  constructEvaluationFromQueryOrAction,
+  collectEvaluationQueries,
   IDbAdapter,
   IExecutionResult,
   OnCancel
@@ -105,7 +105,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
   public async evaluate(
     queryOrAction: string | dataform.Table | dataform.Operation | dataform.Assertion
   ) {
-    const validationQueries = constructEvaluationFromQueryOrAction(queryOrAction, true);
+    const validationQueries = collectEvaluationQueries(queryOrAction, true);
     const queryEvaluations = new Array<dataform.IQueryEvaluation>();
     for (const { query, incremental } of validationQueries) {
       let evaluationResponse: dataform.IQueryEvaluation = {

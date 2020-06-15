@@ -2,7 +2,7 @@ import * as pg from "pg";
 import Cursor from "pg-cursor";
 
 import { Credentials } from "df/api/commands/credentials";
-import { constructEvaluationFromQueryOrAction, IDbAdapter } from "df/api/dbadapters/index";
+import { collectEvaluationQueries, IDbAdapter } from "df/api/dbadapters/index";
 import { SSHTunnelProxy } from "df/api/ssh_tunnel_proxy";
 import { parseRedshiftEvalError } from "df/api/utils/error_parsing";
 import { ErrorWithCause } from "df/common/errors/errors";
@@ -80,10 +80,8 @@ export class RedshiftDbAdapter implements IDbAdapter {
   public async evaluate(
     queryOrAction: string | dataform.Table | dataform.Operation | dataform.Assertion
   ) {
-    const validationQueries = constructEvaluationFromQueryOrAction(
-      queryOrAction,
-      false,
-      (query: string) => (!!query ? `explain ${query}` : "")
+    const validationQueries = collectEvaluationQueries(queryOrAction, false, (query: string) =>
+      !!query ? `explain ${query}` : ""
     );
     const queryEvaluations = new Array<dataform.IQueryEvaluation>();
     for (const { query, incremental } of validationQueries) {

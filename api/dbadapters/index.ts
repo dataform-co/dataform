@@ -69,14 +69,19 @@ register("redshift", RedshiftDbAdapter);
 register("snowflake", SnowflakeDbAdapter);
 register("sqldatawarehouse", SQLDataWarehouseDBAdapter);
 
-export function constructEvaluationFromQueryOrAction(
+export function collectEvaluationQueries(
   queryOrAction: string | dataform.Table | dataform.Operation | dataform.Assertion,
   concatenate: boolean,
-  queryModifier?: (mod: string) => string
+  queryModifier: (mod: string) => string = (query: string) => query
 ) {
-  if (!queryModifier) {
-    queryModifier = (query: string) => query;
-  }
+  // TODO: The prefix method (via `queryModifier`) is a bit sketchy. For example after
+  // attaching the `explain` prefix, a table or operation could look like this:
+  // ```
+  // explain
+  // -- Delete the temporary table, if it exists (perhaps from a previous run).
+  // DROP TABLE IF EXISTS "df_integration_test"."load_from_s3_temp" CASCADE;
+  // ```
+  // which is invalid because the `explain` is interrupted by a comment.
   const validationQueries = new Array<dataform.IValidationQuery>();
   if (typeof queryOrAction === "string") {
     validationQueries.push({ query: queryModifier(queryOrAction) });
@@ -111,14 +116,6 @@ export function constructEvaluationFromQueryOrAction(
           tableQueries.forEach(query => validationQueries.push({ query: queryModifier(query) }));
         }
       } else if (queryOrAction instanceof dataform.Operation) {
-        // TODO: The prefix method is a bit sketchy for operations. For example, after attaching the `eplain` prefix
-        // an operation could look like this:
-        // ```
-        // explain
-        // -- Delete the temporary table, if it exists (perhaps from a previous run).
-        // DROP TABLE IF EXISTS "df_integration_test"."load_from_s3_temp" CASCADE;
-        // ```
-        // which is invalid because the `explain` is interrupted by a comment.
         if (concatenate) {
           validationQueries.push({
             query: concatenateQueries(queryOrAction.queries, queryModifier)
@@ -137,5 +134,5 @@ export function constructEvaluationFromQueryOrAction(
       throw new ErrorWithCause(`Error building tasks for evaluation. ${e.message}`, e);
     }
   }
-  return validationQueries.filter(({ query }) => !!query);
+  return validationQueries.map(({ query }) => query.trim()).filter(query => !!query);
 }
