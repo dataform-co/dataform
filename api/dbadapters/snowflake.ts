@@ -91,18 +91,21 @@ export class SnowflakeDbAdapter implements IDbAdapter {
   }
 
   public async evaluate(
-    queryOrAction: string | dataform.Table | dataform.Operation | dataform.Assertion
+    queryOrAction: string | dataform.Table | dataform.Operation | dataform.Assertion,
+    projectConfig?: dataform.ProjectConfig
   ) {
     const validationQueries = collectEvaluationQueries(queryOrAction, false, (query: string) =>
       !!query ? `select system$explain_plan_json($$${query}$$)` : ""
-    );
+    ).map((validationQuery, index) => ({ index, validationQuery }));
+    const validationQueriesWithoutWrappers = collectEvaluationQueries(queryOrAction, false);
+
     const queryEvaluations = new Array<dataform.IQueryEvaluation>();
-    for (const { query, incremental } of validationQueries) {
+    for (const { index, validationQuery } of validationQueries) {
       let evaluationResponse: dataform.IQueryEvaluation = {
         status: dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
       };
       try {
-        await this.execute(query);
+        await this.execute(validationQuery.query);
       } catch (e) {
         evaluationResponse = {
           status: dataform.QueryEvaluation.QueryEvaluationStatus.FAILURE,
@@ -110,7 +113,11 @@ export class SnowflakeDbAdapter implements IDbAdapter {
         };
       }
       queryEvaluations.push(
-        dataform.QueryEvaluation.create({ ...evaluationResponse, incremental, query })
+        dataform.QueryEvaluation.create({
+          ...evaluationResponse,
+          incremental: validationQuery.incremental,
+          query: validationQueriesWithoutWrappers[index].query
+        })
       );
     }
     return queryEvaluations;

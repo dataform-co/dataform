@@ -103,9 +103,13 @@ export class BigQueryDbAdapter implements IDbAdapter {
   }
 
   public async evaluate(
-    queryOrAction: string | dataform.Table | dataform.Operation | dataform.Assertion
+    queryOrAction: string | dataform.Table | dataform.Operation | dataform.Assertion,
+    projectConfig?: dataform.ProjectConfig
   ) {
-    const validationQueries = collectEvaluationQueries(queryOrAction, true);
+    const validationQueries = collectEvaluationQueries(
+      queryOrAction,
+      !!projectConfig?.useSingleQueryPerAction
+    );
     const queryEvaluations = new Array<dataform.IQueryEvaluation>();
     for (const { query, incremental } of validationQueries) {
       let evaluationResponse: dataform.IQueryEvaluation = {

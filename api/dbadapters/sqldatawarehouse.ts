@@ -93,19 +93,21 @@ export class SQLDataWarehouseDBAdapter implements IDbAdapter {
   }
 
   public async evaluate(
-    queryOrAction: string | dataform.Table | dataform.Operation | dataform.Assertion
+    queryOrAction: string | dataform.Table | dataform.Operation | dataform.Assertion,
+    projectConfig?: dataform.ProjectConfig
   ) {
     // TODO: Using `explain` before declaring a variable is not valid in SQL Data Warehouse.
     const validationQueries = collectEvaluationQueries(queryOrAction, true, (query: string) =>
       !!query ? `explain ${query}` : ""
-    );
+    ).map((validationQuery, index) => ({ index, validationQuery }));
+    const validationQueriesWithoutWrappers = collectEvaluationQueries(queryOrAction, false);
     const queryEvaluations = new Array<dataform.IQueryEvaluation>();
-    for (const { query, incremental } of validationQueries) {
+    for (const { index, validationQuery } of validationQueries) {
       let evaluationResponse: dataform.IQueryEvaluation = {
         status: dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
       };
       try {
-        await this.execute(query);
+        await this.execute(validationQuery.query);
       } catch (e) {
         evaluationResponse = {
           status: dataform.QueryEvaluation.QueryEvaluationStatus.FAILURE,
@@ -113,7 +115,11 @@ export class SQLDataWarehouseDBAdapter implements IDbAdapter {
         };
       }
       queryEvaluations.push(
-        dataform.QueryEvaluation.create({ ...evaluationResponse, incremental, query })
+        dataform.QueryEvaluation.create({
+          ...evaluationResponse,
+          incremental: validationQuery.incremental,
+          query: validationQueriesWithoutWrappers[index].query
+        })
       );
     }
     return queryEvaluations;

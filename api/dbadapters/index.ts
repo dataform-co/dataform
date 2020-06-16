@@ -31,7 +31,8 @@ export interface IDbAdapter {
     }
   ): Promise<IExecutionResult>;
   evaluate(
-    queryOrAction: string | dataform.ITable | dataform.IOperation | dataform.IAssertion
+    queryOrAction: string | dataform.ITable | dataform.IOperation | dataform.IAssertion,
+    projectConfig?: dataform.IProjectConfig
   ): Promise<dataform.IQueryEvaluation[]>;
   tables(): Promise<dataform.ITarget[]>;
   table(target: dataform.ITarget): Promise<dataform.ITableMetadata>;
