@@ -10,7 +10,7 @@ export function concatenateQueries(statements: string[], modifier?: (mod: string
         : statement
     )
     .map(statement => (!!modifier ? modifier(statement) : statement))
-    .join(";");
+    .join(";\n");
 }
 
 export class Tasks {
