@@ -16,11 +16,13 @@ let config = {
     // Use the module name mappings in tsconfig so imports resolve properly.
     config.resolve.plugins = config.resolve.plugins || [];
 
+    // Tell webpack where to find our bazel managed libraries.
     config.resolve.alias = {
       ...config.resolve.alias,
       df: path.resolve(path.join(process.env.RUNFILES, "df")),
     };
 
+    // Next won't transpile anything if we don't add this, as it doesn't like running in a monorepo.
     config.module.rules.push({
       test: /\.[tj]sx?$/,
       exclude: /node_modules/,

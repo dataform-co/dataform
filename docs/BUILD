@@ -103,8 +103,6 @@ DEPS = [
     "@npm//@blueprintjs/select",
     "@npm//@mapbox/rehype-prism",
     "@npm//@zeit/next-css",
-    "@npm//@zeit/next-mdx",
-    "@npm//@zeit/next-typescript",
     "@npm//algoliasearch",
     "@npm//css-loader",
     "@npm//remark-rehype",
@@ -116,7 +114,6 @@ DEPS = [
     "@npm//react-syntax-highlighter",
     "@npm//remark",
     "@npm//rehype-slug",
-    "@npm//umd-compat-loader",
     "@npm//url-loader",
 ]
 
