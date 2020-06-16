@@ -1,4 +1,4 @@
-load("@npm_bazel_typescript//:index.bzl", "ts_library")
+load("//tools:ts_library.bzl", "ts_library")
 load("//tools:expand_template.bzl", "expand_template")
 load("//:version.bzl", "DF_VERSION")
 
