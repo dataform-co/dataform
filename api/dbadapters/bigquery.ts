@@ -111,6 +111,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
       !!projectConfig?.useSingleQueryPerAction
     );
     const queryEvaluations = new Array<dataform.IQueryEvaluation>();
+
     for (const { query, incremental } of validationQueries) {
       let evaluationResponse: dataform.IQueryEvaluation = {
         status: dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
