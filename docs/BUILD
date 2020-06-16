@@ -83,6 +83,7 @@ load("@npm//next:index.bzl", "next")
 DEPS = [
     ":core.typedoc.json",
     ":css_typings",
+    ":tsconfig.json",
     "//:package.json",
     "//:tsconfig.json",
     "//content",
