@@ -64,11 +64,6 @@ module.exports = (env, argv) => {
             }
           ]
         },
-        {
-          test: /\.jsx?$/,
-          exclude: /node_modules/,
-          use: [{ loader: "umd-compat-loader" }]
-        }
       ]
     }
   };
