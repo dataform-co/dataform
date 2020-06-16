@@ -1,6 +1,6 @@
 package(default_visibility = ["//visibility:public"])
 
-load("@npm_bazel_typescript//:index.bzl", "ts_library")
+load("//tools:ts_library.bzl", "ts_library")
 load("@df//tools:css_typings.bzl", "css_typings")
 load("@io_bazel_rules_sass//:defs.bzl", "multi_sass_binary")
 
