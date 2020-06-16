@@ -103,7 +103,6 @@ npm_package_bin(
         ":webpack.config.js",
         "@npm//css-loader",
         "@npm//style-loader",
-        "@npm//umd-compat-loader",
     ],
     tool = ":bundler",
 )
