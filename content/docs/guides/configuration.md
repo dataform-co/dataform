@@ -40,19 +40,31 @@ by changing the `defaultSchema` property to some other value. For example, to ch
 
 [Assertions](assertions) are created inside a different schema as specified by the `assertionsSchema` property.
 
-### Running pre and post operations in context
+### Running operations in context
 
-By default, pre and post operations aren't run in the same context as the main query. Because of this, variables declared in pre-operations won't be valid in the main query. Currently for BigQuery and SQL Data Warehouse there is the option to enable contextual pre and post operations by adding the following flag:
+BigQuery and SQL Data Warehouse by default run all operations for a file in the same context by default. This functionality is not supported for Redshift or Snowflake.
 
-```json
+The executed SQL is created by joining all operations with a semi-colon `;`. For example,
+
+```sql
+pre_operations {
+  declare var string;
+  set var = 'val';
+}
+select var as col;
+```
+
+is treated as if the `pre_operations` block wasn't there, becoming `declare var string; set var = 'val'; select var as col;`. However for Redshift or Snowflake, the pre_operations block would be executed as a separate query before the main block.
+
+To disable running all operations in the same context, place the following flag in your `dataform.json` file:
+
+```jsonkub
 {
   ...
-  "useSingleQueryPerAction": true,
+  "useSingleQueryPerAction": false,
   ...
 }
 ```
-
-This will join pre-operations, the main query, and post operations with a `;`. In future, this functionality is likely to become the default.
 
 ## package.json
 
