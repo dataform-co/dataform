@@ -725,7 +725,20 @@ suite("@dataform/api", () => {
     [
       {
         warehouse: "bigquery",
-        expectedQuery: "preOps;create or replace table `database.schema.b` as query;postOps"
+        expectedQuery: "preOps;\ncreate or replace table `database.schema.b` as query;\npostOps"
+      },
+      {
+        warehouse: "sqldatawarehouse",
+        expectedQuery: `preOps;
+if object_id ('"schema"."b_temp"','U') is not null drop table "schema"."b_temp";
+create table "schema"."b_temp"
+     with(
+       distribution = ROUND_ROBIN
+     ) 
+     as query;
+if object_id ('"schema"."b"','U') is not null drop table "schema"."b";
+rename object "schema"."b_temp" to b;
+postOps`
       }
     ].forEach(({ warehouse, expectedQuery }) => {
       test(`${warehouse}_useSingleQueryPerAction`, async () => {
