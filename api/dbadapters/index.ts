@@ -72,8 +72,10 @@ register("redshift", RedshiftDbAdapter);
 register("snowflake", SnowflakeDbAdapter);
 register("sqldatawarehouse", SQLDataWarehouseDBAdapter);
 
+export type QueryOrAction = string | dataform.Table | dataform.Operation | dataform.Assertion;
+
 export function collectEvaluationQueries(
-  queryOrAction: string | dataform.Table | dataform.Operation | dataform.Assertion,
+  queryOrAction: QueryOrAction,
   concatenate: boolean,
   queryModifier: (mod: string) => string = (q: string) => q
 ): dataform.ValidationQuery[] {

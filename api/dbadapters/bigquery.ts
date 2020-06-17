@@ -8,7 +8,8 @@ import {
   collectEvaluationQueries,
   IDbAdapter,
   IExecutionResult,
-  OnCancel
+  OnCancel,
+  QueryOrAction
 } from "df/api/dbadapters/index";
 import { parseBigqueryEvalError } from "df/api/utils/error_parsing";
 import {
@@ -23,7 +24,6 @@ import {
   StringifiedMap,
   StringifiedSet
 } from "df/common/strings/stringifier";
-import { concatenateQueries } from "df/core/tasks";
 import { dataform } from "df/protos/ts";
 
 const CACHED_STATE_TABLE_NAME = "dataform_meta.cache_state";
@@ -102,13 +102,11 @@ export class BigQueryDbAdapter implements IDbAdapter {
       .promise();
   }
 
-  public async evaluate(
-    queryOrAction: string | dataform.Table | dataform.Operation | dataform.Assertion,
-    projectConfig?: dataform.ProjectConfig
-  ) {
+  public async evaluate(queryOrAction: QueryOrAction, projectConfig?: dataform.ProjectConfig) {
     const validationQueries = collectEvaluationQueries(
       queryOrAction,
-      !!projectConfig?.useSingleQueryPerAction
+      projectConfig?.useSingleQueryPerAction === undefined ||
+        !!projectConfig?.useSingleQueryPerAction
     );
     const queryEvaluations = new Array<dataform.IQueryEvaluation>();
 
