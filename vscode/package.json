@@ -1,0 +1,36 @@
+{
+  "name": "dataform",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.45.0"
+  },
+  "activationEvents": [
+    "workspaceContains:**/*.sqlx"
+  ],
+  "main": "extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "dataform.compile",
+        "title": "Recompile dataform",
+        "category": "cli"
+      }
+    ],
+    "languages": [
+      {
+        "id": "sqlx",
+        "extensions": [
+          ".sqlx"
+        ],
+        "configuration": "language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "sqlx",
+        "scopeName": "source.sqlx",
+        "path": "sqlx.grammar.json"
+      }
+    ]
+  }
+}

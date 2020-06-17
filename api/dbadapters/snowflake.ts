@@ -2,7 +2,7 @@ import * as https from "https";
 import * as PromisePool from "promise-pool-executor";
 
 import { Credentials } from "df/api/commands/credentials";
-import { IDbAdapter } from "df/api/dbadapters/index";
+import { collectEvaluationQueries, IDbAdapter } from "df/api/dbadapters/index";
 import { parseSnowflakeEvalError } from "df/api/utils/error_parsing";
 import { ErrorWithCause } from "df/common/errors/errors";
 import { dataform } from "df/protos/ts";
@@ -90,20 +90,30 @@ export class SnowflakeDbAdapter implements IDbAdapter {
     };
   }
 
-  public async evaluate(statement: string): Promise<dataform.QueryEvaluationResponse> {
-    try {
-      await this.execute(`select system$explain_plan_json($$
-${statement}
-        $$)`);
-      return dataform.QueryEvaluationResponse.create({
-        status: dataform.QueryEvaluationResponse.QueryEvaluationStatus.SUCCESS
-      });
-    } catch (e) {
-      return dataform.QueryEvaluationResponse.create({
-        status: dataform.QueryEvaluationResponse.QueryEvaluationStatus.FAILURE,
-        error: parseSnowflakeEvalError(String(e))
-      });
+  public async evaluate(
+    queryOrAction: string | dataform.Table | dataform.Operation | dataform.Assertion
+  ) {
+    const validationQueries = collectEvaluationQueries(queryOrAction, false, (query: string) =>
+      !!query ? `select system$explain_plan_json($$${query}$$)` : ""
+    );
+    const queryEvaluations = new Array<dataform.IQueryEvaluation>();
+    for (const { query, incremental } of validationQueries) {
+      let evaluationResponse: dataform.IQueryEvaluation = {
+        status: dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
+      };
+      try {
+        await this.execute(query);
+      } catch (e) {
+        evaluationResponse = {
+          status: dataform.QueryEvaluation.QueryEvaluationStatus.FAILURE,
+          error: parseSnowflakeEvalError(e.message)
+        };
+      }
+      queryEvaluations.push(
+        dataform.QueryEvaluation.create({ ...evaluationResponse, incremental, query })
+      );
     }
+    return queryEvaluations;
   }
 
   public async tables(): Promise<dataform.ITarget[]> {

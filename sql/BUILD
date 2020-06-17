@@ -1,4 +1,4 @@
-load("@npm_bazel_typescript//:index.bzl", "ts_library")
+load("//tools:ts_library.bzl", "ts_library")
 load("//testing:index.bzl", "ts_test_suite")
 
 package(default_visibility = ["//visibility:public"])
@@ -23,6 +23,7 @@ ts_test_suite(
     data = [
         "//test_credentials:bigquery.json",
         "//test_credentials:snowflake.json",
+        "//test_credentials:redshift.json",
         "@npm//source-map-support",
     ],
     templated_args = ["--node_options=--require=source-map-support/register"],

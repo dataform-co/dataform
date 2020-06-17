@@ -1,4 +1,4 @@
-import { Button, IButtonProps, Intent } from "@blueprintjs/core";
+import { Button, Classes, IButtonProps, Intent } from "@blueprintjs/core";
 import * as React from "react";
 
 import { CardActions } from "df/components/card";
@@ -104,6 +104,7 @@ export class ControlledDialog extends React.Component<IProps, IState> {
                   this.setState({ isOpen: false });
                 }}
                 text={confirmButtonProps?.text || "Confirm"}
+                className={`${Classes.POPOVER_DISMISS} ${confirmButtonProps?.className || ""}`}
               />
             )}
           </CardActions>

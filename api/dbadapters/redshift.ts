@@ -2,7 +2,7 @@ import * as pg from "pg";
 import Cursor from "pg-cursor";
 
 import { Credentials } from "df/api/commands/credentials";
-import { IDbAdapter } from "df/api/dbadapters/index";
+import { collectEvaluationQueries, IDbAdapter } from "df/api/dbadapters/index";
 import { SSHTunnelProxy } from "df/api/ssh_tunnel_proxy";
 import { parseRedshiftEvalError } from "df/api/utils/error_parsing";
 import { ErrorWithCause } from "df/common/errors/errors";
@@ -13,8 +13,21 @@ interface ICursor {
   close: (callback: (err: Error) => void) => void;
 }
 
+const maybeInitializePg = (() => {
+  let initialized = false;
+  return () => {
+    if (!initialized) {
+      initialized = true;
+      // Decode BigInt types as Numbers, instead of strings.
+      // TODO: This will truncate large values, but is consistent with other adapters. We should change these to all use Long.
+      pg.types.setTypeParser(20, Number);
+    }
+  };
+})();
+
 export class RedshiftDbAdapter implements IDbAdapter {
   public static async create(credentials: Credentials) {
+    maybeInitializePg();
     const jdbcCredentials = credentials as dataform.IJDBC;
     const baseClientConfig: Partial<pg.ClientConfig> = {
       user: jdbcCredentials.username,
@@ -60,24 +73,36 @@ export class RedshiftDbAdapter implements IDbAdapter {
       if (options.includeQueryInError) {
         throw new Error(`Error encountered while running "${statement}": ${e.message}`);
       }
-      throw new ErrorWithCause("Error executing Redshift query.", e);
+      throw new ErrorWithCause(`Error executing Redshift query: ${e.message}`, e);
     }
   }
 
-  public async evaluate(statement: string) {
-    const statementWithExplain = `explain ${statement}`;
-    try {
-      await this.execute(statementWithExplain);
-      return dataform.QueryEvaluationResponse.create({
-        status: dataform.QueryEvaluationResponse.QueryEvaluationStatus.SUCCESS
-      });
-    } catch (e) {
-      return dataform.QueryEvaluationResponse.create({
-        status: dataform.QueryEvaluationResponse.QueryEvaluationStatus.FAILURE,
-        error: parseRedshiftEvalError(statementWithExplain, e)
-      });
+  public async evaluate(
+    queryOrAction: string | dataform.Table | dataform.Operation | dataform.Assertion
+  ) {
+    const validationQueries = collectEvaluationQueries(queryOrAction, false, (query: string) =>
+      !!query ? `explain ${query}` : ""
+    );
+    const queryEvaluations = new Array<dataform.IQueryEvaluation>();
+    for (const { query, incremental } of validationQueries) {
+      let evaluationResponse: dataform.IQueryEvaluation = {
+        status: dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
+      };
+      try {
+        await this.execute(query);
+      } catch (e) {
+        evaluationResponse = {
+          status: dataform.QueryEvaluation.QueryEvaluationStatus.FAILURE,
+          error: parseRedshiftEvalError(query, e)
+        };
+      }
+      queryEvaluations.push(
+        dataform.QueryEvaluation.create({ ...evaluationResponse, incremental, query })
+      );
     }
+    return queryEvaluations;
   }
+
   public async tables(): Promise<dataform.ITarget[]> {
     const hasSpectrumTables = await this.hasSpectrumTables();
     const queryResult = await this.execute(

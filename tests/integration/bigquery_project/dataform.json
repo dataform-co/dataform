@@ -2,6 +2,5 @@
   "warehouse": "bigquery",
   "defaultDatabase": "dataform-integration-tests",
   "defaultSchema": "df_integration_test",
-  "assertionSchema": "df_integration_test_assertions",
-  "useRunCache": true
+  "assertionSchema": "df_integration_test_assertions"
 }

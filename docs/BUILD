@@ -83,6 +83,7 @@ load("@npm//next:index.bzl", "next")
 DEPS = [
     ":core.typedoc.json",
     ":css_typings",
+    ":tsconfig.json",
     "//:package.json",
     "//:tsconfig.json",
     "//content",
@@ -102,8 +103,6 @@ DEPS = [
     "@npm//@blueprintjs/select",
     "@npm//@mapbox/rehype-prism",
     "@npm//@zeit/next-css",
-    "@npm//@zeit/next-mdx",
-    "@npm//@zeit/next-typescript",
     "@npm//algoliasearch",
     "@npm//css-loader",
     "@npm//remark-rehype",
@@ -115,7 +114,6 @@ DEPS = [
     "@npm//react-syntax-highlighter",
     "@npm//remark",
     "@npm//rehype-slug",
-    "@npm//umd-compat-loader",
     "@npm//url-loader",
 ]
 

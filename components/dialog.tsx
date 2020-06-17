@@ -13,7 +13,6 @@ export const Dialog = ({
   return (
     <BlueprintDialog
       className={styles.dialog}
-      isCloseButtonShown={false}
       canOutsideClickClose={true}
       hasBackdrop={true}
       usePortal={true}
