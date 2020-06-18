@@ -31,7 +31,8 @@ export interface IDbAdapter {
     }
   ): Promise<IExecutionResult>;
   evaluate(
-    queryOrAction: string | dataform.ITable | dataform.IOperation | dataform.IAssertion
+    queryOrAction: QueryOrAction,
+    projectConfig?: dataform.IProjectConfig
   ): Promise<dataform.IQueryEvaluation[]>;
   tables(): Promise<dataform.ITarget[]>;
   table(target: dataform.ITarget): Promise<dataform.ITableMetadata>;
@@ -71,8 +72,10 @@ register("redshift", RedshiftDbAdapter);
 register("snowflake", SnowflakeDbAdapter);
 register("sqldatawarehouse", SQLDataWarehouseDBAdapter);
 
+export type QueryOrAction = string | dataform.Table | dataform.Operation | dataform.Assertion;
+
 export function collectEvaluationQueries(
-  queryOrAction: string | dataform.Table | dataform.Operation | dataform.Assertion,
+  queryOrAction: QueryOrAction,
   concatenate: boolean,
   queryModifier: (mod: string) => string = (q: string) => q
 ): dataform.ValidationQuery[] {
