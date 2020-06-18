@@ -97,8 +97,7 @@ export class SQLDataWarehouseDBAdapter implements IDbAdapter {
     // TODO: Using `explain` before declaring a variable is not valid in SQL Data Warehouse.
     const validationQueries = collectEvaluationQueries(
       queryOrAction,
-      projectConfig?.useSingleQueryPerAction === undefined ||
-        !!projectConfig?.useSingleQueryPerAction,
+      !!projectConfig?.useSingleQueryPerAction,
       (query: string) => (!!query ? `explain ${query}` : "")
     ).map((validationQuery, index) => ({ index, validationQuery }));
     const validationQueriesWithoutWrappers = collectEvaluationQueries(queryOrAction, false);

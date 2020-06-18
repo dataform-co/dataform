@@ -105,8 +105,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
   public async evaluate(queryOrAction: QueryOrAction, projectConfig?: dataform.ProjectConfig) {
     const validationQueries = collectEvaluationQueries(
       queryOrAction,
-      projectConfig?.useSingleQueryPerAction === undefined ||
-        !!projectConfig?.useSingleQueryPerAction
+      !!projectConfig?.useSingleQueryPerAction
     );
     const queryEvaluations = new Array<dataform.IQueryEvaluation>();
 
