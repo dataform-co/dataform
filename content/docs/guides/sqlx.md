@@ -8,6 +8,12 @@ priority: 1
 
 SQLX is a powerful extension of SQL. As it is an extension, **every SQL file is also a valid SQLX file**!
 
+<div className="bp3-callout bp3-icon-info-sign bp3-intent-primary" >
+<h4 class="bp3-heading">New to SQLX and Dataform?</h4>
+If you are new to SQLX and Dataform, you can read more about how it works and its features in the introduction. 
+<a href="/introduction/dataform-in-5-minutes"><button intent="primary">How SQLX works in 5 min</button></a></div>
+
+
 ## Structure
 
 SQLX contains the following components:
