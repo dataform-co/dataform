@@ -24,7 +24,7 @@ export function generateAxis({
 
   const longestCategoryAxisValue = Math.min(
     categoryAxisValues
-      .filter(val => !!val)
+      .map(value => String(value))
       .reduce((acc, val) => (acc > val.length ? acc : val.length), 0),
     maxLabelLength
   );
