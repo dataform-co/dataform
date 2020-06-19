@@ -13,7 +13,7 @@ export type ISqlDialect = "standard" | "snowflake" | "postgres";
 export class Sql {
   constructor(private readonly dialect: ISqlDialect = "standard") {}
 
-  public literal(value: string | number) {
+  public literal(value: string | number | null) {
     if (value === null) {
       return "null";
     }
