@@ -8,6 +8,6 @@ ts_library(
     deps = [
         "@npm//@types/long",
         "@npm//@types/node",
-        "@npm//protobufjs",
+        "@npm//long",
     ],
 )

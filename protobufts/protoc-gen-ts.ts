@@ -1,5 +1,6 @@
-import { google } from "df/protobufts/ts-protoc-protos";
 import * as fs from "fs";
+
+import { google } from "df/protobufts/ts-protoc-protos";
 
 function generateFiles(
   request: google.protobuf.compiler.ICodeGeneratorRequest
@@ -147,9 +148,7 @@ function getImportLines(
   if (needsLongImport) {
     imports.push('import Long from "long";');
   }
-  imports.push(
-    'import { IMessage, Serializer, NewSerializer } from "df/protobufts/runtime/serialize";'
-  );
+  imports.push('import { IMessage, Serializer } from "df/protobufts/runtime/serialize";');
   return imports;
 }
 
@@ -200,10 +199,10 @@ ${descriptorProto.field
   .join("\n")}
 
   public serialize(): Uint8Array {
-    return this.serializeInternal(new NewSerializer()).finish();
+    return this.serializeInternal(new Serializer()).finish();
   }
 
-  private serializeInternal(serializer: NewSerializer): NewSerializer {
+  private serializeInternal(serializer: Serializer): Serializer {
     return serializer
 ${descriptorProto.field
   .map(
