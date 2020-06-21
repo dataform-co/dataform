@@ -2,7 +2,7 @@ import * as pg from "pg";
 import Cursor from "pg-cursor";
 
 import { Credentials } from "df/api/commands/credentials";
-import { IDbAdapter } from "df/api/dbadapters/index";
+import { collectEvaluationQueries, IDbAdapter, QueryOrAction } from "df/api/dbadapters/index";
 import { SSHTunnelProxy } from "df/api/ssh_tunnel_proxy";
 import { parseRedshiftEvalError } from "df/api/utils/error_parsing";
 import { ErrorWithCause } from "df/common/errors/errors";
@@ -77,20 +77,36 @@ export class RedshiftDbAdapter implements IDbAdapter {
     }
   }
 
-  public async evaluate(statement: string) {
-    const statementWithExplain = `explain ${statement}`;
-    try {
-      await this.execute(statementWithExplain);
-      return dataform.QueryEvaluationResponse.create({
-        status: dataform.QueryEvaluationResponse.QueryEvaluationStatus.SUCCESS
-      });
-    } catch (e) {
-      return dataform.QueryEvaluationResponse.create({
-        status: dataform.QueryEvaluationResponse.QueryEvaluationStatus.FAILURE,
-        error: parseRedshiftEvalError(statementWithExplain, e)
-      });
+  public async evaluate(queryOrAction: QueryOrAction, projectConfig?: dataform.ProjectConfig) {
+    const validationQueries = collectEvaluationQueries(queryOrAction, false, (query: string) =>
+      !!query ? `explain ${query}` : ""
+    ).map((validationQuery, index) => ({ index, validationQuery }));
+    const validationQueriesWithoutWrappers = collectEvaluationQueries(queryOrAction, false);
+
+    const queryEvaluations = new Array<dataform.IQueryEvaluation>();
+    for (const { index, validationQuery } of validationQueries) {
+      let evaluationResponse: dataform.IQueryEvaluation = {
+        status: dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
+      };
+      try {
+        await this.execute(validationQuery.query);
+      } catch (e) {
+        evaluationResponse = {
+          status: dataform.QueryEvaluation.QueryEvaluationStatus.FAILURE,
+          error: parseRedshiftEvalError(validationQuery.query, e)
+        };
+      }
+      queryEvaluations.push(
+        dataform.QueryEvaluation.create({
+          ...evaluationResponse,
+          incremental: validationQuery.incremental,
+          query: validationQueriesWithoutWrappers[index].query
+        })
+      );
     }
+    return queryEvaluations;
   }
+
   public async tables(): Promise<dataform.ITarget[]> {
     const hasSpectrumTables = await this.hasSpectrumTables();
     const queryResult = await this.execute(
