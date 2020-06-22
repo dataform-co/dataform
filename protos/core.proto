@@ -368,10 +368,9 @@ message CompiledGraph {
 
   string dataform_core_version = 10;
 
-  repeated ValidationError deprecated_validation_errors = 5;
-  repeated CompilationError deprecated_compilation_errors = 6;
-
   repeated Target targets = 11;
+
+  reserved 5, 6;
 }
 
 message ExecutionTask {
