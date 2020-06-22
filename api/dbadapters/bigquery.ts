@@ -135,13 +135,13 @@ export class BigQueryDbAdapter implements IDbAdapter {
 
   public tables(): Promise<dataform.ITarget[]> {
     return this.getClient()
-      .getDatasets({ autoPaginate: true })
+      .getDatasets({ autoPaginate: true, maxResults: 1000 })
       .then((result: any) => {
         return Promise.all(
           result[0].map((dataset: any) => {
             return this.pool
               .addSingleTask({
-                generator: () => dataset.getTables({ autoPaginate: true })
+                generator: () => dataset.getTables({ autoPaginate: true, maxResults: 1000 })
               })
               .promise();
           })
