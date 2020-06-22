@@ -13,3 +13,7 @@ export function timingSafeEqual(a: string, b: string) {
 
   return result === 0;
 }
+
+export function stripDataformToken(message: string): string {
+  return message.replace(/dataform:\S*@/, "dataform:[token]@");
+}
