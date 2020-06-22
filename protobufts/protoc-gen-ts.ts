@@ -207,9 +207,9 @@ ${descriptorProto.field
 ${descriptorProto.field
   .map(
     fieldDescriptorProto =>
-      `      .${serializerMethodName(fieldDescriptorProto)}(${fieldDescriptorProto.number}, this.${
-        fieldDescriptorProto.jsonName
-      }${
+      `      .${serializerMethodName(fieldDescriptorProto)}(${
+        fieldDescriptorProto.number
+      }, ${isPacked(fieldDescriptorProto)}, this.${fieldDescriptorProto.jsonName}${
         fieldDescriptorProto.type === google.protobuf.FieldDescriptorProto.Type.TYPE_MESSAGE
           ? " as unknown as IMessage"
           : ""
@@ -327,6 +327,19 @@ function defaultValue(fieldDescriptorProto: google.protobuf.IFieldDescriptorProt
 function serializerMethodName(fieldDescriptorProto: google.protobuf.IFieldDescriptorProto) {
   const typeString = google.protobuf.FieldDescriptorProto.Type[fieldDescriptorProto.type];
   return typeString.replace("TYPE_", "").toLowerCase();
+}
+
+function isPacked(fieldDescriptorProto: google.protobuf.IFieldDescriptorProto) {
+  if (fieldDescriptorProto.label !== google.protobuf.FieldDescriptorProto.Label.LABEL_REPEATED) {
+    return false;
+  }
+  if (!fieldDescriptorProto.options) {
+    return true;
+  }
+  if (!("packed" in fieldDescriptorProto.options)) {
+    return true;
+  }
+  return fieldDescriptorProto.options.packed;
 }
 
 function getEnum(enumDescriptorProto: google.protobuf.IEnumDescriptorProto) {

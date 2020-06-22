@@ -117,6 +117,13 @@ suite(__filename, () => {
         encoded: new Uint8Array([9, 1, 0, 0, 0, 0, 0, 0, 0])
       },
       {
+        type: "double 35.6",
+        proto: protobuftsProtos.TestMessage.create({
+          doubleField: 35.6
+        }),
+        encoded: new Uint8Array([9, 205, 204, 204, 204, 204, 204, 65, 64])
+      },
+      {
         type: "double 1.797693134862315708145274237317043567981e+308",
         proto: protobuftsProtos.TestMessage.create({
           doubleField: 1.797693134862315708145274237317043567981e308
@@ -339,6 +346,75 @@ suite(__filename, () => {
           sint64Field: Long.MAX_VALUE
         }),
         encoded: new Uint8Array([136, 1, 254, 255, 255, 255, 255, 255, 255, 255, 255, 1])
+      },
+      {
+        type: "packed double [35.6, 12.8, -8.9]",
+        proto: protobuftsProtos.TestRepeatedMessage.create({
+          doubleField: [35.6, 12.8, -8.9]
+        }),
+        encoded: new Uint8Array([
+          10,
+          24,
+          205,
+          204,
+          204,
+          204,
+          204,
+          204,
+          65,
+          64,
+          154,
+          153,
+          153,
+          153,
+          153,
+          153,
+          41,
+          64,
+          205,
+          204,
+          204,
+          204,
+          204,
+          204,
+          33,
+          192
+        ])
+      },
+      {
+        type: "unpacked double [35.6, 12.8, -8.9]",
+        proto: protobuftsProtos.TestRepeatedMessage.create({
+          unpackedDoubleField: [35.6, 12.8, -8.9]
+        }),
+        encoded: new Uint8Array([
+          146,
+          1,
+          24,
+          205,
+          204,
+          204,
+          204,
+          204,
+          204,
+          65,
+          64,
+          154,
+          153,
+          153,
+          153,
+          153,
+          153,
+          41,
+          64,
+          205,
+          204,
+          204,
+          204,
+          204,
+          204,
+          33,
+          192
+        ])
       }
     ];
 
