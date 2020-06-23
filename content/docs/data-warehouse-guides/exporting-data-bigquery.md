@@ -56,49 +56,32 @@ One popular method favored by Python-based data professionals is with [<u>Pandas
 
 Then, to retrieve the result of an SQL query from BigQuery, as a Pandas DataFrame, the API is relatively straightforward to implement:
 
-`from google.cloud import bigquery`
+`from google.cloud import bigquery
+ client = bigquery.Client()`
 
-`client = bigquery.Client()`
-
-`sql = """`
-
-`SELECT name, SUM(number) as count`
-
-`FROM`bigquery-public-data.usa_names.usa_1910_current``
-
-`GROUP BY name`
-
-`ORDER BY count DESC`
-
-`LIMIT 10`
-
-`"""`
+```js
+SELECT name, SUM(number) as count
+FROM`bigquery-public-data.usa_names.usa_1910_current
+GROUP BY name
+ORDER BY count DESC
+LIMIT 10
+```
 
 `df = client.query(sql).to_dataframe()`
 
 `df` becomes a DataFrame object:
 
 ``**`name count`**
-
-`0 James 5015584`
-
-`1 John 4885284`
-
-`2 Robert 4749154`
-
-`3 Michael 4366524`
-
-`4 William 3901134`
-
-`5 Mary 3750838`
-
-`6 David 3605910`
-
-`7 Richard 2544867`
-
-`8 Joseph 2528437`
-
-`9 Charles 2280600`
+0 James 5015584
+1 John 4885284
+2 Robert 4749154
+3 Michael 4366524
+4 William 3901134
+5 Mary 3750838
+6 David 3605910
+7 Richard 2544867
+8 Joseph 2528437
+9 Charles 2280600``
 
 Using the Pandas library with a DataFrame type object also means being able to export the query to a variety of formats, including JSON:
 
@@ -116,15 +99,11 @@ Outputting a result as JSON is very handy, but lacks schema information.  A les
 
 Result:
 
-`{'fields': [{'name': 'index', 'type': 'integer'},`
-
-`{'name': 'name', 'type': 'string'},`
-
-`{'name': 'count', 'type': 'integer'}],`
-
-`'primaryKey': ['index'],`
-
-`'pandas_version': '0.20.0'}`
+`{'fields': [{'name': 'index', 'type': 'integer'},
+{'name': 'name', 'type': 'string'},
+{'name': 'count', 'type': 'integer'}],
+'primaryKey': ['index'],
+'pandas_version': '0.20.0'}`
 
 _Note:  Using BigQuery from an API typically requires the setup of application credentials.  The process involves generating a “service account key” which is a JSON file, then creating an environment variable called GOOGLE_APPLICATION_CREDENTIALS that references it.  For more information, please see _[<u>_https://cloud.google.com/docs/authentication/getting-started_</u>](https://cloud.google.com/docs/authentication/getting-started)
 
