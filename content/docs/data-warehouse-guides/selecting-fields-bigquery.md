@@ -1,7 +1,7 @@
 ---
 title: Selecting Specific Columns in Google BigQuery
 subtitle: Learn how to select all columns, except some, within Bigquery
-priority: 1
+priority: 2
 ---
 
 When working with your data, it's sometimes easy to forget that you don't need to work with* all \_of it, \_all* of the time.
