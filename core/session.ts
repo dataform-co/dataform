@@ -312,11 +312,12 @@ export class Session {
     return newTest;
   }
 
-  public compileError(err: Error | string, path?: string) {
+  public compileError(err: Error | string, path?: string, actionName?: string) {
     const fileName = path || utils.getCallerFile(this.rootDir) || __filename;
 
     const compileError = dataform.CompilationError.create({
-      fileName
+      fileName,
+      actionName
     });
     if (typeof err === "string") {
       compileError.message = err;
@@ -356,27 +357,19 @@ export class Session {
       [].concat(compiledGraph.declarations.map(declaration => declaration.target))
     );
 
-    this.checkActionNameUniqueness(
-      [].concat(
-        compiledGraph.tables,
-        compiledGraph.assertions,
-        compiledGraph.operations,
-        compiledGraph.declarations
-      )
+    const standardActions = [].concat(
+      compiledGraph.tables,
+      compiledGraph.assertions,
+      compiledGraph.operations,
+      compiledGraph.declarations
     );
+
+    this.checkActionNameUniqueness(standardActions);
 
     this.checkTestNameUniqueness(compiledGraph.tests);
 
-    this.checkCanonicalTargetUniqueness(
-      [].concat(
-        compiledGraph.tables,
-        compiledGraph.assertions,
-        compiledGraph.operations,
-        compiledGraph.declarations
-      )
-    );
+    this.checkCanonicalTargetUniqueness(standardActions);
 
-    this.compileError("INTENTIONAL ERROR HERE", compiledGraph.tables[0]?.fileName);
     this.checkTableConfigValidity(compiledGraph.tables);
 
     this.checkCircularity(
@@ -434,7 +427,7 @@ export class Session {
         const compiledChunk = action.compile();
         compiledChunks.push(compiledChunk);
       } catch (e) {
-        this.compileError(e, action.proto.fileName);
+        this.compileError(e, action.proto.fileName, action.proto.name);
       }
     });
 
@@ -452,9 +445,10 @@ export class Session {
             new Error(
               `Missing dependency detected: Action "${
                 action.name
-              }" depends on "${utils.stringifyResolvable(dependency)}" which does not exist.`
+              }" depends on "${utils.stringifyResolvable(dependency)}" which does not exist`
             ),
-            action.fileName
+            action.fileName,
+            action.name
           );
         } else if (possibleDeps.length === 1) {
           // We found a single matching target, and fully-qualify it if it's a normal dependency,
@@ -469,7 +463,11 @@ export class Session {
           }
         } else {
           // Too many targets matched the dependency.
-          this.compileError(new Error(utils.ambiguousActionNameMsg(dependency, possibleDeps)));
+          this.compileError(
+            new Error(utils.ambiguousActionNameMsg(dependency, possibleDeps)),
+            action.fileName,
+            action.name
+          );
         }
       }
       action.dependencies = Object.keys(fullyQualifiedDependencies);
@@ -522,9 +520,10 @@ export class Session {
       if (allNames.includes(action.name)) {
         this.compileError(
           new Error(
-            `Duplicate action name detected. Names within a schema must be unique across tables, declarations, assertions, and operations: "${action.name}"`
+            `Duplicate action name detected. Names within a schema must be unique across tables, declarations, assertions, and operations`
           ),
-          action.fileName
+          action.fileName,
+          action.name
         );
       }
       allNames.push(action.name);
@@ -543,7 +542,8 @@ export class Session {
               action.canonicalTarget
             )}"`
           ),
-          action.fileName
+          action.fileName,
+          action.name
         );
       }
       allCanonicalTargets.set(action.canonicalTarget, true);
@@ -552,13 +552,25 @@ export class Session {
 
   private checkTableConfigValidity(tables: dataform.ITable[]) {
     tables.forEach(table => {
+      // type
+      if (!!table.type && !TableType.includes(table.type as TableType)) {
+        const predefinedTypes = joinQuoted(TableType);
+        this.compileError(
+          `Wrong type of table detected. Should only use predefined types: ${predefinedTypes}`,
+          table.fileName,
+          table.name
+        );
+      }
+
+      // sqldatawarehouse config
       if (!!table.sqlDataWarehouse) {
         if (!!table.uniqueKey && table.uniqueKey.length > 0) {
           this.compileError(
             new Error(
-              `Merging using unique keys for SQLDataWarehouse has not yet been implemented: ${table.name}`
+              `Merging using unique keys for SQLDataWarehouse has not yet been implemented`
             ),
-            table.fileName
+            table.fileName,
+            table.name
           );
         }
 
@@ -570,10 +582,9 @@ export class Session {
             !SQL_DATA_WAREHOUSE_DIST_HASH_REGEXP.test(distribution)
           ) {
             this.compileError(
-              new Error(
-                `Invalid value for sqldatawarehouse distribution (${distribution}): ${table.name}`
-              ),
-              table.fileName
+              new Error(`Invalid value for sqldatawarehouse distribution: ${distribution}`),
+              table.fileName,
+              table.name
             );
           }
         }
@@ -587,10 +598,10 @@ export class Session {
         ) => {
           const value = opts[prop];
           if (!opts.hasOwnProperty(prop)) {
-            this.compileError(`Property "${prop}" is not defined: ${table.name}`, table.fileName);
+            this.compileError(`Property "${prop}" is not defined`, table.fileName, table.name);
           } else if (value instanceof Array) {
             if (value.length === 0) {
-              this.compileError(`Property "${prop}" is not defined: ${table.name}`, table.fileName);
+              this.compileError(`Property "${prop}" is not defined`, table.fileName, table.name);
             }
           }
         };
@@ -605,10 +616,11 @@ export class Session {
         ) => {
           if (!!opts[prop] && !values.includes(opts[prop])) {
             this.compileError(
-              `Wrong value of "${prop}" property. Should only use predefined values of ${joinQuoted(
+              `Wrong value of "${prop}" property. Should only use predefined values: ${joinQuoted(
                 values
-              )}: ${table.name}`,
-              table.fileName
+              )}`,
+              table.fileName,
+              table.name
             );
           }
         };
@@ -630,8 +642,9 @@ export class Session {
       if (!!table.bigquery) {
         if (table.bigquery.partitionBy && table.type === "view") {
           this.compileError(
-            `partitionBy/clusterBy are not valid for BigQuery views; they are only valid for tables: ${table.name}`,
-            table.fileName
+            `partitionBy/clusterBy are not valid for BigQuery views; they are only valid for tables`,
+            table.fileName,
+            table.name
           );
         }
         if (
@@ -640,8 +653,9 @@ export class Session {
           !table.bigquery.partitionBy
         ) {
           this.compileError(
-            `clusterBy is not valid without partitionBy: ${table.name}`,
-            table.fileName
+            `clusterBy is not valid without partitionBy`,
+            table.fileName,
+            table.name
           );
         }
       }
@@ -651,8 +665,9 @@ export class Session {
         Table.IGNORED_PROPS[table.type].forEach(ignoredProp => {
           if (objectExistsOrIsNonEmpty(table[ignoredProp])) {
             this.compileError(
-              `Unused property was detected: "${ignoredProp}". This property is not used for tables with type "${table.type}" and will be ignored: ${table.name}`,
-              table.fileName
+              `Unused property was detected: "${ignoredProp}". This property is not used for tables with type "${table.type}" and will be ignored`,
+              table.fileName,
+              table.name
             );
           }
         });
@@ -666,7 +681,8 @@ export class Session {
       if (allNames.includes(testProto.name)) {
         this.compileError(
           new Error(`Duplicate test name detected: "${testProto.name}"`),
-          testProto.fileName
+          testProto.fileName,
+          testProto.name
         );
       }
       allNames.push(testProto.name);
@@ -708,9 +724,10 @@ export class Session {
       }
       this.compileError(
         new Error(
-          "Zero-dependency actions which create datasets are required to explicitly declare 'hermetic: (true|false)' when run caching is turned on."
+          "Zero-dependency actions which create datasets are required to explicitly declare 'hermetic: (true|false)' when run caching is turned on"
         ),
-        action.fileName
+        action.fileName,
+        action.name
       );
     });
   }

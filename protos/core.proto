@@ -172,6 +172,7 @@ message ValidationError {
 
 message CompilationError {
   string file_name = 1;
+  string action_name = 4;
   string message = 2;
   string stack = 3;
 }
