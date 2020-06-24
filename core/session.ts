@@ -7,11 +7,20 @@ import { AContextable, Assertion, IAssertionConfig } from "df/core/assertion";
 import { Contextable, ICommonContext, Resolvable } from "df/core/common";
 import { Declaration, IDeclarationConfig } from "df/core/declaration";
 import { IOperationConfig, Operation } from "df/core/operation";
-import { ITableConfig, ITableContext, Table, TableType } from "df/core/table";
+import {
+  DistStyleType,
+  ITableConfig,
+  ITableContext,
+  SortStyleType,
+  Table,
+  TableType
+} from "df/core/table";
 import * as test from "df/core/test";
 import * as utils from "df/core/utils";
 import { version as dataformCoreVersion } from "df/core/version";
 import { dataform } from "df/protos/ts";
+
+const SQL_DATA_WAREHOUSE_DIST_HASH_REGEXP = new RegExp("HASH\\s*\\(\\s*\\w*\\s*\\)\\s*");
 
 const DEFAULT_CONFIG = {
   defaultSchema: "dataform",
@@ -319,6 +328,7 @@ export class Session {
   }
 
   public compile(): dataform.CompiledGraph {
+    console.log("SESSION COMPILE CALLED");
     const compiledGraph = dataform.CompiledGraph.create({
       projectConfig: this.config,
       tables: this.compileGraphChunk(this.actions.filter(action => action instanceof Table)),
@@ -354,6 +364,7 @@ export class Session {
         compiledGraph.declarations
       )
     );
+
     this.checkTestNameUniqueness(compiledGraph.tests);
 
     this.checkCanonicalTargetUniqueness(
@@ -364,6 +375,9 @@ export class Session {
         compiledGraph.declarations
       )
     );
+
+    this.compileError("INTENTIONAL ERROR HERE", compiledGraph.tables[0]?.fileName);
+    this.checkTableConfigValidity(compiledGraph.tables);
 
     this.checkCircularity(
       [].concat(compiledGraph.tables, compiledGraph.assertions, compiledGraph.operations)
@@ -378,6 +392,8 @@ export class Session {
         )
       );
     }
+
+    console.log("Session -> this.graphErrors", this.graphErrors);
 
     return compiledGraph;
   }
@@ -534,6 +550,116 @@ export class Session {
     });
   }
 
+  private checkTableConfigValidity(tables: dataform.ITable[]) {
+    tables.forEach(table => {
+      if (!!table.sqlDataWarehouse) {
+        if (!!table.uniqueKey && table.uniqueKey.length > 0) {
+          this.compileError(
+            new Error(
+              `Merging using unique keys for SQLDataWarehouse has not yet been implemented: ${table.name}`
+            ),
+            table.fileName
+          );
+        }
+
+        if (table.sqlDataWarehouse.distribution) {
+          const distribution = table.sqlDataWarehouse.distribution.toUpperCase();
+          if (
+            distribution !== "REPLICATE" &&
+            distribution !== "ROUND_ROBIN" &&
+            !SQL_DATA_WAREHOUSE_DIST_HASH_REGEXP.test(distribution)
+          ) {
+            this.compileError(
+              new Error(
+                `Invalid value for sqldatawarehouse distribution (${distribution}): ${table.name}`
+              ),
+              table.fileName
+            );
+          }
+        }
+      }
+
+      // Redshift config
+      if (!!table.redshift) {
+        const validatePropertyDefined = (
+          opts: dataform.IRedshiftOptions,
+          prop: keyof dataform.IRedshiftOptions
+        ) => {
+          const value = opts[prop];
+          if (!opts.hasOwnProperty(prop)) {
+            this.compileError(`Property "${prop}" is not defined: ${table.name}`, table.fileName);
+          } else if (value instanceof Array) {
+            if (value.length === 0) {
+              this.compileError(`Property "${prop}" is not defined: ${table.name}`, table.fileName);
+            }
+          }
+        };
+        const validatePropertiesDefined = (
+          opts: dataform.IRedshiftOptions,
+          props: Array<keyof dataform.IRedshiftOptions>
+        ) => props.forEach(prop => validatePropertyDefined(opts, prop));
+        const validatePropertyValueInValues = (
+          opts: dataform.IRedshiftOptions,
+          prop: keyof dataform.IRedshiftOptions & ("distStyle" | "sortStyle"),
+          values: readonly string[]
+        ) => {
+          if (!!opts[prop] && !values.includes(opts[prop])) {
+            this.compileError(
+              `Wrong value of "${prop}" property. Should only use predefined values of ${joinQuoted(
+                values
+              )}: ${table.name}`,
+              table.fileName
+            );
+          }
+        };
+
+        if (table.redshift.distStyle || table.redshift.distKey) {
+          validatePropertiesDefined(table.redshift, ["distStyle", "distKey"]);
+          validatePropertyValueInValues(table.redshift, "distStyle", DistStyleType);
+        }
+        if (
+          table.redshift.sortStyle ||
+          (table.redshift.sortKeys && table.redshift.sortKeys.length)
+        ) {
+          validatePropertiesDefined(table.redshift, ["sortStyle", "sortKeys"]);
+          validatePropertyValueInValues(table.redshift, "sortStyle", SortStyleType);
+        }
+      }
+
+      // BigQuery config
+      if (!!table.bigquery) {
+        if (table.bigquery.partitionBy && table.type === "view") {
+          this.compileError(
+            `partitionBy/clusterBy are not valid for BigQuery views; they are only valid for tables: ${table.name}`,
+            table.fileName
+          );
+        }
+        if (
+          !!table.bigquery.clusterBy &&
+          table.bigquery.clusterBy.length > 0 &&
+          !table.bigquery.partitionBy
+        ) {
+          this.compileError(
+            `clusterBy is not valid without partitionBy: ${table.name}`,
+            table.fileName
+          );
+        }
+      }
+
+      // Ignored properties
+      if (!!Table.IGNORED_PROPS[table.type]) {
+        Table.IGNORED_PROPS[table.type].forEach(ignoredProp => {
+          if (objectExistsOrIsNonEmpty(table[ignoredProp])) {
+            this.compileError(
+              `Unused property was detected: "${ignoredProp}". This property is not used for tables with type "${table.type}" and will be ignored: ${table.name}`,
+              table.fileName
+            );
+          }
+        });
+      }
+    });
+  }
+
   private checkTestNameUniqueness(tests: dataform.ITest[]) {
     const allNames: string[] = [];
     tests.forEach(testProto => {
@@ -611,4 +737,20 @@ function getCanonicalProjectConfig(originalProjectConfig: dataform.IProjectConfi
     defaultDatabase: originalProjectConfig.defaultDatabase,
     assertionSchema: originalProjectConfig.assertionSchema
   };
+}
+
+function joinQuoted(values: readonly string[]) {
+  return values.map((value: string) => `"${value}"`).join(" | ");
+}
+
+function objectExistsOrIsNonEmpty(prop: any): boolean {
+  if (!prop) {
+    return false;
+  }
+
+  return (
+    (Array.isArray(prop) && !!prop.length) ||
+    (!Array.isArray(prop) && typeof prop === "object" && !!Object.keys(prop).length) ||
+    typeof prop !== "object"
+  );
 }
