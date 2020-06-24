@@ -43,14 +43,17 @@ suite(basename(__filename), () => {
       expect(coercedError).equals(originalError);
     });
 
-    test("preserves error like objects", () => {
+    test("coerces error like objects", () => {
       const originalError = {
         message: "message",
-        stack: "stack"
+        stack: "stack",
+        name: "name"
       };
       const coercedError = coerceAsError(originalError);
 
-      expect(coercedError).equals(originalError);
+      expect(coercedError.message).equals("message");
+      expect(coercedError.stack).equals("stack");
+      expect(coercedError.name).equals("name");
     });
 
     test("coerces non error types", () => {
