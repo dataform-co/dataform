@@ -95,3 +95,21 @@ Some examples can be found [here](datasets#referencing-other-datasets).
 <div className="bp3-callout bp3-icon-info-sign" markdown="1">
   By default, pre and post operations are run in the same context as the main query for BiqQuery and SQL Data Warehouse. To disable this, see <a href="./datasets">here</a>. This feature is not supported for Redshift or Snowflake.
 </div>
+
+## Sandboxing for fast, secure, reproducible SQLX compilation
+
+Dataform executes all JavaScript and SQLX code in a Dataform project inside a sandboxed environment that has no access to the database, data, or network.
+
+While this can be limiting in some cases, there are many benefits to this approach.
+
+#### Speed
+
+Dataform compilation is extremely fast, and can compile projects with hundreds of datasets and tens of thousands of lines of code in under a second. This is useful for development where you can immediately see what your code will do without waiting.
+
+#### Reproducibility
+
+Changing your generated SQL queries based on data in the warehouse can lead to pipelines breaking even when you haven't changed code. This can be frustrating to debug, and means table structures can change for downstream consumers without notice. With Dataform and SQLX, your build steps and generated table schematas are generally fixed, making debugging and reproducibility much easier.
+
+#### Security
+
+Third party code (such as dataform packages) shouldn't be able to read any of your data. As all project code runs in the sandbox, there is no way to read and leak your data, instead the worst a malicious package could do is cause SQL queries to execute in your warehouse.
