@@ -1,7 +1,13 @@
 import { ConnectionPool } from "mssql";
 
 import { Credentials } from "df/api/commands/credentials";
-import { IDbAdapter, IExecutionResult, OnCancel } from "df/api/dbadapters/index";
+import {
+  collectEvaluationQueries,
+  IDbAdapter,
+  IExecutionResult,
+  OnCancel,
+  QueryOrAction
+} from "df/api/dbadapters/index";
 import { parseAzureEvaluationError } from "df/api/utils/error_parsing";
 import { dataform } from "df/protos/ts";
 
@@ -87,22 +93,44 @@ export class SQLDataWarehouseDBAdapter implements IDbAdapter {
     });
   }
 
-  public async evaluate(statement: string) {
-    try {
-      await this.execute(`explain ${statement}`);
-      return dataform.QueryEvaluationResponse.create({
-        status: dataform.QueryEvaluationResponse.QueryEvaluationStatus.SUCCESS
-      });
-    } catch (e) {
-      return dataform.QueryEvaluationResponse.create({
-        status: dataform.QueryEvaluationResponse.QueryEvaluationStatus.FAILURE,
-        error: parseAzureEvaluationError(e)
-      });
+  public async evaluate(queryOrAction: QueryOrAction, projectConfig?: dataform.ProjectConfig) {
+    // TODO: Using `explain` before declaring a variable is not valid in SQL Data Warehouse.
+    const validationQueries = collectEvaluationQueries(
+      queryOrAction,
+      projectConfig?.useSingleQueryPerAction === undefined ||
+        !!projectConfig?.useSingleQueryPerAction,
+      (query: string) => (!!query ? `explain ${query}` : "")
+    ).map((validationQuery, index) => ({ index, validationQuery }));
+    const validationQueriesWithoutWrappers = collectEvaluationQueries(queryOrAction, false);
+
+    const queryEvaluations = new Array<dataform.IQueryEvaluation>();
+    for (const { index, validationQuery } of validationQueries) {
+      let evaluationResponse: dataform.IQueryEvaluation = {
+        status: dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
+      };
+      try {
+        await this.execute(validationQuery.query);
+      } catch (e) {
+        evaluationResponse = {
+          status: dataform.QueryEvaluation.QueryEvaluationStatus.FAILURE,
+          error: parseAzureEvaluationError(e)
+        };
+      }
+      queryEvaluations.push(
+        dataform.QueryEvaluation.create({
+          ...evaluationResponse,
+          incremental: validationQuery.incremental,
+          query: validationQueriesWithoutWrappers[index].query
+        })
+      );
     }
+    return queryEvaluations;
   }
 
   public async tables(): Promise<dataform.ITarget[]> {
-    const { rows } = await this.execute(
+    const {
+      rows
+    } = await this.execute(
       `select ${TABLE_SCHEMA_COL_NAME}, ${TABLE_NAME_COL_NAME} from ${INFORMATION_SCHEMA_SCHEMA_NAME}.tables`,
       { maxResults: 10000 }
     );

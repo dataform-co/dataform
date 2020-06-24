@@ -4,6 +4,7 @@ import * as path from "path";
 import { anyString, anything, instance, mock, verify, when } from "ts-mockito";
 
 import { Builder, credentials, format, prune, query, Runner } from "df/api";
+import { computeAllTransitiveInputs } from "df/api/commands/build";
 import { IDbAdapter } from "df/api/dbadapters";
 import { BigQueryDbAdapter } from "df/api/dbadapters/bigquery";
 import { actionsByTarget } from "df/api/utils/graphs";
@@ -47,17 +48,15 @@ suite("@dataform/api", () => {
     ]
   });
 
-  const TEST_ACTIONS = actionsByTarget(TEST_GRAPH);
-
   const TEST_STATE = dataform.WarehouseState.create({ tables: [] });
 
   suite("build", () => {
     test("exclude_disabled", () => {
       const builder = new Builder(
         TEST_GRAPH,
-        TEST_ACTIONS,
         { includeDependencies: true },
-        TEST_STATE
+        TEST_STATE,
+        computeAllTransitiveInputs(TEST_GRAPH)
       );
       const executionGraph = builder.build();
 
@@ -84,9 +83,9 @@ suite("@dataform/api", () => {
 
         const builder = new Builder(
           graphWithErrors,
-          actionsByTarget(graphWithErrors),
           {},
-          TEST_STATE
+          TEST_STATE,
+          computeAllTransitiveInputs(graphWithErrors)
         );
         builder.build();
       }).to.throw();
@@ -95,7 +94,12 @@ suite("@dataform/api", () => {
     test("trying to fully refresh a protected dataset fails", () => {
       const testGraph = dataform.CompiledGraph.create(TEST_GRAPH);
       testGraph.tables[0].protected = true;
-      const builder = new Builder(TEST_GRAPH, TEST_ACTIONS, { fullRefresh: true }, TEST_STATE);
+      const builder = new Builder(
+        TEST_GRAPH,
+        { fullRefresh: true },
+        TEST_STATE,
+        computeAllTransitiveInputs(TEST_GRAPH)
+      );
       expect(() => builder.build()).to.throw();
     });
 
@@ -122,7 +126,7 @@ suite("@dataform/api", () => {
         assertions: [{ name: "e", target: { schema: "schema", name: "d" } }]
       });
 
-      const builder = new Builder(graph, actionsByTarget(graph), {}, TEST_STATE);
+      const builder = new Builder(graph, {}, TEST_STATE, computeAllTransitiveInputs(graph));
       const executedGraph = builder.build();
 
       expect(executedGraph.actions.length).greaterThan(0);
@@ -168,10 +172,14 @@ suite("@dataform/api", () => {
           ],
           dataformCoreVersion: "1.4.9"
         });
-        const actionMap = actionsByTarget(graph);
 
         test(`${warehouse} when running non incrementally`, () => {
-          const action = new Builder(graph, actionMap, {}, TEST_STATE).build().actions[0];
+          const action = new Builder(
+            graph,
+            {},
+            TEST_STATE,
+            computeAllTransitiveInputs(graph)
+          ).build().actions[0];
           expect(action.tasks[0]).eql(
             dataform.ExecutionTask.create({
               type: "statement",
@@ -189,11 +197,11 @@ suite("@dataform/api", () => {
         test(`${warehouse} when running incrementally`, () => {
           const action = new Builder(
             graph,
-            actionMap,
             {},
             dataform.WarehouseState.create({
               tables: [{ target: graph.tables[0].target, fields: [] }]
-            })
+            }),
+            computeAllTransitiveInputs(graph)
           ).build().actions[0];
           expect(action.tasks[0]).eql(
             dataform.ExecutionTask.create({
@@ -365,7 +373,12 @@ suite("@dataform/api", () => {
           }
         ]
       });
-      const executionGraph = new Builder(graph, actionsByTarget(graph), {}, state).build();
+      const executionGraph = new Builder(
+        graph,
+        {},
+        state,
+        computeAllTransitiveInputs(graph)
+      ).build();
       expect(
         cleanSql(executionGraph.actions.filter(n => n.name === "incremental")[0].tasks[0].statement)
       ).equals(
@@ -463,7 +476,7 @@ suite("@dataform/api", () => {
         'create or replace view "schema"."redshift_view_with_binding" as query'
       ];
 
-      const builder = new Builder(testGraph, actionsByTarget(testGraph), {}, testState);
+      const builder = new Builder(testGraph, {}, testState, computeAllTransitiveInputs(testGraph));
       const executionGraph = builder.build();
 
       expect(executionGraph.actions)
@@ -497,7 +510,7 @@ suite("@dataform/api", () => {
       const testState = dataform.WarehouseState.create({});
       const expectedSQL = ['create or replace view "schema"."postgres_view" as query'];
 
-      const builder = new Builder(testGraph, actionsByTarget(testGraph), {}, testState);
+      const builder = new Builder(testGraph, {}, testState, computeAllTransitiveInputs(testGraph));
       const executionGraph = builder.build();
 
       expect(executionGraph.actions)
@@ -555,7 +568,10 @@ suite("@dataform/api", () => {
               statement:
                 "create or replace table `deeb.schema.name` partition by DATE(test) as select 1 as test"
             }
-          ]
+          ],
+          dependencies: [],
+          transitiveInputs: [],
+          hermeticity: dataform.ActionHermeticity.HERMETIC
         },
         {
           name: "plain",
@@ -570,14 +586,17 @@ suite("@dataform/api", () => {
               type: "statement",
               statement: "create or replace table `deeb.schema.name` as select 1 as test"
             }
-          ]
+          ],
+          dependencies: [],
+          transitiveInputs: [],
+          hermeticity: dataform.ActionHermeticity.HERMETIC
         }
       ];
       const executionGraph = new Builder(
         testGraph,
-        actionsByTarget(testGraph),
         {},
-        dataform.WarehouseState.create({})
+        dataform.WarehouseState.create({}),
+        computeAllTransitiveInputs(testGraph)
       ).build();
       expect(asPlainObject(executionGraph.actions)).deep.equals(
         asPlainObject(expectedExecutionActions)
@@ -627,7 +646,10 @@ suite("@dataform/api", () => {
               statement:
                 "create or replace table `deeb.schema.name` partition by DATE(test) cluster by name, revenue as select 1 as test"
             }
-          ]
+          ],
+          dependencies: [],
+          transitiveInputs: [],
+          hermeticity: dataform.ActionHermeticity.HERMETIC
         },
         {
           name: "plain",
@@ -642,14 +664,17 @@ suite("@dataform/api", () => {
               type: "statement",
               statement: "create or replace table `deeb.schema.name` as select 1 as test"
             }
-          ]
+          ],
+          dependencies: [],
+          transitiveInputs: [],
+          hermeticity: dataform.ActionHermeticity.HERMETIC
         }
       ];
       const executionGraph = new Builder(
         testGraph,
-        actionsByTarget(testGraph),
         {},
-        dataform.WarehouseState.create({})
+        dataform.WarehouseState.create({}),
+        computeAllTransitiveInputs(testGraph)
       ).build();
       expect(asPlainObject(executionGraph.actions)).deep.equals(
         asPlainObject(expectedExecutionActions)
@@ -680,7 +705,7 @@ suite("@dataform/api", () => {
         ]
       });
       const testState = dataform.WarehouseState.create({});
-      const builder = new Builder(testGraph, actionsByTarget(testGraph), {}, testState);
+      const builder = new Builder(testGraph, {}, testState, computeAllTransitiveInputs(testGraph));
       const executionGraph = builder.build();
 
       expect(executionGraph.actions)
@@ -694,6 +719,58 @@ suite("@dataform/api", () => {
         expect(statements).includes(
           `create or replace table "schema"."${action.name}" as select 1 as test`
         );
+      });
+    });
+
+    [
+      {
+        warehouse: "bigquery",
+        expectedQuery: "preOps;\ncreate or replace table `database.schema.b` as query;\npostOps"
+      },
+      {
+        warehouse: "sqldatawarehouse",
+        expectedQuery: `preOps;
+if object_id ('"schema"."b_temp"','U') is not null drop table "schema"."b_temp";
+create table "schema"."b_temp"
+     with(
+       distribution = ROUND_ROBIN
+     ) 
+     as query;
+if object_id ('"schema"."b"','U') is not null drop table "schema"."b";
+rename object "schema"."b_temp" to b;
+postOps`
+      }
+    ].forEach(({ warehouse, expectedQuery }) => {
+      test(`${warehouse}_useSingleQueryPerAction`, async () => {
+        const testGraph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
+          projectConfig: { warehouse, useSingleQueryPerAction: true },
+          tables: [
+            {
+              name: "a",
+              type: "table",
+              query: "query",
+              preOps: ["preOps"],
+              postOps: ["postOps"],
+              target: { schema: "schema", name: "b", database: "database" }
+            }
+          ]
+        });
+        const testState = dataform.WarehouseState.create({});
+        const builder = new Builder(
+          testGraph,
+          { useSingleQueryPerAction: true },
+          testState,
+          computeAllTransitiveInputs(testGraph)
+        );
+        const executionGraph = builder.build();
+
+        expect(executionGraph.actions)
+          .to.be.an("array")
+          .to.have.lengthOf(1);
+
+        const tasks = executionGraph.actions[0].tasks;
+        expect(tasks.length).to.equal(1);
+        expect(tasks[0].statement).to.equal(expectedQuery);
       });
     });
   });
@@ -826,7 +903,15 @@ suite("@dataform/api", () => {
         fullRefresh: true
       },
       warehouseState: {
-        tables: [{ type: "table" }]
+        tables: [
+          {
+            type: "table",
+            target: {
+              schema: "schema1",
+              name: "target1"
+            }
+          }
+        ]
       },
       actions: [
         {

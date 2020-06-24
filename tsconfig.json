@@ -9,7 +9,7 @@
     "noImplicitThis": true,
     "preserveConstEnums": true,
     "removeComments": true,
-    "target": "es6",
+    "target": "es2017",
     "sourceMap": true,
     "skipLibCheck": true,
     "experimentalDecorators": true,

@@ -21,6 +21,7 @@ message ProjectConfig {
   string table_prefix = 11;
   
   bool use_run_cache = 10;
+  bool use_single_query_per_action = 12;
 
   // Deprecated. Please use 'default_database' instead.
   string gcloud_project_id = 6;
@@ -103,6 +104,8 @@ message RunConfig {
   bool use_run_cache = 8;
   bool disable_set_metadata = 9;
 
+  bool use_single_query_per_action = 10;
+
   reserved 4, 6;
 }
 
@@ -183,13 +186,20 @@ message QueryEvaluationError {
   ErrorLocation error_location = 2;
 }
 
-message QueryEvaluationResponse {
+message QueryEvaluation {
   enum QueryEvaluationStatus {
     SUCCESS = 0;
     FAILURE = 1;
   }
   QueryEvaluationStatus status = 1;
   QueryEvaluationError error = 2;
+  bool incremental = 3;
+  string query = 4;
+}
+
+message ValidationQuery {
+  string query = 1;
+  bool incremental = 2;
 }
 
 message ActionDescriptor {
@@ -358,10 +368,9 @@ message CompiledGraph {
 
   string dataform_core_version = 10;
 
-  repeated ValidationError deprecated_validation_errors = 5;
-  repeated CompilationError deprecated_compilation_errors = 6;
-
   repeated Target targets = 11;
+
+  reserved 5, 6;
 }
 
 message ExecutionTask {
@@ -371,16 +380,20 @@ message ExecutionTask {
 
 message ExecutionAction {
   string name = 1;
-  repeated Target transitive_inputs = 7;
-  repeated ExecutionTask tasks = 2;
-  string type = 4;
   Target target = 5;
-  string table_type = 6;
   string file_name = 8;
-  ActionDescriptor action_descriptor = 9;
 
-  // Deprecated.
-  repeated string dependencies = 3 [deprecated = true]; // Use dependency_targets instead
+  string type = 4;
+  string table_type = 6;
+
+  // TODO: Replace this with a dependency_targets field.
+  repeated string dependencies = 3;
+  repeated Target transitive_inputs = 7;
+  ActionHermeticity hermeticity = 10;
+
+  repeated ExecutionTask tasks = 2;
+
+  ActionDescriptor action_descriptor = 9;
 }
 
 message WarehouseState {
@@ -491,7 +504,7 @@ message PersistedTableMetadata {
   Target target = 1;
   string definition_hash = 2; // sha1 hash of ExectionAction object
   int64 last_updated_millis = 3; // Timestamp of the last modification to this dataset (where that modification happened as a result of a Dataform run).
-  repeated Target dependencies = 4;
+  repeated TableMetadata transitive_input_tables = 6;
   
-  reserved 5;
+  reserved 4, 5;
 }

@@ -143,6 +143,70 @@ suite("@dataform/integration/sqldatawarehouse", ({ before, after }) => {
     }
   });
 
+  suite("evaluate", async () => {
+    test("evaluate from valid compiled graph as valid", async () => {
+      // Create and run the project.
+      const compiledGraph = await dfapi.compile({
+        projectDir: "tests/integration/sqldatawarehouse_project"
+      });
+      const executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
+      await dfapi.run(executionGraph, dbadapter).result();
+
+      const view = keyBy(compiledGraph.tables, t => t.name)["df_integration_test.example_view"];
+      let evaluations = await dbadapter.evaluate(dataform.Table.create(view));
+      expect(evaluations.length).to.equal(1);
+      expect(evaluations[0].status).to.equal(
+        dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
+      );
+
+      const table = keyBy(compiledGraph.tables, t => t.name)["df_integration_test.example_table"];
+      evaluations = await dbadapter.evaluate(dataform.Table.create(table));
+      expect(evaluations.length).to.equal(1);
+      expect(evaluations[0].status).to.equal(
+        dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
+      );
+
+      const assertion = keyBy(compiledGraph.assertions, t => t.name)[
+        "df_integration_test_assertions.example_assertion_pass"
+      ];
+      evaluations = await dbadapter.evaluate(dataform.Assertion.create(assertion));
+      expect(evaluations.length).to.equal(1);
+      expect(evaluations[0].status).to.equal(
+        dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
+      );
+
+      const incremental = keyBy(compiledGraph.tables, t => t.name)[
+        "df_integration_test.example_incremental"
+      ];
+      evaluations = await dbadapter.evaluate(dataform.Table.create(incremental));
+      expect(evaluations.length).to.equal(2);
+      expect(evaluations[0].status).to.equal(
+        dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
+      );
+      expect(evaluations[1].status).to.equal(
+        dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
+      );
+    });
+
+    test("invalid table fails validation", async () => {
+      const evaluations = await dbadapter.evaluate(
+        dataform.Table.create({
+          type: "table",
+          query: "thisisillegal",
+          target: {
+            schema: "df_integration_test",
+            name: "example_illegal_table",
+            database: "dataform-integration-tests"
+          }
+        })
+      );
+      expect(evaluations.length).to.equal(1);
+      expect(evaluations[0].status).to.equal(
+        dataform.QueryEvaluation.QueryEvaluationStatus.FAILURE
+      );
+    });
+  });
+
   suite("publish tasks", async () => {
     test("incremental pre and post ops, core version <= 1.4.8", async () => {
       // 1.4.8 used `preOps` and `postOps` instead of `incrementalPreOps` and `incrementalPostOps`.
@@ -155,18 +219,16 @@ suite("@dataform/integration/sqldatawarehouse", ({ before, after }) => {
         target: { schema: "", name: "", database: "" }
       };
 
-      const bqadapter = new SQLDataWarehouseAdapter({ warehouse: "sqldatawarehouse" }, "1.4.8");
+      const adapter = new SQLDataWarehouseAdapter({ warehouse: "sqldatawarehouse" }, "1.4.8");
 
-      const refresh = bqadapter.publishTasks(table, { fullRefresh: true }, { fields: [] }).build();
+      const refresh = adapter.publishTasks(table, { fullRefresh: true }, { fields: [] }).build();
 
       expect(refresh[0].statement).to.equal(table.preOps[0]);
       expect(refresh[1].statement).to.equal(table.preOps[1]);
       expect(refresh[refresh.length - 2].statement).to.equal(table.postOps[0]);
       expect(refresh[refresh.length - 1].statement).to.equal(table.postOps[1]);
 
-      const increment = bqadapter
-        .publishTasks(table, { fullRefresh: false }, { fields: [] })
-        .build();
+      const increment = adapter.publishTasks(table, { fullRefresh: false }, { fields: [] }).build();
 
       expect(increment[0].statement).to.equal(table.preOps[0]);
       expect(increment[1].statement).to.equal(table.preOps[1]);

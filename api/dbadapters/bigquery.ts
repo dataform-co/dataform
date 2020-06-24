@@ -4,7 +4,13 @@ import { PromisePoolExecutor } from "promise-pool-executor";
 import { BigQuery } from "@google-cloud/bigquery";
 import { QueryResultsOptions } from "@google-cloud/bigquery/build/src/job";
 import { Credentials } from "df/api/commands/credentials";
-import { IDbAdapter, IExecutionResult, OnCancel } from "df/api/dbadapters/index";
+import {
+  collectEvaluationQueries,
+  IDbAdapter,
+  IExecutionResult,
+  OnCancel,
+  QueryOrAction
+} from "df/api/dbadapters/index";
 import { parseBigqueryEvalError } from "df/api/utils/error_parsing";
 import {
   buildQuery,
@@ -12,6 +18,12 @@ import {
   hashExecutionAction,
   IMetadataRow
 } from "df/api/utils/run_cache";
+import { ErrorWithCause } from "df/common/errors/errors";
+import {
+  JSONObjectStringifier,
+  StringifiedMap,
+  StringifiedSet
+} from "df/common/strings/stringifier";
 import { dataform } from "df/protos/ts";
 
 const CACHED_STATE_TABLE_NAME = "dataform_meta.cache_state";
@@ -90,33 +102,46 @@ export class BigQueryDbAdapter implements IDbAdapter {
       .promise();
   }
 
-  public async evaluate(statement: string) {
-    try {
-      await this.getClient().query({
-        useLegacySql: false,
-        query: statement,
-        dryRun: true
-      });
-      return dataform.QueryEvaluationResponse.create({
-        status: dataform.QueryEvaluationResponse.QueryEvaluationStatus.SUCCESS
-      });
-    } catch (e) {
-      return dataform.QueryEvaluationResponse.create({
-        status: dataform.QueryEvaluationResponse.QueryEvaluationStatus.FAILURE,
-        error: parseBigqueryEvalError(e)
-      });
+  public async evaluate(queryOrAction: QueryOrAction, projectConfig?: dataform.ProjectConfig) {
+    const validationQueries = collectEvaluationQueries(
+      queryOrAction,
+      projectConfig?.useSingleQueryPerAction === undefined ||
+        !!projectConfig?.useSingleQueryPerAction
+    );
+    const queryEvaluations = new Array<dataform.IQueryEvaluation>();
+
+    for (const { query, incremental } of validationQueries) {
+      let evaluationResponse: dataform.IQueryEvaluation = {
+        status: dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
+      };
+      try {
+        await this.getClient().query({
+          useLegacySql: false,
+          query,
+          dryRun: true
+        });
+      } catch (e) {
+        evaluationResponse = {
+          status: dataform.QueryEvaluation.QueryEvaluationStatus.FAILURE,
+          error: parseBigqueryEvalError(e)
+        };
+      }
+      queryEvaluations.push(
+        dataform.QueryEvaluation.create({ ...evaluationResponse, incremental, query })
+      );
     }
+    return queryEvaluations;
   }
 
   public tables(): Promise<dataform.ITarget[]> {
     return this.getClient()
-      .getDatasets({ autoPaginate: true })
+      .getDatasets({ autoPaginate: true, maxResults: 1000 })
       .then((result: any) => {
         return Promise.all(
           result[0].map((dataset: any) => {
             return this.pool
               .addSingleTask({
-                generator: () => dataset.getTables({ autoPaginate: true })
+                generator: () => dataset.getTables({ autoPaginate: true, maxResults: 1000 })
               })
               .promise();
           })
@@ -236,21 +261,31 @@ export class BigQueryDbAdapter implements IDbAdapter {
     if (actions.length === 0) {
       return;
     }
-    const tableMetadataMap = new Map<dataform.ITarget, IBigQueryTableMetadata>();
+    const allInvolvedTargets = new StringifiedSet(JSONObjectStringifier.create<dataform.ITarget>());
+    actions.forEach(action => {
+      allInvolvedTargets.add(action.target);
+      action.transitiveInputs.forEach(transitiveInput => allInvolvedTargets.add(transitiveInput));
+    });
+
+    const tableMetadataByTarget = new StringifiedMap<dataform.ITarget, dataform.ITableMetadata>(
+      JSONObjectStringifier.create()
+    );
     await Promise.all(
-      actions.map(async action => {
-        tableMetadataMap.set(action.target, await this.getMetadata(action.target));
+      Array.from(allInvolvedTargets).map(async target => {
+        tableMetadataByTarget.set(target, await this.table(target));
       })
     );
     const queries = actions.map(action => {
-      const definitionHash = hashExecutionAction(action);
-      const dependencies = action.transitiveInputs;
-      const metadata = tableMetadataMap.get(action.target);
       const persistTable = dataform.PersistedTableMetadata.create({
         target: action.target,
-        lastUpdatedMillis: Long.fromString(metadata.lastModifiedTime),
-        definitionHash,
-        dependencies
+        lastUpdatedMillis: tableMetadataByTarget.get(action.target).lastUpdatedMillis,
+        definitionHash: hashExecutionAction(action),
+        transitiveInputTables: action.transitiveInputs.map(transitiveInput => {
+          if (!tableMetadataByTarget.has(transitiveInput)) {
+            throw new Error(`Could not find table metadata for ${JSON.stringify(transitiveInput)}`);
+          }
+          return tableMetadataByTarget.get(transitiveInput);
+        })
       });
 
       const targetName = `${action.target.database}.${action.target.schema}.${action.target.name}`;
@@ -335,7 +370,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
         return null;
       }
       // otherwise throw the error as normal
-      throw e;
+      throw new ErrorWithCause("Error getting BigQuery metadata.", e);
     }
   }
 
@@ -359,7 +394,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
       const allRows: any[] = [];
       const stream = this.getClient().createQueryStream(statement);
       stream
-        .on("error", reject)
+        .on("error", e => reject(new ErrorWithCause(`Error running query: ${e}`, e)))
         .on("data", row => {
           if (!maxResults) {
             allRows.push(row);
@@ -388,58 +423,70 @@ export class BigQueryDbAdapter implements IDbAdapter {
       this.getClient().createQueryJob(
         { useLegacySql: false, jobPrefix: "dataform-", query: statement, maxResults },
         async (err, job) => {
-          if (err) {
-            return reject(err);
-          }
-          // Cancelled before it was created, kill it now.
-          if (isCancelled) {
-            await job.cancel();
-            return reject(new Error("Query cancelled."));
-          }
-          if (onCancel) {
-            onCancel(async () => {
-              // Cancelled while running.
+          try {
+            if (err) {
+              return reject(new ErrorWithCause(`Error running query job: ${err}`, err));
+            }
+            // Cancelled before it was created, kill it now.
+            if (isCancelled) {
               await job.cancel();
               return reject(new Error("Query cancelled."));
-            });
-          }
-
-          let results: any[] = [];
-          const manualPaginationCallback = async (
-            e: Error,
-            rows: any[],
-            nextQuery: QueryResultsOptions
-          ) => {
-            if (e) {
-              reject(e);
-              return;
             }
-            results = results.concat(rows.slice(0, maxResults - results.length));
-            if (nextQuery && results.length < maxResults) {
-              // More results exist and we have space to consume them.
-              job.getQueryResults(nextQuery, manualPaginationCallback);
-            } else {
-              const [jobMetadata] = await job.getMetadata();
-              const queryData = {
-                rows: results,
-                metadata: {
-                  bigquery: {
-                    jobId: jobMetadata.jobReference.jobId,
-                    totalBytesBilled: Long.fromString(
-                      jobMetadata.statistics.query.totalBytesBilled
-                    ),
-                    totalBytesProcessed: Long.fromString(
-                      jobMetadata.statistics.query.totalBytesProcessed
-                    )
-                  }
+            if (onCancel) {
+              onCancel(async () => {
+                // Cancelled while running.
+                try {
+                  await job.cancel();
+                  reject(new Error("Query cancelled."));
+                } catch (e) {
+                  reject(new ErrorWithCause("Error trying to cancel query.", e));
                 }
-              };
-              resolve(queryData);
+              });
             }
-          };
-          // For non interactive queries, we can set a hard limit by disabling auto pagination.
-          // This will cause problems for unit tests that have more than MAX_RESULTS rows to compare.
-          job.getQueryResults({ autoPaginate: false, maxResults }, manualPaginationCallback);
+
+            let results: any[] = [];
+            const manualPaginationCallback = async (
+              e: Error,
+              rows: any[],
+              nextQuery: QueryResultsOptions
+            ) => {
+              try {
+                if (e) {
+                  reject(e);
+                  return;
+                }
+                results = results.concat(rows.slice(0, maxResults - results.length));
+                if (nextQuery && results.length < maxResults) {
+                  // More results exist and we have space to consume them.
+                  job.getQueryResults(nextQuery, manualPaginationCallback);
+                } else {
+                  const [jobMetadata] = await job.getMetadata();
+                  const queryData = {
+                    rows: results,
+                    metadata: {
+                      bigquery: {
+                        jobId: jobMetadata.jobReference.jobId,
+                        totalBytesBilled: Long.fromString(
+                          jobMetadata.statistics.query.totalBytesBilled
+                        ),
+                        totalBytesProcessed: Long.fromString(
+                          jobMetadata.statistics.query.totalBytesProcessed
+                        )
+                      }
+                    }
+                  };
+                  resolve(queryData);
+                }
+              } catch (e) {
+                reject(new ErrorWithCause("Error paginating query results.", e));
+              }
+            };
+            // For non interactive queries, we can set a hard limit by disabling auto pagination.
+            // This will cause problems for unit tests that have more than MAX_RESULTS rows to compare.
+            job.getQueryResults({ autoPaginate: false, maxResults }, manualPaginationCallback);
+          } catch (e) {
+            reject(new ErrorWithCause("Error handling results of query job.", e));
+          }
         }
       )
     );

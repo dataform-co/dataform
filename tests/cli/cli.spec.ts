@@ -106,6 +106,7 @@ select 1 as test
       actions: [
         {
           fileName: "definitions/example.sqlx",
+          hermeticity: "HERMETIC",
           name: "dataform.example",
           tableType: "table",
           target: {
@@ -141,7 +142,8 @@ select 1 as test
       },
       runConfig: {
         fullRefresh: false,
-        useRunCache: false
+        useRunCache: false,
+        useSingleQueryPerAction: false
       },
       warehouseState: {}
     });

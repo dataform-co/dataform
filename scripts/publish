@@ -13,7 +13,7 @@ fi
 
 # Run all the tests.
 
-bazel test //...
+bazel test //... --build_tests_only
 
 bazel run packages/@dataform/assertion_utils:package.publish
 bazel run packages/@dataform/cli:package.publish

@@ -18,7 +18,7 @@ suite("@dataform/integration/snowflake", ({ before, after }) => {
 
   after("close adapter", () => dbadapter.close());
 
-  test("run", { timeout: 60000 }, async () => {
+  test("run", { timeout: 90000 }, async () => {
     const compiledGraph = await dfapi.compile({
       projectDir: "tests/integration/snowflake_project"
     });
@@ -195,6 +195,69 @@ suite("@dataform/integration/snowflake", ({ before, after }) => {
         ]);
       });
     }
+  });
+
+  suite("evaluate", async () => {
+    test("evaluate from valid compiled graph as valid", async () => {
+      // Create and run the project.
+      const compiledGraph = await dfapi.compile({
+        projectDir: "tests/integration/snowflake_project"
+      });
+      const executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
+      await dfapi.run(executionGraph, dbadapter).result();
+
+      const view = keyBy(compiledGraph.tables, t => t.name)["DF_INTEGRATION_TEST.EXAMPLE_VIEW"];
+      let evaluations = await dbadapter.evaluate(dataform.Table.create(view));
+      expect(evaluations.length).to.equal(1);
+      expect(evaluations[0].status).to.equal(
+        dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
+      );
+
+      const table = keyBy(compiledGraph.tables, t => t.name)["DF_INTEGRATION_TEST.EXAMPLE_TABLE"];
+      evaluations = await dbadapter.evaluate(dataform.Table.create(table));
+      expect(evaluations.length).to.equal(1);
+      expect(evaluations[0].status).to.equal(
+        dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
+      );
+
+      const assertion = keyBy(compiledGraph.assertions, t => t.name)[
+        "DF_INTEGRATION_TEST_ASSERTIONS.EXAMPLE_ASSERTION_PASS"
+      ];
+      evaluations = await dbadapter.evaluate(dataform.Assertion.create(assertion));
+      expect(evaluations.length).to.equal(1);
+      expect(evaluations[0].status).to.equal(
+        dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
+      );
+
+      const incremental = keyBy(compiledGraph.tables, t => t.name)[
+        "DF_INTEGRATION_TEST.EXAMPLE_INCREMENTAL"
+      ];
+      evaluations = await dbadapter.evaluate(dataform.Table.create(incremental));
+      expect(evaluations.length).to.equal(2);
+      expect(evaluations[0].status).to.equal(
+        dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
+      );
+      expect(evaluations[1].status).to.equal(
+        dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
+      );
+    });
+
+    test("invalid table fails validation", async () => {
+      const evaluations = await dbadapter.evaluate(
+        dataform.Table.create({
+          type: "table",
+          query: "thisisillegal",
+          target: {
+            name: "EXAMPLE_ILLEGAL_TABLE",
+            database: "DF_INTEGRATION_TEST"
+          }
+        })
+      );
+      expect(evaluations.length).to.equal(1);
+      expect(evaluations[0].status).to.equal(
+        dataform.QueryEvaluation.QueryEvaluationStatus.FAILURE
+      );
+    });
   });
 
   suite("publish tasks", async () => {
