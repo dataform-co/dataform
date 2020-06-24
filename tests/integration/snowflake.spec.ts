@@ -84,10 +84,7 @@ suite("@dataform/integration/snowflake", ({ before, after }) => {
       const expectedResult = expectedFailedActions.includes(actionName)
         ? dataform.ActionResult.ExecutionStatus.FAILED
         : dataform.ActionResult.ExecutionStatus.SUCCESSFUL;
-      expect(
-        actionMap[actionName].status,
-        JSON.stringify([executionActionMap[actionName], actionMap[actionName].tasks], null, 4)
-      ).equals(expectedResult);
+      expect(actionMap[actionName].status).equals(expectedResult);
     }
 
     expect(

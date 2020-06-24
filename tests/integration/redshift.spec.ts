@@ -38,7 +38,7 @@ suite("@dataform/integration/redshift", ({ before, after }) => {
       )
     );
     try {
-    await dropFunctions.reduce((promiseChain, fn) => promiseChain.then(fn), Promise.resolve());
+      await dropFunctions.reduce((promiseChain, fn) => promiseChain.then(fn), Promise.resolve());
     } catch (e) {
       // This seems to throw even if the tables don't exist.
     }
