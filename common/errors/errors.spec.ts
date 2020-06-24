@@ -37,7 +37,7 @@ suite(basename(__filename), () => {
 
   suite("coerceAsError", () => {
     test("preserves original error", () => {
-      const originalError = new Error("hello");
+      const originalError = new ErrorWithCause(new Error("cause"));
       const coercedError = coerceAsError(originalError);
 
       expect(coercedError).equals(originalError);

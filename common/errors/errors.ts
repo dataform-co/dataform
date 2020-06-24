@@ -28,4 +28,5 @@ export function coerceAsError<T extends Error | any>(errorLike: T): T extends Er
   if (errorLike.name) {
     coercedError.name = errorLike.name;
   }
+  return coercedError as any;
 }
