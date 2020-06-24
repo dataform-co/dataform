@@ -108,7 +108,7 @@ Dataform compilation is extremely fast, and can compile projects with hundreds o
 
 #### Reproducibility
 
-Changing your generated SQL queries based on data in the warehouse can lead to pipelines breaking even when you haven't changed code. This can be frustrating to debug, and means table structures can change for downstream consumers without notice.
+Changing your generated SQL queries based on data in the warehouse can lead to pipelines breaking even when you haven't changed code. This can be frustrating to debug, and means table structures can change for downstream consumers without notice. With Dataform and SQLX, your build steps and generated table schematas are generally fixed, making debugging and reproducibility much easier.
 
 #### Security
 
