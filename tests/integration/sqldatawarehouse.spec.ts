@@ -156,7 +156,7 @@ suite("@dataform/integration/sqldatawarehouse", ({ before, after }) => {
       let evaluations = await dbadapter.evaluate(dataform.Table.create(view));
       expect(evaluations.length).to.equal(1);
       expect(evaluations[0].status).to.equal(
-        dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
+        dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS,
       );
 
       const table = keyBy(compiledGraph.tables, t => t.name)["df_integration_test.example_table"];
