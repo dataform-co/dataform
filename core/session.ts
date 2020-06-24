@@ -329,7 +329,6 @@ export class Session {
   }
 
   public compile(): dataform.CompiledGraph {
-    console.log("SESSION COMPILE CALLED");
     const compiledGraph = dataform.CompiledGraph.create({
       projectConfig: this.config,
       tables: this.compileGraphChunk(this.actions.filter(action => action instanceof Table)),
@@ -385,8 +384,6 @@ export class Session {
         )
       );
     }
-
-    console.log("Session -> this.graphErrors", this.graphErrors);
 
     return compiledGraph;
   }
@@ -724,7 +721,7 @@ export class Session {
       }
       this.compileError(
         new Error(
-          "Zero-dependency actions which create datasets are required to explicitly declare 'hermetic: (true|false)' when run caching is turned on"
+          "Zero-dependency actions which create datasets are required to explicitly declare 'hermetic: (true|false)' when run caching is turned on."
         ),
         action.fileName,
         action.name
