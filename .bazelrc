@@ -11,7 +11,6 @@ query --incompatible_disable_deprecated_attr_params=false
 build:remote-cache --remote_cache=grpcs://remotebuildexecution.googleapis.com
 build:remote-cache --remote_timeout=3600
 build:remote-cache --auth_enabled=true
-build:remote-cache --jobs=16
 
 
 # Set up remote cache rules to use our RBE instance.
