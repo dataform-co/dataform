@@ -464,7 +464,6 @@ export class BigQueryDbAdapter implements IDbAdapter {
                   if (!!jobMetadata.status?.errorResult) {
                     reject(new Error(jobMetadata.status.errorResult.message));
                   }
-                  console.log(JSON.stringify(jobMetadata));
                   const queryData = {
                     rows: results,
                     metadata: {
