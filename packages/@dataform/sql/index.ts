@@ -5,7 +5,7 @@ import { ISqlDialect, Sql } from "df/sql";
  */
 const getDefaultDialect = () => {
   const dataformWarehouse = (global as any).session?.config?.warehouse;
-  if (!!dataformWarehouse) {
+  if (!dataformWarehouse) {
     return "standard";
   }
   return ({
