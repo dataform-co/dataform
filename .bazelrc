@@ -8,10 +8,7 @@ query --incompatible_disable_deprecated_attr_params=false
 
 # The following flags enable the remote cache so action results can be shared
 # across machines, developers, and workspaces.
-build:remote-cache --remote_cache=grpcs://remotebuildexecution.googleapis.com
+build:remote-cache --remote_cache=grpcs://buildfarm.corp.dataform.co
 build:remote-cache --remote_timeout=3600
 build:remote-cache --auth_enabled=true
-
-
-# Set up remote cache rules to use our RBE instance.
-build:remote-cache --remote_instance_name=projects/tada-analytics/instances/default_instance
+build:remote-cache --google_default_credentials=true
