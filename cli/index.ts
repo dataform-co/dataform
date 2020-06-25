@@ -615,7 +615,11 @@ export function runCli() {
         positionalOptions: [warehouseOption],
         options: [credentialsOption],
         processFn: async argv => {
-          const dbadapter = await dbadapters.create(argv.credentials, argv.warehouse);
+          const readCredentials = credentials.read(
+            argv.warehouse,
+            actuallyResolve(argv.credentials)
+          );
+          const dbadapter = await dbadapters.create(readCredentials, argv.warehouse);
           try {
             printListTablesResult(await table.list(dbadapter));
           } finally {
@@ -630,7 +634,11 @@ export function runCli() {
         positionalOptions: [warehouseOption],
         options: [credentialsOption],
         processFn: async argv => {
-          const dbadapter = await dbadapters.create(argv.credentials, argv.warehouse);
+          const readCredentials = credentials.read(
+            argv.warehouse,
+            actuallyResolve(argv.credentials)
+          );
+          const dbadapter = await dbadapters.create(readCredentials, argv.warehouse);
           try {
             printGetTableResult(
               await table.get(dbadapter, {

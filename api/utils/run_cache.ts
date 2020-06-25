@@ -3,8 +3,7 @@ import * as objectHash from "object-hash";
 import { dataform } from "df/protos/ts";
 
 export interface IMetadataRow {
-  target_name: string;
-  metadata_json: string;
+  target: string;
   metadata_proto: string;
 }
 
@@ -17,16 +16,6 @@ export const decodePersistedTableMetadata = (protoString: string) => {
   return dataform.PersistedTableMetadata.decode(encodedProto);
 };
 
-export const encodePersistedTableMetadata = (table: dataform.PersistedTableMetadata) => {
-  const encodedProtoBuffer = Buffer.from(dataform.PersistedTableMetadata.encode(table).finish());
-  return encodedProtoBuffer.toString("base64");
-};
-
-export const buildQuery = (targetName: string, table: dataform.PersistedTableMetadata) => {
-  const encodedProtoString = encodePersistedTableMetadata(table);
-  const query = `SELECT 
-          '${targetName}' AS target_name,
-          '${JSON.stringify(table.toJSON())}' AS metadata_json,
-          '${encodedProtoString}' as metadata_proto`;
-  return query;
+export const encodePersistedTableMetadata = (table: dataform.IPersistedTableMetadata) => {
+  return Buffer.from(dataform.PersistedTableMetadata.encode(table).finish()).toString("base64");
 };
