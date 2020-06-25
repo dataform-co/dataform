@@ -16,7 +16,8 @@ import {
   decodePersistedTableMetadata,
   encodePersistedTableMetadata,
   hashExecutionAction,
-  IMetadataRow
+  IMetadataRow,
+  toRowKey
 } from "df/api/utils/run_cache";
 import { ErrorWithCause } from "df/common/errors/errors";
 import {
@@ -258,7 +259,6 @@ export class BigQueryDbAdapter implements IDbAdapter {
     if (allActions.length === 0) {
       return;
     }
-    const targetStringifier = JSONObjectStringifier.create<dataform.ITarget>();
     try {
       // Create the cache table, if needed.
       await this.execute(
@@ -273,7 +273,7 @@ CREATE TABLE IF NOT EXISTS \`${CACHED_STATE_TABLE_NAME}\` (
       await this.execute(
         `
 DELETE \`${CACHED_STATE_TABLE_NAME}\` WHERE target IN (${allActions
-          .map(({ target }) => `'${targetStringifier.stringify(target)}'`)
+          .map(({ target }) => `'${toRowKey(target)}'`)
           .join(",")})`,
         options
       );
@@ -294,7 +294,7 @@ DELETE \`${CACHED_STATE_TABLE_NAME}\` WHERE target IN (${allActions
         )
         .map(
           action =>
-            `('${targetStringifier.stringify(action.target)}', '${encodePersistedTableMetadata({
+            `('${toRowKey(action.target)}', '${encodePersistedTableMetadata({
               target: action.target,
               lastUpdatedMillis: transitiveInputMetadataByTarget.get(action.target)
                 .lastUpdatedMillis,
@@ -306,18 +306,17 @@ DELETE \`${CACHED_STATE_TABLE_NAME}\` WHERE target IN (${allActions
         );
       // We have to split up the INSERT queries to get around BigQuery's query length limit.
       while (valuesTuples.length > 0) {
-        let valuesToInsert = valuesTuples.pop();
-        while (valuesTuples.length > 0 && valuesToInsert.length < MAX_QUERY_LENGTH * 0.95) {
-          valuesToInsert += `, ${valuesTuples.pop()}`;
+        let insertStatement = `INSERT INTO \`${CACHED_STATE_TABLE_NAME}\` (target, metadata_proto) VALUES ${valuesTuples.pop()}`;
+        let nextInsertStatement = `${insertStatement}, ${valuesTuples[valuesTuples.length - 1]}`;
+        while (valuesTuples.length > 0 && nextInsertStatement.length < MAX_QUERY_LENGTH) {
+          insertStatement = nextInsertStatement;
+          valuesTuples.pop();
+          nextInsertStatement = `${insertStatement}, ${valuesTuples[valuesTuples.length - 1]}`;
         }
-        await this.execute(
-          `
-INSERT INTO \`${CACHED_STATE_TABLE_NAME}\` (target, metadata_proto) VALUES ${valuesToInsert}`,
-          options
-        );
+        await this.execute(insertStatement, options);
       }
     } catch (e) {
-      if (e.message.includes("Exceeded rate limits")) {
+      if (String(e).includes("Exceeded rate limits")) {
         // Silently swallow rate-exceeded Errors; there's nothing we can do here, and they aren't harmful
         // (at worst, future runs may not cache as well as they could have).
         return;
