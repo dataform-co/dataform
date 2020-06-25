@@ -7,7 +7,7 @@ FROM
 )
 
 // This example uses a non default database; metadata retrieved should indicate to increment regardless.
-config { type: "incremental", database: "TADA2" }
+config { type: "incremental", database: "INTEGRATION_TESTS2" }
 
 SELECT user_timestamp, user_id
 FROM example_data
