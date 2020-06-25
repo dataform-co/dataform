@@ -8,7 +8,7 @@ import { IWiths, WithBuilder } from "df/sql/builders/with";
 
 export type DurationUnit = "day" | "week" | "month" | "quarter" | "year";
 
-export type ISqlDialect = "standard" | "snowflake" | "postgres";
+export type ISqlDialect = "standard" | "snowflake" | "postgres" | "mssql";
 
 export class Sql {
   constructor(private readonly dialect: ISqlDialect = "standard") {}
@@ -142,6 +142,19 @@ export class Sql {
     return `unix_millis(${timestamp})`;
   }
 
+  public timestampCurrentUTC() {
+    if (this.dialect === "postgres") {
+      return "current_timestamp::timestamp";
+    }
+    if (this.dialect === "snowflake") {
+      return "convert_timezone('UTC', current_timestamp())::timestamp";
+    }
+    if (this.dialect === "mssql") {
+      return "CURRENT_TIMESTAMP";
+    }
+    return "current_timestamp()";
+  }
+
   // Casting functions.
 
   public asTimestamp(castableToTimestamp: string) {
@@ -150,7 +163,7 @@ export class Sql {
 
   public asString(castableToString: string) {
     if (this.dialect === "postgres") {
-      return `cast(${castableToString} as varchar)`;  
+      return `cast(${castableToString} as varchar)`;
     }
     return `cast(${castableToString} as string)`;
   }

@@ -1,9 +1,9 @@
 config { type: "incremental", protected: true, hermetic: false }
 
-js {  const crossdb = require("@dataform/crossdb"); }
+js {  const sql = require("@dataform/sql"); }
 
 select * from (
-    select ${crossdb.currentTimestampUTC()} as ts
+    select ${sql().timestampCurrentUTC()} as ts
 )
 
 ${when(incremental(), `where ts > (select max(ts) from ${self()}) or (select max(ts) from ${self()}) is null`)}
