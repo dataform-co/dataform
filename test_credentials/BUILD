@@ -6,30 +6,34 @@ gcloud_secret(
     name = "bigquery.json",
     testonly = 1,
     ciphertext_file = ":bigquery.json.enc",
-    key = "dataform-co-build",
-    keyring = "dataform-co-build",
+    project = "dataform-public",
+    key = "dataform-builder-key",
+    keyring = "dataform-builder-keyring",
 )
 
 gcloud_secret(
     name = "redshift.json",
     testonly = 1,
     ciphertext_file = ":redshift.json.enc",
-    key = "dataform-co-build",
-    keyring = "dataform-co-build",
+    project = "dataform-public",
+    key = "dataform-builder-key",
+    keyring = "dataform-builder-keyring",
 )
 
 gcloud_secret(
     name = "snowflake.json",
     testonly = 1,
     ciphertext_file = ":snowflake.json.enc",
-    key = "dataform-co-build",
-    keyring = "dataform-co-build",
+    project = "dataform-public",
+    key = "dataform-builder-key",
+    keyring = "dataform-builder-keyring",
 )
 
 gcloud_secret(
     name = "sqldatawarehouse.json",
     testonly = 1,
     ciphertext_file = ":sqldatawarehouse.json.enc",
-    key = "dataform-co-build",
-    keyring = "dataform-co-build",
+    project = "dataform-public",
+    key = "dataform-builder-key",
+    keyring = "dataform-builder-keyring",
 )
