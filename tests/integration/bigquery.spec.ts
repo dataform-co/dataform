@@ -76,18 +76,19 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
       const executedGraph = await dfapi.run(executionGraph, dbadapter).result();
 
       const actionMap = keyBy(executedGraph.actions, v => v.name);
-      expect(Object.keys(actionMap).length).eql(16);
+      expect(Object.keys(actionMap).length).eql(17);
 
       // Check the status of action execution.
       const expectedFailedActions = [
         "dataform-integration-tests.df_integration_test_assertions_project_e2e.example_assertion_uniqueness_fail",
-        "dataform-integration-tests.df_integration_test_assertions_project_e2e.example_assertion_fail"
+        "dataform-integration-tests.df_integration_test_assertions_project_e2e.example_assertion_fail",
+        "dataform-integration-tests.df_integration_test_project_e2e.example_operation_partial_fail"
       ];
       for (const actionName of Object.keys(actionMap)) {
         const expectedResult = expectedFailedActions.includes(actionName)
           ? dataform.ActionResult.ExecutionStatus.FAILED
           : dataform.ActionResult.ExecutionStatus.SUCCESSFUL;
-        expect(actionMap[actionName].status).equals(expectedResult);
+        expect(actionMap[actionName].status).equals(expectedResult, `${actionName} has unexpected status.`);
       }
 
       expect(
@@ -95,6 +96,12 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
           "dataform-integration-tests.df_integration_test_assertions_project_e2e.example_assertion_uniqueness_fail"
         ].tasks[1].errorMessage
       ).to.eql("bigquery error: Assertion failed: query returned 1 row(s).");
+
+      expect(
+        actionMap[
+          "dataform-integration-tests.df_integration_test_project_e2e.example_operation_partial_fail"
+        ].tasks[0].errorMessage
+      ).to.eql("bigquery error: Query error: Unrecognized name: invalid_column at [3:8]");
     });
 
     test("run caching", { timeout: 60000 }, async () => {

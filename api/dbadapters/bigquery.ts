@@ -469,6 +469,10 @@ INSERT INTO \`${CACHED_STATE_TABLE_NAME}\` (target, metadata_proto) VALUES ${val
                   job.getQueryResults(nextQuery, manualPaginationCallback);
                 } else {
                   const [jobMetadata] = await job.getMetadata();
+                  if (!!jobMetadata.status?.errorResult) {
+                    reject(new Error(jobMetadata.status.errorResult.message));
+                    return;
+                  }
                   const queryData = {
                     rows: results,
                     metadata: {
