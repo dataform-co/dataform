@@ -1,4 +1,4 @@
-import { flatten } from "df/common/arrays";
+import { flatten } from "df/common/arrays/arrays";
 import { IColumnsDescriptor, IRecordDescriptor, IRecordDescriptorProperties } from "df/core/common";
 import * as utils from "df/core/utils";
 import { dataform } from "df/protos/ts";
