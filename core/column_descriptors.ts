@@ -1,8 +1,5 @@
-import {
-  IColumnsDescriptor,
-  IRecordDescriptor,
-  IRecordDescriptorProperties
-} from "df/core/common";
+import { flatten } from "df/common/arrays/arrays";
+import { IColumnsDescriptor, IRecordDescriptor, IRecordDescriptorProperties } from "df/core/common";
 import * as utils from "df/core/utils";
 import { dataform } from "df/protos/ts";
 
@@ -14,7 +11,7 @@ export class ColumnDescriptors {
     columns: IColumnsDescriptor,
     reportError: (e: Error) => void
   ): dataform.IColumnDescriptor[] {
-    return utils.flatten(
+    return flatten(
       Object.keys(columns).map(column =>
         ColumnDescriptors.mapColumnDescriptionToProto([column], columns[column], reportError)
       )
@@ -54,7 +51,7 @@ export class ColumnDescriptors {
       : [];
     const nestedColumns = description.columns ? Object.keys(description.columns) : [];
     return columnDescriptor.concat(
-      utils.flatten(
+      flatten(
         nestedColumns.map(nestedColumn =>
           ColumnDescriptors.mapColumnDescriptionToProto(
             currentPath.concat([nestedColumn]),
