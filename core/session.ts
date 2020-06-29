@@ -551,9 +551,10 @@ export class Session {
     tables.forEach(table => {
       // type
       if (!!table.type && !TableType.includes(table.type as TableType)) {
-        const predefinedTypes = joinQuoted(TableType);
         this.compileError(
-          `Wrong type of table detected. Should only use predefined types: ${predefinedTypes}`,
+          `Wrong type of table detected. Should only use predefined types: ${joinQuoted(
+            TableType
+          )}`,
           table.fileName,
           table.name
         );
