@@ -243,12 +243,6 @@ export function validate(compiledGraph: dataform.ICompiledGraph): dataform.IGrap
   return dataform.GraphErrors.create({ validationErrors, compilationErrors });
 }
 
-export function flatten<T>(nestedArray: T[][]) {
-  return nestedArray.reduce((previousValue: T[], currentValue: T[]) => {
-    return previousValue.concat(currentValue);
-  }, []);
-}
-
 const invalidRefInputMessage =
   "Invalid input. Accepted inputs include: a single object containing " +
   "an (optional) 'database', (optional) 'schema', and 'name', " +
