@@ -119,9 +119,8 @@ export class Runner {
     this.runResult.timing = timer.end();
 
     if (this.graph.runConfig && this.graph.runConfig.useRunCache) {
-      await this.dbadapter.prepareStateMetadataTable();
-      await this.dbadapter.deleteStateMetadata(this.graph.actions);
       await this.dbadapter.persistStateMetadata(
+        this.graph.actions,
         this.graph.actions.filter(executionAction => {
           if (executionAction.hermeticity !== dataform.ActionHermeticity.HERMETIC) {
             return false;
@@ -141,7 +140,10 @@ export class Runner {
             return false;
           }
           return true;
-        })
+        }),
+        {
+          onCancel: handleCancel => this.eEmitter.on(CANCEL_EVENT, handleCancel)
+        }
       );
     }
 
