@@ -12,6 +12,7 @@ def _gcloud_secret_impl(ctx):
             "--keyring=%s" % ctx.attr.keyring,
             "--key=%s" % ctx.attr.key,
             "--location=%s" % ctx.attr.location,
+            "--project=%s" % ctx.attr.project,
         ],
         execution_requirements = {
             "local": "1",
@@ -26,6 +27,7 @@ gcloud_secret = rule(
         "ciphertext_file": attr.label(allow_single_file = True),
         "keyring": attr.string(default = "", mandatory = True),
         "key": attr.string(default = "", mandatory = True),
+        "project": attr.string(default = "", mandatory = True),
         "location": attr.string(default = "global"),
     },
 )

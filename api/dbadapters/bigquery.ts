@@ -13,10 +13,11 @@ import {
 } from "df/api/dbadapters/index";
 import { parseBigqueryEvalError } from "df/api/utils/error_parsing";
 import {
-  buildQuery,
   decodePersistedTableMetadata,
+  encodePersistedTableMetadata,
   hashExecutionAction,
-  IMetadataRow
+  IMetadataRow,
+  toRowKey
 } from "df/api/utils/run_cache";
 import { ErrorWithCause } from "df/common/errors/errors";
 import {
@@ -36,6 +37,8 @@ const BIGQUERY_DATE_RELATED_FIELDS = [
   "BigQueryTimestamp",
   "BigQueryDatetime"
 ];
+
+const MAX_QUERY_LENGTH = 1024 * 1024;
 
 interface IBigQueryTableMetadata {
   type: string;
@@ -235,17 +238,6 @@ export class BigQueryDbAdapter implements IDbAdapter {
     // Unimplemented.
   }
 
-  public async prepareStateMetadataTable(): Promise<void> {
-    const metadataTableCreateQuery = `
-      CREATE TABLE IF NOT EXISTS \`${CACHED_STATE_TABLE_NAME}\` (
-        target_name STRING,
-        metadata_json STRING,
-        metadata_proto STRING
-      )
-    `;
-    await this.runQuery(metadataTableCreateQuery);
-  }
-
   public async persistedStateMetadata(): Promise<dataform.IPersistedTableMetadata[]> {
     const { rows } = await this.runQuery(
       `SELECT * FROM ${CACHED_STATE_TABLE_NAME}`,
@@ -257,54 +249,80 @@ export class BigQueryDbAdapter implements IDbAdapter {
     return persistedMetadata;
   }
 
-  public async persistStateMetadata(actions: dataform.IExecutionAction[]): Promise<void> {
-    if (actions.length === 0) {
+  public async persistStateMetadata(
+    allActions: dataform.IExecutionAction[],
+    actionsToPersist: dataform.IExecutionAction[],
+    options: {
+      onCancel: OnCancel;
+    }
+  ): Promise<void> {
+    if (allActions.length === 0) {
       return;
     }
-    const allInvolvedTargets = new StringifiedSet(JSONObjectStringifier.create<dataform.ITarget>());
-    actions.forEach(action => {
-      allInvolvedTargets.add(action.target);
-      action.transitiveInputs.forEach(transitiveInput => allInvolvedTargets.add(transitiveInput));
-    });
+    try {
+      // Create the cache table, if needed.
+      await this.execute(
+        `
+CREATE TABLE IF NOT EXISTS \`${CACHED_STATE_TABLE_NAME}\` (
+  target STRING,
+  metadata_proto STRING
+)`,
+        options
+      );
+      // Before saving any new data, delete all entries for 'allActions'.
+      await this.execute(
+        `
+DELETE \`${CACHED_STATE_TABLE_NAME}\` WHERE target IN (${allActions
+          .map(({ target }) => `'${toRowKey(target)}'`)
+          .join(",")})`,
+        options
+      );
 
-    const tableMetadataByTarget = new StringifiedMap<dataform.ITarget, dataform.ITableMetadata>(
-      JSONObjectStringifier.create()
-    );
-    await Promise.all(
-      Array.from(allInvolvedTargets).map(async target => {
-        tableMetadataByTarget.set(target, await this.table(target));
-      })
-    );
-    const queries = actions.map(action => {
-      const persistTable = dataform.PersistedTableMetadata.create({
-        target: action.target,
-        lastUpdatedMillis: tableMetadataByTarget.get(action.target).lastUpdatedMillis,
-        definitionHash: hashExecutionAction(action),
-        transitiveInputTables: action.transitiveInputs.map(transitiveInput => {
-          if (!tableMetadataByTarget.has(transitiveInput)) {
-            throw new Error(`Could not find table metadata for ${JSON.stringify(transitiveInput)}`);
-          }
-          return tableMetadataByTarget.get(transitiveInput);
-        })
-      });
-
-      const targetName = `${action.target.database}.${action.target.schema}.${action.target.name}`;
-
-      return buildQuery(targetName, persistTable);
-    });
-
-    const unionQuery = queries.join(" UNION ALL ");
-
-    const updateQuery = `MERGE INTO \`${CACHED_STATE_TABLE_NAME}\` T
-    USING (${unionQuery}) S
-    ON (T.target_name = S.target_name)
-    WHEN NOT MATCHED THEN
-      INSERT (target_name, metadata_json, metadata_proto)
-      VALUES(S.target_name, S.metadata_json, S.metadata_proto)
-    WHEN MATCHED THEN
-      UPDATE SET metadata_json = S.metadata_json,
-          metadata_proto = S.metadata_proto;`;
-    await this.runQuery(updateQuery);
+      // Save entries for 'actionsToPersist'.
+      const transitiveInputMetadataByTarget = await this.computeTransitiveInputMetadataMap(
+        actionsToPersist
+      );
+      const valuesTuples = actionsToPersist
+        // If we were unable to load metadata for the action's output dataset, or for any of the action's
+        // input datasets, do not store a cache entry for the action.
+        .filter(
+          action =>
+            transitiveInputMetadataByTarget.has(action.target) &&
+            action.transitiveInputs.every(transitiveInput =>
+              transitiveInputMetadataByTarget.has(transitiveInput)
+            )
+        )
+        .map(
+          action =>
+            `('${toRowKey(action.target)}', '${encodePersistedTableMetadata({
+              target: action.target,
+              lastUpdatedMillis: transitiveInputMetadataByTarget.get(action.target)
+                .lastUpdatedMillis,
+              definitionHash: hashExecutionAction(action),
+              transitiveInputTables: action.transitiveInputs.map(transitiveInput =>
+                transitiveInputMetadataByTarget.get(transitiveInput)
+              )
+            })}')`
+        );
+      // We have to split up the INSERT queries to get around BigQuery's query length limit.
+      while (valuesTuples.length > 0) {
+        let insertStatement = `INSERT INTO \`${CACHED_STATE_TABLE_NAME}\` (target, metadata_proto) VALUES ${valuesTuples.pop()}`;
+        let nextInsertStatement = `${insertStatement}, ${valuesTuples[valuesTuples.length - 1]}`;
+        while (valuesTuples.length > 0 && nextInsertStatement.length < MAX_QUERY_LENGTH) {
+          insertStatement = nextInsertStatement;
+          valuesTuples.pop();
+          nextInsertStatement = `${insertStatement}, ${valuesTuples[valuesTuples.length - 1]}`;
+        }
+        await this.execute(insertStatement, options);
+      }
+    } catch (e) {
+      if (String(e).includes("Exceeded rate limits")) {
+        // Silently swallow rate-exceeded Errors; there's nothing we can do here, and they aren't harmful
+        // (at worst, future runs may not cache as well as they could have).
+        return;
+      }
+      throw e;
+    }
   }
 
   public async setMetadata(action: dataform.IExecutionAction): Promise<any> {
@@ -342,17 +360,6 @@ export class BigQueryDbAdapter implements IDbAdapter {
         generator: async () => this.getMetadataOutsidePromisePool(target)
       })
       .promise();
-  }
-
-  public async deleteStateMetadata(actions: dataform.IExecutionAction[]): Promise<void> {
-    if (actions.length === 0) {
-      return;
-    }
-    const targetNames = actions
-      .map(({ target }) => `"${target.database}.${target.schema}.${target.name}"`)
-      .join(",");
-    const rowDeleteQuery = `DELETE \`${CACHED_STATE_TABLE_NAME}\` WHERE target_name IN (${targetNames})`;
-    await this.runQuery(rowDeleteQuery);
   }
 
   private async getMetadataOutsidePromisePool(
@@ -461,6 +468,10 @@ export class BigQueryDbAdapter implements IDbAdapter {
                   job.getQueryResults(nextQuery, manualPaginationCallback);
                 } else {
                   const [jobMetadata] = await job.getMetadata();
+                  if (!!jobMetadata.status?.errorResult) {
+                    reject(new Error(jobMetadata.status.errorResult.message));
+                    return;
+                  }
                   const queryData = {
                     rows: results,
                     metadata: {
@@ -490,6 +501,30 @@ export class BigQueryDbAdapter implements IDbAdapter {
         }
       )
     );
+  }
+
+  private async computeTransitiveInputMetadataMap(actions: dataform.IExecutionAction[]) {
+    const allInvolvedTargets = new StringifiedSet(JSONObjectStringifier.create<dataform.ITarget>());
+    actions.forEach(action => {
+      allInvolvedTargets.add(action.target);
+      action.transitiveInputs.forEach(transitiveInput => allInvolvedTargets.add(transitiveInput));
+    });
+    const tableMetadataByTarget = new StringifiedMap<
+      dataform.ITarget,
+      dataform.PersistedTableMetadata.ITransitiveInputMetadata
+    >(JSONObjectStringifier.create<dataform.ITarget>());
+    await Promise.all(
+      Array.from(allInvolvedTargets).map(async target => {
+        const tableMetadata = await this.table(target);
+        if (tableMetadata) {
+          tableMetadataByTarget.set(target, {
+            target: tableMetadata.target,
+            lastUpdatedMillis: tableMetadata.lastUpdatedMillis
+          });
+        }
+      })
+    );
+    return tableMetadataByTarget;
   }
 }
 

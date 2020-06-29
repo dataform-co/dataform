@@ -27,6 +27,7 @@ gcloud_secret(
     name = "env.yaml",
     ciphertext_file = ":env.yaml.enc",
     key = "dataform-co-build",
+    project = "tada-analytics",
     keyring = "dataform-co-build",
 )
 

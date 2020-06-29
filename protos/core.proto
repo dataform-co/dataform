@@ -506,7 +506,12 @@ message PersistedTableMetadata {
   Target target = 1;
   string definition_hash = 2; // sha1 hash of ExectionAction object
   int64 last_updated_millis = 3; // Timestamp of the last modification to this dataset (where that modification happened as a result of a Dataform run).
-  repeated TableMetadata transitive_input_tables = 6;
+
+  message TransitiveInputMetadata {
+    Target target = 1;
+    int64 last_updated_millis = 2;
+  }
+  repeated TransitiveInputMetadata transitive_input_tables = 7;
   
-  reserved 4, 5;
+  reserved 4, 5, 6;
 }

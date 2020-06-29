@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import { basename } from "path";
 
-import { ErrorWithCause } from "df/common/errors/errors";
+import { coerceAsError, ErrorWithCause } from "df/common/errors/errors";
 import { suite, test } from "df/testing";
 
 suite(basename(__filename), () => {
@@ -32,6 +32,36 @@ suite(basename(__filename), () => {
       expect(errorWithCause.stack.split("\n").length).eql(cause.stack.split("\n").length * 2);
       expect(errorWithCause.stack.startsWith("Error: top-level error")).eql(true);
       expect(errorWithCause.stack.endsWith(cause.stack)).eql(true);
+    });
+  });
+
+  suite("coerceAsError", () => {
+    test("preserves original error", () => {
+      const originalError = new ErrorWithCause(new Error("cause"));
+      const coercedError = coerceAsError(originalError);
+
+      expect(coercedError).equals(originalError);
+    });
+
+    test("coerces error like objects", () => {
+      const originalError = {
+        message: "message",
+        stack: "stack",
+        name: "name"
+      };
+      const coercedError = coerceAsError(originalError);
+
+      expect(coercedError.message).equals("message");
+      expect(coercedError.stack).equals("stack");
+      expect(coercedError.name).equals("name");
+    });
+
+    test("coerces non error types", () => {
+      const originalError = "string";
+      const coercedError = coerceAsError(originalError);
+
+      expect(coercedError.message).equals("string");
+      expect(coercedError instanceof Error).equals(true);
     });
   });
 });
