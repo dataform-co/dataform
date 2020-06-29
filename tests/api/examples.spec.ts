@@ -843,10 +843,7 @@ suite("examples", () => {
         projectConfigOverride: { warehouse: "snowflake" }
       }).catch(error => error);
       expect(graph).to.not.be.an.instanceof(Error);
-
-      const gErrors = utils.validate(graph);
-
-      expect(gErrors).deep.equals(dataform.GraphErrors.create({}));
+      expect(graph.graphErrors).deep.equals(dataform.GraphErrors.create({}));
 
       const mNames = graph.tables.map((t: dataform.ITable) => t.name);
 
