@@ -23,6 +23,7 @@ ts_library(
     srcs = glob(["**/*.ts"]) + [":version.ts"],
     deps = [
         "//common/strings",
+        "//common/errors",
         "//protos:ts",
         "//sqlx",
         "@npm//@types/node",

@@ -2,9 +2,10 @@ import * as https from "https";
 import * as PromisePool from "promise-pool-executor";
 
 import { Credentials } from "df/api/commands/credentials";
-import { collectEvaluationQueries, IDbAdapter, QueryOrAction } from "df/api/dbadapters/index";
+import { IDbAdapter } from "df/api/dbadapters/index";
 import { parseSnowflakeEvalError } from "df/api/utils/error_parsing";
 import { ErrorWithCause } from "df/common/errors/errors";
+import { collectEvaluationQueries, QueryOrAction } from "df/core/adapters";
 import { dataform } from "df/protos/ts";
 
 interface ISnowflake {
