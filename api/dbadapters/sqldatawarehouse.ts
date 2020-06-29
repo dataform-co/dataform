@@ -1,14 +1,9 @@
 import { ConnectionPool } from "mssql";
 
 import { Credentials } from "df/api/commands/credentials";
-import {
-  collectEvaluationQueries,
-  IDbAdapter,
-  IExecutionResult,
-  OnCancel,
-  QueryOrAction
-} from "df/api/dbadapters/index";
+import { IDbAdapter, IExecutionResult, OnCancel } from "df/api/dbadapters/index";
 import { parseAzureEvaluationError } from "df/api/utils/error_parsing";
+import { collectEvaluationQueries, QueryOrAction } from "df/core/adapters";
 import { dataform } from "df/protos/ts";
 
 const INFORMATION_SCHEMA_SCHEMA_NAME = "information_schema";
