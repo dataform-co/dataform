@@ -162,7 +162,7 @@ message SQLDataWarehouseOptions {
 
 message GraphErrors {
   repeated CompilationError compilation_errors = 1;
-  repeated ValidationError validation_errors = 2;
+  repeated ValidationError validation_errors = 2 [deprecated = true];
 }
 
 // Deprecated.
@@ -275,10 +275,10 @@ message Table {
   string file_name = 18;
 
   // Deprecated.
-  repeated string deprecated_parsed_columns = 12;
-  repeated ValidationError deprecated_validation_errors = 7;
-  string name = 1; // Use 'target' instead.
-  repeated string dependencies = 2; // Use 'dependency_targets' instead.
+  repeated string deprecated_parsed_columns = 12 [deprecated = true];
+  repeated ValidationError deprecated_validation_errors = 7 [deprecated = true];
+  string name = 1 [deprecated = true]; // Use 'target' instead.
+  repeated string dependencies = 2 [deprecated = true]; // Use 'dependency_targets' instead.
 
   reserved 16;
 }

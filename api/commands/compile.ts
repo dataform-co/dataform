@@ -3,7 +3,7 @@ import * as path from "path";
 import { util } from "protobufjs";
 
 import { ChildProcess, fork } from "child_process";
-import { ErrorWithCause } from "df/common/errors/errors";
+import { coerceAsError, ErrorWithCause } from "df/common/errors/errors";
 import { dataform } from "df/protos/ts";
 
 const validWarehouses = ["bigquery", "postgres", "redshift", "sqldatawarehouse", "snowflake"];
@@ -78,7 +78,7 @@ export class CompileChildProcess {
   public async compile(compileConfig: dataform.ICompileConfig) {
     const compileInChildProcess = new Promise<string>(async (resolve, reject) => {
       // Handle errors returned by the child process.
-      this.childProcess.on("message", (e: Error) => reject(e));
+      this.childProcess.on("message", (e: Error) => reject(coerceAsError(e)));
 
       // Handle UTF-8 string chunks returned by the child process.
       const pipe = this.childProcess.stdio[4];

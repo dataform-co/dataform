@@ -4,13 +4,7 @@ import { PromisePoolExecutor } from "promise-pool-executor";
 import { BigQuery } from "@google-cloud/bigquery";
 import { QueryResultsOptions } from "@google-cloud/bigquery/build/src/job";
 import { Credentials } from "df/api/commands/credentials";
-import {
-  collectEvaluationQueries,
-  IDbAdapter,
-  IExecutionResult,
-  OnCancel,
-  QueryOrAction
-} from "df/api/dbadapters/index";
+import { IDbAdapter, IExecutionResult, OnCancel } from "df/api/dbadapters/index";
 import { parseBigqueryEvalError } from "df/api/utils/error_parsing";
 import {
   decodePersistedTableMetadata,
@@ -25,6 +19,7 @@ import {
   StringifiedMap,
   StringifiedSet
 } from "df/common/strings/stringifier";
+import { collectEvaluationQueries, QueryOrAction } from "df/core/adapters";
 import { dataform } from "df/protos/ts";
 
 const CACHED_STATE_TABLE_NAME = "dataform_meta.cache_state";

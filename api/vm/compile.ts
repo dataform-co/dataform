@@ -62,11 +62,7 @@ export function compile(compileConfig: dataform.ICompileConfig) {
     compiler
   });
 
-  const res: string = userCodeVm.run(
-    genIndex(createGenIndexConfig(compileConfig)),
-    vmIndexFileName
-  );
-  return res;
+  return userCodeVm.run(genIndex(createGenIndexConfig(compileConfig)), vmIndexFileName);
 }
 
 export function listenForCompileRequest() {
@@ -77,7 +73,11 @@ export function listenForCompileRequest() {
       const writeable = fs.createWriteStream(null, { fd: 4 });
       writeable.write(compiledResult, "utf8");
     } catch (e) {
-      process.send(e);
+      const serializableError = {};
+      for (const prop of Object.getOwnPropertyNames(e)) {
+        (serializableError as any)[prop] = e[prop];
+      }
+      process.send(serializableError);
     }
     process.exit();
   });
