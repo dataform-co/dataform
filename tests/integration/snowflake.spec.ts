@@ -24,7 +24,6 @@ suite("@dataform/integration/snowflake", ({ before, after }) => {
     });
 
     expect(compiledGraph.graphErrors.compilationErrors).to.eql([]);
-    expect(compiledGraph.graphErrors.validationErrors).to.eql([]);
 
     const adapter = adapters.create(compiledGraph.projectConfig, compiledGraph.dataformCoreVersion);
 

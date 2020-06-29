@@ -541,7 +541,6 @@ async function compile(
   });
 
   expect(compiledGraph.graphErrors.compilationErrors).to.eql([]);
-  expect(compiledGraph.graphErrors.validationErrors).to.eql([]);
 
   compiledGraph.projectConfig = {
     ...compiledGraph.projectConfig,
