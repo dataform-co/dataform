@@ -92,12 +92,6 @@ export function graphHasErrors(graph: dataform.ICompiledGraph) {
   return graph.graphErrors?.compilationErrors.length > 0;
 }
 
-export function flatten<T>(nestedArray: T[][]) {
-  return nestedArray.reduce((previousValue: T[], currentValue: T[]) => {
-    return previousValue.concat(currentValue);
-  }, []);
-}
-
 const invalidRefInputMessage =
   "Invalid input. Accepted inputs include: a single object containing " +
   "an (optional) 'database', (optional) 'schema', and 'name', " +
