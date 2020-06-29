@@ -659,7 +659,7 @@ export function runCli() {
     .wrap(null)
     .recommendCommands()
     .fail(async (msg: string, err: any) => {
-      if (!!err && err.name === "VMError" && err.code === "ENOTFOUND") {
+      if (!!err && err.name === "VMError" && err.message.includes("Cannot find module")) {
         printError("Could not find NPM dependencies. Have you run 'dataform install'?");
       } else {
         const message = err?.message ? err.message.split("\n")[0] : msg;
