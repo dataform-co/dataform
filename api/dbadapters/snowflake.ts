@@ -69,7 +69,11 @@ export class SnowflakeDbAdapter implements IDbAdapter {
                 streamResult: true,
                 complete(err, stmt) {
                   if (err) {
-                    reject(err);
+                    let message = `Snowflake SQL query failed: ${err.message}.`;
+                    if (err.cause) {
+                      message += ` Root cause: ${err.cause}`;
+                    }
+                    reject(new ErrorWithCause(message, err));
                     return;
                   }
                   const rows: any[] = [];
@@ -145,38 +149,36 @@ where LOWER(table_schema) != 'information_schema'
     return rows.map(row => row.SCHEMA_NAME);
   }
 
-  public table(target: dataform.ITarget): Promise<dataform.ITableMetadata> {
-    return Promise.all([
-      this.execute(
-        `
-select column_name, data_type, is_nullable
-from ${target.database ? `"${target.database}".` : ""}information_schema.columns
-where table_schema = '${target.schema}' 
-  and table_name = '${target.name}'`
-      ),
+  public async table(target: dataform.ITarget): Promise<dataform.ITableMetadata> {
+    const [tableResults, columnResults] = await Promise.all([
       this.execute(
         `
 select table_type
 from ${target.database ? `"${target.database}".` : ""}information_schema.tables
 where table_schema = '${target.schema}'
   and table_name = '${target.name}'`
+      ),
+      this.execute(
+        `
+select column_name, data_type, is_nullable
+from ${target.database ? `"${target.database}".` : ""}information_schema.columns
+where table_schema = '${target.schema}' 
+  and table_name = '${target.name}'`
       )
-    ]).then(results => {
-      if (results[1].rows.length > 0) {
-        // The table exists.
-        return {
-          target,
-          type: results[1].rows[0].TABLE_TYPE === "VIEW" ? "view" : "table",
-          fields: results[0].rows.map(row => ({
-            name: row.COLUMN_NAME,
-            primitive: row.DATA_TYPE,
-            flags: row.IS_NULLABLE && row.IS_NULLABLE === "YES" ? ["nullable"] : []
-          }))
-        };
-      } else {
-        return null;
-      }
-    });
+    ]);
+    if (tableResults.rows.length === 0) {
+      // The table does not exist.
+      return null;
+    }
+    return {
+      target,
+      type: tableResults.rows[0].TABLE_TYPE === "VIEW" ? "view" : "table",
+      fields: columnResults.rows.map(row => ({
+        name: row.COLUMN_NAME,
+        primitive: row.DATA_TYPE,
+        flags: row.IS_NULLABLE && row.IS_NULLABLE === "YES" ? ["nullable"] : []
+      }))
+    };
   }
 
   public async preview(target: dataform.ITarget, limitRows: number = 10): Promise<any[]> {

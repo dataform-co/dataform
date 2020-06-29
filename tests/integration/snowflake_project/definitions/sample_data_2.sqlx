@@ -1,6 +1,6 @@
 config {
     type: "view",
-    database: "TADA2",
+    database: "INTEGRATION_TESTS2",
     assertions: {
         uniqueKey: ["val1", "val2"],
         nonNull: [
