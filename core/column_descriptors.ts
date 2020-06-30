@@ -78,6 +78,23 @@ export class ColumnDescriptors {
     }
   }
 
+  public static mapFromAggregation(aggregation: dataform.ColumnDescriptor.Aggregation) {
+    switch (aggregation) {
+      case dataform.ColumnDescriptor.Aggregation.SUM:
+        return "sum";
+      case dataform.ColumnDescriptor.Aggregation.DISTINCT:
+        return "distinct";
+      case dataform.ColumnDescriptor.Aggregation.DERIVED:
+        return "derived";
+      case dataform.ColumnDescriptor.Aggregation.UNKNOWN_AGGREGATION:
+        return undefined;
+      case undefined:
+        return undefined;
+      default:
+        throw new Error(`Aggregation type not recognized: ${aggregation}`);
+    }
+  }
+
   public static mapDimensionType(dimensionType: string) {
     switch (dimensionType) {
       case "category":
@@ -88,6 +105,21 @@ export class ColumnDescriptors {
         return undefined;
       default:
         throw new Error(`'${dimensionType}' is not a valid dimension type.`);
+    }
+  }
+
+  public static mapFromDimensionType(dimensionType: dataform.ColumnDescriptor.DimensionType) {
+    switch (dimensionType) {
+      case dataform.ColumnDescriptor.DimensionType.CATEGORY:
+        return "category";
+      case dataform.ColumnDescriptor.DimensionType.TIMESTAMP:
+        return "timestamp";
+      case dataform.ColumnDescriptor.DimensionType.UNKNOWN_DIMENSION:
+        return undefined;
+      case undefined:
+        return undefined;
+      default:
+        throw new Error(`Dimension type not recognized: ${dimensionType}`);
     }
   }
 }
