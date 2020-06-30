@@ -26,5 +26,6 @@ deploy_pubsub_nodejs_gcloud_function(
         ":package.json",
     ],
     function_name = "updateCloudBuildStatusBadge",
+    project = "tada-analytics",
     topic_name = "cloud-builds",
 )

@@ -27,8 +27,8 @@ gcloud_secret(
     name = "env.yaml",
     ciphertext_file = ":env.yaml.enc",
     key = "dataform-co-build",
-    project = "tada-analytics",
     keyring = "dataform-co-build",
+    project = "tada-analytics",
 )
 
 load("//tools/gcloud:gcloud_function.bzl", "deploy_http_nodejs_gcloud_function")
@@ -41,4 +41,5 @@ deploy_http_nodejs_gcloud_function(
     ],
     env_vars_file = ":env.yaml",
     function_name = "handleStackdriverEvent",
+    project = "tada-analytics",
 )

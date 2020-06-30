@@ -3,8 +3,7 @@ import * as path from "path";
 import { util } from "protobufjs";
 
 import { ChildProcess, fork } from "child_process";
-import { ErrorWithCause } from "df/common/errors/errors";
-import { validate } from "df/core/utils";
+import { coerceAsError, ErrorWithCause } from "df/common/errors/errors";
 import { dataform } from "df/protos/ts";
 
 const validWarehouses = ["bigquery", "postgres", "redshift", "sqldatawarehouse", "snowflake"];
@@ -50,11 +49,7 @@ export async function compile(
   const encodedGraphInBase64 = await CompileChildProcess.forkProcess().compile(compileConfig);
   const encodedGraphBytes = new Uint8Array(util.base64.length(encodedGraphInBase64));
   util.base64.decode(encodedGraphInBase64, encodedGraphBytes, 0);
-  const compiledGraph = dataform.CompiledGraph.decode(encodedGraphBytes);
-  return dataform.CompiledGraph.create({
-    ...compiledGraph,
-    graphErrors: validate(compiledGraph)
-  });
+  return dataform.CompiledGraph.decode(encodedGraphBytes);
 }
 
 export class CompileChildProcess {
@@ -83,7 +78,7 @@ export class CompileChildProcess {
   public async compile(compileConfig: dataform.ICompileConfig) {
     const compileInChildProcess = new Promise<string>(async (resolve, reject) => {
       // Handle errors returned by the child process.
-      this.childProcess.on("message", (e: Error) => reject(e));
+      this.childProcess.on("message", (e: Error) => reject(coerceAsError(e)));
 
       // Handle UTF-8 string chunks returned by the child process.
       const pipe = this.childProcess.stdio[4];
