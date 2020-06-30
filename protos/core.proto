@@ -224,6 +224,7 @@ message ColumnDescriptor {
     UNKNOWN_DIMENSION = 0;
     CATEGORY = 1;
     TIMESTAMP = 2;
+    NUMBER= 3;
   }
   DimensionType dimension_type = 4;
 

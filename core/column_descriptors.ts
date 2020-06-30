@@ -84,6 +84,8 @@ export class ColumnDescriptors {
         return dataform.ColumnDescriptor.DimensionType.CATEGORY;
       case "timestamp":
         return dataform.ColumnDescriptor.DimensionType.TIMESTAMP;
+      case "number":
+        return dataform.ColumnDescriptor.DimensionType.NUMBER;
       case undefined:
         return undefined;
       default:
