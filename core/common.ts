@@ -154,7 +154,7 @@ export interface IRecordDescriptor {
   /**
    * @hidden
    */
-  dimension?: "category" | "timestamp";
+  dimension?: "category" | "timestamp" | "number";
 
   /**
    * @hidden
