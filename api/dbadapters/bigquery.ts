@@ -467,20 +467,24 @@ DELETE \`${CACHED_STATE_TABLE_NAME}\` WHERE target IN (${allActions
                     reject(new Error(jobMetadata.status.errorResult.message));
                     return;
                   }
-                  const queryData = {
+                  const queryData: IExecutionResult = {
                     rows: results,
                     metadata: {
                       bigquery: {
-                        jobId: jobMetadata.jobReference.jobId,
-                        totalBytesBilled: Long.fromString(
-                          jobMetadata.statistics.query.totalBytesBilled
-                        ),
-                        totalBytesProcessed: Long.fromString(
-                          jobMetadata.statistics.query.totalBytesProcessed
-                        )
+                        jobId: jobMetadata.jobReference.jobId
                       }
                     }
                   };
+                  if (jobMetadata.statistics.query.totalBytesBilled) {
+                    queryData.metadata.bigquery.totalBytesBilled = Long.fromString(
+                      jobMetadata.statistics.query.totalBytesBilled
+                    );
+                  }
+                  if (jobMetadata.statistics.query.totalBytesProcessed) {
+                    queryData.metadata.bigquery.totalBytesProcessed = Long.fromString(
+                      jobMetadata.statistics.query.totalBytesProcessed
+                    );
+                  }
                   resolve(queryData);
                 }
               } catch (e) {
