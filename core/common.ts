@@ -104,8 +104,12 @@ export interface IDependenciesConfig {
   dependencies?: Resolvable | Resolvable[];
 
   /**
-   * Asserts that it is correct for this action to have zero dependencies. This is required to be set to `true` for
-   * actions with zero dependencies when the run caching feature is turned on.
+   * Declares whether or not this action is hermetic. An action is hermetic if all of its dependencies are explicitly
+   * declared.
+   *
+   * If this action depends on data from a source which has not been declared as a dependency, then `hermetic`
+   * should be explicitly set to `false`. Otherwise, if this action only depends on data from explicitly-declared
+   * dependencies, then it should be set to `true`.
    */
   hermetic?: boolean;
 }
