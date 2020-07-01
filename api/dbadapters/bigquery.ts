@@ -13,7 +13,7 @@ import {
   IMetadataRow,
   toRowKey
 } from "df/api/utils/run_cache";
-import { ErrorWithCause } from "df/common/errors/errors";
+import { coerceAsError, ErrorWithCause } from "df/common/errors/errors";
 import {
   JSONObjectStringifier,
   StringifiedMap,
@@ -372,7 +372,7 @@ DELETE \`${CACHED_STATE_TABLE_NAME}\` WHERE target IN (${allActions
         return null;
       }
       // otherwise throw the error as normal
-      throw new ErrorWithCause("Error getting BigQuery metadata.", e);
+      throw coerceAsError(e);
     }
   }
 
@@ -396,7 +396,7 @@ DELETE \`${CACHED_STATE_TABLE_NAME}\` WHERE target IN (${allActions
       const allRows: any[] = [];
       const stream = this.getClient().createQueryStream(statement);
       stream
-        .on("error", e => reject(new ErrorWithCause(`Error running query: ${e}`, e)))
+        .on("error", e => reject(coerceAsError(e)))
         .on("data", row => {
           if (!maxResults) {
             allRows.push(row);
@@ -427,7 +427,7 @@ DELETE \`${CACHED_STATE_TABLE_NAME}\` WHERE target IN (${allActions
         async (err, job) => {
           try {
             if (err) {
-              return reject(new ErrorWithCause(`Error running query job: ${err}`, err));
+              return reject(coerceAsError(err));
             }
             // Cancelled before it was created, kill it now.
             if (isCancelled) {
@@ -441,7 +441,7 @@ DELETE \`${CACHED_STATE_TABLE_NAME}\` WHERE target IN (${allActions
                   await job.cancel();
                   reject(new Error("Query cancelled."));
                 } catch (e) {
-                  reject(new ErrorWithCause("Error trying to cancel query.", e));
+                  reject(new ErrorWithCause(`Error trying to cancel query: ${e}`, e));
                 }
               });
             }
@@ -484,14 +484,14 @@ DELETE \`${CACHED_STATE_TABLE_NAME}\` WHERE target IN (${allActions
                   resolve(queryData);
                 }
               } catch (e) {
-                reject(new ErrorWithCause("Error paginating query results.", e));
+                reject(coerceAsError(e));
               }
             };
             // For non interactive queries, we can set a hard limit by disabling auto pagination.
             // This will cause problems for unit tests that have more than MAX_RESULTS rows to compare.
             job.getQueryResults({ autoPaginate: false, maxResults }, manualPaginationCallback);
           } catch (e) {
-            reject(new ErrorWithCause("Error handling results of query job.", e));
+            reject(coerceAsError(e));
           }
         }
       )
