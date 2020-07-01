@@ -8,6 +8,8 @@ import { ErrorWithCause } from "df/common/errors/errors";
 import { collectEvaluationQueries, QueryOrAction } from "df/core/adapters";
 import { dataform } from "df/protos/ts";
 
+const HEARTBEAT_INTERVAL_SECONDS = 30;
+
 interface ISnowflake {
   createConnection: (options: {
     account: string;
@@ -16,6 +18,8 @@ interface ISnowflake {
     database: string;
     warehouse: string;
     role: string;
+    clientSessionKeepAlive: boolean;
+    clientSessionKeepAliveHeartbeatFrequency: number;
   }) => ISnowflakeConnection;
 }
 
@@ -258,7 +262,9 @@ async function connect(snowflakeCredentials: dataform.ISnowflake) {
           password: snowflakeCredentials.password,
           database: snowflakeCredentials.databaseName,
           warehouse: snowflakeCredentials.warehouse,
-          role: snowflakeCredentials.role
+          role: snowflakeCredentials.role,
+          clientSessionKeepAlive: true,
+          clientSessionKeepAliveHeartbeatFrequency: HEARTBEAT_INTERVAL_SECONDS
         })
         .connect((err, conn) => {
           if (err) {
