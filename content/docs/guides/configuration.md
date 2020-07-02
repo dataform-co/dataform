@@ -42,7 +42,7 @@ by changing the `defaultSchema` property to some other value. For example, to ch
 
 ### Running operations in context
 
-BigQuery and SQL Data Warehouse by default run all operations for a file in the same context. This functionality is not supported for Redshift or Snowflake.
+BigQuery and SQL Data Warehouse run all operations for a file in the same context. For Redshift or Snowflake, operations are run as separate queries.
 
 This is useful for scripting, for example defining variables or UDFs in BigQuery before the create table statement.
 
@@ -59,16 +59,6 @@ select var as col;
 is treated as if the `pre_operations` block wasn't there, becoming `declare var string; set var = 'val'; select var as col;`. For a table, SQL would be injected into the relevant place; the previous statement would be executed as `` declare var string; set var = 'val'; create or replace table `tada-analytics.dataform_data.silly_table` as select var as col; ``.
 
 For Redshift or Snowflake, the `pre_operations` block is always executed as a separate query before the main block.
-
-To disable running all operations in the same context, place the following flag in your `dataform.json` file:
-
-```json
-{
-  ...
-  "useSingleQueryPerAction": false,
-  ...
-}
-```
 
 ### Enable run caching to cut warehouse costs
 

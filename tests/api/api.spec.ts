@@ -743,7 +743,7 @@ postOps`
     ].forEach(({ warehouse, expectedQuery }) => {
       test(`${warehouse}_useSingleQueryPerAction`, async () => {
         const testGraph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
-          projectConfig: { warehouse, useSingleQueryPerAction: true },
+          projectConfig: { warehouse },
           tables: [
             {
               name: "a",
@@ -758,7 +758,7 @@ postOps`
         const testState = dataform.WarehouseState.create({});
         const builder = new Builder(
           testGraph,
-          { useSingleQueryPerAction: true },
+          {},
           testState,
           computeAllTransitiveInputs(testGraph)
         );
