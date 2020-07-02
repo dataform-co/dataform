@@ -34,17 +34,22 @@ export async function build(
   const prunedGraph = prune(compiledGraph, runConfig);
   const transitiveInputsByTarget = computeAllTransitiveInputs(compiledGraph);
 
-  const allInvolvedTargets = new StringifiedSet<dataform.ITarget>(JSONObjectStringifier.create());
-  for (const includedAction of [
-    ...prunedGraph.tables,
-    ...prunedGraph.operations,
-    ...prunedGraph.assertions
-  ]) {
-    allInvolvedTargets.add(includedAction.target);
-    if (versionValidForTransitiveInputs(compiledGraph)) {
-      transitiveInputsByTarget
-        .get(includedAction.target)
-        .forEach(transitiveInputTarget => allInvolvedTargets.add(transitiveInputTarget));
+  const allInvolvedTargets = new StringifiedSet<dataform.ITarget>(
+    JSONObjectStringifier.create(),
+    prunedGraph.tables.map(table => table.target)
+  );
+  if (runConfig.useRunCache) {
+    for (const includedAction of [
+      ...prunedGraph.tables,
+      ...prunedGraph.operations,
+      ...prunedGraph.assertions
+    ]) {
+      allInvolvedTargets.add(includedAction.target);
+      if (versionValidForTransitiveInputs(compiledGraph)) {
+        transitiveInputsByTarget
+          .get(includedAction.target)
+          .forEach(transitiveInputTarget => allInvolvedTargets.add(transitiveInputTarget));
+      }
     }
   }
 
