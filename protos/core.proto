@@ -21,6 +21,8 @@ message ProjectConfig {
   string table_prefix = 11;
   
   bool use_run_cache = 10;
+
+  // For internal use only, will be removed at a later date.
   bool use_single_query_per_action = 12;
 
   // Deprecated. Please use 'default_database' instead.
@@ -104,6 +106,7 @@ message RunConfig {
   bool use_run_cache = 8;
   bool disable_set_metadata = 9;
 
+  // For internal use only, will be removed at a later date.
   bool use_single_query_per_action = 10;
 
   reserved 4, 6;

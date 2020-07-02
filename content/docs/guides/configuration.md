@@ -40,26 +40,6 @@ by changing the `defaultSchema` property to some other value. For example, to ch
 
 [Assertions](assertions) are created inside a different schema as specified by the `assertionsSchema` property.
 
-### Running operations in context
-
-BigQuery and SQL Data Warehouse run all operations for a file in the same context. For Redshift or Snowflake, operations are run as separate queries.
-
-This is useful for scripting, for example defining variables or UDFs in BigQuery before the create table statement.
-
-The executed SQL is created by joining all operations with a semi-colon `;`. For example,
-
-```sql
-pre_operations {
-  declare var string;
-  set var = 'val';
-}
-select var as col;
-```
-
-is treated as if the `pre_operations` block wasn't there, becoming `declare var string; set var = 'val'; select var as col;`. For a table, SQL would be injected into the relevant place; the previous statement would be executed as `` declare var string; set var = 'val'; create or replace table `tada-analytics.dataform_data.silly_table` as select var as col; ``.
-
-For Redshift or Snowflake, the `pre_operations` block is always executed as a separate query before the main block.
-
 ### Enable run caching to cut warehouse costs
 
 Dataform has a built-in run caching feature. Once enabled, Dataform only runs actions (datasets, assertions, or operations) that might update the data in the action's output.
