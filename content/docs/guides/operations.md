@@ -29,7 +29,7 @@ These statements will be run without modification against the warehouse. You can
 
 <div className="bp3-callout bp3-icon-info-sign bp3-intent-none" markdown="1">
   BigQuery and SQL Data Warehouse run all operations for a file in the same context; the executed SQL is created by joining all operations with a semi-colon <code>;</code>.
-  For Redshift or Snowflake, operations are run as separate queries.
+  For other warehouse types, operations are run as separate queries.
 </div>
 
 ## Custom dataset builds

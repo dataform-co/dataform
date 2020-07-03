@@ -91,11 +91,9 @@ Some examples can be found [here](datasets#referencing-other-datasets).
 
 - **Post-operations**: the same as pre-operations, but defined with `post_operations { }`, and runs after the main SQL.
 
-BigQuery and SQL Data Warehouse run all operations for a file (such as pre and post operations) in the same context; the executed SQL is created by joining all operations with a semi-colon `;`. For Redshift or Snowflake, operations are run as separate queries.
+BigQuery and SQL Data Warehouse run all operations for a file (such as pre and post operations) in the same context; the executed SQL is created by joining all operations with a semi-colon `;`. For other warehouse types, operations are run as separate queries.
 
 This is useful for scripting, for example defining variables or UDFs in BigQuery before the create table statement.
-
-For Redshift or Snowflake, the `pre_operations` block is always executed as a separate query before the main block, and the `post_operations` block as a separate query afterwards.
 
 ## Sandboxing for fast, secure, reproducible SQLX compilation
 

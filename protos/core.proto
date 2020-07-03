@@ -104,6 +104,8 @@ message RunConfig {
   bool full_refresh = 2;
   int32 timeout_millis = 7;
   bool use_run_cache = 8;
+
+  // For internal use only, will be removed at a later date.
   bool disable_set_metadata = 9;
 
   // For internal use only, will be removed at a later date.
