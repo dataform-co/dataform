@@ -88,7 +88,10 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
         const expectedResult = expectedFailedActions.includes(actionName)
           ? dataform.ActionResult.ExecutionStatus.FAILED
           : dataform.ActionResult.ExecutionStatus.SUCCESSFUL;
-        expect(actionMap[actionName].status).equals(expectedResult, `${actionName} has unexpected status.`);
+        expect(actionMap[actionName].status).equals(
+          expectedResult,
+          `${actionName} has unexpected status.`
+        );
       }
 
       expect(
@@ -370,7 +373,6 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
     test("evaluate from valid compiled graph as valid", async () => {
       // Create and run the project.
       const compiledGraph = await compile("evaluate", {
-        useSingleQueryPerAction: true,
         useRunCache: false
       });
       const executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
