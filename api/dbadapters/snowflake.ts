@@ -10,7 +10,26 @@ import { dataform } from "df/protos/ts";
 
 const HEARTBEAT_INTERVAL_SECONDS = 30;
 
+// This is horrible. However, it allows us to set the 'APPLICATION' parameter on client.environment,
+// which is passed all the way through to Snowflake's connection code. Pending a fix for
+// https://github.com/snowflakedb/snowflake-connector-nodejs/issues/100, this is the only way
+// we can achieve that.
+// tslint:disable-next-line: no-var-requires
+const snowflake = require("snowflake-sdk/lib/core")({
+  httpClientClass: require("snowflake-sdk/lib/http/node"),
+  loggerClass: require("snowflake-sdk/lib/logger/node"),
+  client: {
+    version: require("snowflake-sdk/lib/util").driverVersion,
+    environment: {
+      ...process.versions,
+      APPLICATION: "Dataform"
+    }
+  }
+}) as ISnowflake;
+snowflake.configure({ logLevel: "trace" });
+
 interface ISnowflake {
+  configure: (options: { logLevel: string }) => void;
   createConnection: (options: {
     account: string;
     username: string;
@@ -241,21 +260,7 @@ async function connect(snowflakeCredentials: dataform.ISnowflake) {
   await testHttpsConnection(`https://${snowflakeCredentials.accountId}.snowflakecomputing.com`);
   try {
     return await new Promise<ISnowflakeConnection>((resolve, reject) => {
-      // This is horrible. However, it allows us to set the 'APPLICATION' parameter on client.environment,
-      // which is passed all the way through to Snowflake's connection code. Pending a fix for
-      // https://github.com/snowflakedb/snowflake-connector-nodejs/issues/100, this is the only way
-      // we can achieve that.
-      (require("snowflake-sdk/lib/core")({
-        httpClientClass: require("snowflake-sdk/lib/http/node"),
-        loggerClass: require("snowflake-sdk/lib/logger/node"),
-        client: {
-          version: require("snowflake-sdk/lib/util").driverVersion,
-          environment: {
-            ...process.versions,
-            APPLICATION: "Dataform"
-          }
-        }
-      }) as ISnowflake)
+      snowflake
         .createConnection({
           account: snowflakeCredentials.accountId,
           username: snowflakeCredentials.username,
