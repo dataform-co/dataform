@@ -14,6 +14,7 @@ const HEARTBEAT_INTERVAL_SECONDS = 30;
 // which is passed all the way through to Snowflake's connection code. Pending a fix for
 // https://github.com/snowflakedb/snowflake-connector-nodejs/issues/100, this is the only way
 // we can achieve that.
+// tslint:disable-next-line: no-var-requires
 const snowflake = require("snowflake-sdk/lib/core")({
   httpClientClass: require("snowflake-sdk/lib/http/node"),
   loggerClass: require("snowflake-sdk/lib/logger/node"),
