@@ -20,18 +20,10 @@ export function run(
   graph: dataform.IExecutionGraph,
   partiallyExecutedRunResult?: dataform.IRunResult
 ): Runner {
-  return Runner.create(dbadapter, graph, partiallyExecutedRunResult).execute();
+  return new Runner(dbadapter, graph, partiallyExecutedRunResult).execute();
 }
 
 export class Runner {
-  public static create(
-    dbadapter: dbadapters.IDbAdapter,
-    graph: dataform.IExecutionGraph,
-    partiallyExecutedRunResult?: dataform.IRunResult
-  ) {
-    return new Runner(dbadapter, graph, partiallyExecutedRunResult);
-  }
-
   private readonly warehouseStateByTarget: StringifiedMap<
     dataform.ITarget,
     dataform.ITableMetadata

@@ -10,6 +10,7 @@ ts_library(
         exclude = ["*.spec.ts"],
     ),
     deps = [
+        "//:modules-fix",
         "@npm//@types/node",
     ],
 )
