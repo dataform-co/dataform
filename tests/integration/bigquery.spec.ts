@@ -73,7 +73,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
 
       // Run the project.
       const executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
-      const executedGraph = await dfapi.run(executionGraph, dbadapter).result();
+      const executedGraph = await dfapi.run(dbadapter, executionGraph).result();
 
       const actionMap = keyBy(executedGraph.actions, v => v.name);
       expect(Object.keys(actionMap).length).eql(17);
@@ -118,7 +118,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
 
       // Run the project.
       let executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
-      let executedGraph = await dfapi.run(executionGraph, dbadapter).result();
+      let executedGraph = await dfapi.run(dbadapter, executionGraph).result();
 
       // Re-run (some of) the project. Each included action should cache, or complete
       // successfully (if the previous run was unable to write cache results).
@@ -135,7 +135,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
         },
         dbadapter
       );
-      executedGraph = await dfapi.run(executionGraph, dbadapter).result();
+      executedGraph = await dfapi.run(dbadapter, executionGraph).result();
       for (const action of executedGraph.actions) {
         expect(
           dataform.ActionResult.ExecutionStatus[action.status],
@@ -183,7 +183,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
         dbadapter
       );
 
-      executedGraph = await dfapi.run(executionGraph, dbadapter).result();
+      executedGraph = await dfapi.run(dbadapter, executionGraph).result();
       const actionMap = keyBy(executedGraph.actions, v => v.name);
 
       const expectedActionStatus: { [index: string]: dataform.ActionResult.ExecutionStatus } = {
@@ -258,7 +258,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
         }
       ]) {
         const executionGraph = await dfapi.build(compiledGraph, runIteration.runConfig, dbadapter);
-        const runResult = await dfapi.run(executionGraph, dbadapter).result();
+        const runResult = await dfapi.run(dbadapter, executionGraph).result();
         expect(dataform.RunResult.ExecutionStatus[runResult.status]).eql(
           dataform.RunResult.ExecutionStatus[dataform.RunResult.ExecutionStatus.SUCCESSFUL]
         );
@@ -302,7 +302,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
         },
         dbadapter
       );
-      const runResult = await dfapi.run(executionGraph, dbadapter).result();
+      const runResult = await dfapi.run(dbadapter, executionGraph).result();
       expect(dataform.RunResult.ExecutionStatus[runResult.status]).eql(
         dataform.RunResult.ExecutionStatus[dataform.RunResult.ExecutionStatus.SUCCESSFUL]
       );
@@ -376,7 +376,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
         useRunCache: false
       });
       const executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
-      await dfapi.run(executionGraph, dbadapter).result();
+      await dfapi.run(dbadapter, executionGraph).result();
 
       const view = keyBy(compiledGraph.tables, t => t.name)[
         "dataform-integration-tests.df_integration_test_evaluate.example_view"
