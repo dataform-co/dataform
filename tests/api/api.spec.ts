@@ -8,6 +8,7 @@ import { computeAllTransitiveInputs } from "df/api/commands/build";
 import { IDbAdapter } from "df/api/dbadapters";
 import { BigQueryDbAdapter } from "df/api/dbadapters/bigquery";
 import { actionsByTarget } from "df/api/utils/graphs";
+import { sleep, sleepUntil } from "df/common/promises";
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
 import { asPlainObject, cleanSql } from "df/tests/utils";
@@ -1035,9 +1036,7 @@ postOps`
         mockedDbAdapter.execute(RUN_TEST_GRAPH.actions[0].tasks[0].statement, anything())
       ).thenCall(async () => {
         firstQueryInProgress = true;
-        while (!stopWasCalled) {
-          await new Promise(resolve => setTimeout(resolve, 10));
-        }
+        await sleepUntil(() => stopWasCalled);
         return {
           rows: [],
           metadata: {
@@ -1061,9 +1060,7 @@ postOps`
 
       let runner = new Runner(instance(mockedDbAdapter), RUN_TEST_GRAPH);
       runner.execute();
-      while (!firstQueryInProgress) {
-        await new Promise(resolve => setTimeout(resolve, 10));
-      }
+      await sleepUntil(() => firstQueryInProgress);
       runner.stop();
       stopWasCalled = true;
       const result = cleanTiming(await runner.result());
@@ -1275,8 +1272,9 @@ postOps`
       const runner = new Runner(mockDbAdapter, CANCEL_TEST_GRAPH);
       const execution = runner.execute().result();
       // We want to await the return promise before we actually call cancel.
-      // Setting a short (10ms) timeout on calling cancel accomplishes this.
-      setTimeout(() => runner.cancel(), 10);
+      // Waiting a short (10ms) time before calling cancel accomplishes this.
+      await sleep(10);
+      runner.cancel();
       const result = await execution;
       expect(wasCancelled).equals(true);
       // Cancelling a run doesn't actually throw at the top level.
