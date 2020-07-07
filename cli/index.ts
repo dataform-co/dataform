@@ -539,7 +539,7 @@ export function runCli() {
             if (!argv.json) {
               print("Running...\n");
             }
-            const runner = run(executionGraph, dbadapter);
+            const runner = run(dbadapter, executionGraph);
             process.on("SIGINT", () => {
               if (
                 !supportsCancel(
