@@ -43,7 +43,10 @@ export async function compile(
       ...compileConfig.projectConfigOverride
     });
   } catch (e) {
-    throw new ErrorWithCause("Compilation failed: ProjectConfig ('dataform.json') is invalid.", e);
+    throw new ErrorWithCause(
+      `Compilation failed. ProjectConfig ('dataform.json') is invalid: ${e.message}`,
+      e
+    );
   }
 
   const encodedGraphInBase64 = await CompileChildProcess.forkProcess().compile(compileConfig);
