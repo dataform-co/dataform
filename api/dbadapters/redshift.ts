@@ -74,7 +74,7 @@ export class RedshiftDbAdapter implements IDbAdapter {
       if (options.includeQueryInError) {
         throw new Error(`Error encountered while running "${statement}": ${e.message}`);
       }
-      throw new ErrorWithCause(`Error executing Redshift query: ${e.message}`, e);
+      throw new ErrorWithCause(`Error executing query: ${e.message}`, e);
     }
   }
 
