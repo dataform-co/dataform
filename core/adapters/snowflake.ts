@@ -1,6 +1,7 @@
 import { IAdapter } from "df/core/adapters";
 import { Adapter } from "df/core/adapters/base";
 import { Task, Tasks } from "df/core/tasks";
+import { sanitizePrefix } from "df/core/validation";
 import { dataform } from "df/protos/ts";
 
 export class SnowflakeAdapter extends Adapter implements IAdapter {
@@ -9,7 +10,9 @@ export class SnowflakeAdapter extends Adapter implements IAdapter {
   }
 
   public resolveTarget(target: dataform.ITarget) {
-    return `${!!target.database ? `"${target.database}".` : ""}"${target.schema}"."${target.name}"`;
+    return `${!!target.database ? `"${target.database}".` : ""}"${target.schema}"."${sanitizePrefix(
+      target.name
+    )}"`;
   }
 
   public normalizeIdentifier(identifier: string) {

@@ -4,7 +4,7 @@ import * as path from "path";
 
 import * as compilers from "df/core/compilers";
 import { Session } from "df/core/session";
-import * as utils from "df/core/utils";
+import { isValidPrefix, isValidSuffix, sanitizePrefix, sanitizeSuffix } from "df/core/validation";
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
 import { asPlainObject } from "df/tests/utils";
@@ -910,6 +910,54 @@ post_operations {
           "file.sqlx"
         )
       ).eql(await fs.readFile("tests/core/strings-act-literally.js.test", "utf8"));
+    });
+  });
+
+  suite("validation", () => {
+    test("suffixes interpreted correctly", () => {
+      const testCases: Array<{ in: string; valid: boolean; expected: string }> = [
+        { in: "a_good_name", valid: true, expected: "a_good_name" },
+        { in: "AN_OK_NAME", valid: true, expected: "AN_OK_NAME" },
+        { in: "a-normal-name", valid: false, expected: "a_normal_name" },
+        { in: "a-sh*&#y-name", valid: false, expected: "a_shy_name" },
+        { in: "l3t5_put_s0m3_numb3rs_1n", valid: true, expected: "l3t5_put_s0m3_numb3rs_1n" },
+        {
+          in:
+            "a_ridiculously_long_name_like_seriously_who_would_name_their_branch_in_a_completely_unreadable_way_like_this_i_bet_they_write_sentences_as_titles",
+          valid: false,
+          expected:
+            "a_ridiculously_long_name_like_seriously_who_would_name_their_branch_in_a_completely_unreadable_way_like_this_i_bet_they_write_s"
+        },
+        { in: "ab", valid: true, expected: "ab" }
+      ];
+      testCases.forEach(testCase => {
+        expect(isValidSuffix(testCase.in)).to.equal(testCase.valid);
+        expect(sanitizeSuffix(testCase.in)).to.equal(testCase.expected);
+      });
+    });
+
+    test("prefixes interpreted correctly", () => {
+      const tests: Array<{ in: string; valid: boolean; expected: string }> = [
+        { in: "a_good_name", valid: true, expected: "a_good_name" },
+        { in: "AN_OK_NAME", valid: true, expected: "AN_OK_NAME" },
+        { in: "a-normal-name", valid: false, expected: "a_normal_name" },
+        { in: "a-sh*&#y-name", valid: false, expected: "a_shy_name" },
+        { in: "l3t5_put_s0m3_numb3rs_1n", valid: true, expected: "l3t5_put_s0m3_numb3rs_1n" },
+        {
+          in: Array(51)
+            .fill("a")
+            .join(""),
+          valid: false,
+          expected: Array(49)
+            .fill("a")
+            .join("")
+        },
+        { in: "ab", valid: true, expected: "ab" }
+      ];
+      tests.forEach(testItem => {
+        expect(isValidPrefix(testItem.in)).to.equal(testItem.valid);
+        expect(sanitizePrefix(testItem.in)).to.equal(testItem.expected);
+      });
     });
   });
 });

@@ -1,6 +1,7 @@
 import { IAdapter } from "df/core/adapters";
 import { Adapter } from "df/core/adapters/base";
 import { Task, Tasks } from "df/core/tasks";
+import { sanitizePrefix } from "df/core/validation";
 import { dataform } from "df/protos/ts";
 
 export class BigQueryAdapter extends Adapter implements IAdapter {
@@ -10,7 +11,7 @@ export class BigQueryAdapter extends Adapter implements IAdapter {
 
   public resolveTarget(target: dataform.ITarget) {
     return `\`${target.database || this.project.defaultDatabase}.${target.schema ||
-      this.project.defaultSchema}.${target.name}\``;
+      this.project.defaultSchema}.${sanitizePrefix(target.name)}\``;
   }
 
   public publishTasks(
