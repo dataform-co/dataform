@@ -24,7 +24,7 @@ export function SimpleCollapse({
   return (
     <>
       <div className={cssStyles.join(" ")}>
-        {message}
+        {message || <></>}
         {children && (
           <Button
             minimal={true}
