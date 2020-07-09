@@ -14,11 +14,7 @@ import {
   toRowKey
 } from "df/api/utils/run_cache";
 import { coerceAsError, ErrorWithCause } from "df/common/errors/errors";
-import {
-  JSONObjectStringifier,
-  StringifiedMap,
-  StringifiedSet
-} from "df/common/strings/stringifier";
+import { StringifiedMap } from "df/common/strings/stringifier";
 import { collectEvaluationQueries, QueryOrAction } from "df/core/adapters";
 import { dataform } from "df/protos/ts";
 
@@ -245,6 +241,10 @@ export class BigQueryDbAdapter implements IDbAdapter {
   }
 
   public async persistStateMetadata(
+    transitiveInputMetadataByTarget: StringifiedMap<
+      dataform.ITarget,
+      dataform.PersistedTableMetadata.ITransitiveInputMetadata
+    >,
     allActions: dataform.IExecutionAction[],
     actionsToPersist: dataform.IExecutionAction[],
     options: {
@@ -274,9 +274,6 @@ DELETE \`${CACHED_STATE_TABLE_NAME}\` WHERE target IN (${allActions
       );
 
       // Save entries for 'actionsToPersist'.
-      const transitiveInputMetadataByTarget = await this.computeTransitiveInputMetadataMap(
-        actionsToPersist
-      );
       const valuesTuples = actionsToPersist
         // If we were unable to load metadata for the action's output dataset, or for any of the action's
         // input datasets, do not store a cache entry for the action.
@@ -500,30 +497,6 @@ DELETE \`${CACHED_STATE_TABLE_NAME}\` WHERE target IN (${allActions
         }
       )
     );
-  }
-
-  private async computeTransitiveInputMetadataMap(actions: dataform.IExecutionAction[]) {
-    const allInvolvedTargets = new StringifiedSet(JSONObjectStringifier.create<dataform.ITarget>());
-    actions.forEach(action => {
-      allInvolvedTargets.add(action.target);
-      action.transitiveInputs.forEach(transitiveInput => allInvolvedTargets.add(transitiveInput));
-    });
-    const tableMetadataByTarget = new StringifiedMap<
-      dataform.ITarget,
-      dataform.PersistedTableMetadata.ITransitiveInputMetadata
-    >(JSONObjectStringifier.create<dataform.ITarget>());
-    await Promise.all(
-      Array.from(allInvolvedTargets).map(async target => {
-        const tableMetadata = await this.table(target);
-        if (tableMetadata) {
-          tableMetadataByTarget.set(target, {
-            target: tableMetadata.target,
-            lastUpdatedMillis: tableMetadata.lastUpdatedMillis
-          });
-        }
-      })
-    );
-    return tableMetadataByTarget;
   }
 }
 
