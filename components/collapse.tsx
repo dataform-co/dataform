@@ -4,7 +4,7 @@ import * as React from "react";
 
 import * as styles from "df/components/collapse.css";
 
-interface ISimpleCollapseProps {
+export interface ISimpleCollapseProps {
   message: React.ReactNode;
   className?: string;
   defaultOpen?: boolean;
