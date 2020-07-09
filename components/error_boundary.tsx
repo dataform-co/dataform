@@ -3,13 +3,13 @@ import * as React from "react";
 
 import * as styles from "df/components/error_boundary.css";
 
-interface IBaseErrorProps {
+export interface IBaseErrorProps {
   customTitle?: React.ReactNode | string;
   customIntent?: Intent;
   sinkMethod?: (error: Error, id: string) => void;
 }
 
-interface IErrorCalloutProps extends IBaseErrorProps {
+export interface IErrorCalloutProps extends IBaseErrorProps {
   errorMessage?: string;
 }
 
