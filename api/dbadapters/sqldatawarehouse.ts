@@ -62,7 +62,7 @@ export class SQLDataWarehouseDBAdapter implements IDbAdapter {
     } = { maxResults: 1000 }
   ): Promise<IExecutionResult> {
     const request = (await this.pool).request();
-    if (options && options.onCancel) {
+    if (options?.onCancel) {
       options.onCancel(() => request.cancel());
     }
 

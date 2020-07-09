@@ -2,7 +2,7 @@ import * as pg from "pg";
 import Cursor from "pg-cursor";
 
 import { Credentials } from "df/api/commands/credentials";
-import { IDbAdapter } from "df/api/dbadapters/index";
+import { IDbAdapter, OnCancel } from "df/api/dbadapters/index";
 import { SSHTunnelProxy } from "df/api/ssh_tunnel_proxy";
 import { parseRedshiftEvalError } from "df/api/utils/error_parsing";
 import { ErrorWithCause } from "df/common/errors/errors";
@@ -251,6 +251,7 @@ class PgPoolExecutor {
   public async execute(
     statement: string,
     options: {
+      onCancel?: OnCancel;
       maxResults?: number;
     } = { maxResults: 1000 }
   ) {
@@ -271,6 +272,16 @@ class PgPoolExecutor {
       // See https://docs.aws.amazon.com/redshift/latest/dg/declare.html for more details.
       const cursor: ICursor = client.query(new Cursor(statement));
       const result = await new Promise<any[]>((resolve, reject) => {
+        if (options?.onCancel) {
+          options.onCancel(() =>
+            cursor.close(e => {
+              if (e) {
+                reject(e);
+              }
+            })
+          );
+        }
+
         // It seems that when requesting one row back exactly, we run into some issues with
         // the cursor. I've filed a bug (https://github.com/brianc/node-pg-cursor/issues/55),
         // but setting a minimum of 2 resulting rows seems to do the trick.
