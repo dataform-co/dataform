@@ -5,7 +5,7 @@ import * as React from "react";
 import * as styles from "df/components/collapse.css";
 
 export interface ISimpleCollapseProps {
-  message: React.ReactNode;
+  message?: React.ReactNode;
   className?: string;
   defaultOpen?: boolean;
 }
@@ -24,7 +24,7 @@ export function SimpleCollapse({
   return (
     <>
       <div className={cssStyles.join(" ")}>
-        {message}
+        {message || <></>}
         {children && (
           <Button
             minimal={true}
