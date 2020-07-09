@@ -43,7 +43,7 @@ interface ISnowflakeResultStream {
 }
 
 export class SnowflakeDbAdapter implements IDbAdapter {
-  public static async create(credentials: Credentials) {
+  public static async create(credentials: Credentials, warehouseType: string) {
     const connection = await connect(credentials as dataform.ISnowflake);
     return new SnowflakeDbAdapter(connection);
   }

@@ -48,7 +48,7 @@ export interface IDbAdapter {
 }
 
 export interface IDbAdapterClass<T extends IDbAdapter> {
-  create: (credentials: Credentials, warehouseType?: string) => Promise<T>;
+  create: (credentials: Credentials, warehouseType: string) => Promise<T>;
 }
 
 const registry: { [warehouseType: string]: IDbAdapterClass<IDbAdapter> } = {};

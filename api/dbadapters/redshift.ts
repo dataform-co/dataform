@@ -32,7 +32,7 @@ const maybeInitializePg = (() => {
 })();
 
 export class RedshiftDbAdapter implements IDbAdapter {
-  public static async create(credentials: Credentials, warehouseType?: string) {
+  public static async create(credentials: Credentials, warehouseType: string) {
     maybeInitializePg();
     const jdbcCredentials = credentials as dataform.IJDBC;
     const baseClientConfig: Partial<pg.ClientConfig> = {
@@ -64,8 +64,8 @@ export class RedshiftDbAdapter implements IDbAdapter {
   }
 
   private constructor(
-    private queryExecutor: PgPoolExecutor,
-    private options: IRedshiftAdapterOptions
+    private readonly queryExecutor: PgPoolExecutor,
+    private readonly options: IRedshiftAdapterOptions
   ) {}
 
   public async execute(
@@ -83,7 +83,7 @@ export class RedshiftDbAdapter implements IDbAdapter {
         throw new Error(`Error encountered while running "${statement}": ${e.message}`);
       }
       throw new ErrorWithCause(
-        `Error executing ${this.options.warehouseType || ""} query: ${e.message}`,
+        `Error executing ${this.options.warehouseType} query: ${e.message}`,
         e
       );
     }
