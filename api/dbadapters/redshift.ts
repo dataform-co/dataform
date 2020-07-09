@@ -10,7 +10,10 @@ import { collectEvaluationQueries, QueryOrAction } from "df/core/adapters";
 import { dataform } from "df/protos/ts";
 
 interface ICursor {
-  read: (rowCount: number, callback: (err: Error, rows: any[]) => void) => void;
+  read: (
+    rowCount: number,
+    callback: (err: Error, rows: any[], result: pg.QueryResult) => void
+  ) => void;
   close: (callback: (err: Error) => void) => void;
 }
 
@@ -253,6 +256,7 @@ class PgPoolExecutor {
   ) {
     if (!options || !options.maxResults) {
       const result = await this.pool.query(statement);
+      verifyUniqueColumnNames(result.fields);
       return result.rows;
     }
     const client = await this.pool.connect();
@@ -270,7 +274,12 @@ class PgPoolExecutor {
         // It seems that when requesting one row back exactly, we run into some issues with
         // the cursor. I've filed a bug (https://github.com/brianc/node-pg-cursor/issues/55),
         // but setting a minimum of 2 resulting rows seems to do the trick.
-        cursor.read(Math.max(2, options.maxResults), (err, rows) => {
+        cursor.read(Math.max(2, options.maxResults), (err, rows, queryResult) => {
+          try {
+            verifyUniqueColumnNames(queryResult.fields);
+          } catch (e) {
+            reject(e);
+          }
           if (err) {
             reject(err);
             return;
@@ -295,4 +304,14 @@ class PgPoolExecutor {
   public async close() {
     await this.pool.end();
   }
+}
+
+function verifyUniqueColumnNames(fields: pg.FieldDef[]) {
+  const colNames = new Set<string>();
+  fields.forEach(field => {
+    if (colNames.has(field.name)) {
+      throw new Error(`Ambiguous column name: ${field.name}`);
+    }
+    colNames.add(field.name);
+  });
 }
