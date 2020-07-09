@@ -14,6 +14,11 @@ interface ICursor {
   close: (callback: (err: Error) => void) => void;
 }
 
+interface IRedshiftAdapterOptions {
+  sshTunnel?: SSHTunnelProxy;
+  warehouseType?: string;
+}
+
 const maybeInitializePg = (() => {
   let initialized = false;
   return () => {
@@ -27,7 +32,7 @@ const maybeInitializePg = (() => {
 })();
 
 export class RedshiftDbAdapter implements IDbAdapter {
-  public static async create(credentials: Credentials) {
+  public static async create(credentials: Credentials, warehouseType: string) {
     maybeInitializePg();
     const jdbcCredentials = credentials as dataform.IJDBC;
     const baseClientConfig: Partial<pg.ClientConfig> = {
@@ -46,7 +51,7 @@ export class RedshiftDbAdapter implements IDbAdapter {
         host: "127.0.0.1",
         port: sshTunnel.localPort
       });
-      return new RedshiftDbAdapter(queryExecutor, sshTunnel);
+      return new RedshiftDbAdapter(queryExecutor, { sshTunnel, warehouseType });
     } else {
       const clientConfig: pg.ClientConfig = {
         ...baseClientConfig,
@@ -54,11 +59,14 @@ export class RedshiftDbAdapter implements IDbAdapter {
         port: jdbcCredentials.port
       };
       const queryExecutor = new PgPoolExecutor(clientConfig);
-      return new RedshiftDbAdapter(queryExecutor);
+      return new RedshiftDbAdapter(queryExecutor, { warehouseType });
     }
   }
 
-  private constructor(private queryExecutor: PgPoolExecutor, private sshTunnel?: SSHTunnelProxy) {}
+  private constructor(
+    private readonly queryExecutor: PgPoolExecutor,
+    private readonly options: IRedshiftAdapterOptions
+  ) {}
 
   public async execute(
     statement: string,
@@ -74,7 +82,10 @@ export class RedshiftDbAdapter implements IDbAdapter {
       if (options.includeQueryInError) {
         throw new Error(`Error encountered while running "${statement}": ${e.message}`);
       }
-      throw new ErrorWithCause(`Error executing Redshift query: ${e.message}`, e);
+      throw new ErrorWithCause(
+        `Error executing ${this.options.warehouseType} query: ${e.message}`,
+        e
+      );
     }
   }
 
@@ -188,8 +199,8 @@ export class RedshiftDbAdapter implements IDbAdapter {
 
   public async close() {
     await this.queryExecutor.close();
-    if (this.sshTunnel) {
-      await this.sshTunnel.close();
+    if (this.options.sshTunnel) {
+      await this.options.sshTunnel.close();
     }
   }
 

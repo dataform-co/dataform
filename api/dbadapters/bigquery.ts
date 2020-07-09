@@ -58,7 +58,7 @@ interface IBigQueryFieldMetadata {
 }
 
 export class BigQueryDbAdapter implements IDbAdapter {
-  public static async create(credentials: Credentials) {
+  public static async create(credentials: Credentials, warehouseType: string) {
     return new BigQueryDbAdapter(credentials);
   }
 
