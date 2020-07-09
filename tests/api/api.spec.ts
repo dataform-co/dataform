@@ -1266,7 +1266,8 @@ postOps`
         prepareSchema: (_, __) => {
           return Promise.resolve();
         },
-        close: () => undefined
+        close: () => undefined,
+        table: _ => undefined
       } as IDbAdapter;
 
       const runner = new Runner(mockDbAdapter, CANCEL_TEST_GRAPH);

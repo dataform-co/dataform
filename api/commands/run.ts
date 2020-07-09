@@ -24,7 +24,11 @@ export function run(
 }
 
 export class Runner {
-  private readonly warehouseStateByTarget: StringifiedMap<
+  private readonly warehouseStateBeforeRunByTarget: StringifiedMap<
+    dataform.ITarget,
+    dataform.ITableMetadata
+  >;
+  private readonly warehouseStateAfterRunByTarget: StringifiedMap<
     dataform.ITarget,
     dataform.ITableMetadata
   >;
@@ -51,9 +55,13 @@ export class Runner {
     this.runResult = partiallyExecutedRunResult || {
       actions: []
     };
-    this.warehouseStateByTarget = new StringifiedMap(
+    this.warehouseStateBeforeRunByTarget = new StringifiedMap(
       JSONObjectStringifier.create(),
       graph.warehouseState.tables?.map(tableMetadata => [tableMetadata.target, tableMetadata])
+    );
+    this.warehouseStateAfterRunByTarget = new StringifiedMap(
+      JSONObjectStringifier.create(),
+      Array.from(this.warehouseStateBeforeRunByTarget.entries())
     );
     this.persistedStateByTarget = new StringifiedMap(
       JSONObjectStringifier.create(),
@@ -139,6 +147,21 @@ export class Runner {
 
     if (this.graph.runConfig && this.graph.runConfig.useRunCache) {
       await this.dbadapter.persistStateMetadata(
+        new StringifiedMap<
+          dataform.ITarget,
+          dataform.PersistedTableMetadata.ITransitiveInputMetadata
+        >(
+          JSONObjectStringifier.create<dataform.ITarget>(),
+          Array.from(this.warehouseStateAfterRunByTarget.entries()).map(
+            ([target, tableMetadata]) => [
+              target,
+              {
+                target: tableMetadata.target,
+                lastUpdatedMillis: tableMetadata.lastUpdatedMillis
+              }
+            ]
+          )
+        ),
         this.graph.actions,
         this.graph.actions.filter(executionAction => {
           if (executionAction.hermeticity !== dataform.ActionHermeticity.HERMETIC) {
@@ -360,6 +383,14 @@ export class Runner {
     ) {
       await this.dbadapter.setMetadata(action);
     }
+
+    const newMetadata = await this.dbadapter.table(action.target);
+    if (newMetadata) {
+      this.warehouseStateAfterRunByTarget.set(action.target, newMetadata);
+    } else {
+      this.warehouseStateAfterRunByTarget.delete(action.target);
+    }
+
     actionResult.timing = timer.end();
     await this.notifyListeners();
   }
@@ -431,12 +462,12 @@ export class Runner {
 
     // The target table for this action must exist, and the table metadata's last update timestamp must match
     // the persisted last update timestamp.
-    if (!this.warehouseStateByTarget.has(executionAction.target)) {
+    if (!this.warehouseStateBeforeRunByTarget.has(executionAction.target)) {
       return false;
     }
     if (
       persistedTableMetadata.lastUpdatedMillis.notEquals(
-        this.warehouseStateByTarget.get(executionAction.target).lastUpdatedMillis
+        this.warehouseStateBeforeRunByTarget.get(executionAction.target).lastUpdatedMillis
       )
     ) {
       return false;
@@ -457,11 +488,12 @@ export class Runner {
       const persistedTransitiveInputUpdateTimestamp = persistedTransitiveInputUpdateTimestamps.get(
         transitiveInput
       );
-      if (!this.warehouseStateByTarget.has(transitiveInput)) {
+      if (!this.warehouseStateBeforeRunByTarget.has(transitiveInput)) {
         return false;
       }
-      const latestTransitiveInputUpdateTimestamp = this.warehouseStateByTarget.get(transitiveInput)
-        .lastUpdatedMillis;
+      const latestTransitiveInputUpdateTimestamp = this.warehouseStateBeforeRunByTarget.get(
+        transitiveInput
+      ).lastUpdatedMillis;
       if (persistedTransitiveInputUpdateTimestamp.notEquals(latestTransitiveInputUpdateTimestamp)) {
         return false;
       }

@@ -3,6 +3,7 @@ import { BigQueryDbAdapter } from "df/api/dbadapters/bigquery";
 import { RedshiftDbAdapter } from "df/api/dbadapters/redshift";
 import { SnowflakeDbAdapter } from "df/api/dbadapters/snowflake";
 import { SQLDataWarehouseDBAdapter } from "df/api/dbadapters/sqldatawarehouse";
+import { StringifiedMap } from "df/common/strings/stringifier";
 import { QueryOrAction } from "df/core/adapters";
 import { dataform } from "df/protos/ts";
 
@@ -36,6 +37,10 @@ export interface IDbAdapter {
   preview(target: dataform.ITarget, limitRows?: number): Promise<any[]>;
   prepareSchema(database: string, schema: string): Promise<void>;
   persistStateMetadata(
+    transitiveInputMetadataByTarget: StringifiedMap<
+      dataform.ITarget,
+      dataform.PersistedTableMetadata.ITransitiveInputMetadata
+    >,
     allActions: dataform.IExecutionAction[],
     actionsToPersist: dataform.IExecutionAction[],
     options: {
