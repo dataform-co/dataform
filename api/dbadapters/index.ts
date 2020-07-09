@@ -1,5 +1,3 @@
-import { query } from "..";
-
 import { Credentials } from "df/api/commands/credentials";
 import { BigQueryDbAdapter } from "df/api/dbadapters/bigquery";
 import { RedshiftDbAdapter } from "df/api/dbadapters/redshift";
@@ -50,7 +48,7 @@ export interface IDbAdapter {
 }
 
 export interface IDbAdapterClass<T extends IDbAdapter> {
-  create: (credentials: Credentials) => Promise<T>;
+  create: (credentials: Credentials, warehouseType: string) => Promise<T>;
 }
 
 const registry: { [warehouseType: string]: IDbAdapterClass<IDbAdapter> } = {};
@@ -63,7 +61,7 @@ export async function create(credentials: Credentials, warehouseType: string): P
   if (!registry[warehouseType]) {
     throw new Error(`Unsupported warehouse: ${warehouseType}`);
   }
-  return await registry[warehouseType].create(credentials);
+  return await registry[warehouseType].create(credentials, warehouseType);
 }
 
 register("bigquery", BigQueryDbAdapter);
