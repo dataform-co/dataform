@@ -96,3 +96,11 @@
 .whatsNextCard p {
   color: var(--textSecondary);
 }
+
+/* Stops url links, e.g. /assertions#content-link, from being hidden behind the header */
+:target::before {
+  content: "";
+  display: block;
+  height: 60px;
+  margin: -60px 0 0;
+}
