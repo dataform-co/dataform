@@ -1,22 +1,26 @@
 import { ColumnDescriptors } from "df/core/column_descriptors";
-import { IColumnsDescriptor, IDocumentableConfig, ITargetableConfig } from "df/core/common";
+import {
+  IActionConfig,
+  IColumnsDescriptor,
+  IDocumentableConfig,
+  INamedConfig,
+  ITargetableConfig
+} from "df/core/common";
 import { Session } from "df/core/session";
 import { checkExcessProperties, strictKeysOf } from "df/core/utils";
 import { dataform } from "df/protos/ts";
 /**
  * Configuration options for `declaration` action types.
  */
-export interface IDeclarationConfig extends IDocumentableConfig, ITargetableConfig {}
+export interface IDeclarationConfig extends IDocumentableConfig, INamedConfig, ITargetableConfig {}
 
 export const IDeclarationConfigProperties = strictKeysOf<IDeclarationConfig>()([
-  "type",
-  "name",
-  "tags",
-  "schema",
-  "database",
   "columns",
+  "database",
   "description",
-  "dependencies"
+  "name",
+  "schema",
+  "type"
 ]);
 
 /**

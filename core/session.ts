@@ -103,20 +103,6 @@ export class Session {
         "Actions may only contain more than one SQL statement if they are of type 'operations'."
       );
     }
-    if (
-      sqlxConfig.hasOwnProperty("hasOutput") &&
-      !(sqlxConfig.type === "operations" || definesDataset(sqlxConfig.type))
-    ) {
-      this.compileError(
-        "Actions may only specify 'hasOutput: true' if they are of type 'operations' or create a dataset."
-      );
-    }
-    if (
-      sqlxConfig.hasOwnProperty("columns") &&
-      !declaresDataset(sqlxConfig.type, sqlxConfig.hasOwnProperty("hasOutput"))
-    ) {
-      this.compileError("Actions may only specify 'columns' if they create or declare a dataset.");
-    }
     if (sqlxConfig.hasOwnProperty("protected") && sqlxConfig.type !== "incremental") {
       this.compileError(
         "Actions may only specify 'protected: true' if they are of type 'incremental'."
@@ -130,28 +116,8 @@ export class Session {
     if (!sqlxConfig.hasOwnProperty("schema") && sqlxConfig.type === "declaration") {
       this.compileError("Actions of type 'declaration' must specify a value for 'schema'.");
     }
-    if (sqlxConfig.hasOwnProperty("dataset") && sqlxConfig.type !== "test") {
-      this.compileError("Actions may only specify 'dataset' if they are of type 'test'.");
-    }
-    if (!sqlxConfig.hasOwnProperty("dataset") && sqlxConfig.type === "test") {
-      this.compileError("Actions must specify 'dataset' if they are of type 'test'.");
-    }
     if (actionOptions.hasInputs && sqlxConfig.type !== "test") {
       this.compileError("Actions may only include input blocks if they are of type 'test'.");
-    }
-    if (sqlxConfig.hasOwnProperty("disabled") && !definesDataset(sqlxConfig.type)) {
-      this.compileError("Actions may only specify 'disabled: true' if they create a dataset.");
-    }
-    if (sqlxConfig.hasOwnProperty("redshift") && !definesDataset(sqlxConfig.type)) {
-      this.compileError("Actions may only specify 'redshift: { ... }' if they create a dataset.");
-    }
-    if (sqlxConfig.hasOwnProperty("sqldatawarehouse") && !definesDataset(sqlxConfig.type)) {
-      this.compileError(
-        "Actions may only specify 'sqldatawarehouse: { ... }' if they create a dataset."
-      );
-    }
-    if (sqlxConfig.hasOwnProperty("bigquery") && !definesDataset(sqlxConfig.type)) {
-      this.compileError("Actions may only specify 'bigquery: { ... }' if they create a dataset.");
     }
     if (actionOptions.hasPreOperations && !definesDataset(sqlxConfig.type)) {
       this.compileError("Actions may only include pre_operations if they create a dataset.");

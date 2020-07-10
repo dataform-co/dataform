@@ -295,6 +295,8 @@ message Operation {
 
   repeated Target dependency_targets = 11;
   ActionHermeticity hermeticity = 12;
+  
+  bool disabled = 14;
 
   repeated string queries = 6;
   bool has_output = 8;
@@ -318,6 +320,8 @@ message Assertion {
 
   repeated Target dependency_targets = 11;
   ActionHermeticity hermeticity = 12;
+  
+  bool disabled = 14;
 
   string query = 3;
 

@@ -4,8 +4,6 @@ const parsedConfig = {};
 const sqlxConfig = {
   name: "file",
   type: "operations",
-  dependencies: [],
-  tags: [],
   ...parsedConfig
 };
 
