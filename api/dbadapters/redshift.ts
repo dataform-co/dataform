@@ -14,7 +14,7 @@ interface ICursor {
     rowCount: number,
     callback: (err: Error, rows: any[], result: pg.QueryResult) => void
   ) => void;
-  close: (callback: (err: Error) => void) => void;
+  close: (callback: (err?: Error) => void) => void;
 }
 
 interface IRedshiftAdapterOptions {

@@ -100,13 +100,13 @@ export class SnowflakeDbAdapter implements IDbAdapter {
                     reject(new ErrorWithCause(message, err));
                     return;
                   }
-                    options?.onCancel(() =>
-                      stmt.cancel((e: any) => {
-                        if (e) {
-                          reject(e);
-                        }
-                      })
-                    );
+                  options?.onCancel(() =>
+                    stmt.cancel((e: any) => {
+                      if (e) {
+                        reject(e);
+                      }
+                    })
+                  );
                   const rows: any[] = [];
                   const streamOptions =
                     !!options && !!options.maxResults
