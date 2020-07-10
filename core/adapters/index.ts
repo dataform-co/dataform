@@ -19,8 +19,8 @@ export interface IAdapter {
   ): Tasks;
   assertTasks(assertion: dataform.IAssertion, projectConfig: dataform.IProjectConfig): Tasks;
 
-  dropIfExists(target: dataform.ITarget, type: string): string;
-  baseTableType(type: string): string;
+  dropIfExists(target: dataform.ITarget, type: dataform.TableMetadata.Type): string;
+  baseTableType(type: string): dataform.TableMetadata.Type;
 
   indexAssertion(dataset: string, indexCols: string[]): string;
   rowConditionsAssertion(dataset: string, rowConditions: string[]): string;

@@ -491,13 +491,42 @@ message TestResult {
 }
 
 message Field {
+
+  enum Primitive {
+    UNKNOWN = 0;
+    INTEGER = 1;
+    FLOAT = 2;
+    NUMERIC = 5;
+    BOOLEAN = 3;
+    STRING = 4;
+    DATE = 6;
+    DATETIME = 7;
+    TIMESTAMP = 8;
+    TIME = 9;
+    BYTES = 10;
+    // Semi structured data from Snowflake has no strong schema, and could therefore be anything.
+    ANY = 11;
+  }
+
+  enum Flag {
+    UNKNOWN = 0;
+    REPEATED = 1;
+  }
+
   string name = 1;
-  repeated string flags = 4;
+  
+  repeated Flag flags = 6;
+
   oneof type {
-    string primitive = 2;
+    Primitive primitive = 7;
     Fields struct = 3;
   }
-  string description  = 5;
+
+  string description = 5;
+
+  // Deprecated.
+  repeated string flags_deprecated = 4;
+  string primitive_deprecated = 2;
 }
 
 message Fields {
@@ -505,11 +534,22 @@ message Fields {
 }
 
 message TableMetadata {
+
+  enum Type {
+    UNKNOWN = 0;
+    TABLE = 1;
+    VIEW = 2;
+  }
+
   Target target = 1;
-  string type = 2; // "table" or "view"
+  Type type = 6;
+
   repeated Field fields = 3;
   int64 last_updated_millis = 4;
   string description = 5;
+
+  // Deprecated.
+  string type_deprecated = 2; // "table" or "view"
 }
 
 message PersistedTableMetadata {

@@ -26,9 +26,10 @@ export class SQLDataWarehouseAdapter extends Adapter implements IAdapter {
 
     this.preOps(table, runConfig, tableMetadata).forEach(statement => tasks.add(statement));
 
-    if (tableMetadata && tableMetadata.type !== this.baseTableType(table.type)) {
+    const baseTableType = this.baseTableType(table.type);
+    if (tableMetadata && tableMetadata.type !== baseTableType) {
       tasks.add(
-        Task.statement(this.dropIfExists(table.target, this.oppositeTableType(table.type)))
+        Task.statement(this.dropIfExists(table.target, this.oppositeTableType(baseTableType)))
       );
     }
 
@@ -71,7 +72,7 @@ export class SQLDataWarehouseAdapter extends Adapter implements IAdapter {
       });
 
     return Tasks.create()
-      .add(Task.statement(this.dropIfExists(target, "view")))
+      .add(Task.statement(this.dropIfExists(target, dataform.TableMetadata.Type.VIEW)))
       .add(
         Task.statement(`
         create view ${this.resolveTarget(target)}
@@ -80,9 +81,9 @@ export class SQLDataWarehouseAdapter extends Adapter implements IAdapter {
       .add(Task.assertion(`select sum(1) as row_count from ${this.resolveTarget(target)}`));
   }
 
-  public dropIfExists(target: dataform.ITarget, type: string) {
-    if (type === "view") {
-      return `drop ${this.baseTableType(type)} if exists ${this.resolveTarget(target)} `;
+  public dropIfExists(target: dataform.ITarget, type: dataform.TableMetadata.Type) {
+    if (type === dataform.TableMetadata.Type.VIEW) {
+      return `drop view if exists ${this.resolveTarget(target)} `;
     }
     return `if object_id ('${this.resolveTarget(
       target
@@ -107,7 +108,7 @@ export class SQLDataWarehouseAdapter extends Adapter implements IAdapter {
     return Tasks.create()
       .add(Task.statement(this.dropIfExists(tempTableTarget, this.baseTableType(table.type))))
       .add(Task.statement(this.createTable(table, tempTableTarget)))
-      .add(Task.statement(this.dropIfExists(table.target, "table")))
+      .add(Task.statement(this.dropIfExists(table.target, dataform.TableMetadata.Type.TABLE)))
       .add(
         Task.statement(
           `rename object ${this.resolveTarget(tempTableTarget)} to ${table.target.name} `

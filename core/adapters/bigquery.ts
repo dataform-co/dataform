@@ -22,9 +22,10 @@ export class BigQueryAdapter extends Adapter implements IAdapter {
 
     this.preOps(table, runConfig, tableMetadata).forEach(statement => tasks.add(statement));
 
-    if (tableMetadata && tableMetadata.type !== this.baseTableType(table.type)) {
+    const baseTableType = this.baseTableType(table.type);
+    if (tableMetadata && tableMetadata.type !== baseTableType) {
       tasks.add(
-        Task.statement(this.dropIfExists(table.target, this.oppositeTableType(table.type)))
+        Task.statement(this.dropIfExists(table.target, this.oppositeTableType(baseTableType)))
       );
     }
 
@@ -80,9 +81,9 @@ export class BigQueryAdapter extends Adapter implements IAdapter {
   }
 
   public createOrReplace(table: dataform.ITable) {
-    return `create or replace ${this.baseTableType(table.type)} ${this.resolveTarget(
-      table.target
-    )} ${
+    return `create or replace ${this.tableTypeAsSql(
+      this.baseTableType(table.type)
+    )} ${this.resolveTarget(table.target)} ${
       table.bigquery && table.bigquery.partitionBy
         ? `partition by ${table.bigquery.partitionBy} `
         : ""
@@ -98,8 +99,8 @@ export class BigQueryAdapter extends Adapter implements IAdapter {
       create or replace view ${this.resolveTarget(target)} as ${query}`;
   }
 
-  public dropIfExists(target: dataform.ITarget, type: string) {
-    return `drop ${this.baseTableType(type)} if exists ${this.resolveTarget(target)}`;
+  public dropIfExists(target: dataform.ITarget, type: dataform.TableMetadata.Type) {
+    return `drop ${this.tableTypeAsSql(type)} if exists ${this.resolveTarget(target)}`;
   }
 
   public mergeInto(
