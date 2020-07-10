@@ -313,6 +313,8 @@ async function testHttpsConnection(url: string) {
     throw new ErrorWithCause(`Could not open HTTPS connection to ${url}.`, e);
   }
 }
+
+// See https://docs.snowflake.com/en/sql-reference/intro-summary-data-types.html
 function convertFieldType(type: string) {
   switch (String(type).toUpperCase()) {
     case "FLOAT":

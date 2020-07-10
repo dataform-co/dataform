@@ -200,6 +200,7 @@ export class SQLDataWarehouseDBAdapter implements IDbAdapter {
   }
 }
 
+// See: https://docs.microsoft.com/en-us/sql/t-sql/data-types/data-types-transact-sql?view=sql-server-ver15
 function convertFieldType(type: string) {
   switch (String(type).toUpperCase()) {
     case "FLOAT":

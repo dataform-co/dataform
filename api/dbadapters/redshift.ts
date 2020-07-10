@@ -330,6 +330,7 @@ function verifyUniqueColumnNames(fields: pg.FieldDef[]) {
   });
 }
 
+// See: https://docs.aws.amazon.com/redshift/latest/dg/c_Supported_data_types.html
 function convertFieldType(type: string) {
   switch (String(type).toUpperCase()) {
     case "FLOAT":

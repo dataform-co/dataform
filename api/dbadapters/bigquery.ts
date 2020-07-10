@@ -540,6 +540,7 @@ function convertField(field: IBigQueryFieldMetadata): dataform.IField {
   return result;
 }
 
+// See: https://cloud.google.com/bigquery/docs/reference/rest/v2/tables#TableFieldSchema
 function convertFieldType(type: string) {
   switch (String(type).toUpperCase()) {
     case "FLOAT":
