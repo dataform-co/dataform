@@ -26,6 +26,10 @@ suite("examples", () => {
           }))
         ).deep.equals([
           {
+            fileName: "includes/example_ignore.js",
+            message: "publish is not defined"
+          },
+          {
             fileName: "definitions/has_compile_errors/assertion_with_bigquery.sqlx",
             message:
               'Unexpected property "bigquery" in assertion config. Supported properties are: ["database","dependencies","description","disabled","hermetic","name","schema","tags","type"]'
