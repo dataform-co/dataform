@@ -2,7 +2,7 @@ import * as https from "https";
 import * as PromisePool from "promise-pool-executor";
 
 import { Credentials } from "df/api/commands/credentials";
-import { IDbAdapter } from "df/api/dbadapters/index";
+import { IDbAdapter, OnCancel } from "df/api/dbadapters/index";
 import { parseSnowflakeEvalError } from "df/api/utils/error_parsing";
 import { ErrorWithCause } from "df/common/errors/errors";
 import { collectEvaluationQueries, QueryOrAction } from "df/core/adapters";
@@ -53,7 +53,7 @@ interface ISnowflakeConnection {
 }
 
 interface ISnowflakeStatement {
-  cancel: () => void;
+  cancel: (err: any) => void;
   streamRows: (options: { start?: number; end?: number }) => ISnowflakeResultStream;
 }
 
@@ -79,6 +79,7 @@ export class SnowflakeDbAdapter implements IDbAdapter {
   public async execute(
     statement: string,
     options: {
+      onCancel?: OnCancel;
       maxResults?: number;
     } = { maxResults: 1000 }
   ) {
@@ -99,6 +100,13 @@ export class SnowflakeDbAdapter implements IDbAdapter {
                     reject(new ErrorWithCause(message, err));
                     return;
                   }
+                  options?.onCancel?.(() =>
+                    stmt.cancel((e: any) => {
+                      if (e) {
+                        reject(e);
+                      }
+                    })
+                  );
                   const rows: any[] = [];
                   const streamOptions =
                     !!options && !!options.maxResults
