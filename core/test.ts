@@ -1,4 +1,4 @@
-import { Contextable, ICommonConfig, ICommonContext, Resolvable } from "df/core/common";
+import { Contextable, ICommonContext, INamedConfig, Resolvable } from "df/core/common";
 import { Session } from "df/core/session";
 import * as table from "df/core/table";
 import { ITableContext } from "df/core/table";
@@ -15,20 +15,14 @@ import { dataform } from "df/protos/ts";
 /**
  * Configuration options for unit tests.
  */
-export interface ITestConfig extends ICommonConfig {
+export interface ITestConfig extends INamedConfig {
   /**
    * The dataset that this unit test tests.
    */
   dataset?: Resolvable;
 }
 
-const ITestConfigProperties = strictKeysOf<ITestConfig>()([
-  "type",
-  "dataset",
-  "name",
-  "tags",
-  "dependencies"
-]);
+const ITestConfigProperties = strictKeysOf<ITestConfig>()(["type", "dataset", "name"]);
 
 /**
  * @hidden

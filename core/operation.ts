@@ -1,10 +1,12 @@
 import { ColumnDescriptors } from "df/core/column_descriptors";
 import {
   Contextable,
+  IActionConfig,
   IColumnsDescriptor,
   ICommonContext,
   IDependenciesConfig,
   IDocumentableConfig,
+  INamedConfig,
   ITargetableConfig,
   Resolvable
 } from "df/core/common";
@@ -17,9 +19,11 @@ import { dataform } from "df/protos/ts";
  * Configuration options for `operations` action types.
  */
 export interface IOperationConfig
-  extends ITargetableConfig,
+  extends IActionConfig,
+    IDependenciesConfig,
     IDocumentableConfig,
-    IDependenciesConfig {
+    INamedConfig,
+    ITargetableConfig {
   /**
    * Declares that this `operations` action creates a dataset which should be referenceable using the `ref` function.
    *
@@ -34,16 +38,17 @@ export interface IOperationConfig
 }
 
 export const IIOperationConfigProperties = strictKeysOf<IOperationConfig>()([
-  "type",
-  "name",
-  "tags",
-  "schema",
-  "database",
   "columns",
-  "description",
+  "database",
   "dependencies",
+  "description",
+  "disabled",
+  "hasOutput",
   "hermetic",
-  "hasOutput"
+  "name",
+  "schema",
+  "tags",
+  "type"
 ]);
 
 /**
@@ -70,6 +75,9 @@ export class Operation {
     }
     if (config.hermetic !== undefined) {
       this.hermetic(config.hermetic);
+    }
+    if (config.disabled) {
+      this.disabled();
     }
     if (config.tags) {
       this.tags(config.tags);
@@ -109,6 +117,11 @@ export class Operation {
     this.proto.hermeticity = hermetic
       ? dataform.ActionHermeticity.HERMETIC
       : dataform.ActionHermeticity.NON_HERMETIC;
+  }
+
+  public disabled() {
+    this.proto.disabled = true;
+    return this;
   }
 
   public tags(value: string | string[]) {

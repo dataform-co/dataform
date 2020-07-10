@@ -170,8 +170,6 @@ const parsedConfig = ${config || "{}"};
 const sqlxConfig = {
   name: "${utils.baseFilename(path)}",
   type: "operations",
-  dependencies: [],
-  tags: [],
   ...parsedConfig
 };
 

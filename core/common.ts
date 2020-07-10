@@ -50,7 +50,7 @@ export interface ICommonContext {
 /**
  * @hidden
  */
-export interface ICommonConfig {
+export interface INamedConfig {
   /**
    * The type of the action.
    *
@@ -59,16 +59,21 @@ export interface ICommonConfig {
   type?: string;
 
   /**
-   * A list of user-defined tags with which the action should be labeled.
-   */
-  tags?: string[];
-
-  /**
    * The name of the action.
    *
    * @hidden
    */
   name?: string;
+}
+
+/**
+ * @hidden
+ */
+export interface IActionConfig {
+  /**
+   * A list of user-defined tags with which the action should be labeled.
+   */
+  tags?: string[];
 
   /**
    * Dependencies of the action.
@@ -76,12 +81,18 @@ export interface ICommonConfig {
    * @hidden
    */
   dependencies?: Resolvable | Resolvable[];
+
+  /**
+   * If set to true, this action will not be executed. However, the action may still be depended upon.
+   * Useful for temporarily turning off broken actions.
+   */
+  disabled?: boolean;
 }
 
 /**
  * @hidden
  */
-export interface ITargetableConfig extends ICommonConfig {
+export interface ITargetableConfig {
   /**
    * The database in which the output of this action should be created.
    */

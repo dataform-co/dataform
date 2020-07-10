@@ -27,22 +27,13 @@ suite("examples", () => {
         ).deep.equals([
           {
             fileName: "definitions/has_compile_errors/assertion_with_bigquery.sqlx",
-            message: "Actions may only specify 'bigquery: { ... }' if they create a dataset."
-          },
-          {
-            fileName: "definitions/has_compile_errors/assertion_with_bigquery.sqlx",
             message:
-              'Unexpected property "bigquery" in assertion config. Supported properties are: ["database","schema","name","description","type","tags","dependencies","hermetic"]'
+              'Unexpected property "bigquery" in assertion config. Supported properties are: ["database","dependencies","description","disabled","hermetic","name","schema","tags","type"]'
           },
           {
             fileName: "definitions/has_compile_errors/assertion_with_output.sqlx",
             message:
-              "Actions may only specify 'hasOutput: true' if they are of type 'operations' or create a dataset."
-          },
-          {
-            fileName: "definitions/has_compile_errors/assertion_with_output.sqlx",
-            message:
-              'Unexpected property "hasOutput" in assertion config. Supported properties are: ["database","schema","name","description","type","tags","dependencies","hermetic"]'
+              'Unexpected property "hasOutput" in assertion config. Supported properties are: ["database","dependencies","description","disabled","hermetic","name","schema","tags","type"]'
           },
           {
             fileName: "definitions/has_compile_errors/assertion_with_postops.sqlx",
@@ -54,21 +45,8 @@ suite("examples", () => {
           },
           {
             fileName: "definitions/has_compile_errors/assertion_with_redshift.sqlx",
-            message: "Actions may only specify 'redshift: { ... }' if they create a dataset."
-          },
-          {
-            fileName: "definitions/has_compile_errors/assertion_with_redshift.sqlx",
             message:
-              'Unexpected property "redshift" in assertion config. Supported properties are: ["database","schema","name","description","type","tags","dependencies","hermetic"]'
-          },
-          {
-            fileName: "definitions/has_compile_errors/disabled_assertion.sqlx",
-            message: "Actions may only specify 'disabled: true' if they create a dataset."
-          },
-          {
-            fileName: "definitions/has_compile_errors/disabled_assertion.sqlx",
-            message:
-              'Unexpected property "disabled" in assertion config. Supported properties are: ["database","schema","name","description","type","tags","dependencies","hermetic"]'
+              'Unexpected property "redshift" in assertion config. Supported properties are: ["database","dependencies","description","disabled","hermetic","name","schema","tags","type"]'
           },
           {
             fileName: "definitions/has_compile_errors/protected_assertion.sqlx",
@@ -77,7 +55,7 @@ suite("examples", () => {
           {
             fileName: "definitions/has_compile_errors/protected_assertion.sqlx",
             message:
-              'Unexpected property "protected" in assertion config. Supported properties are: ["database","schema","name","description","type","tags","dependencies","hermetic"]'
+              'Unexpected property "protected" in assertion config. Supported properties are: ["database","dependencies","description","disabled","hermetic","name","schema","tags","type"]'
           },
           {
             fileName: "definitions/has_compile_errors/view_with_incremental.sqlx",
