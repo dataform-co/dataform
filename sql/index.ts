@@ -86,6 +86,18 @@ export class Sql {
     return `sum(${expression})`;
   }
 
+  public min(expression: string | number) {
+    return `min(${expression})`;
+  }
+
+  public max(expression: string | number) {
+    return `max(${expression})`;
+  }
+
+  public avg(expression: string | number) {
+    return `avg(${expression})`;
+  }
+
   public count() {
     return `sum(1)`;
   }
