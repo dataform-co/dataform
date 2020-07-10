@@ -57,9 +57,6 @@ export function genIndex(base64EncodedConfig: string): string {
 // Bind various @dataform/core APIs to the 'global' object.
 require("@dataform/core");
 
-// Require "includes" *.js files.
-${includeRequires}
-
 // Read the project config.
 const originalProjectConfig = require("./dataform.json");
 
@@ -84,6 +81,9 @@ global.session.init("${config.compileConfig.projectDir.replace(
     /\\/g,
     "\\\\"
   )}", projectConfig, originalProjectConfig);
+
+// Require "includes" *.js files.
+${includeRequires}
 
 // Require all "definitions" files (attaching them to the session).
 ${definitionRequires}
