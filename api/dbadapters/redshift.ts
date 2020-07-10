@@ -275,14 +275,14 @@ class PgPoolExecutor {
         // the cursor. I've filed a bug (https://github.com/brianc/node-pg-cursor/issues/55),
         // but setting a minimum of 2 resulting rows seems to do the trick.
         cursor.read(Math.max(2, options.maxResults), (err, rows, queryResult) => {
+          if (err) {
+            reject(err);
+            return;
+          }
           try {
             verifyUniqueColumnNames(queryResult.fields);
           } catch (e) {
             reject(e);
-          }
-          if (err) {
-            reject(err);
-            return;
           }
           // Close the cursor after reading the first page of results.
           cursor.close(closeErr => {
