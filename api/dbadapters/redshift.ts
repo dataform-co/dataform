@@ -178,9 +178,14 @@ export class RedshiftDbAdapter implements IDbAdapter {
       return {
         target,
         type: allTableResults[0].table_type === "VIEW" ? "view" : "table",
+        typeEnum:
+          allTableResults[0].table_type === "VIEW"
+            ? dataform.TableMetadata.Type.VIEW
+            : dataform.TableMetadata.Type.TABLE,
         fields: columnResults.rows.map(row => ({
           name: row.column_name,
           primitive: row.data_type,
+          primitiveEnum: convertFieldType(row.data_type),
           flags: row.is_nullable && row.is_nullable === "YES" ? ["nullable"] : []
         }))
       };
@@ -323,4 +328,48 @@ function verifyUniqueColumnNames(fields: pg.FieldDef[]) {
     }
     colNames.add(field.name);
   });
+}
+
+function convertFieldType(type: string) {
+  switch (String(type).toUpperCase()) {
+    case "FLOAT":
+    case "FLOAT4":
+    case "FLOAT8":
+    case "DOUBLE PRECISION":
+    case "REAL":
+      return dataform.Field.Primitive.FLOAT;
+    case "INTEGER":
+    case "INT":
+    case "INT2":
+    case "INT4":
+    case "INT8":
+    case "BIGINT":
+    case "SMALLINT":
+      return dataform.Field.Primitive.INTEGER;
+    case "DECIMAL":
+    case "NUMERIC":
+      return dataform.Field.Primitive.NUMERIC;
+    case "BOOLEAN":
+    case "BOOL":
+      return dataform.Field.Primitive.BOOLEAN;
+    case "STRING":
+    case "VARCHAR":
+    case "CHAR":
+    case "CHARACTER":
+    case "CHARACTER VARYING":
+    case "NVARCHAR":
+    case "TEXT":
+    case "NCHAR":
+    case "BPCHAR":
+      return dataform.Field.Primitive.STRING;
+    case "DATE":
+      return dataform.Field.Primitive.DATE;
+    case "TIMESTAMP":
+    case "TIMESTAMPZ":
+    case "TIMESTAMP WITHOUT TIME ZONE":
+    case "TIMESTAMP WITH TIME ZONE":
+      return dataform.Field.Primitive.TIMESTAMP;
+    default:
+      return dataform.Field.Primitive.UNKNOWN;
+  }
 }

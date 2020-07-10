@@ -154,10 +154,15 @@ export class SQLDataWarehouseDBAdapter implements IDbAdapter {
     return {
       target,
       type: tableData.rows[0][TABLE_TYPE_COL_NAME] === "VIEW" ? "view" : "table",
+      typeEnum:
+        tableData.rows[0][TABLE_TYPE_COL_NAME] === "VIEW"
+          ? dataform.TableMetadata.Type.VIEW
+          : dataform.TableMetadata.Type.TABLE,
       fields: columnData.rows.map(row => ({
         name: row[COLUMN_NAME_COL_NAME],
         primitive: row[DATA_TYPE_COL_NAME],
-        flags: row[IS_NULLABLE_COL_NAME] && row[IS_NULLABLE_COL_NAME] === "YES" ? ["nullable"] : []
+        primitiveEnum: convertFieldType(row[DATA_TYPE_COL_NAME]),
+        flags: row[IS_NULLABLE_COL_NAME] && row[IS_NULLABLE_COL_NAME] === "YES" ? ["nullable"] : [],
       }))
     };
   }
@@ -192,5 +197,45 @@ export class SQLDataWarehouseDBAdapter implements IDbAdapter {
 
   public async setMetadata(): Promise<void> {
     // Unimplemented.
+  }
+}
+
+function convertFieldType(type: string) {
+  switch (String(type).toUpperCase()) {
+    case "FLOAT":
+    case "REAL":
+      return dataform.Field.Primitive.FLOAT;
+    case "INT":
+    case "BIGINT":
+    case "SMALLINT":
+    case "TINYINT":
+      return dataform.Field.Primitive.INTEGER;
+    case "DECIMAL":
+    case "NUMERIC":
+      return dataform.Field.Primitive.NUMERIC;
+    case "BIT":
+      return dataform.Field.Primitive.BOOLEAN;
+    case "VARCHAR":
+    case "CHAR":
+    case "TEXT":
+    case "NVARCHAR":
+    case "NCHAR":
+    case "NTEXT":
+      return dataform.Field.Primitive.STRING;
+    case "DATE":
+      return dataform.Field.Primitive.DATE;
+    case "DATETIME":
+    case "DATETIME2":
+    case "DATETIMEOFFSET":
+    case "SMALLDATETIME":
+      return dataform.Field.Primitive.DATETIME;
+    case "TIME":
+      return dataform.Field.Primitive.TIME;
+    case "BINARY":
+    case "VARBINARY":
+    case "IMAGE":
+      return dataform.Field.Primitive.BYTES;
+    default:
+      return dataform.Field.Primitive.UNKNOWN;
   }
 }
