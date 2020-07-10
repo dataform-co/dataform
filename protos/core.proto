@@ -511,18 +511,18 @@ message Field {
 
   string name = 1;
   
-  repeated Flag flag_enums = 6;
+  repeated Flag flags = 6;
 
   oneof type {
-    Primitive primitive_enum = 7;
+    Primitive primitive = 7;
     Fields struct = 3;
   }
 
   string description = 5;
 
   // Deprecated.
-  repeated string flags = 4;
-  string primitive = 2;
+  repeated string flags_deprecated = 4;
+  string primitive_deprecated = 2;
 }
 
 message Fields {
@@ -538,14 +538,14 @@ message TableMetadata {
   }
 
   Target target = 1;
-  Type type_enum = 6;
+  Type type = 6;
 
   repeated Field fields = 3;
   int64 last_updated_millis = 4;
   string description = 5;
 
   // Deprecated.
-  string type = 2; // "table" or "view"
+  string type_deprecated = 2; // "table" or "view"
 }
 
 message PersistedTableMetadata {

@@ -33,7 +33,7 @@ suite("@dataform/integration/redshift", ({ before, after }) => {
         dbadapter.execute(adapter.dropIfExists(table.target, adapter.baseTableType(table.type)))
       ),
       compiledGraph.assertions.map(assertion => () =>
-        dbadapter.execute(adapter.dropIfExists(assertion.target, "view"))
+        dbadapter.execute(adapter.dropIfExists(assertion.target, dataform.TableMetadata.Type.VIEW))
       )
     );
     try {

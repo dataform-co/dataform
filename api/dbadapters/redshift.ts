@@ -177,16 +177,16 @@ export class RedshiftDbAdapter implements IDbAdapter {
       // The table exists.
       return {
         target,
-        type: allTableResults[0].table_type === "VIEW" ? "view" : "table",
-        typeEnum:
+        typeDeprecated: allTableResults[0].table_type === "VIEW" ? "view" : "table",
+        type:
           allTableResults[0].table_type === "VIEW"
             ? dataform.TableMetadata.Type.VIEW
             : dataform.TableMetadata.Type.TABLE,
         fields: columnResults.rows.map(row => ({
           name: row.column_name,
-          primitive: row.data_type,
-          primitiveEnum: convertFieldType(row.data_type),
-          flags: row.is_nullable && row.is_nullable === "YES" ? ["nullable"] : []
+          primitiveDeprecated: row.data_type,
+          primitive: convertFieldType(row.data_type),
+          flagsDeprecated: row.is_nullable && row.is_nullable === "YES" ? ["nullable"] : []
         }))
       };
     } else {

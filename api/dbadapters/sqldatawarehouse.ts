@@ -153,16 +153,17 @@ export class SQLDataWarehouseDBAdapter implements IDbAdapter {
     // The table exists.
     return {
       target,
-      type: tableData.rows[0][TABLE_TYPE_COL_NAME] === "VIEW" ? "view" : "table",
-      typeEnum:
+      typeDeprecated: tableData.rows[0][TABLE_TYPE_COL_NAME] === "VIEW" ? "view" : "table",
+      type:
         tableData.rows[0][TABLE_TYPE_COL_NAME] === "VIEW"
           ? dataform.TableMetadata.Type.VIEW
           : dataform.TableMetadata.Type.TABLE,
       fields: columnData.rows.map(row => ({
         name: row[COLUMN_NAME_COL_NAME],
-        primitive: row[DATA_TYPE_COL_NAME],
-        primitiveEnum: convertFieldType(row[DATA_TYPE_COL_NAME]),
-        flags: row[IS_NULLABLE_COL_NAME] && row[IS_NULLABLE_COL_NAME] === "YES" ? ["nullable"] : [],
+        primitiveDeprecated: row[DATA_TYPE_COL_NAME],
+        primitive: convertFieldType(row[DATA_TYPE_COL_NAME]),
+        flagsDeprecated:
+          row[IS_NULLABLE_COL_NAME] && row[IS_NULLABLE_COL_NAME] === "YES" ? ["nullable"] : []
       }))
     };
   }

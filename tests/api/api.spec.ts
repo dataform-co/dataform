@@ -21,6 +21,7 @@ suite("@dataform/api", () => {
     tables: [
       {
         name: "schema.a",
+        type: "table",
         target: {
           schema: "schema",
           name: "a"
@@ -30,6 +31,7 @@ suite("@dataform/api", () => {
       },
       {
         name: "schema.b",
+        type: "table",
         target: {
           schema: "schema",
           name: "b"
@@ -40,6 +42,7 @@ suite("@dataform/api", () => {
       },
       {
         name: "schema.c",
+        type: "table",
         target: {
           schema: "schema",
           name: "c"
@@ -365,7 +368,7 @@ suite("@dataform/api", () => {
               schema: "schema",
               name: "incremental"
             },
-            type: "table",
+            type: dataform.TableMetadata.Type.TABLE,
             fields: [
               {
                 name: "existing_field"
@@ -400,6 +403,7 @@ suite("@dataform/api", () => {
         tables: [
           {
             name: "redshift_all",
+            type: "table",
             target: {
               schema: "schema",
               name: "redshift_all"
@@ -414,6 +418,7 @@ suite("@dataform/api", () => {
           },
           {
             name: "redshift_only_sort",
+            type: "table",
             target: {
               schema: "schema",
               name: "redshift_only_sort"
@@ -426,6 +431,7 @@ suite("@dataform/api", () => {
           },
           {
             name: "redshift_only_dist",
+            type: "table",
             target: {
               schema: "schema",
               name: "redshift_only_dist"
@@ -438,6 +444,7 @@ suite("@dataform/api", () => {
           },
           {
             name: "redshift_without_redshift",
+            type: "table",
             target: {
               schema: "schema",
               name: "redshift_without_redshift"
@@ -688,6 +695,7 @@ suite("@dataform/api", () => {
         tables: [
           {
             name: "a",
+            type: "table",
             target: {
               schema: "schema",
               name: "a"
@@ -696,6 +704,7 @@ suite("@dataform/api", () => {
           },
           {
             name: "b",
+            type: "table",
             target: {
               schema: "schema",
               name: "b"
@@ -906,7 +915,7 @@ postOps`
       warehouseState: {
         tables: [
           {
-            type: "table",
+            type: dataform.TableMetadata.Type.TABLE,
             target: {
               schema: "schema1",
               name: "target1"

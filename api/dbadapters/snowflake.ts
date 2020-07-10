@@ -204,24 +204,18 @@ where table_schema = '${target.schema}'
 
     return {
       target,
-      type: tableResults.rows[0].TABLE_TYPE === "VIEW" ? "view" : "table",
-      typeEnum:
+      typeDeprecated: tableResults.rows[0].TABLE_TYPE === "VIEW" ? "view" : "table",
+      type:
         tableResults.rows[0].TABLE_TYPE === "VIEW"
           ? dataform.TableMetadata.Type.VIEW
           : dataform.TableMetadata.Type.TABLE,
-      fields: columnResults.rows.map(row => {
-        const flagEnums: dataform.Field.Flag[] = [];
-        if (row.DATA_TYPE === "ARRAY") {
-          flagEnums.push(dataform.Field.Flag.REPEATED);
-        }
-        return {
-          name: row.COLUMN_NAME,
-          primitive: row.DATA_TYPE,
-          primitiveEnum: convertFieldType(row.DATA_TYPE),
-          flags: row.IS_NULLABLE && row.IS_NULLABLE === "YES" ? ["nullable"] : [],
-          flagEnums
-        };
-      })
+      fields: columnResults.rows.map(row => ({
+        name: row.COLUMN_NAME,
+        primitiveDeprecated: row.DATA_TYPE,
+        primitive: convertFieldType(row.DATA_TYPE),
+        flagsDeprecated: row.IS_NULLABLE && row.IS_NULLABLE === "YES" ? ["nullable"] : [],
+        flags: row.DATA_TYPE === "ARRAY" ? [dataform.Field.Flag.REPEATED] : []
+      }))
     };
   }
 

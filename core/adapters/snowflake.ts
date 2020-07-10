@@ -25,9 +25,10 @@ export class SnowflakeAdapter extends Adapter implements IAdapter {
 
     this.preOps(table, runConfig, tableMetadata).forEach(statement => tasks.add(statement));
 
-    if (tableMetadata && tableMetadata.type !== this.baseTableType(table.type)) {
+    const baseTableType = this.baseTableType(table.type);
+    if (tableMetadata && tableMetadata.type !== baseTableType) {
       tasks.add(
-        Task.statement(this.dropIfExists(table.target, this.oppositeTableType(table.type)))
+        Task.statement(this.dropIfExists(table.target, this.oppositeTableType(baseTableType)))
       );
     }
 
@@ -83,9 +84,9 @@ export class SnowflakeAdapter extends Adapter implements IAdapter {
   }
 
   public createOrReplace(table: dataform.ITable) {
-    return `create or replace ${this.baseTableType(table.type || "table")} ${this.resolveTarget(
-      table.target
-    )} as ${table.query}`;
+    return `create or replace ${this.tableTypeAsSql(
+      this.baseTableType(table.type || "table")
+    )} ${this.resolveTarget(table.target)} as ${table.query}`;
   }
 
   public mergeInto(
