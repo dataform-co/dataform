@@ -31,7 +31,7 @@ publish("table1").query("SELECT 1 AS test");
 
 declare({
   schema: "rawdata",
-  name: "input1",
+  name: "input1"
 });
 
 assert("assertion1").query("SELECT * FROM source_table WHERE value IS NULL");
@@ -56,7 +56,7 @@ publish("table1")
   .type("table") // Sets the query's type
   .dependencies(["other_table"]) // Specifies dataset dependencies
   .descriptor({
-    test: "Value is 1", // Describes fields in the dataset
+    test: "Value is 1" // Describes fields in the dataset
   });
 ```
 
@@ -67,8 +67,8 @@ publish("table1", {
   type: "table",
   dependencies: ["other_table"],
   descriptor: {
-    test: "Value is 1",
-  },
+    test: "Value is 1"
+  }
 });
 ```
 
@@ -98,7 +98,7 @@ you can pass a function whose only parameter is a `context` object. This object 
 For example, the above example written in JavaScript (making handy use of JavaScript template strings), in `definitions/example.js`:
 
 ```js
-publish("example").query((ctx) => `SELECT * FROM ${ctx.ref("other_table")}`);
+publish("example").query(ctx => `SELECT * FROM ${ctx.ref("other_table")}`);
 ```
 
 <div className="bp3-callout bp3-icon-info-sign bp3-intent-warning" markdown="1">
@@ -121,6 +121,7 @@ The following methods and configuration options accept a function taking a `Cont
 Just like in `.sqlx` files, you can reference any `includes` function, macro or constant inside a `.js` file. However, the syntax differs slightly and varies depending on the `includes` file location.
 
 ### Top-Level includes
+
 When importing from a top-level `includes` file, you can simply reference the file name when declaring your variables.
 
 For example, if you would like to reference `SERVICE_NAME` and `SERVICE_ID` from the `includes/service.js` file, you can reference the file name directly. This is because Dataform automatically imports
@@ -132,12 +133,13 @@ const {SERVICE_NAME, SERVICE_ID} = service;
 ```
 
 ### Nested includes
-When importing from a nested `includes` file, you must declare these constants using the JavaScript builtin `require` function 
 
-For example, if you would like to reference `SERVICE_NAME` and `SERVICE_ID` from the `includes/all_services/service.js` file, you must use `require` and navigate to the appropriate directory level.
+When importing from a nested `includes` file, you must declare these constants using the JavaScript builtin `require` function
+
+For example, if you would like to reference `SERVICE_NAME` and `SERVICE_ID` from the `includes/all_services/service.js` file, you must use `require`.
 
 ```js
-const {SERVICE_NAME, SERVICE_ID} = require("../../includes/all_services/service.js");
+const {SERVICE_NAME, SERVICE_ID} = require("includes/all_services/service.js");
 ...
 ```
 
@@ -154,9 +156,9 @@ You could perform this action across all datasets using a JavaScript `forEach()`
 // definitions/blacklist_views.js
 const datasetNames = ["user_events", "user_settings", "user_logs"];
 
-datasetNames.forEach((datasetNames) => {
+datasetNames.forEach(datasetNames => {
   publish(datasetNames + "_blacklist_removed").query(
-    (ctx) => `
+    ctx => `
       SELECT * FROM ${ctx.ref(tableName)}
       WHERE user_id NOT IN (
         SELECT user_id
