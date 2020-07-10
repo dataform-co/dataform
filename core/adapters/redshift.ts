@@ -23,9 +23,10 @@ export class RedshiftAdapter extends Adapter implements IAdapter {
 
     this.preOps(table, runConfig, tableMetadata).forEach(statement => tasks.add(statement));
 
-    if (tableMetadata && tableMetadata.type !== this.baseTableType(table.type)) {
+    const baseTableType = this.baseTableType(table.type);
+    if (tableMetadata && tableMetadata.type !== baseTableType) {
       tasks.add(
-        Task.statement(this.dropIfExists(table.target, this.oppositeTableType(table.type)))
+        Task.statement(this.dropIfExists(table.target, this.oppositeTableType(baseTableType)))
       );
     }
 
@@ -106,7 +107,7 @@ export class RedshiftAdapter extends Adapter implements IAdapter {
     return Tasks.create()
       .add(Task.statement(this.dropIfExists(tempTableTarget, this.baseTableType(table.type))))
       .add(Task.statement(this.createTable(table, tempTableTarget)))
-      .add(Task.statement(this.dropIfExists(table.target, "table")))
+      .add(Task.statement(this.dropIfExists(table.target, dataform.TableMetadata.Type.TABLE)))
       .add(
         Task.statement(
           `alter table ${this.resolveTarget(tempTableTarget)} rename to "${table.target.name}"`
@@ -133,8 +134,8 @@ export class RedshiftAdapter extends Adapter implements IAdapter {
     return `create table ${this.resolveTarget(target)} as ${table.query}`;
   }
 
-  public dropIfExists(target: dataform.ITarget, type: string) {
-    return `drop ${this.baseTableType(type)} if exists ${this.resolveTarget(target)} cascade`;
+  public dropIfExists(target: dataform.ITarget, type: dataform.TableMetadata.Type) {
+    return `drop ${this.tableTypeAsSql(type)} if exists ${this.resolveTarget(target)} cascade`;
   }
 
   public mergeInto(

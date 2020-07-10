@@ -201,13 +201,20 @@ where table_schema = '${target.schema}'
       // The table does not exist.
       return null;
     }
+
     return {
       target,
-      type: tableResults.rows[0].TABLE_TYPE === "VIEW" ? "view" : "table",
+      typeDeprecated: tableResults.rows[0].TABLE_TYPE === "VIEW" ? "view" : "table",
+      type:
+        tableResults.rows[0].TABLE_TYPE === "VIEW"
+          ? dataform.TableMetadata.Type.VIEW
+          : dataform.TableMetadata.Type.TABLE,
       fields: columnResults.rows.map(row => ({
         name: row.COLUMN_NAME,
-        primitive: row.DATA_TYPE,
-        flags: row.IS_NULLABLE && row.IS_NULLABLE === "YES" ? ["nullable"] : []
+        primitiveDeprecated: row.DATA_TYPE,
+        primitive: convertFieldType(row.DATA_TYPE),
+        flagsDeprecated: row.IS_NULLABLE && row.IS_NULLABLE === "YES" ? ["nullable"] : [],
+        flags: row.DATA_TYPE === "ARRAY" ? [dataform.Field.Flag.REPEATED] : []
       }))
     };
   }
@@ -298,5 +305,55 @@ async function testHttpsConnection(url: string) {
     });
   } catch (e) {
     throw new ErrorWithCause(`Could not open HTTPS connection to ${url}.`, e);
+  }
+}
+
+// See https://docs.snowflake.com/en/sql-reference/intro-summary-data-types.html
+function convertFieldType(type: string) {
+  switch (String(type).toUpperCase()) {
+    case "FLOAT":
+    case "FLOAT4":
+    case "FLOAT8":
+    case "DOUBLE":
+    case "DOUBLE PRECISION":
+    case "REAL":
+      return dataform.Field.Primitive.FLOAT;
+    case "INTEGER":
+    case "INT":
+    case "BIGINT":
+    case "SMALLINT":
+      return dataform.Field.Primitive.INTEGER;
+    case "NUMBER":
+    case "DECIMAL":
+    case "NUMERIC":
+      return dataform.Field.Primitive.NUMERIC;
+    case "BOOLEAN":
+      return dataform.Field.Primitive.BOOLEAN;
+    case "STRING":
+    case "VARCHAR":
+    case "CHAR":
+    case "CHARACTER":
+    case "TEXT":
+      return dataform.Field.Primitive.STRING;
+    case "DATE":
+      return dataform.Field.Primitive.DATE;
+    case "DATETIME":
+      return dataform.Field.Primitive.DATETIME;
+    case "TIMESTAMP":
+    case "TIMESTAMP_LTZ":
+    case "TIMESTAMP_NTZ":
+    case "TIMESTAMP_TZ":
+      return dataform.Field.Primitive.TIMESTAMP;
+    case "TIME":
+      return dataform.Field.Primitive.TIME;
+    case "BINARY":
+    case "VARBINARY":
+      return dataform.Field.Primitive.BYTES;
+    case "VARIANT":
+    case "ARRAY":
+    case "OBJECT":
+      return dataform.Field.Primitive.ANY;
+    default:
+      return dataform.Field.Primitive.UNKNOWN;
   }
 }

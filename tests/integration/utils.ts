@@ -15,9 +15,7 @@ export async function dropAllTables(
   dbadapter: dbadapters.IDbAdapter
 ) {
   await Promise.all(
-    tables.map(table =>
-      dbadapter.execute(adapter.dropIfExists(table.target, adapter.baseTableType(table.type)))
-    )
+    tables.map(table => dbadapter.execute(adapter.dropIfExists(table.target, table.type)))
   );
 }
 

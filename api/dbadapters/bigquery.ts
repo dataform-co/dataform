@@ -160,7 +160,13 @@ export class BigQueryDbAdapter implements IDbAdapter {
     }
 
     return dataform.TableMetadata.create({
-      type: String(metadata.type).toLowerCase(),
+      typeDeprecated: String(metadata.type).toLowerCase(),
+      type:
+        metadata.type === "TABLE"
+          ? dataform.TableMetadata.Type.TABLE
+          : metadata.type === "VIEW"
+          ? dataform.TableMetadata.Type.VIEW
+          : dataform.TableMetadata.Type.UNKNOWN,
       target,
       fields: metadata.schema.fields.map(field => convertField(field)),
       lastUpdatedMillis: Long.fromString(metadata.lastModifiedTime),
@@ -521,15 +527,48 @@ function cleanRows(rows: any[]) {
 function convertField(field: IBigQueryFieldMetadata): dataform.IField {
   const result: dataform.IField = {
     name: field.name,
-    flags: !!field.mode ? [field.mode] : [],
+    flagsDeprecated: !!field.mode ? [field.mode] : [],
+    flags: field.mode === "REPEATED" ? [dataform.Field.Flag.REPEATED] : [],
     description: field.description
   };
-  if (field.type === "RECORD") {
+  if (field.type === "RECORD" || field.type === "STRUCT") {
     result.struct = { fields: field.fields.map(innerField => convertField(innerField)) };
   } else {
-    result.primitive = field.type;
+    result.primitiveDeprecated = field.type;
+    result.primitive = convertFieldType(field.type);
   }
   return result;
+}
+
+// See: https://cloud.google.com/bigquery/docs/reference/rest/v2/tables#TableFieldSchema
+function convertFieldType(type: string) {
+  switch (String(type).toUpperCase()) {
+    case "FLOAT":
+    case "FLOAT64":
+      return dataform.Field.Primitive.FLOAT;
+    case "INTEGER":
+    case "INT64":
+      return dataform.Field.Primitive.INTEGER;
+    case "NUMERIC":
+      return dataform.Field.Primitive.NUMERIC;
+    case "BOOL":
+    case "BOOLEAN":
+      return dataform.Field.Primitive.BOOLEAN;
+    case "STRING":
+      return dataform.Field.Primitive.STRING;
+    case "DATE":
+      return dataform.Field.Primitive.DATE;
+    case "DATETIME":
+      return dataform.Field.Primitive.DATETIME;
+    case "TIMESTAMP":
+      return dataform.Field.Primitive.TIMESTAMP;
+    case "TIME":
+      return dataform.Field.Primitive.TIME;
+    case "BYTES":
+      return dataform.Field.Primitive.BYTES;
+    default:
+      return dataform.Field.Primitive.UNKNOWN;
+  }
 }
 
 function addDescriptionToMetadata(
