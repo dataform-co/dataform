@@ -53,10 +53,12 @@ export function compile(compileConfig: dataform.ICompileConfig) {
   const userCodeVm = new NodeVM({
     wrapper: "none",
     require: {
+      builtin: ["path"],
       context: "sandbox",
-      root: compileConfig.projectDir,
       external: true,
-      builtin: ["path"]
+      root: compileConfig.projectDir,
+      resolve: (moduleName, parentDirName) =>
+        path.join(parentDirName, path.relative(parentDirName, compileConfig.projectDir), moduleName)
     },
     sourceExtensions: ["js", "sql", "sqlx"],
     compiler

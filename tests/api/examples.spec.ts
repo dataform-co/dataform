@@ -4,8 +4,6 @@ import * as path from "path";
 
 import { Builder, compile } from "df/api";
 import { computeAllTransitiveInputs } from "df/api/commands/build";
-import { actionsByTarget } from "df/api/utils/graphs";
-import * as utils from "df/core/utils";
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
 import { cleanSql } from "df/tests/utils";
