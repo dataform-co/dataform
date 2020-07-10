@@ -1,7 +1,7 @@
 ---
 title: Use the Dataform CLI
 subtitle: Guide to learn how to use the Dataform command line interface tool.
-priority: 4
+priority: 5
 icon: console
 ---
 
