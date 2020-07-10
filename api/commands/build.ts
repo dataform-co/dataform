@@ -115,15 +115,13 @@ export class Builder {
       throw new Error("Protected datasets cannot be fully refreshed.");
     }
 
-    const tasks = table.disabled
-      ? ([] as dataform.IExecutionTask[])
-      : this.adapter.publishTasks(table, runConfig, tableMetadata).build();
-
     return {
       ...this.toPartialExecutionAction(table),
       type: "table",
       tableType: table.type,
-      tasks,
+      tasks: table.disabled
+        ? []
+        : this.adapter.publishTasks(table, runConfig, tableMetadata).build(),
       hermeticity: table.hermeticity || dataform.ActionHermeticity.HERMETIC
     };
   }
@@ -132,7 +130,9 @@ export class Builder {
     return {
       ...this.toPartialExecutionAction(operation),
       type: "operation",
-      tasks: operation.queries.map(statement => ({ type: "statement", statement })),
+      tasks: operation.disabled
+        ? []
+        : operation.queries.map(statement => ({ type: "statement", statement })),
       hermeticity: operation.hermeticity || dataform.ActionHermeticity.NON_HERMETIC
     };
   }
@@ -141,7 +141,9 @@ export class Builder {
     return {
       ...this.toPartialExecutionAction(assertion),
       type: "assertion",
-      tasks: this.adapter.assertTasks(assertion, this.prunedGraph.projectConfig).build(),
+      tasks: assertion.disabled
+        ? []
+        : this.adapter.assertTasks(assertion, this.prunedGraph.projectConfig).build(),
       hermeticity: assertion.hermeticity || dataform.ActionHermeticity.HERMETIC
     };
   }

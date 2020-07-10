@@ -115,9 +115,7 @@ export function printCompiledGraph(graph: dataform.ICompiledGraph, verbose: bool
       writeStdOut(`${graph.tables.length} dataset(s):`);
       graph.tables.forEach(compiledTable => {
         writeStdOut(
-          `${datasetString(compiledTable.target, compiledTable.type)}${
-            compiledTable.disabled ? " [disabled]" : ""
-          }`,
+          `${datasetString(compiledTable.target, compiledTable.type, compiledTable.disabled)}`,
           1
         );
       });
@@ -125,13 +123,13 @@ export function printCompiledGraph(graph: dataform.ICompiledGraph, verbose: bool
     if (graph.assertions && graph.assertions.length) {
       writeStdOut(`${graph.assertions.length} assertion(s):`);
       graph.assertions.forEach(assertion => {
-        writeStdOut(targetString(assertion.target), 1);
+        writeStdOut(assertionString(assertion.target, assertion.disabled), 1);
       });
     }
     if (graph.operations && graph.operations.length) {
       writeStdOut(`${graph.operations.length} operation(s):`);
       graph.operations.forEach(operation => {
-        writeStdOut(operationString(operation.name, operation.target), 1);
+        writeStdOut(operationString(operation.target, operation.disabled), 1);
       });
     }
   }
@@ -181,21 +179,24 @@ export function printExecutionGraph(executionGraph: dataform.ExecutionGraph, ver
     if (datasetActions && datasetActions.length) {
       writeStdOut(`${datasetActions.length} dataset(s):`);
       datasetActions.forEach(datasetAction =>
-        writeStdOut(datasetString(datasetAction.target, datasetAction.type), 1)
+        writeStdOut(
+          datasetString(datasetAction.target, datasetAction.type, datasetAction.tasks.length === 0),
+          1
+        )
       );
     }
     const assertionActions = actionsByType.assertion;
     if (assertionActions && assertionActions.length) {
       writeStdOut(`${assertionActions.length} assertion(s):`);
       assertionActions.forEach(assertionAction =>
-        writeStdOut(targetString(assertionAction.target), 1)
+        writeStdOut(assertionString(assertionAction.target, assertionAction.tasks.length === 0), 1)
       );
     }
     const operationActions = actionsByType.operation;
     if (operationActions && operationActions.length) {
       writeStdOut(`${operationActions.length} operation(s):`);
       operationActions.forEach(operationAction =>
-        writeStdOut(operationString(operationAction.name, operationAction.target), 1)
+        writeStdOut(operationString(operationAction.target, operationAction.tasks.length === 0), 1)
       );
     }
   }
@@ -212,22 +213,26 @@ export function printExecutedAction(
           writeStdOut(
             `${successOutput("Dataset created: ")} ${datasetString(
               executionAction.target,
-              executionAction.tableType
+              executionAction.tableType,
+              executionAction.tasks.length === 0
             )}`
           );
           return;
         }
         case "assertion": {
           writeStdOut(
-            `${successOutput("Assertion passed: ")} ${targetString(executionAction.target)}`
+            `${successOutput("Assertion passed: ")} ${assertionString(
+              executionAction.target,
+              executionAction.tasks.length === 0
+            )}`
           );
           return;
         }
         case "operation": {
           writeStdOut(
             `${successOutput("Operation completed successfully: ")} ${operationString(
-              executionAction.name,
-              executionAction.target
+              executionAction.target,
+              executionAction.tasks.length === 0
             )}`
           );
           return;
@@ -240,22 +245,26 @@ export function printExecutedAction(
           writeStdErr(
             `${errorOutput("Dataset creation failed: ")} ${datasetString(
               executionAction.target,
-              executionAction.tableType
+              executionAction.tableType,
+              executionAction.tasks.length === 0
             )}`
           );
           break;
         }
         case "assertion": {
           writeStdErr(
-            `${errorOutput("Assertion failed: ")} ${targetString(executionAction.target)}`
+            `${errorOutput("Assertion failed: ")} ${assertionString(
+              executionAction.target,
+              executionAction.tasks.length === 0
+            )}`
           );
           break;
         }
         case "operation": {
           writeStdErr(
             `${errorOutput("Operation failed: ")} ${operationString(
-              executionAction.name,
-              executionAction.target
+              executionAction.target,
+              executionAction.tasks.length === 0
             )}`
           );
           break;
@@ -270,15 +279,17 @@ export function printExecutedAction(
           writeStdOut(
             `${warningOutput("Skipping dataset creation: ")} ${datasetString(
               executionAction.target,
-              executionAction.tableType
+              executionAction.tableType,
+              executionAction.tasks.length === 0
             )}`
           );
           return;
         }
         case "assertion": {
           writeStdOut(
-            `${warningOutput("Skipping assertion execution: ")} ${targetString(
-              executionAction.target
+            `${warningOutput("Skipping assertion execution: ")} ${assertionString(
+              executionAction.target,
+              executionAction.tasks.length === 0
             )}`
           );
           return;
@@ -286,8 +297,8 @@ export function printExecutedAction(
         case "operation": {
           writeStdOut(
             `${warningOutput("Skipping operation execution: ")} ${operationString(
-              executionAction.name,
-              executionAction.target
+              executionAction.target,
+              executionAction.tasks.length === 0
             )}`
           );
           return;
@@ -301,15 +312,17 @@ export function printExecutedAction(
           writeStdOut(
             `${warningOutput("Dataset creation disabled: ")} ${datasetString(
               executionAction.target,
-              executionAction.tableType
+              executionAction.tableType,
+              executionAction.tasks.length === 0
             )}`
           );
           return;
         }
         case "assertion": {
           writeStdOut(
-            `${warningOutput(`Assertion execution disabled: `)} ${targetString(
-              executionAction.target
+            `${warningOutput(`Assertion execution disabled: `)} ${assertionString(
+              executionAction.target,
+              executionAction.tasks.length === 0
             )}`
           );
           return;
@@ -317,8 +330,8 @@ export function printExecutedAction(
         case "operation": {
           writeStdOut(
             `${warningOutput(`Operation execution disabled: `)} ${operationString(
-              executionAction.name,
-              executionAction.target
+              executionAction.target,
+              executionAction.tasks.length === 0
             )}`
           );
           return;
@@ -332,15 +345,17 @@ export function printExecutedAction(
           writeStdOut(
             `${warningOutput("Skipped dataset creation (cache hit): ")} ${datasetString(
               executionAction.target,
-              executionAction.tableType
+              executionAction.tableType,
+              executionAction.tasks.length === 0
             )}`
           );
           return;
         }
         case "assertion": {
           writeStdOut(
-            `${warningOutput("Skipped assertion execution (cache hit): ")} ${targetString(
-              executionAction.target
+            `${warningOutput("Skipped assertion execution (cache hit): ")} ${assertionString(
+              executionAction.target,
+              executionAction.tasks.length === 0
             )}`
           );
           return;
@@ -348,8 +363,8 @@ export function printExecutedAction(
         case "operation": {
           writeStdOut(
             `${warningOutput("Skipped operation execution (cache hit): ")} ${operationString(
-              executionAction.name,
-              executionAction.target
+              executionAction.target,
+              executionAction.tasks.length === 0
             )}`
           );
           return;
@@ -389,15 +404,16 @@ export function printGetTableResult(tableMetadata: dataform.ITableMetadata) {
   writeStdOut(prettyJsonStringify(tableMetadata));
 }
 
-function datasetString(target: dataform.ITarget, datasetType: string) {
-  return `${targetString(target)} [${datasetType}]`;
+function datasetString(target: dataform.ITarget, datasetType: string, disabled: boolean) {
+  return `${targetString(target)} [${datasetType}]${disabled ? " [disabled]" : ""}`;
 }
 
-function operationString(operationName: string, target: dataform.ITarget) {
-  if (target) {
-    return `${targetString(target)} [hasOutput]`;
-  }
-  return calloutOutput(operationName);
+function assertionString(target: dataform.ITarget, disabled: boolean) {
+  return `${targetString(target)}${disabled ? " [disabled]" : ""}`;
+}
+
+function operationString(target: dataform.ITarget, disabled: boolean) {
+  return `${targetString(target)}${disabled ? " [disabled]" : ""}`;
 }
 
 function targetString(target: dataform.ITarget) {
