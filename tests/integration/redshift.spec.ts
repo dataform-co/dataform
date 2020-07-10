@@ -92,7 +92,7 @@ suite("@dataform/integration/redshift", ({ before, after }) => {
     }
 
     expect(
-      actionMap["df_integration_test_assertions.example_assertion_uniqueness_fail"].tasks[1]
+      actionMap["df_integration_test_assertions.example_assertion_uniqueness_fail"].tasks[2]
         .errorMessage
     ).to.eql("redshift error: Assertion failed: query returned 1 row(s).");
 
