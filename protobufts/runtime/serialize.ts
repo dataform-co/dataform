@@ -11,165 +11,198 @@ export class Proto3Serializer {
   private readonly output: number[] = [];
 
   public double(fieldNumber: number, packed: boolean, val?: number | number[]): this {
+    if (!shouldProto3Serialize(val)) {
+      return this;
+    }
     if (Array.isArray(val)) {
-      if (val.length > 0) {
-        if (packed) {
-          const packedSerializer = new Proto3Serializer();
-          for (const singleVal of val) {
-            packedSerializer.writeNonVarInt(singleVal, true, true);
-          }
-          const packedBytes = Uint8Array.from(packedSerializer.output);
-          this.newTag(fieldNumber, WireType.LENGTH_DELIMITED)
-            .writeVarInt(packedBytes.byteLength)
-            .writeBytes(packedBytes);
-        } else {
-          for (const singleVal of val) {
-            this.newTag(fieldNumber, WireType.SIXTY_FOUR_BIT).writeNonVarInt(singleVal, true, true);
-          }
+      if (packed) {
+        const packedSerializer = new Proto3Serializer();
+        for (const singleVal of val) {
+          packedSerializer.writeNonVarInt(singleVal, true, true);
+        }
+        const packedBytes = Uint8Array.from(packedSerializer.output);
+        this.newTag(fieldNumber, WireType.LENGTH_DELIMITED)
+          .writeVarInt(packedBytes.byteLength)
+          .writeBytes(packedBytes);
+      } else {
+        for (const singleVal of val) {
+          this.newTag(fieldNumber, WireType.SIXTY_FOUR_BIT).writeNonVarInt(singleVal, true, true);
         }
       }
-    } else if (val) {
-      this.newTag(fieldNumber, WireType.SIXTY_FOUR_BIT).writeNonVarInt(val, true, true);
+      return this;
     }
-    return this;
+    return this.newTag(fieldNumber, WireType.SIXTY_FOUR_BIT).writeNonVarInt(val, true, true);
   }
 
   public float(fieldNumber: number, packed: boolean, val?: number | number[]): this {
-    if (Array.isArray(val)) {
-    } else if (val) {
-      this.newTag(fieldNumber, WireType.THIRTY_TWO_BIT).writeNonVarInt(val, false, true);
+    if (!shouldProto3Serialize(val)) {
+      return this;
     }
-    return this;
+    if (Array.isArray(val)) {
+      return this;
+    }
+    return this.newTag(fieldNumber, WireType.THIRTY_TWO_BIT).writeNonVarInt(val, false, true);
   }
 
   public int32(fieldNumber: number, packed: boolean, val?: number | number[]): this {
-    if (Array.isArray(val)) {
-    } else if (val) {
-      this.newTag(fieldNumber, WireType.VARINT).writeVarInt(val);
+    if (!shouldProto3Serialize(val)) {
+      return this;
     }
-    return this;
+    if (Array.isArray(val)) {
+      return this;
+    }
+    return this.newTag(fieldNumber, WireType.VARINT).writeVarInt(val);
   }
 
   public fixed32(fieldNumber: number, packed: boolean, val?: number | number[]): this {
-    if (Array.isArray(val)) {
-    } else if (val) {
-      this.newTag(fieldNumber, WireType.THIRTY_TWO_BIT).writeNonVarInt(val, false, false);
+    if (!shouldProto3Serialize(val)) {
+      return this;
     }
-    return this;
+    if (Array.isArray(val)) {
+      return this;
+    }
+    return this.newTag(fieldNumber, WireType.THIRTY_TWO_BIT).writeNonVarInt(val, false, false);
   }
 
   public uint32(fieldNumber: number, packed: boolean, val?: number | number[]): this {
-    if (Array.isArray(val)) {
-    } else if (val) {
-      this.newTag(fieldNumber, WireType.VARINT).writeVarInt(val);
+    if (!shouldProto3Serialize(val)) {
+      return this;
     }
-    return this;
+    if (Array.isArray(val)) {
+      return this;
+    }
+    return this.newTag(fieldNumber, WireType.VARINT).writeVarInt(val);
   }
 
   public sfixed32(fieldNumber: number, packed: boolean, val?: number | number[]): this {
-    if (Array.isArray(val)) {
-    } else if (val) {
-      this.newTag(fieldNumber, WireType.THIRTY_TWO_BIT).writeNonVarInt(val, false, false);
+    if (!shouldProto3Serialize(val)) {
+      return this;
     }
-    return this;
+    if (Array.isArray(val)) {
+      return this;
+    }
+    return this.newTag(fieldNumber, WireType.THIRTY_TWO_BIT).writeNonVarInt(val, false, false);
   }
 
   public sint32(fieldNumber: number, packed: boolean, val?: number | number[]): this {
-    if (Array.isArray(val)) {
-    } else if (val) {
-      this.newTag(fieldNumber, WireType.VARINT).writeVarInt(((val << 1) ^ (val >> 31)) >>> 0);
+    if (!shouldProto3Serialize(val)) {
+      return this;
     }
-    return this;
+    if (Array.isArray(val)) {
+      return this;
+    }
+    return this.newTag(fieldNumber, WireType.VARINT).writeVarInt(((val << 1) ^ (val >> 31)) >>> 0);
   }
 
   public enum(fieldNumber: number, packed: boolean, val?: number | number[]): this {
-    if (Array.isArray(val)) {
-    } else if (val) {
-      this.newTag(fieldNumber, WireType.VARINT).writeVarInt(val);
+    if (!shouldProto3Serialize(val)) {
+      return this;
     }
-    return this;
+    if (Array.isArray(val)) {
+      return this;
+    }
+    return this.newTag(fieldNumber, WireType.VARINT).writeVarInt(val);
   }
 
   public int64(fieldNumber: number, packed: boolean, val?: Long | Long[]): this {
-    if (Array.isArray(val)) {
-    } else if (!val.isZero()) {
-      this.newTag(fieldNumber, WireType.VARINT).writeLongVarInt(val);
+    if (!shouldProto3Serialize(val)) {
+      return this;
     }
-    return this;
+    if (Array.isArray(val)) {
+      return this;
+    }
+    return this.newTag(fieldNumber, WireType.VARINT).writeLongVarInt(val);
   }
 
   public uint64(fieldNumber: number, packed: boolean, val?: Long | Long[]): this {
-    if (Array.isArray(val)) {
-    } else if (!val.isZero()) {
-      this.newTag(fieldNumber, WireType.VARINT).writeLongVarInt(val);
+    if (!shouldProto3Serialize(val)) {
+      return this;
     }
-    return this;
+    if (Array.isArray(val)) {
+      return this;
+    }
+    return this.newTag(fieldNumber, WireType.VARINT).writeLongVarInt(val);
   }
 
   public fixed64(fieldNumber: number, packed: boolean, val?: Long | Long[]): this {
-    if (Array.isArray(val)) {
-    } else if (!val.isZero()) {
-      this.newTag(fieldNumber, WireType.SIXTY_FOUR_BIT).writeLongNonVarInt(val);
+    if (!shouldProto3Serialize(val)) {
+      return this;
     }
-    return this;
+    if (Array.isArray(val)) {
+      return this;
+    }
+    return this.newTag(fieldNumber, WireType.SIXTY_FOUR_BIT).writeLongNonVarInt(val);
   }
 
   public sfixed64(fieldNumber: number, packed: boolean, val?: Long | Long[]): this {
-    if (Array.isArray(val)) {
-    } else if (!val.isZero()) {
-      this.newTag(fieldNumber, WireType.SIXTY_FOUR_BIT).writeLongNonVarInt(val);
+    if (!shouldProto3Serialize(val)) {
+      return this;
     }
-    return this;
+    if (Array.isArray(val)) {
+      return this;
+    }
+    return this.newTag(fieldNumber, WireType.SIXTY_FOUR_BIT).writeLongNonVarInt(val);
   }
 
   public sint64(fieldNumber: number, packed: boolean, val?: Long | Long[]): this {
-    if (Array.isArray(val)) {
-    } else if (!val.isZero()) {
-      this.newTag(fieldNumber, WireType.VARINT).writeLongVarInt(
-        val.shiftLeft(1).xor(val.shiftRight(63))
-      );
+    if (!shouldProto3Serialize(val)) {
+      return this;
     }
-    return this;
+    if (Array.isArray(val)) {
+      return this;
+    }
+    return this.newTag(fieldNumber, WireType.VARINT).writeLongVarInt(
+      val.shiftLeft(1).xor(val.shiftRight(63))
+    );
   }
 
   public bool(fieldNumber: number, packed: boolean, val?: boolean | boolean[]): this {
-    if (Array.isArray(val)) {
-    } else if (val) {
-      this.newTag(fieldNumber, WireType.VARINT).writeVarInt(1);
+    if (!shouldProto3Serialize(val)) {
+      return this;
     }
-    return this;
+    if (Array.isArray(val)) {
+      return this;
+    }
+    return this.newTag(fieldNumber, WireType.VARINT).writeVarInt(1);
   }
 
   public bytes(fieldNumber: number, packed: boolean, val?: Uint8Array | Uint8Array[]): this {
-    if (Array.isArray(val)) {
-    } else if (val && val.length > 0) {
-      this.newTag(fieldNumber, WireType.LENGTH_DELIMITED)
-        .writeVarInt(val.length)
-        .writeBytes(val);
+    if (!shouldProto3Serialize(val)) {
+      return this;
     }
-    return this;
+    if (Array.isArray(val)) {
+      return this;
+    }
+    return this.newTag(fieldNumber, WireType.LENGTH_DELIMITED)
+      .writeVarInt(val.length)
+      .writeBytes(val);
   }
 
   public string(fieldNumber: number, packed: boolean, val?: string | string[]): this {
-    if (Array.isArray(val)) {
-    } else if (val) {
-      const buffer = Buffer.from(val);
-      this.newTag(fieldNumber, WireType.LENGTH_DELIMITED)
-        .writeVarInt(buffer.byteLength)
-        .writeBytes(buffer);
+    if (!shouldProto3Serialize(val)) {
+      return this;
     }
-    return this;
+    if (Array.isArray(val)) {
+      return this;
+    }
+    const buffer = Buffer.from(val);
+    return this.newTag(fieldNumber, WireType.LENGTH_DELIMITED)
+      .writeVarInt(buffer.byteLength)
+      .writeBytes(buffer);
   }
 
   public message(fieldNumber: number, packed: boolean, val?: IMessage | IMessage[]): this {
-    if (Array.isArray(val)) {
-    } else if (val) {
-      const bytes = val.serialize();
-      this.newTag(fieldNumber, WireType.LENGTH_DELIMITED)
-        .writeVarInt(bytes.length)
-        .writeBytes(bytes);
+    // should always return false
+    if (!shouldProto3Serialize(val)) {
+      return this;
     }
-    return this;
+    if (Array.isArray(val)) {
+      return this;
+    }
+    const bytes = val.serialize();
+    return this.newTag(fieldNumber, WireType.LENGTH_DELIMITED)
+      .writeVarInt(bytes.length)
+      .writeBytes(bytes);
   }
 
   public finish(): Uint8Array {
@@ -253,6 +286,22 @@ export class Proto3Serializer {
     bytes.forEach(byte => this.output.push(byte));
     return this;
   }
+}
+
+function shouldProto3Serialize(val?: any | any[]) {
+  if (!val) {
+    return false;
+  }
+  if (Array.isArray(val) && val.length === 0) {
+    return false;
+  }
+  return !(
+    val === 0 ||
+    val === "" ||
+    val === false ||
+    (val instanceof Long && val.isZero()) ||
+    (val instanceof Uint8Array && val.length === 0)
+  );
 }
 
 enum WireType {

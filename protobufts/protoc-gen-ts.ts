@@ -285,7 +285,7 @@ function hasDefaultValue(fieldDescriptorProto: google.protobuf.IFieldDescriptorP
   if (fieldDescriptorProto.label === google.protobuf.FieldDescriptorProto.Label.LABEL_REPEATED) {
     return true;
   }
-  return !fieldDescriptorProto.typeName;
+  return fieldDescriptorProto.type !== google.protobuf.FieldDescriptorProto.Type.TYPE_MESSAGE;
 }
 
 function defaultValue(fieldDescriptorProto: google.protobuf.IFieldDescriptorProto) {
