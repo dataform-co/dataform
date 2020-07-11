@@ -2,10 +2,12 @@ import { Assertion } from "df/core/assertion";
 import { ColumnDescriptors } from "df/core/column_descriptors";
 import {
   Contextable,
+  IActionConfig,
   IColumnsDescriptor,
   ICommonContext,
   IDependenciesConfig,
   IDocumentableConfig,
+  INamedConfig,
   ITargetableConfig,
   Resolvable
 } from "df/core/common";
@@ -176,18 +178,17 @@ const ITableAssertionsProperties = () =>
 /**
  * Configuration options for `dataset` actions, including `table`, `view` and `incremental` action types.
  */
-export interface ITableConfig extends ITargetableConfig, IDocumentableConfig, IDependenciesConfig {
+export interface ITableConfig
+  extends IActionConfig,
+    IDependenciesConfig,
+    IDocumentableConfig,
+    INamedConfig,
+    ITargetableConfig {
   /**
    * The type of the dataset. For more information on how this setting works, check out some of the [guides](guides)
    * on publishing different types of datasets with Dataform.
    */
   type?: TableType;
-
-  /**
-   * If set to true, this action will not be executed. However, the action may still be depended upon.
-   * Useful for temporarily turning off broken actions.
-   */
-  disabled?: boolean;
 
   /**
    * Only allowed when the table type is `incremental`.

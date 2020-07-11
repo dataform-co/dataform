@@ -24,7 +24,6 @@ suite("@dataform/integration/redshift", ({ before, after }) => {
     });
 
     expect(compiledGraph.graphErrors.compilationErrors).to.eql([]);
-    expect(compiledGraph.graphErrors.validationErrors).to.eql([]);
 
     const adapter = adapters.create(compiledGraph.projectConfig, compiledGraph.dataformCoreVersion);
 
@@ -34,10 +33,14 @@ suite("@dataform/integration/redshift", ({ before, after }) => {
         dbadapter.execute(adapter.dropIfExists(table.target, adapter.baseTableType(table.type)))
       ),
       compiledGraph.assertions.map(assertion => () =>
-        dbadapter.execute(adapter.dropIfExists(assertion.target, "view"))
+        dbadapter.execute(adapter.dropIfExists(assertion.target, dataform.TableMetadata.Type.VIEW))
       )
     );
-    await dropFunctions.reduce((promiseChain, fn) => promiseChain.then(fn), Promise.resolve());
+    try {
+      await dropFunctions.reduce((promiseChain, fn) => promiseChain.then(fn), Promise.resolve());
+    } catch (e) {
+      // This seems to throw if the tables don't exist.
+    }
 
     // Run the tests.
     const testResults = await dfapi.test(dbadapter, compiledGraph.tests);
@@ -71,7 +74,7 @@ suite("@dataform/integration/redshift", ({ before, after }) => {
 
     // Run the project.
     let executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
-    let executedGraph = await dfapi.run(executionGraph, dbadapter).result();
+    let executedGraph = await dfapi.run(dbadapter, executionGraph).result();
 
     const actionMap = keyBy(executedGraph.actions, v => v.name);
     expect(Object.keys(actionMap).length).eql(13);
@@ -89,7 +92,7 @@ suite("@dataform/integration/redshift", ({ before, after }) => {
     }
 
     expect(
-      actionMap["df_integration_test_assertions.example_assertion_uniqueness_fail"].tasks[1]
+      actionMap["df_integration_test_assertions.example_assertion_uniqueness_fail"].tasks[2]
         .errorMessage
     ).to.eql("redshift error: Assertion failed: query returned 1 row(s).");
 
@@ -133,7 +136,7 @@ suite("@dataform/integration/redshift", ({ before, after }) => {
       },
       dbadapter
     );
-    executedGraph = await dfapi.run(executionGraph, dbadapter).result();
+    executedGraph = await dfapi.run(dbadapter, executionGraph).result();
     expect(executedGraph.status).equals(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
 
     // Check there are the expected number of extra rows in the incremental table.
@@ -180,7 +183,7 @@ suite("@dataform/integration/redshift", ({ before, after }) => {
         projectDir: "tests/integration/redshift_project"
       });
       const executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
-      await dfapi.run(executionGraph, dbadapter).result();
+      await dfapi.run(dbadapter, executionGraph).result();
 
       const view = keyBy(compiledGraph.tables, t => t.name)["df_integration_test.example_view"];
       let evaluations = await dbadapter.evaluate(dataform.Table.create(view));

@@ -539,7 +539,7 @@ export function runCli() {
             if (!argv.json) {
               print("Running...\n");
             }
-            const runner = run(executionGraph, dbadapter);
+            const runner = run(dbadapter, executionGraph);
             process.on("SIGINT", () => {
               if (
                 !supportsCancel(
@@ -615,7 +615,11 @@ export function runCli() {
         positionalOptions: [warehouseOption],
         options: [credentialsOption],
         processFn: async argv => {
-          const dbadapter = await dbadapters.create(argv.credentials, argv.warehouse);
+          const readCredentials = credentials.read(
+            argv.warehouse,
+            actuallyResolve(argv.credentials)
+          );
+          const dbadapter = await dbadapters.create(readCredentials, argv.warehouse);
           try {
             printListTablesResult(await table.list(dbadapter));
           } finally {
@@ -630,7 +634,11 @@ export function runCli() {
         positionalOptions: [warehouseOption],
         options: [credentialsOption],
         processFn: async argv => {
-          const dbadapter = await dbadapters.create(argv.credentials, argv.warehouse);
+          const readCredentials = credentials.read(
+            argv.warehouse,
+            actuallyResolve(argv.credentials)
+          );
+          const dbadapter = await dbadapters.create(readCredentials, argv.warehouse);
           try {
             printGetTableResult(
               await table.get(dbadapter, {
@@ -651,7 +659,7 @@ export function runCli() {
     .wrap(null)
     .recommendCommands()
     .fail(async (msg: string, err: any) => {
-      if (!!err && err.name === "VMError" && err.code === "ENOTFOUND") {
+      if (!!err && err.name === "VMError" && err.message.includes("Cannot find module")) {
         printError("Could not find NPM dependencies. Have you run 'dataform install'?");
       } else {
         const message = err?.message ? err.message.split("\n")[0] : msg;

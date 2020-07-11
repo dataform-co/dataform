@@ -4,26 +4,18 @@ import { PromisePoolExecutor } from "promise-pool-executor";
 import { BigQuery } from "@google-cloud/bigquery";
 import { QueryResultsOptions } from "@google-cloud/bigquery/build/src/job";
 import { Credentials } from "df/api/commands/credentials";
-import {
-  collectEvaluationQueries,
-  IDbAdapter,
-  IExecutionResult,
-  OnCancel,
-  QueryOrAction
-} from "df/api/dbadapters/index";
+import { IDbAdapter, IExecutionResult, OnCancel } from "df/api/dbadapters/index";
 import { parseBigqueryEvalError } from "df/api/utils/error_parsing";
 import {
-  buildQuery,
   decodePersistedTableMetadata,
+  encodePersistedTableMetadata,
   hashExecutionAction,
-  IMetadataRow
+  IMetadataRow,
+  toRowKey
 } from "df/api/utils/run_cache";
-import { ErrorWithCause } from "df/common/errors/errors";
-import {
-  JSONObjectStringifier,
-  StringifiedMap,
-  StringifiedSet
-} from "df/common/strings/stringifier";
+import { coerceAsError, ErrorWithCause } from "df/common/errors/errors";
+import { StringifiedMap } from "df/common/strings/stringifier";
+import { collectEvaluationQueries, QueryOrAction } from "df/core/adapters";
 import { dataform } from "df/protos/ts";
 
 const CACHED_STATE_TABLE_NAME = "dataform_meta.cache_state";
@@ -36,6 +28,8 @@ const BIGQUERY_DATE_RELATED_FIELDS = [
   "BigQueryTimestamp",
   "BigQueryDatetime"
 ];
+
+const MAX_QUERY_LENGTH = 1024 * 1024;
 
 interface IBigQueryTableMetadata {
   type: string;
@@ -60,7 +54,7 @@ interface IBigQueryFieldMetadata {
 }
 
 export class BigQueryDbAdapter implements IDbAdapter {
-  public static async create(credentials: Credentials) {
+  public static async create(credentials: Credentials, warehouseType: string) {
     return new BigQueryDbAdapter(credentials);
   }
 
@@ -135,13 +129,13 @@ export class BigQueryDbAdapter implements IDbAdapter {
 
   public tables(): Promise<dataform.ITarget[]> {
     return this.getClient()
-      .getDatasets({ autoPaginate: true })
+      .getDatasets({ autoPaginate: true, maxResults: 1000 })
       .then((result: any) => {
         return Promise.all(
           result[0].map((dataset: any) => {
             return this.pool
               .addSingleTask({
-                generator: () => dataset.getTables({ autoPaginate: true })
+                generator: () => dataset.getTables({ autoPaginate: true, maxResults: 1000 })
               })
               .promise();
           })
@@ -166,7 +160,13 @@ export class BigQueryDbAdapter implements IDbAdapter {
     }
 
     return dataform.TableMetadata.create({
-      type: String(metadata.type).toLowerCase(),
+      typeDeprecated: String(metadata.type).toLowerCase(),
+      type:
+        metadata.type === "TABLE"
+          ? dataform.TableMetadata.Type.TABLE
+          : metadata.type === "VIEW"
+          ? dataform.TableMetadata.Type.VIEW
+          : dataform.TableMetadata.Type.UNKNOWN,
       target,
       fields: metadata.schema.fields.map(field => convertField(field)),
       lastUpdatedMillis: Long.fromString(metadata.lastModifiedTime),
@@ -235,17 +235,6 @@ export class BigQueryDbAdapter implements IDbAdapter {
     // Unimplemented.
   }
 
-  public async prepareStateMetadataTable(): Promise<void> {
-    const metadataTableCreateQuery = `
-      CREATE TABLE IF NOT EXISTS \`${CACHED_STATE_TABLE_NAME}\` (
-        target_name STRING,
-        metadata_json STRING,
-        metadata_proto STRING
-      )
-    `;
-    await this.runQuery(metadataTableCreateQuery);
-  }
-
   public async persistedStateMetadata(): Promise<dataform.IPersistedTableMetadata[]> {
     const { rows } = await this.runQuery(
       `SELECT * FROM ${CACHED_STATE_TABLE_NAME}`,
@@ -257,54 +246,81 @@ export class BigQueryDbAdapter implements IDbAdapter {
     return persistedMetadata;
   }
 
-  public async persistStateMetadata(actions: dataform.IExecutionAction[]): Promise<void> {
-    if (actions.length === 0) {
+  public async persistStateMetadata(
+    transitiveInputMetadataByTarget: StringifiedMap<
+      dataform.ITarget,
+      dataform.PersistedTableMetadata.ITransitiveInputMetadata
+    >,
+    allActions: dataform.IExecutionAction[],
+    actionsToPersist: dataform.IExecutionAction[],
+    options: {
+      onCancel: OnCancel;
+    }
+  ): Promise<void> {
+    if (allActions.length === 0) {
       return;
     }
-    const allInvolvedTargets = new StringifiedSet(JSONObjectStringifier.create<dataform.ITarget>());
-    actions.forEach(action => {
-      allInvolvedTargets.add(action.target);
-      action.transitiveInputs.forEach(transitiveInput => allInvolvedTargets.add(transitiveInput));
-    });
+    try {
+      // Create the cache table, if needed.
+      await this.execute(
+        `
+CREATE TABLE IF NOT EXISTS \`${CACHED_STATE_TABLE_NAME}\` (
+  target STRING,
+  metadata_proto STRING
+)`,
+        options
+      );
+      // Before saving any new data, delete all entries for 'allActions'.
+      await this.execute(
+        `
+DELETE \`${CACHED_STATE_TABLE_NAME}\` WHERE target IN (${allActions
+          .map(({ target }) => `'${toRowKey(target)}'`)
+          .join(",")})`,
+        options
+      );
 
-    const tableMetadataByTarget = new StringifiedMap<dataform.ITarget, dataform.ITableMetadata>(
-      JSONObjectStringifier.create()
-    );
-    await Promise.all(
-      Array.from(allInvolvedTargets).map(async target => {
-        tableMetadataByTarget.set(target, await this.table(target));
-      })
-    );
-    const queries = actions.map(action => {
-      const persistTable = dataform.PersistedTableMetadata.create({
-        target: action.target,
-        lastUpdatedMillis: tableMetadataByTarget.get(action.target).lastUpdatedMillis,
-        definitionHash: hashExecutionAction(action),
-        transitiveInputTables: action.transitiveInputs.map(transitiveInput => {
-          if (!tableMetadataByTarget.has(transitiveInput)) {
-            throw new Error(`Could not find table metadata for ${JSON.stringify(transitiveInput)}`);
-          }
-          return tableMetadataByTarget.get(transitiveInput);
-        })
-      });
-
-      const targetName = `${action.target.database}.${action.target.schema}.${action.target.name}`;
-
-      return buildQuery(targetName, persistTable);
-    });
-
-    const unionQuery = queries.join(" UNION ALL ");
-
-    const updateQuery = `MERGE INTO \`${CACHED_STATE_TABLE_NAME}\` T
-    USING (${unionQuery}) S
-    ON (T.target_name = S.target_name)
-    WHEN NOT MATCHED THEN
-      INSERT (target_name, metadata_json, metadata_proto)
-      VALUES(S.target_name, S.metadata_json, S.metadata_proto)
-    WHEN MATCHED THEN
-      UPDATE SET metadata_json = S.metadata_json,
-          metadata_proto = S.metadata_proto;`;
-    await this.runQuery(updateQuery);
+      // Save entries for 'actionsToPersist'.
+      const valuesTuples = actionsToPersist
+        // If we were unable to load metadata for the action's output dataset, or for any of the action's
+        // input datasets, do not store a cache entry for the action.
+        .filter(
+          action =>
+            transitiveInputMetadataByTarget.has(action.target) &&
+            action.transitiveInputs.every(transitiveInput =>
+              transitiveInputMetadataByTarget.has(transitiveInput)
+            )
+        )
+        .map(
+          action =>
+            `('${toRowKey(action.target)}', '${encodePersistedTableMetadata({
+              target: action.target,
+              lastUpdatedMillis: transitiveInputMetadataByTarget.get(action.target)
+                .lastUpdatedMillis,
+              definitionHash: hashExecutionAction(action),
+              transitiveInputTables: action.transitiveInputs.map(transitiveInput =>
+                transitiveInputMetadataByTarget.get(transitiveInput)
+              )
+            })}')`
+        );
+      // We have to split up the INSERT queries to get around BigQuery's query length limit.
+      while (valuesTuples.length > 0) {
+        let insertStatement = `INSERT INTO \`${CACHED_STATE_TABLE_NAME}\` (target, metadata_proto) VALUES ${valuesTuples.pop()}`;
+        let nextInsertStatement = `${insertStatement}, ${valuesTuples[valuesTuples.length - 1]}`;
+        while (valuesTuples.length > 0 && nextInsertStatement.length < MAX_QUERY_LENGTH) {
+          insertStatement = nextInsertStatement;
+          valuesTuples.pop();
+          nextInsertStatement = `${insertStatement}, ${valuesTuples[valuesTuples.length - 1]}`;
+        }
+        await this.execute(insertStatement, options);
+      }
+    } catch (e) {
+      if (String(e).includes("Exceeded rate limits")) {
+        // Silently swallow rate-exceeded Errors; there's nothing we can do here, and they aren't harmful
+        // (at worst, future runs may not cache as well as they could have).
+        return;
+      }
+      throw e;
+    }
   }
 
   public async setMetadata(action: dataform.IExecutionAction): Promise<any> {
@@ -344,17 +360,6 @@ export class BigQueryDbAdapter implements IDbAdapter {
       .promise();
   }
 
-  public async deleteStateMetadata(actions: dataform.IExecutionAction[]): Promise<void> {
-    if (actions.length === 0) {
-      return;
-    }
-    const targetNames = actions
-      .map(({ target }) => `"${target.database}.${target.schema}.${target.name}"`)
-      .join(",");
-    const rowDeleteQuery = `DELETE \`${CACHED_STATE_TABLE_NAME}\` WHERE target_name IN (${targetNames})`;
-    await this.runQuery(rowDeleteQuery);
-  }
-
   private async getMetadataOutsidePromisePool(
     target: dataform.ITarget
   ): Promise<IBigQueryTableMetadata> {
@@ -370,7 +375,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
         return null;
       }
       // otherwise throw the error as normal
-      throw new ErrorWithCause("Error getting BigQuery metadata.", e);
+      throw coerceAsError(e);
     }
   }
 
@@ -394,7 +399,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
       const allRows: any[] = [];
       const stream = this.getClient().createQueryStream(statement);
       stream
-        .on("error", e => reject(new ErrorWithCause(`Error running query: ${e}`, e)))
+        .on("error", e => reject(coerceAsError(e)))
         .on("data", row => {
           if (!maxResults) {
             allRows.push(row);
@@ -425,7 +430,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
         async (err, job) => {
           try {
             if (err) {
-              return reject(new ErrorWithCause(`Error running query job: ${err}`, err));
+              return reject(coerceAsError(err));
             }
             // Cancelled before it was created, kill it now.
             if (isCancelled) {
@@ -439,7 +444,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
                   await job.cancel();
                   reject(new Error("Query cancelled."));
                 } catch (e) {
-                  reject(new ErrorWithCause("Error trying to cancel query.", e));
+                  reject(new ErrorWithCause(`Error trying to cancel query: ${e}`, e));
                 }
               });
             }
@@ -461,31 +466,39 @@ export class BigQueryDbAdapter implements IDbAdapter {
                   job.getQueryResults(nextQuery, manualPaginationCallback);
                 } else {
                   const [jobMetadata] = await job.getMetadata();
-                  const queryData = {
+                  if (!!jobMetadata.status?.errorResult) {
+                    reject(new Error(jobMetadata.status.errorResult.message));
+                    return;
+                  }
+                  const queryData: IExecutionResult = {
                     rows: results,
                     metadata: {
                       bigquery: {
-                        jobId: jobMetadata.jobReference.jobId,
-                        totalBytesBilled: Long.fromString(
-                          jobMetadata.statistics.query.totalBytesBilled
-                        ),
-                        totalBytesProcessed: Long.fromString(
-                          jobMetadata.statistics.query.totalBytesProcessed
-                        )
+                        jobId: jobMetadata.jobReference.jobId
                       }
                     }
                   };
+                  if (jobMetadata.statistics.query.totalBytesBilled) {
+                    queryData.metadata.bigquery.totalBytesBilled = Long.fromString(
+                      jobMetadata.statistics.query.totalBytesBilled
+                    );
+                  }
+                  if (jobMetadata.statistics.query.totalBytesProcessed) {
+                    queryData.metadata.bigquery.totalBytesProcessed = Long.fromString(
+                      jobMetadata.statistics.query.totalBytesProcessed
+                    );
+                  }
                   resolve(queryData);
                 }
               } catch (e) {
-                reject(new ErrorWithCause("Error paginating query results.", e));
+                reject(coerceAsError(e));
               }
             };
             // For non interactive queries, we can set a hard limit by disabling auto pagination.
             // This will cause problems for unit tests that have more than MAX_RESULTS rows to compare.
             job.getQueryResults({ autoPaginate: false, maxResults }, manualPaginationCallback);
           } catch (e) {
-            reject(new ErrorWithCause("Error handling results of query job.", e));
+            reject(coerceAsError(e));
           }
         }
       )
@@ -514,15 +527,48 @@ function cleanRows(rows: any[]) {
 function convertField(field: IBigQueryFieldMetadata): dataform.IField {
   const result: dataform.IField = {
     name: field.name,
-    flags: !!field.mode ? [field.mode] : [],
+    flagsDeprecated: !!field.mode ? [field.mode] : [],
+    flags: field.mode === "REPEATED" ? [dataform.Field.Flag.REPEATED] : [],
     description: field.description
   };
-  if (field.type === "RECORD") {
+  if (field.type === "RECORD" || field.type === "STRUCT") {
     result.struct = { fields: field.fields.map(innerField => convertField(innerField)) };
   } else {
-    result.primitive = field.type;
+    result.primitiveDeprecated = field.type;
+    result.primitive = convertFieldType(field.type);
   }
   return result;
+}
+
+// See: https://cloud.google.com/bigquery/docs/reference/rest/v2/tables#TableFieldSchema
+function convertFieldType(type: string) {
+  switch (String(type).toUpperCase()) {
+    case "FLOAT":
+    case "FLOAT64":
+      return dataform.Field.Primitive.FLOAT;
+    case "INTEGER":
+    case "INT64":
+      return dataform.Field.Primitive.INTEGER;
+    case "NUMERIC":
+      return dataform.Field.Primitive.NUMERIC;
+    case "BOOL":
+    case "BOOLEAN":
+      return dataform.Field.Primitive.BOOLEAN;
+    case "STRING":
+      return dataform.Field.Primitive.STRING;
+    case "DATE":
+      return dataform.Field.Primitive.DATE;
+    case "DATETIME":
+      return dataform.Field.Primitive.DATETIME;
+    case "TIMESTAMP":
+      return dataform.Field.Primitive.TIMESTAMP;
+    case "TIME":
+      return dataform.Field.Primitive.TIME;
+    case "BYTES":
+      return dataform.Field.Primitive.BYTES;
+    default:
+      return dataform.Field.Primitive.UNKNOWN;
+  }
 }
 
 function addDescriptionToMetadata(

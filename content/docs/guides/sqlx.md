@@ -15,7 +15,6 @@ If you are new to SQLX and Dataform, reading the introduction could be helpful t
 </p>
 <a href="/introduction/dataform-in-5-minutes"><button intent="primary">How SQLX works in 5 min</button></a></div>
 
-
 ## Structure
 
 SQLX contains the following components:
@@ -91,3 +90,25 @@ Some examples can be found [here](datasets#referencing-other-datasets).
 - **Pre-operations**: defined in SQLX by writing `pre_operations { }`, SQL written inside will be executed before the main SQL. This can be useful for granting permissions, as can be seen in the [publishing datasets guide](datasets#example-granting-dataset-access-with-post_operations). **Actions may only include pre_operations if they create a dataset**, for example with `type: "table"` or `type: "view"` or `type: "incremental"` in their config.
 
 - **Post-operations**: the same as pre-operations, but defined with `post_operations { }`, and runs after the main SQL.
+
+BigQuery and SQL Data Warehouse run all operations for a file (such as pre and post operations) in the same context; the executed SQL is created by joining all operations with a semi-colon `;`. For other warehouse types, operations are run as separate queries.
+
+This is useful for scripting, for example defining variables or UDFs in BigQuery before the create table statement.
+
+## Sandboxing for fast, secure, reproducible SQLX compilation
+
+Dataform executes all JavaScript and SQLX code in a Dataform project inside a sandboxed environment that has no access to the database, data, or network.
+
+While this can be limiting in some cases, there are many benefits to this approach.
+
+#### Speed
+
+Dataform compilation is extremely fast, and can compile projects with hundreds of datasets and tens of thousands of lines of code in under a second. This is useful for development where you can immediately see what your code will do without waiting.
+
+#### Reproducibility
+
+Changing your generated SQL queries based on data in the warehouse can lead to pipelines breaking even when you haven't changed code. This can be frustrating to debug, and means table structures can change for downstream consumers without notice. With Dataform and SQLX, your build steps and generated table schematas are generally fixed, making debugging and reproducibility much easier.
+
+#### Security
+
+Third party code (such as dataform packages) shouldn't be able to read any of your data. As all project code runs in the sandbox, there is no way to read and leak your data, instead the worst a malicious package could do is cause SQL queries to execute in your warehouse.

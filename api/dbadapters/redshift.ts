@@ -2,15 +2,24 @@ import * as pg from "pg";
 import Cursor from "pg-cursor";
 
 import { Credentials } from "df/api/commands/credentials";
-import { collectEvaluationQueries, IDbAdapter, QueryOrAction } from "df/api/dbadapters/index";
+import { IDbAdapter, OnCancel } from "df/api/dbadapters/index";
 import { SSHTunnelProxy } from "df/api/ssh_tunnel_proxy";
 import { parseRedshiftEvalError } from "df/api/utils/error_parsing";
 import { ErrorWithCause } from "df/common/errors/errors";
+import { collectEvaluationQueries, QueryOrAction } from "df/core/adapters";
 import { dataform } from "df/protos/ts";
 
 interface ICursor {
-  read: (rowCount: number, callback: (err: Error, rows: any[]) => void) => void;
-  close: (callback: (err: Error) => void) => void;
+  read: (
+    rowCount: number,
+    callback: (err: Error, rows: any[], result: pg.QueryResult) => void
+  ) => void;
+  close: (callback: (err?: Error) => void) => void;
+}
+
+interface IRedshiftAdapterOptions {
+  sshTunnel?: SSHTunnelProxy;
+  warehouseType?: string;
 }
 
 const maybeInitializePg = (() => {
@@ -26,7 +35,7 @@ const maybeInitializePg = (() => {
 })();
 
 export class RedshiftDbAdapter implements IDbAdapter {
-  public static async create(credentials: Credentials) {
+  public static async create(credentials: Credentials, warehouseType: string) {
     maybeInitializePg();
     const jdbcCredentials = credentials as dataform.IJDBC;
     const baseClientConfig: Partial<pg.ClientConfig> = {
@@ -45,7 +54,7 @@ export class RedshiftDbAdapter implements IDbAdapter {
         host: "127.0.0.1",
         port: sshTunnel.localPort
       });
-      return new RedshiftDbAdapter(queryExecutor, sshTunnel);
+      return new RedshiftDbAdapter(queryExecutor, { sshTunnel, warehouseType });
     } else {
       const clientConfig: pg.ClientConfig = {
         ...baseClientConfig,
@@ -53,11 +62,14 @@ export class RedshiftDbAdapter implements IDbAdapter {
         port: jdbcCredentials.port
       };
       const queryExecutor = new PgPoolExecutor(clientConfig);
-      return new RedshiftDbAdapter(queryExecutor);
+      return new RedshiftDbAdapter(queryExecutor, { warehouseType });
     }
   }
 
-  private constructor(private queryExecutor: PgPoolExecutor, private sshTunnel?: SSHTunnelProxy) {}
+  private constructor(
+    private readonly queryExecutor: PgPoolExecutor,
+    private readonly options: IRedshiftAdapterOptions
+  ) {}
 
   public async execute(
     statement: string,
@@ -73,7 +85,10 @@ export class RedshiftDbAdapter implements IDbAdapter {
       if (options.includeQueryInError) {
         throw new Error(`Error encountered while running "${statement}": ${e.message}`);
       }
-      throw new ErrorWithCause(`Error executing Redshift query: ${e.message}`, e);
+      throw new ErrorWithCause(
+        `Error executing ${this.options.warehouseType} query: ${e.message}`,
+        e
+      );
     }
   }
 
@@ -162,11 +177,16 @@ export class RedshiftDbAdapter implements IDbAdapter {
       // The table exists.
       return {
         target,
-        type: allTableResults[0].table_type === "VIEW" ? "view" : "table",
+        typeDeprecated: allTableResults[0].table_type === "VIEW" ? "view" : "table",
+        type:
+          allTableResults[0].table_type === "VIEW"
+            ? dataform.TableMetadata.Type.VIEW
+            : dataform.TableMetadata.Type.TABLE,
         fields: columnResults.rows.map(row => ({
           name: row.column_name,
-          primitive: row.data_type,
-          flags: row.is_nullable && row.is_nullable === "YES" ? ["nullable"] : []
+          primitiveDeprecated: row.data_type,
+          primitive: convertFieldType(row.data_type),
+          flagsDeprecated: row.is_nullable && row.is_nullable === "YES" ? ["nullable"] : []
         }))
       };
     } else {
@@ -187,27 +207,20 @@ export class RedshiftDbAdapter implements IDbAdapter {
 
   public async close() {
     await this.queryExecutor.close();
-    if (this.sshTunnel) {
-      await this.sshTunnel.close();
+    if (this.options.sshTunnel) {
+      await this.options.sshTunnel.close();
     }
   }
 
-  public async prepareStateMetadataTable(): Promise<void> {
-    // Unimplemented.
-  }
-
   public async persistedStateMetadata(): Promise<dataform.IPersistedTableMetadata[]> {
-    const persistedMetadata: dataform.IPersistedTableMetadata[] = [];
-    return persistedMetadata;
+    return [];
   }
 
-  public async persistStateMetadata(actions: dataform.IExecutionAction[]) {
+  public async persistStateMetadata() {
     // Unimplemented.
   }
-  public async setMetadata(action: dataform.IExecutionAction): Promise<void> {
-    // Unimplemented.
-  }
-  public async deleteStateMetadata(actions: dataform.IExecutionAction[]): Promise<void> {
+
+  public async setMetadata(): Promise<void> {
     // Unimplemented.
   }
 
@@ -243,11 +256,13 @@ class PgPoolExecutor {
   public async execute(
     statement: string,
     options: {
+      onCancel?: OnCancel;
       maxResults?: number;
     } = { maxResults: 1000 }
   ) {
     if (!options || !options.maxResults) {
       const result = await this.pool.query(statement);
+      verifyUniqueColumnNames(result.fields);
       return result.rows;
     }
     const client = await this.pool.connect();
@@ -262,13 +277,26 @@ class PgPoolExecutor {
       // See https://docs.aws.amazon.com/redshift/latest/dg/declare.html for more details.
       const cursor: ICursor = client.query(new Cursor(statement));
       const result = await new Promise<any[]>((resolve, reject) => {
+        options?.onCancel?.(() =>
+          cursor.close(e => {
+            if (e) {
+              reject(e);
+            }
+          })
+        );
+
         // It seems that when requesting one row back exactly, we run into some issues with
         // the cursor. I've filed a bug (https://github.com/brianc/node-pg-cursor/issues/55),
         // but setting a minimum of 2 resulting rows seems to do the trick.
-        cursor.read(Math.max(2, options.maxResults), (err, rows) => {
+        cursor.read(Math.max(2, options.maxResults), (err, rows, queryResult) => {
           if (err) {
             reject(err);
             return;
+          }
+          try {
+            verifyUniqueColumnNames(queryResult.fields);
+          } catch (e) {
+            reject(e);
           }
           // Close the cursor after reading the first page of results.
           cursor.close(closeErr => {
@@ -289,5 +317,60 @@ class PgPoolExecutor {
 
   public async close() {
     await this.pool.end();
+  }
+}
+
+function verifyUniqueColumnNames(fields: pg.FieldDef[]) {
+  const colNames = new Set<string>();
+  fields.forEach(field => {
+    if (colNames.has(field.name)) {
+      throw new Error(`Ambiguous column name: ${field.name}`);
+    }
+    colNames.add(field.name);
+  });
+}
+
+// See: https://docs.aws.amazon.com/redshift/latest/dg/c_Supported_data_types.html
+function convertFieldType(type: string) {
+  switch (String(type).toUpperCase()) {
+    case "FLOAT":
+    case "FLOAT4":
+    case "FLOAT8":
+    case "DOUBLE PRECISION":
+    case "REAL":
+      return dataform.Field.Primitive.FLOAT;
+    case "INTEGER":
+    case "INT":
+    case "INT2":
+    case "INT4":
+    case "INT8":
+    case "BIGINT":
+    case "SMALLINT":
+      return dataform.Field.Primitive.INTEGER;
+    case "DECIMAL":
+    case "NUMERIC":
+      return dataform.Field.Primitive.NUMERIC;
+    case "BOOLEAN":
+    case "BOOL":
+      return dataform.Field.Primitive.BOOLEAN;
+    case "STRING":
+    case "VARCHAR":
+    case "CHAR":
+    case "CHARACTER":
+    case "CHARACTER VARYING":
+    case "NVARCHAR":
+    case "TEXT":
+    case "NCHAR":
+    case "BPCHAR":
+      return dataform.Field.Primitive.STRING;
+    case "DATE":
+      return dataform.Field.Primitive.DATE;
+    case "TIMESTAMP":
+    case "TIMESTAMPZ":
+    case "TIMESTAMP WITHOUT TIME ZONE":
+    case "TIMESTAMP WITH TIME ZONE":
+      return dataform.Field.Primitive.TIMESTAMP;
+    default:
+      return dataform.Field.Primitive.UNKNOWN;
   }
 }

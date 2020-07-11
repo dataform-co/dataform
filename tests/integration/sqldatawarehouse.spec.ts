@@ -26,7 +26,6 @@ suite("@dataform/integration/sqldatawarehouse", ({ before, after }) => {
     });
 
     expect(compiledGraph.graphErrors.compilationErrors).to.eql([]);
-    expect(compiledGraph.graphErrors.validationErrors).to.eql([]);
 
     const adapter = adapters.create(compiledGraph.projectConfig, compiledGraph.dataformCoreVersion);
 
@@ -66,8 +65,9 @@ suite("@dataform/integration/sqldatawarehouse", ({ before, after }) => {
 
     // Run the project.
     let executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
-    let executedGraph = await dfapi.run(executionGraph, dbadapter).result();
+    let executedGraph = await dfapi.run(dbadapter, executionGraph).result();
 
+    const executionActionMap = keyBy(executionGraph.actions, v => v.name);
     const actionMap = keyBy(executedGraph.actions, v => v.name);
     expect(Object.keys(actionMap).length).eql(11);
 
@@ -80,9 +80,7 @@ suite("@dataform/integration/sqldatawarehouse", ({ before, after }) => {
       const expectedResult = expectedFailedActions.includes(actionName)
         ? dataform.ActionResult.ExecutionStatus.FAILED
         : dataform.ActionResult.ExecutionStatus.SUCCESSFUL;
-      expect(actionMap[actionName].status, JSON.stringify(executionGraph, null, 4)).equals(
-        expectedResult
-      );
+      expect(actionMap[actionName].status).equals(expectedResult);
     }
 
     expect(
@@ -106,7 +104,7 @@ suite("@dataform/integration/sqldatawarehouse", ({ before, after }) => {
       dbadapter
     );
 
-    executedGraph = await dfapi.run(executionGraph, dbadapter).result();
+    executedGraph = await dfapi.run(dbadapter, executionGraph).result();
     expect(executedGraph.status).equals(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
 
     // Check there is an extra row in the incremental table.
@@ -148,7 +146,7 @@ suite("@dataform/integration/sqldatawarehouse", ({ before, after }) => {
         projectDir: "tests/integration/sqldatawarehouse_project"
       });
       const executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
-      await dfapi.run(executionGraph, dbadapter).result();
+      await dfapi.run(dbadapter, executionGraph).result();
 
       const view = keyBy(compiledGraph.tables, t => t.name)["df_integration_test.example_view"];
       let evaluations = await dbadapter.evaluate(dataform.Table.create(view));

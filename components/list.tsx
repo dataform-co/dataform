@@ -15,7 +15,7 @@ export const List = ({ condensed, ...rest }: IListProps) => (
   </ul>
 );
 
-interface IListItemProps {
+export interface IListItemProps {
   left?: React.ReactNode;
   disabled?: boolean;
   right?: React.ReactNode;

@@ -50,7 +50,7 @@ export interface ICommonContext {
 /**
  * @hidden
  */
-export interface ICommonConfig {
+export interface INamedConfig {
   /**
    * The type of the action.
    *
@@ -59,16 +59,21 @@ export interface ICommonConfig {
   type?: string;
 
   /**
-   * A list of user-defined tags with which the action should be labeled.
-   */
-  tags?: string[];
-
-  /**
    * The name of the action.
    *
    * @hidden
    */
   name?: string;
+}
+
+/**
+ * @hidden
+ */
+export interface IActionConfig {
+  /**
+   * A list of user-defined tags with which the action should be labeled.
+   */
+  tags?: string[];
 
   /**
    * Dependencies of the action.
@@ -76,12 +81,18 @@ export interface ICommonConfig {
    * @hidden
    */
   dependencies?: Resolvable | Resolvable[];
+
+  /**
+   * If set to true, this action will not be executed. However, the action may still be depended upon.
+   * Useful for temporarily turning off broken actions.
+   */
+  disabled?: boolean;
 }
 
 /**
  * @hidden
  */
-export interface ITargetableConfig extends ICommonConfig {
+export interface ITargetableConfig {
   /**
    * The database in which the output of this action should be created.
    */
@@ -104,8 +115,12 @@ export interface IDependenciesConfig {
   dependencies?: Resolvable | Resolvable[];
 
   /**
-   * Asserts that it is correct for this action to have zero dependencies. This is required to be set to `true` for
-   * actions with zero dependencies when the run caching feature is turned on.
+   * Declares whether or not this action is hermetic. An action is hermetic if all of its dependencies are explicitly
+   * declared.
+   *
+   * If this action depends on data from a source which has not been declared as a dependency, then `hermetic`
+   * should be explicitly set to `false`. Otherwise, if this action only depends on data from explicitly-declared
+   * dependencies, then it should be set to `true`.
    */
   hermetic?: boolean;
 }
@@ -154,7 +169,7 @@ export interface IRecordDescriptor {
   /**
    * @hidden
    */
-  dimension?: "category" | "timestamp";
+  dimension?: "category" | "timestamp" | "number";
 
   /**
    * @hidden

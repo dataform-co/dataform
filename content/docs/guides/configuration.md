@@ -40,6 +40,34 @@ by changing the `defaultSchema` property to some other value. For example, to ch
 
 [Assertions](assertions) are created inside a different schema as specified by the `assertionsSchema` property.
 
+### Enable run caching to cut warehouse costs
+
+Dataform has a built-in run caching feature. Once enabled, Dataform only runs actions (datasets, assertions, or operations) that might update the data in the action's output.
+
+For example, if a dataset's SQL definition and dependency datasets are unchanged (since the previous run), re-creating that dataset will not update the actual data. In this case, with run caching enabled, Dataform would not run the relevant action.
+
+<div className="bp3-callout bp3-icon-info-sign bp3-intent-warning" markdown="1">
+  Run caching is currently only supported for <b>BigQuery</b> projects, and requires a <code>@dataform/core</code> version of at least <code>1.6.11</code>.
+</div>
+
+To enable run caching on your project, add the following flag to your `dataform.json` file:
+
+```json
+{
+  ...
+  "useRunCache": true,
+  ...
+}
+```
+
+Run caching enforces some tighter compilation requirements on your project. In particular, run caching depends on Dataform having accurate information about your project's dependency graph. All dependencies must be [declared](/guides/datasets/publish#referencing-other-datasets) explicitly with `ref()` or `dependencies`.
+
+Actions with zero dependencies must either be changed to depend on [declarations](declarations), or must explicitly declare whether or not they are hermetic, using the `hermetic` [configuration option](../reference#ITableConfig).
+
+<div className="bp3-callout bp3-icon-info-sign bp3-intent-warning" markdown="1">
+  Any actions which depend on data from a source that has not been explicitly declared as a dependency should be explicitly marked as not hermetic, by setting <code>hermetic: false</code> on that action. This notifies Dataform that the action reads data from an undeclared dependency, and thus the action should always run.
+</div>
+
 ## package.json
 
 This is a standard NPM package file which may be used to include JavaScript packages within your project.

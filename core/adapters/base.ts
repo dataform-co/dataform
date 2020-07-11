@@ -1,10 +1,21 @@
 import * as semver from "semver";
 
+import { IAdapter } from "df/core/adapters";
 import { Task, Tasks } from "df/core/tasks";
 import { dataform } from "df/protos/ts";
 
-export abstract class Adapter {
+export abstract class Adapter implements IAdapter {
   constructor(protected readonly dataformCoreVersion: string) {}
+
+  public abstract publishTasks(
+    table: dataform.ITable,
+    runConfig: dataform.IRunConfig,
+    tableMetadata: dataform.ITableMetadata
+  ): Tasks;
+  public abstract assertTasks(
+    assertion: dataform.IAssertion,
+    projectConfig: dataform.IProjectConfig
+  ): Tasks;
 
   public abstract resolveTarget(target: dataform.ITarget): string;
 
@@ -17,17 +28,33 @@ export abstract class Adapter {
     return `'${stringContents.replace(/\\/g, "\\\\").replace(/'/g, "\\'")}'`;
   }
 
-  public dropIfExists(target: dataform.ITarget, type: string) {
-    return `drop ${this.baseTableType(type)} if exists ${this.resolveTarget(target)} ${
-      this.baseTableType(type) === "table" ? "cascade" : ""
+  public dropIfExists(target: dataform.ITarget, type: dataform.TableMetadata.Type) {
+    return `drop ${this.tableTypeAsSql(type)} if exists ${this.resolveTarget(target)} ${
+      type === dataform.TableMetadata.Type.TABLE ? "cascade" : ""
     }`;
   }
 
   public baseTableType(type: string) {
-    if (type === "incremental") {
-      return "table";
+    switch (type) {
+      case "table":
+      case "incremental":
+        return dataform.TableMetadata.Type.TABLE;
+      case "view":
+        return dataform.TableMetadata.Type.VIEW;
+      default:
+        throw new Error(`Unexpected table type: ${type}`);
     }
-    return type;
+  }
+
+  public tableTypeAsSql(type: dataform.TableMetadata.Type) {
+    switch (type) {
+      case dataform.TableMetadata.Type.TABLE:
+        return "table";
+      case dataform.TableMetadata.Type.VIEW:
+        return "view";
+      default:
+        throw new Error(`Unexpected table type: ${type}`);
+    }
   }
 
   public indexAssertion(dataset: string, indexCols: string[]) {
@@ -68,8 +95,15 @@ select ${columns.join(",")}
 from (${query}) as insertions`;
   }
 
-  protected oppositeTableType(type: string) {
-    return this.baseTableType(type) === "table" ? "view" : "table";
+  protected oppositeTableType(type: dataform.TableMetadata.Type) {
+    switch (type) {
+      case dataform.TableMetadata.Type.TABLE:
+        return dataform.TableMetadata.Type.VIEW;
+      case dataform.TableMetadata.Type.VIEW:
+        return dataform.TableMetadata.Type.TABLE;
+      default:
+        throw new Error(`Unexpected table type: ${type}`);
+    }
   }
 
   protected where(query: string, where: string) {
@@ -84,7 +118,11 @@ from (${query}) as insertions`;
     runConfig: dataform.IRunConfig,
     tableMetadata?: dataform.ITableMetadata
   ) {
-    return !runConfig.fullRefresh && tableMetadata && tableMetadata.type !== "view";
+    return (
+      !runConfig.fullRefresh &&
+      tableMetadata &&
+      tableMetadata.type !== dataform.TableMetadata.Type.VIEW
+    );
   }
 
   protected preOps(

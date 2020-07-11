@@ -24,7 +24,6 @@ suite("@dataform/integration/snowflake", ({ before, after }) => {
     });
 
     expect(compiledGraph.graphErrors.compilationErrors).to.eql([]);
-    expect(compiledGraph.graphErrors.validationErrors).to.eql([]);
 
     const adapter = adapters.create(compiledGraph.projectConfig, compiledGraph.dataformCoreVersion);
 
@@ -34,8 +33,8 @@ suite("@dataform/integration/snowflake", ({ before, after }) => {
     await dropAllTables(tablesToDelete, adapter, dbadapter);
 
     // Drop schemas to make sure schema creation works.
-    await dbadapter.execute(`drop schema if exists "TADA"."df_integration_test"`);
-    await dbadapter.execute(`drop schema if exists "TADA2"."df_integration_test"`);
+    await dbadapter.execute(`drop schema if exists "INTEGRATION_TESTS"."df_integration_test"`);
+    await dbadapter.execute(`drop schema if exists "INTEGRATION_TESTS2"."df_integration_test"`);
 
     // Run the tests.
     const testResults = await dfapi.test(dbadapter, compiledGraph.tests);
@@ -69,8 +68,9 @@ suite("@dataform/integration/snowflake", ({ before, after }) => {
 
     // Run the project.
     let executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
-    let executedGraph = await dfapi.run(executionGraph, dbadapter).result();
+    let executedGraph = await dfapi.run(dbadapter, executionGraph).result();
 
+    const executionActionMap = keyBy(executionGraph.actions, v => v.name);
     const actionMap = keyBy(executedGraph.actions, v => v.name);
     expect(Object.keys(actionMap).length).eql(14);
 
@@ -83,7 +83,10 @@ suite("@dataform/integration/snowflake", ({ before, after }) => {
       const expectedResult = expectedFailedActions.includes(actionName)
         ? dataform.ActionResult.ExecutionStatus.FAILED
         : dataform.ActionResult.ExecutionStatus.SUCCESSFUL;
-      expect(actionMap[actionName].status).equals(expectedResult);
+      expect(
+        dataform.ActionResult.ExecutionStatus[actionMap[actionName].status],
+        `ActionResult ExecutionStatus for action "${actionName}"`
+      ).equals(dataform.ActionResult.ExecutionStatus[expectedResult]);
     }
 
     expect(
@@ -106,7 +109,7 @@ suite("@dataform/integration/snowflake", ({ before, after }) => {
 
     // Check the status of the view in the non-default database.
     const tada2DatabaseView = keyBy(compiledGraph.tables, t => t.name)[
-      "TADA2.DF_INTEGRATION_TEST.SAMPLE_DATA_2"
+      "INTEGRATION_TESTS2.DF_INTEGRATION_TEST.SAMPLE_DATA_2"
     ];
     const tada2DatabaseViewRows = await getTableRows(tada2DatabaseView.target, adapter, dbadapter);
     expect(tada2DatabaseViewRows.length).equals(3);
@@ -119,7 +122,7 @@ suite("@dataform/integration/snowflake", ({ before, after }) => {
     expect(incrementalRows.length).equals(3);
 
     const incrementalTable2 = keyBy(compiledGraph.tables, t => t.name)[
-      "TADA2.DF_INTEGRATION_TEST.EXAMPLE_INCREMENTAL_TADA2"
+      "INTEGRATION_TESTS2.DF_INTEGRATION_TEST.EXAMPLE_INCREMENTAL_TADA2"
     ];
     const incrementalRows2 = await getTableRows(incrementalTable2.target, adapter, dbadapter);
     expect(incrementalRows2.length).equals(3);
@@ -146,7 +149,7 @@ suite("@dataform/integration/snowflake", ({ before, after }) => {
       dbadapter
     );
 
-    executedGraph = await dfapi.run(executionGraph, dbadapter).result();
+    executedGraph = await dfapi.run(dbadapter, executionGraph).result();
     expect(executedGraph.status).equals(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
 
     // Check there are the expected number of extra rows in the incremental tables.
@@ -157,7 +160,7 @@ suite("@dataform/integration/snowflake", ({ before, after }) => {
     expect(incrementalRows.length).equals(5);
 
     incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
-      "TADA2.DF_INTEGRATION_TEST.EXAMPLE_INCREMENTAL_TADA2"
+      "INTEGRATION_TESTS2.DF_INTEGRATION_TEST.EXAMPLE_INCREMENTAL_TADA2"
     ];
     incrementalRows = await getTableRows(incrementalTable2.target, adapter, dbadapter);
     expect(incrementalRows.length).equals(5);
@@ -200,7 +203,7 @@ suite("@dataform/integration/snowflake", ({ before, after }) => {
         projectDir: "tests/integration/snowflake_project"
       });
       const executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
-      await dfapi.run(executionGraph, dbadapter).result();
+      await dfapi.run(dbadapter, executionGraph).result();
 
       const view = keyBy(compiledGraph.tables, t => t.name)["DF_INTEGRATION_TEST.EXAMPLE_VIEW"];
       let evaluations = await dbadapter.evaluate(dataform.Table.create(view));

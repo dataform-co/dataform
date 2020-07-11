@@ -73,21 +73,25 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
 
       // Run the project.
       const executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
-      const executedGraph = await dfapi.run(executionGraph, dbadapter).result();
+      const executedGraph = await dfapi.run(dbadapter, executionGraph).result();
 
       const actionMap = keyBy(executedGraph.actions, v => v.name);
-      expect(Object.keys(actionMap).length).eql(16);
+      expect(Object.keys(actionMap).length).eql(17);
 
       // Check the status of action execution.
       const expectedFailedActions = [
         "dataform-integration-tests.df_integration_test_assertions_project_e2e.example_assertion_uniqueness_fail",
-        "dataform-integration-tests.df_integration_test_assertions_project_e2e.example_assertion_fail"
+        "dataform-integration-tests.df_integration_test_assertions_project_e2e.example_assertion_fail",
+        "dataform-integration-tests.df_integration_test_project_e2e.example_operation_partial_fail"
       ];
       for (const actionName of Object.keys(actionMap)) {
         const expectedResult = expectedFailedActions.includes(actionName)
           ? dataform.ActionResult.ExecutionStatus.FAILED
           : dataform.ActionResult.ExecutionStatus.SUCCESSFUL;
-        expect(actionMap[actionName].status).equals(expectedResult);
+        expect(actionMap[actionName].status).equals(
+          expectedResult,
+          `${actionName} has unexpected status.`
+        );
       }
 
       expect(
@@ -95,6 +99,134 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
           "dataform-integration-tests.df_integration_test_assertions_project_e2e.example_assertion_uniqueness_fail"
         ].tasks[1].errorMessage
       ).to.eql("bigquery error: Assertion failed: query returned 1 row(s).");
+
+      expect(
+        actionMap[
+          "dataform-integration-tests.df_integration_test_project_e2e.example_operation_partial_fail"
+        ].tasks[0].errorMessage
+      ).to.eql("bigquery error: Query error: Unrecognized name: invalid_column at [3:8]");
+    });
+
+    test("run caching", { timeout: 60000 }, async () => {
+      const compiledGraph = await compile("run_caching", { useRunCache: true });
+
+      // Drop all the tables before we do anything.
+      await cleanWarehouse(compiledGraph, dbadapter);
+
+      // Drop the meta schema
+      await dbadapter.dropSchema("dataform-integration-tests", "dataform_meta");
+
+      // Run the project.
+      let executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
+      let executedGraph = await dfapi.run(dbadapter, executionGraph).result();
+
+      // Re-run (some of) the project. Each included action should cache, or complete
+      // successfully (if the previous run was unable to write cache results).
+      executionGraph = await dfapi.build(
+        compiledGraph,
+        {
+          actions: [
+            "example_table",
+            "example_view",
+            "depends_on_example_view",
+            "sample_data_2",
+            "depends_on_sample_data_3"
+          ]
+        },
+        dbadapter
+      );
+      executedGraph = await dfapi.run(dbadapter, executionGraph).result();
+      for (const action of executedGraph.actions) {
+        expect(
+          dataform.ActionResult.ExecutionStatus[action.status],
+          `ActionResult ExecutionStatus for action "${action.name}"`
+        ).oneOf([
+          dataform.ActionResult.ExecutionStatus[dataform.ActionResult.ExecutionStatus.SUCCESSFUL],
+          dataform.ActionResult.ExecutionStatus[dataform.ActionResult.ExecutionStatus.CACHE_SKIPPED]
+        ]);
+      }
+
+      // Manually change some datasets (to model a data change happening outside of a DF run).
+      await Promise.all([
+        dbadapter.execute(
+          "create or replace view `dataform-integration-tests.df_integration_test_run_caching.sample_data_2` as select 'new' as foo"
+        ),
+        dbadapter.execute(
+          "create or replace view `dataform-integration-tests.df_integration_test_run_caching.sample_data_3` as select 'old' as bar"
+        )
+      ]);
+
+      // Make a change to the 'example_view' query (to model an ExecutionAction hash change).
+      compiledGraph.tables = compiledGraph.tables.map(table => {
+        if (
+          table.name === "dataform-integration-tests.df_integration_test_run_caching.example_view"
+        ) {
+          table.query = "select 1 as test";
+        }
+        return table;
+      });
+
+      // Re-run the project, checking caching results.
+      executionGraph = await dfapi.build(
+        compiledGraph,
+        {
+          actions: [
+            "example_incremental",
+            "example_table",
+            "example_assertion_fail",
+            "example_view",
+            "depends_on_example_view",
+            "sample_data_2",
+            "depends_on_sample_data_3"
+          ]
+        },
+        dbadapter
+      );
+
+      executedGraph = await dfapi.run(dbadapter, executionGraph).result();
+      const actionMap = keyBy(executedGraph.actions, v => v.name);
+
+      const expectedActionStatus: { [index: string]: dataform.ActionResult.ExecutionStatus } = {
+        // Should run because it is non-hermetic.
+        "dataform-integration-tests.df_integration_test_run_caching.example_incremental":
+          dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
+        // Should run because it failed on the last run.
+        "dataform-integration-tests.df_integration_test_assertions_run_caching.example_assertion_fail":
+          dataform.ActionResult.ExecutionStatus.FAILED,
+        // Should run because its query definition (and thus ExecutionAction hash) has changed.
+        "dataform-integration-tests.df_integration_test_run_caching.example_view":
+          dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
+        // Should run because the dataset has changed in the warehouse.
+        "dataform-integration-tests.df_integration_test_run_caching.sample_data_2":
+          dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
+        // Should run because an input to dataset has changed in the warehouse.
+        "dataform-integration-tests.df_integration_test_run_caching.depends_on_sample_data_3":
+          dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
+        // Should run because a transitive input (included in the run) did not cache.
+        "dataform-integration-tests.df_integration_test_run_caching.depends_on_example_view":
+          dataform.ActionResult.ExecutionStatus.SUCCESSFUL
+      };
+
+      for (const actionName of Object.keys(actionMap)) {
+        if (
+          actionName === "dataform-integration-tests.df_integration_test_run_caching.example_table"
+        ) {
+          expect(
+            dataform.ActionResult.ExecutionStatus[actionMap[actionName].status],
+            `ActionResult ExecutionStatus for action "${actionName}"`
+          ).oneOf([
+            dataform.ActionResult.ExecutionStatus[dataform.ActionResult.ExecutionStatus.SUCCESSFUL],
+            dataform.ActionResult.ExecutionStatus[
+              dataform.ActionResult.ExecutionStatus.CACHE_SKIPPED
+            ]
+          ]);
+        } else {
+          expect(
+            dataform.ActionResult.ExecutionStatus[actionMap[actionName].status],
+            `ActionResult ExecutionStatus for action "${actionName}"`
+          ).equals(dataform.ActionResult.ExecutionStatus[expectedActionStatus[actionName]]);
+        }
+      }
     });
 
     test("incremental tables", { timeout: 60000 }, async () => {
@@ -126,7 +258,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
         }
       ]) {
         const executionGraph = await dfapi.build(compiledGraph, runIteration.runConfig, dbadapter);
-        const runResult = await dfapi.run(executionGraph, dbadapter).result();
+        const runResult = await dfapi.run(dbadapter, executionGraph).result();
         expect(dataform.RunResult.ExecutionStatus[runResult.status]).eql(
           dataform.RunResult.ExecutionStatus[dataform.RunResult.ExecutionStatus.SUCCESSFUL]
         );
@@ -170,7 +302,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
         },
         dbadapter
       );
-      const runResult = await dfapi.run(executionGraph, dbadapter).result();
+      const runResult = await dfapi.run(dbadapter, executionGraph).result();
       expect(dataform.RunResult.ExecutionStatus[runResult.status]).eql(
         dataform.RunResult.ExecutionStatus[dataform.RunResult.ExecutionStatus.SUCCESSFUL]
       );
@@ -241,11 +373,10 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
     test("evaluate from valid compiled graph as valid", async () => {
       // Create and run the project.
       const compiledGraph = await compile("evaluate", {
-        useSingleQueryPerAction: true,
         useRunCache: false
       });
       const executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
-      await dfapi.run(executionGraph, dbadapter).result();
+      await dfapi.run(dbadapter, executionGraph).result();
 
       const view = keyBy(compiledGraph.tables, t => t.name)[
         "dataform-integration-tests.df_integration_test_evaluate.example_view"
@@ -412,7 +543,6 @@ async function compile(
   });
 
   expect(compiledGraph.graphErrors.compilationErrors).to.eql([]);
-  expect(compiledGraph.graphErrors.validationErrors).to.eql([]);
 
   compiledGraph.projectConfig = {
     ...compiledGraph.projectConfig,

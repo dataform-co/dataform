@@ -4,17 +4,19 @@ import * as React from "react";
 
 import * as styles from "df/components/collapse.css";
 
-interface ISimpleCollapseProps {
-  message: React.ReactNode;
+export interface ISimpleCollapseProps {
+  message?: React.ReactNode;
   className?: string;
+  defaultOpen?: boolean;
 }
 
 export function SimpleCollapse({
   message,
   className,
-  children
+  children,
+  defaultOpen
 }: React.PropsWithChildren<ISimpleCollapseProps>) {
-  const [show, updateShow] = useState(false);
+  const [show, updateShow] = useState(!!defaultOpen);
   const cssStyles = [styles.messageContainer];
   if (className) {
     cssStyles.push(className);
@@ -22,7 +24,7 @@ export function SimpleCollapse({
   return (
     <>
       <div className={cssStyles.join(" ")}>
-        {message}
+        {message || <></>}
         {children && (
           <Button
             minimal={true}

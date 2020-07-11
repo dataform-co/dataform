@@ -4,7 +4,7 @@ import * as React from "react";
 import { CardActions } from "df/components/card";
 import { Dialog } from "df/components/dialog";
 
-export interface IProps {
+export interface IControlledDialogProps {
   title?: string;
   ref?: React.RefObject<ControlledDialog>;
   openButton?: React.ReactElement<Element>;
@@ -21,8 +21,8 @@ interface IState {
   isOpen: boolean;
 }
 
-export class ControlledDialog extends React.Component<IProps, IState> {
-  constructor(props: IProps) {
+export class ControlledDialog extends React.Component<IControlledDialogProps, IState> {
+  constructor(props: IControlledDialogProps) {
     super(props);
     this.state = { isOpen: false };
   }
