@@ -1,6 +1,7 @@
 package main
 
 import (
+	// "encoding/json"
 	"log"
 	// "math"
 
@@ -18,7 +19,8 @@ func main() {
 	// 	DoubleField: 35.6,
 	// })
 	bytes, err := proto.Marshal(&testprotos.TestRepeatedMessage{
-		UnpackedDoubleField: []float64{35.6, 12.8, -8.9},
+		// UnpackedDoubleField: []float64{35.6, 12.8, -8.9},
+		UnpackedFloatField: []float32{2.7, -9876.549},
 	})
 	if err != nil {
 		log.Fatalf("Failed to marshal protobuf: %v", err)

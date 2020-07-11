@@ -8,216 +8,244 @@ export interface IMessage {
 // Proto3Serializer serializes protobuf fields as according to proto3 rules,
 // i.e. it does not write out default values.
 export class Proto3Serializer {
-  private readonly output: number[] = [];
+  private readonly writer: BufferedWriter = new BufferedWriter();
 
   public double(fieldNumber: number, packed: boolean, val?: number | number[]): this {
+    return this.maybeSerializeField(
+      fieldNumber,
+      WireType.SIXTY_FOUR_BIT,
+      packed,
+      (writer, singleVal) => writer.writeNonVarInt(singleVal, true, true),
+      val
+    );
+  }
+
+  public float(fieldNumber: number, packed: boolean, val?: number | number[]): this {
+    return this.maybeSerializeField(
+      fieldNumber,
+      WireType.THIRTY_TWO_BIT,
+      packed,
+      (writer, singleVal) => writer.writeNonVarInt(singleVal, false, true),
+      val
+    );
+  }
+
+  public int32(fieldNumber: number, packed: boolean, val?: number | number[]): this {
+    return this.maybeSerializeField(
+      fieldNumber,
+      WireType.VARINT,
+      packed,
+      (writer, singleVal) => writer.writeVarInt(singleVal),
+      val
+    );
+  }
+
+  public fixed32(fieldNumber: number, packed: boolean, val?: number | number[]): this {
+    return this.maybeSerializeField(
+      fieldNumber,
+      WireType.THIRTY_TWO_BIT,
+      packed,
+      (writer, singleVal) => writer.writeNonVarInt(singleVal, false, false),
+      val
+    );
+  }
+
+  public uint32(fieldNumber: number, packed: boolean, val?: number | number[]): this {
+    return this.maybeSerializeField(
+      fieldNumber,
+      WireType.VARINT,
+      packed,
+      (writer, singleVal) => writer.writeVarInt(singleVal),
+      val
+    );
+  }
+
+  public sfixed32(fieldNumber: number, packed: boolean, val?: number | number[]): this {
+    return this.maybeSerializeField(
+      fieldNumber,
+      WireType.THIRTY_TWO_BIT,
+      packed,
+      (writer, singleVal) => writer.writeNonVarInt(singleVal, false, false),
+      val
+    );
+  }
+
+  public sint32(fieldNumber: number, packed: boolean, val?: number | number[]): this {
+    return this.maybeSerializeField(
+      fieldNumber,
+      WireType.VARINT,
+      packed,
+      (writer, singleVal) => writer.writeVarInt(((singleVal << 1) ^ (singleVal >> 31)) >>> 0),
+      val
+    );
+  }
+
+  public enum(fieldNumber: number, packed: boolean, val?: number | number[]): this {
+    return this.maybeSerializeField(
+      fieldNumber,
+      WireType.VARINT,
+      packed,
+      (writer, singleVal) => writer.writeVarInt(singleVal),
+      val
+    );
+  }
+
+  public int64(fieldNumber: number, packed: boolean, val?: Long | Long[]): this {
+    return this.maybeSerializeField(
+      fieldNumber,
+      WireType.VARINT,
+      packed,
+      (writer, singleVal) => writer.writeLongVarInt(singleVal),
+      val
+    );
+  }
+
+  public uint64(fieldNumber: number, packed: boolean, val?: Long | Long[]): this {
+    return this.maybeSerializeField(
+      fieldNumber,
+      WireType.VARINT,
+      packed,
+      (writer, singleVal) => writer.writeLongVarInt(singleVal),
+      val
+    );
+  }
+
+  public fixed64(fieldNumber: number, packed: boolean, val?: Long | Long[]): this {
+    return this.maybeSerializeField(
+      fieldNumber,
+      WireType.SIXTY_FOUR_BIT,
+      packed,
+      (writer, singleVal) => writer.writeLongNonVarInt(singleVal),
+      val
+    );
+  }
+
+  public sfixed64(fieldNumber: number, packed: boolean, val?: Long | Long[]): this {
+    return this.maybeSerializeField(
+      fieldNumber,
+      WireType.SIXTY_FOUR_BIT,
+      packed,
+      (writer, singleVal) => writer.writeLongNonVarInt(singleVal),
+      val
+    );
+  }
+
+  public sint64(fieldNumber: number, packed: boolean, val?: Long | Long[]): this {
+    return this.maybeSerializeField(
+      fieldNumber,
+      WireType.VARINT,
+      packed,
+      (writer, singleVal) =>
+        writer.writeLongVarInt(singleVal.shiftLeft(1).xor(singleVal.shiftRight(63))),
+      val
+    );
+  }
+
+  public bool(fieldNumber: number, packed: boolean, val?: boolean | boolean[]): this {
+    return this.maybeSerializeField(
+      fieldNumber,
+      WireType.VARINT,
+      packed,
+      writer => writer.writeVarInt(1),
+      val
+    );
+  }
+
+  public bytes(fieldNumber: number, packed: boolean, val?: Uint8Array | Uint8Array[]): this {
+    return this.maybeSerializeField(
+      fieldNumber,
+      WireType.LENGTH_DELIMITED,
+      packed,
+      (writer, singleVal) => writer.writeVarInt(singleVal.length).writeBytes(singleVal),
+      val
+    );
+  }
+
+  public string(fieldNumber: number, packed: boolean, val?: string | string[]): this {
+    return this.maybeSerializeField(
+      fieldNumber,
+      WireType.LENGTH_DELIMITED,
+      packed,
+      (writer, singleVal) => {
+        const buffer = Buffer.from(singleVal);
+        return writer.writeVarInt(buffer.byteLength).writeBytes(buffer);
+      },
+      val
+    );
+  }
+
+  public message(fieldNumber: number, packed: boolean, val?: IMessage | IMessage[]): this {
+    return this.maybeSerializeField(
+      fieldNumber,
+      WireType.LENGTH_DELIMITED,
+      packed,
+      (writer, singleVal) => {
+        const bytes = singleVal.serialize();
+        return writer.writeVarInt(bytes.byteLength).writeBytes(bytes);
+      },
+      val
+    );
+  }
+
+  public finish(): Uint8Array {
+    return Uint8Array.from(this.writer.buffer);
+  }
+
+  private maybeSerializeField<T>(
+    fieldNumber: number,
+    wireType: WireType,
+    packed: boolean,
+    writeSingleVal: (writer: BufferedWriter, singleVal: T) => void,
+    val: T | T[]
+  ) {
     if (!shouldProto3Serialize(val)) {
       return this;
     }
     if (Array.isArray(val)) {
       if (packed) {
-        const packedSerializer = new Proto3Serializer();
-        for (const singleVal of val) {
-          packedSerializer.writeNonVarInt(singleVal, true, true);
-        }
-        const packedBytes = Uint8Array.from(packedSerializer.output);
+        const writer = new BufferedWriter();
+        val.forEach(singleVal => writeSingleVal(writer, singleVal));
+        const packedBytes = Uint8Array.from(writer.buffer);
         this.newTag(fieldNumber, WireType.LENGTH_DELIMITED)
           .writeVarInt(packedBytes.byteLength)
           .writeBytes(packedBytes);
       } else {
-        for (const singleVal of val) {
-          this.newTag(fieldNumber, WireType.SIXTY_FOUR_BIT).writeNonVarInt(singleVal, true, true);
-        }
+        val.forEach(singleVal => writeSingleVal(this.newTag(fieldNumber, wireType), singleVal));
       }
       return this;
     }
-    return this.newTag(fieldNumber, WireType.SIXTY_FOUR_BIT).writeNonVarInt(val, true, true);
-  }
-
-  public float(fieldNumber: number, packed: boolean, val?: number | number[]): this {
-    if (!shouldProto3Serialize(val)) {
-      return this;
-    }
-    if (Array.isArray(val)) {
-      return this;
-    }
-    return this.newTag(fieldNumber, WireType.THIRTY_TWO_BIT).writeNonVarInt(val, false, true);
-  }
-
-  public int32(fieldNumber: number, packed: boolean, val?: number | number[]): this {
-    if (!shouldProto3Serialize(val)) {
-      return this;
-    }
-    if (Array.isArray(val)) {
-      return this;
-    }
-    return this.newTag(fieldNumber, WireType.VARINT).writeVarInt(val);
-  }
-
-  public fixed32(fieldNumber: number, packed: boolean, val?: number | number[]): this {
-    if (!shouldProto3Serialize(val)) {
-      return this;
-    }
-    if (Array.isArray(val)) {
-      return this;
-    }
-    return this.newTag(fieldNumber, WireType.THIRTY_TWO_BIT).writeNonVarInt(val, false, false);
-  }
-
-  public uint32(fieldNumber: number, packed: boolean, val?: number | number[]): this {
-    if (!shouldProto3Serialize(val)) {
-      return this;
-    }
-    if (Array.isArray(val)) {
-      return this;
-    }
-    return this.newTag(fieldNumber, WireType.VARINT).writeVarInt(val);
-  }
-
-  public sfixed32(fieldNumber: number, packed: boolean, val?: number | number[]): this {
-    if (!shouldProto3Serialize(val)) {
-      return this;
-    }
-    if (Array.isArray(val)) {
-      return this;
-    }
-    return this.newTag(fieldNumber, WireType.THIRTY_TWO_BIT).writeNonVarInt(val, false, false);
-  }
-
-  public sint32(fieldNumber: number, packed: boolean, val?: number | number[]): this {
-    if (!shouldProto3Serialize(val)) {
-      return this;
-    }
-    if (Array.isArray(val)) {
-      return this;
-    }
-    return this.newTag(fieldNumber, WireType.VARINT).writeVarInt(((val << 1) ^ (val >> 31)) >>> 0);
-  }
-
-  public enum(fieldNumber: number, packed: boolean, val?: number | number[]): this {
-    if (!shouldProto3Serialize(val)) {
-      return this;
-    }
-    if (Array.isArray(val)) {
-      return this;
-    }
-    return this.newTag(fieldNumber, WireType.VARINT).writeVarInt(val);
-  }
-
-  public int64(fieldNumber: number, packed: boolean, val?: Long | Long[]): this {
-    if (!shouldProto3Serialize(val)) {
-      return this;
-    }
-    if (Array.isArray(val)) {
-      return this;
-    }
-    return this.newTag(fieldNumber, WireType.VARINT).writeLongVarInt(val);
-  }
-
-  public uint64(fieldNumber: number, packed: boolean, val?: Long | Long[]): this {
-    if (!shouldProto3Serialize(val)) {
-      return this;
-    }
-    if (Array.isArray(val)) {
-      return this;
-    }
-    return this.newTag(fieldNumber, WireType.VARINT).writeLongVarInt(val);
-  }
-
-  public fixed64(fieldNumber: number, packed: boolean, val?: Long | Long[]): this {
-    if (!shouldProto3Serialize(val)) {
-      return this;
-    }
-    if (Array.isArray(val)) {
-      return this;
-    }
-    return this.newTag(fieldNumber, WireType.SIXTY_FOUR_BIT).writeLongNonVarInt(val);
-  }
-
-  public sfixed64(fieldNumber: number, packed: boolean, val?: Long | Long[]): this {
-    if (!shouldProto3Serialize(val)) {
-      return this;
-    }
-    if (Array.isArray(val)) {
-      return this;
-    }
-    return this.newTag(fieldNumber, WireType.SIXTY_FOUR_BIT).writeLongNonVarInt(val);
-  }
-
-  public sint64(fieldNumber: number, packed: boolean, val?: Long | Long[]): this {
-    if (!shouldProto3Serialize(val)) {
-      return this;
-    }
-    if (Array.isArray(val)) {
-      return this;
-    }
-    return this.newTag(fieldNumber, WireType.VARINT).writeLongVarInt(
-      val.shiftLeft(1).xor(val.shiftRight(63))
-    );
-  }
-
-  public bool(fieldNumber: number, packed: boolean, val?: boolean | boolean[]): this {
-    if (!shouldProto3Serialize(val)) {
-      return this;
-    }
-    if (Array.isArray(val)) {
-      return this;
-    }
-    return this.newTag(fieldNumber, WireType.VARINT).writeVarInt(1);
-  }
-
-  public bytes(fieldNumber: number, packed: boolean, val?: Uint8Array | Uint8Array[]): this {
-    if (!shouldProto3Serialize(val)) {
-      return this;
-    }
-    if (Array.isArray(val)) {
-      return this;
-    }
-    return this.newTag(fieldNumber, WireType.LENGTH_DELIMITED)
-      .writeVarInt(val.length)
-      .writeBytes(val);
-  }
-
-  public string(fieldNumber: number, packed: boolean, val?: string | string[]): this {
-    if (!shouldProto3Serialize(val)) {
-      return this;
-    }
-    if (Array.isArray(val)) {
-      return this;
-    }
-    const buffer = Buffer.from(val);
-    return this.newTag(fieldNumber, WireType.LENGTH_DELIMITED)
-      .writeVarInt(buffer.byteLength)
-      .writeBytes(buffer);
-  }
-
-  public message(fieldNumber: number, packed: boolean, val?: IMessage | IMessage[]): this {
-    // should always return false
-    if (!shouldProto3Serialize(val)) {
-      return this;
-    }
-    if (Array.isArray(val)) {
-      return this;
-    }
-    const bytes = val.serialize();
-    return this.newTag(fieldNumber, WireType.LENGTH_DELIMITED)
-      .writeVarInt(bytes.length)
-      .writeBytes(bytes);
-  }
-
-  public finish(): Uint8Array {
-    return Uint8Array.from(this.output);
-  }
-
-  private newTag(fieldNumber: number, wireType: WireType): this {
-    // See https://developers.google.com/protocol-buffers/docs/encoding#structure.
-    this.writeVarInt((fieldNumber << 3) | wireType);
+    writeSingleVal(this.newTag(fieldNumber, wireType), val);
     return this;
   }
 
-  private writeVarInt(varint: number): this {
+  private newTag(fieldNumber: number, wireType: WireType): BufferedWriter {
+    // See https://developers.google.com/protocol-buffers/docs/encoding#structure.
+    return this.writer.writeVarInt((fieldNumber << 3) | wireType);
+  }
+}
+
+function shouldProto3Serialize(val?: any | any[]) {
+  if (val === undefined) {
+    return false;
+  }
+  if (Array.isArray(val) && val.length === 0) {
+    return false;
+  }
+  return !(
+    val === 0 ||
+    val === "" ||
+    val === false ||
+    (val instanceof Long && val.isZero()) ||
+    (val instanceof Uint8Array && val.length === 0)
+  );
+}
+
+class BufferedWriter {
+  public readonly buffer: number[] = [];
+
+  public writeVarInt(varint: number): this {
     if (varint === 0) {
-      this.output.push(0);
+      this.buffer.push(0);
     } else if (varint > 0) {
       while (varint) {
         let nextByte = varint & 0b01111111;
@@ -225,21 +253,21 @@ export class Proto3Serializer {
         if (varint) {
           nextByte |= 0b10000000;
         }
-        this.output.push(nextByte);
+        this.buffer.push(nextByte);
       }
     } else {
       for (let i = 0; i < 10; i++) {
         const nextByte = i === 9 ? 1 : (varint & 0b01111111) | 0b10000000;
         varint >>= 7;
-        this.output.push(nextByte);
+        this.buffer.push(nextByte);
       }
     }
     return this;
   }
 
-  private writeLongVarInt(varint: Long): this {
+  public writeLongVarInt(varint: Long): this {
     if (varint.isZero()) {
-      this.output.push(0);
+      this.buffer.push(0);
     } else if (varint.greaterThan(0)) {
       while (!varint.isZero()) {
         let nextByte = varint.getLowBits() & 0b01111111;
@@ -247,19 +275,19 @@ export class Proto3Serializer {
         if (!varint.isZero()) {
           nextByte |= 0b10000000;
         }
-        this.output.push(nextByte);
+        this.buffer.push(nextByte);
       }
     } else {
       for (let i = 0; i < 10; i++) {
         const nextByte = i === 9 ? 1 : (varint.getLowBits() & 0b01111111) | 0b10000000;
         varint = varint.shiftRight(7);
-        this.output.push(nextByte);
+        this.buffer.push(nextByte);
       }
     }
     return this;
   }
 
-  private writeNonVarInt(num: number, sixtyFourBit: boolean, float: boolean): this {
+  public writeNonVarInt(num: number, sixtyFourBit: boolean, float: boolean): this {
     const bytes = new Uint8Array(sixtyFourBit ? 8 : 4);
     const dataView = new DataView(bytes.buffer);
     if (float) {
@@ -274,7 +302,7 @@ export class Proto3Serializer {
     return this.writeBytes(bytes);
   }
 
-  private writeLongNonVarInt(num: Long): this {
+  public writeLongNonVarInt(num: Long): this {
     const bytes = new Uint8Array(8);
     const dataView = new DataView(bytes.buffer);
     dataView.setInt32(0, num.getLowBits(), true);
@@ -282,26 +310,10 @@ export class Proto3Serializer {
     return this.writeBytes(bytes);
   }
 
-  private writeBytes(bytes: Uint8Array): this {
-    bytes.forEach(byte => this.output.push(byte));
+  public writeBytes(bytes: Uint8Array): this {
+    bytes.forEach(byte => this.buffer.push(byte));
     return this;
   }
-}
-
-function shouldProto3Serialize(val?: any | any[]) {
-  if (!val) {
-    return false;
-  }
-  if (Array.isArray(val) && val.length === 0) {
-    return false;
-  }
-  return !(
-    val === 0 ||
-    val === "" ||
-    val === false ||
-    (val instanceof Long && val.isZero()) ||
-    (val instanceof Uint8Array && val.length === 0)
-  );
 }
 
 enum WireType {

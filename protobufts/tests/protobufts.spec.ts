@@ -415,6 +415,20 @@ suite(__filename, () => {
           33,
           192
         ])
+      },
+      {
+        type: "packed float [2.7, -9876.549]",
+        proto: protobuftsProtos.TestRepeatedMessage.create({
+          floatField: [2.7, -9876.549]
+        }),
+        encoded: new Uint8Array([18, 8, 205, 204, 44, 64, 50, 82, 26, 198])
+      },
+      {
+        type: "unpacked float [2.7, -9876.549]",
+        proto: protobuftsProtos.TestRepeatedMessage.create({
+          unpackedFloatField: [2.7, -9876.549]
+        }),
+        encoded: new Uint8Array([154, 1, 8, 205, 204, 44, 64, 50, 82, 26, 198])
       }
     ];
 
