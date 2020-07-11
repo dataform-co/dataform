@@ -2,18 +2,19 @@ import Long from "long";
 
 export interface IMessage {
   serialize: () => Uint8Array;
-  serializeInternal: (serializer: Serializer) => Serializer;
+  serializeInternal: (serializer: Proto3Serializer) => Proto3Serializer;
 }
 
-export class Serializer {
+// Proto3Serializer serializes protobuf fields as according to proto3 rules,
+// i.e. it does not write out default values.
+export class Proto3Serializer {
   private readonly output: number[] = [];
 
   public double(fieldNumber: number, packed: boolean, val?: number | number[]): this {
     if (Array.isArray(val)) {
-      // TODO: default checks should really be moved into the protobuf Message code to allow for proto2.
       if (val.length > 0) {
         if (packed) {
-          const packedSerializer = new Serializer();
+          const packedSerializer = new Proto3Serializer();
           for (const singleVal of val) {
             packedSerializer.writeNonVarInt(singleVal, true, true);
           }
@@ -27,7 +28,6 @@ export class Serializer {
           }
         }
       }
-      // TODO: default checks should really be moved into the protobuf Message code to allow for proto2.
     } else if (val) {
       this.newTag(fieldNumber, WireType.SIXTY_FOUR_BIT).writeNonVarInt(val, true, true);
     }
@@ -36,7 +36,6 @@ export class Serializer {
 
   public float(fieldNumber: number, packed: boolean, val?: number | number[]): this {
     if (Array.isArray(val)) {
-      // TODO: default checks should really be moved into the protobuf Message code to allow for proto2.
     } else if (val) {
       this.newTag(fieldNumber, WireType.THIRTY_TWO_BIT).writeNonVarInt(val, false, true);
     }
@@ -45,7 +44,6 @@ export class Serializer {
 
   public int32(fieldNumber: number, packed: boolean, val?: number | number[]): this {
     if (Array.isArray(val)) {
-      // TODO: default checks should really be moved into the protobuf Message code to allow for proto2.
     } else if (val) {
       this.newTag(fieldNumber, WireType.VARINT).writeVarInt(val);
     }
@@ -54,7 +52,6 @@ export class Serializer {
 
   public fixed32(fieldNumber: number, packed: boolean, val?: number | number[]): this {
     if (Array.isArray(val)) {
-      // TODO: default checks should really be moved into the protobuf Message code to allow for proto2.
     } else if (val) {
       this.newTag(fieldNumber, WireType.THIRTY_TWO_BIT).writeNonVarInt(val, false, false);
     }
@@ -63,7 +60,6 @@ export class Serializer {
 
   public uint32(fieldNumber: number, packed: boolean, val?: number | number[]): this {
     if (Array.isArray(val)) {
-      // TODO: default checks should really be moved into the protobuf Message code to allow for proto2.
     } else if (val) {
       this.newTag(fieldNumber, WireType.VARINT).writeVarInt(val);
     }
@@ -72,7 +68,6 @@ export class Serializer {
 
   public sfixed32(fieldNumber: number, packed: boolean, val?: number | number[]): this {
     if (Array.isArray(val)) {
-      // TODO: default checks should really be moved into the protobuf Message code to allow for proto2.
     } else if (val) {
       this.newTag(fieldNumber, WireType.THIRTY_TWO_BIT).writeNonVarInt(val, false, false);
     }
@@ -81,7 +76,6 @@ export class Serializer {
 
   public sint32(fieldNumber: number, packed: boolean, val?: number | number[]): this {
     if (Array.isArray(val)) {
-      // TODO: default checks should really be moved into the protobuf Message code to allow for proto2.
     } else if (val) {
       this.newTag(fieldNumber, WireType.VARINT).writeVarInt(((val << 1) ^ (val >> 31)) >>> 0);
     }
@@ -90,7 +84,6 @@ export class Serializer {
 
   public enum(fieldNumber: number, packed: boolean, val?: number | number[]): this {
     if (Array.isArray(val)) {
-      // TODO: default checks should really be moved into the protobuf Message code to allow for proto2.
     } else if (val) {
       this.newTag(fieldNumber, WireType.VARINT).writeVarInt(val);
     }
@@ -99,7 +92,6 @@ export class Serializer {
 
   public int64(fieldNumber: number, packed: boolean, val?: Long | Long[]): this {
     if (Array.isArray(val)) {
-      // TODO: default checks should really be moved into the protobuf Message code to allow for proto2.
     } else if (!val.isZero()) {
       this.newTag(fieldNumber, WireType.VARINT).writeLongVarInt(val);
     }
@@ -108,7 +100,6 @@ export class Serializer {
 
   public uint64(fieldNumber: number, packed: boolean, val?: Long | Long[]): this {
     if (Array.isArray(val)) {
-      // TODO: default checks should really be moved into the protobuf Message code to allow for proto2.
     } else if (!val.isZero()) {
       this.newTag(fieldNumber, WireType.VARINT).writeLongVarInt(val);
     }
@@ -117,7 +108,6 @@ export class Serializer {
 
   public fixed64(fieldNumber: number, packed: boolean, val?: Long | Long[]): this {
     if (Array.isArray(val)) {
-      // TODO: default checks should really be moved into the protobuf Message code to allow for proto2.
     } else if (!val.isZero()) {
       this.newTag(fieldNumber, WireType.SIXTY_FOUR_BIT).writeLongNonVarInt(val);
     }
@@ -126,7 +116,6 @@ export class Serializer {
 
   public sfixed64(fieldNumber: number, packed: boolean, val?: Long | Long[]): this {
     if (Array.isArray(val)) {
-      // TODO: default checks should really be moved into the protobuf Message code to allow for proto2.
     } else if (!val.isZero()) {
       this.newTag(fieldNumber, WireType.SIXTY_FOUR_BIT).writeLongNonVarInt(val);
     }
@@ -135,7 +124,6 @@ export class Serializer {
 
   public sint64(fieldNumber: number, packed: boolean, val?: Long | Long[]): this {
     if (Array.isArray(val)) {
-      // TODO: default checks should really be moved into the protobuf Message code to allow for proto2.
     } else if (!val.isZero()) {
       this.newTag(fieldNumber, WireType.VARINT).writeLongVarInt(
         val.shiftLeft(1).xor(val.shiftRight(63))
@@ -146,7 +134,6 @@ export class Serializer {
 
   public bool(fieldNumber: number, packed: boolean, val?: boolean | boolean[]): this {
     if (Array.isArray(val)) {
-      // TODO: default checks should really be moved into the protobuf Message code to allow for proto2.
     } else if (val) {
       this.newTag(fieldNumber, WireType.VARINT).writeVarInt(1);
     }
@@ -155,7 +142,6 @@ export class Serializer {
 
   public bytes(fieldNumber: number, packed: boolean, val?: Uint8Array | Uint8Array[]): this {
     if (Array.isArray(val)) {
-      // TODO: default checks should really be moved into the protobuf Message code to allow for proto2.
     } else if (val && val.length > 0) {
       this.newTag(fieldNumber, WireType.LENGTH_DELIMITED)
         .writeVarInt(val.length)
@@ -166,7 +152,6 @@ export class Serializer {
 
   public string(fieldNumber: number, packed: boolean, val?: string | string[]): this {
     if (Array.isArray(val)) {
-      // TODO: default checks should really be moved into the protobuf Message code to allow for proto2.
     } else if (val) {
       const buffer = Buffer.from(val);
       this.newTag(fieldNumber, WireType.LENGTH_DELIMITED)
@@ -178,7 +163,6 @@ export class Serializer {
 
   public message(fieldNumber: number, packed: boolean, val?: IMessage | IMessage[]): this {
     if (Array.isArray(val)) {
-      // TODO: default checks should really be moved into the protobuf Message code to allow for proto2.
     } else if (val) {
       const bytes = val.serialize();
       this.newTag(fieldNumber, WireType.LENGTH_DELIMITED)
