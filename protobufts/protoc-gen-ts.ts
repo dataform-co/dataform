@@ -165,7 +165,16 @@ function getMessage(
   fileTypeMapping: Map<string, ITypeLocation>,
   currentProtoFile: string
 ): string {
-  // TODO: better names for oneof fields.
+  const oneofFieldMapping = new Map<number, google.protobuf.IFieldDescriptorProto[]>();
+  descriptorProto.field
+    .filter(fieldDescriptorProto => fieldDescriptorProto.hasOwnProperty("oneofIndex"))
+    .forEach(fieldDescriptorProto => {
+      if (!oneofFieldMapping.has(fieldDescriptorProto.oneofIndex)) {
+        oneofFieldMapping.set(fieldDescriptorProto.oneofIndex, []);
+      }
+      oneofFieldMapping.get(fieldDescriptorProto.oneofIndex).push(fieldDescriptorProto);
+    });
+  // TODO: better class member names for oneof fields.
   const message = `export class ${descriptorProto.name} {
   public static create(params: {
 ${descriptorProto.field
@@ -180,7 +189,12 @@ ${descriptorProto.field
   )
   .join("\n")}
 ${descriptorProto.oneofDecl.map(
-  oneofDescriptorProto => `    ${oneofDescriptorProto.name}?: ${oneofType()};`
+  (oneofDescriptorProto, index) =>
+    `    ${oneofDescriptorProto.name}?: ${oneofType(
+      oneofFieldMapping.get(index),
+      fileTypeMapping,
+      currentProtoFile
+    )};`
 )}
   }) {
     const newProto = new ${descriptorProto.name}();
@@ -209,13 +223,17 @@ ${descriptorProto.field
   )
   .join("\n")}
 ${descriptorProto.oneofDecl.map(
-  oneofDescriptorProto => `  public ${oneofDescriptorProto.name}?: ${oneofType()};`
+  (oneofDescriptorProto, index) =>
+    `  public ${oneofDescriptorProto.name}?: ${oneofType(
+      oneofFieldMapping.get(index),
+      fileTypeMapping,
+      currentProtoFile
+    )};`
 )}
 
   public serialize(): Uint8Array {
     const serializer = new Serializer();
 ${descriptorProto.field
-  // TODO: serializer code for oneofs.
   .filter(fieldDescriptorProto => !fieldDescriptorProto.hasOwnProperty("oneofIndex"))
   .map(fieldDescriptorProto => {
     const serializerCall = `serializer.${serializerMethodName(fieldDescriptorProto)}(${
@@ -228,9 +246,8 @@ ${descriptorProto.oneofDecl
   .map(
     (oneofDescriptorProto, index) => `    if (!!this.${oneofDescriptorProto.name}) {
       switch (this.${oneofDescriptorProto.name}.field) {
-${descriptorProto.field
-  .filter(fieldDescriptorProto => fieldDescriptorProto.hasOwnProperty("oneofIndex"))
-  .filter(fieldDescriptorProto => fieldDescriptorProto.oneofIndex === index)
+${oneofFieldMapping
+  .get(index)
   .map(
     fieldDescriptorProto => `        case "${fieldDescriptorProto.name}":
           serializer.${serializerMethodName(fieldDescriptorProto)}(${
@@ -271,8 +288,8 @@ function type(
 ) {
   const baseType = () => {
     switch (fieldDescriptorProto.type) {
-      case google.protobuf.FieldDescriptorProto.Type.TYPE_DOUBLE: // TODO: is this right?
-      case google.protobuf.FieldDescriptorProto.Type.TYPE_FLOAT: // TODO: is this right?
+      case google.protobuf.FieldDescriptorProto.Type.TYPE_DOUBLE:
+      case google.protobuf.FieldDescriptorProto.Type.TYPE_FLOAT:
       case google.protobuf.FieldDescriptorProto.Type.TYPE_INT32:
       case google.protobuf.FieldDescriptorProto.Type.TYPE_FIXED32:
       case google.protobuf.FieldDescriptorProto.Type.TYPE_UINT32:
@@ -309,9 +326,21 @@ function type(
   return `${baseType()}[]`;
 }
 
-function oneofType() {
-  // TODO: fix this typing to be actually correct.
-  return `{ field: "oneof_int32_field", value: number } | { field: "oneof_string_field", value: string }`;
+function oneofType(
+  memberFields: google.protobuf.IFieldDescriptorProto[],
+  fileTypeMapping: Map<string, ITypeLocation>,
+  currentProtoFile: string
+) {
+  return memberFields
+    .map(
+      fieldDescriptorProto =>
+        `{ field: "${fieldDescriptorProto.name}", value: ${type(
+          fieldDescriptorProto,
+          fileTypeMapping,
+          currentProtoFile
+        )} }`
+    )
+    .join(" | ");
 }
 
 function hasDefaultValue(fieldDescriptorProto: google.protobuf.IFieldDescriptorProto) {
