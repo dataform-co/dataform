@@ -2,16 +2,13 @@ import Long from "long";
 
 export interface IMessage {
   serialize: () => Uint8Array;
-  serializeInternal: (serializer: Proto3Serializer) => Proto3Serializer;
 }
 
-// Proto3Serializer serializes protobuf fields as according to proto3 rules,
-// i.e. it does not write out default values.
-export class Proto3Serializer {
+export class Serializer {
   private readonly writer: BufferedWriter = new BufferedWriter();
 
   public double(fieldNumber: number, packed: boolean, val?: number | number[]): this {
-    return this.maybeSerializeField(
+    return this.serializeField(
       fieldNumber,
       WireType.SIXTY_FOUR_BIT,
       packed,
@@ -21,7 +18,7 @@ export class Proto3Serializer {
   }
 
   public float(fieldNumber: number, packed: boolean, val?: number | number[]): this {
-    return this.maybeSerializeField(
+    return this.serializeField(
       fieldNumber,
       WireType.THIRTY_TWO_BIT,
       packed,
@@ -31,7 +28,7 @@ export class Proto3Serializer {
   }
 
   public int32(fieldNumber: number, packed: boolean, val?: number | number[]): this {
-    return this.maybeSerializeField(
+    return this.serializeField(
       fieldNumber,
       WireType.VARINT,
       packed,
@@ -41,7 +38,7 @@ export class Proto3Serializer {
   }
 
   public fixed32(fieldNumber: number, packed: boolean, val?: number | number[]): this {
-    return this.maybeSerializeField(
+    return this.serializeField(
       fieldNumber,
       WireType.THIRTY_TWO_BIT,
       packed,
@@ -51,7 +48,7 @@ export class Proto3Serializer {
   }
 
   public uint32(fieldNumber: number, packed: boolean, val?: number | number[]): this {
-    return this.maybeSerializeField(
+    return this.serializeField(
       fieldNumber,
       WireType.VARINT,
       packed,
@@ -61,7 +58,7 @@ export class Proto3Serializer {
   }
 
   public sfixed32(fieldNumber: number, packed: boolean, val?: number | number[]): this {
-    return this.maybeSerializeField(
+    return this.serializeField(
       fieldNumber,
       WireType.THIRTY_TWO_BIT,
       packed,
@@ -71,7 +68,7 @@ export class Proto3Serializer {
   }
 
   public sint32(fieldNumber: number, packed: boolean, val?: number | number[]): this {
-    return this.maybeSerializeField(
+    return this.serializeField(
       fieldNumber,
       WireType.VARINT,
       packed,
@@ -81,7 +78,7 @@ export class Proto3Serializer {
   }
 
   public enum(fieldNumber: number, packed: boolean, val?: number | number[]): this {
-    return this.maybeSerializeField(
+    return this.serializeField(
       fieldNumber,
       WireType.VARINT,
       packed,
@@ -91,7 +88,7 @@ export class Proto3Serializer {
   }
 
   public int64(fieldNumber: number, packed: boolean, val?: Long | Long[]): this {
-    return this.maybeSerializeField(
+    return this.serializeField(
       fieldNumber,
       WireType.VARINT,
       packed,
@@ -101,7 +98,7 @@ export class Proto3Serializer {
   }
 
   public uint64(fieldNumber: number, packed: boolean, val?: Long | Long[]): this {
-    return this.maybeSerializeField(
+    return this.serializeField(
       fieldNumber,
       WireType.VARINT,
       packed,
@@ -111,7 +108,7 @@ export class Proto3Serializer {
   }
 
   public fixed64(fieldNumber: number, packed: boolean, val?: Long | Long[]): this {
-    return this.maybeSerializeField(
+    return this.serializeField(
       fieldNumber,
       WireType.SIXTY_FOUR_BIT,
       packed,
@@ -121,7 +118,7 @@ export class Proto3Serializer {
   }
 
   public sfixed64(fieldNumber: number, packed: boolean, val?: Long | Long[]): this {
-    return this.maybeSerializeField(
+    return this.serializeField(
       fieldNumber,
       WireType.SIXTY_FOUR_BIT,
       packed,
@@ -131,7 +128,7 @@ export class Proto3Serializer {
   }
 
   public sint64(fieldNumber: number, packed: boolean, val?: Long | Long[]): this {
-    return this.maybeSerializeField(
+    return this.serializeField(
       fieldNumber,
       WireType.VARINT,
       packed,
@@ -142,7 +139,7 @@ export class Proto3Serializer {
   }
 
   public bool(fieldNumber: number, packed: boolean, val?: boolean | boolean[]): this {
-    return this.maybeSerializeField(
+    return this.serializeField(
       fieldNumber,
       WireType.VARINT,
       packed,
@@ -152,7 +149,7 @@ export class Proto3Serializer {
   }
 
   public bytes(fieldNumber: number, packed: boolean, val?: Uint8Array | Uint8Array[]): this {
-    return this.maybeSerializeField(
+    return this.serializeField(
       fieldNumber,
       WireType.LENGTH_DELIMITED,
       packed,
@@ -162,7 +159,7 @@ export class Proto3Serializer {
   }
 
   public string(fieldNumber: number, packed: boolean, val?: string | string[]): this {
-    return this.maybeSerializeField(
+    return this.serializeField(
       fieldNumber,
       WireType.LENGTH_DELIMITED,
       packed,
@@ -175,7 +172,7 @@ export class Proto3Serializer {
   }
 
   public message(fieldNumber: number, packed: boolean, val?: IMessage | IMessage[]): this {
-    return this.maybeSerializeField(
+    return this.serializeField(
       fieldNumber,
       WireType.LENGTH_DELIMITED,
       packed,
@@ -191,30 +188,27 @@ export class Proto3Serializer {
     return Uint8Array.from(this.writer.buffer);
   }
 
-  private maybeSerializeField<T>(
+  private serializeField<T>(
     fieldNumber: number,
     wireType: WireType,
     packed: boolean,
     writeSingleVal: (writer: BufferedWriter, singleVal: T) => void,
     val: T | T[]
   ) {
-    if (!shouldProto3Serialize(val)) {
+    if (!Array.isArray(val)) {
+      writeSingleVal(this.newTag(fieldNumber, wireType), val);
       return this;
     }
-    if (Array.isArray(val)) {
-      if (packed) {
-        const writer = new BufferedWriter();
-        val.forEach(singleVal => writeSingleVal(writer, singleVal));
-        const packedBytes = Uint8Array.from(writer.buffer);
-        this.newTag(fieldNumber, WireType.LENGTH_DELIMITED)
-          .writeVarInt(packedBytes.byteLength)
-          .writeBytes(packedBytes);
-      } else {
-        val.forEach(singleVal => writeSingleVal(this.newTag(fieldNumber, wireType), singleVal));
-      }
-      return this;
+    if (packed) {
+      const writer = new BufferedWriter();
+      val.forEach(singleVal => writeSingleVal(writer, singleVal));
+      const packedBytes = Uint8Array.from(writer.buffer);
+      this.newTag(fieldNumber, WireType.LENGTH_DELIMITED)
+        .writeVarInt(packedBytes.byteLength)
+        .writeBytes(packedBytes);
+    } else {
+      val.forEach(singleVal => writeSingleVal(this.newTag(fieldNumber, wireType), singleVal));
     }
-    writeSingleVal(this.newTag(fieldNumber, wireType), val);
     return this;
   }
 
@@ -222,22 +216,6 @@ export class Proto3Serializer {
     // See https://developers.google.com/protocol-buffers/docs/encoding#structure.
     return this.writer.writeVarInt((fieldNumber << 3) | wireType);
   }
-}
-
-function shouldProto3Serialize(val?: any | any[]) {
-  if (val === undefined) {
-    return false;
-  }
-  if (Array.isArray(val) && val.length === 0) {
-    return false;
-  }
-  return !(
-    val === 0 ||
-    val === "" ||
-    val === false ||
-    (val instanceof Long && val.isZero()) ||
-    (val instanceof Uint8Array && val.length === 0)
-  );
 }
 
 class BufferedWriter {

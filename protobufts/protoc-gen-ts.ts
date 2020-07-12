@@ -148,7 +148,7 @@ function getImportLines(
   if (needsLongImport) {
     imports.push('import Long from "long";');
   }
-  imports.push('import { IMessage, Proto3Serializer } from "df/protobufts/runtime/serialize";');
+  imports.push('import { Serializer } from "df/protobufts/runtime/serialize";');
   return imports;
 }
 
@@ -213,25 +213,20 @@ ${descriptorProto.oneofDecl.map(
 )}
 
   public serialize(): Uint8Array {
-    return this.serializeInternal(new Proto3Serializer()).finish();
-  }
-
-  private serializeInternal(serializer: Proto3Serializer): Proto3Serializer {
-    return serializer
+    const serializer = new Serializer();
 ${descriptorProto.field
   // TODO: serializer code for oneofs.
   .filter(fieldDescriptorProto => !fieldDescriptorProto.hasOwnProperty("oneofIndex"))
-  .map(
-    fieldDescriptorProto =>
-      `      .${serializerMethodName(fieldDescriptorProto)}(${
-        fieldDescriptorProto.number
-      }, ${isPacked(fieldDescriptorProto)}, this.${fieldDescriptorProto.jsonName}${
-        fieldDescriptorProto.type === google.protobuf.FieldDescriptorProto.Type.TYPE_MESSAGE
-          ? " as unknown as IMessage"
-          : ""
-      })`
-  )
+  .map(fieldDescriptorProto => {
+    const serializerCall = `serializer.${serializerMethodName(fieldDescriptorProto)}(${
+      fieldDescriptorProto.number
+    }, ${isPacked(fieldDescriptorProto)}, this.${fieldDescriptorProto.jsonName})`;
+    return `    if (${shouldSerialize(fieldDescriptorProto)}) {
+      ${serializerCall};
+    }`;
+  })
   .join("\n")}
+    return serializer.finish();
   }
 }`;
   if (descriptorProto.nestedType.length === 0 && descriptorProto.enumType.length === 0) {
@@ -339,6 +334,41 @@ function defaultValue(fieldDescriptorProto: google.protobuf.IFieldDescriptorProt
       throw new Error("GROUP is unsupported.");
     case google.protobuf.FieldDescriptorProto.Type.TYPE_BYTES:
       return "new Uint8Array()";
+    default:
+      throw new Error(`Unrecognized field type: ${fieldDescriptorProto.type}`);
+  }
+}
+
+function shouldSerialize(fieldDescriptorProto: google.protobuf.IFieldDescriptorProto) {
+  if (fieldDescriptorProto.label === google.protobuf.FieldDescriptorProto.Label.LABEL_REPEATED) {
+    return `this.${fieldDescriptorProto.jsonName}.length > 0`;
+  }
+  switch (fieldDescriptorProto.type) {
+    case google.protobuf.FieldDescriptorProto.Type.TYPE_DOUBLE:
+    case google.protobuf.FieldDescriptorProto.Type.TYPE_FLOAT:
+    case google.protobuf.FieldDescriptorProto.Type.TYPE_INT32:
+    case google.protobuf.FieldDescriptorProto.Type.TYPE_FIXED32:
+    case google.protobuf.FieldDescriptorProto.Type.TYPE_UINT32:
+    case google.protobuf.FieldDescriptorProto.Type.TYPE_SFIXED32:
+    case google.protobuf.FieldDescriptorProto.Type.TYPE_SINT32:
+    case google.protobuf.FieldDescriptorProto.Type.TYPE_ENUM:
+      return `this.${fieldDescriptorProto.jsonName} !== 0`;
+    case google.protobuf.FieldDescriptorProto.Type.TYPE_INT64:
+    case google.protobuf.FieldDescriptorProto.Type.TYPE_SFIXED64:
+    case google.protobuf.FieldDescriptorProto.Type.TYPE_SINT64:
+    case google.protobuf.FieldDescriptorProto.Type.TYPE_UINT64:
+    case google.protobuf.FieldDescriptorProto.Type.TYPE_FIXED64:
+      return `!this.${fieldDescriptorProto.jsonName}.isZero()`;
+    case google.protobuf.FieldDescriptorProto.Type.TYPE_BOOL:
+      return `this.${fieldDescriptorProto.jsonName}`;
+    case google.protobuf.FieldDescriptorProto.Type.TYPE_STRING:
+      return `this.${fieldDescriptorProto.jsonName} !== ""`;
+    case google.protobuf.FieldDescriptorProto.Type.TYPE_MESSAGE:
+      return `!!this.${fieldDescriptorProto.jsonName}`;
+    case google.protobuf.FieldDescriptorProto.Type.TYPE_GROUP:
+      throw new Error("GROUP is unsupported.");
+    case google.protobuf.FieldDescriptorProto.Type.TYPE_BYTES:
+      return `this.${fieldDescriptorProto.jsonName}.length > 0`;
     default:
       throw new Error(`Unrecognized field type: ${fieldDescriptorProto.type}`);
   }
