@@ -165,9 +165,11 @@ function getMessage(
   fileTypeMapping: Map<string, ITypeLocation>,
   currentProtoFile: string
 ): string {
+  // TODO: better names for oneof fields.
   const message = `export class ${descriptorProto.name} {
   public static create(params: {
 ${descriptorProto.field
+  .filter(fieldDescriptorProto => !fieldDescriptorProto.hasOwnProperty("oneofIndex"))
   .map(
     fieldDescriptorProto =>
       `    ${fieldDescriptorProto.jsonName}?: ${type(
@@ -177,17 +179,26 @@ ${descriptorProto.field
       )};`
   )
   .join("\n")}
+${descriptorProto.oneofDecl.map(
+  oneofDescriptorProto => `    ${oneofDescriptorProto.name}?: ${oneofType()};`
+)}
   }) {
     const newProto = new ${descriptorProto.name}();
 ${descriptorProto.field
+  .filter(fieldDescriptorProto => !fieldDescriptorProto.hasOwnProperty("oneofIndex"))
   .map(
     fieldDescriptorProto =>
       `    if ('${fieldDescriptorProto.jsonName}' in params) { newProto.${fieldDescriptorProto.jsonName} = params.${fieldDescriptorProto.jsonName}; }`
   )
   .join("\n")}
+${descriptorProto.oneofDecl.map(
+  oneofDescriptorProto =>
+    `    if ('${oneofDescriptorProto.name}' in params) { newProto.${oneofDescriptorProto.name} = params.${oneofDescriptorProto.name}; }`
+)}
     return newProto;
   }
 ${descriptorProto.field
+  .filter(fieldDescriptorProto => !fieldDescriptorProto.hasOwnProperty("oneofIndex"))
   .map(
     fieldDescriptorProto =>
       `  public ${fieldDescriptorProto.jsonName}${
@@ -197,6 +208,9 @@ ${descriptorProto.field
       };`
   )
   .join("\n")}
+${descriptorProto.oneofDecl.map(
+  oneofDescriptorProto => `  public ${oneofDescriptorProto.name}?: ${oneofType()};`
+)}
 
   public serialize(): Uint8Array {
     return this.serializeInternal(new Proto3Serializer()).finish();
@@ -205,6 +219,8 @@ ${descriptorProto.field
   private serializeInternal(serializer: Proto3Serializer): Proto3Serializer {
     return serializer
 ${descriptorProto.field
+  // TODO: serializer code for oneofs.
+  .filter(fieldDescriptorProto => !fieldDescriptorProto.hasOwnProperty("oneofIndex"))
   .map(
     fieldDescriptorProto =>
       `      .${serializerMethodName(fieldDescriptorProto)}(${
@@ -234,6 +250,10 @@ ${descriptorProto.field
 export namespace ${descriptorProto.name} {${
     descriptorProto.nestedType.length > 0 ? `\n${nestedMessages}\n` : ""
   }${descriptorProto.enumType.length > 0 ? `\n${nestedEnums}\n` : ""}}`;
+}
+
+function oneofType() {
+  return `{ kind: "oneofInt32Field", value: number } | { kind: "oneofStringField", value: string }`;
 }
 
 function type(
