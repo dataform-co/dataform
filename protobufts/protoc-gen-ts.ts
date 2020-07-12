@@ -221,10 +221,27 @@ ${descriptorProto.field
     const serializerCall = `serializer.${serializerMethodName(fieldDescriptorProto)}(${
       fieldDescriptorProto.number
     }, ${isPacked(fieldDescriptorProto)}, this.${fieldDescriptorProto.jsonName})`;
-    return `    if (${shouldSerialize(fieldDescriptorProto)}) {
-      ${serializerCall};
-    }`;
+    return `    if (${shouldSerialize(fieldDescriptorProto)}) { ${serializerCall}; }`;
   })
+  .join("\n")}
+${descriptorProto.oneofDecl
+  .map(
+    (oneofDescriptorProto, index) => `    if (!!this.${oneofDescriptorProto.name}) {
+      switch (this.${oneofDescriptorProto.name}.field) {
+${descriptorProto.field
+  .filter(fieldDescriptorProto => fieldDescriptorProto.hasOwnProperty("oneofIndex"))
+  .filter(fieldDescriptorProto => fieldDescriptorProto.oneofIndex === index)
+  .map(
+    fieldDescriptorProto => `        case "${fieldDescriptorProto.name}":
+          serializer.${serializerMethodName(fieldDescriptorProto)}(${
+      fieldDescriptorProto.number
+    }, ${isPacked(fieldDescriptorProto)}, this.${oneofDescriptorProto.name}.value);
+          break;`
+  )
+  .join("\n")}
+      }
+    }`
+  )
   .join("\n")}
     return serializer.finish();
   }
@@ -245,10 +262,6 @@ ${descriptorProto.field
 export namespace ${descriptorProto.name} {${
     descriptorProto.nestedType.length > 0 ? `\n${nestedMessages}\n` : ""
   }${descriptorProto.enumType.length > 0 ? `\n${nestedEnums}\n` : ""}}`;
-}
-
-function oneofType() {
-  return `{ kind: "oneofInt32Field", value: number } | { kind: "oneofStringField", value: string }`;
 }
 
 function type(
@@ -294,6 +307,11 @@ function type(
     return baseType();
   }
   return `${baseType()}[]`;
+}
+
+function oneofType() {
+  // TODO: fix this typing to be actually correct.
+  return `{ field: "oneof_int32_field", value: number } | { field: "oneof_string_field", value: string }`;
 }
 
 function hasDefaultValue(fieldDescriptorProto: google.protobuf.IFieldDescriptorProto) {
