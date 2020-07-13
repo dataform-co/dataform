@@ -1,7 +1,8 @@
 import * as crypto from "crypto";
-import * as fs from "fs-extra";
+import * as fs from "fs";
 import * as jsBeautify from "js-beautify";
 import * as sqlFormatter from "sql-formatter";
+import { promisify } from "util";
 
 import { ErrorWithCause } from "df/common/errors/errors";
 import { SyntaxTreeNode, SyntaxTreeNodeType } from "df/sqlx/lexer";
@@ -36,12 +37,12 @@ export async function formatFile(
   }
 ) {
   const fileExtension = filename.split(".").slice(-1)[0];
-  const formattedText = format(await fs.readFile(filename, "utf8"), fileExtension);
+  const formattedText = format(await promisify(fs.readFile)(filename, "utf8"), fileExtension);
   if (formattedText !== format(formattedText, fileExtension)) {
     throw new Error("Formatter unable to determine final formatted form.");
   }
   if (options && options.overwriteFile) {
-    await fs.writeFile(filename, formattedText);
+    await promisify(fs.writeFile)(filename, formattedText);
   }
   return formattedText;
 }
