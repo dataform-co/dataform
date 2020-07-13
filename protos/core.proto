@@ -509,7 +509,7 @@ message Field {
   }
 
   enum Flag {
-    UNKNOWN = 0;
+    UNKNOWN_FLAG = 0;
     REPEATED = 1;
   }
 

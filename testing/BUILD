@@ -1,5 +1,7 @@
 package(default_visibility = ["//visibility:public"])
 
+exports_files(["build_test.sh"])
+
 load("//tools:ts_library.bzl", "ts_library")
 
 ts_library(
