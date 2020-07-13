@@ -15,6 +15,21 @@ const JS_BEAUTIFY_OPTIONS: JsBeautifyOptions = {
 
 const MAX_SQL_FORMAT_ATTEMPTS = 5;
 
+export function format(text: string, fileExtension: string) {
+  try {
+    switch (fileExtension) {
+      case "sqlx":
+        return postProcessFormattedSqlx(formatSqlx(SyntaxTreeNode.create(text)));
+      case "js":
+        return `${formatJavaScript(text).trim()}\n`;
+      default:
+        return text;
+    }
+  } catch (e) {
+    throw new ErrorWithCause(`Unable to format "${text?.substring(0, 20)}...".`, e);
+  }
+}
+
 export async function formatFile(
   filename: string,
   options?: {
@@ -22,22 +37,8 @@ export async function formatFile(
   }
 ) {
   const fileExtension = filename.split(".").slice(-1)[0];
-  const format = (text: string) => {
-    try {
-      switch (fileExtension) {
-        case "sqlx":
-          return postProcessFormattedSqlx(formatSqlx(SyntaxTreeNode.create(text)));
-        case "js":
-          return `${formatJavaScript(text).trim()}\n`;
-        default:
-          return text;
-      }
-    } catch (e) {
-      throw new ErrorWithCause(`Unable to format "${filename}".`, e);
-    }
-  };
-  const formattedText = format(await promisify(fs.readFile)(filename, "utf8"));
-  if (formattedText !== format(formattedText)) {
+  const formattedText = format(await promisify(fs.readFile)(filename, "utf8"), fileExtension);
+  if (formattedText !== format(formattedText, fileExtension)) {
     throw new Error("Formatter unable to determine final formatted form.");
   }
   if (options && options.overwriteFile) {
