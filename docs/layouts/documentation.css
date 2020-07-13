@@ -98,9 +98,7 @@
 }
 
 /* Stops url links, e.g. /assertions#content-link, from being hidden behind the header */
-:target::before {
-  content: "";
-  display: block;
-  height: 80px;
-  margin: -80px 0 0;
+h2 {
+  padding-top: 80px !important;
+  margin-top: -40px !important;
 }
