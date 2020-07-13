@@ -871,6 +871,18 @@ select * from \${ref('dab')}
         )
       ).eql(await fs.readFile("tests/core/basic-syntax.js.test", "utf8"));
     });
+
+    test("backticks are escaped", async () => {
+      expect(
+        compilers.compile(
+          `
+select "\`" from \`location\`
+`,
+          "file.sqlx"
+        )
+      ).eql(await fs.readFile("tests/core/backticks-are-escaped.js.test", "utf8"));
+    });
+
     test("backslashes act literally", async () => {
       expect(
         compilers.compile(
