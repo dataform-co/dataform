@@ -25,7 +25,7 @@ The following is an example of the `dataform.json` file for a BigQuery project:
 }
 ```
 
-### Changing default schema names
+### Configure default schema names
 
 Dataform aims to create all objects under a single schema (or dataset in BigQuery) in your warehouse. This is usually called `dataform` but can be changed
 by changing the `defaultSchema` property to some other value. For example, to change it to `mytables`, update the configuration file as following:
@@ -38,7 +38,17 @@ by changing the `defaultSchema` property to some other value. For example, to ch
 }
 ```
 
-[Assertions](assertions) are created inside a different schema as specified by the `assertionsSchema` property.
+### Control query concurrency
+
+Dataform executes as many queries as possible in parallel, using per-warehouse default query concurrency limits. If you would like to limit the number of queries that may run concurrently during the course of a Dataform run, you can set the `concurrentQueryLimit` property:
+
+```json
+{
+  ...
+  "concurrentQueryLimit": 10,
+  ...
+}
+```
 
 ### Enable run caching to cut warehouse costs
 
