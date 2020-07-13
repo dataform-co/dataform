@@ -48,7 +48,7 @@ select * from "schema"."my_table"
 -- definitions/table_with_ref.sqlx
 config { type: "table" }
 
-select * from ${ref("my_table)}
+select * from ${ref("my_table")}
 ```
 
 The `ref` function is how you tell Dataform about the dependencies in your project. With this information, Dataform builds a dependency tree of your project in real time, and achieves the following things:

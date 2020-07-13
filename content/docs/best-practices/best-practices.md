@@ -1,6 +1,6 @@
 ---
-title: Best practices to maximise efficiency
-subtitle: Follow best practices to build a project that will scale and maximise  your team efficiency over time
+title: Best practices for managing dataform projects
+subtitle: Follow best practices to build a project that will scale and maximise productivity
 priority: 2
 ---
 
@@ -95,7 +95,7 @@ Documentation is automatically added to the Data Catalog within Dataform and can
 
 <img src="https://assets.dataform.co/docs/best_practices/catalog_example.png"  alt="" />
 
-## Keep your code DRY using reusable `Includes` macros
+## Keep your code DRY using reusable `includes` macros
 
 DRY stands for Don’t Repeat Yourself. JavaScript files can be added to the includes/ folder to define simple scripts, constants or macros that can be reused across your project.
 
@@ -105,8 +105,8 @@ Defining macros within includes allows you to keep your transformation logic DRY
 The function country_group defines a mapping from country to region. It can be defined once, and then reused throughout your project. If the grouping changes, you only need to change code in one place
 
 ```sql
--- includes/mapping.js
-function country_group(country){
+-- includes/country_group.js
+module.exports = (country) => {
   return `
   case
     when ${country} in ('US', 'CA') then 'NA'
@@ -114,6 +114,7 @@ function country_group(country){
     when ${country} in ('AU') then ${country}
     else 'Other'
   end`;
+}
 ```
 
 <br />
@@ -124,7 +125,7 @@ config { type: "table"}
 
 select
   country as country,
-  ${mapping.country_group("country")} as country_group,
+  ${country_group("country")} as country_group,
 ...
 ```
 
