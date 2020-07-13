@@ -35,7 +35,11 @@ const maybeInitializePg = (() => {
 })();
 
 export class RedshiftDbAdapter implements IDbAdapter {
-  public static async create(credentials: Credentials, warehouseType: string) {
+  public static async create(
+    credentials: Credentials,
+    warehouseType: string,
+    options?: { concurrencyLimit?: number }
+  ) {
     maybeInitializePg();
     const jdbcCredentials = credentials as dataform.IJDBC;
     const baseClientConfig: Partial<pg.ClientConfig> = {
@@ -49,11 +53,14 @@ export class RedshiftDbAdapter implements IDbAdapter {
         host: jdbcCredentials.host,
         port: jdbcCredentials.port
       });
-      const queryExecutor = new PgPoolExecutor({
-        ...baseClientConfig,
-        host: "127.0.0.1",
-        port: sshTunnel.localPort
-      });
+      const queryExecutor = new PgPoolExecutor(
+        {
+          ...baseClientConfig,
+          host: "127.0.0.1",
+          port: sshTunnel.localPort
+        },
+        options
+      );
       return new RedshiftDbAdapter(queryExecutor, { sshTunnel, warehouseType });
     } else {
       const clientConfig: pg.ClientConfig = {
@@ -61,7 +68,7 @@ export class RedshiftDbAdapter implements IDbAdapter {
         host: jdbcCredentials.host,
         port: jdbcCredentials.port
       };
-      const queryExecutor = new PgPoolExecutor(clientConfig);
+      const queryExecutor = new PgPoolExecutor(clientConfig, options);
       return new RedshiftDbAdapter(queryExecutor, { warehouseType });
     }
   }
@@ -241,8 +248,11 @@ export class RedshiftDbAdapter implements IDbAdapter {
 
 class PgPoolExecutor {
   private pool: pg.Pool;
-  constructor(clientConfig: pg.ClientConfig) {
-    this.pool = new pg.Pool(clientConfig);
+  constructor(clientConfig: pg.ClientConfig, options?: { concurrencyLimit?: number }) {
+    this.pool = new pg.Pool({
+      ...clientConfig,
+      max: options?.concurrencyLimit
+    });
     // https://node-postgres.com/api/pool#events
     // Idle clients in the pool are still connected to the remote host and as such can
     // emit errors. If/when they do, they will automatically be removed from the pool,

@@ -62,19 +62,28 @@ interface ISnowflakeResultStream {
 }
 
 export class SnowflakeDbAdapter implements IDbAdapter {
-  public static async create(credentials: Credentials, warehouseType: string) {
+  public static async create(
+    credentials: Credentials,
+    _: string,
+    options?: { concurrencyLimit?: number }
+  ) {
     const connection = await connect(credentials as dataform.ISnowflake);
-    return new SnowflakeDbAdapter(connection);
+    return new SnowflakeDbAdapter(connection, options);
   }
 
   // Unclear exactly what snowflakes limit's are here, we can experiment with increasing this.
-  private pool: PromisePool.PromisePoolExecutor = new PromisePool.PromisePoolExecutor({
-    concurrencyLimit: 10,
-    frequencyWindow: 1000,
-    frequencyLimit: 10
-  });
+  private pool: PromisePool.PromisePoolExecutor;
 
-  constructor(private readonly connection: ISnowflakeConnection) {}
+  constructor(
+    private readonly connection: ISnowflakeConnection,
+    options?: { concurrencyLimit?: number }
+  ) {
+    this.pool = new PromisePool.PromisePoolExecutor({
+      concurrencyLimit: options?.concurrencyLimit || 10,
+      frequencyWindow: 1000,
+      frequencyLimit: 10
+    });
+  }
 
   public async execute(
     statement: string,
