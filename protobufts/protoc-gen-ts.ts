@@ -101,7 +101,8 @@ function getFileContent(
     if (
       descriptorProto.field.some(
         fieldDescriptorProto =>
-          type(fieldDescriptorProto, fileTypeMapping, fileDescriptorProto.name) === "Long"
+          type(fieldDescriptorProto, fileTypeMapping, new Set(), fileDescriptorProto.name) ===
+          "Long"
       )
     ) {
       return true;
@@ -174,6 +175,14 @@ function getMessage(
       }
       oneofFieldMapping.get(fieldDescriptorProto.oneofIndex).push(fieldDescriptorProto);
     });
+  // TODO: this doesn't work because the 'nestedDescriptorProto.name' is just the short type name, not
+  // fully-qualified, so the match inside 'type(...)' always fails. we probably need to keep the current nesting
+  // structure in an argument to this recursive function, and prepend the name with that.
+  const embeddedMapTypes = new Set(
+    descriptorProto.nestedType
+      .filter(nestedDescriptorProto => nestedDescriptorProto.options.mapEntry)
+      .map(nestedDescriptorProto => nestedDescriptorProto.name)
+  );
   // TODO: better class member names for oneof fields.
   const message = `export class ${descriptorProto.name} {
   public static create(params: {
@@ -184,6 +193,7 @@ ${descriptorProto.field
       `    ${fieldDescriptorProto.jsonName}?: ${type(
         fieldDescriptorProto,
         fileTypeMapping,
+        embeddedMapTypes,
         currentProtoFile
       )};`
   )
@@ -193,6 +203,7 @@ ${descriptorProto.oneofDecl.map(
     `    ${oneofDescriptorProto.name}?: ${oneofType(
       oneofFieldMapping.get(index),
       fileTypeMapping,
+      embeddedMapTypes,
       currentProtoFile
     )};`
 )}
@@ -217,7 +228,7 @@ ${descriptorProto.field
     fieldDescriptorProto =>
       `  public ${fieldDescriptorProto.jsonName}${
         hasDefaultValue(fieldDescriptorProto) ? "" : "?"
-      }: ${type(fieldDescriptorProto, fileTypeMapping, currentProtoFile)}${
+      }: ${type(fieldDescriptorProto, fileTypeMapping, embeddedMapTypes, currentProtoFile)}${
         hasDefaultValue(fieldDescriptorProto) ? ` = ${defaultValue(fieldDescriptorProto)}` : ""
       };`
   )
@@ -227,6 +238,7 @@ ${descriptorProto.oneofDecl.map(
     `  public ${oneofDescriptorProto.name}?: ${oneofType(
       oneofFieldMapping.get(index),
       fileTypeMapping,
+      embeddedMapTypes,
       currentProtoFile
     )};`
 )}
@@ -284,6 +296,7 @@ export namespace ${descriptorProto.name} {${
 function type(
   fieldDescriptorProto: google.protobuf.IFieldDescriptorProto,
   fileTypeMapping: Map<string, ITypeLocation>,
+  embeddedMapTypes: Set<string>,
   currentProtoFile: string
 ) {
   const baseType = () => {
@@ -310,10 +323,20 @@ function type(
         throw new Error("GROUP is unsupported.");
       case google.protobuf.FieldDescriptorProto.Type.TYPE_MESSAGE:
       case google.protobuf.FieldDescriptorProto.Type.TYPE_ENUM:
-        const typeLocation = fileTypeMapping.get(fieldDescriptorProto.typeName.slice(1));
-        return typeLocation.importProtoFile === currentProtoFile
-          ? typeLocation.typescriptTypeName
-          : `${typeLocation.importName}.${typeLocation.typescriptTypeName}`;
+        const typeName = fieldDescriptorProto.typeName.slice(1);
+        const typeLocation = fileTypeMapping.get(typeName);
+        if (typeLocation.importProtoFile === currentProtoFile) {
+          if (embeddedMapTypes.has(typeName)) {
+            return `Map<string, number>`;
+          }
+          return (
+            typeLocation.typescriptTypeName +
+            ` /* ${typeName}, ${Array.from(embeddedMapTypes.keys())}, ${
+              typeLocation.typescriptTypeName
+            } */`
+          );
+        }
+        return `${typeLocation.importName}.${typeLocation.typescriptTypeName}`;
       case google.protobuf.FieldDescriptorProto.Type.TYPE_BYTES:
         return "Uint8Array";
       default:
@@ -329,6 +352,7 @@ function type(
 function oneofType(
   memberFields: google.protobuf.IFieldDescriptorProto[],
   fileTypeMapping: Map<string, ITypeLocation>,
+  embeddedMapTypes: Set<string>,
   currentProtoFile: string
 ) {
   return memberFields
@@ -337,6 +361,7 @@ function oneofType(
         `{ field: "${fieldDescriptorProto.name}", value: ${type(
           fieldDescriptorProto,
           fileTypeMapping,
+          embeddedMapTypes,
           currentProtoFile
         )} }`
     )

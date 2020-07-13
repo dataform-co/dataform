@@ -26,6 +26,13 @@ message TestMessage {
   sfixed64 sfixed64_field = 15;
   sint32 sint32_field = 16;
   sint64 sint64_field = 17;
+
+  oneof oneof {
+    int32 oneof_int32_field = 18;
+    string oneof_string_field = 19;
+  }
+
+  map<string, int32> bla = 20;
 }
 
 message TestRepeatedMessage {
