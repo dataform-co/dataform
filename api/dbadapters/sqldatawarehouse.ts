@@ -21,14 +21,14 @@ export class SQLDataWarehouseDBAdapter implements IDbAdapter {
   public static async create(
     credentials: Credentials,
     _: string,
-    options: { concurrencyLimit?: number }
+    options?: { concurrencyLimit?: number }
   ) {
     return new SQLDataWarehouseDBAdapter(credentials, options);
   }
 
   private pool: Promise<ConnectionPool>;
 
-  constructor(credentials: Credentials, options: { concurrencyLimit?: number }) {
+  constructor(credentials: Credentials, options?: { concurrencyLimit?: number }) {
     const sqlDataWarehouseCredentials = credentials as dataform.ISQLDataWarehouse;
     this.pool = new Promise((resolve, reject) => {
       const conn = new ConnectionPool({
@@ -41,7 +41,7 @@ export class SQLDataWarehouseDBAdapter implements IDbAdapter {
         requestTimeout: DB_REQUEST_TIMEOUT_MILLIS,
         pool: {
           min: 0,
-          max: options.concurrencyLimit || DB_CON_LIMIT
+          max: options?.concurrencyLimit || DB_CON_LIMIT
         },
         options: {
           encrypt: true

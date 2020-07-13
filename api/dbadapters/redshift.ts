@@ -38,7 +38,7 @@ export class RedshiftDbAdapter implements IDbAdapter {
   public static async create(
     credentials: Credentials,
     warehouseType: string,
-    options: { concurrencyLimit?: number }
+    options?: { concurrencyLimit?: number }
   ) {
     maybeInitializePg();
     const jdbcCredentials = credentials as dataform.IJDBC;
@@ -248,10 +248,10 @@ export class RedshiftDbAdapter implements IDbAdapter {
 
 class PgPoolExecutor {
   private pool: pg.Pool;
-  constructor(clientConfig: pg.ClientConfig, { concurrencyLimit }: { concurrencyLimit?: number }) {
+  constructor(clientConfig: pg.ClientConfig, options?: { concurrencyLimit?: number }) {
     this.pool = new pg.Pool({
       ...clientConfig,
-      max: concurrencyLimit
+      max: options?.concurrencyLimit
     });
     // https://node-postgres.com/api/pool#events
     // Idle clients in the pool are still connected to the remote host and as such can

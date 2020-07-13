@@ -65,7 +65,7 @@ export class SnowflakeDbAdapter implements IDbAdapter {
   public static async create(
     credentials: Credentials,
     _: string,
-    options: { concurrencyLimit?: number }
+    options?: { concurrencyLimit?: number }
   ) {
     const connection = await connect(credentials as dataform.ISnowflake);
     return new SnowflakeDbAdapter(connection, options);
@@ -76,10 +76,10 @@ export class SnowflakeDbAdapter implements IDbAdapter {
 
   constructor(
     private readonly connection: ISnowflakeConnection,
-    options: { concurrencyLimit?: number }
+    options?: { concurrencyLimit?: number }
   ) {
     this.pool = new PromisePool.PromisePoolExecutor({
-      concurrencyLimit: options.concurrencyLimit || 10,
+      concurrencyLimit: options?.concurrencyLimit || 10,
       frequencyWindow: 1000,
       frequencyLimit: 10
     });

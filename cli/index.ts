@@ -439,7 +439,8 @@ export function runCli() {
           print(`Running ${compiledGraph.tests.length} unit tests...\n`);
           const dbadapter = await dbadapters.create(
             readCredentials,
-            compiledGraph.projectConfig.warehouse
+            compiledGraph.projectConfig.warehouse,
+            { concurrencyLimit: compiledGraph.projectConfig.concurrentQueryLimit }
           );
           try {
             const testResults = await test(dbadapter, compiledGraph.tests);
@@ -501,7 +502,8 @@ export function runCli() {
 
           const dbadapter = await dbadapters.create(
             readCredentials,
-            compiledGraph.projectConfig.warehouse
+            compiledGraph.projectConfig.warehouse,
+            { concurrencyLimit: compiledGraph.projectConfig.concurrentQueryLimit }
           );
           try {
             const executionGraph = await build(
