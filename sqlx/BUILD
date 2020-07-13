@@ -7,8 +7,12 @@ ts_library(
     srcs = glob(["**/*.ts"]),
     deps = [
         "//:modules-fix",
+        "//common/errors",
         "@npm//@types/moo",
         "@npm//@types/node",
+        "@npm//@types/js-beautify",
+        "@npm//js-beautify",
+        "@npm//sql-formatter",
         "@npm//moo",
     ],
 )
