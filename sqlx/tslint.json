@@ -1,6 +1,7 @@
 {
   "extends": ["../tslint.json"],
   "rules": {
-    "tsr-detect-possible-timing-attacks": false
+    "tsr-detect-possible-timing-attacks": false,
+    "tsr-detect-non-literal-fs-filename": false
   }
 }
