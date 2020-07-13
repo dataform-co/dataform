@@ -1,6 +1,6 @@
 ---
-title: Start your Dataform project
-subtitle: Principles to set up your project for scale and efficiency
+title: First steps with your Dataform project
+subtitle: Principles to start your project on the right foot
 priority: 1
 ---
 
@@ -8,16 +8,18 @@ priority: 1
 
 Managing your project in folders makes it easier to maintain your project. One simple option is to follow the following folder structure:
 
-<img src="https://assets.dataform.co/docs/best_practices/folder_example.png" width="901" height="551" alt="" />
+<img src="https://assets.dataform.co/docs/best_practices/folder_example.png"  alt="" />
 
 <figcaption>Example of a Dataform project</figcaption>
 
 **Sources**
 
-Where you define transformations on your data sources. This is where you can create datasets that transform data from your different sources into a consistent format. Some examples of transformations you may want to include at this stage are:
+Where you define transformations on your data sources. This is where you can create datasets that transform data from your different sources into a consistent format, using the same structure and naming conventions. Some examples of transformations you may want to include at this stage are:
 
 - Normalising sources (ex: ensure email have the same field name in all tables)
 - Aligning data types (ex: ensure timestamps are in a unique time zone and money fields in dollars)
+
+All subsequent datasets should be built on top of these models, reducing the amount of duplicated code in your project.
 
 **Staging**
 
@@ -61,7 +63,7 @@ Your Dataform project will depend on raw data stored in your warehouse, created 
 
 We recommend defining raw data as declarations to build your projects without any direct relation reference to tables in your warehouse.
 
-<img src="https://assets.dataform.co/docs/best_practices/declarations_dag.png" width="1465" height="551" alt="" />
+<img src="https://assets.dataform.co/docs/best_practices/declarations_dag.png"  alt="" />
 
 Using declarations enables you to reference your raw data in a unique place that can be updated in your data sources changes.
 
@@ -108,14 +110,10 @@ config { type: "table" }
 select * from ${ref("charges")}
 ```
 
-## Use tags to organise and schedule your project
-
-TODO: write this
-
 ## Use schedules to run transformations at a regular interval
 
-Schedules create the datasets defined by your project in your data warehouse at a specified frequency
+Schedules update the datasets defined by your project in your data warehouse at a specified frequency
 
-For example, you may set up a schedule to rerun all transformations once per hour. You can create multiple schedules, if you require several different frequencies
+For example, you may set up a schedule to rerun all transformations once per hour. You can create multiple schedules, if you require several different frequencies.
 
-If you are using Dataform web, schedules are defined in your environment.js file and are version controlled. See the page on [schedule runs](/dataform-web/scheduling) to learn how to configure schedules.
+If you are using Dataform web, schedules are defined in your `environment.js` file and are version controlled. See the page on [scheduling runs](/dataform-web/scheduling) to learn how to configure schedules.

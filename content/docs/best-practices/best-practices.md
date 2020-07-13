@@ -1,10 +1,10 @@
 ---
-title: Best practices
-subtitle: How to start your Dataform project for efficiency
+title: Best practices to maximise efficiency
+subtitle: Follow best practices to build a project that will scale and maximise  your team efficiency over time
 priority: 2
 ---
 
-## Choosing the right action type
+## Choose the right action type
 
 SQLX supports three types of materializations depending on your needs: tables, views and incremental tables. As general rules:
 
@@ -31,19 +31,13 @@ select
   ...
 ```
 
-## Move logic upstream to keep code DRY
-
-Aim to move logic as far upstream as possible, to avoid having to repeat it across your pipeline.
-
-TODO: Add screenshot
-
 ## Test the quality of your data with assertions
 
 Assertions are data quality checks, used to ensure data meets expectations.
 
 Assertions are run as part of your schedule: if an assertion fails, you will be notified (if notifications are configured)
 
-<img src="https://assets.dataform.co/docs/best_practices/assertions_dag.png" width="1702" height="738" alt="" />
+<img src="https://assets.dataform.co/docs/best_practices/assertions_dag.png"  alt="" />
 
 Assertions can be added to the config block in your .sqlx files. There are three types:
 
@@ -99,7 +93,7 @@ select ...
 
 Documentation is automatically added to the Data Catalog within Dataform and can later be exported to other tools.
 
-<img src="https://assets.dataform.co/docs/best_practices/catalog_example.png" width="901" height="750" alt="" />
+<img src="https://assets.dataform.co/docs/best_practices/catalog_example.png"  alt="" />
 
 ## Keep your code DRY using reusable `Includes` macros
 
