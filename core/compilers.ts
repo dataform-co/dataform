@@ -309,8 +309,11 @@ function escapeNode(node: string | SyntaxTreeNode) {
         .replace(/`/g, "\\`")
         .replace(/\${/g, "\\${");
     case SyntaxTreeNodeType.SQL_LITERAL_STRING:
-      // Literal strings may contain escapes, which we need to double-escape.
-      return node.concatenate().replace(/\\/g, "\\\\");
+      // Literal strings may contain backslashes or backticks which need to be escaped.
+      return node
+        .concatenate()
+        .replace(/\\/g, "\\\\")
+        .replace(/\`/g, "\\`");
   }
   return node;
 }
