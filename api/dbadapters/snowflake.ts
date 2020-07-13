@@ -173,13 +173,6 @@ where LOWER(table_schema) != 'information_schema'
     }));
   }
 
-  public async schemas(database: string): Promise<string[]> {
-    const { rows } = await this.execute(
-      `select SCHEMA_NAME from ${database ? `"${database}".` : ""}information_schema.schemata`
-    );
-    return rows.map(row => row.SCHEMA_NAME);
-  }
-
   public async table(target: dataform.ITarget): Promise<dataform.ITableMetadata> {
     const [tableResults, columnResults] = await Promise.all([
       this.execute(
@@ -226,13 +219,17 @@ where table_schema = '${target.schema}'
     return rows;
   }
 
+  public async schemas(database: string): Promise<string[]> {
+    const { rows } = await this.execute(
+      `select SCHEMA_NAME from ${database ? `"${database}".` : ""}information_schema.schemata`
+    );
+    return rows.map(row => row.SCHEMA_NAME);
+  }
+
   public async prepareSchema(database: string, schema: string): Promise<void> {
-    const schemas = await this.schemas(database);
-    if (!schemas.includes(schema)) {
-      await this.execute(
-        `create schema if not exists ${database ? `"${database}".` : ""}"${schema}"`
-      );
-    }
+    await this.execute(
+      `create schema if not exists ${database ? `"${database}".` : ""}"${schema}"`
+    );
   }
 
   public async close() {

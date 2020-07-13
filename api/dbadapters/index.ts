@@ -32,10 +32,16 @@ export interface IDbAdapter {
     queryOrAction: QueryOrAction,
     projectConfig?: dataform.IProjectConfig
   ): Promise<dataform.IQueryEvaluation[]>;
+  preview(target: dataform.ITarget, limitRows?: number): Promise<any[]>;
+
+  schemas(database: string): Promise<string[]>;
+  prepareSchema(database: string, schema: string): Promise<void>;
+
   tables(): Promise<dataform.ITarget[]>;
   table(target: dataform.ITarget): Promise<dataform.ITableMetadata>;
-  preview(target: dataform.ITarget, limitRows?: number): Promise<any[]>;
-  prepareSchema(database: string, schema: string): Promise<void>;
+
+  setMetadata(action: dataform.IExecutionAction): Promise<void>;
+
   persistStateMetadata(
     transitiveInputMetadataByTarget: StringifiedMap<
       dataform.ITarget,
@@ -48,7 +54,7 @@ export interface IDbAdapter {
     }
   ): Promise<void>;
   persistedStateMetadata(): Promise<dataform.IPersistedTableMetadata[]>;
-  setMetadata(action: dataform.IExecutionAction): Promise<void>;
+
   close(): Promise<void>;
 }
 

@@ -1272,9 +1272,8 @@ postOps`
               reject(new Error("Run cancelled"));
             });
           }),
-        prepareSchema: (_, __) => {
-          return Promise.resolve();
-        },
+        schemas: _ => Promise.resolve([]),
+        prepareSchema: (_, __) => Promise.resolve(),
         close: () => undefined,
         table: _ => undefined
       } as IDbAdapter;

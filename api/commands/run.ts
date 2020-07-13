@@ -219,25 +219,28 @@ export class Runner {
         databaseSchemas.get(trueDatabase).add(target.schema);
       });
 
-    if (!databaseSchemas.has(this.graph.projectConfig.defaultDatabase)) {
-      databaseSchemas.set(this.graph.projectConfig.defaultDatabase, new Set<string>());
-    }
-
     if (this.graph.projectConfig.useRunCache) {
+      if (!databaseSchemas.has(this.graph.projectConfig.defaultDatabase)) {
+        databaseSchemas.set(this.graph.projectConfig.defaultDatabase, new Set<string>());
+      }
       databaseSchemas
         .get(this.graph.projectConfig.defaultDatabase)
         .add(dbadapters.CACHED_STATE_TABLE_TARGET.schema);
     }
 
-    // Wait for all schemas to be created.
+    // Create all nonexistent schemas.
     await Promise.all(
-      Array.from(databaseSchemas).map(([database, schemas]) =>
-        Promise.all(
-          Array.from(schemas).map(schema => this.dbadapter.prepareSchema(database, schema))
-        )
-      )
+      Array.from(databaseSchemas.entries()).map(async ([database, schemas]) => {
+        const existingSchemas = new Set(await this.dbadapter.schemas(database));
+        await Promise.all(
+          Array.from(schemas)
+            .filter(schema => !existingSchemas.has(schema))
+            .map(schema => this.dbadapter.prepareSchema(database, schema))
+        );
+      })
     );
   }
+
   private async executeAllActionsReadyForExecution() {
     if (this.stopped) {
       return;
