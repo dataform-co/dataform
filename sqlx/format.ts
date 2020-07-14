@@ -6,6 +6,7 @@ import { promisify } from "util";
 
 import { ErrorWithCause } from "df/common/errors/errors";
 import { SyntaxTreeNode, SyntaxTreeNodeType } from "df/sqlx/lexer";
+import { v4 as uuidv4 } from "uuid";
 
 const JS_BEAUTIFY_OPTIONS: JsBeautifyOptions = {
   indent_size: 2,
@@ -165,7 +166,9 @@ function stripUnformattableText(
 }
 
 function generatePlaceholderId() {
-  return crypto.randomBytes(8).toString("hex");
+  return uuidv4()
+    .replace(/-/g, "")
+    .substring(0, 16);
 }
 
 function replacePlaceholders(
