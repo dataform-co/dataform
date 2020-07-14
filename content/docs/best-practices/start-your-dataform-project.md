@@ -117,7 +117,7 @@ Tags can be added to SQLX config blocks to create collection of actions and data
 - `daily` to tag actions that need to be updated once a day
 - `hourly` to tag actions that need to be updated once per hour
 
-You can create two schedules, one that will run every day all actions tagged `daily` and one that will run every hour all actions tagged `hourly`
+You can create two schedules, one that will run all actions tagged `daily` every day and one that will run all actions tagged `hourly` every hour 
 
 With this setup, when creating a dataset, you simply need to add the right tag to ensure it gets updated at the correct frequency.
 
