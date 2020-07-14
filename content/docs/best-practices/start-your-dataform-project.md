@@ -110,10 +110,20 @@ config { type: "table" }
 select * from ${ref("charges")}
 ```
 
-## Use schedules to run transformations at a regular interval
+## Use tags to manage your schedules
 
-Schedules update the datasets defined by your project in your data warehouse at a specified frequency
+Tags can be added to SQLX config blocks to create collection of actions and datasets. When starting your project, it can useful to create to start using at least the following two tags:
 
-For example, you may set up a schedule to rerun all transformations once per hour. You can create multiple schedules, if you require several different frequencies.
+- `daily` to tag actions that need to be updated once a day
+- `hourly` to tag actions that need to be updated once per hour
 
-If you are using Dataform web, schedules are defined in your `environment.js` file and are version controlled. See the page on [scheduling runs](/dataform-web/scheduling) to learn how to configure schedules.
+You can create two schedules, one that will run every day all actions tagged `daily` and one that will run every hour all actions tagged `hourly`
+
+With this setup, when creating a dataset, you simply need to add the right tag to ensure it gets updated at the correct frequency.
+
+```sql
+-- definitions/analytics/customers.sqlx
+config { type: "table", tags: ["daily"] }
+
+select * from ${ref("crm_data")}
+```
