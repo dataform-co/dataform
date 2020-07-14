@@ -179,7 +179,14 @@ export class SQLDataWarehouseDBAdapter implements IDbAdapter {
     return rows;
   }
 
-  public async prepareSchema(database: string, schema: string): Promise<void> {
+  public async schemas(): Promise<string[]> {
+    const schemas = await this.execute(
+      `select schema_name from ${INFORMATION_SCHEMA_SCHEMA_NAME}.schemata`
+    );
+    return schemas.rows.map(row => row.schema_name);
+  }
+
+  public async createSchema(_: string, schema: string): Promise<void> {
     await this.execute(
       `if not exists ( select schema_name from ${INFORMATION_SCHEMA_SCHEMA_NAME}.schemata where schema_name = '${schema}' )
             begin
