@@ -1,4 +1,3 @@
-import * as crypto from "crypto";
 import * as fs from "fs";
 import * as jsBeautify from "js-beautify";
 import * as sqlFormatter from "sql-formatter";
@@ -6,6 +5,7 @@ import { promisify } from "util";
 
 import { ErrorWithCause } from "df/common/errors/errors";
 import { SyntaxTreeNode, SyntaxTreeNodeType } from "df/sqlx/lexer";
+import * as randombytes from "randombytes";
 
 const JS_BEAUTIFY_OPTIONS: JsBeautifyOptions = {
   indent_size: 2,
@@ -165,7 +165,7 @@ function stripUnformattableText(
 }
 
 function generatePlaceholderId() {
-  return crypto.randomBytes(8).toString("hex");
+  return randombytes.default(8).toString("hex");
 }
 
 function replacePlaceholders(

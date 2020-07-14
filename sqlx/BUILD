@@ -11,6 +11,8 @@ ts_library(
         "@npm//@types/moo",
         "@npm//@types/node",
         "@npm//@types/js-beautify",
+        "@npm//@types/randombytes",
+        "@npm//randombytes",
         "@npm//js-beautify",
         "@npm//sql-formatter",
         "@npm//moo",
