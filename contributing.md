@@ -11,7 +11,19 @@ First :fork_and_knife: [fork this repository](https://github.com/dataform-co/dat
 
 ### Requirements
 
-[Bazel](https://bazel.build) - Bazel is a build system, and this is the only dependency you need to build and run the entire project.
+#### [Bazel](https://bazel.build)
+
+Bazel is a build system which we used to build the project and run tests.
+
+The easiest way to install the correct Bazel version is through Bazelisk via [NPM](https://nodejs.org/en/download/) if you already have it installed:
+
+```
+npm i -g @bazel/bazelisk
+```
+
+Alternatively, you can download Bazelisk directly from [here](https://github.com/bazelbuild/bazelisk/releases), or through other tools such as [homebrew (Mac)](https://formulae.brew.sh/formula/bazelisk).
+
+Finally, if you'd rather install Bazel directly instead, you can download it from here, but make sure to check the contents of `.bazelversion` (currently `2.0.0`) to make sure you aren't using an incompatible version.
 
 ### Run the CLI
 
@@ -29,28 +41,22 @@ _Note: If you are running Bazel on a **Mac**, this or any step that requires bui
 
 ### Test
 
-To test the Dataform project, run the following command:
+To run the all the unit tests, run the following command:
 
 ```bash
-bazel test -- tests/... -tests/integration/...
+bazel test --build_tests_only -- ... -tests/integration/... -sql/...
 ```
 
-This runs all tests excluding the integration tests. If you need to run integration tests, please [get in touch](mailto:opensource@dataform.co) with the team.
+This runs all tests excluding those that rely on encrypted secrets. If you need to run integration tests, please [get in touch](mailto:opensource@dataform.co) with the team.
 
 _Note: A `java failed` error suggests that Java needs to be installed._
 
 ### Building
 
-Running the CLI will build the required components. To build all other components, use:
+Building the CLI will build most of the required components.
 
 ```bash
-bazel build -- ... -tools/...
-```
-
-or if you're using `zsh`, then
-
-```bash
-bazel build -- "..." -tools/...
+bazel build cli
 ```
 
 The projects folder here is not built as it requires an environment file, which can be provided from the team.
