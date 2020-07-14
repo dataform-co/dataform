@@ -4,7 +4,7 @@ import * as path from "path";
 import yargs from "yargs";
 
 import * as chokidar from "chokidar";
-import { build, compile, credentials, format, init, install, run, table, test } from "df/api";
+import { build, compile, credentials, init, install, run, table, test } from "df/api";
 import { CREDENTIALS_FILENAME } from "df/api/commands/credentials";
 import * as dbadapters from "df/api/dbadapters";
 import { prettyJsonStringify } from "df/api/utils";
@@ -35,6 +35,7 @@ import { actuallyResolve, assertPathExists, compiledGraphHasErrors } from "df/cl
 import { createYargsCli, INamedOption } from "df/cli/yargswrapper";
 import { supportsCancel, WarehouseType } from "df/core/adapters";
 import { dataform } from "df/protos/ts";
+import { formatFile } from "df/sqlx/format";
 
 const RECOMPILE_DELAY = 500;
 
@@ -439,7 +440,8 @@ export function runCli() {
           print(`Running ${compiledGraph.tests.length} unit tests...\n`);
           const dbadapter = await dbadapters.create(
             readCredentials,
-            compiledGraph.projectConfig.warehouse
+            compiledGraph.projectConfig.warehouse,
+            { concurrencyLimit: compiledGraph.projectConfig.concurrentQueryLimit }
           );
           try {
             const testResults = await test(dbadapter, compiledGraph.tests);
@@ -501,7 +503,8 @@ export function runCli() {
 
           const dbadapter = await dbadapters.create(
             readCredentials,
-            compiledGraph.projectConfig.warehouse
+            compiledGraph.projectConfig.warehouse,
+            { concurrencyLimit: compiledGraph.projectConfig.concurrentQueryLimit }
           );
           try {
             const executionGraph = await build(
@@ -591,7 +594,7 @@ export function runCli() {
           const results = await Promise.all(
             filenames.map(async filename => {
               try {
-                await format.formatFile(path.resolve(argv["project-dir"], filename), {
+                await formatFile(path.resolve(argv["project-dir"], filename), {
                   overwriteFile: true
                 });
                 return {

@@ -18,13 +18,17 @@ const DB_REQUEST_TIMEOUT_MILLIS = 1 * 60 * 60 * 1000; // 1 hour request timeout
 const DB_CON_LIMIT = 10; // mssql default value of 10 concurrent requests
 
 export class SQLDataWarehouseDBAdapter implements IDbAdapter {
-  public static async create(credentials: Credentials, warehouseType: string) {
-    return new SQLDataWarehouseDBAdapter(credentials);
+  public static async create(
+    credentials: Credentials,
+    _: string,
+    options?: { concurrencyLimit?: number }
+  ) {
+    return new SQLDataWarehouseDBAdapter(credentials, options);
   }
 
   private pool: Promise<ConnectionPool>;
 
-  constructor(credentials: Credentials) {
+  constructor(credentials: Credentials, options?: { concurrencyLimit?: number }) {
     const sqlDataWarehouseCredentials = credentials as dataform.ISQLDataWarehouse;
     this.pool = new Promise((resolve, reject) => {
       const conn = new ConnectionPool({
@@ -37,7 +41,7 @@ export class SQLDataWarehouseDBAdapter implements IDbAdapter {
         requestTimeout: DB_REQUEST_TIMEOUT_MILLIS,
         pool: {
           min: 0,
-          max: DB_CON_LIMIT
+          max: options?.concurrencyLimit || DB_CON_LIMIT
         },
         options: {
           encrypt: true

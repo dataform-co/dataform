@@ -1,13 +1,11 @@
 import { assert, config, expect } from "chai";
 import Long from "long";
-import * as path from "path";
 import { anyString, anything, instance, mock, verify, when } from "ts-mockito";
 
-import { Builder, credentials, format, prune, query, Runner } from "df/api";
+import { Builder, credentials, prune, query, Runner } from "df/api";
 import { computeAllTransitiveInputs } from "df/api/commands/build";
 import { IDbAdapter } from "df/api/dbadapters";
 import { BigQueryDbAdapter } from "df/api/dbadapters/bigquery";
-import { actionsByTarget } from "df/api/utils/graphs";
 import { sleep, sleepUntil } from "df/common/promises";
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
@@ -1292,124 +1290,6 @@ postOps`
         dataform.TaskResult.ExecutionStatus.CANCELLED
       );
       expect(result.actions[0].tasks[0].errorMessage).to.match(/cancelled/);
-    });
-  });
-
-  suite("formatter", () => {
-    test("correctly formats simple.sqlx", async () => {
-      expect(await format.formatFile(path.resolve("examples/formatter/definitions/simple.sqlx")))
-        .eql(`config {
-  type: "view",
-  tags: ["tag1", "tag2"]
-}
-
-js {
-  const foo =
-    jsFunction("table");
-}
-
-select
-  1
-from
-  \${
-    ref({
-      schema: "df_integration_test",
-      name: "sample_data"
-    })
-  }
-`);
-    });
-
-    test("correctly formats multiple_queries.sqlx", async () => {
-      expect(
-        await format.formatFile(
-          path.resolve("examples/formatter/definitions/multiple_queries.sqlx")
-        )
-      ).eql(`js {
-  var tempTable = "yay"
-  const colname = "column";
-
-  let finalTableName = 'dkaodihwada';
-}
-
-drop something
-
----
-
-alter table
-  \${tempTable} rename to \${finalTableName}
-
----
-
-SELECT
-  SUM(IF (session_start_event, 1, 0)) AS session_index
-`);
-    });
-
-    test("correctly formats bigquery_regexps.sqlx", async () => {
-      expect(
-        await format.formatFile(
-          path.resolve("examples/formatter/definitions/bigquery_regexps.sqlx")
-        )
-      ).eql(`config {
-  type: "operation",
-  tags: ["tag1", "tag2"]
-}
-
-select
-  CAST(
-    REGEXP_EXTRACT("", r'^/([0-9]+)\\'\\"/.*') AS INT64
-  ) AS id,
-  CAST(
-    REGEXP_EXTRACT("", r"^/([0-9]+)\\"\\'/.*") AS INT64
-  ) AS id2,
-  IFNULL (
-    regexp_extract('', r'\\a?query=([^&]+)&*'),
-    regexp_extract('', r'\\a?q=([^&]+)&*')
-  ) AS id3,
-  regexp_extract('bar', r'bar') as ID4
-from
-  \${ref("dab")}
-where
-  sample = 100
-`);
-    });
-
-    test("correctly formats comments.sqlx", async () => {
-      expect(await format.formatFile(path.resolve("examples/formatter/definitions/comments.sqlx")))
-        .eql(`config {
-  type: "test",
-}
-
-SELECT
-  MAX(
-    (
-      SELECT
-        SUM(IF(track.event = "event_viewed_project_with_connection", 1, 0))
-      FROM
-        UNNEST(records)
-    )
-  ) > 0 as created_project,
-  /* multi line
-  comment      */
-  2 as foo
-
-input "something" {
-  select
-    1 as test
-    /* something */
-    /* something
-    else      */
-    -- and another thing
-}
-`);
-    });
-    test("Backslashes within regex don't cause 'r' prefix to separate.", async () => {
-      expect(await format.formatFile(path.resolve("examples/formatter/definitions/regex.sqlx")))
-        .equal(`select
-  regexp_extract("", r'abc\\de\\'fg select * from self()'),
-  'bar'
-`);
     });
   });
 });

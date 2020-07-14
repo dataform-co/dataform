@@ -1,7 +1,6 @@
 import { build, Builder } from "df/api/commands/build";
 import { compile } from "df/api/commands/compile";
 import * as credentials from "df/api/commands/credentials";
-import * as format from "df/api/commands/format";
 import { init } from "df/api/commands/init";
 import { install } from "df/api/commands/install";
 import { prune } from "df/api/commands/prune";
@@ -25,6 +24,5 @@ export {
   validateSchedulesFileIfExists,
   Runner,
   Builder,
-  format,
   prune
 };
