@@ -110,6 +110,24 @@ config { type: "table" }
 select * from ${ref("charges")}
 ```
 
+## Use tags to manage your schedules
+
+Tags can be added to SQLX config blocks to create collection of actions and datasets. When starting your project, it can useful to create to start using at least the following two tags:
+
+- `daily` to tag actions that need to be updated once a day
+- `hourly` to tag actions that need to be updated once per hour
+
+You can create two schedules, one that will run every day all actions tagged `daily` and one that will run every hour all actions tagged `hourly`
+
+With this setup, when creating a dataset, you simply need to add the right tag to ensure it gets updated at the correct frequency.
+
+```sql
+-- definitions/analytics/customers.sqlx
+config { type: "table", tags: ["daily"] }
+
+select * from ${ref("crm_data")}
+```
+
 ## Use schedules to run transformations at a regular interval
 
 Schedules update the datasets defined by your project in your data warehouse at a specified frequency
