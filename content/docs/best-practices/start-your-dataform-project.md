@@ -112,7 +112,7 @@ select * from ${ref("charges")}
 
 ## Use tags to manage your schedules
 
-Tags can be added to SQLX config blocks to create collection of actions and datasets. When starting your project, it can useful to create to start using at least the following two tags:
+Tags can be added to SQLX config blocks to create collection of actions and datasets. When starting your project, it can useful to start using the following two tags:
 
 - `daily` to tag actions that need to be updated once a day
 - `hourly` to tag actions that need to be updated once per hour
