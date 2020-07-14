@@ -41,7 +41,7 @@ _Note: If you are running Bazel on a **Mac**, this or any step that requires bui
 
 ### Test
 
-To run the all the unit tests, run the following command:
+The following command runs all unit tests:
 
 ```bash
 bazel test --build_tests_only -- ... -tests/integration/... -sql/...
