@@ -1003,7 +1003,7 @@ postOps`
 
     test("execute", async () => {
       const mockedDbAdapter = mock(BigQueryDbAdapter);
-      when(mockedDbAdapter.prepareSchema(anyString(), anyString())).thenResolve(null);
+      when(mockedDbAdapter.createSchema(anyString(), anyString())).thenResolve(null);
       when(
         mockedDbAdapter.execute(RUN_TEST_GRAPH.actions[0].tasks[0].statement, anything())
       ).thenResolve({
@@ -1031,8 +1031,8 @@ postOps`
       expect(dataform.RunResult.create(cleanTiming(await runner.execute().result()))).to.deep.equal(
         EXPECTED_RUN_RESULT
       );
-      verify(mockedDbAdapter.prepareSchema("database", "schema1")).once();
-      verify(mockedDbAdapter.prepareSchema("database2", "schema2")).once();
+      verify(mockedDbAdapter.createSchema("database", "schema1")).once();
+      verify(mockedDbAdapter.createSchema("database2", "schema2")).once();
     });
 
     test("stop and then resume", async () => {
@@ -1040,7 +1040,7 @@ postOps`
       let stopWasCalled = false;
 
       const mockedDbAdapter = mock(BigQueryDbAdapter);
-      when(mockedDbAdapter.prepareSchema(anyString(), anyString())).thenResolve(null);
+      when(mockedDbAdapter.createSchema(anyString(), anyString())).thenResolve(null);
       when(
         mockedDbAdapter.execute(RUN_TEST_GRAPH.actions[0].tasks[0].statement, anything())
       ).thenCall(async () => {
@@ -1092,8 +1092,8 @@ postOps`
       expect(dataform.RunResult.create(cleanTiming(await runner.execute().result()))).to.deep.equal(
         EXPECTED_RUN_RESULT
       );
-      verify(mockedDbAdapter.prepareSchema("database", "schema1")).once();
-      verify(mockedDbAdapter.prepareSchema("database2", "schema2")).once();
+      verify(mockedDbAdapter.createSchema("database", "schema1")).once();
+      verify(mockedDbAdapter.createSchema("database2", "schema2")).once();
     });
 
     suite("execute with retry", () => {
@@ -1103,7 +1103,7 @@ postOps`
           ...RUN_TEST_GRAPH,
           projectConfig: { ...RUN_TEST_GRAPH.projectConfig, idempotentActionRetries: 1 }
         };
-        when(mockedDbAdapter.prepareSchema(anyString(), anyString())).thenResolve(null);
+        when(mockedDbAdapter.createSchema(anyString(), anyString())).thenResolve(null);
         when(
           mockedDbAdapter.execute(NEW_TEST_GRAPH.actions[0].tasks[0].statement, anything())
         ).thenResolve({
@@ -1140,7 +1140,7 @@ postOps`
           ...RUN_TEST_GRAPH,
           projectConfig: { ...RUN_TEST_GRAPH.projectConfig, idempotentActionRetries: 2 }
         };
-        when(mockedDbAdapter.prepareSchema(anyString(), anyString())).thenResolve(null);
+        when(mockedDbAdapter.createSchema(anyString(), anyString())).thenResolve(null);
         when(
           mockedDbAdapter.execute(NEW_TEST_GRAPH.actions[0].tasks[0].statement, anything())
         ).thenResolve({
@@ -1196,7 +1196,7 @@ postOps`
         };
         NEW_TEST_GRAPH_WITH_OPERATION.actions[1].tasks[0].type = "operation";
 
-        when(mockedDbAdapter.prepareSchema(anyString(), anyString())).thenResolve(null);
+        when(mockedDbAdapter.createSchema(anyString(), anyString())).thenResolve(null);
         when(
           mockedDbAdapter.execute(RUN_TEST_GRAPH.actions[0].tasks[0].statement, anything())
         ).thenResolve({
@@ -1273,7 +1273,7 @@ postOps`
             });
           }),
         schemas: _ => Promise.resolve([]),
-        prepareSchema: (_, __) => Promise.resolve(),
+        createSchema: (_, __) => Promise.resolve(),
         close: () => undefined,
         table: _ => undefined
       } as IDbAdapter;

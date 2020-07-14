@@ -204,7 +204,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
     return data[0].map(dataset => dataset.id);
   }
 
-  public async prepareSchema(database: string, schema: string): Promise<void> {
+  public async createSchema(database: string, schema: string): Promise<void> {
     const location = this.bigQueryCredentials.location || "US";
     const client = this.getClient(database);
 

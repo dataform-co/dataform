@@ -208,7 +208,7 @@ export class RedshiftDbAdapter implements IDbAdapter {
     return schemas.rows.map(row => row.nspname);
   }
 
-  public async prepareSchema(_: string, schema: string): Promise<void> {
+  public async createSchema(_: string, schema: string): Promise<void> {
     await this.execute(`create schema if not exists "${schema}"`, { includeQueryInError: true });
   }
 

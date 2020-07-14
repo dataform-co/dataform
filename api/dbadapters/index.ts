@@ -35,7 +35,7 @@ export interface IDbAdapter {
   preview(target: dataform.ITarget, limitRows?: number): Promise<any[]>;
 
   schemas(database: string): Promise<string[]>;
-  prepareSchema(database: string, schema: string): Promise<void>;
+  createSchema(database: string, schema: string): Promise<void>;
 
   tables(): Promise<dataform.ITarget[]>;
   table(target: dataform.ITarget): Promise<dataform.ITableMetadata>;

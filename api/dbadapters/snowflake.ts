@@ -226,7 +226,7 @@ where table_schema = '${target.schema}'
     return rows.map(row => row.SCHEMA_NAME);
   }
 
-  public async prepareSchema(database: string, schema: string): Promise<void> {
+  public async createSchema(database: string, schema: string): Promise<void> {
     await this.execute(
       `create schema if not exists ${database ? `"${database}".` : ""}"${schema}"`
     );
