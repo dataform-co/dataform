@@ -47,6 +47,8 @@ export class Runner {
   private timedOut = false;
   private executionTask: Promise<dataform.IRunResult>;
 
+  private metadataReadPromises: Array<Promise<void>> = [];
+
   constructor(
     private readonly dbadapter: dbadapters.IDbAdapter,
     private readonly graph: dataform.IExecutionGraph,
@@ -146,6 +148,7 @@ export class Runner {
     this.runResult.timing = timer.end();
 
     if (this.graph.runConfig && this.graph.runConfig.useRunCache) {
+      await Promise.all(this.metadataReadPromises);
       await this.dbadapter.persistStateMetadata(
         new StringifiedMap<
           dataform.ITarget,
@@ -387,11 +390,22 @@ export class Runner {
       await this.dbadapter.setMetadata(action);
     }
 
-    const newMetadata = await this.dbadapter.table(action.target);
-    if (newMetadata) {
-      this.warehouseStateAfterRunByTarget.set(action.target, newMetadata);
-    } else {
-      this.warehouseStateAfterRunByTarget.delete(action.target);
+    if (this.graph.projectConfig.useRunCache) {
+      this.metadataReadPromises.push(
+        (async () => {
+          try {
+            const newMetadata = await this.dbadapter.table(action.target);
+            if (newMetadata) {
+              this.warehouseStateAfterRunByTarget.set(action.target, newMetadata);
+            } else {
+              this.warehouseStateAfterRunByTarget.delete(action.target);
+            }
+          } catch (e) {
+            // If something went wrong trying to get new table metadata, delete it.
+            this.warehouseStateAfterRunByTarget.delete(action.target);
+          }
+        })()
+      );
     }
 
     actionResult.timing = timer.end();
