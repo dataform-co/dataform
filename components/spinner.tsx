@@ -5,6 +5,8 @@ import * as styles from "df/components/spinner.css";
 
 export type SpinnerSize = "large" | "standard" | "small";
 
+// These props don't just extend blueprint's props because defining size using
+// the blueprint props requires using Spinner.SIZE_LARGE which is more verbose.
 export interface ISpinnerProps extends IIntentProps {
   size?: SpinnerSize;
   value?: number;
