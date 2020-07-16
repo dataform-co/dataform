@@ -191,10 +191,12 @@ func (pc *protobufCodec) protoHelper(pb descriptor.Message, t reflect.Type) *pro
 	oneofFieldWrapperProps := make([]*proto.Properties, 0)
 	normalPropsByTag := make(map[string]*proto.Properties)
 	for _, prop := range props.Prop {
-		if oneofNames[prop.OrigName] {
-			oneofFieldWrapperProps = append(oneofFieldWrapperProps, prop)
-		} else {
-			normalPropsByTag[strconv.Itoa(prop.Tag)] = prop
+		if !strings.HasPrefix(prop.Name, "XXX_") {
+			if oneofNames[prop.OrigName] {
+				oneofFieldWrapperProps = append(oneofFieldWrapperProps, prop)
+			} else {
+				normalPropsByTag[strconv.Itoa(prop.Tag)] = prop
+			}
 		}
 	}
 	oneofPropsByTag := make(map[string]*proto.OneofProperties)
