@@ -218,6 +218,12 @@ function computeElapsedNanosSince(hrtimeStart: [number, number]) {
   return delta[0] * 1e9 + delta[1];
 }
 
+class GrpcError extends Error {
+  constructor(message: string, public readonly code: grpc.status) {
+    super(message);
+  }
+}
+
 export class ServicePromiseWrapper {
   private impl: IService;
   private afterInterceptor: (method: string, call: grpc.ServerUnaryCall<any>, grpcMethodCallResults: IGrpcMethodCallResults) => void;
@@ -273,7 +279,7 @@ export class Client {
   ${service.methods
     .map(method => {
       return `
-  public ${camelToLowerCamel(method.name)}(request: ${fullyQualify(
+  public async ${camelToLowerCamel(method.name)}(request: ${fullyQualify(
         currentNamespaceParts,
         method.requestType,
         true
@@ -282,14 +288,18 @@ export class Client {
         method.responseType,
         false
       )}> {
-    return promisify(this.client.makeUnaryRequest.bind(this.client))(
-      DEFINITION.${camelToLowerCamel(method.name)}.path,
-      DEFINITION.${camelToLowerCamel(method.name)}.requestSerialize,
-      DEFINITION.${camelToLowerCamel(method.name)}.responseDeserialize,
-      request,
-      new grpc.Metadata(),
-      (options || {}) as any
-    );
+    try {
+      return await promisify(this.client.makeUnaryRequest.bind(this.client))(
+        DEFINITION.${camelToLowerCamel(method.name)}.path,
+        DEFINITION.${camelToLowerCamel(method.name)}.requestSerialize,
+        DEFINITION.${camelToLowerCamel(method.name)}.responseDeserialize,
+        request,
+        new grpc.Metadata(),
+        (options || {}) as any
+      );
+    } catch (e) {
+      throw new GrpcError(String(e), e.code);
+    }
   }
   `;
     })

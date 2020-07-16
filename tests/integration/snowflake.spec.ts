@@ -1,4 +1,5 @@
 import { expect } from "chai";
+
 import * as dfapi from "df/api";
 import * as dbadapters from "df/api/dbadapters";
 import * as adapters from "df/core/adapters";
@@ -17,13 +18,12 @@ suite("@dataform/integration/snowflake", ({ before, after }) => {
 
   after("close adapter", () => dbadapter.close());
 
-  test("run", { timeout: 60000 }, async () => {
+  test("run", { timeout: 90000 }, async () => {
     const compiledGraph = await dfapi.compile({
       projectDir: "tests/integration/snowflake_project"
     });
 
     expect(compiledGraph.graphErrors.compilationErrors).to.eql([]);
-    expect(compiledGraph.graphErrors.validationErrors).to.eql([]);
 
     const adapter = adapters.create(compiledGraph.projectConfig, compiledGraph.dataformCoreVersion);
 
@@ -33,8 +33,8 @@ suite("@dataform/integration/snowflake", ({ before, after }) => {
     await dropAllTables(tablesToDelete, adapter, dbadapter);
 
     // Drop schemas to make sure schema creation works.
-    await dbadapter.execute(`drop schema if exists "TADA"."df_integration_test"`);
-    await dbadapter.execute(`drop schema if exists "TADA2"."df_integration_test"`);
+    await dbadapter.execute(`drop schema if exists "INTEGRATION_TESTS"."df_integration_test"`);
+    await dbadapter.execute(`drop schema if exists "INTEGRATION_TESTS2"."df_integration_test"`);
 
     // Run the tests.
     const testResults = await dfapi.test(dbadapter, compiledGraph.tests);
@@ -68,8 +68,9 @@ suite("@dataform/integration/snowflake", ({ before, after }) => {
 
     // Run the project.
     let executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
-    let executedGraph = await dfapi.run(executionGraph, dbadapter).result();
+    let executedGraph = await dfapi.run(dbadapter, executionGraph).result();
 
+    const executionActionMap = keyBy(executionGraph.actions, v => v.name);
     const actionMap = keyBy(executedGraph.actions, v => v.name);
     expect(Object.keys(actionMap).length).eql(14);
 
@@ -82,7 +83,10 @@ suite("@dataform/integration/snowflake", ({ before, after }) => {
       const expectedResult = expectedFailedActions.includes(actionName)
         ? dataform.ActionResult.ExecutionStatus.FAILED
         : dataform.ActionResult.ExecutionStatus.SUCCESSFUL;
-      expect(actionMap[actionName].status).equals(expectedResult);
+      expect(
+        dataform.ActionResult.ExecutionStatus[actionMap[actionName].status],
+        `ActionResult ExecutionStatus for action "${actionName}"`
+      ).equals(dataform.ActionResult.ExecutionStatus[expectedResult]);
     }
 
     expect(
@@ -105,7 +109,7 @@ suite("@dataform/integration/snowflake", ({ before, after }) => {
 
     // Check the status of the view in the non-default database.
     const tada2DatabaseView = keyBy(compiledGraph.tables, t => t.name)[
-      "TADA2.DF_INTEGRATION_TEST.SAMPLE_DATA_2"
+      "INTEGRATION_TESTS2.DF_INTEGRATION_TEST.SAMPLE_DATA_2"
     ];
     const tada2DatabaseViewRows = await getTableRows(tada2DatabaseView.target, adapter, dbadapter);
     expect(tada2DatabaseViewRows.length).equals(3);
@@ -118,7 +122,7 @@ suite("@dataform/integration/snowflake", ({ before, after }) => {
     expect(incrementalRows.length).equals(3);
 
     const incrementalTable2 = keyBy(compiledGraph.tables, t => t.name)[
-      "TADA2.DF_INTEGRATION_TEST.EXAMPLE_INCREMENTAL_TADA2"
+      "INTEGRATION_TESTS2.DF_INTEGRATION_TEST.EXAMPLE_INCREMENTAL_TADA2"
     ];
     const incrementalRows2 = await getTableRows(incrementalTable2.target, adapter, dbadapter);
     expect(incrementalRows2.length).equals(3);
@@ -145,7 +149,7 @@ suite("@dataform/integration/snowflake", ({ before, after }) => {
       dbadapter
     );
 
-    executedGraph = await dfapi.run(executionGraph, dbadapter).result();
+    executedGraph = await dfapi.run(dbadapter, executionGraph).result();
     expect(executedGraph.status).equals(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
 
     // Check there are the expected number of extra rows in the incremental tables.
@@ -156,7 +160,7 @@ suite("@dataform/integration/snowflake", ({ before, after }) => {
     expect(incrementalRows.length).equals(5);
 
     incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
-      "TADA2.DF_INTEGRATION_TEST.EXAMPLE_INCREMENTAL_TADA2"
+      "INTEGRATION_TESTS2.DF_INTEGRATION_TEST.EXAMPLE_INCREMENTAL_TADA2"
     ];
     incrementalRows = await getTableRows(incrementalTable2.target, adapter, dbadapter);
     expect(incrementalRows.length).equals(5);
@@ -190,6 +194,69 @@ suite("@dataform/integration/snowflake", ({ before, after }) => {
         ]);
       });
     }
+  });
+
+  suite("evaluate", async () => {
+    test("evaluate from valid compiled graph as valid", async () => {
+      // Create and run the project.
+      const compiledGraph = await dfapi.compile({
+        projectDir: "tests/integration/snowflake_project"
+      });
+      const executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
+      await dfapi.run(dbadapter, executionGraph).result();
+
+      const view = keyBy(compiledGraph.tables, t => t.name)["DF_INTEGRATION_TEST.EXAMPLE_VIEW"];
+      let evaluations = await dbadapter.evaluate(dataform.Table.create(view));
+      expect(evaluations.length).to.equal(1);
+      expect(evaluations[0].status).to.equal(
+        dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
+      );
+
+      const table = keyBy(compiledGraph.tables, t => t.name)["DF_INTEGRATION_TEST.EXAMPLE_TABLE"];
+      evaluations = await dbadapter.evaluate(dataform.Table.create(table));
+      expect(evaluations.length).to.equal(1);
+      expect(evaluations[0].status).to.equal(
+        dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
+      );
+
+      const assertion = keyBy(compiledGraph.assertions, t => t.name)[
+        "DF_INTEGRATION_TEST_ASSERTIONS.EXAMPLE_ASSERTION_PASS"
+      ];
+      evaluations = await dbadapter.evaluate(dataform.Assertion.create(assertion));
+      expect(evaluations.length).to.equal(1);
+      expect(evaluations[0].status).to.equal(
+        dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
+      );
+
+      const incremental = keyBy(compiledGraph.tables, t => t.name)[
+        "DF_INTEGRATION_TEST.EXAMPLE_INCREMENTAL"
+      ];
+      evaluations = await dbadapter.evaluate(dataform.Table.create(incremental));
+      expect(evaluations.length).to.equal(2);
+      expect(evaluations[0].status).to.equal(
+        dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
+      );
+      expect(evaluations[1].status).to.equal(
+        dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
+      );
+    });
+
+    test("invalid table fails validation", async () => {
+      const evaluations = await dbadapter.evaluate(
+        dataform.Table.create({
+          type: "table",
+          query: "thisisillegal",
+          target: {
+            name: "EXAMPLE_ILLEGAL_TABLE",
+            database: "DF_INTEGRATION_TEST"
+          }
+        })
+      );
+      expect(evaluations.length).to.equal(1);
+      expect(evaluations[0].status).to.equal(
+        dataform.QueryEvaluation.QueryEvaluationStatus.FAILURE
+      );
+    });
   });
 
   suite("publish tasks", async () => {

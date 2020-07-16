@@ -1,7 +1,8 @@
 import { grpc } from "grpc-web-client";
+import { Method, RPCImpl, RPCImplCallback } from "protobufjs";
+
 import { ProtobufMessage } from "grpc-web-client/dist/message";
 import { UnaryOutput } from "grpc-web-client/dist/unary";
-import { Method, RPCImpl, RPCImplCallback } from "protobufjs";
 
 export class ProtobufMessageBytes implements grpc.ProtobufMessage {
   public static deserializeBinary(bytes: Uint8Array): ProtobufMessageBytes {
@@ -43,7 +44,7 @@ export function rpcImpl(
   serviceAddress: string,
   serviceName: string,
   metadataProvider?: () => Promise<object>,
-  onEnd?: (output: UnaryOutput<ProtobufMessage>) => void
+  onEnd?: (unaryMethod: UnaryMethod, output: UnaryOutput<ProtobufMessage>) => void
 ): RPCImpl {
   const makeGrpcCall = async (
     method: Method,
@@ -51,7 +52,8 @@ export function rpcImpl(
     callback: RPCImplCallback
   ) => {
     const metadata = await (metadataProvider ? metadataProvider() : Promise.resolve({}));
-    grpc.unary(new UnaryMethod(method.name, { serviceName }), {
+    const unaryMethod = new UnaryMethod(method.name, { serviceName });
+    grpc.unary(unaryMethod, {
       request: new ProtobufMessageBytes(requestData),
       host: serviceAddress,
       metadata: new grpc.Metadata({ ...metadata }),
@@ -62,7 +64,7 @@ export function rpcImpl(
           callback(new Error(output.statusMessage));
         }
         if (onEnd) {
-          onEnd(output);
+          onEnd(unaryMethod, output);
         }
       }
     });

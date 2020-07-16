@@ -9,7 +9,7 @@ export const indexFileGenerator = genIndex;
 export const compiler = compilers.compile;
 export { adapters };
 
-// Create static session object and bind global functions.
+// Create static session object.
 // This hack just enforces the singleton session object to
 // be the same, regardless of the @dataform/core package that is running.
 function globalSession() {
@@ -18,11 +18,4 @@ function globalSession() {
   }
   return (global as any)._DF_SESSION as Session;
 }
-const session = globalSession();
-
-(global as any).session = session;
-(global as any).publish = session.publish.bind(session);
-(global as any).operate = session.operate.bind(session);
-(global as any).assert = session.assert.bind(session);
-(global as any).declare = session.declare.bind(session);
-(global as any).test = session.test.bind(session);
+export const session = globalSession();

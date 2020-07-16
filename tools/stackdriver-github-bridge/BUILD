@@ -1,6 +1,6 @@
 package(default_visibility = ["//visibility:public"])
 
-load("@npm_bazel_typescript//:index.bzl", "ts_library")
+load("//tools:ts_library.bzl", "ts_library")
 
 ts_library(
     name = "stackdriver-github-bridge",
@@ -28,6 +28,7 @@ gcloud_secret(
     ciphertext_file = ":env.yaml.enc",
     key = "dataform-co-build",
     keyring = "dataform-co-build",
+    project = "tada-analytics",
 )
 
 load("//tools/gcloud:gcloud_function.bzl", "deploy_http_nodejs_gcloud_function")
@@ -40,4 +41,5 @@ deploy_http_nodejs_gcloud_function(
     ],
     env_vars_file = ":env.yaml",
     function_name = "handleStackdriverEvent",
+    project = "tada-analytics",
 )

@@ -1,7 +1,8 @@
 import { Dialog as BlueprintDialog, IDialogProps } from "@blueprintjs/core";
+import * as React from "react";
+
 import { Card } from "df/components/card";
 import * as styles from "df/components/dialog.css";
-import * as React from "react";
 
 export const Dialog = ({
   title,
@@ -12,7 +13,6 @@ export const Dialog = ({
   return (
     <BlueprintDialog
       className={styles.dialog}
-      isCloseButtonShown={false}
       canOutsideClickClose={true}
       hasBackdrop={true}
       usePortal={true}

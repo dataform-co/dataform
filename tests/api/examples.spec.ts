@@ -1,12 +1,12 @@
 import { fail } from "assert";
 import { expect } from "chai";
+import * as path from "path";
+
 import { Builder, compile } from "df/api";
-import { actionsByTarget } from "df/api/utils/graphs";
-import * as utils from "df/core/utils";
+import { computeAllTransitiveInputs } from "df/api/commands/build";
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
 import { cleanSql } from "df/tests/utils";
-import * as path from "path";
 
 suite("examples", () => {
   suite("common_v2 bigquery", async () => {
@@ -26,23 +26,18 @@ suite("examples", () => {
           }))
         ).deep.equals([
           {
-            fileName: "definitions/has_compile_errors/assertion_with_bigquery.sqlx",
-            message: "Actions may only specify 'bigquery: { ... }' if they create a dataset."
+            fileName: "includes/example_ignore.js",
+            message: "publish is not defined"
           },
           {
             fileName: "definitions/has_compile_errors/assertion_with_bigquery.sqlx",
             message:
-              'Unexpected property "bigquery" in assertion config. Supported properties are: ["database","schema","name","description","type","tags","dependencies","hermetic"]'
+              'Unexpected property "bigquery" in assertion config. Supported properties are: ["database","dependencies","description","disabled","hermetic","name","schema","tags","type"]'
           },
           {
             fileName: "definitions/has_compile_errors/assertion_with_output.sqlx",
             message:
-              "Actions may only specify 'hasOutput: true' if they are of type 'operations' or create a dataset."
-          },
-          {
-            fileName: "definitions/has_compile_errors/assertion_with_output.sqlx",
-            message:
-              'Unexpected property "hasOutput" in assertion config. Supported properties are: ["database","schema","name","description","type","tags","dependencies","hermetic"]'
+              'Unexpected property "hasOutput" in assertion config. Supported properties are: ["database","dependencies","description","disabled","hermetic","name","schema","tags","type"]'
           },
           {
             fileName: "definitions/has_compile_errors/assertion_with_postops.sqlx",
@@ -54,21 +49,8 @@ suite("examples", () => {
           },
           {
             fileName: "definitions/has_compile_errors/assertion_with_redshift.sqlx",
-            message: "Actions may only specify 'redshift: { ... }' if they create a dataset."
-          },
-          {
-            fileName: "definitions/has_compile_errors/assertion_with_redshift.sqlx",
             message:
-              'Unexpected property "redshift" in assertion config. Supported properties are: ["database","schema","name","description","type","tags","dependencies","hermetic"]'
-          },
-          {
-            fileName: "definitions/has_compile_errors/disabled_assertion.sqlx",
-            message: "Actions may only specify 'disabled: true' if they create a dataset."
-          },
-          {
-            fileName: "definitions/has_compile_errors/disabled_assertion.sqlx",
-            message:
-              'Unexpected property "disabled" in assertion config. Supported properties are: ["database","schema","name","description","type","tags","dependencies","hermetic"]'
+              'Unexpected property "redshift" in assertion config. Supported properties are: ["database","dependencies","description","disabled","hermetic","name","schema","tags","type"]'
           },
           {
             fileName: "definitions/has_compile_errors/protected_assertion.sqlx",
@@ -77,7 +59,7 @@ suite("examples", () => {
           {
             fileName: "definitions/has_compile_errors/protected_assertion.sqlx",
             message:
-              'Unexpected property "protected" in assertion config. Supported properties are: ["database","schema","name","description","type","tags","dependencies","hermetic"]'
+              'Unexpected property "protected" in assertion config. Supported properties are: ["database","dependencies","description","disabled","hermetic","name","schema","tags","type"]'
           },
           {
             fileName: "definitions/has_compile_errors/view_with_incremental.sqlx",
@@ -841,10 +823,7 @@ suite("examples", () => {
         projectConfigOverride: { warehouse: "snowflake" }
       }).catch(error => error);
       expect(graph).to.not.be.an.instanceof(Error);
-
-      const gErrors = utils.validate(graph);
-
-      expect(gErrors).deep.equals(dataform.GraphErrors.create({}));
+      expect(graph.graphErrors).deep.equals(dataform.GraphErrors.create({}));
 
       const mNames = graph.tables.map((t: dataform.ITable) => t.name);
 
@@ -998,7 +977,7 @@ suite("examples", () => {
     expect(example.query.trim()).equals("select 1 as foo_bar");
 
     // Make sure we can dry run.
-    new Builder(graph, actionsByTarget(graph), {}, { tables: [] }).build();
+    new Builder(graph, {}, { tables: [] }, computeAllTransitiveInputs(graph)).build();
   });
 
   test("times out after timeout period during compilation", async () => {

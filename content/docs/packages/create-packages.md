@@ -22,7 +22,7 @@ To get started, clone this repo into a location of your choice. Make sure the re
 
 To make development of your package easier, you may want to import it to Dataform web. This will give you real-time errors and warnings, and a visual representation of the data catalog and dependency graph.
 
-To import the repo, follow [this link](https://app.dataform.co/#/importgitrepo).
+To import the repo, follow [this link](https://app.dataform.co/#/importproject).
 
 ### Update the base repo to add your packages functionality
 

@@ -1,19 +1,22 @@
 import { Button, Collapse } from "@blueprintjs/core";
-import * as styles from "df/components/collapse.css";
 import { useState } from "react";
 import * as React from "react";
 
-interface ISimpleCollapseProps {
-  message: React.ReactNode;
+import * as styles from "df/components/collapse.css";
+
+export interface ISimpleCollapseProps {
+  message?: React.ReactNode;
   className?: string;
+  defaultOpen?: boolean;
 }
 
 export function SimpleCollapse({
   message,
   className,
-  children
+  children,
+  defaultOpen
 }: React.PropsWithChildren<ISimpleCollapseProps>) {
-  const [show, updateShow] = useState(false);
+  const [show, updateShow] = useState(!!defaultOpen);
   const cssStyles = [styles.messageContainer];
   if (className) {
     cssStyles.push(className);
@@ -21,7 +24,7 @@ export function SimpleCollapse({
   return (
     <>
       <div className={cssStyles.join(" ")}>
-        {message}
+        {message || <></>}
         {children && (
           <Button
             minimal={true}

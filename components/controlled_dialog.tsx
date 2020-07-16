@@ -1,10 +1,10 @@
+import { Button, Classes, IButtonProps, Intent } from "@blueprintjs/core";
 import * as React from "react";
 
-import { Button, IButtonProps, Intent } from "@blueprintjs/core";
 import { CardActions } from "df/components/card";
 import { Dialog } from "df/components/dialog";
 
-export interface IProps {
+export interface IControlledDialogProps {
   title?: string;
   ref?: React.RefObject<ControlledDialog>;
   openButton?: React.ReactElement<Element>;
@@ -21,8 +21,8 @@ interface IState {
   isOpen: boolean;
 }
 
-export class ControlledDialog extends React.Component<IProps, IState> {
-  constructor(props: IProps) {
+export class ControlledDialog extends React.Component<IControlledDialogProps, IState> {
+  constructor(props: IControlledDialogProps) {
     super(props);
     this.state = { isOpen: false };
   }
@@ -104,6 +104,7 @@ export class ControlledDialog extends React.Component<IProps, IState> {
                   this.setState({ isOpen: false });
                 }}
                 text={confirmButtonProps?.text || "Confirm"}
+                className={`${Classes.POPOVER_DISMISS} ${confirmButtonProps?.className || ""}`}
               />
             )}
           </CardActions>

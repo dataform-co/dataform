@@ -1,12 +1,13 @@
 import { expect } from "chai";
+import * as fs from "fs-extra";
+import * as path from "path";
+
 import * as compilers from "df/core/compilers";
 import { Session } from "df/core/session";
 import * as utils from "df/core/utils";
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
 import { asPlainObject } from "df/tests/utils";
-import * as fs from "fs-extra";
-import * as path from "path";
 
 class TestConfigs {
   public static redshift: dataform.IProjectConfig = {
@@ -311,9 +312,7 @@ suite("@dataform/core", () => {
         .where("test2")
         .type("incremental");
       const cgSuccess = sessionSuccess.compile();
-      const cgSuccessErrors = utils.validate(cgSuccess);
-
-      expect(cgSuccessErrors.validationErrors).deep.equals([]);
+      expect(cgSuccess.graphErrors.compilationErrors).deep.equals([]);
     });
 
     test("validation_type", () => {
@@ -322,24 +321,24 @@ suite("@dataform/core", () => {
       sessionSuccess.publish("exampleSuccess2", { type: "view" });
       sessionSuccess.publish("exampleSuccess3", { type: "incremental" }).where("test");
       const cgSuccess = sessionSuccess.compile();
-      const cgSuccessErrors = utils.validate(cgSuccess);
-
-      expect(cgSuccessErrors.validationErrors).deep.equals([]);
+      expect(cgSuccess.graphErrors.compilationErrors).deep.equals([]);
 
       const sessionFail = new Session(path.dirname(__filename), TestConfigs.redshift);
       sessionFail.publish("exampleFail", JSON.parse('{"type": "ta ble"}'));
       const cgFail = sessionFail.compile();
-      const cgFailErrors = utils.validate(cgFail);
 
-      expect(cgFailErrors.validationErrors).deep.equals([
-        dataform.ValidationError.create({
+      expect(cgFail.graphErrors.compilationErrors).deep.equals([
+        dataform.CompilationError.create({
+          fileName: "core.spec.js",
           actionName: "schema.exampleFail",
           message:
             'Wrong type of table detected. Should only use predefined types: "table" | "view" | "incremental" | "inline"'
         })
       ]);
 
-      const err = cgFailErrors.validationErrors.find(e => e.actionName === "schema.exampleFail");
+      const err = cgFail.graphErrors.compilationErrors.find(
+        e => e.actionName === "schema.exampleFail"
+      );
       expect(err)
         .to.have.property("message")
         .that.matches(/Wrong type of table/);
@@ -361,14 +360,13 @@ suite("@dataform/core", () => {
       });
 
       const graph = session.compile();
-      const gErrors = utils.validate(graph);
 
       expect(graph)
         .to.have.property("tables")
         .to.be.an("array")
         .to.have.lengthOf(2);
 
-      expect(gErrors.validationErrors).deep.equals([]);
+      expect(graph.graphErrors.compilationErrors).deep.equals([]);
     });
 
     test("validation_redshift_fail", () => {
@@ -443,12 +441,11 @@ suite("@dataform/core", () => {
       ];
 
       const graph = session.compile();
-      const gErrors = utils.validate(graph);
 
       expect(
-        gErrors.validationErrors.map(validationError => ({
-          name: validationError.actionName,
-          message: validationError.message
+        graph.graphErrors.compilationErrors.map(compilationError => ({
+          name: compilationError.actionName,
+          message: compilationError.message
         }))
       ).to.have.deep.members(expectedResults);
     });
@@ -469,10 +466,8 @@ suite("@dataform/core", () => {
       });
 
       const graph = session.compile();
-      const gErrors = utils.validate(graph);
-
       expect(
-        gErrors.validationErrors
+        graph.graphErrors.compilationErrors
           .filter(item => item.actionName === "schema.example_partitionBy_view_fail")
           .map(item => item.message)
       ).to.deep.equals([
@@ -480,7 +475,7 @@ suite("@dataform/core", () => {
       ]);
 
       expect(
-        gErrors.validationErrors
+        graph.graphErrors.compilationErrors
           .filter(item => item.actionName === "schema.example_clusterBy_but_no_partitionBy_fail")
           .map(item => item.message)
       ).to.deep.equals([`clusterBy is not valid without partitionBy`]);
@@ -497,7 +492,6 @@ suite("@dataform/core", () => {
       });
 
       const graph = session.compile();
-      const gValid = utils.validate(graph);
 
       expect(graph.tables[0].bigquery).to.deep.equals(
         dataform.BigQueryOptions.create({
@@ -505,12 +499,7 @@ suite("@dataform/core", () => {
           partitionBy: "some_partition"
         })
       );
-      expect(gValid).to.deep.equals(
-        dataform.GraphErrors.create({
-          compilationErrors: [],
-          validationErrors: []
-        })
-      );
+      expect(graph.graphErrors.compilationErrors).to.deep.equals([]);
     });
 
     test("validation_type_inline", () => {
@@ -542,7 +531,6 @@ suite("@dataform/core", () => {
         .query(ctx => `select * from ${ctx.ref("b")}`);
 
       const graph = session.compile();
-      const graphErrors = utils.validate(graph);
 
       const tableA = graph.tables.find(item => item.name === "schema.a");
       expect(tableA.type).equals("table");
@@ -592,7 +580,7 @@ suite("@dataform/core", () => {
       expect(tableC.where).equals("");
       expect(tableC.query).equals('select * from (select * from "schema"."a")');
 
-      const errors = graphErrors.validationErrors
+      const errors = graph.graphErrors.compilationErrors
         .filter(item => item.actionName === "schema.b")
         .map(item => item.message);
 
@@ -621,9 +609,7 @@ suite("@dataform/core", () => {
         .query(_ => "select 1 as test");
 
       const graph = session.compile();
-      const graphErrors = utils.validate(graph);
-      expect(graphErrors.compilationErrors).deep.equals([]);
-      expect(graphErrors.validationErrors).deep.equals([]);
+      expect(graph.graphErrors.compilationErrors).deep.equals([]);
 
       const schema = graph.tables.find(table => table.name === "schema.a");
 
@@ -663,7 +649,6 @@ suite("@dataform/core", () => {
           session.publish("f", ctx => `select * from ${ctx.ref("e")}`);
 
           const graph = session.compile();
-          const graphErrors = utils.validate(graph);
 
           const tableNames = graph.tables.map(item => item.name);
 
@@ -712,10 +697,9 @@ suite("@dataform/core", () => {
             graph.tables.find(table => table.name === `schema${suffix}.${prefix}f`).dependencies
           ).eql([`foo${suffix}.${prefix}e`]);
 
-          const errors = graphErrors.compilationErrors.map(item => item.message);
+          const errors = graph.graphErrors.compilationErrors.map(item => item.message);
           expect(errors).includes("Action name is not specified");
-          expect(graphErrors.compilationErrors.length).eql(1);
-          expect(graphErrors.validationErrors.length).eql(0);
+          expect(graph.graphErrors.compilationErrors.length).eql(1);
         });
       }
     );
@@ -743,10 +727,8 @@ suite("@dataform/core", () => {
       session.operate("operate-2", ctx => `select * from ${ctx.ref("operate-1")}`).hasOutput(true);
 
       const graph = session.compile();
-      const gErrors = utils.validate(graph);
 
-      expect(gErrors.compilationErrors).deep.equals([]);
-      expect(gErrors.validationErrors).deep.equals([]);
+      expect(graph.graphErrors.compilationErrors).deep.equals([]);
       expect(graph)
         .to.have.property("operations")
         .to.be.an("array")
@@ -768,9 +750,10 @@ suite("@dataform/core", () => {
       session.publish("a").dependencies("b");
       session.publish("b").dependencies("a");
       const cGraph = session.compile();
-      const gErrors = utils.validate(cGraph);
       expect(
-        gErrors.compilationErrors.filter(item => item.message.match(/Circular dependency/)).length
+        cGraph.graphErrors.compilationErrors.filter(item =>
+          item.message.match(/Circular dependency/)
+        ).length
       ).greaterThan(0);
     });
 
@@ -778,9 +761,10 @@ suite("@dataform/core", () => {
       const session = new Session(path.dirname(__filename), TestConfigs.redshift);
       session.publish("a", ctx => `select * from ${ctx.ref("b")}`);
       const cGraph = session.compile();
-      const gErrors = utils.validate(cGraph);
       expect(
-        gErrors.compilationErrors.filter(item => item.message.match(/Missing dependency/)).length
+        cGraph.graphErrors.compilationErrors.filter(item =>
+          item.message.match(/Missing dependency/)
+        ).length
       ).greaterThan(0);
     });
 
@@ -790,10 +774,10 @@ suite("@dataform/core", () => {
       session.publish("b");
       session.publish("a");
       const cGraph = session.compile();
-      const gErrors = utils.validate(cGraph);
-
       expect(
-        gErrors.compilationErrors.filter(item => item.message.match(/Duplicate action name/)).length
+        cGraph.graphErrors.compilationErrors.filter(item =>
+          item.message.match(/Duplicate action name/)
+        ).length
       ).greaterThan(0);
     });
 
@@ -803,9 +787,8 @@ suite("@dataform/core", () => {
       session.publish("a", { schema: "bar" });
       session.publish("b", { schema: "foo" }).dependencies("a");
       const cGraph = session.compile();
-      const gErrors = utils.validate(cGraph);
       expect(
-        gErrors.compilationErrors.filter(item =>
+        cGraph.graphErrors.compilationErrors.filter(item =>
           item.message.match(
             /Ambiguous Action name: {\"name\":\"a\"}. Did you mean one of: foo.a, bar.a./
           )
@@ -819,9 +802,8 @@ suite("@dataform/core", () => {
       session.publish("a", { schema: "schema2" });
       session.publish("b");
       const cGraph = session.compile();
-      const gErrors = utils.validate(cGraph);
       expect(
-        gErrors.compilationErrors.filter(item =>
+        cGraph.graphErrors.compilationErrors.filter(item =>
           item.message.match(/Duplicate action name detected. Names within a schema must be unique/)
         ).length
       ).greaterThan(0);
@@ -833,8 +815,7 @@ suite("@dataform/core", () => {
       session.publish("a", { schema: "schema1" }).dependencies("b");
       session.publish("a", { schema: "schema2" });
       const cGraph = session.compile();
-      const gErrors = utils.validate(cGraph);
-      expect(gErrors.compilationErrors).deep.equals([]);
+      expect(cGraph.graphErrors.compilationErrors).deep.equals([]);
     });
   });
 
@@ -890,6 +871,18 @@ select * from \${ref('dab')}
         )
       ).eql(await fs.readFile("tests/core/basic-syntax.js.test", "utf8"));
     });
+
+    test("backticks are escaped", async () => {
+      expect(
+        compilers.compile(
+          `
+select "\`" from \`location\`
+`,
+          "file.sqlx"
+        )
+      ).eql(await fs.readFile("tests/core/backticks-are-escaped.js.test", "utf8"));
+    });
+
     test("backslashes act literally", async () => {
       expect(
         compilers.compile(

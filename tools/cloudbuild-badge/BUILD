@@ -1,6 +1,6 @@
 package(default_visibility = ["//visibility:public"])
 
-load("@npm_bazel_typescript//:index.bzl", "ts_library")
+load("//tools:ts_library.bzl", "ts_library")
 
 ts_library(
     name = "cloudbuild-badge",
@@ -26,5 +26,6 @@ deploy_pubsub_nodejs_gcloud_function(
         ":package.json",
     ],
     function_name = "updateCloudBuildStatusBadge",
+    project = "tada-analytics",
     topic_name = "cloud-builds",
 )

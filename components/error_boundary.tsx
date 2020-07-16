@@ -1,14 +1,15 @@
 import { Button, Callout, Card, Collapse, H4, Intent } from "@blueprintjs/core";
-import * as styles from "df/components/error_boundary.css";
 import * as React from "react";
 
-interface IBaseErrorProps {
+import * as styles from "df/components/error_boundary.css";
+
+export interface IBaseErrorProps {
   customTitle?: React.ReactNode | string;
   customIntent?: Intent;
   sinkMethod?: (error: Error, id: string) => void;
 }
 
-interface IErrorCalloutProps extends IBaseErrorProps {
+export interface IErrorCalloutProps extends IBaseErrorProps {
   errorMessage?: string;
 }
 

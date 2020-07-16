@@ -1,6 +1,6 @@
 package(default_visibility = ["//tests:__subpackages__"])
 
-load("@npm_bazel_typescript//:index.bzl", "ts_library")
+load("//tools:ts_library.bzl", "ts_library")
 
 ts_library(
     name = "utils",

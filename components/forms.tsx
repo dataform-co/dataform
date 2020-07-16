@@ -8,9 +8,10 @@ import {
   ITagInputProps,
   TagInput
 } from "@blueprintjs/core";
-import * as styles from "df/components/forms.css";
 import * as React from "react";
 import { useState } from "react";
+
+import * as styles from "df/components/forms.css";
 
 export interface IValidationRule<T> {
   predicate: (val: T) => boolean;
@@ -259,55 +260,6 @@ export const FileInput = (props: IFileInputProps & React.LabelHTMLAttributes<HTM
       text={props.value ? <span>{props.value}</span> : <span>Choose file...</span>}
       hasSelection={!!props.value}
     />
-  );
-};
-
-interface IFileInputWithValidationProps {
-  validationRules?: Array<IValidationRule<string>>;
-  name: string;
-  required: boolean;
-}
-
-/**
- * @deprecated Use `useForm`, or `ValidationErrors` directly.
- */
-export const FileInputWithValidation = ({
-  validationRules,
-  onInputChange,
-  onBlur,
-  ...rest
-}: IFileInputWithValidationProps & IFileInputProps) => {
-  const { fileName } = useForm({
-    fileName: {
-      default: rest.value || rest.defaultValue,
-      rules: [
-        ...(rest.required ? [ValidationRules.required(rest.name)] : []),
-        ...(validationRules || [])
-      ]
-    }
-  });
-  return (
-    <>
-      <FileInput
-        {...rest}
-        value={fileName.value()}
-        onInputChange={e => {
-          const file = (e.target as HTMLInputElement).files[0];
-          fileName.set(file.name);
-          if (onInputChange) {
-            onInputChange(e);
-          }
-        }}
-        onBlur={(e: React.FocusEvent<HTMLLabelElement>) => {
-          fileName.showErrors();
-          if (onBlur) {
-            onBlur(e);
-          }
-        }}
-      />
-
-      <ValidationErrors errors={fileName.errors()} />
-    </>
   );
 };
 

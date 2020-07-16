@@ -1,10 +1,12 @@
 import * as crypto from "crypto";
-import { ErrorWithCause } from "df/common/errors/errors";
-import { SyntaxTreeNode, SyntaxTreeNodeType } from "df/sqlx/lexer";
 import * as fs from "fs";
 import * as jsBeautify from "js-beautify";
 import * as sqlFormatter from "sql-formatter";
 import { promisify } from "util";
+
+import { ErrorWithCause } from "df/common/errors/errors";
+import { SyntaxTreeNode, SyntaxTreeNodeType } from "df/sqlx/lexer";
+import { v4 as uuidv4 } from "uuid";
 
 const JS_BEAUTIFY_OPTIONS: JsBeautifyOptions = {
   indent_size: 2,
@@ -14,6 +16,21 @@ const JS_BEAUTIFY_OPTIONS: JsBeautifyOptions = {
 
 const MAX_SQL_FORMAT_ATTEMPTS = 5;
 
+export function format(text: string, fileExtension: string) {
+  try {
+    switch (fileExtension) {
+      case "sqlx":
+        return postProcessFormattedSqlx(formatSqlx(SyntaxTreeNode.create(text)));
+      case "js":
+        return `${formatJavaScript(text).trim()}\n`;
+      default:
+        return text;
+    }
+  } catch (e) {
+    throw new ErrorWithCause(`Unable to format "${text?.substring(0, 20)}...".`, e);
+  }
+}
+
 export async function formatFile(
   filename: string,
   options?: {
@@ -21,22 +38,8 @@ export async function formatFile(
   }
 ) {
   const fileExtension = filename.split(".").slice(-1)[0];
-  const format = (text: string) => {
-    try {
-      switch (fileExtension) {
-        case "sqlx":
-          return postProcessFormattedSqlx(formatSqlx(SyntaxTreeNode.create(text)));
-        case "js":
-          return `${formatJavaScript(text).trim()}\n`;
-        default:
-          return text;
-      }
-    } catch (e) {
-      throw new ErrorWithCause(`Unable to format "${filename}".`, e);
-    }
-  };
-  const formattedText = format(await promisify(fs.readFile)(filename, "utf8"));
-  if (formattedText !== format(formattedText)) {
+  const formattedText = format(await promisify(fs.readFile)(filename, "utf8"), fileExtension);
+  if (formattedText !== format(formattedText, fileExtension)) {
     throw new Error("Formatter unable to determine final formatted form.");
   }
   if (options && options.overwriteFile) {
@@ -163,7 +166,9 @@ function stripUnformattableText(
 }
 
 function generatePlaceholderId() {
-  return crypto.randomBytes(8).toString("hex");
+  return uuidv4()
+    .replace(/-/g, "")
+    .substring(0, 16);
 }
 
 function replacePlaceholders(

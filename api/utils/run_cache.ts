@@ -1,31 +1,29 @@
-import { dataform } from "df/protos/ts";
 import * as objectHash from "object-hash";
 
+import { dataform } from "df/protos/ts";
+
 export interface IMetadataRow {
-  target_name: string;
-  metadata_json: string;
+  target: string;
   metadata_proto: string;
 }
 
-export const hashExecutionAction = (action: dataform.IExecutionAction) => {
+export function hashExecutionAction(action: dataform.IExecutionAction) {
   return objectHash.sha1(action);
-};
+}
 
-export const decodePersistedTableMetadata = (protoString: string) => {
+export function toRowKey(target: dataform.ITarget) {
+  const parts = [target.name, target.schema];
+  if (target.database) {
+    parts.push(target.database);
+  }
+  return parts.reverse().join(".");
+}
+
+export function decodePersistedTableMetadata(protoString: string) {
   const encodedProto = Buffer.from(protoString, "base64");
   return dataform.PersistedTableMetadata.decode(encodedProto);
-};
+}
 
-export const encodePersistedTableMetadata = (table: dataform.PersistedTableMetadata) => {
-  const encodedProtoBuffer = Buffer.from(dataform.PersistedTableMetadata.encode(table).finish());
-  return encodedProtoBuffer.toString("base64");
-};
-
-export const buildQuery = (targetName: string, table: dataform.PersistedTableMetadata) => {
-  const encodedProtoString = encodePersistedTableMetadata(table);
-  const query = `SELECT 
-          '${targetName}' AS target_name,
-          '${JSON.stringify(table.toJSON())}' AS metadata_json,
-          '${encodedProtoString}' as metadata_proto`;
-  return query;
-};
+export function encodePersistedTableMetadata(table: dataform.IPersistedTableMetadata) {
+  return Buffer.from(dataform.PersistedTableMetadata.encode(table).finish()).toString("base64");
+}

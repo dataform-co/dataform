@@ -8,18 +8,12 @@ import { IWiths, WithBuilder } from "df/sql/builders/with";
 
 export type DurationUnit = "day" | "week" | "month" | "quarter" | "year";
 
-export interface IConditional {
-  condition: string;
-  then: string;
-  else?: string;
-}
+export type ISqlDialect = "standard" | "snowflake" | "postgres";
 
 export class Sql {
-  public static create() {
-    return new Sql();
-  }
+  constructor(private readonly dialect: ISqlDialect = "standard") {}
 
-  public literal(value: string | number) {
+  public literal(value: string | number | null) {
     if (value === null) {
       return "null";
     }
@@ -37,8 +31,14 @@ export class Sql {
     return `count(distinct ${expression})`;
   }
 
-  public conditional(conditional: IConditional) {
-    return `if(${conditional.condition}, ${conditional.then}, ${conditional.else || "null"})`;
+  public conditional(condition: string, then: string, otherwise: string = "null") {
+    if (this.dialect === "snowflake") {
+      return `iff(${condition}, ${then}, ${otherwise || "null"})`;
+    }
+    if (this.dialect === "postgres") {
+      return `case when ${condition} then ${then} else ${otherwise} end`;
+    }
+    return `if(${condition}, ${then}, ${otherwise || "null"})`;
   }
 
   public equals(expression: string, expected: string) {
@@ -86,6 +86,18 @@ export class Sql {
     return `sum(${expression})`;
   }
 
+  public min(expression: string | number) {
+    return `min(${expression})`;
+  }
+
+  public max(expression: string | number) {
+    return `max(${expression})`;
+  }
+
+  public avg(expression: string | number) {
+    return `avg(${expression})`;
+  }
+
   public count() {
     return `sum(1)`;
   }
@@ -102,24 +114,57 @@ export class Sql {
     return expressions.join(" and ");
   }
 
-  public asTimestampFromMillis(timestampMillis: number) {
+  public withWrappingBrackets(expression: string) {
+    return `(${expression})`;
+  }
+
+  public safeDivide(numerator: string, denominator: string) {
+    return `${numerator} / nullif(${denominator}, 0)`;
+  }
+
+  // Conversion functions.
+
+  public millisToTimestamp(timestampMillis: string) {
+    if (this.dialect === "snowflake") {
+      return `to_timestamp(${timestampMillis}, 3)`;
+    }
+    if (this.dialect === "postgres") {
+      return `timestamp 'epoch' + (${timestampMillis} / 1000) * interval '1 second'`;
+    }
     return `timestamp_millis(${timestampMillis.toString()})`;
   }
+
+  public timestampTruncate(timestamp: string, timestampUnit: DurationUnit) {
+    if (this.dialect === "snowflake") {
+      return `date_trunc(${timestampUnit}, ${timestamp})`;
+    }
+    if (this.dialect === "postgres") {
+      return `date_trunc('${timestampUnit}', ${timestamp})`;
+    }
+    return `timestamp_trunc(${timestamp}, ${timestampUnit})`;
+  }
+
+  public timestampToMillis(timestamp: string) {
+    if (this.dialect === "snowflake") {
+      return `date_part(epoch_milliseconds, ${timestamp})`;
+    }
+    if (this.dialect === "postgres") {
+      return `extract('epoch' from ${timestamp})::bigint * 1000`;
+    }
+    return `unix_millis(${timestamp})`;
+  }
+
+  // Casting functions.
 
   public asTimestamp(castableToTimestamp: string) {
     return `cast(${castableToTimestamp} as timestamp)`;
   }
 
-  public asTruncatedTimestamp(castableToTimestamp: string, timestampUnit: DurationUnit) {
-    return `timestamp_trunc(cast(${castableToTimestamp} as timestamp), ${timestampUnit})`;
-  }
-
-  public asTruncatedUnixMillis(castableToTimestamp: string, timestampUnit: DurationUnit) {
-    return `unix_millis(${this.asTruncatedTimestamp(castableToTimestamp, timestampUnit)})`;
-  }
-
-  public withWrappingBrackets(expression: string) {
-    return `(${expression})`;
+  public asString(castableToString: string) {
+    if (this.dialect === "postgres") {
+      return `cast(${castableToString} as varchar)`;  
+    }
+    return `cast(${castableToString} as string)`;
   }
 
   // Convenience methods for builders.

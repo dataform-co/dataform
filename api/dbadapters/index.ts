@@ -3,6 +3,8 @@ import { BigQueryDbAdapter } from "df/api/dbadapters/bigquery";
 import { RedshiftDbAdapter } from "df/api/dbadapters/redshift";
 import { SnowflakeDbAdapter } from "df/api/dbadapters/snowflake";
 import { SQLDataWarehouseDBAdapter } from "df/api/dbadapters/sqldatawarehouse";
+import { StringifiedMap } from "df/common/strings/stringifier";
+import { QueryOrAction } from "df/core/adapters";
 import { dataform } from "df/protos/ts";
 
 export type OnCancel = (handleCancel: () => void) => void;
@@ -26,21 +28,42 @@ export interface IDbAdapter {
       maxResults?: number;
     }
   ): Promise<IExecutionResult>;
-  evaluate(statement: string): Promise<dataform.IQueryEvaluationResponse>;
+  evaluate(
+    queryOrAction: QueryOrAction,
+    projectConfig?: dataform.IProjectConfig
+  ): Promise<dataform.IQueryEvaluation[]>;
+  preview(target: dataform.ITarget, limitRows?: number): Promise<any[]>;
+
+  schemas(database: string): Promise<string[]>;
+  createSchema(database: string, schema: string): Promise<void>;
+
   tables(): Promise<dataform.ITarget[]>;
   table(target: dataform.ITarget): Promise<dataform.ITableMetadata>;
-  preview(target: dataform.ITarget, limitRows?: number): Promise<any[]>;
-  prepareSchema(database: string, schema: string): Promise<void>;
-  prepareStateMetadataTable(): Promise<void>;
-  persistStateMetadata(actions: dataform.IExecutionAction[]): Promise<void>;
-  persistedStateMetadata(): Promise<dataform.IPersistedTableMetadata[]>;
+
   setMetadata(action: dataform.IExecutionAction): Promise<void>;
-  deleteStateMetadata(actions: dataform.IExecutionAction[]): Promise<void>;
+
+  persistStateMetadata(
+    transitiveInputMetadataByTarget: StringifiedMap<
+      dataform.ITarget,
+      dataform.PersistedTableMetadata.ITransitiveInputMetadata
+    >,
+    allActions: dataform.IExecutionAction[],
+    actionsToPersist: dataform.IExecutionAction[],
+    options: {
+      onCancel: OnCancel;
+    }
+  ): Promise<void>;
+  persistedStateMetadata(): Promise<dataform.IPersistedTableMetadata[]>;
+
   close(): Promise<void>;
 }
 
 export interface IDbAdapterClass<T extends IDbAdapter> {
-  create: (credentials: Credentials) => Promise<T>;
+  create: (
+    credentials: Credentials,
+    warehouseType: string,
+    options?: { concurrencyLimit?: number }
+  ) => Promise<T>;
 }
 
 const registry: { [warehouseType: string]: IDbAdapterClass<IDbAdapter> } = {};
@@ -49,11 +72,15 @@ export function register(warehouseType: string, c: IDbAdapterClass<IDbAdapter>) 
   registry[warehouseType] = c;
 }
 
-export async function create(credentials: Credentials, warehouseType: string): Promise<IDbAdapter> {
+export async function create(
+  credentials: Credentials,
+  warehouseType: string,
+  options?: { concurrencyLimit?: number }
+): Promise<IDbAdapter> {
   if (!registry[warehouseType]) {
     throw new Error(`Unsupported warehouse: ${warehouseType}`);
   }
-  return await registry[warehouseType].create(credentials);
+  return await registry[warehouseType].create(credentials, warehouseType, options);
 }
 
 register("bigquery", BigQueryDbAdapter);

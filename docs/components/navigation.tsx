@@ -1,8 +1,9 @@
 import { Button, Icon } from "@blueprintjs/core";
+import * as React from "react";
+
 import * as styles from "df/docs/components/navigation.css";
 import { IExtraAttributes } from "df/docs/content_tree";
 import { ITree } from "df/tools/markdown-cms/tree";
-import * as React from "react";
 
 interface IProps {
   version: string;

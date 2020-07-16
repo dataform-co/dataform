@@ -9,3 +9,20 @@ export class ErrorWithCause extends Error {
     }
   }
 }
+
+export function coerceAsError<T extends Error | any>(errorLike: T): T extends Error ? T : Error {
+  // If it's an error instance, return it.
+  if ((errorLike as any) instanceof Error) {
+    return errorLike as any;
+  }
+  // Otherwise, attempt to reconstruct an error class from the object.
+  const message = errorLike.message ? String(errorLike.message) : String(errorLike);
+  const coercedError = new Error(message);
+  if (errorLike.stack) {
+    coercedError.stack = errorLike.stack;
+  }
+  if (errorLike.name) {
+    coercedError.name = errorLike.name;
+  }
+  return coercedError as any;
+}

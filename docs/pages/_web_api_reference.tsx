@@ -1,11 +1,12 @@
 import axios from "axios";
+import { NextPageContext } from "next";
+import * as React from "react";
+import { Spec } from "swagger-schema-official";
+
 import { Swagger } from "df/docs/components/swagger";
 import { getContentTree, IExtraAttributes } from "df/docs/content_tree";
 import Documentation from "df/docs/layouts/documentation";
 import { ITree } from "df/tools/markdown-cms/tree";
-import { NextPageContext } from "next";
-import * as React from "react";
-import { Spec } from "swagger-schema-official";
 
 interface IQuery {
   version: string;
