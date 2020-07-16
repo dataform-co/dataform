@@ -170,6 +170,28 @@ gcloud_sdk(
 # Go dependencies.
 
 go_repository(
+    name = "org_golang_google_grpc",
+    build_file_proto_mode = "disable",
+    importpath = "google.golang.org/grpc",
+    sum = "h1:rRYRFMVgRv6E0D70Skyfsr28tDXIuuPZyWGMPdMcnXg=",
+    version = "v1.27.0",
+)
+
+go_repository(
+    name = "org_golang_x_net",
+    importpath = "golang.org/x/net",
+    sum = "h1:2mqDk8w/o6UmeUCu5Qiq2y7iMf6anbx+YA8d1JFoFrs=",
+    version = "v0.0.0-20191002035440-2ec189313ef0",
+)
+
+go_repository(
+    name = "org_golang_x_text",
+    importpath = "golang.org/x/text",
+    sum = "h1:tW2bmiBqwgJj/UpqtC8EpXEZVYOwU0yG4iWbprSVAcs=",
+    version = "v0.3.2",
+)
+
+go_repository(
     name = "com_github_go_stack_stack",
     importpath = "github.com/go-stack/stack",
     sum = "h1:5SgMzNM5HxrEjV0ww2lTmX6E2Izsfxas4+YHWRs3Lsk=",
