@@ -35,7 +35,6 @@ multi_sass_binary(
     sourcemap = False,
 )
 
-
 genrule(
     name = "blueprint",
     srcs = [
