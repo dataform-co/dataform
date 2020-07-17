@@ -101,10 +101,15 @@ Note that `self()` is used here in order to get the name of the current dataset.
 ```sql
 timestamp > (SELECT MAX(timestamp) FROM default_schema.example_incremental)
 ```
+<br />
+
+<div className="bp3-callout bp3-icon-info-sign" markdown="1">
+  Note that for BigQuery, incremental tables need to be written slightly differently to avoid full table scans. See our [BigQuery specific guide](/warehouses/bigquery#optimizing-partitioned-incremental-tables-for-bigquery) for more info.
+</div>
 
 This dataset may not exist in the warehouse yet. That's OK, because the `WHERE` clause will only be added to the final query if the dataset already exists and new data is being inserted into it.
 
-<div className="pt-callout pt-icon-info-sign pt-intent-warning" markdown="1">
+<div className="bp3-callout bp3-icon-info-sign" markdown="1">
   Note that when data is inserted into an incremental dataset, only fields that already exist in the
   dataset will be written. To make sure that new fields are written after changing the query, the
   dataset must be rebuilt from scratch with the <code>--full-refresh</code> option (if using the
