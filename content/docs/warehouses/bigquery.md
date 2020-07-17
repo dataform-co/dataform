@@ -96,7 +96,7 @@ You can configure separate project-ids for development and production in your `e
 
 ### Optimizing partitioned incremental tables for BigQuery
 
-When creating incremental tables from partitioned tables in BigQuery, some extra care needs to be taken to avoid full table scans, as BigQuery can't optimize where statements that are computed from inline select statements. To fix this, values used in the where clause should be moved to a `pre_operations` block and saved into a variable using [BigQuery scripting](https://cloud.google.com/bigquery/docs/reference/standard-sql/scripting).
+When creating incremental tables from partitioned tables in BigQuery, some extra care needs to be taken to avoid full table scans, as BigQuery can't optimize `where` statements that are computed from inline select statements. To work around this, values used in the where clause should be moved to a `pre_operations` block and saved into a variable using [BigQuery scripting](https://cloud.google.com/bigquery/docs/reference/standard-sql/scripting).
 
 Here's a simple incremental example for BigQuery that follows this pattern, where the source table `raw_events` is already partitioned by `event_timestamp`.
 
