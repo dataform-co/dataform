@@ -94,6 +94,34 @@ config {
 
 You can configure separate project-ids for development and production in your `environment.json` file. The process is described on [this page](/dataform-web/scheduling/environments#example-use-separate-databases-for-development-and-production-data).
 
+### Optimizing partitioned incremental tables for BigQuery
+
+When creating incremental tables from partitioned tables in BigQuery, some extra care needs to be taken to avoid full table scans, as BigQuery can't optimize where statements that are computed from inline select statements. To fix this, values used in the where clause should be moved to a `pre_operations` block and saved into a variable using [BigQuery scripting](https://cloud.google.com/bigquery/docs/reference/standard-sql/scripting).
+
+Here's a simple incremental example for BigQuery that follows this pattern, where the source table `raw_events` is already partitioned by `event_timestamp`.
+
+```sql
+config {
+  type: "incremental",
+}
+
+pre_operations {
+  declare event_timestamp_checkpoint default (
+    ${when(incremental(),
+    `select max(event_timestamp) from ${self()}`,
+    `select timestamp("2000-01-01")`)}
+  );
+}
+
+select
+  *
+from
+  ${ref("raw_events")} 
+where event_timestamp > event_timestamp_checkpoint
+```
+
+This will avoid a full table scan on the `raw_events` table when inserting new rows, only looking at the most recent partitions it needs to.
+
 ## Dataform web features for BigQuery
 
 ### Real time query validation
