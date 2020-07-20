@@ -180,6 +180,11 @@ export interface IRecordDescriptor {
    * @hidden
    */
   expression?: string;
+
+  /**
+   * Tags that apply to this column.
+   */
+  tags?: string | string[];
 }
 
 /**
@@ -194,7 +199,8 @@ export const IRecordDescriptorProperties = () =>
     "displayName",
     "dimension",
     "aggregator",
-    "expression"
+    "expression",
+    "tags"
   ]);
 
 /**
