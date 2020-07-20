@@ -182,7 +182,9 @@ export interface IRecordDescriptor {
   expression?: string;
 
   /**
-   * Tags that apply to this column.
+   * Tags that apply to this column (experimental).
+   * 
+   * @hidden
    */
   tags?: string | string[];
 }
