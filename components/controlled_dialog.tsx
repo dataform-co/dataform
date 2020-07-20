@@ -13,6 +13,7 @@ export interface IControlledDialogProps {
   cancelButtonText?: string;
   confirmButtonProps?: IButtonProps & React.ButtonHTMLAttributes<HTMLButtonElement>;
   confirmHidden?: boolean;
+  additionalButtons?: Array<IButtonProps & React.ButtonHTMLAttributes<HTMLButtonElement>>;
   disable?: boolean;
   width?: string;
 }
@@ -42,7 +43,8 @@ export class ControlledDialog extends React.Component<IControlledDialogProps, IS
       onClose,
       onConfirm,
       width,
-      children
+      children,
+      additionalButtons
     } = this.props;
     return (
       <>
@@ -92,6 +94,18 @@ export class ControlledDialog extends React.Component<IControlledDialogProps, IS
               }}
               text={cancelButtonText || "Cancel"}
             />
+            {additionalButtons?.map(buttonProps => (
+              <Button
+                {...buttonProps}
+                className={`${Classes.POPOVER_DISMISS} ${buttonProps?.className || ""}`}
+                onClick={(e: React.MouseEvent<HTMLElement, MouseEvent>) => {
+                  if (!!buttonProps.onClick) {
+                    buttonProps.onClick(e);
+                  }
+                  this.setState({ isOpen: false });
+                }}
+              />
+            ))}
             {!confirmHidden && (
               <Button
                 {...confirmButtonProps}
