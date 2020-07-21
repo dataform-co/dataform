@@ -243,6 +243,8 @@ message ColumnDescriptor {
   Aggregation aggregation = 5;
 
   string expression = 6;
+
+  repeated string tags = 7;
 }
 
 message Table {
