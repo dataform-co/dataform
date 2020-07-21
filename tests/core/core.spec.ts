@@ -44,7 +44,11 @@ suite("@dataform/core", () => {
             dependencies: [],
             description: "this is a table",
             columns: {
-              test: "test description"
+              test: "test description",
+              test2: {
+                description: "test2 description",
+                tags: ["tag1", "tag2"]
+              }
             }
           })
           .query(_ => "select 1 as test")
@@ -81,6 +85,11 @@ suite("@dataform/core", () => {
             dataform.ColumnDescriptor.create({
               description: "test description",
               path: ["test"]
+            }),
+            dataform.ColumnDescriptor.create({
+              description: "test2 description",
+              path: ["test2"],
+              tags: ["tag1", "tag2"]
             })
           ]
         });
@@ -91,14 +100,8 @@ suite("@dataform/core", () => {
           table => table.name === `schema2.${tableWithPrefix("example")}`
         );
         expect(t2.type).equals("table");
-        expect(t.actionDescriptor).eql({
-          description: "this is a table",
-          columns: [
-            dataform.ColumnDescriptor.create({
-              description: "test description",
-              path: ["test"]
-            })
-          ]
+        expect(t2.actionDescriptor).eql({
+          description: "test description"
         });
         expect(t2.preOps).deep.equals(["pre_op"]);
         expect(t2.postOps).deep.equals(["post_op"]);
