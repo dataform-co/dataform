@@ -49,6 +49,10 @@ SELECT 30 AS age_group, 1 AS user_count
 
 This unit test replaces the `ages` input to the `age_groups` query, and checks that the resulting output rows match the three expected `age_group` rows.
 
+<callout intent="info">
+  If you want to replace an input which has been fully-qualified with a schema name (and optionally a database name), you can fully-qualify inputs with the following syntax: <code>input "schemaName", "inputName" { ... }</code>.
+</callout>
+
 ## Expected vs. actual output equality rules
 
 A unit test fails if the actual output from the dataset is not equal to the expected output. This means that:
