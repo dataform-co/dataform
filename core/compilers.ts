@@ -246,15 +246,17 @@ switch (sqlxConfig.type) {
     break;
   }
   case "test": {
-    ${Object.keys(inputs).map(
-      inputLabel =>
-        `
+    ${Object.keys(inputs)
+      .map(
+        inputLabel =>
+          `
         action.input("${inputLabel}", ctx => {
           ${js}
           return \`${inputs[inputLabel]}\`;
         });
         `
-    )}
+      )
+      .join("\n")}
     action.expect(ctx => {
       ${js}
       return \`${sql}\`;
