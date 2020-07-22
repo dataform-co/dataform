@@ -1,3 +1,4 @@
+import { JSONObjectStringifier, StringifiedMap } from "df/common/strings/stringifier";
 import { Contextable, ICommonContext, INamedConfig, Resolvable } from "df/core/common";
 import { Session } from "df/core/session";
 import * as table from "df/core/table";
@@ -31,7 +32,10 @@ export class Test {
   public proto: dataform.ITest = dataform.Test.create();
 
   public session: Session;
-  public contextableInputs: { [refName: string]: Contextable<ICommonContext, string> } = {};
+  public contextableInputs = new StringifiedMap<
+    dataform.ITarget,
+    Contextable<ICommonContext, string>
+  >(JSONObjectStringifier.create());
 
   private datasetToTest: Resolvable;
   private contextableQuery: Contextable<ICommonContext, string>;
@@ -54,8 +58,8 @@ export class Test {
     return this;
   }
 
-  public input(refName: string, contextableQuery: Contextable<ICommonContext, string>) {
-    this.contextableInputs[refName] = contextableQuery;
+  public input(refName: string | string[], contextableQuery: Contextable<ICommonContext, string>) {
+    this.contextableInputs.set(resolvableAsTarget(toResolvable(refName)), contextableQuery);
     return this;
   }
 
@@ -133,20 +137,20 @@ class RefReplacingContext implements ITableContext {
   }
 
   public resolve(ref: Resolvable | string[], ...rest: string[]) {
-    ref = toResolvable(ref, rest);
-    if (typeof ref !== "string") {
+    const target = resolvableAsTarget(toResolvable(ref, rest));
+    if (!this.testContext.test.contextableInputs.has(target)) {
       this.testContext.test.session.compileError(
-        new Error("Tests do not currently support referencing non-string inputs.")
+        new Error(
+          `Input for dataset "${JSON.stringify(
+            target
+          )}" has not been provided. Provided inputs: ${Array.from(
+            this.testContext.test.contextableInputs.keys()
+          ).map(providedTarget => JSON.stringify(providedTarget))}`
+        )
       );
       return "";
     }
-    if (!this.testContext.test.contextableInputs[ref]) {
-      this.testContext.test.session.compileError(
-        new Error(`Input for dataset "${ref}" has not been provided.`)
-      );
-      return "";
-    }
-    return `(${this.testContext.apply(this.testContext.test.contextableInputs[ref])})`;
+    return `(${this.testContext.apply(this.testContext.test.contextableInputs.get(target))})`;
   }
 
   public apply<T>(value: Contextable<ITableContext, T>): T {

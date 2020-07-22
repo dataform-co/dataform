@@ -97,7 +97,7 @@ const invalidRefInputMessage =
   "an (optional) 'database', (optional) 'schema', and 'name', " +
   "or 1-3 inputs consisting of an (optional) database, (optional) schema, and 'name'.";
 
-export function toResolvable(ref: Resolvable | string[], rest: string[]): Resolvable {
+export function toResolvable(ref: Resolvable | string[], rest: string[] = []): Resolvable {
   if (Array.isArray(ref) && rest.length > 0) {
     throw new Error(invalidRefInputMessage);
   }

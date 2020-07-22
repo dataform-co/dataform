@@ -124,7 +124,10 @@ function compileSqlx(rootNode: SyntaxTreeNode, path: string) {
   let incremental = "";
   let preOperations = [""];
   let postOperations = [""];
-  const inputs: { [label: string]: string } = {};
+  const inputs: Array<{
+    labelParts: string[];
+    value: string;
+  }> = [];
   rootNode
     .children()
     .filter(SyntaxTreeNode.isSyntaxTreeNode)
@@ -160,7 +163,14 @@ function compileSqlx(rootNode: SyntaxTreeNode, path: string) {
         if (statements.length > 1) {
           throw new Error("'input' code blocks may only contain a single SQL statement.");
         }
-        inputs[firstChild.split('"')[1]] = statements[0];
+        const labelParts = firstChild
+          .slice(firstChild.indexOf('"'), firstChild.lastIndexOf('"') + 1)
+          .split(",")
+          .map(label => label.trim().slice(1, -1));
+        inputs.push({
+          labelParts,
+          value: statements[0]
+        });
       }
     });
 
@@ -246,13 +256,13 @@ switch (sqlxConfig.type) {
     break;
   }
   case "test": {
-    ${Object.keys(inputs)
+    ${inputs
       .map(
-        inputLabel =>
+        ({ labelParts, value }) =>
           `
-        action.input("${inputLabel}", ctx => {
+        action.input([${labelParts.map(labelPart => `"${labelPart}"`).join(", ")}], ctx => {
           ${js}
-          return \`${inputs[inputLabel]}\`;
+          return \`${value}\`;
         });
         `
       )
