@@ -1,5 +1,5 @@
 import * as pg from "pg";
-import Cursor from "pg-cursor";
+import QueryStream from "pg-query-stream";
 
 import { Credentials } from "df/api/commands/credentials";
 import { IDbAdapter, OnCancel } from "df/api/dbadapters/index";
@@ -288,45 +288,21 @@ class PgPoolExecutor {
       console.error("pg.Client client error", err.message, err.stack);
     });
     try {
-      // If we want to limit the returned results from redshift, we have two options:
-      // (1) use cursors, or (2) use JDBC and configure a fetch size parameter. We use cursors
-      // to avoid the need to run a JVM.
-      // See https://docs.aws.amazon.com/redshift/latest/dg/declare.html for more details.
-      const cursor: ICursor = client.query(new Cursor(statement));
-      const result = await new Promise<any[]>((resolve, reject) => {
-        options?.onCancel?.(() =>
-          cursor.close(e => {
-            if (e) {
-              reject(e);
-            }
-          })
-        );
-
-        // It seems that when requesting one row back exactly, we run into some issues with
-        // the cursor. I've filed a bug (https://github.com/brianc/node-pg-cursor/issues/55),
-        // but setting a minimum of 2 resulting rows seems to do the trick.
-        cursor.read(Math.max(2, options.maxResults), (err, rows, queryResult) => {
-          if (err) {
-            reject(err);
-            return;
+      return await new Promise<any[]>((resolve, reject) => {
+        const query = client.query(new QueryStream(statement));
+        const results: any[] = [];
+        options?.onCancel?.(() => query.destroy());
+        query.on("data", (row: any) => {
+          if (results.length < options.maxResults) {
+            verifyUniqueColumnNames((query as any).cursor._result.fields);
+            results.push(row);
+          } else {
+            query.destroy();
           }
-          try {
-            verifyUniqueColumnNames(queryResult.fields);
-          } catch (e) {
-            reject(e);
-          }
-          // Close the cursor after reading the first page of results.
-          cursor.close(closeErr => {
-            if (closeErr) {
-              reject(closeErr);
-            } else {
-              // Limit results again, in case we had to increase the limit in the original request.
-              resolve(rows.slice(0, options.maxResults));
-            }
-          });
         });
+        query.on("close", () => resolve(results));
+        query.on("error", e => reject(e));
       });
-      return result;
     } finally {
       client.release();
     }
