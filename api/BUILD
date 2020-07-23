@@ -35,7 +35,6 @@ ts_library(
         "@npm//mssql",
         "@npm//object-hash",
         "@npm//pg",
-        "@npm//pg-cursor",
         "@npm//pg-query-stream",
         "@npm//pretty-ms",
         "@npm//promise-pool-executor",
