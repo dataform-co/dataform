@@ -5,7 +5,11 @@ import * as dbadapters from "df/api/dbadapters";
 import { retry } from "df/api/utils/retry";
 import { hashExecutionAction } from "df/api/utils/run_cache";
 import { timingSafeEqual } from "df/common/strings";
-import { JSONObjectStringifier, StringifiedMap } from "df/common/strings/stringifier";
+import {
+  JSONObjectStringifier,
+  StringifiedMap,
+  StringifiedSet
+} from "df/common/strings/stringifier";
 import { dataform } from "df/protos/ts";
 
 const CANCEL_EVENT = "jobCancel";
@@ -36,6 +40,8 @@ export class Runner {
     dataform.ITarget,
     dataform.IPersistedTableMetadata
   >;
+  private readonly nonTableDeclarationTargets: StringifiedSet<dataform.ITarget>;
+
   private readonly runResult: dataform.IRunResult;
   private readonly changeListeners: Array<(graph: dataform.IRunResult) => void> = [];
   private readonly eEmitter: EventEmitter;
@@ -71,6 +77,14 @@ export class Runner {
         persistedTableMetadata.target,
         persistedTableMetadata
       ])
+    );
+    this.nonTableDeclarationTargets = new StringifiedSet<dataform.ITarget>(
+      JSONObjectStringifier.create(),
+      graph.declarationTargets.filter(
+        declarationTarget =>
+          this.warehouseStateBeforeRunByTarget.get(declarationTarget)?.type !==
+          dataform.TableMetadata.Type.TABLE
+      )
     );
 
     const completedActionNames = new Set(
@@ -497,6 +511,12 @@ export class Runner {
       ])
     );
     for (const transitiveInput of executionAction.transitiveInputs) {
+      // No transitive input can be a non-table declaration (because we don't know anything about the
+      // data upstream of that non-table).
+      if (this.nonTableDeclarationTargets.has(transitiveInput)) {
+        return false;
+      }
+
       // All transitive inputs' last change timestamps must match the corresponding timestamps stored
       // in persisted state.
       if (!persistedTransitiveInputUpdateTimestamps.has(transitiveInput)) {
