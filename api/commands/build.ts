@@ -102,6 +102,7 @@ export class Builder {
       projectConfig: this.prunedGraph.projectConfig,
       runConfig: this.runConfig,
       warehouseState: this.warehouseState,
+      declarationTargets: this.prunedGraph.declarations.map(declaration => declaration.target),
       actions
     });
   }

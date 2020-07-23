@@ -420,6 +420,7 @@ message ExecutionGraph {
   ProjectConfig project_config = 1;
   RunConfig run_config = 2;
   WarehouseState warehouse_state = 4;
+  repeated Target declaration_targets = 5;
 
   repeated ExecutionAction actions = 3;
 }
