@@ -46,7 +46,7 @@ externals = [
     "mssql",
     "object-hash",
     "pg",
-    "pg-cursor",
+    "pg-query-stream",
     "pretty-ms",
     "promise-pool-executor",
     "snowflake-sdk",
