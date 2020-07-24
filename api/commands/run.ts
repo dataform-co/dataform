@@ -230,7 +230,7 @@ export class Runner {
       .forEach(({ target }) => {
         // This field may not be present for older versions of dataform.
         const trueDatabase = target.database || this.graph.projectConfig.defaultDatabase;
-        if (!databaseSchemas.has(target.database)) {
+        if (!databaseSchemas.has(trueDatabase)) {
           databaseSchemas.set(trueDatabase, new Set<string>());
         }
         databaseSchemas.get(trueDatabase).add(target.schema);

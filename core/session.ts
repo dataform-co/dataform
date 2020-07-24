@@ -184,8 +184,12 @@ export class Session {
       }
       return this.adapter().resolveTarget({
         ...resolved.proto.target,
-        schema: `${resolved.proto.target.schema}${this.getSuffixWithUnderscore()}`,
-        name: `${this.getTablePrefixWithUnderscore()}${resolved.proto.target.name}`
+        schema: this.adapter().normalizeIdentifier(
+          `${resolved.proto.target.schema}${this.getSuffixWithUnderscore()}`
+        ),
+        name: this.adapter().normalizeIdentifier(
+          `${this.getTablePrefixWithUnderscore()}${resolved.proto.target.name}`
+        )
       });
     }
     // TODO: Here we allow 'ref' to go unresolved. This is for backwards compatibility with projects
@@ -198,8 +202,10 @@ export class Session {
         utils.target(
           this.adapter(),
           this.config,
-          `${this.getTablePrefixWithUnderscore()}${ref}`,
-          `${this.config.defaultSchema}${this.getSuffixWithUnderscore()}`
+          this.adapter().normalizeIdentifier(`${this.getTablePrefixWithUnderscore()}${ref}`),
+          this.adapter().normalizeIdentifier(
+            `${this.config.defaultSchema}${this.getSuffixWithUnderscore()}`
+          )
         )
       );
     }
@@ -207,8 +213,8 @@ export class Session {
       utils.target(
         this.adapter(),
         this.config,
-        `${this.getTablePrefixWithUnderscore()}${ref.name}`,
-        `${ref.schema}${this.getSuffixWithUnderscore()}`
+        this.adapter().normalizeIdentifier(`${this.getTablePrefixWithUnderscore()}${ref.name}`),
+        this.adapter().normalizeIdentifier(`${ref.schema}${this.getSuffixWithUnderscore()}`)
       )
     );
   }
@@ -459,8 +465,12 @@ export class Session {
     actions.forEach(action => {
       newTargetByOriginalTarget.set(action.target, {
         ...action.target,
-        schema: `${action.target.schema}${this.getSuffixWithUnderscore()}`,
-        name: `${this.getTablePrefixWithUnderscore()}${action.target.name}`
+        schema: this.adapter().normalizeIdentifier(
+          `${action.target.schema}${this.getSuffixWithUnderscore()}`
+        ),
+        name: this.adapter().normalizeIdentifier(
+          `${this.getTablePrefixWithUnderscore()}${action.target.name}`
+        )
       });
       action.target = newTargetByOriginalTarget.get(action.target);
       action.name = utils.targetToName(action.target);

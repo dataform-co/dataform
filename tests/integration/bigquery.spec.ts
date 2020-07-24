@@ -8,7 +8,7 @@ import * as adapters from "df/core/adapters";
 import { BigQueryAdapter } from "df/core/adapters/bigquery";
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
-import { dropAllTables, getTableRows, keyBy } from "df/tests/integration/utils";
+import { compile, dropAllTables, getTableRows, keyBy } from "df/tests/integration/utils";
 
 const EXPECTED_INCREMENTAL_EXAMPLE_SCHEMA = {
   fields: [
@@ -63,7 +63,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
 
   suite("run", { parallel: true }, () => {
     test("project e2e", { timeout: 60000 }, async () => {
-      const compiledGraph = await compile("project_e2e");
+      const compiledGraph = await compile("tests/integration/bigquery_project", "project_e2e");
 
       // Drop all the tables before we do anything.
       await cleanWarehouse(compiledGraph, dbadapter);
@@ -108,7 +108,9 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
     });
 
     test("run caching", { timeout: 60000 }, async () => {
-      const compiledGraph = await compile("run_caching", { useRunCache: true });
+      const compiledGraph = await compile("tests/integration/bigquery_project", "run_caching", {
+        useRunCache: true
+      });
 
       // Drop all the tables before we do anything.
       await cleanWarehouse(compiledGraph, dbadapter);
@@ -230,7 +232,10 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
     });
 
     test("incremental tables", { timeout: 60000 }, async () => {
-      const compiledGraph = await compile("incremental_tables");
+      const compiledGraph = await compile(
+        "tests/integration/bigquery_project",
+        "incremental_tables"
+      );
 
       // Drop all the tables before we do anything.
       await cleanWarehouse(compiledGraph, dbadapter);
@@ -288,7 +293,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
     });
 
     test("dataset metadata set correctly", { timeout: 60000 }, async () => {
-      const compiledGraph = await compile("dataset_metadata");
+      const compiledGraph = await compile("tests/integration/bigquery_project", "dataset_metadata");
 
       // Drop all the tables before we do anything.
       await cleanWarehouse(compiledGraph, dbadapter);
@@ -336,7 +341,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
   });
 
   test("run unit tests", async () => {
-    const compiledGraph = await compile("unit_tests");
+    const compiledGraph = await compile("tests/integration/bigquery_project", "unit_tests");
 
     // Run the tests.
     const testResults = await dfapi.test(dbadapter, compiledGraph.tests);
@@ -361,9 +366,9 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
         name: "wrong row contents",
         successful: false,
         messages: [
-          'For row 0 and column "col2": expected "1" (number), but saw "5" (number).',
-          'For row 1 and column "col3": expected "6.5" (number), but saw "12" (number).',
-          'For row 2 and column "col1": expected "sup?" (string), but saw "WRONG" (string).'
+          'For row 0 and column "col2": expected "1", but saw "5".',
+          'For row 1 and column "col3": expected "6.5", but saw "12".',
+          'For row 2 and column "col1": expected "sup?", but saw "WRONG".'
         ]
       }
     ]);
@@ -372,7 +377,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
   suite("evaluate", async () => {
     test("evaluate from valid compiled graph as valid", async () => {
       // Create and run the project.
-      const compiledGraph = await compile("evaluate", {
+      const compiledGraph = await compile("tests/integration/bigquery_project", "evaluate", {
         useRunCache: false
       });
       const executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
@@ -532,24 +537,6 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
     });
   });
 });
-
-async function compile(
-  schemaSuffixOverride: string,
-  projectConfigOverrides?: dataform.IProjectConfig
-) {
-  const compiledGraph = await dfapi.compile({
-    projectDir: "tests/integration/bigquery_project",
-    schemaSuffixOverride
-  });
-
-  expect(compiledGraph.graphErrors.compilationErrors).to.eql([]);
-
-  compiledGraph.projectConfig = {
-    ...compiledGraph.projectConfig,
-    ...projectConfigOverrides
-  };
-  return compiledGraph;
-}
 
 async function cleanWarehouse(
   compiledGraph: dataform.CompiledGraph,
