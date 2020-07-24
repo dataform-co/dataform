@@ -245,18 +245,10 @@ export class Runner {
         .add(dbadapters.CACHED_STATE_TABLE_TARGET.schema);
     }
 
-    // throw new Error(
-    //   "" +
-    //     Array.from(databaseSchemas.entries()).map(
-    //       ([database, schemas]) => database + ":::" + Array.from(schemas)
-    //     )
-    // );
-
     // Create all nonexistent schemas.
     await Promise.all(
       Array.from(databaseSchemas.entries()).map(async ([database, schemas]) => {
         const existingSchemas = new Set(await this.dbadapter.schemas(database));
-        // throw new Error("" + Array.from(existingSchemas));
         await Promise.all(
           Array.from(schemas)
             .filter(schema => !existingSchemas.has(schema))
