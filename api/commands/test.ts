@@ -81,13 +81,21 @@ async function runTest(
 
     for (const column of actualColumns) {
       const normalizedColumn = normalizeColumnName(column);
-      if (actualResultRow[normalizedColumn] !== expectedResultRow[normalizedColumn]) {
+      const expectedValue = expectedResultRow[normalizedColumn];
+      const actualValue = actualResultRow[normalizedColumn];
+      if (typeof expectedValue !== typeof actualValue) {
         rowMessages.push(
-          `For row ${i} and column "${column}": expected "${
-            expectedResultRow[normalizedColumn]
-          }" (${typeof expectedResultRow[normalizedColumn]}), but saw "${
-            actualResultRow[normalizedColumn]
-          }" (${typeof actualResultRow[normalizedColumn]}).`
+          `For row ${i} and column "${column}": expected type "${typeof expectedValue}", but saw type "${typeof actualValue}".`
+        );
+        break;
+      }
+      const comparableExpectedValue =
+        typeof expectedValue === "object" ? JSON.stringify(expectedValue) : expectedValue;
+      const comparableActualValue =
+        typeof actualValue === "object" ? JSON.stringify(actualValue) : actualValue;
+      if (comparableExpectedValue !== comparableActualValue) {
+        rowMessages.push(
+          `For row ${i} and column "${column}": expected "${comparableExpectedValue}", but saw "${comparableActualValue}".`
         );
       }
     }
