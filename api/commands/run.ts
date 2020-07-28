@@ -60,8 +60,9 @@ export class Runner {
     private readonly graph: dataform.IExecutionGraph,
     partiallyExecutedRunResult?: dataform.IRunResult
   ) {
-    this.runResult = partiallyExecutedRunResult || {
-      actions: []
+    this.runResult = {
+      actions: [],
+      ...partiallyExecutedRunResult
     };
     this.warehouseStateBeforeRunByTarget = new StringifiedMap(
       JSONObjectStringifier.create(),
@@ -88,7 +89,7 @@ export class Runner {
     );
 
     const completedActionNames = new Set(
-      partiallyExecutedRunResult?.actions
+      this.runResult.actions
         .filter(action => action.status !== dataform.ActionResult.ExecutionStatus.RUNNING)
         .map(action => action.name)
     );
