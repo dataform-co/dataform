@@ -14,6 +14,6 @@ node_modules(
     deps = [
         "//packages/@dataform/assertion_utils:package_tar",
         "//packages/@dataform/core:package_tar",
-        "//packages/@dataform/crossdb:package_tar",
+        "//packages/@dataform/sql:package_tar",
     ],
 )

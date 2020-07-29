@@ -68,9 +68,9 @@ suite("builders", { parallel: true }, ({ before, after }) => {
           }
         ];
         const query = sql.from(sql.json(rows)).select({
-          millis: sql.timestampToMillis(sql.asTimestamp(sql.millisToTimestamp("millis"))),
-          truncated_millis: sql.timestampToMillis(
-            sql.timestampTruncate(sql.asTimestamp(sql.millisToTimestamp("millis")), "day")
+          millis: sql.timestamps.toMillis(sql.asTimestamp(sql.timestamps.fromMillis("millis"))),
+          truncated_millis: sql.timestamps.toMillis(
+            sql.timestamps.truncate(sql.asTimestamp(sql.timestamps.fromMillis("millis")), "day")
           )
         });
 
