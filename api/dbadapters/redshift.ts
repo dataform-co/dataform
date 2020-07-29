@@ -6,6 +6,7 @@ import { IDbAdapter, OnCancel } from "df/api/dbadapters/index";
 import { SSHTunnelProxy } from "df/api/ssh_tunnel_proxy";
 import { parseRedshiftEvalError } from "df/api/utils/error_parsing";
 import { ErrorWithCause } from "df/common/errors/errors";
+import { runAsyncIgnoringErrors, sleep } from "df/common/promises";
 import { collectEvaluationQueries, QueryOrAction } from "df/core/adapters";
 import { dataform } from "df/protos/ts";
 
@@ -288,8 +289,9 @@ class PgPoolExecutor {
       console.error("pg.Client client error", err.message, err.stack);
     });
     try {
+      const queryStream = new QueryStream(statement);
+      const query = client.query(queryStream);
       return await new Promise<any[]>((resolve, reject) => {
-        const query = client.query(new QueryStream(statement));
         const results: any[] = [];
         options?.onCancel?.(() => query.destroy());
         query.on("data", (row: any) => {
@@ -300,11 +302,27 @@ class PgPoolExecutor {
             query.destroy();
           }
         });
-        query.on("close", () => resolve(results));
-        query.on("error", e => reject(e));
+        query.on("error", e => {
+          // Destroy the query just in case.
+          query.destroy();
+          reject(e);
+        });
+        query.on("close", () => {
+          resolve(results);
+        });
       });
     } finally {
-      client.release();
+      // Before releasing the client to the pool, we wait a second.
+      // This is here to address issues we were seeing where it looks like
+      // queries would continue to emit events even after ending that causes
+      // uncaught exceptions inside pg code itself.
+      // https://github.com/dataform-co/dataform/issues/914
+      runAsyncIgnoringErrors(
+        (async () => {
+          await sleep(1000);
+          client.release();
+        })()
+      );
     }
   }
 
