@@ -3,7 +3,7 @@ config { type: "incremental", protected: true, hermetic: false }
 js {  const sql = require("@dataform/sql"); }
 
 select * from (
-    select ${sql().timestampCurrentUTC()} as ts
+    select ${sql().timestamps.currentUTC()} as ts
 )
 
 ${when(incremental(), `where ts > (select max(ts) from ${self()}) or (select max(ts) from ${self()}) is null`)}
