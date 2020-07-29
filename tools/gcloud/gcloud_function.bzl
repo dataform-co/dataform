@@ -11,6 +11,7 @@ def _deploy_nodejs_gcloud_function_impl(ctx, trigger_flag):
 
     file_content = [
         "%s functions deploy %s" % (_fullPath(ctx.attr.gcloud.label), function_name),
+        "--project=%s" % ctx.attr.project,
         "--source %s" % ctx.build_file_path[:-6],
         "--runtime nodejs10",
         trigger_flag,
@@ -39,6 +40,7 @@ deploy_http_nodejs_gcloud_function = rule(
     implementation = _deploy_http_nodejs_gcloud_function_impl,
     attrs = {
         "gcloud": attr.label(default = "@gcloud_sdk//:bin/gcloud", allow_single_file = True),
+        "project": attr.string(default = "", mandatory = True),
         "function_name": attr.string(default = "", mandatory = True, values = []),
         # TODO: This rule currently assumes that all srcs are inside the calling BUILD file's package.
         # We should fix that somehow, possibly by trying to use rollup to obtain a single file, or perhaps
@@ -53,6 +55,7 @@ deploy_pubsub_nodejs_gcloud_function = rule(
     implementation = _deploy_pubsub_nodejs_gcloud_function_impl,
     attrs = {
         "gcloud": attr.label(default = "@gcloud_sdk//:bin/gcloud", allow_single_file = True),
+        "project": attr.string(default = "", mandatory = True),
         "function_name": attr.string(default = "", mandatory = True, values = []),
         "topic_name": attr.string(default = "", mandatory = True, values = []),
         # TODO: This rule currently assumes that all srcs are inside the calling BUILD file's package.

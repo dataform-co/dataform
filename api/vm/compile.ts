@@ -53,20 +53,18 @@ export function compile(compileConfig: dataform.ICompileConfig) {
   const userCodeVm = new NodeVM({
     wrapper: "none",
     require: {
+      builtin: ["path"],
       context: "sandbox",
-      root: compileConfig.projectDir,
       external: true,
-      builtin: ["path"]
+      root: compileConfig.projectDir,
+      resolve: (moduleName, parentDirName) =>
+        path.join(parentDirName, path.relative(parentDirName, compileConfig.projectDir), moduleName)
     },
     sourceExtensions: ["js", "sql", "sqlx"],
     compiler
   });
 
-  const res: string = userCodeVm.run(
-    genIndex(createGenIndexConfig(compileConfig)),
-    vmIndexFileName
-  );
-  return res;
+  return userCodeVm.run(genIndex(createGenIndexConfig(compileConfig)), vmIndexFileName);
 }
 
 export function listenForCompileRequest() {
@@ -77,7 +75,11 @@ export function listenForCompileRequest() {
       const writeable = fs.createWriteStream(null, { fd: 4 });
       writeable.write(compiledResult, "utf8");
     } catch (e) {
-      process.send(e);
+      const serializableError = {};
+      for (const prop of Object.getOwnPropertyNames(e)) {
+        (serializableError as any)[prop] = e[prop];
+      }
+      process.send(serializableError);
     }
     process.exit();
   });

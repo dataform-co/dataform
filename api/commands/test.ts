@@ -14,10 +14,20 @@ async function runTest(
 ): Promise<dataform.ITestResult> {
   // TODO: Test results are currently limited to 1000 rows.
   // We should paginate test results to remove this limit.
-  const [actualResults, expectedResults] = await Promise.all([
-    dbadapter.execute(testCase.testQuery, { maxResults: 1000 }),
-    dbadapter.execute(testCase.expectedOutputQuery, { maxResults: 1000 })
-  ]);
+  let actualResults;
+  let expectedResults;
+  try {
+    [actualResults, expectedResults] = await Promise.all([
+      dbadapter.execute(testCase.testQuery, { maxResults: 1000 }),
+      dbadapter.execute(testCase.expectedOutputQuery, { maxResults: 1000 })
+    ]);
+  } catch (e) {
+    return {
+      name: testCase.name,
+      successful: false,
+      messages: [`Error thrown: ${e.message}.`]
+    };
+  }
 
   // Check row counts.
   if (actualResults.rows.length !== expectedResults.rows.length) {
@@ -71,13 +81,21 @@ async function runTest(
 
     for (const column of actualColumns) {
       const normalizedColumn = normalizeColumnName(column);
-      if (actualResultRow[normalizedColumn] !== expectedResultRow[normalizedColumn]) {
+      const expectedValue = expectedResultRow[normalizedColumn];
+      const actualValue = actualResultRow[normalizedColumn];
+      if (typeof expectedValue !== typeof actualValue) {
         rowMessages.push(
-          `For row ${i} and column "${column}": expected "${
-            expectedResultRow[normalizedColumn]
-          }" (${typeof expectedResultRow[normalizedColumn]}), but saw "${
-            actualResultRow[normalizedColumn]
-          }" (${typeof actualResultRow[normalizedColumn]}).`
+          `For row ${i} and column "${column}": expected type "${typeof expectedValue}", but saw type "${typeof actualValue}".`
+        );
+        break;
+      }
+      const comparableExpectedValue =
+        typeof expectedValue === "object" ? JSON.stringify(expectedValue) : expectedValue;
+      const comparableActualValue =
+        typeof actualValue === "object" ? JSON.stringify(actualValue) : actualValue;
+      if (comparableExpectedValue !== comparableActualValue) {
+        rowMessages.push(
+          `For row ${i} and column "${column}": expected "${comparableExpectedValue}", but saw "${comparableActualValue}".`
         );
       }
     }

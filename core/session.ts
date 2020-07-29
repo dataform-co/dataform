@@ -7,11 +7,20 @@ import { AContextable, Assertion, IAssertionConfig } from "df/core/assertion";
 import { Contextable, ICommonContext, Resolvable } from "df/core/common";
 import { Declaration, IDeclarationConfig } from "df/core/declaration";
 import { IOperationConfig, Operation } from "df/core/operation";
-import { ITableConfig, ITableContext, Table, TableType } from "df/core/table";
+import {
+  DistStyleType,
+  ITableConfig,
+  ITableContext,
+  SortStyleType,
+  Table,
+  TableType
+} from "df/core/table";
 import * as test from "df/core/test";
 import * as utils from "df/core/utils";
 import { version as dataformCoreVersion } from "df/core/version";
 import { dataform } from "df/protos/ts";
+
+const SQL_DATA_WAREHOUSE_DIST_HASH_REGEXP = new RegExp("HASH\\s*\\(\\s*\\w*\\s*\\)\\s*");
 
 const DEFAULT_CONFIG = {
   defaultSchema: "dataform",
@@ -94,20 +103,6 @@ export class Session {
         "Actions may only contain more than one SQL statement if they are of type 'operations'."
       );
     }
-    if (
-      sqlxConfig.hasOwnProperty("hasOutput") &&
-      !(sqlxConfig.type === "operations" || definesDataset(sqlxConfig.type))
-    ) {
-      this.compileError(
-        "Actions may only specify 'hasOutput: true' if they are of type 'operations' or create a dataset."
-      );
-    }
-    if (
-      sqlxConfig.hasOwnProperty("columns") &&
-      !declaresDataset(sqlxConfig.type, sqlxConfig.hasOwnProperty("hasOutput"))
-    ) {
-      this.compileError("Actions may only specify 'columns' if they create or declare a dataset.");
-    }
     if (sqlxConfig.hasOwnProperty("protected") && sqlxConfig.type !== "incremental") {
       this.compileError(
         "Actions may only specify 'protected: true' if they are of type 'incremental'."
@@ -121,28 +116,8 @@ export class Session {
     if (!sqlxConfig.hasOwnProperty("schema") && sqlxConfig.type === "declaration") {
       this.compileError("Actions of type 'declaration' must specify a value for 'schema'.");
     }
-    if (sqlxConfig.hasOwnProperty("dataset") && sqlxConfig.type !== "test") {
-      this.compileError("Actions may only specify 'dataset' if they are of type 'test'.");
-    }
-    if (!sqlxConfig.hasOwnProperty("dataset") && sqlxConfig.type === "test") {
-      this.compileError("Actions must specify 'dataset' if they are of type 'test'.");
-    }
     if (actionOptions.hasInputs && sqlxConfig.type !== "test") {
       this.compileError("Actions may only include input blocks if they are of type 'test'.");
-    }
-    if (sqlxConfig.hasOwnProperty("disabled") && !definesDataset(sqlxConfig.type)) {
-      this.compileError("Actions may only specify 'disabled: true' if they create a dataset.");
-    }
-    if (sqlxConfig.hasOwnProperty("redshift") && !definesDataset(sqlxConfig.type)) {
-      this.compileError("Actions may only specify 'redshift: { ... }' if they create a dataset.");
-    }
-    if (sqlxConfig.hasOwnProperty("sqldatawarehouse") && !definesDataset(sqlxConfig.type)) {
-      this.compileError(
-        "Actions may only specify 'sqldatawarehouse: { ... }' if they create a dataset."
-      );
-    }
-    if (sqlxConfig.hasOwnProperty("bigquery") && !definesDataset(sqlxConfig.type)) {
-      this.compileError("Actions may only specify 'bigquery: { ... }' if they create a dataset.");
     }
     if (actionOptions.hasPreOperations && !definesDataset(sqlxConfig.type)) {
       this.compileError("Actions may only include pre_operations if they create a dataset.");
@@ -209,8 +184,12 @@ export class Session {
       }
       return this.adapter().resolveTarget({
         ...resolved.proto.target,
-        schema: `${resolved.proto.target.schema}${this.getSuffixWithUnderscore()}`,
-        name: `${this.getTablePrefixWithUnderscore()}${resolved.proto.target.name}`
+        schema: this.adapter().normalizeIdentifier(
+          `${resolved.proto.target.schema}${this.getSuffixWithUnderscore()}`
+        ),
+        name: this.adapter().normalizeIdentifier(
+          `${this.getTablePrefixWithUnderscore()}${resolved.proto.target.name}`
+        )
       });
     }
     // TODO: Here we allow 'ref' to go unresolved. This is for backwards compatibility with projects
@@ -223,8 +202,10 @@ export class Session {
         utils.target(
           this.adapter(),
           this.config,
-          `${this.getTablePrefixWithUnderscore()}${ref}`,
-          `${this.config.defaultSchema}${this.getSuffixWithUnderscore()}`
+          this.adapter().normalizeIdentifier(`${this.getTablePrefixWithUnderscore()}${ref}`),
+          this.adapter().normalizeIdentifier(
+            `${this.config.defaultSchema}${this.getSuffixWithUnderscore()}`
+          )
         )
       );
     }
@@ -232,8 +213,8 @@ export class Session {
       utils.target(
         this.adapter(),
         this.config,
-        `${this.getTablePrefixWithUnderscore()}${ref.name}`,
-        `${ref.schema}${this.getSuffixWithUnderscore()}`
+        this.adapter().normalizeIdentifier(`${this.getTablePrefixWithUnderscore()}${ref.name}`),
+        this.adapter().normalizeIdentifier(`${ref.schema}${this.getSuffixWithUnderscore()}`)
       )
     );
   }
@@ -303,11 +284,12 @@ export class Session {
     return newTest;
   }
 
-  public compileError(err: Error | string, path?: string) {
+  public compileError(err: Error | string, path?: string, actionName?: string) {
     const fileName = path || utils.getCallerFile(this.rootDir) || __filename;
 
     const compileError = dataform.CompilationError.create({
-      fileName
+      fileName,
+      actionName
     });
     if (typeof err === "string") {
       compileError.message = err;
@@ -346,24 +328,20 @@ export class Session {
       [].concat(compiledGraph.declarations.map(declaration => declaration.target))
     );
 
-    this.checkActionNameUniqueness(
-      [].concat(
-        compiledGraph.tables,
-        compiledGraph.assertions,
-        compiledGraph.operations,
-        compiledGraph.declarations
-      )
+    const standardActions = [].concat(
+      compiledGraph.tables,
+      compiledGraph.assertions,
+      compiledGraph.operations,
+      compiledGraph.declarations
     );
+
+    this.checkActionNameUniqueness(standardActions);
+
     this.checkTestNameUniqueness(compiledGraph.tests);
 
-    this.checkCanonicalTargetUniqueness(
-      [].concat(
-        compiledGraph.tables,
-        compiledGraph.assertions,
-        compiledGraph.operations,
-        compiledGraph.declarations
-      )
-    );
+    this.checkCanonicalTargetUniqueness(standardActions);
+
+    this.checkTableConfigValidity(compiledGraph.tables);
 
     this.checkCircularity(
       [].concat(compiledGraph.tables, compiledGraph.assertions, compiledGraph.operations)
@@ -418,7 +396,7 @@ export class Session {
         const compiledChunk = action.compile();
         compiledChunks.push(compiledChunk);
       } catch (e) {
-        this.compileError(e, action.proto.fileName);
+        this.compileError(e, action.proto.fileName, action.proto.name);
       }
     });
 
@@ -436,9 +414,10 @@ export class Session {
             new Error(
               `Missing dependency detected: Action "${
                 action.name
-              }" depends on "${utils.stringifyResolvable(dependency)}" which does not exist.`
+              }" depends on "${utils.stringifyResolvable(dependency)}" which does not exist`
             ),
-            action.fileName
+            action.fileName,
+            action.name
           );
         } else if (possibleDeps.length === 1) {
           // We found a single matching target, and fully-qualify it if it's a normal dependency,
@@ -453,7 +432,11 @@ export class Session {
           }
         } else {
           // Too many targets matched the dependency.
-          this.compileError(new Error(utils.ambiguousActionNameMsg(dependency, possibleDeps)));
+          this.compileError(
+            new Error(utils.ambiguousActionNameMsg(dependency, possibleDeps)),
+            action.fileName,
+            action.name
+          );
         }
       }
       action.dependencies = Object.keys(fullyQualifiedDependencies);
@@ -482,8 +465,12 @@ export class Session {
     actions.forEach(action => {
       newTargetByOriginalTarget.set(action.target, {
         ...action.target,
-        schema: `${action.target.schema}${this.getSuffixWithUnderscore()}`,
-        name: `${this.getTablePrefixWithUnderscore()}${action.target.name}`
+        schema: this.adapter().normalizeIdentifier(
+          `${action.target.schema}${this.getSuffixWithUnderscore()}`
+        ),
+        name: this.adapter().normalizeIdentifier(
+          `${this.getTablePrefixWithUnderscore()}${action.target.name}`
+        )
       });
       action.target = newTargetByOriginalTarget.get(action.target);
       action.name = utils.targetToName(action.target);
@@ -506,9 +493,10 @@ export class Session {
       if (allNames.includes(action.name)) {
         this.compileError(
           new Error(
-            `Duplicate action name detected. Names within a schema must be unique across tables, declarations, assertions, and operations: "${action.name}"`
+            `Duplicate action name detected. Names within a schema must be unique across tables, declarations, assertions, and operations`
           ),
-          action.fileName
+          action.fileName,
+          action.name
         );
       }
       allNames.push(action.name);
@@ -527,10 +515,137 @@ export class Session {
               action.canonicalTarget
             )}"`
           ),
-          action.fileName
+          action.fileName,
+          action.name
         );
       }
       allCanonicalTargets.set(action.canonicalTarget, true);
+    });
+  }
+
+  private checkTableConfigValidity(tables: dataform.ITable[]) {
+    tables.forEach(table => {
+      // type
+      if (!!table.type && !TableType.includes(table.type as TableType)) {
+        this.compileError(
+          `Wrong type of table detected. Should only use predefined types: ${joinQuoted(
+            TableType
+          )}`,
+          table.fileName,
+          table.name
+        );
+      }
+
+      // sqldatawarehouse config
+      if (!!table.sqlDataWarehouse) {
+        if (!!table.uniqueKey && table.uniqueKey.length > 0) {
+          this.compileError(
+            new Error(
+              `Merging using unique keys for SQLDataWarehouse has not yet been implemented`
+            ),
+            table.fileName,
+            table.name
+          );
+        }
+
+        if (table.sqlDataWarehouse.distribution) {
+          const distribution = table.sqlDataWarehouse.distribution.toUpperCase();
+          if (
+            distribution !== "REPLICATE" &&
+            distribution !== "ROUND_ROBIN" &&
+            !SQL_DATA_WAREHOUSE_DIST_HASH_REGEXP.test(distribution)
+          ) {
+            this.compileError(
+              new Error(`Invalid value for sqldatawarehouse distribution: ${distribution}`),
+              table.fileName,
+              table.name
+            );
+          }
+        }
+      }
+
+      // Redshift config
+      if (!!table.redshift) {
+        const validatePropertyDefined = (
+          opts: dataform.IRedshiftOptions,
+          prop: keyof dataform.IRedshiftOptions
+        ) => {
+          const value = opts[prop];
+          if (!opts.hasOwnProperty(prop)) {
+            this.compileError(`Property "${prop}" is not defined`, table.fileName, table.name);
+          } else if (value instanceof Array) {
+            if (value.length === 0) {
+              this.compileError(`Property "${prop}" is not defined`, table.fileName, table.name);
+            }
+          }
+        };
+        const validatePropertiesDefined = (
+          opts: dataform.IRedshiftOptions,
+          props: Array<keyof dataform.IRedshiftOptions>
+        ) => props.forEach(prop => validatePropertyDefined(opts, prop));
+        const validatePropertyValueInValues = (
+          opts: dataform.IRedshiftOptions,
+          prop: keyof dataform.IRedshiftOptions & ("distStyle" | "sortStyle"),
+          values: readonly string[]
+        ) => {
+          if (!!opts[prop] && !values.includes(opts[prop])) {
+            this.compileError(
+              `Wrong value of "${prop}" property. Should only use predefined values: ${joinQuoted(
+                values
+              )}`,
+              table.fileName,
+              table.name
+            );
+          }
+        };
+
+        if (table.redshift.distStyle || table.redshift.distKey) {
+          validatePropertiesDefined(table.redshift, ["distStyle", "distKey"]);
+          validatePropertyValueInValues(table.redshift, "distStyle", DistStyleType);
+        }
+        if (
+          table.redshift.sortStyle ||
+          (table.redshift.sortKeys && table.redshift.sortKeys.length)
+        ) {
+          validatePropertiesDefined(table.redshift, ["sortStyle", "sortKeys"]);
+          validatePropertyValueInValues(table.redshift, "sortStyle", SortStyleType);
+        }
+      }
+
+      // BigQuery config
+      if (!!table.bigquery) {
+        if (table.bigquery.partitionBy && table.type === "view") {
+          this.compileError(
+            `partitionBy/clusterBy are not valid for BigQuery views; they are only valid for tables`,
+            table.fileName,
+            table.name
+          );
+        }
+        if (
+          !!table.bigquery.clusterBy &&
+          table.bigquery.clusterBy.length > 0 &&
+          !table.bigquery.partitionBy
+        ) {
+          this.compileError(
+            `clusterBy is not valid without partitionBy`,
+            table.fileName,
+            table.name
+          );
+        }
+      }
+
+      // Ignored properties
+      if (!!Table.IGNORED_PROPS[table.type]) {
+        Table.IGNORED_PROPS[table.type].forEach(ignoredProp => {
+          if (objectExistsOrIsNonEmpty(table[ignoredProp])) {
+            this.compileError(
+              `Unused property was detected: "${ignoredProp}". This property is not used for tables with type "${table.type}" and will be ignored`,
+              table.fileName,
+              table.name
+            );
+          }
+        });
+      }
     });
   }
 
@@ -540,7 +655,8 @@ export class Session {
       if (allNames.includes(testProto.name)) {
         this.compileError(
           new Error(`Duplicate test name detected: "${testProto.name}"`),
-          testProto.fileName
+          testProto.fileName,
+          testProto.name
         );
       }
       allNames.push(testProto.name);
@@ -584,7 +700,8 @@ export class Session {
         new Error(
           "Zero-dependency actions which create datasets are required to explicitly declare 'hermetic: (true|false)' when run caching is turned on."
         ),
-        action.fileName
+        action.fileName,
+        action.name
       );
     });
   }
@@ -611,4 +728,20 @@ function getCanonicalProjectConfig(originalProjectConfig: dataform.IProjectConfi
     defaultDatabase: originalProjectConfig.defaultDatabase,
     assertionSchema: originalProjectConfig.assertionSchema
   };
+}
+
+function joinQuoted(values: readonly string[]) {
+  return values.map((value: string) => `"${value}"`).join(" | ");
+}
+
+function objectExistsOrIsNonEmpty(prop: any): boolean {
+  if (!prop) {
+    return false;
+  }
+
+  return (
+    (Array.isArray(prop) && !!prop.length) ||
+    (!Array.isArray(prop) && typeof prop === "object" && !!Object.keys(prop).length) ||
+    typeof prop !== "object"
+  );
 }

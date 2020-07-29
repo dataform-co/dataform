@@ -6,9 +6,9 @@ import * as adapters from "df/core/adapters";
 import { SnowflakeAdapter } from "df/core/adapters/snowflake";
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
-import { dropAllTables, getTableRows, keyBy } from "df/tests/integration/utils";
+import { compile, dropAllTables, getTableRows, keyBy } from "df/tests/integration/utils";
 
-suite("@dataform/integration/snowflake", ({ before, after }) => {
+suite("@dataform/integration/snowflake", { parallel: true }, ({ before, after }) => {
   const credentials = dfapi.credentials.read("snowflake", "test_credentials/snowflake.json");
   let dbadapter: dbadapters.IDbAdapter;
 
@@ -19,12 +19,7 @@ suite("@dataform/integration/snowflake", ({ before, after }) => {
   after("close adapter", () => dbadapter.close());
 
   test("run", { timeout: 90000 }, async () => {
-    const compiledGraph = await dfapi.compile({
-      projectDir: "tests/integration/snowflake_project"
-    });
-
-    expect(compiledGraph.graphErrors.compilationErrors).to.eql([]);
-    expect(compiledGraph.graphErrors.validationErrors).to.eql([]);
+    const compiledGraph = await compile("tests/integration/snowflake_project", "project_e2e");
 
     const adapter = adapters.create(compiledGraph.projectConfig, compiledGraph.dataformCoreVersion);
 
@@ -34,8 +29,123 @@ suite("@dataform/integration/snowflake", ({ before, after }) => {
     await dropAllTables(tablesToDelete, adapter, dbadapter);
 
     // Drop schemas to make sure schema creation works.
-    await dbadapter.execute(`drop schema if exists "INTEGRATION_TESTS"."df_integration_test"`);
-    await dbadapter.execute(`drop schema if exists "INTEGRATION_TESTS2"."df_integration_test"`);
+    await dbadapter.execute(
+      `drop schema if exists "INTEGRATION_TESTS"."DF_INTEGRATION_TEST_PROJECT_E2E"`
+    );
+    await dbadapter.execute(
+      `drop schema if exists "INTEGRATION_TESTS2"."DF_INTEGRATION_TEST_PROJECT_E2E"`
+    );
+
+    // Run the project.
+    let executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
+    let executedGraph = await dfapi.run(dbadapter, executionGraph).result();
+
+    const actionMap = keyBy(executedGraph.actions, v => v.name);
+    expect(Object.keys(actionMap).length).eql(14);
+
+    // Check the status of action execution.
+    const expectedFailedActions = [
+      "DF_INTEGRATION_TEST_ASSERTIONS_PROJECT_E2E.EXAMPLE_ASSERTION_UNIQUENESS_FAIL",
+      "DF_INTEGRATION_TEST_ASSERTIONS_PROJECT_E2E.EXAMPLE_ASSERTION_FAIL"
+    ];
+    for (const actionName of Object.keys(actionMap)) {
+      const expectedResult = expectedFailedActions.includes(actionName)
+        ? dataform.ActionResult.ExecutionStatus.FAILED
+        : dataform.ActionResult.ExecutionStatus.SUCCESSFUL;
+      expect(
+        dataform.ActionResult.ExecutionStatus[actionMap[actionName].status],
+        `ActionResult ExecutionStatus for action "${actionName}"` +
+          ":" +
+          actionMap[actionName].tasks.map(t => t.errorMessage)
+      ).equals(dataform.ActionResult.ExecutionStatus[expectedResult]);
+    }
+
+    expect(
+      actionMap["DF_INTEGRATION_TEST_ASSERTIONS_PROJECT_E2E.EXAMPLE_ASSERTION_UNIQUENESS_FAIL"]
+        .tasks[1].errorMessage
+    ).to.eql("snowflake error: Assertion failed: query returned 1 row(s).");
+
+    // Check the status of the s3 load operation.
+    expect(actionMap["DF_INTEGRATION_TEST_PROJECT_E2E.LOAD_FROM_S3"].status).equals(
+      dataform.ActionResult.ExecutionStatus.SUCCESSFUL
+    );
+
+    // Check the s3 table has two rows, as per:
+    // https://dataform-integration-tests.s3.us-east-2.amazonaws.com/sample-data/sample_data.csv
+    const s3Table = keyBy(compiledGraph.operations, t => t.name)[
+      "DF_INTEGRATION_TEST_PROJECT_E2E.LOAD_FROM_S3"
+    ];
+    const s3Rows = await getTableRows(s3Table.target, adapter, dbadapter);
+    expect(s3Rows.length).equals(2);
+
+    // Check the status of the view in the non-default database.
+    const tada2DatabaseView = keyBy(compiledGraph.tables, t => t.name)[
+      "INTEGRATION_TESTS2.DF_INTEGRATION_TEST_PROJECT_E2E.SAMPLE_DATA_2"
+    ];
+    const tada2DatabaseViewRows = await getTableRows(tada2DatabaseView.target, adapter, dbadapter);
+    expect(tada2DatabaseViewRows.length).equals(3);
+
+    // Check the data in the incremental tables.
+    let incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
+      "DF_INTEGRATION_TEST_PROJECT_E2E.EXAMPLE_INCREMENTAL"
+    ];
+    let incrementalRows = await getTableRows(incrementalTable.target, adapter, dbadapter);
+    expect(incrementalRows.length).equals(3);
+
+    const incrementalTable2 = keyBy(compiledGraph.tables, t => t.name)[
+      "INTEGRATION_TESTS2.DF_INTEGRATION_TEST_PROJECT_E2E.EXAMPLE_INCREMENTAL_TADA2"
+    ];
+    const incrementalRows2 = await getTableRows(incrementalTable2.target, adapter, dbadapter);
+    expect(incrementalRows2.length).equals(3);
+
+    // Check the data in the incremental merge table.
+    incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
+      "DF_INTEGRATION_TEST_PROJECT_E2E.EXAMPLE_INCREMENTAL_MERGE"
+    ];
+    incrementalRows = await getTableRows(incrementalTable.target, adapter, dbadapter);
+    expect(incrementalRows.length).equals(2);
+
+    // Re-run some of the actions.
+    executionGraph = await dfapi.build(
+      compiledGraph,
+      {
+        actions: [
+          "EXAMPLE_INCREMENTAL",
+          "EXAMPLE_INCREMENTAL_MERGE",
+          "EXAMPLE_INCREMENTAL_TADA2",
+          "EXAMPLE_TABLE",
+          "EXAMPLE_VIEW"
+        ]
+      },
+      dbadapter
+    );
+
+    executedGraph = await dfapi.run(dbadapter, executionGraph).result();
+    expect(executedGraph.status).equals(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
+
+    // Check there are the expected number of extra rows in the incremental tables.
+    incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
+      "DF_INTEGRATION_TEST_PROJECT_E2E.EXAMPLE_INCREMENTAL"
+    ];
+    incrementalRows = await getTableRows(incrementalTable.target, adapter, dbadapter);
+    expect(incrementalRows.length).equals(5);
+
+    incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
+      "INTEGRATION_TESTS2.DF_INTEGRATION_TEST_PROJECT_E2E.EXAMPLE_INCREMENTAL_TADA2"
+    ];
+    incrementalRows = await getTableRows(incrementalTable2.target, adapter, dbadapter);
+    expect(incrementalRows.length).equals(5);
+
+    // Check the data in the incremental merge table.
+    incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
+      "DF_INTEGRATION_TEST_PROJECT_E2E.EXAMPLE_INCREMENTAL_MERGE"
+    ];
+    incrementalRows = await getTableRows(incrementalTable.target, adapter, dbadapter);
+    expect(incrementalRows.length).equals(2);
+  });
+
+  test("run unit tests", async () => {
+    const compiledGraph = await compile("tests/integration/snowflake_project", "unit_tests");
 
     // Run the tests.
     const testResults = await dfapi.test(dbadapter, compiledGraph.tests);
@@ -60,115 +170,12 @@ suite("@dataform/integration/snowflake", ({ before, after }) => {
         name: "wrong row contents",
         successful: false,
         messages: [
-          'For row 0 and column "COL2": expected "1" (number), but saw "5" (number).',
-          'For row 1 and column "COL3": expected "6.5" (number), but saw "12" (number).',
-          'For row 2 and column "COL1": expected "sup?" (string), but saw "WRONG" (string).'
+          'For row 0 and column "COL2": expected "1", but saw "5".',
+          'For row 1 and column "COL3": expected "6.5", but saw "12".',
+          'For row 2 and column "COL1": expected "sup?", but saw "WRONG".'
         ]
       }
     ]);
-
-    // Run the project.
-    let executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
-    let executedGraph = await dfapi.run(executionGraph, dbadapter).result();
-
-    const executionActionMap = keyBy(executionGraph.actions, v => v.name);
-    const actionMap = keyBy(executedGraph.actions, v => v.name);
-    expect(Object.keys(actionMap).length).eql(14);
-
-    // Check the status of action execution.
-    const expectedFailedActions = [
-      "DF_INTEGRATION_TEST_ASSERTIONS.EXAMPLE_ASSERTION_UNIQUENESS_FAIL",
-      "DF_INTEGRATION_TEST_ASSERTIONS.EXAMPLE_ASSERTION_FAIL"
-    ];
-    for (const actionName of Object.keys(actionMap)) {
-      const expectedResult = expectedFailedActions.includes(actionName)
-        ? dataform.ActionResult.ExecutionStatus.FAILED
-        : dataform.ActionResult.ExecutionStatus.SUCCESSFUL;
-      expect(actionMap[actionName].status).equals(expectedResult);
-    }
-
-    expect(
-      actionMap["DF_INTEGRATION_TEST_ASSERTIONS.EXAMPLE_ASSERTION_UNIQUENESS_FAIL"].tasks[1]
-        .errorMessage
-    ).to.eql("snowflake error: Assertion failed: query returned 1 row(s).");
-
-    // Check the status of the s3 load operation.
-    expect(actionMap["DF_INTEGRATION_TEST.LOAD_FROM_S3"].status).equals(
-      dataform.ActionResult.ExecutionStatus.SUCCESSFUL
-    );
-
-    // Check the s3 table has two rows, as per:
-    // https://dataform-integration-tests.s3.us-east-2.amazonaws.com/sample-data/sample_data.csv
-    const s3Table = keyBy(compiledGraph.operations, t => t.name)[
-      "DF_INTEGRATION_TEST.LOAD_FROM_S3"
-    ];
-    const s3Rows = await getTableRows(s3Table.target, adapter, dbadapter);
-    expect(s3Rows.length).equals(2);
-
-    // Check the status of the view in the non-default database.
-    const tada2DatabaseView = keyBy(compiledGraph.tables, t => t.name)[
-      "INTEGRATION_TESTS2.DF_INTEGRATION_TEST.SAMPLE_DATA_2"
-    ];
-    const tada2DatabaseViewRows = await getTableRows(tada2DatabaseView.target, adapter, dbadapter);
-    expect(tada2DatabaseViewRows.length).equals(3);
-
-    // Check the data in the incremental tables.
-    let incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
-      "DF_INTEGRATION_TEST.EXAMPLE_INCREMENTAL"
-    ];
-    let incrementalRows = await getTableRows(incrementalTable.target, adapter, dbadapter);
-    expect(incrementalRows.length).equals(3);
-
-    const incrementalTable2 = keyBy(compiledGraph.tables, t => t.name)[
-      "INTEGRATION_TESTS2.DF_INTEGRATION_TEST.EXAMPLE_INCREMENTAL_TADA2"
-    ];
-    const incrementalRows2 = await getTableRows(incrementalTable2.target, adapter, dbadapter);
-    expect(incrementalRows2.length).equals(3);
-
-    // Check the data in the incremental merge table.
-    incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
-      "DF_INTEGRATION_TEST.EXAMPLE_INCREMENTAL_MERGE"
-    ];
-    incrementalRows = await getTableRows(incrementalTable.target, adapter, dbadapter);
-    expect(incrementalRows.length).equals(2);
-
-    // Re-run some of the actions.
-    executionGraph = await dfapi.build(
-      compiledGraph,
-      {
-        actions: [
-          "EXAMPLE_INCREMENTAL",
-          "EXAMPLE_INCREMENTAL_MERGE",
-          "EXAMPLE_INCREMENTAL_TADA2",
-          "EXAMPLE_TABLE",
-          "EXAMPLE_VIEW"
-        ]
-      },
-      dbadapter
-    );
-
-    executedGraph = await dfapi.run(executionGraph, dbadapter).result();
-    expect(executedGraph.status).equals(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
-
-    // Check there are the expected number of extra rows in the incremental tables.
-    incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
-      "DF_INTEGRATION_TEST.EXAMPLE_INCREMENTAL"
-    ];
-    incrementalRows = await getTableRows(incrementalTable.target, adapter, dbadapter);
-    expect(incrementalRows.length).equals(5);
-
-    incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
-      "INTEGRATION_TESTS2.DF_INTEGRATION_TEST.EXAMPLE_INCREMENTAL_TADA2"
-    ];
-    incrementalRows = await getTableRows(incrementalTable2.target, adapter, dbadapter);
-    expect(incrementalRows.length).equals(5);
-
-    // Check the data in the incremental merge table.
-    incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
-      "DF_INTEGRATION_TEST.EXAMPLE_INCREMENTAL_MERGE"
-    ];
-    incrementalRows = await getTableRows(incrementalTable.target, adapter, dbadapter);
-    expect(incrementalRows.length).equals(2);
   });
 
   suite("result limit works", async () => {
@@ -197,20 +204,22 @@ suite("@dataform/integration/snowflake", ({ before, after }) => {
   suite("evaluate", async () => {
     test("evaluate from valid compiled graph as valid", async () => {
       // Create and run the project.
-      const compiledGraph = await dfapi.compile({
-        projectDir: "tests/integration/snowflake_project"
-      });
+      const compiledGraph = await compile("tests/integration/snowflake_project", "evaluate");
       const executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
-      await dfapi.run(executionGraph, dbadapter).result();
+      await dfapi.run(dbadapter, executionGraph).result();
 
-      const view = keyBy(compiledGraph.tables, t => t.name)["DF_INTEGRATION_TEST.EXAMPLE_VIEW"];
+      const view = keyBy(compiledGraph.tables, t => t.name)[
+        "DF_INTEGRATION_TEST_EVALUATE.EXAMPLE_VIEW"
+      ];
       let evaluations = await dbadapter.evaluate(dataform.Table.create(view));
       expect(evaluations.length).to.equal(1);
       expect(evaluations[0].status).to.equal(
         dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
       );
 
-      const table = keyBy(compiledGraph.tables, t => t.name)["DF_INTEGRATION_TEST.EXAMPLE_TABLE"];
+      const table = keyBy(compiledGraph.tables, t => t.name)[
+        "DF_INTEGRATION_TEST_EVALUATE.EXAMPLE_TABLE"
+      ];
       evaluations = await dbadapter.evaluate(dataform.Table.create(table));
       expect(evaluations.length).to.equal(1);
       expect(evaluations[0].status).to.equal(
@@ -218,7 +227,7 @@ suite("@dataform/integration/snowflake", ({ before, after }) => {
       );
 
       const assertion = keyBy(compiledGraph.assertions, t => t.name)[
-        "DF_INTEGRATION_TEST_ASSERTIONS.EXAMPLE_ASSERTION_PASS"
+        "DF_INTEGRATION_TEST_ASSERTIONS_EVALUATE.EXAMPLE_ASSERTION_PASS"
       ];
       evaluations = await dbadapter.evaluate(dataform.Assertion.create(assertion));
       expect(evaluations.length).to.equal(1);
@@ -227,7 +236,7 @@ suite("@dataform/integration/snowflake", ({ before, after }) => {
       );
 
       const incremental = keyBy(compiledGraph.tables, t => t.name)[
-        "DF_INTEGRATION_TEST.EXAMPLE_INCREMENTAL"
+        "DF_INTEGRATION_TEST_EVALUATE.EXAMPLE_INCREMENTAL"
       ];
       evaluations = await dbadapter.evaluate(dataform.Table.create(incremental));
       expect(evaluations.length).to.equal(2);

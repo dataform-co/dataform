@@ -263,55 +263,6 @@ export const FileInput = (props: IFileInputProps & React.LabelHTMLAttributes<HTM
   );
 };
 
-interface IFileInputWithValidationProps {
-  validationRules?: Array<IValidationRule<string>>;
-  name: string;
-  required: boolean;
-}
-
-/**
- * @deprecated Use `useForm`, or `ValidationErrors` directly.
- */
-export const FileInputWithValidation = ({
-  validationRules,
-  onInputChange,
-  onBlur,
-  ...rest
-}: IFileInputWithValidationProps & IFileInputProps) => {
-  const { fileName } = useForm({
-    fileName: {
-      default: rest.value || rest.defaultValue,
-      rules: [
-        ...(rest.required ? [ValidationRules.required(rest.name)] : []),
-        ...(validationRules || [])
-      ]
-    }
-  });
-  return (
-    <>
-      <FileInput
-        {...rest}
-        value={fileName.value()}
-        onInputChange={e => {
-          const file = (e.target as HTMLInputElement).files[0];
-          fileName.set(file.name);
-          if (onInputChange) {
-            onInputChange(e);
-          }
-        }}
-        onBlur={(e: React.FocusEvent<HTMLLabelElement>) => {
-          fileName.showErrors();
-          if (onBlur) {
-            onBlur(e);
-          }
-        }}
-      />
-
-      <ValidationErrors errors={fileName.errors()} />
-    </>
-  );
-};
-
 interface ITagInputWithValidationProps extends ITagInputProps {
   validationRules?: Array<IValidationRule<string>>;
 }

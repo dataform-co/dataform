@@ -1,3 +1,4 @@
+load("@rules_proto//proto:defs.bzl", "proto_library")
 load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
 
 package(default_visibility = ["//visibility:public"])
@@ -59,4 +60,24 @@ ts_proto_library(
         ":schedules_proto",
         ":server_proto",
     ],
+)
+
+load("//testing:build_test.bzl", "build_test")
+
+build_test(
+    name = "build_test",
+    deps = [
+        ":dataform_go_proto",
+        ":dataform_java_proto",
+        ":schedules_go_proto",
+        ":schedules_java_proto",
+    ],
+)
+
+go_proto_library(
+    name = "server_go_proto",
+    compilers = ["@io_bazel_rules_go//proto:go_grpc"],
+    importpath = "github.com/dataform-co/dataform/protos",
+    proto = ":server_proto",
+    deps = [":dataform_go_proto"],
 )

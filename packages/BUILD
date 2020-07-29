@@ -3,7 +3,10 @@ load("@build_bazel_rules_nodejs//:index.bzl", "nodejs_binary")
 
 package(default_visibility = ["//visibility:public"])
 
-exports_files(["rollup.config.js", "rollup_dts.config.js"])
+exports_files([
+    "rollup.config.js",
+    "rollup_dts.config.js",
+])
 
 ts_library(
     name = "gen-package-json",

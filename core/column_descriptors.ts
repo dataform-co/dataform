@@ -1,8 +1,5 @@
-import {
-  IColumnsDescriptor,
-  IRecordDescriptor,
-  IRecordDescriptorProperties
-} from "df/core/common";
+import { flatten } from "df/common/arrays/arrays";
+import { IColumnsDescriptor, IRecordDescriptor, IRecordDescriptorProperties } from "df/core/common";
 import * as utils from "df/core/utils";
 import { dataform } from "df/protos/ts";
 
@@ -14,7 +11,7 @@ export class ColumnDescriptors {
     columns: IColumnsDescriptor,
     reportError: (e: Error) => void
   ): dataform.IColumnDescriptor[] {
-    return utils.flatten(
+    return flatten(
       Object.keys(columns).map(column =>
         ColumnDescriptors.mapColumnDescriptionToProto([column], columns[column], reportError)
       )
@@ -48,13 +45,14 @@ export class ColumnDescriptors {
             displayName: description.displayName,
             dimensionType: ColumnDescriptors.mapDimensionType(description.dimension),
             aggregation: ColumnDescriptors.mapAggregation(description.aggregator),
-            expression: description.expression
+            expression: description.expression,
+            tags: typeof description.tags === "string" ? [description.tags] : description.tags
           })
         ]
       : [];
     const nestedColumns = description.columns ? Object.keys(description.columns) : [];
     return columnDescriptor.concat(
-      utils.flatten(
+      flatten(
         nestedColumns.map(nestedColumn =>
           ColumnDescriptors.mapColumnDescriptionToProto(
             currentPath.concat([nestedColumn]),
@@ -81,16 +79,52 @@ export class ColumnDescriptors {
     }
   }
 
+  public static mapFromAggregation(aggregation: dataform.ColumnDescriptor.Aggregation) {
+    switch (aggregation) {
+      case dataform.ColumnDescriptor.Aggregation.SUM:
+        return "sum";
+      case dataform.ColumnDescriptor.Aggregation.DISTINCT:
+        return "distinct";
+      case dataform.ColumnDescriptor.Aggregation.DERIVED:
+        return "derived";
+      case dataform.ColumnDescriptor.Aggregation.UNKNOWN_AGGREGATION:
+        return undefined;
+      case undefined:
+        return undefined;
+      default:
+        throw new Error(`Aggregation type not recognized: ${aggregation}`);
+    }
+  }
+
   public static mapDimensionType(dimensionType: string) {
     switch (dimensionType) {
       case "category":
         return dataform.ColumnDescriptor.DimensionType.CATEGORY;
       case "timestamp":
         return dataform.ColumnDescriptor.DimensionType.TIMESTAMP;
+      case "number":
+        return dataform.ColumnDescriptor.DimensionType.NUMBER;
       case undefined:
         return undefined;
       default:
         throw new Error(`'${dimensionType}' is not a valid dimension type.`);
+    }
+  }
+
+  public static mapFromDimensionType(dimensionType: dataform.ColumnDescriptor.DimensionType) {
+    switch (dimensionType) {
+      case dataform.ColumnDescriptor.DimensionType.CATEGORY:
+        return "category";
+      case dataform.ColumnDescriptor.DimensionType.TIMESTAMP:
+        return "timestamp";
+      case dataform.ColumnDescriptor.DimensionType.NUMBER:
+        return "number";
+      case dataform.ColumnDescriptor.DimensionType.UNKNOWN_DIMENSION:
+        return undefined;
+      case undefined:
+        return undefined;
+      default:
+        throw new Error(`Dimension type not recognized: ${dimensionType}`);
     }
   }
 }

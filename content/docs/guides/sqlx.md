@@ -15,7 +15,6 @@ If you are new to SQLX and Dataform, reading the introduction could be helpful t
 </p>
 <a href="/introduction/dataform-in-5-minutes"><button intent="primary">How SQLX works in 5 min</button></a></div>
 
-
 ## Structure
 
 SQLX contains the following components:
@@ -92,9 +91,9 @@ Some examples can be found [here](datasets#referencing-other-datasets).
 
 - **Post-operations**: the same as pre-operations, but defined with `post_operations { }`, and runs after the main SQL.
 
-<div className="bp3-callout bp3-icon-info-sign" markdown="1">
-  By default, pre and post operations are run in the same context as the main query for BiqQuery and SQL Data Warehouse. To disable this, see <a href="./datasets">here</a>. This feature is not supported for Redshift or Snowflake.
-</div>
+BigQuery and SQL Data Warehouse run all operations for a file (such as pre and post operations) in the same context; the executed SQL is created by joining all operations with a semi-colon `;`. For other warehouse types, operations are run as separate queries.
+
+This is useful for scripting, for example defining variables or UDFs in BigQuery before the create table statement.
 
 ## Sandboxing for fast, secure, reproducible SQLX compilation
 

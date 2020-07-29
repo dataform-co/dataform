@@ -27,7 +27,10 @@ DROP VIEW IF EXISTS someschema.someview
 
 These statements will be run without modification against the warehouse. You can use warehouse specific commands in these files, such as BigQuery's DML or DDL statements, or Redshift/Postgres specific commands.
 
-Operations files behave very similarly to the statements provided to the `pre_operations { ... }` and `post_operations { ... }` blocks used when publishing datasets.
+<div className="bp3-callout bp3-icon-info-sign bp3-intent-none" markdown="1">
+  BigQuery and SQL Data Warehouse run all operations for a file in the same context; the executed SQL is created by joining all operations with a semi-colon <code>;</code>.
+  For other warehouse types, operations are run as separate queries.
+</div>
 
 ## Custom dataset builds
 

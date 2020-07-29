@@ -15,12 +15,15 @@ message ProjectConfig {
   string default_schema = 2;
   string assertion_schema = 5;
 
+  int32 concurrent_query_limit = 13;
   int32 idempotent_action_retries = 8;
 
   string schema_suffix = 7;
   string table_prefix = 11;
   
   bool use_run_cache = 10;
+
+  // For internal use only, will be removed at a later date.
   bool use_single_query_per_action = 12;
 
   // Deprecated. Please use 'default_database' instead.
@@ -102,8 +105,11 @@ message RunConfig {
   bool full_refresh = 2;
   int32 timeout_millis = 7;
   bool use_run_cache = 8;
+
+  // For internal use only, will be removed at a later date.
   bool disable_set_metadata = 9;
 
+  // For internal use only, will be removed at a later date.
   bool use_single_query_per_action = 10;
 
   reserved 4, 6;
@@ -162,9 +168,10 @@ message SQLDataWarehouseOptions {
 
 message GraphErrors {
   repeated CompilationError compilation_errors = 1;
-  repeated ValidationError validation_errors = 2;
+  repeated ValidationError validation_errors = 2 [deprecated = true];
 }
 
+// Deprecated.
 message ValidationError {
   string action_name = 1;
   string message = 2;
@@ -172,6 +179,7 @@ message ValidationError {
 
 message CompilationError {
   string file_name = 1;
+  string action_name = 4;
   string message = 2;
   string stack = 3;
 }
@@ -222,6 +230,7 @@ message ColumnDescriptor {
     UNKNOWN_DIMENSION = 0;
     CATEGORY = 1;
     TIMESTAMP = 2;
+    NUMBER = 3;
   }
   DimensionType dimension_type = 4;
 
@@ -234,6 +243,8 @@ message ColumnDescriptor {
   Aggregation aggregation = 5;
 
   string expression = 6;
+
+  repeated string tags = 7;
 }
 
 message Table {
@@ -273,10 +284,10 @@ message Table {
   string file_name = 18;
 
   // Deprecated.
-  repeated string deprecated_parsed_columns = 12;
-  repeated ValidationError deprecated_validation_errors = 7;
-  string name = 1; // Use 'target' instead.
-  repeated string dependencies = 2; // Use 'dependency_targets' instead.
+  repeated string deprecated_parsed_columns = 12 [deprecated = true];
+  repeated ValidationError deprecated_validation_errors = 7 [deprecated = true];
+  string name = 1 [deprecated = true]; // Use 'target' instead.
+  repeated string dependencies = 2 [deprecated = true]; // Use 'dependency_targets' instead.
 
   reserved 16;
 }
@@ -287,6 +298,8 @@ message Operation {
 
   repeated Target dependency_targets = 11;
   ActionHermeticity hermeticity = 12;
+  
+  bool disabled = 14;
 
   repeated string queries = 6;
   bool has_output = 8;
@@ -310,6 +323,8 @@ message Assertion {
 
   repeated Target dependency_targets = 11;
   ActionHermeticity hermeticity = 12;
+  
+  bool disabled = 14;
 
   string query = 3;
 
@@ -405,6 +420,7 @@ message ExecutionGraph {
   ProjectConfig project_config = 1;
   RunConfig run_config = 2;
   WarehouseState warehouse_state = 4;
+  repeated Target declaration_targets = 5;
 
   repeated ExecutionAction actions = 3;
 }
@@ -479,13 +495,42 @@ message TestResult {
 }
 
 message Field {
+
+  enum Primitive {
+    UNKNOWN = 0;
+    INTEGER = 1;
+    FLOAT = 2;
+    NUMERIC = 5;
+    BOOLEAN = 3;
+    STRING = 4;
+    DATE = 6;
+    DATETIME = 7;
+    TIMESTAMP = 8;
+    TIME = 9;
+    BYTES = 10;
+    // Semi structured data from Snowflake has no strong schema, and could therefore be anything.
+    ANY = 11;
+  }
+
+  enum Flag {
+    UNKNOWN_FLAG = 0;
+    REPEATED = 1;
+  }
+
   string name = 1;
-  repeated string flags = 4;
+  
+  repeated Flag flags = 6;
+
   oneof type {
-    string primitive = 2;
+    Primitive primitive = 7;
     Fields struct = 3;
   }
-  string description  = 5;
+
+  string description = 5;
+
+  // Deprecated.
+  repeated string flags_deprecated = 4;
+  string primitive_deprecated = 2;
 }
 
 message Fields {
@@ -493,18 +538,34 @@ message Fields {
 }
 
 message TableMetadata {
+
+  enum Type {
+    UNKNOWN = 0;
+    TABLE = 1;
+    VIEW = 2;
+  }
+
   Target target = 1;
-  string type = 2; // "table" or "view"
+  Type type = 6;
+
   repeated Field fields = 3;
   int64 last_updated_millis = 4;
   string description = 5;
+
+  // Deprecated.
+  string type_deprecated = 2; // "table" or "view"
 }
 
 message PersistedTableMetadata {
   Target target = 1;
   string definition_hash = 2; // sha1 hash of ExectionAction object
   int64 last_updated_millis = 3; // Timestamp of the last modification to this dataset (where that modification happened as a result of a Dataform run).
-  repeated TableMetadata transitive_input_tables = 6;
+
+  message TransitiveInputMetadata {
+    Target target = 1;
+    int64 last_updated_millis = 2;
+  }
+  repeated TransitiveInputMetadata transitive_input_tables = 7;
   
-  reserved 4, 5;
+  reserved 4, 5, 6;
 }

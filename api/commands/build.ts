@@ -34,17 +34,22 @@ export async function build(
   const prunedGraph = prune(compiledGraph, runConfig);
   const transitiveInputsByTarget = computeAllTransitiveInputs(compiledGraph);
 
-  const allInvolvedTargets = new StringifiedSet<dataform.ITarget>(JSONObjectStringifier.create());
-  for (const includedAction of [
-    ...prunedGraph.tables,
-    ...prunedGraph.operations,
-    ...prunedGraph.assertions
-  ]) {
-    allInvolvedTargets.add(includedAction.target);
-    if (versionValidForTransitiveInputs(compiledGraph)) {
-      transitiveInputsByTarget
-        .get(includedAction.target)
-        .forEach(transitiveInputTarget => allInvolvedTargets.add(transitiveInputTarget));
+  const allInvolvedTargets = new StringifiedSet<dataform.ITarget>(
+    JSONObjectStringifier.create(),
+    prunedGraph.tables.map(table => table.target)
+  );
+  if (runConfig.useRunCache) {
+    for (const includedAction of [
+      ...prunedGraph.tables,
+      ...prunedGraph.operations,
+      ...prunedGraph.assertions
+    ]) {
+      allInvolvedTargets.add(includedAction.target);
+      if (versionValidForTransitiveInputs(compiledGraph)) {
+        transitiveInputsByTarget
+          .get(includedAction.target)
+          .forEach(transitiveInputTarget => allInvolvedTargets.add(transitiveInputTarget));
+      }
     }
   }
 
@@ -97,6 +102,7 @@ export class Builder {
       projectConfig: this.prunedGraph.projectConfig,
       runConfig: this.runConfig,
       warehouseState: this.warehouseState,
+      declarationTargets: this.prunedGraph.declarations.map(declaration => declaration.target),
       actions
     });
   }
@@ -110,15 +116,13 @@ export class Builder {
       throw new Error("Protected datasets cannot be fully refreshed.");
     }
 
-    const tasks = table.disabled
-      ? ([] as dataform.IExecutionTask[])
-      : this.adapter.publishTasks(table, runConfig, tableMetadata).build();
-
     return {
       ...this.toPartialExecutionAction(table),
       type: "table",
       tableType: table.type,
-      tasks,
+      tasks: table.disabled
+        ? []
+        : this.adapter.publishTasks(table, runConfig, tableMetadata).build(),
       hermeticity: table.hermeticity || dataform.ActionHermeticity.HERMETIC
     };
   }
@@ -127,7 +131,9 @@ export class Builder {
     return {
       ...this.toPartialExecutionAction(operation),
       type: "operation",
-      tasks: operation.queries.map(statement => ({ type: "statement", statement })),
+      tasks: operation.disabled
+        ? []
+        : operation.queries.map(statement => ({ type: "statement", statement })),
       hermeticity: operation.hermeticity || dataform.ActionHermeticity.NON_HERMETIC
     };
   }
@@ -136,7 +142,9 @@ export class Builder {
     return {
       ...this.toPartialExecutionAction(assertion),
       type: "assertion",
-      tasks: this.adapter.assertTasks(assertion, this.prunedGraph.projectConfig).build(),
+      tasks: assertion.disabled
+        ? []
+        : this.adapter.assertTasks(assertion, this.prunedGraph.projectConfig).build(),
       hermeticity: assertion.hermeticity || dataform.ActionHermeticity.HERMETIC
     };
   }

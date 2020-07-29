@@ -2,12 +2,34 @@ import * as https from "https";
 import * as PromisePool from "promise-pool-executor";
 
 import { Credentials } from "df/api/commands/credentials";
-import { collectEvaluationQueries, IDbAdapter, QueryOrAction } from "df/api/dbadapters/index";
+import { IDbAdapter, OnCancel } from "df/api/dbadapters/index";
 import { parseSnowflakeEvalError } from "df/api/utils/error_parsing";
 import { ErrorWithCause } from "df/common/errors/errors";
+import { collectEvaluationQueries, QueryOrAction } from "df/core/adapters";
 import { dataform } from "df/protos/ts";
 
+const HEARTBEAT_INTERVAL_SECONDS = 30;
+
+// This is horrible. However, it allows us to set the 'APPLICATION' parameter on client.environment,
+// which is passed all the way through to Snowflake's connection code. Pending a fix for
+// https://github.com/snowflakedb/snowflake-connector-nodejs/issues/100, this is the only way
+// we can achieve that.
+// tslint:disable-next-line: no-var-requires
+const snowflake = require("snowflake-sdk/lib/core")({
+  httpClientClass: require("snowflake-sdk/lib/http/node"),
+  loggerClass: require("snowflake-sdk/lib/logger/node"),
+  client: {
+    version: require("snowflake-sdk/lib/util").driverVersion,
+    environment: {
+      ...process.versions,
+      APPLICATION: "Dataform"
+    }
+  }
+}) as ISnowflake;
+snowflake.configure({ logLevel: "trace" });
+
 interface ISnowflake {
+  configure: (options: { logLevel: string }) => void;
   createConnection: (options: {
     account: string;
     username: string;
@@ -15,6 +37,8 @@ interface ISnowflake {
     database: string;
     warehouse: string;
     role: string;
+    clientSessionKeepAlive: boolean;
+    clientSessionKeepAliveHeartbeatFrequency: number;
   }) => ISnowflakeConnection;
 }
 
@@ -29,7 +53,7 @@ interface ISnowflakeConnection {
 }
 
 interface ISnowflakeStatement {
-  cancel: () => void;
+  cancel: (err: any) => void;
   streamRows: (options: { start?: number; end?: number }) => ISnowflakeResultStream;
 }
 
@@ -38,23 +62,33 @@ interface ISnowflakeResultStream {
 }
 
 export class SnowflakeDbAdapter implements IDbAdapter {
-  public static async create(credentials: Credentials) {
+  public static async create(
+    credentials: Credentials,
+    _: string,
+    options?: { concurrencyLimit?: number }
+  ) {
     const connection = await connect(credentials as dataform.ISnowflake);
-    return new SnowflakeDbAdapter(connection);
+    return new SnowflakeDbAdapter(connection, options);
   }
 
   // Unclear exactly what snowflakes limit's are here, we can experiment with increasing this.
-  private pool: PromisePool.PromisePoolExecutor = new PromisePool.PromisePoolExecutor({
-    concurrencyLimit: 10,
-    frequencyWindow: 1000,
-    frequencyLimit: 10
-  });
+  private pool: PromisePool.PromisePoolExecutor;
 
-  constructor(private readonly connection: ISnowflakeConnection) {}
+  constructor(
+    private readonly connection: ISnowflakeConnection,
+    options?: { concurrencyLimit?: number }
+  ) {
+    this.pool = new PromisePool.PromisePoolExecutor({
+      concurrencyLimit: options?.concurrencyLimit || 10,
+      frequencyWindow: 1000,
+      frequencyLimit: 10
+    });
+  }
 
   public async execute(
     statement: string,
     options: {
+      onCancel?: OnCancel;
       maxResults?: number;
     } = { maxResults: 1000 }
   ) {
@@ -68,9 +102,20 @@ export class SnowflakeDbAdapter implements IDbAdapter {
                 streamResult: true,
                 complete(err, stmt) {
                   if (err) {
-                    reject(err);
+                    let message = `Snowflake SQL query failed: ${err.message}.`;
+                    if (err.cause) {
+                      message += ` Root cause: ${err.cause}`;
+                    }
+                    reject(new ErrorWithCause(message, err));
                     return;
                   }
+                  options?.onCancel?.(() =>
+                    stmt.cancel((e: any) => {
+                      if (e) {
+                        reject(e);
+                      }
+                    })
+                  );
                   const rows: any[] = [];
                   const streamOptions =
                     !!options && !!options.maxResults
@@ -137,45 +182,43 @@ where LOWER(table_schema) != 'information_schema'
     }));
   }
 
-  public async schemas(database: string): Promise<string[]> {
-    const { rows } = await this.execute(
-      `select SCHEMA_NAME from ${database ? `"${database}".` : ""}information_schema.schemata`
-    );
-    return rows.map(row => row.SCHEMA_NAME);
-  }
-
-  public table(target: dataform.ITarget): Promise<dataform.ITableMetadata> {
-    return Promise.all([
-      this.execute(
-        `
-select column_name, data_type, is_nullable
-from ${target.database ? `"${target.database}".` : ""}information_schema.columns
-where table_schema = '${target.schema}' 
-  and table_name = '${target.name}'`
-      ),
+  public async table(target: dataform.ITarget): Promise<dataform.ITableMetadata> {
+    const [tableResults, columnResults] = await Promise.all([
       this.execute(
         `
 select table_type
 from ${target.database ? `"${target.database}".` : ""}information_schema.tables
 where table_schema = '${target.schema}'
   and table_name = '${target.name}'`
+      ),
+      this.execute(
+        `
+select column_name, data_type, is_nullable
+from ${target.database ? `"${target.database}".` : ""}information_schema.columns
+where table_schema = '${target.schema}' 
+  and table_name = '${target.name}'`
       )
-    ]).then(results => {
-      if (results[1].rows.length > 0) {
-        // The table exists.
-        return {
-          target,
-          type: results[1].rows[0].TABLE_TYPE === "VIEW" ? "view" : "table",
-          fields: results[0].rows.map(row => ({
-            name: row.COLUMN_NAME,
-            primitive: row.DATA_TYPE,
-            flags: row.IS_NULLABLE && row.IS_NULLABLE === "YES" ? ["nullable"] : []
-          }))
-        };
-      } else {
-        return null;
-      }
-    });
+    ]);
+    if (tableResults.rows.length === 0) {
+      // The table does not exist.
+      return null;
+    }
+
+    return {
+      target,
+      typeDeprecated: tableResults.rows[0].TABLE_TYPE === "VIEW" ? "view" : "table",
+      type:
+        tableResults.rows[0].TABLE_TYPE === "VIEW"
+          ? dataform.TableMetadata.Type.VIEW
+          : dataform.TableMetadata.Type.TABLE,
+      fields: columnResults.rows.map(row => ({
+        name: row.COLUMN_NAME,
+        primitiveDeprecated: row.DATA_TYPE,
+        primitive: convertFieldType(row.DATA_TYPE),
+        flagsDeprecated: row.IS_NULLABLE && row.IS_NULLABLE === "YES" ? ["nullable"] : [],
+        flags: row.DATA_TYPE === "ARRAY" ? [dataform.Field.Flag.REPEATED] : []
+      }))
+    };
   }
 
   public async preview(target: dataform.ITarget, limitRows: number = 10): Promise<any[]> {
@@ -185,13 +228,17 @@ where table_schema = '${target.schema}'
     return rows;
   }
 
-  public async prepareSchema(database: string, schema: string): Promise<void> {
-    const schemas = await this.schemas(database);
-    if (!schemas.includes(schema)) {
-      await this.execute(
-        `create schema if not exists ${database ? `"${database}".` : ""}"${schema}"`
-      );
-    }
+  public async schemas(database: string): Promise<string[]> {
+    const { rows } = await this.execute(
+      `select SCHEMA_NAME from ${database ? `"${database}".` : ""}information_schema.schemata`
+    );
+    return rows.map(row => row.SCHEMA_NAME);
+  }
+
+  public async createSchema(database: string, schema: string): Promise<void> {
+    await this.execute(
+      `create schema if not exists ${database ? `"${database}".` : ""}"${schema}"`
+    );
   }
 
   public async close() {
@@ -206,22 +253,15 @@ where table_schema = '${target.schema}'
     });
   }
 
-  public async prepareStateMetadataTable(): Promise<void> {
-    // Unimplemented.
-  }
-
   public async persistedStateMetadata(): Promise<dataform.IPersistedTableMetadata[]> {
-    const persistedMetadata: dataform.IPersistedTableMetadata[] = [];
-    return persistedMetadata;
+    return [];
   }
 
-  public async persistStateMetadata(actions: dataform.IExecutionAction[]) {
+  public async persistStateMetadata() {
     // Unimplemented.
   }
-  public async setMetadata(action: dataform.IExecutionAction): Promise<void> {
-    // Unimplemented.
-  }
-  public async deleteStateMetadata(actions: dataform.IExecutionAction[]): Promise<void> {
+
+  public async setMetadata(): Promise<void> {
     // Unimplemented.
   }
 }
@@ -234,28 +274,16 @@ async function connect(snowflakeCredentials: dataform.ISnowflake) {
   await testHttpsConnection(`https://${snowflakeCredentials.accountId}.snowflakecomputing.com`);
   try {
     return await new Promise<ISnowflakeConnection>((resolve, reject) => {
-      // This is horrible. However, it allows us to set the 'APPLICATION' parameter on client.environment,
-      // which is passed all the way through to Snowflake's connection code. Pending a fix for
-      // https://github.com/snowflakedb/snowflake-connector-nodejs/issues/100, this is the only way
-      // we can achieve that.
-      (require("snowflake-sdk/lib/core")({
-        httpClientClass: require("snowflake-sdk/lib/http/node"),
-        loggerClass: require("snowflake-sdk/lib/logger/node"),
-        client: {
-          version: require("snowflake-sdk/lib/util").driverVersion,
-          environment: {
-            ...process.versions,
-            APPLICATION: "Dataform"
-          }
-        }
-      }) as ISnowflake)
+      snowflake
         .createConnection({
           account: snowflakeCredentials.accountId,
           username: snowflakeCredentials.username,
           password: snowflakeCredentials.password,
           database: snowflakeCredentials.databaseName,
           warehouse: snowflakeCredentials.warehouse,
-          role: snowflakeCredentials.role
+          role: snowflakeCredentials.role,
+          clientSessionKeepAlive: true,
+          clientSessionKeepAliveHeartbeatFrequency: HEARTBEAT_INTERVAL_SECONDS
         })
         .connect((err, conn) => {
           if (err) {
@@ -283,5 +311,55 @@ async function testHttpsConnection(url: string) {
     });
   } catch (e) {
     throw new ErrorWithCause(`Could not open HTTPS connection to ${url}.`, e);
+  }
+}
+
+// See https://docs.snowflake.com/en/sql-reference/intro-summary-data-types.html
+function convertFieldType(type: string) {
+  switch (String(type).toUpperCase()) {
+    case "FLOAT":
+    case "FLOAT4":
+    case "FLOAT8":
+    case "DOUBLE":
+    case "DOUBLE PRECISION":
+    case "REAL":
+      return dataform.Field.Primitive.FLOAT;
+    case "INTEGER":
+    case "INT":
+    case "BIGINT":
+    case "SMALLINT":
+      return dataform.Field.Primitive.INTEGER;
+    case "NUMBER":
+    case "DECIMAL":
+    case "NUMERIC":
+      return dataform.Field.Primitive.NUMERIC;
+    case "BOOLEAN":
+      return dataform.Field.Primitive.BOOLEAN;
+    case "STRING":
+    case "VARCHAR":
+    case "CHAR":
+    case "CHARACTER":
+    case "TEXT":
+      return dataform.Field.Primitive.STRING;
+    case "DATE":
+      return dataform.Field.Primitive.DATE;
+    case "DATETIME":
+      return dataform.Field.Primitive.DATETIME;
+    case "TIMESTAMP":
+    case "TIMESTAMP_LTZ":
+    case "TIMESTAMP_NTZ":
+    case "TIMESTAMP_TZ":
+      return dataform.Field.Primitive.TIMESTAMP;
+    case "TIME":
+      return dataform.Field.Primitive.TIME;
+    case "BINARY":
+    case "VARBINARY":
+      return dataform.Field.Primitive.BYTES;
+    case "VARIANT":
+    case "ARRAY":
+    case "OBJECT":
+      return dataform.Field.Primitive.ANY;
+    default:
+      return dataform.Field.Primitive.UNKNOWN;
   }
 }

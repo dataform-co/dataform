@@ -1,6 +1,8 @@
 import {
+  IActionConfig,
   ICommonContext,
   IDependenciesConfig,
+  INamedConfig,
   ITargetableConfig,
   Resolvable
 } from "df/core/common";
@@ -17,7 +19,11 @@ import { dataform } from "df/protos/ts";
 /**
  * Configuration options for `assertion` action types.
  */
-export interface IAssertionConfig extends ITargetableConfig, IDependenciesConfig {
+export interface IAssertionConfig
+  extends IActionConfig,
+    IDependenciesConfig,
+    INamedConfig,
+    ITargetableConfig {
   /**
    * The database where the corresponding view for this assertion should be created.
    */
@@ -36,13 +42,14 @@ export interface IAssertionConfig extends ITargetableConfig, IDependenciesConfig
 
 export const IAssertionConfigProperties = strictKeysOf<IAssertionConfig>()([
   "database",
-  "schema",
-  "name",
-  "description",
-  "type",
-  "tags",
   "dependencies",
-  "hermetic"
+  "description",
+  "disabled",
+  "hermetic",
+  "name",
+  "schema",
+  "tags",
+  "type"
 ]);
 
 /**
@@ -74,6 +81,9 @@ export class Assertion {
     }
     if (config.hermetic !== undefined) {
       this.hermetic(config.hermetic);
+    }
+    if (config.disabled) {
+      this.disabled();
     }
     if (config.tags) {
       this.tags(config.tags);
@@ -107,6 +117,11 @@ export class Assertion {
     this.proto.hermeticity = hermetic
       ? dataform.ActionHermeticity.HERMETIC
       : dataform.ActionHermeticity.NON_HERMETIC;
+  }
+
+  public disabled() {
+    this.proto.disabled = true;
+    return this;
   }
 
   public tags(value: string | string[]) {

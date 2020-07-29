@@ -1,13 +1,12 @@
 import { assert, config, expect } from "chai";
 import Long from "long";
-import * as path from "path";
 import { anyString, anything, instance, mock, verify, when } from "ts-mockito";
 
-import { Builder, credentials, format, prune, query, Runner } from "df/api";
+import { Builder, credentials, prune, query, Runner } from "df/api";
 import { computeAllTransitiveInputs } from "df/api/commands/build";
 import { IDbAdapter } from "df/api/dbadapters";
 import { BigQueryDbAdapter } from "df/api/dbadapters/bigquery";
-import { actionsByTarget } from "df/api/utils/graphs";
+import { sleep, sleepUntil } from "df/common/promises";
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
 import { asPlainObject, cleanSql } from "df/tests/utils";
@@ -20,6 +19,7 @@ suite("@dataform/api", () => {
     tables: [
       {
         name: "schema.a",
+        type: "table",
         target: {
           schema: "schema",
           name: "a"
@@ -29,6 +29,7 @@ suite("@dataform/api", () => {
       },
       {
         name: "schema.b",
+        type: "table",
         target: {
           schema: "schema",
           name: "b"
@@ -39,6 +40,7 @@ suite("@dataform/api", () => {
       },
       {
         name: "schema.c",
+        type: "table",
         target: {
           schema: "schema",
           name: "c"
@@ -364,7 +366,7 @@ suite("@dataform/api", () => {
               schema: "schema",
               name: "incremental"
             },
-            type: "table",
+            type: dataform.TableMetadata.Type.TABLE,
             fields: [
               {
                 name: "existing_field"
@@ -399,6 +401,7 @@ suite("@dataform/api", () => {
         tables: [
           {
             name: "redshift_all",
+            type: "table",
             target: {
               schema: "schema",
               name: "redshift_all"
@@ -413,6 +416,7 @@ suite("@dataform/api", () => {
           },
           {
             name: "redshift_only_sort",
+            type: "table",
             target: {
               schema: "schema",
               name: "redshift_only_sort"
@@ -425,6 +429,7 @@ suite("@dataform/api", () => {
           },
           {
             name: "redshift_only_dist",
+            type: "table",
             target: {
               schema: "schema",
               name: "redshift_only_dist"
@@ -437,6 +442,7 @@ suite("@dataform/api", () => {
           },
           {
             name: "redshift_without_redshift",
+            type: "table",
             target: {
               schema: "schema",
               name: "redshift_without_redshift"
@@ -687,6 +693,7 @@ suite("@dataform/api", () => {
         tables: [
           {
             name: "a",
+            type: "table",
             target: {
               schema: "schema",
               name: "a"
@@ -695,6 +702,7 @@ suite("@dataform/api", () => {
           },
           {
             name: "b",
+            type: "table",
             target: {
               schema: "schema",
               name: "b"
@@ -905,7 +913,7 @@ postOps`
       warehouseState: {
         tables: [
           {
-            type: "table",
+            type: dataform.TableMetadata.Type.TABLE,
             target: {
               schema: "schema1",
               name: "target1"
@@ -921,6 +929,10 @@ postOps`
             {
               type: "executionTaskType",
               statement: "SELECT foo FROM bar"
+            },
+            {
+              type: "executionTaskType",
+              statement: "SELECT 42"
             }
           ],
           type: "table",
@@ -950,9 +962,46 @@ postOps`
       ]
     });
 
+    const EXPECTED_RUN_RESULT = dataform.RunResult.create({
+      status: dataform.RunResult.ExecutionStatus.FAILED,
+      actions: [
+        {
+          name: RUN_TEST_GRAPH.actions[0].name,
+          tasks: [
+            {
+              status: dataform.TaskResult.ExecutionStatus.SUCCESSFUL,
+              metadata: {
+                bigquery: {
+                  jobId: "abc",
+                  totalBytesBilled: Long.fromNumber(0),
+                  totalBytesProcessed: Long.fromNumber(0)
+                }
+              }
+            },
+            {
+              status: dataform.TaskResult.ExecutionStatus.SUCCESSFUL,
+              metadata: {}
+            }
+          ],
+          status: dataform.ActionResult.ExecutionStatus.SUCCESSFUL
+        },
+        {
+          name: RUN_TEST_GRAPH.actions[1].name,
+          tasks: [
+            {
+              status: dataform.TaskResult.ExecutionStatus.FAILED,
+              metadata: {},
+              errorMessage: "bigquery error: bad statement"
+            }
+          ],
+          status: dataform.ActionResult.ExecutionStatus.FAILED
+        }
+      ]
+    });
+
     test("execute", async () => {
       const mockedDbAdapter = mock(BigQueryDbAdapter);
-      when(mockedDbAdapter.prepareSchema(anyString(), anyString())).thenResolve(null);
+      when(mockedDbAdapter.createSchema(anyString(), anyString())).thenResolve(null);
       when(
         mockedDbAdapter.execute(RUN_TEST_GRAPH.actions[0].tasks[0].statement, anything())
       ).thenResolve({
@@ -966,57 +1015,83 @@ postOps`
         }
       });
       when(
+        mockedDbAdapter.execute(RUN_TEST_GRAPH.actions[0].tasks[1].statement, anything())
+      ).thenResolve({
+        rows: [],
+        metadata: {}
+      });
+      when(
         mockedDbAdapter.execute(RUN_TEST_GRAPH.actions[1].tasks[0].statement, anything())
       ).thenReject(new Error("bad statement"));
 
       const runner = new Runner(instance(mockedDbAdapter), RUN_TEST_GRAPH);
-      const result = await runner.execute().result();
 
-      delete result.timing;
-      result.actions.forEach(actionResult => {
-        delete actionResult.timing;
-        actionResult.tasks.forEach(taskResult => {
-          delete taskResult.timing;
-        });
+      expect(dataform.RunResult.create(cleanTiming(await runner.execute().result()))).to.deep.equal(
+        EXPECTED_RUN_RESULT
+      );
+      verify(mockedDbAdapter.createSchema("database", "schema1")).once();
+      verify(mockedDbAdapter.createSchema("database2", "schema2")).once();
+    });
+
+    test("stop and then resume", async () => {
+      let firstQueryInProgress = false;
+      let stopWasCalled = false;
+
+      const mockedDbAdapter = mock(BigQueryDbAdapter);
+      when(mockedDbAdapter.createSchema(anyString(), anyString())).thenResolve(null);
+      when(
+        mockedDbAdapter.execute(RUN_TEST_GRAPH.actions[0].tasks[0].statement, anything())
+      ).thenCall(async () => {
+        firstQueryInProgress = true;
+        await sleepUntil(() => stopWasCalled);
+        return {
+          rows: [],
+          metadata: {
+            bigquery: {
+              jobId: "abc",
+              totalBytesBilled: Long.fromNumber(0),
+              totalBytesProcessed: Long.fromNumber(0)
+            }
+          }
+        };
       });
+      when(
+        mockedDbAdapter.execute(RUN_TEST_GRAPH.actions[0].tasks[1].statement, anything())
+      ).thenResolve({
+        rows: [],
+        metadata: {}
+      });
+      when(
+        mockedDbAdapter.execute(RUN_TEST_GRAPH.actions[1].tasks[0].statement, anything())
+      ).thenReject(new Error("bad statement"));
+
+      let runner = new Runner(instance(mockedDbAdapter), RUN_TEST_GRAPH);
+      runner.execute();
+      await sleepUntil(() => firstQueryInProgress);
+      runner.stop();
+      stopWasCalled = true;
+      const result = cleanTiming(await runner.result());
 
       expect(dataform.RunResult.create(result)).to.deep.equal(
         dataform.RunResult.create({
-          status: dataform.RunResult.ExecutionStatus.FAILED,
+          status: dataform.RunResult.ExecutionStatus.RUNNING,
           actions: [
             {
-              name: RUN_TEST_GRAPH.actions[0].name,
-              tasks: [
-                {
-                  status: dataform.TaskResult.ExecutionStatus.SUCCESSFUL,
-                  metadata: {
-                    bigquery: {
-                      jobId: "abc",
-                      totalBytesBilled: Long.fromNumber(0),
-                      totalBytesProcessed: Long.fromNumber(0)
-                    }
-                  }
-                }
-              ],
-              status: dataform.ActionResult.ExecutionStatus.SUCCESSFUL
-            },
-            {
-              name: RUN_TEST_GRAPH.actions[1].name,
-              tasks: [
-                {
-                  status: dataform.TaskResult.ExecutionStatus.FAILED,
-                  metadata: {},
-                  errorMessage: "bigquery error: bad statement"
-                }
-              ],
-              status: dataform.ActionResult.ExecutionStatus.FAILED
+              name: EXPECTED_RUN_RESULT.actions[0].name,
+              status: dataform.ActionResult.ExecutionStatus.RUNNING,
+              tasks: [EXPECTED_RUN_RESULT.actions[0].tasks[0]]
             }
           ]
         })
       );
 
-      verify(mockedDbAdapter.prepareSchema("database", "schema1")).once();
-      verify(mockedDbAdapter.prepareSchema("database2", "schema2")).once();
+      runner = new Runner(instance(mockedDbAdapter), RUN_TEST_GRAPH, result);
+
+      expect(dataform.RunResult.create(cleanTiming(await runner.execute().result()))).to.deep.equal(
+        EXPECTED_RUN_RESULT
+      );
+      verify(mockedDbAdapter.createSchema("database", "schema1")).once();
+      verify(mockedDbAdapter.createSchema("database2", "schema2")).once();
     });
 
     suite("execute with retry", () => {
@@ -1026,54 +1101,35 @@ postOps`
           ...RUN_TEST_GRAPH,
           projectConfig: { ...RUN_TEST_GRAPH.projectConfig, idempotentActionRetries: 1 }
         };
-        when(mockedDbAdapter.prepareSchema(anyString(), anyString())).thenResolve(null);
+        when(mockedDbAdapter.createSchema(anyString(), anyString())).thenResolve(null);
         when(
           mockedDbAdapter.execute(NEW_TEST_GRAPH.actions[0].tasks[0].statement, anything())
-        ).thenResolve({ rows: [], metadata: {} });
+        ).thenResolve({
+          rows: [],
+          metadata: {
+            bigquery: {
+              jobId: "abc",
+              totalBytesBilled: Long.fromNumber(0),
+              totalBytesProcessed: Long.fromNumber(0)
+            }
+          }
+        });
+        when(
+          mockedDbAdapter.execute(RUN_TEST_GRAPH.actions[0].tasks[1].statement, anything())
+        ).thenResolve({
+          rows: [],
+          metadata: {}
+        });
         when(mockedDbAdapter.execute(NEW_TEST_GRAPH.actions[1].tasks[0].statement, anything()))
           .thenReject(new Error("bad statement"))
           .thenReject(new Error("bad statement"))
           .thenResolve({ rows: [], metadata: {} });
 
         const runner = new Runner(instance(mockedDbAdapter), NEW_TEST_GRAPH);
-        const result = await runner.execute().result();
 
-        delete result.timing;
-        result.actions.forEach(actionResult => {
-          delete actionResult.timing;
-          actionResult.tasks.forEach(taskResult => {
-            delete taskResult.timing;
-          });
-        });
-
-        expect(dataform.RunResult.create(result)).to.deep.equal(
-          dataform.RunResult.create({
-            status: dataform.RunResult.ExecutionStatus.FAILED,
-            actions: [
-              {
-                name: NEW_TEST_GRAPH.actions[0].name,
-                tasks: [
-                  {
-                    status: dataform.TaskResult.ExecutionStatus.SUCCESSFUL,
-                    metadata: {}
-                  }
-                ],
-                status: dataform.ActionResult.ExecutionStatus.SUCCESSFUL
-              },
-              {
-                name: RUN_TEST_GRAPH.actions[1].name,
-                tasks: [
-                  {
-                    status: dataform.TaskResult.ExecutionStatus.FAILED,
-                    errorMessage: "bigquery error: bad statement",
-                    metadata: {}
-                  }
-                ],
-                status: dataform.ActionResult.ExecutionStatus.FAILED
-              }
-            ]
-          })
-        );
+        expect(
+          dataform.RunResult.create(cleanTiming(await runner.execute().result()))
+        ).to.deep.equal(EXPECTED_RUN_RESULT);
       });
 
       test("should pass when execution fails initially, then passes with the number of allowed retries", async () => {
@@ -1082,39 +1138,39 @@ postOps`
           ...RUN_TEST_GRAPH,
           projectConfig: { ...RUN_TEST_GRAPH.projectConfig, idempotentActionRetries: 2 }
         };
-        when(mockedDbAdapter.prepareSchema(anyString(), anyString())).thenResolve(null);
+        when(mockedDbAdapter.createSchema(anyString(), anyString())).thenResolve(null);
         when(
           mockedDbAdapter.execute(NEW_TEST_GRAPH.actions[0].tasks[0].statement, anything())
-        ).thenResolve({ rows: [], metadata: {} });
+        ).thenResolve({
+          rows: [],
+          metadata: {
+            bigquery: {
+              jobId: "abc",
+              totalBytesBilled: Long.fromNumber(0),
+              totalBytesProcessed: Long.fromNumber(0)
+            }
+          }
+        });
+        when(
+          mockedDbAdapter.execute(RUN_TEST_GRAPH.actions[0].tasks[1].statement, anything())
+        ).thenResolve({
+          rows: [],
+          metadata: {}
+        });
         when(mockedDbAdapter.execute(NEW_TEST_GRAPH.actions[1].tasks[0].statement, anything()))
           .thenReject(new Error("bad statement"))
           .thenReject(new Error("bad statement"))
           .thenResolve({ rows: [], metadata: {} });
 
         const runner = new Runner(instance(mockedDbAdapter), NEW_TEST_GRAPH);
-        const result = await runner.execute().result();
 
-        delete result.timing;
-        result.actions.forEach(actionResult => {
-          delete actionResult.timing;
-          actionResult.tasks.forEach(taskResult => {
-            delete taskResult.timing;
-          });
-        });
-        expect(dataform.RunResult.create(result)).to.deep.equal(
+        expect(
+          dataform.RunResult.create(cleanTiming(await runner.execute().result()))
+        ).to.deep.equal(
           dataform.RunResult.create({
             status: dataform.RunResult.ExecutionStatus.SUCCESSFUL,
             actions: [
-              {
-                name: NEW_TEST_GRAPH.actions[0].name,
-                tasks: [
-                  {
-                    status: dataform.TaskResult.ExecutionStatus.SUCCESSFUL,
-                    metadata: {}
-                  }
-                ],
-                status: dataform.ActionResult.ExecutionStatus.SUCCESSFUL
-              },
+              EXPECTED_RUN_RESULT.actions[0],
               {
                 name: NEW_TEST_GRAPH.actions[1].name,
                 tasks: [
@@ -1138,13 +1194,25 @@ postOps`
         };
         NEW_TEST_GRAPH_WITH_OPERATION.actions[1].tasks[0].type = "operation";
 
-        when(mockedDbAdapter.prepareSchema(anyString(), anyString())).thenResolve(null);
+        when(mockedDbAdapter.createSchema(anyString(), anyString())).thenResolve(null);
         when(
-          mockedDbAdapter.execute(
-            NEW_TEST_GRAPH_WITH_OPERATION.actions[0].tasks[0].statement,
-            anything()
-          )
-        ).thenResolve({ rows: [], metadata: {} });
+          mockedDbAdapter.execute(RUN_TEST_GRAPH.actions[0].tasks[0].statement, anything())
+        ).thenResolve({
+          rows: [],
+          metadata: {
+            bigquery: {
+              jobId: "abc",
+              totalBytesBilled: Long.fromNumber(0),
+              totalBytesProcessed: Long.fromNumber(0)
+            }
+          }
+        });
+        when(
+          mockedDbAdapter.execute(RUN_TEST_GRAPH.actions[0].tasks[1].statement, anything())
+        ).thenResolve({
+          rows: [],
+          metadata: {}
+        });
         when(
           mockedDbAdapter.execute(
             NEW_TEST_GRAPH_WITH_OPERATION.actions[1].tasks[0].statement,
@@ -1156,44 +1224,10 @@ postOps`
           .thenResolve({ rows: [], metadata: {} });
 
         const runner = new Runner(instance(mockedDbAdapter), NEW_TEST_GRAPH_WITH_OPERATION);
-        const result = await runner.execute().result();
 
-        delete result.timing;
-        result.actions.forEach(actionResult => {
-          delete actionResult.timing;
-          actionResult.tasks.forEach(taskResult => {
-            delete taskResult.timing;
-          });
-        });
-
-        expect(dataform.RunResult.create(result)).to.deep.equal(
-          dataform.RunResult.create({
-            status: dataform.RunResult.ExecutionStatus.FAILED,
-            actions: [
-              {
-                name: NEW_TEST_GRAPH_WITH_OPERATION.actions[0].name,
-                tasks: [
-                  {
-                    status: dataform.TaskResult.ExecutionStatus.SUCCESSFUL,
-                    metadata: {}
-                  }
-                ],
-                status: dataform.ActionResult.ExecutionStatus.SUCCESSFUL
-              },
-              {
-                name: NEW_TEST_GRAPH_WITH_OPERATION.actions[1].name,
-                tasks: [
-                  {
-                    status: dataform.TaskResult.ExecutionStatus.FAILED,
-                    errorMessage: "bigquery error: bad statement",
-                    metadata: {}
-                  }
-                ],
-                status: dataform.ActionResult.ExecutionStatus.FAILED
-              }
-            ]
-          })
-        );
+        expect(
+          dataform.RunResult.create(cleanTiming(await runner.execute().result()))
+        ).to.deep.equal(EXPECTED_RUN_RESULT);
       });
     });
 
@@ -1236,17 +1270,18 @@ postOps`
               reject(new Error("Run cancelled"));
             });
           }),
-        prepareSchema: (_, __) => {
-          return Promise.resolve();
-        },
-        close: () => undefined
+        schemas: _ => Promise.resolve([]),
+        createSchema: (_, __) => Promise.resolve(),
+        close: () => undefined,
+        table: _ => undefined
       } as IDbAdapter;
 
       const runner = new Runner(mockDbAdapter, CANCEL_TEST_GRAPH);
       const execution = runner.execute().result();
       // We want to await the return promise before we actually call cancel.
-      // Setting a short (10ms) timeout on calling cancel accomplishes this.
-      setTimeout(() => runner.cancel(), 10);
+      // Waiting a short (10ms) time before calling cancel accomplishes this.
+      await sleep(10);
+      runner.cancel();
       const result = await execution;
       expect(wasCancelled).equals(true);
       // Cancelling a run doesn't actually throw at the top level.
@@ -1257,122 +1292,16 @@ postOps`
       expect(result.actions[0].tasks[0].errorMessage).to.match(/cancelled/);
     });
   });
+});
 
-  suite("formatter", () => {
-    test("correctly formats simple.sqlx", async () => {
-      expect(await format.formatFile(path.resolve("examples/formatter/definitions/simple.sqlx")))
-        .eql(`config {
-  type: "view",
-  tags: ["tag1", "tag2"]
-}
-
-js {
-  const foo =
-    jsFunction("table");
-}
-
-select
-  1
-from
-  \${
-    ref({
-      schema: "df_integration_test",
-      name: "sample_data"
-    })
-  }
-`);
-    });
-
-    test("correctly formats multiple_queries.sqlx", async () => {
-      expect(
-        await format.formatFile(
-          path.resolve("examples/formatter/definitions/multiple_queries.sqlx")
-        )
-      ).eql(`js {
-  var tempTable = "yay"
-  const colname = "column";
-
-  let finalTableName = 'dkaodihwada';
-}
-
-drop something
-
----
-
-alter table
-  \${tempTable} rename to \${finalTableName}
-
----
-
-SELECT
-  SUM(IF (session_start_event, 1, 0)) AS session_index
-`);
-    });
-
-    test("correctly formats bigquery_regexps.sqlx", async () => {
-      expect(
-        await format.formatFile(
-          path.resolve("examples/formatter/definitions/bigquery_regexps.sqlx")
-        )
-      ).eql(`config {
-  type: "operation",
-  tags: ["tag1", "tag2"]
-}
-
-select
-  CAST(
-    REGEXP_EXTRACT("", r'^/([0-9]+)\\'\\"/.*') AS INT64
-  ) AS id,
-  CAST(
-    REGEXP_EXTRACT("", r"^/([0-9]+)\\"\\'/.*") AS INT64
-  ) AS id2,
-  IFNULL (
-    regexp_extract('', r'\\a?query=([^&]+)&*'),
-    regexp_extract('', r'\\a?q=([^&]+)&*')
-  ) AS id3,
-  regexp_extract('bar', r'bar') as ID4
-from
-  \${ref("dab")}
-where
-  sample = 100
-`);
-    });
-
-    test("correctly formats comments.sqlx", async () => {
-      expect(await format.formatFile(path.resolve("examples/formatter/definitions/comments.sqlx")))
-        .eql(`config {
-  type: "test",
-}
-
-SELECT
-  MAX(
-    (
-      SELECT
-        SUM(IF(track.event = "event_viewed_project_with_connection", 1, 0))
-      FROM
-        UNNEST(records)
-    )
-  ) > 0 as created_project,
-  /* multi line
-  comment      */
-  2 as foo
-
-input "something" {
-  select
-    1 as test
-    /* something */
-    /* something
-    else      */
-    -- and another thing
-}
-`);
-    });
-    test("Backslashes within regex don't cause 'r' prefix to separate.", async () => {
-      expect(await format.formatFile(path.resolve("examples/formatter/definitions/regex.sqlx")))
-        .equal(`select
-  regexp_extract("", r'abc\\de\\'fg select * from self()'),
-  'bar'
-`);
+function cleanTiming(runResult: dataform.IRunResult) {
+  const newRunResult = dataform.RunResult.create(runResult);
+  delete newRunResult.timing;
+  newRunResult.actions.forEach(actionResult => {
+    delete actionResult.timing;
+    actionResult.tasks.forEach(taskResult => {
+      delete taskResult.timing;
     });
   });
-});
+  return newRunResult;
+}

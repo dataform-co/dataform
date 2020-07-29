@@ -4,7 +4,7 @@ import * as path from "path";
 import yargs from "yargs";
 
 import * as chokidar from "chokidar";
-import { build, compile, credentials, format, init, install, run, table, test } from "df/api";
+import { build, compile, credentials, init, install, run, table, test } from "df/api";
 import { CREDENTIALS_FILENAME } from "df/api/commands/credentials";
 import * as dbadapters from "df/api/dbadapters";
 import { prettyJsonStringify } from "df/api/utils";
@@ -35,6 +35,7 @@ import { actuallyResolve, assertPathExists, compiledGraphHasErrors } from "df/cl
 import { createYargsCli, INamedOption } from "df/cli/yargswrapper";
 import { supportsCancel, WarehouseType } from "df/core/adapters";
 import { dataform } from "df/protos/ts";
+import { formatFile } from "df/sqlx/format";
 
 const RECOMPILE_DELAY = 500;
 
@@ -439,7 +440,8 @@ export function runCli() {
           print(`Running ${compiledGraph.tests.length} unit tests...\n`);
           const dbadapter = await dbadapters.create(
             readCredentials,
-            compiledGraph.projectConfig.warehouse
+            compiledGraph.projectConfig.warehouse,
+            { concurrencyLimit: compiledGraph.projectConfig.concurrentQueryLimit }
           );
           try {
             const testResults = await test(dbadapter, compiledGraph.tests);
@@ -501,7 +503,8 @@ export function runCli() {
 
           const dbadapter = await dbadapters.create(
             readCredentials,
-            compiledGraph.projectConfig.warehouse
+            compiledGraph.projectConfig.warehouse,
+            { concurrencyLimit: compiledGraph.projectConfig.concurrentQueryLimit }
           );
           try {
             const executionGraph = await build(
@@ -539,7 +542,7 @@ export function runCli() {
             if (!argv.json) {
               print("Running...\n");
             }
-            const runner = run(executionGraph, dbadapter);
+            const runner = run(dbadapter, executionGraph);
             process.on("SIGINT", () => {
               if (
                 !supportsCancel(
@@ -591,7 +594,7 @@ export function runCli() {
           const results = await Promise.all(
             filenames.map(async filename => {
               try {
-                await format.formatFile(path.resolve(argv["project-dir"], filename), {
+                await formatFile(path.resolve(argv["project-dir"], filename), {
                   overwriteFile: true
                 });
                 return {
@@ -615,7 +618,11 @@ export function runCli() {
         positionalOptions: [warehouseOption],
         options: [credentialsOption],
         processFn: async argv => {
-          const dbadapter = await dbadapters.create(argv.credentials, argv.warehouse);
+          const readCredentials = credentials.read(
+            argv.warehouse,
+            actuallyResolve(argv.credentials)
+          );
+          const dbadapter = await dbadapters.create(readCredentials, argv.warehouse);
           try {
             printListTablesResult(await table.list(dbadapter));
           } finally {
@@ -630,7 +637,11 @@ export function runCli() {
         positionalOptions: [warehouseOption],
         options: [credentialsOption],
         processFn: async argv => {
-          const dbadapter = await dbadapters.create(argv.credentials, argv.warehouse);
+          const readCredentials = credentials.read(
+            argv.warehouse,
+            actuallyResolve(argv.credentials)
+          );
+          const dbadapter = await dbadapters.create(readCredentials, argv.warehouse);
           try {
             printGetTableResult(
               await table.get(dbadapter, {
@@ -651,7 +662,7 @@ export function runCli() {
     .wrap(null)
     .recommendCommands()
     .fail(async (msg: string, err: any) => {
-      if (!!err && err.name === "VMError" && err.code === "ENOTFOUND") {
+      if (!!err && err.name === "VMError" && err.message.includes("Cannot find module")) {
         printError("Could not find NPM dependencies. Have you run 'dataform install'?");
       } else {
         const message = err?.message ? err.message.split("\n")[0] : msg;

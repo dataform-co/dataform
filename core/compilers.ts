@@ -124,7 +124,10 @@ function compileSqlx(rootNode: SyntaxTreeNode, path: string) {
   let incremental = "";
   let preOperations = [""];
   let postOperations = [""];
-  const inputs: { [label: string]: string } = {};
+  const inputs: Array<{
+    labelParts: string[];
+    value: string;
+  }> = [];
   rootNode
     .children()
     .filter(SyntaxTreeNode.isSyntaxTreeNode)
@@ -160,7 +163,14 @@ function compileSqlx(rootNode: SyntaxTreeNode, path: string) {
         if (statements.length > 1) {
           throw new Error("'input' code blocks may only contain a single SQL statement.");
         }
-        inputs[firstChild.split('"')[1]] = statements[0];
+        const labelParts = firstChild
+          .slice(firstChild.indexOf('"'), firstChild.lastIndexOf('"') + 1)
+          .split(",")
+          .map(label => label.trim().slice(1, -1));
+        inputs.push({
+          labelParts,
+          value: statements[0]
+        });
       }
     });
 
@@ -170,8 +180,6 @@ const parsedConfig = ${config || "{}"};
 const sqlxConfig = {
   name: "${utils.baseFilename(path)}",
   type: "operations",
-  dependencies: [],
-  tags: [],
   ...parsedConfig
 };
 
@@ -248,15 +256,17 @@ switch (sqlxConfig.type) {
     break;
   }
   case "test": {
-    ${Object.keys(inputs).map(
-      inputLabel =>
-        `
-        action.input("${inputLabel}", ctx => {
+    ${inputs
+      .map(
+        ({ labelParts, value }) =>
+          `
+        action.input([${labelParts.map(labelPart => `"${labelPart}"`).join(", ")}], ctx => {
           ${js}
-          return \`${inputs[inputLabel]}\`;
+          return \`${value}\`;
         });
         `
-    )}
+      )
+      .join("\n")}
     action.expect(ctx => {
       ${js}
       return \`${sql}\`;
@@ -311,8 +321,11 @@ function escapeNode(node: string | SyntaxTreeNode) {
         .replace(/`/g, "\\`")
         .replace(/\${/g, "\\${");
     case SyntaxTreeNodeType.SQL_LITERAL_STRING:
-      // Literal strings may contain escapes, which we need to double-escape.
-      return node.concatenate().replace(/\\/g, "\\\\");
+      // Literal strings may contain backslashes or backticks which need to be escaped.
+      return node
+        .concatenate()
+        .replace(/\\/g, "\\\\")
+        .replace(/\`/g, "\\`");
   }
   return node;
 }
