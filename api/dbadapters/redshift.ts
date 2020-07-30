@@ -9,7 +9,6 @@ import { ErrorWithCause } from "df/common/errors/errors";
 import { collectEvaluationQueries, QueryOrAction } from "df/core/adapters";
 import { dataform } from "df/protos/ts";
 
-
 interface ICursor {
   read: (
     rowCount: number,
@@ -47,7 +46,7 @@ export class RedshiftDbAdapter implements IDbAdapter {
       user: jdbcCredentials.username,
       password: jdbcCredentials.password,
       database: jdbcCredentials.databaseName,
-      ssl: true
+      ssl: { rejectUnauthorized: false }
     };
     if (jdbcCredentials.sshTunnel) {
       const sshTunnel = await SSHTunnelProxy.create(jdbcCredentials.sshTunnel, {
