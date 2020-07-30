@@ -110,10 +110,14 @@ export class Runner {
     }
     this.executionTask = this.executeGraph();
     if (!!this.graph.runConfig && !!this.graph.runConfig.timeoutMillis) {
+      const now = Date.now();
+      const runStartMillis = this.runResult.timing?.startTimeMillis?.toNumber?.() || now;
+      const elapsedTimeMillis = now - runStartMillis;
+      const timeoutMillis = this.graph.runConfig.timeoutMillis - elapsedTimeMillis;
       this.timeout = setTimeout(() => {
         this.timedOut = true;
         this.cancel();
-      }, this.graph.runConfig.timeoutMillis);
+      }, timeoutMillis);
     }
     return this;
   }
