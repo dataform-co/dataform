@@ -6,7 +6,7 @@ import { IDbAdapter, OnCancel } from "df/api/dbadapters/index";
 import { SSHTunnelProxy } from "df/api/ssh_tunnel_proxy";
 import { parseRedshiftEvalError } from "df/api/utils/error_parsing";
 import { ErrorWithCause } from "df/common/errors/errors";
-import { sleep } from "df/common/promises";
+import { runAsyncIgnoringErrors, sleep } from "df/common/promises";
 import { collectEvaluationQueries, QueryOrAction } from "df/core/adapters";
 import { dataform } from "df/protos/ts";
 
@@ -288,28 +288,32 @@ class PgPoolExecutor {
       // tslint:disable-next-line: no-console
       console.error("pg.Client client error", err.message, err.stack);
     });
-    try {
-      return await new Promise<any[]>((resolve, reject) => {
-        const query = client.query(new QueryStream(statement));
-        const results: any[] = [];
-        options?.onCancel?.(() => query.destroy());
-        query.on("data", (row: any) => {
-          if (results.length < options.maxResults) {
-            verifyUniqueColumnNames((query as any).cursor._result.fields);
-            results.push(row);
-          } else {
-            query.destroy();
-          }
-        });
-        query.on("close", () => resolve(results));
-        query.on("error", e => reject(e));
+
+    return await new Promise<any[]>((resolve, reject) => {
+      const query = client.query(new QueryStream(statement));
+      const results: any[] = [];
+      options?.onCancel?.(() => query.destroy());
+      query.on("data", (row: any) => {
+        if (results.length < options.maxResults) {
+          verifyUniqueColumnNames((query as any).cursor._result.fields);
+          results.push(row);
+        } else {
+          // This causes the "end" handler below to fire.
+          query.destroy();
+        }
       });
-    } finally {
-      // This is a super hacky fix for https://github.com/dataform-co/dataform/issues/914
-      // Delaying returning of results as well as releasing the client appears to greatly reduce incident rate.
-      await sleep(500);
-      client.release();
-    }
+      query.on("error", e => {
+        // Errors don't cause "end" to fire, additionally errored connections
+        // cause issues when released back to the pool. Instead, close the connection
+        // by passing the error to release(). https://github.com/dataform-co/dataform/issues/914
+        client.release(e);
+        reject(e);
+      });
+      query.on("end", async () => {
+        client.release();
+        resolve(results);
+      });
+    });
   }
 
   public async close() {

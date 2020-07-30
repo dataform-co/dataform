@@ -54,7 +54,10 @@ suite("@dataform/integration/redshift", { parallel: true }, ({ before, after }) 
       const expectedResult = expectedFailedActions.includes(actionName)
         ? dataform.ActionResult.ExecutionStatus.FAILED
         : dataform.ActionResult.ExecutionStatus.SUCCESSFUL;
-      expect(actionMap[actionName].status).equals(expectedResult);
+      expect(actionMap[actionName].status).equals(
+        expectedResult,
+        actionMap[actionName].tasks.map(task => task.errorMessage).join("\n")
+      );
     }
 
     expect(
@@ -103,7 +106,12 @@ suite("@dataform/integration/redshift", { parallel: true }, ({ before, after }) 
       dbadapter
     );
     executedGraph = await dfapi.run(dbadapter, executionGraph).result();
-    expect(executedGraph.status).equals(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
+    expect(executedGraph.status).equals(
+      dataform.RunResult.ExecutionStatus.SUCCESSFUL,
+      executedGraph.actions
+        .map(action => action.tasks.map(task => task.errorMessage).join("\n"))
+        .join("\n")
+    );
 
     // Check there are the expected number of extra rows in the incremental table.
     incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
@@ -180,8 +188,6 @@ suite("@dataform/integration/redshift", { parallel: true }, ({ before, after }) 
   suite("evaluate", async () => {
     test("evaluate from valid compiled graph as valid", async () => {
       const compiledGraph = await compile("tests/integration/redshift_project", "evaluate");
-      const executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
-      await dfapi.run(dbadapter, executionGraph).result();
 
       const view = keyBy(compiledGraph.tables, t => t.name)[
         "df_integration_test_evaluate.example_view"
