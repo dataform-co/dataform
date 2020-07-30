@@ -6,9 +6,9 @@ import { IDbAdapter, OnCancel } from "df/api/dbadapters/index";
 import { SSHTunnelProxy } from "df/api/ssh_tunnel_proxy";
 import { parseRedshiftEvalError } from "df/api/utils/error_parsing";
 import { ErrorWithCause } from "df/common/errors/errors";
-import { runAsyncIgnoringErrors, sleep } from "df/common/promises";
 import { collectEvaluationQueries, QueryOrAction } from "df/core/adapters";
 import { dataform } from "df/protos/ts";
+
 
 interface ICursor {
   read: (
@@ -309,7 +309,7 @@ class PgPoolExecutor {
         client.release(e);
         reject(e);
       });
-      query.on("end", async () => {
+      query.on("end", () => {
         client.release();
         resolve(results);
       });
