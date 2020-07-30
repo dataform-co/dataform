@@ -6,6 +6,7 @@ import { IDbAdapter, OnCancel } from "df/api/dbadapters/index";
 import { SSHTunnelProxy } from "df/api/ssh_tunnel_proxy";
 import { parseRedshiftEvalError } from "df/api/utils/error_parsing";
 import { ErrorWithCause } from "df/common/errors/errors";
+import { sleep } from "df/common/promises";
 import { collectEvaluationQueries, QueryOrAction } from "df/core/adapters";
 import { dataform } from "df/protos/ts";
 
@@ -304,6 +305,9 @@ class PgPoolExecutor {
         query.on("error", e => reject(e));
       });
     } finally {
+      // This is a super hacky fix for https://github.com/dataform-co/dataform/issues/914
+      // Delaying returning of results as well as releasing the client appears to greatly reduce incident rate.
+      await sleep(500);
       client.release();
     }
   }

@@ -12,6 +12,7 @@ ts_library(
         "//api/utils",
         "//common/errors",
         "//common/strings",
+        "//common/promises",
         "//core",
         "//protos:ts",
         "//sqlx",
