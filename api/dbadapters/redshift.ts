@@ -9,6 +9,7 @@ import { ErrorWithCause } from "df/common/errors/errors";
 import { collectEvaluationQueries, QueryOrAction } from "df/core/adapters";
 import { dataform } from "df/protos/ts";
 
+
 interface ICursor {
   read: (
     rowCount: number,
@@ -287,25 +288,32 @@ class PgPoolExecutor {
       // tslint:disable-next-line: no-console
       console.error("pg.Client client error", err.message, err.stack);
     });
-    try {
-      return await new Promise<any[]>((resolve, reject) => {
-        const query = client.query(new QueryStream(statement));
-        const results: any[] = [];
-        options?.onCancel?.(() => query.destroy());
-        query.on("data", (row: any) => {
-          if (results.length < options.maxResults) {
-            verifyUniqueColumnNames((query as any).cursor._result.fields);
-            results.push(row);
-          } else {
-            query.destroy();
-          }
-        });
-        query.on("close", () => resolve(results));
-        query.on("error", e => reject(e));
+
+    return await new Promise<any[]>((resolve, reject) => {
+      const query = client.query(new QueryStream(statement));
+      const results: any[] = [];
+      options?.onCancel?.(() => query.destroy());
+      query.on("data", (row: any) => {
+        if (results.length < options.maxResults) {
+          verifyUniqueColumnNames((query as any).cursor._result.fields);
+          results.push(row);
+        } else {
+          // This causes the "end" handler below to fire.
+          query.destroy();
+        }
       });
-    } finally {
-      client.release();
-    }
+      query.on("error", e => {
+        // Errors don't cause "end" to fire, additionally errored connections
+        // cause issues when released back to the pool. Instead, close the connection
+        // by passing the error to release(). https://github.com/dataform-co/dataform/issues/914
+        client.release(e);
+        reject(e);
+      });
+      query.on("end", () => {
+        client.release();
+        resolve(results);
+      });
+    });
   }
 
   public async close() {

@@ -8,7 +8,7 @@ import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
 import { compile, getTableRows, keyBy } from "df/tests/integration/utils";
 
-suite("@dataform/integration/redshift", { parallel: true }, ({ before, after }) => {
+suite("@dataform/integration/redshift", { parallel: false }, ({ before, after }) => {
   const credentials = dfapi.credentials.read("redshift", "test_credentials/redshift.json");
   let dbadapter: dbadapters.IDbAdapter;
 
@@ -54,7 +54,10 @@ suite("@dataform/integration/redshift", { parallel: true }, ({ before, after }) 
       const expectedResult = expectedFailedActions.includes(actionName)
         ? dataform.ActionResult.ExecutionStatus.FAILED
         : dataform.ActionResult.ExecutionStatus.SUCCESSFUL;
-      expect(actionMap[actionName].status).equals(expectedResult);
+      expect(actionMap[actionName].status).equals(
+        expectedResult,
+        actionMap[actionName].tasks.map(task => task.errorMessage).join("\n")
+      );
     }
 
     expect(
@@ -103,7 +106,12 @@ suite("@dataform/integration/redshift", { parallel: true }, ({ before, after }) 
       dbadapter
     );
     executedGraph = await dfapi.run(dbadapter, executionGraph).result();
-    expect(executedGraph.status).equals(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
+    expect(executedGraph.status).equals(
+      dataform.RunResult.ExecutionStatus.SUCCESSFUL,
+      executedGraph.actions
+        .map(action => action.tasks.map(task => task.errorMessage).join("\n"))
+        .join("\n")
+    );
 
     // Check there are the expected number of extra rows in the incremental table.
     incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
@@ -177,7 +185,7 @@ suite("@dataform/integration/redshift", { parallel: true }, ({ before, after }) 
     }
   });
 
-  suite("evaluate", async () => {
+  suite("evaluate", () => {
     test("evaluate from valid compiled graph as valid", async () => {
       const compiledGraph = await compile("tests/integration/redshift_project", "evaluate");
       const executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
