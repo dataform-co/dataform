@@ -21,19 +21,20 @@ export function Spinner({ size, message, ...rest }: ISpinnerProps) {
         size={
           size === "large"
             ? BlueprintSpinner.SIZE_LARGE
-            : size === "standard"
-            ? BlueprintSpinner.SIZE_STANDARD
-            : BlueprintSpinner.SIZE_SMALL
+            : size === "small"
+            ? BlueprintSpinner.SIZE_SMALL
+            : BlueprintSpinner.SIZE_STANDARD
         }
         {...rest}
       />
-      {!!message && size === "large" ? (
-        <h1>{message}</h1>
-      ) : size === "standard" ? (
-        <h2>{message}</h2>
-      ) : (
-        <h3>{message}</h3>
-      )}
+      {!!message &&
+        (size === "large" ? (
+          <h1>{message}</h1>
+        ) : size === "standard" ? (
+          <h2>{message}</h2>
+        ) : (
+          <h3>{message}</h3>
+        ))}
     </div>
   );
 }
