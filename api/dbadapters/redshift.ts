@@ -286,6 +286,7 @@ class PgPoolExecutor {
     client.on("error", err => {
       // tslint:disable-next-line: no-console
       console.error("pg.Client client error", err.message, err.stack);
+      client.release(err);
     });
 
     return await new Promise<any[]>((resolve, reject) => {
