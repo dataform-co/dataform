@@ -10,9 +10,10 @@ export type SpinnerSize = "large" | "standard" | "small";
 export interface ISpinnerProps extends IIntentProps {
   size?: SpinnerSize;
   value?: number;
+  message?: string;
 }
 
-export function Spinner({ size, ...rest }: ISpinnerProps) {
+export function Spinner({ size, message, ...rest }: ISpinnerProps) {
   return (
     <div className={styles.centered}>
       <BlueprintSpinner
@@ -20,12 +21,19 @@ export function Spinner({ size, ...rest }: ISpinnerProps) {
         size={
           size === "large"
             ? BlueprintSpinner.SIZE_LARGE
-            : size === "small"
-            ? BlueprintSpinner.SIZE_SMALL
-            : BlueprintSpinner.SIZE_STANDARD
+            : size === "standard"
+            ? BlueprintSpinner.SIZE_STANDARD
+            : BlueprintSpinner.SIZE_SMALL
         }
         {...rest}
       />
+      {!!message && size === "large" ? (
+        <h1>{message}</h1>
+      ) : size === "standard" ? (
+        <h2>{message}</h2>
+      ) : (
+        <h3>{message}</h3>
+      )}
     </div>
   );
 }
