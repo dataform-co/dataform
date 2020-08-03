@@ -286,6 +286,14 @@ class PgPoolExecutor {
     client.on("error", err => {
       // tslint:disable-next-line: no-console
       console.error("pg.Client client error", err.message, err.stack);
+      // Errored connections cause issues when released back to the pool. Instead, close the connection
+      // by passing the error to release(). https://github.com/dataform-co/dataform/issues/914
+      try {
+        client.release(err);
+      } catch (e) {
+        // tslint:disable-next-line: no-console
+        console.error("Error thrown when releasing errored pg.Client", e.message, e.stack);
+      }
     });
 
     return await new Promise<any[]>((resolve, reject) => {
@@ -301,12 +309,17 @@ class PgPoolExecutor {
           query.destroy();
         }
       });
-      query.on("error", e => {
+      query.on("error", err => {
         // Errors don't cause "end" to fire, additionally errored connections
         // cause issues when released back to the pool. Instead, close the connection
         // by passing the error to release(). https://github.com/dataform-co/dataform/issues/914
-        client.release(e);
-        reject(e);
+        try {
+          client.release(err);
+        } catch (e) {
+          // tslint:disable-next-line: no-console
+          console.error("Error thrown when releasing errored pg.Client", e.message, e.stack);
+        }
+        reject(err);
       });
       query.on("end", () => {
         client.release();
