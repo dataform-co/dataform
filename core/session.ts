@@ -3,16 +3,17 @@ import { default as TarjanGraphConstructor, Graph as TarjanGraph } from "tarjan-
 
 import { JSONObjectStringifier, StringifiedMap } from "df/common/strings/stringifier";
 import * as adapters from "df/core/adapters";
-import { AContextable, Assertion, IAssertionConfig } from "df/core/assertion";
+import { AContextable, Assertion, AssertionContext, IAssertionConfig } from "df/core/assertion";
 import { Contextable, ICommonContext, Resolvable } from "df/core/common";
 import { Declaration, IDeclarationConfig } from "df/core/declaration";
-import { IOperationConfig, Operation } from "df/core/operation";
+import { IOperationConfig, Operation, OperationContext } from "df/core/operation";
 import {
   DistStyleType,
   ITableConfig,
   ITableContext,
   SortStyleType,
   Table,
+  TableContext,
   TableType
 } from "df/core/table";
 import * as test from "df/core/test";
@@ -92,10 +93,18 @@ export class Session {
   public sqlxAction(actionOptions: {
     sqlxConfig: SqlxConfig;
     sqlStatementCount: number;
-    hasIncremental: boolean;
-    hasPreOperations: boolean;
-    hasPostOperations: boolean;
-    hasInputs: boolean;
+    sqlContextable: (
+      ctx: TableContext | AssertionContext | OperationContext | ICommonContext
+    ) => string[];
+    incrementalWhereContextable: (ctx: ITableContext) => string;
+    preOperationsContextable: (ctx: ITableContext) => string[];
+    postOperationsContextable: (ctx: ITableContext) => string[];
+    inputContextables: [
+      {
+        refName: string[];
+        contextable: (ctx: ICommonContext) => string;
+      }
+    ];
   }) {
     const { sqlxConfig } = actionOptions;
     if (actionOptions.sqlStatementCount > 1 && sqlxConfig.type !== "operations") {
@@ -108,7 +117,7 @@ export class Session {
         "Actions may only specify 'protected: true' if they are of type 'incremental'."
       );
     }
-    if (actionOptions.hasIncremental && sqlxConfig.type !== "incremental") {
+    if (actionOptions.incrementalWhereContextable && sqlxConfig.type !== "incremental") {
       this.compileError(
         "Actions may only include incremental_where if they are of type 'incremental'."
       );
@@ -116,13 +125,13 @@ export class Session {
     if (!sqlxConfig.hasOwnProperty("schema") && sqlxConfig.type === "declaration") {
       this.compileError("Actions of type 'declaration' must specify a value for 'schema'.");
     }
-    if (actionOptions.hasInputs && sqlxConfig.type !== "test") {
+    if (actionOptions.inputContextables.length > 0 && sqlxConfig.type !== "test") {
       this.compileError("Actions may only include input blocks if they are of type 'test'.");
     }
-    if (actionOptions.hasPreOperations && !definesDataset(sqlxConfig.type)) {
+    if (actionOptions.preOperationsContextable && !definesDataset(sqlxConfig.type)) {
       this.compileError("Actions may only include pre_operations if they create a dataset.");
     }
-    if (actionOptions.hasPostOperations && !definesDataset(sqlxConfig.type)) {
+    if (actionOptions.postOperationsContextable && !definesDataset(sqlxConfig.type)) {
       this.compileError("Actions may only include post_operations if they create a dataset.");
     }
     if (
@@ -134,30 +143,52 @@ export class Session {
       );
     }
 
-    const action = (() => {
-      switch (sqlxConfig.type) {
-        case "view":
-        case "table":
-        case "inline":
-        case "incremental":
-          return this.publish(sqlxConfig.name).config(sqlxConfig);
-        case "assertion":
-          return this.assert(sqlxConfig.name).config(sqlxConfig);
-        case "operations":
-          return this.operate(sqlxConfig.name).config(sqlxConfig);
-        case "declaration":
-          return this.declare({
-            database: sqlxConfig.database,
-            schema: sqlxConfig.schema,
-            name: sqlxConfig.name
-          }).config(sqlxConfig);
-        case "test":
-          return this.test(sqlxConfig.name).config(sqlxConfig);
-        default:
-          throw new Error(`Unrecognized action type: ${(sqlxConfig as SqlxConfig).type}`);
-      }
-    })();
-    return action;
+    switch (sqlxConfig.type) {
+      case "view":
+      case "table":
+      case "inline":
+      case "incremental":
+        const table = this.publish(sqlxConfig.name)
+          .config(sqlxConfig)
+          .query(ctx => actionOptions.sqlContextable(ctx)[0]);
+        if (actionOptions.incrementalWhereContextable) {
+          table.where(actionOptions.incrementalWhereContextable);
+        }
+        if (actionOptions.preOperationsContextable) {
+          table.preOps(actionOptions.preOperationsContextable);
+        }
+        if (actionOptions.postOperationsContextable) {
+          table.postOps(actionOptions.postOperationsContextable);
+        }
+        break;
+      case "assertion":
+        this.assert(sqlxConfig.name)
+          .config(sqlxConfig)
+          .query(ctx => actionOptions.sqlContextable(ctx)[0]);
+        break;
+      case "operations":
+        this.operate(sqlxConfig.name)
+          .config(sqlxConfig)
+          .queries(actionOptions.sqlContextable);
+        break;
+      case "declaration":
+        this.declare({
+          database: sqlxConfig.database,
+          schema: sqlxConfig.schema,
+          name: sqlxConfig.name
+        }).config(sqlxConfig);
+        break;
+      case "test":
+        const testCase = this.test(sqlxConfig.name)
+          .config(sqlxConfig)
+          .expect(ctx => actionOptions.sqlContextable(ctx)[0]);
+        actionOptions.inputContextables.forEach(({ refName, contextable }) => {
+          testCase.input(refName, contextable);
+        });
+        break;
+      default:
+        throw new Error(`Unrecognized action type: ${(sqlxConfig as SqlxConfig).type}`);
+    }
   }
 
   public resolve(ref: Resolvable): string {
