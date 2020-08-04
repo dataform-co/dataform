@@ -91,7 +91,7 @@ export function extractJsBlocks(code: string): { sql: string; js: string } {
 }
 
 function compileSqlx(rootNode: SyntaxTreeNode, path: string) {
-  let config = "";
+  let config = "{}";
   let js = "";
   rootNode
     .children()
@@ -174,110 +174,64 @@ function compileSqlx(rootNode: SyntaxTreeNode, path: string) {
       }
     });
 
-  return `
-const parsedConfig = ${config || "{}"};
-// sqlxConfig should conform to the ISqlxConfig interface.
-const sqlxConfig = {
-  name: "${utils.baseFilename(path)}",
-  type: "operations",
-  ...parsedConfig
-};
+  const contextFunctions = ["self", "ref", "resolve", "name", "when", "incremental"]
+    .map(name => `const ${name} = ctx.${name} ? ctx.${name}.bind(ctx) : undefined;`)
+    .join("\n");
 
-const sqlStatementCount = ${sql.length};
-const hasIncremental = ${!!incremental};
-const hasPreOperations = ${preOperations.length > 1 || preOperations[0] !== ""};
-const hasPostOperations = ${postOperations.length > 1 || postOperations[0] !== ""};
-const hasInputs = ${Object.keys(inputs).length > 0};
-
-const action = session.sqlxAction({
-  sqlxConfig,
-  sqlStatementCount,
-  hasIncremental,
-  hasPreOperations,
-  hasPostOperations,
-  hasInputs
-});
-
-switch (sqlxConfig.type) {
-  case "view":
-  case "table":
-  case "incremental":
-  case "inline": {
-    action.query(ctx => {
-      ${["self", "ref", "resolve", "name", "when", "incremental"]
-        .map(name => `const ${name} = ctx.${name}.bind(ctx);`)
-        .join("\n")}
-      ${js}
-      if (hasIncremental) {
-        action.where(\`${incremental}\`);
-      }
-      return \`${sql[0]}\`;
-    });
-    if (hasPreOperations) {
-      action.preOps(ctx => {
-        ${["self", "ref", "resolve", "name", "when", "incremental"]
-          .map(name => `const ${name} = ctx.${name}.bind(ctx);`)
-          .join("\n")}
-        ${js}
-        return [${preOperations.map(preOpSql => `\`${preOpSql}\``)}];
-      });
-    }
-    if (hasPostOperations) {
-      action.postOps(ctx => {
-        ${["self", "ref", "resolve", "name", "when", "incremental"]
-          .map(name => `const ${name} = ctx.${name}.bind(ctx);`)
-          .join("\n")}
-        ${js}
-        return [${postOperations.map(postOpSql => `\`${postOpSql}\``)}];
-      });
-    }
-    break;
-  }
-  case "assertion": {
-    action.query(ctx => {
-      ${["ref", "resolve"].map(name => `const ${name} = ctx.${name}.bind(ctx);`).join("\n")}
-      ${js}
-      return \`${sql[0]}\`;
-    });
-    break;
-  }
-  case "operations": {
-    action.queries(ctx => {
-      ${["self", "ref", "resolve", "name"]
-        .map(name => `const ${name} = ctx.${name}.bind(ctx);`)
-        .join("\n")}
-      ${js}
-      const operations = [${sql.map(sqlOp => `\`${sqlOp}\``)}];
-      return operations;
-    });
-    break;
-  }
-  case "declaration": {
-    break;
-  }
-  case "test": {
+  return `session.sqlxAction({
+  sqlxConfig: {
+    name: "${utils.baseFilename(path)}",
+    type: "operations",
+    ...${config}
+  },
+  sqlStatementCount: ${sql.length},
+  sqlContextable: (ctx) => {
+    ${contextFunctions}
+    ${js}
+    return [${sql.map(sqlOp => `\`${sqlOp}\``)}];
+  },
+  incrementalWhereContextable: ${
+    !!incremental
+      ? `(ctx) => {
+    ${contextFunctions}
+    ${js}
+    return \`${incremental}\`
+  }`
+      : "undefined"
+  },
+  preOperationsContextable: ${
+    preOperations.length > 1 || preOperations[0] !== ""
+      ? `(ctx) => {
+    ${contextFunctions}
+    ${js}
+    return [${preOperations.map(preOpSql => `\`${preOpSql}\``)}];
+  }`
+      : "undefined"
+  },
+  postOperationsContextable: ${
+    postOperations.length > 1 || postOperations[0] !== ""
+      ? `(ctx) => {
+    ${contextFunctions}
+    ${js}
+    return [${postOperations.map(postOpSql => `\`${postOpSql}\``)}];
+  }`
+      : "undefined"
+  },
+  inputContextables: [
     ${inputs
       .map(
         ({ labelParts, value }) =>
-          `
-        action.input([${labelParts.map(labelPart => `"${labelPart}"`).join(", ")}], ctx => {
-          ${js}
-          return \`${value}\`;
-        });
-        `
+          `{
+            refName: [${labelParts.map(labelPart => `"${labelPart}"`).join(", ")}],
+            contextable: (ctx) => {
+              ${js}
+              return \`${value}\`;
+            }
+          }`
       )
-      .join("\n")}
-    action.expect(ctx => {
-      ${js}
-      return \`${sql}\`;
-    });
-    break;
-  }
-  default: {
-    session.compileError(new Error(\`Unrecognized action type: \${sqlxConfig.type}\`));
-    break;
-  }
-}
+      .join(",")}
+  ]
+});
 `;
 }
 
