@@ -45,6 +45,7 @@ externals = [
     "lodash",
     "mssql",
     "object-hash",
+    "object-sizeof",
     "pg",
     "pg-query-stream",
     "pretty-ms",

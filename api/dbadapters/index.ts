@@ -25,7 +25,8 @@ export interface IDbAdapter {
     options?: {
       onCancel?: OnCancel;
       interactive?: boolean;
-      maxResults?: number;
+      rowLimit?: number;
+      byteLimit?: number;
     }
   ): Promise<IExecutionResult>;
   evaluate(

@@ -162,7 +162,7 @@ suite("@dataform/integration/redshift", { parallel: false }, ({ before, after })
     ]);
   });
 
-  suite("result limit works", async () => {
+  suite("query limits work", { parallel: true }, async () => {
     const query = `
       select 1 union all
       select 2 union all
@@ -170,10 +170,15 @@ suite("@dataform/integration/redshift", { parallel: false }, ({ before, after })
       select 4 union all
       select 5`;
 
-    for (const interactive of [true, false]) {
-      test(`with interactive=${interactive}`, async () => {
-        const { rows } = await dbadapter.execute(query, { interactive, maxResults: 2 });
-        expect(rows).eql([
+    for (const options of [
+      { interactive: true, rowLimit: 2 },
+      { interactive: false, rowLimit: 2 },
+      { interactive: true, byteLimit: 50 },
+      { interactive: false, byteLimit: 50 }
+    ]) {
+      test(`with options=${JSON.stringify(options)}`, async () => {
+        const { rows } = await dbadapter.execute(query, options);
+        expect(rows).to.eql([
           {
             "?column?": 1
           },

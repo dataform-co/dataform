@@ -11,6 +11,7 @@ ts_library(
         "@npm//@types/node",
         "@npm//@types/object-hash",
         "@npm//object-hash",
+        "@npm//object-sizeof",
     ],
 )
 

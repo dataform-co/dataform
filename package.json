@@ -87,6 +87,7 @@
     "next-images": "^1.0.4",
     "node-cache": "^5.1.0",
     "object-hash": "^2.0.3",
+    "object-sizeof": "^1.6.1",
     "pegjs": "^0.10.0",
     "pg": "^8.3.0",
     "pg-query-stream": "^3.2.0",
