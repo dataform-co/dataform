@@ -1,9 +1,11 @@
 import * as https from "https";
 import * as PromisePool from "promise-pool-executor";
+import { Readable } from "stream";
 
 import { Credentials } from "df/api/commands/credentials";
 import { IDbAdapter, OnCancel } from "df/api/dbadapters/index";
 import { parseSnowflakeEvalError } from "df/api/utils/error_parsing";
+import { LimitedResultSet } from "df/api/utils/results";
 import { ErrorWithCause } from "df/common/errors/errors";
 import { collectEvaluationQueries, QueryOrAction } from "df/core/adapters";
 import { dataform } from "df/protos/ts";
@@ -54,11 +56,7 @@ interface ISnowflakeConnection {
 
 interface ISnowflakeStatement {
   cancel: (err: any) => void;
-  streamRows: (options: { start?: number; end?: number }) => ISnowflakeResultStream;
-}
-
-interface ISnowflakeResultStream {
-  on: (event: "error" | "data" | "end", handler: (data: Error | any[]) => void) => this;
+  streamRows: (options?: { start?: number; end?: number }) => Readable;
 }
 
 export class SnowflakeDbAdapter implements IDbAdapter {
@@ -89,8 +87,9 @@ export class SnowflakeDbAdapter implements IDbAdapter {
     statement: string,
     options: {
       onCancel?: OnCancel;
-      maxResults?: number;
-    } = { maxResults: 1000 }
+      rowLimit?: number;
+      byteLimit?: number;
+    } = { rowLimit: 1000, byteLimit: 1024 * 1024 }
   ) {
     return {
       rows: await this.pool
@@ -116,16 +115,20 @@ export class SnowflakeDbAdapter implements IDbAdapter {
                       }
                     })
                   );
-                  const rows: any[] = [];
-                  const streamOptions =
-                    !!options && !!options.maxResults
-                      ? { start: 0, end: options.maxResults - 1 }
-                      : {};
-                  stmt
-                    .streamRows(streamOptions)
+                  const results = new LimitedResultSet({
+                    rowLimit: options?.rowLimit,
+                    byteLimit: options?.byteLimit
+                  });
+                  const stream = stmt.streamRows();
+                  stream
                     .on("error", e => reject(e))
-                    .on("data", row => rows.push(row))
-                    .on("end", () => resolve(rows));
+                    .on("data", row => {
+                      if (!results.push(row)) {
+                        stream.destroy();
+                      }
+                    })
+                    .on("end", () => resolve(results.rows))
+                    .on("close", () => resolve(results.rows));
                 }
               });
             })
@@ -173,7 +176,7 @@ from information_schema.tables
 where LOWER(table_schema) != 'information_schema'
   and LOWER(table_schema) != 'pg_catalog'
   and LOWER(table_schema) != 'pg_internal'`,
-      { maxResults: 10000 }
+      { rowLimit: 10000 }
     );
     return rows.map(row => ({
       database: row.TABLE_CATALOG,

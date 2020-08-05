@@ -3,6 +3,7 @@ import { ConnectionPool } from "mssql";
 import { Credentials } from "df/api/commands/credentials";
 import { IDbAdapter, IExecutionResult, OnCancel } from "df/api/dbadapters/index";
 import { parseAzureEvaluationError } from "df/api/utils/error_parsing";
+import { LimitedResultSet } from "df/api/utils/results";
 import { collectEvaluationQueries, QueryOrAction } from "df/core/adapters";
 import { dataform } from "df/protos/ts";
 
@@ -62,8 +63,9 @@ export class SQLDataWarehouseDBAdapter implements IDbAdapter {
     statement: string,
     options: {
       onCancel?: OnCancel;
-      maxResults?: number;
-    } = { maxResults: 1000 }
+      rowLimit?: number;
+      byteLimit?: number;
+    } = { rowLimit: 1000, byteLimit: 1024 * 1024 }
   ): Promise<IExecutionResult> {
     const request = (await this.pool).request();
     options?.onCancel?.(() => request.cancel());
@@ -71,19 +73,20 @@ export class SQLDataWarehouseDBAdapter implements IDbAdapter {
     return await new Promise<IExecutionResult>((resolve, reject) => {
       request.stream = true;
 
-      const rows: any[] = [];
+      const results = new LimitedResultSet({
+        rowLimit: options?.rowLimit,
+        byteLimit: options?.byteLimit
+      });
 
       request
         .on("row", row => {
-          if (options && options.maxResults && rows.length >= options.maxResults) {
+          if (!results.push(row)) {
             request.cancel();
-            resolve({ rows, metadata: {} });
-            return;
+            resolve({ rows: results.rows, metadata: {} });
           }
-          rows.push(row);
         })
         .on("error", err => reject(err))
-        .on("done", () => resolve({ rows, metadata: {} }));
+        .on("done", () => resolve({ rows: results.rows, metadata: {} }));
 
       // tslint:disable-next-line: no-floating-promises
       request.query(statement);
@@ -129,7 +132,7 @@ export class SQLDataWarehouseDBAdapter implements IDbAdapter {
       rows
     } = await this.execute(
       `select ${TABLE_SCHEMA_COL_NAME}, ${TABLE_NAME_COL_NAME} from ${INFORMATION_SCHEMA_SCHEMA_NAME}.tables`,
-      { maxResults: 10000 }
+      { rowLimit: 10000 }
     );
     return rows.map(row => ({
       schema: row[TABLE_SCHEMA_COL_NAME],
