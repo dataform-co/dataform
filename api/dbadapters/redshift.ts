@@ -302,7 +302,13 @@ class PgPoolExecutor {
       options?.onCancel?.(() => query.destroy());
       query.on("data", (row: any) => {
         if (results.length < options.maxResults) {
-          verifyUniqueColumnNames((query as any).cursor._result.fields);
+          try {
+            verifyUniqueColumnNames((query as any).cursor._result.fields);
+          } catch (e) {
+            query.destroy();
+            reject(e);
+            return;
+          }
           results.push(row);
         } else {
           // This causes the "end" handler below to fire.
