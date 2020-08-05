@@ -128,8 +128,36 @@ suite("@dataform/integration/sqldatawarehouse", { parallel: true }, ({ before, a
 
     for (const interactive of [true, false]) {
       test(`with interactive=${interactive}`, async () => {
-        const { rows } = await dbadapter.execute(query, { interactive, maxResults: 2 });
+        const { rows } = await dbadapter.execute(query, { interactive, rowLimit: 2 });
         expect(rows).eql([
+          {
+            "": 1
+          },
+          {
+            "": 2
+          }
+        ]);
+      });
+    }
+  });
+
+  suite("query limits work", { parallel: true }, async () => {
+    const query = `
+      select 1 union all
+      select 2 union all
+      select 3 union all
+      select 4 union all
+      select 5`;
+
+    for (const options of [
+      { interactive: true, rowLimit: 2 },
+      { interactive: false, rowLimit: 2 },
+      { interactive: true, byteLimit: 20 },
+      { interactive: false, byteLimit: 20 }
+    ]) {
+      test(`with options=${JSON.stringify(options)}`, async () => {
+        const { rows } = await dbadapter.execute(query, options);
+        expect(rows).to.eql([
           {
             "": 1
           },

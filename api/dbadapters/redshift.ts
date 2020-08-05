@@ -5,6 +5,7 @@ import { Credentials } from "df/api/commands/credentials";
 import { IDbAdapter, OnCancel } from "df/api/dbadapters/index";
 import { SSHTunnelProxy } from "df/api/ssh_tunnel_proxy";
 import { parseRedshiftEvalError } from "df/api/utils/error_parsing";
+import { LimitedResultSet } from "df/api/utils/results";
 import { ErrorWithCause } from "df/common/errors/errors";
 import { collectEvaluationQueries, QueryOrAction } from "df/core/adapters";
 import { dataform } from "df/protos/ts";
@@ -81,9 +82,10 @@ export class RedshiftDbAdapter implements IDbAdapter {
   public async execute(
     statement: string,
     options: {
-      maxResults?: number;
+      rowLimit?: number;
+      byteLimit?: number;
       includeQueryInError?: boolean;
-    } = { maxResults: 1000 }
+    } = { rowLimit: 1000, byteLimit: 1024 * 1024 }
   ) {
     try {
       const rows = await this.queryExecutor.execute(statement, options);
@@ -142,7 +144,7 @@ export class RedshiftDbAdapter implements IDbAdapter {
            ? "union select tablename as table_name, schemaname as table_schema from svv_external_tables"
            : ""
        }`,
-      { maxResults: 10000, includeQueryInError: true }
+      { rowLimit: 10000, includeQueryInError: true }
     );
     const { rows } = queryResult;
     return rows.map(row => ({
@@ -246,7 +248,7 @@ export class RedshiftDbAdapter implements IDbAdapter {
          from information_schema.tables
          where table_name = 'svv_external_tables'
            and table_schema = 'pg_catalog'`,
-          { maxResults: 1, includeQueryInError: true }
+          { rowLimit: 1, includeQueryInError: true }
         )
       ).rows.length > 0
     );
@@ -274,10 +276,11 @@ class PgPoolExecutor {
     statement: string,
     options: {
       onCancel?: OnCancel;
-      maxResults?: number;
-    } = { maxResults: 1000 }
+      rowLimit?: number;
+      byteLimit?: number;
+    } = { rowLimit: 1000, byteLimit: 1024 * 1024 }
   ) {
-    if (!options || !options.maxResults) {
+    if (!options?.rowLimit && !options?.byteLimit) {
       const result = await this.pool.query(statement);
       verifyUniqueColumnNames(result.fields);
       return result.rows;
@@ -298,13 +301,14 @@ class PgPoolExecutor {
 
     return await new Promise<any[]>((resolve, reject) => {
       const query = client.query(new QueryStream(statement));
-      const results: any[] = [];
+      const results = new LimitedResultSet({
+        rowLimit: options?.rowLimit,
+        byteLimit: options?.byteLimit
+      });
       options?.onCancel?.(() => query.destroy());
       query.on("data", (row: any) => {
-        if (results.length < options.maxResults) {
-          verifyUniqueColumnNames((query as any).cursor._result.fields);
-          results.push(row);
-        } else {
+        verifyUniqueColumnNames((query as any).cursor._result.fields);
+        if (!results.push(row)) {
           // This causes the "end" handler below to fire.
           query.destroy();
         }
@@ -323,7 +327,7 @@ class PgPoolExecutor {
       });
       query.on("end", () => {
         client.release();
-        resolve(results);
+        resolve(results.rows);
       });
     });
   }

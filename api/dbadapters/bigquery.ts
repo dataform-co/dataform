@@ -2,10 +2,10 @@ import Long from "long";
 import { PromisePoolExecutor } from "promise-pool-executor";
 
 import { BigQuery } from "@google-cloud/bigquery";
-import { QueryResultsOptions } from "@google-cloud/bigquery/build/src/job";
 import { Credentials } from "df/api/commands/credentials";
 import { IDbAdapter, IExecutionResult, OnCancel } from "df/api/dbadapters/index";
 import { parseBigqueryEvalError } from "df/api/utils/error_parsing";
+import { LimitedResultSet } from "df/api/utils/results";
 import {
   decodePersistedTableMetadata,
   encodePersistedTableMetadata,
@@ -13,7 +13,7 @@ import {
   IMetadataRow,
   toRowKey
 } from "df/api/utils/run_cache";
-import { coerceAsError, ErrorWithCause } from "df/common/errors/errors";
+import { coerceAsError } from "df/common/errors/errors";
 import { StringifiedMap } from "df/common/strings/stringifier";
 import { collectEvaluationQueries, QueryOrAction } from "df/core/adapters";
 import { dataform } from "df/protos/ts";
@@ -83,18 +83,20 @@ export class BigQueryDbAdapter implements IDbAdapter {
     options: {
       onCancel?: OnCancel;
       interactive?: boolean;
-      maxResults?: number;
-    } = { interactive: false, maxResults: 1000 }
+      rowLimit?: number;
+      byteLimit?: number;
+    } = { interactive: false, rowLimit: 1000, byteLimit: 1024 * 1024 }
   ): Promise<IExecutionResult> {
     return this.pool
       .addSingleTask({
         generator: () =>
-          options && options.interactive
-            ? this.runQuery(statement, options && options.maxResults)
+          options?.interactive
+            ? this.runQuery(statement, options?.rowLimit, options?.byteLimit)
             : this.createQueryJob(
                 statement,
-                options && options.maxResults,
-                options && options.onCancel
+                options?.rowLimit,
+                options?.byteLimit,
+                options?.onCancel
               )
       })
       .promise();
@@ -403,29 +405,33 @@ DELETE \`${CACHED_STATE_TABLE_NAME}\` WHERE target IN (${allActions
     return this.clients.get(projectId);
   }
 
-  private async runQuery(statement: string, maxResults?: number) {
+  private async runQuery(statement: string, rowLimit?: number, byteLimit?: number) {
     const results = await new Promise<any[]>((resolve, reject) => {
-      const allRows: any[] = [];
+      const allRows = new LimitedResultSet({
+        rowLimit,
+        byteLimit
+      });
       const stream = this.getClient().createQueryStream(statement);
       stream
         .on("error", e => reject(coerceAsError(e)))
         .on("data", row => {
-          if (!maxResults) {
-            allRows.push(row);
-          } else if (allRows.length < maxResults) {
-            allRows.push(row);
-          } else {
+          if (!allRows.push(row)) {
             stream.end();
           }
         })
         .on("end", () => {
-          resolve(allRows);
+          resolve(allRows.rows);
         });
     });
     return { rows: cleanRows(results), metadata: {} };
   }
 
-  private async createQueryJob(statement: string, maxResults?: number, onCancel?: OnCancel) {
+  private async createQueryJob(
+    statement: string,
+    rowLimit?: number,
+    byteLimit?: number,
+    onCancel?: OnCancel
+  ) {
     let isCancelled = false;
     onCancel?.(() => (isCancelled = true));
 
@@ -438,23 +444,24 @@ DELETE \`${CACHED_STATE_TABLE_NAME}\` WHERE target IN (${allActions
       const resultStream = job[0].getQueryResultsStream();
       return new Promise<IExecutionResult>((resolve, reject) => {
         if (isCancelled) {
-          resultStream.destroy();
+          resultStream.end();
           reject(new Error("Query cancelled."));
           return;
         }
         onCancel?.(() => {
-          resultStream.destroy();
+          resultStream.end();
           reject(new Error("Query cancelled."));
         });
 
-        const results: any[] = [];
+        const results = new LimitedResultSet({
+          rowLimit,
+          byteLimit
+        });
         resultStream
           .on("error", e => reject(e))
           .on("data", row => {
-            if (!maxResults || results.length < maxResults) {
-              results.push(row);
-            } else {
-              resultStream.destroy();
+            if (!results.push(row)) {
+              resultStream.end();
             }
           })
           .on("end", async () => {
@@ -467,7 +474,7 @@ DELETE \`${CACHED_STATE_TABLE_NAME}\` WHERE target IN (${allActions
                 return;
               }
               resolve({
-                rows: results,
+                rows: results.rows,
                 metadata: {
                   bigquery: {
                     jobId: jobMetadata.jobReference.jobId,
