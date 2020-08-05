@@ -1,6 +1,6 @@
 ---
 title: Use the REST API
-subtitle: Learn how to Dataform web REST API.
+subtitle: Learn how to use the Dataform web REST API.
 priority: 4
 ---
 
