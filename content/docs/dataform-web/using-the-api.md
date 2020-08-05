@@ -7,7 +7,7 @@ priority: 4
 Dataform Web can be controlled through a REST API. This is currently a paid feature, if you'd like to get set up please reach out to our team on Intercom on the bottom right of the page.
 
 <div class="bp3-callout bp3-icon-info-sign bp3-intent-warning">
-  The Dataform Web API is currently in Alpha, and breaking changes are likely to happen.
+  The Dataform Web API is currently in Beta, and breaking changes are likely to happen.
 </div>
 
 ## Authorization
