@@ -307,6 +307,7 @@ class PgPoolExecutor {
           } catch (e) {
             query.destroy();
             reject(e);
+            return;
           }
           results.push(row);
         } else {
