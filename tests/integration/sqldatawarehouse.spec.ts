@@ -118,29 +118,6 @@ suite("@dataform/integration/sqldatawarehouse", { parallel: true }, ({ before, a
     ]);
   });
 
-  suite("result limit works", async () => {
-    const query = `
-      select 1 union all
-      select 2 union all
-      select 3 union all
-      select 4 union all
-      select 5`;
-
-    for (const interactive of [true, false]) {
-      test(`with interactive=${interactive}`, async () => {
-        const { rows } = await dbadapter.execute(query, { interactive, rowLimit: 2 });
-        expect(rows).eql([
-          {
-            "": 1
-          },
-          {
-            "": 2
-          }
-        ]);
-      });
-    }
-  });
-
   suite("query limits work", { parallel: true }, async () => {
     const query = `
       select 1 union all
