@@ -310,13 +310,14 @@ class PgPoolExecutor {
         try {
           verifyUniqueColumnNames((query as any).cursor._result.fields);
         } catch (e) {
-          query.destroy();
-          reject(e);
+          // This causes the "error" handler below to fire.
+          query.destroy(e);
           return;
         }
         if (!results.push(row)) {
-          // This causes the "end" handler below to fire.
-          query.destroy();
+          // The correct way to stop processing data is to close the cursor itself.
+          // This results in "end" firing below. https://node-postgres.com/api/cursor#close
+          (query as any).cursor.close();
         }
       });
       query.on("error", err => {
