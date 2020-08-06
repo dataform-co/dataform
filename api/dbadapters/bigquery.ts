@@ -466,9 +466,7 @@ DELETE \`${CACHED_STATE_TABLE_NAME}\` WHERE target IN (${allActions
           })
           .on("end", async () => {
             try {
-              const [jobMetadata] = await this.getClient()
-                .job(job[0].id)
-                .getMetadata();
+              const [jobMetadata] = await job[0].getMetadata();
               if (!!jobMetadata.status?.errorResult) {
                 reject(new Error(jobMetadata.status.errorResult.message));
                 return;
