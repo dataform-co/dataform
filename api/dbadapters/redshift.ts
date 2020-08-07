@@ -328,12 +328,17 @@ class PgPoolExecutor {
           client.release(err);
         } catch (e) {
           // tslint:disable-next-line: no-console
-          console.error("Error thrown when releasing errored pg.Client", e.message, e.stack);
+          console.error("Error thrown when releasing errored pg.Query", e.message, e.stack);
         }
         reject(err);
       });
       query.on("end", () => {
-        client.release();
+        try {
+          client.release();
+        } catch (e) {
+          // tslint:disable-next-line: no-console
+          console.error("Error thrown when releasing ended pg.Query", e.message, e.stack);
+        }
         resolve(results.rows);
       });
     });
