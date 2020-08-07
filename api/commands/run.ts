@@ -449,7 +449,7 @@ export class Runner {
         () =>
           this.dbadapter.execute(task.statement, {
             onCancel: handleCancel => this.eEmitter.on(CANCEL_EVENT, handleCancel),
-            maxResults: 1
+            rowLimit: 1
           }),
         task.type === "operation" ? 0 : this.graph.projectConfig.idempotentActionRetries || 0
       );

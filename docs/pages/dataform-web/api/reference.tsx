@@ -29,7 +29,7 @@ export default class WebApiReference extends React.Component<IProps> {
     return {
       index: tree.index(),
       version: context.query.version,
-      current: tree.getChild("dataform-web/api/api-reference"),
+      current: tree.getChild("dataform-web/api/reference"),
       spec: (await axios.get(`https://${apiHost}/swagger.json`)).data,
       apiHost
     };

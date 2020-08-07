@@ -10,7 +10,8 @@ export function run(
   query: string,
   options?: {
     compileConfig?: dataform.ICompileConfig;
-    maxResults?: number;
+    rowLimit?: number;
+    byteLimit?: number;
   }
 ): CancellablePromise<any[]> {
   return new CancellablePromise(async (resolve, reject, onCancel) => {
@@ -19,7 +20,8 @@ export function run(
       const results = await dbadapter.execute(compiledQuery, {
         onCancel,
         interactive: true,
-        maxResults: options && options.maxResults
+        rowLimit: options?.rowLimit,
+        byteLimit: options?.byteLimit
       });
       resolve(results.rows);
     } catch (e) {

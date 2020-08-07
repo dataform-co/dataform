@@ -106,8 +106,8 @@ export async function getContentTree(version = "local"): Promise<Tree<IExtraAttr
     })
   );
 
-  tree.getChild("dataform-web/api/").addChild(
-    new Tree("dataform-web/api/api-reference", "", {
+  tree.getChild("dataform-web/api").addChild(
+    new Tree("dataform-web/api/reference", "", {
       title: "Web API Reference",
       priority: 0
     })
