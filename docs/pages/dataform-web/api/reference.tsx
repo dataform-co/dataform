@@ -29,7 +29,7 @@ export default class WebApiReference extends React.Component<IProps> {
     return {
       index: tree.index(),
       version: context.query.version,
-      current: tree.getChild("dataform-web/api-reference"),
+      current: tree.getChild("dataform-web/api/reference"),
       spec: (await axios.get(`https://${apiHost}/swagger.json`)).data,
       apiHost
     };
@@ -45,7 +45,7 @@ export default class WebApiReference extends React.Component<IProps> {
       >
         <Swagger spec={this.props.spec} apiHost={this.props.apiHost}>
           <div className="bp3-callout bp3-icon-info-sign bp3-intent-warning">
-            The Dataform Web API is currently in Alpha, and breaking changes are likely to happen.
+            The Dataform Web API is currently in Beta, and breaking changes are likely to happen.
           </div>
         </Swagger>
       </Documentation>
