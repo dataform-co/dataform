@@ -1,3 +1,3 @@
 ---
-redirect: /api/index
+redirect: /dataform-web/api
 ---
