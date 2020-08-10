@@ -236,8 +236,43 @@ export class RedshiftDbAdapter implements IDbAdapter {
     // Unimplemented.
   }
 
-  public async setMetadata(): Promise<void> {
-    // Unimplemented.
+  public async setMetadata(action: dataform.IExecutionAction): Promise<void> {
+    const { target, actionDescriptor, type, tableType } = action;
+
+    if (!actionDescriptor || type !== "table" || tableType === "inline") {
+      return;
+    }
+
+    const queries: Array<Promise<any>> = [];
+    if (actionDescriptor.description) {
+      queries.push(
+        this.execute(
+          `comment on ${tableType === "view" ? "view" : "table"} "${target.schema}"."${
+            target.name
+          }" is '${actionDescriptor.description.replace("'", "\\'")}'`
+        )
+      );
+    }
+    if (actionDescriptor.columns?.length > 0) {
+      const actualMetadata = await this.table(target);
+      actionDescriptor.columns.forEach(column => {
+        if (
+          column.path.length > 1 ||
+          !actualMetadata?.fields.some(field => field.name === column.path[0])
+        ) {
+          return;
+        }
+        queries.push(
+          this.execute(
+            `comment on column "${target.schema}"."${target.name}"."${
+              column.path[0]
+            }" is '${column.description.replace("'", "\\'")}'`
+          )
+        );
+      });
+    }
+
+    await Promise.all(queries);
   }
 
   private async hasSpectrumTables() {

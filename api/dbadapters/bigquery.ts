@@ -335,9 +335,9 @@ DELETE \`${CACHED_STATE_TABLE_NAME}\` WHERE target IN (${allActions
   }
 
   public async setMetadata(action: dataform.IExecutionAction): Promise<any> {
-    const { target, actionDescriptor, type } = action;
+    const { target, actionDescriptor, type, tableType } = action;
 
-    if (!actionDescriptor || !["view", "table"].includes(type)) {
+    if (!actionDescriptor || type !== "table" || tableType === "inline") {
       return;
     }
 
