@@ -4,7 +4,11 @@ load("//testing:index.bzl", "ts_test_suite")
 
 ts_test_suite(
     name = "tests",
-    srcs = glob(["*.ts"]),
+    srcs = glob(
+        ["*.ts"],
+        # SQL Data warehouse integration tests are currently disabled while we sort out a new testing server.
+        exclude = ["sqldatawarehouse.spec.ts"],
+    ),
     data = [
         "//test_credentials:bigquery.json",
         "//test_credentials:redshift.json",
