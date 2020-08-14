@@ -82,8 +82,6 @@ function computeIncludedActionNames(
       const matchingDependencyNames = !!assertion.dependencies?.length
         ? utils.matchPatterns(assertion.dependencies, allActionNames)
         : [];
-      console.log("assertion.name", assertion.name);
-      console.log("matchingDependencyNames", matchingDependencyNames);
       if (!!matchingDependencyNames?.length) {
         includedActionNames.add(assertion.name);
       }
