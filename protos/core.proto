@@ -248,7 +248,7 @@ message ColumnDescriptor {
 
   // BigQuery specific settings.
 
-  repeated string bigqueryPolicyTags = 8;
+  repeated string bigquery_policy_tags = 8;
 }
 
 message Table {
