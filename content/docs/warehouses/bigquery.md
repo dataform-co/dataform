@@ -130,6 +130,10 @@ This will avoid a full table scan on the `raw_events` table when inserting new r
 
 If you use [policy tags](https://cloud.google.com/bigquery/docs/column-level-security-intro) for managing column-level security in BigQuery, then you can set policy tags on columns in tables via the Dataform config block. Note that any policy tags manually applied to datasets created via Dataform will likely get overwritten as the table is updated so you'll want to make sure that you configure them in Dataform instead.
 
+<callout intent="info">
+  In order to set policy tags, the service account or user associated with your project must be given the <code>Policy Tag Admin</code> permission.
+</callout>
+
 Here's an example of setting a policy tag on a column. The full tag identifier must be used as in the example below. This can be easily copied to your clipboard from the [taxonomies and tags](https://console.cloud.google.com/datacatalog/taxonomies) page inside the Google Catalog.
 
 ```sql
