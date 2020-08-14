@@ -248,16 +248,14 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
       for (const runIteration of [
         {
           runConfig: {
-            actions: ["example_incremental", "example_incremental_merge"],
-            includeDependencies: false
+            actions: ["example_incremental", "example_incremental_merge"]
           },
           expectedIncrementalRows: 3,
           expectedIncrementalMergeRows: 2
         },
         {
           runConfig: {
-            actions: ["example_incremental", "example_incremental_merge"],
-            includeDependencies: false
+            actions: ["example_incremental", "example_incremental_merge"]
           },
           expectedIncrementalRows: 5,
           expectedIncrementalMergeRows: 2
@@ -309,8 +307,15 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
         dbadapter
       );
       const runResult = await dfapi.run(dbadapter, executionGraph).result();
-      expect(dataform.RunResult.ExecutionStatus[runResult.status]).eql(
-        dataform.RunResult.ExecutionStatus[dataform.RunResult.ExecutionStatus.SUCCESSFUL]
+      const actionMap = keyBy(runResult.actions, v => v.name);
+      [
+        "dataform-integration-tests.df_integration_test_dataset_metadata.example_incremental",
+        "dataform-integration-tests.df_integration_test_dataset_metadata.example_view",
+        "dataform-integration-tests.df_integration_test_dataset_metadata.sample_data"
+      ].forEach(actionName =>
+        expect(actionMap[actionName].status).to.equals(
+          dataform.ActionResult.ExecutionStatus.SUCCESSFUL
+        )
       );
 
       // Check expected metadata.
