@@ -116,7 +116,7 @@ pre_operations {
 select
   *
 from
-  ${ref("raw_events")} 
+  ${ref("raw_events")}
 where event_timestamp > event_timestamp_checkpoint
 ```
 
@@ -124,11 +124,16 @@ This will avoid a full table scan on the `raw_events` table when inserting new r
 
 ## Managing BigQuery policy tags
 
+<callout intent="warning">
+  Support for managing policy tags was introduced from Dataform version <code>1.8.6</code>.
+</callout>
+
 If you use [policy tags](https://cloud.google.com/bigquery/docs/column-level-security-intro) for managing column-level security in BigQuery, then you can set policy tags on columns in tables via the Dataform config block. Note that any policy tags manually applied to datasets created via Dataform will likely get overwritten as the table is updated so you'll want to make sure that you configure them in Dataform instead.
 
-Here's a simple example of setting a tag. The full tag identifier must be used as in the example below. This can be easily copied to your clipboard from the [taxonomies and tags](https://console.cloud.google.com/datacatalog/taxonomies) page inside the Google Catalog.
+Here's an example of setting a policy tag on a column. The full tag identifier must be used as in the example below. This can be easily copied to your clipboard from the [taxonomies and tags](https://console.cloud.google.com/datacatalog/taxonomies) page inside the Google Catalog.
 
-```
+```sql
+// my_table.sqlx
 config {
   type: "table",
   columns: {
@@ -141,7 +146,6 @@ config {
 
 select "test" as column1
 ```
-
 
 ## Dataform web features for BigQuery
 
