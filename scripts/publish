@@ -18,7 +18,6 @@ bazel test //... --build_tests_only
 bazel run packages/@dataform/assertion_utils:package.publish
 bazel run packages/@dataform/cli:package.publish
 bazel run packages/@dataform/core:package.publish
-bazel run packages/@dataform/sql:package.publish
 bazel run cli:push
 
 VERSION=$(cat version.bzl | grep DF_VERSION | awk '{ print $3 }' | sed "s/\"//g")
