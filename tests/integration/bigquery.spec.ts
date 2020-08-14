@@ -249,14 +249,15 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
         {
           runConfig: {
             actions: ["example_incremental", "example_incremental_merge"],
-            includeDependencies: true
+            includeDependencies: false
           },
           expectedIncrementalRows: 3,
           expectedIncrementalMergeRows: 2
         },
         {
           runConfig: {
-            actions: ["example_incremental", "example_incremental_merge"]
+            actions: ["example_incremental", "example_incremental_merge"],
+            includeDependencies: false
           },
           expectedIncrementalRows: 5,
           expectedIncrementalMergeRows: 2
