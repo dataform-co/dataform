@@ -26,7 +26,7 @@ To create a new project in Dataform:
 As part of the project creation flow you'll be asked to connect to a warehouse. You’re going to use the credentials you generated in the earlier part of this tutorial to connect:
 
 1. On the Configure Warehouse modal click `Connect`.
-2. Select `Google Bigquery` from the drop down menu.
+2. Select `Google BigQuery` from the drop down menu.
 3. Enter your Project ID.
 
 - This can be found by going to the [Bigquery console](https://console.cloud.google.com/) and looking at the Project info box.
