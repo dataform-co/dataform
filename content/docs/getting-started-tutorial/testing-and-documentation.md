@@ -70,7 +70,7 @@ config {
 
 2. View the `Dependency tree`:
 
-- Navigate back to the `Dependency tree` tab in the hamburger menu int he top left hand corner:
+- Navigate back to the `Dependency tree` tab in the hamburger menu in the top left hand corner:
 - Click on the `order_stats` table on the left.
 - You can view your table and field descriptions in the data catalog.
 
