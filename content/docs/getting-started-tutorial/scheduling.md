@@ -8,7 +8,7 @@ In the first few videos we introduced the basic concepts of Dataform. We’ll no
 
 ## Setting up a schedule
 
-You want to make sure your data is updated regularly so that it is always up to date. To do this you will create a schedule. You want your datasets to be updated every hour and create an alert so that you are notified by email if the pipeline fails.
+Schedules allow you to make sure your data is updated regularly. You're going to create a schedule that updates your datasets every hour and sends you a notification by email if the pipeline fails.
 
 Schedules are defined in the environments.json file. It’s easiest to set them up in the interactive UI, but it's also possible to edit them directly in the `environments.json` file.
 
