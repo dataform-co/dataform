@@ -26,8 +26,8 @@ Dataform connects to [many different warehouses](https://docs.dataform.co/wareho
 
 1. First you will need to create a new Bigquery project:
 
-- Go to the [BigQuery console](https://console.cloud.google.com/bigquery) (If you don’t already have a GCP account you’ll need to create one here).
-- If you’ve just created a new account you’ll be asked to create a new project straight away. If you already have an existing account you can select the project drop down in the header bar, and create a new project from there.
+   - Go to the [BigQuery console](https://console.cloud.google.com/bigquery) (If you don’t already have a GCP account you’ll need to create one here).
+   - If you’ve just created a new account you’ll be asked to create a new project straight away. If you already have an existing account you can select the project drop down in the header bar, and create a new project from there.
 
 <img src="https://assets.dataform.co/getting%20started%20tutorial/set%20up/Screenshot%202020-08-13%20at%2015.40%201%20(1).png" max-width="753"  alt="" />
 
@@ -39,15 +39,14 @@ In order for Dataform to connect to your BigQuery warehouse you’ll need to gen
 
    - Go to the [Services Account page](https://console.cloud.google.com/iam-admin/serviceaccounts)
    - Make sure the new project you created is selected and click `Open`.
-
-- Click on `Create Service Account` and give it a name.
-- Grant the new account the BigQuery Admin role.
+   - Click on `Create Service Account` and give it a name.
+   - Grant the new account the BigQuery Admin role.
 
 2. Once you’ve done this you need to create a key for your new service account (in JSON format):
 
-- On the [Service Accounts page](https://console.cloud.google.com/iam-admin/serviceaccounts), find the row of the service account that you want to create a key for and click the `More` button.
-- Then click `Create key`.
-- Select JSON key type and click `Create`.
+   - On the [Service Accounts page](https://console.cloud.google.com/iam-admin/serviceaccounts), find the row of the service account that you want to create a key for and click the `More` button.
+   - Then click `Create key`.
+   - Select JSON key type and click `Create`.
 
 Now you've created a new BigQuery project and generated your warehouse credentials, you're ready to create your Dataform project!
 
