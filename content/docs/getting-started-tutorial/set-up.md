@@ -20,7 +20,7 @@ The aim of this tutorial is to create two new tables in our warehouse, one calle
 
 <div style="position: relative; padding-bottom: 55.78124999999999%; height: 0;"><iframe src="https://www.loom.com/embed/2368b67928ec43b2a7eaf8fabda636f9" frameborder="0" webkitallowfullscreen mozallowfullscreen allowfullscreen style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></iframe></div>
 
-## Create a new Bigquery project
+## Create a new BigQuery project
 
 Dataform connects to [many different warehouses](https://docs.dataform.co/warehouses) but for this tutorial we’ll use BigQuery, since anyone with a Google Account can use it and it has a free tier. We’ve created a public dataset in BigQuery that anyone can access for the purpose of this tutorial.
 
