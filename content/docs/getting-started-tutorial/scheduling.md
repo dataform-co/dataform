@@ -34,4 +34,4 @@ Schedules are defined in the environments.json file. It’s easiest to set them 
 
 You have now set up a schedule which updates your project every hour annd an alert which notifies you by email if your pipeline fails.
 
-For more detailed info on setting up schedules, see our [docs](https://docs.dataform.co/dataform-web/scheduling#__next).
+For more detailed info on setting up schedules, see our [docs](https://docs.dataform.co/dataform-web/scheduling).
