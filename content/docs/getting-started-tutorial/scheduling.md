@@ -4,7 +4,7 @@ subtitle: Learn how to set up a schedule and alerts in Dataform
 priority: 3
 ---
 
-In the first few videos we introduced the basic concepts of Dataform. We’ll now introduce some of the more advanced features: [testing](https://docs.dataform.co/guides/assertions#__next) and [documentation](https://docs.dataform.co/guides/datasets/documentation#__next), [scheduling](https://docs.dataform.co/dataform-web/scheduling) and [version control](https://docs.dataform.co/dataform-web/version-control#__next).
+In the first few videos we introduced the basic concepts of Dataform. We’ll now introduce some of the more advanced features: [testing](https://docs.dataform.co/guides/assertions) and [documentation](https://docs.dataform.co/guides/datasets/documentation), [scheduling](https://docs.dataform.co/dataform-web/scheduling) and [version control](https://docs.dataform.co/dataform-web/version-control).
 
 ## Setting up a schedule
 
