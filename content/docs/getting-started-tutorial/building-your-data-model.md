@@ -96,7 +96,7 @@ GROUP BY 1, 2, 3, 4, 5, 6
 4.  Create the table in your warehouse:
 
 - Click `Publish Table` to create the table in your warehouse
-- This will take the SQLX that we’ve written, compile it into pure SQL, and then execute that SQL in your warehouse with the correct boilerplate code to create a table
+- This will take the SQLX that we’ve written, compile it into the SQL syntax of your warehouse (in this case, BigQuery), and then execute that SQL in your warehouse with the correct boilerplate code to create a table
 
 5. Check Run Logs:
 
