@@ -109,4 +109,4 @@ GROUP BY 1, 2, 3, 4, 5, 6
 
 You now have a new table called `order_stats` which has been created in your warehouse and you're ready to add to your data model!
 
-For more detailed info on publishing datasets in Dataform, see our [docs].(https://docs.dataform.co/guides/datasets/publish#__next)
+For more detailed info on publishing datasets in Dataform, see our [docs].(https://docs.dataform.co/guides/datasets/publish)
