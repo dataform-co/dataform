@@ -48,6 +48,6 @@ In order for Dataform to connect to your BigQuery warehouse you’ll need to gen
 - Then click `Create key`.
 - Select JSON key type and click `Create`.
 
-Now you've created a new Bigquery project and generated your warehouse credentials, you're ready to create your Dataform project!
+Now you've created a new BigQuery project and generated your warehouse credentials, you're ready to create your Dataform project!
 
 For more detailed info on generating credentials for Bigquery, see our [docs](https://docs.dataform.co/warehouses/bigquery#__next).
