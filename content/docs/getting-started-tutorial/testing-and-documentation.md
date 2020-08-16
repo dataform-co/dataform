@@ -66,7 +66,7 @@ config {
 }
 ```
 
-- This config block is now adding table and field descriptions to your table.
+- Table and field descriptions are now added to your table.
 
 2. View the `Dependency tree`:
 
