@@ -78,4 +78,4 @@ config {
 
 You have now created an assertion which will fail if any value in your `id` field is duplicated and you have given your `order_stats` table and its fields descriptions.
 
-You can find more information on [assertions](https://docs.dataform.co/guides/assertions#__next) and [documentation](https://docs.dataform.co/guides/datasets/documentation#__next) in our docs.
+You can find more information on [assertions](https://docs.dataform.co/guides/assertions) and [documentation](https://docs.dataform.co/guides/datasets/documentation) in our docs.
