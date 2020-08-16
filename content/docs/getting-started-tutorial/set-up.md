@@ -12,7 +12,7 @@ For this tutorial we’re going to pretend we are a fictional e-commerce shop. W
 - Orders information from Shopify
 - Payment information from Stripe
 
-The aim of this tutorial is to create two new tables in our warehouse one called `order_stats` and one called `customers`, which are:
+The aim of this tutorial is to create two new tables in our warehouse, one called `order_stats` and one called `customers`, which are:
 
 - Updated every hour
 - Tested for data quality
