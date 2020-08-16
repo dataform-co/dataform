@@ -4,7 +4,7 @@ subtitle: Learn how to create a new Bigquery project and generate warehouse cred
 priority: 0
 ---
 
-Welcome to the Dataform Getting Started Tutorial. This tutorial is for people who are new to Dataform and want to be taught how to set up a new project. We will show you how to create your own data model, how to test and document it and how to run schedules on it. You will need a working knowledge of SQL for this tutorial.
+Welcome to the Dataform Getting Started Tutorial. This tutorial is for people who are new to Dataform and would like to learn how to set up a new project. We will show you how to create your own data model, how to test and document it and how to configure schedules. A working knowledge of SQL will be helpful for this tutorial.
 
 For this tutorial we’re going to pretend we are a fictional e-commerce shop. We already have 3 main data sources in our data warehouse:
 
