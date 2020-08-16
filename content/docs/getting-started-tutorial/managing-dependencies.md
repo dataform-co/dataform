@@ -16,7 +16,7 @@ In this step you'll learn how to manage dependencies in Dataform.
 
 <div style="position: relative; padding-bottom: 55.93750000000001%; height: 0;"><iframe src="https://www.loom.com/embed/201481ab82914d55b7c7787e6c903f26" frameborder="0" webkitallowfullscreen mozallowfullscreen allowfullscreen style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></iframe></div>
 
-1. You now want to create a second table called `customers`, following the same process as above
+1. You'll now create a second table called `customers`, following the same process as before
 
 - Click `New Dataset` and select the table t.emplate.
 - Give your table the name `customers`
