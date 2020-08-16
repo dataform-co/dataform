@@ -69,4 +69,4 @@ Here you can see a visualisation of your entire Dataform project. Every time Dat
 
 You now have two tables created in your warehouse, one called `order_stats` and one called `customers`. `customers` depends on `order_stats` and will start running when `order_stats` is completed.
 
-For more detailed info on managing dependencies in Dataform, see our [docs](https://docs.dataform.co/dataform-web/tutorials/102#__next).
+For more detailed info on managing dependencies in Dataform, see our [docs](https://docs.dataform.co/dataform-web/tutorials/102).
