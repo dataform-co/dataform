@@ -36,7 +36,7 @@ config {
 
 Dataform automatically creates a view in your warehouse containing the results of the compiled assertion query. This makes it easy to inspect the rows that caused the assertion to fail without increasing storage requirements or pulling any data out of your warehouse.
 
-You can also choose to use assertions as dependencies. Assertions create named actions in your project that can be depended upon by using the dependencies configuration parameter. If you would like another dataset, assertion, or operation to only run if a specific assertion passes, you can add the assertion to that action's dependencies.
+You can also choose to use assertions as dependencies. Assertions create named actions in your project that can be depended upon by using the dependencies `config` parameter. If you would like another dataset, assertion, or operation to only run if a specific assertion passes, you can add the assertion to that action's dependencies.
 
 ## Documenting your dataset
 
