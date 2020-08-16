@@ -33,7 +33,7 @@ Dataform connects to [many different warehouses](https://docs.dataform.co/wareho
 
 ## Generate warehouse credentials
 
-In order for Dataform to connect to your Bigquery warehouse you’ll need to generate some credentials. Dataform will connect to BigQuery using a service account. You’ll need to create a service account from your Google Cloud Console and assign it permissions to access BigQuery.
+In order for Dataform to connect to your BigQuery warehouse you’ll need to generate some credentials. Dataform will connect to BigQuery using a service account. You’ll need to create a service account from your Google Cloud Console and assign it permissions to access BigQuery.
 
 1. To create a new service account in Google Cloud Console you need to:
 
