@@ -26,7 +26,7 @@ Dataform connects to [many different warehouses](https://docs.dataform.co/wareho
 
 1. First you will need to create a new Bigquery project:
 
-- Go to the [Bigquery console](https://console.cloud.google.com/bigquery) (If you don’t already have a GCP account you’ll need to create one here).
+- Go to the [BigQuery console](https://console.cloud.google.com/bigquery) (If you don’t already have a GCP account you’ll need to create one here).
 - If you’ve just created a new account you’ll be asked to create a new project straight away. If you already have an existing account you can select the project drop down in the header bar, and create a new project from there.
 
 <img src="https://assets.dataform.co/getting%20started%20tutorial/set%20up/Screenshot%202020-08-13%20at%2015.40%201%20(1).png" max-width="753"  alt="" />
