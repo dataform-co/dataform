@@ -50,7 +50,7 @@ GROUP BY 1, 2, 3, 4, 5
 ```
 
 - Paste the query into your file, below the config block.
-- This query uses the `ref`function. The `ref` function enables you to reference any other table defined in a Dataform project.
+- This query uses the `ref` function. The `ref` function enables you to reference any other table defined in a Dataform project.
 - You can see the dependencies of a dataset in the right hand side bar.
 - If you open the compiled query, you can see that the `ref` function has been replaced with the fully qualified table name.
 
