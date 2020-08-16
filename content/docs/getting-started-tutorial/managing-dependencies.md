@@ -67,6 +67,6 @@ GROUP BY 1, 2, 3, 4, 5
 Here you can see a visualisation of your entire Dataform project. Every time Dataform creates a run and executes SQL in your warehouse, it will be sure to update the actions in the corect dependency order. 
 </a></div>
 
-You now have two tables created in your warehouse, one called `order_stats` and one called `customers`. `customers` depends on `order_stats` and will not be run until `order_stats` is updated.
+You now have two tables created in your warehouse, one called `order_stats` and one called `customers`. `customers` depends on `order_stats` and will start running when `order_stats` is completed.
 
 For more detailed info on managing dependencies in Dataform, see our [docs](https://docs.dataform.co/dataform-web/tutorials/102#__next).
