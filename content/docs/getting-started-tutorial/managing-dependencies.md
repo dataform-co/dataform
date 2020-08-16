@@ -18,7 +18,7 @@ In this step you'll learn how to manage dependencies in Dataform.
 
 1. You'll now create a second table called `customers`, following the same process as before
 
-- Click `New Dataset` and select the table t.emplate.
+- Click `New Dataset` and select the table template.
 - Give your table the name `customers`
 - Click `Create`.
 
