@@ -4,7 +4,7 @@ subtitle: Learn how to connect to a warehouse and create and publish your first 
 priority: 1
 ---
 
-Now you have your Bigquery project and warehouse credentials, you’re going to set up your Dataform project using Dataform Web. In this step you'll create a project, connect your warehouse and build out your first dataset.
+Now you have your BigQuery project and warehouse credentials, you’re going to set up your Dataform project using Dataform Web. In this step you'll create a project, connect your warehouse and build out your first dataset.
 
 <div style="position: relative; padding-bottom: 55.93750000000001%; height: 0;"><iframe src="https://www.loom.com/embed/56df10cba03045ddbf27e3a577907876" frameborder="0" webkitallowfullscreen mozallowfullscreen allowfullscreen style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></iframe></div>
 
@@ -26,10 +26,10 @@ To create a new project in Dataform:
 As part of the project creation flow you'll be asked to connect to a warehouse. You’re going to use the credentials you generated in the earlier part of this tutorial to connect:
 
 1. On the Configure Warehouse modal click `Connect`.
-2. Select `Google Bigquery` from the drop down menu.
+2. Select `Google BigQuery` from the drop down menu.
 3. Enter your Project ID.
 
-   - This can be found by going to the [Bigquery console](https://console.cloud.google.com/) and looking at the Project info box.
+   - This can be found by going to the [BigQuery console](https://console.cloud.google.com/) and looking at the Project info box.
 
 4. Browse for the service account key JSON file you created in the `Setting Up` part of this tutorial and upload it.
 5. Check your connection is working:
@@ -62,7 +62,7 @@ Now that you've created your project and connected a warehouse, you're ready to 
 
 3. Define the dataset:
 
-   - To create your table you're going to be using the below query which joins orders information from Shopify, payment details from Stripe and also applies some filters to the data:
+   - To create your table use the below query which joins orders information from Shopify, payment details from Stripe and also applies some filters to the data:
 
 ```sql
 SELECT
@@ -89,14 +89,14 @@ WHERE
 GROUP BY 1, 2, 3, 4, 5, 6
 ```
 
-- Paste the query into your file below the config block.
+- Paste the query into `order_stats.sqlx` below the config block.
 - Dataform will automatically validate your query and check for any errors
 - Once you see that the query is valid you can click `Preview Results` to check that the data looks correct
 
 3. Create the table in your warehouse:
 
    - Click `Publish Table` to create the table in your warehouse
-   - This will take the SQLX that we’ve written, compile it into pure SQL, and then execute that SQL in your warehouse with the correct boilerplate code to create a table
+   - This will take the SQLX that we’ve written, compile it into the SQL syntax of your warehouse (in this case, BigQuery), and then execute that SQL in your warehouse with the correct boilerplate code to create a table
 
 4. Check Run Logs:
 

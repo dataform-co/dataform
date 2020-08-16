@@ -10,22 +10,22 @@ Dataform provides methods that enable you to easily reference another dataset in
 
 This provides two advantages:
 
-- You don’t have provide the full SQL dataset name.
+- You don’t have to provide the full SQL dataset name.
 - Any dataset that is referenced by a query will be automatically added to that query's dependencies. Dependency queries are always executed before dependent queries to ensure correctness.
 
 In this step you'll learn how to manage dependencies in Dataform.
 
 <div style="position: relative; padding-bottom: 55.93750000000001%; height: 0;"><iframe src="https://www.loom.com/embed/201481ab82914d55b7c7787e6c903f26" frameborder="0" webkitallowfullscreen mozallowfullscreen allowfullscreen style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></iframe></div>
 
-1. You now want to create a second table called `customers`, following the same process as above
+1. You'll now create a second table called `customers`, following the same process as before
 
-   - Click `New Dataset` and select the table t.emplate.
+   - Click `New Dataset` and select the table template.
    - Give your table the name `customers`
    - Click `Create`.
 
 2. Define your dataset:
 
-   - To create your table, you're going to be using the below query:
+- To create your table, use the following query:
 
 ```sql
 SELECT
@@ -50,8 +50,8 @@ WHERE
 GROUP BY 1, 2, 3, 4, 5
 ```
 
-- Paste the query into your file, below the config block.
-- This query uses the `ref`function. The `ref` function enables you to reference any other table defined in a Dataform project.
+- Paste the query into `customers.sqlx`, below the config block.
+- This query uses the `ref` function. The `ref` function enables you to reference any other table defined in a Dataform project.
 - You can see the dependencies of a dataset in the right hand side bar.
 - If you open the compiled query, you can see that the `ref` function has been replaced with the fully qualified table name.
 
@@ -65,9 +65,9 @@ GROUP BY 1, 2, 3, 4, 5
 
 <div className="bp3-callout bp3-icon-info-sign bp3-intent-primary" markdown="1">
 <h4 class="bp3-heading">The dependency tree</h4>
-Here you can see a visualisation of your entire Dataform project. Every time Dataform creates a run and executes SQL in your warehouse, it will be sure to update the actions in the corect dependency order. 
+Here you can see a visualisation of your entire Dataform project. Every time Dataform creates a run and executes SQL in your warehouse, it will update the actions in the corect dependency order. 
 </a></div>
 
-You now have two tables created in your warehouse, one called `order_stats` and one called `customers`. `customers` depends on `order_stats` and will not be run until `order_stats` is updated.
+You now have two tables created in your warehouse, one called `order_stats` and one called `customers`. `customers` depends on `order_stats` and will start running when `order_stats` is completed.
 
-For more detailed info on managing dependencies in Dataform, see our [docs](https://docs.dataform.co/dataform-web/tutorials/102#__next).
+For more detailed info on managing dependencies in Dataform, see our [docs](https://docs.dataform.co/dataform-web/tutorials/102).
