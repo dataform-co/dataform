@@ -8,7 +8,7 @@ priority: 5
 
 Dataform uses the Git version control system to maintain a record of each change made to project files and to manage file versions. Each Dataform project has an associated Git repository.
 
-When you first use Dataform we will automatically create a personal development branch for you, name_dev. Only you can see this branch and commit to it. All the changes you've made so far should be on this branch.
+When you first use Dataform we will automatically create a personal development branch for you called `name_dev`. Only you can see this branch and commit to it. All the changes you've made so far should be on this branch.
 
 <div style="position: relative; padding-bottom: 55.93750000000001%; height: 0;"><iframe src="https://www.loom.com/embed/7e0f28b3ff8d473f9594019a7b0bff70" frameborder="0" webkitallowfullscreen mozallowfullscreen allowfullscreen style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></iframe></div>
 
