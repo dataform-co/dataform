@@ -76,6 +76,6 @@ config {
 
 <img src="https://assets.dataform.co/getting%20started%20tutorial/tests%20%26%20documentation/Screenshot%202020-08-13%20at%2015.56%201%20(1).png" max-width="753"  alt="The Data Catalog" />
 
-You have now created an assertion which will fail if any value in your `id` field is duplicated and you have given your `order_stats` dataset, table and field descriptions.
+You have now created an assertion which will fail if any value in your `id` field is duplicated and you have given your `order_stats` table and its fields descriptions.
 
 You can find more information on [assertions](https://docs.dataform.co/guides/assertions#__next) and [documentation](https://docs.dataform.co/guides/datasets/documentation#__next) in our docs.
