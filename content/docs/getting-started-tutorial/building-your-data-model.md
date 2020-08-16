@@ -62,7 +62,7 @@ Now that you've created your project and connected a warehouse, you're ready to 
 
 3. Define the dataset:
 
-- To create your table you're going to be using the below query which joins orders information from Shopify, payment details from Stripe and also applies some filters to the data:
+- To create your table use the below query which joins orders information from Shopify, payment details from Stripe and also applies some filters to the data:
 
 ```sql
 SELECT
