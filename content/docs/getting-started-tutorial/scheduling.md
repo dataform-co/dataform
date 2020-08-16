@@ -28,7 +28,7 @@ Schedules are defined in the environments.json file. It’s easiest to set them 
 - Click on the `Create New Notification channel` button.
 - Give your notification channel the name `email`.
 - Enter your email address into the box below and press enter.
-- It’s also possible to set up notifications to Slack, or a webhook.
+- It’s also possible to set up notifications to Slack or a custom webhook.
 
 <img src="https://assets.dataform.co/getting%20started%20tutorial/schedululing/Screenshot%202020-08-13%20at%2015.54%201%20(1).png" max-width="753"  alt="Setting up a schedule" />
 
