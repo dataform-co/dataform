@@ -14,7 +14,7 @@ Schedules are defined in the environments.json file. It’s easiest to set them 
 
 <div style="position: relative; padding-bottom: 55.93750000000001%; height: 0;"><iframe src="https://www.loom.com/embed/28219ff65f9c4faca1604289c07cae3c" frameborder="0" webkitallowfullscreen mozallowfullscreen allowfullscreen style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></iframe></div>
 
-1. Navigate to the `Scheduling` page by clicking on the hamburger menu in the top eft hand corner.
+1. Navigate to the `Scheduling` page by clicking on the hamburger menu in the top left hand corner.
 
 2. Press the `Create New Schedule` button.
 
