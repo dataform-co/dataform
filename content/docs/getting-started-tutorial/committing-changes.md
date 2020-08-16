@@ -22,7 +22,7 @@ When you first use Dataform we will automatically create a personal development 
 
 - The changes will now be on `production` and used for future schedule runs.
 
-For more information on how version control works in Dataform, see our [docs](https://docs.dataform.co/dataform-web/version-control#__next).
+For more information on how version control works in Dataform, see our [docs](https://docs.dataform.co/dataform-web/version-control).
 
 ## Summary
 
