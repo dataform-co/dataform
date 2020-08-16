@@ -7,6 +7,7 @@ priority: 2
 ## Managing Dependencies
 
 Dataform provides methods that enable you to easily reference another dataset in your project using the `ref` function.
+
 This provides two advantages:
 
 - You don’t have provide the full SQL dataset name.
@@ -18,13 +19,13 @@ In this step you'll learn how to manage dependencies in Dataform.
 
 1. You now want to create a second table called `customers`, following the same process as above
 
-- Click `New Dataset` and select the table t.emplate.
-- Give your table the name `customers`
-- Click `Create`.
+   - Click `New Dataset` and select the table t.emplate.
+   - Give your table the name `customers`
+   - Click `Create`.
 
 2. Define your dataset:
 
-- To create your table, you're going to be using the below query:
+   - To create your table, you're going to be using the below query:
 
 ```sql
 SELECT
@@ -58,7 +59,7 @@ GROUP BY 1, 2, 3, 4, 5
 
 4. View the Dependency tree:
 
-- Navigate to the menu in the top left hand corner of your project and click on the `Dependency Tree` tab.
+   - Navigate to the menu in the top left hand corner of your project and click on the `Dependency Tree` tab.
 
 <img src="https://assets.dataform.co/getting%20started%20tutorial/manage%20dependencies/Screenshot%202020-08-13%20at%2015.52%201%20(1).png" max-width="753"  alt="The dependency tree" />
 

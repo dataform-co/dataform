@@ -18,12 +18,12 @@ We want to create an assertion for our `order_stats` table will fail if there is
 
 1. Navigate back to your `order_stats` table:
 
-- Click on the hamburger menu in the top left hand corner of your project and click on `Develop Project`.
-- Navigate to the `order_stats` file.
+   - Click on the hamburger menu in the top left hand corner of your project and click on `Develop Project`.
+   - Navigate to the `order_stats` file.
 
 2. In the config block write your assertion:
 
-- Copy and paste this example into your file, replacing the config block that is already there.
+   - Copy and paste this example into your file, replacing the config block that is already there.
 
 ```js
 config {
@@ -44,7 +44,8 @@ Dataform allows you to add documentation to the datasets defined in your project
 
 1. In the config block write your documentation:
 
-- Copy and paste the below example into your file, replacing the config block that is already there:
+   - Copy and paste the below example into your file, replacing the config block that is already there.
+   - This config block is now adding table and field descriptions to your table.
 
 ```js
 config {
@@ -66,13 +67,11 @@ config {
 }
 ```
 
-- This config block is now adding table and field descriptions to your table.
-
 2. View the `Dependency tree`:
 
-- Navigate back to the `Dependency tree` tab in the hamburger menu int he top left hand corner:
-- Click on the `order_stats` table on the left.
-- You can view your table and field descriptions in the data catalog.
+   - Navigate back to the `Dependency tree` tab in the hamburger menu int he top left hand corner:
+   - Click on the `order_stats` table on the left.
+   - You can view your table and field descriptions in the data catalog.
 
 <img src="https://assets.dataform.co/getting%20started%20tutorial/tests%20%26%20documentation/Screenshot%202020-08-13%20at%2015.56%201%20(1).png" max-width="753"  alt="The Data Catalog" />
 

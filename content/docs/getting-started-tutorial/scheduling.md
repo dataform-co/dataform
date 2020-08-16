@@ -18,17 +18,17 @@ Schedules are defined in the environments.json file. It’s easiest to set them 
 
 2. Press the `Create New Schedule` button.
 
-- Give your schedule the name `hourly_update`.
-- Press the 'Choose Frequency' button and select `hourly`.
-- Press Save.
+   - Give your schedule the name `hourly_update`.
+   - Press the 'Choose Frequency' button and select `hourly`.
+   - Press Save.
 
 3. Set up a new notification channel
 
-- Navigate back to the environments.json file.
-- Click on the `Create New Notification channel` button.
-- Give your notification channel the name `email`.
-- Enter your email address into the box below and press enter.
-- It’s also possible to set up notifications to Slack, or a webhook.
+   - Navigate back to the environments.json file.
+   - Click on the `Create New Notification channel` button.
+   - Give your notification channel the name `email`.
+   - Enter your email address into the box below and press enter.
+   - It’s also possible to set up notifications to Slack, or a webhook.
 
 <img src="https://assets.dataform.co/getting%20started%20tutorial/schedululing/Screenshot%202020-08-13%20at%2015.54%201%20(1).png" max-width="753"  alt="Setting up a schedule" />
 

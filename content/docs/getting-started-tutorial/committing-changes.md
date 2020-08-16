@@ -14,13 +14,13 @@ When you first use Dataform we will automatically create a personal development 
 
 1. Press the `Comitt Changes` button:
 
-- In the modal you should see a list of all the changes you made to your project.
+   - In the modal you should see a list of all the changes you made to your project.
 
 2. Give your commits a description and press `Commit`.
 
 3. Click the `Push to Master` button to push your changes to the master branch:
 
-- The changes will now be on `production` and used for future schedule runs.
+   - The changes will now be on `production` and used for future schedule runs.
 
 For more information on how version control works in Dataform, see our [docs](https://docs.dataform.co/dataform-web/version-control#__next).
 

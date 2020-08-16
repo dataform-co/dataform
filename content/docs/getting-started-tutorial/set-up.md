@@ -37,8 +37,9 @@ In order for Dataform to connect to your Bigquery warehouse you’ll need to gen
 
 1. To create a new service account in Google Cloud Console you need to:
 
-- Go to the [Services Account page](https://console.cloud.google.com/iam-admin/serviceaccounts).
-- Make sure the new project you created is selected and click `Open`.
+   - Go to the [Services Account page](https://console.cloud.google.com/iam-admin/serviceaccounts)
+   - Make sure the new project you created is selected and click `Open`.
+
 - Click on `Create Service Account` and give it a name.
 - Grant the new account the BigQuery Admin role.
 
