@@ -1,6 +1,6 @@
 ---
 title: Getting set up
-subtitle: Learn how to create a new Bigquery project and generate warehouse credentials.
+subtitle: Learn how to create a new BigQuery project and generate warehouse credentials.
 priority: 0
 ---
 
