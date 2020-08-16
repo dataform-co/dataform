@@ -32,7 +32,7 @@ You’ve now created your two tables; `order stats` and `customers`. `customers`
 
 ### Start working on your own project
 
-Follow the steps in the tutorial to get started with your own project. Connect to your own warehouse and use a query that you frequently run to create your first dataset.
+Follow the steps in this tutorial to get started with your own project. Connect to your own warehouse and create your first dataset using SQL.
 
 ### Learn more about Dataform
 
