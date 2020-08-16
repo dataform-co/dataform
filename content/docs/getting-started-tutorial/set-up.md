@@ -50,4 +50,4 @@ In order for Dataform to connect to your BigQuery warehouse you’ll need to gen
 
 Now you've created a new BigQuery project and generated your warehouse credentials, you're ready to create your Dataform project!
 
-For more detailed info on generating credentials for Bigquery, see our [docs](https://docs.dataform.co/warehouses/bigquery#__next).
+For more detailed info on generating credentials for BigQuery, see our [docs](https://docs.dataform.co/warehouses/bigquery).
