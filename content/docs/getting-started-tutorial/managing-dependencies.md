@@ -9,7 +9,7 @@ priority: 2
 Dataform provides methods that enable you to easily reference another dataset in your project using the `ref` function.
 This provides two advantages:
 
-- You don’t have provide the full SQL dataset name.
+- You don’t have to provide the full SQL dataset name.
 - Any dataset that is referenced by a query will be automatically added to that query's dependencies. Dependency queries are always executed before dependent queries to ensure correctness.
 
 In this step you'll learn how to manage dependencies in Dataform.
