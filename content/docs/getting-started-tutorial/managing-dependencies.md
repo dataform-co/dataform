@@ -24,7 +24,7 @@ In this step you'll learn how to manage dependencies in Dataform.
 
 2. Define your dataset:
 
-- To create your table, you're going to be using the below query:
+- To create your table, use the following query:
 
 ```sql
 SELECT
