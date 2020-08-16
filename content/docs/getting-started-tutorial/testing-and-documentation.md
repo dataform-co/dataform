@@ -9,7 +9,7 @@ priority: 4
 Adding tests to a project helps validate that your models are working correctly. These tests are run every time your project updates, sending alerts if the tests fail. Data quality tests in Dataform are called assertions.
 
 <div className="bp3-callout bp3-icon-info-sign bp3-intent-primary" markdown="1">
-<h4 class="bp3-heading">Assertions</h4> Assertions enable you to check the state of data produced by other actions. An assertion query is written to find rows that violate one or more rules. If the query returns any rows, then the assertion will fail. There are various different types of assertions you can use including uniqueness checks and null checks.The simplest way to define assertions is as part of a dataset's config settings.
+<h4 class="bp3-heading">Assertions</h4> Assertions enable you to check the state of data produced by other actions. An assertion query is written to find rows that violate one or more rules. If the query returns any rows, then the assertion will fail. There are various different types of assertions you can use including uniqueness checks and null checks. The simplest way to define assertions is as part of a dataset's `config` settings.
 </a></div>
 
 We want to create an assertion for our `order_stats` table will fail if there is more than one row in the dataset with the same value for `id`.
