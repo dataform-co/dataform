@@ -21,7 +21,7 @@ We want to create an assertion for our `order_stats` table will fail if there is
 - Click on the hamburger menu in the top left hand corner of your project and click on `Develop Project`.
 - Navigate to the `order_stats` file.
 
-2. In the config block write your assertion:
+2. In the config block add your assertion:
 
 - Copy and paste this example into your file, replacing the config block that is already there.
 
