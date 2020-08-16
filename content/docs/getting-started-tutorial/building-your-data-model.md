@@ -89,7 +89,7 @@ WHERE
 GROUP BY 1, 2, 3, 4, 5, 6
 ```
 
-- Paste the query into your file below the config block.
+- Paste the query into `order_stats.sqlx` below the config block.
 - Dataform will automatically validate your query and check for any errors
 - Once you see that the query is valid you can click `Preview Results` to check that the data looks correct
 
