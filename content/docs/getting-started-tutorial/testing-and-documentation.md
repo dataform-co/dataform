@@ -12,7 +12,7 @@ Adding tests to a project helps validate that your models are working correctly.
 <h4 class="bp3-heading">Assertions</h4> Assertions enable you to check the state of data produced by other actions. An assertion query is written to find rows that violate one or more rules. If the query returns any rows, then the assertion will fail. There are various different types of assertions you can use including uniqueness checks and null checks. The simplest way to define assertions is as part of a dataset's `config` settings.
 </a></div>
 
-We want to create an assertion for our `order_stats` table will fail if there is more than one row in the dataset with the same value for `id`.
+We want to create an assertion for our `order_stats` table that will fail if there is more than one row in the dataset with the same value for `id`.
 
 <div style="position: relative; padding-bottom: 55.78124999999999%; height: 0;"><iframe src="https://www.loom.com/embed/f4735816f4614ea6bb2b99de2ec98d46" frameborder="0" webkitallowfullscreen mozallowfullscreen allowfullscreen style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></iframe></div>
 
