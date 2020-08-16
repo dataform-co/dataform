@@ -29,7 +29,7 @@ As part of the project creation flow you'll be asked to connect to a warehouse. 
 2. Select `Google BigQuery` from the drop down menu.
 3. Enter your Project ID.
 
-- This can be found by going to the [Bigquery console](https://console.cloud.google.com/) and looking at the Project info box.
+- This can be found by going to the [BigQuery console](https://console.cloud.google.com/) and looking at the Project info box.
 
 4. Browse for the service account key JSON file you created in the `Setting Up` part of this tutorial and upload it.
 5. Check your connection is working:
