@@ -73,13 +73,13 @@ typedoc(
     ],
     data = [
         "//:tsconfig.json",
-        "//core:files",
-        "//core:table.ts",
         "//core:assertion.ts",
-        "//core:declaration.ts",
-        "//core:operation.ts",
-        "//core:test.ts",
         "//core:common.ts",
+        "//core:declaration.ts",
+        "//core:files",
+        "//core:operation.ts",
+        "//core:table.ts",
+        "//core:test.ts",
     ],
 )
 
@@ -155,6 +155,13 @@ npm_package_bin(
     # The number of input files to this rule exceeds the cap of 50K.
     tags = ["no-remote-exec"],
     tool = ":docs",
+)
+
+load("//testing:build_test.bzl", "build_test")
+
+build_test(
+    name = "build_test",
+    deps = [":.next"],
 )
 
 next(
