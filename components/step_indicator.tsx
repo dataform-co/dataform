@@ -11,11 +11,15 @@ export interface IStepIndicatorProps {
 }
 
 export function StepIndicator({ steps, currentStep, setStep }: IStepIndicatorProps) {
-  steps.map(({ id }) => (
-    <a onClick={() => setStep(id)} key={`stepIndicator${id}`}>
-      {currentStep === id ? <StepIconActive /> : <StepIconInactive />}
-    </a>
-  ));
+  return (
+    <>
+      {steps.map(({ id }) => (
+        <a onClick={() => setStep(id)} key={`stepIndicator${id}`}>
+          {currentStep === id ? <StepIconActive /> : <StepIconInactive />}
+        </a>
+      ))}
+    </>
+  );
 }
 
 function StepIconInactive() {
