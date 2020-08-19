@@ -74,18 +74,7 @@ function computeIncludedActionNames(
           includedActionNames.add(dependencyName);
         }
       });
-    }
-
-    // Add assertions which are direct dependents of actions.
-    const assertions = compiledGraph.assertions;
-    assertions.forEach(assertion => {
-      const matchingDependencyNames = !!assertion.dependencies?.length
-        ? utils.matchPatterns(assertion.dependencies, allActionNames)
-        : [];
-      if (!!matchingDependencyNames?.length) {
-        includedActionNames.add(assertion.name);
-      }
-    });
+    }    
   }
 
   return includedActionNames;
