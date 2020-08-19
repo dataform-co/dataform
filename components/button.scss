@@ -1,0 +1,10 @@
+.stylizedButton :global(.bp3-button.bp3-minimal) {
+  box-shadow: var(--cardShadow);
+  transition-duration: 250ms;
+  transition-property: box-shadow;
+}
+
+.stylizedButton :global(.bp3-button.bp3-minimal):hover {
+  box-shadow: var(--cardHoverShadow);
+  background: none;
+}
