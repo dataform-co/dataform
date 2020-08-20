@@ -132,18 +132,12 @@ export class RedshiftDbAdapter implements IDbAdapter {
   }
 
   public async tables(): Promise<dataform.ITarget[]> {
-    const hasSpectrumTables = await this.hasSpectrumTables();
     const queryResult = await this.execute(
       `select table_name, table_schema
-     from information_schema.tables
+     from svv_tables
      where table_schema != 'information_schema'
        and table_schema != 'pg_catalog'
-       and table_schema != 'pg_internal'
-       ${
-         hasSpectrumTables
-           ? "union select tablename as table_name, schemaname as table_schema from svv_external_tables"
-           : ""
-       }`,
+       and table_schema != 'pg_internal'`,
       { rowLimit: 10000, includeQueryInError: true }
     );
     const { rows } = queryResult;
@@ -154,53 +148,42 @@ export class RedshiftDbAdapter implements IDbAdapter {
   }
 
   public async table(target: dataform.ITarget): Promise<dataform.ITableMetadata> {
-    const hasSpectrumTables = await this.hasSpectrumTables();
-    const [columnResults, tableResults, externalTableResults] = await Promise.all([
+    const [tableResults, columnResults] = await Promise.all([
       this.execute(
-        `select column_name, data_type, is_nullable
-       from information_schema.columns
-       where table_schema = '${target.schema}' and table_name = '${target.name}'
-       ${
-         hasSpectrumTables
-           ? `union
-       select columnname as column_name, external_type as data_type, 'not_available' as is_nullable 
-       from svv_external_columns 
-       where schemaname = '${target.schema}' and tablename = '${target.name}'`
-           : ""
-       }`,
+        `select table_type, remarks from svv_tables where table_schema = '${target.schema}' and table_name = '${target.name}'`,
         { includeQueryInError: true }
       ),
       this.execute(
-        `select table_type from information_schema.tables where table_schema = '${target.schema}' and table_name = '${target.name}'`,
+        `select column_name, data_type, is_nullable, remarks
+         from svv_columns
+         where table_schema = '${target.schema}' and table_name = '${target.name}'`,
         { includeQueryInError: true }
-      ),
-      hasSpectrumTables
-        ? this.execute(
-            `select 'TABLE' as table_type from svv_external_tables where schemaname = '${target.schema}' and tablename = '${target.name}'`,
-            { includeQueryInError: true }
-          )
-        : { rows: [], metadata: {} }
+      )
     ]);
-    const allTableResults = tableResults.rows.concat(externalTableResults.rows);
-    if (allTableResults.length > 0) {
-      // The table exists.
-      return {
-        target,
-        typeDeprecated: allTableResults[0].table_type === "VIEW" ? "view" : "table",
-        type:
-          allTableResults[0].table_type === "VIEW"
-            ? dataform.TableMetadata.Type.VIEW
-            : dataform.TableMetadata.Type.TABLE,
-        fields: columnResults.rows.map(row => ({
+    if (tableResults.rows.length === 0) {
+      return null;
+    }
+    return {
+      target,
+      typeDeprecated: tableResults.rows[0].table_type === "VIEW" ? "view" : "table",
+      type:
+        tableResults.rows[0].table_type === "VIEW"
+          ? dataform.TableMetadata.Type.VIEW
+          : dataform.TableMetadata.Type.TABLE,
+      fields: columnResults.rows.map(row => {
+        const field: dataform.IField = {
           name: row.column_name,
           primitiveDeprecated: row.data_type,
           primitive: convertFieldType(row.data_type),
           flagsDeprecated: row.is_nullable && row.is_nullable === "YES" ? ["nullable"] : []
-        }))
-      };
-    } else {
-      return null;
-    }
+        };
+        if (row.remarks) {
+          field.description = row.remarks;
+        }
+        return field;
+      }),
+      description: tableResults.rows[0].remarks
+    };
   }
 
   public async preview(target: dataform.ITarget, limitRows: number = 10): Promise<any[]> {
@@ -239,6 +222,8 @@ export class RedshiftDbAdapter implements IDbAdapter {
   public async setMetadata(action: dataform.IExecutionAction): Promise<void> {
     const { target, actionDescriptor, tableType } = action;
 
+    const actualMetadata = await this.table(target);
+
     const queries: Array<Promise<any>> = [];
     if (actionDescriptor.description) {
       queries.push(
@@ -249,13 +234,12 @@ export class RedshiftDbAdapter implements IDbAdapter {
         )
       );
     }
-    if (actionDescriptor.columns?.length > 0) {
-      const actualMetadata = await this.table(target);
+    if (tableType !== "view" && actionDescriptor.columns?.length > 0) {
       actionDescriptor.columns
         .filter(
           column =>
             column.path.length === 1 &&
-            actualMetadata?.fields.some(field => field.name === column.path[0])
+            actualMetadata.fields.some(field => field.name === column.path[0])
         )
         .forEach(column => {
           queries.push(
@@ -269,20 +253,6 @@ export class RedshiftDbAdapter implements IDbAdapter {
     }
 
     await Promise.all(queries);
-  }
-
-  private async hasSpectrumTables() {
-    return (
-      (
-        await this.execute(
-          `select 1
-         from information_schema.tables
-         where table_name = 'svv_external_tables'
-           and table_schema = 'pg_catalog'`,
-          { rowLimit: 1, includeQueryInError: true }
-        )
-      ).rows.length > 0
-    );
   }
 }
 
