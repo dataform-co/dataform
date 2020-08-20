@@ -312,14 +312,10 @@ DELETE \`${CACHED_STATE_TABLE_NAME}\` WHERE target IN (${allActions
     }
   }
 
-  public async setMetadata(action: dataform.IExecutionAction): Promise<any> {
+  public async setMetadata(action: dataform.IExecutionAction): Promise<void> {
     const { target, actionDescriptor, type, tableType } = action;
 
-    if (!actionDescriptor || type !== "table" || tableType === "inline") {
-      return;
-    }
-
-    return this.pool
+    return await this.pool
       .addSingleTask({
         generator: async () => {
           const metadata = await this.getMetadataOutsidePromisePool(target);
@@ -328,14 +324,13 @@ DELETE \`${CACHED_STATE_TABLE_NAME}\` WHERE target IN (${allActions
             metadata.schema.fields
           );
 
-          const table = await this.getClient(target.database)
+          await this.getClient(target.database)
             .dataset(target.schema)
             .table(target.name)
             .setMetadata({
               description: actionDescriptor.description,
               schema: schemaWithDescription
             });
-          return table;
         }
       })
       .promise();
@@ -349,9 +344,7 @@ DELETE \`${CACHED_STATE_TABLE_NAME}\` WHERE target IN (${allActions
       .promise();
   }
 
-  private async getMetadataOutsidePromisePool(
-    target: dataform.ITarget
-  ): Promise<TableMetadata> {
+  private async getMetadataOutsidePromisePool(target: dataform.ITarget): Promise<TableMetadata> {
     try {
       const table = await this.getClient(target.database)
         .dataset(target.schema)
