@@ -144,6 +144,77 @@ suite("@dataform/integration/snowflake", { parallel: true }, ({ before, after })
     expect(incrementalRows.length).equals(2);
   });
 
+  test("dataset metadata set correctly", { timeout: 60000 }, async () => {
+    const compiledGraph = await compile("tests/integration/snowflake_project", "dataset_metadata");
+
+    // Drop all the tables before we do anything.
+    const adapter = adapters.create(compiledGraph.projectConfig, compiledGraph.dataformCoreVersion);
+    const tablesToDelete = (await dfapi.build(compiledGraph, {}, dbadapter)).warehouseState.tables;
+    await dropAllTables(tablesToDelete, adapter, dbadapter);
+
+    // Run the project.
+    const executionGraph = await dfapi.build(
+      compiledGraph,
+      {
+        actions: ["EXAMPLE_INCREMENTAL", "EXAMPLE_VIEW"],
+        includeDependencies: true
+      },
+      dbadapter
+    );
+    const runResult = await dfapi.run(dbadapter, executionGraph).result();
+    expect(dataform.RunResult.ExecutionStatus[runResult.status]).eql(
+      dataform.RunResult.ExecutionStatus[dataform.RunResult.ExecutionStatus.SUCCESSFUL]
+    );
+
+    // Check expected metadata.
+    for (const expectedMetadata of [
+      {
+        target: {
+          schema: "DF_INTEGRATION_TEST_DATASET_METADATA",
+          name: "EXAMPLE_INCREMENTAL"
+        },
+        expectedDescription: "An incremental table",
+        expectedFields: [
+          dataform.Field.create({
+            description: "the id",
+            flagsDeprecated: ["nullable"],
+            name: "USER_ID",
+            primitive: dataform.Field.Primitive.NUMERIC,
+            primitiveDeprecated: "NUMBER"
+          }),
+          dataform.Field.create({
+            description: "the timestamp",
+            flagsDeprecated: ["nullable"],
+            name: "USER_TIMESTAMP",
+            primitive: dataform.Field.Primitive.NUMERIC,
+            primitiveDeprecated: "NUMBER"
+          })
+        ]
+      },
+      {
+        target: {
+          schema: "DF_INTEGRATION_TEST_DATASET_METADATA",
+          name: "EXAMPLE_VIEW"
+        },
+        expectedDescription: "An example view",
+        expectedFields: [
+          dataform.Field.create({
+            flagsDeprecated: ["nullable"],
+            name: "VAL",
+            primitive: dataform.Field.Primitive.NUMERIC,
+            primitiveDeprecated: "NUMBER"
+          })
+        ]
+      }
+    ]) {
+      const metadata = await dbadapter.table(expectedMetadata.target);
+      expect(metadata.description).to.equal(expectedMetadata.expectedDescription);
+      expect(
+        metadata.fields.sort((fieldA, fieldB) => fieldA.name.localeCompare(fieldB.name))
+      ).to.deep.equal(expectedMetadata.expectedFields);
+    }
+  });
+
   test("run unit tests", async () => {
     const compiledGraph = await compile("tests/integration/snowflake_project", "unit_tests");
 

@@ -2,8 +2,8 @@ config {
     type: "incremental",
     description: "An incremental table",
     columns: {
-        user_timestamp: "the timestamp",
-        user_id: "the id",
+        USER_TIMESTAMP: "the timestamp",
+        USER_ID: "the id",
         nested_data: {
           description: "some nested data with duplicate fields",
           columns: {
@@ -12,6 +12,7 @@ config {
           }
         },
         not_a_column_name: "shouldn't appear"
+        
     },
 }
 

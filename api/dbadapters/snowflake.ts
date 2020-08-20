@@ -101,7 +101,7 @@ export class SnowflakeDbAdapter implements IDbAdapter {
                 streamResult: true,
                 complete(err, stmt) {
                   if (err) {
-                    let message = `Snowflake SQL query failed: ${err.message}.`;
+                    let message = `Snowflake SQL query """${statement}""" failed: ${err.message}.`;
                     if (err.cause) {
                       message += ` Root cause: ${err.cause}`;
                     }
@@ -189,14 +189,14 @@ where LOWER(table_schema) != 'information_schema'
     const [tableResults, columnResults] = await Promise.all([
       this.execute(
         `
-select table_type
+select table_type, comment
 from ${target.database ? `"${target.database}".` : ""}information_schema.tables
 where table_schema = '${target.schema}'
   and table_name = '${target.name}'`
       ),
       this.execute(
         `
-select column_name, data_type, is_nullable
+select column_name, data_type, is_nullable, comment
 from ${target.database ? `"${target.database}".` : ""}information_schema.columns
 where table_schema = '${target.schema}' 
   and table_name = '${target.name}'`
@@ -207,21 +207,25 @@ where table_schema = '${target.schema}'
       return null;
     }
 
-    return {
+    return dataform.TableMetadata.create({
       target,
       typeDeprecated: tableResults.rows[0].TABLE_TYPE === "VIEW" ? "view" : "table",
       type:
         tableResults.rows[0].TABLE_TYPE === "VIEW"
           ? dataform.TableMetadata.Type.VIEW
           : dataform.TableMetadata.Type.TABLE,
-      fields: columnResults.rows.map(row => ({
-        name: row.COLUMN_NAME,
-        primitiveDeprecated: row.DATA_TYPE,
-        primitive: convertFieldType(row.DATA_TYPE),
-        flagsDeprecated: row.IS_NULLABLE && row.IS_NULLABLE === "YES" ? ["nullable"] : [],
-        flags: row.DATA_TYPE === "ARRAY" ? [dataform.Field.Flag.REPEATED] : []
-      }))
-    };
+      fields: columnResults.rows.map(row =>
+        dataform.Field.create({
+          name: row.COLUMN_NAME,
+          primitiveDeprecated: row.DATA_TYPE,
+          primitive: convertFieldType(row.DATA_TYPE),
+          flagsDeprecated: row.IS_NULLABLE && row.IS_NULLABLE === "YES" ? ["nullable"] : [],
+          flags: row.DATA_TYPE === "ARRAY" ? [dataform.Field.Flag.REPEATED] : [],
+          description: row.COMMENT
+        })
+      ),
+      description: tableResults.rows[0].COMMENT
+    });
   }
 
   public async preview(target: dataform.ITarget, limitRows: number = 10): Promise<any[]> {
@@ -271,9 +275,12 @@ where table_schema = '${target.schema}'
     if (actionDescriptor.description) {
       queries.push(
         this.execute(
-          `comment on ${tableType === "view" ? "view" : "table"} "${target.schema}"."${
-            target.name
-          }" is '${actionDescriptor.description.replace("'", "\\'")}'`
+          `comment on ${tableType === "view" ? "view" : "table"} ${
+            target.database ? `"${target.database}".` : ""
+          }"${target.schema}"."${target.name}" is '${actionDescriptor.description.replace(
+            "'",
+            "\\'"
+          )}'`
         )
       );
     }
@@ -283,9 +290,12 @@ where table_schema = '${target.schema}'
         .forEach(column => {
           queries.push(
             this.execute(
-              `comment if exists on column "${target.schema}"."${target.name}"."${
-                column.path[0]
-              }" is '${column.description.replace("'", "\\'")}'`
+              `comment if exists on column ${target.database ? `"${target.database}".` : ""}"${
+                target.schema
+              }"."${target.name}"."${column.path[0]}" is '${column.description.replace(
+                "'",
+                "\\'"
+              )}'`
             )
           );
         });

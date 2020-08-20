@@ -182,7 +182,6 @@ suite("@dataform/integration/redshift", { parallel: true }, ({ before, after }) 
         expectedDescription: "An example view",
         expectedFields: [
           dataform.Field.create({
-            flagsDeprecated: [] as string[],
             name: "val",
             primitive: dataform.Field.Primitive.INTEGER,
             primitiveDeprecated: "integer"
