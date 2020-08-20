@@ -80,7 +80,7 @@ function computeIncludedActionNames(
   // Add auto assertions
   [...compiledGraph.assertions].forEach(assertion => {
     if (includedActionNames.has(utils.targetToName(assertion.parent))) {
-      includedActionNames.add(assertion.name);
+      includedActionNames.add(utils.targetToName(assertion.target));
     }
   });
 
