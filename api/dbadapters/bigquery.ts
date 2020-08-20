@@ -313,7 +313,7 @@ DELETE \`${CACHED_STATE_TABLE_NAME}\` WHERE target IN (${allActions
   }
 
   public async setMetadata(action: dataform.IExecutionAction): Promise<void> {
-    const { target, actionDescriptor, type, tableType } = action;
+    const { target, actionDescriptor } = action;
 
     return await this.pool
       .addSingleTask({

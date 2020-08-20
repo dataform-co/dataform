@@ -237,7 +237,7 @@ export class RedshiftDbAdapter implements IDbAdapter {
   }
 
   public async setMetadata(action: dataform.IExecutionAction): Promise<void> {
-    const { target, actionDescriptor, type, tableType } = action;
+    const { target, actionDescriptor, tableType } = action;
 
     const queries: Array<Promise<any>> = [];
     if (actionDescriptor.description) {
