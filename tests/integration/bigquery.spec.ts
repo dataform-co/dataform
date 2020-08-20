@@ -280,37 +280,40 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
             name: "example_incremental"
           },
           expectedDescription: "An incremental table",
-          expectedSchema: {
-            fields: [
-              {
-                description: "the timestamp",
-                name: "user_timestamp",
-                type: "INTEGER"
-              },
-              {
-                description: "the id",
-                name: "user_id",
-                type: "INTEGER"
-              },
-              {
-                name: "nested_data",
-                description: "some nested data with duplicate fields",
-                type: "RECORD",
+          expectedFields: [
+            dataform.Field.create({
+              description: "the timestamp",
+              name: "user_timestamp",
+              primitive: dataform.Field.Primitive.INTEGER,
+              primitiveDeprecated: "INTEGER"
+            }),
+            dataform.Field.create({
+              description: "the id",
+              name: "user_id",
+              primitive: dataform.Field.Primitive.INTEGER,
+              primitiveDeprecated: "INTEGER"
+            }),
+            dataform.Field.create({
+              name: "nested_data",
+              description: "some nested data with duplicate fields",
+              struct: dataform.Fields.create({
                 fields: [
-                  {
+                  dataform.Field.create({
                     description: "nested timestamp",
                     name: "user_timestamp",
-                    type: "INTEGER"
-                  },
-                  {
+                    primitive: dataform.Field.Primitive.INTEGER,
+                    primitiveDeprecated: "INTEGER"
+                  }),
+                  dataform.Field.create({
                     description: "nested id",
                     name: "user_id",
-                    type: "INTEGER"
-                  }
+                    primitive: dataform.Field.Primitive.INTEGER,
+                    primitiveDeprecated: "INTEGER"
+                  })
                 ]
-              }
-            ]
-          }
+              })
+            })
+          ]
         },
         {
           target: {
@@ -319,20 +322,19 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
             name: "example_view"
           },
           expectedDescription: "An example view",
-          expectedSchema: {
-            fields: [
-              {
-                description: "val doc",
-                name: "val",
-                type: "INTEGER"
-              }
-            ]
-          }
+          expectedFields: [
+            dataform.Field.create({
+              description: "val doc",
+              name: "val",
+              primitive: dataform.Field.Primitive.INTEGER,
+              primitiveDeprecated: "INTEGER"
+            })
+          ]
         }
       ]) {
-        const metadata = await dbadapter.getMetadata(expectedMetadata.target);
+        const metadata = await dbadapter.table(expectedMetadata.target);
         expect(metadata.description).to.equal(expectedMetadata.expectedDescription);
-        expect(metadata.schema).to.deep.equal(expectedMetadata.expectedSchema);
+        expect(metadata.fields).to.deep.equal(expectedMetadata.expectedFields);
       }
     });
   });

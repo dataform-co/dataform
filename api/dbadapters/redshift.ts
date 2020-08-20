@@ -163,27 +163,24 @@ export class RedshiftDbAdapter implements IDbAdapter {
     if (tableResults.rows.length === 0) {
       return null;
     }
-    return {
+    return dataform.TableMetadata.create({
       target,
       typeDeprecated: tableResults.rows[0].table_type === "VIEW" ? "view" : "table",
       type:
         tableResults.rows[0].table_type === "VIEW"
           ? dataform.TableMetadata.Type.VIEW
           : dataform.TableMetadata.Type.TABLE,
-      fields: columnResults.rows.map(row => {
-        const field: dataform.IField = {
+      fields: columnResults.rows.map(row =>
+        dataform.Field.create({
           name: row.column_name,
           primitiveDeprecated: row.data_type,
           primitive: convertFieldType(row.data_type),
-          flagsDeprecated: row.is_nullable && row.is_nullable === "YES" ? ["nullable"] : []
-        };
-        if (row.remarks) {
-          field.description = row.remarks;
-        }
-        return field;
-      }),
+          flagsDeprecated: row.is_nullable && row.is_nullable === "YES" ? ["nullable"] : [],
+          description: row.remarks
+        })
+      ),
       description: tableResults.rows[0].remarks
-    };
+    });
   }
 
   public async preview(target: dataform.ITarget, limitRows: number = 10): Promise<any[]> {

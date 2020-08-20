@@ -86,54 +86,47 @@ export class BigQueryDbAdapter implements IDbAdapter {
       projectConfig?.useSingleQueryPerAction === undefined ||
         !!projectConfig?.useSingleQueryPerAction
     );
-    const queryEvaluations = new Array<dataform.IQueryEvaluation>();
 
-    for (const { query, incremental } of validationQueries) {
-      let evaluationResponse: dataform.IQueryEvaluation = {
-        status: dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
-      };
-      try {
-        await this.getClient().query({
-          useLegacySql: false,
-          query,
-          dryRun: true
-        });
-      } catch (e) {
-        evaluationResponse = {
-          status: dataform.QueryEvaluation.QueryEvaluationStatus.FAILURE,
-          error: parseBigqueryEvalError(e)
-        };
-      }
-      queryEvaluations.push(
-        dataform.QueryEvaluation.create({ ...evaluationResponse, incremental, query })
-      );
-    }
-    return queryEvaluations;
+    return await Promise.all(
+      validationQueries.map(async ({ query, incremental }) => {
+        try {
+          await this.pool
+            .addSingleTask({
+              generator: () =>
+                this.getClient().query({
+                  useLegacySql: false,
+                  query,
+                  dryRun: true
+                })
+            })
+            .promise();
+          return dataform.QueryEvaluation.create({
+            status: dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS,
+            incremental,
+            query
+          });
+        } catch (e) {
+          return {
+            status: dataform.QueryEvaluation.QueryEvaluationStatus.FAILURE,
+            error: parseBigqueryEvalError(e)
+          };
+        }
+      })
+    );
   }
 
-  public tables(): Promise<dataform.ITarget[]> {
-    return this.getClient()
-      .getDatasets({ autoPaginate: true, maxResults: 1000 })
-      .then((result: any) => {
-        return Promise.all(
-          result[0].map((dataset: any) => {
-            return this.pool
-              .addSingleTask({
-                generator: () => dataset.getTables({ autoPaginate: true, maxResults: 1000 })
-              })
-              .promise();
-          })
-        );
-      })
-      .then((datasetTables: any) => {
-        const allTables: dataform.ITarget[] = [];
-        datasetTables.forEach((tablesResult: any) =>
-          tablesResult[0].forEach((table: any) =>
-            allTables.push({ schema: table.dataset.id, name: table.id })
-          )
-        );
-        return allTables;
-      });
+  public async tables(): Promise<dataform.ITarget[]> {
+    const tables = await this.getClient().getDatasets({ autoPaginate: true, maxResults: 1000 });
+    const datasetTables = await Promise.all(
+      tables[0].map(dataset => dataset.getTables({ autoPaginate: true, maxResults: 1000 }))
+    );
+    const allTables: dataform.ITarget[] = [];
+    datasetTables.forEach((tablesResult: any) =>
+      tablesResult[0].forEach((table: any) =>
+        allTables.push({ schema: table.dataset.id, name: table.id })
+      )
+    );
+    return allTables;
   }
 
   public async table(target: dataform.ITarget): Promise<dataform.ITableMetadata> {
@@ -163,22 +156,19 @@ export class BigQueryDbAdapter implements IDbAdapter {
     if (metadata.type === "TABLE") {
       // For tables, we use the BigQuery tabledata.list API, as per https://cloud.google.com/bigquery/docs/best-practices-costs#preview-data.
       // Also see https://cloud.google.com/nodejs/docs/reference/bigquery/3.0.x/Table#getRows.
-      const rowsResult = await this.pool
-        .addSingleTask({
-          generator: () =>
-            this.getClient(target.database)
-              .dataset(target.schema)
-              .table(target.name)
-              .getRows({
-                maxResults: limitRows
-              })
-        })
-        .promise();
+      const rowsResult = await this.getClient(target.database)
+        .dataset(target.schema)
+        .table(target.name)
+        .getRows({
+          maxResults: limitRows
+        });
       return cleanRows(rowsResult[0]);
     }
-    const { rows } = await this.runQuery(
+    const {
+      rows
+    } = await this.execute(
       `SELECT * FROM \`${metadata.tableReference.projectId}.${metadata.tableReference.datasetId}.${metadata.tableReference.tableId}\``,
-      limitRows
+      { rowLimit: limitRows }
     );
     return rows;
   }
@@ -225,10 +215,9 @@ export class BigQueryDbAdapter implements IDbAdapter {
   }
 
   public async persistedStateMetadata(): Promise<dataform.IPersistedTableMetadata[]> {
-    const { rows } = await this.runQuery(
-      `SELECT * FROM ${CACHED_STATE_TABLE_NAME}`,
-      5000 // TODO: Add pagination for 5000+ rows
-    );
+    const { rows } = await this.execute(`SELECT * FROM ${CACHED_STATE_TABLE_NAME}`, {
+      rowLimit: 5000 // TODO: Add pagination for 5000+ rows
+    });
     const persistedMetadata = rows.map((row: IMetadataRow) =>
       decodePersistedTableMetadata(row.metadata_proto)
     );
@@ -315,36 +304,22 @@ DELETE \`${CACHED_STATE_TABLE_NAME}\` WHERE target IN (${allActions
   public async setMetadata(action: dataform.IExecutionAction): Promise<void> {
     const { target, actionDescriptor } = action;
 
-    return await this.pool
-      .addSingleTask({
-        generator: async () => {
-          const metadata = await this.getMetadataOutsidePromisePool(target);
-          const schemaWithDescription = addDescriptionToMetadata(
-            actionDescriptor.columns,
-            metadata.schema.fields
-          );
+    const metadata = await this.getMetadata(target);
+    const schemaWithDescription = addDescriptionToMetadata(
+      actionDescriptor.columns,
+      metadata.schema.fields
+    );
 
-          await this.getClient(target.database)
-            .dataset(target.schema)
-            .table(target.name)
-            .setMetadata({
-              description: actionDescriptor.description,
-              schema: schemaWithDescription
-            });
-        }
-      })
-      .promise();
+    await this.getClient(target.database)
+      .dataset(target.schema)
+      .table(target.name)
+      .setMetadata({
+        description: actionDescriptor.description,
+        schema: schemaWithDescription
+      });
   }
 
-  public async getMetadata(target: dataform.ITarget): Promise<TableMetadata> {
-    return this.pool
-      .addSingleTask({
-        generator: async () => this.getMetadataOutsidePromisePool(target)
-      })
-      .promise();
-  }
-
-  private async getMetadataOutsidePromisePool(target: dataform.ITarget): Promise<TableMetadata> {
+  private async getMetadata(target: dataform.ITarget): Promise<TableMetadata> {
     try {
       const table = await this.getClient(target.database)
         .dataset(target.schema)
@@ -493,12 +468,14 @@ function convertField(field: TableField): dataform.IField {
     description: field.description
   };
   if (field.type === "RECORD" || field.type === "STRUCT") {
-    result.struct = { fields: field.fields.map(innerField => convertField(innerField)) };
+    result.struct = dataform.Fields.create({
+      fields: field.fields.map(innerField => convertField(innerField))
+    });
   } else {
     result.primitiveDeprecated = field.type;
     result.primitive = convertFieldType(field.type);
   }
-  return result;
+  return dataform.Field.create(result);
 }
 
 // See: https://cloud.google.com/bigquery/docs/reference/rest/v2/tables#TableFieldSchema

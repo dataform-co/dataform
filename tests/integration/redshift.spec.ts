@@ -158,20 +158,20 @@ suite("@dataform/integration/redshift", { parallel: true }, ({ before, after }) 
         },
         expectedDescription: "An incremental table",
         expectedFields: [
-          {
+          dataform.Field.create({
             description: "the timestamp",
             flagsDeprecated: ["nullable"],
             name: "user_timestamp",
             primitive: dataform.Field.Primitive.INTEGER,
             primitiveDeprecated: "integer"
-          },
-          {
+          }),
+          dataform.Field.create({
             description: "the id",
             flagsDeprecated: ["nullable"],
             name: "user_id",
             primitive: dataform.Field.Primitive.INTEGER,
             primitiveDeprecated: "integer"
-          }
+          })
         ]
       },
       {
@@ -181,12 +181,12 @@ suite("@dataform/integration/redshift", { parallel: true }, ({ before, after }) 
         },
         expectedDescription: "An example view",
         expectedFields: [
-          {
+          dataform.Field.create({
             flagsDeprecated: [] as string[],
             name: "val",
             primitive: dataform.Field.Primitive.INTEGER,
             primitiveDeprecated: "integer"
-          }
+          })
         ]
       }
     ]) {
