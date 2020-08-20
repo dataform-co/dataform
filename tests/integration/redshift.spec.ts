@@ -8,7 +8,7 @@ import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
 import { compile, getTableRows, keyBy } from "df/tests/integration/utils";
 
-suite("@dataform/integration/redshift", { parallel: false }, ({ before, after }) => {
+suite("@dataform/integration/redshift", { parallel: true }, ({ before, after }) => {
   const credentials = dfapi.credentials.read("redshift", "test_credentials/redshift.json");
   let dbadapter: dbadapters.IDbAdapter;
 

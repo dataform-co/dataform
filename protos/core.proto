@@ -245,6 +245,10 @@ message ColumnDescriptor {
   string expression = 6;
 
   repeated string tags = 7;
+
+  // BigQuery specific settings.
+
+  repeated string bigquery_policy_tags = 8;
 }
 
 message Table {

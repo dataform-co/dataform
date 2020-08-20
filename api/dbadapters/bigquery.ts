@@ -1,7 +1,7 @@
 import Long from "long";
 import { PromisePoolExecutor } from "promise-pool-executor";
 
-import { BigQuery } from "@google-cloud/bigquery";
+import { BigQuery, TableField, TableMetadata } from "@google-cloud/bigquery";
 import { Credentials } from "df/api/commands/credentials";
 import { IDbAdapter, IExecutionResult, OnCancel } from "df/api/dbadapters/index";
 import { parseBigqueryEvalError } from "df/api/utils/error_parsing";
@@ -30,28 +30,6 @@ const BIGQUERY_DATE_RELATED_FIELDS = [
 ];
 
 const MAX_QUERY_LENGTH = 1024 * 1024;
-
-interface IBigQueryTableMetadata {
-  type: string;
-  schema: {
-    fields: IBigQueryFieldMetadata[];
-  };
-  tableReference: {
-    projectId: string;
-    datasetId: string;
-    tableId: string;
-  };
-  lastModifiedTime: string;
-  description?: string;
-}
-
-interface IBigQueryFieldMetadata {
-  name: string;
-  mode: string;
-  type: string;
-  fields?: IBigQueryFieldMetadata[];
-  description?: string;
-}
 
 export class BigQueryDbAdapter implements IDbAdapter {
   public static async create(
@@ -363,7 +341,7 @@ DELETE \`${CACHED_STATE_TABLE_NAME}\` WHERE target IN (${allActions
       .promise();
   }
 
-  public async getMetadata(target: dataform.ITarget): Promise<IBigQueryTableMetadata> {
+  public async getMetadata(target: dataform.ITarget): Promise<TableMetadata> {
     return this.pool
       .addSingleTask({
         generator: async () => this.getMetadataOutsidePromisePool(target)
@@ -373,7 +351,7 @@ DELETE \`${CACHED_STATE_TABLE_NAME}\` WHERE target IN (${allActions
 
   private async getMetadataOutsidePromisePool(
     target: dataform.ITarget
-  ): Promise<IBigQueryTableMetadata> {
+  ): Promise<TableMetadata> {
     try {
       const table = await this.getClient(target.database)
         .dataset(target.schema)
@@ -514,7 +492,7 @@ function cleanRows(rows: any[]) {
   return rows;
 }
 
-function convertField(field: IBigQueryFieldMetadata): dataform.IField {
+function convertField(field: TableField): dataform.IField {
   const result: dataform.IField = {
     name: field.name,
     flagsDeprecated: !!field.mode ? [field.mode] : [],
@@ -563,14 +541,20 @@ function convertFieldType(type: string) {
 
 function addDescriptionToMetadata(
   columnDescriptions: dataform.IColumnDescriptor[],
-  metadataArray: IBigQueryFieldMetadata[]
-): IBigQueryFieldMetadata[] {
+  metadataArray: TableField[]
+): TableField[] {
   const findDescription = (path: string[]) =>
     columnDescriptions.find(column => column.path.join("") === path.join(""));
 
-  const mapDescriptionToMetadata = (metadata: IBigQueryFieldMetadata, path: string[]) => {
-    if (findDescription(path)) {
-      metadata.description = findDescription(path).description;
+  const mapDescriptionToMetadata = (metadata: TableField, path: string[]) => {
+    const description = findDescription(path);
+    if (description) {
+      metadata.description = description.description;
+      if (description.bigqueryPolicyTags?.length > 0) {
+        metadata.policyTags = {
+          names: description.bigqueryPolicyTags
+        };
+      }
     }
 
     if (metadata.fields) {

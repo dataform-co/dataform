@@ -340,7 +340,7 @@ class PgPoolExecutor {
         rowLimit: options?.rowLimit,
         byteLimit: options?.byteLimit
       });
-      options?.onCancel?.(() => query.destroy());
+      options?.onCancel?.(() => query.destroy(new Error("Query cancelled.")));
       query.on("data", (row: any) => {
         try {
           verifyUniqueColumnNames((query as any).cursor._result.fields);

@@ -9,7 +9,7 @@
     "@blueprintjs/core": "^3.22.3",
     "@blueprintjs/icons": "^3.13.0",
     "@blueprintjs/select": "^3.8.0",
-    "@google-cloud/bigquery": "^5.0.0",
+    "@google-cloud/bigquery": "^5.1.0",
     "@google-cloud/storage": "^5.1.1",
     "@mapbox/rehype-prism": "^0.4.0",
     "@nivo/bar": "^0.61.1",
