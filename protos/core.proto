@@ -335,6 +335,9 @@ message Assertion {
   repeated string tags = 9;
 
   ActionDescriptor action_descriptor = 10;
+
+  // Only present for auto assertions.
+  string parent = 15;
   
   // Generated.
   string file_name = 7;

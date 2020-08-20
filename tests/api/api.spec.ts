@@ -47,6 +47,16 @@ suite("@dataform/api", () => {
         },
         query: "query"
       }
+    ],
+    assertions: [
+      {
+        name: "schema.d",
+        target: {
+          schema: "schema",
+          name: "d"
+        },
+        parent: "schema.b"
+      }
     ]
   });
 
@@ -325,20 +335,24 @@ suite("@dataform/api", () => {
       const prunedGraph = prune(TEST_GRAPH, { actions: ["schema.a"], includeDependencies: true });
       const actionNames = [
         ...prunedGraph.tables.map(action => action.name),
-        ...prunedGraph.operations.map(action => action.name)
+        ...prunedGraph.operations.map(action => action.name),
+        ...prunedGraph.assertions.map(action => action.name)
       ];
       expect(actionNames).includes("schema.a");
       expect(actionNames).includes("schema.b");
+      expect(actionNames).includes("schema.d");
     });
 
     test("prune actions with --actions without dependencies", () => {
       const prunedGraph = prune(TEST_GRAPH, { actions: ["schema.a"], includeDependencies: false });
       const actionNames = [
         ...prunedGraph.tables.map(action => action.name),
-        ...prunedGraph.operations.map(action => action.name)
+        ...prunedGraph.operations.map(action => action.name),
+        ...prunedGraph.assertions.map(action => action.name)
       ];
       expect(actionNames).includes("schema.a");
       expect(actionNames).not.includes("schema.b");
+      expect(actionNames).not.includes("schema.d");
     });
   });
 
