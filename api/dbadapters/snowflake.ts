@@ -101,7 +101,7 @@ export class SnowflakeDbAdapter implements IDbAdapter {
                 streamResult: true,
                 complete(err, stmt) {
                   if (err) {
-                    let message = `Snowflake SQL query """${statement}""" failed: ${err.message}.`;
+                    let message = `Snowflake SQL query failed: ${err.message}.`;
                     if (err.cause) {
                       message += ` Root cause: ${err.cause}`;
                     }
