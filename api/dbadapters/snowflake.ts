@@ -264,8 +264,34 @@ where table_schema = '${target.schema}'
     // Unimplemented.
   }
 
-  public async setMetadata(): Promise<void> {
-    // Unimplemented.
+  public async setMetadata(action: dataform.IExecutionAction): Promise<void> {
+    const { target, actionDescriptor, tableType } = action;
+
+    const queries: Array<Promise<any>> = [];
+    if (actionDescriptor.description) {
+      queries.push(
+        this.execute(
+          `comment on ${tableType === "view" ? "view" : "table"} "${target.schema}"."${
+            target.name
+          }" is '${actionDescriptor.description.replace("'", "\\'")}'`
+        )
+      );
+    }
+    if (tableType !== "view" && actionDescriptor.columns?.length > 0) {
+      actionDescriptor.columns
+        .filter(column => column.path.length === 1)
+        .forEach(column => {
+          queries.push(
+            this.execute(
+              `comment if exists on column "${target.schema}"."${target.name}"."${
+                column.path[0]
+              }" is '${column.description.replace("'", "\\'")}'`
+            )
+          );
+        });
+    }
+
+    await Promise.all(queries);
   }
 }
 
