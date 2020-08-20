@@ -479,7 +479,10 @@ export class Session {
     return !!this.config.tablePrefix ? `${this.config.tablePrefix}_` : "";
   }
 
-  private alterActionName(actions: IActionProto[], declarationTargets: dataform.ITarget[]) {
+  private alterActionName(
+    actions: Array<dataform.ITable | dataform.IOperation | dataform.IAssertion>,
+    declarationTargets: dataform.ITarget[]
+  ) {
     const { tablePrefix, schemaSuffix } = this.config;
 
     if (!tablePrefix && !schemaSuffix) {
@@ -515,6 +518,12 @@ export class Session {
       action.dependencies = (action.dependencyTargets || []).map(dependencyTarget =>
         utils.targetToName(dependencyTarget)
       );
+
+      if ("parent" in action) {
+        if (!!action.parent) {
+          action.parent = newTargetByOriginalTarget.get(action.parent);
+        }
+      }
     });
   }
 
