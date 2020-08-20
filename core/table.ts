@@ -299,8 +299,6 @@ export class Table {
   private contextableWhere: Contextable<ITableContext, string>;
   private contextablePreOps: Array<Contextable<ITableContext, string | string[]>> = [];
   private contextablePostOps: Array<Contextable<ITableContext, string | string[]>> = [];
-  private uniqueKeyAssertion?: Assertion;
-  private mergedRowConditionsAssertion?: Assertion;
 
   public config(config: ITableConfig) {
     checkExcessProperties(
@@ -504,11 +502,9 @@ export class Table {
     if (!!assertions.uniqueKey) {
       const indexCols =
         typeof assertions.uniqueKey === "string" ? [assertions.uniqueKey] : assertions.uniqueKey;
-      this.uniqueKeyAssertion = this.session.assert(
-        `${this.proto.target.name}_assertions_uniqueKey`,
-        ctx => this.session.adapter().indexAssertion(ctx.ref(this.proto.target), indexCols),
-        this.proto.name
-      );
+      this.session.assert(`${this.proto.target.name}_assertions_uniqueKey`, ctx =>
+        this.session.adapter().indexAssertion(ctx.ref(this.proto.target), indexCols)
+      ).proto.parent = this.proto.target;
     }
     const mergedRowConditions = assertions.rowConditions || [];
     if (!!assertions.nonNull) {
@@ -517,14 +513,11 @@ export class Table {
       nonNullCols.forEach(nonNullCol => mergedRowConditions.push(`${nonNullCol} IS NOT NULL`));
     }
     if (!!mergedRowConditions && mergedRowConditions.length > 0) {
-      this.mergedRowConditionsAssertion = this.session.assert(
-        `${this.proto.target.name}_assertions_rowConditions`,
-        ctx =>
-          this.session
-            .adapter()
-            .rowConditionsAssertion(ctx.ref(this.proto.target), mergedRowConditions),
-        this.proto.name
-      );
+      this.session.assert(`${this.proto.target.name}_assertions_rowConditions`, ctx =>
+        this.session
+          .adapter()
+          .rowConditionsAssertion(ctx.ref(this.proto.target), mergedRowConditions)
+      ).proto.parent = this.proto.target;
     }
     return this;
   }

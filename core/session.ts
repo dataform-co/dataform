@@ -284,7 +284,7 @@ export class Session {
     return newTable;
   }
 
-  public assert(name: string, query?: AContextable<string>, parent?: string): Assertion {
+  public assert(name: string, query?: AContextable<string>): Assertion {
     const assertion = new Assertion();
     assertion.session = this;
     utils.setNameAndTarget(this, assertion.proto, name, this.config.assertionSchema);
@@ -293,9 +293,6 @@ export class Session {
     }
     assertion.proto.fileName = utils.getCallerFile(this.rootDir);
     this.actions.push(assertion);
-    if (parent) {
-      assertion.proto.parent = parent;
-    }
     return assertion;
   }
 
