@@ -290,7 +290,7 @@ message Table {
   // Deprecated.
   repeated string deprecated_parsed_columns = 12 [deprecated = true];
   repeated ValidationError deprecated_validation_errors = 7 [deprecated = true];
-  // string name = 1 [deprecated = true]; // Use 'target' instead.
+  string name = 1 [deprecated = true]; // Use 'target' instead.
   repeated string dependencies = 2 [deprecated = true]; // Use 'dependency_targets' instead.
 
   reserved 16;
@@ -315,7 +315,7 @@ message Operation {
   string file_name = 7;
 
   // Deprecated.
-  // string name = 1 [deprecated = true]; // Use 'target' instead.
+  string name = 1 [deprecated = true]; // Use 'target' instead.
   repeated string dependencies = 2; // Use 'dependency_targets' instead.
 
   reserved 4, 5;
@@ -343,7 +343,7 @@ message Assertion {
   string file_name = 7;
 
   // Deprecated.
-  // string name = 1 [deprecated = true]; // Use 'target' instead.
+  string name = 1 [deprecated = true]; // Use 'target' instead.
   repeated string dependencies = 2; // Use 'dependency_targets' instead.
 
   reserved 4, 5, 6;
@@ -364,7 +364,7 @@ message Declaration {
   // Generated.
   string file_name = 4;
 
-  // string name = 1 [deprecated = true]; // Use 'target' instead.
+  string name = 1 [deprecated = true]; // Use 'target' instead.
 }
 
 message Test {

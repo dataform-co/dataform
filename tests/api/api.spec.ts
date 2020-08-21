@@ -89,7 +89,7 @@ suite("@dataform/api", () => {
         const graphWithErrors: dataform.ICompiledGraph = dataform.CompiledGraph.create({
           projectConfig: { warehouse: "redshift" },
           graphErrors: { compilationErrors: [{ message: "Some critical error" }] },
-          tables: [{ name: "a", target: { schema: "schema", name: "a" } }]
+          tables: [{ target: { schema: "schema", name: "a" } }]
         });
 
         const builder = new Builder(
@@ -141,17 +141,17 @@ suite("@dataform/api", () => {
       expect(executedGraph.actions.length).greaterThan(0);
 
       graph.tables.forEach((t: dataform.ITable) => {
-        const action = executedGraph.actions.find(item => item.name === t.name);
+        const action = executedGraph.actions.find(item => item.target === t.target);
         expect(action).to.include({ type: "table", target: t.target, tableType: t.type });
       });
 
       graph.operations.forEach((o: dataform.IOperation) => {
-        const action = executedGraph.actions.find(item => item.name === o.name);
+        const action = executedGraph.actions.find(item => item.target === o.target);
         expect(action).to.include({ type: "operation", target: o.target });
       });
 
       graph.assertions.forEach((a: dataform.IAssertion) => {
-        const action = executedGraph.actions.find(item => item.name === a.name);
+        const action = executedGraph.actions.find(item => item.target === a.target);
         expect(action).to.include({ type: "assertion" });
       });
     });
@@ -168,7 +168,6 @@ suite("@dataform/api", () => {
           projectConfig: { warehouse: "redshift" },
           tables: [
             {
-              name: "a",
               target: { schema: "schema", name: "a" },
               type: "incremental",
               query: "foo",
@@ -286,11 +285,11 @@ suite("@dataform/api", () => {
 
       expect(prunedGraph.tables.length).greaterThan(0);
 
-      const actionNames = prunedGraph.tables.map(action => action.name);
+      const actionTargets = prunedGraph.tables.map(action => action.target);
 
-      expect(actionNames).includes("a");
-      expect(actionNames).not.includes("b");
-      expect(actionNames).includes("c");
+      expect(actionTargets).includes(dataform.Target.create({ schema: "schema", name: "a" }));
+      expect(actionTargets).not.includes(dataform.Target.create({ schema: "schema", name: "b" }));
+      expect(actionTargets).includes(dataform.Target.create({ schema: "schema", name: "c" }));
     });
 
     test("prune actions with --tags (with dependencies)", () => {
@@ -299,15 +298,15 @@ suite("@dataform/api", () => {
         tags: ["tag1", "tag2", "tag4"],
         includeDependencies: true
       });
-      const actionNames = [
-        ...prunedGraph.tables.map(action => action.name),
-        ...prunedGraph.operations.map(action => action.name)
+      const actionTargets = [
+        ...prunedGraph.tables.map(action => action.target),
+        ...prunedGraph.operations.map(action => action.target)
       ];
-      expect(actionNames).includes("op_a");
-      expect(actionNames).includes("op_b");
-      expect(actionNames).not.includes("op_c");
-      expect(actionNames).includes("op_d");
-      expect(actionNames).includes("tab_a");
+      expect(actionTargets).includes({ schema: "schema", name: "op_a" });
+      expect(actionTargets).includes({ schema: "schema", name: "op_b" });
+      expect(actionTargets).not.includes({ schema: "schema", name: "op_c" });
+      expect(actionTargets).includes({ schema: "schema", name: "op_d" });
+      expect(actionTargets).includes({ schema: "schema", name: "tab_a" });
     });
 
     test("prune actions with --tags but without --actions (without dependencies)", () => {
@@ -315,39 +314,42 @@ suite("@dataform/api", () => {
         tags: ["tag1", "tag2", "tag4"],
         includeDependencies: false
       });
-      const actionNames = [
-        ...prunedGraph.tables.map(action => action.name),
-        ...prunedGraph.operations.map(action => action.name)
+      const actionTargets = [
+        ...prunedGraph.tables.map(action => action.target),
+        ...prunedGraph.operations.map(action => action.target)
       ];
-      expect(actionNames).includes("op_a");
-      expect(actionNames).includes("op_b");
-      expect(actionNames).not.includes("op_c");
-      expect(actionNames).not.includes("op_d");
-      expect(actionNames).includes("tab_a");
+      // TODO
+      expect(actionTargets).includes("op_a");
+      expect(actionTargets).includes("op_b");
+      expect(actionTargets).not.includes("op_c");
+      expect(actionTargets).not.includes("op_d");
+      expect(actionTargets).includes("tab_a");
     });
 
     test("prune actions with --actions with dependencies", () => {
       const prunedGraph = prune(TEST_GRAPH, { actions: ["schema.a"], includeDependencies: true });
-      const actionNames = [
-        ...prunedGraph.tables.map(action => action.name),
-        ...prunedGraph.operations.map(action => action.name),
-        ...prunedGraph.assertions.map(action => action.name)
+      const actionTargets = [
+        ...prunedGraph.tables.map(action => action.target),
+        ...prunedGraph.operations.map(action => action.target),
+        ...prunedGraph.assertions.map(action => action.target)
       ];
-      expect(actionNames).includes("schema.a");
-      expect(actionNames).includes("schema.b");
-      expect(actionNames).includes("schema.d");
+      // TODO
+      expect(actionTargets).includes("schema.a");
+      expect(actionTargets).includes("schema.b");
+      expect(actionTargets).includes("schema.d");
     });
 
     test("prune actions with --actions without dependencies", () => {
       const prunedGraph = prune(TEST_GRAPH, { actions: ["schema.a"], includeDependencies: false });
-      const actionNames = [
-        ...prunedGraph.tables.map(action => action.name),
-        ...prunedGraph.operations.map(action => action.name),
-        ...prunedGraph.assertions.map(action => action.name)
+      const actionTargets = [
+        ...prunedGraph.tables.map(action => action.target),
+        ...prunedGraph.operations.map(action => action.target),
+        ...prunedGraph.assertions.map(action => action.target)
       ];
-      expect(actionNames).includes("schema.a");
-      expect(actionNames).not.includes("schema.b");
-      expect(actionNames).not.includes("schema.d");
+      // TODO
+      expect(actionTargets).includes("schema.a");
+      expect(actionTargets).not.includes("schema.b");
+      expect(actionTargets).not.includes("schema.d");
     });
   });
 
@@ -357,7 +359,6 @@ suite("@dataform/api", () => {
         projectConfig: { warehouse: "bigquery", defaultDatabase: "deeb" },
         tables: [
           {
-            name: "incremental",
             target: {
               schema: "schema",
               name: "incremental"
@@ -409,7 +410,6 @@ suite("@dataform/api", () => {
         dataformCoreVersion: "1.4.1",
         tables: [
           {
-            name: "redshift_all",
             type: "table",
             target: {
               schema: "schema",
@@ -424,7 +424,6 @@ suite("@dataform/api", () => {
             }
           },
           {
-            name: "redshift_only_sort",
             type: "table",
             target: {
               schema: "schema",
@@ -437,7 +436,6 @@ suite("@dataform/api", () => {
             }
           },
           {
-            name: "redshift_only_dist",
             type: "table",
             target: {
               schema: "schema",
@@ -450,7 +448,6 @@ suite("@dataform/api", () => {
             }
           },
           {
-            name: "redshift_without_redshift",
             type: "table",
             target: {
               schema: "schema",
@@ -459,7 +456,6 @@ suite("@dataform/api", () => {
             query: "query"
           },
           {
-            name: "redshift_view",
             type: "view",
             target: {
               schema: "schema",
@@ -468,7 +464,6 @@ suite("@dataform/api", () => {
             query: "query"
           },
           {
-            name: "redshift_view_with_binding",
             type: "view",
             target: {
               schema: "schema",
@@ -512,7 +507,6 @@ suite("@dataform/api", () => {
         dataformCoreVersion: "1.4.1",
         tables: [
           {
-            name: "postgres_view",
             type: "view",
             target: {
               schema: "schema",
@@ -545,10 +539,9 @@ suite("@dataform/api", () => {
         projectConfig: { warehouse: "bigquery", defaultDatabase: "deeb" },
         tables: [
           {
-            name: "partitionby",
             target: {
               schema: "schema",
-              name: "name"
+              name: "partitionby"
             },
             type: "table",
             query: "select 1 as test",
@@ -558,10 +551,9 @@ suite("@dataform/api", () => {
             }
           },
           {
-            name: "plain",
             target: {
               schema: "schema",
-              name: "name"
+              name: "plain"
             },
             type: "table",
             query: "select 1 as test"
@@ -623,10 +615,9 @@ suite("@dataform/api", () => {
         projectConfig: { warehouse: "bigquery", defaultDatabase: "deeb" },
         tables: [
           {
-            name: "partitionby",
             target: {
               schema: "schema",
-              name: "name"
+              name: "partitionby"
             },
             type: "table",
             query: "select 1 as test",
@@ -636,10 +627,9 @@ suite("@dataform/api", () => {
             }
           },
           {
-            name: "plain",
             target: {
               schema: "schema",
-              name: "name"
+              name: "plain"
             },
             type: "table",
             query: "select 1 as test"
@@ -701,7 +691,6 @@ suite("@dataform/api", () => {
         projectConfig: { warehouse: "snowflake" },
         tables: [
           {
-            name: "a",
             type: "table",
             target: {
               schema: "schema",
@@ -710,7 +699,6 @@ suite("@dataform/api", () => {
             query: "select 1 as test"
           },
           {
-            name: "b",
             type: "table",
             target: {
               schema: "schema",
@@ -763,12 +751,11 @@ postOps`
           projectConfig: { warehouse, useSingleQueryPerAction: true },
           tables: [
             {
-              name: "a",
               type: "table",
               query: "query",
               preOps: ["preOps"],
               postOps: ["postOps"],
-              target: { schema: "schema", name: "b", database: "database" }
+              target: { schema: "schema", name: "a", database: "database" }
             }
           ]
         });
