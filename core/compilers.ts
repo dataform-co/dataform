@@ -253,33 +253,30 @@ function getFunctionPropertyNames(prototype: any) {
 
 function createEscapedStatements(nodes: Array<string | SyntaxTreeNode>) {
   const results = [""];
-  nodes.map(escapeNode).forEach(node => {
+  nodes.forEach(node => {
     if (typeof node !== "string" && node.type === SyntaxTreeNodeType.SQL_STATEMENT_SEPARATOR) {
       results.push("");
       return;
     }
-    results[results.length - 1] += typeof node === "string" ? node : node.concatenate();
+    results[results.length - 1] += escapeNode(node);
   });
   return results;
 }
 
+const SQL_STATEMENT_ESCAPERS = new Map([
+  [
+    SyntaxTreeNodeType.SQL_COMMENT,
+    (str: string) => str.replace(/`/g, "\\`").replace(/\${/g, "\\${")
+  ],
+  [
+    SyntaxTreeNodeType.SQL_LITERAL_STRING,
+    (str: string) => str.replace(/\\/g, "\\\\").replace(/\`/g, "\\`")
+  ]
+]);
+
 function escapeNode(node: string | SyntaxTreeNode) {
   if (typeof node === "string") {
-    return node.replace(/\\/g, "\\\\").replace(/\`/g, "\\`");
+    return SQL_STATEMENT_ESCAPERS.get(SyntaxTreeNodeType.SQL_LITERAL_STRING)(node);
   }
-  switch (node.type) {
-    case SyntaxTreeNodeType.SQL_COMMENT:
-      // Any code (i.e. JavaScript placeholder strings) inside comments should not run, so escape it.
-      return node
-        .concatenate()
-        .replace(/`/g, "\\`")
-        .replace(/\${/g, "\\${");
-    case SyntaxTreeNodeType.SQL_LITERAL_STRING:
-      // Literal strings may contain backslashes or backticks which need to be escaped.
-      return node
-        .concatenate()
-        .replace(/\\/g, "\\\\")
-        .replace(/\`/g, "\\`");
-  }
-  return node;
+  return node.concatenate(SQL_STATEMENT_ESCAPERS);
 }
