@@ -929,5 +929,17 @@ post_operations {
         )
       ).eql(await fs.readFile("tests/core/strings-act-literally.js.test", "utf8"));
     });
+    test("JS placeholders inside SQL strings", async () => {
+      expect(
+        compilers.compile(
+          `
+select '\${\`bar\`}'
+`,
+          "file.sqlx"
+        )
+      ).eql(
+        await fs.readFile("tests/core/js-placeholder-strings-inside-sql-strings.js.test", "utf8")
+      );
+    });
   });
 });
