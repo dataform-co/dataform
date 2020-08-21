@@ -142,9 +142,7 @@ export class Builder {
     return {
       ...this.toPartialExecutionAction(assertion),
       type: "assertion",
-      tasks: assertion.disabled
-        ? []
-        : this.adapter.assertTasks(assertion, this.prunedGraph.projectConfig).build(),
+      tasks: assertion.disabled ? [] : this.adapter.assertTasks(assertion).build(),
       hermeticity: assertion.hermeticity || dataform.ActionHermeticity.HERMETIC
     };
   }
@@ -153,7 +151,6 @@ export class Builder {
     action: dataform.ITable | dataform.IOperation | dataform.IAssertion
   ) {
     return dataform.ExecutionAction.create({
-      name: action.name,
       target: action.target,
       fileName: action.fileName,
       dependencies: action.dependencies,

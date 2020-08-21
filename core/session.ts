@@ -316,12 +316,16 @@ export class Session {
     return newTest;
   }
 
-  public compileError(err: Error | string, path?: string, actionName?: string) {
+  public compileError(
+    err: Error | string,
+    path?: string,
+    actionTarget?: dataform.ITarget | string
+  ) {
     const fileName = path || utils.getCallerFile(this.rootDir) || __filename;
 
     const compileError = dataform.CompilationError.create({
       fileName,
-      actionName
+      actionName: typeof actionTarget === "string" ? actionTarget : utils.targetToName(actionTarget)
     });
     if (typeof err === "string") {
       compileError.message = err;
@@ -428,7 +432,7 @@ export class Session {
         const compiledChunk = action.compile();
         compiledChunks.push(compiledChunk);
       } catch (e) {
-        this.compileError(e, action.proto.fileName, action.proto.name);
+        this.compileError(e, action.proto.fileName, action.proto.target);
       }
     });
 
@@ -449,7 +453,7 @@ export class Session {
               }" depends on "${utils.stringifyResolvable(dependency)}" which does not exist`
             ),
             action.fileName,
-            action.name
+            action.target
           );
         } else if (possibleDeps.length === 1) {
           // We found a single matching target, and fully-qualify it if it's a normal dependency,
@@ -460,14 +464,14 @@ export class Session {
               action.dependencyTargets.push(inlineDep)
             );
           } else {
-            fullyQualifiedDependencies[protoDep.name] = protoDep.target;
+            fullyQualifiedDependencies[utils.targetToName(protoDep.target)] = protoDep.target;
           }
         } else {
           // Too many targets matched the dependency.
           this.compileError(
             new Error(utils.ambiguousActionNameMsg(dependency, possibleDeps)),
             action.fileName,
-            action.name
+            action.target
           );
         }
       }
@@ -532,7 +536,7 @@ export class Session {
             `Duplicate action name detected. Names within a schema must be unique across tables, declarations, assertions, and operations`
           ),
           action.fileName,
-          action.name
+          action.target
         );
       }
       allNames.push(action.name);
@@ -552,7 +556,7 @@ export class Session {
             )}"`
           ),
           action.fileName,
-          action.name
+          action.target
         );
       }
       allCanonicalTargets.set(action.canonicalTarget, true);
@@ -568,7 +572,7 @@ export class Session {
             TableType
           )}`,
           table.fileName,
-          table.name
+          table.target
         );
       }
 
@@ -580,7 +584,7 @@ export class Session {
               `Merging using unique keys for SQLDataWarehouse has not yet been implemented`
             ),
             table.fileName,
-            table.name
+            table.target
           );
         }
 
@@ -594,7 +598,7 @@ export class Session {
             this.compileError(
               new Error(`Invalid value for sqldatawarehouse distribution: ${distribution}`),
               table.fileName,
-              table.name
+              table.target
             );
           }
         }
@@ -608,10 +612,10 @@ export class Session {
         ) => {
           const value = opts[prop];
           if (!opts.hasOwnProperty(prop)) {
-            this.compileError(`Property "${prop}" is not defined`, table.fileName, table.name);
+            this.compileError(`Property "${prop}" is not defined`, table.fileName, table.target);
           } else if (value instanceof Array) {
             if (value.length === 0) {
-              this.compileError(`Property "${prop}" is not defined`, table.fileName, table.name);
+              this.compileError(`Property "${prop}" is not defined`, table.fileName, table.target);
             }
           }
         };
@@ -630,7 +634,7 @@ export class Session {
                 values
               )}`,
               table.fileName,
-              table.name
+              table.target
             );
           }
         };
@@ -654,7 +658,7 @@ export class Session {
           this.compileError(
             `partitionBy/clusterBy are not valid for BigQuery views; they are only valid for tables`,
             table.fileName,
-            table.name
+            table.target
           );
         }
         if (
@@ -665,7 +669,7 @@ export class Session {
           this.compileError(
             `clusterBy is not valid without partitionBy`,
             table.fileName,
-            table.name
+            table.target
           );
         }
       }
@@ -677,7 +681,7 @@ export class Session {
             this.compileError(
               `Unused property was detected: "${ignoredProp}". This property is not used for tables with type "${table.type}" and will be ignored`,
               table.fileName,
-              table.name
+              table.target
             );
           }
         });

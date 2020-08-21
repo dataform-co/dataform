@@ -62,16 +62,8 @@ export class RedshiftAdapter extends Adapter implements IAdapter {
     return tasks;
   }
 
-  public assertTasks(
-    assertion: dataform.IAssertion,
-    projectConfig: dataform.IProjectConfig
-  ): Tasks {
-    const target =
-      assertion.target ||
-      dataform.Target.create({
-        schema: projectConfig.assertionSchema,
-        name: assertion.name
-      });
+  public assertTasks(assertion: dataform.IAssertion): Tasks {
+    const target = assertion.target;
     return Tasks.create()
       .add(Task.statement(this.dropIfExists(target, dataform.TableMetadata.Type.VIEW)))
       .add(Task.statement(this.createOrReplaceView(target, assertion.query, true)))
@@ -147,20 +139,22 @@ export class RedshiftAdapter extends Adapter implements IAdapter {
     const finalTarget = this.resolveTarget(target);
     // Schema name not allowed for temporary tables.
     const tempTarget = `"${target.schema}__${target.name}_incremental_temp"`;
-    return Tasks.create()
-      .add(Task.statement(`drop table if exists ${tempTarget};`))
-      .add(Task.statement(`create temp table ${tempTarget} as select * from (${query});`))
-      // TODO: The next two statements should be run in a transaction.
-      .add(
-        Task.statement(
-          `delete from ${finalTarget} using ${tempTarget} where ${uniqueKey
-            .map(
-              uniqueKeyCol => `${finalTarget}."${uniqueKeyCol}" = ${tempTarget}."${uniqueKeyCol}"`
-            )
-            .join(` and `)};`
+    return (
+      Tasks.create()
+        .add(Task.statement(`drop table if exists ${tempTarget};`))
+        .add(Task.statement(`create temp table ${tempTarget} as select * from (${query});`))
+        // TODO: The next two statements should be run in a transaction.
+        .add(
+          Task.statement(
+            `delete from ${finalTarget} using ${tempTarget} where ${uniqueKey
+              .map(
+                uniqueKeyCol => `${finalTarget}."${uniqueKeyCol}" = ${tempTarget}."${uniqueKeyCol}"`
+              )
+              .join(` and `)};`
+          )
         )
-      )
-      .add(Task.statement(`insert into ${finalTarget} select * from ${tempTarget};`))
-      .add(Task.statement(`drop table ${tempTarget};`));
+        .add(Task.statement(`insert into ${finalTarget} select * from ${tempTarget};`))
+        .add(Task.statement(`drop table ${tempTarget};`))
+    );
   }
 }

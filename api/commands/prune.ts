@@ -7,19 +7,19 @@ export function prune(
   compiledGraph: dataform.ICompiledGraph,
   runConfig: dataform.IRunConfig
 ): dataform.ICompiledGraph {
-  const includedActionNames = computeIncludedActionNames(compiledGraph, runConfig);
+  const includedActionNames = computeIncludedActionTargets(compiledGraph, runConfig);
   return {
     ...compiledGraph,
-    tables: compiledGraph.tables.filter(action => includedActionNames.has(action.name)),
-    assertions: compiledGraph.assertions.filter(action => includedActionNames.has(action.name)),
-    operations: compiledGraph.operations.filter(action => includedActionNames.has(action.name))
+    tables: compiledGraph.tables.filter(action => includedActionNames.has(action.target)),
+    assertions: compiledGraph.assertions.filter(action => includedActionNames.has(action.target)),
+    operations: compiledGraph.operations.filter(action => includedActionNames.has(action.target))
   };
 }
 
-function computeIncludedActionNames(
+function computeIncludedActionTargets(
   compiledGraph: dataform.ICompiledGraph,
   runConfig: dataform.IRunConfig
-): Set<string> {
+): Set<dataform.ITarget> {
   // Remove inline tables.
   const filteredTables = compiledGraph.tables.filter(t => t.type !== "inline");
 
@@ -30,43 +30,43 @@ function computeIncludedActionNames(
     compiledGraph.assertions
   );
 
-  const allActionNames = allActions.map(n => n.name);
+  const allActionTargets = allActions.map(n => n.target);
   const allActionsByName: { [name: string]: CompileAction } = {};
-  allActions.forEach(action => (allActionsByName[action.name] = action));
+  allActions.forEach(action => (allActionsByName[utils.targetToName(action.target)] = action));
 
   const hasActionSelector = runConfig.actions && runConfig.actions.length > 0;
   const hasTagSelector = runConfig.tags && runConfig.tags.length > 0;
 
   // If no selectors, return all actions.
   if (!hasActionSelector && !hasTagSelector) {
-    return new Set<string>(allActionNames);
+    return new Set<dataform.ITarget>(allActionTargets);
   }
 
-  const includedActionNames = new Set<string>();
+  const includedActionNames = new Set<dataform.ITarget>();
 
   // Add all actions included by action filters.
   if (hasActionSelector) {
     utils
-      .matchPatterns(runConfig.actions, allActionNames)
-      .forEach(actionName => includedActionNames.add(actionName));
+      .matchPatterns(runConfig.actions, allActionTargets)
+      .forEach(actionTarget => includedActionNames.add(actionTarget));
   }
 
   // Determine actions selected with --tag option and update applicable actions
   if (hasTagSelector) {
     allActions
       .filter(action => action.tags.some(tag => runConfig.tags.includes(tag)))
-      .forEach(action => includedActionNames.add(action.name));
+      .forEach(action => includedActionNames.add(action.target));
   }
 
   // Compute all transitive dependencies.
   if (runConfig.includeDependencies) {
     const queue = [...includedActionNames];
     while (queue.length > 0) {
-      const actionName = queue.pop();
+      const actionName = utils.targetToName(queue.pop());
       const action = allActionsByName[actionName];
       const matchingDependencyNames =
         action.dependencies && action.dependencies.length > 0
-          ? utils.matchPatterns(action.dependencies, allActionNames)
+          ? utils.matchPatterns(action.dependencies, allActionTargets)
           : [];
       matchingDependencyNames.forEach(dependencyName => {
         if (!includedActionNames.has(dependencyName)) {
@@ -80,8 +80,8 @@ function computeIncludedActionNames(
   // Add auto assertions
   [...compiledGraph.assertions].forEach(assertion => {
     if (!!assertion.parentAction) {
-      if (includedActionNames.has(utils.targetToName(assertion.parentAction))) {
-        includedActionNames.add(utils.targetToName(assertion.target));
+      if (includedActionNames.has(assertion.parentAction)) {
+        includedActionNames.add(assertion.target);
       }
     }
   });

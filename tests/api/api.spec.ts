@@ -18,7 +18,6 @@ suite("@dataform/api", () => {
     projectConfig: { warehouse: "redshift" },
     tables: [
       {
-        name: "schema.a",
         type: "table",
         target: {
           schema: "schema",
@@ -28,7 +27,6 @@ suite("@dataform/api", () => {
         dependencies: ["schema.b"]
       },
       {
-        name: "schema.b",
         type: "table",
         target: {
           schema: "schema",
@@ -39,7 +37,6 @@ suite("@dataform/api", () => {
         disabled: true
       },
       {
-        name: "schema.c",
         type: "table",
         target: {
           schema: "schema",
@@ -50,7 +47,6 @@ suite("@dataform/api", () => {
     ],
     assertions: [
       {
-        name: "schema.d",
         target: {
           schema: "schema",
           name: "d"
@@ -122,23 +118,21 @@ suite("@dataform/api", () => {
       const graph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
         projectConfig: { warehouse: "redshift" },
         tables: [
-          { name: "a", target: { schema: "schema", name: "a" }, type: "table" },
+          { target: { schema: "schema", name: "a" }, type: "table" },
           {
-            name: "b",
             target: { schema: "schema", name: "b" },
             type: "incremental",
             where: "test"
           },
-          { name: "c", target: { schema: "schema", name: "c" }, type: "view" }
+          { target: { schema: "schema", name: "c" }, type: "view" }
         ],
         operations: [
           {
-            name: "d",
             target: { schema: "schema", name: "d" },
             queries: ["create or replace view schema.someview as select 1 as test"]
           }
         ],
-        assertions: [{ name: "e", target: { schema: "schema", name: "d" } }]
+        assertions: [{ target: { schema: "schema", name: "d" } }]
       });
 
       const builder = new Builder(graph, {}, TEST_STATE, computeAllTransitiveInputs(graph));
@@ -240,31 +234,30 @@ suite("@dataform/api", () => {
       projectConfig: { warehouse: "bigquery" },
       operations: [
         {
-          name: "op_a",
+          target: { name: "op_a" },
           tags: ["tag1"],
           queries: ["create or replace view schema.someview as select 1 as test"]
         },
         {
-          name: "op_b",
+          target: { name: "op_b" },
           dependencies: ["op_a"],
           tags: ["tag2"],
           queries: ["create or replace view schema.someview as select 1 as test"]
         },
         {
-          name: "op_c",
+          target: { name: "op_c" },
           dependencies: ["op_a"],
           tags: ["tag3"],
           queries: ["create or replace view schema.someview as select 1 as test"]
         },
         {
-          name: "op_d",
+          target: { name: "op_d" },
           tags: ["tag3"],
           queries: ["create or replace view schema.someview as select 1 as test"]
         }
       ],
       tables: [
         {
-          name: "tab_a",
           dependencies: ["op_d"],
           target: {
             schema: "schema",
@@ -279,14 +272,13 @@ suite("@dataform/api", () => {
       const graph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
         projectConfig: { warehouse: "bigquery" },
         tables: [
-          { name: "a", target: { schema: "schema", name: "a" }, type: "table", dependencies: [] },
+          { target: { schema: "schema", name: "a" }, type: "table", dependencies: [] },
           {
-            name: "b",
             target: { schema: "schema", name: "b" },
             type: "inline",
             dependencies: ["a"]
           },
-          { name: "c", target: { schema: "schema", name: "c" }, type: "table", dependencies: ["a"] }
+          { target: { schema: "schema", name: "c" }, type: "table", dependencies: ["a"] }
         ]
       });
 

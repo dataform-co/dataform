@@ -2,6 +2,7 @@ import cronParser from "cron-parser";
 import * as fs from "fs";
 import * as path from "path";
 
+import * as utils from "df/core/utils";
 import { dataform } from "df/protos/ts";
 
 const SCHEDULES_JSON_PATH = "schedules.json";
@@ -72,9 +73,9 @@ export function validateSchedules(
 
     if (schedule.options && schedule.options.actions) {
       const allActionNames: string[] = [].concat(
-        compiledGraph.tables.map(table => table.name),
-        compiledGraph.assertions.map(assertion => assertion.name),
-        compiledGraph.operations.map(operation => operation.name),
+        compiledGraph.tables.map(table => utils.targetToName(table.target)),
+        compiledGraph.assertions.map(assertion => utils.targetToName(assertion.target)),
+        compiledGraph.operations.map(operation => utils.targetToName(operation.target)),
         compiledGraph.tables.map(table => table.target.name),
         compiledGraph.assertions.map(assertion => assertion.target.name),
         compiledGraph.operations

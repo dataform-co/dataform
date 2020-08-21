@@ -12,10 +12,7 @@ export abstract class Adapter implements IAdapter {
     runConfig: dataform.IRunConfig,
     tableMetadata: dataform.ITableMetadata
   ): Tasks;
-  public abstract assertTasks(
-    assertion: dataform.IAssertion,
-    projectConfig: dataform.IProjectConfig
-  ): Tasks;
+  public abstract assertTasks(assertion: dataform.IAssertion): Tasks;
 
   public abstract resolveTarget(target: dataform.ITarget): string;
 
