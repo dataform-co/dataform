@@ -25,22 +25,26 @@ export function baseFilename(fullPath: string) {
   return path.basename(fullPath).split(".")[0];
 }
 
-export function matchPatterns(patterns: string[], values: string[]) {
-  const fullyQualifiedActions: string[] = [];
+export function matchPatterns(patterns: string[], targets: dataform.ITarget[]): dataform.ITarget[] {
+  const namesTargetsMap = new Map<string, dataform.ITarget>();
+  targets.forEach(t => namesTargetsMap.set(targetToName(t), t));
+  const targetNames = Object.keys(namesTargetsMap);
+
+  const fullyQualifiedActions: dataform.ITarget[] = [];
   patterns.forEach(pattern => {
     if (pattern.includes(".")) {
-      if (values.includes(pattern)) {
-        fullyQualifiedActions.push(pattern);
+      if (targetNames.includes(pattern)) {
+        fullyQualifiedActions.push(namesTargetsMap.get(pattern));
       }
     } else {
-      const matchingActions = values.filter(value => pattern === value.split(".").slice(-1)[0]);
+      const matchingActions = targetNames.filter(name => pattern === name.split(".").slice(-1)[0]);
       if (matchingActions.length === 0) {
         return;
       }
       if (matchingActions.length > 1) {
         throw new Error(ambiguousActionNameMsg(pattern, matchingActions));
       }
-      fullyQualifiedActions.push(matchingActions[0]);
+      fullyQualifiedActions.push(namesTargetsMap.get(matchingActions[0]));
     }
   });
   return fullyQualifiedActions;
@@ -186,6 +190,17 @@ export function targetToName(actionTarget: dataform.ITarget) {
     nameParts.push(actionTarget.database);
   }
   return nameParts.reverse().join(".");
+}
+
+export function nameToTarget(name: string) {
+  const nameParts = name.split(".");
+  return dataform.Target.create(
+    nameParts.length === 1
+      ? { name: nameParts[0] }
+      : nameParts.length === 2
+      ? { name: nameParts[1], schema: nameParts[0] }
+      : { name: nameParts[2], schema: nameParts[1], database: nameParts[0] }
+  );
 }
 
 /**

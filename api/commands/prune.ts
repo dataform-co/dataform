@@ -30,48 +30,51 @@ function computeIncludedActionNames(
     compiledGraph.assertions
   );
 
-  const allActionNames = allActions.map(n => n.name);
+  const allActionTargets = allActions.map(n => n.target || utils.nameToTarget(n.name));
   const allActionsByName: { [name: string]: CompileAction } = {};
-  allActions.forEach(action => (allActionsByName[action.name] = action));
+  allActions.forEach(
+    action =>
+      (allActionsByName[!!action.target ? utils.targetToName(action.target) : action.name] = action)
+  );
 
   const hasActionSelector = runConfig.actions && runConfig.actions.length > 0;
   const hasTagSelector = runConfig.tags && runConfig.tags.length > 0;
 
   // If no selectors, return all actions.
   if (!hasActionSelector && !hasTagSelector) {
-    return new Set<string>(allActionNames);
+    return new Set<string>(allActionTargets.map(target => utils.targetToName(target)));
   }
 
-  const includedActionNames = new Set<string>();
+  const includedActionTargets = new Set<dataform.ITarget>();
 
   // Add all actions included by action filters.
   if (hasActionSelector) {
     utils
-      .matchPatterns(runConfig.actions, allActionNames)
-      .forEach(actionName => includedActionNames.add(actionName));
+      .matchPatterns(runConfig.actions, allActionTargets)
+      .forEach(actionTarget => includedActionTargets.add(actionTarget));
   }
 
   // Determine actions selected with --tag option and update applicable actions
   if (hasTagSelector) {
     allActions
       .filter(action => action.tags.some(tag => runConfig.tags.includes(tag)))
-      .forEach(action => includedActionNames.add(action.name));
+      .forEach(action => includedActionTargets.add(action.target));
   }
 
   // Compute all transitive dependencies.
   if (runConfig.includeDependencies) {
-    const queue = [...includedActionNames];
+    const queue = [...includedActionTargets];
     while (queue.length > 0) {
-      const actionName = queue.pop();
+      const actionName = utils.targetToName(queue.pop());
       const action = allActionsByName[actionName];
       const matchingDependencyNames =
         action.dependencies && action.dependencies.length > 0
-          ? utils.matchPatterns(action.dependencies, allActionNames)
+          ? utils.matchPatterns(action.dependencies, allActionTargets)
           : [];
       matchingDependencyNames.forEach(dependencyName => {
-        if (!includedActionNames.has(dependencyName)) {
+        if (!includedActionTargets.has(dependencyName)) {
           queue.push(dependencyName);
-          includedActionNames.add(dependencyName);
+          includedActionTargets.add(dependencyName);
         }
       });
     }
@@ -80,11 +83,14 @@ function computeIncludedActionNames(
   // Add auto assertions
   [...compiledGraph.assertions].forEach(assertion => {
     if (!!assertion.parentAction) {
-      if (includedActionNames.has(utils.targetToName(assertion.parentAction))) {
-        includedActionNames.add(utils.targetToName(assertion.target));
+      if (includedActionTargets.has(assertion.parentAction)) {
+        includedActionTargets.add(assertion.target);
       }
     }
   });
+
+  const includedActionNames = new Set<string>();
+  includedActionTargets.forEach(target => includedActionNames.add(utils.targetToName(target)));
 
   return includedActionNames;
 }
