@@ -39,6 +39,7 @@ export interface IActionProto {
   hermeticity?: dataform.ActionHermeticity;
   target?: dataform.ITarget;
   canonicalTarget?: dataform.ITarget;
+  parentAction?: dataform.ITarget;
 }
 
 type SqlxConfig = (
@@ -515,6 +516,10 @@ export class Session {
       action.dependencies = (action.dependencyTargets || []).map(dependencyTarget =>
         utils.targetToName(dependencyTarget)
       );
+
+      if (!!action.parentAction) {
+        action.parentAction = newTargetByOriginalTarget.get(action.parentAction);
+      }
     });
   }
 
