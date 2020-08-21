@@ -39,6 +39,7 @@ export interface IActionProto {
   hermeticity?: dataform.ActionHermeticity;
   target?: dataform.ITarget;
   canonicalTarget?: dataform.ITarget;
+  parentAction?: dataform.ITarget;
 }
 
 type SqlxConfig = (
@@ -515,6 +516,10 @@ export class Session {
       action.dependencies = (action.dependencyTargets || []).map(dependencyTarget =>
         utils.targetToName(dependencyTarget)
       );
+
+      if (!!action.parentAction) {
+        action.parentAction = newTargetByOriginalTarget.get(action.parentAction);
+      }
     });
   }
 
@@ -645,20 +650,12 @@ export class Session {
 
       // BigQuery config
       if (!!table.bigquery) {
-        if (table.bigquery.partitionBy && table.type === "view") {
-          this.compileError(
-            `partitionBy/clusterBy are not valid for BigQuery views; they are only valid for tables`,
-            table.fileName,
-            table.name
-          );
-        }
         if (
-          !!table.bigquery.clusterBy &&
-          table.bigquery.clusterBy.length > 0 &&
-          !table.bigquery.partitionBy
+          (table.bigquery.partitionBy || table.bigquery.clusterBy?.length) &&
+          table.type === "view"
         ) {
           this.compileError(
-            `clusterBy is not valid without partitionBy`,
+            `partitionBy/clusterBy are not valid for BigQuery views; they are only valid for tables`,
             table.fileName,
             table.name
           );

@@ -77,5 +77,14 @@ function computeIncludedActionNames(
     }
   }
 
+  // Add auto assertions
+  [...compiledGraph.assertions].forEach(assertion => {
+    if (!!assertion.parentAction) {
+      if (includedActionNames.has(utils.targetToName(assertion.parentAction))) {
+        includedActionNames.add(utils.targetToName(assertion.target));
+      }
+    }
+  });
+
   return includedActionNames;
 }
