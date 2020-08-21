@@ -504,7 +504,7 @@ export class Table {
         typeof assertions.uniqueKey === "string" ? [assertions.uniqueKey] : assertions.uniqueKey;
       this.session.assert(`${this.proto.target.name}_assertions_uniqueKey`, ctx =>
         this.session.adapter().indexAssertion(ctx.ref(this.proto.target), indexCols)
-      ).proto.parent = this.proto.target;
+      ).proto.parentAction = this.proto.target;
     }
     const mergedRowConditions = assertions.rowConditions || [];
     if (!!assertions.nonNull) {
@@ -517,7 +517,7 @@ export class Table {
         this.session
           .adapter()
           .rowConditionsAssertion(ctx.ref(this.proto.target), mergedRowConditions)
-      ).proto.parent = this.proto.target;
+      ).proto.parentAction = this.proto.target;
     }
     return this;
   }

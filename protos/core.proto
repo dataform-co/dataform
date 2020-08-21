@@ -337,7 +337,7 @@ message Assertion {
   ActionDescriptor action_descriptor = 10;
 
   // Only present for auto assertions.
-  Target parent = 15;
+  Target parent_action = 15;
   
   // Generated.
   string file_name = 7;

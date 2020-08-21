@@ -55,7 +55,7 @@ suite("@dataform/api", () => {
           schema: "schema",
           name: "d"
         },
-        parent: {
+        parentAction: {
           schema: "schema",
           name: "b"
         }

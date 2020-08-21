@@ -39,6 +39,7 @@ export interface IActionProto {
   hermeticity?: dataform.ActionHermeticity;
   target?: dataform.ITarget;
   canonicalTarget?: dataform.ITarget;
+  parentAction?: dataform.ITarget;
 }
 
 type SqlxConfig = (
@@ -479,10 +480,7 @@ export class Session {
     return !!this.config.tablePrefix ? `${this.config.tablePrefix}_` : "";
   }
 
-  private alterActionName(
-    actions: Array<dataform.ITable | dataform.IOperation | dataform.IAssertion>,
-    declarationTargets: dataform.ITarget[]
-  ) {
+  private alterActionName(actions: IActionProto[], declarationTargets: dataform.ITarget[]) {
     const { tablePrefix, schemaSuffix } = this.config;
 
     if (!tablePrefix && !schemaSuffix) {
@@ -519,10 +517,8 @@ export class Session {
         utils.targetToName(dependencyTarget)
       );
 
-      if ("parent" in action) {
-        if (!!action.parent) {
-          action.parent = newTargetByOriginalTarget.get(action.parent);
-        }
+      if (!!action.parentAction) {
+        action.parentAction = newTargetByOriginalTarget.get(action.parentAction);
       }
     });
   }
