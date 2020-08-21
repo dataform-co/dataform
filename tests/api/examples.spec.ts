@@ -322,7 +322,6 @@ suite("examples", () => {
             name: "example_table_with_tags"
           })
         ]);
-        expect(exampleTableWithTagsUniqueKeyAssertion.tags).eql(["tag1", "tag2", "tag3"]);
 
         // Check table-with-tags's row conditions assertion
         const exampleTableWithTagsRowConditionsAssertion = graph.assertions.filter(
@@ -347,7 +346,6 @@ suite("examples", () => {
             name: "example_table_with_tags"
           })
         ]);
-        expect(exampleTableWithTagsRowConditionsAssertion.tags).eql(["tag1", "tag2", "tag3"]);
 
         // Check sample data
         const exampleSampleData = graph.tables.find(

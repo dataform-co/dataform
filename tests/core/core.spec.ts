@@ -461,27 +461,30 @@ suite("@dataform/core", () => {
           partitionBy: "some_partition"
         }
       });
-      session.publish("example_clusterBy_but_no_partitionBy_fail", {
-        type: "table",
+      session.publish("example_clusterBy_view_fail", {
+        type: "view",
         bigquery: {
-          clusterBy: ["some_column", "some_other_column"]
+          clusterBy: ["some_cluster"]
         }
       });
 
       const graph = session.compile();
-      expect(
-        graph.graphErrors.compilationErrors
-          .filter(item => item.actionName === "schema.example_partitionBy_view_fail")
-          .map(item => item.message)
-      ).to.deep.equals([
-        `partitionBy/clusterBy are not valid for BigQuery views; they are only valid for tables`
-      ]);
 
       expect(
-        graph.graphErrors.compilationErrors
-          .filter(item => item.actionName === "schema.example_clusterBy_but_no_partitionBy_fail")
-          .map(item => item.message)
-      ).to.deep.equals([`clusterBy is not valid without partitionBy`]);
+        graph.graphErrors.compilationErrors.map(({ message, actionName }) => ({
+          message,
+          actionName
+        }))
+      ).has.deep.members([
+        {
+          actionName: "schema.example_partitionBy_view_fail",
+          message: `partitionBy/clusterBy are not valid for BigQuery views; they are only valid for tables`
+        },
+        {
+          actionName: "schema.example_clusterBy_view_fail",
+          message: `partitionBy/clusterBy are not valid for BigQuery views; they are only valid for tables`
+        }
+      ]);
     });
 
     test("validation_bigquery_pass", () => {
@@ -925,6 +928,18 @@ post_operations {
           "file.sqlx"
         )
       ).eql(await fs.readFile("tests/core/strings-act-literally.js.test", "utf8"));
+    });
+    test("JS placeholders inside SQL strings", async () => {
+      expect(
+        compilers.compile(
+          `
+select '\${\`bar\`}'
+`,
+          "file.sqlx"
+        )
+      ).eql(
+        await fs.readFile("tests/core/js-placeholder-strings-inside-sql-strings.js.test", "utf8")
+      );
     });
   });
 });
