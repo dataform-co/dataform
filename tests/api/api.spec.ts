@@ -264,11 +264,11 @@ suite("@dataform/api", () => {
       ],
       tables: [
         {
-          name: "tab_a",
+          name: "schema.tab_a",
           dependencies: ["op_d"],
           target: {
             schema: "schema",
-            name: "a"
+            name: "tab_a"
           },
           tags: ["tag1", "tag2"]
         }
@@ -279,14 +279,24 @@ suite("@dataform/api", () => {
       const graph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
         projectConfig: { warehouse: "bigquery" },
         tables: [
-          { name: "a", target: { schema: "schema", name: "a" }, type: "table", dependencies: [] },
           {
-            name: "b",
+            name: "schema.a",
+            target: { schema: "schema", name: "a" },
+            type: "table",
+            dependencies: []
+          },
+          {
+            name: "schema.b",
             target: { schema: "schema", name: "b" },
             type: "inline",
-            dependencies: ["a"]
+            dependencies: ["schema.a"]
           },
-          { name: "c", target: { schema: "schema", name: "c" }, type: "table", dependencies: ["a"] }
+          {
+            name: "schema.c",
+            target: { schema: "schema", name: "c" },
+            type: "table",
+            dependencies: ["schema.a"]
+          }
         ]
       });
 
@@ -296,9 +306,9 @@ suite("@dataform/api", () => {
 
       const actionNames = prunedGraph.tables.map(action => action.name);
 
-      expect(actionNames).includes("a");
-      expect(actionNames).not.includes("b");
-      expect(actionNames).includes("c");
+      expect(actionNames).includes("schema.a");
+      expect(actionNames).not.includes("schema.b");
+      expect(actionNames).includes("schema.c");
     });
 
     test("prune actions with --tags (with dependencies)", () => {
@@ -315,7 +325,7 @@ suite("@dataform/api", () => {
       expect(actionNames).includes("op_b");
       expect(actionNames).not.includes("op_c");
       expect(actionNames).includes("op_d");
-      expect(actionNames).includes("tab_a");
+      expect(actionNames).includes("schema.tab_a");
     });
 
     test("prune actions with --tags but without --actions (without dependencies)", () => {
@@ -331,7 +341,7 @@ suite("@dataform/api", () => {
       expect(actionNames).includes("op_b");
       expect(actionNames).not.includes("op_c");
       expect(actionNames).not.includes("op_d");
-      expect(actionNames).includes("tab_a");
+      expect(actionNames).includes("schema.tab_a");
     });
 
     test("prune actions with --actions with dependencies", () => {

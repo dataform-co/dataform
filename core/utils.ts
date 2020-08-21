@@ -28,7 +28,7 @@ export function baseFilename(fullPath: string) {
 export function matchPatterns(patterns: string[], targets: dataform.ITarget[]): dataform.ITarget[] {
   const namesTargetsMap = new Map<string, dataform.ITarget>();
   targets.forEach(t => namesTargetsMap.set(targetToName(t), t));
-  const targetNames = Object.keys(namesTargetsMap);
+  const targetNames = Array.from(namesTargetsMap.keys());
 
   const fullyQualifiedActions: dataform.ITarget[] = [];
   patterns.forEach(pattern => {
@@ -185,7 +185,10 @@ export function setNameAndTarget(
 }
 
 export function targetToName(actionTarget: dataform.ITarget) {
-  const nameParts = [actionTarget.name, actionTarget.schema];
+  const nameParts = [actionTarget.name];
+  if (!!actionTarget.schema) {
+    nameParts.push(actionTarget.schema);
+  }
   if (!!actionTarget.database) {
     nameParts.push(actionTarget.database);
   }

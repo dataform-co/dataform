@@ -1,3 +1,4 @@
+import { IStringifier, StringifiedSet } from "df/common/strings/stringifier";
 import * as utils from "df/core/utils";
 import { dataform } from "df/protos/ts";
 
@@ -16,6 +17,20 @@ export function prune(
   };
 }
 
+export class TargetStringifier implements IStringifier<dataform.ITarget> {
+  public static create() {
+    return new TargetStringifier();
+  }
+
+  public stringify(target: dataform.ITarget) {
+    return utils.targetToName(target);
+  }
+
+  public parse(name: string) {
+    return utils.nameToTarget(name);
+  }
+}
+
 function computeIncludedActionNames(
   compiledGraph: dataform.ICompiledGraph,
   runConfig: dataform.IRunConfig
@@ -30,22 +45,24 @@ function computeIncludedActionNames(
     compiledGraph.assertions
   );
 
-  const allActionTargets = allActions.map(n => n.target || utils.nameToTarget(n.name));
+  const allActionTargets = allActions.map(n =>
+    !!n.target ? dataform.Target.create(n.target) : utils.nameToTarget(n.name)
+  );
   const allActionsByName: { [name: string]: CompileAction } = {};
   allActions.forEach(
     action =>
       (allActionsByName[!!action.target ? utils.targetToName(action.target) : action.name] = action)
   );
 
-  const hasActionSelector = runConfig.actions && runConfig.actions.length > 0;
-  const hasTagSelector = runConfig.tags && runConfig.tags.length > 0;
+  const hasActionSelector = !!runConfig.actions?.length;
+  const hasTagSelector = !!runConfig.tags?.length;
 
   // If no selectors, return all actions.
   if (!hasActionSelector && !hasTagSelector) {
     return new Set<string>(allActionTargets.map(target => utils.targetToName(target)));
   }
 
-  const includedActionTargets = new Set<dataform.ITarget>();
+  const includedActionTargets = new StringifiedSet(TargetStringifier.create());
 
   // Add all actions included by action filters.
   if (hasActionSelector) {
@@ -58,7 +75,9 @@ function computeIncludedActionNames(
   if (hasTagSelector) {
     allActions
       .filter(action => action.tags.some(tag => runConfig.tags.includes(tag)))
-      .forEach(action => includedActionTargets.add(action.target));
+      .forEach(action =>
+        includedActionTargets.add(!!action.target ? action.target : utils.nameToTarget(action.name))
+      );
   }
 
   // Compute all transitive dependencies.
@@ -83,7 +102,7 @@ function computeIncludedActionNames(
   // Add auto assertions
   [...compiledGraph.assertions].forEach(assertion => {
     if (!!assertion.parentAction) {
-      if (includedActionTargets.has(assertion.parentAction)) {
+      if (includedActionTargets.has(dataform.Target.create(assertion.parentAction))) {
         includedActionTargets.add(assertion.target);
       }
     }
