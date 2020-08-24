@@ -14,13 +14,9 @@ export function BreadCrumb({ pathParts }: IBreadCrumbProps) {
       {pathParts.slice(0, -1).map((pathPart, index) => (
         <React.Fragment key={index}>
           <H6>
-            {!!pathPart.to ? (
-              <Link onClick={pathPart.onClick} to={pathPart.to}>
-                {pathPart.label}
-              </Link>
-            ) : (
-              <a onClick={pathPart.onClick}>{pathPart.label}</a>
-            )}
+            <Link onClick={pathPart.onClick} to={pathPart.to}>
+              {pathPart.label}
+            </Link>
           </H6>
           {"  >  "}
         </React.Fragment>
