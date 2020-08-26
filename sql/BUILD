@@ -22,8 +22,9 @@ ts_test_suite(
     srcs = glob(["**/*.spec.ts"]),
     data = [
         "//test_credentials:bigquery.json",
-        "//test_credentials:snowflake.json",
+        "//test_credentials:postgres.json",
         "//test_credentials:redshift.json",
+        "//test_credentials:snowflake.json",
         "@npm//source-map-support",
     ],
     templated_args = ["--node_options=--require=source-map-support/register"],
