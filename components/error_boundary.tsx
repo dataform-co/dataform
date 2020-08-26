@@ -17,7 +17,7 @@ interface IBaseErrorState {
   showErrorDetails: boolean;
 }
 
-class BaseErrorCallout extends React.Component<IErrorCalloutProps, IBaseErrorState> {
+export class ErrorCallout extends React.Component<IErrorCalloutProps, IBaseErrorState> {
   public state: IBaseErrorState = {
     showErrorDetails: false
   };
@@ -71,7 +71,7 @@ export class ErrorPageWithCallout extends React.Component<IErrorCalloutProps, IB
     return (
       <div className={styles.errorPageContainer}>
         <Card className={`${styles.content_centered} ${styles.errorPageCard}`}>
-          <BaseErrorCallout {...this.props} />
+          <ErrorCallout {...this.props} />
         </Card>
       </div>
     );
@@ -80,14 +80,14 @@ export class ErrorPageWithCallout extends React.Component<IErrorCalloutProps, IB
 
 const ErrorBoundaryComponent = (props: IErrorCalloutProps) => (
   <div className={styles.errorComponentWrapper}>
-    <BaseErrorCallout {...props} />
+    <ErrorCallout {...props} />
   </div>
 );
 
 const ErrorBoundaryPage = (props: IErrorCalloutProps) => (
   <div className={styles.errorPageContainer}>
     <Card className={`${styles.content_centered} ${styles.errorPageCard}`}>
-      <BaseErrorCallout {...props} />
+      <ErrorCallout {...props} />
     </Card>
   </div>
 );
