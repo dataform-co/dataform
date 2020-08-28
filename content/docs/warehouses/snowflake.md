@@ -9,7 +9,7 @@ priority: 0
 Snowflake connections require the following elements:
 
 - Account name: the first part of your Snowflake url, including region: `account-name.region`.snowflakecomputing.com
-- Username and password used for your Snowflake console. You may prefer to create a separate username and password for Dataform to use - please contact our team if you need help.
+- Username and password used for your Snowflake console. You may prefer to create a separate username and password for Dataform to use - you can read more about creating users [here](https://docs.snowflake.com/en/user-guide/admin-user-management.html#creating-users).
 - Warehouse name: Click "Warehouses" from within your Snowflake console to view a list of warehouses. This warehouse will be used when Dataform creates runs in Snowflake.
 - Database: Click "Databases" from within your Snowflake console to view a list of databases.
 
