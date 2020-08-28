@@ -184,7 +184,7 @@ export function Form({ onSubmit, children, ...rest }: React.PropsWithChildren<IF
 }
 
 interface IItemProps {
-  name: string | React.ReactElement<any>;
+  name?: string | React.ReactElement<any>;
   description?: string | React.ReactElement<any>;
   errors?: string[];
 }
@@ -192,13 +192,15 @@ interface IItemProps {
 export const FormItem = (props: React.PropsWithChildren<IItemProps>) => (
   <div style={{ marginTop: "20px" }}>
     <div>
-      <H5>{props.name}</H5>
-      <div className="bp3-text-muted" style={{ marginBottom: "10px" }}>
-        {props.description}
-      </div>
+      {!!props.name && <H5>{props.name}</H5>}
+      {!!props.description && (
+        <div className="bp3-text-muted" style={{ marginBottom: "10px" }}>
+          {props.description}
+        </div>
+      )}
     </div>
     <div>{props.children}</div>
-    {props.errors && <ValidationErrors errors={props.errors} />}
+    {!!props.errors && <ValidationErrors errors={props.errors} />}
   </div>
 );
 
