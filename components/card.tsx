@@ -120,13 +120,22 @@ export const CardList = ({
   );
 };
 
+export interface ICardMasonryProps {
+  columns?: number;
+}
+
 export const CardMasonry = ({
   children,
   className,
+  columns,
   ...rest
-}: ICardGridProps & React.PropsWithChildren<{}> & React.HTMLAttributes<HTMLDivElement>) => {
+}: ICardMasonryProps & React.PropsWithChildren<{}> & React.HTMLAttributes<HTMLDivElement>) => {
   return (
-    <div className={[styles.cardMasonry, className].join(" ")} {...rest}>
+    <div
+      className={[styles.cardMasonry, className].join(" ")}
+      {...rest}
+      style={{ columns: `${String(columns || 2)} 200px`, ...rest.style }}
+    >
       {children}
     </div>
   );
