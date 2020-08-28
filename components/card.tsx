@@ -122,19 +122,25 @@ export const CardList = ({
 
 export interface ICardMasonryProps {
   columns?: number;
+  minCardWidth?: number;
 }
 
 export const CardMasonry = ({
   children,
   className,
   columns,
+  minCardWidth,
   ...rest
 }: ICardMasonryProps & React.PropsWithChildren<{}> & React.HTMLAttributes<HTMLDivElement>) => {
+  const numOfColumns = columns || 2;
   return (
     <div
       className={[styles.cardMasonry, className].join(" ")}
       {...rest}
-      style={{ columns: `${String(columns || 2)} 200px`, ...rest.style }}
+      style={{
+        columns: `${numOfColumns} ${numOfColumns * (minCardWidth || 100)}px`,
+        ...rest.style
+      }}
     >
       {children}
     </div>
