@@ -143,7 +143,9 @@ export interface IBigQueryOptions {
   updatePartitionFilter?: string;
 
   /**
+   * Key-value pairs for [BigQuery labels](https://cloud.google.com/bigquery/docs/labels-intro).
    *
+   * Both `labels: { "key": "value" }` and `labels: { key: "value" }` as part of the `bigquery` block are valid.
    */
   labels?: { [name: string]: string };
 }
