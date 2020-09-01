@@ -424,7 +424,7 @@ export class Table {
     return this;
   }
 
-  public bigquery(bigquery: IBigQueryOptions) {
+  public bigquery(bigquery: dataform.IBigQueryOptions) {
     checkExcessProperties(
       (e: Error) => this.session.compileError(e),
       bigquery,
@@ -436,9 +436,7 @@ export class Table {
       if (!this.proto.actionDescriptor) {
         this.proto.actionDescriptor = {};
       }
-      this.proto.actionDescriptor.bigqueryLabels = Object.entries(bigquery.labels).map(
-        ([key, value], _) => ({ key, value } as dataform.BigqueryLabel)
-      );
+      this.proto.actionDescriptor.bigqueryLabels = bigquery.labels;
     }
     return this;
   }

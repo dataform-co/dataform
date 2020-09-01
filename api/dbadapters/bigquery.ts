@@ -315,11 +315,6 @@ DELETE \`${CACHED_STATE_TABLE_NAME}\` WHERE target IN (${allActions
   public async setMetadata(action: dataform.IExecutionAction): Promise<any> {
     const { target, actionDescriptor, type } = action;
 
-    const labels: { [key: string]: string } = {};
-    actionDescriptor.bigqueryLabels.forEach(label => {
-      labels[label.key] = label.value;
-    });
-
     if (!actionDescriptor || !["view", "table"].includes(type)) {
       return;
     }
@@ -339,7 +334,7 @@ DELETE \`${CACHED_STATE_TABLE_NAME}\` WHERE target IN (${allActions
             .setMetadata({
               description: actionDescriptor.description,
               schema: schemaWithDescription,
-              labels
+              labels: actionDescriptor.bigqueryLabels
             });
           return table;
         }
