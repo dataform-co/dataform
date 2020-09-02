@@ -112,7 +112,6 @@ publish("example").query(ctx => `SELECT * FROM ${ctx.ref("other_table")}`);
 The following methods and configuration options accept a function taking a `Contextable` argument as in the above example:
 
 - `query()`
-- `where()`
 - `preOps()`
 - `postOps()`
 
