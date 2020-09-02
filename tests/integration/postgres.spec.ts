@@ -9,7 +9,7 @@ import { suite, test } from "df/testing";
 import { compile, getTableRows, keyBy } from "df/tests/integration/utils";
 import { PostgresFixture } from "df/tools/postgres/postgres_fixture";
 
-suite("@dataform/integration/redshift", { parallel: true }, ({ before, after }) => {
+suite("@dataform/integration/postgres", { parallel: true }, ({ before, after }) => {
   let dbadapter: dbadapters.IDbAdapter;
 
   const postgres = new PostgresFixture(5432, before, after);
@@ -21,7 +21,7 @@ suite("@dataform/integration/redshift", { parallel: true }, ({ before, after }) 
         databaseName: "postgres",
         password: "password",
         port: 5432,
-        host: "localhost"
+        host: PostgresFixture.host
       },
       "postgres",
       { disableSslForTestsOnly: true }

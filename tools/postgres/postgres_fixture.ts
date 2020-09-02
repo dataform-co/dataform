@@ -3,7 +3,13 @@ import * as dbadapters from "df/api/dbadapters";
 import { sleepUntil } from "df/common/promises";
 import { IHookHandler } from "df/testing";
 
+const DOCKER_CONTAINER_NAME = "postgres-df-integration-testing";
+
+const useCloudBuildNetwork = process.env.USE_CLOUD_BUILD_NETWORK;
+
 export class PostgresFixture {
+  public static readonly host = useCloudBuildNetwork ? DOCKER_CONTAINER_NAME : "localhost";
+
   private static imageLoaded = false;
 
   constructor(port: number, setUp: IHookHandler, tearDown: IHookHandler) {
@@ -15,8 +21,16 @@ export class PostgresFixture {
       }
       console.log("BEN BEN BEN loaded");
       execSync(
-        // TODO: --network=cloudbuild is the new bit, will not work locally
-        `docker run --rm --name postgres-df-integration-testing -e POSTGRES_PASSWORD=password -d -p ${port}:5432 --network=cloudbuild bazel/tools/postgres:postgres_image`
+        [
+          "docker run",
+          "--rm",
+          `--name DOCKER_CONTAINER_NAME`,
+          "-e POSTGRES_PASSWORD=password",
+          "-d",
+          `-p ${port}:5432`,
+          useCloudBuildNetwork ? "--network cloudbuild" : "",
+          "bazel/tools/postgres:postgres_image"
+        ].join(" ")
       );
       console.log("BEN BEN BEN started");
       const dbadapter = await dbadapters.create(
@@ -25,9 +39,7 @@ export class PostgresFixture {
           databaseName: "postgres",
           password: "password",
           port: 5432,
-          // TODO: needed for cloudbuild, will not work locally
-          host: "postgres-df-integration-testing"
-          // host: "localhost"
+          host: PostgresFixture.host
         },
         "postgres",
         { disableSslForTestsOnly: true }
