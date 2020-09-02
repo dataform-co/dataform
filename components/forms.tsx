@@ -101,7 +101,8 @@ export function useForm<T extends IUseForm>(form: T): IFormObject<T> & IFormMeth
         (acc, curr) => ({ ...acc, [curr]: items[curr].value() }),
         {} as IFormData<T>
       ),
-    showErrors: () => itemValues.forEach(item => item.showErrors())
+    showErrors: () => itemValues.forEach(item => item.showErrors()),
+    reset: () => itemValues.every(item => item.reset())
   };
 }
 
@@ -128,14 +129,17 @@ interface IFormMethods<T extends IUseForm> {
   valid: () => boolean;
   data: () => IFormData<T>;
   showErrors: () => void;
+  reset: () => void;
 }
 
 class FormItemState<T> {
   private valueState: [T, React.Dispatch<T>];
   private errorsState: [string[] | false, React.Dispatch<string[] | false>];
   private rules: Array<IValidationRule<T>>;
+  private defaultValue: T;
 
   constructor(value: IUseFormItem<T>) {
+    this.defaultValue = value.default;
     this.valueState = useState(value.default);
     this.errorsState = useState<string[] | false>(false);
     this.rules = value.rules instanceof Array ? value.rules : value.rules ? [value.rules] : [];
@@ -162,6 +166,13 @@ class FormItemState<T> {
   };
 
   public showErrors = () => this.set(this.valueState[0]);
+
+  public reset = () => {
+    const [_, setState] = this.valueState;
+    const [__, setErrors] = this.errorsState;
+    setState(this.defaultValue);
+    setErrors([]);
+  };
 }
 
 interface IFormProps extends React.HTMLProps<HTMLFormElement> {
