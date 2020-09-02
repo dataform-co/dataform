@@ -4,7 +4,7 @@ import { sleepUntil } from "df/common/promises";
 import { IHookHandler } from "df/testing";
 
 const DOCKER_CONTAINER_NAME = "postgres-df-integration-testing";
-const USE_CLOUD_BUILD_NETWORK = process.env.USE_CLOUD_BUILD_NETWORK;
+const USE_CLOUD_BUILD_NETWORK = !!process.env.USE_CLOUD_BUILD_NETWORK;
 
 export class PostgresFixture {
   public static readonly host = USE_CLOUD_BUILD_NETWORK ? DOCKER_CONTAINER_NAME : "localhost";

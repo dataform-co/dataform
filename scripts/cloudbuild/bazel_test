@@ -3,4 +3,4 @@ set -e
 
 # Run all the tests
 # bazel test --config=remote-cache ... --build_tests_only
-bazel test //tests/integration:postgres.spec
+bazel test //tests/integration:postgres.spec --test_env=USE_CLOUD_BUILD_NETWORK=$USE_CLOUD_BUILD_NETWORK
