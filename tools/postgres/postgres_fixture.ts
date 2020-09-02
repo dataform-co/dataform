@@ -13,19 +13,23 @@ export class PostgresFixture {
         execSync("tools/postgres/postgres_image.executable");
         PostgresFixture.imageLoaded = true;
       }
+      console.log("BEN BEN BEN loaded");
       execSync(
         `docker run --rm --name postgres-df-integration-testing -e POSTGRES_PASSWORD=password -d -p ${port}:5432 bazel/tools/postgres:postgres_image`
       );
+      console.log("BEN BEN BEN started");
       const dbadapter = await dbadapters.create(
         {
           username: "postgres",
           databaseName: "postgres",
           password: "password",
           port: 5432,
-          host: "localhost"
+          // host: "localhost"
+          host: "127.0.0.1"
         },
         "postgres"
       );
+      console.log("BEN BEN BEN db executor created");
       await sleepUntil(async () => {
         try {
           await dbadapter.execute("select 1");
@@ -34,6 +38,7 @@ export class PostgresFixture {
           return false;
         }
       });
+      console.log("BEN BEN BEN ready");
     });
 
     tearDown("stopping postgres", () => {
