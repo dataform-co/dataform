@@ -24,7 +24,8 @@ export class PostgresFixture {
           databaseName: "postgres",
           password: "password",
           port: 5432,
-          host: "localhost"
+          host: "postgres-df-integration-testing"
+          // host: "localhost"
           // host: "127.0.0.1"
         },
         "postgres"
