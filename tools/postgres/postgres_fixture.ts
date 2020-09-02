@@ -35,6 +35,7 @@ export class PostgresFixture {
           await dbadapter.execute("select 1");
           return true;
         } catch (e) {
+          console.log("BEN BEN BEN error", String(e));
           return false;
         }
       });
