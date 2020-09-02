@@ -398,6 +398,18 @@ declare({
 });
 ```
 
+### Declaring multiple sources within one file using `forEach`
+
+```js
+// definitions/external_dependencies.js
+
+["charges", "subscriptions", "line_items", "invoices"].
+  forEach(name => declare({
+    schema: "stripe",
+    name})
+);
+```
+
 ### Deleting sensitive information in all tables containing PII
 
 ```js
@@ -412,6 +424,18 @@ pii_tables.forEach(table =>
       .tags(["gdpr_deletion"]))
 );
 
+```
+
+
+### Adding preOps and postOps using the JS API
+
+```js
+// definitions/pre_and_post_ops_example.js
+
+publish("example")
+  .query(ctx => `SELECT * FROM ${ctx.ref("other_table")}`)
+  .preOps(ctx => `delete ${ctx.self()}`)
+  .postOps(ctx => `grant select on ${ctx.self()} to role`)
 ```
 
 ## Misc

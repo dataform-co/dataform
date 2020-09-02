@@ -66,6 +66,25 @@ In order to be able to query Google Sheets tables via BigQuery, you'll need to s
 - Find the email address of the service account through which you connected to Dataform. You can find this on the [Google Cloud IAM service accounts console page](https://console.cloud.google.com/iam-admin/serviceaccounts). If you're developing your Dataform project locally (as opposed to using Dataform Web), you can find the service accounts email in the `.df-credentials.json` file.
 - Share the Google sheet with the email address of the service account as you would a colleague, through the sheets sharing settings and make sure it has access.
 
+### Using BigQuery labels
+
+[BigQuery labels](https://cloud.google.com/bigquery/docs/labels-intro) are key-value pairs that help you organize your Google Cloud BigQuery resources. To use them in Dataform, add them to the config block:
+
+```sql
+config {
+  type: "table",
+  bigquery: {
+    labels: {
+      label1: "val1",
+      /* If the label name contains special characters, e.g. hyphens, then quote its name. */
+      "label-name": "value"
+    }
+  }
+}
+
+select "test" as column1
+```
+
 ### Using different project_ids within the same project
 
 You can both read from and publish to two separate GCP project_ids within a single Dataform project. For example, you may have a project_id called `raw` that contains raw data loaded in your warehouse and a project_id called `analytics` in which you create data tables you use for analytics and reporting.

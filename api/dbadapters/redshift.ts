@@ -39,7 +39,7 @@ export class RedshiftDbAdapter implements IDbAdapter {
   public static async create(
     credentials: Credentials,
     warehouseType: string,
-    options?: { concurrencyLimit?: number }
+    options?: { concurrencyLimit?: number; disableSslForTestsOnly?: boolean }
   ) {
     maybeInitializePg();
     const jdbcCredentials = credentials as dataform.IJDBC;
@@ -47,7 +47,7 @@ export class RedshiftDbAdapter implements IDbAdapter {
       user: jdbcCredentials.username,
       password: jdbcCredentials.password,
       database: jdbcCredentials.databaseName,
-      ssl: { rejectUnauthorized: false }
+      ssl: options?.disableSslForTestsOnly ? false : { rejectUnauthorized: false }
     };
     if (jdbcCredentials.sshTunnel) {
       const sshTunnel = await SSHTunnelProxy.create(jdbcCredentials.sshTunnel, {

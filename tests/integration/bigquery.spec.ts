@@ -318,7 +318,8 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
                 ]
               })
             })
-          ]
+          ],
+          expectedLabels: {}
         },
         {
           target: {
@@ -334,12 +335,17 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
               primitive: dataform.Field.Primitive.INTEGER,
               primitiveDeprecated: "INTEGER"
             })
-          ]
+          ],
+          expectedLabels: {
+            label1: "val1",
+            label2: "val2"
+          }
         }
       ]) {
         const metadata = await dbadapter.table(expectedMetadata.target);
         expect(metadata.description).to.equal(expectedMetadata.expectedDescription);
         expect(metadata.fields).to.deep.equal(expectedMetadata.expectedFields);
+        expect(metadata.labels).to.deep.equal(expectedMetadata.expectedLabels);
       }
     });
   });

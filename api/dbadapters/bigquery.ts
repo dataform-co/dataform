@@ -147,7 +147,8 @@ export class BigQueryDbAdapter implements IDbAdapter {
       target,
       fields: metadata.schema.fields.map(field => convertField(field)),
       lastUpdatedMillis: Long.fromString(metadata.lastModifiedTime),
-      description: metadata.description
+      description: metadata.description,
+      labels: metadata.labels
     });
   }
 
@@ -315,7 +316,8 @@ DELETE \`${CACHED_STATE_TABLE_NAME}\` WHERE target IN (${allActions
       .table(target.name)
       .setMetadata({
         description: actionDescriptor.description,
-        schema: schemaWithDescription
+        schema: schemaWithDescription,
+        labels: actionDescriptor.bigqueryLabels
       });
   }
 

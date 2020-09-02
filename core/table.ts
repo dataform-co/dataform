@@ -141,10 +141,17 @@ export interface IBigQueryOptions {
    * For more information, see our [incremental dataset docs](https://docs.dataform.co/guides/incremental-datasets).
    */
   updatePartitionFilter?: string;
+
+  /**
+   * Key-value pairs for [BigQuery labels](https://cloud.google.com/bigquery/docs/labels-intro).
+   *
+   * If the label name contains special characters, e.g. hyphens, then quote its name, e.g. labels: { "label-name": "value" }.
+   */
+  labels?: { [name: string]: string };
 }
 
 const IBigQueryOptionsProperties = () =>
-  strictKeysOf<IBigQueryOptions>()(["partitionBy", "clusterBy", "updatePartitionFilter"]);
+  strictKeysOf<IBigQueryOptions>()(["partitionBy", "clusterBy", "updatePartitionFilter", "labels"]);
 
 /**
  * Options for creating assertions as part of a dataset definition.
@@ -425,6 +432,12 @@ export class Table {
       "bigquery config"
     );
     this.proto.bigquery = dataform.BigQueryOptions.create(bigquery);
+    if (!!bigquery.labels) {
+      if (!this.proto.actionDescriptor) {
+        this.proto.actionDescriptor = {};
+      }
+      this.proto.actionDescriptor.bigqueryLabels = bigquery.labels;
+    }
     return this;
   }
 
