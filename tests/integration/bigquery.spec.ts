@@ -335,12 +335,17 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
             name: "example_view"
           },
           expectedDescription: "An example view",
-          expectedSchema: EXPECTED_EXAMPLE_VIEW_SCHEMA
+          expectedSchema: EXPECTED_EXAMPLE_VIEW_SCHEMA,
+          labels: {
+            label1: "val1",
+            label2: "val2"
+          }
         }
       ]) {
         const metadata = await dbadapter.getMetadata(expectedMetadata.target);
         expect(metadata.description).to.equal(expectedMetadata.expectedDescription);
         expect(metadata.schema).to.deep.equal(expectedMetadata.expectedSchema);
+        expect(metadata.labels).to.deep.equal(expectedMetadata.labels);
       }
     });
   });
