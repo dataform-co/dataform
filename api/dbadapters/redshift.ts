@@ -47,7 +47,7 @@ export class RedshiftDbAdapter implements IDbAdapter {
       user: jdbcCredentials.username,
       password: jdbcCredentials.password,
       database: jdbcCredentials.databaseName,
-      ssl: { rejectUnauthorized: false }
+      ssl: jdbcCredentials.host === "localhost" ? false : { rejectUnauthorized: false }
     };
     if (jdbcCredentials.sshTunnel) {
       const sshTunnel = await SSHTunnelProxy.create(jdbcCredentials.sshTunnel, {
