@@ -4,11 +4,10 @@ import { sleepUntil } from "df/common/promises";
 import { IHookHandler } from "df/testing";
 
 const DOCKER_CONTAINER_NAME = "postgres-df-integration-testing";
-
-const useCloudBuildNetwork = process.env.USE_CLOUD_BUILD_NETWORK;
+const USE_CLOUD_BUILD_NETWORK = process.env.USE_CLOUD_BUILD_NETWORK;
 
 export class PostgresFixture {
-  public static readonly host = useCloudBuildNetwork ? DOCKER_CONTAINER_NAME : "localhost";
+  public static readonly host = USE_CLOUD_BUILD_NETWORK ? DOCKER_CONTAINER_NAME : "localhost";
 
   private static imageLoaded = false;
 
@@ -19,7 +18,7 @@ export class PostgresFixture {
         execSync("tools/postgres/postgres_image.executable");
         PostgresFixture.imageLoaded = true;
       }
-      console.log("BEN BEN BEN loaded");
+      console.log("BEN BEN BEN loaded", "useCloudBuildNetwork", USE_CLOUD_BUILD_NETWORK);
       execSync(
         [
           "docker run",
@@ -28,7 +27,7 @@ export class PostgresFixture {
           "-e POSTGRES_PASSWORD=password",
           "-d",
           `-p ${port}:5432`,
-          useCloudBuildNetwork ? "--network cloudbuild" : "",
+          USE_CLOUD_BUILD_NETWORK ? "--network cloudbuild" : "",
           "bazel/tools/postgres:postgres_image"
         ].join(" ")
       );
