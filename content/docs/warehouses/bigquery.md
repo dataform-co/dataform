@@ -77,7 +77,7 @@ config {
     labels: {
       label1: "val1",
       /* If the label name contains special characters, e.g. hyphens, then quote its name. */
-      "label-name": "value"
+      "label-2": "val2"
     }
   }
 }
