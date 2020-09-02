@@ -145,7 +145,7 @@ export interface IBigQueryOptions {
   /**
    * Key-value pairs for [BigQuery labels](https://cloud.google.com/bigquery/docs/labels-intro).
    *
-   * Both `labels: { "key": "value" }` and `labels: { key: "value" }` as part of the `bigquery` block are valid.
+   * If the label name contains special characters, e.g. hyphens, then quote its name, e.g. labels: { "label-name": "value" }.
    */
   labels?: { [name: string]: string };
 }
