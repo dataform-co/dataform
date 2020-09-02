@@ -24,7 +24,7 @@ export class PostgresFixture {
         [
           "docker run",
           "--rm",
-          `--name DOCKER_CONTAINER_NAME`,
+          `--name ${DOCKER_CONTAINER_NAME}`,
           "-e POSTGRES_PASSWORD=password",
           "-d",
           `-p ${port}:5432`,
