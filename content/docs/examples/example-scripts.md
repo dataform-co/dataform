@@ -438,6 +438,17 @@ publish("example")
   .postOps(ctx => `grant select on ${ctx.self()} to role`)
 ```
 
+### Creating incremental tables using the JS API
+
+```js
+// definitions/incremental_example.js
+
+publish("incremental_example", {
+  type: "incremental"
+}).query(ctx => `SELECT * FROM ${ctx.ref("other_table")}`)
+  .where(`where timestamp > (select max(date) from ${self()})`)
+```
+
 ## Misc
 
 ### Use inline variables and functions
