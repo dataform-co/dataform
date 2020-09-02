@@ -1,6 +1,10 @@
 {
   "steps": [
     {
+      "name": "securego/gosec",
+      "args": ["./..."]
+    },
+    {
       "name": "l.gcr.io/google/bazel:3.3.1",
       "entrypoint": "bash",
       "args": ["./scripts/cloudbuild/bazel_test"]

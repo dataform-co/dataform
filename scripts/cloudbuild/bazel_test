@@ -1,6 +1,9 @@
 #!/bin/bash
 set -e
 
-bazel build @postgres//image
-docker load --input bazel-bin/external/postgres/image/image.tar
-docker run bazel/image:image
+# Run tslint.
+bazel run @nodejs//:yarn
+bazel build @npm//tslint/bin:tslint && bazel-bin/external/npm/tslint/bin/tslint.sh --project .
+
+# Run all the tests
+bazel test --config=remote-cache ... --build_tests_only
