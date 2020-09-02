@@ -333,7 +333,8 @@ DELETE \`${CACHED_STATE_TABLE_NAME}\` WHERE target IN (${allActions
             .table(target.name)
             .setMetadata({
               description: actionDescriptor.description,
-              schema: schemaWithDescription
+              schema: schemaWithDescription,
+              labels: actionDescriptor.bigqueryLabels
             });
           return table;
         }
@@ -349,9 +350,7 @@ DELETE \`${CACHED_STATE_TABLE_NAME}\` WHERE target IN (${allActions
       .promise();
   }
 
-  private async getMetadataOutsidePromisePool(
-    target: dataform.ITarget
-  ): Promise<TableMetadata> {
+  private async getMetadataOutsidePromisePool(target: dataform.ITarget): Promise<TableMetadata> {
     try {
       const table = await this.getClient(target.database)
         .dataset(target.schema)

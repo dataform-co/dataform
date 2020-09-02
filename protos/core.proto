@@ -152,6 +152,7 @@ message BigQueryOptions {
   string partition_by = 1;
   repeated string cluster_by = 2;
   string update_partition_filter = 3;
+  map<string, string> labels = 4;
 }
 
 message RedshiftOptions {
@@ -215,6 +216,7 @@ message ActionDescriptor {
   // For Operations, 'columns' may be set iff has_output == true.
   // For Assertions, 'columns' will always be empty.
   repeated ColumnDescriptor columns = 2;
+  map<string, string> bigquery_labels = 3;
 }
 
 message ColumnDescriptor {
