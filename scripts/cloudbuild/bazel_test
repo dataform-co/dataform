@@ -1,4 +1,6 @@
 #!/bin/bash
 set -e
 
-bazel run @postgres//image
+bazel build @postgres//image
+docker load --input bazel-bin/external/postgres/image/image.tar
+docker run bazel/image:image
