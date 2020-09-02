@@ -76,7 +76,7 @@ export function register(warehouseType: string, c: IDbAdapterClass<IDbAdapter>) 
 export async function create(
   credentials: Credentials,
   warehouseType: string,
-  options?: { concurrencyLimit?: number }
+  options?: { concurrencyLimit?: number; disableSslForTestsOnly?: boolean }
 ): Promise<IDbAdapter> {
   if (!registry[warehouseType]) {
     throw new Error(`Unsupported warehouse: ${warehouseType}`);

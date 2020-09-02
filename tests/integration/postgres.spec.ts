@@ -23,7 +23,8 @@ suite("@dataform/integration/redshift", { parallel: true }, ({ before, after }) 
         port: 5432,
         host: "localhost"
       },
-      "postgres"
+      "postgres",
+      { disableSslForTestsOnly: true }
     );
   });
 

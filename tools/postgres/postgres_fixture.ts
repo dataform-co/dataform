@@ -15,6 +15,7 @@ export class PostgresFixture {
       }
       console.log("BEN BEN BEN loaded");
       execSync(
+        // TODO: --network=cloudbuild is the new bit, will not work locally
         `docker run --rm --name postgres-df-integration-testing -e POSTGRES_PASSWORD=password -d -p ${port}:5432 --network=cloudbuild bazel/tools/postgres:postgres_image`
       );
       console.log("BEN BEN BEN started");
@@ -24,11 +25,12 @@ export class PostgresFixture {
           databaseName: "postgres",
           password: "password",
           port: 5432,
+          // TODO: needed for cloudbuild, will not work locally
           host: "postgres-df-integration-testing"
           // host: "localhost"
-          // host: "127.0.0.1"
         },
-        "postgres"
+        "postgres",
+        { disableSslForTestsOnly: true }
       );
       console.log("BEN BEN BEN db executor created");
       await sleepUntil(async () => {
