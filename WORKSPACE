@@ -141,6 +141,16 @@ load(
 
 _nodejs_image_repos()
 
+# Postgres
+
+container_pull(
+    name = "postgres",
+    # This digest is for tag "12.4".
+    digest = "sha256:b0cfe264cb1143c7c660ddfd5c482464997d62d6bc9f97f8fdf3deefce881a8c",
+    registry = "index.docker.io",
+    repository = "library/postgres",
+)
+
 # Sass requirements.
 http_archive(
     name = "io_bazel_rules_sass",
