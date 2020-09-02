@@ -68,7 +68,7 @@ In order to be able to query Google Sheets tables via BigQuery, you'll need to s
 
 ### Using BigQuery labels
 
-[BigQuery labels](https://cloud.google.com/bigquery/docs/labels-intro) are key-value pairs that help you organize your Google Cloud BigQuery resources. To use them in Dataform, add them to the config block as so:
+[BigQuery labels](https://cloud.google.com/bigquery/docs/labels-intro) are key-value pairs that help you organize your Google Cloud BigQuery resources. To use them in Dataform, add them to the config block:
 
 ```sql
 config {
