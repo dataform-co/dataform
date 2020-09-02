@@ -445,9 +445,10 @@ publish("example")
 
 publish("incremental_example", {
   type: "incremental"
-}).query(ctx =>
-  `SELECT * FROM ${ctx.ref("other_table")}
-${ctx.when(ctx.incremental(),`where timestamp > (select max(date) from ${ctx.self()}`)}`)
+}).query(ctx => `
+  SELECT * FROM ${ctx.ref("other_table")}
+  ${ctx.when(ctx.incremental(),`WHERE timestamp > (SELECT MAX(date) FROM ${ctx.self()}`)}
+`)
 ```
 
 ## Misc
