@@ -61,11 +61,7 @@ export interface IDbAdapter {
 }
 
 export interface IDbAdapterClass<T extends IDbAdapter> {
-  create: (
-    credentials: Credentials,
-    warehouseType: string,
-    options?: { concurrencyLimit?: number }
-  ) => Promise<T>;
+  create: (credentials: Credentials, options?: { concurrencyLimit?: number }) => Promise<T>;
 }
 
 const registry: { [warehouseType: string]: IDbAdapterClass<IDbAdapter> } = {};
@@ -82,7 +78,7 @@ export async function create(
   if (!registry[warehouseType]) {
     throw new Error(`Unsupported warehouse: ${warehouseType}`);
   }
-  return await registry[warehouseType].create(credentials, warehouseType, options);
+  return await registry[warehouseType].create(credentials, options);
 }
 
 register("bigquery", BigQueryDbAdapter);

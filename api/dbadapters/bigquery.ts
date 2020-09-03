@@ -32,11 +32,7 @@ const BIGQUERY_DATE_RELATED_FIELDS = [
 const MAX_QUERY_LENGTH = 1024 * 1024;
 
 export class BigQueryDbAdapter implements IDbAdapter {
-  public static async create(
-    credentials: Credentials,
-    _: string,
-    options?: { concurrencyLimit?: number }
-  ) {
+  public static async create(credentials: Credentials, options?: { concurrencyLimit?: number }) {
     return new BigQueryDbAdapter(credentials, options);
   }
 

@@ -19,11 +19,7 @@ const DB_REQUEST_TIMEOUT_MILLIS = 1 * 60 * 60 * 1000; // 1 hour request timeout
 const DB_CON_LIMIT = 10; // mssql default value of 10 concurrent requests
 
 export class SQLDataWarehouseDBAdapter implements IDbAdapter {
-  public static async create(
-    credentials: Credentials,
-    _: string,
-    options?: { concurrencyLimit?: number }
-  ) {
+  public static async create(credentials: Credentials, options?: { concurrencyLimit?: number }) {
     return new SQLDataWarehouseDBAdapter(credentials, options);
   }
 

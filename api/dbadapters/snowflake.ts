@@ -60,11 +60,7 @@ interface ISnowflakeStatement {
 }
 
 export class SnowflakeDbAdapter implements IDbAdapter {
-  public static async create(
-    credentials: Credentials,
-    _: string,
-    options?: { concurrencyLimit?: number }
-  ) {
+  public static async create(credentials: Credentials, options?: { concurrencyLimit?: number }) {
     const connection = await connect(credentials as dataform.ISnowflake);
     return new SnowflakeDbAdapter(connection, options);
   }
