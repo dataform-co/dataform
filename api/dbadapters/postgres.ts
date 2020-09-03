@@ -67,28 +67,27 @@ export class PostgresDbAdapter implements IDbAdapter {
   }
 
   public async withClientLock<T>(callback: (client: IDbClient) => Promise<T>) {
-    return await this.queryExecutor.withClientLock(
-      async client =>
-        await callback({
-          execute: async (
-            statement: string,
-            options: {
-              rowLimit?: number;
-              byteLimit?: number;
-              includeQueryInError?: boolean;
-            } = { rowLimit: 1000, byteLimit: 1024 * 1024 }
-          ) => {
-            try {
-              const rows = await client.execute(statement, options);
-              return { rows, metadata: {} };
-            } catch (e) {
-              if (options.includeQueryInError) {
-                throw new Error(`Error encountered while running "${statement}": ${e.message}`);
-              }
-              throw new ErrorWithCause(`Error executing postgres query: ${e.message}`, e);
+    return await this.queryExecutor.withClientLock(client =>
+      callback({
+        execute: async (
+          statement: string,
+          options: {
+            rowLimit?: number;
+            byteLimit?: number;
+            includeQueryInError?: boolean;
+          } = { rowLimit: 1000, byteLimit: 1024 * 1024 }
+        ) => {
+          try {
+            const rows = await client.execute(statement, options);
+            return { rows, metadata: {} };
+          } catch (e) {
+            if (options.includeQueryInError) {
+              throw new Error(`Error encountered while running "${statement}": ${e.message}`);
             }
+            throw new ErrorWithCause(`Error executing postgres query: ${e.message}`, e);
           }
-        })
+        }
+      })
     );
   }
 
