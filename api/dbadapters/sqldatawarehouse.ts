@@ -1,7 +1,7 @@
 import { ConnectionPool } from "mssql";
 
 import { Credentials } from "df/api/commands/credentials";
-import { IDbAdapter, IExecutionResult, OnCancel } from "df/api/dbadapters/index";
+import { IDbAdapter, IDbClient, IExecutionResult, OnCancel } from "df/api/dbadapters/index";
 import { parseAzureEvaluationError } from "df/api/utils/error_parsing";
 import { LimitedResultSet } from "df/api/utils/results";
 import { collectEvaluationQueries, QueryOrAction } from "df/core/adapters";
@@ -87,6 +87,10 @@ export class SQLDataWarehouseDBAdapter implements IDbAdapter {
       // tslint:disable-next-line: no-floating-promises
       request.query(statement);
     });
+  }
+
+  public async withClientLock<T>(callback: (client: IDbClient) => Promise<T>) {
+    return await callback(this);
   }
 
   public async evaluate(queryOrAction: QueryOrAction, projectConfig?: dataform.ProjectConfig) {

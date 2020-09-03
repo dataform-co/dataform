@@ -121,7 +121,7 @@
     "tarjan-graph": "^2.0.0",
     "tmp": "0.0.33",
     "ts-loader": "^5.3.1",
-    "ts-mockito": "^2.3.1",
+    "ts-mockito": "^2.6.1",
     "tslint": "^5.14.0",
     "tslint-config-prettier": "^1.18.0",
     "tslint-config-security": "^1.16.0",
