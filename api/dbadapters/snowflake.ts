@@ -3,7 +3,7 @@ import * as PromisePool from "promise-pool-executor";
 import { Readable } from "stream";
 
 import { Credentials } from "df/api/commands/credentials";
-import { IDbAdapter, OnCancel } from "df/api/dbadapters/index";
+import { IDbAdapter, IDbClient, OnCancel } from "df/api/dbadapters/index";
 import { parseSnowflakeEvalError } from "df/api/utils/error_parsing";
 import { LimitedResultSet } from "df/api/utils/results";
 import { ErrorWithCause } from "df/common/errors/errors";
@@ -132,6 +132,10 @@ export class SnowflakeDbAdapter implements IDbAdapter {
         .promise(),
       metadata: {}
     };
+  }
+
+  public async withClientLock<T>(callback: (client: IDbClient) => Promise<T>) {
+    return await callback(this);
   }
 
   public async evaluate(queryOrAction: QueryOrAction, projectConfig?: dataform.ProjectConfig) {

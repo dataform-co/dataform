@@ -1,7 +1,7 @@
 import * as pg from "pg";
 
 import { Credentials } from "df/api/commands/credentials";
-import { IDbAdapter } from "df/api/dbadapters/index";
+import { IDbAdapter, IDbClient } from "df/api/dbadapters/index";
 import { SSHTunnelProxy } from "df/api/ssh_tunnel_proxy";
 import { parseRedshiftEvalError } from "df/api/utils/error_parsing";
 import { convertFieldType, PgPoolExecutor } from "df/api/utils/postgres";
@@ -63,15 +63,33 @@ export class PostgresDbAdapter implements IDbAdapter {
       includeQueryInError?: boolean;
     } = { rowLimit: 1000, byteLimit: 1024 * 1024 }
   ) {
-    try {
-      const rows = await this.queryExecutor.execute(statement, options);
-      return { rows, metadata: {} };
-    } catch (e) {
-      if (options.includeQueryInError) {
-        throw new Error(`Error encountered while running "${statement}": ${e.message}`);
-      }
-      throw new ErrorWithCause(`Error executing postgres query: ${e.message}`, e);
-    }
+    return await this.withClientLock(executor => executor.execute(statement, options));
+  }
+
+  public async withClientLock<T>(callback: (client: IDbClient) => Promise<T>) {
+    return await this.queryExecutor.withClientLock(
+      async client =>
+        await callback({
+          execute: async (
+            statement: string,
+            options: {
+              rowLimit?: number;
+              byteLimit?: number;
+              includeQueryInError?: boolean;
+            } = { rowLimit: 1000, byteLimit: 1024 * 1024 }
+          ) => {
+            try {
+              const rows = await client.execute(statement, options);
+              return { rows, metadata: {} };
+            } catch (e) {
+              if (options.includeQueryInError) {
+                throw new Error(`Error encountered while running "${statement}": ${e.message}`);
+              }
+              throw new ErrorWithCause(`Error executing postgres query: ${e.message}`, e);
+            }
+          }
+        })
+    );
   }
 
   public async evaluate(queryOrAction: QueryOrAction, projectConfig?: dataform.ProjectConfig) {

@@ -20,7 +20,7 @@ export interface IExecutionResult {
   metadata: dataform.IExecutionMetadata;
 }
 
-export interface IDbAdapter {
+export interface IDbClient {
   execute(
     statement: string,
     options?: {
@@ -30,17 +30,31 @@ export interface IDbAdapter {
       byteLimit?: number;
     }
   ): Promise<IExecutionResult>;
+}
+
+export interface IDbAdapter extends IDbClient {
+  execute(
+    statement: string,
+    options?: {
+      onCancel?: OnCancel;
+      interactive?: boolean;
+      rowLimit?: number;
+      byteLimit?: number;
+    }
+  ): Promise<IExecutionResult>;
+  withClientLock<T>(callback: (client: IDbClient) => Promise<T>): Promise<T>;
+
   evaluate(
     queryOrAction: QueryOrAction,
     projectConfig?: dataform.IProjectConfig
   ): Promise<dataform.IQueryEvaluation[]>;
-  preview(target: dataform.ITarget, limitRows?: number): Promise<any[]>;
 
   schemas(database: string): Promise<string[]>;
   createSchema(database: string, schema: string): Promise<void>;
 
   tables(): Promise<dataform.ITarget[]>;
   table(target: dataform.ITarget): Promise<dataform.ITableMetadata>;
+  preview(target: dataform.ITarget, limitRows?: number): Promise<any[]>;
 
   setMetadata(action: dataform.IExecutionAction): Promise<void>;
 

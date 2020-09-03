@@ -375,26 +375,32 @@ export class Runner {
       await this.notifyListeners();
     }
 
-    // Start running tasks from the last executed task (if any), onwards.
-    for (const task of action.tasks.slice(actionResult.tasks.length)) {
-      if (this.stopped) {
-        return;
-      }
-      if (
-        actionResult.status === dataform.ActionResult.ExecutionStatus.RUNNING &&
-        !this.cancelled
-      ) {
-        const taskStatus = await this.executeTask(task, actionResult);
-        if (taskStatus === dataform.TaskResult.ExecutionStatus.FAILED) {
-          actionResult.status = dataform.ActionResult.ExecutionStatus.FAILED;
-        } else if (taskStatus === dataform.TaskResult.ExecutionStatus.CANCELLED) {
-          actionResult.status = dataform.ActionResult.ExecutionStatus.CANCELLED;
+    await this.dbadapter.withClientLock(async client => {
+      // Start running tasks from the last executed task (if any), onwards.
+      for (const task of action.tasks.slice(actionResult.tasks.length)) {
+        if (this.stopped) {
+          return;
         }
-      } else {
-        actionResult.tasks.push({
-          status: dataform.TaskResult.ExecutionStatus.SKIPPED
-        });
+        if (
+          actionResult.status === dataform.ActionResult.ExecutionStatus.RUNNING &&
+          !this.cancelled
+        ) {
+          const taskStatus = await this.executeTask(client, task, actionResult);
+          if (taskStatus === dataform.TaskResult.ExecutionStatus.FAILED) {
+            actionResult.status = dataform.ActionResult.ExecutionStatus.FAILED;
+          } else if (taskStatus === dataform.TaskResult.ExecutionStatus.CANCELLED) {
+            actionResult.status = dataform.ActionResult.ExecutionStatus.CANCELLED;
+          }
+        } else {
+          actionResult.tasks.push({
+            status: dataform.TaskResult.ExecutionStatus.SKIPPED
+          });
+        }
       }
+    });
+
+    if (this.stopped) {
+      return;
     }
 
     if (actionResult.status === dataform.ActionResult.ExecutionStatus.RUNNING) {
@@ -434,6 +440,7 @@ export class Runner {
   }
 
   private async executeTask(
+    client: dbadapters.IDbClient,
     task: dataform.IExecutionTask,
     parentAction: dataform.IActionResult
   ): Promise<dataform.TaskResult.ExecutionStatus> {
@@ -449,7 +456,7 @@ export class Runner {
       // Retry this function a given number of times, configurable by user
       const { rows, metadata } = await retry(
         () =>
-          this.dbadapter.execute(task.statement, {
+          client.execute(task.statement, {
             onCancel: handleCancel => this.eEmitter.on(CANCEL_EVENT, handleCancel),
             rowLimit: 1
           }),
