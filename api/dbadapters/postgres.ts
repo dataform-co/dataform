@@ -27,7 +27,7 @@ const maybeInitializePg = (() => {
   };
 })();
 
-export class RedshiftDbAdapter implements IDbAdapter {
+export class PostgresDbAdapter implements IDbAdapter {
   public static async create(
     credentials: Credentials,
     warehouseType: string,
@@ -54,7 +54,7 @@ export class RedshiftDbAdapter implements IDbAdapter {
         },
         options
       );
-      return new RedshiftDbAdapter(queryExecutor, { sshTunnel, warehouseType });
+      return new PostgresDbAdapter(queryExecutor, { sshTunnel, warehouseType });
     } else {
       const clientConfig: pg.ClientConfig = {
         ...baseClientConfig,
@@ -62,7 +62,7 @@ export class RedshiftDbAdapter implements IDbAdapter {
         port: jdbcCredentials.port
       };
       const queryExecutor = new PgPoolExecutor(clientConfig, options);
-      return new RedshiftDbAdapter(queryExecutor, { warehouseType });
+      return new PostgresDbAdapter(queryExecutor, { warehouseType });
     }
   }
 
@@ -140,17 +140,24 @@ export class RedshiftDbAdapter implements IDbAdapter {
   }
 
   public async table(target: dataform.ITarget): Promise<dataform.ITableMetadata> {
-    const [tableResults, columnResults] = await Promise.all([
+    const [tableResults, columnResults, descriptionResults] = await Promise.all([
       this.execute(
-        `select table_type, remarks from svv_tables where table_schema = '${target.schema}' and table_name = '${target.name}'`,
+        `select table_type from information_schema.tables where table_schema = '${target.schema}' and table_name = '${target.name}'`,
         { includeQueryInError: true }
       ),
       this.execute(
-        `select column_name, data_type, is_nullable, remarks
-         from svv_columns
+        `select column_name, data_type, is_nullable, ordinal_position
+         from information_schema.columns
          where table_schema = '${target.schema}' and table_name = '${target.name}'`,
         { includeQueryInError: true }
-      )
+      ),
+      this.execute(`
+      select objsubid as column_number, description from pg_description
+      where objoid = (
+        select oid from pg_class where relname = '${target.name}' and relnamespace = (
+          select oid from pg_namespace where nspname = '${target.schema}'
+        )
+      )`)
     ]);
     if (tableResults.rows.length === 0) {
       return null;
@@ -168,10 +175,14 @@ export class RedshiftDbAdapter implements IDbAdapter {
           primitiveDeprecated: row.data_type,
           primitive: convertFieldType(row.data_type),
           flagsDeprecated: row.is_nullable && row.is_nullable === "YES" ? ["nullable"] : [],
-          description: row.remarks
+          description: descriptionResults.rows.find(
+            descriptionRow => descriptionRow.column_number === row.ordinal_position
+          )?.description
         })
       ),
-      description: tableResults.rows[0].remarks
+      description: descriptionResults.rows.find(
+        descriptionRow => descriptionRow.column_number === 0
+      )?.description
     });
   }
 
@@ -223,7 +234,7 @@ export class RedshiftDbAdapter implements IDbAdapter {
         )
       );
     }
-    if (tableType !== "view" && actionDescriptor.columns?.length > 0) {
+    if (actionDescriptor.columns?.length > 0) {
       actionDescriptor.columns
         .filter(
           column =>
