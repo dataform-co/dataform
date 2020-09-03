@@ -33,15 +33,6 @@ export interface IDbClient {
 }
 
 export interface IDbAdapter extends IDbClient {
-  execute(
-    statement: string,
-    options?: {
-      onCancel?: OnCancel;
-      interactive?: boolean;
-      rowLimit?: number;
-      byteLimit?: number;
-    }
-  ): Promise<IExecutionResult>;
   withClientLock<T>(callback: (client: IDbClient) => Promise<T>): Promise<T>;
 
   evaluate(

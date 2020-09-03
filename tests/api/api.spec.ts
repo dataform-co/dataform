@@ -1,6 +1,6 @@
 import { assert, config, expect } from "chai";
 import Long from "long";
-import { anyFunction, anyString, anything, instance, mock, verify, when } from "ts-mockito";
+import { anyString, anything, instance, mock, verify, when } from "ts-mockito";
 
 import { Builder, credentials, prune, query, Runner } from "df/api";
 import { computeAllTransitiveInputs } from "df/api/commands/build";
