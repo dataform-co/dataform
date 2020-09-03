@@ -1,5 +1,6 @@
 import { Credentials } from "df/api/commands/credentials";
 import { BigQueryDbAdapter } from "df/api/dbadapters/bigquery";
+import { PostgresDbAdapter } from "df/api/dbadapters/postgres";
 import { RedshiftDbAdapter } from "df/api/dbadapters/redshift";
 import { SnowflakeDbAdapter } from "df/api/dbadapters/snowflake";
 import { SQLDataWarehouseDBAdapter } from "df/api/dbadapters/sqldatawarehouse";
@@ -60,11 +61,7 @@ export interface IDbAdapter {
 }
 
 export interface IDbAdapterClass<T extends IDbAdapter> {
-  create: (
-    credentials: Credentials,
-    warehouseType: string,
-    options?: { concurrencyLimit?: number }
-  ) => Promise<T>;
+  create: (credentials: Credentials, options?: { concurrencyLimit?: number }) => Promise<T>;
 }
 
 const registry: { [warehouseType: string]: IDbAdapterClass<IDbAdapter> } = {};
@@ -81,14 +78,14 @@ export async function create(
   if (!registry[warehouseType]) {
     throw new Error(`Unsupported warehouse: ${warehouseType}`);
   }
-  return await registry[warehouseType].create(credentials, warehouseType, options);
+  return await registry[warehouseType].create(credentials, options);
 }
 
 register("bigquery", BigQueryDbAdapter);
 // TODO: The redshift client library happens to work well for postgres, but we should probably
 // not be relying on that behaviour. At some point we should replace this with a first-class
 // PostgresAdapter.
-register("postgres", RedshiftDbAdapter);
+register("postgres", PostgresDbAdapter);
 register("redshift", RedshiftDbAdapter);
 register("snowflake", SnowflakeDbAdapter);
 register("sqldatawarehouse", SQLDataWarehouseDBAdapter);

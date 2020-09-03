@@ -560,6 +560,7 @@ message TableMetadata {
   repeated Field fields = 3;
   int64 last_updated_millis = 4;
   string description = 5;
+  map<string, string> labels = 7;
 
   // Deprecated.
   string type_deprecated = 2; // "table" or "view"

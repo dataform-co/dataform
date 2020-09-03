@@ -21,22 +21,15 @@ suite("@dataform/integration/redshift", { parallel: true }, ({ before, after }) 
   test("run", { timeout: 60000 }, async () => {
     const compiledGraph = await compile("tests/integration/redshift_project", "project_e2e");
 
-    const adapter = adapters.create(compiledGraph.projectConfig, compiledGraph.dataformCoreVersion);
-
-    // Redshift transactions are giving us headaches here. Drop tables sequentially.
-    const dropFunctions = [].concat(
-      compiledGraph.tables.map(table => () =>
-        dbadapter.execute(adapter.dropIfExists(table.target, adapter.baseTableType(table.type)))
-      ),
-      compiledGraph.assertions.map(assertion => () =>
-        dbadapter.execute(adapter.dropIfExists(assertion.target, dataform.TableMetadata.Type.VIEW))
-      )
+    await dbadapter.execute(
+      `drop schema if exists ${Array.from(
+        new Set(
+          [...compiledGraph.tables, ...compiledGraph.assertions, ...compiledGraph.operations].map(
+            action => action.target.schema
+          )
+        )
+      ).join(", ")} cascade`
     );
-    try {
-      await dropFunctions.reduce((promiseChain, fn) => promiseChain.then(fn), Promise.resolve());
-    } catch (e) {
-      // This seems to throw if the tables don't exist.
-    }
 
     // Run the project.
     let executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
@@ -72,6 +65,7 @@ suite("@dataform/integration/redshift", { parallel: true }, ({ before, after }) 
 
     // Check the s3 table has two rows, as per:
     // https://dataform-integration-tests.s3.us-east-2.amazonaws.com/sample-data/sample_data.csv
+    const adapter = adapters.create(compiledGraph.projectConfig, compiledGraph.dataformCoreVersion);
     const s3Table = keyBy(compiledGraph.operations, t => t.name)[
       "df_integration_test_project_e2e.load_from_s3"
     ];
@@ -126,6 +120,79 @@ suite("@dataform/integration/redshift", { parallel: true }, ({ before, after }) 
     ];
     incrementalRows = await getTableRows(incrementalTable.target, adapter, dbadapter);
     expect(incrementalRows.length).equals(2);
+  });
+
+  test("dataset metadata set correctly", { timeout: 60000 }, async () => {
+    const compiledGraph = await compile("tests/integration/redshift_project", "dataset_metadata");
+
+    await dbadapter.execute(
+      `drop schema if exists ${Array.from(
+        new Set(
+          [...compiledGraph.tables, ...compiledGraph.assertions, ...compiledGraph.operations].map(
+            action => action.target.schema
+          )
+        )
+      ).join(", ")} cascade`
+    );
+
+    // Run the project.
+    const executionGraph = await dfapi.build(
+      compiledGraph,
+      {
+        actions: ["example_incremental", "example_view"],
+        includeDependencies: true
+      },
+      dbadapter
+    );
+    const runResult = await dfapi.run(dbadapter, executionGraph).result();
+    expect(dataform.RunResult.ExecutionStatus[runResult.status]).eql(
+      dataform.RunResult.ExecutionStatus[dataform.RunResult.ExecutionStatus.SUCCESSFUL]
+    );
+
+    // Check expected metadata.
+    for (const expectedMetadata of [
+      {
+        target: {
+          schema: "df_integration_test_dataset_metadata",
+          name: "example_incremental"
+        },
+        expectedDescription: "An incremental table",
+        expectedFields: [
+          dataform.Field.create({
+            description: "the timestamp",
+            flagsDeprecated: ["nullable"],
+            name: "user_timestamp",
+            primitive: dataform.Field.Primitive.INTEGER,
+            primitiveDeprecated: "integer"
+          }),
+          dataform.Field.create({
+            description: "the id",
+            flagsDeprecated: ["nullable"],
+            name: "user_id",
+            primitive: dataform.Field.Primitive.INTEGER,
+            primitiveDeprecated: "integer"
+          })
+        ]
+      },
+      {
+        target: {
+          schema: "df_integration_test_dataset_metadata",
+          name: "example_view"
+        },
+        expectedDescription: "An example view",
+        expectedFields: [
+          dataform.Field.create({
+            name: "val",
+            primitive: dataform.Field.Primitive.INTEGER,
+            primitiveDeprecated: "integer"
+          })
+        ]
+      }
+    ]) {
+      const metadata = await dbadapter.table(expectedMetadata.target);
+      expect(metadata.description).to.equal(expectedMetadata.expectedDescription);
+      expect(metadata.fields).to.deep.equal(expectedMetadata.expectedFields);
+    }
   });
 
   test("run unit tests", async () => {

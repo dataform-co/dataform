@@ -10,47 +10,6 @@ import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
 import { compile, dropAllTables, getTableRows, keyBy } from "df/tests/integration/utils";
 
-const EXPECTED_INCREMENTAL_EXAMPLE_SCHEMA = {
-  fields: [
-    {
-      description: "the timestamp",
-      name: "user_timestamp",
-      type: "INTEGER"
-    },
-    {
-      description: "the id",
-      name: "user_id",
-      type: "INTEGER"
-    },
-    {
-      name: "nested_data",
-      description: "some nested data with duplicate fields",
-      type: "RECORD",
-      fields: [
-        {
-          description: "nested timestamp",
-          name: "user_timestamp",
-          type: "INTEGER"
-        },
-        {
-          description: "nested id",
-          name: "user_id",
-          type: "INTEGER"
-        }
-      ]
-    }
-  ]
-};
-const EXPECTED_EXAMPLE_VIEW_SCHEMA = {
-  fields: [
-    {
-      description: "val doc",
-      name: "val",
-      type: "INTEGER"
-    }
-  ]
-};
-
 suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) => {
   const credentials = dfapi.credentials.read("bigquery", "test_credentials/bigquery.json");
   let dbadapter: BigQueryDbAdapter;
@@ -326,7 +285,41 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
             name: "example_incremental"
           },
           expectedDescription: "An incremental table",
-          expectedSchema: EXPECTED_INCREMENTAL_EXAMPLE_SCHEMA
+          expectedFields: [
+            dataform.Field.create({
+              description: "the timestamp",
+              name: "user_timestamp",
+              primitive: dataform.Field.Primitive.INTEGER,
+              primitiveDeprecated: "INTEGER"
+            }),
+            dataform.Field.create({
+              description: "the id",
+              name: "user_id",
+              primitive: dataform.Field.Primitive.INTEGER,
+              primitiveDeprecated: "INTEGER"
+            }),
+            dataform.Field.create({
+              name: "nested_data",
+              description: "some nested data with duplicate fields",
+              struct: dataform.Fields.create({
+                fields: [
+                  dataform.Field.create({
+                    description: "nested timestamp",
+                    name: "user_timestamp",
+                    primitive: dataform.Field.Primitive.INTEGER,
+                    primitiveDeprecated: "INTEGER"
+                  }),
+                  dataform.Field.create({
+                    description: "nested id",
+                    name: "user_id",
+                    primitive: dataform.Field.Primitive.INTEGER,
+                    primitiveDeprecated: "INTEGER"
+                  })
+                ]
+              })
+            })
+          ],
+          expectedLabels: {}
         },
         {
           target: {
@@ -335,17 +328,24 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
             name: "example_view"
           },
           expectedDescription: "An example view",
-          expectedSchema: EXPECTED_EXAMPLE_VIEW_SCHEMA,
-          labels: {
+          expectedFields: [
+            dataform.Field.create({
+              description: "val doc",
+              name: "val",
+              primitive: dataform.Field.Primitive.INTEGER,
+              primitiveDeprecated: "INTEGER"
+            })
+          ],
+          expectedLabels: {
             label1: "val1",
             label2: "val2"
           }
         }
       ]) {
-        const metadata = await dbadapter.getMetadata(expectedMetadata.target);
+        const metadata = await dbadapter.table(expectedMetadata.target);
         expect(metadata.description).to.equal(expectedMetadata.expectedDescription);
-        expect(metadata.schema).to.deep.equal(expectedMetadata.expectedSchema);
-        expect(metadata.labels).to.deep.equal(expectedMetadata.labels);
+        expect(metadata.fields).to.deep.equal(expectedMetadata.expectedFields);
+        expect(metadata.labels).to.deep.equal(expectedMetadata.expectedLabels);
       }
     });
   });

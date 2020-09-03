@@ -31,22 +31,15 @@ suite("@dataform/integration/postgres", { parallel: true }, ({ before, after }) 
   test("run", { timeout: 60000 }, async () => {
     const compiledGraph = await compile("tests/integration/postgres_project", "project_e2e");
 
-    const adapter = adapters.create(compiledGraph.projectConfig, compiledGraph.dataformCoreVersion);
-
-    // Redshift transactions are giving us headaches here. Drop tables sequentially.
-    const dropFunctions = [].concat(
-      compiledGraph.tables.map(table => () =>
-        dbadapter.execute(adapter.dropIfExists(table.target, adapter.baseTableType(table.type)))
-      ),
-      compiledGraph.assertions.map(assertion => () =>
-        dbadapter.execute(adapter.dropIfExists(assertion.target, dataform.TableMetadata.Type.VIEW))
-      )
+    await dbadapter.execute(
+      `drop schema if exists ${Array.from(
+        new Set(
+          [...compiledGraph.tables, ...compiledGraph.assertions, ...compiledGraph.operations].map(
+            action => action.target.schema
+          )
+        )
+      ).join(", ")} cascade`
     );
-    try {
-      await dropFunctions.reduce((promiseChain, fn) => promiseChain.then(fn), Promise.resolve());
-    } catch (e) {
-      // This seems to throw if the tables don't exist.
-    }
 
     // Run the project.
     let executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
@@ -66,7 +59,7 @@ suite("@dataform/integration/postgres", { parallel: true }, ({ before, after }) 
         : dataform.ActionResult.ExecutionStatus.SUCCESSFUL;
       expect(actionMap[actionName].status).equals(
         expectedResult,
-        actionName + ":::" + actionMap[actionName].tasks.map(task => task.errorMessage).join("\n")
+        actionMap[actionName].tasks.map(task => task.errorMessage).join("\n")
       );
     }
 
@@ -76,6 +69,7 @@ suite("@dataform/integration/postgres", { parallel: true }, ({ before, after }) 
     ).to.eql("postgres error: Assertion failed: query returned 1 row(s).");
 
     // Check the data in the incremental table.
+    const adapter = adapters.create(compiledGraph.projectConfig, compiledGraph.dataformCoreVersion);
     let incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
       "df_integration_test_project_e2e.example_incremental"
     ];
@@ -123,6 +117,81 @@ suite("@dataform/integration/postgres", { parallel: true }, ({ before, after }) 
     ];
     incrementalRows = await getTableRows(incrementalTable.target, adapter, dbadapter);
     expect(incrementalRows.length).equals(2);
+  });
+
+  test("dataset metadata set correctly", { timeout: 60000 }, async () => {
+    const compiledGraph = await compile("tests/integration/postgres_project", "dataset_metadata");
+
+    await dbadapter.execute(
+      `drop schema if exists ${Array.from(
+        new Set(
+          [...compiledGraph.tables, ...compiledGraph.assertions, ...compiledGraph.operations].map(
+            action => action.target.schema
+          )
+        )
+      ).join(", ")} cascade`
+    );
+
+    // Run the project.
+    const executionGraph = await dfapi.build(
+      compiledGraph,
+      {
+        actions: ["example_incremental", "example_view"],
+        includeDependencies: true
+      },
+      dbadapter
+    );
+    const runResult = await dfapi.run(dbadapter, executionGraph).result();
+    expect(dataform.RunResult.ExecutionStatus[runResult.status]).eql(
+      dataform.RunResult.ExecutionStatus[dataform.RunResult.ExecutionStatus.SUCCESSFUL]
+    );
+
+    // Check expected metadata.
+    for (const expectedMetadata of [
+      {
+        target: {
+          schema: "df_integration_test_dataset_metadata",
+          name: "example_incremental"
+        },
+        expectedDescription: "An incremental table",
+        expectedFields: [
+          dataform.Field.create({
+            description: "the timestamp",
+            flagsDeprecated: ["nullable"],
+            name: "user_timestamp",
+            primitive: dataform.Field.Primitive.INTEGER,
+            primitiveDeprecated: "integer"
+          }),
+          dataform.Field.create({
+            description: "the id",
+            flagsDeprecated: ["nullable"],
+            name: "user_id",
+            primitive: dataform.Field.Primitive.INTEGER,
+            primitiveDeprecated: "integer"
+          })
+        ]
+      },
+      {
+        target: {
+          schema: "df_integration_test_dataset_metadata",
+          name: "example_view"
+        },
+        expectedDescription: "An example view",
+        expectedFields: [
+          dataform.Field.create({
+            name: "val",
+            description: "val doc",
+            flagsDeprecated: ["nullable"],
+            primitive: dataform.Field.Primitive.INTEGER,
+            primitiveDeprecated: "integer"
+          })
+        ]
+      }
+    ]) {
+      const metadata = await dbadapter.table(expectedMetadata.target);
+      expect(metadata.description).to.equal(expectedMetadata.expectedDescription);
+      expect(metadata.fields).to.deep.equal(expectedMetadata.expectedFields);
+    }
   });
 
   test("run unit tests", async () => {
@@ -264,18 +333,16 @@ suite("@dataform/integration/postgres", { parallel: true }, ({ before, after }) 
         target: { schema: "", name: "", database: "" }
       };
 
-      const bqadapter = new RedshiftAdapter({ warehouse: "redshift" }, "1.4.8");
+      const adapter = new RedshiftAdapter({ warehouse: "postgres" }, "1.4.8");
 
-      const refresh = bqadapter.publishTasks(table, { fullRefresh: true }, { fields: [] }).build();
+      const refresh = adapter.publishTasks(table, { fullRefresh: true }, { fields: [] }).build();
 
       expect(refresh[0].statement).to.equal(table.preOps[0]);
       expect(refresh[1].statement).to.equal(table.preOps[1]);
       expect(refresh[refresh.length - 2].statement).to.equal(table.postOps[0]);
       expect(refresh[refresh.length - 1].statement).to.equal(table.postOps[1]);
 
-      const increment = bqadapter
-        .publishTasks(table, { fullRefresh: false }, { fields: [] })
-        .build();
+      const increment = adapter.publishTasks(table, { fullRefresh: false }, { fields: [] }).build();
 
       expect(increment[0].statement).to.equal(table.preOps[0]);
       expect(increment[1].statement).to.equal(table.preOps[1]);
