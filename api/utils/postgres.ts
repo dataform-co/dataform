@@ -47,63 +47,92 @@ export class PgPoolExecutor {
       verifyUniqueColumnNames(result.fields);
       return result.rows;
     }
-    const client = await this.pool.connect();
-    client.on("error", err => {
-      // tslint:disable-next-line: no-console
-      console.error("pg.Client client error", err.message, err.stack);
-      // Errored connections cause issues when released back to the pool. Instead, close the connection
-      // by passing the error to release(). https://github.com/dataform-co/dataform/issues/914
-      try {
-        client.release(err);
-      } catch (e) {
-        // tslint:disable-next-line: no-console
-        console.error("Error thrown when releasing errored pg.Client", e.message, e.stack);
-      }
-    });
+    return await this.withClientLock(client => client.execute(statement, options));
+  }
 
-    return await new Promise<any[]>((resolve, reject) => {
-      const query = client.query(new QueryStream(statement));
-      const results = new LimitedResultSet({
-        rowLimit: options?.rowLimit,
-        byteLimit: options?.byteLimit
-      });
-      options?.onCancel?.(() => query.destroy(new Error("Query cancelled.")));
-      query.on("data", (row: any) => {
-        try {
-          verifyUniqueColumnNames((query as any).cursor._result.fields);
-        } catch (e) {
-          // This causes the "error" handler below to fire.
-          query.destroy(e);
-          return;
+  public async withClientLock<T>(
+    callback: (client: {
+      execute(
+        statement: string,
+        options?: {
+          onCancel?: (handleCancel: () => void) => void;
+          rowLimit?: number;
+          byteLimit?: number;
         }
-        if (!results.push(row)) {
-          // The correct way to stop processing data is to close the cursor itself.
-          // This results in "end" firing below. https://node-postgres.com/api/cursor#close
-          (query as any).cursor.close();
-        }
-      });
-      query.on("error", err => {
-        // Errors don't cause "end" to fire, additionally errored connections
-        // cause issues when released back to the pool. Instead, close the connection
+      ): Promise<any[]>;
+    }) => Promise<T>
+  ) {
+    const client = await this.pool.connect();
+    try {
+      client.on("error", err => {
+        // tslint:disable-next-line: no-console
+        console.error("pg.Client client error", err.message, err.stack);
+        // Errored connections cause issues when released back to the pool. Instead, close the connection
         // by passing the error to release(). https://github.com/dataform-co/dataform/issues/914
         try {
           client.release(err);
         } catch (e) {
           // tslint:disable-next-line: no-console
-          console.error("Error thrown when releasing errored pg.Query", e.message, e.stack);
+          console.error("Error thrown when releasing errored pg.Client", e.message, e.stack);
         }
-        reject(err);
       });
-      query.on("end", () => {
-        try {
-          client.release();
-        } catch (e) {
-          // tslint:disable-next-line: no-console
-          console.error("Error thrown when releasing ended pg.Query", e.message, e.stack);
+
+      return await callback({
+        execute: async (
+          statement: string,
+          options: {
+            onCancel?: (handleCancel: () => void) => void;
+            rowLimit?: number;
+            byteLimit?: number;
+          } = { rowLimit: 1000, byteLimit: 1024 * 1024 }
+        ) => {
+          return await new Promise<any[]>((resolve, reject) => {
+            const query = client.query(new QueryStream(statement));
+            const results = new LimitedResultSet({
+              rowLimit: options?.rowLimit,
+              byteLimit: options?.byteLimit
+            });
+            options?.onCancel?.(() => query.destroy(new Error("Query cancelled.")));
+            query.on("data", (row: any) => {
+              try {
+                verifyUniqueColumnNames((query as any).cursor._result.fields);
+              } catch (e) {
+                // This causes the "error" handler below to fire.
+                query.destroy(e);
+                return;
+              }
+              if (!results.push(row)) {
+                // The correct way to stop processing data is to close the cursor itself.
+                // This results in "end" firing below. https://node-postgres.com/api/cursor#close
+                (query as any).cursor.close();
+              }
+            });
+            query.on("error", err => {
+              // Errors don't cause "end" to fire, additionally errored connections
+              // cause issues when released back to the pool. Instead, close the connection
+              // by passing the error to release(). https://github.com/dataform-co/dataform/issues/914
+              try {
+                client.release(err);
+              } catch (e) {
+                // tslint:disable-next-line: no-console
+                console.error("Error thrown when releasing errored pg.Query", e.message, e.stack);
+              }
+              reject(err);
+            });
+            query.on("end", () => {
+              resolve(results.rows);
+            });
+          });
         }
-        resolve(results.rows);
       });
-    });
+    } finally {
+      try {
+        client.release();
+      } catch (e) {
+        // tslint:disable-next-line: no-console
+        console.error("Error thrown when releasing ended pg.Client", e.message, e.stack);
+      }
+    }
   }
 
   public async close() {
