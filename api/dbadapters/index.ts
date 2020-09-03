@@ -82,9 +82,6 @@ export async function create(
 }
 
 register("bigquery", BigQueryDbAdapter);
-// TODO: The redshift client library happens to work well for postgres, but we should probably
-// not be relying on that behaviour. At some point we should replace this with a first-class
-// PostgresAdapter.
 register("postgres", PostgresDbAdapter);
 register("redshift", RedshiftDbAdapter);
 register("snowflake", SnowflakeDbAdapter);
