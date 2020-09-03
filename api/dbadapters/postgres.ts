@@ -9,11 +9,11 @@ import { ErrorWithCause } from "df/common/errors/errors";
 import { collectEvaluationQueries, QueryOrAction } from "df/core/adapters";
 import { dataform } from "df/protos/ts";
 
-interface IRedshiftAdapterOptions {
+interface IPostgresAdapterOptions {
   sshTunnel?: SSHTunnelProxy;
 }
 
-export class RedshiftDbAdapter implements IDbAdapter {
+export class PostgresDbAdapter implements IDbAdapter {
   public static async create(
     credentials: Credentials,
     options?: { concurrencyLimit?: number; disableSslForTestsOnly?: boolean }
@@ -38,7 +38,7 @@ export class RedshiftDbAdapter implements IDbAdapter {
         },
         options
       );
-      return new RedshiftDbAdapter(queryExecutor, { sshTunnel });
+      return new PostgresDbAdapter(queryExecutor, { sshTunnel });
     } else {
       const clientConfig: pg.ClientConfig = {
         ...baseClientConfig,
@@ -46,13 +46,13 @@ export class RedshiftDbAdapter implements IDbAdapter {
         port: jdbcCredentials.port
       };
       const queryExecutor = new PgPoolExecutor(clientConfig, options);
-      return new RedshiftDbAdapter(queryExecutor, {});
+      return new PostgresDbAdapter(queryExecutor, {});
     }
   }
 
   private constructor(
     private readonly queryExecutor: PgPoolExecutor,
-    private readonly options: IRedshiftAdapterOptions
+    private readonly options: IPostgresAdapterOptions
   ) {}
 
   public async execute(
@@ -70,7 +70,7 @@ export class RedshiftDbAdapter implements IDbAdapter {
       if (options.includeQueryInError) {
         throw new Error(`Error encountered while running "${statement}": ${e.message}`);
       }
-      throw new ErrorWithCause(`Error executing redshift query: ${e.message}`, e);
+      throw new ErrorWithCause(`Error executing postgres query: ${e.message}`, e);
     }
   }
 
@@ -107,7 +107,7 @@ export class RedshiftDbAdapter implements IDbAdapter {
   public async tables(): Promise<dataform.ITarget[]> {
     const queryResult = await this.execute(
       `select table_name, table_schema
-     from svv_tables
+     from information_schema.tables
      where table_schema != 'information_schema'
        and table_schema != 'pg_catalog'
        and table_schema != 'pg_internal'`,
@@ -121,17 +121,24 @@ export class RedshiftDbAdapter implements IDbAdapter {
   }
 
   public async table(target: dataform.ITarget): Promise<dataform.ITableMetadata> {
-    const [tableResults, columnResults] = await Promise.all([
+    const [tableResults, columnResults, descriptionResults] = await Promise.all([
       this.execute(
-        `select table_type, remarks from svv_tables where table_schema = '${target.schema}' and table_name = '${target.name}'`,
+        `select table_type from information_schema.tables where table_schema = '${target.schema}' and table_name = '${target.name}'`,
         { includeQueryInError: true }
       ),
       this.execute(
-        `select column_name, data_type, is_nullable, remarks
-         from svv_columns
+        `select column_name, data_type, is_nullable, ordinal_position
+         from information_schema.columns
          where table_schema = '${target.schema}' and table_name = '${target.name}'`,
         { includeQueryInError: true }
-      )
+      ),
+      this.execute(`
+      select objsubid as column_number, description from pg_description
+      where objoid = (
+        select oid from pg_class where relname = '${target.name}' and relnamespace = (
+          select oid from pg_namespace where nspname = '${target.schema}'
+        )
+      )`)
     ]);
     if (tableResults.rows.length === 0) {
       return null;
@@ -149,10 +156,14 @@ export class RedshiftDbAdapter implements IDbAdapter {
           primitiveDeprecated: row.data_type,
           primitive: convertFieldType(row.data_type),
           flagsDeprecated: row.is_nullable && row.is_nullable === "YES" ? ["nullable"] : [],
-          description: row.remarks
+          description: descriptionResults.rows.find(
+            descriptionRow => descriptionRow.column_number === row.ordinal_position
+          )?.description
         })
       ),
-      description: tableResults.rows[0].remarks
+      description: descriptionResults.rows.find(
+        descriptionRow => descriptionRow.column_number === 0
+      )?.description
     });
   }
 
@@ -204,7 +215,7 @@ export class RedshiftDbAdapter implements IDbAdapter {
         )
       );
     }
-    if (tableType !== "view" && actionDescriptor.columns?.length > 0) {
+    if (actionDescriptor.columns?.length > 0) {
       actionDescriptor.columns
         .filter(
           column =>
