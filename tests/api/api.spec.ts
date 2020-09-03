@@ -1,6 +1,6 @@
 import { assert, config, expect } from "chai";
 import Long from "long";
-import { anyString, anything, instance, mock, verify, when } from "ts-mockito";
+import { anyFunction, anyString, anything, instance, mock, verify, when } from "ts-mockito";
 
 import { Builder, credentials, prune, query, Runner } from "df/api";
 import { computeAllTransitiveInputs } from "df/api/commands/build";
@@ -1041,7 +1041,11 @@ postOps`
         mockedDbAdapter.execute(RUN_TEST_GRAPH.actions[1].tasks[0].statement, anything())
       ).thenReject(new Error("bad statement"));
 
-      const runner = new Runner(instance(mockedDbAdapter), RUN_TEST_GRAPH);
+      const mockDbAdapterInstance = instance(mockedDbAdapter);
+      mockDbAdapterInstance.withClientLock = async callback =>
+        await callback(mockDbAdapterInstance);
+
+      const runner = new Runner(mockDbAdapterInstance, RUN_TEST_GRAPH);
 
       expect(dataform.RunResult.create(cleanTiming(await runner.execute().result()))).to.deep.equal(
         EXPECTED_RUN_RESULT
@@ -1082,7 +1086,11 @@ postOps`
         mockedDbAdapter.execute(RUN_TEST_GRAPH.actions[1].tasks[0].statement, anything())
       ).thenReject(new Error("bad statement"));
 
-      let runner = new Runner(instance(mockedDbAdapter), RUN_TEST_GRAPH);
+      const mockDbAdapterInstance = instance(mockedDbAdapter);
+      mockDbAdapterInstance.withClientLock = async callback =>
+        await callback(mockDbAdapterInstance);
+
+      let runner = new Runner(mockDbAdapterInstance, RUN_TEST_GRAPH);
       runner.execute();
       await sleepUntil(() => firstQueryInProgress);
       runner.stop();
@@ -1102,7 +1110,7 @@ postOps`
         })
       );
 
-      runner = new Runner(instance(mockedDbAdapter), RUN_TEST_GRAPH, result);
+      runner = new Runner(mockDbAdapterInstance, RUN_TEST_GRAPH, result);
 
       expect(dataform.RunResult.create(cleanTiming(await runner.execute().result()))).to.deep.equal(
         EXPECTED_RUN_RESULT
@@ -1142,7 +1150,11 @@ postOps`
           .thenReject(new Error("bad statement"))
           .thenResolve({ rows: [], metadata: {} });
 
-        const runner = new Runner(instance(mockedDbAdapter), NEW_TEST_GRAPH);
+        const mockDbAdapterInstance = instance(mockedDbAdapter);
+        mockDbAdapterInstance.withClientLock = async callback =>
+          await callback(mockDbAdapterInstance);
+
+        const runner = new Runner(mockDbAdapterInstance, NEW_TEST_GRAPH);
 
         expect(
           dataform.RunResult.create(cleanTiming(await runner.execute().result()))
@@ -1179,7 +1191,11 @@ postOps`
           .thenReject(new Error("bad statement"))
           .thenResolve({ rows: [], metadata: {} });
 
-        const runner = new Runner(instance(mockedDbAdapter), NEW_TEST_GRAPH);
+        const mockDbAdapterInstance = instance(mockedDbAdapter);
+        mockDbAdapterInstance.withClientLock = async callback =>
+          await callback(mockDbAdapterInstance);
+
+        const runner = new Runner(mockDbAdapterInstance, NEW_TEST_GRAPH);
 
         expect(
           dataform.RunResult.create(cleanTiming(await runner.execute().result()))
@@ -1240,7 +1256,11 @@ postOps`
           .thenReject(new Error("bad statement"))
           .thenResolve({ rows: [], metadata: {} });
 
-        const runner = new Runner(instance(mockedDbAdapter), NEW_TEST_GRAPH_WITH_OPERATION);
+        const mockDbAdapterInstance = instance(mockedDbAdapter);
+        mockDbAdapterInstance.withClientLock = async callback =>
+          await callback(mockDbAdapterInstance);
+
+        const runner = new Runner(mockDbAdapterInstance, NEW_TEST_GRAPH_WITH_OPERATION);
 
         expect(
           dataform.RunResult.create(cleanTiming(await runner.execute().result()))
@@ -1287,6 +1307,7 @@ postOps`
               reject(new Error("Run cancelled"));
             });
           }),
+        withClientLock: callback => callback(mockDbAdapter),
         schemas: _ => Promise.resolve([]),
         createSchema: (_, __) => Promise.resolve(),
         close: () => undefined,
