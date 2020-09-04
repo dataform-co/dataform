@@ -31,16 +31,6 @@ suite("@dataform/integration/postgres", { parallel: true }, ({ before, after }) 
   test("run", { timeout: 60000 }, async () => {
     const compiledGraph = await compile("tests/integration/postgres_project", "project_e2e");
 
-    await dbadapter.execute(
-      `drop schema if exists ${Array.from(
-        new Set(
-          [...compiledGraph.tables, ...compiledGraph.assertions, ...compiledGraph.operations].map(
-            action => action.target.schema
-          )
-        )
-      ).join(", ")} cascade`
-    );
-
     // Run the project.
     let executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
     let executedGraph = await dfapi.run(dbadapter, executionGraph).result();
@@ -121,16 +111,6 @@ suite("@dataform/integration/postgres", { parallel: true }, ({ before, after }) 
 
   test("dataset metadata set correctly", { timeout: 60000 }, async () => {
     const compiledGraph = await compile("tests/integration/postgres_project", "dataset_metadata");
-
-    await dbadapter.execute(
-      `drop schema if exists ${Array.from(
-        new Set(
-          [...compiledGraph.tables, ...compiledGraph.assertions, ...compiledGraph.operations].map(
-            action => action.target.schema
-          )
-        )
-      ).join(", ")} cascade`
-    );
 
     // Run the project.
     const executionGraph = await dfapi.build(
@@ -349,5 +329,27 @@ suite("@dataform/integration/postgres", { parallel: true }, ({ before, after }) 
       expect(increment[increment.length - 2].statement).to.equal(table.postOps[0]);
       expect(increment[increment.length - 1].statement).to.equal(table.postOps[1]);
     });
+  });
+
+  test("search", async () => {
+    const compiledGraph = await compile("tests/integration/postgres_project", "search");
+
+    // Run the project.
+    const executionGraph = await dfapi.build(
+      compiledGraph,
+      {
+        actions: ["example_view"],
+        includeDependencies: true
+      },
+      dbadapter
+    );
+    const runResult = await dfapi.run(dbadapter, executionGraph).result();
+    expect(dataform.RunResult.ExecutionStatus[runResult.status]).eql(
+      dataform.RunResult.ExecutionStatus[dataform.RunResult.ExecutionStatus.SUCCESSFUL]
+    );
+
+    expect((await dbadapter.search("df_integration_test_search")).length).equals(2);
+    expect((await dbadapter.search("test_sear")).length).equals(2);
+    expect((await dbadapter.search("val")).length).greaterThan(0);
   });
 });

@@ -551,6 +551,31 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
       }
     });
   });
+
+  test("search", async () => {
+    const compiledGraph = await compile("tests/integration/bigquery_project", "search");
+
+    // Drop all the tables before we do anything.
+    await cleanWarehouse(compiledGraph, dbadapter);
+
+    // Run the project.
+    const executionGraph = await dfapi.build(
+      compiledGraph,
+      {
+        actions: ["example_view"],
+        includeDependencies: true
+      },
+      dbadapter
+    );
+    const runResult = await dfapi.run(dbadapter, executionGraph).result();
+    expect(dataform.RunResult.ExecutionStatus[runResult.status]).eql(
+      dataform.RunResult.ExecutionStatus[dataform.RunResult.ExecutionStatus.SUCCESSFUL]
+    );
+
+    expect((await dbadapter.search("df_integration_test_search")).length).equals(2);
+    expect((await dbadapter.search("test_sear")).length).equals(2);
+    expect((await dbadapter.search("val")).length).greaterThan(0);
+  });
 });
 
 async function cleanWarehouse(

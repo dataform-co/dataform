@@ -241,4 +241,26 @@ suite("@dataform/integration/sqldatawarehouse", { parallel: true }, ({ before, a
       expect(increment[increment.length - 1].statement).to.equal(table.postOps[1]);
     });
   });
+
+  test("search", async () => {
+    const compiledGraph = await compile("tests/integration/sqldatawarehouse_project", "search");
+
+    // Run the project.
+    const executionGraph = await dfapi.build(
+      compiledGraph,
+      {
+        actions: ["example_view"],
+        includeDependencies: true
+      },
+      dbadapter
+    );
+    const runResult = await dfapi.run(dbadapter, executionGraph).result();
+    expect(dataform.RunResult.ExecutionStatus[runResult.status]).eql(
+      dataform.RunResult.ExecutionStatus[dataform.RunResult.ExecutionStatus.SUCCESSFUL]
+    );
+
+    expect((await dbadapter.search("df_integration_test_search")).length).equals(2);
+    expect((await dbadapter.search("test_sear")).length).equals(2);
+    expect((await dbadapter.search("val")).length).greaterThan(0);
+  });
 });
