@@ -48,6 +48,7 @@ interface ISnowflakeConnection {
   connect: (callback: (err: any, connection: ISnowflakeConnection) => void) => void;
   execute: (options: {
     sqlText: string;
+    binds?: any[];
     streamResult?: boolean;
     complete: (err: any, statement: ISnowflakeStatement, rows: any[]) => void;
   }) => void;
@@ -82,6 +83,7 @@ export class SnowflakeDbAdapter implements IDbAdapter {
   public async execute(
     statement: string,
     options: {
+      binds?: any[];
       onCancel?: OnCancel;
       rowLimit?: number;
       byteLimit?: number;
@@ -94,6 +96,7 @@ export class SnowflakeDbAdapter implements IDbAdapter {
             new Promise<any[]>((resolve, reject) => {
               this.connection.execute({
                 sqlText: statement,
+                binds: options?.binds,
                 streamResult: true,
                 complete(err, stmt) {
                   if (err) {
@@ -183,6 +186,41 @@ where LOWER(table_schema) != 'information_schema'
       schema: row.TABLE_SCHEMA,
       name: row.TABLE_NAME
     }));
+  }
+
+  public async search(searchText: string): Promise<dataform.ITableMetadata[]> {
+    const databases = await this.execute(`select database_name from information_schema.databases`, {
+      rowLimit: 100
+    });
+    const allTables = databases.rows
+      .map(row => `select * from ${row.DATABASE_NAME}.information_schema.tables`)
+      .join(" union all ");
+    const allColumns = databases.rows
+      .map(row => `select * from ${row.DATABASE_NAME}.information_schema.columns`)
+      .join(" union all ");
+    const results = await this.execute(
+      `select tables.table_catalog as table_catalog, tables.table_schema as table_schema, tables.table_name as table_name
+       from (${allTables}) as tables
+       left join (${allColumns}) as columns on tables.table_catalog = columns.table_catalog and tables.table_schema = columns.table_schema
+         and tables.table_name = columns.table_name
+       where LOWER(tables.table_catalog) like :1 or LOWER(tables.table_schema) like :1 or LOWER(tables.table_name) like :1 or tables.comment like :1
+         or LOWER(columns.column_name) like :1 or columns.comment like :1
+       group by 1, 2, 3
+       `,
+      {
+        binds: [`%${searchText}%`],
+        rowLimit: 100
+      }
+    );
+    return await Promise.all(
+      results.rows.map(row =>
+        this.table({
+          database: row.TABLE_CATALOG,
+          schema: row.TABLE_SCHEMA,
+          name: row.TABLE_NAME
+        })
+      )
+    );
   }
 
   public async table(target: dataform.ITarget): Promise<dataform.ITableMetadata> {
