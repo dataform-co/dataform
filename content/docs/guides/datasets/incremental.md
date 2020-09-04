@@ -147,11 +147,9 @@ If no unique key is specified, then the merge condition (`T.user_id = S.user_id`
   Incremental merging is not current supported for Azure SQLDataWarehouse.
 </div>
 
-Assuming a similar situation to the example above, but where it's only desirable for the table to contain only the most recent user actions, `uniqueKey` could be specified.
+If you want to ensure that the output table only ever contains one row per some combination of key columns, you should specify a `uniqueKey`. When `uniqueKey` is specified, if a row arrives whose key matches an existing row's key, then the existing row is overwritten with the new data.
 
-If `uniqueKey` is specified, then if an incremental update appears, and if each unique key specified within a row matches that of existing data, then the row will be updated with the newly arriving values. Any rows that don't match will be inserted on top.
-
-In order to optimise this merge on **BigQuery**, an update partition filter is set, that merges into records only from the last 24 hours.
+If using `uniqueKey` with **BigQuery**, we recommend that you set an `updatePartitionFilter` to only consider a subset of records. This helps to optimize costs, since without an `updatePartitionFilter`, BigQuery will scan the whole table to find matching rows.
 
 ```sql
 config {
