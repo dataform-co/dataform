@@ -58,6 +58,7 @@ export class RedshiftDbAdapter implements IDbAdapter {
   public async execute(
     statement: string,
     options: {
+      params?: any[];
       rowLimit?: number;
       byteLimit?: number;
       includeQueryInError?: boolean;
@@ -72,6 +73,7 @@ export class RedshiftDbAdapter implements IDbAdapter {
         execute: async (
           statement: string,
           options: {
+            params?: any[];
             rowLimit?: number;
             byteLimit?: number;
             includeQueryInError?: boolean;
@@ -135,6 +137,29 @@ export class RedshiftDbAdapter implements IDbAdapter {
       schema: row.table_schema,
       name: row.table_name
     }));
+  }
+
+  public async search(searchText: string): Promise<dataform.ITableMetadata[]> {
+    const results = await this.execute(
+      `select tables.table_schema as table_schema, tables.table_name as table_name
+       from svv_tables as tables
+       left join svv_columns as columns on tables.table_schema = columns.table_schema and tables.table_name = columns.table_name
+       where tables.table_schema like $1 or tables.table_name like $1 or tables.remarks like $1
+         or columns.column_name like $1 or columns.remarks like $1
+       group by 1, 2`,
+      {
+        params: [`%${searchText}%`],
+        rowLimit: 100
+      }
+    );
+    return await Promise.all(
+      results.rows.map(row =>
+        this.table({
+          schema: row.table_schema,
+          name: row.table_name
+        })
+      )
+    );
   }
 
   public async table(target: dataform.ITarget): Promise<dataform.ITableMetadata> {
