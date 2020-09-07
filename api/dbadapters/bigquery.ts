@@ -104,7 +104,9 @@ export class BigQueryDbAdapter implements IDbAdapter {
         } catch (e) {
           return {
             status: dataform.QueryEvaluation.QueryEvaluationStatus.FAILURE,
-            error: parseBigqueryEvalError(e)
+            error: parseBigqueryEvalError(e),
+            incremental,
+            query
           };
         }
       })
