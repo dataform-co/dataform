@@ -151,6 +151,16 @@ container_pull(
     repository = "library/postgres",
 )
 
+# Spark
+
+container_pull(
+    name = "spark",
+    # This digest is for tag "3-debian-10".
+    digest = "sha256:6f81f8342f8fd8d8316e91b79efdcf7d41e556e6be31fa6c9297d7a6a7a89742",
+    registry = "index.docker.io",
+    repository = "bitnami/spark",
+)
+
 # Sass requirements.
 http_archive(
     name = "io_bazel_rules_sass",
