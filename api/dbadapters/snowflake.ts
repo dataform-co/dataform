@@ -278,7 +278,7 @@ where table_schema = '${target.schema}'
           `comment on ${tableType === "view" ? "view" : "table"} ${
             target.database ? `"${target.database}".` : ""
           }"${target.schema}"."${target.name}" is '${actionDescriptor.description.replace(
-            "'",
+            /'/g,
             "\\'"
           )}'`
         )
@@ -293,7 +293,7 @@ where table_schema = '${target.schema}'
               `comment if exists on column ${target.database ? `"${target.database}".` : ""}"${
                 target.schema
               }"."${target.name}"."${column.path[0]}" is '${column.description.replace(
-                "'",
+                /'/g,
                 "\\'"
               )}'`
             )
