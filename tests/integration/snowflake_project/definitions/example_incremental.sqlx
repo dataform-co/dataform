@@ -1,8 +1,8 @@
 config { 
     type: "incremental",
-    description: "An incremental table",
+    description: "An incremental 'table'",
     columns: {
-        USER_TIMESTAMP: "the timestamp",
+        USER_TIMESTAMP: "the 'timestamp'",
         USER_ID: "the id",
         nested_data: {
           description: "some nested data with duplicate fields",
