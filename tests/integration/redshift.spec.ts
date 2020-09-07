@@ -357,6 +357,17 @@ suite("@dataform/integration/redshift", { parallel: true }, ({ before, after }) 
   test("search", async () => {
     const compiledGraph = await compile("tests/integration/redshift_project", "search");
 
+    // Drop all the tables before we do anything.
+    await dbadapter.execute(
+      `drop schema if exists ${Array.from(
+        new Set(
+          [...compiledGraph.tables, ...compiledGraph.assertions, ...compiledGraph.operations].map(
+            action => action.target.schema
+          )
+        )
+      ).join(", ")} cascade`
+    );
+
     // Run the project.
     const executionGraph = await dfapi.build(
       compiledGraph,

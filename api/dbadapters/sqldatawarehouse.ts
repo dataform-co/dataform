@@ -165,12 +165,14 @@ export class SQLDataWarehouseDBAdapter implements IDbAdapter {
     const [tableData, columnData] = await Promise.all([
       this.execute(
         `select table_type from information_schema.tables
-          where table_schema = '${target.schema}' AND table_name = '${target.name}'`
+         where table_schema = @schema AND table_name = @name`,
+        { params: target }
       ),
       this.execute(
         `select column_name, data_type, is_nullable
-       from information_schema.columns
-       where table_schema = '${target.schema}' AND table_name = '${target.name}'`
+         from information_schema.columns
+         where table_schema = @schema AND table_name = @name`,
+        { params: target }
       )
     ]);
 

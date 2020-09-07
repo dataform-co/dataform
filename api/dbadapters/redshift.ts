@@ -163,16 +163,17 @@ export class RedshiftDbAdapter implements IDbAdapter {
   }
 
   public async table(target: dataform.ITarget): Promise<dataform.ITableMetadata> {
+    const params = [target.schema, target.name];
     const [tableResults, columnResults] = await Promise.all([
       this.execute(
-        `select table_type, remarks from svv_tables where table_schema = '${target.schema}' and table_name = '${target.name}'`,
-        { includeQueryInError: true }
+        `select table_type, remarks from svv_tables where table_schema = $1 and table_name = $2`,
+        { params, includeQueryInError: true }
       ),
       this.execute(
         `select column_name, data_type, is_nullable, remarks
          from svv_columns
-         where table_schema = '${target.schema}' and table_name = '${target.name}'`,
-        { includeQueryInError: true }
+         where table_schema = $1 and table_name = $2`,
+        { params, includeQueryInError: true }
       )
     ]);
     if (tableResults.rows.length === 0) {

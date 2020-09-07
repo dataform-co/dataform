@@ -377,11 +377,16 @@ suite("@dataform/integration/snowflake", { parallel: true }, ({ before, after })
   test("search", async () => {
     const compiledGraph = await compile("tests/integration/snowflake_project", "search");
 
+    // Drop all the tables before we do anything.
+    const adapter = adapters.create(compiledGraph.projectConfig, compiledGraph.dataformCoreVersion);
+    const tablesToDelete = (await dfapi.build(compiledGraph, {}, dbadapter)).warehouseState.tables;
+    await dropAllTables(tablesToDelete, adapter, dbadapter);
+
     // Run the project.
     const executionGraph = await dfapi.build(
       compiledGraph,
       {
-        actions: ["example_view"],
+        actions: ["EXAMPLE_VIEW"],
         includeDependencies: true
       },
       dbadapter

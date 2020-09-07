@@ -189,19 +189,10 @@ where LOWER(table_schema) != 'information_schema'
   }
 
   public async search(searchText: string): Promise<dataform.ITableMetadata[]> {
-    const databases = await this.execute(`select database_name from information_schema.databases`, {
-      rowLimit: 100
-    });
-    const allTables = databases.rows
-      .map(row => `select * from ${row.DATABASE_NAME}.information_schema.tables`)
-      .join(" union all ");
-    const allColumns = databases.rows
-      .map(row => `select * from ${row.DATABASE_NAME}.information_schema.columns`)
-      .join(" union all ");
     const results = await this.execute(
       `select tables.table_catalog as table_catalog, tables.table_schema as table_schema, tables.table_name as table_name
-       from (${allTables}) as tables
-       left join (${allColumns}) as columns on tables.table_catalog = columns.table_catalog and tables.table_schema = columns.table_schema
+       from information_schema.tables as tables
+       left join information_schema.columns as columns on tables.table_catalog = columns.table_catalog and tables.table_schema = columns.table_schema
          and tables.table_name = columns.table_name
        where LOWER(tables.table_catalog) like :1 or LOWER(tables.table_schema) like :1 or LOWER(tables.table_name) like :1 or tables.comment like :1
          or LOWER(columns.column_name) like :1 or columns.comment like :1
@@ -224,20 +215,23 @@ where LOWER(table_schema) != 'information_schema'
   }
 
   public async table(target: dataform.ITarget): Promise<dataform.ITableMetadata> {
+    const binds = [target.schema, target.name];
     const [tableResults, columnResults] = await Promise.all([
       this.execute(
         `
 select table_type, comment
 from ${target.database ? `"${target.database}".` : ""}information_schema.tables
-where table_schema = '${target.schema}'
-  and table_name = '${target.name}'`
+where table_schema = :1
+  and table_name = :2`,
+        { binds }
       ),
       this.execute(
         `
 select column_name, data_type, is_nullable, comment
 from ${target.database ? `"${target.database}".` : ""}information_schema.columns
-where table_schema = '${target.schema}' 
-  and table_name = '${target.name}'`
+where table_schema = :1 
+  and table_name = :2`,
+        { binds }
       )
     ]);
     if (tableResults.rows.length === 0) {

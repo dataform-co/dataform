@@ -245,6 +245,11 @@ suite("@dataform/integration/sqldatawarehouse", { parallel: true }, ({ before, a
   test("search", async () => {
     const compiledGraph = await compile("tests/integration/sqldatawarehouse_project", "search");
 
+    // Drop all the tables before we do anything.
+    const tablesToDelete = (await dfapi.build(compiledGraph, {}, dbadapter)).warehouseState.tables;
+    const adapter = adapters.create(compiledGraph.projectConfig, compiledGraph.dataformCoreVersion);
+    await dropAllTables(tablesToDelete, adapter, dbadapter);
+
     // Run the project.
     const executionGraph = await dfapi.build(
       compiledGraph,

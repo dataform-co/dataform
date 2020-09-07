@@ -167,24 +167,28 @@ export class PostgresDbAdapter implements IDbAdapter {
   }
 
   public async table(target: dataform.ITarget): Promise<dataform.ITableMetadata> {
+    const params = [target.schema, target.name];
     const [tableResults, columnResults, descriptionResults] = await Promise.all([
       this.execute(
-        `select table_type from information_schema.tables where table_schema = '${target.schema}' and table_name = '${target.name}'`,
-        { includeQueryInError: true }
+        `select table_type from information_schema.tables where table_schema = $1 and table_name = $2`,
+        { params, includeQueryInError: true }
       ),
       this.execute(
         `select column_name, data_type, is_nullable, ordinal_position
          from information_schema.columns
-         where table_schema = '${target.schema}' and table_name = '${target.name}'`,
-        { includeQueryInError: true }
+         where table_schema = $1 and table_name = $2`,
+        { params, includeQueryInError: true }
       ),
-      this.execute(`
+      this.execute(
+        `
       select objsubid as column_number, description from pg_description
       where objoid = (
-        select oid from pg_class where relname = '${target.name}' and relnamespace = (
-          select oid from pg_namespace where nspname = '${target.schema}'
+        select oid from pg_class where relname = $2 and relnamespace = (
+          select oid from pg_namespace where nspname = $1
         )
-      )`)
+      )`,
+        { params, includeQueryInError: true }
+      )
     ]);
     if (tableResults.rows.length === 0) {
       return null;
