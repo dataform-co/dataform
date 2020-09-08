@@ -151,6 +151,16 @@ container_pull(
     repository = "library/postgres",
 )
 
+# Presto
+
+container_pull(
+    name = "presto",
+    # This digest is for tag "340".
+    digest = "sha256:21f9f92ddb232848ef56ef09a83d04f3d1c9a03539c20b0cb786e346797988bb",
+    registry = "index.docker.io",
+    repository = "prestosql/presto",
+)
+
 # Sass requirements.
 http_archive(
     name = "io_bazel_rules_sass",

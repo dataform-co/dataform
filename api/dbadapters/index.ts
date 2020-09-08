@@ -75,9 +75,17 @@ export function register(warehouseType: string, c: IDbAdapterClass<IDbAdapter>) 
   registry[warehouseType] = c;
 }
 
+export const validWarehouses = [
+  "bigquery",
+  "postgres",
+  "redshift",
+  "sqldatawarehouse",
+  "snowflake"
+];
+
 export async function create(
   credentials: Credentials,
-  warehouseType: string,
+  warehouseType: typeof validWarehouses[number],
   options?: { concurrencyLimit?: number; disableSslForTestsOnly?: boolean }
 ): Promise<IDbAdapter> {
   if (!registry[warehouseType]) {
