@@ -17,12 +17,12 @@ export class FlagOverridesFixture {
     if (!this.originalArgs.has(flag)) {
       this.originalArgs.set(flag, Flags.getRawFlagValue(flag));
     }
-    Flags.setFlagValueForTesting(flag, override);
+    Flags.setRawFlagValueForTesting(flag, override);
   }
 
   private restoreArgs() {
     for (const [flag, value] of Array.from(this.originalArgs.entries())) {
-      Flags.setFlagValueForTesting(flag, value);
+      Flags.setRawFlagValueForTesting(flag, value);
     }
   }
 }
