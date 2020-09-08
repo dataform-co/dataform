@@ -33,12 +33,16 @@ load("//testing:index.bzl", "ts_test_suite")
 ts_test_suite(
     name = "tests",
     srcs = glob(["*.spec.ts"]),
+    data = [
+        "//protobufts/tests/reserializer",
+    ],
     deps = [
         ":protobufjs_testprotos_ts_proto",
         ":testprotos_ts_proto",
         "//testing",
         "@npm//@types/chai",
         "@npm//@types/long",
+        "@npm//@types/node",
         "@npm//chai",
     ],
 )

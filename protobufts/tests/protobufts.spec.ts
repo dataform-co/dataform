@@ -1,6 +1,7 @@
 import { expect } from "chai";
 import Long from "long";
 
+import { execSync } from "child_process";
 import * as protobufjsProtos from "df/protobufts/tests/protobufjs_testprotos_ts_proto";
 import * as protobuftsProtos from "df/protobufts/tests/test1";
 import { suite, test } from "df/testing";
@@ -438,4 +439,26 @@ suite(__filename, () => {
       });
     }
   });
+
+  test("reserializer", () => {
+    reserialize(
+      "TestMessage",
+      protobuftsProtos.TestMessage.create({
+        stringField: "hello"
+      }).serialize()
+    );
+  });
 });
+
+const RESERIALIZER_BINARY = "protobufts/tests/reserializer/darwin_amd64_stripped/reserializer";
+
+function reserialize(
+  messageType: "TestMessage" | "TestRepeatedMessage",
+  bytes: Uint8Array
+): Uint8Array {
+  const base64EncodedBytes = Buffer.from(bytes).toString("base64");
+  const returnedBase64EncodedBytes = execSync(
+    `${RESERIALIZER_BINARY} --proto_type=${messageType} --base64_proto_value=${base64EncodedBytes}`
+  ).toString();
+  return Buffer.from(returnedBase64EncodedBytes, "base64");
+}

@@ -5,6 +5,10 @@ go_library(
     srcs = ["reserializer.go"],
     importpath = "github.com/dataform-co/dataform/protobufts/tests/reserializer",
     visibility = ["//visibility:private"],
+    deps = [
+        "//protobufts/tests:testprotos_go_proto",
+        "@com_github_golang_protobuf//proto:go_default_library",
+    ],
 )
 
 go_binary(
