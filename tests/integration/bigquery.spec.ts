@@ -8,48 +8,7 @@ import * as adapters from "df/core/adapters";
 import { BigQueryAdapter } from "df/core/adapters/bigquery";
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
-import { dropAllTables, getTableRows, keyBy } from "df/tests/integration/utils";
-
-const EXPECTED_INCREMENTAL_EXAMPLE_SCHEMA = {
-  fields: [
-    {
-      description: "the timestamp",
-      name: "user_timestamp",
-      type: "INTEGER"
-    },
-    {
-      description: "the id",
-      name: "user_id",
-      type: "INTEGER"
-    },
-    {
-      name: "nested_data",
-      description: "some nested data with duplicate fields",
-      type: "RECORD",
-      fields: [
-        {
-          description: "nested timestamp",
-          name: "user_timestamp",
-          type: "INTEGER"
-        },
-        {
-          description: "nested id",
-          name: "user_id",
-          type: "INTEGER"
-        }
-      ]
-    }
-  ]
-};
-const EXPECTED_EXAMPLE_VIEW_SCHEMA = {
-  fields: [
-    {
-      description: "val doc",
-      name: "val",
-      type: "INTEGER"
-    }
-  ]
-};
+import { compile, dropAllTables, getTableRows, keyBy } from "df/tests/integration/utils";
 
 suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) => {
   const credentials = dfapi.credentials.read("bigquery", "test_credentials/bigquery.json");
@@ -63,7 +22,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
 
   suite("run", { parallel: true }, () => {
     test("project e2e", { timeout: 60000 }, async () => {
-      const compiledGraph = await compile("project_e2e");
+      const compiledGraph = await compile("tests/integration/bigquery_project", "project_e2e");
 
       // Drop all the tables before we do anything.
       await cleanWarehouse(compiledGraph, dbadapter);
@@ -108,7 +67,9 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
     });
 
     test("run caching", { timeout: 60000 }, async () => {
-      const compiledGraph = await compile("run_caching", { useRunCache: true });
+      const compiledGraph = await compile("tests/integration/bigquery_project", "run_caching", {
+        useRunCache: true
+      });
 
       // Drop all the tables before we do anything.
       await cleanWarehouse(compiledGraph, dbadapter);
@@ -199,6 +160,11 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
         // Should run because the dataset has changed in the warehouse.
         "dataform-integration-tests.df_integration_test_run_caching.sample_data_2":
           dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
+        // Should run because they are auto assertions.
+        "dataform-integration-tests.df_integration_test_assertions_run_caching.sample_data_2_assertions_uniqueKey":
+          dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
+        "dataform-integration-tests.df_integration_test_assertions_run_caching.sample_data_2_assertions_rowConditions":
+          dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
         // Should run because an input to dataset has changed in the warehouse.
         "dataform-integration-tests.df_integration_test_run_caching.depends_on_sample_data_3":
           dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
@@ -230,7 +196,10 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
     });
 
     test("incremental tables", { timeout: 60000 }, async () => {
-      const compiledGraph = await compile("incremental_tables");
+      const compiledGraph = await compile(
+        "tests/integration/bigquery_project",
+        "incremental_tables"
+      );
 
       // Drop all the tables before we do anything.
       await cleanWarehouse(compiledGraph, dbadapter);
@@ -288,7 +257,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
     });
 
     test("dataset metadata set correctly", { timeout: 60000 }, async () => {
-      const compiledGraph = await compile("dataset_metadata");
+      const compiledGraph = await compile("tests/integration/bigquery_project", "dataset_metadata");
 
       // Drop all the tables before we do anything.
       await cleanWarehouse(compiledGraph, dbadapter);
@@ -316,7 +285,41 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
             name: "example_incremental"
           },
           expectedDescription: "An incremental table",
-          expectedSchema: EXPECTED_INCREMENTAL_EXAMPLE_SCHEMA
+          expectedFields: [
+            dataform.Field.create({
+              description: "the timestamp",
+              name: "user_timestamp",
+              primitive: dataform.Field.Primitive.INTEGER,
+              primitiveDeprecated: "INTEGER"
+            }),
+            dataform.Field.create({
+              description: "the id",
+              name: "user_id",
+              primitive: dataform.Field.Primitive.INTEGER,
+              primitiveDeprecated: "INTEGER"
+            }),
+            dataform.Field.create({
+              name: "nested_data",
+              description: "some nested data with duplicate fields",
+              struct: dataform.Fields.create({
+                fields: [
+                  dataform.Field.create({
+                    description: "nested timestamp",
+                    name: "user_timestamp",
+                    primitive: dataform.Field.Primitive.INTEGER,
+                    primitiveDeprecated: "INTEGER"
+                  }),
+                  dataform.Field.create({
+                    description: "nested id",
+                    name: "user_id",
+                    primitive: dataform.Field.Primitive.INTEGER,
+                    primitiveDeprecated: "INTEGER"
+                  })
+                ]
+              })
+            })
+          ],
+          expectedLabels: {}
         },
         {
           target: {
@@ -325,18 +328,30 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
             name: "example_view"
           },
           expectedDescription: "An example view",
-          expectedSchema: EXPECTED_EXAMPLE_VIEW_SCHEMA
+          expectedFields: [
+            dataform.Field.create({
+              description: "val doc",
+              name: "val",
+              primitive: dataform.Field.Primitive.INTEGER,
+              primitiveDeprecated: "INTEGER"
+            })
+          ],
+          expectedLabels: {
+            label1: "val1",
+            label2: "val2"
+          }
         }
       ]) {
-        const metadata = await dbadapter.getMetadata(expectedMetadata.target);
+        const metadata = await dbadapter.table(expectedMetadata.target);
         expect(metadata.description).to.equal(expectedMetadata.expectedDescription);
-        expect(metadata.schema).to.deep.equal(expectedMetadata.expectedSchema);
+        expect(metadata.fields).to.deep.equal(expectedMetadata.expectedFields);
+        expect(metadata.labels).to.deep.equal(expectedMetadata.expectedLabels);
       }
     });
   });
 
   test("run unit tests", async () => {
-    const compiledGraph = await compile("unit_tests");
+    const compiledGraph = await compile("tests/integration/bigquery_project", "unit_tests");
 
     // Run the tests.
     const testResults = await dfapi.test(dbadapter, compiledGraph.tests);
@@ -361,9 +376,9 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
         name: "wrong row contents",
         successful: false,
         messages: [
-          'For row 0 and column "col2": expected "1" (number), but saw "5" (number).',
-          'For row 1 and column "col3": expected "6.5" (number), but saw "12" (number).',
-          'For row 2 and column "col1": expected "sup?" (string), but saw "WRONG" (string).'
+          'For row 0 and column "col2": expected "1", but saw "5".',
+          'For row 1 and column "col3": expected "6.5", but saw "12".',
+          'For row 2 and column "col1": expected "sup?", but saw "WRONG".'
         ]
       }
     ]);
@@ -372,7 +387,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
   suite("evaluate", async () => {
     test("evaluate from valid compiled graph as valid", async () => {
       // Create and run the project.
-      const compiledGraph = await compile("evaluate", {
+      const compiledGraph = await compile("tests/integration/bigquery_project", "evaluate", {
         useRunCache: false
       });
       const executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
@@ -508,7 +523,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
       expect(bqMetadata.totalBytesProcessed).to.eql(Long.fromNumber(0));
     });
 
-    suite("result limit works", { parallel: true }, async () => {
+    suite("query limits work", { parallel: true }, async () => {
       const query = `
         select 1 union all
         select 2 union all
@@ -516,9 +531,14 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
         select 4 union all
         select 5`;
 
-      for (const interactive of [true, false]) {
-        test(`with interactive=${interactive}`, async () => {
-          const { rows } = await dbadapter.execute(query, { interactive, maxResults: 2 });
+      for (const options of [
+        { interactive: true, rowLimit: 2 },
+        { interactive: false, rowLimit: 2 },
+        { interactive: true, byteLimit: 30 },
+        { interactive: false, byteLimit: 30 }
+      ]) {
+        test(`with options=${JSON.stringify(options)}`, async () => {
+          const { rows } = await dbadapter.execute(query, options);
           expect(rows).to.eql([
             {
               f0_: 1
@@ -532,24 +552,6 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
     });
   });
 });
-
-async function compile(
-  schemaSuffixOverride: string,
-  projectConfigOverrides?: dataform.IProjectConfig
-) {
-  const compiledGraph = await dfapi.compile({
-    projectDir: "tests/integration/bigquery_project",
-    schemaSuffixOverride
-  });
-
-  expect(compiledGraph.graphErrors.compilationErrors).to.eql([]);
-
-  compiledGraph.projectConfig = {
-    ...compiledGraph.projectConfig,
-    ...projectConfigOverrides
-  };
-  return compiledGraph;
-}
 
 async function cleanWarehouse(
   compiledGraph: dataform.CompiledGraph,

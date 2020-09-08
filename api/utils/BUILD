@@ -10,8 +10,11 @@ ts_library(
         "//protos:ts",
         "@npm//@types/node",
         "@npm//@types/object-hash",
+        "@npm//@types/pg",
+        "@npm//@types/pg-query-stream",
         "@npm//object-hash",
+        "@npm//object-sizeof",
+        "@npm//pg",
+        "@npm//pg-query-stream",
     ],
 )
-
-load("@build_bazel_rules_nodejs//:index.bzl", "nodejs_binary")

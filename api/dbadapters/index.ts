@@ -1,5 +1,6 @@
 import { Credentials } from "df/api/commands/credentials";
 import { BigQueryDbAdapter } from "df/api/dbadapters/bigquery";
+import { PostgresDbAdapter } from "df/api/dbadapters/postgres";
 import { RedshiftDbAdapter } from "df/api/dbadapters/redshift";
 import { SnowflakeDbAdapter } from "df/api/dbadapters/snowflake";
 import { SQLDataWarehouseDBAdapter } from "df/api/dbadapters/sqldatawarehouse";
@@ -19,23 +20,35 @@ export interface IExecutionResult {
   metadata: dataform.IExecutionMetadata;
 }
 
-export interface IDbAdapter {
+export interface IDbClient {
   execute(
     statement: string,
     options?: {
       onCancel?: OnCancel;
       interactive?: boolean;
-      maxResults?: number;
+      rowLimit?: number;
+      byteLimit?: number;
     }
   ): Promise<IExecutionResult>;
+}
+
+export interface IDbAdapter extends IDbClient {
+  withClientLock<T>(callback: (client: IDbClient) => Promise<T>): Promise<T>;
+
   evaluate(
     queryOrAction: QueryOrAction,
     projectConfig?: dataform.IProjectConfig
   ): Promise<dataform.IQueryEvaluation[]>;
+
+  schemas(database: string): Promise<string[]>;
+  createSchema(database: string, schema: string): Promise<void>;
+
   tables(): Promise<dataform.ITarget[]>;
   table(target: dataform.ITarget): Promise<dataform.ITableMetadata>;
   preview(target: dataform.ITarget, limitRows?: number): Promise<any[]>;
-  prepareSchema(database: string, schema: string): Promise<void>;
+
+  setMetadata(action: dataform.IExecutionAction): Promise<void>;
+
   persistStateMetadata(
     transitiveInputMetadataByTarget: StringifiedMap<
       dataform.ITarget,
@@ -48,12 +61,12 @@ export interface IDbAdapter {
     }
   ): Promise<void>;
   persistedStateMetadata(): Promise<dataform.IPersistedTableMetadata[]>;
-  setMetadata(action: dataform.IExecutionAction): Promise<void>;
+
   close(): Promise<void>;
 }
 
 export interface IDbAdapterClass<T extends IDbAdapter> {
-  create: (credentials: Credentials, warehouseType: string) => Promise<T>;
+  create: (credentials: Credentials, options?: { concurrencyLimit?: number }) => Promise<T>;
 }
 
 const registry: { [warehouseType: string]: IDbAdapterClass<IDbAdapter> } = {};
@@ -62,18 +75,19 @@ export function register(warehouseType: string, c: IDbAdapterClass<IDbAdapter>) 
   registry[warehouseType] = c;
 }
 
-export async function create(credentials: Credentials, warehouseType: string): Promise<IDbAdapter> {
+export async function create(
+  credentials: Credentials,
+  warehouseType: string,
+  options?: { concurrencyLimit?: number; disableSslForTestsOnly?: boolean }
+): Promise<IDbAdapter> {
   if (!registry[warehouseType]) {
     throw new Error(`Unsupported warehouse: ${warehouseType}`);
   }
-  return await registry[warehouseType].create(credentials, warehouseType);
+  return await registry[warehouseType].create(credentials, options);
 }
 
 register("bigquery", BigQueryDbAdapter);
-// TODO: The redshift client library happens to work well for postgres, but we should probably
-// not be relying on that behaviour. At some point we should replace this with a first-class
-// PostgresAdapter.
-register("postgres", RedshiftDbAdapter);
+register("postgres", PostgresDbAdapter);
 register("redshift", RedshiftDbAdapter);
 register("snowflake", SnowflakeDbAdapter);
 register("sqldatawarehouse", SQLDataWarehouseDBAdapter);

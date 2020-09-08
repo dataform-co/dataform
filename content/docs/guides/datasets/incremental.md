@@ -101,10 +101,15 @@ Note that `self()` is used here in order to get the name of the current dataset.
 ```sql
 timestamp > (SELECT MAX(timestamp) FROM default_schema.example_incremental)
 ```
+<br />
+
+<div className="bp3-callout bp3-icon-info-sign" markdown="1">
+  Note that for BigQuery, incremental tables need to be written slightly differently to avoid full table scans. See our [BigQuery specific guide](/warehouses/bigquery#optimizing-partitioned-incremental-tables-for-bigquery) for more info.
+</div>
 
 This dataset may not exist in the warehouse yet. That's OK, because the `WHERE` clause will only be added to the final query if the dataset already exists and new data is being inserted into it.
 
-<div className="pt-callout pt-icon-info-sign pt-intent-warning" markdown="1">
+<div className="bp3-callout bp3-icon-info-sign" markdown="1">
   Note that when data is inserted into an incremental dataset, only fields that already exist in the
   dataset will be written. To make sure that new fields are written after changing the query, the
   dataset must be rebuilt from scratch with the <code>--full-refresh</code> option (if using the
@@ -142,11 +147,9 @@ If no unique key is specified, then the merge condition (`T.user_id = S.user_id`
   Incremental merging is not current supported for Azure SQLDataWarehouse.
 </div>
 
-Assuming a similar situation to the example above, but where it's only desirable for the table to contain only the most recent user actions, `uniqueKey` could be specified.
+If you want to ensure that the output table only ever contains one row per some combination of key columns, you should specify a `uniqueKey`. When `uniqueKey` is specified, if a row arrives whose key matches an existing row's key, then the existing row is overwritten with the new data.
 
-If `uniqueKey` is specified, then if an incremental update appears, and if each unique key specified within a row matches that of existing data, then the row will be updated with the newly arriving values. Any rows that don't match will be inserted on top.
-
-In order to optimise this merge on **BigQuery**, an update partition filter is set, that merges into records only from the last 24 hours.
+If using `uniqueKey` with **BigQuery**, we recommend that you set an `updatePartitionFilter` to only consider a subset of records. This helps to optimize costs, since without an `updatePartitionFilter`, BigQuery will scan the whole table to find matching rows.
 
 ```sql
 config {

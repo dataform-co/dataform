@@ -180,6 +180,25 @@ export interface IRecordDescriptor {
    * @hidden
    */
   expression?: string;
+
+  /**
+   * Tags that apply to this column (experimental).
+   *
+   * @hidden
+   */
+  tags?: string | string[];
+
+  /**
+   * BigQuery policy tags that should be applied to this column.
+   *
+   * These should be the fully qualified identifier of the tag, including the project name, location, and taxonomy,
+   * which can be copied from the policy tags page in GCP.
+   * 
+   * For example: "projects/1/locations/eu/taxonomies/2/policyTags/3"
+   * 
+   * Currently BigQuery supports only a single tag per column.
+   */
+  bigqueryPolicyTags?: string | string[];
 }
 
 /**
@@ -194,7 +213,9 @@ export const IRecordDescriptorProperties = () =>
     "displayName",
     "dimension",
     "aggregator",
-    "expression"
+    "expression",
+    "tags",
+    "bigqueryPolicyTags"
   ]);
 
 /**

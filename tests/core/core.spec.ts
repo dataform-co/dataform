@@ -44,7 +44,11 @@ suite("@dataform/core", () => {
             dependencies: [],
             description: "this is a table",
             columns: {
-              test: "test description"
+              test: "test description",
+              test2: {
+                description: "test2 description",
+                tags: ["tag1", "tag2"]
+              }
             }
           })
           .query(_ => "select 1 as test")
@@ -81,6 +85,11 @@ suite("@dataform/core", () => {
             dataform.ColumnDescriptor.create({
               description: "test description",
               path: ["test"]
+            }),
+            dataform.ColumnDescriptor.create({
+              description: "test2 description",
+              path: ["test2"],
+              tags: ["tag1", "tag2"]
             })
           ]
         });
@@ -91,14 +100,8 @@ suite("@dataform/core", () => {
           table => table.name === `schema2.${tableWithPrefix("example")}`
         );
         expect(t2.type).equals("table");
-        expect(t.actionDescriptor).eql({
-          description: "this is a table",
-          columns: [
-            dataform.ColumnDescriptor.create({
-              description: "test description",
-              path: ["test"]
-            })
-          ]
+        expect(t2.actionDescriptor).eql({
+          description: "test description"
         });
         expect(t2.preOps).deep.equals(["pre_op"]);
         expect(t2.postOps).deep.equals(["post_op"]);
@@ -458,27 +461,30 @@ suite("@dataform/core", () => {
           partitionBy: "some_partition"
         }
       });
-      session.publish("example_clusterBy_but_no_partitionBy_fail", {
-        type: "table",
+      session.publish("example_clusterBy_view_fail", {
+        type: "view",
         bigquery: {
-          clusterBy: ["some_column", "some_other_column"]
+          clusterBy: ["some_cluster"]
         }
       });
 
       const graph = session.compile();
-      expect(
-        graph.graphErrors.compilationErrors
-          .filter(item => item.actionName === "schema.example_partitionBy_view_fail")
-          .map(item => item.message)
-      ).to.deep.equals([
-        `partitionBy/clusterBy are not valid for BigQuery views; they are only valid for tables`
-      ]);
 
       expect(
-        graph.graphErrors.compilationErrors
-          .filter(item => item.actionName === "schema.example_clusterBy_but_no_partitionBy_fail")
-          .map(item => item.message)
-      ).to.deep.equals([`clusterBy is not valid without partitionBy`]);
+        graph.graphErrors.compilationErrors.map(({ message, actionName }) => ({
+          message,
+          actionName
+        }))
+      ).has.deep.members([
+        {
+          actionName: "schema.example_partitionBy_view_fail",
+          message: `partitionBy/clusterBy are not valid for BigQuery views; they are only valid for tables`
+        },
+        {
+          actionName: "schema.example_clusterBy_view_fail",
+          message: `partitionBy/clusterBy are not valid for BigQuery views; they are only valid for tables`
+        }
+      ]);
     });
 
     test("validation_bigquery_pass", () => {
@@ -871,6 +877,18 @@ select * from \${ref('dab')}
         )
       ).eql(await fs.readFile("tests/core/basic-syntax.js.test", "utf8"));
     });
+
+    test("backticks are escaped", async () => {
+      expect(
+        compilers.compile(
+          `
+select "\`" from \`location\`
+`,
+          "file.sqlx"
+        )
+      ).eql(await fs.readFile("tests/core/backticks-are-escaped.js.test", "utf8"));
+    });
+
     test("backslashes act literally", async () => {
       expect(
         compilers.compile(
@@ -910,6 +928,18 @@ post_operations {
           "file.sqlx"
         )
       ).eql(await fs.readFile("tests/core/strings-act-literally.js.test", "utf8"));
+    });
+    test("JS placeholders inside SQL strings", async () => {
+      expect(
+        compilers.compile(
+          `
+select '\${\`bar\`}'
+`,
+          "file.sqlx"
+        )
+      ).eql(
+        await fs.readFile("tests/core/js-placeholder-strings-inside-sql-strings.js.test", "utf8")
+      );
     });
   });
 });

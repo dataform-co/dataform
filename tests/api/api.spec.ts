@@ -1,13 +1,11 @@
 import { assert, config, expect } from "chai";
 import Long from "long";
-import * as path from "path";
 import { anyString, anything, instance, mock, verify, when } from "ts-mockito";
 
-import { Builder, credentials, format, prune, query, Runner } from "df/api";
+import { Builder, credentials, prune, query, Runner } from "df/api";
 import { computeAllTransitiveInputs } from "df/api/commands/build";
 import { IDbAdapter } from "df/api/dbadapters";
 import { BigQueryDbAdapter } from "df/api/dbadapters/bigquery";
-import { actionsByTarget } from "df/api/utils/graphs";
 import { sleep, sleepUntil } from "df/common/promises";
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
@@ -48,6 +46,19 @@ suite("@dataform/api", () => {
           name: "c"
         },
         query: "query"
+      }
+    ],
+    assertions: [
+      {
+        name: "schema.d",
+        target: {
+          schema: "schema",
+          name: "d"
+        },
+        parentAction: {
+          schema: "schema",
+          name: "b"
+        }
       }
     ]
   });
@@ -327,20 +338,24 @@ suite("@dataform/api", () => {
       const prunedGraph = prune(TEST_GRAPH, { actions: ["schema.a"], includeDependencies: true });
       const actionNames = [
         ...prunedGraph.tables.map(action => action.name),
-        ...prunedGraph.operations.map(action => action.name)
+        ...prunedGraph.operations.map(action => action.name),
+        ...prunedGraph.assertions.map(action => action.name)
       ];
       expect(actionNames).includes("schema.a");
       expect(actionNames).includes("schema.b");
+      expect(actionNames).includes("schema.d");
     });
 
     test("prune actions with --actions without dependencies", () => {
       const prunedGraph = prune(TEST_GRAPH, { actions: ["schema.a"], includeDependencies: false });
       const actionNames = [
         ...prunedGraph.tables.map(action => action.name),
-        ...prunedGraph.operations.map(action => action.name)
+        ...prunedGraph.operations.map(action => action.name),
+        ...prunedGraph.assertions.map(action => action.name)
       ];
       expect(actionNames).includes("schema.a");
       expect(actionNames).not.includes("schema.b");
+      expect(actionNames).not.includes("schema.d");
     });
   });
 
@@ -1003,7 +1018,7 @@ postOps`
 
     test("execute", async () => {
       const mockedDbAdapter = mock(BigQueryDbAdapter);
-      when(mockedDbAdapter.prepareSchema(anyString(), anyString())).thenResolve(null);
+      when(mockedDbAdapter.createSchema(anyString(), anyString())).thenResolve(null);
       when(
         mockedDbAdapter.execute(RUN_TEST_GRAPH.actions[0].tasks[0].statement, anything())
       ).thenResolve({
@@ -1026,13 +1041,17 @@ postOps`
         mockedDbAdapter.execute(RUN_TEST_GRAPH.actions[1].tasks[0].statement, anything())
       ).thenReject(new Error("bad statement"));
 
-      const runner = new Runner(instance(mockedDbAdapter), RUN_TEST_GRAPH);
+      const mockDbAdapterInstance = instance(mockedDbAdapter);
+      mockDbAdapterInstance.withClientLock = async callback =>
+        await callback(mockDbAdapterInstance);
+
+      const runner = new Runner(mockDbAdapterInstance, RUN_TEST_GRAPH);
 
       expect(dataform.RunResult.create(cleanTiming(await runner.execute().result()))).to.deep.equal(
         EXPECTED_RUN_RESULT
       );
-      verify(mockedDbAdapter.prepareSchema("database", "schema1")).once();
-      verify(mockedDbAdapter.prepareSchema("database2", "schema2")).once();
+      verify(mockedDbAdapter.createSchema("database", "schema1")).once();
+      verify(mockedDbAdapter.createSchema("database2", "schema2")).once();
     });
 
     test("stop and then resume", async () => {
@@ -1040,7 +1059,7 @@ postOps`
       let stopWasCalled = false;
 
       const mockedDbAdapter = mock(BigQueryDbAdapter);
-      when(mockedDbAdapter.prepareSchema(anyString(), anyString())).thenResolve(null);
+      when(mockedDbAdapter.createSchema(anyString(), anyString())).thenResolve(null);
       when(
         mockedDbAdapter.execute(RUN_TEST_GRAPH.actions[0].tasks[0].statement, anything())
       ).thenCall(async () => {
@@ -1067,7 +1086,11 @@ postOps`
         mockedDbAdapter.execute(RUN_TEST_GRAPH.actions[1].tasks[0].statement, anything())
       ).thenReject(new Error("bad statement"));
 
-      let runner = new Runner(instance(mockedDbAdapter), RUN_TEST_GRAPH);
+      const mockDbAdapterInstance = instance(mockedDbAdapter);
+      mockDbAdapterInstance.withClientLock = async callback =>
+        await callback(mockDbAdapterInstance);
+
+      let runner = new Runner(mockDbAdapterInstance, RUN_TEST_GRAPH);
       runner.execute();
       await sleepUntil(() => firstQueryInProgress);
       runner.stop();
@@ -1087,13 +1110,13 @@ postOps`
         })
       );
 
-      runner = new Runner(instance(mockedDbAdapter), RUN_TEST_GRAPH, result);
+      runner = new Runner(mockDbAdapterInstance, RUN_TEST_GRAPH, result);
 
       expect(dataform.RunResult.create(cleanTiming(await runner.execute().result()))).to.deep.equal(
         EXPECTED_RUN_RESULT
       );
-      verify(mockedDbAdapter.prepareSchema("database", "schema1")).once();
-      verify(mockedDbAdapter.prepareSchema("database2", "schema2")).once();
+      verify(mockedDbAdapter.createSchema("database", "schema1")).once();
+      verify(mockedDbAdapter.createSchema("database2", "schema2")).once();
     });
 
     suite("execute with retry", () => {
@@ -1103,7 +1126,7 @@ postOps`
           ...RUN_TEST_GRAPH,
           projectConfig: { ...RUN_TEST_GRAPH.projectConfig, idempotentActionRetries: 1 }
         };
-        when(mockedDbAdapter.prepareSchema(anyString(), anyString())).thenResolve(null);
+        when(mockedDbAdapter.createSchema(anyString(), anyString())).thenResolve(null);
         when(
           mockedDbAdapter.execute(NEW_TEST_GRAPH.actions[0].tasks[0].statement, anything())
         ).thenResolve({
@@ -1127,7 +1150,11 @@ postOps`
           .thenReject(new Error("bad statement"))
           .thenResolve({ rows: [], metadata: {} });
 
-        const runner = new Runner(instance(mockedDbAdapter), NEW_TEST_GRAPH);
+        const mockDbAdapterInstance = instance(mockedDbAdapter);
+        mockDbAdapterInstance.withClientLock = async callback =>
+          await callback(mockDbAdapterInstance);
+
+        const runner = new Runner(mockDbAdapterInstance, NEW_TEST_GRAPH);
 
         expect(
           dataform.RunResult.create(cleanTiming(await runner.execute().result()))
@@ -1140,7 +1167,7 @@ postOps`
           ...RUN_TEST_GRAPH,
           projectConfig: { ...RUN_TEST_GRAPH.projectConfig, idempotentActionRetries: 2 }
         };
-        when(mockedDbAdapter.prepareSchema(anyString(), anyString())).thenResolve(null);
+        when(mockedDbAdapter.createSchema(anyString(), anyString())).thenResolve(null);
         when(
           mockedDbAdapter.execute(NEW_TEST_GRAPH.actions[0].tasks[0].statement, anything())
         ).thenResolve({
@@ -1164,7 +1191,11 @@ postOps`
           .thenReject(new Error("bad statement"))
           .thenResolve({ rows: [], metadata: {} });
 
-        const runner = new Runner(instance(mockedDbAdapter), NEW_TEST_GRAPH);
+        const mockDbAdapterInstance = instance(mockedDbAdapter);
+        mockDbAdapterInstance.withClientLock = async callback =>
+          await callback(mockDbAdapterInstance);
+
+        const runner = new Runner(mockDbAdapterInstance, NEW_TEST_GRAPH);
 
         expect(
           dataform.RunResult.create(cleanTiming(await runner.execute().result()))
@@ -1196,7 +1227,7 @@ postOps`
         };
         NEW_TEST_GRAPH_WITH_OPERATION.actions[1].tasks[0].type = "operation";
 
-        when(mockedDbAdapter.prepareSchema(anyString(), anyString())).thenResolve(null);
+        when(mockedDbAdapter.createSchema(anyString(), anyString())).thenResolve(null);
         when(
           mockedDbAdapter.execute(RUN_TEST_GRAPH.actions[0].tasks[0].statement, anything())
         ).thenResolve({
@@ -1225,7 +1256,11 @@ postOps`
           .thenReject(new Error("bad statement"))
           .thenResolve({ rows: [], metadata: {} });
 
-        const runner = new Runner(instance(mockedDbAdapter), NEW_TEST_GRAPH_WITH_OPERATION);
+        const mockDbAdapterInstance = instance(mockedDbAdapter);
+        mockDbAdapterInstance.withClientLock = async callback =>
+          await callback(mockDbAdapterInstance);
+
+        const runner = new Runner(mockDbAdapterInstance, NEW_TEST_GRAPH_WITH_OPERATION);
 
         expect(
           dataform.RunResult.create(cleanTiming(await runner.execute().result()))
@@ -1272,9 +1307,9 @@ postOps`
               reject(new Error("Run cancelled"));
             });
           }),
-        prepareSchema: (_, __) => {
-          return Promise.resolve();
-        },
+        withClientLock: callback => callback(mockDbAdapter),
+        schemas: _ => Promise.resolve([]),
+        createSchema: (_, __) => Promise.resolve(),
         close: () => undefined,
         table: _ => undefined
       } as IDbAdapter;
@@ -1293,124 +1328,6 @@ postOps`
         dataform.TaskResult.ExecutionStatus.CANCELLED
       );
       expect(result.actions[0].tasks[0].errorMessage).to.match(/cancelled/);
-    });
-  });
-
-  suite("formatter", () => {
-    test("correctly formats simple.sqlx", async () => {
-      expect(await format.formatFile(path.resolve("examples/formatter/definitions/simple.sqlx")))
-        .eql(`config {
-  type: "view",
-  tags: ["tag1", "tag2"]
-}
-
-js {
-  const foo =
-    jsFunction("table");
-}
-
-select
-  1
-from
-  \${
-    ref({
-      schema: "df_integration_test",
-      name: "sample_data"
-    })
-  }
-`);
-    });
-
-    test("correctly formats multiple_queries.sqlx", async () => {
-      expect(
-        await format.formatFile(
-          path.resolve("examples/formatter/definitions/multiple_queries.sqlx")
-        )
-      ).eql(`js {
-  var tempTable = "yay"
-  const colname = "column";
-
-  let finalTableName = 'dkaodihwada';
-}
-
-drop something
-
----
-
-alter table
-  \${tempTable} rename to \${finalTableName}
-
----
-
-SELECT
-  SUM(IF (session_start_event, 1, 0)) AS session_index
-`);
-    });
-
-    test("correctly formats bigquery_regexps.sqlx", async () => {
-      expect(
-        await format.formatFile(
-          path.resolve("examples/formatter/definitions/bigquery_regexps.sqlx")
-        )
-      ).eql(`config {
-  type: "operation",
-  tags: ["tag1", "tag2"]
-}
-
-select
-  CAST(
-    REGEXP_EXTRACT("", r'^/([0-9]+)\\'\\"/.*') AS INT64
-  ) AS id,
-  CAST(
-    REGEXP_EXTRACT("", r"^/([0-9]+)\\"\\'/.*") AS INT64
-  ) AS id2,
-  IFNULL (
-    regexp_extract('', r'\\a?query=([^&]+)&*'),
-    regexp_extract('', r'\\a?q=([^&]+)&*')
-  ) AS id3,
-  regexp_extract('bar', r'bar') as ID4
-from
-  \${ref("dab")}
-where
-  sample = 100
-`);
-    });
-
-    test("correctly formats comments.sqlx", async () => {
-      expect(await format.formatFile(path.resolve("examples/formatter/definitions/comments.sqlx")))
-        .eql(`config {
-  type: "test",
-}
-
-SELECT
-  MAX(
-    (
-      SELECT
-        SUM(IF(track.event = "event_viewed_project_with_connection", 1, 0))
-      FROM
-        UNNEST(records)
-    )
-  ) > 0 as created_project,
-  /* multi line
-  comment      */
-  2 as foo
-
-input "something" {
-  select
-    1 as test
-    /* something */
-    /* something
-    else      */
-    -- and another thing
-}
-`);
-    });
-    test("Backslashes within regex don't cause 'r' prefix to separate.", async () => {
-      expect(await format.formatFile(path.resolve("examples/formatter/definitions/regex.sqlx")))
-        .equal(`select
-  regexp_extract("", r'abc\\de\\'fg select * from self()'),
-  'bar'
-`);
     });
   });
 });

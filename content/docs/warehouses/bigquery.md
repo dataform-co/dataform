@@ -66,6 +66,25 @@ In order to be able to query Google Sheets tables via BigQuery, you'll need to s
 - Find the email address of the service account through which you connected to Dataform. You can find this on the [Google Cloud IAM service accounts console page](https://console.cloud.google.com/iam-admin/serviceaccounts). If you're developing your Dataform project locally (as opposed to using Dataform Web), you can find the service accounts email in the `.df-credentials.json` file.
 - Share the Google sheet with the email address of the service account as you would a colleague, through the sheets sharing settings and make sure it has access.
 
+### Using BigQuery labels
+
+[BigQuery labels](https://cloud.google.com/bigquery/docs/labels-intro) are key-value pairs that help you organize your Google Cloud BigQuery resources. To use them in Dataform, add them to the config block:
+
+```sql
+config {
+  type: "table",
+  bigquery: {
+    labels: {
+      label1: "val1",
+      /* If the label name contains special characters, e.g. hyphens, then quote its name. */
+      "label-2": "val2"
+    }
+  }
+}
+
+select "test" as column1
+```
+
 ### Using different project_ids within the same project
 
 You can both read from and publish to two separate GCP project_ids within a single Dataform project. For example, you may have a project_id called `raw` that contains raw data loaded in your warehouse and a project_id called `analytics` in which you create data tables you use for analytics and reporting.
@@ -93,6 +112,63 @@ config {
 #### Using separate project-ids for development and production
 
 You can configure separate project-ids for development and production in your `environment.json` file. The process is described on [this page](/dataform-web/scheduling/environments#example-use-separate-databases-for-development-and-production-data).
+
+### Optimizing partitioned incremental tables for BigQuery
+
+When creating incremental tables from partitioned tables in BigQuery, some extra care needs to be taken to avoid full table scans, as BigQuery can't optimize `where` statements that are computed from inline select statements. To work around this, values used in the where clause should be moved to a `pre_operations` block and saved into a variable using [BigQuery scripting](https://cloud.google.com/bigquery/docs/reference/standard-sql/scripting).
+
+Here's a simple incremental example for BigQuery that follows this pattern, where the source table `raw_events` is already partitioned by `event_timestamp`.
+
+```sql
+config {
+  type: "incremental",
+}
+
+pre_operations {
+  declare event_timestamp_checkpoint default (
+    ${when(incremental(),
+    `select max(event_timestamp) from ${self()}`,
+    `select timestamp("2000-01-01")`)}
+  );
+}
+
+select
+  *
+from
+  ${ref("raw_events")}
+where event_timestamp > event_timestamp_checkpoint
+```
+
+This will avoid a full table scan on the `raw_events` table when inserting new rows, only looking at the most recent partitions it needs to.
+
+## Managing BigQuery policy tags
+
+<callout intent="warning">
+  Support for managing policy tags was introduced from Dataform version <code>1.8.6</code>.
+</callout>
+
+If you use [policy tags](https://cloud.google.com/bigquery/docs/column-level-security-intro) for managing column-level security in BigQuery, then you can set policy tags on columns in tables via the Dataform config block. Note that any policy tags created directly in BigQuery will get overwritten when Dataform updates the table, so make sure that you configure all policy tags within Dataform.
+
+<callout intent="info">
+  In order to set policy tags, the service account or user associated with your project must be given the <code>Policy Tag Admin</code> permission.
+</callout>
+
+Here's an example of setting a policy tag on a column. The full tag identifier must be used as in the example below. This can be easily copied to your clipboard from the [taxonomies and tags](https://console.cloud.google.com/datacatalog/taxonomies) page inside the Google Catalog.
+
+```sql
+// my_table.sqlx
+config {
+  type: "table",
+  columns: {
+    column1: {
+      description: "Some description",
+      bigqueryPolicyTags: ["projects/dataform-integration-tests/locations/us/taxonomies/800183280162998443/policyTags/494923997126550963"]
+    }
+  }
+}
+
+select "test" as column1
+```
 
 ## Dataform web features for BigQuery
 

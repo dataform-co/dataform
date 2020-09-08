@@ -3902,19 +3902,7 @@ span.bp3-popover-target {
 }
 
 .bp3-tree-node.bp3-tree-node-selected > .bp3-tree-node-content {
-  background-color: var(--primary);
-}
-.bp3-tree-node.bp3-tree-node-selected > .bp3-tree-node-content,
-.bp3-tree-node.bp3-tree-node-selected > .bp3-tree-node-content .bp3-icon,
-.bp3-tree-node.bp3-tree-node-selected > .bp3-tree-node-content .bp3-icon-standard,
-.bp3-tree-node.bp3-tree-node-selected > .bp3-tree-node-content .bp3-icon-large {
-  color: var(--white);
-}
-.bp3-tree-node.bp3-tree-node-selected > .bp3-tree-node-content .bp3-tree-node-caret::before {
-  color: var(--tint);
-}
-.bp3-tree-node.bp3-tree-node-selected > .bp3-tree-node-content .bp3-tree-node-caret:hover::before {
-  color: var(--textInvert);
+  background-color: var(--noneActive);
 }
 
 /*# sourceMappingURL=blueprint.css.map */

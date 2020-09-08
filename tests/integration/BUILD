@@ -4,7 +4,11 @@ load("//testing:index.bzl", "ts_test_suite")
 
 ts_test_suite(
     name = "tests",
-    srcs = glob(["*.ts"]),
+    srcs = glob(
+        ["*.ts"],
+        # SQL Data warehouse integration tests are currently disabled while we sort out a new testing server.
+        exclude = ["sqldatawarehouse.spec.ts"],
+    ),
     data = [
         "//test_credentials:bigquery.json",
         "//test_credentials:redshift.json",
@@ -12,6 +16,8 @@ ts_test_suite(
         "//test_credentials:sqldatawarehouse.json",
         "//tests/integration/bigquery_project:files",
         "//tests/integration/bigquery_project:node_modules",
+        "//tests/integration/postgres_project:files",
+        "//tests/integration/postgres_project:node_modules",
         "//tests/integration/redshift_project:files",
         "//tests/integration/redshift_project:node_modules",
         "//tests/integration/snowflake_project:files",
@@ -26,6 +32,7 @@ ts_test_suite(
         "//protos:ts",
         "//testing",
         "//tests/utils",
+        "//tools/postgres",
         "@npm//@types/chai",
         "@npm//@types/long",
         "@npm//@types/node",

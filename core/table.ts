@@ -141,10 +141,17 @@ export interface IBigQueryOptions {
    * For more information, see our [incremental dataset docs](https://docs.dataform.co/guides/incremental-datasets).
    */
   updatePartitionFilter?: string;
+
+  /**
+   * Key-value pairs for [BigQuery labels](https://cloud.google.com/bigquery/docs/labels-intro).
+   *
+   * If the label name contains special characters, e.g. hyphens, then quote its name, e.g. labels: { "label-name": "value" }.
+   */
+  labels?: { [name: string]: string };
 }
 
 const IBigQueryOptionsProperties = () =>
-  strictKeysOf<IBigQueryOptions>()(["partitionBy", "clusterBy", "updatePartitionFilter"]);
+  strictKeysOf<IBigQueryOptions>()(["partitionBy", "clusterBy", "updatePartitionFilter", "labels"]);
 
 /**
  * Options for creating assertions as part of a dataset definition.
@@ -299,8 +306,6 @@ export class Table {
   private contextableWhere: Contextable<ITableContext, string>;
   private contextablePreOps: Array<Contextable<ITableContext, string | string[]>> = [];
   private contextablePostOps: Array<Contextable<ITableContext, string | string[]>> = [];
-  private uniqueKeyAssertion?: Assertion;
-  private mergedRowConditionsAssertion?: Assertion;
 
   public config(config: ITableConfig) {
     checkExcessProperties(
@@ -427,6 +432,12 @@ export class Table {
       "bigquery config"
     );
     this.proto.bigquery = dataform.BigQueryOptions.create(bigquery);
+    if (!!bigquery.labels) {
+      if (!this.proto.actionDescriptor) {
+        this.proto.actionDescriptor = {};
+      }
+      this.proto.actionDescriptor.bigqueryLabels = bigquery.labels;
+    }
     return this;
   }
 
@@ -450,12 +461,6 @@ export class Table {
     newTags.forEach(t => {
       this.proto.tags.push(t);
     });
-    if (!!this.uniqueKeyAssertion) {
-      this.uniqueKeyAssertion.tags(value);
-    }
-    if (!!this.mergedRowConditionsAssertion) {
-      this.mergedRowConditionsAssertion.tags(value);
-    }
     return this;
   }
 
@@ -510,11 +515,9 @@ export class Table {
     if (!!assertions.uniqueKey) {
       const indexCols =
         typeof assertions.uniqueKey === "string" ? [assertions.uniqueKey] : assertions.uniqueKey;
-      this.uniqueKeyAssertion = this.session
-        .assert(`${this.proto.target.name}_assertions_uniqueKey`, ctx =>
-          this.session.adapter().indexAssertion(ctx.ref(this.proto.target), indexCols)
-        )
-        .tags(this.proto.tags);
+      this.session.assert(`${this.proto.target.name}_assertions_uniqueKey`, ctx =>
+        this.session.adapter().indexAssertion(ctx.ref(this.proto.target), indexCols)
+      ).proto.parentAction = this.proto.target;
     }
     const mergedRowConditions = assertions.rowConditions || [];
     if (!!assertions.nonNull) {
@@ -523,13 +526,11 @@ export class Table {
       nonNullCols.forEach(nonNullCol => mergedRowConditions.push(`${nonNullCol} IS NOT NULL`));
     }
     if (!!mergedRowConditions && mergedRowConditions.length > 0) {
-      this.mergedRowConditionsAssertion = this.session
-        .assert(`${this.proto.target.name}_assertions_rowConditions`, ctx =>
-          this.session
-            .adapter()
-            .rowConditionsAssertion(ctx.ref(this.proto.target), mergedRowConditions)
-        )
-        .tags(this.proto.tags);
+      this.session.assert(`${this.proto.target.name}_assertions_rowConditions`, ctx =>
+        this.session
+          .adapter()
+          .rowConditionsAssertion(ctx.ref(this.proto.target), mergedRowConditions)
+      ).proto.parentAction = this.proto.target;
     }
     return this;
   }

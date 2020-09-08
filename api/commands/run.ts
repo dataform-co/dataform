@@ -5,7 +5,11 @@ import * as dbadapters from "df/api/dbadapters";
 import { retry } from "df/api/utils/retry";
 import { hashExecutionAction } from "df/api/utils/run_cache";
 import { timingSafeEqual } from "df/common/strings";
-import { JSONObjectStringifier, StringifiedMap } from "df/common/strings/stringifier";
+import {
+  JSONObjectStringifier,
+  StringifiedMap,
+  StringifiedSet
+} from "df/common/strings/stringifier";
 import { dataform } from "df/protos/ts";
 
 const CANCEL_EVENT = "jobCancel";
@@ -36,6 +40,8 @@ export class Runner {
     dataform.ITarget,
     dataform.IPersistedTableMetadata
   >;
+  private readonly nonTableDeclarationTargets: StringifiedSet<dataform.ITarget>;
+
   private readonly runResult: dataform.IRunResult;
   private readonly changeListeners: Array<(graph: dataform.IRunResult) => void> = [];
   private readonly eEmitter: EventEmitter;
@@ -47,13 +53,16 @@ export class Runner {
   private timedOut = false;
   private executionTask: Promise<dataform.IRunResult>;
 
+  private metadataReadPromises: Array<Promise<void>> = [];
+
   constructor(
     private readonly dbadapter: dbadapters.IDbAdapter,
     private readonly graph: dataform.IExecutionGraph,
     partiallyExecutedRunResult?: dataform.IRunResult
   ) {
-    this.runResult = partiallyExecutedRunResult || {
-      actions: []
+    this.runResult = {
+      actions: [],
+      ...partiallyExecutedRunResult
     };
     this.warehouseStateBeforeRunByTarget = new StringifiedMap(
       JSONObjectStringifier.create(),
@@ -70,9 +79,17 @@ export class Runner {
         persistedTableMetadata
       ])
     );
+    this.nonTableDeclarationTargets = new StringifiedSet<dataform.ITarget>(
+      JSONObjectStringifier.create(),
+      graph.declarationTargets.filter(
+        declarationTarget =>
+          this.warehouseStateBeforeRunByTarget.get(declarationTarget)?.type !==
+          dataform.TableMetadata.Type.TABLE
+      )
+    );
 
     const completedActionNames = new Set(
-      partiallyExecutedRunResult?.actions
+      this.runResult.actions
         .filter(action => action.status !== dataform.ActionResult.ExecutionStatus.RUNNING)
         .map(action => action.name)
     );
@@ -93,10 +110,14 @@ export class Runner {
     }
     this.executionTask = this.executeGraph();
     if (!!this.graph.runConfig && !!this.graph.runConfig.timeoutMillis) {
+      const now = Date.now();
+      const runStartMillis = this.runResult.timing?.startTimeMillis?.toNumber?.() || now;
+      const elapsedTimeMillis = now - runStartMillis;
+      const timeoutMillis = this.graph.runConfig.timeoutMillis - elapsedTimeMillis;
       this.timeout = setTimeout(() => {
         this.timedOut = true;
         this.cancel();
-      }, this.graph.runConfig.timeoutMillis);
+      }, timeoutMillis);
     }
     return this;
   }
@@ -146,6 +167,7 @@ export class Runner {
     this.runResult.timing = timer.end();
 
     if (this.graph.runConfig && this.graph.runConfig.useRunCache) {
+      await Promise.all(this.metadataReadPromises);
       await this.dbadapter.persistStateMetadata(
         new StringifiedMap<
           dataform.ITarget,
@@ -213,31 +235,34 @@ export class Runner {
       .forEach(({ target }) => {
         // This field may not be present for older versions of dataform.
         const trueDatabase = target.database || this.graph.projectConfig.defaultDatabase;
-        if (!databaseSchemas.has(target.database)) {
+        if (!databaseSchemas.has(trueDatabase)) {
           databaseSchemas.set(trueDatabase, new Set<string>());
         }
         databaseSchemas.get(trueDatabase).add(target.schema);
       });
 
-    if (!databaseSchemas.has(this.graph.projectConfig.defaultDatabase)) {
-      databaseSchemas.set(this.graph.projectConfig.defaultDatabase, new Set<string>());
-    }
-
     if (this.graph.projectConfig.useRunCache) {
+      if (!databaseSchemas.has(this.graph.projectConfig.defaultDatabase)) {
+        databaseSchemas.set(this.graph.projectConfig.defaultDatabase, new Set<string>());
+      }
       databaseSchemas
         .get(this.graph.projectConfig.defaultDatabase)
         .add(dbadapters.CACHED_STATE_TABLE_TARGET.schema);
     }
 
-    // Wait for all schemas to be created.
+    // Create all nonexistent schemas.
     await Promise.all(
-      Array.from(databaseSchemas).map(([database, schemas]) =>
-        Promise.all(
-          Array.from(schemas).map(schema => this.dbadapter.prepareSchema(database, schema))
-        )
-      )
+      Array.from(databaseSchemas.entries()).map(async ([database, schemas]) => {
+        const existingSchemas = new Set(await this.dbadapter.schemas(database));
+        await Promise.all(
+          Array.from(schemas)
+            .filter(schema => !existingSchemas.has(schema))
+            .map(schema => this.dbadapter.createSchema(database, schema))
+        );
+      })
     );
   }
+
   private async executeAllActionsReadyForExecution() {
     if (this.stopped) {
       return;
@@ -350,26 +375,32 @@ export class Runner {
       await this.notifyListeners();
     }
 
-    // Start running tasks from the last executed task (if any), onwards.
-    for (const task of action.tasks.slice(actionResult.tasks.length)) {
-      if (this.stopped) {
-        return;
-      }
-      if (
-        actionResult.status === dataform.ActionResult.ExecutionStatus.RUNNING &&
-        !this.cancelled
-      ) {
-        const taskStatus = await this.executeTask(task, actionResult);
-        if (taskStatus === dataform.TaskResult.ExecutionStatus.FAILED) {
-          actionResult.status = dataform.ActionResult.ExecutionStatus.FAILED;
-        } else if (taskStatus === dataform.TaskResult.ExecutionStatus.CANCELLED) {
-          actionResult.status = dataform.ActionResult.ExecutionStatus.CANCELLED;
+    await this.dbadapter.withClientLock(async client => {
+      // Start running tasks from the last executed task (if any), onwards.
+      for (const task of action.tasks.slice(actionResult.tasks.length)) {
+        if (this.stopped) {
+          return;
         }
-      } else {
-        actionResult.tasks.push({
-          status: dataform.TaskResult.ExecutionStatus.SKIPPED
-        });
+        if (
+          actionResult.status === dataform.ActionResult.ExecutionStatus.RUNNING &&
+          !this.cancelled
+        ) {
+          const taskStatus = await this.executeTask(client, task, actionResult);
+          if (taskStatus === dataform.TaskResult.ExecutionStatus.FAILED) {
+            actionResult.status = dataform.ActionResult.ExecutionStatus.FAILED;
+          } else if (taskStatus === dataform.TaskResult.ExecutionStatus.CANCELLED) {
+            actionResult.status = dataform.ActionResult.ExecutionStatus.CANCELLED;
+          }
+        } else {
+          actionResult.tasks.push({
+            status: dataform.TaskResult.ExecutionStatus.SKIPPED
+          });
+        }
       }
+    });
+
+    if (this.stopped) {
+      return;
     }
 
     if (actionResult.status === dataform.ActionResult.ExecutionStatus.RUNNING) {
@@ -379,16 +410,29 @@ export class Runner {
     if (
       action.actionDescriptor &&
       actionResult.status === dataform.ActionResult.ExecutionStatus.SUCCESSFUL &&
-      !(this.graph.runConfig && this.graph.runConfig.disableSetMetadata)
+      !(this.graph.runConfig && this.graph.runConfig.disableSetMetadata) &&
+      action.type === "table" &&
+      action.tableType !== "inline"
     ) {
       await this.dbadapter.setMetadata(action);
     }
 
-    const newMetadata = await this.dbadapter.table(action.target);
-    if (newMetadata) {
-      this.warehouseStateAfterRunByTarget.set(action.target, newMetadata);
-    } else {
-      this.warehouseStateAfterRunByTarget.delete(action.target);
+    if (this.graph.projectConfig.useRunCache) {
+      this.metadataReadPromises.push(
+        (async () => {
+          try {
+            const newMetadata = await this.dbadapter.table(action.target);
+            if (newMetadata) {
+              this.warehouseStateAfterRunByTarget.set(action.target, newMetadata);
+            } else {
+              this.warehouseStateAfterRunByTarget.delete(action.target);
+            }
+          } catch (e) {
+            // If something went wrong trying to get new table metadata, delete it.
+            this.warehouseStateAfterRunByTarget.delete(action.target);
+          }
+        })()
+      );
     }
 
     actionResult.timing = timer.end();
@@ -396,6 +440,7 @@ export class Runner {
   }
 
   private async executeTask(
+    client: dbadapters.IDbClient,
     task: dataform.IExecutionTask,
     parentAction: dataform.IActionResult
   ): Promise<dataform.TaskResult.ExecutionStatus> {
@@ -411,9 +456,9 @@ export class Runner {
       // Retry this function a given number of times, configurable by user
       const { rows, metadata } = await retry(
         () =>
-          this.dbadapter.execute(task.statement, {
+          client.execute(task.statement, {
             onCancel: handleCancel => this.eEmitter.on(CANCEL_EVENT, handleCancel),
-            maxResults: 1
+            rowLimit: 1
           }),
         task.type === "operation" ? 0 : this.graph.projectConfig.idempotentActionRetries || 0
       );
@@ -480,6 +525,12 @@ export class Runner {
       ])
     );
     for (const transitiveInput of executionAction.transitiveInputs) {
+      // No transitive input can be a non-table declaration (because we don't know anything about the
+      // data upstream of that non-table).
+      if (this.nonTableDeclarationTargets.has(transitiveInput)) {
+        return false;
+      }
+
       // All transitive inputs' last change timestamps must match the corresponding timestamps stored
       // in persisted state.
       if (!persistedTransitiveInputUpdateTimestamps.has(transitiveInput)) {

@@ -9,8 +9,8 @@ priority: 0
 Snowflake connections require the following elements:
 
 - Account name: the first part of your Snowflake url, including region: `account-name.region`.snowflakecomputing.com
-- Username and password used for your Snowflake console. You may prefer to create a separate username and password for Dataform to use - please contact our team if you need help.
-- Warehouse name: Click "Warehouses" from within your Snowflake console to view a list of warehouses. Any warehouse in your account will work with any database.
+- Username and password used for your Snowflake console. You may prefer to create a separate username and password for Dataform to use - you can read more about creating users [here](https://docs.snowflake.com/en/user-guide/admin-user-management.html#creating-users).
+- Warehouse name: Click "Warehouses" from within your Snowflake console to view a list of warehouses. This warehouse will be used when Dataform creates runs in Snowflake.
 - Database: Click "Databases" from within your Snowflake console to view a list of databases.
 
 <div className="bp3-callout bp3-icon-info-sign bp3-intent-warning" markdown="1">
@@ -27,7 +27,7 @@ You may also need to whitelist Dataform's IP addresses to let Dataform access yo
 
 ### Querying different databases
 
-You can both read from and publish to two separate snowflake databases within a single Dataform project. For example, you may have a database called `RAW_SOURCE` that contains raw data loaded in your warehouse and a database called `ANALYTICS` in which you create data tables you use for analytics and reporting.
+You can both read from and publish to two separate snowflake databases within a single Dataform project. For example, you may have a database called `RAW_SOURCE` that contains raw data loaded into Snowflake and a database called `ANALYTICS` in which you create data tables you use for analytics and reporting.
 
 You can define a default database in your `dataform.json` file.
 

@@ -45,7 +45,12 @@ export class ColumnDescriptors {
             displayName: description.displayName,
             dimensionType: ColumnDescriptors.mapDimensionType(description.dimension),
             aggregation: ColumnDescriptors.mapAggregation(description.aggregator),
-            expression: description.expression
+            expression: description.expression,
+            tags: typeof description.tags === "string" ? [description.tags] : description.tags,
+            bigqueryPolicyTags:
+              typeof description.bigqueryPolicyTags === "string"
+                ? [description.bigqueryPolicyTags]
+                : description.bigqueryPolicyTags
           })
         ]
       : [];

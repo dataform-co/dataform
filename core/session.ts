@@ -3,16 +3,17 @@ import { default as TarjanGraphConstructor, Graph as TarjanGraph } from "tarjan-
 
 import { JSONObjectStringifier, StringifiedMap } from "df/common/strings/stringifier";
 import * as adapters from "df/core/adapters";
-import { AContextable, Assertion, IAssertionConfig } from "df/core/assertion";
+import { AContextable, Assertion, AssertionContext, IAssertionConfig } from "df/core/assertion";
 import { Contextable, ICommonContext, Resolvable } from "df/core/common";
 import { Declaration, IDeclarationConfig } from "df/core/declaration";
-import { IOperationConfig, Operation } from "df/core/operation";
+import { IOperationConfig, Operation, OperationContext } from "df/core/operation";
 import {
   DistStyleType,
   ITableConfig,
   ITableContext,
   SortStyleType,
   Table,
+  TableContext,
   TableType
 } from "df/core/table";
 import * as test from "df/core/test";
@@ -38,6 +39,7 @@ export interface IActionProto {
   hermeticity?: dataform.ActionHermeticity;
   target?: dataform.ITarget;
   canonicalTarget?: dataform.ITarget;
+  parentAction?: dataform.ITarget;
 }
 
 type SqlxConfig = (
@@ -92,10 +94,18 @@ export class Session {
   public sqlxAction(actionOptions: {
     sqlxConfig: SqlxConfig;
     sqlStatementCount: number;
-    hasIncremental: boolean;
-    hasPreOperations: boolean;
-    hasPostOperations: boolean;
-    hasInputs: boolean;
+    sqlContextable: (
+      ctx: TableContext | AssertionContext | OperationContext | ICommonContext
+    ) => string[];
+    incrementalWhereContextable: (ctx: ITableContext) => string;
+    preOperationsContextable: (ctx: ITableContext) => string[];
+    postOperationsContextable: (ctx: ITableContext) => string[];
+    inputContextables: [
+      {
+        refName: string[];
+        contextable: (ctx: ICommonContext) => string;
+      }
+    ];
   }) {
     const { sqlxConfig } = actionOptions;
     if (actionOptions.sqlStatementCount > 1 && sqlxConfig.type !== "operations") {
@@ -108,7 +118,7 @@ export class Session {
         "Actions may only specify 'protected: true' if they are of type 'incremental'."
       );
     }
-    if (actionOptions.hasIncremental && sqlxConfig.type !== "incremental") {
+    if (actionOptions.incrementalWhereContextable && sqlxConfig.type !== "incremental") {
       this.compileError(
         "Actions may only include incremental_where if they are of type 'incremental'."
       );
@@ -116,13 +126,13 @@ export class Session {
     if (!sqlxConfig.hasOwnProperty("schema") && sqlxConfig.type === "declaration") {
       this.compileError("Actions of type 'declaration' must specify a value for 'schema'.");
     }
-    if (actionOptions.hasInputs && sqlxConfig.type !== "test") {
+    if (actionOptions.inputContextables.length > 0 && sqlxConfig.type !== "test") {
       this.compileError("Actions may only include input blocks if they are of type 'test'.");
     }
-    if (actionOptions.hasPreOperations && !definesDataset(sqlxConfig.type)) {
+    if (actionOptions.preOperationsContextable && !definesDataset(sqlxConfig.type)) {
       this.compileError("Actions may only include pre_operations if they create a dataset.");
     }
-    if (actionOptions.hasPostOperations && !definesDataset(sqlxConfig.type)) {
+    if (actionOptions.postOperationsContextable && !definesDataset(sqlxConfig.type)) {
       this.compileError("Actions may only include post_operations if they create a dataset.");
     }
     if (
@@ -134,30 +144,52 @@ export class Session {
       );
     }
 
-    const action = (() => {
-      switch (sqlxConfig.type) {
-        case "view":
-        case "table":
-        case "inline":
-        case "incremental":
-          return this.publish(sqlxConfig.name).config(sqlxConfig);
-        case "assertion":
-          return this.assert(sqlxConfig.name).config(sqlxConfig);
-        case "operations":
-          return this.operate(sqlxConfig.name).config(sqlxConfig);
-        case "declaration":
-          return this.declare({
-            database: sqlxConfig.database,
-            schema: sqlxConfig.schema,
-            name: sqlxConfig.name
-          }).config(sqlxConfig);
-        case "test":
-          return this.test(sqlxConfig.name).config(sqlxConfig);
-        default:
-          throw new Error(`Unrecognized action type: ${(sqlxConfig as SqlxConfig).type}`);
-      }
-    })();
-    return action;
+    switch (sqlxConfig.type) {
+      case "view":
+      case "table":
+      case "inline":
+      case "incremental":
+        const table = this.publish(sqlxConfig.name)
+          .config(sqlxConfig)
+          .query(ctx => actionOptions.sqlContextable(ctx)[0]);
+        if (actionOptions.incrementalWhereContextable) {
+          table.where(actionOptions.incrementalWhereContextable);
+        }
+        if (actionOptions.preOperationsContextable) {
+          table.preOps(actionOptions.preOperationsContextable);
+        }
+        if (actionOptions.postOperationsContextable) {
+          table.postOps(actionOptions.postOperationsContextable);
+        }
+        break;
+      case "assertion":
+        this.assert(sqlxConfig.name)
+          .config(sqlxConfig)
+          .query(ctx => actionOptions.sqlContextable(ctx)[0]);
+        break;
+      case "operations":
+        this.operate(sqlxConfig.name)
+          .config(sqlxConfig)
+          .queries(actionOptions.sqlContextable);
+        break;
+      case "declaration":
+        this.declare({
+          database: sqlxConfig.database,
+          schema: sqlxConfig.schema,
+          name: sqlxConfig.name
+        }).config(sqlxConfig);
+        break;
+      case "test":
+        const testCase = this.test(sqlxConfig.name)
+          .config(sqlxConfig)
+          .expect(ctx => actionOptions.sqlContextable(ctx)[0]);
+        actionOptions.inputContextables.forEach(({ refName, contextable }) => {
+          testCase.input(refName, contextable);
+        });
+        break;
+      default:
+        throw new Error(`Unrecognized action type: ${(sqlxConfig as SqlxConfig).type}`);
+    }
   }
 
   public resolve(ref: Resolvable): string {
@@ -184,8 +216,12 @@ export class Session {
       }
       return this.adapter().resolveTarget({
         ...resolved.proto.target,
-        schema: `${resolved.proto.target.schema}${this.getSuffixWithUnderscore()}`,
-        name: `${this.getTablePrefixWithUnderscore()}${resolved.proto.target.name}`
+        schema: this.adapter().normalizeIdentifier(
+          `${resolved.proto.target.schema}${this.getSuffixWithUnderscore()}`
+        ),
+        name: this.adapter().normalizeIdentifier(
+          `${this.getTablePrefixWithUnderscore()}${resolved.proto.target.name}`
+        )
       });
     }
     // TODO: Here we allow 'ref' to go unresolved. This is for backwards compatibility with projects
@@ -198,8 +234,10 @@ export class Session {
         utils.target(
           this.adapter(),
           this.config,
-          `${this.getTablePrefixWithUnderscore()}${ref}`,
-          `${this.config.defaultSchema}${this.getSuffixWithUnderscore()}`
+          this.adapter().normalizeIdentifier(`${this.getTablePrefixWithUnderscore()}${ref}`),
+          this.adapter().normalizeIdentifier(
+            `${this.config.defaultSchema}${this.getSuffixWithUnderscore()}`
+          )
         )
       );
     }
@@ -207,8 +245,8 @@ export class Session {
       utils.target(
         this.adapter(),
         this.config,
-        `${this.getTablePrefixWithUnderscore()}${ref.name}`,
-        `${ref.schema}${this.getSuffixWithUnderscore()}`
+        this.adapter().normalizeIdentifier(`${this.getTablePrefixWithUnderscore()}${ref.name}`),
+        this.adapter().normalizeIdentifier(`${ref.schema}${this.getSuffixWithUnderscore()}`)
       )
     );
   }
@@ -459,8 +497,12 @@ export class Session {
     actions.forEach(action => {
       newTargetByOriginalTarget.set(action.target, {
         ...action.target,
-        schema: `${action.target.schema}${this.getSuffixWithUnderscore()}`,
-        name: `${this.getTablePrefixWithUnderscore()}${action.target.name}`
+        schema: this.adapter().normalizeIdentifier(
+          `${action.target.schema}${this.getSuffixWithUnderscore()}`
+        ),
+        name: this.adapter().normalizeIdentifier(
+          `${this.getTablePrefixWithUnderscore()}${action.target.name}`
+        )
       });
       action.target = newTargetByOriginalTarget.get(action.target);
       action.name = utils.targetToName(action.target);
@@ -474,6 +516,10 @@ export class Session {
       action.dependencies = (action.dependencyTargets || []).map(dependencyTarget =>
         utils.targetToName(dependencyTarget)
       );
+
+      if (!!action.parentAction) {
+        action.parentAction = newTargetByOriginalTarget.get(action.parentAction);
+      }
     });
   }
 
@@ -604,20 +650,12 @@ export class Session {
 
       // BigQuery config
       if (!!table.bigquery) {
-        if (table.bigquery.partitionBy && table.type === "view") {
-          this.compileError(
-            `partitionBy/clusterBy are not valid for BigQuery views; they are only valid for tables`,
-            table.fileName,
-            table.name
-          );
-        }
         if (
-          !!table.bigquery.clusterBy &&
-          table.bigquery.clusterBy.length > 0 &&
-          !table.bigquery.partitionBy
+          (table.bigquery.partitionBy || table.bigquery.clusterBy?.length) &&
+          table.type === "view"
         ) {
           this.compileError(
-            `clusterBy is not valid without partitionBy`,
+            `partitionBy/clusterBy are not valid for BigQuery views; they are only valid for tables`,
             table.fileName,
             table.name
           );

@@ -91,7 +91,7 @@ export function extractJsBlocks(code: string): { sql: string; js: string } {
 }
 
 function compileSqlx(rootNode: SyntaxTreeNode, path: string) {
-  let config = "";
+  let config = "{}";
   let js = "";
   rootNode
     .children()
@@ -124,7 +124,10 @@ function compileSqlx(rootNode: SyntaxTreeNode, path: string) {
   let incremental = "";
   let preOperations = [""];
   let postOperations = [""];
-  const inputs: { [label: string]: string } = {};
+  const inputs: Array<{
+    labelParts: string[];
+    value: string;
+  }> = [];
   rootNode
     .children()
     .filter(SyntaxTreeNode.isSyntaxTreeNode)
@@ -160,112 +163,75 @@ function compileSqlx(rootNode: SyntaxTreeNode, path: string) {
         if (statements.length > 1) {
           throw new Error("'input' code blocks may only contain a single SQL statement.");
         }
-        inputs[firstChild.split('"')[1]] = statements[0];
-      }
-    });
-
-  return `
-const parsedConfig = ${config || "{}"};
-// sqlxConfig should conform to the ISqlxConfig interface.
-const sqlxConfig = {
-  name: "${utils.baseFilename(path)}",
-  type: "operations",
-  ...parsedConfig
-};
-
-const sqlStatementCount = ${sql.length};
-const hasIncremental = ${!!incremental};
-const hasPreOperations = ${preOperations.length > 1 || preOperations[0] !== ""};
-const hasPostOperations = ${postOperations.length > 1 || postOperations[0] !== ""};
-const hasInputs = ${Object.keys(inputs).length > 0};
-
-const action = session.sqlxAction({
-  sqlxConfig,
-  sqlStatementCount,
-  hasIncremental,
-  hasPreOperations,
-  hasPostOperations,
-  hasInputs
-});
-
-switch (sqlxConfig.type) {
-  case "view":
-  case "table":
-  case "incremental":
-  case "inline": {
-    action.query(ctx => {
-      ${["self", "ref", "resolve", "name", "when", "incremental"]
-        .map(name => `const ${name} = ctx.${name}.bind(ctx);`)
-        .join("\n")}
-      ${js}
-      if (hasIncremental) {
-        action.where(\`${incremental}\`);
-      }
-      return \`${sql[0]}\`;
-    });
-    if (hasPreOperations) {
-      action.preOps(ctx => {
-        ${["self", "ref", "resolve", "name", "when", "incremental"]
-          .map(name => `const ${name} = ctx.${name}.bind(ctx);`)
-          .join("\n")}
-        ${js}
-        return [${preOperations.map(preOpSql => `\`${preOpSql}\``)}];
-      });
-    }
-    if (hasPostOperations) {
-      action.postOps(ctx => {
-        ${["self", "ref", "resolve", "name", "when", "incremental"]
-          .map(name => `const ${name} = ctx.${name}.bind(ctx);`)
-          .join("\n")}
-        ${js}
-        return [${postOperations.map(postOpSql => `\`${postOpSql}\``)}];
-      });
-    }
-    break;
-  }
-  case "assertion": {
-    action.query(ctx => {
-      ${["ref", "resolve"].map(name => `const ${name} = ctx.${name}.bind(ctx);`).join("\n")}
-      ${js}
-      return \`${sql[0]}\`;
-    });
-    break;
-  }
-  case "operations": {
-    action.queries(ctx => {
-      ${["self", "ref", "resolve", "name"]
-        .map(name => `const ${name} = ctx.${name}.bind(ctx);`)
-        .join("\n")}
-      ${js}
-      const operations = [${sql.map(sqlOp => `\`${sqlOp}\``)}];
-      return operations;
-    });
-    break;
-  }
-  case "declaration": {
-    break;
-  }
-  case "test": {
-    ${Object.keys(inputs).map(
-      inputLabel =>
-        `
-        action.input("${inputLabel}", ctx => {
-          ${js}
-          return \`${inputs[inputLabel]}\`;
+        const labelParts = firstChild
+          .slice(firstChild.indexOf('"'), firstChild.lastIndexOf('"') + 1)
+          .split(",")
+          .map(label => label.trim().slice(1, -1));
+        inputs.push({
+          labelParts,
+          value: statements[0]
         });
-        `
-    )}
-    action.expect(ctx => {
-      ${js}
-      return \`${sql}\`;
+      }
     });
-    break;
-  }
-  default: {
-    session.compileError(new Error(\`Unrecognized action type: \${sqlxConfig.type}\`));
-    break;
-  }
-}
+
+  const contextFunctions = ["self", "ref", "resolve", "name", "when", "incremental"]
+    .map(name => `const ${name} = ctx.${name} ? ctx.${name}.bind(ctx) : undefined;`)
+    .join("\n");
+
+  return `session.sqlxAction({
+  sqlxConfig: {
+    name: "${utils.baseFilename(path)}",
+    type: "operations",
+    ...${config}
+  },
+  sqlStatementCount: ${sql.length},
+  sqlContextable: (ctx) => {
+    ${contextFunctions}
+    ${js}
+    return [${sql.map(sqlOp => `\`${sqlOp}\``)}];
+  },
+  incrementalWhereContextable: ${
+    !!incremental
+      ? `(ctx) => {
+    ${contextFunctions}
+    ${js}
+    return \`${incremental}\`
+  }`
+      : "undefined"
+  },
+  preOperationsContextable: ${
+    preOperations.length > 1 || preOperations[0] !== ""
+      ? `(ctx) => {
+    ${contextFunctions}
+    ${js}
+    return [${preOperations.map(preOpSql => `\`${preOpSql}\``)}];
+  }`
+      : "undefined"
+  },
+  postOperationsContextable: ${
+    postOperations.length > 1 || postOperations[0] !== ""
+      ? `(ctx) => {
+    ${contextFunctions}
+    ${js}
+    return [${postOperations.map(postOpSql => `\`${postOpSql}\``)}];
+  }`
+      : "undefined"
+  },
+  inputContextables: [
+    ${inputs
+      .map(
+        ({ labelParts, value }) =>
+          `{
+            refName: [${labelParts.map(labelPart => `"${labelPart}"`).join(", ")}],
+            contextable: (ctx) => {
+              ${js}
+              return \`${value}\`;
+            }
+          }`
+      )
+      .join(",")}
+  ]
+});
 `;
 }
 
@@ -287,30 +253,30 @@ function getFunctionPropertyNames(prototype: any) {
 
 function createEscapedStatements(nodes: Array<string | SyntaxTreeNode>) {
   const results = [""];
-  nodes.map(escapeNode).forEach(node => {
+  nodes.forEach(node => {
     if (typeof node !== "string" && node.type === SyntaxTreeNodeType.SQL_STATEMENT_SEPARATOR) {
       results.push("");
       return;
     }
-    results[results.length - 1] += typeof node === "string" ? node : node.concatenate();
+    results[results.length - 1] += escapeNode(node);
   });
   return results;
 }
 
+const SQL_STATEMENT_ESCAPERS = new Map([
+  [
+    SyntaxTreeNodeType.SQL_COMMENT,
+    (str: string) => str.replace(/`/g, "\\`").replace(/\${/g, "\\${")
+  ],
+  [
+    SyntaxTreeNodeType.SQL_LITERAL_STRING,
+    (str: string) => str.replace(/\\/g, "\\\\").replace(/\`/g, "\\`")
+  ]
+]);
+
 function escapeNode(node: string | SyntaxTreeNode) {
   if (typeof node === "string") {
-    return node.replace(/\\/g, "\\\\").replace(/\`/g, "\\`");
+    return SQL_STATEMENT_ESCAPERS.get(SyntaxTreeNodeType.SQL_LITERAL_STRING)(node);
   }
-  switch (node.type) {
-    case SyntaxTreeNodeType.SQL_COMMENT:
-      // Any code (i.e. JavaScript placeholder strings) inside comments should not run, so escape it.
-      return node
-        .concatenate()
-        .replace(/`/g, "\\`")
-        .replace(/\${/g, "\\${");
-    case SyntaxTreeNodeType.SQL_LITERAL_STRING:
-      // Literal strings may contain escapes, which we need to double-escape.
-      return node.concatenate().replace(/\\/g, "\\\\");
-  }
-  return node;
+  return node.concatenate(SQL_STATEMENT_ESCAPERS);
 }

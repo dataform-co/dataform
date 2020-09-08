@@ -1,7 +1,7 @@
 ---
 title: Packages
 subtitle: A list of ready made functions to use in your Dataform projects.
-priority: 5
+priority: 8
 icon: code-block
 ---
 

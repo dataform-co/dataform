@@ -1,9 +1,11 @@
 import * as https from "https";
 import * as PromisePool from "promise-pool-executor";
+import { Readable } from "stream";
 
 import { Credentials } from "df/api/commands/credentials";
-import { IDbAdapter, OnCancel } from "df/api/dbadapters/index";
+import { IDbAdapter, IDbClient, OnCancel } from "df/api/dbadapters/index";
 import { parseSnowflakeEvalError } from "df/api/utils/error_parsing";
+import { LimitedResultSet } from "df/api/utils/results";
 import { ErrorWithCause } from "df/common/errors/errors";
 import { collectEvaluationQueries, QueryOrAction } from "df/core/adapters";
 import { dataform } from "df/protos/ts";
@@ -54,34 +56,36 @@ interface ISnowflakeConnection {
 
 interface ISnowflakeStatement {
   cancel: (err: any) => void;
-  streamRows: (options: { start?: number; end?: number }) => ISnowflakeResultStream;
-}
-
-interface ISnowflakeResultStream {
-  on: (event: "error" | "data" | "end", handler: (data: Error | any[]) => void) => this;
+  streamRows: (options?: { start?: number; end?: number }) => Readable;
 }
 
 export class SnowflakeDbAdapter implements IDbAdapter {
-  public static async create(credentials: Credentials, warehouseType: string) {
+  public static async create(credentials: Credentials, options?: { concurrencyLimit?: number }) {
     const connection = await connect(credentials as dataform.ISnowflake);
-    return new SnowflakeDbAdapter(connection);
+    return new SnowflakeDbAdapter(connection, options);
   }
 
   // Unclear exactly what snowflakes limit's are here, we can experiment with increasing this.
-  private pool: PromisePool.PromisePoolExecutor = new PromisePool.PromisePoolExecutor({
-    concurrencyLimit: 10,
-    frequencyWindow: 1000,
-    frequencyLimit: 10
-  });
+  private pool: PromisePool.PromisePoolExecutor;
 
-  constructor(private readonly connection: ISnowflakeConnection) {}
+  constructor(
+    private readonly connection: ISnowflakeConnection,
+    options?: { concurrencyLimit?: number }
+  ) {
+    this.pool = new PromisePool.PromisePoolExecutor({
+      concurrencyLimit: options?.concurrencyLimit || 10,
+      frequencyWindow: 1000,
+      frequencyLimit: 10
+    });
+  }
 
   public async execute(
     statement: string,
     options: {
       onCancel?: OnCancel;
-      maxResults?: number;
-    } = { maxResults: 1000 }
+      rowLimit?: number;
+      byteLimit?: number;
+    } = { rowLimit: 1000, byteLimit: 1024 * 1024 }
   ) {
     return {
       rows: await this.pool
@@ -107,16 +111,20 @@ export class SnowflakeDbAdapter implements IDbAdapter {
                       }
                     })
                   );
-                  const rows: any[] = [];
-                  const streamOptions =
-                    !!options && !!options.maxResults
-                      ? { start: 0, end: options.maxResults - 1 }
-                      : {};
-                  stmt
-                    .streamRows(streamOptions)
+                  const results = new LimitedResultSet({
+                    rowLimit: options?.rowLimit,
+                    byteLimit: options?.byteLimit
+                  });
+                  const stream = stmt.streamRows();
+                  stream
                     .on("error", e => reject(e))
-                    .on("data", row => rows.push(row))
-                    .on("end", () => resolve(rows));
+                    .on("data", row => {
+                      if (!results.push(row)) {
+                        stream.destroy();
+                      }
+                    })
+                    .on("end", () => resolve(results.rows))
+                    .on("close", () => resolve(results.rows));
                 }
               });
             })
@@ -124,6 +132,10 @@ export class SnowflakeDbAdapter implements IDbAdapter {
         .promise(),
       metadata: {}
     };
+  }
+
+  public async withClientLock<T>(callback: (client: IDbClient) => Promise<T>) {
+    return await callback(this);
   }
 
   public async evaluate(queryOrAction: QueryOrAction, projectConfig?: dataform.ProjectConfig) {
@@ -164,7 +176,7 @@ from information_schema.tables
 where LOWER(table_schema) != 'information_schema'
   and LOWER(table_schema) != 'pg_catalog'
   and LOWER(table_schema) != 'pg_internal'`,
-      { maxResults: 10000 }
+      { rowLimit: 10000 }
     );
     return rows.map(row => ({
       database: row.TABLE_CATALOG,
@@ -173,25 +185,18 @@ where LOWER(table_schema) != 'information_schema'
     }));
   }
 
-  public async schemas(database: string): Promise<string[]> {
-    const { rows } = await this.execute(
-      `select SCHEMA_NAME from ${database ? `"${database}".` : ""}information_schema.schemata`
-    );
-    return rows.map(row => row.SCHEMA_NAME);
-  }
-
   public async table(target: dataform.ITarget): Promise<dataform.ITableMetadata> {
     const [tableResults, columnResults] = await Promise.all([
       this.execute(
         `
-select table_type
+select table_type, comment
 from ${target.database ? `"${target.database}".` : ""}information_schema.tables
 where table_schema = '${target.schema}'
   and table_name = '${target.name}'`
       ),
       this.execute(
         `
-select column_name, data_type, is_nullable
+select column_name, data_type, is_nullable, comment
 from ${target.database ? `"${target.database}".` : ""}information_schema.columns
 where table_schema = '${target.schema}' 
   and table_name = '${target.name}'`
@@ -202,21 +207,25 @@ where table_schema = '${target.schema}'
       return null;
     }
 
-    return {
+    return dataform.TableMetadata.create({
       target,
       typeDeprecated: tableResults.rows[0].TABLE_TYPE === "VIEW" ? "view" : "table",
       type:
         tableResults.rows[0].TABLE_TYPE === "VIEW"
           ? dataform.TableMetadata.Type.VIEW
           : dataform.TableMetadata.Type.TABLE,
-      fields: columnResults.rows.map(row => ({
-        name: row.COLUMN_NAME,
-        primitiveDeprecated: row.DATA_TYPE,
-        primitive: convertFieldType(row.DATA_TYPE),
-        flagsDeprecated: row.IS_NULLABLE && row.IS_NULLABLE === "YES" ? ["nullable"] : [],
-        flags: row.DATA_TYPE === "ARRAY" ? [dataform.Field.Flag.REPEATED] : []
-      }))
-    };
+      fields: columnResults.rows.map(row =>
+        dataform.Field.create({
+          name: row.COLUMN_NAME,
+          primitiveDeprecated: row.DATA_TYPE,
+          primitive: convertFieldType(row.DATA_TYPE),
+          flagsDeprecated: row.IS_NULLABLE && row.IS_NULLABLE === "YES" ? ["nullable"] : [],
+          flags: row.DATA_TYPE === "ARRAY" ? [dataform.Field.Flag.REPEATED] : [],
+          description: row.COMMENT
+        })
+      ),
+      description: tableResults.rows[0].COMMENT
+    });
   }
 
   public async preview(target: dataform.ITarget, limitRows: number = 10): Promise<any[]> {
@@ -226,13 +235,17 @@ where table_schema = '${target.schema}'
     return rows;
   }
 
-  public async prepareSchema(database: string, schema: string): Promise<void> {
-    const schemas = await this.schemas(database);
-    if (!schemas.includes(schema)) {
-      await this.execute(
-        `create schema if not exists ${database ? `"${database}".` : ""}"${schema}"`
-      );
-    }
+  public async schemas(database: string): Promise<string[]> {
+    const { rows } = await this.execute(
+      `select SCHEMA_NAME from ${database ? `"${database}".` : ""}information_schema.schemata`
+    );
+    return rows.map(row => row.SCHEMA_NAME);
+  }
+
+  public async createSchema(database: string, schema: string): Promise<void> {
+    await this.execute(
+      `create schema if not exists ${database ? `"${database}".` : ""}"${schema}"`
+    );
   }
 
   public async close() {
@@ -255,8 +268,40 @@ where table_schema = '${target.schema}'
     // Unimplemented.
   }
 
-  public async setMetadata(): Promise<void> {
-    // Unimplemented.
+  public async setMetadata(action: dataform.IExecutionAction): Promise<void> {
+    const { target, actionDescriptor, tableType } = action;
+
+    const queries: Array<Promise<any>> = [];
+    if (actionDescriptor.description) {
+      queries.push(
+        this.execute(
+          `comment on ${tableType === "view" ? "view" : "table"} ${
+            target.database ? `"${target.database}".` : ""
+          }"${target.schema}"."${target.name}" is '${actionDescriptor.description.replace(
+            /'/g,
+            "\\'"
+          )}'`
+        )
+      );
+    }
+    if (tableType !== "view" && actionDescriptor.columns?.length > 0) {
+      actionDescriptor.columns
+        .filter(column => column.path.length === 1)
+        .forEach(column => {
+          queries.push(
+            this.execute(
+              `comment if exists on column ${target.database ? `"${target.database}".` : ""}"${
+                target.schema
+              }"."${target.name}"."${column.path[0]}" is '${column.description.replace(
+                /'/g,
+                "\\'"
+              )}'`
+            )
+          );
+        });
+    }
+
+    await Promise.all(queries);
   }
 }
 

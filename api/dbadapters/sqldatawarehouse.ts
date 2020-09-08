@@ -1,8 +1,9 @@
 import { ConnectionPool } from "mssql";
 
 import { Credentials } from "df/api/commands/credentials";
-import { IDbAdapter, IExecutionResult, OnCancel } from "df/api/dbadapters/index";
+import { IDbAdapter, IDbClient, IExecutionResult, OnCancel } from "df/api/dbadapters/index";
 import { parseAzureEvaluationError } from "df/api/utils/error_parsing";
+import { LimitedResultSet } from "df/api/utils/results";
 import { collectEvaluationQueries, QueryOrAction } from "df/core/adapters";
 import { dataform } from "df/protos/ts";
 
@@ -18,13 +19,13 @@ const DB_REQUEST_TIMEOUT_MILLIS = 1 * 60 * 60 * 1000; // 1 hour request timeout
 const DB_CON_LIMIT = 10; // mssql default value of 10 concurrent requests
 
 export class SQLDataWarehouseDBAdapter implements IDbAdapter {
-  public static async create(credentials: Credentials, warehouseType: string) {
-    return new SQLDataWarehouseDBAdapter(credentials);
+  public static async create(credentials: Credentials, options?: { concurrencyLimit?: number }) {
+    return new SQLDataWarehouseDBAdapter(credentials, options);
   }
 
   private pool: Promise<ConnectionPool>;
 
-  constructor(credentials: Credentials) {
+  constructor(credentials: Credentials, options?: { concurrencyLimit?: number }) {
     const sqlDataWarehouseCredentials = credentials as dataform.ISQLDataWarehouse;
     this.pool = new Promise((resolve, reject) => {
       const conn = new ConnectionPool({
@@ -37,7 +38,7 @@ export class SQLDataWarehouseDBAdapter implements IDbAdapter {
         requestTimeout: DB_REQUEST_TIMEOUT_MILLIS,
         pool: {
           min: 0,
-          max: DB_CON_LIMIT
+          max: options?.concurrencyLimit || DB_CON_LIMIT
         },
         options: {
           encrypt: true
@@ -58,8 +59,9 @@ export class SQLDataWarehouseDBAdapter implements IDbAdapter {
     statement: string,
     options: {
       onCancel?: OnCancel;
-      maxResults?: number;
-    } = { maxResults: 1000 }
+      rowLimit?: number;
+      byteLimit?: number;
+    } = { rowLimit: 1000, byteLimit: 1024 * 1024 }
   ): Promise<IExecutionResult> {
     const request = (await this.pool).request();
     options?.onCancel?.(() => request.cancel());
@@ -67,23 +69,28 @@ export class SQLDataWarehouseDBAdapter implements IDbAdapter {
     return await new Promise<IExecutionResult>((resolve, reject) => {
       request.stream = true;
 
-      const rows: any[] = [];
+      const results = new LimitedResultSet({
+        rowLimit: options?.rowLimit,
+        byteLimit: options?.byteLimit
+      });
 
       request
         .on("row", row => {
-          if (options && options.maxResults && rows.length >= options.maxResults) {
+          if (!results.push(row)) {
             request.cancel();
-            resolve({ rows, metadata: {} });
-            return;
+            resolve({ rows: results.rows, metadata: {} });
           }
-          rows.push(row);
         })
         .on("error", err => reject(err))
-        .on("done", () => resolve({ rows, metadata: {} }));
+        .on("done", () => resolve({ rows: results.rows, metadata: {} }));
 
       // tslint:disable-next-line: no-floating-promises
       request.query(statement);
     });
+  }
+
+  public async withClientLock<T>(callback: (client: IDbClient) => Promise<T>) {
+    return await callback(this);
   }
 
   public async evaluate(queryOrAction: QueryOrAction, projectConfig?: dataform.ProjectConfig) {
@@ -125,7 +132,7 @@ export class SQLDataWarehouseDBAdapter implements IDbAdapter {
       rows
     } = await this.execute(
       `select ${TABLE_SCHEMA_COL_NAME}, ${TABLE_NAME_COL_NAME} from ${INFORMATION_SCHEMA_SCHEMA_NAME}.tables`,
-      { maxResults: 10000 }
+      { rowLimit: 10000 }
     );
     return rows.map(row => ({
       schema: row[TABLE_SCHEMA_COL_NAME],
@@ -175,7 +182,14 @@ export class SQLDataWarehouseDBAdapter implements IDbAdapter {
     return rows;
   }
 
-  public async prepareSchema(database: string, schema: string): Promise<void> {
+  public async schemas(): Promise<string[]> {
+    const schemas = await this.execute(
+      `select schema_name from ${INFORMATION_SCHEMA_SCHEMA_NAME}.schemata`
+    );
+    return schemas.rows.map(row => row.schema_name);
+  }
+
+  public async createSchema(_: string, schema: string): Promise<void> {
     await this.execute(
       `if not exists ( select schema_name from ${INFORMATION_SCHEMA_SCHEMA_NAME}.schemata where schema_name = '${schema}' )
             begin

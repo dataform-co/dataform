@@ -2,7 +2,16 @@ config {
     type: "view",
     description: "An example view",
     columns: {
-        val: "val doc",
+        val: {
+            description: "val doc",
+            bigqueryPolicyTags: "projects/dataform-integration-tests/locations/us/taxonomies/800183280162998443/policyTags/494923997126550963"
+        }
+    },
+    bigquery: {
+        labels: {
+            label1: "val1",
+            "label2": "val2"
+        }
     }
 }
 select * from ${ref("sample_data")}
