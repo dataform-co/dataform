@@ -33,6 +33,7 @@ ts_test_suite(
         "//testing",
         "//tests/utils",
         "//tools/postgres",
+        "//tools/spark",
         "@npm//@types/chai",
         "@npm//@types/long",
         "@npm//@types/node",
