@@ -5,102 +5,8 @@ import { execSync } from "child_process";
 import * as protobuftsProtos from "df/protobufts/tests/test1";
 import { suite, test } from "df/testing";
 
-suite(__filename, () => {
-  suite("single-field serialization old", () => {
-    const testCases = [
-      {
-        type: "packed double [35.6, 12.8, -8.9]",
-        proto: protobuftsProtos.TestRepeatedMessage.create({
-          doubleField: [35.6, 12.8, -8.9]
-        }),
-        encoded: new Uint8Array([
-          10,
-          24,
-          205,
-          204,
-          204,
-          204,
-          204,
-          204,
-          65,
-          64,
-          154,
-          153,
-          153,
-          153,
-          153,
-          153,
-          41,
-          64,
-          205,
-          204,
-          204,
-          204,
-          204,
-          204,
-          33,
-          192
-        ])
-      },
-      {
-        type: "unpacked double [35.6, 12.8, -8.9]",
-        proto: protobuftsProtos.TestRepeatedMessage.create({
-          unpackedDoubleField: [35.6, 12.8, -8.9]
-        }),
-        encoded: new Uint8Array([
-          146,
-          1,
-          24,
-          205,
-          204,
-          204,
-          204,
-          204,
-          204,
-          65,
-          64,
-          154,
-          153,
-          153,
-          153,
-          153,
-          153,
-          41,
-          64,
-          205,
-          204,
-          204,
-          204,
-          204,
-          204,
-          33,
-          192
-        ])
-      },
-      {
-        type: "packed float [2.7, -9876.549]",
-        proto: protobuftsProtos.TestRepeatedMessage.create({
-          floatField: [2.7, -9876.549]
-        }),
-        encoded: new Uint8Array([18, 8, 205, 204, 44, 64, 50, 82, 26, 198])
-      },
-      {
-        type: "unpacked float [2.7, -9876.549]",
-        proto: protobuftsProtos.TestRepeatedMessage.create({
-          unpackedFloatField: [2.7, -9876.549]
-        }),
-        encoded: new Uint8Array([154, 1, 8, 205, 204, 44, 64, 50, 82, 26, 198])
-      }
-    ];
-
-    for (const testCase of testCases) {
-      test(testCase.type, () => {
-        expect(testCase.proto.serialize()).eql(testCase.encoded);
-      });
-    }
-  });
-
-  suite("single-field non-repeated reserialization", () => {
+suite(__filename, { parallel: true }, () => {
+  suite("single-field non-repeated reserialization", { parallel: true }, () => {
     const testCases = [
       // double_field
       protobuftsProtos.TestMessage.create({
@@ -252,7 +158,7 @@ suite(__filename, () => {
     }
   });
 
-  suite("single-field repeated reserialization", () => {
+  suite("single-field repeated reserialization", { parallel: true }, () => {
     const testCases = [
       // double_field
       protobuftsProtos.TestRepeatedMessage.create({
