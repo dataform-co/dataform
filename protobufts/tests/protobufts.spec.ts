@@ -256,7 +256,7 @@ suite(__filename, () => {
     const testCases = [
       // double_field
       protobuftsProtos.TestRepeatedMessage.create({
-        // doubleField: [4.940656458412465441765687928682213723651e-324, 35.6]
+        doubleField: [4.940656458412465441765687928682213723651e-324, 35.6]
       })
       // float_field
       // int32_field
