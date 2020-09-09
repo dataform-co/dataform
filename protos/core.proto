@@ -167,6 +167,11 @@ message SQLDataWarehouseOptions {
   string distribution = 1;
 }
 
+message PrestoOptions {
+  repeated string partition_by = 1;
+  // TODO: Add map of configurations to different presto connections.
+}
+
 message GraphErrors {
   repeated CompilationError compilation_errors = 1;
   repeated ValidationError validation_errors = 2 [deprecated = true];
@@ -285,6 +290,7 @@ message Table {
   RedshiftOptions redshift = 21;
   BigQueryOptions bigquery = 22;
   SQLDataWarehouseOptions sql_data_warehouse = 25;
+  PrestoOptions presto = 33;
 
   // Generated.
   string file_name = 18;

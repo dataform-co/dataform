@@ -5,6 +5,8 @@
 declare module "presto-client" {
   interface IPrestoClientOptions {
     host: string;
+    port: number;
+    user: string;
     ssl?: {
       ca?: string;
       cert: string;
@@ -15,10 +17,8 @@ declare module "presto-client" {
       pfx?: string;
       rejectUnauthorized?: boolean;
     };
-    port: number;
-    source: string;
-    user: string;
-    catalog: string;
+    source?: string;
+    catalog?: string;
     checkInterval?: number;
     basic_auth?: {
       user: string;

@@ -1,5 +1,6 @@
 import { ErrorWithCause } from "df/common/errors/errors";
 import { BigQueryAdapter } from "df/core/adapters/bigquery";
+import { PrestoAdapter } from "df/core/adapters/presto";
 import { RedshiftAdapter } from "df/core/adapters/redshift";
 import { SnowflakeAdapter } from "df/core/adapters/snowflake";
 import { SQLDataWarehouseAdapter } from "df/core/adapters/sqldatawarehouse";
@@ -33,6 +34,7 @@ export type AdapterConstructor<T extends IAdapter> = new (
 
 export enum WarehouseType {
   BIGQUERY = "bigquery",
+  PRESTO = "presto",
   POSTGRES = "postgres",
   REDSHIFT = "redshift",
   SNOWFLAKE = "snowflake",
@@ -73,13 +75,16 @@ const requiredSQLDataWarehouseProps: Array<keyof dataform.ISQLDataWarehouse> = [
   "password",
   "database"
 ];
+// TODO: Add SSL.
+const requiredPrestoWarehouseProps: Array<keyof dataform.IPresto> = ["host", "port", "user"];
 
 export const requiredWarehouseProps = {
   [WarehouseType.BIGQUERY]: requiredBigQueryWarehouseProps,
   [WarehouseType.POSTGRES]: requiredJdbcWarehouseProps,
   [WarehouseType.REDSHIFT]: requiredJdbcWarehouseProps,
   [WarehouseType.SNOWFLAKE]: requiredSnowflakeWarehouseProps,
-  [WarehouseType.SQLDATAWAREHOUSE]: requiredSQLDataWarehouseProps
+  [WarehouseType.SQLDATAWAREHOUSE]: requiredSQLDataWarehouseProps,
+  [WarehouseType.PRESTO]: requiredPrestoWarehouseProps
 };
 
 const registry: { [warehouseType: string]: AdapterConstructor<IAdapter> } = {};
@@ -99,6 +104,7 @@ export function create(
 }
 
 register("bigquery", BigQueryAdapter);
+register("presto", PrestoAdapter);
 // TODO: The redshift client library happens to work well for postgres, but we should probably
 // not be relying on that behaviour. At some point we should replace this with a first-class
 // PostgresAdapter.

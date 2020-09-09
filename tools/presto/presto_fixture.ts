@@ -10,16 +10,13 @@ const DOCKER_CONTAINER_NAME = "presto-df-integration-testing";
 // We remap this to something more unique.
 const PRESTO_SERVE_PORT = 8080;
 
-export const prestoClient = new presto.Client({
-  host: "127.0.0.1",
-  port: 1234,
-  source: "df-integration-tests",
-  user: "df-integration-tests",
-  // These are included in the docker image.
-  catalog: "tpch",
-  schema: "sf1"
-  // TODO: Add BIGINT json parser; see presto-client docs.
-});
+// export const prestoClient = new presto.Client({
+//   source: "df-integration-tests",
+//   // These are included in the docker image.
+//   catalog: "tpch",
+//   schema: "sf1"
+//   // TODO: Add BIGINT json parser; see presto-client docs.
+// });
 
 interface IPrestoExecutionResult {
   columns?: presto.IPrestoClientColumnMetaData[];
@@ -57,10 +54,22 @@ export class PrestoFixture {
         ].join(" ")
       );
 
+      const dbadapter = await dbadapters.create(
+        {
+          host: "127.0.0.1",
+          port: 1234,
+          user: "df-integration-tests"
+          // TODO: Should source be added here?
+        },
+        "presto",
+        { disableSslForTestsOnly: true }
+      );
+
       // Block until presto is ready to accept requests.
       await sleepUntil(async () => {
         try {
-          await prestoExecute({ query: "select 1" });
+          await dbadapter.execute("select 1");
+          // await prestoExecute({ query: "select 1" });
           return true;
         } catch (e) {
           return false;
@@ -72,48 +81,4 @@ export class PrestoFixture {
       execSync(`docker stop ${DOCKER_CONTAINER_NAME}`);
     });
   }
-}
-
-export function prestoExecute(
-  executeOptions: presto.IPrestoClientExecuteOptions
-): Promise<IPrestoExecutionResult> {
-  const result: IPrestoExecutionResult = {};
-  return new Promise((resolve, reject) => {
-    prestoClient.execute({
-      ...executeOptions,
-      cancel: () => {
-        return false;
-      },
-      state: (error: any, queryId: string, stats: presto.IPrestoClientStats) => {
-        result.error = error;
-        result.queryId = queryId;
-        result.stats = stats;
-      },
-      columns: (error: any, columns: presto.IPrestoClientColumnMetaData[]) => {
-        result.error = error;
-        result.columns = columns;
-      },
-      data: (
-        error: any,
-        data: presto.PrestoClientColumnDatum[],
-        columns: presto.IPrestoClientColumnMetaData[],
-        stats: presto.IPrestoClientStats
-      ) => {
-        result.error = error;
-        result.data = data;
-        result.columns = columns;
-        result.stats = stats;
-      },
-      success: (error: any, stats: presto.IPrestoClientStats) => {
-        if (!!error) {
-          reject(error);
-        }
-        result.stats = stats;
-        resolve(result);
-      },
-      error: (error: any) => {
-        reject(error);
-      }
-    });
-  });
 }

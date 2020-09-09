@@ -65,8 +65,13 @@ export interface IDbAdapter extends IDbClient {
   close(): Promise<void>;
 }
 
+interface ICredentialsOptions {
+  concurrencyLimit?: number;
+  disableSslForTestsOnly?: boolean;
+}
+
 export interface IDbAdapterClass<T extends IDbAdapter> {
-  create: (credentials: Credentials, options?: { concurrencyLimit?: number }) => Promise<T>;
+  create: (credentials: Credentials, options: ICredentialsOptions) => Promise<T>;
 }
 
 const registry: { [warehouseType: string]: IDbAdapterClass<IDbAdapter> } = {};
@@ -86,7 +91,7 @@ export const validWarehouses = [
 export async function create(
   credentials: Credentials,
   warehouseType: typeof validWarehouses[number],
-  options?: { concurrencyLimit?: number; disableSslForTestsOnly?: boolean }
+  options?: ICredentialsOptions
 ): Promise<IDbAdapter> {
   if (!registry[warehouseType]) {
     throw new Error(`Unsupported warehouse: ${warehouseType}`);
