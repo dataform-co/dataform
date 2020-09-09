@@ -50,7 +50,7 @@ message TestRepeatedMessage {
   repeated uint32 uint32_field = 12;
   repeated TestEnum enum_field = 13;
   repeated sfixed32 sfixed32_field = 14;
-  repeated sfixed64 sfixed6_field = 15;
+  repeated sfixed64 sfixed64_field = 15;
   repeated sint32 sint32_field = 16;
   repeated sint64 sint64_field = 17;
 

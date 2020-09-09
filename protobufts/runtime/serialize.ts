@@ -151,7 +151,7 @@ export class Serializer {
       fieldNumber,
       WireType.VARINT,
       packed,
-      writer => writer.writeVarInt(Long.ONE),
+      (writer, singleVal) => writer.writeVarInt(singleVal ? Long.ONE : Long.ZERO),
       val
     );
   }
@@ -160,7 +160,7 @@ export class Serializer {
     return this.serializeField(
       fieldNumber,
       WireType.LENGTH_DELIMITED,
-      packed,
+      false,
       (writer, singleVal) =>
         writer.writeVarInt(Long.fromNumber(singleVal.length)).writeBytes(singleVal),
       val
@@ -171,7 +171,7 @@ export class Serializer {
     return this.serializeField(
       fieldNumber,
       WireType.LENGTH_DELIMITED,
-      packed,
+      false,
       (writer, singleVal) => {
         const buffer = Buffer.from(singleVal);
         return writer.writeVarInt(Long.fromNumber(buffer.byteLength)).writeBytes(buffer);
@@ -184,7 +184,7 @@ export class Serializer {
     return this.serializeField(
       fieldNumber,
       WireType.LENGTH_DELIMITED,
-      packed,
+      false,
       (writer, singleVal) => {
         const bytes = singleVal.serialize();
         return writer.writeVarInt(Long.fromNumber(bytes.byteLength)).writeBytes(bytes);
