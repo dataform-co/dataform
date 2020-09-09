@@ -100,7 +100,7 @@ suite(__filename, () => {
     }
   });
 
-  suite("single-field serialization old", () => {
+  suite("single-field non-repeated reserialization", () => {
     const testCases = [
       // double_field
       protobuftsProtos.TestMessage.create({
@@ -225,62 +225,6 @@ suite(__filename, () => {
       }),
       protobuftsProtos.TestMessage.create({
         bytesField: new Uint8Array([0x5, 0xff])
-      }),
-
-      protobuftsProtos.TestMessage.create({
-        int32Field: -67
-      }),
-      protobuftsProtos.TestMessage.create({
-        uint32Field: 132
-      }),
-      protobuftsProtos.TestMessage.create({
-        sint32Field: -132
-      }),
-      protobuftsProtos.TestMessage.create({
-        int64Field: Long.fromNumber(-112129164178641)
-      }),
-      protobuftsProtos.TestMessage.create({
-        uint64Field: Long.fromNumber(112129164178641).toUnsigned()
-      }),
-      protobuftsProtos.TestMessage.create({
-        sint64Field: Long.fromNumber(-112129164178641)
-      }),
-      protobuftsProtos.TestMessage.create({
-        enumField: protobuftsProtos.TestEnum.VAL2
-      }),
-      protobuftsProtos.TestMessage.create({
-        boolField: true
-      }),
-      protobuftsProtos.TestMessage.create({
-        // TODO: add decimals after doing some correction upon reserialization
-        floatField: 13.0
-      }),
-      protobuftsProtos.TestMessage.create({
-        fixed32Field: 123141
-      }),
-      protobuftsProtos.TestMessage.create({
-        sfixed32Field: -123141
-      }),
-      protobuftsProtos.TestMessage.create({
-        // TODO: add decimals after doing some correction upon reserialization
-        doubleField: 4.940656458412465441765687928682213723651e-324
-      }),
-      protobuftsProtos.TestMessage.create({
-        fixed64Field: Long.fromNumber(1278319).toUnsigned()
-      }),
-      protobuftsProtos.TestMessage.create({
-        sfixed64Field: Long.fromNumber(-1278319)
-      }),
-      protobuftsProtos.TestMessage.create({
-        stringField: "hello"
-      }),
-      protobuftsProtos.TestMessage.create({
-        bytesField: Uint8Array.from([3, 5, 6, 9])
-      }),
-      protobuftsProtos.TestMessage.create({
-        messageField: protobuftsProtos.TestMessage.create({
-          stringField: "hello"
-        })
       })
     ];
 
@@ -288,6 +232,40 @@ suite(__filename, () => {
       test("reserialized", () => {
         const output = protobuftsProtos.TestMessage.deserialize(
           reserialize("TestMessage", input.serialize())
+        );
+        expect(output).eql(input);
+      });
+    }
+  });
+
+  suite("single-field repeated reserialization", () => {
+    const testCases = [
+      // double_field
+      protobuftsProtos.TestRepeatedMessage.create({
+        doubleField: [4.940656458412465441765687928682213723651e-324, 35.6]
+      })
+      // float_field
+      // int32_field
+      // uint32_field
+      // sint32_field
+      // fixed32_field
+      // sfixed32_field
+      // int64_field
+      // uint64_field
+      // sint64_field
+      // fixed64_field
+      // sfixed64_field
+      // bool_field
+      // enum_field
+      // string_field
+      // message_field
+      // bytes_field
+    ];
+
+    for (const input of testCases) {
+      test("reserialized", () => {
+        const output = protobuftsProtos.TestRepeatedMessage.deserialize(
+          reserialize("TestRepeatedMessage", input.serialize())
         );
         expect(output).eql(input);
       });
