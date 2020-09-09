@@ -158,7 +158,7 @@ suite(__filename, { parallel: true }, () => {
     }
   });
 
-  suite("single-field repeated reserialization", { parallel: true }, () => {
+  suite("single-field repeated packed reserialization", { parallel: true }, () => {
     const testCases = [
       // double_field
       protobuftsProtos.TestRepeatedMessage.create({
@@ -258,12 +258,113 @@ suite(__filename, { parallel: true }, () => {
       });
     }
   });
+
+  suite("single-field repeated unpacked reserialization", { parallel: true }, () => {
+    const testCases = [
+      // double_field
+      protobuftsProtos.TestUnpackedRepeatedMessage.create({
+        doubleField: [4.940656458412465441765687928682213723651e-324, 35.6]
+      }),
+      // float_field
+      protobuftsProtos.TestUnpackedRepeatedMessage.create({
+        floatField: [1.40129846432481707092372958328991613128e-45, 35.5]
+      }),
+      // int32_field
+      protobuftsProtos.TestUnpackedRepeatedMessage.create({
+        int32Field: [-100, 99, 0, 76, 10231862]
+      }),
+      // uint32_field
+      protobuftsProtos.TestUnpackedRepeatedMessage.create({
+        uint32Field: [89, 3, 67, 0, 213131]
+      }),
+      // sint32_field
+      protobuftsProtos.TestUnpackedRepeatedMessage.create({
+        sint32Field: [-21332, 323, 555, 0, -23123]
+      }),
+      // fixed32_field
+      protobuftsProtos.TestUnpackedRepeatedMessage.create({
+        fixed32Field: [1232, 0, 51232, 222]
+      }),
+      // sfixed32_field
+      protobuftsProtos.TestUnpackedRepeatedMessage.create({
+        sfixed32Field: [-13279, 3232, 0, -231]
+      }),
+      // int64_field
+      protobuftsProtos.TestUnpackedRepeatedMessage.create({
+        int64Field: [Long.fromNumber(12323), Long.ZERO, Long.fromNumber(-121927)]
+      }),
+      // uint64_field
+      protobuftsProtos.TestUnpackedRepeatedMessage.create({
+        uint64Field: [Long.fromNumber(12323, true), Long.UZERO, Long.fromNumber(172168261, true)]
+      }),
+      // sint64_field
+      protobuftsProtos.TestUnpackedRepeatedMessage.create({
+        sint64Field: [Long.fromNumber(1212), Long.ZERO, Long.fromNumber(-1271333)]
+      }),
+      // fixed64_field
+      protobuftsProtos.TestUnpackedRepeatedMessage.create({
+        fixed64Field: [Long.fromNumber(1323, true), Long.fromNumber(0, true)]
+      }),
+      // sfixed64_field
+      protobuftsProtos.TestUnpackedRepeatedMessage.create({
+        sfixed64Field: [
+          Long.fromNumber(-1821921),
+          Long.fromNumber(-1),
+          Long.fromNumber(12121982172)
+        ]
+      }),
+      // bool_field
+      protobuftsProtos.TestUnpackedRepeatedMessage.create({
+        boolField: [true, false, false, true, true]
+      }),
+      // enum_field
+      protobuftsProtos.TestUnpackedRepeatedMessage.create({
+        enumField: [
+          protobuftsProtos.TestEnum.VAL1,
+          protobuftsProtos.TestEnum.VAL0,
+          protobuftsProtos.TestEnum.VAL2
+        ]
+      }),
+      // string_field
+      protobuftsProtos.TestUnpackedRepeatedMessage.create({
+        stringField: ["", "foo", "bar"]
+      }),
+      // message_field
+      protobuftsProtos.TestUnpackedRepeatedMessage.create({
+        messageField: [
+          protobuftsProtos.TestMessage.create({
+            stringField: "one"
+          }),
+          protobuftsProtos.TestMessage.create({
+            stringField: "two"
+          })
+        ]
+      }),
+      // bytes_field
+      protobuftsProtos.TestUnpackedRepeatedMessage.create({
+        bytesField: [
+          Uint8Array.from([5, 8, 19, 33]),
+          Uint8Array.from([50]),
+          Uint8Array.from([89, 0])
+        ]
+      })
+    ];
+
+    for (const input of testCases) {
+      test("reserialized", () => {
+        const output = protobuftsProtos.TestUnpackedRepeatedMessage.deserialize(
+          reserialize("TestUnpackedRepeatedMessage", input.serialize())
+        );
+        expect(output).eql(input);
+      });
+    }
+  });
 });
 
 const RESERIALIZER_BINARY = "protobufts/tests/reserializer/darwin_amd64_stripped/reserializer";
 
 function reserialize(
-  messageType: "TestMessage" | "TestRepeatedMessage",
+  messageType: "TestMessage" | "TestRepeatedMessage" | "TestUnpackedRepeatedMessage",
   bytes: Uint8Array
 ): Uint8Array {
   const base64EncodedBytes = Buffer.from(bytes).toString("base64");

@@ -54,3 +54,23 @@ message TestRepeatedMessage {
   repeated sint32 sint32_field = 16;
   repeated sint64 sint64_field = 17;
 }
+
+message TestUnpackedRepeatedMessage {
+  repeated double double_field = 1 [packed=false];
+  repeated float float_field = 2 [packed=false];
+  repeated int64 int64_field = 3 [packed=false];
+  repeated uint64 uint64_field = 4 [packed=false];
+  repeated int32 int32_field = 5 [packed=false];
+  repeated fixed64 fixed64_field = 6 [packed=false];
+  repeated fixed32 fixed32_field = 7 [packed=false];
+  repeated bool bool_field = 8 [packed=false];
+  repeated string string_field = 9 [packed=false];
+  repeated TestMessage message_field = 10 [packed=false];
+  repeated bytes bytes_field = 11 [packed=false];
+  repeated uint32 uint32_field = 12 [packed=false];
+  repeated TestEnum enum_field = 13 [packed=false];
+  repeated sfixed32 sfixed32_field = 14 [packed=false];
+  repeated sfixed64 sfixed64_field = 15 [packed=false];
+  repeated sint32 sint32_field = 16 [packed=false];
+  repeated sint64 sint64_field = 17 [packed=false];
+}

@@ -26,6 +26,8 @@ func main() {
 		unmarshalledProto = &testprotos.TestMessage{}
 	case *protoType == "TestRepeatedMessage":
 		unmarshalledProto = &testprotos.TestRepeatedMessage{}
+	case *protoType == "TestUnpackedRepeatedMessage":
+		unmarshalledProto = &testprotos.TestUnpackedRepeatedMessage{}
 	default:
 		panic(fmt.Sprintf("Unrecognized protobuf type: %v", *protoType))
 	}
