@@ -151,7 +151,7 @@ suite(__filename, { parallel: true }, () => {
     for (const input of testCases) {
       test("reserialized", () => {
         const output = protobuftsProtos.TestMessage.deserialize(
-          reserialize("TestMessage", input.serialize())
+          reserialize("TestMessage", input.serialize(), true)
         );
         expect(output).eql(input);
       });
@@ -252,7 +252,7 @@ suite(__filename, { parallel: true }, () => {
     for (const input of testCases) {
       test("reserialized", () => {
         const output = protobuftsProtos.TestRepeatedMessage.deserialize(
-          reserialize("TestRepeatedMessage", input.serialize())
+          reserialize("TestRepeatedMessage", input.serialize(), true)
         );
         expect(output).eql(input);
       });
@@ -353,7 +353,7 @@ suite(__filename, { parallel: true }, () => {
     for (const input of testCases) {
       test("reserialized", () => {
         const output = protobuftsProtos.TestUnpackedRepeatedMessage.deserialize(
-          reserialize("TestUnpackedRepeatedMessage", input.serialize())
+          reserialize("TestUnpackedRepeatedMessage", input.serialize(), true)
         );
         expect(output).eql(input);
       });
@@ -365,11 +365,15 @@ const RESERIALIZER_BINARY = "protobufts/tests/reserializer/darwin_amd64_stripped
 
 function reserialize(
   messageType: "TestMessage" | "TestRepeatedMessage" | "TestUnpackedRepeatedMessage",
-  bytes: Uint8Array
+  bytes: Uint8Array,
+  bytesShouldMatch: boolean = false
 ): Uint8Array {
   const base64EncodedBytes = Buffer.from(bytes).toString("base64");
   const returnedBase64EncodedBytes = execSync(
     `${RESERIALIZER_BINARY} --proto_type=${messageType} --base64_proto_value=${base64EncodedBytes}`
   ).toString();
+  if (bytesShouldMatch) {
+    expect(base64EncodedBytes).eql(returnedBase64EncodedBytes);
+  }
   return Buffer.from(returnedBase64EncodedBytes, "base64");
 }
