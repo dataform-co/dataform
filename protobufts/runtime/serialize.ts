@@ -1,6 +1,6 @@
 import Long from "long";
 
-export interface IMessage {
+interface IMessage {
   serialize: () => Uint8Array;
 }
 
@@ -248,7 +248,7 @@ export class Deserializer {
   }
 
   public fixed32() {
-    return this.reader.readThirtyTwoBitInteger();
+    return this.reader.readThirtyTwoBitInteger(true);
   }
 
   public uint32() {
@@ -273,11 +273,11 @@ export class Deserializer {
   }
 
   public uint64() {
-    return this.reader.readVarInt();
+    return this.reader.readVarInt().toUnsigned();
   }
 
   public fixed64() {
-    return this.reader.readSixtyFourBitInteger();
+    return this.reader.readSixtyFourBitInteger(true);
   }
 
   public sfixed64() {
@@ -402,10 +402,10 @@ class BytesReader {
     return value;
   }
 
-  public readThirtyTwoBitInteger() {
+  public readThirtyTwoBitInteger(unsigned: boolean = false) {
     const bytes = this.readBytes(4);
     const dataView = new DataView(bytes.buffer);
-    return dataView.getInt32(0, true);
+    return unsigned ? dataView.getUint32(0, true) : dataView.getInt32(0, true);
   }
 
   public readThirtyTwoBitFloat() {
@@ -414,8 +414,8 @@ class BytesReader {
     return dataView.getFloat32(0, true);
   }
 
-  public readSixtyFourBitInteger() {
-    return Long.fromBytesLE(this.readBytesAsNumberArray(8));
+  public readSixtyFourBitInteger(unsigned: boolean = false) {
+    return Long.fromBytesLE(this.readBytesAsNumberArray(8), unsigned);
   }
 
   public readSixtyFourBitFloat() {
