@@ -295,80 +295,80 @@ class BufferedWriter {
 }
 
 export class Deserializer {
-  private readonly bufferedReader: BytesReader;
+  private readonly reader: BytesReader;
 
   constructor(bytes: Uint8Array) {
-    this.bufferedReader = new BytesReader(bytes);
+    this.reader = new BytesReader(bytes);
   }
 
   public *deserialize() {
-    for (const { fieldNumber, wireType } of this.bufferedReader.read()) {
+    for (const { fieldNumber, wireType } of this.reader.read()) {
       const length =
-        wireType === WireType.LENGTH_DELIMITED ? this.bufferedReader.readVarInt().toNumber() : 1;
+        wireType === WireType.LENGTH_DELIMITED ? this.reader.readVarInt().toNumber() : 1;
       yield { fieldNumber, length };
     }
   }
 
   public double() {
-    return this.bufferedReader.readSixtyFourBitFloat();
+    return this.reader.readSixtyFourBitFloat();
   }
 
   public float() {
-    return this.bufferedReader.readThirtyTwoBitFloat();
+    return this.reader.readThirtyTwoBitFloat();
   }
 
   public int32() {
-    return this.bufferedReader.readVarInt().toNumber();
+    return this.reader.readVarInt().toNumber();
   }
 
   public fixed32() {
-    return this.bufferedReader.readThirtyTwoBitInteger();
+    return this.reader.readThirtyTwoBitInteger();
   }
 
   public uint32() {
-    return this.bufferedReader.readVarInt().toNumber();
+    return this.reader.readVarInt().toNumber();
   }
 
   public sfixed32() {
-    return this.bufferedReader.readThirtyTwoBitInteger();
+    return this.reader.readThirtyTwoBitInteger();
   }
 
   public sint32() {
-    const val = this.bufferedReader.readVarInt().toNumber();
+    const val = this.reader.readVarInt().toNumber();
     return (val >>> 1) ^ -(val & 1);
   }
 
   public enum() {
-    return this.bufferedReader.readVarInt().toNumber();
+    return this.reader.readVarInt().toNumber();
   }
 
   public int64() {
-    return this.bufferedReader.readVarInt();
+    return this.reader.readVarInt();
   }
 
   public uint64() {
-    return this.bufferedReader.readVarInt();
+    return this.reader.readVarInt();
   }
 
   public fixed64() {
-    return this.bufferedReader.readSixtyFourBitInteger();
+    return this.reader.readSixtyFourBitInteger();
   }
 
   public sfixed64() {
-    return this.bufferedReader.readSixtyFourBitInteger();
+    return this.reader.readSixtyFourBitInteger();
   }
 
   public sint64() {
-    const val = this.bufferedReader.readVarInt();
+    const val = this.reader.readVarInt();
     return val.shiftRightUnsigned(1).xor(val.and(1).multiply(-1));
   }
 
   public bool() {
-    return this.bufferedReader.readVarInt().greaterThan(0);
+    return this.reader.readVarInt().greaterThan(0);
   }
 
   public bytes(length: number) {
-    return this.bufferedReader.readBytes(length);
+    return this.reader.readBytes(length);
   }
 
   public string(length: number) {
