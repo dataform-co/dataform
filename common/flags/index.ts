@@ -57,14 +57,18 @@ export class Flags {
       }
     }
 
+    let flagsStarted = false;
     let currentFlagName = "";
     for (const splitArg of splitArgv) {
       if (splitArg.startsWith("--")) {
+        flagsStarted = true;
         currentFlagName = splitArg.slice(2);
         parsedArgv[currentFlagName] = "";
       } else if (currentFlagName) {
         parsedArgv[currentFlagName] = splitArg;
         currentFlagName = "";
+      } else if (flagsStarted) {
+        throw new Error(`Arg neither flag name nor flag value: ${splitArg}`);
       }
     }
 

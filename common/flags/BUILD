@@ -13,3 +13,10 @@ ts_library(
         "@npm//@types/node",
     ],
 )
+
+load("//testing:build_test.bzl", "build_test")
+
+build_test(
+    name = "build_test",
+    deps = [":flags"],
+)
