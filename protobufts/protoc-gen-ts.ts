@@ -230,19 +230,17 @@ ${descriptorProto.oneofDecl.map(
       switch (fieldNumber) {
 ${descriptorProto.field
   .map(
-    fieldDescriptorProto => `        case ${fieldDescriptorProto.number}: {
-            newProto.${
-              fieldDescriptorProto.hasOwnProperty("oneofIndex")
-                ? descriptorProto.oneofDecl[fieldDescriptorProto.oneofIndex].name
-                : fieldDescriptorProto.jsonName
-            } = ${deserializeInvocation(
-      fieldDescriptorProto,
-      fileTypeMapping,
-      embeddedMapTypes,
-      currentProtoFile
-    )};
-          break;
-        }`
+    fieldDescriptorProto =>
+      `        case ${fieldDescriptorProto.number}: { newProto.${
+        fieldDescriptorProto.hasOwnProperty("oneofIndex")
+          ? descriptorProto.oneofDecl[fieldDescriptorProto.oneofIndex].name
+          : fieldDescriptorProto.jsonName
+      } = ${deserialize(
+        fieldDescriptorProto,
+        fileTypeMapping,
+        embeddedMapTypes,
+        currentProtoFile
+      )}; break; }`
   )
   .join("\n")}
       }
@@ -474,7 +472,7 @@ function serializerMethodName(fieldDescriptorProto: google.protobuf.IFieldDescri
   return typeString.replace("TYPE_", "").toLowerCase();
 }
 
-function deserializeInvocation(
+function deserialize(
   fieldDescriptorProto: google.protobuf.IFieldDescriptorProto,
   fileTypeMapping: Map<string, ITypeLocation>,
   embeddedMapTypes: Set<string>,
@@ -483,54 +481,44 @@ function deserializeInvocation(
   if (fieldDescriptorProto.label === google.protobuf.FieldDescriptorProto.Label.LABEL_REPEATED) {
     return "null";
   }
+  const deserializedValue = (() => {
+    switch (fieldDescriptorProto.type) {
+      case google.protobuf.FieldDescriptorProto.Type.TYPE_INT32:
+      case google.protobuf.FieldDescriptorProto.Type.TYPE_UINT32:
+      case google.protobuf.FieldDescriptorProto.Type.TYPE_SINT32:
+      case google.protobuf.FieldDescriptorProto.Type.TYPE_ENUM:
+      case google.protobuf.FieldDescriptorProto.Type.TYPE_BOOL:
+      case google.protobuf.FieldDescriptorProto.Type.TYPE_DOUBLE:
+      case google.protobuf.FieldDescriptorProto.Type.TYPE_FLOAT:
+      case google.protobuf.FieldDescriptorProto.Type.TYPE_FIXED32:
+      case google.protobuf.FieldDescriptorProto.Type.TYPE_SFIXED32:
+      case google.protobuf.FieldDescriptorProto.Type.TYPE_INT64:
+      case google.protobuf.FieldDescriptorProto.Type.TYPE_SFIXED64:
+      case google.protobuf.FieldDescriptorProto.Type.TYPE_SINT64:
+      case google.protobuf.FieldDescriptorProto.Type.TYPE_UINT64:
+      case google.protobuf.FieldDescriptorProto.Type.TYPE_FIXED64:
+        return `deserializer.${serializerMethodName(fieldDescriptorProto)}()`;
+      case google.protobuf.FieldDescriptorProto.Type.TYPE_STRING:
+        return "deserializer.string(length)";
+      case google.protobuf.FieldDescriptorProto.Type.TYPE_MESSAGE:
+        return `${type(
+          fieldDescriptorProto,
+          fileTypeMapping,
+          embeddedMapTypes,
+          currentProtoFile
+        )}.deserialize(deserializer.bytes(length))`;
+      case google.protobuf.FieldDescriptorProto.Type.TYPE_GROUP:
+        throw new Error("GROUP is unsupported.");
+      case google.protobuf.FieldDescriptorProto.Type.TYPE_BYTES:
+        return "deserializer.bytes(length)";
+      default:
+        throw new Error(`Unrecognized field type: ${fieldDescriptorProto.type}`);
+    }
+  })();
   if (fieldDescriptorProto.hasOwnProperty("oneofIndex")) {
-    return "null";
+    return `{ field: "${fieldDescriptorProto.name}", value: ${deserializedValue} }`;
   }
-  switch (fieldDescriptorProto.type) {
-    case google.protobuf.FieldDescriptorProto.Type.TYPE_INT32:
-      return "deserializer.int32()";
-    case google.protobuf.FieldDescriptorProto.Type.TYPE_UINT32:
-      return "deserializer.uint32()";
-    case google.protobuf.FieldDescriptorProto.Type.TYPE_SINT32:
-      return "deserializer.sint32()";
-    case google.protobuf.FieldDescriptorProto.Type.TYPE_ENUM:
-      return "deserializer.enum()";
-    case google.protobuf.FieldDescriptorProto.Type.TYPE_BOOL:
-      return "deserializer.bool()";
-    case google.protobuf.FieldDescriptorProto.Type.TYPE_DOUBLE:
-      return "deserializer.double()";
-    case google.protobuf.FieldDescriptorProto.Type.TYPE_FLOAT:
-      return "deserializer.float()";
-    case google.protobuf.FieldDescriptorProto.Type.TYPE_FIXED32:
-      return "deserializer.fixed32()";
-    case google.protobuf.FieldDescriptorProto.Type.TYPE_SFIXED32:
-      return "deserializer.sfixed32()";
-    case google.protobuf.FieldDescriptorProto.Type.TYPE_INT64:
-      return "deserializer.int64()";
-    case google.protobuf.FieldDescriptorProto.Type.TYPE_SFIXED64:
-      return "deserializer.sfixed64()";
-    case google.protobuf.FieldDescriptorProto.Type.TYPE_SINT64:
-      return "deserializer.sint64()";
-    case google.protobuf.FieldDescriptorProto.Type.TYPE_UINT64:
-      return "deserializer.uint64()";
-    case google.protobuf.FieldDescriptorProto.Type.TYPE_FIXED64:
-      return "deserializer.fixed64()";
-    case google.protobuf.FieldDescriptorProto.Type.TYPE_STRING:
-      return "deserializer.string(length)";
-    case google.protobuf.FieldDescriptorProto.Type.TYPE_MESSAGE:
-      return `${type(
-        fieldDescriptorProto,
-        fileTypeMapping,
-        embeddedMapTypes,
-        currentProtoFile
-      )}.deserialize(deserializer.bytes(length))`;
-    case google.protobuf.FieldDescriptorProto.Type.TYPE_GROUP:
-      throw new Error("GROUP is unsupported.");
-    case google.protobuf.FieldDescriptorProto.Type.TYPE_BYTES:
-      return "deserializer.bytes(length)";
-    default:
-      throw new Error(`Unrecognized field type: ${fieldDescriptorProto.type}`);
-  }
+  return deserializedValue;
 }
 
 function isPacked(fieldDescriptorProto: google.protobuf.IFieldDescriptorProto) {

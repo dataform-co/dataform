@@ -119,41 +119,6 @@ suite(__filename, () => {
       protobuftsProtos.TestMessage.create({
         floatField: 3.4028234663852885981170418348451692544e38
       }),
-      // int32_field
-      protobuftsProtos.TestMessage.create({
-        int32Field: -2147483648
-      }),
-      protobuftsProtos.TestMessage.create({
-        int32Field: 2147483647
-      }),
-      // uint32_field
-      protobuftsProtos.TestMessage.create({
-        uint32Field: 0
-      }),
-      protobuftsProtos.TestMessage.create({
-        uint32Field: 4294967295
-      }),
-      // sint32_field
-      protobuftsProtos.TestMessage.create({
-        sint32Field: -2147483648
-      }),
-      protobuftsProtos.TestMessage.create({
-        sint32Field: 2147483647
-      }),
-      // fixed32_field
-      protobuftsProtos.TestMessage.create({
-        fixed32Field: 0
-      }),
-      protobuftsProtos.TestMessage.create({
-        fixed32Field: 4294967295
-      }),
-      // sfixed32_field
-      protobuftsProtos.TestMessage.create({
-        sfixed32Field: -2147483648
-      }),
-      protobuftsProtos.TestMessage.create({
-        sfixed32Field: 2147483647
-      }),
       // int64_field
       protobuftsProtos.TestMessage.create({
         int64Field: Long.MIN_VALUE
@@ -168,12 +133,12 @@ suite(__filename, () => {
       protobuftsProtos.TestMessage.create({
         uint64Field: Long.MAX_UNSIGNED_VALUE
       }),
-      // sint64_field
+      // int32_field
       protobuftsProtos.TestMessage.create({
-        sint64Field: Long.MIN_VALUE
+        int32Field: -2147483648
       }),
       protobuftsProtos.TestMessage.create({
-        sint64Field: Long.MAX_VALUE
+        int32Field: 2147483647
       }),
       // fixed64_field
       protobuftsProtos.TestMessage.create({
@@ -182,12 +147,9 @@ suite(__filename, () => {
       protobuftsProtos.TestMessage.create({
         fixed64Field: Long.MAX_UNSIGNED_VALUE
       }),
-      // sfixed64_field
+      // fixed32_field
       protobuftsProtos.TestMessage.create({
-        sfixed64Field: Long.MIN_VALUE
-      }),
-      protobuftsProtos.TestMessage.create({
-        sfixed64Field: Long.MAX_VALUE
+        fixed32Field: 0
       }),
       // bool_field
       protobuftsProtos.TestMessage.create({
@@ -195,13 +157,6 @@ suite(__filename, () => {
       }),
       protobuftsProtos.TestMessage.create({
         boolField: true
-      }),
-      // enum_field
-      protobuftsProtos.TestMessage.create({
-        enumField: protobuftsProtos.TestEnum.VAL0
-      }),
-      protobuftsProtos.TestMessage.create({
-        enumField: protobuftsProtos.TestEnum.VAL1
       }),
       // string_field
       protobuftsProtos.TestMessage.create({
@@ -225,6 +180,65 @@ suite(__filename, () => {
       }),
       protobuftsProtos.TestMessage.create({
         bytesField: new Uint8Array([0x5, 0xff])
+      }),
+      // uint32_field
+      protobuftsProtos.TestMessage.create({
+        uint32Field: 0
+      }),
+      protobuftsProtos.TestMessage.create({
+        uint32Field: 4294967295
+      }),
+      // enum_field
+      protobuftsProtos.TestMessage.create({
+        enumField: protobuftsProtos.TestEnum.VAL0
+      }),
+      protobuftsProtos.TestMessage.create({
+        enumField: protobuftsProtos.TestEnum.VAL1
+      }),
+      // sfixed32_field
+      protobuftsProtos.TestMessage.create({
+        sfixed32Field: -2147483648
+      }),
+      protobuftsProtos.TestMessage.create({
+        sfixed32Field: 2147483647
+      }),
+      // sfixed64_field
+      protobuftsProtos.TestMessage.create({
+        sfixed64Field: Long.MIN_VALUE
+      }),
+      protobuftsProtos.TestMessage.create({
+        sfixed64Field: Long.MAX_VALUE
+      }),
+      // sint32_field
+      protobuftsProtos.TestMessage.create({
+        sint32Field: -2147483648
+      }),
+      protobuftsProtos.TestMessage.create({
+        sint32Field: 2147483647
+      }),
+      protobuftsProtos.TestMessage.create({
+        fixed32Field: 4294967295
+      }),
+      // sint64_field
+      protobuftsProtos.TestMessage.create({
+        sint64Field: Long.MIN_VALUE
+      }),
+      protobuftsProtos.TestMessage.create({
+        sint64Field: Long.MAX_VALUE
+      }),
+      // oneof_int32_field
+      protobuftsProtos.TestMessage.create({
+        oneof: { field: "oneof_int32_field", value: 0 }
+      }),
+      protobuftsProtos.TestMessage.create({
+        oneof: { field: "oneof_int32_field", value: 1234 }
+      }),
+      // oneof_string_field
+      protobuftsProtos.TestMessage.create({
+        oneof: { field: "oneof_string_field", value: "" }
+      }),
+      protobuftsProtos.TestMessage.create({
+        oneof: { field: "oneof_string_field", value: "hello world" }
       })
     ];
 
@@ -242,7 +256,7 @@ suite(__filename, () => {
     const testCases = [
       // double_field
       protobuftsProtos.TestRepeatedMessage.create({
-        doubleField: [4.940656458412465441765687928682213723651e-324, 35.6]
+        // doubleField: [4.940656458412465441765687928682213723651e-324, 35.6]
       })
       // float_field
       // int32_field
