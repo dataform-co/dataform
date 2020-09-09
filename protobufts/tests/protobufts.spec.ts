@@ -150,10 +150,10 @@ suite(__filename, { parallel: true }, () => {
 
     for (const input of testCases) {
       test("reserialized", () => {
-        const output = protobuftsProtos.TestMessage.deserialize(
-          reserialize("TestMessage", input.serialize(), true)
-        );
-        expect(output).eql(input);
+        const serialized = input.serialize();
+        const reserialized = reserialize("TestMessage", input.serialize());
+        expect(serialized).eql(reserialized);
+        expect(protobuftsProtos.TestMessage.deserialize(reserialized)).eql(input);
       });
     }
   });
@@ -251,10 +251,10 @@ suite(__filename, { parallel: true }, () => {
 
     for (const input of testCases) {
       test("reserialized", () => {
-        const output = protobuftsProtos.TestRepeatedMessage.deserialize(
-          reserialize("TestRepeatedMessage", input.serialize(), true)
-        );
-        expect(output).eql(input);
+        const serialized = input.serialize();
+        const reserialized = reserialize("TestRepeatedMessage", input.serialize());
+        expect(serialized).eql(reserialized);
+        expect(protobuftsProtos.TestRepeatedMessage.deserialize(reserialized)).eql(input);
       });
     }
   });
@@ -352,10 +352,10 @@ suite(__filename, { parallel: true }, () => {
 
     for (const input of testCases) {
       test("reserialized", () => {
-        const output = protobuftsProtos.TestUnpackedRepeatedMessage.deserialize(
-          reserialize("TestUnpackedRepeatedMessage", input.serialize(), true)
-        );
-        expect(output).eql(input);
+        const serialized = input.serialize();
+        const reserialized = reserialize("TestUnpackedRepeatedMessage", input.serialize());
+        expect(serialized).eql(reserialized);
+        expect(protobuftsProtos.TestUnpackedRepeatedMessage.deserialize(reserialized)).eql(input);
       });
     }
   });
@@ -365,15 +365,11 @@ const RESERIALIZER_BINARY = "protobufts/tests/reserializer/darwin_amd64_stripped
 
 function reserialize(
   messageType: "TestMessage" | "TestRepeatedMessage" | "TestUnpackedRepeatedMessage",
-  bytes: Uint8Array,
-  bytesShouldMatch: boolean = false
+  bytes: Uint8Array
 ): Uint8Array {
   const base64EncodedBytes = Buffer.from(bytes).toString("base64");
   const returnedBase64EncodedBytes = execSync(
     `${RESERIALIZER_BINARY} --proto_type=${messageType} --base64_proto_value=${base64EncodedBytes}`
   ).toString();
-  if (bytesShouldMatch) {
-    expect(base64EncodedBytes).eql(returnedBase64EncodedBytes);
-  }
   return Buffer.from(returnedBase64EncodedBytes, "base64");
 }
