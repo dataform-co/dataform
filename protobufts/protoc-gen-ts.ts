@@ -149,7 +149,7 @@ function getImportLines(
   if (needsLongImport) {
     imports.push('import Long from "long";');
   }
-  imports.push('import { Serializer } from "df/protobufts/runtime/serialize";');
+  imports.push('import { Deserializer, Serializer } from "df/protobufts/runtime/serialize";');
   return imports;
 }
 
@@ -222,6 +222,34 @@ ${descriptorProto.oneofDecl.map(
 )}
     return newProto;
   }
+
+  public static deserialize(bytes: Uint8Array) {
+    const deserializer = new Deserializer(bytes);
+    const newProto = new ${descriptorProto.name}();
+    for (const { fieldNumber, length } of deserializer.deserialize()) {
+      switch (fieldNumber) {
+${descriptorProto.field
+  .map(
+    fieldDescriptorProto => `        case ${fieldDescriptorProto.number}: {
+            newProto.${
+              fieldDescriptorProto.hasOwnProperty("oneofIndex")
+                ? descriptorProto.oneofDecl[fieldDescriptorProto.oneofIndex].name
+                : fieldDescriptorProto.jsonName
+            } = ${deserializeInvocation(
+      fieldDescriptorProto,
+      fileTypeMapping,
+      embeddedMapTypes,
+      currentProtoFile
+    )};
+          break;
+        }`
+  )
+  .join("\n")}
+      }
+    }
+    return newProto;
+  }
+
 ${descriptorProto.field
   .filter(fieldDescriptorProto => !fieldDescriptorProto.hasOwnProperty("oneofIndex"))
   .map(
@@ -329,12 +357,7 @@ function type(
           if (embeddedMapTypes.has(typeName)) {
             return `Map<string, number>`;
           }
-          return (
-            typeLocation.typescriptTypeName +
-            ` /* ${typeName}, ${Array.from(embeddedMapTypes.keys())}, ${
-              typeLocation.typescriptTypeName
-            } */`
-          );
+          return typeLocation.typescriptTypeName;
         }
         return `${typeLocation.importName}.${typeLocation.typescriptTypeName}`;
       case google.protobuf.FieldDescriptorProto.Type.TYPE_BYTES:
@@ -449,6 +472,65 @@ function shouldSerialize(fieldDescriptorProto: google.protobuf.IFieldDescriptorP
 function serializerMethodName(fieldDescriptorProto: google.protobuf.IFieldDescriptorProto) {
   const typeString = google.protobuf.FieldDescriptorProto.Type[fieldDescriptorProto.type];
   return typeString.replace("TYPE_", "").toLowerCase();
+}
+
+function deserializeInvocation(
+  fieldDescriptorProto: google.protobuf.IFieldDescriptorProto,
+  fileTypeMapping: Map<string, ITypeLocation>,
+  embeddedMapTypes: Set<string>,
+  currentProtoFile: string
+) {
+  if (fieldDescriptorProto.label === google.protobuf.FieldDescriptorProto.Label.LABEL_REPEATED) {
+    return "null";
+  }
+  if (fieldDescriptorProto.hasOwnProperty("oneofIndex")) {
+    return "null";
+  }
+  switch (fieldDescriptorProto.type) {
+    case google.protobuf.FieldDescriptorProto.Type.TYPE_INT32:
+      return "deserializer.int32()";
+    case google.protobuf.FieldDescriptorProto.Type.TYPE_UINT32:
+      return "deserializer.uint32()";
+    case google.protobuf.FieldDescriptorProto.Type.TYPE_SINT32:
+      return "deserializer.sint32()";
+    case google.protobuf.FieldDescriptorProto.Type.TYPE_ENUM:
+      return "deserializer.enum()";
+    case google.protobuf.FieldDescriptorProto.Type.TYPE_BOOL:
+      return "deserializer.bool()";
+    case google.protobuf.FieldDescriptorProto.Type.TYPE_DOUBLE:
+      return "deserializer.double()";
+    case google.protobuf.FieldDescriptorProto.Type.TYPE_FLOAT:
+      return "deserializer.float()";
+    case google.protobuf.FieldDescriptorProto.Type.TYPE_FIXED32:
+      return "deserializer.fixed32()";
+    case google.protobuf.FieldDescriptorProto.Type.TYPE_SFIXED32:
+      return "deserializer.sfixed32()";
+    case google.protobuf.FieldDescriptorProto.Type.TYPE_INT64:
+      return "deserializer.int64()";
+    case google.protobuf.FieldDescriptorProto.Type.TYPE_SFIXED64:
+      return "deserializer.sfixed64()";
+    case google.protobuf.FieldDescriptorProto.Type.TYPE_SINT64:
+      return "deserializer.sint64()";
+    case google.protobuf.FieldDescriptorProto.Type.TYPE_UINT64:
+      return "deserializer.uint64()";
+    case google.protobuf.FieldDescriptorProto.Type.TYPE_FIXED64:
+      return "deserializer.fixed64()";
+    case google.protobuf.FieldDescriptorProto.Type.TYPE_STRING:
+      return "deserializer.string(length)";
+    case google.protobuf.FieldDescriptorProto.Type.TYPE_MESSAGE:
+      return `${type(
+        fieldDescriptorProto,
+        fileTypeMapping,
+        embeddedMapTypes,
+        currentProtoFile
+      )}.deserialize(deserializer.bytes(length))`;
+    case google.protobuf.FieldDescriptorProto.Type.TYPE_GROUP:
+      throw new Error("GROUP is unsupported.");
+    case google.protobuf.FieldDescriptorProto.Type.TYPE_BYTES:
+      return "deserializer.bytes(length)";
+    default:
+      throw new Error(`Unrecognized field type: ${fieldDescriptorProto.type}`);
+  }
 }
 
 function isPacked(fieldDescriptorProto: google.protobuf.IFieldDescriptorProto) {

@@ -294,6 +294,157 @@ class BufferedWriter {
   }
 }
 
+export class Deserializer {
+  private readonly bufferedReader: BytesReader;
+
+  constructor(bytes: Uint8Array) {
+    this.bufferedReader = new BytesReader(bytes);
+  }
+
+  public *deserialize() {
+    for (const { fieldNumber, wireType } of this.bufferedReader.read()) {
+      const length =
+        wireType === WireType.LENGTH_DELIMITED ? this.bufferedReader.readVarInt().toNumber() : 1;
+      yield { fieldNumber, length };
+    }
+  }
+
+  public double() {
+    return this.bufferedReader.readSixtyFourBitFloat();
+  }
+
+  public float() {
+    return this.bufferedReader.readThirtyTwoBitFloat();
+  }
+
+  public int32() {
+    return this.bufferedReader.readVarInt().toNumber();
+  }
+
+  public fixed32() {
+    return this.bufferedReader.readThirtyTwoBitInteger();
+  }
+
+  public uint32() {
+    return this.bufferedReader.readVarInt().toNumber();
+  }
+
+  public sfixed32() {
+    return this.bufferedReader.readThirtyTwoBitInteger();
+  }
+
+  public sint32() {
+    const val = this.bufferedReader.readVarInt().toNumber();
+    return (val >>> 1) ^ -(val & 1);
+  }
+
+  public enum() {
+    return this.bufferedReader.readVarInt().toNumber();
+  }
+
+  public int64() {
+    return this.bufferedReader.readVarInt();
+  }
+
+  public uint64() {
+    return this.bufferedReader.readVarInt();
+  }
+
+  public fixed64() {
+    return this.bufferedReader.readSixtyFourBitInteger();
+  }
+
+  public sfixed64() {
+    return this.bufferedReader.readSixtyFourBitInteger();
+  }
+
+  public sint64() {
+    const val = this.bufferedReader.readVarInt();
+    return val.shiftRightUnsigned(1).xor(val.and(1).multiply(-1));
+  }
+
+  public bool() {
+    return this.bufferedReader.readVarInt().greaterThan(0);
+  }
+
+  public bytes(length: number) {
+    return this.bufferedReader.readBytes(length);
+  }
+
+  public string(length: number) {
+    return Buffer.from(this.bytes(length)).toString("utf8");
+  }
+}
+
+class BytesReader {
+  private cursor = 0;
+
+  constructor(private readonly bytes: Uint8Array) {}
+
+  public *read() {
+    while (this.cursor < this.bytes.length) {
+      const tag = this.readVarInt().toNumber();
+      const fieldNumber = tag >> 3;
+      // TODO: this might be LENGTH_DELIMITED for a repeated packed field (only possible for primitive numeric types).
+      // This might happen even if the repeated field has not been declared as packed.
+      // Need to handle this case.
+      const wireType: WireType = tag & 0b00000111;
+      yield { fieldNumber, wireType };
+    }
+  }
+
+  public readVarInt() {
+    const collected = [];
+    let shouldReadNextByte = true;
+    while (shouldReadNextByte) {
+      const nextByte = this.bytes[this.cursor];
+      this.cursor++;
+      shouldReadNextByte = (nextByte & 0b10000000) > 0;
+      collected.push(nextByte);
+    }
+    let value = Long.ZERO;
+    for (let i = collected.length - 1; i >= 0; i--) {
+      value = value.shiftLeft(7).or(collected[i] & 0b01111111);
+    }
+    return value;
+  }
+
+  public readThirtyTwoBitInteger() {
+    const bytes = this.readBytes(4);
+    const dataView = new DataView(bytes.buffer);
+    return dataView.getInt32(0, true);
+  }
+
+  public readThirtyTwoBitFloat() {
+    const bytes = this.readBytes(4);
+    const dataView = new DataView(bytes.buffer);
+    return dataView.getFloat32(0, true);
+  }
+
+  public readSixtyFourBitInteger() {
+    return Long.fromBytesLE(this.readBytesAsNumberArray(8));
+  }
+
+  public readSixtyFourBitFloat() {
+    const bytes = this.readBytes(8);
+    const dataView = new DataView(bytes.buffer);
+    return dataView.getFloat64(0, true);
+  }
+
+  public readBytes(num: number) {
+    return Uint8Array.from(this.readBytesAsNumberArray(num));
+  }
+
+  private readBytesAsNumberArray(num: number) {
+    const bytes = [];
+    for (let i = 0; i < num; i++) {
+      bytes.push(this.bytes[this.cursor]);
+      this.cursor++;
+    }
+    return bytes;
+  }
+}
+
 enum WireType {
   VARINT = 0,
   SIXTY_FOUR_BIT = 1,

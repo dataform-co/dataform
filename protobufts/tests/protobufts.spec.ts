@@ -440,14 +440,72 @@ suite(__filename, () => {
     }
   });
 
-  test("reserializer", () => {
-    reserialize(
-      "TestMessage",
-      protobuftsProtos.TestMessage.create({
+  const reserializerTestCases = [
+    protobuftsProtos.TestMessage.create({
+      int32Field: -67
+    }),
+    protobuftsProtos.TestMessage.create({
+      uint32Field: 132
+    }),
+    protobuftsProtos.TestMessage.create({
+      sint32Field: -132
+    }),
+    protobuftsProtos.TestMessage.create({
+      int64Field: Long.fromNumber(-112129164178641)
+    }),
+    protobuftsProtos.TestMessage.create({
+      uint64Field: Long.fromNumber(112129164178641)
+    }),
+    protobuftsProtos.TestMessage.create({
+      sint64Field: Long.fromNumber(-112129164178641)
+    }),
+    protobuftsProtos.TestMessage.create({
+      enumField: protobuftsProtos.TestEnum.VAL2
+    }),
+    protobuftsProtos.TestMessage.create({
+      boolField: true
+    }),
+    protobuftsProtos.TestMessage.create({
+      // TODO: add decimals after doing some correction upon reserialization
+      floatField: 13.0
+    }),
+    protobuftsProtos.TestMessage.create({
+      fixed32Field: 123141
+    }),
+    protobuftsProtos.TestMessage.create({
+      sfixed32Field: -123141
+    }),
+    protobuftsProtos.TestMessage.create({
+      // TODO: add decimals after doing some correction upon reserialization
+      doubleField: 9973717.0
+    }),
+    protobuftsProtos.TestMessage.create({
+      fixed64Field: Long.fromNumber(1278319)
+    }),
+    protobuftsProtos.TestMessage.create({
+      sfixed64Field: Long.fromNumber(-1278319)
+    }),
+    protobuftsProtos.TestMessage.create({
+      stringField: "hello"
+    }),
+    protobuftsProtos.TestMessage.create({
+      bytesField: Uint8Array.from([3, 5, 6, 9])
+    }),
+    protobuftsProtos.TestMessage.create({
+      messageField: protobuftsProtos.TestMessage.create({
         stringField: "hello"
-      }).serialize()
-    );
-  });
+      })
+    })
+  ];
+
+  for (const reserializerTestCase of reserializerTestCases) {
+    test("reserializer", () => {
+      const output = protobuftsProtos.TestMessage.deserialize(
+        reserialize("TestMessage", reserializerTestCase.serialize())
+      );
+      expect(output).eql(reserializerTestCase);
+    });
+  }
 });
 
 const RESERIALIZER_BINARY = "protobufts/tests/reserializer/darwin_amd64_stripped/reserializer";
