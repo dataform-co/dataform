@@ -1,6 +1,7 @@
 // The types for this are still in an outstanding PR:
 // https://github.com/tagomoris/presto-client-node/pull/29/files
 // And a discussion about it here: https://github.com/tagomoris/presto-client-node/issues/28
+// Some tweaking has been done to make optional parameters actually optional.
 declare module "presto-client" {
   interface IPrestoClientOptions {
     host: string;
@@ -18,7 +19,7 @@ declare module "presto-client" {
     source: string;
     user: string;
     catalog: string;
-    checkInterval: number;
+    checkInterval?: number;
     basic_auth?: {
       user: string;
       password: string;
@@ -72,16 +73,16 @@ declare module "presto-client" {
 
   interface IPrestoClientExecuteOptions {
     query: string;
-    catalog: string;
-    schema: string;
+    catalog?: string;
+    schema?: string;
     timezone?: string;
     info?: boolean;
     cancel?: () => boolean;
     state?: (error: any, query_id: string, stats: IPrestoClientStats) => void;
-    columns?: (error: any, data: IPrestoClientColumnMetaData[]) => void;
+    columns?: (error: any, columns: IPrestoClientColumnMetaData[]) => void;
     data?: (
       error: any,
-      data: PrestoClientColumnDatum[],
+      data: IPrestoClientColumnDatum[],
       columns: IPrestoClientColumnMetaData[],
       stats: IPrestoClientStats
     ) => void;

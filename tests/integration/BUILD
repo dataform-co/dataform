@@ -28,15 +28,16 @@ ts_test_suite(
     deps = [
         "//api",
         "//api/utils",
+        "//common/promises",
         "//core",
         "//protos:ts",
         "//testing",
         "//tests/utils",
         "//tools/postgres",
+        "//tools/presto",
         "@npm//@types/chai",
         "@npm//@types/long",
         "@npm//@types/node",
         "@npm//chai",
-        "@npm//presto-client",
     ],
 )
