@@ -5,14 +5,14 @@ export interface IMessage {
 }
 
 export class Serializer {
-  private readonly writer: BufferedWriter = new BufferedWriter();
+  private readonly writer: BytesWriter = new BytesWriter();
 
   public double(fieldNumber: number, packed: boolean, val?: number | number[]): this {
     return this.serializeField(
       fieldNumber,
       WireType.SIXTY_FOUR_BIT,
       packed,
-      (writer, singleVal) => writer.writeNonVarInt(singleVal, true, true),
+      (writer, singleVal) => writer.writeSixtyFourBitFloat(singleVal),
       val
     );
   }
@@ -22,7 +22,7 @@ export class Serializer {
       fieldNumber,
       WireType.THIRTY_TWO_BIT,
       packed,
-      (writer, singleVal) => writer.writeNonVarInt(singleVal, false, true),
+      (writer, singleVal) => writer.writeThirtyTwoBitFloat(singleVal),
       val
     );
   }
@@ -32,7 +32,7 @@ export class Serializer {
       fieldNumber,
       WireType.VARINT,
       packed,
-      (writer, singleVal) => writer.writeVarInt(singleVal),
+      (writer, singleVal) => writer.writeVarInt(Long.fromNumber(singleVal)),
       val
     );
   }
@@ -42,7 +42,7 @@ export class Serializer {
       fieldNumber,
       WireType.THIRTY_TWO_BIT,
       packed,
-      (writer, singleVal) => writer.writeNonVarInt(singleVal, false, false),
+      (writer, singleVal) => writer.writeThirtyTwoBitInteger(singleVal),
       val
     );
   }
@@ -52,7 +52,7 @@ export class Serializer {
       fieldNumber,
       WireType.VARINT,
       packed,
-      (writer, singleVal) => writer.writeVarInt(singleVal),
+      (writer, singleVal) => writer.writeVarInt(Long.fromNumber(singleVal)),
       val
     );
   }
@@ -62,7 +62,7 @@ export class Serializer {
       fieldNumber,
       WireType.THIRTY_TWO_BIT,
       packed,
-      (writer, singleVal) => writer.writeNonVarInt(singleVal, false, false),
+      (writer, singleVal) => writer.writeThirtyTwoBitInteger(singleVal),
       val
     );
   }
@@ -72,7 +72,8 @@ export class Serializer {
       fieldNumber,
       WireType.VARINT,
       packed,
-      (writer, singleVal) => writer.writeVarInt(((singleVal << 1) ^ (singleVal >> 31)) >>> 0),
+      (writer, singleVal) =>
+        writer.writeVarInt(Long.fromNumber(((singleVal << 1) ^ (singleVal >> 31)) >>> 0)),
       val
     );
   }
@@ -82,7 +83,7 @@ export class Serializer {
       fieldNumber,
       WireType.VARINT,
       packed,
-      (writer, singleVal) => writer.writeVarInt(singleVal),
+      (writer, singleVal) => writer.writeVarInt(Long.fromNumber(singleVal)),
       val
     );
   }
@@ -92,7 +93,7 @@ export class Serializer {
       fieldNumber,
       WireType.VARINT,
       packed,
-      (writer, singleVal) => writer.writeLongVarInt(singleVal),
+      (writer, singleVal) => writer.writeVarInt(singleVal),
       val
     );
   }
@@ -102,7 +103,7 @@ export class Serializer {
       fieldNumber,
       WireType.VARINT,
       packed,
-      (writer, singleVal) => writer.writeLongVarInt(singleVal),
+      (writer, singleVal) => writer.writeVarInt(singleVal),
       val
     );
   }
@@ -112,7 +113,7 @@ export class Serializer {
       fieldNumber,
       WireType.SIXTY_FOUR_BIT,
       packed,
-      (writer, singleVal) => writer.writeLongNonVarInt(singleVal),
+      (writer, singleVal) => writer.writeSixtyFourBitInteger(singleVal),
       val
     );
   }
@@ -122,7 +123,7 @@ export class Serializer {
       fieldNumber,
       WireType.SIXTY_FOUR_BIT,
       packed,
-      (writer, singleVal) => writer.writeLongNonVarInt(singleVal),
+      (writer, singleVal) => writer.writeSixtyFourBitInteger(singleVal),
       val
     );
   }
@@ -133,7 +134,7 @@ export class Serializer {
       WireType.VARINT,
       packed,
       (writer, singleVal) =>
-        writer.writeLongVarInt(singleVal.shiftLeft(1).xor(singleVal.shiftRight(63))),
+        writer.writeVarInt(singleVal.shiftLeft(1).xor(singleVal.shiftRight(63))),
       val
     );
   }
@@ -143,7 +144,7 @@ export class Serializer {
       fieldNumber,
       WireType.VARINT,
       packed,
-      writer => writer.writeVarInt(1),
+      writer => writer.writeVarInt(Long.ONE),
       val
     );
   }
@@ -153,7 +154,8 @@ export class Serializer {
       fieldNumber,
       WireType.LENGTH_DELIMITED,
       packed,
-      (writer, singleVal) => writer.writeVarInt(singleVal.length).writeBytes(singleVal),
+      (writer, singleVal) =>
+        writer.writeVarInt(Long.fromNumber(singleVal.length)).writeBytes(singleVal),
       val
     );
   }
@@ -165,7 +167,7 @@ export class Serializer {
       packed,
       (writer, singleVal) => {
         const buffer = Buffer.from(singleVal);
-        return writer.writeVarInt(buffer.byteLength).writeBytes(buffer);
+        return writer.writeVarInt(Long.fromNumber(buffer.byteLength)).writeBytes(buffer);
       },
       val
     );
@@ -178,7 +180,7 @@ export class Serializer {
       packed,
       (writer, singleVal) => {
         const bytes = singleVal.serialize();
-        return writer.writeVarInt(bytes.byteLength).writeBytes(bytes);
+        return writer.writeVarInt(Long.fromNumber(bytes.byteLength)).writeBytes(bytes);
       },
       val
     );
@@ -192,7 +194,7 @@ export class Serializer {
     fieldNumber: number,
     wireType: WireType,
     packed: boolean,
-    writeSingleVal: (writer: BufferedWriter, singleVal: T) => void,
+    writeSingleVal: (writer: BytesWriter, singleVal: T) => void,
     val: T | T[]
   ) {
     if (!Array.isArray(val)) {
@@ -200,11 +202,11 @@ export class Serializer {
       return this;
     }
     if (packed) {
-      const writer = new BufferedWriter();
+      const writer = new BytesWriter();
       val.forEach(singleVal => writeSingleVal(writer, singleVal));
       const packedBytes = Uint8Array.from(writer.buffer);
       this.newTag(fieldNumber, WireType.LENGTH_DELIMITED)
-        .writeVarInt(packedBytes.byteLength)
+        .writeVarInt(Long.fromNumber(packedBytes.byteLength))
         .writeBytes(packedBytes);
     } else {
       val.forEach(singleVal => writeSingleVal(this.newTag(fieldNumber, wireType), singleVal));
@@ -212,85 +214,9 @@ export class Serializer {
     return this;
   }
 
-  private newTag(fieldNumber: number, wireType: WireType): BufferedWriter {
+  private newTag(fieldNumber: number, wireType: WireType): BytesWriter {
     // See https://developers.google.com/protocol-buffers/docs/encoding#structure.
-    return this.writer.writeVarInt((fieldNumber << 3) | wireType);
-  }
-}
-
-class BufferedWriter {
-  public readonly buffer: number[] = [];
-
-  public writeVarInt(varint: number): this {
-    if (varint === 0) {
-      this.buffer.push(0);
-    } else if (varint > 0) {
-      while (varint) {
-        let nextByte = varint & 0b01111111;
-        varint >>>= 7;
-        if (varint) {
-          nextByte |= 0b10000000;
-        }
-        this.buffer.push(nextByte);
-      }
-    } else {
-      for (let i = 0; i < 10; i++) {
-        const nextByte = i === 9 ? 1 : (varint & 0b01111111) | 0b10000000;
-        varint >>= 7;
-        this.buffer.push(nextByte);
-      }
-    }
-    return this;
-  }
-
-  public writeLongVarInt(varint: Long): this {
-    if (varint.isZero()) {
-      this.buffer.push(0);
-    } else if (varint.greaterThan(0)) {
-      while (!varint.isZero()) {
-        let nextByte = varint.getLowBits() & 0b01111111;
-        varint = varint.shiftRightUnsigned(7);
-        if (!varint.isZero()) {
-          nextByte |= 0b10000000;
-        }
-        this.buffer.push(nextByte);
-      }
-    } else {
-      for (let i = 0; i < 10; i++) {
-        const nextByte = i === 9 ? 1 : (varint.getLowBits() & 0b01111111) | 0b10000000;
-        varint = varint.shiftRight(7);
-        this.buffer.push(nextByte);
-      }
-    }
-    return this;
-  }
-
-  public writeNonVarInt(num: number, sixtyFourBit: boolean, float: boolean): this {
-    const bytes = new Uint8Array(sixtyFourBit ? 8 : 4);
-    const dataView = new DataView(bytes.buffer);
-    if (float) {
-      if (sixtyFourBit) {
-        dataView.setFloat64(0, num, true);
-      } else {
-        dataView.setFloat32(0, num, true);
-      }
-    } else {
-      dataView.setInt32(0, num, true);
-    }
-    return this.writeBytes(bytes);
-  }
-
-  public writeLongNonVarInt(num: Long): this {
-    const bytes = new Uint8Array(8);
-    const dataView = new DataView(bytes.buffer);
-    dataView.setInt32(0, num.getLowBits(), true);
-    dataView.setInt32(4, num.getHighBits(), true);
-    return this.writeBytes(bytes);
-  }
-
-  public writeBytes(bytes: Uint8Array): this {
-    bytes.forEach(byte => this.buffer.push(byte));
-    return this;
+    return this.writer.writeVarInt(Long.fromNumber((fieldNumber << 3) | wireType));
   }
 }
 
@@ -376,6 +302,73 @@ export class Deserializer {
   }
 }
 
+enum WireType {
+  VARINT = 0,
+  SIXTY_FOUR_BIT = 1,
+  LENGTH_DELIMITED = 2,
+  THIRTY_TWO_BIT = 5
+}
+
+class BytesWriter {
+  public readonly buffer: number[] = [];
+
+  public writeVarInt(varint: Long): this {
+    if (varint.isZero()) {
+      this.buffer.push(0);
+    } else if (varint.greaterThan(0)) {
+      while (!varint.isZero()) {
+        let nextByte = varint.getLowBits() & 0b01111111;
+        varint = varint.shiftRightUnsigned(7);
+        if (!varint.isZero()) {
+          nextByte |= 0b10000000;
+        }
+        this.buffer.push(nextByte);
+      }
+    } else {
+      for (let i = 0; i < 10; i++) {
+        const nextByte = i === 9 ? 1 : (varint.getLowBits() & 0b01111111) | 0b10000000;
+        varint = varint.shiftRight(7);
+        this.buffer.push(nextByte);
+      }
+    }
+    return this;
+  }
+
+  public writeThirtyTwoBitInteger(num: number): this {
+    const bytes = new Uint8Array(4);
+    const dataView = new DataView(bytes.buffer);
+    dataView.setInt32(0, num, true);
+    return this.writeBytes(bytes);
+  }
+
+  public writeThirtyTwoBitFloat(num: number): this {
+    const bytes = new Uint8Array(4);
+    const dataView = new DataView(bytes.buffer);
+    dataView.setFloat32(0, num, true);
+    return this.writeBytes(bytes);
+  }
+
+  public writeSixtyFourBitInteger(num: Long) {
+    const bytes = new Uint8Array(8);
+    const dataView = new DataView(bytes.buffer);
+    dataView.setInt32(0, num.getLowBits(), true);
+    dataView.setInt32(4, num.getHighBits(), true);
+    return this.writeBytes(bytes);
+  }
+
+  public writeSixtyFourBitFloat(num: number): this {
+    const bytes = new Uint8Array(8);
+    const dataView = new DataView(bytes.buffer);
+    dataView.setFloat64(0, num, true);
+    return this.writeBytes(bytes);
+  }
+
+  public writeBytes(bytes: Uint8Array): this {
+    bytes.forEach(byte => this.buffer.push(byte));
+    return this;
+  }
+}
+
 class BytesReader {
   private cursor = 0;
 
@@ -443,11 +436,4 @@ class BytesReader {
     }
     return bytes;
   }
-}
-
-enum WireType {
-  VARINT = 0,
-  SIXTY_FOUR_BIT = 1,
-  LENGTH_DELIMITED = 2,
-  THIRTY_TWO_BIT = 5
 }
