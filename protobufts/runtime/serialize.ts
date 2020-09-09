@@ -4,6 +4,13 @@ interface IMessage {
   serialize: () => Uint8Array;
 }
 
+enum WireType {
+  VARINT = 0,
+  SIXTY_FOUR_BIT = 1,
+  LENGTH_DELIMITED = 2,
+  THIRTY_TWO_BIT = 5
+}
+
 export class Serializer {
   private readonly writer: BytesWriter = new BytesWriter();
 
@@ -229,9 +236,13 @@ export class Deserializer {
 
   public *deserialize() {
     for (const { fieldNumber, wireType } of this.reader.read()) {
-      const length =
-        wireType === WireType.LENGTH_DELIMITED ? this.reader.readVarInt().toNumber() : 1;
-      yield { fieldNumber, length };
+      const buffer =
+        wireType === WireType.LENGTH_DELIMITED
+          ? new LengthDelimitedFieldBuffer(
+              this.reader.readBytes(this.reader.readVarInt().toNumber())
+            )
+          : undefined;
+      yield { fieldNumber, buffer };
     }
   }
 
@@ -292,21 +303,90 @@ export class Deserializer {
   public bool() {
     return this.reader.readVarInt().greaterThan(0);
   }
-
-  public bytes(length: number) {
-    return this.reader.readBytes(length);
-  }
-
-  public string(length: number) {
-    return Buffer.from(this.bytes(length)).toString("utf8");
-  }
 }
 
-enum WireType {
-  VARINT = 0,
-  SIXTY_FOUR_BIT = 1,
-  LENGTH_DELIMITED = 2,
-  THIRTY_TWO_BIT = 5
+class LengthDelimitedFieldBuffer {
+  private readonly reader: BytesReader;
+
+  constructor(bytes: Uint8Array) {
+    this.reader = new BytesReader(bytes);
+  }
+
+  public double() {
+    return this.yieldUntilDone(() => this.reader.readSixtyFourBitFloat());
+  }
+
+  public float() {
+    return this.yieldUntilDone(() => this.reader.readThirtyTwoBitFloat());
+  }
+
+  public int32() {
+    return this.yieldUntilDone(() => this.reader.readVarInt().toNumber());
+  }
+
+  public fixed32() {
+    return this.yieldUntilDone(() => this.reader.readThirtyTwoBitInteger(true));
+  }
+
+  public uint32() {
+    return this.yieldUntilDone(() => this.reader.readVarInt().toNumber());
+  }
+
+  public sfixed32() {
+    return this.yieldUntilDone(() => this.reader.readThirtyTwoBitInteger());
+  }
+
+  public sint32() {
+    return this.yieldUntilDone(() => {
+      const val = this.reader.readVarInt().toNumber();
+      return (val >>> 1) ^ -(val & 1);
+    });
+  }
+
+  public enum() {
+    return this.yieldUntilDone(() => this.reader.readVarInt().toNumber());
+  }
+
+  public int64() {
+    return this.yieldUntilDone(() => this.reader.readVarInt());
+  }
+
+  public uint64() {
+    return this.yieldUntilDone(() => this.reader.readVarInt().toUnsigned());
+  }
+
+  public fixed64() {
+    return this.yieldUntilDone(() => this.reader.readSixtyFourBitInteger(true));
+  }
+
+  public sfixed64() {
+    return this.yieldUntilDone(() => this.reader.readSixtyFourBitInteger());
+  }
+
+  public sint64() {
+    return this.yieldUntilDone(() => {
+      const val = this.reader.readVarInt();
+      return val.shiftRightUnsigned(1).xor(val.and(1).multiply(-1));
+    });
+  }
+
+  public bool() {
+    return this.yieldUntilDone(() => this.reader.readVarInt().greaterThan(0));
+  }
+
+  public bytes() {
+    return this.reader.readBytes(this.reader.length);
+  }
+
+  public string() {
+    return Buffer.from(this.bytes()).toString("utf8");
+  }
+
+  private *yieldUntilDone<T>(fn: () => T) {
+    while (!this.reader.done()) {
+      yield fn();
+    }
+  }
 }
 
 class BytesWriter {
@@ -378,9 +458,6 @@ class BytesReader {
     while (this.cursor < this.bytes.length) {
       const tag = this.readVarInt().toNumber();
       const fieldNumber = tag >> 3;
-      // TODO: this might be LENGTH_DELIMITED for a repeated packed field (only possible for primitive numeric types).
-      // This might happen even if the repeated field has not been declared as packed.
-      // Need to handle this case.
       const wireType: WireType = tag & 0b00000111;
       yield { fieldNumber, wireType };
     }
@@ -428,9 +505,20 @@ class BytesReader {
     return Uint8Array.from(this.readBytesAsNumberArray(num));
   }
 
+  public get length() {
+    return this.bytes.length;
+  }
+
+  public done() {
+    return this.cursor >= this.bytes.length;
+  }
+
   private readBytesAsNumberArray(num: number) {
     const bytes = [];
     for (let i = 0; i < num; i++) {
+      if (this.done()) {
+        throw new Error("No more data to read.");
+      }
       bytes.push(this.bytes[this.cursor]);
       this.cursor++;
     }
