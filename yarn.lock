@@ -9907,6 +9907,11 @@ prepend-http@^1.0.0:
   resolved "https://registry.yarnpkg.com/prepend-http/-/prepend-http-1.0.4.tgz#d4f4562b0ce3696e41ac52d0e002e57a635dc6dc"
   integrity sha1-1PRWKwzjaW5BrFLQ4ALlemNdxtw=
 
+presto-client@^0.8.1:
+  version "0.8.1"
+  resolved "https://registry.yarnpkg.com/presto-client/-/presto-client-0.8.1.tgz#3cc95e678dee00a6bea84c90377757f19e5456f8"
+  integrity sha512-1R+0lLYths2JTQGgbggNpnTseJb2iV26b0pQbOD5u7d6YuHevrsnYCjRTHYu7jfy37D3yWZHaYXXtka7I8T06g==
+
 prettier@^1.14.2:
   version "1.19.1"
   resolved "https://registry.yarnpkg.com/prettier/-/prettier-1.19.1.tgz#f7d7f5ff8a9cd872a7be4ca142095956a60797cb"

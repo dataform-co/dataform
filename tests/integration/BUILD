@@ -37,5 +37,6 @@ ts_test_suite(
         "@npm//@types/long",
         "@npm//@types/node",
         "@npm//chai",
+        "@npm//presto-client",
     ],
 )

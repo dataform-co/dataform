@@ -91,6 +91,7 @@
     "pegjs": "^0.10.0",
     "pg": "^8.3.0",
     "pg-query-stream": "^3.2.0",
+    "presto-client": "^0.8.1",
     "prettier": "^1.14.2",
     "pretty-ms": "^4.0.0",
     "promise-pool-executor": "^1.1.1",
