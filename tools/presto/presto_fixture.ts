@@ -2,6 +2,7 @@ import * as presto from "presto-client";
 
 import { execSync } from "child_process";
 import * as dbadapters from "df/api/dbadapters";
+import { prestoExecute } from "df/api/dbadapters/presto";
 import { sleep, sleepUntil } from "df/common/promises";
 import { IHookHandler } from "df/testing";
 
@@ -10,21 +11,16 @@ const DOCKER_CONTAINER_NAME = "presto-df-integration-testing";
 // We remap this to something more unique.
 const PRESTO_SERVE_PORT = 8080;
 
-// export const prestoClient = new presto.Client({
-//   source: "df-integration-tests",
-//   // These are included in the docker image.
-//   catalog: "tpch",
-//   schema: "sf1"
-//   // TODO: Add BIGINT json parser; see presto-client docs.
-// });
-
-interface IPrestoExecutionResult {
-  columns?: presto.IPrestoClientColumnMetaData[];
-  data?: presto.PrestoClientColumnDatum[];
-  error?: any;
-  queryId?: string;
-  stats?: presto.IPrestoClientStats;
-}
+const prestoClient = new presto.Client({
+  host: "127.0.0.1",
+  port: 1234,
+  user: "df-integration-tests",
+  source: "df-integration-tests",
+  // These are included in the docker image.
+  catalog: "tpch",
+  schema: "sf1"
+  // TODO: Add BIGINT json parser; see presto-client docs.
+});
 
 export class PrestoFixture {
   public static readonly host = USE_CLOUD_BUILD_NETWORK ? DOCKER_CONTAINER_NAME : "localhost";
@@ -54,27 +50,31 @@ export class PrestoFixture {
         ].join(" ")
       );
 
-      const dbadapter = await dbadapters.create(
-        {
-          host: "127.0.0.1",
-          port: 1234,
-          user: "df-integration-tests"
-          // TODO: Should source be added here?
-        },
-        "presto",
-        { disableSslForTestsOnly: true }
-      );
+      // const dbadapter = await dbadapters.create(
+      //   {
+      //     host: "127.0.0.1",
+      //     port: 1234,
+      //     user: "df-integration-tests"
+      //     // TODO: Should source be added here?
+      //   },
+      //   "presto",
+      //   { disableSslForTestsOnly: true }
+      // );
 
       // Block until presto is ready to accept requests.
       await sleepUntil(async () => {
         try {
-          await dbadapter.execute("select 1");
+          await prestoExecute(prestoClient, "select 1");
           // await prestoExecute({ query: "select 1" });
           return true;
         } catch (e) {
           return false;
         }
       });
+
+      console.log("TRYING SHOW");
+      const result = await prestoExecute(prestoClient, "show columns in customer");
+      console.log("PrestoFixture -> constructor -> result", result);
     });
 
     tearDown("stopping presto", () => {

@@ -53,6 +53,7 @@ message SSHTunnel {
   int32 port = 5;
 }
 
+// TODO: Add TLS/SSL details.
 message Presto {
   string host = 1;
   int32 port = 2;

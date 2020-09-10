@@ -10,6 +10,7 @@ ts_library(
     ),
     deps = [
         "//api/utils",
+        "//common/arrays",
         "//common/errors",
         "//common/strings",
         "//core",
@@ -36,6 +37,7 @@ ts_library(
         "@npm//object-hash",
         "@npm//pg",
         "@npm//pg-query-stream",
+        "@npm//presto-client",
         "@npm//pretty-ms",
         "@npm//promise-pool-executor",
         "@npm//protobufjs",
