@@ -1,13 +1,20 @@
 {
   "name": "dataform",
+  "publisher": "dataform",
   "version": "0.0.1",
+  "repository": {
+    "url": "https://github.com/dataform-co/dataform/tree/master/vscode"
+  },
   "engines": {
-    "vscode": "^1.45.0"
+    "vscode": "^1.48.0"
   },
   "activationEvents": [
     "workspaceContains:**/*.sqlx"
   ],
   "main": "extension.js",
+  "scripts": {
+    "vscode:prepublish": "cd .. && bazel run vscode:bin"
+  },
   "contributes": {
     "commands": [
       {
