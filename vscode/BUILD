@@ -32,3 +32,14 @@ sh_binary(
         ":vscode-sources",
     ],
 )
+
+sh_binary(
+    name = "packager",
+    srcs = ["packager.sh"],
+    data = [
+        ":language-configuration.json",
+        ":package.json",
+        ":sqlx.grammar.json",
+        ":vscode-sources",
+    ],
+)
