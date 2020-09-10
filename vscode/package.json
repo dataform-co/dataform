@@ -4,7 +4,8 @@
     "Programming Languages"
   ],
   "publisher": "dataform",
-  "version": "0.0.2",
+  "version": "0.0.3",
+  "icon": "dataform_logo.png",
   "repository": {
     "url": "https://github.com/dataform-co/dataform/tree/master/vscode"
   },

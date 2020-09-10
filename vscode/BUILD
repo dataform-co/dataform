@@ -38,6 +38,7 @@ sh_binary(
     srcs = ["packager.sh"],
     data = [
         ":language-configuration.json",
+        ":dataform_logo.png",
         ":package.json",
         ":sqlx.grammar.json",
         ":vscode-sources",
