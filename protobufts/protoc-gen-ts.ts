@@ -101,8 +101,13 @@ function getFileContent(
     if (
       descriptorProto.field.some(
         fieldDescriptorProto =>
-          type(fieldDescriptorProto, fileTypeMapping, new Set(), fileDescriptorProto.name) ===
-          "Long"
+          type(
+            fieldDescriptorProto,
+            false,
+            fileTypeMapping,
+            new Set(),
+            fileDescriptorProto.name
+          ) === "Long"
       )
     ) {
       return true;
@@ -192,6 +197,7 @@ ${descriptorProto.field
     fieldDescriptorProto =>
       `    ${fieldDescriptorProto.jsonName}?: ${type(
         fieldDescriptorProto,
+        fieldDescriptorProto.label === google.protobuf.FieldDescriptorProto.Label.LABEL_REPEATED,
         fileTypeMapping,
         embeddedMapTypes,
         currentProtoFile
@@ -267,9 +273,13 @@ ${descriptorProto.field
     fieldDescriptorProto =>
       `  public ${fieldDescriptorProto.jsonName}${
         hasDefaultValue(fieldDescriptorProto) ? "" : "?"
-      }: ${type(fieldDescriptorProto, fileTypeMapping, embeddedMapTypes, currentProtoFile)}${
-        hasDefaultValue(fieldDescriptorProto) ? ` = ${defaultValue(fieldDescriptorProto)}` : ""
-      };`
+      }: ${type(
+        fieldDescriptorProto,
+        fieldDescriptorProto.label === google.protobuf.FieldDescriptorProto.Label.LABEL_REPEATED,
+        fileTypeMapping,
+        embeddedMapTypes,
+        currentProtoFile
+      )}${hasDefaultValue(fieldDescriptorProto) ? ` = ${defaultValue(fieldDescriptorProto)}` : ""};`
   )
   .join("\n")}
 ${descriptorProto.oneofDecl.map(
@@ -334,6 +344,7 @@ export namespace ${descriptorProto.name} {${
 
 function type(
   fieldDescriptorProto: google.protobuf.IFieldDescriptorProto,
+  asArray: boolean,
   fileTypeMapping: Map<string, ITypeLocation>,
   embeddedMapTypes: Set<string>,
   currentProtoFile: string
@@ -377,10 +388,10 @@ function type(
         throw new Error(`Unrecognized field type: ${fieldDescriptorProto.type}`);
     }
   };
-  if (fieldDescriptorProto.label !== google.protobuf.FieldDescriptorProto.Label.LABEL_REPEATED) {
-    return baseType();
+  if (asArray) {
+    return `${baseType()}[]`;
   }
-  return `${baseType()}[]`;
+  return baseType();
 }
 
 function oneofType(
@@ -394,6 +405,7 @@ function oneofType(
       fieldDescriptorProto =>
         `{ field: "${fieldDescriptorProto.name}", value: ${type(
           fieldDescriptorProto,
+          false,
           fileTypeMapping,
           embeddedMapTypes,
           currentProtoFile
@@ -513,6 +525,7 @@ function deserialize(
       case google.protobuf.FieldDescriptorProto.Type.TYPE_MESSAGE:
         return `${type(
           fieldDescriptorProto,
+          false,
           fileTypeMapping,
           embeddedMapTypes,
           currentProtoFile
@@ -549,10 +562,11 @@ function deserialize(
       case google.protobuf.FieldDescriptorProto.Type.TYPE_MESSAGE:
         return `${type(
           fieldDescriptorProto,
+          false,
           fileTypeMapping,
           embeddedMapTypes,
           currentProtoFile
-        ).slice(0, -2)}.deserialize(buffer.bytes())`;
+        )}.deserialize(buffer.bytes())`;
       // case google.protobuf.FieldDescriptorProto.Type.TYPE_GROUP:
       //   throw new Error("GROUP is unsupported.");
       case google.protobuf.FieldDescriptorProto.Type.TYPE_BYTES:
