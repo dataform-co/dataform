@@ -14,6 +14,18 @@ interface IPrestoExecutionResult {
   stats?: Presto.IPrestoClientStats;
 }
 
+// TODO: In the future, the connection doesn't specify the catalog (database) and schema to allow moving data
+// between tables, meaning target resolution will require both the database and schema to be required,
+// so should throw if not present.
+// HOWEVER, until the database and schema options are made optional in the presto client used (see IPresto proto comment),
+// the integration tests will provide database and schema in the connection.
+// TODO: Move this to somewhere both the API and CLI can use?
+function resolveTarget(target: dataform.ITarget) {
+  return `${target.database ? `${target.database}.` : ""}${
+    target.schema ? `${target.schema}.` : ""
+  }${target.name}`;
+}
+
 export class PrestoDbAdapter implements IDbAdapter {
   public static async create(
     credentials: Credentials,
@@ -77,7 +89,6 @@ export class PrestoDbAdapter implements IDbAdapter {
     );
   }
 
-  // Catalogs are similar to databases in BigQuery.
   public async catalogs(): Promise<string[]> {
     const result = await prestoExecute(this.client, "show catalogs");
     return flatten(result.data);
@@ -89,31 +100,40 @@ export class PrestoDbAdapter implements IDbAdapter {
       const result = await prestoExecute(this.client, `show schemas from ${catalog}`);
       schemas = schemas.concat(flatten(result.data).map(schema => `${catalog}.${schema}`));
     });
-    // TODO: Currently this returns `catalog.schema` rather than just schemas. Should this be changed?
+    // TODO: Currently this returns `catalog.schema` rather than just schemas in order to
+    // conform to string return type. Should this be changed?
     return schemas;
   }
 
   public async createSchema(catalog: string, schema: string): Promise<void> {
-    await prestoExecute(this.client, `create schema if not exists ${catalog}.${schema};`);
+    await prestoExecute(this.client, `create schema if not exists ${catalog}.${schema}`);
   }
 
+  // TODO: This should take parameters to allow for retrieving from a specific catalog/schema.
   public async tables(): Promise<dataform.ITarget[]> {
-    const result = await prestoExecute(this.client, "show tables");
-    return flatten(result.data).map(name => dataform.Target.create({ name }));
+    let tables: dataform.ITarget[] = [];
+    (await this.schemas()).forEach(async schemaString => {
+      const [database, schema] = schemaString.split(".");
+      const result = await prestoExecute(this.client, `show tables from ${schema}`);
+      tables = tables.concat(flatten(result.data).map(table => ({ database, schema, table })));
+    });
+    return tables;
   }
 
   public async table(target: dataform.ITarget): Promise<dataform.ITableMetadata> {
-    // TODO: Use resolve target function instead.
-    const columnsResult = await prestoExecute(
-      this.client,
-      `describe ${target.database}.${target.schema}.${target.name}`
-    );
+    let columnsResult: IPrestoExecutionResult;
+    try {
+      columnsResult = await prestoExecute(this.client, `describe ${resolveTarget(target)}`);
+    } catch (e) {
+      // This probably failed because the table doesn't exist, so ignore as the information isn't necessary.
+    }
     // TODO: Add primitives mapping.
     // Columns are structured [column name, type (primitive), extra, comment]. This can be
     // seen under columnsResult.columns; instead they could be dynamically populated using this info.
-    const fields = columnsResult.data.map(column =>
-      dataform.Field.create({ name: column[0], description: column[3] })
-    );
+    const fields =
+      columnsResult?.data.map(column =>
+        dataform.Field.create({ name: column[0], description: column[3] })
+      ) || [];
     return dataform.TableMetadata.create({
       // TODO: Add missing table metadata items.
       target,
@@ -123,7 +143,7 @@ export class PrestoDbAdapter implements IDbAdapter {
 
   public async preview(target: dataform.ITarget, limitRows: number = 10): Promise<any[]> {
     const { rows } = await this.execute(
-      `SELECT * FROM ${target.database}.${target.schema}.${target.name} LIMIT ${limitRows}`
+      `select * from ${target.database}.${target.schema}.${target.name} limit ${limitRows}`
     );
     return rows;
   }
@@ -154,7 +174,6 @@ export function prestoExecute(
     const result: IPrestoExecutionResult = {};
     client.execute({
       query: statement,
-      // TODO: Add catalog and schema here to allow cross-database querying.
       cancel: () => {
         return false;
       },

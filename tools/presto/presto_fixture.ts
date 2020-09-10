@@ -11,16 +11,13 @@ const DOCKER_CONTAINER_NAME = "presto-df-integration-testing";
 // We remap this to something more unique.
 const PRESTO_SERVE_PORT = 8080;
 
-const prestoClient = new presto.Client({
+export const prestoTestCredentials = {
   host: "127.0.0.1",
   port: 1234,
   user: "df-integration-tests",
-  source: "df-integration-tests",
-  // These are included in the docker image.
-  catalog: "tpch",
-  schema: "sf1"
-  // TODO: Add BIGINT json parser; see presto-client docs.
-});
+  catalog: "memory",
+  schema: "default"
+};
 
 export class PrestoFixture {
   public static readonly host = USE_CLOUD_BUILD_NETWORK ? DOCKER_CONTAINER_NAME : "localhost";
@@ -36,8 +33,7 @@ export class PrestoFixture {
       }
       // Run the presto Docker image.
       // This running container can be interacted with via the include CLI using:
-      // `docker exec -it presto presto --catalog tpch --schema sf1`
-      // (Catalog and schema conform to the default provided within the image).
+      // `docker exec -it presto presto`.
       execSync(
         [
           "docker run",
@@ -50,31 +46,19 @@ export class PrestoFixture {
         ].join(" ")
       );
 
-      // const dbadapter = await dbadapters.create(
-      //   {
-      //     host: "127.0.0.1",
-      //     port: 1234,
-      //     user: "df-integration-tests"
-      //     // TODO: Should source be added here?
-      //   },
-      //   "presto",
-      //   { disableSslForTestsOnly: true }
-      // );
+      const dbadapter = await dbadapters.create({ ...prestoTestCredentials, port }, "presto", {
+        disableSslForTestsOnly: true
+      });
 
       // Block until presto is ready to accept requests.
       await sleepUntil(async () => {
         try {
-          await prestoExecute(prestoClient, "select 1");
-          // await prestoExecute({ query: "select 1" });
+          await dbadapter.execute("select 1");
           return true;
         } catch (e) {
           return false;
         }
-      });
-
-      console.log("TRYING SHOW");
-      const result = await prestoExecute(prestoClient, "show columns in customer");
-      console.log("PrestoFixture -> constructor -> result", result);
+      }, 500);
     });
 
     tearDown("stopping presto", () => {

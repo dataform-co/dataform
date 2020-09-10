@@ -18,6 +18,8 @@ ts_test_suite(
         "//tests/integration/bigquery_project:node_modules",
         "//tests/integration/postgres_project:files",
         "//tests/integration/postgres_project:node_modules",
+        "//tests/integration/presto_project:files",
+        "//tests/integration/presto_project:node_modules",
         "//tests/integration/redshift_project:files",
         "//tests/integration/redshift_project:node_modules",
         "//tests/integration/snowflake_project:files",

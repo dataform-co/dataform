@@ -1,6 +1,7 @@
 import { Credentials } from "df/api/commands/credentials";
 import { BigQueryDbAdapter } from "df/api/dbadapters/bigquery";
 import { PostgresDbAdapter } from "df/api/dbadapters/postgres";
+import { PrestoDbAdapter } from "df/api/dbadapters/presto";
 import { RedshiftDbAdapter } from "df/api/dbadapters/redshift";
 import { SnowflakeDbAdapter } from "df/api/dbadapters/snowflake";
 import { SQLDataWarehouseDBAdapter } from "df/api/dbadapters/sqldatawarehouse";
@@ -85,7 +86,8 @@ export const validWarehouses = [
   "postgres",
   "redshift",
   "sqldatawarehouse",
-  "snowflake"
+  "snowflake",
+  "presto"
 ];
 
 export async function create(
@@ -104,3 +106,4 @@ register("postgres", PostgresDbAdapter);
 register("redshift", RedshiftDbAdapter);
 register("snowflake", SnowflakeDbAdapter);
 register("sqldatawarehouse", SQLDataWarehouseDBAdapter);
+register("presto", PrestoDbAdapter);

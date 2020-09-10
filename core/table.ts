@@ -154,6 +154,39 @@ const IBigQueryOptionsProperties = () =>
   strictKeysOf<IBigQueryOptions>()(["partitionBy", "clusterBy", "updatePartitionFilter", "labels"]);
 
 /**
+ * Options for creating tables within Presto projects.
+ */
+export interface IPrestoOptions {
+  /**
+   * The key with which to partition the table. Typically the name of a timestamp or date column.
+   *
+   * For more information, read the partiton by docs for the connection you are using.
+   */
+  partitionBy?: string[];
+
+  /**
+   * The key with which to partition the table. Typically the name of a timestamp or date column.
+   *
+   * For more information, read the partiton by docs for the connection you are using.
+   */
+
+  /**
+   * If catalog and schema are specified in the request, then leading prefixes
+   *
+   * can be ignored, e.g. "catalog.schema.table" can be referred to as just "table".
+   */
+  catalog?: string;
+
+  /**
+   * See catalog option.
+   */
+  schema?: string;
+}
+
+const IPrestoOptionsProperties = () =>
+  strictKeysOf<IPrestoOptions>()(["partitionBy", "catalog", "schema"]);
+
+/**
  * Options for creating assertions as part of a dataset definition.
  */
 export interface ITableAssertions {
@@ -221,6 +254,11 @@ export interface ITableConfig
   sqldatawarehouse?: ISQLDataWarehouseOptions;
 
   /**
+   * Presto-specific options.
+   */
+  presto?: IPrestoOptions;
+
+  /**
    * Assertions to be run on the dataset.
    *
    * If configured, relevant assertions will automatically be created and run as a dependency of this dataset.
@@ -245,6 +283,7 @@ export const ITableConfigProperties = () =>
     "redshift",
     "bigquery",
     "sqldatawarehouse",
+    "presto",
     "tags",
     "uniqueKey",
     "dependencies",
@@ -284,6 +323,7 @@ export class Table {
       "bigquery",
       "redshift",
       "sqlDataWarehouse",
+      "presto",
       "preOps",
       "postOps",
       "actionDescriptor",
@@ -337,6 +377,9 @@ export class Table {
     }
     if (config.sqldatawarehouse) {
       this.sqldatawarehouse(config.sqldatawarehouse);
+    }
+    if (config.presto) {
+      this.presto(config.presto);
     }
     if (config.tags) {
       this.tags(config.tags);
@@ -438,6 +481,17 @@ export class Table {
       }
       this.proto.actionDescriptor.bigqueryLabels = bigquery.labels;
     }
+    return this;
+  }
+
+  public presto(presto: dataform.IPrestoOptions) {
+    checkExcessProperties(
+      (e: Error) => this.session.compileError(e),
+      presto,
+      IPrestoOptionsProperties(),
+      "presto config"
+    );
+    this.proto.presto = dataform.PrestoOptions.create(presto);
     return this;
   }
 
@@ -648,6 +702,11 @@ export class TableContext implements ITableContext {
 
   public bigquery(bigquery: dataform.IBigQueryOptions) {
     this.table.bigquery(bigquery);
+    return "";
+  }
+
+  public presto(presto: dataform.IPrestoOptions) {
+    this.table.presto(presto);
     return "";
   }
 
