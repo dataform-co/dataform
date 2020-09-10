@@ -1,5 +1,9 @@
-** Under construction **
+## This extension is in Alpha
 
-To run you need vscode and bazel installed. Then run: `bazel run vscode:bin -- /path/to/dataform-repo`
+To run this extension you will need the dataform cli installed globally: `npm i -g @dataform/cli`.
 
-This will open a vscode instance in developer mode. Go to a `.sqlx` file to use the extension.
+Includes:
+
+- Syntax highlighting for `.sqlx` files
+- Realtime compilation of your project
+- `cmd + click` on a `ref()` function to go to the file that it references
