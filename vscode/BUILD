@@ -40,6 +40,8 @@ sh_binary(
         ":language-configuration.json",
         ":dataform_logo.png",
         ":package.json",
+        ":README.md",
+        ":LICENSE",
         ":sqlx.grammar.json",
         ":vscode-sources",
     ],
