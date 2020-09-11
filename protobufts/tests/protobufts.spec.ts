@@ -359,6 +359,103 @@ suite(__filename, { parallel: true }, () => {
       });
     }
   });
+
+  suite("json support", { parallel: true }, () => {
+    test("singular fields", () => {
+      expect(
+        protobuftsProtos.TestMessage.create({
+          doubleField: 45.8,
+          floatField: Number.NaN,
+          int64Field: Long.MAX_VALUE,
+          uint64Field: Long.UONE,
+          int32Field: 190323,
+          fixed64Field: Long.fromNumber(12988, true),
+          fixed32Field: 4173723,
+          boolField: true,
+          stringField: "hello world",
+          messageField: protobuftsProtos.TestMessage.create({
+            stringField: "byeeee"
+          }),
+          bytesField: Uint8Array.from([5, 78, 93, 101]),
+          uint32Field: 12455,
+          enumField: protobuftsProtos.TestEnum.VAL1,
+          sfixed32Field: -135131,
+          sfixed64Field: Long.fromValue(-9102713712)
+          // TODO: Once Map support is in, fix Map JSON conversion.
+        }).toJson()
+      ).eql({
+        doubleField: 45.8,
+        floatField: "NaN",
+        int64Field: "9223372036854775807",
+        uint64Field: "1",
+        int32Field: 190323,
+        fixed64Field: "12988",
+        fixed32Field: 4173723,
+        boolField: true,
+        stringField: "hello world",
+        messageField: {
+          stringField: "byeeee"
+        },
+        bytesField: "BU5dZQ==",
+        uint32Field: 12455,
+        enumField: "VAL1",
+        sfixed32Field: -135131,
+        sfixed64Field: "-9102713712"
+      });
+    });
+
+    test("repeated fields", () => {
+      expect(
+        protobuftsProtos.TestRepeatedMessage.create({
+          doubleField: [45.8, 78.1],
+          floatField: [Number.NaN, Number.NEGATIVE_INFINITY],
+          int64Field: [Long.MAX_VALUE],
+          uint64Field: [Long.UONE],
+          int32Field: [190323, -18278],
+          fixed64Field: [Long.fromNumber(12988, true)],
+          fixed32Field: [4173723],
+          boolField: [true, false, false, true],
+          stringField: ["hello", "world"],
+          messageField: [
+            protobuftsProtos.TestMessage.create({
+              stringField: "byeeee"
+            }),
+            protobuftsProtos.TestMessage.create({
+              stringField: "wow"
+            })
+          ],
+          bytesField: [Uint8Array.from([5, 78, 93, 101]), Uint8Array.from([7, 121, 1])],
+          uint32Field: [12455],
+          enumField: [protobuftsProtos.TestEnum.VAL0, protobuftsProtos.TestEnum.VAL1],
+          sfixed32Field: [-135131],
+          sfixed64Field: [Long.fromValue(-9102713712)]
+        }).toJson()
+      ).eql({
+        doubleField: [45.8, 78.1],
+        floatField: ["NaN", "-Infinity"],
+        int64Field: ["9223372036854775807"],
+        uint64Field: ["1"],
+        int32Field: [190323, -18278],
+        fixed64Field: ["12988"],
+        fixed32Field: [4173723],
+        boolField: [true, false, false, true],
+        stringField: ["hello", "world"],
+        messageField: [
+          {
+            stringField: "byeeee"
+          },
+          {
+            stringField: "wow"
+          }
+        ],
+        bytesField: ["BU5dZQ==", "B3kB"],
+        uint32Field: [12455],
+        enumField: ["VAL0", "VAL1"],
+        sfixed32Field: [-135131],
+        sfixed64Field: ["-9102713712"]
+      });
+    });
+  });
 });
 
 const RESERIALIZER_BINARY = "protobufts/tests/reserializer/darwin_amd64_stripped/reserializer";

@@ -32,7 +32,7 @@ message TestMessage {
     string oneof_string_field = 19;
   }
 
-  map<string, int32> bla = 20;
+  map<string, int32> map_field = 20;
 }
 
 message TestRepeatedMessage {

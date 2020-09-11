@@ -8,6 +8,7 @@ import {
 } from "df/protobufts/types";
 
 const IMPORT_LONG = 'import Long from "long";';
+const IMPORT_JSON_SUPPORT = 'import { toJsonValue } from "df/protobufts/runtime/json_support";';
 const IMPORT_SERIALIZATION =
   'import { Deserializer, Serializer } from "df/protobufts/runtime/serialize";';
 
@@ -74,6 +75,7 @@ ${[
         }"`;
       }),
       ...(this.needsLongImport() ? [IMPORT_LONG] : []),
+      IMPORT_JSON_SUPPORT,
       IMPORT_SERIALIZATION
     ];
   }
@@ -220,6 +222,24 @@ ${indent(
   2
 )}
     return serializer.finish();
+  }
+
+  public toJson() {
+    const jsonObject: any = {};
+${indent(
+  [
+    ...this.type.protobufType.fields.map(fieldDescriptorProto =>
+      Serialization.forField(fieldDescriptorProto, this.types, this.type)
+    ),
+    ...this.type.protobufType.oneofs.map(oneof =>
+      Serialization.forOneof(oneof.name, oneof.fields, this.types, this.type)
+    )
+  ]
+    .map(serialization => serialization.setJsonObjectFields())
+    .join("\n"),
+  2
+)}
+    return jsonObject;
   }
 }`;
     if (
@@ -382,7 +402,7 @@ class Serialization {
     }
   }
 
-  private static methodName(fieldDescriptorProto: google.protobuf.IFieldDescriptorProto) {
+  private static serializerMethodName(fieldDescriptorProto: google.protobuf.IFieldDescriptorProto) {
     const typeString = google.protobuf.FieldDescriptorProto.Type[fieldDescriptorProto.type];
     return typeString.replace("TYPE_", "").toLowerCase();
   }
@@ -424,7 +444,7 @@ ${indent(
   this.field.fieldDescriptorProtos
     .map(
       fieldDescriptorProto =>
-        `case "${fieldDescriptorProto.jsonName}": serializer.${Serialization.methodName(
+        `case "${fieldDescriptorProto.jsonName}": serializer.${Serialization.serializerMethodName(
           fieldDescriptorProto
         )}(${fieldDescriptorProto.number}, false, this.${name}.value); break;`
     )
@@ -436,7 +456,7 @@ ${indent(
     }
     return `if (${Serialization.checkShouldSerialize(
       this.field.fieldDescriptorProto
-    )}) { serializer.${Serialization.methodName(this.field.fieldDescriptorProto)}(${
+    )}) { serializer.${Serialization.serializerMethodName(this.field.fieldDescriptorProto)}(${
       this.field.fieldDescriptorProto.number
     }, ${Serialization.isPacked(this.field.fieldDescriptorProto)}, this.${
       this.field.fieldDescriptorProto.jsonName
@@ -467,10 +487,37 @@ ${indent(
     }; break; }`;
   }
 
+  public setJsonObjectFields() {
+    if (this.field.type === "oneof") {
+      const name = this.field.name;
+      return `if (!!this.${name}) {
+  switch (this.${name}.field) {
+${indent(
+  this.field.fieldDescriptorProtos
+    .map(
+      fieldDescriptorProto =>
+        `case "${fieldDescriptorProto.jsonName}": jsonObject.${
+          fieldDescriptorProto.jsonName
+        } = ${this.toJsonValue(fieldDescriptorProto, `this.${name}.value`)}; break;`
+    )
+    .join("\n"),
+  2
+)}
+  }
+}`;
+    }
+    return `if (${Serialization.checkShouldSerialize(
+      this.field.fieldDescriptorProto
+    )}) { jsonObject.${this.field.fieldDescriptorProto.jsonName} = ${this.toJsonValue(
+      this.field.fieldDescriptorProto,
+      `this.${this.field.fieldDescriptorProto.jsonName}`
+    )}; }`;
+  }
+
   private deserialize(fieldDescriptorProto: google.protobuf.IFieldDescriptorProto) {
     const deserializedValue = (() => {
       if (PACKABLE_TYPES.includes(fieldDescriptorProto.type)) {
-        return `...buffer.${Serialization.methodName(fieldDescriptorProto)}()`;
+        return `...buffer.${Serialization.serializerMethodName(fieldDescriptorProto)}()`;
       }
       switch (fieldDescriptorProto.type) {
         case google.protobuf.FieldDescriptorProto.Type.TYPE_STRING:
@@ -501,6 +548,26 @@ ${indent(
       return `Deserializer.single([${deserializedValue}])`;
     }
     return deserializedValue;
+  }
+
+  private toJsonValue(
+    fieldDescriptorProto: google.protobuf.IFieldDescriptorProto,
+    valueVariable: string
+  ) {
+    if (fieldDescriptorProto.type === google.protobuf.FieldDescriptorProto.Type.TYPE_ENUM) {
+      const enumTypeName = this.types.typescriptTypeFromProtobufType(
+        fieldDescriptorProto.type,
+        fieldDescriptorProto.typeName,
+        this.insideMessage
+      );
+      if (
+        fieldDescriptorProto.label === google.protobuf.FieldDescriptorProto.Label.LABEL_REPEATED
+      ) {
+        return `${valueVariable}.map(value => ${enumTypeName}[value])`;
+      }
+      return `${enumTypeName}[${valueVariable}]`;
+    }
+    return `toJsonValue(${valueVariable})`;
   }
 }
 
