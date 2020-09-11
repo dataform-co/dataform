@@ -92,15 +92,23 @@ connection.onDefinition(
     if (!refContents || refContents.length === 0) {
       return null;
     }
-    const linkedFileName = retrieveLinkedFileName(refContents.join(""));
-    const fileString = `${WORKSPACE_ROOT_FOLDER}/${linkedFileName}`;
-    return {
-      uri: fileString,
-      range: {
-        start: { line: 0, character: 0 },
-        end: { line: 1, character: 0 }
-      }
-    } as Location;
+
+    const minPosition = lineWithRef.search(refRegex);
+    const refStatement = refContents[0];
+    const maxPosition = minPosition + refStatement.length;
+
+    if (params.position.character > minPosition && params.position.character < maxPosition) {
+      // TODO: Make this work for multiple refs in one line
+      const linkedFileName = retrieveLinkedFileName(refContents[0]);
+      const fileString = `${WORKSPACE_ROOT_FOLDER}/${linkedFileName}`;
+      return {
+        uri: fileString,
+        range: {
+          start: { line: 0, character: 0 },
+          end: { line: 1, character: 0 }
+        }
+      } as Location;
+    }
   }
 );
 
