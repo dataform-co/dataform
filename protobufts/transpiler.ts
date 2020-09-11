@@ -155,7 +155,7 @@ ${[
     oneof => `    ${oneof.name}?: ${this.fieldTypeNames.get(oneof.name)}`
   )
 ].join("\n")}
-  }) {
+  } = {}) {
     const newProto = new ${this.type.typescriptType.name}();
 ${[
   ...this.type.protobufType.fields.map(fieldDescriptorProto => fieldDescriptorProto.jsonName),
