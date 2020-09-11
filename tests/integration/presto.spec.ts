@@ -34,4 +34,31 @@ suite("@dataform/integration/presto", { parallel: true }, ({ before, after }) =>
       expect(actionMap[actionName].status).equals(dataform.ActionResult.ExecutionStatus.SUCCESSFUL);
     }
   });
+
+  test("catalog inspection", { timeout: 60000 }, async () => {
+    const schemas = await dbadapter.schemas("");
+    // Some of the schemas defined in the docker image.
+    [
+      "system.information_schema",
+      "tpch.information_schema",
+      "memory.default",
+      "jmx.current",
+      "tpcds.information_schema"
+    ].forEach(schema => {
+      expect(schemas).to.include(schema);
+    });
+    // Some of the tables defined in the docker image.
+    // TODO: Fix equivalence testing.
+    // const tables = await dbadapter.tables();
+    // [
+    //   { database: "tpcds", schema: "sf1000", table: "call_center" },
+    //   {
+    //     database: "jmx",
+    //     schema: "current",
+    //     table: "com.sun.management:type=diagnosticcommand"
+    //   }
+    // ].forEach(target => {
+    //   expect(tables).to.include(dataform.Target.create(target));
+    // });
+  });
 });

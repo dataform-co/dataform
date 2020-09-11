@@ -60,48 +60,60 @@ export class PrestoDbAdapter implements IDbAdapter {
   }
 
   public async evaluate(queryOrAction: QueryOrAction, projectConfig?: dataform.ProjectConfig) {
+    const useSingleQueryPerAction =
+      projectConfig?.useSingleQueryPerAction === undefined ||
+      !!projectConfig?.useSingleQueryPerAction;
     const validationQueries = collectEvaluationQueries(
       queryOrAction,
-      projectConfig?.useSingleQueryPerAction === undefined ||
-        !!projectConfig?.useSingleQueryPerAction,
+      useSingleQueryPerAction,
       (query: string) => (!!query ? `explain ${query}` : "")
+    ).map((validationQuery, index) => ({ index, validationQuery }));
+    const validationQueriesWithoutWrappers = collectEvaluationQueries(
+      queryOrAction,
+      useSingleQueryPerAction
     );
 
-    return await Promise.all(
-      validationQueries.map(async ({ query, incremental }) => {
-        try {
-          await prestoExecute(this.client);
-          return dataform.QueryEvaluation.create({
-            status: dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS,
-            incremental,
-            query
-          });
-        } catch (e) {
-          return {
-            status: dataform.QueryEvaluation.QueryEvaluationStatus.FAILURE,
-            // TODO: Parse the error with line number.
-            error: e,
-            incremental,
-            query
-          };
-        }
-      })
-    );
+    const queryEvaluations = new Array<dataform.IQueryEvaluation>();
+    for (const { index, validationQuery } of validationQueries) {
+      let evaluationResponse: dataform.IQueryEvaluation = {
+        status: dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
+      };
+      try {
+        await prestoExecute(this.client, validationQuery.query);
+      } catch (e) {
+        evaluationResponse = {
+          // TODO: Parse the error with line number.
+          status: dataform.QueryEvaluation.QueryEvaluationStatus.FAILURE,
+          error: e
+        };
+      }
+      queryEvaluations.push(
+        dataform.QueryEvaluation.create({
+          ...evaluationResponse,
+          incremental: validationQuery.incremental,
+          query: validationQueriesWithoutWrappers[index].query
+        })
+      );
+    }
+    return queryEvaluations;
   }
 
   public async catalogs(): Promise<string[]> {
     const result = await prestoExecute(this.client, "show catalogs");
-    return flatten(result.data);
+    const catalogs = flatten(result.data);
+    return catalogs;
   }
 
   public async schemas(): Promise<string[]> {
     let schemas: string[] = [];
-    (await this.catalogs()).forEach(async catalog => {
-      const result = await prestoExecute(this.client, `show schemas from ${catalog}`);
-      schemas = schemas.concat(flatten(result.data).map(schema => `${catalog}.${schema}`));
-    });
+    await Promise.all(
+      (await this.catalogs()).map(async catalog => {
+        const result = await prestoExecute(this.client, `show schemas from ${catalog}`);
+        schemas = schemas.concat(flatten(result.data).map(schema => `${catalog}.${schema}`));
+      })
+    );
     // TODO: Currently this returns `catalog.schema` rather than just schemas in order to
-    // conform to string return type. Should this be changed?
+    // conform to string return type. Should this be changed? In tables() it is converted to targets.
     return schemas;
   }
 
@@ -112,11 +124,15 @@ export class PrestoDbAdapter implements IDbAdapter {
   // TODO: This should take parameters to allow for retrieving from a specific catalog/schema.
   public async tables(): Promise<dataform.ITarget[]> {
     let tables: dataform.ITarget[] = [];
-    (await this.schemas()).forEach(async schemaString => {
-      const [database, schema] = schemaString.split(".");
-      const result = await prestoExecute(this.client, `show tables from ${schema}`);
-      tables = tables.concat(flatten(result.data).map(table => ({ database, schema, table })));
-    });
+    await Promise.all(
+      (await this.schemas()).map(async schemaString => {
+        const [catalog, schema] = schemaString.split(".");
+        const result = await prestoExecute(this.client, `show tables from ${catalog}.${schema}`);
+        tables = tables.concat(
+          flatten(result.data).map(table => ({ database: catalog, schema, table }))
+        );
+      })
+    );
     return tables;
   }
 
