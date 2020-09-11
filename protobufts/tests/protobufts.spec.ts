@@ -134,17 +134,17 @@ suite(__filename, { parallel: true }, () => {
       }),
       // oneof_int32_field
       protobuftsProtos.TestMessage.create({
-        oneof: { field: "oneof_int32_field", value: 0 }
+        oneof: { field: "oneofInt32Field", value: 0 }
       }),
       protobuftsProtos.TestMessage.create({
-        oneof: { field: "oneof_int32_field", value: 1234 }
+        oneof: { field: "oneofInt32Field", value: 1234 }
       }),
       // oneof_string_field
       protobuftsProtos.TestMessage.create({
-        oneof: { field: "oneof_string_field", value: "" }
+        oneof: { field: "oneofStringField", value: "" }
       }),
       protobuftsProtos.TestMessage.create({
-        oneof: { field: "oneof_string_field", value: "hello world" }
+        oneof: { field: "oneofStringField", value: "hello world" }
       })
     ];
 

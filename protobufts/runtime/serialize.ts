@@ -228,6 +228,13 @@ export class Serializer {
 }
 
 export class Deserializer {
+  public static single<T>(values: T[]) {
+    if (values.length !== 1) {
+      throw new Error(`Expected exactly one value in array, but got ${values}`);
+    }
+    return values[0];
+  }
+
   private readonly reader: BytesReader;
 
   constructor(bytes: Uint8Array) {
@@ -236,76 +243,30 @@ export class Deserializer {
 
   public *deserialize() {
     for (const { fieldNumber, wireType } of this.reader.read()) {
-      const buffer =
-        wireType === WireType.LENGTH_DELIMITED
-          ? new LengthDelimitedFieldBuffer(
-              this.reader.readBytes(this.reader.readVarInt().toNumber())
-            )
-          : undefined;
+      const buffer = (() => {
+        switch (wireType) {
+          case WireType.VARINT:
+            return new FieldBytesBuffer(this.reader.readBytes(this.reader.nextVarIntSize()));
+
+          case WireType.SIXTY_FOUR_BIT:
+            return new FieldBytesBuffer(this.reader.readBytes(8));
+
+          case WireType.LENGTH_DELIMITED:
+            return new FieldBytesBuffer(this.reader.readBytes(this.reader.readVarInt().toNumber()));
+
+          case WireType.THIRTY_TWO_BIT:
+            return new FieldBytesBuffer(this.reader.readBytes(4));
+
+          default:
+            throw new Error(`Unrecognized wire type: ${wireType}`);
+        }
+      })();
       yield { fieldNumber, buffer };
     }
   }
-
-  public double() {
-    return this.reader.readSixtyFourBitFloat();
-  }
-
-  public float() {
-    return this.reader.readThirtyTwoBitFloat();
-  }
-
-  public int32() {
-    return this.reader.readVarInt().toNumber();
-  }
-
-  public fixed32() {
-    return this.reader.readThirtyTwoBitInteger(true);
-  }
-
-  public uint32() {
-    return this.reader.readVarInt().toNumber();
-  }
-
-  public sfixed32() {
-    return this.reader.readThirtyTwoBitInteger();
-  }
-
-  public sint32() {
-    const val = this.reader.readVarInt().toNumber();
-    return (val >>> 1) ^ -(val & 1);
-  }
-
-  public enum() {
-    return this.reader.readVarInt().toNumber();
-  }
-
-  public int64() {
-    return this.reader.readVarInt();
-  }
-
-  public uint64() {
-    return this.reader.readVarInt().toUnsigned();
-  }
-
-  public fixed64() {
-    return this.reader.readSixtyFourBitInteger(true);
-  }
-
-  public sfixed64() {
-    return this.reader.readSixtyFourBitInteger();
-  }
-
-  public sint64() {
-    const val = this.reader.readVarInt();
-    return val.shiftRightUnsigned(1).xor(val.and(1).multiply(-1));
-  }
-
-  public bool() {
-    return this.reader.readVarInt().greaterThan(0);
-  }
 }
 
-class LengthDelimitedFieldBuffer {
+class FieldBytesBuffer {
   private readonly reader: BytesReader;
 
   constructor(bytes: Uint8Array) {
@@ -463,14 +424,21 @@ class BytesReader {
     }
   }
 
+  public nextVarIntSize() {
+    for (let i = this.cursor; i < this.bytes.length; i++) {
+      if ((this.bytes[i] & 0b10000000) === 0) {
+        return i - this.cursor + 1;
+      }
+    }
+    throw new Error("Varint decoding did not end before buffer end.");
+  }
+
   public readVarInt() {
     const collected = [];
-    let shouldReadNextByte = true;
-    while (shouldReadNextByte) {
-      const nextByte = this.bytes[this.cursor];
+    const nextVarintSize = this.nextVarIntSize();
+    for (let i = 0; i < nextVarintSize; i++) {
+      collected.push(this.bytes[this.cursor]);
       this.cursor++;
-      shouldReadNextByte = (nextByte & 0b10000000) > 0;
-      collected.push(nextByte);
     }
     let value = Long.ZERO;
     for (let i = collected.length - 1; i >= 0; i--) {
