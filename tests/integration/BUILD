@@ -7,7 +7,7 @@ ts_test_suite(
     srcs = glob(
         ["*.ts"],
         # SQL Data warehouse integration tests are currently disabled while we sort out a new testing server.
-        # exclude = ["sqldatawarehouse.spec.ts"],
+        exclude = ["sqldatawarehouse.spec.ts"],
     ),
     data = [
         "//test_credentials:bigquery.json",
