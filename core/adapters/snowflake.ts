@@ -97,7 +97,8 @@ export class SnowflakeAdapter extends Adapter implements IAdapter {
   ) {
     return `
 merge into ${this.resolveTarget(target)} T
-using (${query}) S
+using (${query}
+) S
 on ${uniqueKey.map(uniqueKeyCol => `T.${uniqueKeyCol} = S.${uniqueKeyCol}`).join(` and `)}
 when matched then
   update set ${columns.map(column => `${column} = S.${column}`).join(",")}
