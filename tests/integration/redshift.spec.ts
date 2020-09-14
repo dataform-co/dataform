@@ -382,8 +382,14 @@ suite("@dataform/integration/redshift", { parallel: true }, ({ before, after }) 
       dataform.RunResult.ExecutionStatus[dataform.RunResult.ExecutionStatus.SUCCESSFUL]
     );
 
-    expect((await dbadapter.search("df_integration_test_search")).length).equals(2);
-    expect((await dbadapter.search("test_sear")).length).equals(2);
-    expect((await dbadapter.search("val")).length).greaterThan(0);
+    const [fullSearch, partialSearch, columnSearch] = await Promise.all([
+      dbadapter.search("df_integration_test_search"),
+      dbadapter.search("test_sear"),
+      dbadapter.search("val")
+    ]);
+
+    expect(fullSearch.length).equals(2);
+    expect(partialSearch.length).equals(2);
+    expect(columnSearch.length).greaterThan(0);
   });
 });
