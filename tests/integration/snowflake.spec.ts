@@ -173,7 +173,7 @@ suite("@dataform/integration/snowflake", { parallel: true }, ({ before, after })
           schema: "DF_INTEGRATION_TEST_DATASET_METADATA",
           name: "EXAMPLE_INCREMENTAL"
         },
-        expectedDescription: "An incremental table",
+        expectedDescription: "An incremental 'table'",
         expectedFields: [
           dataform.Field.create({
             description: "the id",
@@ -183,7 +183,7 @@ suite("@dataform/integration/snowflake", { parallel: true }, ({ before, after })
             primitiveDeprecated: "NUMBER"
           }),
           dataform.Field.create({
-            description: "the timestamp",
+            description: "the 'timestamp'",
             flagsDeprecated: ["nullable"],
             name: "USER_TIMESTAMP",
             primitive: dataform.Field.Primitive.NUMERIC,

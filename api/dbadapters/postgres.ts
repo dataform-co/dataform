@@ -261,7 +261,7 @@ export class PostgresDbAdapter implements IDbAdapter {
         this.execute(
           `comment on ${tableType === "view" ? "view" : "table"} "${target.schema}"."${
             target.name
-          }" is '${actionDescriptor.description.replace("'", "\\'")}'`
+          }" is '${actionDescriptor.description.replace(/'/g, "''")}'`
         )
       );
     }
@@ -277,7 +277,7 @@ export class PostgresDbAdapter implements IDbAdapter {
             this.execute(
               `comment on column "${target.schema}"."${target.name}"."${
                 column.path[0]
-              }" is '${column.description.replace("'", "\\'")}'`
+              }" is '${column.description.replace(/'/g, "''")}'`
             )
           );
         });

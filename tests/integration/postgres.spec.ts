@@ -133,10 +133,10 @@ suite("@dataform/integration/postgres", { parallel: true }, ({ before, after }) 
           schema: "df_integration_test_dataset_metadata",
           name: "example_incremental"
         },
-        expectedDescription: "An incremental table",
+        expectedDescription: "An incremental 'table'",
         expectedFields: [
           dataform.Field.create({
-            description: "the timestamp",
+            description: "the 'timestamp'",
             flagsDeprecated: ["nullable"],
             name: "user_timestamp",
             primitive: dataform.Field.Primitive.INTEGER,
