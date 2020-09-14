@@ -14,7 +14,7 @@ enum WireType {
 export class Serializer {
   private readonly writer: BytesWriter = new BytesWriter();
 
-  public double(fieldNumber: number, packed: boolean, val?: number | number[]): this {
+  public double(fieldNumber: number, packed: boolean, val: number | number[]): this {
     return this.serializeField(
       fieldNumber,
       WireType.SIXTY_FOUR_BIT,
@@ -24,7 +24,7 @@ export class Serializer {
     );
   }
 
-  public float(fieldNumber: number, packed: boolean, val?: number | number[]): this {
+  public float(fieldNumber: number, packed: boolean, val: number | number[]): this {
     return this.serializeField(
       fieldNumber,
       WireType.THIRTY_TWO_BIT,
@@ -34,7 +34,7 @@ export class Serializer {
     );
   }
 
-  public int32(fieldNumber: number, packed: boolean, val?: number | number[]): this {
+  public int32(fieldNumber: number, packed: boolean, val: number | number[]): this {
     return this.serializeField(
       fieldNumber,
       WireType.VARINT,
@@ -44,7 +44,7 @@ export class Serializer {
     );
   }
 
-  public fixed32(fieldNumber: number, packed: boolean, val?: number | number[]): this {
+  public fixed32(fieldNumber: number, packed: boolean, val: number | number[]): this {
     return this.serializeField(
       fieldNumber,
       WireType.THIRTY_TWO_BIT,
@@ -54,7 +54,7 @@ export class Serializer {
     );
   }
 
-  public uint32(fieldNumber: number, packed: boolean, val?: number | number[]): this {
+  public uint32(fieldNumber: number, packed: boolean, val: number | number[]): this {
     return this.serializeField(
       fieldNumber,
       WireType.VARINT,
@@ -64,7 +64,7 @@ export class Serializer {
     );
   }
 
-  public sfixed32(fieldNumber: number, packed: boolean, val?: number | number[]): this {
+  public sfixed32(fieldNumber: number, packed: boolean, val: number | number[]): this {
     return this.serializeField(
       fieldNumber,
       WireType.THIRTY_TWO_BIT,
@@ -74,7 +74,7 @@ export class Serializer {
     );
   }
 
-  public sint32(fieldNumber: number, packed: boolean, val?: number | number[]): this {
+  public sint32(fieldNumber: number, packed: boolean, val: number | number[]): this {
     return this.serializeField(
       fieldNumber,
       WireType.VARINT,
@@ -85,7 +85,7 @@ export class Serializer {
     );
   }
 
-  public enum(fieldNumber: number, packed: boolean, val?: number | number[]): this {
+  public enum(fieldNumber: number, packed: boolean, val: number | number[]): this {
     return this.serializeField(
       fieldNumber,
       WireType.VARINT,
@@ -95,7 +95,7 @@ export class Serializer {
     );
   }
 
-  public int64(fieldNumber: number, packed: boolean, val?: Long | Long[]): this {
+  public int64(fieldNumber: number, packed: boolean, val: Long | Long[]): this {
     return this.serializeField(
       fieldNumber,
       WireType.VARINT,
@@ -105,7 +105,7 @@ export class Serializer {
     );
   }
 
-  public uint64(fieldNumber: number, packed: boolean, val?: Long | Long[]): this {
+  public uint64(fieldNumber: number, packed: boolean, val: Long | Long[]): this {
     return this.serializeField(
       fieldNumber,
       WireType.VARINT,
@@ -115,7 +115,7 @@ export class Serializer {
     );
   }
 
-  public fixed64(fieldNumber: number, packed: boolean, val?: Long | Long[]): this {
+  public fixed64(fieldNumber: number, packed: boolean, val: Long | Long[]): this {
     return this.serializeField(
       fieldNumber,
       WireType.SIXTY_FOUR_BIT,
@@ -125,7 +125,7 @@ export class Serializer {
     );
   }
 
-  public sfixed64(fieldNumber: number, packed: boolean, val?: Long | Long[]): this {
+  public sfixed64(fieldNumber: number, packed: boolean, val: Long | Long[]): this {
     return this.serializeField(
       fieldNumber,
       WireType.SIXTY_FOUR_BIT,
@@ -135,7 +135,7 @@ export class Serializer {
     );
   }
 
-  public sint64(fieldNumber: number, packed: boolean, val?: Long | Long[]): this {
+  public sint64(fieldNumber: number, packed: boolean, val: Long | Long[]): this {
     return this.serializeField(
       fieldNumber,
       WireType.VARINT,
@@ -146,7 +146,7 @@ export class Serializer {
     );
   }
 
-  public bool(fieldNumber: number, packed: boolean, val?: boolean | boolean[]): this {
+  public bool(fieldNumber: number, packed: boolean, val: boolean | boolean[]): this {
     return this.serializeField(
       fieldNumber,
       WireType.VARINT,
@@ -156,7 +156,7 @@ export class Serializer {
     );
   }
 
-  public bytes(fieldNumber: number, packed: boolean, val?: Uint8Array | Uint8Array[]): this {
+  public bytes(fieldNumber: number, packed: boolean, val: Uint8Array | Uint8Array[]): this {
     return this.serializeField(
       fieldNumber,
       WireType.LENGTH_DELIMITED,
@@ -167,7 +167,7 @@ export class Serializer {
     );
   }
 
-  public string(fieldNumber: number, packed: boolean, val?: string | string[]): this {
+  public string(fieldNumber: number, packed: boolean, val: string | string[]): this {
     return this.serializeField(
       fieldNumber,
       WireType.LENGTH_DELIMITED,
@@ -180,7 +180,7 @@ export class Serializer {
     );
   }
 
-  public message(fieldNumber: number, packed: boolean, val?: IMessage | IMessage[]): this {
+  public message(fieldNumber: number, packed: boolean, val: IMessage | IMessage[]): this {
     return this.serializeField(
       fieldNumber,
       WireType.LENGTH_DELIMITED,
@@ -190,6 +190,28 @@ export class Serializer {
         return writer.writeVarInt(Long.fromNumber(bytes.byteLength)).writeBytes(bytes);
       },
       val
+    );
+  }
+
+  public map<K, V>(
+    fieldNumber: number,
+    packed: boolean,
+    val: Map<K, V>,
+    serializeKey: (serializer: Serializer, key: K) => void,
+    serializeValue: (serializer: Serializer, value: V) => void
+  ) {
+    return this.serializeField(
+      fieldNumber,
+      WireType.LENGTH_DELIMITED,
+      false,
+      (writer, [key, value]) => {
+        const entrySerializer = new Serializer();
+        serializeKey(entrySerializer, key);
+        serializeValue(entrySerializer, value);
+        const bytes = entrySerializer.finish();
+        return writer.writeVarInt(Long.fromNumber(bytes.byteLength)).writeBytes(bytes);
+      },
+      Array.from(val)
     );
   }
 
@@ -243,112 +265,210 @@ export class Deserializer {
 
   public *deserialize() {
     for (const { fieldNumber, wireType } of this.reader.read()) {
-      const buffer = (() => {
+      const reader = (() => {
         switch (wireType) {
           case WireType.VARINT:
-            return new FieldBytesBuffer(this.reader.readBytes(this.reader.nextVarIntSize()));
-
+            return new BytesReader(this.reader.readBytes(this.reader.nextVarIntSize()));
+          // return new FieldBytesBuffer(this.reader.readBytes(this.reader.nextVarIntSize()));
           case WireType.SIXTY_FOUR_BIT:
-            return new FieldBytesBuffer(this.reader.readBytes(8));
-
+            return new BytesReader(this.reader.readBytes(8));
+          // return new FieldBytesBuffer(this.reader.readBytes(8));
           case WireType.LENGTH_DELIMITED:
-            return new FieldBytesBuffer(this.reader.readBytes(this.reader.readVarInt().toNumber()));
-
+            return new BytesReader(this.reader.readBytes(this.reader.readVarInt().toNumber()));
+          // return new FieldBytesBuffer(this.reader.readBytes(this.reader.readVarInt().toNumber()));
           case WireType.THIRTY_TWO_BIT:
-            return new FieldBytesBuffer(this.reader.readBytes(4));
-
+            return new BytesReader(this.reader.readBytes(4));
+          // return new FieldBytesBuffer(this.reader.readBytes(4));
           default:
             throw new Error(`Unrecognized wire type: ${wireType}`);
         }
       })();
-      yield { fieldNumber, buffer };
+      yield { fieldNumber, reader };
     }
   }
 }
 
-class FieldBytesBuffer {
-  private readonly reader: BytesReader;
+interface IDecoder<T> {
+  decode(reader: BytesReader, currentValue: T): T;
+}
 
-  constructor(bytes: Uint8Array) {
-    this.reader = new BytesReader(bytes);
-  }
+abstract class PackedFieldDecoder<T> {
+  public abstract decode(reader: BytesReader, currentValue: T[]): T[];
 
-  public double() {
-    return this.yieldUntilDone(() => this.reader.readSixtyFourBitFloat());
-  }
-
-  public float() {
-    return this.yieldUntilDone(() => this.reader.readThirtyTwoBitFloat());
-  }
-
-  public int32() {
-    return this.yieldUntilDone(() => this.reader.readVarInt().toNumber());
-  }
-
-  public fixed32() {
-    return this.yieldUntilDone(() => this.reader.readThirtyTwoBitInteger(true));
-  }
-
-  public uint32() {
-    return this.yieldUntilDone(() => this.reader.readVarInt().toNumber());
-  }
-
-  public sfixed32() {
-    return this.yieldUntilDone(() => this.reader.readThirtyTwoBitInteger());
-  }
-
-  public sint32() {
-    return this.yieldUntilDone(() => {
-      const val = this.reader.readVarInt().toNumber();
-      return (val >>> 1) ^ -(val & 1);
-    });
-  }
-
-  public enum() {
-    return this.yieldUntilDone(() => this.reader.readVarInt().toNumber());
-  }
-
-  public int64() {
-    return this.yieldUntilDone(() => this.reader.readVarInt());
-  }
-
-  public uint64() {
-    return this.yieldUntilDone(() => this.reader.readVarInt().toUnsigned());
-  }
-
-  public fixed64() {
-    return this.yieldUntilDone(() => this.reader.readSixtyFourBitInteger(true));
-  }
-
-  public sfixed64() {
-    return this.yieldUntilDone(() => this.reader.readSixtyFourBitInteger());
-  }
-
-  public sint64() {
-    return this.yieldUntilDone(() => {
-      const val = this.reader.readVarInt();
-      return val.shiftRightUnsigned(1).xor(val.and(1).multiply(-1));
-    });
-  }
-
-  public bool() {
-    return this.yieldUntilDone(() => this.reader.readVarInt().greaterThan(0));
-  }
-
-  public bytes() {
-    return this.reader.readBytes(this.reader.length);
-  }
-
-  public string() {
-    return Buffer.from(this.bytes()).toString("utf8");
-  }
-
-  private *yieldUntilDone<T>(fn: () => T) {
-    while (!this.reader.done()) {
-      yield fn();
-    }
+  public single(): IDecoder<T> {
+    const repeatedDecoder = this;
+    return new (class {
+      public decode(reader: BytesReader): T {
+        const values = repeatedDecoder.decode(reader, []);
+        if (values.length !== 1) {
+          throw new Error(`Expected exactly one value but saw ${values.length} values.`);
+        }
+        return values[0];
+      }
+    })();
   }
 }
+
+export class Decoders {
+  public static uint32(): IDecoder<number[]> {
+    return new (class extends PackedFieldDecoder<number> {
+      public decode(reader: BytesReader, currentValue: number[]): number[] {
+        while (!reader.done()) {
+          currentValue.push(reader.readVarInt().toNumber());
+        }
+        return currentValue;
+      }
+    })();
+  }
+
+  public static message<T>(deserialize: (bytes: Uint8Array) => IMessage & T): IDecoder<T> {
+    return new (class {
+      public decode(reader: BytesReader, currentValue: T): T {
+        const newMessage = deserialize(reader.readBytes());
+        // TODO: return currentValue.mergeWith(newMessage);
+        return newMessage;
+      }
+    })();
+  }
+
+  public static oneOfEntry<Name extends string, T>(
+    field: Name,
+    decoder: IDecoder<T>
+  ): IDecoder<{
+    field: Name;
+    value: T;
+  }> {
+    return new (class {
+      public decode(
+        reader: BytesReader,
+        currentValue: {
+          field: Name;
+          value: T;
+        }
+      ): {
+        field: Name;
+        value: T;
+      } {
+        return {
+          field,
+          value: decoder.decode(reader, currentValue.value)
+        };
+      }
+    })();
+  }
+
+  public static map<K, V>(keyDecoder: IDecoder<K>, valueDecoder: IDecoder<V>): IDecoder<Map<K, V>> {
+    return new (class {
+      public decode(reader: BytesReader, currentValue: Map<K, V>): Map<K, V> {
+        let key: K;
+        let value: V;
+        for (const { fieldNumber, reader: fieldReader } of new Deserializer(
+          reader.readBytes()
+        ).deserialize()) {
+          switch (fieldNumber) {
+            case 1: {
+              key = keyDecoder.decode(fieldReader, key);
+              break;
+            }
+            case 2: {
+              value = valueDecoder.decode(fieldReader, value);
+              break;
+            }
+          }
+        }
+        if (key === undefined || value === undefined) {
+          throw new Error("Did not deserialize complete Map entry.");
+        }
+        currentValue.set(key, value);
+        return currentValue;
+      }
+    })();
+  }
+}
+
+// class FieldBytesBuffer {
+//   private readonly reader: BytesReader;
+
+//   constructor(bytes: Uint8Array) {
+//     this.reader = new BytesReader(bytes);
+//   }
+
+//   public double() {
+//     return this.yieldUntilDone(() => this.reader.readSixtyFourBitFloat());
+//   }
+
+//   public float() {
+//     return this.yieldUntilDone(() => this.reader.readThirtyTwoBitFloat());
+//   }
+
+//   public int32() {
+//     return this.yieldUntilDone(() => this.reader.readVarInt().toNumber());
+//   }
+
+//   public fixed32() {
+//     return this.yieldUntilDone(() => this.reader.readThirtyTwoBitInteger(true));
+//   }
+
+//   public uint32() {
+//     return this.yieldUntilDone(() => this.reader.readVarInt().toNumber());
+//   }
+
+//   public sfixed32() {
+//     return this.yieldUntilDone(() => this.reader.readThirtyTwoBitInteger());
+//   }
+
+//   public sint32() {
+//     return this.yieldUntilDone(() => {
+//       const val = this.reader.readVarInt().toNumber();
+//       return (val >>> 1) ^ -(val & 1);
+//     });
+//   }
+
+//   public enum() {
+//     return this.yieldUntilDone(() => this.reader.readVarInt().toNumber());
+//   }
+
+//   public int64() {
+//     return this.yieldUntilDone(() => this.reader.readVarInt());
+//   }
+
+//   public uint64() {
+//     return this.yieldUntilDone(() => this.reader.readVarInt().toUnsigned());
+//   }
+
+//   public fixed64() {
+//     return this.yieldUntilDone(() => this.reader.readSixtyFourBitInteger(true));
+//   }
+
+//   public sfixed64() {
+//     return this.yieldUntilDone(() => this.reader.readSixtyFourBitInteger());
+//   }
+
+//   public sint64() {
+//     return this.yieldUntilDone(() => {
+//       const val = this.reader.readVarInt();
+//       return val.shiftRightUnsigned(1).xor(val.and(1).multiply(-1));
+//     });
+//   }
+
+//   public bool() {
+//     return this.yieldUntilDone(() => this.reader.readVarInt().greaterThan(0));
+//   }
+
+//   public bytes() {
+//     return this.reader.readBytes(this.reader.length);
+//   }
+
+//   public string() {
+//     return Buffer.from(this.bytes()).toString("utf8");
+//   }
+
+//   private *yieldUntilDone<T>(fn: () => T) {
+//     while (!this.reader.done()) {
+//       yield fn();
+//     }
+//   }
+// }
 
 class BytesWriter {
   public readonly buffer: number[] = [];
@@ -469,8 +589,8 @@ class BytesReader {
     return dataView.getFloat64(0, true);
   }
 
-  public readBytes(num: number) {
-    return Uint8Array.from(this.readBytesAsNumberArray(num));
+  public readBytes(num?: number) {
+    return Uint8Array.from(this.readBytesAsNumberArray(num || this.length));
   }
 
   public get length() {

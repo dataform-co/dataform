@@ -147,7 +147,7 @@ export class TypeRegistry {
     type: google.protobuf.FieldDescriptorProto.Type,
     typeName: string,
     insideMessage: ITypeMetadata<IMessageDescriptor>
-  ) {
+  ): string {
     switch (type) {
       case google.protobuf.FieldDescriptorProto.Type.TYPE_DOUBLE:
       case google.protobuf.FieldDescriptorProto.Type.TYPE_FLOAT:
@@ -174,6 +174,24 @@ export class TypeRegistry {
         const typeMetadata = this.allTypes.find(
           typeMetadata => typeMetadata.protobufType.fullyQualifiedName === typeName.slice(1)
         );
+        if (
+          typeMetadata.protobufType.isEnum === false &&
+          typeMetadata.protobufType.descriptorProto.options?.mapEntry
+        ) {
+          const keyField = typeMetadata.protobufType.descriptorProto.field[0];
+          const keyType = this.typescriptTypeFromProtobufType(
+            keyField.type,
+            keyField.typeName,
+            insideMessage
+          );
+          const valueField = typeMetadata.protobufType.descriptorProto.field[1];
+          const valueType = this.typescriptTypeFromProtobufType(
+            valueField.type,
+            valueField.typeName,
+            insideMessage
+          );
+          return `Map<${keyType}, ${valueType}>`;
+        }
         const typescriptTypeName = [
           ...typeMetadata.typescriptType.parentMessages,
           typeMetadata.typescriptType.name
@@ -207,5 +225,20 @@ export class TypeRegistry {
           )} }`
       )
       .join(" | ");
+  }
+
+  public forFieldDescriptor(fieldDescriptorProto: google.protobuf.IFieldDescriptorProto) {
+    if (
+      ![
+        google.protobuf.FieldDescriptorProto.Type.TYPE_ENUM,
+        google.protobuf.FieldDescriptorProto.Type.TYPE_MESSAGE
+      ].includes(fieldDescriptorProto.type)
+    ) {
+      throw new Error(`Field ${fieldDescriptorProto.name} is not an enum or message type.`);
+    }
+    return this.allTypes.find(
+      typeMetadata =>
+        typeMetadata.protobufType.fullyQualifiedName === fieldDescriptorProto.typeName.slice(1)
+    );
   }
 }

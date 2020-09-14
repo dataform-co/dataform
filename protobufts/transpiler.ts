@@ -10,7 +10,7 @@ import {
 const IMPORT_LONG = 'import Long from "long";';
 const IMPORT_JSON_SUPPORT = 'import { toJsonValue } from "df/protobufts/runtime/json_support";';
 const IMPORT_SERIALIZATION =
-  'import { Deserializer, Serializer } from "df/protobufts/runtime/serialize";';
+  'import { Decoders, Deserializer, Serializer } from "df/protobufts/runtime/serialize";';
 
 const LONG_TYPES = [
   google.protobuf.FieldDescriptorProto.Type.TYPE_INT64,
@@ -172,7 +172,7 @@ ${[
   public static deserialize(bytes: Uint8Array) {
     const deserializer = new Deserializer(bytes);
     const newProto = new ${this.type.typescriptType.name}();
-    for (const { fieldNumber, buffer } of deserializer.deserialize()) {
+    for (const { fieldNumber, reader } of deserializer.deserialize()) {
       switch (fieldNumber) {
 ${indent(
   [
@@ -191,6 +191,22 @@ ${indent(
     }
     return newProto;
   }
+
+  private static readonly decoders = {
+${indent(
+  [
+    ...this.type.protobufType.fields.map(
+      fieldDescriptorProto =>
+        `${fieldDescriptorProto.number}: Decoders.uint32()${
+          fieldDescriptorProto.label !== google.protobuf.FieldDescriptorProto.Label.LABEL_REPEATED
+            ? ".single()"
+            : ""
+        }`
+    )
+  ].join(",\n"),
+  2
+)}
+  };
 
 ${indent(
   [
@@ -242,18 +258,7 @@ ${indent(
     return jsonObject;
   }
 }`;
-    if (
-      this.type.protobufType.descriptorProto.nestedType.length === 0 &&
-      this.type.protobufType.descriptorProto.enumType.length === 0
-    ) {
-      return message;
-    }
-    return `${message}
-
-export namespace ${this.type.typescriptType.name} {
-${indent(
-  [
-    ...this.types
+    const nestedMessages = this.types
       .forTypescriptFilename(this.type.file.typescript.name, [
         ...this.type.typescriptType.parentMessages,
         this.type.typescriptType.name
@@ -261,14 +266,23 @@ ${indent(
       .filter(
         (type): type is ITypeMetadata<IMessageDescriptor> => type.protobufType.isEnum === false
       )
-      .map(type => MessageTranspiler.forMessage(type, this.types).generateMessage()),
-    ...this.types
+      .filter(type => !type.protobufType.descriptorProto.options?.mapEntry);
+    const nestedEnums = this.types
       .forTypescriptFilename(this.type.file.typescript.name, [
         ...this.type.typescriptType.parentMessages,
         this.type.typescriptType.name
       ])
-      .filter((type): type is ITypeMetadata<IEnumDescriptor> => type.protobufType.isEnum === true)
-      .map(type => EnumTranspiler.forEnum(type).generateEnum())
+      .filter((type): type is ITypeMetadata<IEnumDescriptor> => type.protobufType.isEnum === true);
+    if (nestedMessages.length === 0 && nestedEnums.length === 0) {
+      return message;
+    }
+    return `${message}
+
+export namespace ${this.type.typescriptType.name} {
+${indent(
+  [
+    ...nestedMessages.map(type => MessageTranspiler.forMessage(type, this.types).generateMessage()),
+    ...nestedEnums.map(type => EnumTranspiler.forEnum(type).generateEnum())
   ]
     .filter(str => !!str)
     .join("\n\n")
@@ -277,10 +291,22 @@ ${indent(
   }
 
   private maybeArrayType(fieldDescriptorProto: google.protobuf.IFieldDescriptorProto) {
-    if (fieldDescriptorProto.label === google.protobuf.FieldDescriptorProto.Label.LABEL_REPEATED) {
-      return `${this.fieldTypeNames.get(fieldDescriptorProto.name)}[]`;
+    const fieldTypeName = this.fieldTypeNames.get(fieldDescriptorProto.name);
+    if (fieldDescriptorProto.type === google.protobuf.FieldDescriptorProto.Type.TYPE_MESSAGE) {
+      const typeMetadata = this.types.forFieldDescriptor(fieldDescriptorProto);
+      if (typeMetadata.protobufType.isEnum === true) {
+        throw new Error(
+          `Lookup for message type ${fieldDescriptorProto.name} returned enum ${typeMetadata.protobufType.fullyQualifiedName}.`
+        );
+      }
+      if (typeMetadata.protobufType.descriptorProto.options?.mapEntry) {
+        return fieldTypeName;
+      }
     }
-    return this.fieldTypeNames.get(fieldDescriptorProto.name);
+    if (fieldDescriptorProto.label === google.protobuf.FieldDescriptorProto.Label.LABEL_REPEATED) {
+      return `${fieldTypeName}[]`;
+    }
+    return fieldTypeName;
   }
 
   private maybeOptionalMember(fieldDescriptorProto: google.protobuf.IFieldDescriptorProto) {
@@ -294,6 +320,17 @@ ${indent(
   }
 
   private defaultValue(fieldDescriptorProto: google.protobuf.IFieldDescriptorProto) {
+    if (fieldDescriptorProto.type === google.protobuf.FieldDescriptorProto.Type.TYPE_MESSAGE) {
+      const typeMetadata = this.types.forFieldDescriptor(fieldDescriptorProto);
+      if (typeMetadata.protobufType.isEnum === true) {
+        throw new Error(
+          `Lookup for message type ${fieldDescriptorProto.name} returned enum ${typeMetadata.protobufType.fullyQualifiedName}.`
+        );
+      }
+      if (typeMetadata.protobufType.descriptorProto.options?.mapEntry) {
+        return `new ${this.fieldTypeNames.get(fieldDescriptorProto.name)}()`;
+      }
+    }
     if (fieldDescriptorProto.label === google.protobuf.FieldDescriptorProto.Label.LABEL_REPEATED) {
       return "[]";
     }
@@ -367,46 +404,6 @@ class Serialization {
     return new Serialization({ type: "oneof", name, fieldDescriptorProtos }, types, insideMessage);
   }
 
-  private static checkShouldSerialize(fieldDescriptorProto: google.protobuf.IFieldDescriptorProto) {
-    if (fieldDescriptorProto.label === google.protobuf.FieldDescriptorProto.Label.LABEL_REPEATED) {
-      return `this.${fieldDescriptorProto.jsonName}.length > 0`;
-    }
-    switch (fieldDescriptorProto.type) {
-      case google.protobuf.FieldDescriptorProto.Type.TYPE_DOUBLE:
-      case google.protobuf.FieldDescriptorProto.Type.TYPE_FLOAT:
-      case google.protobuf.FieldDescriptorProto.Type.TYPE_INT32:
-      case google.protobuf.FieldDescriptorProto.Type.TYPE_FIXED32:
-      case google.protobuf.FieldDescriptorProto.Type.TYPE_UINT32:
-      case google.protobuf.FieldDescriptorProto.Type.TYPE_SFIXED32:
-      case google.protobuf.FieldDescriptorProto.Type.TYPE_SINT32:
-      case google.protobuf.FieldDescriptorProto.Type.TYPE_ENUM:
-        return `this.${fieldDescriptorProto.jsonName} !== 0`;
-      case google.protobuf.FieldDescriptorProto.Type.TYPE_INT64:
-      case google.protobuf.FieldDescriptorProto.Type.TYPE_SFIXED64:
-      case google.protobuf.FieldDescriptorProto.Type.TYPE_SINT64:
-      case google.protobuf.FieldDescriptorProto.Type.TYPE_UINT64:
-      case google.protobuf.FieldDescriptorProto.Type.TYPE_FIXED64:
-        return `!this.${fieldDescriptorProto.jsonName}.isZero()`;
-      case google.protobuf.FieldDescriptorProto.Type.TYPE_BOOL:
-        return `this.${fieldDescriptorProto.jsonName}`;
-      case google.protobuf.FieldDescriptorProto.Type.TYPE_STRING:
-        return `this.${fieldDescriptorProto.jsonName} !== ""`;
-      case google.protobuf.FieldDescriptorProto.Type.TYPE_MESSAGE:
-        return `!!this.${fieldDescriptorProto.jsonName}`;
-      case google.protobuf.FieldDescriptorProto.Type.TYPE_GROUP:
-        throw new Error("GROUP is unsupported.");
-      case google.protobuf.FieldDescriptorProto.Type.TYPE_BYTES:
-        return `this.${fieldDescriptorProto.jsonName}.length > 0`;
-      default:
-        throw new Error(`Unrecognized field type: ${fieldDescriptorProto.type}`);
-    }
-  }
-
-  private static serializerMethodName(fieldDescriptorProto: google.protobuf.IFieldDescriptorProto) {
-    const typeString = google.protobuf.FieldDescriptorProto.Type[fieldDescriptorProto.type];
-    return typeString.replace("TYPE_", "").toLowerCase();
-  }
-
   private static isPacked(fieldDescriptorProto: google.protobuf.IFieldDescriptorProto) {
     if (fieldDescriptorProto.label !== google.protobuf.FieldDescriptorProto.Label.LABEL_REPEATED) {
       return false;
@@ -444,7 +441,7 @@ ${indent(
   this.field.fieldDescriptorProtos
     .map(
       fieldDescriptorProto =>
-        `case "${fieldDescriptorProto.jsonName}": serializer.${Serialization.serializerMethodName(
+        `case "${fieldDescriptorProto.jsonName}": serializer.${this.serializerMethodName(
           fieldDescriptorProto
         )}(${fieldDescriptorProto.number}, false, this.${name}.value); break;`
     )
@@ -454,12 +451,39 @@ ${indent(
   }
 }`;
     }
-    return `if (${Serialization.checkShouldSerialize(
+    let isMap = false;
+    let keyField: google.protobuf.IFieldDescriptorProto;
+    let valueField: google.protobuf.IFieldDescriptorProto;
+    if (
+      this.field.fieldDescriptorProto.type ===
+      google.protobuf.FieldDescriptorProto.Type.TYPE_MESSAGE
+    ) {
+      const typeMetadata = this.types.forFieldDescriptor(this.field.fieldDescriptorProto);
+      if (typeMetadata.protobufType.isEnum === true) {
+        throw new Error(
+          `Lookup for message type ${this.field.fieldDescriptorProto.name} returned enum ${typeMetadata.protobufType.fullyQualifiedName}.`
+        );
+      }
+      if (typeMetadata.protobufType.descriptorProto.options?.mapEntry) {
+        isMap = true;
+        keyField = typeMetadata.protobufType.descriptorProto.field[0];
+        valueField = typeMetadata.protobufType.descriptorProto.field[1];
+      }
+    }
+    return `if (${this.checkShouldSerialize(
       this.field.fieldDescriptorProto
-    )}) { serializer.${Serialization.serializerMethodName(this.field.fieldDescriptorProto)}(${
+    )}) { serializer.${this.serializerMethodName(this.field.fieldDescriptorProto)}(${
       this.field.fieldDescriptorProto.number
     }, ${Serialization.isPacked(this.field.fieldDescriptorProto)}, this.${
       this.field.fieldDescriptorProto.jsonName
+    }${
+      isMap
+        ? `, (mapEntrySerializer, key) => { mapEntrySerializer.${this.serializerMethodName(
+            keyField
+          )}(1, false, key); }, (mapEntrySerializer, value) => { mapEntrySerializer.${this.serializerMethodName(
+            valueField
+          )}(1, false, value); }`
+        : ""
     }); }`;
   }
 
@@ -475,16 +499,7 @@ ${indent(
         )
         .join("\n");
     }
-    return `case ${this.field.fieldDescriptorProto.number}: { ${
-      this.field.fieldDescriptorProto.label ===
-      google.protobuf.FieldDescriptorProto.Label.LABEL_REPEATED
-        ? `newProto.${this.field.fieldDescriptorProto.jsonName}.push(${this.deserialize(
-            this.field.fieldDescriptorProto
-          )})`
-        : `newProto.${this.field.fieldDescriptorProto.jsonName} = ${this.deserialize(
-            this.field.fieldDescriptorProto
-          )}`
-    }; break; }`;
+    return `case ${this.field.fieldDescriptorProto.number}: { newProto.${this.field.fieldDescriptorProto.jsonName} = ${this.insideMessage.typescriptType.name}.decoders[${this.field.fieldDescriptorProto.number}].decode(reader, newProto.${this.field.fieldDescriptorProto.jsonName}); break; }`;
   }
 
   public setJsonObjectFields() {
@@ -506,18 +521,80 @@ ${indent(
   }
 }`;
     }
-    return `if (${Serialization.checkShouldSerialize(
-      this.field.fieldDescriptorProto
-    )}) { jsonObject.${this.field.fieldDescriptorProto.jsonName} = ${this.toJsonValue(
+    return `if (${this.checkShouldSerialize(this.field.fieldDescriptorProto)}) { jsonObject.${
+      this.field.fieldDescriptorProto.jsonName
+    } = ${this.toJsonValue(
       this.field.fieldDescriptorProto,
       `this.${this.field.fieldDescriptorProto.jsonName}`
     )}; }`;
   }
 
+  private checkShouldSerialize(fieldDescriptorProto: google.protobuf.IFieldDescriptorProto) {
+    if (fieldDescriptorProto.type === google.protobuf.FieldDescriptorProto.Type.TYPE_MESSAGE) {
+      const typeMetadata = this.types.forFieldDescriptor(fieldDescriptorProto);
+      if (typeMetadata.protobufType.isEnum === true) {
+        throw new Error(
+          `Lookup for message type ${fieldDescriptorProto.name} returned enum ${typeMetadata.protobufType.fullyQualifiedName}.`
+        );
+      }
+      if (typeMetadata.protobufType.descriptorProto.options?.mapEntry) {
+        return `this.${fieldDescriptorProto.jsonName}.size > 0`;
+      }
+    }
+    if (fieldDescriptorProto.label === google.protobuf.FieldDescriptorProto.Label.LABEL_REPEATED) {
+      return `this.${fieldDescriptorProto.jsonName}.length > 0`;
+    }
+    switch (fieldDescriptorProto.type) {
+      case google.protobuf.FieldDescriptorProto.Type.TYPE_DOUBLE:
+      case google.protobuf.FieldDescriptorProto.Type.TYPE_FLOAT:
+      case google.protobuf.FieldDescriptorProto.Type.TYPE_INT32:
+      case google.protobuf.FieldDescriptorProto.Type.TYPE_FIXED32:
+      case google.protobuf.FieldDescriptorProto.Type.TYPE_UINT32:
+      case google.protobuf.FieldDescriptorProto.Type.TYPE_SFIXED32:
+      case google.protobuf.FieldDescriptorProto.Type.TYPE_SINT32:
+      case google.protobuf.FieldDescriptorProto.Type.TYPE_ENUM:
+        return `this.${fieldDescriptorProto.jsonName} !== 0`;
+      case google.protobuf.FieldDescriptorProto.Type.TYPE_INT64:
+      case google.protobuf.FieldDescriptorProto.Type.TYPE_SFIXED64:
+      case google.protobuf.FieldDescriptorProto.Type.TYPE_SINT64:
+      case google.protobuf.FieldDescriptorProto.Type.TYPE_UINT64:
+      case google.protobuf.FieldDescriptorProto.Type.TYPE_FIXED64:
+        return `!this.${fieldDescriptorProto.jsonName}.isZero()`;
+      case google.protobuf.FieldDescriptorProto.Type.TYPE_BOOL:
+        return `this.${fieldDescriptorProto.jsonName}`;
+      case google.protobuf.FieldDescriptorProto.Type.TYPE_STRING:
+        return `this.${fieldDescriptorProto.jsonName} !== ""`;
+      case google.protobuf.FieldDescriptorProto.Type.TYPE_MESSAGE:
+        return `!!this.${fieldDescriptorProto.jsonName}`;
+      case google.protobuf.FieldDescriptorProto.Type.TYPE_GROUP:
+        throw new Error("GROUP is unsupported.");
+      case google.protobuf.FieldDescriptorProto.Type.TYPE_BYTES:
+        return `this.${fieldDescriptorProto.jsonName}.length > 0`;
+      default:
+        throw new Error(`Unrecognized field type: ${fieldDescriptorProto.type}`);
+    }
+  }
+
+  private serializerMethodName(fieldDescriptorProto: google.protobuf.IFieldDescriptorProto) {
+    if (fieldDescriptorProto.type === google.protobuf.FieldDescriptorProto.Type.TYPE_MESSAGE) {
+      const typeMetadata = this.types.forFieldDescriptor(fieldDescriptorProto);
+      if (typeMetadata.protobufType.isEnum === true) {
+        throw new Error(
+          `Lookup for message type ${fieldDescriptorProto.name} returned enum ${typeMetadata.protobufType.fullyQualifiedName}.`
+        );
+      }
+      if (typeMetadata.protobufType.descriptorProto.options?.mapEntry) {
+        return "map";
+      }
+    }
+    const typeString = google.protobuf.FieldDescriptorProto.Type[fieldDescriptorProto.type];
+    return typeString.replace("TYPE_", "").toLowerCase();
+  }
+
   private deserialize(fieldDescriptorProto: google.protobuf.IFieldDescriptorProto) {
     const deserializedValue = (() => {
       if (PACKABLE_TYPES.includes(fieldDescriptorProto.type)) {
-        return `...buffer.${Serialization.serializerMethodName(fieldDescriptorProto)}()`;
+        return `...buffer.${this.serializerMethodName(fieldDescriptorProto)}()`;
       }
       switch (fieldDescriptorProto.type) {
         case google.protobuf.FieldDescriptorProto.Type.TYPE_STRING:
@@ -553,7 +630,24 @@ ${indent(
   private toJsonValue(
     fieldDescriptorProto: google.protobuf.IFieldDescriptorProto,
     valueVariable: string
-  ) {
+  ): string {
+    if (fieldDescriptorProto.type === google.protobuf.FieldDescriptorProto.Type.TYPE_MESSAGE) {
+      const typeMetadata = this.types.forFieldDescriptor(fieldDescriptorProto);
+      if (typeMetadata.protobufType.isEnum === true) {
+        throw new Error(
+          `Lookup for message type ${fieldDescriptorProto.name} returned enum ${typeMetadata.protobufType.fullyQualifiedName}.`
+        );
+      }
+      if (typeMetadata.protobufType.descriptorProto.options?.mapEntry) {
+        return `Array.from(${valueVariable}).reduce((currentVal: any, [key, val]) => {
+          currentVal[String(key)] = ${this.toJsonValue(
+            typeMetadata.protobufType.descriptorProto.field[1],
+            "val"
+          )};
+          return currentVal;
+        }, {})`;
+      }
+    }
     if (fieldDescriptorProto.type === google.protobuf.FieldDescriptorProto.Type.TYPE_ENUM) {
       const enumTypeName = this.types.typescriptTypeFromProtobufType(
         fieldDescriptorProto.type,
