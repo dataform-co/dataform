@@ -147,7 +147,7 @@ suite("@dataform/integration/snowflake", { parallel: true }, ({ before, after })
     expect(incrementalRows.length).equals(2);
   });
 
-  test("dataset metadata set correctly", { timeout: 60000 }, async () => {
+  test("dataset metadata set correctly", { timeout: 120000 }, async () => {
     const compiledGraph = await compile("tests/integration/snowflake_project", "dataset_metadata");
 
     // Drop all the tables before we do anything.
