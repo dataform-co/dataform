@@ -90,9 +90,10 @@ export class PrestoDbAdapter implements IDbAdapter {
                 result.columns = columns;
                 result.stats = stats;
                 if (!allRows.push(data)) {
-                  result.data = allRows.rows;
-                  resolve(result);
+                  isCancelled = true;
                 }
+                result.data = allRows.rows;
+                resolve(result);
               },
               success: (error, stats) => {
                 if (cancelIfError(error)) {
@@ -198,8 +199,11 @@ export class PrestoDbAdapter implements IDbAdapter {
       // moving data between tables, in which case target resolution should throw if both are not present.
       columnsResult = await this.execute(`describe ${resolveTarget(target)}`);
     } catch (e) {
-      throw e;
-      // This probably failed because the table doesn't exist, so ignore as the information isn't necessary.
+      // If the table doesn't exist just return empty metadata.
+      // In this circumstance the error will be of type Presto.IPrestoClientError.
+      if (e.errorName === "TABLE_NOT_FOUND") {
+        return dataform.TableMetadata.create({});
+      }
     }
     // TODO: Add primitives mapping.
     // Columns are structured [column name, type (primitive), extra, comment]. This can be

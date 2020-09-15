@@ -1,16 +1,13 @@
-import * as presto from "presto-client";
-
 import { execSync } from "child_process";
 import * as dbadapters from "df/api/dbadapters";
-import { sleep, sleepUntil } from "df/common/promises";
+import { Flags } from "df/common/flags";
+import { sleepUntil } from "df/common/promises";
 import { IHookHandler } from "df/testing";
 
-const USE_CLOUD_BUILD_NETWORK = !!process.env.USE_CLOUD_BUILD_NETWORK;
+const USE_CLOUD_BUILD_NETWORK = Flags.boolean("use-cloud-build-network", false).get();
 const DOCKER_CONTAINER_NAME = "presto-df-integration-testing";
-// We remap this to something more unique.
-const PRESTO_SERVE_PORT = 8080;
 
-export const prestoTestCredentials = {
+export const PRESTO_TEST_CREDENTIALS = {
   host: "127.0.0.1",
   port: 1234,
   user: "df-integration-tests",
@@ -39,15 +36,13 @@ export class PrestoFixture {
           "--rm",
           `--name ${DOCKER_CONTAINER_NAME}`,
           "-d",
-          `-p ${port}:${PRESTO_SERVE_PORT}`,
+          `-p ${port}:${8080}`,
           USE_CLOUD_BUILD_NETWORK ? "--network cloudbuild" : "",
           "bazel/tools/presto:presto_image"
         ].join(" ")
       );
 
-      const dbadapter = await dbadapters.create({ ...prestoTestCredentials, port }, "presto", {
-        disableSslForTestsOnly: true
-      });
+      const dbadapter = await dbadapters.create({ ...PRESTO_TEST_CREDENTIALS, port }, "presto");
 
       // Block until presto is ready to accept requests.
       await sleepUntil(async () => {
@@ -57,7 +52,7 @@ export class PrestoFixture {
         } catch (e) {
           return false;
         }
-      }, 500);
+      }, 100);
     });
 
     tearDown("stopping presto", () => {

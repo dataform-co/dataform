@@ -5,15 +5,15 @@ import * as dbadapters from "df/api/dbadapters";
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
 import { compile, keyBy } from "df/tests/integration/utils";
-import { PrestoFixture, prestoTestCredentials } from "df/tools/presto/presto_fixture";
+import { PRESTO_TEST_CREDENTIALS, PrestoFixture } from "df/tools/presto/presto_fixture";
 
 suite("@dataform/integration/presto", { parallel: true }, ({ before, after }) => {
-  const _ = new PrestoFixture(1234, before, after);
+  const _ = new PrestoFixture(PRESTO_TEST_CREDENTIALS.port, before, after);
 
   let dbadapter: dbadapters.IDbAdapter;
 
   before("create adapter", async () => {
-    dbadapter = await dbadapters.create(prestoTestCredentials, "presto");
+    dbadapter = await dbadapters.create(PRESTO_TEST_CREDENTIALS, "presto");
   });
 
   after("close adapter", async () => dbadapter.close());

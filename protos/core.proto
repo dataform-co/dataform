@@ -168,8 +168,6 @@ message SQLDataWarehouseOptions {
 }
 
 message PrestoOptions {
-  string catalog = 1;
-  string schema = 2;
   repeated string partition_by = 3;
 }
 

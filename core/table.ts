@@ -163,22 +163,9 @@ export interface IPrestoOptions {
    * For more information, read the partitioning documentation for the Presto connection in use.
    */
   partitionBy?: string[];
-
-  /**
-   * If catalog and schema are specified in the request, then leading prefixes
-   *
-   * can be ignored, e.g. "catalog.schema.table" can be referred to as just "table".
-   */
-  catalog?: string;
-
-  /**
-   * See catalog option.
-   */
-  schema?: string;
 }
 
-const IPrestoOptionsProperties = () =>
-  strictKeysOf<IPrestoOptions>()(["partitionBy", "catalog", "schema"]);
+const IPrestoOptionsProperties = () => strictKeysOf<IPrestoOptions>()(["partitionBy"]);
 
 /**
  * Options for creating assertions as part of a dataset definition.
