@@ -34,27 +34,12 @@ export class PgPoolExecutor {
     });
   }
 
-  public async execute(
-    statement: string,
-    options: {
-      onCancel?: (handleCancel: () => void) => void;
-      rowLimit?: number;
-      byteLimit?: number;
-    } = { rowLimit: 1000, byteLimit: 1024 * 1024 }
-  ) {
-    if (!options?.rowLimit && !options?.byteLimit) {
-      const result = await this.pool.query(statement);
-      verifyUniqueColumnNames(result.fields);
-      return result.rows;
-    }
-    return await this.withClientLock(client => client.execute(statement, options));
-  }
-
   public async withClientLock<T>(
     callback: (client: {
       execute(
         statement: string,
         options?: {
+          params?: any[];
           onCancel?: (handleCancel: () => void) => void;
           rowLimit?: number;
           byteLimit?: number;
@@ -81,13 +66,14 @@ export class PgPoolExecutor {
         execute: async (
           statement: string,
           options: {
+            params?: any[];
             onCancel?: (handleCancel: () => void) => void;
             rowLimit?: number;
             byteLimit?: number;
           } = { rowLimit: 1000, byteLimit: 1024 * 1024 }
         ) => {
           return await new Promise<any[]>((resolve, reject) => {
-            const query = client.query(new QueryStream(statement));
+            const query = client.query(new QueryStream(statement, options?.params));
             const results = new LimitedResultSet({
               rowLimit: options?.rowLimit,
               byteLimit: options?.byteLimit
