@@ -20,7 +20,7 @@ suite("@dataform/integration/snowflake", { parallel: true }, ({ before, after })
 
   after("close adapter", () => dbadapter.close());
 
-  test("run", { timeout: 90000 }, async () => {
+  test("run", { timeout: 120000 }, async () => {
     const compiledGraph = await compile("tests/integration/snowflake_project", "project_e2e");
 
     const adapter = adapters.create(compiledGraph.projectConfig, compiledGraph.dataformCoreVersion);
@@ -283,7 +283,7 @@ suite("@dataform/integration/snowflake", { parallel: true }, ({ before, after })
   });
 
   suite("evaluate", async () => {
-    test("evaluate from valid compiled graph as valid", async () => {
+    test("evaluate from valid compiled graph as valid", { timeout: 120000 }, async () => {
       // Create and run the project.
       const compiledGraph = await compile("tests/integration/snowflake_project", "evaluate");
       const executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
@@ -379,7 +379,7 @@ suite("@dataform/integration/snowflake", { parallel: true }, ({ before, after })
     });
   });
 
-  test("search", { timeout: 60000 }, async () => {
+  test("search", { timeout: 120000 }, async () => {
     // TODO: It seems as though, sometimes, the DB adapter can switch the current 'in-scope' database
     // away from 'INTEGRATION_TESTS' (the default) to 'INTEGRATION_TESTS2' (only used by one of the actions
     // in the graph). Re-creating a local DB adapter sucks, but forces queries to happen predictably against
