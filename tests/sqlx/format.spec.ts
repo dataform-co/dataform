@@ -115,5 +115,10 @@ input "something" {
   'bar'
 `);
     });
+    test("doesn't care about special string replacement characters", async () => {
+      expect(await formatFile(path.resolve("examples/formatter/definitions/dollar_regex.sqlx")))
+        .equal(`'^.*(bot|crawl|slurp|spider|archiv|spinn|sniff|seo|audit|survey|pingdom|worm|capture|(browser|screen)shots|analyz|index|thumb|check|facebook|PhantomJS|a_archiver|facebookexternalhit|BingPreview|360User-agent|semalt).*$'
+`);
+    });
   });
 });
