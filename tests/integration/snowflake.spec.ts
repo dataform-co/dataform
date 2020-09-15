@@ -10,7 +10,9 @@ import { compile, dropAllTables, getTableRows, keyBy } from "df/tests/integratio
 
 process.env.SF_OCSP_TEST_OCSP_RESPONDER_TIMEOUT = "10";
 
-suite("@dataform/integration/snowflake", { parallel: true }, ({ before, after }) => {
+// TODO: Figure out what is causing Snowflake to be unable to respond to requests quickly
+// and re-parallelise these tests.
+suite("@dataform/integration/snowflake", { parallel: false }, ({ before, after }) => {
   const credentials = dfapi.credentials.read("snowflake", "test_credentials/snowflake.json");
   let dbadapter: dbadapters.IDbAdapter;
 
