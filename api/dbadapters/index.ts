@@ -44,7 +44,7 @@ export interface IDbAdapter extends IDbClient {
   schemas(database: string): Promise<string[]>;
   createSchema(database: string, schema: string): Promise<void>;
 
-  // TODO: This should take parameters to allow for retrieving from a specific catalog/schema.
+  // TODO: This should take parameters to allow for retrieving from a specific database/schema.
   tables(): Promise<dataform.ITarget[]>;
   search(searchText: string, options?: { limit: number }): Promise<dataform.ITableMetadata[]>;
   table(target: dataform.ITarget): Promise<dataform.ITableMetadata>;

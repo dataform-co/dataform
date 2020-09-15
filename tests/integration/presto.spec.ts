@@ -1,3 +1,4 @@
+import { fail } from "assert";
 import { expect } from "chai";
 
 import * as dfapi from "df/api";
@@ -56,18 +57,5 @@ suite("@dataform/integration/presto", { parallel: true }, ({ before, after }) =>
       dataform.QueryEvaluation.QueryEvaluationStatus.FAILURE
     );
     expect(failedEvaluation[0].error.errorLocation.line).to.equal(2);
-  });
-
-  test("table target failure", async () => {
-    try {
-      await dbadapter.table({
-        database: "memory",
-        schema: "information_schema",
-        name: "nonexistant_table"
-      });
-      expect(false);
-    } catch (e) {
-      expect(e.errorName).to.equal("TABLE_NOT_FOUND");
-    }
   });
 });

@@ -2,18 +2,11 @@ import * as Presto from "presto-client";
 import * as PromisePool from "promise-pool-executor";
 
 import { Credentials } from "df/api/commands/credentials";
-import { IDbAdapter, IDbClient, IExecutionResult } from "df/api/dbadapters/index";
+import { IDbAdapter, IDbClient, IExecutionResult, OnCancel } from "df/api/dbadapters/index";
 import { LimitedResultSet } from "df/api/utils/results";
 import { flatten } from "df/common/arrays/arrays";
 import { collectEvaluationQueries, QueryOrAction } from "df/core/adapters";
 import { dataform } from "df/protos/ts";
-
-interface IPrestoExecutionResult {
-  columns?: Presto.IPrestoClientColumnMetaData[];
-  data?: Presto.PrestoClientColumnDatum[];
-  queryId?: string;
-  stats?: Presto.IPrestoClientStats;
-}
 
 // TODO: Move this to somewhere both the API and CLI can use?
 function resolveTarget(target: dataform.ITarget) {
@@ -27,9 +20,8 @@ export class PrestoDbAdapter implements IDbAdapter {
     return new PrestoDbAdapter(credentials, options);
   }
 
-  private client: Presto.Client;
-
-  private pool: PromisePool.PromisePoolExecutor;
+  private readonly client: Presto.Client;
+  private readonly pool: PromisePool.PromisePoolExecutor;
 
   private constructor(credentials: Credentials, options?: { concurrencyLimit?: number }) {
     this.client = new Presto.Client(credentials as Presto.IPrestoClientOptions);
@@ -42,26 +34,26 @@ export class PrestoDbAdapter implements IDbAdapter {
 
   public async execute(
     statement: string,
-    // TODO: These execute options should actually allow any of Presto.IPrestoClientExecuteOptions.
     options: {
       rowLimit?: number;
       byteLimit?: number;
+      onCancel?: OnCancel;
     } = { rowLimit: 1000, byteLimit: 1024 * 1024 }
   ): Promise<IExecutionResult> {
     let isCancelled = false;
-    const prestoResult: IPrestoExecutionResult = await this.pool
+    options.onCancel?.(() => (isCancelled = true));
+    const rows = await this.pool
       .addSingleTask({
         generator: () =>
           new Promise((resolve, reject) => {
-            const result: IPrestoExecutionResult = { data: [] };
             const allRows = new LimitedResultSet({
               rowLimit: options.rowLimit,
               byteLimit: options.byteLimit
             });
-            const cancelIfError = (error: Presto.IPrestoClientError) => {
+            const rejectIfError = (error: Presto.IPrestoClientError) => {
               if (!!error) {
                 reject(error);
-                return (isCancelled = true);
+                return true;
               }
             };
             this.client.execute({
@@ -70,44 +62,27 @@ export class PrestoDbAdapter implements IDbAdapter {
                 // The presto client cancels executions if this returns true.
                 return isCancelled;
               },
-              state: (error, queryId, stats) => {
-                if (cancelIfError(error)) {
-                  return;
-                }
-                result.queryId = queryId;
-                result.stats = stats;
-              },
-              columns: (error, columns) => {
-                if (cancelIfError(error)) {
-                  return;
-                }
-                result.columns = columns;
-              },
               data: (error, data, columns, stats) => {
-                if (cancelIfError(error)) {
+                if (rejectIfError(error)) {
                   return;
                 }
-                result.columns = columns;
-                result.stats = stats;
                 if (!allRows.push(data)) {
                   isCancelled = true;
                 }
-                result.data = allRows.rows;
-                resolve(result);
+                resolve(allRows.rows);
               },
               success: (error, stats) => {
-                if (cancelIfError(error)) {
+                if (rejectIfError(error)) {
                   return;
                 }
-                result.stats = stats;
-                resolve(result);
+                resolve(allRows.rows);
               },
-              error: cancelIfError
+              error: rejectIfError
             });
           })
       })
       .promise();
-    return { rows: prestoResult.data, metadata: {} };
+    return { rows: rows as any[], metadata: {} };
   }
 
   public async withClientLock<T>(callback: (client: IDbClient) => Promise<T>) {
@@ -158,29 +133,29 @@ export class PrestoDbAdapter implements IDbAdapter {
     return queryEvaluations;
   }
 
-  public async schemas(catalog: string): Promise<string[]> {
-    const result = await this.execute(`show schemas from ${catalog}`);
+  public async schemas(database: string): Promise<string[]> {
+    const result = await this.execute(`show schemas from ${database}`);
     return flatten(result.rows);
   }
 
-  public async createSchema(catalog: string, schema: string): Promise<void> {
-    await this.execute(`create schema if not exists ${catalog}.${schema}`);
+  public async createSchema(database: string, schema: string): Promise<void> {
+    await this.execute(`create schema if not exists ${database}.${schema}`);
   }
 
   public async tables(): Promise<dataform.ITarget[]> {
-    const catalogs = await this.catalogs();
-    let targets: dataform.ITarget[] = [];
+    const databases = await this.databases();
+    const targets: dataform.ITarget[] = [];
     await Promise.all(
-      catalogs.map(
-        async catalog =>
+      databases.map(
+        async database =>
           await Promise.all(
-            (await this.schemas(catalog)).map(async targetSchema => {
-              const result = await this.execute(`show tables from ${catalog}.${targetSchema}`);
-              targets = targets.concat(
-                flatten(result.rows).map(table =>
+            (await this.schemas(database)).map(async schema => {
+              const result = await this.execute(`show tables from ${database}.${schema}`);
+              targets.push(
+                ...flatten(result.rows).map(table =>
                   dataform.Target.create({
-                    database: catalog,
-                    schema: targetSchema,
+                    database,
+                    schema,
                     name: table as string
                   })
                 )
@@ -195,15 +170,16 @@ export class PrestoDbAdapter implements IDbAdapter {
   public async table(target: dataform.ITarget): Promise<dataform.ITableMetadata> {
     let columnsResult: IExecutionResult;
     try {
-      // TODO: In the future, the connection won't specify the catalog (database) and schema to allow
-      // moving data between tables, in which case target resolution should throw if both are not present.
+      // TODO: In the future, the connection won't specify the database and schema to allow moving data between
+      // tables in different databases, in which case target resolution should throw if both are not present.
       columnsResult = await this.execute(`describe ${resolveTarget(target)}`);
     } catch (e) {
       // If the table doesn't exist just return empty metadata.
       // In this circumstance the error will be of type Presto.IPrestoClientError.
       if (e.errorName === "TABLE_NOT_FOUND") {
-        return dataform.TableMetadata.create({});
+        return null;
       }
+      throw e;
     }
     // TODO: Add primitives mapping.
     // Columns are structured [column name, type (primitive), extra, comment]. This can be
@@ -221,7 +197,7 @@ export class PrestoDbAdapter implements IDbAdapter {
 
   public async preview(target: dataform.ITarget, limitRows: number = 10): Promise<any[]> {
     const { rows } = await this.execute(
-      `select * from ${target.database}.${target.schema}.${target.name} limit ${limitRows}`
+      `select * from ${resolveTarget(target)} limit ${limitRows}`
     );
     return rows;
   }
@@ -251,9 +227,8 @@ export class PrestoDbAdapter implements IDbAdapter {
     return [];
   }
 
-  private async catalogs(): Promise<string[]> {
+  private async databases(): Promise<string[]> {
     const result = await this.execute("show catalogs");
-    const catalogs: string[] = flatten(result.rows);
-    return catalogs;
+    return flatten(result.rows);
   }
 }
