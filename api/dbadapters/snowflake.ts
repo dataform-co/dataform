@@ -188,19 +188,22 @@ where LOWER(table_schema) != 'information_schema'
     }));
   }
 
-  public async search(searchText: string): Promise<dataform.ITableMetadata[]> {
+  public async search(
+    searchText: string,
+    options: { limit: number } = { limit: 1000 }
+  ): Promise<dataform.ITableMetadata[]> {
     const results = await this.execute(
       `select tables.table_catalog as table_catalog, tables.table_schema as table_schema, tables.table_name as table_name
        from information_schema.tables as tables
        left join information_schema.columns as columns on tables.table_catalog = columns.table_catalog and tables.table_schema = columns.table_schema
          and tables.table_name = columns.table_name
-       where LOWER(tables.table_catalog) like :1 or LOWER(tables.table_schema) like :1 or LOWER(tables.table_name) like :1 or tables.comment like :1
-         or LOWER(columns.column_name) like :1 or columns.comment like :1
+       where tables.table_catalog ilike :1 or tables.table_schema ilike :1 or tables.table_name ilike :1 or tables.comment ilike :1
+         or columns.column_name ilike :1 or columns.comment ilike :1
        group by 1, 2, 3
        `,
       {
         binds: [`%${searchText}%`],
-        rowLimit: 100
+        rowLimit: options.limit
       }
     );
     return await Promise.all(

@@ -141,7 +141,7 @@ export class PostgresDbAdapter implements IDbAdapter {
 
   public async search(
     searchText: string,
-    options: { limit: number } = { limit: 100 }
+    options: { limit: number } = { limit: 1000 }
   ): Promise<dataform.ITableMetadata[]> {
     // TODO: It would be nice to extend this to search through table/column descriptions. However, this involves
     // a somewhat crazy 5-way join.
@@ -149,7 +149,7 @@ export class PostgresDbAdapter implements IDbAdapter {
       `select tables.table_schema as table_schema, tables.table_name as table_name
        from information_schema.tables as tables
        left join information_schema.columns columns on tables.table_schema = columns.table_schema and tables.table_name = columns.table_name
-       where tables.table_schema like $1 or tables.table_name like $1 or columns.column_name like $1
+       where tables.table_schema ilike $1 or tables.table_name ilike $1 or columns.column_name ilike $1
        group by 1, 2`,
       {
         params: [`%${searchText}%`],

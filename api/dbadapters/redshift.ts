@@ -139,17 +139,20 @@ export class RedshiftDbAdapter implements IDbAdapter {
     }));
   }
 
-  public async search(searchText: string): Promise<dataform.ITableMetadata[]> {
+  public async search(
+    searchText: string,
+    options: { limit: number } = { limit: 1000 }
+  ): Promise<dataform.ITableMetadata[]> {
     const results = await this.execute(
       `select tables.table_schema as table_schema, tables.table_name as table_name
        from svv_tables as tables
        left join svv_columns as columns on tables.table_schema = columns.table_schema and tables.table_name = columns.table_name
-       where tables.table_schema like $1 or tables.table_name like $1 or tables.remarks like $1
-         or columns.column_name like $1 or columns.remarks like $1
+       where tables.table_schema ilike $1 or tables.table_name ilike $1 or tables.remarks ilike $1
+         or columns.column_name ilike $1 or columns.remarks ilike $1
        group by 1, 2`,
       {
         params: [`%${searchText}%`],
-        rowLimit: 100
+        rowLimit: options.limit
       }
     );
     return await Promise.all(

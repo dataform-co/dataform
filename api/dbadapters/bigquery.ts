@@ -135,16 +135,16 @@ export class BigQueryDbAdapter implements IDbAdapter {
 
   public async search(
     searchText: string,
-    options: { limit: number } = { limit: 100 }
+    options: { limit: number } = { limit: 1000 }
   ): Promise<dataform.ITableMetadata[]> {
     const results = await this.execute(
       `select table_catalog, table_schema, table_name
        from region-${this.bigQueryCredentials.location}.INFORMATION_SCHEMA.COLUMN_FIELD_PATHS
-       where table_schema like @searchText or table_name like @searchText or field_path like @searchText
+       where regexp_contains(table_schema, @searchText) or regexp_contains(table_name, @searchText) or regexp_contains(field_path, @searchText)
        group by 1, 2, 3`,
       {
         params: {
-          searchText: `%${searchText}%`
+          searchText: `(?i)${searchText}`
         },
         interactive: true,
         rowLimit: options.limit

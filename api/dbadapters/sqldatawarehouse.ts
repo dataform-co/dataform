@@ -137,7 +137,10 @@ export class SQLDataWarehouseDBAdapter implements IDbAdapter {
     }));
   }
 
-  public async search(searchText: string): Promise<dataform.ITableMetadata[]> {
+  public async search(
+    searchText: string,
+    options: { limit: number } = { limit: 1000 }
+  ): Promise<dataform.ITableMetadata[]> {
     const results = await this.execute(
       `select tables.table_schema as table_schema, tables.table_name as table_name
        from information_schema.tables as tables
@@ -148,7 +151,7 @@ export class SQLDataWarehouseDBAdapter implements IDbAdapter {
         params: {
           searchText: `%${searchText}%`
         },
-        rowLimit: 100
+        rowLimit: options.limit
       }
     );
     return await Promise.all(
@@ -162,17 +165,25 @@ export class SQLDataWarehouseDBAdapter implements IDbAdapter {
   }
 
   public async table(target: dataform.ITarget): Promise<dataform.ITableMetadata> {
+    const queryParams = {
+      schema: target.schema,
+      name: target.name
+    };
     const [tableData, columnData] = await Promise.all([
       this.execute(
         `select table_type from information_schema.tables
          where table_schema = @schema AND table_name = @name`,
-        { params: target }
+        {
+          params: queryParams
+        }
       ),
       this.execute(
         `select column_name, data_type, is_nullable
          from information_schema.columns
          where table_schema = @schema AND table_name = @name`,
-        { params: target }
+        {
+          params: queryParams
+        }
       )
     ]);
 
