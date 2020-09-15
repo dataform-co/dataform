@@ -243,6 +243,14 @@ export class PrestoDbAdapter implements IDbAdapter {
     // Unimplemented.
   }
 
+  public async search(
+    searchText: string,
+    options?: { limit: number }
+  ): Promise<dataform.ITableMetadata[]> {
+    // Unimplemented.
+    return [];
+  }
+
   private async catalogs(): Promise<string[]> {
     const result = await this.execute("show catalogs");
     const catalogs: string[] = flatten(result.rows);

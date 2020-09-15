@@ -58,6 +58,7 @@ export class PostgresDbAdapter implements IDbAdapter {
   public async execute(
     statement: string,
     options: {
+      params?: any[];
       rowLimit?: number;
       byteLimit?: number;
       includeQueryInError?: boolean;
@@ -72,6 +73,7 @@ export class PostgresDbAdapter implements IDbAdapter {
         execute: async (
           statement: string,
           options: {
+            params?: any[];
             rowLimit?: number;
             byteLimit?: number;
             includeQueryInError?: boolean;
@@ -137,25 +139,56 @@ export class PostgresDbAdapter implements IDbAdapter {
     }));
   }
 
+  public async search(
+    searchText: string,
+    options: { limit: number } = { limit: 1000 }
+  ): Promise<dataform.ITableMetadata[]> {
+    // TODO: It would be nice to extend this to search through table/column descriptions. However, this involves
+    // a somewhat crazy 5-way join.
+    const results = await this.execute(
+      `select tables.table_schema as table_schema, tables.table_name as table_name
+       from information_schema.tables as tables
+       left join information_schema.columns columns on tables.table_schema = columns.table_schema and tables.table_name = columns.table_name
+       where tables.table_schema ilike $1 or tables.table_name ilike $1 or columns.column_name ilike $1
+       group by 1, 2`,
+      {
+        params: [`%${searchText}%`],
+        rowLimit: options.limit
+      }
+    );
+    return await Promise.all(
+      results.rows.map(row =>
+        this.table({
+          schema: row.table_schema,
+          name: row.table_name
+        })
+      )
+    );
+  }
+
   public async table(target: dataform.ITarget): Promise<dataform.ITableMetadata> {
+    const params = [target.schema, target.name];
     const [tableResults, columnResults, descriptionResults] = await Promise.all([
       this.execute(
-        `select table_type from information_schema.tables where table_schema = '${target.schema}' and table_name = '${target.name}'`,
-        { includeQueryInError: true }
+        `select table_type from information_schema.tables where table_schema = $1 and table_name = $2`,
+        { params, includeQueryInError: true }
       ),
       this.execute(
         `select column_name, data_type, is_nullable, ordinal_position
          from information_schema.columns
-         where table_schema = '${target.schema}' and table_name = '${target.name}'`,
-        { includeQueryInError: true }
+         where table_schema = $1 and table_name = $2`,
+        { params, includeQueryInError: true }
       ),
-      this.execute(`
+      this.execute(
+        `
       select objsubid as column_number, description from pg_description
       where objoid = (
-        select oid from pg_class where relname = '${target.name}' and relnamespace = (
-          select oid from pg_namespace where nspname = '${target.schema}'
+        select oid from pg_class where relname = $2 and relnamespace = (
+          select oid from pg_namespace where nspname = $1
         )
-      )`)
+      )`,
+        { params, includeQueryInError: true }
+      )
     ]);
     if (tableResults.rows.length === 0) {
       return null;

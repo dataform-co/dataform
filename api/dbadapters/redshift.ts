@@ -58,6 +58,7 @@ export class RedshiftDbAdapter implements IDbAdapter {
   public async execute(
     statement: string,
     options: {
+      params?: any[];
       rowLimit?: number;
       byteLimit?: number;
       includeQueryInError?: boolean;
@@ -72,6 +73,7 @@ export class RedshiftDbAdapter implements IDbAdapter {
         execute: async (
           statement: string,
           options: {
+            params?: any[];
             rowLimit?: number;
             byteLimit?: number;
             includeQueryInError?: boolean;
@@ -137,17 +139,44 @@ export class RedshiftDbAdapter implements IDbAdapter {
     }));
   }
 
+  public async search(
+    searchText: string,
+    options: { limit: number } = { limit: 1000 }
+  ): Promise<dataform.ITableMetadata[]> {
+    const results = await this.execute(
+      `select tables.table_schema as table_schema, tables.table_name as table_name
+       from svv_tables as tables
+       left join svv_columns as columns on tables.table_schema = columns.table_schema and tables.table_name = columns.table_name
+       where tables.table_schema ilike $1 or tables.table_name ilike $1 or tables.remarks ilike $1
+         or columns.column_name ilike $1 or columns.remarks ilike $1
+       group by 1, 2`,
+      {
+        params: [`%${searchText}%`],
+        rowLimit: options.limit
+      }
+    );
+    return await Promise.all(
+      results.rows.map(row =>
+        this.table({
+          schema: row.table_schema,
+          name: row.table_name
+        })
+      )
+    );
+  }
+
   public async table(target: dataform.ITarget): Promise<dataform.ITableMetadata> {
+    const params = [target.schema, target.name];
     const [tableResults, columnResults] = await Promise.all([
       this.execute(
-        `select table_type, remarks from svv_tables where table_schema = '${target.schema}' and table_name = '${target.name}'`,
-        { includeQueryInError: true }
+        `select table_type, remarks from svv_tables where table_schema = $1 and table_name = $2`,
+        { params, includeQueryInError: true }
       ),
       this.execute(
         `select column_name, data_type, is_nullable, remarks
          from svv_columns
-         where table_schema = '${target.schema}' and table_name = '${target.name}'`,
-        { includeQueryInError: true }
+         where table_schema = $1 and table_name = $2`,
+        { params, includeQueryInError: true }
       )
     ]);
     if (tableResults.rows.length === 0) {
