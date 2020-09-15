@@ -241,4 +241,37 @@ suite("@dataform/integration/sqldatawarehouse", { parallel: true }, ({ before, a
       expect(increment[increment.length - 1].statement).to.equal(table.postOps[1]);
     });
   });
+
+  test("search", async () => {
+    const compiledGraph = await compile("tests/integration/sqldatawarehouse_project", "search");
+
+    // Drop all the tables before we do anything.
+    const tablesToDelete = (await dfapi.build(compiledGraph, {}, dbadapter)).warehouseState.tables;
+    const adapter = adapters.create(compiledGraph.projectConfig, compiledGraph.dataformCoreVersion);
+    await dropAllTables(tablesToDelete, adapter, dbadapter);
+
+    // Run the project.
+    const executionGraph = await dfapi.build(
+      compiledGraph,
+      {
+        actions: ["example_view"],
+        includeDependencies: true
+      },
+      dbadapter
+    );
+    const runResult = await dfapi.run(dbadapter, executionGraph).result();
+    expect(dataform.RunResult.ExecutionStatus[runResult.status]).eql(
+      dataform.RunResult.ExecutionStatus[dataform.RunResult.ExecutionStatus.SUCCESSFUL]
+    );
+
+    const [fullSearch, partialSearch, columnSearch] = await Promise.all([
+      dbadapter.search("df_integration_test_search"),
+      dbadapter.search("test_sear"),
+      dbadapter.search("val")
+    ]);
+
+    expect(fullSearch.length).equals(2);
+    expect(partialSearch.length).equals(2);
+    expect(columnSearch.length).greaterThan(0);
+  });
 });

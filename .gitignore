@@ -22,3 +22,5 @@ lerna-debug.log
 **/.DS_Store
 
 **/*.orig
+
+go.sum

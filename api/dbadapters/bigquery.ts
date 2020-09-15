@@ -55,6 +55,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
   public async execute(
     statement: string,
     options: {
+      params?: { [name: string]: any };
       onCancel?: OnCancel;
       interactive?: boolean;
       rowLimit?: number;
@@ -65,9 +66,10 @@ export class BigQueryDbAdapter implements IDbAdapter {
       .addSingleTask({
         generator: () =>
           options?.interactive
-            ? this.runQuery(statement, options?.rowLimit, options?.byteLimit)
+            ? this.runQuery(statement, options?.params, options?.rowLimit, options?.byteLimit)
             : this.createQueryJob(
                 statement,
+                options?.params,
                 options?.rowLimit,
                 options?.byteLimit,
                 options?.onCancel
@@ -129,6 +131,34 @@ export class BigQueryDbAdapter implements IDbAdapter {
       )
     );
     return allTables;
+  }
+
+  public async search(
+    searchText: string,
+    options: { limit: number } = { limit: 1000 }
+  ): Promise<dataform.ITableMetadata[]> {
+    const results = await this.execute(
+      `select table_catalog, table_schema, table_name
+       from region-${this.bigQueryCredentials.location}.INFORMATION_SCHEMA.COLUMN_FIELD_PATHS
+       where regexp_contains(table_schema, @searchText) or regexp_contains(table_name, @searchText) or regexp_contains(field_path, @searchText)
+       group by 1, 2, 3`,
+      {
+        params: {
+          searchText: `(?i)${searchText}`
+        },
+        interactive: true,
+        rowLimit: options.limit
+      }
+    );
+    return await Promise.all(
+      results.rows.map(row =>
+        this.table({
+          database: row.table_catalog,
+          schema: row.table_schema,
+          name: row.table_name
+        })
+      )
+    );
   }
 
   public async table(target: dataform.ITarget): Promise<dataform.ITableMetadata> {
@@ -355,13 +385,21 @@ DELETE \`${CACHED_STATE_TABLE_NAME}\` WHERE target IN (${allActions
     return this.clients.get(projectId);
   }
 
-  private async runQuery(statement: string, rowLimit?: number, byteLimit?: number) {
+  private async runQuery(
+    query: string,
+    params?: { [name: string]: any },
+    rowLimit?: number,
+    byteLimit?: number
+  ) {
     const results = await new Promise<any[]>((resolve, reject) => {
       const allRows = new LimitedResultSet({
         rowLimit,
         byteLimit
       });
-      const stream = this.getClient().createQueryStream(statement);
+      const stream = this.getClient().createQueryStream({
+        query,
+        params
+      });
       stream
         .on("error", e => reject(coerceAsError(e)))
         .on("data", row => {
@@ -377,7 +415,8 @@ DELETE \`${CACHED_STATE_TABLE_NAME}\` WHERE target IN (${allActions
   }
 
   private async createQueryJob(
-    statement: string,
+    query: string,
+    params?: { [name: string]: any },
     rowLimit?: number,
     byteLimit?: number,
     onCancel?: OnCancel
@@ -389,7 +428,8 @@ DELETE \`${CACHED_STATE_TABLE_NAME}\` WHERE target IN (${allActions
       const job = await this.getClient().createQueryJob({
         useLegacySql: false,
         jobPrefix: "dataform-",
-        query: statement
+        query,
+        params
       });
       const resultStream = job[0].getQueryResultsStream();
       return new Promise<IExecutionResult>((resolve, reject) => {
