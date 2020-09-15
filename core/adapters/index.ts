@@ -75,7 +75,7 @@ const requiredSQLDataWarehouseProps: Array<keyof dataform.ISQLDataWarehouse> = [
   "password",
   "database"
 ];
-// TODO: Add SSL.
+
 const requiredPrestoWarehouseProps: Array<keyof dataform.IPresto> = ["host", "port", "user"];
 
 export const requiredWarehouseProps = {

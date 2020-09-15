@@ -2,7 +2,6 @@ import * as presto from "presto-client";
 
 import { execSync } from "child_process";
 import * as dbadapters from "df/api/dbadapters";
-import { prestoExecute } from "df/api/dbadapters/presto";
 import { sleep, sleepUntil } from "df/common/promises";
 import { IHookHandler } from "df/testing";
 

@@ -80,23 +80,46 @@ declare module "presto-client" {
     timezone?: string;
     info?: boolean;
     cancel?: () => boolean;
-    state?: (error: any, query_id: string, stats: IPrestoClientStats) => void;
-    columns?: (error: any, columns: IPrestoClientColumnMetaData[]) => void;
+    state?: (error: IPrestoClientError, query_id: string, stats: IPrestoClientStats) => void;
+    columns?: (error: IPrestoClientError, columns: IPrestoClientColumnMetaData[]) => void;
     data?: (
-      error: any,
+      error: IPrestoClientError,
       data: any[],
       columns: IPrestoClientColumnMetaData[],
       stats: IPrestoClientStats
     ) => void;
-    success?: (error: any, stats: IPrestoClientStats) => void;
-    error?: (error: any) => void;
+    success?: (error: IPrestoClientError, stats: IPrestoClientStats) => void;
+    error?: (error: IPrestoClientError) => void;
+  }
+
+  interface IPrestoErrorLocation {
+    lineNumber: number;
+    columnNumber: number;
+  }
+
+  interface IPrestoClientError {
+    message?: string;
+    errorCode?: number;
+    errorName?: string;
+    errorType?: string;
+    errorLocation?: IPrestoErrorLocation;
+    failureInfo?: {
+      type?: string;
+      message?: string;
+      suppressed?: string[];
+      stack?: string[];
+      errorLocation?: IPrestoErrorLocation;
+    };
   }
 
   class Client {
     constructor(options: IPrestoClientOptions);
     public execute(options: IPrestoClientExecuteOptions): void;
-    public query(query_id: string, callback: (error: any, data?: any) => void): void;
-    public kill(query_id: string, callback: (error: any) => void): void;
-    public nodes(opts: null | undefined | {}, callback: (error: any, data: {}[]) => void): void;
+    public query(query_id: string, callback: (error: IPrestoClientError, data?: any) => void): void;
+    public kill(query_id: string, callback: (error: IPrestoClientError) => void): void;
+    public nodes(
+      opts: null | undefined | {},
+      callback: (error: IPrestoClientError, data: {}[]) => void
+    ): void;
   }
 }

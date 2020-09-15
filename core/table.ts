@@ -160,15 +160,9 @@ export interface IPrestoOptions {
   /**
    * The key with which to partition the table. Typically the name of a timestamp or date column.
    *
-   * For more information, read the partiton by docs for the connection you are using.
+   * For more information, read the partitioning documentation for the Presto connection in use.
    */
   partitionBy?: string[];
-
-  /**
-   * The key with which to partition the table. Typically the name of a timestamp or date column.
-   *
-   * For more information, read the partiton by docs for the connection you are using.
-   */
 
   /**
    * If catalog and schema are specified in the request, then leading prefixes

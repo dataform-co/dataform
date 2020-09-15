@@ -13,9 +13,7 @@ suite("@dataform/integration/presto", { parallel: true }, ({ before, after }) =>
   let dbadapter: dbadapters.IDbAdapter;
 
   before("create adapter", async () => {
-    dbadapter = await dbadapters.create(prestoTestCredentials, "presto", {
-      disableSslForTestsOnly: true
-    });
+    dbadapter = await dbadapters.create(prestoTestCredentials, "presto");
   });
 
   after("close adapter", async () => dbadapter.close());
@@ -35,30 +33,41 @@ suite("@dataform/integration/presto", { parallel: true }, ({ before, after }) =>
     }
   });
 
-  test("catalog inspection", { timeout: 60000 }, async () => {
-    const schemas = await dbadapter.schemas("");
-    // Some of the schemas defined in the docker image.
+  test("catalog inspection", async () => {
+    const targets = await dbadapter.tables();
+    const resolvedTargets = targets.map(
+      target => `${target.database}.${target.schema}.${target.name}`
+    );
     [
-      "system.information_schema",
-      "tpch.information_schema",
-      "memory.default",
-      "jmx.current",
-      "tpcds.information_schema"
-    ].forEach(schema => {
-      expect(schemas).to.include(schema);
+      "system.metadata.analyze_properties",
+      "jmx.information_schema.applicable_roles",
+      "system.information_schema.applicable_roles",
+      "jmx.current.com.sun.management:type=diagnosticcommand",
+      "memory.information_schema.applicable_roles"
+    ].forEach(resolvedTarget => {
+      expect(resolvedTargets).to.include(resolvedTarget);
     });
-    // Some of the tables defined in the docker image.
-    // TODO: Fix equivalence testing.
-    // const tables = await dbadapter.tables();
-    // [
-    //   { database: "tpcds", schema: "sf1000", table: "call_center" },
-    //   {
-    //     database: "jmx",
-    //     schema: "current",
-    //     table: "com.sun.management:type=diagnosticcommand"
-    //   }
-    // ].forEach(target => {
-    //   expect(tables).to.include(dataform.Target.create(target));
-    // });
+  });
+
+  test("evaluation failure", async () => {
+    const failedEvaluation = await dbadapter.evaluate("select\nz\nas\nx");
+    expect(failedEvaluation.length).to.equal(1);
+    expect(failedEvaluation[0].status).to.equal(
+      dataform.QueryEvaluation.QueryEvaluationStatus.FAILURE
+    );
+    expect(failedEvaluation[0].error.errorLocation.line).to.equal(2);
+  });
+
+  test("table target failure", async () => {
+    try {
+      await dbadapter.table({
+        database: "memory",
+        schema: "information_schema",
+        name: "nonexistant_table"
+      });
+      expect(false);
+    } catch (e) {
+      expect(e.errorName).to.equal("TABLE_NOT_FOUND");
+    }
   });
 });

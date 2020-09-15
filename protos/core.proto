@@ -171,7 +171,6 @@ message PrestoOptions {
   string catalog = 1;
   string schema = 2;
   repeated string partition_by = 3;
-  // TODO: Add map of configurations to different presto connections.
 }
 
 message GraphErrors {

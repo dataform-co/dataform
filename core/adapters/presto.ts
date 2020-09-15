@@ -85,7 +85,8 @@ export class PrestoAdapter extends Adapter implements IAdapter {
   }
 
   public mergeInto() {
-    // TODO: merge isn't supported by Presto. Instead a solution could be formed by using a temporary
+    throw new Error("mergeInto unimplemented for Presto.");
+    // MERGE isn't supported by Presto. Instead a solution could be formed by using a temporary
     // table (as we do in Redshift) using an in memory connection, as suggested here?
     // https://groups.google.com/g/presto-users/c/5I480n_1nPc
   }

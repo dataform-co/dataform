@@ -34,7 +34,7 @@ Compile hundreds of data models in under a second using SQLX. SQLX extends your 
 * Redshift
 * Postgres
 * Azure SQL data warehouse
-* Presto (pre-alpha)
+* Presto (under development)
 
 # Data modeling with Dataform
 
