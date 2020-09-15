@@ -8,7 +8,7 @@ import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
 import { compile, dropAllTables, getTableRows, keyBy } from "df/tests/integration/utils";
 
-process.env.SF_OCSP_TEST_OCSP_RESPONDER_TIMEOUT = "100";
+process.env.SF_OCSP_TEST_OCSP_RESPONDER_TIMEOUT = "10";
 
 suite("@dataform/integration/snowflake", { parallel: true }, ({ before, after }) => {
   const credentials = dfapi.credentials.read("snowflake", "test_credentials/snowflake.json");
