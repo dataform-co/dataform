@@ -15,7 +15,7 @@ suite("@dataform/integration/snowflake", { parallel: true }, ({ before, after })
   let dbadapter: dbadapters.IDbAdapter;
 
   before("create adapter", async () => {
-    dbadapter = await dbadapters.create(credentials, "snowflake", { concurrencyLimit: 25 });
+    dbadapter = await dbadapters.create(credentials, "snowflake");
   });
 
   after("close adapter", () => dbadapter.close());
