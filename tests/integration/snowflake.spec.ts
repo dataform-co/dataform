@@ -379,7 +379,7 @@ suite("@dataform/integration/snowflake", { parallel: true }, ({ before, after })
     });
   });
 
-  test("search", async () => {
+  test("search", { timeout: 60000 }, async () => {
     // TODO: It seems as though, sometimes, the DB adapter can switch the current 'in-scope' database
     // away from 'INTEGRATION_TESTS' (the default) to 'INTEGRATION_TESTS2' (only used by one of the actions
     // in the graph). Re-creating a local DB adapter sucks, but forces queries to happen predictably against
