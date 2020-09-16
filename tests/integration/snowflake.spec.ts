@@ -378,4 +378,44 @@ suite("@dataform/integration/snowflake", { parallel: true }, ({ before, after })
       expect(increment[increment.length - 1].statement).to.equal(table.postOps[1]);
     });
   });
+
+  test("search", { timeout: 60000 }, async () => {
+    // TODO: It seems as though, sometimes, the DB adapter can switch the current 'in-scope' database
+    // away from 'INTEGRATION_TESTS' (the default) to 'INTEGRATION_TESTS2' (only used by one of the actions
+    // in the graph). Re-creating a local DB adapter sucks, but forces queries to happen predictably against
+    // 'INTEGRATION_TESTS'.
+    const localDbAdapter = await dbadapters.create(credentials, "snowflake");
+
+    const compiledGraph = await compile("tests/integration/snowflake_project", "search");
+
+    // Drop all the tables before we do anything.
+    const adapter = adapters.create(compiledGraph.projectConfig, compiledGraph.dataformCoreVersion);
+    const tablesToDelete = (await dfapi.build(compiledGraph, {}, localDbAdapter)).warehouseState
+      .tables;
+    await dropAllTables(tablesToDelete, adapter, localDbAdapter);
+
+    // Run the project.
+    const executionGraph = await dfapi.build(
+      compiledGraph,
+      {
+        actions: ["EXAMPLE_VIEW"],
+        includeDependencies: true
+      },
+      localDbAdapter
+    );
+    const runResult = await dfapi.run(localDbAdapter, executionGraph).result();
+    expect(dataform.RunResult.ExecutionStatus[runResult.status]).eql(
+      dataform.RunResult.ExecutionStatus[dataform.RunResult.ExecutionStatus.SUCCESSFUL]
+    );
+
+    const [fullSearch, partialSearch, columnSearch] = await Promise.all([
+      localDbAdapter.search("df_integration_test_search"),
+      localDbAdapter.search("test_sear"),
+      localDbAdapter.search("val")
+    ]);
+
+    expect(fullSearch.length).equals(2);
+    expect(partialSearch.length).equals(2);
+    expect(columnSearch.length).greaterThan(0);
+  });
 });
