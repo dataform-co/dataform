@@ -38,10 +38,19 @@ export async function formatFile(
   }
 ) {
   const fileExtension = filename.split(".").slice(-1)[0];
-  const formattedText = format(await promisify(fs.readFile)(filename, "utf8"), fileExtension);
+  const originalFileContent = await promisify(fs.readFile)(filename, "utf8");
+  const formattedText = format(originalFileContent, fileExtension);
   if (formattedText !== format(formattedText, fileExtension)) {
     throw new Error("Formatter unable to determine final formatted form.");
   }
+
+  const noWhiteSpaceFormatted = formattedText.replace(/\s/g, "");
+  const noWhiteSpaceOriginal = originalFileContent.replace(/\s/g, "");
+  if (noWhiteSpaceFormatted.length !== noWhiteSpaceOriginal.length) {
+    const isLonger = noWhiteSpaceFormatted.length > noWhiteSpaceOriginal.length;
+    throw new Error(`Formatter ${isLonger ? "added" : "removed"} non-whitespace characters`);
+  }
+
   if (options && options.overwriteFile) {
     await promisify(fs.writeFile)(filename, formattedText);
   }
@@ -219,7 +228,7 @@ function formatPlaceholderInSqlx(
     placeholderSyntaxNode.type !== SyntaxTreeNodeType.SQL_COMMENT &&
     !formattedPlaceholder.includes("\n")
   ) {
-    return sqlx.replace(placeholderId, formattedPlaceholder.trim());
+    return sqlx.replace(placeholderId, () => formattedPlaceholder.trim());
   }
   // Push multi-line placeholders to their own lines, if they're not already on one.
   const [textBeforePlaceholder, textAfterPlaceholder] = wholeLine.split(placeholderId);
