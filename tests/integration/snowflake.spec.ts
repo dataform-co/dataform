@@ -8,7 +8,7 @@ import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
 import { compile, dropAllTables, getTableRows, keyBy } from "df/tests/integration/utils";
 
-process.env.SF_OCSP_TEST_OCSP_RESPONDER_TIMEOUT = "10";
+process.env.SF_OCSP_TEST_OCSP_RESPONDER_TIMEOUT = "100";
 
 suite("@dataform/integration/snowflake", { parallel: true }, ({ before, after }) => {
   const credentials = dfapi.credentials.read("snowflake", "test_credentials/snowflake.json");
@@ -20,7 +20,7 @@ suite("@dataform/integration/snowflake", { parallel: true }, ({ before, after })
 
   after("close adapter", () => dbadapter.close());
 
-  test("run", { timeout: 120000 }, async () => {
+  test("run", { timeout: 90000 }, async () => {
     const compiledGraph = await compile("tests/integration/snowflake_project", "project_e2e");
 
     const adapter = adapters.create(compiledGraph.projectConfig, compiledGraph.dataformCoreVersion);
@@ -147,7 +147,7 @@ suite("@dataform/integration/snowflake", { parallel: true }, ({ before, after })
     expect(incrementalRows.length).equals(2);
   });
 
-  test("dataset metadata set correctly", { timeout: 120000 }, async () => {
+  test("dataset metadata set correctly", { timeout: 60000 }, async () => {
     const compiledGraph = await compile("tests/integration/snowflake_project", "dataset_metadata");
 
     // Drop all the tables before we do anything.
@@ -283,7 +283,7 @@ suite("@dataform/integration/snowflake", { parallel: true }, ({ before, after })
   });
 
   suite("evaluate", async () => {
-    test("evaluate from valid compiled graph as valid", { timeout: 120000 }, async () => {
+    test("evaluate from valid compiled graph as valid", async () => {
       // Create and run the project.
       const compiledGraph = await compile("tests/integration/snowflake_project", "evaluate");
       const executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
@@ -379,7 +379,7 @@ suite("@dataform/integration/snowflake", { parallel: true }, ({ before, after })
     });
   });
 
-  test("search", { timeout: 120000 }, async () => {
+  test("search", { timeout: 60000 }, async () => {
     // TODO: It seems as though, sometimes, the DB adapter can switch the current 'in-scope' database
     // away from 'INTEGRATION_TESTS' (the default) to 'INTEGRATION_TESTS2' (only used by one of the actions
     // in the graph). Re-creating a local DB adapter sucks, but forces queries to happen predictably against
