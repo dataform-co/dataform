@@ -45,7 +45,7 @@ export class PrestoDbAdapter implements IDbAdapter {
     const rows = await this.pool
       .addSingleTask({
         generator: () =>
-          new Promise((resolve, reject) => {
+          new Promise<any>((resolve, reject) => {
             const allRows = new LimitedResultSet({
               rowLimit: options.rowLimit,
               byteLimit: options.byteLimit
@@ -82,7 +82,7 @@ export class PrestoDbAdapter implements IDbAdapter {
           })
       })
       .promise();
-    return { rows: rows as any[], metadata: {} };
+    return { rows, metadata: {} };
   }
 
   public async withClientLock<T>(callback: (client: IDbClient) => Promise<T>) {

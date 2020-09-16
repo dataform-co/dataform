@@ -1,4 +1,3 @@
-import { fail } from "assert";
 import { expect } from "chai";
 
 import * as dfapi from "df/api";
