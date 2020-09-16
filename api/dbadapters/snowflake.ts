@@ -28,7 +28,14 @@ const snowflake = require("snowflake-sdk/lib/core")({
     }
   }
 }) as ISnowflake;
-snowflake.configure({ logLevel: "trace", insecureConnect: true });
+
+snowflake.configure({
+  logLevel: "trace",
+  // Turn off OCSP checking. It appears as though timeouts in OCSP checks cause failed runs.
+  // See https://community.snowflake.com/s/case/5003r00001JuQrGAAV/snowflake-network-connectivity-problems
+  // for support ticket.
+  insecureConnect: true
+});
 
 interface ISnowflake {
   configure: (options: { logLevel?: string; insecureConnect?: boolean }) => void;
