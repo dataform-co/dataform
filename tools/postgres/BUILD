@@ -20,7 +20,6 @@ ts_library(
     ],
     deps = [
         "//api",
-        "//common/flags",
         "//common/promises",
         "//testing",
         "@npm//@types/node",

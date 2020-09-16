@@ -1,10 +1,9 @@
 import { execSync } from "child_process";
 import * as dbadapters from "df/api/dbadapters";
-import { Flags } from "df/common/flags";
 import { sleepUntil } from "df/common/promises";
 import { IHookHandler } from "df/testing";
 
-const USE_CLOUD_BUILD_NETWORK = Flags.boolean("use-cloud-build-network", false).get();
+const USE_CLOUD_BUILD_NETWORK = !!process.env.USE_CLOUD_BUILD_NETWORK;
 const DOCKER_CONTAINER_NAME = "postgres-df-integration-testing";
 const POSTGRES_SERVE_PORT = 5432;
 
