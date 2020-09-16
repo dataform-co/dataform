@@ -28,10 +28,10 @@ const snowflake = require("snowflake-sdk/lib/core")({
     }
   }
 }) as ISnowflake;
-snowflake.configure({ logLevel: "trace" });
+snowflake.configure({ logLevel: "trace", insecureConnect: true });
 
 interface ISnowflake {
-  configure: (options: { logLevel: string }) => void;
+  configure: (options: { logLevel?: string; insecureConnect?: boolean }) => void;
   createConnection: (options: {
     account: string;
     username: string;
