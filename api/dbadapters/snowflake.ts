@@ -30,6 +30,8 @@ const snowflake = require("snowflake-sdk/lib/core")({
 }) as ISnowflake;
 snowflake.configure({ logLevel: "trace" });
 
+// meaningless comment for cloudbuild
+
 interface ISnowflake {
   configure: (options: { logLevel: string }) => void;
   createConnection: (options: {
