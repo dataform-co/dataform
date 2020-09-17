@@ -70,6 +70,23 @@ export class ArrayStringifier<T> implements IStringifier<T[]> {
   }
 }
 
+// Stringifying a string doesn't require any operation; like the empty set, or an empty monad.
+export class StringStringifier implements IStringifier<string> {
+  public static create(stringifier: IStringifier<string>) {
+    return new StringStringifier(stringifier);
+  }
+
+  constructor(private stringifier: IStringifier<string>) {}
+
+  public stringify(value: string) {
+    return value;
+  }
+
+  public parse(value: string) {
+    return value;
+  }
+}
+
 export class StringifiedMap<K, V> implements Map<K, V> {
   get [Symbol.toStringTag]() {
     return StringifiedMap.name;
