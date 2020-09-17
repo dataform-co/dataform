@@ -50,6 +50,8 @@ export class PrestoFixture {
           await dbadapter.execute("select 1");
           return true;
         } catch (e) {
+          // tslint:disable-next-line: no-console
+          console.log("PrestoFixture -> constructor -> e", String(e));
           return false;
         }
       }, 100);
