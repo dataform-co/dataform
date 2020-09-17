@@ -51,7 +51,7 @@ export class PrestoFixture {
           return true;
         } catch (e) {
           // tslint:disable-next-line: no-console
-          console.log("PrestoFixture -> constructor -> e", String(e));
+          console.log("PrestoFixture -> constructor -> e", e.message);
           return false;
         }
       }, 100);
