@@ -2,4 +2,4 @@
 set -e
 
 # Run all the tests
-bazel test --config=remote-cache tests/integration:snowflake.spec --cache_test_results=no --runs_per_test=10 --local_test_jobs=1
+bazel test --config=remote-cache tests/integration:snowflake.spec --cache_test_results=no
