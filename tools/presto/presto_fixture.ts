@@ -6,16 +6,14 @@ import { IHookHandler } from "df/testing";
 const USE_CLOUD_BUILD_NETWORK = !!process.env.USE_CLOUD_BUILD_NETWORK;
 const DOCKER_CONTAINER_NAME = "presto-df-integration-testing";
 
-export const PRESTO_TEST_CREDENTIALS = {
-  host: "127.0.0.1",
-  port: 1234,
-  user: "df-integration-tests",
-  catalog: "memory",
-  schema: "default"
-};
-
 export class PrestoFixture {
-  public static readonly host = USE_CLOUD_BUILD_NETWORK ? DOCKER_CONTAINER_NAME : "localhost";
+  public static readonly PRESTO_TEST_CREDENTIALS = {
+    host: USE_CLOUD_BUILD_NETWORK ? DOCKER_CONTAINER_NAME : "localhost",
+    port: 1234,
+    user: "df-integration-tests",
+    catalog: "memory",
+    schema: "default"
+  };
 
   private static imageLoaded = false;
 
@@ -35,13 +33,16 @@ export class PrestoFixture {
           "--rm",
           `--name ${DOCKER_CONTAINER_NAME}`,
           "-d",
-          `-p ${port}:${8080}`,
+          `-p ${PrestoFixture.PRESTO_TEST_CREDENTIALS.port}:${8080}`,
           USE_CLOUD_BUILD_NETWORK ? "--network cloudbuild" : "",
           "bazel/tools/presto:presto_image"
         ].join(" ")
       );
 
-      const dbadapter = await dbadapters.create({ ...PRESTO_TEST_CREDENTIALS, port }, "presto");
+      const dbadapter = await dbadapters.create(
+        { ...PrestoFixture.PRESTO_TEST_CREDENTIALS, port },
+        "presto"
+      );
 
       // Block until presto is ready to accept requests.
       await sleepUntil(async () => {
