@@ -9,7 +9,7 @@ const DOCKER_CONTAINER_NAME = "presto-df-integration-testing";
 export class PrestoFixture {
   public static readonly PRESTO_TEST_CREDENTIALS = {
     host: USE_CLOUD_BUILD_NETWORK ? DOCKER_CONTAINER_NAME : "localhost",
-    port: 1234,
+    port: 6969,
     user: "df-integration-tests",
     catalog: "memory",
     schema: "default"
