@@ -133,6 +133,7 @@ export class SQLDataWarehouseAdapter extends Adapter implements IAdapter {
 insert into ${this.resolveTarget(target)}
 (${columns.join(",")})
 select ${columns.join(",")}
-from (${query}) as insertions`;
+from (${query}
+) as insertions`;
   }
 }
