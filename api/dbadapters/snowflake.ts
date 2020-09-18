@@ -440,6 +440,8 @@ function convertFieldType(type: string) {
     case "ARRAY":
     case "OBJECT":
       return dataform.Field.Primitive.ANY;
+    case "GEOGRAPHY":
+      return dataform.Field.Primitive.GEOGRAPHY;
     default:
       return dataform.Field.Primitive.UNKNOWN;
   }
