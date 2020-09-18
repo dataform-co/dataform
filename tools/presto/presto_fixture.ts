@@ -1,4 +1,4 @@
-import { execSync } from "child_process";
+import { exec, execSync, spawn } from "child_process";
 import * as dbadapters from "df/api/dbadapters";
 import { sleepUntil } from "df/common/promises";
 import { IHookHandler } from "df/testing";
@@ -27,17 +27,28 @@ export class PrestoFixture {
       // Run the presto Docker image.
       // This running container can be interacted with via the include CLI using:
       // `docker exec -it presto presto`.
-      execSync(
+      const result = exec(
         [
           "docker run",
           "--rm",
           `--name ${DOCKER_CONTAINER_NAME}`,
-          "-d",
           `-p ${PrestoFixture.PRESTO_TEST_CREDENTIALS.port}:${8080}`,
           USE_CLOUD_BUILD_NETWORK ? "--network cloudbuild" : "",
           "bazel/tools/presto:presto_image"
         ].join(" ")
       );
+      result.stdout.on("data", data => {
+        // tslint:disable-next-line: no-console
+        console.log("stdout: " + data.toString());
+      });
+      result.stderr.on("data", data => {
+        // tslint:disable-next-line: no-console
+        console.log("stderr: " + data.toString());
+      });
+      result.on("exit", code => {
+        // tslint:disable-next-line: no-console
+        console.log("child process exited with code " + code.toString());
+      });
 
       const dbadapter = await dbadapters.create(
         { ...PrestoFixture.PRESTO_TEST_CREDENTIALS, port },
@@ -54,7 +65,7 @@ export class PrestoFixture {
           console.log("PrestoFixture -> constructor -> e", e);
           return false;
         }
-      }, 100);
+      }, 500);
     });
 
     tearDown("stopping presto", () => {
