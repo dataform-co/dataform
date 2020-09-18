@@ -548,6 +548,8 @@ function convertFieldType(type: string) {
       return dataform.Field.Primitive.TIME;
     case "BYTES":
       return dataform.Field.Primitive.BYTES;
+    case "GEOGRAPHY":
+      return dataform.Field.Primitive.GEOGRAPHY;
     default:
       return dataform.Field.Primitive.UNKNOWN;
   }
