@@ -112,7 +112,8 @@ export class BigQueryAdapter extends Adapter implements IAdapter {
   ) {
     return `
 merge ${this.resolveTarget(target)} T
-using (${query}) S
+using (${query}
+) S
 on ${uniqueKey.map(uniqueKeyCol => `T.${uniqueKeyCol} = S.${uniqueKeyCol}`).join(` and `)}
   ${updatePartitionFilter ? `and T.${updatePartitionFilter}` : ""}
 when matched then
