@@ -149,7 +149,10 @@ export class RedshiftAdapter extends Adapter implements IAdapter {
     const tempTarget = `"${target.schema}__${target.name}_incremental_temp"`;
     return Tasks.create()
       .add(Task.statement(`drop table if exists ${tempTarget};`))
-      .add(Task.statement(`create temp table ${tempTarget} as select * from (${query}) as data;`))
+      .add(
+        Task.statement(`create temp table ${tempTarget} as select * from (${query}
+) as data;`)
+      )
       .add(Task.statement(`begin transaction;`))
       .add(
         Task.statement(
