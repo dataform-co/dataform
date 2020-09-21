@@ -9,7 +9,7 @@ const DOCKER_CONTAINER_NAME = "presto-df-integration-testing";
 export class PrestoFixture {
   public static readonly PRESTO_TEST_CREDENTIALS = {
     host: USE_CLOUD_BUILD_NETWORK ? DOCKER_CONTAINER_NAME : "localhost",
-    port: 6969,
+    port: 2345,
     user: "df-integration-tests",
     catalog: "memory",
     schema: "default"
@@ -17,7 +17,7 @@ export class PrestoFixture {
 
   private static imageLoaded = false;
 
-  constructor(port: number, setUp: IHookHandler, tearDown: IHookHandler) {
+  constructor(setUp: IHookHandler, tearDown: IHookHandler) {
     setUp("starting presto", async () => {
       if (!PrestoFixture.imageLoaded) {
         // Load the presto image into the local Docker daemon.
@@ -32,7 +32,7 @@ export class PrestoFixture {
           "docker run",
           "--rm",
           `--name ${DOCKER_CONTAINER_NAME}`,
-          `-p ${PrestoFixture.PRESTO_TEST_CREDENTIALS.port}:${8080}`,
+          `-p ${PrestoFixture.PRESTO_TEST_CREDENTIALS.port}:8080`,
           USE_CLOUD_BUILD_NETWORK ? "--network cloudbuild" : "",
           "bazel/tools/presto:presto_image"
         ].join(" ")
@@ -50,10 +50,7 @@ export class PrestoFixture {
         console.log("child process exited with code " + code.toString());
       });
 
-      const dbadapter = await dbadapters.create(
-        { ...PrestoFixture.PRESTO_TEST_CREDENTIALS, port },
-        "presto"
-      );
+      const dbadapter = await dbadapters.create(PrestoFixture.PRESTO_TEST_CREDENTIALS, "presto");
 
       // Block until presto is ready to accept requests.
       await sleepUntil(async () => {

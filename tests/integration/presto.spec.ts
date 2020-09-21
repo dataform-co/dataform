@@ -8,7 +8,7 @@ import { compile, keyBy } from "df/tests/integration/utils";
 import { PrestoFixture } from "df/tools/presto/presto_fixture";
 
 suite("@dataform/integration/presto", { parallel: true }, ({ before, after }) => {
-  const _ = new PrestoFixture(PrestoFixture.PRESTO_TEST_CREDENTIALS.port, before, after);
+  const _ = new PrestoFixture(before, after);
 
   let dbadapter: dbadapters.IDbAdapter;
 
