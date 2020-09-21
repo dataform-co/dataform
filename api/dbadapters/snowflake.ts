@@ -259,7 +259,6 @@ where table_schema = :1
       fields: columnResults.rows.map(row =>
         dataform.Field.create({
           name: row.COLUMN_NAME,
-          primitiveDeprecated: row.DATA_TYPE,
           primitive: convertFieldType(row.DATA_TYPE),
           flagsDeprecated: row.IS_NULLABLE && row.IS_NULLABLE === "YES" ? ["nullable"] : [],
           flags: row.DATA_TYPE === "ARRAY" ? [dataform.Field.Flag.REPEATED] : [],

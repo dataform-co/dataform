@@ -515,10 +515,8 @@ function convertField(field: TableField): dataform.IField {
     result.struct = dataform.Fields.create({
       fields: field.fields.map(innerField => convertField(innerField))
     });
-  } else {
-    result.primitiveDeprecated = field.type;
-    result.primitive = convertFieldType(field.type);
   }
+  result.primitive = convertFieldType(field.type);
   return dataform.Field.create(result);
 }
 
@@ -550,6 +548,10 @@ function convertFieldType(type: string) {
       return dataform.Field.Primitive.BYTES;
     case "GEOGRAPHY":
       return dataform.Field.Primitive.GEOGRAPHY;
+    case "RECORD":
+      return dataform.Field.Primitive.RECORD;
+    case "STRUCT":
+      return dataform.Field.Primitive.STRUCT;
     default:
       return dataform.Field.Primitive.UNKNOWN;
   }
