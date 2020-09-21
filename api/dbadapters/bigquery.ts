@@ -513,10 +513,12 @@ function convertField(field: TableField): dataform.IField {
   };
   if (field.type === "RECORD" || field.type === "STRUCT") {
     result.struct = dataform.Fields.create({
-      fields: field.fields.map(innerField => convertField(innerField))
+      fields: field.fields.map(innerField => convertField(innerField)),
+      type: convertStructuredType(field.type)
     });
+  } else {
+    result.primitive = convertFieldType(field.type);
   }
-  result.primitive = convertFieldType(field.type);
   return dataform.Field.create(result);
 }
 
@@ -548,12 +550,19 @@ function convertFieldType(type: string) {
       return dataform.Field.Primitive.BYTES;
     case "GEOGRAPHY":
       return dataform.Field.Primitive.GEOGRAPHY;
-    case "RECORD":
-      return dataform.Field.Primitive.RECORD;
-    case "STRUCT":
-      return dataform.Field.Primitive.STRUCT;
     default:
       return dataform.Field.Primitive.UNKNOWN;
+  }
+}
+
+function convertStructuredType(type: string) {
+  switch (String(type).toUpperCase()) {
+    case "RECORD":
+      return dataform.Fields.Type.RECORD;
+    case "STRUCT":
+      return dataform.Fields.Type.STRUCT;
+    default:
+      return dataform.Fields.Type.UNKNOWN;
   }
 }
 

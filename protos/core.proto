@@ -517,11 +517,9 @@ message Field {
     TIMESTAMP = 8;
     TIME = 9;
     BYTES = 10;
-    GEOGRAPHY = 12;
-    RECORD = 13;
-    STRUCT = 14;
     // Semi structured data from Snowflake has no strong schema, and could therefore be anything.
     ANY = 11;
+    GEOGRAPHY = 12;
   }
 
   enum Flag {
@@ -548,6 +546,14 @@ message Field {
 
 message Fields {
   repeated Field fields = 1;
+
+  enum Type {
+    UNKNOWN = 0;
+    RECORD = 1;
+    STRUCT = 2;
+  }
+
+  Type type = 2;
 }
 
 message TableMetadata {
