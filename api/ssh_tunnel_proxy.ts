@@ -10,7 +10,7 @@ import { dataform } from "df/protos/ts";
  */
 export class SSHTunnelProxy {
   public static async create(
-    tunnel: dataform.ISSHTunnel,
+    tunnel: dataform.JDBC.ISshTunnel,
     destination: { host: string; port: number }
   ) {
     // Find a free local port for the tunnel proxy.
