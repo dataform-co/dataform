@@ -311,8 +311,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
                     name: "user_id",
                     primitive: dataform.Field.Primitive.INTEGER
                   })
-                ],
-                type: dataform.Fields.Type.RECORD
+                ]
               })
             })
           ],

@@ -546,14 +546,6 @@ message Field {
 
 message Fields {
   repeated Field fields = 1;
-
-  enum Type {
-    UNKNOWN = 0;
-    RECORD = 1;
-    STRUCT = 2;
-  }
-
-  Type type = 2;
 }
 
 message TableMetadata {
