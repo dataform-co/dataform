@@ -42,7 +42,10 @@ export class SSHTunnelProxy {
       privateKey: tunnel.privateKey
     });
 
-    await new Promise(resolve => sshClient.on("ready", () => resolve()));
+    await new Promise((resolve, reject) => {
+      sshClient.on("error", (err: Error) => reject(err));
+      sshClient.on("ready", () => resolve());
+    });
 
     return new SSHTunnelProxy(sshClient, proxy, localPort);
   }
