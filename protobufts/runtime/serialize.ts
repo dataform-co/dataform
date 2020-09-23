@@ -466,8 +466,8 @@ export class Decoders {
     })();
   }
 
-  public static message<T>(
-    deserialize: (bytes: Uint8Array) => IMessage & T
+  public static message<T extends IMessage>(
+    deserialize: (bytes: Uint8Array) => T
   ): IRepeatedFieldDecoder<T> {
     return new (class {
       public decode(reader: BytesReader, currentValue: T[]): T[] {
@@ -478,9 +478,17 @@ export class Decoders {
       public single(): IDecoder<T> {
         return new (class {
           public decode(reader: BytesReader, currentValue: T): T {
-            const newMessage = deserialize(reader.readBytes());
-            // TODO: return currentValue.mergeWith(newMessage);
-            return newMessage;
+            const newMessageBytes = reader.readBytes();
+            if (!currentValue) {
+              return deserialize(newMessageBytes);
+            }
+            const oldMessageBytes = currentValue.serialize();
+            const mergedMessageBytes = new Uint8Array(
+              oldMessageBytes.length + newMessageBytes.length
+            );
+            mergedMessageBytes.set(oldMessageBytes);
+            mergedMessageBytes.set(newMessageBytes, oldMessageBytes.length);
+            return deserialize(newMessageBytes);
           }
         })();
       }
