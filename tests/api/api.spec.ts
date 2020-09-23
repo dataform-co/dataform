@@ -517,7 +517,7 @@ suite("@dataform/api", () => {
     test("redshift_create after bind support dropped", () => {
       const testGraph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
         projectConfig: { warehouse: "redshift" },
-        dataformCoreVersion: "1.10.1",
+        dataformCoreVersion: "1.11.0",
         tables: [
           {
             name: "redshift_view_with_binding",
