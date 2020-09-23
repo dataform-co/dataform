@@ -44,6 +44,7 @@ export interface IDbAdapter extends IDbClient {
   createSchema(database: string, schema: string): Promise<void>;
 
   tables(): Promise<dataform.ITarget[]>;
+  search(searchText: string, options?: { limit: number }): Promise<dataform.ITableMetadata[]>;
   table(target: dataform.ITarget): Promise<dataform.ITableMetadata>;
   preview(target: dataform.ITarget, limitRows?: number): Promise<any[]>;
 

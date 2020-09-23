@@ -8,6 +8,8 @@ import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
 import { compile, dropAllTables, getTableRows, keyBy } from "df/tests/integration/utils";
 
+process.env.SF_OCSP_TEST_OCSP_RESPONDER_TIMEOUT = "100";
+
 suite("@dataform/integration/snowflake", { parallel: true }, ({ before, after }) => {
   const credentials = dfapi.credentials.read("snowflake", "test_credentials/snowflake.json");
   let dbadapter: dbadapters.IDbAdapter;
@@ -45,8 +47,8 @@ suite("@dataform/integration/snowflake", { parallel: true }, ({ before, after })
 
     // Check the status of action execution.
     const expectedFailedActions = [
-      "DF_INTEGRATION_TEST_ASSERTIONS_PROJECT_E2E.EXAMPLE_ASSERTION_UNIQUENESS_FAIL",
-      "DF_INTEGRATION_TEST_ASSERTIONS_PROJECT_E2E.EXAMPLE_ASSERTION_FAIL"
+      "INTEGRATION_TESTS.DF_INTEGRATION_TEST_ASSERTIONS_PROJECT_E2E.EXAMPLE_ASSERTION_UNIQUENESS_FAIL",
+      "INTEGRATION_TESTS.DF_INTEGRATION_TEST_ASSERTIONS_PROJECT_E2E.EXAMPLE_ASSERTION_FAIL"
     ];
     for (const actionName of Object.keys(actionMap)) {
       const expectedResult = expectedFailedActions.includes(actionName)
@@ -61,19 +63,20 @@ suite("@dataform/integration/snowflake", { parallel: true }, ({ before, after })
     }
 
     expect(
-      actionMap["DF_INTEGRATION_TEST_ASSERTIONS_PROJECT_E2E.EXAMPLE_ASSERTION_UNIQUENESS_FAIL"]
-        .tasks[1].errorMessage
+      actionMap[
+        "INTEGRATION_TESTS.DF_INTEGRATION_TEST_ASSERTIONS_PROJECT_E2E.EXAMPLE_ASSERTION_UNIQUENESS_FAIL"
+      ].tasks[1].errorMessage
     ).to.eql("snowflake error: Assertion failed: query returned 1 row(s).");
 
     // Check the status of the s3 load operation.
-    expect(actionMap["DF_INTEGRATION_TEST_PROJECT_E2E.LOAD_FROM_S3"].status).equals(
-      dataform.ActionResult.ExecutionStatus.SUCCESSFUL
-    );
+    expect(
+      actionMap["INTEGRATION_TESTS.DF_INTEGRATION_TEST_PROJECT_E2E.LOAD_FROM_S3"].status
+    ).equals(dataform.ActionResult.ExecutionStatus.SUCCESSFUL);
 
     // Check the s3 table has two rows, as per:
     // https://dataform-integration-tests.s3.us-east-2.amazonaws.com/sample-data/sample_data.csv
     const s3Table = keyBy(compiledGraph.operations, t => t.name)[
-      "DF_INTEGRATION_TEST_PROJECT_E2E.LOAD_FROM_S3"
+      "INTEGRATION_TESTS.DF_INTEGRATION_TEST_PROJECT_E2E.LOAD_FROM_S3"
     ];
     const s3Rows = await getTableRows(s3Table.target, adapter, dbadapter);
     expect(s3Rows.length).equals(2);
@@ -87,7 +90,7 @@ suite("@dataform/integration/snowflake", { parallel: true }, ({ before, after })
 
     // Check the data in the incremental tables.
     let incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
-      "DF_INTEGRATION_TEST_PROJECT_E2E.EXAMPLE_INCREMENTAL"
+      "INTEGRATION_TESTS.DF_INTEGRATION_TEST_PROJECT_E2E.EXAMPLE_INCREMENTAL"
     ];
     let incrementalRows = await getTableRows(incrementalTable.target, adapter, dbadapter);
     expect(incrementalRows.length).equals(3);
@@ -100,7 +103,7 @@ suite("@dataform/integration/snowflake", { parallel: true }, ({ before, after })
 
     // Check the data in the incremental merge table.
     incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
-      "DF_INTEGRATION_TEST_PROJECT_E2E.EXAMPLE_INCREMENTAL_MERGE"
+      "INTEGRATION_TESTS.DF_INTEGRATION_TEST_PROJECT_E2E.EXAMPLE_INCREMENTAL_MERGE"
     ];
     incrementalRows = await getTableRows(incrementalTable.target, adapter, dbadapter);
     expect(incrementalRows.length).equals(2);
@@ -125,7 +128,7 @@ suite("@dataform/integration/snowflake", { parallel: true }, ({ before, after })
 
     // Check there are the expected number of extra rows in the incremental tables.
     incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
-      "DF_INTEGRATION_TEST_PROJECT_E2E.EXAMPLE_INCREMENTAL"
+      "INTEGRATION_TESTS.DF_INTEGRATION_TEST_PROJECT_E2E.EXAMPLE_INCREMENTAL"
     ];
     incrementalRows = await getTableRows(incrementalTable.target, adapter, dbadapter);
     expect(incrementalRows.length).equals(5);
@@ -138,7 +141,7 @@ suite("@dataform/integration/snowflake", { parallel: true }, ({ before, after })
 
     // Check the data in the incremental merge table.
     incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
-      "DF_INTEGRATION_TEST_PROJECT_E2E.EXAMPLE_INCREMENTAL_MERGE"
+      "INTEGRATION_TESTS.DF_INTEGRATION_TEST_PROJECT_E2E.EXAMPLE_INCREMENTAL_MERGE"
     ];
     incrementalRows = await getTableRows(incrementalTable.target, adapter, dbadapter);
     expect(incrementalRows.length).equals(2);
@@ -170,6 +173,7 @@ suite("@dataform/integration/snowflake", { parallel: true }, ({ before, after })
     for (const expectedMetadata of [
       {
         target: {
+          database: "INTEGRATION_TESTS",
           schema: "DF_INTEGRATION_TEST_DATASET_METADATA",
           name: "EXAMPLE_INCREMENTAL"
         },
@@ -179,20 +183,19 @@ suite("@dataform/integration/snowflake", { parallel: true }, ({ before, after })
             description: "the id",
             flagsDeprecated: ["nullable"],
             name: "USER_ID",
-            primitive: dataform.Field.Primitive.NUMERIC,
-            primitiveDeprecated: "NUMBER"
+            primitive: dataform.Field.Primitive.NUMERIC
           }),
           dataform.Field.create({
             description: "the 'timestamp'",
             flagsDeprecated: ["nullable"],
             name: "USER_TIMESTAMP",
-            primitive: dataform.Field.Primitive.NUMERIC,
-            primitiveDeprecated: "NUMBER"
+            primitive: dataform.Field.Primitive.NUMERIC
           })
         ]
       },
       {
         target: {
+          database: "INTEGRATION_TESTS",
           schema: "DF_INTEGRATION_TEST_DATASET_METADATA",
           name: "EXAMPLE_VIEW"
         },
@@ -201,8 +204,7 @@ suite("@dataform/integration/snowflake", { parallel: true }, ({ before, after })
           dataform.Field.create({
             flagsDeprecated: ["nullable"],
             name: "VAL",
-            primitive: dataform.Field.Primitive.NUMERIC,
-            primitiveDeprecated: "NUMBER"
+            primitive: dataform.Field.Primitive.NUMERIC
           })
         ]
       }
@@ -285,7 +287,7 @@ suite("@dataform/integration/snowflake", { parallel: true }, ({ before, after })
       await dfapi.run(dbadapter, executionGraph).result();
 
       const view = keyBy(compiledGraph.tables, t => t.name)[
-        "DF_INTEGRATION_TEST_EVALUATE.EXAMPLE_VIEW"
+        "INTEGRATION_TESTS.DF_INTEGRATION_TEST_EVALUATE.EXAMPLE_VIEW"
       ];
       let evaluations = await dbadapter.evaluate(dataform.Table.create(view));
       expect(evaluations.length).to.equal(1);
@@ -294,7 +296,7 @@ suite("@dataform/integration/snowflake", { parallel: true }, ({ before, after })
       );
 
       const table = keyBy(compiledGraph.tables, t => t.name)[
-        "DF_INTEGRATION_TEST_EVALUATE.EXAMPLE_TABLE"
+        "INTEGRATION_TESTS.DF_INTEGRATION_TEST_EVALUATE.EXAMPLE_TABLE"
       ];
       evaluations = await dbadapter.evaluate(dataform.Table.create(table));
       expect(evaluations.length).to.equal(1);
@@ -303,7 +305,7 @@ suite("@dataform/integration/snowflake", { parallel: true }, ({ before, after })
       );
 
       const assertion = keyBy(compiledGraph.assertions, t => t.name)[
-        "DF_INTEGRATION_TEST_ASSERTIONS_EVALUATE.EXAMPLE_ASSERTION_PASS"
+        "INTEGRATION_TESTS.DF_INTEGRATION_TEST_ASSERTIONS_EVALUATE.EXAMPLE_ASSERTION_PASS"
       ];
       evaluations = await dbadapter.evaluate(dataform.Assertion.create(assertion));
       expect(evaluations.length).to.equal(1);
@@ -312,7 +314,7 @@ suite("@dataform/integration/snowflake", { parallel: true }, ({ before, after })
       );
 
       const incremental = keyBy(compiledGraph.tables, t => t.name)[
-        "DF_INTEGRATION_TEST_EVALUATE.EXAMPLE_INCREMENTAL"
+        "INTEGRATION_TESTS.DF_INTEGRATION_TEST_EVALUATE.EXAMPLE_INCREMENTAL"
       ];
       evaluations = await dbadapter.evaluate(dataform.Table.create(incremental));
       expect(evaluations.length).to.equal(2);
@@ -372,5 +374,45 @@ suite("@dataform/integration/snowflake", { parallel: true }, ({ before, after })
       expect(increment[increment.length - 2].statement).to.equal(table.postOps[0]);
       expect(increment[increment.length - 1].statement).to.equal(table.postOps[1]);
     });
+  });
+
+  test("search", { timeout: 60000 }, async () => {
+    // TODO: It seems as though, sometimes, the DB adapter can switch the current 'in-scope' database
+    // away from 'INTEGRATION_TESTS' (the default) to 'INTEGRATION_TESTS2' (only used by one of the actions
+    // in the graph). Re-creating a local DB adapter sucks, but forces queries to happen predictably against
+    // 'INTEGRATION_TESTS'.
+    const localDbAdapter = await dbadapters.create(credentials, "snowflake");
+
+    const compiledGraph = await compile("tests/integration/snowflake_project", "search");
+
+    // Drop all the tables before we do anything.
+    const adapter = adapters.create(compiledGraph.projectConfig, compiledGraph.dataformCoreVersion);
+    const tablesToDelete = (await dfapi.build(compiledGraph, {}, localDbAdapter)).warehouseState
+      .tables;
+    await dropAllTables(tablesToDelete, adapter, localDbAdapter);
+
+    // Run the project.
+    const executionGraph = await dfapi.build(
+      compiledGraph,
+      {
+        actions: ["EXAMPLE_VIEW"],
+        includeDependencies: true
+      },
+      localDbAdapter
+    );
+    const runResult = await dfapi.run(localDbAdapter, executionGraph).result();
+    expect(dataform.RunResult.ExecutionStatus[runResult.status]).eql(
+      dataform.RunResult.ExecutionStatus[dataform.RunResult.ExecutionStatus.SUCCESSFUL]
+    );
+
+    const [fullSearch, partialSearch, columnSearch] = await Promise.all([
+      localDbAdapter.search("df_integration_test_search"),
+      localDbAdapter.search("test_sear"),
+      localDbAdapter.search("val")
+    ]);
+
+    expect(fullSearch.length).equals(2);
+    expect(partialSearch.length).equals(2);
+    expect(columnSearch.length).greaterThan(0);
   });
 });

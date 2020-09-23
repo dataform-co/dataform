@@ -160,7 +160,8 @@ message RedshiftOptions {
   string dist_style = 2;
   repeated string sort_keys = 3;
   string sort_style = 4;
-  bool bind = 5;
+
+  bool bind = 5 [deprecated = true];
 }
 
 message SQLDataWarehouseOptions {
@@ -519,6 +520,7 @@ message Field {
     BYTES = 10;
     // Semi structured data from Snowflake has no strong schema, and could therefore be anything.
     ANY = 11;
+    GEOGRAPHY = 12;
   }
 
   enum Flag {
@@ -539,7 +541,8 @@ message Field {
 
   // Deprecated.
   repeated string flags_deprecated = 4;
-  string primitive_deprecated = 2;
+
+  reserved 2;
 }
 
 message Fields {

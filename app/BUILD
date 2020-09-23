@@ -71,7 +71,7 @@ webpack_dev_server(
         "@npm//webpack-cli",
     ],
     tags = [
-        # "ibazel_notify_changes",
+        "ibazel_notify_changes",
     ],
 )
 

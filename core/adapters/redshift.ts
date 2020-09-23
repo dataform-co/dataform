@@ -91,7 +91,8 @@ export class RedshiftAdapter extends Adapter implements IAdapter {
     if (table.type === "view") {
       const isBindDefined = table.redshift && table.redshift.hasOwnProperty("bind");
       const bindDefaultValue = semver.gte(this.dataformCoreVersion, "1.4.1") ? false : true;
-      const bind = isBindDefined ? table.redshift.bind : bindDefaultValue;
+      const bind =
+        (isBindDefined ? table.redshift.bind : bindDefaultValue) && this.isBindSupported();
       return (
         Tasks.create()
           // Drop the view in case we are changing the number of column(s) (or their types).
@@ -135,7 +136,11 @@ export class RedshiftAdapter extends Adapter implements IAdapter {
   }
 
   public dropIfExists(target: dataform.ITarget, type: dataform.TableMetadata.Type) {
-    return `drop ${this.tableTypeAsSql(type)} if exists ${this.resolveTarget(target)} cascade`;
+    const query = `drop ${this.tableTypeAsSql(type)} if exists ${this.resolveTarget(target)}`;
+    if (!this.isBindSupported()) {
+      return query;
+    }
+    return `${query} cascade`;
   }
 
   public mergeInto(
@@ -149,7 +154,10 @@ export class RedshiftAdapter extends Adapter implements IAdapter {
     const tempTarget = `"${target.schema}__${target.name}_incremental_temp"`;
     return Tasks.create()
       .add(Task.statement(`drop table if exists ${tempTarget};`))
-      .add(Task.statement(`create temp table ${tempTarget} as select * from (${query}) as data;`))
+      .add(
+        Task.statement(`create temp table ${tempTarget} as select * from (${query}
+) as data;`)
+      )
       .add(Task.statement(`begin transaction;`))
       .add(
         Task.statement(
@@ -163,5 +171,9 @@ export class RedshiftAdapter extends Adapter implements IAdapter {
       .add(Task.statement(`insert into ${finalTarget} select * from ${tempTarget};`))
       .add(Task.statement(`end transaction;`))
       .add(Task.statement(`drop table ${tempTarget};`));
+  }
+
+  private isBindSupported() {
+    return semver.lte(this.dataformCoreVersion, "1.10.0");
   }
 }

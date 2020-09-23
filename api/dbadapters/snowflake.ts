@@ -28,10 +28,17 @@ const snowflake = require("snowflake-sdk/lib/core")({
     }
   }
 }) as ISnowflake;
-snowflake.configure({ logLevel: "trace" });
+
+snowflake.configure({
+  logLevel: "trace",
+  // Turn off OCSP checking. It appears as though timeouts in OCSP checks cause failed runs.
+  // See https://community.snowflake.com/s/case/5003r00001JuQrGAAV/snowflake-network-connectivity-problems
+  // for support ticket.
+  insecureConnect: true
+});
 
 interface ISnowflake {
-  configure: (options: { logLevel: string }) => void;
+  configure: (options: { logLevel?: string; insecureConnect?: boolean }) => void;
   createConnection: (options: {
     account: string;
     username: string;
@@ -48,6 +55,7 @@ interface ISnowflakeConnection {
   connect: (callback: (err: any, connection: ISnowflakeConnection) => void) => void;
   execute: (options: {
     sqlText: string;
+    binds?: any[];
     streamResult?: boolean;
     complete: (err: any, statement: ISnowflakeStatement, rows: any[]) => void;
   }) => void;
@@ -82,6 +90,7 @@ export class SnowflakeDbAdapter implements IDbAdapter {
   public async execute(
     statement: string,
     options: {
+      binds?: any[];
       onCancel?: OnCancel;
       rowLimit?: number;
       byteLimit?: number;
@@ -94,6 +103,7 @@ export class SnowflakeDbAdapter implements IDbAdapter {
             new Promise<any[]>((resolve, reject) => {
               this.connection.execute({
                 sqlText: statement,
+                binds: options?.binds,
                 streamResult: true,
                 complete(err, stmt) {
                   if (err) {
@@ -185,21 +195,53 @@ where LOWER(table_schema) != 'information_schema'
     }));
   }
 
+  public async search(
+    searchText: string,
+    options: { limit: number } = { limit: 1000 }
+  ): Promise<dataform.ITableMetadata[]> {
+    const results = await this.execute(
+      `select tables.table_catalog as table_catalog, tables.table_schema as table_schema, tables.table_name as table_name
+       from information_schema.tables as tables
+       left join information_schema.columns as columns on tables.table_catalog = columns.table_catalog and tables.table_schema = columns.table_schema
+         and tables.table_name = columns.table_name
+       where tables.table_catalog ilike :1 or tables.table_schema ilike :1 or tables.table_name ilike :1 or tables.comment ilike :1
+         or columns.column_name ilike :1 or columns.comment ilike :1
+       group by 1, 2, 3
+       `,
+      {
+        binds: [`%${searchText}%`],
+        rowLimit: options.limit
+      }
+    );
+    return await Promise.all(
+      results.rows.map(row =>
+        this.table({
+          database: row.TABLE_CATALOG,
+          schema: row.TABLE_SCHEMA,
+          name: row.TABLE_NAME
+        })
+      )
+    );
+  }
+
   public async table(target: dataform.ITarget): Promise<dataform.ITableMetadata> {
+    const binds = [target.schema, target.name];
     const [tableResults, columnResults] = await Promise.all([
       this.execute(
         `
 select table_type, comment
 from ${target.database ? `"${target.database}".` : ""}information_schema.tables
-where table_schema = '${target.schema}'
-  and table_name = '${target.name}'`
+where table_schema = :1
+  and table_name = :2`,
+        { binds }
       ),
       this.execute(
         `
 select column_name, data_type, is_nullable, comment
 from ${target.database ? `"${target.database}".` : ""}information_schema.columns
-where table_schema = '${target.schema}' 
-  and table_name = '${target.name}'`
+where table_schema = :1 
+  and table_name = :2`,
+        { binds }
       )
     ]);
     if (tableResults.rows.length === 0) {
@@ -217,7 +259,6 @@ where table_schema = '${target.schema}'
       fields: columnResults.rows.map(row =>
         dataform.Field.create({
           name: row.COLUMN_NAME,
-          primitiveDeprecated: row.DATA_TYPE,
           primitive: convertFieldType(row.DATA_TYPE),
           flagsDeprecated: row.IS_NULLABLE && row.IS_NULLABLE === "YES" ? ["nullable"] : [],
           flags: row.DATA_TYPE === "ARRAY" ? [dataform.Field.Flag.REPEATED] : [],
@@ -398,6 +439,8 @@ function convertFieldType(type: string) {
     case "ARRAY":
     case "OBJECT":
       return dataform.Field.Primitive.ANY;
+    case "GEOGRAPHY":
+      return dataform.Field.Primitive.GEOGRAPHY;
     default:
       return dataform.Field.Primitive.UNKNOWN;
   }

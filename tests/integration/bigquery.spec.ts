@@ -289,14 +289,12 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
             dataform.Field.create({
               description: "the timestamp",
               name: "user_timestamp",
-              primitive: dataform.Field.Primitive.INTEGER,
-              primitiveDeprecated: "INTEGER"
+              primitive: dataform.Field.Primitive.INTEGER
             }),
             dataform.Field.create({
               description: "the id",
               name: "user_id",
-              primitive: dataform.Field.Primitive.INTEGER,
-              primitiveDeprecated: "INTEGER"
+              primitive: dataform.Field.Primitive.INTEGER
             }),
             dataform.Field.create({
               name: "nested_data",
@@ -306,14 +304,12 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
                   dataform.Field.create({
                     description: "nested timestamp",
                     name: "user_timestamp",
-                    primitive: dataform.Field.Primitive.INTEGER,
-                    primitiveDeprecated: "INTEGER"
+                    primitive: dataform.Field.Primitive.INTEGER
                   }),
                   dataform.Field.create({
                     description: "nested id",
                     name: "user_id",
-                    primitive: dataform.Field.Primitive.INTEGER,
-                    primitiveDeprecated: "INTEGER"
+                    primitive: dataform.Field.Primitive.INTEGER
                   })
                 ]
               })
@@ -332,8 +328,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
             dataform.Field.create({
               description: "val doc",
               name: "val",
-              primitive: dataform.Field.Primitive.INTEGER,
-              primitiveDeprecated: "INTEGER"
+              primitive: dataform.Field.Primitive.INTEGER
             })
           ],
           expectedLabels: {
@@ -550,6 +545,37 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
         });
       }
     });
+  });
+
+  test("search", async () => {
+    const compiledGraph = await compile("tests/integration/bigquery_project", "search");
+
+    // Drop all the tables before we do anything.
+    await cleanWarehouse(compiledGraph, dbadapter);
+
+    // Run the project.
+    const executionGraph = await dfapi.build(
+      compiledGraph,
+      {
+        actions: ["example_view"],
+        includeDependencies: true
+      },
+      dbadapter
+    );
+    const runResult = await dfapi.run(dbadapter, executionGraph).result();
+    expect(dataform.RunResult.ExecutionStatus[runResult.status]).eql(
+      dataform.RunResult.ExecutionStatus[dataform.RunResult.ExecutionStatus.SUCCESSFUL]
+    );
+
+    const [fullSearch, partialSearch, columnSearch] = await Promise.all([
+      dbadapter.search("df_integration_test_search"),
+      dbadapter.search("test_sear"),
+      dbadapter.search("val")
+    ]);
+
+    expect(fullSearch.length).equals(2);
+    expect(partialSearch.length).equals(2);
+    expect(columnSearch.length).greaterThan(0);
   });
 });
 

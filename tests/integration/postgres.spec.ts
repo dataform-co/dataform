@@ -31,16 +31,6 @@ suite("@dataform/integration/postgres", { parallel: true }, ({ before, after }) 
   test("run", { timeout: 60000 }, async () => {
     const compiledGraph = await compile("tests/integration/postgres_project", "project_e2e");
 
-    await dbadapter.execute(
-      `drop schema if exists ${Array.from(
-        new Set(
-          [...compiledGraph.tables, ...compiledGraph.assertions, ...compiledGraph.operations].map(
-            action => action.target.schema
-          )
-        )
-      ).join(", ")} cascade`
-    );
-
     // Run the project.
     let executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
     let executedGraph = await dfapi.run(dbadapter, executionGraph).result();
@@ -122,16 +112,6 @@ suite("@dataform/integration/postgres", { parallel: true }, ({ before, after }) 
   test("dataset metadata set correctly", { timeout: 60000 }, async () => {
     const compiledGraph = await compile("tests/integration/postgres_project", "dataset_metadata");
 
-    await dbadapter.execute(
-      `drop schema if exists ${Array.from(
-        new Set(
-          [...compiledGraph.tables, ...compiledGraph.assertions, ...compiledGraph.operations].map(
-            action => action.target.schema
-          )
-        )
-      ).join(", ")} cascade`
-    );
-
     // Run the project.
     const executionGraph = await dfapi.build(
       compiledGraph,
@@ -159,15 +139,13 @@ suite("@dataform/integration/postgres", { parallel: true }, ({ before, after }) 
             description: "the 'timestamp'",
             flagsDeprecated: ["nullable"],
             name: "user_timestamp",
-            primitive: dataform.Field.Primitive.INTEGER,
-            primitiveDeprecated: "integer"
+            primitive: dataform.Field.Primitive.INTEGER
           }),
           dataform.Field.create({
             description: "the id",
             flagsDeprecated: ["nullable"],
             name: "user_id",
-            primitive: dataform.Field.Primitive.INTEGER,
-            primitiveDeprecated: "integer"
+            primitive: dataform.Field.Primitive.INTEGER
           })
         ]
       },
@@ -182,8 +160,7 @@ suite("@dataform/integration/postgres", { parallel: true }, ({ before, after }) 
             name: "val",
             description: "val doc",
             flagsDeprecated: ["nullable"],
-            primitive: dataform.Field.Primitive.INTEGER,
-            primitiveDeprecated: "integer"
+            primitive: dataform.Field.Primitive.INTEGER
           })
         ]
       }
@@ -349,5 +326,33 @@ suite("@dataform/integration/postgres", { parallel: true }, ({ before, after }) 
       expect(increment[increment.length - 2].statement).to.equal(table.postOps[0]);
       expect(increment[increment.length - 1].statement).to.equal(table.postOps[1]);
     });
+  });
+
+  test("search", async () => {
+    const compiledGraph = await compile("tests/integration/postgres_project", "search");
+
+    // Run the project.
+    const executionGraph = await dfapi.build(
+      compiledGraph,
+      {
+        actions: ["example_view"],
+        includeDependencies: true
+      },
+      dbadapter
+    );
+    const runResult = await dfapi.run(dbadapter, executionGraph).result();
+    expect(dataform.RunResult.ExecutionStatus[runResult.status]).eql(
+      dataform.RunResult.ExecutionStatus[dataform.RunResult.ExecutionStatus.SUCCESSFUL]
+    );
+
+    const [fullSearch, partialSearch, columnSearch] = await Promise.all([
+      dbadapter.search("df_integration_test_search"),
+      dbadapter.search("test_sear"),
+      dbadapter.search("val")
+    ]);
+
+    expect(fullSearch.length).equals(2);
+    expect(partialSearch.length).equals(2);
+    expect(columnSearch.length).greaterThan(0);
   });
 });
