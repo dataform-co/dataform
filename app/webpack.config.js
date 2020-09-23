@@ -30,6 +30,16 @@ module.exports = (env, argv) => {
       contentBase: path.resolve("./app"),
       stats: {
         colors: true
+      },
+      after: (_, socket) => {
+        // Listen to STDIN, which is written to by ibazel to tell it to reload.
+        // Must check the message so we only bundle after a successful build completes.
+        process.stdin.on("data", data => {
+          if (!String(data).includes("IBAZEL_BUILD_COMPLETED SUCCESS")) {
+            return;
+          }
+          socket.sockWrite(socket.sockets, "content-changed");
+        });
       }
     },
     resolve: {
@@ -63,7 +73,7 @@ module.exports = (env, argv) => {
               }
             }
           ]
-        },
+        }
       ]
     }
   };
