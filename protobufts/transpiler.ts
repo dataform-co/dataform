@@ -650,13 +650,10 @@ ${indent(
         );
       }
       if (typeMetadata.protobufType.descriptorProto.options?.mapEntry) {
-        return `Array.from(${valueVariable}).reduce((currentVal: any, [key, val]) => {
-          currentVal[String(key)] = ${this.toJsonValue(
-            typeMetadata.protobufType.descriptorProto.field[1],
-            "val"
-          )};
-          return currentVal;
-        }, {})`;
+        return `Array.from(${valueVariable}).reduce((currentVal: any, [key, val]) => { currentVal[String(key)] = ${this.toJsonValue(
+          typeMetadata.protobufType.descriptorProto.field[1],
+          "val"
+        )}; return currentVal; }, {})`;
       }
     }
     if (fieldDescriptorProto.type === google.protobuf.FieldDescriptorProto.Type.TYPE_ENUM) {
