@@ -540,7 +540,8 @@ message Field {
 
   // Deprecated.
   repeated string flags_deprecated = 4;
-  string primitive_deprecated = 2;
+
+  reserved 2;
 }
 
 message Fields {

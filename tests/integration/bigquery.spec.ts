@@ -289,14 +289,12 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
             dataform.Field.create({
               description: "the timestamp",
               name: "user_timestamp",
-              primitive: dataform.Field.Primitive.INTEGER,
-              primitiveDeprecated: "INTEGER"
+              primitive: dataform.Field.Primitive.INTEGER
             }),
             dataform.Field.create({
               description: "the id",
               name: "user_id",
-              primitive: dataform.Field.Primitive.INTEGER,
-              primitiveDeprecated: "INTEGER"
+              primitive: dataform.Field.Primitive.INTEGER
             }),
             dataform.Field.create({
               name: "nested_data",
@@ -306,14 +304,12 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
                   dataform.Field.create({
                     description: "nested timestamp",
                     name: "user_timestamp",
-                    primitive: dataform.Field.Primitive.INTEGER,
-                    primitiveDeprecated: "INTEGER"
+                    primitive: dataform.Field.Primitive.INTEGER
                   }),
                   dataform.Field.create({
                     description: "nested id",
                     name: "user_id",
-                    primitive: dataform.Field.Primitive.INTEGER,
-                    primitiveDeprecated: "INTEGER"
+                    primitive: dataform.Field.Primitive.INTEGER
                   })
                 ]
               })
@@ -332,8 +328,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
             dataform.Field.create({
               description: "val doc",
               name: "val",
-              primitive: dataform.Field.Primitive.INTEGER,
-              primitiveDeprecated: "INTEGER"
+              primitive: dataform.Field.Primitive.INTEGER
             })
           ],
           expectedLabels: {

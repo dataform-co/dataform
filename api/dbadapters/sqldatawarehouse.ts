@@ -201,7 +201,6 @@ export class SQLDataWarehouseDBAdapter implements IDbAdapter {
           : dataform.TableMetadata.Type.TABLE,
       fields: columnData.rows.map(row => ({
         name: row.column_name,
-        primitiveDeprecated: row.data_type,
         primitive: convertFieldType(row.data_type),
         flagsDeprecated: row.is_nullable && row.is_nullable === "YES" ? ["nullable"] : []
       }))

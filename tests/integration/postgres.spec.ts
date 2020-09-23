@@ -139,15 +139,13 @@ suite("@dataform/integration/postgres", { parallel: true }, ({ before, after }) 
             description: "the 'timestamp'",
             flagsDeprecated: ["nullable"],
             name: "user_timestamp",
-            primitive: dataform.Field.Primitive.INTEGER,
-            primitiveDeprecated: "integer"
+            primitive: dataform.Field.Primitive.INTEGER
           }),
           dataform.Field.create({
             description: "the id",
             flagsDeprecated: ["nullable"],
             name: "user_id",
-            primitive: dataform.Field.Primitive.INTEGER,
-            primitiveDeprecated: "integer"
+            primitive: dataform.Field.Primitive.INTEGER
           })
         ]
       },
@@ -162,8 +160,7 @@ suite("@dataform/integration/postgres", { parallel: true }, ({ before, after }) 
             name: "val",
             description: "val doc",
             flagsDeprecated: ["nullable"],
-            primitive: dataform.Field.Primitive.INTEGER,
-            primitiveDeprecated: "integer"
+            primitive: dataform.Field.Primitive.INTEGER
           })
         ]
       }

@@ -516,7 +516,6 @@ function convertField(field: TableField): dataform.IField {
       fields: field.fields.map(innerField => convertField(innerField))
     });
   } else {
-    result.primitiveDeprecated = field.type;
     result.primitive = convertFieldType(field.type);
   }
   return dataform.Field.create(result);

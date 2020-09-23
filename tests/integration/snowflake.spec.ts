@@ -183,15 +183,13 @@ suite("@dataform/integration/snowflake", { parallel: true }, ({ before, after })
             description: "the id",
             flagsDeprecated: ["nullable"],
             name: "USER_ID",
-            primitive: dataform.Field.Primitive.NUMERIC,
-            primitiveDeprecated: "NUMBER"
+            primitive: dataform.Field.Primitive.NUMERIC
           }),
           dataform.Field.create({
             description: "the 'timestamp'",
             flagsDeprecated: ["nullable"],
             name: "USER_TIMESTAMP",
-            primitive: dataform.Field.Primitive.NUMERIC,
-            primitiveDeprecated: "NUMBER"
+            primitive: dataform.Field.Primitive.NUMERIC
           })
         ]
       },
@@ -206,8 +204,7 @@ suite("@dataform/integration/snowflake", { parallel: true }, ({ before, after })
           dataform.Field.create({
             flagsDeprecated: ["nullable"],
             name: "VAL",
-            primitive: dataform.Field.Primitive.NUMERIC,
-            primitiveDeprecated: "NUMBER"
+            primitive: dataform.Field.Primitive.NUMERIC
           })
         ]
       }
