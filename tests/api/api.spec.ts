@@ -514,6 +514,42 @@ suite("@dataform/api", () => {
       });
     });
 
+    test("redshift_create after bind support dropped", () => {
+      const testGraph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
+        projectConfig: { warehouse: "redshift" },
+        dataformCoreVersion: "1.11.0",
+        tables: [
+          {
+            name: "redshift_view_with_binding",
+            type: "view",
+            target: {
+              schema: "schema",
+              name: "redshift_view_with_binding"
+            },
+            query: "query",
+            redshift: {
+              bind: true
+            }
+          }
+        ]
+      });
+
+      const builder = new Builder(
+        testGraph,
+        {},
+        dataform.WarehouseState.create({}),
+        computeAllTransitiveInputs(testGraph)
+      );
+      const executionGraph = builder.build();
+
+      expect(
+        executionGraph.actions.map(action => action.tasks.map(task => task.statement)).flat()
+      ).eql([
+        'drop view if exists "schema"."redshift_view_with_binding"',
+        'create or replace view "schema"."redshift_view_with_binding" as query with no schema binding'
+      ]);
+    });
+
     test("postgres_create", () => {
       const testGraph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
         projectConfig: { warehouse: "postgres" },

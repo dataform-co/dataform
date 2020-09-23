@@ -115,7 +115,7 @@ select 1 as test
           },
           tasks: [
             {
-              statement: 'drop table if exists "dataform"."example_temp" cascade',
+              statement: 'drop table if exists "dataform"."example_temp"',
               type: "statement"
             },
             {
@@ -123,7 +123,7 @@ select 1 as test
               type: "statement"
             },
             {
-              statement: 'drop table if exists "dataform"."example" cascade',
+              statement: 'drop table if exists "dataform"."example"',
               type: "statement"
             },
             {

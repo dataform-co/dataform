@@ -89,19 +89,10 @@ export interface IRedshiftOptions {
    * For more information, read the [Redshift sort style article](https://docs.aws.amazon.com/redshift/latest/dg/t_Sorting_data-compare-sort-styles.html).
    */
   sortStyle?: string;
-
-  /**
-   * By default, views are created as late binding views.
-   *
-   * When this is set to true, views will not be created as late binding views, and the `WITH SCHEMA BINDING` suffix is omitted.
-   *
-   * For more information, read the [Redshift create view docs](https://docs.aws.amazon.com/redshift/latest/dg/r_CREATE_VIEW.html).
-   */
-  bind?: boolean;
 }
 
 const IRedshiftOptionsProperties = () =>
-  strictKeysOf<IRedshiftOptions>()(["distKey", "distStyle", "sortKeys", "sortStyle", "bind"]);
+  strictKeysOf<IRedshiftOptions>()(["distKey", "distStyle", "sortKeys", "sortStyle"]);
 
 /**
  * Options for creating tables within Azure SQL Data Warehouse projects.
