@@ -2,7 +2,7 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "df/*": ["*", "bazel-bin/*", "bazel-genfiles/*"],
+      "df/*": ["*", "bazel-bin/*", "bazel-genfiles/*"]
     },
     "module": "commonjs",
     "noImplicitAny": true,
@@ -14,7 +14,7 @@
     "skipLibCheck": true,
     "experimentalDecorators": true,
     "jsx": "react",
-    "lib": ["es2017", "dom"],
+    "lib": ["es2019", "dom"],
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true
   },
