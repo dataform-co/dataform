@@ -269,16 +269,12 @@ export class Deserializer {
         switch (wireType) {
           case WireType.VARINT:
             return new BytesReader(this.reader.readBytes(this.reader.nextVarIntSize()));
-          // return new FieldBytesBuffer(this.reader.readBytes(this.reader.nextVarIntSize()));
           case WireType.SIXTY_FOUR_BIT:
             return new BytesReader(this.reader.readBytes(8));
-          // return new FieldBytesBuffer(this.reader.readBytes(8));
           case WireType.LENGTH_DELIMITED:
             return new BytesReader(this.reader.readBytes(this.reader.readVarInt().toNumber()));
-          // return new FieldBytesBuffer(this.reader.readBytes(this.reader.readVarInt().toNumber()));
           case WireType.THIRTY_TWO_BIT:
             return new BytesReader(this.reader.readBytes(4));
-          // return new FieldBytesBuffer(this.reader.readBytes(4));
           default:
             throw new Error(`Unrecognized wire type: ${wireType}`);
         }
@@ -288,12 +284,40 @@ export class Deserializer {
   }
 }
 
-interface IDecoder<T> {
-  decode(reader: BytesReader, currentValue: T): T;
+interface IRepeatedFieldDecoder<T> {
+  decode(reader: BytesReader, currentValue: T[]): T[];
+  single(): IDecoder<T>;
 }
 
-abstract class PackedFieldDecoder<T> {
-  public abstract decode(reader: BytesReader, currentValue: T[]): T[];
+interface IDecoder<T> {
+  decode(reader: BytesReader, currentValue?: T): T;
+}
+
+abstract class NotPackedFieldDecoder<T> implements IRepeatedFieldDecoder<T> {
+  public decode(reader: BytesReader, currentValue: T[]): T[] {
+    currentValue.push(this.decodeSingleValue(reader));
+    return currentValue;
+  }
+
+  public single(): IDecoder<T> {
+    const repeatedDecoder = this;
+    return new (class {
+      public decode(reader: BytesReader): T {
+        return repeatedDecoder.decodeSingleValue(reader);
+      }
+    })();
+  }
+
+  protected abstract decodeSingleValue(reader: BytesReader): T;
+}
+
+abstract class MaybePackedFieldDecoder<T> implements IRepeatedFieldDecoder<T> {
+  public decode(reader: BytesReader, currentValue: T[]): T[] {
+    while (!reader.done()) {
+      currentValue.push(this.decodeSingleValue(reader));
+    }
+    return currentValue;
+  }
 
   public single(): IDecoder<T> {
     const repeatedDecoder = this;
@@ -307,26 +331,158 @@ abstract class PackedFieldDecoder<T> {
       }
     })();
   }
+
+  protected abstract decodeSingleValue(reader: BytesReader): T;
 }
 
 export class Decoders {
-  public static uint32(): IDecoder<number[]> {
-    return new (class extends PackedFieldDecoder<number> {
-      public decode(reader: BytesReader, currentValue: number[]): number[] {
-        while (!reader.done()) {
-          currentValue.push(reader.readVarInt().toNumber());
-        }
-        return currentValue;
+  public static double(): IRepeatedFieldDecoder<number> {
+    return new (class extends MaybePackedFieldDecoder<number> {
+      public decodeSingleValue(reader: BytesReader) {
+        return reader.readSixtyFourBitFloat();
       }
     })();
   }
 
-  public static message<T>(deserialize: (bytes: Uint8Array) => IMessage & T): IDecoder<T> {
+  public static float(): IRepeatedFieldDecoder<number> {
+    return new (class extends MaybePackedFieldDecoder<number> {
+      public decodeSingleValue(reader: BytesReader) {
+        return reader.readThirtyTwoBitFloat();
+      }
+    })();
+  }
+
+  public static int32(): IRepeatedFieldDecoder<number> {
+    return new (class extends MaybePackedFieldDecoder<number> {
+      public decodeSingleValue(reader: BytesReader) {
+        return reader.readVarInt().toNumber();
+      }
+    })();
+  }
+
+  public static fixed32(): IRepeatedFieldDecoder<number> {
+    return new (class extends MaybePackedFieldDecoder<number> {
+      public decodeSingleValue(reader: BytesReader) {
+        return reader.readThirtyTwoBitInteger(true);
+      }
+    })();
+  }
+
+  public static uint32(): IRepeatedFieldDecoder<number> {
+    return new (class extends MaybePackedFieldDecoder<number> {
+      public decodeSingleValue(reader: BytesReader) {
+        return reader.readVarInt().toNumber();
+      }
+    })();
+  }
+
+  public static sfixed32(): IRepeatedFieldDecoder<number> {
+    return new (class extends MaybePackedFieldDecoder<number> {
+      public decodeSingleValue(reader: BytesReader) {
+        return reader.readThirtyTwoBitInteger();
+      }
+    })();
+  }
+
+  public static sint32(): IRepeatedFieldDecoder<number> {
+    return new (class extends MaybePackedFieldDecoder<number> {
+      public decodeSingleValue(reader: BytesReader) {
+        const val = reader.readVarInt().toNumber();
+        return (val >>> 1) ^ -(val & 1);
+      }
+    })();
+  }
+
+  public static enum(): IRepeatedFieldDecoder<number> {
+    return new (class extends MaybePackedFieldDecoder<number> {
+      public decodeSingleValue(reader: BytesReader) {
+        return reader.readVarInt().toNumber();
+      }
+    })();
+  }
+
+  public static int64(): IRepeatedFieldDecoder<Long> {
+    return new (class extends MaybePackedFieldDecoder<Long> {
+      public decodeSingleValue(reader: BytesReader) {
+        return reader.readVarInt();
+      }
+    })();
+  }
+
+  public static uint64(): IRepeatedFieldDecoder<Long> {
+    return new (class extends MaybePackedFieldDecoder<Long> {
+      public decodeSingleValue(reader: BytesReader) {
+        return reader.readVarInt().toUnsigned();
+      }
+    })();
+  }
+
+  public static fixed64(): IRepeatedFieldDecoder<Long> {
+    return new (class extends MaybePackedFieldDecoder<Long> {
+      public decodeSingleValue(reader: BytesReader) {
+        return reader.readSixtyFourBitInteger(true);
+      }
+    })();
+  }
+
+  public static sfixed64(): IRepeatedFieldDecoder<Long> {
+    return new (class extends MaybePackedFieldDecoder<Long> {
+      public decodeSingleValue(reader: BytesReader) {
+        return reader.readSixtyFourBitInteger();
+      }
+    })();
+  }
+
+  public static sint64(): IRepeatedFieldDecoder<Long> {
+    return new (class extends MaybePackedFieldDecoder<Long> {
+      public decodeSingleValue(reader: BytesReader) {
+        const val = reader.readVarInt();
+        return val.shiftRightUnsigned(1).xor(val.and(1).multiply(-1));
+      }
+    })();
+  }
+
+  public static bool(): IRepeatedFieldDecoder<boolean> {
+    return new (class extends MaybePackedFieldDecoder<boolean> {
+      public decodeSingleValue(reader: BytesReader) {
+        return reader.readVarInt().greaterThan(0);
+      }
+    })();
+  }
+
+  public static bytes(): IRepeatedFieldDecoder<Uint8Array> {
+    return new (class extends NotPackedFieldDecoder<Uint8Array> {
+      protected decodeSingleValue(reader: BytesReader): Uint8Array {
+        return reader.readBytes();
+      }
+    })();
+  }
+
+  public static string(): IRepeatedFieldDecoder<string> {
+    return new (class extends NotPackedFieldDecoder<string> {
+      protected decodeSingleValue(reader: BytesReader): string {
+        return Buffer.from(reader.readBytes()).toString("utf8");
+      }
+    })();
+  }
+
+  public static message<T>(
+    deserialize: (bytes: Uint8Array) => IMessage & T
+  ): IRepeatedFieldDecoder<T> {
     return new (class {
-      public decode(reader: BytesReader, currentValue: T): T {
-        const newMessage = deserialize(reader.readBytes());
-        // TODO: return currentValue.mergeWith(newMessage);
-        return newMessage;
+      public decode(reader: BytesReader, currentValue: T[]): T[] {
+        currentValue.push(deserialize(reader.readBytes()));
+        return currentValue;
+      }
+
+      public single(): IDecoder<T> {
+        return new (class {
+          public decode(reader: BytesReader, currentValue: T): T {
+            const newMessage = deserialize(reader.readBytes());
+            // TODO: return currentValue.mergeWith(newMessage);
+            return newMessage;
+          }
+        })();
       }
     })();
   }
@@ -341,7 +497,7 @@ export class Decoders {
     return new (class {
       public decode(
         reader: BytesReader,
-        currentValue: {
+        currentValue?: {
           field: Name;
           value: T;
         }
@@ -351,7 +507,7 @@ export class Decoders {
       } {
         return {
           field,
-          value: decoder.decode(reader, currentValue.value)
+          value: decoder.decode(reader, currentValue?.value)
         };
       }
     })();
@@ -385,90 +541,6 @@ export class Decoders {
     })();
   }
 }
-
-// class FieldBytesBuffer {
-//   private readonly reader: BytesReader;
-
-//   constructor(bytes: Uint8Array) {
-//     this.reader = new BytesReader(bytes);
-//   }
-
-//   public double() {
-//     return this.yieldUntilDone(() => this.reader.readSixtyFourBitFloat());
-//   }
-
-//   public float() {
-//     return this.yieldUntilDone(() => this.reader.readThirtyTwoBitFloat());
-//   }
-
-//   public int32() {
-//     return this.yieldUntilDone(() => this.reader.readVarInt().toNumber());
-//   }
-
-//   public fixed32() {
-//     return this.yieldUntilDone(() => this.reader.readThirtyTwoBitInteger(true));
-//   }
-
-//   public uint32() {
-//     return this.yieldUntilDone(() => this.reader.readVarInt().toNumber());
-//   }
-
-//   public sfixed32() {
-//     return this.yieldUntilDone(() => this.reader.readThirtyTwoBitInteger());
-//   }
-
-//   public sint32() {
-//     return this.yieldUntilDone(() => {
-//       const val = this.reader.readVarInt().toNumber();
-//       return (val >>> 1) ^ -(val & 1);
-//     });
-//   }
-
-//   public enum() {
-//     return this.yieldUntilDone(() => this.reader.readVarInt().toNumber());
-//   }
-
-//   public int64() {
-//     return this.yieldUntilDone(() => this.reader.readVarInt());
-//   }
-
-//   public uint64() {
-//     return this.yieldUntilDone(() => this.reader.readVarInt().toUnsigned());
-//   }
-
-//   public fixed64() {
-//     return this.yieldUntilDone(() => this.reader.readSixtyFourBitInteger(true));
-//   }
-
-//   public sfixed64() {
-//     return this.yieldUntilDone(() => this.reader.readSixtyFourBitInteger());
-//   }
-
-//   public sint64() {
-//     return this.yieldUntilDone(() => {
-//       const val = this.reader.readVarInt();
-//       return val.shiftRightUnsigned(1).xor(val.and(1).multiply(-1));
-//     });
-//   }
-
-//   public bool() {
-//     return this.yieldUntilDone(() => this.reader.readVarInt().greaterThan(0));
-//   }
-
-//   public bytes() {
-//     return this.reader.readBytes(this.reader.length);
-//   }
-
-//   public string() {
-//     return Buffer.from(this.bytes()).toString("utf8");
-//   }
-
-//   private *yieldUntilDone<T>(fn: () => T) {
-//     while (!this.reader.done()) {
-//       yield fn();
-//     }
-//   }
-// }
 
 class BytesWriter {
   public readonly buffer: number[] = [];
@@ -590,7 +662,7 @@ class BytesReader {
   }
 
   public readBytes(num?: number) {
-    return Uint8Array.from(this.readBytesAsNumberArray(num || this.length));
+    return Uint8Array.from(this.readBytesAsNumberArray(num === undefined ? this.length : num));
   }
 
   public get length() {

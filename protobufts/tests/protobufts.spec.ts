@@ -149,7 +149,7 @@ suite(__filename, { parallel: true }, () => {
     ];
 
     for (const input of testCases) {
-      test("reserialized", () => {
+      test(`reserialized ${JSON.stringify(input.toJson())}`, () => {
         const serialized = input.serialize();
         const reserialized = reserialize("TestMessage", input.serialize());
         expect(serialized).eql(reserialized);
@@ -250,7 +250,7 @@ suite(__filename, { parallel: true }, () => {
     ];
 
     for (const input of testCases) {
-      test("reserialized", () => {
+      test(`reserialized ${JSON.stringify(input.toJson())}`, () => {
         const serialized = input.serialize();
         const reserialized = reserialize("TestRepeatedMessage", input.serialize());
         expect(serialized).eql(reserialized);
@@ -351,7 +351,7 @@ suite(__filename, { parallel: true }, () => {
     ];
 
     for (const input of testCases) {
-      test("reserialized", () => {
+      test(`reserialized ${JSON.stringify(input.toJson())}`, () => {
         const serialized = input.serialize();
         const reserialized = reserialize("TestUnpackedRepeatedMessage", input.serialize());
         expect(serialized).eql(reserialized);
@@ -380,8 +380,11 @@ suite(__filename, { parallel: true }, () => {
           uint32Field: 12455,
           enumField: protobuftsProtos.TestEnum.VAL1,
           sfixed32Field: -135131,
-          sfixed64Field: Long.fromValue(-9102713712)
-          // TODO: Once Map support is in, fix Map JSON conversion.
+          sfixed64Field: Long.fromValue(-9102713712),
+          mapField: new Map([
+            ["hello", 5],
+            ["goodbye", 0]
+          ])
         }).toJson()
       ).eql({
         doubleField: 45.8,
@@ -400,7 +403,11 @@ suite(__filename, { parallel: true }, () => {
         uint32Field: 12455,
         enumField: "VAL1",
         sfixed32Field: -135131,
-        sfixed64Field: "-9102713712"
+        sfixed64Field: "-9102713712",
+        mapField: {
+          hello: 5,
+          goodbye: 0
+        }
       });
     });
 

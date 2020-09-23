@@ -197,12 +197,25 @@ ${indent(
   [
     ...this.type.protobufType.fields.map(
       fieldDescriptorProto =>
-        `${fieldDescriptorProto.number}: Decoders.uint32()${
-          fieldDescriptorProto.label !== google.protobuf.FieldDescriptorProto.Label.LABEL_REPEATED
-            ? ".single()"
-            : ""
-        }`
-    )
+        `${fieldDescriptorProto.number}: ${Decoders.for(
+          fieldDescriptorProto,
+          this.types,
+          this.type
+        ).instantiate()}`
+    ),
+    ...this.type.protobufType.oneofs
+      .map(oneof =>
+        oneof.fields.map(
+          fieldDescriptorProto =>
+            `${fieldDescriptorProto.number}: ${Decoders.for(
+              fieldDescriptorProto,
+              this.types,
+              this.type,
+              true
+            ).instantiate()}`
+        )
+      )
+      .flat()
   ].join(",\n"),
   2
 )}
@@ -493,9 +506,7 @@ ${indent(
       return this.field.fieldDescriptorProtos
         .map(
           fieldDescriptorProto =>
-            `case ${fieldDescriptorProto.number}: { newProto.${memberName} = { field: "${
-              fieldDescriptorProto.jsonName
-            }", value: ${this.deserialize(fieldDescriptorProto)}}; break; }`
+            `case ${fieldDescriptorProto.number}: { newProto.${memberName} = ${this.insideMessage.typescriptType.name}.decoders[${fieldDescriptorProto.number}].decode(reader, newProto.${memberName}?.field === "${fieldDescriptorProto.jsonName}" ? newProto.${memberName} : null); break; }`
         )
         .join("\n");
     }
@@ -662,6 +673,83 @@ ${indent(
       return `${enumTypeName}[${valueVariable}]`;
     }
     return `toJsonValue(${valueVariable})`;
+  }
+}
+
+class Decoders {
+  public static for(
+    fieldDescriptorProto: google.protobuf.IFieldDescriptorProto,
+    types: TypeRegistry,
+    insideMessage: ITypeMetadata<IMessageDescriptor>,
+    isOneof?: boolean
+  ) {
+    return new Decoders(fieldDescriptorProto, types, insideMessage, isOneof);
+  }
+
+  constructor(
+    private readonly fieldDescriptorProto: google.protobuf.IFieldDescriptorProto,
+    private readonly types: TypeRegistry,
+    private readonly insideMessage: ITypeMetadata<IMessageDescriptor>,
+    private readonly isOneof: boolean = false
+  ) {}
+
+  public instantiate(): string {
+    if (this.isOneof) {
+      return `Decoders.oneOfEntry("${this.fieldDescriptorProto.jsonName}", ${Decoders.for(
+        this.fieldDescriptorProto,
+        this.types,
+        this.insideMessage
+      ).instantiate()})`;
+    }
+    return `Decoders.${this.decodersMethodName()}(${this.decoderArguments()})${
+      this.fieldDescriptorProto.label !== google.protobuf.FieldDescriptorProto.Label.LABEL_REPEATED
+        ? ".single()"
+        : ""
+    }`;
+  }
+
+  private decodersMethodName() {
+    if (this.fieldDescriptorProto.type === google.protobuf.FieldDescriptorProto.Type.TYPE_MESSAGE) {
+      const typeMetadata = this.types.forFieldDescriptor(this.fieldDescriptorProto);
+      if (typeMetadata.protobufType.isEnum === true) {
+        throw new Error(
+          `Lookup for message type ${this.fieldDescriptorProto.name} returned enum ${typeMetadata.protobufType.fullyQualifiedName}.`
+        );
+      }
+      if (typeMetadata.protobufType.descriptorProto.options?.mapEntry) {
+        return "map";
+      }
+    }
+    const typeString = google.protobuf.FieldDescriptorProto.Type[this.fieldDescriptorProto.type];
+    return typeString.replace("TYPE_", "").toLowerCase();
+  }
+
+  private decoderArguments(): string {
+    if (this.fieldDescriptorProto.type === google.protobuf.FieldDescriptorProto.Type.TYPE_MESSAGE) {
+      const typeMetadata = this.types.forFieldDescriptor(this.fieldDescriptorProto);
+      if (typeMetadata.protobufType.isEnum === true) {
+        throw new Error(
+          `Lookup for message type ${this.fieldDescriptorProto.name} returned enum ${typeMetadata.protobufType.fullyQualifiedName}.`
+        );
+      }
+      if (typeMetadata.protobufType.descriptorProto.options?.mapEntry) {
+        return `${Decoders.for(
+          typeMetadata.protobufType.fields[0],
+          this.types,
+          this.insideMessage
+        ).instantiate()}, ${Decoders.for(
+          typeMetadata.protobufType.fields[1],
+          this.types,
+          this.insideMessage
+        ).instantiate()}`;
+      }
+      return `${this.types.typescriptTypeFromProtobufType(
+        this.fieldDescriptorProto.type,
+        this.fieldDescriptorProto.typeName,
+        this.insideMessage
+      )}.deserialize`;
+    }
+    return "";
   }
 }
 
