@@ -73,20 +73,6 @@ config {
 SELECT 1 AS ts
 ```
 
-### Binding views
-
-By default, all views in Redshift are created as late binding views. This can be changed by setting the `bind` property in the redshift configuration block.
-
-```js
-config {
-  type: "view",
-  redshift: {
-    bind: true
-  }
-}
-SELECT 1 AS ts
-```
-
 ## Dataform web features for Redshift
 
 ### Real time query validation
