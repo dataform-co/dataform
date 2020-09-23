@@ -177,7 +177,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
           ? dataform.TableMetadata.Type.VIEW
           : dataform.TableMetadata.Type.UNKNOWN,
       target,
-      fields: metadata.schema.fields.map(field => convertField(field)),
+      fields: metadata.schema.fields?.map(field => convertField(field)),
       lastUpdatedMillis: Long.fromString(metadata.lastModifiedTime),
       description: metadata.description,
       labels: metadata.labels
