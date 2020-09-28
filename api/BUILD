@@ -11,6 +11,7 @@ ts_library(
     deps = [
         "//api/utils",
         "//common/errors",
+        "//common/flags",
         "//common/strings",
         "//core",
         "//protos:ts",
