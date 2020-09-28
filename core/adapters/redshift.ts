@@ -74,7 +74,7 @@ export class RedshiftAdapter extends Adapter implements IAdapter {
       });
     return Tasks.create()
       .add(Task.statement(this.dropIfExists(target, dataform.TableMetadata.Type.VIEW)))
-      .add(Task.statement(this.createOrReplaceView(target, assertion.query, true)))
+      .add(Task.statement(this.createOrReplaceView(target, assertion.query, false)))
       .add(Task.assertion(`select sum(1) as row_count from ${this.resolveTarget(target)}`));
   }
 
