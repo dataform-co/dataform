@@ -193,11 +193,11 @@ suite("@dataform/integration/sqldatawarehouse", { parallel: true }, ({ before, a
       );
     });
 
-    test("invalid table fails validation", async () => {
+    test("invalid table fails validation and error parsed correctly", async () => {
       const evaluations = await dbadapter.evaluate(
         dataform.Table.create({
           type: "table",
-          query: "thisisillegal",
+          query: "selects\n1 as x",
           target: {
             schema: "df_integration_test",
             name: "example_illegal_table",
@@ -209,6 +209,9 @@ suite("@dataform/integration/sqldatawarehouse", { parallel: true }, ({ before, a
       expect(evaluations[0].status).to.equal(
         dataform.QueryEvaluation.QueryEvaluationStatus.FAILURE
       );
+      expect(
+        dataform.QueryEvaluationError.ErrorLocation.create(evaluations[0].error.errorLocation)
+      ).eql(dataform.QueryEvaluationError.ErrorLocation.create({ line: 1, column: 1 }));
     });
   });
 
