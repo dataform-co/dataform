@@ -6,6 +6,7 @@ import { Builder, credentials, prune, query, Runner } from "df/api";
 import { computeAllTransitiveInputs } from "df/api/commands/build";
 import { IDbAdapter } from "df/api/dbadapters";
 import { BigQueryDbAdapter } from "df/api/dbadapters/bigquery";
+import { parseSnowflakeEvalError } from "df/api/utils/error_parsing";
 import { sleep, sleepUntil } from "df/common/promises";
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";

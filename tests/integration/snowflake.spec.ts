@@ -326,11 +326,11 @@ suite("@dataform/integration/snowflake", { parallel: true }, ({ before, after })
       );
     });
 
-    test("invalid table fails validation", async () => {
+    test("invalid table fails validation and error parsed correctly", async () => {
       const evaluations = await dbadapter.evaluate(
         dataform.Table.create({
           type: "table",
-          query: "thisisillegal",
+          query: "selects\n1 as x",
           target: {
             name: "EXAMPLE_ILLEGAL_TABLE",
             database: "DF_INTEGRATION_TEST"
@@ -341,6 +341,9 @@ suite("@dataform/integration/snowflake", { parallel: true }, ({ before, after })
       expect(evaluations[0].status).to.equal(
         dataform.QueryEvaluation.QueryEvaluationStatus.FAILURE
       );
+      expect(
+        dataform.QueryEvaluationError.ErrorLocation.create(evaluations[0].error.errorLocation)
+      ).eql(dataform.QueryEvaluationError.ErrorLocation.create({ line: 1, column: 1 }));
     });
   });
 
