@@ -1367,28 +1367,6 @@ postOps`
       expect(result.actions[0].tasks[0].errorMessage).to.match(/cancelled/);
     });
   });
-
-  suite("error_parsing", () => {
-    test("snowflake", () => {
-      [
-        {
-          errorMessage: "SQL compilation error: syntax error line 4 at position 9 unexpected 'fr'",
-          errorLocation: { line: 4, column: 10 }
-        },
-        {
-          errorMessage:
-            "SQL compilation error: syntax error line 3 at position 0 unexpected 'selects'",
-          errorLocation: { line: 3, column: 1 }
-        }
-      ].forEach(errorTest => {
-        expect(
-          dataform.QueryEvaluationError.ErrorLocation.create(
-            parseSnowflakeEvalError(errorTest.errorMessage).errorLocation
-          )
-        ).eql(dataform.QueryEvaluationError.ErrorLocation.create(errorTest.errorLocation));
-      });
-    });
-  });
 });
 
 function cleanTiming(runResult: dataform.IRunResult) {
