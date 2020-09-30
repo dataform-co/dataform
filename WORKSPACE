@@ -120,9 +120,9 @@ load(
 )
 
 container_pull(
-    name = "nodejs_slim_base",
-    # This digest is for tag "12.13.0-buster-slim".
-    digest = "sha256:b63713d51d3a655e476d33b72b1f13d61edfd2b51e7dea1124c4cc1f604c0f69",
+    name = "nodejs_base",
+    # This digest is for tag "12.18.4".
+    digest = "sha256:7f35eaf7c26a25056a43777fff187fd590662fa5564b3cbb665ee253c4da7604",
     registry = "index.docker.io",
     repository = "library/node",
 )
