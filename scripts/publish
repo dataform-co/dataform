@@ -23,3 +23,6 @@ bazel run cli:push
 VERSION=$(cat version.bzl | grep DF_VERSION | awk '{ print $3 }' | sed "s/\"//g")
 git tag $VERSION
 git push origin $VERSION
+
+docker tag dataformco/dataform:$VERSION dataformco/dataform:latest
+docker push dataformco/dataform:latest
