@@ -28,6 +28,9 @@ export interface IDbClient {
       interactive?: boolean;
       rowLimit?: number;
       byteLimit?: number;
+      bigquery?: {
+        labels?: { [label: string]: string };
+      };
     }
   ): Promise<IExecutionResult>;
 }
