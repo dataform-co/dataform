@@ -60,8 +60,14 @@ export class BigQueryDbAdapter implements IDbAdapter {
       interactive?: boolean;
       rowLimit?: number;
       byteLimit?: number;
+      bigquery?: {
+        labels?: { [label: string]: string };
+      };
     } = { interactive: false, rowLimit: 1000, byteLimit: 1024 * 1024 }
   ): Promise<IExecutionResult> {
+    if (options?.interactive && options?.bigquery?.labels) {
+      throw new Error("BigQuery job labels may not be set for interactive queries.");
+    }
     return this.pool
       .addSingleTask({
         generator: () =>
@@ -72,7 +78,8 @@ export class BigQueryDbAdapter implements IDbAdapter {
                 options?.params,
                 options?.rowLimit,
                 options?.byteLimit,
-                options?.onCancel
+                options?.onCancel,
+                options?.bigquery?.labels
               )
       })
       .promise();
@@ -419,7 +426,8 @@ DELETE \`${CACHED_STATE_TABLE_NAME}\` WHERE target IN (${allActions
     params?: { [name: string]: any },
     rowLimit?: number,
     byteLimit?: number,
-    onCancel?: OnCancel
+    onCancel?: OnCancel,
+    labels?: { [label: string]: string }
   ) {
     let isCancelled = false;
     onCancel?.(() => (isCancelled = true));
@@ -429,7 +437,8 @@ DELETE \`${CACHED_STATE_TABLE_NAME}\` WHERE target IN (${allActions
         useLegacySql: false,
         jobPrefix: "dataform-",
         query,
-        params
+        params,
+        labels
       });
       const resultStream = job[0].getQueryResultsStream();
       return new Promise<IExecutionResult>((resolve, reject) => {

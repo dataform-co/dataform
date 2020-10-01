@@ -385,7 +385,9 @@ export class Runner {
           actionResult.status === dataform.ActionResult.ExecutionStatus.RUNNING &&
           !this.cancelled
         ) {
-          const taskStatus = await this.executeTask(client, task, actionResult);
+          const taskStatus = await this.executeTask(client, task, actionResult, {
+            bigquery: { labels: action.actionDescriptor?.bigqueryLabels }
+          });
           if (taskStatus === dataform.TaskResult.ExecutionStatus.FAILED) {
             actionResult.status = dataform.ActionResult.ExecutionStatus.FAILED;
           } else if (taskStatus === dataform.TaskResult.ExecutionStatus.CANCELLED) {
@@ -442,7 +444,8 @@ export class Runner {
   private async executeTask(
     client: dbadapters.IDbClient,
     task: dataform.IExecutionTask,
-    parentAction: dataform.IActionResult
+    parentAction: dataform.IActionResult,
+    options: { bigquery: { labels: { [label: string]: string } } }
   ): Promise<dataform.TaskResult.ExecutionStatus> {
     const timer = Timer.start();
     const taskResult: dataform.ITaskResult = {
@@ -458,7 +461,8 @@ export class Runner {
         () =>
           client.execute(task.statement, {
             onCancel: handleCancel => this.eEmitter.on(CANCEL_EVENT, handleCancel),
-            rowLimit: 1
+            rowLimit: 1,
+            bigquery: options.bigquery
           }),
         task.type === "operation" ? 0 : this.graph.projectConfig.idempotentActionRetries || 0
       );
