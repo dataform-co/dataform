@@ -75,7 +75,7 @@ base_url='https://api.dataform.co/v1/project/<PROJECT_ID>/run'
 headers={'Authorization': 'Bearer <API_TOKEN>'}
 run_create_request='{ "scheduleName": "<SCHEDULE_NAME>" }'
 
-response = requests.post(base_url, data=run_create_request, headers=headers)
+response = requests.post(base_url, data=json.dumps(run_create_request), headers=headers)
 
 run_url = base_url + '/' + response.json()['id']
 
