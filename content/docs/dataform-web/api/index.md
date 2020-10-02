@@ -70,17 +70,17 @@ The following example, written in Python, shows how you can trigger a schedule, 
 ```python
 import requests
 import time
+import json
 
 base_url='https://api.dataform.co/v1/project/<PROJECT_ID>/run'
 headers={'Authorization': 'Bearer <API_TOKEN>'}
-run_create_request='{ "scheduleName": "<SCHEDULE_NAME>" }'
+run_create_request={"environmentName": "<ENVIRONMENT_NAME>", "scheduleName": "<SCHEDULE_NAME>"}
 
 response = requests.post(base_url, data=json.dumps(run_create_request), headers=headers)
 
 run_url = base_url + '/' + response.json()['id']
 
 response = requests.get(run_url, headers=headers)
-print(response.json())
 
 while response.json()['status'] == 'RUNNING':
     time.sleep(10)
