@@ -65,7 +65,7 @@ This will return a [`RunGetResponse`](api/reference#/definitions/v1RunGetRespons
 
 Using the REST API it's possible to trigger Dataform schedules from a third party orchestration tool, like Airflow or Luigi.
 
-The following example, written in Python, shows how you could initiate a schedule, check it's status every 10 seconds, and exit when the schedules either succeeds or fails.
+The following example, written in Python, shows how you could initiate a schedule, check it's status every 10 seconds, and exit when the schedule either succeeds or fails.
 
 ```python
 import requests
