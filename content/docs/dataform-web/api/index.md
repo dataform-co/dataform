@@ -60,3 +60,30 @@ This will return a [`RunGetResponse`](api/reference#/definitions/v1RunGetRespons
   "runLogUrl": "https://app.dataform.co/#/1234/run/5678"
 }
 ```
+
+## Triggering a Dataform schedule from a 3rd party orchestration tool
+
+Using the REST API it's possible to trigger Dataform schedules from a third party orchestration tool, like Airflow or Luigi.
+
+The following example, written in Python, shows how you could initiate a schedule, check it's status every 10 seconds, and exit when the schedules either succeeds or fails.
+
+```python
+import requests
+import time
+
+base_url='https://api.dataform.co/v1/project/<PROJECT_ID>/run'
+headers={'Authorization': 'Bearer <API_TOKEN>'}
+run_create_request='{ "scheduleName": "<SCHEDULE_NAME>" }'
+
+response = requests.post(base_url, data=run_create_request, headers=headers)
+
+run_url = base_url + '/' + response.json()['id']
+
+response = requests.get(run_url, headers=headers)
+print(response.json())
+
+while response.json()['status'] == 'RUNNING':
+    time.sleep(10)
+    response = requests.get(run_url, headers=headers)
+    print(response.json())
+```
