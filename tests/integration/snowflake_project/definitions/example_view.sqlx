@@ -3,6 +3,9 @@ config {
     description: "An example view",
     columns: {
         val: "val doc",
+    },
+    snowflake: {
+        secure: true
     }
 }
 select * from ${ref("sample_data")}
