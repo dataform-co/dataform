@@ -572,6 +572,17 @@ export class Session {
         );
       }
 
+      // snowflake config
+      if (!!table.snowflake) {
+        if (table.snowflake.secure && table.type !== "view") {
+          this.compileError(
+            new Error(`The 'secure' option is only valid for Snowflake views`),
+            table.fileName,
+            table.name
+          );
+        }
+      }
+
       // sqldatawarehouse config
       if (!!table.sqlDataWarehouse) {
         if (!!table.uniqueKey && table.uniqueKey.length > 0) {

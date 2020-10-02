@@ -59,7 +59,7 @@ export const SortStyleType = ["compound", "interleaved"] as const;
 export type SortStyleType = typeof SortStyleType[number];
 
 /**
- * Redshift specific warehouse options.
+ * Redshift-specific warehouse options.
  */
 export interface IRedshiftOptions {
   /**
@@ -95,7 +95,20 @@ const IRedshiftOptionsProperties = () =>
   strictKeysOf<IRedshiftOptions>()(["distKey", "distStyle", "sortKeys", "sortStyle"]);
 
 /**
- * Options for creating tables within Azure SQL Data Warehouse projects.
+ * Snowflake-specific warehouse options.
+ */
+export interface ISnowflakeOptions {
+  /**
+   * If set to true, a secure view will be created.
+   *
+   * For more information, read the [Snowflake Secure Views docs](https://docs.snowflake.com/en/user-guide/views-secure.html).
+   */
+  secure?: boolean;
+}
+const ISnowflakeOptionsProperties = () => strictKeysOf<ISnowflakeOptions>()(["secure"]);
+
+/**
+ * Azure SQL Data Warehouse-specific warehouse options.
  */
 export interface ISQLDataWarehouseOptions {
   /**
@@ -109,7 +122,7 @@ const ISQLDataWarehouseOptionsProperties = () =>
   strictKeysOf<ISQLDataWarehouseOptions>()(["distribution"]);
 
 /**
- * Options for creating tables within BigQuery projects.
+ * BigQuery-specific warehouse options.
  */
 export interface IBigQueryOptions {
   /**
@@ -207,6 +220,11 @@ export interface ITableConfig
   bigquery?: IBigQueryOptions;
 
   /**
+   * Snowflake-specific options.
+   */
+  snowflake?: ISnowflakeOptions;
+
+  /**
    * Azure SQL Data Warehouse-specific options.
    */
   sqldatawarehouse?: ISQLDataWarehouseOptions;
@@ -235,6 +253,7 @@ export const ITableConfigProperties = () =>
     "name",
     "redshift",
     "bigquery",
+    "snowflake",
     "sqldatawarehouse",
     "tags",
     "uniqueKey",
@@ -274,6 +293,7 @@ export class Table {
     inline: [
       "bigquery",
       "redshift",
+      "snowflake",
       "sqlDataWarehouse",
       "preOps",
       "postOps",
@@ -325,6 +345,9 @@ export class Table {
     }
     if (config.bigquery) {
       this.bigquery(config.bigquery);
+    }
+    if (config.snowflake) {
+      this.snowflake(config.snowflake);
     }
     if (config.sqldatawarehouse) {
       this.sqldatawarehouse(config.sqldatawarehouse);
@@ -391,6 +414,17 @@ export class Table {
 
   public uniqueKey(uniqueKey: string[]) {
     this.proto.uniqueKey = uniqueKey;
+  }
+
+  public snowflake(snowflake: dataform.ISnowflakeOptions) {
+    checkExcessProperties(
+      (e: Error) => this.session.compileError(e),
+      snowflake,
+      ISnowflakeOptionsProperties(),
+      "snowflake config"
+    );
+    this.proto.snowflake = dataform.SnowflakeOptions.create(snowflake);
+    return this;
   }
 
   public sqldatawarehouse(sqlDataWarehouse: dataform.ISQLDataWarehouseOptions) {
