@@ -73,23 +73,25 @@ export class SnowflakeAdapter extends Adapter implements IAdapter {
         schema: projectConfig.assertionSchema,
         name: assertion.name
       });
-    tasks.add(Task.statement(this.createOrReplaceView(target, assertion.query)));
+    tasks.add(Task.statement(this.createOrReplaceView(target, assertion.query, false)));
     tasks.add(Task.assertion(`select sum(1) as row_count from ${this.resolveTarget(target)}`));
     return tasks;
   }
 
-  public createOrReplaceView(target: dataform.ITarget, query: string) {
-    return `
-      create or replace view ${this.resolveTarget(target)} as ${query}`;
+  private createOrReplaceView(target: dataform.ITarget, query: string, secure: boolean) {
+    return `create or replace ${secure ? "secure " : ""}view ${this.resolveTarget(
+      target
+    )} as ${query}`;
   }
 
-  public createOrReplace(table: dataform.ITable) {
-    return `create or replace ${this.tableTypeAsSql(
-      this.baseTableType(table.type || "table")
-    )} ${this.resolveTarget(table.target)} as ${table.query}`;
+  private createOrReplace(table: dataform.ITable) {
+    if (table.type === "view") {
+      return this.createOrReplaceView(table.target, table.query, table.snowflake?.secure);
+    }
+    return `create or replace table ${this.resolveTarget(table.target)} as ${table.query}`;
   }
 
-  public mergeInto(
+  private mergeInto(
     target: dataform.ITarget,
     columns: string[],
     query: string,
