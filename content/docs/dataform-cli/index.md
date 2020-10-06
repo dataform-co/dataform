@@ -20,7 +20,7 @@ npm i -g @dataform/cli
 To create a new `bigquery`, `postgres`, `redshift`, `snowflake`, or `sqldatawarehouse` project in the `new_project` directory, run the respective command:
 
 ```bash
-dataform init bigquery new_project --gcloud-project-id<your-google-cloud-project-id>
+dataform init bigquery new_project --gcloud-project-id <your-google-cloud-project-id>
 - or -
 dataform init postgres new_project
 - or -
