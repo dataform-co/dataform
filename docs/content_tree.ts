@@ -63,7 +63,7 @@ async function getPackageTrees(): Promise<Array<Tree<IExtraAttributes>>> {
       },
       {
         owner: "dataform-co",
-        repo: "dataform-fivetran-logs",
+        repo: "dataform-fivetran-log",
         title: "Fivetran: Fivetran Logs"
       }
     ].map(async ({ owner, repo, title }) => {
