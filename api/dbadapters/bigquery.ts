@@ -3,7 +3,13 @@ import { PromisePoolExecutor } from "promise-pool-executor";
 
 import { BigQuery, TableField, TableMetadata } from "@google-cloud/bigquery";
 import { Credentials } from "df/api/commands/credentials";
-import { IDbAdapter, IDbClient, IExecutionResult, OnCancel } from "df/api/dbadapters/index";
+import {
+  CACHED_STATE_TABLE_TARGET,
+  IDbAdapter,
+  IDbClient,
+  IExecutionResult,
+  OnCancel
+} from "df/api/dbadapters/index";
 import { parseBigqueryEvalError } from "df/api/utils/error_parsing";
 import { LimitedResultSet } from "df/api/utils/results";
 import {
@@ -17,8 +23,6 @@ import { coerceAsError } from "df/common/errors/errors";
 import { StringifiedMap } from "df/common/strings/stringifier";
 import { collectEvaluationQueries, QueryOrAction } from "df/core/adapters";
 import { dataform } from "df/protos/ts";
-
-const CACHED_STATE_TABLE_NAME = "dataform_meta.cache_state";
 
 const EXTRA_GOOGLE_SCOPES = ["https://www.googleapis.com/auth/drive"];
 
@@ -254,10 +258,15 @@ export class BigQueryDbAdapter implements IDbAdapter {
     // Unimplemented.
   }
 
-  public async persistedStateMetadata(): Promise<dataform.IPersistedTableMetadata[]> {
-    const { rows } = await this.execute(`SELECT * FROM ${CACHED_STATE_TABLE_NAME}`, {
-      rowLimit: 5000 // TODO: Add pagination for 5000+ rows
-    });
+  public async persistedStateMetadata(
+    database: string
+  ): Promise<dataform.IPersistedTableMetadata[]> {
+    const { rows } = await this.execute(
+      `SELECT * FROM \`${database}.${CACHED_STATE_TABLE_TARGET.schema}.${CACHED_STATE_TABLE_TARGET.name}\``,
+      {
+        rowLimit: 5000 // TODO: Add pagination for 5000+ rows
+      }
+    );
     const persistedMetadata = rows.map((row: IMetadataRow) =>
       decodePersistedTableMetadata(row.metadata_proto)
     );
@@ -265,6 +274,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
   }
 
   public async persistStateMetadata(
+    database: string,
     transitiveInputMetadataByTarget: StringifiedMap<
       dataform.ITarget,
       dataform.PersistedTableMetadata.ITransitiveInputMetadata
@@ -278,11 +288,12 @@ export class BigQueryDbAdapter implements IDbAdapter {
     if (allActions.length === 0) {
       return;
     }
+    const cachedStateTableName = `${database}.${CACHED_STATE_TABLE_TARGET.schema}.${CACHED_STATE_TABLE_TARGET.name}`;
     try {
       // Create the cache table, if needed.
       await this.execute(
         `
-CREATE TABLE IF NOT EXISTS \`${CACHED_STATE_TABLE_NAME}\` (
+CREATE TABLE IF NOT EXISTS \`${cachedStateTableName}\` (
   target STRING,
   metadata_proto STRING
 )`,
@@ -291,7 +302,7 @@ CREATE TABLE IF NOT EXISTS \`${CACHED_STATE_TABLE_NAME}\` (
       // Before saving any new data, delete all entries for 'allActions'.
       await this.execute(
         `
-DELETE \`${CACHED_STATE_TABLE_NAME}\` WHERE target IN (${allActions
+DELETE \`${cachedStateTableName}\` WHERE target IN (${allActions
           .map(({ target }) => `'${toRowKey(target)}'`)
           .join(",")})`,
         options
@@ -322,7 +333,7 @@ DELETE \`${CACHED_STATE_TABLE_NAME}\` WHERE target IN (${allActions
         );
       // We have to split up the INSERT queries to get around BigQuery's query length limit.
       while (valuesTuples.length > 0) {
-        let insertStatement = `INSERT INTO \`${CACHED_STATE_TABLE_NAME}\` (target, metadata_proto) VALUES ${valuesTuples.pop()}`;
+        let insertStatement = `INSERT INTO \`${cachedStateTableName}\` (target, metadata_proto) VALUES ${valuesTuples.pop()}`;
         let nextInsertStatement = `${insertStatement}, ${valuesTuples[valuesTuples.length - 1]}`;
         while (valuesTuples.length > 0 && nextInsertStatement.length < MAX_QUERY_LENGTH) {
           insertStatement = nextInsertStatement;

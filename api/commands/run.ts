@@ -169,6 +169,7 @@ export class Runner {
     if (this.graph.runConfig && this.graph.runConfig.useRunCache) {
       await Promise.all(this.metadataReadPromises);
       await this.dbadapter.persistStateMetadata(
+        this.graph.projectConfig.defaultDatabase,
         new StringifiedMap<
           dataform.ITarget,
           dataform.PersistedTableMetadata.ITransitiveInputMetadata
