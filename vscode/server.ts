@@ -1,4 +1,4 @@
-import { ChildProcess, exec } from "child_process";
+import { ChildProcess, exec, execSync, spawn, spawnSync } from "child_process";
 import { dataform } from "df/protos/ts";
 import {
   createConnection,
@@ -44,7 +44,9 @@ documents.onDidSave(change => {
 });
 
 async function compileAndValidate() {
-  const compileResult = await getProcessResult(exec("dataform compile --json"));
+  const spawnedProcess = spawn("dataform", ["compile", "--json"]);
+  const compileResult = await getProcessResult(spawnedProcess);
+
   const parsedResult: dataform.ICompiledGraph = JSON.parse(compileResult.stdout);
   if (parsedResult?.graphErrors?.compilationErrors) {
     parsedResult.graphErrors.compilationErrors.forEach(compilationError => {
