@@ -1,4 +1,4 @@
-import { ChildProcess, exec, execSync, spawn, spawnSync } from "child_process";
+import { ChildProcess, spawn } from "child_process";
 import { dataform } from "df/protos/ts";
 import {
   createConnection,
