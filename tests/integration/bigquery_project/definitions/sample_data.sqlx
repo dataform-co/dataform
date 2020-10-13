@@ -3,6 +3,6 @@ config {
   hermetic: false,
 }
 
-select ${when(dataform.projectConfig.variables.fooVar === "bar", "1", "2")} as val union all
+select ${when(dataform.projectConfig.vars.fooVar === "bar", "1", "2")} as val union all
 select 2 as val union all
 select ${when(dataform.projectConfig.warehouse === "bigquery", "3", "2")} as val

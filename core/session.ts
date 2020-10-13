@@ -95,7 +95,7 @@ export class Session {
     | "assertionSchema"
     | "schemaSuffix"
     | "tablePrefix"
-    | "variables"
+    | "vars"
   > {
     return Object.freeze({
       warehouse: this.config.warehouse,
@@ -104,7 +104,7 @@ export class Session {
       assertionSchema: this.config.assertionSchema,
       schemaSuffix: this.config.schemaSuffix,
       tablePrefix: this.config.tablePrefix,
-      variables: Object.freeze({ ...this.config.variables })
+      vars: Object.freeze({ ...this.config.vars })
     });
   }
 

@@ -60,7 +60,7 @@ You may inject custom variables into project compilation:
 // dataform.json
 {
   ...
-  "variables": {
+  "vars": {
     "myVariableName": "myVariableValue"
   },
   ...
@@ -73,7 +73,7 @@ As with project configuration settings, you can access these in your project cod
 // definitions/my_view.sqlx
 config { type: "view" }
 select ${when(
-  dataform.projectConfig.variables.myVariableName === "myVariableValue",
+  dataform.projectConfig.vars.myVariableName === "myVariableValue",
   "myVariableName is set to myVariableValue!",
   "myVariableName is not set to myVariableValue!"
 )}
