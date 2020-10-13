@@ -2,5 +2,8 @@
   "warehouse": "snowflake",
   "defaultDatabase": "integration_tests",
   "defaultSchema": "df_integration_test",
-  "assertionSchema": "df_integration_test_assertions"
+  "assertionSchema": "df_integration_test_assertions",
+  "variables": {
+    "fooVar": "bar"
+  }
 }

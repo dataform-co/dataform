@@ -87,6 +87,27 @@ export class Session {
     this.graphErrors = { compilationErrors: [] };
   }
 
+  public get projectConfig(): Pick<
+    dataform.IProjectConfig,
+    | "warehouse"
+    | "defaultDatabase"
+    | "defaultSchema"
+    | "assertionSchema"
+    | "schemaSuffix"
+    | "tablePrefix"
+    | "variables"
+  > {
+    return Object.freeze({
+      warehouse: this.config.warehouse,
+      defaultDatabase: this.config.defaultDatabase,
+      defaultSchema: this.config.defaultSchema,
+      assertionSchema: this.config.assertionSchema,
+      schemaSuffix: this.config.schemaSuffix,
+      tablePrefix: this.config.tablePrefix,
+      variables: Object.freeze({ ...this.config.variables })
+    });
+  }
+
   public adapter(): adapters.IAdapter {
     return adapters.create(this.config, dataformCoreVersion);
   }
