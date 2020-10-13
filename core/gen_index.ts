@@ -32,8 +32,8 @@ export function genIndex(base64EncodedConfig: string): string {
   const returnValue = !!config.compileConfig.query
     ? `(function() {
       try {
-        const ref = global.session.resolve.bind(global.session);
-        const resolve = global.session.resolve.bind(global.session);
+        const ref = global.dataform.resolve.bind(global.dataform);
+        const resolve = global.dataform.resolve.bind(global.dataform);
         const self = () => "";
         return \`${config.compileConfig.query}\`;
       } catch (e) {
@@ -76,7 +76,7 @@ session.init("${config.compileConfig.projectDir.replace(
 ${includeRequires}
 
 // Bind various @dataform/core APIs to the 'global' object.
-global.session = session;
+global.dataform = session;
 global.publish = session.publish.bind(session);
 global.operate = session.operate.bind(session);
 global.assert = session.assert.bind(session);
@@ -87,6 +87,6 @@ global.test = session.test.bind(session);
 ${definitionRequires}
 
 // Return a base64 encoded proto via NodeVM. Returning a Uint8Array directly causes issues.
-const base64EncodedGraphBytes = global.session.compileToBase64();
+const base64EncodedGraphBytes = session.compileToBase64();
 return ${returnValue};`;
 }
