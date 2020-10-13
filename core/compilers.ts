@@ -178,7 +178,7 @@ function compileSqlx(rootNode: SyntaxTreeNode, path: string) {
     .map(name => `const ${name} = ctx.${name} ? ctx.${name}.bind(ctx) : undefined;`)
     .join("\n");
 
-  return `session.sqlxAction({
+  return `dataform.sqlxAction({
   sqlxConfig: {
     name: "${utils.baseFilename(path)}",
     type: "operations",
