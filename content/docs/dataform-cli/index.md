@@ -92,6 +92,8 @@ dataform init-creds redshift
 dataform init-creds snowflake
 - or -
 dataform init-creds sqldatawarehouse
+- or, if you've cloned a pre-existing project -
+dataform install 
 ```
 
 A `.df-credentials.json` file will be written to disk containing your provided details.
