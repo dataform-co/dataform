@@ -29,6 +29,8 @@ dataform init redshift new_project
 dataform init snowflake new_project
 - or -
 dataform init sqldatawarehouse new_project
+- or, if you've cloned a pre-existing project -
+dataform install 
 ```
 
 ### Project structure
@@ -92,8 +94,6 @@ dataform init-creds redshift
 dataform init-creds snowflake
 - or -
 dataform init-creds sqldatawarehouse
-- or, if you've cloned a pre-existing project -
-dataform install 
 ```
 
 A `.df-credentials.json` file will be written to disk containing your provided details.
