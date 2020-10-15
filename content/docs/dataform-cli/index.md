@@ -80,6 +80,12 @@ Compiled 1 action(s).
   dataform.example [view]
 ```
 
+To see the output of the compilation process as a JSON object, add the `--json` option.
+
+```bash
+dataform compile --json
+```
+
 ## Create a credentials file
 
 Dataform requires a credentials file in order to connect to your warehouse. Run the `init-creds` command and Dataform will guide you through credentials file creation:
