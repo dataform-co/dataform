@@ -48,8 +48,26 @@ Before creating a machine user on GitHub, please read their [TOCs](https://help.
 
 How to create a git access token differs between remote git providers.
 
+### GitHub
+
 [Creating a **GitHub** access token](https://help.github.com/en/github/authenticating-to-github/creating-a-personal-access-token-for-the-command-line#creating-a-token).
 
-For providers other than GitHub (e.g. GitLab), the access token name must be `dataform`, and it must have the **api** permission.
+Permissions required:
+ - repo
 
-[Creating a **GitLab** access token](https://docs.gitlab.com/ee/user/profile/personal_access_tokens.html#creating-a-personal-access-token).
+### GitLab
+
+[Creating a **GitLab** access token](https://docs.gitlab.com/ee/user/profile/personal_access_tokens.html#creating-a-personal-access-token). The access token name must be `dataform`.
+
+Permissions required:
+ - api
+ - read_repository
+ - write_repository
+
+### Azure Repo
+
+[Creating a **Azure DevOps** access token](https://docs.microsoft.com/en-us/azure/devops/organizations/accounts/use-personal-access-tokens-to-authenticate?view=azure-devops&tabs=preview-page#create-a-pat ).
+
+Permissions required:
+ - code:full
+

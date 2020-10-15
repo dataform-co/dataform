@@ -1,4 +1,4 @@
-session.sqlxAction({
+dataform.sqlxAction({
   sqlxConfig: {
     name: "file",
     type: "operations",

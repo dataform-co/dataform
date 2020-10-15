@@ -23,7 +23,14 @@ export class PostgresDbAdapter implements IDbAdapter {
       user: jdbcCredentials.username,
       password: jdbcCredentials.password,
       database: jdbcCredentials.databaseName,
-      ssl: options?.disableSslForTestsOnly ? false : { rejectUnauthorized: false }
+      ssl: options?.disableSslForTestsOnly
+        ? false
+        : {
+            rejectUnauthorized: false,
+            ca: jdbcCredentials.ssl?.serverCertificate,
+            cert: jdbcCredentials.ssl?.clientCertificate,
+            key: jdbcCredentials.ssl?.clientPrivateKey
+          }
     };
     if (jdbcCredentials.sshTunnel) {
       const sshTunnel = await SSHTunnelProxy.create(jdbcCredentials.sshTunnel, {
@@ -203,7 +210,6 @@ export class PostgresDbAdapter implements IDbAdapter {
       fields: columnResults.rows.map(row =>
         dataform.Field.create({
           name: row.column_name,
-          primitiveDeprecated: row.data_type,
           primitive: convertFieldType(row.data_type),
           flagsDeprecated: row.is_nullable && row.is_nullable === "YES" ? ["nullable"] : [],
           description: descriptionResults.rows.find(

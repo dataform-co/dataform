@@ -27,6 +27,7 @@ ts_test_suite(
         "//tests/integration/sqldatawarehouse_project:files",
         "//tests/integration/sqldatawarehouse_project:node_modules",
     ],
+    templated_args = ["--snowflake-use-ocsp=false"],
     deps = [
         "//api",
         "//api/utils",

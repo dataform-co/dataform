@@ -11,7 +11,21 @@ message JDBC {
   string password = 5;
   string database_name = 6;
 
-  SSHTunnel ssh_tunnel = 7;
+  message SslConfiguration {
+    string server_certificate = 1;
+    string client_certificate = 2;
+    string client_private_key = 3;
+  }
+  SslConfiguration ssl = 8;
+
+  message SshTunnel {
+    string private_key = 1;
+    string username = 2;
+    string password = 3;
+    string host = 4;
+    int32 port = 5;
+  }
+  SshTunnel ssh_tunnel = 7;
 
   reserved 1;
 }
@@ -42,15 +56,6 @@ message SQLDataWarehouse {
   string username = 3;
   string password = 4;
   string database = 5;
-}
-
-
-message SSHTunnel {
-  string private_key = 1;
-  string username = 2;
-  string password = 3;
-  string host = 4;
-  int32 port = 5;
 }
 
 // TODO: Add TLS/SSL details.

@@ -10,8 +10,8 @@ ts_library(
     ),
     deps = [
         "//api/utils",
-        "//common/arrays",
         "//common/errors",
+        "//common/flags",
         "//common/strings",
         "//core",
         "//protos:ts",

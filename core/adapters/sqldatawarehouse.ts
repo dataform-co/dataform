@@ -90,7 +90,16 @@ export class SQLDataWarehouseAdapter extends Adapter implements IAdapter {
     )}','U') is not null drop table ${this.resolveTarget(target)}`;
   }
 
-  public createOrReplace(table: dataform.ITable, alreadyExists: boolean) {
+  public insertInto(target: dataform.ITarget, columns: string[], query: string) {
+    return `
+insert into ${this.resolveTarget(target)}
+(${columns.join(",")})
+select ${columns.join(",")}
+from (${query}
+) as insertions`;
+  }
+
+  private createOrReplace(table: dataform.ITable, alreadyExists: boolean) {
     if (table.type === "view") {
       return Tasks.create().add(
         Task.statement(
@@ -116,7 +125,7 @@ export class SQLDataWarehouseAdapter extends Adapter implements IAdapter {
       );
   }
 
-  public createTable(table: dataform.ITable, target: dataform.ITarget) {
+  private createTable(table: dataform.ITable, target: dataform.ITarget) {
     const distribution =
       table.sqlDataWarehouse && table.sqlDataWarehouse.distribution
         ? table.sqlDataWarehouse.distribution
@@ -126,13 +135,5 @@ export class SQLDataWarehouseAdapter extends Adapter implements IAdapter {
        distribution = ${distribution}
      ) 
      as ${table.query}`;
-  }
-
-  public insertInto(target: dataform.ITarget, columns: string[], query: string) {
-    return `
-insert into ${this.resolveTarget(target)}
-(${columns.join(",")})
-select ${columns.join(",")}
-from (${query}) as insertions`;
   }
 }

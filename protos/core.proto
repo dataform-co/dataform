@@ -15,6 +15,8 @@ message ProjectConfig {
   string default_schema = 2;
   string assertion_schema = 5;
 
+  map<string, string> vars = 14;
+
   int32 concurrent_query_limit = 13;
   int32 idempotent_action_retries = 8;
 
@@ -160,7 +162,12 @@ message RedshiftOptions {
   string dist_style = 2;
   repeated string sort_keys = 3;
   string sort_style = 4;
-  bool bind = 5;
+
+  bool bind = 5 [deprecated = true];
+}
+
+message SnowflakeOptions {
+  bool secure = 1;
 }
 
 message SQLDataWarehouseOptions {
@@ -288,8 +295,9 @@ message Table {
   // Warehouse specific features.
   RedshiftOptions redshift = 21;
   BigQueryOptions bigquery = 22;
+  SnowflakeOptions snowflake = 33;
   SQLDataWarehouseOptions sql_data_warehouse = 25;
-  PrestoOptions presto = 33;
+  PrestoOptions presto = 34;
 
   // Generated.
   string file_name = 18;
@@ -524,6 +532,7 @@ message Field {
     BYTES = 10;
     // Semi structured data from Snowflake has no strong schema, and could therefore be anything.
     ANY = 11;
+    GEOGRAPHY = 12;
   }
 
   enum Flag {
@@ -544,7 +553,8 @@ message Field {
 
   // Deprecated.
   repeated string flags_deprecated = 4;
-  string primitive_deprecated = 2;
+
+  reserved 2;
 }
 
 message Fields {

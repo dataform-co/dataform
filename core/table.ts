@@ -59,7 +59,7 @@ export const SortStyleType = ["compound", "interleaved"] as const;
 export type SortStyleType = typeof SortStyleType[number];
 
 /**
- * Redshift specific warehouse options.
+ * Redshift-specific warehouse options.
  */
 export interface IRedshiftOptions {
   /**
@@ -89,22 +89,26 @@ export interface IRedshiftOptions {
    * For more information, read the [Redshift sort style article](https://docs.aws.amazon.com/redshift/latest/dg/t_Sorting_data-compare-sort-styles.html).
    */
   sortStyle?: string;
-
-  /**
-   * By default, views are created as late binding views.
-   *
-   * When this is set to true, views will not be created as late binding views, and the `WITH SCHEMA BINDING` suffix is omitted.
-   *
-   * For more information, read the [Redshift create view docs](https://docs.aws.amazon.com/redshift/latest/dg/r_CREATE_VIEW.html).
-   */
-  bind?: boolean;
 }
 
 const IRedshiftOptionsProperties = () =>
-  strictKeysOf<IRedshiftOptions>()(["distKey", "distStyle", "sortKeys", "sortStyle", "bind"]);
+  strictKeysOf<IRedshiftOptions>()(["distKey", "distStyle", "sortKeys", "sortStyle"]);
 
 /**
- * Options for creating tables within Azure SQL Data Warehouse projects.
+ * Snowflake-specific warehouse options.
+ */
+export interface ISnowflakeOptions {
+  /**
+   * If set to true, a secure view will be created.
+   *
+   * For more information, read the [Snowflake Secure Views docs](https://docs.snowflake.com/en/user-guide/views-secure.html).
+   */
+  secure?: boolean;
+}
+const ISnowflakeOptionsProperties = () => strictKeysOf<ISnowflakeOptions>()(["secure"]);
+
+/**
+ * Azure SQL Data Warehouse-specific warehouse options.
  */
 export interface ISQLDataWarehouseOptions {
   /**
@@ -118,7 +122,7 @@ const ISQLDataWarehouseOptionsProperties = () =>
   strictKeysOf<ISQLDataWarehouseOptions>()(["distribution"]);
 
 /**
- * Options for creating tables within BigQuery projects.
+ * BigQuery-specific warehouse options.
  */
 export interface IBigQueryOptions {
   /**
@@ -230,6 +234,11 @@ export interface ITableConfig
   bigquery?: IBigQueryOptions;
 
   /**
+   * Snowflake-specific options.
+   */
+  snowflake?: ISnowflakeOptions;
+
+  /**
    * Azure SQL Data Warehouse-specific options.
    */
   sqldatawarehouse?: ISQLDataWarehouseOptions;
@@ -263,6 +272,7 @@ export const ITableConfigProperties = () =>
     "name",
     "redshift",
     "bigquery",
+    "snowflake",
     "sqldatawarehouse",
     "presto",
     "tags",
@@ -303,6 +313,7 @@ export class Table {
     inline: [
       "bigquery",
       "redshift",
+      "snowflake",
       "sqlDataWarehouse",
       "presto",
       "preOps",
@@ -355,6 +366,9 @@ export class Table {
     }
     if (config.bigquery) {
       this.bigquery(config.bigquery);
+    }
+    if (config.snowflake) {
+      this.snowflake(config.snowflake);
     }
     if (config.sqldatawarehouse) {
       this.sqldatawarehouse(config.sqldatawarehouse);
@@ -424,6 +438,17 @@ export class Table {
 
   public uniqueKey(uniqueKey: string[]) {
     this.proto.uniqueKey = uniqueKey;
+  }
+
+  public snowflake(snowflake: dataform.ISnowflakeOptions) {
+    checkExcessProperties(
+      (e: Error) => this.session.compileError(e),
+      snowflake,
+      ISnowflakeOptionsProperties(),
+      "snowflake config"
+    );
+    this.proto.snowflake = dataform.SnowflakeOptions.create(snowflake);
+    return this;
   }
 
   public sqldatawarehouse(sqlDataWarehouse: dataform.ISQLDataWarehouseOptions) {

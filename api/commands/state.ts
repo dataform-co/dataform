@@ -2,6 +2,7 @@ import { IDbAdapter } from "df/api/dbadapters";
 import { dataform } from "df/protos/ts";
 
 export async function state(
+  defaultDatabase: string,
   dbadapter: IDbAdapter,
   targets: dataform.ITarget[],
   fetchPersistedMetadata: boolean
@@ -17,7 +18,7 @@ export async function state(
 
   if (fetchPersistedMetadata) {
     try {
-      cachedStates = await dbadapter.persistedStateMetadata();
+      cachedStates = await dbadapter.persistedStateMetadata(defaultDatabase);
     } catch (err) {
       // If the table doesn't exist or for some network error
       // cache state is not fetchable, then return empty array

@@ -289,14 +289,12 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
             dataform.Field.create({
               description: "the timestamp",
               name: "user_timestamp",
-              primitive: dataform.Field.Primitive.INTEGER,
-              primitiveDeprecated: "INTEGER"
+              primitive: dataform.Field.Primitive.INTEGER
             }),
             dataform.Field.create({
               description: "the id",
               name: "user_id",
-              primitive: dataform.Field.Primitive.INTEGER,
-              primitiveDeprecated: "INTEGER"
+              primitive: dataform.Field.Primitive.INTEGER
             }),
             dataform.Field.create({
               name: "nested_data",
@@ -306,14 +304,12 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
                   dataform.Field.create({
                     description: "nested timestamp",
                     name: "user_timestamp",
-                    primitive: dataform.Field.Primitive.INTEGER,
-                    primitiveDeprecated: "INTEGER"
+                    primitive: dataform.Field.Primitive.INTEGER
                   }),
                   dataform.Field.create({
                     description: "nested id",
                     name: "user_id",
-                    primitive: dataform.Field.Primitive.INTEGER,
-                    primitiveDeprecated: "INTEGER"
+                    primitive: dataform.Field.Primitive.INTEGER
                   })
                 ]
               })
@@ -332,8 +328,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
             dataform.Field.create({
               description: "val doc",
               name: "val",
-              primitive: dataform.Field.Primitive.INTEGER,
-              primitiveDeprecated: "INTEGER"
+              primitive: dataform.Field.Primitive.INTEGER
             })
           ],
           expectedLabels: {
@@ -473,6 +468,26 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
       expect(evaluations[0].status).to.equal(
         dataform.QueryEvaluation.QueryEvaluationStatus.FAILURE
       );
+    });
+
+    test("invalid table fails validation and error parsed correctly", async () => {
+      const evaluations = await dbadapter.evaluate(
+        dataform.Table.create({
+          type: "table",
+          query: "selects\n1 as x",
+          target: {
+            name: "EXAMPLE_ILLEGAL_TABLE",
+            database: "DF_INTEGRATION_TEST"
+          }
+        })
+      );
+      expect(evaluations.length).to.equal(1);
+      expect(evaluations[0].status).to.equal(
+        dataform.QueryEvaluation.QueryEvaluationStatus.FAILURE
+      );
+      expect(
+        dataform.QueryEvaluationError.ErrorLocation.create(evaluations[0].error.errorLocation)
+      ).eql(dataform.QueryEvaluationError.ErrorLocation.create({ line: 1, column: 1 }));
     });
   });
 

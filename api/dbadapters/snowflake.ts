@@ -7,10 +7,16 @@ import { IDbAdapter, IDbClient, OnCancel } from "df/api/dbadapters/index";
 import { parseSnowflakeEvalError } from "df/api/utils/error_parsing";
 import { LimitedResultSet } from "df/api/utils/results";
 import { ErrorWithCause } from "df/common/errors/errors";
+import { Flags } from "df/common/flags";
 import { collectEvaluationQueries, QueryOrAction } from "df/core/adapters";
 import { dataform } from "df/protos/ts";
 
 const HEARTBEAT_INTERVAL_SECONDS = 30;
+
+const flags = {
+  snowflakeLogLevel: Flags.string("snowflake-log-level", "info"),
+  snowflakeUseOcsp: Flags.boolean("snowflake-use-ocsp", true)
+};
 
 // This is horrible. However, it allows us to set the 'APPLICATION' parameter on client.environment,
 // which is passed all the way through to Snowflake's connection code. Pending a fix for
@@ -30,11 +36,8 @@ const snowflake = require("snowflake-sdk/lib/core")({
 }) as ISnowflake;
 
 snowflake.configure({
-  logLevel: "trace",
-  // Turn off OCSP checking. It appears as though timeouts in OCSP checks cause failed runs.
-  // See https://community.snowflake.com/s/case/5003r00001JuQrGAAV/snowflake-network-connectivity-problems
-  // for support ticket.
-  insecureConnect: true
+  logLevel: flags.snowflakeLogLevel.get(),
+  insecureConnect: !flags.snowflakeUseOcsp.get()
 });
 
 interface ISnowflake {
@@ -259,7 +262,6 @@ where table_schema = :1
       fields: columnResults.rows.map(row =>
         dataform.Field.create({
           name: row.COLUMN_NAME,
-          primitiveDeprecated: row.DATA_TYPE,
           primitive: convertFieldType(row.DATA_TYPE),
           flagsDeprecated: row.IS_NULLABLE && row.IS_NULLABLE === "YES" ? ["nullable"] : [],
           flags: row.DATA_TYPE === "ARRAY" ? [dataform.Field.Flag.REPEATED] : [],
@@ -440,6 +442,8 @@ function convertFieldType(type: string) {
     case "ARRAY":
     case "OBJECT":
       return dataform.Field.Primitive.ANY;
+    case "GEOGRAPHY":
+      return dataform.Field.Primitive.GEOGRAPHY;
     default:
       return dataform.Field.Primitive.UNKNOWN;
   }

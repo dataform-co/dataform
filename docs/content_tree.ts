@@ -60,6 +60,11 @@ async function getPackageTrees(): Promise<Array<Tree<IExtraAttributes>>> {
         owner: "dataform-co",
         repo: "dataform-scd",
         title: "Slowly changing dimensions"
+      },
+      {
+        owner: "dataform-co",
+        repo: "dataform-fivetran-log",
+        title: "Fivetran: Fivetran Logs"
       }
     ].map(async ({ owner, repo, title }) => {
       const tree = await new GitHubCms<IExtraAttributes>({

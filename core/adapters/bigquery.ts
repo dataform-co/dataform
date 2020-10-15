@@ -80,7 +80,11 @@ export class BigQueryAdapter extends Adapter implements IAdapter {
     return tasks;
   }
 
-  public createOrReplace(table: dataform.ITable) {
+  public dropIfExists(target: dataform.ITarget, type: dataform.TableMetadata.Type) {
+    return `drop ${this.tableTypeAsSql(type)} if exists ${this.resolveTarget(target)}`;
+  }
+
+  private createOrReplace(table: dataform.ITable) {
     return `create or replace ${this.tableTypeAsSql(
       this.baseTableType(table.type)
     )} ${this.resolveTarget(table.target)} ${
@@ -94,16 +98,12 @@ export class BigQueryAdapter extends Adapter implements IAdapter {
     }as ${table.query}`;
   }
 
-  public createOrReplaceView(target: dataform.ITarget, query: string) {
+  private createOrReplaceView(target: dataform.ITarget, query: string) {
     return `
       create or replace view ${this.resolveTarget(target)} as ${query}`;
   }
 
-  public dropIfExists(target: dataform.ITarget, type: dataform.TableMetadata.Type) {
-    return `drop ${this.tableTypeAsSql(type)} if exists ${this.resolveTarget(target)}`;
-  }
-
-  public mergeInto(
+  private mergeInto(
     target: dataform.ITarget,
     columns: string[],
     query: string,
@@ -112,7 +112,8 @@ export class BigQueryAdapter extends Adapter implements IAdapter {
   ) {
     return `
 merge ${this.resolveTarget(target)} T
-using (${query}) S
+using (${query}
+) S
 on ${uniqueKey.map(uniqueKeyCol => `T.${uniqueKeyCol} = S.${uniqueKeyCol}`).join(` and `)}
   ${updatePartitionFilter ? `and T.${updatePartitionFilter}` : ""}
 when matched then

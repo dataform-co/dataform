@@ -29,6 +29,9 @@ export interface IDbClient {
       interactive?: boolean;
       rowLimit?: number;
       byteLimit?: number;
+      bigquery?: {
+        labels?: { [label: string]: string };
+      };
     }
   ): Promise<IExecutionResult>;
 }
@@ -53,6 +56,7 @@ export interface IDbAdapter extends IDbClient {
   setMetadata(action: dataform.IExecutionAction): Promise<void>;
 
   persistStateMetadata(
+    database: string,
     transitiveInputMetadataByTarget: StringifiedMap<
       dataform.ITarget,
       dataform.PersistedTableMetadata.ITransitiveInputMetadata
@@ -63,7 +67,7 @@ export interface IDbAdapter extends IDbClient {
       onCancel: OnCancel;
     }
   ): Promise<void>;
-  persistedStateMetadata(): Promise<dataform.IPersistedTableMetadata[]>;
+  persistedStateMetadata(database: string): Promise<dataform.IPersistedTableMetadata[]>;
 
   close(): Promise<void>;
 }

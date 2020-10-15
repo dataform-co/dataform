@@ -4,7 +4,6 @@ import * as PromisePool from "promise-pool-executor";
 import { Credentials } from "df/api/commands/credentials";
 import { IDbAdapter, IDbClient, IExecutionResult, OnCancel } from "df/api/dbadapters/index";
 import { LimitedResultSet } from "df/api/utils/results";
-import { flatten } from "df/common/arrays/arrays";
 import { collectEvaluationQueries, QueryOrAction } from "df/core/adapters";
 import { dataform } from "df/protos/ts";
 
@@ -135,7 +134,7 @@ export class PrestoDbAdapter implements IDbAdapter {
 
   public async schemas(database: string): Promise<string[]> {
     const result = await this.execute(`show schemas from ${database}`);
-    return flatten(result.rows);
+    return result.rows.flat();
   }
 
   public async createSchema(database: string, schema: string): Promise<void> {
@@ -152,7 +151,7 @@ export class PrestoDbAdapter implements IDbAdapter {
             (await this.schemas(database)).map(async schema => {
               const result = await this.execute(`show tables from ${database}.${schema}`);
               targets.push(
-                ...flatten(result.rows).map(table =>
+                ...result.rows.flat().map(table =>
                   dataform.Target.create({
                     database,
                     schema,
@@ -229,6 +228,6 @@ export class PrestoDbAdapter implements IDbAdapter {
 
   private async databases(): Promise<string[]> {
     const result = await this.execute("show catalogs");
-    return flatten(result.rows);
+    return result.rows.flat();
   }
 }

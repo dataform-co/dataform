@@ -87,6 +87,27 @@ export class Session {
     this.graphErrors = { compilationErrors: [] };
   }
 
+  public get projectConfig(): Pick<
+    dataform.IProjectConfig,
+    | "warehouse"
+    | "defaultDatabase"
+    | "defaultSchema"
+    | "assertionSchema"
+    | "schemaSuffix"
+    | "tablePrefix"
+    | "vars"
+  > {
+    return Object.freeze({
+      warehouse: this.config.warehouse,
+      defaultDatabase: this.config.defaultDatabase,
+      defaultSchema: this.config.defaultSchema,
+      assertionSchema: this.config.assertionSchema,
+      schemaSuffix: this.config.schemaSuffix,
+      tablePrefix: this.config.tablePrefix,
+      vars: Object.freeze({ ...this.config.vars })
+    });
+  }
+
   public adapter(): adapters.IAdapter {
     return adapters.create(this.config, dataformCoreVersion);
   }
@@ -570,6 +591,17 @@ export class Session {
           table.fileName,
           table.name
         );
+      }
+
+      // snowflake config
+      if (!!table.snowflake) {
+        if (table.snowflake.secure && table.type !== "view") {
+          this.compileError(
+            new Error(`The 'secure' option is only valid for Snowflake views`),
+            table.fileName,
+            table.name
+          );
+        }
       }
 
       // sqldatawarehouse config

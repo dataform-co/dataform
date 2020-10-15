@@ -44,7 +44,7 @@ container_run_and_commit(
     commands = [
         "npm i -g @dataform/cli@{dataform_version}".format(dataform_version = DF_VERSION),
     ],
-    image = "@nodejs_slim_base//image",
+    image = "@nodejs_base//image",
     tags = [
         "no-remote",
     ],

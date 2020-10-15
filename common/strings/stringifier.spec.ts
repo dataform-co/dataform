@@ -7,7 +7,8 @@ import {
   JSONObjectStringifier,
   LongStringifier,
   StringifiedMap,
-  StringifiedSet
+  StringifiedSet,
+  StringStringifier
 } from "df/common/strings/stringifier";
 import { suite, test } from "df/testing";
 
@@ -139,5 +140,12 @@ suite(basename(__filename), () => {
         })
       ).equals(true);
     });
+  });
+
+  test("string stringifier", () => {
+    const stringifier = StringStringifier.create();
+    const stringified = stringifier.stringify("Str$ng");
+    expect(stringified).to.equal("Str$ng");
+    expect(stringifier.parse(stringified)).to.equal("Str$ng");
   });
 });

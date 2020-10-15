@@ -192,7 +192,6 @@ export class RedshiftDbAdapter implements IDbAdapter {
       fields: columnResults.rows.map(row =>
         dataform.Field.create({
           name: row.column_name,
-          primitiveDeprecated: row.data_type,
           primitive: convertFieldType(row.data_type),
           flagsDeprecated: row.is_nullable && row.is_nullable === "YES" ? ["nullable"] : [],
           description: row.remarks
