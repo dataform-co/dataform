@@ -12,6 +12,7 @@ import * as React from "react";
 import { useState } from "react";
 
 import * as styles from "df/components/forms.css";
+import validator from 'validator';
 
 export interface IValidationRule<T> {
   predicate: (val: T) => boolean;
@@ -27,19 +28,17 @@ export class ValidationRules {
   }
 
   public static email(): IValidationRule<string> {
-    // from: https://emailregex.com/
-    // tslint:disable-next-line: tsr-detect-unsafe-regexp
-    const emailRegex = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
     return {
-      predicate: v => !v || emailRegex.test(v),
+      predicate: v => !v || validator.isEmail(v),
       message: "One of the emails is in an invalid format."
     };
   }
 
   public static url(): IValidationRule<string> {
     return {
-      // tslint:disable-next-line: tsr-detect-unsafe-regexp
-      predicate: v => !v || !!v.match(/^https:\/\/(-\.)?([^\s\/?\.#-]+\.?)+(\/[^\s]*)?$/i),
+      predicate: v => !v || validator.isURL(v, {
+        protocols: ["http", "https"]
+      }),
       message: "URL is invalid."
     };
   }
