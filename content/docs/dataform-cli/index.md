@@ -29,6 +29,8 @@ dataform init redshift new_project
 dataform init snowflake new_project
 - or -
 dataform init sqldatawarehouse new_project
+- or, if you've cloned a pre-existing project -
+dataform install 
 ```
 
 ### Project structure
