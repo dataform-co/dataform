@@ -56,6 +56,5 @@ suite("@dataform/integration/presto", { parallel: true }, ({ before, after }) =>
       dataform.QueryEvaluation.QueryEvaluationStatus.FAILURE
     );
     expect(failedEvaluation[0].error.errorLocation.line).to.equal(2);
-    expect(true).to.equal(false);
   });
 });
