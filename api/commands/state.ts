@@ -1,4 +1,5 @@
 import { IDbAdapter } from "df/api/dbadapters";
+import { JSONObjectStringifier, StringifiedSet } from "df/common/strings/stringifier";
 import { dataform } from "df/protos/ts";
 
 export async function state(
@@ -18,7 +19,9 @@ export async function state(
 
   if (fetchPersistedMetadata) {
     try {
-      cachedStates = await dbadapter.persistedStateMetadata(defaultDatabase);
+      const allCachedStates = await dbadapter.persistedStateMetadata(defaultDatabase);
+      const targetSet = new StringifiedSet(JSONObjectStringifier.create(), targets);
+      cachedStates = allCachedStates.filter(cachedState => targetSet.has(cachedState.target));
     } catch (err) {
       // If the table doesn't exist or for some network error
       // cache state is not fetchable, then return empty array
