@@ -91,7 +91,7 @@ if (!analytics.initialize)
       n.parentNode.insertBefore(e, n);
     };
     analytics.SNIPPET_VERSION = "4.0.0";
-    analytics.load("cuUyTERfHPfEmlJIWLTYt61KJFAH52r8");
+    analytics.load("zD3lNX5txHQqzJ2HxHVOFPXnBKpqXxUv");
     // Track pageviews on the static site.
     analytics.page();
   }
