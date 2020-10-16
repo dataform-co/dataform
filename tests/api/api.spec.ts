@@ -1021,6 +1021,7 @@ postOps`
       actions: [
         {
           name: RUN_TEST_GRAPH.actions[0].name,
+          target: RUN_TEST_GRAPH.actions[0].target,
           tasks: [
             {
               status: dataform.TaskResult.ExecutionStatus.SUCCESSFUL,
@@ -1041,6 +1042,7 @@ postOps`
         },
         {
           name: RUN_TEST_GRAPH.actions[1].name,
+          target: RUN_TEST_GRAPH.actions[1].target,
           tasks: [
             {
               status: dataform.TaskResult.ExecutionStatus.FAILED,
@@ -1140,6 +1142,7 @@ postOps`
           actions: [
             {
               name: EXPECTED_RUN_RESULT.actions[0].name,
+              target: EXPECTED_RUN_RESULT.actions[0].target,
               status: dataform.ActionResult.ExecutionStatus.RUNNING,
               tasks: [EXPECTED_RUN_RESULT.actions[0].tasks[0]]
             }
@@ -1243,6 +1246,7 @@ postOps`
               EXPECTED_RUN_RESULT.actions[0],
               {
                 name: NEW_TEST_GRAPH.actions[1].name,
+                target: NEW_TEST_GRAPH.actions[1].target,
                 tasks: [
                   {
                     status: dataform.TaskResult.ExecutionStatus.SUCCESSFUL,

@@ -276,6 +276,7 @@ export class Runner {
       allPendingActions.forEach(pendingAction =>
         this.runResult.actions.push({
           name: pendingAction.name,
+          target: pendingAction.target,
           status: dataform.ActionResult.ExecutionStatus.SKIPPED,
           tasks: pendingAction.tasks.map(() => ({
             status: dataform.TaskResult.ExecutionStatus.SKIPPED
@@ -294,6 +295,7 @@ export class Runner {
         skippableActions.forEach(skippableAction => {
           this.runResult.actions.push({
             name: skippableAction.name,
+            target: skippableAction.target,
             status: dataform.ActionResult.ExecutionStatus.SKIPPED,
             tasks: skippableAction.tasks.map(() => ({
               status: dataform.TaskResult.ExecutionStatus.SKIPPED
@@ -344,6 +346,7 @@ export class Runner {
     if (action.tasks.length === 0) {
       this.runResult.actions.push({
         name: action.name,
+        target: action.target,
         status: dataform.ActionResult.ExecutionStatus.DISABLED,
         tasks: []
       });
@@ -354,6 +357,7 @@ export class Runner {
     if (this.shouldCacheSkip(action)) {
       this.runResult.actions.push({
         name: action.name,
+        target: action.target,
         status: dataform.ActionResult.ExecutionStatus.CACHE_SKIPPED,
         tasks: []
       });
@@ -368,6 +372,7 @@ export class Runner {
     if (!actionResult) {
       actionResult = {
         name: action.name,
+        target: action.target,
         status: dataform.ActionResult.ExecutionStatus.RUNNING,
         timing: timer.current(),
         tasks: []
