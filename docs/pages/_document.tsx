@@ -84,14 +84,14 @@ if (!analytics.initialize)
       e.async = !0;
       e.src =
         ("https:" === document.location.protocol ? "https://" : "http://") +
-        "cdn.segment.com/analytics.js/v1/" +
+        "cdn.segment.dataform.co/analytics.js/v1/" +
         t +
         "/analytics.min.js";
       var n = document.getElementsByTagName("script")[0];
       n.parentNode.insertBefore(e, n);
     };
     analytics.SNIPPET_VERSION = "4.0.0";
-    analytics.load("zD3lNX5txHQqzJ2HxHVOFPXnBKpqXxUv");
+    analytics.load("cuUyTERfHPfEmlJIWLTYt61KJFAH52r8");
     // Track pageviews on the static site.
     analytics.page();
   }
