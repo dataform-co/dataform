@@ -26,6 +26,7 @@ ts_test_suite(
         "//tests/integration/snowflake_project:node_modules",
         "//tests/integration/sqldatawarehouse_project:files",
         "//tests/integration/sqldatawarehouse_project:node_modules",
+        "//tools/presto:presto_config_files",
     ],
     templated_args = ["--snowflake-use-ocsp=false"],
     deps = [

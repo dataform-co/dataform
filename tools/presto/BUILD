@@ -10,12 +10,21 @@ container_image(
 
 load("//tools:ts_library.bzl", "ts_library")
 
+filegroup(
+    name = "presto_config_files",
+    srcs = [
+        "config.properties",
+        "jvm.config",
+    ],
+)
+
 ts_library(
     name = "presto",
     srcs = glob(
         ["*.ts"],
     ),
     data = [
+        ":presto_config_files",
         ":presto_image",
     ],
     deps = [

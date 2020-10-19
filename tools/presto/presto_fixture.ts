@@ -1,3 +1,5 @@
+import * as path from "path";
+
 import { exec, execSync, spawn } from "child_process";
 import * as dbadapters from "df/api/dbadapters";
 import { sleepUntil } from "df/common/promises";
@@ -24,21 +26,24 @@ export class PrestoFixture {
         execSync("tools/presto/presto_image.executable");
         PrestoFixture.imageLoaded = true;
       }
+      const configPath = `${path.resolve("tools/presto/")}/`;
+      console.log("PrestoFixture -> constructor -> configPath", configPath);
+      const lsTest = execSync(`ls ${configPath}`);
+      console.log("PrestoFixture -> constructor -> lsTest", lsTest.toString());
       // Run the presto Docker image.
       // This running container can be interacted with via the include CLI using:
       // `docker exec -it presto presto`.
-      const result = exec(
-        [
-          "docker run",
-          "--rm",
-          `--name ${DOCKER_CONTAINER_NAME}`,
-          // TODO: Elias, this needs to point at the right place on disk (probably somewhere in bazel-bin, and you'll need to add this file as a test data dependency).
-          `-v /Users/benbirt/Code/dataform/tools/presto/:/etc/presto/`,
-          `-p ${PrestoFixture.PRESTO_TEST_CREDENTIALS.port}:${PrestoFixture.PRESTO_TEST_CREDENTIALS.port}`,
-          USE_CLOUD_BUILD_NETWORK ? "--network cloudbuild" : "",
-          "bazel/tools/presto:presto_image"
-        ].join(" ")
-      );
+      const cmd = [
+        "docker run",
+        "--rm",
+        `--name ${DOCKER_CONTAINER_NAME}`,
+        `-v ${configPath}:/etc/presto/`,
+        `-p ${PrestoFixture.PRESTO_TEST_CREDENTIALS.port}:${PrestoFixture.PRESTO_TEST_CREDENTIALS.port}`,
+        USE_CLOUD_BUILD_NETWORK ? "--network cloudbuild" : "",
+        "bazel/tools/presto:presto_image"
+      ].join(" ");
+      console.log("PrestoFixture -> constructor -> cmd", cmd);
+      const result = exec(cmd);
       result.stdout.on("data", data => {
         // tslint:disable-next-line: no-console
         console.log("stdout: " + data.toString());
