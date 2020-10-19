@@ -64,7 +64,7 @@ Compile hundreds of data models in under a second using SQLX. SQLX extends your 
 
 ## With the CLI
 
-You can install the Dataform SDK using the following command line. Follow the [docs](https://docs.dataform.co/guides/command-line-interface/?utm_medium=organic&utm_source=github_readme) to get started.
+You can install the Dataform SDK using the following command line. Follow the [docs](https://docs.dataform.co/dataform-cli?utm_medium=organic&utm_source=github_readme) to get started.
 
 
 ```

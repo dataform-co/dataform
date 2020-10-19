@@ -468,6 +468,7 @@ message RunResult {
 
 message ActionResult {
   string name = 1;
+  Target target = 5;
 
   enum ExecutionStatus {
     UNKNOWN = 0;
