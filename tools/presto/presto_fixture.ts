@@ -32,7 +32,9 @@ export class PrestoFixture {
           "docker run",
           "--rm",
           `--name ${DOCKER_CONTAINER_NAME}`,
-          `-p ${PrestoFixture.PRESTO_TEST_CREDENTIALS.port}:8080`,
+          // TODO: Elias, this needs to point at the right place on disk (probably somewhere in bazel-bin, and you'll need to add this file as a test data dependency).
+          `-v /Users/benbirt/Code/dataform/tools/presto/:/etc/presto/`,
+          `-p ${PrestoFixture.PRESTO_TEST_CREDENTIALS.port}:${PrestoFixture.PRESTO_TEST_CREDENTIALS.port}`,
           USE_CLOUD_BUILD_NETWORK ? "--network cloudbuild" : "",
           "bazel/tools/presto:presto_image"
         ].join(" ")
