@@ -26,24 +26,28 @@ export class PrestoFixture {
         execSync("tools/presto/presto_image.executable");
         PrestoFixture.imageLoaded = true;
       }
-      const configPath = `${path.resolve("tools/presto/")}/`;
-      console.log("PrestoFixture -> constructor -> configPath", configPath);
-      const lsTest = execSync(`ls ${configPath}`);
-      console.log("PrestoFixture -> constructor -> lsTest", lsTest.toString());
+      const baseConfigPath = path.resolve("tools/presto/");
+      // Mapping the whole volume causes confusing issues, probably stemming from symlinks; for now just link each file individually.
+      const mountedFiles = [
+        "config.properties",
+        "jvm.config",
+        "catalog/memory.properties",
+        "catalog/jmx.properties"
+      ].map(configPath => `-v ${path.join(baseConfigPath, configPath)}:/etc/presto/${configPath}`);
       // Run the presto Docker image.
       // This running container can be interacted with via the include CLI using:
       // `docker exec -it presto presto`.
-      const cmd = [
-        "docker run",
-        "--rm",
-        `--name ${DOCKER_CONTAINER_NAME}`,
-        `-v ${configPath}:/etc/presto/`,
-        `-p ${PrestoFixture.PRESTO_TEST_CREDENTIALS.port}:${PrestoFixture.PRESTO_TEST_CREDENTIALS.port}`,
-        USE_CLOUD_BUILD_NETWORK ? "--network cloudbuild" : "",
-        "bazel/tools/presto:presto_image"
-      ].join(" ");
-      console.log("PrestoFixture -> constructor -> cmd", cmd);
-      const result = exec(cmd);
+      const result = exec(
+        [
+          "docker run",
+          "--rm",
+          `--name ${DOCKER_CONTAINER_NAME}`,
+          ...mountedFiles,
+          `-p ${PrestoFixture.PRESTO_TEST_CREDENTIALS.port}:${PrestoFixture.PRESTO_TEST_CREDENTIALS.port}`,
+          USE_CLOUD_BUILD_NETWORK ? "--network cloudbuild" : "",
+          "bazel/tools/presto:presto_image"
+        ].join(" ")
+      );
       result.stdout.on("data", data => {
         // tslint:disable-next-line: no-console
         console.log("stdout: " + data.toString());

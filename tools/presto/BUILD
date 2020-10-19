@@ -12,10 +12,12 @@ load("//tools:ts_library.bzl", "ts_library")
 
 filegroup(
     name = "presto_config_files",
-    srcs = [
-        "config.properties",
-        "jvm.config",
-    ],
+    srcs = glob(
+        [
+            "**/*.properties",
+            "**/*.config",
+        ],
+    ),
 )
 
 ts_library(
