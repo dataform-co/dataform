@@ -26,14 +26,16 @@ export class PrestoFixture {
         execSync("tools/presto/presto_image.executable");
         PrestoFixture.imageLoaded = true;
       }
-      const baseConfigPath = path.resolve("tools/presto/");
+      const baseConfigPath = path.resolve("tools/presto");
       // Mapping the whole volume causes confusing issues, probably stemming from symlinks; for now just link each file individually.
       const mountedFiles = [
         "config.properties",
-        // "jvm.config",
+        "jvm.config",
         "catalog/memory.properties",
         "catalog/jmx.properties"
-      ].map(configPath => `-v ${path.join(baseConfigPath, configPath)}:/etc/presto/${configPath}`);
+      ].map(configPath => `-v ${baseConfigPath}/${configPath}:/etc/presto/${configPath}`);
+      // tslint:disable-next-line: no-console
+      console.log("PrestoFixture -> constructor -> mountedFiles", mountedFiles);
       // Run the presto Docker image.
       // This running container can be interacted with via the include CLI using:
       // `docker exec -it presto presto`.
