@@ -168,6 +168,7 @@ message RedshiftOptions {
 
 message SnowflakeOptions {
   bool secure = 1;
+  bool transient = 2;
 }
 
 message SQLDataWarehouseOptions {

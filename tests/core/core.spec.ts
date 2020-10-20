@@ -29,6 +29,11 @@ class TestConfigs {
     warehouse: "bigquery",
     defaultSchema: "schema"
   };
+
+  public static snowflake: dataform.IProjectConfig = {
+    warehouse: "snowflake",
+    defaultSchema: "schema"
+  };
 }
 
 suite("@dataform/core", () => {
@@ -483,6 +488,40 @@ suite("@dataform/core", () => {
         {
           actionName: "schema.example_clusterBy_view_fail",
           message: `partitionBy/clusterBy are not valid for BigQuery views; they are only valid for tables`
+        }
+      ]);
+    });
+
+    test("validation_snowflake_fail", () => {
+      const session = new Session(path.dirname(__filename), TestConfigs.snowflake);
+      session.publish("example_secure_table_fail", {
+        type: "table",
+        snowflake: {
+          secure: true
+        }
+      });
+      session.publish("example_transient_view_fail", {
+        type: "view",
+        snowflake: {
+          transient: true
+        }
+      });
+
+      const graph = session.compile();
+
+      expect(
+        graph.graphErrors.compilationErrors.map(({ message, actionName }) => ({
+          message,
+          actionName
+        }))
+      ).has.deep.members([
+        {
+          actionName: "SCHEMA.EXAMPLE_SECURE_TABLE_FAIL",
+          message: "The 'secure' option is only valid for Snowflake views"
+        },
+        {
+          actionName: "SCHEMA.EXAMPLE_TRANSIENT_VIEW_FAIL",
+          message: "The 'transient' option is only valid for Snowflake tables"
         }
       ]);
     });
