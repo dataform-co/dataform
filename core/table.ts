@@ -158,6 +158,20 @@ const IBigQueryOptionsProperties = () =>
   strictKeysOf<IBigQueryOptions>()(["partitionBy", "clusterBy", "updatePartitionFilter", "labels"]);
 
 /**
+ * Options for creating tables within Presto projects.
+ */
+export interface IPrestoOptions {
+  /**
+   * The key with which to partition the table. Typically the name of a timestamp or date column.
+   *
+   * For more information, read the partitioning documentation for the Presto connection in use.
+   */
+  partitionBy?: string[];
+}
+
+const IPrestoOptionsProperties = () => strictKeysOf<IPrestoOptions>()(["partitionBy"]);
+
+/**
  * Options for creating assertions as part of a dataset definition.
  */
 export interface ITableAssertions {
@@ -230,6 +244,11 @@ export interface ITableConfig
   sqldatawarehouse?: ISQLDataWarehouseOptions;
 
   /**
+   * Presto-specific options.
+   */
+  presto?: IPrestoOptions;
+
+  /**
    * Assertions to be run on the dataset.
    *
    * If configured, relevant assertions will automatically be created and run as a dependency of this dataset.
@@ -255,6 +274,7 @@ export const ITableConfigProperties = () =>
     "bigquery",
     "snowflake",
     "sqldatawarehouse",
+    "presto",
     "tags",
     "uniqueKey",
     "dependencies",
@@ -295,6 +315,7 @@ export class Table {
       "redshift",
       "snowflake",
       "sqlDataWarehouse",
+      "presto",
       "preOps",
       "postOps",
       "actionDescriptor",
@@ -351,6 +372,9 @@ export class Table {
     }
     if (config.sqldatawarehouse) {
       this.sqldatawarehouse(config.sqldatawarehouse);
+    }
+    if (config.presto) {
+      this.presto(config.presto);
     }
     if (config.tags) {
       this.tags(config.tags);
@@ -463,6 +487,17 @@ export class Table {
       }
       this.proto.actionDescriptor.bigqueryLabels = bigquery.labels;
     }
+    return this;
+  }
+
+  public presto(presto: dataform.IPrestoOptions) {
+    checkExcessProperties(
+      (e: Error) => this.session.compileError(e),
+      presto,
+      IPrestoOptionsProperties(),
+      "presto config"
+    );
+    this.proto.presto = dataform.PrestoOptions.create(presto);
     return this;
   }
 
@@ -673,6 +708,11 @@ export class TableContext implements ITableContext {
 
   public bigquery(bigquery: dataform.IBigQueryOptions) {
     this.table.bigquery(bigquery);
+    return "";
+  }
+
+  public presto(presto: dataform.IPrestoOptions) {
+    this.table.presto(presto);
     return "";
   }
 

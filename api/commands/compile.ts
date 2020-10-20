@@ -3,10 +3,10 @@ import * as path from "path";
 import { util } from "protobufjs";
 
 import { ChildProcess, fork } from "child_process";
+import { validWarehouses } from "df/api/dbadapters";
 import { coerceAsError, ErrorWithCause } from "df/common/errors/errors";
 import { dataform } from "df/protos/ts";
 
-const validWarehouses = ["bigquery", "postgres", "redshift", "sqldatawarehouse", "snowflake"];
 const mandatoryProps: Array<keyof dataform.IProjectConfig> = ["warehouse", "defaultSchema"];
 const simpleCheckProps: Array<keyof dataform.IProjectConfig> = [
   "assertionSchema",

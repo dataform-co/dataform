@@ -20,6 +20,7 @@ ts_library(
         "@npm//analytics-node",
         "@npm//chokidar",
         "@npm//glob",
+        "@npm//presto-client",
         "@npm//readline-sync",
         "@npm//untildify",
         "@npm//uuid",

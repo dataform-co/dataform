@@ -57,3 +57,13 @@ message SQLDataWarehouse {
   string password = 4;
   string database = 5;
 }
+
+// TODO: Add TLS/SSL details.
+message Presto {
+  string host = 1;
+  int32 port = 2;
+  string user = 3;
+  // TODO: Deprecate these fields once https://github.com/tagomoris/presto-client-node/pull/40 is merged.
+  string catalog = 4;
+  string schema = 5;
+}

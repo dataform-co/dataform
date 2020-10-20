@@ -48,6 +48,7 @@ externals = [
     "object-sizeof",
     "pg",
     "pg-query-stream",
+    "presto-client",
     "pretty-ms",
     "promise-pool-executor",
     "snowflake-sdk",
