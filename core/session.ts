@@ -602,6 +602,14 @@ export class Session {
             table.name
           );
         }
+
+        if (table.snowflake.transient && table.type !== "table") {
+          this.compileError(
+            new Error(`The 'transient' option is only valid for Snowflake tables`),
+            table.fileName,
+            table.name
+          );
+        }
       }
 
       // sqldatawarehouse config

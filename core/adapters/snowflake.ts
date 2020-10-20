@@ -88,7 +88,9 @@ export class SnowflakeAdapter extends Adapter implements IAdapter {
     if (table.type === "view") {
       return this.createOrReplaceView(table.target, table.query, table.snowflake?.secure);
     }
-    return `create or replace table ${this.resolveTarget(table.target)} as ${table.query}`;
+    return `create or replace ${
+      table.snowflake?.transient ? "transient " : ""
+    }table ${this.resolveTarget(table.target)} as ${table.query}`;
   }
 
   private mergeInto(

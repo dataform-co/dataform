@@ -763,7 +763,7 @@ suite("@dataform/api", () => {
             },
             dependencies: ["a"],
             query: "select 1 as test"
-          }
+          },
         ]
       });
       const testState = dataform.WarehouseState.create({});

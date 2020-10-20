@@ -104,8 +104,15 @@ export interface ISnowflakeOptions {
    * For more information, read the [Snowflake Secure Views docs](https://docs.snowflake.com/en/user-guide/views-secure.html).
    */
   secure?: boolean;
+
+  /**
+   * If set to true, a transient table will be created. Only applicable to actions of type "table".
+   *
+   * For more information, read the [Snowflake docs](https://docs.snowflake.com/en/user-guide/tables-temp-transient.html).
+   */
+  transient?: boolean;
 }
-const ISnowflakeOptionsProperties = () => strictKeysOf<ISnowflakeOptions>()(["secure"]);
+const ISnowflakeOptionsProperties = () => strictKeysOf<ISnowflakeOptions>()(["secure", "transient"]);
 
 /**
  * Azure SQL Data Warehouse-specific warehouse options.
