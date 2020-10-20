@@ -26,19 +26,6 @@ export class PrestoFixture {
         execSync("tools/presto/presto_image.executable");
         PrestoFixture.imageLoaded = true;
       }
-      const baseConfigPath = path.resolve("./tools/presto");
-      const contents = execSync(`ls ${baseConfigPath}`);
-      // tslint:disable-next-line: no-console
-      console.log("PrestoFixture -> constructor -> contents", contents);
-      // Mapping the whole volume causes confusing issues, probably stemming from symlinks; for now just link each file individually.
-      const mountedFiles = [
-        "config.properties",
-        "jvm.config",
-        "catalog/memory.properties",
-        "catalog/jmx.properties"
-      ].map(configPath => `-v ${baseConfigPath}/${configPath}:/etc/presto/${configPath}`);
-      // tslint:disable-next-line: no-console
-      console.log("PrestoFixture -> constructor -> mountedFiles", mountedFiles);
       // Run the presto Docker image.
       // This running container can be interacted with via the include CLI using:
       // `docker exec -it presto presto`.
@@ -47,7 +34,6 @@ export class PrestoFixture {
           "docker run",
           "--rm",
           `--name ${DOCKER_CONTAINER_NAME}`,
-          ...mountedFiles,
           `-p ${PrestoFixture.PRESTO_TEST_CREDENTIALS.port}:${PrestoFixture.PRESTO_TEST_CREDENTIALS.port}`,
           USE_CLOUD_BUILD_NETWORK ? "--network cloudbuild" : "",
           "bazel/tools/presto:presto_image"

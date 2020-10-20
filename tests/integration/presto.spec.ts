@@ -38,12 +38,12 @@ suite("@dataform/integration/presto", { parallel: true }, ({ before, after }) =>
     const resolvedTargets = targets.map(
       target => `${target.database}.${target.schema}.${target.name}`
     );
+    console.log("resolvedTargets", resolvedTargets);
     [
       "system.metadata.analyze_properties",
-      "jmx.information_schema.applicable_roles",
       "system.information_schema.applicable_roles",
-      "jmx.current.com.sun.management:type=diagnosticcommand",
-      "memory.information_schema.applicable_roles"
+      "system.jdbc.catalogs",
+      "system.jdbc.schemas"
     ].forEach(resolvedTarget => {
       expect(resolvedTargets).to.include(resolvedTarget);
     });

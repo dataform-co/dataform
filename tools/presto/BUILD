@@ -1,24 +1,37 @@
 package(default_visibility = ["//visibility:public"])
 
-load("@io_bazel_rules_docker//container:image.bzl", "container_image")
+load("@io_bazel_rules_docker//container:container.bzl", "container_image", "container_layer")
 
-# Exists purely to give a clean name to the presto Docker image.
 container_image(
     name = "presto_image",
     base = "@presto//image",
+    layers = [
+        ":presto_config_files",
+        ":presto_database_properties",
+    ],
+)
+
+container_layer(
+    name = "presto_config_files",
+    directory = "/etc/presto/",
+    files = [
+        "catalog/memory.properties",
+        "config.properties",
+        "jvm.config",
+    ],
+    mode = "0o644",
+)
+
+container_layer(
+    name = "presto_database_properties",
+    directory = "/etc/presto/catalog/",
+    files = [
+        "catalog/memory.properties",
+    ],
+    mode = "0o644",
 )
 
 load("//tools:ts_library.bzl", "ts_library")
-
-filegroup(
-    name = "presto_config_files",
-    srcs = glob(
-        [
-            "**/*.properties",
-            "**/*.config",
-        ],
-    ),
-)
 
 ts_library(
     name = "presto",
@@ -26,7 +39,6 @@ ts_library(
         ["*.ts"],
     ),
     data = [
-        ":presto_config_files",
         ":presto_image",
     ],
     deps = [
