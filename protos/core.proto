@@ -174,6 +174,10 @@ message SQLDataWarehouseOptions {
   string distribution = 1;
 }
 
+message PrestoOptions {
+  repeated string partition_by = 3;
+}
+
 message GraphErrors {
   repeated CompilationError compilation_errors = 1;
   repeated ValidationError validation_errors = 2 [deprecated = true];
@@ -293,6 +297,7 @@ message Table {
   BigQueryOptions bigquery = 22;
   SnowflakeOptions snowflake = 33;
   SQLDataWarehouseOptions sql_data_warehouse = 25;
+  PrestoOptions presto = 34;
 
   // Generated.
   string file_name = 18;
