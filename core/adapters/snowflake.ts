@@ -90,7 +90,11 @@ export class SnowflakeAdapter extends Adapter implements IAdapter {
     }
     return `create or replace ${
       table.snowflake?.transient ? "transient " : ""
-    }table ${this.resolveTarget(table.target)} as ${table.query}`;
+    }table ${this.resolveTarget(table.target)} ${
+      table.snowflake?.clusterBy?.length > 0
+        ? `cluster by (${table.snowflake?.clusterBy.join(", ")}) `
+        : ""
+    }as ${table.query}`;
   }
 
   private mergeInto(
