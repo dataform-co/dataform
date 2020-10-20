@@ -113,7 +113,7 @@ export interface ISnowflakeOptions {
   transient?: boolean;
 
   /**
-   * A list of clustering keys to cluster the table by.
+   * A list of clustering keys to cluster the table by. Only applicable to actions of type "table" or "incremental".
    *
    * For more information, read the [Snowflake clustering docs](https://docs.snowflake.com/en/user-guide/tables-clustering-keys.html).
    */

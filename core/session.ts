@@ -611,7 +611,11 @@ export class Session {
           );
         }
 
-        if (table.snowflake.clusterBy?.length > 0 && table.type !== "table") {
+        if (
+          table.snowflake.clusterBy?.length > 0 &&
+          table.type !== "table" &&
+          table.type !== "incremental"
+        ) {
           this.compileError(
             new Error(`The 'clusterBy' option is only valid for Snowflake tables`),
             table.fileName,
