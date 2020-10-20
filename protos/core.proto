@@ -169,6 +169,7 @@ message RedshiftOptions {
 message SnowflakeOptions {
   bool secure = 1;
   bool transient = 2;
+  repeated string cluster_by = 3;
 }
 
 message SQLDataWarehouseOptions {
