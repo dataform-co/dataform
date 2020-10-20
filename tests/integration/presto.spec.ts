@@ -38,7 +38,6 @@ suite("@dataform/integration/presto", { parallel: true }, ({ before, after }) =>
     const resolvedTargets = targets.map(
       target => `${target.database}.${target.schema}.${target.name}`
     );
-    console.log("resolvedTargets", resolvedTargets);
     [
       "system.metadata.analyze_properties",
       "system.information_schema.applicable_roles",
