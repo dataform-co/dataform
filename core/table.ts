@@ -111,8 +111,16 @@ export interface ISnowflakeOptions {
    * For more information, read the [Snowflake docs](https://docs.snowflake.com/en/user-guide/tables-temp-transient.html).
    */
   transient?: boolean;
+
+  /**
+   * A list of clustering keys to cluster the table by.
+   *
+   * For more information, read the [Snowflake clustering docs](https://docs.snowflake.com/en/user-guide/tables-clustering-keys.html).
+   */
+  clusterBy?: string[];
 }
-const ISnowflakeOptionsProperties = () => strictKeysOf<ISnowflakeOptions>()(["secure", "transient"]);
+const ISnowflakeOptionsProperties = () =>
+  strictKeysOf<ISnowflakeOptions>()(["secure", "transient", "clusterBy"]);
 
 /**
  * Azure SQL Data Warehouse-specific warehouse options.

@@ -506,6 +506,12 @@ suite("@dataform/core", () => {
           transient: true
         }
       });
+      session.publish("example_cluster_by_view_fail", {
+        type: "view",
+        snowflake: {
+          clusterBy: ["a"]
+        }
+      });
 
       const graph = session.compile();
 
@@ -522,6 +528,10 @@ suite("@dataform/core", () => {
         {
           actionName: "SCHEMA.EXAMPLE_TRANSIENT_VIEW_FAIL",
           message: "The 'transient' option is only valid for Snowflake tables"
+        },
+        {
+          actionName: "SCHEMA.EXAMPLE_CLUSTER_BY_VIEW_FAIL",
+          message: "The 'clusterBy' option is only valid for Snowflake tables"
         }
       ]);
     });
