@@ -29,7 +29,7 @@ export class PrestoFixture {
       // Run the presto Docker image.
       // This running container can be interacted with via the include CLI using:
       // `docker exec -it presto presto`.
-      const result = exec(
+      exec(
         [
           "docker run",
           "--rm",
@@ -39,18 +39,6 @@ export class PrestoFixture {
           "bazel/tools/presto:presto_image"
         ].join(" ")
       );
-      result.stdout.on("data", data => {
-        // tslint:disable-next-line: no-console
-        console.log("stdout: " + data.toString());
-      });
-      result.stderr.on("data", data => {
-        // tslint:disable-next-line: no-console
-        console.log("stderr: " + data.toString());
-      });
-      result.on("exit", code => {
-        // tslint:disable-next-line: no-console
-        console.log("child process exited with code " + code.toString());
-      });
 
       const dbadapter = await dbadapters.create(PrestoFixture.PRESTO_TEST_CREDENTIALS, "presto");
 
@@ -60,8 +48,6 @@ export class PrestoFixture {
           await dbadapter.execute("select 1");
           return true;
         } catch (e) {
-          // tslint:disable-next-line: no-console
-          console.log("PrestoFixture -> constructor -> e", e);
           return false;
         }
       }, 500);
