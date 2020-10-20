@@ -50,14 +50,14 @@ How to create a git access token differs between remote git providers.
 
 ### GitHub
 
-[Creating a **GitHub** access token](https://help.github.com/en/github/authenticating-to-github/creating-a-personal-access-token-for-the-command-line#creating-a-token).
+[Creating a **GitHub** personal access token](https://help.github.com/en/github/authenticating-to-github/creating-a-personal-access-token-for-the-command-line#creating-a-token).
 
 Permissions required:
  - repo
 
 ### GitLab
 
-[Creating a **GitLab** access token](https://docs.gitlab.com/ee/user/profile/personal_access_tokens.html#creating-a-personal-access-token). The access token name must be `dataform`.
+[Creating a **GitLab** personal access token](https://docs.gitlab.com/ee/user/profile/personal_access_tokens.html#creating-a-personal-access-token). The access token name must be `dataform`.
 
 Permissions required:
  - api
@@ -66,7 +66,7 @@ Permissions required:
 
 ### Azure Repo
 
-[Creating a **Azure DevOps** access token](https://docs.microsoft.com/en-us/azure/devops/organizations/accounts/use-personal-access-tokens-to-authenticate?view=azure-devops&tabs=preview-page#create-a-pat ).
+[Creating a **Azure DevOps** personal access token](https://docs.microsoft.com/en-us/azure/devops/organizations/accounts/use-personal-access-tokens-to-authenticate?view=azure-devops&tabs=preview-page#create-a-pat ).
 
 Permissions required:
  - code:full
