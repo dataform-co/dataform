@@ -72,11 +72,13 @@ session.init("${config.compileConfig.projectDir.replace(
     "\\\\"
   )}", projectConfig, originalProjectConfig);
 
+// Allow "includes" files to use the current session object.
+global.dataform = session;
+
 // Require "includes" *.js files.
 ${includeRequires}
 
 // Bind various @dataform/core APIs to the 'global' object.
-global.dataform = session;
 global.publish = session.publish.bind(session);
 global.operate = session.operate.bind(session);
 global.assert = session.assert.bind(session);
