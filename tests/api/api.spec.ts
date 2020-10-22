@@ -15,6 +15,10 @@ import { asPlainObject, cleanSql } from "df/tests/utils";
 config.truncateThreshold = 0;
 
 suite("@dataform/api", () => {
+  // c +-> b +-> a
+  //       ^
+  //       d
+  // Made with asciiflow.com
   const TEST_GRAPH: dataform.ICompiledGraph = dataform.CompiledGraph.create({
     projectConfig: { warehouse: "redshift" },
     tables: [
@@ -237,6 +241,11 @@ suite("@dataform/api", () => {
   });
 
   suite("prune", () => {
+    //        +-> op_b
+    // op_a +-+
+    //        +-> op_c
+    //
+    // op_d +---> tab_a
     const TEST_GRAPH_WITH_TAGS: dataform.ICompiledGraph = dataform.CompiledGraph.create({
       projectConfig: { warehouse: "bigquery" },
       operations: [
@@ -319,10 +328,41 @@ suite("@dataform/api", () => {
       expect(actionNames).includes("tab_a");
     });
 
-    test("prune actions with --tags but without --actions (without dependencies)", () => {
+    test("prune actions with --tags (with dependents)", () => {
+      const prunedGraph = prune(TEST_GRAPH_WITH_TAGS, {
+        tags: ["tag2"],
+        includeDependents: true
+      });
+      const actionNames = [
+        ...prunedGraph.tables.map(action => action.name),
+        ...prunedGraph.operations.map(action => action.name)
+      ];
+      expect(actionNames).not.includes("op_a");
+      expect(actionNames).not.includes("op_b");
+      expect(actionNames).not.includes("op_c");
+      expect(actionNames).includes("op_d");
+      expect(actionNames).includes("tab_a");
+    });
+
+    test("prune actions with dependents", () => {
+      const prunedGraph = prune(TEST_GRAPH, {
+        actions: ["schema.c"],
+        includeDependents: true
+      });
+      const actionNames = [
+        ...prunedGraph.tables.map(action => action.name),
+        ...prunedGraph.operations.map(action => action.name)
+      ];
+      expect(actionNames).includes("schema.a");
+      expect(actionNames).includes("schema.b");
+      expect(actionNames).includes("schema.c");
+    });
+
+    test("prune actions with --tags but without --actions (without dependencies or dependents)", () => {
       const prunedGraph = prune(TEST_GRAPH_WITH_TAGS, {
         tags: ["tag1", "tag2", "tag4"],
-        includeDependencies: false
+        includeDependencies: false,
+        includeDependents: false
       });
       const actionNames = [
         ...prunedGraph.tables.map(action => action.name),

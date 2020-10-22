@@ -512,7 +512,8 @@ export function runCli() {
               {
                 fullRefresh: argv["full-refresh"],
                 actions: argv.actions,
-                includeDependencies: argv["include-deps"],
+                includeDependencies: argv["include-dependencies"],
+                includeDependents: argv["include-dependents"],
                 tags: argv.tags
               },
               dbadapter

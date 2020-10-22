@@ -77,6 +77,26 @@ function computeIncludedActionNames(
     }
   }
 
+  // Compute all transitive dependents.
+  if (runConfig.includeDependents) {
+    const queue = [...includedActionNames];
+    while (queue.length > 0) {
+      const actionName = queue.pop();
+      const matchingDependentNames = allActions
+        .filter(
+          compileAction =>
+            utils.matchPatterns([actionName], compileAction.dependencies || []).length >= 1
+        )
+        .map(compileAction => compileAction.name);
+      matchingDependentNames.forEach(dependentName => {
+        if (!includedActionNames.has(dependentName)) {
+          queue.push(dependentName);
+          includedActionNames.add(dependentName);
+        }
+      });
+    }
+  }
+
   // Add auto assertions
   [...compiledGraph.assertions].forEach(assertion => {
     if (!!assertion.parentAction) {
