@@ -60,6 +60,7 @@ message Environments {
       // This is a subset of RunConfig.
       message Options {
         bool include_dependencies = 4;
+        bool include_dependents = 6;
         bool full_refresh = 5;
       }
       // Optional.
@@ -104,6 +105,7 @@ message RunConfig {
   repeated string actions = 1;
   repeated string tags = 5;
   bool include_dependencies = 3;
+  bool include_dependents = 11;
   bool full_refresh = 2;
   int32 timeout_millis = 7;
   bool use_run_cache = 8;
