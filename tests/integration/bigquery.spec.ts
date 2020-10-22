@@ -35,7 +35,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
       const executedGraph = await dfapi.run(dbadapter, executionGraph).result();
 
       const actionMap = keyBy(executedGraph.actions, v => v.name);
-      expect(Object.keys(actionMap).length).eql(17);
+      expect(Object.keys(actionMap).length).eql(18);
 
       // Check the status of action execution.
       const expectedFailedActions = [
@@ -161,7 +161,9 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
         "dataform-integration-tests.df_integration_test_run_caching.sample_data_2":
           dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
         // Should run because they are auto assertions.
-        "dataform-integration-tests.df_integration_test_assertions_run_caching.df_integration_test_sample_data_2_assertions_uniqueKey":
+        "dataform-integration-tests.df_integration_test_assertions_run_caching.df_integration_test_sample_data_2_assertions_uniqueKey_0":
+          dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
+        "dataform-integration-tests.df_integration_test_assertions_run_caching.df_integration_test_sample_data_2_assertions_uniqueKey_1":
           dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
         "dataform-integration-tests.df_integration_test_assertions_run_caching.df_integration_test_sample_data_2_assertions_rowConditions":
           dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
