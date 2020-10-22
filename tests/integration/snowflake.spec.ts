@@ -43,7 +43,7 @@ suite("@dataform/integration/snowflake", { parallel: true }, ({ before, after })
     let executedGraph = await dfapi.run(dbadapter, executionGraph).result();
 
     const actionMap = keyBy(executedGraph.actions, v => v.name);
-    expect(Object.keys(actionMap).length).eql(16);
+    expect(Object.keys(actionMap).length).eql(17);
 
     // Check the status of action execution.
     const expectedFailedActions = [

@@ -306,7 +306,7 @@ suite("examples", () => {
             t.name ===
             "tada-analytics." +
               schemaWithSuffix("df_integration_test_assertions") +
-              ".df_integration_test_example_table_with_tags_assertions_uniqueKey"
+              ".df_integration_test_example_table_with_tags_assertions_uniqueKey_0"
         )[0];
         expect(exampleTableWithTagsUniqueKeyAssertion.disabled).eql(true);
         expect(cleanSql(exampleTableWithTagsUniqueKeyAssertion.query)).equals(
