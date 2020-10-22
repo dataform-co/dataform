@@ -297,6 +297,7 @@ suite("examples", () => {
             t.name ===
             "tada-analytics." + schemaWithSuffix("df_integration_test") + ".example_table_with_tags"
         );
+        expect(exampleTableWithTags.disabled).eql(true);
         expect(exampleTableWithTags.tags).to.eql(["tag1", "tag2", "tag3"]);
 
         // Check table-with-tags's unique key assertion
@@ -307,6 +308,7 @@ suite("examples", () => {
               schemaWithSuffix("df_integration_test_assertions") +
               ".df_integration_test_example_table_with_tags_assertions_uniqueKey"
         )[0];
+        expect(exampleTableWithTagsUniqueKeyAssertion.disabled).eql(true);
         expect(cleanSql(exampleTableWithTagsUniqueKeyAssertion.query)).equals(
           "select * from (select sample, count(1) as index_row_count from `tada-analytics." +
             schemaWithSuffix("df_integration_test") +
@@ -331,6 +333,7 @@ suite("examples", () => {
               schemaWithSuffix("df_integration_test_assertions") +
               ".df_integration_test_example_table_with_tags_assertions_rowConditions"
         )[0];
+        expect(exampleTableWithTagsRowConditionsAssertion.disabled).eql(true);
         expect(cleanSql(exampleTableWithTagsRowConditionsAssertion.query)).equals(
           "select 'sample is not null' as failing_row_condition, * from `tada-analytics." +
             schemaWithSuffix("df_integration_test") +

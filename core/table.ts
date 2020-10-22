@@ -354,6 +354,9 @@ export class Table {
   private contextablePreOps: Array<Contextable<ITableContext, string | string[]>> = [];
   private contextablePostOps: Array<Contextable<ITableContext, string | string[]>> = [];
 
+  private uniqueKeyAssertion: Assertion;
+  private rowConditionsAssertion: Assertion;
+
   public config(config: ITableConfig) {
     checkExcessProperties(
       (e: Error) => this.session.compileError(e),
@@ -443,6 +446,8 @@ export class Table {
 
   public disabled() {
     this.proto.disabled = true;
+    this.uniqueKeyAssertion?.disabled();
+    this.rowConditionsAssertion?.disabled();
     return this;
   }
 
@@ -590,10 +595,14 @@ export class Table {
     if (!!assertions.uniqueKey) {
       const indexCols =
         typeof assertions.uniqueKey === "string" ? [assertions.uniqueKey] : assertions.uniqueKey;
-      this.session.assert(
+      this.uniqueKeyAssertion = this.session.assert(
         `${this.proto.target.schema}_${this.proto.target.name}_assertions_uniqueKey`,
         ctx => this.session.adapter().indexAssertion(ctx.ref(this.proto.target), indexCols)
-      ).proto.parentAction = this.proto.target;
+      );
+      this.uniqueKeyAssertion.proto.parentAction = this.proto.target;
+      if (this.proto.disabled) {
+        this.uniqueKeyAssertion.disabled();
+      }
     }
     const mergedRowConditions = assertions.rowConditions || [];
     if (!!assertions.nonNull) {
@@ -602,13 +611,17 @@ export class Table {
       nonNullCols.forEach(nonNullCol => mergedRowConditions.push(`${nonNullCol} IS NOT NULL`));
     }
     if (!!mergedRowConditions && mergedRowConditions.length > 0) {
-      this.session.assert(
+      this.rowConditionsAssertion = this.session.assert(
         `${this.proto.target.schema}_${this.proto.target.name}_assertions_rowConditions`,
         ctx =>
           this.session
             .adapter()
             .rowConditionsAssertion(ctx.ref(this.proto.target), mergedRowConditions)
-      ).proto.parentAction = this.proto.target;
+      );
+      this.rowConditionsAssertion.proto.parentAction = this.proto.target;
+      if (this.proto.disabled) {
+        this.rowConditionsAssertion.disabled();
+      }
     }
     return this;
   }
