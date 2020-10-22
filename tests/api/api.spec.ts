@@ -338,9 +338,9 @@ suite("@dataform/api", () => {
         ...prunedGraph.operations.map(action => action.name)
       ];
       expect(actionNames).not.includes("op_a");
-      expect(actionNames).not.includes("op_b");
+      expect(actionNames).includes("op_b");
       expect(actionNames).not.includes("op_c");
-      expect(actionNames).includes("op_d");
+      expect(actionNames).not.includes("op_d");
       expect(actionNames).includes("tab_a");
     });
 
