@@ -872,6 +872,19 @@ suite("@dataform/core", () => {
       const cGraph = session.compile();
       expect(cGraph.graphErrors.compilationErrors).deep.equals([]);
     });
+
+    test("semi-colons at the end of files throw", () => {
+      // If this didn't happen, then the generated SQL could be incorrect
+      // because of being broken up by semi-colons.
+      const session = new Session(path.dirname(__filename), TestConfigs.redshift);
+      session.publish("a", "select 1 as x;\n");
+      session.assert("b", "select 1 as x;");
+      const graph = session.compile();
+      expect(graph.graphErrors.compilationErrors.map(error => error.message)).deep.equals([
+        "Semi-colons are not allowed at the end of SQLX table or assertion statements",
+        "Semi-colons are not allowed at the end of SQLX table or assertion statements"
+      ]);
+    });
   });
 
   suite("compilers", () => {

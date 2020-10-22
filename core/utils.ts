@@ -219,3 +219,12 @@ export function checkExcessProperties<T>(
     );
   }
 }
+
+export function throwIfTrailingSemicolonInQuery(session: Session, query: string) {
+  query = query.trim();
+  if (query.charAt(query.length - 1) === ";") {
+    session.compileError(
+      "Semi-colons are not allowed at the end of SQLX table or assertion statements"
+    );
+  }
+}

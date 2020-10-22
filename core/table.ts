@@ -1,4 +1,3 @@
-import { Assertion } from "df/core/assertion";
 import { ColumnDescriptors } from "df/core/column_descriptors";
 import {
   Contextable,
@@ -17,6 +16,7 @@ import {
   resolvableAsTarget,
   setNameAndTarget,
   strictKeysOf,
+  throwIfTrailingSemicolonInQuery,
   toResolvable
 } from "df/core/utils";
 import { dataform } from "df/protos/ts";
@@ -422,6 +422,7 @@ export class Table {
   }
 
   public query(query: Contextable<ITableContext, string>) {
+    throwIfTrailingSemicolonInQuery(this.session, query.toString());
     this.contextableQuery = query;
     return this;
   }
@@ -432,11 +433,13 @@ export class Table {
   }
 
   public preOps(pres: Contextable<ITableContext, string | string[]>) {
+    throwIfTrailingSemicolonInQuery(this.session, pres.toString());
     this.contextablePreOps.push(pres);
     return this;
   }
 
   public postOps(posts: Contextable<ITableContext, string | string[]>) {
+    throwIfTrailingSemicolonInQuery(this.session, posts.toString());
     this.contextablePostOps.push(posts);
     return this;
   }

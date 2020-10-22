@@ -12,6 +12,7 @@ import {
   resolvableAsTarget,
   setNameAndTarget,
   strictKeysOf,
+  throwIfTrailingSemicolonInQuery,
   toResolvable
 } from "df/core/utils";
 import { dataform } from "df/protos/ts";
@@ -101,6 +102,7 @@ export class Assertion {
   }
 
   public query(query: AContextable<string>) {
+    throwIfTrailingSemicolonInQuery(this.session, query.toString());
     this.contextableQuery = query;
     return this;
   }
