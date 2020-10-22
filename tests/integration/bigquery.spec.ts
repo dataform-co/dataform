@@ -161,9 +161,9 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
         "dataform-integration-tests.df_integration_test_run_caching.sample_data_2":
           dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
         // Should run because they are auto assertions.
-        "dataform-integration-tests.df_integration_test_assertions_run_caching.sample_data_2_assertions_uniqueKey":
+        "dataform-integration-tests.df_integration_test_assertions_run_caching.df_integration_test_sample_data_2_assertions_uniqueKey":
           dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
-        "dataform-integration-tests.df_integration_test_assertions_run_caching.sample_data_2_assertions_rowConditions":
+        "dataform-integration-tests.df_integration_test_assertions_run_caching.df_integration_test_sample_data_2_assertions_rowConditions":
           dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
         // Should run because an input to dataset has changed in the warehouse.
         "dataform-integration-tests.df_integration_test_run_caching.depends_on_sample_data_3":
