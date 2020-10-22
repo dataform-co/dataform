@@ -47,6 +47,7 @@ message ScheduleOptions {
   repeated string actions = 1;	
   repeated string tags = 4;	
   bool include_dependencies = 2;	
+  bool include_dependents = 5;
   bool full_refresh = 3;	
 }
 
