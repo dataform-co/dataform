@@ -305,7 +305,7 @@ suite("examples", () => {
             t.name ===
             "tada-analytics." +
               schemaWithSuffix("df_integration_test_assertions") +
-              ".example_table_with_tags_assertions_uniqueKey"
+              ".df_integration_test_example_table_with_tags_assertions_uniqueKey"
         )[0];
         expect(cleanSql(exampleTableWithTagsUniqueKeyAssertion.query)).equals(
           "select * from (select sample, count(1) as index_row_count from `tada-analytics." +
@@ -329,7 +329,7 @@ suite("examples", () => {
             t.name ===
             "tada-analytics." +
               schemaWithSuffix("df_integration_test_assertions") +
-              ".example_table_with_tags_assertions_rowConditions"
+              ".df_integration_test_example_table_with_tags_assertions_rowConditions"
         )[0];
         expect(cleanSql(exampleTableWithTagsRowConditionsAssertion.query)).equals(
           "select 'sample is not null' as failing_row_condition, * from `tada-analytics." +

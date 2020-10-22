@@ -590,8 +590,9 @@ export class Table {
     if (!!assertions.uniqueKey) {
       const indexCols =
         typeof assertions.uniqueKey === "string" ? [assertions.uniqueKey] : assertions.uniqueKey;
-      this.session.assert(`${this.proto.target.name}_assertions_uniqueKey`, ctx =>
-        this.session.adapter().indexAssertion(ctx.ref(this.proto.target), indexCols)
+      this.session.assert(
+        `${this.proto.target.schema}_${this.proto.target.name}_assertions_uniqueKey`,
+        ctx => this.session.adapter().indexAssertion(ctx.ref(this.proto.target), indexCols)
       ).proto.parentAction = this.proto.target;
     }
     const mergedRowConditions = assertions.rowConditions || [];
@@ -601,10 +602,12 @@ export class Table {
       nonNullCols.forEach(nonNullCol => mergedRowConditions.push(`${nonNullCol} IS NOT NULL`));
     }
     if (!!mergedRowConditions && mergedRowConditions.length > 0) {
-      this.session.assert(`${this.proto.target.name}_assertions_rowConditions`, ctx =>
-        this.session
-          .adapter()
-          .rowConditionsAssertion(ctx.ref(this.proto.target), mergedRowConditions)
+      this.session.assert(
+        `${this.proto.target.schema}_${this.proto.target.name}_assertions_rowConditions`,
+        ctx =>
+          this.session
+            .adapter()
+            .rowConditionsAssertion(ctx.ref(this.proto.target), mergedRowConditions)
       ).proto.parentAction = this.proto.target;
     }
     return this;
