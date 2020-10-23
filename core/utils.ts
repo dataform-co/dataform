@@ -221,8 +221,7 @@ export function checkExcessProperties<T>(
 }
 
 export function validateQueryString(session: Session, query: string) {
-  query = query.trim();
-  if (query.trim().slice(-1) === ";") {
+  if (query?.trim().slice(-1) === ";") {
     session.compileError(
       new Error(
         "Semi-colons are not allowed at the end of SQL statements"

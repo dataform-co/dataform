@@ -198,6 +198,14 @@ export interface ITableAssertions {
   uniqueKey?: string | string[];
 
   /**
+   * Combinations of column(s), each of which should constitute a unique key index for the dataset.
+   *
+   * If set, the resulting assertion(s) will fail if there is more than one row in the dataset with the same values for all of the column(s)
+   * in the unique key(s).
+   */
+  uniqueKeys?: string[][];
+
+  /**
    * Column(s) which may never be `NULL`.
    *
    * If set, the resulting assertion will fail if any row contains `NULL` values for these column(s).
@@ -213,7 +221,7 @@ export interface ITableAssertions {
 }
 
 const ITableAssertionsProperties = () =>
-  strictKeysOf<ITableAssertions>()(["uniqueKey", "nonNull", "rowConditions"]);
+  strictKeysOf<ITableAssertions>()(["uniqueKey", "uniqueKeys", "nonNull", "rowConditions"]);
 
 /**
  * Configuration options for `dataset` actions, including `table`, `view` and `incremental` action types.
@@ -354,6 +362,9 @@ export class Table {
   private contextablePreOps: Array<Contextable<ITableContext, string | string[]>> = [];
   private contextablePostOps: Array<Contextable<ITableContext, string | string[]>> = [];
 
+  private uniqueKeyAssertions: Assertion[] = [];
+  private rowConditionsAssertion: Assertion;
+
   public config(config: ITableConfig) {
     checkExcessProperties(
       (e: Error) => this.session.compileError(e),
@@ -443,6 +454,8 @@ export class Table {
 
   public disabled() {
     this.proto.disabled = true;
+    this.uniqueKeyAssertions.forEach(assertion => assertion.disabled());
+    this.rowConditionsAssertion?.disabled();
     return this;
   }
 
@@ -587,12 +600,30 @@ export class Table {
       ITableAssertionsProperties(),
       "assertions config"
     );
+    if (!!assertions.uniqueKey && !!assertions.uniqueKeys) {
+      this.session.compileError(
+        new Error("Specify at most one of 'assertions.uniqueKey' and 'assertions.uniqueKeys'.")
+      );
+    }
+    let uniqueKeys = assertions.uniqueKeys;
     if (!!assertions.uniqueKey) {
-      const indexCols =
-        typeof assertions.uniqueKey === "string" ? [assertions.uniqueKey] : assertions.uniqueKey;
-      this.session.assert(`${this.proto.target.name}_assertions_uniqueKey`, ctx =>
-        this.session.adapter().indexAssertion(ctx.ref(this.proto.target), indexCols)
-      ).proto.parentAction = this.proto.target;
+      uniqueKeys =
+        typeof assertions.uniqueKey === "string"
+          ? [[assertions.uniqueKey]]
+          : [assertions.uniqueKey];
+    }
+    if (uniqueKeys) {
+      uniqueKeys.forEach((uniqueKey, index) => {
+        const uniqueKeyAssertion = this.session.assert(
+          `${this.proto.target.schema}_${this.proto.target.name}_assertions_uniqueKey_${index}`,
+          ctx => this.session.adapter().indexAssertion(ctx.ref(this.proto.target), uniqueKey)
+        );
+        uniqueKeyAssertion.proto.parentAction = this.proto.target;
+        if (this.proto.disabled) {
+          uniqueKeyAssertion.disabled();
+        }
+        this.uniqueKeyAssertions.push(uniqueKeyAssertion);
+      });
     }
     const mergedRowConditions = assertions.rowConditions || [];
     if (!!assertions.nonNull) {
@@ -601,11 +632,17 @@ export class Table {
       nonNullCols.forEach(nonNullCol => mergedRowConditions.push(`${nonNullCol} IS NOT NULL`));
     }
     if (!!mergedRowConditions && mergedRowConditions.length > 0) {
-      this.session.assert(`${this.proto.target.name}_assertions_rowConditions`, ctx =>
-        this.session
-          .adapter()
-          .rowConditionsAssertion(ctx.ref(this.proto.target), mergedRowConditions)
-      ).proto.parentAction = this.proto.target;
+      this.rowConditionsAssertion = this.session.assert(
+        `${this.proto.target.schema}_${this.proto.target.name}_assertions_rowConditions`,
+        ctx =>
+          this.session
+            .adapter()
+            .rowConditionsAssertion(ctx.ref(this.proto.target), mergedRowConditions)
+      );
+      this.rowConditionsAssertion.proto.parentAction = this.proto.target;
+      if (this.proto.disabled) {
+        this.rowConditionsAssertion.disabled();
+      }
     }
     return this;
   }
