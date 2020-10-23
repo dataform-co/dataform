@@ -992,10 +992,7 @@ select '\${\`bar\`}'
     });
     test("can escape dollar-brace", async () => {
       expect(
-        compilers.compile(
-          `select \\\${outOfQuotes.whatever}, "\\\${inQuotes.whatever}"`,
-          "file.sqlx"
-        )
+        compilers.compile('select \\${outOfQuotes.whatever}, "\\${inQuotes.whatever}"', "file.sqlx")
       ).eql(await fs.readFile("tests/core/escaped-dollar-brace.js.test", "utf8"));
     });
   });
