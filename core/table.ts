@@ -16,8 +16,8 @@ import {
   resolvableAsTarget,
   setNameAndTarget,
   strictKeysOf,
-  throwIfTrailingSemicolonInQuery,
-  toResolvable
+  toResolvable,
+  validateQueryString
 } from "df/core/utils";
 import { dataform } from "df/protos/ts";
 
@@ -422,7 +422,6 @@ export class Table {
   }
 
   public query(query: Contextable<ITableContext, string>) {
-    throwIfTrailingSemicolonInQuery(this.session, query.toString());
     this.contextableQuery = query;
     return this;
   }
@@ -433,13 +432,11 @@ export class Table {
   }
 
   public preOps(pres: Contextable<ITableContext, string | string[]>) {
-    throwIfTrailingSemicolonInQuery(this.session, pres.toString());
     this.contextablePreOps.push(pres);
     return this;
   }
 
   public postOps(posts: Contextable<ITableContext, string | string[]>) {
-    throwIfTrailingSemicolonInQuery(this.session, posts.toString());
     this.contextablePostOps.push(posts);
     return this;
   }
@@ -635,6 +632,10 @@ export class Table {
 
     this.proto.preOps = this.contextifyOps(this.contextablePreOps, context);
     this.proto.postOps = this.contextifyOps(this.contextablePostOps, context);
+
+    validateQueryString(this.session, this.proto.query);
+    this.proto.preOps.forEach(preOp => validateQueryString(this.session, preOp));
+    this.proto.postOps.forEach(postOp => validateQueryString(this.session, postOp));
 
     return this.proto;
   }

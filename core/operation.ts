@@ -12,7 +12,7 @@ import {
 } from "df/core/common";
 import { Session } from "df/core/session";
 import * as utils from "df/core/utils";
-import { checkExcessProperties, strictKeysOf } from "df/core/utils";
+import { checkExcessProperties, strictKeysOf, validateQueryString } from "df/core/utils";
 import { dataform } from "df/protos/ts";
 
 /**
@@ -193,6 +193,7 @@ export class Operation {
 
     const appliedQueries = context.apply(this.contextableQueries);
     this.proto.queries = typeof appliedQueries === "string" ? [appliedQueries] : appliedQueries;
+    this.proto.queries.forEach(query => validateQueryString(this.session, query));
 
     return this.proto;
   }
