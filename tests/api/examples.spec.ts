@@ -359,6 +359,7 @@ suite("examples", () => {
         expect(exampleSampleData.query.trim()).equals(
           "select 1 as sample union all\nselect 2 as sample union all\nselect 3 as sample"
         );
+        expect(exampleSampleData.preOps).eql([]);
         expect(exampleSampleData.dependencies).to.eql([]);
         expect(exampleSampleData.dependencyTargets).eql([]);
         expect(exampleSampleData.actionDescriptor).to.eql(
