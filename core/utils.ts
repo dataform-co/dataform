@@ -222,10 +222,11 @@ export function checkExcessProperties<T>(
 
 export function validateQueryString(session: Session, query: string) {
   query = query.trim();
-  if (query.charAt(query.length - 1) === ";") {
+  if (query.trim().slice(-1) === ";") {
     session.compileError(
       new Error(
-        "Semi-colons are not allowed at the end of SQL statements undergoing contextualization, as this can break appended adapter specific SQL"
+        "Semi-colons are not allowed at the end of SQL statements"
+        // This can break the statement because of appended adapter specific SQL.
       )
     );
   }
