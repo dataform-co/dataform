@@ -667,8 +667,12 @@ export class Table {
       this.proto.where = context.apply(this.contextableWhere);
     }
 
-    this.proto.preOps = this.contextifyOps(this.contextablePreOps, context);
-    this.proto.postOps = this.contextifyOps(this.contextablePostOps, context);
+    this.proto.preOps = this.contextifyOps(this.contextablePreOps, context).filter(
+      op => !!op.trim()
+    );
+    this.proto.postOps = this.contextifyOps(this.contextablePostOps, context).filter(
+      op => !!op.trim()
+    );
 
     return this.proto;
   }
