@@ -263,20 +263,20 @@ function createEscapedStatements(nodes: Array<string | SyntaxTreeNode>) {
   return results;
 }
 
+const escapeJavaScriptTemplateStringCharacters = (str: string) =>
+  str.replace(/\\(?!\${)/g, "\\\\").replace(/\`/g, "\\`");
+
 const SQL_STATEMENT_ESCAPERS = new Map([
   [
     SyntaxTreeNodeType.SQL_COMMENT,
     (str: string) => str.replace(/`/g, "\\`").replace(/\${/g, "\\${")
   ],
-  [
-    SyntaxTreeNodeType.SQL_LITERAL_STRING,
-    (str: string) => str.replace(/\\/g, "\\\\").replace(/\`/g, "\\`")
-  ]
+  [SyntaxTreeNodeType.SQL_LITERAL_STRING, escapeJavaScriptTemplateStringCharacters]
 ]);
 
 function escapeNode(node: string | SyntaxTreeNode) {
   if (typeof node === "string") {
-    return SQL_STATEMENT_ESCAPERS.get(SyntaxTreeNodeType.SQL_LITERAL_STRING)(node);
+    return escapeJavaScriptTemplateStringCharacters(node);
   }
   return node.concatenate(SQL_STATEMENT_ESCAPERS);
 }
