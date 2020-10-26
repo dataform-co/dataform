@@ -881,8 +881,8 @@ suite("@dataform/core", () => {
       session.assert("b", "select 1 as x;");
       const graph = session.compile();
       expect(graph.graphErrors.compilationErrors.map(error => error.message)).deep.equals([
-        "Semi-colons are not allowed at the end of SQLX table or assertion statements",
-        "Semi-colons are not allowed at the end of SQLX table or assertion statements"
+        "Semi-colons are not allowed at the end of SQL statements",
+        "Semi-colons are not allowed at the end of SQL statements"
       ]);
     });
   });
