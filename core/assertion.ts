@@ -12,7 +12,8 @@ import {
   resolvableAsTarget,
   setNameAndTarget,
   strictKeysOf,
-  toResolvable
+  toResolvable,
+  validateQueryString
 } from "df/core/utils";
 import { dataform } from "df/protos/ts";
 
@@ -158,8 +159,8 @@ export class Assertion {
   public compile() {
     const context = new AssertionContext(this);
 
-    const appliedQuery = context.apply(this.contextableQuery);
-    this.proto.query = appliedQuery;
+    this.proto.query = context.apply(this.contextableQuery);
+    validateQueryString(this.session, this.proto.query);
 
     return this.proto;
   }
