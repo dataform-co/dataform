@@ -3,12 +3,7 @@ import * as utils from "df/core/utils";
 import { dataform } from "df/protos/ts";
 
 export function genIndex(base64EncodedConfig: string): string {
-  let config;
-  try {
-    config = decode(dataform.GenerateIndexConfig, base64EncodedConfig);
-  } catch (e) {
-    throw new Error("base64EncodedConfig :::" + base64EncodedConfig);
-  }
+  const config = decode(dataform.GenerateIndexConfig, base64EncodedConfig);
 
   const includeRequires = config.includePaths
     .map(path => {
