@@ -17,7 +17,8 @@ import {
   resolvableAsTarget,
   setNameAndTarget,
   strictKeysOf,
-  toResolvable
+  toResolvable,
+  validateQueryString
 } from "df/core/utils";
 import { dataform } from "df/protos/ts";
 
@@ -673,6 +674,10 @@ export class Table {
     this.proto.postOps = this.contextifyOps(this.contextablePostOps, context).filter(
       op => !!op.trim()
     );
+
+    validateQueryString(this.session, this.proto.query);
+    this.proto.preOps.forEach(preOp => validateQueryString(this.session, preOp));
+    this.proto.postOps.forEach(postOp => validateQueryString(this.session, postOp));
 
     return this.proto;
   }
