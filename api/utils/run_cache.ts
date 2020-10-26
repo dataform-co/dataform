@@ -1,5 +1,6 @@
 import * as objectHash from "object-hash";
 
+import { decode, encode } from "df/common/protos";
 import { dataform } from "df/protos/ts";
 
 export interface IMetadataRow {
@@ -20,10 +21,9 @@ export function toRowKey(target: dataform.ITarget) {
 }
 
 export function decodePersistedTableMetadata(protoString: string) {
-  const encodedProto = Buffer.from(protoString, "base64");
-  return dataform.PersistedTableMetadata.decode(encodedProto);
+  return decode(dataform.PersistedTableMetadata, protoString);
 }
 
 export function encodePersistedTableMetadata(table: dataform.IPersistedTableMetadata) {
-  return Buffer.from(dataform.PersistedTableMetadata.encode(table).finish()).toString("base64");
+  return encode(dataform.PersistedTableMetadata, table);
 }

@@ -4,6 +4,7 @@ import Long from "long";
 import * as dbadapters from "df/api/dbadapters";
 import { retry } from "df/api/utils/retry";
 import { hashExecutionAction } from "df/api/utils/run_cache";
+import { deepClone } from "df/common/protos";
 import { timingSafeEqual } from "df/common/strings";
 import {
   JSONObjectStringifier,
@@ -99,7 +100,7 @@ export class Runner {
     this.eEmitter.setMaxListeners(0);
   }
 
-  public onChange(listener: (graph: dataform.IRunResult) => Promise<void> | void): Runner {
+  public onChange(listener: (graph: dataform.IRunResult) => void): Runner {
     this.changeListeners.push(listener);
     return this;
   }
@@ -142,7 +143,8 @@ export class Runner {
   }
 
   private notifyListeners() {
-    return Promise.all(this.changeListeners.map(listener => listener(this.runResult)));
+    const runResultClone = deepClone(dataform.RunResult, this.runResult);
+    this.changeListeners.forEach(listener => listener(runResultClone));
   }
 
   private async executeGraph() {
@@ -150,7 +152,7 @@ export class Runner {
 
     this.runResult.status = dataform.RunResult.ExecutionStatus.RUNNING;
     this.runResult.timing = timer.current();
-    await this.notifyListeners();
+    this.notifyListeners();
 
     // If we're not resuming an existing run, prepare schemas.
     if (this.runResult.actions.length === 0) {
@@ -283,7 +285,7 @@ export class Runner {
           }))
         })
       );
-      await this.notifyListeners();
+      this.notifyListeners();
       return;
     }
 
@@ -303,7 +305,7 @@ export class Runner {
           });
         });
         if (skippableActions.length > 0) {
-          await this.notifyListeners();
+          this.notifyListeners();
           await this.executeAllActionsReadyForExecution();
         }
       })(),
@@ -350,7 +352,7 @@ export class Runner {
         status: dataform.ActionResult.ExecutionStatus.DISABLED,
         tasks: []
       });
-      await this.notifyListeners();
+      this.notifyListeners();
       return;
     }
 
@@ -361,7 +363,7 @@ export class Runner {
         status: dataform.ActionResult.ExecutionStatus.CACHE_SKIPPED,
         tasks: []
       });
-      await this.notifyListeners();
+      this.notifyListeners();
       return;
     }
 
@@ -378,7 +380,7 @@ export class Runner {
         tasks: []
       };
       this.runResult.actions.push(actionResult);
-      await this.notifyListeners();
+      this.notifyListeners();
     }
 
     await this.dbadapter.withClientLock(async client => {
@@ -444,7 +446,7 @@ export class Runner {
     }
 
     actionResult.timing = timer.end();
-    await this.notifyListeners();
+    this.notifyListeners();
   }
 
   private async executeTask(
@@ -460,7 +462,7 @@ export class Runner {
       metadata: {}
     };
     parentAction.tasks.push(taskResult);
-    await this.notifyListeners();
+    this.notifyListeners();
     try {
       // Retry this function a given number of times, configurable by user
       const { rows, metadata } = await retry(
@@ -489,7 +491,7 @@ export class Runner {
       taskResult.errorMessage = `${this.graph.projectConfig.warehouse} error: ${e.message}`;
     }
     taskResult.timing = timer.end();
-    await this.notifyListeners();
+    this.notifyListeners();
     return taskResult.status;
   }
 

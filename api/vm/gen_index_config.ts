@@ -2,6 +2,7 @@ import * as glob from "glob";
 import { util } from "protobufjs";
 
 import { dataform } from "df/protos/ts";
+import { encode } from "df/common/protos";
 
 export function createGenIndexConfig(compileConfig: dataform.ICompileConfig): string {
   const includePaths: string[] = [];
@@ -23,12 +24,11 @@ export function createGenIndexConfig(compileConfig: dataform.ICompileConfig): st
       definitionPaths.push(path);
     }
   });
-  const encodedConfigBytes = dataform.GenerateIndexConfig.encode({
+  return encode(dataform.GenerateIndexConfig, {
     compileConfig,
     includePaths,
     definitionPaths,
     // For backwards compatibility with old versions of @dataform/core.
     returnOverride: compileConfig.returnOverride
-  }).finish();
-  return util.base64.encode(encodedConfigBytes, 0, encodedConfigBytes.length);
+  });
 }

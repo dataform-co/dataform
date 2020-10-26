@@ -1,12 +1,14 @@
-import { util } from "protobufjs";
-
+import { decode } from "df/common/protos";
 import * as utils from "df/core/utils";
 import { dataform } from "df/protos/ts";
 
 export function genIndex(base64EncodedConfig: string): string {
-  const encodedGraphBytes = new Uint8Array(util.base64.length(base64EncodedConfig));
-  util.base64.decode(base64EncodedConfig, encodedGraphBytes, 0);
-  const config = dataform.GenerateIndexConfig.decode(encodedGraphBytes);
+  let config;
+  try {
+    config = decode(dataform.GenerateIndexConfig, base64EncodedConfig);
+  } catch (e) {
+    throw new Error("base64EncodedConfig :::" + base64EncodedConfig);
+  }
 
   const includeRequires = config.includePaths
     .map(path => {
