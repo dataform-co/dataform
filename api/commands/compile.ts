@@ -1,10 +1,10 @@
 import * as fs from "fs";
 import * as path from "path";
-import { util } from "protobufjs";
 
 import { ChildProcess, fork } from "child_process";
 import { validWarehouses } from "df/api/dbadapters";
 import { coerceAsError, ErrorWithCause } from "df/common/errors/errors";
+import { decode } from "df/common/protos";
 import { dataform } from "df/protos/ts";
 
 const mandatoryProps: Array<keyof dataform.IProjectConfig> = ["warehouse", "defaultSchema"];
@@ -48,11 +48,10 @@ export async function compile(
       e
     );
   }
-
-  const encodedGraphInBase64 = await CompileChildProcess.forkProcess().compile(compileConfig);
-  const encodedGraphBytes = new Uint8Array(util.base64.length(encodedGraphInBase64));
-  util.base64.decode(encodedGraphInBase64, encodedGraphBytes, 0);
-  return dataform.CompiledGraph.decode(encodedGraphBytes);
+  return decode(
+    dataform.CompiledGraph,
+    await CompileChildProcess.forkProcess().compile(compileConfig)
+  );
 }
 
 export class CompileChildProcess {
