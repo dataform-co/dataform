@@ -129,7 +129,7 @@ pre_operations {
     ${when(incremental(),
     `select max(event_timestamp) from ${self()}`,
     `select timestamp("2000-01-01")`)}
-  );
+  )
 }
 
 select
