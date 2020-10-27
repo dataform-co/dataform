@@ -71,6 +71,10 @@ suite("examples", () => {
               "Actions may only contain more than one SQL statement if they are of type 'operations'."
           },
           {
+            fileName: "definitions/has_compile_errors/view_with_semi_colon_at_end.sqlx",
+            message: "Semi-colons are not allowed at the end of SQL statements."
+          },
+          {
             fileName: "definitions/has_compile_errors/view_without_hermetic.sqlx",
             message:
               "Zero-dependency actions which create datasets are required to explicitly declare 'hermetic: (true|false)' when run caching is turned on."
