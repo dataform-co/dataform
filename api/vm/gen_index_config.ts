@@ -1,8 +1,7 @@
 import * as glob from "glob";
-import { util } from "protobufjs";
 
-import { dataform } from "df/protos/ts";
 import { encode } from "df/common/protos";
+import { dataform } from "df/protos/ts";
 
 export function createGenIndexConfig(compileConfig: dataform.ICompileConfig): string {
   const includePaths: string[] = [];
