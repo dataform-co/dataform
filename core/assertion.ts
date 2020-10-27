@@ -160,7 +160,7 @@ export class Assertion {
     const context = new AssertionContext(this);
 
     this.proto.query = context.apply(this.contextableQuery);
-    validateQueryString(this.session, this.proto.query);
+    validateQueryString(this.session, this.proto.query, this.proto.fileName);
 
     return this.proto;
   }

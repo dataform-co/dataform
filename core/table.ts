@@ -675,9 +675,13 @@ export class Table {
       op => !!op.trim()
     );
 
-    validateQueryString(this.session, this.proto.query);
-    this.proto.preOps.forEach(preOp => validateQueryString(this.session, preOp));
-    this.proto.postOps.forEach(postOp => validateQueryString(this.session, postOp));
+    validateQueryString(this.session, this.proto.query, this.proto.fileName);
+    this.proto.preOps.forEach(preOp =>
+      validateQueryString(this.session, preOp, this.proto.fileName)
+    );
+    this.proto.postOps.forEach(postOp =>
+      validateQueryString(this.session, postOp, this.proto.fileName)
+    );
 
     return this.proto;
   }
