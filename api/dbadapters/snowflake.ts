@@ -208,7 +208,6 @@ where LOWER(table_schema) != 'information_schema'`,
           and tables.table_name = columns.table_name
         where tables.table_catalog ilike :1 or tables.table_schema ilike :1 or tables.table_name ilike :1 or tables.comment ilike :1
           or columns.column_name ilike :1 or columns.comment ilike :1
-          and LOWER(tables.table_schema) != 'information_schema' and LOWER(tables.table_schema) != 'pg_catalog' and LOWER(tables.table_schema) != 'pg_internal'
         group by 1, 2, 3
       ) where LOWER(table_schema) != 'information_schema'
        `,
