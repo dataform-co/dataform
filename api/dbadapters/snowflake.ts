@@ -186,9 +186,7 @@ export class SnowflakeDbAdapter implements IDbAdapter {
       `
 select table_name, table_schema, table_catalog
 from information_schema.tables
-where LOWER(table_schema) != 'information_schema'
-  and LOWER(table_schema) != 'pg_catalog'
-  and LOWER(table_schema) != 'pg_internal'`,
+where LOWER(table_schema) != 'information_schema'`,
       { rowLimit: 10000 }
     );
     return rows.map(row => ({
@@ -213,8 +211,6 @@ where LOWER(table_schema) != 'information_schema'
           and LOWER(tables.table_schema) != 'information_schema' and LOWER(tables.table_schema) != 'pg_catalog' and LOWER(tables.table_schema) != 'pg_internal'
         group by 1, 2, 3
       ) where LOWER(table_schema) != 'information_schema'
-      and LOWER(table_schema) != 'pg_catalog'
-      and LOWER(table_schema) != 'pg_internal'
        `,
       {
         binds: [`%${searchText}%`],
