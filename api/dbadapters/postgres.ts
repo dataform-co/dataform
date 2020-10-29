@@ -66,6 +66,7 @@ export class PostgresDbAdapter implements IDbAdapter {
     statement: string,
     options: {
       params?: any[];
+      onCancel?: (handleCancel: () => void) => void;
       rowLimit?: number;
       byteLimit?: number;
       includeQueryInError?: boolean;
