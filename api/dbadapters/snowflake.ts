@@ -186,9 +186,7 @@ export class SnowflakeDbAdapter implements IDbAdapter {
       `
 select table_name, table_schema, table_catalog
 from information_schema.tables
-where LOWER(table_schema) != 'information_schema'
-  and LOWER(table_schema) != 'pg_catalog'
-  and LOWER(table_schema) != 'pg_internal'`,
+where LOWER(table_schema) != 'information_schema'`,
       { rowLimit: 10000 }
     );
     return rows.map(row => ({
@@ -203,13 +201,15 @@ where LOWER(table_schema) != 'information_schema'
     options: { limit: number } = { limit: 1000 }
   ): Promise<dataform.ITableMetadata[]> {
     const results = await this.execute(
-      `select tables.table_catalog as table_catalog, tables.table_schema as table_schema, tables.table_name as table_name
-       from information_schema.tables as tables
-       left join information_schema.columns as columns on tables.table_catalog = columns.table_catalog and tables.table_schema = columns.table_schema
-         and tables.table_name = columns.table_name
-       where tables.table_catalog ilike :1 or tables.table_schema ilike :1 or tables.table_name ilike :1 or tables.comment ilike :1
-         or columns.column_name ilike :1 or columns.comment ilike :1
-       group by 1, 2, 3
+      `select * from (
+        select tables.table_catalog as table_catalog, tables.table_schema as table_schema, tables.table_name as table_name
+        from information_schema.tables as tables
+        left join information_schema.columns as columns on tables.table_catalog = columns.table_catalog and tables.table_schema = columns.table_schema
+          and tables.table_name = columns.table_name
+        where tables.table_catalog ilike :1 or tables.table_schema ilike :1 or tables.table_name ilike :1 or tables.comment ilike :1
+          or columns.column_name ilike :1 or columns.comment ilike :1
+        group by 1, 2, 3
+      ) where LOWER(table_schema) != 'information_schema'
        `,
       {
         binds: [`%${searchText}%`],
