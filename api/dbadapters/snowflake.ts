@@ -61,7 +61,7 @@ interface ISnowflakeConnection {
     binds?: any[];
     streamResult?: boolean;
     complete: (err: any, statement: ISnowflakeStatement, rows: any[]) => void;
-  }) => void;
+  }) => ISnowflakeStatement;
   destroy: (err: any) => void;
 }
 
@@ -91,7 +91,7 @@ export class SnowflakeDbAdapter implements IDbAdapter {
   }
 
   public async execute(
-    statement: string,
+    sqlText: string,
     options: {
       binds?: any[];
       onCancel?: OnCancel;
@@ -104,8 +104,8 @@ export class SnowflakeDbAdapter implements IDbAdapter {
         .addSingleTask({
           generator: () =>
             new Promise<any[]>((resolve, reject) => {
-              this.connection.execute({
-                sqlText: statement,
+              const statement = this.connection.execute({
+                sqlText,
                 binds: options?.binds,
                 streamResult: true,
                 complete(err, stmt) {
@@ -117,13 +117,6 @@ export class SnowflakeDbAdapter implements IDbAdapter {
                     reject(new ErrorWithCause(message, err));
                     return;
                   }
-                  options?.onCancel?.(() =>
-                    stmt.cancel((e: any) => {
-                      if (e) {
-                        reject(e);
-                      }
-                    })
-                  );
                   const results = new LimitedResultSet({
                     rowLimit: options?.rowLimit,
                     byteLimit: options?.byteLimit
@@ -139,6 +132,13 @@ export class SnowflakeDbAdapter implements IDbAdapter {
                     .on("end", () => resolve(results.rows))
                     .on("close", () => resolve(results.rows));
                 }
+              });
+              options?.onCancel?.(() => {
+                statement.cancel((e: any) => {
+                  if (e) {
+                    reject(e);
+                  }
+                });
               });
             })
         })
