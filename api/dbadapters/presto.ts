@@ -89,18 +89,10 @@ export class PrestoDbAdapter implements IDbAdapter {
   }
 
   public async evaluate(queryOrAction: QueryOrAction, projectConfig?: dataform.ProjectConfig) {
-    const useSingleQueryPerAction =
-      projectConfig?.useSingleQueryPerAction === undefined ||
-      !!projectConfig?.useSingleQueryPerAction;
-    const validationQueries = collectEvaluationQueries(
-      queryOrAction,
-      useSingleQueryPerAction,
-      (query: string) => (!!query ? `explain ${query}` : "")
+    const validationQueries = collectEvaluationQueries(queryOrAction, true, (query: string) =>
+      !!query ? `explain ${query}` : ""
     ).map((validationQuery, index) => ({ index, validationQuery }));
-    const validationQueriesWithoutWrappers = collectEvaluationQueries(
-      queryOrAction,
-      useSingleQueryPerAction
-    );
+    const validationQueriesWithoutWrappers = collectEvaluationQueries(queryOrAction, true);
 
     const queryEvaluations = new Array<dataform.IQueryEvaluation>();
     for (const { index, validationQuery } of validationQueries) {
