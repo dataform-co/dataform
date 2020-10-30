@@ -230,18 +230,19 @@ suite("@dataform/integration/sqldatawarehouse", { parallel: true }, ({ before, a
       const adapter = new SQLDataWarehouseAdapter({ warehouse: "sqldatawarehouse" }, "1.4.8");
 
       const refresh = adapter.publishTasks(table, { fullRefresh: true }, { fields: [] }).build();
-
-      expect(refresh[0].statement).to.equal(table.preOps[0]);
-      expect(refresh[1].statement).to.equal(table.preOps[1]);
-      expect(refresh[refresh.length - 2].statement).to.equal(table.postOps[0]);
-      expect(refresh[refresh.length - 1].statement).to.equal(table.postOps[1]);
+      const splitRefresh = refresh[0].statement.split(";\n");
+      expect([...splitRefresh.slice(0, 2), ...splitRefresh.slice(-2)]).to.eql([
+        ...table.preOps,
+        ...table.postOps
+      ]);
 
       const increment = adapter.publishTasks(table, { fullRefresh: false }, { fields: [] }).build();
 
-      expect(increment[0].statement).to.equal(table.preOps[0]);
-      expect(increment[1].statement).to.equal(table.preOps[1]);
-      expect(increment[increment.length - 2].statement).to.equal(table.postOps[0]);
-      expect(increment[increment.length - 1].statement).to.equal(table.postOps[1]);
+      const splitIncrement = increment[0].statement.split(";\n");
+      expect([...splitIncrement.slice(0, 2), ...splitIncrement.slice(-2)]).to.eql([
+        ...table.preOps,
+        ...table.postOps
+      ]);
     });
   });
 
