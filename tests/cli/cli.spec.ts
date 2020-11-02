@@ -142,8 +142,7 @@ select 1 as test
       },
       runConfig: {
         fullRefresh: false,
-        useRunCache: false,
-        useSingleQueryPerAction: false
+        useRunCache: false
       },
       warehouseState: {}
     });
