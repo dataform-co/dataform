@@ -94,11 +94,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
   }
 
   public async evaluate(queryOrAction: QueryOrAction, projectConfig?: dataform.ProjectConfig) {
-    const validationQueries = collectEvaluationQueries(
-      queryOrAction,
-      projectConfig?.useSingleQueryPerAction === undefined ||
-        !!projectConfig?.useSingleQueryPerAction
-    );
+    const validationQueries = collectEvaluationQueries(queryOrAction, true);
 
     return await Promise.all(
       validationQueries.map(async ({ query, incremental }) => {

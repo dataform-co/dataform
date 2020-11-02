@@ -25,9 +25,6 @@ message ProjectConfig {
   
   bool use_run_cache = 10;
 
-  // For internal use only, will be removed at a later date.
-  bool use_single_query_per_action = 12;
-
   // Deprecated. Please use 'default_database' instead.
   string gcloud_project_id = 6;
 }
@@ -112,9 +109,6 @@ message RunConfig {
 
   // For internal use only, will be removed at a later date.
   bool disable_set_metadata = 9;
-
-  // For internal use only, will be removed at a later date.
-  bool use_single_query_per_action = 10;
 
   reserved 4, 6;
 }
