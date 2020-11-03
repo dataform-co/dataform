@@ -144,7 +144,6 @@ export class BigQueryDbAdapter implements IDbAdapter {
     searchText: string,
     options: { limit: number } = { limit: 1000 }
   ): Promise<dataform.ITableMetadata[]> {
-    console.log("this.bigQueryCredentials.location", this.bigQueryCredentials.location);
     const results = await this.execute(
       `select table_catalog, table_schema, table_name
        from region-${this.bigQueryCredentials.location}.INFORMATION_SCHEMA.COLUMN_FIELD_PATHS
