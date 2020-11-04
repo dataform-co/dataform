@@ -178,6 +178,26 @@ suite("builders", { parallel: true }, ({ before, after }) => {
         ]);
       });
 
+      test("surrogate key", async () => {
+        const rows = [
+          {
+            a: 1,
+            b: "b"
+          },
+          {
+            a: 2,
+            b: "c"
+          }
+        ];
+        const query = sql.from(sql.json(rows)).select({
+          key: sql.surrogateKey(["a", "b"])
+        });
+
+        const result: any = await execute(query);
+        expect(result.length).equals(2);
+        expect(result[0].key).not.equals(result[1].key);
+      });
+
       test("json", async () => {
         const rows = [
           {

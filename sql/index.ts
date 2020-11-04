@@ -138,6 +138,21 @@ export class Sql {
     return `cast(${castableToString} as string)`;
   }
 
+  // Surrogate keys.
+
+  public surrogateKey(columnNames: string[]) {
+    const columnsAsStrings = columnNames.map(id => this.asString(id)).join(`,`);
+    if (this.dialect === "standard") {
+      return this.asString(`farm_fingerprint(concat(${columnsAsStrings}))`);
+    }
+    if (this.dialect === "postgres" || this.dialect === "snowflake") {
+      return this.asString(`md5(concat(${columnsAsStrings}))`);
+    }
+    if (this.dialect === "mssql") {
+      return this.asString(`hashbytes("md5", (concat(${columnsAsStrings})))`);
+    }
+  }
+
   // Convenience methods for builders.
   public json<S extends ISelectSchema>(data: S[]) {
     return new JSONBuilder<S>(this, data);
