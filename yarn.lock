@@ -1090,7 +1090,7 @@
     classnames "^2.2"
     tslib "~1.10.0"
 
-"@google-cloud/bigquery@^5.3.0":
+"@google-cloud/bigquery@5.3.0":
   version "5.3.0"
   resolved "https://registry.yarnpkg.com/@google-cloud/bigquery/-/bigquery-5.3.0.tgz#87db58ed6538d0be5dd146901ffd636d6b9fead0"
   integrity sha512-IxHd7dWJygQgExdnwS7D8zMswe3VG5akKSLTkdl5ky1Xn6VHiXg30c8zK99jqRafA7kU023W/+L9F9zIQp1qiA==
