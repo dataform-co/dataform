@@ -600,7 +600,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
 
     const [fullSearch, partialSearch, columnSearch] = await Promise.all([
       dbadapter.search("df_integration_test_eu_search"),
-      dbadapter.search("test_sear"),
+      dbadapter.search("test_eu_sear"),
       dbadapter.search("val")
     ]);
 
