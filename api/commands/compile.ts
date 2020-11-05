@@ -40,7 +40,11 @@ export async function compile(
     const projectConfig = JSON.parse(dataformJson);
     checkDataformJsonValidity({
       ...projectConfig,
-      ...compileConfig.projectConfigOverride
+      ...compileConfig.projectConfigOverride,
+      vars: {
+        ...projectConfig.vars,
+        ...compileConfig.projectConfigOverride?.vars
+      }
     });
   } catch (e) {
     throw new ErrorWithCause(

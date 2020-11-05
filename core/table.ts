@@ -676,12 +676,7 @@ export class Table {
     );
 
     validateQueryString(this.session, this.proto.query, this.proto.fileName);
-    this.proto.preOps.forEach(preOp =>
-      validateQueryString(this.session, preOp, this.proto.fileName)
-    );
-    this.proto.postOps.forEach(postOp =>
-      validateQueryString(this.session, postOp, this.proto.fileName)
-    );
+    validateQueryString(this.session, this.proto.incrementalQuery, this.proto.fileName);
 
     return this.proto;
   }
