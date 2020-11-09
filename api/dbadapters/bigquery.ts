@@ -3,24 +3,10 @@ import { PromisePoolExecutor } from "promise-pool-executor";
 
 import { BigQuery, TableField, TableMetadata } from "@google-cloud/bigquery";
 import { Credentials } from "df/api/commands/credentials";
-import {
-  CACHED_STATE_TABLE_TARGET,
-  IDbAdapter,
-  IDbClient,
-  IExecutionResult,
-  OnCancel
-} from "df/api/dbadapters/index";
+import { IDbAdapter, IDbClient, IExecutionResult, OnCancel } from "df/api/dbadapters/index";
 import { parseBigqueryEvalError } from "df/api/utils/error_parsing";
 import { LimitedResultSet } from "df/api/utils/results";
-import {
-  decodePersistedTableMetadata,
-  encodePersistedTableMetadata,
-  hashExecutionAction,
-  IMetadataRow,
-  toRowKey
-} from "df/api/utils/run_cache";
 import { coerceAsError } from "df/common/errors/errors";
-import { StringifiedMap } from "df/common/strings/stringifier";
 import { collectEvaluationQueries, QueryOrAction } from "df/core/adapters";
 import { dataform } from "df/protos/ts";
 
@@ -32,8 +18,6 @@ const BIGQUERY_DATE_RELATED_FIELDS = [
   "BigQueryTimestamp",
   "BigQueryDatetime"
 ];
-
-const MAX_QUERY_LENGTH = 1024 * 1024;
 
 export class BigQueryDbAdapter implements IDbAdapter {
   public static async create(credentials: Credentials, options?: { concurrencyLimit?: number }) {
@@ -252,100 +236,6 @@ export class BigQueryDbAdapter implements IDbAdapter {
 
   public async close() {
     // Unimplemented.
-  }
-
-  public async persistedStateMetadata(
-    database: string
-  ): Promise<dataform.IPersistedTableMetadata[]> {
-    const { rows } = await this.execute(
-      `SELECT * FROM \`${database}.${CACHED_STATE_TABLE_TARGET.schema}.${CACHED_STATE_TABLE_TARGET.name}\``,
-      {
-        rowLimit: 5000 // TODO: Add pagination for 5000+ rows
-      }
-    );
-    const persistedMetadata = rows.map((row: IMetadataRow) =>
-      decodePersistedTableMetadata(row.metadata_proto)
-    );
-    return persistedMetadata;
-  }
-
-  public async persistStateMetadata(
-    database: string,
-    transitiveInputMetadataByTarget: StringifiedMap<
-      dataform.ITarget,
-      dataform.PersistedTableMetadata.ITransitiveInputMetadata
-    >,
-    allActions: dataform.IExecutionAction[],
-    actionsToPersist: dataform.IExecutionAction[],
-    options: {
-      onCancel: OnCancel;
-    }
-  ): Promise<void> {
-    if (allActions.length === 0) {
-      return;
-    }
-    const cachedStateTableName = `${database}.${CACHED_STATE_TABLE_TARGET.schema}.${CACHED_STATE_TABLE_TARGET.name}`;
-    try {
-      // Create the cache table, if needed.
-      await this.execute(
-        `
-CREATE TABLE IF NOT EXISTS \`${cachedStateTableName}\` (
-  target STRING,
-  metadata_proto STRING
-)`,
-        options
-      );
-      // Before saving any new data, delete all entries for 'allActions'.
-      await this.execute(
-        `
-DELETE \`${cachedStateTableName}\` WHERE target IN (${allActions
-          .map(({ target }) => `'${toRowKey(target)}'`)
-          .join(",")})`,
-        options
-      );
-
-      // Save entries for 'actionsToPersist'.
-      const valuesTuples = actionsToPersist
-        // If we were unable to load metadata for the action's output dataset, or for any of the action's
-        // input datasets, do not store a cache entry for the action.
-        .filter(
-          action =>
-            transitiveInputMetadataByTarget.has(action.target) &&
-            action.transitiveInputs.every(transitiveInput =>
-              transitiveInputMetadataByTarget.has(transitiveInput)
-            )
-        )
-        .map(
-          action =>
-            `('${toRowKey(action.target)}', '${encodePersistedTableMetadata({
-              target: action.target,
-              lastUpdatedMillis: transitiveInputMetadataByTarget.get(action.target)
-                .lastUpdatedMillis,
-              definitionHash: hashExecutionAction(action),
-              transitiveInputTables: action.transitiveInputs.map(transitiveInput =>
-                transitiveInputMetadataByTarget.get(transitiveInput)
-              )
-            })}')`
-        );
-      // We have to split up the INSERT queries to get around BigQuery's query length limit.
-      while (valuesTuples.length > 0) {
-        let insertStatement = `INSERT INTO \`${cachedStateTableName}\` (target, metadata_proto) VALUES ${valuesTuples.pop()}`;
-        let nextInsertStatement = `${insertStatement}, ${valuesTuples[valuesTuples.length - 1]}`;
-        while (valuesTuples.length > 0 && nextInsertStatement.length < MAX_QUERY_LENGTH) {
-          insertStatement = nextInsertStatement;
-          valuesTuples.pop();
-          nextInsertStatement = `${insertStatement}, ${valuesTuples[valuesTuples.length - 1]}`;
-        }
-        await this.execute(insertStatement, options);
-      }
-    } catch (e) {
-      if (String(e).includes("Exceeded rate limits")) {
-        // Silently swallow rate-exceeded Errors; there's nothing we can do here, and they aren't harmful
-        // (at worst, future runs may not cache as well as they could have).
-        return;
-      }
-      throw e;
-    }
   }
 
   public async setMetadata(action: dataform.IExecutionAction): Promise<void> {

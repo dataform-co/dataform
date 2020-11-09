@@ -1,4 +1,5 @@
 import * as https from "https";
+import Long from "long";
 import * as PromisePool from "promise-pool-executor";
 import { Readable } from "stream";
 
@@ -232,7 +233,7 @@ where LOWER(table_schema) != 'information_schema'`,
     const [tableResults, columnResults] = await Promise.all([
       this.execute(
         `
-select table_type, comment
+select table_type, last_altered, comment
 from ${target.database ? `"${target.database}".` : ""}information_schema.tables
 where table_schema = :1
   and table_name = :2`,
@@ -268,6 +269,7 @@ where table_schema = :1
           description: row.COMMENT
         })
       ),
+      lastUpdatedMillis: Long.fromNumber(tableResults.rows[0].LAST_ALTERED),
       description: tableResults.rows[0].COMMENT
     });
   }
@@ -302,14 +304,6 @@ where table_schema = :1
         }
       });
     });
-  }
-
-  public async persistedStateMetadata(): Promise<dataform.IPersistedTableMetadata[]> {
-    return [];
-  }
-
-  public async persistStateMetadata() {
-    // Unimplemented.
   }
 
   public async setMetadata(action: dataform.IExecutionAction): Promise<void> {

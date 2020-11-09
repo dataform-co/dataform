@@ -967,6 +967,7 @@ suite("@dataform/api", () => {
         {
           name: "action1",
           dependencies: [],
+          transitiveInputs: [],
           tasks: [
             {
               type: "executionTaskType",
@@ -987,6 +988,7 @@ suite("@dataform/api", () => {
         {
           name: "action2",
           dependencies: ["action1"],
+          transitiveInputs: [{ schema: "schema1", name: "target1" }],
           tasks: [
             {
               type: "executionTaskType2",
@@ -1010,6 +1012,7 @@ suite("@dataform/api", () => {
         {
           name: RUN_TEST_GRAPH.actions[0].name,
           target: RUN_TEST_GRAPH.actions[0].target,
+          inputs: [],
           tasks: [
             {
               status: dataform.TaskResult.ExecutionStatus.SUCCESSFUL,
@@ -1031,6 +1034,7 @@ suite("@dataform/api", () => {
         {
           name: RUN_TEST_GRAPH.actions[1].name,
           target: RUN_TEST_GRAPH.actions[1].target,
+          inputs: [{ target: RUN_TEST_GRAPH.actions[0].target, metadata: null }],
           tasks: [
             {
               status: dataform.TaskResult.ExecutionStatus.FAILED,
@@ -1131,6 +1135,7 @@ suite("@dataform/api", () => {
             {
               name: EXPECTED_RUN_RESULT.actions[0].name,
               target: EXPECTED_RUN_RESULT.actions[0].target,
+              inputs: [],
               status: dataform.ActionResult.ExecutionStatus.RUNNING,
               tasks: [EXPECTED_RUN_RESULT.actions[0].tasks[0]]
             }
@@ -1235,6 +1240,7 @@ suite("@dataform/api", () => {
               {
                 name: NEW_TEST_GRAPH.actions[1].name,
                 target: NEW_TEST_GRAPH.actions[1].target,
+                inputs: [{ target: RUN_TEST_GRAPH.actions[0].target, metadata: null }],
                 tasks: [
                   {
                     status: dataform.TaskResult.ExecutionStatus.SUCCESSFUL,
@@ -1311,6 +1317,7 @@ suite("@dataform/api", () => {
           {
             name: "action1",
             dependencies: [],
+            transitiveInputs: [],
             tasks: [
               {
                 type: "statement",

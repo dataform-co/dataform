@@ -249,14 +249,6 @@ export class PostgresDbAdapter implements IDbAdapter {
     }
   }
 
-  public async persistedStateMetadata(): Promise<dataform.IPersistedTableMetadata[]> {
-    return [];
-  }
-
-  public async persistStateMetadata() {
-    // Unimplemented.
-  }
-
   public async setMetadata(action: dataform.IExecutionAction): Promise<void> {
     const { target, actionDescriptor, tableType } = action;
 
