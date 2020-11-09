@@ -5,16 +5,10 @@ import { PrestoDbAdapter } from "df/api/dbadapters/presto";
 import { RedshiftDbAdapter } from "df/api/dbadapters/redshift";
 import { SnowflakeDbAdapter } from "df/api/dbadapters/snowflake";
 import { SQLDataWarehouseDBAdapter } from "df/api/dbadapters/sqldatawarehouse";
-import { StringifiedMap } from "df/common/strings/stringifier";
 import { QueryOrAction } from "df/core/adapters";
 import { dataform } from "df/protos/ts";
 
 export type OnCancel = (handleCancel: () => void) => void;
-
-export const CACHED_STATE_TABLE_TARGET: dataform.ITarget = {
-  schema: "dataform_meta",
-  name: "cache_state"
-};
 
 export interface IExecutionResult {
   rows: any[];
@@ -54,20 +48,6 @@ export interface IDbAdapter extends IDbClient {
   preview(target: dataform.ITarget, limitRows?: number): Promise<any[]>;
 
   setMetadata(action: dataform.IExecutionAction): Promise<void>;
-
-  persistStateMetadata(
-    database: string,
-    transitiveInputMetadataByTarget: StringifiedMap<
-      dataform.ITarget,
-      dataform.PersistedTableMetadata.ITransitiveInputMetadata
-    >,
-    allActions: dataform.IExecutionAction[],
-    actionsToPersist: dataform.IExecutionAction[],
-    options: {
-      onCancel: OnCancel;
-    }
-  ): Promise<void>;
-  persistedStateMetadata(database: string): Promise<dataform.IPersistedTableMetadata[]>;
 
   close(): Promise<void>;
 }

@@ -433,7 +433,8 @@ message ExecutionAction {
 
 message WarehouseState {
   repeated TableMetadata tables = 1;
-  repeated PersistedTableMetadata cached_states = 2;
+
+  reserved 2;
 }
 
 message ExecutionGraph {
@@ -468,6 +469,17 @@ message ActionResult {
   string name = 1;
   Target target = 5;
 
+  message Input {
+    Target target = 1;
+
+    message Metadata {
+      int64 last_modified_timestamp_millis = 1;
+    }
+    // If left unset, metadata for this Input could not be found.
+    Metadata metadata = 2;
+  }
+  repeated Input inputs = 6;
+
   enum ExecutionStatus {
     UNKNOWN = 0;
     RUNNING = 1;
@@ -482,6 +494,8 @@ message ActionResult {
 
   repeated TaskResult tasks = 3;
   Timing timing = 4;
+  // Only set if use_run_cache was set to true.
+  int64 post_execution_timestamp_millis = 7;
 }
 
 
