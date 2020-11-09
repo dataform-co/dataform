@@ -190,28 +190,16 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
           dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
         // Should run because a transitive input (included in the run) did not cache.
         "dataform-integration-tests.df_integration_test_eu_run_caching.depends_on_example_view":
-          dataform.ActionResult.ExecutionStatus.SUCCESSFUL
+          dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
+        "dataform-integration-tests.df_integration_test_eu_run_caching.example_table":
+          dataform.ActionResult.ExecutionStatus.CACHE_SKIPPED
       };
 
       for (const actionName of Object.keys(actionMap)) {
-        if (
-          actionName ===
-          "dataform-integration-tests.df_integration_test_eu_run_caching.example_table"
-        ) {
-          expect(
-            dataform.ActionResult.ExecutionStatus[actionMap[actionName].status],
-            `ActionResult ExecutionStatus for action "${actionName}"`
-          ).eql(
-            dataform.ActionResult.ExecutionStatus[
-              dataform.ActionResult.ExecutionStatus.CACHE_SKIPPED
-            ]
-          );
-        } else {
-          expect(
-            dataform.ActionResult.ExecutionStatus[actionMap[actionName].status],
-            `ActionResult ExecutionStatus for action "${actionName}"`
-          ).equals(dataform.ActionResult.ExecutionStatus[expectedActionStatus[actionName]]);
-        }
+        expect(
+          dataform.ActionResult.ExecutionStatus[actionMap[actionName].status],
+          `ActionResult ExecutionStatus for action "${actionName}"`
+        ).equals(dataform.ActionResult.ExecutionStatus[expectedActionStatus[actionName]]);
       }
     });
 

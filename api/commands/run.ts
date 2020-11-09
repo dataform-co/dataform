@@ -480,9 +480,13 @@ export class Runner {
       return false;
     }
     if (
-      previouslyExecutedAction.actionResult.postExecutionTimestampMillis.notEquals(
-        this.warehouseStateByTarget.get(executionAction.target).lastUpdatedMillis
-      )
+      this.warehouseStateByTarget.get(executionAction.target).lastUpdatedMillis.equals(0) ||
+      previouslyExecutedAction.actionResult.postExecutionTimestampMillis.equals(0) ||
+      this.warehouseStateByTarget
+        .get(executionAction.target)
+        .lastUpdatedMillis.notEquals(
+          previouslyExecutedAction.actionResult.postExecutionTimestampMillis
+        )
     ) {
       return false;
     }
@@ -509,9 +513,11 @@ export class Runner {
         return false;
       }
       if (
-        previousInputTimestamps
+        this.warehouseStateByTarget.get(transitiveInput).lastUpdatedMillis.equals(0) ||
+        previousInputTimestamps.get(transitiveInput).equals(0) ||
+        this.warehouseStateByTarget
           .get(transitiveInput)
-          .notEquals(this.warehouseStateByTarget.get(transitiveInput).lastUpdatedMillis)
+          .lastUpdatedMillis.notEquals(previousInputTimestamps.get(transitiveInput))
       ) {
         return false;
       }
