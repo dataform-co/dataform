@@ -79,10 +79,10 @@ export class RedshiftAdapter extends Adapter implements IAdapter {
 
   public dropIfExists(target: dataform.ITarget, type: dataform.TableMetadata.Type) {
     const query = `drop ${this.tableTypeAsSql(type)} if exists ${this.resolveTarget(target)}`;
-    if (!this.isBindSupported()) {
-      return query;
+    if (this.project.warehouse === "postgres" || this.isBindSupported()) {
+      return `${query} cascade`;
     }
-    return `${query} cascade`;
+    return query;
   }
 
   private createOrReplaceView(target: dataform.ITarget, query: string, bind: boolean) {
