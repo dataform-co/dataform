@@ -1,0 +1,35 @@
+Useful functions for constructing SQL statements in Dataform packages.
+
+## Supported warehouses
+
+- BigQuery
+- Redshift
+- Snowflake
+
+*If you would like us to add support for another warehouse, please get in touch via [email](mailto:team@dataform.co) or [Slack](https://dataform.co/slack)*
+
+## Installation
+
+(TODO)
+
+## Functions
+
+### Common SQL functions
+
+#### surrogateKey
+Creates a unique hash from a list of fields. Useful for generating a surrogate key for a table.
+
+`${sql.surrogateKey["field_one", "field_two"]}`
+
+#### asTimestamp
+Casts the field to timestamp type
+
+`${sql.asTimestamp("field")}`
+
+#### asString
+Casts the field to timestamp type
+
+`${sql.asString("field")}`
+
+### Timestamp functions
+
