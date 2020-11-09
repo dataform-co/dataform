@@ -229,14 +229,6 @@ export class SQLDataWarehouseDBAdapter implements IDbAdapter {
     await (await this.pool).close();
   }
 
-  public async persistedStateMetadata(): Promise<dataform.IPersistedTableMetadata[]> {
-    return [];
-  }
-
-  public async persistStateMetadata() {
-    // Unimplemented.
-  }
-
   public async setMetadata(): Promise<void> {
     // Unimplemented.
   }
