@@ -366,6 +366,8 @@ export class Runner {
 
     if (
       action.actionDescriptor &&
+      // Only set metadata if we expect the action to complete in SUCCESSFUL state
+      // (i.e. it must still be RUNNING, and not FAILED).
       actionResult.status === dataform.ActionResult.ExecutionStatus.RUNNING &&
       !(this.graph.runConfig && this.graph.runConfig.disableSetMetadata) &&
       action.type === "table" &&
