@@ -45,6 +45,11 @@ Casts the field to timestamp type
 
 `${sql.asString("field")}`
 
+#### stringAgg
+Groups the values in a field into a concatenated string, with an optional delimited value that default to ","
+
+`${sql.stringAgg("field", "delimited")}`
+
 ### Timestamp functions
 
 Calculate the time difference between two timestamps.

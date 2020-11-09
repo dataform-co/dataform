@@ -241,6 +241,30 @@ suite("builders", { parallel: true }, ({ before, after }) => {
         expect(result[0].first_value).equals(1);
       });
 
+      if (false) {
+        test("string agg", async () => {
+          const rows = [
+            {
+              a: "foo"
+            },
+            {
+              a: "bar"
+            }
+          ];
+          const query = sql.from(sql.json(rows)).select({
+            agg: sql.stringAgg("a"),
+            agg_hyphen: sql.stringAgg("a", "-")
+          });
+
+          const result: any = await execute(query);
+          expect(result.length).equals(1);
+          expect(result[0]).deep.equals({
+            agg: "foo,bar",
+            agg_hyphen: "foo-bar"
+          });
+        });
+      }
+
       test("timestamp diff", async () => {
         const rows = [
           {
