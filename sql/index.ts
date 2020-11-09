@@ -145,16 +145,10 @@ export class Sql {
     if (this.dialect === "standard") {
       return this.asString(`farm_fingerprint(concat(${columnsAsStrings}))`);
     }
-    if (
-      this.dialect === "postgres" ||
-      this.dialect === "redshift" ||
-      this.dialect === "snowflake"
-    ) {
-      return this.asString(`md5(concat(${columnsAsStrings}))`);
-    }
     if (this.dialect === "mssql") {
       return this.asString(`hashbytes("md5", (concat(${columnsAsStrings})))`);
     }
+    return this.asString(`md5(concat(${columnsAsStrings}))`);
   }
 
   // window function
@@ -184,24 +178,25 @@ export class Sql {
       })`;
     }
 
+    // For some window functions in Redshift, a frame clause is always required
+    const requiresFrame = [
+      "avg",
+      "count",
+      "first_value",
+      "last_value",
+      "max",
+      "min",
+      "nth_value",
+      "stddev_samp",
+      "stddev_pop",
+      "stddev",
+      "sum",
+      "variance",
+      "var_samp",
+      "var_pop"
+    ].includes(name.toLowerCase());
+
     if (this.dialect === "redshift") {
-      // For some window functions in Redshift, a frame clause is required
-      const requiresFrame = [
-        "avg",
-        "count",
-        "first_value",
-        "last_value",
-        "max",
-        "min",
-        "nth_value",
-        "stddev_samp",
-        "stddev_pop",
-        "stddev",
-        "sum",
-        "variance",
-        "var_samp",
-        "var_pop"
-      ].includes(name.toLowerCase());
       return `${name}(${value} ${ignoreNulls ? `ignore nulls` : ``}) over (${
         windowSpecification.partitionFields ? `partition by ${partitionFieldsAsString}` : ``
       } ${windowSpecification.orderFields ? `order by ${orderFieldsAsString}` : ``} ${
@@ -216,23 +211,6 @@ export class Sql {
     }
 
     if (this.dialect === "postgres") {
-      // For some window functions in postgres, a frame clause is required
-      const requiresFrame = [
-        "avg",
-        "count",
-        "first_value",
-        "last_value",
-        "max",
-        "min",
-        "nth_value",
-        "stddev_samp",
-        "stddev_pop",
-        "stddev",
-        "sum",
-        "variance",
-        "var_samp",
-        "var_pop"
-      ].includes(name.toLowerCase());
       return `${name}(${value}) over (${
         windowSpecification.partitionFields ? `partition by ${partitionFieldsAsString}` : ``
       } ${windowSpecification.orderFields || ignoreNulls ? `order by` : ``} ${

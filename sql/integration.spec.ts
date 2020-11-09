@@ -281,11 +281,14 @@ suite("builders", { parallel: true }, ({ before, after }) => {
         });
 
         const result: any = await execute(query);
-        expect(result[0].day).equals(1);
-        expect(result[0].hour).equals(1);
-        expect(result[0].minute).equals(1);
-        expect(result[0].second).equals(1);
-        expect(result[0].millisecond).equals(1);
+
+        expect(result[0]).deep.equals({
+          day: 1,
+          hour: 1,
+          minute: 1,
+          second: 1,
+          millisecond: 1
+        });
       });
 
       test("json", async () => {
