@@ -10,7 +10,8 @@ const getDefaultDialect = () => {
   }
   return ({
     bigquery: "standard",
-    redshift: "postgres",
+    redshift: "redshift",
+    postgres: "postgres",
     snowflake: "snowflake",
     sqldatawarehouse: "mssql"
   } as { [key: string]: ISqlDialect })[dataformWarehouse];
