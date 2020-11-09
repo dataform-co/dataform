@@ -49,4 +49,4 @@ Casts the field to timestamp type
 
 Calculate the time difference between two timestamps.
 
-`${sql.timestamps.diff("start_timestamp", "end_timestamp", "date_part")}`
+`${sql.timestamps.diff("date_part", "start_timestamp", "end_timestamp")}`
