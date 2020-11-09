@@ -13,7 +13,7 @@ suite("builders", { parallel: true }, ({ before, after }) => {
 
   before("create bigquery", async () => {
     bigquery = await dbadapters.create(
-      dfapi.credentials.read("bigquery", "test_credentials/bigquery.json"),
+      { ...dfapi.credentials.read("bigquery", "test_credentials/bigquery.json"), location: "UK" },
       "bigquery"
     );
   });
