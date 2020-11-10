@@ -242,7 +242,7 @@ suite("builders", { parallel: true }, ({ before, after }) => {
       });
       // skipping this test for redshift as the function is only supported on user-defined-tables
       // i.e. not when just querying a select statement with no table
-      if (name != "redshift") {
+      if (name !== "redshift") {
         test("string agg", async () => {
           const rows = [
             {
