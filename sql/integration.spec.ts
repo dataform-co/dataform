@@ -240,8 +240,9 @@ suite("builders", { parallel: true }, ({ before, after }) => {
         expect(result[0].max).equals(1);
         expect(result[0].first_value).equals(1);
       });
-
-      if (false) {
+      // skipping this test for redshift as the function is only supported on user-defined-tables
+      // i.e. not when just querying a select statement with no table
+      if (name != "redshift") {
         test("string agg", async () => {
           const rows = [
             {
