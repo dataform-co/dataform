@@ -227,6 +227,15 @@ export class Sql {
     }
   }
 
+  // String aggregation
+
+  public stringAgg(field: string, delimiter = ",") {
+    if (this.dialect === "snowflake" || this.dialect === "redshift") {
+      return `listagg(${field}, '${delimiter}')`;
+    }
+    return `string_agg(${field}, '${delimiter}')`;
+  }
+
   // Convenience methods for builders.
   public json<S extends ISelectSchema>(data: S[]) {
     return new JSONBuilder<S>(this, data);
