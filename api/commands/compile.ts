@@ -10,6 +10,7 @@ import { dataform } from "df/protos/ts";
 const mandatoryProps: Array<keyof dataform.IProjectConfig> = ["warehouse", "defaultSchema"];
 const simpleCheckProps: Array<keyof dataform.IProjectConfig> = [
   "assertionSchema",
+  "databaseSuffix",
   "schemaSuffix",
   "tablePrefix",
   "defaultSchema"
