@@ -4,11 +4,11 @@ subtitle: Learn how to make improvements to an existing package
 priority: 2
 ---
 
-The instructions below walk you through the steps required to suggest improvements to a Dataform package. You may also find it useful to read GitHub's [guide on forking projects](https://guides.github.com/activities/forking/).
+The instructions below explain how to make improvements to existing Dataform packages. You may also find it useful to read GitHub's [guide on forking projects](https://guides.github.com/activities/forking/).
 
 ## Fork the repo
 
-The first step in contributing to an existing package is to fork the repository of that package. In GitHub, the fork option is in the top-right corner when you have the repo open.
+The first step is to fork the repository of the package. In GitHub, the fork option is in the top-right corner when you have the repository page open.
 
 ## Create a clone of the forked repo
 
@@ -16,7 +16,7 @@ To make changes to the forked repo, you'll need to create a clone and make the c
 
 ## Create a branch and make changes
 
-Once you've cloned the repo (either on your desktop or in Dataform Web), you can create a branch. Make changes in the branch, and once you're ready, push the branch back up to GitHub.
+Once you've cloned the repo (either on your desktop or in Dataform Web), you can create a branch. Make changes in the branch, and once you're ready, push the branch back up to the forked repo in GitHub.
 
 ## Create a pull request
 
