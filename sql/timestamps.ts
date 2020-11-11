@@ -82,4 +82,17 @@ export class Timestamps {
       }
     }
   }
+
+  public add(timestamp: string, units: number, datePart: DurationUnit) {
+    if (this.dialect === "standard") {
+      return `timestamp_add(${timestamp}, interval ${units} ${datePart})`;
+    }
+    if (this.dialect === "postgres") {
+      return `${timestamp} + interval '1 ${datePart}' * ${units}`;
+    }
+    if (this.dialect === "snowflake") {
+      return `timestampadd(${datePart}, ${units}, ${timestamp})`;
+    }
+    return `dateadd(${datePart}, ${units}, ${timestamp})`;
+  }
 }
