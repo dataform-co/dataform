@@ -94,6 +94,7 @@ export class Session {
     | "defaultDatabase"
     | "defaultSchema"
     | "assertionSchema"
+    | "databaseSuffix"
     | "schemaSuffix"
     | "tablePrefix"
     | "vars"
@@ -103,6 +104,7 @@ export class Session {
       defaultDatabase: this.config.defaultDatabase,
       defaultSchema: this.config.defaultSchema,
       assertionSchema: this.config.assertionSchema,
+      databaseSuffix: this.config.databaseSuffix,
       schemaSuffix: this.config.schemaSuffix,
       tablePrefix: this.config.tablePrefix,
       vars: Object.freeze({ ...this.config.vars })
@@ -238,8 +240,13 @@ export class Session {
       }
       return this.adapter().resolveTarget({
         ...resolved.proto.target,
+        database:
+          resolved.proto.target.database &&
+          this.adapter().normalizeIdentifier(
+            `${resolved.proto.target.database}${this.getDatabaseSuffixWithUnderscore()}`
+          ),
         schema: this.adapter().normalizeIdentifier(
-          `${resolved.proto.target.schema}${this.getSuffixWithUnderscore()}`
+          `${resolved.proto.target.schema}${this.getSchemaSuffixWithUnderscore()}`
         ),
         name: this.adapter().normalizeIdentifier(
           `${this.getTablePrefixWithUnderscore()}${resolved.proto.target.name}`
@@ -258,8 +265,12 @@ export class Session {
           this.config,
           this.adapter().normalizeIdentifier(`${this.getTablePrefixWithUnderscore()}${ref}`),
           this.adapter().normalizeIdentifier(
-            `${this.config.defaultSchema}${this.getSuffixWithUnderscore()}`
-          )
+            `${this.config.defaultSchema}${this.getSchemaSuffixWithUnderscore()}`
+          ),
+          this.config.defaultDatabase &&
+            this.adapter().normalizeIdentifier(
+              `${this.config.defaultDatabase}${this.getDatabaseSuffixWithUnderscore()}`
+            )
         )
       );
     }
@@ -268,7 +279,11 @@ export class Session {
         this.adapter(),
         this.config,
         this.adapter().normalizeIdentifier(`${this.getTablePrefixWithUnderscore()}${ref.name}`),
-        this.adapter().normalizeIdentifier(`${ref.schema}${this.getSuffixWithUnderscore()}`)
+        this.adapter().normalizeIdentifier(`${ref.schema}${this.getSchemaSuffixWithUnderscore()}`),
+        ref.database &&
+          this.adapter().normalizeIdentifier(
+            `${ref.database}${this.getDatabaseSuffixWithUnderscore()}`
+          )
       )
     );
   }
@@ -437,8 +452,16 @@ export class Session {
     });
   }
 
-  private getSuffixWithUnderscore() {
+  private getDatabaseSuffixWithUnderscore() {
+    return !!this.config.databaseSuffix ? `_${this.config.databaseSuffix}` : "";
+  }
+
+  private getSchemaSuffixWithUnderscore() {
     return !!this.config.schemaSuffix ? `_${this.config.schemaSuffix}` : "";
+  }
+
+  private getTablePrefixWithUnderscore() {
+    return !!this.config.tablePrefix ? `${this.config.tablePrefix}_` : "";
   }
 
   private compileGraphChunk<T>(actions: Array<{ proto: IActionProto; compile(): T }>): T[] {
@@ -497,14 +520,10 @@ export class Session {
     });
   }
 
-  private getTablePrefixWithUnderscore() {
-    return !!this.config.tablePrefix ? `${this.config.tablePrefix}_` : "";
-  }
-
   private alterActionName(actions: IActionProto[], declarationTargets: dataform.ITarget[]) {
-    const { tablePrefix, schemaSuffix } = this.config;
+    const { tablePrefix, schemaSuffix, databaseSuffix } = this.config;
 
-    if (!tablePrefix && !schemaSuffix) {
+    if (!tablePrefix && !schemaSuffix && !databaseSuffix) {
       return;
     }
 
@@ -518,8 +537,13 @@ export class Session {
     actions.forEach(action => {
       newTargetByOriginalTarget.set(action.target, {
         ...action.target,
+        database:
+          action.target.database &&
+          this.adapter().normalizeIdentifier(
+            `${action.target.database}${this.getDatabaseSuffixWithUnderscore()}`
+          ),
         schema: this.adapter().normalizeIdentifier(
-          `${action.target.schema}${this.getSuffixWithUnderscore()}`
+          `${action.target.schema}${this.getSchemaSuffixWithUnderscore()}`
         ),
         name: this.adapter().normalizeIdentifier(
           `${this.getTablePrefixWithUnderscore()}${action.target.name}`
