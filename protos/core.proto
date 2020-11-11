@@ -20,6 +20,7 @@ message ProjectConfig {
   int32 concurrent_query_limit = 13;
   int32 idempotent_action_retries = 8;
 
+  string database_suffix = 15;
   string schema_suffix = 7;
   string table_prefix = 11;
   
@@ -27,6 +28,8 @@ message ProjectConfig {
 
   // Deprecated. Please use 'default_database' instead.
   string gcloud_project_id = 6;
+
+  reserved 3, 4, 12;
 }
 
 message Environments {
