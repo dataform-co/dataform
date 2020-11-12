@@ -48,6 +48,14 @@ Groups the values in a field into a concatenated string, with an optional delimi
 
 ### Timestamp functions
 
+#### diff
+
 Calculate the time difference between two timestamps.
 
 `${sql.timestamps.diff("date_part", "start_timestamp", "end_timestamp")}`
+
+#### add
+
+Add a period of time to a timestamp.
+
+`${sql.timestamps.add("timestamp", 1, "hour")`

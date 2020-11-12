@@ -316,6 +316,40 @@ suite("builders", { parallel: true }, ({ before, after }) => {
         });
       });
 
+      test("timestamp add", async () => {
+        const rows = [
+          {
+            previous_day: 1604489223000,
+            previous_hour: 1604572023000,
+            previous_minute: 1604575563000,
+            previous_second: 1604575622000
+          }
+        ];
+        const query = sql.from(sql.json(rows)).select({
+          day: sql.timestamps.toMillis(
+            sql.timestamps.add(sql.timestamps.fromMillis("previous_day"), 1, "day")
+          ),
+          hour: sql.timestamps.toMillis(
+            sql.timestamps.add(sql.timestamps.fromMillis("previous_hour"), 1, "hour")
+          ),
+          minute: sql.timestamps.toMillis(
+            sql.timestamps.add(sql.timestamps.fromMillis("previous_minute"), 1, "minute")
+          ),
+          second: sql.timestamps.toMillis(
+            sql.timestamps.add(sql.timestamps.fromMillis("previous_second"), 1, "second")
+          )
+        });
+
+        const result: any = await execute(query);
+
+        expect(result[0]).deep.equals({
+          day: 1604575623000,
+          hour: 1604575623000,
+          minute: 1604575623000,
+          second: 1604575623000
+        });
+      });
+
       test("json", async () => {
         const rows = [
           {

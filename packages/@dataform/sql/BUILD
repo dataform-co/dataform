@@ -22,7 +22,7 @@ pkg_json(
     ],
     main = "bundle.js",
     types = "bundle.d.ts",
-    version = "0.3.0",
+    version = "0.4.0",
 )
 
 pkg_bundle(
