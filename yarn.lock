@@ -1090,10 +1090,10 @@
     classnames "^2.2"
     tslib "~1.10.0"
 
-"@google-cloud/bigquery@5.4.0":
-  version "5.4.0"
-  resolved "https://registry.yarnpkg.com/@google-cloud/bigquery/-/bigquery-5.4.0.tgz#e9b3ddb2d7b5a04a5224a5c0cd95d549bbdde4ff"
-  integrity sha512-efdNr+S0SMJ0ZpYhtKC8tdMqCIUsL0oVImFz+WJM8Coq37WuGvLk6gX7rd5J/L5chDYW0sg7PSIF2izmi0Uplg==
+"@google-cloud/bigquery@^5.5.0":
+  version "5.5.0"
+  resolved "https://registry.yarnpkg.com/@google-cloud/bigquery/-/bigquery-5.5.0.tgz#cfe72f8d056abd9c8289c724150d1082a0a6367d"
+  integrity sha512-hMje0+Fd1B/b29yMUGvnTUXEaUQQD1zyvYjGEu/HCh9w2ek47DQr1zVrHdstlpstUZfaeRCjxK/c3HY6wWrVFg==
   dependencies:
     "@google-cloud/common" "^3.1.0"
     "@google-cloud/paginator" "^3.0.0"
