@@ -2487,7 +2487,7 @@ table.bp3-html-table.bp3-interactive tbody tr:active td {
   color: var(--textSecondary);
 }
 .bp3-menu-item.bp3-intent-primary {
-  color: var(--white);
+  color: var(--textPrimary);
 }
 .bp3-menu-item.bp3-intent-primary .bp3-icon {
   color: inherit;
@@ -2495,7 +2495,7 @@ table.bp3-html-table.bp3-interactive tbody tr:active td {
 .bp3-menu-item.bp3-intent-primary::before,
 .bp3-menu-item.bp3-intent-primary::after,
 .bp3-menu-item.bp3-intent-primary .bp3-menu-item-label {
-  color: var(--white);
+  color: var(--textPrimary);
 }
 .bp3-menu-item.bp3-intent-primary:hover,
 .bp3-submenu .bp3-popover-target.bp3-popover-open > .bp3-intent-primary.bp3-menu-item,
@@ -2524,7 +2524,7 @@ table.bp3-html-table.bp3-interactive tbody tr:active td {
 .bp3-menu-item.bp3-intent-primary.bp3-active::before,
 .bp3-menu-item.bp3-intent-primary.bp3-active::after,
 .bp3-menu-item.bp3-intent-primary.bp3-active .bp3-menu-item-label {
-  color: var(--white);
+  color: var(--textPrimary);
 }
 .bp3-menu-item.bp3-intent-success {
   color: var(--successHover);
