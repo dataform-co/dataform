@@ -77,7 +77,11 @@ Some examples can be found [here](datasets#referencing-other-datasets).
 
 #### self()
 
-`self()` returns the name of the current dataset. If the database, schema, or dataset name is overridden in the `config{}` block, `self()` will return the full and correct dataset name.
+`self()` returns the fully qualified name (database, schema and name) of the current dataset. If the database, schema, or dataset name is overridden in the `config{}` block, `self()` will return the full and correct dataset name.
+
+#### name()
+
+`name()` returns the name of the current dataset.
 
 [Here](incremental-datasets/#a-simple-example) is an example of an incremental table using the `self()` function.
 

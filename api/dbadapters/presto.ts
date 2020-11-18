@@ -193,15 +193,6 @@ export class PrestoDbAdapter implements IDbAdapter {
     return rows;
   }
 
-  public async persistedStateMetadata(): Promise<dataform.IPersistedTableMetadata[]> {
-    // Unimplemented.
-    return [];
-  }
-
-  public async persistStateMetadata() {
-    // Unimplemented.
-  }
-
   public async setMetadata(action: dataform.IExecutionAction): Promise<void> {
     // Unimplemented.
   }

@@ -7,7 +7,7 @@ import { UnionBuilder } from "df/sql/builders/union";
 import { IWiths, WithBuilder } from "df/sql/builders/with";
 import { Timestamps } from "df/sql/timestamps";
 
-export type ISqlDialect = "standard" | "snowflake" | "postgres" | "mssql";
+export type ISqlDialect = "standard" | "snowflake" | "postgres" | "mssql" | "redshift";
 
 export class Sql {
   public readonly timestamps: Timestamps;
@@ -38,7 +38,7 @@ export class Sql {
     if (this.dialect === "snowflake") {
       return `iff(${condition}, ${then}, ${otherwise || "null"})`;
     }
-    if (this.dialect === "postgres") {
+    if (this.dialect === "postgres" || this.dialect === "redshift") {
       return `case when ${condition} then ${then} else ${otherwise} end`;
     }
     return `if(${condition}, ${then}, ${otherwise || "null"})`;
@@ -132,10 +132,108 @@ export class Sql {
   }
 
   public asString(castableToString: string) {
-    if (this.dialect === "postgres") {
+    if (this.dialect === "postgres" || this.dialect === "redshift") {
       return `cast(${castableToString} as varchar)`;
     }
     return `cast(${castableToString} as string)`;
+  }
+
+  // Surrogate keys.
+
+  public surrogateKey(columnNames: string[]) {
+    const columnsAsStrings = columnNames.map(id => this.asString(id)).join(`,`);
+    if (this.dialect === "standard") {
+      return this.asString(`farm_fingerprint(concat(${columnsAsStrings}))`);
+    }
+    if (this.dialect === "mssql") {
+      return this.asString(`hashbytes("md5", (concat(${columnsAsStrings})))`);
+    }
+    return this.asString(`md5(concat(${columnsAsStrings}))`);
+  }
+
+  // window function
+
+  public windowFunction(
+    name: string,
+    value: string,
+    ignoreNulls: boolean = false,
+    windowSpecification?: {
+      partitionFields?: string[];
+      orderFields?: string[];
+      frameClause?: string;
+    }
+  ) {
+    const partitionFieldsAsString = windowSpecification.partitionFields
+      ? [...windowSpecification.partitionFields].join(`, `)
+      : "";
+    const orderFieldsAsString = windowSpecification.orderFields
+      ? [...windowSpecification.orderFields].join(`, `)
+      : "";
+
+    if (this.dialect === "standard" || this.dialect === "mssql" || this.dialect === "snowflake") {
+      return `${name}(${value} ${ignoreNulls ? `ignore nulls` : ``}) over (${
+        windowSpecification.partitionFields ? `partition by ${partitionFieldsAsString}` : ``
+      } ${windowSpecification.orderFields ? `order by ${orderFieldsAsString}` : ``} ${
+        windowSpecification.frameClause ? windowSpecification.frameClause : ``
+      })`;
+    }
+
+    // For some window functions in Redshift, a frame clause is always required
+    const requiresFrame = [
+      "avg",
+      "count",
+      "first_value",
+      "last_value",
+      "max",
+      "min",
+      "nth_value",
+      "stddev_samp",
+      "stddev_pop",
+      "stddev",
+      "sum",
+      "variance",
+      "var_samp",
+      "var_pop"
+    ].includes(name.toLowerCase());
+
+    if (this.dialect === "redshift") {
+      return `${name}(${value} ${ignoreNulls ? `ignore nulls` : ``}) over (${
+        windowSpecification.partitionFields ? `partition by ${partitionFieldsAsString}` : ``
+      } ${windowSpecification.orderFields ? `order by ${orderFieldsAsString}` : ``} ${
+        windowSpecification.orderFields
+          ? windowSpecification.frameClause
+            ? windowSpecification.frameClause
+            : requiresFrame
+            ? `rows between unbounded preceding and unbounded following`
+            : ``
+          : ``
+      })`;
+    }
+
+    if (this.dialect === "postgres") {
+      return `${name}(${value}) over (${
+        windowSpecification.partitionFields ? `partition by ${partitionFieldsAsString}` : ``
+      } ${windowSpecification.orderFields || ignoreNulls ? `order by` : ``} ${
+        ignoreNulls ? `case when ${value} is not null then 0 else 1 end asc` : ``
+      } ${orderFieldsAsString && ignoreNulls ? `,` : ``} ${orderFieldsAsString} ${
+        windowSpecification.orderFields
+          ? windowSpecification.frameClause
+            ? windowSpecification.frameClause
+            : requiresFrame
+            ? `rows between unbounded preceding and unbounded following`
+            : ``
+          : ``
+      })`;
+    }
+  }
+
+  // String aggregation
+
+  public stringAgg(field: string, delimiter = ",") {
+    if (this.dialect === "snowflake" || this.dialect === "redshift") {
+      return `listagg(${field}, '${delimiter}')`;
+    }
+    return `string_agg(${field}, '${delimiter}')`;
   }
 
   // Convenience methods for builders.

@@ -13,7 +13,7 @@ suite("builders", { parallel: true }, ({ before, after }) => {
 
   before("create bigquery", async () => {
     bigquery = await dbadapters.create(
-      dfapi.credentials.read("bigquery", "test_credentials/bigquery.json"),
+      { ...dfapi.credentials.read("bigquery", "test_credentials/bigquery.json"), location: "EU" },
       "bigquery"
     );
   });
@@ -41,7 +41,7 @@ suite("builders", { parallel: true }, ({ before, after }) => {
   for (const { name, dbadapter, sql } of [
     { name: "bigquery", dbadapter: () => bigquery, sql: new Sql("standard") },
     { name: "snowflake", dbadapter: () => snowflake, sql: new Sql("snowflake") },
-    { name: "redshift", dbadapter: () => redshift, sql: new Sql("postgres") }
+    { name: "redshift", dbadapter: () => redshift, sql: new Sql("redshift") }
   ]) {
     suite(name, { parallel: true }, () => {
       const execute = async <S extends ISelectSchema>(select: ISelectOrBuilder<S>) => {
@@ -176,6 +176,178 @@ suite("builders", { parallel: true }, ({ before, after }) => {
             b: "b"
           }
         ]);
+      });
+
+      test("surrogate key", async () => {
+        const rows = [
+          {
+            a: 1,
+            b: "b"
+          },
+          {
+            a: 2,
+            b: "c"
+          }
+        ];
+        const query = sql.from(sql.json(rows)).select({
+          key: sql.surrogateKey(["a", "b"])
+        });
+
+        const result: any = await execute(query);
+        expect(result.length).equals(2);
+        expect(result[0].key).not.equals(result[1].key);
+      });
+
+      test("window function", async () => {
+        const rows = [
+          {
+            key: 1,
+            sort: 1,
+            value: 1,
+            partition_field: "a"
+          },
+          {
+            key: 2,
+            sort: 2,
+            value: 1,
+            partition_field: "a"
+          },
+          {
+            key: 3,
+            sort: 3,
+            value: null,
+            partition_field: "b"
+          },
+          {
+            key: 4,
+            sort: 4,
+            value: 1,
+            partition_field: "b"
+          }
+        ];
+        const query = sql.from(sql.json(rows)).select({
+          lag: sql.windowFunction("lag", "value", false, { orderFields: ["key"] }),
+          max: sql.windowFunction("max", "value", false, { partitionFields: ["partition_field"] }),
+          first_value: sql.windowFunction("first_value", "value", true, {
+            partitionFields: ["partition_field"],
+            orderFields: ["sort"]
+          })
+        });
+
+        const result: any = await execute(query);
+        expect(result.length).equals(4);
+        expect(result[1].lag).equals(1);
+        expect(result[0].max).equals(1);
+        expect(result[0].first_value).equals(1);
+      });
+      // skipping this test for redshift as the function is only supported on user-defined-tables
+      // i.e. not when just querying a select statement with no table
+      if (name !== "redshift") {
+        test("string agg", async () => {
+          const rows = [
+            {
+              a: "foo"
+            },
+            {
+              a: "bar"
+            }
+          ];
+          const query = sql.from(sql.json(rows)).select({
+            agg: sql.stringAgg("a"),
+            agg_hyphen: sql.stringAgg("a", "-")
+          });
+
+          const result: any = await execute(query);
+          expect(result.length).equals(1);
+          expect(result[0]).deep.equals({
+            agg: "foo,bar",
+            agg_hyphen: "foo-bar"
+          });
+        });
+      }
+
+      test("timestamp diff", async () => {
+        const rows = [
+          {
+            millis: 1604575623426,
+            previous_day: 1604489223426,
+            previous_hour: 1604572023426,
+            previous_minute: 1604575563426,
+            previous_second: 1604575622426,
+            previous_millisecond: 1604575623425
+          }
+        ];
+        const query = sql.from(sql.json(rows)).select({
+          day: sql.timestamps.diff(
+            "day",
+            sql.timestamps.fromMillis("previous_day"),
+            sql.timestamps.fromMillis("millis")
+          ),
+          hour: sql.timestamps.diff(
+            "hour",
+            sql.timestamps.fromMillis("previous_hour"),
+            sql.timestamps.fromMillis("millis")
+          ),
+          minute: sql.timestamps.diff(
+            "minute",
+            sql.timestamps.fromMillis("previous_minute"),
+            sql.timestamps.fromMillis("millis")
+          ),
+          second: sql.timestamps.diff(
+            "second",
+            sql.timestamps.fromMillis("previous_second"),
+            sql.timestamps.fromMillis("millis")
+          ),
+          millisecond: sql.timestamps.diff(
+            "millisecond",
+            sql.timestamps.fromMillis("previous_millisecond"),
+            sql.timestamps.fromMillis("millis")
+          )
+        });
+
+        const result: any = await execute(query);
+
+        expect(result[0]).deep.equals({
+          day: 1,
+          hour: 1,
+          minute: 1,
+          second: 1,
+          millisecond: 1
+        });
+      });
+
+      test("timestamp add", async () => {
+        const rows = [
+          {
+            previous_day: 1604489223000,
+            previous_hour: 1604572023000,
+            previous_minute: 1604575563000,
+            previous_second: 1604575622000
+          }
+        ];
+        const query = sql.from(sql.json(rows)).select({
+          day: sql.timestamps.toMillis(
+            sql.timestamps.add(sql.timestamps.fromMillis("previous_day"), 1, "day")
+          ),
+          hour: sql.timestamps.toMillis(
+            sql.timestamps.add(sql.timestamps.fromMillis("previous_hour"), 1, "hour")
+          ),
+          minute: sql.timestamps.toMillis(
+            sql.timestamps.add(sql.timestamps.fromMillis("previous_minute"), 1, "minute")
+          ),
+          second: sql.timestamps.toMillis(
+            sql.timestamps.add(sql.timestamps.fromMillis("previous_second"), 1, "second")
+          )
+        });
+
+        const result: any = await execute(query);
+
+        expect(result[0]).deep.equals({
+          day: 1604575623000,
+          hour: 1604575623000,
+          minute: 1604575623000,
+          second: 1604575623000
+        });
       });
 
       test("json", async () => {

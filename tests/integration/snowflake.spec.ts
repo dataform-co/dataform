@@ -10,12 +10,12 @@ import { compile, dropAllTables, getTableRows, keyBy } from "df/tests/integratio
 
 process.env.SF_OCSP_TEST_OCSP_RESPONDER_TIMEOUT = "100";
 
-suite("@dataform/integration/snowflake", { parallel: true }, ({ before, after }) => {
+suite("@dataform/integration/snowflake", ({ before, after }) => {
   const credentials = dfapi.credentials.read("snowflake", "test_credentials/snowflake.json");
   let dbadapter: dbadapters.IDbAdapter;
 
   before("create adapter", async () => {
-    dbadapter = await dbadapters.create(credentials, "snowflake");
+    dbadapter = await dbadapters.create(credentials, "snowflake", { concurrencyLimit: 100 });
   });
 
   after("close adapter", () => dbadapter.close());
@@ -43,7 +43,7 @@ suite("@dataform/integration/snowflake", { parallel: true }, ({ before, after })
     let executedGraph = await dfapi.run(dbadapter, executionGraph).result();
 
     const actionMap = keyBy(executedGraph.actions, v => v.name);
-    expect(Object.keys(actionMap).length).eql(17);
+    expect(Object.keys(actionMap).length).eql(20);
 
     // Check the status of action execution.
     const expectedFailedActions = [
@@ -145,6 +145,133 @@ suite("@dataform/integration/snowflake", { parallel: true }, ({ before, after })
     ];
     incrementalRows = await getTableRows(incrementalTable.target, adapter, dbadapter);
     expect(incrementalRows.length).equals(2);
+  });
+
+  test("run caching", { timeout: 90000 }, async () => {
+    const compiledGraph = await compile("tests/integration/snowflake_project", "run_caching", {
+      useRunCache: true
+    });
+
+    const adapter = adapters.create(compiledGraph.projectConfig, compiledGraph.dataformCoreVersion);
+    const tablesToDelete = (await dfapi.build(compiledGraph, {}, dbadapter)).warehouseState.tables;
+
+    // Drop all the tables before we do anything.
+    await dropAllTables(tablesToDelete, adapter, dbadapter);
+
+    // Run the project.
+    let executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
+    let runResult = await dfapi.run(dbadapter, executionGraph).result();
+    const previouslyExecutedActions = runResult.actions
+      .filter(
+        actionResult => actionResult.status === dataform.ActionResult.ExecutionStatus.SUCCESSFUL
+      )
+      .map(actionResult => ({
+        executionAction: executionGraph.actions.find(
+          executionAction => executionAction.name === actionResult.name
+        ),
+        actionResult
+      }));
+
+    // Re-run (some of) the project. Each included action should cache, or complete
+    // successfully (if the previous run was unable to write cache results).
+    executionGraph = await dfapi.build(
+      compiledGraph,
+      {
+        actions: [
+          "EXAMPLE_TABLE",
+          "EXAMPLE_VIEW",
+          "DEPENDS_ON_EXAMPLE_VIEW",
+          "SAMPLE_DATA_2",
+          "DEPENDS_ON_SAMPLE_DATA_3"
+        ]
+      },
+      dbadapter
+    );
+
+    runResult = await dfapi.run(dbadapter, executionGraph, {}, previouslyExecutedActions).result();
+    for (const action of runResult.actions) {
+      expect(
+        dataform.ActionResult.ExecutionStatus[action.status],
+        `ActionResult ExecutionStatus for action "${action.name}"`
+      ).eql(
+        dataform.ActionResult.ExecutionStatus[dataform.ActionResult.ExecutionStatus.CACHE_SKIPPED]
+      );
+    }
+
+    // Manually change some datasets (to model a data change happening outside of a DF run).
+    await Promise.all([
+      dbadapter.execute(
+        'create or replace view "INTEGRATION_TESTS2"."DF_INTEGRATION_TEST_RUN_CACHING"."SAMPLE_DATA_2" as select \'new\' as foo'
+      ),
+      dbadapter.execute(
+        'create or replace view "INTEGRATION_TESTS"."DF_INTEGRATION_TEST_RUN_CACHING"."SAMPLE_DATA_3" as select \'old\' as bar'
+      )
+    ]);
+
+    // Make a change to the 'example_view' query (to model an ExecutionAction hash change).
+    compiledGraph.tables = compiledGraph.tables.map(table => {
+      if (table.name === "INTEGRATION_TESTS.DF_INTEGRATION_TEST_RUN_CACHING.EXAMPLE_VIEW") {
+        table.query = "select 1 as test";
+      }
+      return table;
+    });
+
+    // Re-run the project, checking caching results.
+    executionGraph = await dfapi.build(
+      compiledGraph,
+      {
+        actions: [
+          "EXAMPLE_INCREMENTAL",
+          "EXAMPLE_TABLE",
+          "EXAMPLE_ASSERTION_FAIL",
+          "EXAMPLE_VIEW",
+          "DEPENDS_ON_EXAMPLE_VIEW",
+          "SAMPLE_DATA_2",
+          "DEPENDS_ON_SAMPLE_DATA_3"
+        ]
+      },
+      dbadapter
+    );
+
+    runResult = await dfapi.run(dbadapter, executionGraph, {}, previouslyExecutedActions).result();
+    const actionMap = keyBy(runResult.actions, v => v.name);
+
+    const expectedActionStatus: { [index: string]: dataform.ActionResult.ExecutionStatus } = {
+      // Should run because it is non-hermetic.
+      "INTEGRATION_TESTS.DF_INTEGRATION_TEST_RUN_CACHING.EXAMPLE_INCREMENTAL":
+        dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
+      // Should run because it failed on the last run.
+      "INTEGRATION_TESTS.DF_INTEGRATION_TEST_ASSERTIONS_RUN_CACHING.EXAMPLE_ASSERTION_FAIL":
+        dataform.ActionResult.ExecutionStatus.FAILED,
+      // Should run because its query definition (and thus ExecutionAction hash) has changed.
+      "INTEGRATION_TESTS.DF_INTEGRATION_TEST_RUN_CACHING.EXAMPLE_VIEW":
+        dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
+      // Should run because the dataset has changed in the warehouse.
+      "INTEGRATION_TESTS2.DF_INTEGRATION_TEST_RUN_CACHING.SAMPLE_DATA_2":
+        dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
+      // Should run because they are auto assertions.
+      "INTEGRATION_TESTS.DF_INTEGRATION_TEST_ASSERTIONS_RUN_CACHING.DF_INTEGRATION_TEST_SAMPLE_DATA_2_ASSERTIONS_UNIQUEKEY_0":
+        dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
+      "INTEGRATION_TESTS.DF_INTEGRATION_TEST_ASSERTIONS_RUN_CACHING.DF_INTEGRATION_TEST_SAMPLE_DATA_2_ASSERTIONS_UNIQUEKEY_1":
+        dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
+      "INTEGRATION_TESTS.DF_INTEGRATION_TEST_ASSERTIONS_RUN_CACHING.DF_INTEGRATION_TEST_SAMPLE_DATA_2_ASSERTIONS_ROWCONDITIONS":
+        dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
+      // Should run because an input to dataset has changed in the warehouse.
+      "INTEGRATION_TESTS.DF_INTEGRATION_TEST_RUN_CACHING.DEPENDS_ON_SAMPLE_DATA_3":
+        dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
+      // Should run because a transitive input (included in the run) did not cache.
+      "INTEGRATION_TESTS.DF_INTEGRATION_TEST_RUN_CACHING.DEPENDS_ON_EXAMPLE_VIEW":
+        dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
+      "INTEGRATION_TESTS.DF_INTEGRATION_TEST_RUN_CACHING.EXAMPLE_TABLE":
+        dataform.ActionResult.ExecutionStatus.CACHE_SKIPPED
+    };
+
+    for (const actionName of Object.keys(actionMap)) {
+      expect(
+        dataform.ActionResult.ExecutionStatus[actionMap[actionName].status],
+        `ActionResult ExecutionStatus for action "${actionName}"`
+      ).equals(dataform.ActionResult.ExecutionStatus[expectedActionStatus[actionName]]);
+    }
   });
 
   test("dataset metadata set correctly", { timeout: 60000 }, async () => {
@@ -251,7 +378,7 @@ suite("@dataform/integration/snowflake", { parallel: true }, ({ before, after })
     ]);
   });
 
-  suite("query limits work", { parallel: true }, async () => {
+  suite("query limits work", async () => {
     const query = `
       select 1 union all
       select 2 union all
@@ -280,7 +407,7 @@ suite("@dataform/integration/snowflake", { parallel: true }, ({ before, after })
   });
 
   suite("evaluate", async () => {
-    test("evaluate from valid compiled graph as valid", async () => {
+    test("evaluate from valid compiled graph as valid", { timeout: 60000 }, async () => {
       // Create and run the project.
       const compiledGraph = await compile("tests/integration/snowflake_project", "evaluate");
       const executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);

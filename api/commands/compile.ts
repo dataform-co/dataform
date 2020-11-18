@@ -10,6 +10,7 @@ import { dataform } from "df/protos/ts";
 const mandatoryProps: Array<keyof dataform.IProjectConfig> = ["warehouse", "defaultSchema"];
 const simpleCheckProps: Array<keyof dataform.IProjectConfig> = [
   "assertionSchema",
+  "databaseSuffix",
   "schemaSuffix",
   "tablePrefix",
   "defaultSchema"
@@ -83,14 +84,23 @@ export class CompileChildProcess {
 
   public async compile(compileConfig: dataform.ICompileConfig) {
     const compileInChildProcess = new Promise<string>(async (resolve, reject) => {
-      // Handle errors returned by the child process.
+      // Handle any Error caused by spawning the child process, or sent directly from the child process.
+      this.childProcess.on("error", (e: Error) => reject(coerceAsError(e)));
       this.childProcess.on("message", (e: Error) => reject(coerceAsError(e)));
 
       // Handle UTF-8 string chunks returned by the child process.
       const pipe = this.childProcess.stdio[4];
       const chunks: Buffer[] = [];
       pipe.on("data", (chunk: Buffer) => chunks.push(chunk));
-      pipe.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
+
+      // When the child process closes all stdio streams, return the compiled result.
+      this.childProcess.on("close", exitCode => {
+        if (exitCode === 0) {
+          resolve(Buffer.concat(chunks).toString("utf8"));
+        } else {
+          reject(new Error(`Compilation child process exited with exit code ${exitCode}.`));
+        }
+      });
 
       // Trigger the child process to start compiling.
       this.childProcess.send(compileConfig);

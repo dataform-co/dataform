@@ -51,12 +51,7 @@ export async function build(
   return new Builder(
     prunedGraph,
     runConfig,
-    await state(
-      compiledGraph.projectConfig.defaultDatabase,
-      dbadapter,
-      Array.from(allInvolvedTargets),
-      runConfig.useRunCache
-    ),
+    await state(dbadapter, Array.from(allInvolvedTargets)),
     transitiveInputsByTarget
   ).build();
 }

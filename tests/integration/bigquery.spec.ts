@@ -80,12 +80,19 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
       // Drop all the tables before we do anything.
       await cleanWarehouse(compiledGraph, dbadapter);
 
-      // Drop the meta schema
-      await dbadapter.dropSchema("dataform-integration-tests", "dataform_meta");
-
       // Run the project.
       let executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
-      let executedGraph = await dfapi.run(dbadapter, executionGraph).result();
+      let runResult = await dfapi.run(dbadapter, executionGraph).result();
+      const previouslyExecutedActions = runResult.actions
+        .filter(
+          actionResult => actionResult.status === dataform.ActionResult.ExecutionStatus.SUCCESSFUL
+        )
+        .map(actionResult => ({
+          executionAction: executionGraph.actions.find(
+            executionAction => executionAction.name === actionResult.name
+          ),
+          actionResult
+        }));
 
       // Re-run (some of) the project. Each included action should cache, or complete
       // successfully (if the previous run was unable to write cache results).
@@ -102,15 +109,17 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
         },
         dbadapter
       );
-      executedGraph = await dfapi.run(dbadapter, executionGraph).result();
-      for (const action of executedGraph.actions) {
+
+      runResult = await dfapi
+        .run(dbadapter, executionGraph, {}, previouslyExecutedActions)
+        .result();
+      for (const action of runResult.actions) {
         expect(
           dataform.ActionResult.ExecutionStatus[action.status],
           `ActionResult ExecutionStatus for action "${action.name}"`
-        ).oneOf([
-          dataform.ActionResult.ExecutionStatus[dataform.ActionResult.ExecutionStatus.SUCCESSFUL],
+        ).eql(
           dataform.ActionResult.ExecutionStatus[dataform.ActionResult.ExecutionStatus.CACHE_SKIPPED]
-        ]);
+        );
       }
 
       // Manually change some datasets (to model a data change happening outside of a DF run).
@@ -151,8 +160,10 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
         dbadapter
       );
 
-      executedGraph = await dfapi.run(dbadapter, executionGraph).result();
-      const actionMap = keyBy(executedGraph.actions, v => v.name);
+      runResult = await dfapi
+        .run(dbadapter, executionGraph, {}, previouslyExecutedActions)
+        .result();
+      const actionMap = keyBy(runResult.actions, v => v.name);
 
       const expectedActionStatus: { [index: string]: dataform.ActionResult.ExecutionStatus } = {
         // Should run because it is non-hermetic.
@@ -179,29 +190,16 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
           dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
         // Should run because a transitive input (included in the run) did not cache.
         "dataform-integration-tests.df_integration_test_eu_run_caching.depends_on_example_view":
-          dataform.ActionResult.ExecutionStatus.SUCCESSFUL
+          dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
+        "dataform-integration-tests.df_integration_test_eu_run_caching.example_table":
+          dataform.ActionResult.ExecutionStatus.CACHE_SKIPPED
       };
 
       for (const actionName of Object.keys(actionMap)) {
-        if (
-          actionName ===
-          "dataform-integration-tests.df_integration_test_eu_run_caching.example_table"
-        ) {
-          expect(
-            dataform.ActionResult.ExecutionStatus[actionMap[actionName].status],
-            `ActionResult ExecutionStatus for action "${actionName}"`
-          ).oneOf([
-            dataform.ActionResult.ExecutionStatus[dataform.ActionResult.ExecutionStatus.SUCCESSFUL],
-            dataform.ActionResult.ExecutionStatus[
-              dataform.ActionResult.ExecutionStatus.CACHE_SKIPPED
-            ]
-          ]);
-        } else {
-          expect(
-            dataform.ActionResult.ExecutionStatus[actionMap[actionName].status],
-            `ActionResult ExecutionStatus for action "${actionName}"`
-          ).equals(dataform.ActionResult.ExecutionStatus[expectedActionStatus[actionName]]);
-        }
+        expect(
+          dataform.ActionResult.ExecutionStatus[actionMap[actionName].status],
+          `ActionResult ExecutionStatus for action "${actionName}"`
+        ).equals(dataform.ActionResult.ExecutionStatus[expectedActionStatus[actionName]]);
       }
     });
 
