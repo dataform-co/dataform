@@ -35,7 +35,7 @@ export function SimpleCollapse({
             minimal={true}
             onClick={() => updateShow(!show)}
             icon={show ? "caret-up" : "caret-down"}
-            style={{ marginLeft: fullWidth ? "20px" : "unset" }}
+            style={{ marginLeft: fullWidth ? "20px" : "10px" }}
           />
         )}
       </div>
