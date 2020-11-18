@@ -57,7 +57,7 @@ SELECT 1 AS sourcedata
 SELECT * FROM ${ref("source")}
 ```
 
-In order to reference the dataset created by a `source.sqxl` file, the value that should be passed to the `ref()` function is `"source"`, i.e. the name of the file defining the dataset (_without_ the file extension).
+In order to reference the dataset created by a `source.sqlx` file, the value that should be passed to the `ref()` function is `"source"`, i.e. the name of the file defining the dataset (_without_ the file extension).
 
 For a detailed description of how to use the `ref` function, check out the [`ITableContext`](/reference#ITableContext) reference documentation.
 
