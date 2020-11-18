@@ -2,10 +2,9 @@
   display: flex;
   flex-direction: row;
   align-items: center;
-  justify-content: space-between;
   word-break: break-all;
 }
 
-.button {
-  margin-left: 20px;
+.messageContainerFullWidth {
+  justify-content: space-between;
 }
