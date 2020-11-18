@@ -55,6 +55,13 @@ GROUP BY 1, 2, 3, 4, 5
 - You can see the dependencies of a dataset in the right hand side bar.
 - If you open the compiled query, you can see that the `ref` function has been replaced with the fully qualified table name.
 
+<div className="bp3-callout bp3-icon-info-sign bp3-intent-primary" markdown="1">
+<h4 class="bp3-heading">The ref() function</h4>
+The use the ref() function, pass it the database, schema and name of the dataset you're referencing. Database and schema are optional: you'll only need to specify 
+these if there are multiple datasets in your project with the same name.
+Read more about the ref() function [here](https://docs.dataform.co/reference#ICommonContext)
+</a></div>
+
 3. Once you can see that your query is valid you can publish the table to your warehouse by clicking on `Publish Table`.
 
 4. View the Dependency tree:
