@@ -59,7 +59,12 @@ SELECT * FROM ${ref("source")}
 
 In order to reference the dataset created by a `source.sql` file, the value that should be passed to the `ref()` function is `"source"`, i.e. the name of the file defining the dataset (_without_ the file extension).
 
-For a detailed description of how to use the `ref` function, check out the [`ITableContext`](/reference#ITableContext) reference documentation.
+<div className="bp3-callout bp3-icon-info-sign bp3-intent-primary" markdown="1">
+<h4 class="bp3-heading">The ref() function</h4>
+The use the ref() function, pass it the database, schema and name of the dataset you're referencing. Database and schema are optional: you'll only need to specify 
+these if there are multiple datasets in your project with the same name.
+Read more about the ref() function [here](/reference#ICommonContext)
+</a></div>
 
 The query will be compiled into the following SQL before it is run:
 
