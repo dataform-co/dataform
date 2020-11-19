@@ -149,6 +149,16 @@ If no unique key is specified, then the merge condition (`T.user_id = S.user_id`
 
 If you want to ensure that the output table only ever contains one row per some combination of key columns, you should specify a `uniqueKey`. When `uniqueKey` is specified, if a row arrives whose key matches an existing row's key, then the existing row is overwritten with the new data.
 
+```sql
+config {
+  type: "incremental",
+  uniqueKey: ["transaction_id"]
+}
+
+SELECT timestamp, action FROM weblogs.user_actions
+${ when(incremental(), `WHERE timestamp > (SELECT MAX(timestamp) FROM ${self()})`) }
+```
+
 If using `uniqueKey` with **BigQuery**, we recommend that you set an `updatePartitionFilter` to only consider a subset of records. This helps to optimize costs, since without an `updatePartitionFilter`, BigQuery will scan the whole table to find matching rows.
 
 ```sql
