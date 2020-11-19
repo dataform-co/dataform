@@ -57,7 +57,7 @@ SELECT 1 AS sourcedata
 SELECT * FROM ${ref("source")}
 ```
 
-In order to reference the dataset created by a `source.sql` file, the value that should be passed to the `ref()` function is `"source"`, i.e. the name of the file defining the dataset (_without_ the file extension).
+In order to reference the dataset created by a `source.sqlx` file, the value that should be passed to the `ref()` function is `"source"`, i.e. the name of the file defining the dataset (_without_ the file extension).
 
 <div className="bp3-callout bp3-icon-info-sign bp3-intent-primary" markdown="1">
 <h4 class="bp3-heading">The <code>ref()</code> function</h4>
