@@ -44,7 +44,7 @@ export async function compile(
   compileConfig?: dataform.ICompileConfig
 ): Promise<string> {
   // If there is no project directory, no need to compile the script.
-  if (!compileConfig || !compileConfig.projectDir) {
+  if (!compileConfig || !compileConfig.projectDir || query === "") {
     return Promise.resolve(query);
   }
   // Resolve the path in case it hasn't been resolved already.
