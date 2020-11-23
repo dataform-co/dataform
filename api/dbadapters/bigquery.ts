@@ -1,7 +1,13 @@
 import Long from "long";
 import { PromisePoolExecutor } from "promise-pool-executor";
 
-import { BigQuery, TableField, TableMetadata } from "@google-cloud/bigquery";
+import {
+  BigQuery,
+  GetTablesResponse,
+  Table,
+  TableField,
+  TableMetadata
+} from "@google-cloud/bigquery";
 import { Credentials } from "df/api/commands/credentials";
 import { IDbAdapter, IDbClient, IExecutionResult, OnCancel } from "df/api/dbadapters/index";
 import { parseBigqueryEvalError } from "df/api/utils/error_parsing";
@@ -116,9 +122,13 @@ export class BigQueryDbAdapter implements IDbAdapter {
       datasets[0].map(dataset => dataset.getTables({ autoPaginate: true, maxResults: 1000 }))
     );
     const allTables: dataform.ITarget[] = [];
-    tables.forEach((tablesResult: any) =>
-      tablesResult[0].forEach((table: any) =>
-        allTables.push({ schema: table.dataset.id, name: table.id })
+    tables.forEach((tablesResult: GetTablesResponse) =>
+      tablesResult[0].forEach(table =>
+        allTables.push({
+          database: table.bigQuery.projectId,
+          schema: table.dataset.id,
+          name: table.id
+        })
       )
     );
     return allTables;
@@ -167,7 +177,11 @@ export class BigQueryDbAdapter implements IDbAdapter {
           : metadata.type === "VIEW"
           ? dataform.TableMetadata.Type.VIEW
           : dataform.TableMetadata.Type.UNKNOWN,
-      target,
+      target: {
+        database: metadata.tableReference.projectId,
+        schema: metadata.tableReference.datasetId,
+        name: metadata.tableReference.tableId
+      },
       fields: metadata.schema.fields?.map(field => convertField(field)),
       lastUpdatedMillis: Long.fromString(metadata.lastModifiedTime),
       description: metadata.description,
