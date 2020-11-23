@@ -13,9 +13,9 @@ import { IDbAdapter, IDbClient, IExecutionResult, OnCancel } from "df/api/dbadap
 import { parseBigqueryEvalError } from "df/api/utils/error_parsing";
 import { LimitedResultSet } from "df/api/utils/results";
 import { coerceAsError } from "df/common/errors/errors";
+import { equals } from "df/common/protos";
 import { collectEvaluationQueries, QueryOrAction } from "df/core/adapters";
 import { dataform } from "df/protos/ts";
-import { equals } from "df/common/protos";
 
 const EXTRA_GOOGLE_SCOPES = ["https://www.googleapis.com/auth/drive"];
 
