@@ -15,6 +15,7 @@ import { LimitedResultSet } from "df/api/utils/results";
 import { coerceAsError } from "df/common/errors/errors";
 import { collectEvaluationQueries, QueryOrAction } from "df/core/adapters";
 import { dataform } from "df/protos/ts";
+import { equals } from "df/common/protos";
 
 const EXTRA_GOOGLE_SCOPES = ["https://www.googleapis.com/auth/drive"];
 
@@ -169,6 +170,20 @@ export class BigQueryDbAdapter implements IDbAdapter {
       return null;
     }
 
+    const metadataTarget = {
+      database: metadata.tableReference.projectId,
+      schema: metadata.tableReference.datasetId,
+      name: metadata.tableReference.tableId
+    };
+
+    if (!equals(dataform.Target, target, metadataTarget)) {
+      throw new Error(
+        `Target ${JSON.stringify(metadataTarget)} does not match requested target ${JSON.stringify(
+          target
+        )}.`
+      );
+    }
+
     return dataform.TableMetadata.create({
       typeDeprecated: String(metadata.type).toLowerCase(),
       type:
@@ -177,11 +192,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
           : metadata.type === "VIEW"
           ? dataform.TableMetadata.Type.VIEW
           : dataform.TableMetadata.Type.UNKNOWN,
-      target: {
-        database: metadata.tableReference.projectId,
-        schema: metadata.tableReference.datasetId,
-        name: metadata.tableReference.tableId
-      },
+      target: metadataTarget,
       fields: metadata.schema.fields?.map(field => convertField(field)),
       lastUpdatedMillis: Long.fromString(metadata.lastModifiedTime),
       description: metadata.description,
