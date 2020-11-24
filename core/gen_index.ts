@@ -26,8 +26,9 @@ export function genIndex(base64EncodedConfig: string): string {
     dataform.ProjectConfig.create(config.compileConfig.projectConfigOverride).toJSON()
   );
 
-  const returnValue = !!config.compileConfig.query
-    ? `(function() {
+  const returnValue =
+    !!config.compileConfig.query || config.compileConfig.query === ""
+      ? `(function() {
       try {
         const ref = global.dataform.resolve.bind(global.dataform);
         const resolve = global.dataform.resolve.bind(global.dataform);
@@ -37,7 +38,7 @@ export function genIndex(base64EncodedConfig: string): string {
         return e.message;
       }
     })()`
-    : "base64EncodedGraphBytes";
+      : "base64EncodedGraphBytes";
 
   // NOTE:
   // - The returned script must be valid JavaScript (not TypeScript)
