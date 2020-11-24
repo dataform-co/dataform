@@ -162,10 +162,12 @@ export function target(
   schema?: string,
   database?: string
 ): dataform.ITarget {
+  schema = schema || config.defaultSchema;
+  database = database || config.defaultDatabase;
   return dataform.Target.create({
     name: adapter.normalizeIdentifier(name),
-    schema: adapter.normalizeIdentifier(schema || config.defaultSchema),
-    database: adapter.normalizeIdentifier(database || config.defaultDatabase || "")
+    schema: !!schema ? adapter.normalizeIdentifier(schema || config.defaultSchema) : undefined,
+    database: !!database ? adapter.normalizeIdentifier(database) : undefined
   });
 }
 
