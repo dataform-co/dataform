@@ -68,7 +68,6 @@ export class BigQueryAdapter extends Adapter implements IAdapter {
     const target =
       assertion.target ||
       dataform.Target.create({
-        database: projectConfig.defaultDatabase,
         schema: projectConfig.assertionSchema,
         name: assertion.name
       });
