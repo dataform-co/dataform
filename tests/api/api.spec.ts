@@ -857,6 +857,13 @@ suite("@dataform/api", () => {
       );
       expect(compiledQuery).equals("select regexp_extract('01a_data_engine', '^(\\d{2}\\w)')");
     });
+    test("example with no text", async () => {
+      const compiledQuery = await query.compile("", {
+        projectDir: "examples/common_v1",
+        projectConfigOverride: { warehouse: "bigquery", defaultDatabase: "tada-analytics" }
+      });
+      expect(compiledQuery).equals("");
+    });
   });
 
   suite("credentials_config", () => {
