@@ -133,6 +133,7 @@ message CompileConfig {
   ProjectConfig project_config_override = 3;
 
   // If supplied, only the compiled form of 'query' will be returned.
+  bool compile_single_query = 7;
   string query = 4;
 
   // Override compilation timeout settings.
