@@ -66,6 +66,7 @@ export async function compile(
       } catch (e) {
         return e.message;
       }
-    })()`
+    })()`,
+    compileSingleQuery: true
   });
 }

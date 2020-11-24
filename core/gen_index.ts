@@ -26,7 +26,7 @@ export function genIndex(base64EncodedConfig: string): string {
     dataform.ProjectConfig.create(config.compileConfig.projectConfigOverride).toJSON()
   );
 
-  const returnValue = !!config.compileConfig.query
+  const returnValue = config.compileConfig.compileSingleQuery
     ? `(function() {
       try {
         const ref = global.dataform.resolve.bind(global.dataform);
