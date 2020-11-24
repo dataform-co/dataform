@@ -165,7 +165,7 @@ export function target(
   return dataform.Target.create({
     name: adapter.normalizeIdentifier(name),
     schema: adapter.normalizeIdentifier(schema || config.defaultSchema),
-    database: adapter.normalizeIdentifier(database || config.defaultDatabase)
+    database: adapter.normalizeIdentifier(database || config.defaultDatabase || "")
   });
 }
 
