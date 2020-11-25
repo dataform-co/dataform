@@ -11,8 +11,13 @@ import {
   Resolvable
 } from "df/core/common";
 import { Session } from "df/core/session";
-import * as utils from "df/core/utils";
-import { checkExcessProperties, strictKeysOf } from "df/core/utils";
+import {
+  checkExcessProperties,
+  resolvableAsTarget,
+  setNameAndTarget,
+  strictKeysOf,
+  toResolvable
+} from "df/core/utils";
 import { dataform } from "df/protos/ts";
 
 /**
@@ -108,7 +113,7 @@ export class Operation {
   public dependencies(value: Resolvable | Resolvable[]) {
     const newDependencies = Array.isArray(value) ? value : [value];
     newDependencies.forEach(resolvable => {
-      this.proto.dependencyTargets.push(utils.resolvableAsTarget(resolvable));
+      this.proto.dependencyTargets.push(resolvableAsTarget(resolvable));
     });
     return this;
   }
@@ -159,7 +164,7 @@ export class Operation {
   }
 
   public database(database: string) {
-    utils.setNameAndTarget(
+    setNameAndTarget(
       this.session,
       this.proto,
       this.proto.target.name,
@@ -170,17 +175,18 @@ export class Operation {
   }
 
   public schema(schema: string) {
-    utils.setNameAndTarget(this.session, this.proto, this.proto.target.name, schema);
+    setNameAndTarget(
+      this.session,
+      this.proto,
+      this.proto.target.name,
+      schema,
+      this.proto.target.database
+    );
     return this;
   }
 
   public compile() {
-    if (
-      this.proto.actionDescriptor &&
-      this.proto.actionDescriptor.columns &&
-      this.proto.actionDescriptor.columns.length > 0 &&
-      !this.proto.hasOutput
-    ) {
+    if (this.proto.actionDescriptor?.columns?.length > 0 && !this.proto.hasOutput) {
       this.session.compileError(
         new Error(
           "Actions of type 'operations' may only describe columns if they specify 'hasOutput: true'."
@@ -217,8 +223,8 @@ export class OperationContext implements ICommonContext {
   }
 
   public ref(ref: Resolvable | string[], ...rest: string[]) {
-    ref = utils.toResolvable(ref, rest);
-    if (!utils.resolvableAsTarget(ref)) {
+    ref = toResolvable(ref, rest);
+    if (!resolvableAsTarget(ref)) {
       const message = `Action name is not specified`;
       this.operation.session.compileError(new Error(message));
       return "";
@@ -228,7 +234,7 @@ export class OperationContext implements ICommonContext {
   }
 
   public resolve(ref: Resolvable | string[], ...rest: string[]) {
-    return this.operation.session.resolve(utils.toResolvable(ref, rest));
+    return this.operation.session.resolve(toResolvable(ref, rest));
   }
 
   public dependencies(name: Resolvable | Resolvable[]) {
