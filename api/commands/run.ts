@@ -2,7 +2,7 @@ import EventEmitter from "events";
 import Long from "long";
 
 import * as dbadapters from "df/api/dbadapters";
-import { retry } from "df/api/utils/retry";
+import { retry } from "df/common/promises";
 import { deepClone, equals } from "df/common/protos";
 import {
   JSONObjectStringifier,
@@ -424,7 +424,7 @@ export class Runner {
             rowLimit: 1,
             bigquery: options.bigquery
           }),
-        task.type === "operation" ? 0 : this.graph.projectConfig.idempotentActionRetries || 0
+        task.type === "operation" ? 1 : this.graph.projectConfig.idempotentActionRetries + 1 || 1
       );
       taskResult.metadata = metadata;
       if (task.type === "assertion") {
