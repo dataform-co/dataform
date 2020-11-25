@@ -152,7 +152,13 @@ export class Assertion {
   }
 
   public schema(schema: string) {
-    setNameAndTarget(this.session, this.proto, this.proto.target.name, schema);
+    setNameAndTarget(
+      this.session,
+      this.proto,
+      this.proto.target.name,
+      schema,
+      this.proto.target.database
+    );
     return this;
   }
 
