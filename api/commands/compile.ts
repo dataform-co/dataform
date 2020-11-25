@@ -7,7 +7,10 @@ import { coerceAsError, ErrorWithCause } from "df/common/errors/errors";
 import { decode } from "df/common/protos";
 import { dataform } from "df/protos/ts";
 
+// Project config properties that are required.
 const mandatoryProps: Array<keyof dataform.IProjectConfig> = ["warehouse", "defaultSchema"];
+
+// Project config properties that require alphanumeric characters, hyphens or underscores.
 const simpleCheckProps: Array<keyof dataform.IProjectConfig> = [
   "assertionSchema",
   "databaseSuffix",

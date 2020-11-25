@@ -34,8 +34,8 @@ function computeIncludedActionNames(
   const allActionsByName: { [name: string]: CompileAction } = {};
   allActions.forEach(action => (allActionsByName[action.name] = action));
 
-  const hasActionSelector = runConfig.actions && runConfig.actions.length > 0;
-  const hasTagSelector = runConfig.tags && runConfig.tags.length > 0;
+  const hasActionSelector = runConfig.actions?.length > 0;
+  const hasTagSelector = runConfig.tags?.length > 0;
 
   // If no selectors, return all actions.
   if (!hasActionSelector && !hasTagSelector) {
@@ -65,7 +65,7 @@ function computeIncludedActionNames(
       const actionName = queue.pop();
       const action = allActionsByName[actionName];
       const matchingDependencyNames =
-        action.dependencies && action.dependencies.length > 0
+        action.dependencies?.length > 0
           ? utils.matchPatterns(action.dependencies, allActionNames)
           : [];
       matchingDependencyNames.forEach(dependencyName => {

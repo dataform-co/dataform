@@ -159,14 +159,15 @@ export function target(
   adapter: adapters.IAdapter,
   config: dataform.IProjectConfig,
   name: string,
-  schema: string,
+  schema?: string,
   database?: string
 ): dataform.ITarget {
-  const resolvedDatabase = database || config.defaultDatabase;
+  schema = schema || config.defaultSchema;
+  database = database || config.defaultDatabase;
   return dataform.Target.create({
     name: adapter.normalizeIdentifier(name),
-    schema: adapter.normalizeIdentifier(schema || config.defaultSchema),
-    database: resolvedDatabase && adapter.normalizeIdentifier(resolvedDatabase)
+    schema: !!schema ? adapter.normalizeIdentifier(schema || config.defaultSchema) : undefined,
+    database: !!database ? adapter.normalizeIdentifier(database) : undefined
   });
 }
 
