@@ -209,9 +209,14 @@ export class AssertionContext implements ICommonContext {
     this.assertion.dependencies(name);
     return "";
   }
+
   public tags(name: string | string[]) {
     this.assertion.tags(name);
     return "";
+  }
+
+  public when(cond: boolean, trueCase: string, falseCase: string = "") {
+    return cond ? trueCase : falseCase;
   }
 
   public apply<T>(value: AContextable<T>): T {

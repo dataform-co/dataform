@@ -252,6 +252,10 @@ export class OperationContext implements ICommonContext {
     return "";
   }
 
+  public when(cond: boolean, trueCase: string, falseCase: string = "") {
+    return cond ? trueCase : falseCase;
+  }
+
   public apply<T>(value: Contextable<ICommonContext, T>): T {
     if (typeof value === "function") {
       return (value as any)(this);
