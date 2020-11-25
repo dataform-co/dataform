@@ -13,7 +13,7 @@ import { IDbAdapter, IDbClient, IExecutionResult, OnCancel } from "df/api/dbadap
 import { parseBigqueryEvalError } from "df/api/utils/error_parsing";
 import { LimitedResultSet } from "df/api/utils/results";
 import { coerceAsError } from "df/common/errors/errors";
-import { equals } from "df/common/protos";
+import { retry } from "df/common/promises";
 import { collectEvaluationQueries, QueryOrAction } from "df/core/adapters";
 import { dataform } from "df/protos/ts";
 
@@ -25,6 +25,8 @@ const BIGQUERY_DATE_RELATED_FIELDS = [
   "BigQueryTimestamp",
   "BigQueryDatetime"
 ];
+
+const BIGQUERY_INTERNAL_ERROR_JOB_MAX_ATTEMPTS = 3;
 
 export class BigQueryDbAdapter implements IDbAdapter {
   public static async create(credentials: Credentials, options?: { concurrencyLimit?: number }) {
@@ -360,66 +362,72 @@ export class BigQueryDbAdapter implements IDbAdapter {
     let isCancelled = false;
     onCancel?.(() => (isCancelled = true));
 
-    try {
-      const job = await this.getClient().createQueryJob({
-        useLegacySql: false,
-        jobPrefix: "dataform-",
-        query,
-        params,
-        labels
-      });
-      const resultStream = job[0].getQueryResultsStream();
-      return new Promise<IExecutionResult>((resolve, reject) => {
-        if (isCancelled) {
-          resultStream.end();
-          reject(new Error("Query cancelled."));
-          return;
-        }
-        onCancel?.(() => {
-          resultStream.end();
-          reject(new Error("Query cancelled."));
-        });
-
-        const results = new LimitedResultSet({
-          rowLimit,
-          byteLimit
-        });
-        resultStream
-          .on("error", e => reject(e))
-          .on("data", row => {
-            if (!results.push(row)) {
+    return retry(
+      async () => {
+        try {
+          const job = await this.getClient().createQueryJob({
+            useLegacySql: false,
+            jobPrefix: "dataform-",
+            query,
+            params,
+            labels
+          });
+          const resultStream = job[0].getQueryResultsStream();
+          return new Promise<IExecutionResult>((resolve, reject) => {
+            if (isCancelled) {
               resultStream.end();
+              reject(new Error("Query cancelled."));
+              return;
             }
-          })
-          .on("end", async () => {
-            try {
-              const [jobMetadata] = await job[0].getMetadata();
-              if (!!jobMetadata.status?.errorResult) {
-                reject(new Error(jobMetadata.status.errorResult.message));
-                return;
-              }
-              resolve({
-                rows: results.rows,
-                metadata: {
-                  bigquery: {
-                    jobId: jobMetadata.jobReference.jobId,
-                    totalBytesBilled: jobMetadata.statistics.query.totalBytesBilled
-                      ? Long.fromString(jobMetadata.statistics.query.totalBytesBilled)
-                      : Long.ZERO,
-                    totalBytesProcessed: jobMetadata.statistics.query.totalBytesProcessed
-                      ? Long.fromString(jobMetadata.statistics.query.totalBytesProcessed)
-                      : Long.ZERO
+            onCancel?.(() => {
+              resultStream.end();
+              reject(new Error("Query cancelled."));
+            });
+
+            const results = new LimitedResultSet({
+              rowLimit,
+              byteLimit
+            });
+            resultStream
+              .on("error", e => reject(e))
+              .on("data", row => {
+                if (!results.push(row)) {
+                  resultStream.end();
+                }
+              })
+              .on("end", async () => {
+                try {
+                  const [jobMetadata] = await job[0].getMetadata();
+                  if (!!jobMetadata.status?.errorResult) {
+                    reject(new Error(jobMetadata.status.errorResult.message));
+                    return;
                   }
+                  resolve({
+                    rows: results.rows,
+                    metadata: {
+                      bigquery: {
+                        jobId: jobMetadata.jobReference.jobId,
+                        totalBytesBilled: jobMetadata.statistics.query.totalBytesBilled
+                          ? Long.fromString(jobMetadata.statistics.query.totalBytesBilled)
+                          : Long.ZERO,
+                        totalBytesProcessed: jobMetadata.statistics.query.totalBytesProcessed
+                          ? Long.fromString(jobMetadata.statistics.query.totalBytesProcessed)
+                          : Long.ZERO
+                      }
+                    }
+                  });
+                } catch (e) {
+                  reject(e);
                 }
               });
-            } catch (e) {
-              reject(e);
-            }
           });
-      });
-    } catch (e) {
-      throw coerceAsError(e);
-    }
+        } catch (e) {
+          throw coerceAsError(e);
+        }
+      },
+      BIGQUERY_INTERNAL_ERROR_JOB_MAX_ATTEMPTS,
+      e => e.message?.includes("Retrying the job may solve the problem")
+    );
   }
 }
 

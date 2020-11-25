@@ -12,6 +12,7 @@ ts_library(
         "//api/utils",
         "//common/errors",
         "//common/flags",
+        "//common/promises",
         "//common/protos",
         "//common/strings",
         "//core",

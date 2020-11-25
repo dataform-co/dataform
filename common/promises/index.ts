@@ -43,3 +43,22 @@ export async function sleepUntil(
 export async function sleepImmediate() {
   await new Promise(resolve => setImmediate(resolve));
 }
+
+export async function retry<T>(
+  fn: () => Promise<T>,
+  maxAttempts: number = 1,
+  matchesRetriableError: (e: any) => boolean = () => true
+): Promise<T> {
+  let lastErr;
+  for (let i = 0; i < maxAttempts; i++) {
+    try {
+      return await fn();
+    } catch (e) {
+      if (!matchesRetriableError(e)) {
+        throw e;
+      }
+      lastErr = e;
+    }
+  }
+  throw lastErr;
+}
