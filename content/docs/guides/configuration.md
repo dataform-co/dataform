@@ -96,7 +96,7 @@ Dataform executes as many queries as possible in parallel, using per-warehouse d
 
 Dataform has a built-in run caching feature. Once enabled, Dataform only runs actions (datasets, assertions, or operations) that might update the data in the action's output.
 
-For example, if a dataset's SQL definition and dependency datasets are unchanged (since the previous run), re-creating that dataset will not update the actual data. In this case, with run caching enabled, Dataform would not run the relevant action.
+For example, if a dataset's SQL definition and dependency datasets are unmodified (since the previous run), re-creating that dataset will not update the actual data. In this case, with run caching enabled, Dataform would not run the relevant action.
 
 <div className="bp3-callout bp3-icon-info-sign bp3-intent-warning" markdown="1">
   Run caching is currently only supported for <b>BigQuery</b> and <b>Snowflake</b> projects, and requires a <code>@dataform/core</code> version of at least <code>1.6.11</code>.
