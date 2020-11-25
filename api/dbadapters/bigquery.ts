@@ -176,7 +176,12 @@ export class BigQueryDbAdapter implements IDbAdapter {
       name: metadata.tableReference.tableId
     };
 
-    if (!equals(dataform.Target, target, metadataTarget)) {
+    // Database isn't checked for equality as it's not always presented to the compiled graph, but
+    // IS always available in the warehouse.
+    if (
+      metadata.tableReference.datasetId !== target.schema ||
+      metadata.tableReference.tableId !== target.name
+    ) {
       throw new Error(
         `Target ${JSON.stringify(metadataTarget)} does not match requested target ${JSON.stringify(
           target
@@ -288,9 +293,9 @@ export class BigQueryDbAdapter implements IDbAdapter {
         .dataset(target.schema)
         .table(target.name)
         .getMetadata();
-      return table && table[0];
+      return table?.[0];
     } catch (e) {
-      if (e && e.errors && e.errors[0] && e.errors[0].reason === "notFound") {
+      if (e?.errors?.[0]?.reason === "notFound") {
         // if the table can't be found, just return null
         return null;
       }
