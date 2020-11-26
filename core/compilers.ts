@@ -90,8 +90,101 @@ export function extractJsBlocks(code: string): { sql: string; js: string } {
   };
 }
 
+export function compileStandaloneSqlxQuery(code: string) {
+  const { config, js, sql, incremental, preOperations, postOperations, inputs } = extractSqlxParts(
+    SyntaxTreeNode.create(code)
+  );
+  if (config) {
+    throw new Error(`Standalone SQLX queries may not define 'config' code blocks.`);
+  }
+  if (incremental) {
+    throw new Error(`Standalone SQLX queries may not define 'incremental_where' code blocks.`);
+  }
+  if (preOperations.length > 0) {
+    throw new Error(`Standalone SQLX queries may not define 'pre_operations' code blocks.`);
+  }
+  if (postOperations.length > 0) {
+    throw new Error(`Standalone SQLX queries may not define 'post_operations' code blocks.`);
+  }
+  if (inputs.length > 0) {
+    throw new Error(`Standalone SQLX queries may not define 'input' code blocks.`);
+  }
+  return `
+    const ref = dataform.resolve.bind(dataform);
+    const resolve = dataform.resolve.bind(dataform);
+    ${js}
+    return \`${sql}\`;
+  `;
+}
+
 function compileSqlx(rootNode: SyntaxTreeNode, path: string) {
-  let config = "{}";
+  const { config, js, sql, incremental, preOperations, postOperations, inputs } = extractSqlxParts(
+    rootNode
+  );
+
+  const contextFunctions = ["self", "ref", "resolve", "name", "when", "incremental"]
+    .map(name => `const ${name} = ctx.${name} ? ctx.${name}.bind(ctx) : undefined;`)
+    .join("\n");
+
+  return `dataform.sqlxAction({
+  sqlxConfig: {
+    name: "${utils.baseFilename(path)}",
+    type: "operations",
+    ...${config || "{}"}
+  },
+  sqlStatementCount: ${sql.length},
+  sqlContextable: (ctx) => {
+    ${contextFunctions}
+    ${js}
+    return [${sql.map(sqlOp => `\`${sqlOp}\``)}];
+  },
+  incrementalWhereContextable: ${
+    !!incremental
+      ? `(ctx) => {
+    ${contextFunctions}
+    ${js}
+    return \`${incremental}\`
+  }`
+      : "undefined"
+  },
+  preOperationsContextable: ${
+    preOperations.length > 0
+      ? `(ctx) => {
+    ${contextFunctions}
+    ${js}
+    return [${preOperations.map(preOpSql => `\`${preOpSql}\``)}];
+  }`
+      : "undefined"
+  },
+  postOperationsContextable: ${
+    postOperations.length > 0
+      ? `(ctx) => {
+    ${contextFunctions}
+    ${js}
+    return [${postOperations.map(postOpSql => `\`${postOpSql}\``)}];
+  }`
+      : "undefined"
+  },
+  inputContextables: [
+    ${inputs
+      .map(
+        ({ labelParts, value }) =>
+          `{
+            refName: [${labelParts.map(labelPart => `"${labelPart}"`).join(", ")}],
+            contextable: (ctx) => {
+              ${js}
+              return \`${value}\`;
+            }
+          }`
+      )
+      .join(",")}
+  ]
+});
+`;
+}
+
+function extractSqlxParts(rootNode: SyntaxTreeNode) {
+  let config = "";
   let js = "";
   rootNode
     .children()
@@ -122,8 +215,8 @@ function compileSqlx(rootNode: SyntaxTreeNode, path: string) {
   );
 
   let incremental = "";
-  let preOperations = [""];
-  let postOperations = [""];
+  let preOperations: string[] = [];
+  let postOperations: string[] = [];
   const inputs: Array<{
     labelParts: string[];
     value: string;
@@ -174,65 +267,15 @@ function compileSqlx(rootNode: SyntaxTreeNode, path: string) {
       }
     });
 
-  const contextFunctions = ["self", "ref", "resolve", "name", "when", "incremental"]
-    .map(name => `const ${name} = ctx.${name} ? ctx.${name}.bind(ctx) : undefined;`)
-    .join("\n");
-
-  return `dataform.sqlxAction({
-  sqlxConfig: {
-    name: "${utils.baseFilename(path)}",
-    type: "operations",
-    ...${config}
-  },
-  sqlStatementCount: ${sql.length},
-  sqlContextable: (ctx) => {
-    ${contextFunctions}
-    ${js}
-    return [${sql.map(sqlOp => `\`${sqlOp}\``)}];
-  },
-  incrementalWhereContextable: ${
-    !!incremental
-      ? `(ctx) => {
-    ${contextFunctions}
-    ${js}
-    return \`${incremental}\`
-  }`
-      : "undefined"
-  },
-  preOperationsContextable: ${
-    preOperations.length > 1 || preOperations[0] !== ""
-      ? `(ctx) => {
-    ${contextFunctions}
-    ${js}
-    return [${preOperations.map(preOpSql => `\`${preOpSql}\``)}];
-  }`
-      : "undefined"
-  },
-  postOperationsContextable: ${
-    postOperations.length > 1 || postOperations[0] !== ""
-      ? `(ctx) => {
-    ${contextFunctions}
-    ${js}
-    return [${postOperations.map(postOpSql => `\`${postOpSql}\``)}];
-  }`
-      : "undefined"
-  },
-  inputContextables: [
-    ${inputs
-      .map(
-        ({ labelParts, value }) =>
-          `{
-            refName: [${labelParts.map(labelPart => `"${labelPart}"`).join(", ")}],
-            contextable: (ctx) => {
-              ${js}
-              return \`${value}\`;
-            }
-          }`
-      )
-      .join(",")}
-  ]
-});
-`;
+  return {
+    config,
+    js,
+    sql,
+    incremental,
+    preOperations,
+    postOperations,
+    inputs
+  };
 }
 
 function getFunctionPropertyNames(prototype: any) {

@@ -26,13 +26,15 @@ export function genIndex(base64EncodedConfig: string): string {
     dataform.ProjectConfig.create(config.compileConfig.projectConfigOverride).toJSON()
   );
 
+  const escapedQuery = config.compileConfig.query
+    .replace(/\\/g, "\\\\")
+    .replace(/`/g, "\\`")
+    .replace(/\${/g, "\\${");
   const returnValue = config.compileConfig.compileSingleQuery
     ? `(function() {
       try {
-        const ref = global.dataform.resolve.bind(global.dataform);
-        const resolve = global.dataform.resolve.bind(global.dataform);
-        const self = () => "";
-        return \`${config.compileConfig.query}\`;
+        const compiled = require("@dataform/core").compileStandaloneSqlxQuery(\`${escapedQuery}\`);
+        return new Function(compiled)();
       } catch (e) {
         return e.message;
       }

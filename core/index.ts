@@ -19,3 +19,6 @@ function globalSession() {
   return (global as any)._DF_SESSION as Session;
 }
 export const session = globalSession();
+
+// Used by generated index.js file.
+export const compileStandaloneSqlxQuery = compilers.compileStandaloneSqlxQuery;
