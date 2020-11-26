@@ -4,10 +4,7 @@ import { TableContext } from "df/core/table";
 import * as utils from "df/core/utils";
 import { SyntaxTreeNode, SyntaxTreeNodeType } from "df/sqlx/lexer";
 
-export function compile(code: string, path?: string) {
-  if (!path) {
-    return compileStandaloneSqlxQuery(code);
-  }
+export function compile(code: string, path: string) {
   if (path.endsWith(".sqlx")) {
     return compileSqlx(SyntaxTreeNode.create(code), path);
   }
@@ -93,7 +90,7 @@ export function extractJsBlocks(code: string): { sql: string; js: string } {
   };
 }
 
-function compileStandaloneSqlxQuery(code: string) {
+export function compileStandaloneSqlxQuery(code: string) {
   const { config, js, sql, incremental, preOperations, postOperations, inputs } = extractSqlxParts(
     SyntaxTreeNode.create(code)
   );

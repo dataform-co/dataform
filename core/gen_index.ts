@@ -33,7 +33,7 @@ export function genIndex(base64EncodedConfig: string): string {
   const returnValue = config.compileConfig.compileSingleQuery
     ? `(function() {
       try {
-        const compiled = require("@dataform/core").compiler(\`${escapedQuery}\`);
+        const compiled = require("@dataform/core").compileStandaloneSqlxQuery(\`${escapedQuery}\`);
         return new Function(compiled)();
       } catch (e) {
         return e.message;
