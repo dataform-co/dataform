@@ -19,6 +19,7 @@ import {
 } from "df/core/table";
 import * as test from "df/core/test";
 import * as utils from "df/core/utils";
+import { toResolvable } from "df/core/utils";
 import { version as dataformCoreVersion } from "df/core/version";
 import { dataform } from "df/protos/ts";
 
@@ -216,7 +217,8 @@ export class Session {
     }
   }
 
-  public resolve(ref: Resolvable): string {
+  public resolve(ref: Resolvable | string[], ...rest: string[]): string {
+    ref = toResolvable(ref, rest);
     const allResolved = this.findActions(utils.resolvableAsTarget(ref));
     if (allResolved.length > 1) {
       this.compileError(new Error(utils.ambiguousActionNameMsg(ref, allResolved)));
