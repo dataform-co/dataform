@@ -876,6 +876,22 @@ suite("@dataform/api", () => {
       });
       expect(compiledQuery).equals("");
     });
+    test("example with JS block", async () => {
+      const compiledQuery = await query.compile(
+        `
+js {
+  const foo = "bar";
+}
+
+select \${foo}
+`,
+        {
+          projectDir: "examples/common_v1",
+          projectConfigOverride: { warehouse: "bigquery", defaultDatabase: "tada-analytics" }
+        }
+      );
+      expect(compiledQuery.trim()).equals("select bar");
+    });
   });
 
   suite("credentials_config", () => {
