@@ -1,4 +1,4 @@
-div.hljs-filename {
+div.primsjs-filename {
   background-color: #1b1d24;
   border-radius: 5px 5px 0px 0px;
   padding: 8px 10px;
@@ -19,7 +19,7 @@ div.hljs-filename {
   opacity: 0.6;
 }
 
-pre.hljs {
+pre.prismjs {
   padding: 10px;
   border-radius: 5px;
   background-color: #242837;
@@ -40,7 +40,8 @@ pre.hljs {
   hyphens: none;
 }
 
-pre.hljs, pre.hljs > code {
+pre.primsjs,
+pre.primsjs > code {
   font-family: "Roboto Mono", monospace;
 }
 
