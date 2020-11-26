@@ -835,6 +835,18 @@ suite("@dataform/api", () => {
         "select 1 from `tada-analytics.df_integration_test.example_view`"
       );
     });
+    test("bigquery_example with explicit schema", async () => {
+      const compiledQuery = await query.compile(
+        'select 1 from ${ref("df_integration_test", "example_view")}',
+        {
+          projectDir: "examples/common_v1",
+          projectConfigOverride: { warehouse: "bigquery", defaultDatabase: "tada-analytics" }
+        }
+      );
+      expect(compiledQuery).equals(
+        "select 1 from `tada-analytics.df_integration_test.example_view`"
+      );
+    });
     test("bigquery example with input backticks", async () => {
       const compiledQuery = await query.compile(
         "select 1 from `tada-analytics.df_integration_test.example_view`",
