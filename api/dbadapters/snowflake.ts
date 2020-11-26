@@ -281,11 +281,28 @@ where table_schema = :1
     return rows;
   }
 
-  public async schemas(database: string): Promise<string[]> {
-    const { rows } = await this.execute(
-      `select SCHEMA_NAME from ${database ? `"${database}".` : ""}information_schema.schemata`
+  public async databases(): Promise<string[]> {
+    const { rows } = await this.execute(`SHOW DATABASES`);
+    return rows.map(row => row.name);
+  }
+
+  public async schemas(database?: string | string[]): Promise<string[]> {
+    if (database === undefined) {
+      database = await this.databases();
+    }
+    if (typeof database === "string") {
+      database = [database];
+    }
+    let schemas: string[] = [];
+    await Promise.all(
+      database.map(async db => {
+        const { rows } = await this.execute(
+          `select SCHEMA_NAME from ${db ? `"${db}".` : ""}information_schema.schemata`
+        );
+        schemas = schemas.concat(rows.map(row => row.SCHEMA_NAME));
+      })
     );
-    return rows.map(row => row.SCHEMA_NAME);
+    return schemas;
   }
 
   public async createSchema(database: string, schema: string): Promise<void> {

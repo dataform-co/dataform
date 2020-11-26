@@ -38,7 +38,8 @@ export interface IDbAdapter extends IDbClient {
     projectConfig?: dataform.IProjectConfig
   ): Promise<dataform.IQueryEvaluation[]>;
 
-  schemas(database: string): Promise<string[]>;
+  databases(): Promise<string[]>;
+  schemas(databases?: string | string[]): Promise<string[]>;
   createSchema(database: string, schema: string): Promise<void>;
 
   // TODO: This should take parameters to allow for retrieving from a specific database/schema.

@@ -124,9 +124,26 @@ export class PrestoDbAdapter implements IDbAdapter {
     return queryEvaluations;
   }
 
-  public async schemas(database: string): Promise<string[]> {
-    const result = await this.execute(`show schemas from ${database}`);
+  public async databases(): Promise<string[]> {
+    const result = await this.execute("show catalogs");
     return result.rows.flat();
+  }
+
+  public async schemas(database?: string | string[]): Promise<string[]> {
+    if (database === undefined) {
+      database = await this.databases();
+    }
+    if (typeof database === "string") {
+      database = [database];
+    }
+    let schemas: string[] = [];
+    await Promise.all(
+      database.map(async db => {
+        const { rows } = await this.execute(`show schemas from ${db}`);
+        schemas = schemas.concat(rows.flat());
+      })
+    );
+    return schemas;
   }
 
   public async createSchema(database: string, schema: string): Promise<void> {
@@ -137,23 +154,18 @@ export class PrestoDbAdapter implements IDbAdapter {
     const databases = await this.databases();
     const targets: dataform.ITarget[] = [];
     await Promise.all(
-      databases.map(
-        async database =>
-          await Promise.all(
-            (await this.schemas(database)).map(async schema => {
-              const result = await this.execute(`show tables from ${database}.${schema}`);
-              targets.push(
-                ...result.rows.flat().map(table =>
-                  dataform.Target.create({
-                    database,
-                    schema,
-                    name: table as string
-                  })
-                )
-              );
+      (await this.schemas()).map(async schema => {
+        const result = await this.execute(`show tables from ${database}.${schema}`);
+        targets.push(
+          ...result.rows.flat().map(table =>
+            dataform.Target.create({
+              database,
+              schema,
+              name: table as string
             })
           )
-      )
+        );
+      })
     );
     return targets;
   }
@@ -207,10 +219,5 @@ export class PrestoDbAdapter implements IDbAdapter {
   ): Promise<dataform.ITableMetadata[]> {
     // Unimplemented.
     return [];
-  }
-
-  private async databases(): Promise<string[]> {
-    const result = await this.execute("show catalogs");
-    return result.rows.flat();
   }
 }
