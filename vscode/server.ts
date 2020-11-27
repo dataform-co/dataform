@@ -45,6 +45,14 @@ documents.onDidSave(change => {
 
 async function compileAndValidate() {
   const spawnedProcess = spawn("dataform", ["compile", "--json"]);
+  spawnedProcess.on("error", err => {
+    console.error("Error running dataform compile:" + err);
+    connection.sendNotification(
+      "error",
+      "There is an issue with your local dataform cli tool. Please make sure your cli tool is installed and up to date."
+    );
+    return;
+  });
   const compileResult = await getProcessResult(spawnedProcess);
 
   const parsedResult: dataform.ICompiledGraph = JSON.parse(compileResult.stdout);
