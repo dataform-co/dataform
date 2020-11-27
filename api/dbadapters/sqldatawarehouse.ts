@@ -215,9 +215,23 @@ export class SQLDataWarehouseDBAdapter implements IDbAdapter {
     throw new Error("SQLDataWarehouse does not support multiple databases in the same connection");
   }
 
-  public async schemas(): Promise<string[]> {
-    const schemas = await this.execute(`select schema_name from information_schema.schemata`);
-    return schemas.rows.map(row => row.schema_name);
+  public async schemas(database?: string | string[]): Promise<string[]> {
+    if (database === undefined) {
+      database = await this.databases();
+    }
+    if (typeof database === "string") {
+      database = [database];
+    }
+    let schemas: string[] = [];
+    await Promise.all(
+      database.map(async db => {
+        const { rows } = await this.execute(
+          `select schema_name from ${db}.information_schema.schemata`
+        );
+        schemas = schemas.concat(rows.map(row => row.schema_name));
+      })
+    );
+    return schemas;
   }
 
   public async createSchema(_: string, schema: string): Promise<void> {

@@ -235,7 +235,7 @@ export class PostgresDbAdapter implements IDbAdapter {
     throw new Error("Postgres does not support multiple databases in the same connection");
   }
 
-  public async schemas(): Promise<string[]> {
+  public async schemas(database?: string | string[]): Promise<string[]> {
     const schemas = await this.execute(`select nspname from pg_namespace`, {
       includeQueryInError: true
     });

@@ -154,18 +154,23 @@ export class PrestoDbAdapter implements IDbAdapter {
     const databases = await this.databases();
     const targets: dataform.ITarget[] = [];
     await Promise.all(
-      (await this.schemas()).map(async schema => {
-        const result = await this.execute(`show tables from ${database}.${schema}`);
-        targets.push(
-          ...result.rows.flat().map(table =>
-            dataform.Target.create({
-              database,
-              schema,
-              name: table as string
+      databases.map(
+        async database =>
+          await Promise.all(
+            (await this.schemas(database)).map(async schema => {
+              const result = await this.execute(`show tables from ${database}.${schema}`);
+              targets.push(
+                ...result.rows.flat().map(table =>
+                  dataform.Target.create({
+                    database,
+                    schema,
+                    name: table as string
+                  })
+                )
+              );
             })
           )
-        );
-      })
+      )
     );
     return targets;
   }

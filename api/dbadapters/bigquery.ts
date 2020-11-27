@@ -236,9 +236,22 @@ export class BigQueryDbAdapter implements IDbAdapter {
     throw new Error("BigQuery does not support multiple databases in the same connection");
   }
 
-  public async schemas(database: string): Promise<string[]> {
-    const data = await this.getClient(database).getDatasets();
-    return data[0].map(dataset => dataset.id);
+  public async schemas(database?: string | string[]): Promise<string[]> {
+    if (database === undefined) {
+      database = await this.databases();
+    }
+    if (typeof database === "string") {
+      database = [database];
+    }
+
+    let schemas: string[] = [];
+    await Promise.all(
+      database.map(async db => {
+        const data = await this.getClient(db).getDatasets();
+        schemas = schemas.concat(data[0].map(dataset => dataset.id));
+      })
+    );
+    return schemas;
   }
 
   public async createSchema(database: string, schema: string): Promise<void> {
