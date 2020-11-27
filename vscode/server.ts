@@ -46,6 +46,7 @@ documents.onDidSave(change => {
 async function compileAndValidate() {
   const spawnedProcess = spawn("dataform", ["compile", "--json"]);
   spawnedProcess.on("error", err => {
+    // tslint:disable-next-line: no-console
     console.error("Error running 'dataform compile':", err);
     connection.sendNotification(
       "error",
