@@ -150,10 +150,8 @@ suite(__filename, { parallel: true }, () => {
 
     for (const input of testCases) {
       test(`reserialized ${JSON.stringify(input.toJson())}`, () => {
-        const serialized = input.serialize();
-        const reserialized = reserialize("TestMessage", input.serialize());
-        expect(serialized).eql(reserialized);
-        expect(protobuftsProtos.TestMessage.deserialize(reserialized)).eql(input);
+        expect(input.serialize()).eql(reserialize("TestMessage", input.serialize()));
+        expect(protobuftsProtos.TestMessage.deserialize(input.serialize())).eql(input);
       });
     }
   });
@@ -251,10 +249,8 @@ suite(__filename, { parallel: true }, () => {
 
     for (const input of testCases) {
       test(`reserialized ${JSON.stringify(input.toJson())}`, () => {
-        const serialized = input.serialize();
-        const reserialized = reserialize("TestRepeatedMessage", input.serialize());
-        expect(serialized).eql(reserialized);
-        expect(protobuftsProtos.TestRepeatedMessage.deserialize(reserialized)).eql(input);
+        expect(input.serialize()).eql(reserialize("TestRepeatedMessage", input.serialize()));
+        expect(protobuftsProtos.TestRepeatedMessage.deserialize(input.serialize())).eql(input);
       });
     }
   });
@@ -352,10 +348,12 @@ suite(__filename, { parallel: true }, () => {
 
     for (const input of testCases) {
       test(`reserialized ${JSON.stringify(input.toJson())}`, () => {
-        const serialized = input.serialize();
-        const reserialized = reserialize("TestUnpackedRepeatedMessage", input.serialize());
-        expect(serialized).eql(reserialized);
-        expect(protobuftsProtos.TestUnpackedRepeatedMessage.deserialize(reserialized)).eql(input);
+        expect(input.serialize()).eql(
+          reserialize("TestUnpackedRepeatedMessage", input.serialize())
+        );
+        expect(protobuftsProtos.TestUnpackedRepeatedMessage.deserialize(input.serialize())).eql(
+          input
+        );
       });
     }
   });

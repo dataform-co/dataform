@@ -20,6 +20,23 @@ const LONG_TYPES = [
   google.protobuf.FieldDescriptorProto.Type.TYPE_SINT64
 ];
 
+const PACKABLE_TYPES = [
+  google.protobuf.FieldDescriptorProto.Type.TYPE_DOUBLE,
+  google.protobuf.FieldDescriptorProto.Type.TYPE_FLOAT,
+  google.protobuf.FieldDescriptorProto.Type.TYPE_INT64,
+  google.protobuf.FieldDescriptorProto.Type.TYPE_UINT64,
+  google.protobuf.FieldDescriptorProto.Type.TYPE_INT32,
+  google.protobuf.FieldDescriptorProto.Type.TYPE_FIXED64,
+  google.protobuf.FieldDescriptorProto.Type.TYPE_FIXED32,
+  google.protobuf.FieldDescriptorProto.Type.TYPE_BOOL,
+  google.protobuf.FieldDescriptorProto.Type.TYPE_UINT32,
+  google.protobuf.FieldDescriptorProto.Type.TYPE_ENUM,
+  google.protobuf.FieldDescriptorProto.Type.TYPE_SFIXED32,
+  google.protobuf.FieldDescriptorProto.Type.TYPE_SFIXED64,
+  google.protobuf.FieldDescriptorProto.Type.TYPE_SINT32,
+  google.protobuf.FieldDescriptorProto.Type.TYPE_SINT64
+];
+
 export class FileTranspiler {
   public static forProtobufFile(
     file: google.protobuf.IFileDescriptorProto,
@@ -90,23 +107,6 @@ ${[
     );
   }
 }
-
-const PACKABLE_TYPES = [
-  google.protobuf.FieldDescriptorProto.Type.TYPE_DOUBLE,
-  google.protobuf.FieldDescriptorProto.Type.TYPE_FLOAT,
-  google.protobuf.FieldDescriptorProto.Type.TYPE_INT64,
-  google.protobuf.FieldDescriptorProto.Type.TYPE_UINT64,
-  google.protobuf.FieldDescriptorProto.Type.TYPE_INT32,
-  google.protobuf.FieldDescriptorProto.Type.TYPE_FIXED64,
-  google.protobuf.FieldDescriptorProto.Type.TYPE_FIXED32,
-  google.protobuf.FieldDescriptorProto.Type.TYPE_BOOL,
-  google.protobuf.FieldDescriptorProto.Type.TYPE_UINT32,
-  google.protobuf.FieldDescriptorProto.Type.TYPE_ENUM,
-  google.protobuf.FieldDescriptorProto.Type.TYPE_SFIXED32,
-  google.protobuf.FieldDescriptorProto.Type.TYPE_SFIXED64,
-  google.protobuf.FieldDescriptorProto.Type.TYPE_SINT32,
-  google.protobuf.FieldDescriptorProto.Type.TYPE_SINT64
-];
 
 class MessageTranspiler {
   public static forMessage(type: ITypeMetadata<IMessageDescriptor>, types: TypeRegistry) {
