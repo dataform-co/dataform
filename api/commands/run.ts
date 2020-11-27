@@ -514,12 +514,15 @@ export class Runner {
       if (!this.warehouseStateByTarget.has(transitiveInput)) {
         return false;
       }
+      const inputWarehouseState = this.warehouseStateByTarget.get(transitiveInput);
       if (
         this.warehouseStateByTarget.get(transitiveInput).lastUpdatedMillis.equals(0) ||
         previousInputTimestamps.get(transitiveInput).equals(0) ||
-        this.warehouseStateByTarget
-          .get(transitiveInput)
-          .lastUpdatedMillis.notEquals(previousInputTimestamps.get(transitiveInput))
+        inputWarehouseState.lastUpdatedMillis.notEquals(
+          previousInputTimestamps.get(transitiveInput)
+        ) ||
+        // If the input has a streaming buffer, we cannot trust its last-updated timestamp.
+        inputWarehouseState.bigquery?.hasStreamingBuffer
       ) {
         return false;
       }
