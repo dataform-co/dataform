@@ -171,20 +171,20 @@ export class TypeRegistry {
         throw new Error("GROUP is unsupported.");
       case google.protobuf.FieldDescriptorProto.Type.TYPE_MESSAGE:
       case google.protobuf.FieldDescriptorProto.Type.TYPE_ENUM:
-        const typeMetadata = this.allTypes.find(
+        const matchingTypeMetadata = this.allTypes.find(
           typeMetadata => typeMetadata.protobufType.fullyQualifiedName === typeName.slice(1)
         );
         if (
-          typeMetadata.protobufType.isEnum === false &&
-          typeMetadata.protobufType.descriptorProto.options?.mapEntry
+          matchingTypeMetadata.protobufType.isEnum === false &&
+          matchingTypeMetadata.protobufType.descriptorProto.options?.mapEntry
         ) {
-          const keyField = typeMetadata.protobufType.descriptorProto.field[0];
+          const keyField = matchingTypeMetadata.protobufType.descriptorProto.field[0];
           const keyType = this.typescriptTypeFromProtobufType(
             keyField.type,
             keyField.typeName,
             insideMessage
           );
-          const valueField = typeMetadata.protobufType.descriptorProto.field[1];
+          const valueField = matchingTypeMetadata.protobufType.descriptorProto.field[1];
           const valueType = this.typescriptTypeFromProtobufType(
             valueField.type,
             valueField.typeName,
@@ -193,13 +193,13 @@ export class TypeRegistry {
           return `Map<${keyType}, ${valueType}>`;
         }
         const typescriptTypeName = [
-          ...typeMetadata.typescriptType.parentMessages,
-          typeMetadata.typescriptType.name
+          ...matchingTypeMetadata.typescriptType.parentMessages,
+          matchingTypeMetadata.typescriptType.name
         ].join(".");
-        if (typeMetadata.file.typescript.name === insideMessage.file.typescript.name) {
+        if (matchingTypeMetadata.file.typescript.name === insideMessage.file.typescript.name) {
           return typescriptTypeName;
         }
-        return `${typeMetadata.file.typescript.importAs}.${typescriptTypeName}`;
+        return `${matchingTypeMetadata.file.typescript.importAs}.${typescriptTypeName}`;
       case google.protobuf.FieldDescriptorProto.Type.TYPE_BYTES:
         return "Uint8Array";
       default:

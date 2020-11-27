@@ -1,5 +1,7 @@
 import Long from "long";
 
+// tslint:disable: no-bitwise
+
 interface IMessage {
   serialize: () => Uint8Array;
 }
