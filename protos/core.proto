@@ -579,20 +579,23 @@ message Fields {
 }
 
 message TableMetadata {
-
+  Target target = 1;
   enum Type {
     UNKNOWN = 0;
     TABLE = 1;
     VIEW = 2;
   }
-
-  Target target = 1;
   Type type = 6;
 
   repeated Field fields = 3;
-  int64 last_updated_millis = 4;
   string description = 5;
   map<string, string> labels = 7;
+  int64 last_updated_millis = 4;
+
+  message BigQuery {
+    bool has_streaming_buffer = 1;
+  }
+  BigQuery bigquery = 8;
 
   // Deprecated.
   string type_deprecated = 2; // "table" or "view"
