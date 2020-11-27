@@ -203,7 +203,10 @@ export class BigQueryDbAdapter implements IDbAdapter {
       fields: metadata.schema.fields?.map(field => convertField(field)),
       lastUpdatedMillis: Long.fromString(metadata.lastModifiedTime),
       description: metadata.description,
-      labels: metadata.labels
+      labels: metadata.labels,
+      bigquery: {
+        hasStreamingBuffer: !!metadata.streamingBuffer
+      }
     });
   }
 
