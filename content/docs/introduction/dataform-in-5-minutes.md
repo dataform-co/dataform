@@ -1,5 +1,5 @@
 ---
-title: Dataform and SQLX in 5 minutes
+title: SQLX and Dataform in 5 minutes
 subtitle: Learn how Dataform and SQLX can help your team manage data in your warehouse.
 priority: 2
 ---
