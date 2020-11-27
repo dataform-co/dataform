@@ -15,19 +15,21 @@ message ProjectConfig {
   string default_schema = 2;
   string assertion_schema = 5;
 
+  map<string, string> vars = 14;
+
   int32 concurrent_query_limit = 13;
   int32 idempotent_action_retries = 8;
 
+  string database_suffix = 15;
   string schema_suffix = 7;
   string table_prefix = 11;
   
   bool use_run_cache = 10;
 
-  // For internal use only, will be removed at a later date.
-  bool use_single_query_per_action = 12;
-
   // Deprecated. Please use 'default_database' instead.
   string gcloud_project_id = 6;
+
+  reserved 3, 4, 12;
 }
 
 message Environments {
@@ -58,6 +60,7 @@ message Environments {
       // This is a subset of RunConfig.
       message Options {
         bool include_dependencies = 4;
+        bool include_dependents = 6;
         bool full_refresh = 5;
       }
       // Optional.
@@ -102,15 +105,13 @@ message RunConfig {
   repeated string actions = 1;
   repeated string tags = 5;
   bool include_dependencies = 3;
+  bool include_dependents = 11;
   bool full_refresh = 2;
   int32 timeout_millis = 7;
   bool use_run_cache = 8;
 
   // For internal use only, will be removed at a later date.
   bool disable_set_metadata = 9;
-
-  // For internal use only, will be removed at a later date.
-  bool use_single_query_per_action = 10;
 
   reserved 4, 6;
 }
@@ -132,6 +133,7 @@ message CompileConfig {
   ProjectConfig project_config_override = 3;
 
   // If supplied, only the compiled form of 'query' will be returned.
+  bool compile_single_query = 7;
   string query = 4;
 
   // Override compilation timeout settings.
@@ -164,8 +166,18 @@ message RedshiftOptions {
   bool bind = 5 [deprecated = true];
 }
 
+message SnowflakeOptions {
+  bool secure = 1;
+  bool transient = 2;
+  repeated string cluster_by = 3;
+}
+
 message SQLDataWarehouseOptions {
   string distribution = 1;
+}
+
+message PrestoOptions {
+  repeated string partition_by = 3;
 }
 
 message GraphErrors {
@@ -285,7 +297,9 @@ message Table {
   // Warehouse specific features.
   RedshiftOptions redshift = 21;
   BigQueryOptions bigquery = 22;
+  SnowflakeOptions snowflake = 33;
   SQLDataWarehouseOptions sql_data_warehouse = 25;
+  PrestoOptions presto = 34;
 
   // Generated.
   string file_name = 18;
@@ -423,7 +437,8 @@ message ExecutionAction {
 
 message WarehouseState {
   repeated TableMetadata tables = 1;
-  repeated PersistedTableMetadata cached_states = 2;
+
+  reserved 2;
 }
 
 message ExecutionGraph {
@@ -456,6 +471,18 @@ message RunResult {
 
 message ActionResult {
   string name = 1;
+  Target target = 5;
+
+  message Input {
+    Target target = 1;
+
+    message Metadata {
+      int64 last_modified_timestamp_millis = 1;
+    }
+    // If left unset, metadata for this Input could not be found.
+    Metadata metadata = 2;
+  }
+  repeated Input inputs = 6;
 
   enum ExecutionStatus {
     UNKNOWN = 0;
@@ -471,6 +498,8 @@ message ActionResult {
 
   repeated TaskResult tasks = 3;
   Timing timing = 4;
+  // Only set if use_run_cache was set to true.
+  int64 post_execution_timestamp_millis = 7;
 }
 
 

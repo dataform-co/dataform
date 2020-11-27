@@ -34,8 +34,10 @@ ts_library(
         "@npm//@types/node",
         "@npm//@types/react",
         "@npm//@types/react-router",
+        "@npm//@types/validator",
         "@npm//re-resizable",
         "@npm//react",
         "@npm//react-router",
+        "@npm//validator",
     ],
 )

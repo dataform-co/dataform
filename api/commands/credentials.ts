@@ -9,6 +9,7 @@ export const CREDENTIALS_FILENAME = ".df-credentials.json";
 export type Credentials =
   | dataform.IBigQuery
   | dataform.IJDBC
+  | dataform.IPresto
   | dataform.ISnowflake
   | dataform.ISQLDataWarehouse;
 
@@ -35,6 +36,14 @@ export function coerce(warehouse: string, credentials: any): Credentials {
         credentials,
         dataform.JDBC.verify,
         dataform.JDBC.create,
+        requiredWarehouseProps[warehouse]
+      );
+    }
+    case WarehouseType.PRESTO: {
+      return validateAnyAsCredentials(
+        credentials,
+        dataform.Presto.verify,
+        dataform.Presto.create,
         requiredWarehouseProps[warehouse]
       );
     }

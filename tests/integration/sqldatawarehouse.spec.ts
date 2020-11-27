@@ -193,11 +193,11 @@ suite("@dataform/integration/sqldatawarehouse", { parallel: true }, ({ before, a
       );
     });
 
-    test("invalid table fails validation", async () => {
+    test("invalid table fails validation and error parsed correctly", async () => {
       const evaluations = await dbadapter.evaluate(
         dataform.Table.create({
           type: "table",
-          query: "thisisillegal",
+          query: "selects\n1 as x",
           target: {
             schema: "df_integration_test",
             name: "example_illegal_table",
@@ -209,6 +209,9 @@ suite("@dataform/integration/sqldatawarehouse", { parallel: true }, ({ before, a
       expect(evaluations[0].status).to.equal(
         dataform.QueryEvaluation.QueryEvaluationStatus.FAILURE
       );
+      expect(
+        dataform.QueryEvaluationError.ErrorLocation.create(evaluations[0].error.errorLocation)
+      ).eql(dataform.QueryEvaluationError.ErrorLocation.create({ line: 1, column: 1 }));
     });
   });
 
@@ -227,18 +230,19 @@ suite("@dataform/integration/sqldatawarehouse", { parallel: true }, ({ before, a
       const adapter = new SQLDataWarehouseAdapter({ warehouse: "sqldatawarehouse" }, "1.4.8");
 
       const refresh = adapter.publishTasks(table, { fullRefresh: true }, { fields: [] }).build();
-
-      expect(refresh[0].statement).to.equal(table.preOps[0]);
-      expect(refresh[1].statement).to.equal(table.preOps[1]);
-      expect(refresh[refresh.length - 2].statement).to.equal(table.postOps[0]);
-      expect(refresh[refresh.length - 1].statement).to.equal(table.postOps[1]);
+      const splitRefresh = refresh[0].statement.split(";\n");
+      expect([...splitRefresh.slice(0, 2), ...splitRefresh.slice(-2)]).to.eql([
+        ...table.preOps,
+        ...table.postOps
+      ]);
 
       const increment = adapter.publishTasks(table, { fullRefresh: false }, { fields: [] }).build();
 
-      expect(increment[0].statement).to.equal(table.preOps[0]);
-      expect(increment[1].statement).to.equal(table.preOps[1]);
-      expect(increment[increment.length - 2].statement).to.equal(table.postOps[0]);
-      expect(increment[increment.length - 1].statement).to.equal(table.postOps[1]);
+      const splitIncrement = increment[0].statement.split(";\n");
+      expect([...splitIncrement.slice(0, 2), ...splitIncrement.slice(-2)]).to.eql([
+        ...table.preOps,
+        ...table.postOps
+      ]);
     });
   });
 

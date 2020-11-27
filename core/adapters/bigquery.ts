@@ -57,11 +57,7 @@ export class BigQueryAdapter extends Adapter implements IAdapter {
 
     this.postOps(table, runConfig, tableMetadata).forEach(statement => tasks.add(statement));
 
-    if (runConfig.useSingleQueryPerAction) {
-      return tasks.concatenate();
-    }
-
-    return tasks;
+    return tasks.concatenate();
   }
 
   public assertTasks(
@@ -80,7 +76,11 @@ export class BigQueryAdapter extends Adapter implements IAdapter {
     return tasks;
   }
 
-  public createOrReplace(table: dataform.ITable) {
+  public dropIfExists(target: dataform.ITarget, type: dataform.TableMetadata.Type) {
+    return `drop ${this.tableTypeAsSql(type)} if exists ${this.resolveTarget(target)}`;
+  }
+
+  private createOrReplace(table: dataform.ITable) {
     return `create or replace ${this.tableTypeAsSql(
       this.baseTableType(table.type)
     )} ${this.resolveTarget(table.target)} ${
@@ -94,16 +94,12 @@ export class BigQueryAdapter extends Adapter implements IAdapter {
     }as ${table.query}`;
   }
 
-  public createOrReplaceView(target: dataform.ITarget, query: string) {
+  private createOrReplaceView(target: dataform.ITarget, query: string) {
     return `
       create or replace view ${this.resolveTarget(target)} as ${query}`;
   }
 
-  public dropIfExists(target: dataform.ITarget, type: dataform.TableMetadata.Type) {
-    return `drop ${this.tableTypeAsSql(type)} if exists ${this.resolveTarget(target)}`;
-  }
-
-  public mergeInto(
+  private mergeInto(
     target: dataform.ITarget,
     columns: string[],
     query: string,

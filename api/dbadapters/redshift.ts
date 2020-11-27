@@ -59,6 +59,7 @@ export class RedshiftDbAdapter implements IDbAdapter {
     statement: string,
     options: {
       params?: any[];
+      onCancel?: (handleCancel: () => void) => void;
       rowLimit?: number;
       byteLimit?: number;
       includeQueryInError?: boolean;
@@ -224,14 +225,6 @@ export class RedshiftDbAdapter implements IDbAdapter {
     if (this.options.sshTunnel) {
       await this.options.sshTunnel.close();
     }
-  }
-
-  public async persistedStateMetadata(): Promise<dataform.IPersistedTableMetadata[]> {
-    return [];
-  }
-
-  public async persistStateMetadata() {
-    // Unimplemented.
   }
 
   public async setMetadata(action: dataform.IExecutionAction): Promise<void> {

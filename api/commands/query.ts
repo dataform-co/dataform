@@ -50,8 +50,6 @@ export async function compile(
   // Resolve the path in case it hasn't been resolved already.
   const projectDir = path.resolve(compileConfig.projectDir);
 
-  query = query.replace(/\\/g, "\\\\").replace(/`/g, "\\`");
-
   return await CompileChildProcess.forkProcess().compile({
     ...compileConfig,
     projectDir,
@@ -66,6 +64,7 @@ export async function compile(
       } catch (e) {
         return e.message;
       }
-    })()`
+    })()`,
+    compileSingleQuery: true
   });
 }

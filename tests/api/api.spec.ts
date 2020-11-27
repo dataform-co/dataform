@@ -6,6 +6,7 @@ import { Builder, credentials, prune, query, Runner } from "df/api";
 import { computeAllTransitiveInputs } from "df/api/commands/build";
 import { IDbAdapter } from "df/api/dbadapters";
 import { BigQueryDbAdapter } from "df/api/dbadapters/bigquery";
+import { parseSnowflakeEvalError } from "df/api/utils/error_parsing";
 import { sleep, sleepUntil } from "df/common/promises";
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
@@ -14,6 +15,10 @@ import { asPlainObject, cleanSql } from "df/tests/utils";
 config.truncateThreshold = 0;
 
 suite("@dataform/api", () => {
+  // c +-> b +-> a
+  //       ^
+  //       d
+  // Made with asciiflow.com
   const TEST_GRAPH: dataform.ICompiledGraph = dataform.CompiledGraph.create({
     projectConfig: { warehouse: "redshift" },
     tables: [
@@ -236,6 +241,11 @@ suite("@dataform/api", () => {
   });
 
   suite("prune", () => {
+    //        +-> op_b
+    // op_a +-+
+    //        +-> op_c
+    //
+    // op_d +---> tab_a
     const TEST_GRAPH_WITH_TAGS: dataform.ICompiledGraph = dataform.CompiledGraph.create({
       projectConfig: { warehouse: "bigquery" },
       operations: [
@@ -318,10 +328,41 @@ suite("@dataform/api", () => {
       expect(actionNames).includes("tab_a");
     });
 
-    test("prune actions with --tags but without --actions (without dependencies)", () => {
+    test("prune actions with --tags (with dependents)", () => {
+      const prunedGraph = prune(TEST_GRAPH_WITH_TAGS, {
+        tags: ["tag2"],
+        includeDependents: true
+      });
+      const actionNames = [
+        ...prunedGraph.tables.map(action => action.name),
+        ...prunedGraph.operations.map(action => action.name)
+      ];
+      expect(actionNames).not.includes("op_a");
+      expect(actionNames).includes("op_b");
+      expect(actionNames).not.includes("op_c");
+      expect(actionNames).not.includes("op_d");
+      expect(actionNames).includes("tab_a");
+    });
+
+    test("prune actions with dependents", () => {
+      const prunedGraph = prune(TEST_GRAPH, {
+        actions: ["schema.c"],
+        includeDependents: true
+      });
+      const actionNames = [
+        ...prunedGraph.tables.map(action => action.name),
+        ...prunedGraph.operations.map(action => action.name)
+      ];
+      expect(actionNames).includes("schema.a");
+      expect(actionNames).includes("schema.b");
+      expect(actionNames).includes("schema.c");
+    });
+
+    test("prune actions with --tags but without --actions (without dependencies or dependents)", () => {
       const prunedGraph = prune(TEST_GRAPH_WITH_TAGS, {
         tags: ["tag1", "tag2", "tag4"],
-        includeDependencies: false
+        includeDependencies: false,
+        includeDependents: false
       });
       const actionNames = [
         ...prunedGraph.tables.map(action => action.name),
@@ -782,58 +823,6 @@ suite("@dataform/api", () => {
         );
       });
     });
-
-    [
-      {
-        warehouse: "bigquery",
-        expectedQuery: "preOps;\ncreate or replace table `database.schema.b` as query;\npostOps"
-      },
-      {
-        warehouse: "sqldatawarehouse",
-        expectedQuery: `preOps;
-if object_id ('"schema"."b_temp"','U') is not null drop table "schema"."b_temp";
-create table "schema"."b_temp"
-     with(
-       distribution = ROUND_ROBIN
-     ) 
-     as query;
-if object_id ('"schema"."b"','U') is not null drop table "schema"."b";
-rename object "schema"."b_temp" to b;
-postOps`
-      }
-    ].forEach(({ warehouse, expectedQuery }) => {
-      test(`${warehouse}_useSingleQueryPerAction`, async () => {
-        const testGraph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
-          projectConfig: { warehouse, useSingleQueryPerAction: true },
-          tables: [
-            {
-              name: "a",
-              type: "table",
-              query: "query",
-              preOps: ["preOps"],
-              postOps: ["postOps"],
-              target: { schema: "schema", name: "b", database: "database" }
-            }
-          ]
-        });
-        const testState = dataform.WarehouseState.create({});
-        const builder = new Builder(
-          testGraph,
-          { useSingleQueryPerAction: true },
-          testState,
-          computeAllTransitiveInputs(testGraph)
-        );
-        const executionGraph = builder.build();
-
-        expect(executionGraph.actions)
-          .to.be.an("array")
-          .to.have.lengthOf(1);
-
-        const tasks = executionGraph.actions[0].tasks;
-        expect(tasks.length).to.equal(1);
-        expect(tasks[0].statement).to.equal(expectedQuery);
-      });
-    });
   });
 
   suite("query", () => {
@@ -842,6 +831,18 @@ postOps`
         projectDir: "examples/common_v1",
         projectConfigOverride: { warehouse: "bigquery", defaultDatabase: "tada-analytics" }
       });
+      expect(compiledQuery).equals(
+        "select 1 from `tada-analytics.df_integration_test.example_view`"
+      );
+    });
+    test("bigquery_example with explicit schema", async () => {
+      const compiledQuery = await query.compile(
+        'select 1 from ${ref("df_integration_test", "example_view")}',
+        {
+          projectDir: "examples/common_v1",
+          projectConfigOverride: { warehouse: "bigquery", defaultDatabase: "tada-analytics" }
+        }
+      );
       expect(compiledQuery).equals(
         "select 1 from `tada-analytics.df_integration_test.example_view`"
       );
@@ -867,6 +868,29 @@ postOps`
         }
       );
       expect(compiledQuery).equals("select regexp_extract('01a_data_engine', '^(\\d{2}\\w)')");
+    });
+    test("example with no text", async () => {
+      const compiledQuery = await query.compile("", {
+        projectDir: "examples/common_v1",
+        projectConfigOverride: { warehouse: "bigquery", defaultDatabase: "tada-analytics" }
+      });
+      expect(compiledQuery).equals("");
+    });
+    test("example with JS block", async () => {
+      const compiledQuery = await query.compile(
+        `
+js {
+  const foo = "bar";
+}
+
+select \${foo}
+`,
+        {
+          projectDir: "examples/common_v1",
+          projectConfigOverride: { warehouse: "bigquery", defaultDatabase: "tada-analytics" }
+        }
+      );
+      expect(compiledQuery.trim()).equals("select bar");
     });
   });
 
@@ -978,6 +1002,7 @@ postOps`
         {
           name: "action1",
           dependencies: [],
+          transitiveInputs: [],
           tasks: [
             {
               type: "executionTaskType",
@@ -998,6 +1023,7 @@ postOps`
         {
           name: "action2",
           dependencies: ["action1"],
+          transitiveInputs: [{ schema: "schema1", name: "target1" }],
           tasks: [
             {
               type: "executionTaskType2",
@@ -1020,6 +1046,8 @@ postOps`
       actions: [
         {
           name: RUN_TEST_GRAPH.actions[0].name,
+          target: RUN_TEST_GRAPH.actions[0].target,
+          inputs: [],
           tasks: [
             {
               status: dataform.TaskResult.ExecutionStatus.SUCCESSFUL,
@@ -1040,6 +1068,8 @@ postOps`
         },
         {
           name: RUN_TEST_GRAPH.actions[1].name,
+          target: RUN_TEST_GRAPH.actions[1].target,
+          inputs: [{ target: RUN_TEST_GRAPH.actions[0].target, metadata: null }],
           tasks: [
             {
               status: dataform.TaskResult.ExecutionStatus.FAILED,
@@ -1139,6 +1169,8 @@ postOps`
           actions: [
             {
               name: EXPECTED_RUN_RESULT.actions[0].name,
+              target: EXPECTED_RUN_RESULT.actions[0].target,
+              inputs: [],
               status: dataform.ActionResult.ExecutionStatus.RUNNING,
               tasks: [EXPECTED_RUN_RESULT.actions[0].tasks[0]]
             }
@@ -1242,6 +1274,8 @@ postOps`
               EXPECTED_RUN_RESULT.actions[0],
               {
                 name: NEW_TEST_GRAPH.actions[1].name,
+                target: NEW_TEST_GRAPH.actions[1].target,
+                inputs: [{ target: RUN_TEST_GRAPH.actions[0].target, metadata: null }],
                 tasks: [
                   {
                     status: dataform.TaskResult.ExecutionStatus.SUCCESSFUL,
@@ -1318,6 +1352,7 @@ postOps`
           {
             name: "action1",
             dependencies: [],
+            transitiveInputs: [],
             tasks: [
               {
                 type: "statement",

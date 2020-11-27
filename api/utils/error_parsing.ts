@@ -102,8 +102,8 @@ export function parseSnowflakeEvalError(error: string) {
       // Do nothing.
     }
     evalError.errorLocation = {
-      line: Number(match[1]) - 1,
-      column: Number(match[2])
+      line: Number(match[1]),
+      column: Number(match[2]) + 1
     };
   } catch (e) {
     // Do nothing.

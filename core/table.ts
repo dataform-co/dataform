@@ -17,7 +17,8 @@ import {
   resolvableAsTarget,
   setNameAndTarget,
   strictKeysOf,
-  toResolvable
+  toResolvable,
+  validateQueryString
 } from "df/core/utils";
 import { dataform } from "df/protos/ts";
 
@@ -59,7 +60,7 @@ export const SortStyleType = ["compound", "interleaved"] as const;
 export type SortStyleType = typeof SortStyleType[number];
 
 /**
- * Redshift specific warehouse options.
+ * Redshift-specific warehouse options.
  */
 export interface IRedshiftOptions {
   /**
@@ -95,7 +96,35 @@ const IRedshiftOptionsProperties = () =>
   strictKeysOf<IRedshiftOptions>()(["distKey", "distStyle", "sortKeys", "sortStyle"]);
 
 /**
- * Options for creating tables within Azure SQL Data Warehouse projects.
+ * Snowflake-specific warehouse options.
+ */
+export interface ISnowflakeOptions {
+  /**
+   * If set to true, a secure view will be created.
+   *
+   * For more information, read the [Snowflake Secure Views docs](https://docs.snowflake.com/en/user-guide/views-secure.html).
+   */
+  secure?: boolean;
+
+  /**
+   * If set to true, a transient table will be created. Only applicable to actions of type "table".
+   *
+   * For more information, read the [Snowflake docs](https://docs.snowflake.com/en/user-guide/tables-temp-transient.html).
+   */
+  transient?: boolean;
+
+  /**
+   * A list of clustering keys to cluster the table by. Only applicable to actions of type "table" or "incremental".
+   *
+   * For more information, read the [Snowflake clustering docs](https://docs.snowflake.com/en/user-guide/tables-clustering-keys.html).
+   */
+  clusterBy?: string[];
+}
+const ISnowflakeOptionsProperties = () =>
+  strictKeysOf<ISnowflakeOptions>()(["secure", "transient", "clusterBy"]);
+
+/**
+ * Azure SQL Data Warehouse-specific warehouse options.
  */
 export interface ISQLDataWarehouseOptions {
   /**
@@ -109,7 +138,7 @@ const ISQLDataWarehouseOptionsProperties = () =>
   strictKeysOf<ISQLDataWarehouseOptions>()(["distribution"]);
 
 /**
- * Options for creating tables within BigQuery projects.
+ * BigQuery-specific warehouse options.
  */
 export interface IBigQueryOptions {
   /**
@@ -145,6 +174,20 @@ const IBigQueryOptionsProperties = () =>
   strictKeysOf<IBigQueryOptions>()(["partitionBy", "clusterBy", "updatePartitionFilter", "labels"]);
 
 /**
+ * Options for creating tables within Presto projects.
+ */
+export interface IPrestoOptions {
+  /**
+   * The key with which to partition the table. Typically the name of a timestamp or date column.
+   *
+   * For more information, read the partitioning documentation for the Presto connection in use.
+   */
+  partitionBy?: string[];
+}
+
+const IPrestoOptionsProperties = () => strictKeysOf<IPrestoOptions>()(["partitionBy"]);
+
+/**
  * Options for creating assertions as part of a dataset definition.
  */
 export interface ITableAssertions {
@@ -154,6 +197,14 @@ export interface ITableAssertions {
    * If set, the resulting assertion will fail if there is more than one row in the dataset with the same values for all of these column(s).
    */
   uniqueKey?: string | string[];
+
+  /**
+   * Combinations of column(s), each of which should constitute a unique key index for the dataset.
+   *
+   * If set, the resulting assertion(s) will fail if there is more than one row in the dataset with the same values for all of the column(s)
+   * in the unique key(s).
+   */
+  uniqueKeys?: string[][];
 
   /**
    * Column(s) which may never be `NULL`.
@@ -171,7 +222,7 @@ export interface ITableAssertions {
 }
 
 const ITableAssertionsProperties = () =>
-  strictKeysOf<ITableAssertions>()(["uniqueKey", "nonNull", "rowConditions"]);
+  strictKeysOf<ITableAssertions>()(["uniqueKey", "uniqueKeys", "nonNull", "rowConditions"]);
 
 /**
  * Configuration options for `dataset` actions, including `table`, `view` and `incremental` action types.
@@ -207,9 +258,19 @@ export interface ITableConfig
   bigquery?: IBigQueryOptions;
 
   /**
+   * Snowflake-specific options.
+   */
+  snowflake?: ISnowflakeOptions;
+
+  /**
    * Azure SQL Data Warehouse-specific options.
    */
   sqldatawarehouse?: ISQLDataWarehouseOptions;
+
+  /**
+   * Presto-specific options.
+   */
+  presto?: IPrestoOptions;
 
   /**
    * Assertions to be run on the dataset.
@@ -235,7 +296,9 @@ export const ITableConfigProperties = () =>
     "name",
     "redshift",
     "bigquery",
+    "snowflake",
     "sqldatawarehouse",
+    "presto",
     "tags",
     "uniqueKey",
     "dependencies",
@@ -274,7 +337,9 @@ export class Table {
     inline: [
       "bigquery",
       "redshift",
+      "snowflake",
       "sqlDataWarehouse",
+      "presto",
       "preOps",
       "postOps",
       "actionDescriptor",
@@ -297,6 +362,9 @@ export class Table {
   private contextableWhere: Contextable<ITableContext, string>;
   private contextablePreOps: Array<Contextable<ITableContext, string | string[]>> = [];
   private contextablePostOps: Array<Contextable<ITableContext, string | string[]>> = [];
+
+  private uniqueKeyAssertions: Assertion[] = [];
+  private rowConditionsAssertion: Assertion;
 
   public config(config: ITableConfig) {
     checkExcessProperties(
@@ -326,8 +394,14 @@ export class Table {
     if (config.bigquery) {
       this.bigquery(config.bigquery);
     }
+    if (config.snowflake) {
+      this.snowflake(config.snowflake);
+    }
     if (config.sqldatawarehouse) {
       this.sqldatawarehouse(config.sqldatawarehouse);
+    }
+    if (config.presto) {
+      this.presto(config.presto);
     }
     if (config.tags) {
       this.tags(config.tags);
@@ -381,6 +455,8 @@ export class Table {
 
   public disabled() {
     this.proto.disabled = true;
+    this.uniqueKeyAssertions.forEach(assertion => assertion.disabled());
+    this.rowConditionsAssertion?.disabled();
     return this;
   }
 
@@ -391,6 +467,17 @@ export class Table {
 
   public uniqueKey(uniqueKey: string[]) {
     this.proto.uniqueKey = uniqueKey;
+  }
+
+  public snowflake(snowflake: dataform.ISnowflakeOptions) {
+    checkExcessProperties(
+      (e: Error) => this.session.compileError(e),
+      snowflake,
+      ISnowflakeOptionsProperties(),
+      "snowflake config"
+    );
+    this.proto.snowflake = dataform.SnowflakeOptions.create(snowflake);
+    return this;
   }
 
   public sqldatawarehouse(sqlDataWarehouse: dataform.ISQLDataWarehouseOptions) {
@@ -429,6 +516,17 @@ export class Table {
       }
       this.proto.actionDescriptor.bigqueryLabels = bigquery.labels;
     }
+    return this;
+  }
+
+  public presto(presto: dataform.IPrestoOptions) {
+    checkExcessProperties(
+      (e: Error) => this.session.compileError(e),
+      presto,
+      IPrestoOptionsProperties(),
+      "presto config"
+    );
+    this.proto.presto = dataform.PrestoOptions.create(presto);
     return this;
   }
 
@@ -503,12 +601,30 @@ export class Table {
       ITableAssertionsProperties(),
       "assertions config"
     );
+    if (!!assertions.uniqueKey && !!assertions.uniqueKeys) {
+      this.session.compileError(
+        new Error("Specify at most one of 'assertions.uniqueKey' and 'assertions.uniqueKeys'.")
+      );
+    }
+    let uniqueKeys = assertions.uniqueKeys;
     if (!!assertions.uniqueKey) {
-      const indexCols =
-        typeof assertions.uniqueKey === "string" ? [assertions.uniqueKey] : assertions.uniqueKey;
-      this.session.assert(`${this.proto.target.name}_assertions_uniqueKey`, ctx =>
-        this.session.adapter().indexAssertion(ctx.ref(this.proto.target), indexCols)
-      ).proto.parentAction = this.proto.target;
+      uniqueKeys =
+        typeof assertions.uniqueKey === "string"
+          ? [[assertions.uniqueKey]]
+          : [assertions.uniqueKey];
+    }
+    if (uniqueKeys) {
+      uniqueKeys.forEach((uniqueKey, index) => {
+        const uniqueKeyAssertion = this.session.assert(
+          `${this.proto.target.schema}_${this.proto.target.name}_assertions_uniqueKey_${index}`,
+          ctx => this.session.adapter().indexAssertion(ctx.ref(this.proto.target), uniqueKey)
+        );
+        uniqueKeyAssertion.proto.parentAction = this.proto.target;
+        if (this.proto.disabled) {
+          uniqueKeyAssertion.disabled();
+        }
+        this.uniqueKeyAssertions.push(uniqueKeyAssertion);
+      });
     }
     const mergedRowConditions = assertions.rowConditions || [];
     if (!!assertions.nonNull) {
@@ -517,11 +633,17 @@ export class Table {
       nonNullCols.forEach(nonNullCol => mergedRowConditions.push(`${nonNullCol} IS NOT NULL`));
     }
     if (!!mergedRowConditions && mergedRowConditions.length > 0) {
-      this.session.assert(`${this.proto.target.name}_assertions_rowConditions`, ctx =>
-        this.session
-          .adapter()
-          .rowConditionsAssertion(ctx.ref(this.proto.target), mergedRowConditions)
-      ).proto.parentAction = this.proto.target;
+      this.rowConditionsAssertion = this.session.assert(
+        `${this.proto.target.schema}_${this.proto.target.name}_assertions_rowConditions`,
+        ctx =>
+          this.session
+            .adapter()
+            .rowConditionsAssertion(ctx.ref(this.proto.target), mergedRowConditions)
+      );
+      this.rowConditionsAssertion.proto.parentAction = this.proto.target;
+      if (this.proto.disabled) {
+        this.rowConditionsAssertion.disabled();
+      }
     }
     return this;
   }
@@ -546,8 +668,15 @@ export class Table {
       this.proto.where = context.apply(this.contextableWhere);
     }
 
-    this.proto.preOps = this.contextifyOps(this.contextablePreOps, context);
-    this.proto.postOps = this.contextifyOps(this.contextablePostOps, context);
+    this.proto.preOps = this.contextifyOps(this.contextablePreOps, context).filter(
+      op => !!op.trim()
+    );
+    this.proto.postOps = this.contextifyOps(this.contextablePostOps, context).filter(
+      op => !!op.trim()
+    );
+
+    validateQueryString(this.session, this.proto.query, this.proto.fileName);
+    validateQueryString(this.session, this.proto.incrementalQuery, this.proto.fileName);
 
     return this.proto;
   }
@@ -639,6 +768,11 @@ export class TableContext implements ITableContext {
 
   public bigquery(bigquery: dataform.IBigQueryOptions) {
     this.table.bigquery(bigquery);
+    return "";
+  }
+
+  public presto(presto: dataform.IPrestoOptions) {
+    this.table.presto(presto);
     return "";
   }
 

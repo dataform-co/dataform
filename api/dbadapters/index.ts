@@ -1,19 +1,14 @@
 import { Credentials } from "df/api/commands/credentials";
 import { BigQueryDbAdapter } from "df/api/dbadapters/bigquery";
 import { PostgresDbAdapter } from "df/api/dbadapters/postgres";
+import { PrestoDbAdapter } from "df/api/dbadapters/presto";
 import { RedshiftDbAdapter } from "df/api/dbadapters/redshift";
 import { SnowflakeDbAdapter } from "df/api/dbadapters/snowflake";
 import { SQLDataWarehouseDBAdapter } from "df/api/dbadapters/sqldatawarehouse";
-import { StringifiedMap } from "df/common/strings/stringifier";
 import { QueryOrAction } from "df/core/adapters";
 import { dataform } from "df/protos/ts";
 
 export type OnCancel = (handleCancel: () => void) => void;
-
-export const CACHED_STATE_TABLE_TARGET: dataform.ITarget = {
-  schema: "dataform_meta",
-  name: "cache_state"
-};
 
 export interface IExecutionResult {
   rows: any[];
@@ -28,6 +23,9 @@ export interface IDbClient {
       interactive?: boolean;
       rowLimit?: number;
       byteLimit?: number;
+      bigquery?: {
+        labels?: { [label: string]: string };
+      };
     }
   ): Promise<IExecutionResult>;
 }
@@ -43,6 +41,7 @@ export interface IDbAdapter extends IDbClient {
   schemas(database: string): Promise<string[]>;
   createSchema(database: string, schema: string): Promise<void>;
 
+  // TODO: This should take parameters to allow for retrieving from a specific database/schema.
   tables(): Promise<dataform.ITarget[]>;
   search(searchText: string, options?: { limit: number }): Promise<dataform.ITableMetadata[]>;
   table(target: dataform.ITarget): Promise<dataform.ITableMetadata>;
@@ -50,24 +49,16 @@ export interface IDbAdapter extends IDbClient {
 
   setMetadata(action: dataform.IExecutionAction): Promise<void>;
 
-  persistStateMetadata(
-    transitiveInputMetadataByTarget: StringifiedMap<
-      dataform.ITarget,
-      dataform.PersistedTableMetadata.ITransitiveInputMetadata
-    >,
-    allActions: dataform.IExecutionAction[],
-    actionsToPersist: dataform.IExecutionAction[],
-    options: {
-      onCancel: OnCancel;
-    }
-  ): Promise<void>;
-  persistedStateMetadata(): Promise<dataform.IPersistedTableMetadata[]>;
-
   close(): Promise<void>;
 }
 
+interface ICredentialsOptions {
+  concurrencyLimit?: number;
+  disableSslForTestsOnly?: boolean;
+}
+
 export interface IDbAdapterClass<T extends IDbAdapter> {
-  create: (credentials: Credentials, options?: { concurrencyLimit?: number }) => Promise<T>;
+  create: (credentials: Credentials, options: ICredentialsOptions) => Promise<T>;
 }
 
 const registry: { [warehouseType: string]: IDbAdapterClass<IDbAdapter> } = {};
@@ -76,10 +67,19 @@ export function register(warehouseType: string, c: IDbAdapterClass<IDbAdapter>) 
   registry[warehouseType] = c;
 }
 
+export const validWarehouses = [
+  "bigquery",
+  "postgres",
+  "redshift",
+  "sqldatawarehouse",
+  "snowflake",
+  "presto"
+];
+
 export async function create(
   credentials: Credentials,
-  warehouseType: string,
-  options?: { concurrencyLimit?: number; disableSslForTestsOnly?: boolean }
+  warehouseType: typeof validWarehouses[number],
+  options?: ICredentialsOptions
 ): Promise<IDbAdapter> {
   if (!registry[warehouseType]) {
     throw new Error(`Unsupported warehouse: ${warehouseType}`);
@@ -92,3 +92,4 @@ register("postgres", PostgresDbAdapter);
 register("redshift", RedshiftDbAdapter);
 register("snowflake", SnowflakeDbAdapter);
 register("sqldatawarehouse", SQLDataWarehouseDBAdapter);
+register("presto", PrestoDbAdapter);

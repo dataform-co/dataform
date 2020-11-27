@@ -42,11 +42,11 @@ jobs:
       - name: Checkout code into workspace directory
         uses: actions/checkout@v2
       - name: Install project dependencies
-        uses: docker://dataformco/dataform:1.6.11
+        uses: docker://dataformco/dataform:latest
         with:
           args: install
       - name: Run dataform compile
-        uses: docker://dataformco/dataform:1.6.11
+        uses: docker://dataformco/dataform:latest
         with:
           args: compile
 ```

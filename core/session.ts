@@ -1,6 +1,7 @@
 import { util } from "protobufjs";
 import { default as TarjanGraphConstructor, Graph as TarjanGraph } from "tarjan-graph";
 
+import { encode } from "df/common/protos";
 import { JSONObjectStringifier, StringifiedMap } from "df/common/strings/stringifier";
 import * as adapters from "df/core/adapters";
 import { AContextable, Assertion, AssertionContext, IAssertionConfig } from "df/core/assertion";
@@ -18,6 +19,7 @@ import {
 } from "df/core/table";
 import * as test from "df/core/test";
 import * as utils from "df/core/utils";
+import { toResolvable } from "df/core/utils";
 import { version as dataformCoreVersion } from "df/core/version";
 import { dataform } from "df/protos/ts";
 
@@ -85,6 +87,29 @@ export class Session {
     this.actions = [];
     this.tests = {};
     this.graphErrors = { compilationErrors: [] };
+  }
+
+  public get projectConfig(): Pick<
+    dataform.IProjectConfig,
+    | "warehouse"
+    | "defaultDatabase"
+    | "defaultSchema"
+    | "assertionSchema"
+    | "databaseSuffix"
+    | "schemaSuffix"
+    | "tablePrefix"
+    | "vars"
+  > {
+    return Object.freeze({
+      warehouse: this.config.warehouse,
+      defaultDatabase: this.config.defaultDatabase,
+      defaultSchema: this.config.defaultSchema,
+      assertionSchema: this.config.assertionSchema,
+      databaseSuffix: this.config.databaseSuffix,
+      schemaSuffix: this.config.schemaSuffix,
+      tablePrefix: this.config.tablePrefix,
+      vars: Object.freeze({ ...this.config.vars })
+    });
   }
 
   public adapter(): adapters.IAdapter {
@@ -192,7 +217,8 @@ export class Session {
     }
   }
 
-  public resolve(ref: Resolvable): string {
+  public resolve(ref: Resolvable | string[], ...rest: string[]): string {
+    ref = toResolvable(ref, rest);
     const allResolved = this.findActions(utils.resolvableAsTarget(ref));
     if (allResolved.length > 1) {
       this.compileError(new Error(utils.ambiguousActionNameMsg(ref, allResolved)));
@@ -216,8 +242,13 @@ export class Session {
       }
       return this.adapter().resolveTarget({
         ...resolved.proto.target,
+        database:
+          resolved.proto.target.database &&
+          this.adapter().normalizeIdentifier(
+            `${resolved.proto.target.database}${this.getDatabaseSuffixWithUnderscore()}`
+          ),
         schema: this.adapter().normalizeIdentifier(
-          `${resolved.proto.target.schema}${this.getSuffixWithUnderscore()}`
+          `${resolved.proto.target.schema}${this.getSchemaSuffixWithUnderscore()}`
         ),
         name: this.adapter().normalizeIdentifier(
           `${this.getTablePrefixWithUnderscore()}${resolved.proto.target.name}`
@@ -236,8 +267,12 @@ export class Session {
           this.config,
           this.adapter().normalizeIdentifier(`${this.getTablePrefixWithUnderscore()}${ref}`),
           this.adapter().normalizeIdentifier(
-            `${this.config.defaultSchema}${this.getSuffixWithUnderscore()}`
-          )
+            `${this.config.defaultSchema}${this.getSchemaSuffixWithUnderscore()}`
+          ),
+          this.config.defaultDatabase &&
+            this.adapter().normalizeIdentifier(
+              `${this.config.defaultDatabase}${this.getDatabaseSuffixWithUnderscore()}`
+            )
         )
       );
     }
@@ -246,7 +281,11 @@ export class Session {
         this.adapter(),
         this.config,
         this.adapter().normalizeIdentifier(`${this.getTablePrefixWithUnderscore()}${ref.name}`),
-        this.adapter().normalizeIdentifier(`${ref.schema}${this.getSuffixWithUnderscore()}`)
+        this.adapter().normalizeIdentifier(`${ref.schema}${this.getSchemaSuffixWithUnderscore()}`),
+        ref.database &&
+          this.adapter().normalizeIdentifier(
+            `${ref.database}${this.getDatabaseSuffixWithUnderscore()}`
+          )
       )
     );
   }
@@ -393,8 +432,7 @@ export class Session {
   }
 
   public compileToBase64() {
-    const encodedGraphBytes = dataform.CompiledGraph.encode(this.compile()).finish();
-    return util.base64.encode(encodedGraphBytes, 0, encodedGraphBytes.length);
+    return encode(dataform.CompiledGraph, this.compile());
   }
 
   public findActions(target: dataform.ITarget) {
@@ -416,8 +454,16 @@ export class Session {
     });
   }
 
-  private getSuffixWithUnderscore() {
+  private getDatabaseSuffixWithUnderscore() {
+    return !!this.config.databaseSuffix ? `_${this.config.databaseSuffix}` : "";
+  }
+
+  private getSchemaSuffixWithUnderscore() {
     return !!this.config.schemaSuffix ? `_${this.config.schemaSuffix}` : "";
+  }
+
+  private getTablePrefixWithUnderscore() {
+    return !!this.config.tablePrefix ? `${this.config.tablePrefix}_` : "";
   }
 
   private compileGraphChunk<T>(actions: Array<{ proto: IActionProto; compile(): T }>): T[] {
@@ -476,14 +522,10 @@ export class Session {
     });
   }
 
-  private getTablePrefixWithUnderscore() {
-    return !!this.config.tablePrefix ? `${this.config.tablePrefix}_` : "";
-  }
-
   private alterActionName(actions: IActionProto[], declarationTargets: dataform.ITarget[]) {
-    const { tablePrefix, schemaSuffix } = this.config;
+    const { tablePrefix, schemaSuffix, databaseSuffix } = this.config;
 
-    if (!tablePrefix && !schemaSuffix) {
+    if (!tablePrefix && !schemaSuffix && !databaseSuffix) {
       return;
     }
 
@@ -497,8 +539,13 @@ export class Session {
     actions.forEach(action => {
       newTargetByOriginalTarget.set(action.target, {
         ...action.target,
+        database:
+          action.target.database &&
+          this.adapter().normalizeIdentifier(
+            `${action.target.database}${this.getDatabaseSuffixWithUnderscore()}`
+          ),
         schema: this.adapter().normalizeIdentifier(
-          `${action.target.schema}${this.getSuffixWithUnderscore()}`
+          `${action.target.schema}${this.getSchemaSuffixWithUnderscore()}`
         ),
         name: this.adapter().normalizeIdentifier(
           `${this.getTablePrefixWithUnderscore()}${action.target.name}`
@@ -570,6 +617,37 @@ export class Session {
           table.fileName,
           table.name
         );
+      }
+
+      // snowflake config
+      if (!!table.snowflake) {
+        if (table.snowflake.secure && table.type !== "view") {
+          this.compileError(
+            new Error(`The 'secure' option is only valid for Snowflake views`),
+            table.fileName,
+            table.name
+          );
+        }
+
+        if (table.snowflake.transient && table.type !== "table") {
+          this.compileError(
+            new Error(`The 'transient' option is only valid for Snowflake tables`),
+            table.fileName,
+            table.name
+          );
+        }
+
+        if (
+          table.snowflake.clusterBy?.length > 0 &&
+          table.type !== "table" &&
+          table.type !== "incremental"
+        ) {
+          this.compileError(
+            new Error(`The 'clusterBy' option is only valid for Snowflake tables`),
+            table.fileName,
+            table.name
+          );
+        }
       }
 
       // sqldatawarehouse config

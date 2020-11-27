@@ -73,17 +73,25 @@ export function getCallerFile(rootDir: string) {
     }
     break;
   }
+  if (!lastfile) {
+    // This is likely caused by Session.compileError() being called inside Session.compile().
+    // If so, explicitly pass the filename to Session.compileError().
+    throw new Error("Unable to find valid caller file; please report this issue.");
+  }
   return relativePath(lastfile, rootDir);
 }
 
 function getCurrentStack(): NodeJS.CallSite[] {
+  const originalStackTraceLimit = Error.stackTraceLimit;
   const originalPrepareStackTrace = Error.prepareStackTrace;
   try {
+    Error.stackTraceLimit = Number.POSITIVE_INFINITY;
     Error.prepareStackTrace = (err, stack) => {
       return stack;
     };
     return (new Error().stack as unknown) as NodeJS.CallSite[];
   } finally {
+    Error.stackTraceLimit = originalStackTraceLimit;
     Error.prepareStackTrace = originalPrepareStackTrace;
   }
 }
@@ -151,14 +159,15 @@ export function target(
   adapter: adapters.IAdapter,
   config: dataform.IProjectConfig,
   name: string,
-  schema: string,
+  schema?: string,
   database?: string
 ): dataform.ITarget {
-  const resolvedDatabase = database || config.defaultDatabase;
+  schema = schema || config.defaultSchema;
+  database = database || config.defaultDatabase;
   return dataform.Target.create({
     name: adapter.normalizeIdentifier(name),
-    schema: adapter.normalizeIdentifier(schema || config.defaultSchema),
-    database: resolvedDatabase && adapter.normalizeIdentifier(resolvedDatabase)
+    schema: !!schema ? adapter.normalizeIdentifier(schema || config.defaultSchema) : undefined,
+    database: !!database ? adapter.normalizeIdentifier(database) : undefined
   });
 }
 
@@ -216,6 +225,18 @@ export function checkExcessProperties<T>(
           !!name ? ` in ${name}` : ""
         }. Supported properties are: ${JSON.stringify(supportedProperties)}`
       )
+    );
+  }
+}
+
+export function validateQueryString(session: Session, query: string, filename: string) {
+  if (query?.trim().slice(-1) === ";") {
+    session.compileError(
+      new Error(
+        "Semi-colons are not allowed at the end of SQL statements."
+        // This can break the statement because of appended adapter specific SQL.
+      ),
+      filename
     );
   }
 }

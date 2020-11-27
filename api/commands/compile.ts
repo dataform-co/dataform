@@ -1,15 +1,19 @@
 import * as fs from "fs";
 import * as path from "path";
-import { util } from "protobufjs";
 
 import { ChildProcess, fork } from "child_process";
+import { validWarehouses } from "df/api/dbadapters";
 import { coerceAsError, ErrorWithCause } from "df/common/errors/errors";
+import { decode } from "df/common/protos";
 import { dataform } from "df/protos/ts";
 
-const validWarehouses = ["bigquery", "postgres", "redshift", "sqldatawarehouse", "snowflake"];
+// Project config properties that are required.
 const mandatoryProps: Array<keyof dataform.IProjectConfig> = ["warehouse", "defaultSchema"];
+
+// Project config properties that require alphanumeric characters, hyphens or underscores.
 const simpleCheckProps: Array<keyof dataform.IProjectConfig> = [
   "assertionSchema",
+  "databaseSuffix",
   "schemaSuffix",
   "tablePrefix",
   "defaultSchema"
@@ -40,7 +44,11 @@ export async function compile(
     const projectConfig = JSON.parse(dataformJson);
     checkDataformJsonValidity({
       ...projectConfig,
-      ...compileConfig.projectConfigOverride
+      ...compileConfig.projectConfigOverride,
+      vars: {
+        ...projectConfig.vars,
+        ...compileConfig.projectConfigOverride?.vars
+      }
     });
   } catch (e) {
     throw new ErrorWithCause(
@@ -48,11 +56,10 @@ export async function compile(
       e
     );
   }
-
-  const encodedGraphInBase64 = await CompileChildProcess.forkProcess().compile(compileConfig);
-  const encodedGraphBytes = new Uint8Array(util.base64.length(encodedGraphInBase64));
-  util.base64.decode(encodedGraphInBase64, encodedGraphBytes, 0);
-  return dataform.CompiledGraph.decode(encodedGraphBytes);
+  return decode(
+    dataform.CompiledGraph,
+    await CompileChildProcess.forkProcess().compile(compileConfig)
+  );
 }
 
 export class CompileChildProcess {
@@ -80,14 +87,23 @@ export class CompileChildProcess {
 
   public async compile(compileConfig: dataform.ICompileConfig) {
     const compileInChildProcess = new Promise<string>(async (resolve, reject) => {
-      // Handle errors returned by the child process.
+      // Handle any Error caused by spawning the child process, or sent directly from the child process.
+      this.childProcess.on("error", (e: Error) => reject(coerceAsError(e)));
       this.childProcess.on("message", (e: Error) => reject(coerceAsError(e)));
 
       // Handle UTF-8 string chunks returned by the child process.
       const pipe = this.childProcess.stdio[4];
       const chunks: Buffer[] = [];
       pipe.on("data", (chunk: Buffer) => chunks.push(chunk));
-      pipe.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
+
+      // When the child process closes all stdio streams, return the compiled result.
+      this.childProcess.on("close", exitCode => {
+        if (exitCode === 0) {
+          resolve(Buffer.concat(chunks).toString("utf8"));
+        } else {
+          reject(new Error(`Compilation child process exited with exit code ${exitCode}.`));
+        }
+      });
 
       // Trigger the child process to start compiling.
       this.childProcess.send(compileConfig);

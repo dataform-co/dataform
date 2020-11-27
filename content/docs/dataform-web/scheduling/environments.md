@@ -39,6 +39,7 @@ If an environment is configured using a tag or branch, that tag or branch must e
 A simple example of an `environments.json` file is:
 
 ```json
+// environments.json
 {
   "environments": [
     {
@@ -63,6 +64,23 @@ This `staging` environment runs the `run_everything_once_per_day` schedule at th
 
 Note that Dataform uses the `environments.json` file on your `master` branch to determine your project's environments. **Any changes to your environments must be pushed to `master` before Dataform will take note of those changes**.
 
+### Code that depends on environment/schedule name
+
+Dataform injects two special [variables](/guides/configuration#configure-custom-compilation-variables) when schedules are executed: `environmentName` and `scheduleName`. You can use these in your code by referencing `dataform.projectConfig.vars`. For example, to select 10% of data in a `staging` environment:
+
+```js
+// definitions/my_view.sqlx
+config { type: "view" }
+
+select
+  *
+from ${ref("data")}
+${when(
+  dataform.projectConfig.vars.environmentName === "staging",
+  "where farm_fingerprint(id) % 10 = 0",
+)}
+```
+
 ## Example: manage a production release process using environments
 
 More advanced Dataform projects typically have a tightly-controlled `production` environment. All changes to project code go into a `staging` environment which is intentionally kept separate from `production`. Once the code in `staging` has been verified to be sufficiently stable, that version of the code is then promoted to the `production` environment.
@@ -82,6 +100,7 @@ In the below example:
 A nice property of this configuration is that any change to the `production` environment leaves an audit trail (by being recorded in your project's Git history).
 
 ```json
+// environments.json
 {
   "environments": [
     {
@@ -127,6 +146,7 @@ However, we do not recommend using Git branches to manage a <code>production</co
 An alternative approach to separating production and staging data is to append a suffix to schemas in each environment. For example:
 
 ```json
+// environments.json
 {
   "environments": [
     {
@@ -159,9 +179,8 @@ In the example below:
 - schedules are defined in the `production` environment, and so use the `defaultDatabase` from that environment's `configOverride`
 - the `production` environment specifies the `master` Git branch, so all of its schedules will run using the latest version of the code
 
-`dataform.json`:
-
 ```json
+// dataform.json
 {
   "warehouse": "bigquery",
   "defaultSchema": "dataform_data",
@@ -169,9 +188,10 @@ In the example below:
 }
 ```
 
-`environments.json`:
+<br />
 
 ```json
+// environments.json
 {
   "environments": [
     {

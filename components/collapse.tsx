@@ -8,18 +8,23 @@ export interface ISimpleCollapseProps {
   message?: React.ReactNode;
   className?: string;
   defaultOpen?: boolean;
+  fullWidth?: boolean;
 }
 
 export function SimpleCollapse({
   message,
   className,
   children,
-  defaultOpen
+  defaultOpen,
+  fullWidth = true
 }: React.PropsWithChildren<ISimpleCollapseProps>) {
   const [show, updateShow] = useState(!!defaultOpen);
   const cssStyles = [styles.messageContainer];
   if (className) {
     cssStyles.push(className);
+  }
+  if (fullWidth) {
+    cssStyles.push(styles.messageContainerFullWidth);
   }
   return (
     <>
@@ -28,9 +33,9 @@ export function SimpleCollapse({
         {children && (
           <Button
             minimal={true}
-            className={styles.button}
             onClick={() => updateShow(!show)}
             icon={show ? "caret-up" : "caret-down"}
+            style={{ marginLeft: fullWidth ? "20px" : "10px" }}
           />
         )}
       </div>

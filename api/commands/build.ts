@@ -23,12 +23,7 @@ export async function build(
     useRunCache:
       runConfig.hasOwnProperty("useRunCache") && typeof runConfig.useRunCache !== "undefined"
         ? runConfig.useRunCache
-        : compiledGraph.projectConfig.useRunCache,
-    useSingleQueryPerAction:
-      runConfig.hasOwnProperty("useSingleQueryPerAction") &&
-      typeof runConfig.useSingleQueryPerAction !== "undefined"
-        ? runConfig.useSingleQueryPerAction
-        : compiledGraph.projectConfig.useSingleQueryPerAction
+        : compiledGraph.projectConfig.useRunCache
   };
 
   const prunedGraph = prune(compiledGraph, runConfig);
@@ -56,7 +51,7 @@ export async function build(
   return new Builder(
     prunedGraph,
     runConfig,
-    await state(dbadapter, Array.from(allInvolvedTargets), runConfig.useRunCache),
+    await state(dbadapter, Array.from(allInvolvedTargets)),
     transitiveInputsByTarget
   ).build();
 }

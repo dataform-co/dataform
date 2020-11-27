@@ -17,10 +17,7 @@ export default class DefaultDocument extends Document {
             rel="stylesheet"
             href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.min.css"
           />
-          <link
-            rel="stylesheet"
-            href="/global.css"
-          />
+          <link rel="stylesheet" href="/global.css" />
           <link rel="shortcut icon" href={"/static/images/favicon.ico"} type="image/png" />
         </Head>
         <body className="light">
@@ -34,6 +31,7 @@ export default class DefaultDocument extends Document {
               }}
             />
           ))}
+          <script src="https://dataform.co/third_party_licenses.js" async={true} />
         </body>
       </html>
     );
@@ -84,7 +82,7 @@ if (!analytics.initialize)
       e.async = !0;
       e.src =
         ("https:" === document.location.protocol ? "https://" : "http://") +
-        "cdn.segment.com/analytics.js/v1/" +
+        "cdn.segment.dataform.co/analytics.js/v1/" +
         t +
         "/analytics.min.js";
       var n = document.getElementsByTagName("script")[0];

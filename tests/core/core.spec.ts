@@ -29,6 +29,11 @@ class TestConfigs {
     warehouse: "bigquery",
     defaultSchema: "schema"
   };
+
+  public static snowflake: dataform.IProjectConfig = {
+    warehouse: "snowflake",
+    defaultSchema: "schema"
+  };
 }
 
 suite("@dataform/core", () => {
@@ -487,6 +492,50 @@ suite("@dataform/core", () => {
       ]);
     });
 
+    test("validation_snowflake_fail", () => {
+      const session = new Session(path.dirname(__filename), TestConfigs.snowflake);
+      session.publish("example_secure_table_fail", {
+        type: "table",
+        snowflake: {
+          secure: true
+        }
+      });
+      session.publish("example_transient_view_fail", {
+        type: "view",
+        snowflake: {
+          transient: true
+        }
+      });
+      session.publish("example_cluster_by_view_fail", {
+        type: "view",
+        snowflake: {
+          clusterBy: ["a"]
+        }
+      });
+
+      const graph = session.compile();
+
+      expect(
+        graph.graphErrors.compilationErrors.map(({ message, actionName }) => ({
+          message,
+          actionName
+        }))
+      ).has.deep.members([
+        {
+          actionName: "SCHEMA.EXAMPLE_SECURE_TABLE_FAIL",
+          message: "The 'secure' option is only valid for Snowflake views"
+        },
+        {
+          actionName: "SCHEMA.EXAMPLE_TRANSIENT_VIEW_FAIL",
+          message: "The 'transient' option is only valid for Snowflake tables"
+        },
+        {
+          actionName: "SCHEMA.EXAMPLE_CLUSTER_BY_VIEW_FAIL",
+          message: "The 'clusterBy' option is only valid for Snowflake tables"
+        }
+      ]);
+    });
+
     test("validation_bigquery_pass", () => {
       const session = new Session(path.dirname(__filename), TestConfigs.bigquery);
       session.publish("example_partitionBy_view_fail", {
@@ -822,6 +871,19 @@ suite("@dataform/core", () => {
       session.publish("a", { schema: "schema2" });
       const cGraph = session.compile();
       expect(cGraph.graphErrors.compilationErrors).deep.equals([]);
+    });
+
+    test("semi-colons at the end of files throw", () => {
+      // If this didn't happen, then the generated SQL could be incorrect
+      // because of being broken up by semi-colons.
+      const session = new Session(path.dirname(__filename), TestConfigs.redshift);
+      session.publish("a", "select 1 as x;\n");
+      session.assert("b", "select 1 as x;");
+      const graph = session.compile();
+      expect(graph.graphErrors.compilationErrors.map(error => error.message)).deep.equals([
+        "Semi-colons are not allowed at the end of SQL statements.",
+        "Semi-colons are not allowed at the end of SQL statements."
+      ]);
     });
   });
 

@@ -12,7 +12,8 @@ import {
   resolvableAsTarget,
   setNameAndTarget,
   strictKeysOf,
-  toResolvable
+  toResolvable,
+  validateQueryString
 } from "df/core/utils";
 import { dataform } from "df/protos/ts";
 
@@ -151,15 +152,21 @@ export class Assertion {
   }
 
   public schema(schema: string) {
-    setNameAndTarget(this.session, this.proto, this.proto.target.name, schema);
+    setNameAndTarget(
+      this.session,
+      this.proto,
+      this.proto.target.name,
+      schema,
+      this.proto.target.database
+    );
     return this;
   }
 
   public compile() {
     const context = new AssertionContext(this);
 
-    const appliedQuery = context.apply(this.contextableQuery);
-    this.proto.query = appliedQuery;
+    this.proto.query = context.apply(this.contextableQuery);
+    validateQueryString(this.session, this.proto.query, this.proto.fileName);
 
     return this.proto;
   }
@@ -202,9 +209,14 @@ export class AssertionContext implements ICommonContext {
     this.assertion.dependencies(name);
     return "";
   }
+
   public tags(name: string | string[]) {
     this.assertion.tags(name);
     return "";
+  }
+
+  public when(cond: boolean, trueCase: string, falseCase: string = "") {
+    return cond ? trueCase : falseCase;
   }
 
   public apply<T>(value: AContextable<T>): T {

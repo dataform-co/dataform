@@ -2488,6 +2488,7 @@ table.bp3-html-table.bp3-interactive tbody tr:active td {
 }
 .bp3-menu-item.bp3-intent-primary {
   color: var(--white);
+  background-color: var(--primary);
 }
 .bp3-menu-item.bp3-intent-primary .bp3-icon {
   color: inherit;
@@ -2500,10 +2501,10 @@ table.bp3-html-table.bp3-interactive tbody tr:active td {
 .bp3-menu-item.bp3-intent-primary:hover,
 .bp3-submenu .bp3-popover-target.bp3-popover-open > .bp3-intent-primary.bp3-menu-item,
 .bp3-menu-item.bp3-intent-primary.bp3-active {
-  background-color: var(--primary);
+  background-color: var(--primaryHover);
 }
 .bp3-menu-item.bp3-intent-primary:active {
-  background-color: var(--primaryHover);
+  background-color: var(--primaryActive);
 }
 .bp3-menu-item.bp3-intent-primary:hover,
 .bp3-submenu .bp3-popover-target.bp3-popover-open > .bp3-intent-primary.bp3-menu-item,

@@ -1,0 +1,2 @@
+config { type: "view", hermetic: true }
+select 1 as test;

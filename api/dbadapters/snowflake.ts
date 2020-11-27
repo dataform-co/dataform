@@ -1,4 +1,5 @@
 import * as https from "https";
+import Long from "long";
 import * as PromisePool from "promise-pool-executor";
 import { Readable } from "stream";
 
@@ -7,10 +8,16 @@ import { IDbAdapter, IDbClient, OnCancel } from "df/api/dbadapters/index";
 import { parseSnowflakeEvalError } from "df/api/utils/error_parsing";
 import { LimitedResultSet } from "df/api/utils/results";
 import { ErrorWithCause } from "df/common/errors/errors";
+import { Flags } from "df/common/flags";
 import { collectEvaluationQueries, QueryOrAction } from "df/core/adapters";
 import { dataform } from "df/protos/ts";
 
 const HEARTBEAT_INTERVAL_SECONDS = 30;
+
+const flags = {
+  snowflakeLogLevel: Flags.string("snowflake-log-level", "info"),
+  snowflakeUseOcsp: Flags.boolean("snowflake-use-ocsp", true)
+};
 
 // This is horrible. However, it allows us to set the 'APPLICATION' parameter on client.environment,
 // which is passed all the way through to Snowflake's connection code. Pending a fix for
@@ -30,11 +37,8 @@ const snowflake = require("snowflake-sdk/lib/core")({
 }) as ISnowflake;
 
 snowflake.configure({
-  logLevel: "trace",
-  // Turn off OCSP checking. It appears as though timeouts in OCSP checks cause failed runs.
-  // See https://community.snowflake.com/s/case/5003r00001JuQrGAAV/snowflake-network-connectivity-problems
-  // for support ticket.
-  insecureConnect: true
+  logLevel: flags.snowflakeLogLevel.get(),
+  insecureConnect: !flags.snowflakeUseOcsp.get()
 });
 
 interface ISnowflake {
@@ -58,7 +62,7 @@ interface ISnowflakeConnection {
     binds?: any[];
     streamResult?: boolean;
     complete: (err: any, statement: ISnowflakeStatement, rows: any[]) => void;
-  }) => void;
+  }) => ISnowflakeStatement;
   destroy: (err: any) => void;
 }
 
@@ -88,7 +92,7 @@ export class SnowflakeDbAdapter implements IDbAdapter {
   }
 
   public async execute(
-    statement: string,
+    sqlText: string,
     options: {
       binds?: any[];
       onCancel?: OnCancel;
@@ -101,8 +105,8 @@ export class SnowflakeDbAdapter implements IDbAdapter {
         .addSingleTask({
           generator: () =>
             new Promise<any[]>((resolve, reject) => {
-              this.connection.execute({
-                sqlText: statement,
+              const statement = this.connection.execute({
+                sqlText,
                 binds: options?.binds,
                 streamResult: true,
                 complete(err, stmt) {
@@ -114,13 +118,6 @@ export class SnowflakeDbAdapter implements IDbAdapter {
                     reject(new ErrorWithCause(message, err));
                     return;
                   }
-                  options?.onCancel?.(() =>
-                    stmt.cancel((e: any) => {
-                      if (e) {
-                        reject(e);
-                      }
-                    })
-                  );
                   const results = new LimitedResultSet({
                     rowLimit: options?.rowLimit,
                     byteLimit: options?.byteLimit
@@ -136,6 +133,13 @@ export class SnowflakeDbAdapter implements IDbAdapter {
                     .on("end", () => resolve(results.rows))
                     .on("close", () => resolve(results.rows));
                 }
+              });
+              options?.onCancel?.(() => {
+                statement.cancel((e: any) => {
+                  if (e) {
+                    reject(e);
+                  }
+                });
               });
             })
         })
@@ -183,9 +187,7 @@ export class SnowflakeDbAdapter implements IDbAdapter {
       `
 select table_name, table_schema, table_catalog
 from information_schema.tables
-where LOWER(table_schema) != 'information_schema'
-  and LOWER(table_schema) != 'pg_catalog'
-  and LOWER(table_schema) != 'pg_internal'`,
+where LOWER(table_schema) != 'information_schema'`,
       { rowLimit: 10000 }
     );
     return rows.map(row => ({
@@ -200,13 +202,15 @@ where LOWER(table_schema) != 'information_schema'
     options: { limit: number } = { limit: 1000 }
   ): Promise<dataform.ITableMetadata[]> {
     const results = await this.execute(
-      `select tables.table_catalog as table_catalog, tables.table_schema as table_schema, tables.table_name as table_name
-       from information_schema.tables as tables
-       left join information_schema.columns as columns on tables.table_catalog = columns.table_catalog and tables.table_schema = columns.table_schema
-         and tables.table_name = columns.table_name
-       where tables.table_catalog ilike :1 or tables.table_schema ilike :1 or tables.table_name ilike :1 or tables.comment ilike :1
-         or columns.column_name ilike :1 or columns.comment ilike :1
-       group by 1, 2, 3
+      `select * from (
+        select tables.table_catalog as table_catalog, tables.table_schema as table_schema, tables.table_name as table_name
+        from information_schema.tables as tables
+        left join information_schema.columns as columns on tables.table_catalog = columns.table_catalog and tables.table_schema = columns.table_schema
+          and tables.table_name = columns.table_name
+        where tables.table_catalog ilike :1 or tables.table_schema ilike :1 or tables.table_name ilike :1 or tables.comment ilike :1
+          or columns.column_name ilike :1 or columns.comment ilike :1
+        group by 1, 2, 3
+      ) where LOWER(table_schema) != 'information_schema'
        `,
       {
         binds: [`%${searchText}%`],
@@ -229,7 +233,7 @@ where LOWER(table_schema) != 'information_schema'
     const [tableResults, columnResults] = await Promise.all([
       this.execute(
         `
-select table_type, comment
+select table_type, last_altered, comment
 from ${target.database ? `"${target.database}".` : ""}information_schema.tables
 where table_schema = :1
   and table_name = :2`,
@@ -265,6 +269,7 @@ where table_schema = :1
           description: row.COMMENT
         })
       ),
+      lastUpdatedMillis: Long.fromNumber(tableResults.rows[0].LAST_ALTERED),
       description: tableResults.rows[0].COMMENT
     });
   }
@@ -299,14 +304,6 @@ where table_schema = :1
         }
       });
     });
-  }
-
-  public async persistedStateMetadata(): Promise<dataform.IPersistedTableMetadata[]> {
-    return [];
-  }
-
-  public async persistStateMetadata() {
-    // Unimplemented.
   }
 
   public async setMetadata(action: dataform.IExecutionAction): Promise<void> {

@@ -1,12 +1,9 @@
-import { util } from "protobufjs";
-
+import { decode } from "df/common/protos";
 import * as utils from "df/core/utils";
 import { dataform } from "df/protos/ts";
 
 export function genIndex(base64EncodedConfig: string): string {
-  const encodedGraphBytes = new Uint8Array(util.base64.length(base64EncodedConfig));
-  util.base64.decode(base64EncodedConfig, encodedGraphBytes, 0);
-  const config = dataform.GenerateIndexConfig.decode(encodedGraphBytes);
+  const config = decode(dataform.GenerateIndexConfig, base64EncodedConfig);
 
   const includeRequires = config.includePaths
     .map(path => {
@@ -29,13 +26,15 @@ export function genIndex(base64EncodedConfig: string): string {
     dataform.ProjectConfig.create(config.compileConfig.projectConfigOverride).toJSON()
   );
 
-  const returnValue = !!config.compileConfig.query
+  const escapedQuery = config.compileConfig.query
+    .replace(/\\/g, "\\\\")
+    .replace(/`/g, "\\`")
+    .replace(/\${/g, "\\${");
+  const returnValue = config.compileConfig.compileSingleQuery
     ? `(function() {
       try {
-        const ref = global.session.resolve.bind(global.session);
-        const resolve = global.session.resolve.bind(global.session);
-        const self = () => "";
-        return \`${config.compileConfig.query}\`;
+        const compiled = require("@dataform/core").compileStandaloneSqlxQuery(\`${escapedQuery}\`);
+        return new Function(compiled)();
       } catch (e) {
         return e.message;
       }
@@ -72,11 +71,13 @@ session.init("${config.compileConfig.projectDir.replace(
     "\\\\"
   )}", projectConfig, originalProjectConfig);
 
+// Allow "includes" files to use the current session object.
+global.dataform = session;
+
 // Require "includes" *.js files.
 ${includeRequires}
 
 // Bind various @dataform/core APIs to the 'global' object.
-global.session = session;
 global.publish = session.publish.bind(session);
 global.operate = session.operate.bind(session);
 global.assert = session.assert.bind(session);
@@ -87,6 +88,6 @@ global.test = session.test.bind(session);
 ${definitionRequires}
 
 // Return a base64 encoded proto via NodeVM. Returning a Uint8Array directly causes issues.
-const base64EncodedGraphBytes = global.session.compileToBase64();
+const base64EncodedGraphBytes = session.compileToBase64();
 return ${returnValue};`;
 }

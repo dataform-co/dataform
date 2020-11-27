@@ -92,11 +92,8 @@ export class SQLDataWarehouseDBAdapter implements IDbAdapter {
 
   public async evaluate(queryOrAction: QueryOrAction, projectConfig?: dataform.ProjectConfig) {
     // TODO: Using `explain` before declaring a variable is not valid in SQL Data Warehouse.
-    const validationQueries = collectEvaluationQueries(
-      queryOrAction,
-      projectConfig?.useSingleQueryPerAction === undefined ||
-        !!projectConfig?.useSingleQueryPerAction,
-      (query: string) => (!!query ? `explain ${query}` : "")
+    const validationQueries = collectEvaluationQueries(queryOrAction, true, (query: string) =>
+      !!query ? `explain ${query}` : ""
     ).map((validationQuery, index) => ({ index, validationQuery }));
     const validationQueriesWithoutWrappers = collectEvaluationQueries(queryOrAction, false);
 
@@ -230,14 +227,6 @@ export class SQLDataWarehouseDBAdapter implements IDbAdapter {
 
   public async close() {
     await (await this.pool).close();
-  }
-
-  public async persistedStateMetadata(): Promise<dataform.IPersistedTableMetadata[]> {
-    return [];
-  }
-
-  public async persistStateMetadata() {
-    // Unimplemented.
   }
 
   public async setMetadata(): Promise<void> {

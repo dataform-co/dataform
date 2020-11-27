@@ -6,6 +6,7 @@ ts_library(
     name = "utils",
     srcs = glob(["**/*.ts"]),
     deps = [
+        "//common/protos",
         "//common/strings",
         "//protos:ts",
         "@npm//@types/node",
