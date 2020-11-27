@@ -46,12 +46,11 @@ documents.onDidSave(change => {
 async function compileAndValidate() {
   const spawnedProcess = spawn("dataform", ["compile", "--json"]);
   spawnedProcess.on("error", err => {
-    console.error("Error running dataform compile:" + err);
+    console.error("Error running 'dataform compile':", err);
     connection.sendNotification(
       "error",
-      "There is an issue with your local dataform cli tool. Please make sure your cli tool is installed and up to date."
+      "Errors encountered when running 'dataform' CLI. Please ensure that the CLI is installed and up-to-date: 'npm i -g @dataform/cli'."
     );
-    return;
   });
   const compileResult = await getProcessResult(spawnedProcess);
 
