@@ -1,6 +1,6 @@
 ## This extension is in Alpha
 
-To run this extension you will need the dataform cli installed globally: `npm i -g @dataform/cli`.
+**To run this extension you will need the dataform cli installed globally: `npm i -g @dataform/cli`.**
 
 Includes:
 
