@@ -2,8 +2,13 @@ import { expect } from "chai";
 import Long from "long";
 
 import { execSync } from "child_process";
+import { Flags } from "df/common/flags";
 import * as protobuftsProtos from "df/protobufts/tests/test1";
 import { suite, test } from "df/testing";
+
+const flags = {
+  reserializerLocation: Flags.string("reserializer-location")
+};
 
 suite(__filename, { parallel: true }, () => {
   suite("single-field non-repeated reserialization", { parallel: true }, () => {
@@ -463,15 +468,13 @@ suite(__filename, { parallel: true }, () => {
   });
 });
 
-const RESERIALIZER_BINARY = "protobufts/tests/reserializer/darwin_amd64_stripped/reserializer";
-
 function reserialize(
   messageType: "TestMessage" | "TestRepeatedMessage" | "TestUnpackedRepeatedMessage",
   bytes: Uint8Array
 ): Uint8Array {
   const base64EncodedBytes = Buffer.from(bytes).toString("base64");
   const returnedBase64EncodedBytes = execSync(
-    `${RESERIALIZER_BINARY} --proto_type=${messageType} --base64_proto_value=${base64EncodedBytes}`
+    `../${flags.reserializerLocation.get()} --proto_type=${messageType} --base64_proto_value=${base64EncodedBytes}`
   ).toString();
   return Buffer.from(returnedBase64EncodedBytes, "base64");
 }

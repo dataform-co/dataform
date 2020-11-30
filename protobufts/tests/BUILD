@@ -36,9 +36,11 @@ ts_test_suite(
     data = [
         "//protobufts/tests/reserializer",
     ],
+    templated_args = ["--reserializer-location=$(location //protobufts/tests/reserializer)"],
     deps = [
         ":protobufjs_testprotos_ts_proto",
         ":testprotos_ts_proto",
+        "//common/flags",
         "//testing",
         "@npm//@types/chai",
         "@npm//@types/long",
