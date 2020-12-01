@@ -45,6 +45,14 @@ documents.onDidSave(change => {
 
 async function compileAndValidate() {
   const spawnedProcess = spawn("dataform", ["compile", "--json"]);
+  spawnedProcess.on("error", err => {
+    // tslint:disable-next-line: no-console
+    console.error("Error running 'dataform compile':", err);
+    connection.sendNotification(
+      "error",
+      "Errors encountered when running 'dataform' CLI. Please ensure that the CLI is installed and up-to-date: 'npm i -g @dataform/cli'."
+    );
+  });
   const compileResult = await getProcessResult(spawnedProcess);
 
   const parsedResult: dataform.ICompiledGraph = JSON.parse(compileResult.stdout);

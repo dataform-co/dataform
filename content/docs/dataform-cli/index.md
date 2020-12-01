@@ -5,7 +5,7 @@ priority: 6
 icon: console
 ---
 
-The CLI enables you to initialize, compile test and run Dataform projects directly from your local machine or as part of other systems.
+The CLI enables you to initialize, compile, test, and run Dataform projects directly from your local machine or as part of other systems.
 
 ## Installation
 
