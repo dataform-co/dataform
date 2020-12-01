@@ -196,30 +196,15 @@ export class Runner {
         }
         databaseSchemas.get(trueDatabase).add({ database: trueDatabase, schema: target.schema });
       });
-    console.log(
-      "🚀 ~ file: run.ts ~ line 189 ~ Runner ~ prepareAllSchemas ~ databaseSchemas",
-      databaseSchemas
-    );
 
     // Create all nonexistent schemas.
     await Promise.all(
       Array.from(databaseSchemas.entries()).map(async ([database, schemas]) => {
         const existingSchemas = new Set(await this.dbadapter.schemas([database]));
-        console.log(
-          "🚀 ~ file: run.ts ~ line 208 ~ Runner ~ Array.from ~ existingSchemas",
-          existingSchemas
-        );
         await Promise.all(
           Array.from(schemas)
             .filter(schema => !existingSchemas.has(schema))
-            .map(async schema => {
-              const creation = await this.dbadapter.createSchema(schema);
-              console.log(
-                "🚀 ~ file: run.ts ~ line 229 ~ Runner ~ Array.from ~ schemacreation",
-                schema
-              );
-              return creation;
-            })
+            .map(async schema => this.dbadapter.createSchema(schema))
         );
       })
     );
