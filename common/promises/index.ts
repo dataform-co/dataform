@@ -62,3 +62,29 @@ export async function retry<T>(
   }
   throw lastErr;
 }
+
+// This should behave similarly to the (currently experimental) Promise.any function.
+// See https://github.com/tc39/proposal-promise-any for more context.
+// This is added here instead of upgrading to esnext to avoid introducing additional
+// experimental features.
+export async function promiseAny<T>(promises: Array<Promise<T>>): Promise<T> {
+  if (!promises) {
+    throw new Error(`promiseAny given ${promises}; requires array of promises`);
+  }
+  if (promises.length === 0) {
+    return new Promise(() => undefined);
+  }
+  return new Promise(async (resolve, reject) => {
+    let storedError: Error;
+    await Promise.all(
+      promises.map(async promise => {
+        try {
+          await promise.then(result => resolve(result));
+        } catch (e) {
+          storedError = e;
+        }
+      })
+    );
+    reject(storedError);
+  });
+}

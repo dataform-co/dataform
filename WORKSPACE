@@ -1,6 +1,6 @@
 workspace(name = "df")
 
-load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive", "http_file")
 
 http_archive(
     name = "bazel_skylib",
@@ -159,6 +159,14 @@ container_pull(
     digest = "sha256:21f9f92ddb232848ef56ef09a83d04f3d1c9a03539c20b0cb786e346797988bb",
     registry = "index.docker.io",
     repository = "prestosql/presto",
+)
+
+# Fetch Redis source (binaries are not distributed).
+# Urls and hashes come from here: https://github.com/redis/redis-hashes/blob/master/README.
+http_file(
+    name = "redis-source",
+    sha256 = "12ad49b163af5ef39466e8d2f7d212a58172116e5b441eebecb4e6ca22363d94",
+    urls = ["http://download.redis.io/releases/redis-6.0.6.tar.gz"],
 )
 
 # Sass requirements.

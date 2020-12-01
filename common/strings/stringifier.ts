@@ -1,5 +1,7 @@
 import Long from "long";
 
+import { ProtoUtils } from "df/common/protos/proto_utils";
+
 export interface IStringifier<T> {
   stringify: (value: T) => string;
   parse: (value: string) => T;
@@ -280,5 +282,20 @@ export class StringifiedSet<T> implements Set<T> {
         };
       }
     })();
+  }
+}
+
+export class ProtoStringifier<T> implements IStringifier<T> {
+  public static create<T>(protoType: new () => T) {
+    return new ProtoStringifier<T>(protoType);
+  }
+
+  constructor(private readonly protoType: new () => T) {}
+
+  public stringify(value: T) {
+    return ProtoUtils.encode(this.protoType, value);
+  }
+  public parse(value: string) {
+    return ProtoUtils.decode(this.protoType, value);
   }
 }

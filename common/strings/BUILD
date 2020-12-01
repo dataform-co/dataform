@@ -11,6 +11,7 @@ ts_library(
     ),
     deps = [
         "//:modules-fix",
+        "//common/protos",
         "@npm//@types/long",
         "@npm//long",
     ],
@@ -24,7 +25,6 @@ ts_test_suite(
     ],
     templated_args = ["--node_options=--require=source-map-support/register"],
     deps = [
-        "//common/strings",
         "@df//testing",
         "@npm//@types/chai",
         "@npm//@types/long",
