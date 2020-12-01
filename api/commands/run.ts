@@ -185,26 +185,41 @@ export class Runner {
 
   private async prepareAllSchemas() {
     // Work out all the schemas we are going to need to create first.
-    const databaseSchemas = new Map<string, Set<string>>();
+    const databaseSchemas = new Map<string, Set<dataform.ISchema>>();
     this.graph.actions
-      .filter(action => !!action.target && !!action.target.schema)
+      .filter(action => !!action.target?.schema)
       .forEach(({ target }) => {
         // This field may not be present for older versions of dataform.
         const trueDatabase = target.database || this.graph.projectConfig.defaultDatabase;
         if (!databaseSchemas.has(trueDatabase)) {
-          databaseSchemas.set(trueDatabase, new Set<string>());
+          databaseSchemas.set(trueDatabase, new Set<dataform.ISchema>());
         }
-        databaseSchemas.get(trueDatabase).add(target.schema);
+        databaseSchemas.get(trueDatabase).add({ database: trueDatabase, schema: target.schema });
       });
+    console.log(
+      "🚀 ~ file: run.ts ~ line 189 ~ Runner ~ prepareAllSchemas ~ databaseSchemas",
+      databaseSchemas
+    );
 
     // Create all nonexistent schemas.
     await Promise.all(
       Array.from(databaseSchemas.entries()).map(async ([database, schemas]) => {
-        const existingSchemas = new Set(await this.dbadapter.schemas(database));
+        const existingSchemas = new Set(await this.dbadapter.schemas([database]));
+        console.log(
+          "🚀 ~ file: run.ts ~ line 208 ~ Runner ~ Array.from ~ existingSchemas",
+          existingSchemas
+        );
         await Promise.all(
           Array.from(schemas)
             .filter(schema => !existingSchemas.has(schema))
-            .map(schema => this.dbadapter.createSchema(database, schema))
+            .map(async schema => {
+              const creation = await this.dbadapter.createSchema(schema);
+              console.log(
+                "🚀 ~ file: run.ts ~ line 229 ~ Runner ~ Array.from ~ schemacreation",
+                schema
+              );
+              return creation;
+            })
         );
       })
     );

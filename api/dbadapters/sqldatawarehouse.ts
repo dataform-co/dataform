@@ -215,30 +215,28 @@ export class SQLDataWarehouseDBAdapter implements IDbAdapter {
     throw new Error("SQLDataWarehouse does not support multiple databases in the same connection");
   }
 
-  public async schemas(database?: string | string[]): Promise<string[]> {
-    if (database === undefined) {
-      database = await this.databases();
+  public async schemas(databases?: string[]): Promise<dataform.ISchema[]> {
+    if (databases === undefined) {
+      databases = await this.databases();
     }
-    if (typeof database === "string") {
-      database = [database];
-    }
-    let schemas: string[] = [];
+
+    const schemas = new Array<dataform.ISchema>();
     await Promise.all(
-      database.map(async db => {
+      databases.map(async database => {
         const { rows } = await this.execute(
-          `select schema_name from ${db}.information_schema.schemata`
+          `select schema_name from ${database}.information_schema.schemata`
         );
-        schemas = schemas.concat(rows.map(row => row.schema_name));
+        schemas.push(...rows.map(row => ({ database, schema: row.schema_name })));
       })
     );
     return schemas;
   }
 
-  public async createSchema(_: string, schema: string): Promise<void> {
+  public async createSchema(schema: dataform.ISchema): Promise<void> {
     await this.execute(
-      `if not exists ( select schema_name from information_schema.schemata where schema_name = '${schema}' )
+      `if not exists ( select schema_name from information_schema.schemata where schema_name = '${schema.schema}' )
             begin
-              exec sp_executesql N'create schema ${schema}'
+              exec sp_executesql N'create schema ${schema.schema}'
             end `
     );
   }

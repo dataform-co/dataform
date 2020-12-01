@@ -129,49 +129,39 @@ export class PrestoDbAdapter implements IDbAdapter {
     return result.rows.flat();
   }
 
-  public async schemas(database?: string | string[]): Promise<string[]> {
-    if (database === undefined) {
-      database = await this.databases();
+  public async schemas(databases?: string[]): Promise<dataform.ISchema[]> {
+    if (databases === undefined) {
+      databases = await this.databases();
     }
-    if (typeof database === "string") {
-      database = [database];
-    }
-    let schemas: string[] = [];
+
+    const schemas = new Array<dataform.ISchema>();
     await Promise.all(
-      database.map(async db => {
-        const { rows } = await this.execute(`show schemas from ${db}`);
-        schemas = schemas.concat(rows.flat());
+      databases.map(async database => {
+        const { rows } = await this.execute(`show schemas from ${database}`);
+        schemas.push(...rows.flat().map(cell => ({ database, schema: cell })));
       })
     );
     return schemas;
   }
 
-  public async createSchema(database: string, schema: string): Promise<void> {
-    await this.execute(`create schema if not exists ${database}.${schema}`);
+  public async createSchema(schema: dataform.ISchema): Promise<void> {
+    await this.execute(`create schema if not exists ${schema.database}.${schema.schema}`);
   }
 
   public async tables(): Promise<dataform.ITarget[]> {
-    const databases = await this.databases();
     const targets: dataform.ITarget[] = [];
-    await Promise.all(
-      databases.map(
-        async database =>
-          await Promise.all(
-            (await this.schemas(database)).map(async schema => {
-              const result = await this.execute(`show tables from ${database}.${schema}`);
-              targets.push(
-                ...result.rows.flat().map(table =>
-                  dataform.Target.create({
-                    database,
-                    schema,
-                    name: table as string
-                  })
-                )
-              );
-            })
-          )
-      )
-    );
+    (await this.schemas()).forEach(async schema => {
+      const result = await this.execute(`show tables from ${schema.database}.${schema.schema}`);
+      targets.push(
+        ...result.rows.flat().map(table =>
+          dataform.Target.create({
+            database: schema.database,
+            schema: schema.schema,
+            name: table as string
+          })
+        )
+      );
+    });
     return targets;
   }
 

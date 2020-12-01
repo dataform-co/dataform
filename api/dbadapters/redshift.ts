@@ -213,15 +213,17 @@ export class RedshiftDbAdapter implements IDbAdapter {
     throw new Error("Redshift does not support multiple databases in the same connection");
   }
 
-  public async schemas(database?: string | string[]): Promise<string[]> {
+  public async schemas(): Promise<dataform.ISchema[]> {
     const schemas = await this.execute(`select nspname from pg_namespace`, {
       includeQueryInError: true
     });
-    return schemas.rows.map(row => row.nspname);
+    return schemas.rows.map(row => ({ schema: row.nspname }));
   }
 
-  public async createSchema(_: string, schema: string): Promise<void> {
-    await this.execute(`create schema if not exists "${schema}"`, { includeQueryInError: true });
+  public async createSchema(schema: dataform.ISchema): Promise<void> {
+    await this.execute(`create schema if not exists "${schema.schema}"`, {
+      includeQueryInError: true
+    });
   }
 
   public async close() {

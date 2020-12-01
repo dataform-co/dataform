@@ -144,6 +144,11 @@ message CompileConfig {
   string return_override = 5;
 }
 
+message Schema {
+  string schema = 1;
+  string database = 2;
+}
+
 message Target {
   string database = 3;
   string schema = 1;

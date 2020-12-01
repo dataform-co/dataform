@@ -233,57 +233,56 @@ export class BigQueryDbAdapter implements IDbAdapter {
   }
 
   public async databases(): Promise<string[]> {
-    throw new Error("BigQuery does not support multiple databases in the same connection");
+    throw new Error(
+      "The Dataform BigQuery API adapter does not (yet) support multiple databases in the same connection"
+    );
   }
 
-  public async schemas(database?: string | string[]): Promise<string[]> {
-    if (database === undefined) {
-      database = await this.databases();
-    }
-    if (typeof database === "string") {
-      database = [database];
+  public async schemas(databases?: string[]): Promise<dataform.ISchema[]> {
+    if (databases === undefined) {
+      databases = await this.databases();
     }
 
-    let schemas: string[] = [];
+    const schemas = new Array<dataform.ISchema>();
     await Promise.all(
-      database.map(async db => {
-        const data = await this.getClient(db).getDatasets();
-        schemas = schemas.concat(data[0].map(dataset => dataset.id));
+      databases.map(async database => {
+        const data = await this.getClient(database).getDatasets();
+        schemas.push(...data[0].map(dataset => ({ database, schema: dataset.id })));
       })
     );
     return schemas;
   }
 
-  public async createSchema(database: string, schema: string): Promise<void> {
+  public async createSchema(schema: dataform.ISchema): Promise<void> {
     const location = this.bigQueryCredentials.location || "US";
-    const client = this.getClient(database);
+    const client = this.getClient(schema.database);
 
     let metadata;
     try {
-      const data = await client.dataset(schema).getMetadata();
+      const data = await client.dataset(schema.schema).getMetadata();
       metadata = data[0];
     } catch (e) {
       // If metadata call fails, it probably doesn't exist. So try to create it.
-      await client.createDataset(schema, { location });
+      await client.createDataset(schema.schema, { location });
       return;
     }
 
     if (metadata.location.toUpperCase() !== location.toUpperCase()) {
       throw new Error(
-        `Cannot create dataset "${schema}" in location "${location}". It already exists in location "${metadata.location}". Change your default dataset location or delete the existing dataset.`
+        `Cannot create dataset "${schema.schema}" in location "${location}". It already exists in location "${metadata.location}". Change your default dataset location or delete the existing dataset.`
       );
     }
   }
 
-  public async dropSchema(database: string, schema: string): Promise<void> {
-    const client = this.getClient(database);
+  public async dropSchema(schema: dataform.ISchema): Promise<void> {
+    const client = this.getClient(schema.database);
     try {
-      await client.dataset(schema).getMetadata();
+      await client.dataset(schema.schema).getMetadata();
     } catch (e) {
       // If metadata call fails, it probably doesn't exist, so don't do anything.
       return;
     }
-    await client.dataset(schema).delete({ force: true });
+    await client.dataset(schema.schema).delete({ force: true });
   }
 
   public async close() {

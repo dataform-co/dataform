@@ -31,10 +31,10 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
       await cleanWarehouse(compiledGraph, dbadapter);
 
       // Drop schemas to make sure schema creation works.
-      await dbadapter.dropSchema(
-        "dataform-integration-tests",
-        "df_integration_test_eu_project_e2e"
-      );
+      await dbadapter.dropSchema({
+        database: "dataform-integration-tests",
+        schema: "df_integration_test_eu_project_e2e"
+      });
 
       // Run the project.
       const executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
