@@ -1,6 +1,8 @@
 import { util } from "protobufjs";
 
-interface IProtoClass<IProto, Proto> {
+import { IStringifier } from "df/common/strings/stringifier";
+
+export interface IProtoClass<IProto, Proto> {
   new (): Proto;
 
   create(iProto?: IProto | Proto): Proto;
@@ -49,4 +51,19 @@ function fromBase64(value: string): Uint8Array {
   const buf = new Uint8Array(util.base64.length(value));
   util.base64.decode(value, buf, 0);
   return buf;
+}
+
+export class ProtoStringifier<T> implements IStringifier<T> {
+  public static create<T>(protoType: IProtoClass<T, T>) {
+    return new ProtoStringifier<T>(protoType);
+  }
+
+  constructor(private readonly protoType: IProtoClass<T, T>) {}
+
+  public stringify(value: T) {
+    return encode(this.protoType, value);
+  }
+  public parse(value: string) {
+    return decode(this.protoType, value);
+  }
 }
