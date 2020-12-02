@@ -1,7 +1,7 @@
 import { expect } from "chai";
 
 import { sleepUntil } from "df/common/promises";
-import { ProtoUtils } from "df/common/protos/proto_utils";
+import { ProtoUtils } from "df/common/protos";
 import { dataform } from "df/protos/ts";
 import { Cache, createProtoCacheCodec } from "df/redis/client";
 import { suite, test } from "df/testing";

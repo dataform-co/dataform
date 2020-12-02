@@ -1,6 +1,6 @@
 import Long from "long";
 
-import { ProtoUtils } from "df/common/protos/proto_utils";
+import { ProtoUtils } from "df/common/protos";
 
 export interface IStringifier<T> {
   stringify: (value: T) => string;
