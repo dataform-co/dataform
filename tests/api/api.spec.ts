@@ -1082,7 +1082,7 @@ select \${foo}
       ]
     });
 
-    test("execute specificially", async () => {
+    test("execute", async () => {
       const mockedDbAdapter = mock(BigQueryDbAdapter);
       when(mockedDbAdapter.createSchema(anything())).thenResolve(null);
       when(
