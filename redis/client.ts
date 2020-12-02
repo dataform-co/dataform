@@ -69,7 +69,7 @@ export class Cache<K, V> {
       // Without this, the error thrown is a TCP error, which breaks through all try/catches.
       // A regular error isn't thrown here either because this binding can't be run inside
       // a try/catch at call time of a method, for example `get`.
-      this.client.nodeRedis.on("error", options.onTCPError || (() => null));
+      this.client.redis.on("error", options.onTCPError || (() => null));
     }
   }
 

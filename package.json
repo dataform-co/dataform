@@ -77,7 +77,7 @@
     "google-protobuf": "^3.6.1",
     "grpc": "^1.24.0",
     "grpc-web-client": "^0.5.0",
-    "handy-redis": "^2.0.2",
+    "handy-redis": "^1.8.3",
     "js-beautify": "^1.10.2",
     "jsdoc": "^3.5.5",
     "json-stable-stringify": "^1.0.1",
