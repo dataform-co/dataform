@@ -49,9 +49,10 @@ ts_library(
 
 ts_test_suite(
     name = "tests",
-    srcs = glob(["**/*.spec.ts"]),
+    # srcs = glob(["**/*.spec.ts"]),
+    srcs = [],
     data = [
-        ":redis",
+        # ":redis",
         "@npm//source-map-support",
     ],
     templated_args = ["--node_options=--require=source-map-support/register"],
