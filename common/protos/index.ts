@@ -1,6 +1,8 @@
 import { util } from "protobufjs";
 
-interface IProtoClass<IProto, Proto> {
+import { IStringifier } from "df/common/strings/stringifier";
+
+export interface IProtoClass<IProto, Proto> {
   new (): Proto;
 
   create(iProto?: IProto | Proto): Proto;
@@ -51,34 +53,17 @@ function fromBase64(value: string): Uint8Array {
   return buf;
 }
 
-export class ProtoUtils {
-  public static decode64(value: string): Uint8Array {
-    const buf = new Uint8Array(util.base64.length(value));
-    util.base64.decode(value, buf, 0);
-    return buf;
+export class ProtoStringifier<T> implements IStringifier<T> {
+  public static create<T>(protoType: IProtoClass<T, T>) {
+    return new ProtoStringifier<T>(protoType);
   }
 
-  public static encode64(value: Uint8Array): string {
-    return util.base64.encode(value, 0, value.length);
-  }
+  constructor(private readonly protoType: IProtoClass<T, T>) {}
 
-  public static decode<Proto>(protoType: new () => Proto, encodedValue: string): Proto {
-    if (!encodedValue || encodedValue === "" || encodedValue === "_") {
-      return (protoType as any).create();
-    }
-    return (protoType as any).decode(ProtoUtils.decode64(encodedValue)) as Proto;
+  public stringify(value: T) {
+    return encode(this.protoType, value);
   }
-
-  public static encode<Proto>(protoType: new () => Proto, value: Proto): string {
-    if (!value) {
-      value = {} as Proto;
-    }
-    return ProtoUtils.encode64(
-      (protoType as any).encode((protoType as any).create(value)).finish()
-    );
-  }
-
-  public static equals<Proto>(protoType: new () => Proto, valueA: Proto, valueB: Proto): boolean {
-    return ProtoUtils.encode(protoType, valueA) === ProtoUtils.encode(protoType, valueB);
+  public parse(value: string) {
+    return decode(this.protoType, value);
   }
 }

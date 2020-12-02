@@ -11,7 +11,6 @@ ts_library(
     ),
     deps = [
         "//:modules-fix",
-        "//common/protos",
         "@npm//@types/long",
         "@npm//long",
     ],

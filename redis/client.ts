@@ -1,9 +1,6 @@
 import { promiseAny, runAsyncIgnoringErrors, sleep, sleepUntil } from "df/common/promises";
-import {
-  IStringifier,
-  JSONObjectStringifier,
-  ProtoStringifier
-} from "df/common/strings/stringifier";
+import { IProtoClass, ProtoStringifier } from "df/common/protos";
+import { IStringifier, JSONObjectStringifier } from "df/common/strings/stringifier";
 import { createHandyClient, IHandyRedis } from "handy-redis";
 import Redis from "redis";
 
@@ -162,8 +159,8 @@ export function createProtoCacheCodec<K, V>({
   keyProto,
   valueProto
 }: {
-  keyProto: new () => K;
-  valueProto: new () => V;
+  keyProto: IProtoClass<K, K>;
+  valueProto: IProtoClass<V, V>;
 }): ICacheCodec<K, V> {
   return {
     keyStringifier: ProtoStringifier.create(keyProto),

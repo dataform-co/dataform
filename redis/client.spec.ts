@@ -1,7 +1,7 @@
 import { expect } from "chai";
 
 import { sleepUntil } from "df/common/promises";
-import { ProtoUtils } from "df/common/protos";
+import { encode } from "df/common/protos";
 import { dataform } from "df/protos/ts";
 import { Cache, createProtoCacheCodec } from "df/redis/client";
 import { suite, test } from "df/testing";
@@ -84,8 +84,8 @@ suite(__filename, ({ before, after }) => {
     expect(value).deep.equals(await calculateValue(key));
 
     // Directly check the value exists in the cache.
-    const encodedKey = ProtoUtils.encode(dataform.Target, key);
-    let cachedValue: dataform.TestResult;
+    const encodedKey = encode(dataform.Target, key);
+    let cachedValue: dataform.ITestResult;
     // Cache population may not have completed yet, so wait until it has.
     await sleepUntil(async () => {
       cachedValue = codec.valueStringifier.parse(await testCache.get(encodedKey));
