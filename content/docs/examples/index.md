@@ -1,6 +1,6 @@
 ---
 title: Example projects and scripts
 subtitle: Learn how Dataform works with examples projects and scripts.
-priority: 7
+priority: 3
 icon: inbox-search
 ---
