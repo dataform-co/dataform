@@ -24,6 +24,7 @@ ts_test_suite(
     ],
     templated_args = ["--node_options=--require=source-map-support/register"],
     deps = [
+        ":strings",
         "@df//testing",
         "@npm//@types/chai",
         "@npm//@types/long",
