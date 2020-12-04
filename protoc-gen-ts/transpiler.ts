@@ -1,16 +1,16 @@
-import { IGeneratorParameters } from "df/protobufts/parameters";
-import { google } from "df/protobufts/ts-protoc-protos";
+import { IGeneratorParameters } from "df/protoc-gen-ts/parameters";
+import { google } from "df/protoc-gen-ts/ts-protoc-protos";
 import {
   IEnumDescriptor,
   IMessageDescriptor,
   ITypeMetadata,
   TypeRegistry
-} from "df/protobufts/types";
+} from "df/protoc-gen-ts/types";
 
 const IMPORT_LONG = 'import Long from "long";';
-const IMPORT_JSON_SUPPORT = 'import { toJsonValue } from "df/protobufts/runtime/json_support";';
+const IMPORT_JSON_SUPPORT = 'import { toJsonValue } from "df/protoc-gen-ts/runtime/json_support";';
 const IMPORT_SERIALIZATION =
-  'import { Decoders, Deserializer, Serializer } from "df/protobufts/runtime/serialize";';
+  'import { Decoders, Deserializer, Serializer } from "df/protoc-gen-ts/runtime/serialize";';
 
 const LONG_TYPES = [
   google.protobuf.FieldDescriptorProto.Type.TYPE_INT64,

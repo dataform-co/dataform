@@ -1,9 +1,9 @@
 import * as fs from "fs";
 
-import { parseGeneratorParameters } from "df/protobufts/parameters";
-import { FileTranspiler } from "df/protobufts/transpiler";
-import { google } from "df/protobufts/ts-protoc-protos";
-import { TypeRegistry } from "df/protobufts/types";
+import { parseGeneratorParameters } from "df/protoc-gen-ts/parameters";
+import { FileTranspiler } from "df/protoc-gen-ts/transpiler";
+import { google } from "df/protoc-gen-ts/ts-protoc-protos";
+import { TypeRegistry } from "df/protoc-gen-ts/types";
 
 function generateFiles(
   request: google.protobuf.compiler.ICodeGeneratorRequest

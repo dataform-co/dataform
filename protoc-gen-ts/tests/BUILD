@@ -16,7 +16,7 @@ protobufjs_proto_library(
     ],
 )
 
-load("//protobufts:ts_proto_library.bzl", "ts_proto_library")
+load("//protoc-gen-ts:ts_proto_library.bzl", "ts_proto_library")
 
 ts_proto_library(
     name = "testprotos_ts_proto",
@@ -34,9 +34,9 @@ ts_test_suite(
     name = "tests",
     srcs = glob(["*.spec.ts"]),
     data = [
-        "//protobufts/tests/reserializer",
+        "//protoc-gen-ts/tests/reserializer",
     ],
-    templated_args = ["--reserializer-location=$(location //protobufts/tests/reserializer)"],
+    templated_args = ["--reserializer-location=$(location //protoc-gen-ts/tests/reserializer)"],
     deps = [
         ":protobufjs_testprotos_ts_proto",
         ":testprotos_ts_proto",
@@ -51,7 +51,7 @@ ts_test_suite(
 
 go_proto_library(
     name = "testprotos_go_proto",
-    importpath = "github.com/dataform-co/dataform/protobufts/tests",
+    importpath = "github.com/dataform-co/dataform/protoc-gen-ts/tests",
     proto = ":testprotos_proto",
     visibility = ["//visibility:public"],
 )
