@@ -27,7 +27,7 @@ protoc_gen_ts = rule(
         "protos": attr.label_list(allow_empty = False, mandatory = True),
         "import_prefix": attr.string(default = ""),
         "_protoc": attr.label(default = "@com_google_protobuf//:protoc", executable = True, allow_single_file = None, cfg = "host"),
-        "_protoc_gen_ts": attr.label(default = "//protobufts:bin", executable = True, allow_single_file = None, cfg = "host"),
+        "_protoc_gen_ts": attr.label(default = "//protoc-gen-ts:bin", executable = True, allow_single_file = None, cfg = "host"),
     },
 )
 
@@ -41,5 +41,5 @@ def ts_proto_library(name, protos, deps = [], import_prefix = ""):
     ts_library(
         name = name,
         srcs = [":" + name + "-gen"],
-        deps = deps + ["//protobufts/runtime"],
+        deps = deps + ["//protoc-gen-ts/runtime"],
     )

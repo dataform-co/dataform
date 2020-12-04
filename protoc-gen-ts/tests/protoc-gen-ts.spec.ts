@@ -3,7 +3,7 @@ import Long from "long";
 
 import { execSync } from "child_process";
 import { Flags } from "df/common/flags";
-import * as protobuftsProtos from "df/protobufts/tests/test1";
+import * as testProtos from "df/protoc-gen-ts/tests/test1";
 import { suite, test } from "df/testing";
 
 const flags = {
@@ -14,141 +14,141 @@ suite(__filename, { parallel: true }, () => {
   suite("single-field non-repeated reserialization", { parallel: true }, () => {
     const testCases = [
       // double_field
-      protobuftsProtos.TestMessage.create({
+      testProtos.TestMessage.create({
         doubleField: 4.940656458412465441765687928682213723651e-324
       }),
-      protobuftsProtos.TestMessage.create({
+      testProtos.TestMessage.create({
         doubleField: 35.6
       }),
-      protobuftsProtos.TestMessage.create({
+      testProtos.TestMessage.create({
         doubleField: 1.797693134862315708145274237317043567981e308
       }),
       // float_field
-      protobuftsProtos.TestMessage.create({
+      testProtos.TestMessage.create({
         floatField: 1.40129846432481707092372958328991613128e-45
       }),
-      protobuftsProtos.TestMessage.create({
+      testProtos.TestMessage.create({
         floatField: 3.4028234663852885981170418348451692544e38
       }),
       // int64_field
-      protobuftsProtos.TestMessage.create({
+      testProtos.TestMessage.create({
         int64Field: Long.MIN_VALUE
       }),
-      protobuftsProtos.TestMessage.create({
+      testProtos.TestMessage.create({
         int64Field: Long.MAX_VALUE
       }),
       // uint64_field
-      protobuftsProtos.TestMessage.create({
+      testProtos.TestMessage.create({
         uint64Field: Long.UZERO
       }),
-      protobuftsProtos.TestMessage.create({
+      testProtos.TestMessage.create({
         uint64Field: Long.MAX_UNSIGNED_VALUE
       }),
       // int32_field
-      protobuftsProtos.TestMessage.create({
+      testProtos.TestMessage.create({
         int32Field: -2147483648
       }),
-      protobuftsProtos.TestMessage.create({
+      testProtos.TestMessage.create({
         int32Field: 2147483647
       }),
       // fixed64_field
-      protobuftsProtos.TestMessage.create({
+      testProtos.TestMessage.create({
         fixed64Field: Long.UZERO
       }),
-      protobuftsProtos.TestMessage.create({
+      testProtos.TestMessage.create({
         fixed64Field: Long.MAX_UNSIGNED_VALUE
       }),
       // fixed32_field
-      protobuftsProtos.TestMessage.create({
+      testProtos.TestMessage.create({
         fixed32Field: 0
       }),
       // bool_field
-      protobuftsProtos.TestMessage.create({
+      testProtos.TestMessage.create({
         boolField: false
       }),
-      protobuftsProtos.TestMessage.create({
+      testProtos.TestMessage.create({
         boolField: true
       }),
       // string_field
-      protobuftsProtos.TestMessage.create({
+      testProtos.TestMessage.create({
         stringField: ""
       }),
-      protobuftsProtos.TestMessage.create({
+      testProtos.TestMessage.create({
         stringField: "hello world"
       }),
       // message_field
-      protobuftsProtos.TestMessage.create({
-        messageField: protobuftsProtos.TestMessage.create({})
+      testProtos.TestMessage.create({
+        messageField: testProtos.TestMessage.create({})
       }),
-      protobuftsProtos.TestMessage.create({
-        messageField: protobuftsProtos.TestMessage.create({
+      testProtos.TestMessage.create({
+        messageField: testProtos.TestMessage.create({
           stringField: "hello world"
         })
       }),
       // bytes_field
-      protobuftsProtos.TestMessage.create({
+      testProtos.TestMessage.create({
         bytesField: new Uint8Array([])
       }),
-      protobuftsProtos.TestMessage.create({
+      testProtos.TestMessage.create({
         bytesField: new Uint8Array([0x5, 0xff])
       }),
       // uint32_field
-      protobuftsProtos.TestMessage.create({
+      testProtos.TestMessage.create({
         uint32Field: 0
       }),
-      protobuftsProtos.TestMessage.create({
+      testProtos.TestMessage.create({
         uint32Field: 4294967295
       }),
       // enum_field
-      protobuftsProtos.TestMessage.create({
-        enumField: protobuftsProtos.TestEnum.VAL0
+      testProtos.TestMessage.create({
+        enumField: testProtos.TestEnum.VAL0
       }),
-      protobuftsProtos.TestMessage.create({
-        enumField: protobuftsProtos.TestEnum.VAL1
+      testProtos.TestMessage.create({
+        enumField: testProtos.TestEnum.VAL1
       }),
       // sfixed32_field
-      protobuftsProtos.TestMessage.create({
+      testProtos.TestMessage.create({
         sfixed32Field: -2147483648
       }),
-      protobuftsProtos.TestMessage.create({
+      testProtos.TestMessage.create({
         sfixed32Field: 2147483647
       }),
       // sfixed64_field
-      protobuftsProtos.TestMessage.create({
+      testProtos.TestMessage.create({
         sfixed64Field: Long.MIN_VALUE
       }),
-      protobuftsProtos.TestMessage.create({
+      testProtos.TestMessage.create({
         sfixed64Field: Long.MAX_VALUE
       }),
       // sint32_field
-      protobuftsProtos.TestMessage.create({
+      testProtos.TestMessage.create({
         sint32Field: -2147483648
       }),
-      protobuftsProtos.TestMessage.create({
+      testProtos.TestMessage.create({
         sint32Field: 2147483647
       }),
-      protobuftsProtos.TestMessage.create({
+      testProtos.TestMessage.create({
         fixed32Field: 4294967295
       }),
       // sint64_field
-      protobuftsProtos.TestMessage.create({
+      testProtos.TestMessage.create({
         sint64Field: Long.MIN_VALUE
       }),
-      protobuftsProtos.TestMessage.create({
+      testProtos.TestMessage.create({
         sint64Field: Long.MAX_VALUE
       }),
       // oneof_int32_field
-      protobuftsProtos.TestMessage.create({
+      testProtos.TestMessage.create({
         oneof: { field: "oneofInt32Field", value: 0 }
       }),
-      protobuftsProtos.TestMessage.create({
+      testProtos.TestMessage.create({
         oneof: { field: "oneofInt32Field", value: 1234 }
       }),
       // oneof_string_field
-      protobuftsProtos.TestMessage.create({
+      testProtos.TestMessage.create({
         oneof: { field: "oneofStringField", value: "" }
       }),
-      protobuftsProtos.TestMessage.create({
+      testProtos.TestMessage.create({
         oneof: { field: "oneofStringField", value: "hello world" }
       })
     ];
@@ -156,7 +156,7 @@ suite(__filename, { parallel: true }, () => {
     for (const input of testCases) {
       test(`reserialized ${JSON.stringify(input.toJson())}`, () => {
         expect(input.serialize()).eql(reserialize("TestMessage", input.serialize()));
-        expect(protobuftsProtos.TestMessage.deserialize(input.serialize())).eql(input);
+        expect(testProtos.TestMessage.deserialize(input.serialize())).eql(input);
       });
     }
   });
@@ -164,51 +164,51 @@ suite(__filename, { parallel: true }, () => {
   suite("single-field repeated packed reserialization", { parallel: true }, () => {
     const testCases = [
       // double_field
-      protobuftsProtos.TestRepeatedMessage.create({
+      testProtos.TestRepeatedMessage.create({
         doubleField: [4.940656458412465441765687928682213723651e-324, 35.6]
       }),
       // float_field
-      protobuftsProtos.TestRepeatedMessage.create({
+      testProtos.TestRepeatedMessage.create({
         floatField: [1.40129846432481707092372958328991613128e-45, 35.5]
       }),
       // int32_field
-      protobuftsProtos.TestRepeatedMessage.create({
+      testProtos.TestRepeatedMessage.create({
         int32Field: [-100, 99, 0, 76, 10231862]
       }),
       // uint32_field
-      protobuftsProtos.TestRepeatedMessage.create({
+      testProtos.TestRepeatedMessage.create({
         uint32Field: [89, 3, 67, 0, 213131]
       }),
       // sint32_field
-      protobuftsProtos.TestRepeatedMessage.create({
+      testProtos.TestRepeatedMessage.create({
         sint32Field: [-21332, 323, 555, 0, -23123]
       }),
       // fixed32_field
-      protobuftsProtos.TestRepeatedMessage.create({
+      testProtos.TestRepeatedMessage.create({
         fixed32Field: [1232, 0, 51232, 222]
       }),
       // sfixed32_field
-      protobuftsProtos.TestRepeatedMessage.create({
+      testProtos.TestRepeatedMessage.create({
         sfixed32Field: [-13279, 3232, 0, -231]
       }),
       // int64_field
-      protobuftsProtos.TestRepeatedMessage.create({
+      testProtos.TestRepeatedMessage.create({
         int64Field: [Long.fromNumber(12323), Long.ZERO, Long.fromNumber(-121927)]
       }),
       // uint64_field
-      protobuftsProtos.TestRepeatedMessage.create({
+      testProtos.TestRepeatedMessage.create({
         uint64Field: [Long.fromNumber(12323, true), Long.UZERO, Long.fromNumber(172168261, true)]
       }),
       // sint64_field
-      protobuftsProtos.TestRepeatedMessage.create({
+      testProtos.TestRepeatedMessage.create({
         sint64Field: [Long.fromNumber(1212), Long.ZERO, Long.fromNumber(-1271333)]
       }),
       // fixed64_field
-      protobuftsProtos.TestRepeatedMessage.create({
+      testProtos.TestRepeatedMessage.create({
         fixed64Field: [Long.fromNumber(1323, true), Long.fromNumber(0, true)]
       }),
       // sfixed64_field
-      protobuftsProtos.TestRepeatedMessage.create({
+      testProtos.TestRepeatedMessage.create({
         sfixed64Field: [
           Long.fromNumber(-1821921),
           Long.fromNumber(-1),
@@ -216,34 +216,30 @@ suite(__filename, { parallel: true }, () => {
         ]
       }),
       // bool_field
-      protobuftsProtos.TestRepeatedMessage.create({
+      testProtos.TestRepeatedMessage.create({
         boolField: [true, false, false, true, true]
       }),
       // enum_field
-      protobuftsProtos.TestRepeatedMessage.create({
-        enumField: [
-          protobuftsProtos.TestEnum.VAL1,
-          protobuftsProtos.TestEnum.VAL0,
-          protobuftsProtos.TestEnum.VAL2
-        ]
+      testProtos.TestRepeatedMessage.create({
+        enumField: [testProtos.TestEnum.VAL1, testProtos.TestEnum.VAL0, testProtos.TestEnum.VAL2]
       }),
       // string_field
-      protobuftsProtos.TestRepeatedMessage.create({
+      testProtos.TestRepeatedMessage.create({
         stringField: ["", "foo", "bar"]
       }),
       // message_field
-      protobuftsProtos.TestRepeatedMessage.create({
+      testProtos.TestRepeatedMessage.create({
         messageField: [
-          protobuftsProtos.TestMessage.create({
+          testProtos.TestMessage.create({
             stringField: "one"
           }),
-          protobuftsProtos.TestMessage.create({
+          testProtos.TestMessage.create({
             stringField: "two"
           })
         ]
       }),
       // bytes_field
-      protobuftsProtos.TestRepeatedMessage.create({
+      testProtos.TestRepeatedMessage.create({
         bytesField: [
           Uint8Array.from([5, 8, 19, 33]),
           Uint8Array.from([50]),
@@ -255,7 +251,7 @@ suite(__filename, { parallel: true }, () => {
     for (const input of testCases) {
       test(`reserialized ${JSON.stringify(input.toJson())}`, () => {
         expect(input.serialize()).eql(reserialize("TestRepeatedMessage", input.serialize()));
-        expect(protobuftsProtos.TestRepeatedMessage.deserialize(input.serialize())).eql(input);
+        expect(testProtos.TestRepeatedMessage.deserialize(input.serialize())).eql(input);
       });
     }
   });
@@ -263,51 +259,51 @@ suite(__filename, { parallel: true }, () => {
   suite("single-field repeated unpacked reserialization", { parallel: true }, () => {
     const testCases = [
       // double_field
-      protobuftsProtos.TestUnpackedRepeatedMessage.create({
+      testProtos.TestUnpackedRepeatedMessage.create({
         doubleField: [4.940656458412465441765687928682213723651e-324, 35.6]
       }),
       // float_field
-      protobuftsProtos.TestUnpackedRepeatedMessage.create({
+      testProtos.TestUnpackedRepeatedMessage.create({
         floatField: [1.40129846432481707092372958328991613128e-45, 35.5]
       }),
       // int32_field
-      protobuftsProtos.TestUnpackedRepeatedMessage.create({
+      testProtos.TestUnpackedRepeatedMessage.create({
         int32Field: [-100, 99, 0, 76, 10231862]
       }),
       // uint32_field
-      protobuftsProtos.TestUnpackedRepeatedMessage.create({
+      testProtos.TestUnpackedRepeatedMessage.create({
         uint32Field: [89, 3, 67, 0, 213131]
       }),
       // sint32_field
-      protobuftsProtos.TestUnpackedRepeatedMessage.create({
+      testProtos.TestUnpackedRepeatedMessage.create({
         sint32Field: [-21332, 323, 555, 0, -23123]
       }),
       // fixed32_field
-      protobuftsProtos.TestUnpackedRepeatedMessage.create({
+      testProtos.TestUnpackedRepeatedMessage.create({
         fixed32Field: [1232, 0, 51232, 222]
       }),
       // sfixed32_field
-      protobuftsProtos.TestUnpackedRepeatedMessage.create({
+      testProtos.TestUnpackedRepeatedMessage.create({
         sfixed32Field: [-13279, 3232, 0, -231]
       }),
       // int64_field
-      protobuftsProtos.TestUnpackedRepeatedMessage.create({
+      testProtos.TestUnpackedRepeatedMessage.create({
         int64Field: [Long.fromNumber(12323), Long.ZERO, Long.fromNumber(-121927)]
       }),
       // uint64_field
-      protobuftsProtos.TestUnpackedRepeatedMessage.create({
+      testProtos.TestUnpackedRepeatedMessage.create({
         uint64Field: [Long.fromNumber(12323, true), Long.UZERO, Long.fromNumber(172168261, true)]
       }),
       // sint64_field
-      protobuftsProtos.TestUnpackedRepeatedMessage.create({
+      testProtos.TestUnpackedRepeatedMessage.create({
         sint64Field: [Long.fromNumber(1212), Long.ZERO, Long.fromNumber(-1271333)]
       }),
       // fixed64_field
-      protobuftsProtos.TestUnpackedRepeatedMessage.create({
+      testProtos.TestUnpackedRepeatedMessage.create({
         fixed64Field: [Long.fromNumber(1323, true), Long.fromNumber(0, true)]
       }),
       // sfixed64_field
-      protobuftsProtos.TestUnpackedRepeatedMessage.create({
+      testProtos.TestUnpackedRepeatedMessage.create({
         sfixed64Field: [
           Long.fromNumber(-1821921),
           Long.fromNumber(-1),
@@ -315,34 +311,30 @@ suite(__filename, { parallel: true }, () => {
         ]
       }),
       // bool_field
-      protobuftsProtos.TestUnpackedRepeatedMessage.create({
+      testProtos.TestUnpackedRepeatedMessage.create({
         boolField: [true, false, false, true, true]
       }),
       // enum_field
-      protobuftsProtos.TestUnpackedRepeatedMessage.create({
-        enumField: [
-          protobuftsProtos.TestEnum.VAL1,
-          protobuftsProtos.TestEnum.VAL0,
-          protobuftsProtos.TestEnum.VAL2
-        ]
+      testProtos.TestUnpackedRepeatedMessage.create({
+        enumField: [testProtos.TestEnum.VAL1, testProtos.TestEnum.VAL0, testProtos.TestEnum.VAL2]
       }),
       // string_field
-      protobuftsProtos.TestUnpackedRepeatedMessage.create({
+      testProtos.TestUnpackedRepeatedMessage.create({
         stringField: ["", "foo", "bar"]
       }),
       // message_field
-      protobuftsProtos.TestUnpackedRepeatedMessage.create({
+      testProtos.TestUnpackedRepeatedMessage.create({
         messageField: [
-          protobuftsProtos.TestMessage.create({
+          testProtos.TestMessage.create({
             stringField: "one"
           }),
-          protobuftsProtos.TestMessage.create({
+          testProtos.TestMessage.create({
             stringField: "two"
           })
         ]
       }),
       // bytes_field
-      protobuftsProtos.TestUnpackedRepeatedMessage.create({
+      testProtos.TestUnpackedRepeatedMessage.create({
         bytesField: [
           Uint8Array.from([5, 8, 19, 33]),
           Uint8Array.from([50]),
@@ -356,9 +348,7 @@ suite(__filename, { parallel: true }, () => {
         expect(input.serialize()).eql(
           reserialize("TestUnpackedRepeatedMessage", input.serialize())
         );
-        expect(protobuftsProtos.TestUnpackedRepeatedMessage.deserialize(input.serialize())).eql(
-          input
-        );
+        expect(testProtos.TestUnpackedRepeatedMessage.deserialize(input.serialize())).eql(input);
       });
     }
   });
@@ -366,7 +356,7 @@ suite(__filename, { parallel: true }, () => {
   suite("json support", { parallel: true }, () => {
     test("singular fields", () => {
       expect(
-        protobuftsProtos.TestMessage.create({
+        testProtos.TestMessage.create({
           doubleField: 45.8,
           floatField: Number.NaN,
           int64Field: Long.MAX_VALUE,
@@ -376,12 +366,12 @@ suite(__filename, { parallel: true }, () => {
           fixed32Field: 4173723,
           boolField: true,
           stringField: "hello world",
-          messageField: protobuftsProtos.TestMessage.create({
+          messageField: testProtos.TestMessage.create({
             stringField: "byeeee"
           }),
           bytesField: Uint8Array.from([5, 78, 93, 101]),
           uint32Field: 12455,
-          enumField: protobuftsProtos.TestEnum.VAL1,
+          enumField: testProtos.TestEnum.VAL1,
           sfixed32Field: -135131,
           sfixed64Field: Long.fromValue(-9102713712),
           mapField: new Map([
@@ -416,7 +406,7 @@ suite(__filename, { parallel: true }, () => {
 
     test("repeated fields", () => {
       expect(
-        protobuftsProtos.TestRepeatedMessage.create({
+        testProtos.TestRepeatedMessage.create({
           doubleField: [45.8, 78.1],
           floatField: [Number.NaN, Number.NEGATIVE_INFINITY],
           int64Field: [Long.MAX_VALUE],
@@ -427,16 +417,16 @@ suite(__filename, { parallel: true }, () => {
           boolField: [true, false, false, true],
           stringField: ["hello", "world"],
           messageField: [
-            protobuftsProtos.TestMessage.create({
+            testProtos.TestMessage.create({
               stringField: "byeeee"
             }),
-            protobuftsProtos.TestMessage.create({
+            testProtos.TestMessage.create({
               stringField: "wow"
             })
           ],
           bytesField: [Uint8Array.from([5, 78, 93, 101]), Uint8Array.from([7, 121, 1])],
           uint32Field: [12455],
-          enumField: [protobuftsProtos.TestEnum.VAL0, protobuftsProtos.TestEnum.VAL1],
+          enumField: [testProtos.TestEnum.VAL0, testProtos.TestEnum.VAL1],
           sfixed32Field: [-135131],
           sfixed64Field: [Long.fromValue(-9102713712)]
         }).toJson()
