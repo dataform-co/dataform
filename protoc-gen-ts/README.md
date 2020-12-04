@@ -9,8 +9,6 @@
 
 ## TODO
 
-- Cleanup:
-  - `protobufts` names should be removed in favour of `protoc-gen-ts`
 - Features:
   - `toJson()` is supported, but `fromJson()` is not
   - `toJson()` support for "special" protobuf types e.g. `Any`

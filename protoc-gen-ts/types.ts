@@ -1,4 +1,4 @@
-import { google } from "df/protobufts/ts-protoc-protos";
+import { google } from "df/protoc-gen-ts/ts-protoc-protos";
 
 export interface ITypeMetadata<T extends IEnumDescriptor | IMessageDescriptor> {
   file: {
