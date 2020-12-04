@@ -225,14 +225,34 @@ ${indent(
   [
     ...this.type.protobufType.fields.map(
       fieldDescriptorProto =>
-        `public ${this.maybeOptionalMember(fieldDescriptorProto)}: ${this.maybeArrayType(
+        `private _${this.maybeOptionalMember(fieldDescriptorProto)}: ${this.maybeArrayType(
           fieldDescriptorProto
         )} = ${this.defaultValue(fieldDescriptorProto)};`
     ),
     ...this.type.protobufType.oneofs.map(
-      oneof => `public ${oneof.name}?: ${this.fieldTypeNames.get(oneof.name)} = null;`
+      oneof => `private _${oneof.name}?: ${this.fieldTypeNames.get(oneof.name)} = null;`
     )
   ].join("\n")
+)}
+
+${indent(
+  [
+    ...this.type.protobufType.fields.map(
+      fieldDescriptorProto =>
+        `public get ${fieldDescriptorProto.jsonName}() { return this._${
+          fieldDescriptorProto.jsonName
+        }; }
+public set ${fieldDescriptorProto.jsonName}(val: ${this.maybeArrayType(
+          fieldDescriptorProto
+        )}) { this._${fieldDescriptorProto.jsonName} = val; }`
+    ),
+    ...this.type.protobufType.oneofs.map(
+      oneof => `public get ${oneof.name}() { return this._${oneof.name}; }
+public set ${oneof.name}(val: ${this.fieldTypeNames.get(oneof.name)}) { this._${
+        oneof.name
+      } = val; }`
+    )
+  ].join("\n\n")
 )}
 
   public serialize(): Uint8Array {
