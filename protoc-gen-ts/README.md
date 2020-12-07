@@ -19,7 +19,6 @@
   - the transpiler should reject any field that uses `proto3_optional`, aka "synthetic" optional fields (until support for `proto3_optional` is added)
 - More tests need to be added:
   - multiple values for non-repeated Message fields are (correctly) merged upon deserialization; this needs tests
-  - tests for more edge-cases, e.g. `NaN`, positive/negative infinity
   - deserialization of unknown fields / unknown enum values
   - messages with more than one field set
   - compatibility tests - `optional` vs `repeated ... [packed=false]`; `repeated ... [packed=false]` vs `repeated ... [packed=true]`; other types that are safe to change to another type
