@@ -210,7 +210,11 @@ ${indent(
     return newProto;
   }
 
-  private static readonly decoders = {
+  private static DECODERS_SINGLETON: any;
+
+  private static get decoders() {
+    if (!${this.type.typescriptType.name}.DECODERS_SINGLETON) {
+      ${this.type.typescriptType.name}.DECODERS_SINGLETON = {
 ${indent(
   [
     ...this.type.protobufType.fields.map(
@@ -235,9 +239,12 @@ ${indent(
       )
       .flat()
   ].join(",\n"),
-  2
+  4
 )}
-  };
+      };
+    }
+    return ${this.type.typescriptType.name}.DECODERS_SINGLETON;
+  }
 
 ${indent(
   [

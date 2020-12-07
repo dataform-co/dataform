@@ -11,6 +11,7 @@
 
 - Cleanup:
   - Transpiler code determines whether a field is a Map in several places; this should be consolidated
+  - `DECODERS_SINGLETON` members should have correct typing (instead of `any`)
 - Features:
   - `toJson()` is supported, but `fromJson()` is not
   - `toJson()` support for "special" protobuf types e.g. `Any`
