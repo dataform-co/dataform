@@ -210,7 +210,10 @@ ${indent(
     return newProto;
   }
 
-  private static readonly decoders = {
+  private static readonly decoders = ${this.type.typescriptType.name}.initializeDecoders();
+
+  private static initializeDecoders() {
+    return {
 ${indent(
   [
     ...this.type.protobufType.fields.map(
@@ -235,9 +238,10 @@ ${indent(
       )
       .flat()
   ].join(",\n"),
-  2
+  3
 )}
-  };
+    };
+  }
 
 ${indent(
   [
