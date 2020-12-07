@@ -12,7 +12,7 @@ const IMPORT_JSON_SUPPORT = 'import { toJsonValue } from "df/protoc-gen-ts/runti
 const IMPORT_SERIALIZATION =
   'import { Decoders, Deserializer, Serializer } from "df/protoc-gen-ts/runtime/serialize";';
 const IMPORT_VALIDATION =
-  'import { checkSignedInt32, checkUnsignedInt32, checkSignedInt64, checkUnsignedInt64, check32BitFloat, check64BitFloat } from "df/protoc-gen-ts/runtime/validation";';
+  'import { checkSignedInt32, checkUnsignedInt32, checkSignedInt64, checkUnsignedInt64, check32BitFloat, check64BitFloat, requireNonOptional } from "df/protoc-gen-ts/runtime/validation";';
 
 const LONG_TYPES = [
   google.protobuf.FieldDescriptorProto.Type.TYPE_INT64,
@@ -262,9 +262,10 @@ ${indent(
         }; }
 public set ${fieldDescriptorProto.jsonName}(val: ${this.maybeArrayType(fieldDescriptorProto)}) {
 ${indent(
-  `${Validation.forField(fieldDescriptorProto, this.types).callValidator()}this._${
-    fieldDescriptorProto.jsonName
-  } = val;`
+  `${isOptional(fieldDescriptorProto) ? "" : "requireNonOptional(val);\n"}${Validation.forField(
+    fieldDescriptorProto,
+    this.types
+  ).callValidator()}this._${fieldDescriptorProto.jsonName} = val;`
 )}
 }`
     ),
@@ -366,13 +367,9 @@ ${indent(
   }
 
   private maybeOptionalMember(fieldDescriptorProto: google.protobuf.IFieldDescriptorProto) {
-    if (fieldDescriptorProto.label === google.protobuf.FieldDescriptorProto.Label.LABEL_REPEATED) {
-      return fieldDescriptorProto.jsonName;
-    }
-    if (fieldDescriptorProto.type !== google.protobuf.FieldDescriptorProto.Type.TYPE_MESSAGE) {
-      return fieldDescriptorProto.jsonName;
-    }
-    return `${fieldDescriptorProto.jsonName}?`;
+    return isOptional(fieldDescriptorProto)
+      ? `${fieldDescriptorProto.jsonName}?`
+      : fieldDescriptorProto.jsonName;
   }
 
   private defaultValue(fieldDescriptorProto: google.protobuf.IFieldDescriptorProto) {
@@ -421,6 +418,16 @@ ${indent(
         throw new Error(`Unrecognized field type: ${fieldDescriptorProto.type}`);
     }
   }
+}
+
+function isOptional(fieldDescriptorProto: google.protobuf.IFieldDescriptorProto) {
+  if (fieldDescriptorProto.label === google.protobuf.FieldDescriptorProto.Label.LABEL_REPEATED) {
+    return false;
+  }
+  if (fieldDescriptorProto.type !== google.protobuf.FieldDescriptorProto.Type.TYPE_MESSAGE) {
+    return false;
+  }
+  return true;
 }
 
 class EnumTranspiler {
