@@ -11,6 +11,8 @@ const IMPORT_LONG = 'import Long from "long";';
 const IMPORT_JSON_SUPPORT = 'import { toJsonValue } from "df/protoc-gen-ts/runtime/json_support";';
 const IMPORT_SERIALIZATION =
   'import { Decoders, Deserializer, Serializer } from "df/protoc-gen-ts/runtime/serialize";';
+const IMPORT_VALIDATION =
+  'import { checkSignedInt32, checkUnsignedInt32, checkSignedInt64, checkUnsignedInt64, check32BitFloat, check64BitFloat } from "df/protoc-gen-ts/runtime/validation";';
 
 const LONG_TYPES = [
   google.protobuf.FieldDescriptorProto.Type.TYPE_INT64,
@@ -31,6 +33,21 @@ const PACKABLE_TYPES = [
   google.protobuf.FieldDescriptorProto.Type.TYPE_BOOL,
   google.protobuf.FieldDescriptorProto.Type.TYPE_UINT32,
   google.protobuf.FieldDescriptorProto.Type.TYPE_ENUM,
+  google.protobuf.FieldDescriptorProto.Type.TYPE_SFIXED32,
+  google.protobuf.FieldDescriptorProto.Type.TYPE_SFIXED64,
+  google.protobuf.FieldDescriptorProto.Type.TYPE_SINT32,
+  google.protobuf.FieldDescriptorProto.Type.TYPE_SINT64
+];
+
+const VALIDATABLE_TYPES = [
+  google.protobuf.FieldDescriptorProto.Type.TYPE_DOUBLE,
+  google.protobuf.FieldDescriptorProto.Type.TYPE_FLOAT,
+  google.protobuf.FieldDescriptorProto.Type.TYPE_INT64,
+  google.protobuf.FieldDescriptorProto.Type.TYPE_UINT64,
+  google.protobuf.FieldDescriptorProto.Type.TYPE_INT32,
+  google.protobuf.FieldDescriptorProto.Type.TYPE_FIXED64,
+  google.protobuf.FieldDescriptorProto.Type.TYPE_FIXED32,
+  google.protobuf.FieldDescriptorProto.Type.TYPE_UINT32,
   google.protobuf.FieldDescriptorProto.Type.TYPE_SFIXED32,
   google.protobuf.FieldDescriptorProto.Type.TYPE_SFIXED64,
   google.protobuf.FieldDescriptorProto.Type.TYPE_SINT32,
@@ -93,7 +110,8 @@ ${[
       }),
       ...(this.needsLongImport() ? [IMPORT_LONG] : []),
       IMPORT_JSON_SUPPORT,
-      IMPORT_SERIALIZATION
+      IMPORT_SERIALIZATION,
+      IMPORT_VALIDATION
     ];
   }
 
@@ -242,15 +260,20 @@ ${indent(
         `public get ${fieldDescriptorProto.jsonName}() { return this._${
           fieldDescriptorProto.jsonName
         }; }
-public set ${fieldDescriptorProto.jsonName}(val: ${this.maybeArrayType(
-          fieldDescriptorProto
-        )}) { this._${fieldDescriptorProto.jsonName} = val; }`
+public set ${fieldDescriptorProto.jsonName}(val: ${this.maybeArrayType(fieldDescriptorProto)}) {
+${indent(
+  `${Validation.forField(fieldDescriptorProto, this.types, this.type).callValidator()}this._${
+    fieldDescriptorProto.jsonName
+  } = val;`
+)}
+}`
     ),
     ...this.type.protobufType.oneofs.map(
       oneof => `public get ${oneof.name}() { return this._${oneof.name}; }
-public set ${oneof.name}(val: ${this.fieldTypeNames.get(oneof.name)}) { this._${
-        oneof.name
-      } = val; }`
+public set ${oneof.name}(val: ${this.fieldTypeNames.get(oneof.name)}) {
+${indent(Validation.forOneof(oneof.name, oneof.fields, this.types, this.type).callValidator())};
+  this._${oneof.name} = val;
+}`
     )
   ].join("\n\n")
 )}
@@ -622,42 +645,6 @@ ${indent(
     return typeString.replace("TYPE_", "").toLowerCase();
   }
 
-  private deserialize(fieldDescriptorProto: google.protobuf.IFieldDescriptorProto) {
-    const deserializedValue = (() => {
-      if (PACKABLE_TYPES.includes(fieldDescriptorProto.type)) {
-        return `...buffer.${this.serializerMethodName(fieldDescriptorProto)}()`;
-      }
-      switch (fieldDescriptorProto.type) {
-        case google.protobuf.FieldDescriptorProto.Type.TYPE_STRING:
-          return "buffer.string()";
-        case google.protobuf.FieldDescriptorProto.Type.TYPE_MESSAGE:
-          this.types.typescriptTypeFromProtobufType(
-            fieldDescriptorProto.type,
-            fieldDescriptorProto.typeName,
-            this.insideMessage
-          );
-          return `${this.types.typescriptTypeFromProtobufType(
-            fieldDescriptorProto.type,
-            fieldDescriptorProto.typeName,
-            this.insideMessage
-          )}.deserialize(buffer.bytes())`;
-        case google.protobuf.FieldDescriptorProto.Type.TYPE_GROUP:
-          throw new Error("GROUP is unsupported.");
-        case google.protobuf.FieldDescriptorProto.Type.TYPE_BYTES:
-          return "buffer.bytes()";
-        default:
-          throw new Error(`Unrecognized field type: ${fieldDescriptorProto.type}`);
-      }
-    })();
-    if (
-      fieldDescriptorProto.label !== google.protobuf.FieldDescriptorProto.Label.LABEL_REPEATED &&
-      PACKABLE_TYPES.includes(fieldDescriptorProto.type)
-    ) {
-      return `Deserializer.single([${deserializedValue}])`;
-    }
-    return deserializedValue;
-  }
-
   private toJsonValue(
     fieldDescriptorProto: google.protobuf.IFieldDescriptorProto,
     valueVariable: string
@@ -767,6 +754,130 @@ class Decoders {
       )}.deserialize`;
     }
     return "";
+  }
+}
+
+class Validation {
+  public static forField(
+    fieldDescriptorProto: google.protobuf.IFieldDescriptorProto,
+    types: TypeRegistry,
+    insideMessage: ITypeMetadata<IMessageDescriptor>
+  ) {
+    return new Validation({ type: "normal", fieldDescriptorProto }, types, insideMessage);
+  }
+
+  public static forOneof(
+    name: string,
+    fieldDescriptorProtos: google.protobuf.IFieldDescriptorProto[],
+    types: TypeRegistry,
+    insideMessage: ITypeMetadata<IMessageDescriptor>
+  ) {
+    return new Validation({ type: "oneof", name, fieldDescriptorProtos }, types, insideMessage);
+  }
+
+  constructor(
+    private readonly field:
+      | { type: "normal"; fieldDescriptorProto: google.protobuf.IFieldDescriptorProto }
+      | {
+          type: "oneof";
+          name: string;
+          fieldDescriptorProtos: google.protobuf.IFieldDescriptorProto[];
+        },
+    private readonly types: TypeRegistry,
+    private readonly insideMessage: ITypeMetadata<IMessageDescriptor>
+  ) {}
+
+  public callValidator() {
+    if (this.field.type === "oneof") {
+      if (
+        this.field.fieldDescriptorProtos.filter(fieldDescriptorProto =>
+          VALIDATABLE_TYPES.includes(fieldDescriptorProto.type)
+        ).length === 0
+      ) {
+        return "";
+      }
+      return `if (val) {
+  switch (val.field) {
+${indent(
+  this.field.fieldDescriptorProtos
+    .filter(fieldDescriptorProto => VALIDATABLE_TYPES.includes(fieldDescriptorProto.type))
+    .map(
+      fieldDescriptorProto =>
+        `case "${fieldDescriptorProto.jsonName}": ${this.validationMethodName(
+          fieldDescriptorProto
+        )}(val.value); break;`
+    )
+    .join("\n"),
+  2
+)}
+  }
+}`;
+    }
+    let isMap = false;
+    let keyField: google.protobuf.IFieldDescriptorProto;
+    let valueField: google.protobuf.IFieldDescriptorProto;
+    if (
+      this.field.fieldDescriptorProto.type ===
+      google.protobuf.FieldDescriptorProto.Type.TYPE_MESSAGE
+    ) {
+      const typeMetadata = this.types.forFieldDescriptor(this.field.fieldDescriptorProto);
+      if (typeMetadata.protobufType.isEnum === true) {
+        throw new Error(
+          `Lookup for message type ${this.field.fieldDescriptorProto.name} returned enum ${typeMetadata.protobufType.fullyQualifiedName}.`
+        );
+      }
+      if (typeMetadata.protobufType.descriptorProto.options?.mapEntry) {
+        isMap = true;
+        keyField = typeMetadata.protobufType.descriptorProto.field[0];
+        valueField = typeMetadata.protobufType.descriptorProto.field[1];
+      }
+    }
+    if (
+      isMap &&
+      (VALIDATABLE_TYPES.includes(keyField.type) || VALIDATABLE_TYPES.includes(valueField.type))
+    ) {
+      return `Array.from(val.entries()).forEach(([${
+        VALIDATABLE_TYPES.includes(keyField.type) ? "key" : "_"
+      }, ${VALIDATABLE_TYPES.includes(valueField.type) ? "value" : "_"}]) => {
+  ${
+    VALIDATABLE_TYPES.includes(keyField.type)
+      ? `${this.validationMethodName(keyField)}(key);\n`
+      : ""
+  }${
+        VALIDATABLE_TYPES.includes(valueField.type)
+          ? `${this.validationMethodName(valueField)}(value);\n`
+          : ""
+      }});\n`;
+    }
+    if (!VALIDATABLE_TYPES.includes(this.field.fieldDescriptorProto.type)) {
+      return "";
+    }
+    return `${this.validationMethodName(this.field.fieldDescriptorProto)}(val);\n`;
+  }
+
+  private validationMethodName(fieldDescriptorProto: google.protobuf.IFieldDescriptorProto) {
+    switch (fieldDescriptorProto.type) {
+      case google.protobuf.FieldDescriptorProto.Type.TYPE_DOUBLE:
+        return "check64BitFloat";
+      case google.protobuf.FieldDescriptorProto.Type.TYPE_FLOAT:
+        return "check32BitFloat";
+      case google.protobuf.FieldDescriptorProto.Type.TYPE_INT32:
+      case google.protobuf.FieldDescriptorProto.Type.TYPE_SFIXED32:
+      case google.protobuf.FieldDescriptorProto.Type.TYPE_SINT32:
+        return "checkSignedInt32";
+      case google.protobuf.FieldDescriptorProto.Type.TYPE_FIXED32:
+      case google.protobuf.FieldDescriptorProto.Type.TYPE_UINT32:
+        return "checkUnsignedInt32";
+      case google.protobuf.FieldDescriptorProto.Type.TYPE_INT64:
+      case google.protobuf.FieldDescriptorProto.Type.TYPE_SFIXED64:
+      case google.protobuf.FieldDescriptorProto.Type.TYPE_SINT64:
+        return "checkSignedInt64";
+      case google.protobuf.FieldDescriptorProto.Type.TYPE_UINT64:
+      case google.protobuf.FieldDescriptorProto.Type.TYPE_FIXED64:
+        return "checkUnsignedInt64";
+      default:
+        throw new Error(`Unrecognized field type: ${fieldDescriptorProto.type}`);
+    }
   }
 }
 
