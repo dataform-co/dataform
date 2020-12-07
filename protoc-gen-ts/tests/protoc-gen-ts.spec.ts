@@ -15,6 +15,12 @@ suite(__filename, { parallel: true }, () => {
     const testCases = [
       // double_field
       testProtos.TestMessage.create({
+        doubleField: Number.NaN
+      }),
+      testProtos.TestMessage.create({
+        doubleField: Number.NEGATIVE_INFINITY
+      }),
+      testProtos.TestMessage.create({
         doubleField: 4.940656458412465441765687928682213723651e-324
       }),
       testProtos.TestMessage.create({
@@ -23,12 +29,24 @@ suite(__filename, { parallel: true }, () => {
       testProtos.TestMessage.create({
         doubleField: 1.797693134862315708145274237317043567981e308
       }),
+      testProtos.TestMessage.create({
+        doubleField: Number.POSITIVE_INFINITY
+      }),
       // float_field
+      testProtos.TestMessage.create({
+        floatField: Number.NaN
+      }),
+      testProtos.TestMessage.create({
+        floatField: Number.NEGATIVE_INFINITY
+      }),
       testProtos.TestMessage.create({
         floatField: 1.40129846432481707092372958328991613128e-45
       }),
       testProtos.TestMessage.create({
         floatField: 3.4028234663852885981170418348451692544e38
+      }),
+      testProtos.TestMessage.create({
+        floatField: Number.POSITIVE_INFINITY
       }),
       // int64_field
       testProtos.TestMessage.create({
@@ -165,11 +183,23 @@ suite(__filename, { parallel: true }, () => {
     const testCases = [
       // double_field
       testProtos.TestRepeatedMessage.create({
-        doubleField: [4.940656458412465441765687928682213723651e-324, 35.6]
+        doubleField: [
+          Number.NaN,
+          Number.NEGATIVE_INFINITY,
+          4.940656458412465441765687928682213723651e-324,
+          35.6,
+          Number.POSITIVE_INFINITY
+        ]
       }),
       // float_field
       testProtos.TestRepeatedMessage.create({
-        floatField: [1.40129846432481707092372958328991613128e-45, 35.5]
+        floatField: [
+          Number.NaN,
+          Number.NEGATIVE_INFINITY,
+          1.40129846432481707092372958328991613128e-45,
+          35.5,
+          Number.POSITIVE_INFINITY
+        ]
       }),
       // int32_field
       testProtos.TestRepeatedMessage.create({
@@ -260,11 +290,23 @@ suite(__filename, { parallel: true }, () => {
     const testCases = [
       // double_field
       testProtos.TestUnpackedRepeatedMessage.create({
-        doubleField: [4.940656458412465441765687928682213723651e-324, 35.6]
+        doubleField: [
+          Number.NaN,
+          Number.NEGATIVE_INFINITY,
+          4.940656458412465441765687928682213723651e-324,
+          35.6,
+          Number.POSITIVE_INFINITY
+        ]
       }),
       // float_field
       testProtos.TestUnpackedRepeatedMessage.create({
-        floatField: [1.40129846432481707092372958328991613128e-45, 35.5]
+        floatField: [
+          Number.NaN,
+          Number.NEGATIVE_INFINITY,
+          1.40129846432481707092372958328991613128e-45,
+          35.5,
+          Number.POSITIVE_INFINITY
+        ]
       }),
       // int32_field
       testProtos.TestUnpackedRepeatedMessage.create({
