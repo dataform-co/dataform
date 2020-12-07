@@ -12,6 +12,15 @@ const MAX_INCLUSIVE_32_BIT_FLOAT = 3.4028234663852886e38;
 const MIN_INCLUSIVE_64_BIT_FLOAT = -1.7976931348623157e308;
 const MAX_INCLUSIVE_64_BIT_FLOAT = 1.7976931348623157e308;
 
+export function requireNonOptional(val: any) {
+  if (val === null) {
+    throw new Error("Field may not be set to null.");
+  }
+  if (val === undefined) {
+    throw new Error("Field may not be set to undefined.");
+  }
+}
+
 export function checkSignedInt32(val: number | number[]) {
   if (Array.isArray(val)) {
     val.forEach(singleVal =>

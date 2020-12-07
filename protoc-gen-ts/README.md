@@ -17,7 +17,6 @@
 - Correctness/validation additions:
   - the transpiler should reject any non-proto3 protobufs (until support for proto2 transpilation is added)
   - the transpiler should reject any field that uses `proto3_optional`, aka "synthetic" optional fields (until support for `proto3_optional` is added)
-  - generated code should do (limited?) type checks on field values (when set by the caller), including null/undefined-ness
 - More tests need to be added:
   - multiple values for non-repeated Message fields are (correctly) merged upon deserialization; this needs tests
   - tests for more edge-cases, e.g. `NaN`, positive/negative infinity
