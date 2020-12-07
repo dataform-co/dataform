@@ -20,7 +20,6 @@
   - generated code should do (limited?) type checks on field values (when set by the caller), including null/undefined-ness
 - More tests need to be added:
   - multiple values for non-repeated Message fields are (correctly) merged upon deserialization; this needs tests
-  - tests for more edge-cases, e.g. `NaN`, positive/negative infinity
   - deserialization of unknown fields / unknown enum values
   - messages with more than one field set
   - compatibility tests - `optional` vs `repeated ... [packed=false]`; `repeated ... [packed=false]` vs `repeated ... [packed=true]`; other types that are safe to change to another type
