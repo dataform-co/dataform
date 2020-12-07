@@ -262,7 +262,7 @@ ${indent(
         }; }
 public set ${fieldDescriptorProto.jsonName}(val: ${this.maybeArrayType(fieldDescriptorProto)}) {
 ${indent(
-  `${Validation.forField(fieldDescriptorProto, this.types, this.type).callValidator()}this._${
+  `${Validation.forField(fieldDescriptorProto, this.types).callValidator()}this._${
     fieldDescriptorProto.jsonName
   } = val;`
 )}
@@ -271,7 +271,7 @@ ${indent(
     ...this.type.protobufType.oneofs.map(
       oneof => `public get ${oneof.name}() { return this._${oneof.name}; }
 public set ${oneof.name}(val: ${this.fieldTypeNames.get(oneof.name)}) {
-${indent(Validation.forOneof(oneof.name, oneof.fields, this.types, this.type).callValidator())};
+${indent(Validation.forOneof(oneof.name, oneof.fields, this.types).callValidator())};
   this._${oneof.name} = val;
 }`
     )
@@ -760,19 +760,17 @@ class Decoders {
 class Validation {
   public static forField(
     fieldDescriptorProto: google.protobuf.IFieldDescriptorProto,
-    types: TypeRegistry,
-    insideMessage: ITypeMetadata<IMessageDescriptor>
+    types: TypeRegistry
   ) {
-    return new Validation({ type: "normal", fieldDescriptorProto }, types, insideMessage);
+    return new Validation({ type: "normal", fieldDescriptorProto }, types);
   }
 
   public static forOneof(
     name: string,
     fieldDescriptorProtos: google.protobuf.IFieldDescriptorProto[],
-    types: TypeRegistry,
-    insideMessage: ITypeMetadata<IMessageDescriptor>
+    types: TypeRegistry
   ) {
-    return new Validation({ type: "oneof", name, fieldDescriptorProtos }, types, insideMessage);
+    return new Validation({ type: "oneof", name, fieldDescriptorProtos }, types);
   }
 
   constructor(
@@ -783,8 +781,7 @@ class Validation {
           name: string;
           fieldDescriptorProtos: google.protobuf.IFieldDescriptorProto[];
         },
-    private readonly types: TypeRegistry,
-    private readonly insideMessage: ITypeMetadata<IMessageDescriptor>
+    private readonly types: TypeRegistry
   ) {}
 
   public callValidator() {

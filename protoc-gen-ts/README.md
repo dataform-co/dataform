@@ -9,6 +9,8 @@
 
 ## TODO
 
+- Cleanup:
+  - Transpiler code determines whether a field is a Map in several places; this should be consolidated
 - Features:
   - `toJson()` is supported, but `fromJson()` is not
   - `toJson()` support for "special" protobuf types e.g. `Any`
