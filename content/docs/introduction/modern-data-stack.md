@@ -22,7 +22,7 @@ The data warehouse is the epicenter of modern stacks. Raw data from across the c
 
 <img src="https://assets.dataform.co/docs/introduction/datastack_simple_schema.png" max-width="819"  alt="" />
 
-Most businesses today will use cloud data warehouses like Google BigQuery, Snowflake, or AWS Redshift.
+Most businesses today will use a cloud data warehouses like Google BigQuery.
 
 ### Extraction and Loading
 
