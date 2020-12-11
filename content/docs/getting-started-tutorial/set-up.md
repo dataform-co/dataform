@@ -22,7 +22,7 @@ The aim of this tutorial is to create two new tables in our warehouse, one calle
 
 ## Create a new BigQuery project
 
-Dataform connects to [many different warehouses](https://docs.dataform.co/warehouses) but for this tutorial we’ll use BigQuery, since anyone with a Google Account can use it and it has a free tier. We’ve created a public dataset in BigQuery that anyone can access for the purpose of this tutorial.
+For this this tutorial we’ll use BigQuery. Anyone with a Google Account can use it and it has a free tier. We’ve created a public dataset in BigQuery that anyone can access for the purpose of this tutorial.
 
 1. First you will need to create a new Bigquery project:
 

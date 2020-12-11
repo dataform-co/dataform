@@ -286,13 +286,12 @@ export class Deserializer {
   }
 }
 
-interface IRepeatedFieldDecoder<T> {
-  decode(reader: BytesReader, currentValue: T[]): T[];
-  single(): IDecoder<T>;
+export interface IDecoder<T> {
+  decode(reader: BytesReader, currentValue?: T): T;
 }
 
-interface IDecoder<T> {
-  decode(reader: BytesReader, currentValue?: T): T;
+interface IRepeatedFieldDecoder<T> extends IDecoder<T[]> {
+  single(): IDecoder<T>;
 }
 
 abstract class NotPackedFieldDecoder<T> implements IRepeatedFieldDecoder<T> {

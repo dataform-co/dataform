@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/dataform-co/dataform/protobufts/tests"
+	"github.com/dataform-co/dataform/protoc-gen-ts/tests"
 	"github.com/golang/protobuf/proto"
 )
 
