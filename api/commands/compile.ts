@@ -92,7 +92,7 @@ export class CompileChildProcess {
       this.childProcess.on("error", (e: Error) => reject(coerceAsError(e)));
       this.childProcess.on("message", (e: Error) => reject(coerceAsError(e)));
 
-      // Handle UTF-8 string chunks returned by the child process.q
+      // Handle UTF-8 string chunks returned by the child process.
       const pipe = this.childProcess.stdio[4];
       const chunks: Buffer[] = [];
       // Typing issues here are from the 4th item in stdio (pipe) when developing on a mac.
