@@ -56,6 +56,7 @@ export async function compile(
       e
     );
   }
+
   return decode(
     dataform.CompiledGraph,
     await CompileChildProcess.forkProcess().compile(compileConfig)
@@ -91,10 +92,16 @@ export class CompileChildProcess {
       this.childProcess.on("error", (e: Error) => reject(coerceAsError(e)));
       this.childProcess.on("message", (e: Error) => reject(coerceAsError(e)));
 
-      // Handle UTF-8 string chunks returned by the child process.
+      // Handle UTF-8 string chunks returned by the child process.q
       const pipe = this.childProcess.stdio[4];
       const chunks: Buffer[] = [];
-      pipe.on("data", (chunk: Buffer) => chunks.push(chunk));
+      // Typing issues here are from the 4th item in stdio (pipe) when developing on a mac.
+      pipe?.on("readable", () => {
+        const buffer = ((pipe as unknown) as any).read();
+        if (!!buffer) {
+          chunks.push(buffer);
+        }
+      });
 
       // When the child process closes all stdio streams, return the compiled result.
       this.childProcess.on("close", exitCode => {

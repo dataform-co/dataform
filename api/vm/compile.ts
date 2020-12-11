@@ -1,4 +1,3 @@
-import * as fs from "fs";
 import * as path from "path";
 import { CompilerFunction, NodeVM } from "vm2";
 
@@ -6,6 +5,7 @@ import { createGenIndexConfig } from "df/api/vm/gen_index_config";
 import * as legacyCompiler from "df/api/vm/legacy_compiler";
 import { legacyGenIndex } from "df/api/vm/legacy_gen_index";
 import { dataform } from "df/protos/ts";
+import * as net from "net";
 
 export function compile(compileConfig: dataform.ICompileConfig) {
   const vmIndexFileName = path.resolve(path.join(compileConfig.projectDir, "index.js"));
@@ -63,7 +63,6 @@ export function compile(compileConfig: dataform.ICompileConfig) {
     sourceExtensions: ["js", "sql", "sqlx"],
     compiler
   });
-
   return userCodeVm.run(genIndex(createGenIndexConfig(compileConfig)), vmIndexFileName);
 }
 
@@ -71,9 +70,8 @@ export function listenForCompileRequest() {
   process.on("message", (compileConfig: dataform.ICompileConfig) => {
     try {
       const compiledResult = compile(compileConfig);
-      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
-      const writeable = fs.createWriteStream(null, { fd: 4 });
-      writeable.write(compiledResult, "utf8");
+      const writer = new net.Socket({ fd: 4 });
+      writer.write(compiledResult);
     } catch (e) {
       const serializableError = {};
       for (const prop of Object.getOwnPropertyNames(e)) {

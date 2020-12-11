@@ -85,6 +85,7 @@ global.declare = session.declare.bind(session);
 global.test = session.test.bind(session);
 
 // Require all "definitions" files (attaching them to the session).
+
 ${definitionRequires}
 
 // Return a base64 encoded proto via NodeVM. Returning a Uint8Array directly causes issues.
