@@ -1,5 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
+import { Readable } from "stream";
 
 import { ChildProcess, fork } from "child_process";
 import { validWarehouses } from "df/api/dbadapters";
@@ -56,6 +57,7 @@ export async function compile(
       e
     );
   }
+
   return decode(
     dataform.CompiledGraph,
     await CompileChildProcess.forkProcess().compile(compileConfig)
@@ -92,9 +94,15 @@ export class CompileChildProcess {
       this.childProcess.on("message", (e: Error) => reject(coerceAsError(e)));
 
       // Handle UTF-8 string chunks returned by the child process.
-      const pipe = this.childProcess.stdio[4];
+      const pipe = this.childProcess.stdio[4] as Readable;
       const chunks: Buffer[] = [];
-      pipe.on("data", (chunk: Buffer) => chunks.push(chunk));
+      pipe?.on("readable", () => {
+        let buffer: Buffer = pipe.read();
+        while (buffer) {
+          chunks.push(buffer);
+          buffer = pipe.read();
+        }
+      });
 
       // When the child process closes all stdio streams, return the compiled result.
       this.childProcess.on("close", exitCode => {
