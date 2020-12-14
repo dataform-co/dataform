@@ -1,5 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
+import { Readable } from "stream";
 
 import { ChildProcess, fork } from "child_process";
 import { validWarehouses } from "df/api/dbadapters";
@@ -93,12 +94,11 @@ export class CompileChildProcess {
       this.childProcess.on("message", (e: Error) => reject(coerceAsError(e)));
 
       // Handle UTF-8 string chunks returned by the child process.
-      const pipe = this.childProcess.stdio[4];
+      const pipe = this.childProcess.stdio[4] as Readable;
       const chunks: Buffer[] = [];
-      // Typing issues here are from the 4th item in stdio (pipe) when developing on a mac.
       pipe?.on("readable", () => {
-        const buffer = ((pipe as unknown) as any).read();
-        if (!!buffer) {
+        let buffer: any;
+        while ((buffer = pipe.read())) {
           chunks.push(buffer);
         }
       });
