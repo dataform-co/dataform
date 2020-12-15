@@ -97,10 +97,14 @@ export class CompileChildProcess {
       const pipe = this.childProcess.stdio[4] as Readable;
       const chunks: Buffer[] = [];
       pipe?.on("readable", () => {
-        let buffer: Buffer = pipe.read();
-        while (buffer) {
-          chunks.push(buffer);
+        let firstRead = true;
+        let buffer: Buffer;
+        while (buffer || firstRead) {
+          firstRead = false;
           buffer = pipe.read();
+          if (!!buffer) {
+            chunks.push(buffer);
+          }
         }
       });
 
