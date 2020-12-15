@@ -69,20 +69,9 @@ export function compile(compileConfig: dataform.ICompileConfig) {
 export function listenForCompileRequest() {
   process.on("message", (compileConfig: dataform.ICompileConfig) => {
     try {
-      let compiledResult: string = compile(compileConfig);
+      const compiledResult = compile(compileConfig);
       const writer = new net.Socket({ fd: 4 });
-      // max socket write length seems to be 2^12 (4096) bytes so split the writing.
-      let splitCompiledResult: string[] = [];
-      while (compiledResult.length > 0) {
-        splitCompiledResult.push(compiledResult.substring(0, 2 ** 12));
-        compiledResult = compiledResult.substring(2 ** 12);
-      }
-      for (let chunk of splitCompiledResult) {
-        writer.write(chunk, "utf8");
-        // This is needed for an unclear reason.
-        // tslint:disable-next-line: no-console
-        console.log();
-      }
+      writer.write(compiledResult, () => process.exit());
     } catch (e) {
       const serializableError = {};
       for (const prop of Object.getOwnPropertyNames(e)) {
@@ -90,7 +79,6 @@ export function listenForCompileRequest() {
       }
       process.send(serializableError);
     }
-    process.exit();
   });
 }
 
