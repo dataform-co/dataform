@@ -6,6 +6,7 @@ import { createGenIndexConfig } from "df/api/vm/gen_index_config";
 import * as legacyCompiler from "df/api/vm/legacy_compiler";
 import { legacyGenIndex } from "df/api/vm/legacy_gen_index";
 import { dataform } from "df/protos/ts";
+import { promisify } from "util";
 
 export function compile(compileConfig: dataform.ICompileConfig) {
   const vmIndexFileName = path.resolve(path.join(compileConfig.projectDir, "index.js"));
@@ -68,16 +69,25 @@ export function compile(compileConfig: dataform.ICompileConfig) {
 
 export function listenForCompileRequest() {
   process.on("message", (compileConfig: dataform.ICompileConfig) => {
-    try {
-      const compiledResult = compile(compileConfig);
-      const writer = new net.Socket({ fd: 4 });
-      writer.write(compiledResult, () => process.exit());
-    } catch (e) {
+    const handleError = (e: any) => {
       const serializableError = {};
       for (const prop of Object.getOwnPropertyNames(e)) {
         (serializableError as any)[prop] = e[prop];
       }
       process.send(serializableError);
+    }
+    try {
+      const compiledResult = compile(compileConfig);
+      const writer = new net.Socket({ fd: 4 });
+      writer.write(compiledResult, (err) => {
+        if (err) {
+          handleError(err);
+        }
+        process.exit();
+      });
+    } catch (e) {
+      handleError(e);
+      process.exit()
     }
   });
 }
