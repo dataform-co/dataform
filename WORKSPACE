@@ -103,9 +103,9 @@ load("@io_bazel_rules_docker//toolchains/docker:toolchain.bzl",
     docker_toolchain_configure="toolchain_configure"
 )
 
+# Force Docker toolchain to use 'which' to find Docker binary.
 docker_toolchain_configure(
   name = "docker_config",
-  docker_path="/usr/local/bin/docker",
 )
 
 load(
