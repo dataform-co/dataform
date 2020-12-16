@@ -99,6 +99,15 @@ http_archive(
     urls = ["https://github.com/bazelbuild/rules_docker/releases/download/v0.14.4/rules_docker-v0.14.4.tar.gz"],
 )
 
+load("@io_bazel_rules_docker//toolchains/docker:toolchain.bzl",
+    docker_toolchain_configure="toolchain_configure"
+)
+
+# Force Docker toolchain to use 'which' to find Docker binary.
+docker_toolchain_configure(
+  name = "docker_config",
+)
+
 load(
     "@io_bazel_rules_docker//repositories:repositories.bzl",
     container_repositories = "repositories",
