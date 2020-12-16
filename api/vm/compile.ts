@@ -1,5 +1,6 @@
 import * as net from "net";
 import * as path from "path";
+import { promisify } from "util";
 import { CompilerFunction, NodeVM } from "vm2";
 
 import { createGenIndexConfig } from "df/api/vm/gen_index_config";
@@ -68,18 +69,26 @@ export function compile(compileConfig: dataform.ICompileConfig) {
 
 export function listenForCompileRequest() {
   process.on("message", (compileConfig: dataform.ICompileConfig) => {
-    try {
-      const compiledResult = compile(compileConfig);
-      const writer = new net.Socket({ fd: 4 });
-      writer.write(compiledResult);
-    } catch (e) {
+    const handleError = (e: any) => {
       const serializableError = {};
       for (const prop of Object.getOwnPropertyNames(e)) {
         (serializableError as any)[prop] = e[prop];
       }
       process.send(serializableError);
     }
-    process.exit();
+    try {
+      const compiledResult = compile(compileConfig);
+      const writer = new net.Socket({ fd: 4 });
+      writer.write(compiledResult, (err) => {
+        if (err) {
+          handleError(err);
+        }
+        process.exit();
+      });
+    } catch (e) {
+      handleError(e);
+      process.exit()
+    }
   });
 }
 
