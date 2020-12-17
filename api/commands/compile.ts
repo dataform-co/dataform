@@ -89,30 +89,21 @@ export class CompileChildProcess {
 
   public async compile(compileConfig: dataform.ICompileConfig) {
     const compileInChildProcess = new Promise<string>(async (resolve, reject) => {
+      let encodedCompiledGraph: string;
       // Handle any Error caused by spawning the child process, or sent directly from the child process.
       this.childProcess.on("error", (e: Error) => reject(coerceAsError(e)));
-      this.childProcess.on("message", (e: Error) => reject(coerceAsError(e)));
-
-      // Handle UTF-8 string chunks returned by the child process.
-      const pipe = this.childProcess.stdio[4] as Readable;
-      const chunks: Buffer[] = [];
-      pipe?.on("readable", () => {
-        let buffer: Buffer = pipe.read();
-        while (buffer) {
-          chunks.push(buffer);
-          buffer = pipe.read();
+      this.childProcess.on("message", (messageOrError: string | Error) => {
+        if (typeof messageOrError === "string") {
+          encodedCompiledGraph = messageOrError;
+          return;
         }
-      });
-      pipe?.on("data", chunk => {
-        if (chunk.includes("Error compiling in child process")) {
-          reject(new Error(chunk));
-        }
+        reject(coerceAsError(messageOrError));
       });
 
       // When the child process closes all stdio streams, return the compiled result.
       this.childProcess.on("close", exitCode => {
         if (exitCode === 0) {
-          resolve(Buffer.concat(chunks).toString("utf8"));
+          resolve(encodedCompiledGraph);
         } else {
           reject(new Error(`Compilation child process exited with exit code ${exitCode}.`));
         }
