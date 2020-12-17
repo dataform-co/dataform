@@ -68,13 +68,6 @@ export function compile(compileConfig: dataform.ICompileConfig) {
 
 export function listenForCompileRequest() {
   process.on("message", (compileConfig: dataform.ICompileConfig) => {
-    const serializeError = (e: any) => {
-      const serializableError = {};
-      for (const prop of Object.getOwnPropertyNames(e)) {
-        (serializableError as any)[prop] = e[prop];
-      }
-      return serializableError;
-    };
     // Initializing writer here results in a `uv_pipe_open` error.
     let writer: net.Socket;
     try {
