@@ -69,25 +69,15 @@ export function compile(compileConfig: dataform.ICompileConfig) {
 
 export function listenForCompileRequest() {
   process.on("message", (compileConfig: dataform.ICompileConfig) => {
-    const handleError = (e: any) => {
+    try {
+      const compiledResult = compile(compileConfig);
+      process.send(compiledResult);
+    } catch (e) {
       const serializableError = {};
       for (const prop of Object.getOwnPropertyNames(e)) {
         (serializableError as any)[prop] = e[prop];
       }
       process.send(serializableError);
-    }
-    try {
-      const compiledResult = compile(compileConfig);
-      const writer = new net.Socket({ fd: 4 });
-      writer.write(compiledResult, (err) => {
-        if (err) {
-          handleError(err);
-        }
-        process.exit();
-      });
-    } catch (e) {
-      handleError(e);
-      process.exit()
     }
   });
 }
