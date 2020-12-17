@@ -94,6 +94,7 @@ export class CompileChildProcess {
       this.childProcess.on("message", (messageOrError: string | Error) => {
         if (typeof messageOrError === "string") {
           resolve(messageOrError);
+          return;
         }
         reject(coerceAsError(messageOrError));
       });
