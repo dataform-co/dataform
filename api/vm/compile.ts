@@ -1,6 +1,5 @@
 import * as net from "net";
 import * as path from "path";
-import { promisify } from "util";
 import { CompilerFunction, NodeVM } from "vm2";
 
 import { createGenIndexConfig } from "df/api/vm/gen_index_config";
@@ -69,25 +68,27 @@ export function compile(compileConfig: dataform.ICompileConfig) {
 
 export function listenForCompileRequest() {
   process.on("message", (compileConfig: dataform.ICompileConfig) => {
-    const handleError = (e: any) => {
+    const serializeError = (e: any) => {
       const serializableError = {};
       for (const prop of Object.getOwnPropertyNames(e)) {
         (serializableError as any)[prop] = e[prop];
       }
-      process.send(serializableError);
-    }
+      return serializableError;
+    };
+    // Initializing writer here results in a `uv_pipe_open` error.
+    let writer: net.Socket;
     try {
       const compiledResult = compile(compileConfig);
-      const writer = new net.Socket({ fd: 4 });
-      writer.write(compiledResult, (err) => {
+      writer = new net.Socket({ fd: 4 });
+      writer.write(compiledResult, (err: any) => {
         if (err) {
-          handleError(err);
+          writer?.end(`Error compiling in child process: ${err?.message}`);
         }
         process.exit();
       });
-    } catch (e) {
-      handleError(e);
-      process.exit()
+    } catch (err) {
+      writer?.end(`Error compiling in child process: ${err?.message}`);
+      process.exit();
     }
   });
 }

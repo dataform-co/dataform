@@ -103,6 +103,11 @@ export class CompileChildProcess {
           buffer = pipe.read();
         }
       });
+      pipe?.on("data", chunk => {
+        if (chunk.includes("Error compiling in child process")) {
+          reject(new Error(chunk));
+        }
+      });
 
       // When the child process closes all stdio streams, return the compiled result.
       this.childProcess.on("close", exitCode => {
