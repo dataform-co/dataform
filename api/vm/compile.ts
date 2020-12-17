@@ -71,14 +71,13 @@ export function listenForCompileRequest() {
   process.on("message", (compileConfig: dataform.ICompileConfig) => {
     try {
       const compiledResult = compile(compileConfig);
-      process.send(compiledResult, () => process.exit());
+      process.send(compiledResult);
     } catch (e) {
       const serializableError = {};
       for (const prop of Object.getOwnPropertyNames(e)) {
         (serializableError as any)[prop] = e[prop];
       }
       process.send(serializableError);
-      process.exit();
     }
   });
 }
