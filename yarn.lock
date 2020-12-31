@@ -1155,7 +1155,7 @@
   resolved "https://registry.yarnpkg.com/@google-cloud/promisify/-/promisify-2.0.1.tgz#79f722463a5779197267c6870362b1d7927081f7"
   integrity sha512-82EQzwrNauw1fkbUSr3f+50Bcq7g4h0XvLOk8C5e9ABkXYHei7ZPi9tiMMD7Vh3SfcdH97d1ibJ3KBWp2o1J+w==
 
-"@google-cloud/storage@^5.1.1":
+"@google-cloud/storage@^5.7.0":
   version "5.7.0"
   resolved "https://registry.yarnpkg.com/@google-cloud/storage/-/storage-5.7.0.tgz#1cdbeeaab21f78b69de060c11b765c2b5591de91"
   integrity sha512-6nPTylNaYWsVo5yHDdjQfUSh9qP/DFwahhyvOAf9CSDKfeoOys8+PAyHsoKyL29uyYoC6ymws7uJDO48y/SzBA==
