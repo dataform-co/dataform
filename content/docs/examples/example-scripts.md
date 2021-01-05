@@ -403,11 +403,12 @@ declare({
 ```js
 // definitions/external_dependencies.js
 
-["charges", "subscriptions", "line_items", "invoices"].
-  forEach(name => declare({
-    schema: "stripe",
-    name})
-);
+["charges", "subscriptions", "line_items", "invoices"]
+  .forEach(source => declare({
+      schema: "stripe",
+      name: source
+    })
+  );
 ```
 
 ### Deleting sensitive information in all tables containing PII
