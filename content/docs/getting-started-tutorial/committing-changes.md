@@ -1,10 +1,10 @@
 ---
 title: Committing your changes
-subtitle: Learn how to committ changes you've made in your Dataform project
+subtitle: Learn how to commit changes you've made in your Dataform project
 priority: 5
 ---
 
-## Comitting changes
+## Committing changes
 
 Dataform uses the Git version control system to maintain a record of each change made to project files and to manage file versions. Each Dataform project has an associated Git repository.
 
@@ -12,7 +12,7 @@ When you first use Dataform we will automatically create a personal development 
 
 <div style="position: relative; padding-bottom: 55.93750000000001%; height: 0;"><iframe src="https://www.loom.com/embed/7e0f28b3ff8d473f9594019a7b0bff70" frameborder="0" webkitallowfullscreen mozallowfullscreen allowfullscreen style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></iframe></div>
 
-1. Press the `Comitt Changes` button:
+1. Press the `Commit Changes` button:
 
    - In the modal you should see a list of all the changes you made to your project.
 
