@@ -12,67 +12,60 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// This file is an example of a network sandboxed binary inside a network
-// namespace. It can't connect with the server directly, but the executor can
-// establish a connection and pass the connected socket to the sandboxee.
+// This file is an example of a binary which is intended to be sandboxed by the
+// sandbox2, and which uses a built-in fork-server to spawn new sandboxees
+// (instead of doing fork/execve via the Fork-Server).
 
-#include <sys/socket.h>
-#include <syscall.h>
+#include <sys/types.h>
 
-#include <cstring>
-#include <string>
+#include <cstdint>
 
-#include "absl/strings/str_format.h"
-#include "sandboxed_api/sandbox2/client.h"
 #include "sandboxed_api/sandbox2/comms.h"
-#include "sandboxed_api/sandbox2/util.h"
+#include "sandboxed_api/sandbox2/forkingclient.h"
+#include "sandboxed_api/util/raw_logging.h"
 
-static ssize_t ReadFromFd(int fd, uint8_t* buf, size_t size) {
-  ssize_t received = 0;
-  while (received < size) {
-    ssize_t read_status =
-        TEMP_FAILURE_RETRY(read(fd, &buf[received], size - received));
-    if (read_status == 0) {
-      break;
-    }
-    if (read_status < 0) {
-      return -1;
-    }
-    received += read_status;
-  }
-  return received;
-}
+// Just return the value received over the Comms channel from the parent.
+static int SandboxeeFunction(sandbox2::Comms* comms) {
+  int32_t i;
+  // SAPI_RAW_CHECK() uses smaller set of syscalls than regular CHECK().
+  SAPI_RAW_CHECK(comms->RecvInt32(&i), "Receiving an int32_t");
 
-static bool CommunicationTest(int sock) {
-  char received[1025] = {0};
-
-  if (ReadFromFd(sock, reinterpret_cast<uint8_t*>(received),
-                 sizeof(received) - 1) <= 0) {
-    LOG(ERROR) << "Data receiving error";
-    return false;
-  }
-  absl::PrintF("Sandboxee received data from the server:\n\n%s\n", received);
-  if (strcmp(received, "Hello World\n")) {
-    LOG(ERROR) << "Data receiving error";
-    return false;
-  }
-
-  return true;
+  // Make sure that we're not the init process in the custom forkserver
+  // child.
+  SAPI_RAW_CHECK(getpid() == 2, "Unexpected PID");
+  return i;
 }
 
 int main(int argc, char** argv) {
-  // Set-up the sandbox2::Client object, using a file descriptor (1023).
-  sandbox2::Comms comms(sandbox2::Comms::kSandbox2ClientCommsFD);
-  sandbox2::Client sandbox2_client(&comms);
-  // Enable sandboxing from here.
-  sandbox2_client.SandboxMeHere();
+  // Writing to stderr limits the number of invoked syscalls.
+  gflags::SetCommandLineOptionWithMode("logtostderr", "true",
+                                       gflags::SET_FLAG_IF_DEFAULT);
+  gflags::ParseCommandLineFlags(&argc, &argv, false);
 
-  int client;
-  if (!comms.RecvFD(&client)) {
-    fputs("sandboxee: !comms.RecvFD(&client) failed\n", stderr);
-    return 1;
+  // Instantiate Comms channel with the parent Executor
+  sandbox2::Comms comms(sandbox2::Comms::kSandbox2ClientCommsFD);
+  sandbox2::ForkingClient s2client(&comms);
+
+  for (;;) {
+    // Start a new process, if the sandboxer requests us to do so. No need to
+    // wait for the new process, as the call to sandbox2::Client::Fork will
+    // indirectly call sigaction(SIGCHLD, sa_flags=SA_NOCLDWAIT) in the parent.
+    pid_t pid = s2client.WaitAndFork();
+    if (pid == -1) {
+      SAPI_RAW_CHECK(false, "Could not spawn a new sandboxee");
+    }
+    // Child - return to the main(), to continue with code which is supposed to
+    // be sandboxed. From now on the comms channel (in the child) is set up over
+    // a new file descriptor pair, reachable from a separate Executor in the
+    // sandboxer.
+    if (pid == 0) {
+      break;
+    }
   }
 
-  if (!CommunicationTest(client)) return 2;
-  return 0;
+  // Start sandboxing here
+  s2client.SandboxMeHere();
+
+  // This section of code runs sandboxed
+  return SandboxeeFunction(&comms);
 }
