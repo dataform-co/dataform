@@ -37,9 +37,9 @@ protobuf_deps()
 
 git_repository(
     name = "com_google_sandboxed_api",
-    commit = "918a409126da97355f376805d88d42451873bfaa",
+    commit = "d91879f752a11d8f1c66ef526eb48dcc28aef5cf",
     remote = "https://github.com/google/sandboxed-api.git",
-    shallow_since = "1610018395 -0800",
+    shallow_since = "1566562135 -0700",
 )
 
 http_archive(

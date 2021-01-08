@@ -12,6 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// This file is an example of a network sandboxed binary inside a network
+// namespace. It can't connect with the server directly, but the executor can
+// establish a connection and pass the connected socket to the sandboxee.
+
 #include <sys/socket.h>
 #include <syscall.h>
 
