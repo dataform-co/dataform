@@ -57,7 +57,7 @@ Permissions required:
 
 ### GitLab
 
-[Creating a **GitLab** personal access token](https://docs.gitlab.com/ee/user/profile/personal_access_tokens.html#creating-a-personal-access-token). The access token name must be `dataform`.
+[Creating a **GitLab** personal access token](https://docs.gitlab.com/ee/user/profile/personal_access_tokens.html#creating-a-personal-access-token). The access token name must be `dataform`. You must have `maintainer` permissions on the repo.
 
 Permissions required:
  - api
