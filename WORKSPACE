@@ -1,6 +1,6 @@
 workspace(name = "df")
 
-load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
+load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository", "new_git_repository")
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive", "http_file")
 load("@bazel_tools//tools/build_defs/repo:utils.bzl", "maybe")
 
@@ -54,6 +54,19 @@ load("@com_google_sandboxed_api//sandboxed_api/bazel:sapi_deps.bzl", "sapi_deps"
 
 sapi_deps()
 
+# new_git_repository(
+#     name = "nodejs_src",
+#     commit = "39fee5d91bc07beab14a1049358ababdd77ce3b1", # 15.5.1
+#     remote = "https://github.com/nodejs/node.git",
+#     build_file_content = """
+# exports_files(
+#     [
+#         "src/node.h",
+#     ]
+# )
+# """,
+# )
+
 http_archive(
     name = "net_zlib",
     build_file = "@com_google_sandboxed_api//sandboxed_api:bazel/external/zlib.BUILD",
@@ -65,7 +78,7 @@ http_archive(
     # We are investigating better ways to avoid this issue. For most "normal"
     # C and C++ headers, parsing just works.
     patches = ["@com_google_sandboxed_api//sandboxed_api:bazel/external/zlib.patch"],
-    sha256 = "c3e5e9fdd5004dcb542feda5ee4f0ff0744628baf8ed2dd5d66f8ca1197cb1a1",  # 2020-04-23
+    sha256 = "c3e5e9fdd5004dcb542feda5ee4f0ff0744628baf8ed2dd5d66f8ca1197cb1a1",
     strip_prefix = "zlib-1.2.11",
     urls = [
         "https://mirror.bazel.build/zlib.net/zlib-1.2.11.tar.gz",
@@ -76,7 +89,7 @@ http_archive(
 maybe(
     http_archive,
     name = "com_google_googletest",
-    sha256 = "a6ab7c7d6fd4dd727f6012b5d85d71a73d3aa1274f529ecd4ad84eb9ec4ff767",  # 2020-04-16
+    sha256 = "a6ab7c7d6fd4dd727f6012b5d85d71a73d3aa1274f529ecd4ad84eb9ec4ff767",
     strip_prefix = "googletest-dcc92d0ab6c4ce022162a23566d44f673251eee4",
     urls = ["https://github.com/google/googletest/archive/dcc92d0ab6c4ce022162a23566d44f673251eee4.zip"],
 )
@@ -84,7 +97,7 @@ maybe(
 maybe(
     http_archive,
     name = "com_google_benchmark",
-    sha256 = "7f45be0bff07d787d75c3864212e9ea5ebba57593b2e487c783d11da70ef6857",  # 2020-04-23
+    sha256 = "7f45be0bff07d787d75c3864212e9ea5ebba57593b2e487c783d11da70ef6857",
     strip_prefix = "benchmark-56898e9a92fba537671d5462df9c5ef2ea6a823a",
     urls = ["https://github.com/google/benchmark/archive/56898e9a92fba537671d5462df9c5ef2ea6a823a.zip"],
 )

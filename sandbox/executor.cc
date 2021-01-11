@@ -40,22 +40,9 @@ std::unique_ptr<sandbox2::Policy> GetPolicy() {
   return sandbox2::PolicyBuilder()
       // The most frequent syscall should go first in this sequence (to make it
       // fast).
-      .AllowRead()
-      .AllowWrite()
       .AllowExit()
       .AllowTime()
       .EnableNamespaces()
-      .AllowSyscalls({
-        __NR_close, __NR_getpid,
-#if defined(__NR_arch_prctl)
-            // Not defined with every CPU architecture in Prod.
-            __NR_arch_prctl,
-#endif  // defined(__NR_arch_prctl)
-      })
-#if defined(ADDRESS_SANITIZER) || defined(MEMORY_SANITIZER) || \
-    defined(THREAD_SANITIZER)
-      .AllowMmap()
-#endif
       .BuildOrDie();
 }
 
@@ -118,8 +105,7 @@ int main(int argc, char** argv) {
 #endif
 
   // Start a custom fork-server (via sandbox2::Executor).
-  const std::string path = sandbox2::GetDataDependencyFilePath(
-      "df/sandbox/sandboxee");
+  const std::string path = "/usr/bin/node";
   std::vector<std::string> args = {path};
   std::vector<std::string> envs = {};
   auto fork_executor = absl::make_unique<sandbox2::Executor>(path, args, envs);
