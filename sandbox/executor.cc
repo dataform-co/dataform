@@ -53,6 +53,9 @@ std::unique_ptr<sandbox2::Policy> GetPolicy() {
       // Allow the getpid() syscall.
       .AllowSyscall(__NR_getpid)
 
+      // Suggestion to fix execveat error.
+      .AddFileAt("/dev/zero", "/dev/fd/1022", false)
+
 // #ifdef __NR_access
 //       // On Debian, even static binaries check existence of /etc/ld.so.nohwcap.
 //       .BlockSyscallWithErrno(__NR_access, ENOENT)
@@ -67,8 +70,6 @@ std::unique_ptr<sandbox2::Policy> GetPolicy() {
                               JEQ32(1, ALLOW),
                               // Allow write(fd=STDERR)
                               JEQ32(2, ALLOW),
-                              JEQ32(3, ALLOW),
-                              JEQ32(4, ALLOW),
                           })
       // write() calls with fd not in (1, 2) will continue evaluating the
       // policy. This means that other rules might still allow them.
@@ -139,9 +140,9 @@ int main(int argc, char** argv) {
 
   printf("Running sandbox\n");
   auto result = s2.Run();
-  LOG(INFO) << ("Run complete");
+  printf("Run complete\n");
 
-  LOG(INFO) << "Final execution status: " << result.ToString();
+  printf("Final execution status: %s\n", result.ToString().c_str());
 
   return result.final_status() == sandbox2::Result::OK ? EXIT_SUCCESS
                                                        : EXIT_FAILURE;
