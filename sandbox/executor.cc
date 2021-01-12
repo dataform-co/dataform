@@ -39,8 +39,6 @@
 #include "sandboxed_api/sandbox2/util/bpf_helper.h"
 #include "sandboxed_api/sandbox2/util/runfiles.h"
 
-const std::string NODE_PATH = "/usr/bin/node";
-
 std::unique_ptr<sandbox2::Policy> GetPolicy() {
   return sandbox2::PolicyBuilder()
       // The most frequent syscall should go first in this sequence (to make it
@@ -52,7 +50,6 @@ std::unique_ptr<sandbox2::Policy> GetPolicy() {
       // of static binaries.
       .AllowStaticStartup()
       .EnableNamespaces()
-      .AddFile(NODE_PATH)
       // Allow the getpid() syscall.
       .AllowSyscall(__NR_getpid)
 
@@ -76,18 +73,18 @@ std::unique_ptr<sandbox2::Policy> GetPolicy() {
       // write() calls with fd not in (1, 2) will continue evaluating the
       // policy. This means that other rules might still allow them.
 
-      // Allow exit() only with an exit_code of 0.
-      // Explicitly jumping to KILL, thus the following rules can not
-      // override this rule.
-      .AddPolicyOnSyscall(
-          __NR_exit_group,
-          {// Load first argument (exit_code).
-           ARG_32(0),
-           // Deny every argument except 0.
-           JNE32(0, KILL),
-           // Allow all exit() calls that were not previously forbidden
-           // = exit_code == 0.
-           ALLOW})
+      // // Allow exit() only with an exit_code of 0.
+      // // Explicitly jumping to KILL, thus the following rules can not
+      // // override this rule.
+      // .AddPolicyOnSyscall(
+      //     __NR_exit_group,
+      //     {// Load first argument (exit_code).
+      //      ARG_32(0),
+      //      // Deny every argument except 0.
+      //      JNE32(0, KILL),
+      //      // Allow all exit() calls that were not previously forbidden
+      //      // = exit_code == 0.
+      //      ALLOW})
 
       // = This won't have any effect as we handled every case of this syscall
       // in the previous rule.
@@ -105,12 +102,17 @@ int main(int argc, char** argv) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   google::InitGoogleLogging(argv[0]);
 
+  std::string workspaceFolder = "df/";
+  std::string relativePath(argv[1]);
+  const std::string nodePath = sandbox2::GetDataDependencyFilePath(workspaceFolder + relativePath);
+
   std::vector<std::string> args = {
-        NODE_PATH,
-      //   "/usr/local/google/home/eliaskassell/Documents/github/dataform/tmp.js"
+        nodePath,
       };
-  auto executor = absl::make_unique<sandbox2::Executor>(NODE_PATH, args);
+  printf("Starting node bin from path '%s'\n", nodePath.c_str());
+  auto executor = absl::make_unique<sandbox2::Executor>(nodePath, args);
   
+  printf("Configuring executor settings\n");
   executor
     // Sandboxing is enabled by the sandbox itself. The sandboxed binary is
     // not aware that it'll be sandboxed.
@@ -119,27 +121,25 @@ int main(int argc, char** argv) {
     .limits()
     // Remove restrictions on the size of address-space of sandboxed
     // processes.
-    ->set_rlimit_as(RLIM64_INFINITY)
-    // Kill sandboxed processes with a signal (SIGXFSZ) if it writes more than
-    // these many bytes to the file-system.
-    .set_rlimit_fsize(1024 * 1024)
-    // The CPU time limit.
-    .set_rlimit_cpu(60)
-    .set_walltime_limit(absl::Seconds(30));
+    ->set_rlimit_as(RLIM64_INFINITY);
+  printf("Executor settings configured\n");
 
   int proc_version_fd = open("/proc/version", O_RDONLY);
-  printf("Proc version: %i", proc_version_fd);
+  printf("Proc version: %i\n", proc_version_fd);
   PCHECK(proc_version_fd != -1);
 
   // Map this file's to sandboxee's stdin.
+  printf("Mapping fd to stdin\n");
   executor->ipc()->MapFd(proc_version_fd, STDIN_FILENO);
 
+  printf("Retrieving policy\n");
   auto policy = GetPolicy();
+  printf("Applying policy\n");
   sandbox2::Sandbox2 s2(std::move(executor), std::move(policy));
 
-  printf("Running sandbox");
+  printf("Running sandbox\n");
   auto result = s2.Run();
-  printf("Run complete");
+  LOG(INFO) << ("Run complete");
 
   LOG(INFO) << "Final execution status: " << result.ToString();
 
