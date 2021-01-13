@@ -39,7 +39,7 @@
 #include "sandboxed_api/sandbox2/util/bpf_helper.h"
 #include "sandboxed_api/sandbox2/util/runfiles.h"
 
-std::unique_ptr<sandbox2::Policy> GetPolicy() {
+std::unique_ptr<sandbox2::Policy> GetPolicy(std::string nodePath) {
   return sandbox2::PolicyBuilder()
       // The most frequent syscall should go first in this sequence (to make it
       // fast).
@@ -49,7 +49,7 @@ std::unique_ptr<sandbox2::Policy> GetPolicy() {
       // Allow a preset of syscalls that are known to be used during startup
       // of static binaries.
       .AllowDynamicStartup()
-      .AddLibrariesForBinary("/usr/local/google/home/eliaskassell/.cache/bazel/_bazel_eliaskassell/7a3b4b05af3e35677ea962500c529f6a/external/nodejs_linux_amd64/bin/nodejs/bin/node")
+      .AddLibrariesForBinary(nodePath)
       .EnableNamespaces()
       // Allow the getpid() syscall.
       .AllowSyscall(__NR_getpid)
@@ -101,17 +101,25 @@ std::unique_ptr<sandbox2::Policy> GetPolicy() {
 }
 
 int main(int argc, char** argv) {
+  printf("starting main\n");
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   google::InitGoogleLogging(argv[0]);
 
   std::string workspaceFolder = "df/";
-  std::string relativePath(argv[1]);
-  const std::string nodePath = sandbox2::GetDataDependencyFilePath(workspaceFolder + relativePath);
+  std::string nodeRelativePath(argv[1]);
+  std::string compileRelativePath(argv[2]);
+  std::string nodePath = sandbox2::GetDataDependencyFilePath(workspaceFolder + nodeRelativePath);
+  std::string compilePath = sandbox2::GetDataDependencyFilePath(workspaceFolder + compileRelativePath);
+
+  // File to run path is the .sh rather than .js, so swap file extension for .js.
+  compilePath = compilePath.substr(0, compilePath.find_last_of('.')) + ".js";
 
   std::vector<std::string> args = {
         nodePath,
+        compilePath
       };
   printf("Starting node bin from path '%s'\n", nodePath.c_str());
+  printf("Running js file from path: '%s'\n", compilePath.c_str());
   auto executor = absl::make_unique<sandbox2::Executor>(nodePath, args);
   
   printf("Configuring executor settings\n");
@@ -135,7 +143,7 @@ int main(int argc, char** argv) {
   executor->ipc()->MapFd(proc_version_fd, STDIN_FILENO);
 
   printf("Retrieving policy\n");
-  auto policy = GetPolicy();
+  auto policy = GetPolicy(nodePath);
   printf("Applying policy\n");
   sandbox2::Sandbox2 s2(std::move(executor), std::move(policy));
 
