@@ -48,7 +48,8 @@ std::unique_ptr<sandbox2::Policy> GetPolicy() {
       .AllowWrite()
       // Allow a preset of syscalls that are known to be used during startup
       // of static binaries.
-      .AllowStaticStartup()
+      .AllowDynamicStartup()
+      .AddLibrariesForBinary("/usr/local/google/home/eliaskassell/.cache/bazel/_bazel_eliaskassell/7a3b4b05af3e35677ea962500c529f6a/external/nodejs_linux_amd64/bin/nodejs/bin/node")
       .EnableNamespaces()
       // Allow the getpid() syscall.
       .AllowSyscall(__NR_getpid)
