@@ -54,19 +54,6 @@ load("@com_google_sandboxed_api//sandboxed_api/bazel:sapi_deps.bzl", "sapi_deps"
 
 sapi_deps()
 
-# new_git_repository(
-#     name = "nodejs_src",
-#     commit = "39fee5d91bc07beab14a1049358ababdd77ce3b1", # 15.5.1
-#     remote = "https://github.com/nodejs/node.git",
-#     build_file_content = """
-# exports_files(
-#     [
-#         "src/node.h",
-#     ]
-# )
-# """,
-# )
-
 http_archive(
     name = "net_zlib",
     build_file = "@com_google_sandboxed_api//sandboxed_api:bazel/external/zlib.BUILD",

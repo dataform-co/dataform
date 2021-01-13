@@ -1,9 +1,5 @@
 load("@com_google_sandboxed_api//sandboxed_api/bazel:build_defs.bzl", "sapi_platform_copts")
 
-# load("@build_bazel_rules_nodejs//:index.bzl", "nodejs_binary")
-
-
-
 cc_binary(
     name = "executor",
     srcs = ["executor.cc"],
