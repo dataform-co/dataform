@@ -46,10 +46,13 @@ export class Runner {
 
   private readonly previouslyExecutedActions: StringifiedMap<dataform.ITarget, IExecutedAction>;
 
+  private readonly allActionNames: Set<string>;
   private readonly runResult: dataform.IRunResult;
   private readonly changeListeners: Array<(graph: dataform.IRunResult) => void> = [];
   private readonly eEmitter: EventEmitter;
 
+  private executedActionNames: Set<string>;
+  private successfullyExecutedActionNames: Set<string>;
   private pendingActions: dataform.IExecutionAction[];
   private stopped = false;
   private cancelled = false;
@@ -63,6 +66,7 @@ export class Runner {
     partiallyExecutedRunResult: dataform.IRunResult = {},
     previouslyExecutedActions: IExecutedAction[] = []
   ) {
+    this.allActionNames = new Set<string>(graph.actions.map(action => action.name));
     this.runResult = {
       actions: [],
       ...partiallyExecutedRunResult
@@ -88,12 +92,17 @@ export class Runner {
       ])
     );
 
-    const completedActionNames = new Set(
+    this.executedActionNames = new Set(
       this.runResult.actions
         .filter(action => action.status !== dataform.ActionResult.ExecutionStatus.RUNNING)
         .map(action => action.name)
     );
-    this.pendingActions = graph.actions.filter(action => !completedActionNames.has(action.name));
+    this.successfullyExecutedActionNames = new Set(
+      this.runResult.actions.filter(isSuccessfulAction).map(action => action.name)
+    );
+    this.pendingActions = graph.actions.filter(
+      action => !this.executedActionNames.has(action.name)
+    );
     this.eEmitter = new EventEmitter();
     // There could feasibly be thousands of listeners to this, 0 makes the limit infinite.
     this.eEmitter.setMaxListeners(0);
@@ -233,8 +242,35 @@ export class Runner {
       return;
     }
 
-    const executableActions = this.removeExecutableActionsFromPending();
-    const skippableActions = this.removeSkippableActionsFromPending();
+    const executableActions = [];
+    const skippableActions = [];
+    const stillPendingActions = [];
+    for (const pendingAction of this.pendingActions) {
+      if (
+        // An action is executable if all dependencies either: do not exist in the graph, or
+        // have executed successfully.
+        pendingAction.dependencies.every(
+          dependency =>
+            !this.allActionNames.has(dependency) ||
+            this.successfullyExecutedActionNames.has(dependency)
+        )
+      ) {
+        executableActions.push(pendingAction);
+      } else if (
+        // An action is skippable if it is not executable and all dependencies either: do not
+        // exist in the graph, or have completed execution.
+        pendingAction.dependencies.every(
+          dependency =>
+            !this.allActionNames.has(dependency) || this.executedActionNames.has(dependency)
+        )
+      ) {
+        skippableActions.push(pendingAction);
+      } else {
+        // Otherwise, the action is still pending.
+        stillPendingActions.push(pendingAction);
+      }
+    }
+    this.pendingActions = stillPendingActions;
 
     await Promise.all([
       (async () => {
@@ -255,40 +291,18 @@ export class Runner {
       })(),
       Promise.all(
         executableActions.map(async executableAction => {
-          await this.executeAction(executableAction);
+          const actionResult = await this.executeAction(executableAction);
+          this.executedActionNames.add(executableAction.name);
+          if (isSuccessfulAction(actionResult)) {
+            this.successfullyExecutedActionNames.add(executableAction.name);
+          }
           await this.executeAllActionsReadyForExecution();
         })
       )
     ]);
   }
 
-  private removeExecutableActionsFromPending() {
-    const allDependenciesHaveExecutedSuccessfully = allDependenciesHaveBeenExecuted(
-      this.graph,
-      this.runResult.actions.filter(isSuccessfulAction)
-    );
-    const executableActions = this.pendingActions.filter(allDependenciesHaveExecutedSuccessfully);
-    this.pendingActions = this.pendingActions.filter(
-      action => !allDependenciesHaveExecutedSuccessfully(action)
-    );
-    return executableActions;
-  }
-
-  private removeSkippableActionsFromPending() {
-    const allDependenciesHaveExecuted = allDependenciesHaveBeenExecuted(
-      this.graph,
-      this.runResult.actions.filter(
-        action => action.status !== dataform.ActionResult.ExecutionStatus.RUNNING
-      )
-    );
-    const skippableActions = this.pendingActions.filter(allDependenciesHaveExecuted);
-    this.pendingActions = this.pendingActions.filter(
-      action => !allDependenciesHaveExecuted(action)
-    );
-    return skippableActions;
-  }
-
-  private async executeAction(action: dataform.IExecutionAction): Promise<void> {
+  private async executeAction(action: dataform.IExecutionAction): Promise<dataform.IActionResult> {
     let actionResult: dataform.IActionResult = {
       name: action.name,
       target: action.target,
@@ -304,21 +318,17 @@ export class Runner {
     };
 
     if (action.tasks.length === 0) {
-      this.runResult.actions.push({
-        ...actionResult,
-        status: dataform.ActionResult.ExecutionStatus.DISABLED
-      });
+      actionResult.status = dataform.ActionResult.ExecutionStatus.DISABLED;
+      this.runResult.actions.push(actionResult);
       this.notifyListeners();
-      return;
+      return actionResult;
     }
 
     if (this.shouldCacheSkip(action)) {
-      this.runResult.actions.push({
-        ...actionResult,
-        status: dataform.ActionResult.ExecutionStatus.CACHE_SKIPPED
-      });
+      actionResult.status = dataform.ActionResult.ExecutionStatus.CACHE_SKIPPED;
+      this.runResult.actions.push(actionResult);
       this.notifyListeners();
-      return;
+      return actionResult;
     }
 
     const resumedActionResult = this.runResult.actions.find(
@@ -338,7 +348,7 @@ export class Runner {
       // Start running tasks from the last executed task (if any), onwards.
       for (const task of action.tasks.slice(actionResult.tasks.length)) {
         if (this.stopped) {
-          return;
+          return actionResult;
         }
         if (
           actionResult.status === dataform.ActionResult.ExecutionStatus.RUNNING &&
@@ -361,7 +371,7 @@ export class Runner {
     });
 
     if (this.stopped) {
-      return;
+      return actionResult;
     }
 
     if (
@@ -399,6 +409,7 @@ export class Runner {
 
     actionResult.timing = timer.end();
     this.notifyListeners();
+    return actionResult;
   }
 
   private async executeTask(
@@ -530,22 +541,6 @@ export class Runner {
 
     return true;
   }
-}
-
-function allDependenciesHaveBeenExecuted(
-  executionGraph: dataform.IExecutionGraph,
-  actionResults: dataform.IActionResult[]
-) {
-  const allActionNames = new Set<string>(executionGraph.actions.map(action => action.name));
-  const executedActionNames = new Set<string>(actionResults.map(action => action.name));
-  return (action: dataform.IExecutionAction) => {
-    for (const dependency of action.dependencies) {
-      if (allActionNames.has(dependency) && !executedActionNames.has(dependency)) {
-        return false;
-      }
-    }
-    return true;
-  };
 }
 
 class Timer {
