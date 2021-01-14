@@ -11,14 +11,16 @@ def _helm_tool_impl(ctx):
 helm_tool = repository_rule(
     implementation = _helm_tool_impl,
     attrs = {
-        "version": attr.string(default = "v3.0.2"),
+        "version": attr.string(default = "v3.4.2"),
     },
 )
 
 def _helm_chart_impl(ctx):
-    # Make sure the local repository config starts clean.
+    # Make sure the local repository config/cache starts clean.
+    ctx.delete("registry.json")
     ctx.delete("repositories.yaml")
     ctx.delete("repositories.lock")
+    ctx.delete("repository-cache")
 
     # Run 'helm repo add' to add the helm repository to the repository config.
     reponame = ctx.attr.name
@@ -28,7 +30,9 @@ def _helm_chart_impl(ctx):
         "add",
         reponame,
         ctx.attr.repo_url,
+        "--registry-config=registry.json",
         "--repository-config=repositories.yaml",
+        "--repository-cache=repository-cache",
     ])
     if result.return_code != 0:
         fail("Failed to add Helm repository '%s': %s" % (reponame, result.stderr))
@@ -40,14 +44,18 @@ def _helm_chart_impl(ctx):
         reponame + "/" + ctx.attr.chartname,
         "--version",
         ctx.attr.version,
+        "--registry-config=registry.json",
         "--repository-config=repositories.yaml",
+        "--repository-cache=repository-cache",
     ], timeout = 600)
     if result.return_code != 0:
         fail("Failed to pull Helm chart '%s': %s" % (ctx.attr.chartname, result.stderr))
 
-    # Delete repository config.
+    # Delete repository config/cache.
+    ctx.delete("registry.json")
     ctx.delete("repositories.yaml")
     ctx.delete("repositories.lock")
+    ctx.delete("repository-cache")
 
     # Rename the downloaded chart to 'chart.tgz'.
     result = ctx.execute(["ls"])
