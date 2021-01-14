@@ -15,7 +15,10 @@
 // Based on this example:
 // https://github.com/google/sandboxed-api/blob/master/sandboxed_api/sandbox2/examples/static/static_sandbox.cc
 
+#include "sandboxed_api/sandbox2/executor.h"
+
 #include <fcntl.h>
+#include <glog/logging.h>
 #include <sys/resource.h>
 #include <syscall.h>
 #include <unistd.h>
@@ -27,10 +30,8 @@
 #include <utility>
 #include <vector>
 
-#include <glog/logging.h>
-#include "sandboxed_api/util/flag.h"
+#include "absl/base/internal/raw_logging.h"
 #include "absl/memory/memory.h"
-#include "sandboxed_api/sandbox2/executor.h"
 #include "sandboxed_api/sandbox2/limits.h"
 #include "sandboxed_api/sandbox2/policy.h"
 #include "sandboxed_api/sandbox2/policybuilder.h"
@@ -38,8 +39,8 @@
 #include "sandboxed_api/sandbox2/sandbox2.h"
 #include "sandboxed_api/sandbox2/util/bpf_helper.h"
 #include "sandboxed_api/sandbox2/util/runfiles.h"
+#include "sandboxed_api/util/flag.h"
 #include "tools/cpp/runfiles/runfiles.h"
-#include "absl/base/internal/raw_logging.h"
 
 std::unique_ptr<sandbox2::Policy> GetPolicy(std::string nodePath) {
   return sandbox2::PolicyBuilder()
@@ -56,13 +57,10 @@ std::unique_ptr<sandbox2::Policy> GetPolicy(std::string nodePath) {
       // Allow the getpid() syscall.
       .AllowSyscall(__NR_getpid)
 
-      // Suggestion to fix execveat error.
-      .AddFileAt("/dev/zero", "/dev/fd/1022", false)
-
-// #ifdef __NR_access
-//       // On Debian, even static binaries check existence of /etc/ld.so.nohwcap.
-//       .BlockSyscallWithErrno(__NR_access, ENOENT)
-// #endif
+      // #ifdef __NR_access
+      //       // On Debian, even static binaries check existence of
+      //       /etc/ld.so.nohwcap. .BlockSyscallWithErrno(__NR_access, ENOENT)
+      // #endif
 
       // Examples for AddPolicyOnSyscall:
       .AddPolicyOnSyscall(__NR_write,
@@ -104,8 +102,8 @@ std::unique_ptr<sandbox2::Policy> GetPolicy(std::string nodePath) {
 
 std::string GetDataDependencyFilePath(absl::string_view relative_path) {
   std::string error;
-  auto* runfiles = bazel::tools::cpp::runfiles::Runfiles::Create(
-        gflags::GetArgv0(), &error);
+  auto* runfiles =
+      bazel::tools::cpp::runfiles::Runfiles::Create(gflags::GetArgv0(), &error);
   ABSL_INTERNAL_CHECK(runfiles != nullptr, absl::StrFormat(("%s"), error));
   return runfiles->Rlocation(std::string(relative_path));
 }
@@ -117,46 +115,37 @@ int main(int argc, char** argv) {
   std::string workspaceFolder = "df/";
   std::string nodeRelativePath(argv[1]);
   std::string compileRelativePath(argv[2]);
-  std::string nodePath = GetDataDependencyFilePath(workspaceFolder + nodeRelativePath);
-  std::string compilePath = GetDataDependencyFilePath(workspaceFolder + compileRelativePath);
-
-  // TODO: A bit hacky; file to run path is the .sh rather than .js, so
-  //   currently just swappping file extension for .js.
-  compilePath = absl::StrCat(compilePath.substr(0, compilePath.find_last_of('.')), ".js");
-
-  std::ostringstream compileRead;
+  std::string nodePath =
+      GetDataDependencyFilePath(workspaceFolder + nodeRelativePath);
+  std::string compilePath =
+      GetDataDependencyFilePath(workspaceFolder + compileRelativePath);
 
   std::vector<std::string> args = {
-        nodePath,
-        "-e",
-        absl::StrCat("'$(cat ", compilePath, ")'"),
-      };
+      nodePath, "-e", "\"console.log('hello');\""
+      //   absl::StrCat("'$(cat ", compilePath, ")'"),
+      //   compilePath,
+  };
   printf("Starting node bin from path '%s'\n", nodePath.c_str());
   printf("Running js file from path: '%s'\n", compilePath.c_str());
   auto executor = absl::make_unique<sandbox2::Executor>(nodePath, args);
-  
-  printf("Configuring executor settings\n");
-  executor
-    ->set_enable_sandbox_before_exec(true)
-    .limits()
-    // Remove restrictions on the size of address-space of sandboxed processes.
-    ->set_rlimit_as(RLIM64_INFINITY);
-  printf("Executor settings configured\n");
 
+  executor->set_enable_sandbox_before_exec(true)
+      .limits()
+      // Remove restrictions on the size of address-space of sandboxed
+      // processes.
+      ->set_rlimit_as(RLIM64_INFINITY);
+
+  // Check for Linux filesystem.
   int proc_version_fd = open("/proc/version", O_RDONLY);
-  printf("Proc version: %i\n", proc_version_fd);
   PCHECK(proc_version_fd != -1);
 
   // Map this file's to sandboxee's stdin.
-  printf("Mapping fd to stdin\n");
   executor->ipc()->MapFd(proc_version_fd, STDIN_FILENO);
 
-  printf("Retrieving policy\n");
   auto policy = GetPolicy(nodePath);
-  printf("Applying policy\n");
   sandbox2::Sandbox2 s2(std::move(executor), std::move(policy));
+  printf("Policy applied\n");
 
-  printf("Running sandbox\n");
   auto result = s2.Run();
   printf("Run complete\n");
 

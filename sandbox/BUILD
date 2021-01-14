@@ -5,7 +5,7 @@ cc_binary(
     srcs = ["executor.cc"],
     args = [
         "$(execpath @nodejs_linux_amd64//:node_bin)",
-        "$(locations //api:vm/compile_loader.js)"
+        "$(locations //api:vm/compile_loader.js)",
     ],
     copts = sapi_platform_copts(),
     data = [
