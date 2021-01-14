@@ -2,6 +2,7 @@ import EventEmitter from "events";
 import Long from "long";
 
 import * as dbadapters from "df/api/dbadapters";
+import { Flags } from "df/common/flags";
 import { retry } from "df/common/promises";
 import { deepClone, equals } from "df/common/protos";
 import {
@@ -10,7 +11,6 @@ import {
   StringifiedSet
 } from "df/common/strings/stringifier";
 import { dataform } from "df/protos/ts";
-import { Flags } from "df/common/flags";
 
 const CANCEL_EVENT = "jobCancel";
 
