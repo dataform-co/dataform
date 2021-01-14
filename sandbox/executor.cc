@@ -135,13 +135,6 @@ int main(int argc, char** argv) {
       // processes.
       ->set_rlimit_as(RLIM64_INFINITY);
 
-  // Check for Linux filesystem.
-  int proc_version_fd = open("/proc/version", O_RDONLY);
-  PCHECK(proc_version_fd != -1);
-
-  // Map this file's to sandboxee's stdin.
-  executor->ipc()->MapFd(proc_version_fd, STDIN_FILENO);
-
   auto policy = GetPolicy(nodePath);
   sandbox2::Sandbox2 s2(std::move(executor), std::move(policy));
   printf("Policy applied\n");
