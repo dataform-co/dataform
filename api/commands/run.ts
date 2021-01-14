@@ -2,6 +2,7 @@ import EventEmitter from "events";
 import Long from "long";
 
 import * as dbadapters from "df/api/dbadapters";
+import { Flags } from "df/common/flags";
 import { retry } from "df/common/promises";
 import { deepClone, equals } from "df/common/protos";
 import {
@@ -12,6 +13,10 @@ import {
 import { dataform } from "df/protos/ts";
 
 const CANCEL_EVENT = "jobCancel";
+
+const flags = {
+  runnerNotificationPeriodMillis: Flags.number("runner-notification-period-millis", 5000)
+};
 
 const isSuccessfulAction = (actionResult: dataform.IActionResult) =>
   actionResult.status === dataform.ActionResult.ExecutionStatus.SUCCESSFUL ||
@@ -54,6 +59,7 @@ export class Runner {
   private executedActionNames: Set<string>;
   private successfullyExecutedActionNames: Set<string>;
   private pendingActions: dataform.IExecutionAction[];
+  private lastNotificationTimestampMillis = 0;
   private stopped = false;
   private cancelled = false;
   private timeout: NodeJS.Timer;
@@ -151,7 +157,14 @@ export class Runner {
   }
 
   private notifyListeners() {
+    if (
+      Date.now() - flags.runnerNotificationPeriodMillis.get() <
+      this.lastNotificationTimestampMillis
+    ) {
+      return;
+    }
     const runResultClone = deepClone(dataform.RunResult, this.runResult);
+    this.lastNotificationTimestampMillis = Date.now();
     this.changeListeners.forEach(listener => listener(runResultClone));
   }
 
