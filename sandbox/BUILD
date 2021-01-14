@@ -5,12 +5,12 @@ cc_binary(
     srcs = ["executor.cc"],
     args = [
         "$(execpath @nodejs_linux_amd64//:node_bin)",
-        "$(locations //api:vm/compile)"
+        "$(locations //api:vm/compile_loader.js)"
     ],
     copts = sapi_platform_copts(),
     data = [
         "@nodejs_linux_amd64//:node_bin",
-        "//api:vm/compile",
+        "//api:vm/compile_loader.js",
     ],
     deps = [
         "@com_google_sandboxed_api//sandboxed_api/sandbox2",
@@ -18,5 +18,6 @@ cc_binary(
         "@com_google_sandboxed_api//sandboxed_api/sandbox2/util:bpf_helper",
         "@com_google_sandboxed_api//sandboxed_api/sandbox2/util:runfiles",
         "@com_google_absl//absl/base:core_headers",
+        "@bazel_tools//tools/cpp/runfiles",
     ],
 )

@@ -38,6 +38,8 @@
 #include "sandboxed_api/sandbox2/sandbox2.h"
 #include "sandboxed_api/sandbox2/util/bpf_helper.h"
 #include "sandboxed_api/sandbox2/util/runfiles.h"
+#include "tools/cpp/runfiles/runfiles.h"
+#include "absl/base/internal/raw_logging.h"
 
 std::unique_ptr<sandbox2::Policy> GetPolicy(std::string nodePath) {
   return sandbox2::PolicyBuilder()
@@ -100,23 +102,34 @@ std::unique_ptr<sandbox2::Policy> GetPolicy(std::string nodePath) {
       .BuildOrDie();
 }
 
+std::string GetDataDependencyFilePath(absl::string_view relative_path) {
+  std::string error;
+  auto* runfiles = bazel::tools::cpp::runfiles::Runfiles::Create(
+        gflags::GetArgv0(), &error);
+  ABSL_INTERNAL_CHECK(runfiles != nullptr, absl::StrFormat(("%s"), error));
+  return runfiles->Rlocation(std::string(relative_path));
+}
+
 int main(int argc, char** argv) {
-  printf("starting main\n");
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   google::InitGoogleLogging(argv[0]);
 
   std::string workspaceFolder = "df/";
   std::string nodeRelativePath(argv[1]);
   std::string compileRelativePath(argv[2]);
-  std::string nodePath = sandbox2::GetDataDependencyFilePath(workspaceFolder + nodeRelativePath);
-  std::string compilePath = sandbox2::GetDataDependencyFilePath(workspaceFolder + compileRelativePath);
+  std::string nodePath = GetDataDependencyFilePath(workspaceFolder + nodeRelativePath);
+  std::string compilePath = GetDataDependencyFilePath(workspaceFolder + compileRelativePath);
 
-  // File to run path is the .sh rather than .js, so swap file extension for .js.
-  compilePath = compilePath.substr(0, compilePath.find_last_of('.')) + ".js";
+  // TODO: A bit hacky; file to run path is the .sh rather than .js, so
+  //   currently just swappping file extension for .js.
+  compilePath = absl::StrCat(compilePath.substr(0, compilePath.find_last_of('.')), ".js");
+
+  std::ostringstream compileRead;
 
   std::vector<std::string> args = {
         nodePath,
-        compilePath
+        "-e",
+        absl::StrCat("'$(cat ", compilePath, ")'"),
       };
   printf("Starting node bin from path '%s'\n", nodePath.c_str());
   printf("Running js file from path: '%s'\n", compilePath.c_str());
@@ -124,13 +137,9 @@ int main(int argc, char** argv) {
   
   printf("Configuring executor settings\n");
   executor
-    // Sandboxing is enabled by the sandbox itself. The sandboxed binary is
-    // not aware that it'll be sandboxed.
-    // Note: 'true' is the default setting for this class.
     ->set_enable_sandbox_before_exec(true)
     .limits()
-    // Remove restrictions on the size of address-space of sandboxed
-    // processes.
+    // Remove restrictions on the size of address-space of sandboxed processes.
     ->set_rlimit_as(RLIM64_INFINITY);
   printf("Executor settings configured\n");
 
