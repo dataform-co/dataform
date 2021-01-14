@@ -38,7 +38,6 @@
 #include "sandboxed_api/sandbox2/result.h"
 #include "sandboxed_api/sandbox2/sandbox2.h"
 #include "sandboxed_api/sandbox2/util/bpf_helper.h"
-#include "sandboxed_api/sandbox2/util/runfiles.h"
 #include "sandboxed_api/util/flag.h"
 #include "tools/cpp/runfiles/runfiles.h"
 
