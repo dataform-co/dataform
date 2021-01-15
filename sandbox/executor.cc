@@ -35,6 +35,7 @@
 
 #include "absl/base/internal/raw_logging.h"
 #include "absl/memory/memory.h"
+#include "absl/strings/str_format.h"
 #include "sandboxed_api/sandbox2/limits.h"
 #include "sandboxed_api/sandbox2/policy.h"
 #include "sandboxed_api/sandbox2/policybuilder.h"
@@ -43,6 +44,7 @@
 #include "sandboxed_api/sandbox2/util.h"
 #include "sandboxed_api/sandbox2/util/bpf_helper.h"
 #include "sandboxed_api/util/flag.h"
+#include "sandboxed_api/util/runfiles.h"
 #include "tools/cpp/runfiles/runfiles.h"
 
 std::unique_ptr<sandbox2::Policy> GetPolicy(std::string nodePath) {
@@ -56,43 +58,13 @@ std::unique_ptr<sandbox2::Policy> GetPolicy(std::string nodePath) {
       // of static binaries.
       .AllowDynamicStartup()
       .AddLibrariesForBinary(nodePath)
-      .EnableNamespaces()
       // Allow the getpid() syscall.
       .AllowSyscall(__NR_getpid)
 
       .AddDirectory("/proc")
       .AddDirectory("/dev")
-      // .AddFileAt("/dev/zero", "/dev/fd/1022", false)
-
-      // Examples for AddPolicyOnSyscall:
-      .AddPolicyOnSyscall(__NR_write,
-                          {
-                              // Load the first argument of write() (= fd)
-                              ARG_32(0),
-                              // Allow write(fd=STDOUT)
-                              JEQ32(1, ALLOW),
-                              // Allow write(fd=STDERR)
-                              JEQ32(2, ALLOW),
-                          })
-      // write() calls with fd not in (1, 2) will continue evaluating the
-      // policy. This means that other rules might still allow them.
-
-      // Allow exit() only with an exit_code of 0.
-      // Explicitly jumping to KILL, thus the following rules can not
-      // override this rule.
-      .AddPolicyOnSyscall(
-          __NR_exit_group,
-          {// Load first argument (exit_code).
-           ARG_32(0),
-           // Deny every argument except 0.
-           JNE32(0, KILL),
-           // Allow all exit() calls that were not previously forbidden
-           // = exit_code == 0.
-           ALLOW})
-
-      // = This won't have any effect as we handled every case of this syscall
-      // in the previous rule.
-      .AllowSyscall(__NR_exit_group)
+      .AddDirectory("/usr/local/google/home/eliaskassell", false)
+  // .AddFileAt("/dev/zero", "/dev/fd/1022", false)
 
 #ifdef __NR_open
       .BlockSyscallWithErrno(__NR_open, ENOENT)
@@ -106,7 +78,7 @@ void OutputFD(int stdoutFd, int errFd) {
   for (;;) {
     char stdoutBuf[4096];
     char stderrBuf[4096];
-    ssize_t stdoutRLen = read(errFd, stdoutBuf, sizeof(stdoutBuf));
+    ssize_t stdoutRLen = read(stdoutFd, stdoutBuf, sizeof(stdoutBuf));
     ssize_t stderrRLen = read(errFd, stderrBuf, sizeof(stderrBuf));
     printf("stdout: '%s'\n", std::string(stdoutBuf, stdoutRLen).c_str());
     printf("stderr: '%s'\n", std::string(stderrBuf, stderrRLen).c_str());
@@ -139,7 +111,10 @@ int main(int argc, char** argv) {
   // printf("Running js file from path: '%s'\n", compilePath.c_str());
 
   std::vector<std::string> args = {
-      nodePath, "-e", "\"console.log('hello');\"",
+      // nodePath, "-e", "\"console.log('hello');\"",
+      nodePath, "-e",
+      "\"fs.writeFileSync('/usr/local/google/home/eliaskassell/tmp.js', "
+      "'content');\"",
       //   absl::StrCat("'$(cat ", compilePath, ")'"),
   };
   auto executor = absl::make_unique<sandbox2::Executor>(nodePath, args);
@@ -159,14 +134,14 @@ int main(int argc, char** argv) {
   sandbox2::Sandbox2 s2(std::move(executor), std::move(policy));
   printf("Policy applied, running\n");
 
+  sandbox2::Result result;
   if (s2.RunAsync()) {
     OutputFD(stdoutFd, stderrFd);
-    s2.Kill();
+    result = s2.AwaitResult();
   } else {
     printf("Sandbox failed\n");
   }
   printf("Run complete\n");
-  auto result = s2.AwaitResult();
 
   printf("Final execution status: %s\n", result.ToString().c_str());
 
