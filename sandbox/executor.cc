@@ -19,12 +19,15 @@
 
 #include <fcntl.h>
 #include <glog/logging.h>
+#include <linux/socket.h>
 #include <sys/resource.h>
+#include <sys/socket.h>
 #include <syscall.h>
 #include <unistd.h>
 
 #include <csignal>
 #include <cstdlib>
+#include <fstream>
 #include <memory>
 #include <string>
 #include <utility>
@@ -37,6 +40,7 @@
 #include "sandboxed_api/sandbox2/policybuilder.h"
 #include "sandboxed_api/sandbox2/result.h"
 #include "sandboxed_api/sandbox2/sandbox2.h"
+#include "sandboxed_api/sandbox2/util.h"
 #include "sandboxed_api/sandbox2/util/bpf_helper.h"
 #include "sandboxed_api/util/flag.h"
 #include "tools/cpp/runfiles/runfiles.h"
@@ -56,10 +60,9 @@ std::unique_ptr<sandbox2::Policy> GetPolicy(std::string nodePath) {
       // Allow the getpid() syscall.
       .AllowSyscall(__NR_getpid)
 
-      // #ifdef __NR_access
-      //       // On Debian, even static binaries check existence of
-      //       /etc/ld.so.nohwcap. .BlockSyscallWithErrno(__NR_access, ENOENT)
-      // #endif
+      .AddDirectory("/proc")
+      .AddDirectory("/dev")
+      // .AddFileAt("/dev/zero", "/dev/fd/1022", false)
 
       // Examples for AddPolicyOnSyscall:
       .AddPolicyOnSyscall(__NR_write,
@@ -74,18 +77,18 @@ std::unique_ptr<sandbox2::Policy> GetPolicy(std::string nodePath) {
       // write() calls with fd not in (1, 2) will continue evaluating the
       // policy. This means that other rules might still allow them.
 
-      // // Allow exit() only with an exit_code of 0.
-      // // Explicitly jumping to KILL, thus the following rules can not
-      // // override this rule.
-      // .AddPolicyOnSyscall(
-      //     __NR_exit_group,
-      //     {// Load first argument (exit_code).
-      //      ARG_32(0),
-      //      // Deny every argument except 0.
-      //      JNE32(0, KILL),
-      //      // Allow all exit() calls that were not previously forbidden
-      //      // = exit_code == 0.
-      //      ALLOW})
+      // Allow exit() only with an exit_code of 0.
+      // Explicitly jumping to KILL, thus the following rules can not
+      // override this rule.
+      .AddPolicyOnSyscall(
+          __NR_exit_group,
+          {// Load first argument (exit_code).
+           ARG_32(0),
+           // Deny every argument except 0.
+           JNE32(0, KILL),
+           // Allow all exit() calls that were not previously forbidden
+           // = exit_code == 0.
+           ALLOW})
 
       // = This won't have any effect as we handled every case of this syscall
       // in the previous rule.
@@ -97,6 +100,20 @@ std::unique_ptr<sandbox2::Policy> GetPolicy(std::string nodePath) {
       .BlockSyscallWithErrno(__NR_openat, ENOENT)
 #endif
       .BuildOrDie();
+}
+
+void OutputFD(int stdoutFd, int errFd) {
+  for (;;) {
+    char stdoutBuf[4096];
+    char stderrBuf[4096];
+    ssize_t stdoutRLen = read(errFd, stdoutBuf, sizeof(stdoutBuf));
+    ssize_t stderrRLen = read(errFd, stderrBuf, sizeof(stderrBuf));
+    printf("stdout: '%s'\n", std::string(stdoutBuf, stdoutRLen).c_str());
+    printf("stderr: '%s'\n", std::string(stderrBuf, stderrRLen).c_str());
+    if (stdoutRLen < 1) {
+      break;
+    }
+  }
 }
 
 std::string GetDataDependencyFilePath(absl::string_view relative_path) {
@@ -116,16 +133,15 @@ int main(int argc, char** argv) {
   std::string compileRelativePath(argv[2]);
   std::string nodePath =
       GetDataDependencyFilePath(workspaceFolder + nodeRelativePath);
-  std::string compilePath =
-      GetDataDependencyFilePath(workspaceFolder + compileRelativePath);
+  printf("Starting node bin from path '%s'\n", nodePath.c_str());
+  // std::string compilePath =
+  //     GetDataDependencyFilePath(workspaceFolder + compileRelativePath);
+  // printf("Running js file from path: '%s'\n", compilePath.c_str());
 
   std::vector<std::string> args = {
-      nodePath, "-e", "\"console.log('hello');\""
+      nodePath, "-e", "\"console.log('hello');\"",
       //   absl::StrCat("'$(cat ", compilePath, ")'"),
-      //   compilePath,
   };
-  printf("Starting node bin from path '%s'\n", nodePath.c_str());
-  printf("Running js file from path: '%s'\n", compilePath.c_str());
   auto executor = absl::make_unique<sandbox2::Executor>(nodePath, args);
 
   executor->set_enable_sandbox_before_exec(true)
@@ -134,12 +150,23 @@ int main(int argc, char** argv) {
       // processes.
       ->set_rlimit_as(RLIM64_INFINITY);
 
+  auto stdoutFd = executor->ipc()->ReceiveFd(STDOUT_FILENO);
+  printf("stdoutFd: %i\n", stdoutFd);
+  auto stderrFd = executor->ipc()->ReceiveFd(STDERR_FILENO);
+  printf("stderrFd: %i\n", stderrFd);
+
   auto policy = GetPolicy(nodePath);
   sandbox2::Sandbox2 s2(std::move(executor), std::move(policy));
-  printf("Policy applied\n");
+  printf("Policy applied, running\n");
 
-  auto result = s2.Run();
+  if (s2.RunAsync()) {
+    OutputFD(stdoutFd, stderrFd);
+    s2.Kill();
+  } else {
+    printf("Sandbox failed\n");
+  }
   printf("Run complete\n");
+  auto result = s2.AwaitResult();
 
   printf("Final execution status: %s\n", result.ToString().c_str());
 
