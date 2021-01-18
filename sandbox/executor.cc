@@ -35,6 +35,7 @@
 
 #include "absl/base/internal/raw_logging.h"
 #include "absl/memory/memory.h"
+#include "absl/strings/str_cat.h"
 #include "absl/strings/str_format.h"
 #include "sandboxed_api/sandbox2/limits.h"
 #include "sandboxed_api/sandbox2/policy.h"
@@ -88,38 +89,35 @@ void OutputFD(int stdoutFd, int errFd) {
   }
 }
 
-std::string GetDataDependencyFilePath(absl::string_view relative_path) {
-  std::string error;
-  auto* runfiles =
-      bazel::tools::cpp::runfiles::Runfiles::Create(gflags::GetArgv0(), &error);
-  ABSL_INTERNAL_CHECK(runfiles != nullptr, absl::StrFormat(("%s"), error));
-  return runfiles->Rlocation(std::string(relative_path));
-}
-
 int main(int argc, char** argv) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   google::InitGoogleLogging(argv[0]);
 
   std::string workspaceFolder = "df/";
+
   std::string nodeRelativePath(argv[1]);
-  std::string compileRelativePath(argv[2]);
   std::string nodePath =
-      GetDataDependencyFilePath(workspaceFolder + nodeRelativePath);
-  printf("Starting node bin from path '%s'\n", nodePath.c_str());
-  // std::string compilePath =
-  //     GetDataDependencyFilePath(workspaceFolder + compileRelativePath);
-  // printf("Running js file from path: '%s'\n", compilePath.c_str());
+      sapi::GetDataDependencyFilePath(workspaceFolder + nodeRelativePath);
+
+  std::string compileRelativePath(argv[2]);
+  std::string compilePath =
+      sapi::GetDataDependencyFilePath(workspaceFolder + compileRelativePath);
+
+  // std::string cwdRelativePath(argv[3]);
+  // std::string cwdPath =
+  //     sapi::GetDataDependencyFilePath(workspaceFolder + cwdPath);
+
+  printf("Running command: '%s %s'\n", nodePath.c_str(), compilePath.c_str());
 
   std::vector<std::string> args = {
-      // nodePath, "-e", "\"console.log('hello');\"",
-      nodePath, "-e",
-      "\"fs.writeFileSync('/usr/local/google/home/eliaskassell/tmp.js', "
-      "'content');\"",
-      //   absl::StrCat("'$(cat ", compilePath, ")'"),
+      compilePath,
   };
   auto executor = absl::make_unique<sandbox2::Executor>(nodePath, args);
 
-  executor->set_enable_sandbox_before_exec(true)
+  // printf("Using cwd path as: '%s'\n", cwdPath.c_str());
+  executor
+      ->set_enable_sandbox_before_exec(true)
+      // .set_cwd(cwdPath)
       .limits()
       // Remove restrictions on the size of address-space of sandboxed
       // processes.

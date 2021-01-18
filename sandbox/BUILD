@@ -5,12 +5,14 @@ cc_binary(
     srcs = ["executor.cc"],
     args = [
         "$(execpath @nodejs_linux_amd64//:node_bin)",
-        "$(locations //api:vm/compile_loader.js)",
+        "$(locations //api:vm/compile)",
+        # "$(locations //packages/@dataform/cli:worker_bundle)",
     ],
     copts = sapi_platform_copts(),
     data = [
         "@nodejs_linux_amd64//:node_bin",
-        "//api:vm/compile_loader.js",
+        "//api:vm/compile",
+        # "//packages/@dataform/cli:worker_bundle",
     ],
     deps = [
         "@com_google_sandboxed_api//sandboxed_api/sandbox2",
