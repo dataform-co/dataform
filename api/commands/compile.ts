@@ -1,6 +1,5 @@
 import * as fs from "fs";
 import * as path from "path";
-import { Readable } from "stream";
 
 import { ChildProcess, fork } from "child_process";
 import { validWarehouses } from "df/api/dbadapters";
@@ -73,7 +72,7 @@ export class CompileChildProcess {
         const workerBundlePath = require.resolve("./worker_bundle");
         return workerBundlePath;
       } catch (e) {
-        return require.resolve("../vm/compile_loader");
+        return require.resolve("../../sandbox/vm/compile_loader");
       }
     };
     const forkScript = findForkScript();

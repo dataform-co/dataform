@@ -1,11 +1,9 @@
-import * as net from "net";
 import * as path from "path";
-import { promisify } from "util";
 import { CompilerFunction, NodeVM } from "vm2";
 
-import { createGenIndexConfig } from "df/api/vm/gen_index_config";
-import * as legacyCompiler from "df/api/vm/legacy_compiler";
-import { legacyGenIndex } from "df/api/vm/legacy_gen_index";
+import { createGenIndexConfig } from "df/sandbox/vm/gen_index_config";
+import * as legacyCompiler from "df/sandbox/vm/legacy_compiler";
+import { legacyGenIndex } from "df/sandbox/vm/legacy_gen_index";
 import { dataform } from "df/protos/ts";
 
 export function compile(compileConfig: dataform.ICompileConfig) {
