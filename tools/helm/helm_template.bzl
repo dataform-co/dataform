@@ -9,6 +9,8 @@ def helm_template_impl(ctx):
     if ctx.file.values_yaml_file != None:
         inputs += [ctx.file.values_yaml_file]
         helm_cmd = "%s --values %s" % (helm_cmd, ctx.file.values_yaml_file.path)
+    if ctx.attr.include_crds:
+        helm_cmd = "%s --include-crds" % (helm_cmd)
 
     out = ctx.actions.declare_file(ctx.attr.name + ".yaml")
     ctx.actions.run_shell(
@@ -33,6 +35,10 @@ helm_template = rule(
             cfg = "host",
             allow_single_file = True,
             default = Label("@helm_tool//:helm"),
+        ),
+        "include_crds": attr.bool(
+            default = False,
+            mandatory = False,
         ),
     },
 )
