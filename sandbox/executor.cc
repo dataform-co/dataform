@@ -50,28 +50,39 @@
 
 std::unique_ptr<sandbox2::Policy> GetPolicy(std::string nodePath) {
   return sandbox2::PolicyBuilder()
-      // The most frequent syscall should go first in this sequence (to make it
-      // fast).
-      // Allow read() with all arguments.
-      .AllowRead()
-      .AllowWrite()
-      // Allow a preset of syscalls that are known to be used during startup
-      // of static binaries.
-      .AllowDynamicStartup()
+
+      // Libraries for binaries are required to run a binary.
       .AddLibrariesForBinary(nodePath)
-      // Allow the getpid() syscall.
+
+      // System folders and files.
+      .AddFile("/dev/urandom", false)
+      .AddTmpfs("/dev/shm", 256 << 20)  // 256MB
+      .AddFile("/etc/localtime")
+      // Proc needed for retrieving fd.
+      .AddDirectory("/proc", false)
+      .AddFile("/dev/null", false)
+      .AddFile("/etc/ld.so.cache")
+
+      // File descriptor use.
+      .AllowRead()
+      .AllowReaddir()
+      .BlockSyscallWithErrno(__NR_ioctl, ENOTTY)
+
+      // Misc.
+      .AllowDynamicStartup()
       .AllowSyscall(__NR_getpid)
+      .AllowSyscalls({
+          __NR_access,   // GRTE/v5
+          __NR_getpid,   // GRTE/v5
+          __NR_mkdir,    //
+          __NR_sysinfo,  // GRTE/v5
+          __NR_unlink,   //
+      })
 
-      .AddDirectory("/proc")
-      .AddDirectory("/dev")
-      .AddDirectory("/usr/local/google/home/eliaskassell", false)
-  // .AddFileAt("/dev/zero", "/dev/fd/1022", false)
+      // Temporary, for development.
+      .AddFile("/usr/local/google/home/eliaskassell/tmp.js")
 
-#ifdef __NR_open
-      .BlockSyscallWithErrno(__NR_open, ENOENT)
-#else
-      .BlockSyscallWithErrno(__NR_openat, ENOENT)
-#endif
+      // Aggressively fail if policy builder fails.
       .BuildOrDie();
 }
 
@@ -103,21 +114,15 @@ int main(int argc, char** argv) {
   std::string compilePath =
       sapi::GetDataDependencyFilePath(workspaceFolder + compileRelativePath);
 
-  // std::string cwdRelativePath(argv[3]);
-  // std::string cwdPath =
-  //     sapi::GetDataDependencyFilePath(workspaceFolder + cwdPath);
-
-  printf("Running command: '%s %s'\n", nodePath.c_str(), compilePath.c_str());
-
   std::vector<std::string> args = {
-      compilePath,
+      nodePath,
+      // compilePath,
+      "/usr/local/google/home/eliaskassell/tmp.js",
   };
+  printf("Running command: '%s'\n", (args[0] + " " + args[1]).c_str());
   auto executor = absl::make_unique<sandbox2::Executor>(nodePath, args);
 
-  // printf("Using cwd path as: '%s'\n", cwdPath.c_str());
-  executor
-      ->set_enable_sandbox_before_exec(true)
-      // .set_cwd(cwdPath)
+  executor->set_enable_sandbox_before_exec(true)
       .limits()
       // Remove restrictions on the size of address-space of sandboxed
       // processes.
