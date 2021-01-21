@@ -19,6 +19,7 @@
 
 #include <fcntl.h>
 #include <glog/logging.h>
+#include <linux/futex.h>
 #include <linux/socket.h>
 #include <sys/resource.h>
 #include <sys/socket.h>
@@ -49,12 +50,42 @@
 #include "tools/cpp/runfiles/runfiles.h"
 
 std::unique_ptr<sandbox2::Policy> GetPolicy(std::string nodePath) {
+
   return sandbox2::PolicyBuilder()
+      // Syscall table for x86_64:
+      // https://blog.rchapman.org/posts/Linux_System_Call_Table_for_x86_64/
+      // System policies are preceeded by "[syscall number/syscall name], reason"
 
-      // Libraries for binaries are required to run a binary.
-      .AddLibrariesForBinary(nodePath)
+      // [257/openat], open a file relative to a directory file descriptor.
+      // Required for opening files.
+      .AllowOpen()
+      // [9/mmap], map or unmap files or devices into memory.
+      // JS files are loaded into memory by Node.
+      .AllowMmap()
+      // [202/futex], fast user-space locking, used by v8 when available (if not it emulates them), which Node depends on.
+      .AllowFutexOp(FUTEX_WAKE)
+      // [14/rt_sigprocmask], examine and change blocked signals, used by Node)
+      // Note that only SIG_SETMASK is set. This is used for things like error
+      // stream handling.
+      // https://github.com/nodejs/node/blob/e2793049542b50bcbb07148cd17ed7c517faa467/src/node.cc#L589.
+      .AddPolicyOnSyscall(__NR_rt_sigprocmask, {
+                                                   ARG_32(0),
+                                                   JEQ32(SIG_SETMASK, ALLOW),
+                                               })
+      // TODO: Remove this and limit [13/rt_sigation] directly? If not, remove
+      // [14/rt_sigprocmask], as this is covered by allowing all signals here.
+      .AllowHandleSignals()
+      // [72/fcntl], manipulate file descriptor.
+      // Used by node for dealing with stdio streams:
+      // https://github.com/nodejs/node/blob/e2793049542b50bcbb07148cd17ed7c517faa467/src/node.cc#L628
+      .AllowSafeFcntl()
+      // Various syscalls for getting user and group IDs.
+      .AllowGetIDs()
 
-      // System folders and files.
+      // To run a binary, the libraries for it need to be allowed.
+      .AddLibrariesForBinary(nodePath)      
+
+      // Add specific system folders and files.
       .AddFile("/dev/urandom", false)
       .AddTmpfs("/dev/shm", 256 << 20)  // 256MB
       .AddFile("/etc/localtime")
@@ -67,6 +98,9 @@ std::unique_ptr<sandbox2::Policy> GetPolicy(std::string nodePath) {
       .AllowRead()
       .AllowReaddir()
       .BlockSyscallWithErrno(__NR_ioctl, ENOTTY)
+
+      // TODO: Why deny this, with EPERM?
+      .BlockSyscallWithErrno(__NR_prlimit64, EPERM)
 
       // Misc.
       .AllowDynamicStartup()
@@ -129,8 +163,8 @@ int main(int argc, char** argv) {
       ->set_rlimit_as(RLIM64_INFINITY);
 
   auto stdoutFd = executor->ipc()->ReceiveFd(STDOUT_FILENO);
-  printf("stdoutFd: %i\n", stdoutFd);
   auto stderrFd = executor->ipc()->ReceiveFd(STDERR_FILENO);
+  printf("stdoutFd: %i\n", stdoutFd);
   printf("stderrFd: %i\n", stderrFd);
 
   auto policy = GetPolicy(nodePath);
