@@ -25,6 +25,8 @@
 #include <sys/socket.h>
 #include <syscall.h>
 #include <unistd.h>
+#include <netinet/tcp.h>
+#include <sys/ioctl.h>
 
 #include <csignal>
 #include <cstdlib>
@@ -63,10 +65,9 @@ std::unique_ptr<sandbox2::Policy> GetPolicy(std::string nodePath) {
       .AddFile("/dev/urandom", false)
       .AddTmpfs("/dev/shm", 256 << 20)  // 256MB
       .AddFile("/etc/localtime")
-      // Proc needed for retrieving fd.
+      // Proc needed for retrieving fd. TODO: Make more specific.
       .AddDirectory("/proc", false)
       .AddFile("/dev/null", false)
-      .AddFile("/etc/ld.so.cache")
 
       // Futex:
       // [202/futex], fast user-space locking, used by v8 when available (if not
@@ -90,9 +91,9 @@ std::unique_ptr<sandbox2::Policy> GetPolicy(std::string nodePath) {
       .AllowHandleSignals()
 
       // File descriptors:
+      .AllowWrite()
       .AllowRead()
       .AllowReaddir()
-      .AllowWrite()
       // [72/fcntl], manipulate file descriptor.
       // Used by node for dealing with stdio streams:
       // https://github.com/nodejs/node/blob/e2793049542b50bcbb07148cd17ed7c517faa467/src/node.cc#L628
@@ -101,8 +102,7 @@ std::unique_ptr<sandbox2::Policy> GetPolicy(std::string nodePath) {
       .AllowSyscall(__NR_statx)
       // [290/eventfd2], create a file descriptor for event notification.
       .AllowSyscall(__NR_eventfd2)
-      // TODO: Why this? File descriptor use?
-      .BlockSyscallWithErrno(__NR_ioctl, ENOTTY)
+      .AllowSyscall(__NR_ioctl)
 
       // Namespaced file system access (we need to read files for compilation):
       // [257/openat], open a file relative to a directory file descriptor.
@@ -147,9 +147,9 @@ std::unique_ptr<sandbox2::Policy> GetPolicy(std::string nodePath) {
 
       // Misc:
       // [318/getrandom], obtain a series of random bytes
+      .AllowExit()
       .AllowGetRandom()
       .AllowDynamicStartup()
-      .AllowExit()
 
       // Temporary, for development.
       .AddFile("/usr/local/google/home/eliaskassell/tmp.js")
