@@ -19,32 +19,29 @@ ts_library(
     ],
 )
 
-ts_library(
-    name = "compile_loader",
-    srcs = [],
+load("@npm//webpack:index.bzl", "webpack")
+
+webpack(
+    name = "bundler",
     data = [
-        ":compile_loader.js",
-    ],
-    deps = [
         ":vm",
-        "@npm//source-map-support",
+        "@npm//webpack-cli",
     ],
 )
 
-load("@build_bazel_rules_nodejs//:index.bzl", "nodejs_binary")
+load("@build_bazel_rules_nodejs//:index.bzl", "npm_package_bin")
 
-# This is a bit nuts. As we fork a process when compiling projects, we
-# start a new node instance but within bazel, modules will fail to load in the
-# forked process as we don't have a loader script available.
-# To fix this, we use the binary rules to generate the bazel loader scripts
-# and then execute these scripts instead, so module resulution works.
-
-nodejs_binary(
-    name = "compile",
-    data = [
-        ":vm",
-        "@npm//source-map-support",
+npm_package_bin(
+    name = "worker_bundle",
+    outs = [
+        "worker.bundle.js",
     ],
-    entry_point = ":compile.ts",
-    templated_args = ["--node_options=--require=source-map-support/register"],
+    args = [
+        "--config=sandbox/vm/webpack.config.js",
+        "--output=$(location worker.bundle.js)",
+    ],
+    data = [
+        ":webpack.config.js",
+    ],
+    tool = ":bundler",
 )
