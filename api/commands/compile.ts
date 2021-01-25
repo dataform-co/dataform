@@ -7,8 +7,6 @@ import { coerceAsError, ErrorWithCause } from "df/common/errors/errors";
 import { decode } from "df/common/protos";
 import { dataform } from "df/protos/ts";
 
-const compileLoader = require.resolve("./worker.bundle");
-
 // Project config properties that are required.
 const mandatoryProps: Array<keyof dataform.IProjectConfig> = ["warehouse", "defaultSchema"];
 
@@ -69,8 +67,17 @@ export class CompileChildProcess {
   public static forkProcess() {
     // Runs the worker_bundle script we generate for the package (see packages/@dataform/cli/BUILD)
     // if it exists, otherwise run the bazel compile loader target.
+    var currentPath = process.cwd();
+    console.log(
+      "🚀 ~ file: compile.ts ~ line 71 ~ CompileChildProcess ~ forkProcess ~ currentPath",
+      currentPath
+    );
+    var files = fs.readdirSync("./sandbox/vm");
+    console.log("FILES INSPECT", files);
     return new CompileChildProcess(
-      fork(require.resolve(compileLoader), [], { stdio: [0, 1, 2, "ipc", "pipe"] })
+      fork(require.resolve("./sandbox/vm/worker_bundle"), [], {
+        stdio: [0, 1, 2, "ipc", "pipe"]
+      })
     );
   }
   private readonly childProcess: ChildProcess;

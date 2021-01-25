@@ -19,29 +19,20 @@ ts_library(
     ],
 )
 
-load("@npm//webpack:index.bzl", "webpack")
+load("//packages:index.bzl", "pkg_bundle", "pkg_json", "pkg_npm_tar")
 
-webpack(
-    name = "bundler",
-    data = [
-        ":vm",
-        "@npm//webpack-cli",
-    ],
-)
+externals = [
+    "vm2",
+    "glob",
+    "protobufjs",
+]
 
-load("@build_bazel_rules_nodejs//:index.bzl", "npm_package_bin")
-
-npm_package_bin(
+pkg_bundle(
     name = "worker_bundle",
-    outs = [
-        "worker.bundle.js",
+    args = ["--banner='#!/usr/bin/env node'"],
+    entry_point = "worker.ts",
+    externals = externals,
+    deps = [
+        ":vm",
     ],
-    args = [
-        "--config=sandbox/vm/webpack.config.js",
-        "--output=$(location worker.bundle.js)",
-    ],
-    data = [
-        ":webpack.config.js",
-    ],
-    tool = ":bundler",
 )

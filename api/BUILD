@@ -8,6 +8,9 @@ ts_library(
         ["**/*.ts"],
         exclude = ["utils/**/*.*"],
     ),
+    data = [
+        "//sandbox/vm:worker_bundle",
+    ],
     deps = [
         "//api/utils",
         "//common/errors",
@@ -18,7 +21,6 @@ ts_library(
         "//core",
         "//protos:ts",
         "//sandbox/vm",
-        "//sandbox/vm:worker_bundle",
         "//sqlx",
         "@npm//@google-cloud/bigquery",
         "@npm//@types/glob",
