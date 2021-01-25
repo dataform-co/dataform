@@ -63,7 +63,6 @@ std::unique_ptr<sandbox2::Policy> GetPolicy(std::string nodePath) {
 
       // System folder and files.
       .AddFile("/dev/urandom", false)
-      .AddTmpfs("/dev/shm", 256 << 20)  // 256MB
       .AddFile("/etc/localtime")
       // Proc needed for retrieving fd. TODO: Make more specific.
       .AddDirectory("/proc", false)
@@ -192,6 +191,8 @@ int main(int argc, char** argv) {
       "/usr/local/google/home/eliaskassell/tmp.js",
   };
   printf("Running command: '%s'\n", (args[0] + " " + args[1]).c_str());
+
+
   auto executor = absl::make_unique<sandbox2::Executor>(nodePath, args);
 
   executor->set_enable_sandbox_before_exec(true)
@@ -202,12 +203,9 @@ int main(int argc, char** argv) {
 
   auto stdoutFd = executor->ipc()->ReceiveFd(STDOUT_FILENO);
   auto stderrFd = executor->ipc()->ReceiveFd(STDERR_FILENO);
-  printf("stdoutFd: %i\n", stdoutFd);
-  printf("stderrFd: %i\n", stderrFd);
 
   auto policy = GetPolicy(nodePath);
   sandbox2::Sandbox2 s2(std::move(executor), std::move(policy));
-  printf("Policy applied, running\n");
 
   sandbox2::Result result;
   if (s2.RunAsync()) {
@@ -216,7 +214,6 @@ int main(int argc, char** argv) {
   } else {
     printf("Sandbox failed\n");
   }
-  printf("Run complete\n");
 
   printf("Final execution status: %s\n", result.ToString().c_str());
 
