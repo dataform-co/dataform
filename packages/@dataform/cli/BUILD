@@ -10,6 +10,7 @@ ts_library(
     deps = [
         "//api",
         "//cli",
+        "//sandbox/vm",
     ],
 )
 
