@@ -61,14 +61,24 @@ const checkImports = imports => {
   };
 };
 
+// CommonJS module should go before babel:
+// https://github.com/rollup/rollup-plugin-babel/issues/342
+// HOWEVER:
+// Discussion of difficulty of running CommonJs then Babel (as opposed running Babel then CommonJS):
+// https://github.com/rollup/rollup-plugin-commonjs/issues/29
+// This is something explicitly supported by Webpack, "Bundles ES Modules, CommonJS, and AMD modules (even combined)."
+// https://github.com/webpack/webpack
+
 export default {
   plugins: [
-    babel({ babelHelpers: "bundled", babelrc: false, presets: ["@babel/preset-env"] }),
+    json(),
     resolve({
       jsnext: true,
-      // resolveOnly: importsToBundle
+      browser: false
+      // resolveOnly: importsToBundle,
     }),
     commonjs(),
+    babel({ babelHelpers: "bundled", babelrc: false, presets: ["@babel/preset-env"] })
     // checkImports(importsToBundle),
   ]
 };

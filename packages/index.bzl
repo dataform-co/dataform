@@ -37,7 +37,7 @@ def pkg_bundle(deps, externals, args = [], **kwargs):
             "@npm//@rollup/plugin-node-resolve",
             "@npm//@rollup/plugin-commonjs",
             "@npm//@rollup/plugin-babel",
-            "@npm//@babel/preset-env"
+            "@npm//@babel/preset-env",
         ] + deps,
         **kwargs
     )
