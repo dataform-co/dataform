@@ -25,7 +25,7 @@ All subsequent datasets should be built on top of these models, reducing the amo
 
 Where you can define intermediary datasets that are only used within your Dataform project. The objectives of these tables are to make your project easier to maintain, easier to reason about, and make your pipelines more efficient.
 
-**Reporting**
+**Analytics**
 
 Where you define datasets that represent entities and processes relevant to your business and will be consumed by downstream users (BI tools, reports…).
 
