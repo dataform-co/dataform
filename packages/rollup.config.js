@@ -1,4 +1,6 @@
 import resolve from "@rollup/plugin-node-resolve";
+import commonjs from "@rollup/plugin-commonjs";
+import { babel } from "@rollup/plugin-babel";
 
 // Add new node built ins here if they are used.
 const knownBuiltIns = [
@@ -14,7 +16,22 @@ const knownBuiltIns = [
   "net"
 ];
 
-const importsToBundle = ["df", /df\/.*$/, /^bazel\-.*$/];
+const importsToBundle = [
+  "df",
+  /df\/.*$/,
+  /^bazel\-.*$/,
+  /\.\/.*$/,
+  /\.\.\/.*$/,
+  "vm2",
+  "glob",
+  "protobufjs",
+  "protobufjs/minimal",
+  "@protobufjs/codegen",
+  "@protobufjs/fetch",
+  "@protobufjs/path",
+  "@protobufjs/aspromise",
+  "@protobufjs/inquire"
+];
 
 const checkImports = imports => {
   const allowedImports = [...imports, ...knownBuiltIns].map(pattern => {
@@ -27,18 +44,16 @@ const checkImports = imports => {
   });
 
   // We're going to read these from the arguments.
-  let externals = [];
+  let external = () => false;
 
   return {
     buildStart(options) {
-      externals = options.external || [];
+      external = options.external;
     },
     resolveId(source) {
       // Either this is an internal import, or explicitly listed in externals or we fail.
-      if (
-        allowedImports.some(pattern => pattern.test(source)) ||
-        externals.some(external => source === external || source.startsWith(`${external}/`))
-      ) {
+      // console.log(external.toString());
+      if (allowedImports.some(pattern => pattern.test(source)) || external(source)) {
         return null;
       }
       throw new Error("Must explicitly list import as an external: " + source);
@@ -48,9 +63,12 @@ const checkImports = imports => {
 
 export default {
   plugins: [
-    checkImports(importsToBundle),
+    babel({ babelHelpers: "bundled", babelrc: false, presets: ["@babel/preset-env"] }),
     resolve({
-      resolveOnly: importsToBundle
-    })
+      jsnext: true,
+      // resolveOnly: importsToBundle
+    }),
+    commonjs(),
+    // checkImports(importsToBundle),
   ]
 };

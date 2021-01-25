@@ -28,6 +28,7 @@ nodejs_binary(
 externals = [
     "@google-cloud/bigquery",
     "protobufjs",
+    "protobufjs/minimal",
     "tarjan-graph",
     "semver",
     "moo",
@@ -85,7 +86,7 @@ pkg_bundle(
     name = "worker_bundle",
     args = ["--banner='#!/usr/bin/env node'"],
     entry_point = "worker.ts",
-    externals = externals,
+    externals = [],
     deps = [
         ":cli",
     ],

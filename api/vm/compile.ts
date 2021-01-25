@@ -1,6 +1,4 @@
-import * as net from "net";
 import * as path from "path";
-import { promisify } from "util";
 import { CompilerFunction, NodeVM } from "vm2";
 
 import { createGenIndexConfig } from "df/api/vm/gen_index_config";
