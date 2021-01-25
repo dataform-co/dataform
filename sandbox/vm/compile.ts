@@ -1,10 +1,10 @@
 import * as path from "path";
 import { CompilerFunction, NodeVM } from "vm2";
 
+import { dataform } from "df/protos/ts";
 import { createGenIndexConfig } from "df/sandbox/vm/gen_index_config";
 import * as legacyCompiler from "df/sandbox/vm/legacy_compiler";
 import { legacyGenIndex } from "df/sandbox/vm/legacy_gen_index";
-import { dataform } from "df/protos/ts";
 
 export function compile(compileConfig: dataform.ICompileConfig) {
   const vmIndexFileName = path.resolve(path.join(compileConfig.projectDir, "index.js"));
