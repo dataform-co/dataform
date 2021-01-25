@@ -10,7 +10,7 @@ The traditional ETL, which stands for Extraction, Transformation, and Loading, h
 
 ## A simple ELT example
 
-Imagine you want to build the data stack of an ecommerce shop. This business has three data sources: Shopify for the web store, Stripe to process payments, and Salesforce as their CRM. You want to use all that data to build reports to track KPIs, create dashboards and conduct ad hocs analysis to understand the business. One of the fist tasks would be to create a dashboard in a BI tool with all your customers information for everyone in the company to know about your customers. This dashboard will have all the data you have about your customers.
+Imagine you want to build the data stack of an ecommerce shop. This business has three data sources: Shopify for the web store, Stripe to process payments, and Salesforce as their CRM. You want to use all that data to build reports to track KPIs, create dashboards and conduct ad hocs analysis to understand the business. One of the first tasks would be to create a dashboard in a BI tool with all your customers information for everyone in the company to know about your customers. This dashboard will have all the data you have about your customers.
 
 <img src="https://assets.dataform.co/docs/introduction/example_simple_schema.png" max-width="753"  alt="" />
 
