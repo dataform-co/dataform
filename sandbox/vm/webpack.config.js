@@ -10,24 +10,18 @@ module.exports = (env, argv) => {
       filename: path.basename(argv.output)
     },
     optimization: {
-      minimize: false // TODO: true?
+      minimize: false // TODO: Make true and fix errors?
     },
-    // node: {
-    //   fs: "empty",
-    //   child_process: "empty"
-    // },
+    node: {
+      fs: "empty",
+      child_process: "empty"
+    },
     resolve: {
-      extensions: [".ts", ".js", ".json"]
-      // alias: {
-      //   df: path.resolve(process.env.RUNFILES, "df")
-      // }
+      extensions: [".ts", ".js", ".json"],
+      alias: {
+        df: path.resolve(process.env.RUNFILES, "df")
+      }
     }
-
-    // plugins: [
-    //   new webpack.optimize.LimitChunkCountPlugin({
-    //     maxChunks: 1
-    //   })
-    // ],
   };
   return config;
 };
