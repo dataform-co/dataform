@@ -65,8 +65,15 @@ export async function compile(
 
 export class CompileChildProcess {
   public static forkProcess() {
+    let workerBundle: string;
+    try {
+      workerBundle = require.resolve("df/sandbox/vm/worker_bundle");
+    } catch (e) {
+      // The bundled CLI doesn't allow the `df` prefix.
+      workerBundle = "./sandbox/vm/worker_bundle";
+    }
     return new CompileChildProcess(
-      fork(require.resolve("df/sandbox/vm/worker_bundle"), [], {
+      fork(workerBundle, [], {
         stdio: [0, 1, 2, "ipc", "pipe"]
       })
     );

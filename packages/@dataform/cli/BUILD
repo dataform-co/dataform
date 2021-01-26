@@ -73,6 +73,7 @@ pkg_json(
 
 pkg_bundle(
     name = "bundle",
+    srcs = ["//sandbox/vm:worker_bundle"],
     args = ["--banner='#!/usr/bin/env node'"],
     entry_point = "index.ts",
     externals = externals,

@@ -53,6 +53,11 @@ select 1 as test
 
     expect(compileResult.exitCode).equals(0);
 
+    console.log(
+      "🚀 ~ file: cli.spec.ts ~ line 57 ~ expect ~ compileResult.stdout '''",
+      compileResult.stdout,
+      "'''"
+    );
     expect(JSON.parse(compileResult.stdout)).deep.equals({
       tables: [
         {
