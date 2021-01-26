@@ -69,7 +69,7 @@ export class CompileChildProcess {
     try {
       workerBundle = require.resolve("df/sandbox/vm/worker_bundle");
     } catch (e) {
-      // The bundled CLI doesn't allow the `df` prefix.
+      // The bundled CLI doesn't allow the `df` prefix; the source file is packaged directly.
       workerBundle = "./sandbox/vm/worker_bundle";
     }
     return new CompileChildProcess(
