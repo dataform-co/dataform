@@ -7,7 +7,6 @@ package(default_visibility = ["//visibility:public"])
 ts_library(
     name = "cli",
     srcs = glob(["*.ts"]),
-    data = ["//sandbox/vm:worker_bundle"],
     deps = [
         "//cli",
     ],

@@ -17,7 +17,6 @@ ts_library(
         "//common/strings",
         "//core",
         "//protos:ts",
-        "//sandbox/vm",
         "//sqlx",
         "@npm//@google-cloud/bigquery",
         "@npm//@types/glob",
