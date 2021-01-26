@@ -65,17 +65,8 @@ export async function compile(
 
 export class CompileChildProcess {
   public static forkProcess() {
-    // Runs the worker_bundle script we generate for the package (see packages/@dataform/cli/BUILD)
-    // if it exists, otherwise run the bazel compile loader target.
-    var currentPath = process.cwd();
-    console.log(
-      "🚀 ~ file: compile.ts ~ line 71 ~ CompileChildProcess ~ forkProcess ~ currentPath",
-      currentPath
-    );
-    var files = fs.readdirSync("./sandbox/vm");
-    console.log("FILES INSPECT", files);
     return new CompileChildProcess(
-      fork(require.resolve("./sandbox/vm/worker_bundle"), [], {
+      fork(require.resolve("df/sandbox/vm/worker_bundle"), [], {
         stdio: [0, 1, 2, "ipc", "pipe"]
       })
     );
