@@ -8,9 +8,6 @@ ts_library(
         ["**/*.ts"],
         exclude = ["utils/**/*.*"],
     ),
-    data = [
-        "//sandbox/vm:worker_bundle",
-    ],
     deps = [
         "//api/utils",
         "//common/errors",

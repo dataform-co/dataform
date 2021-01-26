@@ -73,7 +73,6 @@ pkg_json(
 
 pkg_bundle(
     name = "bundle",
-    srcs = ["//sandbox/vm:worker_bundle"],
     args = ["--banner='#!/usr/bin/env node'"],
     entry_point = "index.ts",
     externals = externals,
@@ -85,7 +84,18 @@ pkg_bundle(
 pkg_npm_tar(
     name = "package",
     deps = [
+        "copy_bundle",
         ":bundle",
         ":package.json",
     ],
+)
+
+# Worker bundle needs to be copied over for packaging, as deps files are only
+# included if they're in this folder.
+genrule(
+    name = "copy_bundle",
+    srcs = ["//sandbox/vm:worker_bundle"],
+    outs = ["worker_bundle"],
+    cmd = "cp $< $@",
+    output_to_bindir = 1,
 )

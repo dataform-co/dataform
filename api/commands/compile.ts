@@ -67,10 +67,10 @@ export class CompileChildProcess {
   public static forkProcess() {
     let workerBundle: string;
     try {
-      workerBundle = require.resolve("df/sandbox/vm/worker_bundle");
+      // The bundled CLI packages the worker_bundle directly.
+      workerBundle = require.resolve("./worker_bundle");
     } catch (e) {
-      // The bundled CLI doesn't allow the `df` prefix; the source file is packaged directly.
-      workerBundle = "./sandbox/vm/worker_bundle";
+      workerBundle = require.resolve("df/sandbox/vm/worker_bundle");
     }
     return new CompileChildProcess(
       fork(workerBundle, [], {
