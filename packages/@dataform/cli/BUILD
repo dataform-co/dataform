@@ -7,9 +7,9 @@ package(default_visibility = ["//visibility:public"])
 ts_library(
     name = "cli",
     srcs = glob(["*.ts"]),
+    data = ["//sandbox/vm:worker_bundle"],
     deps = [
         "//cli",
-        "//sandbox/vm:worker_bundle",
     ],
 )
 
@@ -78,5 +78,13 @@ pkg_bundle(
     externals = externals,
     deps = [
         ":cli",
+    ],
+)
+
+pkg_npm_tar(
+    name = "package",
+    deps = [
+        ":bundle",
+        ":package.json",
     ],
 )
