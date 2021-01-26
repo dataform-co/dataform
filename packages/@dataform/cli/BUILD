@@ -83,16 +83,16 @@ pkg_bundle(
 pkg_npm_tar(
     name = "package",
     deps = [
-        "copy_bundle",
+        "copy_worker_bundle",
         ":bundle",
         ":package.json",
     ],
 )
 
-# Worker bundle needs to be copied over for packaging, as deps files are only
-# included if they're in this folder.
+# Worker bundle needs to be copied over into packages, as deps files are only
+# included in the root directory of package folders.
 genrule(
-    name = "copy_bundle",
+    name = "copy_worker_bundle",
     srcs = ["//sandbox/vm:worker_bundle"],
     outs = ["worker_bundle"],
     cmd = "cp $< $@",
