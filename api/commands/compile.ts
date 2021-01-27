@@ -1,8 +1,8 @@
-import deepmerge from "deepmerge";
 import * as fs from "fs";
 import * as path from "path";
 
 import { ChildProcess, fork } from "child_process";
+import deepmerge from "deepmerge";
 import { validWarehouses } from "df/api/dbadapters";
 import { coerceAsError, ErrorWithCause } from "df/common/errors/errors";
 import { decode } from "df/common/protos";
