@@ -94,7 +94,7 @@ pkg_npm_tar(
 genrule(
     name = "copy_worker_bundle",
     srcs = ["//sandbox/vm:worker_bundle"],
-    outs = ["worker_bundle"],
+    outs = ["worker_bundle.js"],
     cmd = "cp $< $@",
     output_to_bindir = 1,
 )

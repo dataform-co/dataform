@@ -70,6 +70,8 @@ export class CompileChildProcess {
       // The bundled CLI packages the worker_bundle directly.
       workerBundle = require.resolve("./worker_bundle");
     } catch (e) {
+      // This resolution  happens when run in the Bazel environment. It could be avoided by copying
+      // the worker bundle to the appropriate places for every use case, but this seems cleaner.
       workerBundle = require.resolve("df/sandbox/vm/worker_bundle");
     }
     return new CompileChildProcess(
