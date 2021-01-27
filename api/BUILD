@@ -34,6 +34,7 @@ ts_library(
         "@npm//@types/semver",
         "@npm//@types/ssh2",
         "@npm//cron-parser",
+        "@npm//deepmerge",
         "@npm//get-port",
         "@npm//glob",
         "@npm//js-beautify",

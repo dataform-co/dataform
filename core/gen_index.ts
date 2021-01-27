@@ -62,7 +62,7 @@ projectConfig.schemaSuffix = "${
   }" || projectConfig.schemaSuffix;
 
 // Merge in general project config overrides.
-projectConfig = { ...projectConfig, ...${projectOverridesJsonString} };
+projectConfig = { ...projectConfig, ...${projectOverridesJsonString}, vars: { ...projectConfig.vars, ...${projectOverridesJsonString}.vars } };
 
 // Initialize the compilation session.
 const session = require("@dataform/core").session;
