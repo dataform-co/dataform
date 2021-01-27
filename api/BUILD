@@ -3,11 +3,14 @@ package(default_visibility = ["//visibility:public"])
 load("//tools:ts_library.bzl", "ts_library")
 
 ts_library(
-    name = "lib",
+    name = "api",
     srcs = glob(
         ["**/*.ts"],
         exclude = ["utils/**/*.*"],
     ),
+    data = [
+        "//sandbox/vm:worker_bundle",
+    ],
     deps = [
         "//api/utils",
         "//common/errors",
@@ -47,36 +50,5 @@ ts_library(
         "@npm//snowflake-sdk",
         "@npm//sql-formatter",
         "@npm//ssh2",
-        "@npm//vm2",
     ],
-)
-
-ts_library(
-    name = "api",
-    srcs = [],
-    data = [
-        ":vm/compile_loader.js",
-    ],
-    deps = [
-        ":lib",
-        "@npm//source-map-support",
-    ],
-)
-
-load("@build_bazel_rules_nodejs//:index.bzl", "nodejs_binary")
-
-# This is a bit nuts. As we fork a process when compiling projects, we
-# start a new node instance but within bazel, modules will fail to load in the
-# forked process as we don't have a loader script available.
-# To fix this, we use the binary rules to generate the bazel loader scripts
-# and then execute these scripts instead, so module resulution works.
-
-nodejs_binary(
-    name = "vm/compile",
-    data = [
-        ":lib",
-        "@npm//source-map-support",
-    ],
-    entry_point = ":vm/compile.ts",
-    templated_args = ["--node_options=--require=source-map-support/register"],
 )
