@@ -65,6 +65,7 @@
     "chokidar": "^2.0.4",
     "cron-parser": "^2.15.0",
     "css-loader": "^3.2.0",
+    "deepmerge": "^4.2.2",
     "diff": "^4.0.2",
     "escodegen": "^1.11.0",
     "espree": "^3.5.4",

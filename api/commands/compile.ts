@@ -1,3 +1,4 @@
+import deepmerge from "deepmerge";
 import * as fs from "fs";
 import * as path from "path";
 
@@ -42,14 +43,7 @@ export async function compile(
     // check dataformJson is valid before we try to compile
     const dataformJson = fs.readFileSync(`${compileConfig.projectDir}/dataform.json`, "utf8");
     const projectConfig = JSON.parse(dataformJson);
-    checkDataformJsonValidity({
-      ...projectConfig,
-      ...compileConfig.projectConfigOverride,
-      vars: {
-        ...projectConfig.vars,
-        ...compileConfig.projectConfigOverride?.vars
-      }
-    });
+    checkDataformJsonValidity(deepmerge(projectConfig, compileConfig.projectConfigOverride));
   } catch (e) {
     throw new ErrorWithCause(
       `Compilation failed. ProjectConfig ('dataform.json') is invalid: ${e.message}`,
@@ -129,7 +123,7 @@ export class CompileChildProcess {
   }
 }
 
-export const checkDataformJsonValidity = (dataformJsonParsed: { [prop: string]: string }) => {
+export const checkDataformJsonValidity = (dataformJsonParsed: { [prop: string]: any }) => {
   const invalidWarehouseProp = () => {
     return dataformJsonParsed.warehouse && !validWarehouses.includes(dataformJsonParsed.warehouse)
       ? `Invalid value on property warehouse: ${
