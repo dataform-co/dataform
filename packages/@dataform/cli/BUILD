@@ -38,6 +38,7 @@ externals = [
     "yargs",
     "glob",
     "cron-parser",
+    "deepmerge",
     "get-port",
     "glob",
     "js-beautify",
