@@ -37,6 +37,5 @@ pkg_bundle(
     templated_args = ["--node_options=--require=source-map-support/register"],
     deps = [
         ":vm",
-        "@npm//source-map-support",
     ],
 )

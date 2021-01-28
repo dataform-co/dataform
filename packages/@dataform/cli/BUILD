@@ -8,9 +8,7 @@ ts_library(
     name = "cli",
     srcs = glob(["*.ts"]),
     deps = [
-        "//api",
         "//cli",
-        "//sandbox/vm",
     ],
 )
 
@@ -83,21 +81,21 @@ pkg_bundle(
     ],
 )
 
-pkg_bundle(
-    name = "worker_bundle",
-    args = ["--banner='#!/usr/bin/env node'"],
-    entry_point = "worker.ts",
-    externals = externals,
-    deps = [
-        ":cli",
-    ],
-)
-
 pkg_npm_tar(
     name = "package",
     deps = [
+        "copy_worker_bundle",
         ":bundle",
         ":package.json",
-        ":worker_bundle",
     ],
+)
+
+# Worker bundle needs to be copied over into packages, as deps files are only
+# included in the root directory of package folders.
+genrule(
+    name = "copy_worker_bundle",
+    srcs = ["//sandbox/vm:worker_bundle"],
+    outs = ["worker_bundle.js"],
+    cmd = "cp $< $@",
+    output_to_bindir = 1,
 )
