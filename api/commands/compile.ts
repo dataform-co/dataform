@@ -74,9 +74,7 @@ export class CompileChildProcess {
       }
     }
     return new CompileChildProcess(
-      fork(workerBundle, [], {
-        stdio: [0, 1, 2, "ipc", "pipe"]
-      })
+      fork(require.resolve(forkScript), [], { stdio: [0, 1, 2, "ipc", "pipe"] })
     );
   }
   private readonly childProcess: ChildProcess;

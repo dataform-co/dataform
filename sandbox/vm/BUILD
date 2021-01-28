@@ -32,8 +32,11 @@ pkg_bundle(
     name = "worker_bundle",
     args = ["--environment=FAT_BUNDLE"],
     entry_point = "worker.ts",
+    entry_point = ":compile.ts",
     externals = externals,
+    templated_args = ["--node_options=--require=source-map-support/register"],
     deps = [
         ":vm",
+        "@npm//source-map-support",
     ],
 )
