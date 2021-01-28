@@ -16,7 +16,6 @@ ts_test_suite(
         "//examples/invalid_dataform_json:node_modules",
         "//examples/never_finishes_compiling:files",
         "//examples/never_finishes_compiling:node_modules",
-        "//sandbox/vm:worker_bundle",
     ],
     deps = [
         "//api",

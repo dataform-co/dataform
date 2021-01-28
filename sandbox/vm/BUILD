@@ -19,19 +19,32 @@ ts_library(
     ],
 )
 
-load("//packages:index.bzl", "pkg_bundle", "pkg_json", "pkg_npm_tar")
-
-externals = [
-    "vm2",
-    "glob",
-    "protobufjs",
-]
-
-pkg_bundle(
-    name = "worker_bundle",
-    entry_point = "worker.ts",
-    externals = externals,
+ts_library(
+    name = "compile_loader",
+    srcs = [],
+    data = [
+        ":compile_loader.js",
+    ],
     deps = [
         ":vm",
+        "@npm//source-map-support",
     ],
+)
+
+load("@build_bazel_rules_nodejs//:index.bzl", "nodejs_binary")
+
+# This is a bit nuts. As we fork a process when compiling projects, we
+# start a new node instance but within bazel, modules will fail to load in the
+# forked process as we don't have a loader script available.
+# To fix this, we use the binary rules to generate the bazel loader scripts
+# and then execute these scripts instead, so module resulution works.
+
+nodejs_binary(
+    name = "compile",
+    data = [
+        ":vm",
+        "@npm//source-map-support",
+    ],
+    entry_point = ":compile.ts",
+    templated_args = ["--node_options=--require=source-map-support/register"],
 )
