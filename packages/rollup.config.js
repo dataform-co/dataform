@@ -49,8 +49,12 @@ const checkImports = imports => {
 export default {
   plugins: [
     checkImports(importsToBundle),
-    resolve({
-      resolveOnly: importsToBundle
-    })
+    resolve(
+      process.env.FAT_BUNDLE
+        ? {}
+        : {
+            resolveOnly: importsToBundle
+          }
+    )
   ]
 };
