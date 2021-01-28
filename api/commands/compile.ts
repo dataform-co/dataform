@@ -64,9 +64,14 @@ export class CompileChildProcess {
       // The bundled CLI packages the worker_bundle directly.
       workerBundle = require.resolve("./worker_bundle");
     } catch (e) {
-      // This resolution  happens when run in the Bazel environment. It could be avoided by copying
-      // the worker bundle to the appropriate places for every use case, but this seems cleaner.
-      workerBundle = require.resolve("df/sandbox/vm/worker_bundle");
+      try {
+        // This resolution  happens when run in this Bazel environment. It could be avoided by copying
+        // the worker bundle via bazel to the appropriate places for every use case, but this seems cleaner.
+        workerBundle = require.resolve("df/sandbox/vm/worker_bundle");
+      } catch (e) {
+        // This resolution happens when run in an external bazel workspace.
+        workerBundle = "./bazel-bin/worker_bundle.js";
+      }
     }
     return new CompileChildProcess(
       fork(workerBundle, [], {
