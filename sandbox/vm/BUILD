@@ -19,21 +19,51 @@ ts_library(
     ],
 )
 
-load("//packages:index.bzl", "pkg_bundle")
+# load("//packages:index.bzl", "pkg_bundle")
 
-externals = [
-    "vm2",
-    "glob",
-    "protobufjs",
-    "protobufjs/minimal",
-]
+# externals = [
+#     "vm2",
+#     "glob",
+#     "protobufjs",
+#     "protobufjs/minimal",
+# ]
 
-pkg_bundle(
-    name = "worker_bundle",
-    args = ["--environment=FAT_BUNDLE"],
-    entry_point = "worker.ts",
-    externals = externals,
-    deps = [
+# pkg_bundle(
+#     name = "worker_bundle",
+#     args = [
+#         "--environment=FAT_BUNDLE",
+#     ],
+#     entry_point = "worker.ts",
+#     externals = externals,
+#     deps = [
+#         ":vm",
+#     ],
+# )
+
+load("@npm//webpack:index.bzl", "webpack")
+
+webpack(
+    name = "bundler",
+    data = [
         ":vm",
+        ":webpack.config.js",
+        "@npm//webpack-cli",
     ],
+)
+
+load("@build_bazel_rules_nodejs//:index.bzl", "npm_package_bin")
+
+npm_package_bin(
+    name = "worker_bundle",
+    outs = [
+        "worker_bundle.js",
+    ],
+    args = [
+        "--config=sandbox/vm/webpack.config.js",
+        # "--path=$(location worker_bundle.js)",
+    ],
+    data = [
+        ":webpack.config.js",
+    ],
+    tool = ":bundler",
 )
