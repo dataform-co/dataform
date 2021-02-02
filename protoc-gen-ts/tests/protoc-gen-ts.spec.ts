@@ -426,6 +426,33 @@ suite(__filename, { parallel: true }, () => {
     });
   });
 
+  suite("unknown values", { parallel: true }, () => {
+    test("unknown fields ignored", () => {
+      expect(
+        testProtos.FieldSubsetMessage.deserialize(
+          testProtos.FieldSupersetMessage.create({
+            int32Field: 89
+          }).serialize()
+        )
+      ).eql(testProtos.FieldSubsetMessage.create({}));
+    });
+
+    // This behaviour is language-dependent.
+    test("unknown enum values retained", () => {
+      expect(
+        testProtos.FieldSubsetMessage.deserialize(
+          testProtos.FieldSupersetMessage.create({
+            enumField: testProtos.FieldSupersetMessage.SupersetEnum.VAL_1
+          }).serialize()
+        )
+      ).eql(
+        testProtos.FieldSubsetMessage.create({
+          enumField: 1
+        })
+      );
+    });
+  });
+
   suite("json support", { parallel: true }, () => {
     test("singular fields", () => {
       expect(

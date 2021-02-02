@@ -88,3 +88,20 @@ message ConcatenatedMessage {
   repeated string string_field = 2;
   repeated uint32 uint32_field = 3 [packed=false];
 }
+
+message FieldSubsetMessage {
+  enum SubsetEnum {
+    VAL_0 = 0;
+  }
+  SubsetEnum enum_field = 1;
+}
+
+message FieldSupersetMessage {
+  enum SupersetEnum {
+    VAL_0 = 0;
+    VAL_1 = 1;
+  }
+  SupersetEnum enum_field = 1;
+  
+  int32 int32_field = 2;
+}
