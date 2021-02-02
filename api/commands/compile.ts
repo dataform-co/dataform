@@ -67,9 +67,10 @@ export class CompileChildProcess {
       try {
         // This resolution  happens when run in this Bazel environment. It could be avoided by copying
         // the worker bundle via bazel to the appropriate places for every use case, but this seems cleaner.
-        workerBundle = require.resolve("df/sandbox/vm/worker_bundle");
+        workerBundle = "./sandbox/vm/worker_bundle.js";
       } catch (e) {
-        // This resolution happens when run in an external bazel workspace.
+        // This resolution happens when run in an external bazel workspace. The worker bundle must explicity
+        // be copied to the root of of the project by a build rule.
         workerBundle = "./bazel-bin/worker_bundle.js";
       }
     }

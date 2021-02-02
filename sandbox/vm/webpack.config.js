@@ -3,7 +3,7 @@ const path = require("path");
 module.exports = (env, argv) => {
   const config = {
     mode: argv.mode || "development",
-    entry: [path.resolve(process.env.RUNFILES, "df/sandbox/vm/worker")],
+    entry: [path.resolve(process.env.RUNFILES, "df/sandbox/vm/compile")],
     output: {
       path: path.dirname(path.resolve(argv.output)),
       filename: path.basename(argv.output)
@@ -22,7 +22,7 @@ module.exports = (env, argv) => {
       }
     },
     externals: {
-      vm2: "require('vm2')"
+      vm2: "'node_modules/vm2'"
     }
   };
   return config;

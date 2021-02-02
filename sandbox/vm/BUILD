@@ -24,24 +24,19 @@ load("@npm//webpack:index.bzl", "webpack")
 webpack(
     name = "bundler",
     data = [
+        ":copy_vm2",
         ":vm",
         ":webpack.config.js",
         "@npm//webpack-cli",
     ],
 )
 
-filegroup(
-    name = "vm2_node_module",
-    srcs = [
-        "//:node_modules/vm2",
-    ],
-)
-
 genrule(
     name = "copy_vm2",
-    srcs = [":vm2_node_module"],
+    srcs = ["//:node_modules/vm2"],
     outs = ["node_modules/vm2"],
     cmd = "cp -r $(SRCS) $(OUTS)",
+    output_to_bindir = 1,
 )
 
 load("@build_bazel_rules_nodejs//:index.bzl", "npm_package_bin")
@@ -57,6 +52,7 @@ npm_package_bin(
     ],
     data = [
         ":copy_vm2",
+        ":package.json",
         ":webpack.config.js",
     ],
     tool = ":bundler",
