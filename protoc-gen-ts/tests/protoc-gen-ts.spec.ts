@@ -395,6 +395,37 @@ suite(__filename, { parallel: true }, () => {
     }
   });
 
+  suite("field type compatibility", { parallel: true }, () => {
+    test("repeated Messages are concatenated when interpreted as singular", () => {
+      expect(
+        testProtos.SingleConcatenatedMessageWrapper.deserialize(
+          testProtos.RepeatedConcatenatedMessageWrapper.create({
+            concatenatedMessage: [
+              testProtos.ConcatenatedMessage.create({
+                int32Field: 45,
+                stringField: ["foo", "bar"],
+                uint32Field: [78, 0]
+              }),
+              testProtos.ConcatenatedMessage.create({
+                int32Field: -89,
+                stringField: ["baz"],
+                uint32Field: [1, 100]
+              })
+            ]
+          }).serialize()
+        )
+      ).eql(
+        testProtos.SingleConcatenatedMessageWrapper.create({
+          concatenatedMessage: testProtos.ConcatenatedMessage.create({
+            int32Field: -89,
+            stringField: ["foo", "bar", "baz"],
+            uint32Field: [78, 0, 1, 100]
+          })
+        })
+      );
+    });
+  });
+
   suite("json support", { parallel: true }, () => {
     test("singular fields", () => {
       expect(
