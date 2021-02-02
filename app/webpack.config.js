@@ -7,21 +7,21 @@ module.exports = (env, argv) => {
     mode: argv.mode || "development",
     entry: [path.resolve(process.env.RUNFILES, "df/app/index")],
     output: {
-      path: path.dirname(path.resolve(argv.output)),
-      filename: path.basename(argv.output)
+      path: path.dirname(path.resolve(argv.outputPath)),
+      filename: path.basename(argv.outputPath)
     },
     optimization: {
       minimize: argv.mode === "production"
     },
     watchOptions: {
-      ignored: [/node_modules/]
+      ignored: /node_modules/
     },
     stats: {
       warnings: true
     },
     node: {
-      fs: "empty",
-      child_process: "empty"
+      // fs: "empty",
+      // child_process: "empty"
     },
     devServer: {
       port: 9110,
@@ -46,6 +46,12 @@ module.exports = (env, argv) => {
       extensions: [".ts", ".tsx", ".js", ".jsx", ".json", ".css"],
       alias: {
         df: path.resolve(process.env.RUNFILES, "df")
+      },
+      // Polyfill
+      fallback: {
+        http: require.resolve("stream-http"),
+        https: require.resolve("https-browserify"),
+        url: require.resolve("url")
       }
     },
 
@@ -68,7 +74,7 @@ module.exports = (env, argv) => {
             { loader: "style-loader" },
             {
               loader: "css-loader",
-              query: {
+              options: {
                 modules: true
               }
             }

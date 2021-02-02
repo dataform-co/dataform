@@ -97,7 +97,7 @@ npm_package_bin(
     ],
     args = [
         "--config=app/webpack.config.js",
-        "--output=$(location app.bundle.js)",
+        "--output-path=$(location app.bundle.js)",
     ],
     data = [
         ":webpack.config.js",

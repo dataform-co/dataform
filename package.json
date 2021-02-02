@@ -122,6 +122,7 @@
     "source-map-loader": "^0.2.0",
     "sql-formatter": "^2.3.3",
     "ssh2": "^0.8.9",
+    "stream-http": "^3.1.1",
     "style-loader": "^1.0.0",
     "tarjan-graph": "^2.0.0",
     "tmp": "0.0.33",

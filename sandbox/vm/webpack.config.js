@@ -2,12 +2,16 @@ const path = require("path");
 const webpack = require("webpack");
 
 module.exports = (env, argv) => {
+  console.log(
+    "🚀 ~ file: webpack.config.js ~ line 29 ~ path.dirname(path.resolve(argv.outputPath))",
+    path.dirname(path.resolve(argv.outputPath))
+  );
   const config = {
     mode: argv.mode || "development",
     entry: [path.resolve(process.env.RUNFILES, "df/sandbox/vm/worker")],
     output: {
-      path: path.dirname(path.resolve(argv.outputPath)),
-      filename: path.basename(argv.outputPath)
+      path: path.dirname(path.resolve(argv.outputPath))
+      // filename: path.basename(argv.outputPath)
     },
     target: "node",
     optimization: {
@@ -35,7 +39,7 @@ module.exports = (env, argv) => {
       })
     ],
     externals: {
-      // vm2: "require('vm2')"
+      vm2: "require('vm2')"
     }
   };
   return config;
