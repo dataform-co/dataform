@@ -19,27 +19,6 @@ ts_library(
     ],
 )
 
-# load("//packages:index.bzl", "pkg_bundle")
-
-# externals = [
-#     "vm2",
-#     "glob",
-#     "protobufjs",
-#     "protobufjs/minimal",
-# ]
-
-# pkg_bundle(
-#     name = "worker_bundle",
-#     args = [
-#         "--environment=FAT_BUNDLE",
-#     ],
-#     entry_point = "worker.ts",
-#     externals = externals,
-#     deps = [
-#         ":vm",
-#     ],
-# )
-
 load("@npm//webpack:index.bzl", "webpack")
 
 webpack(
