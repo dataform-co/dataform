@@ -62,7 +62,7 @@ export class CompileChildProcess {
     let workerBundle: string;
     try {
       // The bundled CLI packages the worker_bundle directly.
-      workerBundle = require.resolve("./worker_bundle.js/main.js");
+      workerBundle = require.resolve("./worker_bundle");
     } catch (e) {
       try {
         // This resolution  happens when run in this Bazel environment. It could be avoided by copying
@@ -70,7 +70,7 @@ export class CompileChildProcess {
         workerBundle = require.resolve("df/sandbox/vm/worker_bundle");
       } catch (e) {
         // This resolution happens when run in an external bazel workspace.
-        workerBundle = "./bazel-bin/worker_bundle.js/main.js";
+        workerBundle = "./bazel-bin/worker_bundle.js";
       }
     }
     return new CompileChildProcess(

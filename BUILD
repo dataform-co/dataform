@@ -7,6 +7,8 @@ exports_files([
     "package.json",
     "readme.md",
     "version.bzl",
+    # Not particularly orthodox; used for bundling vm2 into webpack worker bundle package.
+    "node_modules/vm2",
 ])
 
 PROTOBUF_DEPS = [

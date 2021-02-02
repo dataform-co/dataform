@@ -19,6 +19,27 @@ ts_library(
     ],
 )
 
+# load("//packages:index.bzl", "pkg_bundle")
+
+# externals = [
+#     "vm2",
+#     "glob",
+#     "protobufjs",
+#     "protobufjs/minimal",
+# ]
+
+# pkg_bundle(
+#     name = "worker_bundle",
+#     args = [
+#         "--environment=FAT_BUNDLE",
+#     ],
+#     entry_point = "worker.ts",
+#     externals = externals,
+#     deps = [
+#         ":vm",
+#     ],
+# )
+
 load("@npm//webpack:index.bzl", "webpack")
 
 webpack(
@@ -30,15 +51,19 @@ webpack(
     ],
 )
 
-# # Copy the vm2 package to the worker bundle, as it can't be bundled by webpack
-# # directly.
-# genrule(
-#     name = "copy_vm2",
-#     srcs = [":package.json"],
-#     outs = ["worker_bundle.js/package.json"],
-#     cmd = "cp $< $@",
-#     output_to_bindir = 1,
-# )
+filegroup(
+    name = "vm2_node_module",
+    srcs = [
+        "//:node_modules/vm2",
+    ],
+)
+
+genrule(
+    name = "copy_vm2",
+    srcs = [":vm2_node_module"],
+    outs = ["node_modules/vm2"],
+    cmd = "cp -r $(SRCS) $(OUTS)",
+)
 
 load("@build_bazel_rules_nodejs//:index.bzl", "npm_package_bin")
 
@@ -49,9 +74,10 @@ npm_package_bin(
     ],
     args = [
         "--config=sandbox/vm/webpack.config.js",
-        "--output-path=$(location worker_bundle.js)",
+        "--output=$(location worker_bundle.js)",
     ],
     data = [
+        ":copy_vm2",
         ":webpack.config.js",
     ],
     tool = ":bundler",
