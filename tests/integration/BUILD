@@ -10,6 +10,9 @@ ts_test_suite(
         exclude = ["sqldatawarehouse.spec.ts"],
     ),
     data = [
+        "//sandbox/vm:copy_glob",
+        "//sandbox/vm:copy_protobufjs",
+        "//sandbox/vm:copy_vm2",
         "//sandbox/vm:worker_bundle",
         "//test_credentials:bigquery.json",
         "//test_credentials:redshift.json",

@@ -60,30 +60,34 @@ export async function compile(
 export class CompileChildProcess {
   public static forkProcess() {
     let workerBundle: string;
-    console.log(
-      "🚀 ~ file: compile.ts ~ line 65 ~ CompileChildProcess ~ forkProcess ~ ./sandbox",
-      fs.readdirSync("./sandbox")
-    );
-    console.log(
-      "🚀 ~ file: compile.ts ~ line 65 ~ CompileChildProcess ~ forkProcess ~ ./sandbox/vm",
-      fs.readdirSync("./sandbox/vm")
-    );
-    console.log(
-      "🚀 ~ file: compile.ts ~ line 65 ~ CompileChildProcess ~ forkProcess ~ ./sandbox/vm/node_modules",
-      fs.readdirSync("./sandbox/vm/node_modules")
-    );
     try {
+      console.log(
+        "🚀 ~ file: compile.ts ~ line 73 ~ CompileChildProcess ~ forkProcess ~ process.cwd()",
+        process.cwd()
+      );
+      console.log(
+        "🚀 ~ file: comple.ts ~ line 65 ~ CompileChildProcess ~ forkProcess ~ .",
+        fs.readdirSync(".")
+      );
       // The bundled CLI packages the worker_bundle directly.
-      workerBundle = require.resolve("./worker_bundle");
+      workerBundle = require.resolve("./worker_bundle/worker_bundle");
     } catch (e) {
       try {
+        console.log(
+          "🚀 ~ file: compile.ts ~ line 65 ~ CompileChildProcess ~ forkProcess ~ ./sandbox/vm/worker_bundle",
+          fs.readdirSync("./sandbox/vm/worker_bundle")
+        );
         // This resolution  happens when run in this Bazel environment. It could be avoided by copying
         // the worker bundle via bazel to the appropriate places for every use case, but this seems cleaner.
         workerBundle = "./sandbox/vm/worker_bundle.js";
       } catch (e) {
+        console.log(
+          "🚀 ~ file: compile.ts ~ line 65 ~ CompileChildProcess ~ forkProcess ~ ./bazel-bin/worker_bundle",
+          fs.readdirSync("./bazel-bin/worker_bundle")
+        );
         // This resolution happens when run in an external bazel workspace. The worker bundle must explicity
         // be copied to the root of of the project by a build rule.
-        workerBundle = "./bazel-bin/worker_bundle.js";
+        workerBundle = "./bazel-bin/worker_bundle/worker_bundle.js";
       }
     }
     return new CompileChildProcess(

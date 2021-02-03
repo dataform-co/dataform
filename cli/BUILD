@@ -5,6 +5,12 @@ load("//tools:ts_library.bzl", "ts_library")
 ts_library(
     name = "cli",
     srcs = glob(["**/*.ts"]),
+    data = [
+        "//sandbox/vm:copy_glob",
+        "//sandbox/vm:copy_protobufjs",
+        "//sandbox/vm:copy_vm2",
+        "//sandbox/vm:worker_bundle",
+    ],
     deps = [
         "//api",
         "//core",

@@ -7,7 +7,7 @@ exports_files([
     "package.json",
     "readme.md",
     "version.bzl",
-    # Not particularly orthodox; used for bundling vm2 into webpack worker bundle package.
+    # Not particularly orthodox; used for bundling vm2 into worker_bundle package.
     "node_modules/vm2",
     "node_modules/glob",
     "node_modules/protobufjs",

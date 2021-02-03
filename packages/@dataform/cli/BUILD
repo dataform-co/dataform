@@ -84,8 +84,11 @@ pkg_bundle(
 pkg_npm_tar(
     name = "package",
     deps = [
-        "copy_worker_bundle",
         ":bundle",
+        # ":copy_glob",
+        # ":copy_protobufjs",
+        # ":copy_vm2",
+        ":copy_worker_bundle",
         ":package.json",
     ],
 )
@@ -96,6 +99,30 @@ genrule(
     name = "copy_worker_bundle",
     srcs = ["//sandbox/vm:worker_bundle"],
     outs = ["worker_bundle.js"],
-    cmd = "cp $< $@",
+    cmd = "cp -p $< $@",
+    output_to_bindir = 1,
+)
+
+genrule(
+    name = "copy_vm2",
+    srcs = ["//:node_modules/vm2"],
+    outs = ["worker_bundle/node_modules/vm2"],
+    cmd = "cp -rp $(SRCS) $(OUTS)",
+    output_to_bindir = 1,
+)
+
+genrule(
+    name = "copy_glob",
+    srcs = ["//:node_modules/glob"],
+    outs = ["worker_bundle/node_modules/glob"],
+    cmd = "cp -rp $(SRCS) $(OUTS)",
+    output_to_bindir = 1,
+)
+
+genrule(
+    name = "copy_protobufjs",
+    srcs = ["//:node_modules/protobufjs"],
+    outs = ["worker_bundle/node_modules/protobufjs"],
+    cmd = "cp -rp $(SRCS) $(OUTS)",
     output_to_bindir = 1,
 )
