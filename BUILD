@@ -9,6 +9,9 @@ exports_files([
     "version.bzl",
     # Not particularly orthodox; used for bundling vm2 into webpack worker bundle package.
     "node_modules/vm2",
+    "node_modules/glob",
+    "node_modules/protobufjs",
+    "node_modules/protobufjs/minimal",
 ])
 
 PROTOBUF_DEPS = [

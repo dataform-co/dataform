@@ -1,6 +1,0 @@
-{
-    "description": "This package.json is used for bundling vm2 with the sandboxing code, so that the fat bundle does not have to expand vm2",
-    "dependencies": {
-        "vm2": "^3.9.2"
-    }
-} 

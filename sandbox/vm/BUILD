@@ -19,41 +19,48 @@ ts_library(
     ],
 )
 
-load("@npm//webpack:index.bzl", "webpack")
+load("//packages:index.bzl", "pkg_bundle", "pkg_npm_tar")
 
-webpack(
-    name = "bundler",
-    data = [
-        ":copy_vm2",
-        ":vm",
-        ":webpack.config.js",
-        "@npm//webpack-cli",
-    ],
-)
+externals = [
+    "vm2",
+    "glob",
+    "protobufjs",
+    "protobufjs/minimal",
+]
 
 genrule(
     name = "copy_vm2",
     srcs = ["//:node_modules/vm2"],
     outs = ["node_modules/vm2"],
-    cmd = "cp -r $(SRCS) $(OUTS)",
+    cmd = "cp -rp $(SRCS) $(OUTS)",
     output_to_bindir = 1,
 )
 
-load("@build_bazel_rules_nodejs//:index.bzl", "npm_package_bin")
+genrule(
+    name = "copy_glob",
+    srcs = ["//:node_modules/glob"],
+    outs = ["node_modules/glob"],
+    cmd = "cp -rp $(SRCS) $(OUTS)",
+    output_to_bindir = 1,
+)
 
-npm_package_bin(
+genrule(
+    name = "copy_protobufjs",
+    srcs = ["//:node_modules/protobufjs"],
+    outs = ["node_modules/protobufjs"],
+    cmd = "cp -rp $(SRCS) $(OUTS)",
+    output_to_bindir = 1,
+)
+
+pkg_bundle(
     name = "worker_bundle",
-    outs = [
-        "worker_bundle.js",
-    ],
-    args = [
-        "--config=sandbox/vm/webpack.config.js",
-        "--output=$(location worker_bundle.js)",
-    ],
-    data = [
+    args = ["--environment=WORKER_BUNDLE"],
+    entry_point = "worker.ts",
+    externals = externals,
+    deps = [
+        ":copy_glob",
+        ":copy_protobufjs",
         ":copy_vm2",
-        ":package.json",
-        ":webpack.config.js",
+        ":vm",
     ],
-    tool = ":bundler",
 )

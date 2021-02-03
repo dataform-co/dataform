@@ -33,7 +33,7 @@ const checkImports = imports => {
     buildStart(options) {
       externals = options.external || [];
     },
-    resolveId(source) {
+    resolveId(source, toPlace) {
       // Either this is an internal import, or explicitly listed in externals or we fail.
       if (
         allowedImports.some(pattern => pattern.test(source)) ||
@@ -47,14 +47,20 @@ const checkImports = imports => {
 };
 
 export default {
+  output: {
+    paths: process.env.WORKER_BUNDLE
+      ? {
+          vm2: "./node_modules/vm2",
+          glob: "./node_modules/glob",
+          protobufjs: "./node_modules/protobufjs",
+          "protobufjs/minimal": "./node_modules/protobufjs/minimal"
+        }
+      : {}
+  },
   plugins: [
     checkImports(importsToBundle),
-    resolve(
-      process.env.FAT_BUNDLE
-        ? {}
-        : {
-            resolveOnly: importsToBundle
-          }
-    )
+    resolve({
+      resolveOnly: importsToBundle
+    })
   ]
 };

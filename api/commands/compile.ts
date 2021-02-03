@@ -60,6 +60,18 @@ export async function compile(
 export class CompileChildProcess {
   public static forkProcess() {
     let workerBundle: string;
+    console.log(
+      "🚀 ~ file: compile.ts ~ line 65 ~ CompileChildProcess ~ forkProcess ~ ./sandbox",
+      fs.readdirSync("./sandbox")
+    );
+    console.log(
+      "🚀 ~ file: compile.ts ~ line 65 ~ CompileChildProcess ~ forkProcess ~ ./sandbox/vm",
+      fs.readdirSync("./sandbox/vm")
+    );
+    console.log(
+      "🚀 ~ file: compile.ts ~ line 65 ~ CompileChildProcess ~ forkProcess ~ ./sandbox/vm/node_modules",
+      fs.readdirSync("./sandbox/vm/node_modules")
+    );
     try {
       // The bundled CLI packages the worker_bundle directly.
       workerBundle = require.resolve("./worker_bundle");
