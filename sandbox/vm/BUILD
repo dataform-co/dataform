@@ -64,3 +64,16 @@ pkg_bundle(
         ":vm",
     ],
 )
+
+pkg_bundle(
+    name = "cli_worker_bundle",
+    args = [],
+    entry_point = "worker.ts",
+    externals = externals,
+    deps = [
+        ":copy_glob",
+        ":copy_protobufjs",
+        ":copy_vm2",
+        ":vm",
+    ],
+)
