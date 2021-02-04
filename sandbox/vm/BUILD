@@ -71,9 +71,6 @@ pkg_bundle(
     entry_point = "worker.ts",
     externals = externals,
     deps = [
-        ":copy_glob",
-        ":copy_protobufjs",
-        ":copy_vm2",
         ":vm",
     ],
 )

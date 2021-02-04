@@ -33,7 +33,7 @@ const checkImports = imports => {
     buildStart(options) {
       externals = options.external || [];
     },
-    resolveId(source, toPlace) {
+    resolveId(source) {
       // Either this is an internal import, or explicitly listed in externals or we fail.
       if (
         allowedImports.some(pattern => pattern.test(source)) ||

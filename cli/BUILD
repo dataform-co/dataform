@@ -6,10 +6,7 @@ ts_library(
     name = "cli",
     srcs = glob(["**/*.ts"]),
     data = [
-        "//sandbox/vm:copy_glob",
-        "//sandbox/vm:copy_protobufjs",
-        "//sandbox/vm:copy_vm2",
-        "//sandbox/vm:worker_bundle",
+        "//sandbox/vm:cli_worker_bundle",
     ],
     deps = [
         "//api",
