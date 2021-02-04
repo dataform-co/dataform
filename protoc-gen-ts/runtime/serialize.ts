@@ -489,7 +489,7 @@ export class Decoders {
             );
             mergedMessageBytes.set(oldMessageBytes);
             mergedMessageBytes.set(newMessageBytes, oldMessageBytes.length);
-            return deserialize(newMessageBytes);
+            return deserialize(mergedMessageBytes);
           }
         })();
       }

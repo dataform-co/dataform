@@ -6,8 +6,12 @@ ts_test_suite(
     name = "tests",
     srcs = glob(
         ["*.ts"],
-        # SQL Data warehouse integration tests are currently disabled while we sort out a new testing server.
-        exclude = ["sqldatawarehouse.spec.ts"],
+        exclude = [
+            # SQL Data warehouse integration tests are currently disabled while we sort out a new testing server.
+            "sqldatawarehouse.spec.ts",
+            # Redshift integrations tests are currently disabled while we reorganize cluster structure.
+            "redshift.spec.ts",
+        ],
     ),
     data = [
         "//sandbox/vm:copy_glob",
@@ -15,7 +19,6 @@ ts_test_suite(
         "//sandbox/vm:copy_vm2",
         "//sandbox/vm:worker_bundle",
         "//test_credentials:bigquery.json",
-        "//test_credentials:redshift.json",
         "//test_credentials:snowflake.json",
         "//test_credentials:sqldatawarehouse.json",
         "//tests/integration/bigquery_project:files",
@@ -24,8 +27,6 @@ ts_test_suite(
         "//tests/integration/postgres_project:node_modules",
         "//tests/integration/presto_project:files",
         "//tests/integration/presto_project:node_modules",
-        "//tests/integration/redshift_project:files",
-        "//tests/integration/redshift_project:node_modules",
         "//tests/integration/snowflake_project:files",
         "//tests/integration/snowflake_project:node_modules",
         "//tests/integration/sqldatawarehouse_project:files",

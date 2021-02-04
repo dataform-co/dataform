@@ -20,7 +20,15 @@ suite(__filename, () => {
   test("init and compile", async () => {
     // Initialize a project using the CLI, don't install packages.
     await getProcessResult(
-      execFile(nodePath, [cliEntryPointPath, "init", "redshift", projectDir, "--skip-install"])
+      execFile(nodePath, [
+        cliEntryPointPath,
+        "init",
+        "bigquery",
+        projectDir,
+        "--skip-install",
+        "--default-database",
+        "dataform-integration-tests"
+      ])
     );
 
     // Install packages manually to get around bazel sandbox issues.
@@ -56,15 +64,17 @@ select 1 as test
     expect(JSON.parse(compileResult.stdout)).deep.equals({
       tables: [
         {
-          name: "dataform.example",
+          name: "dataform-integration-tests.dataform.example",
           type: "table",
           target: {
+            database: "dataform-integration-tests",
             schema: "dataform",
             name: "example"
           },
           canonicalTarget: {
             schema: "dataform",
-            name: "example"
+            name: "example",
+            database: "dataform-integration-tests"
           },
           query: "\n\nselect 1 as test\n",
           disabled: false,
@@ -72,15 +82,17 @@ select 1 as test
         }
       ],
       projectConfig: {
-        warehouse: "redshift",
+        warehouse: "bigquery",
         defaultSchema: "dataform",
         assertionSchema: "dataform_assertions",
+        defaultDatabase: "dataform-integration-tests",
         useRunCache: false
       },
       graphErrors: {},
       dataformCoreVersion: version,
       targets: [
         {
+          database: "dataform-integration-tests",
           schema: "dataform",
           name: "example"
         }
@@ -94,7 +106,7 @@ select 1 as test
         "run",
         projectDir,
         "--credentials",
-        "test_credentials/redshift.json",
+        "test_credentials/bigquery.json",
         "--dry-run",
         "--json"
       ])
@@ -107,27 +119,17 @@ select 1 as test
         {
           fileName: "definitions/example.sqlx",
           hermeticity: "HERMETIC",
-          name: "dataform.example",
+          name: "dataform-integration-tests.dataform.example",
           tableType: "table",
           target: {
+            database: "dataform-integration-tests",
             name: "example",
             schema: "dataform"
           },
           tasks: [
             {
-              statement: 'drop table if exists "dataform"."example_temp"',
-              type: "statement"
-            },
-            {
-              statement: 'create table "dataform"."example_temp" as \n\nselect 1 as test\n',
-              type: "statement"
-            },
-            {
-              statement: 'drop table if exists "dataform"."example"',
-              type: "statement"
-            },
-            {
-              statement: 'alter table "dataform"."example_temp" rename to "example"',
+              statement:
+                "create or replace table `dataform-integration-tests.dataform.example` as \n\nselect 1 as test",
               type: "statement"
             }
           ],
@@ -136,9 +138,10 @@ select 1 as test
       ],
       projectConfig: {
         assertionSchema: "dataform_assertions",
+        defaultDatabase: "dataform-integration-tests",
         defaultSchema: "dataform",
         useRunCache: false,
-        warehouse: "redshift"
+        warehouse: "bigquery"
       },
       runConfig: {
         fullRefresh: false,

@@ -15,12 +15,11 @@
 - Features:
   - `toJson()` is supported, but `fromJson()` is not
   - `toJson()` support for "special" protobuf types e.g. `Any`
+  - unknown values should be retained during parsing and included in serialized output (for compliance with protobuf v3.5)
 - Correctness/validation additions:
   - the transpiler should reject any non-proto3 protobufs (until support for proto2 transpilation is added)
   - the transpiler should reject any field that uses `proto3_optional`, aka "synthetic" optional fields (until support for `proto3_optional` is added)
 - More tests need to be added:
-  - multiple values for non-repeated Message fields are (correctly) merged upon deserialization; this needs tests
-  - deserialization of unknown fields / unknown enum values
   - messages with more than one field set
   - compatibility tests - `optional` vs `repeated ... [packed=false]`; `repeated ... [packed=false]` vs `repeated ... [packed=true]`; other types that are safe to change to another type
   - `JSON` compatibility with a reference spec (Go?)
