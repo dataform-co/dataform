@@ -96,7 +96,7 @@ Your default project id is defined in the `defaultDatabase` field in your `dataf
   "warehouse": "bigquery",
   "defaultSchema": "dataform",
   "assertionSchema": "dataform_assertions",
-  "defaultDatabase": "analytics"
+  "defaultDatabase": "raw"
 }
 ```
 
@@ -105,7 +105,7 @@ You can then override the default gcp project id in the `database` field in the 
 ```js
 config {
   type: "table",
-  database: “raw”
+  database: "analytics"
 }
 ```
 
