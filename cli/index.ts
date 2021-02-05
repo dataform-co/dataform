@@ -153,7 +153,8 @@ const varsOption: INamedOption<yargs.Options> = {
   name: "vars",
   option: {
     describe:
-      "Variables to inject that are exposed at compile and runtime via `dataform.projectConfig.vars.myVariableName`.",
+      "Variables to inject that are exposed at compile and runtime via `dataform.projectConfig.vars.myVariableName`.\n" +
+      "They should take the structure of '--vars=someKey:someValue,someOtherKey:someOtherValue'.",
     type: "string",
     default: null
   },
@@ -162,7 +163,7 @@ const varsOption: INamedOption<yargs.Options> = {
       parseVarOptions(argv.vars);
     } catch (e) {
       throw new Error(
-        "vars are in correct format. They should take the structure of '--vars=someKey:someValue,someOtherKey:someOtherValue'"
+        "vars are in an incorrect format. They should take the structure of '--vars=someKey:someValue,someOtherKey:someOtherValue'"
       );
     }
   }
