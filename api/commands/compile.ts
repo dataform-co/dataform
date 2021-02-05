@@ -31,6 +31,11 @@ export async function compile(
   // Create an empty projectConfigOverride if not set.
   compileConfig = { projectConfigOverride: {}, ...compileConfig };
 
+  compileConfig.projectConfigOverride.vars = {
+    ...compileConfig.vars,
+    ...compileConfig.projectConfigOverride.vars
+  };
+
   // Schema overrides field can be set in two places, projectConfigOverride.schemaSuffix takes precedent.
   if (compileConfig.schemaSuffixOverride) {
     compileConfig.projectConfigOverride = {

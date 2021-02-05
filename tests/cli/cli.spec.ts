@@ -56,7 +56,13 @@ select 1 as test
 
     // Compile the project using the CLI.
     const compileResult = await getProcessResult(
-      execFile(nodePath, [cliEntryPointPath, "compile", projectDir, "--json"])
+      execFile(nodePath, [
+        cliEntryPointPath,
+        "compile",
+        projectDir,
+        "--json",
+        "--vars=testVar1:testValue1,testVar2:testValue2"
+      ])
     );
 
     expect(compileResult.exitCode).equals(0);
@@ -86,7 +92,11 @@ select 1 as test
         defaultSchema: "dataform",
         assertionSchema: "dataform_assertions",
         defaultDatabase: "dataform-integration-tests",
-        useRunCache: false
+        useRunCache: false,
+        vars: {
+          testVar1: "testValue1",
+          testVar2: "testValue2"
+        }
       },
       graphErrors: {},
       dataformCoreVersion: version,
