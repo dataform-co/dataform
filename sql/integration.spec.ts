@@ -40,8 +40,7 @@ suite("builders", { parallel: true }, ({ before, after }) => {
 
   for (const { name, dbadapter, sql } of [
     { name: "bigquery", dbadapter: () => bigquery, sql: new Sql("standard") },
-    { name: "snowflake", dbadapter: () => snowflake, sql: new Sql("snowflake") },
-    { name: "redshift", dbadapter: () => redshift, sql: new Sql("redshift") }
+    { name: "snowflake", dbadapter: () => snowflake, sql: new Sql("snowflake") }
   ]) {
     suite(name, { parallel: true }, () => {
       const execute = async <S extends ISelectSchema>(select: ISelectOrBuilder<S>) => {
