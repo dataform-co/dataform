@@ -19,5 +19,3 @@ This project transforms four raw datasets (`posts_answers`, `posts_questions`, `
 ## View the project
 
 <a href="https://github.com/dataform-co/dataform-example-project-bigquery" target="_blank"><button>See the example on GitHub</button></a>
-
-<a href="https://app.dataform.co/#/6470156092964864/overview"><button intent="primary">See the example on Dataform web</button></a> (Viewing the example project on Dataform web requires sign up)
