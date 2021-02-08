@@ -142,8 +142,6 @@ message CompileConfig {
   // Deprecated.
   string schema_suffix_override = 2;
   string return_override = 5;
-
-  map<string, string> vars = 8;
 }
 
 message Target {

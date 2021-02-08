@@ -50,7 +50,7 @@ suite(__filename, () => {
       filePath,
       `
 config { type: "table" }
-select 1 as test
+select 1 as \${dataform.projectConfig.vars.testVar2}
 `
     );
 
@@ -61,7 +61,7 @@ select 1 as test
         "compile",
         projectDir,
         "--json",
-        "--vars=testVar1:testValue1,testVar2:testValue2"
+        "--vars=testVar1=testValue1,testVar2=testValue2"
       ])
     );
 
@@ -82,7 +82,7 @@ select 1 as test
             name: "example",
             database: "dataform-integration-tests"
           },
-          query: "\n\nselect 1 as test\n",
+          query: "\n\nselect 1 as testValue2\n",
           disabled: false,
           fileName: "definitions/example.sqlx"
         }
@@ -118,7 +118,8 @@ select 1 as test
         "--credentials",
         "test_credentials/bigquery.json",
         "--dry-run",
-        "--json"
+        "--json",
+        "--vars=testVar1=testValue1,testVar2=testValue2"
       ])
     );
 
@@ -139,7 +140,7 @@ select 1 as test
           tasks: [
             {
               statement:
-                "create or replace table `dataform-integration-tests.dataform.example` as \n\nselect 1 as test",
+                "create or replace table `dataform-integration-tests.dataform.example` as \n\nselect 1 as testValue2",
               type: "statement"
             }
           ],
@@ -151,7 +152,11 @@ select 1 as test
         defaultDatabase: "dataform-integration-tests",
         defaultSchema: "dataform",
         useRunCache: false,
-        warehouse: "bigquery"
+        warehouse: "bigquery",
+        vars: {
+          testVar1: "testValue1",
+          testVar2: "testValue2"
+        }
       },
       runConfig: {
         fullRefresh: false,

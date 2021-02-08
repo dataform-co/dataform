@@ -28,14 +28,6 @@ export async function compile(
   // Resolve the path in case it hasn't been resolved already.
   path.resolve(compileConfig.projectDir);
 
-  // Create an empty projectConfigOverride if not set.
-  compileConfig = { projectConfigOverride: {}, ...compileConfig };
-
-  compileConfig.projectConfigOverride.vars = {
-    ...compileConfig.vars,
-    ...compileConfig.projectConfigOverride.vars
-  };
-
   // Schema overrides field can be set in two places, projectConfigOverride.schemaSuffix takes precedent.
   if (compileConfig.schemaSuffixOverride) {
     compileConfig.projectConfigOverride = {
@@ -48,7 +40,7 @@ export async function compile(
     // check dataformJson is valid before we try to compile
     const dataformJson = fs.readFileSync(`${compileConfig.projectDir}/dataform.json`, "utf8");
     const projectConfig = JSON.parse(dataformJson);
-    checkDataformJsonValidity(deepmerge(projectConfig, compileConfig.projectConfigOverride));
+    checkDataformJsonValidity(deepmerge(projectConfig, compileConfig.projectConfigOverride || {}));
   } catch (e) {
     throw new ErrorWithCause(
       `Compilation failed. ProjectConfig ('dataform.json') is invalid: ${e.message}`,
