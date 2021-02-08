@@ -149,6 +149,24 @@ const jsonOutputOption: INamedOption<yargs.Options> = {
   }
 };
 
+const varsOption: INamedOption<yargs.Options> = {
+  name: "vars",
+  option: {
+    describe:
+      "Variables to inject via '--vars=someKey=someValue,a=b`, referenced by `dataform.projectConfig.vars.someValue`.",
+    type: "string",
+    default: null,
+    coerce: (rawVarsString: string) => {
+      const variables: { [key: string]: string } = {};
+      rawVarsString?.split(",").forEach(keyValueStr => {
+        const [key, value] = keyValueStr.split("=");
+        variables[key] = value;
+      });
+      return variables;
+    }
+  }
+};
+
 const getCredentialsPath = (projectDir: string, credentialsPath: string) =>
   actuallyResolve(credentialsPath || path.join(projectDir, CREDENTIALS_FILENAME));
 
@@ -328,11 +346,13 @@ export function runCli() {
             }
           },
           schemaSuffixOverrideOption,
-          jsonOutputOption
+          jsonOutputOption,
+          varsOption
         ],
         processFn: async argv => {
           const projectDir = argv["project-dir"];
           const schemaSuffixOverride = argv["schema-suffix"];
+          const vars = argv.vars;
 
           const compileAndPrint = async () => {
             if (!argv.json) {
@@ -340,7 +360,8 @@ export function runCli() {
             }
             const compiledGraph = await compile({
               projectDir,
-              schemaSuffixOverride
+              schemaSuffixOverride,
+              projectConfigOverride: { vars }
             });
             printCompiledGraph(compiledGraph, argv.json);
             if (compiledGraphHasErrors(compiledGraph)) {
@@ -415,12 +436,13 @@ export function runCli() {
         format: "test [project-dir]",
         description: "Run the dataform project's unit tests on the configured data warehouse.",
         positionalOptions: [projectDirMustExistOption],
-        options: [credentialsOption],
+        options: [credentialsOption, varsOption],
         processFn: async argv => {
           print("Compiling...\n");
           const compiledGraph = await compile({
             projectDir: argv["project-dir"],
-            schemaSuffixOverride: argv["schema-suffix"]
+            schemaSuffixOverride: argv["schema-suffix"],
+            projectConfigOverride: { vars: argv.vars }
           });
           if (compiledGraphHasErrors(compiledGraph)) {
             printCompiledGraphErrors(compiledGraph.graphErrors);
@@ -479,7 +501,8 @@ export function runCli() {
           includeDepsOption,
           schemaSuffixOverrideOption,
           credentialsOption,
-          jsonOutputOption
+          jsonOutputOption,
+          varsOption
         ],
         processFn: async argv => {
           if (!argv.json) {
@@ -487,7 +510,8 @@ export function runCli() {
           }
           const compiledGraph = await compile({
             projectDir: argv["project-dir"],
-            schemaSuffixOverride: argv["schema-suffix"]
+            schemaSuffixOverride: argv["schema-suffix"],
+            projectConfigOverride: { vars: argv.vars }
           });
           if (compiledGraphHasErrors(compiledGraph)) {
             printCompiledGraphErrors(compiledGraph.graphErrors);
