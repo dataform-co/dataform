@@ -86,19 +86,7 @@ To see the output of the compilation process as a JSON object, add the `--json` 
 dataform compile --json
 ```
 
-### Variable injection
-
-Variables can be directly passed in to code by using the `--vars` flag. For example if you have the file `vars_example.sqlx` in your project that looks like:
-
-```sql
-config {
-  "type": "table"
-}
-
-select 1 as ${dataform.projectConfig.vars.exampleVar}
-```
-
-then you can inject a variable into it using
+If your project uses [custom compilation variables](/guides/configuration#configure-custom-compilation-variables), you can pass their values using the --vars flag:
 
 ```bash
 dataform compile --vars=exampleVar=exampleValue
