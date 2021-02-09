@@ -30,7 +30,7 @@ dataform init snowflake new_project
 - or -
 dataform init sqldatawarehouse new_project
 - or, if you've cloned a pre-existing project -
-dataform install 
+dataform install
 ```
 
 ### Project structure
@@ -84,6 +84,24 @@ To see the output of the compilation process as a JSON object, add the `--json` 
 
 ```bash
 dataform compile --json
+```
+
+### Variable injection
+
+Variables can be directly passed in to code by using the `--vars` flag. For example if you have the file `vars_example.sqlx` in your project that looks like:
+
+```sql
+config {
+  "type": "table"
+}
+
+select 1 as ${dataform.projectConfig.vars.exampleVar}
+```
+
+then you can inject a variable into it using
+
+```bash
+dataform compile --vars=exampleVar=exampleValue
 ```
 
 ## Create a credentials file
