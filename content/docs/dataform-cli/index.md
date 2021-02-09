@@ -30,7 +30,7 @@ dataform init snowflake new_project
 - or -
 dataform init sqldatawarehouse new_project
 - or, if you've cloned a pre-existing project -
-dataform install 
+dataform install
 ```
 
 ### Project structure
@@ -84,6 +84,12 @@ To see the output of the compilation process as a JSON object, add the `--json` 
 
 ```bash
 dataform compile --json
+```
+
+If your project uses [custom compilation variables](/guides/configuration#configure-custom-compilation-variables), you can pass their values using the --vars flag:
+
+```bash
+dataform compile --vars=exampleVar=exampleValue
 ```
 
 ## Create a credentials file
