@@ -73,23 +73,6 @@ config {
 SELECT 1 AS ts
 ```
 
-## Dataform web features for Redshift
-
-### Real time query validation
-
-Dataform validates the compiled script you are editing against Redshift in real time. It will let you know if the query is valid (or won’t run) before having to run it.
-
-<video autoplay controls loop  muted  width="680" ><source src="https://assets.dataform.co/docs/compilation.mp4" type="video/mp4" ><span>Real time compilation video</span></video>
-
-## Sample Dataform project with Redshift
-
-We prepared the following sample project of a fictional ecommerce store using using Redshift.
-
-<img src="https://assets.dataform.co/docs/sample_projects/redshift_sample_project_dag.png" width="1100"  alt="Sample bigquery Dataform project DAG" />
-<figcaption>Dependency tree of the Redshift sample project</figcaption>
-
-<a href="../examples/projects/ecommerce-redshift"><button>View project page</button></a>
-
 ## Blog posts
 
 ### Import data from S3 to Redshift using Dataform
