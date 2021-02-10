@@ -1,16 +1,7 @@
 <p align="center">
   <img src="https://github.com/dataform-co/dataform/blob/master/static/images/github_bg.png">
 </p>
-<div align="center">
-  <img src="https://storage.googleapis.com/dataform-cloud-build-badges/build/status.svg" alt="Cloud build status"/>
-  <a href="https://www.npmjs.com/package/@dataform/cli"><img src="https://badge.fury.io/js/%40dataform%2Fcli.svg" alt="NPM package version" /></a>
-  <a href="https://www.npmjs.com/package/@dataform/cli"><img alt="npm" src="https://img.shields.io/npm/dm/@dataform/cli.svg" alt="Monthly downloads" /></a>
-</div>
-<div align="center">
-  <img src="https://david-dm.org/dataform-co/dataform.svg" alt="NPM dependency status" />
-  <!-- <img src="https://join.slack.com/t/dataform-users/shared_invite/zt-dark6b7k-r5~12LjYL1a17Vgma2ru2A/badge.svg" alt="Dataform Slack" /> -->
-  <img src="https://img.shields.io/github/license/dataform-co/dataform.svg" alt="License information" />
-</div>
+
 <div align="center">
   <!-- <a href="https://twitter.com/dataform"><img src="https://img.shields.io/twitter/follow/dataform.svg?style=social" alt="Follow Dataform on Twitter" /></a> -->
 </div>
