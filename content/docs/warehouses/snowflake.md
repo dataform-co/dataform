@@ -46,7 +46,7 @@ You can then override the default database in the config block of your SQLX file
 ```js
 config {
     type: "table",
-    database: “RAW_SOURCE”
+    database: "RAW_SOURCE"
 }
 
 ```
@@ -55,22 +55,6 @@ config {
 
 You can configure separate databases for development and production in your `environment.json` file. The process is described on [this page](https://docs.dataform.co/dataform-web/scheduling/environments#example-use-separate-databases-for-development-and-production-data).
 
-## Dataform web features for Snowflake
-
-### Real time query validation
-
-Dataform validates the compiled script you are editing against Snowflake in real time. It will let you know if the query is valid (or won’t run) before having to run it.
-
-<video autoplay controls loop  muted  width="680" ><source src="https://assets.dataform.co/docs/compilation.mp4" type="video/mp4" ><span>Real time compilation video</span></video>
-
-## Sample Dataform project with Snowflake
-
-We prepared the following sample project of a fictional ecommerce store using using Snowflake.
-
-<img src="https://assets.dataform.co/docs/sample_projects/snowflake_sample_project_dag.png" width="1100"  alt="Sample bigquery Dataform project DAG" />
-<figcaption>Dependency tree of the Snowflake sample project</figcaption>
-
-<a href="../examples/projects/ecommerce-snowflake"><button>View project page</button></a>
 
 ## Getting help
 
