@@ -11,7 +11,7 @@
     "@blueprintjs/select": "^3.8.0",
     "@google-cloud/bigquery": "^5.5.0",
     "@google-cloud/storage": "^5.7.0",
-    "@mapbox/rehype-prism": "^0.4.0",
+    "@mapbox/rehype-prism": "^0.6.0",
     "@nivo/bar": "^0.61.1",
     "@nivo/line": "^0.61.1",
     "@octokit/rest": "^16.35.0",
