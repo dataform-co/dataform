@@ -106,6 +106,7 @@ export class BigQueryAdapter extends Adapter implements IAdapter {
     uniqueKey: string[],
     updatePartitionFilter: string
   ) {
+    const backtickedColumns = columns.map(column => `\`${column}\``);
     return `
 merge ${this.resolveTarget(target)} T
 using (${query}
@@ -113,8 +114,8 @@ using (${query}
 on ${uniqueKey.map(uniqueKeyCol => `T.${uniqueKeyCol} = S.${uniqueKeyCol}`).join(` and `)}
   ${updatePartitionFilter ? `and T.${updatePartitionFilter}` : ""}
 when matched then
-  update set ${columns.map(column => `${column} = S.${column}`).join(",")}
+  update set ${columns.map(column => `\`${column}\` = S.${column}`).join(",")}
 when not matched then
-  insert (${columns.join(",")}) values (${columns.join(",")})`;
+  insert (${backtickedColumns.join(",")}) values (${backtickedColumns.join(",")})`;
   }
 }
