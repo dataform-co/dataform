@@ -160,14 +160,14 @@ container_pull(
     repository = "library/postgres",
 )
 
-# Presto
+# Trino (used to be Presto)
 
 container_pull(
-    name = "presto",
-    # This digest is for tag "340".
-    digest = "sha256:21f9f92ddb232848ef56ef09a83d04f3d1c9a03539c20b0cb786e346797988bb",
+    name = "trino",
+    # This digest is for tag "351".
+    digest = "sha256:e97be2f4193b30cad176307665a7e334988059461f677d542ad8a62f68511133",
     registry = "index.docker.io",
-    repository = "prestosql/presto",
+    repository = "trinodb/trino",
 )
 
 # Fetch Redis source (binaries are not distributed).

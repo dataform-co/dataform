@@ -11,6 +11,8 @@ ts_test_suite(
             "sqldatawarehouse.spec.ts",
             # Redshift integrations tests are currently disabled while we reorganize cluster structure.
             "redshift.spec.ts",
+            # Presto tests are disabled until our adapter is update to Trinio.
+            "presto.spec.ts"
         ],
     ),
     data = [

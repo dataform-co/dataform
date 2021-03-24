@@ -48,6 +48,7 @@ export class PrestoFixture {
           await dbadapter.execute("select 1");
           return true;
         } catch (e) {
+          console.log("ERROR:", e);
           return false;
         }
       }, 500);
