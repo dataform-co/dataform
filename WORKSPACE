@@ -160,7 +160,7 @@ container_pull(
     repository = "library/postgres",
 )
 
-# Trino (used to be Presto)
+# Trino (used to be called Presto)
 
 container_pull(
     name = "trino",
