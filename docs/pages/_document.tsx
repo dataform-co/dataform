@@ -18,7 +18,7 @@ export default class DefaultDocument extends Document {
             href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.min.css"
           />
           <link rel="stylesheet" href="/global.css" />
-          <link rel="shortcut icon" href={"/static/images/favicon.ico"} type="image/png" />
+          <link rel="shortcut icon" href="/static/images/favicon.ico" type="image/png" />
         </Head>
         <body className="light">
           <Main />
