@@ -148,5 +148,11 @@
     "webpack-cli": "^3.3.10",
     "webpack-dev-server": "^3.9.0",
     "yargs": "^16.0.3"
+  },
+  "resolutions": {
+    "**/object-path": "^0.11.5",
+    "**/http-proxy": "^1.18.1",
+    "**/serialize-javascript": "^3.1.0",
+    "webpack/**/acorn": "^5.7.4"
   }
 }
