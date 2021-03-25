@@ -4,7 +4,7 @@ load("@io_bazel_rules_docker//container:container.bzl", "container_image", "cont
 
 container_image(
     name = "presto_image",
-    base = "@presto//image",
+    base = "@trino//image",
     layers = [
         ":presto_config_files",
         ":presto_database_properties",
@@ -13,7 +13,7 @@ container_image(
 
 container_layer(
     name = "presto_config_files",
-    directory = "/etc/presto/",
+    directory = "/etc/trino/",
     files = [
         "catalog/memory.properties",
         "config.properties",
