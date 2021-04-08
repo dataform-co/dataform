@@ -11,6 +11,6 @@ def _gcloud_sdk_impl(ctx):
 gcloud_sdk = repository_rule(
     implementation = _gcloud_sdk_impl,
     attrs = {
-        "version": attr.string(default = "293.0.0"),
+        "version": attr.string(default = "318.0.0"),
     },
 )
