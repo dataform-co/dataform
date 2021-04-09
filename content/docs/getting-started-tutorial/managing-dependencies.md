@@ -3,17 +3,16 @@ title: Managing dependencies
 subtitle: Learn how to use the ref function in Dataform and how to view your project in the Dependency tree.
 priority: 2
 ---
-
-## Managing Dependencies
-
 <div className="bp3-callout bp3-icon-info-sign bp3-intent-warning" markdown="1">
 Dataform signups are closed. Please join
   <a
     target="_blank"
     rel="noopener"
     href="https://forms.gle/YBfHb6CWLD4Kmbd46"
-  >the waitlist</a> to register your interest in using Datfaorm.
+  >the waitlist</a> to register your interest in using Dataform.
 </div>
+
+## Managing Dependencies
 
 Dataform provides methods that enable you to easily reference another dataset in your project using the `ref` function.
 
