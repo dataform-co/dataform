@@ -11,7 +11,7 @@ Dataform signups are closed. Please join
     target="_blank"
     rel="noopener"
     href="https://forms.gle/YBfHb6CWLD4Kmbd46"
-  >the waitlist</a> to register your interest in using Datfaorm.
+  >the waitlist</a> to register your interest in using Dataform.
 </div>
 
 Welcome to the Dataform Getting Started Tutorial. This tutorial is for people who are new to Dataform and would like to learn how to set up a new project. We will show you how to create your own data model, how to test and document it and how to configure schedules. A working knowledge of SQL will be helpful for this tutorial.
