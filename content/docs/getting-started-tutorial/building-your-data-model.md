@@ -10,7 +10,7 @@ Dataform signups are closed. Please join
     target="_blank"
     rel="noopener"
     href="https://forms.gle/YBfHb6CWLD4Kmbd46"
-  >the waitlist</a> to register your interest in using Datfaorm.
+  >the waitlist</a> to register your interest in using Dataform.
 </div>
 
 Now you have your BigQuery project and warehouse credentials, you’re going to set up your Dataform project using Dataform Web. In this step you'll create a project, connect your warehouse and build out your first dataset.
