@@ -12,7 +12,7 @@ Dataform signups are closed. Please join
     target="_blank"
     rel="noopener"
     href="https://forms.gle/YBfHb6CWLD4Kmbd46"
-  >the waitlist</a> to register your interest in using Datfaorm.
+  >the waitlist</a> to register your interest in using Dataform.
 </div>
 
 Dataform uses the Git version control system to maintain a record of each change made to project files and to manage file versions. Each Dataform project has an associated Git repository.
