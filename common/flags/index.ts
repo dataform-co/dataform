@@ -102,7 +102,7 @@ abstract class AbstractFlag<T> implements IFlag<T> {
   protected abstract parse(stringValue: string): T;
 }
 
-class SingleValueFlag<T> extends AbstractFlag<T> {
+export class SingleValueFlag<T> extends AbstractFlag<T> {
   constructor(name: string, defaultValue: T, private readonly parser: (singleValue: string) => T) {
     super(name, defaultValue);
   }
@@ -112,7 +112,7 @@ class SingleValueFlag<T> extends AbstractFlag<T> {
   }
 }
 
-class SetFlag<T> extends AbstractFlag<Set<T>> {
+export class SetFlag<T> extends AbstractFlag<Set<T>> {
   constructor(
     name: string,
     defaultValue: Set<T>,
