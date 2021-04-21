@@ -23,12 +23,17 @@ config {
 }
 ```
 
-Alternatively you can use the JavaScript API:
+Alternatively you can use the JavaScript API and add multiple declarations in a single file:
 
 ```js
 declare({
   schema: "input",
-  name: "data",
+  name: "foo",
+});
+
+declare({
+  schema: "input",
+  name: "bar",
 });
 ```
 
