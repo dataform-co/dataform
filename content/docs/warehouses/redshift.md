@@ -1,10 +1,10 @@
 ---
 title: Amazon Redshift
-subtitle: Authentification, configuration options, and content for Redshift.
+subtitle: Authentication, configuration options, and content for Redshift.
 priority: 2
 ---
 
-## Authentification
+## Authentication
 
 Redshift projects require the following configuration settings:
 
