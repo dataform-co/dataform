@@ -1,9 +1,9 @@
 ---
 title: Postgres
-subtitle: Authentification and configuration options for Postgres.
+subtitle: Authentication and configuration options for Postgres.
 ---
 
-## Authentification
+## Authentication
 
 Postgres projects require the following configuration settings:
 
