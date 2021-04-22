@@ -33,7 +33,15 @@ For this this tutorial we’ll use BigQuery. Anyone with a Google Account can us
 
 ## Generate warehouse credentials
 
-In order for Dataform to connect to your BigQuery warehouse you’ll need to generate some credentials. Dataform will connect to BigQuery using a service account. You’ll need to create a service account from your Google Cloud Console and assign it permissions to access BigQuery.
+In order for Dataform to connect to your BigQuery warehouse you’ll need to use Application Default Credentials or a service account and JSON key.
+
+### Using Application Default Credentials
+
+If running on GCE or GKE this will be automatically available. If not, then use `[gcloud auth application-default](https://cloud.google.com/sdk/gcloud/reference/auth/application-default)` to authenticate.
+
+### Create a service account with JSON key
+
+You’ll need to create a service account from your Google Cloud Console and assign it permissions to access BigQuery.
 
 1. To create a new service account in Google Cloud Console you need to:
 

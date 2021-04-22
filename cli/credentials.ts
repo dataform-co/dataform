@@ -19,10 +19,9 @@ export function getBigQueryCredentials(): dataform.IBigQuery {
     "JSON Key"
   ]);
   if (isApplicationDefaultOrJSONKeyIndex === 0)  {
-    const projectId = question("Enter your billing project:");
+    const projectId = question("Enter your billing project ID:");
     return {
       projectId: projectId,
-      credentials: "",
       location
     }
   }
