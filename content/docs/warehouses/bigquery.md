@@ -1,10 +1,10 @@
 ---
 title: Google BigQuery
-subtitle: Authentification, configuration options, and content for BigQuery.
+subtitle: Authentication, configuration options, and content for BigQuery.
 priority: 1
 ---
 
-## Authentification
+## Authentication
 
 Dataform will connect to BigQuery using a service account. You’ll need to create a service account from your Google Cloud Console and assign it permissions to access BigQuery.
 
