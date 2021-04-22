@@ -930,7 +930,7 @@ select \${foo}
       );
     });
 
-    [{}, { wrongProperty: "" }, { projectId: "" }].forEach(bigquery => {
+    [{}, { wrongProperty: ""}].forEach(bigquery => {
       test("bigquery_properties_check", () => {
         expect(() =>
           credentials.coerce("bigquery", JSON.parse(JSON.stringify(bigquery)))

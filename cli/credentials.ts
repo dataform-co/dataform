@@ -5,6 +5,26 @@ import { actuallyResolve } from "df/cli/util";
 import { dataform } from "df/protos/ts";
 
 export function getBigQueryCredentials(): dataform.IBigQuery {
+  const locationIndex = selectionQuestion("Enter the location of your datasets:", [
+    "US (default)",
+    "EU",
+    "other"
+  ]);
+  let location = locationIndex === 0 ? "US" : "EU";
+  if (locationIndex === 2) {
+    location = question("Enter the location's region name (e.g. 'asia-south1'):");
+  }
+  const isApplicationDefaultOrJSONKeyIndex = selectionQuestion("Do you wish to use Application Default Credentials or JSON Key:", [
+    "ADC (default)",
+    "JSON Key"
+  ]);
+  if (isApplicationDefaultOrJSONKeyIndex === 0)  {
+    const projectId = question("Enter your billing project ID:");
+    return {
+      projectId,
+      location
+    }
+  }
   const cloudCredentialsPath = actuallyResolve(
     question(
       "Please follow the instructions at https://docs.dataform.co/dataform-cli#create-a-credentials-file/\n" +
@@ -17,15 +37,6 @@ export function getBigQueryCredentials(): dataform.IBigQuery {
     throw new Error(`Google Cloud private key file "${cloudCredentialsPath}" does not exist!`);
   }
   const cloudCredentials = JSON.parse(fs.readFileSync(cloudCredentialsPath, "utf8"));
-  const locationIndex = selectionQuestion("Enter the location of your datasets:", [
-    "US (default)",
-    "EU",
-    "other"
-  ]);
-  let location = locationIndex === 0 ? "US" : "EU";
-  if (locationIndex === 2) {
-    location = question("Enter the location's region name (e.g. 'asia-south1'):");
-  }
   return {
     projectId: cloudCredentials.project_id,
     credentials: fs.readFileSync(cloudCredentialsPath, "utf8"),
