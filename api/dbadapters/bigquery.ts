@@ -316,9 +316,10 @@ export class BigQueryDbAdapter implements IDbAdapter {
         projectId,
         new BigQuery({
           projectId,
-          credentials: JSON.parse(this.bigQueryCredentials.credentials),
           scopes: EXTRA_GOOGLE_SCOPES,
-          location: this.bigQueryCredentials.location
+          location: this.bigQueryCredentials.location,
+          credentials: this.bigQueryCredentials.credentials &&
+                       JSON.parse(this.bigQueryCredentials.credentials)
         })
       );
     }

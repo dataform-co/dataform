@@ -6,10 +6,18 @@ priority: 1
 
 ## Authentication
 
-Dataform will connect to BigQuery using a service account. You’ll need to create a service account from your Google Cloud Console and assign it permissions to access BigQuery.
+Dataform will connect to BigQuery using Application Default Credentials or using a service account.
+
+### Application Default Credentials
+
+If using Application Default Credentials ensure that the service account or user has `BigQuery Admin` role or equivalent. (Dataform requires access to create queries and list tables.) Read <a target="_blank" rel="noopener" href="https://cloud.google.com/iam/docs/granting-roles-to-service-accounts#granting_access_to_a_service_account_for_a_resource">this</a> if you need help.
+
+### Service Account
+
+You’ll need to create a service account from your Google Cloud Console and assign it permissions to access BigQuery.
 
 1. Follow <a target="_blank" rel="noopener" href="https://cloud.google.com/iam/docs/creating-managing-service-accounts#creating_a_service_account">these instructions</a> to create a new service account in Google Cloud Console.
-2. Grant the new account the `BigQuery Admin` role. (Admin access is required by Dataform so that it can create queries and list tables.) Read
+2. Grant the new account the `BigQuery Admin` role. (Admin access is required by Dataform so that it can create datasets and list tables.) Read
    <a target="_blank" rel="noopener" href="https://cloud.google.com/iam/docs/granting-roles-to-service-accounts#granting_access_to_a_service_account_for_a_resource">this</a> if you need help.
 3. Create a key for your new service account (in JSON format). You will upload this file to Dataform. Read
    <a target="_blank" rel="noopener" href="https://cloud.google.com/iam/docs/creating-managing-service-account-keys#creating_service_account_keys">this</a> if you need help.

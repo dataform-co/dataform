@@ -50,8 +50,7 @@ export function supportsCancel(warehouseType: WarehouseType) {
 }
 
 const requiredBigQueryWarehouseProps: Array<keyof dataform.IBigQuery> = [
-  "projectId",
-  "credentials"
+  "projectId"
 ];
 const requiredJdbcWarehouseProps: Array<keyof dataform.IJDBC> = [
   "host",
