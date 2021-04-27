@@ -8,7 +8,7 @@ priority: 0
 
 Dataform uses the Git version control system to maintain a record of each change made to project files and to manage file versions. Each Dataform project has an associated Git repository.
 
-By default, Dataform will manage your project's Git repository for you. However, projects can be configured to use GitHub instead by clicking the `Migrate project to GitHub` button in Settings.
+By default, Dataform will manage your project's Git repository for you. However, projects can be configured to use GitHub instead by clicking the `Migrate project to GitHub` button, available in the navigation menu -> Project settings.
 
 <div className="bp3-callout bp3-icon-info-sign bp3-intent-primary" markdown="1">
   Version control is tightly integrated into Dataform Web and has consequences on how your data
