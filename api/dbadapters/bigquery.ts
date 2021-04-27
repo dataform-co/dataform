@@ -59,6 +59,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
       byteLimit?: number;
       bigquery?: {
         labels?: { [label: string]: string };
+        location?: string;
       };
     } = { interactive: false, rowLimit: 1000, byteLimit: 1024 * 1024 }
   ): Promise<IExecutionResult> {
@@ -69,14 +70,21 @@ export class BigQueryDbAdapter implements IDbAdapter {
       .addSingleTask({
         generator: () =>
           options?.interactive
-            ? this.runQuery(statement, options?.params, options?.rowLimit, options?.byteLimit)
+            ? this.runQuery(
+                statement,
+                options?.params,
+                options?.rowLimit,
+                options?.byteLimit,
+                options.bigquery?.location
+              )
             : this.createQueryJob(
                 statement,
                 options?.params,
                 options?.rowLimit,
                 options?.byteLimit,
                 options?.onCancel,
-                options?.bigquery?.labels
+                options?.bigquery?.labels,
+                options.bigquery?.location
               )
       })
       .promise();
@@ -238,35 +246,10 @@ export class BigQueryDbAdapter implements IDbAdapter {
   }
 
   public async createSchema(database: string, schema: string): Promise<void> {
-    const location = this.bigQueryCredentials.location || "US";
-    const client = this.getClient(database);
-
-    let metadata;
-    try {
-      const data = await client.dataset(schema).getMetadata();
-      metadata = data[0];
-    } catch (e) {
-      // If metadata call fails, it probably doesn't exist. So try to create it.
-      await client.createDataset(schema, { location });
-      return;
-    }
-
-    if (metadata.location.toUpperCase() !== location.toUpperCase()) {
-      throw new Error(
-        `Cannot create dataset "${schema}" in location "${location}". It already exists in location "${metadata.location}". Change your default dataset location or delete the existing dataset.`
-      );
-    }
-  }
-
-  public async dropSchema(database: string, schema: string): Promise<void> {
-    const client = this.getClient(database);
-    try {
-      await client.dataset(schema).getMetadata();
-    } catch (e) {
-      // If metadata call fails, it probably doesn't exist, so don't do anything.
-      return;
-    }
-    await client.dataset(schema).delete({ force: true });
+    await this.execute(
+      `create schema if not exists \`${database || this.bigQueryCredentials.projectId}.${schema}\``,
+      { bigquery: { location: this.bigQueryCredentials.location || "US" } }
+    );
   }
 
   public async close() {
@@ -318,8 +301,8 @@ export class BigQueryDbAdapter implements IDbAdapter {
           projectId,
           scopes: EXTRA_GOOGLE_SCOPES,
           location: this.bigQueryCredentials.location,
-          credentials: this.bigQueryCredentials.credentials &&
-                       JSON.parse(this.bigQueryCredentials.credentials)
+          credentials:
+            this.bigQueryCredentials.credentials && JSON.parse(this.bigQueryCredentials.credentials)
         })
       );
     }
@@ -330,7 +313,8 @@ export class BigQueryDbAdapter implements IDbAdapter {
     query: string,
     params?: { [name: string]: any },
     rowLimit?: number,
-    byteLimit?: number
+    byteLimit?: number,
+    location?: string
   ) {
     const results = await new Promise<any[]>((resolve, reject) => {
       const allRows = new LimitedResultSet({
@@ -339,7 +323,8 @@ export class BigQueryDbAdapter implements IDbAdapter {
       });
       const stream = this.getClient().createQueryStream({
         query,
-        params
+        params,
+        location
       });
       stream
         .on("error", e => reject(coerceAsError(e)))
@@ -361,7 +346,8 @@ export class BigQueryDbAdapter implements IDbAdapter {
     rowLimit?: number,
     byteLimit?: number,
     onCancel?: OnCancel,
-    labels?: { [label: string]: string }
+    labels?: { [label: string]: string },
+    location?: string
   ) {
     let isCancelled = false;
     onCancel?.(() => (isCancelled = true));
@@ -374,7 +360,8 @@ export class BigQueryDbAdapter implements IDbAdapter {
             jobPrefix: "dataform-",
             query,
             params,
-            labels
+            labels,
+            location
           });
           const resultStream = job[0].getQueryResultsStream();
           return new Promise<IExecutionResult>((resolve, reject) => {
