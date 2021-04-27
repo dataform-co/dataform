@@ -31,9 +31,8 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
       await cleanWarehouse(compiledGraph, dbadapter);
 
       // Drop schemas to make sure schema creation works.
-      await dbadapter.dropSchema(
-        "dataform-integration-tests",
-        "df_integration_test_eu_project_e2e"
+      await dbadapter.execute(
+        "drop schema if exists `dataform-integration-tests.df_integration_test_eu_project_e2e` cascade"
       );
 
       // Run the project.
