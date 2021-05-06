@@ -89,7 +89,7 @@ dataform compile --json
 If your project uses [custom compilation variables](/guides/configuration#configure-custom-compilation-variables), you can pass their values using the --vars flag:
 
 ```bash
-dataform compile --vars=exampleVar=exampleValue
+dataform compile --vars=exampleVar=exampleValue,foo=bar
 ```
 
 ## Create a credentials file
