@@ -9,7 +9,7 @@
     "@blueprintjs/core": "^3.22.3",
     "@blueprintjs/icons": "^3.13.0",
     "@blueprintjs/select": "^3.8.0",
-    "@google-cloud/bigquery": "^5.5.0",
+    "@google-cloud/bigquery": "^5.6.0",
     "@google-cloud/storage": "^5.8.2",
     "@mapbox/rehype-prism": "^0.6.0",
     "@nivo/bar": "^0.61.1",
@@ -132,7 +132,7 @@
     "tslint-config-security": "^1.16.0",
     "tslint-react": "^3.6.0",
     "typed-css-modules": "^0.6.4",
-    "typedoc": "^0.17.0",
+    "typedoc": "^0.20.36",
     "typescript": "^3.8.3",
     "uglify-es": "^3.3.9",
     "uglify-js": "^3.4.9",
@@ -146,13 +146,14 @@
     "vscode-languageserver-textdocument": "^1.0.1",
     "webpack": "4.20.2",
     "webpack-cli": "^3.3.10",
-    "webpack-dev-server": "^3.9.0",
+    "webpack-dev-server": "^3.11.2",
     "yargs": "^16.0.3"
   },
   "resolutions": {
     "**/object-path": "^0.11.5",
     "**/http-proxy": "^1.18.1",
     "**/serialize-javascript": "^3.1.0",
-    "webpack/**/acorn": "^5.7.4"
+    "webpack/**/acorn": "^5.7.4",
+    "**/lodash": "^4.17.21"
   }
 }
