@@ -82,7 +82,7 @@
     "js-beautify": "^1.10.2",
     "jsdoc": "^3.6.6",
     "json-stable-stringify": "^1.0.1",
-    "lodash": "^4.17.19",
+    "lodash": "^4.17.21",
     "minimist": "^1.2.3",
     "moo": "^0.5.0",
     "mssql": "^7.0.0-beta.3",
