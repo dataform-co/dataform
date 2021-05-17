@@ -443,8 +443,8 @@ suite("@dataform/api", () => {
         cleanSql(executionGraph.actions.filter(n => n.name === "incremental")[0].tasks[0].statement)
       ).equals(
         cleanSql(
-          `insert into \`deeb.schema.incremental\` (existing_field)
-           select existing_field from (
+          `insert into \`deeb.schema.incremental\` (\`existing_field\`)
+           select \`existing_field\` from (
              select * from (select 1 as test) as subquery
              where true
            ) as insertions`
@@ -930,7 +930,7 @@ select \${foo}
       );
     });
 
-    [{}, { wrongProperty: ""}].forEach(bigquery => {
+    [{}, { wrongProperty: "" }].forEach(bigquery => {
       test("bigquery_properties_check", () => {
         expect(() =>
           credentials.coerce("bigquery", JSON.parse(JSON.stringify(bigquery)))

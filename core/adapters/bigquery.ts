@@ -45,7 +45,7 @@ export class BigQueryAdapter extends Adapter implements IAdapter {
                 )
               : this.insertInto(
                   table.target,
-                  tableMetadata?.fields.map(f => f.name),
+                  tableMetadata?.fields.map(f => f.name).map(column => `\`${column}\``),
                   this.where(table.incrementalQuery || table.query, table.where)
                 )
           )
