@@ -66,6 +66,10 @@ export class BigQueryDbAdapter implements IDbAdapter {
     if (options?.interactive && options?.bigquery?.labels) {
       throw new Error("BigQuery job labels may not be set for interactive queries.");
     }
+
+    if (!statement) {
+      throw new Error("Query string cannot be empty");
+    }
     return this.pool
       .addSingleTask({
         generator: () =>
