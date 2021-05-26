@@ -190,12 +190,13 @@ const Comment = (props: ITypedocComment) => (
 const Markdown = (props: { content: string }) => (
   <>
     {
-      remark()
-        .use(remarkRehype, { allowDangerousHTML: true })
+      (remark()
+        .use(remarkRehype, {allowDangerousHtml: true})
         .use(rehypePrism)
         .use(rehypeRaw)
         .use(rehypeReact, { createElement: React.createElement })
-        .processSync(props.content).contents
+        // their types are wrong, they omit `.result` which is the actual type we want
+        .processSync(props.content) as any).result
     }
   </>
 );
