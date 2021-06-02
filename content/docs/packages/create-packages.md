@@ -10,7 +10,7 @@ Creating your own package is relatively easy, as long as you're relatively famil
 
 ### Clone the base package repo
 
-[This repo](https://github.com/dataform-co/dataform_package_base) contains the building blocks of a package:
+[This repo](https://github.com/dataform-co/dataform-package-base) contains the building blocks of a package:
 
 - index.js
 - example.js
