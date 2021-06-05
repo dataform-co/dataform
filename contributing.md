@@ -111,7 +111,7 @@ Another way we'd love for you to contribute is by flagging any issues you find. 
 
 ### Adding Tutorials
 
-We really value the addition of [tutorials](../getting_started/examples). Documentation here is written in markdown which is then compiled to a website. You can find the raw markdown files [here](https://github.com/dataform-co/dataform/tree/master/content/docs).
+We really value the addition of [tutorials](../examples). Documentation here is written in markdown which is then compiled to a website. You can find the raw markdown files [here](https://github.com/dataform-co/dataform/tree/master/content/docs).
 
 ### Promoting Dataform
 
