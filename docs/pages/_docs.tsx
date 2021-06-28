@@ -81,17 +81,16 @@ export class Docs extends React.Component<IProps> {
         current={this.props.current}
         index={this.props.index}
       >
-        {this.props.current.content && (remark()
-          .use(remarkRehype, {allowDangerousHtml: true})
-          .use(rehypeSlug)
-          .use(rehypeRaw)
-          .use(rehypeReact, {
-            createElement: React.createElement,
-            // Only functional components allowed https://github.com/rehypejs/rehype-react/issues/25
-            components: {button: (props) => <Button {...props} />, callout: (props) => <Callout {...props} />, code: MaybeCode}
-          })
-          // their types are wrong, they omit `.result` which is the actual type we want
-          .processSync(this.props.current.content) as any).result}
+        {this.props.current.content &&
+          remark()
+            .use(remarkRehype, { allowDangerousHTML: true })
+            .use(rehypeSlug)
+            .use(rehypeRaw)
+            .use(rehypeReact, {
+              createElement: React.createElement,
+              components: { button: Button, callout: Callout, code: MaybeCode }
+            })
+            .processSync(this.props.current.content).contents}
         {this.props.children}
       </Documentation>
     );
