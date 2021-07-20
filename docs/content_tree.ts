@@ -53,11 +53,6 @@ async function getPackageTrees(): Promise<Array<Tree<IExtraAttributes>>> {
       },
       {
         owner: "dataform-co",
-        repo: "dataform-bq-audit-logs",
-        title: "BigQuery Audit Logs"
-      },
-      {
-        owner: "dataform-co",
         repo: "dataform-scd",
         title: "Slowly changing dimensions"
       },
