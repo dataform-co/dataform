@@ -1,6 +1,6 @@
 config {
   hasOutput: true,
-  description: "An example operations file which outputs a dataset.",
+  description: ["An example operations file which outputs a dataset."],
   columns: {
       TEST: "Just 1!"
   }
