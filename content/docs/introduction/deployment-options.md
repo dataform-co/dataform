@@ -14,7 +14,7 @@ The Dataform Web platform allows you to schedule runs, configure pipeline monito
 
 <a href="/dataform-web"><button>Learn about Dataform Web</button></a></div>
 
-[Learn about Dataform Web](https://docs.dataform.co/dataform-web).
+[Learn about Dataform Web](/dataform-web).
 
 ## Dataform CLI (open source)
 
