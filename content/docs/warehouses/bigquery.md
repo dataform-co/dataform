@@ -52,9 +52,37 @@ PARTITION BY DATE(ts)
 AS (SELECT CURRENT_TIMESTAMP() AS ts)
 ```
 
-#### Cluster partitions
+Tables can also be partitioned by hour,
+```js
+config {
+  type: "table",
+  bigquery: {
+    partitionBy: "DATETIME_TRUNC(<timestamp_column>, HOUR)"
+  }
+}
+```
+... month,
+```js
+config {
+  type: "table",
+  bigquery: {
+    partitionBy: "DATE_TRUNC(<date_column>, MONTH)"
+  }
+}
+```
+... or an integer value.
+```js
+config {
+  type: "table",
+  bigquery: {
+    partitionBy: "RANGE_BUCKET(<integer_column>, GENERATE_ARRAY(0, 1000000, 1000))"
+  }
+}
+```
 
-If desired, partitions can be clustered by using the `clusterBy` option, for example:
+#### Clustered tables
+
+If desired, tables can be clustered by using the `clusterBy` option, for example:
 
 ```js
 config {
