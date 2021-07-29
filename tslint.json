@@ -29,8 +29,5 @@
         ]
       }
     ]
-  },
-  "linterOptions": {
-    "exclude": ["bazel-*", "node_modules"]
   }
 }
