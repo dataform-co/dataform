@@ -3,9 +3,12 @@ import { CompilerFunction, NodeVM } from "vm2";
 
 import { dataform } from "df/protos/ts";
 import { createGenIndexConfig } from "df/sandbox/vm/gen_index_config";
-import * as legacyCompiler from "df/sandbox/vm/legacy_compiler";
-import { legacyGenIndex } from "df/sandbox/vm/legacy_gen_index";
 
+function missingValidCorePackageError() {
+  return new Error(
+    `Could not find a recent installed version of @dataform/core in the project. Ensure packages are installed and upgrade to a recent version.`
+  );
+}
 export function compile(compileConfig: dataform.ICompileConfig) {
   const vmIndexFileName = path.resolve(path.join(compileConfig.projectDir, "index.js"));
 
@@ -19,34 +22,27 @@ export function compile(compileConfig: dataform.ICompileConfig) {
     }
   });
 
-  // TODO: Once all users of @dataform/core are updated to include compiler functions, remove
-  // this exception handling code (and assume existence of genIndex / compiler functions in @dataform/core).
   const findGenIndex = (): ((base64EncodedConfig: string) => string) => {
     try {
-      return (
-        indexGeneratorVm.run(
-          'return require("@dataform/core").indexFileGenerator',
-          vmIndexFileName
-        ) || legacyGenIndex
+      return indexGeneratorVm.run(
+        'return require("@dataform/core").indexFileGenerator',
+        vmIndexFileName
       );
     } catch (e) {
-      return legacyGenIndex;
+      throw missingValidCorePackageError();
     }
   };
   const genIndex = findGenIndex();
   const findCompiler = (): CompilerFunction => {
     try {
-      return (
-        indexGeneratorVm.run('return require("@dataform/core").compiler', vmIndexFileName) ||
-        legacyCompiler.compile
-      );
+      return indexGeneratorVm.run('return require("@dataform/core").compiler', vmIndexFileName);
     } catch (e) {
-      return legacyCompiler.compile;
+      throw missingValidCorePackageError();
     }
   };
   const compiler = findCompiler();
   if (!compiler) {
-    throw new Error("Could not find compiler function.");
+    throw missingValidCorePackageError();
   }
 
   const userCodeVm = new NodeVM({
