@@ -374,17 +374,23 @@ export class Session {
   public compile(): dataform.CompiledGraph {
     const compiledGraph = dataform.CompiledGraph.create({
       projectConfig: this.config,
-      tables: this.compileGraphChunk(this.actions.filter(action => action instanceof Table)),
+      tables: this.compileGraphChunk(
+        this.actions.filter(action => action instanceof Table),
+        dataform.Table.verify
+      ),
       operations: this.compileGraphChunk(
-        this.actions.filter(action => action instanceof Operation)
+        this.actions.filter(action => action instanceof Operation),
+        dataform.Operation.verify
       ),
       assertions: this.compileGraphChunk(
-        this.actions.filter(action => action instanceof Assertion)
+        this.actions.filter(action => action instanceof Assertion),
+        dataform.Assertion.verify
       ),
       declarations: this.compileGraphChunk(
-        this.actions.filter(action => action instanceof Declaration)
+        this.actions.filter(action => action instanceof Declaration),
+        dataform.Declaration.verify
       ),
-      tests: this.compileGraphChunk(Object.values(this.tests)),
+      tests: this.compileGraphChunk(Object.values(this.tests), dataform.Test.verify),
       graphErrors: this.graphErrors,
       dataformCoreVersion,
       targets: this.actions.map(action => action.proto.target)
@@ -432,7 +438,9 @@ export class Session {
   }
 
   public compileToBase64() {
-    return encode(dataform.CompiledGraph, this.compile());
+    const compiledGraph = this.compile();
+    utils.throwIfInvalid(compiledGraph, dataform.CompiledGraph.verify);
+    return encode(dataform.CompiledGraph, compiledGraph);
   }
 
   public findActions(target: dataform.ITarget) {
@@ -466,12 +474,16 @@ export class Session {
     return !!this.config.tablePrefix ? `${this.config.tablePrefix}_` : "";
   }
 
-  private compileGraphChunk<T>(actions: Array<{ proto: IActionProto; compile(): T }>): T[] {
+  private compileGraphChunk<T>(
+    actions: Array<{ proto: IActionProto; compile(): T }>,
+    verify: (proto: T) => string
+  ): T[] {
     const compiledChunks: T[] = [];
 
     actions.forEach(action => {
       try {
         const compiledChunk = action.compile();
+        utils.throwIfInvalid(compiledChunk, verify);
         compiledChunks.push(compiledChunk);
       } catch (e) {
         this.compileError(e, action.proto.fileName, action.proto.name);
@@ -556,16 +568,22 @@ export class Session {
     });
 
     // Fix up dependencies in case those dependencies' names have changed.
+    const getUpdatedTarget = (originalTarget: dataform.ITarget) => {
+      // It's possible that we don't have a new Target for a dependency that failed to compile,
+      // so fall back to the original Target.
+      if (!newTargetByOriginalTarget.has(originalTarget)) {
+        return originalTarget;
+      }
+      return newTargetByOriginalTarget.get(originalTarget);
+    };
     actions.forEach(action => {
-      action.dependencyTargets = (action.dependencyTargets || []).map(dependencyTarget =>
-        newTargetByOriginalTarget.get(dependencyTarget)
-      );
+      action.dependencyTargets = (action.dependencyTargets || []).map(getUpdatedTarget);
       action.dependencies = (action.dependencyTargets || []).map(dependencyTarget =>
         utils.targetToName(dependencyTarget)
       );
 
       if (!!action.parentAction) {
-        action.parentAction = newTargetByOriginalTarget.get(action.parentAction);
+        action.parentAction = getUpdatedTarget(action.parentAction);
       }
     });
   }
