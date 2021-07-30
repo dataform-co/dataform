@@ -240,3 +240,10 @@ export function validateQueryString(session: Session, query: string, filename: s
     );
   }
 }
+
+export function throwIfInvalid<T>(proto: T, verify: (proto: T) => string) {
+  const verifyError = verify(proto);
+  if (verifyError) {
+    throw new Error(verifyError);
+  }
+}
