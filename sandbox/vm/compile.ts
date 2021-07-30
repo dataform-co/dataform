@@ -19,21 +19,6 @@ export function compile(compileConfig: dataform.ICompileConfig) {
     }
   });
 
-  // TODO: Once all users of @dataform/core are updated to include compiler functions, remove
-  // this exception handling code (and assume existence of genIndex / compiler functions in @dataform/core).
-  const findGenIndex = (): ((base64EncodedConfig: string) => string) => {
-    try {
-      return (
-        indexGeneratorVm.run(
-          'return require("@dataform/core").indexFileGenerator',
-          vmIndexFileName
-        ) || legacyGenIndex
-      );
-    } catch (e) {
-      return legacyGenIndex;
-    }
-  };
-  const genIndex = findGenIndex();
   const findCompiler = (): CompilerFunction => {
     try {
       return (
@@ -62,6 +47,42 @@ export function compile(compileConfig: dataform.ICompileConfig) {
     sourceExtensions: ["js", "sql", "sqlx"],
     compiler
   });
+
+  let mainExists: boolean;
+  try {
+    mainExists = !!userCodeVm.run(
+      `return require("@dataform/core").main`,
+      vmIndexFileName
+    );
+  } catch (e) {
+    // This is OK, main may not exist on older @dataform/core versions.
+  }
+
+  if (mainExists) {
+    return userCodeVm.run(
+      `return require("@dataform/core").main("${createGenIndexConfig(compileConfig)}")`,
+      vmIndexFileName
+    );
+  }
+
+  // No main exists, generate an index file and run it.
+
+  // TODO: Once all users of @dataform/core are updated to include compiler functions, remove
+  // this exception handling code (and assume existence of genIndex / compiler functions in @dataform/core).
+  const findGenIndex = (): ((base64EncodedConfig: string) => string) => {
+    try {
+      return (
+        indexGeneratorVm.run(
+          'return require("@dataform/core").indexFileGenerator',
+          vmIndexFileName
+        ) || legacyGenIndex
+      );
+    } catch (e) {
+      return legacyGenIndex;
+    }
+  };
+  const genIndex = findGenIndex();
+
   return userCodeVm.run(genIndex(createGenIndexConfig(compileConfig)), vmIndexFileName);
 }
 
