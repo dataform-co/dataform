@@ -429,7 +429,7 @@ export class Table {
   }
 
   public type(type: TableType) {
-    this.proto.type = type as string;
+    this.proto.type = type;
     return this;
   }
 
