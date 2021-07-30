@@ -513,7 +513,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
       const bqadapter = new BigQueryAdapter({ warehouse: "bigquery" }, "1.4.8");
 
       const refresh = bqadapter.publishTasks(table, { fullRefresh: true }, { fields: [] }).build();
-      const splitRefresh = refresh[0].statement.split(";\n");
+      const splitRefresh = refresh[0].statement.split("\n;\n");
       expect([...splitRefresh.slice(0, 2), ...splitRefresh.slice(-2)]).to.eql([
         ...table.preOps,
         ...table.postOps
@@ -523,7 +523,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
         .publishTasks(table, { fullRefresh: false }, { fields: [] })
         .build();
 
-      const splitIncrement = increment[0].statement.split(";\n");
+      const splitIncrement = increment[0].statement.split("\n;\n");
       expect([...splitIncrement.slice(0, 2), ...splitIncrement.slice(-2)]).to.eql([
         ...table.preOps,
         ...table.postOps
