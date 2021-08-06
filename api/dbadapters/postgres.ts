@@ -101,7 +101,7 @@ export class PostgresDbAdapter implements IDbAdapter {
     );
   }
 
-  public async evaluate(queryOrAction: QueryOrAction, projectConfig?: dataform.ProjectConfig) {
+  public async evaluate(queryOrAction: QueryOrAction) {
     const validationQueries = collectEvaluationQueries(queryOrAction, false, (query: string) =>
       !!query ? `explain ${query}` : ""
     ).map((validationQuery, index) => ({ index, validationQuery }));
@@ -254,7 +254,7 @@ export class PostgresDbAdapter implements IDbAdapter {
 
     const actualMetadata = await this.table(target);
 
-    const queries: Array<Promise<any>> = [];
+    const queries: Promise<any>[] = [];
     if (actionDescriptor.description) {
       queries.push(
         this.execute(

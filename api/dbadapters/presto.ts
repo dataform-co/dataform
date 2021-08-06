@@ -88,7 +88,7 @@ export class PrestoDbAdapter implements IDbAdapter {
     return await callback(this);
   }
 
-  public async evaluate(queryOrAction: QueryOrAction, projectConfig?: dataform.ProjectConfig) {
+  public async evaluate(queryOrAction: QueryOrAction) {
     const validationQueries = collectEvaluationQueries(queryOrAction, true, (query: string) =>
       !!query ? `explain ${query}` : ""
     ).map((validationQuery, index) => ({ index, validationQuery }));

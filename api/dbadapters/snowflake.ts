@@ -152,7 +152,7 @@ export class SnowflakeDbAdapter implements IDbAdapter {
     return await callback(this);
   }
 
-  public async evaluate(queryOrAction: QueryOrAction, projectConfig?: dataform.ProjectConfig) {
+  public async evaluate(queryOrAction: QueryOrAction) {
     const validationQueries = collectEvaluationQueries(queryOrAction, false, (query: string) =>
       !!query ? `select system$explain_plan_json($$${query}$$)` : ""
     ).map((validationQuery, index) => ({ index, validationQuery }));
@@ -309,7 +309,7 @@ where table_schema = :1
   public async setMetadata(action: dataform.IExecutionAction): Promise<void> {
     const { target, actionDescriptor, tableType } = action;
 
-    const queries: Array<Promise<any>> = [];
+    const queries: Promise<any>[] = [];
     if (actionDescriptor.description) {
       queries.push(
         this.execute(
