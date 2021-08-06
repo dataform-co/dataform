@@ -309,7 +309,7 @@ where table_schema = :1
   public async setMetadata(action: dataform.IExecutionAction): Promise<void> {
     const { target, actionDescriptor, tableType } = action;
 
-    const queries: Promise<any>[] = [];
+    const queries: Array<Promise<any>> = [];
     if (actionDescriptor.description) {
       queries.push(
         this.execute(

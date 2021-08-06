@@ -254,7 +254,7 @@ export class PostgresDbAdapter implements IDbAdapter {
 
     const actualMetadata = await this.table(target);
 
-    const queries: Promise<any>[] = [];
+    const queries: Array<Promise<any>> = [];
     if (actionDescriptor.description) {
       queries.push(
         this.execute(
