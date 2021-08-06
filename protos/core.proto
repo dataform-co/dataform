@@ -132,16 +132,14 @@ message CompileConfig {
   // Project configuration overrides (dataform.json).
   ProjectConfig project_config_override = 3;
 
-  // If supplied, only the compiled form of 'query' will be returned.
-  bool compile_single_query = 7;
-  string query = 4;
-
   // Override compilation timeout settings.
   int32 timeout_millis = 6;
 
   // Deprecated.
   string schema_suffix_override = 2;
   string return_override = 5;
+  
+  reserved 7, 4;
 }
 
 message Target {

@@ -101,7 +101,7 @@ export class PostgresDbAdapter implements IDbAdapter {
     );
   }
 
-  public async evaluate(queryOrAction: QueryOrAction, projectConfig?: dataform.ProjectConfig) {
+  public async evaluate(queryOrAction: QueryOrAction) {
     const validationQueries = collectEvaluationQueries(queryOrAction, false, (query: string) =>
       !!query ? `explain ${query}` : ""
     ).map((validationQuery, index) => ({ index, validationQuery }));

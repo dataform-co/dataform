@@ -152,7 +152,7 @@ export class SnowflakeDbAdapter implements IDbAdapter {
     return await callback(this);
   }
 
-  public async evaluate(queryOrAction: QueryOrAction, projectConfig?: dataform.ProjectConfig) {
+  public async evaluate(queryOrAction: QueryOrAction) {
     const validationQueries = collectEvaluationQueries(queryOrAction, false, (query: string) =>
       !!query ? `select system$explain_plan_json($$${query}$$)` : ""
     ).map((validationQuery, index) => ({ index, validationQuery }));
