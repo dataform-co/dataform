@@ -90,7 +90,7 @@ export class SQLDataWarehouseDBAdapter implements IDbAdapter {
     return await callback(this);
   }
 
-  public async evaluate(queryOrAction: QueryOrAction, projectConfig?: dataform.ProjectConfig) {
+  public async evaluate(queryOrAction: QueryOrAction) {
     // TODO: Using `explain` before declaring a variable is not valid in SQL Data Warehouse.
     const validationQueries = collectEvaluationQueries(queryOrAction, true, (query: string) =>
       !!query ? `explain ${query}` : ""

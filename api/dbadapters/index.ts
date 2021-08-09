@@ -35,7 +35,6 @@ export interface IDbAdapter extends IDbClient {
 
   evaluate(
     queryOrAction: QueryOrAction,
-    projectConfig?: dataform.IProjectConfig
   ): Promise<dataform.IQueryEvaluation[]>;
 
   schemas(database: string): Promise<string[]>;
