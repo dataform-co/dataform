@@ -2,7 +2,7 @@ import * as path from "path";
 import { CompilerFunction, NodeVM } from "vm2";
 
 import { dataform } from "df/protos/ts";
-import { createGenIndexConfig } from "df/sandbox/vm/gen_index_config";
+import { createGenIndexConfig, createMainConfig } from "df/sandbox/vm/create_config";
 
 function missingValidCorePackageError() {
   return new Error(
@@ -48,18 +48,15 @@ export function compile(compileConfig: dataform.ICompileConfig) {
     compiler
   });
 
-  let mainExists: boolean;
-  try {
-    mainExists = !!userCodeVm.run(`return require("@dataform/core").main`, vmIndexFileName);
-  } catch (e) {
-    // This is OK, main may not exist on older @dataform/core versions.
-  }
-
-  if (mainExists) {
-    return userCodeVm.run(
-      `return require("@dataform/core").main("${createGenIndexConfig(compileConfig)}")`,
-      vmIndexFileName
-    );
+  if (compileConfig.useMain) {
+    try {
+      return userCodeVm.run(
+        `return require("@dataform/core").main("${createMainConfig(compileConfig)}")`,
+        vmIndexFileName
+      );
+    } catch (e) {
+      throw missingValidCorePackageError();
+    }
   }
 
   // No main exists, generate an index file and run it.
