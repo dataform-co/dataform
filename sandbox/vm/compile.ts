@@ -2,7 +2,7 @@ import * as path from "path";
 import { CompilerFunction, NodeVM } from "vm2";
 
 import { dataform } from "df/protos/ts";
-import { createGenIndexConfig, createMainConfig } from "df/sandbox/vm/create_config";
+import { createGenIndexConfig, createCoreExecutionConfig } from "df/sandbox/vm/create_config";
 
 function missingValidCorePackageError() {
   return new Error(
@@ -51,7 +51,7 @@ export function compile(compileConfig: dataform.ICompileConfig) {
   if (compileConfig.useMain) {
     try {
       return userCodeVm.run(
-        `return require("@dataform/core").main("${createMainConfig(compileConfig)}")`,
+        `return require("@dataform/core").main("${createCoreExecutionConfig(compileConfig)}")`,
         vmIndexFileName
       );
     } catch (e) {
@@ -59,8 +59,7 @@ export function compile(compileConfig: dataform.ICompileConfig) {
     }
   }
 
-  // No main exists, generate an index file and run it.
-
+  // Generate an index file and run it.
   const findGenIndex = (): ((base64EncodedConfig: string) => string) => {
     try {
       return indexGeneratorVm.run(

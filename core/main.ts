@@ -6,13 +6,13 @@ import { dataform } from "df/protos/ts";
 /**
  * This is the main entry point into the user space code that should be invoked by the compilation wrapper sandbox.
  *
- * @param encodedMainConfig a base64 encoded {@see dataform.MainConfig} proto.
- * @returns a base64 encoded {@see dataform.MainResult} proto.
+ * @param encodedCoreExecutionConfig a base64 encoded {@see dataform.CoreExecutionConfig} proto.
+ * @returns a base64 encoded {@see dataform.CoreExecutionResult} proto.
  */
-export function main(encodedMainConfig: string): string {
+export function main(encodedCoreExecutionConfig: string): string {
   const globalAny = global as any;
 
-  const config = decode64(dataform.MainConfig, encodedMainConfig);
+  const config = decode64(dataform.CoreExecutionConfig, encodedCoreExecutionConfig);
 
   // Read the project config from the root of the project.
   const originalProjectConfig = require("dataform.json");
@@ -81,7 +81,7 @@ export function main(encodedMainConfig: string): string {
 
   // Return a base64 encoded proto. Returning a Uint8Array directly causes issues.
   return encode64(
-    dataform.MainResult,
-    dataform.MainResult.create({ compiledGraph: session.compile() })
+    dataform.CoreExecutionResult,
+    dataform.CoreExecutionResult.create({ compiledGraph: session.compile() })
   );
 }
