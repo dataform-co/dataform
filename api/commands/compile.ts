@@ -5,7 +5,7 @@ import { ChildProcess, fork } from "child_process";
 import deepmerge from "deepmerge";
 import { validWarehouses } from "df/api/dbadapters";
 import { coerceAsError, ErrorWithCause } from "df/common/errors/errors";
-import { decode } from "df/common/protos";
+import { decode64 } from "df/common/protos";
 import { dataform } from "df/protos/ts";
 
 // Project config properties that are required.
@@ -48,10 +48,14 @@ export async function compile(
     );
   }
 
-  return decode(
-    dataform.CompiledGraph,
-    await CompileChildProcess.forkProcess().compile(compileConfig)
-  );
+  const result = await CompileChildProcess.forkProcess().compile(compileConfig);
+
+  if (compileConfig.useMain) {
+    const decodedResult = decode64(dataform.CoreExecutionResult, result);
+    return dataform.CompiledGraph.create(decodedResult.compiledGraph);
+  }
+
+  return decode64(dataform.CompiledGraph, result);
 }
 
 export class CompileChildProcess {

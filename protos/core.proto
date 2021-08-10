@@ -129,11 +129,17 @@ message CompileConfig {
   // Required.
   string project_dir = 1;
 
+  // A list of all files in the project directory.
+  repeated string file_paths = 8;
+
   // Project configuration overrides (dataform.json).
   ProjectConfig project_config_override = 3;
 
   // Override compilation timeout settings.
   int32 timeout_millis = 6;
+
+  // Whether to use the new main function instead of gen index.
+  bool use_main = 9;
 
   // Deprecated.
   string schema_suffix_override = 2;
@@ -611,4 +617,12 @@ message PersistedTableMetadata {
   repeated TransitiveInputMetadata transitive_input_tables = 7;
   
   reserved 4, 5, 6;
+}
+
+message CoreExecutionConfig {
+  CompileConfig compile_config = 1;
+}
+
+message CoreExecutionResult {
+  CompiledGraph compiled_graph = 1;
 }
