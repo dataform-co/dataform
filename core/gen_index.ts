@@ -1,9 +1,9 @@
-import { decode } from "df/common/protos";
+import { decode64 } from "df/common/protos";
 import * as utils from "df/core/utils";
 import { dataform } from "df/protos/ts";
 
 export function genIndex(base64EncodedConfig: string): string {
-  const config = decode(dataform.GenerateIndexConfig, base64EncodedConfig);
+  const config = decode64(dataform.GenerateIndexConfig, base64EncodedConfig);
 
   const includeRequires = config.includePaths
     .map(path => {

@@ -1,7 +1,6 @@
-import { util } from "protobufjs";
 import { default as TarjanGraphConstructor, Graph as TarjanGraph } from "tarjan-graph";
 
-import { encode } from "df/common/protos";
+import { encode64 } from "df/common/protos";
 import { JSONObjectStringifier, StringifiedMap } from "df/common/strings/stringifier";
 import * as adapters from "df/core/adapters";
 import { AContextable, Assertion, AssertionContext, IAssertionConfig } from "df/core/assertion";
@@ -434,13 +433,12 @@ export class Session {
       );
     }
 
+    utils.throwIfInvalid(compiledGraph, dataform.CompiledGraph.verify);
     return compiledGraph;
   }
 
   public compileToBase64() {
-    const compiledGraph = this.compile();
-    utils.throwIfInvalid(compiledGraph, dataform.CompiledGraph.verify);
-    return encode(dataform.CompiledGraph, compiledGraph);
+    return encode64(dataform.CompiledGraph, this.compile());
   }
 
   public findActions(target: dataform.ITarget) {

@@ -2,7 +2,7 @@ import * as path from "path";
 import { CompilerFunction, NodeVM } from "vm2";
 
 import { dataform } from "df/protos/ts";
-import { createGenIndexConfig } from "df/sandbox/vm/gen_index_config";
+import { createCoreExecutionConfig, createGenIndexConfig } from "df/sandbox/vm/create_config";
 
 function missingValidCorePackageError() {
   return new Error(
@@ -22,17 +22,6 @@ export function compile(compileConfig: dataform.ICompileConfig) {
     }
   });
 
-  const findGenIndex = (): ((base64EncodedConfig: string) => string) => {
-    try {
-      return indexGeneratorVm.run(
-        'return require("@dataform/core").indexFileGenerator',
-        vmIndexFileName
-      );
-    } catch (e) {
-      throw missingValidCorePackageError();
-    }
-  };
-  const genIndex = findGenIndex();
   const findCompiler = (): CompilerFunction => {
     try {
       return indexGeneratorVm.run('return require("@dataform/core").compiler', vmIndexFileName);
@@ -58,6 +47,31 @@ export function compile(compileConfig: dataform.ICompileConfig) {
     sourceExtensions: ["js", "sql", "sqlx"],
     compiler
   });
+
+  if (compileConfig.useMain) {
+    try {
+      return userCodeVm.run(
+        `return require("@dataform/core").main("${createCoreExecutionConfig(compileConfig)}")`,
+        vmIndexFileName
+      );
+    } catch (e) {
+      throw missingValidCorePackageError();
+    }
+  }
+
+  // Generate an index file and run it.
+  const findGenIndex = (): ((base64EncodedConfig: string) => string) => {
+    try {
+      return indexGeneratorVm.run(
+        'return require("@dataform/core").indexFileGenerator',
+        vmIndexFileName
+      );
+    } catch (e) {
+      throw missingValidCorePackageError();
+    }
+  };
+  const genIndex = findGenIndex();
+
   return userCodeVm.run(genIndex(createGenIndexConfig(compileConfig)), vmIndexFileName);
 }
 

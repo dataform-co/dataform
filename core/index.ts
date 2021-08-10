@@ -7,6 +7,8 @@ import { Session } from "df/core/session";
 // Changes to these will break @dataform/api, so take care!
 export const indexFileGenerator = genIndex;
 export const compiler = compilers.compile;
+export { main } from "df/core/main";
+
 export { adapters };
 
 // Create static session object.
