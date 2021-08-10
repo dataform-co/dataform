@@ -438,8 +438,7 @@ export class Session {
   }
 
   public compileToBase64() {
-    const compiledGraph = this.compile();
-    return encode64(dataform.CompiledGraph, compiledGraph);
+    return encode64(dataform.CompiledGraph, this.compile());
   }
 
   public findActions(target: dataform.ITarget) {
