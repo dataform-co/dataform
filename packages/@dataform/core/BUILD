@@ -17,6 +17,7 @@ externals = [
     "tarjan-graph",
     "semver",
     "moo",
+    "long",
 ]
 
 pkg_json(

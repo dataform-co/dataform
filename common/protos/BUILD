@@ -10,7 +10,6 @@ ts_library(
     deps = [
         "//:modules-fix",
         "//common/strings",
-        "@npm//@types/node",
         "@npm//protobufjs",
     ],
 )

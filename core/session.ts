@@ -66,7 +66,7 @@ export class Session {
   public graphErrors: dataform.IGraphErrors;
 
   constructor(
-    rootDir: string,
+    rootDir?: string,
     projectConfig?: dataform.IProjectConfig,
     originalProjectConfig?: dataform.IProjectConfig
   ) {
