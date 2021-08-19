@@ -77,6 +77,7 @@ pkg_bundle(
     name = "bundle",
     args = ["--banner='#!/usr/bin/env node'"],
     entry_point = "index.ts",
+    allow_node_builtins = True,
     externals = externals,
     deps = [
         ":cli",
@@ -87,6 +88,7 @@ pkg_bundle(
     name = "worker_bundle",
     args = ["--banner='#!/usr/bin/env node'"],
     entry_point = "worker.ts",
+    allow_node_builtins = True,
     externals = externals,
     deps = [
         ":cli",

@@ -27,10 +27,13 @@ def pkg_json(name, package_name, description, version, external_deps = [], layer
         ),
     )
 
-def pkg_bundle(deps, externals, args = [], **kwargs):
+def pkg_bundle(deps, externals, allow_node_builtins = False, args = [], **kwargs):
+    base_args = ["--external={}".format(",".join(externals))]
+    if allow_node_builtins:
+        base_args.append("--environment=ALLOW_NODE_BUILTINS")
     rollup_bundle(
         config_file = "//packages:rollup.config.js",
-        args = ["--external={}".format(",".join(externals))] + args,
+        args = base_args + args,
         format = "cjs",
         sourcemap = "false",
         deps = [

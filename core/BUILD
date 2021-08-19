@@ -27,7 +27,6 @@ ts_library(
         "//common/strings",
         "//protos:ts",
         "//sqlx",
-        "@npm//@types/node",
         "@npm//@types/semver",
         "@npm//protobufjs",
         "@npm//semver",

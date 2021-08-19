@@ -1,5 +1,3 @@
-import * as path from "path";
-
 import { adapters } from "df/core";
 import { Assertion } from "df/core/assertion";
 import { Resolvable } from "df/core/common";
@@ -9,12 +7,19 @@ import { IActionProto, Session } from "df/core/session";
 import { Table } from "df/core/table";
 import { dataform } from "df/protos/ts";
 
+const pathSeperator = (() => {
+  if (typeof process !== "undefined") {
+    return process.platform === "win32" ? "\\" : "/";
+  }
+  return "/";
+})();
+
 function relativePath(fullPath: string, base: string) {
   if (base.length === 0) {
     return fullPath;
   }
   const stripped = fullPath.substr(base.length);
-  if (stripped.startsWith(path.sep)) {
+  if (stripped.startsWith(pathSeperator)) {
     return stripped.substr(1);
   } else {
     return stripped;
@@ -22,7 +27,10 @@ function relativePath(fullPath: string, base: string) {
 }
 
 export function baseFilename(fullPath: string) {
-  return path.basename(fullPath).split(".")[0];
+  return fullPath
+    .split(pathSeperator)
+    .slice(-1)[0]
+    .split(".")[0];
 }
 
 export function matchPatterns(patterns: string[], values: string[]) {
@@ -65,8 +73,8 @@ export function getCallerFile(rootDir: string) {
     lastfile = nextLastfile;
     if (
       !(
-        nextLastfile.includes(`definitions${path.sep}`) ||
-        nextLastfile.includes(`models${path.sep}`)
+        nextLastfile.includes(`definitions${pathSeperator}`) ||
+        nextLastfile.includes(`models${pathSeperator}`)
       )
     ) {
       continue;
