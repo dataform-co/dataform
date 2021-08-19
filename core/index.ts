@@ -16,7 +16,7 @@ export { adapters };
 // be the same, regardless of the @dataform/core package that is running.
 function globalSession() {
   if (!(global as any)._DF_SESSION) {
-    (global as any)._DF_SESSION = new Session(process.cwd());
+    (global as any)._DF_SESSION = new Session();
   }
   return (global as any)._DF_SESSION as Session;
 }
