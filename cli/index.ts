@@ -361,7 +361,7 @@ export function runCli() {
             const compiledGraph = await compile({
               projectDir,
               schemaSuffixOverride,
-              projectConfigOverride: { vars },
+              projectConfigOverride: { vars }
             });
             printCompiledGraph(compiledGraph, argv.json);
             if (compiledGraphHasErrors(compiledGraph)) {
