@@ -48,6 +48,7 @@ externals = [
     "mssql",
     "object-hash",
     "object-sizeof",
+    "parse-duration",
     "pg",
     "pg-query-stream",
     "presto-client",

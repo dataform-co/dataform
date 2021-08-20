@@ -92,6 +92,7 @@
     "node-cache": "^5.1.0",
     "object-hash": "^2.0.3",
     "object-sizeof": "^1.6.1",
+    "parse-duration": "^1.0.0",
     "pegjs": "^0.10.0",
     "pg": "^8.4.1",
     "pg-query-stream": "^3.3.1",
