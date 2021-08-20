@@ -479,13 +479,14 @@ export function runCli() {
         format: `test [${projectDirMustExistOption.name}]`,
         description: "Run the dataform project's unit tests on the configured data warehouse.",
         positionalOptions: [projectDirMustExistOption],
-        options: [credentialsOption, varsOption],
+        options: [credentialsOption, varsOption, timeoutOption],
         processFn: async argv => {
           print("Compiling...\n");
           const compiledGraph = await compile({
             projectDir: argv[projectDirMustExistOption.name],
             schemaSuffixOverride: argv[schemaSuffixOverrideOption.name],
-            projectConfigOverride: { vars: argv[varsOption.name] }
+            projectConfigOverride: { vars: argv[varsOption.name] },
+            timeoutMillis: argv[timeoutOption.name] || undefined
           });
           if (compiledGraphHasErrors(compiledGraph)) {
             printCompiledGraphErrors(compiledGraph.graphErrors);
@@ -545,7 +546,8 @@ export function runCli() {
           schemaSuffixOverrideOption,
           credentialsOption,
           jsonOutputOption,
-          varsOption
+          varsOption,
+          timeoutOption
         ],
         processFn: async argv => {
           if (!argv[jsonOutputOption.name]) {
@@ -554,7 +556,8 @@ export function runCli() {
           const compiledGraph = await compile({
             projectDir: argv[projectDirOption.name],
             schemaSuffixOverride: argv[schemaSuffixOverrideOption.name],
-            projectConfigOverride: { vars: argv[varsOption.name] }
+            projectConfigOverride: { vars: argv[varsOption.name] },
+            timeoutMillis: argv[timeoutOption.name] || undefined
           });
           if (compiledGraphHasErrors(compiledGraph)) {
             printCompiledGraphErrors(compiledGraph.graphErrors);
