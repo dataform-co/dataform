@@ -56,7 +56,7 @@ The core of Dataform is open source (Dataform compiler and runner) and can be us
 
 Dataform is built for data professionals who interact with a cloud data warehouse. That includes anyone who knows how to write SQL queries, including data analysts, data engineers and data scientists.
 
-Using Dataform requires an understanding of SQL. If you're unfamiliar with SQL, check out the Khan Academy [Introduction to SQL course](https://www.khanacademy.org/computing/computer-programming/sql) or [Codeacademy](https://www.codecademy.com/learn/learn-sql).
+Using Dataform requires an understanding of SQL. If you're unfamiliar with SQL, check out the Khan Academy [Introduction to SQL course](https://www.khanacademy.org/computing/computer-programming/sql), [Codeacademy](https://www.codecademy.com/learn/learn-sql) or Intellipaat's free course on [MS SQL](https://intellipaat.com/academy/course/ms-sql-training-and-certification-course/).
 
 Knowledge of Javascript can be useful to use Dataform most advanced features. Those are totally optional but can make developing faster and easier. If you are unfamiliar with Javascript, check the [re-introduction to Javascript](https://developer.mozilla.org/en-US/docs/Web/JavaScript/A_re-introduction_to_JavaScript) on MDN.
 
