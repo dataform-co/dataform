@@ -87,7 +87,7 @@
     "minimist": "^1.2.3",
     "moo": "^0.5.0",
     "mssql": "^7.1.0",
-    "next": "^9.4.0",
+    "next": "^11.1.1",
     "next-images": "^1.0.4",
     "node-cache": "^5.1.0",
     "object-hash": "^2.0.3",
