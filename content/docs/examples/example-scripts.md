@@ -35,6 +35,8 @@ select * from ${ref("source_data")}
 
 ### Run several SQL operations
 
+Note that using `---` to separate statements in pre- and post-operations ensures compatibility across all DB engines, while `;` only works with engines that support multiple statements in a single query.
+
 ```sql
 -- definitions/operations.sqlx
 
