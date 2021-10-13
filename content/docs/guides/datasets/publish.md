@@ -115,7 +115,7 @@ post_operations {
 }
 ```
 
-To specify multiple operations, separate them with `---`:
+To specify multiple operations, separate them with `---` (using `---` to separate statements in pre- and post-operations ensures compatibility across all DB engines, while `;` only works with engines that support multiple statements in a single query):
 
 ```js
 post_operations {
