@@ -27,10 +27,6 @@ export function main(encodedCoreExecutionConfig: string): string {
 
   let projectConfig = { ...originalProjectConfig };
 
-  // For backwards compatibility, in case core version is ahead of api.
-  projectConfig.schemaSuffix =
-    config.compileConfig.schemaSuffixOverride || projectConfig.schemaSuffix;
-
   // Merge in general project config overrides.
   projectConfig = {
     ...projectConfig,
