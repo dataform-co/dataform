@@ -308,13 +308,11 @@ suite("@dataform/integration/snowflake", ({ before, after }) => {
         expectedFields: [
           dataform.Field.create({
             description: "the id",
-            flagsDeprecated: ["nullable"],
             name: "USER_ID",
             primitive: dataform.Field.Primitive.NUMERIC
           }),
           dataform.Field.create({
             description: "the 'timestamp'",
-            flagsDeprecated: ["nullable"],
             name: "USER_TIMESTAMP",
             primitive: dataform.Field.Primitive.NUMERIC
           })
@@ -329,7 +327,6 @@ suite("@dataform/integration/snowflake", ({ before, after }) => {
         expectedDescription: "An example view",
         expectedFields: [
           dataform.Field.create({
-            flagsDeprecated: ["nullable"],
             name: "VAL",
             primitive: dataform.Field.Primitive.NUMERIC
           })

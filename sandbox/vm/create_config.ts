@@ -27,8 +27,6 @@ export function createGenIndexConfig(compileConfig: dataform.ICompileConfig): st
     compileConfig,
     includePaths,
     definitionPaths,
-    // For backwards compatibility with old versions of @dataform/core.
-    returnOverride: compileConfig.returnOverride
   });
 }
 

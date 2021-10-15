@@ -204,7 +204,6 @@ export class BigQueryDbAdapter implements IDbAdapter {
     }
 
     return dataform.TableMetadata.create({
-      typeDeprecated: String(metadata.type).toLowerCase(),
       type:
         metadata.type === "TABLE"
           ? dataform.TableMetadata.Type.TABLE
@@ -447,7 +446,6 @@ function cleanRows(rows: any[]) {
 function convertField(field: TableField): dataform.IField {
   const result: dataform.IField = {
     name: field.name,
-    flagsDeprecated: !!field.mode ? [field.mode] : [],
     flags: field.mode === "REPEATED" ? [dataform.Field.Flag.REPEATED] : [],
     description: field.description
   };
