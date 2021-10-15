@@ -37,7 +37,7 @@ export async function compile(
 ) {
   const compiledGraph = await dfapi.compile({
     projectDir,
-    projectConfigOverride: { ...projectConfigOverrides, schemaSuffix: schemaSuffixOverride }
+    projectConfigOverride: { schemaSuffix: schemaSuffixOverride }
   });
 
   expect(compiledGraph.graphErrors.compilationErrors).to.eql([]);
