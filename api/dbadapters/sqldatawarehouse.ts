@@ -191,7 +191,6 @@ export class SQLDataWarehouseDBAdapter implements IDbAdapter {
     // The table exists.
     return {
       target,
-      typeDeprecated: tableData.rows[0].table_type === "VIEW" ? "view" : "table",
       type:
         tableData.rows[0].table_type === "VIEW"
           ? dataform.TableMetadata.Type.VIEW
@@ -199,7 +198,6 @@ export class SQLDataWarehouseDBAdapter implements IDbAdapter {
       fields: columnData.rows.map(row => ({
         name: row.column_name,
         primitive: convertFieldType(row.data_type),
-        flagsDeprecated: row.is_nullable && row.is_nullable === "YES" ? ["nullable"] : []
       }))
     };
   }

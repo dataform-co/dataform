@@ -41,11 +41,6 @@ delete originalProjectConfig.gcloudProjectId;
 
 let projectConfig = { ...originalProjectConfig };
 
-// For backwards compatibility, in case core version is ahead of api.
-projectConfig.schemaSuffix = "${
-    config.compileConfig.schemaSuffixOverride
-  }" || projectConfig.schemaSuffix;
-
 // Merge in general project config overrides.
 projectConfig = { ...projectConfig, ...${projectOverridesJsonString}, vars: { ...projectConfig.vars, ...${projectOverridesJsonString}.vars } };
 

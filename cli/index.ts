@@ -402,8 +402,7 @@ export function runCli() {
             }
             const compiledGraph = await compile({
               projectDir,
-              schemaSuffixOverride,
-              projectConfigOverride: { vars },
+              projectConfigOverride: { vars, schemaSuffix: schemaSuffixOverride },
               timeoutMillis: argv[timeoutOption.name] || undefined
             });
             printCompiledGraph(compiledGraph, argv[jsonOutputOption.name]);
@@ -484,8 +483,10 @@ export function runCli() {
           print("Compiling...\n");
           const compiledGraph = await compile({
             projectDir: argv[projectDirMustExistOption.name],
-            schemaSuffixOverride: argv[schemaSuffixOverrideOption.name],
-            projectConfigOverride: { vars: argv[varsOption.name] },
+            projectConfigOverride: {
+              vars: argv[varsOption.name],
+              schemaSuffix: argv[schemaSuffixOverrideOption.name]
+            },
             timeoutMillis: argv[timeoutOption.name] || undefined
           });
           if (compiledGraphHasErrors(compiledGraph)) {
@@ -555,8 +556,10 @@ export function runCli() {
           }
           const compiledGraph = await compile({
             projectDir: argv[projectDirOption.name],
-            schemaSuffixOverride: argv[schemaSuffixOverrideOption.name],
-            projectConfigOverride: { vars: argv[varsOption.name] },
+            projectConfigOverride: {
+              vars: argv[varsOption.name],
+              schemaSuffix: argv[schemaSuffixOverrideOption.name]
+            },
             timeoutMillis: argv[timeoutOption.name] || undefined
           });
           if (compiledGraphHasErrors(compiledGraph)) {
