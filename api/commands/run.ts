@@ -30,15 +30,9 @@ export interface IExecutedAction {
 export function run(
   dbadapter: dbadapters.IDbAdapter,
   graph: dataform.IExecutionGraph,
-  partiallyExecutedRunResult: dataform.IRunResult = {},
-  previouslyExecutedActions: IExecutedAction[] = []
+  partiallyExecutedRunResult: dataform.IRunResult = {}
 ): Runner {
-  return new Runner(
-    dbadapter,
-    graph,
-    partiallyExecutedRunResult,
-    previouslyExecutedActions
-  ).execute();
+  return new Runner(dbadapter, graph, partiallyExecutedRunResult).execute();
 }
 
 export class Runner {
@@ -46,9 +40,6 @@ export class Runner {
     dataform.ITarget,
     dataform.ITableMetadata
   >;
-  private readonly nonTableDeclarationTargets: StringifiedSet<dataform.ITarget>;
-
-  private readonly previouslyExecutedActions: StringifiedMap<dataform.ITarget, IExecutedAction>;
 
   private readonly allActionNames: Set<string>;
   private readonly runResult: dataform.IRunResult;
@@ -68,8 +59,7 @@ export class Runner {
   constructor(
     private readonly dbadapter: dbadapters.IDbAdapter,
     private readonly graph: dataform.IExecutionGraph,
-    partiallyExecutedRunResult: dataform.IRunResult = {},
-    previouslyExecutedActions: IExecutedAction[] = []
+    partiallyExecutedRunResult: dataform.IRunResult = {}
   ) {
     this.allActionNames = new Set<string>(graph.actions.map(action => action.name));
     this.runResult = {
@@ -79,22 +69,6 @@ export class Runner {
     this.warehouseStateByTarget = new StringifiedMap(
       JSONObjectStringifier.create(),
       graph.warehouseState.tables?.map(tableMetadata => [tableMetadata.target, tableMetadata])
-    );
-    this.nonTableDeclarationTargets = new StringifiedSet<dataform.ITarget>(
-      JSONObjectStringifier.create(),
-      graph.declarationTargets.filter(
-        declarationTarget =>
-          this.warehouseStateByTarget.get(declarationTarget)?.type !==
-          dataform.TableMetadata.Type.TABLE
-      )
-    );
-
-    this.previouslyExecutedActions = new StringifiedMap(
-      JSONObjectStringifier.create(),
-      previouslyExecutedActions.map(executedAction => [
-        executedAction.executionAction.target,
-        executedAction
-      ])
     );
 
     this.executedActionNames = new Set(
