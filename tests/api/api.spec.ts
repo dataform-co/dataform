@@ -925,7 +925,7 @@ suite("@dataform/api", () => {
           dependencyTargets: []
         },
         {
-          dependencyTargets: [{ schema: "schema1", name: "action1" }],
+          dependencyTargets: [{ schema: "schema1", name: "target1" }],
           transitiveInputs: [{ schema: "schema1", name: "target1" }],
           tasks: [
             {
@@ -970,7 +970,7 @@ suite("@dataform/api", () => {
         },
         {
           target: RUN_TEST_GRAPH.actions[1].target,
-          inputs: [{ target: RUN_TEST_GRAPH.actions[0].target, metadata: {} }],
+          inputs: [{ target: RUN_TEST_GRAPH.actions[0].target, metadata: undefined }],
           tasks: [
             {
               status: dataform.TaskResult.ExecutionStatus.FAILED,
@@ -1064,7 +1064,7 @@ suite("@dataform/api", () => {
       stopWasCalled = true;
       const result = cleanTiming(await runner.result());
 
-      expect(dataform.RunResult.create(result)).to.deep.equal(
+      expect(dataform.RunResult.create(result).toJSON()).to.deep.equal(
         dataform.RunResult.create({
           status: dataform.RunResult.ExecutionStatus.RUNNING,
           actions: [
@@ -1075,14 +1075,14 @@ suite("@dataform/api", () => {
               tasks: [EXPECTED_RUN_RESULT.actions[0].tasks[0]]
             }
           ]
-        })
+        }).toJSON()
       );
 
       runner = new Runner(mockDbAdapterInstance, RUN_TEST_GRAPH, result);
 
-      expect(dataform.RunResult.create(cleanTiming(await runner.execute().result()))).to.deep.equal(
-        EXPECTED_RUN_RESULT
-      );
+      expect(
+        dataform.RunResult.create(cleanTiming(await runner.execute().result())).toJSON()
+      ).to.deep.equal(EXPECTED_RUN_RESULT.toJSON());
       verify(mockedDbAdapter.createSchema("database", "schema1")).once();
       verify(mockedDbAdapter.createSchema("database2", "schema2")).once();
     });
@@ -1174,7 +1174,7 @@ suite("@dataform/api", () => {
               EXPECTED_RUN_RESULT.actions[0],
               {
                 target: NEW_TEST_GRAPH.actions[1].target,
-                inputs: [{ target: RUN_TEST_GRAPH.actions[0].target, metadata: {} }],
+                inputs: [{ target: RUN_TEST_GRAPH.actions[0].target }],
                 tasks: [
                   {
                     status: dataform.TaskResult.ExecutionStatus.SUCCESSFUL,
