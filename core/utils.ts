@@ -194,7 +194,6 @@ export function setNameAndTarget(
     overrideSchema,
     overrideDatabase
   );
-  action.name = targetToName(action.target);
 }
 
 export function targetToName(actionTarget: dataform.ITarget) {

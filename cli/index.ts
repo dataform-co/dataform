@@ -34,6 +34,7 @@ import {
 import { actuallyResolve, assertPathExists, compiledGraphHasErrors } from "df/cli/util";
 import { createYargsCli, INamedOption } from "df/cli/yargswrapper";
 import { supportsCancel, WarehouseType } from "df/core/adapters";
+import { targetToName } from "df/core/utils";
 import { dataform } from "df/protos/ts";
 import { formatFile } from "df/sqlx/format";
 import parseDuration from "parse-duration";
@@ -629,7 +630,7 @@ export function runCli() {
 
             const actionsByName = new Map<string, dataform.IExecutionAction>();
             executionGraph.actions.forEach(action => {
-              actionsByName.set(action.name, action);
+              actionsByName.set(targetToName(action.target), action);
             });
             const alreadyPrintedActions = new Set<string>();
 
@@ -639,10 +640,15 @@ export function runCli() {
                   actionResult =>
                     actionResult.status !== dataform.ActionResult.ExecutionStatus.RUNNING
                 )
-                .filter(executedAction => !alreadyPrintedActions.has(executedAction.name))
+                .filter(
+                  executedAction => !alreadyPrintedActions.has(targetToName(executedAction.target))
+                )
                 .forEach(executedAction => {
-                  printExecutedAction(executedAction, actionsByName.get(executedAction.name));
-                  alreadyPrintedActions.add(executedAction.name);
+                  printExecutedAction(
+                    executedAction,
+                    actionsByName.get(targetToName(executedAction.target))
+                  );
+                  alreadyPrintedActions.add(targetToName(executedAction.target));
                 });
             };
 

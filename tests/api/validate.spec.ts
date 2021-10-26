@@ -17,21 +17,18 @@ suite("@dataform/api/validate", () => {
       const compiledGraph = dataform.CompiledGraph.create({
         tables: [
           {
-            name: "action1",
             target: {
               schema: "schema",
               name: "action1"
             }
           },
           {
-            name: "action2",
             target: {
               schema: "schema",
               name: "action2"
             }
           },
           {
-            name: "schema.action3",
             target: {
               schema: "schema",
               name: "action3"
@@ -69,14 +66,12 @@ suite("@dataform/api/validate", () => {
       const compiledGraph = dataform.CompiledGraph.create({
         tables: [
           {
-            name: "action1",
             target: {
               schema: "schema",
               name: "action1"
             }
           },
           {
-            name: "action2",
             target: {
               schema: "schema",
               name: "action2"
@@ -133,14 +128,12 @@ suite("@dataform/api/validate", () => {
         const compiledGraph = dataform.CompiledGraph.create({
           tables: [
             {
-              name: "action1",
               target: {
                 schema: "schema",
                 name: "action1"
               }
             },
             {
-              name: "action2",
               target: {
                 schema: "schema",
                 name: "action2"

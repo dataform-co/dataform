@@ -187,7 +187,9 @@ message GraphErrors {
 
 message CompilationError {
   string file_name = 1;
+  // TODO: Deprecate this and replace with action_target.
   string action_name = 4;
+  Target action_target = 5;
   string message = 2;
   string stack = 3;
 }
@@ -298,18 +300,14 @@ message Table {
   // Generated.
   string file_name = 18;
 
-  // Deprecated.
-  string name = 1 [deprecated = true]; // Use 'target' instead.
-  repeated string dependencies = 2 [deprecated = true]; // Use 'dependency_targets' instead.
-
-  reserved 7, 12, 16;
+  reserved 1,2, 7, 12, 16;
 }
 
 message Operation {
   Target target = 3;
   Target canonical_target = 13;
-
   repeated Target dependency_targets = 11;
+
   ActionHermeticity hermeticity = 12;
   
   bool disabled = 14;
@@ -323,11 +321,7 @@ message Operation {
   // Generated.
   string file_name = 7;
 
-  // Deprecated.
-  string name = 1; // Use 'target' instead.
-  repeated string dependencies = 2; // Use 'dependency_targets' instead.
-
-  reserved 4, 5;
+  reserved 1, 2, 4, 5;
 }
 
 message Assertion {
@@ -351,11 +345,7 @@ message Assertion {
   // Generated.
   string file_name = 7;
 
-  // Deprecated.
-  string name = 1; // Use 'target' instead.
-  repeated string dependencies = 2; // Use 'dependency_targets' instead.
-
-  reserved 4, 5, 6;
+  reserved 1, 2, 4, 5, 6;
 }
 
 enum ActionHermeticity {
@@ -365,7 +355,6 @@ enum ActionHermeticity {
 }
 
 message Declaration {
-  string name = 1;
 
   Target target = 2;
   Target canonical_target = 5;
@@ -410,21 +399,22 @@ message ExecutionTask {
 }
 
 message ExecutionAction {
-  string name = 1;
   Target target = 5;
   string file_name = 8;
 
   string type = 4;
   string table_type = 6;
 
-  // TODO: Replace this with a dependency_targets field.
-  repeated string dependencies = 3;
+  
+  repeated Target dependency_targets = 11;
   repeated Target transitive_inputs = 7;
   ActionHermeticity hermeticity = 10;
 
   repeated ExecutionTask tasks = 2;
 
   ActionDescriptor action_descriptor = 9;
+
+  reserved 1, 3;
 }
 
 message WarehouseState {
@@ -462,7 +452,7 @@ message RunResult {
 }
 
 message ActionResult {
-  string name = 1;
+  
   Target target = 5;
 
   message Input {
@@ -492,6 +482,8 @@ message ActionResult {
   Timing timing = 4;
   // Only set if use_run_cache was set to true.
   int64 post_execution_timestamp_millis = 7;
+
+  reserved 1;
 }
 
 

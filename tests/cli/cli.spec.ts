@@ -70,7 +70,6 @@ select 1 as \${dataform.projectConfig.vars.testVar2}
     expect(JSON.parse(compileResult.stdout)).deep.equals({
       tables: [
         {
-          name: "dataform-integration-tests.dataform.example",
           type: "table",
           target: {
             database: "dataform-integration-tests",
@@ -130,7 +129,6 @@ select 1 as \${dataform.projectConfig.vars.testVar2}
         {
           fileName: "definitions/example.sqlx",
           hermeticity: "HERMETIC",
-          name: "dataform-integration-tests.dataform.example",
           tableType: "table",
           target: {
             database: "dataform-integration-tests",

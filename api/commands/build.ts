@@ -148,10 +148,9 @@ export class Builder {
     action: dataform.ITable | dataform.IOperation | dataform.IAssertion
   ) {
     return dataform.ExecutionAction.create({
-      name: action.name,
       target: action.target,
       fileName: action.fileName,
-      dependencies: action.dependencies,
+      dependencyTargets: action.dependencyTargets,
       transitiveInputs: versionValidForTransitiveInputs(this.prunedGraph)
         ? Array.from(this.transitiveInputsByTarget.get(action.target))
         : [],

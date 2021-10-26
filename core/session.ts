@@ -33,10 +33,8 @@ const DEFAULT_CONFIG = {
  * @hidden
  */
 export interface IActionProto {
-  name?: string;
   fileName?: string;
   dependencyTargets?: dataform.ITarget[];
-  dependencies?: string[];
   hermeticity?: dataform.ActionHermeticity;
   target?: dataform.ITarget;
   canonicalTarget?: dataform.ITarget;
@@ -354,12 +352,13 @@ export class Session {
     return newTest;
   }
 
-  public compileError(err: Error | string, path?: string, actionName?: string) {
+  public compileError(err: Error | string, path?: string, actionTarget?: dataform.ITarget) {
     const fileName = path || utils.getCallerFile(this.rootDir) || __filename;
 
     const compileError = dataform.CompilationError.create({
       fileName,
-      actionName
+      actionName: !!actionTarget ? utils.targetToName(actionTarget): undefined,
+      actionTarget
     });
     if (typeof err === "string") {
       compileError.message = err;
@@ -484,7 +483,7 @@ export class Session {
         utils.throwIfInvalid(compiledChunk, verify);
         compiledChunks.push(compiledChunk);
       } catch (e) {
-        this.compileError(e, action.proto.fileName, action.proto.name);
+        this.compileError(e, action.proto.fileName, action.proto.target);
       }
     });
 
@@ -500,12 +499,12 @@ export class Session {
           // We couldn't find a matching target.
           this.compileError(
             new Error(
-              `Missing dependency detected: Action "${
-                action.name
-              }" depends on "${utils.stringifyResolvable(dependency)}" which does not exist`
+              `Missing dependency detected: Action "${utils.targetToName(
+                action.target
+              )}" depends on "${utils.stringifyResolvable(dependency)}" which does not exist`
             ),
             action.fileName,
-            action.name
+            action.target
           );
         } else if (possibleDeps.length === 1) {
           // We found a single matching target, and fully-qualify it if it's a normal dependency,
@@ -516,18 +515,17 @@ export class Session {
               action.dependencyTargets.push(inlineDep)
             );
           } else {
-            fullyQualifiedDependencies[protoDep.name] = protoDep.target;
+            fullyQualifiedDependencies[utils.targetToName(protoDep.target)] = protoDep.target;
           }
         } else {
           // Too many targets matched the dependency.
           this.compileError(
             new Error(utils.ambiguousActionNameMsg(dependency, possibleDeps)),
             action.fileName,
-            action.name
+            action.target
           );
         }
       }
-      action.dependencies = Object.keys(fullyQualifiedDependencies);
       action.dependencyTargets = Object.values(fullyQualifiedDependencies);
     });
   }
@@ -562,7 +560,6 @@ export class Session {
         )
       });
       action.target = newTargetByOriginalTarget.get(action.target);
-      action.name = utils.targetToName(action.target);
     });
 
     // Fix up dependencies in case those dependencies' names have changed.
@@ -576,9 +573,6 @@ export class Session {
     };
     actions.forEach(action => {
       action.dependencyTargets = (action.dependencyTargets || []).map(getUpdatedTarget);
-      action.dependencies = (action.dependencyTargets || []).map(dependencyTarget =>
-        utils.targetToName(dependencyTarget)
-      );
 
       if (!!action.parentAction) {
         action.parentAction = getUpdatedTarget(action.parentAction);
@@ -589,16 +583,17 @@ export class Session {
   private checkActionNameUniqueness(actions: IActionProto[]) {
     const allNames: string[] = [];
     actions.forEach(action => {
-      if (allNames.includes(action.name)) {
+      const name = utils.targetToName(action.target);
+      if (allNames.includes(name)) {
         this.compileError(
           new Error(
             `Duplicate action name detected. Names within a schema must be unique across tables, declarations, assertions, and operations`
           ),
           action.fileName,
-          action.name
+          action.target
         );
       }
-      allNames.push(action.name);
+      allNames.push(name);
     });
   }
 
@@ -615,7 +610,7 @@ export class Session {
             )}"`
           ),
           action.fileName,
-          action.name
+          action.target
         );
       }
       allCanonicalTargets.set(action.canonicalTarget, true);
@@ -631,7 +626,7 @@ export class Session {
             TableType
           )}`,
           table.fileName,
-          table.name
+          table.target
         );
       }
 
@@ -641,7 +636,7 @@ export class Session {
           this.compileError(
             new Error(`The 'secure' option is only valid for Snowflake views`),
             table.fileName,
-            table.name
+            table.target
           );
         }
 
@@ -649,7 +644,7 @@ export class Session {
           this.compileError(
             new Error(`The 'transient' option is only valid for Snowflake tables`),
             table.fileName,
-            table.name
+            table.target
           );
         }
 
@@ -661,7 +656,7 @@ export class Session {
           this.compileError(
             new Error(`The 'clusterBy' option is only valid for Snowflake tables`),
             table.fileName,
-            table.name
+            table.target
           );
         }
       }
@@ -674,7 +669,7 @@ export class Session {
               `Merging using unique keys for SQLDataWarehouse has not yet been implemented`
             ),
             table.fileName,
-            table.name
+            table.target
           );
         }
 
@@ -688,7 +683,7 @@ export class Session {
             this.compileError(
               new Error(`Invalid value for sqldatawarehouse distribution: ${distribution}`),
               table.fileName,
-              table.name
+              table.target
             );
           }
         }
@@ -702,10 +697,10 @@ export class Session {
         ) => {
           const value = opts[prop];
           if (!opts.hasOwnProperty(prop)) {
-            this.compileError(`Property "${prop}" is not defined`, table.fileName, table.name);
+            this.compileError(`Property "${prop}" is not defined`, table.fileName, table.target);
           } else if (value instanceof Array) {
             if (value.length === 0) {
-              this.compileError(`Property "${prop}" is not defined`, table.fileName, table.name);
+              this.compileError(`Property "${prop}" is not defined`, table.fileName, table.target);
             }
           }
         };
@@ -724,7 +719,7 @@ export class Session {
                 values
               )}`,
               table.fileName,
-              table.name
+              table.target
             );
           }
         };
@@ -751,7 +746,7 @@ export class Session {
           this.compileError(
             `partitionBy/clusterBy are not valid for BigQuery views; they are only valid for tables`,
             table.fileName,
-            table.name
+            table.target
           );
         }
       }
@@ -763,7 +758,7 @@ export class Session {
             this.compileError(
               `Unused property was detected: "${ignoredProp}". This property is not used for tables with type "${table.type}" and will be ignored`,
               table.fileName,
-              table.name
+              table.target
             );
           }
         });
@@ -777,8 +772,7 @@ export class Session {
       if (allNames.includes(testProto.name)) {
         this.compileError(
           new Error(`Duplicate test name detected: "${testProto.name}"`),
-          testProto.fileName,
-          testProto.name
+          testProto.fileName
         );
       }
       allNames.push(testProto.name);
@@ -791,24 +785,24 @@ export class Session {
     // Type exports for tarjan-graph are unfortunately wrong, so we have to do this minor hack.
     const tarjanGraph: TarjanGraph = new (TarjanGraphConstructor as any)();
     actions.forEach(action => {
-      const cleanedDependencies = (action.dependencies || []).filter(
-        dependency => !!allActionsByName[dependency]
+      const cleanedDependencies = (action.dependencyTargets || []).filter(
+        dependency => !!allActionsByName[utils.targetToName(dependency)]
       );
-      tarjanGraph.add(action.name, cleanedDependencies);
+      tarjanGraph.add(utils.targetToName(action.target), cleanedDependencies.map(target => utils.targetToName(target)));
     });
     const cycles = tarjanGraph.getCycles();
     cycles.forEach(cycle => {
       const firstActionInCycle = allActionsByName[cycle[0].name];
       const message = `Circular dependency detected in chain: [${cycle
         .map(vertex => vertex.name)
-        .join(" > ")} > ${firstActionInCycle.name}]`;
-      this.compileError(new Error(message), firstActionInCycle.fileName);
+        .join(" > ")} > ${utils.targetToName(firstActionInCycle.target)}]`;
+      this.compileError(new Error(message), firstActionInCycle.fileName, firstActionInCycle.target);
     });
   }
 
   private checkRunCachingCorrectness(actionsWithOutput: IActionProto[]) {
     actionsWithOutput.forEach(action => {
-      if (action.dependencies?.length > 0) {
+      if (action.dependencyTargets?.length > 0) {
         return;
       }
       if (
@@ -823,7 +817,7 @@ export class Session {
           "Zero-dependency actions which create datasets are required to explicitly declare 'hermetic: (true|false)' when run caching is turned on."
         ),
         action.fileName,
-        action.name
+        action.target
       );
     });
   }
@@ -839,7 +833,7 @@ function definesDataset(type: string) {
 
 function keyByName(actions: IActionProto[]) {
   const actionsByName: { [name: string]: IActionProto } = {};
-  actions.forEach(action => (actionsByName[action.name] = action));
+  actions.forEach(action => (actionsByName[utils.targetToName(action.target)] = action));
   return actionsByName;
 }
 

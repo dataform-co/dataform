@@ -4,6 +4,7 @@ import * as dfapi from "df/api";
 import * as dbadapters from "df/api/dbadapters";
 import * as adapters from "df/core/adapters";
 import { RedshiftAdapter } from "df/core/adapters/redshift";
+import { targetToName } from "df/core/utils";
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
 import { compile, getTableRows, keyBy } from "df/tests/integration/utils";
@@ -35,7 +36,7 @@ suite("@dataform/integration/postgres", { parallel: true }, ({ before, after }) 
     let executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
     let executedGraph = await dfapi.run(dbadapter, executionGraph).result();
 
-    const actionMap = keyBy(executedGraph.actions, v => v.name);
+    const actionMap = keyBy(executedGraph.actions, v => targetToName(v.target));
     expect(Object.keys(actionMap).length).eql(13);
 
     // Check the status of action execution.
@@ -60,14 +61,14 @@ suite("@dataform/integration/postgres", { parallel: true }, ({ before, after }) 
 
     // Check the data in the incremental table.
     const adapter = adapters.create(compiledGraph.projectConfig, compiledGraph.dataformCoreVersion);
-    let incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
+    let incrementalTable = keyBy(compiledGraph.tables, t => targetToName(t.target))[
       "df_integration_test_project_e2e.example_incremental"
     ];
     let incrementalRows = await getTableRows(incrementalTable.target, adapter, dbadapter);
     expect(incrementalRows.length).equals(3);
 
     // Check the data in the incremental merge table.
-    incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
+    incrementalTable = keyBy(compiledGraph.tables, t => targetToName(t.target))[
       "df_integration_test_project_e2e.example_incremental_merge"
     ];
     incrementalRows = await getTableRows(incrementalTable.target, adapter, dbadapter);
@@ -95,14 +96,14 @@ suite("@dataform/integration/postgres", { parallel: true }, ({ before, after }) 
     );
 
     // Check there are the expected number of extra rows in the incremental table.
-    incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
+    incrementalTable = keyBy(compiledGraph.tables, t => targetToName(t.target))[
       "df_integration_test_project_e2e.example_incremental"
     ];
     incrementalRows = await getTableRows(incrementalTable.target, adapter, dbadapter);
     expect(incrementalRows.length).equals(5);
 
     // Check there are the expected number of extra rows in the incremental merge table.
-    incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
+    incrementalTable = keyBy(compiledGraph.tables, t => targetToName(t.target))[
       "df_integration_test_project_e2e.example_incremental_merge"
     ];
     incrementalRows = await getTableRows(incrementalTable.target, adapter, dbadapter);
@@ -236,7 +237,7 @@ suite("@dataform/integration/postgres", { parallel: true }, ({ before, after }) 
       const executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
       await dfapi.run(dbadapter, executionGraph).result();
 
-      const view = keyBy(compiledGraph.tables, t => t.name)[
+      const view = keyBy(compiledGraph.tables, t => targetToName(t.target))[
         "df_integration_test_evaluate.example_view"
       ];
       let evaluations = await dbadapter.evaluate(dataform.Table.create(view));
@@ -245,7 +246,7 @@ suite("@dataform/integration/postgres", { parallel: true }, ({ before, after }) 
         dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
       );
 
-      const table = keyBy(compiledGraph.tables, t => t.name)[
+      const table = keyBy(compiledGraph.tables, t => targetToName(t.target))[
         "df_integration_test_evaluate.example_table"
       ];
       evaluations = await dbadapter.evaluate(dataform.Table.create(table));
@@ -254,7 +255,7 @@ suite("@dataform/integration/postgres", { parallel: true }, ({ before, after }) 
         dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
       );
 
-      const assertion = keyBy(compiledGraph.assertions, t => t.name)[
+      const assertion = keyBy(compiledGraph.assertions, t => targetToName(t.target))[
         "df_integration_test_assertions_evaluate.example_assertion_pass"
       ];
       evaluations = await dbadapter.evaluate(dataform.Assertion.create(assertion));
@@ -263,7 +264,7 @@ suite("@dataform/integration/postgres", { parallel: true }, ({ before, after }) 
         dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
       );
 
-      const incremental = keyBy(compiledGraph.tables, t => t.name)[
+      const incremental = keyBy(compiledGraph.tables, t => targetToName(t.target))[
         "df_integration_test_evaluate.example_incremental"
       ];
       evaluations = await dbadapter.evaluate(dataform.Table.create(incremental));

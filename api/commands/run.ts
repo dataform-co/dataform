@@ -10,6 +10,7 @@ import {
   StringifiedMap,
   StringifiedSet
 } from "df/common/strings/stringifier";
+import { targetToName } from "df/core/utils";
 import { dataform } from "df/protos/ts";
 
 const CANCEL_EVENT = "jobCancel";
@@ -51,13 +52,13 @@ export class Runner {
 
   private readonly previouslyExecutedActions: StringifiedMap<dataform.ITarget, IExecutedAction>;
 
-  private readonly allActionNames: Set<string>;
+  private readonly allActionTargets: StringifiedSet<dataform.ITarget>;
   private readonly runResult: dataform.IRunResult;
   private readonly changeListeners: Array<(graph: dataform.IRunResult) => void> = [];
   private readonly eEmitter: EventEmitter;
 
-  private executedActionNames: Set<string>;
-  private successfullyExecutedActionNames: Set<string>;
+  private executedActionTargets: StringifiedSet<dataform.ITarget>;
+  private successfullyExecutedActionTargets: StringifiedSet<dataform.ITarget>;
   private pendingActions: dataform.IExecutionAction[];
   private lastNotificationTimestampMillis = 0;
   private stopped = false;
@@ -72,7 +73,10 @@ export class Runner {
     partiallyExecutedRunResult: dataform.IRunResult = {},
     previouslyExecutedActions: IExecutedAction[] = []
   ) {
-    this.allActionNames = new Set<string>(graph.actions.map(action => action.name));
+    this.allActionTargets = new StringifiedSet<dataform.ITarget>(
+      JSONObjectStringifier.create(),
+      graph.actions.map(action => action.target)
+    );
     this.runResult = {
       actions: [],
       ...partiallyExecutedRunResult
@@ -98,16 +102,18 @@ export class Runner {
       ])
     );
 
-    this.executedActionNames = new Set(
+    this.executedActionTargets = new StringifiedSet(
+      JSONObjectStringifier.create(),
       this.runResult.actions
         .filter(action => action.status !== dataform.ActionResult.ExecutionStatus.RUNNING)
-        .map(action => action.name)
+        .map(action => action.target)
     );
-    this.successfullyExecutedActionNames = new Set(
-      this.runResult.actions.filter(isSuccessfulAction).map(action => action.name)
+    this.successfullyExecutedActionTargets = new StringifiedSet(
+      JSONObjectStringifier.create(),
+      this.runResult.actions.filter(isSuccessfulAction).map(action => action.target)
     );
     this.pendingActions = graph.actions.filter(
-      action => !this.executedActionNames.has(action.name)
+      action => !this.executedActionTargets.has(action.target)
     );
     this.eEmitter = new EventEmitter();
     // There could feasibly be thousands of listeners to this, 0 makes the limit infinite.
@@ -243,7 +249,6 @@ export class Runner {
       this.pendingActions = [];
       allPendingActions.forEach(pendingAction =>
         this.runResult.actions.push({
-          name: pendingAction.name,
           target: pendingAction.target,
           status: dataform.ActionResult.ExecutionStatus.SKIPPED,
           tasks: pendingAction.tasks.map(() => ({
@@ -262,19 +267,19 @@ export class Runner {
       if (
         // An action is executable if all dependencies either: do not exist in the graph, or
         // have executed successfully.
-        pendingAction.dependencies.every(
+        pendingAction.dependencyTargets.every(
           dependency =>
-            !this.allActionNames.has(dependency) ||
-            this.successfullyExecutedActionNames.has(dependency)
+            !this.allActionTargets.has(dependency) ||
+            this.successfullyExecutedActionTargets.has(dependency)
         )
       ) {
         executableActions.push(pendingAction);
       } else if (
         // An action is skippable if it is not executable and all dependencies either: do not
         // exist in the graph, or have completed execution.
-        pendingAction.dependencies.every(
+        pendingAction.dependencyTargets.every(
           dependency =>
-            !this.allActionNames.has(dependency) || this.executedActionNames.has(dependency)
+            !this.allActionTargets.has(dependency) || this.executedActionTargets.has(dependency)
         )
       ) {
         skippableActions.push(pendingAction);
@@ -289,7 +294,6 @@ export class Runner {
       (async () => {
         skippableActions.forEach(skippableAction => {
           this.runResult.actions.push({
-            name: skippableAction.name,
             target: skippableAction.target,
             status: dataform.ActionResult.ExecutionStatus.SKIPPED,
             tasks: skippableAction.tasks.map(() => ({
@@ -305,9 +309,9 @@ export class Runner {
       Promise.all(
         executableActions.map(async executableAction => {
           const actionResult = await this.executeAction(executableAction);
-          this.executedActionNames.add(executableAction.name);
+          this.executedActionTargets.add(executableAction.target);
           if (isSuccessfulAction(actionResult)) {
-            this.successfullyExecutedActionNames.add(executableAction.name);
+            this.successfullyExecutedActionTargets.add(executableAction.target);
           }
           await this.executeAllActionsReadyForExecution();
         })
@@ -317,7 +321,6 @@ export class Runner {
 
   private async executeAction(action: dataform.IExecutionAction): Promise<dataform.IActionResult> {
     let actionResult: dataform.IActionResult = {
-      name: action.name,
       target: action.target,
       tasks: [],
       inputs: action.transitiveInputs.map(target => ({
@@ -345,7 +348,8 @@ export class Runner {
     }
 
     const resumedActionResult = this.runResult.actions.find(
-      existingActionResult => existingActionResult.name === action.name
+      existingActionResult =>
+        targetToName(existingActionResult.target) === targetToName(action.target)
     );
     if (resumedActionResult) {
       actionResult = resumedActionResult;
