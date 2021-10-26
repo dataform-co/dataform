@@ -6,11 +6,10 @@ import { Flags } from "df/common/flags";
 import { retry } from "df/common/promises";
 import { deepClone, equals } from "df/common/protos";
 import {
-  JSONObjectStringifier,
   StringifiedMap,
   StringifiedSet
 } from "df/common/strings/stringifier";
-import { targetToName } from "df/core/utils";
+import { targetsAreEqual, targetStringifier } from "df/core/targets";
 import { dataform } from "df/protos/ts";
 
 const CANCEL_EVENT = "jobCancel";
@@ -74,7 +73,7 @@ export class Runner {
     previouslyExecutedActions: IExecutedAction[] = []
   ) {
     this.allActionTargets = new StringifiedSet<dataform.ITarget>(
-      JSONObjectStringifier.create(),
+      targetStringifier,
       graph.actions.map(action => action.target)
     );
     this.runResult = {
@@ -82,11 +81,11 @@ export class Runner {
       ...partiallyExecutedRunResult
     };
     this.warehouseStateByTarget = new StringifiedMap(
-      JSONObjectStringifier.create(),
+      targetStringifier,
       graph.warehouseState.tables?.map(tableMetadata => [tableMetadata.target, tableMetadata])
     );
     this.nonTableDeclarationTargets = new StringifiedSet<dataform.ITarget>(
-      JSONObjectStringifier.create(),
+      targetStringifier,
       graph.declarationTargets.filter(
         declarationTarget =>
           this.warehouseStateByTarget.get(declarationTarget)?.type !==
@@ -95,7 +94,7 @@ export class Runner {
     );
 
     this.previouslyExecutedActions = new StringifiedMap(
-      JSONObjectStringifier.create(),
+      targetStringifier,
       previouslyExecutedActions.map(executedAction => [
         executedAction.executionAction.target,
         executedAction
@@ -103,13 +102,13 @@ export class Runner {
     );
 
     this.executedActionTargets = new StringifiedSet(
-      JSONObjectStringifier.create(),
+      targetStringifier,
       this.runResult.actions
         .filter(action => action.status !== dataform.ActionResult.ExecutionStatus.RUNNING)
         .map(action => action.target)
     );
     this.successfullyExecutedActionTargets = new StringifiedSet(
-      JSONObjectStringifier.create(),
+      targetStringifier,
       this.runResult.actions.filter(isSuccessfulAction).map(action => action.target)
     );
     this.pendingActions = graph.actions.filter(
@@ -347,9 +346,8 @@ export class Runner {
       return actionResult;
     }
 
-    const resumedActionResult = this.runResult.actions.find(
-      existingActionResult =>
-        targetToName(existingActionResult.target) === targetToName(action.target)
+    const resumedActionResult = this.runResult.actions.find(existingActionResult =>
+      targetsAreEqual(existingActionResult.target, action.target)
     );
     if (resumedActionResult) {
       actionResult = resumedActionResult;
@@ -522,7 +520,7 @@ export class Runner {
     }
 
     const previousInputTimestamps = new StringifiedMap(
-      JSONObjectStringifier.create<dataform.ITarget>(),
+      targetStringifier,
       previouslyExecutedAction.actionResult.inputs
         .filter(input => !!input.metadata)
         .map(input => [input.target, input.metadata.lastModifiedTimestampMillis])

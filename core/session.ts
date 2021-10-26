@@ -1,7 +1,7 @@
 import { default as TarjanGraphConstructor, Graph as TarjanGraph } from "tarjan-graph";
 
 import { encode64 } from "df/common/protos";
-import { JSONObjectStringifier, StringifiedMap } from "df/common/strings/stringifier";
+import { StringifiedMap, StringifiedSet } from "df/common/strings/stringifier";
 import * as adapters from "df/core/adapters";
 import { AContextable, Assertion, AssertionContext, IAssertionConfig } from "df/core/assertion";
 import { Contextable, ICommonContext, Resolvable } from "df/core/common";
@@ -16,6 +16,7 @@ import {
   TableContext,
   TableType
 } from "df/core/table";
+import { targetAsReadableString, targetStringifier } from "df/core/targets";
 import * as test from "df/core/test";
 import * as utils from "df/core/utils";
 import { toResolvable } from "df/core/utils";
@@ -357,7 +358,7 @@ export class Session {
 
     const compileError = dataform.CompilationError.create({
       fileName,
-      actionName: !!actionTarget ? utils.targetToName(actionTarget): undefined,
+      actionName: !!actionTarget ? targetAsReadableString(actionTarget) : undefined,
       actionTarget
     });
     if (typeof err === "string") {
@@ -499,7 +500,7 @@ export class Session {
           // We couldn't find a matching target.
           this.compileError(
             new Error(
-              `Missing dependency detected: Action "${utils.targetToName(
+              `Missing dependency detected: Action "${targetAsReadableString(
                 action.target
               )}" depends on "${utils.stringifyResolvable(dependency)}" which does not exist`
             ),
@@ -515,7 +516,7 @@ export class Session {
               action.dependencyTargets.push(inlineDep)
             );
           } else {
-            fullyQualifiedDependencies[utils.targetToName(protoDep.target)] = protoDep.target;
+            fullyQualifiedDependencies[targetAsReadableString(protoDep.target)] = protoDep.target;
           }
         } else {
           // Too many targets matched the dependency.
@@ -538,7 +539,7 @@ export class Session {
     }
 
     const newTargetByOriginalTarget = new StringifiedMap<dataform.ITarget, dataform.ITarget>(
-      JSONObjectStringifier.create()
+      targetStringifier
     );
     declarationTargets.forEach(declarationTarget =>
       newTargetByOriginalTarget.set(declarationTarget, declarationTarget)
@@ -583,7 +584,7 @@ export class Session {
   private checkActionNameUniqueness(actions: IActionProto[]) {
     const allNames: string[] = [];
     actions.forEach(action => {
-      const name = utils.targetToName(action.target);
+      const name = targetAsReadableString(action.target);
       if (allNames.includes(name)) {
         this.compileError(
           new Error(
@@ -598,8 +599,8 @@ export class Session {
   }
 
   private checkCanonicalTargetUniqueness(actions: IActionProto[]) {
-    const allCanonicalTargets = new StringifiedMap<dataform.ITarget, boolean>(
-      JSONObjectStringifier.create()
+    const allCanonicalTargets = new StringifiedSet<dataform.ITarget>(
+      targetStringifier
     );
     actions.forEach(action => {
       if (allCanonicalTargets.has(action.canonicalTarget)) {
@@ -613,7 +614,7 @@ export class Session {
           action.target
         );
       }
-      allCanonicalTargets.set(action.canonicalTarget, true);
+      allCanonicalTargets.add(action.canonicalTarget);
     });
   }
 
@@ -780,22 +781,27 @@ export class Session {
   }
 
   private checkCircularity(actions: IActionProto[]) {
-    const allActionsByName = keyByName(actions);
+    const allActionsByStringifiedTarget = new Map<string, IActionProto>(
+      actions.map(action => [targetStringifier.stringify(action.target), action])
+    );
 
     // Type exports for tarjan-graph are unfortunately wrong, so we have to do this minor hack.
     const tarjanGraph: TarjanGraph = new (TarjanGraphConstructor as any)();
     actions.forEach(action => {
       const cleanedDependencies = (action.dependencyTargets || []).filter(
-        dependency => !!allActionsByName[utils.targetToName(dependency)]
+        dependency => !!allActionsByStringifiedTarget.get(targetStringifier.stringify(dependency))
       );
-      tarjanGraph.add(utils.targetToName(action.target), cleanedDependencies.map(target => utils.targetToName(target)));
+      tarjanGraph.add(
+        targetStringifier.stringify(action.target),
+        cleanedDependencies.map(target => targetStringifier.stringify(target))
+      );
     });
     const cycles = tarjanGraph.getCycles();
     cycles.forEach(cycle => {
-      const firstActionInCycle = allActionsByName[cycle[0].name];
+      const firstActionInCycle = allActionsByStringifiedTarget.get(cycle[0].name);
       const message = `Circular dependency detected in chain: [${cycle
         .map(vertex => vertex.name)
-        .join(" > ")} > ${utils.targetToName(firstActionInCycle.target)}]`;
+        .join(" > ")} > ${targetAsReadableString(firstActionInCycle.target)}]`;
       this.compileError(new Error(message), firstActionInCycle.fileName, firstActionInCycle.target);
     });
   }
@@ -829,12 +835,6 @@ function declaresDataset(type: string, hasOutput?: boolean) {
 
 function definesDataset(type: string) {
   return type === "view" || type === "table" || type === "inline" || type === "incremental";
-}
-
-function keyByName(actions: IActionProto[]) {
-  const actionsByName: { [name: string]: IActionProto } = {};
-  actions.forEach(action => (actionsByName[utils.targetToName(action.target)] = action));
-  return actionsByName;
 }
 
 function getCanonicalProjectConfig(originalProjectConfig: dataform.IProjectConfig) {

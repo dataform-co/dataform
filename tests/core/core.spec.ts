@@ -4,7 +4,7 @@ import * as path from "path";
 
 import * as compilers from "df/core/compilers";
 import { Session } from "df/core/session";
-import * as utils from "df/core/utils";
+import { targetAsReadableString } from "df/core/targets";
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
 import { asPlainObject } from "df/tests/utils";
@@ -81,7 +81,7 @@ suite("@dataform/core", () => {
         expect(compiledGraph.graphErrors.compilationErrors).to.eql([]);
 
         const t = compiledGraph.tables.find(
-          table => utils.targetToName(table.target) === `schema.${tableWithPrefix("example")}`
+          table => targetAsReadableString(table.target) === `schema.${tableWithPrefix("example")}`
         );
         expect(t.type).equals("table");
         expect(t.actionDescriptor).eql({
@@ -102,7 +102,7 @@ suite("@dataform/core", () => {
         expect(t.postOps).deep.equals(["post_op"]);
 
         const t2 = compiledGraph.tables.find(
-          table => utils.targetToName(table.target) === `schema2.${tableWithPrefix("example")}`
+          table => targetAsReadableString(table.target) === `schema2.${tableWithPrefix("example")}`
         );
         expect(t2.type).equals("table");
         expect(t2.actionDescriptor).eql({
@@ -110,7 +110,7 @@ suite("@dataform/core", () => {
         });
         expect(t2.preOps).deep.equals(["pre_op"]);
         expect(t2.postOps).deep.equals(["post_op"]);
-        expect(t2.dependencyTargets.map(dependency => utils.targetToName(dependency))).includes(
+        expect(t2.dependencyTargets.map(dependency => targetAsReadableString(dependency))).includes(
           `schema.${tableWithPrefix("example")}`
         );
         expect(dataform.Target.create(t2.canonicalTarget).toJSON()).deep.equals({
@@ -119,7 +119,8 @@ suite("@dataform/core", () => {
         });
 
         const t3 = compiledGraph.tables.find(
-          table => utils.targetToName(table.target) === `test_schema.${tableWithPrefix("my_table")}`
+          table =>
+            targetAsReadableString(table.target) === `test_schema.${tableWithPrefix("my_table")}`
         );
         expect((t3.target.name = `${tableWithPrefix("my_table")}`));
         expect((t3.target.schema = "test_schema"));
@@ -166,7 +167,7 @@ suite("@dataform/core", () => {
         expect(compiledGraph.graphErrors.compilationErrors).to.eql([]);
 
         const t = compiledGraph.tables.find(
-          table => utils.targetToName(table.target) === `${schemaWithSuffix("schema")}.example`
+          table => targetAsReadableString(table.target) === `${schemaWithSuffix("schema")}.example`
         );
         expect(t.type).equals("table");
         expect(t.actionDescriptor).eql({
@@ -182,7 +183,7 @@ suite("@dataform/core", () => {
         expect(t.postOps).deep.equals(["post_op"]);
 
         const t2 = compiledGraph.tables.find(
-          table => utils.targetToName(table.target) === `${schemaWithSuffix("schema2")}.example`
+          table => targetAsReadableString(table.target) === `${schemaWithSuffix("schema2")}.example`
         );
         expect(t2.type).equals("table");
         expect(t.actionDescriptor).eql({
@@ -196,13 +197,13 @@ suite("@dataform/core", () => {
         });
         expect(t2.preOps).deep.equals(["pre_op"]);
         expect(t2.postOps).deep.equals(["post_op"]);
-        expect(t2.dependencyTargets.map(dependency => utils.targetToName(dependency))).includes(
+        expect(t2.dependencyTargets.map(dependency => targetAsReadableString(dependency))).includes(
           `${schemaWithSuffix("schema")}.example`
         );
 
         const t3 = compiledGraph.tables.find(
           table =>
-            utils.targetToName(table.target) === `${schemaWithSuffix("test_schema")}.my_table`
+            targetAsReadableString(table.target) === `${schemaWithSuffix("test_schema")}.my_table`
         );
         expect((t3.target.name = "my_table"));
         expect((t3.target.schema = schemaWithSuffix("test_schema")));
@@ -592,18 +593,22 @@ suite("@dataform/core", () => {
 
       const graph = session.compile();
 
-      const tableA = graph.tables.find(table => utils.targetToName(table.target) === "schema.a");
+      const tableA = graph.tables.find(
+        table => targetAsReadableString(table.target) === "schema.a"
+      );
       expect(tableA.type).equals("table");
       expect(
-        tableA.dependencyTargets.map(dependency => utils.targetToName(dependency))
+        tableA.dependencyTargets.map(dependency => targetAsReadableString(dependency))
       ).deep.equals([]);
       expect(tableA.query).equals("select 1 as test");
 
-      const tableB = graph.tables.find(table => utils.targetToName(table.target) === "schema.b");
-      expect(tableB.type).equals("inline");
-      expect(tableB.dependencyTargets.map(dependency => utils.targetToName(dependency))).includes(
-        "schema.a"
+      const tableB = graph.tables.find(
+        table => targetAsReadableString(table.target) === "schema.b"
       );
+      expect(tableB.type).equals("inline");
+      expect(
+        tableB.dependencyTargets.map(dependency => targetAsReadableString(dependency))
+      ).includes("schema.a");
       expect(tableB.actionDescriptor).eql({
         columns: [
           dataform.ColumnDescriptor.create({
@@ -626,11 +631,13 @@ suite("@dataform/core", () => {
       expect(tableB.where).equals("test_where");
       expect(tableB.query).equals('select * from "schema"."a"');
 
-      const tableC = graph.tables.find(table => utils.targetToName(table.target) === "schema.c");
-      expect(tableC.type).equals("table");
-      expect(tableC.dependencyTargets.map(dependency => utils.targetToName(dependency))).includes(
-        "schema.a"
+      const tableC = graph.tables.find(
+        table => targetAsReadableString(table.target) === "schema.c"
       );
+      expect(tableC.type).equals("table");
+      expect(
+        tableC.dependencyTargets.map(dependency => targetAsReadableString(dependency))
+      ).includes("schema.a");
       expect(tableC.actionDescriptor).eql({
         columns: [
           dataform.ColumnDescriptor.create({
@@ -677,7 +684,9 @@ suite("@dataform/core", () => {
       const graph = session.compile();
       expect(graph.graphErrors.compilationErrors).deep.equals([]);
 
-      const schema = graph.tables.find(table => utils.targetToName(table.target) === "schema.a");
+      const schema = graph.tables.find(
+        table => targetAsReadableString(table.target) === "schema.a"
+      );
 
       const collyColumn = schema.actionDescriptor.columns.find(
         column => column.displayName === "colly display name"
@@ -716,7 +725,7 @@ suite("@dataform/core", () => {
 
           const graph = session.compile();
 
-          const tableNames = graph.tables.map(table => utils.targetToName(table.target));
+          const tableNames = graph.tables.map(table => targetAsReadableString(table.target));
 
           const baseEqlArray = [
             "schema.a",
@@ -749,28 +758,28 @@ suite("@dataform/core", () => {
 
           expect(
             graph.tables
-              .find(table => utils.targetToName(table.target) === `schema${suffix}.${prefix}b`)
-              .dependencyTargets.map(dependency => utils.targetToName(dependency))
+              .find(table => targetAsReadableString(table.target) === `schema${suffix}.${prefix}b`)
+              .dependencyTargets.map(dependency => targetAsReadableString(dependency))
           ).eql([`schema${suffix}.${prefix}a`]);
           expect(
             graph.tables
-              .find(table => utils.targetToName(table.target) === `schema${suffix}.${prefix}d`)
-              .dependencyTargets.map(dependency => utils.targetToName(dependency))
+              .find(table => targetAsReadableString(table.target) === `schema${suffix}.${prefix}d`)
+              .dependencyTargets.map(dependency => targetAsReadableString(dependency))
           ).eql([`schema${suffix}.${prefix}a`]);
           expect(
             graph.tables
-              .find(table => utils.targetToName(table.target) === `schema${suffix}.${prefix}g`)
-              .dependencyTargets.map(dependency => utils.targetToName(dependency))
+              .find(table => targetAsReadableString(table.target) === `schema${suffix}.${prefix}g`)
+              .dependencyTargets.map(dependency => targetAsReadableString(dependency))
           ).eql([`schema${suffix}.${prefix}a`]);
           expect(
             graph.tables
-              .find(table => utils.targetToName(table.target) === `schema${suffix}.${prefix}h`)
-              .dependencyTargets.map(dependency => utils.targetToName(dependency))
+              .find(table => targetAsReadableString(table.target) === `schema${suffix}.${prefix}h`)
+              .dependencyTargets.map(dependency => targetAsReadableString(dependency))
           ).eql([`schema${suffix}.${prefix}a`]);
           expect(
             graph.tables
-              .find(table => utils.targetToName(table.target) === `schema${suffix}.${prefix}f`)
-              .dependencyTargets.map(dependency => utils.targetToName(dependency))
+              .find(table => targetAsReadableString(table.target) === `schema${suffix}.${prefix}f`)
+              .dependencyTargets.map(dependency => targetAsReadableString(dependency))
           ).eql([`foo${suffix}.${prefix}e`]);
 
           const errors = graph.graphErrors.compilationErrors.map(item => item.message);
@@ -810,15 +819,15 @@ suite("@dataform/core", () => {
         .to.be.an("array")
         .to.have.lengthOf(2);
 
-      expect(utils.targetToName(graph.operations[0].target)).equals("schema.operate-1");
+      expect(targetAsReadableString(graph.operations[0].target)).equals("schema.operate-1");
       expect(
-        graph.operations[0].dependencyTargets.map(dependency => utils.targetToName(dependency))
+        graph.operations[0].dependencyTargets.map(dependency => targetAsReadableString(dependency))
       ).deep.equals([]);
       expect(graph.operations[0].queries).deep.equals(["select 1 as sample"]);
 
-      expect(utils.targetToName(graph.operations[1].target)).equals("schema.operate-2");
+      expect(targetAsReadableString(graph.operations[1].target)).equals("schema.operate-2");
       expect(
-        graph.operations[1].dependencyTargets.map(dependency => utils.targetToName(dependency))
+        graph.operations[1].dependencyTargets.map(dependency => targetAsReadableString(dependency))
       ).deep.equals(["schema.operate-1"]);
       expect(graph.operations[1].queries).deep.equals(['select * from "schema"."operate-1"']);
     });

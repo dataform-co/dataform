@@ -196,14 +196,6 @@ export function setNameAndTarget(
   );
 }
 
-export function targetToName(actionTarget: dataform.ITarget) {
-  const nameParts = [actionTarget.name, actionTarget.schema];
-  if (!!actionTarget.database) {
-    nameParts.push(actionTarget.database);
-  }
-  return nameParts.reverse().join(".");
-}
-
 /**
  * Checks that the given list of keys completely covers all supported keys in the given interface.
  */

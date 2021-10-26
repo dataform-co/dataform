@@ -34,7 +34,7 @@ import {
 import { actuallyResolve, assertPathExists, compiledGraphHasErrors } from "df/cli/util";
 import { createYargsCli, INamedOption } from "df/cli/yargswrapper";
 import { supportsCancel, WarehouseType } from "df/core/adapters";
-import { targetToName } from "df/core/utils";
+import { targetAsReadableString } from "df/core/targets";
 import { dataform } from "df/protos/ts";
 import { formatFile } from "df/sqlx/format";
 import parseDuration from "parse-duration";
@@ -630,7 +630,7 @@ export function runCli() {
 
             const actionsByName = new Map<string, dataform.IExecutionAction>();
             executionGraph.actions.forEach(action => {
-              actionsByName.set(targetToName(action.target), action);
+              actionsByName.set(targetAsReadableString(action.target), action);
             });
             const alreadyPrintedActions = new Set<string>();
 
@@ -641,14 +641,14 @@ export function runCli() {
                     actionResult.status !== dataform.ActionResult.ExecutionStatus.RUNNING
                 )
                 .filter(
-                  executedAction => !alreadyPrintedActions.has(targetToName(executedAction.target))
+                  executedAction => !alreadyPrintedActions.has(targetAsReadableString(executedAction.target))
                 )
                 .forEach(executedAction => {
                   printExecutedAction(
                     executedAction,
-                    actionsByName.get(targetToName(executedAction.target))
+                    actionsByName.get(targetAsReadableString(executedAction.target))
                   );
-                  alreadyPrintedActions.add(targetToName(executedAction.target));
+                  alreadyPrintedActions.add(targetAsReadableString(executedAction.target));
                 });
             };
 

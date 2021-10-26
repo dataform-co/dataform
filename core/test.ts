@@ -1,8 +1,9 @@
-import { JSONObjectStringifier, StringifiedMap } from "df/common/strings/stringifier";
+import { StringifiedMap } from "df/common/strings/stringifier";
 import { Contextable, ICommonContext, INamedConfig, Resolvable } from "df/core/common";
 import { Session } from "df/core/session";
 import * as table from "df/core/table";
 import { ITableContext } from "df/core/table";
+import { targetStringifier } from "df/core/targets";
 import {
   ambiguousActionNameMsg,
   checkExcessProperties,
@@ -35,7 +36,7 @@ export class Test {
   public contextableInputs = new StringifiedMap<
     dataform.ITarget,
     Contextable<ICommonContext, string>
-  >(JSONObjectStringifier.create());
+  >(targetStringifier);
 
   private datasetToTest: Resolvable;
   private contextableQuery: Contextable<ICommonContext, string>;

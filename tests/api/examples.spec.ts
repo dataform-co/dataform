@@ -4,7 +4,7 @@ import * as path from "path";
 
 import { Builder, compile } from "df/api";
 import { computeAllTransitiveInputs } from "df/api/commands/build";
-import { Targets } from "df/core/targets";
+import { targetAsReadableString } from "df/core/targets";
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
 import { cleanSql } from "df/tests/utils";
@@ -92,7 +92,7 @@ suite("examples", () => {
             // Check JS blocks get processed.
             const exampleJsBlocks = graph.tables.find(
               (t: dataform.ITable) =>
-                Targets.getId(t) ===
+                targetAsReadableString(t.target) ===
                 dotJoined(
                   databaseWithSuffix("tada-analytics"),
                   schemaWithSuffix("df_integration_test"),
@@ -105,7 +105,7 @@ suite("examples", () => {
             // Check we can import and use an external package.
             const exampleIncremental = graph.tables.find(
               (t: dataform.ITable) =>
-                Targets.getId(t) ===
+                targetAsReadableString(t.target) ===
                 dotJoined(
                   databaseWithSuffix("tada-analytics"),
                   schemaWithSuffix("df_integration_test"),
@@ -128,7 +128,7 @@ suite("examples", () => {
 
             const exampleIsIncremental = graph.tables.filter(
               (t: dataform.ITable) =>
-                Targets.getId(t) ===
+                targetAsReadableString(t.target) ===
                 dotJoined(
                   databaseWithSuffix("tada-analytics"),
                   schemaWithSuffix("df_integration_test"),
@@ -158,12 +158,12 @@ suite("examples", () => {
 
             // Check tables defined in includes are not included.
             const exampleIgnore = graph.tables.find(
-              (t: dataform.ITable) => Targets.getId(t) === "example_ignore"
+              (t: dataform.ITable) => targetAsReadableString(t.target) === "example_ignore"
             );
             expect(exampleIgnore).equal(undefined);
             const exampleIgnore2 = graph.tables.find(
               (t: dataform.ITable) =>
-                Targets.getId(t) ===
+                targetAsReadableString(t.target) ===
                 dotJoined(
                   databaseWithSuffix("tada-analytics"),
                   schemaWithSuffix("df_integration_test"),
@@ -175,7 +175,7 @@ suite("examples", () => {
             // Check SQL files with raw back-ticks get escaped.
             const exampleBackticks = graph.tables.find(
               (t: dataform.ITable) =>
-                Targets.getId(t) ===
+                targetAsReadableString(t.target) ===
                 dotJoined(
                   databaseWithSuffix("tada-analytics"),
                   schemaWithSuffix("df_integration_test"),
@@ -193,7 +193,7 @@ suite("examples", () => {
             // Check deferred calls to table resolve to the correct definitions file.
             const exampleDeferred = graph.tables.find(
               (t: dataform.ITable) =>
-                Targets.getId(t) ===
+                targetAsReadableString(t.target) ===
                 dotJoined(
                   databaseWithSuffix("tada-analytics"),
                   schemaWithSuffix("df_integration_test"),
@@ -205,7 +205,7 @@ suite("examples", () => {
             // Check inline tables
             const exampleInline = graph.tables.find(
               (t: dataform.ITable) =>
-                Targets.getId(t) ===
+                targetAsReadableString(t.target) ===
                 dotJoined(
                   databaseWithSuffix("tada-analytics"),
                   schemaWithSuffix("df_integration_test"),
@@ -230,7 +230,7 @@ suite("examples", () => {
 
             const exampleUsingInline = graph.tables.find(
               (t: dataform.ITable) =>
-                Targets.getId(t) ===
+                targetAsReadableString(t.target) ===
                 dotJoined(
                   databaseWithSuffix("tada-analytics"),
                   schemaWithSuffix("df_integration_test"),
@@ -256,7 +256,7 @@ suite("examples", () => {
             // Check view
             const exampleView = graph.tables.find(
               (t: dataform.ITable) =>
-                Targets.getId(t) ===
+                targetAsReadableString(t.target) ===
                 dotJoined(
                   databaseWithSuffix("tada-analytics"),
                   schemaWithSuffix("df_integration_test"),
@@ -317,7 +317,7 @@ suite("examples", () => {
             // Check table
             const exampleTable = graph.tables.find(
               (t: dataform.ITable) =>
-                Targets.getId(t) ===
+                targetAsReadableString(t.target) ===
                 dotJoined(
                   databaseWithSuffix("tada-analytics"),
                   schemaWithSuffix("df_integration_test"),
@@ -357,7 +357,7 @@ suite("examples", () => {
             // Check Table with tags
             const exampleTableWithTags = graph.tables.find(
               (t: dataform.ITable) =>
-                Targets.getId(t) ===
+                targetAsReadableString(t.target) ===
                 dotJoined(
                   databaseWithSuffix("tada-analytics"),
                   schemaWithSuffix("df_integration_test"),
@@ -370,7 +370,7 @@ suite("examples", () => {
             // Check table-with-tags's unique key assertion
             const exampleTableWithTagsUniqueKeyAssertion = graph.assertions.filter(
               t =>
-                Targets.getId(t) ===
+                targetAsReadableString(t.target) ===
                 dotJoined(
                   databaseWithSuffix("tada-analytics"),
                   schemaWithSuffix("df_integration_test_assertions"),
@@ -396,7 +396,7 @@ suite("examples", () => {
             // Check table-with-tags's row conditions assertion
             const exampleTableWithTagsRowConditionsAssertion = graph.assertions.filter(
               t =>
-                Targets.getId(t) ===
+                targetAsReadableString(t.target) ===
                 dotJoined(
                   databaseWithSuffix("tada-analytics"),
                   schemaWithSuffix("df_integration_test_assertions"),
@@ -422,7 +422,7 @@ suite("examples", () => {
             // Check sample data
             const exampleSampleData = graph.tables.find(
               (t: dataform.ITable) =>
-                Targets.getId(t) ===
+                targetAsReadableString(t.target) ===
                 dotJoined(
                   databaseWithSuffix("tada-analytics"),
                   schemaWithSuffix("df_integration_test"),
@@ -450,7 +450,7 @@ suite("examples", () => {
             // Check database override defined in "config {}".
             const exampleUsingOverriddenDatabase = graph.tables.find(
               (t: dataform.ITable) =>
-                Targets.getId(t) ===
+                targetAsReadableString(t.target) ===
                 dotJoined(
                   databaseWithSuffix("override_database"),
                   schemaWithSuffix("df_integration_test"),
@@ -469,7 +469,7 @@ suite("examples", () => {
             // Check schema overrides defined in "config {}"
             const exampleUsingOverriddenSchema = graph.tables.find(
               (t: dataform.ITable) =>
-                Targets.getId(t) ===
+                targetAsReadableString(t.target) ===
                 dotJoined(
                   databaseWithSuffix("tada-analytics"),
                   schemaWithSuffix("override_schema"),
@@ -488,7 +488,7 @@ suite("examples", () => {
             // Check schema overrides defined in "config {}" -- case with schema unchanged
             const exampleUsingOverriddenSchemaUnchanged = graph.tables.find(
               (t: dataform.ITable) =>
-                Targets.getId(t) ===
+                targetAsReadableString(t.target) ===
                 dotJoined(
                   databaseWithSuffix("tada-analytics"),
                   schemaWithSuffix("df_integration_test"),
@@ -507,7 +507,7 @@ suite("examples", () => {
             // Check assertion
             const exampleAssertion = graph.assertions.find(
               (a: dataform.IAssertion) =>
-                Targets.getId(a) ===
+                targetAsReadableString(a.target) ===
                 dotJoined(
                   databaseWithSuffix("tada-analytics"),
                   schemaWithSuffix("hi_there"),
@@ -539,7 +539,7 @@ suite("examples", () => {
             // Check Assertion with tags
             const exampleAssertionWithTags = graph.assertions.find(
               (a: dataform.IAssertion) =>
-                Targets.getId(a) ===
+                targetAsReadableString(a.target) ===
                 dotJoined(
                   databaseWithSuffix("tada-analytics"),
                   schemaWithSuffix("df_integration_test_assertions"),
@@ -554,7 +554,7 @@ suite("examples", () => {
             // Check example operations file
             const exampleOperations = graph.operations.find(
               (o: dataform.IOperation) =>
-                Targets.getId(o) ===
+                targetAsReadableString(o.target) ===
                 dotJoined(
                   databaseWithSuffix("tada-analytics"),
                   schemaWithSuffix("df_integration_test"),
@@ -597,7 +597,7 @@ suite("examples", () => {
             // Check example operation with output.
             const exampleOperationWithOutput = graph.operations.find(
               (o: dataform.IOperation) =>
-                Targets.getId(o) ===
+                targetAsReadableString(o.target) ===
                 dotJoined(
                   databaseWithSuffix("tada-analytics"),
                   schemaWithSuffix("df_integration_test"),
@@ -607,9 +607,7 @@ suite("examples", () => {
             expect(exampleOperationWithOutput.target.schema).equals(
               schemaWithSuffix("df_integration_test")
             );
-            expect(exampleOperationWithOutput.target.name).equals(
-              "example_operation_with_output"
-            );
+            expect(exampleOperationWithOutput.target.name).equals("example_operation_with_output");
             expect(exampleOperationWithOutput.queries).to.eql([
               `\nCREATE OR REPLACE VIEW \`${dotJoined(
                 databaseWithSuffix("tada-analytics"),
@@ -639,7 +637,7 @@ suite("examples", () => {
             // Check Operation with tags
             const exampleOperationsWithTags = graph.operations.find(
               (o: dataform.IOperation) =>
-                Targets.getId(o) ===
+                targetAsReadableString(o.target) ===
                 dotJoined(
                   databaseWithSuffix("tada-analytics"),
                   schemaWithSuffix("df_integration_test"),
@@ -651,7 +649,7 @@ suite("examples", () => {
             // Check declaration.
             const exampleDeclaration = graph.declarations.find(
               d =>
-                Targets.getId(d) ===
+                targetAsReadableString(d.target) ===
                 "some_database_name.some_external_schema_name.very_important_external_table"
             );
             expect(exampleDeclaration.target).eql(
@@ -674,9 +672,7 @@ suite("examples", () => {
               "select 'hi' as faked union all\nselect 'ben' as faked union all\nselect 'sup?' as faked"
             );
 
-            const testCaseFQ = graph.tests.find(
-              t => t.name === "example_test_case_fq_ref"
-            );
+            const testCaseFQ = graph.tests.find(t => t.name === "example_test_case_fq_ref");
             expect(testCaseFQ.testQuery.trim()).equals(
               "select * from (\n    select 'hi' as faked union all\n    select 'ben' as faked union all\n    select 'sup?' as faked\n)\n\n-- here ${\"is\"} a `comment\n\n/* ${\"another\"} ` backtick ` containing ```comment */"
             );
@@ -687,7 +683,7 @@ suite("examples", () => {
             // Check double backslashes don't get converted to singular.
             const exampleDoubleBackslash = graph.tables.find(
               (t: dataform.ITable) =>
-                Targets.getId(t) ===
+                targetAsReadableString(t.target) ===
                 dotJoined(
                   databaseWithSuffix("tada-analytics"),
                   schemaWithSuffix("df_integration_test"),
@@ -712,7 +708,7 @@ suite("examples", () => {
         projectDir: path.resolve("examples/common_v1"),
         projectConfigOverride: { warehouse: "bigquery", defaultDatabase: "tada-analytics" }
       });
-      const tableNames = graph.tables.map((t: dataform.ITable) => Targets.getId(t));
+      const tableNames = graph.tables.map((t: dataform.ITable) => targetAsReadableString(t.target));
 
       expect(graph.graphErrors).to.eql(dataform.GraphErrors.create());
 
@@ -720,7 +716,8 @@ suite("examples", () => {
       expect(tableNames).includes("tada-analytics.df_integration_test.example_js_blocks");
       const exampleJsBlocks = graph.tables.filter(
         (t: dataform.ITable) =>
-          Targets.getId(t) === "tada-analytics.df_integration_test.example_js_blocks"
+          targetAsReadableString(t.target) ===
+          "tada-analytics.df_integration_test.example_js_blocks"
       )[0];
       expect(exampleJsBlocks.type).equals("table");
       expect(exampleJsBlocks.query).equals("select 1 as foo");
@@ -729,7 +726,8 @@ suite("examples", () => {
       expect(tableNames).includes("tada-analytics.df_integration_test.example_incremental");
       const exampleIncremental = graph.tables.filter(
         (t: dataform.ITable) =>
-          Targets.getId(t) === "tada-analytics.df_integration_test.example_incremental"
+          targetAsReadableString(t.target) ===
+          "tada-analytics.df_integration_test.example_incremental"
       )[0];
       expect(exampleIncremental.query).equals("select current_timestamp() as ts");
       expect(exampleIncremental.where.trim()).equals(
@@ -743,7 +741,8 @@ suite("examples", () => {
       expect(tableNames).includes("tada-analytics.df_integration_test.example_backticks");
       const exampleBackticks = graph.tables.filter(
         (t: dataform.ITable) =>
-          Targets.getId(t) === "tada-analytics.df_integration_test.example_backticks"
+          targetAsReadableString(t.target) ===
+          "tada-analytics.df_integration_test.example_backticks"
       )[0];
       expect(cleanSql(exampleBackticks.query)).equals(
         "select * from `tada-analytics.df_integration_test.sample_data`"
@@ -753,7 +752,7 @@ suite("examples", () => {
       expect(tableNames).includes("tada-analytics.df_integration_test.example_deferred");
       const exampleDeferred = graph.tables.filter(
         (t: dataform.ITable) =>
-          Targets.getId(t) === "tada-analytics.df_integration_test.example_deferred"
+          targetAsReadableString(t.target) === "tada-analytics.df_integration_test.example_deferred"
       )[0];
       expect(exampleDeferred.fileName).includes("definitions/example_deferred.js");
 
@@ -761,7 +760,7 @@ suite("examples", () => {
       expect(tableNames).includes("tada-analytics.df_integration_test.example_inline");
       const exampleInline = graph.tables.filter(
         (t: dataform.ITable) =>
-          Targets.getId(t) === "tada-analytics.df_integration_test.example_inline"
+          targetAsReadableString(t.target) === "tada-analytics.df_integration_test.example_inline"
       )[0];
       expect(exampleInline.type).equals("inline");
       expect(exampleInline.query).equals(
@@ -778,7 +777,8 @@ suite("examples", () => {
       expect(tableNames).includes("tada-analytics.df_integration_test.example_using_inline");
       const exampleUsingInline = graph.tables.filter(
         (t: dataform.ITable) =>
-          Targets.getId(t) === "tada-analytics.df_integration_test.example_using_inline"
+          targetAsReadableString(t.target) ===
+          "tada-analytics.df_integration_test.example_using_inline"
       )[0];
       expect(exampleUsingInline.type).equals("table");
       expect(exampleUsingInline.query).equals(
@@ -796,7 +796,7 @@ suite("examples", () => {
       expect(tableNames).includes("tada-analytics.df_integration_test.example_view");
       const exampleView = graph.tables.filter(
         (t: dataform.ITable) =>
-          Targets.getId(t) === "tada-analytics.df_integration_test.example_view"
+          targetAsReadableString(t.target) === "tada-analytics.df_integration_test.example_view"
       )[0];
       expect(exampleView.type).equals("view");
       expect(exampleView.query).equals(
@@ -814,7 +814,7 @@ suite("examples", () => {
       expect(tableNames).includes("tada-analytics.df_integration_test.example_table");
       const exampleTable = graph.tables.filter(
         (t: dataform.ITable) =>
-          Targets.getId(t) === "tada-analytics.df_integration_test.example_table"
+          targetAsReadableString(t.target) === "tada-analytics.df_integration_test.example_table"
       )[0];
       expect(exampleTable.type).equals("table");
       expect(exampleTable.query).equals(
@@ -832,7 +832,7 @@ suite("examples", () => {
       expect(tableNames).includes("tada-analytics.df_integration_test.sample_data");
       const exampleSampleData = graph.tables.filter(
         (t: dataform.ITable) =>
-          Targets.getId(t) === "tada-analytics.df_integration_test.sample_data"
+          targetAsReadableString(t.target) === "tada-analytics.df_integration_test.sample_data"
       )[0];
       expect(exampleSampleData.type).equals("view");
       expect(exampleSampleData.query).equals(
@@ -867,7 +867,9 @@ suite("examples", () => {
       });
       expect(graph.projectConfig.defaultDatabase).to.equal("overridden-database");
       const exampleTable = graph.tables.find(
-        table => Targets.getId(table) === "overridden-database.df_integration_test.example_table"
+        table =>
+          targetAsReadableString(table.target) ===
+          "overridden-database.df_integration_test.example_table"
       );
       expect(exampleTable.target.database).equals("overridden-database");
     });
@@ -877,19 +879,23 @@ suite("examples", () => {
         projectDir: "examples/common_v1",
         projectConfigOverride: { warehouse: "redshift" }
       }).then(graph => {
-        const tableNames = graph.tables.map((t: dataform.ITable) => Targets.getId(t));
+        const tableNames = graph.tables.map((t: dataform.ITable) =>
+          targetAsReadableString(t.target)
+        );
 
         // Check we can import and use an external package.
         expect(tableNames).includes("df_integration_test.example_incremental");
         const exampleIncremental = graph.tables.filter(
-          (t: dataform.ITable) => Targets.getId(t) === "df_integration_test.example_incremental"
+          (t: dataform.ITable) =>
+            targetAsReadableString(t.target) === "df_integration_test.example_incremental"
         )[0];
         expect(exampleIncremental.query).equals("select current_timestamp::timestamp as ts");
 
         // Check inline tables
         expect(tableNames).includes("df_integration_test.example_inline");
         const exampleInline = graph.tables.filter(
-          (t: dataform.ITable) => Targets.getId(t) === "df_integration_test.example_inline"
+          (t: dataform.ITable) =>
+            targetAsReadableString(t.target) === "df_integration_test.example_inline"
         )[0];
         expect(exampleInline.type).equals("inline");
         expect(exampleInline.query).equals('\nselect * from "df_integration_test"."sample_data"');
@@ -902,7 +908,8 @@ suite("examples", () => {
 
         expect(tableNames).includes("df_integration_test.example_using_inline");
         const exampleUsingInline = graph.tables.filter(
-          (t: dataform.ITable) => Targets.getId(t) === "df_integration_test.example_using_inline"
+          (t: dataform.ITable) =>
+            targetAsReadableString(t.target) === "df_integration_test.example_using_inline"
         )[0];
         expect(exampleUsingInline.type).equals("table");
         expect(exampleUsingInline.query).equals(
@@ -925,11 +932,12 @@ suite("examples", () => {
       expect(graph).to.not.be.an.instanceof(Error);
       expect(graph.graphErrors).deep.equals(dataform.GraphErrors.create({}));
 
-      const mNames = graph.tables.map((t: dataform.ITable) => Targets.getId(t));
+      const mNames = graph.tables.map((t: dataform.ITable) => targetAsReadableString(t.target));
 
       expect(mNames).includes("DF_INTEGRATION_TEST.EXAMPLE_INCREMENTAL");
       const mIncremental = graph.tables.filter(
-        (t: dataform.ITable) => Targets.getId(t) === "DF_INTEGRATION_TEST.EXAMPLE_INCREMENTAL"
+        (t: dataform.ITable) =>
+          targetAsReadableString(t.target) === "DF_INTEGRATION_TEST.EXAMPLE_INCREMENTAL"
       )[0];
       expect(mIncremental.type).equals("incremental");
       expect(mIncremental.query).equals(
@@ -940,7 +948,8 @@ suite("examples", () => {
 
       expect(mNames).includes("DF_INTEGRATION_TEST.EXAMPLE_TABLE");
       const mTable = graph.tables.filter(
-        (t: dataform.ITable) => Targets.getId(t) === "DF_INTEGRATION_TEST.EXAMPLE_TABLE"
+        (t: dataform.ITable) =>
+          targetAsReadableString(t.target) === "DF_INTEGRATION_TEST.EXAMPLE_TABLE"
       )[0];
       expect(mTable.type).equals("table");
       expect(mTable.query).equals('\nselect * from "DF_INTEGRATION_TEST"."SAMPLE_DATA"');
@@ -953,7 +962,8 @@ suite("examples", () => {
 
       expect(mNames).includes("DF_INTEGRATION_TEST.EXAMPLE_VIEW");
       const mView = graph.tables.filter(
-        (t: dataform.ITable) => Targets.getId(t) === "DF_INTEGRATION_TEST.EXAMPLE_VIEW"
+        (t: dataform.ITable) =>
+          targetAsReadableString(t.target) === "DF_INTEGRATION_TEST.EXAMPLE_VIEW"
       )[0];
       expect(mView.type).equals("view");
       expect(mView.query).equals('\nselect * from "DF_INTEGRATION_TEST"."SAMPLE_DATA"');
@@ -966,7 +976,8 @@ suite("examples", () => {
 
       expect(mNames).includes("DF_INTEGRATION_TEST.SAMPLE_DATA");
       const mSampleData = graph.tables.filter(
-        (t: dataform.ITable) => Targets.getId(t) === "DF_INTEGRATION_TEST.SAMPLE_DATA"
+        (t: dataform.ITable) =>
+          targetAsReadableString(t.target) === "DF_INTEGRATION_TEST.SAMPLE_DATA"
       )[0];
       expect(mSampleData.type).equals("view");
       expect(mSampleData.query).equals(
@@ -977,7 +988,8 @@ suite("examples", () => {
       // Check inline tables
       expect(mNames).includes("DF_INTEGRATION_TEST.EXAMPLE_INLINE");
       const exampleInline = graph.tables.filter(
-        (t: dataform.ITable) => Targets.getId(t) === "DF_INTEGRATION_TEST.EXAMPLE_INLINE"
+        (t: dataform.ITable) =>
+          targetAsReadableString(t.target) === "DF_INTEGRATION_TEST.EXAMPLE_INLINE"
       )[0];
       expect(exampleInline.type).equals("inline");
       expect(exampleInline.query).equals('\nselect * from "DF_INTEGRATION_TEST"."SAMPLE_DATA"');
@@ -990,7 +1002,8 @@ suite("examples", () => {
 
       expect(mNames).includes("DF_INTEGRATION_TEST.EXAMPLE_USING_INLINE");
       const exampleUsingInline = graph.tables.filter(
-        (t: dataform.ITable) => Targets.getId(t) === "DF_INTEGRATION_TEST.EXAMPLE_USING_INLINE"
+        (t: dataform.ITable) =>
+          targetAsReadableString(t.target) === "DF_INTEGRATION_TEST.EXAMPLE_USING_INLINE"
       )[0];
       expect(exampleUsingInline.type).equals("table");
       expect(exampleUsingInline.query).equals(
@@ -1003,12 +1016,15 @@ suite("examples", () => {
         })
       ]);
 
-      const aNames = graph.assertions.map((a: dataform.IAssertion) => Targets.getId(a));
+      const aNames = graph.assertions.map((a: dataform.IAssertion) =>
+        targetAsReadableString(a.target)
+      );
 
       expect(aNames).includes("DF_INTEGRATION_TEST_ASSERTIONS.SAMPLE_DATA_ASSERTION");
       const assertion = graph.assertions.filter(
         (a: dataform.IAssertion) =>
-          Targets.getId(a) === "DF_INTEGRATION_TEST_ASSERTIONS.SAMPLE_DATA_ASSERTION"
+          targetAsReadableString(a.target) ===
+          "DF_INTEGRATION_TEST_ASSERTIONS.SAMPLE_DATA_ASSERTION"
       )[0];
       expect(assertion.query).equals(
         'select * from "DF_INTEGRATION_TEST"."SAMPLE_DATA" where sample > 3'

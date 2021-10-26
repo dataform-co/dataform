@@ -1,8 +1,4 @@
-import {
-  JSONObjectStringifier,
-  StringifiedMap,
-  StringifiedSet
-} from "df/common/strings/stringifier";
+import { targetAsReadableString } from "df/core/targets";
 import * as utils from "df/core/utils";
 import { dataform } from "df/protos/ts";
 
@@ -16,13 +12,13 @@ export function prune(
   return {
     ...compiledGraph,
     tables: compiledGraph.tables.filter(action =>
-      includedActionNames.has(utils.targetToName(action.target))
+      includedActionNames.has(targetAsReadableString(action.target))
     ),
     assertions: compiledGraph.assertions.filter(action =>
-      includedActionNames.has(utils.targetToName(action.target))
+      includedActionNames.has(targetAsReadableString(action.target))
     ),
     operations: compiledGraph.operations.filter(action =>
-      includedActionNames.has(utils.targetToName(action.target))
+      includedActionNames.has(targetAsReadableString(action.target))
     )
   };
 }
@@ -42,10 +38,10 @@ function computeIncludedActionNames(
   );
 
   const allActionNames = new Set<string>(
-    allActions.map(action => utils.targetToName(action.target))
+    allActions.map(action => targetAsReadableString(action.target))
   );
   const allActionsByName = new Map<string, CompileAction>(
-    allActions.map(action => [utils.targetToName(action.target), action])
+    allActions.map(action => [targetAsReadableString(action.target), action])
   );
 
   const hasActionSelector = runConfig.actions?.length > 0;
@@ -69,7 +65,7 @@ function computeIncludedActionNames(
   if (hasTagSelector) {
     allActions
       .filter(action => action.tags.some(tag => runConfig.tags.includes(tag)))
-      .forEach(action => includedActionNames.add(utils.targetToName(action.target)));
+      .forEach(action => includedActionNames.add(targetAsReadableString(action.target)));
   }
 
   // Compute all transitive dependencies.
@@ -81,7 +77,7 @@ function computeIncludedActionNames(
       const matchingDependencyNames =
         action.dependencyTargets?.length > 0
           ? utils.matchPatterns(
-              action.dependencyTargets.map(dependency => utils.targetToName(dependency)),
+              action.dependencyTargets.map(dependency => targetAsReadableString(dependency)),
               [...allActionNames]
             )
           : [];
@@ -104,11 +100,12 @@ function computeIncludedActionNames(
           compileAction =>
             utils.matchPatterns(
               [actionName],
-              compileAction.dependencyTargets?.map(dependency => utils.targetToName(dependency)) ||
-                []
+              compileAction.dependencyTargets?.map(dependency =>
+                targetAsReadableString(dependency)
+              ) || []
             ).length >= 1
         )
-        .map(compileAction => utils.targetToName(compileAction.target));
+        .map(compileAction => targetAsReadableString(compileAction.target));
       matchingDependentNames.forEach(dependentName => {
         if (!includedActionNames.has(dependentName)) {
           queue.push(dependentName);
@@ -121,8 +118,8 @@ function computeIncludedActionNames(
   // Add auto assertions
   [...compiledGraph.assertions].forEach(assertion => {
     if (!!assertion.parentAction) {
-      if (includedActionNames.has(utils.targetToName(assertion.parentAction))) {
-        includedActionNames.add(utils.targetToName(assertion.target));
+      if (includedActionNames.has(targetAsReadableString(assertion.parentAction))) {
+        includedActionNames.add(targetAsReadableString(assertion.target));
       }
     }
   });

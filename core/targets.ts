@@ -1,25 +1,32 @@
 import { JSONObjectStringifier } from "df/common/strings/stringifier";
 import { dataform } from "df/protos/ts";
 
-export class Targets {
-  public static STRINGIFIER = JSONObjectStringifier.create();
+/**
+ * Produces an unambigous mapping to and from a string representation.
+ */
+export const targetStringifier = JSONObjectStringifier.create<dataform.ITarget>();
 
-  public static equal(a: dataform.ITarget, b: dataform.ITarget) {
-    return a.database === b.database && a.schema === b.schema && a.name === b.name;
+/**
+ * Returns true if both targets are equal.
+ */
+export function targetsAreEqual(a: dataform.ITarget, b: dataform.ITarget) {
+  return a.database === b.database && a.schema === b.schema && a.name === b.name;
+}
+
+/**
+ * Provides a readable string representation of the target which is used for e.g. specifying
+ * actions on the CLI or as part of schedule configs.
+ * This is effectively equivelant to an action "name".
+ * 
+ * This is an ambiguous transformation, multiple targets may map to the same string
+ * and it should not be used for indexing. Use {@code targetStringifier} instead.
+ */
+export function targetAsReadableString(
+  target: dataform.ITarget
+): string {
+  const nameParts = [target.name, target.schema];
+  if (!!target.database) {
+    nameParts.push(target.database);
   }
-
-  public static getId(
-    targetOrTargetable: dataform.ITarget | { target?: dataform.ITarget }
-  ): string {
-    const target: dataform.ITarget =
-      "target" in targetOrTargetable
-        ? targetOrTargetable.target
-        : (targetOrTargetable as dataform.ITarget);
-
-    const nameParts = [target.name, target.schema];
-    if (!!target.database) {
-      nameParts.push(target.database);
-    }
-    return nameParts.reverse().join(".");
-  }
+  return nameParts.reverse().join(".");
 }

@@ -8,6 +8,7 @@ ts_library(
     deps = [
         "//common/protos",
         "//common/strings",
+        "//core",
         "//protos:ts",
         "@npm//@types/node",
         "@npm//@types/object-hash",

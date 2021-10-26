@@ -6,9 +6,8 @@ import { Builder, credentials, prune, query, Runner } from "df/api";
 import { computeAllTransitiveInputs } from "df/api/commands/build";
 import { IDbAdapter } from "df/api/dbadapters";
 import { BigQueryDbAdapter } from "df/api/dbadapters/bigquery";
-import { parseSnowflakeEvalError } from "df/api/utils/error_parsing";
 import { sleep, sleepUntil } from "df/common/promises";
-import { Targets } from "df/core/targets";
+import { targetAsReadableString, targetsAreEqual } from "df/core/targets";
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
 import { asPlainObject, cleanSql } from "df/tests/utils";
@@ -77,9 +76,15 @@ suite("@dataform/api", () => {
       );
       const executionGraph = builder.build();
 
-      const actionA = executionGraph.actions.find(n => Targets.getId(n) === "schema.a");
-      const actionB = executionGraph.actions.find(n => Targets.getId(n) === "schema.b");
-      const actionC = executionGraph.actions.find(n => Targets.getId(n) === "schema.c");
+      const actionA = executionGraph.actions.find(
+        n => targetAsReadableString(n.target) === "schema.a"
+      );
+      const actionB = executionGraph.actions.find(
+        n => targetAsReadableString(n.target) === "schema.b"
+      );
+      const actionC = executionGraph.actions.find(
+        n => targetAsReadableString(n.target) === "schema.c"
+      );
 
       assert.exists(actionA);
       assert.exists(actionB);
@@ -147,17 +152,17 @@ suite("@dataform/api", () => {
       expect(executedGraph.actions.length).greaterThan(0);
 
       graph.tables.forEach((t: dataform.ITable) => {
-        const action = executedGraph.actions.find(item => Targets.equal(item.target, t.target));
+        const action = executedGraph.actions.find(item => targetsAreEqual(item.target, t.target));
         expect(action).to.include({ type: "table", target: t.target, tableType: t.type });
       });
 
       graph.operations.forEach((o: dataform.IOperation) => {
-        const action = executedGraph.actions.find(item => Targets.equal(item.target, o.target));
+        const action = executedGraph.actions.find(item => targetsAreEqual(item.target, o.target));
         expect(action).to.include({ type: "operation", target: o.target });
       });
 
       graph.assertions.forEach((a: dataform.IAssertion) => {
-        const action = executedGraph.actions.find(item => Targets.equal(item.target, a.target));
+        const action = executedGraph.actions.find(item => targetsAreEqual(item.target, a.target));
         expect(action).to.include({ type: "assertion" });
       });
     });
@@ -297,7 +302,7 @@ suite("@dataform/api", () => {
 
       expect(prunedGraph.tables.length).greaterThan(0);
 
-      const actionNames = prunedGraph.tables.map(action => Targets.getId(action));
+      const actionNames = prunedGraph.tables.map(action => targetAsReadableString(action.target));
 
       expect(actionNames).includes("schema.a");
       expect(actionNames).not.includes("schema.b");
@@ -311,8 +316,8 @@ suite("@dataform/api", () => {
         includeDependencies: true
       });
       const actionNames = [
-        ...prunedGraph.tables.map(action => Targets.getId(action)),
-        ...prunedGraph.operations.map(action => Targets.getId(action))
+        ...prunedGraph.tables.map(action => targetAsReadableString(action.target)),
+        ...prunedGraph.operations.map(action => targetAsReadableString(action.target))
       ];
       expect(actionNames).includes("schema.op_a");
       expect(actionNames).includes("schema.op_b");
@@ -327,8 +332,8 @@ suite("@dataform/api", () => {
         includeDependents: true
       });
       const actionNames = [
-        ...prunedGraph.tables.map(action => Targets.getId(action)),
-        ...prunedGraph.operations.map(action => Targets.getId(action))
+        ...prunedGraph.tables.map(action => targetAsReadableString(action.target)),
+        ...prunedGraph.operations.map(action => targetAsReadableString(action.target))
       ];
       expect(actionNames).not.includes("schema.op_a");
       expect(actionNames).includes("schema.op_b");
@@ -343,8 +348,8 @@ suite("@dataform/api", () => {
         includeDependents: true
       });
       const actionNames = [
-        ...prunedGraph.tables.map(action => Targets.getId(action)),
-        ...prunedGraph.operations.map(action => Targets.getId(action))
+        ...prunedGraph.tables.map(action => targetAsReadableString(action.target)),
+        ...prunedGraph.operations.map(action => targetAsReadableString(action.target))
       ];
       expect(actionNames).includes("schema.a");
       expect(actionNames).includes("schema.b");
@@ -358,8 +363,8 @@ suite("@dataform/api", () => {
         includeDependents: false
       });
       const actionNames = [
-        ...prunedGraph.tables.map(action => Targets.getId(action)),
-        ...prunedGraph.operations.map(action => Targets.getId(action))
+        ...prunedGraph.tables.map(action => targetAsReadableString(action.target)),
+        ...prunedGraph.operations.map(action => targetAsReadableString(action.target))
       ];
       expect(actionNames).includes("schema.op_a");
       expect(actionNames).includes("schema.op_b");
@@ -371,9 +376,9 @@ suite("@dataform/api", () => {
     test("prune actions with --actions with dependencies", () => {
       const prunedGraph = prune(TEST_GRAPH, { actions: ["schema.a"], includeDependencies: true });
       const actionNames = [
-        ...prunedGraph.tables.map(action => Targets.getId(action)),
-        ...prunedGraph.operations.map(action => Targets.getId(action)),
-        ...prunedGraph.assertions.map(action => Targets.getId(action))
+        ...prunedGraph.tables.map(action => targetAsReadableString(action.target)),
+        ...prunedGraph.operations.map(action => targetAsReadableString(action.target)),
+        ...prunedGraph.assertions.map(action => targetAsReadableString(action.target))
       ];
       expect(actionNames).includes("schema.a");
       expect(actionNames).includes("schema.b");
@@ -383,9 +388,9 @@ suite("@dataform/api", () => {
     test("prune actions with --actions without dependencies", () => {
       const prunedGraph = prune(TEST_GRAPH, { actions: ["schema.a"], includeDependencies: false });
       const actionNames = [
-        ...prunedGraph.tables.map(action => Targets.getId(action)),
-        ...prunedGraph.operations.map(action => Targets.getId(action)),
-        ...prunedGraph.assertions.map(action => Targets.getId(action))
+        ...prunedGraph.tables.map(action => targetAsReadableString(action.target)),
+        ...prunedGraph.operations.map(action => targetAsReadableString(action.target)),
+        ...prunedGraph.assertions.map(action => targetAsReadableString(action.target))
       ];
       expect(actionNames).includes("schema.a");
       expect(actionNames).not.includes("schema.b");
@@ -433,8 +438,9 @@ suite("@dataform/api", () => {
       ).build();
       expect(
         cleanSql(
-          executionGraph.actions.filter(n => Targets.getId(n) === "schema.incremental")[0].tasks[0]
-            .statement
+          executionGraph.actions.filter(
+            n => targetAsReadableString(n.target) === "schema.incremental"
+          )[0].tasks[0].statement
         )
       ).equals(
         cleanSql(

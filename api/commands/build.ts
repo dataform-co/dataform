@@ -4,12 +4,9 @@ import { prune } from "df/api/commands/prune";
 import { state } from "df/api/commands/state";
 import * as dbadapters from "df/api/dbadapters";
 import { actionsByTarget } from "df/api/utils/graphs";
-import {
-  JSONObjectStringifier,
-  StringifiedMap,
-  StringifiedSet
-} from "df/common/strings/stringifier";
+import { StringifiedMap, StringifiedSet } from "df/common/strings/stringifier";
 import { adapters } from "df/core";
+import { targetStringifier } from "df/core/targets";
 import * as utils from "df/core/utils";
 import { dataform } from "df/protos/ts";
 
@@ -30,7 +27,7 @@ export async function build(
   const transitiveInputsByTarget = computeAllTransitiveInputs(compiledGraph);
 
   const allInvolvedTargets = new StringifiedSet<dataform.ITarget>(
-    JSONObjectStringifier.create(),
+    targetStringifier,
     prunedGraph.tables.map(table => table.target)
   );
   if (runConfig.useRunCache) {
@@ -80,7 +77,7 @@ export class Builder {
     }
 
     const tableMetadataByTarget = new StringifiedMap<dataform.ITarget, dataform.ITableMetadata>(
-      JSONObjectStringifier.create()
+      targetStringifier
     );
     this.warehouseState.tables.forEach(tableState => {
       tableMetadataByTarget.set(tableState.target, tableState);
@@ -169,7 +166,7 @@ export function computeAllTransitiveInputs(compiledGraph: dataform.ICompiledGrap
   const transitiveInputsByTarget = new StringifiedMap<
     dataform.ITarget,
     StringifiedSet<dataform.ITarget>
-  >(JSONObjectStringifier.create());
+  >(targetStringifier);
 
   if (!versionValidForTransitiveInputs(compiledGraph)) {
     return transitiveInputsByTarget;
@@ -200,7 +197,7 @@ function computeTransitiveInputsForAction(
   >,
   transitiveInputsByTarget: StringifiedMap<dataform.ITarget, StringifiedSet<dataform.ITarget>>
 ) {
-  const transitiveInputTargets = new StringifiedSet(JSONObjectStringifier.create());
+  const transitiveInputTargets = new StringifiedSet(targetStringifier);
   if (!transitiveInputsByTarget.has(action.target)) {
     for (const transitiveInputTarget of action.dependencyTargets || []) {
       transitiveInputTargets.add(transitiveInputTarget);
