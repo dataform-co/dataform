@@ -670,6 +670,7 @@ suite("@dataform/api", () => {
             }
           ],
           dependencies: [],
+          dependencyTargets: [],
           transitiveInputs: [],
           hermeticity: dataform.ActionHermeticity.HERMETIC
         },
@@ -688,6 +689,7 @@ suite("@dataform/api", () => {
             }
           ],
           dependencies: [],
+          dependencyTargets: [],
           transitiveInputs: [],
           hermeticity: dataform.ActionHermeticity.HERMETIC
         }
@@ -748,6 +750,7 @@ suite("@dataform/api", () => {
             }
           ],
           dependencies: [],
+          dependencyTargets: [],
           transitiveInputs: [],
           hermeticity: dataform.ActionHermeticity.HERMETIC
         },
@@ -766,6 +769,7 @@ suite("@dataform/api", () => {
             }
           ],
           dependencies: [],
+          dependencyTargets: [],
           transitiveInputs: [],
           hermeticity: dataform.ActionHermeticity.HERMETIC
         }
