@@ -152,6 +152,7 @@ export class Builder {
       target: action.target,
       fileName: action.fileName,
       dependencies: action.dependencies,
+      dependencyTargets: action.dependencyTargets,
       transitiveInputs: versionValidForTransitiveInputs(this.prunedGraph)
         ? Array.from(this.transitiveInputsByTarget.get(action.target))
         : [],

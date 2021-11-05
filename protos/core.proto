@@ -417,14 +417,16 @@ message ExecutionAction {
   string type = 4;
   string table_type = 6;
 
-  // TODO: Replace this with a dependency_targets field.
-  repeated string dependencies = 3;
+  repeated Target dependency_targets = 11;
   repeated Target transitive_inputs = 7;
   ActionHermeticity hermeticity = 10;
 
   repeated ExecutionTask tasks = 2;
 
   ActionDescriptor action_descriptor = 9;
+
+  // TODO: Deprecate this after consumers are updated.
+  repeated string dependencies = 3;
 }
 
 message WarehouseState {
