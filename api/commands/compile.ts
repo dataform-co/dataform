@@ -44,7 +44,7 @@ export async function compile(
 
   if (compileConfig.useMain) {
     const decodedResult = decode64(dataform.CoreExecutionResponse, result);
-    return dataform.CompiledGraph.create(decodedResult.compiledGraph);
+    return dataform.CompiledGraph.create(decodedResult.compile.compiledGraph);
   }
 
   return decode64(dataform.CompiledGraph, result);
