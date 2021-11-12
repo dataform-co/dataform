@@ -43,7 +43,7 @@ export async function compile(
   const result = await CompileChildProcess.forkProcess().compile(compileConfig);
 
   if (compileConfig.useMain) {
-    const decodedResult = decode64(dataform.CoreExecutionResult, result);
+    const decodedResult = decode64(dataform.CoreExecutionResponse, result);
     return dataform.CompiledGraph.create(decodedResult.compiledGraph);
   }
 

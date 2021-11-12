@@ -26,20 +26,20 @@ export function createGenIndexConfig(compileConfig: dataform.ICompileConfig): st
   return encode64(dataform.GenerateIndexConfig, {
     compileConfig,
     includePaths,
-    definitionPaths,
+    definitionPaths
   });
 }
 
 /**
- * @returns a base64 encoded {@see dataform.CoreExecutionConfig} proto.
+ * @returns a base64 encoded {@see dataform.CoreExecutionRequest} proto.
  */
-export function createCoreExecutionConfig(compileConfig: dataform.ICompileConfig): string {
+export function createCoreExecutionRequest(compileConfig: dataform.ICompileConfig): string {
   const filePaths = Array.from(
     new Set<string>(glob.sync("!(node_modules)/**/*.*", { cwd: compileConfig.projectDir }))
   );
 
-  return encode64(dataform.CoreExecutionConfig, {
+  return encode64(dataform.CoreExecutionRequest, {
     // Add the list of file paths to the compile config if not already set.
-    compileConfig: { filePaths, ...compileConfig }
+    compile: { compileConfig: { filePaths, ...compileConfig } }
   });
 }

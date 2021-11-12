@@ -591,10 +591,22 @@ message TableMetadata {
   reserved 2;
 }
 
-message CoreExecutionConfig {
+message CoreExecutionRequest {
+  oneof request {
+    CompileExecutionRequest compile = 1;
+  }
+}
+
+message CoreExecutionResponse {
+  oneof response {
+    CompileExecutionResponse compile = 1;
+  }
+}
+
+message CompileExecutionRequest {
   CompileConfig compile_config = 1;
 }
 
-message CoreExecutionResult {
+message CompileExecutionResponse {
   CompiledGraph compiled_graph = 1;
 }
