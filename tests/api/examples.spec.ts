@@ -920,9 +920,9 @@ suite("examples", () => {
     test("bigquery compiles with schema override", async () => {
       const graph = await compile({
         projectDir: path.resolve("examples/common_v1"),
-        schemaSuffixOverride: "suffix",
         projectConfigOverride: {
-          warehouse: "redshift"
+          warehouse: "redshift",
+          schemaSuffix: "suffix"
         }
       });
       expect(graph.projectConfig.schemaSuffix).to.equal("suffix");

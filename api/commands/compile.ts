@@ -28,14 +28,6 @@ export async function compile(
   // Resolve the path in case it hasn't been resolved already.
   path.resolve(compileConfig.projectDir);
 
-  // Schema overrides field can be set in two places, projectConfigOverride.schemaSuffix takes precedent.
-  if (compileConfig.schemaSuffixOverride) {
-    compileConfig.projectConfigOverride = {
-      schemaSuffix: compileConfig.schemaSuffixOverride,
-      ...compileConfig.projectConfigOverride
-    };
-  }
-
   try {
     // check dataformJson is valid before we try to compile
     const dataformJson = fs.readFileSync(`${compileConfig.projectDir}/dataform.json`, "utf8");
@@ -51,8 +43,8 @@ export async function compile(
   const result = await CompileChildProcess.forkProcess().compile(compileConfig);
 
   if (compileConfig.useMain) {
-    const decodedResult = decode64(dataform.CoreExecutionResult, result);
-    return dataform.CompiledGraph.create(decodedResult.compiledGraph);
+    const decodedResult = decode64(dataform.CoreExecutionResponse, result);
+    return dataform.CompiledGraph.create(decodedResult.compile.compiledGraph);
   }
 
   return decode64(dataform.CompiledGraph, result);

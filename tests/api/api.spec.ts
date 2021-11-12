@@ -637,7 +637,7 @@ suite("@dataform/api", () => {
             }
           ],
           dependencies: [],
-
+          dependencyTargets: [],
           hermeticity: dataform.ActionHermeticity.HERMETIC
         },
         {
@@ -655,7 +655,7 @@ suite("@dataform/api", () => {
             }
           ],
           dependencies: [],
-
+          dependencyTargets: [],
           hermeticity: dataform.ActionHermeticity.HERMETIC
         }
       ];
@@ -710,7 +710,7 @@ suite("@dataform/api", () => {
             }
           ],
           dependencies: [],
-
+          dependencyTargets: [],
           hermeticity: dataform.ActionHermeticity.HERMETIC
         },
         {
@@ -728,7 +728,7 @@ suite("@dataform/api", () => {
             }
           ],
           dependencies: [],
-
+          dependencyTargets: [],
           hermeticity: dataform.ActionHermeticity.HERMETIC
         }
       ];

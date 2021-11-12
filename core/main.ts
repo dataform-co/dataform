@@ -6,18 +6,19 @@ import { dataform } from "df/protos/ts";
 /**
  * This is the main entry point into the user space code that should be invoked by the compilation wrapper sandbox.
  *
- * @param encodedCoreExecutionConfig a base64 encoded {@see dataform.CoreExecutionConfig} proto.
- * @returns a base64 encoded {@see dataform.CoreExecutionResult} proto.
+ * @param encodedCoreExecutionRequest a base64 encoded {@see dataform.CoreExecutionRequest} proto.
+ * @returns a base64 encoded {@see dataform.CoreExecutionResponse} proto.
  */
-export function main(encodedCoreExecutionConfig: string): string {
+export function main(encodedCoreExecutionRequest: string): string {
   const globalAny = global as any;
 
-  const config = decode64(dataform.CoreExecutionConfig, encodedCoreExecutionConfig);
+  const request = decode64(dataform.CoreExecutionRequest, encodedCoreExecutionRequest);
+  const compileRequest = request.compile;
 
   // Read the project config from the root of the project.
   const originalProjectConfig = require("dataform.json");
 
-  const projectConfigOverride = config.compileConfig.projectConfigOverride ?? {};
+  const projectConfigOverride = compileRequest.compileConfig.projectConfigOverride ?? {};
 
   // Stop using the deprecated 'gcloudProjectId' field.
   if (!originalProjectConfig.defaultDatabase) {
@@ -26,10 +27,6 @@ export function main(encodedCoreExecutionConfig: string): string {
   delete originalProjectConfig.gcloudProjectId;
 
   let projectConfig = { ...originalProjectConfig };
-
-  // For backwards compatibility, in case core version is ahead of api.
-  projectConfig.schemaSuffix =
-    config.compileConfig.schemaSuffixOverride || projectConfig.schemaSuffix;
 
   // Merge in general project config overrides.
   projectConfig = {
@@ -41,13 +38,13 @@ export function main(encodedCoreExecutionConfig: string): string {
   // Initialize the compilation session.
   const session = require("@dataform/core").session as Session;
 
-  session.init(config.compileConfig.projectDir, projectConfig, originalProjectConfig);
+  session.init(compileRequest.compileConfig.projectDir, projectConfig, originalProjectConfig);
 
   // Allow "includes" files to use the current session object.
   globalAny.dataform = session;
 
   // Require "includes" *.js files.
-  config.compileConfig.filePaths
+  compileRequest.compileConfig.filePaths
     .filter(path => path.startsWith("includes/"))
     .filter(path => path.endsWith(".js"))
     .forEach(includePath => {
@@ -67,7 +64,7 @@ export function main(encodedCoreExecutionConfig: string): string {
   globalAny.test = session.test.bind(session);
 
   // Require all "definitions" files (attaching them to the session).
-  config.compileConfig.filePaths
+  compileRequest.compileConfig.filePaths
     .filter(path => path.startsWith("definitions/"))
     .filter(path => path.endsWith(".js") || path.endsWith(".sqlx"))
     .forEach(definitionPath => {
@@ -81,7 +78,7 @@ export function main(encodedCoreExecutionConfig: string): string {
 
   // Return a base64 encoded proto. Returning a Uint8Array directly causes issues.
   return encode64(
-    dataform.CoreExecutionResult,
-    dataform.CoreExecutionResult.create({ compiledGraph: session.compile() })
+    dataform.CoreExecutionResponse,
+    dataform.CoreExecutionResponse.create({ compile: { compiledGraph: session.compile() } })
   );
 }

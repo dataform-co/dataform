@@ -126,8 +126,7 @@ message GenerateIndexConfig {
   repeated string include_paths = 2;
   repeated string definition_paths = 3;
 
-  // Deprecated.
-  string return_override = 4;
+  reserved 4;
 }
 
 message CompileConfig {
@@ -145,12 +144,8 @@ message CompileConfig {
 
   // Whether to use the new main function instead of gen index.
   bool use_main = 9;
-
-  // Deprecated.
-  string schema_suffix_override = 2;
-  string return_override = 5;
   
-  reserved 7, 4;
+  reserved 2, 4, 5, 7;
 }
 
 message Target {
@@ -191,13 +186,8 @@ message PrestoOptions {
 
 message GraphErrors {
   repeated CompilationError compilation_errors = 1;
-  repeated ValidationError validation_errors = 2 [deprecated = true];
-}
 
-// Deprecated.
-message ValidationError {
-  string action_name = 1;
-  string message = 2;
+  reserved 2;
 }
 
 message CompilationError {
@@ -314,12 +304,10 @@ message Table {
   string file_name = 18;
 
   // Deprecated.
-  repeated string deprecated_parsed_columns = 12 [deprecated = true];
-  repeated ValidationError deprecated_validation_errors = 7 [deprecated = true];
   string name = 1 [deprecated = true]; // Use 'target' instead.
   repeated string dependencies = 2 [deprecated = true]; // Use 'dependency_targets' instead.
 
-  reserved 16;
+  reserved 7, 12, 16;
 }
 
 message Operation {
@@ -434,16 +422,26 @@ message ExecutionAction {
   string type = 4;
   string table_type = 6;
 
+<<<<<<< HEAD
   // TODO: Replace this with a dependency_targets field.
   repeated string dependencies = 3;
   
+=======
+  repeated Target dependency_targets = 11;
+  repeated Target transitive_inputs = 7;
+>>>>>>> origin/master
   ActionHermeticity hermeticity = 10;
 
   repeated ExecutionTask tasks = 2;
 
   ActionDescriptor action_descriptor = 9;
 
+<<<<<<< HEAD
   reserved 7;
+=======
+  // TODO: Deprecate this after consumers are updated.
+  repeated string dependencies = 3;
+>>>>>>> origin/master
 }
 
 message WarehouseState {
@@ -568,10 +566,7 @@ message Field {
 
   string description = 5;
 
-  // Deprecated.
-  repeated string flags_deprecated = 4;
-
-  reserved 2;
+  reserved 2, 4;
 }
 
 message Fields {
@@ -597,28 +592,25 @@ message TableMetadata {
   }
   BigQuery bigquery = 8;
 
-  // Deprecated.
-  string type_deprecated = 2; // "table" or "view"
+  reserved 2;
 }
 
-message PersistedTableMetadata {
-  Target target = 1;
-  string definition_hash = 2; // sha1 hash of ExectionAction object
-  int64 last_updated_millis = 3; // Timestamp of the last modification to this dataset (where that modification happened as a result of a Dataform run).
-
-  message TransitiveInputMetadata {
-    Target target = 1;
-    int64 last_updated_millis = 2;
+message CoreExecutionRequest {
+  oneof request {
+    CompileExecutionRequest compile = 1;
   }
-  repeated TransitiveInputMetadata transitive_input_tables = 7;
-  
-  reserved 4, 5, 6;
 }
 
-message CoreExecutionConfig {
+message CoreExecutionResponse {
+  oneof response {
+    CompileExecutionResponse compile = 1;
+  }
+}
+
+message CompileExecutionRequest {
   CompileConfig compile_config = 1;
 }
 
-message CoreExecutionResult {
+message CompileExecutionResponse {
   CompiledGraph compiled_graph = 1;
 }

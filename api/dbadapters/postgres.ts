@@ -203,7 +203,6 @@ export class PostgresDbAdapter implements IDbAdapter {
     }
     return dataform.TableMetadata.create({
       target,
-      typeDeprecated: tableResults.rows[0].table_type === "VIEW" ? "view" : "table",
       type:
         tableResults.rows[0].table_type === "VIEW"
           ? dataform.TableMetadata.Type.VIEW
@@ -212,7 +211,6 @@ export class PostgresDbAdapter implements IDbAdapter {
         dataform.Field.create({
           name: row.column_name,
           primitive: convertFieldType(row.data_type),
-          flagsDeprecated: row.is_nullable && row.is_nullable === "YES" ? ["nullable"] : [],
           description: descriptionResults.rows.find(
             descriptionRow => descriptionRow.column_number === row.ordinal_position
           )?.description

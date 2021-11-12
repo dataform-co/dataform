@@ -135,6 +135,7 @@ export class Builder {
       target: action.target,
       fileName: action.fileName,
       dependencies: action.dependencies,
+      dependencyTargets: action.dependencyTargets,
       actionDescriptor: action.actionDescriptor
     });
   }
