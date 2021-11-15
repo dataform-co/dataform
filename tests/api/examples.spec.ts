@@ -3,7 +3,6 @@ import { expect } from "chai";
 import * as path from "path";
 
 import { Builder, compile } from "df/api";
-import { computeAllTransitiveInputs } from "df/api/commands/build";
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
 import { cleanSql } from "df/tests/utils";
@@ -1156,7 +1155,7 @@ suite("examples", () => {
     expect(example.query.trim()).equals("select 1 as foo_bar");
 
     // Make sure we can dry run.
-    new Builder(graph, {}, { tables: [] }, computeAllTransitiveInputs(graph)).build();
+    new Builder(graph, {}, { tables: [] }).build();
   });
 
   test("times out after timeout period during compilation", async () => {

@@ -20,7 +20,6 @@ const flags = {
 
 const isSuccessfulAction = (actionResult: dataform.IActionResult) =>
   actionResult.status === dataform.ActionResult.ExecutionStatus.SUCCESSFUL ||
-  actionResult.status === dataform.ActionResult.ExecutionStatus.CACHE_SKIPPED ||
   actionResult.status === dataform.ActionResult.ExecutionStatus.DISABLED;
 
 export interface IExecutedAction {
@@ -31,15 +30,9 @@ export interface IExecutedAction {
 export function run(
   dbadapter: dbadapters.IDbAdapter,
   graph: dataform.IExecutionGraph,
-  partiallyExecutedRunResult: dataform.IRunResult = {},
-  previouslyExecutedActions: IExecutedAction[] = []
+  partiallyExecutedRunResult: dataform.IRunResult = {}
 ): Runner {
-  return new Runner(
-    dbadapter,
-    graph,
-    partiallyExecutedRunResult,
-    previouslyExecutedActions
-  ).execute();
+  return new Runner(dbadapter, graph, partiallyExecutedRunResult).execute();
 }
 
 export class Runner {
@@ -47,9 +40,6 @@ export class Runner {
     dataform.ITarget,
     dataform.ITableMetadata
   >;
-  private readonly nonTableDeclarationTargets: StringifiedSet<dataform.ITarget>;
-
-  private readonly previouslyExecutedActions: StringifiedMap<dataform.ITarget, IExecutedAction>;
 
   private readonly allActionNames: Set<string>;
   private readonly runResult: dataform.IRunResult;
@@ -69,8 +59,7 @@ export class Runner {
   constructor(
     private readonly dbadapter: dbadapters.IDbAdapter,
     private readonly graph: dataform.IExecutionGraph,
-    partiallyExecutedRunResult: dataform.IRunResult = {},
-    previouslyExecutedActions: IExecutedAction[] = []
+    partiallyExecutedRunResult: dataform.IRunResult = {}
   ) {
     this.allActionNames = new Set<string>(graph.actions.map(action => action.name));
     this.runResult = {
@@ -80,22 +69,6 @@ export class Runner {
     this.warehouseStateByTarget = new StringifiedMap(
       JSONObjectStringifier.create(),
       graph.warehouseState.tables?.map(tableMetadata => [tableMetadata.target, tableMetadata])
-    );
-    this.nonTableDeclarationTargets = new StringifiedSet<dataform.ITarget>(
-      JSONObjectStringifier.create(),
-      graph.declarationTargets.filter(
-        declarationTarget =>
-          this.warehouseStateByTarget.get(declarationTarget)?.type !==
-          dataform.TableMetadata.Type.TABLE
-      )
-    );
-
-    this.previouslyExecutedActions = new StringifiedMap(
-      JSONObjectStringifier.create(),
-      previouslyExecutedActions.map(executedAction => [
-        executedAction.executionAction.target,
-        executedAction
-      ])
     );
 
     this.executedActionNames = new Set(
@@ -319,26 +292,11 @@ export class Runner {
     let actionResult: dataform.IActionResult = {
       name: action.name,
       target: action.target,
-      tasks: [],
-      inputs: action.transitiveInputs.map(target => ({
-        target,
-        metadata: this.warehouseStateByTarget.has(target)
-          ? {
-              lastModifiedTimestampMillis: this.warehouseStateByTarget.get(target).lastUpdatedMillis
-            }
-          : null
-      }))
+      tasks: []
     };
 
     if (action.tasks.length === 0) {
       actionResult.status = dataform.ActionResult.ExecutionStatus.DISABLED;
-      this.runResult.actions.push(actionResult);
-      this.notifyListeners();
-      return actionResult;
-    }
-
-    if (this.shouldCacheSkip(action)) {
-      actionResult.status = dataform.ActionResult.ExecutionStatus.CACHE_SKIPPED;
       this.runResult.actions.push(actionResult);
       this.notifyListeners();
       return actionResult;
@@ -410,7 +368,6 @@ export class Runner {
     }
     if (newMetadata) {
       this.warehouseStateByTarget.set(action.target, newMetadata);
-      actionResult.postExecutionTimestampMillis = newMetadata.lastUpdatedMillis;
       this.notifyListeners();
     } else {
       this.warehouseStateByTarget.delete(action.target);
@@ -469,90 +426,6 @@ export class Runner {
     taskResult.timing = timer.end();
     this.notifyListeners();
     return taskResult.status;
-  }
-
-  private shouldCacheSkip(executionAction: dataform.IExecutionAction): boolean {
-    // Run caching must be turned on.
-    if (!this.graph.runConfig?.useRunCache) {
-      return false;
-    }
-
-    // If the action is non-hermetic, always run it.
-    if (executionAction.hermeticity === dataform.ActionHermeticity.NON_HERMETIC) {
-      return false;
-    }
-
-    // This action must have been executed successfully before, and the previous ExecutionAction
-    // must be equal to this one.
-    if (!this.previouslyExecutedActions.has(executionAction.target)) {
-      return false;
-    }
-    const previouslyExecutedAction = this.previouslyExecutedActions.get(executionAction.target);
-    if (
-      previouslyExecutedAction.actionResult.status !==
-      dataform.ActionResult.ExecutionStatus.SUCCESSFUL
-    ) {
-      return false;
-    }
-    if (
-      !equals(dataform.ExecutionAction, previouslyExecutedAction.executionAction, executionAction)
-    ) {
-      return false;
-    }
-
-    // The target table for this action must exist, and the table metadata's last update timestamp must match
-    // the timestamp recorded after the most recent execution.
-    if (!this.warehouseStateByTarget.has(executionAction.target)) {
-      return false;
-    }
-    if (
-      this.warehouseStateByTarget.get(executionAction.target).lastUpdatedMillis.equals(0) ||
-      previouslyExecutedAction.actionResult.postExecutionTimestampMillis.equals(0) ||
-      this.warehouseStateByTarget
-        .get(executionAction.target)
-        .lastUpdatedMillis.notEquals(
-          previouslyExecutedAction.actionResult.postExecutionTimestampMillis
-        )
-    ) {
-      return false;
-    }
-
-    const previousInputTimestamps = new StringifiedMap(
-      JSONObjectStringifier.create<dataform.ITarget>(),
-      previouslyExecutedAction.actionResult.inputs
-        .filter(input => !!input.metadata)
-        .map(input => [input.target, input.metadata.lastModifiedTimestampMillis])
-    );
-    for (const transitiveInput of executionAction.transitiveInputs) {
-      // No transitive input can be a non-table declaration (because we don't know anything about the
-      // data upstream of that non-table).
-      if (this.nonTableDeclarationTargets.has(transitiveInput)) {
-        return false;
-      }
-
-      // All transitive inputs' last change timestamps must match the corresponding timestamps stored
-      // in persisted state.
-      if (!previousInputTimestamps.has(transitiveInput)) {
-        return false;
-      }
-      if (!this.warehouseStateByTarget.has(transitiveInput)) {
-        return false;
-      }
-      const inputWarehouseState = this.warehouseStateByTarget.get(transitiveInput);
-      if (
-        this.warehouseStateByTarget.get(transitiveInput).lastUpdatedMillis.equals(0) ||
-        previousInputTimestamps.get(transitiveInput).equals(0) ||
-        inputWarehouseState.lastUpdatedMillis.notEquals(
-          previousInputTimestamps.get(transitiveInput)
-        ) ||
-        // If the input has a streaming buffer, we cannot trust its last-updated timestamp.
-        inputWarehouseState.bigquery?.hasStreamingBuffer
-      ) {
-        return false;
-      }
-    }
-
-    return true;
   }
 }
 
