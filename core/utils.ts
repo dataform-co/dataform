@@ -194,15 +194,6 @@ export function setNameAndTarget(
     overrideSchema,
     overrideDatabase
   );
-  action.name = targetToName(action.target);
-}
-
-export function targetToName(actionTarget: dataform.ITarget) {
-  const nameParts = [actionTarget.name, actionTarget.schema];
-  if (!!actionTarget.database) {
-    nameParts.push(actionTarget.database);
-  }
-  return nameParts.reverse().join(".");
 }
 
 /**

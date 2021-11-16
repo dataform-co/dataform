@@ -60,13 +60,7 @@ export class SQLDataWarehouseAdapter extends Adapter implements IAdapter {
     assertion: dataform.IAssertion,
     projectConfig: dataform.IProjectConfig
   ): Tasks {
-    const target =
-      assertion.target ||
-      dataform.Target.create({
-        schema: projectConfig.assertionSchema,
-        name: assertion.name
-      });
-
+    const target = assertion.target;
     return Tasks.create()
       .add(Task.statement(this.dropIfExists(target, dataform.TableMetadata.Type.VIEW)))
       .add(

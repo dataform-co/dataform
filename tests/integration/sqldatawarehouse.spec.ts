@@ -4,6 +4,7 @@ import * as dfapi from "df/api";
 import * as dbadapters from "df/api/dbadapters";
 import * as adapters from "df/core/adapters";
 import { SQLDataWarehouseAdapter } from "df/core/adapters/sqldatawarehouse";
+import { targetToName } from "df/core/utils";
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
 import { compile, dropAllTables, getTableRows, keyBy } from "df/tests/integration/utils";
@@ -36,7 +37,7 @@ suite("@dataform/integration/sqldatawarehouse", { parallel: true }, ({ before, a
     let executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
     let executedGraph = await dfapi.run(dbadapter, executionGraph).result();
 
-    const actionMap = keyBy(executedGraph.actions, v => v.name);
+    const actionMap = keyBy(executedGraph.actions, v => targetToName(v.target));
     expect(Object.keys(actionMap).length).eql(11);
 
     // Check the status of action execution.
@@ -57,7 +58,7 @@ suite("@dataform/integration/sqldatawarehouse", { parallel: true }, ({ before, a
     ).to.eql("sqldatawarehouse error: Assertion failed: query returned 1 row(s).");
 
     // Check the data in the incremental table.
-    let incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
+    let incrementalTable = keyBy(compiledGraph.tables, t => targetToName(t.target))[
       "df_integration_test_project_e2e.example_incremental"
     ];
     let incrementalRows = await getTableRows(incrementalTable.target, adapter, dbadapter);
@@ -76,7 +77,7 @@ suite("@dataform/integration/sqldatawarehouse", { parallel: true }, ({ before, a
     expect(executedGraph.status).equals(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
 
     // Check there is an extra row in the incremental table.
-    incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
+    incrementalTable = keyBy(compiledGraph.tables, t => targetToName(t.target))[
       "df_integration_test_project_e2e.example_incremental"
     ];
     incrementalRows = await getTableRows(incrementalTable.target, adapter, dbadapter);
@@ -153,7 +154,7 @@ suite("@dataform/integration/sqldatawarehouse", { parallel: true }, ({ before, a
       const executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
       await dfapi.run(dbadapter, executionGraph).result();
 
-      const view = keyBy(compiledGraph.tables, t => t.name)[
+      const view = keyBy(compiledGraph.tables, t => targetToName(t.target))[
         "df_integration_test_evaluate.example_view"
       ];
       let evaluations = await dbadapter.evaluate(dataform.Table.create(view));
@@ -162,7 +163,7 @@ suite("@dataform/integration/sqldatawarehouse", { parallel: true }, ({ before, a
         dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
       );
 
-      const table = keyBy(compiledGraph.tables, t => t.name)[
+      const table = keyBy(compiledGraph.tables, t => targetToName(t.target))[
         "df_integration_test_evaluate.example_table"
       ];
       evaluations = await dbadapter.evaluate(dataform.Table.create(table));
@@ -171,7 +172,7 @@ suite("@dataform/integration/sqldatawarehouse", { parallel: true }, ({ before, a
         dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
       );
 
-      const assertion = keyBy(compiledGraph.assertions, t => t.name)[
+      const assertion = keyBy(compiledGraph.assertions, t => targetToName(t.target))[
         "df_integration_test_assertions_evaluate.example_assertion_pass"
       ];
       evaluations = await dbadapter.evaluate(dataform.Assertion.create(assertion));
@@ -180,7 +181,7 @@ suite("@dataform/integration/sqldatawarehouse", { parallel: true }, ({ before, a
         dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
       );
 
-      const incremental = keyBy(compiledGraph.tables, t => t.name)[
+      const incremental = keyBy(compiledGraph.tables, t => targetToName(t.target))[
         "df_integration_test_evaluate.example_incremental"
       ];
       evaluations = await dbadapter.evaluate(dataform.Table.create(incremental));

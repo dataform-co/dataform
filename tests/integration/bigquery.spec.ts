@@ -6,6 +6,7 @@ import * as dbadapters from "df/api/dbadapters";
 import { BigQueryDbAdapter } from "df/api/dbadapters/bigquery";
 import * as adapters from "df/core/adapters";
 import { BigQueryAdapter } from "df/core/adapters/bigquery";
+import { targetAsReadableString } from "df/core/targets";
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
 import { compile, dropAllTables, getTableRows, keyBy } from "df/tests/integration/utils";
@@ -39,7 +40,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
       const executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
       const executedGraph = await dfapi.run(dbadapter, executionGraph).result();
 
-      const actionMap = keyBy(executedGraph.actions, v => v.name);
+      const actionMap = keyBy(executedGraph.actions, v => targetAsReadableString(v.target));
       expect(Object.keys(actionMap).length).eql(18);
 
       // Check the status of action execution.
@@ -264,7 +265,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
       const executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
       await dfapi.run(dbadapter, executionGraph).result();
 
-      const view = keyBy(compiledGraph.tables, t => t.name)[
+      const view = keyBy(compiledGraph.tables, t => targetAsReadableString(t.target))[
         "dataform-integration-tests.df_integration_test_eu_evaluate.example_view"
       ];
       let evaluations = await dbadapter.evaluate(dataform.Table.create(view));
@@ -273,7 +274,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
         dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
       );
 
-      const table = keyBy(compiledGraph.tables, t => t.name)[
+      const table = keyBy(compiledGraph.tables, t => targetAsReadableString(t.target))[
         "dataform-integration-tests.df_integration_test_eu_evaluate.example_table"
       ];
       evaluations = await dbadapter.evaluate(dataform.Table.create(table));
@@ -282,7 +283,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
         dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
       );
 
-      const operation = keyBy(compiledGraph.operations, t => t.name)[
+      const operation = keyBy(compiledGraph.operations, t => targetAsReadableString(t.target))[
         "dataform-integration-tests.df_integration_test_eu_evaluate.example_operation"
       ];
       evaluations = await dbadapter.evaluate(dataform.Operation.create(operation));
@@ -291,7 +292,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
         dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
       );
 
-      const assertion = keyBy(compiledGraph.assertions, t => t.name)[
+      const assertion = keyBy(compiledGraph.assertions, t => targetAsReadableString(t.target))[
         "dataform-integration-tests.df_integration_test_eu_assertions_evaluate.example_assertion_pass"
       ];
       evaluations = await dbadapter.evaluate(dataform.Assertion.create(assertion));
@@ -300,7 +301,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
         dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
       );
 
-      const incremental = keyBy(compiledGraph.tables, t => t.name)[
+      const incremental = keyBy(compiledGraph.tables, t => targetAsReadableString(t.target))[
         "dataform-integration-tests.df_integration_test_eu_evaluate.example_incremental"
       ];
       evaluations = await dbadapter.evaluate(dataform.Table.create(incremental));

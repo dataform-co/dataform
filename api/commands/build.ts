@@ -1,12 +1,9 @@
 import { prune } from "df/api/commands/prune";
 import { state } from "df/api/commands/state";
 import * as dbadapters from "df/api/dbadapters";
-import {
-  JSONObjectStringifier,
-  StringifiedMap,
-  StringifiedSet
-} from "df/common/strings/stringifier";
+import { StringifiedMap, StringifiedSet } from "df/common/strings/stringifier";
 import { adapters } from "df/core";
+import { targetStringifier } from "df/core/targets";
 import * as utils from "df/core/utils";
 import { dataform } from "df/protos/ts";
 
@@ -23,7 +20,7 @@ export async function build(
   const prunedGraph = prune(compiledGraph, runConfig);
 
   const allInvolvedTargets = new StringifiedSet<dataform.ITarget>(
-    JSONObjectStringifier.create(),
+    targetStringifier,
     prunedGraph.tables.map(table => table.target)
   );
   if (runConfig.useRunCache) {
@@ -63,7 +60,7 @@ export class Builder {
     }
 
     const tableMetadataByTarget = new StringifiedMap<dataform.ITarget, dataform.ITableMetadata>(
-      JSONObjectStringifier.create()
+      targetStringifier
     );
     this.warehouseState.tables.forEach(tableState => {
       tableMetadataByTarget.set(tableState.target, tableState);
@@ -131,10 +128,8 @@ export class Builder {
     action: dataform.ITable | dataform.IOperation | dataform.IAssertion
   ) {
     return dataform.ExecutionAction.create({
-      name: action.name,
       target: action.target,
       fileName: action.fileName,
-      dependencies: action.dependencies,
       dependencyTargets: action.dependencyTargets,
       actionDescriptor: action.actionDescriptor
     });

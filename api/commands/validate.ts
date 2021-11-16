@@ -2,6 +2,7 @@ import cronParser from "cron-parser";
 import * as fs from "fs";
 import * as path from "path";
 
+import { targetAsReadableString } from "df/core/targets";
 import { dataform } from "df/protos/ts";
 
 const SCHEDULES_JSON_PATH = "schedules.json";
@@ -71,10 +72,10 @@ export function validateSchedules(
     }
 
     if (schedule.options && schedule.options.actions) {
-      const allActionNames: string[] = [].concat(
-        compiledGraph.tables.map(table => table.name),
-        compiledGraph.assertions.map(assertion => assertion.name),
-        compiledGraph.operations.map(operation => operation.name),
+      const allReadableTargetNames: string[] = [].concat(
+        compiledGraph.tables.map(table => targetAsReadableString(table.target)),
+        compiledGraph.assertions.map(assertion => targetAsReadableString(assertion.target)),
+        compiledGraph.operations.map(operation => targetAsReadableString(operation.target)),
         compiledGraph.tables.map(table => table.target.name),
         compiledGraph.assertions.map(assertion => assertion.target.name),
         compiledGraph.operations
@@ -84,7 +85,7 @@ export function validateSchedules(
 
       schedule.options.actions.forEach(action => {
         const prefixedActionName = tablePrefix ? `${tablePrefix}_${action}` : action;
-        if (!allActionNames.includes(prefixedActionName)) {
+        if (!allReadableTargetNames.includes(prefixedActionName)) {
           errors.push(
             `Action "${prefixedActionName}" included in schedule ${schedule.name} doesn't exist in the project.`
           );

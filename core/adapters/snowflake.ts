@@ -67,12 +67,7 @@ export class SnowflakeAdapter extends Adapter implements IAdapter {
     projectConfig: dataform.IProjectConfig
   ): Tasks {
     const tasks = Tasks.create();
-    const target =
-      assertion.target ||
-      dataform.Target.create({
-        schema: projectConfig.assertionSchema,
-        name: assertion.name
-      });
+    const target = assertion.target;
     tasks.add(Task.statement(this.createOrReplaceView(target, assertion.query, false)));
     tasks.add(Task.assertion(`select sum(1) as row_count from ${this.resolveTarget(target)}`));
     return tasks;
