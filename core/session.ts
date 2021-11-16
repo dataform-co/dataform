@@ -1,7 +1,7 @@
 import { default as TarjanGraphConstructor, Graph as TarjanGraph } from "tarjan-graph";
 
 import { encode64 } from "df/common/protos";
-import { JSONObjectStringifier, StringifiedMap } from "df/common/strings/stringifier";
+import { StringifiedMap, StringifiedSet } from "df/common/strings/stringifier";
 import * as adapters from "df/core/adapters";
 import { AContextable, Assertion, AssertionContext, IAssertionConfig } from "df/core/assertion";
 import { Contextable, ICommonContext, Resolvable } from "df/core/common";
@@ -16,6 +16,7 @@ import {
   TableContext,
   TableType
 } from "df/core/table";
+import { targetAsReadableString, targetStringifier } from "df/core/targets";
 import * as test from "df/core/test";
 import * as utils from "df/core/utils";
 import { toResolvable } from "df/core/utils";
@@ -33,10 +34,8 @@ const DEFAULT_CONFIG = {
  * @hidden
  */
 export interface IActionProto {
-  name?: string;
   fileName?: string;
   dependencyTargets?: dataform.ITarget[];
-  dependencies?: string[];
   hermeticity?: dataform.ActionHermeticity;
   target?: dataform.ITarget;
   canonicalTarget?: dataform.ITarget;
@@ -354,12 +353,13 @@ export class Session {
     return newTest;
   }
 
-  public compileError(err: Error | string, path?: string, actionName?: string) {
+  public compileError(err: Error | string, path?: string, actionTarget?: dataform.ITarget) {
     const fileName = path || utils.getCallerFile(this.rootDir) || __filename;
 
     const compileError = dataform.CompilationError.create({
       fileName,
-      actionName
+      actionName: !!actionTarget ? targetAsReadableString(actionTarget) : undefined,
+      actionTarget
     });
     if (typeof err === "string") {
       compileError.message = err;
@@ -484,7 +484,7 @@ export class Session {
         utils.throwIfInvalid(compiledChunk, verify);
         compiledChunks.push(compiledChunk);
       } catch (e) {
-        this.compileError(e, action.proto.fileName, action.proto.name);
+        this.compileError(e, action.proto.fileName, action.proto.target);
       }
     });
 
@@ -500,12 +500,12 @@ export class Session {
           // We couldn't find a matching target.
           this.compileError(
             new Error(
-              `Missing dependency detected: Action "${
-                action.name
-              }" depends on "${utils.stringifyResolvable(dependency)}" which does not exist`
+              `Missing dependency detected: Action "${targetAsReadableString(
+                action.target
+              )}" depends on "${utils.stringifyResolvable(dependency)}" which does not exist`
             ),
             action.fileName,
-            action.name
+            action.target
           );
         } else if (possibleDeps.length === 1) {
           // We found a single matching target, and fully-qualify it if it's a normal dependency,
@@ -516,18 +516,17 @@ export class Session {
               action.dependencyTargets.push(inlineDep)
             );
           } else {
-            fullyQualifiedDependencies[protoDep.name] = protoDep.target;
+            fullyQualifiedDependencies[targetAsReadableString(protoDep.target)] = protoDep.target;
           }
         } else {
           // Too many targets matched the dependency.
           this.compileError(
             new Error(utils.ambiguousActionNameMsg(dependency, possibleDeps)),
             action.fileName,
-            action.name
+            action.target
           );
         }
       }
-      action.dependencies = Object.keys(fullyQualifiedDependencies);
       action.dependencyTargets = Object.values(fullyQualifiedDependencies);
     });
   }
@@ -540,7 +539,7 @@ export class Session {
     }
 
     const newTargetByOriginalTarget = new StringifiedMap<dataform.ITarget, dataform.ITarget>(
-      JSONObjectStringifier.create()
+      targetStringifier
     );
     declarationTargets.forEach(declarationTarget =>
       newTargetByOriginalTarget.set(declarationTarget, declarationTarget)
@@ -562,7 +561,6 @@ export class Session {
         )
       });
       action.target = newTargetByOriginalTarget.get(action.target);
-      action.name = utils.targetToName(action.target);
     });
 
     // Fix up dependencies in case those dependencies' names have changed.
@@ -576,9 +574,6 @@ export class Session {
     };
     actions.forEach(action => {
       action.dependencyTargets = (action.dependencyTargets || []).map(getUpdatedTarget);
-      action.dependencies = (action.dependencyTargets || []).map(dependencyTarget =>
-        utils.targetToName(dependencyTarget)
-      );
 
       if (!!action.parentAction) {
         action.parentAction = getUpdatedTarget(action.parentAction);
@@ -589,22 +584,23 @@ export class Session {
   private checkActionNameUniqueness(actions: IActionProto[]) {
     const allNames: string[] = [];
     actions.forEach(action => {
-      if (allNames.includes(action.name)) {
+      const name = targetAsReadableString(action.target);
+      if (allNames.includes(name)) {
         this.compileError(
           new Error(
             `Duplicate action name detected. Names within a schema must be unique across tables, declarations, assertions, and operations`
           ),
           action.fileName,
-          action.name
+          action.target
         );
       }
-      allNames.push(action.name);
+      allNames.push(name);
     });
   }
 
   private checkCanonicalTargetUniqueness(actions: IActionProto[]) {
-    const allCanonicalTargets = new StringifiedMap<dataform.ITarget, boolean>(
-      JSONObjectStringifier.create()
+    const allCanonicalTargets = new StringifiedSet<dataform.ITarget>(
+      targetStringifier
     );
     actions.forEach(action => {
       if (allCanonicalTargets.has(action.canonicalTarget)) {
@@ -615,10 +611,10 @@ export class Session {
             )}"`
           ),
           action.fileName,
-          action.name
+          action.target
         );
       }
-      allCanonicalTargets.set(action.canonicalTarget, true);
+      allCanonicalTargets.add(action.canonicalTarget);
     });
   }
 
@@ -631,7 +627,7 @@ export class Session {
             TableType
           )}`,
           table.fileName,
-          table.name
+          table.target
         );
       }
 
@@ -641,7 +637,7 @@ export class Session {
           this.compileError(
             new Error(`The 'secure' option is only valid for Snowflake views`),
             table.fileName,
-            table.name
+            table.target
           );
         }
 
@@ -649,7 +645,7 @@ export class Session {
           this.compileError(
             new Error(`The 'transient' option is only valid for Snowflake tables`),
             table.fileName,
-            table.name
+            table.target
           );
         }
 
@@ -661,7 +657,7 @@ export class Session {
           this.compileError(
             new Error(`The 'clusterBy' option is only valid for Snowflake tables`),
             table.fileName,
-            table.name
+            table.target
           );
         }
       }
@@ -674,7 +670,7 @@ export class Session {
               `Merging using unique keys for SQLDataWarehouse has not yet been implemented`
             ),
             table.fileName,
-            table.name
+            table.target
           );
         }
 
@@ -688,7 +684,7 @@ export class Session {
             this.compileError(
               new Error(`Invalid value for sqldatawarehouse distribution: ${distribution}`),
               table.fileName,
-              table.name
+              table.target
             );
           }
         }
@@ -702,10 +698,10 @@ export class Session {
         ) => {
           const value = opts[prop];
           if (!opts.hasOwnProperty(prop)) {
-            this.compileError(`Property "${prop}" is not defined`, table.fileName, table.name);
+            this.compileError(`Property "${prop}" is not defined`, table.fileName, table.target);
           } else if (value instanceof Array) {
             if (value.length === 0) {
-              this.compileError(`Property "${prop}" is not defined`, table.fileName, table.name);
+              this.compileError(`Property "${prop}" is not defined`, table.fileName, table.target);
             }
           }
         };
@@ -724,7 +720,7 @@ export class Session {
                 values
               )}`,
               table.fileName,
-              table.name
+              table.target
             );
           }
         };
@@ -751,7 +747,7 @@ export class Session {
           this.compileError(
             `partitionBy/clusterBy are not valid for BigQuery views; they are only valid for tables`,
             table.fileName,
-            table.name
+            table.target
           );
         }
       }
@@ -763,7 +759,7 @@ export class Session {
             this.compileError(
               `Unused property was detected: "${ignoredProp}". This property is not used for tables with type "${table.type}" and will be ignored`,
               table.fileName,
-              table.name
+              table.target
             );
           }
         });
@@ -777,8 +773,7 @@ export class Session {
       if (allNames.includes(testProto.name)) {
         this.compileError(
           new Error(`Duplicate test name detected: "${testProto.name}"`),
-          testProto.fileName,
-          testProto.name
+          testProto.fileName
         );
       }
       allNames.push(testProto.name);
@@ -786,29 +781,34 @@ export class Session {
   }
 
   private checkCircularity(actions: IActionProto[]) {
-    const allActionsByName = keyByName(actions);
+    const allActionsByStringifiedTarget = new Map<string, IActionProto>(
+      actions.map(action => [targetStringifier.stringify(action.target), action])
+    );
 
     // Type exports for tarjan-graph are unfortunately wrong, so we have to do this minor hack.
     const tarjanGraph: TarjanGraph = new (TarjanGraphConstructor as any)();
     actions.forEach(action => {
-      const cleanedDependencies = (action.dependencies || []).filter(
-        dependency => !!allActionsByName[dependency]
+      const cleanedDependencies = (action.dependencyTargets || []).filter(
+        dependency => !!allActionsByStringifiedTarget.get(targetStringifier.stringify(dependency))
       );
-      tarjanGraph.add(action.name, cleanedDependencies);
+      tarjanGraph.add(
+        targetStringifier.stringify(action.target),
+        cleanedDependencies.map(target => targetStringifier.stringify(target))
+      );
     });
     const cycles = tarjanGraph.getCycles();
     cycles.forEach(cycle => {
-      const firstActionInCycle = allActionsByName[cycle[0].name];
+      const firstActionInCycle = allActionsByStringifiedTarget.get(cycle[0].name);
       const message = `Circular dependency detected in chain: [${cycle
         .map(vertex => vertex.name)
-        .join(" > ")} > ${firstActionInCycle.name}]`;
-      this.compileError(new Error(message), firstActionInCycle.fileName);
+        .join(" > ")} > ${targetAsReadableString(firstActionInCycle.target)}]`;
+      this.compileError(new Error(message), firstActionInCycle.fileName, firstActionInCycle.target);
     });
   }
 
   private checkRunCachingCorrectness(actionsWithOutput: IActionProto[]) {
     actionsWithOutput.forEach(action => {
-      if (action.dependencies?.length > 0) {
+      if (action.dependencyTargets?.length > 0) {
         return;
       }
       if (
@@ -823,7 +823,7 @@ export class Session {
           "Zero-dependency actions which create datasets are required to explicitly declare 'hermetic: (true|false)' when run caching is turned on."
         ),
         action.fileName,
-        action.name
+        action.target
       );
     });
   }
@@ -835,12 +835,6 @@ function declaresDataset(type: string, hasOutput?: boolean) {
 
 function definesDataset(type: string) {
   return type === "view" || type === "table" || type === "inline" || type === "incremental";
-}
-
-function keyByName(actions: IActionProto[]) {
-  const actionsByName: { [name: string]: IActionProto } = {};
-  actions.forEach(action => (actionsByName[action.name] = action));
-  return actionsByName;
 }
 
 function getCanonicalProjectConfig(originalProjectConfig: dataform.IProjectConfig) {

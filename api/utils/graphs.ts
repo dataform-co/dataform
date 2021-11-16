@@ -1,4 +1,5 @@
-import { JSONObjectStringifier, StringifiedMap } from "df/common/strings/stringifier";
+import { StringifiedMap } from "df/common/strings/stringifier";
+import { targetStringifier } from "df/core/targets";
 import { dataform } from "df/protos/ts";
 
 export const combineAllActions = (graph: dataform.ICompiledGraph) => {
@@ -14,7 +15,7 @@ export const combineAllActions = (graph: dataform.ICompiledGraph) => {
 
 export function actionsByTarget(compiledGraph: dataform.ICompiledGraph) {
   return new StringifiedMap(
-    JSONObjectStringifier.create<dataform.ITarget>(),
+    targetStringifier,
     combineAllActions(compiledGraph)
       // Required for backwards compatibility with old versions of @dataform/core.
       .filter(action => !!action.target)
@@ -24,7 +25,7 @@ export function actionsByTarget(compiledGraph: dataform.ICompiledGraph) {
 
 export function actionsByCanonicalTarget(compiledGraph: dataform.ICompiledGraph) {
   return new StringifiedMap(
-    JSONObjectStringifier.create<dataform.ITarget>(),
+    targetStringifier,
     combineAllActions(compiledGraph)
       // Required for backwards compatibility with old versions of @dataform/core.
       .filter(action => !!action.canonicalTarget)

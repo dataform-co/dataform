@@ -4,6 +4,7 @@ import * as dfapi from "df/api";
 import * as dbadapters from "df/api/dbadapters";
 import * as adapters from "df/core/adapters";
 import { SnowflakeAdapter } from "df/core/adapters/snowflake";
+import { targetAsReadableString } from "df/core/targets";
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
 import { compile, dropAllTables, getTableRows, keyBy } from "df/tests/integration/utils";
@@ -42,7 +43,7 @@ suite("@dataform/integration/snowflake", ({ before, after }) => {
     let executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
     let executedGraph = await dfapi.run(dbadapter, executionGraph).result();
 
-    const actionMap = keyBy(executedGraph.actions, v => v.name);
+    const actionMap = keyBy(executedGraph.actions, v => targetAsReadableString(v.target));
     expect(Object.keys(actionMap).length).eql(20);
 
     // Check the status of action execution.
@@ -75,34 +76,34 @@ suite("@dataform/integration/snowflake", ({ before, after }) => {
 
     // Check the s3 table has two rows, as per:
     // https://dataform-integration-tests.s3.us-east-2.amazonaws.com/sample-data/sample_data.csv
-    const s3Table = keyBy(compiledGraph.operations, t => t.name)[
+    const s3Table = keyBy(compiledGraph.operations, t => targetAsReadableString(t.target))[
       "INTEGRATION_TESTS.DF_INTEGRATION_TEST_PROJECT_E2E.LOAD_FROM_S3"
     ];
     const s3Rows = await getTableRows(s3Table.target, adapter, dbadapter);
     expect(s3Rows.length).equals(2);
 
     // Check the status of the view in the non-default database.
-    const tada2DatabaseView = keyBy(compiledGraph.tables, t => t.name)[
+    const tada2DatabaseView = keyBy(compiledGraph.tables, t => targetAsReadableString(t.target))[
       "INTEGRATION_TESTS2.DF_INTEGRATION_TEST_PROJECT_E2E.SAMPLE_DATA_2"
     ];
     const tada2DatabaseViewRows = await getTableRows(tada2DatabaseView.target, adapter, dbadapter);
     expect(tada2DatabaseViewRows.length).equals(3);
 
     // Check the data in the incremental tables.
-    let incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
+    let incrementalTable = keyBy(compiledGraph.tables, t => targetAsReadableString(t.target))[
       "INTEGRATION_TESTS.DF_INTEGRATION_TEST_PROJECT_E2E.EXAMPLE_INCREMENTAL"
     ];
     let incrementalRows = await getTableRows(incrementalTable.target, adapter, dbadapter);
     expect(incrementalRows.length).equals(3);
 
-    const incrementalTable2 = keyBy(compiledGraph.tables, t => t.name)[
+    const incrementalTable2 = keyBy(compiledGraph.tables, t => targetAsReadableString(t.target))[
       "INTEGRATION_TESTS2.DF_INTEGRATION_TEST_PROJECT_E2E.EXAMPLE_INCREMENTAL_TADA2"
     ];
     const incrementalRows2 = await getTableRows(incrementalTable2.target, adapter, dbadapter);
     expect(incrementalRows2.length).equals(3);
 
     // Check the data in the incremental merge table.
-    incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
+    incrementalTable = keyBy(compiledGraph.tables, t => targetAsReadableString(t.target))[
       "INTEGRATION_TESTS.DF_INTEGRATION_TEST_PROJECT_E2E.EXAMPLE_INCREMENTAL_MERGE"
     ];
     incrementalRows = await getTableRows(incrementalTable.target, adapter, dbadapter);
@@ -127,20 +128,20 @@ suite("@dataform/integration/snowflake", ({ before, after }) => {
     expect(executedGraph.status).equals(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
 
     // Check there are the expected number of extra rows in the incremental tables.
-    incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
+    incrementalTable = keyBy(compiledGraph.tables, t => targetAsReadableString(t.target))[
       "INTEGRATION_TESTS.DF_INTEGRATION_TEST_PROJECT_E2E.EXAMPLE_INCREMENTAL"
     ];
     incrementalRows = await getTableRows(incrementalTable.target, adapter, dbadapter);
     expect(incrementalRows.length).equals(5);
 
-    incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
+    incrementalTable = keyBy(compiledGraph.tables, t => targetAsReadableString(t.target))[
       "INTEGRATION_TESTS2.DF_INTEGRATION_TEST_PROJECT_E2E.EXAMPLE_INCREMENTAL_TADA2"
     ];
     incrementalRows = await getTableRows(incrementalTable2.target, adapter, dbadapter);
     expect(incrementalRows.length).equals(5);
 
     // Check the data in the incremental merge table.
-    incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
+    incrementalTable = keyBy(compiledGraph.tables, t => targetAsReadableString(t.target))[
       "INTEGRATION_TESTS.DF_INTEGRATION_TEST_PROJECT_E2E.EXAMPLE_INCREMENTAL_MERGE"
     ];
     incrementalRows = await getTableRows(incrementalTable.target, adapter, dbadapter);
@@ -283,7 +284,7 @@ suite("@dataform/integration/snowflake", ({ before, after }) => {
       const executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
       await dfapi.run(dbadapter, executionGraph).result();
 
-      const view = keyBy(compiledGraph.tables, t => t.name)[
+      const view = keyBy(compiledGraph.tables, t => targetAsReadableString(t.target))[
         "INTEGRATION_TESTS.DF_INTEGRATION_TEST_EVALUATE.EXAMPLE_VIEW"
       ];
       let evaluations = await dbadapter.evaluate(dataform.Table.create(view));
@@ -292,7 +293,7 @@ suite("@dataform/integration/snowflake", ({ before, after }) => {
         dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
       );
 
-      const table = keyBy(compiledGraph.tables, t => t.name)[
+      const table = keyBy(compiledGraph.tables, t => targetAsReadableString(t.target))[
         "INTEGRATION_TESTS.DF_INTEGRATION_TEST_EVALUATE.EXAMPLE_TABLE"
       ];
       evaluations = await dbadapter.evaluate(dataform.Table.create(table));
@@ -301,7 +302,7 @@ suite("@dataform/integration/snowflake", ({ before, after }) => {
         dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
       );
 
-      const assertion = keyBy(compiledGraph.assertions, t => t.name)[
+      const assertion = keyBy(compiledGraph.assertions, t => targetAsReadableString(t.target))[
         "INTEGRATION_TESTS.DF_INTEGRATION_TEST_ASSERTIONS_EVALUATE.EXAMPLE_ASSERTION_PASS"
       ];
       evaluations = await dbadapter.evaluate(dataform.Assertion.create(assertion));
@@ -310,7 +311,7 @@ suite("@dataform/integration/snowflake", ({ before, after }) => {
         dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
       );
 
-      const incremental = keyBy(compiledGraph.tables, t => t.name)[
+      const incremental = keyBy(compiledGraph.tables, t => targetAsReadableString(t.target))[
         "INTEGRATION_TESTS.DF_INTEGRATION_TEST_EVALUATE.EXAMPLE_INCREMENTAL"
       ];
       evaluations = await dbadapter.evaluate(dataform.Table.create(incremental));
