@@ -1,8 +1,8 @@
 syntax="proto3";
 
-package dataform;
+package dataform.profiles;
 
-option go_package = "github.com/dataform-co/dataform/protos/dataform";
+option go_package = "github.com/dataform-co/dataform/protos/dataform/profiles";
 
 message JDBC {
   string host = 2;
