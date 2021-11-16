@@ -1,10 +1,10 @@
 syntax="proto3";
 
-package dataform.execution;
+package dataform;
 
 import "protos/core.proto";
 
-option go_package = "github.com/dataform-co/dataform/protos/dataform/execution";
+option go_package = "github.com/dataform-co/dataform/protos/dataform";
 
 
 // This is a superset of Schedule.Options.

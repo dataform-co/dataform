@@ -1,8 +1,8 @@
 syntax="proto3";
 
-package dataform.evaluation;
+package dataform;
 
-option go_package = "github.com/dataform-co/dataform/protos/dataform/evaluation";
+option go_package = "github.com/dataform-co/dataform/protos/dataform";
 
 message QueryEvaluationError {
   string message = 1;

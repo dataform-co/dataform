@@ -1,10 +1,10 @@
 syntax="proto3";
 
-package dataform.environments;
+package dataform;
 
 import "protos/core.proto";
 
-option go_package = "github.com/dataform-co/dataform/protos/dataform/environments";
+option go_package = "github.com/dataform-co/dataform/protos/dataform";
 
 message Environments {
   message Environment {
