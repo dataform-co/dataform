@@ -2,8 +2,7 @@ import { assert, config, expect } from "chai";
 import Long from "long";
 import { anyString, anything, instance, mock, verify, when } from "ts-mockito";
 
-import { Builder, credentials, prune, query, Runner } from "df/api";
-import { computeAllTransitiveInputs } from "df/api/commands/build";
+import { Builder, credentials, prune, Runner } from "df/api";
 import { IDbAdapter } from "df/api/dbadapters";
 import { BigQueryDbAdapter } from "df/api/dbadapters/bigquery";
 import { sleep, sleepUntil } from "df/common/promises";
@@ -68,12 +67,7 @@ suite("@dataform/api", () => {
 
   suite("build", () => {
     test("exclude_disabled", () => {
-      const builder = new Builder(
-        TEST_GRAPH,
-        { includeDependencies: true },
-        TEST_STATE,
-        computeAllTransitiveInputs(TEST_GRAPH)
-      );
+      const builder = new Builder(TEST_GRAPH, { includeDependencies: true }, TEST_STATE);
       const executionGraph = builder.build();
 
       const actionA = executionGraph.actions.find(
@@ -103,12 +97,7 @@ suite("@dataform/api", () => {
           tables: [{ target: { schema: "schema", name: "a" } }]
         });
 
-        const builder = new Builder(
-          graphWithErrors,
-          {},
-          TEST_STATE,
-          computeAllTransitiveInputs(graphWithErrors)
-        );
+        const builder = new Builder(graphWithErrors, {}, TEST_STATE);
         builder.build();
       }).to.throw();
     });
@@ -116,12 +105,7 @@ suite("@dataform/api", () => {
     test("trying to fully refresh a protected dataset fails", () => {
       const testGraph = dataform.CompiledGraph.create(TEST_GRAPH);
       testGraph.tables[0].protected = true;
-      const builder = new Builder(
-        TEST_GRAPH,
-        { fullRefresh: true },
-        TEST_STATE,
-        computeAllTransitiveInputs(TEST_GRAPH)
-      );
+      const builder = new Builder(TEST_GRAPH, { fullRefresh: true }, TEST_STATE);
       expect(() => builder.build()).to.throw();
     });
 
@@ -146,7 +130,7 @@ suite("@dataform/api", () => {
         assertions: [{ target: { schema: "schema", name: "e" } }]
       });
 
-      const builder = new Builder(graph, {}, TEST_STATE, computeAllTransitiveInputs(graph));
+      const builder = new Builder(graph, {}, TEST_STATE);
       const executedGraph = builder.build();
 
       expect(executedGraph.actions.length).greaterThan(0);
@@ -193,12 +177,7 @@ suite("@dataform/api", () => {
         });
 
         test(`${warehouse} when running non incrementally`, () => {
-          const action = new Builder(
-            graph,
-            {},
-            TEST_STATE,
-            computeAllTransitiveInputs(graph)
-          ).build().actions[0];
+          const action = new Builder(graph, {}, TEST_STATE).build().actions[0];
           expect(action.tasks[0]).eql(
             dataform.ExecutionTask.create({
               type: "statement",
@@ -219,8 +198,7 @@ suite("@dataform/api", () => {
             {},
             dataform.WarehouseState.create({
               tables: [{ target: graph.tables[0].target, fields: [] }]
-            }),
-            computeAllTransitiveInputs(graph)
+            })
           ).build().actions[0];
           expect(action.tasks[0]).eql(
             dataform.ExecutionTask.create({
@@ -430,12 +408,7 @@ suite("@dataform/api", () => {
           }
         ]
       });
-      const executionGraph = new Builder(
-        graph,
-        {},
-        state,
-        computeAllTransitiveInputs(graph)
-      ).build();
+      const executionGraph = new Builder(graph, {}, state).build();
       expect(
         cleanSql(
           executionGraph.actions.filter(
@@ -535,7 +508,7 @@ suite("@dataform/api", () => {
         'create or replace view "schema"."redshift_view_with_binding" as query'
       ];
 
-      const builder = new Builder(testGraph, {}, testState, computeAllTransitiveInputs(testGraph));
+      const builder = new Builder(testGraph, {}, testState);
       const executionGraph = builder.build();
 
       expect(executionGraph.actions)
@@ -569,12 +542,7 @@ suite("@dataform/api", () => {
         ]
       });
 
-      const builder = new Builder(
-        testGraph,
-        {},
-        dataform.WarehouseState.create({}),
-        computeAllTransitiveInputs(testGraph)
-      );
+      const builder = new Builder(testGraph, {}, dataform.WarehouseState.create({}));
       const executionGraph = builder.build();
 
       expect(
@@ -603,7 +571,7 @@ suite("@dataform/api", () => {
       const testState = dataform.WarehouseState.create({});
       const expectedSQL = ['create or replace view "schema"."postgres_view" as query'];
 
-      const builder = new Builder(testGraph, {}, testState, computeAllTransitiveInputs(testGraph));
+      const builder = new Builder(testGraph, {}, testState);
       const executionGraph = builder.build();
 
       expect(executionGraph.actions)
@@ -659,7 +627,6 @@ suite("@dataform/api", () => {
                 "create or replace table `deeb.schema.partitionby` partition by DATE(test) as select 1 as test"
             }
           ],
-          transitiveInputs: [],
           dependencyTargets: [],
           hermeticity: dataform.ActionHermeticity.HERMETIC
         },
@@ -676,17 +643,11 @@ suite("@dataform/api", () => {
               statement: "create or replace table `deeb.schema.plain` as select 1 as test"
             }
           ],
-          transitiveInputs: [],
           dependencyTargets: [],
           hermeticity: dataform.ActionHermeticity.HERMETIC
         }
       ];
-      const executionGraph = new Builder(
-        testGraph,
-        {},
-        dataform.WarehouseState.create({}),
-        computeAllTransitiveInputs(testGraph)
-      ).build();
+      const executionGraph = new Builder(testGraph, {}, dataform.WarehouseState.create({})).build();
       expect(asPlainObject(executionGraph.actions)).deep.equals(
         asPlainObject(expectedExecutionActions)
       );
@@ -733,7 +694,6 @@ suite("@dataform/api", () => {
                 "create or replace table `deeb.schema.partitionby` partition by DATE(test) cluster by name, revenue as select 1 as test"
             }
           ],
-          transitiveInputs: [],
           dependencyTargets: [],
           hermeticity: dataform.ActionHermeticity.HERMETIC
         },
@@ -750,17 +710,11 @@ suite("@dataform/api", () => {
               statement: "create or replace table `deeb.schema.plain` as select 1 as test"
             }
           ],
-          transitiveInputs: [],
           dependencyTargets: [],
           hermeticity: dataform.ActionHermeticity.HERMETIC
         }
       ];
-      const executionGraph = new Builder(
-        testGraph,
-        {},
-        dataform.WarehouseState.create({}),
-        computeAllTransitiveInputs(testGraph)
-      ).build();
+      const executionGraph = new Builder(testGraph, {}, dataform.WarehouseState.create({})).build();
       expect(asPlainObject(executionGraph.actions)).deep.equals(
         asPlainObject(expectedExecutionActions)
       );
@@ -790,7 +744,7 @@ suite("@dataform/api", () => {
         ]
       });
       const testState = dataform.WarehouseState.create({});
-      const builder = new Builder(testGraph, {}, testState, computeAllTransitiveInputs(testGraph));
+      const builder = new Builder(testGraph, {}, testState);
       const executionGraph = builder.build();
 
       expect(executionGraph.actions)
@@ -911,7 +865,6 @@ suite("@dataform/api", () => {
       },
       actions: [
         {
-          transitiveInputs: [],
           tasks: [
             {
               type: "executionTaskType",
@@ -931,8 +884,6 @@ suite("@dataform/api", () => {
           dependencyTargets: []
         },
         {
-          dependencyTargets: [{ schema: "schema1", name: "target1" }],
-          transitiveInputs: [{ schema: "schema1", name: "target1" }],
           tasks: [
             {
               type: "executionTaskType2",
@@ -945,7 +896,13 @@ suite("@dataform/api", () => {
             schema: "schema2",
             name: "target2"
           },
-          tableType: "someTableType"
+          tableType: "someTableType",
+          dependencyTargets: [
+            {
+              schema: "schema1",
+              name: "target1"
+            }
+          ]
         }
       ]
     });
@@ -955,7 +912,7 @@ suite("@dataform/api", () => {
       actions: [
         {
           target: RUN_TEST_GRAPH.actions[0].target,
-          inputs: [],
+
           tasks: [
             {
               status: dataform.TaskResult.ExecutionStatus.SUCCESSFUL,
@@ -976,7 +933,6 @@ suite("@dataform/api", () => {
         },
         {
           target: RUN_TEST_GRAPH.actions[1].target,
-          inputs: [{ target: RUN_TEST_GRAPH.actions[0].target, metadata: undefined }],
           tasks: [
             {
               status: dataform.TaskResult.ExecutionStatus.FAILED,
@@ -1076,7 +1032,6 @@ suite("@dataform/api", () => {
           actions: [
             {
               target: EXPECTED_RUN_RESULT.actions[0].target,
-              inputs: [],
               status: dataform.ActionResult.ExecutionStatus.RUNNING,
               tasks: [EXPECTED_RUN_RESULT.actions[0].tasks[0]]
             }
@@ -1180,7 +1135,6 @@ suite("@dataform/api", () => {
               EXPECTED_RUN_RESULT.actions[0],
               {
                 target: NEW_TEST_GRAPH.actions[1].target,
-                inputs: [{ target: RUN_TEST_GRAPH.actions[0].target }],
                 tasks: [
                   {
                     status: dataform.TaskResult.ExecutionStatus.SUCCESSFUL,
@@ -1255,8 +1209,6 @@ suite("@dataform/api", () => {
         },
         actions: [
           {
-            transitiveInputs: [],
-            dependencyTargets: [],
             tasks: [
               {
                 type: "statement",
@@ -1268,7 +1220,8 @@ suite("@dataform/api", () => {
               schema: "schema1",
               name: "target1"
             },
-            tableType: "table"
+            tableType: "table",
+            dependencyTargets: []
           }
         ]
       });

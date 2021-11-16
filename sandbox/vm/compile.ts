@@ -2,7 +2,7 @@ import * as path from "path";
 import { CompilerFunction, NodeVM } from "vm2";
 
 import { dataform } from "df/protos/ts";
-import { createCoreExecutionConfig, createGenIndexConfig } from "df/sandbox/vm/create_config";
+import { createCoreExecutionRequest, createGenIndexConfig } from "df/sandbox/vm/create_config";
 
 function missingValidCorePackageError() {
   return new Error(
@@ -51,7 +51,7 @@ export function compile(compileConfig: dataform.ICompileConfig) {
   if (compileConfig.useMain) {
     try {
       return userCodeVm.run(
-        `return require("@dataform/core").main("${createCoreExecutionConfig(compileConfig)}")`,
+        `return require("@dataform/core").main("${createCoreExecutionRequest(compileConfig)}")`,
         vmIndexFileName
       );
     } catch (e) {

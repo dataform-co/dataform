@@ -339,39 +339,6 @@ export function printExecutedAction(
       }
       return;
     }
-    case dataform.ActionResult.ExecutionStatus.CACHE_SKIPPED: {
-      switch (executionAction.type) {
-        case "table": {
-          writeStdOut(
-            `${warningOutput("Skipped dataset creation (cache hit): ")} ${datasetString(
-              executionAction.target,
-              executionAction.tableType,
-              executionAction.tasks.length === 0
-            )}`
-          );
-          return;
-        }
-        case "assertion": {
-          writeStdOut(
-            `${warningOutput("Skipped assertion execution (cache hit): ")} ${assertionString(
-              executionAction.target,
-              executionAction.tasks.length === 0
-            )}`
-          );
-          return;
-        }
-        case "operation": {
-          writeStdOut(
-            `${warningOutput("Skipped operation execution (cache hit): ")} ${operationString(
-              executionAction.target,
-              executionAction.tasks.length === 0
-            )}`
-          );
-          return;
-        }
-      }
-      return;
-    }
   }
 }
 
