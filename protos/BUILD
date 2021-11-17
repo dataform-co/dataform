@@ -12,6 +12,9 @@ proto_library(
     name = "dataform_proto",
     srcs = [
         "core.proto",
+        "environments.proto",
+        "evaluation.proto",
+        "execution.proto",
         "profiles.proto",
     ],
 )
