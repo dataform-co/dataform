@@ -49,9 +49,7 @@ export function supportsCancel(warehouseType: WarehouseType) {
   });
 }
 
-const requiredBigQueryWarehouseProps: Array<keyof dataform.IBigQuery> = [
-  "projectId"
-];
+const requiredBigQueryWarehouseProps: Array<keyof dataform.IBigQuery> = ["projectId"];
 const requiredJdbcWarehouseProps: Array<keyof dataform.IJDBC> = [
   "host",
   "port",
@@ -114,11 +112,15 @@ register("sqldatawarehouse", SQLDataWarehouseAdapter);
 
 export type QueryOrAction = string | dataform.Table | dataform.Operation | dataform.Assertion;
 
+export interface IValidationQuery {
+  query?: string;
+  incremental?: boolean;
+}
 export function collectEvaluationQueries(
   queryOrAction: QueryOrAction,
   concatenate: boolean,
   queryModifier: (mod: string) => string = (q: string) => q
-): dataform.ValidationQuery[] {
+): IValidationQuery[] {
   // TODO: The prefix method (via `queryModifier`) is a bit sketchy. For example after
   // attaching the `explain` prefix, a table or operation could look like this:
   // ```
@@ -127,7 +129,7 @@ export function collectEvaluationQueries(
   // DROP TABLE IF EXISTS "df_integration_test"."load_from_s3_temp" CASCADE;
   // ```
   // which is invalid because the `explain` is interrupted by a comment.
-  const validationQueries = new Array<dataform.IValidationQuery>();
+  const validationQueries = new Array<IValidationQuery>();
   if (typeof queryOrAction === "string") {
     validationQueries.push({ query: queryModifier(queryOrAction) });
   } else {
@@ -178,8 +180,6 @@ export function collectEvaluationQueries(
     }
   }
   return validationQueries
-    .map(validationQuery =>
-      dataform.ValidationQuery.create({ query: validationQuery.query.trim(), ...validationQuery })
-    )
+    .map(validationQuery => ({ query: validationQuery.query.trim(), ...validationQuery }))
     .filter(validationQuery => !!validationQuery.query);
 }

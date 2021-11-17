@@ -1,0 +1,200 @@
+syntax="proto3";
+
+package dataform;
+
+import "protos/core.proto";
+
+option go_package = "github.com/dataform-co/dataform/protos/dataform";
+
+
+// This is a superset of Schedule.Options.
+message RunConfig {
+  repeated string actions = 1;
+  repeated string tags = 5;
+  bool include_dependencies = 3;
+  bool include_dependents = 11;
+  bool full_refresh = 2;
+  int32 timeout_millis = 7;
+  
+  // For internal use only, will be removed at a later date.
+  bool disable_set_metadata = 9;
+
+  // This setting no longer has any effect.
+  bool use_run_cache = 8;
+
+  reserved 4, 6;
+}
+
+message ExecutionTask {
+  string type = 1;
+  string statement = 2;
+}
+
+message ExecutionAction {
+  Target target = 5;
+  string file_name = 8;
+
+  string type = 4;
+  string table_type = 6;
+
+  
+  repeated Target dependency_targets = 11;
+  ActionHermeticity hermeticity = 10;
+
+  repeated ExecutionTask tasks = 2;
+
+  ActionDescriptor action_descriptor = 9;
+
+  reserved 1, 3, 7;
+}
+
+message WarehouseState {
+  repeated TableMetadata tables = 1;
+
+  reserved 2;
+}
+
+message ExecutionGraph {
+  ProjectConfig project_config = 1;
+  RunConfig run_config = 2;
+  WarehouseState warehouse_state = 4;
+  repeated Target declaration_targets = 5;
+
+  repeated ExecutionAction actions = 3;
+}
+
+message Timing {
+  int64 start_time_millis = 1;
+  int64 end_time_millis = 2;
+}
+
+message RunResult {
+  enum ExecutionStatus {
+    UNKNOWN = 0;
+    RUNNING = 1;
+    SUCCESSFUL = 2;
+    FAILED = 3;
+    CANCELLED = 4;
+    TIMED_OUT = 5;
+  }
+  ExecutionStatus status = 1;
+  repeated ActionResult actions = 2;
+  Timing timing = 3;
+}
+
+message ActionResult {
+  
+  Target target = 5;
+
+  enum ExecutionStatus {
+    UNKNOWN = 0;
+    RUNNING = 1;
+    SUCCESSFUL = 2;
+    FAILED = 3;
+    SKIPPED = 4;
+    DISABLED = 5;
+    CANCELLED = 6;
+    reserved 7;
+  }
+  ExecutionStatus status = 2;
+
+  repeated TaskResult tasks = 3;
+  Timing timing = 4;
+
+  reserved 1, 6, 7;
+}
+
+
+message ExecutionMetadata {
+  message BigqueryMetadata {
+    string job_id = 1;
+    int64 total_bytes_processed = 2;
+    int64 total_bytes_billed = 3;  
+  }
+  BigqueryMetadata bigquery = 1;
+}
+
+message TaskResult {
+  enum ExecutionStatus {
+      UNKNOWN = 0;
+      RUNNING = 1;
+      SUCCESSFUL = 2;
+      FAILED = 3;
+      SKIPPED = 4;
+      CANCELLED = 5;
+  }
+  ExecutionStatus status = 1;
+  string error_message = 2;
+  Timing timing = 3;
+  ExecutionMetadata metadata = 4;
+}
+
+message TestResult {
+  string name = 1;
+  bool successful = 2;
+  repeated string messages = 3;
+}
+
+message Field {
+
+  enum Primitive {
+    UNKNOWN = 0;
+    INTEGER = 1;
+    FLOAT = 2;
+    NUMERIC = 5;
+    BOOLEAN = 3;
+    STRING = 4;
+    DATE = 6;
+    DATETIME = 7;
+    TIMESTAMP = 8;
+    TIME = 9;
+    BYTES = 10;
+    // Semi structured data from Snowflake has no strong schema, and could therefore be anything.
+    ANY = 11;
+    GEOGRAPHY = 12;
+  }
+
+  enum Flag {
+    UNKNOWN_FLAG = 0;
+    REPEATED = 1;
+  }
+
+  string name = 1;
+  
+  repeated Flag flags = 6;
+
+  oneof type {
+    Primitive primitive = 7;
+    Fields struct = 3;
+  }
+
+  string description = 5;
+
+  reserved 2, 4;
+}
+
+message Fields {
+  repeated Field fields = 1;
+}
+
+message TableMetadata {
+  Target target = 1;
+  enum Type {
+    UNKNOWN = 0;
+    TABLE = 1;
+    VIEW = 2;
+  }
+  Type type = 6;
+
+  repeated Field fields = 3;
+  string description = 5;
+  map<string, string> labels = 7;
+  int64 last_updated_millis = 4;
+
+  message BigQuery {
+    bool has_streaming_buffer = 1;
+  }
+  BigQuery bigquery = 8;
+
+  reserved 2;
+}
