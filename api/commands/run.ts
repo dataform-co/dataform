@@ -353,7 +353,21 @@ export class Runner {
       action.type === "table" &&
       action.tableType !== "inline"
     ) {
-      await this.dbadapter.setMetadata(action);
+      try {
+        await this.dbadapter.setMetadata(action);
+      } catch (e) {
+        // TODO: Setting the metadata is not a task itself, so we have nowhere to surface this error cleanly.
+        // For now, we can attach the error to the last task in the action so it gets
+        // surfaced properly without ending the entire run, but also not failing silently.
+        if (actionResult.tasks.length > 0) {
+          actionResult.tasks[
+            actionResult.tasks.length - 1
+          ].errorMessage = `Error setting metadata: ${e.message}`;
+          actionResult.tasks[actionResult.tasks.length - 1].status =
+            dataform.TaskResult.ExecutionStatus.FAILED;
+        }
+        actionResult.status = dataform.ActionResult.ExecutionStatus.FAILED;
+      }
     }
 
     let newMetadata: dataform.ITableMetadata;

@@ -1257,6 +1257,76 @@ suite("@dataform/api", () => {
       );
       expect(result.actions[0].tasks[0].errorMessage).to.match(/cancelled/);
     });
+
+    test("continues after setMetadata fails", async () => {
+      const METADATA_TEST_GRAPH: dataform.IExecutionGraph = dataform.ExecutionGraph.create({
+        projectConfig: {
+          warehouse: "bigquery",
+          defaultSchema: "foo",
+          assertionSchema: "bar"
+        },
+        warehouseState: {
+          tables: []
+        },
+        actions: [
+          {
+            tasks: [
+              {
+                type: "statement",
+                statement: "some statement"
+              }
+            ],
+            type: "table",
+            target: {
+              schema: "schema1",
+              name: "target1"
+            },
+            actionDescriptor: {
+              description: "desc"
+            },
+            tableType: "table",
+            dependencyTargets: []
+          }
+        ]
+      });
+      const mockedDbAdapter = mock(BigQueryDbAdapter);
+      when(mockedDbAdapter.createSchema(anyString(), anyString())).thenResolve(null);
+      when(mockedDbAdapter.execute(anything(), anything())).thenResolve({
+        rows: [],
+        metadata: {}
+      });
+      when(mockedDbAdapter.setMetadata(anything())).thenReject(
+        new Error("Error during setMetadata")
+      );
+
+      const mockDbAdapterInstance = instance(mockedDbAdapter);
+      mockDbAdapterInstance.withClientLock = async callback =>
+        await callback(mockDbAdapterInstance);
+
+      const runner = new Runner(mockDbAdapterInstance, METADATA_TEST_GRAPH);
+
+      expect(
+        dataform.RunResult.create(cleanTiming(await runner.execute().result())).toJSON()
+      ).to.deep.equal({
+        actions: [
+          {
+            status: "FAILED",
+            target: {
+              name: "target1",
+              schema: "schema1"
+            },
+            tasks: [
+              {
+                errorMessage: "Error setting metadata: Error during setMetadata",
+                metadata: {},
+                status: "FAILED"
+              }
+            ]
+          }
+        ],
+        status: "FAILED"
+      });
+    });
   });
 });
 
