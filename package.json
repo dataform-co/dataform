@@ -140,7 +140,7 @@
     "uglify-js": "^3.4.9",
     "untildify": "^4.0.0",
     "uuid": "^7.0.2",
-    "validator": "^13.1.17",
+    "validator": "^13.7.0",
     "vm2": "^3.9.4",
     "vsce": "^1.79.5",
     "vscode-languageclient": "^6.1.3",
