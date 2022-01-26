@@ -41,7 +41,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
       const executedGraph = await dfapi.run(dbadapter, executionGraph).result();
 
       const actionMap = keyBy(executedGraph.actions, v => targetAsReadableString(v.target));
-      expect(Object.keys(actionMap).length).eql(18);
+      expect(Object.keys(actionMap).length).eql(19);
 
       // Check the status of action execution.
       const expectedFailedActions = [
