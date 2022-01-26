@@ -417,7 +417,7 @@ export class Session {
 
     this.checkCanonicalTargetUniqueness(standardActions);
 
-    this.checkTableConfigValidity(compiledGraph.tables, compiledGraph.projectConfig);
+    this.checkTableConfigValidity(compiledGraph.tables);
 
     this.checkCircularity(
       [].concat(compiledGraph.tables, compiledGraph.assertions, compiledGraph.operations)
@@ -618,7 +618,7 @@ export class Session {
     });
   }
 
-  private checkTableConfigValidity(tables: dataform.ITable[], config: dataform.IProjectConfig) {
+  private checkTableConfigValidity(tables: dataform.ITable[]) {
     tables.forEach(table => {
       // type
       if (!!table.type && !TableType.includes(table.type as TableType)) {
@@ -633,7 +633,7 @@ export class Session {
 
       // materialized
       if(!!table.materialized){
-        if (table.type !== "view" || (config.warehouse !== "snowflake" && config.warehouse !== "bigquery")) {
+        if (table.type !== "view" || (this.config.warehouse !== "snowflake" && this.config.warehouse !== "bigquery")) {
           this.compileError(
             new Error(`The 'materialized' option is only valid for Snowflake and BigQuery views`),
             table.fileName,
