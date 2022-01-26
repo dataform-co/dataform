@@ -334,6 +334,7 @@ suite("examples", () => {
                 )
             );
             expect(exampleMaterializedView.type).equals("view");
+            expect(exampleMaterializedView.materialized).equals(true);
             expect(exampleMaterializedView.query.trim()).equals(
               `select * from \`${dotJoined(
                 databaseWithSuffix("tada-analytics"),
