@@ -848,6 +848,7 @@ function objectExistsOrIsNonEmpty(prop: any): boolean {
 class ActionIndex {
   private readonly byName: Map<string, Action[]> = new Map();
   private readonly bySchemaAndName: Map<string, Map<string, Action[]>> = new Map();
+  private readonly byDatabaseAndName: Map<string, Map<string, Action[]>> = new Map();
   private readonly byDatabaseSchemaAndName: Map<
     string,
     Map<string, Map<string, Action[]>>
@@ -870,6 +871,15 @@ class ActionIndex {
       forSchema.get(action.proto.target.name).push(action);
 
       if (!!action.proto.target.database) {
+        if (!this.byDatabaseAndName.has(action.proto.target.database)) {
+          this.byDatabaseAndName.set(action.proto.target.database, new Map());
+        }
+        const forDatabaseNoSchema = this.byDatabaseAndName.get(action.proto.target.database);
+        if (!forDatabaseNoSchema.has(action.proto.target.name)) {
+          forDatabaseNoSchema.set(action.proto.target.name, []);
+        }
+        forDatabaseNoSchema.get(action.proto.target.name).push(action);
+
         if (!this.byDatabaseSchemaAndName.has(action.proto.target.database)) {
           this.byDatabaseSchemaAndName.set(action.proto.target.database, new Map());
         }
@@ -888,10 +898,17 @@ class ActionIndex {
 
   public find(target: dataform.ITarget) {
     if (!!target.database) {
+      if (!!target.schema) {
+        return (
+          this.byDatabaseSchemaAndName
+            .get(this.adapter.normalizeIdentifier(target.database))
+            .get(this.adapter.normalizeIdentifier(target.schema))
+            .get(this.adapter.normalizeIdentifier(target.name)) || []
+        );
+      }
       return (
-        this.byDatabaseSchemaAndName
+        this.byDatabaseAndName
           .get(this.adapter.normalizeIdentifier(target.database))
-          .get(this.adapter.normalizeIdentifier(target.schema))
           .get(this.adapter.normalizeIdentifier(target.name)) || []
       );
     }
