@@ -287,8 +287,8 @@ export interface ITableConfig
   uniqueKey?: string[];
 
   /**
-   * Only allowed when the table type is `view`.
-   * Only allowed when using Snowflake or BigQuery warehouse.
+   * Only valid when the table type is `view`.
+   * Only valid when using Snowflake or BigQuery.
    * 
    * If set to true, will make the view materialized.
    *
