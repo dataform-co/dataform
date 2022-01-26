@@ -50,6 +50,8 @@ type SqlxConfig = (
   | (test.ITestConfig & { type: "test" })
 ) & { name: string };
 
+type Action = Table | Operation | Assertion | Declaration;
+
 /**
  * @hidden
  */
@@ -59,7 +61,8 @@ export class Session {
   public config: dataform.IProjectConfig;
   public canonicalConfig: dataform.IProjectConfig;
 
-  public actions: Array<Table | Operation | Assertion | Declaration>;
+  public actions: Action[];
+  public indexedActions: ActionIndex;
   public tests: { [name: string]: test.Test };
 
   public graphErrors: dataform.IGraphErrors;
@@ -217,7 +220,7 @@ export class Session {
 
   public resolve(ref: Resolvable | string[], ...rest: string[]): string {
     ref = toResolvable(ref, rest);
-    const allResolved = this.findActions(utils.resolvableAsTarget(ref));
+    const allResolved = this.indexedActions.find(utils.resolvableAsTarget(ref));
     if (allResolved.length > 1) {
       this.compileError(new Error(utils.ambiguousActionNameMsg(ref, allResolved)));
     }
@@ -371,6 +374,7 @@ export class Session {
   }
 
   public compile(): dataform.CompiledGraph {
+    this.indexedActions = new ActionIndex(this.adapter(), this.actions);
     const compiledGraph = dataform.CompiledGraph.create({
       projectConfig: this.config,
       tables: this.compileGraphChunk(
@@ -441,25 +445,6 @@ export class Session {
     return encode64(dataform.CompiledGraph, this.compile());
   }
 
-  public findActions(target: dataform.ITarget) {
-    const adapter = this.adapter();
-    return this.actions.filter(action => {
-      if (
-        !!target.database &&
-        action.proto.target.database !== adapter.normalizeIdentifier(target.database)
-      ) {
-        return false;
-      }
-      if (
-        !!target.schema &&
-        action.proto.target.schema !== adapter.normalizeIdentifier(target.schema)
-      ) {
-        return false;
-      }
-      return action.proto.target.name === adapter.normalizeIdentifier(target.name);
-    });
-  }
-
   private getDatabaseSuffixWithUnderscore() {
     return !!this.config.databaseSuffix ? `_${this.config.databaseSuffix}` : "";
   }
@@ -495,7 +480,7 @@ export class Session {
     actions.forEach(action => {
       const fullyQualifiedDependencies: { [name: string]: dataform.ITarget } = {};
       for (const dependency of action.dependencyTargets) {
-        const possibleDeps = this.findActions(dependency);
+        const possibleDeps = this.indexedActions.find(dependency);
         if (possibleDeps.length === 0) {
           // We couldn't find a matching target.
           this.compileError(
@@ -599,9 +584,7 @@ export class Session {
   }
 
   private checkCanonicalTargetUniqueness(actions: IActionProto[]) {
-    const allCanonicalTargets = new StringifiedSet<dataform.ITarget>(
-      targetStringifier
-    );
+    const allCanonicalTargets = new StringifiedSet<dataform.ITarget>(targetStringifier);
     actions.forEach(action => {
       if (allCanonicalTargets.has(action.canonicalTarget)) {
         this.compileError(
@@ -860,4 +843,82 @@ function objectExistsOrIsNonEmpty(prop: any): boolean {
     (!Array.isArray(prop) && typeof prop === "object" && !!Object.keys(prop).length) ||
     typeof prop !== "object"
   );
+}
+
+class ActionIndex {
+  private readonly byName: Map<string, Action[]> = new Map();
+  private readonly bySchemaAndName: Map<string, Map<string, Action[]>> = new Map();
+  private readonly byDatabaseAndName: Map<string, Map<string, Action[]>> = new Map();
+  private readonly byDatabaseSchemaAndName: Map<
+    string,
+    Map<string, Map<string, Action[]>>
+  > = new Map();
+
+  public constructor(private readonly adapter: adapters.IAdapter, actions: Action[]) {
+    for (const action of actions) {
+      if (!this.byName.has(action.proto.target.name)) {
+        this.byName.set(action.proto.target.name, []);
+      }
+      this.byName.get(action.proto.target.name).push(action);
+
+      if (!this.bySchemaAndName.has(action.proto.target.schema)) {
+        this.bySchemaAndName.set(action.proto.target.schema, new Map());
+      }
+      const forSchema = this.bySchemaAndName.get(action.proto.target.schema);
+      if (!forSchema.has(action.proto.target.name)) {
+        forSchema.set(action.proto.target.name, []);
+      }
+      forSchema.get(action.proto.target.name).push(action);
+
+      if (!!action.proto.target.database) {
+        if (!this.byDatabaseAndName.has(action.proto.target.database)) {
+          this.byDatabaseAndName.set(action.proto.target.database, new Map());
+        }
+        const forDatabaseNoSchema = this.byDatabaseAndName.get(action.proto.target.database);
+        if (!forDatabaseNoSchema.has(action.proto.target.name)) {
+          forDatabaseNoSchema.set(action.proto.target.name, []);
+        }
+        forDatabaseNoSchema.get(action.proto.target.name).push(action);
+
+        if (!this.byDatabaseSchemaAndName.has(action.proto.target.database)) {
+          this.byDatabaseSchemaAndName.set(action.proto.target.database, new Map());
+        }
+        const forDatabase = this.byDatabaseSchemaAndName.get(action.proto.target.database);
+        if (!forDatabase.has(action.proto.target.schema)) {
+          forDatabase.set(action.proto.target.schema, new Map());
+        }
+        const forDatabaseAndSchema = forDatabase.get(action.proto.target.schema);
+        if (!forDatabaseAndSchema.has(action.proto.target.name)) {
+          forDatabaseAndSchema.set(action.proto.target.name, []);
+        }
+        forDatabaseAndSchema.get(action.proto.target.name).push(action);
+      }
+    }
+  }
+
+  public find(target: dataform.ITarget) {
+    if (!!target.database) {
+      if (!!target.schema) {
+        return (
+          this.byDatabaseSchemaAndName
+            .get(this.adapter.normalizeIdentifier(target.database))
+            .get(this.adapter.normalizeIdentifier(target.schema))
+            .get(this.adapter.normalizeIdentifier(target.name)) || []
+        );
+      }
+      return (
+        this.byDatabaseAndName
+          .get(this.adapter.normalizeIdentifier(target.database))
+          .get(this.adapter.normalizeIdentifier(target.name)) || []
+      );
+    }
+    if (!!target.schema) {
+      return (
+        this.bySchemaAndName
+          .get(this.adapter.normalizeIdentifier(target.schema))
+          .get(this.adapter.normalizeIdentifier(target.name)) || []
+      );
+    }
+    return this.byName.get(this.adapter.normalizeIdentifier(target.name)) || [];
+  }
 }
