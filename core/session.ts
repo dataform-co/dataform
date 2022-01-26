@@ -61,7 +61,7 @@ export class Session {
   public config: dataform.IProjectConfig;
   public canonicalConfig: dataform.IProjectConfig;
 
-  public actions: Array<Action>;
+  public actions: Action[];
   public indexedActions: ActionIndex;
   public tests: { [name: string]: test.Test };
 
