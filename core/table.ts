@@ -285,6 +285,17 @@ export interface ITableConfig
    * If configured, records with matching unique key(s) will be updated, rather than new rows being inserted.
    */
   uniqueKey?: string[];
+
+  /**
+   * Only allowed when the table type is `view`.
+   * Only allowed when using Snowflake or BigQuery warehouse.
+   * 
+   * If set to true, will make the view materialized.
+   *
+   * For more information, read the [BigQuery materialized view docs](https://cloud.google.com/bigquery/docs/materialized-views-intro)
+   *  or the [Snowflake materialized view docs](https://docs.snowflake.com/en/user-guide/views-materialized.html).
+   */
+  materialized?: boolean;
 }
 
 // TODO: This needs to be a method, I'm really not sure why, but it hits a runtime failure otherwise.
@@ -307,7 +318,8 @@ export const ITableConfigProperties = () =>
     "assertions",
     "database",
     "columns",
-    "description"
+    "description",
+    "materialized"
   ]);
 
 /**
@@ -424,6 +436,9 @@ export class Table {
     if (config.uniqueKey) {
       this.uniqueKey(config.uniqueKey);
     }
+    if (config.materialized) {
+      this.materialized(config.materialized);
+    }
 
     return this;
   }
@@ -467,6 +482,10 @@ export class Table {
 
   public uniqueKey(uniqueKey: string[]) {
     this.proto.uniqueKey = uniqueKey;
+  }
+
+  public materialized(materialized: boolean) {
+    this.proto.materialized = materialized;
   }
 
   public snowflake(snowflake: dataform.ISnowflakeOptions) {

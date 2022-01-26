@@ -274,6 +274,15 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
         dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
       );
 
+      const materializedView = keyBy(compiledGraph.tables, t => targetAsReadableString(t.target))[
+        "dataform-integration-tests.df_integration_test_eu_evaluate.example_materialized_view"
+      ];
+      evaluations = await dbadapter.evaluate(dataform.Table.create(materializedView));
+      expect(evaluations.length).to.equal(1);
+      expect(evaluations[0].status).to.equal(
+        dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
+      );
+
       const table = keyBy(compiledGraph.tables, t => targetAsReadableString(t.target))[
         "dataform-integration-tests.df_integration_test_eu_evaluate.example_table"
       ];

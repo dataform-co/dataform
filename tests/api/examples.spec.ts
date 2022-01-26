@@ -40,6 +40,11 @@ suite("examples", () => {
                   'Unexpected property "bigquery" in assertion config. Supported properties are: ["database","dependencies","description","disabled","hermetic","name","schema","tags","type"]'
               },
               {
+                fileName: "definitions/has_compile_errors/assertion_with_materialized.sqlx",
+                message:
+                  'Unexpected property "materialized" in assertion config. Supported properties are: ["database","dependencies","description","disabled","hermetic","name","schema","tags","type"]'
+              },
+              {
                 fileName: "definitions/has_compile_errors/assertion_with_output.sqlx",
                 message:
                   'Unexpected property "hasOutput" in assertion config. Supported properties are: ["database","dependencies","description","disabled","hermetic","name","schema","tags","type"]'
@@ -80,6 +85,11 @@ suite("examples", () => {
               {
                 fileName: "definitions/has_compile_errors/view_with_semi_colon_at_end.sqlx",
                 message: "Semi-colons are not allowed at the end of SQL statements."
+              },
+              {
+                fileName: "definitions/has_compile_errors/table_with_materialized.sqlx",
+                message:
+                  "The 'materialized' option is only valid for Snowflake and BigQuery views"
               },
               {
                 fileName: "definitions/has_compile_errors/view_without_hermetic.sqlx",
@@ -312,6 +322,48 @@ suite("examples", () => {
               })
             ]);
             expect(exampleView.tags).to.eql([]);
+            
+            // Check materialized view
+            const exampleMaterializedView = graph.tables.find(
+              (t: dataform.ITable) =>
+                targetAsReadableString(t.target) ===
+                dotJoined(
+                  databaseWithSuffix("tada-analytics"),
+                  schemaWithSuffix("df_integration_test"),
+                  "example_materialized_view"
+                )
+            );
+            expect(exampleMaterializedView.type).equals("view");
+            expect(exampleMaterializedView.query.trim()).equals(
+              `select * from \`${dotJoined(
+                databaseWithSuffix("tada-analytics"),
+                schemaWithSuffix("df_integration_test"),
+                "sample_data"
+              )}\`\n` +
+              `group by 1`
+            );
+            expect(exampleMaterializedView.target).deep.equals(
+              dataform.Target.create({
+                database: databaseWithSuffix("tada-analytics"),
+                schema: schemaWithSuffix("df_integration_test"),
+                name: "example_materialized_view"
+              })
+            );
+            expect(exampleMaterializedView.canonicalTarget).deep.equals(
+              dataform.Target.create({
+                database: "tada-analytics",
+                schema: "df_integration_test",
+                name: "example_materialized_view"
+              })
+            );
+            expect(exampleMaterializedView.dependencyTargets).eql([
+              dataform.Target.create({
+                database: databaseWithSuffix("tada-analytics"),
+                schema: schemaWithSuffix("df_integration_test"),
+                name: "sample_data"
+              })
+            ]);
+            expect(exampleMaterializedView.tags).to.eql([]);
 
             // Check table
             const exampleTable = graph.tables.find(

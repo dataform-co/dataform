@@ -426,6 +426,134 @@ suite("@dataform/api", () => {
       );
     });
 
+    test("bigquery_materialized", () => {
+      const testGraph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
+        projectConfig: { warehouse: "bigquery", defaultDatabase: "deeb" },
+        tables: [
+          {
+            target: {
+              schema: "schema",
+              name: "materialized"
+            },
+            type: "view",
+            query: "select 1 as test",
+            materialized: true
+          },
+          {
+            target: {
+              schema: "schema",
+              name: "plain"
+            },
+            type: "view",
+            query: "select 1 as test"
+          }
+        ]
+      });
+      const expectedExecutionActions: dataform.IExecutionAction[] = [
+        {
+          type: "table",
+          tableType: "view",
+          target: {
+            schema: "schema",
+            name: "materialized"
+          },
+          tasks: [
+            {
+              type: "statement",
+              statement:
+                "create or replace materialized view `deeb.schema.materialized` as select 1 as test"
+            }
+          ],
+          dependencyTargets: [],
+          hermeticity: dataform.ActionHermeticity.HERMETIC
+        },
+        {
+          type: "table",
+          tableType: "view",
+          target: {
+            schema: "schema",
+            name: "plain"
+          },
+          tasks: [
+            {
+              type: "statement",
+              statement: "create or replace view `deeb.schema.plain` as select 1 as test"
+            }
+          ],
+          dependencyTargets: [],
+          hermeticity: dataform.ActionHermeticity.HERMETIC
+        }
+      ];
+      const executionGraph = new Builder(testGraph, {}, dataform.WarehouseState.create({})).build();
+      expect(asPlainObject(executionGraph.actions)).deep.equals(
+        asPlainObject(expectedExecutionActions)
+      );
+    });
+
+    test("snowflake_materialized", () => {
+      const testGraph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
+        projectConfig: { warehouse: "snowflake"},
+        tables: [
+          {
+            target: {
+              schema: "schema",
+              name: "materialized"
+            },
+            type: "view",
+            query: "select 1 as test",
+            materialized: true
+          },
+          {
+            target: {
+              schema: "schema",
+              name: "plain"
+            },
+            type: "view",
+            query: "select 1 as test"
+          }
+        ]
+      });
+      const expectedExecutionActions: dataform.IExecutionAction[] = [
+        {
+          type: "table",
+          tableType: "view",
+          target: {
+            schema: "schema",
+            name: "materialized"
+          },
+          tasks: [
+            {
+              type: "statement",
+              statement:
+                `create or replace materialized view "schema"."materialized" as select 1 as test`
+            }
+          ],
+          dependencyTargets: [],
+          hermeticity: dataform.ActionHermeticity.HERMETIC
+        },
+        {
+          type: "table",
+          tableType: "view",
+          target: {
+            schema: "schema",
+            name: "plain"
+          },
+          tasks: [
+            {
+              type: "statement",
+              statement: `create or replace view "schema"."plain" as select 1 as test`
+            }
+          ],
+          dependencyTargets: [],
+          hermeticity: dataform.ActionHermeticity.HERMETIC
+        }
+      ];
+      const executionGraph = new Builder(testGraph, {}, dataform.WarehouseState.create({})).build();
+      expect(asPlainObject(executionGraph.actions)).deep.equals(
+        asPlainObject(expectedExecutionActions)
+      );
+    });
+
     test("redshift_create", () => {
       const testGraph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
         projectConfig: { warehouse: "redshift" },
