@@ -824,6 +824,7 @@ suite("@dataform/core", () => {
       testConfig => {
         test(`resolve with prefix "${testConfig.tablePrefix}" and suffix "${testConfig.schemaSuffix}"`, () => {
           const session = new Session(path.dirname(__filename), testConfig);
+          session.compile();
           const suffix = testConfig.schemaSuffix ? `_${testConfig.schemaSuffix}` : "";
           const prefix = testConfig.tablePrefix ? `${testConfig.tablePrefix}_` : "";
 
