@@ -68,20 +68,20 @@ export class SnowflakeAdapter extends Adapter implements IAdapter {
   ): Tasks {
     const tasks = Tasks.create();
     const target = assertion.target;
-    tasks.add(Task.statement(this.createOrReplaceView(target, assertion.query, false)));
+    tasks.add(Task.statement(this.createOrReplaceView(target, assertion.query, false, false)));
     tasks.add(Task.assertion(`select sum(1) as row_count from ${this.resolveTarget(target)}`));
     return tasks;
   }
 
-  private createOrReplaceView(target: dataform.ITarget, query: string, secure: boolean) {
-    return `create or replace ${secure ? "secure " : ""}view ${this.resolveTarget(
+  private createOrReplaceView(target: dataform.ITarget, query: string, secure: boolean, materialized: boolean) {
+    return `create or replace ${secure ? "secure " : ""}${materialized ? "materialized " : ""}view ${this.resolveTarget(
       target
     )} as ${query}`;
   }
 
   private createOrReplace(table: dataform.ITable) {
     if (table.type === "view") {
-      return this.createOrReplaceView(table.target, table.query, table.snowflake?.secure);
+      return this.createOrReplaceView(table.target, table.query, table.snowflake?.secure, table.materialized);
     }
     return `create or replace ${
       table.snowflake?.transient ? "transient " : ""

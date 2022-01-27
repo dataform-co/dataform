@@ -167,6 +167,7 @@ message Table {
   string type = 3;
   string query = 5;
   bool protected = 9;
+  bool materialized = 35;
 
   ActionDescriptor action_descriptor = 24;
 

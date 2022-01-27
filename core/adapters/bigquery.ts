@@ -76,7 +76,11 @@ export class BigQueryAdapter extends Adapter implements IAdapter {
   }
 
   private createOrReplace(table: dataform.ITable) {
-    return `create or replace ${this.tableTypeAsSql(
+    return `create or replace ${
+      table.materialized 
+      ? "materialized "
+      : ""
+    }${this.tableTypeAsSql(
       this.baseTableType(table.type)
     )} ${this.resolveTarget(table.target)} ${
       table.bigquery && table.bigquery.partitionBy

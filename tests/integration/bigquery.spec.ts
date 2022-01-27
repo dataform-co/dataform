@@ -41,7 +41,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
       const executedGraph = await dfapi.run(dbadapter, executionGraph).result();
 
       const actionMap = keyBy(executedGraph.actions, v => targetAsReadableString(v.target));
-      expect(Object.keys(actionMap).length).eql(18);
+      expect(Object.keys(actionMap).length).eql(19);
 
       // Check the status of action execution.
       const expectedFailedActions = [
@@ -269,6 +269,15 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
         "dataform-integration-tests.df_integration_test_eu_evaluate.example_view"
       ];
       let evaluations = await dbadapter.evaluate(dataform.Table.create(view));
+      expect(evaluations.length).to.equal(1);
+      expect(evaluations[0].status).to.equal(
+        dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
+      );
+
+      const materializedView = keyBy(compiledGraph.tables, t => targetAsReadableString(t.target))[
+        "dataform-integration-tests.df_integration_test_eu_evaluate.example_materialized_view"
+      ];
+      evaluations = await dbadapter.evaluate(dataform.Table.create(materializedView));
       expect(evaluations.length).to.equal(1);
       expect(evaluations[0].status).to.equal(
         dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
