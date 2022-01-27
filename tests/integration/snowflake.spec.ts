@@ -44,7 +44,7 @@ suite("@dataform/integration/snowflake", ({ before, after }) => {
     let executedGraph = await dfapi.run(dbadapter, executionGraph).result();
 
     const actionMap = keyBy(executedGraph.actions, v => targetAsReadableString(v.target));
-    expect(Object.keys(actionMap).length).eql(21);
+    expect(Object.keys(actionMap).length).eql(20);
 
     // Check the status of action execution.
     const expectedFailedActions = [
@@ -288,24 +288,6 @@ suite("@dataform/integration/snowflake", ({ before, after }) => {
         "INTEGRATION_TESTS.DF_INTEGRATION_TEST_EVALUATE.EXAMPLE_VIEW"
       ];
       let evaluations = await dbadapter.evaluate(dataform.Table.create(view));
-      expect(evaluations.length).to.equal(1);
-      expect(evaluations[0].status).to.equal(
-        dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
-      );
-
-      const materializedView = keyBy(compiledGraph.tables, t => targetAsReadableString(t.target))[
-        "INTEGRATION_TESTS.DF_INTEGRATION_TEST_EVALUATE.EXAMPLE_MATERIALIZED_VIEW"
-      ];
-      evaluations = await dbadapter.evaluate(dataform.Table.create(materializedView));
-      expect(evaluations.length).to.equal(1);
-      expect(evaluations[0].status).to.equal(
-        dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
-      );
-
-      const table = keyBy(compiledGraph.tables, t => targetAsReadableString(t.target))[
-        "INTEGRATION_TESTS.DF_INTEGRATION_TEST_EVALUATE.EXAMPLE_TABLE"
-      ];
-      evaluations = await dbadapter.evaluate(dataform.Table.create(table));
       expect(evaluations.length).to.equal(1);
       expect(evaluations[0].status).to.equal(
         dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
