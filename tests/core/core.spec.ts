@@ -437,6 +437,10 @@ suite("@dataform/core", () => {
           sortStyle: "wrong_sortStyle"
         }
       });
+      session.publish("example_materialized_view", {
+        type: "view",
+        materialized: true
+      });
 
       const expectedResults = [
         { name: "schema.example_absent_distKey", message: `Property "distKey" is not defined` },
@@ -451,6 +455,10 @@ suite("@dataform/core", () => {
         {
           name: "schema.example_wrong_sortStyle",
           message: `Wrong value of "sortStyle" property. Should only use predefined values: "compound" | "interleaved"`
+        },
+        {
+          name: "schema.example_materialized_view",
+          message: "The 'materialized' option is only valid for Snowflake and BigQuery views"
         }
       ];
 
@@ -478,6 +486,10 @@ suite("@dataform/core", () => {
           clusterBy: ["some_cluster"]
         }
       });
+      session.publish("example_materialize_table_fail", {
+        type: "table",
+        materialized: true
+      });
 
       const graph = session.compile();
 
@@ -494,6 +506,10 @@ suite("@dataform/core", () => {
         {
           actionName: "schema.example_clusterBy_view_fail",
           message: `partitionBy/clusterBy are not valid for BigQuery views; they are only valid for tables`
+        },
+        {
+          actionName: "schema.example_materialize_table_fail",
+          message: "The 'materialized' option is only valid for Snowflake and BigQuery views"
         }
       ]);
     });
@@ -518,6 +534,10 @@ suite("@dataform/core", () => {
           clusterBy: ["a"]
         }
       });
+      session.publish("example_materialize_table_fail", {
+        type: "table",
+        materialized: true
+      });
 
       const graph = session.compile();
 
@@ -538,6 +558,10 @@ suite("@dataform/core", () => {
         {
           actionName: "SCHEMA.EXAMPLE_CLUSTER_BY_VIEW_FAIL",
           message: "The 'clusterBy' option is only valid for Snowflake tables"
+        },
+        {
+          actionName: "SCHEMA.EXAMPLE_MATERIALIZE_TABLE_FAIL",
+          message: "The 'materialized' option is only valid for Snowflake and BigQuery views"
         }
       ]);
     });
@@ -551,6 +575,10 @@ suite("@dataform/core", () => {
           clusterBy: ["some_column", "some_other_column"]
         }
       });
+      session.publish("example_materialized_view", {
+        type: "view",
+        materialized: true
+      });
 
       const graph = session.compile();
 
@@ -560,6 +588,7 @@ suite("@dataform/core", () => {
           partitionBy: "some_partition"
         })
       );
+      expect(graph.tables[1].materialized).to.equals(true);
       expect(graph.graphErrors.compilationErrors).to.deep.equals([]);
     });
 
