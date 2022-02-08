@@ -6,6 +6,15 @@ priority: 5
 
 ## Committing changes
 
+<div className="bp3-callout bp3-icon-info-sign bp3-intent-warning" markdown="1">
+Dataform signups are closed. Please join
+  <a
+    target="_blank"
+    rel="noopener"
+    href="https://forms.gle/YBfHb6CWLD4Kmbd46"
+  >the waitlist</a> to register your interest in using Dataform.
+</div>
+
 Dataform uses the Git version control system to maintain a record of each change made to project files and to manage file versions. Each Dataform project has an associated Git repository.
 
 When you first use Dataform we will automatically create a personal development branch for you called `name_dev`. Only you can see this branch and commit to it. All the changes you've made so far should be on this branch.
