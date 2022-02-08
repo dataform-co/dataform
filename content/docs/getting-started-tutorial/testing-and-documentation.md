@@ -4,6 +4,15 @@ subtitle: Learn how to set up data quality tests using assertions and how to doc
 priority: 4
 ---
 
+<div className="bp3-callout bp3-icon-info-sign bp3-intent-warning" markdown="1">
+Dataform signups are closed. Please join
+  <a
+    target="_blank"
+    rel="noopener"
+    href="https://forms.gle/YBfHb6CWLD4Kmbd46"
+  >the waitlist</a> to register your interest in using Dataform.
+</div>
+
 ## Data quality tests
 
 Adding tests to a project helps validate that your models are working correctly. These tests are run every time your project updates, sending alerts if the tests fail. Data quality tests in Dataform are called assertions.

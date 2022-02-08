@@ -4,6 +4,15 @@ subtitle: Learn how to set up a schedule and alerts in Dataform
 priority: 3
 ---
 
+<div className="bp3-callout bp3-icon-info-sign bp3-intent-warning" markdown="1">
+Dataform signups are closed. Please join
+  <a
+    target="_blank"
+    rel="noopener"
+    href="https://forms.gle/YBfHb6CWLD4Kmbd46"
+  >the waitlist</a> to register your interest in using Dataform.
+</div>
+
 In the first few videos we introduced the basic concepts of Dataform. We’ll now introduce some of the more advanced features: [testing](https://docs.dataform.co/guides/assertions) and [documentation](https://docs.dataform.co/guides/datasets/documentation), [scheduling](https://docs.dataform.co/dataform-web/scheduling) and [version control](https://docs.dataform.co/dataform-web/version-control).
 
 ## Setting up a schedule
