@@ -13,6 +13,9 @@ ts_library(
         "@npm//vscode-languageclient",
         "@npm//vscode-languageserver",
         "@npm//vscode-languageserver-textdocument",
+        "@npm//vscode-languageserver-protocol",
+        "@npm//vscode-languageserver-types",
+        "@npm//vscode-jsonrpc"
     ],
 )
 

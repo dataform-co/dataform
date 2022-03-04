@@ -1,3 +1,10 @@
+To run locally:
+* cd into this directory
+* `npm i`
+* `./run.sh`
+
+`extension.js` and `server.js` will appear, can be safely ignored.
+
 There are two routes to publishing new versions:
 
 ### Web (actually working):

@@ -23,11 +23,27 @@
     "vscode-languageserver": "^6.1.1",
     "vscode-languageserver-textdocument": "^1.0.1"
   },
+  "capabilities": {
+    "virtualWorkspaces": {
+      "supported": false,
+      "description": "The dataform cli must be installed for this extension to work and that is not possible in virtual workspaces"
+    }
+  },
   "contributes": {
     "commands": [
       {
         "command": "dataform.compile",
         "title": "Compile project",
+        "category": "Dataform"
+      },
+      {
+        "command": "dataform.sidebar",
+        "title": "Open the sidebar",
+        "category": "Dataform"
+      },
+      {
+        "command": "dataform.run",
+        "title": "Run the project",
         "category": "Dataform"
       }
     ],

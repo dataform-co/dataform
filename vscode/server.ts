@@ -14,15 +14,12 @@ const connection = createConnection(ProposedFeatures.all);
 const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument);
 let CACHED_COMPILE_GRAPH: dataform.ICompiledGraph = null;
 let WORKSPACE_ROOT_FOLDER: string = null;
+let runProcess: ChildProcess | undefined;
 
 connection.onInitialize(() => {
   return {
     capabilities: {
       textDocumentSync: TextDocumentSyncKind.Incremental,
-      // Tell the client that the server supports code completion and definitions
-      completionProvider: {
-        resolveProvider: true
-      },
       definitionProvider: true
     }
   };
@@ -37,6 +34,30 @@ connection.onInitialized(async () => {
 
 connection.onRequest("compile", async () => {
   const _ = compileAndValidate();
+});
+
+connection.onRequest("run", async () => {
+  runProcess = spawn("dataform", ["run", "--tags", "stripe"]);
+  runProcess.on("error", err => {
+    // tslint:disable-next-line: no-console
+    console.error("Error running 'dataform run':", err);
+    connection.sendNotification(
+      "error",
+      "Errors encountered when running 'dataform' CLI. Please ensure that the CLI is installed and up-to-date: 'npm i -g @dataform/cli'."
+    );
+  });
+  const runResult = await getProcessResult(runProcess);
+  if (runResult.exitCode === 0) {
+    connection.sendNotification("complete");
+    connection.sendNotification("success", "Project ran successfully");
+  } else {
+    connection.sendNotification("error", "Run cancelled or failed");
+  }
+});
+
+connection.onRequest("cancel", () => {
+  runProcess?.kill();
+  runProcess = undefined;
 });
 
 documents.onDidSave(change => {
@@ -60,8 +81,12 @@ async function compileAndValidate() {
     parsedResult.graphErrors.compilationErrors.forEach(compilationError => {
       connection.sendNotification("error", compilationError.message);
     });
+    connection.sendNotification("compile", parsedResult);
+    connection.sendNotification("compile-fail");
   } else {
     connection.sendNotification("success", "Project compiled successfully");
+    connection.sendNotification("compile", parsedResult);
+    connection.sendNotification("compile-success");
   }
   CACHED_COMPILE_GRAPH = parsedResult;
 }
@@ -85,7 +110,7 @@ function gatherAllActions(
 
 function retrieveLinkedFileName(ref: string) {
   const allActions = gatherAllActions();
-  const foundCompileAction = allActions.find(action => action.name.split(".").slice(-1)[0] === ref);
+  const foundCompileAction = allActions.find(action => action.target.name === ref);
   return foundCompileAction.fileName;
 }
 
