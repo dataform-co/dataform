@@ -76,6 +76,12 @@ export class BigQueryAdapter extends Adapter implements IAdapter {
   }
 
   private createOrReplace(table: dataform.ITable) {
+    var optionsArray = []
+    if (table.bigquery && table.bigquery.partitionBy && table.bigquery.partitionExpirationDays)
+      optionsArray.push(`partition_expiration_days=${table.bigquery.partitionExpirationDays}`)
+    if (table.bigquery && table.bigquery.partitionBy && table.bigquery.requirePartitionFilter)
+      optionsArray.push(`require_partition_filter=${table.bigquery.requirePartitionFilter}`)
+        
     return `create or replace ${
       table.materialized 
       ? "materialized "
@@ -90,6 +96,9 @@ export class BigQueryAdapter extends Adapter implements IAdapter {
       table.bigquery && table.bigquery.clusterBy && table.bigquery.clusterBy.length > 0
         ? `cluster by ${table.bigquery.clusterBy.join(", ")} `
         : ""
+    }${
+      optionsArray.length>0 ?
+      `OPTIONS(${optionsArray.join(',')})` : ""
     }as ${table.query}`;
   }
 
