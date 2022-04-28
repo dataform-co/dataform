@@ -514,7 +514,7 @@ suite("@dataform/core", () => {
           message: `partitionBy/clusterBy/requirePartitionFilter/partitionExpirationDays are not valid for BigQuery views; they are only valid for tables`
         },
         {
-          actionName: "schema.example_clusterBy_view_fail",
+          actionName: "schema.example_expiring_view_fail",
           message: `partitionBy/clusterBy/requirePartitionFilter/partitionExpirationDays are not valid for BigQuery views; they are only valid for tables`
         },
         {
@@ -597,7 +597,9 @@ suite("@dataform/core", () => {
       expect(graph.tables[0].bigquery).to.deep.equals(
         dataform.BigQueryOptions.create({
           clusterBy: ["some_column", "some_other_column"],
-          partitionBy: "some_partition"
+          partitionBy: "some_partition",
+          partitionExpirationDays: 7,
+          requirePartitionFilter: false
         })
       );
       expect(graph.tables[1].materialized).to.equals(true);
