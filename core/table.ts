@@ -21,7 +21,6 @@ import {
   validateQueryString
 } from "df/core/utils";
 import { dataform } from "df/protos/ts";
-import internal from "events";
 
 /**
  * @hidden
