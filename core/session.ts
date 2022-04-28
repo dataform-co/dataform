@@ -740,7 +740,7 @@ export class Session {
           table.type === "view"
         ) {
           this.compileError(
-            `partitionBy/clusterBy are not valid for BigQuery views; they are only valid for tables`,
+            `partitionBy/clusterBy/requirePartitionFilter/partitionExpirationDays are not valid for BigQuery views; they are only valid for tables`,
             table.fileName,
             table.target
           );
