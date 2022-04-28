@@ -735,7 +735,8 @@ export class Session {
       // BigQuery config
       if (!!table.bigquery) {
         if (
-          (table.bigquery.partitionBy || table.bigquery.clusterBy?.length) &&
+          (table.bigquery.partitionBy || table.bigquery.clusterBy?.length || table.bigquery.partitionExpirationDays  
+            || table.bigquery.requirePartitionFilter) &&
           table.type === "view"
         ) {
           this.compileError(
