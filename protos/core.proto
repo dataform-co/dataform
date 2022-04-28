@@ -75,7 +75,6 @@ message BigQueryOptions {
   map<string, string> labels = 4;
   int32 partition_expiration_days = 5;
   bool require_partition_filter = 6;
-
 }
 
 message RedshiftOptions {

@@ -745,6 +745,17 @@ export class Session {
             table.target
           );
         }
+        else if (
+          (!table.bigquery.partitionBy &&  (table.bigquery.partitionExpirationDays || table.bigquery.requirePartitionFilter)) &&
+          table.type === "table"
+        ) {
+          this.compileError(
+            `requirePartitionFilter/partitionExpirationDays are not valid for non partitioned BigQuery tables`,
+            table.fileName,
+            table.target
+          );
+        }
+
       }
 
       // Ignored properties

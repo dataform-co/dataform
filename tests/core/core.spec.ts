@@ -496,6 +496,12 @@ suite("@dataform/core", () => {
         type: "table",
         materialized: true
       });
+      session.publish("example_expiring_non_partitioned_fail", {
+        type: "table",
+        bigquery: {
+          partitionExpirationDays: 7
+        }
+      });
 
       const graph = session.compile();
 
@@ -520,6 +526,10 @@ suite("@dataform/core", () => {
         {
           actionName: "schema.example_materialize_table_fail",
           message: "The 'materialized' option is only valid for Snowflake and BigQuery views"
+        },
+        {
+          actionName: "schema.example_expiring_non_partitioned_fail",
+          message: "requirePartitionFilter/partitionExpirationDays are not valid for non partitioned BigQuery tables"
         }
       ]);
     });
