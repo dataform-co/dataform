@@ -168,10 +168,29 @@ export interface IBigQueryOptions {
    * If the label name contains special characters, e.g. hyphens, then quote its name, e.g. labels: { "label-name": "value" }.
    */
   labels?: { [name: string]: string };
+
+
+  /**
+   * This setting specifies how long BigQuery keeps the data in each partition. The setting applies to all partitions in the table, 
+   * but is calculated independently for each partition based on the partition time.
+   * 
+   * For more information, see our [docs](https://cloud.google.com/bigquery/docs/managing-partitioned-tables#partition-expiration).
+   */
+  partitionExpirationDays?: number;
+
+  /**
+   * When you create a partitioned table, you can require that all queries on the table must include a predicate filter (
+   * a WHERE clause) that filters on the partitioning column. 
+   * This setting can improve performance and reduce costs, 
+   * because BigQuery can use the filter to prune partitions that don't match the predicate.
+   * 
+   * For more information, see our [docs](https://cloud.google.com/bigquery/docs/managing-partitioned-tables#require-filter).
+   */
+  requirePartitionFilter?: boolean;
 }
 
 const IBigQueryOptionsProperties = () =>
-  strictKeysOf<IBigQueryOptions>()(["partitionBy", "clusterBy", "updatePartitionFilter", "labels"]);
+  strictKeysOf<IBigQueryOptions>()(["partitionBy", "clusterBy", "updatePartitionFilter", "labels", "partitionExpirationDays", "requirePartitionFilter"]);
 
 /**
  * Options for creating tables within Presto projects.

@@ -781,6 +781,75 @@ suite("@dataform/api", () => {
       );
     });
 
+    test("bigquery_options", () => {
+      const testGraph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
+        projectConfig: { warehouse: "bigquery", defaultDatabase: "deeb" },
+        tables: [
+          {
+            target: {
+              schema: "schema",
+              name: "partitionby"
+            },
+            type: "table",
+            query: "select 1 as test",
+            bigquery: {
+              partitionBy: "DATE(test)",
+              clusterBy: [],
+              partitionExpirationDays : 1,
+              requirePartitionFilter : true
+            }
+          },
+          {
+            target: {
+              schema: "schema",
+              name: "plain"
+            },
+            type: "table",
+            query: "select 1 as test"
+          }
+        ]
+      });
+      const expectedExecutionActions: dataform.IExecutionAction[] = [
+        {
+          type: "table",
+          tableType: "table",
+          target: {
+            schema: "schema",
+            name: "partitionby"
+          },
+          tasks: [
+            {
+              type: "statement",
+              statement:
+                "create or replace table `deeb.schema.partitionby` partition by DATE(test) OPTIONS(partition_expiration_days=1,require_partition_filter=true)as select 1 as test"
+            }
+          ],
+          dependencyTargets: [],
+          hermeticity: dataform.ActionHermeticity.HERMETIC
+        },
+        {
+          type: "table",
+          tableType: "table",
+          target: {
+            schema: "schema",
+            name: "plain"
+          },
+          tasks: [
+            {
+              type: "statement",
+              statement: "create or replace table `deeb.schema.plain` as select 1 as test"
+            }
+          ],
+          dependencyTargets: [],
+          hermeticity: dataform.ActionHermeticity.HERMETIC
+        }
+      ];
+      const executionGraph = new Builder(testGraph, {}, dataform.WarehouseState.create({})).build();
+      expect(asPlainObject(executionGraph.actions)).deep.equals(
+        asPlainObject(expectedExecutionActions)
+      );
+    });
+
     test("bigquery_clusterby", () => {
       const testGraph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
         projectConfig: { warehouse: "bigquery", defaultDatabase: "deeb" },

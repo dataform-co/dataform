@@ -735,15 +735,27 @@ export class Session {
       // BigQuery config
       if (!!table.bigquery) {
         if (
-          (table.bigquery.partitionBy || table.bigquery.clusterBy?.length) &&
+          (table.bigquery.partitionBy || table.bigquery.clusterBy?.length || table.bigquery.partitionExpirationDays  
+            || table.bigquery.requirePartitionFilter) &&
           table.type === "view"
         ) {
           this.compileError(
-            `partitionBy/clusterBy are not valid for BigQuery views; they are only valid for tables`,
+            `partitionBy/clusterBy/requirePartitionFilter/partitionExpirationDays are not valid for BigQuery views; they are only valid for tables`,
             table.fileName,
             table.target
           );
         }
+        else if (
+          (!table.bigquery.partitionBy &&  (table.bigquery.partitionExpirationDays || table.bigquery.requirePartitionFilter)) &&
+          table.type === "table"
+        ) {
+          this.compileError(
+            `requirePartitionFilter/partitionExpirationDays are not valid for non partitioned BigQuery tables`,
+            table.fileName,
+            table.target
+          );
+        }
+
       }
 
       // Ignored properties
