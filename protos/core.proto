@@ -73,6 +73,8 @@ message BigQueryOptions {
   repeated string cluster_by = 2;
   string update_partition_filter = 3;
   map<string, string> labels = 4;
+  int32 partition_expiration_days = 5;
+  bool require_partition_filter = 6;
 }
 
 message RedshiftOptions {

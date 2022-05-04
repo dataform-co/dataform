@@ -486,9 +486,21 @@ suite("@dataform/core", () => {
           clusterBy: ["some_cluster"]
         }
       });
+      session.publish("example_expiring_view_fail", {
+        type: "view",
+        bigquery: {
+          partitionExpirationDays: 7
+        }
+      });
       session.publish("example_materialize_table_fail", {
         type: "table",
         materialized: true
+      });
+      session.publish("example_expiring_non_partitioned_fail", {
+        type: "table",
+        bigquery: {
+          partitionExpirationDays: 7
+        }
       });
 
       const graph = session.compile();
@@ -501,15 +513,23 @@ suite("@dataform/core", () => {
       ).has.deep.members([
         {
           actionName: "schema.example_partitionBy_view_fail",
-          message: `partitionBy/clusterBy are not valid for BigQuery views; they are only valid for tables`
+          message: `partitionBy/clusterBy/requirePartitionFilter/partitionExpirationDays are not valid for BigQuery views; they are only valid for tables`
         },
         {
           actionName: "schema.example_clusterBy_view_fail",
-          message: `partitionBy/clusterBy are not valid for BigQuery views; they are only valid for tables`
+          message: `partitionBy/clusterBy/requirePartitionFilter/partitionExpirationDays are not valid for BigQuery views; they are only valid for tables`
+        },
+        {
+          actionName: "schema.example_expiring_view_fail",
+          message: `partitionBy/clusterBy/requirePartitionFilter/partitionExpirationDays are not valid for BigQuery views; they are only valid for tables`
         },
         {
           actionName: "schema.example_materialize_table_fail",
           message: "The 'materialized' option is only valid for Snowflake and BigQuery views"
+        },
+        {
+          actionName: "schema.example_expiring_non_partitioned_fail",
+          message: "requirePartitionFilter/partitionExpirationDays are not valid for non partitioned BigQuery tables"
         }
       ]);
     });
@@ -572,7 +592,9 @@ suite("@dataform/core", () => {
         type: "table",
         bigquery: {
           partitionBy: "some_partition",
-          clusterBy: ["some_column", "some_other_column"]
+          clusterBy: ["some_column", "some_other_column"],
+          partitionExpirationDays: 7,
+          requirePartitionFilter: false
         }
       });
       session.publish("example_materialized_view", {
@@ -585,7 +607,9 @@ suite("@dataform/core", () => {
       expect(graph.tables[0].bigquery).to.deep.equals(
         dataform.BigQueryOptions.create({
           clusterBy: ["some_column", "some_other_column"],
-          partitionBy: "some_partition"
+          partitionBy: "some_partition",
+          partitionExpirationDays: 7,
+          requirePartitionFilter: false
         })
       );
       expect(graph.tables[1].materialized).to.equals(true);

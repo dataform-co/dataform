@@ -95,6 +95,28 @@ config {
 SELECT CURRENT_TIMESTAMP() as ts, name, revenue
 ```
 
+#### Options support
+
+If needed, you can set whether queries over the table require a partition filter. To do this, set `requirePartitionFilter` option to `true`.
+
+If you want to control retention of all partitions in a partitioned table, set `partitionExpirationDays` accordingly to your needs. 
+
+For example:
+
+```js
+config {
+  type: "table",
+  bigquery: {
+    partitionBy: "DATE(ts)",
+    partitionExpirationDays: 14,
+    requirePartitionFilter : true
+  }
+}
+SELECT CURRENT_TIMESTAMP() AS ts
+```
+
+Only newly created models will have `partitionExpirationDays` and `requirePartitionFilter` set. If you changed those values after model was created, [altering table](https://cloud.google.com/bigquery/docs/managing-partitioned-tables#sql) will be needed.
+
 ### Configuring access to Google Sheets
 
 In order to be able to query Google Sheets tables via BigQuery, you'll need to share the sheet with the service account that is used by Dataform.
