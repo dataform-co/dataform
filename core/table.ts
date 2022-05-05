@@ -171,26 +171,35 @@ export interface IBigQueryOptions {
 
 
   /**
-   * This setting specifies how long BigQuery keeps the data in each partition. The setting applies to all partitions in the table, 
+   * This setting specifies how long BigQuery keeps the data in each partition. The setting applies to all partitions in the table,
    * but is calculated independently for each partition based on the partition time.
-   * 
+   *
    * For more information, see our [docs](https://cloud.google.com/bigquery/docs/managing-partitioned-tables#partition-expiration).
    */
   partitionExpirationDays?: number;
 
   /**
    * When you create a partitioned table, you can require that all queries on the table must include a predicate filter (
-   * a WHERE clause) that filters on the partitioning column. 
-   * This setting can improve performance and reduce costs, 
+   * a WHERE clause) that filters on the partitioning column.
+   * This setting can improve performance and reduce costs,
    * because BigQuery can use the filter to prune partitions that don't match the predicate.
-   * 
+   *
    * For more information, see our [docs](https://cloud.google.com/bigquery/docs/managing-partitioned-tables#require-filter).
    */
   requirePartitionFilter?: boolean;
+
+  /**
+   * Key-value pairs for options [table](https://cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#table_option_list), [view](https://cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#view_option_list), [materialized view](https://cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#materialized_view_option_list).
+   *
+   * Some options(like partitionExpirationDays) have dedicated type/validity checked fields under config prefer using those
+   * Always quote value, and double quote if it's a string e.g. additionalOptions: {numeric_option: "5", string_option: '"string-value"'}
+   * If the option name contains special characters, e.g. hyphens, then quote its name, e.g. additionalOptions: { "option-name": "value" }.
+   */
+  additionalOptions?: { [name: string]: string };
 }
 
 const IBigQueryOptionsProperties = () =>
-  strictKeysOf<IBigQueryOptions>()(["partitionBy", "clusterBy", "updatePartitionFilter", "labels", "partitionExpirationDays", "requirePartitionFilter"]);
+  strictKeysOf<IBigQueryOptions>()(["partitionBy", "clusterBy", "updatePartitionFilter", "labels", "partitionExpirationDays", "requirePartitionFilter", "additionalOptions"]);
 
 /**
  * Options for creating tables within Presto projects.
@@ -308,7 +317,7 @@ export interface ITableConfig
   /**
    * Only valid when the table type is `view`.
    * Only valid when using Snowflake or BigQuery.
-   * 
+   *
    * If set to true, will make the view materialized.
    *
    * For more information, read the [BigQuery materialized view docs](https://cloud.google.com/bigquery/docs/materialized-views-intro)
