@@ -757,8 +757,8 @@ export class Session {
         }
         else if(
           table.bigquery.additionalOptions && (
-            (table.bigquery.partitionExpirationDays && table.bigquery.additionalOptions["partition_expiration_days"]) ||
-            (table.bigquery.requirePartitionFilter && table.bigquery.additionalOptions["require_partition_filter"]))
+            (table.bigquery.partitionExpirationDays && table.bigquery.additionalOptions.partition_expiration_days) ||
+            (table.bigquery.requirePartitionFilter && table.bigquery.additionalOptions.require_partition_filter))
           ){
           this.compileError(
             `requirePartitionFilter/partitionExpirationDays can be declared once either as a field or in additional options not both`,
