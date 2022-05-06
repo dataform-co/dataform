@@ -84,8 +84,8 @@ export class BigQueryAdapter extends Adapter implements IAdapter {
       options.push(`require_partition_filter=${table.bigquery.requirePartitionFilter}`)
     }
     if(table.bigquery && table.bigquery.additionalOptions){
-      for(const entries of Object.entries(table.bigquery.additionalOptions)){
-        options.push(entries.join('='))
+      for(const [optionName, optionValue] of Object.entries(table.bigquery.additionalOptions)){
+        options.push(`${optionName}=${optionValue}`)
       }
     }
 

@@ -761,7 +761,7 @@ export class Session {
             (table.bigquery.requirePartitionFilter && table.bigquery.additionalOptions.require_partition_filter))
           ){
           this.compileError(
-            `requirePartitionFilter/partitionExpirationDays can be declared once either as a field or in additional options not both`,
+            `requirePartitionFilter/partitionExpirationDays has been declared twice`,
             table.fileName,
             table.target
           );
