@@ -25,7 +25,6 @@ message ProjectConfig {
   string table_prefix = 11;
 
 
-
   // Deprecated.
   // Please use 'default_database' instead.
   string gcloud_project_id = 6;

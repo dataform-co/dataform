@@ -502,13 +502,23 @@ suite("@dataform/core", () => {
           partitionExpirationDays: 7
         }
       });
-      session.publish("example_duplicate_options_fail", {
+      session.publish("example_duplicate_partition_expiration_days_fail", {
         type: "table",
         bigquery: {
           partitionBy : "partition",
-          partitionExpirationDays : 7,
+          partitionExpirationDays : 1,
           additionalOptions: {
             partition_expiration_days : "7"
+          }
+        }
+      });
+      session.publish("example_duplicate_require_partition_filter_fail", {
+        type: "table",
+        bigquery: {
+          partitionBy : "partition",
+          requirePartitionFilter : true,
+          additionalOptions: {
+            require_partition_filter : "false"
           }
         }
       });
@@ -542,8 +552,12 @@ suite("@dataform/core", () => {
           message: "requirePartitionFilter/partitionExpirationDays are not valid for non partitioned BigQuery tables"
         },
         {
-          actionName: "schema.example_duplicate_options_fail",
-          message: "requirePartitionFilter/partitionExpirationDays can be declared once either as a field or in additional options not both"
+          actionName: "schema.example_duplicate_partition_expiration_days_fail",
+          message: "partitionExpirationDays has been declared twice"
+        },
+        {
+          actionName: "schema.example_duplicate_require_partition_filter_fail",
+          message: "requirePartitionFilter has been declared twice"
         }
       ]);
     });

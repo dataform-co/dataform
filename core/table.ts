@@ -192,7 +192,7 @@ export interface IBigQueryOptions {
    * Key-value pairs for options [table](https://cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#table_option_list), [view](https://cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#view_option_list), [materialized view](https://cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#materialized_view_option_list).
    *
    * Some options (e.g. `partitionExpirationDays`) have dedicated type/validity checked fields; prefer using those.
-   * Always quote value, and double quote if it's a string e.g. additionalOptions: {numeric_option: "5", string_option: '"string-value"'}
+   * String values need double-quotes, e.g. additionalOptions: {numeric_option: "5", string_option: '"string-value"'}
    * If the option name contains special characters, e.g. hyphens, then quote its name, e.g. additionalOptions: { "option-name": "value" }.
    */
   additionalOptions?: { [name: string]: string };
