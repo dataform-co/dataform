@@ -114,6 +114,23 @@ const includeDepsOption: INamedOption<yargs.Options> = {
   }
 };
 
+const includeDependentsOption: INamedOption<yargs.Options> = {
+  name: "include-dependents",
+  option: {
+    describe: "If set, dependents (downstream) for selected actions will also be run.",
+    type: "boolean"
+  },
+  // It would be nice to use yargs' "implies" to implement this, but it doesn't work for some reason.
+  check: (argv: yargs.Arguments) => {
+    if (argv[includeDependentsOption.name] && !(argv[actionsOption.name] || argv[tagsOption.name])) {
+      throw new Error(
+        `The --${includeDependentsOption.name} flag should only be supplied along with --${actionsOption.name} or --${tagsOption.name}.`
+      );
+    }
+  }
+};
+
+
 const schemaSuffixOverrideOption: INamedOption<yargs.Options> = {
   name: "schema-suffix",
   option: {
@@ -587,6 +604,7 @@ export function runCli() {
                 fullRefresh: argv[fullRefreshOption.name],
                 actions: argv[actionsOption.name],
                 includeDependencies: argv[includeDepsOption.name],
+                includeDependents: argv[includeDependentsOption.name],
                 tags: argv[tagsOption.name]
               },
               dbadapter
