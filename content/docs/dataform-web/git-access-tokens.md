@@ -6,6 +6,10 @@ priority: 1
 
 Git access tokens are important for Dataform projects linked to remote git providers, such as GitHub. They provide authentication for accessing and controlling the git project.
 
+<div className="bp3-callout bp3-icon-info-sign bp3-intent-warning" markdown="1">
+  Dataform's IP addresses may need be allowlisted in order to access your GitHub / GitLab repository cluster. Dataform's IP addresses are <code>35.233.106.210</code> and <code>104.196.10.242</code>.
+</div>
+
 ## User authentication
 
 User access tokens are used to authenticate git access of Dataform projects during project manipulation.
