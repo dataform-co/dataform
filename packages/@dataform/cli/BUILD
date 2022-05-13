@@ -1,6 +1,6 @@
 load("//tools:ts_library.bzl", "ts_library")
 load("//:version.bzl", "DF_VERSION")
-load("//packages:index.bzl", "pkg_bundle", "pkg_json", "pkg_npm_tar")
+load("//packages:index.bzl", "pkg_bundle", "pkg_bundle_dts", "pkg_json", "pkg_npm_tar")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -85,6 +85,15 @@ pkg_bundle(
     ],
 )
 
+pkg_bundle_dts(
+    name = "bundle.d",
+    entry_point = "index.ts",
+    externals = externals,
+    deps = [
+        ":cli",
+    ],
+)
+
 pkg_bundle(
     name = "worker_bundle",
     args = ["--banner='#!/usr/bin/env node'"],
@@ -100,6 +109,7 @@ pkg_npm_tar(
     name = "package",
     deps = [
         ":bundle",
+        ":bundle.d",
         ":package.json",
         ":worker_bundle",
     ],
