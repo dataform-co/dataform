@@ -502,6 +502,26 @@ suite("@dataform/core", () => {
           partitionExpirationDays: 7
         }
       });
+      session.publish("example_duplicate_partition_expiration_days_fail", {
+        type: "table",
+        bigquery: {
+          partitionBy : "partition",
+          partitionExpirationDays : 1,
+          additionalOptions: {
+            partition_expiration_days : "7"
+          }
+        }
+      });
+      session.publish("example_duplicate_require_partition_filter_fail", {
+        type: "table",
+        bigquery: {
+          partitionBy : "partition",
+          requirePartitionFilter : true,
+          additionalOptions: {
+            require_partition_filter : "false"
+          }
+        }
+      });
 
       const graph = session.compile();
 
@@ -530,6 +550,14 @@ suite("@dataform/core", () => {
         {
           actionName: "schema.example_expiring_non_partitioned_fail",
           message: "requirePartitionFilter/partitionExpirationDays are not valid for non partitioned BigQuery tables"
+        },
+        {
+          actionName: "schema.example_duplicate_partition_expiration_days_fail",
+          message: "partitionExpirationDays has been declared twice"
+        },
+        {
+          actionName: "schema.example_duplicate_require_partition_filter_fail",
+          message: "requirePartitionFilter has been declared twice"
         }
       ]);
     });
@@ -601,6 +629,14 @@ suite("@dataform/core", () => {
         type: "view",
         materialized: true
       });
+      session.publish("example_additional_options", {
+        type: "table",
+        bigquery: {
+          additionalOptions: {
+            friendlyName : "name"
+          }
+        }
+      });
 
       const graph = session.compile();
 
@@ -613,6 +649,13 @@ suite("@dataform/core", () => {
         })
       );
       expect(graph.tables[1].materialized).to.equals(true);
+      expect(graph.tables[2].bigquery).to.deep.equals(
+        dataform.BigQueryOptions.create({
+          additionalOptions: {
+            friendlyName : "name"
+          }
+        })
+      )
       expect(graph.graphErrors.compilationErrors).to.deep.equals([]);
     });
 
@@ -990,8 +1033,8 @@ suite("@dataform/core", () => {
         -- --js var x = 1200;
         --js var b = 2;
         -- normal_single_line_comment
-        
-        -- /*js 
+
+        -- /*js
         -- var y = 234; // some js comment
         -- */
 
@@ -1005,8 +1048,8 @@ suite("@dataform/core", () => {
         -- --js var x = 1200;
 
         -- normal_single_line_comment
-        
-        -- /*js 
+
+        -- /*js
         -- var y = 234; // some js comment
         -- */
 
