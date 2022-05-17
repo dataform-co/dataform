@@ -23,10 +23,9 @@ message ProjectConfig {
   string database_suffix = 15;
   string schema_suffix = 7;
   string table_prefix = 11;
-  
-  
 
-  // Deprecated. 
+
+  // Deprecated.
   // Please use 'default_database' instead.
   string gcloud_project_id = 6;
   // This setting no longer has any effect.
@@ -58,7 +57,7 @@ message CompileConfig {
 
   // Whether to use the new main function instead of gen index.
   bool use_main = 9;
-  
+
   reserved 2, 4, 5, 7;
 }
 
@@ -75,6 +74,7 @@ message BigQueryOptions {
   map<string, string> labels = 4;
   int32 partition_expiration_days = 5;
   bool require_partition_filter = 6;
+  map<string, string> additional_options = 7;
 }
 
 message RedshiftOptions {
@@ -163,7 +163,7 @@ message Table {
 
   repeated Target dependency_targets = 27;
   ActionHermeticity hermeticity = 31;
-  
+
   bool disabled = 6;
 
   string type = 3;
@@ -205,7 +205,7 @@ message Operation {
   repeated Target dependency_targets = 11;
 
   ActionHermeticity hermeticity = 12;
-  
+
   bool disabled = 14;
 
   repeated string queries = 6;
@@ -226,7 +226,7 @@ message Assertion {
 
   repeated Target dependency_targets = 11;
   ActionHermeticity hermeticity = 12;
-  
+
   bool disabled = 14;
 
   string query = 3;
@@ -237,7 +237,7 @@ message Assertion {
 
   // Only present for auto assertions.
   Target parent_action = 15;
-  
+
   // Generated.
   string file_name = 7;
 

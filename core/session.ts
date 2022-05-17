@@ -735,7 +735,7 @@ export class Session {
       // BigQuery config
       if (!!table.bigquery) {
         if (
-          (table.bigquery.partitionBy || table.bigquery.clusterBy?.length || table.bigquery.partitionExpirationDays  
+          (table.bigquery.partitionBy || table.bigquery.clusterBy?.length || table.bigquery.partitionExpirationDays
             || table.bigquery.requirePartitionFilter) &&
           table.type === "view"
         ) {
@@ -755,7 +755,22 @@ export class Session {
             table.target
           );
         }
-
+        else if(table.bigquery.additionalOptions) {
+          if(table.bigquery.partitionExpirationDays && table.bigquery.additionalOptions.partition_expiration_days) {
+            this.compileError(
+              `partitionExpirationDays has been declared twice`,
+              table.fileName,
+              table.target
+            );
+          }
+          if (table.bigquery.requirePartitionFilter && table.bigquery.additionalOptions.require_partition_filter) {
+            this.compileError(
+              `requirePartitionFilter has been declared twice`,
+              table.fileName,
+              table.target
+            );
+          }
+        }
       }
 
       // Ignored properties
