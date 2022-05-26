@@ -10,6 +10,8 @@ import { targetsAreEqual, targetStringifier } from "df/core/targets";
 import { dataform } from "df/protos/ts";
 
 const CANCEL_EVENT = "jobCancel";
+const RUNNER_NOTIFICATION_PERIOD_MILLIS = 5000;
+const DISPLAY_RUNNING_STATUS = false;
 
 const isSuccessfulAction = (actionResult: dataform.IActionResult) =>
   actionResult.status === dataform.ActionResult.ExecutionStatus.SUCCESSFUL ||
@@ -24,8 +26,8 @@ export function run(
   dbadapter: dbadapters.IDbAdapter,
   graph: dataform.IExecutionGraph,
   partiallyExecutedRunResult: dataform.IRunResult = {},
-  runnerNotificationPeriodMillis: SingleValueFlag<number> = Flags.number("runner-notification-period-millis", 5000),
-  displayRunningStatus: SingleValueFlag<boolean> = Flags.boolean("display-running-status", false)
+  runnerNotificationPeriodMillis: number = RUNNER_NOTIFICATION_PERIOD_MILLIS,
+  displayRunningStatus: boolean = DISPLAY_RUNNING_STATUS
 ): Runner {
   return new Runner(dbadapter, graph, partiallyExecutedRunResult, runnerNotificationPeriodMillis, displayRunningStatus).execute();
 }
@@ -40,7 +42,10 @@ export class Runner {
   private readonly runResult: dataform.IRunResult;
   private readonly changeListeners: Array<(graph: dataform.IRunResult) => void> = [];
   private readonly eEmitter: EventEmitter;
-
+  private readonly flags: {
+    runnerNotificationPeriodMillis: SingleValueFlag<number>,
+    displayRunningStatus: SingleValueFlag<boolean>
+  };
   private executedActionTargets: StringifiedSet<dataform.ITarget>;
   private successfullyExecutedActionTargets: StringifiedSet<dataform.ITarget>;
   private pendingActions: dataform.IExecutionAction[];
@@ -55,8 +60,8 @@ export class Runner {
     private readonly dbadapter: dbadapters.IDbAdapter,
     private readonly graph: dataform.IExecutionGraph,
     partiallyExecutedRunResult: dataform.IRunResult = {},
-    private readonly runnerNotificationPeriodMillis: SingleValueFlag<number> = Flags.number("runner-notification-period-millis", 5000),
-    private readonly displayRunningStatus: SingleValueFlag<boolean> = Flags.boolean("display-running-status", false)
+    runnerNotificationPeriodMillis: number = RUNNER_NOTIFICATION_PERIOD_MILLIS,
+    displayRunningStatus: boolean = DISPLAY_RUNNING_STATUS
   ) {
     this.allActionTargets = new StringifiedSet<dataform.ITarget>(
       targetStringifier,
@@ -70,9 +75,13 @@ export class Runner {
       targetStringifier,
       graph.warehouseState.tables?.map(tableMetadata => [tableMetadata.target, tableMetadata])
     );
+    this.flags = {
+      runnerNotificationPeriodMillis: Flags.number("runner-notification-period-millis", runnerNotificationPeriodMillis),
+      displayRunningStatus: Flags.boolean("display-running-status", displayRunningStatus)
+    };
     this.executedActionTargets = new StringifiedSet(
       targetStringifier,
-      !!this.displayRunningStatus.get() ?
+      !!this.flags.displayRunningStatus.get() ?
         this.runResult.actions
           .filter(action => action.status !== dataform.ActionResult.ExecutionStatus.RUNNING)
           .map(action => action.target) :
@@ -135,7 +144,7 @@ export class Runner {
 
   private notifyListeners() {
     if (
-      Date.now() - this.runnerNotificationPeriodMillis.get() <
+      Date.now() - this.flags.runnerNotificationPeriodMillis.get() <
       this.lastNotificationTimestampMillis
     ) {
       return;
