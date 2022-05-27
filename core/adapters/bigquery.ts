@@ -94,7 +94,7 @@ export class BigQueryAdapter extends Adapter implements IAdapter {
     }
     if (table.bigquery && table.bigquery.partitionBy && table.bigquery.requirePartitionFilter){
       options.push(`require_partition_filter=${table.bigquery.requirePartitionFilter}`)
-    }  
+    }
     if(table.bigquery && table.bigquery.additionalOptions){
       for(const [optionName, optionValue] of Object.entries(table.bigquery.additionalOptions)){
         options.push(`${optionName}=${optionValue}`)
@@ -102,7 +102,7 @@ export class BigQueryAdapter extends Adapter implements IAdapter {
     }
 
     return `create or replace ${
-      table.materialized 
+      table.materialized
       ? "materialized "
       : ""
     }${this.tableTypeAsSql(
