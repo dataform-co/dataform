@@ -73,11 +73,11 @@ select 1 as \${dataform.projectConfig.vars.testVar2}
           type: "table",
           target: {
             database: "dataform-integration-tests",
-            schema: "testValue1",
+            schema: "dataform",
             name: "example"
           },
           canonicalTarget: {
-            schema: "testValue1",
+            schema: "dataform",
             name: "example",
             database: "dataform-integration-tests"
           },
@@ -93,7 +93,7 @@ select 1 as \${dataform.projectConfig.vars.testVar2}
         defaultDatabase: "dataform-integration-tests",
         useRunCache: false,
         vars: {
-          testVar1: "testValue1",
+          testVar1: "dataform",
           testVar2: "testValue2"
         }
       },
@@ -102,7 +102,7 @@ select 1 as \${dataform.projectConfig.vars.testVar2}
       targets: [
         {
           database: "dataform-integration-tests",
-          schema: "testValue1",
+          schema: "dataform",
           name: "example"
         }
       ]
@@ -118,7 +118,7 @@ select 1 as \${dataform.projectConfig.vars.testVar2}
         "test_credentials/bigquery.json",
         "--dry-run",
         "--json",
-        "--vars=testVar1=testValue1,testVar2=testValue2"
+        "--vars=testVar1=dataform,testVar2=testValue2"
       ])
     );
 
