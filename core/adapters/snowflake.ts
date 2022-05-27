@@ -31,27 +31,33 @@ export class SnowflakeAdapter extends Adapter implements IAdapter {
         Task.statement(this.dropIfExists(table.target, this.oppositeTableType(baseTableType)))
       );
     }
-
     if (table.type === "incremental") {
       if (!this.shouldWriteIncrementally(runConfig, tableMetadata)) {
         tasks.add(Task.statement(this.createOrReplace(table)));
-      } else {
+      } else if (table.uniqueKey && table.uniqueKey.length > 0 && (table.strategy===null || table.strategy==="merge")){
         tasks.add(
           Task.statement(
-            table.uniqueKey && table.uniqueKey.length > 0
-              ? this.mergeInto(
+            this.mergeInto(
                   table.target,
                   tableMetadata.fields.map(f => f.name),
                   this.where(table.incrementalQuery || table.query, table.where),
                   table.uniqueKey
-                )
-              : this.insertInto(
-                  table.target,
-                  tableMetadata.fields.map(f => f.name),
-                  this.where(table.incrementalQuery || table.query, table.where)
-                )
-          )
-        );
+                )));
+      } else {
+        if (table.strategy==="insert_overwrite"){
+          if(table.overwriteFilter){
+            tasks.add(Task.statement(this.deleteWithStaticFilter(table.target,table.overwriteFilter)));
+          }else {
+            throw new Error("insert_overwrite requires setting overtwriteFilter.");
+          }
+        }
+        tasks.add(Task.statement(this.insertInto(
+          table.target,
+          tableMetadata.fields.map(f => f.name),
+          this.where(table.incrementalQuery || table.query, table.where)
+        )));
+          
+        
       }
     } else {
       tasks.add(Task.statement(this.createOrReplace(table)));
@@ -90,6 +96,21 @@ export class SnowflakeAdapter extends Adapter implements IAdapter {
         ? `cluster by (${table.snowflake?.clusterBy.join(", ")}) `
         : ""
     }as ${table.query}`;
+  }
+
+  private deleteWithStaticFilter(
+    target: dataform.ITarget,
+    overwriteFilter: string
+  ) {
+    return `delete from ${this.resolveTarget(target)} T where ${overwriteFilter}`;
+  }
+
+  private deleteDynamically(
+    target: dataform.ITarget,
+    partitionBy: string,
+    query: string
+  ) {
+    return `delete from ${this.resolveTarget(target)} T where ${partitionBy} in (select ${partitionBy} from (${query}))`;
   }
 
   private mergeInto(

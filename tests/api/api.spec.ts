@@ -606,6 +606,66 @@ suite("@dataform/api", () => {
       );
     });
 
+    test("snowflake_incremental", () => {
+      const testGraph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
+        projectConfig: { warehouse: "snowflake"},
+        tables: [
+          {
+            target: {
+              schema: "schema",
+              name: "incremental"
+            },
+            type: "incremental",
+            strategy: "insert_overwrite",
+            overwriteFilter: "1=1",
+            query: "select 1 as test",
+            where: "true"
+          }
+        ]
+      });
+      const state = dataform.WarehouseState.create({
+        tables: [
+          {
+            target: {
+              schema: "schema",
+              name: "incremental"
+            },
+            type: dataform.TableMetadata.Type.TABLE,
+            fields: [
+              {
+                name: "existing_field"
+              }
+            ]
+          }
+        ]
+      });
+      const executionGraph = new Builder(testGraph, {}, state).build();
+      expect(
+        cleanSql(
+          executionGraph.actions.filter(
+            n => targetAsReadableString(n.target) === "schema.incremental"
+          )[0].tasks[0].statement
+        )
+      ).equals(
+        cleanSql(`delete from "schema"."incremental" t where 1=1`)
+      );
+
+      expect(
+        cleanSql(
+          executionGraph.actions.filter(
+            n => targetAsReadableString(n.target) === "schema.incremental"
+          )[0].tasks[1].statement
+        )
+      ).equals(
+        cleanSql(`insert into "schema"."incremental" (existing_field) 
+              select existing_field from (
+                select * from (select 1 as test) as subquery
+                where true
+              ) as insertions`)
+      );
+    });
+
+
     test("redshift_create", () => {
       const testGraph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
         projectConfig: { warehouse: "redshift" },
