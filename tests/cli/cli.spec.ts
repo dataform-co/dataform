@@ -61,7 +61,7 @@ select 1 as \${dataform.projectConfig.vars.testVar2}
         "compile",
         projectDir,
         "--json",
-        "--vars=testVar1=testValue1,testVar2=testValue2"
+        "--vars=testVar1=dataform,testVar2=testValue2"
       ])
     );
 
@@ -133,7 +133,7 @@ select 1 as \${dataform.projectConfig.vars.testVar2}
           target: {
             database: "dataform-integration-tests",
             name: "example",
-            schema: "testValue1"
+            schema: "dataform"
           },
           tasks: [
             {
@@ -152,7 +152,7 @@ select 1 as \${dataform.projectConfig.vars.testVar2}
         useRunCache: false,
         warehouse: "bigquery",
         vars: {
-          testVar1: "testValue1",
+          testVar1: "dataform",
           testVar2: "testValue2"
         }
       },
