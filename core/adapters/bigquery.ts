@@ -32,22 +32,34 @@ export class BigQueryAdapter extends Adapter implements IAdapter {
     if (table.type === "incremental") {
       if (!this.shouldWriteIncrementally(runConfig, tableMetadata)) {
         tasks.add(Task.statement(this.createOrReplace(table)));
-      } else {
+      } else if (table.uniqueKey && table.uniqueKey.length > 0 && (table.strategy===null || table.strategy==="merge")){
         tasks.add(
           Task.statement(
-            table.uniqueKey && table.uniqueKey.length > 0
-              ? this.mergeInto(
+            this.mergeInto(
                   table.target,
                   tableMetadata?.fields.map(f => f.name),
                   this.where(table.incrementalQuery || table.query, table.where),
                   table.uniqueKey,
                   table.bigquery && table.bigquery.updatePartitionFilter
                 )
-              : this.insertInto(
-                  table.target,
-                  tableMetadata?.fields.map(f => f.name).map(column => `\`${column}\``),
-                  this.where(table.incrementalQuery || table.query, table.where)
-                )
+          )
+        );
+      } else {
+        if (table.strategy==="insert_overwrite"){
+          if(table.overwriteFilter){
+            tasks.add(Task.statement(this.deleteWithStaticFilter(table.target,table.overwriteFilter)));
+          }else {
+            tasks.add(Task.statement(this.deleteDynamically(table.target,table.bigquery.partitionBy,
+              this.where(table.incrementalQuery || table.query, table.where))));
+          }
+        }
+        tasks.add(
+            Task.statement(
+              this.insertInto(
+                table.target,
+                tableMetadata?.fields.map(f => f.name).map(column => `\`${column}\``),
+                this.where(table.incrementalQuery || table.query, table.where)
+              )
           )
         );
       }
@@ -82,7 +94,7 @@ export class BigQueryAdapter extends Adapter implements IAdapter {
     }
     if (table.bigquery && table.bigquery.partitionBy && table.bigquery.requirePartitionFilter){
       options.push(`require_partition_filter=${table.bigquery.requirePartitionFilter}`)
-    }
+    }  
     if(table.bigquery && table.bigquery.additionalOptions){
       for(const [optionName, optionValue] of Object.entries(table.bigquery.additionalOptions)){
         options.push(`${optionName}=${optionValue}`)
@@ -90,7 +102,7 @@ export class BigQueryAdapter extends Adapter implements IAdapter {
     }
 
     return `create or replace ${
-      table.materialized
+      table.materialized 
       ? "materialized "
       : ""
     }${this.tableTypeAsSql(
@@ -113,6 +125,22 @@ export class BigQueryAdapter extends Adapter implements IAdapter {
     return `
       create or replace view ${this.resolveTarget(target)} as ${query}`;
   }
+
+  private deleteWithStaticFilter(
+    target: dataform.ITarget,
+    overwriteFilter: string
+  ) {
+    return `delete from ${this.resolveTarget(target)} T where ${overwriteFilter}`;
+  }
+
+  private deleteDynamically(
+    target: dataform.ITarget,
+    partitionBy: string,
+    query: string
+  ) {
+    return `delete from ${this.resolveTarget(target)} T where ${partitionBy} in (select ${partitionBy} from (${query}))`;
+  }
+
 
   private mergeInto(
     target: dataform.ITarget,

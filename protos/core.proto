@@ -179,6 +179,8 @@ message Table {
   string where = 8 [deprecated = true];
   string incremental_query = 26;
   repeated string unique_key = 30;
+  string strategy = 36;
+  string overwrite_filter = 37;
 
   // Pre/post operations.
   repeated string pre_ops = 13;

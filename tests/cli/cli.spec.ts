@@ -48,8 +48,8 @@ suite(__filename, () => {
     fs.ensureFileSync(filePath);
     fs.writeFileSync(
       filePath,
-      `
-config { type: "table" }
+      `config { type: "table", schema: \`\${dataform.projectConfig.vars.testVar1}\` }
+
 select 1 as \${dataform.projectConfig.vars.testVar2}
 `
     );
@@ -73,11 +73,11 @@ select 1 as \${dataform.projectConfig.vars.testVar2}
           type: "table",
           target: {
             database: "dataform-integration-tests",
-            schema: "dataform",
+            schema: "testValue1",
             name: "example"
           },
           canonicalTarget: {
-            schema: "dataform",
+            schema: "testValue1",
             name: "example",
             database: "dataform-integration-tests"
           },
@@ -102,7 +102,7 @@ select 1 as \${dataform.projectConfig.vars.testVar2}
       targets: [
         {
           database: "dataform-integration-tests",
-          schema: "dataform",
+          schema: "testValue1",
           name: "example"
         }
       ]
@@ -133,7 +133,7 @@ select 1 as \${dataform.projectConfig.vars.testVar2}
           target: {
             database: "dataform-integration-tests",
             name: "example",
-            schema: "dataform"
+            schema: "testValue1"
           },
           tasks: [
             {

@@ -426,6 +426,58 @@ suite("@dataform/api", () => {
       );
     });
 
+    test("bigquery_incremental_insert_overwrite_custom_overwrite_filter", () => {
+      const graph = dataform.CompiledGraph.create({
+        projectConfig: { warehouse: "bigquery", defaultDatabase: "deeb" },
+        tables: [
+          {
+            target: {
+              schema: "schema",
+              name: "incremental"
+            },
+            type: "incremental",
+            strategy: "insert_overwrite",
+            overwriteFilter: "1=1",
+            query: "select 1 as test",
+            where: "true"
+          }
+        ]
+      });
+      const state = dataform.WarehouseState.create({
+        tables: [
+          {
+            target: {
+              schema: "schema",
+              name: "incremental"
+            },
+            type: dataform.TableMetadata.Type.TABLE,
+            fields: [
+              {
+                name: "existing_field"
+              }
+            ]
+          }
+        ]
+      });
+      const executionGraph = new Builder(graph, {}, state).build();
+      expect(
+        cleanSql(
+          executionGraph.actions.filter(
+            n => targetAsReadableString(n.target) === "schema.incremental"
+          )[0].tasks[0].statement
+        )
+      ).equals(
+        cleanSql(
+          `delete from \`deeb.schema.incremental\` t
+             where 1=1 ; insert into \`deeb.schema.incremental\` (\`existing_field\`)
+             select \`existing_field\` from (
+               select * from (select 1 as test) as subquery
+               where true
+             ) as insertions`
+        )
+      );
+    });
+
     test("bigquery_materialized", () => {
       const testGraph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
         projectConfig: { warehouse: "bigquery", defaultDatabase: "deeb" },
