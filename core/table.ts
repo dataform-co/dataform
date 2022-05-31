@@ -326,6 +326,8 @@ export interface ITableConfig
   materialized?: boolean;
 
   strategy?: string;
+
+  overwriteFilter?: string;
 }
 
 // TODO: This needs to be a method, I'm really not sure why, but it hits a runtime failure otherwise.
@@ -350,7 +352,8 @@ export const ITableConfigProperties = () =>
     "columns",
     "description",
     "materialized",
-    "strategy"
+    "strategy",
+    "overwriteFilter"
   ]);
 
 /**
@@ -476,6 +479,10 @@ export class Table {
       this.strategy(config.strategy);
     }
 
+    if(config.overwriteFilter){
+      this.overwriteFilter(config.overwriteFilter);
+    }
+
     return this;
   }
 
@@ -526,6 +533,10 @@ export class Table {
   
   public strategy(strategy: string) {
     this.proto.strategy = strategy;
+  }
+
+  public overwriteFilter(overwriteFilter: string) {
+    this.proto.overwriteFilter = overwriteFilter;
   }
 
 
