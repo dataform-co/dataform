@@ -13,7 +13,9 @@ message ProjectConfig {
 
   string default_database = 9;
   string default_schema = 2;
-  string assertion_schema = 5;
+  string default_location = 15;
+
+  string assertion_schema = 5;  
 
   map<string, string> vars = 14;
 
