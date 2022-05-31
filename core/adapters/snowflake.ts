@@ -34,7 +34,7 @@ export class SnowflakeAdapter extends Adapter implements IAdapter {
     if (table.type === "incremental") {
       if (!this.shouldWriteIncrementally(runConfig, tableMetadata)) {
         tasks.add(Task.statement(this.createOrReplace(table)));
-      } else if (table.uniqueKey && table.uniqueKey.length > 0 && (table.strategy===null || table.strategy==="merge")){
+      } else if (table.uniqueKey && table.uniqueKey.length > 0 && (!table.strategy || table.strategy==="merge")){
         tasks.add(
           Task.statement(
             this.mergeInto(
