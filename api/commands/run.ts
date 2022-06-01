@@ -2,7 +2,7 @@ import EventEmitter from "events";
 import Long from "long";
 
 import * as dbadapters from "df/api/dbadapters";
-import { Flags, SingleValueFlag } from "df/common/flags";
+import { Flags } from "df/common/flags";
 import { retry } from "df/common/promises";
 import { deepClone, equals } from "df/common/protos";
 import { StringifiedMap, StringifiedSet } from "df/common/strings/stringifier";
@@ -10,8 +10,9 @@ import { targetsAreEqual, targetStringifier } from "df/core/targets";
 import { dataform } from "df/protos/ts";
 
 const CANCEL_EVENT = "jobCancel";
-const RUNNER_NOTIFICATION_PERIOD_MILLIS = 5000;
-const DISPLAY_RUNNING_STATUS = false;
+let flags = {
+  runnerNotificationPeriodMillis: Flags.number("runner-notification-period-millis", 5000)
+};
 
 const isSuccessfulAction = (actionResult: dataform.IActionResult) =>
   actionResult.status === dataform.ActionResult.ExecutionStatus.SUCCESSFUL ||
@@ -26,10 +27,9 @@ export function run(
   dbadapter: dbadapters.IDbAdapter,
   graph: dataform.IExecutionGraph,
   partiallyExecutedRunResult: dataform.IRunResult = {},
-  runnerNotificationPeriodMillis: number = RUNNER_NOTIFICATION_PERIOD_MILLIS,
-  displayRunningStatus: boolean = DISPLAY_RUNNING_STATUS
+  runnerNotificationPeriodMillis: number = flags.runnerNotificationPeriodMillis.get()
 ): Runner {
-  return new Runner(dbadapter, graph, partiallyExecutedRunResult, runnerNotificationPeriodMillis, displayRunningStatus).execute();
+  return new Runner(dbadapter, graph, partiallyExecutedRunResult, runnerNotificationPeriodMillis).execute();
 }
 
 export class Runner {
@@ -42,10 +42,6 @@ export class Runner {
   private readonly runResult: dataform.IRunResult;
   private readonly changeListeners: Array<(graph: dataform.IRunResult) => void> = [];
   private readonly eEmitter: EventEmitter;
-  private readonly flags: {
-    runnerNotificationPeriodMillis: SingleValueFlag<number>,
-    displayRunningStatus: SingleValueFlag<boolean>
-  };
   private executedActionTargets: StringifiedSet<dataform.ITarget>;
   private successfullyExecutedActionTargets: StringifiedSet<dataform.ITarget>;
   private pendingActions: dataform.IExecutionAction[];
@@ -60,9 +56,7 @@ export class Runner {
     private readonly dbadapter: dbadapters.IDbAdapter,
     private readonly graph: dataform.IExecutionGraph,
     partiallyExecutedRunResult: dataform.IRunResult = {},
-    runnerNotificationPeriodMillis: number = RUNNER_NOTIFICATION_PERIOD_MILLIS,
-    displayRunningStatus: boolean = DISPLAY_RUNNING_STATUS
-  ) {
+    private readonly runnerNotificationPeriodMillis: number = flags.runnerNotificationPeriodMillis.get()) {
     this.allActionTargets = new StringifiedSet<dataform.ITarget>(
       targetStringifier,
       graph.actions.map(action => action.target)
@@ -75,18 +69,11 @@ export class Runner {
       targetStringifier,
       graph.warehouseState.tables?.map(tableMetadata => [tableMetadata.target, tableMetadata])
     );
-    this.flags = {
-      runnerNotificationPeriodMillis: Flags.number("runner-notification-period-millis", runnerNotificationPeriodMillis),
-      displayRunningStatus: Flags.boolean("display-running-status", displayRunningStatus)
-    };
     this.executedActionTargets = new StringifiedSet(
       targetStringifier,
-      !!this.flags.displayRunningStatus.get() ?
-        this.runResult.actions
-          .filter(action => action.status !== dataform.ActionResult.ExecutionStatus.RUNNING)
-          .map(action => action.target) :
-        this.runResult.actions
-          .map(action => action.target)
+      this.runResult.actions
+        .filter(action => action.status !== dataform.ActionResult.ExecutionStatus.RUNNING)
+        .map(action => action.target)
     );
     this.successfullyExecutedActionTargets = new StringifiedSet(
       targetStringifier,
@@ -144,7 +131,7 @@ export class Runner {
 
   private notifyListeners() {
     if (
-      Date.now() - this.flags.runnerNotificationPeriodMillis.get() <
+      Date.now() - this.runnerNotificationPeriodMillis <
       this.lastNotificationTimestampMillis
     ) {
       return;
