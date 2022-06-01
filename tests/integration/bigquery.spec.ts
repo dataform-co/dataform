@@ -41,7 +41,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
       const executedGraph = await dfapi.run(dbadapter, executionGraph).result();
 
       const actionMap = keyBy(executedGraph.actions, v => targetAsReadableString(v.target));
-      expect(Object.keys(actionMap).length).eql(19);
+      expect(Object.keys(actionMap).length).eql(20);
 
       // Check the status of action execution.
       const expectedFailedActions = [
@@ -89,18 +89,20 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
       for (const runIteration of [
         {
           runConfig: {
-            actions: ["example_incremental", "example_incremental_merge"],
+            actions: ["example_incremental", "example_incremental_merge", "example_incremental_insert_overwrite"],
             includeDependencies: true
           },
           expectedIncrementalRows: 3,
-          expectedIncrementalMergeRows: 2
+          expectedIncrementalMergeRows: 2,
+          expectedIncrementalInsertOverwriteRows: 4
         },
         {
           runConfig: {
-            actions: ["example_incremental", "example_incremental_merge"]
+            actions: ["example_incremental", "example_incremental_merge", "example_incremental_insert_overwrite"]
           },
           expectedIncrementalRows: 5,
-          expectedIncrementalMergeRows: 2
+          expectedIncrementalMergeRows: 2,
+          expectedIncrementalInsertOverwriteRows: 2
         }
       ]) {
         const executionGraph = await dfapi.build(compiledGraph, runIteration.runConfig, dbadapter);
@@ -108,7 +110,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
         expect(dataform.RunResult.ExecutionStatus[runResult.status]).eql(
           dataform.RunResult.ExecutionStatus[dataform.RunResult.ExecutionStatus.SUCCESSFUL]
         );
-        const [incrementalRows, incrementalMergeRows] = await Promise.all([
+        const [incrementalRows, incrementalMergeRows,incrementalInsertOverwriteRows] = await Promise.all([
           getTableRows(
             {
               database: "dataform-integration-tests",
@@ -126,10 +128,20 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
             },
             adapter,
             dbadapter
+          ),
+          getTableRows(
+            {
+              database: "dataform-integration-tests",
+              schema: "df_integration_test_eu_incremental_tables",
+              name: "example_incremental_insert_overwrite"
+            },
+            adapter,
+            dbadapter
           )
         ]);
         expect(incrementalRows.length).equals(runIteration.expectedIncrementalRows);
         expect(incrementalMergeRows.length).equals(runIteration.expectedIncrementalMergeRows);
+        expect(incrementalInsertOverwriteRows.length).equals(runIteration.expectedIncrementalInsertOverwriteRows);
       }
     });
 
