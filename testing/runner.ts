@@ -38,7 +38,7 @@ export class Runner {
 
   // tslint:disable: no-console
   public static async run() {
-    chalk.enabled = true;
+    chalk.level = 2;
     chalk.level = 3;
     try {
       // We tell the runner to start running at the end of current block of
