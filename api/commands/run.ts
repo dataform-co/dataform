@@ -10,7 +10,7 @@ import { targetsAreEqual, targetStringifier } from "df/core/targets";
 import { dataform } from "df/protos/ts";
 
 const CANCEL_EVENT = "jobCancel";
-let flags = {
+const flags = {
   runnerNotificationPeriodMillis: Flags.number("runner-notification-period-millis", 5000)
 };
 
