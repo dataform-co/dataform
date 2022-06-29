@@ -22,7 +22,7 @@ export interface IExecutedAction {
   executionAction: dataform.IExecutionAction;
   actionResult: dataform.IActionResult;
 }
-// dummy comment
+
 export function run(
   dbadapter: dbadapters.IDbAdapter,
   graph: dataform.IExecutionGraph,
