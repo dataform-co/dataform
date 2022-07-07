@@ -220,6 +220,8 @@ const runTestsOptionName = "run-tests";
 const schemaOptionName = "schema";
 const tableOptionName = "table";
 
+const fmtIgnoreJsOptionName = "ignore-js-files"
+
 const getCredentialsPath = (projectDir: string, credentialsPath: string) =>
   actuallyResolve(credentialsPath || path.join(projectDir, CREDENTIALS_FILENAME));
 
@@ -683,9 +685,18 @@ export function runCli() {
         format: `format [${projectDirMustExistOption.name}]`,
         description: "Format the dataform project's files.",
         positionalOptions: [projectDirMustExistOption],
-        options: [],
+        options: [
+          {
+            name: fmtIgnoreJsOptionName,
+            option: {
+              describe: "If set, the formatter will not consider javascript files (.js)",
+              type: "boolean"
+            }
+          }
+        ],
         processFn: async argv => {
-          const filenames = glob.sync("{definitions,includes}/**/*.{js,sqlx}", {
+          const extensions = argv[fmtIgnoreJsOptionName] ? "*.sqlx" : '*.{js,sqlx}'
+          const filenames = glob.sync(`{definitions,includes}/**/${extensions}`, {
             cwd: argv[projectDirMustExistOption.name]
           });
           const results = await Promise.all(
