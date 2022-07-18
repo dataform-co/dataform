@@ -1,7 +1,7 @@
 {
   "steps": [
     {
-      "name": "l.gcr.io/google/bazel:3.3.1",
+      "name": "l.gcr.io/google/bazel:5.2.0",
       "entrypoint": "bash",
       "args": ["./scripts/cloudbuild/bazel_deploy"]
     }
