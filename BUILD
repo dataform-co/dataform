@@ -11,6 +11,7 @@ exports_files([
 
 PROTOBUF_DEPS = [
     "@npm//protobufjs",
+    "@npm//protobufjs-cli",
     # these deps are needed even though they are not automatic transitive deps of
     # protobufjs since if they are not in the runfiles then protobufjs attempts to
     # run `npm install` at runtime to get thhem which fails as it tries to access
@@ -31,14 +32,14 @@ PROTOBUF_DEPS = [
 nodejs_binary(
     name = "pbjs",
     data = PROTOBUF_DEPS,
-    entry_point = "@npm//:node_modules/protobufjs/bin/pbjs",
+    entry_point = "@npm//:node_modules/protobufjs-cli/bin/pbjs",
     install_source_map_support = False,
 )
 
 nodejs_binary(
     name = "pbts",
     data = PROTOBUF_DEPS,
-    entry_point = "@npm//:node_modules/protobufjs/bin/pbts",
+    entry_point = "@npm//:node_modules/protobufjs-cli/bin/pbts",
     install_source_map_support = False,
 )
 
