@@ -1,5 +1,5 @@
 load("@io_bazel_rules_docker//docker/util:run.bzl", "container_run_and_commit")
-load("@io_bazel_rules_docker//container:container.bzl", "container_image", "container_push")
+load("@io_bazel_rules_docker//container:container.bzl", "container_push")
 
 # The following defines our base builder image for the dataform repo.
 container_run_and_commit(
@@ -7,7 +7,7 @@ container_run_and_commit(
     commands = [
         # Install apt packages.
         "apt update",
-        "apt install -yq --no-install-recommends build-essential cmake git ca-certificates apt-transport-https wget python2 python3.9",
+        "apt install -yq --no-install-recommends build-essential cmake git ca-certificates apt-transport-https wget python2 python3.9 default-jre default-jdk",
         # Update certificates.
         "update-ca-certificates",
         # Install bazelisk.
@@ -23,18 +23,10 @@ container_run_and_commit(
     ],
 )
 
-container_image(
-    name = "builder_wrapper",
-    base = ":builder_commit.tar",
-    tags = [
-        "no-remote",
-    ],
-)
-
 container_push(
     name = "builder.push",
     format = "Docker",
-    image = ":builder_wrapper",
+    image = ":builder_commit.tar",
     registry = "gcr.io",
     repository = "dataform-public/dataform-builder",
     tag = "latest",
