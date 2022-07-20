@@ -10,7 +10,6 @@ import { targetsAreEqual, targetStringifier } from "df/core/targets";
 import { dataform } from "df/protos/ts";
 
 const CANCEL_EVENT = "jobCancel";
-
 const flags = {
   runnerNotificationPeriodMillis: Flags.number("runner-notification-period-millis", 5000)
 };
@@ -27,9 +26,10 @@ export interface IExecutedAction {
 export function run(
   dbadapter: dbadapters.IDbAdapter,
   graph: dataform.IExecutionGraph,
-  partiallyExecutedRunResult: dataform.IRunResult = {}
+  partiallyExecutedRunResult: dataform.IRunResult = {},
+  runnerNotificationPeriodMillis: number = flags.runnerNotificationPeriodMillis.get()
 ): Runner {
-  return new Runner(dbadapter, graph, partiallyExecutedRunResult).execute();
+  return new Runner(dbadapter, graph, partiallyExecutedRunResult, runnerNotificationPeriodMillis).execute();
 }
 
 export class Runner {
@@ -42,7 +42,6 @@ export class Runner {
   private readonly runResult: dataform.IRunResult;
   private readonly changeListeners: Array<(graph: dataform.IRunResult) => void> = [];
   private readonly eEmitter: EventEmitter;
-
   private executedActionTargets: StringifiedSet<dataform.ITarget>;
   private successfullyExecutedActionTargets: StringifiedSet<dataform.ITarget>;
   private pendingActions: dataform.IExecutionAction[];
@@ -56,8 +55,8 @@ export class Runner {
   constructor(
     private readonly dbadapter: dbadapters.IDbAdapter,
     private readonly graph: dataform.IExecutionGraph,
-    partiallyExecutedRunResult: dataform.IRunResult = {}
-  ) {
+    partiallyExecutedRunResult: dataform.IRunResult = {},
+    private readonly runnerNotificationPeriodMillis: number = flags.runnerNotificationPeriodMillis.get()) {
     this.allActionTargets = new StringifiedSet<dataform.ITarget>(
       targetStringifier,
       graph.actions.map(action => action.target)
@@ -70,7 +69,6 @@ export class Runner {
       targetStringifier,
       graph.warehouseState.tables?.map(tableMetadata => [tableMetadata.target, tableMetadata])
     );
-
     this.executedActionTargets = new StringifiedSet(
       targetStringifier,
       this.runResult.actions
@@ -133,7 +131,7 @@ export class Runner {
 
   private notifyListeners() {
     if (
-      Date.now() - flags.runnerNotificationPeriodMillis.get() <
+      Date.now() - this.runnerNotificationPeriodMillis <
       this.lastNotificationTimestampMillis
     ) {
       return;
@@ -446,7 +444,7 @@ class Timer {
   public static start(existingTiming?: dataform.ITiming) {
     return new Timer(existingTiming?.startTimeMillis.toNumber() || new Date().valueOf());
   }
-  private constructor(readonly startTimeMillis: number) {}
+  private constructor(readonly startTimeMillis: number) { }
 
   public current(): dataform.ITiming {
     return {

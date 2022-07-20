@@ -253,3 +253,11 @@ go_repository(
     sum = "h1:6fhXjXSzzXRQdqtFKOI1CDw6Gw5x6VflovRpfbrlVi0=",
     version = "v1.2.0",
 )
+
+container_pull(
+    name = "debian_base",
+    # docker manifest inspect index.docker.io/debian:bullseye
+    digest = "sha256:c11d2593cb741ae8a36d0de9cd240d13518e95f50bccfa8d00a668c006db181e",
+    registry = "index.docker.io",
+    repository = "library/debian",
+)
