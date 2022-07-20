@@ -8,7 +8,7 @@ container_run_and_commit(
     name = "builder",
     commands = [
         "apt update",
-        "apt install -yq --no-install-recommends build-essential ca-certificates apt-transport-https wget python2 python3",
+        "apt install -yq --no-install-recommends build-essential ca-certificates apt-transport-https wget python2 python3 python-is-python3",
         "update-ca-certificates",
         "wget https://github.com/bazelbuild/bazelisk/releases/download/v1.2.1/bazelisk-linux-amd64 -O /usr/local/bin/bazel",
         "chmod +x /usr/local/bin/bazel"

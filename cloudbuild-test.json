@@ -1,7 +1,7 @@
 {
   "steps": [
     {
-      "name": "gcr.io/dataform-public/dataform-builder@sha256:89c99e7eb86b33e147c7606a579e970527d7aa3d9f3020006524cd471ce3a0ed",
+      "name": "gcr.io/dataform-public/dataform-builder@sha256:8d39a87a73020ca8504916ace8b8e1ce4077d46335fc5afa7387d2862b0b5586",
       "entrypoint": "bash",
       "args": ["./scripts/cloudbuild/bazel_test"]
     }
