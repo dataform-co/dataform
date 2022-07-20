@@ -248,3 +248,11 @@ go_repository(
     sum = "h1:6fhXjXSzzXRQdqtFKOI1CDw6Gw5x6VflovRpfbrlVi0=",
     version = "v1.2.0",
 )
+
+container_pull(
+    name = "debian_base",
+    # docker manifest inspect index.docker.io/debian:bookworm
+    digest = "sha256:315d05f9f8a123847e1af17d49d62da4bf3b6e1678f34c5af28cc5515e26aef9",
+    registry = "index.docker.io",
+    repository = "library/debian",
+)
