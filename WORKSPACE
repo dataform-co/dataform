@@ -251,8 +251,8 @@ go_repository(
 
 container_pull(
     name = "debian_base",
-    # docker manifest inspect index.docker.io/debian:bookworm
-    digest = "sha256:315d05f9f8a123847e1af17d49d62da4bf3b6e1678f34c5af28cc5515e26aef9",
+    # docker manifest inspect index.docker.io/debian:bullseye
+    digest = "sha256:c11d2593cb741ae8a36d0de9cd240d13518e95f50bccfa8d00a668c006db181e",
     registry = "index.docker.io",
     repository = "library/debian",
 )
