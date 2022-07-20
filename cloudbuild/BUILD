@@ -7,7 +7,7 @@ container_run_and_commit(
     commands = [
         # Install apt packages.
         "apt update",
-        "apt install -yq --no-install-recommends build-essential ca-certificates apt-transport-https wget python2 python3.9",
+        "apt install -yq --no-install-recommends build-essential cmake git ca-certificates apt-transport-https wget python2 python3.9",
         # Update certificates.
         "update-ca-certificates",
         # Install bazelisk.
