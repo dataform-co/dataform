@@ -1,4 +1,5 @@
 {
   "defaultSchema": "df_integration_test",
-  "assertionSchema": "df_integration_test_assertions"
+  "assertionSchema": "df_integration_test_assertions",
+  "defaultLocation": "US"
 }

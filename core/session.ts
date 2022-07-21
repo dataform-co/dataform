@@ -375,6 +375,13 @@ export class Session {
 
   public compile(): dataform.CompiledGraph {
     this.indexedActions = new ActionIndex(this.adapter(), this.actions);
+
+    if (this.config.warehouse === "bigquery" && !this.config.defaultLocation) {
+      this.compileError(
+        "A defaultLocation is required for BigQuery. This can be configured in dataform.json."
+      );
+    }
+
     const compiledGraph = dataform.CompiledGraph.create({
       projectConfig: this.config,
       tables: this.compileGraphChunk(
@@ -615,8 +622,11 @@ export class Session {
       }
 
       // materialized
-      if(!!table.materialized){
-        if (table.type !== "view" || (this.config.warehouse !== "snowflake" && this.config.warehouse !== "bigquery")) {
+      if (!!table.materialized) {
+        if (
+          table.type !== "view" ||
+          (this.config.warehouse !== "snowflake" && this.config.warehouse !== "bigquery")
+        ) {
           this.compileError(
             new Error(`The 'materialized' option is only valid for Snowflake and BigQuery views`),
             table.fileName,
@@ -735,8 +745,10 @@ export class Session {
       // BigQuery config
       if (!!table.bigquery) {
         if (
-          (table.bigquery.partitionBy || table.bigquery.clusterBy?.length || table.bigquery.partitionExpirationDays
-            || table.bigquery.requirePartitionFilter) &&
+          (table.bigquery.partitionBy ||
+            table.bigquery.clusterBy?.length ||
+            table.bigquery.partitionExpirationDays ||
+            table.bigquery.requirePartitionFilter) &&
           table.type === "view"
         ) {
           this.compileError(
@@ -744,9 +756,9 @@ export class Session {
             table.fileName,
             table.target
           );
-        }
-        else if (
-          (!table.bigquery.partitionBy &&  (table.bigquery.partitionExpirationDays || table.bigquery.requirePartitionFilter)) &&
+        } else if (
+          !table.bigquery.partitionBy &&
+          (table.bigquery.partitionExpirationDays || table.bigquery.requirePartitionFilter) &&
           table.type === "table"
         ) {
           this.compileError(
@@ -754,16 +766,21 @@ export class Session {
             table.fileName,
             table.target
           );
-        }
-        else if(table.bigquery.additionalOptions) {
-          if(table.bigquery.partitionExpirationDays && table.bigquery.additionalOptions.partition_expiration_days) {
+        } else if (table.bigquery.additionalOptions) {
+          if (
+            table.bigquery.partitionExpirationDays &&
+            table.bigquery.additionalOptions.partition_expiration_days
+          ) {
             this.compileError(
               `partitionExpirationDays has been declared twice`,
               table.fileName,
               table.target
             );
           }
-          if (table.bigquery.requirePartitionFilter && table.bigquery.additionalOptions.require_partition_filter) {
+          if (
+            table.bigquery.requirePartitionFilter &&
+            table.bigquery.additionalOptions.require_partition_filter
+          ) {
             this.compileError(
               `requirePartitionFilter has been declared twice`,
               table.fileName,
