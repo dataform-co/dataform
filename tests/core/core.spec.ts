@@ -27,7 +27,8 @@ class TestConfigs {
 
   public static bigquery: dataform.IProjectConfig = {
     warehouse: "bigquery",
-    defaultSchema: "schema"
+    defaultSchema: "schema",
+    defaultLocation: "US"
   };
 
   public static snowflake: dataform.IProjectConfig = {
@@ -294,7 +295,8 @@ suite("@dataform/core", () => {
       const originalConfig = {
         warehouse: "bigquery",
         defaultSchema: "schema",
-        defaultDatabase: "database"
+        defaultDatabase: "database",
+        defaultLocation: "US"
       };
       const overrideConfig = { ...originalConfig, defaultSchema: "otherschema" };
       const session = new Session(path.dirname(__filename), overrideConfig, originalConfig);
@@ -505,20 +507,20 @@ suite("@dataform/core", () => {
       session.publish("example_duplicate_partition_expiration_days_fail", {
         type: "table",
         bigquery: {
-          partitionBy : "partition",
-          partitionExpirationDays : 1,
+          partitionBy: "partition",
+          partitionExpirationDays: 1,
           additionalOptions: {
-            partition_expiration_days : "7"
+            partition_expiration_days: "7"
           }
         }
       });
       session.publish("example_duplicate_require_partition_filter_fail", {
         type: "table",
         bigquery: {
-          partitionBy : "partition",
-          requirePartitionFilter : true,
+          partitionBy: "partition",
+          requirePartitionFilter: true,
           additionalOptions: {
-            require_partition_filter : "false"
+            require_partition_filter: "false"
           }
         }
       });
@@ -549,7 +551,8 @@ suite("@dataform/core", () => {
         },
         {
           actionName: "schema.example_expiring_non_partitioned_fail",
-          message: "requirePartitionFilter/partitionExpirationDays are not valid for non partitioned BigQuery tables"
+          message:
+            "requirePartitionFilter/partitionExpirationDays are not valid for non partitioned BigQuery tables"
         },
         {
           actionName: "schema.example_duplicate_partition_expiration_days_fail",
@@ -633,7 +636,7 @@ suite("@dataform/core", () => {
         type: "table",
         bigquery: {
           additionalOptions: {
-            friendlyName : "name"
+            friendlyName: "name"
           }
         }
       });
@@ -652,10 +655,10 @@ suite("@dataform/core", () => {
       expect(graph.tables[2].bigquery).to.deep.equals(
         dataform.BigQueryOptions.create({
           additionalOptions: {
-            friendlyName : "name"
+            friendlyName: "name"
           }
         })
-      )
+      );
       expect(graph.graphErrors.compilationErrors).to.deep.equals([]);
     });
 
@@ -1014,6 +1017,17 @@ suite("@dataform/core", () => {
       expect(graph.graphErrors.compilationErrors.map(error => error.message)).deep.equals([
         "Semi-colons are not allowed at the end of SQL statements.",
         "Semi-colons are not allowed at the end of SQL statements."
+      ]);
+    });
+
+    test("defaultLocation must be set in BigQuery", () => {
+      const session = new Session(path.dirname(__filename), {
+        warehouse: "bigquery",
+        defaultSchema: "schema",
+      });
+      const graph = session.compile();
+      expect(graph.graphErrors.compilationErrors.map(error => error.message)).deep.equals([
+        "A defaultLocation is required for BigQuery. This can be configured in dataform.json.",
       ]);
     });
   });

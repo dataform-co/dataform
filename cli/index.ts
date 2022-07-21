@@ -206,6 +206,7 @@ const timeoutOption: INamedOption<yargs.Options> = {
 };
 
 const defaultDatabaseOptionName = "default-database";
+const defaultLocationOptionName = "default-location";
 const skipInstallOptionName = "skip-install";
 const includeSchedulesOptionName = "include-schedules";
 const includeEnvironmentsOptionName = "include-environments";
@@ -265,6 +266,28 @@ export function runCli() {
             }
           },
           {
+            name: defaultLocationOptionName,
+            option: {
+              describe:
+                "The default BigQuery location to use. See https://cloud.google.com/bigquery/docs/locations for supported values."
+            },
+            check: (argv: yargs.Arguments<any>) => {
+              if (
+                argv[defaultLocationOptionName] &&
+                !["bigquery"].includes(argv[warehouseOption.name])
+              ) {
+                throw new Error(
+                  `The --${defaultLocationOptionName} flag is only used for BigQuery.`
+                );
+              }
+              if (!argv[defaultLocationOptionName] && argv[warehouseOption.name] === "bigquery") {
+                throw new Error(
+                  `The --${defaultLocationOptionName} flag is required for BigQuery projects. Please run 'dataform help init' for more information.`
+                );
+              }
+            }
+          },
+          {
             name: skipInstallOptionName,
             option: {
               describe: "Whether to skip installing NPM packages.",
@@ -293,6 +316,7 @@ export function runCli() {
             {
               warehouse: argv[warehouseOption.name],
               defaultDatabase: argv[defaultDatabaseOptionName],
+              defaultLocation: argv[defaultLocationOptionName],
               useRunCache: false
             },
             {
