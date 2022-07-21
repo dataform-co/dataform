@@ -271,9 +271,9 @@ export class Session {
             `${this.config.defaultSchema}${this.getSchemaSuffixWithUnderscore()}`
           ),
           this.config.defaultDatabase &&
-            this.adapter().normalizeIdentifier(
-              `${this.config.defaultDatabase}${this.getDatabaseSuffixWithUnderscore()}`
-            )
+          this.adapter().normalizeIdentifier(
+            `${this.config.defaultDatabase}${this.getDatabaseSuffixWithUnderscore()}`
+          )
         )
       );
     }
@@ -284,9 +284,9 @@ export class Session {
         this.adapter().normalizeIdentifier(`${this.getTablePrefixWithUnderscore()}${ref.name}`),
         this.adapter().normalizeIdentifier(`${ref.schema}${this.getSchemaSuffixWithUnderscore()}`),
         ref.database &&
-          this.adapter().normalizeIdentifier(
-            `${ref.database}${this.getDatabaseSuffixWithUnderscore()}`
-          )
+        this.adapter().normalizeIdentifier(
+          `${ref.database}${this.getDatabaseSuffixWithUnderscore()}`
+        )
       )
     );
   }
@@ -378,7 +378,8 @@ export class Session {
 
     if (this.config.warehouse === "bigquery" && !this.config.defaultLocation) {
       this.compileError(
-        "A defaultLocation is required for BigQuery. This can be configured in dataform.json."
+        "A defaultLocation is required for BigQuery. This can be configured in dataform.json.",
+        "dataform.json"
       );
     }
 
