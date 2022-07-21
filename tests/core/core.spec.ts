@@ -1019,6 +1019,17 @@ suite("@dataform/core", () => {
         "Semi-colons are not allowed at the end of SQL statements."
       ]);
     });
+
+    test("defaultLocation must be set in BigQuery", () => {
+      const session = new Session(path.dirname(__filename), {
+        warehouse: "bigquery",
+        defaultSchema: "schema",
+      });
+      const graph = session.compile();
+      expect(graph.graphErrors.compilationErrors.map(error => error.message)).deep.equals([
+        "A defaultLocation is required for BigQuery. This can be configured in dataform.json.",
+      ]);
+    });
   });
 
   suite("compilers", () => {
