@@ -61,7 +61,7 @@ In order to reference the dataset created by a `source.sqlx` file, the value tha
 
 <div className="bp3-callout bp3-icon-info-sign bp3-intent-primary" markdown="1">
 <h4 class="bp3-heading">The <code>ref()</code> function</h4>
-The use the <code>ref()</code> function, pass it the database, schema, and name of the dataset you're referencing. Database and schema are optional: you'll only need to specify these if there are multiple datasets in your project with the same name.
+To use the <code>ref()</code> function, pass it the database, schema, and name of the dataset you're referencing. Database and schema are optional: you'll only need to specify these if there are multiple datasets in your project with the same name.
 Read more about the <code>ref()</code> function [here](/reference#ICommonContext).
 </a></div>
 
