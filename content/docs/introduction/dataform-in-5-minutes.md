@@ -53,7 +53,7 @@ Current SQL workflows don’t necessarily follow engineering best practices. Sev
 - You **can’t reuse code** easily across different scripts.
 - There’s **no way to write tests** to ensure data consistency.
 - **Managing dependencies is hard** because it requires separate systems. In practice many teams write 1000 lines long queries to ensure data processing happens in the right order.
-- **Data is often not documented** because documentation is needs to be managed outside of the code, in a separate system. It makes it hard for teams to keep it updated.
+- **Data is often not documented** because documentation needs to be managed outside of the code, in a separate system. It makes it hard for teams to keep it updated.
 
 ### What is SQLX
 
