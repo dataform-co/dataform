@@ -257,7 +257,7 @@ We prepared the following sample project using the Stackoverflow public dataset.
 
 We published a package that helps the analysis of BigQuery usage logs. You can find more information by reading the related blog post or the package page.
 
-<a href="https://dataform.co/blog/exporting-bigquery-usage-logs"><button>Visit the package page</button></a> <a href="../packages/dataform-bq-audit-logs"><button>Read the blog post</button></a>
+<a href="https://dataform.co/blog/exporting-bigquery-usage-logs"><button>Read the blog post</button></a> <a href="../packages/dataform-bq-audit-logs"><button>Visit the package page</button></a>
 
 ## Blog posts
 
