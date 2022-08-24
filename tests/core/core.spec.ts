@@ -970,6 +970,31 @@ suite("@dataform/core", () => {
       ).greaterThan(0);
     });
 
+    test("duplicate actions in compiled graph", () => {
+      const session = new Session(path.dirname(__filename), TestConfigs.redshift);
+      session.publish("a")
+      session.publish("a");
+      session.publish("b"); // unique action
+      session.publish("c")
+      
+      session.operate("a")
+      session.operate("d") // unique action
+      session.operate("e") // unique action
+
+      session.declare({ name: "a" })
+      session.declare({ name: "f" }) // unique action
+      session.declare({ name: "g" })
+
+      session.assert("c")
+      session.assert("g")
+
+      const cGraph = session.compile();
+ 
+      expect(
+        [].concat(cGraph.tables, cGraph.assertions, cGraph.operations, cGraph.declarations).length
+      ).equals(4)
+    });
+
     test("same action names in different schemas (ambiguity)", () => {
       const session = new Session(path.dirname(__filename), TestConfigs.redshift);
       session.publish("a", { schema: "foo" });

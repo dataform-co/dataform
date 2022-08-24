@@ -445,6 +445,8 @@ export class Session {
       );
     }
 
+    this.removeNonUniqueActionsFromCompiledGraph(standardActions, compiledGraph)
+
     utils.throwIfInvalid(compiledGraph, dataform.CompiledGraph.verify);
     return compiledGraph;
   }
@@ -865,6 +867,34 @@ export class Session {
         action.target
       );
     });
+  }
+
+  private getNonUniqueTargets(targets: dataform.ITarget[]): StringifiedSet<dataform.ITarget> {
+    const allTargets = new StringifiedSet<dataform.ITarget>(targetStringifier);
+    const nonUniqueTargets = new StringifiedSet<dataform.ITarget>(targetStringifier);
+
+    targets.forEach(target => {
+      if (allTargets.has(target)) {
+        nonUniqueTargets.add(target);
+      }
+      allTargets.add(target);
+    });
+
+    return nonUniqueTargets;
+  }
+
+  private removeNonUniqueActionsFromCompiledGraph(actions: IActionProto[], compiledGraph: dataform.CompiledGraph) {
+    const nonUniqueTargets = this.getNonUniqueTargets(actions.map(action => action.target));
+    const nonUniqueCanonicalTargets = this.getNonUniqueTargets(actions.map(action => action.canonicalTarget));
+
+    function isUniqueAction(action: IActionProto): boolean {
+      return !nonUniqueTargets.has(action.target) && !nonUniqueCanonicalTargets.has(action.canonicalTarget);
+    }
+
+    compiledGraph.tables = compiledGraph.tables.filter(isUniqueAction);
+    compiledGraph.operations = compiledGraph.operations.filter(isUniqueAction);
+    compiledGraph.declarations = compiledGraph.declarations.filter(isUniqueAction);
+    compiledGraph.assertions = compiledGraph.assertions.filter(isUniqueAction);
   }
 }
 
