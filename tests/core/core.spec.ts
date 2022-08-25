@@ -310,9 +310,9 @@ suite("@dataform/core", () => {
         schema: "schema"
       });
       const graph = session.compile();
-      expect(graph.graphErrors.compilationErrors.map(error => error.message)).deep.equals([
+      expect(graph.graphErrors.compilationErrors.map(error => error.message)).deep.equals(Array(2).fill(
         'Duplicate canonical target detected. Canonical targets must be unique across tables, declarations, assertions, and operations:\n"{"schema":"schema","name":"view","database":"database"}"'
-      ]);
+      ));
     });
 
     test("validation_type_incremental", () => {
@@ -967,7 +967,7 @@ suite("@dataform/core", () => {
         cGraph.graphErrors.compilationErrors.filter(item =>
           item.message.match(/Duplicate action name/)
         ).length
-      ).greaterThan(0);
+      ).equals(2);
     });
 
     test("duplicate actions in compiled graph", () => {
@@ -1020,7 +1020,7 @@ suite("@dataform/core", () => {
         cGraph.graphErrors.compilationErrors.filter(item =>
           item.message.match(/Duplicate action name detected. Names within a schema must be unique/)
         ).length
-      ).greaterThan(0);
+      ).equals(2);
     });
 
     test("same action names in different schemas", () => {
