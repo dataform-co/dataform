@@ -416,18 +416,9 @@ export class Session {
       [].concat(compiledGraph.declarations.map(declaration => declaration.target))
     );
 
-    const standardActions = [].concat(
-      compiledGraph.tables,
-      compiledGraph.assertions,
-      compiledGraph.operations,
-      compiledGraph.declarations
-    );
-
-    this.checkActionNameUniqueness(standardActions);
+    this.removeNonUniqueActionsFromCompiledGraph(compiledGraph);
 
     this.checkTestNameUniqueness(compiledGraph.tests);
-
-    this.checkCanonicalTargetUniqueness(standardActions);
 
     this.checkTableConfigValidity(compiledGraph.tables);
 
@@ -571,41 +562,6 @@ export class Session {
       if (!!action.parentAction) {
         action.parentAction = getUpdatedTarget(action.parentAction);
       }
-    });
-  }
-
-  private checkActionNameUniqueness(actions: IActionProto[]) {
-    const allNames: string[] = [];
-    actions.forEach(action => {
-      const name = targetAsReadableString(action.target);
-      if (allNames.includes(name)) {
-        this.compileError(
-          new Error(
-            `Duplicate action name detected. Names within a schema must be unique across tables, declarations, assertions, and operations`
-          ),
-          action.fileName,
-          action.target
-        );
-      }
-      allNames.push(name);
-    });
-  }
-
-  private checkCanonicalTargetUniqueness(actions: IActionProto[]) {
-    const allCanonicalTargets = new StringifiedSet<dataform.ITarget>(targetStringifier);
-    actions.forEach(action => {
-      if (allCanonicalTargets.has(action.canonicalTarget)) {
-        this.compileError(
-          new Error(
-            `Duplicate canonical target detected. Canonical targets must be unique across tables, declarations, assertions, and operations:\n"${JSON.stringify(
-              action.canonicalTarget
-            )}"`
-          ),
-          action.fileName,
-          action.target
-        );
-      }
-      allCanonicalTargets.add(action.canonicalTarget);
     });
   }
 
@@ -865,6 +821,65 @@ export class Session {
         action.target
       );
     });
+  }
+
+  private removeNonUniqueActionsFromCompiledGraph(compiledGraph: dataform.CompiledGraph) {
+    function getNonUniqueTargets(targets: dataform.ITarget[]): StringifiedSet<dataform.ITarget> {
+      const allTargets = new StringifiedSet<dataform.ITarget>(targetStringifier);
+      const nonUniqueTargets = new StringifiedSet<dataform.ITarget>(targetStringifier);
+  
+      targets.forEach(target => {
+        if (allTargets.has(target)) {
+          nonUniqueTargets.add(target);
+        }
+        allTargets.add(target);
+      });
+  
+      return nonUniqueTargets;
+    }
+
+    const actions = [].concat(
+      compiledGraph.tables,
+      compiledGraph.assertions,
+      compiledGraph.operations,
+      compiledGraph.declarations
+    );
+
+    const nonUniqueActionsTargets = getNonUniqueTargets(actions.map(action => action.target));
+    const nonUniqueActionsCanonicalTargets = getNonUniqueTargets(actions.map(action => action.canonicalTarget));
+
+    const isUniqueAction = (action: IActionProto) => {
+      const isNonUniqueTarget = nonUniqueActionsTargets.has(action.target);
+      const isNonUniqueCanonicalTarget = nonUniqueActionsCanonicalTargets.has(action.canonicalTarget);
+
+      if (isNonUniqueTarget) {
+        this.compileError(
+          new Error(
+            `Duplicate action name detected. Names within a schema must be unique across tables, declarations, assertions, and operations`
+          ),
+          action.fileName,
+          action.target
+        );
+      }
+      if (isNonUniqueCanonicalTarget) {
+        this.compileError(
+          new Error(
+            `Duplicate canonical target detected. Canonical targets must be unique across tables, declarations, assertions, and operations:\n"${JSON.stringify(
+              action.canonicalTarget
+            )}"`
+          ),
+          action.fileName,
+          action.target
+        );
+      }
+
+      return !isNonUniqueTarget && !isNonUniqueCanonicalTarget;
+    }
+
+    compiledGraph.tables = compiledGraph.tables.filter(isUniqueAction);
+    compiledGraph.operations = compiledGraph.operations.filter(isUniqueAction);
+    compiledGraph.declarations = compiledGraph.declarations.filter(isUniqueAction);
+    compiledGraph.assertions = compiledGraph.assertions.filter(isUniqueAction);
   }
 }
 

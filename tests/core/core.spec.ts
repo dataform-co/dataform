@@ -310,9 +310,9 @@ suite("@dataform/core", () => {
         schema: "schema"
       });
       const graph = session.compile();
-      expect(graph.graphErrors.compilationErrors.map(error => error.message)).deep.equals([
+      expect(graph.graphErrors.compilationErrors.map(error => error.message)).deep.equals(Array(2).fill(
         'Duplicate canonical target detected. Canonical targets must be unique across tables, declarations, assertions, and operations:\n"{"schema":"schema","name":"view","database":"database"}"'
-      ]);
+      ));
     });
 
     test("validation_type_incremental", () => {
@@ -967,7 +967,32 @@ suite("@dataform/core", () => {
         cGraph.graphErrors.compilationErrors.filter(item =>
           item.message.match(/Duplicate action name/)
         ).length
-      ).greaterThan(0);
+      ).equals(2);
+    });
+
+    test("duplicate actions in compiled graph", () => {
+      const session = new Session(path.dirname(__filename), TestConfigs.redshift);
+      session.publish("a")
+      session.publish("a");
+      session.publish("b"); // unique action
+      session.publish("c")
+      
+      session.operate("a")
+      session.operate("d") // unique action
+      session.operate("e") // unique action
+
+      session.declare({ name: "a" })
+      session.declare({ name: "f" }) // unique action
+      session.declare({ name: "g" })
+
+      session.assert("c")
+      session.assert("g")
+
+      const cGraph = session.compile();
+ 
+      expect(
+        [].concat(cGraph.tables, cGraph.assertions, cGraph.operations, cGraph.declarations).length
+      ).equals(4)
     });
 
     test("same action names in different schemas (ambiguity)", () => {
@@ -995,7 +1020,7 @@ suite("@dataform/core", () => {
         cGraph.graphErrors.compilationErrors.filter(item =>
           item.message.match(/Duplicate action name detected. Names within a schema must be unique/)
         ).length
-      ).greaterThan(0);
+      ).equals(2);
     });
 
     test("same action names in different schemas", () => {
