@@ -845,12 +845,12 @@ export class Session {
       compiledGraph.declarations
     );
 
-    const nonUniqueTargets = getNonUniqueTargets(actions.map(action => action.target));
-    const nonUniqueCanonicalTargets = getNonUniqueTargets(actions.map(action => action.canonicalTarget));
+    const nonUniqueActionsTargets = getNonUniqueTargets(actions.map(action => action.target));
+    const nonUniqueActionsCanonicalTargets = getNonUniqueTargets(actions.map(action => action.canonicalTarget));
 
     const isUniqueAction = (action: IActionProto) => {
-      const isNonUniqueTarget = nonUniqueTargets.has(action.target);
-      const isNonUniqueCanonicalTarget = nonUniqueCanonicalTargets.has(action.canonicalTarget);
+      const isNonUniqueTarget = nonUniqueActionsTargets.has(action.target);
+      const isNonUniqueCanonicalTarget = nonUniqueActionsCanonicalTargets.has(action.canonicalTarget);
 
       if (isNonUniqueTarget) {
         this.compileError(
