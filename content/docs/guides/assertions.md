@@ -140,6 +140,7 @@ SELECT
   customer_id,
   SUM(1) as rows
 FROM ${ref("daily_customer_stats")}
+GROUP BY date, customer_id
 )
 SELECT * FROM base WHERE rows > 1
 ```
