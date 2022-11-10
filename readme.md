@@ -26,7 +26,7 @@ Using Dataform core, data teams can build scalable SQL data transformation pipel
 * [Quickstart](https://cloud.google.com/dataform/docs/quickstart)
 * [Create tables and views](https://cloud.google.com/dataform/docs/tables)
 * [Configure dependencies](https://cloud.google.com/dataform/docs/define-table#define_table_structure_and_dependencies)
-* Write [data quality checks](https://docs.dataform.co/guides/assertions)
+* Write [data quality checks](https://cloud.google.com/dataform/docs/assertions)
 * Enable [scripting](https://cloud.google.com/dataform/docs/develop-workflows-js) and code re-use with a JavaScript API
 
 <div align="center">
