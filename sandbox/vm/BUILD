@@ -10,6 +10,7 @@ ts_library(
     ),
     deps = [
         "//common/protos",
+        "//common/promises",
         "//core",
         "//protos:ts",
         "@npm//@types/glob",

@@ -1,8 +1,10 @@
+import * as inspector from "inspector";
 import * as path from "path";
 import { CompilerFunction, NodeVM } from "vm2";
 
 import { dataform } from "df/protos/ts";
 import { createCoreExecutionRequest, createGenIndexConfig } from "df/sandbox/vm/create_config";
+import { sleep } from "df/common/promises";
 
 function missingValidCorePackageError() {
   return new Error(
@@ -76,6 +78,8 @@ export function compile(compileConfig: dataform.ICompileConfig) {
 }
 
 export function listenForCompileRequest() {
+  inspector.open(9999, "localhost", true);
+  sleep(5000);
   process.on("message", (compileConfig: dataform.ICompileConfig) => {
     try {
       const compiledResult = compile(compileConfig);
