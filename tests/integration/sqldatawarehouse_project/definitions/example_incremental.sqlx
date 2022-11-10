@@ -3,11 +3,11 @@ config {
 }
 
 js {
-  const crossdb = require("@dataform/crossdb");
+  const sql = require("@dataform/sql");
 }
 
-select ${crossdb.currentTimestampUTC()} as ts
+${ when(incremental(), "select * from (") }
 
-incremental_where {
-    ts > (select max(ts) from ${self()}) or (select max(ts) from ${self()}) is null
-}
+select ${sql("mssql").timestamps.currentUTC()} as ts
+
+${ when(incremental(), `) as subquery where ts > (select max(ts) from ${self()}) or (select max(ts) from ${self()}) is null`) }

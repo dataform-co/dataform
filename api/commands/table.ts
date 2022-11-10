@@ -1,24 +1,21 @@
-import { Credentials } from "@dataform/api/commands/credentials";
-import * as dbadapters from "@dataform/api/dbadapters";
-import { dataform } from "@dataform/protos";
+import * as dbadapters from "df/api/dbadapters";
+import { dataform } from "df/protos/ts";
 
-export function list(credentials: Credentials, warehouse: string): Promise<dataform.ITarget[]> {
-  return dbadapters.create(credentials, warehouse).tables();
+export async function list(dbadapter: dbadapters.IDbAdapter): Promise<dataform.ITarget[]> {
+  return await dbadapter.tables();
 }
 
-export function get(
-  credentials: Credentials,
-  warehouse: string,
+export async function get(
+  dbadapter: dbadapters.IDbAdapter,
   target: dataform.ITarget
 ): Promise<dataform.ITableMetadata> {
-  return dbadapters.create(credentials, warehouse).table(target);
+  return await dbadapter.table(target);
 }
 
-export function preview(
-  credentials: Credentials,
-  warehouse: string,
+export async function preview(
+  dbadapter: dbadapters.IDbAdapter,
   target: dataform.ITarget,
   limitRows?: number
 ): Promise<any[]> {
-  return dbadapters.create(credentials, warehouse).preview(target, limitRows);
+  return await dbadapter.preview(target, limitRows);
 }

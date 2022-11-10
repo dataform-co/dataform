@@ -1,135 +1,50 @@
 package(default_visibility = ["//visibility:public"])
 
-load("@npm_bazel_typescript//:index.bzl", "ts_library")
+load("//testing:index.bzl", "ts_test_suite")
 
-ts_library(
-    name = "utils",
-    srcs = glob(["utils.ts"]),
-    deps = [
-        "//api",
-        "//core",
-        "//protos",
-        "//tests/utils",
-        "@npm//@types/chai",
-        "@npm//@types/mocha",
-        "@npm//@types/node",
-    ],
-)
-
-ts_library(
-    name = "bigquery_lib",
-    srcs = glob(["bigquery.spec.ts"]),
-    deps = [
-        ":utils",
-        "//api",
-        "//core",
-        "//protos",
-        "//tests/utils",
-        "@npm//@types/chai",
-        "@npm//@types/mocha",
-        "@npm//@types/node",
-    ],
-)
-
-load("//tools/mocha:mocha_node_test.bzl", "mocha_node_test")
-
-mocha_node_test(
-    name = "bigquery",
-    srcs = [
-        ":bigquery_lib",
-    ],
+ts_test_suite(
+    name = "tests",
+    srcs = glob(
+        ["*.ts"],
+        exclude = [
+            # SQL Data warehouse integration tests are currently disabled while we sort out a new testing server.
+            "sqldatawarehouse.spec.ts",
+            # Redshift integrations tests are currently disabled while we reorganize cluster structure.
+            "redshift.spec.ts",
+            # Presto tests are disabled until our adapter is updated to Trinio.
+            "presto.spec.ts"
+        ],
+    ),
     data = [
-        "//test_credentials",
+        "//test_credentials:bigquery.json",
+        "//test_credentials:snowflake.json",
+        "//test_credentials:sqldatawarehouse.json",
         "//tests/integration/bigquery_project:files",
         "//tests/integration/bigquery_project:node_modules",
-        "@npm//chai",
-        "@npm//mocha",
-    ],
-)
-
-ts_library(
-    name = "redshift_lib",
-    srcs = glob(["redshift.spec.ts"]),
-    deps = [
-        ":utils",
-        "//api",
-        "//core",
-        "//protos",
-        "//tests/utils",
-        "@npm//@types/chai",
-        "@npm//@types/mocha",
-        "@npm//@types/node",
-    ],
-)
-
-mocha_node_test(
-    name = "redshift",
-    srcs = [
-        ":redshift_lib",
-    ],
-    data = [
-        "//test_credentials",
-        "//tests/integration/redshift_project:files",
-        "//tests/integration/redshift_project:node_modules",
-        "@npm//chai",
-        "@npm//mocha",
-    ],
-)
-
-ts_library(
-    name = "snowflake_lib",
-    srcs = glob(["snowflake.spec.ts"]),
-    deps = [
-        ":utils",
-        "//api",
-        "//core",
-        "//protos",
-        "//tests/utils",
-        "@npm//@types/chai",
-        "@npm//@types/mocha",
-        "@npm//@types/node",
-    ],
-)
-
-mocha_node_test(
-    name = "snowflake",
-    srcs = [
-        ":snowflake_lib",
-    ],
-    data = [
-        "//test_credentials",
+        "//tests/integration/postgres_project:files",
+        "//tests/integration/postgres_project:node_modules",
+        "//tests/integration/presto_project:files",
+        "//tests/integration/presto_project:node_modules",
         "//tests/integration/snowflake_project:files",
         "//tests/integration/snowflake_project:node_modules",
-        "@npm//chai",
-        "@npm//mocha",
-    ],
-)
-
-ts_library(
-    name = "sqldatawarehouse_lib",
-    srcs = glob(["sqldatawarehouse.spec.ts"]),
-    deps = [
-        ":utils",
-        "//api",
-        "//core",
-        "//protos",
-        "//tests/utils",
-        "@npm//@types/chai",
-        "@npm//@types/mocha",
-        "@npm//@types/node",
-    ],
-)
-
-mocha_node_test(
-    name = "sqldatawarehouse",
-    srcs = [
-        ":sqldatawarehouse_lib",
-    ],
-    data = [
-        "//test_credentials",
         "//tests/integration/sqldatawarehouse_project:files",
         "//tests/integration/sqldatawarehouse_project:node_modules",
+        "//tools/presto:presto_config_files",
+    ],
+    templated_args = ["--snowflake-use-ocsp=false"],
+    deps = [
+        "//api",
+        "//api/utils",
+        "//common/promises",
+        "//core",
+        "//protos:ts",
+        "//testing",
+        "//tests/utils",
+        "//tools/postgres",
+        "//tools/presto",
+        "@npm//@types/chai",
+        "@npm//@types/long",
+        "@npm//@types/node",
         "@npm//chai",
-        "@npm//mocha",
     ],
 )

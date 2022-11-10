@@ -1,35 +1,34 @@
-import { validateSchedules } from "@dataform/api";
-import * as dfapi from "@dataform/api";
-import { checkDataformJsonValidity } from "@dataform/api/commands/compile";
-import { dataform } from "@dataform/protos";
-import { assert, config, expect } from "chai";
-import { TmpDirFixture } from "df/tests/utils/fixtures";
+import { expect } from "chai";
 import * as fs from "fs";
 import * as path from "path";
 
+import * as dfapi from "df/api";
+import { validateSchedules } from "df/api";
+import { checkDataformJsonValidity } from "df/api/commands/compile";
+import { dataform } from "df/protos/ts";
+import { suite, test } from "df/testing";
+import { TmpDirFixture } from "df/tests/utils/fixtures";
+
 const SCHEDULES_JSON_PATH = "schedules.json";
 
-describe("@dataform/api/validate", () => {
-  describe("validateSchedules", () => {
-    it("returns no errors for valid schedules object", () => {
+suite("@dataform/api/validate", () => {
+  suite("validateSchedules", () => {
+    test("returns no errors for valid schedules object", () => {
       const compiledGraph = dataform.CompiledGraph.create({
         tables: [
           {
-            name: "action1",
             target: {
               schema: "schema",
               name: "action1"
             }
           },
           {
-            name: "action2",
             target: {
               schema: "schema",
               name: "action2"
             }
           },
           {
-            name: "schema.action3",
             target: {
               schema: "schema",
               name: "action3"
@@ -63,18 +62,16 @@ describe("@dataform/api/validate", () => {
       expect(errors).to.eql([]);
     });
 
-    it("test all errors", () => {
+    test("test all errors", () => {
       const compiledGraph = dataform.CompiledGraph.create({
         tables: [
           {
-            name: "action1",
             target: {
               schema: "schema",
               name: "action1"
             }
           },
           {
-            name: "action2",
             target: {
               schema: "schema",
               name: "action2"
@@ -112,18 +109,18 @@ describe("@dataform/api/validate", () => {
       const errors = validateSchedules(invalidSchedule, compiledGraph);
       const expectedErrors = [
         'Schedule "name1" contains an invalid cron expression "asdas".',
-        'Action "action3" included on schedule name1 doesn\'t exist in the project.',
+        'Action "action3" included in schedule name1 doesn\'t exist in the project.',
         'Schedule "name1" contains an invalid email address "test2.com".',
         'Schedule name "name1" is not unique. All schedule names must be unique.'
       ];
       expect(errors).to.eql(expectedErrors);
     });
 
-    describe("validate schedules.json file", () => {
+    suite("validate schedules.json file", ({ afterEach }) => {
       const tmpDirFixture = new TmpDirFixture(afterEach);
       const projectsRootDir = tmpDirFixture.createNewTmpDir();
 
-      it("test all errors", async () => {
+      test("test all errors", async () => {
         const projectName = "schedules-test";
         const projectDir = path.resolve(path.join(projectsRootDir, projectName));
         const filePath = path.resolve(path.join(projectDir, SCHEDULES_JSON_PATH));
@@ -131,14 +128,12 @@ describe("@dataform/api/validate", () => {
         const compiledGraph = dataform.CompiledGraph.create({
           tables: [
             {
-              name: "action1",
               target: {
                 schema: "schema",
                 name: "action1"
               }
             },
             {
-              name: "action2",
               target: {
                 schema: "schema",
                 name: "action2"
@@ -181,7 +176,7 @@ describe("@dataform/api/validate", () => {
         fs.writeFileSync(filePath, JSON.stringify(invalidJson));
         const expectedErrors = [
           'Schedule "name1" contains an invalid cron expression "asdas".',
-          'Action "action3" included on schedule name1 doesn\'t exist in the project.',
+          'Action "action3" included in schedule name1 doesn\'t exist in the project.',
           'Schedule "name1" contains an invalid email address "test2.com".',
           'Schedule name "name1" is not unique. All schedule names must be unique.'
         ];
@@ -191,19 +186,19 @@ describe("@dataform/api/validate", () => {
     });
   });
 
-  it("dataform.json validation", async () => {
-    it("fails on invalid warehouse", async () => {
+  suite("dataform.json validation", async () => {
+    test("fails on invalid warehouse", async () => {
       expect(() =>
         checkDataformJsonValidity({
           warehouse: "dataform",
-          gcloudProjectId: "tada-analytics",
+          defaultDatabase: "tada-analytics",
           defaultSchema: "df_integration_test",
           assertionSchema: "df_integration_test_assertions"
         })
       ).to.throw(/Invalid value on property warehouse: dataform/);
     });
 
-    it("fails on missing warehouse", async () => {
+    test("fails on missing warehouse", async () => {
       expect(() =>
         checkDataformJsonValidity({
           aint_no_warehouse: "redshift",
@@ -213,11 +208,11 @@ describe("@dataform/api/validate", () => {
       ).to.throw(/Missing mandatory property: warehouse/);
     });
 
-    it("fails on invalid default schema", async () => {
+    test("fails on invalid default schema", async () => {
       expect(() =>
         checkDataformJsonValidity({
           warehouse: "redshift",
-          gcloudProjectId: "tada-analytics",
+          defaultDatabase: "tada-analytics",
           defaultSchema: "rock&roll",
           assertionSchema: "df_integration_test_assertions"
         })
@@ -227,7 +222,7 @@ describe("@dataform/api/validate", () => {
     });
   });
 
-  it("passes for valid config", async () => {
+  test("passes for valid config", async () => {
     expect(() =>
       checkDataformJsonValidity({
         warehouse: "redshift",

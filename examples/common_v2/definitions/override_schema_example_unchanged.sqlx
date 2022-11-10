@@ -1,6 +1,7 @@
 config {
     schema: "df_integration_test",
-    type: "view"
+    type: "view",
+    hermetic: false
 }
 
 select 1 as test_schema_override

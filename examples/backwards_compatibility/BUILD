@@ -12,7 +12,8 @@ filegroup(
 node_modules(
     name = "node_modules",
     packages = [
-        "@dataform/core@0.0.2-beta.1",
-        "@dataform/protos@0.0.2-beta.1",
+        "protobufjs@6.8.8",
+        "@dataform/core@1.0.3",
+        "@dataform/protos@1.0.3",
     ],
 )

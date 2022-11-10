@@ -2,6 +2,8 @@ import * as fs from "fs";
 import * as path from "path";
 import * as rimraf from "rimraf";
 
+import { IHookHandler } from "df/testing";
+
 // TmpDirFixture can be used to create unique temporary directories which will be cleaned up
 // at the end of a test run. Intended for use within bazel tests.
 export class TmpDirFixture {
@@ -9,7 +11,7 @@ export class TmpDirFixture {
 
   private tmpDirPaths: Set<string>;
 
-  constructor(tearDown: Mocha.HookFunction) {
+  constructor(tearDown: IHookHandler) {
     this.tmpDirPaths = new Set<string>();
     tearDown("delete tmp directories", () => this.rmTmpDirs());
   }
@@ -19,6 +21,7 @@ export class TmpDirFixture {
     const tmpDirPath = path.resolve(
       path.join(process.env.TEST_TMPDIR, `tmp_dir_${TmpDirFixture.dirCounter++}`)
     );
+    // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
     fs.mkdirSync(tmpDirPath);
     this.tmpDirPaths.add(tmpDirPath);
     return tmpDirPath;

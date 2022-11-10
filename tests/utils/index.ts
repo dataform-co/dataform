@@ -11,7 +11,7 @@ export function cleanSql(value: string) {
       .replace("\n", " ")
       .replace("( ", "(")
       .replace(" )", ")");
-    if (newCleanVal != cleanValue) {
+    if (newCleanVal !== cleanValue) {
       cleanValue = newCleanVal;
       continue;
     }

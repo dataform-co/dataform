@@ -1,13 +1,10 @@
-import { Credentials } from "@dataform/api/commands/credentials";
-import * as dbadapters from "@dataform/api/dbadapters";
-import { dataform } from "@dataform/protos";
+import * as dbadapters from "df/api/dbadapters";
+import { dataform } from "df/protos/ts";
 
 export async function test(
-  credentials: Credentials,
-  warehouse: string,
+  dbadapter: dbadapters.IDbAdapter,
   tests: dataform.ITest[]
 ): Promise<dataform.ITestResult[]> {
-  const dbadapter = dbadapters.create(credentials, warehouse);
   return await Promise.all(tests.map(testCase => runTest(dbadapter, testCase)));
 }
 
@@ -15,24 +12,36 @@ async function runTest(
   dbadapter: dbadapters.IDbAdapter,
   testCase: dataform.ITest
 ): Promise<dataform.ITestResult> {
-  // TODO: Test results are currently limited to 1000 rows.
+  // TODO: Test results are currently limited to 1MB.
   // We should paginate test results to remove this limit.
-  const [actualResults, expectedResults] = await Promise.all([
-    dbadapter.execute(testCase.testQuery, { maxResults: 1000 }),
-    dbadapter.execute(testCase.expectedOutputQuery, { maxResults: 1000 })
-  ]);
-
-  // Check row counts.
-  if (actualResults.length !== expectedResults.length) {
+  let actualResults;
+  let expectedResults;
+  try {
+    [actualResults, expectedResults] = await Promise.all([
+      dbadapter.execute(testCase.testQuery, { byteLimit: 1024 * 1024 }),
+      dbadapter.execute(testCase.expectedOutputQuery, { byteLimit: 1024 * 1024 })
+    ]);
+  } catch (e) {
     return {
       name: testCase.name,
       successful: false,
-      messages: [`Expected ${expectedResults.length} rows, but saw ${actualResults.length} rows.`]
+      messages: [`Error thrown: ${e.message}.`]
+    };
+  }
+
+  // Check row counts.
+  if (actualResults.rows.length !== expectedResults.rows.length) {
+    return {
+      name: testCase.name,
+      successful: false,
+      messages: [
+        `Expected ${expectedResults.rows.length} rows, but saw ${actualResults.rows.length} rows.`
+      ]
     };
   }
   // If the result set is empty and the number of actual rows is equal to the number of expected rows
   // (asserted above), this test is therefore successful.
-  if (actualResults.length === 0) {
+  if (actualResults.rows.length === 0) {
     return {
       name: testCase.name,
       successful: true
@@ -40,8 +49,8 @@ async function runTest(
   }
 
   // Check column sets.
-  const actualColumns = Object.keys(actualResults[0]);
-  const expectedColumns = Object.keys(expectedResults[0]);
+  const actualColumns = Object.keys(actualResults.rows[0]);
+  const expectedColumns = Object.keys(expectedResults.rows[0]);
   if (actualColumns.length !== expectedColumns.length) {
     return {
       name: testCase.name,
@@ -66,19 +75,27 @@ async function runTest(
 
   // Check row contents.
   const rowMessages: string[] = [];
-  for (let i = 0; i < actualResults.length; i++) {
-    const actualResultRow = normalizeRow(actualResults[i]);
-    const expectedResultRow = normalizeRow(expectedResults[i]);
+  for (let i = 0; i < actualResults.rows.length; i++) {
+    const actualResultRow = normalizeRow(actualResults.rows[i]);
+    const expectedResultRow = normalizeRow(expectedResults.rows[i]);
 
     for (const column of actualColumns) {
       const normalizedColumn = normalizeColumnName(column);
-      if (actualResultRow[normalizedColumn] !== expectedResultRow[normalizedColumn]) {
+      const expectedValue = expectedResultRow[normalizedColumn];
+      const actualValue = actualResultRow[normalizedColumn];
+      if (typeof expectedValue !== typeof actualValue) {
         rowMessages.push(
-          `For row ${i} and column "${column}": expected "${
-            expectedResultRow[normalizedColumn]
-          }" (${typeof expectedResultRow[normalizedColumn]}), but saw "${
-            actualResultRow[normalizedColumn]
-          }" (${typeof actualResultRow[normalizedColumn]}).`
+          `For row ${i} and column "${column}": expected type "${typeof expectedValue}", but saw type "${typeof actualValue}".`
+        );
+        break;
+      }
+      const comparableExpectedValue =
+        typeof expectedValue === "object" ? JSON.stringify(expectedValue) : expectedValue;
+      const comparableActualValue =
+        typeof actualValue === "object" ? JSON.stringify(actualValue) : actualValue;
+      if (comparableExpectedValue !== comparableActualValue) {
+        rowMessages.push(
+          `For row ${i} and column "${column}": expected "${comparableExpectedValue}", but saw "${comparableActualValue}".`
         );
       }
     }

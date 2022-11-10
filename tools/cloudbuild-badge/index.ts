@@ -25,12 +25,14 @@ exports.updateCloudBuildStatusBadge = async (event: { data: string }) => {
       .bucket("dataform-cloud-build-badges")
       .file("build/success.svg")
       .copy(storage.bucket("dataform-cloud-build-badges").file("build/status.svg"));
+    // tslint:disable-next-line: no-console
     console.log("Success badge image copied.");
   } else if (build.status === "FAILURE") {
     await storage
       .bucket("dataform-cloud-build-badges")
       .file("build/failure.svg")
       .copy(storage.bucket("dataform-cloud-build-badges").file("build/status.svg"));
+    // tslint:disable-next-line: no-console
     console.log("Failure badge image copied.");
   }
 };

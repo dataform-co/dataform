@@ -1,26 +1,35 @@
+load("//tools:ts_library.bzl", "ts_library")
+load("//tools:expand_template.bzl", "expand_template")
+load("//:version.bzl", "DF_VERSION")
+
 package(default_visibility = ["//visibility:public"])
 
-load("@npm_bazel_typescript//:index.bzl", "ts_library")
+expand_template(
+    name = "version",
+    out = "version.ts",
+    substitutions = {
+        "$DF_VERSION": DF_VERSION,
+    },
+    template = "version.ts.tmpl",
+)
+
+filegroup(
+    name = "files",
+    srcs = glob(["**/*.*"]) + [":version.ts"],
+)
 
 ts_library(
     name = "core",
-    srcs = glob(["**/*.ts"]),
-    module_name = "@dataform/core",
+    srcs = glob(["**/*.ts"]) + [":version.ts"],
     deps = [
-        "//protos",
+        "//common/errors",
+        "//common/protos",
+        "//common/strings",
+        "//protos:ts",
         "//sqlx",
-        "@npm//@types/node",
+        "@npm//@types/semver",
         "@npm//protobufjs",
+        "@npm//semver",
+        "@npm//tarjan-graph",
     ],
-)
-
-load("//tools/npm:package.bzl", "dataform_npm_package")
-
-dataform_npm_package(
-    name = "package",
-    package_layers = [
-        "//:common.package.json",
-        "core.package.json",
-    ],
-    deps = [":core"],
 )

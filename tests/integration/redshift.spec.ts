@@ -1,37 +1,201 @@
-import * as dfapi from "@dataform/api";
-import * as dbadapters from "@dataform/api/dbadapters";
-import * as adapters from "@dataform/core/adapters";
-import { dataform } from "@dataform/protos";
 import { expect } from "chai";
-import { getTableRows, keyBy } from "df/tests/integration/utils";
 
-describe("@dataform/integration/redshift", () => {
-  const credentials = dfapi.credentials.read("redshift", "df/test_credentials/redshift.json");
-  const dbadapter = dbadapters.create(credentials, "redshift");
+import * as dfapi from "df/api";
+import * as dbadapters from "df/api/dbadapters";
+import * as adapters from "df/core/adapters";
+import { RedshiftAdapter } from "df/core/adapters/redshift";
+import { targetToName } from "df/core/utils";
+import { dataform } from "df/protos/ts";
+import { suite, test } from "df/testing";
+import { compile, getTableRows, keyBy } from "df/tests/integration/utils";
 
-  it("run", async () => {
-    const compiledGraph = await dfapi.compile({
-      projectDir: "df/tests/integration/redshift_project"
-    });
+suite("@dataform/integration/redshift", { parallel: true }, ({ before, after }) => {
+  const credentials = dfapi.credentials.read("redshift", "test_credentials/redshift.json");
+  let dbadapter: dbadapters.IDbAdapter;
 
-    expect(compiledGraph.graphErrors.compilationErrors).to.eql([]);
-    expect(compiledGraph.graphErrors.validationErrors).to.eql([]);
+  before("create adapter", async () => {
+    dbadapter = await dbadapters.create(credentials, "redshift");
+  });
 
-    const adapter = adapters.create(compiledGraph.projectConfig);
+  after("close adapter", async () => dbadapter.close());
 
-    // Redshift transactions are giving us headaches here. Drop tables sequentially.
-    const dropFunctions = [].concat(
-      compiledGraph.tables.map(table => () =>
-        dbadapter.execute(adapter.dropIfExists(table.target, adapter.baseTableType(table.type)))
-      ),
-      compiledGraph.assertions.map(assertion => () =>
-        dbadapter.execute(adapter.dropIfExists(assertion.target, "view"))
-      )
+  test("run", { timeout: 60000 }, async () => {
+    const compiledGraph = await compile("tests/integration/redshift_project", "project_e2e");
+
+    await dbadapter.execute(
+      `drop schema if exists ${Array.from(
+        new Set(
+          [...compiledGraph.tables, ...compiledGraph.assertions, ...compiledGraph.operations].map(
+            action => action.target.schema
+          )
+        )
+      ).join(", ")} cascade`
     );
-    await dropFunctions.reduce((promiseChain, fn) => promiseChain.then(fn), Promise.resolve());
+
+    // Run the project.
+    let executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
+    let executedGraph = await dfapi.run(dbadapter, executionGraph).result();
+
+    const actionMap = keyBy(executedGraph.actions, v => targetToName(v.target));
+    expect(Object.keys(actionMap).length).eql(14);
+
+    // Check the status of action execution.
+    const expectedFailedActions = [
+      "df_integration_test_assertions_project_e2e.example_assertion_uniqueness_fail",
+      "df_integration_test_assertions_project_e2e.example_assertion_fail"
+    ];
+    for (const actionName of Object.keys(actionMap)) {
+      const expectedResult = expectedFailedActions.includes(actionName)
+        ? dataform.ActionResult.ExecutionStatus.FAILED
+        : dataform.ActionResult.ExecutionStatus.SUCCESSFUL;
+      expect(actionMap[actionName].status).equals(
+        expectedResult,
+        actionMap[actionName].tasks.map(task => task.errorMessage).join("\n")
+      );
+    }
+
+    expect(
+      actionMap["df_integration_test_assertions_project_e2e.example_assertion_uniqueness_fail"]
+        .tasks[2].errorMessage
+    ).to.eql("redshift error: Assertion failed: query returned 1 row(s).");
+
+    // Check the status of the s3 load operation.
+    expect(actionMap["df_integration_test_project_e2e.load_from_s3"].status).equals(
+      dataform.ActionResult.ExecutionStatus.SUCCESSFUL
+    );
+
+    // Check the s3 table has two rows, as per:
+    // https://dataform-integration-tests.s3.us-east-2.amazonaws.com/sample-data/sample_data.csv
+    const adapter = adapters.create(compiledGraph.projectConfig, compiledGraph.dataformCoreVersion);
+    const s3Table = keyBy(compiledGraph.operations, t => targetToName(t.target))[
+      "df_integration_test_project_e2e.load_from_s3"
+    ];
+    const s3Rows = await getTableRows(s3Table.target, adapter, dbadapter);
+    expect(s3Rows.length).equals(2);
+
+    // Check the data in the incremental table.
+    let incrementalTable = keyBy(compiledGraph.tables, t => targetToName(t.target))[
+      "df_integration_test_project_e2e.example_incremental"
+    ];
+    let incrementalRows = await getTableRows(incrementalTable.target, adapter, dbadapter);
+    expect(incrementalRows.length).equals(3);
+
+    // Check the data in the incremental merge table.
+    incrementalTable = keyBy(compiledGraph.tables, t => targetToName(t.target))[
+      "df_integration_test_project_e2e.example_incremental_merge"
+    ];
+    incrementalRows = await getTableRows(incrementalTable.target, adapter, dbadapter);
+    expect(incrementalRows.length).equals(2);
+
+    // Re-run some of the actions.
+    executionGraph = await dfapi.build(
+      compiledGraph,
+      {
+        actions: [
+          "example_incremental",
+          "example_incremental_merge",
+          "example_table",
+          "example_view"
+        ]
+      },
+      dbadapter
+    );
+    executedGraph = await dfapi.run(dbadapter, executionGraph).result();
+    expect(executedGraph.status).equals(
+      dataform.RunResult.ExecutionStatus.SUCCESSFUL,
+      executedGraph.actions
+        .map(action => action.tasks.map(task => task.errorMessage).join("\n"))
+        .join("\n")
+    );
+
+    // Check there are the expected number of extra rows in the incremental table.
+    incrementalTable = keyBy(compiledGraph.tables, t => targetToName(t.target))[
+      "df_integration_test_project_e2e.example_incremental"
+    ];
+    incrementalRows = await getTableRows(incrementalTable.target, adapter, dbadapter);
+    expect(incrementalRows.length).equals(5);
+
+    // Check there are the expected number of extra rows in the incremental merge table.
+    incrementalTable = keyBy(compiledGraph.tables, t => targetToName(t.target))[
+      "df_integration_test_project_e2e.example_incremental_merge"
+    ];
+    incrementalRows = await getTableRows(incrementalTable.target, adapter, dbadapter);
+    expect(incrementalRows.length).equals(2);
+  });
+
+  test("dataset metadata set correctly", { timeout: 60000 }, async () => {
+    const compiledGraph = await compile("tests/integration/redshift_project", "dataset_metadata");
+
+    await dbadapter.execute(
+      `drop schema if exists ${Array.from(
+        new Set(
+          [...compiledGraph.tables, ...compiledGraph.assertions, ...compiledGraph.operations].map(
+            action => action.target.schema
+          )
+        )
+      ).join(", ")} cascade`
+    );
+
+    // Run the project.
+    const executionGraph = await dfapi.build(
+      compiledGraph,
+      {
+        actions: ["example_incremental", "example_view"],
+        includeDependencies: true
+      },
+      dbadapter
+    );
+    const runResult = await dfapi.run(dbadapter, executionGraph).result();
+    expect(dataform.RunResult.ExecutionStatus[runResult.status]).eql(
+      dataform.RunResult.ExecutionStatus[dataform.RunResult.ExecutionStatus.SUCCESSFUL]
+    );
+
+    // Check expected metadata.
+    for (const expectedMetadata of [
+      {
+        target: {
+          schema: "df_integration_test_dataset_metadata",
+          name: "example_incremental"
+        },
+        expectedDescription: "An incremental 'table'",
+        expectedFields: [
+          dataform.Field.create({
+            description: "the 'timestamp'",
+            name: "user_timestamp",
+            primitive: dataform.Field.Primitive.INTEGER
+          }),
+          dataform.Field.create({
+            description: "the id",
+            name: "user_id",
+            primitive: dataform.Field.Primitive.INTEGER
+          })
+        ]
+      },
+      {
+        target: {
+          schema: "df_integration_test_dataset_metadata",
+          name: "example_view"
+        },
+        expectedDescription: "An example view",
+        expectedFields: [
+          dataform.Field.create({
+            name: "val",
+            primitive: dataform.Field.Primitive.INTEGER
+          })
+        ]
+      }
+    ]) {
+      const metadata = await dbadapter.table(expectedMetadata.target);
+      expect(metadata.description).to.equal(expectedMetadata.expectedDescription);
+      expect(metadata.fields).to.deep.equal(expectedMetadata.expectedFields);
+    }
+  });
+
+  test("run unit tests", async () => {
+    const compiledGraph = await compile("tests/integration/redshift_project", "unit_tests");
 
     // Run the tests.
-    const testResults = await dfapi.test(credentials, "redshift", compiledGraph.tests);
+    const testResults = await dfapi.test(dbadapter, compiledGraph.tests);
     expect(testResults).to.eql([
       { name: "successful", successful: true },
       {
@@ -53,84 +217,15 @@ describe("@dataform/integration/redshift", () => {
         name: "wrong row contents",
         successful: false,
         messages: [
-          'For row 0 and column "col2": expected "1" (number), but saw "5" (number).',
-          'For row 1 and column "col3": expected "6.5" (string), but saw "12.0" (string).',
-          'For row 2 and column "col1": expected "sup?" (string), but saw "WRONG" (string).'
+          'For row 0 and column "col2": expected "1", but saw "5".',
+          'For row 1 and column "col3": expected "6.5", but saw "12.0".',
+          'For row 2 and column "col1": expected "sup?", but saw "WRONG".'
         ]
       }
     ]);
+  });
 
-    // Run the project.
-    let executionGraph = await dfapi.build(compiledGraph, {}, credentials);
-    let executedGraph = await dfapi.run(executionGraph, credentials).resultPromise();
-
-    const actionMap = keyBy(executedGraph.actions, v => v.name);
-
-    // Check the status of the s3 load operation.
-    expect(actionMap["df_integration_test.load_from_s3"].status).equals(
-      dataform.ActionResult.ExecutionStatus.SUCCESSFUL
-    );
-
-    // Check the s3 table has two rows, as per:
-    // https://dataform-integration-tests.s3.us-east-2.amazonaws.com/sample-data/sample_data.csv
-    const s3Table = keyBy(compiledGraph.operations, t => t.name)[
-      "df_integration_test.load_from_s3"
-    ];
-    const s3Rows = await getTableRows(s3Table.target, adapter, credentials, "redshift");
-    expect(s3Rows.length).equals(2);
-
-    // Check the status of the two assertions.
-    expect(actionMap["df_integration_test_assertions.example_assertion_fail"].status).equals(
-      dataform.ActionResult.ExecutionStatus.FAILED
-    );
-    expect(actionMap["df_integration_test_assertions.example_assertion_pass"].status).equals(
-      dataform.ActionResult.ExecutionStatus.SUCCESSFUL
-    );
-
-    // Check the status of the two uniqueness assertions.
-    expect(
-      actionMap["df_integration_test_assertions.example_assertion_uniqueness_fail"].status
-    ).equals(dataform.ActionResult.ExecutionStatus.FAILED);
-    expect(
-      actionMap["df_integration_test_assertions.example_assertion_uniqueness_fail"].tasks[1]
-        .errorMessage
-    ).to.eql("Assertion failed: query returned 1 row(s).");
-    expect(
-      actionMap["df_integration_test_assertions.example_assertion_uniqueness_pass"].status
-    ).equals(dataform.ActionResult.ExecutionStatus.SUCCESSFUL);
-
-    // Check the data in the incremental table.
-    let incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
-      "df_integration_test.example_incremental"
-    ];
-    let incrementalRows = await getTableRows(
-      incrementalTable.target,
-      adapter,
-      credentials,
-      "redshift"
-    );
-    expect(incrementalRows.length).equals(1);
-
-    // Re-run some of the actions.
-    executionGraph = await dfapi.build(
-      compiledGraph,
-      {
-        actions: ["example_incremental", "example_table", "example_view"]
-      },
-      credentials
-    );
-    executedGraph = await dfapi.run(executionGraph, credentials).resultPromise();
-    expect(executedGraph.status).equals(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
-
-    // Check there is an extra row in the incremental table.
-    incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
-      "df_integration_test.example_incremental"
-    ];
-    incrementalRows = await getTableRows(incrementalTable.target, adapter, credentials, "redshift");
-    expect(incrementalRows.length).equals(2);
-  }).timeout(60000);
-
-  describe("result limit works", async () => {
+  suite("query limits work", { parallel: true }, async () => {
     const query = `
       select 1 union all
       select 2 union all
@@ -138,9 +233,15 @@ describe("@dataform/integration/redshift", () => {
       select 4 union all
       select 5`;
 
-    for (const interactive of [true, false]) {
-      it(`with interactive=${interactive}`, async () => {
-        expect(await dbadapter.execute(query, { interactive, maxResults: 2 })).eql([
+    for (const options of [
+      { interactive: true, rowLimit: 2 },
+      { interactive: false, rowLimit: 2 },
+      { interactive: true, byteLimit: 50 },
+      { interactive: false, byteLimit: 50 }
+    ]) {
+      test(`with options=${JSON.stringify(options)}`, async () => {
+        const { rows } = await dbadapter.execute(query, options);
+        expect(rows).to.eql([
           {
             "?column?": 1
           },
@@ -150,5 +251,141 @@ describe("@dataform/integration/redshift", () => {
         ]);
       });
     }
+  });
+
+  suite("evaluate", () => {
+    test("evaluate from valid compiled graph as valid", async () => {
+      const compiledGraph = await compile("tests/integration/redshift_project", "evaluate");
+      const executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
+      await dfapi.run(dbadapter, executionGraph).result();
+
+      const view = keyBy(compiledGraph.tables, t => targetToName(t.target))[
+        "df_integration_test_evaluate.example_view"
+      ];
+      let evaluations = await dbadapter.evaluate(dataform.Table.create(view));
+      expect(evaluations.length).to.equal(1);
+      expect(evaluations[0].status).to.equal(
+        dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
+      );
+
+      const table = keyBy(compiledGraph.tables, t => targetToName(t.target))[
+        "df_integration_test_evaluate.example_table"
+      ];
+      evaluations = await dbadapter.evaluate(dataform.Table.create(table));
+      expect(evaluations.length).to.equal(1);
+      expect(evaluations[0].status).to.equal(
+        dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
+      );
+
+      const assertion = keyBy(compiledGraph.assertions, t => targetToName(t.target))[
+        "df_integration_test_assertions_evaluate.example_assertion_pass"
+      ];
+      evaluations = await dbadapter.evaluate(dataform.Assertion.create(assertion));
+      expect(evaluations.length).to.equal(1);
+      expect(evaluations[0].status).to.equal(
+        dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
+      );
+
+      const incremental = keyBy(compiledGraph.tables, t => targetToName(t.target))[
+        "df_integration_test_evaluate.example_incremental"
+      ];
+      evaluations = await dbadapter.evaluate(dataform.Table.create(incremental));
+      expect(evaluations.length).to.equal(2);
+      expect(evaluations[0].status).to.equal(
+        dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
+      );
+      expect(evaluations[1].status).to.equal(
+        dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
+      );
+    });
+
+    test("invalid table fails validation", async () => {
+      const evaluations = await dbadapter.evaluate(
+        dataform.Table.create({
+          type: "table",
+          query: "thisisillegal",
+          target: {
+            schema: "df_integration_test",
+            name: "example_illegal_table",
+            database: "dataform-integration-tests"
+          }
+        })
+      );
+      expect(evaluations.length).to.equal(1);
+      expect(evaluations[0].status).to.equal(
+        dataform.QueryEvaluation.QueryEvaluationStatus.FAILURE
+      );
+    });
+  });
+
+  suite("publish tasks", async () => {
+    test("incremental pre and post ops, core version <= 1.4.8", async () => {
+      // 1.4.8 used `preOps` and `postOps` instead of `incrementalPreOps` and `incrementalPostOps`.
+      const table: dataform.ITable = {
+        type: "incremental",
+        query: "query",
+        preOps: ["preop task1", "preop task2"],
+        incrementalQuery: "",
+        postOps: ["postop task1", "postop task2"],
+        target: { schema: "", name: "", database: "" }
+      };
+
+      const bqadapter = new RedshiftAdapter({ warehouse: "redshift" }, "1.4.8");
+
+      const refresh = bqadapter.publishTasks(table, { fullRefresh: true }, { fields: [] }).build();
+
+      expect(refresh[0].statement).to.equal(table.preOps[0]);
+      expect(refresh[1].statement).to.equal(table.preOps[1]);
+      expect(refresh[refresh.length - 2].statement).to.equal(table.postOps[0]);
+      expect(refresh[refresh.length - 1].statement).to.equal(table.postOps[1]);
+
+      const increment = bqadapter
+        .publishTasks(table, { fullRefresh: false }, { fields: [] })
+        .build();
+
+      expect(increment[0].statement).to.equal(table.preOps[0]);
+      expect(increment[1].statement).to.equal(table.preOps[1]);
+      expect(increment[increment.length - 2].statement).to.equal(table.postOps[0]);
+      expect(increment[increment.length - 1].statement).to.equal(table.postOps[1]);
+    });
+  });
+
+  test("search", async () => {
+    const compiledGraph = await compile("tests/integration/redshift_project", "search");
+
+    // Drop all the tables before we do anything.
+    await dbadapter.execute(
+      `drop schema if exists ${Array.from(
+        new Set(
+          [...compiledGraph.tables, ...compiledGraph.assertions, ...compiledGraph.operations].map(
+            action => action.target.schema
+          )
+        )
+      ).join(", ")} cascade`
+    );
+
+    // Run the project.
+    const executionGraph = await dfapi.build(
+      compiledGraph,
+      {
+        actions: ["example_view"],
+        includeDependencies: true
+      },
+      dbadapter
+    );
+    const runResult = await dfapi.run(dbadapter, executionGraph).result();
+    expect(dataform.RunResult.ExecutionStatus[runResult.status]).eql(
+      dataform.RunResult.ExecutionStatus[dataform.RunResult.ExecutionStatus.SUCCESSFUL]
+    );
+
+    const [fullSearch, partialSearch, columnSearch] = await Promise.all([
+      dbadapter.search("df_integration_test_search"),
+      dbadapter.search("test_sear"),
+      dbadapter.search("val")
+    ]);
+
+    expect(fullSearch.length).equals(2);
+    expect(partialSearch.length).equals(2);
+    expect(columnSearch.length).greaterThan(0);
   });
 });

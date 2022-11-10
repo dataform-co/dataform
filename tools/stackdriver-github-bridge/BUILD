@@ -1,6 +1,6 @@
 package(default_visibility = ["//visibility:public"])
 
-load("@npm_bazel_typescript//:index.bzl", "ts_library")
+load("//tools:ts_library.bzl", "ts_library")
 
 ts_library(
     name = "stackdriver-github-bridge",
@@ -15,19 +15,31 @@ ts_library(
     ],
 )
 
-load("@build_bazel_rules_nodejs//:defs.bzl", "npm_package")
+filegroup(
+    name = "index.js",
+    srcs = ["stackdriver-github-bridge"],
+    output_group = "es5_sources",
+)
 
-npm_package(
-    name = "package",
-    srcs = ["package.json"],
-    deps = [":stackdriver-github-bridge"],
+load("//tools/gcloud:secrets.bzl", "gcloud_secret")
+
+gcloud_secret(
+    name = "env.yaml",
+    ciphertext_file = ":env.yaml.enc",
+    key = "dataform-co-build",
+    keyring = "dataform-co-build",
+    project = "tada-analytics",
 )
 
 load("//tools/gcloud:gcloud_function.bzl", "deploy_http_nodejs_gcloud_function")
 
 deploy_http_nodejs_gcloud_function(
     name = "deploy",
-    env_vars_file = "env.yaml",
+    srcs = [
+        ":index.js",
+        ":package.json",
+    ],
+    env_vars_file = ":env.yaml",
     function_name = "handleStackdriverEvent",
-    npm_package = ":package",
+    project = "tada-analytics",
 )

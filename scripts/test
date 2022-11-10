@@ -1,6 +1,0 @@
-#!/bin/bash
-set -e
-
-./scripts/decode_credentials
-
-bazel test ...

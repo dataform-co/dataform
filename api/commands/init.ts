@@ -1,24 +1,24 @@
-import { CREDENTIALS_FILENAME } from "@dataform/api/commands/credentials";
-import { install } from "@dataform/api/commands/install";
-import { prettyJsonStringify } from "@dataform/api/utils";
-import { dataform } from "@dataform/protos";
 import * as fs from "fs";
 import * as path from "path";
 
-const { version } = require("../package.json");
+import { CREDENTIALS_FILENAME } from "df/api/commands/credentials";
+import { install } from "df/api/commands/install";
+import { prettyJsonStringify } from "df/api/utils";
+import { version } from "df/core/version";
+import { dataform } from "df/protos/ts";
 
 const gitIgnoreContents = `
 ${CREDENTIALS_FILENAME}
 node_modules/
 `;
 
-export interface InitResult {
+export interface IInitResult {
   filesWritten: string[];
   dirsCreated: string[];
   installedNpmPackages: boolean;
 }
 
-export interface InitOptions {
+export interface IInitOptions {
   skipInstall?: boolean;
   includeSchedules?: boolean;
   includeEnvironments?: boolean;
@@ -27,8 +27,8 @@ export interface InitOptions {
 export async function init(
   projectDir: string,
   projectConfig: dataform.IProjectConfig,
-  options: InitOptions = {}
-): Promise<InitResult> {
+  options: IInitOptions = {}
+): Promise<IInitResult> {
   const dataformJsonPath = path.join(projectDir, "dataform.json");
   const packageJsonPath = path.join(projectDir, "package.json");
   const gitignorePath = path.join(projectDir, ".gitignore");

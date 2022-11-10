@@ -1,17 +1,17 @@
 package(default_visibility = ["//visibility:public"])
 
-load("@build_bazel_rules_nodejs//:defs.bzl", "nodejs_binary")
+load("@build_bazel_rules_nodejs//:index.bzl", "nodejs_binary")
 
 exports_files([
     "tsconfig.json",
     "package.json",
-    "common.package.json",
     "readme.md",
     "version.bzl",
 ])
 
 PROTOBUF_DEPS = [
     "@npm//protobufjs",
+    "@npm//protobufjs-cli",
     # these deps are needed even though they are not automatic transitive deps of
     # protobufjs since if they are not in the runfiles then protobufjs attempts to
     # run `npm install` at runtime to get thhem which fails as it tries to access
@@ -32,14 +32,14 @@ PROTOBUF_DEPS = [
 nodejs_binary(
     name = "pbjs",
     data = PROTOBUF_DEPS,
-    entry_point = "@npm//:node_modules/protobufjs/bin/pbjs",
+    entry_point = "@npm//:node_modules/protobufjs-cli/bin/pbjs",
     install_source_map_support = False,
 )
 
 nodejs_binary(
     name = "pbts",
     data = PROTOBUF_DEPS,
-    entry_point = "@npm//:node_modules/protobufjs/bin/pbts",
+    entry_point = "@npm//:node_modules/protobufjs-cli/bin/pbts",
     install_source_map_support = False,
 )
 
@@ -53,8 +53,19 @@ nodejs_binary(
     templated_args = ["--node_options=--preserve-symlinks"],
 )
 
-load("@com_github_bazelbuild_buildtools//buildifier:def.bzl", "buildifier")
+load("@bazel_gazelle//:def.bzl", "gazelle")
 
-buildifier(
-    name = "buildifier",
+# gazelle:prefix github.com/dataform-co/dataform
+# gazelle:proto package
+# gazelle:proto_group go_package
+gazelle(name = "gazelle")
+
+load("//tools:ts_library.bzl", "ts_library")
+
+# TODO: This is only here in order to workaround a bug in the way bazel resolves
+# workspace imports when in nested repositories, and can be removed once that is fixed.
+ts_library(
+    name = "modules-fix",
+    srcs = [],
+    module_name = "df",
 )

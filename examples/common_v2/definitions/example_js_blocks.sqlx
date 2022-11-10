@@ -1,5 +1,6 @@
 config {
-    type: "table"
+    type: "table",
+    hermetic: false
 }
 js { const bar = "foo"; }
 js { var foo = () => bar; }

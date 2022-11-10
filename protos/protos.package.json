@@ -1,9 +1,0 @@
-{
-  "name": "@dataform/protos",
-  "description": "Dataform protocol buffers.",
-  "main": "index.js",
-  "types": "index.d.ts",
-  "dependencies": {
-    "protobufjs": "^6.8.8"
-  }
-}

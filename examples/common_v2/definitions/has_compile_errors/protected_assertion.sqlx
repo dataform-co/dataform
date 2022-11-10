@@ -1,2 +1,2 @@
-config { type: "assertion", protected: true }
+config { type: "assertion", protected: true, hermetic: false }
 select 1 as test

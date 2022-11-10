@@ -1,9 +1,48 @@
-import { Credentials } from "@dataform/api/commands/credentials";
-import { IDbAdapter } from "@dataform/api/dbadapters/index";
-import { dataform } from "@dataform/protos";
 import * as https from "https";
+import Long from "long";
+import * as PromisePool from "promise-pool-executor";
+import { Readable } from "stream";
+
+import { Credentials } from "df/api/commands/credentials";
+import { IDbAdapter, IDbClient, OnCancel } from "df/api/dbadapters/index";
+import { parseSnowflakeEvalError } from "df/api/utils/error_parsing";
+import { LimitedResultSet } from "df/api/utils/results";
+import { ErrorWithCause } from "df/common/errors/errors";
+import { Flags } from "df/common/flags";
+import { collectEvaluationQueries, QueryOrAction } from "df/core/adapters";
+import { dataform } from "df/protos/ts";
+
+const HEARTBEAT_INTERVAL_SECONDS = 30;
+
+const flags = {
+  snowflakeLogLevel: Flags.string("snowflake-log-level", "info"),
+  snowflakeUseOcsp: Flags.boolean("snowflake-use-ocsp", true)
+};
+
+// This is horrible. However, it allows us to set the 'APPLICATION' parameter on client.environment,
+// which is passed all the way through to Snowflake's connection code. Pending a fix for
+// https://github.com/snowflakedb/snowflake-connector-nodejs/issues/100, this is the only way
+// we can achieve that.
+// tslint:disable-next-line: no-var-requires
+const snowflake = require("snowflake-sdk/lib/core")({
+  httpClientClass: require("snowflake-sdk/lib/http/node"),
+  loggerClass: require("snowflake-sdk/lib/logger/node"),
+  client: {
+    version: require("snowflake-sdk/lib/util").driverVersion,
+    environment: {
+      ...process.versions,
+      APPLICATION: "Dataform"
+    }
+  }
+}) as ISnowflake;
+
+snowflake.configure({
+  logLevel: flags.snowflakeLogLevel.get(),
+  insecureConnect: !flags.snowflakeUseOcsp.get()
+});
 
 interface ISnowflake {
+  configure: (options: { logLevel?: string; insecureConnect?: boolean }) => void;
   createConnection: (options: {
     account: string;
     username: string;
@@ -11,6 +50,8 @@ interface ISnowflake {
     database: string;
     warehouse: string;
     role: string;
+    clientSessionKeepAlive: boolean;
+    clientSessionKeepAliveHeartbeatFrequency: number;
   }) => ISnowflakeConnection;
 }
 
@@ -18,118 +59,285 @@ interface ISnowflakeConnection {
   connect: (callback: (err: any, connection: ISnowflakeConnection) => void) => void;
   execute: (options: {
     sqlText: string;
+    binds?: any[];
     streamResult?: boolean;
     complete: (err: any, statement: ISnowflakeStatement, rows: any[]) => void;
-  }) => void;
+  }) => ISnowflakeStatement;
+  destroy: (err: any) => void;
 }
 
 interface ISnowflakeStatement {
-  cancel: () => void;
-  streamRows: (options: { start?: number; end?: number }) => ISnowflakeResultStream;
+  cancel: (err: any) => void;
+  streamRows: (options?: { start?: number; end?: number }) => Readable;
 }
-
-interface ISnowflakeResultStream {
-  on: (event: "error" | "data" | "end", handler: (data: Error | any[]) => void) => this;
-}
-
-const snowflake: ISnowflake = require("snowflake-sdk");
 
 export class SnowflakeDbAdapter implements IDbAdapter {
-  private connectionPromise: Promise<ISnowflakeConnection>;
-
-  constructor(credentials: Credentials) {
-    this.connectionPromise = connect(credentials as dataform.ISnowflake);
+  public static async create(credentials: Credentials, options?: { concurrencyLimit?: number }) {
+    const connection = await connect(credentials as dataform.ISnowflake);
+    return new SnowflakeDbAdapter(connection, options);
   }
 
-  public async execute(
-    statement: string,
-    options: {
-      maxResults?: number;
-    } = { maxResults: 1000 }
+  // Unclear exactly what snowflakes limit's are here, we can experiment with increasing this.
+  private pool: PromisePool.PromisePoolExecutor;
+
+  constructor(
+    private readonly connection: ISnowflakeConnection,
+    options?: { concurrencyLimit?: number }
   ) {
-    const connection = await this.connectionPromise;
-    return new Promise<any[]>((resolve, reject) => {
-      connection.execute({
-        sqlText: statement,
-        streamResult: true,
-        complete(err, stmt) {
-          if (err) {
-            reject(err);
-            return;
-          }
-          const rows: any[] = [];
-          const streamOptions =
-            !!options && !!options.maxResults ? { start: 0, end: options.maxResults - 1 } : {};
-          stmt
-            .streamRows(streamOptions)
-            .on("error", e => reject(e))
-            .on("data", row => rows.push(row))
-            .on("end", () => resolve(rows));
-        }
-      });
+    this.pool = new PromisePool.PromisePoolExecutor({
+      concurrencyLimit: options?.concurrencyLimit || 10,
+      frequencyWindow: 1000,
+      frequencyLimit: 10
     });
   }
 
-  public evaluate(statement: string): Promise<void> {
-    throw new Error("Unimplemented");
+  public async execute(
+    sqlText: string,
+    options: {
+      binds?: any[];
+      onCancel?: OnCancel;
+      rowLimit?: number;
+      byteLimit?: number;
+    } = { rowLimit: 1000, byteLimit: 1024 * 1024 }
+  ) {
+    return {
+      rows: await this.pool
+        .addSingleTask({
+          generator: () =>
+            new Promise<any[]>((resolve, reject) => {
+              const statement = this.connection.execute({
+                sqlText,
+                binds: options?.binds,
+                streamResult: true,
+                complete(err, stmt) {
+                  if (err) {
+                    let message = `Snowflake SQL query failed: ${err.message}.`;
+                    if (err.cause) {
+                      message += ` Root cause: ${err.cause}`;
+                    }
+                    reject(new ErrorWithCause(message, err));
+                    return;
+                  }
+                  const results = new LimitedResultSet({
+                    rowLimit: options?.rowLimit,
+                    byteLimit: options?.byteLimit
+                  });
+                  const stream = stmt.streamRows();
+                  stream
+                    .on("error", e => reject(e))
+                    .on("data", row => {
+                      if (!results.push(row)) {
+                        stream.destroy();
+                      }
+                    })
+                    .on("end", () => resolve(results.rows))
+                    .on("close", () => resolve(results.rows));
+                }
+              });
+              options?.onCancel?.(() => {
+                statement.cancel((e: any) => {
+                  if (e) {
+                    reject(e);
+                  }
+                });
+              });
+            })
+        })
+        .promise(),
+      metadata: {}
+    };
+  }
+
+  public async withClientLock<T>(callback: (client: IDbClient) => Promise<T>) {
+    return await callback(this);
+  }
+
+  public async evaluate(queryOrAction: QueryOrAction) {
+    const validationQueries = collectEvaluationQueries(queryOrAction, false, (query: string) =>
+      !!query ? `select system$explain_plan_json($$${query}$$)` : ""
+    ).map((validationQuery, index) => ({ index, validationQuery }));
+    const validationQueriesWithoutWrappers = collectEvaluationQueries(queryOrAction, false);
+
+    const queryEvaluations = new Array<dataform.IQueryEvaluation>();
+    for (const { index, validationQuery } of validationQueries) {
+      let evaluationResponse: dataform.IQueryEvaluation = {
+        status: dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
+      };
+      try {
+        await this.execute(validationQuery.query);
+      } catch (e) {
+        evaluationResponse = {
+          status: dataform.QueryEvaluation.QueryEvaluationStatus.FAILURE,
+          error: parseSnowflakeEvalError(e.message)
+        };
+      }
+      queryEvaluations.push(
+        dataform.QueryEvaluation.create({
+          ...evaluationResponse,
+          incremental: validationQuery.incremental,
+          query: validationQueriesWithoutWrappers[index].query
+        })
+      );
+    }
+    return queryEvaluations;
   }
 
   public async tables(): Promise<dataform.ITarget[]> {
-    const rows = await this.execute(
-      `select table_name, table_schema
-       from information_schema.tables
-       where LOWER(table_schema) != 'information_schema'
-         and LOWER(table_schema) != 'pg_catalog'
-         and LOWER(table_schema) != 'pg_internal'`
+    const { rows } = await this.execute(
+      `
+select table_name, table_schema, table_catalog
+from information_schema.tables
+where LOWER(table_schema) != 'information_schema'`,
+      { rowLimit: 10000 }
     );
     return rows.map(row => ({
+      database: row.TABLE_CATALOG,
       schema: row.TABLE_SCHEMA,
       name: row.TABLE_NAME
     }));
   }
 
-  public async schemas(): Promise<string[]> {
-    const rows = await this.execute(`select SCHEMA_NAME from information_schema.schemata`);
-    return rows.map(row => row.SCHEMA_NAME);
+  public async search(
+    searchText: string,
+    options: { limit: number } = { limit: 1000 }
+  ): Promise<dataform.ITableMetadata[]> {
+    const results = await this.execute(
+      `select * from (
+        select tables.table_catalog as table_catalog, tables.table_schema as table_schema, tables.table_name as table_name
+        from information_schema.tables as tables
+        left join information_schema.columns as columns on tables.table_catalog = columns.table_catalog and tables.table_schema = columns.table_schema
+          and tables.table_name = columns.table_name
+        where tables.table_catalog ilike :1 or tables.table_schema ilike :1 or tables.table_name ilike :1 or tables.comment ilike :1
+          or columns.column_name ilike :1 or columns.comment ilike :1
+        group by 1, 2, 3
+      ) where LOWER(table_schema) != 'information_schema'
+       `,
+      {
+        binds: [`%${searchText}%`],
+        rowLimit: options.limit
+      }
+    );
+    return await Promise.all(
+      results.rows.map(row =>
+        this.table({
+          database: row.TABLE_CATALOG,
+          schema: row.TABLE_SCHEMA,
+          name: row.TABLE_NAME
+        })
+      )
+    );
   }
 
-  public table(target: dataform.ITarget): Promise<dataform.ITableMetadata> {
-    return Promise.all([
+  public async table(target: dataform.ITarget): Promise<dataform.ITableMetadata> {
+    const binds = [target.schema, target.name];
+    const [tableResults, columnResults] = await Promise.all([
       this.execute(
-        `select column_name, data_type, is_nullable
-       from information_schema.columns
-       where table_schema = '${target.schema}' AND table_name = '${target.name}'`
+        `
+select table_type, last_altered, comment
+from ${target.database ? `"${target.database}".` : ""}information_schema.tables
+where table_schema = :1
+  and table_name = :2`,
+        { binds }
       ),
       this.execute(
-        `select table_type from information_schema.tables where table_schema = '${target.schema}' AND table_name = '${target.name}'`
+        `
+select column_name, data_type, is_nullable, comment
+from ${target.database ? `"${target.database}".` : ""}information_schema.columns
+where table_schema = :1 
+  and table_name = :2`,
+        { binds }
       )
-    ]).then(results => {
-      if (results[1].length > 0) {
-        // The table exists.
-        return {
-          target,
-          type: results[1][0].TABLE_TYPE == "VIEW" ? "view" : "table",
-          fields: results[0].map(row => ({
-            name: row.COLUMN_NAME,
-            primitive: row.DATA_TYPE,
-            flags: row.IS_NULLABLE && row.IS_NULLABLE == "YES" ? ["nullable"] : []
-          }))
-        };
-      } else {
-        throw new Error(`Could not find relation: ${target.schema}.${target.name}`);
-      }
+    ]);
+    if (tableResults.rows.length === 0) {
+      // The table does not exist.
+      return null;
+    }
+
+    return dataform.TableMetadata.create({
+      target,
+      type:
+        tableResults.rows[0].TABLE_TYPE === "VIEW"
+          ? dataform.TableMetadata.Type.VIEW
+          : dataform.TableMetadata.Type.TABLE,
+      fields: columnResults.rows.map(row =>
+        dataform.Field.create({
+          name: row.COLUMN_NAME,
+          primitive: convertFieldType(row.DATA_TYPE),
+          flags: row.DATA_TYPE === "ARRAY" ? [dataform.Field.Flag.REPEATED] : [],
+          description: row.COMMENT
+        })
+      ),
+      lastUpdatedMillis: Long.fromNumber(tableResults.rows[0].LAST_ALTERED),
+      description: tableResults.rows[0].COMMENT
     });
   }
 
   public async preview(target: dataform.ITarget, limitRows: number = 10): Promise<any[]> {
-    return this.execute(`SELECT * FROM "${target.schema}"."${target.name}" LIMIT ${limitRows}`);
+    const { rows } = await this.execute(
+      `SELECT * FROM "${target.schema}"."${target.name}" LIMIT ${limitRows}`
+    );
+    return rows;
   }
 
-  public async prepareSchema(schema: string): Promise<void> {
-    const schemas = await this.schemas();
-    if (!schemas.includes(schema)) {
-      await this.execute(`create schema if not exists "${schema}"`);
+  public async schemas(database: string): Promise<string[]> {
+    const { rows } = await this.execute(
+      `select SCHEMA_NAME from ${database ? `"${database}".` : ""}information_schema.schemata`
+    );
+    return rows.map(row => row.SCHEMA_NAME);
+  }
+
+  public async createSchema(database: string, schema: string): Promise<void> {
+    await this.execute(
+      `create schema if not exists ${database ? `"${database}".` : ""}"${schema}"`
+    );
+  }
+
+  public async close() {
+    await new Promise((resolve, reject) => {
+      this.connection.destroy((err: any) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve();
+        }
+      });
+    });
+  }
+
+  public async setMetadata(action: dataform.IExecutionAction): Promise<void> {
+    const { target, actionDescriptor, tableType } = action;
+
+    const queries: Array<Promise<any>> = [];
+    if (actionDescriptor.description) {
+      queries.push(
+        this.execute(
+          `comment on ${tableType === "view" ? "view" : "table"} ${
+            target.database ? `"${target.database}".` : ""
+          }"${target.schema}"."${target.name}" is '${actionDescriptor.description.replace(
+            /'/g,
+            "\\'"
+          )}'`
+        )
+      );
     }
+    if (tableType !== "view" && actionDescriptor.columns?.length > 0) {
+      actionDescriptor.columns
+        .filter(column => column.path.length === 1)
+        .forEach(column => {
+          queries.push(
+            this.execute(
+              `comment if exists on column ${target.database ? `"${target.database}".` : ""}"${
+                target.schema
+              }"."${target.name}"."${column.path[0]}" is '${column.description.replace(
+                /'/g,
+                "\\'"
+              )}'`
+            )
+          );
+        });
+    }
+
+    await Promise.all(queries);
   }
 }
 
@@ -148,7 +356,9 @@ async function connect(snowflakeCredentials: dataform.ISnowflake) {
           password: snowflakeCredentials.password,
           database: snowflakeCredentials.databaseName,
           warehouse: snowflakeCredentials.warehouse,
-          role: snowflakeCredentials.role
+          role: snowflakeCredentials.role,
+          clientSessionKeepAlive: true,
+          clientSessionKeepAliveHeartbeatFrequency: HEARTBEAT_INTERVAL_SECONDS
         })
         .connect((err, conn) => {
           if (err) {
@@ -159,7 +369,7 @@ async function connect(snowflakeCredentials: dataform.ISnowflake) {
         });
     });
   } catch (e) {
-    throw new Error(`Could not connect to Snowflake: ${e.message}`);
+    throw new ErrorWithCause(`Could not connect to Snowflake: ${e.message}`, e);
   }
 }
 
@@ -175,6 +385,58 @@ async function testHttpsConnection(url: string) {
       });
     });
   } catch (e) {
-    throw new Error(`Could not open HTTPS connection to ${url}: ${e.message}`);
+    throw new ErrorWithCause(`Could not open HTTPS connection to ${url}.`, e);
+  }
+}
+
+// See https://docs.snowflake.com/en/sql-reference/intro-summary-data-types.html
+function convertFieldType(type: string) {
+  switch (String(type).toUpperCase()) {
+    case "FLOAT":
+    case "FLOAT4":
+    case "FLOAT8":
+    case "DOUBLE":
+    case "DOUBLE PRECISION":
+    case "REAL":
+      return dataform.Field.Primitive.FLOAT;
+    case "INTEGER":
+    case "INT":
+    case "BIGINT":
+    case "SMALLINT":
+      return dataform.Field.Primitive.INTEGER;
+    case "NUMBER":
+    case "DECIMAL":
+    case "NUMERIC":
+      return dataform.Field.Primitive.NUMERIC;
+    case "BOOLEAN":
+      return dataform.Field.Primitive.BOOLEAN;
+    case "STRING":
+    case "VARCHAR":
+    case "CHAR":
+    case "CHARACTER":
+    case "TEXT":
+      return dataform.Field.Primitive.STRING;
+    case "DATE":
+      return dataform.Field.Primitive.DATE;
+    case "DATETIME":
+      return dataform.Field.Primitive.DATETIME;
+    case "TIMESTAMP":
+    case "TIMESTAMP_LTZ":
+    case "TIMESTAMP_NTZ":
+    case "TIMESTAMP_TZ":
+      return dataform.Field.Primitive.TIMESTAMP;
+    case "TIME":
+      return dataform.Field.Primitive.TIME;
+    case "BINARY":
+    case "VARBINARY":
+      return dataform.Field.Primitive.BYTES;
+    case "VARIANT":
+    case "ARRAY":
+    case "OBJECT":
+      return dataform.Field.Primitive.ANY;
+    case "GEOGRAPHY":
+      return dataform.Field.Primitive.GEOGRAPHY;
+    default:
+      return dataform.Field.Primitive.UNKNOWN;
   }
 }

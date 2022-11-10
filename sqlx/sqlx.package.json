@@ -1,9 +1,0 @@
-{
-  "name": "@dataform/sqlx",
-  "description": "Dataform SQLX language tools.",
-  "main": "index.js",
-  "types": "index.d.ts",
-  "dependencies": {
-    "moo": "^0.5.0"
-  }
-}

@@ -1,30 +1,19 @@
-package(default_visibility = ["//visibility:public"])
+load("//testing:index.bzl", "ts_test_suite")
 
-load("@npm_bazel_typescript//:index.bzl", "ts_library")
-
-ts_library(
-    name = "lib",
+ts_test_suite(
+    name = "tests",
     srcs = glob(["**/*.ts"]),
+    data = glob(["*.js.test"]),
     deps = [
         "//core",
-        "//protos",
+        "//protos:ts",
+        "//testing",
         "//tests/utils",
         "@npm//@types/chai",
+        "@npm//@types/fs-extra",
         "@npm//@types/long",
-        "@npm//@types/mocha",
         "@npm//@types/node",
-    ],
-)
-
-load("//tools/mocha:mocha_node_test.bzl", "mocha_node_test")
-
-mocha_node_test(
-    name = "core",
-    srcs = [
-        ":lib",
-    ],
-    data = [
         "@npm//chai",
-        "@npm//mocha",
+        "@npm//fs-extra",
     ],
 )

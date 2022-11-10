@@ -1,5 +1,5 @@
 config { type: "table" }
-select * from ${ref("sample_data")}
+select * from ${ref("df_integration_test", "sample_data")}
 
 -- here ${"is"} a `comment
 

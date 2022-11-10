@@ -1,0 +1,3 @@
+---
+redirect: ../git-access-tokens
+---

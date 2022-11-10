@@ -1,13 +1,15 @@
-import * as dbadapters from "@dataform/api/dbadapters";
-import { requiredWarehouseProps, WarehouseType } from "@dataform/core/adapters";
-import { dataform } from "@dataform/protos";
 import * as fs from "fs";
+
+import * as dbadapters from "df/api/dbadapters";
+import { requiredWarehouseProps, WarehouseType } from "df/core/adapters";
+import { dataform } from "df/protos/ts";
 
 export const CREDENTIALS_FILENAME = ".df-credentials.json";
 
 export type Credentials =
   | dataform.IBigQuery
   | dataform.IJDBC
+  | dataform.IPresto
   | dataform.ISnowflake
   | dataform.ISQLDataWarehouse;
 
@@ -34,6 +36,14 @@ export function coerce(warehouse: string, credentials: any): Credentials {
         credentials,
         dataform.JDBC.verify,
         dataform.JDBC.create,
+        requiredWarehouseProps[warehouse]
+      );
+    }
+    case WarehouseType.PRESTO: {
+      return validateAnyAsCredentials(
+        credentials,
+        dataform.Presto.verify,
+        dataform.Presto.create,
         requiredWarehouseProps[warehouse]
       );
     }
@@ -70,8 +80,7 @@ export interface ITestResult {
 }
 
 export async function test(
-  credentials: Credentials,
-  warehouse: string,
+  dbadapter: dbadapters.IDbAdapter,
   timeoutMs: number = 10000
 ): Promise<ITestResult> {
   let timer;
@@ -79,10 +88,7 @@ export async function test(
     const timeout = new Promise<TestResultStatus>(
       resolve => (timer = setTimeout(() => resolve(TestResultStatus.TIMED_OUT), timeoutMs))
     );
-    const executeQuery = dbadapters
-      .create(credentials, warehouse)
-      .execute("SELECT 1 AS x")
-      .then(() => TestResultStatus.SUCCESSFUL);
+    const executeQuery = dbadapter.execute("SELECT 1 AS x").then(() => TestResultStatus.SUCCESSFUL);
     return {
       status: await Promise.race([executeQuery, timeout])
     };

@@ -1,0 +1,3 @@
+select 1 as test;
+
+select invalid_column from (select 1 as test);

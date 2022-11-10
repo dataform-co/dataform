@@ -12,8 +12,6 @@ filegroup(
 node_modules(
     name = "node_modules",
     deps = [
-        "//core:package_tar",
-        "//protos:package_tar",
-        "//sqlx:package_tar",
+        "//packages/@dataform/core:package_tar",
     ],
 )

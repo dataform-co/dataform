@@ -1,4 +1,17 @@
-import { dataform } from "@dataform/protos";
+import { dataform } from "df/protos/ts";
+
+export function concatenateQueries(statements: string[], modifier?: (mod: string) => string) {
+  return statements
+    .filter(statement => !!statement)
+    .map(statement => statement.trim())
+    .map(statement =>
+      statement.length > 0 && statement.charAt(statement.length - 1) === ";"
+        ? statement.substring(0, statement.length - 1)
+        : statement
+    )
+    .map(statement => (!!modifier ? modifier(statement) : statement))
+    .join("\n;\n");
+}
 
 export class Tasks {
   public static create() {
@@ -18,6 +31,12 @@ export class Tasks {
 
   public build() {
     return this.tasks.map(task => task.build());
+  }
+
+  public concatenate() {
+    return Tasks.create().add(
+      Task.statement(concatenateQueries(this.tasks.map(task => task.getStatement())))
+    );
   }
 }
 
@@ -47,6 +66,10 @@ export class Task {
   public statement(v: string) {
     this.proto.statement = v;
     return this;
+  }
+
+  public getStatement() {
+    return this.proto.statement;
   }
 
   public build() {

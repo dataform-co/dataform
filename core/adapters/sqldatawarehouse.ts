@@ -1,9 +1,18 @@
-import { Adapter } from "@dataform/core/adapters/base";
-import { IAdapter } from "@dataform/core/adapters/index";
-import { Task, Tasks } from "@dataform/core/tasks";
-import { dataform } from "@dataform/protos";
+import { IAdapter } from "df/core/adapters";
+import { Adapter } from "df/core/adapters/base";
+import { Task, Tasks } from "df/core/tasks";
+import { dataform } from "df/protos/ts";
 
 export class SQLDataWarehouseAdapter extends Adapter implements IAdapter {
+  constructor(private readonly project: dataform.IProjectConfig, dataformCoreVersion: string) {
+    super(dataformCoreVersion);
+  }
+
+  public sqlString(stringContents: string) {
+    // Double single quotes (effectively escaping them), then wrap the string in single quotes.
+    return `'${stringContents.replace(/'/g, "''")}'`;
+  }
+
   public resolveTarget(target: dataform.ITarget) {
     return `"${target.schema}"."${target.name}"`;
   }
@@ -14,17 +23,20 @@ export class SQLDataWarehouseAdapter extends Adapter implements IAdapter {
     tableMetadata: dataform.ITableMetadata
   ): Tasks {
     const tasks = Tasks.create();
-    // Drop the existing view or table if we are changing its type.
-    if (tableMetadata && tableMetadata.type !== this.baseTableType(table.type)) {
+
+    this.preOps(table, runConfig, tableMetadata).forEach(statement => tasks.add(statement));
+
+    const baseTableType = this.baseTableType(table.type);
+    if (tableMetadata && tableMetadata.type !== baseTableType) {
       tasks.add(
-        Task.statement(this.dropIfExists(table.target, this.oppositeTableType(table.type)))
+        Task.statement(this.dropIfExists(table.target, this.oppositeTableType(baseTableType)))
       );
     }
+
     if (table.type === "incremental") {
-      if (runConfig.fullRefresh || !tableMetadata || tableMetadata.type === "view") {
+      if (!this.shouldWriteIncrementally(runConfig, tableMetadata)) {
         tasks.addAll(this.createOrReplace(table, !!tableMetadata));
       } else {
-        // The table exists, insert new rows.
         tasks.add(
           Task.statement(
             this.insertInto(
@@ -38,22 +50,19 @@ export class SQLDataWarehouseAdapter extends Adapter implements IAdapter {
     } else {
       tasks.addAll(this.createOrReplace(table, !!tableMetadata));
     }
-    return tasks;
+
+    this.postOps(table, runConfig, tableMetadata).forEach(statement => tasks.add(statement));
+
+    return tasks.concatenate();
   }
 
   public assertTasks(
     assertion: dataform.IAssertion,
     projectConfig: dataform.IProjectConfig
   ): Tasks {
-    const target =
-      assertion.target ||
-      dataform.Target.create({
-        schema: projectConfig.assertionSchema,
-        name: assertion.name
-      });
-
+    const target = assertion.target;
     return Tasks.create()
-      .add(Task.statement(this.dropIfExists(target, "view")))
+      .add(Task.statement(this.dropIfExists(target, dataform.TableMetadata.Type.VIEW)))
       .add(
         Task.statement(`
         create view ${this.resolveTarget(target)}
@@ -62,13 +71,22 @@ export class SQLDataWarehouseAdapter extends Adapter implements IAdapter {
       .add(Task.assertion(`select sum(1) as row_count from ${this.resolveTarget(target)}`));
   }
 
-  public dropIfExists(target: dataform.ITarget, type: string) {
-    if (type === "view") {
-      return `drop ${this.baseTableType(type)} if exists ${this.resolveTarget(target)} `;
+  public dropIfExists(target: dataform.ITarget, type: dataform.TableMetadata.Type) {
+    if (type === dataform.TableMetadata.Type.VIEW) {
+      return `drop view if exists ${this.resolveTarget(target)} `;
     }
     return `if object_id ('${this.resolveTarget(
       target
     )}','U') is not null drop table ${this.resolveTarget(target)}`;
+  }
+
+  public insertInto(target: dataform.ITarget, columns: string[], query: string) {
+    return `
+insert into ${this.resolveTarget(target)}
+(${columns.join(",")})
+select ${columns.join(",")}
+from (${query}
+) as insertions`;
   }
 
   private createOrReplace(table: dataform.ITable, alreadyExists: boolean) {
@@ -89,7 +107,7 @@ export class SQLDataWarehouseAdapter extends Adapter implements IAdapter {
     return Tasks.create()
       .add(Task.statement(this.dropIfExists(tempTableTarget, this.baseTableType(table.type))))
       .add(Task.statement(this.createTable(table, tempTableTarget)))
-      .add(Task.statement(this.dropIfExists(table.target, "table")))
+      .add(Task.statement(this.dropIfExists(table.target, dataform.TableMetadata.Type.TABLE)))
       .add(
         Task.statement(
           `rename object ${this.resolveTarget(tempTableTarget)} to ${table.target.name} `

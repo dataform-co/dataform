@@ -1,33 +1,36 @@
-import { Assertion } from "@dataform/core/assertion";
-import { Declaration } from "@dataform/core/declaration";
-import { Operation } from "@dataform/core/operation";
-import { Resolvable } from "@dataform/core/session";
-import {
-  DistStyleTypes,
-  ignoredProps,
-  SortStyleTypes,
-  Table,
-  TableTypes
-} from "@dataform/core/table";
-import { dataform } from "@dataform/protos";
+import { adapters } from "df/core";
+import { Assertion } from "df/core/assertion";
+import { Resolvable } from "df/core/common";
+import { Declaration } from "df/core/declaration";
+import { Operation } from "df/core/operation";
+import { IActionProto, Session } from "df/core/session";
+import { Table } from "df/core/table";
+import { dataform } from "df/protos/ts";
 
-const SQL_DATA_WAREHOUSE_DIST_HASH_REGEXP = new RegExp("HASH\\s*\\(\\s*\\w*\\s*\\)\\s*");
-
-function relativePath(path: string, base: string) {
-  if (base.length === 0) {
-    return path;
+const pathSeperator = (() => {
+  if (typeof process !== "undefined") {
+    return process.platform === "win32" ? "\\" : "/";
   }
-  const stripped = path.substr(base.length);
-  if (stripped.startsWith("/")) {
+  return "/";
+})();
+
+function relativePath(fullPath: string, base: string) {
+  if (base.length === 0) {
+    return fullPath;
+  }
+  const stripped = fullPath.substr(base.length);
+  if (stripped.startsWith(pathSeperator)) {
     return stripped.substr(1);
   } else {
     return stripped;
   }
 }
 
-export function baseFilename(path: string) {
-  const pathSplits = path.split("/");
-  return pathSplits[pathSplits.length - 1].split(".")[0];
+export function baseFilename(fullPath: string) {
+  return fullPath
+    .split(pathSeperator)
+    .slice(-1)[0]
+    .split(".")[0];
 }
 
 export function matchPatterns(patterns: string[], values: string[]) {
@@ -55,169 +58,94 @@ export function getCallerFile(rootDir: string) {
   let lastfile: string;
   const stack = getCurrentStack();
   while (stack.length) {
-    lastfile = stack.shift().getFileName();
-    if (!lastfile) {
+    const nextLastfile = stack.shift().getFileName();
+    if (!nextLastfile) {
       continue;
     }
-    if (!lastfile.includes(rootDir)) {
+    if (!nextLastfile.includes(rootDir)) {
       continue;
     }
-    if (lastfile.includes("node_modules")) {
+    if (nextLastfile.includes("node_modules")) {
       continue;
     }
-    if (!(lastfile.includes("definitions/") || lastfile.includes("models/"))) {
+    // If it's in the root directory we'll take it, but keep searching
+    // for a better match.
+    lastfile = nextLastfile;
+    if (
+      !(
+        nextLastfile.includes(`definitions${pathSeperator}`) ||
+        nextLastfile.includes(`models${pathSeperator}`)
+      )
+    ) {
       continue;
     }
     break;
+  }
+  if (!lastfile) {
+    // This is likely caused by Session.compileError() being called inside Session.compile().
+    // If so, explicitly pass the filename to Session.compileError().
+    throw new Error("Unable to find valid caller file; please report this issue.");
   }
   return relativePath(lastfile, rootDir);
 }
 
 function getCurrentStack(): NodeJS.CallSite[] {
+  const originalStackTraceLimit = Error.stackTraceLimit;
   const originalPrepareStackTrace = Error.prepareStackTrace;
   try {
+    Error.stackTraceLimit = Number.POSITIVE_INFINITY;
     Error.prepareStackTrace = (err, stack) => {
       return stack;
     };
     return (new Error().stack as unknown) as NodeJS.CallSite[];
   } finally {
+    Error.stackTraceLimit = originalStackTraceLimit;
     Error.prepareStackTrace = originalPrepareStackTrace;
   }
 }
 
 export function graphHasErrors(graph: dataform.ICompiledGraph) {
-  const graphErrors = validate(graph);
-
-  return (
-    (graphErrors.compilationErrors && graphErrors.compilationErrors.length > 0) ||
-    (graphErrors.validationErrors && graphErrors.validationErrors.length > 0)
-  );
+  return graph.graphErrors?.compilationErrors.length > 0;
 }
 
-function joinQuoted(values: string[]) {
-  return values.map((value: string) => `"${value}"`).join(" | ");
+const invalidRefInputMessage =
+  "Invalid input. Accepted inputs include: a single object containing " +
+  "an (optional) 'database', (optional) 'schema', and 'name', " +
+  "or 1-3 inputs consisting of an (optional) database, (optional) schema, and 'name'.";
+
+export function toResolvable(ref: Resolvable | string[], rest: string[] = []): Resolvable {
+  if (Array.isArray(ref) && rest.length > 0) {
+    throw new Error(invalidRefInputMessage);
+  }
+  if (rest.length === 0 && !Array.isArray(ref)) {
+    return ref;
+  }
+  const resolvableArray = Array.isArray(ref) ? ref.reverse() : [ref, ...rest].reverse();
+  if (!isResolvableArray(resolvableArray)) {
+    throw new Error(invalidRefInputMessage);
+  }
+  const [name, schema, database] = resolvableArray;
+  return { database, schema, name };
 }
 
-function objectExistsOrIsNonEmpty(prop: any): boolean {
-  if (!prop) {
+function isResolvableArray(parts: any[]): parts is [string, string?, string?] {
+  if (parts.some(part => typeof part !== "string")) {
     return false;
   }
-
-  return (
-    (Array.isArray(prop) && !!prop.length) ||
-    (!Array.isArray(prop) && typeof prop === "object" && !!Object.keys(prop).length) ||
-    typeof prop !== "object"
-  );
+  return parts.length > 0 && parts.length <= 3;
 }
 
-export function validate(compiledGraph: dataform.ICompiledGraph): dataform.IGraphErrors {
-  const validationErrors: dataform.IValidationError[] = [];
-
-  // Table validation
-  compiledGraph.tables.forEach(action => {
-    const actionName = action.name;
-
-    // type
-    if (!!action.type && !Object.values(TableTypes).includes(action.type)) {
-      const predefinedTypes = joinQuoted(Object.values(TableTypes));
-      const message = `Wrong type of table detected. Should only use predefined types: ${predefinedTypes}`;
-      validationErrors.push(dataform.ValidationError.create({ message, actionName }));
-    }
-
-    // sqldatawarehouse config
-    if (action.sqlDataWarehouse && action.sqlDataWarehouse.distribution) {
-      const distribution = action.sqlDataWarehouse.distribution.toUpperCase();
-
-      if (
-        distribution !== "REPLICATE" &&
-        distribution !== "ROUND_ROBIN" &&
-        !SQL_DATA_WAREHOUSE_DIST_HASH_REGEXP.test(distribution)
-      ) {
-        const message = `Invalid value for sqldatawarehouse distribution: "${distribution}"`;
-        validationErrors.push(dataform.ValidationError.create({ message, actionName }));
-      }
-    }
-
-    // redshift config
-    if (!!action.redshift) {
-      if (
-        Object.keys(action.redshift).length === 0 ||
-        Object.values(action.redshift).every((value: string) => !value.length)
-      ) {
-        const message = `Missing properties in redshift config`;
-        validationErrors.push(dataform.ValidationError.create({ message, actionName }));
-      }
-
-      const validatePropertyDefined = (
-        opts: dataform.IRedshiftOptions,
-        prop: keyof dataform.IRedshiftOptions
-      ) => {
-        if (!opts[prop] || !opts[prop].length) {
-          const message = `Property "${prop}" is not defined`;
-          validationErrors.push(dataform.ValidationError.create({ message, actionName }));
-        }
-      };
-      const validatePropertiesDefined = (
-        opts: dataform.IRedshiftOptions,
-        props: Array<keyof dataform.IRedshiftOptions>
-      ) => props.forEach(prop => validatePropertyDefined(opts, prop));
-      const validatePropertyValueInValues = (
-        opts: dataform.IRedshiftOptions,
-        prop: keyof dataform.IRedshiftOptions & ("distStyle" | "sortStyle"),
-        values: string[]
-      ) => {
-        if (!!opts[prop] && !values.includes(opts[prop])) {
-          const message = `Wrong value of "${prop}" property. Should only use predefined values: ${joinQuoted(
-            values
-          )}`;
-          validationErrors.push(dataform.ValidationError.create({ message, actionName }));
-        }
-      };
-
-      if (action.redshift.distStyle || action.redshift.distKey) {
-        validatePropertiesDefined(action.redshift, ["distStyle", "distKey"]);
-        validatePropertyValueInValues(action.redshift, "distStyle", Object.values(DistStyleTypes));
-      }
-      if (
-        action.redshift.sortStyle ||
-        (action.redshift.sortKeys && action.redshift.sortKeys.length)
-      ) {
-        validatePropertiesDefined(action.redshift, ["sortStyle", "sortKeys"]);
-        validatePropertyValueInValues(action.redshift, "sortStyle", Object.values(SortStyleTypes));
-      }
-    }
-
-    // ignored properties in tables
-    if (!!ignoredProps[action.type]) {
-      ignoredProps[action.type].forEach(ignoredProp => {
-        if (objectExistsOrIsNonEmpty(action[ignoredProp])) {
-          const message = `Unused property was detected: "${ignoredProp}". This property is not used for tables with type "${action.type}" and will be ignored.`;
-          validationErrors.push(dataform.ValidationError.create({ message, actionName }));
-        }
-      });
-    }
-  });
-
-  const compilationErrors =
-    compiledGraph.graphErrors && compiledGraph.graphErrors.compilationErrors
-      ? compiledGraph.graphErrors.compilationErrors
-      : [];
-
-  return dataform.GraphErrors.create({ validationErrors, compilationErrors });
-}
-
-export function flatten<T>(nestedArray: T[][]) {
-  return nestedArray.reduce((previousValue: T[], currentValue: T[]) => {
-    return previousValue.concat(currentValue);
-  }, []);
-}
-
-export function isResolvable(res: any) {
-  return typeof res === "string" || (!!res.schema && !!res.name);
+export function resolvableAsTarget(resolvable: Resolvable): dataform.ITarget {
+  if (typeof resolvable === "string") {
+    return {
+      name: resolvable
+    };
+  }
+  return resolvable;
 }
 
 export function stringifyResolvable(res: Resolvable) {
-  return typeof res === "string" ? res : `${res.schema}.${res.name}`;
+  return typeof res === "string" ? res : JSON.stringify(res);
 }
 
 export function ambiguousActionNameMsg(
@@ -233,4 +161,88 @@ export function ambiguousActionNameMsg(
   return `Ambiguous Action name: ${stringifyResolvable(
     act
   )}. Did you mean one of: ${allActNames.join(", ")}.`;
+}
+
+export function target(
+  adapter: adapters.IAdapter,
+  config: dataform.IProjectConfig,
+  name: string,
+  schema?: string,
+  database?: string
+): dataform.ITarget {
+  schema = schema || config.defaultSchema;
+  database = database || config.defaultDatabase;
+  return dataform.Target.create({
+    name: adapter.normalizeIdentifier(name),
+    schema: !!schema ? adapter.normalizeIdentifier(schema || config.defaultSchema) : undefined,
+    database: !!database ? adapter.normalizeIdentifier(database) : undefined
+  });
+}
+
+export function setNameAndTarget(
+  session: Session,
+  action: IActionProto,
+  name: string,
+  overrideSchema?: string,
+  overrideDatabase?: string
+) {
+  action.target = target(session.adapter(), session.config, name, overrideSchema, overrideDatabase);
+  action.canonicalTarget = target(
+    session.adapter(),
+    session.canonicalConfig,
+    name,
+    overrideSchema,
+    overrideDatabase
+  );
+}
+
+/**
+ * Checks that the given list of keys completely covers all supported keys in the given interface.
+ */
+export function strictKeysOf<T>() {
+  return <U extends Array<keyof T>>(
+    array: U & ([keyof T] extends [U[number]] ? unknown : Array<["Needs to be all of", T]>)
+  ) => array;
+}
+
+/**
+ * Will throw an error if the provided object contains any properties that aren't in the provided list.
+ */
+export function checkExcessProperties<T>(
+  reportError: (e: Error) => void,
+  object: T,
+  supportedProperties: string[],
+  name?: string
+) {
+  const extraProperties = Object.keys(object).filter(
+    key => !(supportedProperties as string[]).includes(key)
+  );
+  if (extraProperties.length > 0) {
+    reportError(
+      new Error(
+        `Unexpected property "${extraProperties[0]}"${
+          !!name ? ` in ${name}` : ""
+        }. Supported properties are: ${JSON.stringify(supportedProperties)}`
+      )
+    );
+  }
+}
+
+export function validateQueryString(session: Session, query: string, filename: string) {
+  if (query?.trim().slice(-1) === ";") {
+    session.compileError(
+      new Error(
+        "Semi-colons are not allowed at the end of SQL statements."
+        // This can break the statement because of appended adapter specific SQL.
+      ),
+      filename
+    );
+  }
+}
+
+export function throwIfInvalid<T>(proto: T, verify: (proto: T) => string) {
+  const verifyError = verify(proto);
+  if (verifyError) {
+    throw new Error(verifyError);
+  }
 }

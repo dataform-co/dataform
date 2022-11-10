@@ -1,8 +1,10 @@
-import { CancellablePromise } from "@dataform/api/utils/cancellable_promise";
 import { expect } from "chai";
 
-describe("cancellable_promise", () => {
-  it("cancel is called", () => {
+import { CancellablePromise } from "df/api/utils/cancellable_promise";
+import { suite, test } from "df/testing";
+
+suite("cancellable_promise", () => {
+  test("cancel is called", () => {
     let wasCancelled = false;
     const promise = new CancellablePromise((resolve, reject, onCancel) => {
       onCancel(() => {
@@ -10,10 +12,10 @@ describe("cancellable_promise", () => {
       });
     });
     promise.cancel();
-    expect(wasCancelled).is.true;
+    expect(wasCancelled).equals(true);
   });
 
-  it("cancel called early", async () => {
+  test("cancel called early", async () => {
     let wasCancelled = false;
     const promise = new CancellablePromise((resolve, reject, onCancel) => {
       setTimeout(
@@ -27,10 +29,10 @@ describe("cancellable_promise", () => {
     });
     promise.cancel();
     await promise;
-    expect(wasCancelled).is.true;
+    expect(wasCancelled).equals(true);
   });
 
-  it("resolves", async () => {
+  test("resolves", async () => {
     const result = await new CancellablePromise<string>((resolve, reject, onCancel) => {
       resolve("resolved");
     });

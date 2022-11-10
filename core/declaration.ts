@@ -1,18 +1,43 @@
-import { IColumnsDescriptor, mapToColumnProtoArray, Session } from "@dataform/core/session";
-import { dataform } from "@dataform/protos";
+import { ColumnDescriptors } from "df/core/column_descriptors";
+import {
+  IActionConfig,
+  IColumnsDescriptor,
+  IDocumentableConfig,
+  INamedConfig,
+  ITargetableConfig
+} from "df/core/common";
+import { Session } from "df/core/session";
+import { checkExcessProperties, strictKeysOf } from "df/core/utils";
+import { dataform } from "df/protos/ts";
+/**
+ * Configuration options for `declaration` action types.
+ */
+export interface IDeclarationConfig extends IDocumentableConfig, INamedConfig, ITargetableConfig {}
 
-export interface DConfig {
-  description?: string;
-  columns?: IColumnsDescriptor;
-  schema?: string;
-}
+export const IDeclarationConfigProperties = strictKeysOf<IDeclarationConfig>()([
+  "columns",
+  "database",
+  "description",
+  "name",
+  "schema",
+  "type"
+]);
 
+/**
+ * @hidden
+ */
 export class Declaration {
   public proto: dataform.IDeclaration = dataform.Declaration.create();
 
   public session: Session;
 
-  public config(config: DConfig) {
+  public config(config: IDeclarationConfig) {
+    checkExcessProperties(
+      (e: Error) => this.session.compileError(e),
+      config,
+      IDeclarationConfigProperties,
+      "declaration config"
+    );
     if (config.description) {
       this.description(config.description);
     }
@@ -34,7 +59,10 @@ export class Declaration {
     if (!this.proto.actionDescriptor) {
       this.proto.actionDescriptor = {};
     }
-    this.proto.actionDescriptor.columns = mapToColumnProtoArray(columns);
+    this.proto.actionDescriptor.columns = ColumnDescriptors.mapToColumnProtoArray(
+      columns,
+      (e: Error) => this.session.compileError(e)
+    );
     return this;
   }
 

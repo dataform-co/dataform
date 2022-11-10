@@ -1,38 +1,32 @@
 package(default_visibility = ["//visibility:public"])
 
-load("@npm_bazel_typescript//:index.bzl", "ts_library")
+load("//tools:ts_library.bzl", "ts_library")
 
 ts_library(
     name = "cli",
     srcs = glob(["**/*.ts"]),
-    module_name = "@dataform/cli",
     deps = [
         "//api",
         "//core",
-        "//protos",
+        "//protos:ts",
+        "//sqlx",
+        "@npm//@types/analytics-node",
         "@npm//@types/glob",
         "@npm//@types/long",
         "@npm//@types/node",
         "@npm//@types/readline-sync",
+        "@npm//@types/uuid",
         "@npm//@types/yargs",
+        "@npm//analytics-node",
         "@npm//chokidar",
         "@npm//glob",
+        "@npm//parse-duration",
+        "@npm//presto-client",
         "@npm//readline-sync",
         "@npm//untildify",
+        "@npm//uuid",
         "@npm//yargs",
     ],
-)
-
-load("@build_bazel_rules_nodejs//:defs.bzl", "nodejs_binary")
-
-nodejs_binary(
-    name = "bin",
-    bootstrap = ["source-map-support/register"],
-    data = [
-        ":cli",
-        "@npm//source-map-support",
-    ],
-    entry_point = ":index.ts",
 )
 
 load("//tools/common:copy.bzl", "copy_file")
@@ -43,16 +37,36 @@ copy_file(
     out = "readme.md",
 )
 
-load("//tools/npm:package.bzl", "dataform_npm_package")
+load("//:version.bzl", "DF_VERSION")
+load("@io_bazel_rules_docker//docker/util:run.bzl", "container_run_and_commit")
 
-dataform_npm_package(
-    name = "package",
-    package_layers = [
-        "//:common.package.json",
-        "cli.package.json",
+container_run_and_commit(
+    name = "image_with_dataform_cli",
+    commands = [
+        "npm i -g @dataform/cli@{dataform_version}".format(dataform_version = DF_VERSION),
     ],
-    deps = [
-        ":cli",
-        ":readme",
+    image = "@nodejs_base//image",
+    tags = [
+        "no-remote",
     ],
+)
+
+load("@io_bazel_rules_docker//container:container.bzl", "container_image", "container_push")
+
+container_image(
+    name = "image_with_dataform_entrypoint",
+    base = ":image_with_dataform_cli_commit.tar",
+    entrypoint = ["dataform"],
+    tags = [
+        "no-remote",
+    ],
+)
+
+container_push(
+    name = "push",
+    format = "Docker",
+    image = ":image_with_dataform_entrypoint",
+    registry = "docker.io",
+    repository = "dataformco/dataform",
+    tag = DF_VERSION,
 )

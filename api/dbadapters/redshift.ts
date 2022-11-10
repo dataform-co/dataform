@@ -1,154 +1,263 @@
-import { Credentials } from "@dataform/api/commands/credentials";
-import { IDbAdapter } from "@dataform/api/dbadapters/index";
-import { dataform } from "@dataform/protos";
 import * as pg from "pg";
-import * as Cursor from "pg-cursor";
-import * as PromisePool from "promise-pool-executor";
 
-interface ICursor {
-  read: (rowCount: number, callback: (err: Error, rows: any[]) => void) => void;
-  close: (callback: (err: Error) => void) => void;
+import { Credentials } from "df/api/commands/credentials";
+import { IDbAdapter, IDbClient } from "df/api/dbadapters/index";
+import { SSHTunnelProxy } from "df/api/ssh_tunnel_proxy";
+import { parseRedshiftEvalError } from "df/api/utils/error_parsing";
+import { convertFieldType, PgPoolExecutor } from "df/api/utils/postgres";
+import { ErrorWithCause } from "df/common/errors/errors";
+import { collectEvaluationQueries, QueryOrAction } from "df/core/adapters";
+import { dataform } from "df/protos/ts";
+
+interface IRedshiftAdapterOptions {
+  sshTunnel?: SSHTunnelProxy;
 }
 
 export class RedshiftDbAdapter implements IDbAdapter {
-  private credentials: dataform.IJDBC;
-  private pool: PromisePool.PromisePoolExecutor;
-
-  constructor(credentials: Credentials) {
-    this.credentials = credentials as dataform.IJDBC;
-    // Limit DB client concurrency.
-    this.pool = new PromisePool.PromisePoolExecutor({
-      concurrencyLimit: 10,
-      frequencyWindow: 1000,
-      frequencyLimit: 10
-    });
+  public static async create(
+    credentials: Credentials,
+    options?: { concurrencyLimit?: number; disableSslForTestsOnly?: boolean }
+  ) {
+    const jdbcCredentials = credentials as dataform.IJDBC;
+    const baseClientConfig: Partial<pg.ClientConfig> = {
+      user: jdbcCredentials.username,
+      password: jdbcCredentials.password,
+      database: jdbcCredentials.databaseName,
+      ssl: options?.disableSslForTestsOnly ? false : { rejectUnauthorized: false }
+    };
+    if (jdbcCredentials.sshTunnel) {
+      const sshTunnel = await SSHTunnelProxy.create(jdbcCredentials.sshTunnel, {
+        host: jdbcCredentials.host,
+        port: jdbcCredentials.port
+      });
+      const queryExecutor = new PgPoolExecutor(
+        {
+          ...baseClientConfig,
+          host: "127.0.0.1",
+          port: sshTunnel.localPort
+        },
+        options
+      );
+      return new RedshiftDbAdapter(queryExecutor, { sshTunnel });
+    } else {
+      const clientConfig: pg.ClientConfig = {
+        ...baseClientConfig,
+        host: jdbcCredentials.host,
+        port: jdbcCredentials.port
+      };
+      const queryExecutor = new PgPoolExecutor(clientConfig, options);
+      return new RedshiftDbAdapter(queryExecutor, {});
+    }
   }
+
+  private constructor(
+    private readonly queryExecutor: PgPoolExecutor,
+    private readonly options: IRedshiftAdapterOptions
+  ) {}
 
   public async execute(
     statement: string,
     options: {
-      maxResults?: number;
-    } = { maxResults: 1000 }
+      params?: any[];
+      onCancel?: (handleCancel: () => void) => void;
+      rowLimit?: number;
+      byteLimit?: number;
+      includeQueryInError?: boolean;
+    } = { rowLimit: 1000, byteLimit: 1024 * 1024 }
   ) {
-    return this.pool
-      .addSingleTask({
-        generator: () => this.executeInsidePool(statement, options)
-      })
-      .promise();
+    return await this.withClientLock(executor => executor.execute(statement, options));
   }
 
-  public async evaluate(statement: string) {
-    await this.execute(`explain ${statement}`);
+  public async withClientLock<T>(callback: (client: IDbClient) => Promise<T>) {
+    return await this.queryExecutor.withClientLock(client =>
+      callback({
+        execute: async (
+          statement: string,
+          options: {
+            params?: any[];
+            rowLimit?: number;
+            byteLimit?: number;
+            includeQueryInError?: boolean;
+          } = { rowLimit: 1000, byteLimit: 1024 * 1024 }
+        ) => {
+          try {
+            const rows = await client.execute(statement, options);
+            return { rows, metadata: {} };
+          } catch (e) {
+            if (options.includeQueryInError) {
+              throw new Error(`Error encountered while running "${statement}": ${e.message}`);
+            }
+            throw new ErrorWithCause(`Error executing redshift query: ${e.message}`, e);
+          }
+        }
+      })
+    );
+  }
+
+  public async evaluate(queryOrAction: QueryOrAction) {
+    const validationQueries = collectEvaluationQueries(queryOrAction, false, (query: string) =>
+      !!query ? `explain ${query}` : ""
+    ).map((validationQuery, index) => ({ index, validationQuery }));
+    const validationQueriesWithoutWrappers = collectEvaluationQueries(queryOrAction, false);
+
+    const queryEvaluations = new Array<dataform.IQueryEvaluation>();
+    for (const { index, validationQuery } of validationQueries) {
+      let evaluationResponse: dataform.IQueryEvaluation = {
+        status: dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
+      };
+      try {
+        await this.execute(validationQuery.query);
+      } catch (e) {
+        evaluationResponse = {
+          status: dataform.QueryEvaluation.QueryEvaluationStatus.FAILURE,
+          error: parseRedshiftEvalError(validationQuery.query, e)
+        };
+      }
+      queryEvaluations.push(
+        dataform.QueryEvaluation.create({
+          ...evaluationResponse,
+          incremental: validationQuery.incremental,
+          query: validationQueriesWithoutWrappers[index].query
+        })
+      );
+    }
+    return queryEvaluations;
   }
 
   public async tables(): Promise<dataform.ITarget[]> {
-    const rows = await this.execute(
+    const queryResult = await this.execute(
       `select table_name, table_schema
-     from information_schema.tables
+     from svv_tables
      where table_schema != 'information_schema'
        and table_schema != 'pg_catalog'
-       and table_schema != 'pg_internal'
-       union select tablename as table_name, schemaname as table_schema from svv_external_tables`
+       and table_schema != 'pg_internal'`,
+      { rowLimit: 10000, includeQueryInError: true }
     );
+    const { rows } = queryResult;
     return rows.map(row => ({
       schema: row.table_schema,
       name: row.table_name
     }));
   }
 
+  public async search(
+    searchText: string,
+    options: { limit: number } = { limit: 1000 }
+  ): Promise<dataform.ITableMetadata[]> {
+    const results = await this.execute(
+      `select tables.table_schema as table_schema, tables.table_name as table_name
+       from svv_tables as tables
+       left join svv_columns as columns on tables.table_schema = columns.table_schema and tables.table_name = columns.table_name
+       where tables.table_schema ilike $1 or tables.table_name ilike $1 or tables.remarks ilike $1
+         or columns.column_name ilike $1 or columns.remarks ilike $1
+       group by 1, 2`,
+      {
+        params: [`%${searchText}%`],
+        rowLimit: options.limit
+      }
+    );
+    return await Promise.all(
+      results.rows.map(row =>
+        this.table({
+          schema: row.table_schema,
+          name: row.table_name
+        })
+      )
+    );
+  }
+
   public async table(target: dataform.ITarget): Promise<dataform.ITableMetadata> {
-    const [columnResults, tableResults, externalTableResults] = await Promise.all([
+    const params = [target.schema, target.name];
+    const [tableResults, columnResults] = await Promise.all([
       this.execute(
-        `select column_name, data_type, is_nullable
-       from information_schema.columns
-       where table_schema = '${target.schema}' and table_name = '${target.name}'
-       union
-       select columnname as column_name, external_type as data_type, 'not_available' as is_nullable 
-       from svv_external_columns 
-       where schemaname = '${target.schema}' and tablename = '${target.name}'`
+        `select table_type, remarks from svv_tables where table_schema = $1 and table_name = $2`,
+        { params, includeQueryInError: true }
       ),
       this.execute(
-        `select table_type from information_schema.tables where table_schema = '${target.schema}' and table_name = '${target.name}'`
-      ),
-      this.execute(
-        `select 'TABLE' as table_type from svv_external_tables where schemaname = '${target.schema}' and tablename = '${target.name}'`
+        `select column_name, data_type, is_nullable, remarks
+         from svv_columns
+         where table_schema = $1 and table_name = $2`,
+        { params, includeQueryInError: true }
       )
     ]);
-    const allTableResults = tableResults.concat(externalTableResults);
-    if (allTableResults.length > 0) {
-      // The table exists.
-      return {
-        target,
-        type: allTableResults[0].table_type === "VIEW" ? "view" : "table",
-        fields: columnResults.map(row => ({
-          name: row.column_name,
-          primitive: row.data_type,
-          flags: row.is_nullable && row.is_nullable === "YES" ? ["nullable"] : []
-        }))
-      };
-    } else {
-      throw new Error(`Could not find relation: ${target.schema}.${target.name}`);
+    if (tableResults.rows.length === 0) {
+      return null;
     }
+    return dataform.TableMetadata.create({
+      target,
+      type:
+        tableResults.rows[0].table_type === "VIEW"
+          ? dataform.TableMetadata.Type.VIEW
+          : dataform.TableMetadata.Type.TABLE,
+      fields: columnResults.rows.map(row =>
+        dataform.Field.create({
+          name: row.column_name,
+          primitive: convertFieldType(row.data_type),
+          description: row.remarks
+        })
+      ),
+      description: tableResults.rows[0].remarks
+    });
   }
 
   public async preview(target: dataform.ITarget, limitRows: number = 10): Promise<any[]> {
-    return this.execute(`SELECT * FROM "${target.schema}"."${target.name}" LIMIT ${limitRows}`);
+    const { rows } = await this.execute(
+      `SELECT * FROM "${target.schema}"."${target.name}" LIMIT ${limitRows}`
+    );
+    return rows;
   }
 
-  public async prepareSchema(schema: string): Promise<void> {
-    await this.execute(`create schema if not exists "${schema}"`);
+  public async schemas(): Promise<string[]> {
+    const schemas = await this.execute(`select nspname from pg_namespace`, {
+      includeQueryInError: true
+    });
+    return schemas.rows.map(row => row.nspname);
   }
 
-  private async executeInsidePool(
-    statement: string,
-    options: {
-      maxResults?: number;
-    } = { maxResults: 1000 }
-  ) {
-    const client = new pg.Client({
-      host: this.credentials.host,
-      port: this.credentials.port,
-      user: this.credentials.username,
-      password: this.credentials.password,
-      database: this.credentials.databaseName,
-      ssl: true
-    });
-    client.on("error", err => {
-      console.error("pg.Client client error", err.message, err.stack);
-    });
-    await client.connect();
-    try {
-      if (!options || !options.maxResults) {
-        const result = await client.query(statement);
-        return result.rows;
-      }
-      // If we want to limit the returned results from redshift, we have two options:
-      // (1) use cursors, or (2) use JDBC and configure a fetch size parameter. We use cursors
-      // to avoid the need to run a JVM.
-      // See https://docs.aws.amazon.com/redshift/latest/dg/declare.html for more details.
-      const cursor: ICursor = client.query(new Cursor(statement));
-      return await new Promise<any[]>((resolve, reject) => {
-        // It seems that when requesting one row back exactly, we run into some issues with
-        // the cursor. I've filed a bug (https://github.com/brianc/node-pg-cursor/issues/55),
-        // but setting a minimum of 2 resulting rows seems to do the trick.
-        cursor.read(Math.max(2, options.maxResults), (err, rows) => {
-          if (err) {
-            reject(err);
-            return;
-          }
-          // Close the cursor after reading the first page of results.
-          cursor.close(closeErr => {
-            if (closeErr) {
-              reject(closeErr);
-            } else {
-              // Limit results again, in case we had to increase the limit in the original request.
-              resolve(rows.slice(0, options.maxResults));
-            }
-          });
-        });
-      });
-    } finally {
-      await client.end();
+  public async createSchema(_: string, schema: string): Promise<void> {
+    await this.execute(`create schema if not exists "${schema}"`, { includeQueryInError: true });
+  }
+
+  public async close() {
+    await this.queryExecutor.close();
+    if (this.options.sshTunnel) {
+      await this.options.sshTunnel.close();
     }
+  }
+
+  public async setMetadata(action: dataform.IExecutionAction): Promise<void> {
+    const { target, actionDescriptor, tableType } = action;
+
+    const actualMetadata = await this.table(target);
+
+    const queries: Array<Promise<any>> = [];
+    if (actionDescriptor.description) {
+      queries.push(
+        this.execute(
+          `comment on ${tableType === "view" ? "view" : "table"} "${target.schema}"."${
+            target.name
+          }" is '${actionDescriptor.description.replace(/'/g, "\\'")}'`
+        )
+      );
+    }
+    if (tableType !== "view" && actionDescriptor.columns?.length > 0) {
+      actionDescriptor.columns
+        .filter(
+          column =>
+            column.path.length === 1 &&
+            actualMetadata.fields.some(field => field.name === column.path[0])
+        )
+        .forEach(column => {
+          queries.push(
+            this.execute(
+              `comment on column "${target.schema}"."${target.name}"."${
+                column.path[0]
+              }" is '${column.description.replace(/'/g, "\\'")}'`
+            )
+          );
+        });
+    }
+
+    await Promise.all(queries);
   }
 }

@@ -1,7 +1,8 @@
-import { dataform } from "@dataform/protos";
 import * as fs from "fs";
 import * as path from "path";
-import untildify = require("untildify");
+
+import { dataform } from "df/protos/ts";
+import untildify from "untildify";
 
 export const actuallyResolve = (filePath: string) => path.resolve(untildify(filePath));
 
@@ -12,9 +13,5 @@ export function assertPathExists(checkPath: string) {
 }
 
 export function compiledGraphHasErrors(graph: dataform.ICompiledGraph) {
-  return (
-    graph.graphErrors &&
-    ((graph.graphErrors.compilationErrors && graph.graphErrors.compilationErrors.length > 0) ||
-      (graph.graphErrors.validationErrors && graph.graphErrors.validationErrors.length > 0))
-  );
+  return graph.graphErrors?.compilationErrors?.length > 0;
 }

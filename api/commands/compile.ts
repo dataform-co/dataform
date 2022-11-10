@@ -1,17 +1,26 @@
-import { validate } from "@dataform/core/utils";
-import { dataform } from "@dataform/protos";
-import { ChildProcess, fork } from "child_process";
 import * as fs from "fs";
 import * as path from "path";
-import { util } from "protobufjs";
 
-const validWarehouses = ["bigquery", "postgres", "redshift", "sqldatawarehouse", "snowflake"];
+import { ChildProcess, fork } from "child_process";
+import deepmerge from "deepmerge";
+import { validWarehouses } from "df/api/dbadapters";
+import { coerceAsError, ErrorWithCause } from "df/common/errors/errors";
+import { decode64 } from "df/common/protos";
+import { dataform } from "df/protos/ts";
+
+// Project config properties that are required.
 const mandatoryProps: Array<keyof dataform.IProjectConfig> = ["warehouse", "defaultSchema"];
+
+// Project config properties that require alphanumeric characters, hyphens or underscores.
 const simpleCheckProps: Array<keyof dataform.IProjectConfig> = [
   "assertionSchema",
+  "databaseSuffix",
   "schemaSuffix",
+  "tablePrefix",
   "defaultSchema"
 ];
+
+export class CompilationTimeoutError extends Error {}
 
 export async function compile(
   compileConfig: dataform.ICompileConfig = {}
@@ -19,43 +28,41 @@ export async function compile(
   // Resolve the path in case it hasn't been resolved already.
   path.resolve(compileConfig.projectDir);
 
-  // Create an empty projectConfigOverride if not set.
-  compileConfig = { projectConfigOverride: {}, ...compileConfig };
-
-  // Schema overrides field can be set in two places, projectConfigOverride.schemaSuffix takes precedent.
-  if (compileConfig.schemaSuffixOverride) {
-    compileConfig.projectConfigOverride = {
-      schemaSuffix: compileConfig.schemaSuffixOverride,
-      ...compileConfig.projectConfigOverride
-    };
-  }
-
   try {
     // check dataformJson is valid before we try to compile
     const dataformJson = fs.readFileSync(`${compileConfig.projectDir}/dataform.json`, "utf8");
     const projectConfig = JSON.parse(dataformJson);
-    checkDataformJsonValidity({
-      ...projectConfig,
-      ...compileConfig.projectConfigOverride
-    });
+    checkDataformJsonValidity(deepmerge(projectConfig, compileConfig.projectConfigOverride || {}));
   } catch (e) {
-    throw new Error(`Compile Error: ProjectConfig ('dataform.json') is invalid. ${e}`);
+    throw new ErrorWithCause(
+      `Compilation failed. ProjectConfig ('dataform.json') is invalid: ${e.message}`,
+      e
+    );
   }
 
-  const encodedGraphInBase64 = await CompileChildProcess.forkProcess().compile(compileConfig);
-  const encodedGraphBytes = new Uint8Array(util.base64.length(encodedGraphInBase64));
-  util.base64.decode(encodedGraphInBase64, encodedGraphBytes, 0);
-  const compiledGraph = dataform.CompiledGraph.decode(encodedGraphBytes);
-  return dataform.CompiledGraph.create({
-    ...compiledGraph,
-    graphErrors: validate(compiledGraph)
-  });
+  const result = await CompileChildProcess.forkProcess().compile(compileConfig);
+
+  if (compileConfig.useMain) {
+    const decodedResult = decode64(dataform.CoreExecutionResponse, result);
+    return dataform.CompiledGraph.create(decodedResult.compile.compiledGraph);
+  }
+
+  return decode64(dataform.CompiledGraph, result);
 }
 
 export class CompileChildProcess {
   public static forkProcess() {
-    // Run the bin_loader script if inside bazel, otherwise don't.
-    const forkScript = process.env.BAZEL_TARGET ? "../vm/compile_bin_loader" : "../vm/compile";
+    // Runs the worker_bundle script we generate for the package (see packages/@dataform/cli/BUILD)
+    // if it exists, otherwise run the bazel compile loader target.
+    const findForkScript = () => {
+      try {
+        const workerBundlePath = require.resolve("./worker_bundle");
+        return workerBundlePath;
+      } catch (e) {
+        return require.resolve("../../sandbox/vm/compile_loader");
+      }
+    };
+    const forkScript = findForkScript();
     return new CompileChildProcess(
       fork(require.resolve(forkScript), [], { stdio: [0, 1, 2, "ipc", "pipe"] })
     );
@@ -68,14 +75,21 @@ export class CompileChildProcess {
 
   public async compile(compileConfig: dataform.ICompileConfig) {
     const compileInChildProcess = new Promise<string>(async (resolve, reject) => {
-      // Handle errors returned by the child process.
-      this.childProcess.on("message", (e: Error) => reject(e));
+      this.childProcess.on("error", (e: Error) => reject(coerceAsError(e)));
 
-      // Handle UTF-8 string chunks returned by the child process.
-      const pipe = this.childProcess.stdio[4];
-      const chunks: Buffer[] = [];
-      pipe.on("data", (chunk: Buffer) => chunks.push(chunk));
-      pipe.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
+      this.childProcess.on("message", (messageOrError: string | Error) => {
+        if (typeof messageOrError === "string") {
+          resolve(messageOrError);
+          return;
+        }
+        reject(coerceAsError(messageOrError));
+      });
+
+      this.childProcess.on("close", exitCode => {
+        if (exitCode !== 0) {
+          reject(new Error(`Compilation child process exited with exit code ${exitCode}.`));
+        }
+      });
 
       // Trigger the child process to start compiling.
       this.childProcess.send(compileConfig);
@@ -83,14 +97,17 @@ export class CompileChildProcess {
     let timer;
     const timeout = new Promise(
       (resolve, reject) =>
-        (timer = setTimeout(() => reject(new Error("Compilation timed out")), 500000))
+        (timer = setTimeout(
+          () => reject(new CompilationTimeoutError("Compilation timed out")),
+          compileConfig.timeoutMillis || 5000
+        ))
     );
     try {
       await Promise.race([timeout, compileInChildProcess]);
       return await compileInChildProcess;
     } finally {
       // if (!this.childProcess.killed) {
-      //   this.childProcess.kill();
+      //   this.childProcess.kill("SIGKILL");
       // }
       if (timer) {
         clearTimeout(timer);
@@ -99,7 +116,7 @@ export class CompileChildProcess {
   }
 }
 
-export const checkDataformJsonValidity = (dataformJsonParsed: { [prop: string]: string }) => {
+export const checkDataformJsonValidity = (dataformJsonParsed: { [prop: string]: any }) => {
   const invalidWarehouseProp = () => {
     return dataformJsonParsed.warehouse && !validWarehouses.includes(dataformJsonParsed.warehouse)
       ? `Invalid value on property warehouse: ${
