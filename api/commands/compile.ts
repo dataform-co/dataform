@@ -1,5 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
+import * as semver from "semver";
 
 import { ChildProcess, fork } from "child_process";
 import deepmerge from "deepmerge";
@@ -38,6 +39,18 @@ export async function compile(
       `Compilation failed. ProjectConfig ('dataform.json') is invalid: ${e.message}`,
       e
     );
+  }
+
+  if (compileConfig.useMain === null || compileConfig.useMain === undefined) {
+    try {
+      const packageJson = JSON.parse(
+        fs.readFileSync(`${compileConfig.projectDir}/package.json`, "utf8")
+      );
+      const dataformCoreVersion = packageJson.dependencies["@dataform/core"];
+      compileConfig.useMain = semver.gte(dataformCoreVersion, "2.0.4");
+    } catch (e) {
+      // Silently catch any thrown Error. Do not attempt to use `main` compilation.
+    }
   }
 
   const result = await CompileChildProcess.forkProcess().compile(compileConfig);
