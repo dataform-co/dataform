@@ -47,7 +47,7 @@ export async function compile(
         fs.readFileSync(`${compileConfig.projectDir}/package.json`, "utf8")
       );
       const dataformCoreVersion = packageJson.dependencies["@dataform/core"];
-      compileConfig.useMain = semver.gte(dataformCoreVersion, "2.0.4");
+      compileConfig.useMain = semver.subset(dataformCoreVersion, ">=2.0.4");
     } catch (e) {
       // Silently catch any thrown Error. Do not attempt to use `main` compilation.
     }
