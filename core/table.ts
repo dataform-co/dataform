@@ -169,7 +169,6 @@ export interface IBigQueryOptions {
    */
   labels?: { [name: string]: string };
 
-
   /**
    * This setting specifies how long BigQuery keeps the data in each partition. The setting applies to all partitions in the table,
    * but is calculated independently for each partition based on the partition time.
@@ -199,7 +198,15 @@ export interface IBigQueryOptions {
 }
 
 const IBigQueryOptionsProperties = () =>
-  strictKeysOf<IBigQueryOptions>()(["partitionBy", "clusterBy", "updatePartitionFilter", "labels", "partitionExpirationDays", "requirePartitionFilter", "additionalOptions"]);
+  strictKeysOf<IBigQueryOptions>()([
+    "partitionBy",
+    "clusterBy",
+    "updatePartitionFilter",
+    "labels",
+    "partitionExpirationDays",
+    "requirePartitionFilter",
+    "additionalOptions"
+  ]);
 
 /**
  * Options for creating tables within Presto projects.
@@ -597,6 +604,8 @@ export class Table {
     newTags.forEach(t => {
       this.proto.tags.push(t);
     });
+    this.uniqueKeyAssertions.forEach(assertion => assertion.tags(value));
+    this.rowConditionsAssertion?.tags(value);
     return this;
   }
 
@@ -666,6 +675,9 @@ export class Table {
           `${this.proto.target.schema}_${this.proto.target.name}_assertions_uniqueKey_${index}`,
           ctx => this.session.adapter().indexAssertion(ctx.ref(this.proto.target), uniqueKey)
         );
+        if (this.proto.tags) {
+          uniqueKeyAssertion.tags(this.proto.tags);
+        }
         uniqueKeyAssertion.proto.parentAction = this.proto.target;
         if (this.proto.disabled) {
           uniqueKeyAssertion.disabled();
@@ -690,6 +702,9 @@ export class Table {
       this.rowConditionsAssertion.proto.parentAction = this.proto.target;
       if (this.proto.disabled) {
         this.rowConditionsAssertion.disabled();
+      }
+      if (this.proto.tags) {
+        this.rowConditionsAssertion.tags(this.proto.tags);
       }
     }
     return this;
