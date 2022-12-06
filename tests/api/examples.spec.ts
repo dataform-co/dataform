@@ -88,8 +88,7 @@ suite("examples", () => {
               },
               {
                 fileName: "definitions/has_compile_errors/table_with_materialized.sqlx",
-                message:
-                  "The 'materialized' option is only valid for Snowflake and BigQuery views"
+                message: "The 'materialized' option is only valid for Snowflake and BigQuery views"
               },
               {
                 fileName: "definitions/has_compile_errors/view_without_hermetic.sqlx",
@@ -322,7 +321,7 @@ suite("examples", () => {
               })
             ]);
             expect(exampleView.tags).to.eql([]);
-            
+
             // Check materialized view
             const exampleMaterializedView = graph.tables.find(
               (t: dataform.ITable) =>
@@ -340,8 +339,7 @@ suite("examples", () => {
                 databaseWithSuffix("tada-analytics"),
                 schemaWithSuffix("df_integration_test"),
                 "sample_data"
-              )}\`\n` +
-              `group by 1`
+              )}\`\n` + `group by 1`
             );
             expect(exampleMaterializedView.target).deep.equals(
               dataform.Target.create({
@@ -444,6 +442,7 @@ suite("examples", () => {
                 name: "example_table_with_tags"
               })
             ]);
+            expect(exampleTableWithTagsUniqueKeyAssertion.tags).eql(["tag1", "tag2", "tag3"]);
 
             // Check table-with-tags's row conditions assertion
             const exampleTableWithTagsRowConditionsAssertion = graph.assertions.filter(

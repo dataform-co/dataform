@@ -271,9 +271,9 @@ export class Session {
             `${this.config.defaultSchema}${this.getSchemaSuffixWithUnderscore()}`
           ),
           this.config.defaultDatabase &&
-          this.adapter().normalizeIdentifier(
-            `${this.config.defaultDatabase}${this.getDatabaseSuffixWithUnderscore()}`
-          )
+            this.adapter().normalizeIdentifier(
+              `${this.config.defaultDatabase}${this.getDatabaseSuffixWithUnderscore()}`
+            )
         )
       );
     }
@@ -284,9 +284,9 @@ export class Session {
         this.adapter().normalizeIdentifier(`${this.getTablePrefixWithUnderscore()}${ref.name}`),
         this.adapter().normalizeIdentifier(`${ref.schema}${this.getSchemaSuffixWithUnderscore()}`),
         ref.database &&
-        this.adapter().normalizeIdentifier(
-          `${ref.database}${this.getDatabaseSuffixWithUnderscore()}`
-        )
+          this.adapter().normalizeIdentifier(
+            `${ref.database}${this.getDatabaseSuffixWithUnderscore()}`
+          )
       )
     );
   }
@@ -325,12 +325,15 @@ export class Session {
     return newTable;
   }
 
-  public assert(name: string, query?: AContextable<string>): Assertion {
+  public assert(name: string, query?: AContextable<string>, tags?: string | string[]): Assertion {
     const assertion = new Assertion();
     assertion.session = this;
     utils.setNameAndTarget(this, assertion.proto, name, this.config.assertionSchema);
     if (query) {
       assertion.query(query);
+    }
+    if (tags) {
+      assertion.tags(tags);
     }
     assertion.proto.fileName = utils.getCallerFile(this.rootDir);
     this.actions.push(assertion);
@@ -827,14 +830,14 @@ export class Session {
     function getNonUniqueTargets(targets: dataform.ITarget[]): StringifiedSet<dataform.ITarget> {
       const allTargets = new StringifiedSet<dataform.ITarget>(targetStringifier);
       const nonUniqueTargets = new StringifiedSet<dataform.ITarget>(targetStringifier);
-  
+
       targets.forEach(target => {
         if (allTargets.has(target)) {
           nonUniqueTargets.add(target);
         }
         allTargets.add(target);
       });
-  
+
       return nonUniqueTargets;
     }
 
@@ -846,11 +849,15 @@ export class Session {
     );
 
     const nonUniqueActionsTargets = getNonUniqueTargets(actions.map(action => action.target));
-    const nonUniqueActionsCanonicalTargets = getNonUniqueTargets(actions.map(action => action.canonicalTarget));
+    const nonUniqueActionsCanonicalTargets = getNonUniqueTargets(
+      actions.map(action => action.canonicalTarget)
+    );
 
     const isUniqueAction = (action: IActionProto) => {
       const isNonUniqueTarget = nonUniqueActionsTargets.has(action.target);
-      const isNonUniqueCanonicalTarget = nonUniqueActionsCanonicalTargets.has(action.canonicalTarget);
+      const isNonUniqueCanonicalTarget = nonUniqueActionsCanonicalTargets.has(
+        action.canonicalTarget
+      );
 
       if (isNonUniqueTarget) {
         this.compileError(
@@ -874,7 +881,7 @@ export class Session {
       }
 
       return !isNonUniqueTarget && !isNonUniqueCanonicalTarget;
-    }
+    };
 
     compiledGraph.tables = compiledGraph.tables.filter(isUniqueAction);
     compiledGraph.operations = compiledGraph.operations.filter(isUniqueAction);

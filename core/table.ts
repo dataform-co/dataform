@@ -169,7 +169,6 @@ export interface IBigQueryOptions {
    */
   labels?: { [name: string]: string };
 
-
   /**
    * This setting specifies how long BigQuery keeps the data in each partition. The setting applies to all partitions in the table,
    * but is calculated independently for each partition based on the partition time.
@@ -199,7 +198,15 @@ export interface IBigQueryOptions {
 }
 
 const IBigQueryOptionsProperties = () =>
-  strictKeysOf<IBigQueryOptions>()(["partitionBy", "clusterBy", "updatePartitionFilter", "labels", "partitionExpirationDays", "requirePartitionFilter", "additionalOptions"]);
+  strictKeysOf<IBigQueryOptions>()([
+    "partitionBy",
+    "clusterBy",
+    "updatePartitionFilter",
+    "labels",
+    "partitionExpirationDays",
+    "requirePartitionFilter",
+    "additionalOptions"
+  ]);
 
 /**
  * Options for creating tables within Presto projects.
@@ -664,7 +671,8 @@ export class Table {
       uniqueKeys.forEach((uniqueKey, index) => {
         const uniqueKeyAssertion = this.session.assert(
           `${this.proto.target.schema}_${this.proto.target.name}_assertions_uniqueKey_${index}`,
-          ctx => this.session.adapter().indexAssertion(ctx.ref(this.proto.target), uniqueKey)
+          ctx => this.session.adapter().indexAssertion(ctx.ref(this.proto.target), uniqueKey),
+          this.proto.tags
         );
         uniqueKeyAssertion.proto.parentAction = this.proto.target;
         if (this.proto.disabled) {
@@ -685,7 +693,8 @@ export class Table {
         ctx =>
           this.session
             .adapter()
-            .rowConditionsAssertion(ctx.ref(this.proto.target), mergedRowConditions)
+            .rowConditionsAssertion(ctx.ref(this.proto.target), mergedRowConditions),
+        this.proto.tags
       );
       this.rowConditionsAssertion.proto.parentAction = this.proto.target;
       if (this.proto.disabled) {
