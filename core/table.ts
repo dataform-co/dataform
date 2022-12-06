@@ -604,6 +604,8 @@ export class Table {
     newTags.forEach(t => {
       this.proto.tags.push(t);
     });
+    this.uniqueKeyAssertions.forEach(assertion => assertion.tags(value));
+    this.rowConditionsAssertion?.tags(value);
     return this;
   }
 
@@ -671,9 +673,11 @@ export class Table {
       uniqueKeys.forEach((uniqueKey, index) => {
         const uniqueKeyAssertion = this.session.assert(
           `${this.proto.target.schema}_${this.proto.target.name}_assertions_uniqueKey_${index}`,
-          ctx => this.session.adapter().indexAssertion(ctx.ref(this.proto.target), uniqueKey),
-          this.proto.tags
+          ctx => this.session.adapter().indexAssertion(ctx.ref(this.proto.target), uniqueKey)
         );
+        if (this.proto.tags) {
+          uniqueKeyAssertion.tags(this.proto.tags);
+        }
         uniqueKeyAssertion.proto.parentAction = this.proto.target;
         if (this.proto.disabled) {
           uniqueKeyAssertion.disabled();
@@ -693,12 +697,14 @@ export class Table {
         ctx =>
           this.session
             .adapter()
-            .rowConditionsAssertion(ctx.ref(this.proto.target), mergedRowConditions),
-        this.proto.tags
+            .rowConditionsAssertion(ctx.ref(this.proto.target), mergedRowConditions)
       );
       this.rowConditionsAssertion.proto.parentAction = this.proto.target;
       if (this.proto.disabled) {
         this.rowConditionsAssertion.disabled();
+      }
+      if (this.proto.tags) {
+        this.rowConditionsAssertion.tags(this.proto.tags);
       }
     }
     return this;

@@ -325,15 +325,12 @@ export class Session {
     return newTable;
   }
 
-  public assert(name: string, query?: AContextable<string>, tags?: string | string[]): Assertion {
+  public assert(name: string, query?: AContextable<string>): Assertion {
     const assertion = new Assertion();
     assertion.session = this;
     utils.setNameAndTarget(this, assertion.proto, name, this.config.assertionSchema);
     if (query) {
       assertion.query(query);
-    }
-    if (tags) {
-      assertion.tags(tags);
     }
     assertion.proto.fileName = utils.getCallerFile(this.rootDir);
     this.actions.push(assertion);
