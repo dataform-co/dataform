@@ -1,6 +1,6 @@
 config { type: "incremental", protected: true, hermetic: false }
 
-select CURRENT_TIMESTAMP() as ts
+select current_timestamp() as ts
 
 incremental_where {
     ts > (select max(ts) from ${self()}) or (select max(ts) from ${self()}) is null

@@ -1,7 +1,7 @@
 config { type: "incremental", protected: true, hermetic: false }
 
 select * from (
-    select CURRENT_TIMESTAMP() as ts
+    select current_timestamp() as ts
 )
 
 ${when(incremental(), `where ts > (select max(ts) from ${self()}) or (select max(ts) from ${self()}) is null`)}
