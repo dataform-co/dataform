@@ -1,7 +1,5 @@
 config { type: "incremental", protected: true, hermetic: false }
 
-js {  const sql = require("@dataform/sql"); }
-
 select * from (
     select CURRENT_TIMESTAMP() as ts
 )
