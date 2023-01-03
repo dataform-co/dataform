@@ -13,6 +13,5 @@ node_modules(
     name = "node_modules",
     deps = [
         "//packages/@dataform/core:package_tar",
-        "//packages/@dataform/sql:package_tar",
     ],
 )
