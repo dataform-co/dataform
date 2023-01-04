@@ -175,33 +175,6 @@ container_pull(
     repository = "trinodb/trino",
 )
 
-# Fetch Redis source (binaries are not distributed).
-# Urls and hashes come from here: https://github.com/redis/redis-hashes/blob/master/README.
-http_file(
-    name = "redis-source",
-    sha256 = "12ad49b163af5ef39466e8d2f7d212a58172116e5b441eebecb4e6ca22363d94",
-    urls = ["http://download.redis.io/releases/redis-6.0.6.tar.gz"],
-)
-
-# Sass requirements.
-http_archive(
-    name = "io_bazel_rules_sass",
-    sha256 = "77e241148f26d5dbb98f96fe0029d8f221c6cb75edbb83e781e08ac7f5322c5f",
-    strip_prefix = "rules_sass-1.24.0",
-    url = "https://github.com/bazelbuild/rules_sass/archive/1.24.0.zip",
-)
-
-# Fetch required transitive dependencies. This is an optional step because you
-# can always fetch the required NodeJS transitive dependency on your own.
-load("@io_bazel_rules_sass//:package.bzl", "rules_sass_dependencies")
-
-rules_sass_dependencies()
-
-# Setup repositories which are needed for the Sass rules.
-load("@io_bazel_rules_sass//:defs.bzl", "sass_repositories")
-
-sass_repositories()
-
 # Gcloud SDK binaries.
 load("//tools/gcloud:repository_rules.bzl", "gcloud_sdk")
 
@@ -231,27 +204,6 @@ go_repository(
     importpath = "golang.org/x/text",
     sum = "h1:tW2bmiBqwgJj/UpqtC8EpXEZVYOwU0yG4iWbprSVAcs=",
     version = "v0.3.2",
-)
-
-go_repository(
-    name = "com_github_go_stack_stack",
-    importpath = "github.com/go-stack/stack",
-    sum = "h1:5SgMzNM5HxrEjV0ww2lTmX6E2Izsfxas4+YHWRs3Lsk=",
-    version = "v1.8.0",
-)
-
-go_repository(
-    name = "com_github_golang_protobuf",
-    importpath = "github.com/golang/protobuf",
-    sum = "h1:6nsPYzhq5kReh6QImI3k5qWzO4PEbvbIW2cwSfR/6xs=",
-    version = "v1.3.2",
-)
-
-go_repository(
-    name = "org_mongodb_go_mongo_driver",
-    importpath = "go.mongodb.org/mongo-driver",
-    sum = "h1:6fhXjXSzzXRQdqtFKOI1CDw6Gw5x6VflovRpfbrlVi0=",
-    version = "v1.2.0",
 )
 
 container_pull(
