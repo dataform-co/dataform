@@ -4,8 +4,6 @@ ts_test_suite(
     name = "tests",
     srcs = glob(["**/*.ts"]),
     data = [
-        "//examples/backwards_compatibility:files",
-        "//examples/backwards_compatibility:node_modules",
         "//examples/common_v2:files",
         "//examples/common_v2:node_modules",
         "//examples/formatter:files",

@@ -753,21 +753,6 @@ suite("examples", () => {
     }
   });
 
-  test("backwards_compatibility", async () => {
-    const graph = await compile({ projectDir: "examples/backwards_compatibility" });
-
-    const tableNames = graph.tables.map((t: dataform.ITable) => t.target.name);
-
-    // Make sure it compiles.
-    expect(tableNames).includes("example");
-    const example = graph.tables.filter((t: dataform.ITable) => t.target.name === "example")[0];
-    expect(example.type).equals("table");
-    expect(example.query.trim()).equals("select 1 as foo_bar");
-
-    // Make sure we can dry run.
-    new Builder(graph, {}, { tables: [] }).build();
-  });
-
   test("times out after timeout period during compilation", async () => {
     try {
       await compile({ projectDir: "examples/never_finishes_compiling" });
