@@ -1,7 +1,6 @@
-import * as path from "path";
+import * as Presto from "presto-client";
 
-import { exec, execSync, spawn } from "child_process";
-import * as dbadapters from "df/api/dbadapters";
+import { exec, execSync } from "child_process";
 import { sleepUntil } from "df/common/promises";
 import { IHookHandler } from "df/testing";
 
@@ -40,12 +39,14 @@ export class PrestoFixture {
         ].join(" ")
       );
 
-      const dbadapter = await dbadapters.create(PrestoFixture.PRESTO_TEST_CREDENTIALS, "presto");
+      const client = new Presto.Client(PrestoFixture.PRESTO_TEST_CREDENTIALS);
 
       // Block until presto is ready to accept requests.
       await sleepUntil(async () => {
         try {
-          await dbadapter.execute("select 1");
+          client.execute({
+            query: "select 1"
+          });
           return true;
         } catch (e) {
           return false;
