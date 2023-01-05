@@ -46,7 +46,6 @@ export class PostgresFixture {
         user: jdbcCredentials.username,
         password: jdbcCredentials.password,
         database: jdbcCredentials.databaseName,
-        ssl: false,
         port,
         host: PostgresFixture.host
       };
@@ -56,17 +55,9 @@ export class PostgresFixture {
       await sleepUntil(async () => {
         try {
           await queryExecutor.withClientLock(async client => {
-            execute: async (
-              statement: string,
-              options: {
-                params?: any[];
-                rowLimit?: number;
-                byteLimit?: number;
-                includeQueryInError?: boolean;
-              } = { rowLimit: 1000, byteLimit: 1024 * 1024 }
-            ) => {
-              const rows = await client.execute(statement, options);
-              return { rows, metadata: {} };
+            execute: async (statement: string, options: {}) => {
+              await client.execute(statement, options);
+              return {};
             };
           });
           return true;
