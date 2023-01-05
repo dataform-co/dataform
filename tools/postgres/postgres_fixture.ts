@@ -35,21 +35,13 @@ export class PostgresFixture {
         ].join(" ")
       );
 
-      const jdbcCredentials = {
-        username: "postgres",
-        databaseName: "postgres",
+      const queryExecutor = new PgPoolExecutor({
+        user: "postgres",
         password: "password",
+        database: "postgres",
         port,
         host: PostgresFixture.host
-      };
-      const clientConfig: Partial<pg.ClientConfig> = {
-        user: jdbcCredentials.username,
-        password: jdbcCredentials.password,
-        database: jdbcCredentials.databaseName,
-        port,
-        host: PostgresFixture.host
-      };
-      const queryExecutor = new PgPoolExecutor(clientConfig);
+      });
 
       // Block until postgres is ready to accept requests.
       await sleepUntil(async () => {
