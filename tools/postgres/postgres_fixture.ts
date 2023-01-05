@@ -41,8 +41,17 @@ export class PostgresFixture {
         port,
         host: PostgresFixture.host
       });
+
       // Block until postgres is ready to accept requests.
-      await pool.connect();
+      await sleepUntil(async () => {
+        try {
+          await pool.connect();
+          return true;
+        } catch (e) {
+          console.log("POSTGRES ERROR:", e);
+          return false;
+        }
+      }, 500);
     });
 
     tearDown("stopping postgres", () => {
