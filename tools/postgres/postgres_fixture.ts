@@ -3,7 +3,6 @@ import * as pg from "pg";
 import { execSync } from "child_process";
 import { sleepUntil } from "df/common/promises";
 import { IHookHandler } from "df/testing";
-import { convertFieldType, PgPoolExecutor } from "df/api/utils/postgres";
 
 const USE_CLOUD_BUILD_NETWORK = !!process.env.USE_CLOUD_BUILD_NETWORK;
 const DOCKER_CONTAINER_NAME = "postgres-df-integration-testing";
@@ -35,28 +34,15 @@ export class PostgresFixture {
         ].join(" ")
       );
 
-      const queryExecutor = new PgPoolExecutor({
+      const pool = new pg.Pool({
         user: "postgres",
         password: "password",
         database: "postgres",
         port,
         host: PostgresFixture.host
       });
-
       // Block until postgres is ready to accept requests.
-      await sleepUntil(async () => {
-        try {
-          await queryExecutor.withClientLock(async client => {
-            execute: async (statement: string, options: {}) => {
-              await client.execute(statement, options);
-              return {};
-            };
-          });
-          return true;
-        } catch (e) {
-          return false;
-        }
-      });
+      await pool.connect();
     });
 
     tearDown("stopping postgres", () => {

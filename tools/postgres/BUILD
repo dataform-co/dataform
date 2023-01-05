@@ -22,7 +22,11 @@ ts_library(
         "//common/promises",
         "//testing",
         "@npm//@types/node",
+        "@npm//@types/pg",
+        "@npm//@types/pg-query-stream",
         "@npm//@types/uuid",
+        "@npm//pg",
+        "@npm//promise-pool-executor",
         "@npm//uuid",
     ],
 )
