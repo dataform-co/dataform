@@ -48,7 +48,6 @@ export class PostgresFixture {
           await pool.connect();
           return true;
         } catch (e) {
-          console.log("POSTGRES ERROR:", e);
           return false;
         }
       }, 500);
