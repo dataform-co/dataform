@@ -122,14 +122,16 @@ const includeDependentsOption: INamedOption<yargs.Options> = {
   },
   // It would be nice to use yargs' "implies" to implement this, but it doesn't work for some reason.
   check: (argv: yargs.Arguments) => {
-    if (argv[includeDependentsOption.name] && !(argv[actionsOption.name] || argv[tagsOption.name])) {
+    if (
+      argv[includeDependentsOption.name] &&
+      !(argv[actionsOption.name] || argv[tagsOption.name])
+    ) {
       throw new Error(
         `The --${includeDependentsOption.name} flag should only be supplied along with --${actionsOption.name} or --${tagsOption.name}.`
       );
     }
   }
 };
-
 
 const schemaSuffixOverrideOption: INamedOption<yargs.Options> = {
   name: "schema-suffix",
@@ -208,8 +210,6 @@ const timeoutOption: INamedOption<yargs.Options> = {
 const defaultDatabaseOptionName = "default-database";
 const defaultLocationOptionName = "default-location";
 const skipInstallOptionName = "skip-install";
-const includeSchedulesOptionName = "include-schedules";
-const includeEnvironmentsOptionName = "include-environments";
 
 const testConnectionOptionName = "test-connection";
 
@@ -293,20 +293,6 @@ export function runCli() {
               describe: "Whether to skip installing NPM packages.",
               default: false
             }
-          },
-          {
-            name: includeSchedulesOptionName,
-            option: {
-              describe: "Whether to initialize a schedules.json file.",
-              default: false
-            }
-          },
-          {
-            name: includeEnvironmentsOptionName,
-            option: {
-              describe: "Whether to initialize a environments.json file.",
-              default: false
-            }
           }
         ],
         processFn: async argv => {
@@ -320,9 +306,7 @@ export function runCli() {
               useRunCache: false
             },
             {
-              skipInstall: argv[skipInstallOptionName],
-              includeSchedules: argv[includeSchedulesOptionName],
-              includeEnvironments: argv[includeEnvironmentsOptionName]
+              skipInstall: argv[skipInstallOptionName]
             }
           );
           printInitResult(initResult);
@@ -683,7 +667,8 @@ export function runCli() {
                     actionResult.status !== dataform.ActionResult.ExecutionStatus.RUNNING
                 )
                 .filter(
-                  executedAction => !alreadyPrintedActions.has(targetAsReadableString(executedAction.target))
+                  executedAction =>
+                    !alreadyPrintedActions.has(targetAsReadableString(executedAction.target))
                 )
                 .forEach(executedAction => {
                   printExecutedAction(
