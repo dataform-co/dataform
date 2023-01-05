@@ -1,6 +1,6 @@
 config {
   type: "view",
-  hermetic: false,
+  hermetic: false
 }
 
 select ${when(dataform.projectConfig.vars.fooVar === "bar", "1", "2")} as val union all

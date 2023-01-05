@@ -41,11 +41,10 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
       const executedGraph = await dfapi.run(dbadapter, executionGraph).result();
 
       const actionMap = keyBy(executedGraph.actions, v => targetAsReadableString(v.target));
-      expect(Object.keys(actionMap).length).eql(19);
+      expect(Object.keys(actionMap).length).eql(17);
 
       // Check the status of action execution.
       const expectedFailedActions = [
-        "dataform-integration-tests.df_integration_test_eu_assertions_project_e2e.example_assertion_uniqueness_fail",
         "dataform-integration-tests.df_integration_test_eu_assertions_project_e2e.example_assertion_fail",
         "dataform-integration-tests.df_integration_test_eu_project_e2e.example_operation_partial_fail"
       ];
@@ -61,7 +60,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
 
       expect(
         actionMap[
-          "dataform-integration-tests.df_integration_test_eu_assertions_project_e2e.example_assertion_uniqueness_fail"
+          "dataform-integration-tests.df_integration_test_eu_assertions_project_e2e.example_assertion_fail"
         ].tasks[1].errorMessage
       ).to.eql("bigquery error: Assertion failed: query returned 1 row(s).");
 

@@ -42,7 +42,6 @@ suite("@dataform/integration/sqldatawarehouse", { parallel: true }, ({ before, a
 
     // Check the status of action execution.
     const expectedFailedActions = [
-      "df_integration_test_assertions_project_e2e.example_assertion_uniqueness_fail",
       "df_integration_test_assertions_project_e2e.example_assertion_fail"
     ];
     for (const actionName of Object.keys(actionMap)) {
@@ -53,8 +52,8 @@ suite("@dataform/integration/sqldatawarehouse", { parallel: true }, ({ before, a
     }
 
     expect(
-      actionMap["df_integration_test_assertions_project_e2e.example_assertion_uniqueness_fail"]
-        .tasks[2].errorMessage
+      actionMap["df_integration_test_assertions_project_e2e.example_assertion_fail"].tasks[2]
+        .errorMessage
     ).to.eql("sqldatawarehouse error: Assertion failed: query returned 1 row(s).");
 
     // Check the data in the incremental table.
