@@ -47,7 +47,6 @@ ts_library(
         "@npm//@types/node",
         "@npm//@types/uuid",
         "@npm//presto-client",
-        "@npm//promise-pool-executor",
         "@npm//uuid",
     ],
 )

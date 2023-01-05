@@ -1,5 +1,4 @@
 import * as Presto from "presto-client";
-import * as PromisePool from "promise-pool-executor";
 
 import { exec, execSync } from "child_process";
 import { sleepUntil } from "df/common/promises";
@@ -41,25 +40,13 @@ export class PrestoFixture {
       );
 
       const client = new Presto.Client(PrestoFixture.PRESTO_TEST_CREDENTIALS);
-      const pool = new PromisePool.PromisePoolExecutor({
-        concurrencyLimit: 1,
-        frequencyWindow: 1000,
-        frequencyLimit: 10
-      });
 
       // Block until presto is ready to accept requests.
       await sleepUntil(async () => {
         try {
-          await pool
-            .addSingleTask({
-              generator: () =>
-                new Promise<any>(() => {
-                  client.execute({
-                    query: "select 1"
-                  });
-                })
-            })
-            .promise();
+          client.execute({
+            query: "select 1"
+          });
           return true;
         } catch (e) {
           return false;
