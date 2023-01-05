@@ -1,5 +1,8 @@
-config { type: "assertion" }
+config {
+    type: "assertion"
+}
 
-js { const assertionUtils = require("@dataform/assertion_utils"); }
-
-${assertionUtils.forDataset(ref("sample_data")).groupedBy(["val"]).getUniqueRowQuery()}
+WITH base AS (
+    SELECT "val1", "val2", SUM(1) as row_count FROM ref("sample_data2") GROUP BY "val1", "val2"
+)
+SELECT * FROM base WHERE row_count > 1

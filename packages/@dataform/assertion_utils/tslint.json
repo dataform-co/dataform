@@ -1,6 +1,0 @@
-{
-  "extends": ["../../../tslint.json"],
-  "rules": {
-    "tsr-detect-sql-literal-injection": false
-  }
-}

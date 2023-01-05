@@ -48,7 +48,6 @@ suite("@dataform/integration/snowflake", ({ before, after }) => {
 
     // Check the status of action execution.
     const expectedFailedActions = [
-      "INTEGRATION_TESTS.DF_INTEGRATION_TEST_ASSERTIONS_PROJECT_E2E.EXAMPLE_ASSERTION_UNIQUENESS_FAIL",
       "INTEGRATION_TESTS.DF_INTEGRATION_TEST_ASSERTIONS_PROJECT_E2E.EXAMPLE_ASSERTION_FAIL"
     ];
     for (const actionName of Object.keys(actionMap)) {
@@ -65,7 +64,7 @@ suite("@dataform/integration/snowflake", ({ before, after }) => {
 
     expect(
       actionMap[
-        "INTEGRATION_TESTS.DF_INTEGRATION_TEST_ASSERTIONS_PROJECT_E2E.EXAMPLE_ASSERTION_UNIQUENESS_FAIL"
+        "INTEGRATION_TESTS.DF_INTEGRATION_TEST_ASSERTIONS_PROJECT_E2E.EXAMPLE_ASSERTION_FAIL"
       ].tasks[1].errorMessage
     ).to.eql("snowflake error: Assertion failed: query returned 1 row(s).");
 

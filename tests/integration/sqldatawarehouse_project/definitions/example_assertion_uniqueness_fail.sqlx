@@ -1,5 +1,0 @@
-config { type: "assertion" }
-
-js { const assertionUtils = require("@dataform/assertion_utils"); }
-
-${assertionUtils.forDataset(ref("sample_data_2")).groupedBy(["val1"]).getUniqueRowQuery()}
