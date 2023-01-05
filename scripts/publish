@@ -15,7 +15,6 @@ fi
 
 bazel test //... --build_tests_only -- -tests/integration:snowflake.spec
 
-bazel run packages/@dataform/assertion_utils:package.publish
 bazel run packages/@dataform/cli:package.publish
 bazel run packages/@dataform/core:package.publish
 bazel run cli:push
