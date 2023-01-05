@@ -50,8 +50,8 @@ suite(__filename, () => {
     fs.ensureFileSync(filePath);
     fs.writeFileSync(
       filePath,
-      `
-config { type: "table" }
+      `config { type: "table", schema: \`\${dataform.projectConfig.vars.testVar1}\` }
+
 select 1 as \${dataform.projectConfig.vars.testVar2}
 `
     );
@@ -63,7 +63,7 @@ select 1 as \${dataform.projectConfig.vars.testVar2}
         "compile",
         projectDir,
         "--json",
-        "--vars=testVar1=testValue1,testVar2=testValue2"
+        "--vars=testVar1=dataform,testVar2=testValue2"
       ])
     );
 
@@ -96,7 +96,7 @@ select 1 as \${dataform.projectConfig.vars.testVar2}
         defaultLocation: "US",
         useRunCache: false,
         vars: {
-          testVar1: "testValue1",
+          testVar1: "dataform",
           testVar2: "testValue2"
         }
       },
@@ -121,7 +121,7 @@ select 1 as \${dataform.projectConfig.vars.testVar2}
         "test_credentials/bigquery.json",
         "--dry-run",
         "--json",
-        "--vars=testVar1=testValue1,testVar2=testValue2"
+        "--vars=testVar1=dataform,testVar2=testValue2"
       ])
     );
 
@@ -156,7 +156,7 @@ select 1 as \${dataform.projectConfig.vars.testVar2}
         useRunCache: false,
         warehouse: "bigquery",
         vars: {
-          testVar1: "testValue1",
+          testVar1: "dataform",
           testVar2: "testValue2"
         }
       },

@@ -1,0 +1,28 @@
+WITH example_data AS (
+SELECT dt AS dt, id_1 AS id_1, val AS val
+FROM 
+  (SELECT DATE("2022-06-01") AS dt, 21	AS id_1 , 'not_partitioned' AS val) UNION ALL
+  (SELECT DATE("2022-06-02") AS dt,	22	AS id_1, 'not_partitioned' AS val) UNION ALL
+  (SELECT DATE("2022-06-03") AS dt,	23	AS id_1, 'original' AS val) UNION ALL
+  (SELECT DATE("2022-06-03") AS dt,	24	AS id_1, 'original' AS val) UNION ALL
+  (SELECT DATE("2022-06-03") AS dt,	24	AS id_1, 'original_dup' AS val) UNION ALL
+  (SELECT DATE("2022-06-03") AS dt,	24	AS id_1, 'original_dup' AS val) UNION ALL
+  (SELECT DATE("2022-06-03") AS dt,	25	AS id_1, 'new' AS val) UNION ALL
+  (SELECT DATE("2022-06-03") AS dt,	26	AS id_1, 'new' AS val)
+)
+
+config {
+  type: "incremental",
+  strategy: "insert_overwrite",
+  overwriteFilter: "dt = \"2022-06-03\"",
+  bigquery: {
+    partitionBy: "dt",
+    updatePartitionFilter: "dt > \"2022-06-02\""
+  },
+  hermetic: false
+}
+
+SELECT dt, id_1, val
+FROM example_data
+
+${ when(incremental(),  `WHERE id_1 > 24`, `WHERE id_1 > 22 and id_1 < 25`) }

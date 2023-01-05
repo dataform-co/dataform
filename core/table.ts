@@ -331,6 +331,10 @@ export interface ITableConfig
    *  or the [Snowflake materialized view docs](https://docs.snowflake.com/en/user-guide/views-materialized.html).
    */
   materialized?: boolean;
+
+  strategy?: string;
+
+  overwriteFilter?: string;
 }
 
 // TODO: This needs to be a method, I'm really not sure why, but it hits a runtime failure otherwise.
@@ -354,7 +358,9 @@ export const ITableConfigProperties = () =>
     "database",
     "columns",
     "description",
-    "materialized"
+    "materialized",
+    "strategy",
+    "overwriteFilter"
   ]);
 
 /**
@@ -391,7 +397,8 @@ export class Table {
       "postOps",
       "actionDescriptor",
       "disabled",
-      "where"
+      "where",
+      "strategy"
     ]
   };
 
@@ -475,6 +482,14 @@ export class Table {
       this.materialized(config.materialized);
     }
 
+    if(config.strategy){
+      this.strategy(config.strategy);
+    }
+
+    if(config.overwriteFilter){
+      this.overwriteFilter(config.overwriteFilter);
+    }
+
     return this;
   }
 
@@ -522,6 +537,15 @@ export class Table {
   public materialized(materialized: boolean) {
     this.proto.materialized = materialized;
   }
+  
+  public strategy(strategy: string) {
+    this.proto.strategy = strategy;
+  }
+
+  public overwriteFilter(overwriteFilter: string) {
+    this.proto.overwriteFilter = overwriteFilter;
+  }
+
 
   public snowflake(snowflake: dataform.ISnowflakeOptions) {
     checkExcessProperties(
