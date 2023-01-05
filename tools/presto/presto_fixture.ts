@@ -1,8 +1,9 @@
+import * as Presto from "presto-client";
+import * as PromisePool from "promise-pool-executor";
+
 import { exec, execSync } from "child_process";
 import { sleepUntil } from "df/common/promises";
 import { IHookHandler } from "df/testing";
-import * as Presto from "presto-client";
-import * as PromisePool from "promise-pool-executor";
 
 const USE_CLOUD_BUILD_NETWORK = !!process.env.USE_CLOUD_BUILD_NETWORK;
 const DOCKER_CONTAINER_NAME = "presto-df-integration-testing";
