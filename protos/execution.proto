@@ -7,7 +7,6 @@ import "protos/core.proto";
 option go_package = "github.com/dataform-co/dataform/protos/dataform";
 
 
-// This is a superset of Schedule.Options.
 message RunConfig {
   repeated string actions = 1;
   repeated string tags = 5;
