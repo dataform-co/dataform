@@ -1,7 +1,9 @@
+import * as pg from "pg";
+
 import { execSync } from "child_process";
-import * as dbadapters from "df/api/dbadapters";
 import { sleepUntil } from "df/common/promises";
 import { IHookHandler } from "df/testing";
+import { convertFieldType, PgPoolExecutor } from "df/api/utils/postgres";
 
 const USE_CLOUD_BUILD_NETWORK = !!process.env.USE_CLOUD_BUILD_NETWORK;
 const DOCKER_CONTAINER_NAME = "postgres-df-integration-testing";
@@ -32,21 +34,41 @@ export class PostgresFixture {
           "bazel/tools/postgres:postgres_image"
         ].join(" ")
       );
-      const dbadapter = await dbadapters.create(
-        {
-          username: "postgres",
-          databaseName: "postgres",
-          password: "password",
-          port,
-          host: PostgresFixture.host
-        },
-        "postgres",
-        { disableSslForTestsOnly: true }
-      );
+
+      const jdbcCredentials = {
+        username: "postgres",
+        databaseName: "postgres",
+        password: "password",
+        port,
+        host: PostgresFixture.host
+      };
+      const clientConfig: Partial<pg.ClientConfig> = {
+        user: jdbcCredentials.username,
+        password: jdbcCredentials.password,
+        database: jdbcCredentials.databaseName,
+        ssl: false,
+        port,
+        host: PostgresFixture.host
+      };
+      const queryExecutor = new PgPoolExecutor(clientConfig);
+
       // Block until postgres is ready to accept requests.
       await sleepUntil(async () => {
         try {
-          await dbadapter.execute("select 1");
+          await queryExecutor.withClientLock(async client => {
+            execute: async (
+              statement: string,
+              options: {
+                params?: any[];
+                rowLimit?: number;
+                byteLimit?: number;
+                includeQueryInError?: boolean;
+              } = { rowLimit: 1000, byteLimit: 1024 * 1024 }
+            ) => {
+              const rows = await client.execute(statement, options);
+              return { rows, metadata: {} };
+            };
+          });
           return true;
         } catch (e) {
           return false;

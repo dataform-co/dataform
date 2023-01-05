@@ -1,9 +1,8 @@
-import * as path from "path";
-
-import { exec, execSync, spawn } from "child_process";
-import * as dbadapters from "df/api/dbadapters";
+import { exec, execSync } from "child_process";
 import { sleepUntil } from "df/common/promises";
 import { IHookHandler } from "df/testing";
+import * as Presto from "presto-client";
+import * as PromisePool from "promise-pool-executor";
 
 const USE_CLOUD_BUILD_NETWORK = !!process.env.USE_CLOUD_BUILD_NETWORK;
 const DOCKER_CONTAINER_NAME = "presto-df-integration-testing";
@@ -40,12 +39,26 @@ export class PrestoFixture {
         ].join(" ")
       );
 
-      const dbadapter = await dbadapters.create(PrestoFixture.PRESTO_TEST_CREDENTIALS, "presto");
+      const client = new Presto.Client(PrestoFixture.PRESTO_TEST_CREDENTIALS);
+      const pool = new PromisePool.PromisePoolExecutor({
+        concurrencyLimit: 1,
+        frequencyWindow: 1000,
+        frequencyLimit: 10
+      });
 
       // Block until presto is ready to accept requests.
       await sleepUntil(async () => {
         try {
-          await dbadapter.execute("select 1");
+          await pool
+            .addSingleTask({
+              generator: () =>
+                new Promise<any>(() => {
+                  client.execute({
+                    query: "select 1"
+                  });
+                })
+            })
+            .promise();
           return true;
         } catch (e) {
           return false;

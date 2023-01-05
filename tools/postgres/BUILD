@@ -19,7 +19,6 @@ ts_library(
         ":postgres_image",
     ],
     deps = [
-        "//api",
         "//common/promises",
         "//testing",
         "@npm//@types/node",

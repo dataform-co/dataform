@@ -42,12 +42,12 @@ ts_library(
         ":presto_image",
     ],
     deps = [
-        "//api",
         "//common/promises",
         "//testing",
         "@npm//@types/node",
         "@npm//@types/uuid",
         "@npm//presto-client",
+        "@npm//promise-pool-executor",
         "@npm//uuid",
     ],
 )
