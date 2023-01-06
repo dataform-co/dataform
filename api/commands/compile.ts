@@ -1,13 +1,14 @@
 import * as fs from "fs";
 import * as path from "path";
 import * as semver from "semver";
+import * as glob from "glob";
 
-import { ChildProcess, fork } from "child_process";
 import deepmerge from "deepmerge";
 import { validWarehouses } from "df/api/dbadapters";
-import { coerceAsError, ErrorWithCause } from "df/common/errors/errors";
-import { decode64 } from "df/common/protos";
+import { ErrorWithCause } from "df/common/errors/errors";
+import { encode64, decode64 } from "df/common/protos";
 import { dataform } from "df/protos/ts";
+import { main as coreCompile } from "df/core";
 
 // Project config properties that are required.
 const mandatoryProps: Array<keyof dataform.IProjectConfig> = ["warehouse", "defaultSchema"];
@@ -53,7 +54,8 @@ export async function compile(
     }
   }
 
-  const result = await CompileChildProcess.forkProcess().compile(compileConfig);
+  const coreExecutionRequest = createCoreExecutionRequest(compileConfig);
+  const result = coreCompile(coreExecutionRequest);
 
   if (compileConfig.useMain) {
     const decodedResult = decode64(dataform.CoreExecutionResponse, result);
@@ -63,70 +65,45 @@ export async function compile(
   return decode64(dataform.CompiledGraph, result);
 }
 
-export class CompileChildProcess {
-  public static forkProcess() {
-    // Runs the worker_bundle script we generate for the package (see packages/@dataform/cli/BUILD)
-    // if it exists, otherwise run the bazel compile loader target.
-    const findForkScript = () => {
-      try {
-        const workerBundlePath = require.resolve("./worker_bundle");
-        return workerBundlePath;
-      } catch (e) {
-        return require.resolve("../../sandbox/vm/compile_loader");
-      }
-    };
-    const forkScript = findForkScript();
-    return new CompileChildProcess(
-      fork(require.resolve(forkScript), [], { stdio: [0, 1, 2, "ipc", "pipe"] })
-    );
-  }
-  private readonly childProcess: ChildProcess;
-
-  constructor(childProcess: ChildProcess) {
-    this.childProcess = childProcess;
-  }
-
-  public async compile(compileConfig: dataform.ICompileConfig) {
-    const compileInChildProcess = new Promise<string>(async (resolve, reject) => {
-      this.childProcess.on("error", (e: Error) => reject(coerceAsError(e)));
-
-      this.childProcess.on("message", (messageOrError: string | Error) => {
-        if (typeof messageOrError === "string") {
-          resolve(messageOrError);
-          return;
-        }
-        reject(coerceAsError(messageOrError));
-      });
-
-      this.childProcess.on("close", exitCode => {
-        if (exitCode !== 0) {
-          reject(new Error(`Compilation child process exited with exit code ${exitCode}.`));
-        }
-      });
-
-      // Trigger the child process to start compiling.
-      this.childProcess.send(compileConfig);
-    });
-    let timer;
-    const timeout = new Promise(
-      (resolve, reject) =>
-        (timer = setTimeout(
-          () => reject(new CompilationTimeoutError("Compilation timed out")),
-          compileConfig.timeoutMillis || 5000
-        ))
-    );
-    try {
-      await Promise.race([timeout, compileInChildProcess]);
-      return await compileInChildProcess;
-    } finally {
-      if (!this.childProcess.killed) {
-        this.childProcess.kill("SIGKILL");
-      }
-      if (timer) {
-        clearTimeout(timer);
-      }
+export function createGenIndexConfig(compileConfig: dataform.ICompileConfig): string {
+  const includePaths: string[] = [];
+  glob.sync("includes/*.js", { cwd: compileConfig.projectDir }).forEach(path => {
+    if (includePaths.indexOf(path) < 0) {
+      includePaths.push(path);
     }
-  }
+  });
+
+  const definitionPaths: string[] = [];
+  glob.sync("definitions/**/*.{js,sql,sqlx}", { cwd: compileConfig.projectDir }).forEach(path => {
+    if (definitionPaths.indexOf(path) < 0) {
+      definitionPaths.push(path);
+    }
+  });
+  // Support projects that don't use the new project structure.
+  glob.sync("models/**/*.{js,sql,sqlx}", { cwd: compileConfig.projectDir }).forEach(path => {
+    if (definitionPaths.indexOf(path) < 0) {
+      definitionPaths.push(path);
+    }
+  });
+  return encode64(dataform.GenerateIndexConfig, {
+    compileConfig,
+    includePaths,
+    definitionPaths
+  });
+}
+
+/**
+ * @returns a base64 encoded {@see dataform.CoreExecutionRequest} proto.
+ */
+export function createCoreExecutionRequest(compileConfig: dataform.ICompileConfig): string {
+  const filePaths = Array.from(
+    new Set<string>(glob.sync("!(node_modules)/**/*.*", { cwd: compileConfig.projectDir }))
+  );
+
+  return encode64(dataform.CoreExecutionRequest, {
+    // Add the list of file paths to the compile config if not already set.
+    compile: { compileConfig: { filePaths, ...compileConfig } }
+  });
 }
 
 export const checkDataformJsonValidity = (dataformJsonParsed: { [prop: string]: any }) => {

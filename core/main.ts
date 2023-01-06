@@ -15,6 +15,8 @@ export function main(encodedCoreExecutionRequest: string): string {
   const request = decode64(dataform.CoreExecutionRequest, encodedCoreExecutionRequest);
   const compileRequest = request.compile;
 
+  console.log("CURRENT PATH", __dirname);
+
   // Read the project config from the root of the project.
   const originalProjectConfig = require("dataform.json");
 
