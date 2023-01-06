@@ -5,66 +5,7 @@ import * as utils from "df/core/utils";
 import { SyntaxTreeNode, SyntaxTreeNodeType } from "df/sqlx/lexer";
 
 export function compile(code: string, path: string) {
-  if (path.endsWith(".sqlx")) {
-    return compileSqlx(SyntaxTreeNode.create(code), path);
-  }
-  if (path.endsWith(".assert.sql")) {
-    return compileAssertionSql(code, path);
-  }
-  if (path.endsWith(".ops.sql")) {
-    return compileOperationSql(code, path);
-  }
-  if (path.endsWith(".sql")) {
-    return compileTableSql(code, path);
-  }
-  return code;
-}
-
-// For older versions of @dataform/core, these functions may not actually exist so leave them as undefined.
-function safelyBindCtxFunction(name: string) {
-  return `ctx.${name} ? ctx.${name}.bind(ctx) : undefined`;
-}
-
-function compileTableSql(code: string, path: string) {
-  const { sql, js } = extractJsBlocks(code);
-  const functionsBindings = getFunctionPropertyNames(TableContext.prototype).map(
-    name => `const ${name} = ${safelyBindCtxFunction(name)};`
-  );
-
-  return `
-  publish("${utils.baseFilename(path)}").query(ctx => {
-    ${functionsBindings.join("\n")}
-    ${js}
-    return \`${sql}\`;
-  })`;
-}
-
-function compileOperationSql(code: string, path: string) {
-  const { sql, js } = extractJsBlocks(code);
-  const functionsBindings = getFunctionPropertyNames(OperationContext.prototype).map(
-    name => `const ${name} = ${safelyBindCtxFunction(name)};`
-  );
-
-  return `
-  operate("${utils.baseFilename(path)}").queries(ctx => {
-    ${functionsBindings.join("\n")}
-    ${js}
-    return \`${sql}\`.split("\\n---\\n");
-  })`;
-}
-
-function compileAssertionSql(code: string, path: string) {
-  const { sql, js } = extractJsBlocks(code);
-  const functionsBindings = getFunctionPropertyNames(AssertionContext.prototype).map(
-    name => `const ${name} = ${safelyBindCtxFunction(name)};`
-  );
-
-  return `
-  assert("${utils.baseFilename(path)}").query(ctx => {
-    ${functionsBindings.join("\n")}
-    ${js}
-    return \`${sql}\`;
-  })`;
+  return path.endsWith(".sqlx") ? compileSqlx(SyntaxTreeNode.create(code), path) : code;
 }
 
 export function extractJsBlocks(code: string): { sql: string; js: string } {
@@ -276,22 +217,6 @@ function extractSqlxParts(rootNode: SyntaxTreeNode) {
     postOperations,
     inputs
   };
-}
-
-function getFunctionPropertyNames(prototype: any) {
-  return [
-    ...new Set(
-      Object.getOwnPropertyNames(prototype).filter(propertyName => {
-        if (typeof prototype[propertyName] !== "function") {
-          return false;
-        }
-        if (propertyName === "constructor") {
-          return false;
-        }
-        return true;
-      })
-    )
-  ];
 }
 
 function createEscapedStatements(nodes: Array<string | SyntaxTreeNode>) {
