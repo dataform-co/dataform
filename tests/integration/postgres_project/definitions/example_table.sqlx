@@ -2,4 +2,4 @@ config {
     type: "table"
 }
 
-select * from ${ref("sample_data")}
+select * from ${ref("sample_data")} as data
