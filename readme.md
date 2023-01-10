@@ -70,4 +70,4 @@ You can learn more on [cloud.google.com/dataform](https://cloud.google.com/dataf
 
 # Want to contribute?
 
-Check out our [contributors guide](https://github.com/dataform-co/dataform/blob/master/contributing.md) to get started with setting up the repo.
+Check out our [contributors guide](https://github.com/dataform-co/dataform/blob/main/contributing.md) to get started with setting up the repo.
