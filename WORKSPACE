@@ -24,9 +24,9 @@ versions.check(minimum_bazel_version = "0.26.0")
 # This statement defines the @com_google_protobuf repo.
 http_archive(
     name = "com_google_protobuf",
-    sha256 = "1c744a6a1f2c901e68c5521bc275e22bdc66256eeb605c2781923365b7087e5f",
-    strip_prefix = "protobuf-3.13.0",
-    urls = ["https://github.com/protocolbuffers/protobuf/archive/v3.13.0.zip"],
+    sha256 = "f7042d540c969b00db92e8e1066a9b8099c8379c33f40f360eb9e1d98a36ca26",
+    strip_prefix = "protobuf-3.21.12",
+    urls = ["https://github.com/protocolbuffers/protobuf/archive/v3.21.12.zip"],
 )
 
 load("@com_google_protobuf//:protobuf_deps.bzl", "protobuf_deps")
@@ -99,18 +99,18 @@ gazelle_dependencies()
 # Docker base images.
 http_archive(
     name = "io_bazel_rules_docker",
-    sha256 = "4521794f0fba2e20f3bf15846ab5e01d5332e587e9ce81629c7f96c793bb7036",
-    strip_prefix = "rules_docker-0.14.4",
-    urls = ["https://github.com/bazelbuild/rules_docker/releases/download/v0.14.4/rules_docker-v0.14.4.tar.gz"],
+    sha256 = "b1e80761a8a8243d03ebca8845e9cc1ba6c82ce7c5179ce2b295cd36f7e394bf",
+    urls = ["https://github.com/bazelbuild/rules_docker/releases/download/v0.25.0/rules_docker-v0.25.0.tar.gz"],
 )
 
-load("@io_bazel_rules_docker//toolchains/docker:toolchain.bzl",
-    docker_toolchain_configure="toolchain_configure"
+load(
+    "@io_bazel_rules_docker//toolchains/docker:toolchain.bzl",
+    docker_toolchain_configure = "toolchain_configure",
 )
 
 # Force Docker toolchain to use 'which' to find Docker binary.
 docker_toolchain_configure(
-  name = "docker_config",
+    name = "docker_config",
 )
 
 load(
@@ -124,9 +124,9 @@ load("@io_bazel_rules_docker//repositories:deps.bzl", container_deps = "deps")
 
 container_deps()
 
-load("@io_bazel_rules_docker//repositories:pip_repositories.bzl", "pip_deps")
+load("@io_bazel_rules_docker//repositories:py_repositories.bzl", "py_deps")
 
-pip_deps()
+py_deps()
 
 load(
     "@io_bazel_rules_docker//container:container.bzl",
@@ -135,8 +135,8 @@ load(
 
 container_pull(
     name = "nodejs_base",
-    # This digest is for tag "12.18.4".
-    digest = "sha256:7f35eaf7c26a25056a43777fff187fd590662fa5564b3cbb665ee253c4da7604",
+    # This digest is for tag "18.13.0".
+    digest = "sha256:d9061fd0205c20cd47f70bdc879a7a84fb472b822d3ad3158aeef40698d2ce36",
     registry = "index.docker.io",
     repository = "library/node",
 )
