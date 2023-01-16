@@ -1,3 +1,0 @@
----
-redirect: ../scheduling/environments
----

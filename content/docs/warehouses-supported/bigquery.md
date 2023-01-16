@@ -1,3 +1,0 @@
----
-redirect: ../warehouses/bigqquery
----
