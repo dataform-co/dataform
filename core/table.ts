@@ -790,6 +790,10 @@ export class TableContext implements ITableContext {
     return this.table.session.resolve(ref, ...rest);
   }
 
+  public schema(): string {
+    return this.table.session.normalizeSchema(this.table.proto.target.schema);
+  }
+
   public type(type: TableType) {
     this.table.type(type);
     return "";

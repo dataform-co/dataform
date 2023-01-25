@@ -237,6 +237,12 @@ export class OperationContext implements ICommonContext {
     return this.operation.session.resolve(ref, ...rest);
   }
 
+  public schema(): string {
+    return this.operation.session.normalizeSchema(
+      this.operation.proto.target.schema
+    );
+  }
+
   public dependencies(name: Resolvable | Resolvable[]) {
     this.operation.dependencies(name);
     return "";

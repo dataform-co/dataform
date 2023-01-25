@@ -205,6 +205,12 @@ export class AssertionContext implements ICommonContext {
     return this.assertion.session.resolve(ref, ...rest);
   }
 
+  public schema(): string {
+    return this.assertion.session.normalizeSchema(
+      this.assertion.proto.target.schema
+    );
+  }
+
   public dependencies(name: Resolvable | Resolvable[]) {
     this.assertion.dependencies(name);
     return "";
