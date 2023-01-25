@@ -8,7 +8,6 @@ import { targetAsReadableString } from "df/core/targets";
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
 import { asPlainObject } from "df/tests/utils";
-import {session} from "df/core";
 
 class TestConfigs {
   public static redshift: dataform.IProjectConfig = {
