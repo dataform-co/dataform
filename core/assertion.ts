@@ -202,7 +202,7 @@ export class AssertionContext implements ICommonContext {
   }
 
   public resolve(ref: Resolvable | string[], ...rest: string[]) {
-    return this.assertion.session.resolve(toResolvable(ref, rest));
+    return this.assertion.session.resolve(ref, ...rest);
   }
 
   public dependencies(name: Resolvable | Resolvable[]) {

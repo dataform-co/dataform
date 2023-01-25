@@ -234,7 +234,7 @@ export class OperationContext implements ICommonContext {
   }
 
   public resolve(ref: Resolvable | string[], ...rest: string[]) {
-    return this.operation.session.resolve(toResolvable(ref, rest));
+    return this.operation.session.resolve(ref, ...rest);
   }
 
   public dependencies(name: Resolvable | Resolvable[]) {
