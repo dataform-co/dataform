@@ -6,7 +6,7 @@ import * as compilers from "df/core/compilers";
 import {Session} from "df/core/session";
 import {targetAsReadableString} from "df/core/targets";
 import {dataform} from "df/protos/ts";
-import {suite, Test, test} from "df/testing";
+import {suite, test} from "df/testing";
 import {asPlainObject} from "df/tests/utils";
 
 class TestConfigs {
