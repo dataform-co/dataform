@@ -787,7 +787,11 @@ export class TableContext implements ITableContext {
   }
 
   public resolve(ref: Resolvable | string[], ...rest: string[]) {
-    return this.table.session.resolve(toResolvable(ref, rest));
+    return this.table.session.resolve(ref, ...rest);
+  }
+
+  public schema(): string {
+    return this.table.session.finalizeSchema(this.table.proto.target.schema);
   }
 
   public type(type: TableType) {
