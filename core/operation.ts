@@ -238,7 +238,7 @@ export class OperationContext implements ICommonContext {
   }
 
   public schema(): string {
-    return this.operation.session.normalizeSchema(
+    return this.operation.session.finalizeSchema(
       this.operation.proto.target.schema
     );
   }

@@ -206,7 +206,7 @@ export class AssertionContext implements ICommonContext {
   }
 
   public schema(): string {
-    return this.assertion.session.normalizeSchema(
+    return this.assertion.session.finalizeSchema(
       this.assertion.proto.target.schema
     );
   }

@@ -791,7 +791,7 @@ export class TableContext implements ITableContext {
   }
 
   public schema(): string {
-    return this.table.session.normalizeSchema(this.table.proto.target.schema);
+    return this.table.session.finalizeSchema(this.table.proto.target.schema);
   }
 
   public type(type: TableType) {
