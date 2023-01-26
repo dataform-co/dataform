@@ -891,14 +891,14 @@ suite("@dataform/core", () => {
     test("schema without suffix", () => {
       const session = new Session(path.dirname(__filename), TestConfigs.redshift);
       session.publish("test", { type: "table" })
-        .query(ctx => `select "${ctx.schema()}"`);
+        .query(ctx => ctx.schema());
 
       const graph = session.compile();
 
       const testTable = graph.tables
         .find(table => targetAsReadableString(table.target) === "schema.test");
 
-      expect(testTable.query).deep.equals('select "schema"')
+      expect(testTable.query).deep.equals('schema')
     });
 
     test("schema with suffix", () => {
@@ -906,7 +906,7 @@ suite("@dataform/core", () => {
         path.dirname(__filename), TestConfigs.redshiftWithSuffix
       );
       session.publish("test", { type: "table" })
-        .query(ctx => `select "${ctx.schema()}"`);
+        .query(ctx => ctx.schema());
 
       const graph = session.compile();
 
@@ -916,7 +916,7 @@ suite("@dataform/core", () => {
               targetAsReadableString(table.target) === "schema_suffix.test"
         );
 
-      expect(testTable.query).deep.equals('select "schema_suffix"')
+      expect(testTable.query).deep.equals('schema_suffix')
     });
   });
 
@@ -965,20 +965,20 @@ suite("@dataform/core", () => {
 
     test("schema with suffix", () => {
       const session = new Session(path.dirname(__filename), TestConfigs.redshiftWithSuffix);
-      session.operate("operate-1", ctx => `select "${ctx.schema()}"`).hasOutput(true);
+      session.operate("operate-1", ctx => ctx.schema()).hasOutput(true);
 
       const graph = session.compile();
 
-      expect(graph.operations[0].queries).deep.equals(['select "schema_suffix"']);
+      expect(graph.operations[0].queries).deep.equals(['schema_suffix']);
     });
 
     test("schema without suffix", () => {
       const session = new Session(path.dirname(__filename), TestConfigs.redshift);
-      session.operate("operate-1", ctx => `select "${ctx.schema()}"`).hasOutput(true);
+      session.operate("operate-1", ctx => ctx.schema()).hasOutput(true);
 
       const graph = session.compile();
 
-      expect(graph.operations[0].queries).deep.equals(['select "schema"']);
+      expect(graph.operations[0].queries).deep.equals(['schema']);
     });
   });
 
@@ -1228,21 +1228,21 @@ select '\${\`bar\`}'
     test("schema with suffix", () => {
       const session = new Session(path.dirname(__filename), TestConfigs.redshiftWithSuffix);
 
-      session.assert("schema-assertion", ctx => `${ctx.schema()} is schema`);
+      session.assert("schema-assertion", ctx => ctx.schema());
 
       const graph = session.compile();
 
-      expect(JSON.stringify(graph.assertions[0].query)).to.deep.equal('"schema_suffix is schema"');
+      expect(JSON.stringify(graph.assertions[0].query)).to.deep.equal('"schema_suffix"');
     });
 
     test("schema without suffix", () => {
       const session = new Session(path.dirname(__filename), TestConfigs.redshift);
 
-      session.assert("schema-assertion", ctx => `${ctx.schema()} is schema`);
+      session.assert("schema-assertion", ctx => ctx.schema());
 
       const graph = session.compile();
 
-      expect(JSON.stringify(graph.assertions[0].query)).to.deep.equal('"schema is schema"');
+      expect(JSON.stringify(graph.assertions[0].query)).to.deep.equal('"schema"');
     });
   });
 });
