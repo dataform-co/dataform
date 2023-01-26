@@ -245,15 +245,9 @@ export class Session {
         ...resolved.proto.target,
         database:
           resolved.proto.target.database &&
-          this.adapter().normalizeIdentifier(
-            `${resolved.proto.target.database}${this.getDatabaseSuffixWithUnderscore()}`
-          ),
-        schema: this.adapter().normalizeIdentifier(
-          `${resolved.proto.target.schema}${this.getSchemaSuffixWithUnderscore()}`
-        ),
-        name: this.adapter().normalizeIdentifier(
-          `${this.getTablePrefixWithUnderscore()}${resolved.proto.target.name}`
-        )
+          this.finalizeDatabase(resolved.proto.target.database),
+        schema: this.finalizeSchema(resolved.proto.target.schema),
+        name: this.finalizeName(resolved.proto.target.name),
       });
     }
     // TODO: Here we allow 'ref' to go unresolved. This is for backwards compatibility with projects
@@ -266,14 +260,10 @@ export class Session {
         utils.target(
           this.adapter(),
           this.config,
-          this.adapter().normalizeIdentifier(`${this.getTablePrefixWithUnderscore()}${ref}`),
-          this.adapter().normalizeIdentifier(
-            `${this.config.defaultSchema}${this.getSchemaSuffixWithUnderscore()}`
-          ),
+          this.finalizeName(ref),
+          this.finalizeSchema(this.config.defaultSchema),
           this.config.defaultDatabase &&
-            this.adapter().normalizeIdentifier(
-              `${this.config.defaultDatabase}${this.getDatabaseSuffixWithUnderscore()}`
-            )
+            this.finalizeDatabase(this.config.defaultDatabase),
         )
       );
     }
@@ -281,12 +271,9 @@ export class Session {
       utils.target(
         this.adapter(),
         this.config,
-        this.adapter().normalizeIdentifier(`${this.getTablePrefixWithUnderscore()}${ref.name}`),
-        this.adapter().normalizeIdentifier(`${ref.schema}${this.getSchemaSuffixWithUnderscore()}`),
-        ref.database &&
-          this.adapter().normalizeIdentifier(
-            `${ref.database}${this.getDatabaseSuffixWithUnderscore()}`
-          )
+        this.finalizeName(ref.name),
+        this.finalizeSchema(ref.schema),
+        ref.database && this.finalizeName(ref.database),
       )
     );
   }
@@ -442,6 +429,21 @@ export class Session {
 
   public compileToBase64() {
     return encode64(dataform.CompiledGraph, this.compile());
+  }
+
+  public finalizeDatabase(database: string): string {
+    return this.adapter().normalizeIdentifier(
+      `${database}${this.getDatabaseSuffixWithUnderscore()}`);
+  }
+
+  public finalizeSchema(schema: string): string {
+    return this.adapter().normalizeIdentifier(
+      `${schema}${this.getSchemaSuffixWithUnderscore()}`);
+  }
+
+  public finalizeName(name: string): string {
+    return this.adapter().normalizeIdentifier(
+      `${this.getTablePrefixWithUnderscore()}${name}`);
   }
 
   private getDatabaseSuffixWithUnderscore() {

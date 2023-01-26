@@ -178,6 +178,10 @@ class RefReplacingContext implements ITableContext {
     return "";
   }
 
+  public schema() {
+    return "";
+  }
+
   public where(where: Contextable<ITableContext, string>) {
     return "";
   }
