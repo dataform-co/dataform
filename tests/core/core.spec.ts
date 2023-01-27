@@ -888,7 +888,10 @@ suite("@dataform/core", () => {
       }
     );
 
-    [{testConfig: TestConfigs.redshift, target: 'schema'}, {testConfig: TestConfigs.redshiftWithSuffix, target: 'schema_suffix'}].forEach(({testConfig, target}) => {
+    [
+      {testConfig: TestConfigs.redshift, target: 'schema'},
+      {testConfig: TestConfigs.redshiftWithSuffix, target: 'schema_suffix'},
+    ].forEach(({testConfig, target}) => {
       test(`schema/suffix: "${target}"`, () => {
         const session = new Session(path.dirname(__filename), testConfig);
         session.publish("test", {type: "table"})
@@ -900,6 +903,24 @@ suite("@dataform/core", () => {
           .find(table => targetAsReadableString(table.target) === `${target}.test`);
 
         expect(testTable.query).deep.equals(target)
+      });
+    });
+
+    [
+      {testConfig: TestConfigs.redshift, target: 'schema.test', name: 'test'},
+      {testConfig: TestConfigs.redshiftWithPrefix, target: 'schema.prefix_test', name: 'prefix_test'},
+    ].forEach(({testConfig, target, name}) => {
+      test(`name/prefix: "${target}"`, () => {
+        const session = new Session(path.dirname(__filename), testConfig);
+        session.publish("test", {type: "table"})
+          .query(ctx => ctx.name());
+
+        const graph = session.compile();
+
+        const testTable = graph.tables
+          .find(table => targetAsReadableString(table.target) === target);
+
+        expect(testTable.query).deep.equals(name)
       });
     });
   });
@@ -947,7 +968,10 @@ suite("@dataform/core", () => {
       expect(graph.operations[1].queries).deep.equals(['select * from "schema"."operate-1"']);
     });
 
-    [{testConfig: TestConfigs.redshift, finalizedSchema: 'schema'}, {testConfig: TestConfigs.redshiftWithSuffix, finalizedSchema: 'schema_suffix'}].forEach(({testConfig, finalizedSchema}) => {
+    [
+      {testConfig: TestConfigs.redshift, finalizedSchema: 'schema'},
+      {testConfig: TestConfigs.redshiftWithSuffix, finalizedSchema: 'schema_suffix'},
+    ].forEach(({testConfig, finalizedSchema}) => {
       test(`schema with suffix: "${finalizedSchema}"`, () => {
         const session = new Session(path.dirname(__filename), testConfig);
         session.operate("operate-1", ctx => ctx.schema()).hasOutput(true);
@@ -957,6 +981,20 @@ suite("@dataform/core", () => {
         expect(graph.operations[0].queries).deep.equals([finalizedSchema]);
       });
     });
+
+    [
+      {testConfig: TestConfigs.redshift, finalizedName: 'operate-1'},
+      {testConfig: TestConfigs.redshiftWithPrefix, finalizedName: 'prefix_operate-1'},
+    ].forEach(({testConfig, finalizedName}) => {
+      test(`name with prefix: "${finalizedName}"`, () => {
+        const session = new Session(path.dirname(__filename), testConfig);
+        session.operate("operate-1", ctx => ctx.name()).hasOutput(true);
+
+        const graph = session.compile();
+
+        expect(graph.operations[0].queries).deep.equals([finalizedName]);
+      });
+    });    
   });
 
   suite("graph", () => {
@@ -1202,7 +1240,10 @@ select '\${\`bar\`}'
   });
 
   suite("assert", () => {
-    [{testConfig: TestConfigs.redshift, assertion: 'schema'}, {testConfig: TestConfigs.redshiftWithSuffix, assertion: 'schema_suffix'}].forEach(({testConfig, assertion}) => {
+    [
+      {testConfig: TestConfigs.redshift, assertion: 'schema'},
+      {testConfig: TestConfigs.redshiftWithSuffix, assertion: 'schema_suffix'},
+    ].forEach(({testConfig, assertion}) => {
       test(`schema: ${assertion}`, () => {
         const session = new Session(path.dirname(__filename), testConfig);
 
@@ -1211,6 +1252,21 @@ select '\${\`bar\`}'
         const graph = session.compile();
 
         expect(JSON.stringify(graph.assertions[0].query)).to.deep.equal(`"${assertion}"`);
+      });
+    });
+
+    [
+      {testConfig: TestConfigs.redshift, finalizedName: 'name'},
+      {testConfig: TestConfigs.redshiftWithPrefix, finalizedName: 'prefix_name'},
+    ].forEach(({testConfig, finalizedName}) => {
+      test(`name: ${finalizedName}`, () => {
+        const session = new Session(path.dirname(__filename), testConfig);
+
+        session.assert("name", ctx => ctx.name());
+
+        const graph = session.compile();
+
+        expect(JSON.stringify(graph.assertions[0].query)).to.deep.equal(`"${finalizedName}"`);
       });
     });
   });
