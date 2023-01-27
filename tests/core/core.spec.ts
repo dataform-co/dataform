@@ -31,6 +31,16 @@ class TestConfigs {
     defaultLocation: "US"
   };
 
+  public static bigqueryWithDatabase: dataform.IProjectConfig = {
+    ...TestConfigs.bigquery,
+    defaultDatabase: "test-db",
+  };
+
+  public static bigqueryWithDatabaseAndSuffix: dataform.IProjectConfig = {
+    ...TestConfigs.bigqueryWithDatabase,
+    databaseSuffix: "suffix",
+  };
+
   public static snowflake: dataform.IProjectConfig = {
     warehouse: "snowflake",
     defaultSchema: "schema"
@@ -923,6 +933,24 @@ suite("@dataform/core", () => {
         expect(testTable.query).deep.equals(name)
       });
     });
+
+    [
+      {testConfig: TestConfigs.bigqueryWithDatabase, target: 'test-db.schema.test', database: 'test-db'},
+      {testConfig: TestConfigs.bigqueryWithDatabaseAndSuffix, target: 'test-db_suffix.schema.test', database: 'test-db_suffix'},
+    ].forEach(({testConfig, target, database}) => {
+      test(`database/suffix: "${target}"`, () => {
+        const session = new Session(path.dirname(__filename), testConfig);
+        session.publish("test", {type: "table"})
+          .query(ctx => ctx.database());
+
+        const graph = session.compile();
+
+        const testTable = graph.tables
+          .find(table => targetAsReadableString(table.target) === target);
+
+        expect(testTable.query).deep.equals(database)
+      });
+    });
   });
 
   suite("resolve", () => {
@@ -994,7 +1022,21 @@ suite("@dataform/core", () => {
 
         expect(graph.operations[0].queries).deep.equals([finalizedName]);
       });
-    });    
+    });
+
+    [
+      {testConfig: TestConfigs.bigqueryWithDatabase, finalizedDatabase: 'test-db'},
+      {testConfig: TestConfigs.bigqueryWithDatabaseAndSuffix, finalizedDatabase: 'test-db_suffix'},
+    ].forEach(({testConfig, finalizedDatabase}) => {
+      test(`database with suffix: "${finalizedDatabase}"`, () => {
+        const session = new Session(path.dirname(__filename), testConfig);
+        session.operate("operate-1", ctx => ctx.database()).hasOutput(true);
+
+        const graph = session.compile();
+
+        expect(graph.operations[0].queries).deep.equals([finalizedDatabase]);
+      });
+    });
   });
 
   suite("graph", () => {
@@ -1267,6 +1309,21 @@ select '\${\`bar\`}'
         const graph = session.compile();
 
         expect(JSON.stringify(graph.assertions[0].query)).to.deep.equal(`"${finalizedName}"`);
+      });
+    });
+
+    [
+      {testConfig: TestConfigs.bigqueryWithDatabase, finalizedDatabase: 'test-db'},
+      {testConfig: TestConfigs.bigqueryWithDatabaseAndSuffix, finalizedDatabase: 'test-db_suffix'},
+    ].forEach(({testConfig, finalizedDatabase}) => {
+      test(`database: ${finalizedDatabase}`, () => {
+        const session = new Session(path.dirname(__filename), {...testConfig, defaultDatabase: 'test-db'});
+
+        session.assert("database", ctx => ctx.database());
+
+        const graph = session.compile();
+
+        expect(JSON.stringify(graph.assertions[0].query)).to.deep.equal(`"${finalizedDatabase}"`);
       });
     });
   });

@@ -793,7 +793,15 @@ export class TableContext implements ITableContext {
   }
 
   public schema(): string {
-    return this.table.session.finalizeSchema(this.table.proto.target.schema);
+    return this.table.session.finalizeSchema(
+      this.table.proto.target.schema
+    );
+  }
+
+  public database(): string {
+    return this.table.session.finalizeDatabase(
+      this.table.proto.target.database
+    );
   }
 
   public type(type: TableType) {

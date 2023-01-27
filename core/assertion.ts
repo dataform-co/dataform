@@ -213,6 +213,12 @@ export class AssertionContext implements ICommonContext {
     );
   }
 
+  public database(): string {
+    return this.assertion.session.finalizeDatabase(
+      this.assertion.proto.target.database
+    );
+  }
+
   public dependencies(name: Resolvable | Resolvable[]) {
     this.assertion.dependencies(name);
     return "";

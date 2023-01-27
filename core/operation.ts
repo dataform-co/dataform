@@ -245,6 +245,12 @@ export class OperationContext implements ICommonContext {
     );
   }
 
+  public database(): string {
+    return this.operation.session.finalizeDatabase(
+      this.operation.proto.target.database
+    );
+  }
+
   public dependencies(name: Resolvable | Resolvable[]) {
     this.operation.dependencies(name);
     return "";

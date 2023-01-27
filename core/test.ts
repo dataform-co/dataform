@@ -182,6 +182,10 @@ class RefReplacingContext implements ITableContext {
     return "";
   }
 
+  public database() {
+    return "";
+  }
+
   public where(where: Contextable<ITableContext, string>) {
     return "";
   }
