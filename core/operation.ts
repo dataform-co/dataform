@@ -219,7 +219,9 @@ export class OperationContext implements ICommonContext {
   }
 
   public name(): string {
-    return this.operation.proto.target.name;
+    return this.operation.session.finalizeName(
+      this.operation.proto.target.name
+    );
   }
 
   public ref(ref: Resolvable | string[], ...rest: string[]) {
