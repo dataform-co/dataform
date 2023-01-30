@@ -780,8 +780,7 @@ export class TableContext implements ITableContext {
   public ref(ref: Resolvable | string[], ...rest: string[]): string {
     ref = toResolvable(ref, rest);
     if (!resolvableAsTarget(ref)) {
-      const message = `Action name is not specified`;
-      this.table.session.compileError(new Error(message));
+      this.table.session.compileError(new Error(`Action name is not specified`));
       return "";
     }
     this.table.dependencies(ref);
@@ -793,7 +792,20 @@ export class TableContext implements ITableContext {
   }
 
   public schema(): string {
-    return this.table.session.finalizeSchema(this.table.proto.target.schema);
+    return this.table.session.finalizeSchema(
+      this.table.proto.target.schema
+    );
+  }
+
+  public database(): string {
+    if (!this.table.proto.target.database) {
+      this.table.session.compileError(new Error(`Warehouse does not support multiple databases`));
+      return "";
+    }
+
+    return this.table.session.finalizeDatabase(
+      this.table.proto.target.database
+    );
   }
 
   public type(type: TableType) {

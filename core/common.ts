@@ -50,6 +50,11 @@ export interface ICommonContext {
    * Returns the schema of this dataset.
    */
   schema: () => string;
+
+  /**
+   * Returns the database of this dataset, if applicable.
+   */
+  database: () => string;
 }
 
 /**
