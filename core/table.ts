@@ -799,6 +799,12 @@ export class TableContext implements ITableContext {
   }
 
   public database(): string {
+    if (!this.table.proto.target.database) {
+      const message = `The database field in the target is undefined.`;
+      this.table.session.compileError(new Error(message));
+      return "";
+    }
+
     return this.table.session.finalizeDatabase(
       this.table.proto.target.database
     );

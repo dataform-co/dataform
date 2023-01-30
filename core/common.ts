@@ -52,7 +52,7 @@ export interface ICommonContext {
   schema: () => string;
 
   /**
-   * Returns the database of this dataset.
+   * Returns the database of this dataset, if applicable.
    */
   database: () => string;
 }

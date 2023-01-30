@@ -246,6 +246,12 @@ export class OperationContext implements ICommonContext {
   }
 
   public database(): string {
+    if (!this.operation.proto.target.database) {
+      const message = `The database field in the target is undefined.`;
+      this.operation.session.compileError(new Error(message));
+      return "";
+    }
+
     return this.operation.session.finalizeDatabase(
       this.operation.proto.target.database
     );

@@ -214,6 +214,12 @@ export class AssertionContext implements ICommonContext {
   }
 
   public database(): string {
+    if (!this.assertion.proto.target.database) {
+      const message = `The database field in the target is undefined.`;
+      this.assertion.session.compileError(new Error(message));
+      return "";
+    }
+
     return this.assertion.session.finalizeDatabase(
       this.assertion.proto.target.database
     );
