@@ -1036,7 +1036,7 @@ suite("@dataform/core", () => {
 
         expect(graph.operations[0].queries).deep.equals([finalizedDatabase]);
       });
-    });
+    });    
   });
 
   suite("graph", () => {
