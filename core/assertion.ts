@@ -187,7 +187,9 @@ export class AssertionContext implements ICommonContext {
   }
 
   public name(): string {
-    return this.assertion.proto.target.name;
+    return this.assertion.session.finalizeName(
+      this.assertion.proto.target.name
+    );
   }
 
   public ref(ref: Resolvable | string[], ...rest: string[]) {

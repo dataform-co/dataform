@@ -772,7 +772,9 @@ export class TableContext implements ITableContext {
   }
 
   public name(): string {
-    return this.table.proto.target.name;
+    return this.table.session.finalizeName(
+      this.table.proto.target.name
+    );
   }
 
   public ref(ref: Resolvable | string[], ...rest: string[]): string {
