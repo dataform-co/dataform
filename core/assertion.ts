@@ -195,8 +195,7 @@ export class AssertionContext implements ICommonContext {
   public ref(ref: Resolvable | string[], ...rest: string[]) {
     ref = toResolvable(ref, rest);
     if (!resolvableAsTarget(ref)) {
-      const message = `Action name is not specified`;
-      this.assertion.session.compileError(new Error(message));
+      this.assertion.session.compileError(new Error(`Action name is not specified`));
       return "";
     }
     this.assertion.dependencies(ref);
@@ -210,6 +209,19 @@ export class AssertionContext implements ICommonContext {
   public schema(): string {
     return this.assertion.session.finalizeSchema(
       this.assertion.proto.target.schema
+    );
+  }
+
+  public database(): string {
+    if (!this.assertion.proto.target.database) {
+      this.assertion.session.compileError(
+        new Error(`Warehouse does not support multiple databases`)
+      );
+      return "";
+    }
+
+    return this.assertion.session.finalizeDatabase(
+      this.assertion.proto.target.database
     );
   }
 
