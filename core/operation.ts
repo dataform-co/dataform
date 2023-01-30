@@ -227,8 +227,7 @@ export class OperationContext implements ICommonContext {
   public ref(ref: Resolvable | string[], ...rest: string[]) {
     ref = toResolvable(ref, rest);
     if (!resolvableAsTarget(ref)) {
-      const message = `Action name is not specified`;
-      this.operation.session.compileError(new Error(message));
+      this.operation.session.compileError(new Error(`Action name is not specified`));
       return "";
     }
     this.operation.dependencies(ref);
@@ -247,8 +246,9 @@ export class OperationContext implements ICommonContext {
 
   public database(): string {
     if (!this.operation.proto.target.database) {
-      const message = `The database field in the target is undefined.`;
-      this.operation.session.compileError(new Error(message));
+      this.operation.session.compileError(
+        new Error(`Warehouse does not support multiple databases`)
+      );
       return "";
     }
 

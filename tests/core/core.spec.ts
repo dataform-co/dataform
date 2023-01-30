@@ -962,7 +962,7 @@ suite("@dataform/core", () => {
         .find(table => targetAsReadableString(table.target) === 'schema.test');
 
       expect(graph.graphErrors.compilationErrors[0].message).deep
-        .equals("The database field in the target is undefined.");
+        .equals("Warehouse does not support multiple databases");
       expect(testTable.query).deep.equals("");
     });
   });
@@ -1060,7 +1060,7 @@ suite("@dataform/core", () => {
       const graph = session.compile();
 
       expect(graph.graphErrors.compilationErrors[0].message).deep
-        .equals("The database field in the target is undefined.");
+        .equals("Warehouse does not support multiple databases");
       expect(JSON.stringify(graph.operations[0].queries)).deep.equals('[""]');
     });
   });
@@ -1361,7 +1361,7 @@ select '\${\`bar\`}'
       const graph = session.compile();
 
       expect(graph.graphErrors.compilationErrors[0].message).deep
-        .equals("The database field in the target is undefined.");
+        .equals("Warehouse does not support multiple databases");
       expect(JSON.stringify(graph.assertions[0].query)).to.deep.equal('""');
     });
   });

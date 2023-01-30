@@ -195,8 +195,7 @@ export class AssertionContext implements ICommonContext {
   public ref(ref: Resolvable | string[], ...rest: string[]) {
     ref = toResolvable(ref, rest);
     if (!resolvableAsTarget(ref)) {
-      const message = `Action name is not specified`;
-      this.assertion.session.compileError(new Error(message));
+      this.assertion.session.compileError(new Error(`Action name is not specified`));
       return "";
     }
     this.assertion.dependencies(ref);
@@ -215,8 +214,9 @@ export class AssertionContext implements ICommonContext {
 
   public database(): string {
     if (!this.assertion.proto.target.database) {
-      const message = `The database field in the target is undefined.`;
-      this.assertion.session.compileError(new Error(message));
+      this.assertion.session.compileError(
+        new Error(`Warehouse does not support multiple databases`)
+      );
       return "";
     }
 
