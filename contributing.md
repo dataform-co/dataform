@@ -37,7 +37,7 @@ _Note: If you are running Bazel on a **Mac**, this or any step that requires bui
 The following command runs all unit tests:
 
 ```bash
-bazel test --build_tests_only -- ... -tests/integration/... -sql/...
+bazel test --build_tests_only -- ... -tests/integration/...
 ```
 
 This runs all tests excluding those that rely on encrypted secrets. If you need to run integration tests, please [get in touch](mailto:opensource@dataform.co) with the team.
