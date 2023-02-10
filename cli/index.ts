@@ -562,6 +562,7 @@ export function runCli() {
           actionsOption,
           tagsOption,
           includeDepsOption,
+          includeDependentsOption,
           schemaSuffixOverrideOption,
           credentialsOption,
           jsonOutputOption,
