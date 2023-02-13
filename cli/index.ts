@@ -206,6 +206,16 @@ const timeoutOption: INamedOption<yargs.Options> = {
   }
 };
 
+const jobPrefixOption: INamedOption<yargs.Options> = {
+  name: "job-prefix",
+  option: {
+    describe:
+      "Adds an additional prefix in the form of `dataform-${jobPrefix}-`. Has no effect on warehouses other than BigQuery.",
+    type: "string",
+    default: null
+  }
+};
+
 const defaultDatabaseOptionName = "default-database";
 const defaultLocationOptionName = "default-location";
 const skipInstallOptionName = "skip-install";
@@ -573,7 +583,8 @@ export function runCli() {
           credentialsOption,
           jsonOutputOption,
           varsOption,
-          timeoutOption
+          timeoutOption,
+          jobPrefixOption
         ],
         processFn: async argv => {
           if (!argv[jsonOutputOption.name]) {
@@ -641,7 +652,13 @@ export function runCli() {
             if (!argv[jsonOutputOption.name]) {
               print("Running...\n");
             }
-            const runner = run(dbadapter, executionGraph);
+            const runner = run(
+              dbadapter,
+              executionGraph,
+              argv[jobPrefixOption.name]
+                ? { bigquery: { jobPrefix: argv[jobPrefixOption.name] } }
+                : {}
+            );
             process.on("SIGINT", () => {
               if (
                 !supportsCancel(

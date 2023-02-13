@@ -424,6 +424,16 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
       expect(bqMetadata.totalBytesProcessed).to.eql(Long.fromNumber(0));
     });
 
+    test("configured job prefix is added to table names", async () => {
+      const query = `select 1 as test`;
+      const { metadata } = await dbadapter.execute(query, { bigquery: { jobPrefix: "jobPrefix" } });
+      const { bigquery: bqMetadata } = metadata;
+      expect(bqMetadata).to.have.property("jobId");
+      expect(bqMetadata.jobId).to.match(
+        /^dataform-jobPrefix-[0-9A-Fa-f]{8}(?:-[0-9A-Fa-f]{4}){3}-[0-9A-Fa-f]{12}$/
+      );
+    });
+
     suite("query limits work", { parallel: true }, async () => {
       const query = `
         select 1 union all

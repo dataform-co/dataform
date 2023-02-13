@@ -25,6 +25,8 @@ export interface IDbClient {
       byteLimit?: number;
       bigquery?: {
         labels?: { [label: string]: string };
+        location?: string;
+        jobPrefix?: string;
       };
     }
   ): Promise<IExecutionResult>;
@@ -33,9 +35,7 @@ export interface IDbClient {
 export interface IDbAdapter extends IDbClient {
   withClientLock<T>(callback: (client: IDbClient) => Promise<T>): Promise<T>;
 
-  evaluate(
-    queryOrAction: QueryOrAction,
-  ): Promise<dataform.IQueryEvaluation[]>;
+  evaluate(queryOrAction: QueryOrAction): Promise<dataform.IQueryEvaluation[]>;
 
   schemas(database: string): Promise<string[]>;
   createSchema(database: string, schema: string): Promise<void>;
