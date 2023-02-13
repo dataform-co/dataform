@@ -74,7 +74,9 @@ The projects folder here is not built as it requires an environment file, which 
 
 1. Begin materialising your masterpiece.
 
-1. Once done, merge from main, review your code, run the tests, **[check for common mistakes](#common-pull-request-mistakes)** and then open a pull request.
+   1. Create a feature branch based on `main` ([link](https://github.com/dataform-co/dataform/tree/main)) for development work.
+
+1. Once done, review your code, run the tests, **[check for common mistakes](#common-pull-request-mistakes)** and then open a pull request.
 
    1. Tidy the code by removing erronous log statements. Comment difficult to interpret sections. Make sure functions are names appropriately. We will review the pull request mainly by the git difference.
 
