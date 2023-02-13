@@ -1,6 +1,6 @@
 import yargs from "yargs";
 
-import { maybeConfigureAnalytics, trackCommand } from "df/cli/analytics";
+import {maybeConfigureAnalytics, trackCommand, noTrackOption} from "df/cli/analytics";
 
 export interface ICli {
   commands: ICommand[];
@@ -28,7 +28,7 @@ export function createYargsCli(cli: ICli) {
       command.description,
       (yargsChainer: yargs.Argv) => createOptionsChain(yargsChainer, command),
       async (argv: { [argumentName: string]: any }) => {
-        await maybeConfigureAnalytics();
+        await maybeConfigureAnalytics(argv[noTrackOption.name]);
         const analyticsTrack = trackCommand(command.format.split(" ")[0]);
         const exitCode = await command.processFn(argv);
         let timer: NodeJS.Timer;

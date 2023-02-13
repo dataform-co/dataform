@@ -8,7 +8,7 @@ import { build, compile, credentials, init, install, run, table, test } from "df
 import { CREDENTIALS_FILENAME } from "df/api/commands/credentials";
 import * as dbadapters from "df/api/dbadapters";
 import { prettyJsonStringify } from "df/api/utils";
-import { trackError } from "df/cli/analytics";
+import {trackError, noTrackOption} from "df/cli/analytics";
 import {
   print,
   printCompiledGraph,
@@ -242,6 +242,7 @@ export function runCli() {
         description: "Create a new dataform project.",
         positionalOptions: [warehouseOption, projectDirOption],
         options: [
+          noTrackOption,
           {
             name: defaultDatabaseOptionName,
             option: {
@@ -316,7 +317,7 @@ export function runCli() {
         format: `install [${projectDirMustExistOption.name}]`,
         description: "Install a project's NPM dependencies.",
         positionalOptions: [projectDirMustExistOption],
-        options: [],
+        options: [noTrackOption],
         processFn: async argv => {
           print("Installing NPM dependencies...\n");
           await install(argv[projectDirMustExistOption.name]);
@@ -329,6 +330,7 @@ export function runCli() {
         description: `Create a ${credentials.CREDENTIALS_FILENAME} file for Dataform to use when accessing your warehouse.`,
         positionalOptions: [warehouseOption, projectDirMustExistOption],
         options: [
+          noTrackOption,
           {
             name: testConnectionOptionName,
             option: {
@@ -414,7 +416,8 @@ export function runCli() {
           schemaSuffixOverrideOption,
           jsonOutputOption,
           varsOption,
-          timeoutOption
+          timeoutOption,
+          noTrackOption
         ],
         processFn: async argv => {
           const projectDir = argv[projectDirMustExistOption.name];
@@ -503,7 +506,7 @@ export function runCli() {
         format: `test [${projectDirMustExistOption.name}]`,
         description: "Run the dataform project's unit tests on the configured data warehouse.",
         positionalOptions: [projectDirMustExistOption],
-        options: [credentialsOption, varsOption, timeoutOption],
+        options: [credentialsOption, varsOption, timeoutOption, noTrackOption],
         processFn: async argv => {
           print("Compiling...\n");
           const compiledGraph = await compile({
@@ -574,7 +577,8 @@ export function runCli() {
           credentialsOption,
           jsonOutputOption,
           varsOption,
-          timeoutOption
+          timeoutOption,
+          noTrackOption
         ],
         processFn: async argv => {
           if (!argv[jsonOutputOption.name]) {
@@ -692,7 +696,7 @@ export function runCli() {
         format: `format [${projectDirMustExistOption.name}]`,
         description: "Format the dataform project's files.",
         positionalOptions: [projectDirMustExistOption],
-        options: [],
+        options: [noTrackOption],
         processFn: async argv => {
           const filenames = glob.sync("{definitions,includes}/**/*.{js,sqlx}", {
             cwd: argv[projectDirMustExistOption.name]
@@ -722,7 +726,7 @@ export function runCli() {
         format: `listtables <${warehouseOption.name}>`,
         description: "List tables on the configured data warehouse.",
         positionalOptions: [warehouseOption],
-        options: [credentialsOption],
+        options: [credentialsOption, noTrackOption],
         processFn: async argv => {
           const readCredentials = credentials.read(
             argv[warehouseOption.name],
@@ -757,7 +761,7 @@ export function runCli() {
             }
           }
         ],
-        options: [credentialsOption],
+        options: [credentialsOption, noTrackOption],
         processFn: async argv => {
           const readCredentials = credentials.read(
             argv[warehouseOption.name],

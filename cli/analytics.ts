@@ -1,13 +1,24 @@
 import Analytics from "analytics-node";
 import { getConfigSettings, getConfigSettingsPath, upsertConfigSettings } from "df/cli/config";
 import { ynQuestion } from "df/cli/console";
+import {INamedOption} from "df/cli/yargswrapper";
 import { v4 as uuidv4 } from "uuid";
+import yargs from "yargs";
+
+export const noTrackOption: INamedOption<yargs.Options> = {
+  name: "no-track",
+  option: {
+    describe: `Disables analytics without asking the user. A settings.json file will be written at ${getConfigSettingsPath()} to store this setting`,
+    type: "boolean",
+    default: false
+  }
+};
 
 const analytics = new Analytics("eR24ln3MniE3TKZXkvAkOGkiSN02xXqw");
 
 let currentCommand: string;
 
-export async function maybeConfigureAnalytics() {
+export async function maybeConfigureAnalytics(noTrack: boolean) {
   const settings = await getConfigSettings();
   // We should only ask if users want to track analytics if they are in an interactive terminal;
   if (!process.stdout.isTTY) {
@@ -16,6 +27,14 @@ export async function maybeConfigureAnalytics() {
   if (settings.allowAnonymousAnalytics !== undefined) {
     return;
   }
+  if (noTrack) {
+    await upsertConfigSettings({
+      allowAnonymousAnalytics: false,
+      anonymousUserId: uuidv4()
+    });
+    return;
+  }
+
   const optInResponse = ynQuestion(
     `
 To help improve the quality of our products, we collect anonymized usage data and anonymized stacktraces when crashes are encountered.
