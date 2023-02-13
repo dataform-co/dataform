@@ -32,7 +32,7 @@ export interface IExecutionOptions {
 export function run(
   dbadapter: dbadapters.IDbAdapter,
   graph: dataform.IExecutionGraph,
-  executionOptions: IExecutionOptions = {},
+  executionOptions?: IExecutionOptions,
   partiallyExecutedRunResult: dataform.IRunResult = {},
   runnerNotificationPeriodMillis: number = flags.runnerNotificationPeriodMillis.get()
 ): Runner {
