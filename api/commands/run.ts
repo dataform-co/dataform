@@ -32,7 +32,7 @@ export interface IExecutionOptions {
 export function run(
   dbadapter: dbadapters.IDbAdapter,
   graph: dataform.IExecutionGraph,
-  executionOptions?: IExecutionOptions,
+  executionOptions: IExecutionOptions = {},
   partiallyExecutedRunResult: dataform.IRunResult = {},
   runnerNotificationPeriodMillis: number = flags.runnerNotificationPeriodMillis.get()
 ): Runner {
@@ -68,7 +68,7 @@ export class Runner {
   constructor(
     private readonly dbadapter: dbadapters.IDbAdapter,
     private readonly graph: dataform.IExecutionGraph,
-    private readonly executionOptions: IExecutionOptions,
+    private readonly executionOptions: IExecutionOptions = {},
     partiallyExecutedRunResult: dataform.IRunResult = {},
     private readonly runnerNotificationPeriodMillis: number = flags.runnerNotificationPeriodMillis.get()
   ) {
