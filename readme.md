@@ -1,14 +1,11 @@
-<p align="center">
-  <img src="https://github.com/dataform-co/dataform/blob/master/static/images/github_bg.png">
-</p>
-
-# Intro
+# Dataform Core
 
 Dataform core is an open source meta-language to create SQL tables and workflows. Dataform core extends SQL by providing a dependency management system, automated data quality testing, and data documentation.
 
 Using Dataform core, data teams can build scalable SQL data transformation pipelines following software engineering best practices, like version control and testing.
 
-<br/>
+A more in-depth description can be [found here](https://cloud.google.com/dataform/docs/overview). Note that Dataform core is separate to [Dataform in Google Cloud Platform](#in-google-cloud-platform).
+
 <br/>
 
 <p align="center">
@@ -57,11 +54,11 @@ Dataform in Google Cloud Platform provides a fully managed experience to build s
 - a cloud development environment to develop data assets with SQL and Dataform core and version control code with GitHub, GitLab, and other Git providers.
 - a fully managed, serverless orchestration environment for data pipelines, fully integrated in Google Cloud Platform.
 
-You can learn more on [cloud.google.com/dataform](https://cloud.google.com/dataform)
+You can learn more on [cloud.google.com/dataform](https://cloud.google.com/dataform).
 
-## How it works
+# Deploying
 
-- Read the [docs here](https://cloud.google.com/dataform/docs/overview).
+Scheduling the running of Dataform projects is [available via Dataform on GCP](https://cloud.google.com/dataform/docs), but basic scheduling can be achieved without. See [scheduling.md](https://github.com/dataform-co/dataform/blob/main/deploying.md) for more details.
 
 # Want to report a bug or request a feature?
 
