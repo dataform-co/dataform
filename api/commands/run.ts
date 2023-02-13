@@ -2,6 +2,7 @@ import EventEmitter from "events";
 import Long from "long";
 
 import * as dbadapters from "df/api/dbadapters";
+import { IBigQueryExecutionOptions } from "df/api/dbadapters/bigquery";
 import { Flags } from "df/common/flags";
 import { retry } from "df/common/promises";
 import { deepClone, equals } from "df/common/protos";
@@ -9,7 +10,6 @@ import { StringifiedMap, StringifiedSet } from "df/common/strings/stringifier";
 import { targetsAreEqual, targetStringifier } from "df/core/targets";
 import { dataform } from "df/protos/ts";
 import { IBigQueryOptions } from "df/core/table";
-import { IBigQueryExecutionOptions } from "../dbadapters/bigquery";
 
 const CANCEL_EVENT = "jobCancel";
 const flags = {
