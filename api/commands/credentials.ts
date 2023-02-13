@@ -15,7 +15,7 @@ export type Credentials =
 
 export function read(warehouse: string, credentialsPath: string): Credentials {
   if (!fs.existsSync(credentialsPath)) {
-    throw new Error("Missing credentials JSON file.");
+    throw new Error(`Missing credentials JSON file; not found at path '${credentialsPath}'.`);
   }
   return coerce(warehouse, JSON.parse(fs.readFileSync(credentialsPath, "utf8")));
 }

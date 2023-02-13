@@ -154,11 +154,10 @@ const credentialsOption: INamedOption<yargs.Options> = {
   name: "credentials",
   option: {
     describe: "The location of the credentials JSON file to use.",
-    default: null
+    default: CREDENTIALS_FILENAME
   },
   check: (argv: yargs.Arguments<any>) =>
-    !argv[credentialsOption.name] ||
-    assertPathExists(getCredentialsPath(argv[projectDirOption.name], argv[credentialsOption.name]))
+    getCredentialsPath(argv[projectDirOption.name], argv[credentialsOption.name])
 };
 
 const warehouseOption: INamedOption<yargs.PositionalOptions> = {
