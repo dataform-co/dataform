@@ -53,7 +53,7 @@ container_run_and_commit(
 container_image(
     name = "image_with_dataform_entrypoint",
     base = ":image_with_dataform_cli_commit.tar",
-    cmd = ["help"],
+    cmd = [],
     entrypoint = ["dataform"],
     tags = [
         "no-remote",
