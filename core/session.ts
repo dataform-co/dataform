@@ -246,9 +246,10 @@ export class Session {
       return this.adapter().resolveTarget({
         ...resolved.proto.target,
         database:
-          resolved.proto.target.database && this.finalizeDatabase(resolved.proto.target.database),
+          resolved.proto.target.database &&
+          this.finalizeDatabase(resolved.proto.target.database),
         schema: this.finalizeSchema(resolved.proto.target.schema),
-        name: this.finalizeName(resolved.proto.target.name)
+        name: this.finalizeName(resolved.proto.target.name),
       });
     }
     // TODO: Here we allow 'ref' to go unresolved. This is for backwards compatibility with projects
@@ -263,7 +264,8 @@ export class Session {
           this.config,
           this.finalizeName(ref),
           this.finalizeSchema(this.config.defaultSchema),
-          this.config.defaultDatabase && this.finalizeDatabase(this.config.defaultDatabase)
+          this.config.defaultDatabase &&
+            this.finalizeDatabase(this.config.defaultDatabase),
         )
       );
     }
@@ -273,7 +275,7 @@ export class Session {
         this.config,
         this.finalizeName(ref.name),
         this.finalizeSchema(ref.schema),
-        ref.database && this.finalizeName(ref.database)
+        ref.database && this.finalizeName(ref.database),
       )
     );
   }
@@ -433,16 +435,17 @@ export class Session {
 
   public finalizeDatabase(database: string): string {
     return this.adapter().normalizeIdentifier(
-      `${database}${this.getDatabaseSuffixWithUnderscore()}`
-    );
+      `${database}${this.getDatabaseSuffixWithUnderscore()}`);
   }
 
   public finalizeSchema(schema: string): string {
-    return this.adapter().normalizeIdentifier(`${schema}${this.getSchemaSuffixWithUnderscore()}`);
+    return this.adapter().normalizeIdentifier(
+      `${schema}${this.getSchemaSuffixWithUnderscore()}`);
   }
 
   public finalizeName(name: string): string {
-    return this.adapter().normalizeIdentifier(`${this.getTablePrefixWithUnderscore()}${name}`);
+    return this.adapter().normalizeIdentifier(
+      `${this.getTablePrefixWithUnderscore()}${name}`);
   }
 
   private getDatabaseSuffixWithUnderscore() {
