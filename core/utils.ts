@@ -246,3 +246,33 @@ export function throwIfInvalid<T>(proto: T, verify: (proto: T) => string) {
     throw new Error(verifyError);
   }
 }
+
+export function strTableTypeToEnum(type: string, throwIfUnknown: boolean) {
+  switch (type) {
+    case "table":
+      return dataform.TableType.TABLE;
+    case "incremental":
+      return dataform.TableType.INCREMENTAL;
+    case "view":
+      return dataform.TableType.VIEW;
+    case "inline":
+      return dataform.TableType.INLINE;
+    default: {
+      if (throwIfUnknown) {
+        throw new Error(`Unexpected table type: ${type}`);
+      }
+      return dataform.TableType.UNKNOWN_TYPE;
+    }
+  }
+}
+
+export function tableTypeFromProto(table: dataform.ITable, throwIfUnknown: boolean) {
+  if (table.enumType !== dataform.TableType.UNKNOWN_TYPE && table.enumType !== undefined) {
+    return table.enumType;
+  }
+  return strTableTypeToEnum(table.type, throwIfUnknown);
+}
+
+export function tableEnumTypeToString(enumType: dataform.TableType) {
+  return dataform.TableType[enumType].toLowerCase();
+}

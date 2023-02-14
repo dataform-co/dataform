@@ -94,7 +94,7 @@ export class Builder {
     return {
       ...this.toPartialExecutionAction(table),
       type: "table",
-      tableType: table.type,
+      tableType: utils.tableEnumTypeToString(utils.tableTypeFromProto(table, true)),
       tasks: table.disabled
         ? []
         : this.adapter.publishTasks(table, runConfig, tableMetadata).build(),

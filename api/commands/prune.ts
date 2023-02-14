@@ -28,7 +28,7 @@ function computeIncludedActionNames(
   runConfig: dataform.IRunConfig
 ): Set<string> {
   // Remove inline tables.
-  const filteredTables = compiledGraph.tables.filter(t => t.type !== "inline");
+  const filteredTables = compiledGraph.tables.filter(t => utils.tableTypeFromProto(t, false) !== dataform.TableType.INLINE);
 
   // Union all tables, operations, assertions.
   const allActions: CompileAction[] = [].concat(

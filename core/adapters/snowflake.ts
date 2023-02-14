@@ -1,6 +1,7 @@
 import { IAdapter } from "df/core/adapters";
 import { Adapter } from "df/core/adapters/base";
 import { Task, Tasks } from "df/core/tasks";
+import { tableTypeFromProto } from "df/core/utils";
 import { dataform } from "df/protos/ts";
 
 export class SnowflakeAdapter extends Adapter implements IAdapter {
@@ -25,14 +26,15 @@ export class SnowflakeAdapter extends Adapter implements IAdapter {
 
     this.preOps(table, runConfig, tableMetadata).forEach(statement => tasks.add(statement));
 
-    const baseTableType = this.baseTableType(table.type);
+    const tableType = tableTypeFromProto(table, true);
+    const baseTableType = this.baseTableType(tableType);
     if (tableMetadata && tableMetadata.type !== baseTableType) {
       tasks.add(
         Task.statement(this.dropIfExists(table.target, this.oppositeTableType(baseTableType)))
       );
     }
 
-    if (table.type === "incremental") {
+    if (tableType === dataform.TableType.INCREMENTAL) {
       if (!this.shouldWriteIncrementally(runConfig, tableMetadata)) {
         tasks.add(Task.statement(this.createOrReplace(table)));
       } else {
@@ -80,7 +82,7 @@ export class SnowflakeAdapter extends Adapter implements IAdapter {
   }
 
   private createOrReplace(table: dataform.ITable) {
-    if (table.type === "view") {
+    if (tableTypeFromProto(table, true) === dataform.TableType.VIEW) {
       return this.createOrReplaceView(table.target, table.query, table.snowflake?.secure, table.materialized);
     }
     return `create or replace ${
