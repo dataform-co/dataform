@@ -1,7 +1,7 @@
 import * as fs from "fs";
 import * as glob from "glob";
 import * as path from "path";
-import yargs, { string } from "yargs";
+import yargs from "yargs";
 
 import * as chokidar from "chokidar";
 import { build, compile, credentials, init, install, run, table, test } from "df/api";
@@ -178,6 +178,9 @@ const defaultDatabaseOption: INamedOption<yargs.Options> = {
     type: "string"
   },
   check: (argv: yargs.Arguments<any>) => {
+    if (!argv[warehouseOption.name]) {
+      return;
+    }
     if (
       argv[defaultDatabaseOption.name] &&
       !["bigquery", "snowflake"].includes(argv[warehouseOption.name])
@@ -201,6 +204,9 @@ const defaultLocationOption: INamedOption<yargs.Options> = {
       "The default BigQuery location to use. See https://cloud.google.com/bigquery/docs/locations for supported values."
   },
   check: (argv: yargs.Arguments<any>) => {
+    if (!argv[warehouseOption.name]) {
+      return;
+    }
     if (argv[defaultLocationOption.name] && !["bigquery"].includes(argv[warehouseOption.name])) {
       throw new Error(`The --${defaultLocationOption.name} flag is only used for BigQuery.`);
     }
@@ -853,46 +859,53 @@ class ProjectConfigOverride {
   };
 
   static allYargsOptions = [
-    this.warehouseOverrideOption,
-    this.defaultDatabaseOverrideOption,
-    this.defaultSchemaOverrideOption,
-    this.defaultLocationOverrideOption,
-    this.assertionSchemaOverrideOption,
-    this.varsOverrideOption,
-    this.databaseSuffixOverrideOption,
-    this.schemaSuffixOverrideOption,
-    this.tablePrefixOverrideOption
+    ProjectConfigOverride.warehouseOverrideOption,
+    ProjectConfigOverride.defaultDatabaseOverrideOption,
+    ProjectConfigOverride.defaultSchemaOverrideOption,
+    ProjectConfigOverride.defaultLocationOverrideOption,
+    ProjectConfigOverride.assertionSchemaOverrideOption,
+    ProjectConfigOverride.varsOverrideOption,
+    ProjectConfigOverride.databaseSuffixOverrideOption,
+    ProjectConfigOverride.schemaSuffixOverrideOption,
+    ProjectConfigOverride.tablePrefixOverrideOption
   ];
 
   static construct(argv: yargs.Arguments<any>): dataform.IProjectConfig {
     let projectConfigOverride: dataform.IProjectConfig = {};
 
-    if (argv[this.warehouseOverrideOption.name]) {
-      projectConfigOverride.warehouse = argv[this.warehouseOverrideOption.name];
+    if (argv[ProjectConfigOverride.warehouseOverrideOption.name]) {
+      projectConfigOverride.warehouse = argv[ProjectConfigOverride.warehouseOverrideOption.name];
     }
-    if (argv[this.defaultDatabaseOverrideOption.name]) {
-      projectConfigOverride.defaultDatabase = argv[this.defaultDatabaseOverrideOption.name];
+    if (argv[ProjectConfigOverride.defaultDatabaseOverrideOption.name]) {
+      projectConfigOverride.defaultDatabase =
+        argv[ProjectConfigOverride.defaultDatabaseOverrideOption.name];
     }
-    if (argv[this.defaultSchemaOverrideOption.name]) {
-      projectConfigOverride.defaultSchema = argv[this.defaultSchemaOverrideOption.name];
+    if (argv[ProjectConfigOverride.defaultSchemaOverrideOption.name]) {
+      projectConfigOverride.defaultSchema =
+        argv[ProjectConfigOverride.defaultSchemaOverrideOption.name];
     }
-    if (argv[this.defaultLocationOverrideOption.name]) {
-      projectConfigOverride.defaultLocation = argv[this.defaultLocationOverrideOption.name];
+    if (argv[ProjectConfigOverride.defaultLocationOverrideOption.name]) {
+      projectConfigOverride.defaultLocation =
+        argv[ProjectConfigOverride.defaultLocationOverrideOption.name];
     }
-    if (argv[this.assertionSchemaOverrideOption.name]) {
-      projectConfigOverride.assertionSchema = argv[this.assertionSchemaOverrideOption.name];
+    if (argv[ProjectConfigOverride.assertionSchemaOverrideOption.name]) {
+      projectConfigOverride.assertionSchema =
+        argv[ProjectConfigOverride.assertionSchemaOverrideOption.name];
     }
-    if (argv[this.varsOverrideOption.name]) {
-      projectConfigOverride.vars = argv[this.varsOverrideOption.name];
+    if (argv[ProjectConfigOverride.varsOverrideOption.name]) {
+      projectConfigOverride.vars = argv[ProjectConfigOverride.varsOverrideOption.name];
     }
-    if (argv[this.databaseSuffixOverrideOption.name]) {
-      projectConfigOverride.databaseSuffix = argv[this.databaseSuffixOverrideOption.name];
+    if (argv[ProjectConfigOverride.databaseSuffixOverrideOption.name]) {
+      projectConfigOverride.databaseSuffix =
+        argv[ProjectConfigOverride.databaseSuffixOverrideOption.name];
     }
-    if (argv[this.schemaSuffixOverrideOption.name]) {
-      projectConfigOverride.schemaSuffix = argv[this.schemaSuffixOverrideOption.name];
+    if (argv[ProjectConfigOverride.schemaSuffixOverrideOption.name]) {
+      projectConfigOverride.schemaSuffix =
+        argv[ProjectConfigOverride.schemaSuffixOverrideOption.name];
     }
-    if (argv[this.tablePrefixOverrideOption.name]) {
-      projectConfigOverride.schemaSuffix = argv[this.tablePrefixOverrideOption.name];
+    if (argv[ProjectConfigOverride.tablePrefixOverrideOption.name]) {
+      projectConfigOverride.schemaSuffix =
+        argv[ProjectConfigOverride.tablePrefixOverrideOption.name];
     }
     return projectConfigOverride;
   }

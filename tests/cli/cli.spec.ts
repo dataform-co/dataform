@@ -63,7 +63,8 @@ select 1 as \${dataform.projectConfig.vars.testVar2}
         "compile",
         projectDir,
         "--json",
-        "--vars=testVar1=testValue1,testVar2=testValue2"
+        "--vars=testVar1=testValue1,testVar2=testValue2",
+        "--schema-suffix=test_schema_suffix"
       ])
     );
 
@@ -75,7 +76,7 @@ select 1 as \${dataform.projectConfig.vars.testVar2}
           type: "table",
           target: {
             database: "dataform-integration-tests",
-            schema: "dataform",
+            schema: "dataform_test_schema_suffix",
             name: "example"
           },
           canonicalTarget: {
@@ -98,7 +99,8 @@ select 1 as \${dataform.projectConfig.vars.testVar2}
         vars: {
           testVar1: "testValue1",
           testVar2: "testValue2"
-        }
+        },
+        schemaSuffix: "test_schema_suffix"
       },
       graphErrors: {},
       dataformCoreVersion: version,
@@ -121,7 +123,8 @@ select 1 as \${dataform.projectConfig.vars.testVar2}
         "test_credentials/bigquery.json",
         "--dry-run",
         "--json",
-        "--vars=testVar1=testValue1,testVar2=testValue2"
+        "--vars=testVar1=testValue1,testVar2=testValue2",
+        "--default-location=europe"
       ])
     );
 
@@ -151,7 +154,7 @@ select 1 as \${dataform.projectConfig.vars.testVar2}
       projectConfig: {
         assertionSchema: "dataform_assertions",
         defaultDatabase: "dataform-integration-tests",
-        defaultLocation: "US",
+        defaultLocation: "europe",
         defaultSchema: "dataform",
         useRunCache: false,
         warehouse: "bigquery",
