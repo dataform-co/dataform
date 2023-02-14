@@ -24,3 +24,5 @@ lerna-debug.log
 **/*.orig
 
 go.sum
+
+.df-credentials.json
