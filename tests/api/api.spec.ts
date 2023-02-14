@@ -151,6 +151,63 @@ suite("@dataform/api", () => {
       });
     });
 
+    test("table_enum_types", () => {
+      const graph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
+        projectConfig: { warehouse: "bigquery" },
+        tables: [
+          { target: { schema: "schema", name: "a" }, enumType: dataform.TableType.TABLE },
+          {
+            target: { schema: "schema", name: "b" },
+            enumType: dataform.TableType.INCREMENTAL,
+            where: "test"
+          },
+          { target: { schema: "schema", name: "c" }, enumType: dataform.TableType.VIEW }
+        ]
+      });
+
+      const builder = new Builder(graph, {}, TEST_STATE);
+      const executedGraph = builder.build();
+
+      expect(executedGraph.actions.length).greaterThan(0);
+
+      graph.tables.forEach((t: dataform.ITable) => {
+        const action = executedGraph.actions.find(item => targetsAreEqual(item.target, t.target));
+        expect(action).to.include({
+          type: "table",
+          target: t.target,
+          tableType: dataform.TableType[t.enumType].toLowerCase(),
+        });
+      });
+    });
+
+    test("table_enum_and_string_types", () => {
+      const graph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
+        projectConfig: { warehouse: "bigquery" },
+        tables: [
+          { target: { schema: "schema", name: "a" }, enumType: dataform.TableType.TABLE },
+          {
+            target: { schema: "schema", name: "b" },
+            type: "incremental",
+            where: "test"
+          }
+        ]
+      });
+
+      const builder = new Builder(graph, {}, TEST_STATE);
+      const executedGraph = builder.build();
+
+      expect(executedGraph.actions.length).greaterThan(0);
+
+      graph.tables.forEach((t: dataform.ITable) => {
+        const action = executedGraph.actions.find(item => targetsAreEqual(item.target, t.target));
+        expect(action).to.include({
+          type: "table",
+          target: t.target,
+          tableType: t.enumType !== undefined ? dataform.TableType[t.enumType].toLowerCase() : t.type,
+        });
+      });
+    });
+
     suite("pre and post ops", () => {
       for (const warehouse of [
         "bigquery",

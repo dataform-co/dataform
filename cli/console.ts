@@ -1,5 +1,6 @@
 import { IInitResult } from "df/api/commands/init";
 import { prettyJsonStringify } from "df/api/utils";
+import { tableEnumTypeToString, tableTypeFromProto } from "df/core/utils";
 import { dataform } from "df/protos/ts";
 import * as readlineSync from "readline-sync";
 
@@ -115,7 +116,7 @@ export function printCompiledGraph(graph: dataform.ICompiledGraph, verbose: bool
       writeStdOut(`${graph.tables.length} dataset(s):`);
       graph.tables.forEach(compiledTable => {
         writeStdOut(
-          `${datasetString(compiledTable.target, compiledTable.type, compiledTable.disabled)}`,
+          `${datasetString(compiledTable.target, tableEnumTypeToString(tableTypeFromProto(compiledTable, true)), compiledTable.disabled)}`,
           1
         );
       });

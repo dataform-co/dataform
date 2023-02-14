@@ -19,7 +19,7 @@ import {
 import { targetAsReadableString, targetStringifier } from "df/core/targets";
 import * as test from "df/core/test";
 import * as utils from "df/core/utils";
-import { toResolvable } from "df/core/utils";
+import { tableTypeFromProto, toResolvable } from "df/core/utils";
 import { version as dataformCoreVersion } from "df/core/version";
 import { dataform } from "df/protos/ts";
 
@@ -226,7 +226,7 @@ export class Session {
     }
     const resolved = allResolved.length > 0 ? allResolved[0] : undefined;
 
-    if (resolved && resolved instanceof Table && resolved.proto.type === "inline") {
+    if (resolved && resolved instanceof Table && tableTypeFromProto(resolved.proto, true) === dataform.TableType.INLINE) {
       // TODO: Pretty sure this is broken as the proto.query value may not
       // be set yet as it happens during compilation. We should evalute the query here.
       return `(${resolved.proto.query})`;
@@ -497,7 +497,7 @@ export class Session {
           // We found a single matching target, and fully-qualify it if it's a normal dependency,
           // or add all of its dependencies to ours if it's an 'inline' table.
           const protoDep = possibleDeps[0].proto;
-          if (protoDep instanceof dataform.Table && protoDep.type === "inline") {
+          if (protoDep instanceof dataform.Table && tableTypeFromProto(protoDep, true) === dataform.TableType.INLINE) {
             protoDep.dependencyTargets.forEach(inlineDep =>
               action.dependencyTargets.push(inlineDep)
             );
@@ -570,7 +570,10 @@ export class Session {
   private checkTableConfigValidity(tables: dataform.ITable[]) {
     tables.forEach(table => {
       // type
-      if (!!table.type && !TableType.includes(table.type as TableType)) {
+      let tableType;
+      try {
+        tableType = tableTypeFromProto(table, true);
+      } catch (e) {
         this.compileError(
           `Wrong type of table detected. Should only use predefined types: ${joinQuoted(
             TableType
@@ -583,7 +586,7 @@ export class Session {
       // materialized
       if (!!table.materialized) {
         if (
-          table.type !== "view" ||
+          tableType !== dataform.TableType.VIEW ||
           (this.config.warehouse !== "snowflake" && this.config.warehouse !== "bigquery")
         ) {
           this.compileError(
@@ -596,7 +599,7 @@ export class Session {
 
       // snowflake config
       if (!!table.snowflake) {
-        if (table.snowflake.secure && table.type !== "view") {
+        if (table.snowflake.secure && tableType !== dataform.TableType.VIEW) {
           this.compileError(
             new Error(`The 'secure' option is only valid for Snowflake views`),
             table.fileName,
@@ -604,7 +607,7 @@ export class Session {
           );
         }
 
-        if (table.snowflake.transient && table.type !== "table") {
+        if (table.snowflake.transient && tableType !== dataform.TableType.TABLE) {
           this.compileError(
             new Error(`The 'transient' option is only valid for Snowflake tables`),
             table.fileName,
@@ -614,8 +617,8 @@ export class Session {
 
         if (
           table.snowflake.clusterBy?.length > 0 &&
-          table.type !== "table" &&
-          table.type !== "incremental"
+          tableType !== dataform.TableType.TABLE &&
+          tableType !== dataform.TableType.INCREMENTAL
         ) {
           this.compileError(
             new Error(`The 'clusterBy' option is only valid for Snowflake tables`),
@@ -708,7 +711,7 @@ export class Session {
             table.bigquery.clusterBy?.length ||
             table.bigquery.partitionExpirationDays ||
             table.bigquery.requirePartitionFilter) &&
-          table.type === "view"
+          tableType === dataform.TableType.VIEW
         ) {
           this.compileError(
             `partitionBy/clusterBy/requirePartitionFilter/partitionExpirationDays are not valid for BigQuery views; they are only valid for tables`,
@@ -718,7 +721,7 @@ export class Session {
         } else if (
           !table.bigquery.partitionBy &&
           (table.bigquery.partitionExpirationDays || table.bigquery.requirePartitionFilter) &&
-          table.type === "table"
+          tableType === dataform.TableType.TABLE
         ) {
           this.compileError(
             `requirePartitionFilter/partitionExpirationDays are not valid for non partitioned BigQuery tables`,
@@ -750,11 +753,11 @@ export class Session {
       }
 
       // Ignored properties
-      if (!!Table.IGNORED_PROPS[table.type]) {
-        Table.IGNORED_PROPS[table.type].forEach(ignoredProp => {
+      if (tableType === dataform.TableType.INLINE) {
+        Table.INLINE_IGNORED_PROPS.forEach(ignoredProp => {
           if (objectExistsOrIsNonEmpty(table[ignoredProp])) {
             this.compileError(
-              `Unused property was detected: "${ignoredProp}". This property is not used for tables with type "${table.type}" and will be ignored`,
+              `Unused property was detected: "${ignoredProp}". This property is not used for tables with type "inline" and will be ignored`,
               table.fileName,
               table.target
             );
