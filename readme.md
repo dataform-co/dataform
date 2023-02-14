@@ -1,4 +1,8 @@
-# Dataform Core
+<p align="center">
+  <img src="https://github.com/dataform-co/dataform/blob/master/static/images/github_bg.png">
+</p>
+
+# Intro
 
 Dataform core is an open source meta-language to create SQL tables and workflows. Dataform core extends SQL by providing a dependency management system, automated data quality testing, and data documentation.
 
