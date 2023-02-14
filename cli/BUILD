@@ -1,6 +1,10 @@
-package(default_visibility = ["//visibility:public"])
-
 load("//tools:ts_library.bzl", "ts_library")
+load("//tools/common:copy.bzl", "copy_file")
+load("@io_bazel_rules_docker//container:container.bzl", "container_image", "container_push")
+load("@io_bazel_rules_docker//docker/util:run.bzl", "container_run_and_commit")
+load("//:version.bzl", "DF_VERSION")
+
+package(default_visibility = ["//visibility:public"])
 
 ts_library(
     name = "cli",
@@ -29,16 +33,11 @@ ts_library(
     ],
 )
 
-load("//tools/common:copy.bzl", "copy_file")
-
 copy_file(
     name = "readme",
     src = "//:readme.md",
     out = "readme.md",
 )
-
-load("//:version.bzl", "DF_VERSION")
-load("@io_bazel_rules_docker//docker/util:run.bzl", "container_run_and_commit")
 
 container_run_and_commit(
     name = "image_with_dataform_cli",
@@ -51,11 +50,10 @@ container_run_and_commit(
     ],
 )
 
-load("@io_bazel_rules_docker//container:container.bzl", "container_image", "container_push")
-
 container_image(
     name = "image_with_dataform_entrypoint",
     base = ":image_with_dataform_cli_commit.tar",
+    cmd = ["help"],
     entrypoint = ["dataform"],
     tags = [
         "no-remote",
