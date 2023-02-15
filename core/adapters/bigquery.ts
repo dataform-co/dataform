@@ -23,7 +23,7 @@ export class BigQueryAdapter extends Adapter implements IAdapter {
     this.preOps(table, runConfig, tableMetadata).forEach(statement => tasks.add(statement));
 
     const baseTableType = this.baseTableType(table.enumType);
-    if (tableMetadata && tableMetadata.type !== this.baseTableType(table.enumType)) {
+    if (tableMetadata && tableMetadata.type !== baseTableType) {
       tasks.add(
         Task.statement(this.dropIfExists(table.target, this.oppositeTableType(baseTableType)))
       );
