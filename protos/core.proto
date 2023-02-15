@@ -77,6 +77,7 @@ message BigQueryOptions {
   int32 partition_expiration_days = 5;
   bool require_partition_filter = 6;
   map<string, string> additional_options = 7;
+  string write_disposition = 8;
 }
 
 message RedshiftOptions {
@@ -123,6 +124,7 @@ message ActionDescriptor {
   // For Assertions, 'columns' will always be empty.
   repeated ColumnDescriptor columns = 2;
   map<string, string> bigquery_labels = 3;
+  string write_disposition = 4;
 }
 
 message ColumnDescriptor {

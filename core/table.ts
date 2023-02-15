@@ -188,6 +188,13 @@ export interface IBigQueryOptions {
   requirePartitionFilter?: boolean;
 
   /**
+   * Specifies the action that occurs if a destination table already exists when running a bigquery job.
+   *
+   * For supported values, read the [writeDisposition argument description in the bigquery docs for running jobs](https://cloud.google.com/bigquery/docs/reference/rest/v2/Job#jobconfigurationquery).
+   */
+  writeDisposition?: string;
+
+  /**
    * Key-value pairs for options [table](https://cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#table_option_list), [view](https://cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#view_option_list), [materialized view](https://cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#materialized_view_option_list).
    *
    * Some options (e.g. `partitionExpirationDays`) have dedicated type/validity checked fields; prefer using those.
@@ -205,6 +212,7 @@ const IBigQueryOptionsProperties = () =>
     "labels",
     "partitionExpirationDays",
     "requirePartitionFilter",
+    "writeDisposition",
     "additionalOptions"
   ]);
 
@@ -564,11 +572,14 @@ export class Table {
       "bigquery config"
     );
     this.proto.bigquery = dataform.BigQueryOptions.create(bigquery);
+    if ((!!bigquery.labels || !!bigquery.writeDisposition) && !this.proto.actionDescriptor) {
+      this.proto.actionDescriptor = {};
+    }
     if (!!bigquery.labels) {
-      if (!this.proto.actionDescriptor) {
-        this.proto.actionDescriptor = {};
-      }
       this.proto.actionDescriptor.bigqueryLabels = bigquery.labels;
+    }
+    if (!!bigquery.writeDisposition) {
+      this.proto.actionDescriptor.writeDisposition = bigquery.writeDisposition;
     }
     return this;
   }

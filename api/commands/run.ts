@@ -323,7 +323,10 @@ export class Runner {
           !this.cancelled
         ) {
           const taskStatus = await this.executeTask(client, task, actionResult, {
-            bigquery: { labels: action.actionDescriptor?.bigqueryLabels }
+            bigquery: {
+              labels: action.actionDescriptor?.bigqueryLabels,
+              writeDisposition: action.actionDescriptor?.writeDisposition,
+            }
           });
           if (taskStatus === dataform.TaskResult.ExecutionStatus.FAILED) {
             actionResult.status = dataform.ActionResult.ExecutionStatus.FAILED;
@@ -397,7 +400,7 @@ export class Runner {
     client: dbadapters.IDbClient,
     task: dataform.IExecutionTask,
     parentAction: dataform.IActionResult,
-    options: { bigquery: { labels: { [label: string]: string } } }
+    options: { bigquery: { labels: { [label: string]: string }; writeDisposition?: string } }
   ): Promise<dataform.TaskResult.ExecutionStatus> {
     const timer = Timer.start();
     const taskResult: dataform.ITaskResult = {

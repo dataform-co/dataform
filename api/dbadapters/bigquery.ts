@@ -60,11 +60,17 @@ export class BigQueryDbAdapter implements IDbAdapter {
       bigquery?: {
         labels?: { [label: string]: string };
         location?: string;
+        writeDisposition?: string;
       };
     } = { interactive: false, rowLimit: 1000, byteLimit: 1024 * 1024 }
   ): Promise<IExecutionResult> {
-    if (options?.interactive && options?.bigquery?.labels) {
-      throw new Error("BigQuery job labels may not be set for interactive queries.");
+    if (options?.interactive) {
+      if (options?.bigquery?.labels) {
+        throw new Error("BigQuery job labels may not be set for interactive queries.");
+      }
+      if (options?.bigquery?.writeDisposition) {
+        throw new Error("BigQuery job writeDisposition may not be set for interactive queries.");
+      }
     }
 
     if (!statement) {
@@ -88,7 +94,8 @@ export class BigQueryDbAdapter implements IDbAdapter {
                 options?.byteLimit,
                 options?.onCancel,
                 options?.bigquery?.labels,
-                options.bigquery?.location
+                options.bigquery?.location,
+                options?.bigquery?.writeDisposition,
               )
       })
       .promise();
@@ -350,7 +357,8 @@ export class BigQueryDbAdapter implements IDbAdapter {
     byteLimit?: number,
     onCancel?: OnCancel,
     labels?: { [label: string]: string },
-    location?: string
+    location?: string,
+    writeDisposition?: string
   ) {
     let isCancelled = false;
     onCancel?.(() => (isCancelled = true));
@@ -364,7 +372,8 @@ export class BigQueryDbAdapter implements IDbAdapter {
             query,
             params,
             labels,
-            location
+            location,
+            writeDisposition
           });
           const resultStream = job[0].getQueryResultsStream();
           return new Promise<IExecutionResult>((resolve, reject) => {
