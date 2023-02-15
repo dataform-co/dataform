@@ -271,7 +271,7 @@ export function tableTypeEnumToString(enumType: dataform.TableType) {
 }
 
 export function setOrValidateTableEnumType(table: dataform.ITable) {
-  var enumTypeFromStr: dataform.TableType|null = null;
+  let enumTypeFromStr: dataform.TableType|null = null;
   if (table.type !== "" && table.type !== undefined) {
     enumTypeFromStr = tableTypeStringToEnum(table.type, true);
   }
