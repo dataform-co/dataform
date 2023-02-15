@@ -8,7 +8,7 @@ import { build, compile, credentials, init, install, run, table, test } from "df
 import { CREDENTIALS_FILENAME } from "df/api/commands/credentials";
 import * as dbadapters from "df/api/dbadapters";
 import { prettyJsonStringify } from "df/api/utils";
-import {trackError, noTrackOption} from "df/cli/analytics";
+import {noTrackOption, trackError} from "df/cli/analytics";
 import {
   print,
   printCompiledGraph,

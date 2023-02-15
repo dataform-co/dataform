@@ -1,9 +1,10 @@
-import Analytics from "analytics-node";
-import { getConfigSettings, getConfigSettingsPath, upsertConfigSettings } from "df/cli/config";
-import { ynQuestion } from "df/cli/console";
-import {INamedOption} from "df/cli/yargswrapper";
-import { v4 as uuidv4 } from "uuid";
 import yargs from "yargs";
+
+import Analytics from "analytics-node";
+import {getConfigSettings, getConfigSettingsPath, upsertConfigSettings} from "df/cli/config";
+import {ynQuestion} from "df/cli/console";
+import {INamedOption} from "df/cli/yargswrapper";
+import {v4 as uuidv4} from "uuid";
 
 export const noTrackOption: INamedOption<yargs.Options> = {
   name: "no-track",
