@@ -1,6 +1,7 @@
-package(default_visibility = ["//visibility:public"])
+load("@aspect_rules_js//js:defs.bzl", "js_binary")
+load("@bazel_gazelle//:def.bzl", "gazelle")
 
-load("@build_bazel_rules_nodejs//:index.bzl", "nodejs_binary")
+package(default_visibility = ["//visibility:public"])
 
 exports_files([
     "tsconfig.json",
@@ -29,43 +30,31 @@ PROTOBUF_DEPS = [
     "@npm//estraverse",
 ]
 
-nodejs_binary(
+js_binary(
     name = "pbjs",
     data = PROTOBUF_DEPS,
     entry_point = "@npm//:node_modules/protobufjs-cli/bin/pbjs",
-    install_source_map_support = False,
+    # source_map = False,
 )
 
-nodejs_binary(
+js_binary(
     name = "pbts",
     data = PROTOBUF_DEPS,
     entry_point = "@npm//:node_modules/protobufjs-cli/bin/pbts",
-    install_source_map_support = False,
+    # install_source_map_support = False,
 )
 
-nodejs_binary(
+js_binary(
     name = "tslint",
     data = [
         "@npm//tslint",
     ],
     entry_point = "@npm//:node_modules/tslint/bin/tslint",
-    install_source_map_support = False,
-    templated_args = ["--node_options=--preserve-symlinks"],
+    # install_source_map_support = False,
+    node_options = ["--preserve-symlinks"],
 )
-
-load("@bazel_gazelle//:def.bzl", "gazelle")
 
 # gazelle:prefix github.com/dataform-co/dataform
 # gazelle:proto package
 # gazelle:proto_group go_package
 gazelle(name = "gazelle")
-
-load("//tools:ts_library.bzl", "ts_library")
-
-# TODO: This is only here in order to workaround a bug in the way bazel resolves
-# workspace imports when in nested repositories, and can be removed once that is fixed.
-ts_library(
-    name = "modules-fix",
-    srcs = [],
-    module_name = "df",
-)

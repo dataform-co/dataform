@@ -1,5 +1,7 @@
 load("@rules_proto//proto:defs.bzl", "proto_library")
 load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
+load("//tools:ts_proto_library.bzl", "ts_proto_compile")
+load("//testing:build_test.bzl", "build_test")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -37,17 +39,15 @@ go_proto_library(
     proto = ":dataform_proto",
 )
 
-load("//tools:ts_proto_library.bzl", "ts_proto_library")
-
-ts_proto_library(
+ts_proto_compile(
     name = "ts",
-    deps = [
+    protos = [
         ":dataform_proto",
         ":server_proto",
     ],
+    verbose = 4,
+    visibility = ["//visibility:public"],
 )
-
-load("//testing:build_test.bzl", "build_test")
 
 build_test(
     name = "build_test",
