@@ -55,6 +55,9 @@ container_image(
     base = ":image_with_dataform_cli_commit.tar",
     cmd = [],
     entrypoint = ["dataform"],
+    env = {
+        "NODE_NO_WARNINGS": "1",
+    },
     tags = [
         "no-remote",
     ],
