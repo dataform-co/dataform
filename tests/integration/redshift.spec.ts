@@ -301,7 +301,7 @@ suite("@dataform/integration/redshift", { parallel: true }, ({ before, after }) 
     test("invalid table fails validation", async () => {
       const evaluations = await dbadapter.evaluate(
         dataform.Table.create({
-          type: "table",
+          enumType: dataform.TableType.TABLE,
           query: "thisisillegal",
           target: {
             schema: "df_integration_test",
@@ -321,7 +321,7 @@ suite("@dataform/integration/redshift", { parallel: true }, ({ before, after }) 
     test("incremental pre and post ops, core version <= 1.4.8", async () => {
       // 1.4.8 used `preOps` and `postOps` instead of `incrementalPreOps` and `incrementalPostOps`.
       const table: dataform.ITable = {
-        type: "incremental",
+        enumType: dataform.TableType.INCREMENTAL,
         query: "query",
         preOps: ["preop task1", "preop task2"],
         incrementalQuery: "",

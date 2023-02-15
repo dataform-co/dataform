@@ -21,7 +21,7 @@ export interface IAdapter {
   assertTasks(assertion: dataform.IAssertion, projectConfig: dataform.IProjectConfig): Tasks;
 
   dropIfExists(target: dataform.ITarget, type: dataform.TableMetadata.Type): string;
-  baseTableType(type: string): dataform.TableMetadata.Type;
+  baseTableType(enumType: dataform.TableType): dataform.TableMetadata.Type;
 
   indexAssertion(dataset: string, indexCols: string[]): string;
   rowConditionsAssertion(dataset: string, rowConditions: string[]): string;
@@ -135,7 +135,7 @@ export function collectEvaluationQueries(
   } else {
     try {
       if (queryOrAction instanceof dataform.Table) {
-        if (queryOrAction.type === "incremental") {
+        if (queryOrAction.enumType === dataform.TableType.INCREMENTAL) {
           const incrementalTableQueries = queryOrAction.incrementalPreOps.concat(
             queryOrAction.incrementalQuery,
             queryOrAction.incrementalPostOps

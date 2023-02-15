@@ -52,6 +52,7 @@ export class Builder {
       prunedGraph.projectConfig,
       prunedGraph.dataformCoreVersion || "1.0.0"
     );
+    prunedGraph.tables.forEach(utils.setOrValidateTableEnumType);
   }
 
   public build(): dataform.ExecutionGraph {
@@ -94,7 +95,7 @@ export class Builder {
     return {
       ...this.toPartialExecutionAction(table),
       type: "table",
-      tableType: table.type,
+      tableType: utils.tableTypeEnumToString(table.enumType),
       tasks: table.disabled
         ? []
         : this.adapter.publishTasks(table, runConfig, tableMetadata).build(),
