@@ -247,7 +247,7 @@ export function throwIfInvalid<T>(proto: T, verify: (proto: T) => string) {
   }
 }
 
-export function strTableTypeToEnum(type: string, throwIfUnknown: boolean) {
+export function tableTypeStringToEnum(type: string, throwIfUnknown: boolean) {
   switch (type) {
     case "table":
       return dataform.TableType.TABLE;
@@ -266,13 +266,18 @@ export function strTableTypeToEnum(type: string, throwIfUnknown: boolean) {
   }
 }
 
-export function tableTypeFromProto(table: dataform.ITable, throwIfUnknown: boolean) {
-  if (table.enumType !== dataform.TableType.UNKNOWN_TYPE && table.enumType !== undefined) {
-    return table.enumType;
-  }
-  return strTableTypeToEnum(table.type, throwIfUnknown);
+export function tableTypeEnumToString(enumType: dataform.TableType) {
+  return dataform.TableType[enumType].toLowerCase();
 }
 
-export function tableEnumTypeToString(enumType: dataform.TableType) {
-  return dataform.TableType[enumType].toLowerCase();
+export function setOrValidateTableEnumType(table: dataform.ITable) {
+  var enumTypeFromStr: dataform.TableType|null = null;
+  if (table.type !== "" && table.type !== undefined) {
+    enumTypeFromStr = tableTypeStringToEnum(table.type, true);
+  }
+  if (table.enumType === dataform.TableType.UNKNOWN_TYPE || table.enumType === undefined) {
+    table.enumType = enumTypeFromStr!;
+  } else if (enumTypeFromStr !== null && table.enumType !== enumTypeFromStr) {
+    throw new Error(`Table str type "${table.type}" and enumType "${tableTypeEnumToString(table.enumType)}" are not equivalent.`);
+  }
 }

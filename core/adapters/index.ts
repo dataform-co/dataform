@@ -5,7 +5,6 @@ import { RedshiftAdapter } from "df/core/adapters/redshift";
 import { SnowflakeAdapter } from "df/core/adapters/snowflake";
 import { SQLDataWarehouseAdapter } from "df/core/adapters/sqldatawarehouse";
 import { concatenateQueries, Tasks } from "df/core/tasks";
-import { tableTypeFromProto } from "df/core/utils"
 import { dataform } from "df/protos/ts";
 
 export interface IAdapter {
@@ -136,7 +135,7 @@ export function collectEvaluationQueries(
   } else {
     try {
       if (queryOrAction instanceof dataform.Table) {
-        if (tableTypeFromProto(queryOrAction, true) === dataform.TableType.INCREMENTAL) {
+        if (queryOrAction.enumType === dataform.TableType.INCREMENTAL) {
           const incrementalTableQueries = queryOrAction.incrementalPreOps.concat(
             queryOrAction.incrementalQuery,
             queryOrAction.incrementalPostOps

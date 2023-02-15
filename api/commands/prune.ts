@@ -8,6 +8,7 @@ export function prune(
   compiledGraph: dataform.ICompiledGraph,
   runConfig: dataform.IRunConfig
 ): dataform.ICompiledGraph {
+  compiledGraph.tables.forEach(utils.setOrValidateTableEnumType);
   const includedActionNames = computeIncludedActionNames(compiledGraph, runConfig);
   return {
     ...compiledGraph,
@@ -28,7 +29,7 @@ function computeIncludedActionNames(
   runConfig: dataform.IRunConfig
 ): Set<string> {
   // Remove inline tables.
-  const filteredTables = compiledGraph.tables.filter(t => utils.tableTypeFromProto(t, false) !== dataform.TableType.INLINE);
+  const filteredTables = compiledGraph.tables.filter(t => t.enumType !== dataform.TableType.INLINE);
 
   // Union all tables, operations, assertions.
   const allActions: CompileAction[] = [].concat(

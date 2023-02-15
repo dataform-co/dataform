@@ -180,32 +180,19 @@ suite("@dataform/api", () => {
       });
     });
 
-    test("table_enum_and_string_types", () => {
+    test("table_enum_and_str_types_should_match", () => {
       const graph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
         projectConfig: { warehouse: "bigquery" },
-        tables: [
-          { target: { schema: "schema", name: "a" }, enumType: dataform.TableType.TABLE },
-          {
-            target: { schema: "schema", name: "b" },
-            type: "incremental",
-            where: "test"
-          }
-        ]
+        tables: [{
+          target: { schema: "schema", name: "a" },
+          enumType: dataform.TableType.TABLE,
+          type: "incremental",
+        }]
       });
 
-      const builder = new Builder(graph, {}, TEST_STATE);
-      const executedGraph = builder.build();
-
-      expect(executedGraph.actions.length).greaterThan(0);
-
-      graph.tables.forEach((t: dataform.ITable) => {
-        const action = executedGraph.actions.find(item => targetsAreEqual(item.target, t.target));
-        expect(action).to.include({
-          type: "table",
-          target: t.target,
-          tableType: t.enumType !== undefined ? dataform.TableType[t.enumType].toLowerCase() : t.type,
-        });
-      });
+      expect(() => new Builder(graph, {}, TEST_STATE)).to.throw(
+        /Table str type "incremental" and enumType "table" are not equivalent/
+      );
     });
 
     suite("pre and post ops", () => {

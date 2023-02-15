@@ -17,7 +17,7 @@ import {
   resolvableAsTarget,
   setNameAndTarget,
   strictKeysOf,
-  strTableTypeToEnum,
+  tableTypeStringToEnum,
   toResolvable,
   validateQueryString
 } from "df/core/utils";
@@ -479,7 +479,7 @@ export class Table {
 
   public type(type: TableType) {
     this.proto.type = type;
-    this.proto.enumType = strTableTypeToEnum(type, false);
+    this.proto.enumType = tableTypeStringToEnum(type, false);
     return this;
   }
 

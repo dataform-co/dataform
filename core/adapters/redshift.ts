@@ -3,7 +3,6 @@ import * as semver from "semver";
 import { IAdapter } from "df/core/adapters";
 import { Adapter } from "df/core/adapters/base";
 import { Task, Tasks } from "df/core/tasks";
-import { tableTypeFromProto } from "df/core/utils";
 import { dataform } from "df/protos/ts";
 
 export class RedshiftAdapter extends Adapter implements IAdapter {
@@ -24,15 +23,14 @@ export class RedshiftAdapter extends Adapter implements IAdapter {
 
     this.preOps(table, runConfig, tableMetadata).forEach(statement => tasks.add(statement));
 
-    const tableType = tableTypeFromProto(table, true);
-    const baseTableType = this.baseTableType(tableType);
+    const baseTableType = this.baseTableType(table.enumType);
     if (tableMetadata && tableMetadata.type !== baseTableType) {
       tasks.add(
         Task.statement(this.dropIfExists(table.target, this.oppositeTableType(baseTableType)))
       );
     }
 
-    if (tableType === dataform.TableType.INCREMENTAL) {
+    if (table.enumType === dataform.TableType.INCREMENTAL) {
       if (!this.shouldWriteIncrementally(runConfig, tableMetadata)) {
         tasks.addAll(this.createOrReplace(table));
       } else {
@@ -92,8 +90,7 @@ export class RedshiftAdapter extends Adapter implements IAdapter {
   }
 
   private createOrReplace(table: dataform.ITable) {
-    const inputType = tableTypeFromProto(table, true);
-    if (inputType === dataform.TableType.VIEW) {
+    if (table.enumType === dataform.TableType.VIEW) {
       const isBindDefined = table.redshift && table.redshift.hasOwnProperty("bind");
       const bindDefaultValue = semver.gte(this.dataformCoreVersion, "1.4.1") ? false : true;
       const bind =
@@ -101,7 +98,7 @@ export class RedshiftAdapter extends Adapter implements IAdapter {
       return (
         Tasks.create()
           // Drop the view in case we are changing the number of column(s) (or their types).
-          .add(Task.statement(this.dropIfExists(table.target, this.baseTableType(inputType))))
+          .add(Task.statement(this.dropIfExists(table.target, this.baseTableType(table.enumType))))
           .add(Task.statement(this.createOrReplaceView(table.target, table.query, bind)))
       );
     }
@@ -111,7 +108,7 @@ export class RedshiftAdapter extends Adapter implements IAdapter {
     });
 
     return Tasks.create()
-      .add(Task.statement(this.dropIfExists(tempTableTarget, this.baseTableType(inputType))))
+      .add(Task.statement(this.dropIfExists(tempTableTarget, this.baseTableType(table.enumType))))
       .add(Task.statement(this.createTable(table, tempTableTarget)))
       .add(Task.statement(this.dropIfExists(table.target, dataform.TableMetadata.Type.TABLE)))
       .add(
