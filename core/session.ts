@@ -570,9 +570,7 @@ export class Session {
   private checkTableConfigValidity(tables: dataform.ITable[]) {
     tables.forEach(table => {
       // type
-      try {
-        setOrValidateTableEnumType(table);
-      } catch (e) {
+      if (table.enumType === dataform.TableType.UNKNOWN_TYPE) {
         this.compileError(
           `Wrong type of table detected. Should only use predefined types: ${joinQuoted(
             TableType
