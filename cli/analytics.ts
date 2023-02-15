@@ -20,7 +20,7 @@ let currentCommand: string;
 let allowAnonymousAnalytics: boolean;
 let anonymousUserId: string;
 
-export async function maybeConfigureAnalytics(track: boolean) {
+export async function maybeConfigureAnalytics(track?: boolean) {
   const settings = await getConfigSettings();
   if (track !== undefined) {
     allowAnonymousAnalytics = track;
