@@ -762,7 +762,7 @@ export function runCli() {
 }
 
 class ProjectConfigOverride {
-  static warehouseOverrideOption: INamedOption<yargs.Options> = {
+  public static warehouseOverrideOption: INamedOption<yargs.Options> = {
     ...warehouseOption,
     option: {
       describe:
@@ -771,7 +771,7 @@ class ProjectConfigOverride {
     }
   };
 
-  static defaultDatabaseOverrideOption: INamedOption<yargs.Options> = {
+  public static defaultDatabaseOverrideOption: INamedOption<yargs.Options> = {
     ...defaultDatabaseOption,
     option: {
       describe:
@@ -781,7 +781,7 @@ class ProjectConfigOverride {
     }
   };
 
-  static defaultSchemaOverrideOption: INamedOption<yargs.Options> = {
+  public static defaultSchemaOverrideOption: INamedOption<yargs.Options> = {
     name: "default-schema",
     option: {
       describe:
@@ -789,7 +789,7 @@ class ProjectConfigOverride {
     }
   };
 
-  static defaultLocationOverrideOption: INamedOption<yargs.Options> = {
+  public static defaultLocationOverrideOption: INamedOption<yargs.Options> = {
     ...defaultLocationOption,
     option: {
       describe:
@@ -799,21 +799,21 @@ class ProjectConfigOverride {
     }
   };
 
-  static assertionSchemaOverrideOption: INamedOption<yargs.Options> = {
+  public static assertionSchemaOverrideOption: INamedOption<yargs.Options> = {
     name: "assertion-schema",
     option: {
       describe: "Default assertion schema. If unset, the value from dataform.json is used."
     }
   };
 
-  static databaseSuffixOverrideOption: INamedOption<yargs.Options> = {
+  public static databaseSuffixOverrideOption: INamedOption<yargs.Options> = {
     name: "database-suffix",
     option: {
       describe: "Default assertion schema. If unset, the value from dataform.json is used."
     }
   };
 
-  static varsOverrideOption: INamedOption<yargs.Options> = {
+  public static varsOverrideOption: INamedOption<yargs.Options> = {
     name: "vars",
     option: {
       describe:
@@ -832,7 +832,7 @@ class ProjectConfigOverride {
     }
   };
 
-  static schemaSuffixOverrideOption: INamedOption<yargs.Options> = {
+  public static schemaSuffixOverrideOption: INamedOption<yargs.Options> = {
     name: "schema-suffix",
     option: {
       describe:
@@ -851,14 +851,14 @@ class ProjectConfigOverride {
     }
   };
 
-  static tablePrefixOverrideOption: INamedOption<yargs.Options> = {
+  public static tablePrefixOverrideOption: INamedOption<yargs.Options> = {
     name: "table-prefix",
     option: {
       describe: "Adds a prefix for all table names. If unset, the value from dataform.json is used."
     }
   };
 
-  static allYargsOptions = [
+  public static allYargsOptions = [
     ProjectConfigOverride.warehouseOverrideOption,
     ProjectConfigOverride.defaultDatabaseOverrideOption,
     ProjectConfigOverride.defaultSchemaOverrideOption,
@@ -870,8 +870,8 @@ class ProjectConfigOverride {
     ProjectConfigOverride.tablePrefixOverrideOption
   ];
 
-  static construct(argv: yargs.Arguments<any>): dataform.IProjectConfig {
-    let projectConfigOverride: dataform.IProjectConfig = {};
+  public static construct(argv: yargs.Arguments<any>): dataform.IProjectConfig {
+    const projectConfigOverride: dataform.IProjectConfig = {};
 
     if (argv[ProjectConfigOverride.warehouseOverrideOption.name]) {
       projectConfigOverride.warehouse = argv[ProjectConfigOverride.warehouseOverrideOption.name];
