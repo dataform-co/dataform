@@ -17,6 +17,7 @@ export const noTrackOption: INamedOption<yargs.Options> = {
 const analytics = new Analytics("eR24ln3MniE3TKZXkvAkOGkiSN02xXqw");
 
 let currentCommand: string;
+let allowAnonymousAnalytics: boolean;
 
 export async function maybeConfigureAnalytics(noTrack: boolean) {
   const settings = await getConfigSettings();
@@ -25,13 +26,11 @@ export async function maybeConfigureAnalytics(noTrack: boolean) {
     return;
   }
   if (settings.allowAnonymousAnalytics !== undefined) {
+    allowAnonymousAnalytics = settings.allowAnonymousAnalytics;
     return;
   }
   if (noTrack) {
-    await upsertConfigSettings({
-      allowAnonymousAnalytics: false,
-      anonymousUserId: uuidv4()
-    });
+    allowAnonymousAnalytics = false;
     return;
   }
 
@@ -47,12 +46,13 @@ Would you like to opt-in to anonymous usage and error tracking?`,
     allowAnonymousAnalytics: optInResponse,
     anonymousUserId: uuidv4()
   });
+  allowAnonymousAnalytics = optInResponse;
 }
 
 export async function trackCommand(command: string) {
   currentCommand = command;
   const config = await getConfigSettings();
-  if (!config.allowAnonymousAnalytics) {
+  if (!allowAnonymousAnalytics) {
     return;
   }
   await new Promise(resolve => {
@@ -74,7 +74,7 @@ export async function trackCommand(command: string) {
 
 export async function trackError() {
   const config = await getConfigSettings();
-  if (!config.allowAnonymousAnalytics) {
+  if (!allowAnonymousAnalytics) {
     return;
   }
   await new Promise(resolve => {
