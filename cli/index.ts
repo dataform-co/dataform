@@ -181,10 +181,7 @@ const defaultDatabaseOption: INamedOption<yargs.Options> = {
     if (!argv[warehouseOption.name]) {
       return;
     }
-    if (
-      argv[defaultDatabaseOption.name] &&
-      !["bigquery", "snowflake"].includes(argv[warehouseOption.name])
-    ) {
+    if (!["bigquery", "snowflake"].includes(argv[warehouseOption.name])) {
       throw new Error(
         `The --${defaultDatabaseOption.name} flag is only used for BigQuery and Snowflake projects.`
       );
