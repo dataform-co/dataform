@@ -95,6 +95,7 @@ suite("@dataform/core", () => {
           table => targetAsReadableString(table.target) === `schema.${tableWithPrefix("example")}`
         );
         expect(t.type).equals("table");
+        expect(t.enumType).equals(dataform.TableType.TABLE);
         expect(t.actionDescriptor).eql({
           description: "this is a table",
           columns: [
@@ -116,6 +117,7 @@ suite("@dataform/core", () => {
           table => targetAsReadableString(table.target) === `schema2.${tableWithPrefix("example")}`
         );
         expect(t2.type).equals("table");
+        expect(t2.enumType).equals(dataform.TableType.TABLE);
         expect(t2.actionDescriptor).eql({
           description: "test description"
         });
@@ -136,6 +138,7 @@ suite("@dataform/core", () => {
         expect((t3.target.name = `${tableWithPrefix("my_table")}`));
         expect((t3.target.schema = "test_schema"));
         expect(t3.type).equals("table");
+        expect(t3.enumType).equals(dataform.TableType.TABLE);
       });
     });
 
@@ -181,6 +184,7 @@ suite("@dataform/core", () => {
           table => targetAsReadableString(table.target) === `${schemaWithSuffix("schema")}.example`
         );
         expect(t.type).equals("table");
+        expect(t.enumType).equals(dataform.TableType.TABLE);
         expect(t.actionDescriptor).eql({
           description: "this is a table",
           columns: [
@@ -197,6 +201,7 @@ suite("@dataform/core", () => {
           table => targetAsReadableString(table.target) === `${schemaWithSuffix("schema2")}.example`
         );
         expect(t2.type).equals("table");
+        expect(t2.enumType).equals(dataform.TableType.TABLE);
         expect(t.actionDescriptor).eql({
           description: "this is a table",
           columns: [
@@ -219,6 +224,7 @@ suite("@dataform/core", () => {
         expect((t3.target.name = "my_table"));
         expect((t3.target.schema = schemaWithSuffix("test_schema")));
         expect(t3.type).equals("table");
+        expect(t3.enumType).equals(dataform.TableType.TABLE);
       });
     });
 
@@ -245,7 +251,8 @@ suite("@dataform/core", () => {
           incrementalQuery: "select true as incremental",
           disabled: false,
           fileName: path.basename(__filename),
-          type: "incremental"
+          type: "incremental",
+          enumType: "INCREMENTAL",
         }
       ]);
     });
@@ -706,6 +713,7 @@ suite("@dataform/core", () => {
         table => targetAsReadableString(table.target) === "schema.a"
       );
       expect(tableA.type).equals("table");
+      expect(tableA.enumType).equals(dataform.TableType.TABLE);
       expect(
         tableA.dependencyTargets.map(dependency => targetAsReadableString(dependency))
       ).deep.equals([]);
@@ -715,6 +723,7 @@ suite("@dataform/core", () => {
         table => targetAsReadableString(table.target) === "schema.b"
       );
       expect(tableB.type).equals("inline");
+      expect(tableB.enumType).equals(dataform.TableType.INLINE);
       expect(
         tableB.dependencyTargets.map(dependency => targetAsReadableString(dependency))
       ).includes("schema.a");
@@ -744,6 +753,7 @@ suite("@dataform/core", () => {
         table => targetAsReadableString(table.target) === "schema.c"
       );
       expect(tableC.type).equals("table");
+      expect(tableC.enumType).equals(dataform.TableType.TABLE);
       expect(
         tableC.dependencyTargets.map(dependency => targetAsReadableString(dependency))
       ).includes("schema.a");

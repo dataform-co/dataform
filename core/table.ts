@@ -17,6 +17,7 @@ import {
   resolvableAsTarget,
   setNameAndTarget,
   strictKeysOf,
+  tableTypeStringToEnum,
   toResolvable,
   validateQueryString
 } from "df/core/utils";
@@ -378,10 +379,8 @@ export interface ITableContext extends ICommonContext {
  * @hidden
  */
 export class Table {
-  public static readonly IGNORED_PROPS: {
-    [tableType: string]: Array<keyof dataform.ITable>;
-  } = {
-    inline: [
+  public static readonly INLINE_IGNORED_PROPS: Array<keyof dataform.ITable> = 
+    [
       "bigquery",
       "redshift",
       "snowflake",
@@ -392,11 +391,11 @@ export class Table {
       "actionDescriptor",
       "disabled",
       "where"
-    ]
-  };
+    ];
 
   public proto: dataform.ITable = dataform.Table.create({
     type: "view",
+    enumType: dataform.TableType.VIEW,
     disabled: false,
     tags: []
   });
@@ -480,6 +479,7 @@ export class Table {
 
   public type(type: TableType) {
     this.proto.type = type;
+    this.proto.enumType = tableTypeStringToEnum(type, false);
     return this;
   }
 
@@ -716,7 +716,7 @@ export class Table {
 
     this.proto.query = context.apply(this.contextableQuery);
 
-    if (this.proto.type === "incremental") {
+    if (this.proto.enumType === dataform.TableType.INCREMENTAL) {
       this.proto.incrementalQuery = incrementalContext.apply(this.contextableQuery);
 
       this.proto.incrementalPreOps = this.contextifyOps(this.contextablePreOps, incrementalContext);
