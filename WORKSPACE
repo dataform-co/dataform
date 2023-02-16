@@ -69,12 +69,12 @@ http_archive(
     urls = ["https://github.com/bazelbuild/rules_nodejs/releases/download/5.8.0/rules_nodejs-5.8.0.tar.gz"],
 )
 
-# or for core module
-http_archive(
-    name = "rules_nodejs",
-    sha256 = "08337d4fffc78f7fe648a93be12ea2fc4e8eb9795a4e6aa48595b66b34555626",
-    urls = ["https://github.com/bazelbuild/rules_nodejs/releases/download/5.8.0/rules_nodejs-core-5.8.0.tar.gz"],
-)
+# # or for core module
+# http_archive(
+#     name = "rules_nodejs",
+#     sha256 = "08337d4fffc78f7fe648a93be12ea2fc4e8eb9795a4e6aa48595b66b34555626",
+#     urls = ["https://github.com/bazelbuild/rules_nodejs/releases/download/5.8.0/rules_nodejs-core-5.8.0.tar.gz"],
+# )
 
 http_archive(
     name = "aspect_rules_js",

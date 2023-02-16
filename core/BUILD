@@ -23,7 +23,7 @@ ts_library(
     srcs = glob(["**/*.ts"]) + [":version.ts"],
     deps = [
         "//:node_modules/@types/semver",
-        # "//:node_modules/protobufjs",
+        "//:node_modules/protobufjs",
         "//:node_modules/semver",
         "//:node_modules/tarjan-graph",
         "//common/errors",

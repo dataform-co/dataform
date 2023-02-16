@@ -1,6 +1,7 @@
-package(default_visibility = ["//visibility:public"])
-
 load("//tools:ts_library.bzl", "ts_library")
+load("@aspect_rules_js//js:defs.bzl", "js_binary")
+
+package(default_visibility = ["//visibility:public"])
 
 ts_library(
     name = "json-merge",
@@ -12,14 +13,12 @@ ts_library(
     ],
 )
 
-load("@build_bazel_rules_nodejs//:index.bzl", "nodejs_binary")
-
-nodejs_binary(
+js_binary(
     name = "bin",
-    templated_args = ["--node_options=--require=source-map-support/register"],
     data = [
         ":json-merge",
         "@npm//source-map-support",
     ],
     entry_point = ":index.ts",
+    node_options = ["--require=source-map-support/register"],
 )
