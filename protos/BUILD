@@ -20,14 +20,6 @@ proto_library(
     ],
 )
 
-proto_library(
-    name = "server_proto",
-    srcs = ["server.proto"],
-    deps = [
-        ":dataform_proto",
-    ],
-)
-
 java_proto_library(
     name = "dataform_java_proto",
     deps = [":dataform_proto"],
@@ -43,7 +35,6 @@ ts_proto_compile(
     name = "ts",
     protos = [
         ":dataform_proto",
-        ":server_proto",
     ],
     verbose = 4,
     visibility = ["//visibility:public"],
@@ -55,12 +46,4 @@ build_test(
         ":dataform_go_proto",
         ":dataform_java_proto",
     ],
-)
-
-go_proto_library(
-    name = "server_go_proto",
-    compilers = ["@io_bazel_rules_go//proto:go_grpc"],
-    importpath = "github.com/dataform-co/dataform/protos",
-    proto = ":server_proto",
-    deps = [":dataform_go_proto"],
 )

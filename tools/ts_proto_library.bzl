@@ -10,23 +10,12 @@ load(
 )
 
 def _ts_proto_compile_impl(ctx):
-    """
-    Implementation function for ts_proto_compile.
-
-    Args:
-        ctx: The Bazel rule execution context object.
-
-    Returns:
-        Providers:
-            - ProtoCompileInfo
-            - DefaultInfo
-
-    """
     base_env = {
         # Make up for https://github.com/bazelbuild/bazel/issues/15470.
         "BAZEL_BINDIR": ctx.bin_dir.path,
     }
     return proto_compile_impl(ctx, base_env = base_env)
+    # return proto_compile_impl(ctx)
 
 # based on https://github.com/aspect-build/rules_js/issues/397
 ts_proto_compile = rule(
@@ -44,4 +33,19 @@ ts_proto_compile = rule(
     toolchains = [
         str(Label("@rules_proto_grpc//protobuf:toolchain_type")),
     ],
+)
+
+ts_grpc_proto_compile = rule(
+    implementation = _ts_proto_compile_impl,
+    attrs = dict(
+        proto_compile_attrs,
+        _plugins = attr.label_list(
+            providers = [ProtoPluginInfo],
+            default = [
+                Label("//tools:ts_grpc_proto_compile"),
+            ],
+            doc = "List of protoc plugins to apply",
+        ),
+    ),
+    toolchains = [str(Label("@rules_proto_grpc//protobuf:toolchain_type"))],
 )

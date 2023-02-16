@@ -1,6 +1,7 @@
 workspace(name = "df")
 
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive", "http_file")
+load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 
 http_archive(
     name = "bazel_skylib",
@@ -35,12 +36,6 @@ protobuf_deps()
 
 ########
 
-# git_repository(
-#     name = "rules_proto_grpc",
-#     commit = "b9e6b2922d8b6177d0747f30b738ea467161fc33",
-#     remote = "https://github.com/gonzojive/rules_proto_grpc.git",
-# )
-
 # http_archive(
 #     name = "rules_proto_grpc",
 #     sha256 = "7954abbb6898830cd10ac9714fbcacf092299fda00ed2baf781172f545120419",
@@ -48,11 +43,12 @@ protobuf_deps()
 #     urls = ["https://github.com/rules-proto-grpc/rules_proto_grpc/archive/3.1.1.tar.gz"],
 # )
 
-http_archive(
+# TODO: We need `base_env` added (used in //tools/ts_proto_library), so have to pull from a recent commit sha.
+# When avaialble, update to rules_proto_grpc 4.4.0 when available, and undo custom version.
+git_repository(
     name = "rules_proto_grpc",
-    sha256 = "fb7fc7a3c19a92b2f15ed7c4ffb2983e956625c1436f57a3430b897ba9864059",
-    strip_prefix = "rules_proto_grpc-4.3.0",
-    urls = ["https://github.com/rules-proto-grpc/rules_proto_grpc/archive/4.3.0.tar.gz"],
+    commit = "e9b7119d712c8e1f4159a10893b2752b38d1b664",
+    remote = "https://github.com/rules-proto-grpc/rules_proto_grpc.git",
 )
 
 load("@rules_proto_grpc//:repositories.bzl", "rules_proto_grpc_repos", "rules_proto_grpc_toolchains")
