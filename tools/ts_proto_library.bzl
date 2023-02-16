@@ -34,18 +34,3 @@ ts_proto_compile = rule(
         str(Label("@rules_proto_grpc//protobuf:toolchain_type")),
     ],
 )
-
-ts_grpc_proto_compile = rule(
-    implementation = _ts_proto_compile_impl,
-    attrs = dict(
-        proto_compile_attrs,
-        _plugins = attr.label_list(
-            providers = [ProtoPluginInfo],
-            default = [
-                Label("//tools:ts_grpc_proto_compile"),
-            ],
-            doc = "List of protoc plugins to apply",
-        ),
-    ),
-    toolchains = [str(Label("@rules_proto_grpc//protobuf:toolchain_type"))],
-)

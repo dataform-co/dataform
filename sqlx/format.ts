@@ -8,7 +8,7 @@ import { ErrorWithCause } from "df/common/errors/errors";
 import { SyntaxTreeNode, SyntaxTreeNodeType } from "df/sqlx/lexer";
 import { v4 as uuidv4 } from "uuid";
 
-const JS_BEAUTIFY_OPTIONS: JsBeautifyOptions = {
+const JS_BEAUTIFY_OPTIONS: js_beautify.CoreBeautifyOptions = {
   indent_size: 2,
   preserve_newlines: true,
   max_preserve_newlines: 2

@@ -28,7 +28,7 @@ export async function runWithTimeout<T>(
 }
 
 export async function sleep(sleepMillis: number) {
-  await new Promise(resolve => setTimeout(() => resolve(), sleepMillis));
+  await new Promise<void>(resolve => setTimeout(() => resolve(), sleepMillis));
 }
 
 export async function sleepUntil(
