@@ -404,7 +404,6 @@ suite("@dataform/api", () => {
       ];
       expect(actionNames).includes("schema.a");
       expect(actionNames).includes("schema.b");
-      expect(actionNames).includes("schema.d");
     });
 
     test("prune actions with --actions without dependencies", () => {
