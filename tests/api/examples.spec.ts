@@ -108,6 +108,7 @@ suite("examples", () => {
                 )
             );
             expect(exampleJsBlocks.type).equals("table");
+            expect(exampleJsBlocks.enumType).equals(dataform.TableType.TABLE);
             expect(exampleJsBlocks.query.trim()).equals("select 1 as foo");
 
             // Check we can import and use an external package.
@@ -221,6 +222,7 @@ suite("examples", () => {
                 )
             );
             expect(exampleInline.type).equals("inline");
+            expect(exampleInline.enumType).equals(dataform.TableType.INLINE);
             expect(exampleInline.query.trim()).equals(
               `select * from \`${dotJoined(
                 databaseWithSuffix("tada-analytics"),
@@ -246,6 +248,7 @@ suite("examples", () => {
                 )
             );
             expect(exampleUsingInline.type).equals("table");
+            expect(exampleUsingInline.enumType).equals(dataform.TableType.TABLE);
             expect(exampleUsingInline.query.trim()).equals(
               `select * from (\n\nselect * from \`${dotJoined(
                 databaseWithSuffix("tada-analytics"),
@@ -272,6 +275,7 @@ suite("examples", () => {
                 )
             );
             expect(exampleView.type).equals("view");
+            expect(exampleView.enumType).equals(dataform.TableType.VIEW);
             expect(exampleView.query.trim()).equals(
               `select * from \`${dotJoined(
                 databaseWithSuffix("tada-analytics"),
@@ -333,6 +337,7 @@ suite("examples", () => {
                 )
             );
             expect(exampleMaterializedView.type).equals("view");
+            expect(exampleMaterializedView.enumType).equals(dataform.TableType.VIEW);
             expect(exampleMaterializedView.materialized).equals(true);
             expect(exampleMaterializedView.query.trim()).equals(
               `select * from \`${dotJoined(
@@ -375,6 +380,7 @@ suite("examples", () => {
                 )
             );
             expect(exampleTable.type).equals("table");
+            expect(exampleTable.enumType).equals(dataform.TableType.TABLE);
             expect(exampleTable.query.trim()).equals(
               `select * from \`${dotJoined(
                 databaseWithSuffix("tada-analytics"),
@@ -481,6 +487,7 @@ suite("examples", () => {
                 )
             );
             expect(exampleSampleData.type).equals("view");
+            expect(exampleSampleData.enumType).equals(dataform.TableType.VIEW);
             expect(exampleSampleData.query.trim()).equals(
               "select 1 as sample union all\nselect 2 as sample union all\nselect 3 as sample"
             );
@@ -513,6 +520,7 @@ suite("examples", () => {
               databaseWithSuffix("override_database")
             );
             expect(exampleUsingOverriddenDatabase.type).equals("view");
+            expect(exampleUsingOverriddenDatabase.enumType).equals(dataform.TableType.VIEW);
             expect(exampleUsingOverriddenDatabase.query.trim()).equals(
               "select 1 as test_database_override"
             );
@@ -532,6 +540,7 @@ suite("examples", () => {
               schemaWithSuffix("override_schema")
             );
             expect(exampleUsingOverriddenSchema.type).equals("view");
+            expect(exampleUsingOverriddenSchema.enumType).equals(dataform.TableType.VIEW);
             expect(exampleUsingOverriddenSchema.query.trim()).equals(
               "select 1 as test_schema_override"
             );
@@ -551,6 +560,7 @@ suite("examples", () => {
               schemaWithSuffix("df_integration_test")
             );
             expect(exampleUsingOverriddenSchemaUnchanged.type).equals("view");
+            expect(exampleUsingOverriddenSchemaUnchanged.enumType).equals(dataform.TableType.VIEW);
             expect(exampleUsingOverriddenSchemaUnchanged.query.trim()).equals(
               "select 1 as test_schema_override"
             );
