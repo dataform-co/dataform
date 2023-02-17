@@ -3,22 +3,20 @@ import * as semver from "semver";
 import { IAdapter } from "df/core/adapters";
 import { Task, Tasks } from "df/core/tasks";
 import { tableTypeEnumToString } from "df/core/utils";
-import { dataform } from "df/protos/ts";
+import * as core from "df/protos/core";
+import * as execution from "df/protos/execution";
 
 export abstract class Adapter implements IAdapter {
-  constructor(protected readonly dataformCoreVersion: string) {}
+  constructor(protected readonly coreCoreVersion: string) {}
 
   public abstract publishTasks(
-    table: dataform.ITable,
-    runConfig: dataform.IRunConfig,
-    tableMetadata: dataform.ITableMetadata
+    table: core.Table,
+    runConfig: execution.RunConfig,
+    tableMetadata: execution.TableMetadata
   ): Tasks;
-  public abstract assertTasks(
-    assertion: dataform.IAssertion,
-    projectConfig: dataform.IProjectConfig
-  ): Tasks;
+  public abstract assertTasks(assertion: core.Assertion, projectConfig: core.ProjectConfig): Tasks;
 
-  public abstract resolveTarget(target: dataform.ITarget): string;
+  public abstract resolveTarget(target: core.Target): string;
 
   public normalizeIdentifier(identifier: string) {
     return identifier;
@@ -29,29 +27,29 @@ export abstract class Adapter implements IAdapter {
     return `'${stringContents.replace(/\\/g, "\\\\").replace(/'/g, "\\'")}'`;
   }
 
-  public dropIfExists(target: dataform.ITarget, type: dataform.TableMetadata.Type) {
+  public dropIfExists(target: core.Target, type: execution.TableMetadata_Type) {
     return `drop ${this.tableTypeAsSql(type)} if exists ${this.resolveTarget(target)} ${
-      type === dataform.TableMetadata.Type.TABLE ? "cascade" : ""
+      type === execution.TableMetadata_Type.TABLE ? "cascade" : ""
     }`;
   }
 
-  public baseTableType(enumType: dataform.TableType) {
+  public baseTableType(enumType: core.TableType) {
     switch (enumType) {
-      case dataform.TableType.TABLE:
-      case dataform.TableType.INCREMENTAL:
-        return dataform.TableMetadata.Type.TABLE;
-      case dataform.TableType.VIEW:
-        return dataform.TableMetadata.Type.VIEW;
+      case core.TableType.TABLE:
+      case core.TableType.INCREMENTAL:
+        return execution.TableMetadata_Type.TABLE;
+      case core.TableType.VIEW:
+        return execution.TableMetadata_Type.VIEW;
       default:
         throw new Error(`Unexpected table type: ${tableTypeEnumToString(enumType)}`);
     }
   }
 
-  public tableTypeAsSql(type: dataform.TableMetadata.Type) {
+  public tableTypeAsSql(type: execution.TableMetadata_Type) {
     switch (type) {
-      case dataform.TableMetadata.Type.TABLE:
+      case execution.TableMetadata_Type.TABLE:
         return "table";
-      case dataform.TableMetadata.Type.VIEW:
+      case execution.TableMetadata_Type.VIEW:
         return "view";
       default:
         throw new Error(`Unexpected table type: ${type}`);
@@ -88,7 +86,7 @@ WHERE NOT (${rowCondition})
       .join(`UNION ALL`);
   }
 
-  protected insertInto(target: dataform.ITarget, columns: string[], query: string) {
+  protected insertInto(target: core.Target, columns: string[], query: string) {
     return `	
 insert into ${this.resolveTarget(target)}	
 (${columns.join(",")})	
@@ -96,12 +94,12 @@ select ${columns.join(",")}
 from (${query}) as insertions`;
   }
 
-  protected oppositeTableType(type: dataform.TableMetadata.Type) {
+  protected oppositeTableType(type: execution.TableMetadata_Type) {
     switch (type) {
-      case dataform.TableMetadata.Type.TABLE:
-        return dataform.TableMetadata.Type.VIEW;
-      case dataform.TableMetadata.Type.VIEW:
-        return dataform.TableMetadata.Type.TABLE;
+      case execution.TableMetadata_Type.TABLE:
+        return execution.TableMetadata_Type.VIEW;
+      case execution.TableMetadata_Type.VIEW:
+        return execution.TableMetadata_Type.TABLE;
       default:
         throw new Error(`Unexpected table type: ${type}`);
     }
@@ -116,25 +114,25 @@ from (${query}) as insertions`;
   }
 
   protected shouldWriteIncrementally(
-    runConfig: dataform.IRunConfig,
-    tableMetadata?: dataform.ITableMetadata
+    runConfig: execution.RunConfig,
+    tableMetadata?: execution.TableMetadata
   ) {
     return (
       !runConfig.fullRefresh &&
       tableMetadata &&
-      tableMetadata.type !== dataform.TableMetadata.Type.VIEW
+      tableMetadata.type !== execution.TableMetadata_Type.VIEW
     );
   }
 
   protected preOps(
-    table: dataform.ITable,
-    runConfig: dataform.IRunConfig,
-    tableMetadata?: dataform.ITableMetadata
+    table: core.Table,
+    runConfig: execution.RunConfig,
+    tableMetadata?: execution.TableMetadata
   ): Task[] {
     let preOps = table.preOps;
     if (
-      semver.gt(this.dataformCoreVersion, "1.4.8") &&
-      table.enumType === dataform.TableType.INCREMENTAL &&
+      semver.gt(this.coreCoreVersion, "1.4.8") &&
+      table.enumType === core.TableType.INCREMENTAL &&
       this.shouldWriteIncrementally(runConfig, tableMetadata)
     ) {
       preOps = table.incrementalPreOps;
@@ -143,14 +141,14 @@ from (${query}) as insertions`;
   }
 
   protected postOps(
-    table: dataform.ITable,
-    runConfig: dataform.IRunConfig,
-    tableMetadata?: dataform.ITableMetadata
+    table: core.Table,
+    runConfig: execution.RunConfig,
+    tableMetadata?: execution.TableMetadata
   ): Task[] {
     let postOps = table.postOps;
     if (
-      semver.gt(this.dataformCoreVersion, "1.4.8") &&
-      table.enumType === dataform.TableType.INCREMENTAL &&
+      semver.gt(this.coreCoreVersion, "1.4.8") &&
+      table.enumType === core.TableType.INCREMENTAL &&
       this.shouldWriteIncrementally(runConfig, tableMetadata)
     ) {
       postOps = table.incrementalPostOps;
