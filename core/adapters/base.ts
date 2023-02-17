@@ -2,7 +2,7 @@ import * as semver from "semver";
 
 import { IAdapter } from "df/core/adapters";
 import { Task, Tasks } from "df/core/tasks";
-import { tableTypeEnumToString } from "df/core/utils"
+import { tableTypeEnumToString } from "df/core/utils";
 import { dataform } from "df/protos/ts";
 
 export abstract class Adapter implements IAdapter {

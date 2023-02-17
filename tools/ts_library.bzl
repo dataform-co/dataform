@@ -1,7 +1,7 @@
-load("@aspect_rules_ts//ts:defs.bzl", native_ts_library = "ts_project")
+load("@aspect_rules_ts//ts:defs.bzl", "ts_project")
 
 def ts_library(**kwargs):
-    native_ts_library(
+    ts_project(
         tsconfig = "//:tsconfig",
         declaration = True,
         source_map = True,
