@@ -369,6 +369,12 @@ export class Session {
         "dataform.json"
       );
     }
+    if (
+      !!this.config.vars && 
+      !Object.values(this.config.vars).every((value) => typeof value === 'string')
+    ) {
+      throw new Error("Custom variables defined in dataform.json can only be strings.");
+    }
 
     const compiledGraph = dataform.CompiledGraph.create({
       projectConfig: this.config,

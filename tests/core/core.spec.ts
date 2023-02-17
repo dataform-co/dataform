@@ -1197,6 +1197,35 @@ suite("@dataform/core", () => {
         "A defaultLocation is required for BigQuery. This can be configured in dataform.json.",
       ]);
     });
+
+    test("variables defined in dataform.json must be strings", () => {
+      const sessionFail = new Session(path.dirname(__filename), {
+        warehouse: "bigquery",
+        defaultSchema: "schema",
+        defaultLocation: "location",
+        vars: {
+          int_var: 1,
+          str_var: "str"
+        }
+      } as any);
+      
+      expect(() => { 
+        sessionFail.compile();
+      }).to.throw("Custom variables defined in dataform.json can only be strings.");
+
+      const sessionSuccess = new Session(path.dirname(__filename), {
+        warehouse: "bigquery",
+        defaultSchema: "schema",
+        defaultLocation: "location",
+        vars: {
+          str_var1: "str1",
+          str_var2: "str2"
+        }
+      } as any);
+
+      const graph = sessionSuccess.compile();
+      expect(graph.graphErrors.compilationErrors).to.eql([]);
+    });
   });
 
   suite("compilers", () => {
