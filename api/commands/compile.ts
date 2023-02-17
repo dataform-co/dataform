@@ -27,7 +27,7 @@ export class CompilationTimeoutError extends Error {}
 
 export async function compile(
   compileConfig: dataform.CompileConfig = {}
-): Promise<dataform.CompiledGraph> {
+): Promise<core.CompiledGraph> {
   // Resolve the path in case it hasn't been resolved already.
   path.resolve(compileConfig.projectDir);
 
@@ -57,12 +57,12 @@ export async function compile(
 
   const result = await CompileChildProcess.forkProcess().compile(compileConfig);
 
-  let compileResult: dataform.CompiledGraph;
+  let compileResult: core.CompiledGraph;
   if (compileConfig.useMain) {
     const decodedResult = decode64(dataform.CoreExecutionResponse, result);
-    compileResult = dataform.CompiledGraph.create(decodedResult.compile.compiledGraph);
+    compileResult = core.CompiledGraph.create(decodedResult.compile.compiledGraph);
   } else {
-    compileResult = decode64(dataform.CompiledGraph, result);
+    compileResult = decode64(core.CompiledGraph, result);
   }
 
   compileResult.tables.forEach(setOrValidateTableEnumType);

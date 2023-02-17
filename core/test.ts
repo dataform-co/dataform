@@ -90,7 +90,7 @@ export class Test {
           new Error(`Dataset ${stringifyResolvable(this.datasetToTest)} could not be found.`),
           this.proto.fileName
         );
-      } else if (dataset.proto.enumType === core.TargetType.INCREMENTAL) {
+      } else if (dataset.proto.enumType === core.TableType.INCREMENTAL) {
         this.session.compileError(
           new Error("Running tests on incremental datasets is not yet supported."),
           this.proto.fileName

@@ -6,9 +6,9 @@ import * as execution from "df/protos/execution";
 type CompileAction = core.Target | core.Operation | core.Assertion;
 
 export function prune(
-  compiledGraph: dataform.CompiledGraph,
+  compiledGraph: core.CompiledGraph,
   runConfig: execution.RunConfig
-): dataform.CompiledGraph {
+): core.CompiledGraph {
   compiledGraph.tables.forEach(utils.setOrValidateTableEnumType);
   const includedActionNames = computeIncludedActionNames(compiledGraph, runConfig);
   return {
@@ -26,7 +26,7 @@ export function prune(
 }
 
 function computeIncludedActionNames(
-  compiledGraph: dataform.CompiledGraph,
+  compiledGraph: core.CompiledGraph,
   runConfig: execution.RunConfig
 ): Set<string> {
   // Remove inline tables.

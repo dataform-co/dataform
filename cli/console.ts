@@ -103,7 +103,7 @@ export function printInitCredsResult(writtenFilePath: string) {
   writeStdOut("To change connection settings, edit this file directly.");
 }
 
-export function printCompiledGraph(graph: dataform.CompiledGraph, verbose: boolean) {
+export function printCompiledGraph(graph: core.CompiledGraph, verbose: boolean) {
   if (verbose) {
     writeStdOut(prettyJsonStringify(graph));
   } else {

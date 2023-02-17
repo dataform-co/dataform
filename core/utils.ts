@@ -105,7 +105,7 @@ function getCurrentStack(): NodeJS.CallSite[] {
   }
 }
 
-export function graphHasErrors(graph: dataform.CompiledGraph) {
+export function graphHasErrors(graph: core.CompiledGraph) {
   return graph.graphErrors?.compilationErrors.length > 0;
 }
 
@@ -138,11 +138,11 @@ function isResolvableArray(parts: any[]): parts is [string, string?, string?] {
 
 export function resolvableAsTarget(resolvable: Resolvable): core.Target {
   if (typeof resolvable === "string") {
-    return {
+    return core.Target.create({
       name: resolvable
-    };
+    });
   }
-  return resolvable;
+  return core.Target.create(resolvable);
 }
 
 export function stringifyResolvable(res: Resolvable) {
@@ -251,32 +251,32 @@ export function throwIfInvalid<T>(proto: T, verify: (proto: T) => string) {
 export function tableTypeStringToEnum(type: string, throwIfUnknown: boolean) {
   switch (type) {
     case "table":
-      return core.TargetType.TABLE;
+      return core.TableType.TABLE;
     case "incremental":
-      return core.TargetType.INCREMENTAL;
+      return core.TableType.INCREMENTAL;
     case "view":
-      return core.TargetType.VIEW;
+      return core.TableType.VIEW;
     case "inline":
-      return core.TargetType.INLINE;
+      return core.TableType.INLINE;
     default: {
       if (throwIfUnknown) {
         throw new Error(`Unexpected table type: ${type}`);
       }
-      return core.TargetType.UNKNOWN_TYPE;
+      return core.TableType.UNKNOWN_TYPE;
     }
   }
 }
 
-export function tableTypeEnumToString(enumType: core.TargetType) {
-  return core.TargetType[enumType].toLowerCase();
+export function tableTypeEnumToString(enumType: core.TableType) {
+  return core.TableType[enumType].toLowerCase();
 }
 
-export function setOrValidateTableEnumType(table: core.Target) {
-  let enumTypeFromStr: core.TargetType | null = null;
+export function setOrValidateTableEnumType(table: core.Table) {
+  let enumTypeFromStr: core.TableType | null = null;
   if (table.type !== "" && table.type !== undefined) {
     enumTypeFromStr = tableTypeStringToEnum(table.type, true);
   }
-  if (table.enumType === core.TargetType.UNKNOWN_TYPE || table.enumType === undefined) {
+  if (table.enumType === core.TableType.UNKNOWN_TYPE || table.enumType === undefined) {
     table.enumType = enumTypeFromStr!;
   } else if (enumTypeFromStr !== null && table.enumType !== enumTypeFromStr) {
     throw new Error(

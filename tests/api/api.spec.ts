@@ -19,7 +19,7 @@ suite("@dataform/api", () => {
   //       ^
   //       d
   // Made with asciiflow.com
-  const TEST_GRAPH: dataform.CompiledGraph = dataform.CompiledGraph.create({
+  const TEST_GRAPH: core.CompiledGraph = core.CompiledGraph.create({
     projectConfig: { warehouse: "redshift" },
     tables: [
       {
@@ -92,7 +92,7 @@ suite("@dataform/api", () => {
 
     test("build_with_errors", () => {
       expect(() => {
-        const graphWithErrors: dataform.CompiledGraph = dataform.CompiledGraph.create({
+        const graphWithErrors: core.CompiledGraph = core.CompiledGraph.create({
           projectConfig: { warehouse: "redshift" },
           graphErrors: { compilationErrors: [{ message: "Some critical error" }] },
           tables: [{ target: { schema: "schema", name: "a" } }]
@@ -104,14 +104,14 @@ suite("@dataform/api", () => {
     });
 
     test("trying to fully refresh a protected dataset fails", () => {
-      const testGraph = dataform.CompiledGraph.create(TEST_GRAPH);
+      const testGraph = core.CompiledGraph.create(TEST_GRAPH);
       testGraph.tables[0].protected = true;
       const builder = new Builder(TEST_GRAPH, { fullRefresh: true }, TEST_STATE);
       expect(() => builder.build()).to.throw();
     });
 
     test("action_types", () => {
-      const graph: dataform.CompiledGraph = dataform.CompiledGraph.create({
+      const graph: core.CompiledGraph = core.CompiledGraph.create({
         projectConfig: { warehouse: "redshift" },
         tables: [
           { target: { schema: "schema", name: "a" }, type: "table" },
@@ -153,7 +153,7 @@ suite("@dataform/api", () => {
     });
 
     test("table_enum_types", () => {
-      const graph: dataform.CompiledGraph = dataform.CompiledGraph.create({
+      const graph: core.CompiledGraph = core.CompiledGraph.create({
         projectConfig: { warehouse: "bigquery" },
         tables: [
           { target: { schema: "schema", name: "a" }, enumType: core.TargetType.TABLE },
@@ -182,7 +182,7 @@ suite("@dataform/api", () => {
     });
 
     test("table_enum_and_str_types_should_match", () => {
-      const graph: dataform.CompiledGraph = dataform.CompiledGraph.create({
+      const graph: core.CompiledGraph = core.CompiledGraph.create({
         projectConfig: { warehouse: "bigquery" },
         tables: [
           {
@@ -206,7 +206,7 @@ suite("@dataform/api", () => {
         "sqldatawarehouse",
         "snowflake"
       ]) {
-        const graph: dataform.CompiledGraph = dataform.CompiledGraph.create({
+        const graph: core.CompiledGraph = core.CompiledGraph.create({
           projectConfig: { warehouse: "redshift" },
           tables: [
             {
@@ -270,7 +270,7 @@ suite("@dataform/api", () => {
     //        +-> op_c
     //
     // op_d +---> tab_a
-    const TEST_GRAPH_WITH_TAGS: dataform.CompiledGraph = dataform.CompiledGraph.create({
+    const TEST_GRAPH_WITH_TAGS: core.CompiledGraph = core.CompiledGraph.create({
       projectConfig: { warehouse: "bigquery", defaultLocation: "US" },
       operations: [
         {
@@ -306,7 +306,7 @@ suite("@dataform/api", () => {
     });
 
     test("prune removes inline tables", async () => {
-      const graph: dataform.CompiledGraph = dataform.CompiledGraph.create({
+      const graph: core.CompiledGraph = core.CompiledGraph.create({
         projectConfig: { warehouse: "bigquery", defaultLocation: "US" },
         tables: [
           { target: { schema: "schema", name: "a" }, type: "table" },
@@ -424,7 +424,7 @@ suite("@dataform/api", () => {
 
   suite("sql_generating", () => {
     test("bigquery_incremental", () => {
-      const graph = dataform.CompiledGraph.create({
+      const graph = core.CompiledGraph.create({
         projectConfig: { warehouse: "bigquery", defaultDatabase: "deeb", defaultLocation: "US" },
         tables: [
           {
@@ -473,7 +473,7 @@ suite("@dataform/api", () => {
     });
 
     test("bigquery_materialized", () => {
-      const testGraph: dataform.CompiledGraph = dataform.CompiledGraph.create({
+      const testGraph: core.CompiledGraph = core.CompiledGraph.create({
         projectConfig: { warehouse: "bigquery", defaultDatabase: "deeb", defaultLocation: "US" },
         tables: [
           {
@@ -537,7 +537,7 @@ suite("@dataform/api", () => {
     });
 
     test("snowflake_materialized", () => {
-      const testGraph: dataform.CompiledGraph = dataform.CompiledGraph.create({
+      const testGraph: core.CompiledGraph = core.CompiledGraph.create({
         projectConfig: { warehouse: "snowflake" },
         tables: [
           {
@@ -600,7 +600,7 @@ suite("@dataform/api", () => {
     });
 
     test("redshift_create", () => {
-      const testGraph: dataform.CompiledGraph = dataform.CompiledGraph.create({
+      const testGraph: core.CompiledGraph = core.CompiledGraph.create({
         projectConfig: { warehouse: "redshift" },
         dataformCoreVersion: "1.4.1",
         tables: [
@@ -697,7 +697,7 @@ suite("@dataform/api", () => {
     });
 
     test("redshift_create after bind support dropped", () => {
-      const testGraph: dataform.CompiledGraph = dataform.CompiledGraph.create({
+      const testGraph: core.CompiledGraph = core.CompiledGraph.create({
         projectConfig: { warehouse: "redshift" },
         dataformCoreVersion: "1.11.0",
         tables: [
@@ -727,7 +727,7 @@ suite("@dataform/api", () => {
     });
 
     test("postgres_create", () => {
-      const testGraph: dataform.CompiledGraph = dataform.CompiledGraph.create({
+      const testGraph: core.CompiledGraph = core.CompiledGraph.create({
         projectConfig: { warehouse: "postgres" },
         dataformCoreVersion: "1.4.1",
         tables: [
@@ -760,7 +760,7 @@ suite("@dataform/api", () => {
     });
 
     test("bigquery_partitionby", () => {
-      const testGraph: dataform.CompiledGraph = dataform.CompiledGraph.create({
+      const testGraph: core.CompiledGraph = core.CompiledGraph.create({
         projectConfig: { warehouse: "bigquery", defaultDatabase: "deeb", defaultLocation: "US" },
         tables: [
           {
@@ -827,7 +827,7 @@ suite("@dataform/api", () => {
     });
 
     test("bigquery_options", () => {
-      const testGraph: dataform.CompiledGraph = dataform.CompiledGraph.create({
+      const testGraph: core.CompiledGraph = core.CompiledGraph.create({
         projectConfig: { warehouse: "bigquery", defaultDatabase: "deeb", defaultLocation: "US" },
         tables: [
           {
@@ -896,7 +896,7 @@ suite("@dataform/api", () => {
     });
 
     test("bigquery_clusterby", () => {
-      const testGraph: dataform.CompiledGraph = dataform.CompiledGraph.create({
+      const testGraph: core.CompiledGraph = core.CompiledGraph.create({
         projectConfig: { warehouse: "bigquery", defaultDatabase: "deeb", defaultLocation: "US" },
         tables: [
           {
@@ -963,7 +963,7 @@ suite("@dataform/api", () => {
     });
 
     test("bigquery_additional_options", () => {
-      const testGraph: dataform.CompiledGraph = dataform.CompiledGraph.create({
+      const testGraph: core.CompiledGraph = core.CompiledGraph.create({
         projectConfig: { warehouse: "bigquery", defaultDatabase: "deeb", defaultLocation: "US" },
         tables: [
           {
@@ -1033,7 +1033,7 @@ suite("@dataform/api", () => {
     });
 
     test("snowflake", () => {
-      const testGraph: dataform.CompiledGraph = dataform.CompiledGraph.create({
+      const testGraph: core.CompiledGraph = core.CompiledGraph.create({
         projectConfig: { warehouse: "snowflake" },
         tables: [
           {

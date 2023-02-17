@@ -498,7 +498,7 @@ suite("examples", () => {
               dataform.ActionDescriptor.create({
                 description: "This is some sample data.",
                 columns: [
-                  dataform.ColumnDescriptor.create({
+                  core.ColumnDescriptor.create({
                     description: "Sample integers.",
                     path: ["sample"]
                   })
@@ -688,7 +688,7 @@ suite("examples", () => {
               dataform.ActionDescriptor.create({
                 description: "An example operations file which outputs a dataset.",
                 columns: [
-                  dataform.ColumnDescriptor.create({
+                  core.ColumnDescriptor.create({
                     description: "Just 1!",
                     path: ["TEST"]
                   })

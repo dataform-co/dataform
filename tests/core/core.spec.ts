@@ -100,11 +100,11 @@ suite("@dataform/core", () => {
         expect(t.actionDescriptor).eql({
           description: "this is a table",
           columns: [
-            dataform.ColumnDescriptor.create({
+            core.ColumnDescriptor.create({
               description: "test description",
               path: ["test"]
             }),
-            dataform.ColumnDescriptor.create({
+            core.ColumnDescriptor.create({
               description: "test2 description",
               path: ["test2"],
               tags: ["tag1", "tag2"]
@@ -189,7 +189,7 @@ suite("@dataform/core", () => {
         expect(t.actionDescriptor).eql({
           description: "this is a table",
           columns: [
-            dataform.ColumnDescriptor.create({
+            core.ColumnDescriptor.create({
               description: "test description",
               path: ["test"]
             })
@@ -206,7 +206,7 @@ suite("@dataform/core", () => {
         expect(t.actionDescriptor).eql({
           description: "this is a table",
           columns: [
-            dataform.ColumnDescriptor.create({
+            core.ColumnDescriptor.create({
               description: "test description",
               path: ["test"]
             })
@@ -732,7 +732,7 @@ suite("@dataform/core", () => {
       ).includes("schema.a");
       expect(tableB.actionDescriptor).eql({
         columns: [
-          dataform.ColumnDescriptor.create({
+          core.ColumnDescriptor.create({
             description: "test description b",
             path: ["test"]
           })
@@ -762,7 +762,7 @@ suite("@dataform/core", () => {
       ).includes("schema.a");
       expect(tableC.actionDescriptor).eql({
         columns: [
-          dataform.ColumnDescriptor.create({
+          core.ColumnDescriptor.create({
             description: "test description c",
             path: ["test"]
           })
@@ -814,12 +814,12 @@ suite("@dataform/core", () => {
         column => column.displayName === "colly display name"
       );
       expect(collyColumn).to.eql(
-        dataform.ColumnDescriptor.create({
+        core.ColumnDescriptor.create({
           path: ["colly"],
           displayName: "colly display name",
           description: "colly description",
-          dimensionType: dataform.ColumnDescriptor.DimensionType.TIMESTAMP,
-          aggregation: dataform.ColumnDescriptor.Aggregation.DISTINCT,
+          dimensionType: core.ColumnDescriptor_DimensionType.TIMESTAMP,
+          aggregation: core.ColumnDescriptor_Aggregation.DISTINCT,
           expression: "1"
         })
       );

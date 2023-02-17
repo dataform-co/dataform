@@ -486,10 +486,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
   });
 });
 
-async function cleanWarehouse(
-  compiledGraph: dataform.CompiledGraph,
-  dbadapter: dbadapters.IDbAdapter
-) {
+async function cleanWarehouse(compiledGraph: core.CompiledGraph, dbadapter: dbadapters.IDbAdapter) {
   await dropAllTables(
     (await dfapi.build(compiledGraph, {}, dbadapter)).warehouseState.tables,
     adapters.create(compiledGraph.projectConfig, compiledGraph.dataformCoreVersion),

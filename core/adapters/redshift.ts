@@ -7,8 +7,10 @@ import * as core from "df/protos/core";
 import * as execution from "df/protos/execution";
 
 export class RedshiftAdapter extends Adapter implements IAdapter {
+  dataformCoreVersion: string;
   constructor(private readonly project: core.ProjectConfig, dataformCoreVersion: string) {
     super(dataformCoreVersion);
+    this.dataformCoreVersion = dataformCoreVersion;
   }
 
   public resolveTarget(target: core.Target) {

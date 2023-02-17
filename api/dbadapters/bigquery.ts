@@ -494,7 +494,7 @@ function convertFieldType(type: string) {
 }
 
 function addDescriptionToMetadata(
-  columnDescriptions: dataform.ColumnDescriptor[],
+  columnDescriptions: core.ColumnDescriptor[],
   metadataArray: TableField[]
 ): TableField[] {
   const findDescription = (path: string[]) =>

@@ -9,7 +9,7 @@ import * as core from "df/protos/core";
 import * as execution from "df/protos/execution";
 
 export async function build(
-  compiledGraph: dataform.CompiledGraph,
+  compiledGraph: core.CompiledGraph,
   runConfig: execution.RunConfig,
   dbadapter: dbadapters.IDbAdapter
 ) {
@@ -45,7 +45,7 @@ export class Builder {
   private readonly adapter: adapters.IAdapter;
 
   constructor(
-    private readonly prunedGraph: dataform.CompiledGraph,
+    private readonly prunedGraph: core.CompiledGraph,
     private readonly runConfig: execution.RunConfig,
     private readonly warehouseState: dataform.WarehouseState
   ) {

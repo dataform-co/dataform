@@ -380,7 +380,7 @@ export interface ITableContext extends ICommonContext {
  * @hidden
  */
 export class Table {
-  public static readonly INLINE_IGNORED_PROPS: Array<keyof core.Target> = [
+  public static readonly INLINE_IGNORED_PROPS: Array<keyof core.Table> = [
     "bigquery",
     "redshift",
     "snowflake",
@@ -393,9 +393,9 @@ export class Table {
     "where"
   ];
 
-  public proto: core.Target = core.Target.create({
+  public proto: core.Table = core.Table.create({
     type: "view",
-    enumType: core.TargetType.VIEW,
+    enumType: core.TableType.VIEW,
     disabled: false,
     tags: []
   });
@@ -435,19 +435,19 @@ export class Table {
       this.protected();
     }
     if (config.redshift) {
-      this.redshift(config.redshift);
+      this.redshift(core.RedshiftOptions.create(config.redshift));
     }
     if (config.bigquery) {
-      this.bigquery(config.bigquery);
+      this.bigquery(core.BigQueryOptions.create(config.bigquery));
     }
     if (config.snowflake) {
-      this.snowflake(config.snowflake);
+      this.snowflake(core.SnowflakeOptions.create(config.snowflake));
     }
     if (config.sqldatawarehouse) {
-      this.sqldatawarehouse(config.sqldatawarehouse);
+      this.sqldatawarehouse(core.SQLDataWarehouseOptions.create(config.sqldatawarehouse));
     }
     if (config.presto) {
-      this.presto(config.presto);
+      this.presto(core.PrestoOptions.create(config.presto));
     }
     if (config.tags) {
       this.tags(config.tags);
@@ -523,64 +523,61 @@ export class Table {
     this.proto.materialized = materialized;
   }
 
-  public snowflake(snowflake: profiles.SnowflakeOptions) {
+  public snowflake(snowflake: core.SnowflakeOptions) {
     checkExcessProperties(
       (e: Error) => this.session.compileError(e),
       snowflake,
       ISnowflakeOptionsProperties(),
       "snowflake config"
     );
-    this.proto.snowflake = profiles.SnowflakeOptions.create(snowflake);
+    this.proto.snowflake = core.SnowflakeOptions.create(snowflake);
     return this;
   }
 
-  public sqldatawarehouse(sqlDataWarehouse: dataform.SQLDataWarehouseOptions) {
+  public sqldatawarehouse(sqlDataWarehouse: core.SQLDataWarehouseOptions) {
     checkExcessProperties(
       (e: Error) => this.session.compileError(e),
       sqlDataWarehouse,
       ISQLDataWarehouseOptionsProperties(),
       "sqldatawarehouse config"
     );
-    this.proto.sqlDataWarehouse = dataform.SQLDataWarehouseOptions.create(sqlDataWarehouse);
+    this.proto.sqlDataWarehouse = core.SQLDataWarehouseOptions.create(sqlDataWarehouse);
     return this;
   }
 
-  public redshift(redshift: dataform.RedshiftOptions) {
+  public redshift(redshift: core.RedshiftOptions) {
     checkExcessProperties(
       (e: Error) => this.session.compileError(e),
       redshift,
       IRedshiftOptionsProperties(),
       "redshift config"
     );
-    this.proto.redshift = dataform.RedshiftOptions.create(redshift);
+    this.proto.redshift = core.RedshiftOptions.create(redshift);
     return this;
   }
 
-  public bigquery(bigquery: profiles.BigQueryOptions) {
+  public bigquery(bigquery: core.BigQueryOptions) {
     checkExcessProperties(
       (e: Error) => this.session.compileError(e),
       bigquery,
       IBigQueryOptionsProperties(),
       "bigquery config"
     );
-    this.proto.bigquery = profiles.BigQueryOptions.create(bigquery);
+    this.proto.bigquery = core.BigQueryOptions.create(bigquery);
     if (!!bigquery.labels) {
-      if (!this.proto.actionDescriptor) {
-        this.proto.actionDescriptor = {};
-      }
       this.proto.actionDescriptor.bigqueryLabels = bigquery.labels;
     }
     return this;
   }
 
-  public presto(presto: profiles.PrestoOptions) {
+  public presto(presto: core.PrestoOptions) {
     checkExcessProperties(
       (e: Error) => this.session.compileError(e),
       presto,
       IPrestoOptionsProperties(),
       "presto config"
     );
-    this.proto.presto = profiles.PrestoOptions.create(presto);
+    this.proto.presto = core.PrestoOptions.create(presto);
     return this;
   }
 
@@ -610,17 +607,11 @@ export class Table {
   }
 
   public description(description: string) {
-    if (!this.proto.actionDescriptor) {
-      this.proto.actionDescriptor = {};
-    }
     this.proto.actionDescriptor.description = description;
     return this;
   }
 
   public columns(columns: IColumnsDescriptor) {
-    if (!this.proto.actionDescriptor) {
-      this.proto.actionDescriptor = {};
-    }
     this.proto.actionDescriptor.columns = ColumnDescriptors.mapToColumnProtoArray(
       columns,
       (e: Error) => this.session.compileError(e)
@@ -716,7 +707,7 @@ export class Table {
 
     this.proto.query = context.apply(this.contextableQuery);
 
-    if (this.proto.enumType === core.TargetType.INCREMENTAL) {
+    if (this.proto.enumType === core.TableType.INCREMENTAL) {
       this.proto.incrementalQuery = incrementalContext.apply(this.contextableQuery);
 
       this.proto.incrementalPreOps = this.contextifyOps(this.contextablePreOps, incrementalContext);
@@ -835,17 +826,17 @@ export class TableContext implements ITableContext {
     return "";
   }
 
-  public redshift(redshift: dataform.RedshiftOptions) {
+  public redshift(redshift: core.RedshiftOptions) {
     this.table.redshift(redshift);
     return "";
   }
 
-  public bigquery(bigquery: profiles.BigQueryOptions) {
+  public bigquery(bigquery: core.BigQueryOptions) {
     this.table.bigquery(bigquery);
     return "";
   }
 
-  public presto(presto: profiles.PrestoOptions) {
+  public presto(presto: core.PrestoOptions) {
     this.table.presto(presto);
     return "";
   }

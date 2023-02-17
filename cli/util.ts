@@ -13,6 +13,6 @@ export function assertPathExists(checkPath: string) {
   }
 }
 
-export function compiledGraphHasErrors(graph: dataform.CompiledGraph) {
+export function compiledGraphHasErrors(graph: core.CompiledGraph) {
   return graph.graphErrors?.compilationErrors?.length > 0;
 }

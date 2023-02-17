@@ -13,7 +13,7 @@ import { TextDocument } from "vscode-languageserver-textdocument";
 
 const connection = createConnection(ProposedFeatures.all);
 const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument);
-let CACHED_COMPILE_GRAPH: dataform.CompiledGraph = null;
+let CACHED_COMPILE_GRAPH: core.CompiledGraph = null;
 let WORKSPACE_ROOT_FOLDER: string = null;
 
 connection.onInitialize(() => {
@@ -56,7 +56,7 @@ async function compileAndValidate() {
   });
   const compileResult = await getProcessResult(spawnedProcess);
 
-  const parsedResult: dataform.CompiledGraph = JSON.parse(compileResult.stdout);
+  const parsedResult: core.CompiledGraph = JSON.parse(compileResult.stdout);
   if (parsedResult?.graphErrors?.compilationErrors) {
     parsedResult.graphErrors.compilationErrors.forEach(compilationError => {
       connection.sendNotification("error", compilationError.message);
@@ -80,7 +80,7 @@ async function getProcessResult(childProcess: ChildProcess) {
 
 function gatherAllActions(
   graph = CACHED_COMPILE_GRAPH
-): Array<core.Target | dataform.Declaration | core.Operation | core.Assertion> {
+): Array<core.Target | core.Declaration | core.Operation | core.Assertion> {
   return [].concat(graph.tables, graph.operations, graph.assertions, graph.declarations);
 }
 

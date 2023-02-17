@@ -7,13 +7,13 @@ import * as execution from "df/protos/execution";
 /**
  * This is the main entry point into the user space code that should be invoked by the compilation wrapper sandbox.
  *
- * @param encodedCoreExecutionRequest a base64 encoded {@see dataform.CoreExecutionRequest} proto.
+ * @param encodedCoreExecutionRequest a base64 encoded {@see core.CoreExecutionRequest} proto.
  * @returns a base64 encoded {@see dataform.CoreExecutionResponse} proto.
  */
 export function main(encodedCoreExecutionRequest: string): string {
   const globalAny = global as any;
 
-  const request = decode64(dataform.CoreExecutionRequest, encodedCoreExecutionRequest);
+  const request = decode64(core.CoreExecutionRequest, encodedCoreExecutionRequest);
   const compileRequest = request.compile;
 
   // Read the project config from the root of the project.

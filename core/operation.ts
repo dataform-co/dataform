@@ -146,17 +146,11 @@ export class Operation {
   }
 
   public description(description: string) {
-    if (!this.proto.actionDescriptor) {
-      this.proto.actionDescriptor = {};
-    }
     this.proto.actionDescriptor.description = description;
     return this;
   }
 
   public columns(columns: IColumnsDescriptor) {
-    if (!this.proto.actionDescriptor) {
-      this.proto.actionDescriptor = {};
-    }
     this.proto.actionDescriptor.columns = ColumnDescriptors.mapToColumnProtoArray(
       columns,
       (e: Error) => this.session.compileError(e)
