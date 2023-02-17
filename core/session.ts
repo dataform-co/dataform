@@ -88,7 +88,7 @@ export class Session {
     );
     this.actions = [];
     this.tests = {};
-    this.graphErrors = { compilationErrors: [] };
+    this.graphErrors = core.GraphErrors.create({ compilationErrors: [] });
   }
 
   public get projectConfig(): Pick<
@@ -200,11 +200,13 @@ export class Session {
           .queries(actionOptions.sqlContextable);
         break;
       case "declaration":
-        this.declare({
-          database: sqlxConfig.database,
-          schema: sqlxConfig.schema,
-          name: sqlxConfig.name
-        }).config(sqlxConfig);
+        this.declare(
+          core.Target.create({
+            database: sqlxConfig.database,
+            schema: sqlxConfig.schema,
+            name: sqlxConfig.name
+          })
+        ).config(sqlxConfig);
         break;
       case "test":
         const testCase = this.test(sqlxConfig.name)
@@ -382,8 +384,12 @@ export class Session {
     const compiledGraph = core.CompiledGraph.create({
       projectConfig: this.config,
       tables: this.compileGraphChunk(
-        this.actions.filter(action => action instanceof Table),
-        core.Table.verify
+        this.actions.filter(action => action instanceof Table) as Table[],
+        (proto: Table) => core.Table.create(proto as any) as any
+      ),
+      operations: this.compileGraphChunk(
+        this.actions.filter(action => action instanceof Table) as Table[],
+        (table: Table) => core.Table.create(table as any)
       ),
       operations: this.compileGraphChunk(
         this.actions.filter(action => action instanceof Operation),
@@ -468,7 +474,7 @@ export class Session {
 
   private compileGraphChunk<T>(
     actions: Array<{ proto: IActionProto; compile(): T }>,
-    verify: (proto: T) => string
+    verify: (proto: T) => any
   ): T[] {
     const compiledChunks: T[] = [];
 
@@ -476,6 +482,7 @@ export class Session {
       try {
         const compiledChunk = action.compile();
         utils.throwIfInvalid(compiledChunk, verify);
+
         compiledChunks.push(compiledChunk);
       } catch (e) {
         this.compileError(e, action.proto.fileName, action.proto.target);

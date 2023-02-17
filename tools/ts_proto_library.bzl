@@ -15,9 +15,6 @@ def _ts_proto_compile_impl(ctx):
         "BAZEL_BINDIR": ctx.bin_dir.path,
     }
     return proto_compile_impl(ctx, base_env = base_env)
-    # return proto_compile_impl(ctx)
-
-# proto_compile_attrs.extra_protoc_args =
 
 # based on https://github.com/aspect-build/rules_js/issues/397
 ts_proto_compile = rule(
@@ -31,7 +28,10 @@ ts_proto_compile = rule(
             ],
             doc = "List of protoc plugins to apply",
         ),
-        extra_protoc_args = attr.string_list(default = ["--ts_proto_opt=esModuleInterop=true"]),
+        extra_protoc_args = attr.string_list(default = [
+            "--ts_proto_opt=esModuleInterop=true",
+            "--ts_proto_opt=outputTypeRegistry=true",
+        ]),
     ),
     toolchains = [
         str(Label("@rules_proto_grpc//protobuf:toolchain_type")),

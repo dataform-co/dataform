@@ -133,7 +133,7 @@ export function collectEvaluationQueries(
     validationQueries.push({ query: queryModifier(queryOrAction) });
   } else {
     try {
-      if (queryOrAction instanceof core.Table) {
+      if (queryOrAction.$type === "dataform.Table") {
         if (queryOrAction.enumType === core.TableType.INCREMENTAL) {
           const incrementalTableQueries = queryOrAction.incrementalPreOps.concat(
             queryOrAction.incrementalQuery,
@@ -161,7 +161,7 @@ export function collectEvaluationQueries(
         } else {
           tableQueries.forEach(q => validationQueries.push({ query: queryModifier(q) }));
         }
-      } else if (queryOrAction instanceof core.Operation) {
+      } else if (queryOrAction.$type === "dataform.Operation") {
         if (concatenate) {
           validationQueries.push({
             query: concatenateQueries(queryOrAction.queries, queryModifier)
@@ -169,7 +169,7 @@ export function collectEvaluationQueries(
         } else {
           queryOrAction.queries.forEach(q => validationQueries.push({ query: queryModifier(q) }));
         }
-      } else if (queryOrAction instanceof core.Assertion) {
+      } else if (queryOrAction.$type === "dataform.Assertion") {
         validationQueries.push({ query: queryModifier(queryOrAction.query) });
       } else {
         throw new Error("Unrecognized evaluate type.");
