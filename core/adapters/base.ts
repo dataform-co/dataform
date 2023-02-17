@@ -7,7 +7,7 @@ import * as core from "df/protos/core";
 import * as execution from "df/protos/execution";
 
 export abstract class Adapter implements IAdapter {
-  constructor(protected readonly coreCoreVersion: string) {}
+  constructor(protected readonly coreVersion: string) {}
 
   public abstract publishTasks(
     table: core.Table,
@@ -131,7 +131,7 @@ from (${query}) as insertions`;
   ): Task[] {
     let preOps = table.preOps;
     if (
-      semver.gt(this.coreCoreVersion, "1.4.8") &&
+      semver.gt(this.coreVersion, "1.4.8") &&
       table.enumType === core.TableType.INCREMENTAL &&
       this.shouldWriteIncrementally(runConfig, tableMetadata)
     ) {
@@ -147,7 +147,7 @@ from (${query}) as insertions`;
   ): Task[] {
     let postOps = table.postOps;
     if (
-      semver.gt(this.coreCoreVersion, "1.4.8") &&
+      semver.gt(this.coreVersion, "1.4.8") &&
       table.enumType === core.TableType.INCREMENTAL &&
       this.shouldWriteIncrementally(runConfig, tableMetadata)
     ) {

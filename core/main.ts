@@ -1,7 +1,8 @@
 import { decode64, encode64 } from "df/common/protos";
 import { Session } from "df/core/session";
 import * as utils from "df/core/utils";
-import { dataform } from "df/protos/ts";
+import * as core from "df/protos/core";
+import * as execution from "df/protos/execution";
 
 /**
  * This is the main entry point into the user space code that should be invoked by the compilation wrapper sandbox.

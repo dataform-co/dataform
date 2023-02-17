@@ -1,4 +1,5 @@
-import { dataform } from "df/protos/ts";
+import * as core from "df/protos/core";
+import * as execution from "df/protos/execution";
 
 export function concatenateQueries(statements: string[], modifier?: (mod: string) => string) {
   return statements
@@ -56,7 +57,7 @@ export class Task {
       .type("assertion")
       .statement(statement);
   }
-  private proto: dataform.IExecutionTask = dataform.ExecutionTask.create();
+  private proto: dataform.ExecutionTask = dataform.ExecutionTask.create();
 
   public type(v: string) {
     this.proto.type = v;

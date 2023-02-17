@@ -1,10 +1,11 @@
 import { IAdapter } from "df/core/adapters";
 import { Adapter } from "df/core/adapters/base";
 import { Task, Tasks } from "df/core/tasks";
-import { dataform } from "df/protos/ts";
+import * as core from "df/protos/core";
+import * as execution from "df/protos/execution";
 
 export class SQLDataWarehouseAdapter extends Adapter implements IAdapter {
-  constructor(private readonly project: dataform.IProjectConfig, dataformCoreVersion: string) {
+  constructor(private readonly project: core.ProjectConfig, dataformCoreVersion: string) {
     super(dataformCoreVersion);
   }
 
@@ -13,14 +14,14 @@ export class SQLDataWarehouseAdapter extends Adapter implements IAdapter {
     return `'${stringContents.replace(/'/g, "''")}'`;
   }
 
-  public resolveTarget(target: dataform.ITarget) {
+  public resolveTarget(target: core.Target) {
     return `"${target.schema}"."${target.name}"`;
   }
 
   public publishTasks(
-    table: dataform.ITable,
-    runConfig: dataform.IRunConfig,
-    tableMetadata: dataform.ITableMetadata
+    table: core.Table,
+    runConfig: execution.RunConfig,
+    tableMetadata: execution.TableMetadata
   ): Tasks {
     const tasks = Tasks.create();
 
@@ -33,7 +34,7 @@ export class SQLDataWarehouseAdapter extends Adapter implements IAdapter {
       );
     }
 
-    if (table.enumType === dataform.TableType.INCREMENTAL) {
+    if (table.enumType === core.TableType.INCREMENTAL) {
       if (!this.shouldWriteIncrementally(runConfig, tableMetadata)) {
         tasks.addAll(this.createOrReplace(table, !!tableMetadata));
       } else {
@@ -56,13 +57,10 @@ export class SQLDataWarehouseAdapter extends Adapter implements IAdapter {
     return tasks.concatenate();
   }
 
-  public assertTasks(
-    assertion: dataform.IAssertion,
-    projectConfig: dataform.IProjectConfig
-  ): Tasks {
+  public assertTasks(assertion: core.Assertion, projectConfig: core.ProjectConfig): Tasks {
     const target = assertion.target;
     return Tasks.create()
-      .add(Task.statement(this.dropIfExists(target, dataform.TableMetadata.Type.VIEW)))
+      .add(Task.statement(this.dropIfExists(target, execution.TableMetadata_Type.VIEW)))
       .add(
         Task.statement(`
         create view ${this.resolveTarget(target)}
@@ -71,8 +69,8 @@ export class SQLDataWarehouseAdapter extends Adapter implements IAdapter {
       .add(Task.assertion(`select sum(1) as row_count from ${this.resolveTarget(target)}`));
   }
 
-  public dropIfExists(target: dataform.ITarget, type: dataform.TableMetadata.Type) {
-    if (type === dataform.TableMetadata.Type.VIEW) {
+  public dropIfExists(target: core.Target, type: execution.TableMetadata_Type) {
+    if (type === execution.TableMetadata_Type.VIEW) {
       return `drop view if exists ${this.resolveTarget(target)} `;
     }
     return `if object_id ('${this.resolveTarget(
@@ -80,7 +78,7 @@ export class SQLDataWarehouseAdapter extends Adapter implements IAdapter {
     )}','U') is not null drop table ${this.resolveTarget(target)}`;
   }
 
-  public insertInto(target: dataform.ITarget, columns: string[], query: string) {
+  public insertInto(target: core.Target, columns: string[], query: string) {
     return `
 insert into ${this.resolveTarget(target)}
 (${columns.join(",")})
@@ -89,8 +87,8 @@ from (${query}
 ) as insertions`;
   }
 
-  private createOrReplace(table: dataform.ITable, alreadyExists: boolean) {
-    if (table.enumType === dataform.TableType.VIEW) {
+  private createOrReplace(table: core.Table, alreadyExists: boolean) {
+    if (table.enumType === core.TableType.VIEW) {
       return Tasks.create().add(
         Task.statement(
           `${alreadyExists ? "alter" : "create"} view ${this.resolveTarget(table.target)} as ${
@@ -99,7 +97,7 @@ from (${query}
         )
       );
     }
-    const tempTableTarget = dataform.Target.create({
+    const tempTableTarget = core.Target.create({
       schema: table.target.schema,
       name: table.target.name + "_temp"
     });
@@ -107,7 +105,7 @@ from (${query}
     return Tasks.create()
       .add(Task.statement(this.dropIfExists(tempTableTarget, this.baseTableType(table.enumType))))
       .add(Task.statement(this.createTable(table, tempTableTarget)))
-      .add(Task.statement(this.dropIfExists(table.target, dataform.TableMetadata.Type.TABLE)))
+      .add(Task.statement(this.dropIfExists(table.target, execution.TableMetadata_Type.TABLE)))
       .add(
         Task.statement(
           `rename object ${this.resolveTarget(tempTableTarget)} to ${table.target.name} `
@@ -115,7 +113,7 @@ from (${query}
       );
   }
 
-  private createTable(table: dataform.ITable, target: dataform.ITarget) {
+  private createTable(table: core.Table, target: core.Target) {
     const distribution =
       table.sqlDataWarehouse && table.sqlDataWarehouse.distribution
         ? table.sqlDataWarehouse.distribution

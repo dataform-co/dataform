@@ -7,7 +7,8 @@ import { IDbAdapter } from "df/api/dbadapters";
 import { BigQueryDbAdapter } from "df/api/dbadapters/bigquery";
 import { sleep, sleepUntil } from "df/common/promises";
 import { targetAsReadableString, targetsAreEqual } from "df/core/targets";
-import { dataform } from "df/protos/ts";
+import * as core from "df/protos/core";
+import * as execution from "df/protos/execution";
 import { suite, test } from "df/testing";
 import { asPlainObject, cleanSql } from "df/tests/utils";
 
@@ -18,7 +19,7 @@ suite("@dataform/api", () => {
   //       ^
   //       d
   // Made with asciiflow.com
-  const TEST_GRAPH: dataform.ICompiledGraph = dataform.CompiledGraph.create({
+  const TEST_GRAPH: dataform.CompiledGraph = dataform.CompiledGraph.create({
     projectConfig: { warehouse: "redshift" },
     tables: [
       {
@@ -91,7 +92,7 @@ suite("@dataform/api", () => {
 
     test("build_with_errors", () => {
       expect(() => {
-        const graphWithErrors: dataform.ICompiledGraph = dataform.CompiledGraph.create({
+        const graphWithErrors: dataform.CompiledGraph = dataform.CompiledGraph.create({
           projectConfig: { warehouse: "redshift" },
           graphErrors: { compilationErrors: [{ message: "Some critical error" }] },
           tables: [{ target: { schema: "schema", name: "a" } }]
@@ -110,7 +111,7 @@ suite("@dataform/api", () => {
     });
 
     test("action_types", () => {
-      const graph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
+      const graph: dataform.CompiledGraph = dataform.CompiledGraph.create({
         projectConfig: { warehouse: "redshift" },
         tables: [
           { target: { schema: "schema", name: "a" }, type: "table" },
@@ -135,33 +136,33 @@ suite("@dataform/api", () => {
 
       expect(executedGraph.actions.length).greaterThan(0);
 
-      graph.tables.forEach((t: dataform.ITable) => {
+      graph.tables.forEach((t: core.Target) => {
         const action = executedGraph.actions.find(item => targetsAreEqual(item.target, t.target));
         expect(action).to.include({ type: "table", target: t.target, tableType: t.type });
       });
 
-      graph.operations.forEach((o: dataform.IOperation) => {
+      graph.operations.forEach((o: core.Operation) => {
         const action = executedGraph.actions.find(item => targetsAreEqual(item.target, o.target));
         expect(action).to.include({ type: "operation", target: o.target });
       });
 
-      graph.assertions.forEach((a: dataform.IAssertion) => {
+      graph.assertions.forEach((a: core.Assertion) => {
         const action = executedGraph.actions.find(item => targetsAreEqual(item.target, a.target));
         expect(action).to.include({ type: "assertion" });
       });
     });
 
     test("table_enum_types", () => {
-      const graph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
+      const graph: dataform.CompiledGraph = dataform.CompiledGraph.create({
         projectConfig: { warehouse: "bigquery" },
         tables: [
-          { target: { schema: "schema", name: "a" }, enumType: dataform.TableType.TABLE },
+          { target: { schema: "schema", name: "a" }, enumType: core.TargetType.TABLE },
           {
             target: { schema: "schema", name: "b" },
-            enumType: dataform.TableType.INCREMENTAL,
+            enumType: core.TargetType.INCREMENTAL,
             where: "test"
           },
-          { target: { schema: "schema", name: "c" }, enumType: dataform.TableType.VIEW }
+          { target: { schema: "schema", name: "c" }, enumType: core.TargetType.VIEW }
         ]
       });
 
@@ -170,24 +171,26 @@ suite("@dataform/api", () => {
 
       expect(executedGraph.actions.length).greaterThan(0);
 
-      graph.tables.forEach((t: dataform.ITable) => {
+      graph.tables.forEach((t: core.Target) => {
         const action = executedGraph.actions.find(item => targetsAreEqual(item.target, t.target));
         expect(action).to.include({
           type: "table",
           target: t.target,
-          tableType: dataform.TableType[t.enumType].toLowerCase(),
+          tableType: core.TargetType[t.enumType].toLowerCase()
         });
       });
     });
 
     test("table_enum_and_str_types_should_match", () => {
-      const graph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
+      const graph: dataform.CompiledGraph = dataform.CompiledGraph.create({
         projectConfig: { warehouse: "bigquery" },
-        tables: [{
-          target: { schema: "schema", name: "a" },
-          enumType: dataform.TableType.TABLE,
-          type: "incremental",
-        }]
+        tables: [
+          {
+            target: { schema: "schema", name: "a" },
+            enumType: core.TargetType.TABLE,
+            type: "incremental"
+          }
+        ]
       });
 
       expect(() => new Builder(graph, {}, TEST_STATE)).to.throw(
@@ -203,7 +206,7 @@ suite("@dataform/api", () => {
         "sqldatawarehouse",
         "snowflake"
       ]) {
-        const graph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
+        const graph: dataform.CompiledGraph = dataform.CompiledGraph.create({
           projectConfig: { warehouse: "redshift" },
           tables: [
             {
@@ -267,7 +270,7 @@ suite("@dataform/api", () => {
     //        +-> op_c
     //
     // op_d +---> tab_a
-    const TEST_GRAPH_WITH_TAGS: dataform.ICompiledGraph = dataform.CompiledGraph.create({
+    const TEST_GRAPH_WITH_TAGS: dataform.CompiledGraph = dataform.CompiledGraph.create({
       projectConfig: { warehouse: "bigquery", defaultLocation: "US" },
       operations: [
         {
@@ -303,7 +306,7 @@ suite("@dataform/api", () => {
     });
 
     test("prune removes inline tables", async () => {
-      const graph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
+      const graph: dataform.CompiledGraph = dataform.CompiledGraph.create({
         projectConfig: { warehouse: "bigquery", defaultLocation: "US" },
         tables: [
           { target: { schema: "schema", name: "a" }, type: "table" },
@@ -442,7 +445,7 @@ suite("@dataform/api", () => {
               schema: "schema",
               name: "incremental"
             },
-            type: dataform.TableMetadata.Type.TABLE,
+            type: execution.TableMetadata_Type.TABLE,
             fields: [
               {
                 name: "existing_field"
@@ -470,7 +473,7 @@ suite("@dataform/api", () => {
     });
 
     test("bigquery_materialized", () => {
-      const testGraph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
+      const testGraph: dataform.CompiledGraph = dataform.CompiledGraph.create({
         projectConfig: { warehouse: "bigquery", defaultDatabase: "deeb", defaultLocation: "US" },
         tables: [
           {
@@ -492,7 +495,7 @@ suite("@dataform/api", () => {
           }
         ]
       });
-      const expectedExecutionActions: dataform.IExecutionAction[] = [
+      const expectedExecutionActions: dataform.ExecutionAction[] = [
         {
           type: "table",
           tableType: "view",
@@ -508,7 +511,7 @@ suite("@dataform/api", () => {
             }
           ],
           dependencyTargets: [],
-          hermeticity: dataform.ActionHermeticity.HERMETIC
+          hermeticity: core.ActionHermeticity.HERMETIC
         },
         {
           type: "table",
@@ -524,7 +527,7 @@ suite("@dataform/api", () => {
             }
           ],
           dependencyTargets: [],
-          hermeticity: dataform.ActionHermeticity.HERMETIC
+          hermeticity: core.ActionHermeticity.HERMETIC
         }
       ];
       const executionGraph = new Builder(testGraph, {}, dataform.WarehouseState.create({})).build();
@@ -534,7 +537,7 @@ suite("@dataform/api", () => {
     });
 
     test("snowflake_materialized", () => {
-      const testGraph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
+      const testGraph: dataform.CompiledGraph = dataform.CompiledGraph.create({
         projectConfig: { warehouse: "snowflake" },
         tables: [
           {
@@ -556,7 +559,7 @@ suite("@dataform/api", () => {
           }
         ]
       });
-      const expectedExecutionActions: dataform.IExecutionAction[] = [
+      const expectedExecutionActions: dataform.ExecutionAction[] = [
         {
           type: "table",
           tableType: "view",
@@ -571,7 +574,7 @@ suite("@dataform/api", () => {
             }
           ],
           dependencyTargets: [],
-          hermeticity: dataform.ActionHermeticity.HERMETIC
+          hermeticity: core.ActionHermeticity.HERMETIC
         },
         {
           type: "table",
@@ -587,7 +590,7 @@ suite("@dataform/api", () => {
             }
           ],
           dependencyTargets: [],
-          hermeticity: dataform.ActionHermeticity.HERMETIC
+          hermeticity: core.ActionHermeticity.HERMETIC
         }
       ];
       const executionGraph = new Builder(testGraph, {}, dataform.WarehouseState.create({})).build();
@@ -597,7 +600,7 @@ suite("@dataform/api", () => {
     });
 
     test("redshift_create", () => {
-      const testGraph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
+      const testGraph: dataform.CompiledGraph = dataform.CompiledGraph.create({
         projectConfig: { warehouse: "redshift" },
         dataformCoreVersion: "1.4.1",
         tables: [
@@ -694,7 +697,7 @@ suite("@dataform/api", () => {
     });
 
     test("redshift_create after bind support dropped", () => {
-      const testGraph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
+      const testGraph: dataform.CompiledGraph = dataform.CompiledGraph.create({
         projectConfig: { warehouse: "redshift" },
         dataformCoreVersion: "1.11.0",
         tables: [
@@ -724,7 +727,7 @@ suite("@dataform/api", () => {
     });
 
     test("postgres_create", () => {
-      const testGraph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
+      const testGraph: dataform.CompiledGraph = dataform.CompiledGraph.create({
         projectConfig: { warehouse: "postgres" },
         dataformCoreVersion: "1.4.1",
         tables: [
@@ -757,7 +760,7 @@ suite("@dataform/api", () => {
     });
 
     test("bigquery_partitionby", () => {
-      const testGraph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
+      const testGraph: dataform.CompiledGraph = dataform.CompiledGraph.create({
         projectConfig: { warehouse: "bigquery", defaultDatabase: "deeb", defaultLocation: "US" },
         tables: [
           {
@@ -782,7 +785,7 @@ suite("@dataform/api", () => {
           }
         ]
       });
-      const expectedExecutionActions: dataform.IExecutionAction[] = [
+      const expectedExecutionActions: dataform.ExecutionAction[] = [
         {
           type: "table",
           tableType: "table",
@@ -798,7 +801,7 @@ suite("@dataform/api", () => {
             }
           ],
           dependencyTargets: [],
-          hermeticity: dataform.ActionHermeticity.HERMETIC
+          hermeticity: core.ActionHermeticity.HERMETIC
         },
         {
           type: "table",
@@ -814,7 +817,7 @@ suite("@dataform/api", () => {
             }
           ],
           dependencyTargets: [],
-          hermeticity: dataform.ActionHermeticity.HERMETIC
+          hermeticity: core.ActionHermeticity.HERMETIC
         }
       ];
       const executionGraph = new Builder(testGraph, {}, dataform.WarehouseState.create({})).build();
@@ -824,7 +827,7 @@ suite("@dataform/api", () => {
     });
 
     test("bigquery_options", () => {
-      const testGraph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
+      const testGraph: dataform.CompiledGraph = dataform.CompiledGraph.create({
         projectConfig: { warehouse: "bigquery", defaultDatabase: "deeb", defaultLocation: "US" },
         tables: [
           {
@@ -851,7 +854,7 @@ suite("@dataform/api", () => {
           }
         ]
       });
-      const expectedExecutionActions: dataform.IExecutionAction[] = [
+      const expectedExecutionActions: dataform.ExecutionAction[] = [
         {
           type: "table",
           tableType: "table",
@@ -867,7 +870,7 @@ suite("@dataform/api", () => {
             }
           ],
           dependencyTargets: [],
-          hermeticity: dataform.ActionHermeticity.HERMETIC
+          hermeticity: core.ActionHermeticity.HERMETIC
         },
         {
           type: "table",
@@ -883,7 +886,7 @@ suite("@dataform/api", () => {
             }
           ],
           dependencyTargets: [],
-          hermeticity: dataform.ActionHermeticity.HERMETIC
+          hermeticity: core.ActionHermeticity.HERMETIC
         }
       ];
       const executionGraph = new Builder(testGraph, {}, dataform.WarehouseState.create({})).build();
@@ -893,7 +896,7 @@ suite("@dataform/api", () => {
     });
 
     test("bigquery_clusterby", () => {
-      const testGraph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
+      const testGraph: dataform.CompiledGraph = dataform.CompiledGraph.create({
         projectConfig: { warehouse: "bigquery", defaultDatabase: "deeb", defaultLocation: "US" },
         tables: [
           {
@@ -918,7 +921,7 @@ suite("@dataform/api", () => {
           }
         ]
       });
-      const expectedExecutionActions: dataform.IExecutionAction[] = [
+      const expectedExecutionActions: dataform.ExecutionAction[] = [
         {
           type: "table",
           tableType: "table",
@@ -934,7 +937,7 @@ suite("@dataform/api", () => {
             }
           ],
           dependencyTargets: [],
-          hermeticity: dataform.ActionHermeticity.HERMETIC
+          hermeticity: core.ActionHermeticity.HERMETIC
         },
         {
           type: "table",
@@ -950,7 +953,7 @@ suite("@dataform/api", () => {
             }
           ],
           dependencyTargets: [],
-          hermeticity: dataform.ActionHermeticity.HERMETIC
+          hermeticity: core.ActionHermeticity.HERMETIC
         }
       ];
       const executionGraph = new Builder(testGraph, {}, dataform.WarehouseState.create({})).build();
@@ -960,7 +963,7 @@ suite("@dataform/api", () => {
     });
 
     test("bigquery_additional_options", () => {
-      const testGraph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
+      const testGraph: dataform.CompiledGraph = dataform.CompiledGraph.create({
         projectConfig: { warehouse: "bigquery", defaultDatabase: "deeb", defaultLocation: "US" },
         tables: [
           {
@@ -988,7 +991,7 @@ suite("@dataform/api", () => {
           }
         ]
       });
-      const expectedExecutionActions: dataform.IExecutionAction[] = [
+      const expectedExecutionActions: dataform.ExecutionAction[] = [
         {
           type: "table",
           tableType: "table",
@@ -1004,7 +1007,7 @@ suite("@dataform/api", () => {
             }
           ],
           dependencyTargets: [],
-          hermeticity: dataform.ActionHermeticity.HERMETIC
+          hermeticity: core.ActionHermeticity.HERMETIC
         },
         {
           type: "table",
@@ -1020,7 +1023,7 @@ suite("@dataform/api", () => {
             }
           ],
           dependencyTargets: [],
-          hermeticity: dataform.ActionHermeticity.HERMETIC
+          hermeticity: core.ActionHermeticity.HERMETIC
         }
       ];
       const executionGraph = new Builder(testGraph, {}, dataform.WarehouseState.create({})).build();
@@ -1030,7 +1033,7 @@ suite("@dataform/api", () => {
     });
 
     test("snowflake", () => {
-      const testGraph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
+      const testGraph: dataform.CompiledGraph = dataform.CompiledGraph.create({
         projectConfig: { warehouse: "snowflake" },
         tables: [
           {
@@ -1151,7 +1154,7 @@ suite("@dataform/api", () => {
   });
 
   suite("run", () => {
-    const RUN_TEST_GRAPH: dataform.IExecutionGraph = dataform.ExecutionGraph.create({
+    const RUN_TEST_GRAPH: dataform.ExecutionGraph = dataform.ExecutionGraph.create({
       projectConfig: {
         warehouse: "bigquery",
         defaultSchema: "foo",
@@ -1165,7 +1168,7 @@ suite("@dataform/api", () => {
       warehouseState: {
         tables: [
           {
-            type: dataform.TableMetadata.Type.TABLE,
+            type: execution.TableMetadata_Type.TABLE,
             target: {
               schema: "schema1",
               name: "target1"
@@ -1508,7 +1511,7 @@ suite("@dataform/api", () => {
     });
 
     test("execute_with_cancel", async () => {
-      const CANCEL_TEST_GRAPH: dataform.IExecutionGraph = dataform.ExecutionGraph.create({
+      const CANCEL_TEST_GRAPH: dataform.ExecutionGraph = dataform.ExecutionGraph.create({
         projectConfig: {
           warehouse: "bigquery",
           defaultSchema: "foo",
@@ -1570,7 +1573,7 @@ suite("@dataform/api", () => {
     });
 
     test("continues after setMetadata fails", async () => {
-      const METADATA_TEST_GRAPH: dataform.IExecutionGraph = dataform.ExecutionGraph.create({
+      const METADATA_TEST_GRAPH: dataform.ExecutionGraph = dataform.ExecutionGraph.create({
         projectConfig: {
           warehouse: "bigquery",
           defaultSchema: "foo",
@@ -1642,7 +1645,7 @@ suite("@dataform/api", () => {
   });
 });
 
-function cleanTiming(runResult: dataform.IRunResult) {
+function cleanTiming(runResult: dataform.RunResult) {
   const newRunResult = dataform.RunResult.create(runResult);
   delete newRunResult.timing;
   newRunResult.actions.forEach(actionResult => {

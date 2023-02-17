@@ -3,21 +3,22 @@ import * as semver from "semver";
 import { IAdapter } from "df/core/adapters";
 import { Adapter } from "df/core/adapters/base";
 import { Task, Tasks } from "df/core/tasks";
-import { dataform } from "df/protos/ts";
+import * as core from "df/protos/core";
+import * as execution from "df/protos/execution";
 
 export class RedshiftAdapter extends Adapter implements IAdapter {
-  constructor(private readonly project: dataform.IProjectConfig, dataformCoreVersion: string) {
+  constructor(private readonly project: core.ProjectConfig, dataformCoreVersion: string) {
     super(dataformCoreVersion);
   }
 
-  public resolveTarget(target: dataform.ITarget) {
+  public resolveTarget(target: core.Target) {
     return `"${target.schema}"."${target.name}"`;
   }
 
   public publishTasks(
-    table: dataform.ITable,
-    runConfig: dataform.IRunConfig,
-    tableMetadata: dataform.ITableMetadata
+    table: core.Table,
+    runConfig: execution.RunConfig,
+    tableMetadata: execution.TableMetadata
   ): Tasks {
     const tasks = Tasks.create();
 
@@ -30,7 +31,7 @@ export class RedshiftAdapter extends Adapter implements IAdapter {
       );
     }
 
-    if (table.enumType === dataform.TableType.INCREMENTAL) {
+    if (table.enumType === core.TableType.INCREMENTAL) {
       if (!this.shouldWriteIncrementally(runConfig, tableMetadata)) {
         tasks.addAll(this.createOrReplace(table));
       } else {
@@ -61,18 +62,15 @@ export class RedshiftAdapter extends Adapter implements IAdapter {
     return tasks;
   }
 
-  public assertTasks(
-    assertion: dataform.IAssertion,
-    projectConfig: dataform.IProjectConfig
-  ): Tasks {
+  public assertTasks(assertion: core.Assertion, projectConfig: core.ProjectConfig): Tasks {
     const target = assertion.target;
     return Tasks.create()
-      .add(Task.statement(this.dropIfExists(target, dataform.TableMetadata.Type.VIEW)))
+      .add(Task.statement(this.dropIfExists(target, execution.TableMetadata_Type.VIEW)))
       .add(Task.statement(this.createOrReplaceView(target, assertion.query, false)))
       .add(Task.assertion(`select sum(1) as row_count from ${this.resolveTarget(target)}`));
   }
 
-  public dropIfExists(target: dataform.ITarget, type: dataform.TableMetadata.Type) {
+  public dropIfExists(target: core.Target, type: execution.TableMetadata_Type) {
     const query = `drop ${this.tableTypeAsSql(type)} if exists ${this.resolveTarget(target)}`;
     if (this.project.warehouse === "postgres" || this.isBindSupported()) {
       return `${query} cascade`;
@@ -80,7 +78,7 @@ export class RedshiftAdapter extends Adapter implements IAdapter {
     return query;
   }
 
-  private createOrReplaceView(target: dataform.ITarget, query: string, bind: boolean) {
+  private createOrReplaceView(target: core.Target, query: string, bind: boolean) {
     const createQuery = `create or replace view ${this.resolveTarget(target)} as ${query}`;
     // Postgres doesn't support with no schema binding.
     if (bind || this.project.warehouse === "postgres") {
@@ -89,8 +87,8 @@ export class RedshiftAdapter extends Adapter implements IAdapter {
     return `${createQuery} with no schema binding`;
   }
 
-  private createOrReplace(table: dataform.ITable) {
-    if (table.enumType === dataform.TableType.VIEW) {
+  private createOrReplace(table: core.Table) {
+    if (table.enumType === core.TableType.VIEW) {
       const isBindDefined = table.redshift && table.redshift.hasOwnProperty("bind");
       const bindDefaultValue = semver.gte(this.dataformCoreVersion, "1.4.1") ? false : true;
       const bind =
@@ -102,7 +100,7 @@ export class RedshiftAdapter extends Adapter implements IAdapter {
           .add(Task.statement(this.createOrReplaceView(table.target, table.query, bind)))
       );
     }
-    const tempTableTarget = dataform.Target.create({
+    const tempTableTarget = core.Target.create({
       schema: table.target.schema,
       name: table.target.name + "_temp"
     });
@@ -110,7 +108,7 @@ export class RedshiftAdapter extends Adapter implements IAdapter {
     return Tasks.create()
       .add(Task.statement(this.dropIfExists(tempTableTarget, this.baseTableType(table.enumType))))
       .add(Task.statement(this.createTable(table, tempTableTarget)))
-      .add(Task.statement(this.dropIfExists(table.target, dataform.TableMetadata.Type.TABLE)))
+      .add(Task.statement(this.dropIfExists(table.target, execution.TableMetadata_Type.TABLE)))
       .add(
         Task.statement(
           `alter table ${this.resolveTarget(tempTableTarget)} rename to "${table.target.name}"`
@@ -118,7 +116,7 @@ export class RedshiftAdapter extends Adapter implements IAdapter {
       );
   }
 
-  private createTable(table: dataform.ITable, target: dataform.ITarget) {
+  private createTable(table: core.Table, target: core.Target) {
     if (table.redshift) {
       let query = `create table ${this.resolveTarget(target)}`;
 
@@ -137,7 +135,7 @@ export class RedshiftAdapter extends Adapter implements IAdapter {
     return `create table ${this.resolveTarget(target)} as ${table.query}`;
   }
 
-  private mergeInto(target: dataform.ITarget, query: string, uniqueKey: string[]) {
+  private mergeInto(target: core.Target, query: string, uniqueKey: string[]) {
     const finalTarget = this.resolveTarget(target);
     // Schema name not allowed for temporary tables.
     const tempTarget = `"${target.schema}__${target.name}_incremental_temp"`;

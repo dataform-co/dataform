@@ -15,7 +15,8 @@ import { LimitedResultSet } from "df/api/utils/results";
 import { coerceAsError } from "df/common/errors/errors";
 import { retry } from "df/common/promises";
 import { collectEvaluationQueries, QueryOrAction } from "df/core/adapters";
-import { dataform } from "df/protos/ts";
+import * as core from "df/protos/core";
+import * as execution from "df/protos/execution";
 
 const EXTRA_GOOGLE_SCOPES = ["https://www.googleapis.com/auth/drive"];
 
@@ -33,13 +34,13 @@ export class BigQueryDbAdapter implements IDbAdapter {
     return new BigQueryDbAdapter(credentials, options);
   }
 
-  private bigQueryCredentials: dataform.IBigQuery;
+  private bigQueryCredentials: profiles.BigQuery;
   private pool: PromisePoolExecutor;
 
   private readonly clients = new Map<string, BigQuery>();
 
   private constructor(credentials: Credentials, options?: { concurrencyLimit?: number }) {
-    this.bigQueryCredentials = credentials as dataform.IBigQuery;
+    this.bigQueryCredentials = credentials as profiles.BigQuery;
     // Bigquery allows 50 concurrent queries, and a rate limit of 100/user/second by default.
     // These limits should be safely low enough for most projects.
     this.pool = new PromisePoolExecutor({
@@ -131,12 +132,12 @@ export class BigQueryDbAdapter implements IDbAdapter {
     );
   }
 
-  public async tables(): Promise<dataform.ITarget[]> {
+  public async tables(): Promise<core.Target[]> {
     const datasets = await this.getClient().getDatasets({ autoPaginate: true, maxResults: 1000 });
     const tables = await Promise.all(
       datasets[0].map(dataset => dataset.getTables({ autoPaginate: true, maxResults: 1000 }))
     );
-    const allTables: dataform.ITarget[] = [];
+    const allTables: core.Target[] = [];
     tables.forEach((tablesResult: GetTablesResponse) =>
       tablesResult[0].forEach(table =>
         allTables.push({
@@ -152,7 +153,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
   public async search(
     searchText: string,
     options: { limit: number } = { limit: 1000 }
-  ): Promise<dataform.ITableMetadata[]> {
+  ): Promise<execution.TableMetadata[]> {
     const results = await this.execute(
       `select table_catalog, table_schema, table_name
        from region-${this.bigQueryCredentials.location}.INFORMATION_SCHEMA.COLUMN_FIELD_PATHS
@@ -177,7 +178,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
     );
   }
 
-  public async table(target: dataform.ITarget): Promise<dataform.ITableMetadata> {
+  public async table(target: core.Target): Promise<execution.TableMetadata> {
     const metadata = await this.getMetadata(target);
 
     if (!metadata) {
@@ -203,13 +204,13 @@ export class BigQueryDbAdapter implements IDbAdapter {
       );
     }
 
-    return dataform.TableMetadata.create({
+    return execution.TableMetadata.create({
       type:
         metadata.type === "TABLE"
-          ? dataform.TableMetadata.Type.TABLE
+          ? execution.TableMetadata_Type.TABLE
           : metadata.type === "VIEW"
-          ? dataform.TableMetadata.Type.VIEW
-          : dataform.TableMetadata.Type.UNKNOWN,
+          ? execution.TableMetadata_Type.VIEW
+          : execution.TableMetadata_Type.UNKNOWN,
       target: metadataTarget,
       fields: metadata.schema.fields?.map(field => convertField(field)),
       lastUpdatedMillis: Long.fromString(metadata.lastModifiedTime),
@@ -221,7 +222,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
     });
   }
 
-  public async preview(target: dataform.ITarget, limitRows: number = 10): Promise<any[]> {
+  public async preview(target: core.Target, limitRows: number = 10): Promise<any[]> {
     const metadata = await this.getMetadata(target);
     if (metadata.type === "TABLE") {
       // For tables, we use the BigQuery tabledata.list API, as per https://cloud.google.com/bigquery/docs/best-practices-costs#preview-data.
@@ -259,7 +260,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
     // Unimplemented.
   }
 
-  public async setMetadata(action: dataform.IExecutionAction): Promise<void> {
+  public async setMetadata(action: dataform.ExecutionAction): Promise<void> {
     const { target, actionDescriptor } = action;
 
     const metadata = await this.getMetadata(target);
@@ -278,7 +279,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
       });
   }
 
-  private async getMetadata(target: dataform.ITarget): Promise<TableMetadata> {
+  private async getMetadata(target: core.Target): Promise<TableMetadata> {
     try {
       const table = await this.getClient(target.database)
         .dataset(target.schema)
@@ -443,8 +444,8 @@ function cleanRows(rows: any[]) {
   return rows;
 }
 
-function convertField(field: TableField): dataform.IField {
-  const result: dataform.IField = {
+function convertField(field: TableField): dataform.Field {
+  const result: dataform.Field = {
     name: field.name,
     flags: field.mode === "REPEATED" ? [dataform.Field.Flag.REPEATED] : [],
     description: field.description
@@ -493,7 +494,7 @@ function convertFieldType(type: string) {
 }
 
 function addDescriptionToMetadata(
-  columnDescriptions: dataform.IColumnDescriptor[],
+  columnDescriptions: dataform.ColumnDescriptor[],
   metadataArray: TableField[]
 ): TableField[] {
   const findDescription = (path: string[]) =>

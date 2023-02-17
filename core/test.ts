@@ -12,7 +12,8 @@ import {
   stringifyResolvable,
   toResolvable
 } from "df/core/utils";
-import { dataform } from "df/protos/ts";
+import * as core from "df/protos/core";
+import * as execution from "df/protos/execution";
 
 /**
  * Configuration options for unit tests.
@@ -30,13 +31,12 @@ const ITestConfigProperties = strictKeysOf<ITestConfig>()(["type", "dataset", "n
  * @hidden
  */
 export class Test {
-  public proto: dataform.ITest = dataform.Test.create();
+  public proto: dataform.Test = dataform.Test.create();
 
   public session: Session;
-  public contextableInputs = new StringifiedMap<
-    dataform.ITarget,
-    Contextable<ICommonContext, string>
-  >(targetStringifier);
+  public contextableInputs = new StringifiedMap<core.Target, Contextable<ICommonContext, string>>(
+    targetStringifier
+  );
 
   private datasetToTest: Resolvable;
   private contextableQuery: Contextable<ICommonContext, string>;
@@ -90,7 +90,7 @@ export class Test {
           new Error(`Dataset ${stringifyResolvable(this.datasetToTest)} could not be found.`),
           this.proto.fileName
         );
-      } else if (dataset.proto.enumType === dataform.TableType.INCREMENTAL) {
+      } else if (dataset.proto.enumType === core.TargetType.INCREMENTAL) {
         this.session.compileError(
           new Error("Running tests on incremental datasets is not yet supported."),
           this.proto.fileName
@@ -210,11 +210,11 @@ class RefReplacingContext implements ITableContext {
     return "";
   }
 
-  public redshift(redshift: dataform.IRedshiftOptions) {
+  public redshift(redshift: dataform.RedshiftOptions) {
     return "";
   }
 
-  public bigquery(bigquery: dataform.IBigQueryOptions) {
+  public bigquery(bigquery: profiles.BigQueryOptions) {
     return "";
   }
 

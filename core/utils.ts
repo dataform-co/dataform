@@ -5,7 +5,8 @@ import { Declaration } from "df/core/declaration";
 import { Operation } from "df/core/operation";
 import { IActionProto, Session } from "df/core/session";
 import { Table } from "df/core/table";
-import { dataform } from "df/protos/ts";
+import * as core from "df/protos/core";
+import * as execution from "df/protos/execution";
 
 const pathSeperator = (() => {
   if (typeof process !== "undefined") {
@@ -104,7 +105,7 @@ function getCurrentStack(): NodeJS.CallSite[] {
   }
 }
 
-export function graphHasErrors(graph: dataform.ICompiledGraph) {
+export function graphHasErrors(graph: dataform.CompiledGraph) {
   return graph.graphErrors?.compilationErrors.length > 0;
 }
 
@@ -135,7 +136,7 @@ function isResolvableArray(parts: any[]): parts is [string, string?, string?] {
   return parts.length > 0 && parts.length <= 3;
 }
 
-export function resolvableAsTarget(resolvable: Resolvable): dataform.ITarget {
+export function resolvableAsTarget(resolvable: Resolvable): core.Target {
   if (typeof resolvable === "string") {
     return {
       name: resolvable
@@ -165,14 +166,14 @@ export function ambiguousActionNameMsg(
 
 export function target(
   adapter: adapters.IAdapter,
-  config: dataform.IProjectConfig,
+  config: core.ProjectConfig,
   name: string,
   schema?: string,
   database?: string
-): dataform.ITarget {
+): core.Target {
   schema = schema || config.defaultSchema;
   database = database || config.defaultDatabase;
-  return dataform.Target.create({
+  return core.Target.create({
     name: adapter.normalizeIdentifier(name),
     schema: !!schema ? adapter.normalizeIdentifier(schema || config.defaultSchema) : undefined,
     database: !!database ? adapter.normalizeIdentifier(database) : undefined
@@ -250,34 +251,38 @@ export function throwIfInvalid<T>(proto: T, verify: (proto: T) => string) {
 export function tableTypeStringToEnum(type: string, throwIfUnknown: boolean) {
   switch (type) {
     case "table":
-      return dataform.TableType.TABLE;
+      return core.TargetType.TABLE;
     case "incremental":
-      return dataform.TableType.INCREMENTAL;
+      return core.TargetType.INCREMENTAL;
     case "view":
-      return dataform.TableType.VIEW;
+      return core.TargetType.VIEW;
     case "inline":
-      return dataform.TableType.INLINE;
+      return core.TargetType.INLINE;
     default: {
       if (throwIfUnknown) {
         throw new Error(`Unexpected table type: ${type}`);
       }
-      return dataform.TableType.UNKNOWN_TYPE;
+      return core.TargetType.UNKNOWN_TYPE;
     }
   }
 }
 
-export function tableTypeEnumToString(enumType: dataform.TableType) {
-  return dataform.TableType[enumType].toLowerCase();
+export function tableTypeEnumToString(enumType: core.TargetType) {
+  return core.TargetType[enumType].toLowerCase();
 }
 
-export function setOrValidateTableEnumType(table: dataform.ITable) {
-  let enumTypeFromStr: dataform.TableType|null = null;
+export function setOrValidateTableEnumType(table: core.Target) {
+  let enumTypeFromStr: core.TargetType | null = null;
   if (table.type !== "" && table.type !== undefined) {
     enumTypeFromStr = tableTypeStringToEnum(table.type, true);
   }
-  if (table.enumType === dataform.TableType.UNKNOWN_TYPE || table.enumType === undefined) {
+  if (table.enumType === core.TargetType.UNKNOWN_TYPE || table.enumType === undefined) {
     table.enumType = enumTypeFromStr!;
   } else if (enumTypeFromStr !== null && table.enumType !== enumTypeFromStr) {
-    throw new Error(`Table str type "${table.type}" and enumType "${tableTypeEnumToString(table.enumType)}" are not equivalent.`);
+    throw new Error(
+      `Table str type "${table.type}" and enumType "${tableTypeEnumToString(
+        table.enumType
+      )}" are not equivalent.`
+    );
   }
 }

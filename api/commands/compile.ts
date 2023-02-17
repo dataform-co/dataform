@@ -8,13 +8,14 @@ import { validWarehouses } from "df/api/dbadapters";
 import { coerceAsError, ErrorWithCause } from "df/common/errors/errors";
 import { decode64 } from "df/common/protos";
 import { setOrValidateTableEnumType } from "df/core/utils";
-import { dataform } from "df/protos/ts";
+import * as core from "df/protos/core";
+import * as execution from "df/protos/execution";
 
 // Project config properties that are required.
-const mandatoryProps: Array<keyof dataform.IProjectConfig> = ["warehouse", "defaultSchema"];
+const mandatoryProps: Array<keyof core.ProjectConfig> = ["warehouse", "defaultSchema"];
 
 // Project config properties that require alphanumeric characters, hyphens or underscores.
-const simpleCheckProps: Array<keyof dataform.IProjectConfig> = [
+const simpleCheckProps: Array<keyof core.ProjectConfig> = [
   "assertionSchema",
   "databaseSuffix",
   "schemaSuffix",
@@ -25,7 +26,7 @@ const simpleCheckProps: Array<keyof dataform.IProjectConfig> = [
 export class CompilationTimeoutError extends Error {}
 
 export async function compile(
-  compileConfig: dataform.ICompileConfig = {}
+  compileConfig: dataform.CompileConfig = {}
 ): Promise<dataform.CompiledGraph> {
   // Resolve the path in case it hasn't been resolved already.
   path.resolve(compileConfig.projectDir);
@@ -91,7 +92,7 @@ export class CompileChildProcess {
     this.childProcess = childProcess;
   }
 
-  public async compile(compileConfig: dataform.ICompileConfig) {
+  public async compile(compileConfig: dataform.CompileConfig) {
     const compileInChildProcess = new Promise<string>(async (resolve, reject) => {
       this.childProcess.on("error", (e: Error) => reject(coerceAsError(e)));
 

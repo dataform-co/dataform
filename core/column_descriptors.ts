@@ -1,6 +1,7 @@
 import { IColumnsDescriptor, IRecordDescriptor, IRecordDescriptorProperties } from "df/core/common";
 import * as utils from "df/core/utils";
-import { dataform } from "df/protos/ts";
+import * as core from "df/protos/core";
+import * as execution from "df/protos/execution";
 
 /**
  * @hidden
@@ -9,7 +10,7 @@ export class ColumnDescriptors {
   public static mapToColumnProtoArray(
     columns: IColumnsDescriptor,
     reportError: (e: Error) => void
-  ): dataform.IColumnDescriptor[] {
+  ): dataform.ColumnDescriptor[] {
     return Object.keys(columns)
       .map(column =>
         ColumnDescriptors.mapColumnDescriptionToProto([column], columns[column], reportError)
@@ -21,7 +22,7 @@ export class ColumnDescriptors {
     currentPath: string[],
     description: string | IRecordDescriptor,
     reportError: (e: Error) => void
-  ): dataform.IColumnDescriptor[] {
+  ): dataform.ColumnDescriptor[] {
     if (typeof description === "string") {
       return [
         dataform.ColumnDescriptor.create({
@@ -36,7 +37,7 @@ export class ColumnDescriptors {
       IRecordDescriptorProperties(),
       `${currentPath.join(".")} column descriptor`
     );
-    const columnDescriptor: dataform.IColumnDescriptor[] = !!description
+    const columnDescriptor: dataform.ColumnDescriptor[] = !!description
       ? [
           dataform.ColumnDescriptor.create({
             path: currentPath,

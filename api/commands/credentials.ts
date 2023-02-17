@@ -2,16 +2,17 @@ import * as fs from "fs";
 
 import * as dbadapters from "df/api/dbadapters";
 import { requiredWarehouseProps, WarehouseType } from "df/core/adapters";
-import { dataform } from "df/protos/ts";
+import * as core from "df/protos/core";
+import * as execution from "df/protos/execution";
 
 export const CREDENTIALS_FILENAME = ".df-credentials.json";
 
 export type Credentials =
-  | dataform.IBigQuery
-  | dataform.IJDBC
-  | dataform.IPresto
-  | dataform.ISnowflake
-  | dataform.ISQLDataWarehouse;
+  | profiles.BigQuery
+  | profiles.JDBC
+  | profiles.Presto
+  | profiles.Snowflake
+  | dataform.SQLDataWarehouse;
 
 export function read(warehouse: string, credentialsPath: string): Credentials {
   if (!fs.existsSync(credentialsPath)) {
@@ -25,8 +26,8 @@ export function coerce(warehouse: string, credentials: any): Credentials {
     case WarehouseType.BIGQUERY: {
       return validateAnyAsCredentials(
         credentials,
-        dataform.BigQuery.verify,
-        dataform.BigQuery.create,
+        profiles.BigQuery.verify,
+        profiles.BigQuery.create,
         requiredWarehouseProps[warehouse]
       );
     }
@@ -34,24 +35,24 @@ export function coerce(warehouse: string, credentials: any): Credentials {
     case WarehouseType.REDSHIFT: {
       return validateAnyAsCredentials(
         credentials,
-        dataform.JDBC.verify,
-        dataform.JDBC.create,
+        profiles.JDBC.verify,
+        profiles.JDBC.create,
         requiredWarehouseProps[warehouse]
       );
     }
     case WarehouseType.PRESTO: {
       return validateAnyAsCredentials(
         credentials,
-        dataform.Presto.verify,
-        dataform.Presto.create,
+        profiles.Presto.verify,
+        profiles.Presto.create,
         requiredWarehouseProps[warehouse]
       );
     }
     case WarehouseType.SNOWFLAKE: {
       return validateAnyAsCredentials(
         credentials,
-        dataform.Snowflake.verify,
-        dataform.Snowflake.create,
+        profiles.Snowflake.verify,
+        profiles.Snowflake.create,
         requiredWarehouseProps[warehouse]
       );
     }

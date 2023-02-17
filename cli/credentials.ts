@@ -2,9 +2,10 @@ import * as fs from "fs";
 
 import { intQuestion, passwordQuestion, question, selectionQuestion } from "df/cli/console";
 import { actuallyResolve } from "df/cli/util";
-import { dataform } from "df/protos/ts";
+import * as core from "df/protos/core";
+import * as execution from "df/protos/execution";
 
-export function getBigQueryCredentials(): dataform.IBigQuery {
+export function getBigQueryCredentials(): profiles.BigQuery {
   const locationIndex = selectionQuestion("Enter the location of your datasets:", [
     "US (default)",
     "EU",
@@ -14,16 +15,16 @@ export function getBigQueryCredentials(): dataform.IBigQuery {
   if (locationIndex === 2) {
     location = question("Enter the location's region name (e.g. 'asia-south1'):");
   }
-  const isApplicationDefaultOrJSONKeyIndex = selectionQuestion("Do you wish to use Application Default Credentials or JSON Key:", [
-    "ADC (default)",
-    "JSON Key"
-  ]);
-  if (isApplicationDefaultOrJSONKeyIndex === 0)  {
+  const isApplicationDefaultOrJSONKeyIndex = selectionQuestion(
+    "Do you wish to use Application Default Credentials or JSON Key:",
+    ["ADC (default)", "JSON Key"]
+  );
+  if (isApplicationDefaultOrJSONKeyIndex === 0) {
     const projectId = question("Enter your billing project ID:");
     return {
       projectId,
       location
-    }
+    };
   }
   const cloudCredentialsPath = actuallyResolve(
     question(
@@ -55,7 +56,7 @@ export function getRedshiftCredentials() {
   );
 }
 
-export function getSQLDataWarehouseCredentials(): dataform.ISQLDataWarehouse {
+export function getSQLDataWarehouseCredentials(): dataform.SQLDataWarehouse {
   const server = question("Enter your server name (for example 'name.database.windows.net'):");
   const port = intQuestion("Enter your server port:", 1433);
   const username = question("Enter your datawarehouse user:");
@@ -71,7 +72,7 @@ export function getSQLDataWarehouseCredentials(): dataform.ISQLDataWarehouse {
   };
 }
 
-export function getSnowflakeCredentials(): dataform.ISnowflake {
+export function getSnowflakeCredentials(): profiles.Snowflake {
   const accountId = question(
     "Enter your Snowflake account identifier, including region (for example 'myaccount.us-east-1'):"
   );
@@ -90,7 +91,7 @@ export function getSnowflakeCredentials(): dataform.ISnowflake {
   };
 }
 
-function getJdbcCredentials(hostQuestion: string, defaultPort: number): dataform.IJDBC {
+function getJdbcCredentials(hostQuestion: string, defaultPort: number): profiles.JDBC {
   const host = question(hostQuestion);
   const port = intQuestion(
     "Enter the port that Dataform should connect to (leave blank to use default):",

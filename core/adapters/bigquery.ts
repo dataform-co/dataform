@@ -1,22 +1,23 @@
 import { IAdapter } from "df/core/adapters";
 import { Adapter } from "df/core/adapters/base";
 import { Task, Tasks } from "df/core/tasks";
-import { dataform } from "df/protos/ts";
+import * as core from "df/protos/core";
+import * as execution from "df/protos/execution";
 
 export class BigQueryAdapter extends Adapter implements IAdapter {
-  constructor(private readonly project: dataform.IProjectConfig, dataformCoreVersion: string) {
+  constructor(private readonly project: core.ProjectConfig, dataformCoreVersion: string) {
     super(dataformCoreVersion);
   }
 
-  public resolveTarget(target: dataform.ITarget) {
+  public resolveTarget(target: core.Target) {
     return `\`${target.database || this.project.defaultDatabase}.${target.schema ||
       this.project.defaultSchema}.${target.name}\``;
   }
 
   public publishTasks(
-    table: dataform.ITable,
-    runConfig: dataform.IRunConfig,
-    tableMetadata?: dataform.ITableMetadata
+    table: core.Table,
+    runConfig: execution.RunConfig,
+    tableMetadata?: execution.TableMetadata
   ): Tasks {
     const tasks = Tasks.create();
 
@@ -29,7 +30,7 @@ export class BigQueryAdapter extends Adapter implements IAdapter {
       );
     }
 
-    if (table.enumType === dataform.TableType.INCREMENTAL) {
+    if (table.enumType === core.TableType.INCREMENTAL) {
       if (!this.shouldWriteIncrementally(runConfig, tableMetadata)) {
         tasks.add(Task.statement(this.createOrReplace(table)));
       } else {
@@ -60,10 +61,7 @@ export class BigQueryAdapter extends Adapter implements IAdapter {
     return tasks.concatenate();
   }
 
-  public assertTasks(
-    assertion: dataform.IAssertion,
-    projectConfig: dataform.IProjectConfig
-  ): Tasks {
+  public assertTasks(assertion: core.Assertion, projectConfig: core.ProjectConfig): Tasks {
     const tasks = Tasks.create();
     const target = assertion.target;
     tasks.add(Task.statement(this.createOrReplaceView(target, assertion.query)));
@@ -71,29 +69,25 @@ export class BigQueryAdapter extends Adapter implements IAdapter {
     return tasks;
   }
 
-  public dropIfExists(target: dataform.ITarget, type: dataform.TableMetadata.Type) {
+  public dropIfExists(target: core.Target, type: execution.TableMetadata_Type) {
     return `drop ${this.tableTypeAsSql(type)} if exists ${this.resolveTarget(target)}`;
   }
 
-  private createOrReplace(table: dataform.ITable) {
-    const options = []
-    if (table.bigquery && table.bigquery.partitionBy && table.bigquery.partitionExpirationDays){
-      options.push(`partition_expiration_days=${table.bigquery.partitionExpirationDays}`)
+  private createOrReplace(table: core.Table) {
+    const options = [];
+    if (table.bigquery && table.bigquery.partitionBy && table.bigquery.partitionExpirationDays) {
+      options.push(`partition_expiration_days=${table.bigquery.partitionExpirationDays}`);
     }
-    if (table.bigquery && table.bigquery.partitionBy && table.bigquery.requirePartitionFilter){
-      options.push(`require_partition_filter=${table.bigquery.requirePartitionFilter}`)
+    if (table.bigquery && table.bigquery.partitionBy && table.bigquery.requirePartitionFilter) {
+      options.push(`require_partition_filter=${table.bigquery.requirePartitionFilter}`);
     }
-    if(table.bigquery && table.bigquery.additionalOptions){
-      for(const [optionName, optionValue] of Object.entries(table.bigquery.additionalOptions)){
-        options.push(`${optionName}=${optionValue}`)
+    if (table.bigquery && table.bigquery.additionalOptions) {
+      for (const [optionName, optionValue] of Object.entries(table.bigquery.additionalOptions)) {
+        options.push(`${optionName}=${optionValue}`);
       }
     }
 
-    return `create or replace ${
-      table.materialized
-      ? "materialized "
-      : ""
-    }${this.tableTypeAsSql(
+    return `create or replace ${table.materialized ? "materialized " : ""}${this.tableTypeAsSql(
       this.baseTableType(table.enumType)
     )} ${this.resolveTarget(table.target)} ${
       table.bigquery && table.bigquery.partitionBy
@@ -103,19 +97,16 @@ export class BigQueryAdapter extends Adapter implements IAdapter {
       table.bigquery && table.bigquery.clusterBy && table.bigquery.clusterBy.length > 0
         ? `cluster by ${table.bigquery.clusterBy.join(", ")} `
         : ""
-    }${
-      options.length>0 ?
-      `OPTIONS(${options.join(',')})` : ""
-    }as ${table.query}`;
+    }${options.length > 0 ? `OPTIONS(${options.join(",")})` : ""}as ${table.query}`;
   }
 
-  private createOrReplaceView(target: dataform.ITarget, query: string) {
+  private createOrReplaceView(target: core.Target, query: string) {
     return `
       create or replace view ${this.resolveTarget(target)} as ${query}`;
   }
 
   private mergeInto(
-    target: dataform.ITarget,
+    target: core.Target,
     columns: string[],
     query: string,
     uniqueKey: string[],

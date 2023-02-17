@@ -1,4 +1,5 @@
-import { dataform } from "df/protos/ts";
+import * as core from "df/protos/core";
+import * as execution from "df/protos/execution";
 
 interface IAzureEvaluationError {
   originalError?: {

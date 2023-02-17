@@ -7,7 +7,8 @@ import { BigQueryDbAdapter } from "df/api/dbadapters/bigquery";
 import * as adapters from "df/core/adapters";
 import { BigQueryAdapter } from "df/core/adapters/bigquery";
 import { targetAsReadableString } from "df/core/targets";
-import { dataform } from "df/protos/ts";
+import * as core from "df/protos/core";
+import * as execution from "df/protos/execution";
 import { suite, test } from "df/testing";
 import { compile, dropAllTables, getTableRows, keyBy } from "df/tests/integration/utils";
 
@@ -267,7 +268,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
       const view = keyBy(compiledGraph.tables, t => targetAsReadableString(t.target))[
         "dataform-integration-tests.df_integration_test_eu_evaluate.example_view"
       ];
-      let evaluations = await dbadapter.evaluate(dataform.Table.create(view));
+      let evaluations = await dbadapter.evaluate(core.Target.create(view));
       expect(evaluations.length).to.equal(1);
       expect(evaluations[0].status).to.equal(
         dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
@@ -276,7 +277,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
       const materializedView = keyBy(compiledGraph.tables, t => targetAsReadableString(t.target))[
         "dataform-integration-tests.df_integration_test_eu_evaluate.example_materialized_view"
       ];
-      evaluations = await dbadapter.evaluate(dataform.Table.create(materializedView));
+      evaluations = await dbadapter.evaluate(core.Target.create(materializedView));
       expect(evaluations.length).to.equal(1);
       expect(evaluations[0].status).to.equal(
         dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
@@ -285,7 +286,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
       const table = keyBy(compiledGraph.tables, t => targetAsReadableString(t.target))[
         "dataform-integration-tests.df_integration_test_eu_evaluate.example_table"
       ];
-      evaluations = await dbadapter.evaluate(dataform.Table.create(table));
+      evaluations = await dbadapter.evaluate(core.Target.create(table));
       expect(evaluations.length).to.equal(1);
       expect(evaluations[0].status).to.equal(
         dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
@@ -294,7 +295,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
       const operation = keyBy(compiledGraph.operations, t => targetAsReadableString(t.target))[
         "dataform-integration-tests.df_integration_test_eu_evaluate.example_operation"
       ];
-      evaluations = await dbadapter.evaluate(dataform.Operation.create(operation));
+      evaluations = await dbadapter.evaluate(core.Operation.create(operation));
       expect(evaluations.length).to.equal(1);
       expect(evaluations[0].status).to.equal(
         dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
@@ -303,7 +304,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
       const assertion = keyBy(compiledGraph.assertions, t => targetAsReadableString(t.target))[
         "dataform-integration-tests.df_integration_test_eu_assertions_evaluate.example_assertion_pass"
       ];
-      evaluations = await dbadapter.evaluate(dataform.Assertion.create(assertion));
+      evaluations = await dbadapter.evaluate(core.Assertion.create(assertion));
       expect(evaluations.length).to.equal(1);
       expect(evaluations[0].status).to.equal(
         dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
@@ -312,7 +313,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
       const incremental = keyBy(compiledGraph.tables, t => targetAsReadableString(t.target))[
         "dataform-integration-tests.df_integration_test_eu_evaluate.example_incremental"
       ];
-      evaluations = await dbadapter.evaluate(dataform.Table.create(incremental));
+      evaluations = await dbadapter.evaluate(core.Target.create(incremental));
       expect(evaluations.length).to.equal(2);
       expect(evaluations[0].status).to.equal(
         dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
@@ -330,8 +331,8 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
       });
 
       let evaluations = await dbadapter.evaluate(
-        dataform.Table.create({
-          enumType: dataform.TableType.TABLE,
+        core.Target.create({
+          enumType: core.TargetType.TABLE,
           preOps: ["declare var string; set var = 'val';"],
           query: "select var as col;",
           target: target("example_valid_variable")
@@ -343,8 +344,8 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
       );
 
       evaluations = await dbadapter.evaluate(
-        dataform.Table.create({
-          enumType: dataform.TableType.TABLE,
+        core.Target.create({
+          enumType: core.TargetType.TABLE,
           query: "select var as col;",
           target: target("example_invalid_variable")
         })
@@ -357,8 +358,8 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
 
     test("invalid table fails validation and error parsed correctly", async () => {
       const evaluations = await dbadapter.evaluate(
-        dataform.Table.create({
-          enumType: dataform.TableType.TABLE,
+        core.Target.create({
+          enumType: core.TargetType.TABLE,
           query: "selects\n1 as x",
           target: {
             name: "EXAMPLE_ILLEGAL_TABLE",
@@ -379,8 +380,8 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
   suite("publish tasks", { parallel: true }, async () => {
     test("incremental pre and post ops, core version <= 1.4.8", async () => {
       // 1.4.8 used `preOps` and `postOps` instead of `incrementalPreOps` and `incrementalPostOps`.
-      const table: dataform.ITable = {
-        enumType: dataform.TableType.INCREMENTAL,
+      const table: core.Target = {
+        enumType: core.TargetType.INCREMENTAL,
         query: "query",
         preOps: ["preop task1", "preop task2"],
         incrementalQuery: "",

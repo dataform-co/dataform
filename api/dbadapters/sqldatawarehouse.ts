@@ -5,7 +5,8 @@ import { IDbAdapter, IDbClient, IExecutionResult, OnCancel } from "df/api/dbadap
 import { parseAzureEvaluationError } from "df/api/utils/error_parsing";
 import { LimitedResultSet } from "df/api/utils/results";
 import { collectEvaluationQueries, QueryOrAction } from "df/core/adapters";
-import { dataform } from "df/protos/ts";
+import * as core from "df/protos/core";
+import * as execution from "df/protos/execution";
 
 const DB_CONNECTION_TIMEOUT_MILLIS = 5 * 60 * 1000; // 5 minute connection timeout
 const DB_REQUEST_TIMEOUT_MILLIS = 1 * 60 * 60 * 1000; // 1 hour request timeout
@@ -19,7 +20,7 @@ export class SQLDataWarehouseDBAdapter implements IDbAdapter {
   private pool: Promise<ConnectionPool>;
 
   constructor(credentials: Credentials, options?: { concurrencyLimit?: number }) {
-    const sqlDataWarehouseCredentials = credentials as dataform.ISQLDataWarehouse;
+    const sqlDataWarehouseCredentials = credentials as dataform.SQLDataWarehouse;
     this.pool = new Promise((resolve, reject) => {
       const conn = new ConnectionPool({
         server: sqlDataWarehouseCredentials.server,
@@ -97,9 +98,9 @@ export class SQLDataWarehouseDBAdapter implements IDbAdapter {
     ).map((validationQuery, index) => ({ index, validationQuery }));
     const validationQueriesWithoutWrappers = collectEvaluationQueries(queryOrAction, false);
 
-    const queryEvaluations = new Array<dataform.IQueryEvaluation>();
+    const queryEvaluations = new Array<dataform.QueryEvaluation>();
     for (const { index, validationQuery } of validationQueries) {
-      let evaluationResponse: dataform.IQueryEvaluation = {
+      let evaluationResponse: dataform.QueryEvaluation = {
         status: dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
       };
       try {
@@ -121,7 +122,7 @@ export class SQLDataWarehouseDBAdapter implements IDbAdapter {
     return queryEvaluations;
   }
 
-  public async tables(): Promise<dataform.ITarget[]> {
+  public async tables(): Promise<core.Target[]> {
     const { rows } = await this.execute(
       `select table_schema, table_name from information_schema.tables`,
       {
@@ -137,7 +138,7 @@ export class SQLDataWarehouseDBAdapter implements IDbAdapter {
   public async search(
     searchText: string,
     options: { limit: number } = { limit: 1000 }
-  ): Promise<dataform.ITableMetadata[]> {
+  ): Promise<execution.TableMetadata[]> {
     const results = await this.execute(
       `select tables.table_schema as table_schema, tables.table_name as table_name
        from information_schema.tables as tables
@@ -161,7 +162,7 @@ export class SQLDataWarehouseDBAdapter implements IDbAdapter {
     );
   }
 
-  public async table(target: dataform.ITarget): Promise<dataform.ITableMetadata> {
+  public async table(target: core.Target): Promise<execution.TableMetadata> {
     const queryParams = {
       schema: target.schema,
       name: target.name
@@ -193,16 +194,16 @@ export class SQLDataWarehouseDBAdapter implements IDbAdapter {
       target,
       type:
         tableData.rows[0].table_type === "VIEW"
-          ? dataform.TableMetadata.Type.VIEW
-          : dataform.TableMetadata.Type.TABLE,
+          ? execution.TableMetadata_Type.VIEW
+          : execution.TableMetadata_Type.TABLE,
       fields: columnData.rows.map(row => ({
         name: row.column_name,
-        primitive: convertFieldType(row.data_type),
+        primitive: convertFieldType(row.data_type)
       }))
     };
   }
 
-  public async preview(target: dataform.ITarget, limitRows: number = 10): Promise<any[]> {
+  public async preview(target: core.Target, limitRows: number = 10): Promise<any[]> {
     const { rows } = await this.execute(
       `SELECT TOP ${limitRows} * FROM "${target.schema}"."${target.name}"`
     );

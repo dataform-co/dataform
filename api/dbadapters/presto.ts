@@ -5,10 +5,11 @@ import { Credentials } from "df/api/commands/credentials";
 import { IDbAdapter, IDbClient, IExecutionResult, OnCancel } from "df/api/dbadapters/index";
 import { LimitedResultSet } from "df/api/utils/results";
 import { collectEvaluationQueries, QueryOrAction } from "df/core/adapters";
-import { dataform } from "df/protos/ts";
+import * as core from "df/protos/core";
+import * as execution from "df/protos/execution";
 
 // TODO: Move this to somewhere both the API and CLI can use?
-function resolveTarget(target: dataform.ITarget) {
+function resolveTarget(target: core.Target) {
   return `${target.database ? `${target.database}.` : ""}${
     target.schema ? `${target.schema}.` : ""
   }${target.name}`;
@@ -94,9 +95,9 @@ export class PrestoDbAdapter implements IDbAdapter {
     ).map((validationQuery, index) => ({ index, validationQuery }));
     const validationQueriesWithoutWrappers = collectEvaluationQueries(queryOrAction, true);
 
-    const queryEvaluations = new Array<dataform.IQueryEvaluation>();
+    const queryEvaluations = new Array<dataform.QueryEvaluation>();
     for (const { index, validationQuery } of validationQueries) {
-      let evaluationResponse: dataform.IQueryEvaluation = {
+      let evaluationResponse: dataform.QueryEvaluation = {
         status: dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
       };
       try {
@@ -133,9 +134,9 @@ export class PrestoDbAdapter implements IDbAdapter {
     await this.execute(`create schema if not exists ${database}.${schema}`);
   }
 
-  public async tables(): Promise<dataform.ITarget[]> {
+  public async tables(): Promise<core.Target[]> {
     const databases = await this.databases();
-    const targets: dataform.ITarget[] = [];
+    const targets: core.Target[] = [];
     await Promise.all(
       databases.map(
         async database =>
@@ -144,7 +145,7 @@ export class PrestoDbAdapter implements IDbAdapter {
               const result = await this.execute(`show tables from ${database}.${schema}`);
               targets.push(
                 ...result.rows.flat().map(table =>
-                  dataform.Target.create({
+                  core.Target.create({
                     database,
                     schema,
                     name: table as string
@@ -158,7 +159,7 @@ export class PrestoDbAdapter implements IDbAdapter {
     return targets;
   }
 
-  public async table(target: dataform.ITarget): Promise<dataform.ITableMetadata> {
+  public async table(target: core.Target): Promise<execution.TableMetadata> {
     let columnsResult: IExecutionResult;
     try {
       // TODO: In the future, the connection won't specify the database and schema to allow moving data between
@@ -179,21 +180,21 @@ export class PrestoDbAdapter implements IDbAdapter {
       columnsResult?.rows.map(column =>
         dataform.Field.create({ name: column[0], description: column[3] })
       ) || [];
-    return dataform.TableMetadata.create({
+    return execution.TableMetadata.create({
       // TODO: Add missing table metadata items.
       target,
       fields
     });
   }
 
-  public async preview(target: dataform.ITarget, limitRows: number = 10): Promise<any[]> {
+  public async preview(target: core.Target, limitRows: number = 10): Promise<any[]> {
     const { rows } = await this.execute(
       `select * from ${resolveTarget(target)} limit ${limitRows}`
     );
     return rows;
   }
 
-  public async setMetadata(action: dataform.IExecutionAction): Promise<void> {
+  public async setMetadata(action: dataform.ExecutionAction): Promise<void> {
     // Unimplemented.
   }
 
@@ -204,7 +205,7 @@ export class PrestoDbAdapter implements IDbAdapter {
   public async search(
     searchText: string,
     options?: { limit: number }
-  ): Promise<dataform.ITableMetadata[]> {
+  ): Promise<execution.TableMetadata[]> {
     // Unimplemented.
     return [];
   }

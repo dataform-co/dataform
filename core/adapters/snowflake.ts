@@ -1,14 +1,15 @@
 import { IAdapter } from "df/core/adapters";
 import { Adapter } from "df/core/adapters/base";
 import { Task, Tasks } from "df/core/tasks";
-import { dataform } from "df/protos/ts";
+import * as core from "df/protos/core";
+import * as execution from "df/protos/execution";
 
 export class SnowflakeAdapter extends Adapter implements IAdapter {
-  constructor(private readonly project: dataform.IProjectConfig, dataformCoreVersion: string) {
+  constructor(private readonly project: core.ProjectConfig, dataformCoreVersion: string) {
     super(dataformCoreVersion);
   }
 
-  public resolveTarget(target: dataform.ITarget) {
+  public resolveTarget(target: core.Target) {
     return `${!!target.database ? `"${target.database}".` : ""}"${target.schema}"."${target.name}"`;
   }
 
@@ -17,9 +18,9 @@ export class SnowflakeAdapter extends Adapter implements IAdapter {
   }
 
   public publishTasks(
-    table: dataform.ITable,
-    runConfig: dataform.IRunConfig,
-    tableMetadata: dataform.ITableMetadata
+    table: core.Table,
+    runConfig: execution.RunConfig,
+    tableMetadata: execution.TableMetadata
   ): Tasks {
     const tasks = Tasks.create();
 
@@ -32,7 +33,7 @@ export class SnowflakeAdapter extends Adapter implements IAdapter {
       );
     }
 
-    if (table.enumType === dataform.TableType.INCREMENTAL) {
+    if (table.enumType === core.TableType.INCREMENTAL) {
       if (!this.shouldWriteIncrementally(runConfig, tableMetadata)) {
         tasks.add(Task.statement(this.createOrReplace(table)));
       } else {
@@ -62,10 +63,7 @@ export class SnowflakeAdapter extends Adapter implements IAdapter {
     return tasks;
   }
 
-  public assertTasks(
-    assertion: dataform.IAssertion,
-    projectConfig: dataform.IProjectConfig
-  ): Tasks {
+  public assertTasks(assertion: core.Assertion, projectConfig: core.ProjectConfig): Tasks {
     const tasks = Tasks.create();
     const target = assertion.target;
     tasks.add(Task.statement(this.createOrReplaceView(target, assertion.query, false, false)));
@@ -73,15 +71,25 @@ export class SnowflakeAdapter extends Adapter implements IAdapter {
     return tasks;
   }
 
-  private createOrReplaceView(target: dataform.ITarget, query: string, secure: boolean, materialized: boolean) {
-    return `create or replace ${secure ? "secure " : ""}${materialized ? "materialized " : ""}view ${this.resolveTarget(
-      target
-    )} as ${query}`;
+  private createOrReplaceView(
+    target: core.Target,
+    query: string,
+    secure: boolean,
+    materialized: boolean
+  ) {
+    return `create or replace ${secure ? "secure " : ""}${
+      materialized ? "materialized " : ""
+    }view ${this.resolveTarget(target)} as ${query}`;
   }
 
-  private createOrReplace(table: dataform.ITable) {
-    if (table.enumType === dataform.TableType.VIEW) {
-      return this.createOrReplaceView(table.target, table.query, table.snowflake?.secure, table.materialized);
+  private createOrReplace(table: core.Table) {
+    if (table.enumType === core.TableType.VIEW) {
+      return this.createOrReplaceView(
+        table.target,
+        table.query,
+        table.snowflake?.secure,
+        table.materialized
+      );
     }
     return `create or replace ${
       table.snowflake?.transient ? "transient " : ""
@@ -92,12 +100,7 @@ export class SnowflakeAdapter extends Adapter implements IAdapter {
     }as ${table.query}`;
   }
 
-  private mergeInto(
-    target: dataform.ITarget,
-    columns: string[],
-    query: string,
-    uniqueKey: string[]
-  ) {
+  private mergeInto(target: core.Target, columns: string[], query: string, uniqueKey: string[]) {
     return `
 merge into ${this.resolveTarget(target)} T
 using (${query}

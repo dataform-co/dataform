@@ -1,6 +1,7 @@
 import { decode64 } from "df/common/protos";
 import * as utils from "df/core/utils";
-import { dataform } from "df/protos/ts";
+import * as core from "df/protos/core";
+import * as execution from "df/protos/execution";
 
 export function genIndex(base64EncodedConfig: string): string {
   const config = decode64(dataform.GenerateIndexConfig, base64EncodedConfig);
@@ -23,7 +24,7 @@ export function genIndex(base64EncodedConfig: string): string {
     .join("\n");
 
   const projectOverridesJsonString = JSON.stringify(
-    dataform.ProjectConfig.create(config.compileConfig.projectConfigOverride).toJSON()
+    core.ProjectConfig.create(config.compileConfig.projectConfigOverride).toJSON()
   );
 
   // NOTE:

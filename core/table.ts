@@ -21,7 +21,8 @@ import {
   toResolvable,
   validateQueryString
 } from "df/core/utils";
-import { dataform } from "df/protos/ts";
+import * as core from "df/protos/core";
+import * as execution from "df/protos/execution";
 
 /**
  * @hidden
@@ -379,23 +380,22 @@ export interface ITableContext extends ICommonContext {
  * @hidden
  */
 export class Table {
-  public static readonly INLINE_IGNORED_PROPS: Array<keyof dataform.ITable> = 
-    [
-      "bigquery",
-      "redshift",
-      "snowflake",
-      "sqlDataWarehouse",
-      "presto",
-      "preOps",
-      "postOps",
-      "actionDescriptor",
-      "disabled",
-      "where"
-    ];
+  public static readonly INLINE_IGNORED_PROPS: Array<keyof core.Target> = [
+    "bigquery",
+    "redshift",
+    "snowflake",
+    "sqlDataWarehouse",
+    "presto",
+    "preOps",
+    "postOps",
+    "actionDescriptor",
+    "disabled",
+    "where"
+  ];
 
-  public proto: dataform.ITable = dataform.Table.create({
+  public proto: core.Target = core.Target.create({
     type: "view",
-    enumType: dataform.TableType.VIEW,
+    enumType: core.TargetType.VIEW,
     disabled: false,
     tags: []
   });
@@ -523,18 +523,18 @@ export class Table {
     this.proto.materialized = materialized;
   }
 
-  public snowflake(snowflake: dataform.ISnowflakeOptions) {
+  public snowflake(snowflake: profiles.SnowflakeOptions) {
     checkExcessProperties(
       (e: Error) => this.session.compileError(e),
       snowflake,
       ISnowflakeOptionsProperties(),
       "snowflake config"
     );
-    this.proto.snowflake = dataform.SnowflakeOptions.create(snowflake);
+    this.proto.snowflake = profiles.SnowflakeOptions.create(snowflake);
     return this;
   }
 
-  public sqldatawarehouse(sqlDataWarehouse: dataform.ISQLDataWarehouseOptions) {
+  public sqldatawarehouse(sqlDataWarehouse: dataform.SQLDataWarehouseOptions) {
     checkExcessProperties(
       (e: Error) => this.session.compileError(e),
       sqlDataWarehouse,
@@ -545,7 +545,7 @@ export class Table {
     return this;
   }
 
-  public redshift(redshift: dataform.IRedshiftOptions) {
+  public redshift(redshift: dataform.RedshiftOptions) {
     checkExcessProperties(
       (e: Error) => this.session.compileError(e),
       redshift,
@@ -556,14 +556,14 @@ export class Table {
     return this;
   }
 
-  public bigquery(bigquery: dataform.IBigQueryOptions) {
+  public bigquery(bigquery: profiles.BigQueryOptions) {
     checkExcessProperties(
       (e: Error) => this.session.compileError(e),
       bigquery,
       IBigQueryOptionsProperties(),
       "bigquery config"
     );
-    this.proto.bigquery = dataform.BigQueryOptions.create(bigquery);
+    this.proto.bigquery = profiles.BigQueryOptions.create(bigquery);
     if (!!bigquery.labels) {
       if (!this.proto.actionDescriptor) {
         this.proto.actionDescriptor = {};
@@ -573,14 +573,14 @@ export class Table {
     return this;
   }
 
-  public presto(presto: dataform.IPrestoOptions) {
+  public presto(presto: profiles.PrestoOptions) {
     checkExcessProperties(
       (e: Error) => this.session.compileError(e),
       presto,
       IPrestoOptionsProperties(),
       "presto config"
     );
-    this.proto.presto = dataform.PrestoOptions.create(presto);
+    this.proto.presto = profiles.PrestoOptions.create(presto);
     return this;
   }
 
@@ -595,8 +595,8 @@ export class Table {
 
   public hermetic(hermetic: boolean) {
     this.proto.hermeticity = hermetic
-      ? dataform.ActionHermeticity.HERMETIC
-      : dataform.ActionHermeticity.NON_HERMETIC;
+      ? core.ActionHermeticity.HERMETIC
+      : core.ActionHermeticity.NON_HERMETIC;
   }
 
   public tags(value: string | string[]) {
@@ -716,7 +716,7 @@ export class Table {
 
     this.proto.query = context.apply(this.contextableQuery);
 
-    if (this.proto.enumType === dataform.TableType.INCREMENTAL) {
+    if (this.proto.enumType === core.TargetType.INCREMENTAL) {
       this.proto.incrementalQuery = incrementalContext.apply(this.contextableQuery);
 
       this.proto.incrementalPreOps = this.contextifyOps(this.contextablePreOps, incrementalContext);
@@ -772,9 +772,7 @@ export class TableContext implements ITableContext {
   }
 
   public name(): string {
-    return this.table.session.finalizeName(
-      this.table.proto.target.name
-    );
+    return this.table.session.finalizeName(this.table.proto.target.name);
   }
 
   public ref(ref: Resolvable | string[], ...rest: string[]): string {
@@ -792,9 +790,7 @@ export class TableContext implements ITableContext {
   }
 
   public schema(): string {
-    return this.table.session.finalizeSchema(
-      this.table.proto.target.schema
-    );
+    return this.table.session.finalizeSchema(this.table.proto.target.schema);
   }
 
   public database(): string {
@@ -803,9 +799,7 @@ export class TableContext implements ITableContext {
       return "";
     }
 
-    return this.table.session.finalizeDatabase(
-      this.table.proto.target.database
-    );
+    return this.table.session.finalizeDatabase(this.table.proto.target.database);
   }
 
   public type(type: TableType) {
@@ -841,17 +835,17 @@ export class TableContext implements ITableContext {
     return "";
   }
 
-  public redshift(redshift: dataform.IRedshiftOptions) {
+  public redshift(redshift: dataform.RedshiftOptions) {
     this.table.redshift(redshift);
     return "";
   }
 
-  public bigquery(bigquery: dataform.IBigQueryOptions) {
+  public bigquery(bigquery: profiles.BigQueryOptions) {
     this.table.bigquery(bigquery);
     return "";
   }
 
-  public presto(presto: dataform.IPrestoOptions) {
+  public presto(presto: profiles.PrestoOptions) {
     this.table.presto(presto);
     return "";
   }

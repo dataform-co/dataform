@@ -2,7 +2,8 @@ import getPort from "get-port";
 import * as net from "net";
 import * as ssh2 from "ssh2";
 
-import { dataform } from "df/protos/ts";
+import * as core from "df/protos/core";
+import * as execution from "df/protos/execution";
 
 /**
  * Creates a local socket on this machine on a random port and forwards traffic
@@ -10,7 +11,7 @@ import { dataform } from "df/protos/ts";
  */
 export class SSHTunnelProxy {
   public static async create(
-    tunnel: dataform.JDBC.ISshTunnel,
+    tunnel: profiles.JDBC.ISshTunnel,
     destination: { host: string; port: number }
   ) {
     // Find a free local port for the tunnel proxy.

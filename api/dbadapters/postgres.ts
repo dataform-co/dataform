@@ -7,7 +7,8 @@ import { parseRedshiftEvalError } from "df/api/utils/error_parsing";
 import { convertFieldType, PgPoolExecutor } from "df/api/utils/postgres";
 import { ErrorWithCause } from "df/common/errors/errors";
 import { collectEvaluationQueries, QueryOrAction } from "df/core/adapters";
-import { dataform } from "df/protos/ts";
+import * as core from "df/protos/core";
+import * as execution from "df/protos/execution";
 
 interface IPostgresAdapterOptions {
   sshTunnel?: SSHTunnelProxy;
@@ -18,7 +19,7 @@ export class PostgresDbAdapter implements IDbAdapter {
     credentials: Credentials,
     options?: { concurrencyLimit?: number; disableSslForTestsOnly?: boolean }
   ) {
-    const jdbcCredentials = credentials as dataform.IJDBC;
+    const jdbcCredentials = credentials as profiles.JDBC;
     const baseClientConfig: Partial<pg.ClientConfig> = {
       user: jdbcCredentials.username,
       password: jdbcCredentials.password,
@@ -107,9 +108,9 @@ export class PostgresDbAdapter implements IDbAdapter {
     ).map((validationQuery, index) => ({ index, validationQuery }));
     const validationQueriesWithoutWrappers = collectEvaluationQueries(queryOrAction, false);
 
-    const queryEvaluations = new Array<dataform.IQueryEvaluation>();
+    const queryEvaluations = new Array<dataform.QueryEvaluation>();
     for (const { index, validationQuery } of validationQueries) {
-      let evaluationResponse: dataform.IQueryEvaluation = {
+      let evaluationResponse: dataform.QueryEvaluation = {
         status: dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
       };
       try {
@@ -131,7 +132,7 @@ export class PostgresDbAdapter implements IDbAdapter {
     return queryEvaluations;
   }
 
-  public async tables(): Promise<dataform.ITarget[]> {
+  public async tables(): Promise<core.Target[]> {
     const queryResult = await this.execute(
       `select table_name, table_schema
      from information_schema.tables
@@ -150,7 +151,7 @@ export class PostgresDbAdapter implements IDbAdapter {
   public async search(
     searchText: string,
     options: { limit: number } = { limit: 1000 }
-  ): Promise<dataform.ITableMetadata[]> {
+  ): Promise<execution.TableMetadata[]> {
     // TODO: It would be nice to extend this to search through table/column descriptions. However, this involves
     // a somewhat crazy 5-way join.
     const results = await this.execute(
@@ -174,7 +175,7 @@ export class PostgresDbAdapter implements IDbAdapter {
     );
   }
 
-  public async table(target: dataform.ITarget): Promise<dataform.ITableMetadata> {
+  public async table(target: core.Target): Promise<execution.TableMetadata> {
     const params = [target.schema, target.name];
     const [tableResults, columnResults, descriptionResults] = await Promise.all([
       this.execute(
@@ -201,12 +202,12 @@ export class PostgresDbAdapter implements IDbAdapter {
     if (tableResults.rows.length === 0) {
       return null;
     }
-    return dataform.TableMetadata.create({
+    return execution.TableMetadata.create({
       target,
       type:
         tableResults.rows[0].table_type === "VIEW"
-          ? dataform.TableMetadata.Type.VIEW
-          : dataform.TableMetadata.Type.TABLE,
+          ? execution.TableMetadata_Type.VIEW
+          : execution.TableMetadata_Type.TABLE,
       fields: columnResults.rows.map(row =>
         dataform.Field.create({
           name: row.column_name,
@@ -222,7 +223,7 @@ export class PostgresDbAdapter implements IDbAdapter {
     });
   }
 
-  public async preview(target: dataform.ITarget, limitRows: number = 10): Promise<any[]> {
+  public async preview(target: core.Target, limitRows: number = 10): Promise<any[]> {
     const { rows } = await this.execute(
       `SELECT * FROM "${target.schema}"."${target.name}" LIMIT ${limitRows}`
     );
@@ -247,7 +248,7 @@ export class PostgresDbAdapter implements IDbAdapter {
     }
   }
 
-  public async setMetadata(action: dataform.IExecutionAction): Promise<void> {
+  public async setMetadata(action: dataform.ExecutionAction): Promise<void> {
     const { target, actionDescriptor, tableType } = action;
 
     const actualMetadata = await this.table(target);

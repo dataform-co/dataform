@@ -10,7 +10,8 @@ import { LimitedResultSet } from "df/api/utils/results";
 import { ErrorWithCause } from "df/common/errors/errors";
 import { Flags } from "df/common/flags";
 import { collectEvaluationQueries, QueryOrAction } from "df/core/adapters";
-import { dataform } from "df/protos/ts";
+import * as core from "df/protos/core";
+import * as execution from "df/protos/execution";
 
 const HEARTBEAT_INTERVAL_SECONDS = 30;
 
@@ -73,7 +74,7 @@ interface ISnowflakeStatement {
 
 export class SnowflakeDbAdapter implements IDbAdapter {
   public static async create(credentials: Credentials, options?: { concurrencyLimit?: number }) {
-    const connection = await connect(credentials as dataform.ISnowflake);
+    const connection = await connect(credentials as profiles.Snowflake);
     return new SnowflakeDbAdapter(connection, options);
   }
 
@@ -158,9 +159,9 @@ export class SnowflakeDbAdapter implements IDbAdapter {
     ).map((validationQuery, index) => ({ index, validationQuery }));
     const validationQueriesWithoutWrappers = collectEvaluationQueries(queryOrAction, false);
 
-    const queryEvaluations = new Array<dataform.IQueryEvaluation>();
+    const queryEvaluations = new Array<dataform.QueryEvaluation>();
     for (const { index, validationQuery } of validationQueries) {
-      let evaluationResponse: dataform.IQueryEvaluation = {
+      let evaluationResponse: dataform.QueryEvaluation = {
         status: dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
       };
       try {
@@ -182,7 +183,7 @@ export class SnowflakeDbAdapter implements IDbAdapter {
     return queryEvaluations;
   }
 
-  public async tables(): Promise<dataform.ITarget[]> {
+  public async tables(): Promise<core.Target[]> {
     const { rows } = await this.execute(
       `
 select table_name, table_schema, table_catalog
@@ -200,7 +201,7 @@ where LOWER(table_schema) != 'information_schema'`,
   public async search(
     searchText: string,
     options: { limit: number } = { limit: 1000 }
-  ): Promise<dataform.ITableMetadata[]> {
+  ): Promise<execution.TableMetadata[]> {
     const results = await this.execute(
       `select * from (
         select tables.table_catalog as table_catalog, tables.table_schema as table_schema, tables.table_name as table_name
@@ -228,7 +229,7 @@ where LOWER(table_schema) != 'information_schema'`,
     );
   }
 
-  public async table(target: dataform.ITarget): Promise<dataform.ITableMetadata> {
+  public async table(target: core.Target): Promise<execution.TableMetadata> {
     const binds = [target.schema, target.name];
     const [tableResults, columnResults] = await Promise.all([
       this.execute(
@@ -253,12 +254,12 @@ where table_schema = :1
       return null;
     }
 
-    return dataform.TableMetadata.create({
+    return execution.TableMetadata.create({
       target,
       type:
         tableResults.rows[0].TABLE_TYPE === "VIEW"
-          ? dataform.TableMetadata.Type.VIEW
-          : dataform.TableMetadata.Type.TABLE,
+          ? execution.TableMetadata_Type.VIEW
+          : execution.TableMetadata_Type.TABLE,
       fields: columnResults.rows.map(row =>
         dataform.Field.create({
           name: row.COLUMN_NAME,
@@ -272,7 +273,7 @@ where table_schema = :1
     });
   }
 
-  public async preview(target: dataform.ITarget, limitRows: number = 10): Promise<any[]> {
+  public async preview(target: core.Target, limitRows: number = 10): Promise<any[]> {
     const { rows } = await this.execute(
       `SELECT * FROM "${target.schema}"."${target.name}" LIMIT ${limitRows}`
     );
@@ -304,7 +305,7 @@ where table_schema = :1
     });
   }
 
-  public async setMetadata(action: dataform.IExecutionAction): Promise<void> {
+  public async setMetadata(action: dataform.ExecutionAction): Promise<void> {
     const { target, actionDescriptor, tableType } = action;
 
     const queries: Array<Promise<any>> = [];
@@ -341,7 +342,7 @@ where table_schema = :1
   }
 }
 
-async function connect(snowflakeCredentials: dataform.ISnowflake) {
+async function connect(snowflakeCredentials: profiles.Snowflake) {
   // We are forced to try our own HTTPS connection to the final <accountId>.snowflakecomputing.com URL
   // in order to verify its certificate. If we don't do this, and pass an invalid account ID (which thus
   // resolves to an invalid URL) to the snowflake connect() API, snowflake-sdk will not handle the

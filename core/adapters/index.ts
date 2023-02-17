@@ -5,30 +5,32 @@ import { RedshiftAdapter } from "df/core/adapters/redshift";
 import { SnowflakeAdapter } from "df/core/adapters/snowflake";
 import { SQLDataWarehouseAdapter } from "df/core/adapters/sqldatawarehouse";
 import { concatenateQueries, Tasks } from "df/core/tasks";
-import { dataform } from "df/protos/ts";
+import * as core from "df/protos/core";
+import * as execution from "df/protos/execution";
+import * as profiles from "df/protos/profiles";
 
 export interface IAdapter {
-  resolveTarget(target: dataform.ITarget): string;
+  resolveTarget(target: core.Target): string;
   normalizeIdentifier(identifier: string): string;
 
   sqlString(stringContents: string): string;
 
   publishTasks(
-    table: dataform.ITable,
-    runConfig: dataform.IRunConfig,
-    tableMetadata: dataform.ITableMetadata
+    table: core.Table,
+    runConfig: execution.RunConfig,
+    tableMetadata: execution.TableMetadata
   ): Tasks;
-  assertTasks(assertion: dataform.IAssertion, projectConfig: dataform.IProjectConfig): Tasks;
+  assertTasks(assertion: core.Assertion, projectConfig: core.ProjectConfig): Tasks;
 
-  dropIfExists(target: dataform.ITarget, type: dataform.TableMetadata.Type): string;
-  baseTableType(enumType: dataform.TableType): dataform.TableMetadata.Type;
+  dropIfExists(target: core.Target, type: execution.TableMetadata_Type): string;
+  baseTableType(enumType: core.TableType): execution.TableMetadata_Type;
 
   indexAssertion(dataset: string, indexCols: string[]): string;
   rowConditionsAssertion(dataset: string, rowConditions: string[]): string;
 }
 
 export type AdapterConstructor<T extends IAdapter> = new (
-  projectConfig: dataform.IProjectConfig,
+  projectConfig: core.ProjectConfig,
   dataformCoreVersion: string
 ) => T;
 
@@ -49,15 +51,15 @@ export function supportsCancel(warehouseType: WarehouseType) {
   });
 }
 
-const requiredBigQueryWarehouseProps: Array<keyof dataform.IBigQuery> = ["projectId"];
-const requiredJdbcWarehouseProps: Array<keyof dataform.IJDBC> = [
+const requiredBigQueryWarehouseProps: Array<keyof profiles.BigQuery> = ["projectId"];
+const requiredJdbcWarehouseProps: Array<keyof profiles.JDBC> = [
   "host",
   "port",
   "username",
   "password",
   "databaseName"
 ];
-const requiredSnowflakeWarehouseProps: Array<keyof dataform.ISnowflake> = [
+const requiredSnowflakeWarehouseProps: Array<keyof profiles.Snowflake> = [
   "accountId",
   "username",
   "password",
@@ -65,7 +67,7 @@ const requiredSnowflakeWarehouseProps: Array<keyof dataform.ISnowflake> = [
   "databaseName",
   "warehouse"
 ];
-const requiredSQLDataWarehouseProps: Array<keyof dataform.ISQLDataWarehouse> = [
+const requiredSQLDataWarehouseProps: Array<keyof profiles.SQLDataWarehouse> = [
   "server",
   "port",
   "username",
@@ -73,7 +75,7 @@ const requiredSQLDataWarehouseProps: Array<keyof dataform.ISQLDataWarehouse> = [
   "database"
 ];
 
-const requiredPrestoWarehouseProps: Array<keyof dataform.IPresto> = ["host", "port", "user"];
+const requiredPrestoWarehouseProps: Array<keyof profiles.Presto> = ["host", "port", "user"];
 
 export const requiredWarehouseProps = {
   [WarehouseType.BIGQUERY]: requiredBigQueryWarehouseProps,
@@ -90,10 +92,7 @@ export function register(warehouseType: string, c: AdapterConstructor<IAdapter>)
   registry[warehouseType] = c;
 }
 
-export function create(
-  projectConfig: dataform.IProjectConfig,
-  dataformCoreVersion: string
-): IAdapter {
+export function create(projectConfig: core.ProjectConfig, dataformCoreVersion: string): IAdapter {
   if (!registry[projectConfig.warehouse]) {
     throw new Error(`Unsupported warehouse: ${projectConfig.warehouse}`);
   }
@@ -110,7 +109,7 @@ register("redshift", RedshiftAdapter);
 register("snowflake", SnowflakeAdapter);
 register("sqldatawarehouse", SQLDataWarehouseAdapter);
 
-export type QueryOrAction = string | dataform.Table | dataform.Operation | dataform.Assertion;
+export type QueryOrAction = string | core.Table | core.Operation | core.Assertion;
 
 export interface IValidationQuery {
   query?: string;
@@ -134,8 +133,8 @@ export function collectEvaluationQueries(
     validationQueries.push({ query: queryModifier(queryOrAction) });
   } else {
     try {
-      if (queryOrAction instanceof dataform.Table) {
-        if (queryOrAction.enumType === dataform.TableType.INCREMENTAL) {
+      if (queryOrAction instanceof core.Table) {
+        if (queryOrAction.enumType === core.TableType.INCREMENTAL) {
           const incrementalTableQueries = queryOrAction.incrementalPreOps.concat(
             queryOrAction.incrementalQuery,
             queryOrAction.incrementalPostOps
@@ -162,7 +161,7 @@ export function collectEvaluationQueries(
         } else {
           tableQueries.forEach(q => validationQueries.push({ query: queryModifier(q) }));
         }
-      } else if (queryOrAction instanceof dataform.Operation) {
+      } else if (queryOrAction instanceof core.Operation) {
         if (concatenate) {
           validationQueries.push({
             query: concatenateQueries(queryOrAction.queries, queryModifier)
@@ -170,7 +169,7 @@ export function collectEvaluationQueries(
         } else {
           queryOrAction.queries.forEach(q => validationQueries.push({ query: queryModifier(q) }));
         }
-      } else if (queryOrAction instanceof dataform.Assertion) {
+      } else if (queryOrAction instanceof core.Assertion) {
         validationQueries.push({ query: queryModifier(queryOrAction.query) });
       } else {
         throw new Error("Unrecognized evaluate type.");

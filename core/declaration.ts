@@ -8,7 +8,8 @@ import {
 } from "df/core/common";
 import { Session } from "df/core/session";
 import { checkExcessProperties, strictKeysOf } from "df/core/utils";
-import { dataform } from "df/protos/ts";
+import * as core from "df/protos/core";
+import * as execution from "df/protos/execution";
 /**
  * Configuration options for `declaration` action types.
  */
@@ -27,7 +28,7 @@ export const IDeclarationConfigProperties = strictKeysOf<IDeclarationConfig>()([
  * @hidden
  */
 export class Declaration {
-  public proto: dataform.IDeclaration = dataform.Declaration.create();
+  public proto: dataform.Declaration = dataform.Declaration.create();
 
   public session: Session;
 

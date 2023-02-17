@@ -2,7 +2,8 @@ import * as pg from "pg";
 import QueryStream from "pg-query-stream";
 
 import { LimitedResultSet } from "df/api/utils/results";
-import { dataform } from "df/protos/ts";
+import * as core from "df/protos/core";
+import * as execution from "df/protos/execution";
 
 const maybeInitializePg = (() => {
   let initialized = false;
