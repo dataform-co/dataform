@@ -1,9 +1,10 @@
 import * as glob from "glob";
 
 import { encode64 } from "df/common/protos";
-import { dataform } from "df/protos/ts";
+import * as core from "df/protos/core";
+import * as execution from "df/protos/execution";
 
-export function createGenIndexConfig(compileConfig: dataform.ICompileConfig): string {
+export function createGenIndexConfig(compileConfig: dataform.CompileConfig): string {
   const includePaths: string[] = [];
   glob.sync("includes/*.js", { cwd: compileConfig.projectDir }).forEach(path => {
     if (includePaths.indexOf(path) < 0) {
@@ -31,14 +32,14 @@ export function createGenIndexConfig(compileConfig: dataform.ICompileConfig): st
 }
 
 /**
- * @returns a base64 encoded {@see dataform.CoreExecutionRequest} proto.
+ * @returns a base64 encoded {@see core.CoreExecutionRequest} proto.
  */
-export function createCoreExecutionRequest(compileConfig: dataform.ICompileConfig): string {
+export function createCoreExecutionRequest(compileConfig: dataform.CompileConfig): string {
   const filePaths = Array.from(
     new Set<string>(glob.sync("!(node_modules)/**/*.*", { cwd: compileConfig.projectDir }))
   );
 
-  return encode64(dataform.CoreExecutionRequest, {
+  return encode64(core.CoreExecutionRequest, {
     // Add the list of file paths to the compile config if not already set.
     compile: { compileConfig: { filePaths, ...compileConfig } }
   });

@@ -18,7 +18,8 @@ import {
   strictKeysOf,
   toResolvable
 } from "df/core/utils";
-import { dataform } from "df/protos/ts";
+import * as core from "df/protos/core";
+import * as execution from "df/protos/execution";
 
 /**
  * Configuration options for `operations` action types.
@@ -60,7 +61,7 @@ export const IIOperationConfigProperties = strictKeysOf<IOperationConfig>()([
  * @hidden
  */
 export class Operation {
-  public proto: dataform.IOperation = dataform.Operation.create();
+  public proto: core.Operation = core.Operation.create();
 
   // Hold a reference to the Session instance.
   public session: Session;
@@ -120,8 +121,8 @@ export class Operation {
 
   public hermetic(hermetic: boolean) {
     this.proto.hermeticity = hermetic
-      ? dataform.ActionHermeticity.HERMETIC
-      : dataform.ActionHermeticity.NON_HERMETIC;
+      ? core.ActionHermeticity.HERMETIC
+      : core.ActionHermeticity.NON_HERMETIC;
   }
 
   public disabled() {
@@ -145,17 +146,11 @@ export class Operation {
   }
 
   public description(description: string) {
-    if (!this.proto.actionDescriptor) {
-      this.proto.actionDescriptor = {};
-    }
     this.proto.actionDescriptor.description = description;
     return this;
   }
 
   public columns(columns: IColumnsDescriptor) {
-    if (!this.proto.actionDescriptor) {
-      this.proto.actionDescriptor = {};
-    }
     this.proto.actionDescriptor.columns = ColumnDescriptors.mapToColumnProtoArray(
       columns,
       (e: Error) => this.session.compileError(e)
@@ -219,9 +214,7 @@ export class OperationContext implements ICommonContext {
   }
 
   public name(): string {
-    return this.operation.session.finalizeName(
-      this.operation.proto.target.name
-    );
+    return this.operation.session.finalizeName(this.operation.proto.target.name);
   }
 
   public ref(ref: Resolvable | string[], ...rest: string[]) {
@@ -239,9 +232,7 @@ export class OperationContext implements ICommonContext {
   }
 
   public schema(): string {
-    return this.operation.session.finalizeSchema(
-      this.operation.proto.target.schema
-    );
+    return this.operation.session.finalizeSchema(this.operation.proto.target.schema);
   }
 
   public database(): string {
@@ -252,9 +243,7 @@ export class OperationContext implements ICommonContext {
       return "";
     }
 
-    return this.operation.session.finalizeDatabase(
-      this.operation.proto.target.database
-    );
+    return this.operation.session.finalizeDatabase(this.operation.proto.target.database);
   }
 
   public dependencies(name: Resolvable | Resolvable[]) {

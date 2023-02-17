@@ -52,7 +52,7 @@ suite(__filename, () => {
       filePath,
       `
 config { type: "table" }
-select 1 as \${dataform.projectConfig.vars.testVar2}
+select 1 as \${core.ProjectConfig.vars.testVar2}
 `
     );
 

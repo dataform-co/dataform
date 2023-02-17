@@ -1,6 +1,7 @@
 import { IColumnsDescriptor, IRecordDescriptor, IRecordDescriptorProperties } from "df/core/common";
 import * as utils from "df/core/utils";
-import { dataform } from "df/protos/ts";
+import * as core from "df/protos/core";
+import * as execution from "df/protos/execution";
 
 /**
  * @hidden
@@ -9,7 +10,7 @@ export class ColumnDescriptors {
   public static mapToColumnProtoArray(
     columns: IColumnsDescriptor,
     reportError: (e: Error) => void
-  ): dataform.IColumnDescriptor[] {
+  ): core.ColumnDescriptor[] {
     return Object.keys(columns)
       .map(column =>
         ColumnDescriptors.mapColumnDescriptionToProto([column], columns[column], reportError)
@@ -21,10 +22,10 @@ export class ColumnDescriptors {
     currentPath: string[],
     description: string | IRecordDescriptor,
     reportError: (e: Error) => void
-  ): dataform.IColumnDescriptor[] {
+  ): core.ColumnDescriptor[] {
     if (typeof description === "string") {
       return [
-        dataform.ColumnDescriptor.create({
+        core.ColumnDescriptor.create({
           description,
           path: currentPath
         })
@@ -36,9 +37,9 @@ export class ColumnDescriptors {
       IRecordDescriptorProperties(),
       `${currentPath.join(".")} column descriptor`
     );
-    const columnDescriptor: dataform.IColumnDescriptor[] = !!description
+    const columnDescriptor: core.ColumnDescriptor[] = !!description
       ? [
-          dataform.ColumnDescriptor.create({
+          core.ColumnDescriptor.create({
             path: currentPath,
             description: description.description,
             displayName: description.displayName,
@@ -70,11 +71,11 @@ export class ColumnDescriptors {
   public static mapAggregation(aggregation: string) {
     switch (aggregation) {
       case "sum":
-        return dataform.ColumnDescriptor.Aggregation.SUM;
+        return core.ColumnDescriptor_Aggregation.SUM;
       case "distinct":
-        return dataform.ColumnDescriptor.Aggregation.DISTINCT;
+        return core.ColumnDescriptor_Aggregation.DISTINCT;
       case "derived":
-        return dataform.ColumnDescriptor.Aggregation.DERIVED;
+        return core.ColumnDescriptor_Aggregation.DERIVED;
       case undefined:
         return undefined;
       default:
@@ -82,15 +83,15 @@ export class ColumnDescriptors {
     }
   }
 
-  public static mapFromAggregation(aggregation: dataform.ColumnDescriptor.Aggregation) {
+  public static mapFromAggregation(aggregation: core.ColumnDescriptor_Aggregation) {
     switch (aggregation) {
-      case dataform.ColumnDescriptor.Aggregation.SUM:
+      case core.ColumnDescriptor_Aggregation.SUM:
         return "sum";
-      case dataform.ColumnDescriptor.Aggregation.DISTINCT:
+      case core.ColumnDescriptor_Aggregation.DISTINCT:
         return "distinct";
-      case dataform.ColumnDescriptor.Aggregation.DERIVED:
+      case core.ColumnDescriptor_Aggregation.DERIVED:
         return "derived";
-      case dataform.ColumnDescriptor.Aggregation.UNKNOWN_AGGREGATION:
+      case core.ColumnDescriptor_Aggregation.UNKNOWN_AGGREGATION:
         return undefined;
       case undefined:
         return undefined;
@@ -102,11 +103,11 @@ export class ColumnDescriptors {
   public static mapDimensionType(dimensionType: string) {
     switch (dimensionType) {
       case "category":
-        return dataform.ColumnDescriptor.DimensionType.CATEGORY;
+        return core.ColumnDescriptor_DimensionType.CATEGORY;
       case "timestamp":
-        return dataform.ColumnDescriptor.DimensionType.TIMESTAMP;
+        return core.ColumnDescriptor_DimensionType.TIMESTAMP;
       case "number":
-        return dataform.ColumnDescriptor.DimensionType.NUMBER;
+        return core.ColumnDescriptor_DimensionType.NUMBER;
       case undefined:
         return undefined;
       default:
@@ -114,15 +115,15 @@ export class ColumnDescriptors {
     }
   }
 
-  public static mapFromDimensionType(dimensionType: dataform.ColumnDescriptor.DimensionType) {
+  public static mapFromDimensionType(dimensionType: core.ColumnDescriptor_DimensionType) {
     switch (dimensionType) {
-      case dataform.ColumnDescriptor.DimensionType.CATEGORY:
+      case core.ColumnDescriptor_DimensionType.CATEGORY:
         return "category";
-      case dataform.ColumnDescriptor.DimensionType.TIMESTAMP:
+      case core.ColumnDescriptor_DimensionType.TIMESTAMP:
         return "timestamp";
-      case dataform.ColumnDescriptor.DimensionType.NUMBER:
+      case core.ColumnDescriptor_DimensionType.NUMBER:
         return "number";
-      case dataform.ColumnDescriptor.DimensionType.UNKNOWN_DIMENSION:
+      case core.ColumnDescriptor_DimensionType.UNKNOWN_DIMENSION:
         return undefined;
       case undefined:
         return undefined;

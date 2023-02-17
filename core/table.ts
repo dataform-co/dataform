@@ -21,7 +21,8 @@ import {
   toResolvable,
   validateQueryString
 } from "df/core/utils";
-import { dataform } from "df/protos/ts";
+import * as core from "df/protos/core";
+import * as execution from "df/protos/execution";
 
 /**
  * @hidden
@@ -379,23 +380,22 @@ export interface ITableContext extends ICommonContext {
  * @hidden
  */
 export class Table {
-  public static readonly INLINE_IGNORED_PROPS: Array<keyof dataform.ITable> = 
-    [
-      "bigquery",
-      "redshift",
-      "snowflake",
-      "sqlDataWarehouse",
-      "presto",
-      "preOps",
-      "postOps",
-      "actionDescriptor",
-      "disabled",
-      "where"
-    ];
+  public static readonly INLINE_IGNORED_PROPS: Array<keyof core.Table> = [
+    "bigquery",
+    "redshift",
+    "snowflake",
+    "sqlDataWarehouse",
+    "presto",
+    "preOps",
+    "postOps",
+    "actionDescriptor",
+    "disabled",
+    "where"
+  ];
 
-  public proto: dataform.ITable = dataform.Table.create({
+  public proto: core.Table = core.Table.create({
     type: "view",
-    enumType: dataform.TableType.VIEW,
+    enumType: core.TableType.VIEW,
     disabled: false,
     tags: []
   });
@@ -435,19 +435,19 @@ export class Table {
       this.protected();
     }
     if (config.redshift) {
-      this.redshift(config.redshift);
+      this.redshift(core.RedshiftOptions.create(config.redshift));
     }
     if (config.bigquery) {
-      this.bigquery(config.bigquery);
+      this.bigquery(core.BigQueryOptions.create(config.bigquery));
     }
     if (config.snowflake) {
-      this.snowflake(config.snowflake);
+      this.snowflake(core.SnowflakeOptions.create(config.snowflake));
     }
     if (config.sqldatawarehouse) {
-      this.sqldatawarehouse(config.sqldatawarehouse);
+      this.sqldatawarehouse(core.SQLDataWarehouseOptions.create(config.sqldatawarehouse));
     }
     if (config.presto) {
-      this.presto(config.presto);
+      this.presto(core.PrestoOptions.create(config.presto));
     }
     if (config.tags) {
       this.tags(config.tags);
@@ -523,64 +523,61 @@ export class Table {
     this.proto.materialized = materialized;
   }
 
-  public snowflake(snowflake: dataform.ISnowflakeOptions) {
+  public snowflake(snowflake: core.SnowflakeOptions) {
     checkExcessProperties(
       (e: Error) => this.session.compileError(e),
       snowflake,
       ISnowflakeOptionsProperties(),
       "snowflake config"
     );
-    this.proto.snowflake = dataform.SnowflakeOptions.create(snowflake);
+    this.proto.snowflake = core.SnowflakeOptions.create(snowflake);
     return this;
   }
 
-  public sqldatawarehouse(sqlDataWarehouse: dataform.ISQLDataWarehouseOptions) {
+  public sqldatawarehouse(sqlDataWarehouse: core.SQLDataWarehouseOptions) {
     checkExcessProperties(
       (e: Error) => this.session.compileError(e),
       sqlDataWarehouse,
       ISQLDataWarehouseOptionsProperties(),
       "sqldatawarehouse config"
     );
-    this.proto.sqlDataWarehouse = dataform.SQLDataWarehouseOptions.create(sqlDataWarehouse);
+    this.proto.sqlDataWarehouse = core.SQLDataWarehouseOptions.create(sqlDataWarehouse);
     return this;
   }
 
-  public redshift(redshift: dataform.IRedshiftOptions) {
+  public redshift(redshift: core.RedshiftOptions) {
     checkExcessProperties(
       (e: Error) => this.session.compileError(e),
       redshift,
       IRedshiftOptionsProperties(),
       "redshift config"
     );
-    this.proto.redshift = dataform.RedshiftOptions.create(redshift);
+    this.proto.redshift = core.RedshiftOptions.create(redshift);
     return this;
   }
 
-  public bigquery(bigquery: dataform.IBigQueryOptions) {
+  public bigquery(bigquery: core.BigQueryOptions) {
     checkExcessProperties(
       (e: Error) => this.session.compileError(e),
       bigquery,
       IBigQueryOptionsProperties(),
       "bigquery config"
     );
-    this.proto.bigquery = dataform.BigQueryOptions.create(bigquery);
+    this.proto.bigquery = core.BigQueryOptions.create(bigquery);
     if (!!bigquery.labels) {
-      if (!this.proto.actionDescriptor) {
-        this.proto.actionDescriptor = {};
-      }
       this.proto.actionDescriptor.bigqueryLabels = bigquery.labels;
     }
     return this;
   }
 
-  public presto(presto: dataform.IPrestoOptions) {
+  public presto(presto: core.PrestoOptions) {
     checkExcessProperties(
       (e: Error) => this.session.compileError(e),
       presto,
       IPrestoOptionsProperties(),
       "presto config"
     );
-    this.proto.presto = dataform.PrestoOptions.create(presto);
+    this.proto.presto = core.PrestoOptions.create(presto);
     return this;
   }
 
@@ -595,8 +592,8 @@ export class Table {
 
   public hermetic(hermetic: boolean) {
     this.proto.hermeticity = hermetic
-      ? dataform.ActionHermeticity.HERMETIC
-      : dataform.ActionHermeticity.NON_HERMETIC;
+      ? core.ActionHermeticity.HERMETIC
+      : core.ActionHermeticity.NON_HERMETIC;
   }
 
   public tags(value: string | string[]) {
@@ -610,17 +607,11 @@ export class Table {
   }
 
   public description(description: string) {
-    if (!this.proto.actionDescriptor) {
-      this.proto.actionDescriptor = {};
-    }
     this.proto.actionDescriptor.description = description;
     return this;
   }
 
   public columns(columns: IColumnsDescriptor) {
-    if (!this.proto.actionDescriptor) {
-      this.proto.actionDescriptor = {};
-    }
     this.proto.actionDescriptor.columns = ColumnDescriptors.mapToColumnProtoArray(
       columns,
       (e: Error) => this.session.compileError(e)
@@ -716,7 +707,7 @@ export class Table {
 
     this.proto.query = context.apply(this.contextableQuery);
 
-    if (this.proto.enumType === dataform.TableType.INCREMENTAL) {
+    if (this.proto.enumType === core.TableType.INCREMENTAL) {
       this.proto.incrementalQuery = incrementalContext.apply(this.contextableQuery);
 
       this.proto.incrementalPreOps = this.contextifyOps(this.contextablePreOps, incrementalContext);
@@ -772,9 +763,7 @@ export class TableContext implements ITableContext {
   }
 
   public name(): string {
-    return this.table.session.finalizeName(
-      this.table.proto.target.name
-    );
+    return this.table.session.finalizeName(this.table.proto.target.name);
   }
 
   public ref(ref: Resolvable | string[], ...rest: string[]): string {
@@ -792,9 +781,7 @@ export class TableContext implements ITableContext {
   }
 
   public schema(): string {
-    return this.table.session.finalizeSchema(
-      this.table.proto.target.schema
-    );
+    return this.table.session.finalizeSchema(this.table.proto.target.schema);
   }
 
   public database(): string {
@@ -803,9 +790,7 @@ export class TableContext implements ITableContext {
       return "";
     }
 
-    return this.table.session.finalizeDatabase(
-      this.table.proto.target.database
-    );
+    return this.table.session.finalizeDatabase(this.table.proto.target.database);
   }
 
   public type(type: TableType) {
@@ -841,17 +826,17 @@ export class TableContext implements ITableContext {
     return "";
   }
 
-  public redshift(redshift: dataform.IRedshiftOptions) {
+  public redshift(redshift: core.RedshiftOptions) {
     this.table.redshift(redshift);
     return "";
   }
 
-  public bigquery(bigquery: dataform.IBigQueryOptions) {
+  public bigquery(bigquery: core.BigQueryOptions) {
     this.table.bigquery(bigquery);
     return "";
   }
 
-  public presto(presto: dataform.IPrestoOptions) {
+  public presto(presto: core.PrestoOptions) {
     this.table.presto(presto);
     return "";
   }

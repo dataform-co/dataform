@@ -1,5 +1,6 @@
 import { ChildProcess, spawn } from "child_process";
-import { dataform } from "df/protos/ts";
+import * as core from "df/protos/core";
+import * as execution from "df/protos/execution";
 import {
   createConnection,
   HandlerResult,
@@ -12,7 +13,7 @@ import { TextDocument } from "vscode-languageserver-textdocument";
 
 const connection = createConnection(ProposedFeatures.all);
 const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument);
-let CACHED_COMPILE_GRAPH: dataform.ICompiledGraph = null;
+let CACHED_COMPILE_GRAPH: core.CompiledGraph = null;
 let WORKSPACE_ROOT_FOLDER: string = null;
 
 connection.onInitialize(() => {
@@ -55,7 +56,7 @@ async function compileAndValidate() {
   });
   const compileResult = await getProcessResult(spawnedProcess);
 
-  const parsedResult: dataform.ICompiledGraph = JSON.parse(compileResult.stdout);
+  const parsedResult: core.CompiledGraph = JSON.parse(compileResult.stdout);
   if (parsedResult?.graphErrors?.compilationErrors) {
     parsedResult.graphErrors.compilationErrors.forEach(compilationError => {
       connection.sendNotification("error", compilationError.message);
@@ -79,7 +80,7 @@ async function getProcessResult(childProcess: ChildProcess) {
 
 function gatherAllActions(
   graph = CACHED_COMPILE_GRAPH
-): Array<dataform.Table | dataform.Declaration | dataform.Operation | dataform.Assertion> {
+): Array<core.Target | core.Declaration | core.Operation | core.Assertion> {
   return [].concat(graph.tables, graph.operations, graph.assertions, graph.declarations);
 }
 

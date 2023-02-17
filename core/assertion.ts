@@ -15,7 +15,8 @@ import {
   toResolvable,
   validateQueryString
 } from "df/core/utils";
-import { dataform } from "df/protos/ts";
+import * as core from "df/protos/core";
+import * as execution from "df/protos/execution";
 
 /**
  * Configuration options for `assertion` action types.
@@ -62,7 +63,7 @@ export type AContextable<T> = T | ((ctx: AssertionContext) => T);
  * @hidden
  */
 export class Assertion {
-  public proto: dataform.IAssertion = dataform.Assertion.create();
+  public proto: core.Assertion = core.Assertion.create();
 
   // Hold a reference to the Session instance.
   public session: Session;
@@ -116,8 +117,8 @@ export class Assertion {
 
   public hermetic(hermetic: boolean) {
     this.proto.hermeticity = hermetic
-      ? dataform.ActionHermeticity.HERMETIC
-      : dataform.ActionHermeticity.NON_HERMETIC;
+      ? core.ActionHermeticity.HERMETIC
+      : core.ActionHermeticity.NON_HERMETIC;
   }
 
   public disabled() {
@@ -136,7 +137,7 @@ export class Assertion {
   }
 
   public description(description: string) {
-    this.proto.actionDescriptor = { description };
+    this.proto.actionDescriptor = { ...this.proto.actionDescriptor, description };
     return this;
   }
 
@@ -187,9 +188,7 @@ export class AssertionContext implements ICommonContext {
   }
 
   public name(): string {
-    return this.assertion.session.finalizeName(
-      this.assertion.proto.target.name
-    );
+    return this.assertion.session.finalizeName(this.assertion.proto.target.name);
   }
 
   public ref(ref: Resolvable | string[], ...rest: string[]) {
@@ -207,9 +206,7 @@ export class AssertionContext implements ICommonContext {
   }
 
   public schema(): string {
-    return this.assertion.session.finalizeSchema(
-      this.assertion.proto.target.schema
-    );
+    return this.assertion.session.finalizeSchema(this.assertion.proto.target.schema);
   }
 
   public database(): string {
@@ -220,9 +217,7 @@ export class AssertionContext implements ICommonContext {
       return "";
     }
 
-    return this.assertion.session.finalizeDatabase(
-      this.assertion.proto.target.database
-    );
+    return this.assertion.session.finalizeDatabase(this.assertion.proto.target.database);
   }
 
   public dependencies(name: Resolvable | Resolvable[]) {

@@ -1,19 +1,18 @@
 import { StringifiedMap } from "df/common/strings/stringifier";
 import { targetStringifier } from "df/core/targets";
-import { dataform } from "df/protos/ts";
+import * as core from "df/protos/core";
+import * as execution from "df/protos/execution";
 
-export const combineAllActions = (graph: dataform.ICompiledGraph) => {
-  return ([] as Array<
-    dataform.ITable | dataform.IOperation | dataform.IAssertion | dataform.IDeclaration
-  >).concat(
-    graph.tables || ([] as dataform.ITable[]),
-    graph.operations || ([] as dataform.IOperation[]),
-    graph.assertions || ([] as dataform.IAssertion[]),
-    graph.declarations || ([] as dataform.IDeclaration[])
+export const combineAllActions = (graph: core.CompiledGraph) => {
+  return ([] as Array<core.Target | core.Operation | core.Assertion | core.Declaration>).concat(
+    graph.tables || ([] as core.Target[]),
+    graph.operations || ([] as core.Operation[]),
+    graph.assertions || ([] as core.Assertion[]),
+    graph.declarations || ([] as core.Declaration[])
   );
 };
 
-export function actionsByTarget(compiledGraph: dataform.ICompiledGraph) {
+export function actionsByTarget(compiledGraph: core.CompiledGraph) {
   return new StringifiedMap(
     targetStringifier,
     combineAllActions(compiledGraph)
@@ -23,7 +22,7 @@ export function actionsByTarget(compiledGraph: dataform.ICompiledGraph) {
   );
 }
 
-export function actionsByCanonicalTarget(compiledGraph: dataform.ICompiledGraph) {
+export function actionsByCanonicalTarget(compiledGraph: core.CompiledGraph) {
   return new StringifiedMap(
     targetStringifier,
     combineAllActions(compiledGraph)

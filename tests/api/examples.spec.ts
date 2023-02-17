@@ -4,7 +4,8 @@ import * as path from "path";
 
 import { Builder, compile } from "df/api";
 import { targetAsReadableString } from "df/core/targets";
-import { dataform } from "df/protos/ts";
+import * as core from "df/protos/core";
+import * as execution from "df/protos/execution";
 import { suite, test } from "df/testing";
 import { cleanSql } from "df/tests/utils";
 
@@ -99,7 +100,7 @@ suite("examples", () => {
 
             // Check JS blocks get processed.
             const exampleJsBlocks = graph.tables.find(
-              (t: dataform.ITable) =>
+              (t: core.Target) =>
                 targetAsReadableString(t.target) ===
                 dotJoined(
                   databaseWithSuffix("tada-analytics"),
@@ -108,12 +109,12 @@ suite("examples", () => {
                 )
             );
             expect(exampleJsBlocks.type).equals("table");
-            expect(exampleJsBlocks.enumType).equals(dataform.TableType.TABLE);
+            expect(exampleJsBlocks.enumType).equals(core.TargetType.TABLE);
             expect(exampleJsBlocks.query.trim()).equals("select 1 as foo");
 
             // Check we can import and use an external package.
             const exampleIncremental = graph.tables.find(
-              (t: dataform.ITable) =>
+              (t: core.Target) =>
                 targetAsReadableString(t.target) ===
                 dotJoined(
                   databaseWithSuffix("tada-analytics"),
@@ -136,7 +137,7 @@ suite("examples", () => {
             );
 
             const exampleIsIncremental = graph.tables.filter(
-              (t: dataform.ITable) =>
+              (t: core.Target) =>
                 targetAsReadableString(t.target) ===
                 dotJoined(
                   databaseWithSuffix("tada-analytics"),
@@ -167,11 +168,11 @@ suite("examples", () => {
 
             // Check tables defined in includes are not included.
             const exampleIgnore = graph.tables.find(
-              (t: dataform.ITable) => targetAsReadableString(t.target) === "example_ignore"
+              (t: core.Target) => targetAsReadableString(t.target) === "example_ignore"
             );
             expect(exampleIgnore).equal(undefined);
             const exampleIgnore2 = graph.tables.find(
-              (t: dataform.ITable) =>
+              (t: core.Target) =>
                 targetAsReadableString(t.target) ===
                 dotJoined(
                   databaseWithSuffix("tada-analytics"),
@@ -183,7 +184,7 @@ suite("examples", () => {
 
             // Check SQL files with raw back-ticks get escaped.
             const exampleBackticks = graph.tables.find(
-              (t: dataform.ITable) =>
+              (t: core.Target) =>
                 targetAsReadableString(t.target) ===
                 dotJoined(
                   databaseWithSuffix("tada-analytics"),
@@ -201,7 +202,7 @@ suite("examples", () => {
 
             // Check deferred calls to table resolve to the correct definitions file.
             const exampleDeferred = graph.tables.find(
-              (t: dataform.ITable) =>
+              (t: core.Target) =>
                 targetAsReadableString(t.target) ===
                 dotJoined(
                   databaseWithSuffix("tada-analytics"),
@@ -213,7 +214,7 @@ suite("examples", () => {
 
             // Check inline tables
             const exampleInline = graph.tables.find(
-              (t: dataform.ITable) =>
+              (t: core.Target) =>
                 targetAsReadableString(t.target) ===
                 dotJoined(
                   databaseWithSuffix("tada-analytics"),
@@ -222,7 +223,7 @@ suite("examples", () => {
                 )
             );
             expect(exampleInline.type).equals("inline");
-            expect(exampleInline.enumType).equals(dataform.TableType.INLINE);
+            expect(exampleInline.enumType).equals(core.TargetType.INLINE);
             expect(exampleInline.query.trim()).equals(
               `select * from \`${dotJoined(
                 databaseWithSuffix("tada-analytics"),
@@ -231,7 +232,7 @@ suite("examples", () => {
               )}\``
             );
             expect(exampleInline.dependencyTargets).eql([
-              dataform.Target.create({
+              core.Target.create({
                 database: databaseWithSuffix("tada-analytics"),
                 schema: schemaWithSuffix("df_integration_test"),
                 name: "sample_data"
@@ -239,7 +240,7 @@ suite("examples", () => {
             ]);
 
             const exampleUsingInline = graph.tables.find(
-              (t: dataform.ITable) =>
+              (t: core.Target) =>
                 targetAsReadableString(t.target) ===
                 dotJoined(
                   databaseWithSuffix("tada-analytics"),
@@ -248,7 +249,7 @@ suite("examples", () => {
                 )
             );
             expect(exampleUsingInline.type).equals("table");
-            expect(exampleUsingInline.enumType).equals(dataform.TableType.TABLE);
+            expect(exampleUsingInline.enumType).equals(core.TargetType.TABLE);
             expect(exampleUsingInline.query.trim()).equals(
               `select * from (\n\nselect * from \`${dotJoined(
                 databaseWithSuffix("tada-analytics"),
@@ -257,7 +258,7 @@ suite("examples", () => {
               )}\`\n)\nwhere true`
             );
             expect(exampleUsingInline.dependencyTargets).eql([
-              dataform.Target.create({
+              core.Target.create({
                 database: databaseWithSuffix("tada-analytics"),
                 schema: schemaWithSuffix("df_integration_test"),
                 name: "sample_data"
@@ -266,7 +267,7 @@ suite("examples", () => {
 
             // Check view
             const exampleView = graph.tables.find(
-              (t: dataform.ITable) =>
+              (t: core.Target) =>
                 targetAsReadableString(t.target) ===
                 dotJoined(
                   databaseWithSuffix("tada-analytics"),
@@ -275,7 +276,7 @@ suite("examples", () => {
                 )
             );
             expect(exampleView.type).equals("view");
-            expect(exampleView.enumType).equals(dataform.TableType.VIEW);
+            expect(exampleView.enumType).equals(core.TargetType.VIEW);
             expect(exampleView.query.trim()).equals(
               `select * from \`${dotJoined(
                 databaseWithSuffix("tada-analytics"),
@@ -294,31 +295,31 @@ suite("examples", () => {
                 )}\``
             );
             expect(exampleView.target).deep.equals(
-              dataform.Target.create({
+              core.Target.create({
                 database: databaseWithSuffix("tada-analytics"),
                 schema: schemaWithSuffix("df_integration_test"),
                 name: "example_view"
               })
             );
             expect(exampleView.canonicalTarget).deep.equals(
-              dataform.Target.create({
+              core.Target.create({
                 database: "tada-analytics",
                 schema: "df_integration_test",
                 name: "example_view"
               })
             );
             expect(exampleView.dependencyTargets).eql([
-              dataform.Target.create({
+              core.Target.create({
                 database: databaseWithSuffix("tada-analytics"),
                 schema: schemaWithSuffix("df_integration_test"),
                 name: "sample_data"
               }),
-              dataform.Target.create({
+              core.Target.create({
                 database: databaseWithSuffix("tada-analytics"),
                 schema: schemaWithSuffix("override_schema"),
                 name: "override_schema_example"
               }),
-              dataform.Target.create({
+              core.Target.create({
                 database: databaseWithSuffix("override_database"),
                 schema: schemaWithSuffix("df_integration_test"),
                 name: "override_database_example"
@@ -328,7 +329,7 @@ suite("examples", () => {
 
             // Check materialized view
             const exampleMaterializedView = graph.tables.find(
-              (t: dataform.ITable) =>
+              (t: core.Target) =>
                 targetAsReadableString(t.target) ===
                 dotJoined(
                   databaseWithSuffix("tada-analytics"),
@@ -337,7 +338,7 @@ suite("examples", () => {
                 )
             );
             expect(exampleMaterializedView.type).equals("view");
-            expect(exampleMaterializedView.enumType).equals(dataform.TableType.VIEW);
+            expect(exampleMaterializedView.enumType).equals(core.TargetType.VIEW);
             expect(exampleMaterializedView.materialized).equals(true);
             expect(exampleMaterializedView.query.trim()).equals(
               `select * from \`${dotJoined(
@@ -347,21 +348,21 @@ suite("examples", () => {
               )}\`\n` + `group by 1`
             );
             expect(exampleMaterializedView.target).deep.equals(
-              dataform.Target.create({
+              core.Target.create({
                 database: databaseWithSuffix("tada-analytics"),
                 schema: schemaWithSuffix("df_integration_test"),
                 name: "example_materialized_view"
               })
             );
             expect(exampleMaterializedView.canonicalTarget).deep.equals(
-              dataform.Target.create({
+              core.Target.create({
                 database: "tada-analytics",
                 schema: "df_integration_test",
                 name: "example_materialized_view"
               })
             );
             expect(exampleMaterializedView.dependencyTargets).eql([
-              dataform.Target.create({
+              core.Target.create({
                 database: databaseWithSuffix("tada-analytics"),
                 schema: schemaWithSuffix("df_integration_test"),
                 name: "sample_data"
@@ -371,7 +372,7 @@ suite("examples", () => {
 
             // Check table
             const exampleTable = graph.tables.find(
-              (t: dataform.ITable) =>
+              (t: core.Target) =>
                 targetAsReadableString(t.target) ===
                 dotJoined(
                   databaseWithSuffix("tada-analytics"),
@@ -380,7 +381,7 @@ suite("examples", () => {
                 )
             );
             expect(exampleTable.type).equals("table");
-            expect(exampleTable.enumType).equals(dataform.TableType.TABLE);
+            expect(exampleTable.enumType).equals(core.TargetType.TABLE);
             expect(exampleTable.query.trim()).equals(
               `select * from \`${dotJoined(
                 databaseWithSuffix("tada-analytics"),
@@ -389,7 +390,7 @@ suite("examples", () => {
               )}\`\n\n-- here \${"is"} a \`comment\n\n/* \${"another"} \` backtick \` containing \`\`\`comment */`
             );
             expect(exampleTable.dependencyTargets).eql([
-              dataform.Target.create({
+              core.Target.create({
                 database: databaseWithSuffix("tada-analytics"),
                 schema: schemaWithSuffix("df_integration_test"),
                 name: "sample_data"
@@ -412,7 +413,7 @@ suite("examples", () => {
 
             // Check Table with tags
             const exampleTableWithTags = graph.tables.find(
-              (t: dataform.ITable) =>
+              (t: core.Target) =>
                 targetAsReadableString(t.target) ===
                 dotJoined(
                   databaseWithSuffix("tada-analytics"),
@@ -442,7 +443,7 @@ suite("examples", () => {
               )}\` group by sample) as data where index_row_count > 1`
             );
             expect(exampleTableWithTagsUniqueKeyAssertion.dependencyTargets).eql([
-              dataform.Target.create({
+              core.Target.create({
                 database: databaseWithSuffix("tada-analytics"),
                 schema: schemaWithSuffix("df_integration_test"),
                 name: "example_table_with_tags"
@@ -469,7 +470,7 @@ suite("examples", () => {
               )}\` where not (sample is not null)`
             );
             expect(exampleTableWithTagsRowConditionsAssertion.dependencyTargets).eql([
-              dataform.Target.create({
+              core.Target.create({
                 database: databaseWithSuffix("tada-analytics"),
                 schema: schemaWithSuffix("df_integration_test"),
                 name: "example_table_with_tags"
@@ -478,7 +479,7 @@ suite("examples", () => {
 
             // Check sample data
             const exampleSampleData = graph.tables.find(
-              (t: dataform.ITable) =>
+              (t: core.Target) =>
                 targetAsReadableString(t.target) ===
                 dotJoined(
                   databaseWithSuffix("tada-analytics"),
@@ -487,7 +488,7 @@ suite("examples", () => {
                 )
             );
             expect(exampleSampleData.type).equals("view");
-            expect(exampleSampleData.enumType).equals(dataform.TableType.VIEW);
+            expect(exampleSampleData.enumType).equals(core.TargetType.VIEW);
             expect(exampleSampleData.query.trim()).equals(
               "select 1 as sample union all\nselect 2 as sample union all\nselect 3 as sample"
             );
@@ -497,7 +498,7 @@ suite("examples", () => {
               dataform.ActionDescriptor.create({
                 description: "This is some sample data.",
                 columns: [
-                  dataform.ColumnDescriptor.create({
+                  core.ColumnDescriptor.create({
                     description: "Sample integers.",
                     path: ["sample"]
                   })
@@ -507,7 +508,7 @@ suite("examples", () => {
 
             // Check database override defined in "config {}".
             const exampleUsingOverriddenDatabase = graph.tables.find(
-              (t: dataform.ITable) =>
+              (t: core.Target) =>
                 targetAsReadableString(t.target) ===
                 dotJoined(
                   databaseWithSuffix("override_database"),
@@ -520,14 +521,14 @@ suite("examples", () => {
               databaseWithSuffix("override_database")
             );
             expect(exampleUsingOverriddenDatabase.type).equals("view");
-            expect(exampleUsingOverriddenDatabase.enumType).equals(dataform.TableType.VIEW);
+            expect(exampleUsingOverriddenDatabase.enumType).equals(core.TargetType.VIEW);
             expect(exampleUsingOverriddenDatabase.query.trim()).equals(
               "select 1 as test_database_override"
             );
 
             // Check schema overrides defined in "config {}"
             const exampleUsingOverriddenSchema = graph.tables.find(
-              (t: dataform.ITable) =>
+              (t: core.Target) =>
                 targetAsReadableString(t.target) ===
                 dotJoined(
                   databaseWithSuffix("tada-analytics"),
@@ -540,14 +541,14 @@ suite("examples", () => {
               schemaWithSuffix("override_schema")
             );
             expect(exampleUsingOverriddenSchema.type).equals("view");
-            expect(exampleUsingOverriddenSchema.enumType).equals(dataform.TableType.VIEW);
+            expect(exampleUsingOverriddenSchema.enumType).equals(core.TargetType.VIEW);
             expect(exampleUsingOverriddenSchema.query.trim()).equals(
               "select 1 as test_schema_override"
             );
 
             // Check schema overrides defined in "config {}" -- case with schema unchanged
             const exampleUsingOverriddenSchemaUnchanged = graph.tables.find(
-              (t: dataform.ITable) =>
+              (t: core.Target) =>
                 targetAsReadableString(t.target) ===
                 dotJoined(
                   databaseWithSuffix("tada-analytics"),
@@ -560,14 +561,14 @@ suite("examples", () => {
               schemaWithSuffix("df_integration_test")
             );
             expect(exampleUsingOverriddenSchemaUnchanged.type).equals("view");
-            expect(exampleUsingOverriddenSchemaUnchanged.enumType).equals(dataform.TableType.VIEW);
+            expect(exampleUsingOverriddenSchemaUnchanged.enumType).equals(core.TargetType.VIEW);
             expect(exampleUsingOverriddenSchemaUnchanged.query.trim()).equals(
               "select 1 as test_schema_override"
             );
 
             // Check assertion
             const exampleAssertion = graph.assertions.find(
-              (a: dataform.IAssertion) =>
+              (a: core.Assertion) =>
                 targetAsReadableString(a.target) ===
                 dotJoined(
                   databaseWithSuffix("tada-analytics"),
@@ -584,7 +585,7 @@ suite("examples", () => {
               )}\` where sample = 100`
             );
             expect(exampleAssertion.dependencyTargets).eql([
-              dataform.Target.create({
+              core.Target.create({
                 database: databaseWithSuffix("tada-analytics"),
                 schema: schemaWithSuffix("df_integration_test"),
                 name: "sample_data"
@@ -599,7 +600,7 @@ suite("examples", () => {
 
             // Check Assertion with tags
             const exampleAssertionWithTags = graph.assertions.find(
-              (a: dataform.IAssertion) =>
+              (a: core.Assertion) =>
                 targetAsReadableString(a.target) ===
                 dotJoined(
                   databaseWithSuffix("tada-analytics"),
@@ -614,7 +615,7 @@ suite("examples", () => {
 
             // Check example operations file
             const exampleOperations = graph.operations.find(
-              (o: dataform.IOperation) =>
+              (o: core.Operation) =>
                 targetAsReadableString(o.target) ===
                 dotJoined(
                   databaseWithSuffix("tada-analytics"),
@@ -637,17 +638,17 @@ suite("examples", () => {
               )}\`\n`
             ]);
             expect(exampleOperations.dependencyTargets).eql([
-              dataform.Target.create({
+              core.Target.create({
                 database: databaseWithSuffix("tada-analytics"),
                 schema: schemaWithSuffix("override_schema"),
                 name: "override_schema_example"
               }),
-              dataform.Target.create({
+              core.Target.create({
                 database: databaseWithSuffix("override_database"),
                 schema: schemaWithSuffix("df_integration_test"),
                 name: "override_database_example"
               }),
-              dataform.Target.create({
+              core.Target.create({
                 database: databaseWithSuffix("tada-analytics"),
                 schema: schemaWithSuffix("df_integration_test"),
                 name: "sample_data"
@@ -657,7 +658,7 @@ suite("examples", () => {
 
             // Check example operation with output.
             const exampleOperationWithOutput = graph.operations.find(
-              (o: dataform.IOperation) =>
+              (o: core.Operation) =>
                 targetAsReadableString(o.target) ===
                 dotJoined(
                   databaseWithSuffix("tada-analytics"),
@@ -677,7 +678,7 @@ suite("examples", () => {
               )}\` AS (SELECT * FROM \`some_database_name.some_external_schema_name.very_important_external_table\`)`
             ]);
             expect(exampleOperationWithOutput.dependencyTargets).eql([
-              dataform.Target.create({
+              core.Target.create({
                 database: "some_database_name",
                 schema: "some_external_schema_name",
                 name: "very_important_external_table"
@@ -687,7 +688,7 @@ suite("examples", () => {
               dataform.ActionDescriptor.create({
                 description: "An example operations file which outputs a dataset.",
                 columns: [
-                  dataform.ColumnDescriptor.create({
+                  core.ColumnDescriptor.create({
                     description: "Just 1!",
                     path: ["TEST"]
                   })
@@ -697,7 +698,7 @@ suite("examples", () => {
 
             // Check Operation with tags
             const exampleOperationsWithTags = graph.operations.find(
-              (o: dataform.IOperation) =>
+              (o: core.Operation) =>
                 targetAsReadableString(o.target) ===
                 dotJoined(
                   databaseWithSuffix("tada-analytics"),
@@ -714,7 +715,7 @@ suite("examples", () => {
                 "some_database_name.some_external_schema_name.very_important_external_table"
             );
             expect(exampleDeclaration.target).eql(
-              dataform.Target.create({
+              core.Target.create({
                 database: "some_database_name",
                 schema: "some_external_schema_name",
                 name: "very_important_external_table"
@@ -743,7 +744,7 @@ suite("examples", () => {
 
             // Check double backslashes don't get converted to singular.
             const exampleDoubleBackslash = graph.tables.find(
-              (t: dataform.ITable) =>
+              (t: core.Target) =>
                 targetAsReadableString(t.target) ===
                 dotJoined(
                   databaseWithSuffix("tada-analytics"),
@@ -766,11 +767,11 @@ suite("examples", () => {
   test("backwards_compatibility", async () => {
     const graph = await compile({ projectDir: "examples/backwards_compatibility" });
 
-    const tableNames = graph.tables.map((t: dataform.ITable) => t.target.name);
+    const tableNames = graph.tables.map((t: core.Target) => t.target.name);
 
     // Make sure it compiles.
     expect(tableNames).includes("example");
-    const example = graph.tables.filter((t: dataform.ITable) => t.target.name === "example")[0];
+    const example = graph.tables.filter((t: core.Target) => t.target.name === "example")[0];
     expect(example.type).equals("table");
     expect(example.query.trim()).equals("select 1 as foo_bar");
 

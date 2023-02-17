@@ -1,12 +1,13 @@
 import * as dbadapters from "df/api/dbadapters";
 import { CancellablePromise } from "df/api/utils/cancellable_promise";
-import { dataform } from "df/protos/ts";
+import * as core from "df/protos/core";
+import * as execution from "df/protos/execution";
 
 export function run(
   dbadapter: dbadapters.IDbAdapter,
   query: string,
   options?: {
-    compileConfig?: dataform.ICompileConfig;
+    compileConfig?: dataform.CompileConfig;
     rowLimit?: number;
     byteLimit?: number;
   }
@@ -29,6 +30,6 @@ export function run(
 export async function evaluate(
   dbadapter: dbadapters.IDbAdapter,
   query: string
-): Promise<dataform.IQueryEvaluation> {
+): Promise<dataform.QueryEvaluation> {
   return (await dbadapter.evaluate(query))[0];
 }

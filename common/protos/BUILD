@@ -1,6 +1,7 @@
-package(default_visibility = ["//visibility:public"])
-
 load("//tools:ts_library.bzl", "ts_library")
+load("//testing:build_test.bzl", "build_test")
+
+package(default_visibility = ["//visibility:public"])
 
 ts_library(
     name = "protos",
@@ -8,13 +9,10 @@ ts_library(
         ["*.ts"],
     ),
     deps = [
-        "//:modules-fix",
+        "//:node_modules/protobufjs",
         "//common/strings",
-        "@npm//protobufjs",
     ],
 )
-
-load("//testing:build_test.bzl", "build_test")
 
 build_test(
     name = "build_test",

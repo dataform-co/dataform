@@ -5,7 +5,8 @@ import { CREDENTIALS_FILENAME } from "df/api/commands/credentials";
 import { install } from "df/api/commands/install";
 import { prettyJsonStringify } from "df/api/utils";
 import { version } from "df/core/version";
-import { dataform } from "df/protos/ts";
+import * as core from "df/protos/core";
+import * as execution from "df/protos/execution";
 
 const gitIgnoreContents = `
 ${CREDENTIALS_FILENAME}
@@ -24,7 +25,7 @@ export interface IInitOptions {
 
 export async function init(
   projectDir: string,
-  projectConfig: dataform.IProjectConfig,
+  projectConfig: core.ProjectConfig,
   options: IInitOptions = {}
 ): Promise<IInitResult> {
   const dataformJsonPath = path.join(projectDir, "dataform.json");
@@ -48,7 +49,7 @@ export async function init(
   fs.writeFileSync(
     dataformJsonPath,
     prettyJsonStringify(
-      dataform.ProjectConfig.create({
+      core.ProjectConfig.create({
         defaultSchema: "dataform",
         assertionSchema: "dataform_assertions",
         ...projectConfig

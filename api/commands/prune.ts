@@ -1,13 +1,14 @@
 import { targetAsReadableString } from "df/core/targets";
 import * as utils from "df/core/utils";
-import { dataform } from "df/protos/ts";
+import * as core from "df/protos/core";
+import * as execution from "df/protos/execution";
 
-type CompileAction = dataform.ITable | dataform.IOperation | dataform.IAssertion;
+type CompileAction = core.Target | core.Operation | core.Assertion;
 
 export function prune(
-  compiledGraph: dataform.ICompiledGraph,
-  runConfig: dataform.IRunConfig
-): dataform.ICompiledGraph {
+  compiledGraph: core.CompiledGraph,
+  runConfig: execution.RunConfig
+): core.CompiledGraph {
   compiledGraph.tables.forEach(utils.setOrValidateTableEnumType);
   const includedActionNames = computeIncludedActionNames(compiledGraph, runConfig);
   return {
@@ -25,11 +26,11 @@ export function prune(
 }
 
 function computeIncludedActionNames(
-  compiledGraph: dataform.ICompiledGraph,
-  runConfig: dataform.IRunConfig
+  compiledGraph: core.CompiledGraph,
+  runConfig: execution.RunConfig
 ): Set<string> {
   // Remove inline tables.
-  const filteredTables = compiledGraph.tables.filter(t => t.enumType !== dataform.TableType.INLINE);
+  const filteredTables = compiledGraph.tables.filter(t => t.enumType !== core.TargetType.INLINE);
 
   // Union all tables, operations, assertions.
   const allActions: CompileAction[] = [].concat(

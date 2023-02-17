@@ -8,7 +8,7 @@ import { build, compile, credentials, init, install, run, table, test } from "df
 import { CREDENTIALS_FILENAME } from "df/api/commands/credentials";
 import * as dbadapters from "df/api/dbadapters";
 import { prettyJsonStringify } from "df/api/utils";
-import {trackError, trackOption} from "df/cli/analytics";
+import { trackError, trackOption } from "df/cli/analytics";
 import {
   print,
   printCompiledGraph,
@@ -35,7 +35,8 @@ import { actuallyResolve, assertPathExists, compiledGraphHasErrors } from "df/cl
 import { createYargsCli, INamedOption } from "df/cli/yargswrapper";
 import { supportsCancel, WarehouseType } from "df/core/adapters";
 import { targetAsReadableString } from "df/core/targets";
-import { dataform } from "df/protos/ts";
+import * as core from "df/protos/core";
+import * as execution from "df/protos/execution";
 import { formatFile } from "df/sqlx/format";
 import parseDuration from "parse-duration";
 
@@ -181,7 +182,7 @@ const varsOptionName = "vars";
 const varsOption: INamedOption<yargs.Options> = {
   name: varsOptionName,
   option: {
-    describe: `Variables to inject via '--${varsOptionName}=someKey=someValue,a=b', referenced by \`dataform.projectConfig.vars.someValue\`.`,
+    describe: `Variables to inject via '--${varsOptionName}=someKey=someValue,a=b', referenced by \`core.ProjectConfig.vars.someValue\`.`,
     type: "string",
     default: null,
     coerce: (rawVarsString: string | null) => {
@@ -658,13 +659,13 @@ export function runCli() {
               runner.cancel();
             });
 
-            const actionsByName = new Map<string, dataform.IExecutionAction>();
+            const actionsByName = new Map<string, dataform.ExecutionAction>();
             executionGraph.actions.forEach(action => {
               actionsByName.set(targetAsReadableString(action.target), action);
             });
             const alreadyPrintedActions = new Set<string>();
 
-            const printExecutedGraph = (executedGraph: dataform.IRunResult) => {
+            const printExecutedGraph = (executedGraph: dataform.RunResult) => {
               executedGraph.actions
                 .filter(
                   actionResult =>

@@ -1,20 +1,21 @@
 import * as dbadapters from "df/api/dbadapters";
-import { dataform } from "df/protos/ts";
+import * as core from "df/protos/core";
+import * as execution from "df/protos/execution";
 
-export async function list(dbadapter: dbadapters.IDbAdapter): Promise<dataform.ITarget[]> {
+export async function list(dbadapter: dbadapters.IDbAdapter): Promise<core.Target[]> {
   return await dbadapter.tables();
 }
 
 export async function get(
   dbadapter: dbadapters.IDbAdapter,
-  target: dataform.ITarget
-): Promise<dataform.ITableMetadata> {
+  target: core.Target
+): Promise<execution.TableMetadata> {
   return await dbadapter.table(target);
 }
 
 export async function preview(
   dbadapter: dbadapters.IDbAdapter,
-  target: dataform.ITarget,
+  target: core.Target,
   limitRows?: number
 ): Promise<any[]> {
   return await dbadapter.preview(target, limitRows);

@@ -6,13 +6,14 @@ import { RedshiftDbAdapter } from "df/api/dbadapters/redshift";
 import { SnowflakeDbAdapter } from "df/api/dbadapters/snowflake";
 import { SQLDataWarehouseDBAdapter } from "df/api/dbadapters/sqldatawarehouse";
 import { QueryOrAction } from "df/core/adapters";
-import { dataform } from "df/protos/ts";
+import * as core from "df/protos/core";
+import * as execution from "df/protos/execution";
 
 export type OnCancel = (handleCancel: () => void) => void;
 
 export interface IExecutionResult {
   rows: any[];
-  metadata: dataform.IExecutionMetadata;
+  metadata: dataform.ExecutionMetadata;
 }
 
 export interface IDbClient {
@@ -33,20 +34,18 @@ export interface IDbClient {
 export interface IDbAdapter extends IDbClient {
   withClientLock<T>(callback: (client: IDbClient) => Promise<T>): Promise<T>;
 
-  evaluate(
-    queryOrAction: QueryOrAction,
-  ): Promise<dataform.IQueryEvaluation[]>;
+  evaluate(queryOrAction: QueryOrAction): Promise<dataform.QueryEvaluation[]>;
 
   schemas(database: string): Promise<string[]>;
   createSchema(database: string, schema: string): Promise<void>;
 
   // TODO: This should take parameters to allow for retrieving from a specific database/schema.
-  tables(): Promise<dataform.ITarget[]>;
-  search(searchText: string, options?: { limit: number }): Promise<dataform.ITableMetadata[]>;
-  table(target: dataform.ITarget): Promise<dataform.ITableMetadata>;
-  preview(target: dataform.ITarget, limitRows?: number): Promise<any[]>;
+  tables(): Promise<core.Target[]>;
+  search(searchText: string, options?: { limit: number }): Promise<execution.TableMetadata[]>;
+  table(target: core.Target): Promise<execution.TableMetadata>;
+  preview(target: core.Target, limitRows?: number): Promise<any[]>;
 
-  setMetadata(action: dataform.IExecutionAction): Promise<void>;
+  setMetadata(action: dataform.ExecutionAction): Promise<void>;
 
   close(): Promise<void>;
 }

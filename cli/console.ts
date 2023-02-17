@@ -1,7 +1,8 @@
 import { IInitResult } from "df/api/commands/init";
 import { prettyJsonStringify } from "df/api/utils";
 import { setOrValidateTableEnumType, tableTypeEnumToString } from "df/core/utils";
-import { dataform } from "df/protos/ts";
+import * as core from "df/protos/core";
+import * as execution from "df/protos/execution";
 import * as readlineSync from "readline-sync";
 
 // Uses ANSI escape color codes.
@@ -102,7 +103,7 @@ export function printInitCredsResult(writtenFilePath: string) {
   writeStdOut("To change connection settings, edit this file directly.");
 }
 
-export function printCompiledGraph(graph: dataform.ICompiledGraph, verbose: boolean) {
+export function printCompiledGraph(graph: core.CompiledGraph, verbose: boolean) {
   if (verbose) {
     writeStdOut(prettyJsonStringify(graph));
   } else {
@@ -117,7 +118,11 @@ export function printCompiledGraph(graph: dataform.ICompiledGraph, verbose: bool
       writeStdOut(`${graph.tables.length} dataset(s):`);
       graph.tables.forEach(compiledTable => {
         writeStdOut(
-          `${datasetString(compiledTable.target, tableTypeEnumToString(compiledTable.enumType), compiledTable.disabled)}`,
+          `${datasetString(
+            compiledTable.target,
+            tableTypeEnumToString(compiledTable.enumType),
+            compiledTable.disabled
+          )}`,
           1
         );
       });
@@ -137,7 +142,7 @@ export function printCompiledGraph(graph: dataform.ICompiledGraph, verbose: bool
   }
 }
 
-export function printCompiledGraphErrors(graphErrors: dataform.IGraphErrors) {
+export function printCompiledGraphErrors(graphErrors: dataform.GraphErrors) {
   if (graphErrors.compilationErrors && graphErrors.compilationErrors.length > 0) {
     printError("Compilation errors:", 1);
     graphErrors.compilationErrors.forEach(compileError => {
@@ -151,7 +156,7 @@ export function printCompiledGraphErrors(graphErrors: dataform.IGraphErrors) {
   }
 }
 
-export function printTestResult(testResult: dataform.ITestResult) {
+export function printTestResult(testResult: dataform.TestResult) {
   writeStdOut(
     `${testResult.name}: ${testResult.successful ? successOutput("passed") : errorOutput("failed")}`
   );
@@ -165,9 +170,9 @@ export function printExecutionGraph(executionGraph: dataform.ExecutionGraph, ver
     writeStdOut(prettyJsonStringify(executionGraph.toJSON()));
   } else {
     const actionsByType = {
-      table: [] as dataform.IExecutionAction[],
-      assertion: [] as dataform.IExecutionAction[],
-      operation: [] as dataform.IExecutionAction[]
+      table: [] as dataform.ExecutionAction[],
+      assertion: [] as dataform.ExecutionAction[],
+      operation: [] as dataform.ExecutionAction[]
     };
     executionGraph.actions.forEach(action => {
       if (
@@ -205,8 +210,8 @@ export function printExecutionGraph(executionGraph: dataform.ExecutionGraph, ver
 }
 
 export function printExecutedAction(
-  executedAction: dataform.IActionResult,
-  executionAction: dataform.IExecutionAction
+  executedAction: dataform.ActionResult,
+  executionAction: dataform.ExecutionAction
 ) {
   switch (executedAction.status) {
     case dataform.ActionResult.ExecutionStatus.SUCCESSFUL: {
@@ -365,33 +370,33 @@ export function printFormatFilesResult(
   }
 }
 
-export function printListTablesResult(tables: dataform.ITarget[]) {
+export function printListTablesResult(tables: core.Target[]) {
   tables.forEach(foundTable => writeStdOut(`${foundTable.schema}.${foundTable.name}`));
 }
 
-export function printGetTableResult(tableMetadata: dataform.ITableMetadata) {
+export function printGetTableResult(tableMetadata: execution.TableMetadata) {
   writeStdOut(prettyJsonStringify(tableMetadata));
 }
 
-function datasetString(target: dataform.ITarget, datasetType: string, disabled: boolean) {
+function datasetString(target: core.Target, datasetType: string, disabled: boolean) {
   return `${targetString(target)} [${datasetType}]${disabled ? " [disabled]" : ""}`;
 }
 
-function assertionString(target: dataform.ITarget, disabled: boolean) {
+function assertionString(target: core.Target, disabled: boolean) {
   return `${targetString(target)}${disabled ? " [disabled]" : ""}`;
 }
 
-function operationString(target: dataform.ITarget, disabled: boolean) {
+function operationString(target: core.Target, disabled: boolean) {
   return `${targetString(target)}${disabled ? " [disabled]" : ""}`;
 }
 
-function targetString(target: dataform.ITarget) {
+function targetString(target: core.Target) {
   return calloutOutput(`${target.schema}.${target.name}`);
 }
 
 function printExecutedActionErrors(
-  executedAction: dataform.IActionResult,
-  executionAction: dataform.IExecutionAction
+  executedAction: dataform.ActionResult,
+  executionAction: dataform.ExecutionAction
 ) {
   const failingTasks = executedAction.tasks.filter(
     task => task.status === dataform.ActionResult.ExecutionStatus.FAILED

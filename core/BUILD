@@ -22,14 +22,14 @@ ts_library(
     name = "core",
     srcs = glob(["**/*.ts"]) + [":version.ts"],
     deps = [
+        "//:node_modules/@types/semver",
+        "//:node_modules/protobufjs",
+        "//:node_modules/semver",
+        "//:node_modules/tarjan-graph",
         "//common/errors",
         "//common/protos",
         "//common/strings",
         "//protos:ts",
         "//sqlx",
-        "@npm//@types/semver",
-        "@npm//protobufjs",
-        "@npm//semver",
-        "@npm//tarjan-graph",
     ],
 )

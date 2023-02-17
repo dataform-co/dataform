@@ -5,7 +5,8 @@ import * as dbadapters from "df/api/dbadapters";
 import * as adapters from "df/core/adapters";
 import { SQLDataWarehouseAdapter } from "df/core/adapters/sqldatawarehouse";
 import { targetToName } from "df/core/utils";
-import { dataform } from "df/protos/ts";
+import * as core from "df/protos/core";
+import * as execution from "df/protos/execution";
 import { suite, test } from "df/testing";
 import { compile, dropAllTables, getTableRows, keyBy } from "df/tests/integration/utils";
 
@@ -156,7 +157,7 @@ suite("@dataform/integration/sqldatawarehouse", { parallel: true }, ({ before, a
       const view = keyBy(compiledGraph.tables, t => targetToName(t.target))[
         "df_integration_test_evaluate.example_view"
       ];
-      let evaluations = await dbadapter.evaluate(dataform.Table.create(view));
+      let evaluations = await dbadapter.evaluate(core.Target.create(view));
       expect(evaluations.length).to.equal(1);
       expect(evaluations[0].status).to.equal(
         dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
@@ -165,7 +166,7 @@ suite("@dataform/integration/sqldatawarehouse", { parallel: true }, ({ before, a
       const table = keyBy(compiledGraph.tables, t => targetToName(t.target))[
         "df_integration_test_evaluate.example_table"
       ];
-      evaluations = await dbadapter.evaluate(dataform.Table.create(table));
+      evaluations = await dbadapter.evaluate(core.Target.create(table));
       expect(evaluations.length).to.equal(1);
       expect(evaluations[0].status).to.equal(
         dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
@@ -174,7 +175,7 @@ suite("@dataform/integration/sqldatawarehouse", { parallel: true }, ({ before, a
       const assertion = keyBy(compiledGraph.assertions, t => targetToName(t.target))[
         "df_integration_test_assertions_evaluate.example_assertion_pass"
       ];
-      evaluations = await dbadapter.evaluate(dataform.Assertion.create(assertion));
+      evaluations = await dbadapter.evaluate(core.Assertion.create(assertion));
       expect(evaluations.length).to.equal(1);
       expect(evaluations[0].status).to.equal(
         dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
@@ -183,7 +184,7 @@ suite("@dataform/integration/sqldatawarehouse", { parallel: true }, ({ before, a
       const incremental = keyBy(compiledGraph.tables, t => targetToName(t.target))[
         "df_integration_test_evaluate.example_incremental"
       ];
-      evaluations = await dbadapter.evaluate(dataform.Table.create(incremental));
+      evaluations = await dbadapter.evaluate(core.Target.create(incremental));
       expect(evaluations.length).to.equal(2);
       expect(evaluations[0].status).to.equal(
         dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
@@ -195,8 +196,8 @@ suite("@dataform/integration/sqldatawarehouse", { parallel: true }, ({ before, a
 
     test("invalid table fails validation and error parsed correctly", async () => {
       const evaluations = await dbadapter.evaluate(
-        dataform.Table.create({
-          enumType: dataform.TableType.TABLE,
+        core.Target.create({
+          enumType: core.TargetType.TABLE,
           query: "selects\n1 as x",
           target: {
             schema: "df_integration_test",
@@ -218,8 +219,8 @@ suite("@dataform/integration/sqldatawarehouse", { parallel: true }, ({ before, a
   suite("publish tasks", async () => {
     test("incremental pre and post ops, core version <= 1.4.8", async () => {
       // 1.4.8 used `preOps` and `postOps` instead of `incrementalPreOps` and `incrementalPostOps`.
-      const table: dataform.ITable = {
-        enumType: dataform.TableType.INCREMENTAL,
+      const table: core.Target = {
+        enumType: core.TargetType.INCREMENTAL,
         query: "query",
         preOps: ["preop task1", "preop task2"],
         incrementalQuery: "",

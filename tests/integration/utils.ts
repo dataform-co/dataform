@@ -3,7 +3,8 @@ import { expect } from "chai";
 import * as dfapi from "df/api";
 import * as dbadapters from "df/api/dbadapters";
 import * as adapters from "df/core/adapters";
-import { dataform } from "df/protos/ts";
+import * as core from "df/protos/core";
+import * as execution from "df/protos/execution";
 
 export function keyBy<V>(values: V[], keyFn: (value: V) => string): { [key: string]: V } {
   return values.reduce((map, value) => {
@@ -13,7 +14,7 @@ export function keyBy<V>(values: V[], keyFn: (value: V) => string): { [key: stri
 }
 
 export async function dropAllTables(
-  tables: dataform.ITableMetadata[],
+  tables: execution.TableMetadata[],
   adapter: adapters.IAdapter,
   dbadapter: dbadapters.IDbAdapter
 ) {
@@ -23,7 +24,7 @@ export async function dropAllTables(
 }
 
 export async function getTableRows(
-  target: dataform.ITarget,
+  target: core.Target,
   adapter: adapters.IAdapter,
   dbadapter: dbadapters.IDbAdapter
 ) {
@@ -33,7 +34,7 @@ export async function getTableRows(
 export async function compile(
   projectDir: string,
   schemaSuffixOverride: string,
-  projectConfigOverrides?: dataform.IProjectConfig
+  projectConfigOverrides?: core.ProjectConfig
 ) {
   const compiledGraph = await dfapi.compile({
     projectDir,

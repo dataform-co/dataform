@@ -21,25 +21,26 @@ import * as test from "df/core/test";
 import * as utils from "df/core/utils";
 import { setOrValidateTableEnumType, toResolvable } from "df/core/utils";
 import { version as dataformCoreVersion } from "df/core/version";
-import { dataform } from "df/protos/ts";
+import * as core from "df/protos/core";
+import * as execution from "df/protos/execution";
 
 const SQL_DATA_WAREHOUSE_DIST_HASH_REGEXP = new RegExp("HASH\\s*\\(\\s*\\w*\\s*\\)\\s*");
 
-const DEFAULT_CONFIG = {
+const DEFAULT_CONFIG = core.ProjectConfig.create({
   defaultSchema: "dataform",
   assertionSchema: "dataform_assertions"
-};
+});
 
 /**
  * @hidden
  */
 export interface IActionProto {
   fileName?: string;
-  dependencyTargets?: dataform.ITarget[];
-  hermeticity?: dataform.ActionHermeticity;
-  target?: dataform.ITarget;
-  canonicalTarget?: dataform.ITarget;
-  parentAction?: dataform.ITarget;
+  dependencyTargets?: core.Target[];
+  hermeticity?: core.ActionHermeticity;
+  target?: core.Target;
+  canonicalTarget?: core.Target;
+  parentAction?: core.Target;
 }
 
 type SqlxConfig = (
@@ -58,27 +59,27 @@ type Action = Table | Operation | Assertion | Declaration;
 export class Session {
   public rootDir: string;
 
-  public config: dataform.IProjectConfig;
-  public canonicalConfig: dataform.IProjectConfig;
+  public config: core.ProjectConfig;
+  public canonicalConfig: core.ProjectConfig;
 
   public actions: Action[];
   public indexedActions: ActionIndex;
   public tests: { [name: string]: test.Test };
 
-  public graphErrors: dataform.IGraphErrors;
+  public graphErrors: core.GraphErrors;
 
   constructor(
     rootDir?: string,
-    projectConfig?: dataform.IProjectConfig,
-    originalProjectConfig?: dataform.IProjectConfig
+    projectConfig?: core.ProjectConfig,
+    originalProjectConfig?: core.ProjectConfig
   ) {
     this.init(rootDir, projectConfig, originalProjectConfig);
   }
 
   public init(
     rootDir: string,
-    projectConfig?: dataform.IProjectConfig,
-    originalProjectConfig?: dataform.IProjectConfig
+    projectConfig?: core.ProjectConfig,
+    originalProjectConfig?: core.ProjectConfig
   ) {
     this.rootDir = rootDir;
     this.config = projectConfig || DEFAULT_CONFIG;
@@ -87,11 +88,11 @@ export class Session {
     );
     this.actions = [];
     this.tests = {};
-    this.graphErrors = { compilationErrors: [] };
+    this.graphErrors = core.GraphErrors.create({ compilationErrors: [] });
   }
 
   public get projectConfig(): Pick<
-    dataform.IProjectConfig,
+    core.ProjectConfig,
     | "warehouse"
     | "defaultDatabase"
     | "defaultSchema"
@@ -199,11 +200,13 @@ export class Session {
           .queries(actionOptions.sqlContextable);
         break;
       case "declaration":
-        this.declare({
-          database: sqlxConfig.database,
-          schema: sqlxConfig.schema,
-          name: sqlxConfig.name
-        }).config(sqlxConfig);
+        this.declare(
+          core.Target.create({
+            database: sqlxConfig.database,
+            schema: sqlxConfig.schema,
+            name: sqlxConfig.name
+          })
+        ).config(sqlxConfig);
         break;
       case "test":
         const testCase = this.test(sqlxConfig.name)
@@ -226,7 +229,11 @@ export class Session {
     }
     const resolved = allResolved.length > 0 ? allResolved[0] : undefined;
 
-    if (resolved && resolved instanceof Table && resolved.proto.enumType === dataform.TableType.INLINE) {
+    if (
+      resolved &&
+      resolved instanceof Table &&
+      resolved.proto.enumType === core.TableType.INLINE
+    ) {
       // TODO: Pretty sure this is broken as the proto.query value may not
       // be set yet as it happens during compilation. We should evalute the query here.
       return `(${resolved.proto.query})`;
@@ -244,10 +251,9 @@ export class Session {
       return this.adapter().resolveTarget({
         ...resolved.proto.target,
         database:
-          resolved.proto.target.database &&
-          this.finalizeDatabase(resolved.proto.target.database),
+          resolved.proto.target.database && this.finalizeDatabase(resolved.proto.target.database),
         schema: this.finalizeSchema(resolved.proto.target.schema),
-        name: this.finalizeName(resolved.proto.target.name),
+        name: this.finalizeName(resolved.proto.target.name)
       });
     }
     // TODO: Here we allow 'ref' to go unresolved. This is for backwards compatibility with projects
@@ -262,8 +268,7 @@ export class Session {
           this.config,
           this.finalizeName(ref),
           this.finalizeSchema(this.config.defaultSchema),
-          this.config.defaultDatabase &&
-            this.finalizeDatabase(this.config.defaultDatabase),
+          this.config.defaultDatabase && this.finalizeDatabase(this.config.defaultDatabase)
         )
       );
     }
@@ -273,7 +278,7 @@ export class Session {
         this.config,
         this.finalizeName(ref.name),
         this.finalizeSchema(ref.schema),
-        ref.database && this.finalizeName(ref.database),
+        ref.database && this.finalizeName(ref.database)
       )
     );
   }
@@ -324,7 +329,7 @@ export class Session {
     return assertion;
   }
 
-  public declare(dataset: dataform.ITarget): Declaration {
+  public declare(dataset: core.Target): Declaration {
     const declaration = new Declaration();
     declaration.session = this;
     utils.setNameAndTarget(this, declaration.proto, dataset.name, dataset.schema, dataset.database);
@@ -343,10 +348,10 @@ export class Session {
     return newTest;
   }
 
-  public compileError(err: Error | string, path?: string, actionTarget?: dataform.ITarget) {
+  public compileError(err: Error | string, path?: string, actionTarget?: core.Target) {
     const fileName = path || utils.getCallerFile(this.rootDir) || __filename;
 
-    const compileError = dataform.CompilationError.create({
+    const compileError = core.CompilationError.create({
       fileName,
       actionName: !!actionTarget ? targetAsReadableString(actionTarget) : undefined,
       actionTarget
@@ -360,7 +365,7 @@ export class Session {
     this.graphErrors.compilationErrors.push(compileError);
   }
 
-  public compile(): dataform.CompiledGraph {
+  public compile(): core.CompiledGraph {
     this.indexedActions = new ActionIndex(this.adapter(), this.actions);
 
     if (this.config.warehouse === "bigquery" && !this.config.defaultLocation) {
@@ -370,31 +375,35 @@ export class Session {
       );
     }
     if (
-      !!this.config.vars && 
-      !Object.values(this.config.vars).every((value) => typeof value === 'string')
+      !!this.config.vars &&
+      !Object.values(this.config.vars).every(value => typeof value === "string")
     ) {
       throw new Error("Custom variables defined in dataform.json can only be strings.");
     }
 
-    const compiledGraph = dataform.CompiledGraph.create({
+    const compiledGraph = core.CompiledGraph.create({
       projectConfig: this.config,
       tables: this.compileGraphChunk(
-        this.actions.filter(action => action instanceof Table),
-        dataform.Table.verify
+        this.actions.filter(action => action instanceof Table) as Table[],
+        (proto: Table) => core.Table.create(proto as any) as any
+      ),
+      operations: this.compileGraphChunk(
+        this.actions.filter(action => action instanceof Table) as Table[],
+        (table: Table) => core.Table.create(table as any)
       ),
       operations: this.compileGraphChunk(
         this.actions.filter(action => action instanceof Operation),
-        dataform.Operation.verify
+        core.Operation.verify
       ),
       assertions: this.compileGraphChunk(
         this.actions.filter(action => action instanceof Assertion),
-        dataform.Assertion.verify
+        core.Assertion.verify
       ),
       declarations: this.compileGraphChunk(
         this.actions.filter(action => action instanceof Declaration),
-        dataform.Declaration.verify
+        core.Declaration.verify
       ),
-      tests: this.compileGraphChunk(Object.values(this.tests), dataform.Test.verify),
+      tests: this.compileGraphChunk(Object.values(this.tests), core.Test.verify),
       graphErrors: this.graphErrors,
       dataformCoreVersion,
       targets: this.actions.map(action => action.proto.target)
@@ -429,27 +438,26 @@ export class Session {
       );
     }
 
-    utils.throwIfInvalid(compiledGraph, dataform.CompiledGraph.verify);
+    utils.throwIfInvalid(compiledGraph, core.CompiledGraph.verify);
     return compiledGraph;
   }
 
   public compileToBase64() {
-    return encode64(dataform.CompiledGraph, this.compile());
+    return encode64(core.CompiledGraph, this.compile());
   }
 
   public finalizeDatabase(database: string): string {
     return this.adapter().normalizeIdentifier(
-      `${database}${this.getDatabaseSuffixWithUnderscore()}`);
+      `${database}${this.getDatabaseSuffixWithUnderscore()}`
+    );
   }
 
   public finalizeSchema(schema: string): string {
-    return this.adapter().normalizeIdentifier(
-      `${schema}${this.getSchemaSuffixWithUnderscore()}`);
+    return this.adapter().normalizeIdentifier(`${schema}${this.getSchemaSuffixWithUnderscore()}`);
   }
 
   public finalizeName(name: string): string {
-    return this.adapter().normalizeIdentifier(
-      `${this.getTablePrefixWithUnderscore()}${name}`);
+    return this.adapter().normalizeIdentifier(`${this.getTablePrefixWithUnderscore()}${name}`);
   }
 
   private getDatabaseSuffixWithUnderscore() {
@@ -466,7 +474,7 @@ export class Session {
 
   private compileGraphChunk<T>(
     actions: Array<{ proto: IActionProto; compile(): T }>,
-    verify: (proto: T) => string
+    verify: (proto: T) => any
   ): T[] {
     const compiledChunks: T[] = [];
 
@@ -474,6 +482,7 @@ export class Session {
       try {
         const compiledChunk = action.compile();
         utils.throwIfInvalid(compiledChunk, verify);
+
         compiledChunks.push(compiledChunk);
       } catch (e) {
         this.compileError(e, action.proto.fileName, action.proto.target);
@@ -485,7 +494,7 @@ export class Session {
 
   private fullyQualifyDependencies(actions: IActionProto[]) {
     actions.forEach(action => {
-      const fullyQualifiedDependencies: { [name: string]: dataform.ITarget } = {};
+      const fullyQualifiedDependencies: { [name: string]: core.Target } = {};
       for (const dependency of action.dependencyTargets) {
         const possibleDeps = this.indexedActions.find(dependency);
         if (possibleDeps.length === 0) {
@@ -503,7 +512,7 @@ export class Session {
           // We found a single matching target, and fully-qualify it if it's a normal dependency,
           // or add all of its dependencies to ours if it's an 'inline' table.
           const protoDep = possibleDeps[0].proto;
-          if (protoDep instanceof dataform.Table && protoDep.enumType === dataform.TableType.INLINE) {
+          if (protoDep instanceof core.Target && protoDep.enumType === core.TargetType.INLINE) {
             protoDep.dependencyTargets.forEach(inlineDep =>
               action.dependencyTargets.push(inlineDep)
             );
@@ -523,14 +532,14 @@ export class Session {
     });
   }
 
-  private alterActionName(actions: IActionProto[], declarationTargets: dataform.ITarget[]) {
+  private alterActionName(actions: IActionProto[], declarationTargets: core.Target[]) {
     const { tablePrefix, schemaSuffix, databaseSuffix } = this.config;
 
     if (!tablePrefix && !schemaSuffix && !databaseSuffix) {
       return;
     }
 
-    const newTargetByOriginalTarget = new StringifiedMap<dataform.ITarget, dataform.ITarget>(
+    const newTargetByOriginalTarget = new StringifiedMap<core.Target, core.Target>(
       targetStringifier
     );
     declarationTargets.forEach(declarationTarget =>
@@ -556,7 +565,7 @@ export class Session {
     });
 
     // Fix up dependencies in case those dependencies' names have changed.
-    const getUpdatedTarget = (originalTarget: dataform.ITarget) => {
+    const getUpdatedTarget = (originalTarget: core.Target) => {
       // It's possible that we don't have a new Target for a dependency that failed to compile,
       // so fall back to the original Target.
       if (!newTargetByOriginalTarget.has(originalTarget)) {
@@ -573,10 +582,10 @@ export class Session {
     });
   }
 
-  private checkTableConfigValidity(tables: dataform.ITable[]) {
+  private checkTableConfigValidity(tables: core.Table[]) {
     tables.forEach(table => {
       // type
-      if (table.enumType === dataform.TableType.UNKNOWN_TYPE) {
+      if (table.enumType === core.TableType.UNKNOWN_TYPE) {
         this.compileError(
           `Wrong type of table detected. Should only use predefined types: ${joinQuoted(
             TableType
@@ -589,7 +598,7 @@ export class Session {
       // materialized
       if (!!table.materialized) {
         if (
-          table.enumType !== dataform.TableType.VIEW ||
+          table.enumType !== core.TableType.VIEW ||
           (this.config.warehouse !== "snowflake" && this.config.warehouse !== "bigquery")
         ) {
           this.compileError(
@@ -602,7 +611,7 @@ export class Session {
 
       // snowflake config
       if (!!table.snowflake) {
-        if (table.snowflake.secure && table.enumType !== dataform.TableType.VIEW) {
+        if (table.snowflake.secure && table.enumType !== core.TableType.VIEW) {
           this.compileError(
             new Error(`The 'secure' option is only valid for Snowflake views`),
             table.fileName,
@@ -610,7 +619,7 @@ export class Session {
           );
         }
 
-        if (table.snowflake.transient && table.enumType !== dataform.TableType.TABLE) {
+        if (table.snowflake.transient && table.enumType !== core.TableType.TABLE) {
           this.compileError(
             new Error(`The 'transient' option is only valid for Snowflake tables`),
             table.fileName,
@@ -620,8 +629,8 @@ export class Session {
 
         if (
           table.snowflake.clusterBy?.length > 0 &&
-          table.enumType !== dataform.TableType.TABLE &&
-          table.enumType !== dataform.TableType.INCREMENTAL
+          table.enumType !== core.TableType.TABLE &&
+          table.enumType !== core.TableType.INCREMENTAL
         ) {
           this.compileError(
             new Error(`The 'clusterBy' option is only valid for Snowflake tables`),
@@ -662,8 +671,8 @@ export class Session {
       // Redshift config
       if (!!table.redshift) {
         const validatePropertyDefined = (
-          opts: dataform.IRedshiftOptions,
-          prop: keyof dataform.IRedshiftOptions
+          opts: core.RedshiftOptions,
+          prop: keyof core.RedshiftOptions
         ) => {
           const value = opts[prop];
           if (!opts.hasOwnProperty(prop)) {
@@ -675,12 +684,12 @@ export class Session {
           }
         };
         const validatePropertiesDefined = (
-          opts: dataform.IRedshiftOptions,
-          props: Array<keyof dataform.IRedshiftOptions>
+          opts: core.RedshiftOptions,
+          props: Array<keyof core.RedshiftOptions>
         ) => props.forEach(prop => validatePropertyDefined(opts, prop));
         const validatePropertyValueInValues = (
-          opts: dataform.IRedshiftOptions,
-          prop: keyof dataform.IRedshiftOptions & ("distStyle" | "sortStyle"),
+          opts: core.RedshiftOptions,
+          prop: keyof core.RedshiftOptions & ("distStyle" | "sortStyle"),
           values: readonly string[]
         ) => {
           if (!!opts[prop] && !values.includes(opts[prop])) {
@@ -714,7 +723,7 @@ export class Session {
             table.bigquery.clusterBy?.length ||
             table.bigquery.partitionExpirationDays ||
             table.bigquery.requirePartitionFilter) &&
-          table.enumType === dataform.TableType.VIEW
+          table.enumType === core.TableType.VIEW
         ) {
           this.compileError(
             `partitionBy/clusterBy/requirePartitionFilter/partitionExpirationDays are not valid for BigQuery views; they are only valid for tables`,
@@ -724,7 +733,7 @@ export class Session {
         } else if (
           !table.bigquery.partitionBy &&
           (table.bigquery.partitionExpirationDays || table.bigquery.requirePartitionFilter) &&
-          table.enumType === dataform.TableType.TABLE
+          table.enumType === core.TableType.TABLE
         ) {
           this.compileError(
             `requirePartitionFilter/partitionExpirationDays are not valid for non partitioned BigQuery tables`,
@@ -756,7 +765,7 @@ export class Session {
       }
 
       // Ignored properties
-      if (table.enumType === dataform.TableType.INLINE) {
+      if (table.enumType === core.TableType.INLINE) {
         Table.INLINE_IGNORED_PROPS.forEach(ignoredProp => {
           if (objectExistsOrIsNonEmpty(table[ignoredProp])) {
             this.compileError(
@@ -770,7 +779,7 @@ export class Session {
     });
   }
 
-  private checkTestNameUniqueness(tests: dataform.ITest[]) {
+  private checkTestNameUniqueness(tests: core.Test[]) {
     const allNames: string[] = [];
     tests.forEach(testProto => {
       if (allNames.includes(testProto.name)) {
@@ -815,7 +824,7 @@ export class Session {
         return;
       }
       if (
-        [dataform.ActionHermeticity.HERMETIC, dataform.ActionHermeticity.NON_HERMETIC].includes(
+        [core.ActionHermeticity.HERMETIC, core.ActionHermeticity.NON_HERMETIC].includes(
           action.hermeticity
         )
       ) {
@@ -831,10 +840,10 @@ export class Session {
     });
   }
 
-  private removeNonUniqueActionsFromCompiledGraph(compiledGraph: dataform.CompiledGraph) {
-    function getNonUniqueTargets(targets: dataform.ITarget[]): StringifiedSet<dataform.ITarget> {
-      const allTargets = new StringifiedSet<dataform.ITarget>(targetStringifier);
-      const nonUniqueTargets = new StringifiedSet<dataform.ITarget>(targetStringifier);
+  private removeNonUniqueActionsFromCompiledGraph(compiledGraph: core.CompiledGraph) {
+    function getNonUniqueTargets(targets: core.Target[]): StringifiedSet<core.Target> {
+      const allTargets = new StringifiedSet<core.Target>(targetStringifier);
+      const nonUniqueTargets = new StringifiedSet<core.Target>(targetStringifier);
 
       targets.forEach(target => {
         if (allTargets.has(target)) {
@@ -903,13 +912,13 @@ function definesDataset(type: string) {
   return type === "view" || type === "table" || type === "inline" || type === "incremental";
 }
 
-function getCanonicalProjectConfig(originalProjectConfig: dataform.IProjectConfig) {
-  return {
+function getCanonicalProjectConfig(originalProjectConfig: core.ProjectConfig): core.ProjectConfig {
+  return core.ProjectConfig.create({
     warehouse: originalProjectConfig.warehouse,
     defaultSchema: originalProjectConfig.defaultSchema,
     defaultDatabase: originalProjectConfig.defaultDatabase,
     assertionSchema: originalProjectConfig.assertionSchema
-  };
+  });
 }
 
 function joinQuoted(values: readonly string[]) {
@@ -979,7 +988,7 @@ class ActionIndex {
     }
   }
 
-  public find(target: dataform.ITarget) {
+  public find(target: core.Target) {
     if (!!target.database) {
       if (!!target.schema) {
         return (

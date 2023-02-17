@@ -7,57 +7,61 @@ import { retry } from "df/common/promises";
 import { deepClone, equals } from "df/common/protos";
 import { StringifiedMap, StringifiedSet } from "df/common/strings/stringifier";
 import { targetsAreEqual, targetStringifier } from "df/core/targets";
-import { dataform } from "df/protos/ts";
+import * as core from "df/protos/core";
+import * as execution from "df/protos/execution";
 
 const CANCEL_EVENT = "jobCancel";
 const flags = {
   runnerNotificationPeriodMillis: Flags.number("runner-notification-period-millis", 5000)
 };
 
-const isSuccessfulAction = (actionResult: dataform.IActionResult) =>
+const isSuccessfulAction = (actionResult: dataform.ActionResult) =>
   actionResult.status === dataform.ActionResult.ExecutionStatus.SUCCESSFUL ||
   actionResult.status === dataform.ActionResult.ExecutionStatus.DISABLED;
 
 export interface IExecutedAction {
-  executionAction: dataform.IExecutionAction;
-  actionResult: dataform.IActionResult;
+  executionAction: dataform.ExecutionAction;
+  actionResult: dataform.ActionResult;
 }
 
 export function run(
   dbadapter: dbadapters.IDbAdapter,
-  graph: dataform.IExecutionGraph,
-  partiallyExecutedRunResult: dataform.IRunResult = {},
+  graph: dataform.ExecutionGraph,
+  partiallyExecutedRunResult: dataform.RunResult = {},
   runnerNotificationPeriodMillis: number = flags.runnerNotificationPeriodMillis.get()
 ): Runner {
-  return new Runner(dbadapter, graph, partiallyExecutedRunResult, runnerNotificationPeriodMillis).execute();
+  return new Runner(
+    dbadapter,
+    graph,
+    partiallyExecutedRunResult,
+    runnerNotificationPeriodMillis
+  ).execute();
 }
 
 export class Runner {
-  private readonly warehouseStateByTarget: StringifiedMap<
-    dataform.ITarget,
-    dataform.ITableMetadata
-  >;
+  private readonly warehouseStateByTarget: StringifiedMap<core.Target, execution.TableMetadata>;
 
-  private readonly allActionTargets: StringifiedSet<dataform.ITarget>;
-  private readonly runResult: dataform.IRunResult;
-  private readonly changeListeners: Array<(graph: dataform.IRunResult) => void> = [];
+  private readonly allActionTargets: StringifiedSet<core.Target>;
+  private readonly runResult: dataform.RunResult;
+  private readonly changeListeners: Array<(graph: dataform.RunResult) => void> = [];
   private readonly eEmitter: EventEmitter;
-  private executedActionTargets: StringifiedSet<dataform.ITarget>;
-  private successfullyExecutedActionTargets: StringifiedSet<dataform.ITarget>;
-  private pendingActions: dataform.IExecutionAction[];
+  private executedActionTargets: StringifiedSet<core.Target>;
+  private successfullyExecutedActionTargets: StringifiedSet<core.Target>;
+  private pendingActions: dataform.ExecutionAction[];
   private lastNotificationTimestampMillis = 0;
   private stopped = false;
   private cancelled = false;
   private timeout: NodeJS.Timer;
   private timedOut = false;
-  private executionTask: Promise<dataform.IRunResult>;
+  private executionTask: Promise<dataform.RunResult>;
 
   constructor(
     private readonly dbadapter: dbadapters.IDbAdapter,
-    private readonly graph: dataform.IExecutionGraph,
-    partiallyExecutedRunResult: dataform.IRunResult = {},
-    private readonly runnerNotificationPeriodMillis: number = flags.runnerNotificationPeriodMillis.get()) {
-    this.allActionTargets = new StringifiedSet<dataform.ITarget>(
+    private readonly graph: dataform.ExecutionGraph,
+    partiallyExecutedRunResult: dataform.RunResult = {},
+    private readonly runnerNotificationPeriodMillis: number = flags.runnerNotificationPeriodMillis.get()
+  ) {
+    this.allActionTargets = new StringifiedSet<core.Target>(
       targetStringifier,
       graph.actions.map(action => action.target)
     );
@@ -87,7 +91,7 @@ export class Runner {
     this.eEmitter.setMaxListeners(0);
   }
 
-  public onChange(listener: (graph: dataform.IRunResult) => void): Runner {
+  public onChange(listener: (graph: dataform.RunResult) => void): Runner {
     this.changeListeners.push(listener);
     return this;
   }
@@ -119,7 +123,7 @@ export class Runner {
     this.eEmitter.emit(CANCEL_EVENT);
   }
 
-  public async result(): Promise<dataform.IRunResult> {
+  public async result(): Promise<dataform.RunResult> {
     try {
       return await this.executionTask;
     } finally {
@@ -130,10 +134,7 @@ export class Runner {
   }
 
   private notifyListeners() {
-    if (
-      Date.now() - this.runnerNotificationPeriodMillis <
-      this.lastNotificationTimestampMillis
-    ) {
+    if (Date.now() - this.runnerNotificationPeriodMillis < this.lastNotificationTimestampMillis) {
       return;
     }
     const runResultClone = deepClone(dataform.RunResult, this.runResult);
@@ -286,8 +287,8 @@ export class Runner {
     ]);
   }
 
-  private async executeAction(action: dataform.IExecutionAction): Promise<dataform.IActionResult> {
-    let actionResult: dataform.IActionResult = {
+  private async executeAction(action: dataform.ExecutionAction): Promise<dataform.ActionResult> {
+    let actionResult: dataform.ActionResult = {
       target: action.target,
       tasks: []
     };
@@ -368,7 +369,7 @@ export class Runner {
       }
     }
 
-    let newMetadata: dataform.ITableMetadata;
+    let newMetadata: execution.TableMetadata;
     if (this.graph.projectConfig.useRunCache) {
       try {
         newMetadata = await this.dbadapter.table(action.target);
@@ -395,12 +396,12 @@ export class Runner {
 
   private async executeTask(
     client: dbadapters.IDbClient,
-    task: dataform.IExecutionTask,
-    parentAction: dataform.IActionResult,
+    task: dataform.ExecutionTask,
+    parentAction: dataform.ActionResult,
     options: { bigquery: { labels: { [label: string]: string } } }
   ): Promise<dataform.TaskResult.ExecutionStatus> {
     const timer = Timer.start();
-    const taskResult: dataform.ITaskResult = {
+    const taskResult: dataform.TaskResult = {
       status: dataform.TaskResult.ExecutionStatus.RUNNING,
       timing: timer.current(),
       metadata: {}
@@ -441,18 +442,18 @@ export class Runner {
 }
 
 class Timer {
-  public static start(existingTiming?: dataform.ITiming) {
+  public static start(existingTiming?: dataform.Timing) {
     return new Timer(existingTiming?.startTimeMillis.toNumber() || new Date().valueOf());
   }
-  private constructor(readonly startTimeMillis: number) { }
+  private constructor(readonly startTimeMillis: number) {}
 
-  public current(): dataform.ITiming {
+  public current(): dataform.Timing {
     return {
       startTimeMillis: Long.fromNumber(this.startTimeMillis)
     };
   }
 
-  public end(): dataform.ITiming {
+  public end(): dataform.Timing {
     return {
       startTimeMillis: Long.fromNumber(this.startTimeMillis),
       endTimeMillis: Long.fromNumber(new Date().valueOf())

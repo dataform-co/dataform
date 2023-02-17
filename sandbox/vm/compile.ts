@@ -1,7 +1,8 @@
 import * as path from "path";
 import { CompilerFunction, NodeVM } from "vm2";
 
-import { dataform } from "df/protos/ts";
+import * as core from "df/protos/core";
+import * as execution from "df/protos/execution";
 import { createCoreExecutionRequest, createGenIndexConfig } from "df/sandbox/vm/create_config";
 
 function missingValidCorePackageError() {
@@ -9,7 +10,7 @@ function missingValidCorePackageError() {
     `Could not find a recent installed version of @dataform/core in the project. Ensure packages are installed and upgrade to a recent version.`
   );
 }
-export function compile(compileConfig: dataform.ICompileConfig) {
+export function compile(compileConfig: dataform.CompileConfig) {
   const vmIndexFileName = path.resolve(path.join(compileConfig.projectDir, "index.js"));
 
   const indexGeneratorVm = new NodeVM({
@@ -76,7 +77,7 @@ export function compile(compileConfig: dataform.ICompileConfig) {
 }
 
 export function listenForCompileRequest() {
-  process.on("message", (compileConfig: dataform.ICompileConfig) => {
+  process.on("message", (compileConfig: dataform.CompileConfig) => {
     try {
       const compiledResult = compile(compileConfig);
       process.send(compiledResult);
