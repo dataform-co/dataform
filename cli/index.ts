@@ -8,7 +8,7 @@ import { build, compile, credentials, init, install, run, table, test } from "df
 import { CREDENTIALS_FILENAME } from "df/api/commands/credentials";
 import * as dbadapters from "df/api/dbadapters";
 import { prettyJsonStringify } from "df/api/utils";
-import {trackError, trackOption} from "df/cli/analytics";
+import { trackError, trackOption } from "df/cli/analytics";
 import {
   print,
   printCompiledGraph,
@@ -203,6 +203,16 @@ const timeoutOption: INamedOption<yargs.Options> = {
     default: null,
     coerce: (rawTimeoutString: string | null) =>
       rawTimeoutString ? parseDuration(rawTimeoutString) : null
+  }
+};
+
+const jobPrefixOption: INamedOption<yargs.Options> = {
+  name: "job-prefix",
+  option: {
+    describe:
+      "Adds an additional prefix in the form of `dataform-${jobPrefix}-`. Has no effect on warehouses other than BigQuery.",
+    type: "string",
+    default: null
   }
 };
 
@@ -578,6 +588,7 @@ export function runCli() {
           jsonOutputOption,
           varsOption,
           timeoutOption,
+          jobPrefixOption,
           trackOption
         ],
         processFn: async argv => {
@@ -646,7 +657,13 @@ export function runCli() {
             if (!argv[jsonOutputOption.name]) {
               print("Running...\n");
             }
-            const runner = run(dbadapter, executionGraph);
+            const runner = run(
+              dbadapter,
+              executionGraph,
+              argv[jobPrefixOption.name]
+                ? { bigquery: { jobPrefix: argv[jobPrefixOption.name] } }
+                : {}
+            );
             process.on("SIGINT", () => {
               if (
                 !supportsCancel(

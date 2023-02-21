@@ -1349,7 +1349,7 @@ suite("@dataform/api", () => {
         }).toJSON()
       );
 
-      runner = new Runner(mockDbAdapterInstance, RUN_TEST_GRAPH, result);
+      runner = new Runner(mockDbAdapterInstance, RUN_TEST_GRAPH, undefined, result);
 
       expect(
         dataform.RunResult.create(cleanTiming(await runner.execute().result())).toJSON()
