@@ -246,3 +246,38 @@ export function throwIfInvalid<T>(proto: T, verify: (proto: T) => string) {
     throw new Error(verifyError);
   }
 }
+
+export function tableTypeStringToEnum(type: string, throwIfUnknown: boolean) {
+  switch (type) {
+    case "table":
+      return dataform.TableType.TABLE;
+    case "incremental":
+      return dataform.TableType.INCREMENTAL;
+    case "view":
+      return dataform.TableType.VIEW;
+    case "inline":
+      return dataform.TableType.INLINE;
+    default: {
+      if (throwIfUnknown) {
+        throw new Error(`Unexpected table type: ${type}`);
+      }
+      return dataform.TableType.UNKNOWN_TYPE;
+    }
+  }
+}
+
+export function tableTypeEnumToString(enumType: dataform.TableType) {
+  return dataform.TableType[enumType].toLowerCase();
+}
+
+export function setOrValidateTableEnumType(table: dataform.ITable) {
+  let enumTypeFromStr: dataform.TableType|null = null;
+  if (table.type !== "" && table.type !== undefined) {
+    enumTypeFromStr = tableTypeStringToEnum(table.type, true);
+  }
+  if (table.enumType === dataform.TableType.UNKNOWN_TYPE || table.enumType === undefined) {
+    table.enumType = enumTypeFromStr!;
+  } else if (enumTypeFromStr !== null && table.enumType !== enumTypeFromStr) {
+    throw new Error(`Table str type "${table.type}" and enumType "${tableTypeEnumToString(table.enumType)}" are not equivalent.`);
+  }
+}
