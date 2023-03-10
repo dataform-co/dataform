@@ -47,6 +47,7 @@ function computeIncludedActionNames(
 
   const hasActionSelector = runConfig.actions?.length > 0;
   const hasTagSelector = runConfig.tags?.length > 0;
+  const hasIncludeAllTagsSelector = runConfig.includeAllTags;
 
   // If no selectors, return all actions.
   if (!hasActionSelector && !hasTagSelector) {
@@ -64,9 +65,18 @@ function computeIncludedActionNames(
 
   // Determine actions selected with --tag option and update applicable actions
   if (hasTagSelector) {
-    allActions
-      .filter(action => action.tags.some(tag => runConfig.tags.includes(tag)))
-      .forEach(action => includedActionNames.add(targetAsReadableString(action.target)));
+    // Keep actions wich include every tags in --tag option
+    if (hasIncludeAllTagsSelector) {
+      allActions
+        .filter(action => runConfig.tags.every(tag => action.tags.includes(tag)))
+        .forEach(action => includedActionNames.add(targetAsReadableString(action.target)));
+    }
+    // Keep actions with include at least one tag in --tag option
+    else {
+      allActions
+        .filter(action => action.tags.some(tag => runConfig.tags.includes(tag)))
+        .forEach(action => includedActionNames.add(targetAsReadableString(action.target)));
+    }
   }
 
   // Compute all transitive dependencies.
