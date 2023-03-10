@@ -10,6 +10,7 @@ option go_package = "github.com/dataform-co/dataform/protos/dataform";
 message RunConfig {
   repeated string actions = 1;
   repeated string tags = 5;
+  bool include_all_tags = 10;
   bool include_dependencies = 3;
   bool include_dependents = 11;
   bool full_refresh = 2;

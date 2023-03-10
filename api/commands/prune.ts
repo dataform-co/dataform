@@ -47,7 +47,7 @@ function computeIncludedActionNames(
 
   const hasActionSelector = runConfig.actions?.length > 0;
   const hasTagSelector = runConfig.tags?.length > 0;
-  const hasIncludeAllTagsSelector = runConfig.includeAllTags;
+  const hasIncludeAllTagsSelector = runConfig.includeAllTags?.valueOf();
 
   // If no selectors, return all actions.
   if (!hasActionSelector && !hasTagSelector) {
