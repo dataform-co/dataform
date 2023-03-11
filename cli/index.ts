@@ -98,10 +98,10 @@ const tagsOption: INamedOption<yargs.Options> = {
   }
 };
 
-const IncludeAllTagsOption: INamedOption<yargs.Options> = {
+const includeAllTagsOption: INamedOption<yargs.Options> = {
   name: "include-all-tags",
   option: {
-    describe: "Filter actions which include all user-specified tags",
+    describe: "If set, only actions that include every user-specified tags will be run",
     type: "boolean",
     default: false
   }
@@ -590,7 +590,7 @@ export function runCli() {
           fullRefreshOption,
           actionsOption,
           tagsOption,
-          IncludeAllTagsOption,
+          includeAllTagsOption,
           includeDepsOption,
           includeDependentsOption,
           schemaSuffixOverrideOption,
@@ -639,7 +639,7 @@ export function runCli() {
                 includeDependencies: argv[includeDepsOption.name],
                 includeDependents: argv[includeDependentsOption.name],
                 tags: argv[tagsOption.name],
-                includeAllTags: argv[IncludeAllTagsOption.name]
+                includeAllTags: argv[includeAllTagsOption.name]
               },
               dbadapter
             );
