@@ -502,8 +502,8 @@ export function runCli() {
                 }
               }, RECOMPILE_DELAY);
             });
-          process.on("SIGINT", () => {
-            watcher.close();
+          process.on("SIGINT", async () => {
+            await watcher.close();
             watching = false;
             process.exit(1);
           });
