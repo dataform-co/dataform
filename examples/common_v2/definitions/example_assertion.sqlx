@@ -1,7 +1,0 @@
-config {
-  schema: "hi_there",
-  type: "assertion",
-  description: "An example assertion looking for incorrect 'sample' values."
-}
-
-select * from ${ref("sample_data")} where sample = 100

@@ -1,2 +1,0 @@
-config { type: "assertion", bigquery: { partitionBy: "something0", clusterBy: ["something1", "something2"] }, hermetic: false }
-SELECT 1 as test

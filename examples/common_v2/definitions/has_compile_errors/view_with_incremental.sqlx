@@ -1,5 +1,0 @@
-config { type: "view", hermetic: false }
-
-select 1 as test
-
-incremental_where { test > 0 }

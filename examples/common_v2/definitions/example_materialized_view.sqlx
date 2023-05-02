@@ -1,3 +1,0 @@
-config {type: "view", materialized: true}
-select * from ${ref("sample_data")}
-group by 1

@@ -1,1 +1,0 @@
-code --extensionDevelopmentPath=$PWD/vscode $@

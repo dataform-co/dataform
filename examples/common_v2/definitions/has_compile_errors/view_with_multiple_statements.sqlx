@@ -1,4 +1,0 @@
-config { type: "view", hermetic: false }
-select 1 as test
----
-select 2 as test2

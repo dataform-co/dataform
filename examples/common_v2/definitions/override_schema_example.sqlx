@@ -1,7 +1,0 @@
-config {
-    schema: "override_schema",
-    type: "view",
-    hermetic: false
-}
-
-select 1 as test_schema_override

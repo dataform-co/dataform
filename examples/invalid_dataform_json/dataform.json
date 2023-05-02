@@ -1,6 +1,0 @@
-{
-  "warehouse": "redshift",
-  "defaultDatabase": "tada-analytics",
-  "defaultSchema": "rock&roll",
-  "assertionSchema": "df_integration_test_assertions"
-}

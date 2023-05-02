@@ -1,4 +1,0 @@
-config {type: "view"}
-select * from ${ref("sample_data")}
-inner join select * from ${ref("override_schema", "override_schema_example")}
-inner join select * from ${ref({database: "override_database", name: "override_database_example"})}

@@ -1,8 +1,0 @@
-config {
-    type: "table",
-    snowflake: {
-        clusterBy: ["test"]
-    }
-}
-
-select 1 as test

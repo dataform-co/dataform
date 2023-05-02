@@ -1,5 +1,0 @@
-#!/bin/bash
-set -e
-
-bazel build //packages/@dataform/cli:bin
-./bazel-bin/packages/@dataform/cli/bin.sh "$@"

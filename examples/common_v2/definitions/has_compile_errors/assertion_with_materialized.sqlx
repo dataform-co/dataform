@@ -1,2 +1,0 @@
-config { type: "assertion", materialized: true, hermetic: false }
-SELECT 1 as test

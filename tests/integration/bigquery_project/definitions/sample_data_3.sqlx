@@ -1,8 +1,0 @@
-config {
-    type: "view",
-    hermetic: true
-}
-
-select 1 as val1, 1 as val2, NULL as val3 union all
-select 1 as val1, 2 as val2, NULL as val3 union all
-select 1 as val1, 3 as val2, NULL as val3

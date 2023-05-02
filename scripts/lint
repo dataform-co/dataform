@@ -1,3 +1,0 @@
-#!/bin/bash
-
-bazel build @npm//tslint/bin:tslint && bazel-bin/external/npm/tslint/bin/tslint.sh --project .

@@ -1,2 +1,0 @@
-config { type: "table", materialized: true, hermetic: true }
-select 1 as test

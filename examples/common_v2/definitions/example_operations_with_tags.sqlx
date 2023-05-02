@@ -1,9 +1,0 @@
-config {
-    type: "operations",
-    dependencies: "example_inline",
-    tags: ["tag1"]
-}
-
-CREATE OR REPLACE VIEW someschema.someview AS (SELECT 1 AS test)
----
-DROP VIEW IF EXISTS ${ref("override_schema_example")}

@@ -1,7 +1,0 @@
-config {
-    type: "table",
-    hermetic: false
-}
-js { const bar = "foo"; }
-js { var foo = () => bar; }
-select 1 as ${foo()}

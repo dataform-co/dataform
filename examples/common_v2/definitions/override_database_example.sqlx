@@ -1,7 +1,0 @@
-config {
-    database: "override_database",
-    type: "view",
-    hermetic: false
-}
-
-select 1 as test_database_override
