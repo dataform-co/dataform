@@ -143,14 +143,6 @@ const credentialsOption: INamedOption<yargs.Options> = {
     getCredentialsPath(argv[projectDirOption.name], argv[credentialsOption.name])
 };
 
-const warehouseOption: INamedOption<yargs.PositionalOptions> = {
-  name: "warehouse",
-  option: {
-    describe: "The project's data warehouse type.",
-    choices: Object.values(WarehouseType)
-  }
-};
-
 const jsonOutputOption: INamedOption<yargs.Options> = {
   name: "json",
   option: {
@@ -168,50 +160,6 @@ const timeoutOption: INamedOption<yargs.Options> = {
     default: null,
     coerce: (rawTimeoutString: string | null) =>
       rawTimeoutString ? parseDuration(rawTimeoutString) : null
-  }
-};
-
-const defaultDatabaseOption: INamedOption<yargs.Options> = {
-  name: "default-database",
-  option: {
-    describe: "The default database to use. For BigQuery, this is a Google Cloud Project ID.",
-    type: "string"
-  },
-  check: (argv: yargs.Arguments<any>) => {
-    if (!argv[warehouseOption.name]) {
-      return;
-    }
-    if (!["bigquery", "snowflake"].includes(argv[warehouseOption.name])) {
-      throw new Error(
-        `The --${defaultDatabaseOption.name} flag is only used for BigQuery and Snowflake projects.`
-      );
-    }
-    if (!argv[defaultDatabaseOption.name] && argv[warehouseOption.name] === "bigquery") {
-      throw new Error(
-        `The --${defaultDatabaseOption.name} flag is required for BigQuery projects.`
-      );
-    }
-  }
-};
-
-const defaultLocationOption: INamedOption<yargs.Options> = {
-  name: "default-location",
-  option: {
-    describe:
-      "The default BigQuery location to use. See https://cloud.google.com/bigquery/docs/locations for supported values."
-  },
-  check: (argv: yargs.Arguments<any>) => {
-    if (!argv[warehouseOption.name]) {
-      return;
-    }
-    if (argv[defaultLocationOption.name] && !["bigquery"].includes(argv[warehouseOption.name])) {
-      throw new Error(`The --${defaultLocationOption.name} flag is only used for BigQuery.`);
-    }
-    if (!argv[defaultLocationOption.name] && argv[warehouseOption.name] === "bigquery") {
-      throw new Error(
-        `The --${defaultLocationOption.name} flag is required for BigQuery projects. Please run 'dataform help init' for more information.`
-      );
-    }
   }
 };
 
@@ -245,12 +193,27 @@ export function runCli() {
         }
       },
       {
-        format: `init <${warehouseOption.name}> [${projectDirOption.name}]`,
+        format: `init <${ProjectConfigOptions.warehouse.name}> [${projectDirOption.name}]`,
         description: "Create a new dataform project.",
-        positionalOptions: [warehouseOption, projectDirOption],
+        positionalOptions: [ProjectConfigOptions.warehouse, projectDirOption],
         options: [
-          defaultDatabaseOption,
-          defaultLocationOption,
+          {
+            ...ProjectConfigOptions.defaultDatabase,
+            option: {
+              ...ProjectConfigOptions.defaultDatabase.option,
+              describe:
+                "The default database to use. For BigQuery, this is a Google Cloud Project ID."
+            }
+          },
+          {
+            ...ProjectConfigOptions.defaultLocation,
+            option: {
+              ...ProjectConfigOptions.defaultLocation.option,
+              describe:
+                "The default BigQuery location to use. See " +
+                "https://cloud.google.com/bigquery/docs/locations for supported values."
+            }
+          },
           {
             name: skipInstallOptionName,
             option: {
@@ -264,9 +227,9 @@ export function runCli() {
           const initResult = await init(
             argv[projectDirOption.name],
             {
-              warehouse: argv[warehouseOption.name],
-              defaultDatabase: argv[defaultDatabaseOption.name],
-              defaultLocation: argv[defaultLocationOption.name],
+              warehouse: argv[ProjectConfigOptions.warehouse.name],
+              defaultDatabase: argv[ProjectConfigOptions.defaultDatabase.name],
+              defaultLocation: argv[ProjectConfigOptions.defaultLocation.name],
               useRunCache: false
             },
             {
@@ -290,9 +253,11 @@ export function runCli() {
         }
       },
       {
-        format: `init-creds <${warehouseOption.name}> [${projectDirMustExistOption.name}]`,
-        description: `Create a ${credentials.CREDENTIALS_FILENAME} file for Dataform to use when accessing your warehouse.`,
-        positionalOptions: [warehouseOption, projectDirMustExistOption],
+        format: `init-creds <${ProjectConfigOptions.warehouse.name}> [${projectDirMustExistOption.name}]`,
+        description:
+          `Create a ${credentials.CREDENTIALS_FILENAME} file for Dataform to use when ` +
+          "accessing your warehouse.",
+        positionalOptions: [ProjectConfigOptions.warehouse, projectDirMustExistOption],
         options: [
           {
             name: testConnectionOptionName,
@@ -305,7 +270,7 @@ export function runCli() {
         ],
         processFn: async argv => {
           const credentialsFn = () => {
-            switch (argv[warehouseOption.name]) {
+            switch (argv[ProjectConfigOptions.warehouse.name]) {
               case "bigquery": {
                 return getBigQueryCredentials();
               }
@@ -322,14 +287,19 @@ export function runCli() {
                 return getSnowflakeCredentials();
               }
               default: {
-                throw new Error(`Unrecognized warehouse type ${argv[warehouseOption.name]}`);
+                throw new Error(
+                  `Unrecognized warehouse type ${argv[ProjectConfigOptions.warehouse.name]}`
+                );
               }
             }
           };
           const finalCredentials = credentialsFn();
           if (argv[testConnectionOptionName]) {
             print("\nRunning connection test...");
-            const dbadapter = await dbadapters.create(finalCredentials, argv[warehouseOption.name]);
+            const dbadapter = await dbadapters.create(
+              finalCredentials,
+              argv[ProjectConfigOptions.warehouse.name]
+            );
             try {
               const testResult = await credentials.test(dbadapter);
               switch (testResult.status) {
@@ -378,7 +348,7 @@ export function runCli() {
           },
           jsonOutputOption,
           timeoutOption,
-          ...ProjectConfigOverride.allYargsOptions
+          ...ProjectConfigOptions.allYargsOptions
         ],
         processFn: async argv => {
           const projectDir = argv[projectDirMustExistOption.name];
@@ -389,7 +359,7 @@ export function runCli() {
             }
             const compiledGraph = await compile({
               projectDir,
-              projectConfigOverride: ProjectConfigOverride.construct(argv),
+              projectConfigOverride: ProjectConfigOptions.construct(argv),
               timeoutMillis: argv[timeoutOption.name] || undefined
             });
             printCompiledGraph(compiledGraph, argv[jsonOutputOption.name]);
@@ -465,12 +435,12 @@ export function runCli() {
         format: `test [${projectDirMustExistOption.name}]`,
         description: "Run the dataform project's unit tests on the configured data warehouse.",
         positionalOptions: [projectDirMustExistOption],
-        options: [credentialsOption, timeoutOption, ...ProjectConfigOverride.allYargsOptions],
+        options: [credentialsOption, timeoutOption, ...ProjectConfigOptions.allYargsOptions],
         processFn: async argv => {
           print("Compiling...\n");
           const compiledGraph = await compile({
             projectDir: argv[projectDirMustExistOption.name],
-            projectConfigOverride: ProjectConfigOverride.construct(argv),
+            projectConfigOverride: ProjectConfigOptions.construct(argv),
             timeoutMillis: argv[timeoutOption.name] || undefined
           });
           if (compiledGraphHasErrors(compiledGraph)) {
@@ -512,7 +482,8 @@ export function runCli() {
             name: dryRunOptionName,
             option: {
               describe:
-                "If set, built SQL is not run against the data warehouse and instead is printed to the console.",
+                "If set, built SQL is not run against the data warehouse and instead is printed " +
+                "to the console.",
               type: "boolean"
             }
           },
@@ -532,7 +503,7 @@ export function runCli() {
           credentialsOption,
           jsonOutputOption,
           timeoutOption,
-          ...ProjectConfigOverride.allYargsOptions
+          ...ProjectConfigOptions.allYargsOptions
         ],
         processFn: async argv => {
           if (!argv[jsonOutputOption.name]) {
@@ -540,7 +511,7 @@ export function runCli() {
           }
           const compiledGraph = await compile({
             projectDir: argv[projectDirOption.name],
-            projectConfigOverride: ProjectConfigOverride.construct(argv),
+            projectConfigOverride: ProjectConfigOptions.construct(argv),
             timeoutMillis: argv[timeoutOption.name] || undefined
           });
           if (compiledGraphHasErrors(compiledGraph)) {
@@ -576,7 +547,8 @@ export function runCli() {
             if (argv[dryRunOptionName]) {
               if (!argv[jsonOutputOption.name]) {
                 print(
-                  `Dry run (--${dryRunOptionName}) mode is turned on; not running the following actions against your warehouse:\n`
+                  `Dry run (--${dryRunOptionName}) mode is turned on; not running the following ` +
+                    "actions against your warehouse:\n"
                 );
               }
               printExecutionGraph(executionGraph, argv[jsonOutputOption.name]);
@@ -674,16 +646,19 @@ export function runCli() {
         }
       },
       {
-        format: `listtables <${warehouseOption.name}>`,
+        format: `listtables <${ProjectConfigOptions.warehouse.name}>`,
         description: "List tables on the configured data warehouse.",
-        positionalOptions: [warehouseOption],
+        positionalOptions: [ProjectConfigOptions.warehouse],
         options: [credentialsOption],
         processFn: async argv => {
           const readCredentials = credentials.read(
-            argv[warehouseOption.name],
+            argv[ProjectConfigOptions.warehouse.name],
             actuallyResolve(argv[credentialsOption.name])
           );
-          const dbadapter = await dbadapters.create(readCredentials, argv[warehouseOption.name]);
+          const dbadapter = await dbadapters.create(
+            readCredentials,
+            argv[ProjectConfigOptions.warehouse.name]
+          );
           try {
             printListTablesResult(await table.list(dbadapter));
           } finally {
@@ -693,10 +668,10 @@ export function runCli() {
         }
       },
       {
-        format: `gettablemetadata <${warehouseOption.name}> <${schemaOptionName}> <${tableOptionName}>`,
+        format: `gettablemetadata <${ProjectConfigOptions.warehouse.name}> <${schemaOptionName}> <${tableOptionName}>`,
         description: "Fetch metadata for a specified table.",
         positionalOptions: [
-          warehouseOption,
+          ProjectConfigOptions.warehouse,
           {
             name: schemaOptionName,
             option: {
@@ -715,10 +690,13 @@ export function runCli() {
         options: [credentialsOption],
         processFn: async argv => {
           const readCredentials = credentials.read(
-            argv[warehouseOption.name],
+            argv[ProjectConfigOptions.warehouse.name],
             actuallyResolve(argv[credentialsOption.name])
           );
-          const dbadapter = await dbadapters.create(readCredentials, argv[warehouseOption.name]);
+          const dbadapter = await dbadapters.create(
+            readCredentials,
+            argv[ProjectConfigOptions.warehouse.name]
+          );
           try {
             printGetTableResult(
               await table.get(dbadapter, {
@@ -758,27 +736,47 @@ export function runCli() {
   }
 }
 
-class ProjectConfigOverride {
-  public static warehouseOverrideOption: INamedOption<yargs.Options> = {
-    ...warehouseOption,
+class ProjectConfigOptions {
+  public static defaultDatabase: INamedOption<yargs.Options> = {
+    name: "default-database",
     option: {
       describe:
-        "Override for the project's data warehouse type. If unset, the value from dataform.json is used.",
+        "The default database to use. For BigQuery, this is a Google Cloud Project ID. If unset, " +
+        "the value from dataform.json is used.",
       type: "string"
+    },
+    check: (argv: yargs.Arguments<any>) => {
+      if (!argv[ProjectConfigOptions.warehouse.name]) {
+        return;
+      }
+      if (!["bigquery", "snowflake"].includes(argv[ProjectConfigOptions.warehouse.name])) {
+        throw new Error(
+          `The --${ProjectConfigOptions.defaultDatabase.name} flag is only used` +
+            " for BigQuery and Snowflake projects."
+        );
+      }
+      if (
+        !argv[ProjectConfigOptions.defaultDatabase.name] &&
+        argv[ProjectConfigOptions.warehouse.name] === "bigquery"
+      ) {
+        throw new Error(
+          `The --${ProjectConfigOptions.defaultDatabase.name} flag is required for ` +
+            "BigQuery projects."
+        );
+      }
     }
   };
 
-  public static defaultDatabaseOverrideOption: INamedOption<yargs.Options> = {
-    ...defaultDatabaseOption,
+  public static warehouse: INamedOption<yargs.PositionalOptions> = {
+    name: "warehouse",
     option: {
       describe:
-        "Override for the default database to use. For BigQuery, this is a " +
-        "Google Cloud Project ID. If unset, the value from dataform.json is used.",
-      type: "string"
+        "The project's data warehouse type. If unset, the value from dataform.json is used.",
+      choices: Object.values(WarehouseType)
     }
   };
 
-  public static defaultSchemaOverrideOption: INamedOption<yargs.Options> = {
+  public static defaultSchema: INamedOption<yargs.Options> = {
     name: "default-schema",
     option: {
       describe:
@@ -786,31 +784,53 @@ class ProjectConfigOverride {
     }
   };
 
-  public static defaultLocationOverrideOption: INamedOption<yargs.Options> = {
-    ...defaultLocationOption,
+  public static defaultLocation: INamedOption<yargs.Options> = {
+    name: "default-location",
     option: {
       describe:
-        "Override for the default BigQuery location to use. See " +
-        "https://cloud.google.com/bigquery/docs/locations for supported values.If unset, the " +
+        "The default BigQuery location to use. See " +
+        "https://cloud.google.com/bigquery/docs/locations for supported values. If unset, the " +
         "value from dataform.json is used."
+    },
+    check: (argv: yargs.Arguments<any>) => {
+      if (!argv[ProjectConfigOptions.warehouse.name]) {
+        return;
+      }
+      if (
+        argv[ProjectConfigOptions.defaultLocation.name] &&
+        !["bigquery"].includes(argv[ProjectConfigOptions.warehouse.name])
+      ) {
+        throw new Error(
+          `The --${ProjectConfigOptions.defaultLocation.name} flag is only used for BigQuery.`
+        );
+      }
+      if (
+        !argv[ProjectConfigOptions.defaultLocation.name] &&
+        argv[ProjectConfigOptions.warehouse.name] === "bigquery"
+      ) {
+        throw new Error(
+          `The --${ProjectConfigOptions.defaultLocation.name} flag is required for BigQuery ` +
+            "projects. Please run 'dataform help init' for more information."
+        );
+      }
     }
   };
 
-  public static assertionSchemaOverrideOption: INamedOption<yargs.Options> = {
+  public static assertionSchema: INamedOption<yargs.Options> = {
     name: "assertion-schema",
     option: {
       describe: "Default assertion schema. If unset, the value from dataform.json is used."
     }
   };
 
-  public static databaseSuffixOverrideOption: INamedOption<yargs.Options> = {
+  public static databaseSuffix: INamedOption<yargs.Options> = {
     name: "database-suffix",
     option: {
       describe: "Default assertion schema. If unset, the value from dataform.json is used."
     }
   };
 
-  public static varsOverrideOption: INamedOption<yargs.Options> = {
+  public static vars: INamedOption<yargs.Options> = {
     name: "vars",
     option: {
       describe:
@@ -829,26 +849,27 @@ class ProjectConfigOverride {
     }
   };
 
-  public static schemaSuffixOverrideOption: INamedOption<yargs.Options> = {
+  public static schemaSuffix: INamedOption<yargs.Options> = {
     name: "schema-suffix",
     option: {
       describe:
-        "A suffix to be appended to output schema names. If unset, the value from dataform.json is used."
+        "A suffix to be appended to output schema names. If unset, the value from dataform.json " +
+        "is used."
     },
     check: (argv: yargs.Arguments<any>) => {
       if (
-        argv[ProjectConfigOverride.schemaSuffixOverrideOption.name] &&
-        !/^[a-zA-Z_0-9]+$/.test(argv[ProjectConfigOverride.schemaSuffixOverrideOption.name])
+        argv[ProjectConfigOptions.schemaSuffix.name] &&
+        !/^[a-zA-Z_0-9]+$/.test(argv[ProjectConfigOptions.schemaSuffix.name])
       ) {
         throw new Error(
-          `--${ProjectConfigOverride.schemaSuffixOverrideOption.name} should contain only ` +
+          `--${ProjectConfigOptions.schemaSuffix.name} should contain only ` +
             `alphanumeric characters and/or underscores.`
         );
       }
     }
   };
 
-  public static tablePrefixOverrideOption: INamedOption<yargs.Options> = {
+  public static tablePrefix: INamedOption<yargs.Options> = {
     name: "table-prefix",
     option: {
       describe: "Adds a prefix for all table names. If unset, the value from dataform.json is used."
@@ -856,54 +877,47 @@ class ProjectConfigOverride {
   };
 
   public static allYargsOptions = [
-    ProjectConfigOverride.warehouseOverrideOption,
-    ProjectConfigOverride.defaultDatabaseOverrideOption,
-    ProjectConfigOverride.defaultSchemaOverrideOption,
-    ProjectConfigOverride.defaultLocationOverrideOption,
-    ProjectConfigOverride.assertionSchemaOverrideOption,
-    ProjectConfigOverride.varsOverrideOption,
-    ProjectConfigOverride.databaseSuffixOverrideOption,
-    ProjectConfigOverride.schemaSuffixOverrideOption,
-    ProjectConfigOverride.tablePrefixOverrideOption
+    ProjectConfigOptions.warehouse,
+    ProjectConfigOptions.defaultDatabase,
+    ProjectConfigOptions.defaultSchema,
+    ProjectConfigOptions.defaultLocation,
+    ProjectConfigOptions.assertionSchema,
+    ProjectConfigOptions.vars,
+    ProjectConfigOptions.databaseSuffix,
+    ProjectConfigOptions.schemaSuffix,
+    ProjectConfigOptions.tablePrefix
   ];
 
   public static construct(argv: yargs.Arguments<any>): dataform.IProjectConfig {
-    const projectConfigOverride: dataform.IProjectConfig = {};
+    const projectConfigOptions: dataform.IProjectConfig = {};
 
-    if (argv[ProjectConfigOverride.warehouseOverrideOption.name]) {
-      projectConfigOverride.warehouse = argv[ProjectConfigOverride.warehouseOverrideOption.name];
+    if (argv[ProjectConfigOptions.warehouse.name]) {
+      projectConfigOptions.warehouse = argv[ProjectConfigOptions.warehouse.name];
     }
-    if (argv[ProjectConfigOverride.defaultDatabaseOverrideOption.name]) {
-      projectConfigOverride.defaultDatabase =
-        argv[ProjectConfigOverride.defaultDatabaseOverrideOption.name];
+    if (argv[ProjectConfigOptions.defaultDatabase.name]) {
+      projectConfigOptions.defaultDatabase = argv[ProjectConfigOptions.defaultDatabase.name];
     }
-    if (argv[ProjectConfigOverride.defaultSchemaOverrideOption.name]) {
-      projectConfigOverride.defaultSchema =
-        argv[ProjectConfigOverride.defaultSchemaOverrideOption.name];
+    if (argv[ProjectConfigOptions.defaultSchema.name]) {
+      projectConfigOptions.defaultSchema = argv[ProjectConfigOptions.defaultSchema.name];
     }
-    if (argv[ProjectConfigOverride.defaultLocationOverrideOption.name]) {
-      projectConfigOverride.defaultLocation =
-        argv[ProjectConfigOverride.defaultLocationOverrideOption.name];
+    if (argv[ProjectConfigOptions.defaultLocation.name]) {
+      projectConfigOptions.defaultLocation = argv[ProjectConfigOptions.defaultLocation.name];
     }
-    if (argv[ProjectConfigOverride.assertionSchemaOverrideOption.name]) {
-      projectConfigOverride.assertionSchema =
-        argv[ProjectConfigOverride.assertionSchemaOverrideOption.name];
+    if (argv[ProjectConfigOptions.assertionSchema.name]) {
+      projectConfigOptions.assertionSchema = argv[ProjectConfigOptions.assertionSchema.name];
     }
-    if (argv[ProjectConfigOverride.varsOverrideOption.name]) {
-      projectConfigOverride.vars = argv[ProjectConfigOverride.varsOverrideOption.name];
+    if (argv[ProjectConfigOptions.vars.name]) {
+      projectConfigOptions.vars = argv[ProjectConfigOptions.vars.name];
     }
-    if (argv[ProjectConfigOverride.databaseSuffixOverrideOption.name]) {
-      projectConfigOverride.databaseSuffix =
-        argv[ProjectConfigOverride.databaseSuffixOverrideOption.name];
+    if (argv[ProjectConfigOptions.databaseSuffix.name]) {
+      projectConfigOptions.databaseSuffix = argv[ProjectConfigOptions.databaseSuffix.name];
     }
-    if (argv[ProjectConfigOverride.schemaSuffixOverrideOption.name]) {
-      projectConfigOverride.schemaSuffix =
-        argv[ProjectConfigOverride.schemaSuffixOverrideOption.name];
+    if (argv[ProjectConfigOptions.schemaSuffix.name]) {
+      projectConfigOptions.schemaSuffix = argv[ProjectConfigOptions.schemaSuffix.name];
     }
-    if (argv[ProjectConfigOverride.tablePrefixOverrideOption.name]) {
-      projectConfigOverride.schemaSuffix =
-        argv[ProjectConfigOverride.tablePrefixOverrideOption.name];
+    if (argv[ProjectConfigOptions.tablePrefix.name]) {
+      projectConfigOptions.schemaSuffix = argv[ProjectConfigOptions.tablePrefix.name];
     }
-    return projectConfigOverride;
+    return projectConfigOptions;
   }
 }
