@@ -359,7 +359,7 @@ export function runCli() {
             }
             const compiledGraph = await compile({
               projectDir,
-              projectConfigOverride: ProjectConfigOptions.construct(argv),
+              projectConfigOverride: ProjectConfigOptions.constructProjectConfigOverride(argv),
               timeoutMillis: argv[timeoutOption.name] || undefined
             });
             printCompiledGraph(compiledGraph, argv[jsonOutputOption.name]);
@@ -440,7 +440,7 @@ export function runCli() {
           print("Compiling...\n");
           const compiledGraph = await compile({
             projectDir: argv[projectDirMustExistOption.name],
-            projectConfigOverride: ProjectConfigOptions.construct(argv),
+            projectConfigOverride: ProjectConfigOptions.constructProjectConfigOverride(argv),
             timeoutMillis: argv[timeoutOption.name] || undefined
           });
           if (compiledGraphHasErrors(compiledGraph)) {
@@ -511,7 +511,7 @@ export function runCli() {
           }
           const compiledGraph = await compile({
             projectDir: argv[projectDirOption.name],
-            projectConfigOverride: ProjectConfigOptions.construct(argv),
+            projectConfigOverride: ProjectConfigOptions.constructProjectConfigOverride(argv),
             timeoutMillis: argv[timeoutOption.name] || undefined
           });
           if (compiledGraphHasErrors(compiledGraph)) {
@@ -888,7 +888,9 @@ class ProjectConfigOptions {
     ProjectConfigOptions.tablePrefix
   ];
 
-  public static construct(argv: yargs.Arguments<any>): dataform.IProjectConfig {
+  public static constructProjectConfigOverride(
+    argv: yargs.Arguments<any>
+  ): dataform.IProjectConfig {
     const projectConfigOptions: dataform.IProjectConfig = {};
 
     if (argv[ProjectConfigOptions.warehouse.name]) {
