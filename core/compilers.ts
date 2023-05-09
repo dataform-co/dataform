@@ -122,7 +122,7 @@ function compileSqlx(rootNode: SyntaxTreeNode, path: string) {
     rootNode
   );
 
-  const contextFunctions = ["self", "ref", "resolve", "name", "when", "incremental"]
+  const contextFunctions = ["self", "ref", "resolve", "name", "when", "incremental", "schema", "database"]
     .map(name => `const ${name} = ctx.${name} ? ctx.${name}.bind(ctx) : undefined;`)
     .join("\n");
 
