@@ -127,6 +127,7 @@ class Table:
         table_type: TABLE_TYPE_NAMES,
         table_config_as_map: TableConfig,
     ):
+        # TODO: Validate table config.
         self._proto = TableProto()
         self._table_config = TableConfig(**table_config_as_map)
         # We're able to populate proto fields that don't require context at class initialization.
@@ -175,7 +176,7 @@ class Table:
             )
 
     def sql(self, sql: str):
-        self._proto.query = sql
+        self._proto.query = sql.strip()
 
     def _add_dependency(self, target: Target):
         self._proto.dependency_targets.append(target)

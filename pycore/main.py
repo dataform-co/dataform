@@ -11,12 +11,14 @@ from protos.core_pb2 import (
     ProjectConfig,
     Target,
     GraphErrors,
+    CompiledGraph,
     CompilationError,
 )
 import inspect
 from typing import List, Literal, Dict
 from google.protobuf.json_format import MessageToDict
 from google.protobuf import json_format
+from google.protobuf import text_format
 
 ACTION_TYPES = Table
 
@@ -81,9 +83,19 @@ class Session:
         # Then compile all SQL, now that we have access to the full context.
         # TODO: Do we actually need to do this step?
 
+    def compile(self) -> CompiledGraph:
+        compiled_graph = CompiledGraph()
+        compiled_graph.project_config.CopyFrom(self.project_config)
+        compiled_graph.tables.extend(
+            [i._proto for i in self.actions.values() if isinstance(i, Table)]
+        )
+        # TODO: Check circularity.
+        return compiled_graph
+
     def _add_action(
         self, path: Path, action_class: ACTION_TYPES, *args
     ) -> ACTION_TYPES:
+        # TODO: Check that action isn't duplicate.
         action = action_class(self.project_config, path.stem, *args)
         self._current_action_context = action
         self.actions[action.canonical_target()] = action
@@ -126,9 +138,9 @@ def detect_python_files(directory: Path) -> List[Path]:
 
 if __name__ == "__main__":
     compile_config = CompileConfig()
-    compile_config.project_dir = (
-        "/usr/local/google/home/eliaskassell/Documents/github/dataform/examples/actions"
-    )
+    compile_config.project_dir = "/usr/local/google/home/eliaskassell/Documents/github/dataform/examples/simple_ref"
     session = Session(compile_config)
     session.load_includes()
     session.load_actions()
+    compiled_graph = session.compile()
+    print("Compiled graph:", text_format.MessageToString(compiled_graph))
