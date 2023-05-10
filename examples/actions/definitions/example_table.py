@@ -1,9 +1,7 @@
-print("Creating example table")
-
 table({"tags": ["tagA"]}).sql(
     f"""
 
-select 1
+select * from {foo("test")}
 
 """
 )

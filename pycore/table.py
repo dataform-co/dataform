@@ -84,7 +84,6 @@ class Table:
     dependency_targets: List[Target]
 
     def __init__(self, table_type: TABLE_TYPE_NAMES, config: TableConfig):
-        print("CONFIG:", config)
         self._config = config
         # We're able to populate proto fields that don't require context at class initialization.
         self._populate_simple_proto_fields(table_type)
@@ -119,17 +118,3 @@ class Table:
 
     def sql(self, sql: str):
         self._proto.query = sql
-
-
-def table(table_config_as_map: Dict[str, any]):
-    global test_tmp
-    test_tmp = 3
-
-    global result
-    result = Table("table", table_config_as_map)
-    return result
-
-
-# def view(table_config_as_map):
-#     global result
-#     return Table("view", table_config_as_map)
