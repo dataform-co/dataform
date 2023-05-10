@@ -2,7 +2,9 @@ import importlib
 import importlib.util
 import sys
 from pathlib import Path
-from table import Table, target_to_canonical_target
+from table import Table
+from common import target_to_target_representation
+from declaration import Declaration
 import json
 from dataclasses import dataclass
 import os
@@ -16,7 +18,6 @@ from protos.core_pb2 import (
 )
 import inspect
 from typing import List, Literal, Dict
-from google.protobuf.json_format import MessageToDict
 from google.protobuf import json_format
 from google.protobuf import text_format
 
@@ -26,7 +27,7 @@ ACTION_TYPES = Table
 class Session:
     actions: Dict[str, ACTION_TYPES] = {}
     graph_errors: GraphErrors = GraphErrors()
-    project_dir = Path()
+    project_path = Path()
     project_config: ProjectConfig = ProjectConfig()
     _includes_functions = {}
     _current_action_context: ACTION_TYPES = None
@@ -34,16 +35,19 @@ class Session:
     def __init__(self, compile_config: CompileConfig):
         print(f"Running with Python version {sys.version}")
 
-        self.project_dir = Path(compile_config.project_dir)
+        self.project_path = Path(compile_config.project_dir)
         project_config_file = {}
-        with open((self.project_dir / "dataform.json").absolute(), "r") as f:
+        with open((self.project_path / "dataform.json").absolute(), "r") as f:
             project_config_file = json.load(f)
         self.project_config = json_format.ParseDict(
             project_config_file, self.project_config
         )
 
     def load_includes(self):
-        for file in detect_python_files(self.project_dir / "includes"):
+        includes_path = self.project_path / "includes"
+        if not includes_path.exists():
+            return
+        for file in detect_files():
             print("Loading include", file)
             module_name = "includes." + file.stem
             spec = importlib.util.spec_from_file_location(module_name, file)
@@ -55,11 +59,8 @@ class Session:
                 self._includes_functions[name] = function
 
     def load_actions(self):
-        definitions_files = detect_python_files(self.project_dir / "definitions")
+        definitions_files = detect_files(self.project_path / "definitions")
 
-        # First load all actions, populating proto properties that aren't dynamic given the context.
-        # Without this as a first step, we wouldn't know what tables to reference in subsequent
-        # steps.
         for path in definitions_files:
             print("Loading definition:", path)
             _globals = {
@@ -73,6 +74,9 @@ class Session:
                 "incremental": lambda config_as_map: self._add_action(
                     path, Table, "incremental", config_as_map
                 ),
+                "declaration": lambda config_as_map: self._add_action(
+                    path, Declaration, config_as_map
+                ),
                 "ref": session._ref,
                 **self._includes_functions,
             }
@@ -80,8 +84,6 @@ class Session:
             with open(path.absolute(), "r") as f:
                 code = f.read()
             exec(code, _globals)
-        # Then compile all SQL, now that we have access to the full context.
-        # TODO: Do we actually need to do this step?
 
     def compile(self) -> CompiledGraph:
         compiled_graph = CompiledGraph()
@@ -89,34 +91,50 @@ class Session:
         compiled_graph.tables.extend(
             [i._proto for i in self.actions.values() if isinstance(i, Table)]
         )
-        # TODO: Check circularity.
-        return compiled_graph
+        compiled_graph.declarations.extend(
+            [i._proto for i in self.actions.values() if isinstance(i, Declaration)]
+        )
+
+        # This is a pretty hacky way to Replace all outdated refs with the updated target
+        # representations.
+        compiled_graph_string = json.dumps(json_format.MessageToDict(compiled_graph))
+        for action in self.actions.values():
+            target_representation = action.target_representation()
+            canonical_target_representation = action.canonical_target_representation()
+            if target_representation != canonical_target_representation:
+                compiled_graph_string = compiled_graph_string.replace(
+                    f"`canonical_target_representation`", f"`target_representation`"
+                )
+
+        return json_format.ParseDict(json.loads(compiled_graph_string), compiled_graph)
 
     def _add_action(
         self, path: Path, action_class: ACTION_TYPES, *args
     ) -> ACTION_TYPES:
-        # TODO: Check that action isn't duplicate.
-        action = action_class(self.project_config, path.stem, *args)
+        action = action_class(self.project_config, path, *args)
+        target_representation = action.target_representation()
+        if target_representation in self.actions:
+            raise Exception(f"Duplicate action: {target_representation}")
         self._current_action_context = action
-        self.actions[action.canonical_target()] = action
+        self.actions[action.target_representation()] = action
         return action
 
-    def _ref(self, partial_canonical_target: str) -> str:
-        target = self._resolve_canonical_target(partial_canonical_target)
-        full_canonical_target = target_to_canonical_target(target)
+    def _ref(self, partial_target_representation: str) -> str:
+        target = self._resolve_target_representation(partial_target_representation)
+        full_target_representation = target_to_target_representation(target)
         # This is a bit hacky; it's not guaranteed that current action context is set before ref.
         self._current_action_context._add_dependency(target)
-        return full_canonical_target
+        return f"`{full_target_representation}`"
 
-    def _resolve_canonical_target(self, canonical_target: str) -> Target:
-        if canonical_target == "":
+    def _resolve_target_representation(self, target_representation: str) -> Target:
+        if target_representation == "":
             raise Exception(f"Empty canonical target")
         target = Target()
-        segments = canonical_target.split(".")
+        segments = target_representation.split(".")
         segments.reverse()
         if len(segments) > 3:
             raise Exception(
-                f"Canonical target {canonical_target} contains too many segments"
+                f"Target representation {target_representation} contains too many segments"
             )
         target.database = (
             segments[2] if len(segments) >= 3 else self.project_config.default_database
@@ -128,19 +146,29 @@ class Session:
         return target
 
 
-def detect_python_files(directory: Path) -> List[Path]:
-    return [
-        directory / f
-        for f in os.listdir(directory)
-        if os.path.isfile(os.path.join(directory, f)) and f.endswith(".py")
-    ]
+def detect_files(path: Path, filtered_suffixes: List[str] = [".py"]) -> List[Path]:
+    files: List[Path] = []
+    for subdirectory, _, filenames in os.walk(path):
+        for filename in filenames:
+            file_path = path / os.path.join(subdirectory, filename)
+            if file_path.suffix in filtered_suffixes:
+                files.append(file_path)
+    return files
 
 
 if __name__ == "__main__":
     compile_config = CompileConfig()
-    compile_config.project_dir = "/usr/local/google/home/eliaskassell/Documents/github/dataform/examples/simple_ref"
+    compile_config.project_dir = "/usr/local/google/home/eliaskassell/Documents/github/dataform/examples/stackoverflow_bigquery"
     session = Session(compile_config)
     session.load_includes()
     session.load_actions()
     compiled_graph = session.compile()
-    print("Compiled graph:", text_format.MessageToString(compiled_graph))
+    # print("Compiled graph:", text_format.MessageToString(compiled_graph))
+    compiled_graph_json = json_format.MessageToDict(compiled_graph)
+    print("Compiled graph:", json.dumps(compiled_graph_json, indent=4))
+    with open(
+        "/usr/local/google/home/eliaskassell/Documents/sandbox/sqly-output/python.json",
+        "w",
+        encoding="utf-8",
+    ) as f:
+        json.dump(compiled_graph_json, f, indent=4)

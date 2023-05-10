@@ -1,4 +1,4 @@
-syntax="proto3";
+syntax = "proto3";
 
 package dataform;
 
@@ -25,7 +25,6 @@ message ProjectConfig {
   string database_suffix = 15;
   string schema_suffix = 7;
   string table_prefix = 11;
-
 
   // Deprecated.
   // Please use 'default_database' instead.
@@ -129,7 +128,8 @@ message ColumnDescriptor {
   string description = 1;
 
   // For nested records, the path might look like e.g. ["record", "column"].
-  // For simple columns, this will always contain a single entry e.g. ["column"].
+  // For simple columns, this will always contain a single entry e.g.
+  // ["column"].
   repeated string path = 2;
 
   string display_name = 3;
@@ -169,6 +169,7 @@ enum TableType {
 
 message Table {
   Target target = 4;
+  // TODO: Why is this a thing? I think we should *enforce* unique targets.
   Target canonical_target = 32;
 
   repeated Target dependency_targets = 27;
@@ -207,7 +208,7 @@ message Table {
   // Generated.
   string file_name = 18;
 
-  reserved 1,2, 7, 12, 16;
+  reserved 1, 2, 7, 12, 16;
 }
 
 message Operation {
@@ -262,7 +263,6 @@ enum ActionHermeticity {
 }
 
 message Declaration {
-
   Target target = 2;
   Target canonical_target = 5;
 

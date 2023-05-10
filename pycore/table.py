@@ -1,7 +1,14 @@
 from typing import Literal, Optional, List, Dict
 from dataclasses import dataclass
-from protos.core_pb2 import Target, Table as TableProto, TableType, ProjectConfig
-from google.protobuf.any_pb2 import Any
+from protos.core_pb2 import (
+    Target,
+    Table as TableProto,
+    TableType,
+    ProjectConfig,
+    ActionDescriptor,
+)
+from common import ActionConfig, action_target, target_to_target_representation
+from pathlib import Path
 
 TABLE_TYPE_NAMES = Literal["table", "incremental", "view", "inline"]
 
@@ -24,50 +31,6 @@ class TableAssertions:
     row_conditions: Optional[List[str]] = None
 
 
-# TODO: Move to shared location.
-@dataclass
-class ActionConfig:
-    """
-    A dataclass that represents generic action configuration options.
-
-    Args:
-        # From target interface.
-        database: The database in which the output of this action should be created.
-        schema: The schema in which the output of this action should be created.
-
-        # From record descriptor interface.
-        description: A description of the struct, object or record.
-        columns: A description of columns within the struct, object or record.
-        displayName: A human-readable name for the column.
-        dimension: The type of the column. Can be `category`, `timestamp` or `number`.
-        aggregator: The type of aggregator to use for the column. Can be `sum`, `distinct` or `derived`.
-        expression: The expression to use for the column.
-        tags: Tags that apply to this column (experimental).
-        bigqueryPolicyTags: BigQuery policy tags that should be applied to this column.
-
-        # From action config interface.
-        tags: A list of user-defined tags with which the action should be labeled.
-        dependencies: Dependencies of the action.
-        disabled: If set to true, this action will not be executed. However, the action may still be depended upon. Useful for temporarily turning off broken actions.
-    """
-
-    database: Optional[str] = None
-    schema: Optional[str] = None
-
-    description: Optional[str] = None
-    # columns: Optional[IColumnsDescriptor] = None
-    displayName: Optional[str] = None
-    dimension: Optional[str] = None
-    aggregator: Optional[str] = None
-    expression: Optional[str] = None
-    tags: Optional[List[str]] = None
-    bigqueryPolicyTags: Optional[List[str]] = None
-
-    tags: Optional[List[str]] = None
-    dependencies: Optional[List[str]] = None
-    disabled: Optional[bool] = None
-
-
 @dataclass
 class TableConfig(ActionConfig):
     """
@@ -80,7 +43,7 @@ class TableConfig(ActionConfig):
             This is useful for tables which are built from transient data, to ensure that historical data is never lost.
         assertions: Optional[TableAssertions]: Assertions to be run on the dataset.
             If configured, relevant assertions will automatically be created and run as a dependency of this dataset.
-        uniqueKey: Optional[List[str]]: Unique keys for merge criteria for incremental tables.
+        unique_key: Optional[List[str]]: Unique keys for merge criteria for incremental tables.
             If configured, records with matching unique key(s) will be updated, rather than new rows being inserted.
         materialized: Only valid when the table type is `view`.
             If set to true, will make the view materialized.
@@ -99,7 +62,7 @@ class TableConfig(ActionConfig):
     type: Optional[TABLE_TYPE_NAMES] = None
     protected: Optional[bool] = None
     assertions: Optional[TableAssertions] = None
-    uniqueKey: Optional[List[str]] = None
+    unique_key: Optional[List[str]] = None
     materialized: Optional[bool] = None
 
     # These were originally BigQuery specific options.
@@ -115,40 +78,36 @@ class TableConfig(ActionConfig):
 
 
 class Table:
-    # TODO: These should be common across all Action types.
-    file_name: str
-    target: Target
-    dependency_targets: List[Target]
-
     def __init__(
         self,
         project_config: ProjectConfig,
-        name: str,
+        path: Path,
         table_type: TABLE_TYPE_NAMES,
         table_config_as_map: TableConfig,
     ):
         # TODO: Validate table config.
         self._proto = TableProto()
         self._table_config = TableConfig(**table_config_as_map)
-        # We're able to populate proto fields that don't require context at class initialization.
-        self._populate_simple_proto_fields(table_type)
-        self._populate_bigquery_fields()
+        self.dependency_targets: List[Target] = []
 
-        target = Target()
-        target.database = (
-            self._table_config.database
-            if self._table_config.database
-            else project_config.default_database
-        )
-        target.schema = (
-            self._table_config.schema
-            if self._table_config.schema
-            else project_config.default_schema
-        )
-        target.name = name
-        self._proto.target.CopyFrom(target)
+        self._populate_proto_fields(table_type)
+        self._populate_bigquery_proto_fields()
 
-    def _populate_simple_proto_fields(self, table_type: TABLE_TYPE_NAMES):
+        # Canonical target is based off of the file structure, and is guaranteed to be unique.
+        self._proto.canonical_target.CopyFrom(action_target(project_config, path.stem))
+
+        # Target is the final resolved target, and can be overridden by the table config.
+        self._proto.target.CopyFrom(
+            action_target(
+                project_config,
+                path.stem,
+                self._table_config.database,
+                self._table_config.schema,
+                self._table_config.name,
+            )
+        )
+
+    def _populate_proto_fields(self, table_type: TABLE_TYPE_NAMES):
         if table_type != None:
             if table_type == "incremental":
                 self._proto.enum_type = TableType.INCREMENTAL
@@ -158,32 +117,59 @@ class Table:
                 self._proto.enum_type = TableType.VIEW
             else:
                 raise Exception(f"Unrecognized table type: {self._table_config.type}")
-        if self._table_config.disabled:
-            self._proto.disabled = self._table_config.disabled
+        # TODO: Propagate unique key assertions from disabled.
+        self._proto.disabled = bool(self._table_config.disabled)
         if self._table_config.protected:
             self._proto.protected = self._table_config.protected
+        if self._table_config.tags:
+            self._proto.tags.extend(self._table_config.tags)
+        # if self._table_config.description:
+        #     self._proto.description = self._table_config.description
+        if self._table_config.description:
+            self._proto.action_descriptor.description = self._table_config.description
+        # TODO: Check for columns.
+        # TODO: Check for assertions.
+        if self._table_config.unique_key:
+            self._proto.unique_key = self._table_config.uniqueKey
+        if self._table_config.materialized:
+            self._proto.materialized = self._table_config.materialized
 
-    def _populate_bigquery_fields(self):
+    def _populate_bigquery_proto_fields(self):
         """These are options that were previously BigQuery specific."""
         if self._table_config.partition_by:
             self._proto.bigquery.partition_by = self._table_config.partition_by
         if self._table_config.cluster_by:
             self._proto.bigquery.cluster_by = self._table_config.cluster_by
+        if self._table_config.update_partition_filter:
+            self._proto.bigquery.update_partition_filter = (
+                self._table_config.update_partition_filter
+            )
+        if self._table_config.labels:
+            self._proto.bigquery.labels = self._table_config.labels
+        if self._table_config.partition_expiration_days:
+            self._proto.bigquery.partition_expiration_days = (
+                self._table_config.partition_expiration_days
+            )
+        if self._table_config.require_partition_filter:
+            self._proto.bigquery.require_partition_filter = (
+                self._table_config.require_partition_filter
+            )
         if self._table_config.additional_options:
             # TODO: Expand dynamically.
             self._proto.bigquery.additional_options = (
                 self._table_config.additional_options
             )
+        if self._table_config.labels:
+            self._proto.action_descriptor.bigquery_labels = self._table_config.labels
 
     def sql(self, sql: str):
-        self._proto.query = sql.strip()
+        self._proto.query = sql
 
     def _add_dependency(self, target: Target):
         self._proto.dependency_targets.append(target)
 
-    def canonical_target(self):
-        return target_to_canonical_target(self._proto.target)
+    def target_representation(self):
+        return target_to_target_representation(self._proto.target)
 
-
-def target_to_canonical_target(target: Target) -> str:
-    return f"{target.database}.{target.schema}.{target.name}"
+    def canonical_target_representation(self):
+        return target_to_target_representation(self._proto.canonical_target)
