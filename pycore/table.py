@@ -1,10 +1,7 @@
 from typing import Literal, Optional, List, Dict
 from dataclasses import dataclass
-from protos.core_pb2 import (
-    Target,
-    Table as TableProto,
-    TableType,
-)
+from protos.core_pb2 import Target, Table as TableProto, TableType, ProjectConfig
+from google.protobuf.any_pb2 import Any
 
 TABLE_TYPE_NAMES = Literal["table", "incremental", "view", "inline"]
 
@@ -27,8 +24,52 @@ class TableAssertions:
     row_conditions: Optional[List[str]] = None
 
 
+# TODO: Move to shared location.
 @dataclass
-class TableConfig:
+class ActionConfig:
+    """
+    A dataclass that represents generic action configuration options.
+
+    Args:
+        # From target interface.
+        database: The database in which the output of this action should be created.
+        schema: The schema in which the output of this action should be created.
+
+        # From record descriptor interface.
+        description: A description of the struct, object or record.
+        columns: A description of columns within the struct, object or record.
+        displayName: A human-readable name for the column.
+        dimension: The type of the column. Can be `category`, `timestamp` or `number`.
+        aggregator: The type of aggregator to use for the column. Can be `sum`, `distinct` or `derived`.
+        expression: The expression to use for the column.
+        tags: Tags that apply to this column (experimental).
+        bigqueryPolicyTags: BigQuery policy tags that should be applied to this column.
+
+        # From action config interface.
+        tags: A list of user-defined tags with which the action should be labeled.
+        dependencies: Dependencies of the action.
+        disabled: If set to true, this action will not be executed. However, the action may still be depended upon. Useful for temporarily turning off broken actions.
+    """
+
+    database: Optional[str] = None
+    schema: Optional[str] = None
+
+    description: Optional[str] = None
+    # columns: Optional[IColumnsDescriptor] = None
+    displayName: Optional[str] = None
+    dimension: Optional[str] = None
+    aggregator: Optional[str] = None
+    expression: Optional[str] = None
+    tags: Optional[List[str]] = None
+    bigqueryPolicyTags: Optional[List[str]] = None
+
+    tags: Optional[List[str]] = None
+    dependencies: Optional[List[str]] = None
+    disabled: Optional[bool] = None
+
+
+@dataclass
+class TableConfig(ActionConfig):
     """
     A data class that represents table configuration options.
 
@@ -76,45 +117,70 @@ class TableConfig:
 class Table:
     _proto = TableProto()
     _proto.enum_type = TableType.VIEW
-    _config: TableConfig = None
+    _table_config: TableConfig = None
 
     # TODO: These should be common across all Action types.
     file_name: str
     target: Target
     dependency_targets: List[Target]
 
-    def __init__(self, table_type: TABLE_TYPE_NAMES, config: TableConfig):
-        self._config = config
+    def __init__(
+        self,
+        project_config: ProjectConfig,
+        name: str,
+        table_type: TABLE_TYPE_NAMES,
+        table_config_as_map: TableConfig,
+    ):
+        self._table_config = TableConfig(**table_config_as_map)
         # We're able to populate proto fields that don't require context at class initialization.
         self._populate_simple_proto_fields(table_type)
         self._populate_bigquery_fields()
+
+        print("DATABASE FIELD:", self._table_config.database)
+
+        target = Target()
+        target.database = (
+            self._table_config.database
+            if self._table_config.database
+            else project_config.default_database
+        )
+        target.schema = (
+            self._table_config.schema
+            if self._table_config.schema
+            else project_config.default_schema
+        )
+        target.name = name
+        self._proto.target.CopyFrom(target)
 
     def _populate_simple_proto_fields(self, table_type: TABLE_TYPE_NAMES):
         if table_type != None:
             if table_type == "incremental":
                 self._proto.enum_type = TableType.INCREMENTAL
-            elif table_type == "inline":
-                self._proto.enum_type = TableType.INLINE
             elif table_type == "table":
                 self._proto.enum_type = TableType.TABLE
             elif table_type == "view":
                 self._proto.enum_type = TableType.VIEW
             else:
-                raise Exception(f"Unrecognized table type: {self._config.type}")
-        if "disabled" in self._config:
-            self._proto.disabled = self._config.disabled
-        if "protected" in self._config:
-            self._proto.protected = self._config.protected
+                raise Exception(f"Unrecognized table type: {self._table_config.type}")
+        if self._table_config.disabled:
+            self._proto.disabled = self._table_config.disabled
+        if self._table_config.protected:
+            self._proto.protected = self._table_config.protected
 
     def _populate_bigquery_fields(self):
         """These are options that were previously BigQuery specific."""
-        if "partition_by" in self._config:
-            self._proto.bigquery.partition_by = self._config.partition_by
-        if "cluster_by" in self._config:
-            self._proto.bigquery.cluster_by = self._config.cluster_by
-        if "additional_options" in self._config:
+        if self._table_config.partition_by:
+            self._proto.bigquery.partition_by = self._table_config.partition_by
+        if self._table_config.cluster_by:
+            self._proto.bigquery.cluster_by = self._table_config.cluster_by
+        if self._table_config.additional_options:
             # TODO: Expand dynamically.
-            self._proto.bigquery.additional_options = self._config.additional_options
+            self._proto.bigquery.additional_options = (
+                self._table_config.additional_options
+            )
 
     def sql(self, sql: str):
         self._proto.query = sql
+
+    def _add_dependency(self, target: Target):
+        self._proto.dependency_targets.append(target)

@@ -15,6 +15,8 @@ from protos.core_pb2 import (
 )
 import inspect
 from typing import List, Literal, Dict
+from google.protobuf.json_format import MessageToDict
+from google.protobuf import json_format
 
 ACTION_TYPES = Table
 
@@ -23,23 +25,20 @@ class Session:
     actions: list[ACTION_TYPES] = []
     graph_errors: GraphErrors = GraphErrors()
     project_dir = Path()
-    project_config: ProjectConfig = {}
+    project_config: ProjectConfig = ProjectConfig()
     _includes_functions = {}
+    _current_action_context: ACTION_TYPES = None
 
     def __init__(self, compile_config: CompileConfig):
         print(f"Running with Python version {sys.version}")
 
         self.project_dir = Path(compile_config.project_dir)
-        project_config = {}
+        project_config_file = {}
         with open((self.project_dir / "dataform.json").absolute(), "r") as f:
-            project_config = json.load(f)
-
-        # Project config overrides take precedence over the `dataform.json` file.
-        self.project_config = {
-            **project_config,
-            # TODO: Convert project config override proto to mapping to make this work.
-            #     **compile_config.project_config_override,
-        }
+            project_config_file = json.load(f)
+        self.project_config = json_format.ParseDict(
+            project_config_file, self.project_config
+        )
 
     def load_includes(self):
         for file in detect_python_files(self.project_dir / "includes"):
@@ -59,37 +58,65 @@ class Session:
         # First load all actions, populating proto properties that aren't dynamic given the context.
         # Without this as a first step, we wouldn't know what tables to reference in subsequent
         # steps.
-        for file in definitions_files:
-            print("Loading definition:", file)
+        for path in definitions_files:
+            print("Loading definition:", path)
             _globals = {
                 "session": self,
                 "table": lambda config_as_map: self._add_action(
-                    Table("table", config_as_map)
+                    path, Table, "table", config_as_map
                 ),
                 "view": lambda config_as_map: self._add_action(
-                    Table("view", config_as_map)
+                    path, Table, "view", config_as_map
                 ),
                 "incremental": lambda config_as_map: self._add_action(
-                    Table("incremental", config_as_map)
+                    path, Table, "incremental", config_as_map
                 ),
                 "ref": session._ref,
                 **self._includes_functions,
             }
             code = ""
-            with open(file.absolute(), "r") as f:
+            with open(path.absolute(), "r") as f:
                 code = f.read()
             exec(f"{code}", _globals)
 
         print("ACTIONS:", session.actions)
+        print("ACTION 0 TARGET:", session.actions[0]._proto.target)
+        print("ACTION 0 DEPS 0:", session.actions[0]._proto.dependency_targets)
+        print("ACTION 1 DEPS 0:", session.actions[1]._proto.dependency_targets)
         # Then compile all SQL, now that we have access to the full context.
         # TODO: Do we actually need to do this step?
 
-    def _add_action(self, action: ACTION_TYPES) -> ACTION_TYPES:
+    def _add_action(
+        self, path: Path, action_class: ACTION_TYPES, *args
+    ) -> ACTION_TYPES:
+        action = action_class(self.project_config, path.stem, *args)
+        self._current_action_context = action
         self.actions.append(action)
         return action
 
     def _ref(self, canonical_target: str) -> str:
-        return "test_resolve_target"
+        target = self._resolve_canonical_target(canonical_target)
+        # This is a bit hacky; it's not guaranteed that current action context is set before ref.
+        return self._current_action_context._add_dependency(target)
+
+    def _resolve_canonical_target(self, canonical_target: str) -> Target:
+        if canonical_target == "":
+            raise Exception(f"Empty canonical target")
+        target = Target()
+        segments = canonical_target.split(".")
+        segments.reverse()
+        if len(segments) > 3:
+            raise Exception(
+                f"Canonical target {canonical_target} contains too many segments"
+            )
+        target.database = (
+            segments[2] if len(segments) >= 3 else self.project_config.default_database
+        )
+        target.schema = (
+            segments[1] if len(segments) >= 2 else self.project_config.default_schema
+        )
+        target.name = segments[0]
+        return target
 
 
 def detect_python_files(directory: Path) -> List[Path]:
