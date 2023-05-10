@@ -2,7 +2,7 @@ import importlib
 import importlib.util
 import sys
 from pathlib import Path
-from table import Table
+from table import Table, target_to_canonical_target
 import json
 from dataclasses import dataclass
 import os
@@ -22,7 +22,7 @@ ACTION_TYPES = Table
 
 
 class Session:
-    actions: list[ACTION_TYPES] = []
+    actions: Dict[str, ACTION_TYPES] = {}
     graph_errors: GraphErrors = GraphErrors()
     project_dir = Path()
     project_config: ProjectConfig = ProjectConfig()
@@ -77,12 +77,7 @@ class Session:
             code = ""
             with open(path.absolute(), "r") as f:
                 code = f.read()
-            exec(f"{code}", _globals)
-
-        print("ACTIONS:", session.actions)
-        print("ACTION 0 TARGET:", session.actions[0]._proto.target)
-        print("ACTION 0 DEPS 0:", session.actions[0]._proto.dependency_targets)
-        print("ACTION 1 DEPS 0:", session.actions[1]._proto.dependency_targets)
+            exec(code, _globals)
         # Then compile all SQL, now that we have access to the full context.
         # TODO: Do we actually need to do this step?
 
@@ -91,13 +86,15 @@ class Session:
     ) -> ACTION_TYPES:
         action = action_class(self.project_config, path.stem, *args)
         self._current_action_context = action
-        self.actions.append(action)
+        self.actions[action.canonical_target()] = action
         return action
 
-    def _ref(self, canonical_target: str) -> str:
-        target = self._resolve_canonical_target(canonical_target)
+    def _ref(self, partial_canonical_target: str) -> str:
+        target = self._resolve_canonical_target(partial_canonical_target)
+        full_canonical_target = target_to_canonical_target(target)
         # This is a bit hacky; it's not guaranteed that current action context is set before ref.
-        return self._current_action_context._add_dependency(target)
+        self._current_action_context._add_dependency(target)
+        return full_canonical_target
 
     def _resolve_canonical_target(self, canonical_target: str) -> Target:
         if canonical_target == "":

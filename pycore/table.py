@@ -115,10 +115,6 @@ class TableConfig(ActionConfig):
 
 
 class Table:
-    _proto = TableProto()
-    _proto.enum_type = TableType.VIEW
-    _table_config: TableConfig = None
-
     # TODO: These should be common across all Action types.
     file_name: str
     target: Target
@@ -131,12 +127,11 @@ class Table:
         table_type: TABLE_TYPE_NAMES,
         table_config_as_map: TableConfig,
     ):
+        self._proto = TableProto()
         self._table_config = TableConfig(**table_config_as_map)
         # We're able to populate proto fields that don't require context at class initialization.
         self._populate_simple_proto_fields(table_type)
         self._populate_bigquery_fields()
-
-        print("DATABASE FIELD:", self._table_config.database)
 
         target = Target()
         target.database = (
@@ -184,3 +179,10 @@ class Table:
 
     def _add_dependency(self, target: Target):
         self._proto.dependency_targets.append(target)
+
+    def canonical_target(self):
+        return target_to_canonical_target(self._proto.target)
+
+
+def target_to_canonical_target(target: Target) -> str:
+    return f"{target.database}.{target.schema}.{target.name}"
