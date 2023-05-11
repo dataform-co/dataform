@@ -9,7 +9,12 @@ from protos.core_pb2 import (
     ProjectConfig,
     ActionDescriptor,
 )
-from common import ActionConfig, action_target, target_to_target_representation
+from common import (
+    ActionConfig,
+    action_target,
+    target_to_target_representation,
+    efficient_replace_string,
+)
 from pathlib import Path
 from assertion import Assertion
 
@@ -122,14 +127,11 @@ class Table:
             raise Exception(f"Unknown table type: {self._table_config.type}")
         else:
             self._proto.enum_type = self._table_type
-        # TODO: Propagate unique key assertions from disabled.
         self._proto.disabled = bool(self._table_config.disabled)
         if self._table_config.protected:
             self._proto.protected = self._table_config.protected
         if self._table_config.tags:
             self._proto.tags.extend(self._table_config.tags)
-        # if self._table_config.description:
-        #     self._proto.description = self._table_config.description
         if self._table_config.description:
             self._proto.action_descriptor.description = self._table_config.description
         # TODO: Check for columns.
@@ -144,6 +146,7 @@ class Table:
                     for target_representation in self._table_config.dependencies
                 ]
             )
+        self._proto.file_name = str(self._path)
 
     def _add_assertions(self):
         if self._table_config.assertions:
@@ -167,7 +170,7 @@ class Table:
                         / f"{self._path.stem}_assertions_unique_key_{i}",
                         self._session,
                         assertion_config_to_share,
-                    ).query(
+                    ).sql(
                         adapter.index_assertion(
                             self.target_representation(), unique_key
                         )
@@ -187,7 +190,7 @@ class Table:
                         / f"{self._path.stem}_assertions_rowConditions",
                         self._session,
                         assertion_config_to_share,
-                    ).query(
+                    ).sql(
                         adapter.row_conditions_assertion(
                             self.target_representation(), merged_row_conditions
                         )
@@ -233,3 +236,7 @@ class Table:
 
     def canonical_target_representation(self):
         return target_to_target_representation(self._proto.canonical_target)
+
+    def clean_refs(self, refs_to_replace: Dict[str, str]):
+        self._proto.query = efficient_replace_string(refs_to_replace, self._proto.query)
+        # TODO: Clean pre-ops and post-ops.

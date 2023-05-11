@@ -25,8 +25,12 @@ class Declaration:
         session,
         declaration_config_as_map: Dict,
     ):
-        self._proto = DeclarationProto()
+        self._project_config = project_config
+        self._path = path
+        self._session = session
         self._table_config = DeclarationConfig(**declaration_config_as_map)
+
+        self._proto = DeclarationProto()
 
         # Canonical target is based off of the file structure, and is guaranteed to be unique.
         self._proto.canonical_target.CopyFrom(action_target(project_config, path.stem))
@@ -46,9 +50,13 @@ class Declaration:
 
     def _populate_proto_fields(self):
         self._proto.action_descriptor.description = self._table_config.description
+        self._proto.file_name = str(self._path)
 
     def target_representation(self):
         return target_to_target_representation(self._proto.target)
 
     def canonical_target_representation(self):
         return target_to_target_representation(self._proto.canonical_target)
+
+    def clean_refs(self, refs_to_replace: Dict[str, str]):
+        pass

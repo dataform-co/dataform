@@ -1,4 +1,9 @@
-from common import ActionConfig, action_target, target_to_target_representation
+from common import (
+    ActionConfig,
+    action_target,
+    target_to_target_representation,
+    efficient_replace_string,
+)
 from dataclasses import dataclass
 from pathlib import Path
 from protos.core_pb2 import (
@@ -49,8 +54,8 @@ class Assertion:
 
         self._populate_proto_fields()
 
-    def query(self, query: str) -> "Assertion":
-        self._proto.query = query
+    def sql(self, sql: str) -> "Assertion":
+        self._proto.query = sql
         return self
 
     def _populate_proto_fields(self):
@@ -72,9 +77,13 @@ class Assertion:
             self._proto.action_descriptor.description = (
                 self._assertion_config.description
             )
+        self._proto.file_name = str(self._path)
 
     def target_representation(self):
         return target_to_target_representation(self._proto.target)
 
     def canonical_target_representation(self):
         return target_to_target_representation(self._proto.canonical_target)
+
+    def clean_refs(self, refs_to_replace: Dict[str, str]):
+        self._proto.query = efficient_replace_string(refs_to_replace, self._proto.query)

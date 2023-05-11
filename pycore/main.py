@@ -23,6 +23,7 @@ from typing import List, Literal, Dict
 from google.protobuf import json_format
 from google.protobuf import text_format
 from tarjan import tarjan
+import time
 
 ACTION_TYPES = Table
 
@@ -66,35 +67,24 @@ class Session:
 
         for path in definitions_files:
             print("Loading definition:", path)
-            _globals = {
-                "session": self,
-                "table": lambda config_as_map={}: self._add_action_from_definition(
-                    path, Table, TableType.TABLE, config_as_map
-                ),
-                "view": lambda config_as_map={}: self._add_action_from_definition(
-                    path, Table, TableType.VIEW, config_as_map
-                ),
-                "incremental": lambda config_as_map={}: self._add_action_from_definition(
-                    path, Table, TableType.INCREMENTAL, config_as_map
-                ),
-                "declaration": lambda config_as_map={}: self._add_action_from_definition(
-                    path, Declaration, config_as_map
-                ),
-                "assertion": lambda config_as_map={}: self._add_action_from_definition(
-                    path, Assertion, config_as_map
-                ),
-                "ref": session._ref,
-                **self._includes_functions,
-            }
             code = ""
             with open(path.absolute(), "r") as f:
                 code = f.read()
-            exec(code, _globals)
+            exec(code, self._get_globals(path))
 
     def compile(self) -> CompiledGraph:
-        print("Actions before compiling:")
-        for i in self.actions.keys():
-            print(f" - {i}")
+        # Before compiling, replace canonical targets with effectual targets.
+        refs_to_replace: Dict[str, str] = {}
+        for action in self.actions.values():
+            target_representation = action.target_representation()
+            canonical_target_representation = action.canonical_target_representation()
+            if target_representation != canonical_target_representation:
+                refs_to_replace[
+                    f"`{canonical_target_representation}`"
+                ] = f"`{target_representation}`"
+        for action in self.actions.values():
+            action.clean_refs(refs_to_replace)
+
         compiled_graph = CompiledGraph()
         compiled_graph.project_config.CopyFrom(self.project_config)
         compiled_graph.tables.extend(
@@ -107,35 +97,45 @@ class Session:
             [i._proto for i in self.actions.values() if isinstance(i, Assertion)]
         )
 
-        # This is a pretty hacky way to Replace all outdated refs with the updated target
-        # representations.
-        compiled_graph_string = json.dumps(json_format.MessageToDict(compiled_graph))
-        for action in self.actions.values():
-            target_representation = action.target_representation()
-            canonical_target_representation = action.canonical_target_representation()
-            if target_representation != canonical_target_representation:
-                compiled_graph_string = compiled_graph_string.replace(
-                    f"`canonical_target_representation`", f"`target_representation`"
-                )
-        compiled_graph = json_format.ParseDict(
-            json.loads(compiled_graph_string), compiled_graph
-        )
-
         self._check_circularity(compiled_graph)
         return compiled_graph
+
+    def _get_globals(self, path: Path) -> Dict:
+        return {
+            "session": self,
+            "table": lambda config_as_map={}: self._add_action_from_definition(
+                path, Table, TableType.TABLE, config_as_map
+            ),
+            "view": lambda config_as_map={}: self._add_action_from_definition(
+                path, Table, TableType.VIEW, config_as_map
+            ),
+            "incremental": lambda config_as_map={}: self._add_action_from_definition(
+                path, Table, TableType.INCREMENTAL, config_as_map
+            ),
+            "declaration": lambda config_as_map={}: self._add_action_from_definition(
+                path, Declaration, config_as_map
+            ),
+            "assertion": lambda config_as_map={}: self._add_action_from_definition(
+                path, Assertion, config_as_map
+            ),
+            "ref": session._ref,
+            **self._includes_functions,
+        }
 
     def _add_action_from_definition(
         self, path: Path, action_class: ACTION_TYPES, *args
     ) -> ACTION_TYPES:
+        # This remove references to directories outside of the project directory.
+        path = path.relative_to(self.project_path.absolute())
         action = action_class(self.project_config, path, self, *args)
         self._current_action_context = action
         return self._add_action(action)
 
     def _add_action(self, action: ACTION_TYPES) -> ACTION_TYPES:
-        canonical_target_representation = action.canonical_target_representation()
-        if canonical_target_representation in self.actions:
-            raise Exception(f"Duplicate action: {canonical_target_representation}")
-        self.actions[canonical_target_representation] = action
+        target_representation = action.target_representation()
+        if target_representation in self.actions:
+            raise Exception(f"Duplicate action: {target_representation}")
+        self.actions[target_representation] = action
         return action
 
     def _ref(self, partial_target_representation: str) -> str:
@@ -202,14 +202,21 @@ def detect_files(path: Path, filtered_suffixes: List[str] = [".py"]) -> List[Pat
 
 
 if __name__ == "__main__":
+    start = time.time()
+    print("Compiling...")
+
     compile_config = CompileConfig()
     compile_config.project_dir = "/usr/local/google/home/eliaskassell/Documents/github/dataform/examples/stackoverflow_bigquery"
     session = Session(compile_config)
     session.load_includes()
     session.load_actions()
     compiled_graph = session.compile()
+    print(f"Total compilation time: {time.time() - start}s")
+
     compiled_graph_json = json_format.MessageToDict(compiled_graph)
-    print("Compiled graph:")
+    print("Compiled graph size:", compiled_graph.ByteSize())
+
+    # print("Compiled graph:")
     print(json.dumps(compiled_graph_json, indent=4))
     with open(
         "/usr/local/google/home/eliaskassell/Documents/sandbox/sqly-output/python.json",
@@ -218,11 +225,12 @@ if __name__ == "__main__":
     ) as f:
         json.dump(compiled_graph_json, f, indent=4)
 
-    print("All actions made:")
-    for action in [
-        *compiled_graph.tables,
-        *compiled_graph.operations,
-        *compiled_graph.assertions,
-        *compiled_graph.declarations,
-    ]:
-        print(target_to_target_representation(action.target))
+    # print("All actions made:")
+    # for action in [
+    #     *compiled_graph.tables,
+    #     *compiled_graph.operations,
+    #     *compiled_graph.assertions,
+    #     *compiled_graph.declarations,
+    # ]:
+    #     # print(target_to_target_representation(action.target))
+    #     print(action.file_name)

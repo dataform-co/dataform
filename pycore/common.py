@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import Literal, Optional, List, Dict
 from protos.core_pb2 import Target, Table as TableProto, TableType, ProjectConfig
+import re
 
 
 @dataclass
@@ -70,3 +71,15 @@ def target_to_target_representation(target: Target) -> str:
     Converts a Target (proto) to a target representation (string), e.g. `database.schema.name`.
     """
     return f"{target.database}.{target.schema}.{target.name}"
+
+
+def efficient_replace_string(to_replace: Dict[str, str], text: str):
+    """
+    Note: This may only be more efficient for large `to_replace` dicts and long `text` strings.
+    """
+    # First make the replacements regex safe.
+    to_replace = dict((re.escape(k), re.escape(v)) for k, v in to_replace.items())
+    # Then apply the "or" matching operator.
+    pattern = re.compile("|".join(to_replace.keys()))
+    # Finally apply the regex substitution.
+    return pattern.sub(lambda match: to_replace[re.escape(match.group(0))], text)
