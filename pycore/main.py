@@ -48,7 +48,7 @@ class Session:
         includes_path = self.project_path / "includes"
         if not includes_path.exists():
             return
-        for file in detect_files():
+        for file in detect_files(includes_path):
             print("Loading include", file)
             module_name = "includes." + file.stem
             spec = importlib.util.spec_from_file_location(module_name, file)
@@ -66,16 +66,16 @@ class Session:
             print("Loading definition:", path)
             _globals = {
                 "session": self,
-                "table": lambda config_as_map: self._add_action(
+                "table": lambda config_as_map={}: self._add_action(
                     path, Table, "table", config_as_map
                 ),
-                "view": lambda config_as_map: self._add_action(
+                "view": lambda config_as_map={}: self._add_action(
                     path, Table, "view", config_as_map
                 ),
-                "incremental": lambda config_as_map: self._add_action(
+                "incremental": lambda config_as_map={}: self._add_action(
                     path, Table, "incremental", config_as_map
                 ),
-                "declaration": lambda config_as_map: self._add_action(
+                "declaration": lambda config_as_map={}: self._add_action(
                     path, Declaration, config_as_map
                 ),
                 "ref": session._ref,
@@ -166,6 +166,14 @@ class Session:
             representations_to_dependencies[
                 target_to_target_representation(action.target)
             ] = dependency_target_representations
+        tarjan_groups: List[List[str]] = tarjan(representations_to_dependencies)
+        cycles = [
+            strongly_connected_actions
+            for strongly_connected_actions in tarjan_groups
+            if len(strongly_connected_actions) > 1
+        ]
+        if len(cycles) >= 1:
+            raise Exception(f"Cycle detected. Cycle groups: {cycles}")
 
 
 def detect_files(path: Path, filtered_suffixes: List[str] = [".py"]) -> List[Path]:
