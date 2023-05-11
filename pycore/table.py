@@ -228,6 +228,18 @@ class Table:
     def sql(self, sql: str):
         self._proto.query = sql
 
+    def load_sql(self, sql_path_as_str: str):
+        path = self._session.project_path / sql_path_as_str
+        code = ""
+        with open(path.absolute(), "r") as f:
+            code = f.read()
+        code = f'store_temporary_value(f"""{code}""")'
+        exec(code, self._session._get_globals(path))
+        print("TEMPORARY VALUE:", self._session._temporary_value)
+        self.sql(self._session._temporary_value)
+        # print("LOAD SQL:")
+        # print(code)
+
     def _add_dependency(self, target: Target):
         self._proto.dependency_targets.append(target)
 

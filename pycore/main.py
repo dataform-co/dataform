@@ -35,6 +35,8 @@ class Session:
     project_config: ProjectConfig = ProjectConfig()
     _includes_functions = {}
     _current_action_context: ACTION_TYPES = None
+    # This is a hacky way of storing read SQL.
+    _temporary_value = ""
 
     def __init__(self, compile_config: CompileConfig):
         print(f"Running with Python version {sys.version}")
@@ -119,8 +121,13 @@ class Session:
                 path, Assertion, config_as_map
             ),
             "ref": session._ref,
+            # This is a hacky way of storing read SQL.
+            "store_temporary_value": lambda val="": self._store_temporary_value(val),
             **self._includes_functions,
         }
+
+    def _store_temporary_value(self, val: str):
+        self._temporary_value = val
 
     def _add_action_from_definition(
         self, path: Path, action_class: ACTION_TYPES, *args
@@ -206,7 +213,7 @@ if __name__ == "__main__":
     print("Compiling...")
 
     compile_config = CompileConfig()
-    compile_config.project_dir = "/usr/local/google/home/eliaskassell/Documents/github/dataform/examples/stackoverflow_bigquery"
+    compile_config.project_dir = "/usr/local/google/home/eliaskassell/Documents/github/dataform/examples/simple_load_sql"
     session = Session(compile_config)
     session.load_includes()
     session.load_actions()
@@ -216,14 +223,14 @@ if __name__ == "__main__":
     compiled_graph_json = json_format.MessageToDict(compiled_graph)
     print("Compiled graph size:", compiled_graph.ByteSize())
 
-    # print("Compiled graph:")
+    print("Compiled graph:")
     print(json.dumps(compiled_graph_json, indent=4))
-    with open(
-        "/usr/local/google/home/eliaskassell/Documents/sandbox/sqly-output/python.json",
-        "w",
-        encoding="utf-8",
-    ) as f:
-        json.dump(compiled_graph_json, f, indent=4)
+    # with open(
+    #     "/usr/local/google/home/eliaskassell/Documents/sandbox/sqly-output/python.json",
+    #     "w",
+    #     encoding="utf-8",
+    # ) as f:
+    #     json.dump(compiled_graph_json, f, indent=4)
 
     # print("All actions made:")
     # for action in [
