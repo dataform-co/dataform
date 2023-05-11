@@ -1,5 +1,5 @@
 load("@rules_proto//proto:defs.bzl", "proto_library")
-load("@com_google_protobuf//:protobuf.bzl", "py_proto_library")
+load("@protobuf//:protobuf.bzl", "py_proto_library")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -14,7 +14,6 @@ proto_library(
         "core.proto",
         "evaluation.proto",
         "execution.proto",
-        "profiles.proto",
     ],
 )
 

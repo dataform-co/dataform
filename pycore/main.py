@@ -20,6 +20,7 @@ import inspect
 from typing import List, Literal, Dict
 from google.protobuf import json_format
 from google.protobuf import text_format
+from tarjan import tarjan
 
 ACTION_TYPES = Table
 
@@ -105,8 +106,12 @@ class Session:
                 compiled_graph_string = compiled_graph_string.replace(
                     f"`canonical_target_representation`", f"`target_representation`"
                 )
+        compiled_graph = json_format.ParseDict(
+            json.loads(compiled_graph_string), compiled_graph
+        )
 
-        return json_format.ParseDict(json.loads(compiled_graph_string), compiled_graph)
+        self._check_circularity(compiled_graph)
+        return compiled_graph
 
     def _add_action(
         self, path: Path, action_class: ACTION_TYPES, *args
@@ -144,6 +149,23 @@ class Session:
         )
         target.name = segments[0]
         return target
+
+    def _check_circularity(self, compiled_graph):
+        # First transform the compiled graph into target representations, which can be used by the
+        # tarjan libary.
+        representations_to_dependencies: Dict[str, str] = {}
+        for action in [
+            *compiled_graph.tables,
+            *compiled_graph.operations,
+            *compiled_graph.assertions,
+        ]:
+            dependency_target_representations = [
+                target_to_target_representation(target)
+                for target in action.dependency_targets
+            ]
+            representations_to_dependencies[
+                target_to_target_representation(action.target)
+            ] = dependency_target_representations
 
 
 def detect_files(path: Path, filtered_suffixes: List[str] = [".py"]) -> List[Path]:
