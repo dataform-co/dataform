@@ -179,7 +179,7 @@ class Table:
                 merged_row_conditions.extend(
                     [f"{col} IS NOT NULL" for col in assertions.non_null]
                 )
-            for merged_row_condition in merged_row_conditions:
+            if len(merged_row_conditions) > 0:
                 self._session._add_action(
                     Assertion(
                         self._project_config,
@@ -189,7 +189,7 @@ class Table:
                         assertion_config_to_share,
                     ).query(
                         adapter.row_conditions_assertion(
-                            self.target_representation(), merged_row_condition
+                            self.target_representation(), merged_row_conditions
                         )
                     )
                 )
