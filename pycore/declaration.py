@@ -22,13 +22,11 @@ class Declaration:
         self,
         project_config: ProjectConfig,
         path: Path,
-        declaration_config_as_map: DeclarationConfig,
+        session,
+        declaration_config_as_map: Dict,
     ):
-        # TODO: Validate table config.
         self._proto = DeclarationProto()
         self._table_config = DeclarationConfig(**declaration_config_as_map)
-
-        self._populate_proto_fields()
 
         # Canonical target is based off of the file structure, and is guaranteed to be unique.
         self._proto.canonical_target.CopyFrom(action_target(project_config, path.stem))
@@ -43,6 +41,8 @@ class Declaration:
                 self._table_config.name,
             )
         )
+
+        self._populate_proto_fields()
 
     def _populate_proto_fields(self):
         self._proto.action_descriptor.description = self._table_config.description

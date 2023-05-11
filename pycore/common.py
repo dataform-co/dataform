@@ -66,4 +66,7 @@ def action_target(
 
 
 def target_to_target_representation(target: Target) -> str:
+    """
+    Converts a Target (proto) to a target representation (string), e.g. `database.schema.name`.
+    """
     return f"{target.database}.{target.schema}.{target.name}"

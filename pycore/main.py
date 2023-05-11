@@ -5,12 +5,14 @@ from pathlib import Path
 from table import Table
 from common import target_to_target_representation
 from declaration import Declaration
+from assertion import Assertion
 import json
 from dataclasses import dataclass
 import os
 from protos.core_pb2 import (
     CompileConfig,
     ProjectConfig,
+    TableType,
     Target,
     GraphErrors,
     CompiledGraph,
@@ -66,17 +68,20 @@ class Session:
             print("Loading definition:", path)
             _globals = {
                 "session": self,
-                "table": lambda config_as_map={}: self._add_action(
-                    path, Table, "table", config_as_map
+                "table": lambda config_as_map={}: self._add_action_from_definition(
+                    path, Table, TableType.TABLE, config_as_map
                 ),
-                "view": lambda config_as_map={}: self._add_action(
-                    path, Table, "view", config_as_map
+                "view": lambda config_as_map={}: self._add_action_from_definition(
+                    path, Table, TableType.VIEW, config_as_map
                 ),
-                "incremental": lambda config_as_map={}: self._add_action(
-                    path, Table, "incremental", config_as_map
+                "incremental": lambda config_as_map={}: self._add_action_from_definition(
+                    path, Table, TableType.INCREMENTAL, config_as_map
                 ),
-                "declaration": lambda config_as_map={}: self._add_action(
+                "declaration": lambda config_as_map={}: self._add_action_from_definition(
                     path, Declaration, config_as_map
+                ),
+                "assertion": lambda config_as_map={}: self._add_action_from_definition(
+                    path, Assertion, config_as_map
                 ),
                 "ref": session._ref,
                 **self._includes_functions,
@@ -87,6 +92,9 @@ class Session:
             exec(code, _globals)
 
     def compile(self) -> CompiledGraph:
+        print("Actions before compiling:")
+        for i in self.actions.keys():
+            print(f" - {i}")
         compiled_graph = CompiledGraph()
         compiled_graph.project_config.CopyFrom(self.project_config)
         compiled_graph.tables.extend(
@@ -94,6 +102,9 @@ class Session:
         )
         compiled_graph.declarations.extend(
             [i._proto for i in self.actions.values() if isinstance(i, Declaration)]
+        )
+        compiled_graph.assertions.extend(
+            [i._proto for i in self.actions.values() if isinstance(i, Assertion)]
         )
 
         # This is a pretty hacky way to Replace all outdated refs with the updated target
@@ -113,15 +124,18 @@ class Session:
         self._check_circularity(compiled_graph)
         return compiled_graph
 
-    def _add_action(
+    def _add_action_from_definition(
         self, path: Path, action_class: ACTION_TYPES, *args
     ) -> ACTION_TYPES:
-        action = action_class(self.project_config, path, *args)
-        target_representation = action.target_representation()
-        if target_representation in self.actions:
-            raise Exception(f"Duplicate action: {target_representation}")
+        action = action_class(self.project_config, path, self, *args)
         self._current_action_context = action
-        self.actions[action.target_representation()] = action
+        return self._add_action(action)
+
+    def _add_action(self, action: ACTION_TYPES) -> ACTION_TYPES:
+        canonical_target_representation = action.canonical_target_representation()
+        if canonical_target_representation in self.actions:
+            raise Exception(f"Duplicate action: {canonical_target_representation}")
+        self.actions[canonical_target_representation] = action
         return action
 
     def _ref(self, partial_target_representation: str) -> str:
@@ -158,6 +172,7 @@ class Session:
             *compiled_graph.tables,
             *compiled_graph.operations,
             *compiled_graph.assertions,
+            # Declarations have no dependencies, so are ignored.
         ]:
             dependency_target_representations = [
                 target_to_target_representation(target)
@@ -193,12 +208,21 @@ if __name__ == "__main__":
     session.load_includes()
     session.load_actions()
     compiled_graph = session.compile()
-    # print("Compiled graph:", text_format.MessageToString(compiled_graph))
     compiled_graph_json = json_format.MessageToDict(compiled_graph)
-    print("Compiled graph:", json.dumps(compiled_graph_json, indent=4))
+    print("Compiled graph:")
+    print(json.dumps(compiled_graph_json, indent=4))
     with open(
         "/usr/local/google/home/eliaskassell/Documents/sandbox/sqly-output/python.json",
         "w",
         encoding="utf-8",
     ) as f:
         json.dump(compiled_graph_json, f, indent=4)
+
+    print("All actions made:")
+    for action in [
+        *compiled_graph.tables,
+        *compiled_graph.operations,
+        *compiled_graph.assertions,
+        *compiled_graph.declarations,
+    ]:
+        print(target_to_target_representation(action.target))

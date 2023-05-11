@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Literal, Optional, List, Dict
 from dataclasses import dataclass
 from protos.core_pb2 import (
@@ -9,10 +11,13 @@ from protos.core_pb2 import (
 )
 from common import ActionConfig, action_target, target_to_target_representation
 from pathlib import Path
+from assertion import Assertion
 
-TABLE_TYPE_NAMES = Literal["table", "incremental", "view", "inline"]
+import adapter
 
 
+# TODO: These are all snake case, but the current open source uses camel case. We shouldn't
+# necessarily convert them to camel case however.
 @dataclass
 class TableAssertions:
     """
@@ -59,7 +64,7 @@ class TableConfig(ActionConfig):
         additional_options: Key-value pairs for options [table](https://cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#table_option_list), [view](https://cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#view_option_list), [materialized view](https://cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#materialized_view_option_list).
     """
 
-    type: Optional[TABLE_TYPE_NAMES] = None
+    type: Optional[TableType] = None
     protected: Optional[bool] = None
     assertions: Optional[TableAssertions] = None
     unique_key: Optional[List[str]] = None
@@ -82,16 +87,17 @@ class Table:
         self,
         project_config: ProjectConfig,
         path: Path,
-        table_type: TABLE_TYPE_NAMES,
-        table_config_as_map: TableConfig,
+        session,  # TODO: Can't import this type because cirular dependency; maybe spread session?
+        table_type: TableType,
+        table_config_as_map: Dict,
     ):
-        # TODO: Validate table config.
-        self._proto = TableProto()
+        self._project_config = project_config
+        self._path = path
+        self._session = session
+        self._table_type = table_type
         self._table_config = TableConfig(**table_config_as_map)
-        self.dependency_targets: List[Target] = []
 
-        self._populate_proto_fields(table_type)
-        self._populate_bigquery_proto_fields()
+        self._proto = TableProto()
 
         # Canonical target is based off of the file structure, and is guaranteed to be unique.
         self._proto.canonical_target.CopyFrom(action_target(project_config, path.stem))
@@ -107,16 +113,15 @@ class Table:
             )
         )
 
-    def _populate_proto_fields(self, table_type: TABLE_TYPE_NAMES):
-        if table_type != None:
-            if table_type == "incremental":
-                self._proto.enum_type = TableType.INCREMENTAL
-            elif table_type == "table":
-                self._proto.enum_type = TableType.TABLE
-            elif table_type == "view":
-                self._proto.enum_type = TableType.VIEW
-            else:
-                raise Exception(f"Unrecognized table type: {self._table_config.type}")
+        self._populate_proto_fields()
+        self._add_assertions()
+        self._populate_bigquery_proto_fields()
+
+    def _populate_proto_fields(self):
+        if TableType == TableType.UNKNOWN_TYPE:
+            raise Exception(f"Unknown table type: {self._table_config.type}")
+        else:
+            self._proto.enum_type = self._table_type
         # TODO: Propagate unique key assertions from disabled.
         self._proto.disabled = bool(self._table_config.disabled)
         if self._table_config.protected:
@@ -128,11 +133,66 @@ class Table:
         if self._table_config.description:
             self._proto.action_descriptor.description = self._table_config.description
         # TODO: Check for columns.
-        # TODO: Check for assertions.
         if self._table_config.unique_key:
             self._proto.unique_key = self._table_config.uniqueKey
         if self._table_config.materialized:
             self._proto.materialized = self._table_config.materialized
+        if self._table_config.dependencies:
+            self._proto.dependency_targets.extend(
+                [
+                    self._session._resolve_target_representation(target_representation)
+                    for target_representation in self._table_config.dependencies
+                ]
+            )
+
+    def _add_assertions(self):
+        if self._table_config.assertions:
+            assertions = TableAssertions(**self._table_config.assertions)
+            if assertions.unique_key and assertions.unique_keys:
+                raise Exception(
+                    "Specify at most one of 'assertions.unique_key' and 'assertions.unique_keys'."
+                )
+            if assertions.unique_key:
+                assertions.unique_keys = [assertions.unique_key]
+            assertion_config_to_share = {
+                "tags": self._proto.tags,
+                "disabled": self._proto.disabled,
+                "dependencies": [self.target_representation()],
+            }
+            for i, unique_key in enumerate(assertions.unique_keys):
+                self._session._add_action(
+                    Assertion(
+                        self._project_config,
+                        self._path.parent
+                        / f"{self._path.stem}_assertions_unique_key_{i}",
+                        self._session,
+                        assertion_config_to_share,
+                    ).query(
+                        adapter.index_assertion(
+                            self.target_representation(), unique_key
+                        )
+                    )
+                )
+
+            merged_row_conditions = assertions.row_conditions or []
+            if assertions.non_null:
+                merged_row_conditions.extend(
+                    [f"{col} IS NOT NULL" for col in assertions.non_null]
+                )
+            for merged_row_condition in merged_row_conditions:
+                self._session._add_action(
+                    Assertion(
+                        self._project_config,
+                        self._path.parent
+                        / f"{self._path.stem}_assertions_rowConditions",
+                        self._session,
+                        assertion_config_to_share,
+                    ).query(
+                        adapter.row_conditions_assertion(
+                            self.target_representation(), merged_row_condition
+                        )
+                    )
+                )
 
     def _populate_bigquery_proto_fields(self):
         """These are options that were previously BigQuery specific."""
