@@ -6,6 +6,7 @@ from table import Table
 from common import target_to_target_representation
 from declaration import Declaration
 from assertion import Assertion
+from operation import Operation
 import json
 import os
 from protos.core_pb2 import (
@@ -21,7 +22,7 @@ from typing import List, Dict
 from google.protobuf import json_format
 from tarjan import tarjan
 
-ACTION_TYPES = Table | Assertion | Declaration
+ACTION_TYPES = Table | Operation | Assertion | Declaration
 
 
 class Session:
@@ -30,6 +31,10 @@ class Session:
     project_path = Path()
     project_config: ProjectConfig = ProjectConfig()
     _includes_functions = {}
+
+    # Whenever an action context is entered, it's stored here. Then when ref or other contextual
+    # methods are called, they know their context. This facilitates contextualisation in a single
+    # code passthrough (with canonical target resolution in a subsequent passthrough).
     _current_action_context: ACTION_TYPES = None
 
     # This is used to store read `.sql` files in the global variables during nested `eval()` calls.
@@ -90,11 +95,14 @@ class Session:
         compiled_graph.tables.extend(
             [i._proto for i in self.actions.values() if isinstance(i, Table)]
         )
-        compiled_graph.declarations.extend(
-            [i._proto for i in self.actions.values() if isinstance(i, Declaration)]
+        compiled_graph.operations.extend(
+            [i._proto for i in self.actions.values() if isinstance(i, Operation)]
         )
         compiled_graph.assertions.extend(
             [i._proto for i in self.actions.values() if isinstance(i, Assertion)]
+        )
+        compiled_graph.declarations.extend(
+            [i._proto for i in self.actions.values() if isinstance(i, Declaration)]
         )
 
         self._check_circularity(compiled_graph)
@@ -112,16 +120,31 @@ class Session:
             "incremental": lambda config_as_map={}: self._add_action_from_definition(
                 path, Table, TableType.INCREMENTAL, config_as_map
             ),
-            "declaration": lambda config_as_map={}: self._add_action_from_definition(
-                path, Declaration, config_as_map
+            "operations": lambda config_as_map={}: self._add_action_from_definition(
+                path, Operation, config_as_map
             ),
             "assertion": lambda config_as_map={}: self._add_action_from_definition(
                 path, Assertion, config_as_map
             ),
+            "declaration": lambda config_as_map={}: self._add_action_from_definition(
+                path, Declaration, config_as_map
+            ),
             "ref": self._ref,
+            # TODO: Self is reserved in python, so I've swapped self reference to `this`.
+            "this": self._this,
             "store_sql": lambda val="": self._store_sql(val),
+            "load_sql_file": lambda file_path="": self._load_sql_file(file_path),
             **self._includes_functions,
         }
+
+    def _load_sql_file(self, sql_file_path_as_str: str) -> str:
+        path = self.project_path / sql_file_path_as_str
+        code = ""
+        with open(path.absolute(), "r") as f:
+            code = f.read()
+        code = f'store_sql(f"""{code}""")'
+        exec(code, self._get_globals(path))
+        return self._stored_sql
 
     def _store_sql(self, val: str):
         self._stored_sql = val
@@ -148,6 +171,9 @@ class Session:
         # This is a bit hacky; it's not guaranteed that current action context is set before ref.
         self._current_action_context._add_dependency(target)
         return f"`{full_target_representation}`"
+
+    def _this(self):
+        return f"`{self._current_action_context.target_representation()}`"
 
     def _resolve_target_representation(self, target_representation: str) -> Target:
         if target_representation == "":

@@ -5,6 +5,32 @@ import re
 
 
 @dataclass
+class RecordDescriptor:
+    """
+    A data class that describes a struct, object or record in a dataset that has nested columns.
+
+    Args:
+        description: A description of the struct, object or record.
+        columns: A description of columns within the struct, object or record.
+        displayName: A human-readable name for the column.
+        dimension: The type of the column. Can be `category`, `timestamp` or `number`.
+        aggregator: The type of aggregator to use for the column. Can be `sum`, `distinct` or `derived`.
+        expression: The expression to use for the column.
+        tags: Tags that apply to this column (experimental).
+        bigqueryPolicyTags: BigQuery policy tags that should be applied to this column.
+    """
+
+    description: Optional[str] = None
+    columns: Optional[Dict[str, "RecordDescriptor"]] = None
+    displayName: Optional[str] = None
+    dimension: Optional[str] = None
+    aggregator: Optional[str] = None
+    expression: Optional[str] = None
+    tags: Optional[str | List[str]] = None
+    bigqueryPolicyTags: Optional[str | List[str]] = None
+
+
+@dataclass
 class ActionConfig:
     """
     A dataclass that represents generic action configuration options.
@@ -35,7 +61,7 @@ class ActionConfig:
     name: Optional[str] = None
 
     description: Optional[str] = None
-    # columns: Optional[IColumnsDescriptor] = None
+    columns: Optional[Dict[str, RecordDescriptor]] = None
     displayName: Optional[str] = None
     dimension: Optional[str] = None
     aggregator: Optional[str] = None

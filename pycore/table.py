@@ -7,6 +7,7 @@ from protos.core_pb2 import (
     Table as TableProto,
     TableType,
     ProjectConfig,
+    ColumnDescriptor,
 )
 from common import (
     ActionConfig,
@@ -16,8 +17,8 @@ from common import (
 )
 from pathlib import Path
 from assertion import Assertion
-
 import adapter
+from google.protobuf import json_format
 
 
 # TODO: These are all snake case, but the current open source uses camel case. We shouldn't
@@ -133,6 +134,13 @@ class Table:
             self._proto.tags.extend(self._table_config.tags)
         if self._table_config.description:
             self._proto.action_descriptor.description = self._table_config.description
+        if self._table_config.columns:
+            self._proto.action_descriptor.columns.extend(
+                [
+                    json_format.ParseDict(column, ColumnDescriptor())
+                    for column in self._table_config.columns
+                ]
+            )
         # TODO: Check for columns.
         if self._table_config.unique_key:
             self._proto.unique_key = self._table_config.uniqueKey
@@ -227,19 +235,30 @@ class Table:
         if self._table_config.labels:
             self._proto.action_descriptor.bigquery_labels = self._table_config.labels
 
-    def sql(self, sql: str):
+    def sql(self, sql: str) -> "Table":
+        if self._proto.query:
+            raise Exception("SQL is already defined")
         self._proto.query = sql
+        if self._proto.enum_type == TableType.INCREMENTAL:
+            self._proto.incremental_query = sql
+        # TODO: Validate query strings (remove semi-colon at end), or no longer necessary?
+        return self
 
-    def load_sql_file(self, sql_file_path_as_str: str):
-        path = self._session.project_path / sql_file_path_as_str
-        code = ""
-        with open(path.absolute(), "r") as f:
-            code = f.read()
-        code = f'store_sql(f"""{code}""")'
-        exec(code, self._session._get_globals(path))
-        self.sql(self._session._stored_sql)
-        # print("LOAD SQL:")
-        # print(code)
+    def pre_operations(self, sqls: List[str]) -> "Table":
+        self._proto.pre_ops.extend(sqls)
+        if self._proto.enum_type == TableType.INCREMENTAL:
+            self._proto.incremental_pre_ops.extend(sqls)
+        return self
+
+    def post_operations(self, sqls: List[str]) -> "Table":
+        self._proto.post_ops.extend(sqls)
+        if self._proto.enum_type == TableType.INCREMENTAL:
+            self._proto.incremental_post_ops.extend(sqls)
+        return self
+
+    def load_sql_file(self, sql_file_path_as_str: str) -> "Table":
+        self.sql(self._session._load_sql_file(sql_file_path_as_str))
+        return self
 
     def _add_dependency(self, target: Target):
         self._proto.dependency_targets.append(target)
@@ -251,5 +270,7 @@ class Table:
         return target_to_target_representation(self._proto.canonical_target)
 
     def clean_refs(self, refs_to_replace: Dict[str, str]):
+        if not refs_to_replace:
+            return
         self._proto.query = efficient_replace_string(refs_to_replace, self._proto.query)
         # TODO: Clean pre-ops and post-ops.

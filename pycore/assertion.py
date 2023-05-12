@@ -86,4 +86,6 @@ class Assertion:
         return target_to_target_representation(self._proto.canonical_target)
 
     def clean_refs(self, refs_to_replace: Dict[str, str]):
+        if not refs_to_replace:
+            return
         self._proto.query = efficient_replace_string(refs_to_replace, self._proto.query)

@@ -13,7 +13,7 @@ if __name__ == "__main__":
     print("Compiling...")
 
     compile_config = CompileConfig()
-    compile_config.project_dir = "/usr/local/google/home/eliaskassell/Documents/github/dataform/examples/simple_load_sql"
+    compile_config.project_dir = "/usr/local/google/home/eliaskassell/Documents/github/dataform/examples/operations"
     session = Session(compile_config)
     session.load_includes()
     session.load_actions()
