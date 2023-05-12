@@ -7,7 +7,6 @@ from protos.core_pb2 import (
     Table as TableProto,
     TableType,
     ProjectConfig,
-    ActionDescriptor,
 )
 from common import (
     ActionConfig,
@@ -162,12 +161,15 @@ class Table:
                 "disabled": self._proto.disabled,
                 "dependencies": [self.target_representation()],
             }
-            for i, unique_key in enumerate(assertions.unique_keys):
+            for unique_key in assertions.unique_keys:
                 self._session._add_action(
                     Assertion(
                         self._project_config,
                         self._path.parent
-                        / f"{self._path.stem}_assertions_unique_key_{i}",
+                        # TODO: Confirm this is an improvement: it differs from previous
+                        # implementation, but facilitates multiple unique key assertions in the same
+                        # file.
+                        / f"{self._proto.target.name}_assertions_unique_key_{'_'.join(unique_key)}",
                         self._session,
                         assertion_config_to_share,
                     ).sql(
@@ -228,15 +230,14 @@ class Table:
     def sql(self, sql: str):
         self._proto.query = sql
 
-    def load_sql(self, sql_path_as_str: str):
-        path = self._session.project_path / sql_path_as_str
+    def load_sql_file(self, sql_file_path_as_str: str):
+        path = self._session.project_path / sql_file_path_as_str
         code = ""
         with open(path.absolute(), "r") as f:
             code = f.read()
-        code = f'store_temporary_value(f"""{code}""")'
+        code = f'store_sql(f"""{code}""")'
         exec(code, self._session._get_globals(path))
-        print("TEMPORARY VALUE:", self._session._temporary_value)
-        self.sql(self._session._temporary_value)
+        self.sql(self._session._stored_sql)
         # print("LOAD SQL:")
         # print(code)
 
