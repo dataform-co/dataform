@@ -141,7 +141,6 @@ class Table:
                     for column in self._table_config.columns
                 ]
             )
-        # TODO: Check for columns.
         if self._table_config.unique_key:
             self._proto.unique_key = self._table_config.uniqueKey
         if self._table_config.materialized:

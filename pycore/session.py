@@ -14,6 +14,7 @@ from protos.core_pb2 import (
     ProjectConfig,
     TableType,
     Target,
+    CompilationError,
     GraphErrors,
     CompiledGraph,
 )
@@ -40,6 +41,9 @@ class Session:
     # This is used to store read `.sql` files in the global variables during nested `eval()` calls.
     # A queue would probably be better, but this fits all purposes currently.
     _stored_sql = ""
+
+    # When loading files to actions, store errors per action rather than cancelling all compilation.
+    _compilation_errors = []
 
     def __init__(self, compile_config: CompileConfig):
         print(f"Running with Python version {sys.version}")
@@ -77,6 +81,16 @@ class Session:
                 code = f.read()
             exec(code, self._get_globals(path))
 
+    def load_sql_files_as_actions(self):
+        definitions_files = detect_files(self.project_path / "definitions", [".sql"])
+
+        for path in definitions_files:
+            print("Loading definition:", path)
+            code = ""
+            with open(path.absolute(), "r") as f:
+                code = f.read()
+            exec(code, self._get_globals(path))
+
     def compile(self) -> CompiledGraph:
         # Before compiling, replace canonical targets with effectual targets.
         refs_to_replace: Dict[str, str] = {}
@@ -104,6 +118,8 @@ class Session:
         compiled_graph.declarations.extend(
             [i._proto for i in self.actions.values() if isinstance(i, Declaration)]
         )
+
+        compiled_graph.graph_errors.compilation_errors.extend(self._compilation_errors)
 
         self._check_circularity(compiled_graph)
         return compiled_graph
@@ -171,6 +187,17 @@ class Session:
         # This is a bit hacky; it's not guaranteed that current action context is set before ref.
         self._current_action_context._add_dependency(target)
         return f"`{full_target_representation}`"
+
+    def report_compilation_error(
+        self, path: Path, target: Target(), message: str, stack: str
+    ):
+        compilation_error = CompilationError()
+        compilation_error.file_name = str(path)
+        compilation_error.action_name = target_to_target_representation(target)
+        compilation_error.action_target.CopyFrom(target)
+        compilation_error.message = message
+        compilation_error.stack = stack
+        self._compilation_errors.append(compilation_error)
 
     def _this(self):
         return f"`{self._current_action_context.target_representation()}`"

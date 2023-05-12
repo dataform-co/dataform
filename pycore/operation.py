@@ -14,6 +14,7 @@ from common import (
     efficient_replace_string,
 )
 from pathlib import Path
+import traceback
 
 
 # TODO: Override argument descriptions for docs usage; see original assertions file.
@@ -76,13 +77,20 @@ class Operation:
             self._proto.action_descriptor.description = (
                 self._operation_config.description
             )
-        # TODO: Add columns.
+        # TODO: Handle columns.
         if self._operation_config.has_output:
             self._proto.has_output = self._operation_config.has_output
         if self._operation_config.columns:
-            raise Exception(
-                "Actions of type 'operation' may only describe columns if they specify 'has_output: true'."
-            )
+            try:
+                raise Exception()
+            except Exception:
+                self._session.report_compilation_error(
+                    self._path,
+                    self._proto.target,
+                    "Actions of type 'operation' may only describe columns if they specify 'has_output: true'.",
+                    # This isn't the idea way of getting a stack trace, but it does work.
+                    traceback.format_exc(),
+                )
 
     def queries(self, sqls: List[str]):
         self._proto.queries.extend(sqls)
