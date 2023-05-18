@@ -23,11 +23,11 @@ from typing import List, Dict
 from google.protobuf import json_format
 from tarjan import tarjan
 
-ACTION_TYPES = Table | Operation | Assertion | Declaration
+ActionTypes = Table | Operation | Assertion | Declaration
 
 
 class Session:
-    actions: Dict[str, ACTION_TYPES] = {}
+    actions: Dict[str, ActionTypes] = {}
     graph_errors: GraphErrors = GraphErrors()
     project_path = Path()
     project_config: ProjectConfig = ProjectConfig()
@@ -36,7 +36,7 @@ class Session:
     # Whenever an action context is entered, it's stored here. Then when ref or other contextual
     # methods are called, they know their context. This facilitates contextualisation in a single
     # code passthrough (with canonical target resolution in a subsequent passthrough).
-    _current_action_context: ACTION_TYPES = None
+    _current_action_context: ActionTypes = None
 
     # This is used to store read `.sql` files in the global variables during nested `eval()` calls.
     # A queue would probably be better, but this fits all purposes currently.
@@ -154,15 +154,15 @@ class Session:
         self._stored_sql = val
 
     def _add_action_from_definition(
-        self, path: Path, action_class: ACTION_TYPES, *args
-    ) -> ACTION_TYPES:
+        self, path: Path, action_class: ActionTypes, *args
+    ) -> ActionTypes:
         # This remove references to directories outside of the project directory.
         path = path.relative_to(self.project_path.absolute())
         action = action_class(self.project_config, path, self, *args)
         self._current_action_context = action
         return self._add_action(action)
 
-    def _add_action(self, action: ACTION_TYPES) -> ACTION_TYPES:
+    def _add_action(self, action: ActionTypes) -> ActionTypes:
         target_representation = action.target_representation()
         if target_representation in self.actions:
             raise Exception(f"Duplicate action: {target_representation}")
@@ -238,7 +238,7 @@ class Session:
 
 def detect_files(path: Path, filtered_suffixes: List[str] = [".py"]) -> List[Path]:
     files: List[Path] = []
-    for subdirectory, _, filenames in os.walk(path):
+    for subdirectory, _, filenames in os.walk(path.absolute()):
         for filename in filenames:
             file_path = path / os.path.join(subdirectory, filename)
             if file_path.suffix in filtered_suffixes:
