@@ -6,6 +6,8 @@ from typing import List, Literal, Dict
 from google.protobuf import json_format
 import time
 from session import Session
+import sys
+from pathlib import Path
 
 
 if __name__ == "__main__":
@@ -13,15 +15,27 @@ if __name__ == "__main__":
     print("Compiling...")
 
     compile_config = CompileConfig()
-    compile_config.project_dir = "/usr/local/google/home/eliaskassell/Documents/github/dataform/examples/compilation_errors"
+
+    # This provides a temporary entrypoint for demoing.
+    example_project_name = sys.argv[1]
+    if not example_project_name:
+        raise Exception("Name of example project required.")
+    example_project_path = Path.cwd() / "examples" / example_project_name
+    if not example_project_path.exists():
+        raise Exception(
+            f"Example project '{example_project_path}' does not exist. Check the examples directory."
+        )
+
+    compile_config.project_dir = str(example_project_path)
+
     session = Session(compile_config)
     session.load_includes()
     session.load_actions()
     compiled_graph = session.compile()
-    print(f"Total compilation time: {time.time() - start}s")
 
     compiled_graph_json = json_format.MessageToDict(compiled_graph)
-    print("Compiled graph size:", compiled_graph.ByteSize())
+
+    total_compilation_time = time.time() - start
 
     print("Compiled graph:")
     print(json.dumps(compiled_graph_json, indent=4))
@@ -31,6 +45,9 @@ if __name__ == "__main__":
     #     encoding="utf-8",
     # ) as f:
     #     json.dump(compiled_graph_json, f, indent=4)
+
+    print("Compiled graph size:", compiled_graph.ByteSize())
+    print(f"Total compilation time: {total_compilation_time}s")
 
     # print("All actions made:")
     # for action in [

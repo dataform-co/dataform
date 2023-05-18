@@ -61,7 +61,6 @@ class Session:
         if not includes_path.exists():
             return
         for file in detect_files(includes_path):
-            print("Loading include", file)
             module_name = "includes." + file.stem
             spec = importlib.util.spec_from_file_location(module_name, file)
             module = importlib.util.module_from_spec(spec)
@@ -75,17 +74,6 @@ class Session:
         definitions_files = detect_files(self.project_path / "definitions")
 
         for path in definitions_files:
-            print("Loading definition:", path)
-            code = ""
-            with open(path.absolute(), "r") as f:
-                code = f.read()
-            exec(code, self._get_globals(path))
-
-    def load_sql_files_as_actions(self):
-        definitions_files = detect_files(self.project_path / "definitions", [".sql"])
-
-        for path in definitions_files:
-            print("Loading definition:", path)
             code = ""
             with open(path.absolute(), "r") as f:
                 code = f.read()

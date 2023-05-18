@@ -1,5 +1,1 @@
-for i in range(200):
-    table({"name": f"name{i}"}).sql(
-        # A string of 500kb.
-        ("a" * 500 * 1024)
-    )
+[table({"name": f"name{i}"}).sql("a" * 500 * 1024) for i in range(250)]

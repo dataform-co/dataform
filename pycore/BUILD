@@ -15,6 +15,9 @@ py_binary(
     srcs = [
         "main.py",
     ],
+    data = [
+        "//examples",
+    ],
     deps = [
         ":pycore_lib",
     ],
