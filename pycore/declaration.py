@@ -1,4 +1,9 @@
-from common import ActionConfig, action_target, target_to_target_representation
+from common import (
+    TargetableActionConfig,
+    DocumentableActionConfig,
+    action_target,
+    target_to_target_representation,
+)
 from dataclasses import dataclass
 from pathlib import Path
 from protos.core_pb2 import (
@@ -11,7 +16,7 @@ from typing import Literal, Optional, List, Dict
 
 
 @dataclass
-class DeclarationConfig(ActionConfig):
+class DeclarationConfig(TargetableActionConfig, DocumentableActionConfig):
     """
     A data class that represents declaration configuration options.
     """

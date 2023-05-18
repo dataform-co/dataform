@@ -10,7 +10,9 @@ from protos.core_pb2 import (
     ColumnDescriptor,
 )
 from common import (
-    ActionConfig,
+    ActionWithDependenciesConfig,
+    TargetableActionConfig,
+    DocumentableActionConfig,
     action_target,
     target_to_target_representation,
     efficient_replace_string,
@@ -42,7 +44,9 @@ class TableAssertions:
 
 
 @dataclass
-class TableConfig(ActionConfig):
+class TableConfig(
+    TargetableActionConfig, ActionWithDependenciesConfig, DocumentableActionConfig
+):
     """
     A data class that represents table configuration options.
 

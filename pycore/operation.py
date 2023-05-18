@@ -8,7 +8,9 @@ from protos.core_pb2 import (
     ProjectConfig,
 )
 from common import (
-    ActionConfig,
+    TargetableActionConfig,
+    ActionWithDependenciesConfig,
+    DocumentableActionConfig,
     action_target,
     target_to_target_representation,
     efficient_replace_string,
@@ -19,7 +21,9 @@ import traceback
 
 # TODO: Override argument descriptions for docs usage; see original assertions file.
 @dataclass
-class OperationConfig(ActionConfig):
+class OperationConfig(
+    TargetableActionConfig, ActionWithDependenciesConfig, DocumentableActionConfig
+):
     """
     A data class that represents declaration configuration options.
 

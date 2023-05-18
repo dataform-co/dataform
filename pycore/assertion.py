@@ -1,5 +1,6 @@
 from common import (
-    ActionConfig,
+    ActionWithDependenciesConfig,
+    TargetableActionConfig,
     action_target,
     target_to_target_representation,
     efficient_replace_string,
@@ -17,10 +18,18 @@ from typing import Literal, Optional, List, Dict
 
 # TODO: Override argument descriptions for docs usage; see original assertions file.
 @dataclass
-class AssertionConfig(ActionConfig):
+class AssertionConfig(TargetableActionConfig, ActionWithDependenciesConfig):
     """
     A data class that represents declaration configuration options.
+
+    Unlike other actions, assertions can't have columns. This is because columns would not make
+    sense in the context of the generated tables of assertions.
+
+    Args:
+        description: A description of the struct, object or record.
     """
+
+    description: Optional[str] = None
 
 
 class Assertion:

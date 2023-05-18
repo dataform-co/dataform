@@ -22,52 +22,48 @@ class RecordDescriptor:
 
     description: Optional[str] = None
     columns: Optional[Dict[str, "RecordDescriptor"]] = None
-    displayName: Optional[str] = None
-    dimension: Optional[str] = None
-    aggregator: Optional[str] = None
-    expression: Optional[str] = None
-    tags: Optional[str | List[str]] = None
-    bigqueryPolicyTags: Optional[str | List[str]] = None
 
 
 @dataclass
-class ActionConfig:
+class DocumentableActionConfig:
     """
-    A dataclass that represents generic action configuration options.
+    A data class that
 
     Args:
-        # From target interface.
+        description:  A description of the dataset.
+        columns: A description of columns within the struct, object or record.
+    """
+
+    description: Optional[str] = None
+    columns: Optional[Dict[str, "RecordDescriptor"]] = None
+
+
+@dataclass
+class TargetableActionConfig:
+    """
+    A dataclass that with attributes that represent the warehouse target of an action.
+
+    Args:
         database: The database in which the output of this action should be created.
         schema: The schema in which the output of this action should be created.
-
-        # From record descriptor interface.
-        description: A description of the struct, object or record.
-        columns: A description of columns within the struct, object or record.
-        displayName: A human-readable name for the column.
-        dimension: The type of the column. Can be `category`, `timestamp` or `number`.
-        aggregator: The type of aggregator to use for the column. Can be `sum`, `distinct` or `derived`.
-        expression: The expression to use for the column.
-        tags: Tags that apply to this column (experimental).
-        bigqueryPolicyTags: BigQuery policy tags that should be applied to this column.
-
-        # From action config interface.
-        tags: A list of user-defined tags with which the action should be labeled.
-        dependencies: Dependencies of the action.
-        disabled: If set to true, this action will not be executed. However, the action may still be depended upon. Useful for temporarily turning off broken actions.
+        name: The name of the action.
     """
 
     database: Optional[str] = None
     schema: Optional[str] = None
     name: Optional[str] = None
 
-    description: Optional[str] = None
-    columns: Optional[Dict[str, RecordDescriptor]] = None
-    displayName: Optional[str] = None
-    dimension: Optional[str] = None
-    aggregator: Optional[str] = None
-    expression: Optional[str] = None
-    tags: Optional[List[str]] = None
-    bigqueryPolicyTags: Optional[List[str]] = None
+
+@dataclass
+class ActionWithDependenciesConfig:
+    """
+    A dataclass that represents the dependency attributes of an action.
+
+    Args:
+        tags: A list of user-defined tags with which the action should be labeled.
+        dependencies: Dependencies of the action.
+        disabled: If set to true, this action will not be executed. However, the action may still be depended upon. Useful for temporarily turning off broken actions.
+    """
 
     tags: Optional[List[str]] = None
     dependencies: Optional[List[str]] = None
@@ -81,6 +77,7 @@ def action_target(
     schema_override: Optional[str] = None,
     name_override: Optional[str] = None,
 ):
+    "Creates the target for an action, processing any overrides where supplied."
     target = Target()
     target.database = (
         database_override if database_override else project_config.default_database
