@@ -277,3 +277,10 @@ class Table:
             return
         self._proto.query = efficient_replace_string(refs_to_replace, self._proto.query)
         # TODO: Clean pre-ops and post-ops.
+
+    def __str__(self):
+        """
+        By setting an empty string representation for the action, when called from within a SQL
+        file, the object ref isn't printed.
+        """
+        return ""

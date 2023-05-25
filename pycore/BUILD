@@ -4,10 +4,6 @@ load("@pip//:requirements.bzl", "requirement")
 py_library(
     name = "pycore_lib",
     srcs = glob(["*.py"]),
-    deps = [
-        "//protos:dataform_py_proto",
-        requirement("tarjan"),
-    ],
 )
 
 py_binary(
@@ -20,5 +16,8 @@ py_binary(
     ],
     deps = [
         ":pycore_lib",
+        "//protos:dataform_py_proto",
+        requirement("tarjan"),
+        requirement("protobuf"),
     ],
 )

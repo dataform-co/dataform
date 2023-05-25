@@ -1,0 +1,13 @@
+{ view(
+    { "schema": "staging",
+    "description": "Cleaned version of stackoverflow.badges",
+    "tags": ["staging"],
+    }
+) }
+select
+    id as badge_id,
+    name as badge_name,
+    date as award_timestamp,
+    user_id
+from
+    { ref("badges") }

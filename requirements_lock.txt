@@ -1,1 +1,2 @@
+protobuf==4.22.1
 tarjan==0.2.4

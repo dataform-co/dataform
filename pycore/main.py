@@ -171,7 +171,8 @@ if __name__ == "__main__":
 
         session = Session(compile_config)
         session.load_includes()
-        session.load_actions()
+        session.load_actions_from_py_files()
+        session.load_actions_from_sql_files()
         compiled_graph = session.compile()
 
         total_compilation_time = time.time() - start

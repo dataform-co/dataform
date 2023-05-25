@@ -1,8 +1,0 @@
-declaration(
-    {
-        "database": "bigquery-public-data",
-        "schema": "stackoverflow",
-        "name": "posts_questions",
-        "description": "raw posts_questions table",
-    }
-)

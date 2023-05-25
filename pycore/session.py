@@ -70,7 +70,7 @@ class Session:
             ):
                 self._includes_functions[name] = function
 
-    def load_actions(self):
+    def load_actions_from_py_files(self):
         definitions_files = detect_files(self.project_path / "definitions")
 
         for path in definitions_files:
@@ -78,6 +78,17 @@ class Session:
             with open(path.absolute(), "r") as f:
                 code = f.read()
             exec(code, self._get_globals(path))
+
+    def load_actions_from_sql_files(self):
+        definitions_files = detect_files(self.project_path / "definitions", [".sql"])
+
+        for path in definitions_files:
+            code = ""
+            with open(path.absolute(), "r") as f:
+                code = f.read()
+            code = f'store_sql(f"""{code}""")'
+            exec(code, self._get_globals(path))
+            self._current_action_context.sql(self._stored_sql)
 
     def compile(self) -> CompiledGraph:
         # Before compiling, replace canonical targets with effectual targets.
@@ -156,7 +167,7 @@ class Session:
     def _add_action_from_definition(
         self, path: Path, action_class: ActionTypes, *args
     ) -> ActionTypes:
-        # This remove references to directories outside of the project directory.
+        # This removes references to directories outside of the project directory.
         path = path.relative_to(self.project_path.absolute())
         action = action_class(self.project_config, path, self, *args)
         self._current_action_context = action
