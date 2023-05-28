@@ -120,5 +120,33 @@ input "something" {
         .equal(`'^.*(bot|crawl|slurp|spider|archiv|spinn|sniff|seo|audit|survey|pingdom|worm|capture|(browser|screen)shots|analyz|index|thumb|check|facebook|PhantomJS|a_archiver|facebookexternalhit|BingPreview|360User-agent|semalt).*$'
 `);
     });
+
+    test("formats named arguments", async () => {
+      expect(await formatFile(path.resolve("examples/formatter/definitions/named_arguments.sqlx")))
+      .equal(`config {
+  type: "operations"
+}
+
+SELECT
+  MAKE_INTERVAL(1, day => 2, minute => 3)
+`);
+    });
+
+    test("formats QUALIFY clause", async () => {
+      expect(await formatFile(path.resolve("examples/formatter/definitions/qualify.sqlx")))
+      .equal(`config {
+  type: "operations"
+}
+
+SELECT
+  *
+FROM
+  UNNEST ([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]) AS n
+WHERE
+  n < 8
+QUALIFY
+  MOD(ROW_NUMBER() OVER (), 2) = 0
+`);
+    });
   });
 });
