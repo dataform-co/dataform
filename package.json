@@ -120,7 +120,7 @@
     "semver": "^7.3.8",
     "snowflake-sdk": "^1.6.12",
     "source-map-loader": "^0.2.0",
-    "sql-formatter": "^2.3.3",
+    "sql-formatter": "^12.2.1",
     "ssh2": "^1.4.0",
     "style-loader": "^1.0.0",
     "tarjan-graph": "^2.0.0",
