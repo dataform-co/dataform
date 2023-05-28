@@ -43,13 +43,13 @@ drop something
 
 ---
 
-alter table
-  \${tempTable} rename to \${finalTableName}
+alter table \${tempTable}
+rename to \${finalTableName}
 
 ---
 
 SELECT
-  SUM(IF (session_start_event, 1, 0)) AS session_index
+  SUM(IF(session_start_event, 1, 0)) AS session_index
 `);
     });
 
@@ -67,7 +67,7 @@ select
   CAST(
     REGEXP_EXTRACT("", r"^/([0-9]+)\\"\\'/.*") AS INT64
   ) AS id2,
-  IFNULL (
+  IFNULL(
     regexp_extract('', r'\\a?query=([^&]+)&*'),
     regexp_extract('', r'\\a?q=([^&]+)&*')
   ) AS id3,
@@ -91,7 +91,7 @@ SELECT
       SELECT
         SUM(IF(track.event = "event_viewed_project_with_connection", 1, 0))
       FROM
-        UNNEST(records)
+        UNNEST (records)
     )
   ) > 0 as created_project,
   /* multi line

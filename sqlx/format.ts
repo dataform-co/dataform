@@ -1,4 +1,3 @@
-import * as crypto from "crypto";
 import * as fs from "fs";
 import * as jsBeautify from "js-beautify";
 import * as sqlFormatter from "sql-formatter";
@@ -16,11 +15,13 @@ const JS_BEAUTIFY_OPTIONS: JsBeautifyOptions = {
 
 const MAX_SQL_FORMAT_ATTEMPTS = 5;
 
-export function format(text: string, fileExtension: string) {
+export type SqlLanguage = sqlFormatter.SqlLanguage;
+
+export function format(text: string, fileExtension: string, language: SqlLanguage) {
   try {
     switch (fileExtension) {
       case "sqlx":
-        return postProcessFormattedSqlx(formatSqlx(SyntaxTreeNode.create(text)));
+        return postProcessFormattedSqlx(formatSqlx(SyntaxTreeNode.create(text), "", language));
       case "js":
         return `${formatJavaScript(text).trim()}\n`;
       default:
@@ -35,12 +36,15 @@ export async function formatFile(
   filename: string,
   options?: {
     overwriteFile?: boolean;
+    language?: SqlLanguage;
   }
 ) {
   const fileExtension = filename.split(".").slice(-1)[0];
   const originalFileContent = await promisify(fs.readFile)(filename, "utf8");
-  const formattedText = format(originalFileContent, fileExtension);
-  if (formattedText !== format(formattedText, fileExtension)) {
+
+  const language = options?.language || 'bigquery';
+  const formattedText = format(originalFileContent, fileExtension, language);
+  if (formattedText !== format(formattedText, fileExtension, language)) {
     throw new Error("Formatter unable to determine final formatted form.");
   }
 
@@ -57,7 +61,7 @@ export async function formatFile(
   return formattedText;
 }
 
-function formatSqlx(node: SyntaxTreeNode, indent: string = "") {
+function formatSqlx(node: SyntaxTreeNode, indent: string = "", language: SqlLanguage) {
   const { sqlxStatements, javascriptBlocks, innerSqlBlocks } = separateSqlxIntoParts(
     node.children()
   );
@@ -73,7 +77,7 @@ function formatSqlx(node: SyntaxTreeNode, indent: string = "") {
       [placeholderId: string]: SyntaxTreeNode | string;
     } = {};
     const unformattedPlaceholderSql = stripUnformattableText(sqlxStatement, placeholders).join("");
-    const formattedPlaceholderSql = formatSql(unformattedPlaceholderSql);
+    const formattedPlaceholderSql = formatSql(unformattedPlaceholderSql, language);
     return formatEveryLine(
       replacePlaceholders(formattedPlaceholderSql, placeholders),
       line => `${indent}${line}`
@@ -101,7 +105,7 @@ function formatSqlx(node: SyntaxTreeNode, indent: string = "") {
           ]);
 
     return `${upToFirstBrace}
-${formatSqlx(sqlCodeBlockWithoutOuterBraces, "  ")}
+${formatSqlx(sqlCodeBlockWithoutOuterBraces, "  ", language)}
 ${lastBraceOnwards}`;
   });
 
@@ -201,11 +205,11 @@ function formatJavaScript(text: string) {
   return jsBeautify.js(text, JS_BEAUTIFY_OPTIONS);
 }
 
-function formatSql(text: string) {
-  let formatted = sqlFormatter.format(text) as string;
+function formatSql(text: string, language: SqlLanguage) {
+  let formatted = sqlFormatter.format(text, { language }) as string;
   // Unfortunately sql-formatter does not always produce final formatted output (even on plain SQL) in a single pass.
   for (let attempts = 0; attempts < MAX_SQL_FORMAT_ATTEMPTS; attempts++) {
-    const newFormatted = sqlFormatter.format(formatted) as string;
+    const newFormatted = sqlFormatter.format(formatted, { language }) as string;
     if (newFormatted === formatted) {
       return newFormatted;
     }
