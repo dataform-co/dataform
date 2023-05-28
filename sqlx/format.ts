@@ -175,7 +175,9 @@ function stripUnformattableText(
 }
 
 function generatePlaceholderId() {
-  return uuidv4()
+  // Add a leading character to ensure that the placeholder doesn't start with a number.
+  // Identifiers beginning with a number cause errors when formatting.
+  return '_' + uuidv4()
     .replace(/-/g, "")
     .substring(0, 16);
 }
