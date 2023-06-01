@@ -33,6 +33,7 @@ import {
 } from "df/cli/credentials";
 import { actuallyResolve, assertPathExists, compiledGraphHasErrors } from "df/cli/util";
 import { createYargsCli, INamedOption } from "df/cli/yargswrapper";
+import { ErrorWithCause } from "df/common/errors/errors";
 import { supportsCancel, WarehouseType } from "df/core/adapters";
 import { targetAsReadableString } from "df/core/targets";
 import { dataform } from "df/protos/ts";
@@ -729,8 +730,8 @@ export function runCli() {
             const dataformJson = fs.readFileSync(path.resolve(argv[projectDirMustExistOption.name], "dataform.json"), 'utf8');
             const projectConfig = JSON.parse(dataformJson);
             warehouse = projectConfig.warehouse;
-          } catch {
-            throw new Error('Could not parse dataform.json');
+          } catch (e) {
+            throw new ErrorWithCause(`Could not parse dataform.json: ${e.message}`, e);
           }
           if (!dbadapters.validWarehouses.includes(warehouse)) {
             throw new Error("Unrecognized 'warehouse' setting in dataform.json");
