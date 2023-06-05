@@ -140,7 +140,7 @@
     "url": "^0.11.0",
     "uuid": "^7.0.2",
     "validator": "^13.7.0",
-    "vm2": "3.9.17",
+    "vm2": "3.9.19",
     "vsce": "^1.79.5",
     "vscode-languageclient": "^6.1.3",
     "vscode-languageserver": "^6.1.1",
