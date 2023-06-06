@@ -8,7 +8,8 @@ ts_test_suite(
         "//examples/formatter:node_modules",
     ],
     deps = [
-        "//sqlx",
+        "//sqlx:sqlx",
+        "//sqlx:format",
         "//testing",
         "@npm//@types/chai",
         "@npm//@types/node",

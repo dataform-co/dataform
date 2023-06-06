@@ -4,17 +4,32 @@ load("//tools:ts_library.bzl", "ts_library")
 
 ts_library(
     name = "sqlx",
-    srcs = glob(["**/*.ts"]),
+    srcs = glob(
+        ["**/*.ts"],
+        exclude = ["format.ts"],
+    ),
     deps = [
         "//:modules-fix",
-        "//common/errors",
         "@npm//@types/moo",
-        "@npm//@types/node",
+        "@npm//moo",
+    ],
+)
+
+ts_library(
+    name = "format",
+    srcs = glob(
+        ["format.ts"],
+    ),
+    deps = [
+        "//:modules-fix",
+        "//core",
+        "//common/errors",
+        "//sqlx:sqlx",
         "@npm//@types/js-beautify",
+        "@npm//@types/node",
         "@npm//@types/uuid",
         "@npm//js-beautify",
-        "@npm//uuid",
         "@npm//sql-formatter",
-        "@npm//moo",
+        "@npm//uuid",
     ],
 )
