@@ -41,6 +41,10 @@ export enum WarehouseType {
   SQLDATAWAREHOUSE = "sqldatawarehouse"
 }
 
+export function isWarehouseType(input: any): input is WarehouseType {
+  return Object.values(WarehouseType).includes(input);
+}
+
 const CANCELLATION_SUPPORTED = [WarehouseType.BIGQUERY, WarehouseType.SQLDATAWAREHOUSE];
 
 export function supportsCancel(warehouseType: WarehouseType) {
