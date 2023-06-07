@@ -25,7 +25,7 @@ const WAREHOUSE_LANGUAGE_MAP: Record<WarehouseType, sqlFormatter.SqlLanguage> = 
   [WarehouseType.SQLDATAWAREHOUSE]: "transactsql"
 };
 
-const DEFAULT_WAREHOUSE_FOR_FORMATTING: WarehouseType = WarehouseType.BIGQUERY
+const DEFAULT_WAREHOUSE_FOR_FORMATTING: WarehouseType = WarehouseType.BIGQUERY;
 
 export function format(
   text: string,
@@ -78,7 +78,7 @@ function formatSqlx(node: SyntaxTreeNode, indent: string = "", warehouse: Wareho
   const { sqlxStatements, javascriptBlocks, innerSqlBlocks } = separateSqlxIntoParts(
     node.children()
   );
-  const sqlLanguage = WAREHOUSE_LANGUAGE_MAP[warehouse]
+  const sqlLanguage = WAREHOUSE_LANGUAGE_MAP[warehouse];
 
   // First, format the JS blocks (including the config block).
   const formattedJsCodeBlocks = javascriptBlocks.map(jsCodeBlock =>
