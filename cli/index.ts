@@ -33,10 +33,10 @@ import {
 } from "df/cli/credentials";
 import { actuallyResolve, assertPathExists, compiledGraphHasErrors } from "df/cli/util";
 import { createYargsCli, INamedOption } from "df/cli/yargswrapper";
-import { supportsCancel, WarehouseType } from "df/core/adapters";
+import { supportsCancel, WarehouseType, isWarehouseType } from "df/core/adapters";
 import { targetAsReadableString } from "df/core/targets";
 import { dataform } from "df/protos/ts";
-import { formatFile, SqlLanguage } from "df/sqlx/format";
+import { formatFile } from "df/sqlx/format";
 import parseDuration from "parse-duration";
 
 const RECOMPILE_DELAY = 500;
@@ -232,15 +232,6 @@ const tableOptionName = "table";
 
 const getCredentialsPath = (projectDir: string, credentialsPath: string) =>
   actuallyResolve(credentialsPath || path.join(projectDir, CREDENTIALS_FILENAME));
-
-const warehouseSqlLanguageMap: Record<WarehouseType, SqlLanguage> = {
-  [WarehouseType.BIGQUERY]:"bigquery",
-  [WarehouseType.PRESTO]: "trino",
-  [WarehouseType.POSTGRES]: "postgresql",
-  [WarehouseType.REDSHIFT]: "redshift",
-  [WarehouseType.SNOWFLAKE]: "snowflake",
-  [WarehouseType.SQLDATAWAREHOUSE]: "transactsql"
-};
 
 export function runCli() {
   const builtYargs = createYargsCli({
@@ -724,18 +715,21 @@ export function runCli() {
         positionalOptions: [projectDirMustExistOption],
         options: [trackOption],
         processFn: async argv => {
-          let warehouse: string | undefined;
-          try {
-            const dataformJson = fs.readFileSync(path.resolve(argv[projectDirMustExistOption.name], "dataform.json"), 'utf8');
-            const projectConfig = JSON.parse(dataformJson);
-            warehouse = projectConfig.warehouse;
-          } catch (e) {
-            throw new Error(`Could not parse dataform.json: ${e.message}`);
-          }
-          if (!dbadapters.validWarehouses.includes(warehouse)) {
-            throw new Error("Unrecognized 'warehouse' setting in dataform.json");
-          }
-          const language = warehouseSqlLanguageMap[warehouse as WarehouseType];
+          const readWarehouseConfig = (): WarehouseType => {
+            let warehouse: string;
+            try {
+              const dataformJson = fs.readFileSync(path.resolve(argv[projectDirMustExistOption.name], "dataform.json"), 'utf8');
+              const projectConfig = JSON.parse(dataformJson);
+              warehouse = projectConfig.warehouse;
+            } catch (e) {
+              throw new Error(`Could not parse dataform.json: ${e.message}`);
+            }
+            if (!isWarehouseType(warehouse)) {
+              throw new Error("Unrecognized 'warehouse' setting in dataform.json");
+            }
+            return warehouse;
+          };
+          const warehouse = readWarehouseConfig();
 
           const filenames = glob.sync("{definitions,includes}/**/*.{js,sqlx}", {
             cwd: argv[projectDirMustExistOption.name]
@@ -745,7 +739,7 @@ export function runCli() {
               try {
                 await formatFile(path.resolve(argv[projectDirMustExistOption.name], filename), {
                   overwriteFile: true,
-                  language,
+                  warehouse
                 });
                 return {
                   filename
