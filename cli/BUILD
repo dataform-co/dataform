@@ -13,7 +13,7 @@ ts_library(
         "//api",
         "//core",
         "//protos:ts",
-        "//sqlx",
+        "//sqlx:format",
         "@npm//@types/analytics-node",
         "@npm//@types/glob",
         "@npm//@types/long",
