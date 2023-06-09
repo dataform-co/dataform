@@ -118,7 +118,7 @@
     "rollup": "^2.7.3",
     "rollup-plugin-dts": "^1.4.0",
     "semver": "^7.3.8",
-    "snowflake-sdk": "^1.6.12",
+    "snowflake-sdk": "^1.6.21",
     "source-map-loader": "^0.2.0",
     "sql-formatter": "^12.2.1",
     "ssh2": "^1.4.0",
