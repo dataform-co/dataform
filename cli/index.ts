@@ -33,7 +33,7 @@ import {
 } from "df/cli/credentials";
 import { actuallyResolve, assertPathExists, compiledGraphHasErrors } from "df/cli/util";
 import { createYargsCli, INamedOption } from "df/cli/yargswrapper";
-import { supportsCancel, WarehouseType, isWarehouseType } from "df/core/adapters";
+import { isWarehouseType, supportsCancel, WarehouseType } from "df/core/adapters";
 import { targetAsReadableString } from "df/core/targets";
 import { dataform } from "df/protos/ts";
 import { formatFile } from "df/sqlx/format";
@@ -716,18 +716,18 @@ export function runCli() {
         options: [trackOption],
         processFn: async argv => {
           const readWarehouseConfig = (): WarehouseType => {
-            let warehouse: string;
+            let wh: string;
             try {
               const dataformJson = fs.readFileSync(path.resolve(argv[projectDirMustExistOption.name], "dataform.json"), 'utf8');
               const projectConfig = JSON.parse(dataformJson);
-              warehouse = projectConfig.warehouse;
+              wh = projectConfig.warehouse;
             } catch (e) {
               throw new Error(`Could not parse dataform.json: ${e.message}`);
             }
-            if (!isWarehouseType(warehouse)) {
+            if (!isWarehouseType(wh)) {
               throw new Error("Unrecognized 'warehouse' setting in dataform.json");
             }
-            return warehouse;
+            return wh;
           };
           const warehouse = readWarehouseConfig();
 

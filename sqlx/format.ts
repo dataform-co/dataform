@@ -3,8 +3,8 @@ import * as jsBeautify from "js-beautify";
 import * as sqlFormatter from "sql-formatter";
 import { promisify } from "util";
 
-import { WarehouseType } from "df/core/adapters";
 import { ErrorWithCause } from "df/common/errors/errors";
+import { WarehouseType } from "df/core/adapters";
 import { SyntaxTreeNode, SyntaxTreeNodeType } from "df/sqlx/lexer";
 import { v4 as uuidv4 } from "uuid";
 
@@ -17,7 +17,7 @@ const JS_BEAUTIFY_OPTIONS: JsBeautifyOptions = {
 const MAX_SQL_FORMAT_ATTEMPTS = 5;
 
 const WAREHOUSE_LANGUAGE_MAP: Record<WarehouseType, sqlFormatter.SqlLanguage> = {
-  [WarehouseType.BIGQUERY]:"bigquery",
+  [WarehouseType.BIGQUERY]: "bigquery",
   [WarehouseType.PRESTO]: "trino",
   [WarehouseType.POSTGRES]: "postgresql",
   [WarehouseType.REDSHIFT]: "redshift",
