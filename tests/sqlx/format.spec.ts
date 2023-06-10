@@ -148,5 +148,32 @@ QUALIFY
   MOD(ROW_NUMBER() OVER (), 2) = 0
 `);
     });
+
+    test("format triple quoted string", async () => {
+      expect(await formatFile(path.resolve("examples/formatter/definitions/triple_quoted.sqlx")))
+      .equal(`config {
+  type: "table"
+}
+
+SELECT
+  '''1''' AS single_line,
+  """multi
+  line
+    string
+      with indent""" AS multi_line,
+  REGEXP_CONTAINS("\\n  abc\\n  ", r'''
+abc
+''') AS multi_line_regex,
+  """
+This project is ...
+  "\${database()}"!!
+""" AS with_js
+
+post_operations {
+  select
+    """1""" as inner_sql
+}
+`);
+    });
   });
 });
