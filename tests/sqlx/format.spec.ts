@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import * as path from "path";
 
-import { formatFile } from "df/sqlx/format";
+import { formatFile, format } from "df/sqlx/format";
 import { suite, test } from "df/testing";
 
 suite("@dataform/sqlx", () => {
@@ -176,4 +176,26 @@ post_operations {
 `);
     });
   });
+
+  suite("formatter todos", () => {
+    test("TODO format tempalte string in a string", async () => {
+      const input = `
+        config {
+          type: "view"
+        }
+        SELECT
+          "ok" AS \${  "here"+  "works"  },
+          "1 + 2 = \${ 1+2  }" AS TODO_in_string,
+          '''\${1  +2  }''' AS TODO_in_triple_quoted_string
+      `;
+      expect(format(input, 'sqlx')).eql(`config {
+  type: "view"
+}
+
+SELECT
+  "ok" AS \${"here" + "works"},
+  "1 + 2 = \${ 1+2  }" AS TODO_in_string,
+  '''\${1  +2  }''' AS TODO_in_triple_quoted_string
+`)});
+  })
 });

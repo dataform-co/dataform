@@ -18,8 +18,7 @@ abc
 
 """
 This project is ...
-  "${
-    database()}"!!
+  "${database()}"!!
 """ AS with_js
 
 post_operations { select """1""" as inner_sql }
