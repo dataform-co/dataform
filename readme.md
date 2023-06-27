@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://github.com/dataform-co/dataform/blob/master/static/images/github_bg.png">
+  <img src="https://github.com/dataform-co/dataform/blob/main/static/images/github_bg.png">
 </p>
 
 # Intro
