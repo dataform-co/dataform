@@ -171,6 +171,7 @@ function stripUnformattableText(
       const placeholderId = generatePlaceholderId();
       switch (part.type) {
         case SyntaxTreeNodeType.SQL_LITERAL_STRING:
+        case SyntaxTreeNodeType.SQL_LITERAL_MULTILINE_STRING:
         case SyntaxTreeNodeType.JAVASCRIPT_TEMPLATE_STRING_PLACEHOLDER: {
           placeholders[placeholderId] = part;
           return placeholderId;
@@ -242,6 +243,7 @@ function formatPlaceholderInSqlx(
   const wholeLine = getWholeLineContainingPlaceholderId(placeholderId, sqlx);
   const indent = " ".repeat(wholeLine.length - wholeLine.trimLeft().length);
   const formattedPlaceholder = formatSqlQueryPlaceholder(placeholderSyntaxNode, indent);
+
   // Replace the placeholder entirely if (a) it fits on one line and (b) it isn't a comment.
   // Otherwise, push the replacement onto its own line.
   if (
@@ -250,6 +252,12 @@ function formatPlaceholderInSqlx(
   ) {
     return sqlx.replace(placeholderId, () => formattedPlaceholder.trim());
   }
+
+  // Keep internal line breaks in multiline string.
+  if (placeholderSyntaxNode.type === SyntaxTreeNodeType.SQL_LITERAL_MULTILINE_STRING) {
+    return sqlx.replace(placeholderId, () => formattedPlaceholder.trim());
+  }
+
   // Push multi-line placeholders to their own lines, if they're not already on one.
   const [textBeforePlaceholder, textAfterPlaceholder] = wholeLine.split(placeholderId);
   const newLines: string[] = [];
@@ -270,6 +278,8 @@ function formatSqlQueryPlaceholder(node: SyntaxTreeNode, jsIndent: string): stri
     case SyntaxTreeNodeType.SQL_LITERAL_STRING:
     case SyntaxTreeNodeType.SQL_COMMENT:
       return formatEveryLine(node.concatenate(), line => `${jsIndent}${line.trimLeft()}`);
+    case SyntaxTreeNodeType.SQL_LITERAL_MULTILINE_STRING:
+      return `${jsIndent}${node.concatenate().trimLeft()}`;
     default:
       throw new Error(`Unrecognized SyntaxTreeNodeType: ${node.type}`);
   }
