@@ -178,7 +178,7 @@ post_operations {
   });
 
   suite("formatter todos", () => {
-    test("TODO format tempalte string in a string", async () => {
+    test("TODO format template string in a string", async () => {
       const input = `
         config {
           type: "view"

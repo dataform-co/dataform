@@ -308,7 +308,7 @@ function buildSqlxLexer(): { [x: string]: moo.Rules } {
   sqlLexer[SQL_LEXER_TOKEN_NAMES.BACKTICK] = "`";
 
   // Since quotes(' & ") are substring of triple-quotes(''' & """), the declarations of
-  // triple-quote tokens must be placed first. The parsing order by moo implicity depends
+  // triple-quote tokens must be placed first. The parsing order by moo implicitly depends
   // on the order of property creation in rule object.
   sqlLexer[SQL_LEXER_TOKEN_NAMES.START_TRIPLE_QUOTE_SINGLE] = {
     match: "'''",
