@@ -124,6 +124,9 @@ class Session:
         return compiled_graph
 
     def _get_globals(self, path: Path) -> Dict:
+        """
+        These are the methods that are available within the definitions file.
+        """
         return {
             "session": self,
             "table": lambda config_as_map={}: self._add_action_from_definition(

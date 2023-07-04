@@ -1,6 +1,5 @@
 { table(
-    { "type": "table",
-    "schema": "reporting",
+    { "schema": "reporting",
     "tags": ["daily"],
     "description": "Combine both questions and answers into a single posts_all table",
     "assertions": { "unique_key": ["post_id"] },
