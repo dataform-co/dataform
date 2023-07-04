@@ -1,15 +1,3 @@
-node_modules/
-
-bazel-*
-
-.idea/
-.vscode/
-.history/
-
-bazel-*
-
-# TODO: Remove these.
-
 build/
 !!build/package.json
 ts/protos/index.*
@@ -28,3 +16,8 @@ go.sum
 .df-credentials.json
 
 __pycache__/
+
+# Ignore compiled protobufs, so that they have to be recompiled.
+*_pb2.py
+
+.vscode
