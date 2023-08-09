@@ -17,6 +17,10 @@ const database = ctx.database ? ctx.database.bind(ctx) : undefined;
     
     return [`
 select
+  """
+  triple
+  quotes
+  """,
   "asd\\"123'def",
   'asd\\'123"def',
 
@@ -37,6 +41,10 @@ const database = ctx.database ? ctx.database.bind(ctx) : undefined;
     
     return [`
   select
+    """
+    triple
+    quotes
+    """,
     "asd\\"123'def",
     'asd\\'123"def',
 `];

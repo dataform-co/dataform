@@ -209,6 +209,7 @@ function extractSqlxParts(rootNode: SyntaxTreeNode) {
             SyntaxTreeNodeType.JAVASCRIPT_TEMPLATE_STRING_PLACEHOLDER,
             SyntaxTreeNodeType.SQL_COMMENT,
             SyntaxTreeNodeType.SQL_LITERAL_STRING,
+            SyntaxTreeNodeType.SQL_LITERAL_MULTILINE_STRING,
             SyntaxTreeNodeType.SQL_STATEMENT_SEPARATOR
           ].includes(node.type)
       )

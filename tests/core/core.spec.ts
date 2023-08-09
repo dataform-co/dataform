@@ -1319,11 +1319,19 @@ pre_operations {
         compilers.compile(
           `
 select
+  """
+  triple
+  quotes
+  """,
   "asd\\"123'def",
   'asd\\'123"def',
 
 post_operations {
   select
+    """
+    triple
+    quotes
+    """,
     "asd\\"123'def",
     'asd\\'123"def',
 }
