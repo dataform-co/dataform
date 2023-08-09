@@ -1,8 +1,0 @@
-{
-  "description": "A cloud function that changes GitHub badges depending on Cloud Build status.",
-  "main": "index.js",
-  "dependencies": {
-    "@google-cloud/storage": "^4.0.0"
-  },
-  "private": true
-}
