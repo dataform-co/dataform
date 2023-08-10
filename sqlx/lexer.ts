@@ -188,10 +188,7 @@ export class SyntaxTreeNode {
         continue;
       }
       if (START_TOKEN_NODE_MAPPINGS.has(token.type)) {
-        const childType = START_TOKEN_NODE_MAPPINGS.get(token.type);
-        if (!childType) {
-          continue;
-        }
+        const childType = START_TOKEN_NODE_MAPPINGS.get(token.type)!;
         if (childType === SyntaxTreeNodeType.SQL && currentNode.type !== SyntaxTreeNodeType.SQL) {
           throw new Error("SQL syntax tree nodes may only be children of other SQL nodes.");
         }
@@ -204,12 +201,8 @@ export class SyntaxTreeNode {
         nodeStack.pop();
         currentNode = nodeStack[nodeStack.length - 1];
       } else if (WHOLE_TOKEN_NODE_MAPPINGS.has(token.type)) {
-        const tokenType = WHOLE_TOKEN_NODE_MAPPINGS.get(token.type);
-        if (!tokenType) {
-          continue;
-        }
         currentNode.push(
-          new SyntaxTreeNode(tokenType).push(token.value)
+          new SyntaxTreeNode(WHOLE_TOKEN_NODE_MAPPINGS.get(token.type)!).push(token.value)
         );
       } else {
         currentNode.push(token.value);
