@@ -184,8 +184,14 @@ export class SyntaxTreeNode {
     const nodeStack = [currentNode];
     lexer.reset(code);
     for (const token of lexer) {
+      if (!token.type) {
+        continue;
+      }
       if (START_TOKEN_NODE_MAPPINGS.has(token.type)) {
         const childType = START_TOKEN_NODE_MAPPINGS.get(token.type);
+        if (!childType) {
+          continue;
+        }
         if (childType === SyntaxTreeNodeType.SQL && currentNode.type !== SyntaxTreeNodeType.SQL) {
           throw new Error("SQL syntax tree nodes may only be children of other SQL nodes.");
         }
@@ -198,8 +204,12 @@ export class SyntaxTreeNode {
         nodeStack.pop();
         currentNode = nodeStack[nodeStack.length - 1];
       } else if (WHOLE_TOKEN_NODE_MAPPINGS.has(token.type)) {
+        const tokenType = WHOLE_TOKEN_NODE_MAPPINGS.get(token.type);
+        if (!tokenType) {
+          continue;
+        }
         currentNode.push(
-          new SyntaxTreeNode(WHOLE_TOKEN_NODE_MAPPINGS.get(token.type)).push(token.value)
+          new SyntaxTreeNode(tokenType).push(token.value)
         );
       } else {
         currentNode.push(token.value);
@@ -226,7 +236,7 @@ export class SyntaxTreeNode {
     return this.allChildren
       .map(child => {
         if (typeof child === "string") {
-          return mutator(child);
+          return mutator?.(child) || "";
         }
         return child.concatenate();
       })
@@ -241,7 +251,7 @@ export class SyntaxTreeNode {
     ) {
       this.allChildren[this.allChildren.length - 1] =
         this.allChildren[this.allChildren.length - 1] + child;
-      return;
+      return this;
     }
     this.allChildren.push(child);
     return this;
