@@ -180,9 +180,9 @@ load("@io_bazel_rules_docker//repositories:deps.bzl", container_deps = "deps")
 
 container_deps()
 
-load("@io_bazel_rules_docker//repositories:pip_repositories.bzl", "pip_deps")
+load("@io_bazel_rules_docker//repositories:py_repositories.bzl", "py_deps")
 
-pip_deps()
+py_deps()
 
 load(
     "@io_bazel_rules_docker//container:container.bzl",
