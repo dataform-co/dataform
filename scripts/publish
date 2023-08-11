@@ -6,8 +6,8 @@ if [ "$(git status --porcelain)" ]; then
     exit 1
 fi
 
-if [ "main" != "$(git branch --show-current)" ]; then 
-    echo "Not on the 'main' branch; aborting." 1>&2
+if [ "main_v1" != "$(git branch --show-current)" ]; then 
+    echo "Not on the 'main_v1' branch; aborting." 1>&2
     exit 1
 fi
 
