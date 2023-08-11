@@ -45,16 +45,6 @@ export interface ICommonContext {
    * See the `ref` function for example usage.
    */
   resolve: (ref: Resolvable | string[], ...rest: string[]) => string;
-
-  /**
-   * Returns the schema of this dataset.
-   */
-  schema: () => string;
-
-  /**
-   * Returns the database of this dataset, if applicable.
-   */
-  database: () => string;
 }
 
 /**
@@ -203,9 +193,9 @@ export interface IRecordDescriptor {
    *
    * These should be the fully qualified identifier of the tag, including the project name, location, and taxonomy,
    * which can be copied from the policy tags page in GCP.
-   *
+   * 
    * For example: "projects/1/locations/eu/taxonomies/2/policyTags/3"
-   *
+   * 
    * Currently BigQuery supports only a single tag per column.
    */
   bigqueryPolicyTags?: string | string[];

@@ -187,15 +187,14 @@ export class AssertionContext implements ICommonContext {
   }
 
   public name(): string {
-    return this.assertion.session.finalizeName(
-      this.assertion.proto.target.name
-    );
+    return this.assertion.proto.target.name;
   }
 
   public ref(ref: Resolvable | string[], ...rest: string[]) {
     ref = toResolvable(ref, rest);
     if (!resolvableAsTarget(ref)) {
-      this.assertion.session.compileError(new Error(`Action name is not specified`));
+      const message = `Action name is not specified`;
+      this.assertion.session.compileError(new Error(message));
       return "";
     }
     this.assertion.dependencies(ref);
@@ -203,26 +202,7 @@ export class AssertionContext implements ICommonContext {
   }
 
   public resolve(ref: Resolvable | string[], ...rest: string[]) {
-    return this.assertion.session.resolve(ref, ...rest);
-  }
-
-  public schema(): string {
-    return this.assertion.session.finalizeSchema(
-      this.assertion.proto.target.schema
-    );
-  }
-
-  public database(): string {
-    if (!this.assertion.proto.target.database) {
-      this.assertion.session.compileError(
-        new Error(`Warehouse does not support multiple databases`)
-      );
-      return "";
-    }
-
-    return this.assertion.session.finalizeDatabase(
-      this.assertion.proto.target.database
-    );
+    return this.assertion.session.resolve(toResolvable(ref, rest));
   }
 
   public dependencies(name: Resolvable | Resolvable[]) {

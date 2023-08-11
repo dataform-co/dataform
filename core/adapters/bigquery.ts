@@ -22,14 +22,14 @@ export class BigQueryAdapter extends Adapter implements IAdapter {
 
     this.preOps(table, runConfig, tableMetadata).forEach(statement => tasks.add(statement));
 
-    const baseTableType = this.baseTableType(table.enumType);
+    const baseTableType = this.baseTableType(table.type);
     if (tableMetadata && tableMetadata.type !== baseTableType) {
       tasks.add(
         Task.statement(this.dropIfExists(table.target, this.oppositeTableType(baseTableType)))
       );
     }
 
-    if (table.enumType === dataform.TableType.INCREMENTAL) {
+    if (table.type === "incremental") {
       if (!this.shouldWriteIncrementally(runConfig, tableMetadata)) {
         tasks.add(Task.statement(this.createOrReplace(table)));
       } else {
@@ -94,7 +94,7 @@ export class BigQueryAdapter extends Adapter implements IAdapter {
       ? "materialized "
       : ""
     }${this.tableTypeAsSql(
-      this.baseTableType(table.enumType)
+      this.baseTableType(table.type)
     )} ${this.resolveTarget(table.target)} ${
       table.bigquery && table.bigquery.partitionBy
         ? `partition by ${table.bigquery.partitionBy} `

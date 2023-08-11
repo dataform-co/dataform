@@ -23,14 +23,14 @@ export class PrestoAdapter extends Adapter implements IAdapter {
 
     this.preOps(table, runConfig, tableMetadata).forEach(statement => tasks.add(statement));
 
-    const baseTableType = this.baseTableType(table.enumType);
+    const baseTableType = this.baseTableType(table.type);
     if (tableMetadata && tableMetadata.type !== baseTableType) {
       tasks.add(
         Task.statement(this.dropIfExists(table.target, this.oppositeTableType(baseTableType)))
       );
     }
 
-    if (table.enumType === dataform.TableType.INCREMENTAL) {
+    if (table.type === "incremental") {
       throw new Error("Incremental table types are not currently supported for Presto.");
     } else {
       tasks.add(Task.statement(this.createOrReplace(table)));

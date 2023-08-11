@@ -12,10 +12,16 @@ proto_library(
     name = "dataform_proto",
     srcs = [
         "core.proto",
+        "environments.proto",
         "evaluation.proto",
         "execution.proto",
         "profiles.proto",
     ],
+)
+
+proto_library(
+    name = "schedules_proto",
+    srcs = ["schedules.proto"],
 )
 
 proto_library(
@@ -31,10 +37,21 @@ java_proto_library(
     deps = [":dataform_proto"],
 )
 
+java_proto_library(
+    name = "schedules_java_proto",
+    deps = [":schedules_proto"],
+)
+
 go_proto_library(
     name = "dataform_go_proto",
     importpath = "github.com/dataform-co/dataform/protos/dataform",
     proto = ":dataform_proto",
+)
+
+go_proto_library(
+    name = "schedules_go_proto",
+    importpath = "github.com/dataform-co/dataform/protos/dataform/schedules",
+    proto = ":schedules_proto",
 )
 
 load("//tools:ts_proto_library.bzl", "ts_proto_library")
@@ -43,6 +60,7 @@ ts_proto_library(
     name = "ts",
     deps = [
         ":dataform_proto",
+        ":schedules_proto",
         ":server_proto",
     ],
 )
@@ -54,6 +72,8 @@ build_test(
     deps = [
         ":dataform_go_proto",
         ":dataform_java_proto",
+        ":schedules_go_proto",
+        ":schedules_java_proto",
     ],
 )
 

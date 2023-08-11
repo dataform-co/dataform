@@ -19,14 +19,11 @@ ts_library(
         ":postgres_image",
     ],
     deps = [
+        "//api",
         "//common/promises",
         "//testing",
         "@npm//@types/node",
-        "@npm//@types/pg",
-        "@npm//@types/pg-query-stream",
         "@npm//@types/uuid",
-        "@npm//pg",
-        "@npm//promise-pool-executor",
         "@npm//uuid",
     ],
 )

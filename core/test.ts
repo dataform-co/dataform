@@ -90,7 +90,7 @@ export class Test {
           new Error(`Dataset ${stringifyResolvable(this.datasetToTest)} could not be found.`),
           this.proto.fileName
         );
-      } else if (dataset.proto.enumType === dataform.TableType.INCREMENTAL) {
+      } else if (dataset.proto.type === "incremental") {
         this.session.compileError(
           new Error("Running tests on incremental datasets is not yet supported."),
           this.proto.fileName
@@ -175,14 +175,6 @@ class RefReplacingContext implements ITableContext {
   }
 
   public type(type: table.TableType) {
-    return "";
-  }
-
-  public schema() {
-    return "";
-  }
-
-  public database() {
     return "";
   }
 

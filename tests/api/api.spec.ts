@@ -151,50 +151,6 @@ suite("@dataform/api", () => {
       });
     });
 
-    test("table_enum_types", () => {
-      const graph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
-        projectConfig: { warehouse: "bigquery" },
-        tables: [
-          { target: { schema: "schema", name: "a" }, enumType: dataform.TableType.TABLE },
-          {
-            target: { schema: "schema", name: "b" },
-            enumType: dataform.TableType.INCREMENTAL,
-            where: "test"
-          },
-          { target: { schema: "schema", name: "c" }, enumType: dataform.TableType.VIEW }
-        ]
-      });
-
-      const builder = new Builder(graph, {}, TEST_STATE);
-      const executedGraph = builder.build();
-
-      expect(executedGraph.actions.length).greaterThan(0);
-
-      graph.tables.forEach((t: dataform.ITable) => {
-        const action = executedGraph.actions.find(item => targetsAreEqual(item.target, t.target));
-        expect(action).to.include({
-          type: "table",
-          target: t.target,
-          tableType: dataform.TableType[t.enumType].toLowerCase(),
-        });
-      });
-    });
-
-    test("table_enum_and_str_types_should_match", () => {
-      const graph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
-        projectConfig: { warehouse: "bigquery" },
-        tables: [{
-          target: { schema: "schema", name: "a" },
-          enumType: dataform.TableType.TABLE,
-          type: "incremental",
-        }]
-      });
-
-      expect(() => new Builder(graph, {}, TEST_STATE)).to.throw(
-        /Table str type "incremental" and enumType "table" are not equivalent/
-      );
-    });
-
     suite("pre and post ops", () => {
       for (const warehouse of [
         "bigquery",
@@ -268,7 +224,7 @@ suite("@dataform/api", () => {
     //
     // op_d +---> tab_a
     const TEST_GRAPH_WITH_TAGS: dataform.ICompiledGraph = dataform.CompiledGraph.create({
-      projectConfig: { warehouse: "bigquery", defaultLocation: "US" },
+      projectConfig: { warehouse: "bigquery" },
       operations: [
         {
           target: { schema: "schema", name: "op_a" },
@@ -304,7 +260,7 @@ suite("@dataform/api", () => {
 
     test("prune removes inline tables", async () => {
       const graph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
-        projectConfig: { warehouse: "bigquery", defaultLocation: "US" },
+        projectConfig: { warehouse: "bigquery" },
         tables: [
           { target: { schema: "schema", name: "a" }, type: "table" },
           {
@@ -404,6 +360,7 @@ suite("@dataform/api", () => {
       ];
       expect(actionNames).includes("schema.a");
       expect(actionNames).includes("schema.b");
+      expect(actionNames).includes("schema.d");
     });
 
     test("prune actions with --actions without dependencies", () => {
@@ -422,7 +379,7 @@ suite("@dataform/api", () => {
   suite("sql_generating", () => {
     test("bigquery_incremental", () => {
       const graph = dataform.CompiledGraph.create({
-        projectConfig: { warehouse: "bigquery", defaultDatabase: "deeb", defaultLocation: "US" },
+        projectConfig: { warehouse: "bigquery", defaultDatabase: "deeb" },
         tables: [
           {
             target: {
@@ -471,7 +428,7 @@ suite("@dataform/api", () => {
 
     test("bigquery_materialized", () => {
       const testGraph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
-        projectConfig: { warehouse: "bigquery", defaultDatabase: "deeb", defaultLocation: "US" },
+        projectConfig: { warehouse: "bigquery", defaultDatabase: "deeb" },
         tables: [
           {
             target: {
@@ -535,7 +492,7 @@ suite("@dataform/api", () => {
 
     test("snowflake_materialized", () => {
       const testGraph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
-        projectConfig: { warehouse: "snowflake" },
+        projectConfig: { warehouse: "snowflake"},
         tables: [
           {
             target: {
@@ -567,7 +524,8 @@ suite("@dataform/api", () => {
           tasks: [
             {
               type: "statement",
-              statement: `create or replace materialized view "schema"."materialized" as select 1 as test`
+              statement:
+                `create or replace materialized view "schema"."materialized" as select 1 as test`
             }
           ],
           dependencyTargets: [],
@@ -758,7 +716,7 @@ suite("@dataform/api", () => {
 
     test("bigquery_partitionby", () => {
       const testGraph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
-        projectConfig: { warehouse: "bigquery", defaultDatabase: "deeb", defaultLocation: "US" },
+        projectConfig: { warehouse: "bigquery", defaultDatabase: "deeb" },
         tables: [
           {
             target: {
@@ -825,7 +783,7 @@ suite("@dataform/api", () => {
 
     test("bigquery_options", () => {
       const testGraph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
-        projectConfig: { warehouse: "bigquery", defaultDatabase: "deeb", defaultLocation: "US" },
+        projectConfig: { warehouse: "bigquery", defaultDatabase: "deeb" },
         tables: [
           {
             target: {
@@ -837,8 +795,8 @@ suite("@dataform/api", () => {
             bigquery: {
               partitionBy: "DATE(test)",
               clusterBy: [],
-              partitionExpirationDays: 1,
-              requirePartitionFilter: true
+              partitionExpirationDays : 1,
+              requirePartitionFilter : true
             }
           },
           {
@@ -894,7 +852,7 @@ suite("@dataform/api", () => {
 
     test("bigquery_clusterby", () => {
       const testGraph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
-        projectConfig: { warehouse: "bigquery", defaultDatabase: "deeb", defaultLocation: "US" },
+        projectConfig: { warehouse: "bigquery", defaultDatabase: "deeb" },
         tables: [
           {
             target: {
@@ -961,7 +919,7 @@ suite("@dataform/api", () => {
 
     test("bigquery_additional_options", () => {
       const testGraph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
-        projectConfig: { warehouse: "bigquery", defaultDatabase: "deeb", defaultLocation: "US" },
+        projectConfig: { warehouse: "bigquery", defaultDatabase: "deeb" },
         tables: [
           {
             target: {
@@ -971,10 +929,10 @@ suite("@dataform/api", () => {
             type: "table",
             query: "select 1 as test",
             bigquery: {
-              additionalOptions: {
-                partition_expiration_days: "1",
-                require_partition_filter: "true",
-                friendly_name: '"friendlyName"'
+              additionalOptions : {
+                partition_expiration_days : "1",
+                "require_partition_filter" : "true",
+                friendly_name : '"friendlyName"',
               }
             }
           },
@@ -1000,7 +958,7 @@ suite("@dataform/api", () => {
             {
               type: "statement",
               statement:
-                'create or replace table `deeb.schema.additional_options` OPTIONS(partition_expiration_days=1,require_partition_filter=true,friendly_name="friendlyName")as select 1 as test'
+                "create or replace table `deeb.schema.additional_options` OPTIONS(partition_expiration_days=1,require_partition_filter=true,friendly_name=\"friendlyName\")as select 1 as test"
             }
           ],
           dependencyTargets: [],
@@ -1156,8 +1114,7 @@ suite("@dataform/api", () => {
         warehouse: "bigquery",
         defaultSchema: "foo",
         assertionSchema: "bar",
-        defaultDatabase: "database",
-        defaultLocation: "US"
+        defaultDatabase: "database"
       },
       runConfig: {
         fullRefresh: true
@@ -1349,7 +1306,7 @@ suite("@dataform/api", () => {
         }).toJSON()
       );
 
-      runner = new Runner(mockDbAdapterInstance, RUN_TEST_GRAPH, undefined, result);
+      runner = new Runner(mockDbAdapterInstance, RUN_TEST_GRAPH, result);
 
       expect(
         dataform.RunResult.create(cleanTiming(await runner.execute().result())).toJSON()
@@ -1512,8 +1469,7 @@ suite("@dataform/api", () => {
         projectConfig: {
           warehouse: "bigquery",
           defaultSchema: "foo",
-          assertionSchema: "bar",
-          defaultLocation: "US"
+          assertionSchema: "bar"
         },
         warehouseState: {
           tables: []
@@ -1574,8 +1530,7 @@ suite("@dataform/api", () => {
         projectConfig: {
           warehouse: "bigquery",
           defaultSchema: "foo",
-          assertionSchema: "bar",
-          defaultLocation: "US"
+          assertionSchema: "bar"
         },
         warehouseState: {
           tables: []

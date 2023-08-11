@@ -2,12 +2,10 @@ import EventEmitter from "events";
 import Long from "long";
 
 import * as dbadapters from "df/api/dbadapters";
-import { IBigQueryExecutionOptions } from "df/api/dbadapters/bigquery";
 import { Flags } from "df/common/flags";
 import { retry } from "df/common/promises";
 import { deepClone, equals } from "df/common/protos";
 import { StringifiedMap, StringifiedSet } from "df/common/strings/stringifier";
-import { IBigQueryOptions } from "df/core/table";
 import { targetsAreEqual, targetStringifier } from "df/core/targets";
 import { dataform } from "df/protos/ts";
 
@@ -25,24 +23,13 @@ export interface IExecutedAction {
   actionResult: dataform.IActionResult;
 }
 
-export interface IExecutionOptions {
-  bigquery?: { jobPrefix?: string };
-}
-
 export function run(
   dbadapter: dbadapters.IDbAdapter,
   graph: dataform.IExecutionGraph,
-  executionOptions?: IExecutionOptions,
   partiallyExecutedRunResult: dataform.IRunResult = {},
   runnerNotificationPeriodMillis: number = flags.runnerNotificationPeriodMillis.get()
 ): Runner {
-  return new Runner(
-    dbadapter,
-    graph,
-    executionOptions,
-    partiallyExecutedRunResult,
-    runnerNotificationPeriodMillis
-  ).execute();
+  return new Runner(dbadapter, graph, partiallyExecutedRunResult, runnerNotificationPeriodMillis).execute();
 }
 
 export class Runner {
@@ -68,10 +55,8 @@ export class Runner {
   constructor(
     private readonly dbadapter: dbadapters.IDbAdapter,
     private readonly graph: dataform.IExecutionGraph,
-    private readonly executionOptions: IExecutionOptions = {},
     partiallyExecutedRunResult: dataform.IRunResult = {},
-    private readonly runnerNotificationPeriodMillis: number = flags.runnerNotificationPeriodMillis.get()
-  ) {
+    private readonly runnerNotificationPeriodMillis: number = flags.runnerNotificationPeriodMillis.get()) {
     this.allActionTargets = new StringifiedSet<dataform.ITarget>(
       targetStringifier,
       graph.actions.map(action => action.target)
@@ -145,7 +130,10 @@ export class Runner {
   }
 
   private notifyListeners() {
-    if (Date.now() - this.runnerNotificationPeriodMillis < this.lastNotificationTimestampMillis) {
+    if (
+      Date.now() - this.runnerNotificationPeriodMillis <
+      this.lastNotificationTimestampMillis
+    ) {
       return;
     }
     const runResultClone = deepClone(dataform.RunResult, this.runResult);
@@ -335,10 +323,7 @@ export class Runner {
           !this.cancelled
         ) {
           const taskStatus = await this.executeTask(client, task, actionResult, {
-            bigquery: {
-              labels: action.actionDescriptor?.bigqueryLabels,
-              jobPrefix: this.executionOptions?.bigquery?.jobPrefix
-            }
+            bigquery: { labels: action.actionDescriptor?.bigqueryLabels }
           });
           if (taskStatus === dataform.TaskResult.ExecutionStatus.FAILED) {
             actionResult.status = dataform.ActionResult.ExecutionStatus.FAILED;
@@ -412,7 +397,7 @@ export class Runner {
     client: dbadapters.IDbClient,
     task: dataform.IExecutionTask,
     parentAction: dataform.IActionResult,
-    options: { bigquery?: IBigQueryOptions & IBigQueryExecutionOptions }
+    options: { bigquery: { labels: { [label: string]: string } } }
   ): Promise<dataform.TaskResult.ExecutionStatus> {
     const timer = Timer.start();
     const taskResult: dataform.ITaskResult = {
@@ -459,7 +444,7 @@ class Timer {
   public static start(existingTiming?: dataform.ITiming) {
     return new Timer(existingTiming?.startTimeMillis.toNumber() || new Date().valueOf());
   }
-  private constructor(readonly startTimeMillis: number) {}
+  private constructor(readonly startTimeMillis: number) { }
 
   public current(): dataform.ITiming {
     return {

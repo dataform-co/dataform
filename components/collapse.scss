@@ -1,0 +1,10 @@
+.messageContainer {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  word-break: break-all;
+}
+
+.messageContainerFullWidth {
+  justify-content: space-between;
+}

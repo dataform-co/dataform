@@ -1,0 +1,3 @@
+---
+redirect: ../scheduling/slack-notifications
+---

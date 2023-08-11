@@ -44,10 +44,11 @@ suite("@dataform/integration/snowflake", ({ before, after }) => {
     let executedGraph = await dfapi.run(dbadapter, executionGraph).result();
 
     const actionMap = keyBy(executedGraph.actions, v => targetAsReadableString(v.target));
-    expect(Object.keys(actionMap).length).eql(18);
+    expect(Object.keys(actionMap).length).eql(20);
 
     // Check the status of action execution.
     const expectedFailedActions = [
+      "INTEGRATION_TESTS.DF_INTEGRATION_TEST_ASSERTIONS_PROJECT_E2E.EXAMPLE_ASSERTION_UNIQUENESS_FAIL",
       "INTEGRATION_TESTS.DF_INTEGRATION_TEST_ASSERTIONS_PROJECT_E2E.EXAMPLE_ASSERTION_FAIL"
     ];
     for (const actionName of Object.keys(actionMap)) {
@@ -64,7 +65,7 @@ suite("@dataform/integration/snowflake", ({ before, after }) => {
 
     expect(
       actionMap[
-        "INTEGRATION_TESTS.DF_INTEGRATION_TEST_ASSERTIONS_PROJECT_E2E.EXAMPLE_ASSERTION_FAIL"
+        "INTEGRATION_TESTS.DF_INTEGRATION_TEST_ASSERTIONS_PROJECT_E2E.EXAMPLE_ASSERTION_UNIQUENESS_FAIL"
       ].tasks[1].errorMessage
     ).to.eql("snowflake error: Assertion failed: query returned 1 row(s).");
 
@@ -317,7 +318,7 @@ suite("@dataform/integration/snowflake", ({ before, after }) => {
     test("invalid table fails validation and error parsed correctly", async () => {
       const evaluations = await dbadapter.evaluate(
         dataform.Table.create({
-          enumType: dataform.TableType.TABLE,
+          type: "table",
           query: "selects\n1 as x",
           target: {
             name: "EXAMPLE_ILLEGAL_TABLE",
@@ -339,7 +340,7 @@ suite("@dataform/integration/snowflake", ({ before, after }) => {
     test("incremental pre and post ops, core version <= 1.4.8", async () => {
       // 1.4.8 used `preOps` and `postOps` instead of `incrementalPreOps` and `incrementalPostOps`.
       const table: dataform.ITable = {
-        enumType: dataform.TableType.INCREMENTAL,
+        type: "incremental",
         query: "query",
         preOps: ["preop task1", "preop task2"],
         incrementalQuery: "",

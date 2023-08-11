@@ -17,7 +17,6 @@ import {
   resolvableAsTarget,
   setNameAndTarget,
   strictKeysOf,
-  tableTypeStringToEnum,
   toResolvable,
   validateQueryString
 } from "df/core/utils";
@@ -170,6 +169,7 @@ export interface IBigQueryOptions {
    */
   labels?: { [name: string]: string };
 
+
   /**
    * This setting specifies how long BigQuery keeps the data in each partition. The setting applies to all partitions in the table,
    * but is calculated independently for each partition based on the partition time.
@@ -199,15 +199,7 @@ export interface IBigQueryOptions {
 }
 
 const IBigQueryOptionsProperties = () =>
-  strictKeysOf<IBigQueryOptions>()([
-    "partitionBy",
-    "clusterBy",
-    "updatePartitionFilter",
-    "labels",
-    "partitionExpirationDays",
-    "requirePartitionFilter",
-    "additionalOptions"
-  ]);
+  strictKeysOf<IBigQueryOptions>()(["partitionBy", "clusterBy", "updatePartitionFilter", "labels", "partitionExpirationDays", "requirePartitionFilter", "additionalOptions"]);
 
 /**
  * Options for creating tables within Presto projects.
@@ -379,8 +371,10 @@ export interface ITableContext extends ICommonContext {
  * @hidden
  */
 export class Table {
-  public static readonly INLINE_IGNORED_PROPS: Array<keyof dataform.ITable> = 
-    [
+  public static readonly IGNORED_PROPS: {
+    [tableType: string]: Array<keyof dataform.ITable>;
+  } = {
+    inline: [
       "bigquery",
       "redshift",
       "snowflake",
@@ -391,11 +385,11 @@ export class Table {
       "actionDescriptor",
       "disabled",
       "where"
-    ];
+    ]
+  };
 
   public proto: dataform.ITable = dataform.Table.create({
     type: "view",
-    enumType: dataform.TableType.VIEW,
     disabled: false,
     tags: []
   });
@@ -479,7 +473,6 @@ export class Table {
 
   public type(type: TableType) {
     this.proto.type = type;
-    this.proto.enumType = tableTypeStringToEnum(type, false);
     return this;
   }
 
@@ -604,8 +597,6 @@ export class Table {
     newTags.forEach(t => {
       this.proto.tags.push(t);
     });
-    this.uniqueKeyAssertions.forEach(assertion => assertion.tags(value));
-    this.rowConditionsAssertion?.tags(value);
     return this;
   }
 
@@ -675,9 +666,6 @@ export class Table {
           `${this.proto.target.schema}_${this.proto.target.name}_assertions_uniqueKey_${index}`,
           ctx => this.session.adapter().indexAssertion(ctx.ref(this.proto.target), uniqueKey)
         );
-        if (this.proto.tags) {
-          uniqueKeyAssertion.tags(this.proto.tags);
-        }
         uniqueKeyAssertion.proto.parentAction = this.proto.target;
         if (this.proto.disabled) {
           uniqueKeyAssertion.disabled();
@@ -703,9 +691,6 @@ export class Table {
       if (this.proto.disabled) {
         this.rowConditionsAssertion.disabled();
       }
-      if (this.proto.tags) {
-        this.rowConditionsAssertion.tags(this.proto.tags);
-      }
     }
     return this;
   }
@@ -716,7 +701,7 @@ export class Table {
 
     this.proto.query = context.apply(this.contextableQuery);
 
-    if (this.proto.enumType === dataform.TableType.INCREMENTAL) {
+    if (this.proto.type === "incremental") {
       this.proto.incrementalQuery = incrementalContext.apply(this.contextableQuery);
 
       this.proto.incrementalPreOps = this.contextifyOps(this.contextablePreOps, incrementalContext);
@@ -772,15 +757,14 @@ export class TableContext implements ITableContext {
   }
 
   public name(): string {
-    return this.table.session.finalizeName(
-      this.table.proto.target.name
-    );
+    return this.table.proto.target.name;
   }
 
   public ref(ref: Resolvable | string[], ...rest: string[]): string {
     ref = toResolvable(ref, rest);
     if (!resolvableAsTarget(ref)) {
-      this.table.session.compileError(new Error(`Action name is not specified`));
+      const message = `Action name is not specified`;
+      this.table.session.compileError(new Error(message));
       return "";
     }
     this.table.dependencies(ref);
@@ -788,24 +772,7 @@ export class TableContext implements ITableContext {
   }
 
   public resolve(ref: Resolvable | string[], ...rest: string[]) {
-    return this.table.session.resolve(ref, ...rest);
-  }
-
-  public schema(): string {
-    return this.table.session.finalizeSchema(
-      this.table.proto.target.schema
-    );
-  }
-
-  public database(): string {
-    if (!this.table.proto.target.database) {
-      this.table.session.compileError(new Error(`Warehouse does not support multiple databases`));
-      return "";
-    }
-
-    return this.table.session.finalizeDatabase(
-      this.table.proto.target.database
-    );
+    return this.table.session.resolve(toResolvable(ref, rest));
   }
 
   public type(type: TableType) {

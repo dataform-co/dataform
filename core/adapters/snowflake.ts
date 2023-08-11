@@ -25,14 +25,14 @@ export class SnowflakeAdapter extends Adapter implements IAdapter {
 
     this.preOps(table, runConfig, tableMetadata).forEach(statement => tasks.add(statement));
 
-    const baseTableType = this.baseTableType(table.enumType);
+    const baseTableType = this.baseTableType(table.type);
     if (tableMetadata && tableMetadata.type !== baseTableType) {
       tasks.add(
         Task.statement(this.dropIfExists(table.target, this.oppositeTableType(baseTableType)))
       );
     }
 
-    if (table.enumType === dataform.TableType.INCREMENTAL) {
+    if (table.type === "incremental") {
       if (!this.shouldWriteIncrementally(runConfig, tableMetadata)) {
         tasks.add(Task.statement(this.createOrReplace(table)));
       } else {
@@ -80,7 +80,7 @@ export class SnowflakeAdapter extends Adapter implements IAdapter {
   }
 
   private createOrReplace(table: dataform.ITable) {
-    if (table.enumType === dataform.TableType.VIEW) {
+    if (table.type === "view") {
       return this.createOrReplaceView(table.target, table.query, table.snowflake?.secure, table.materialized);
     }
     return `create or replace ${

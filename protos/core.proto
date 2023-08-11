@@ -159,14 +159,6 @@ message ColumnDescriptor {
   repeated string bigquery_policy_tags = 8;
 }
 
-enum TableType {
-  UNKNOWN_TYPE = 0;
-  TABLE = 1;
-  INCREMENTAL = 2;
-  VIEW = 3;
-  INLINE = 4;
-}
-
 message Table {
   Target target = 4;
   Target canonical_target = 32;
@@ -176,11 +168,10 @@ message Table {
 
   bool disabled = 6;
 
-  string type = 3 [deprecated = true];
+  string type = 3;
   string query = 5;
   bool protected = 9;
   bool materialized = 35;
-  TableType enum_type = 36;
 
   ActionDescriptor action_descriptor = 24;
 

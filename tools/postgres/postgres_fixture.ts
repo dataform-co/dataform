@@ -1,6 +1,5 @@
-import * as pg from "pg";
-
 import { execSync } from "child_process";
+import * as dbadapters from "df/api/dbadapters";
 import { sleepUntil } from "df/common/promises";
 import { IHookHandler } from "df/testing";
 
@@ -33,24 +32,26 @@ export class PostgresFixture {
           "bazel/tools/postgres:postgres_image"
         ].join(" ")
       );
-
-      const pool = new pg.Pool({
-        user: "postgres",
-        password: "password",
-        database: "postgres",
-        port,
-        host: PostgresFixture.host
-      });
-
+      const dbadapter = await dbadapters.create(
+        {
+          username: "postgres",
+          databaseName: "postgres",
+          password: "password",
+          port,
+          host: PostgresFixture.host
+        },
+        "postgres",
+        { disableSslForTestsOnly: true }
+      );
       // Block until postgres is ready to accept requests.
       await sleepUntil(async () => {
         try {
-          await pool.connect();
+          await dbadapter.execute("select 1");
           return true;
         } catch (e) {
           return false;
         }
-      }, 500);
+      });
     });
 
     tearDown("stopping postgres", () => {

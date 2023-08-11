@@ -8,6 +8,7 @@ import * as query from "df/api/commands/query";
 import { run, Runner } from "df/api/commands/run";
 import * as table from "df/api/commands/table";
 import { test } from "df/api/commands/test";
+import { validateSchedules, validateSchedulesFileIfExists } from "df/api/commands/validate";
 
 export {
   init,
@@ -19,6 +20,8 @@ export {
   run,
   query,
   table,
+  validateSchedules,
+  validateSchedulesFileIfExists,
   Runner,
   Builder,
   prune

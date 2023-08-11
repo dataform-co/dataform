@@ -2,7 +2,6 @@ import * as semver from "semver";
 
 import { IAdapter } from "df/core/adapters";
 import { Task, Tasks } from "df/core/tasks";
-import { tableTypeEnumToString } from "df/core/utils"
 import { dataform } from "df/protos/ts";
 
 export abstract class Adapter implements IAdapter {
@@ -35,15 +34,15 @@ export abstract class Adapter implements IAdapter {
     }`;
   }
 
-  public baseTableType(enumType: dataform.TableType) {
-    switch (enumType) {
-      case dataform.TableType.TABLE:
-      case dataform.TableType.INCREMENTAL:
+  public baseTableType(type: string) {
+    switch (type) {
+      case "table":
+      case "incremental":
         return dataform.TableMetadata.Type.TABLE;
-      case dataform.TableType.VIEW:
+      case "view":
         return dataform.TableMetadata.Type.VIEW;
       default:
-        throw new Error(`Unexpected table type: ${tableTypeEnumToString(enumType)}`);
+        throw new Error(`Unexpected table type: ${type}`);
     }
   }
 
@@ -134,7 +133,7 @@ from (${query}) as insertions`;
     let preOps = table.preOps;
     if (
       semver.gt(this.dataformCoreVersion, "1.4.8") &&
-      table.enumType === dataform.TableType.INCREMENTAL &&
+      table.type === "incremental" &&
       this.shouldWriteIncrementally(runConfig, tableMetadata)
     ) {
       preOps = table.incrementalPreOps;
@@ -150,7 +149,7 @@ from (${query}) as insertions`;
     let postOps = table.postOps;
     if (
       semver.gt(this.dataformCoreVersion, "1.4.8") &&
-      table.enumType === dataform.TableType.INCREMENTAL &&
+      table.type === "incremental" &&
       this.shouldWriteIncrementally(runConfig, tableMetadata)
     ) {
       postOps = table.incrementalPostOps;

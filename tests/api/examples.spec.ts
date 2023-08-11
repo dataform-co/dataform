@@ -88,7 +88,8 @@ suite("examples", () => {
               },
               {
                 fileName: "definitions/has_compile_errors/table_with_materialized.sqlx",
-                message: "The 'materialized' option is only valid for Snowflake and BigQuery views"
+                message:
+                  "The 'materialized' option is only valid for Snowflake and BigQuery views"
               },
               {
                 fileName: "definitions/has_compile_errors/view_without_hermetic.sqlx",
@@ -108,7 +109,6 @@ suite("examples", () => {
                 )
             );
             expect(exampleJsBlocks.type).equals("table");
-            expect(exampleJsBlocks.enumType).equals(dataform.TableType.TABLE);
             expect(exampleJsBlocks.query.trim()).equals("select 1 as foo");
 
             // Check we can import and use an external package.
@@ -222,7 +222,6 @@ suite("examples", () => {
                 )
             );
             expect(exampleInline.type).equals("inline");
-            expect(exampleInline.enumType).equals(dataform.TableType.INLINE);
             expect(exampleInline.query.trim()).equals(
               `select * from \`${dotJoined(
                 databaseWithSuffix("tada-analytics"),
@@ -248,7 +247,6 @@ suite("examples", () => {
                 )
             );
             expect(exampleUsingInline.type).equals("table");
-            expect(exampleUsingInline.enumType).equals(dataform.TableType.TABLE);
             expect(exampleUsingInline.query.trim()).equals(
               `select * from (\n\nselect * from \`${dotJoined(
                 databaseWithSuffix("tada-analytics"),
@@ -275,7 +273,6 @@ suite("examples", () => {
                 )
             );
             expect(exampleView.type).equals("view");
-            expect(exampleView.enumType).equals(dataform.TableType.VIEW);
             expect(exampleView.query.trim()).equals(
               `select * from \`${dotJoined(
                 databaseWithSuffix("tada-analytics"),
@@ -325,7 +322,7 @@ suite("examples", () => {
               })
             ]);
             expect(exampleView.tags).to.eql([]);
-
+            
             // Check materialized view
             const exampleMaterializedView = graph.tables.find(
               (t: dataform.ITable) =>
@@ -337,14 +334,14 @@ suite("examples", () => {
                 )
             );
             expect(exampleMaterializedView.type).equals("view");
-            expect(exampleMaterializedView.enumType).equals(dataform.TableType.VIEW);
             expect(exampleMaterializedView.materialized).equals(true);
             expect(exampleMaterializedView.query.trim()).equals(
               `select * from \`${dotJoined(
                 databaseWithSuffix("tada-analytics"),
                 schemaWithSuffix("df_integration_test"),
                 "sample_data"
-              )}\`\n` + `group by 1`
+              )}\`\n` +
+              `group by 1`
             );
             expect(exampleMaterializedView.target).deep.equals(
               dataform.Target.create({
@@ -380,7 +377,6 @@ suite("examples", () => {
                 )
             );
             expect(exampleTable.type).equals("table");
-            expect(exampleTable.enumType).equals(dataform.TableType.TABLE);
             expect(exampleTable.query.trim()).equals(
               `select * from \`${dotJoined(
                 databaseWithSuffix("tada-analytics"),
@@ -448,7 +444,6 @@ suite("examples", () => {
                 name: "example_table_with_tags"
               })
             ]);
-            expect(exampleTableWithTagsUniqueKeyAssertion.tags).eql(["tag1", "tag2", "tag3"]);
 
             // Check table-with-tags's row conditions assertion
             const exampleTableWithTagsRowConditionsAssertion = graph.assertions.filter(
@@ -487,7 +482,6 @@ suite("examples", () => {
                 )
             );
             expect(exampleSampleData.type).equals("view");
-            expect(exampleSampleData.enumType).equals(dataform.TableType.VIEW);
             expect(exampleSampleData.query.trim()).equals(
               "select 1 as sample union all\nselect 2 as sample union all\nselect 3 as sample"
             );
@@ -520,7 +514,6 @@ suite("examples", () => {
               databaseWithSuffix("override_database")
             );
             expect(exampleUsingOverriddenDatabase.type).equals("view");
-            expect(exampleUsingOverriddenDatabase.enumType).equals(dataform.TableType.VIEW);
             expect(exampleUsingOverriddenDatabase.query.trim()).equals(
               "select 1 as test_database_override"
             );
@@ -540,7 +533,6 @@ suite("examples", () => {
               schemaWithSuffix("override_schema")
             );
             expect(exampleUsingOverriddenSchema.type).equals("view");
-            expect(exampleUsingOverriddenSchema.enumType).equals(dataform.TableType.VIEW);
             expect(exampleUsingOverriddenSchema.query.trim()).equals(
               "select 1 as test_schema_override"
             );
@@ -560,7 +552,6 @@ suite("examples", () => {
               schemaWithSuffix("df_integration_test")
             );
             expect(exampleUsingOverriddenSchemaUnchanged.type).equals("view");
-            expect(exampleUsingOverriddenSchemaUnchanged.enumType).equals(dataform.TableType.VIEW);
             expect(exampleUsingOverriddenSchemaUnchanged.query.trim()).equals(
               "select 1 as test_schema_override"
             );
@@ -761,6 +752,370 @@ suite("examples", () => {
         }
       }
     }
+  });
+
+  suite("common_v1", async () => {
+    test("bigquery compiles", async () => {
+      const graph = await compile({
+        projectDir: path.resolve("examples/common_v1"),
+        projectConfigOverride: { warehouse: "bigquery", defaultDatabase: "tada-analytics" }
+      });
+      const tableNames = graph.tables.map((t: dataform.ITable) => targetAsReadableString(t.target));
+
+      expect(graph.graphErrors).to.eql(dataform.GraphErrors.create());
+
+      // Check JS blocks get processed.
+      expect(tableNames).includes("tada-analytics.df_integration_test.example_js_blocks");
+      const exampleJsBlocks = graph.tables.filter(
+        (t: dataform.ITable) =>
+          targetAsReadableString(t.target) ===
+          "tada-analytics.df_integration_test.example_js_blocks"
+      )[0];
+      expect(exampleJsBlocks.type).equals("table");
+      expect(exampleJsBlocks.query).equals("select 1 as foo");
+
+      // Check we can import and use an external package.
+      expect(tableNames).includes("tada-analytics.df_integration_test.example_incremental");
+      const exampleIncremental = graph.tables.filter(
+        (t: dataform.ITable) =>
+          targetAsReadableString(t.target) ===
+          "tada-analytics.df_integration_test.example_incremental"
+      )[0];
+      expect(exampleIncremental.query).equals("select current_timestamp() as ts");
+      expect(exampleIncremental.where.trim()).equals(
+        "ts > (select max(ts) from `tada-analytics.df_integration_test.example_incremental`) or (select max(ts) from `tada-analytics.df_integration_test.example_incremental`) is null"
+      );
+
+      // Check tables defined in includes are not included.
+      expect(tableNames).not.includes("example_ignore");
+
+      // Check SQL files with raw back-ticks get escaped.
+      expect(tableNames).includes("tada-analytics.df_integration_test.example_backticks");
+      const exampleBackticks = graph.tables.filter(
+        (t: dataform.ITable) =>
+          targetAsReadableString(t.target) ===
+          "tada-analytics.df_integration_test.example_backticks"
+      )[0];
+      expect(cleanSql(exampleBackticks.query)).equals(
+        "select * from `tada-analytics.df_integration_test.sample_data`"
+      );
+
+      // Check deferred calls to table resolve to the correct definitions file.
+      expect(tableNames).includes("tada-analytics.df_integration_test.example_deferred");
+      const exampleDeferred = graph.tables.filter(
+        (t: dataform.ITable) =>
+          targetAsReadableString(t.target) === "tada-analytics.df_integration_test.example_deferred"
+      )[0];
+      expect(exampleDeferred.fileName).includes("definitions/example_deferred.js");
+
+      // Check inline tables
+      expect(tableNames).includes("tada-analytics.df_integration_test.example_inline");
+      const exampleInline = graph.tables.filter(
+        (t: dataform.ITable) =>
+          targetAsReadableString(t.target) === "tada-analytics.df_integration_test.example_inline"
+      )[0];
+      expect(exampleInline.type).equals("inline");
+      expect(exampleInline.query).equals(
+        "\nselect * from `tada-analytics.df_integration_test.sample_data`"
+      );
+      expect(exampleInline.dependencyTargets).eql([
+        dataform.Target.create({
+          database: "tada-analytics",
+          schema: "df_integration_test",
+          name: "sample_data"
+        })
+      ]);
+
+      expect(tableNames).includes("tada-analytics.df_integration_test.example_using_inline");
+      const exampleUsingInline = graph.tables.filter(
+        (t: dataform.ITable) =>
+          targetAsReadableString(t.target) ===
+          "tada-analytics.df_integration_test.example_using_inline"
+      )[0];
+      expect(exampleUsingInline.type).equals("table");
+      expect(exampleUsingInline.query).equals(
+        "\nselect * from (\nselect * from `tada-analytics.df_integration_test.sample_data`)\nwhere true"
+      );
+      expect(exampleUsingInline.dependencyTargets).eql([
+        dataform.Target.create({
+          database: "tada-analytics",
+          schema: "df_integration_test",
+          name: "sample_data"
+        })
+      ]);
+
+      // Check view
+      expect(tableNames).includes("tada-analytics.df_integration_test.example_view");
+      const exampleView = graph.tables.filter(
+        (t: dataform.ITable) =>
+          targetAsReadableString(t.target) === "tada-analytics.df_integration_test.example_view"
+      )[0];
+      expect(exampleView.type).equals("view");
+      expect(exampleView.query).equals(
+        "\nselect * from `tada-analytics.df_integration_test.sample_data`"
+      );
+      expect(exampleView.dependencyTargets).eql([
+        dataform.Target.create({
+          database: "tada-analytics",
+          schema: "df_integration_test",
+          name: "sample_data"
+        })
+      ]);
+
+      // Check table
+      expect(tableNames).includes("tada-analytics.df_integration_test.example_table");
+      const exampleTable = graph.tables.filter(
+        (t: dataform.ITable) =>
+          targetAsReadableString(t.target) === "tada-analytics.df_integration_test.example_table"
+      )[0];
+      expect(exampleTable.type).equals("table");
+      expect(exampleTable.query).equals(
+        "\nselect * from `tada-analytics.df_integration_test.sample_data`"
+      );
+      expect(exampleTable.dependencyTargets).eql([
+        dataform.Target.create({
+          database: "tada-analytics",
+          schema: "df_integration_test",
+          name: "sample_data"
+        })
+      ]);
+
+      // Check sample data
+      expect(tableNames).includes("tada-analytics.df_integration_test.sample_data");
+      const exampleSampleData = graph.tables.filter(
+        (t: dataform.ITable) =>
+          targetAsReadableString(t.target) === "tada-analytics.df_integration_test.sample_data"
+      )[0];
+      expect(exampleSampleData.type).equals("view");
+      expect(exampleSampleData.query).equals(
+        "select 1 as sample union all\nselect 2 as sample union all\nselect 3 as sample"
+      );
+      expect(exampleSampleData.dependencyTargets).eql([]);
+    });
+
+    test("bigquery compiles with schema override", async () => {
+      const graph = await compile({
+        projectDir: path.resolve("examples/common_v1"),
+        projectConfigOverride: {
+          warehouse: "redshift",
+          schemaSuffix: "suffix"
+        }
+      });
+      expect(graph.projectConfig.schemaSuffix).to.equal("suffix");
+      graph.tables.forEach(table =>
+        expect(table.target.schema).to.match(
+          /^(df_integration_test_suffix|override_schema_suffix)$/
+        )
+      );
+    });
+
+    test("bigquery compiles with database override", async () => {
+      const graph = await compile({
+        projectDir: path.resolve("examples/common_v2"),
+        projectConfigOverride: {
+          warehouse: "bigquery",
+          defaultDatabase: "overridden-database"
+        }
+      });
+      expect(graph.projectConfig.defaultDatabase).to.equal("overridden-database");
+      const exampleTable = graph.tables.find(
+        table =>
+          targetAsReadableString(table.target) ===
+          "overridden-database.df_integration_test.example_table"
+      );
+      expect(exampleTable.target.database).equals("overridden-database");
+    });
+
+    test("redshift compiles", () => {
+      return compile({
+        projectDir: "examples/common_v1",
+        projectConfigOverride: { warehouse: "redshift" }
+      }).then(graph => {
+        const tableNames = graph.tables.map((t: dataform.ITable) =>
+          targetAsReadableString(t.target)
+        );
+
+        // Check we can import and use an external package.
+        expect(tableNames).includes("df_integration_test.example_incremental");
+        const exampleIncremental = graph.tables.filter(
+          (t: dataform.ITable) =>
+            targetAsReadableString(t.target) === "df_integration_test.example_incremental"
+        )[0];
+        expect(exampleIncremental.query).equals("select current_timestamp::timestamp as ts");
+
+        // Check inline tables
+        expect(tableNames).includes("df_integration_test.example_inline");
+        const exampleInline = graph.tables.filter(
+          (t: dataform.ITable) =>
+            targetAsReadableString(t.target) === "df_integration_test.example_inline"
+        )[0];
+        expect(exampleInline.type).equals("inline");
+        expect(exampleInline.query).equals('\nselect * from "df_integration_test"."sample_data"');
+        expect(exampleInline.dependencyTargets).eql([
+          dataform.Target.create({
+            schema: "df_integration_test",
+            name: "sample_data"
+          })
+        ]);
+
+        expect(tableNames).includes("df_integration_test.example_using_inline");
+        const exampleUsingInline = graph.tables.filter(
+          (t: dataform.ITable) =>
+            targetAsReadableString(t.target) === "df_integration_test.example_using_inline"
+        )[0];
+        expect(exampleUsingInline.type).equals("table");
+        expect(exampleUsingInline.query).equals(
+          '\nselect * from (\nselect * from "df_integration_test"."sample_data")\nwhere true'
+        );
+        expect(exampleUsingInline.dependencyTargets).eql([
+          dataform.Target.create({
+            schema: "df_integration_test",
+            name: "sample_data"
+          })
+        ]);
+      });
+    });
+
+    test("snowflake compiles", async () => {
+      const graph = await compile({
+        projectDir: "examples/common_v1",
+        projectConfigOverride: { warehouse: "snowflake" }
+      }).catch(error => error);
+      expect(graph).to.not.be.an.instanceof(Error);
+      expect(graph.graphErrors).deep.equals(dataform.GraphErrors.create({}));
+
+      const mNames = graph.tables.map((t: dataform.ITable) => targetAsReadableString(t.target));
+
+      expect(mNames).includes("DF_INTEGRATION_TEST.EXAMPLE_INCREMENTAL");
+      const mIncremental = graph.tables.filter(
+        (t: dataform.ITable) =>
+          targetAsReadableString(t.target) === "DF_INTEGRATION_TEST.EXAMPLE_INCREMENTAL"
+      )[0];
+      expect(mIncremental.type).equals("incremental");
+      expect(mIncremental.query).equals(
+        "select convert_timezone('UTC', current_timestamp())::timestamp as ts"
+      );
+
+      expect(mIncremental.dependencyTargets).eql([]);
+
+      expect(mNames).includes("DF_INTEGRATION_TEST.EXAMPLE_TABLE");
+      const mTable = graph.tables.filter(
+        (t: dataform.ITable) =>
+          targetAsReadableString(t.target) === "DF_INTEGRATION_TEST.EXAMPLE_TABLE"
+      )[0];
+      expect(mTable.type).equals("table");
+      expect(mTable.query).equals('\nselect * from "DF_INTEGRATION_TEST"."SAMPLE_DATA"');
+      expect(mTable.dependencyTargets).eql([
+        dataform.Target.create({
+          schema: "DF_INTEGRATION_TEST",
+          name: "SAMPLE_DATA"
+        })
+      ]);
+
+      expect(mNames).includes("DF_INTEGRATION_TEST.EXAMPLE_VIEW");
+      const mView = graph.tables.filter(
+        (t: dataform.ITable) =>
+          targetAsReadableString(t.target) === "DF_INTEGRATION_TEST.EXAMPLE_VIEW"
+      )[0];
+      expect(mView.type).equals("view");
+      expect(mView.query).equals('\nselect * from "DF_INTEGRATION_TEST"."SAMPLE_DATA"');
+      expect(mView.dependencyTargets).eql([
+        dataform.Target.create({
+          schema: "DF_INTEGRATION_TEST",
+          name: "SAMPLE_DATA"
+        })
+      ]);
+
+      expect(mNames).includes("DF_INTEGRATION_TEST.SAMPLE_DATA");
+      const mSampleData = graph.tables.filter(
+        (t: dataform.ITable) =>
+          targetAsReadableString(t.target) === "DF_INTEGRATION_TEST.SAMPLE_DATA"
+      )[0];
+      expect(mSampleData.type).equals("view");
+      expect(mSampleData.query).equals(
+        "select 1 as sample union all\nselect 2 as sample union all\nselect 3 as sample"
+      );
+      expect(mSampleData.dependencyTargets).eql([]);
+
+      // Check inline tables
+      expect(mNames).includes("DF_INTEGRATION_TEST.EXAMPLE_INLINE");
+      const exampleInline = graph.tables.filter(
+        (t: dataform.ITable) =>
+          targetAsReadableString(t.target) === "DF_INTEGRATION_TEST.EXAMPLE_INLINE"
+      )[0];
+      expect(exampleInline.type).equals("inline");
+      expect(exampleInline.query).equals('\nselect * from "DF_INTEGRATION_TEST"."SAMPLE_DATA"');
+      expect(exampleInline.dependencyTargets).eql([
+        dataform.Target.create({
+          schema: "DF_INTEGRATION_TEST",
+          name: "SAMPLE_DATA"
+        })
+      ]);
+
+      expect(mNames).includes("DF_INTEGRATION_TEST.EXAMPLE_USING_INLINE");
+      const exampleUsingInline = graph.tables.filter(
+        (t: dataform.ITable) =>
+          targetAsReadableString(t.target) === "DF_INTEGRATION_TEST.EXAMPLE_USING_INLINE"
+      )[0];
+      expect(exampleUsingInline.type).equals("table");
+      expect(exampleUsingInline.query).equals(
+        '\nselect * from (\nselect * from "DF_INTEGRATION_TEST"."SAMPLE_DATA")\nwhere true'
+      );
+      expect(exampleUsingInline.dependencyTargets).eql([
+        dataform.Target.create({
+          schema: "DF_INTEGRATION_TEST",
+          name: "SAMPLE_DATA"
+        })
+      ]);
+
+      const aNames = graph.assertions.map((a: dataform.IAssertion) =>
+        targetAsReadableString(a.target)
+      );
+
+      expect(aNames).includes("DF_INTEGRATION_TEST_ASSERTIONS.SAMPLE_DATA_ASSERTION");
+      const assertion = graph.assertions.filter(
+        (a: dataform.IAssertion) =>
+          targetAsReadableString(a.target) ===
+          "DF_INTEGRATION_TEST_ASSERTIONS.SAMPLE_DATA_ASSERTION"
+      )[0];
+      expect(assertion.query).equals(
+        'select * from "DF_INTEGRATION_TEST"."SAMPLE_DATA" where sample > 3'
+      );
+      expect(assertion.dependencyTargets).eql([
+        dataform.Target.create({
+          schema: "DF_INTEGRATION_TEST",
+          name: "EXAMPLE_BACKTICKS"
+        }),
+        dataform.Target.create({
+          schema: "DF_INTEGRATION_TEST",
+          name: "EXAMPLE_DEFERRED"
+        }),
+        dataform.Target.create({
+          schema: "DF_INTEGRATION_TEST",
+          name: "EXAMPLE_INCREMENTAL"
+        }),
+        dataform.Target.create({
+          schema: "DF_INTEGRATION_TEST",
+          name: "EXAMPLE_JS_BLOCKS"
+        }),
+        dataform.Target.create({
+          schema: "DF_INTEGRATION_TEST",
+          name: "EXAMPLE_TABLE"
+        }),
+        dataform.Target.create({
+          schema: "DF_INTEGRATION_TEST",
+          name: "EXAMPLE_USING_INLINE"
+        }),
+        dataform.Target.create({
+          schema: "DF_INTEGRATION_TEST",
+          name: "EXAMPLE_VIEW"
+        }),
+        dataform.Target.create({
+          schema: "DF_INTEGRATION_TEST",
+          name: "SAMPLE_DATA"
+        })
+      ]);
+    });
   });
 
   test("backwards_compatibility", async () => {

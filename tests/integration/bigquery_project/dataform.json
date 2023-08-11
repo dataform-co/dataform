@@ -3,7 +3,6 @@
   "defaultDatabase": "dataform-integration-tests",
   "defaultSchema": "df_integration_test_eu",
   "assertionSchema": "df_integration_test_eu_assertions",
-  "defaultLocation": "US",
   "vars": {
     "fooVar": "bar"
   }

@@ -85,7 +85,7 @@ function gatherAllActions(
 
 function retrieveLinkedFileName(ref: string) {
   const allActions = gatherAllActions();
-  const foundCompileAction = allActions.find(action => action.target.name === ref);
+  const foundCompileAction = allActions.find(action => action.name.split(".").slice(-1)[0] === ref);
   return foundCompileAction.fileName;
 }
 

@@ -27,9 +27,7 @@ suite(__filename, () => {
         projectDir,
         "--skip-install",
         "--default-database",
-        "dataform-integration-tests",
-        "--default-location",
-        "US"
+        "dataform-integration-tests"
       ])
     );
 
@@ -73,7 +71,6 @@ select 1 as \${dataform.projectConfig.vars.testVar2}
       tables: [
         {
           type: "table",
-          enumType: "TABLE",
           target: {
             database: "dataform-integration-tests",
             schema: "dataform",
@@ -94,7 +91,6 @@ select 1 as \${dataform.projectConfig.vars.testVar2}
         defaultSchema: "dataform",
         assertionSchema: "dataform_assertions",
         defaultDatabase: "dataform-integration-tests",
-        defaultLocation: "US",
         useRunCache: false,
         vars: {
           testVar1: "testValue1",
@@ -152,7 +148,6 @@ select 1 as \${dataform.projectConfig.vars.testVar2}
       projectConfig: {
         assertionSchema: "dataform_assertions",
         defaultDatabase: "dataform-integration-tests",
-        defaultLocation: "US",
         defaultSchema: "dataform",
         useRunCache: false,
         warehouse: "bigquery",

@@ -8,7 +8,6 @@ export function prune(
   compiledGraph: dataform.ICompiledGraph,
   runConfig: dataform.IRunConfig
 ): dataform.ICompiledGraph {
-  compiledGraph.tables.forEach(utils.setOrValidateTableEnumType);
   const includedActionNames = computeIncludedActionNames(compiledGraph, runConfig);
   return {
     ...compiledGraph,
@@ -29,7 +28,7 @@ function computeIncludedActionNames(
   runConfig: dataform.IRunConfig
 ): Set<string> {
   // Remove inline tables.
-  const filteredTables = compiledGraph.tables.filter(t => t.enumType !== dataform.TableType.INLINE);
+  const filteredTables = compiledGraph.tables.filter(t => t.type !== "inline");
 
   // Union all tables, operations, assertions.
   const allActions: CompileAction[] = [].concat(
@@ -115,6 +114,15 @@ function computeIncludedActionNames(
       });
     }
   }
+
+  // Add auto assertions
+  [...compiledGraph.assertions].forEach(assertion => {
+    if (!!assertion.parentAction) {
+      if (includedActionNames.has(targetAsReadableString(assertion.parentAction))) {
+        includedActionNames.add(targetAsReadableString(assertion.target));
+      }
+    }
+  });
 
   return includedActionNames;
 }

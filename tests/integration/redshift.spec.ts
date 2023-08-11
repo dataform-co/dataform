@@ -41,6 +41,7 @@ suite("@dataform/integration/redshift", { parallel: true }, ({ before, after }) 
 
     // Check the status of action execution.
     const expectedFailedActions = [
+      "df_integration_test_assertions_project_e2e.example_assertion_uniqueness_fail",
       "df_integration_test_assertions_project_e2e.example_assertion_fail"
     ];
     for (const actionName of Object.keys(actionMap)) {
@@ -54,8 +55,8 @@ suite("@dataform/integration/redshift", { parallel: true }, ({ before, after }) 
     }
 
     expect(
-      actionMap["df_integration_test_assertions_project_e2e.example_assertion_fail"].tasks[2]
-        .errorMessage
+      actionMap["df_integration_test_assertions_project_e2e.example_assertion_uniqueness_fail"]
+        .tasks[2].errorMessage
     ).to.eql("redshift error: Assertion failed: query returned 1 row(s).");
 
     // Check the status of the s3 load operation.
@@ -301,7 +302,7 @@ suite("@dataform/integration/redshift", { parallel: true }, ({ before, after }) 
     test("invalid table fails validation", async () => {
       const evaluations = await dbadapter.evaluate(
         dataform.Table.create({
-          enumType: dataform.TableType.TABLE,
+          type: "table",
           query: "thisisillegal",
           target: {
             schema: "df_integration_test",
@@ -321,7 +322,7 @@ suite("@dataform/integration/redshift", { parallel: true }, ({ before, after }) 
     test("incremental pre and post ops, core version <= 1.4.8", async () => {
       // 1.4.8 used `preOps` and `postOps` instead of `incrementalPreOps` and `incrementalPostOps`.
       const table: dataform.ITable = {
-        enumType: dataform.TableType.INCREMENTAL,
+        type: "incremental",
         query: "query",
         preOps: ["preop task1", "preop task2"],
         incrementalQuery: "",
