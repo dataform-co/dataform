@@ -1,8 +1,9 @@
-import { JSONObjectStringifier, StringifiedMap } from "df/common/strings/stringifier";
+import { StringifiedMap } from "df/common/strings/stringifier";
 import { Contextable, ICommonContext, INamedConfig, Resolvable } from "df/core/common";
 import { Session } from "df/core/session";
 import * as table from "df/core/table";
 import { ITableContext } from "df/core/table";
+import { targetStringifier } from "df/core/targets";
 import {
   ambiguousActionNameMsg,
   checkExcessProperties,
@@ -35,7 +36,7 @@ export class Test {
   public contextableInputs = new StringifiedMap<
     dataform.ITarget,
     Contextable<ICommonContext, string>
-  >(JSONObjectStringifier.create());
+  >(targetStringifier);
 
   private datasetToTest: Resolvable;
   private contextableQuery: Contextable<ICommonContext, string>;
@@ -76,7 +77,7 @@ export class Test {
         this.proto.fileName
       );
     } else {
-      const allResolved = this.session.findActions(resolvableAsTarget(this.datasetToTest));
+      const allResolved = this.session.indexedActions.find(resolvableAsTarget(this.datasetToTest));
       if (allResolved.length > 1) {
         this.session.compileError(
           new Error(ambiguousActionNameMsg(this.datasetToTest, allResolved)),
@@ -89,7 +90,7 @@ export class Test {
           new Error(`Dataset ${stringifyResolvable(this.datasetToTest)} could not be found.`),
           this.proto.fileName
         );
-      } else if (dataset.proto.type === "incremental") {
+      } else if (dataset.proto.enumType === dataform.TableType.INCREMENTAL) {
         this.session.compileError(
           new Error("Running tests on incremental datasets is not yet supported."),
           this.proto.fileName
@@ -174,6 +175,14 @@ class RefReplacingContext implements ITableContext {
   }
 
   public type(type: table.TableType) {
+    return "";
+  }
+
+  public schema() {
+    return "";
+  }
+
+  public database() {
     return "";
   }
 

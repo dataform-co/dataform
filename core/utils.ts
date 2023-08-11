@@ -1,5 +1,3 @@
-import * as path from "path";
-
 import { adapters } from "df/core";
 import { Assertion } from "df/core/assertion";
 import { Resolvable } from "df/core/common";
@@ -9,12 +7,19 @@ import { IActionProto, Session } from "df/core/session";
 import { Table } from "df/core/table";
 import { dataform } from "df/protos/ts";
 
+const pathSeperator = (() => {
+  if (typeof process !== "undefined") {
+    return process.platform === "win32" ? "\\" : "/";
+  }
+  return "/";
+})();
+
 function relativePath(fullPath: string, base: string) {
   if (base.length === 0) {
     return fullPath;
   }
   const stripped = fullPath.substr(base.length);
-  if (stripped.startsWith(path.sep)) {
+  if (stripped.startsWith(pathSeperator)) {
     return stripped.substr(1);
   } else {
     return stripped;
@@ -22,7 +27,10 @@ function relativePath(fullPath: string, base: string) {
 }
 
 export function baseFilename(fullPath: string) {
-  return path.basename(fullPath).split(".")[0];
+  return fullPath
+    .split(pathSeperator)
+    .slice(-1)[0]
+    .split(".")[0];
 }
 
 export function matchPatterns(patterns: string[], values: string[]) {
@@ -65,8 +73,8 @@ export function getCallerFile(rootDir: string) {
     lastfile = nextLastfile;
     if (
       !(
-        nextLastfile.includes(`definitions${path.sep}`) ||
-        nextLastfile.includes(`models${path.sep}`)
+        nextLastfile.includes(`definitions${pathSeperator}`) ||
+        nextLastfile.includes(`models${pathSeperator}`)
       )
     ) {
       continue;
@@ -186,15 +194,6 @@ export function setNameAndTarget(
     overrideSchema,
     overrideDatabase
   );
-  action.name = targetToName(action.target);
-}
-
-export function targetToName(actionTarget: dataform.ITarget) {
-  const nameParts = [actionTarget.name, actionTarget.schema];
-  if (!!actionTarget.database) {
-    nameParts.push(actionTarget.database);
-  }
-  return nameParts.reverse().join(".");
 }
 
 /**
@@ -238,5 +237,47 @@ export function validateQueryString(session: Session, query: string, filename: s
       ),
       filename
     );
+  }
+}
+
+export function throwIfInvalid<T>(proto: T, verify: (proto: T) => string) {
+  const verifyError = verify(proto);
+  if (verifyError) {
+    throw new Error(verifyError);
+  }
+}
+
+export function tableTypeStringToEnum(type: string, throwIfUnknown: boolean) {
+  switch (type) {
+    case "table":
+      return dataform.TableType.TABLE;
+    case "incremental":
+      return dataform.TableType.INCREMENTAL;
+    case "view":
+      return dataform.TableType.VIEW;
+    case "inline":
+      return dataform.TableType.INLINE;
+    default: {
+      if (throwIfUnknown) {
+        throw new Error(`Unexpected table type: ${type}`);
+      }
+      return dataform.TableType.UNKNOWN_TYPE;
+    }
+  }
+}
+
+export function tableTypeEnumToString(enumType: dataform.TableType) {
+  return dataform.TableType[enumType].toLowerCase();
+}
+
+export function setOrValidateTableEnumType(table: dataform.ITable) {
+  let enumTypeFromStr: dataform.TableType|null = null;
+  if (table.type !== "" && table.type !== undefined) {
+    enumTypeFromStr = tableTypeStringToEnum(table.type, true);
+  }
+  if (table.enumType === dataform.TableType.UNKNOWN_TYPE || table.enumType === undefined) {
+    table.enumType = enumTypeFromStr!;
+  } else if (enumTypeFromStr !== null && table.enumType !== enumTypeFromStr) {
+    throw new Error(`Table str type "${table.type}" and enumType "${tableTypeEnumToString(table.enumType)}" are not equivalent.`);
   }
 }

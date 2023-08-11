@@ -8,9 +8,6 @@ ts_library(
         ["**/*.ts"],
         exclude = ["utils/**/*.*"],
     ),
-    data = [
-        "//sandbox/vm:worker_bundle",
-    ],
     deps = [
         "//api/utils",
         "//common/errors",
@@ -20,7 +17,9 @@ ts_library(
         "//common/strings",
         "//core",
         "//protos:ts",
+        "//sandbox/vm:compile_loader",
         "//sqlx",
+        "//sandbox/vm:vm",
         "@npm//@google-cloud/bigquery",
         "@npm//@types/glob",
         "@npm//@types/js-beautify",
@@ -34,6 +33,7 @@ ts_library(
         "@npm//@types/semver",
         "@npm//@types/ssh2",
         "@npm//cron-parser",
+        "@npm//deepmerge",
         "@npm//get-port",
         "@npm//glob",
         "@npm//js-beautify",

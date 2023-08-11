@@ -1,9 +1,9 @@
-import { decode } from "df/common/protos";
+import { decode64 } from "df/common/protos";
 import * as utils from "df/core/utils";
 import { dataform } from "df/protos/ts";
 
 export function genIndex(base64EncodedConfig: string): string {
-  const config = decode(dataform.GenerateIndexConfig, base64EncodedConfig);
+  const config = decode64(dataform.GenerateIndexConfig, base64EncodedConfig);
 
   const includeRequires = config.includePaths
     .map(path => {
@@ -26,21 +26,6 @@ export function genIndex(base64EncodedConfig: string): string {
     dataform.ProjectConfig.create(config.compileConfig.projectConfigOverride).toJSON()
   );
 
-  const escapedQuery = config.compileConfig.query
-    .replace(/\\/g, "\\\\")
-    .replace(/`/g, "\\`")
-    .replace(/\${/g, "\\${");
-  const returnValue = config.compileConfig.compileSingleQuery
-    ? `(function() {
-      try {
-        const compiled = require("@dataform/core").compileStandaloneSqlxQuery(\`${escapedQuery}\`);
-        return new Function(compiled)();
-      } catch (e) {
-        return e.message;
-      }
-    })()`
-    : "base64EncodedGraphBytes";
-
   // NOTE:
   // - The returned script must be valid JavaScript (not TypeScript)
   // - The returned script may not require() any package that is not "@dataform/core"
@@ -56,13 +41,8 @@ delete originalProjectConfig.gcloudProjectId;
 
 let projectConfig = { ...originalProjectConfig };
 
-// For backwards compatibility, in case core version is ahead of api.
-projectConfig.schemaSuffix = "${
-    config.compileConfig.schemaSuffixOverride
-  }" || projectConfig.schemaSuffix;
-
 // Merge in general project config overrides.
-projectConfig = { ...projectConfig, ...${projectOverridesJsonString} };
+projectConfig = { ...projectConfig, ...${projectOverridesJsonString}, vars: { ...projectConfig.vars, ...${projectOverridesJsonString}.vars } };
 
 // Initialize the compilation session.
 const session = require("@dataform/core").session;
@@ -88,6 +68,5 @@ global.test = session.test.bind(session);
 ${definitionRequires}
 
 // Return a base64 encoded proto via NodeVM. Returning a Uint8Array directly causes issues.
-const base64EncodedGraphBytes = session.compileToBase64();
-return ${returnValue};`;
+return session.compileToBase64();`;
 }

@@ -1,15 +1,9 @@
-import * as semver from "semver";
-
 import { prune } from "df/api/commands/prune";
 import { state } from "df/api/commands/state";
 import * as dbadapters from "df/api/dbadapters";
-import { actionsByTarget } from "df/api/utils/graphs";
-import {
-  JSONObjectStringifier,
-  StringifiedMap,
-  StringifiedSet
-} from "df/common/strings/stringifier";
+import { StringifiedMap, StringifiedSet } from "df/common/strings/stringifier";
 import { adapters } from "df/core";
+import { targetStringifier } from "df/core/targets";
 import * as utils from "df/core/utils";
 import { dataform } from "df/protos/ts";
 
@@ -20,17 +14,13 @@ export async function build(
 ) {
   runConfig = {
     ...runConfig,
-    useRunCache:
-      runConfig.hasOwnProperty("useRunCache") && typeof runConfig.useRunCache !== "undefined"
-        ? runConfig.useRunCache
-        : compiledGraph.projectConfig.useRunCache
+    useRunCache: false
   };
 
   const prunedGraph = prune(compiledGraph, runConfig);
-  const transitiveInputsByTarget = computeAllTransitiveInputs(compiledGraph);
 
   const allInvolvedTargets = new StringifiedSet<dataform.ITarget>(
-    JSONObjectStringifier.create(),
+    targetStringifier,
     prunedGraph.tables.map(table => table.target)
   );
   if (runConfig.useRunCache) {
@@ -40,19 +30,13 @@ export async function build(
       ...prunedGraph.assertions
     ]) {
       allInvolvedTargets.add(includedAction.target);
-      if (versionValidForTransitiveInputs(compiledGraph)) {
-        transitiveInputsByTarget
-          .get(includedAction.target)
-          .forEach(transitiveInputTarget => allInvolvedTargets.add(transitiveInputTarget));
-      }
     }
   }
 
   return new Builder(
     prunedGraph,
     runConfig,
-    await state(dbadapter, Array.from(allInvolvedTargets)),
-    transitiveInputsByTarget
+    await state(dbadapter, Array.from(allInvolvedTargets))
   ).build();
 }
 
@@ -62,16 +46,13 @@ export class Builder {
   constructor(
     private readonly prunedGraph: dataform.ICompiledGraph,
     private readonly runConfig: dataform.IRunConfig,
-    private readonly warehouseState: dataform.IWarehouseState,
-    private readonly transitiveInputsByTarget: StringifiedMap<
-      dataform.ITarget,
-      StringifiedSet<dataform.ITarget>
-    >
+    private readonly warehouseState: dataform.IWarehouseState
   ) {
     this.adapter = adapters.create(
       prunedGraph.projectConfig,
       prunedGraph.dataformCoreVersion || "1.0.0"
     );
+    prunedGraph.tables.forEach(utils.setOrValidateTableEnumType);
   }
 
   public build(): dataform.ExecutionGraph {
@@ -80,7 +61,7 @@ export class Builder {
     }
 
     const tableMetadataByTarget = new StringifiedMap<dataform.ITarget, dataform.ITableMetadata>(
-      JSONObjectStringifier.create()
+      targetStringifier
     );
     this.warehouseState.tables.forEach(tableState => {
       tableMetadataByTarget.set(tableState.target, tableState);
@@ -114,7 +95,7 @@ export class Builder {
     return {
       ...this.toPartialExecutionAction(table),
       type: "table",
-      tableType: table.type,
+      tableType: utils.tableTypeEnumToString(table.enumType),
       tasks: table.disabled
         ? []
         : this.adapter.publishTasks(table, runConfig, tableMetadata).build(),
@@ -148,81 +129,10 @@ export class Builder {
     action: dataform.ITable | dataform.IOperation | dataform.IAssertion
   ) {
     return dataform.ExecutionAction.create({
-      name: action.name,
       target: action.target,
       fileName: action.fileName,
-      dependencies: action.dependencies,
-      transitiveInputs: versionValidForTransitiveInputs(this.prunedGraph)
-        ? Array.from(this.transitiveInputsByTarget.get(action.target))
-        : [],
+      dependencyTargets: action.dependencyTargets,
       actionDescriptor: action.actionDescriptor
     });
   }
-}
-
-function versionValidForTransitiveInputs(compiledGraph: dataform.ICompiledGraph) {
-  return (
-    compiledGraph.dataformCoreVersion && semver.gte(compiledGraph.dataformCoreVersion, "1.6.11")
-  );
-}
-
-export function computeAllTransitiveInputs(compiledGraph: dataform.ICompiledGraph) {
-  const transitiveInputsByTarget = new StringifiedMap<
-    dataform.ITarget,
-    StringifiedSet<dataform.ITarget>
-  >(JSONObjectStringifier.create());
-
-  if (!versionValidForTransitiveInputs(compiledGraph)) {
-    return transitiveInputsByTarget;
-  }
-
-  const actionsByTargetMap = actionsByTarget(compiledGraph);
-  for (const action of [
-    ...compiledGraph.tables,
-    ...compiledGraph.operations,
-    ...compiledGraph.assertions
-  ]) {
-    if (!transitiveInputsByTarget.has(action.target)) {
-      transitiveInputsByTarget.set(
-        action.target,
-        computeTransitiveInputsForAction(action, actionsByTargetMap, transitiveInputsByTarget)
-      );
-    }
-  }
-
-  return transitiveInputsByTarget;
-}
-
-function computeTransitiveInputsForAction(
-  action: dataform.ITable | dataform.IOperation | dataform.IAssertion,
-  actionByTarget: StringifiedMap<
-    dataform.ITarget,
-    dataform.IAssertion | dataform.ITable | dataform.IOperation | dataform.IDeclaration
-  >,
-  transitiveInputsByTarget: StringifiedMap<dataform.ITarget, StringifiedSet<dataform.ITarget>>
-) {
-  const transitiveInputTargets = new StringifiedSet(JSONObjectStringifier.create());
-  if (!transitiveInputsByTarget.has(action.target)) {
-    for (const transitiveInputTarget of action.dependencyTargets || []) {
-      transitiveInputTargets.add(transitiveInputTarget);
-      const transitiveInputAction = actionByTarget.get(transitiveInputTarget);
-      // Recursively add transitive inputs for all dependencies that are not tables or declarations.
-      // (i.e. recurse through all dependency views, operations, etc.)
-      if (
-        !(
-          (transitiveInputAction instanceof dataform.Table &&
-            ["table", "incremental"].includes(transitiveInputAction.type)) ||
-          transitiveInputAction instanceof dataform.Declaration
-        )
-      ) {
-        computeTransitiveInputsForAction(
-          transitiveInputAction,
-          actionByTarget,
-          transitiveInputsByTarget
-        ).forEach(target => transitiveInputTargets.add(target));
-      }
-    }
-    transitiveInputsByTarget.set(action.target, transitiveInputTargets);
-  }
-  return transitiveInputsByTarget.get(action.target);
 }

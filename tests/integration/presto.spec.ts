@@ -2,6 +2,7 @@ import { expect } from "chai";
 
 import * as dfapi from "df/api";
 import * as dbadapters from "df/api/dbadapters";
+import { targetToName } from "df/core/utils";
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
 import { compile, keyBy } from "df/tests/integration/utils";
@@ -25,7 +26,7 @@ suite("@dataform/integration/presto", { parallel: true }, ({ before, after }) =>
     const executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
     const executedGraph = await dfapi.run(dbadapter, executionGraph).result();
 
-    const actionMap = keyBy(executedGraph.actions, v => v.name);
+    const actionMap = keyBy(executedGraph.actions, v => targetToName(v.target));
     expect(Object.keys(actionMap).length).eql(1);
 
     for (const actionName of Object.keys(actionMap)) {

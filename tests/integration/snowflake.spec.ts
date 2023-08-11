@@ -4,6 +4,7 @@ import * as dfapi from "df/api";
 import * as dbadapters from "df/api/dbadapters";
 import * as adapters from "df/core/adapters";
 import { SnowflakeAdapter } from "df/core/adapters/snowflake";
+import { targetAsReadableString } from "df/core/targets";
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
 import { compile, dropAllTables, getTableRows, keyBy } from "df/tests/integration/utils";
@@ -42,12 +43,11 @@ suite("@dataform/integration/snowflake", ({ before, after }) => {
     let executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
     let executedGraph = await dfapi.run(dbadapter, executionGraph).result();
 
-    const actionMap = keyBy(executedGraph.actions, v => v.name);
-    expect(Object.keys(actionMap).length).eql(20);
+    const actionMap = keyBy(executedGraph.actions, v => targetAsReadableString(v.target));
+    expect(Object.keys(actionMap).length).eql(18);
 
     // Check the status of action execution.
     const expectedFailedActions = [
-      "INTEGRATION_TESTS.DF_INTEGRATION_TEST_ASSERTIONS_PROJECT_E2E.EXAMPLE_ASSERTION_UNIQUENESS_FAIL",
       "INTEGRATION_TESTS.DF_INTEGRATION_TEST_ASSERTIONS_PROJECT_E2E.EXAMPLE_ASSERTION_FAIL"
     ];
     for (const actionName of Object.keys(actionMap)) {
@@ -64,7 +64,7 @@ suite("@dataform/integration/snowflake", ({ before, after }) => {
 
     expect(
       actionMap[
-        "INTEGRATION_TESTS.DF_INTEGRATION_TEST_ASSERTIONS_PROJECT_E2E.EXAMPLE_ASSERTION_UNIQUENESS_FAIL"
+        "INTEGRATION_TESTS.DF_INTEGRATION_TEST_ASSERTIONS_PROJECT_E2E.EXAMPLE_ASSERTION_FAIL"
       ].tasks[1].errorMessage
     ).to.eql("snowflake error: Assertion failed: query returned 1 row(s).");
 
@@ -75,34 +75,34 @@ suite("@dataform/integration/snowflake", ({ before, after }) => {
 
     // Check the s3 table has two rows, as per:
     // https://dataform-integration-tests.s3.us-east-2.amazonaws.com/sample-data/sample_data.csv
-    const s3Table = keyBy(compiledGraph.operations, t => t.name)[
+    const s3Table = keyBy(compiledGraph.operations, t => targetAsReadableString(t.target))[
       "INTEGRATION_TESTS.DF_INTEGRATION_TEST_PROJECT_E2E.LOAD_FROM_S3"
     ];
     const s3Rows = await getTableRows(s3Table.target, adapter, dbadapter);
     expect(s3Rows.length).equals(2);
 
     // Check the status of the view in the non-default database.
-    const tada2DatabaseView = keyBy(compiledGraph.tables, t => t.name)[
+    const tada2DatabaseView = keyBy(compiledGraph.tables, t => targetAsReadableString(t.target))[
       "INTEGRATION_TESTS2.DF_INTEGRATION_TEST_PROJECT_E2E.SAMPLE_DATA_2"
     ];
     const tada2DatabaseViewRows = await getTableRows(tada2DatabaseView.target, adapter, dbadapter);
     expect(tada2DatabaseViewRows.length).equals(3);
 
     // Check the data in the incremental tables.
-    let incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
+    let incrementalTable = keyBy(compiledGraph.tables, t => targetAsReadableString(t.target))[
       "INTEGRATION_TESTS.DF_INTEGRATION_TEST_PROJECT_E2E.EXAMPLE_INCREMENTAL"
     ];
     let incrementalRows = await getTableRows(incrementalTable.target, adapter, dbadapter);
     expect(incrementalRows.length).equals(3);
 
-    const incrementalTable2 = keyBy(compiledGraph.tables, t => t.name)[
+    const incrementalTable2 = keyBy(compiledGraph.tables, t => targetAsReadableString(t.target))[
       "INTEGRATION_TESTS2.DF_INTEGRATION_TEST_PROJECT_E2E.EXAMPLE_INCREMENTAL_TADA2"
     ];
     const incrementalRows2 = await getTableRows(incrementalTable2.target, adapter, dbadapter);
     expect(incrementalRows2.length).equals(3);
 
     // Check the data in the incremental merge table.
-    incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
+    incrementalTable = keyBy(compiledGraph.tables, t => targetAsReadableString(t.target))[
       "INTEGRATION_TESTS.DF_INTEGRATION_TEST_PROJECT_E2E.EXAMPLE_INCREMENTAL_MERGE"
     ];
     incrementalRows = await getTableRows(incrementalTable.target, adapter, dbadapter);
@@ -127,151 +127,24 @@ suite("@dataform/integration/snowflake", ({ before, after }) => {
     expect(executedGraph.status).equals(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
 
     // Check there are the expected number of extra rows in the incremental tables.
-    incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
+    incrementalTable = keyBy(compiledGraph.tables, t => targetAsReadableString(t.target))[
       "INTEGRATION_TESTS.DF_INTEGRATION_TEST_PROJECT_E2E.EXAMPLE_INCREMENTAL"
     ];
     incrementalRows = await getTableRows(incrementalTable.target, adapter, dbadapter);
     expect(incrementalRows.length).equals(5);
 
-    incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
+    incrementalTable = keyBy(compiledGraph.tables, t => targetAsReadableString(t.target))[
       "INTEGRATION_TESTS2.DF_INTEGRATION_TEST_PROJECT_E2E.EXAMPLE_INCREMENTAL_TADA2"
     ];
     incrementalRows = await getTableRows(incrementalTable2.target, adapter, dbadapter);
     expect(incrementalRows.length).equals(5);
 
     // Check the data in the incremental merge table.
-    incrementalTable = keyBy(compiledGraph.tables, t => t.name)[
+    incrementalTable = keyBy(compiledGraph.tables, t => targetAsReadableString(t.target))[
       "INTEGRATION_TESTS.DF_INTEGRATION_TEST_PROJECT_E2E.EXAMPLE_INCREMENTAL_MERGE"
     ];
     incrementalRows = await getTableRows(incrementalTable.target, adapter, dbadapter);
     expect(incrementalRows.length).equals(2);
-  });
-
-  test("run caching", { timeout: 90000 }, async () => {
-    const compiledGraph = await compile("tests/integration/snowflake_project", "run_caching", {
-      useRunCache: true
-    });
-
-    const adapter = adapters.create(compiledGraph.projectConfig, compiledGraph.dataformCoreVersion);
-    const tablesToDelete = (await dfapi.build(compiledGraph, {}, dbadapter)).warehouseState.tables;
-
-    // Drop all the tables before we do anything.
-    await dropAllTables(tablesToDelete, adapter, dbadapter);
-
-    // Run the project.
-    let executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
-    let runResult = await dfapi.run(dbadapter, executionGraph).result();
-    const previouslyExecutedActions = runResult.actions
-      .filter(
-        actionResult => actionResult.status === dataform.ActionResult.ExecutionStatus.SUCCESSFUL
-      )
-      .map(actionResult => ({
-        executionAction: executionGraph.actions.find(
-          executionAction => executionAction.name === actionResult.name
-        ),
-        actionResult
-      }));
-
-    // Re-run (some of) the project. Each included action should cache, or complete
-    // successfully (if the previous run was unable to write cache results).
-    executionGraph = await dfapi.build(
-      compiledGraph,
-      {
-        actions: [
-          "EXAMPLE_TABLE",
-          "EXAMPLE_VIEW",
-          "DEPENDS_ON_EXAMPLE_VIEW",
-          "SAMPLE_DATA_2",
-          "DEPENDS_ON_SAMPLE_DATA_3"
-        ]
-      },
-      dbadapter
-    );
-
-    runResult = await dfapi.run(dbadapter, executionGraph, {}, previouslyExecutedActions).result();
-    for (const action of runResult.actions) {
-      expect(
-        dataform.ActionResult.ExecutionStatus[action.status],
-        `ActionResult ExecutionStatus for action "${action.name}"`
-      ).eql(
-        dataform.ActionResult.ExecutionStatus[dataform.ActionResult.ExecutionStatus.CACHE_SKIPPED]
-      );
-    }
-
-    // Manually change some datasets (to model a data change happening outside of a DF run).
-    await Promise.all([
-      dbadapter.execute(
-        'create or replace view "INTEGRATION_TESTS2"."DF_INTEGRATION_TEST_RUN_CACHING"."SAMPLE_DATA_2" as select \'new\' as foo'
-      ),
-      dbadapter.execute(
-        'create or replace view "INTEGRATION_TESTS"."DF_INTEGRATION_TEST_RUN_CACHING"."SAMPLE_DATA_3" as select \'old\' as bar'
-      )
-    ]);
-
-    // Make a change to the 'example_view' query (to model an ExecutionAction hash change).
-    compiledGraph.tables = compiledGraph.tables.map(table => {
-      if (table.name === "INTEGRATION_TESTS.DF_INTEGRATION_TEST_RUN_CACHING.EXAMPLE_VIEW") {
-        table.query = "select 1 as test";
-      }
-      return table;
-    });
-
-    // Re-run the project, checking caching results.
-    executionGraph = await dfapi.build(
-      compiledGraph,
-      {
-        actions: [
-          "EXAMPLE_INCREMENTAL",
-          "EXAMPLE_TABLE",
-          "EXAMPLE_ASSERTION_FAIL",
-          "EXAMPLE_VIEW",
-          "DEPENDS_ON_EXAMPLE_VIEW",
-          "SAMPLE_DATA_2",
-          "DEPENDS_ON_SAMPLE_DATA_3"
-        ]
-      },
-      dbadapter
-    );
-
-    runResult = await dfapi.run(dbadapter, executionGraph, {}, previouslyExecutedActions).result();
-    const actionMap = keyBy(runResult.actions, v => v.name);
-
-    const expectedActionStatus: { [index: string]: dataform.ActionResult.ExecutionStatus } = {
-      // Should run because it is non-hermetic.
-      "INTEGRATION_TESTS.DF_INTEGRATION_TEST_RUN_CACHING.EXAMPLE_INCREMENTAL":
-        dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
-      // Should run because it failed on the last run.
-      "INTEGRATION_TESTS.DF_INTEGRATION_TEST_ASSERTIONS_RUN_CACHING.EXAMPLE_ASSERTION_FAIL":
-        dataform.ActionResult.ExecutionStatus.FAILED,
-      // Should run because its query definition (and thus ExecutionAction hash) has changed.
-      "INTEGRATION_TESTS.DF_INTEGRATION_TEST_RUN_CACHING.EXAMPLE_VIEW":
-        dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
-      // Should run because the dataset has changed in the warehouse.
-      "INTEGRATION_TESTS2.DF_INTEGRATION_TEST_RUN_CACHING.SAMPLE_DATA_2":
-        dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
-      // Should run because they are auto assertions.
-      "INTEGRATION_TESTS.DF_INTEGRATION_TEST_ASSERTIONS_RUN_CACHING.DF_INTEGRATION_TEST_SAMPLE_DATA_2_ASSERTIONS_UNIQUEKEY_0":
-        dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
-      "INTEGRATION_TESTS.DF_INTEGRATION_TEST_ASSERTIONS_RUN_CACHING.DF_INTEGRATION_TEST_SAMPLE_DATA_2_ASSERTIONS_UNIQUEKEY_1":
-        dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
-      "INTEGRATION_TESTS.DF_INTEGRATION_TEST_ASSERTIONS_RUN_CACHING.DF_INTEGRATION_TEST_SAMPLE_DATA_2_ASSERTIONS_ROWCONDITIONS":
-        dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
-      // Should run because an input to dataset has changed in the warehouse.
-      "INTEGRATION_TESTS.DF_INTEGRATION_TEST_RUN_CACHING.DEPENDS_ON_SAMPLE_DATA_3":
-        dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
-      // Should run because a transitive input (included in the run) did not cache.
-      "INTEGRATION_TESTS.DF_INTEGRATION_TEST_RUN_CACHING.DEPENDS_ON_EXAMPLE_VIEW":
-        dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
-      "INTEGRATION_TESTS.DF_INTEGRATION_TEST_RUN_CACHING.EXAMPLE_TABLE":
-        dataform.ActionResult.ExecutionStatus.CACHE_SKIPPED
-    };
-
-    for (const actionName of Object.keys(actionMap)) {
-      expect(
-        dataform.ActionResult.ExecutionStatus[actionMap[actionName].status],
-        `ActionResult ExecutionStatus for action "${actionName}"`
-      ).equals(dataform.ActionResult.ExecutionStatus[expectedActionStatus[actionName]]);
-    }
   });
 
   test("dataset metadata set correctly", { timeout: 60000 }, async () => {
@@ -308,13 +181,11 @@ suite("@dataform/integration/snowflake", ({ before, after }) => {
         expectedFields: [
           dataform.Field.create({
             description: "the id",
-            flagsDeprecated: ["nullable"],
             name: "USER_ID",
             primitive: dataform.Field.Primitive.NUMERIC
           }),
           dataform.Field.create({
             description: "the 'timestamp'",
-            flagsDeprecated: ["nullable"],
             name: "USER_TIMESTAMP",
             primitive: dataform.Field.Primitive.NUMERIC
           })
@@ -329,7 +200,6 @@ suite("@dataform/integration/snowflake", ({ before, after }) => {
         expectedDescription: "An example view",
         expectedFields: [
           dataform.Field.create({
-            flagsDeprecated: ["nullable"],
             name: "VAL",
             primitive: dataform.Field.Primitive.NUMERIC
           })
@@ -413,7 +283,7 @@ suite("@dataform/integration/snowflake", ({ before, after }) => {
       const executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
       await dfapi.run(dbadapter, executionGraph).result();
 
-      const view = keyBy(compiledGraph.tables, t => t.name)[
+      const view = keyBy(compiledGraph.tables, t => targetAsReadableString(t.target))[
         "INTEGRATION_TESTS.DF_INTEGRATION_TEST_EVALUATE.EXAMPLE_VIEW"
       ];
       let evaluations = await dbadapter.evaluate(dataform.Table.create(view));
@@ -422,16 +292,7 @@ suite("@dataform/integration/snowflake", ({ before, after }) => {
         dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
       );
 
-      const table = keyBy(compiledGraph.tables, t => t.name)[
-        "INTEGRATION_TESTS.DF_INTEGRATION_TEST_EVALUATE.EXAMPLE_TABLE"
-      ];
-      evaluations = await dbadapter.evaluate(dataform.Table.create(table));
-      expect(evaluations.length).to.equal(1);
-      expect(evaluations[0].status).to.equal(
-        dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
-      );
-
-      const assertion = keyBy(compiledGraph.assertions, t => t.name)[
+      const assertion = keyBy(compiledGraph.assertions, t => targetAsReadableString(t.target))[
         "INTEGRATION_TESTS.DF_INTEGRATION_TEST_ASSERTIONS_EVALUATE.EXAMPLE_ASSERTION_PASS"
       ];
       evaluations = await dbadapter.evaluate(dataform.Assertion.create(assertion));
@@ -440,7 +301,7 @@ suite("@dataform/integration/snowflake", ({ before, after }) => {
         dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS
       );
 
-      const incremental = keyBy(compiledGraph.tables, t => t.name)[
+      const incremental = keyBy(compiledGraph.tables, t => targetAsReadableString(t.target))[
         "INTEGRATION_TESTS.DF_INTEGRATION_TEST_EVALUATE.EXAMPLE_INCREMENTAL"
       ];
       evaluations = await dbadapter.evaluate(dataform.Table.create(incremental));
@@ -456,7 +317,7 @@ suite("@dataform/integration/snowflake", ({ before, after }) => {
     test("invalid table fails validation and error parsed correctly", async () => {
       const evaluations = await dbadapter.evaluate(
         dataform.Table.create({
-          type: "table",
+          enumType: dataform.TableType.TABLE,
           query: "selects\n1 as x",
           target: {
             name: "EXAMPLE_ILLEGAL_TABLE",
@@ -478,7 +339,7 @@ suite("@dataform/integration/snowflake", ({ before, after }) => {
     test("incremental pre and post ops, core version <= 1.4.8", async () => {
       // 1.4.8 used `preOps` and `postOps` instead of `incrementalPreOps` and `incrementalPostOps`.
       const table: dataform.ITable = {
-        type: "incremental",
+        enumType: dataform.TableType.INCREMENTAL,
         query: "query",
         preOps: ["preop task1", "preop task2"],
         incrementalQuery: "",

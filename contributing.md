@@ -1,9 +1,6 @@
 # Contributing
 
-Dataform is a TypeScript project, and is fairly easy to build and run locally.
-For help making changes, join our `#development` channel in [Slack](https://join.slack.com/t/dataform-users/shared_invite/zt-dark6b7k-r5~12LjYL1a17Vgma2ru2A), or [email us](mailto:team@dataform.co) directly.
-
-Dataform operates similar to most open source projects on GitHub. If you've never done this before, here's [a nice project to get you up to speed](https://github.com/firstcontributions/first-contributions).
+Dataform is a TypeScript project, using [Bazel](https://bazel.build) as a build tool. To scope out work, please [check existing issues (which includes feature requests)](https://github.com/dataform-co/dataform/issues) or [open a discussion thread](https://github.com/dataform-co/dataform/discussions)!
 
 ## Getting Started
 
@@ -15,15 +12,11 @@ First :fork_and_knife: [fork this repository](https://github.com/dataform-co/dat
 
 Bazel is a build system which we used to build the project and run tests.
 
-The easiest way to install the correct Bazel version is through Bazelisk via [NPM](https://nodejs.org/en/download/) if you already have it installed:
+The easiest way to install the correct Bazel version is through Bazelisk via [NPM](https://nodejs.org/en/download/):
 
 ```
 npm i -g @bazel/bazelisk
 ```
-
-Alternatively, you can download Bazelisk directly from [here](https://github.com/bazelbuild/bazelisk/releases), or through other tools such as [homebrew (Mac)](https://formulae.brew.sh/formula/bazelisk).
-
-Finally, if you'd rather install Bazel directly instead, you can download it from here, but make sure to check the contents of `.bazelversion` (currently `2.0.0`) to make sure you aren't using an incompatible version.
 
 ### Run the CLI
 
@@ -35,7 +28,7 @@ For example, to print out the default help information:
 ./scripts/run help
 ```
 
-Check the [docs](https://docs.dataform.co/dataform-cli) for more examples.
+Check the [docs](https://cloud.google.com/dataform/docs/reference/dataform-cli-reference) for more examples.
 
 _Note: If you are running Bazel on a **Mac**, this or any step that requires building may fail with a `Too many open files in system` error. This is [due to a limitation](https://github.com/angular/angular-bazel-example/issues/178) on the default maximum open file descriptors. You can increase the limit by running `sudo sysctl -w kern.maxfiles=<LARGE_NUMBER>` (we use `65536`)._
 
@@ -44,7 +37,7 @@ _Note: If you are running Bazel on a **Mac**, this or any step that requires bui
 The following command runs all unit tests:
 
 ```bash
-bazel test --build_tests_only -- ... -tests/integration/... -sql/...
+bazel test --build_tests_only -- ... -tests/integration/...
 ```
 
 This runs all tests excluding those that rely on encrypted secrets. If you need to run integration tests, please [get in touch](mailto:opensource@dataform.co) with the team.
@@ -61,16 +54,6 @@ bazel build cli
 
 The projects folder here is not built as it requires an environment file, which can be provided from the team.
 
-### Run the documentation site
-
-This will run the documentation site in development mode with live reload.
-
-```bash
-bazel run docs
-```
-
-You can view the documentation site at [localhost:3001](http://localhost:3001).
-
 ## The Contribution Process
 
 1. Decide on what you'd like to contribute. The majority of open-source contributions come from:
@@ -81,7 +64,7 @@ You can view the documentation site at [localhost:3001](http://localhost:3001).
 
 1. Plan out the change, and whether it is feasible.
 
-   1. If you're unsure of the scope of the change, then message us on [Slack](https://join.slack.com/t/dataform-users/shared_invite/zt-dark6b7k-r5~12LjYL1a17Vgma2ru2A).
+   1. If you're unsure of the scope of the change, then ask in the issue or [create a discussion](https://github.com/dataform-co/dataform/discussions).
 
    1. We'd much prefer multiple smaller code changes than a single large one.
 
@@ -91,7 +74,9 @@ You can view the documentation site at [localhost:3001](http://localhost:3001).
 
 1. Begin materialising your masterpiece.
 
-1. Once done, merge from master, review your code, run the tests, **[check for common mistakes](#common-pull-request-mistakes)** and then open a pull request.
+   1. Create a feature branch based on `main` ([link](https://github.com/dataform-co/dataform/tree/main)) for development work.
+
+1. Once done, review your code, run the tests, **[check for common mistakes](#common-pull-request-mistakes)** and then open a pull request.
 
    1. Tidy the code by removing erronous log statements. Comment difficult to interpret sections. Make sure functions are names appropriately. We will review the pull request mainly by the git difference.
 
@@ -109,13 +94,9 @@ You can view the documentation site at [localhost:3001](http://localhost:3001).
 
 Another way we'd love for you to contribute is by flagging any issues you find. First check through the list of [existing issues](https://github.com/dataform-co/dataform/issues) for anything similar, in order to avoid duplicates. If not, then full steam ahead!
 
-### Adding Tutorials
-
-We really value the addition of [tutorials](../getting_started/examples). Documentation here is written in markdown which is then compiled to a website. You can find the raw markdown files [here](https://github.com/dataform-co/dataform/tree/master/content/docs).
-
 ### Promoting Dataform
 
-If you're using Dataform for interesting projects then please let people know! Reach out to [team@dataform.co](team@dataform.co) for marketing support.
+If you're using Dataform for interesting projects then please let people know! Reach out to [dataform-preview@google.com](dataform-preview@google.com) for marketing support.
 
 ### Common Pull Request Mistakes
 

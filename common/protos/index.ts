@@ -14,14 +14,14 @@ export interface IProtoClass<IProto, Proto> {
   fromObject(obj: { [k: string]: any }): Proto;
 }
 
-export function encode<IProto, Proto>(
+export function encode64<IProto, Proto>(
   protoType: IProtoClass<IProto, Proto>,
   value: IProto | Proto = {} as IProto
 ): string {
   return toBase64(protoType.encode(protoType.create(value)).finish());
 }
 
-export function decode<Proto>(protoType: IProtoClass<any, Proto>, encodedValue?: string): Proto {
+export function decode64<Proto>(protoType: IProtoClass<any, Proto>, encodedValue?: string): Proto {
   if (!encodedValue) {
     return protoType.create();
   }
@@ -33,7 +33,7 @@ export function equals<IProto, Proto>(
   valueA: IProto | Proto,
   valueB: IProto | Proto
 ): boolean {
-  return encode(protoType, valueA) === encode(protoType, valueB);
+  return encode64(protoType, valueA) === encode64(protoType, valueB);
 }
 
 export function deepClone<IProto, Proto>(
@@ -61,9 +61,9 @@ export class ProtoStringifier<T> implements IStringifier<T> {
   constructor(private readonly protoType: IProtoClass<T, T>) {}
 
   public stringify(value: T) {
-    return encode(this.protoType, value);
+    return encode64(this.protoType, value);
   }
   public parse(value: string) {
-    return decode(this.protoType, value);
+    return decode64(this.protoType, value);
   }
 }

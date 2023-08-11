@@ -28,6 +28,12 @@ const BIGQUERY_DATE_RELATED_FIELDS = [
 
 const BIGQUERY_INTERNAL_ERROR_JOB_MAX_ATTEMPTS = 3;
 
+export interface IBigQueryExecutionOptions {
+  labels?: { [label: string]: string };
+  location?: string;
+  jobPrefix?: string;
+}
+
 export class BigQueryDbAdapter implements IDbAdapter {
   public static async create(credentials: Credentials, options?: { concurrencyLimit?: number }) {
     return new BigQueryDbAdapter(credentials, options);
@@ -57,26 +63,36 @@ export class BigQueryDbAdapter implements IDbAdapter {
       interactive?: boolean;
       rowLimit?: number;
       byteLimit?: number;
-      bigquery?: {
-        labels?: { [label: string]: string };
-      };
+      bigquery?: IBigQueryExecutionOptions;
     } = { interactive: false, rowLimit: 1000, byteLimit: 1024 * 1024 }
   ): Promise<IExecutionResult> {
     if (options?.interactive && options?.bigquery?.labels) {
       throw new Error("BigQuery job labels may not be set for interactive queries.");
     }
+
+    if (!statement) {
+      throw new Error("Query string cannot be empty");
+    }
     return this.pool
       .addSingleTask({
         generator: () =>
           options?.interactive
-            ? this.runQuery(statement, options?.params, options?.rowLimit, options?.byteLimit)
+            ? this.runQuery(
+                statement,
+                options?.params,
+                options?.rowLimit,
+                options?.byteLimit,
+                options.bigquery?.location
+              )
             : this.createQueryJob(
                 statement,
                 options?.params,
                 options?.rowLimit,
                 options?.byteLimit,
                 options?.onCancel,
-                options?.bigquery?.labels
+                options?.bigquery?.labels,
+                options?.bigquery?.location,
+                options?.bigquery?.jobPrefix
               )
       })
       .promise();
@@ -86,7 +102,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
     return await callback(this);
   }
 
-  public async evaluate(queryOrAction: QueryOrAction, projectConfig?: dataform.ProjectConfig) {
+  public async evaluate(queryOrAction: QueryOrAction) {
     const validationQueries = collectEvaluationQueries(queryOrAction, true);
 
     return await Promise.all(
@@ -192,7 +208,6 @@ export class BigQueryDbAdapter implements IDbAdapter {
     }
 
     return dataform.TableMetadata.create({
-      typeDeprecated: String(metadata.type).toLowerCase(),
       type:
         metadata.type === "TABLE"
           ? dataform.TableMetadata.Type.TABLE
@@ -238,35 +253,10 @@ export class BigQueryDbAdapter implements IDbAdapter {
   }
 
   public async createSchema(database: string, schema: string): Promise<void> {
-    const location = this.bigQueryCredentials.location || "US";
-    const client = this.getClient(database);
-
-    let metadata;
-    try {
-      const data = await client.dataset(schema).getMetadata();
-      metadata = data[0];
-    } catch (e) {
-      // If metadata call fails, it probably doesn't exist. So try to create it.
-      await client.createDataset(schema, { location });
-      return;
-    }
-
-    if (metadata.location.toUpperCase() !== location.toUpperCase()) {
-      throw new Error(
-        `Cannot create dataset "${schema}" in location "${location}". It already exists in location "${metadata.location}". Change your default dataset location or delete the existing dataset.`
-      );
-    }
-  }
-
-  public async dropSchema(database: string, schema: string): Promise<void> {
-    const client = this.getClient(database);
-    try {
-      await client.dataset(schema).getMetadata();
-    } catch (e) {
-      // If metadata call fails, it probably doesn't exist, so don't do anything.
-      return;
-    }
-    await client.dataset(schema).delete({ force: true });
+    await this.execute(
+      `create schema if not exists \`${database || this.bigQueryCredentials.projectId}.${schema}\``,
+      { bigquery: { location: this.bigQueryCredentials.location || "US" } }
+    );
   }
 
   public async close() {
@@ -316,9 +306,10 @@ export class BigQueryDbAdapter implements IDbAdapter {
         projectId,
         new BigQuery({
           projectId,
-          credentials: JSON.parse(this.bigQueryCredentials.credentials),
           scopes: EXTRA_GOOGLE_SCOPES,
-          location: this.bigQueryCredentials.location
+          location: this.bigQueryCredentials.location,
+          credentials:
+            this.bigQueryCredentials.credentials && JSON.parse(this.bigQueryCredentials.credentials)
         })
       );
     }
@@ -329,7 +320,8 @@ export class BigQueryDbAdapter implements IDbAdapter {
     query: string,
     params?: { [name: string]: any },
     rowLimit?: number,
-    byteLimit?: number
+    byteLimit?: number,
+    location?: string
   ) {
     const results = await new Promise<any[]>((resolve, reject) => {
       const allRows = new LimitedResultSet({
@@ -338,7 +330,8 @@ export class BigQueryDbAdapter implements IDbAdapter {
       });
       const stream = this.getClient().createQueryStream({
         query,
-        params
+        params,
+        location
       });
       stream
         .on("error", e => reject(coerceAsError(e)))
@@ -360,7 +353,9 @@ export class BigQueryDbAdapter implements IDbAdapter {
     rowLimit?: number,
     byteLimit?: number,
     onCancel?: OnCancel,
-    labels?: { [label: string]: string }
+    labels?: { [label: string]: string },
+    location?: string,
+    jobPrefix?: string
   ) {
     let isCancelled = false;
     onCancel?.(() => (isCancelled = true));
@@ -370,10 +365,11 @@ export class BigQueryDbAdapter implements IDbAdapter {
         try {
           const job = await this.getClient().createQueryJob({
             useLegacySql: false,
-            jobPrefix: "dataform-",
+            jobPrefix: "dataform-" + (jobPrefix ? `${jobPrefix}-` : ""),
             query,
             params,
-            labels
+            labels,
+            location
           });
           const resultStream = job[0].getQueryResultsStream();
           return new Promise<IExecutionResult>((resolve, reject) => {
@@ -455,7 +451,6 @@ function cleanRows(rows: any[]) {
 function convertField(field: TableField): dataform.IField {
   const result: dataform.IField = {
     name: field.name,
-    flagsDeprecated: !!field.mode ? [field.mode] : [],
     flags: field.mode === "REPEATED" ? [dataform.Field.Flag.REPEATED] : [],
     description: field.description
   };

@@ -1,3 +1,0 @@
----
-redirect: ../using-the-api
----

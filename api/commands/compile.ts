@@ -1,10 +1,13 @@
 import * as fs from "fs";
 import * as path from "path";
+import * as semver from "semver";
 
 import { ChildProcess, fork } from "child_process";
+import deepmerge from "deepmerge";
 import { validWarehouses } from "df/api/dbadapters";
 import { coerceAsError, ErrorWithCause } from "df/common/errors/errors";
-import { decode } from "df/common/protos";
+import { decode64 } from "df/common/protos";
+import { setOrValidateTableEnumType } from "df/core/utils";
 import { dataform } from "df/protos/ts";
 
 // Project config properties that are required.
@@ -27,29 +30,11 @@ export async function compile(
   // Resolve the path in case it hasn't been resolved already.
   path.resolve(compileConfig.projectDir);
 
-  // Create an empty projectConfigOverride if not set.
-  compileConfig = { projectConfigOverride: {}, ...compileConfig };
-
-  // Schema overrides field can be set in two places, projectConfigOverride.schemaSuffix takes precedent.
-  if (compileConfig.schemaSuffixOverride) {
-    compileConfig.projectConfigOverride = {
-      schemaSuffix: compileConfig.schemaSuffixOverride,
-      ...compileConfig.projectConfigOverride
-    };
-  }
-
   try {
     // check dataformJson is valid before we try to compile
     const dataformJson = fs.readFileSync(`${compileConfig.projectDir}/dataform.json`, "utf8");
     const projectConfig = JSON.parse(dataformJson);
-    checkDataformJsonValidity({
-      ...projectConfig,
-      ...compileConfig.projectConfigOverride,
-      vars: {
-        ...projectConfig.vars,
-        ...compileConfig.projectConfigOverride?.vars
-      }
-    });
+    checkDataformJsonValidity(deepmerge(projectConfig, compileConfig.projectConfigOverride || {}));
   } catch (e) {
     throw new ErrorWithCause(
       `Compilation failed. ProjectConfig ('dataform.json') is invalid: ${e.message}`,
@@ -57,27 +42,47 @@ export async function compile(
     );
   }
 
-  return decode(
-    dataform.CompiledGraph,
-    await CompileChildProcess.forkProcess().compile(compileConfig)
-  );
+  if (compileConfig.useMain === null || compileConfig.useMain === undefined) {
+    try {
+      const packageJson = JSON.parse(
+        fs.readFileSync(`${compileConfig.projectDir}/package.json`, "utf8")
+      );
+      const dataformCoreVersion = packageJson.dependencies["@dataform/core"];
+      compileConfig.useMain = semver.subset(dataformCoreVersion, ">=2.0.4");
+    } catch (e) {
+      // Silently catch any thrown Error. Do not attempt to use `main` compilation.
+    }
+  }
+
+  const result = await CompileChildProcess.forkProcess().compile(compileConfig);
+
+  let compileResult: dataform.CompiledGraph;
+  if (compileConfig.useMain) {
+    const decodedResult = decode64(dataform.CoreExecutionResponse, result);
+    compileResult = dataform.CompiledGraph.create(decodedResult.compile.compiledGraph);
+  } else {
+    compileResult = decode64(dataform.CompiledGraph, result);
+  }
+
+  compileResult.tables.forEach(setOrValidateTableEnumType);
+  return compileResult;
 }
 
 export class CompileChildProcess {
   public static forkProcess() {
-    let workerBundle: string;
-    try {
-      // The bundled CLI packages the worker_bundle directly.
-      workerBundle = require.resolve("./worker_bundle");
-    } catch (e) {
-      // This resolution  happens when run in the Bazel environment. It could be avoided by copying
-      // the worker bundle to the appropriate places for every use case, but this seems cleaner.
-      workerBundle = require.resolve("df/sandbox/vm/worker_bundle");
-    }
+    // Runs the worker_bundle script we generate for the package (see packages/@dataform/cli/BUILD)
+    // if it exists, otherwise run the bazel compile loader target.
+    const findForkScript = () => {
+      try {
+        const workerBundlePath = require.resolve("./worker_bundle");
+        return workerBundlePath;
+      } catch (e) {
+        return require.resolve("../../sandbox/vm/compile_loader");
+      }
+    };
+    const forkScript = findForkScript();
     return new CompileChildProcess(
-      fork(workerBundle, [], {
-        stdio: [0, 1, 2, "ipc", "pipe"]
-      })
+      fork(require.resolve(forkScript), [], { stdio: [0, 1, 2, "ipc", "pipe"] })
     );
   }
   private readonly childProcess: ChildProcess;
@@ -129,7 +134,7 @@ export class CompileChildProcess {
   }
 }
 
-export const checkDataformJsonValidity = (dataformJsonParsed: { [prop: string]: string }) => {
+export const checkDataformJsonValidity = (dataformJsonParsed: { [prop: string]: any }) => {
   const invalidWarehouseProp = () => {
     return dataformJsonParsed.warehouse && !validWarehouses.includes(dataformJsonParsed.warehouse)
       ? `Invalid value on property warehouse: ${

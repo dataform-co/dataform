@@ -6,8 +6,6 @@ ts_test_suite(
     data = [
         "//examples/backwards_compatibility:files",
         "//examples/backwards_compatibility:node_modules",
-        "//examples/common_v1:files",
-        "//examples/common_v1:node_modules",
         "//examples/common_v2:files",
         "//examples/common_v2:node_modules",
         "//examples/formatter:files",
@@ -16,7 +14,6 @@ ts_test_suite(
         "//examples/invalid_dataform_json:node_modules",
         "//examples/never_finishes_compiling:files",
         "//examples/never_finishes_compiling:node_modules",
-        "//sandbox/vm:worker_bundle",
     ],
     deps = [
         "//api",

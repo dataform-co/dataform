@@ -22,14 +22,14 @@ export class BigQueryAdapter extends Adapter implements IAdapter {
 
     this.preOps(table, runConfig, tableMetadata).forEach(statement => tasks.add(statement));
 
-    const baseTableType = this.baseTableType(table.type);
+    const baseTableType = this.baseTableType(table.enumType);
     if (tableMetadata && tableMetadata.type !== baseTableType) {
       tasks.add(
         Task.statement(this.dropIfExists(table.target, this.oppositeTableType(baseTableType)))
       );
     }
 
-    if (table.type === "incremental") {
+    if (table.enumType === dataform.TableType.INCREMENTAL) {
       if (!this.shouldWriteIncrementally(runConfig, tableMetadata)) {
         tasks.add(Task.statement(this.createOrReplace(table)));
       } else {
@@ -45,7 +45,7 @@ export class BigQueryAdapter extends Adapter implements IAdapter {
                 )
               : this.insertInto(
                   table.target,
-                  tableMetadata?.fields.map(f => f.name),
+                  tableMetadata?.fields.map(f => f.name).map(column => `\`${column}\``),
                   this.where(table.incrementalQuery || table.query, table.where)
                 )
           )
@@ -65,12 +65,7 @@ export class BigQueryAdapter extends Adapter implements IAdapter {
     projectConfig: dataform.IProjectConfig
   ): Tasks {
     const tasks = Tasks.create();
-    const target =
-      assertion.target ||
-      dataform.Target.create({
-        schema: projectConfig.assertionSchema,
-        name: assertion.name
-      });
+    const target = assertion.target;
     tasks.add(Task.statement(this.createOrReplaceView(target, assertion.query)));
     tasks.add(Task.assertion(`select sum(1) as row_count from ${this.resolveTarget(target)}`));
     return tasks;
@@ -81,8 +76,25 @@ export class BigQueryAdapter extends Adapter implements IAdapter {
   }
 
   private createOrReplace(table: dataform.ITable) {
-    return `create or replace ${this.tableTypeAsSql(
-      this.baseTableType(table.type)
+    const options = []
+    if (table.bigquery && table.bigquery.partitionBy && table.bigquery.partitionExpirationDays){
+      options.push(`partition_expiration_days=${table.bigquery.partitionExpirationDays}`)
+    }
+    if (table.bigquery && table.bigquery.partitionBy && table.bigquery.requirePartitionFilter){
+      options.push(`require_partition_filter=${table.bigquery.requirePartitionFilter}`)
+    }
+    if(table.bigquery && table.bigquery.additionalOptions){
+      for(const [optionName, optionValue] of Object.entries(table.bigquery.additionalOptions)){
+        options.push(`${optionName}=${optionValue}`)
+      }
+    }
+
+    return `create or replace ${
+      table.materialized
+      ? "materialized "
+      : ""
+    }${this.tableTypeAsSql(
+      this.baseTableType(table.enumType)
     )} ${this.resolveTarget(table.target)} ${
       table.bigquery && table.bigquery.partitionBy
         ? `partition by ${table.bigquery.partitionBy} `
@@ -91,6 +103,9 @@ export class BigQueryAdapter extends Adapter implements IAdapter {
       table.bigquery && table.bigquery.clusterBy && table.bigquery.clusterBy.length > 0
         ? `cluster by ${table.bigquery.clusterBy.join(", ")} `
         : ""
+    }${
+      options.length>0 ?
+      `OPTIONS(${options.join(',')})` : ""
     }as ${table.query}`;
   }
 
@@ -106,6 +121,7 @@ export class BigQueryAdapter extends Adapter implements IAdapter {
     uniqueKey: string[],
     updatePartitionFilter: string
   ) {
+    const backtickedColumns = columns.map(column => `\`${column}\``);
     return `
 merge ${this.resolveTarget(target)} T
 using (${query}
@@ -113,8 +129,8 @@ using (${query}
 on ${uniqueKey.map(uniqueKeyCol => `T.${uniqueKeyCol} = S.${uniqueKeyCol}`).join(` and `)}
   ${updatePartitionFilter ? `and T.${updatePartitionFilter}` : ""}
 when matched then
-  update set ${columns.map(column => `${column} = S.${column}`).join(",")}
+  update set ${columns.map(column => `\`${column}\` = S.${column}`).join(",")}
 when not matched then
-  insert (${columns.join(",")}) values (${columns.join(",")})`;
+  insert (${backtickedColumns.join(",")}) values (${backtickedColumns.join(",")})`;
   }
 }

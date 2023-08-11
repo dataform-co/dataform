@@ -43,6 +43,7 @@ message Snowflake {
 
 message BigQuery {
   string project_id = 1;
+  // If credentials are unset, then the library will use the application default credentials
   string credentials = 3;
   // Options are listed here: https://cloud.google.com/bigquery/docs/locations
   string location = 4;

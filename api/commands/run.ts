@@ -2,25 +2,22 @@ import EventEmitter from "events";
 import Long from "long";
 
 import * as dbadapters from "df/api/dbadapters";
+import { IBigQueryExecutionOptions } from "df/api/dbadapters/bigquery";
 import { Flags } from "df/common/flags";
 import { retry } from "df/common/promises";
 import { deepClone, equals } from "df/common/protos";
-import {
-  JSONObjectStringifier,
-  StringifiedMap,
-  StringifiedSet
-} from "df/common/strings/stringifier";
+import { StringifiedMap, StringifiedSet } from "df/common/strings/stringifier";
+import { IBigQueryOptions } from "df/core/table";
+import { targetsAreEqual, targetStringifier } from "df/core/targets";
 import { dataform } from "df/protos/ts";
 
 const CANCEL_EVENT = "jobCancel";
-
 const flags = {
   runnerNotificationPeriodMillis: Flags.number("runner-notification-period-millis", 5000)
 };
 
 const isSuccessfulAction = (actionResult: dataform.IActionResult) =>
   actionResult.status === dataform.ActionResult.ExecutionStatus.SUCCESSFUL ||
-  actionResult.status === dataform.ActionResult.ExecutionStatus.CACHE_SKIPPED ||
   actionResult.status === dataform.ActionResult.ExecutionStatus.DISABLED;
 
 export interface IExecutedAction {
@@ -28,17 +25,23 @@ export interface IExecutedAction {
   actionResult: dataform.IActionResult;
 }
 
+export interface IExecutionOptions {
+  bigquery?: { jobPrefix?: string };
+}
+
 export function run(
   dbadapter: dbadapters.IDbAdapter,
   graph: dataform.IExecutionGraph,
+  executionOptions?: IExecutionOptions,
   partiallyExecutedRunResult: dataform.IRunResult = {},
-  previouslyExecutedActions: IExecutedAction[] = []
+  runnerNotificationPeriodMillis: number = flags.runnerNotificationPeriodMillis.get()
 ): Runner {
   return new Runner(
     dbadapter,
     graph,
+    executionOptions,
     partiallyExecutedRunResult,
-    previouslyExecutedActions
+    runnerNotificationPeriodMillis
   ).execute();
 }
 
@@ -47,17 +50,13 @@ export class Runner {
     dataform.ITarget,
     dataform.ITableMetadata
   >;
-  private readonly nonTableDeclarationTargets: StringifiedSet<dataform.ITarget>;
 
-  private readonly previouslyExecutedActions: StringifiedMap<dataform.ITarget, IExecutedAction>;
-
-  private readonly allActionNames: Set<string>;
+  private readonly allActionTargets: StringifiedSet<dataform.ITarget>;
   private readonly runResult: dataform.IRunResult;
   private readonly changeListeners: Array<(graph: dataform.IRunResult) => void> = [];
   private readonly eEmitter: EventEmitter;
-
-  private executedActionNames: Set<string>;
-  private successfullyExecutedActionNames: Set<string>;
+  private executedActionTargets: StringifiedSet<dataform.ITarget>;
+  private successfullyExecutedActionTargets: StringifiedSet<dataform.ITarget>;
   private pendingActions: dataform.IExecutionAction[];
   private lastNotificationTimestampMillis = 0;
   private stopped = false;
@@ -69,45 +68,34 @@ export class Runner {
   constructor(
     private readonly dbadapter: dbadapters.IDbAdapter,
     private readonly graph: dataform.IExecutionGraph,
+    private readonly executionOptions: IExecutionOptions = {},
     partiallyExecutedRunResult: dataform.IRunResult = {},
-    previouslyExecutedActions: IExecutedAction[] = []
+    private readonly runnerNotificationPeriodMillis: number = flags.runnerNotificationPeriodMillis.get()
   ) {
-    this.allActionNames = new Set<string>(graph.actions.map(action => action.name));
+    this.allActionTargets = new StringifiedSet<dataform.ITarget>(
+      targetStringifier,
+      graph.actions.map(action => action.target)
+    );
     this.runResult = {
       actions: [],
       ...partiallyExecutedRunResult
     };
     this.warehouseStateByTarget = new StringifiedMap(
-      JSONObjectStringifier.create(),
+      targetStringifier,
       graph.warehouseState.tables?.map(tableMetadata => [tableMetadata.target, tableMetadata])
     );
-    this.nonTableDeclarationTargets = new StringifiedSet<dataform.ITarget>(
-      JSONObjectStringifier.create(),
-      graph.declarationTargets.filter(
-        declarationTarget =>
-          this.warehouseStateByTarget.get(declarationTarget)?.type !==
-          dataform.TableMetadata.Type.TABLE
-      )
-    );
-
-    this.previouslyExecutedActions = new StringifiedMap(
-      JSONObjectStringifier.create(),
-      previouslyExecutedActions.map(executedAction => [
-        executedAction.executionAction.target,
-        executedAction
-      ])
-    );
-
-    this.executedActionNames = new Set(
+    this.executedActionTargets = new StringifiedSet(
+      targetStringifier,
       this.runResult.actions
         .filter(action => action.status !== dataform.ActionResult.ExecutionStatus.RUNNING)
-        .map(action => action.name)
+        .map(action => action.target)
     );
-    this.successfullyExecutedActionNames = new Set(
-      this.runResult.actions.filter(isSuccessfulAction).map(action => action.name)
+    this.successfullyExecutedActionTargets = new StringifiedSet(
+      targetStringifier,
+      this.runResult.actions.filter(isSuccessfulAction).map(action => action.target)
     );
     this.pendingActions = graph.actions.filter(
-      action => !this.executedActionNames.has(action.name)
+      action => !this.executedActionTargets.has(action.target)
     );
     this.eEmitter = new EventEmitter();
     // There could feasibly be thousands of listeners to this, 0 makes the limit infinite.
@@ -157,10 +145,7 @@ export class Runner {
   }
 
   private notifyListeners() {
-    if (
-      Date.now() - flags.runnerNotificationPeriodMillis.get() <
-      this.lastNotificationTimestampMillis
-    ) {
+    if (Date.now() - this.runnerNotificationPeriodMillis < this.lastNotificationTimestampMillis) {
       return;
     }
     const runResultClone = deepClone(dataform.RunResult, this.runResult);
@@ -243,7 +228,6 @@ export class Runner {
       this.pendingActions = [];
       allPendingActions.forEach(pendingAction =>
         this.runResult.actions.push({
-          name: pendingAction.name,
           target: pendingAction.target,
           status: dataform.ActionResult.ExecutionStatus.SKIPPED,
           tasks: pendingAction.tasks.map(() => ({
@@ -262,19 +246,19 @@ export class Runner {
       if (
         // An action is executable if all dependencies either: do not exist in the graph, or
         // have executed successfully.
-        pendingAction.dependencies.every(
+        pendingAction.dependencyTargets.every(
           dependency =>
-            !this.allActionNames.has(dependency) ||
-            this.successfullyExecutedActionNames.has(dependency)
+            !this.allActionTargets.has(dependency) ||
+            this.successfullyExecutedActionTargets.has(dependency)
         )
       ) {
         executableActions.push(pendingAction);
       } else if (
         // An action is skippable if it is not executable and all dependencies either: do not
         // exist in the graph, or have completed execution.
-        pendingAction.dependencies.every(
+        pendingAction.dependencyTargets.every(
           dependency =>
-            !this.allActionNames.has(dependency) || this.executedActionNames.has(dependency)
+            !this.allActionTargets.has(dependency) || this.executedActionTargets.has(dependency)
         )
       ) {
         skippableActions.push(pendingAction);
@@ -289,7 +273,6 @@ export class Runner {
       (async () => {
         skippableActions.forEach(skippableAction => {
           this.runResult.actions.push({
-            name: skippableAction.name,
             target: skippableAction.target,
             status: dataform.ActionResult.ExecutionStatus.SKIPPED,
             tasks: skippableAction.tasks.map(() => ({
@@ -305,9 +288,9 @@ export class Runner {
       Promise.all(
         executableActions.map(async executableAction => {
           const actionResult = await this.executeAction(executableAction);
-          this.executedActionNames.add(executableAction.name);
+          this.executedActionTargets.add(executableAction.target);
           if (isSuccessfulAction(actionResult)) {
-            this.successfullyExecutedActionNames.add(executableAction.name);
+            this.successfullyExecutedActionTargets.add(executableAction.target);
           }
           await this.executeAllActionsReadyForExecution();
         })
@@ -317,17 +300,8 @@ export class Runner {
 
   private async executeAction(action: dataform.IExecutionAction): Promise<dataform.IActionResult> {
     let actionResult: dataform.IActionResult = {
-      name: action.name,
       target: action.target,
-      tasks: [],
-      inputs: action.transitiveInputs.map(target => ({
-        target,
-        metadata: this.warehouseStateByTarget.has(target)
-          ? {
-              lastModifiedTimestampMillis: this.warehouseStateByTarget.get(target).lastUpdatedMillis
-            }
-          : null
-      }))
+      tasks: []
     };
 
     if (action.tasks.length === 0) {
@@ -337,15 +311,8 @@ export class Runner {
       return actionResult;
     }
 
-    if (this.shouldCacheSkip(action)) {
-      actionResult.status = dataform.ActionResult.ExecutionStatus.CACHE_SKIPPED;
-      this.runResult.actions.push(actionResult);
-      this.notifyListeners();
-      return actionResult;
-    }
-
-    const resumedActionResult = this.runResult.actions.find(
-      existingActionResult => existingActionResult.name === action.name
+    const resumedActionResult = this.runResult.actions.find(existingActionResult =>
+      targetsAreEqual(existingActionResult.target, action.target)
     );
     if (resumedActionResult) {
       actionResult = resumedActionResult;
@@ -368,7 +335,10 @@ export class Runner {
           !this.cancelled
         ) {
           const taskStatus = await this.executeTask(client, task, actionResult, {
-            bigquery: { labels: action.actionDescriptor?.bigqueryLabels }
+            bigquery: {
+              labels: action.actionDescriptor?.bigqueryLabels,
+              jobPrefix: this.executionOptions?.bigquery?.jobPrefix
+            }
           });
           if (taskStatus === dataform.TaskResult.ExecutionStatus.FAILED) {
             actionResult.status = dataform.ActionResult.ExecutionStatus.FAILED;
@@ -396,7 +366,21 @@ export class Runner {
       action.type === "table" &&
       action.tableType !== "inline"
     ) {
-      await this.dbadapter.setMetadata(action);
+      try {
+        await this.dbadapter.setMetadata(action);
+      } catch (e) {
+        // TODO: Setting the metadata is not a task itself, so we have nowhere to surface this error cleanly.
+        // For now, we can attach the error to the last task in the action so it gets
+        // surfaced properly without ending the entire run, but also not failing silently.
+        if (actionResult.tasks.length > 0) {
+          actionResult.tasks[
+            actionResult.tasks.length - 1
+          ].errorMessage = `Error setting metadata: ${e.message}`;
+          actionResult.tasks[actionResult.tasks.length - 1].status =
+            dataform.TaskResult.ExecutionStatus.FAILED;
+        }
+        actionResult.status = dataform.ActionResult.ExecutionStatus.FAILED;
+      }
     }
 
     let newMetadata: dataform.ITableMetadata;
@@ -410,7 +394,6 @@ export class Runner {
     }
     if (newMetadata) {
       this.warehouseStateByTarget.set(action.target, newMetadata);
-      actionResult.postExecutionTimestampMillis = newMetadata.lastUpdatedMillis;
       this.notifyListeners();
     } else {
       this.warehouseStateByTarget.delete(action.target);
@@ -429,7 +412,7 @@ export class Runner {
     client: dbadapters.IDbClient,
     task: dataform.IExecutionTask,
     parentAction: dataform.IActionResult,
-    options: { bigquery: { labels: { [label: string]: string } } }
+    options: { bigquery?: IBigQueryOptions & IBigQueryExecutionOptions }
   ): Promise<dataform.TaskResult.ExecutionStatus> {
     const timer = Timer.start();
     const taskResult: dataform.ITaskResult = {
@@ -469,90 +452,6 @@ export class Runner {
     taskResult.timing = timer.end();
     this.notifyListeners();
     return taskResult.status;
-  }
-
-  private shouldCacheSkip(executionAction: dataform.IExecutionAction): boolean {
-    // Run caching must be turned on.
-    if (!this.graph.runConfig?.useRunCache) {
-      return false;
-    }
-
-    // If the action is non-hermetic, always run it.
-    if (executionAction.hermeticity === dataform.ActionHermeticity.NON_HERMETIC) {
-      return false;
-    }
-
-    // This action must have been executed successfully before, and the previous ExecutionAction
-    // must be equal to this one.
-    if (!this.previouslyExecutedActions.has(executionAction.target)) {
-      return false;
-    }
-    const previouslyExecutedAction = this.previouslyExecutedActions.get(executionAction.target);
-    if (
-      previouslyExecutedAction.actionResult.status !==
-      dataform.ActionResult.ExecutionStatus.SUCCESSFUL
-    ) {
-      return false;
-    }
-    if (
-      !equals(dataform.ExecutionAction, previouslyExecutedAction.executionAction, executionAction)
-    ) {
-      return false;
-    }
-
-    // The target table for this action must exist, and the table metadata's last update timestamp must match
-    // the timestamp recorded after the most recent execution.
-    if (!this.warehouseStateByTarget.has(executionAction.target)) {
-      return false;
-    }
-    if (
-      this.warehouseStateByTarget.get(executionAction.target).lastUpdatedMillis.equals(0) ||
-      previouslyExecutedAction.actionResult.postExecutionTimestampMillis.equals(0) ||
-      this.warehouseStateByTarget
-        .get(executionAction.target)
-        .lastUpdatedMillis.notEquals(
-          previouslyExecutedAction.actionResult.postExecutionTimestampMillis
-        )
-    ) {
-      return false;
-    }
-
-    const previousInputTimestamps = new StringifiedMap(
-      JSONObjectStringifier.create<dataform.ITarget>(),
-      previouslyExecutedAction.actionResult.inputs
-        .filter(input => !!input.metadata)
-        .map(input => [input.target, input.metadata.lastModifiedTimestampMillis])
-    );
-    for (const transitiveInput of executionAction.transitiveInputs) {
-      // No transitive input can be a non-table declaration (because we don't know anything about the
-      // data upstream of that non-table).
-      if (this.nonTableDeclarationTargets.has(transitiveInput)) {
-        return false;
-      }
-
-      // All transitive inputs' last change timestamps must match the corresponding timestamps stored
-      // in persisted state.
-      if (!previousInputTimestamps.has(transitiveInput)) {
-        return false;
-      }
-      if (!this.warehouseStateByTarget.has(transitiveInput)) {
-        return false;
-      }
-      const inputWarehouseState = this.warehouseStateByTarget.get(transitiveInput);
-      if (
-        this.warehouseStateByTarget.get(transitiveInput).lastUpdatedMillis.equals(0) ||
-        previousInputTimestamps.get(transitiveInput).equals(0) ||
-        inputWarehouseState.lastUpdatedMillis.notEquals(
-          previousInputTimestamps.get(transitiveInput)
-        ) ||
-        // If the input has a streaming buffer, we cannot trust its last-updated timestamp.
-        inputWarehouseState.bigquery?.hasStreamingBuffer
-      ) {
-        return false;
-      }
-    }
-
-    return true;
   }
 }
 

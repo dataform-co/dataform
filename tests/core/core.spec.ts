@@ -1,13 +1,13 @@
-import { expect } from "chai";
+import {expect} from "chai";
 import * as fs from "fs-extra";
 import * as path from "path";
 
 import * as compilers from "df/core/compilers";
-import { Session } from "df/core/session";
-import * as utils from "df/core/utils";
-import { dataform } from "df/protos/ts";
-import { suite, test } from "df/testing";
-import { asPlainObject } from "df/tests/utils";
+import {Session} from "df/core/session";
+import {targetAsReadableString} from "df/core/targets";
+import {dataform} from "df/protos/ts";
+import {suite, test} from "df/testing";
+import {asPlainObject} from "df/tests/utils";
 
 class TestConfigs {
   public static redshift: dataform.IProjectConfig = {
@@ -27,7 +27,18 @@ class TestConfigs {
 
   public static bigquery: dataform.IProjectConfig = {
     warehouse: "bigquery",
-    defaultSchema: "schema"
+    defaultSchema: "schema",
+    defaultLocation: "US"
+  };
+
+  public static bigqueryWithDatabase: dataform.IProjectConfig = {
+    ...TestConfigs.bigquery,
+    defaultDatabase: "test-db",
+  };
+
+  public static bigqueryWithDatabaseAndSuffix: dataform.IProjectConfig = {
+    ...TestConfigs.bigqueryWithDatabase,
+    databaseSuffix: "suffix",
   };
 
   public static snowflake: dataform.IProjectConfig = {
@@ -63,7 +74,7 @@ suite("@dataform/core", () => {
           .publish("example", {
             type: "table",
             schema: "schema2",
-            dependencies: [{ schema: "schema", name: "example" }],
+            dependencies: [{schema: "schema", name: "example"}],
             description: "test description"
           })
           .query(_ => "select 1 as test")
@@ -81,9 +92,10 @@ suite("@dataform/core", () => {
         expect(compiledGraph.graphErrors.compilationErrors).to.eql([]);
 
         const t = compiledGraph.tables.find(
-          table => table.name === `schema.${tableWithPrefix("example")}`
+          table => targetAsReadableString(table.target) === `schema.${tableWithPrefix("example")}`
         );
         expect(t.type).equals("table");
+        expect(t.enumType).equals(dataform.TableType.TABLE);
         expect(t.actionDescriptor).eql({
           description: "this is a table",
           columns: [
@@ -102,26 +114,31 @@ suite("@dataform/core", () => {
         expect(t.postOps).deep.equals(["post_op"]);
 
         const t2 = compiledGraph.tables.find(
-          table => table.name === `schema2.${tableWithPrefix("example")}`
+          table => targetAsReadableString(table.target) === `schema2.${tableWithPrefix("example")}`
         );
         expect(t2.type).equals("table");
+        expect(t2.enumType).equals(dataform.TableType.TABLE);
         expect(t2.actionDescriptor).eql({
           description: "test description"
         });
         expect(t2.preOps).deep.equals(["pre_op"]);
         expect(t2.postOps).deep.equals(["post_op"]);
-        expect(t2.dependencies).includes(`schema.${tableWithPrefix("example")}`);
+        expect(t2.dependencyTargets.map(dependency => targetAsReadableString(dependency))).includes(
+          `schema.${tableWithPrefix("example")}`
+        );
         expect(dataform.Target.create(t2.canonicalTarget).toJSON()).deep.equals({
           name: "example",
           schema: "schema2"
         });
 
         const t3 = compiledGraph.tables.find(
-          table => table.name === `test_schema.${tableWithPrefix("my_table")}`
+          table =>
+            targetAsReadableString(table.target) === `test_schema.${tableWithPrefix("my_table")}`
         );
         expect((t3.target.name = `${tableWithPrefix("my_table")}`));
         expect((t3.target.schema = "test_schema"));
         expect(t3.type).equals("table");
+        expect(t3.enumType).equals(dataform.TableType.TABLE);
       });
     });
 
@@ -146,7 +163,7 @@ suite("@dataform/core", () => {
           .publish("example", {
             type: "table",
             schema: "schema2",
-            dependencies: [{ schema: "schema", name: "example" }],
+            dependencies: [{schema: "schema", name: "example"}],
             description: "test description"
           })
           .query(_ => "select 1 as test")
@@ -164,9 +181,10 @@ suite("@dataform/core", () => {
         expect(compiledGraph.graphErrors.compilationErrors).to.eql([]);
 
         const t = compiledGraph.tables.find(
-          table => table.name === `${schemaWithSuffix("schema")}.example`
+          table => targetAsReadableString(table.target) === `${schemaWithSuffix("schema")}.example`
         );
         expect(t.type).equals("table");
+        expect(t.enumType).equals(dataform.TableType.TABLE);
         expect(t.actionDescriptor).eql({
           description: "this is a table",
           columns: [
@@ -180,9 +198,10 @@ suite("@dataform/core", () => {
         expect(t.postOps).deep.equals(["post_op"]);
 
         const t2 = compiledGraph.tables.find(
-          table => table.name === `${schemaWithSuffix("schema2")}.example`
+          table => targetAsReadableString(table.target) === `${schemaWithSuffix("schema2")}.example`
         );
         expect(t2.type).equals("table");
+        expect(t2.enumType).equals(dataform.TableType.TABLE);
         expect(t.actionDescriptor).eql({
           description: "this is a table",
           columns: [
@@ -194,14 +213,18 @@ suite("@dataform/core", () => {
         });
         expect(t2.preOps).deep.equals(["pre_op"]);
         expect(t2.postOps).deep.equals(["post_op"]);
-        expect(t2.dependencies).includes(`${schemaWithSuffix("schema")}.example`);
+        expect(t2.dependencyTargets.map(dependency => targetAsReadableString(dependency))).includes(
+          `${schemaWithSuffix("schema")}.example`
+        );
 
         const t3 = compiledGraph.tables.find(
-          table => table.name === `${schemaWithSuffix("test_schema")}.my_table`
+          table =>
+            targetAsReadableString(table.target) === `${schemaWithSuffix("test_schema")}.my_table`
         );
         expect((t3.target.name = "my_table"));
         expect((t3.target.schema = schemaWithSuffix("test_schema")));
         expect(t3.type).equals("table");
+        expect(t3.enumType).equals(dataform.TableType.TABLE);
       });
     });
 
@@ -228,8 +251,8 @@ suite("@dataform/core", () => {
           incrementalQuery: "select true as incremental",
           disabled: false,
           fileName: path.basename(__filename),
-          name: "schema.incremental",
-          type: "incremental"
+          type: "incremental",
+          enumType: "INCREMENTAL",
         }
       ]);
     });
@@ -250,7 +273,7 @@ suite("@dataform/core", () => {
       const session = new Session(path.dirname(__filename), overrideConfig, originalConfig);
       session.publish("dataset");
       session.assert("assertion");
-      session.declare({ name: "declaration" });
+      session.declare({name: "declaration"});
       session.operate("operation");
 
       const graph = session.compile();
@@ -289,9 +312,10 @@ suite("@dataform/core", () => {
       const originalConfig = {
         warehouse: "bigquery",
         defaultSchema: "schema",
-        defaultDatabase: "database"
+        defaultDatabase: "database",
+        defaultLocation: "US"
       };
-      const overrideConfig = { ...originalConfig, defaultSchema: "otherschema" };
+      const overrideConfig = {...originalConfig, defaultSchema: "otherschema"};
       const session = new Session(path.dirname(__filename), overrideConfig, originalConfig);
       session
         .publish("view", {
@@ -303,9 +327,9 @@ suite("@dataform/core", () => {
         schema: "schema"
       });
       const graph = session.compile();
-      expect(graph.graphErrors.compilationErrors.map(error => error.message)).deep.equals([
+      expect(graph.graphErrors.compilationErrors.map(error => error.message)).deep.equals(Array(2).fill(
         'Duplicate canonical target detected. Canonical targets must be unique across tables, declarations, assertions, and operations:\n"{"schema":"schema","name":"view","database":"database"}"'
-      ]);
+      ));
     });
 
     test("validation_type_incremental", () => {
@@ -325,9 +349,9 @@ suite("@dataform/core", () => {
 
     test("validation_type", () => {
       const sessionSuccess = new Session(path.dirname(__filename), TestConfigs.redshift);
-      sessionSuccess.publish("exampleSuccess1", { type: "table" });
-      sessionSuccess.publish("exampleSuccess2", { type: "view" });
-      sessionSuccess.publish("exampleSuccess3", { type: "incremental" }).where("test");
+      sessionSuccess.publish("exampleSuccess1", {type: "table"});
+      sessionSuccess.publish("exampleSuccess2", {type: "view"});
+      sessionSuccess.publish("exampleSuccess3", {type: "incremental"}).where("test");
       const cgSuccess = sessionSuccess.compile();
       expect(cgSuccess.graphErrors.compilationErrors).deep.equals([]);
 
@@ -335,13 +359,14 @@ suite("@dataform/core", () => {
       sessionFail.publish("exampleFail", JSON.parse('{"type": "ta ble"}'));
       const cgFail = sessionFail.compile();
 
-      expect(cgFail.graphErrors.compilationErrors).deep.equals([
-        dataform.CompilationError.create({
+      expect(cgFail.toJSON().graphErrors.compilationErrors).deep.equals([
+        {
           fileName: "core.spec.js",
           actionName: "schema.exampleFail",
+          actionTarget: {schema: "schema", name: "exampleFail"},
           message:
             'Wrong type of table detected. Should only use predefined types: "table" | "view" | "incremental" | "inline"'
-        })
+        }
       ]);
 
       const err = cgFail.graphErrors.compilationErrors.find(
@@ -431,20 +456,28 @@ suite("@dataform/core", () => {
           sortStyle: "wrong_sortStyle"
         }
       });
+      session.publish("example_materialized_view", {
+        type: "view",
+        materialized: true
+      });
 
       const expectedResults = [
-        { name: "schema.example_absent_distKey", message: `Property "distKey" is not defined` },
-        { name: "schema.example_absent_distStyle", message: `Property "distStyle" is not defined` },
+        {name: "schema.example_absent_distKey", message: `Property "distKey" is not defined`},
+        {name: "schema.example_absent_distStyle", message: `Property "distStyle" is not defined`},
         {
           name: "schema.example_wrong_distStyle",
           message: `Wrong value of "distStyle" property. Should only use predefined values: "even" | "key" | "all"`
         },
-        { name: "schema.example_absent_sortKeys", message: `Property "sortKeys" is not defined` },
-        { name: "schema.example_empty_sortKeys", message: `Property "sortKeys" is not defined` },
-        { name: "schema.example_absent_sortStyle", message: `Property "sortStyle" is not defined` },
+        {name: "schema.example_absent_sortKeys", message: `Property "sortKeys" is not defined`},
+        {name: "schema.example_empty_sortKeys", message: `Property "sortKeys" is not defined`},
+        {name: "schema.example_absent_sortStyle", message: `Property "sortStyle" is not defined`},
         {
           name: "schema.example_wrong_sortStyle",
           message: `Wrong value of "sortStyle" property. Should only use predefined values: "compound" | "interleaved"`
+        },
+        {
+          name: "schema.example_materialized_view",
+          message: "The 'materialized' option is only valid for Snowflake and BigQuery views"
         }
       ];
 
@@ -472,22 +505,79 @@ suite("@dataform/core", () => {
           clusterBy: ["some_cluster"]
         }
       });
+      session.publish("example_expiring_view_fail", {
+        type: "view",
+        bigquery: {
+          partitionExpirationDays: 7
+        }
+      });
+      session.publish("example_materialize_table_fail", {
+        type: "table",
+        materialized: true
+      });
+      session.publish("example_expiring_non_partitioned_fail", {
+        type: "table",
+        bigquery: {
+          partitionExpirationDays: 7
+        }
+      });
+      session.publish("example_duplicate_partition_expiration_days_fail", {
+        type: "table",
+        bigquery: {
+          partitionBy: "partition",
+          partitionExpirationDays: 1,
+          additionalOptions: {
+            partition_expiration_days: "7"
+          }
+        }
+      });
+      session.publish("example_duplicate_require_partition_filter_fail", {
+        type: "table",
+        bigquery: {
+          partitionBy: "partition",
+          requirePartitionFilter: true,
+          additionalOptions: {
+            require_partition_filter: "false"
+          }
+        }
+      });
 
       const graph = session.compile();
 
       expect(
-        graph.graphErrors.compilationErrors.map(({ message, actionName }) => ({
+        graph.graphErrors.compilationErrors.map(({message, actionName}) => ({
           message,
           actionName
         }))
       ).has.deep.members([
         {
           actionName: "schema.example_partitionBy_view_fail",
-          message: `partitionBy/clusterBy are not valid for BigQuery views; they are only valid for tables`
+          message: `partitionBy/clusterBy/requirePartitionFilter/partitionExpirationDays are not valid for BigQuery views; they are only valid for tables`
         },
         {
           actionName: "schema.example_clusterBy_view_fail",
-          message: `partitionBy/clusterBy are not valid for BigQuery views; they are only valid for tables`
+          message: `partitionBy/clusterBy/requirePartitionFilter/partitionExpirationDays are not valid for BigQuery views; they are only valid for tables`
+        },
+        {
+          actionName: "schema.example_expiring_view_fail",
+          message: `partitionBy/clusterBy/requirePartitionFilter/partitionExpirationDays are not valid for BigQuery views; they are only valid for tables`
+        },
+        {
+          actionName: "schema.example_materialize_table_fail",
+          message: "The 'materialized' option is only valid for Snowflake and BigQuery views"
+        },
+        {
+          actionName: "schema.example_expiring_non_partitioned_fail",
+          message:
+            "requirePartitionFilter/partitionExpirationDays are not valid for non partitioned BigQuery tables"
+        },
+        {
+          actionName: "schema.example_duplicate_partition_expiration_days_fail",
+          message: "partitionExpirationDays has been declared twice"
+        },
+        {
+          actionName: "schema.example_duplicate_require_partition_filter_fail",
+          message: "requirePartitionFilter has been declared twice"
         }
       ]);
     });
@@ -512,11 +602,15 @@ suite("@dataform/core", () => {
           clusterBy: ["a"]
         }
       });
+      session.publish("example_materialize_table_fail", {
+        type: "table",
+        materialized: true
+      });
 
       const graph = session.compile();
 
       expect(
-        graph.graphErrors.compilationErrors.map(({ message, actionName }) => ({
+        graph.graphErrors.compilationErrors.map(({message, actionName}) => ({
           message,
           actionName
         }))
@@ -532,6 +626,10 @@ suite("@dataform/core", () => {
         {
           actionName: "SCHEMA.EXAMPLE_CLUSTER_BY_VIEW_FAIL",
           message: "The 'clusterBy' option is only valid for Snowflake tables"
+        },
+        {
+          actionName: "SCHEMA.EXAMPLE_MATERIALIZE_TABLE_FAIL",
+          message: "The 'materialized' option is only valid for Snowflake and BigQuery views"
         }
       ]);
     });
@@ -542,7 +640,21 @@ suite("@dataform/core", () => {
         type: "table",
         bigquery: {
           partitionBy: "some_partition",
-          clusterBy: ["some_column", "some_other_column"]
+          clusterBy: ["some_column", "some_other_column"],
+          partitionExpirationDays: 7,
+          requirePartitionFilter: false
+        }
+      });
+      session.publish("example_materialized_view", {
+        type: "view",
+        materialized: true
+      });
+      session.publish("example_additional_options", {
+        type: "table",
+        bigquery: {
+          additionalOptions: {
+            friendlyName: "name"
+          }
         }
       });
 
@@ -551,7 +663,17 @@ suite("@dataform/core", () => {
       expect(graph.tables[0].bigquery).to.deep.equals(
         dataform.BigQueryOptions.create({
           clusterBy: ["some_column", "some_other_column"],
-          partitionBy: "some_partition"
+          partitionBy: "some_partition",
+          partitionExpirationDays: 7,
+          requirePartitionFilter: false
+        })
+      );
+      expect(graph.tables[1].materialized).to.equals(true);
+      expect(graph.tables[2].bigquery).to.deep.equals(
+        dataform.BigQueryOptions.create({
+          additionalOptions: {
+            friendlyName: "name"
+          }
         })
       );
       expect(graph.graphErrors.compilationErrors).to.deep.equals([]);
@@ -559,7 +681,7 @@ suite("@dataform/core", () => {
 
     test("validation_type_inline", () => {
       const session = new Session(path.dirname(__filename), TestConfigs.redshift);
-      session.publish("a", { type: "table" }).query(_ => "select 1 as test");
+      session.publish("a", {type: "table"}).query(_ => "select 1 as test");
       session
         .publish("b", {
           type: "inline",
@@ -569,7 +691,7 @@ suite("@dataform/core", () => {
             sortKeys: ["column1", "column2"],
             sortStyle: "compound"
           },
-          columns: { test: "test description b" },
+          columns: {test: "test description b"},
           disabled: true
         })
         .preOps(_ => ["pre_op_b"])
@@ -579,7 +701,7 @@ suite("@dataform/core", () => {
       session
         .publish("c", {
           type: "table",
-          columns: { test: "test description c" }
+          columns: {test: "test description c"}
         })
         .preOps(_ => ["pre_op_c"])
         .postOps(_ => ["post_op_c"])
@@ -587,14 +709,24 @@ suite("@dataform/core", () => {
 
       const graph = session.compile();
 
-      const tableA = graph.tables.find(item => item.name === "schema.a");
+      const tableA = graph.tables.find(
+        table => targetAsReadableString(table.target) === "schema.a"
+      );
       expect(tableA.type).equals("table");
-      expect(tableA.dependencies).deep.equals([]);
+      expect(tableA.enumType).equals(dataform.TableType.TABLE);
+      expect(
+        tableA.dependencyTargets.map(dependency => targetAsReadableString(dependency))
+      ).deep.equals([]);
       expect(tableA.query).equals("select 1 as test");
 
-      const tableB = graph.tables.find(item => item.name === "schema.b");
+      const tableB = graph.tables.find(
+        table => targetAsReadableString(table.target) === "schema.b"
+      );
       expect(tableB.type).equals("inline");
-      expect(tableB.dependencies).includes("schema.a");
+      expect(tableB.enumType).equals(dataform.TableType.INLINE);
+      expect(
+        tableB.dependencyTargets.map(dependency => targetAsReadableString(dependency))
+      ).includes("schema.a");
       expect(tableB.actionDescriptor).eql({
         columns: [
           dataform.ColumnDescriptor.create({
@@ -617,9 +749,14 @@ suite("@dataform/core", () => {
       expect(tableB.where).equals("test_where");
       expect(tableB.query).equals('select * from "schema"."a"');
 
-      const tableC = graph.tables.find(item => item.name === "schema.c");
+      const tableC = graph.tables.find(
+        table => targetAsReadableString(table.target) === "schema.c"
+      );
       expect(tableC.type).equals("table");
-      expect(tableC.dependencies).includes("schema.a");
+      expect(tableC.enumType).equals(dataform.TableType.TABLE);
+      expect(
+        tableC.dependencyTargets.map(dependency => targetAsReadableString(dependency))
+      ).includes("schema.a");
       expect(tableC.actionDescriptor).eql({
         columns: [
           dataform.ColumnDescriptor.create({
@@ -666,7 +803,9 @@ suite("@dataform/core", () => {
       const graph = session.compile();
       expect(graph.graphErrors.compilationErrors).deep.equals([]);
 
-      const schema = graph.tables.find(table => table.name === "schema.a");
+      const schema = graph.tables.find(
+        table => targetAsReadableString(table.target) === "schema.a"
+      );
 
       const collyColumn = schema.actionDescriptor.columns.find(
         column => column.displayName === "colly display name"
@@ -693,7 +832,7 @@ suite("@dataform/core", () => {
           session.publish(`a`, _ => "select 1 as test");
           session.publish(`b`, ctx => `select * from ${ctx.ref("a")}`);
           session.publish(`c`, ctx => `select * from ${ctx.ref(undefined)}`);
-          session.publish(`d`, ctx => `select * from ${ctx.ref({ schema: "schema", name: "a" })}`);
+          session.publish(`d`, ctx => `select * from ${ctx.ref({schema: "schema", name: "a"})}`);
           session.publish(`g`, ctx => `select * from ${ctx.ref("schema", "a")}`);
           session.publish(`h`, ctx => `select * from ${ctx.ref(["schema", "a"])}`);
           session
@@ -705,7 +844,7 @@ suite("@dataform/core", () => {
 
           const graph = session.compile();
 
-          const tableNames = graph.tables.map(item => item.name);
+          const tableNames = graph.tables.map(table => targetAsReadableString(table.target));
 
           const baseEqlArray = [
             "schema.a",
@@ -737,19 +876,29 @@ suite("@dataform/core", () => {
           );
 
           expect(
-            graph.tables.find(table => table.name === `schema${suffix}.${prefix}b`).dependencies
+            graph.tables
+              .find(table => targetAsReadableString(table.target) === `schema${suffix}.${prefix}b`)
+              .dependencyTargets.map(dependency => targetAsReadableString(dependency))
           ).eql([`schema${suffix}.${prefix}a`]);
           expect(
-            graph.tables.find(table => table.name === `schema${suffix}.${prefix}d`).dependencies
+            graph.tables
+              .find(table => targetAsReadableString(table.target) === `schema${suffix}.${prefix}d`)
+              .dependencyTargets.map(dependency => targetAsReadableString(dependency))
           ).eql([`schema${suffix}.${prefix}a`]);
           expect(
-            graph.tables.find(table => table.name === `schema${suffix}.${prefix}g`).dependencies
+            graph.tables
+              .find(table => targetAsReadableString(table.target) === `schema${suffix}.${prefix}g`)
+              .dependencyTargets.map(dependency => targetAsReadableString(dependency))
           ).eql([`schema${suffix}.${prefix}a`]);
           expect(
-            graph.tables.find(table => table.name === `schema${suffix}.${prefix}h`).dependencies
+            graph.tables
+              .find(table => targetAsReadableString(table.target) === `schema${suffix}.${prefix}h`)
+              .dependencyTargets.map(dependency => targetAsReadableString(dependency))
           ).eql([`schema${suffix}.${prefix}a`]);
           expect(
-            graph.tables.find(table => table.name === `schema${suffix}.${prefix}f`).dependencies
+            graph.tables
+              .find(table => targetAsReadableString(table.target) === `schema${suffix}.${prefix}f`)
+              .dependencyTargets.map(dependency => targetAsReadableString(dependency))
           ).eql([`foo${suffix}.${prefix}e`]);
 
           const errors = graph.graphErrors.compilationErrors.map(item => item.message);
@@ -758,6 +907,74 @@ suite("@dataform/core", () => {
         });
       }
     );
+
+    [
+      {testConfig: TestConfigs.redshift, target: 'schema'},
+      {testConfig: TestConfigs.redshiftWithSuffix, target: 'schema_suffix'},
+    ].forEach(({testConfig, target}) => {
+      test(`schema/suffix: "${target}"`, () => {
+        const session = new Session(path.dirname(__filename), testConfig);
+        session.publish("test", {type: "table"})
+          .query(ctx => ctx.schema());
+
+        const graph = session.compile();
+
+        const testTable = graph.tables
+          .find(table => targetAsReadableString(table.target) === `${target}.test`);
+
+        expect(testTable.query).deep.equals(target)
+      });
+    });
+
+    [
+      {testConfig: TestConfigs.redshift, target: 'schema.test', name: 'test'},
+      {testConfig: TestConfigs.redshiftWithPrefix, target: 'schema.prefix_test', name: 'prefix_test'},
+    ].forEach(({testConfig, target, name}) => {
+      test(`name/prefix: "${target}"`, () => {
+        const session = new Session(path.dirname(__filename), testConfig);
+        session.publish("test", {type: "table"})
+          .query(ctx => ctx.name());
+
+        const graph = session.compile();
+
+        const testTable = graph.tables
+          .find(table => targetAsReadableString(table.target) === target);
+
+        expect(testTable.query).deep.equals(name)
+      });
+    });
+
+    [
+      {testConfig: TestConfigs.bigqueryWithDatabase, target: 'test-db.schema.test', database: 'test-db'},
+      {testConfig: TestConfigs.bigqueryWithDatabaseAndSuffix, target: 'test-db_suffix.schema.test', database: 'test-db_suffix'},
+    ].forEach(({testConfig, target, database}) => {
+      test(`database/suffix: "${target}"`, () => {
+        const session = new Session(path.dirname(__filename), testConfig);
+        session.publish("test", {type: "table"})
+          .query(ctx => ctx.database());
+
+        const graph = session.compile();
+
+        const testTable = graph.tables
+          .find(table => targetAsReadableString(table.target) === target);
+
+        expect(testTable.query).deep.equals(database)
+      });
+    });
+
+    test(`database fails when undefined`, () => {
+      const session = new Session(path.dirname(__filename), TestConfigs.redshift);
+      session.publish("test", {type: "table"}).query(ctx => ctx.database());
+
+      const graph = session.compile();
+
+      const testTable = graph.tables
+        .find(table => targetAsReadableString(table.target) === 'schema.test');
+
+      expect(graph.graphErrors.compilationErrors[0].message).deep
+        .equals("Warehouse does not support multiple databases");
+      expect(testTable.query).deep.equals("");
+    });
   });
 
   suite("resolve", () => {
@@ -765,6 +982,7 @@ suite("@dataform/core", () => {
       testConfig => {
         test(`resolve with prefix "${testConfig.tablePrefix}" and suffix "${testConfig.schemaSuffix}"`, () => {
           const session = new Session(path.dirname(__filename), testConfig);
+          session.compile();
           const suffix = testConfig.schemaSuffix ? `_${testConfig.schemaSuffix}` : "";
           const prefix = testConfig.tablePrefix ? `${testConfig.tablePrefix}_` : "";
 
@@ -789,13 +1007,71 @@ suite("@dataform/core", () => {
         .to.be.an("array")
         .to.have.lengthOf(2);
 
-      expect(graph.operations[0].name).equals("schema.operate-1");
-      expect(graph.operations[0].dependencies).deep.equals([]);
+      expect(targetAsReadableString(graph.operations[0].target)).equals("schema.operate-1");
+      expect(
+        graph.operations[0].dependencyTargets.map(dependency => targetAsReadableString(dependency))
+      ).deep.equals([]);
       expect(graph.operations[0].queries).deep.equals(["select 1 as sample"]);
 
-      expect(graph.operations[1].name).equals("schema.operate-2");
-      expect(graph.operations[1].dependencies).deep.equals(["schema.operate-1"]);
+      expect(targetAsReadableString(graph.operations[1].target)).equals("schema.operate-2");
+      expect(
+        graph.operations[1].dependencyTargets.map(dependency => targetAsReadableString(dependency))
+      ).deep.equals(["schema.operate-1"]);
       expect(graph.operations[1].queries).deep.equals(['select * from "schema"."operate-1"']);
+    });
+
+    [
+      {testConfig: TestConfigs.redshift, finalizedSchema: 'schema'},
+      {testConfig: TestConfigs.redshiftWithSuffix, finalizedSchema: 'schema_suffix'},
+    ].forEach(({testConfig, finalizedSchema}) => {
+      test(`schema with suffix: "${finalizedSchema}"`, () => {
+        const session = new Session(path.dirname(__filename), testConfig);
+        session.operate("operate-1", ctx => ctx.schema()).hasOutput(true);
+
+        const graph = session.compile();
+
+        expect(graph.operations[0].queries).deep.equals([finalizedSchema]);
+      });
+    });
+
+    [
+      {testConfig: TestConfigs.redshift, finalizedName: 'operate-1'},
+      {testConfig: TestConfigs.redshiftWithPrefix, finalizedName: 'prefix_operate-1'},
+    ].forEach(({testConfig, finalizedName}) => {
+      test(`name with prefix: "${finalizedName}"`, () => {
+        const session = new Session(path.dirname(__filename), testConfig);
+        session.operate("operate-1", ctx => ctx.name()).hasOutput(true);
+
+        const graph = session.compile();
+
+        expect(graph.operations[0].queries).deep.equals([finalizedName]);
+      });
+    });
+
+    [
+      {testConfig: TestConfigs.bigqueryWithDatabase, finalizedDatabase: 'test-db'},
+      {testConfig: TestConfigs.bigqueryWithDatabaseAndSuffix, finalizedDatabase: 'test-db_suffix'},
+    ].forEach(({testConfig, finalizedDatabase}) => {
+      test(`database with suffix: "${finalizedDatabase}"`, () => {
+        const session = new Session(path.dirname(__filename), testConfig);
+        session.operate("operate-1", ctx => ctx.database()).hasOutput(true);
+
+        const graph = session.compile();
+
+        expect(graph.operations[0].queries).deep.equals([finalizedDatabase]);
+      });
+    });
+
+    test(`database fails when undefined`, () => {
+      const session = new Session(path.dirname(__filename), TestConfigs.redshift);
+
+      session.operate("operate-1", ctx => ctx.database()).hasOutput(true);
+
+      const graph = session.compile();
+
+      expect(graph.graphErrors.compilationErrors[0].message).deep
+        .equals("Warehouse does not support multiple databases");
+      expect(JSON.stringify(graph.operations[0].queries)).deep.equals('[""]');
     });
   });
 
@@ -833,14 +1109,39 @@ suite("@dataform/core", () => {
         cGraph.graphErrors.compilationErrors.filter(item =>
           item.message.match(/Duplicate action name/)
         ).length
-      ).greaterThan(0);
+      ).equals(2);
+    });
+
+    test("duplicate actions in compiled graph", () => {
+      const session = new Session(path.dirname(__filename), TestConfigs.redshift);
+      session.publish("a")
+      session.publish("a");
+      session.publish("b"); // unique action
+      session.publish("c")
+
+      session.operate("a")
+      session.operate("d") // unique action
+      session.operate("e") // unique action
+
+      session.declare({name: "a"})
+      session.declare({name: "f"}) // unique action
+      session.declare({name: "g"})
+
+      session.assert("c")
+      session.assert("g")
+
+      const cGraph = session.compile();
+
+      expect(
+        [].concat(cGraph.tables, cGraph.assertions, cGraph.operations, cGraph.declarations).length
+      ).equals(4)
     });
 
     test("same action names in different schemas (ambiguity)", () => {
       const session = new Session(path.dirname(__filename), TestConfigs.redshift);
-      session.publish("a", { schema: "foo" });
-      session.publish("a", { schema: "bar" });
-      session.publish("b", { schema: "foo" }).dependencies("a");
+      session.publish("a", {schema: "foo"});
+      session.publish("a", {schema: "bar"});
+      session.publish("b", {schema: "foo"}).dependencies("a");
       const cGraph = session.compile();
       expect(
         cGraph.graphErrors.compilationErrors.filter(item =>
@@ -853,22 +1154,22 @@ suite("@dataform/core", () => {
 
     test("same action name in same schema", () => {
       const session = new Session(path.dirname(__filename), TestConfigs.redshift);
-      session.publish("a", { schema: "schema2" }).dependencies("b");
-      session.publish("a", { schema: "schema2" });
+      session.publish("a", {schema: "schema2"}).dependencies("b");
+      session.publish("a", {schema: "schema2"});
       session.publish("b");
       const cGraph = session.compile();
       expect(
         cGraph.graphErrors.compilationErrors.filter(item =>
           item.message.match(/Duplicate action name detected. Names within a schema must be unique/)
         ).length
-      ).greaterThan(0);
+      ).equals(2);
     });
 
     test("same action names in different schemas", () => {
       const session = new Session(path.dirname(__filename), TestConfigs.redshift);
       session.publish("b");
-      session.publish("a", { schema: "schema1" }).dependencies("b");
-      session.publish("a", { schema: "schema2" });
+      session.publish("a", {schema: "schema1"}).dependencies("b");
+      session.publish("a", {schema: "schema2"});
       const cGraph = session.compile();
       expect(cGraph.graphErrors.compilationErrors).deep.equals([]);
     });
@@ -884,6 +1185,46 @@ suite("@dataform/core", () => {
         "Semi-colons are not allowed at the end of SQL statements.",
         "Semi-colons are not allowed at the end of SQL statements."
       ]);
+    });
+
+    test("defaultLocation must be set in BigQuery", () => {
+      const session = new Session(path.dirname(__filename), {
+        warehouse: "bigquery",
+        defaultSchema: "schema",
+      });
+      const graph = session.compile();
+      expect(graph.graphErrors.compilationErrors.map(error => error.message)).deep.equals([
+        "A defaultLocation is required for BigQuery. This can be configured in dataform.json.",
+      ]);
+    });
+
+    test("variables defined in dataform.json must be strings", () => {
+      const sessionFail = new Session(path.dirname(__filename), {
+        warehouse: "bigquery",
+        defaultSchema: "schema",
+        defaultLocation: "location",
+        vars: {
+          int_var: 1,
+          str_var: "str"
+        }
+      } as any);
+      
+      expect(() => { 
+        sessionFail.compile();
+      }).to.throw("Custom variables defined in dataform.json can only be strings.");
+
+      const sessionSuccess = new Session(path.dirname(__filename), {
+        warehouse: "bigquery",
+        defaultSchema: "schema",
+        defaultLocation: "location",
+        vars: {
+          str_var1: "str1",
+          str_var2: "str2"
+        }
+      } as any);
+
+      const graph = sessionSuccess.compile();
+      expect(graph.graphErrors.compilationErrors).to.eql([]);
     });
   });
 
@@ -902,8 +1243,8 @@ suite("@dataform/core", () => {
         -- --js var x = 1200;
         --js var b = 2;
         -- normal_single_line_comment
-        
-        -- /*js 
+
+        -- /*js
         -- var y = 234; // some js comment
         -- */
 
@@ -917,14 +1258,14 @@ suite("@dataform/core", () => {
         -- --js var x = 1200;
 
         -- normal_single_line_comment
-        
-        -- /*js 
+
+        -- /*js
         -- var y = 234; // some js comment
         -- */
 
         select 1 as test from \\\`x\\\``.trim();
 
-      const { sql, js } = compilers.extractJsBlocks(TEST_SQL_FILE);
+      const {sql, js} = compilers.extractJsBlocks(TEST_SQL_FILE);
       expect(sql).equals(EXPECTED_SQL);
       expect(js).equals(EXPECTED_JS);
     });
@@ -978,11 +1319,19 @@ pre_operations {
         compilers.compile(
           `
 select
+  """
+  triple
+  quotes
+  """,
   "asd\\"123'def",
   'asd\\'123"def',
 
 post_operations {
   select
+    """
+    triple
+    quotes
+    """,
     "asd\\"123'def",
     'asd\\'123"def',
 }
@@ -1002,6 +1351,65 @@ select '\${\`bar\`}'
       ).eql(
         await fs.readFile("tests/core/js-placeholder-strings-inside-sql-strings.js.test", "utf8")
       );
+    });
+  });
+
+  suite("assert", () => {
+    [
+      {testConfig: TestConfigs.redshift, assertion: 'schema'},
+      {testConfig: TestConfigs.redshiftWithSuffix, assertion: 'schema_suffix'},
+    ].forEach(({testConfig, assertion}) => {
+      test(`schema: ${assertion}`, () => {
+        const session = new Session(path.dirname(__filename), testConfig);
+
+        session.assert("schema-assertion", ctx => ctx.schema());
+
+        const graph = session.compile();
+
+        expect(JSON.stringify(graph.assertions[0].query)).to.deep.equal(`"${assertion}"`);
+      });
+    });
+
+    [
+      {testConfig: TestConfigs.redshift, finalizedName: 'name'},
+      {testConfig: TestConfigs.redshiftWithPrefix, finalizedName: 'prefix_name'},
+    ].forEach(({testConfig, finalizedName}) => {
+      test(`name: ${finalizedName}`, () => {
+        const session = new Session(path.dirname(__filename), testConfig);
+
+        session.assert("name", ctx => ctx.name());
+
+        const graph = session.compile();
+
+        expect(JSON.stringify(graph.assertions[0].query)).to.deep.equal(`"${finalizedName}"`);
+      });
+    });
+
+    [
+      {testConfig: TestConfigs.bigqueryWithDatabase, finalizedDatabase: 'test-db'},
+      {testConfig: TestConfigs.bigqueryWithDatabaseAndSuffix, finalizedDatabase: 'test-db_suffix'},
+    ].forEach(({testConfig, finalizedDatabase}) => {
+      test(`database: ${finalizedDatabase}`, () => {
+        const session = new Session(path.dirname(__filename), {...testConfig, defaultDatabase: 'test-db'});
+
+        session.assert("database", ctx => ctx.database());
+
+        const graph = session.compile();
+
+        expect(JSON.stringify(graph.assertions[0].query)).to.deep.equal(`"${finalizedDatabase}"`);
+      });
+    });
+
+    test(`database fails when undefined`, () => {
+      const session = new Session(path.dirname(__filename), TestConfigs.redshift);
+
+      session.assert("database", ctx => ctx.database());
+
+      const graph = session.compile();
+
+      expect(graph.graphErrors.compilationErrors[0].message).deep
+        .equals("Warehouse does not support multiple databases");
+      expect(JSON.stringify(graph.assertions[0].query)).to.deep.equal('""');
     });
   });
 });

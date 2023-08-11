@@ -17,6 +17,7 @@ import {
   resolvableAsTarget,
   setNameAndTarget,
   strictKeysOf,
+  tableTypeStringToEnum,
   toResolvable,
   validateQueryString
 } from "df/core/utils";
@@ -168,10 +169,45 @@ export interface IBigQueryOptions {
    * If the label name contains special characters, e.g. hyphens, then quote its name, e.g. labels: { "label-name": "value" }.
    */
   labels?: { [name: string]: string };
+
+  /**
+   * This setting specifies how long BigQuery keeps the data in each partition. The setting applies to all partitions in the table,
+   * but is calculated independently for each partition based on the partition time.
+   *
+   * For more information, see our [docs](https://cloud.google.com/bigquery/docs/managing-partitioned-tables#partition-expiration).
+   */
+  partitionExpirationDays?: number;
+
+  /**
+   * When you create a partitioned table, you can require that all queries on the table must include a predicate filter (
+   * a WHERE clause) that filters on the partitioning column.
+   * This setting can improve performance and reduce costs,
+   * because BigQuery can use the filter to prune partitions that don't match the predicate.
+   *
+   * For more information, see our [docs](https://cloud.google.com/bigquery/docs/managing-partitioned-tables#require-filter).
+   */
+  requirePartitionFilter?: boolean;
+
+  /**
+   * Key-value pairs for options [table](https://cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#table_option_list), [view](https://cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#view_option_list), [materialized view](https://cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#materialized_view_option_list).
+   *
+   * Some options (e.g. `partitionExpirationDays`) have dedicated type/validity checked fields; prefer using those.
+   * String values need double-quotes, e.g. additionalOptions: {numeric_option: "5", string_option: '"string-value"'}
+   * If the option name contains special characters, e.g. hyphens, then quote its name, e.g. additionalOptions: { "option-name": "value" }.
+   */
+  additionalOptions?: { [name: string]: string };
 }
 
 const IBigQueryOptionsProperties = () =>
-  strictKeysOf<IBigQueryOptions>()(["partitionBy", "clusterBy", "updatePartitionFilter", "labels"]);
+  strictKeysOf<IBigQueryOptions>()([
+    "partitionBy",
+    "clusterBy",
+    "updatePartitionFilter",
+    "labels",
+    "partitionExpirationDays",
+    "requirePartitionFilter",
+    "additionalOptions"
+  ]);
 
 /**
  * Options for creating tables within Presto projects.
@@ -285,6 +321,17 @@ export interface ITableConfig
    * If configured, records with matching unique key(s) will be updated, rather than new rows being inserted.
    */
   uniqueKey?: string[];
+
+  /**
+   * Only valid when the table type is `view`.
+   * Only valid when using Snowflake or BigQuery.
+   *
+   * If set to true, will make the view materialized.
+   *
+   * For more information, read the [BigQuery materialized view docs](https://cloud.google.com/bigquery/docs/materialized-views-intro)
+   *  or the [Snowflake materialized view docs](https://docs.snowflake.com/en/user-guide/views-materialized.html).
+   */
+  materialized?: boolean;
 }
 
 // TODO: This needs to be a method, I'm really not sure why, but it hits a runtime failure otherwise.
@@ -307,7 +354,8 @@ export const ITableConfigProperties = () =>
     "assertions",
     "database",
     "columns",
-    "description"
+    "description",
+    "materialized"
   ]);
 
 /**
@@ -331,10 +379,8 @@ export interface ITableContext extends ICommonContext {
  * @hidden
  */
 export class Table {
-  public static readonly IGNORED_PROPS: {
-    [tableType: string]: Array<keyof dataform.ITable>;
-  } = {
-    inline: [
+  public static readonly INLINE_IGNORED_PROPS: Array<keyof dataform.ITable> = 
+    [
       "bigquery",
       "redshift",
       "snowflake",
@@ -345,11 +391,11 @@ export class Table {
       "actionDescriptor",
       "disabled",
       "where"
-    ]
-  };
+    ];
 
   public proto: dataform.ITable = dataform.Table.create({
     type: "view",
+    enumType: dataform.TableType.VIEW,
     disabled: false,
     tags: []
   });
@@ -424,12 +470,16 @@ export class Table {
     if (config.uniqueKey) {
       this.uniqueKey(config.uniqueKey);
     }
+    if (config.materialized) {
+      this.materialized(config.materialized);
+    }
 
     return this;
   }
 
   public type(type: TableType) {
-    this.proto.type = type as string;
+    this.proto.type = type;
+    this.proto.enumType = tableTypeStringToEnum(type, false);
     return this;
   }
 
@@ -467,6 +517,10 @@ export class Table {
 
   public uniqueKey(uniqueKey: string[]) {
     this.proto.uniqueKey = uniqueKey;
+  }
+
+  public materialized(materialized: boolean) {
+    this.proto.materialized = materialized;
   }
 
   public snowflake(snowflake: dataform.ISnowflakeOptions) {
@@ -550,6 +604,8 @@ export class Table {
     newTags.forEach(t => {
       this.proto.tags.push(t);
     });
+    this.uniqueKeyAssertions.forEach(assertion => assertion.tags(value));
+    this.rowConditionsAssertion?.tags(value);
     return this;
   }
 
@@ -619,6 +675,9 @@ export class Table {
           `${this.proto.target.schema}_${this.proto.target.name}_assertions_uniqueKey_${index}`,
           ctx => this.session.adapter().indexAssertion(ctx.ref(this.proto.target), uniqueKey)
         );
+        if (this.proto.tags) {
+          uniqueKeyAssertion.tags(this.proto.tags);
+        }
         uniqueKeyAssertion.proto.parentAction = this.proto.target;
         if (this.proto.disabled) {
           uniqueKeyAssertion.disabled();
@@ -644,6 +703,9 @@ export class Table {
       if (this.proto.disabled) {
         this.rowConditionsAssertion.disabled();
       }
+      if (this.proto.tags) {
+        this.rowConditionsAssertion.tags(this.proto.tags);
+      }
     }
     return this;
   }
@@ -654,7 +716,7 @@ export class Table {
 
     this.proto.query = context.apply(this.contextableQuery);
 
-    if (this.proto.type === "incremental") {
+    if (this.proto.enumType === dataform.TableType.INCREMENTAL) {
       this.proto.incrementalQuery = incrementalContext.apply(this.contextableQuery);
 
       this.proto.incrementalPreOps = this.contextifyOps(this.contextablePreOps, incrementalContext);
@@ -710,14 +772,15 @@ export class TableContext implements ITableContext {
   }
 
   public name(): string {
-    return this.table.proto.target.name;
+    return this.table.session.finalizeName(
+      this.table.proto.target.name
+    );
   }
 
   public ref(ref: Resolvable | string[], ...rest: string[]): string {
     ref = toResolvable(ref, rest);
     if (!resolvableAsTarget(ref)) {
-      const message = `Action name is not specified`;
-      this.table.session.compileError(new Error(message));
+      this.table.session.compileError(new Error(`Action name is not specified`));
       return "";
     }
     this.table.dependencies(ref);
@@ -725,7 +788,24 @@ export class TableContext implements ITableContext {
   }
 
   public resolve(ref: Resolvable | string[], ...rest: string[]) {
-    return this.table.session.resolve(toResolvable(ref, rest));
+    return this.table.session.resolve(ref, ...rest);
+  }
+
+  public schema(): string {
+    return this.table.session.finalizeSchema(
+      this.table.proto.target.schema
+    );
+  }
+
+  public database(): string {
+    if (!this.table.proto.target.database) {
+      this.table.session.compileError(new Error(`Warehouse does not support multiple databases`));
+      return "";
+    }
+
+    return this.table.session.finalizeDatabase(
+      this.table.proto.target.database
+    );
   }
 
   public type(type: TableType) {

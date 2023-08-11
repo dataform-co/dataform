@@ -2,12 +2,11 @@ import { assert, config, expect } from "chai";
 import Long from "long";
 import { anyString, anything, instance, mock, verify, when } from "ts-mockito";
 
-import { Builder, credentials, prune, query, Runner } from "df/api";
-import { computeAllTransitiveInputs } from "df/api/commands/build";
+import { Builder, credentials, prune, Runner } from "df/api";
 import { IDbAdapter } from "df/api/dbadapters";
 import { BigQueryDbAdapter } from "df/api/dbadapters/bigquery";
-import { parseSnowflakeEvalError } from "df/api/utils/error_parsing";
 import { sleep, sleepUntil } from "df/common/promises";
+import { targetAsReadableString, targetsAreEqual } from "df/core/targets";
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
 import { asPlainObject, cleanSql } from "df/tests/utils";
@@ -23,28 +22,25 @@ suite("@dataform/api", () => {
     projectConfig: { warehouse: "redshift" },
     tables: [
       {
-        name: "schema.a",
         type: "table",
         target: {
           schema: "schema",
           name: "a"
         },
         query: "query",
-        dependencies: ["schema.b"]
+        dependencyTargets: [{ schema: "schema", name: "b" }]
       },
       {
-        name: "schema.b",
         type: "table",
         target: {
           schema: "schema",
           name: "b"
         },
         query: "query",
-        dependencies: ["schema.c"],
+        dependencyTargets: [{ schema: "schema", name: "c" }],
         disabled: true
       },
       {
-        name: "schema.c",
         type: "table",
         target: {
           schema: "schema",
@@ -55,7 +51,6 @@ suite("@dataform/api", () => {
     ],
     assertions: [
       {
-        name: "schema.d",
         target: {
           schema: "schema",
           name: "d"
@@ -72,17 +67,18 @@ suite("@dataform/api", () => {
 
   suite("build", () => {
     test("exclude_disabled", () => {
-      const builder = new Builder(
-        TEST_GRAPH,
-        { includeDependencies: true },
-        TEST_STATE,
-        computeAllTransitiveInputs(TEST_GRAPH)
-      );
+      const builder = new Builder(TEST_GRAPH, { includeDependencies: true }, TEST_STATE);
       const executionGraph = builder.build();
 
-      const actionA = executionGraph.actions.find(n => n.name === "schema.a");
-      const actionB = executionGraph.actions.find(n => n.name === "schema.b");
-      const actionC = executionGraph.actions.find(n => n.name === "schema.c");
+      const actionA = executionGraph.actions.find(
+        n => targetAsReadableString(n.target) === "schema.a"
+      );
+      const actionB = executionGraph.actions.find(
+        n => targetAsReadableString(n.target) === "schema.b"
+      );
+      const actionC = executionGraph.actions.find(
+        n => targetAsReadableString(n.target) === "schema.c"
+      );
 
       assert.exists(actionA);
       assert.exists(actionB);
@@ -98,15 +94,10 @@ suite("@dataform/api", () => {
         const graphWithErrors: dataform.ICompiledGraph = dataform.CompiledGraph.create({
           projectConfig: { warehouse: "redshift" },
           graphErrors: { compilationErrors: [{ message: "Some critical error" }] },
-          tables: [{ name: "a", target: { schema: "schema", name: "a" } }]
+          tables: [{ target: { schema: "schema", name: "a" } }]
         });
 
-        const builder = new Builder(
-          graphWithErrors,
-          {},
-          TEST_STATE,
-          computeAllTransitiveInputs(graphWithErrors)
-        );
+        const builder = new Builder(graphWithErrors, {}, TEST_STATE);
         builder.build();
       }).to.throw();
     });
@@ -114,12 +105,7 @@ suite("@dataform/api", () => {
     test("trying to fully refresh a protected dataset fails", () => {
       const testGraph = dataform.CompiledGraph.create(TEST_GRAPH);
       testGraph.tables[0].protected = true;
-      const builder = new Builder(
-        TEST_GRAPH,
-        { fullRefresh: true },
-        TEST_STATE,
-        computeAllTransitiveInputs(TEST_GRAPH)
-      );
+      const builder = new Builder(TEST_GRAPH, { fullRefresh: true }, TEST_STATE);
       expect(() => builder.build()).to.throw();
     });
 
@@ -127,44 +113,86 @@ suite("@dataform/api", () => {
       const graph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
         projectConfig: { warehouse: "redshift" },
         tables: [
-          { name: "a", target: { schema: "schema", name: "a" }, type: "table" },
+          { target: { schema: "schema", name: "a" }, type: "table" },
           {
-            name: "b",
             target: { schema: "schema", name: "b" },
             type: "incremental",
             where: "test"
           },
-          { name: "c", target: { schema: "schema", name: "c" }, type: "view" }
+          { target: { schema: "schema", name: "c" }, type: "view" }
         ],
         operations: [
           {
-            name: "d",
             target: { schema: "schema", name: "d" },
             queries: ["create or replace view schema.someview as select 1 as test"]
           }
         ],
-        assertions: [{ name: "e", target: { schema: "schema", name: "d" } }]
+        assertions: [{ target: { schema: "schema", name: "e" } }]
       });
 
-      const builder = new Builder(graph, {}, TEST_STATE, computeAllTransitiveInputs(graph));
+      const builder = new Builder(graph, {}, TEST_STATE);
       const executedGraph = builder.build();
 
       expect(executedGraph.actions.length).greaterThan(0);
 
       graph.tables.forEach((t: dataform.ITable) => {
-        const action = executedGraph.actions.find(item => item.name === t.name);
+        const action = executedGraph.actions.find(item => targetsAreEqual(item.target, t.target));
         expect(action).to.include({ type: "table", target: t.target, tableType: t.type });
       });
 
       graph.operations.forEach((o: dataform.IOperation) => {
-        const action = executedGraph.actions.find(item => item.name === o.name);
+        const action = executedGraph.actions.find(item => targetsAreEqual(item.target, o.target));
         expect(action).to.include({ type: "operation", target: o.target });
       });
 
       graph.assertions.forEach((a: dataform.IAssertion) => {
-        const action = executedGraph.actions.find(item => item.name === a.name);
+        const action = executedGraph.actions.find(item => targetsAreEqual(item.target, a.target));
         expect(action).to.include({ type: "assertion" });
       });
+    });
+
+    test("table_enum_types", () => {
+      const graph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
+        projectConfig: { warehouse: "bigquery" },
+        tables: [
+          { target: { schema: "schema", name: "a" }, enumType: dataform.TableType.TABLE },
+          {
+            target: { schema: "schema", name: "b" },
+            enumType: dataform.TableType.INCREMENTAL,
+            where: "test"
+          },
+          { target: { schema: "schema", name: "c" }, enumType: dataform.TableType.VIEW }
+        ]
+      });
+
+      const builder = new Builder(graph, {}, TEST_STATE);
+      const executedGraph = builder.build();
+
+      expect(executedGraph.actions.length).greaterThan(0);
+
+      graph.tables.forEach((t: dataform.ITable) => {
+        const action = executedGraph.actions.find(item => targetsAreEqual(item.target, t.target));
+        expect(action).to.include({
+          type: "table",
+          target: t.target,
+          tableType: dataform.TableType[t.enumType].toLowerCase(),
+        });
+      });
+    });
+
+    test("table_enum_and_str_types_should_match", () => {
+      const graph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
+        projectConfig: { warehouse: "bigquery" },
+        tables: [{
+          target: { schema: "schema", name: "a" },
+          enumType: dataform.TableType.TABLE,
+          type: "incremental",
+        }]
+      });
+
+      expect(() => new Builder(graph, {}, TEST_STATE)).to.throw(
+        /Table str type "incremental" and enumType "table" are not equivalent/
+      );
     });
 
     suite("pre and post ops", () => {
@@ -179,7 +207,6 @@ suite("@dataform/api", () => {
           projectConfig: { warehouse: "redshift" },
           tables: [
             {
-              name: "a",
               target: { schema: "schema", name: "a" },
               type: "incremental",
               query: "foo",
@@ -194,12 +221,7 @@ suite("@dataform/api", () => {
         });
 
         test(`${warehouse} when running non incrementally`, () => {
-          const action = new Builder(
-            graph,
-            {},
-            TEST_STATE,
-            computeAllTransitiveInputs(graph)
-          ).build().actions[0];
+          const action = new Builder(graph, {}, TEST_STATE).build().actions[0];
           expect(action.tasks[0]).eql(
             dataform.ExecutionTask.create({
               type: "statement",
@@ -220,8 +242,7 @@ suite("@dataform/api", () => {
             {},
             dataform.WarehouseState.create({
               tables: [{ target: graph.tables[0].target, fields: [] }]
-            }),
-            computeAllTransitiveInputs(graph)
+            })
           ).build().actions[0];
           expect(action.tasks[0]).eql(
             dataform.ExecutionTask.create({
@@ -247,39 +268,35 @@ suite("@dataform/api", () => {
     //
     // op_d +---> tab_a
     const TEST_GRAPH_WITH_TAGS: dataform.ICompiledGraph = dataform.CompiledGraph.create({
-      projectConfig: { warehouse: "bigquery" },
+      projectConfig: { warehouse: "bigquery", defaultLocation: "US" },
       operations: [
         {
-          name: "op_a",
+          target: { schema: "schema", name: "op_a" },
           tags: ["tag1"],
           queries: ["create or replace view schema.someview as select 1 as test"]
         },
         {
-          name: "op_b",
-          dependencies: ["op_a"],
+          target: { schema: "schema", name: "op_b" },
+          dependencyTargets: [{ schema: "schema", name: "op_a" }],
           tags: ["tag2"],
           queries: ["create or replace view schema.someview as select 1 as test"]
         },
         {
-          name: "op_c",
-          dependencies: ["op_a"],
+          target: { schema: "schema", name: "op_c" },
+          dependencyTargets: [{ schema: "schema", name: "op_a" }],
           tags: ["tag3"],
           queries: ["create or replace view schema.someview as select 1 as test"]
         },
         {
-          name: "op_d",
+          target: { schema: "schema", name: "op_d" },
           tags: ["tag3"],
           queries: ["create or replace view schema.someview as select 1 as test"]
         }
       ],
       tables: [
         {
-          name: "tab_a",
-          dependencies: ["op_d"],
-          target: {
-            schema: "schema",
-            name: "a"
-          },
+          target: { schema: "schema", name: "tab_a" },
+          dependencyTargets: [{ schema: "schema", name: "op_d" }],
           tags: ["tag1", "tag2"]
         }
       ]
@@ -287,16 +304,19 @@ suite("@dataform/api", () => {
 
     test("prune removes inline tables", async () => {
       const graph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
-        projectConfig: { warehouse: "bigquery" },
+        projectConfig: { warehouse: "bigquery", defaultLocation: "US" },
         tables: [
-          { name: "a", target: { schema: "schema", name: "a" }, type: "table", dependencies: [] },
+          { target: { schema: "schema", name: "a" }, type: "table" },
           {
-            name: "b",
             target: { schema: "schema", name: "b" },
             type: "inline",
-            dependencies: ["a"]
+            dependencyTargets: [{ schema: "schema", name: "a" }]
           },
-          { name: "c", target: { schema: "schema", name: "c" }, type: "table", dependencies: ["a"] }
+          {
+            target: { schema: "schema", name: "c" },
+            type: "table",
+            dependencyTargets: [{ schema: "schema", name: "a" }]
+          }
         ]
       });
 
@@ -304,11 +324,11 @@ suite("@dataform/api", () => {
 
       expect(prunedGraph.tables.length).greaterThan(0);
 
-      const actionNames = prunedGraph.tables.map(action => action.name);
+      const actionNames = prunedGraph.tables.map(action => targetAsReadableString(action.target));
 
-      expect(actionNames).includes("a");
-      expect(actionNames).not.includes("b");
-      expect(actionNames).includes("c");
+      expect(actionNames).includes("schema.a");
+      expect(actionNames).not.includes("schema.b");
+      expect(actionNames).includes("schema.c");
     });
 
     test("prune actions with --tags (with dependencies)", () => {
@@ -318,14 +338,14 @@ suite("@dataform/api", () => {
         includeDependencies: true
       });
       const actionNames = [
-        ...prunedGraph.tables.map(action => action.name),
-        ...prunedGraph.operations.map(action => action.name)
+        ...prunedGraph.tables.map(action => targetAsReadableString(action.target)),
+        ...prunedGraph.operations.map(action => targetAsReadableString(action.target))
       ];
-      expect(actionNames).includes("op_a");
-      expect(actionNames).includes("op_b");
-      expect(actionNames).not.includes("op_c");
-      expect(actionNames).includes("op_d");
-      expect(actionNames).includes("tab_a");
+      expect(actionNames).includes("schema.op_a");
+      expect(actionNames).includes("schema.op_b");
+      expect(actionNames).not.includes("schema.op_c");
+      expect(actionNames).includes("schema.op_d");
+      expect(actionNames).includes("schema.tab_a");
     });
 
     test("prune actions with --tags (with dependents)", () => {
@@ -334,14 +354,14 @@ suite("@dataform/api", () => {
         includeDependents: true
       });
       const actionNames = [
-        ...prunedGraph.tables.map(action => action.name),
-        ...prunedGraph.operations.map(action => action.name)
+        ...prunedGraph.tables.map(action => targetAsReadableString(action.target)),
+        ...prunedGraph.operations.map(action => targetAsReadableString(action.target))
       ];
-      expect(actionNames).not.includes("op_a");
-      expect(actionNames).includes("op_b");
-      expect(actionNames).not.includes("op_c");
-      expect(actionNames).not.includes("op_d");
-      expect(actionNames).includes("tab_a");
+      expect(actionNames).not.includes("schema.op_a");
+      expect(actionNames).includes("schema.op_b");
+      expect(actionNames).not.includes("schema.op_c");
+      expect(actionNames).not.includes("schema.op_d");
+      expect(actionNames).includes("schema.tab_a");
     });
 
     test("prune actions with dependents", () => {
@@ -350,8 +370,8 @@ suite("@dataform/api", () => {
         includeDependents: true
       });
       const actionNames = [
-        ...prunedGraph.tables.map(action => action.name),
-        ...prunedGraph.operations.map(action => action.name)
+        ...prunedGraph.tables.map(action => targetAsReadableString(action.target)),
+        ...prunedGraph.operations.map(action => targetAsReadableString(action.target))
       ];
       expect(actionNames).includes("schema.a");
       expect(actionNames).includes("schema.b");
@@ -365,34 +385,33 @@ suite("@dataform/api", () => {
         includeDependents: false
       });
       const actionNames = [
-        ...prunedGraph.tables.map(action => action.name),
-        ...prunedGraph.operations.map(action => action.name)
+        ...prunedGraph.tables.map(action => targetAsReadableString(action.target)),
+        ...prunedGraph.operations.map(action => targetAsReadableString(action.target))
       ];
-      expect(actionNames).includes("op_a");
-      expect(actionNames).includes("op_b");
-      expect(actionNames).not.includes("op_c");
-      expect(actionNames).not.includes("op_d");
-      expect(actionNames).includes("tab_a");
+      expect(actionNames).includes("schema.op_a");
+      expect(actionNames).includes("schema.op_b");
+      expect(actionNames).not.includes("schema.op_c");
+      expect(actionNames).not.includes("schema.op_d");
+      expect(actionNames).includes("schema.tab_a");
     });
 
     test("prune actions with --actions with dependencies", () => {
       const prunedGraph = prune(TEST_GRAPH, { actions: ["schema.a"], includeDependencies: true });
       const actionNames = [
-        ...prunedGraph.tables.map(action => action.name),
-        ...prunedGraph.operations.map(action => action.name),
-        ...prunedGraph.assertions.map(action => action.name)
+        ...prunedGraph.tables.map(action => targetAsReadableString(action.target)),
+        ...prunedGraph.operations.map(action => targetAsReadableString(action.target)),
+        ...prunedGraph.assertions.map(action => targetAsReadableString(action.target))
       ];
       expect(actionNames).includes("schema.a");
       expect(actionNames).includes("schema.b");
-      expect(actionNames).includes("schema.d");
     });
 
     test("prune actions with --actions without dependencies", () => {
       const prunedGraph = prune(TEST_GRAPH, { actions: ["schema.a"], includeDependencies: false });
       const actionNames = [
-        ...prunedGraph.tables.map(action => action.name),
-        ...prunedGraph.operations.map(action => action.name),
-        ...prunedGraph.assertions.map(action => action.name)
+        ...prunedGraph.tables.map(action => targetAsReadableString(action.target)),
+        ...prunedGraph.operations.map(action => targetAsReadableString(action.target)),
+        ...prunedGraph.assertions.map(action => targetAsReadableString(action.target))
       ];
       expect(actionNames).includes("schema.a");
       expect(actionNames).not.includes("schema.b");
@@ -403,10 +422,9 @@ suite("@dataform/api", () => {
   suite("sql_generating", () => {
     test("bigquery_incremental", () => {
       const graph = dataform.CompiledGraph.create({
-        projectConfig: { warehouse: "bigquery", defaultDatabase: "deeb" },
+        projectConfig: { warehouse: "bigquery", defaultDatabase: "deeb", defaultLocation: "US" },
         tables: [
           {
-            name: "incremental",
             target: {
               schema: "schema",
               name: "incremental"
@@ -433,22 +451,148 @@ suite("@dataform/api", () => {
           }
         ]
       });
-      const executionGraph = new Builder(
-        graph,
-        {},
-        state,
-        computeAllTransitiveInputs(graph)
-      ).build();
+      const executionGraph = new Builder(graph, {}, state).build();
       expect(
-        cleanSql(executionGraph.actions.filter(n => n.name === "incremental")[0].tasks[0].statement)
+        cleanSql(
+          executionGraph.actions.filter(
+            n => targetAsReadableString(n.target) === "schema.incremental"
+          )[0].tasks[0].statement
+        )
       ).equals(
         cleanSql(
-          `insert into \`deeb.schema.incremental\` (existing_field)
-           select existing_field from (
+          `insert into \`deeb.schema.incremental\` (\`existing_field\`)
+           select \`existing_field\` from (
              select * from (select 1 as test) as subquery
              where true
            ) as insertions`
         )
+      );
+    });
+
+    test("bigquery_materialized", () => {
+      const testGraph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
+        projectConfig: { warehouse: "bigquery", defaultDatabase: "deeb", defaultLocation: "US" },
+        tables: [
+          {
+            target: {
+              schema: "schema",
+              name: "materialized"
+            },
+            type: "view",
+            query: "select 1 as test",
+            materialized: true
+          },
+          {
+            target: {
+              schema: "schema",
+              name: "plain"
+            },
+            type: "view",
+            query: "select 1 as test"
+          }
+        ]
+      });
+      const expectedExecutionActions: dataform.IExecutionAction[] = [
+        {
+          type: "table",
+          tableType: "view",
+          target: {
+            schema: "schema",
+            name: "materialized"
+          },
+          tasks: [
+            {
+              type: "statement",
+              statement:
+                "create or replace materialized view `deeb.schema.materialized` as select 1 as test"
+            }
+          ],
+          dependencyTargets: [],
+          hermeticity: dataform.ActionHermeticity.HERMETIC
+        },
+        {
+          type: "table",
+          tableType: "view",
+          target: {
+            schema: "schema",
+            name: "plain"
+          },
+          tasks: [
+            {
+              type: "statement",
+              statement: "create or replace view `deeb.schema.plain` as select 1 as test"
+            }
+          ],
+          dependencyTargets: [],
+          hermeticity: dataform.ActionHermeticity.HERMETIC
+        }
+      ];
+      const executionGraph = new Builder(testGraph, {}, dataform.WarehouseState.create({})).build();
+      expect(asPlainObject(executionGraph.actions)).deep.equals(
+        asPlainObject(expectedExecutionActions)
+      );
+    });
+
+    test("snowflake_materialized", () => {
+      const testGraph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
+        projectConfig: { warehouse: "snowflake" },
+        tables: [
+          {
+            target: {
+              schema: "schema",
+              name: "materialized"
+            },
+            type: "view",
+            query: "select 1 as test",
+            materialized: true
+          },
+          {
+            target: {
+              schema: "schema",
+              name: "plain"
+            },
+            type: "view",
+            query: "select 1 as test"
+          }
+        ]
+      });
+      const expectedExecutionActions: dataform.IExecutionAction[] = [
+        {
+          type: "table",
+          tableType: "view",
+          target: {
+            schema: "schema",
+            name: "materialized"
+          },
+          tasks: [
+            {
+              type: "statement",
+              statement: `create or replace materialized view "schema"."materialized" as select 1 as test`
+            }
+          ],
+          dependencyTargets: [],
+          hermeticity: dataform.ActionHermeticity.HERMETIC
+        },
+        {
+          type: "table",
+          tableType: "view",
+          target: {
+            schema: "schema",
+            name: "plain"
+          },
+          tasks: [
+            {
+              type: "statement",
+              statement: `create or replace view "schema"."plain" as select 1 as test`
+            }
+          ],
+          dependencyTargets: [],
+          hermeticity: dataform.ActionHermeticity.HERMETIC
+        }
+      ];
+      const executionGraph = new Builder(testGraph, {}, dataform.WarehouseState.create({})).build();
+      expect(asPlainObject(executionGraph.actions)).deep.equals(
+        asPlainObject(expectedExecutionActions)
       );
     });
 
@@ -458,7 +602,6 @@ suite("@dataform/api", () => {
         dataformCoreVersion: "1.4.1",
         tables: [
           {
-            name: "redshift_all",
             type: "table",
             target: {
               schema: "schema",
@@ -473,7 +616,6 @@ suite("@dataform/api", () => {
             }
           },
           {
-            name: "redshift_only_sort",
             type: "table",
             target: {
               schema: "schema",
@@ -486,7 +628,6 @@ suite("@dataform/api", () => {
             }
           },
           {
-            name: "redshift_only_dist",
             type: "table",
             target: {
               schema: "schema",
@@ -499,7 +640,6 @@ suite("@dataform/api", () => {
             }
           },
           {
-            name: "redshift_without_redshift",
             type: "table",
             target: {
               schema: "schema",
@@ -508,7 +648,6 @@ suite("@dataform/api", () => {
             query: "query"
           },
           {
-            name: "redshift_view",
             type: "view",
             target: {
               schema: "schema",
@@ -517,7 +656,6 @@ suite("@dataform/api", () => {
             query: "query"
           },
           {
-            name: "redshift_view_with_binding",
             type: "view",
             target: {
               schema: "schema",
@@ -540,7 +678,7 @@ suite("@dataform/api", () => {
         'create or replace view "schema"."redshift_view_with_binding" as query'
       ];
 
-      const builder = new Builder(testGraph, {}, testState, computeAllTransitiveInputs(testGraph));
+      const builder = new Builder(testGraph, {}, testState);
       const executionGraph = builder.build();
 
       expect(executionGraph.actions)
@@ -561,7 +699,6 @@ suite("@dataform/api", () => {
         dataformCoreVersion: "1.11.0",
         tables: [
           {
-            name: "redshift_view_with_binding",
             type: "view",
             target: {
               schema: "schema",
@@ -575,12 +712,7 @@ suite("@dataform/api", () => {
         ]
       });
 
-      const builder = new Builder(
-        testGraph,
-        {},
-        dataform.WarehouseState.create({}),
-        computeAllTransitiveInputs(testGraph)
-      );
+      const builder = new Builder(testGraph, {}, dataform.WarehouseState.create({}));
       const executionGraph = builder.build();
 
       expect(
@@ -597,7 +729,6 @@ suite("@dataform/api", () => {
         dataformCoreVersion: "1.4.1",
         tables: [
           {
-            name: "postgres_view",
             type: "view",
             target: {
               schema: "schema",
@@ -610,7 +741,7 @@ suite("@dataform/api", () => {
       const testState = dataform.WarehouseState.create({});
       const expectedSQL = ['create or replace view "schema"."postgres_view" as query'];
 
-      const builder = new Builder(testGraph, {}, testState, computeAllTransitiveInputs(testGraph));
+      const builder = new Builder(testGraph, {}, testState);
       const executionGraph = builder.build();
 
       expect(executionGraph.actions)
@@ -627,13 +758,12 @@ suite("@dataform/api", () => {
 
     test("bigquery_partitionby", () => {
       const testGraph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
-        projectConfig: { warehouse: "bigquery", defaultDatabase: "deeb" },
+        projectConfig: { warehouse: "bigquery", defaultDatabase: "deeb", defaultLocation: "US" },
         tables: [
           {
-            name: "partitionby",
             target: {
               schema: "schema",
-              name: "name"
+              name: "partitionby"
             },
             type: "table",
             query: "select 1 as test",
@@ -643,10 +773,9 @@ suite("@dataform/api", () => {
             }
           },
           {
-            name: "plain",
             target: {
               schema: "schema",
-              name: "name"
+              name: "plain"
             },
             type: "table",
             query: "select 1 as test"
@@ -655,49 +784,109 @@ suite("@dataform/api", () => {
       });
       const expectedExecutionActions: dataform.IExecutionAction[] = [
         {
-          name: "partitionby",
           type: "table",
           tableType: "table",
           target: {
             schema: "schema",
-            name: "name"
+            name: "partitionby"
           },
           tasks: [
             {
               type: "statement",
               statement:
-                "create or replace table `deeb.schema.name` partition by DATE(test) as select 1 as test"
+                "create or replace table `deeb.schema.partitionby` partition by DATE(test) as select 1 as test"
             }
           ],
-          dependencies: [],
-          transitiveInputs: [],
+          dependencyTargets: [],
           hermeticity: dataform.ActionHermeticity.HERMETIC
         },
         {
-          name: "plain",
           type: "table",
           tableType: "table",
           target: {
             schema: "schema",
-            name: "name"
+            name: "plain"
           },
           tasks: [
             {
               type: "statement",
-              statement: "create or replace table `deeb.schema.name` as select 1 as test"
+              statement: "create or replace table `deeb.schema.plain` as select 1 as test"
             }
           ],
-          dependencies: [],
-          transitiveInputs: [],
+          dependencyTargets: [],
           hermeticity: dataform.ActionHermeticity.HERMETIC
         }
       ];
-      const executionGraph = new Builder(
-        testGraph,
-        {},
-        dataform.WarehouseState.create({}),
-        computeAllTransitiveInputs(testGraph)
-      ).build();
+      const executionGraph = new Builder(testGraph, {}, dataform.WarehouseState.create({})).build();
+      expect(asPlainObject(executionGraph.actions)).deep.equals(
+        asPlainObject(expectedExecutionActions)
+      );
+    });
+
+    test("bigquery_options", () => {
+      const testGraph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
+        projectConfig: { warehouse: "bigquery", defaultDatabase: "deeb", defaultLocation: "US" },
+        tables: [
+          {
+            target: {
+              schema: "schema",
+              name: "partitionby"
+            },
+            type: "table",
+            query: "select 1 as test",
+            bigquery: {
+              partitionBy: "DATE(test)",
+              clusterBy: [],
+              partitionExpirationDays: 1,
+              requirePartitionFilter: true
+            }
+          },
+          {
+            target: {
+              schema: "schema",
+              name: "plain"
+            },
+            type: "table",
+            query: "select 1 as test"
+          }
+        ]
+      });
+      const expectedExecutionActions: dataform.IExecutionAction[] = [
+        {
+          type: "table",
+          tableType: "table",
+          target: {
+            schema: "schema",
+            name: "partitionby"
+          },
+          tasks: [
+            {
+              type: "statement",
+              statement:
+                "create or replace table `deeb.schema.partitionby` partition by DATE(test) OPTIONS(partition_expiration_days=1,require_partition_filter=true)as select 1 as test"
+            }
+          ],
+          dependencyTargets: [],
+          hermeticity: dataform.ActionHermeticity.HERMETIC
+        },
+        {
+          type: "table",
+          tableType: "table",
+          target: {
+            schema: "schema",
+            name: "plain"
+          },
+          tasks: [
+            {
+              type: "statement",
+              statement: "create or replace table `deeb.schema.plain` as select 1 as test"
+            }
+          ],
+          dependencyTargets: [],
+          hermeticity: dataform.ActionHermeticity.HERMETIC
+        }
+      ];
+      const executionGraph = new Builder(testGraph, {}, dataform.WarehouseState.create({})).build();
       expect(asPlainObject(executionGraph.actions)).deep.equals(
         asPlainObject(expectedExecutionActions)
       );
@@ -705,13 +894,12 @@ suite("@dataform/api", () => {
 
     test("bigquery_clusterby", () => {
       const testGraph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
-        projectConfig: { warehouse: "bigquery", defaultDatabase: "deeb" },
+        projectConfig: { warehouse: "bigquery", defaultDatabase: "deeb", defaultLocation: "US" },
         tables: [
           {
-            name: "partitionby",
             target: {
               schema: "schema",
-              name: "name"
+              name: "partitionby"
             },
             type: "table",
             query: "select 1 as test",
@@ -721,10 +909,9 @@ suite("@dataform/api", () => {
             }
           },
           {
-            name: "plain",
             target: {
               schema: "schema",
-              name: "name"
+              name: "plain"
             },
             type: "table",
             query: "select 1 as test"
@@ -733,49 +920,110 @@ suite("@dataform/api", () => {
       });
       const expectedExecutionActions: dataform.IExecutionAction[] = [
         {
-          name: "partitionby",
           type: "table",
           tableType: "table",
           target: {
             schema: "schema",
-            name: "name"
+            name: "partitionby"
           },
           tasks: [
             {
               type: "statement",
               statement:
-                "create or replace table `deeb.schema.name` partition by DATE(test) cluster by name, revenue as select 1 as test"
+                "create or replace table `deeb.schema.partitionby` partition by DATE(test) cluster by name, revenue as select 1 as test"
             }
           ],
-          dependencies: [],
-          transitiveInputs: [],
+          dependencyTargets: [],
           hermeticity: dataform.ActionHermeticity.HERMETIC
         },
         {
-          name: "plain",
           type: "table",
           tableType: "table",
           target: {
             schema: "schema",
-            name: "name"
+            name: "plain"
           },
           tasks: [
             {
               type: "statement",
-              statement: "create or replace table `deeb.schema.name` as select 1 as test"
+              statement: "create or replace table `deeb.schema.plain` as select 1 as test"
             }
           ],
-          dependencies: [],
-          transitiveInputs: [],
+          dependencyTargets: [],
           hermeticity: dataform.ActionHermeticity.HERMETIC
         }
       ];
-      const executionGraph = new Builder(
-        testGraph,
-        {},
-        dataform.WarehouseState.create({}),
-        computeAllTransitiveInputs(testGraph)
-      ).build();
+      const executionGraph = new Builder(testGraph, {}, dataform.WarehouseState.create({})).build();
+      expect(asPlainObject(executionGraph.actions)).deep.equals(
+        asPlainObject(expectedExecutionActions)
+      );
+    });
+
+    test("bigquery_additional_options", () => {
+      const testGraph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
+        projectConfig: { warehouse: "bigquery", defaultDatabase: "deeb", defaultLocation: "US" },
+        tables: [
+          {
+            target: {
+              schema: "schema",
+              name: "additional_options"
+            },
+            type: "table",
+            query: "select 1 as test",
+            bigquery: {
+              additionalOptions: {
+                partition_expiration_days: "1",
+                require_partition_filter: "true",
+                friendly_name: '"friendlyName"'
+              }
+            }
+          },
+          {
+            target: {
+              schema: "schema",
+              name: "plain"
+            },
+            type: "table",
+            query: "select 1 as test"
+          }
+        ]
+      });
+      const expectedExecutionActions: dataform.IExecutionAction[] = [
+        {
+          type: "table",
+          tableType: "table",
+          target: {
+            schema: "schema",
+            name: "additional_options"
+          },
+          tasks: [
+            {
+              type: "statement",
+              statement:
+                'create or replace table `deeb.schema.additional_options` OPTIONS(partition_expiration_days=1,require_partition_filter=true,friendly_name="friendlyName")as select 1 as test'
+            }
+          ],
+          dependencyTargets: [],
+          hermeticity: dataform.ActionHermeticity.HERMETIC
+        },
+        {
+          type: "table",
+          tableType: "table",
+          target: {
+            schema: "schema",
+            name: "plain"
+          },
+          tasks: [
+            {
+              type: "statement",
+              statement: "create or replace table `deeb.schema.plain` as select 1 as test"
+            }
+          ],
+          dependencyTargets: [],
+          hermeticity: dataform.ActionHermeticity.HERMETIC
+        }
+      ];
+      const executionGraph = new Builder(testGraph, {}, dataform.WarehouseState.create({})).build();
       expect(asPlainObject(executionGraph.actions)).deep.equals(
         asPlainObject(expectedExecutionActions)
       );
@@ -786,7 +1034,6 @@ suite("@dataform/api", () => {
         projectConfig: { warehouse: "snowflake" },
         tables: [
           {
-            name: "a",
             type: "table",
             target: {
               schema: "schema",
@@ -795,102 +1042,29 @@ suite("@dataform/api", () => {
             query: "select 1 as test"
           },
           {
-            name: "b",
             type: "table",
             target: {
               schema: "schema",
               name: "b"
             },
-            dependencies: ["a"],
+            dependencyTargets: [{ schema: "schema", name: "a" }],
             query: "select 1 as test"
           }
         ]
       });
       const testState = dataform.WarehouseState.create({});
-      const builder = new Builder(testGraph, {}, testState, computeAllTransitiveInputs(testGraph));
+      const builder = new Builder(testGraph, {}, testState);
       const executionGraph = builder.build();
 
       expect(executionGraph.actions)
         .to.be.an("array")
         .to.have.lengthOf(2);
 
-      executionGraph.actions.forEach((action, index) => {
-        expect(action.tasks.length).greaterThan(0);
-
-        const statements = action.tasks.map(item => item.statement);
-        expect(statements).includes(
-          `create or replace table "schema"."${action.name}" as select 1 as test`
-        );
-      });
-    });
-  });
-
-  suite("query", () => {
-    test("bigquery_example", async () => {
-      const compiledQuery = await query.compile('select 1 from ${ref("example_view")}', {
-        projectDir: "examples/common_v1",
-        projectConfigOverride: { warehouse: "bigquery", defaultDatabase: "tada-analytics" }
-      });
-      expect(compiledQuery).equals(
-        "select 1 from `tada-analytics.df_integration_test.example_view`"
+      const statements = executionGraph.actions.flatMap(action =>
+        action.tasks.map(task => task.statement)
       );
-    });
-    test("bigquery_example with explicit schema", async () => {
-      const compiledQuery = await query.compile(
-        'select 1 from ${ref("df_integration_test", "example_view")}',
-        {
-          projectDir: "examples/common_v1",
-          projectConfigOverride: { warehouse: "bigquery", defaultDatabase: "tada-analytics" }
-        }
-      );
-      expect(compiledQuery).equals(
-        "select 1 from `tada-analytics.df_integration_test.example_view`"
-      );
-    });
-    test("bigquery example with input backticks", async () => {
-      const compiledQuery = await query.compile(
-        "select 1 from `tada-analytics.df_integration_test.example_view`",
-        {
-          projectDir: "examples/common_v1",
-          projectConfigOverride: { warehouse: "bigquery", defaultDatabase: "tada-analytics" }
-        }
-      );
-      expect(compiledQuery).equals(
-        "select 1 from `tada-analytics.df_integration_test.example_view`"
-      );
-    });
-    test("bigquery example with a backslash in regex", async () => {
-      const compiledQuery = await query.compile(
-        "select regexp_extract('01a_data_engine', '^(\\d{2}\\w)')",
-        {
-          projectDir: "examples/common_v1",
-          projectConfigOverride: { warehouse: "bigquery", defaultDatabase: "tada-analytics" }
-        }
-      );
-      expect(compiledQuery).equals("select regexp_extract('01a_data_engine', '^(\\d{2}\\w)')");
-    });
-    test("example with no text", async () => {
-      const compiledQuery = await query.compile("", {
-        projectDir: "examples/common_v1",
-        projectConfigOverride: { warehouse: "bigquery", defaultDatabase: "tada-analytics" }
-      });
-      expect(compiledQuery).equals("");
-    });
-    test("example with JS block", async () => {
-      const compiledQuery = await query.compile(
-        `
-js {
-  const foo = "bar";
-}
-
-select \${foo}
-`,
-        {
-          projectDir: "examples/common_v1",
-          projectConfigOverride: { warehouse: "bigquery", defaultDatabase: "tada-analytics" }
-        }
-      );
-      expect(compiledQuery.trim()).equals("select bar");
+      expect(statements).includes(`create or replace table "schema"."a" as select 1 as test`);
+      expect(statements).includes(`create or replace table "schema"."b" as select 1 as test`);
     });
   });
 
@@ -930,7 +1104,7 @@ select \${foo}
       );
     });
 
-    [{}, { wrongProperty: "" }, { projectId: "" }].forEach(bigquery => {
+    [{}, { wrongProperty: "" }].forEach(bigquery => {
       test("bigquery_properties_check", () => {
         expect(() =>
           credentials.coerce("bigquery", JSON.parse(JSON.stringify(bigquery)))
@@ -982,7 +1156,8 @@ select \${foo}
         warehouse: "bigquery",
         defaultSchema: "foo",
         assertionSchema: "bar",
-        defaultDatabase: "database"
+        defaultDatabase: "database",
+        defaultLocation: "US"
       },
       runConfig: {
         fullRefresh: true
@@ -1000,9 +1175,6 @@ select \${foo}
       },
       actions: [
         {
-          name: "action1",
-          dependencies: [],
-          transitiveInputs: [],
           tasks: [
             {
               type: "executionTaskType",
@@ -1018,12 +1190,10 @@ select \${foo}
             schema: "schema1",
             name: "target1"
           },
-          tableType: "someTableType"
+          tableType: "someTableType",
+          dependencyTargets: []
         },
         {
-          name: "action2",
-          dependencies: ["action1"],
-          transitiveInputs: [{ schema: "schema1", name: "target1" }],
           tasks: [
             {
               type: "executionTaskType2",
@@ -1036,7 +1206,13 @@ select \${foo}
             schema: "schema2",
             name: "target2"
           },
-          tableType: "someTableType"
+          tableType: "someTableType",
+          dependencyTargets: [
+            {
+              schema: "schema1",
+              name: "target1"
+            }
+          ]
         }
       ]
     });
@@ -1045,9 +1221,8 @@ select \${foo}
       status: dataform.RunResult.ExecutionStatus.FAILED,
       actions: [
         {
-          name: RUN_TEST_GRAPH.actions[0].name,
           target: RUN_TEST_GRAPH.actions[0].target,
-          inputs: [],
+
           tasks: [
             {
               status: dataform.TaskResult.ExecutionStatus.SUCCESSFUL,
@@ -1067,9 +1242,7 @@ select \${foo}
           status: dataform.ActionResult.ExecutionStatus.SUCCESSFUL
         },
         {
-          name: RUN_TEST_GRAPH.actions[1].name,
           target: RUN_TEST_GRAPH.actions[1].target,
-          inputs: [{ target: RUN_TEST_GRAPH.actions[0].target, metadata: null }],
           tasks: [
             {
               status: dataform.TaskResult.ExecutionStatus.FAILED,
@@ -1113,9 +1286,9 @@ select \${foo}
 
       const runner = new Runner(mockDbAdapterInstance, RUN_TEST_GRAPH);
 
-      expect(dataform.RunResult.create(cleanTiming(await runner.execute().result()))).to.deep.equal(
-        EXPECTED_RUN_RESULT
-      );
+      expect(
+        dataform.RunResult.create(cleanTiming(await runner.execute().result())).toJSON()
+      ).to.deep.equal(EXPECTED_RUN_RESULT.toJSON());
       verify(mockedDbAdapter.createSchema("database", "schema1")).once();
       verify(mockedDbAdapter.createSchema("database2", "schema2")).once();
     });
@@ -1163,26 +1336,24 @@ select \${foo}
       stopWasCalled = true;
       const result = cleanTiming(await runner.result());
 
-      expect(dataform.RunResult.create(result)).to.deep.equal(
+      expect(dataform.RunResult.create(result).toJSON()).to.deep.equal(
         dataform.RunResult.create({
           status: dataform.RunResult.ExecutionStatus.RUNNING,
           actions: [
             {
-              name: EXPECTED_RUN_RESULT.actions[0].name,
               target: EXPECTED_RUN_RESULT.actions[0].target,
-              inputs: [],
               status: dataform.ActionResult.ExecutionStatus.RUNNING,
               tasks: [EXPECTED_RUN_RESULT.actions[0].tasks[0]]
             }
           ]
-        })
+        }).toJSON()
       );
 
-      runner = new Runner(mockDbAdapterInstance, RUN_TEST_GRAPH, result);
+      runner = new Runner(mockDbAdapterInstance, RUN_TEST_GRAPH, undefined, result);
 
-      expect(dataform.RunResult.create(cleanTiming(await runner.execute().result()))).to.deep.equal(
-        EXPECTED_RUN_RESULT
-      );
+      expect(
+        dataform.RunResult.create(cleanTiming(await runner.execute().result())).toJSON()
+      ).to.deep.equal(EXPECTED_RUN_RESULT.toJSON());
       verify(mockedDbAdapter.createSchema("database", "schema1")).once();
       verify(mockedDbAdapter.createSchema("database2", "schema2")).once();
     });
@@ -1225,8 +1396,8 @@ select \${foo}
         const runner = new Runner(mockDbAdapterInstance, NEW_TEST_GRAPH);
 
         expect(
-          dataform.RunResult.create(cleanTiming(await runner.execute().result()))
-        ).to.deep.equal(EXPECTED_RUN_RESULT);
+          dataform.RunResult.create(cleanTiming(await runner.execute().result())).toJSON()
+        ).to.deep.equal(EXPECTED_RUN_RESULT.toJSON());
       });
 
       test("should pass when execution fails initially, then passes with the number of allowed retries", async () => {
@@ -1266,16 +1437,14 @@ select \${foo}
         const runner = new Runner(mockDbAdapterInstance, NEW_TEST_GRAPH);
 
         expect(
-          dataform.RunResult.create(cleanTiming(await runner.execute().result()))
+          dataform.RunResult.create(cleanTiming(await runner.execute().result())).toJSON()
         ).to.deep.equal(
           dataform.RunResult.create({
             status: dataform.RunResult.ExecutionStatus.SUCCESSFUL,
             actions: [
               EXPECTED_RUN_RESULT.actions[0],
               {
-                name: NEW_TEST_GRAPH.actions[1].name,
                 target: NEW_TEST_GRAPH.actions[1].target,
-                inputs: [{ target: RUN_TEST_GRAPH.actions[0].target, metadata: null }],
                 tasks: [
                   {
                     status: dataform.TaskResult.ExecutionStatus.SUCCESSFUL,
@@ -1285,7 +1454,7 @@ select \${foo}
                 status: dataform.ActionResult.ExecutionStatus.SUCCESSFUL
               }
             ]
-          })
+          }).toJSON()
         );
       });
 
@@ -1333,8 +1502,8 @@ select \${foo}
         const runner = new Runner(mockDbAdapterInstance, NEW_TEST_GRAPH_WITH_OPERATION);
 
         expect(
-          dataform.RunResult.create(cleanTiming(await runner.execute().result()))
-        ).to.deep.equal(EXPECTED_RUN_RESULT);
+          dataform.RunResult.create(cleanTiming(await runner.execute().result())).toJSON()
+        ).to.deep.equal(EXPECTED_RUN_RESULT.toJSON());
       });
     });
 
@@ -1343,16 +1512,14 @@ select \${foo}
         projectConfig: {
           warehouse: "bigquery",
           defaultSchema: "foo",
-          assertionSchema: "bar"
+          assertionSchema: "bar",
+          defaultLocation: "US"
         },
         warehouseState: {
           tables: []
         },
         actions: [
           {
-            name: "action1",
-            dependencies: [],
-            transitiveInputs: [],
             tasks: [
               {
                 type: "statement",
@@ -1364,7 +1531,8 @@ select \${foo}
               schema: "schema1",
               name: "target1"
             },
-            tableType: "table"
+            tableType: "table",
+            dependencyTargets: []
           }
         ]
       });
@@ -1399,6 +1567,77 @@ select \${foo}
         dataform.TaskResult.ExecutionStatus.CANCELLED
       );
       expect(result.actions[0].tasks[0].errorMessage).to.match(/cancelled/);
+    });
+
+    test("continues after setMetadata fails", async () => {
+      const METADATA_TEST_GRAPH: dataform.IExecutionGraph = dataform.ExecutionGraph.create({
+        projectConfig: {
+          warehouse: "bigquery",
+          defaultSchema: "foo",
+          assertionSchema: "bar",
+          defaultLocation: "US"
+        },
+        warehouseState: {
+          tables: []
+        },
+        actions: [
+          {
+            tasks: [
+              {
+                type: "statement",
+                statement: "some statement"
+              }
+            ],
+            type: "table",
+            target: {
+              schema: "schema1",
+              name: "target1"
+            },
+            actionDescriptor: {
+              description: "desc"
+            },
+            tableType: "table",
+            dependencyTargets: []
+          }
+        ]
+      });
+      const mockedDbAdapter = mock(BigQueryDbAdapter);
+      when(mockedDbAdapter.createSchema(anyString(), anyString())).thenResolve(null);
+      when(mockedDbAdapter.execute(anything(), anything())).thenResolve({
+        rows: [],
+        metadata: {}
+      });
+      when(mockedDbAdapter.setMetadata(anything())).thenReject(
+        new Error("Error during setMetadata")
+      );
+
+      const mockDbAdapterInstance = instance(mockedDbAdapter);
+      mockDbAdapterInstance.withClientLock = async callback =>
+        await callback(mockDbAdapterInstance);
+
+      const runner = new Runner(mockDbAdapterInstance, METADATA_TEST_GRAPH);
+
+      expect(
+        dataform.RunResult.create(cleanTiming(await runner.execute().result())).toJSON()
+      ).to.deep.equal({
+        actions: [
+          {
+            status: "FAILED",
+            target: {
+              name: "target1",
+              schema: "schema1"
+            },
+            tasks: [
+              {
+                errorMessage: "Error setting metadata: Error during setMetadata",
+                metadata: {},
+                status: "FAILED"
+              }
+            ]
+          }
+        ],
+        status: "FAILED"
+      });
     });
   });
 });

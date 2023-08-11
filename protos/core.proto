@@ -13,6 +13,8 @@ message ProjectConfig {
 
   string default_database = 9;
   string default_schema = 2;
+  string default_location = 16;
+
   string assertion_schema = 5;
 
   map<string, string> vars = 14;
@@ -23,97 +25,15 @@ message ProjectConfig {
   string database_suffix = 15;
   string schema_suffix = 7;
   string table_prefix = 11;
-  
+
+
+  // Deprecated.
+  // Please use 'default_database' instead.
+  string gcloud_project_id = 6;
+  // This setting no longer has any effect.
   bool use_run_cache = 10;
 
-  // Deprecated. Please use 'default_database' instead.
-  string gcloud_project_id = 6;
-
   reserved 3, 4, 12;
-}
-
-message Environments {
-  message Environment {
-    string name = 1;
-    
-    message GitReference {
-      oneof git_reference {
-        string branch = 1;
-        string commit_sha = 2;
-      }
-    }
-  
-    oneof git_settings {
-      string git_ref = 5;
-      // Deprecated. Please use 'git_ref' instead.
-      GitReference git_reference = 2;
-    }
-
-    ProjectConfig config_override = 3;
-
-    message Schedule {
-      // Required fields.
-      string name = 1;
-      string cron = 2;
-      repeated string tags = 3;
-  
-      // This is a subset of RunConfig.
-      message Options {
-        bool include_dependencies = 4;
-        bool include_dependents = 6;
-        bool full_refresh = 5;
-      }
-      // Optional.
-      Options options = 4;
-      bool disabled = 5;
-  
-      message NotificationRequirement {
-        string channel = 1;
-  
-        enum CompletionStatus {
-          UNKNOWN = 0;
-          SUCCESS = 1;
-          FAILURE = 2;
-        }
-        repeated CompletionStatus statuses = 2;
-      }
-      repeated NotificationRequirement notify = 6;
-    }
-    repeated Schedule schedules = 4;  
-  }
-  repeated Environment environments = 1;
-
-  message NotificationChannel {
-    string name = 1;
-
-    message EmailNotificationChannel {
-      repeated string to = 1;
-    }
-    message SlackNotificationChannel {
-      string webhook_url = 1;
-    }
-    oneof channel {
-      EmailNotificationChannel email = 2;
-      SlackNotificationChannel slack = 3;
-    }
-  }
-  repeated NotificationChannel notification_channels = 2;
-}
-
-// This is a superset of Schedule.Options.
-message RunConfig {
-  repeated string actions = 1;
-  repeated string tags = 5;
-  bool include_dependencies = 3;
-  bool include_dependents = 11;
-  bool full_refresh = 2;
-  int32 timeout_millis = 7;
-  bool use_run_cache = 8;
-
-  // For internal use only, will be removed at a later date.
-  bool disable_set_metadata = 9;
-
-  reserved 4, 6;
 }
 
 message GenerateIndexConfig {
@@ -121,27 +41,26 @@ message GenerateIndexConfig {
   repeated string include_paths = 2;
   repeated string definition_paths = 3;
 
-  // Deprecated.
-  string return_override = 4;
+  reserved 4;
 }
 
 message CompileConfig {
   // Required.
   string project_dir = 1;
 
+  // A list of all files in the project directory.
+  repeated string file_paths = 8;
+
   // Project configuration overrides (dataform.json).
   ProjectConfig project_config_override = 3;
-
-  // If supplied, only the compiled form of 'query' will be returned.
-  bool compile_single_query = 7;
-  string query = 4;
 
   // Override compilation timeout settings.
   int32 timeout_millis = 6;
 
-  // Deprecated.
-  string schema_suffix_override = 2;
-  string return_override = 5;
+  // Whether to use the new main function instead of gen index.
+  bool use_main = 9;
+
+  reserved 2, 4, 5, 7;
 }
 
 message Target {
@@ -155,6 +74,9 @@ message BigQueryOptions {
   repeated string cluster_by = 2;
   string update_partition_filter = 3;
   map<string, string> labels = 4;
+  int32 partition_expiration_days = 5;
+  bool require_partition_filter = 6;
+  map<string, string> additional_options = 7;
 }
 
 message RedshiftOptions {
@@ -182,46 +104,17 @@ message PrestoOptions {
 
 message GraphErrors {
   repeated CompilationError compilation_errors = 1;
-  repeated ValidationError validation_errors = 2 [deprecated = true];
-}
 
-// Deprecated.
-message ValidationError {
-  string action_name = 1;
-  string message = 2;
+  reserved 2;
 }
 
 message CompilationError {
   string file_name = 1;
+  // TODO: Deprecate this and replace with action_target.
   string action_name = 4;
+  Target action_target = 5;
   string message = 2;
   string stack = 3;
-}
-
-message QueryEvaluationError {
-  string message = 1;
-  message ErrorLocation {
-    int32 line = 1;
-    int32 column = 2;
-  }
-  // will not be set if error_location can't be determined
-  ErrorLocation error_location = 2;
-}
-
-message QueryEvaluation {
-  enum QueryEvaluationStatus {
-    SUCCESS = 0;
-    FAILURE = 1;
-  }
-  QueryEvaluationStatus status = 1;
-  QueryEvaluationError error = 2;
-  bool incremental = 3;
-  string query = 4;
-}
-
-message ValidationQuery {
-  string query = 1;
-  bool incremental = 2;
 }
 
 message ActionDescriptor {
@@ -266,18 +159,28 @@ message ColumnDescriptor {
   repeated string bigquery_policy_tags = 8;
 }
 
+enum TableType {
+  UNKNOWN_TYPE = 0;
+  TABLE = 1;
+  INCREMENTAL = 2;
+  VIEW = 3;
+  INLINE = 4;
+}
+
 message Table {
   Target target = 4;
   Target canonical_target = 32;
 
   repeated Target dependency_targets = 27;
   ActionHermeticity hermeticity = 31;
-  
+
   bool disabled = 6;
 
-  string type = 3;
+  string type = 3 [deprecated = true];
   string query = 5;
   bool protected = 9;
+  bool materialized = 35;
+  TableType enum_type = 36;
 
   ActionDescriptor action_descriptor = 24;
 
@@ -304,22 +207,16 @@ message Table {
   // Generated.
   string file_name = 18;
 
-  // Deprecated.
-  repeated string deprecated_parsed_columns = 12 [deprecated = true];
-  repeated ValidationError deprecated_validation_errors = 7 [deprecated = true];
-  string name = 1 [deprecated = true]; // Use 'target' instead.
-  repeated string dependencies = 2 [deprecated = true]; // Use 'dependency_targets' instead.
-
-  reserved 16;
+  reserved 1,2, 7, 12, 16;
 }
 
 message Operation {
   Target target = 3;
   Target canonical_target = 13;
-
   repeated Target dependency_targets = 11;
+
   ActionHermeticity hermeticity = 12;
-  
+
   bool disabled = 14;
 
   repeated string queries = 6;
@@ -331,11 +228,7 @@ message Operation {
   // Generated.
   string file_name = 7;
 
-  // Deprecated.
-  string name = 1; // Use 'target' instead.
-  repeated string dependencies = 2; // Use 'dependency_targets' instead.
-
-  reserved 4, 5;
+  reserved 1, 2, 4, 5;
 }
 
 message Assertion {
@@ -344,7 +237,7 @@ message Assertion {
 
   repeated Target dependency_targets = 11;
   ActionHermeticity hermeticity = 12;
-  
+
   bool disabled = 14;
 
   string query = 3;
@@ -355,15 +248,11 @@ message Assertion {
 
   // Only present for auto assertions.
   Target parent_action = 15;
-  
+
   // Generated.
   string file_name = 7;
 
-  // Deprecated.
-  string name = 1; // Use 'target' instead.
-  repeated string dependencies = 2; // Use 'dependency_targets' instead.
-
-  reserved 4, 5, 6;
+  reserved 1, 2, 4, 5, 6;
 }
 
 enum ActionHermeticity {
@@ -373,7 +262,6 @@ enum ActionHermeticity {
 }
 
 message Declaration {
-  string name = 1;
 
   Target target = 2;
   Target canonical_target = 5;
@@ -412,205 +300,22 @@ message CompiledGraph {
   reserved 5, 6;
 }
 
-message ExecutionTask {
-  string type = 1;
-  string statement = 2;
-}
-
-message ExecutionAction {
-  string name = 1;
-  Target target = 5;
-  string file_name = 8;
-
-  string type = 4;
-  string table_type = 6;
-
-  // TODO: Replace this with a dependency_targets field.
-  repeated string dependencies = 3;
-  repeated Target transitive_inputs = 7;
-  ActionHermeticity hermeticity = 10;
-
-  repeated ExecutionTask tasks = 2;
-
-  ActionDescriptor action_descriptor = 9;
-}
-
-message WarehouseState {
-  repeated TableMetadata tables = 1;
-
-  reserved 2;
-}
-
-message ExecutionGraph {
-  ProjectConfig project_config = 1;
-  RunConfig run_config = 2;
-  WarehouseState warehouse_state = 4;
-  repeated Target declaration_targets = 5;
-
-  repeated ExecutionAction actions = 3;
-}
-
-message Timing {
-  int64 start_time_millis = 1;
-  int64 end_time_millis = 2;
-}
-
-message RunResult {
-  enum ExecutionStatus {
-    UNKNOWN = 0;
-    RUNNING = 1;
-    SUCCESSFUL = 2;
-    FAILED = 3;
-    CANCELLED = 4;
-    TIMED_OUT = 5;
+message CoreExecutionRequest {
+  oneof request {
+    CompileExecutionRequest compile = 1;
   }
-  ExecutionStatus status = 1;
-  repeated ActionResult actions = 2;
-  Timing timing = 3;
 }
 
-message ActionResult {
-  string name = 1;
-  Target target = 5;
-
-  message Input {
-    Target target = 1;
-
-    message Metadata {
-      int64 last_modified_timestamp_millis = 1;
-    }
-    // If left unset, metadata for this Input could not be found.
-    Metadata metadata = 2;
+message CoreExecutionResponse {
+  oneof response {
+    CompileExecutionResponse compile = 1;
   }
-  repeated Input inputs = 6;
-
-  enum ExecutionStatus {
-    UNKNOWN = 0;
-    RUNNING = 1;
-    SUCCESSFUL = 2;
-    FAILED = 3;
-    SKIPPED = 4;
-    DISABLED = 5;
-    CANCELLED = 6;
-    CACHE_SKIPPED = 7;
-  }
-  ExecutionStatus status = 2;
-
-  repeated TaskResult tasks = 3;
-  Timing timing = 4;
-  // Only set if use_run_cache was set to true.
-  int64 post_execution_timestamp_millis = 7;
 }
 
-
-message ExecutionMetadata {
-  message BigqueryMetadata {
-    string job_id = 1;
-    int64 total_bytes_processed = 2;
-    int64 total_bytes_billed = 3;  
-  }
-  BigqueryMetadata bigquery = 1;
+message CompileExecutionRequest {
+  CompileConfig compile_config = 1;
 }
 
-message TaskResult {
-  enum ExecutionStatus {
-      UNKNOWN = 0;
-      RUNNING = 1;
-      SUCCESSFUL = 2;
-      FAILED = 3;
-      SKIPPED = 4;
-      CANCELLED = 5;
-  }
-  ExecutionStatus status = 1;
-  string error_message = 2;
-  Timing timing = 3;
-  ExecutionMetadata metadata = 4;
-}
-
-message TestResult {
-  string name = 1;
-  bool successful = 2;
-  repeated string messages = 3;
-}
-
-message Field {
-
-  enum Primitive {
-    UNKNOWN = 0;
-    INTEGER = 1;
-    FLOAT = 2;
-    NUMERIC = 5;
-    BOOLEAN = 3;
-    STRING = 4;
-    DATE = 6;
-    DATETIME = 7;
-    TIMESTAMP = 8;
-    TIME = 9;
-    BYTES = 10;
-    // Semi structured data from Snowflake has no strong schema, and could therefore be anything.
-    ANY = 11;
-    GEOGRAPHY = 12;
-  }
-
-  enum Flag {
-    UNKNOWN_FLAG = 0;
-    REPEATED = 1;
-  }
-
-  string name = 1;
-  
-  repeated Flag flags = 6;
-
-  oneof type {
-    Primitive primitive = 7;
-    Fields struct = 3;
-  }
-
-  string description = 5;
-
-  // Deprecated.
-  repeated string flags_deprecated = 4;
-
-  reserved 2;
-}
-
-message Fields {
-  repeated Field fields = 1;
-}
-
-message TableMetadata {
-  Target target = 1;
-  enum Type {
-    UNKNOWN = 0;
-    TABLE = 1;
-    VIEW = 2;
-  }
-  Type type = 6;
-
-  repeated Field fields = 3;
-  string description = 5;
-  map<string, string> labels = 7;
-  int64 last_updated_millis = 4;
-
-  message BigQuery {
-    bool has_streaming_buffer = 1;
-  }
-  BigQuery bigquery = 8;
-
-  // Deprecated.
-  string type_deprecated = 2; // "table" or "view"
-}
-
-message PersistedTableMetadata {
-  Target target = 1;
-  string definition_hash = 2; // sha1 hash of ExectionAction object
-  int64 last_updated_millis = 3; // Timestamp of the last modification to this dataset (where that modification happened as a result of a Dataform run).
-
-  message TransitiveInputMetadata {
-    Target target = 1;
-    int64 last_updated_millis = 2;
-  }
-  repeated TransitiveInputMetadata transitive_input_tables = 7;
-  
-  reserved 4, 5, 6;
+message CompileExecutionResponse {
+  CompiledGraph compiled_graph = 1;
 }

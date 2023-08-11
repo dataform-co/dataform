@@ -152,7 +152,7 @@ export class SnowflakeDbAdapter implements IDbAdapter {
     return await callback(this);
   }
 
-  public async evaluate(queryOrAction: QueryOrAction, projectConfig?: dataform.ProjectConfig) {
+  public async evaluate(queryOrAction: QueryOrAction) {
     const validationQueries = collectEvaluationQueries(queryOrAction, false, (query: string) =>
       !!query ? `select system$explain_plan_json($$${query}$$)` : ""
     ).map((validationQuery, index) => ({ index, validationQuery }));
@@ -255,7 +255,6 @@ where table_schema = :1
 
     return dataform.TableMetadata.create({
       target,
-      typeDeprecated: tableResults.rows[0].TABLE_TYPE === "VIEW" ? "view" : "table",
       type:
         tableResults.rows[0].TABLE_TYPE === "VIEW"
           ? dataform.TableMetadata.Type.VIEW
@@ -264,7 +263,6 @@ where table_schema = :1
         dataform.Field.create({
           name: row.COLUMN_NAME,
           primitive: convertFieldType(row.DATA_TYPE),
-          flagsDeprecated: row.IS_NULLABLE && row.IS_NULLABLE === "YES" ? ["nullable"] : [],
           flags: row.DATA_TYPE === "ARRAY" ? [dataform.Field.Flag.REPEATED] : [],
           description: row.COMMENT
         })

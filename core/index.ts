@@ -7,6 +7,8 @@ import { Session } from "df/core/session";
 // Changes to these will break @dataform/api, so take care!
 export const indexFileGenerator = genIndex;
 export const compiler = compilers.compile;
+export { main } from "df/core/main";
+
 export { adapters };
 
 // Create static session object.
@@ -14,7 +16,7 @@ export { adapters };
 // be the same, regardless of the @dataform/core package that is running.
 function globalSession() {
   if (!(global as any)._DF_SESSION) {
-    (global as any)._DF_SESSION = new Session(process.cwd());
+    (global as any)._DF_SESSION = new Session();
   }
   return (global as any)._DF_SESSION as Session;
 }

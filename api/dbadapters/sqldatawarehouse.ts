@@ -90,7 +90,7 @@ export class SQLDataWarehouseDBAdapter implements IDbAdapter {
     return await callback(this);
   }
 
-  public async evaluate(queryOrAction: QueryOrAction, projectConfig?: dataform.ProjectConfig) {
+  public async evaluate(queryOrAction: QueryOrAction) {
     // TODO: Using `explain` before declaring a variable is not valid in SQL Data Warehouse.
     const validationQueries = collectEvaluationQueries(queryOrAction, true, (query: string) =>
       !!query ? `explain ${query}` : ""
@@ -191,7 +191,6 @@ export class SQLDataWarehouseDBAdapter implements IDbAdapter {
     // The table exists.
     return {
       target,
-      typeDeprecated: tableData.rows[0].table_type === "VIEW" ? "view" : "table",
       type:
         tableData.rows[0].table_type === "VIEW"
           ? dataform.TableMetadata.Type.VIEW
@@ -199,7 +198,6 @@ export class SQLDataWarehouseDBAdapter implements IDbAdapter {
       fields: columnData.rows.map(row => ({
         name: row.column_name,
         primitive: convertFieldType(row.data_type),
-        flagsDeprecated: row.is_nullable && row.is_nullable === "YES" ? ["nullable"] : []
       }))
     };
   }

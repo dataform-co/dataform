@@ -94,7 +94,7 @@ export class RedshiftDbAdapter implements IDbAdapter {
     );
   }
 
-  public async evaluate(queryOrAction: QueryOrAction, projectConfig?: dataform.ProjectConfig) {
+  public async evaluate(queryOrAction: QueryOrAction) {
     const validationQueries = collectEvaluationQueries(queryOrAction, false, (query: string) =>
       !!query ? `explain ${query}` : ""
     ).map((validationQuery, index) => ({ index, validationQuery }));
@@ -185,7 +185,6 @@ export class RedshiftDbAdapter implements IDbAdapter {
     }
     return dataform.TableMetadata.create({
       target,
-      typeDeprecated: tableResults.rows[0].table_type === "VIEW" ? "view" : "table",
       type:
         tableResults.rows[0].table_type === "VIEW"
           ? dataform.TableMetadata.Type.VIEW
@@ -194,7 +193,6 @@ export class RedshiftDbAdapter implements IDbAdapter {
         dataform.Field.create({
           name: row.column_name,
           primitive: convertFieldType(row.data_type),
-          flagsDeprecated: row.is_nullable && row.is_nullable === "YES" ? ["nullable"] : [],
           description: row.remarks
         })
       ),
