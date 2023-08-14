@@ -7,11 +7,11 @@ cc_binary(
     srcs = ["compile_executor.cc"],
     args = [
         "$(execpath @nodejs_linux_amd64//:node_bin)",
-        "$(execpath :copy_worker_bundle)",
+        "$(execpath //packages/@dataform/cli:bin)",
     ],
     copts = sapi_platform_copts(),
     data = [
-        ":copy_worker_bundle",
+        "//packages/@dataform/cli:bin",
         "@nodejs_linux_amd64//:node_bin",
     ],
     deps = [
