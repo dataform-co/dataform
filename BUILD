@@ -7,12 +7,6 @@ exports_files([
     "package.json",
     "readme.md",
     "version.bzl",
-    # Not particularly orthodox; used for bundling sandbox/vm2.
-    # These dependencies have to be manually installed for worker_bundle to work.
-    "node_modules/vm2",
-    "node_modules/glob",
-    "node_modules/protobufjs",
-    "node_modules/protobufjs/minimal",
 ])
 
 PROTOBUF_DEPS = [

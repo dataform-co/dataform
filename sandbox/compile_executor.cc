@@ -54,23 +54,10 @@
 namespace fs = std::filesystem;
 
 std::string EXAMPLE_COMPILE_PATH = "/usr/local/google/home/eliaskassell/Documents/github/dataform/examples/common_v1";
-std::string BASH_PATH = "/usr/bin/bash";
-std::string CLI_DIRECTORY = "/usr/local/google/home/eliaskassell/Documents/github/dataform/bazel-out/k8-py2-fastbuild/bin/packages/@dataform/cli";
-std::string CLI_PATH = "/usr/local/google/home/eliaskassell/Documents/github/dataform/bazel-out/k8-py2-fastbuild/bin/packages/@dataform/cli/bin.sh";
 
 const int TIMEOUT_SECS = 1000;
 const int FALLBACK_TIMEOUT_DELAY = 1000;
 
-std::unique_ptr<sandbox2::Policy> GetPolicy() {
-    return sandbox2::PolicyBuilder()
-            .AddLibrariesForBinary(BASH_PATH)
-            .AddFile(BASH_PATH)
-            .AddDirectory("/usr/bin")
-            .AddDirectory(CLI_DIRECTORY, true)
-            .AddDirectory(EXAMPLE_COMPILE_PATH, false)
-            .DangerDefaultAllowAll()
-            .BuildOrDie();
-}
 
 void OutputFD(int stdoutFd, int errFd) {
     for (;;) {
@@ -95,15 +82,30 @@ int main(int argc, char** argv) {
     gflags::ParseCommandLineFlags(&argc, &argv, true);
     google::InitGoogleLogging(argv[0]);
 
-    // Useful for debugging.
+    std::string workspaceFolder = "df/";
+
+    std::string nodeRelativePath(argv[1]);
+    std::string nodePath =
+        sapi::GetDataDependencyFilePath(workspaceFolder + nodeRelativePath);
+
+    // std::string cliRelativePath(argv[2]);
+    // std::string cliPath =
+    //     sapi::GetDataDependencyFilePath(workspaceFolder + cliRelativePath);
+    std::string cliDirectory = "/usr/local/google/home/eliaskassell/.cache/bazel/_bazel_eliaskassell/7a3b4b05af3e35677ea962500c529f6a/execroot/df/bazel-out/k8-py2-fastbuild/bin/sandbox/compile_executor.runfiles/df/packages/@dataform/cli";
+    std::string cliPath = "/usr/local/google/home/eliaskassell/.cache/bazel/_bazel_eliaskassell/7a3b4b05af3e35677ea962500c529f6a/execroot/df/bazel-out/k8-py2-fastbuild/bin/sandbox/compile_executor.runfiles/df/packages/@dataform/cli/index.js";
+
+    // Useful for debugging paths.
     std::cout << "Current path is " << fs::current_path() << '\n';
 
     std::vector<std::string> args = {
-        BASH_PATH,
-        "ls",
+        nodePath,
+        cliPath,
+        // "-e",
+        // "console.log('hello')"
     };
     printf("Running command: '%s'\n", (args[0] + " " + args[1]).c_str());
-    auto executor = absl::make_unique<sandbox2::Executor>(BASH_PATH, args);
+    // printf("Running command: '%s'\n", (args[0] + " " + args[1] + " " + args[2]).c_str());
+    auto executor = absl::make_unique<sandbox2::Executor>(nodePath, args);
 
     executor->set_enable_sandbox_before_exec(true)
         .limits()
@@ -115,7 +117,20 @@ int main(int argc, char** argv) {
     int stdoutFd = executor->ipc()->ReceiveFd(STDOUT_FILENO);
     int stderrFd = executor->ipc()->ReceiveFd(STDERR_FILENO);
 
-    auto policy = GetPolicy();
+    auto policy = sandbox2::PolicyBuilder()
+            // Workaround to make the forkserver's execveat work.
+            .AddFileAt("/dev/zero", "/dev/fd/1022", false)
+
+            .AddLibrariesForBinary(nodePath)
+
+            // TODO: Make read only.
+            .AddDirectory(cliDirectory, true)
+            .AddFile(cliPath, true)
+
+            .AddDirectory(EXAMPLE_COMPILE_PATH, false)
+            .DangerDefaultAllowAll()
+            .BuildOrDie();
+
     sandbox2::Sandbox2 s2(std::move(executor), std::move(policy));
 
     // If the sandbox program fails to start, return early.
@@ -123,6 +138,7 @@ int main(int argc, char** argv) {
         auto result = s2.AwaitResultWithTimeout(
             absl::Seconds(TIMEOUT_SECS + FALLBACK_TIMEOUT_DELAY));
         LOG(ERROR) << "sandbox failed to start: " << result->ToString();
+        return EXIT_FAILURE;
     }
 
     auto result = s2.AwaitResultWithTimeout(

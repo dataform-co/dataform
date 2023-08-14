@@ -1,5 +1,4 @@
 {
   "defaultSchema": "df_integration_test",
-  "assertionSchema": "df_integration_test_assertions",
-  "warehouse": "bigquery"
+  "assertionSchema": "df_integration_test_assertions"
 }

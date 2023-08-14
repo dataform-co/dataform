@@ -11,8 +11,8 @@ cc_binary(
     ],
     copts = sapi_platform_copts(),
     data = [
-        "//packages/@dataform/cli:bin",
         "@nodejs_linux_amd64//:node_bin",
+        "//packages/@dataform/cli:bin",
     ],
     deps = [
         "@bazel_tools//tools/cpp/runfiles",
@@ -39,14 +39,4 @@ ts_test_suite(
         "@npm//@types/node",
         "@npm//chai",
     ],
-)
-
-# Worker bundle needs to be copied over into packages, as deps files are only
-# included in the root directory of package folders.
-genrule(
-    name = "copy_worker_bundle",
-    srcs = ["//sandbox/vm:worker_bundle"],
-    outs = ["worker_bundle.js"],
-    cmd = "cp $< $@",
-    output_to_bindir = 1,
 )
