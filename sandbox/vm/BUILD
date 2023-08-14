@@ -13,9 +13,9 @@ ts_library(
         "//core",
         "//protos:ts",
         "@npm//@types/glob",
-        "@npm//@types/node",
         "@npm//glob",
         "@npm//vm2",
+        "@npm//@types/node",
     ],
 )
 
@@ -26,6 +26,8 @@ externals = [
     "glob",
     "protobufjs",
     "protobufjs/minimal",
+    # From Node.
+    "path",
 ]
 
 genrule(
@@ -52,6 +54,7 @@ genrule(
     output_to_bindir = 1,
 )
 
+# Note: to make the copy_ rules work, see the root BUILD file exports_files comment for them.
 pkg_bundle(
     name = "worker_bundle",
     args = ["--environment=WORKER_BUNDLE"],

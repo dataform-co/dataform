@@ -156,6 +156,10 @@ std::unique_ptr<sandbox2::Policy> GetPolicy(std::string nodePath) {
         // Temporary, for development.
         .AddFile("/usr/local/google/home/eliaskassell/tmp.js")
 
+        // TODO: Remove this.
+        .DefaultAction(sandbox2::AllowAllSyscalls())
+        .AddDirectory("/")
+
         // Aggressively fail if policy builder fails.
         .BuildOrDie();
 }

@@ -19,6 +19,8 @@ core/package-lock.json
 protos/package-lock.json
 lerna-debug.log
 
+package-lock.json
+
 **/.DS_Store
 
 **/*.orig
