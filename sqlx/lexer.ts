@@ -185,7 +185,7 @@ export class SyntaxTreeNode {
     lexer.reset(code);
     for (const token of lexer) {
       if (!token.type) {
-        continue;
+        throw new Error('Undefined token type encountered.');
       }
       if (START_TOKEN_NODE_MAPPINGS.has(token.type)) {
         const childType = START_TOKEN_NODE_MAPPINGS.get(token.type)!;
@@ -225,11 +225,11 @@ export class SyntaxTreeNode {
   }
 
   public concatenate(mutators?: Map<SyntaxTreeNodeType, (str: string) => string>): string {
-    const mutator = mutators?.has(this.type) ? mutators.get(this.type) : (str: string) => str;
+    const mutator = mutators?.has(this.type) ? mutators.get(this.type)! : (str: string) => str;
     return this.allChildren
       .map(child => {
         if (typeof child === "string") {
-          return mutator?.(child) || "";
+          return mutator(child);
         }
         return child.concatenate();
       })
