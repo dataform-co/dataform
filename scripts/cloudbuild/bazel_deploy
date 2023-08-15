@@ -1,5 +1,0 @@
-#!/bin/bash
-set -e
-
-# Push the docs site.
-bazel run --config=remote-cache docs:push

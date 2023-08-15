@@ -1,0 +1,3 @@
+config { type: "operations" }
+
+SELECT MAKE_INTERVAL(1,  day=>2, minute => 3)

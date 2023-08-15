@@ -42,7 +42,6 @@ suite("@dataform/integration/sqldatawarehouse", { parallel: true }, ({ before, a
 
     // Check the status of action execution.
     const expectedFailedActions = [
-      "df_integration_test_assertions_project_e2e.example_assertion_uniqueness_fail",
       "df_integration_test_assertions_project_e2e.example_assertion_fail"
     ];
     for (const actionName of Object.keys(actionMap)) {
@@ -53,8 +52,8 @@ suite("@dataform/integration/sqldatawarehouse", { parallel: true }, ({ before, a
     }
 
     expect(
-      actionMap["df_integration_test_assertions_project_e2e.example_assertion_uniqueness_fail"]
-        .tasks[2].errorMessage
+      actionMap["df_integration_test_assertions_project_e2e.example_assertion_fail"].tasks[2]
+        .errorMessage
     ).to.eql("sqldatawarehouse error: Assertion failed: query returned 1 row(s).");
 
     // Check the data in the incremental table.
@@ -197,7 +196,7 @@ suite("@dataform/integration/sqldatawarehouse", { parallel: true }, ({ before, a
     test("invalid table fails validation and error parsed correctly", async () => {
       const evaluations = await dbadapter.evaluate(
         dataform.Table.create({
-          type: "table",
+          enumType: dataform.TableType.TABLE,
           query: "selects\n1 as x",
           target: {
             schema: "df_integration_test",
@@ -220,7 +219,7 @@ suite("@dataform/integration/sqldatawarehouse", { parallel: true }, ({ before, a
     test("incremental pre and post ops, core version <= 1.4.8", async () => {
       // 1.4.8 used `preOps` and `postOps` instead of `incrementalPreOps` and `incrementalPostOps`.
       const table: dataform.ITable = {
-        type: "incremental",
+        enumType: dataform.TableType.INCREMENTAL,
         query: "query",
         preOps: ["preop task1", "preop task2"],
         incrementalQuery: "",

@@ -8,7 +8,7 @@ import { build, compile, credentials, init, install, run, table, test } from "df
 import { CREDENTIALS_FILENAME } from "df/api/commands/credentials";
 import * as dbadapters from "df/api/dbadapters";
 import { prettyJsonStringify } from "df/api/utils";
-import { trackError } from "df/cli/analytics";
+import { trackError, trackOption } from "df/cli/analytics";
 import {
   print,
   printCompiledGraph,
@@ -33,7 +33,7 @@ import {
 } from "df/cli/credentials";
 import { actuallyResolve, assertPathExists, compiledGraphHasErrors } from "df/cli/util";
 import { createYargsCli, INamedOption } from "df/cli/yargswrapper";
-import { supportsCancel, WarehouseType } from "df/core/adapters";
+import { isWarehouseType, supportsCancel, WarehouseType } from "df/core/adapters";
 import { targetAsReadableString } from "df/core/targets";
 import { dataform } from "df/protos/ts";
 import { formatFile } from "df/sqlx/format";
@@ -122,14 +122,16 @@ const includeDependentsOption: INamedOption<yargs.Options> = {
   },
   // It would be nice to use yargs' "implies" to implement this, but it doesn't work for some reason.
   check: (argv: yargs.Arguments) => {
-    if (argv[includeDependentsOption.name] && !(argv[actionsOption.name] || argv[tagsOption.name])) {
+    if (
+      argv[includeDependentsOption.name] &&
+      !(argv[actionsOption.name] || argv[tagsOption.name])
+    ) {
       throw new Error(
         `The --${includeDependentsOption.name} flag should only be supplied along with --${actionsOption.name} or --${tagsOption.name}.`
       );
     }
   }
 };
-
 
 const schemaSuffixOverrideOption: INamedOption<yargs.Options> = {
   name: "schema-suffix",
@@ -152,11 +154,10 @@ const credentialsOption: INamedOption<yargs.Options> = {
   name: "credentials",
   option: {
     describe: "The location of the credentials JSON file to use.",
-    default: null
+    default: CREDENTIALS_FILENAME
   },
   check: (argv: yargs.Arguments<any>) =>
-    !argv[credentialsOption.name] ||
-    assertPathExists(getCredentialsPath(argv[projectDirOption.name], argv[credentialsOption.name]))
+    getCredentialsPath(argv[projectDirOption.name], argv[credentialsOption.name])
 };
 
 const warehouseOption: INamedOption<yargs.PositionalOptions> = {
@@ -205,10 +206,19 @@ const timeoutOption: INamedOption<yargs.Options> = {
   }
 };
 
+const jobPrefixOption: INamedOption<yargs.Options> = {
+  name: "job-prefix",
+  option: {
+    describe:
+      "Adds an additional prefix in the form of `dataform-${jobPrefix}-`. Has no effect on warehouses other than BigQuery.",
+    type: "string",
+    default: null
+  }
+};
+
 const defaultDatabaseOptionName = "default-database";
+const defaultLocationOptionName = "default-location";
 const skipInstallOptionName = "skip-install";
-const includeSchedulesOptionName = "include-schedules";
-const includeEnvironmentsOptionName = "include-environments";
 
 const testConnectionOptionName = "test-connection";
 
@@ -242,6 +252,7 @@ export function runCli() {
         description: "Create a new dataform project.",
         positionalOptions: [warehouseOption, projectDirOption],
         options: [
+          trackOption,
           {
             name: defaultDatabaseOptionName,
             option: {
@@ -265,23 +276,31 @@ export function runCli() {
             }
           },
           {
+            name: defaultLocationOptionName,
+            option: {
+              describe:
+                "The default BigQuery location to use. See https://cloud.google.com/bigquery/docs/locations for supported values."
+            },
+            check: (argv: yargs.Arguments<any>) => {
+              if (
+                argv[defaultLocationOptionName] &&
+                !["bigquery"].includes(argv[warehouseOption.name])
+              ) {
+                throw new Error(
+                  `The --${defaultLocationOptionName} flag is only used for BigQuery.`
+                );
+              }
+              if (!argv[defaultLocationOptionName] && argv[warehouseOption.name] === "bigquery") {
+                throw new Error(
+                  `The --${defaultLocationOptionName} flag is required for BigQuery projects. Please run 'dataform help init' for more information.`
+                );
+              }
+            }
+          },
+          {
             name: skipInstallOptionName,
             option: {
               describe: "Whether to skip installing NPM packages.",
-              default: false
-            }
-          },
-          {
-            name: includeSchedulesOptionName,
-            option: {
-              describe: "Whether to initialize a schedules.json file.",
-              default: false
-            }
-          },
-          {
-            name: includeEnvironmentsOptionName,
-            option: {
-              describe: "Whether to initialize a environments.json file.",
               default: false
             }
           }
@@ -293,12 +312,11 @@ export function runCli() {
             {
               warehouse: argv[warehouseOption.name],
               defaultDatabase: argv[defaultDatabaseOptionName],
+              defaultLocation: argv[defaultLocationOptionName],
               useRunCache: false
             },
             {
-              skipInstall: argv[skipInstallOptionName],
-              includeSchedules: argv[includeSchedulesOptionName],
-              includeEnvironments: argv[includeEnvironmentsOptionName]
+              skipInstall: argv[skipInstallOptionName]
             }
           );
           printInitResult(initResult);
@@ -309,7 +327,7 @@ export function runCli() {
         format: `install [${projectDirMustExistOption.name}]`,
         description: "Install a project's NPM dependencies.",
         positionalOptions: [projectDirMustExistOption],
-        options: [],
+        options: [trackOption],
         processFn: async argv => {
           print("Installing NPM dependencies...\n");
           await install(argv[projectDirMustExistOption.name]);
@@ -322,6 +340,7 @@ export function runCli() {
         description: `Create a ${credentials.CREDENTIALS_FILENAME} file for Dataform to use when accessing your warehouse.`,
         positionalOptions: [warehouseOption, projectDirMustExistOption],
         options: [
+          trackOption,
           {
             name: testConnectionOptionName,
             option: {
@@ -407,7 +426,8 @@ export function runCli() {
           schemaSuffixOverrideOption,
           jsonOutputOption,
           varsOption,
-          timeoutOption
+          timeoutOption,
+          trackOption
         ],
         processFn: async argv => {
           const projectDir = argv[projectDirMustExistOption.name];
@@ -482,8 +502,8 @@ export function runCli() {
                 }
               }, RECOMPILE_DELAY);
             });
-          process.on("SIGINT", () => {
-            watcher.close();
+          process.on("SIGINT", async () => {
+            await watcher.close();
             watching = false;
             process.exit(1);
           });
@@ -496,7 +516,7 @@ export function runCli() {
         format: `test [${projectDirMustExistOption.name}]`,
         description: "Run the dataform project's unit tests on the configured data warehouse.",
         positionalOptions: [projectDirMustExistOption],
-        options: [credentialsOption, varsOption, timeoutOption],
+        options: [credentialsOption, varsOption, timeoutOption, trackOption],
         processFn: async argv => {
           print("Compiling...\n");
           const compiledGraph = await compile({
@@ -562,11 +582,14 @@ export function runCli() {
           actionsOption,
           tagsOption,
           includeDepsOption,
+          includeDependentsOption,
           schemaSuffixOverrideOption,
           credentialsOption,
           jsonOutputOption,
           varsOption,
-          timeoutOption
+          timeoutOption,
+          jobPrefixOption,
+          trackOption
         ],
         processFn: async argv => {
           if (!argv[jsonOutputOption.name]) {
@@ -634,7 +657,13 @@ export function runCli() {
             if (!argv[jsonOutputOption.name]) {
               print("Running...\n");
             }
-            const runner = run(dbadapter, executionGraph);
+            const runner = run(
+              dbadapter,
+              executionGraph,
+              argv[jobPrefixOption.name]
+                ? { bigquery: { jobPrefix: argv[jobPrefixOption.name] } }
+                : {}
+            );
             process.on("SIGINT", () => {
               if (
                 !supportsCancel(
@@ -659,7 +688,8 @@ export function runCli() {
                     actionResult.status !== dataform.ActionResult.ExecutionStatus.RUNNING
                 )
                 .filter(
-                  executedAction => !alreadyPrintedActions.has(targetAsReadableString(executedAction.target))
+                  executedAction =>
+                    !alreadyPrintedActions.has(targetAsReadableString(executedAction.target))
                 )
                 .forEach(executedAction => {
                   printExecutedAction(
@@ -683,8 +713,24 @@ export function runCli() {
         format: `format [${projectDirMustExistOption.name}]`,
         description: "Format the dataform project's files.",
         positionalOptions: [projectDirMustExistOption],
-        options: [],
+        options: [trackOption],
         processFn: async argv => {
+          const readWarehouseConfig = (): WarehouseType => {
+            let wh: string;
+            try {
+              const dataformJson = fs.readFileSync(path.resolve(argv[projectDirMustExistOption.name], "dataform.json"), 'utf8');
+              const projectConfig = JSON.parse(dataformJson);
+              wh = projectConfig.warehouse;
+            } catch (e) {
+              throw new Error(`Could not parse dataform.json: ${e.message}`);
+            }
+            if (!isWarehouseType(wh)) {
+              throw new Error("Unrecognized 'warehouse' setting in dataform.json");
+            }
+            return wh;
+          };
+          const warehouse = readWarehouseConfig();
+
           const filenames = glob.sync("{definitions,includes}/**/*.{js,sqlx}", {
             cwd: argv[projectDirMustExistOption.name]
           });
@@ -692,7 +738,8 @@ export function runCli() {
             filenames.map(async filename => {
               try {
                 await formatFile(path.resolve(argv[projectDirMustExistOption.name], filename), {
-                  overwriteFile: true
+                  overwriteFile: true,
+                  warehouse
                 });
                 return {
                   filename
@@ -713,7 +760,7 @@ export function runCli() {
         format: `listtables <${warehouseOption.name}>`,
         description: "List tables on the configured data warehouse.",
         positionalOptions: [warehouseOption],
-        options: [credentialsOption],
+        options: [credentialsOption, trackOption],
         processFn: async argv => {
           const readCredentials = credentials.read(
             argv[warehouseOption.name],
@@ -748,7 +795,7 @@ export function runCli() {
             }
           }
         ],
-        options: [credentialsOption],
+        options: [credentialsOption, trackOption],
         processFn: async argv => {
           const readCredentials = credentials.read(
             argv[warehouseOption.name],

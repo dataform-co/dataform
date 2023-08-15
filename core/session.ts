@@ -19,7 +19,7 @@ import {
 import { targetAsReadableString, targetStringifier } from "df/core/targets";
 import * as test from "df/core/test";
 import * as utils from "df/core/utils";
-import { toResolvable } from "df/core/utils";
+import { setOrValidateTableEnumType, toResolvable } from "df/core/utils";
 import { version as dataformCoreVersion } from "df/core/version";
 import { dataform } from "df/protos/ts";
 
@@ -226,7 +226,7 @@ export class Session {
     }
     const resolved = allResolved.length > 0 ? allResolved[0] : undefined;
 
-    if (resolved && resolved instanceof Table && resolved.proto.type === "inline") {
+    if (resolved && resolved instanceof Table && resolved.proto.enumType === dataform.TableType.INLINE) {
       // TODO: Pretty sure this is broken as the proto.query value may not
       // be set yet as it happens during compilation. We should evalute the query here.
       return `(${resolved.proto.query})`;
@@ -245,15 +245,9 @@ export class Session {
         ...resolved.proto.target,
         database:
           resolved.proto.target.database &&
-          this.adapter().normalizeIdentifier(
-            `${resolved.proto.target.database}${this.getDatabaseSuffixWithUnderscore()}`
-          ),
-        schema: this.adapter().normalizeIdentifier(
-          `${resolved.proto.target.schema}${this.getSchemaSuffixWithUnderscore()}`
-        ),
-        name: this.adapter().normalizeIdentifier(
-          `${this.getTablePrefixWithUnderscore()}${resolved.proto.target.name}`
-        )
+          this.finalizeDatabase(resolved.proto.target.database),
+        schema: this.finalizeSchema(resolved.proto.target.schema),
+        name: this.finalizeName(resolved.proto.target.name),
       });
     }
     // TODO: Here we allow 'ref' to go unresolved. This is for backwards compatibility with projects
@@ -266,14 +260,10 @@ export class Session {
         utils.target(
           this.adapter(),
           this.config,
-          this.adapter().normalizeIdentifier(`${this.getTablePrefixWithUnderscore()}${ref}`),
-          this.adapter().normalizeIdentifier(
-            `${this.config.defaultSchema}${this.getSchemaSuffixWithUnderscore()}`
-          ),
+          this.finalizeName(ref),
+          this.finalizeSchema(this.config.defaultSchema),
           this.config.defaultDatabase &&
-            this.adapter().normalizeIdentifier(
-              `${this.config.defaultDatabase}${this.getDatabaseSuffixWithUnderscore()}`
-            )
+            this.finalizeDatabase(this.config.defaultDatabase),
         )
       );
     }
@@ -281,12 +271,9 @@ export class Session {
       utils.target(
         this.adapter(),
         this.config,
-        this.adapter().normalizeIdentifier(`${this.getTablePrefixWithUnderscore()}${ref.name}`),
-        this.adapter().normalizeIdentifier(`${ref.schema}${this.getSchemaSuffixWithUnderscore()}`),
-        ref.database &&
-          this.adapter().normalizeIdentifier(
-            `${ref.database}${this.getDatabaseSuffixWithUnderscore()}`
-          )
+        this.finalizeName(ref.name),
+        this.finalizeSchema(ref.schema),
+        ref.database && this.finalizeName(ref.database),
       )
     );
   }
@@ -375,6 +362,20 @@ export class Session {
 
   public compile(): dataform.CompiledGraph {
     this.indexedActions = new ActionIndex(this.adapter(), this.actions);
+
+    if (this.config.warehouse === "bigquery" && !this.config.defaultLocation) {
+      this.compileError(
+        "A defaultLocation is required for BigQuery. This can be configured in dataform.json.",
+        "dataform.json"
+      );
+    }
+    if (
+      !!this.config.vars && 
+      !Object.values(this.config.vars).every((value) => typeof value === 'string')
+    ) {
+      throw new Error("Custom variables defined in dataform.json can only be strings.");
+    }
+
     const compiledGraph = dataform.CompiledGraph.create({
       projectConfig: this.config,
       tables: this.compileGraphChunk(
@@ -408,18 +409,9 @@ export class Session {
       [].concat(compiledGraph.declarations.map(declaration => declaration.target))
     );
 
-    const standardActions = [].concat(
-      compiledGraph.tables,
-      compiledGraph.assertions,
-      compiledGraph.operations,
-      compiledGraph.declarations
-    );
-
-    this.checkActionNameUniqueness(standardActions);
+    this.removeNonUniqueActionsFromCompiledGraph(compiledGraph);
 
     this.checkTestNameUniqueness(compiledGraph.tests);
-
-    this.checkCanonicalTargetUniqueness(standardActions);
 
     this.checkTableConfigValidity(compiledGraph.tables);
 
@@ -443,6 +435,21 @@ export class Session {
 
   public compileToBase64() {
     return encode64(dataform.CompiledGraph, this.compile());
+  }
+
+  public finalizeDatabase(database: string): string {
+    return this.adapter().normalizeIdentifier(
+      `${database}${this.getDatabaseSuffixWithUnderscore()}`);
+  }
+
+  public finalizeSchema(schema: string): string {
+    return this.adapter().normalizeIdentifier(
+      `${schema}${this.getSchemaSuffixWithUnderscore()}`);
+  }
+
+  public finalizeName(name: string): string {
+    return this.adapter().normalizeIdentifier(
+      `${this.getTablePrefixWithUnderscore()}${name}`);
   }
 
   private getDatabaseSuffixWithUnderscore() {
@@ -496,7 +503,7 @@ export class Session {
           // We found a single matching target, and fully-qualify it if it's a normal dependency,
           // or add all of its dependencies to ours if it's an 'inline' table.
           const protoDep = possibleDeps[0].proto;
-          if (protoDep instanceof dataform.Table && protoDep.type === "inline") {
+          if (protoDep instanceof dataform.Table && protoDep.enumType === dataform.TableType.INLINE) {
             protoDep.dependencyTargets.forEach(inlineDep =>
               action.dependencyTargets.push(inlineDep)
             );
@@ -566,45 +573,10 @@ export class Session {
     });
   }
 
-  private checkActionNameUniqueness(actions: IActionProto[]) {
-    const allNames: string[] = [];
-    actions.forEach(action => {
-      const name = targetAsReadableString(action.target);
-      if (allNames.includes(name)) {
-        this.compileError(
-          new Error(
-            `Duplicate action name detected. Names within a schema must be unique across tables, declarations, assertions, and operations`
-          ),
-          action.fileName,
-          action.target
-        );
-      }
-      allNames.push(name);
-    });
-  }
-
-  private checkCanonicalTargetUniqueness(actions: IActionProto[]) {
-    const allCanonicalTargets = new StringifiedSet<dataform.ITarget>(targetStringifier);
-    actions.forEach(action => {
-      if (allCanonicalTargets.has(action.canonicalTarget)) {
-        this.compileError(
-          new Error(
-            `Duplicate canonical target detected. Canonical targets must be unique across tables, declarations, assertions, and operations:\n"${JSON.stringify(
-              action.canonicalTarget
-            )}"`
-          ),
-          action.fileName,
-          action.target
-        );
-      }
-      allCanonicalTargets.add(action.canonicalTarget);
-    });
-  }
-
   private checkTableConfigValidity(tables: dataform.ITable[]) {
     tables.forEach(table => {
       // type
-      if (!!table.type && !TableType.includes(table.type as TableType)) {
+      if (table.enumType === dataform.TableType.UNKNOWN_TYPE) {
         this.compileError(
           `Wrong type of table detected. Should only use predefined types: ${joinQuoted(
             TableType
@@ -615,8 +587,11 @@ export class Session {
       }
 
       // materialized
-      if(!!table.materialized){
-        if (table.type !== "view" || (this.config.warehouse !== "snowflake" && this.config.warehouse !== "bigquery")) {
+      if (!!table.materialized) {
+        if (
+          table.enumType !== dataform.TableType.VIEW ||
+          (this.config.warehouse !== "snowflake" && this.config.warehouse !== "bigquery")
+        ) {
           this.compileError(
             new Error(`The 'materialized' option is only valid for Snowflake and BigQuery views`),
             table.fileName,
@@ -627,7 +602,7 @@ export class Session {
 
       // snowflake config
       if (!!table.snowflake) {
-        if (table.snowflake.secure && table.type !== "view") {
+        if (table.snowflake.secure && table.enumType !== dataform.TableType.VIEW) {
           this.compileError(
             new Error(`The 'secure' option is only valid for Snowflake views`),
             table.fileName,
@@ -635,7 +610,7 @@ export class Session {
           );
         }
 
-        if (table.snowflake.transient && table.type !== "table") {
+        if (table.snowflake.transient && table.enumType !== dataform.TableType.TABLE) {
           this.compileError(
             new Error(`The 'transient' option is only valid for Snowflake tables`),
             table.fileName,
@@ -645,8 +620,8 @@ export class Session {
 
         if (
           table.snowflake.clusterBy?.length > 0 &&
-          table.type !== "table" &&
-          table.type !== "incremental"
+          table.enumType !== dataform.TableType.TABLE &&
+          table.enumType !== dataform.TableType.INCREMENTAL
         ) {
           this.compileError(
             new Error(`The 'clusterBy' option is only valid for Snowflake tables`),
@@ -735,35 +710,42 @@ export class Session {
       // BigQuery config
       if (!!table.bigquery) {
         if (
-          (table.bigquery.partitionBy || table.bigquery.clusterBy?.length || table.bigquery.partitionExpirationDays
-            || table.bigquery.requirePartitionFilter) &&
-          table.type === "view"
+          (table.bigquery.partitionBy ||
+            table.bigquery.clusterBy?.length ||
+            table.bigquery.partitionExpirationDays ||
+            table.bigquery.requirePartitionFilter) &&
+          table.enumType === dataform.TableType.VIEW
         ) {
           this.compileError(
             `partitionBy/clusterBy/requirePartitionFilter/partitionExpirationDays are not valid for BigQuery views; they are only valid for tables`,
             table.fileName,
             table.target
           );
-        }
-        else if (
-          (!table.bigquery.partitionBy &&  (table.bigquery.partitionExpirationDays || table.bigquery.requirePartitionFilter)) &&
-          table.type === "table"
+        } else if (
+          !table.bigquery.partitionBy &&
+          (table.bigquery.partitionExpirationDays || table.bigquery.requirePartitionFilter) &&
+          table.enumType === dataform.TableType.TABLE
         ) {
           this.compileError(
             `requirePartitionFilter/partitionExpirationDays are not valid for non partitioned BigQuery tables`,
             table.fileName,
             table.target
           );
-        }
-        else if(table.bigquery.additionalOptions) {
-          if(table.bigquery.partitionExpirationDays && table.bigquery.additionalOptions.partition_expiration_days) {
+        } else if (table.bigquery.additionalOptions) {
+          if (
+            table.bigquery.partitionExpirationDays &&
+            table.bigquery.additionalOptions.partition_expiration_days
+          ) {
             this.compileError(
               `partitionExpirationDays has been declared twice`,
               table.fileName,
               table.target
             );
           }
-          if (table.bigquery.requirePartitionFilter && table.bigquery.additionalOptions.require_partition_filter) {
+          if (
+            table.bigquery.requirePartitionFilter &&
+            table.bigquery.additionalOptions.require_partition_filter
+          ) {
             this.compileError(
               `requirePartitionFilter has been declared twice`,
               table.fileName,
@@ -774,11 +756,11 @@ export class Session {
       }
 
       // Ignored properties
-      if (!!Table.IGNORED_PROPS[table.type]) {
-        Table.IGNORED_PROPS[table.type].forEach(ignoredProp => {
+      if (table.enumType === dataform.TableType.INLINE) {
+        Table.INLINE_IGNORED_PROPS.forEach(ignoredProp => {
           if (objectExistsOrIsNonEmpty(table[ignoredProp])) {
             this.compileError(
-              `Unused property was detected: "${ignoredProp}". This property is not used for tables with type "${table.type}" and will be ignored`,
+              `Unused property was detected: "${ignoredProp}". This property is not used for tables with type "inline" and will be ignored`,
               table.fileName,
               table.target
             );
@@ -847,6 +829,69 @@ export class Session {
         action.target
       );
     });
+  }
+
+  private removeNonUniqueActionsFromCompiledGraph(compiledGraph: dataform.CompiledGraph) {
+    function getNonUniqueTargets(targets: dataform.ITarget[]): StringifiedSet<dataform.ITarget> {
+      const allTargets = new StringifiedSet<dataform.ITarget>(targetStringifier);
+      const nonUniqueTargets = new StringifiedSet<dataform.ITarget>(targetStringifier);
+
+      targets.forEach(target => {
+        if (allTargets.has(target)) {
+          nonUniqueTargets.add(target);
+        }
+        allTargets.add(target);
+      });
+
+      return nonUniqueTargets;
+    }
+
+    const actions = [].concat(
+      compiledGraph.tables,
+      compiledGraph.assertions,
+      compiledGraph.operations,
+      compiledGraph.declarations
+    );
+
+    const nonUniqueActionsTargets = getNonUniqueTargets(actions.map(action => action.target));
+    const nonUniqueActionsCanonicalTargets = getNonUniqueTargets(
+      actions.map(action => action.canonicalTarget)
+    );
+
+    const isUniqueAction = (action: IActionProto) => {
+      const isNonUniqueTarget = nonUniqueActionsTargets.has(action.target);
+      const isNonUniqueCanonicalTarget = nonUniqueActionsCanonicalTargets.has(
+        action.canonicalTarget
+      );
+
+      if (isNonUniqueTarget) {
+        this.compileError(
+          new Error(
+            `Duplicate action name detected. Names within a schema must be unique across tables, declarations, assertions, and operations`
+          ),
+          action.fileName,
+          action.target
+        );
+      }
+      if (isNonUniqueCanonicalTarget) {
+        this.compileError(
+          new Error(
+            `Duplicate canonical target detected. Canonical targets must be unique across tables, declarations, assertions, and operations:\n"${JSON.stringify(
+              action.canonicalTarget
+            )}"`
+          ),
+          action.fileName,
+          action.target
+        );
+      }
+
+      return !isNonUniqueTarget && !isNonUniqueCanonicalTarget;
+    };
+
+    compiledGraph.tables = compiledGraph.tables.filter(isUniqueAction);
+    compiledGraph.operations = compiledGraph.operations.filter(isUniqueAction);
+    compiledGraph.declarations = compiledGraph.declarations.filter(isUniqueAction);
+    compiledGraph.assertions = compiledGraph.assertions.filter(isUniqueAction);
   }
 }
 

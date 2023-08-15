@@ -219,14 +219,15 @@ export class OperationContext implements ICommonContext {
   }
 
   public name(): string {
-    return this.operation.proto.target.name;
+    return this.operation.session.finalizeName(
+      this.operation.proto.target.name
+    );
   }
 
   public ref(ref: Resolvable | string[], ...rest: string[]) {
     ref = toResolvable(ref, rest);
     if (!resolvableAsTarget(ref)) {
-      const message = `Action name is not specified`;
-      this.operation.session.compileError(new Error(message));
+      this.operation.session.compileError(new Error(`Action name is not specified`));
       return "";
     }
     this.operation.dependencies(ref);
@@ -234,7 +235,26 @@ export class OperationContext implements ICommonContext {
   }
 
   public resolve(ref: Resolvable | string[], ...rest: string[]) {
-    return this.operation.session.resolve(toResolvable(ref, rest));
+    return this.operation.session.resolve(ref, ...rest);
+  }
+
+  public schema(): string {
+    return this.operation.session.finalizeSchema(
+      this.operation.proto.target.schema
+    );
+  }
+
+  public database(): string {
+    if (!this.operation.proto.target.database) {
+      this.operation.session.compileError(
+        new Error(`Warehouse does not support multiple databases`)
+      );
+      return "";
+    }
+
+    return this.operation.session.finalizeDatabase(
+      this.operation.proto.target.database
+    );
   }
 
   public dependencies(name: Resolvable | Resolvable[]) {

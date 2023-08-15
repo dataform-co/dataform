@@ -45,7 +45,7 @@ export function main(encodedCoreExecutionRequest: string): string {
 
   // Require "includes" *.js files.
   compileRequest.compileConfig.filePaths
-    .filter(path => path.startsWith("includes/"))
+    .filter(path => path.startsWith(`includes${utils.pathSeperator}`))
     .filter(path => path.endsWith(".js"))
     .forEach(includePath => {
       try {
@@ -65,7 +65,7 @@ export function main(encodedCoreExecutionRequest: string): string {
 
   // Require all "definitions" files (attaching them to the session).
   compileRequest.compileConfig.filePaths
-    .filter(path => path.startsWith("definitions/"))
+    .filter(path => path.startsWith(`definitions${utils.pathSeperator}`))
     .filter(path => path.endsWith(".js") || path.endsWith(".sqlx"))
     .forEach(definitionPath => {
       try {

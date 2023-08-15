@@ -41,11 +41,10 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
       const executedGraph = await dfapi.run(dbadapter, executionGraph).result();
 
       const actionMap = keyBy(executedGraph.actions, v => targetAsReadableString(v.target));
-      expect(Object.keys(actionMap).length).eql(19);
+      expect(Object.keys(actionMap).length).eql(17);
 
       // Check the status of action execution.
       const expectedFailedActions = [
-        "dataform-integration-tests.df_integration_test_eu_assertions_project_e2e.example_assertion_uniqueness_fail",
         "dataform-integration-tests.df_integration_test_eu_assertions_project_e2e.example_assertion_fail",
         "dataform-integration-tests.df_integration_test_eu_project_e2e.example_operation_partial_fail"
       ];
@@ -61,7 +60,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
 
       expect(
         actionMap[
-          "dataform-integration-tests.df_integration_test_eu_assertions_project_e2e.example_assertion_uniqueness_fail"
+          "dataform-integration-tests.df_integration_test_eu_assertions_project_e2e.example_assertion_fail"
         ].tasks[1].errorMessage
       ).to.eql("bigquery error: Assertion failed: query returned 1 row(s).");
 
@@ -332,7 +331,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
 
       let evaluations = await dbadapter.evaluate(
         dataform.Table.create({
-          type: "table",
+          enumType: dataform.TableType.TABLE,
           preOps: ["declare var string; set var = 'val';"],
           query: "select var as col;",
           target: target("example_valid_variable")
@@ -345,7 +344,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
 
       evaluations = await dbadapter.evaluate(
         dataform.Table.create({
-          type: "table",
+          enumType: dataform.TableType.TABLE,
           query: "select var as col;",
           target: target("example_invalid_variable")
         })
@@ -359,7 +358,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
     test("invalid table fails validation and error parsed correctly", async () => {
       const evaluations = await dbadapter.evaluate(
         dataform.Table.create({
-          type: "table",
+          enumType: dataform.TableType.TABLE,
           query: "selects\n1 as x",
           target: {
             name: "EXAMPLE_ILLEGAL_TABLE",
@@ -381,7 +380,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
     test("incremental pre and post ops, core version <= 1.4.8", async () => {
       // 1.4.8 used `preOps` and `postOps` instead of `incrementalPreOps` and `incrementalPostOps`.
       const table: dataform.ITable = {
-        type: "incremental",
+        enumType: dataform.TableType.INCREMENTAL,
         query: "query",
         preOps: ["preop task1", "preop task2"],
         incrementalQuery: "",
@@ -423,6 +422,16 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
       expect(bqMetadata.totalBytesBilled).to.eql(Long.fromNumber(0));
       expect(bqMetadata).to.have.property("totalBytesProcessed");
       expect(bqMetadata.totalBytesProcessed).to.eql(Long.fromNumber(0));
+    });
+
+    test("configured job prefix is added to table names", async () => {
+      const query = `select 1 as test`;
+      const { metadata } = await dbadapter.execute(query, { bigquery: { jobPrefix: "jobPrefix" } });
+      const { bigquery: bqMetadata } = metadata;
+      expect(bqMetadata).to.have.property("jobId");
+      expect(bqMetadata.jobId).to.match(
+        /^dataform-jobPrefix-[0-9A-Fa-f]{8}(?:-[0-9A-Fa-f]{4}){3}-[0-9A-Fa-f]{12}$/
+      );
     });
 
     suite("query limits work", { parallel: true }, async () => {

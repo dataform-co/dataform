@@ -26,14 +26,14 @@ export class SQLDataWarehouseAdapter extends Adapter implements IAdapter {
 
     this.preOps(table, runConfig, tableMetadata).forEach(statement => tasks.add(statement));
 
-    const baseTableType = this.baseTableType(table.type);
+    const baseTableType = this.baseTableType(table.enumType);
     if (tableMetadata && tableMetadata.type !== baseTableType) {
       tasks.add(
         Task.statement(this.dropIfExists(table.target, this.oppositeTableType(baseTableType)))
       );
     }
 
-    if (table.type === "incremental") {
+    if (table.enumType === dataform.TableType.INCREMENTAL) {
       if (!this.shouldWriteIncrementally(runConfig, tableMetadata)) {
         tasks.addAll(this.createOrReplace(table, !!tableMetadata));
       } else {
@@ -90,7 +90,7 @@ from (${query}
   }
 
   private createOrReplace(table: dataform.ITable, alreadyExists: boolean) {
-    if (table.type === "view") {
+    if (table.enumType === dataform.TableType.VIEW) {
       return Tasks.create().add(
         Task.statement(
           `${alreadyExists ? "alter" : "create"} view ${this.resolveTarget(table.target)} as ${
@@ -105,7 +105,7 @@ from (${query}
     });
 
     return Tasks.create()
-      .add(Task.statement(this.dropIfExists(tempTableTarget, this.baseTableType(table.type))))
+      .add(Task.statement(this.dropIfExists(tempTableTarget, this.baseTableType(table.enumType))))
       .add(Task.statement(this.createTable(table, tempTableTarget)))
       .add(Task.statement(this.dropIfExists(table.target, dataform.TableMetadata.Type.TABLE)))
       .add(

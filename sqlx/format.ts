@@ -1,10 +1,10 @@
-import * as crypto from "crypto";
 import * as fs from "fs";
 import * as jsBeautify from "js-beautify";
 import * as sqlFormatter from "sql-formatter";
 import { promisify } from "util";
 
 import { ErrorWithCause } from "df/common/errors/errors";
+import { WarehouseType } from "df/core/adapters";
 import { SyntaxTreeNode, SyntaxTreeNodeType } from "df/sqlx/lexer";
 import { v4 as uuidv4 } from "uuid";
 
@@ -16,11 +16,26 @@ const JS_BEAUTIFY_OPTIONS = {
 
 const MAX_SQL_FORMAT_ATTEMPTS = 5;
 
-export function format(text: string, fileExtension: string) {
+const WAREHOUSE_LANGUAGE_MAP: Record<WarehouseType, sqlFormatter.SqlLanguage> = {
+  [WarehouseType.BIGQUERY]: "bigquery",
+  [WarehouseType.PRESTO]: "trino",
+  [WarehouseType.POSTGRES]: "postgresql",
+  [WarehouseType.REDSHIFT]: "redshift",
+  [WarehouseType.SNOWFLAKE]: "snowflake",
+  [WarehouseType.SQLDATAWAREHOUSE]: "transactsql"
+};
+
+const DEFAULT_WAREHOUSE_FOR_FORMATTING: WarehouseType = WarehouseType.BIGQUERY;
+
+export function format(
+  text: string,
+  fileExtension: string,
+  warehouse: WarehouseType = DEFAULT_WAREHOUSE_FOR_FORMATTING
+) {
   try {
     switch (fileExtension) {
       case "sqlx":
-        return postProcessFormattedSqlx(formatSqlx(SyntaxTreeNode.create(text)));
+        return postProcessFormattedSqlx(formatSqlx(SyntaxTreeNode.create(text), "", warehouse));
       case "js":
         return `${formatJavaScript(text).trim()}\n`;
       default:
@@ -35,12 +50,14 @@ export async function formatFile(
   filename: string,
   options?: {
     overwriteFile?: boolean;
+    warehouse?: WarehouseType;
   }
 ) {
   const fileExtension = filename.split(".").slice(-1)[0];
   const originalFileContent = await promisify(fs.readFile)(filename, "utf8");
-  const formattedText = format(originalFileContent, fileExtension);
-  if (formattedText !== format(formattedText, fileExtension)) {
+
+  const formattedText = format(originalFileContent, fileExtension, options?.warehouse);
+  if (formattedText !== format(formattedText, fileExtension, options?.warehouse)) {
     throw new Error("Formatter unable to determine final formatted form.");
   }
 
@@ -57,10 +74,11 @@ export async function formatFile(
   return formattedText;
 }
 
-function formatSqlx(node: SyntaxTreeNode, indent: string = "") {
+function formatSqlx(node: SyntaxTreeNode, indent: string = "", warehouse: WarehouseType) {
   const { sqlxStatements, javascriptBlocks, innerSqlBlocks } = separateSqlxIntoParts(
     node.children()
   );
+  const sqlLanguage = WAREHOUSE_LANGUAGE_MAP[warehouse];
 
   // First, format the JS blocks (including the config block).
   const formattedJsCodeBlocks = javascriptBlocks.map(jsCodeBlock =>
@@ -73,7 +91,7 @@ function formatSqlx(node: SyntaxTreeNode, indent: string = "") {
       [placeholderId: string]: SyntaxTreeNode | string;
     } = {};
     const unformattedPlaceholderSql = stripUnformattableText(sqlxStatement, placeholders).join("");
-    const formattedPlaceholderSql = formatSql(unformattedPlaceholderSql);
+    const formattedPlaceholderSql = formatSql(unformattedPlaceholderSql, sqlLanguage);
     return formatEveryLine(
       replacePlaceholders(formattedPlaceholderSql, placeholders),
       line => `${indent}${line}`
@@ -101,7 +119,7 @@ function formatSqlx(node: SyntaxTreeNode, indent: string = "") {
           ]);
 
     return `${upToFirstBrace}
-${formatSqlx(sqlCodeBlockWithoutOuterBraces, "  ")}
+${formatSqlx(sqlCodeBlockWithoutOuterBraces, "  ", warehouse)}
 ${lastBraceOnwards}`;
   });
 
@@ -153,6 +171,7 @@ function stripUnformattableText(
       const placeholderId = generatePlaceholderId();
       switch (part.type) {
         case SyntaxTreeNodeType.SQL_LITERAL_STRING:
+        case SyntaxTreeNodeType.SQL_LITERAL_MULTILINE_STRING:
         case SyntaxTreeNodeType.JAVASCRIPT_TEMPLATE_STRING_PLACEHOLDER: {
           placeholders[placeholderId] = part;
           return placeholderId;
@@ -175,7 +194,9 @@ function stripUnformattableText(
 }
 
 function generatePlaceholderId() {
-  return uuidv4()
+  // Add a leading character to ensure that the placeholder doesn't start with a number.
+  // Identifiers beginning with a number cause errors when formatting.
+  return '_' + uuidv4()
     .replace(/-/g, "")
     .substring(0, 16);
 }
@@ -199,11 +220,11 @@ function formatJavaScript(text: string) {
   return jsBeautify.js(text, JS_BEAUTIFY_OPTIONS);
 }
 
-function formatSql(text: string) {
-  let formatted = sqlFormatter.format(text) as string;
+function formatSql(text: string, language: sqlFormatter.SqlLanguage) {
+  let formatted = sqlFormatter.format(text, { language }) as string;
   // Unfortunately sql-formatter does not always produce final formatted output (even on plain SQL) in a single pass.
   for (let attempts = 0; attempts < MAX_SQL_FORMAT_ATTEMPTS; attempts++) {
-    const newFormatted = sqlFormatter.format(formatted) as string;
+    const newFormatted = sqlFormatter.format(formatted, { language }) as string;
     if (newFormatted === formatted) {
       return newFormatted;
     }
@@ -222,6 +243,7 @@ function formatPlaceholderInSqlx(
   const wholeLine = getWholeLineContainingPlaceholderId(placeholderId, sqlx);
   const indent = " ".repeat(wholeLine.length - wholeLine.trimLeft().length);
   const formattedPlaceholder = formatSqlQueryPlaceholder(placeholderSyntaxNode, indent);
+
   // Replace the placeholder entirely if (a) it fits on one line and (b) it isn't a comment.
   // Otherwise, push the replacement onto its own line.
   if (
@@ -230,6 +252,12 @@ function formatPlaceholderInSqlx(
   ) {
     return sqlx.replace(placeholderId, () => formattedPlaceholder.trim());
   }
+
+  // Keep internal line breaks in multiline string.
+  if (placeholderSyntaxNode.type === SyntaxTreeNodeType.SQL_LITERAL_MULTILINE_STRING) {
+    return sqlx.replace(placeholderId, () => formattedPlaceholder.trim());
+  }
+
   // Push multi-line placeholders to their own lines, if they're not already on one.
   const [textBeforePlaceholder, textAfterPlaceholder] = wholeLine.split(placeholderId);
   const newLines: string[] = [];
@@ -250,6 +278,8 @@ function formatSqlQueryPlaceholder(node: SyntaxTreeNode, jsIndent: string): stri
     case SyntaxTreeNodeType.SQL_LITERAL_STRING:
     case SyntaxTreeNodeType.SQL_COMMENT:
       return formatEveryLine(node.concatenate(), line => `${jsIndent}${line.trimLeft()}`);
+    case SyntaxTreeNodeType.SQL_LITERAL_MULTILINE_STRING:
+      return `${jsIndent}${node.concatenate().trimLeft()}`;
     default:
       throw new Error(`Unrecognized SyntaxTreeNodeType: ${node.type}`);
   }

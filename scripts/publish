@@ -6,8 +6,8 @@ if [ "$(git status --porcelain)" ]; then
     exit 1
 fi
 
-if [ "main_v1" != "$(git branch --show-current)" ]; then 
-    echo "Not on the 'main_v1' branch; aborting." 1>&2
+if [ "main" != "$(git branch --show-current)" ]; then 
+    echo "Not on the 'main' branch; aborting." 1>&2
     exit 1
 fi
 
@@ -15,7 +15,6 @@ fi
 
 bazel test //... --build_tests_only -- -tests/integration:snowflake.spec
 
-bazel run packages/@dataform/assertion_utils:package.publish
 bazel run packages/@dataform/cli:package.publish
 bazel run packages/@dataform/core:package.publish
 bazel run cli:push

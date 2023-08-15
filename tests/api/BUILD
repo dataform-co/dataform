@@ -6,8 +6,6 @@ ts_test_suite(
     data = [
         "//examples/backwards_compatibility:files",
         "//examples/backwards_compatibility:node_modules",
-        "//examples/common_v1:files",
-        "//examples/common_v1:node_modules",
         "//examples/common_v2:files",
         "//examples/common_v2:node_modules",
         "//examples/formatter:files",
@@ -21,6 +19,7 @@ ts_test_suite(
         "//api",
         "//api/utils",
         "//common/promises",
+        "//common/strings",
         "//core",
         "//protos:ts",
         "//testing",

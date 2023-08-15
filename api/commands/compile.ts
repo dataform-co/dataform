@@ -1,11 +1,13 @@
 import * as fs from "fs";
 import * as path from "path";
+import * as semver from "semver";
 
 import { ChildProcess, fork } from "child_process";
 import deepmerge from "deepmerge";
 import { validWarehouses } from "df/api/dbadapters";
 import { coerceAsError, ErrorWithCause } from "df/common/errors/errors";
 import { decode64 } from "df/common/protos";
+import { setOrValidateTableEnumType } from "df/core/utils";
 import { dataform } from "df/protos/ts";
 
 // Project config properties that are required.
@@ -40,14 +42,30 @@ export async function compile(
     );
   }
 
-  const result = await CompileChildProcess.forkProcess().compile(compileConfig);
-
-  if (compileConfig.useMain) {
-    const decodedResult = decode64(dataform.CoreExecutionResponse, result);
-    return dataform.CompiledGraph.create(decodedResult.compile.compiledGraph);
+  if (compileConfig.useMain === null || compileConfig.useMain === undefined) {
+    try {
+      const packageJson = JSON.parse(
+        fs.readFileSync(`${compileConfig.projectDir}/package.json`, "utf8")
+      );
+      const dataformCoreVersion = packageJson.dependencies["@dataform/core"];
+      compileConfig.useMain = semver.subset(dataformCoreVersion, ">=2.0.4");
+    } catch (e) {
+      // Silently catch any thrown Error. Do not attempt to use `main` compilation.
+    }
   }
 
-  return decode64(dataform.CompiledGraph, result);
+  const result = await CompileChildProcess.forkProcess().compile(compileConfig);
+
+  let compileResult: dataform.CompiledGraph;
+  if (compileConfig.useMain) {
+    const decodedResult = decode64(dataform.CoreExecutionResponse, result);
+    compileResult = dataform.CompiledGraph.create(decodedResult.compile.compiledGraph);
+  } else {
+    compileResult = decode64(dataform.CompiledGraph, result);
+  }
+
+  compileResult.tables.forEach(setOrValidateTableEnumType);
+  return compileResult;
 }
 
 export class CompileChildProcess {

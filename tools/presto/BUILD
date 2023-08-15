@@ -42,7 +42,6 @@ ts_library(
         ":presto_image",
     ],
     deps = [
-        "//api",
         "//common/promises",
         "//testing",
         "@npm//@types/node",

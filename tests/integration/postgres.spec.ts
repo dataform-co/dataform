@@ -37,11 +37,10 @@ suite("@dataform/integration/postgres", { parallel: true }, ({ before, after }) 
     let executedGraph = await dfapi.run(dbadapter, executionGraph).result();
 
     const actionMap = keyBy(executedGraph.actions, v => targetAsReadableString(v.target));
-    expect(Object.keys(actionMap).length).eql(13);
+    expect(Object.keys(actionMap).length).eql(11);
 
     // Check the status of action execution.
     const expectedFailedActions = [
-      "df_integration_test_assertions_project_e2e.example_assertion_uniqueness_fail",
       "df_integration_test_assertions_project_e2e.example_assertion_fail"
     ];
     for (const actionName of Object.keys(actionMap)) {
@@ -55,8 +54,8 @@ suite("@dataform/integration/postgres", { parallel: true }, ({ before, after }) 
     }
 
     expect(
-      actionMap["df_integration_test_assertions_project_e2e.example_assertion_uniqueness_fail"]
-        .tasks[2].errorMessage
+      actionMap["df_integration_test_assertions_project_e2e.example_assertion_fail"].tasks[2]
+        .errorMessage
     ).to.eql("postgres error: Assertion failed: query returned 1 row(s).");
 
     // Check the data in the incremental table.
@@ -280,7 +279,7 @@ suite("@dataform/integration/postgres", { parallel: true }, ({ before, after }) 
     test("invalid table fails validation", async () => {
       const evaluations = await dbadapter.evaluate(
         dataform.Table.create({
-          type: "table",
+          enumType: dataform.TableType.TABLE,
           query: "thisisillegal",
           target: {
             schema: "df_integration_test",
@@ -300,7 +299,7 @@ suite("@dataform/integration/postgres", { parallel: true }, ({ before, after }) 
     test("incremental pre and post ops, core version <= 1.4.8", async () => {
       // 1.4.8 used `preOps` and `postOps` instead of `incrementalPreOps` and `incrementalPostOps`.
       const table: dataform.ITable = {
-        type: "incremental",
+        enumType: dataform.TableType.INCREMENTAL,
         query: "query",
         preOps: ["preop task1", "preop task2"],
         incrementalQuery: "",
