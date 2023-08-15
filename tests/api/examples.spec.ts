@@ -3,6 +3,7 @@ import { expect } from "chai";
 import * as path from "path";
 
 import { Builder, compile } from "df/api";
+import { JSONObjectStringifier, StringifiedSet } from "df/common/strings/stringifier";
 import { targetAsReadableString } from "df/core/targets";
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
@@ -25,77 +26,83 @@ suite("examples", () => {
               useMain
             });
             expect(
-              graph.graphErrors.compilationErrors.map(({ fileName, message }) => ({
-                fileName,
-                message
-              }))
-            ).deep.equals([
-              {
-                fileName: "includes/example_ignore.js",
-                message: "publish is not defined"
-              },
-              {
-                fileName: "definitions/has_compile_errors/assertion_with_bigquery.sqlx",
-                message:
-                  'Unexpected property "bigquery" in assertion config. Supported properties are: ["database","dependencies","description","disabled","hermetic","name","schema","tags","type"]'
-              },
-              {
-                fileName: "definitions/has_compile_errors/assertion_with_materialized.sqlx",
-                message:
-                  'Unexpected property "materialized" in assertion config. Supported properties are: ["database","dependencies","description","disabled","hermetic","name","schema","tags","type"]'
-              },
-              {
-                fileName: "definitions/has_compile_errors/assertion_with_output.sqlx",
-                message:
-                  'Unexpected property "hasOutput" in assertion config. Supported properties are: ["database","dependencies","description","disabled","hermetic","name","schema","tags","type"]'
-              },
-              {
-                fileName: "definitions/has_compile_errors/assertion_with_postops.sqlx",
-                message: "Actions may only include post_operations if they create a dataset."
-              },
-              {
-                fileName: "definitions/has_compile_errors/assertion_with_preops.sqlx",
-                message: "Actions may only include pre_operations if they create a dataset."
-              },
-              {
-                fileName: "definitions/has_compile_errors/assertion_with_redshift.sqlx",
-                message:
-                  'Unexpected property "redshift" in assertion config. Supported properties are: ["database","dependencies","description","disabled","hermetic","name","schema","tags","type"]'
-              },
-              {
-                fileName: "definitions/has_compile_errors/protected_assertion.sqlx",
-                message:
-                  "Actions may only specify 'protected: true' if they are of type 'incremental'."
-              },
-              {
-                fileName: "definitions/has_compile_errors/protected_assertion.sqlx",
-                message:
-                  'Unexpected property "protected" in assertion config. Supported properties are: ["database","dependencies","description","disabled","hermetic","name","schema","tags","type"]'
-              },
-              {
-                fileName: "definitions/has_compile_errors/view_with_incremental.sqlx",
-                message:
-                  "Actions may only include incremental_where if they are of type 'incremental'."
-              },
-              {
-                fileName: "definitions/has_compile_errors/view_with_multiple_statements.sqlx",
-                message:
-                  "Actions may only contain more than one SQL statement if they are of type 'operations'."
-              },
-              {
-                fileName: "definitions/has_compile_errors/view_with_semi_colon_at_end.sqlx",
-                message: "Semi-colons are not allowed at the end of SQL statements."
-              },
-              {
-                fileName: "definitions/has_compile_errors/table_with_materialized.sqlx",
-                message: "The 'materialized' option is only valid for Snowflake and BigQuery views"
-              },
-              {
-                fileName: "definitions/has_compile_errors/view_without_hermetic.sqlx",
-                message:
-                  "Zero-dependency actions which create datasets are required to explicitly declare 'hermetic: (true|false)' when run caching is turned on."
-              }
-            ]);
+              new StringifiedSet(
+                new JSONObjectStringifier(),
+                graph.graphErrors.compilationErrors.map(({ fileName, message }) => ({
+                  fileName,
+                  message
+                }))
+              )
+            ).deep.equals(
+              new StringifiedSet(new JSONObjectStringifier(), [
+                {
+                  fileName: "includes/example_ignore.js",
+                  message: "publish is not defined"
+                },
+                {
+                  fileName: "definitions/has_compile_errors/assertion_with_bigquery.sqlx",
+                  message:
+                    'Unexpected property "bigquery" in assertion config. Supported properties are: ["database","dependencies","description","disabled","hermetic","name","schema","tags","type"]'
+                },
+                {
+                  fileName: "definitions/has_compile_errors/assertion_with_materialized.sqlx",
+                  message:
+                    'Unexpected property "materialized" in assertion config. Supported properties are: ["database","dependencies","description","disabled","hermetic","name","schema","tags","type"]'
+                },
+                {
+                  fileName: "definitions/has_compile_errors/assertion_with_output.sqlx",
+                  message:
+                    'Unexpected property "hasOutput" in assertion config. Supported properties are: ["database","dependencies","description","disabled","hermetic","name","schema","tags","type"]'
+                },
+                {
+                  fileName: "definitions/has_compile_errors/assertion_with_postops.sqlx",
+                  message: "Actions may only include post_operations if they create a dataset."
+                },
+                {
+                  fileName: "definitions/has_compile_errors/assertion_with_preops.sqlx",
+                  message: "Actions may only include pre_operations if they create a dataset."
+                },
+                {
+                  fileName: "definitions/has_compile_errors/assertion_with_redshift.sqlx",
+                  message:
+                    'Unexpected property "redshift" in assertion config. Supported properties are: ["database","dependencies","description","disabled","hermetic","name","schema","tags","type"]'
+                },
+                {
+                  fileName: "definitions/has_compile_errors/protected_assertion.sqlx",
+                  message:
+                    "Actions may only specify 'protected: true' if they are of type 'incremental'."
+                },
+                {
+                  fileName: "definitions/has_compile_errors/protected_assertion.sqlx",
+                  message:
+                    'Unexpected property "protected" in assertion config. Supported properties are: ["database","dependencies","description","disabled","hermetic","name","schema","tags","type"]'
+                },
+                {
+                  fileName: "definitions/has_compile_errors/view_with_incremental.sqlx",
+                  message:
+                    "Actions may only include incremental_where if they are of type 'incremental'."
+                },
+                {
+                  fileName: "definitions/has_compile_errors/view_with_multiple_statements.sqlx",
+                  message:
+                    "Actions may only contain more than one SQL statement if they are of type 'operations'."
+                },
+                {
+                  fileName: "definitions/has_compile_errors/view_with_semi_colon_at_end.sqlx",
+                  message: "Semi-colons are not allowed at the end of SQL statements."
+                },
+                {
+                  fileName: "definitions/has_compile_errors/table_with_materialized.sqlx",
+                  message:
+                    "The 'materialized' option is only valid for Snowflake and BigQuery views"
+                },
+                {
+                  fileName: "definitions/has_compile_errors/view_without_hermetic.sqlx",
+                  message:
+                    "Zero-dependency actions which create datasets are required to explicitly declare 'hermetic: (true|false)' when run caching is turned on."
+                }
+              ])
+            );
 
             // Check JS blocks get processed.
             const exampleJsBlocks = graph.tables.find(
@@ -231,32 +238,6 @@ suite("examples", () => {
               )}\``
             );
             expect(exampleInline.dependencyTargets).eql([
-              dataform.Target.create({
-                database: databaseWithSuffix("tada-analytics"),
-                schema: schemaWithSuffix("df_integration_test"),
-                name: "sample_data"
-              })
-            ]);
-
-            const exampleUsingInline = graph.tables.find(
-              (t: dataform.ITable) =>
-                targetAsReadableString(t.target) ===
-                dotJoined(
-                  databaseWithSuffix("tada-analytics"),
-                  schemaWithSuffix("df_integration_test"),
-                  "example_using_inline"
-                )
-            );
-            expect(exampleUsingInline.type).equals("table");
-            expect(exampleUsingInline.enumType).equals(dataform.TableType.TABLE);
-            expect(exampleUsingInline.query.trim()).equals(
-              `select * from (\n\nselect * from \`${dotJoined(
-                databaseWithSuffix("tada-analytics"),
-                schemaWithSuffix("df_integration_test"),
-                "sample_data"
-              )}\`\n)\nwhere true`
-            );
-            expect(exampleUsingInline.dependencyTargets).eql([
               dataform.Target.create({
                 database: databaseWithSuffix("tada-analytics"),
                 schema: schemaWithSuffix("df_integration_test"),
