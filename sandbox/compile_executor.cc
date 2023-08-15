@@ -53,8 +53,8 @@
 
 namespace fs = std::filesystem;
 
-std::string EXAMPLE_COMPILE_PATH = "/usr/local/google/home/eliaskassell/Documents/github/dataform/examples/common_v1";
-
+//std::string EXAMPLE_COMPILE_PATH = "/usr/local/google/home/eliaskassell/Documents/github/dataform/examples/common_v1";
+std::string EXAMPLE_COMPILE_PATH = "/usr/local/google/home/lewishemens/workspace/dataform-data";
 const int TIMEOUT_SECS = 1000;
 const int FALLBACK_TIMEOUT_DELAY = 1000;
 
@@ -82,24 +82,22 @@ int main(int argc, char** argv) {
     gflags::ParseCommandLineFlags(&argc, &argv, true);
     google::InitGoogleLogging(argv[0]);
 
-    std::string workspaceFolder = "df/";
+    std::string currentPath = std::string(fs::current_path()) + "/";
 
     std::string nodeRelativePath(argv[1]);
     std::string nodePath =
-        sapi::GetDataDependencyFilePath(workspaceFolder + nodeRelativePath);
-
-    // std::string cliRelativePath(argv[2]);
-    // std::string cliPath =
-    //     sapi::GetDataDependencyFilePath(workspaceFolder + cliRelativePath);
-    std::string cliDirectory = "/usr/local/google/home/eliaskassell/.cache/bazel/_bazel_eliaskassell/7a3b4b05af3e35677ea962500c529f6a/execroot/df/bazel-out/k8-py2-fastbuild/bin/sandbox/compile_executor.runfiles/df/packages/@dataform/cli";
-    std::string cliPath = "/usr/local/google/home/eliaskassell/.cache/bazel/_bazel_eliaskassell/7a3b4b05af3e35677ea962500c529f6a/execroot/df/bazel-out/k8-py2-fastbuild/bin/sandbox/compile_executor.runfiles/df/packages/@dataform/cli/index.js";
+        sapi::GetDataDependencyFilePath(nodeRelativePath);
+    std::string workerRelativeRoot(argv[2]);
+    std::string workerRoot =  sapi::GetDataDependencyFilePath(workerRelativeRoot);
 
     // Useful for debugging paths.
     std::cout << "Current path is " << fs::current_path() << '\n';
+    std::cout << "Worker path is " << workerRoot << '\n';
+
 
     std::vector<std::string> args = {
         nodePath,
-        cliPath,
+        workerRoot + "/worker_bundle.js",
         // "-e",
         // "console.log('hello')"
     };
@@ -112,7 +110,7 @@ int main(int argc, char** argv) {
         ->set_rlimit_as(RLIM64_INFINITY)
         .set_rlimit_fsize(4ULL << 20)
         .set_rlimit_cpu(RLIM64_INFINITY)
-        .set_walltime_limit(absl::Seconds(10));
+        .set_walltime_limit(absl::Seconds(20));
 
     int stdoutFd = executor->ipc()->ReceiveFd(STDOUT_FILENO);
     int stderrFd = executor->ipc()->ReceiveFd(STDERR_FILENO);
@@ -124,8 +122,7 @@ int main(int argc, char** argv) {
             .AddLibrariesForBinary(nodePath)
 
             // TODO: Make read only.
-            .AddDirectory(cliDirectory, true)
-            .AddFile(cliPath, true)
+            .AddDirectory(workerRoot, true)
 
             .AddDirectory(EXAMPLE_COMPILE_PATH, false)
             .DangerDefaultAllowAll()

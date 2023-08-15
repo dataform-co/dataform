@@ -6,13 +6,14 @@ cc_binary(
     name = "compile_executor",
     srcs = ["compile_executor.cc"],
     args = [
-        "$(execpath @nodejs_linux_amd64//:node_bin)",
-        "$(execpath //packages/@dataform/cli:bin)",
+        "$(location @nodejs_linux_amd64//:node_bin)",
+        "$(location //sandbox/worker:worker_bundle.js)",
     ],
     copts = sapi_platform_copts(),
     data = [
         "@nodejs_linux_amd64//:node_bin",
-        "//packages/@dataform/cli:bin",
+        "//sandbox/worker:worker_bundle.js",
+        "//sandbox/worker:node_modules",
     ],
     deps = [
         "@bazel_tools//tools/cpp/runfiles",
