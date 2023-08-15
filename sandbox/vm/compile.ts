@@ -85,6 +85,7 @@ export function compileAndSend(socket: string, encodedCompileConfig: string) {
       const compiledResult = compile(compileConfig);
       client.write(compiledResult);
     } catch (e) {
+      console.log(e);
       const serializableError = {};
       for (const prop of Object.getOwnPropertyNames(e)) {
         (serializableError as any)[prop] = e[prop];

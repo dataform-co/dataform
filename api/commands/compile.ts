@@ -2,8 +2,9 @@ import * as fs from "fs";
 import * as path from "path";
 import * as net from "net";
 import { promisify} from "util";
+import * as os from "os";
 
-import { ChildProcess, fork } from "child_process";
+import { ChildProcess, fork, spawn } from "child_process";
 import deepmerge from "deepmerge";
 import { validWarehouses } from "df/api/dbadapters";
 import { coerceAsError, ErrorWithCause } from "df/common/errors/errors";
@@ -29,7 +30,7 @@ export async function compile(
   compileConfig: dataform.ICompileConfig = {}
 ): Promise<dataform.CompiledGraph> {
   // Resolve the path in case it hasn't been resolved already.
-  path.resolve(compileConfig.projectDir);
+  compileConfig = { ...compileConfig, projectDir: path.resolve(compileConfig.projectDir)}
 
   try {
     // check dataformJson is valid before we try to compile
@@ -58,7 +59,7 @@ export async function compile(
 
   server.listen(socketPath);
 
-  await CompileChildProcess.forkProcess(socketPath, {...compileConfig, useMain: false}).timeout(compileConfig.timeoutMillis || 5000);
+  await CompileChildProcess.forkProcess(socketPath, {...compileConfig, useMain: false}).timeout(compileConfig.timeoutMillis || 20000);
 
   await promisify(server.close.bind(server))();
 
@@ -68,19 +69,12 @@ export async function compile(
 
 export class CompileChildProcess {
   public static forkProcess(socket: string, compileConfig: dataform.ICompileConfig) {
-    // Runs the worker_bundle script we generate for the package (see packages/@dataform/cli/BUILD)
-    // if it exists, otherwise run the bazel compile loader target.
-    const findForkScript = () => {
-      try {
-        const workerBundlePath = require.resolve("./worker_bundle");
-        return workerBundlePath;
-      } catch (e) {
-        return require.resolve("../../sandbox/vm/compile_loader");
-      }
-    };
-    const forkScript = findForkScript();
+  const platformPath = os.platform() === "darwin" ? "nodejs_darwin_amd64" : "nodejs_linux_amd64";
+  const nodePath = path.join(process.env.RUNFILES, "df", `external/${platformPath}/bin/nodejs/bin/node`);
+  const workerRootPath = path.join(process.env.RUNFILES, "df", "sandbox/worker");
+  const sandboxerPath = path.join(process.env.RUNFILES, "df", `sandbox/compile_executor`);
     return new CompileChildProcess(
-      fork(require.resolve(forkScript), [socket, encode64(dataform.CompileConfig, compileConfig)], { stdio: [0, 1, 2, "ipc", "pipe"] })
+      spawn(sandboxerPath, [nodePath, workerRootPath, socket, encode64(dataform.CompileConfig, compileConfig), compileConfig.projectDir], { stdio: [0, 1, 2, "ipc", "pipe"] })
     );
   }
   private readonly childProcess: ChildProcess;

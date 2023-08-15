@@ -8,6 +8,12 @@ ts_library(
         ["**/*.ts"],
         exclude = ["utils/**/*.*"],
     ),
+    data = [
+        "@nodejs_linux_amd64//:node_bin",
+        "//sandbox:compile_executor",
+        "//sandbox/worker:worker_bundle.js",
+        "//sandbox/worker:node_modules"
+    ],
     deps = [
         "//api/utils",
         "//common/errors",
