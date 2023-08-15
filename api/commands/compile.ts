@@ -1,12 +1,15 @@
 import * as fs from "fs";
 import * as path from "path";
+import * as net from "net";
+import { promisify} from "util";
 
 import { ChildProcess, fork } from "child_process";
 import deepmerge from "deepmerge";
 import { validWarehouses } from "df/api/dbadapters";
 import { coerceAsError, ErrorWithCause } from "df/common/errors/errors";
-import { decode64 } from "df/common/protos";
+import { decode64, encode64 } from "df/common/protos";
 import { dataform } from "df/protos/ts";
+import { v4 as uuid } from "uuid";
 
 // Project config properties that are required.
 const mandatoryProps: Array<keyof dataform.IProjectConfig> = ["warehouse", "defaultSchema"];
@@ -40,18 +43,31 @@ export async function compile(
     );
   }
 
-  const result = await CompileChildProcess.forkProcess().compile(compileConfig);
+  var result: string = "";
 
-  if (compileConfig.useMain) {
-    const decodedResult = decode64(dataform.CoreExecutionResponse, result);
-    return dataform.CompiledGraph.create(decodedResult.compile.compiledGraph);
+  const socketPath = `/tmp/${uuid()}.sock`;
+
+  if (fs.existsSync(socketPath)) {
+    fs.unlinkSync(socketPath);
   }
+  const server = net.createServer((socket) => {
+    socket.on("data", (buf) => {
+      result += buf.toString();
+    });
+  });
 
-  return decode64(dataform.CompiledGraph, result);
+  server.listen(socketPath);
+
+  await CompileChildProcess.forkProcess(socketPath, {...compileConfig, useMain: false}).timeout(compileConfig.timeoutMillis || 5000);
+
+  await promisify(server.close.bind(server))();
+
+  const decodedResult = decode64(dataform.CompiledGraph, result);
+  return decodedResult;
 }
 
 export class CompileChildProcess {
-  public static forkProcess() {
+  public static forkProcess(socket: string, compileConfig: dataform.ICompileConfig) {
     // Runs the worker_bundle script we generate for the package (see packages/@dataform/cli/BUILD)
     // if it exists, otherwise run the bazel compile loader target.
     const findForkScript = () => {
@@ -64,7 +80,7 @@ export class CompileChildProcess {
     };
     const forkScript = findForkScript();
     return new CompileChildProcess(
-      fork(require.resolve(forkScript), [], { stdio: [0, 1, 2, "ipc", "pipe"] })
+      fork(require.resolve(forkScript), [socket, encode64(dataform.CompileConfig, compileConfig)], { stdio: [0, 1, 2, "ipc", "pipe"] })
     );
   }
   private readonly childProcess: ChildProcess;
@@ -73,33 +89,21 @@ export class CompileChildProcess {
     this.childProcess = childProcess;
   }
 
-  public async compile(compileConfig: dataform.ICompileConfig) {
+  public async timeout(timeoutMillis: number) {
     const compileInChildProcess = new Promise<string>(async (resolve, reject) => {
-      this.childProcess.on("error", (e: Error) => reject(coerceAsError(e)));
-
-      this.childProcess.on("message", (messageOrError: string | Error) => {
-        if (typeof messageOrError === "string") {
-          resolve(messageOrError);
-          return;
-        }
-        reject(coerceAsError(messageOrError));
-      });
-
-      this.childProcess.on("close", exitCode => {
+      this.childProcess.on("exit", exitCode => {
         if (exitCode !== 0) {
           reject(new Error(`Compilation child process exited with exit code ${exitCode}.`));
         }
+        resolve("Compilation completed successfully");
       });
-
-      // Trigger the child process to start compiling.
-      this.childProcess.send(compileConfig);
     });
     let timer;
     const timeout = new Promise(
       (resolve, reject) =>
         (timer = setTimeout(
           () => reject(new CompilationTimeoutError("Compilation timed out")),
-          compileConfig.timeoutMillis || 5000
+          timeoutMillis
         ))
     );
     try {

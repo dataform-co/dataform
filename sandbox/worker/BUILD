@@ -6,7 +6,10 @@ ts_library(
     name = "worker",
     srcs = glob(["*.ts"]),
     deps = [
+        "//common/protos",
+        "//protos:ts",
         "//sandbox/vm",
+        "@npm//@types/node",
     ],
 )
 

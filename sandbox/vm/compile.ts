@@ -1,8 +1,10 @@
 import * as path from "path";
 import { CompilerFunction, NodeVM } from "vm2";
+import * as net from "net";
 
 import { dataform } from "df/protos/ts";
 import { createCoreExecutionRequest, createGenIndexConfig } from "df/sandbox/vm/create_config";
+import { decode64 } from "df/common/protos";
 
 function missingValidCorePackageError() {
   return new Error(
@@ -75,21 +77,24 @@ export function compile(compileConfig: dataform.ICompileConfig) {
   return userCodeVm.run(genIndex(createGenIndexConfig(compileConfig)), vmIndexFileName);
 }
 
-export function listenForCompileRequest() {
-  process.on("message", (compileConfig: dataform.ICompileConfig) => {
+export function compileAndSend(socket: string, encodedCompileConfig: string) {
+  const client = net.createConnection(socket);
+  client.on("connect", () => {
+    const compileConfig = decode64(dataform.CompileConfig, encodedCompileConfig);
     try {
       const compiledResult = compile(compileConfig);
-      process.send(compiledResult);
+      client.write(compiledResult);
     } catch (e) {
       const serializableError = {};
       for (const prop of Object.getOwnPropertyNames(e)) {
         (serializableError as any)[prop] = e[prop];
       }
-      process.send(serializableError);
+      client.write(JSON.stringify(serializableError));
     }
+    client.end();
   });
 }
 
 if (require.main === module) {
-  listenForCompileRequest();
+  compileAndSend(process.argv[2], process.argv[3]);
 }

@@ -55,7 +55,7 @@ namespace fs = std::filesystem;
 
 //std::string EXAMPLE_COMPILE_PATH = "/usr/local/google/home/eliaskassell/Documents/github/dataform/examples/common_v1";
 std::string EXAMPLE_COMPILE_PATH = "/usr/local/google/home/lewishemens/workspace/dataform-data";
-const int TIMEOUT_SECS = 1000;
+const int TIMEOUT_SECS = 10000;
 const int FALLBACK_TIMEOUT_DELAY = 1000;
 
 
@@ -110,10 +110,11 @@ int main(int argc, char** argv) {
         ->set_rlimit_as(RLIM64_INFINITY)
         .set_rlimit_fsize(4ULL << 20)
         .set_rlimit_cpu(RLIM64_INFINITY)
-        .set_walltime_limit(absl::Seconds(20));
+        .set_walltime_limit(absl::Seconds(1000));
 
     int stdoutFd = executor->ipc()->ReceiveFd(STDOUT_FILENO);
     int stderrFd = executor->ipc()->ReceiveFd(STDERR_FILENO);
+    // int dataformFd = executor->ipc()->ReceiveFd(3);
 
     auto policy = sandbox2::PolicyBuilder()
             // Workaround to make the forkserver's execveat work.
@@ -142,6 +143,18 @@ int main(int argc, char** argv) {
         absl::Seconds(TIMEOUT_SECS + FALLBACK_TIMEOUT_DELAY));
 
     OutputFD(stdoutFd, stderrFd);
+
+    // Collect Dataform output FD.
+    // char dataformBuf[20 * 1024 * 1024];
+    // ssize_t dataformLen = 0;
+    // for (;;) {
+    //     ssize_t readLen = read(dataformFd, dataformBuf, sizeof(dataformBuf));
+    //     dataformLen += readLen;
+    //     if (readLen < 1) {
+    //         break;
+    //     }
+    // }
+    // printf("dataform: '%s'\n", std::string(dataformBuf, dataformLen).c_str());
 
     printf("Final execution status: %s\n", result->ToString().c_str());
 
