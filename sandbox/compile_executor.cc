@@ -106,6 +106,8 @@ int main(int argc, char **argv)
         argv[4]  // compileConfig
     };
     printf("Running command: '%s'\n", (args[0] + " " + args[1]).c_str());
+    printf("Project dir: ");
+    printf(argv[5]);
     // printf("Running command: '%s'\n", (args[0] + " " + args[1] + " " + args[2]).c_str());
     auto executor = absl::make_unique<sandbox2::Executor>(nodePath, args);
 
@@ -155,7 +157,6 @@ int main(int argc, char **argv)
                       .AddFileAt(workerRoot + "/node_modules/acorn-walk/dist/walk.js", "/worker_root/node_modules/acorn-walk/dist/walk.js", true)
                       .AddFileAt(workerRoot + "/node_modules/acorn-walk/dist/walk.mjs", "/worker_root/node_modules/acorn-walk/dist/walk.mjs", true)
                       .AddFileAt(workerRoot + "/node_modules/acorn-walk/package.json", "/worker_root/node_modules/acorn-walk/package.json", true)
-
                       .AllowStat()
                       .DangerDefaultAllowAll()
                       .BuildOrDie();
@@ -178,8 +179,6 @@ int main(int argc, char **argv)
 
     printf("Final execution status: %s\n", result->ToString().c_str());
 
-    // TODO: Process is aborted for some reason?
-    return EXIT_SUCCESS;
-    // return result->final_status() == sandbox2::Result::OK ? EXIT_SUCCESS
-    //                                                       : EXIT_FAILURE;
+    return result->final_status() == sandbox2::Result::OK ? EXIT_SUCCESS
+                                                          : EXIT_FAILURE;
 }

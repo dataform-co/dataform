@@ -83,16 +83,21 @@ export function compileAndSend(socket: string, encodedCompileConfig: string) {
     const compileConfig = decode64(dataform.CompileConfig, encodedCompileConfig);
     try {
       const compiledResult = compile(compileConfig);
-      client.write(compiledResult);
+      client.write(compiledResult, (err) => {
+        client.end(); 
+        process.exit(0);
+      });
     } catch (e) {
       console.log(e);
       const serializableError = {};
       for (const prop of Object.getOwnPropertyNames(e)) {
         (serializableError as any)[prop] = e[prop];
       }
-      client.write(JSON.stringify(serializableError));
+      client.write(JSON.stringify(serializableError), (err) => {
+        client.end(); 
+        process.exit(0);
+      });
     }
-    client.end();
   });
 }
 

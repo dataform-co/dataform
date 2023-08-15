@@ -34,4 +34,5 @@ ts_test_suite(
         "@npm//stack-trace",
         "@npm//ts-mockito",
     ],
+    tags = ["local"]
 )
