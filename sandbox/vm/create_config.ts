@@ -5,24 +5,33 @@ import { dataform } from "df/protos/ts";
 
 export function createGenIndexConfig(compileConfig: dataform.ICompileConfig): string {
   const includePaths: string[] = [];
-  glob.sync("includes/*.js", { cwd: compileConfig.projectDir }).forEach(path => {
-    if (includePaths.indexOf(path) < 0) {
-      includePaths.push(path);
-    }
-  });
+  glob
+    .sync("includes/*.js", { cwd: compileConfig.projectDir })
+    .sort(alphabetically)
+    .forEach(path => {
+      if (includePaths.indexOf(path) < 0) {
+        includePaths.push(path);
+      }
+    });
 
   const definitionPaths: string[] = [];
-  glob.sync("definitions/**/*.{js,sql,sqlx}", { cwd: compileConfig.projectDir }).forEach(path => {
-    if (definitionPaths.indexOf(path) < 0) {
-      definitionPaths.push(path);
-    }
-  });
+  glob
+    .sync("definitions/**/*.{js,sql,sqlx}", { cwd: compileConfig.projectDir })
+    .sort(alphabetically)
+    .forEach(path => {
+      if (definitionPaths.indexOf(path) < 0) {
+        definitionPaths.push(path);
+      }
+    });
   // Support projects that don't use the new project structure.
-  glob.sync("models/**/*.{js,sql,sqlx}", { cwd: compileConfig.projectDir }).forEach(path => {
-    if (definitionPaths.indexOf(path) < 0) {
-      definitionPaths.push(path);
-    }
-  });
+  glob
+    .sync("models/**/*.{js,sql,sqlx}", { cwd: compileConfig.projectDir })
+    .sort(alphabetically)
+    .forEach(path => {
+      if (definitionPaths.indexOf(path) < 0) {
+        definitionPaths.push(path);
+      }
+    });
   return encode64(dataform.GenerateIndexConfig, {
     compileConfig,
     includePaths,
@@ -35,7 +44,9 @@ export function createGenIndexConfig(compileConfig: dataform.ICompileConfig): st
  */
 export function createCoreExecutionRequest(compileConfig: dataform.ICompileConfig): string {
   const filePaths = Array.from(
-    new Set<string>(glob.sync("!(node_modules)/**/*.*", { cwd: compileConfig.projectDir }))
+    new Set<string>(
+      glob.sync("!(node_modules)/**/*.*", { cwd: compileConfig.projectDir }).sort(alphabetically)
+    )
   );
 
   return encode64(dataform.CoreExecutionRequest, {
@@ -43,3 +54,8 @@ export function createCoreExecutionRequest(compileConfig: dataform.ICompileConfi
     compile: { compileConfig: { filePaths, ...compileConfig } }
   });
 }
+
+// NOTE: this is used to sort results of `glob.sync()` above.
+// This sort is only required for compatibility with @dataform/core <= 2.6.5.
+// If/when the CLI drops support for those versions, we can remove the sorting.
+const alphabetically = (a: string, b: string) => a.localeCompare(b);
