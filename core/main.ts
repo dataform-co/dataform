@@ -49,7 +49,7 @@ export function main(encodedCoreExecutionRequest: string): string {
   const topLevelIncludes: {[key: string]: any} = {};
   compileRequest.compileConfig.filePaths
     .filter(path => path.startsWith(`includes${utils.pathSeperator}`))
-    .filter(path => path.split(utils.pathSeperator).length === 2)
+    .filter(path => path.split(utils.pathSeperator).length === 2) // Only include top-level "includes" files.
     .filter(path => path.endsWith(".js"))
     .forEach(includePath => {
       try {
