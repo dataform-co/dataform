@@ -6,7 +6,7 @@ select * from ${ref("df_integration_test", "sample_data")}
 /* ${"another"} ` backtick ` containing ```comment */
 
 post_operations {
-    GRANT SELECT ON ${self()} TO GROUP "allusers@dataform.co"
+    GRANT SELECT ON ${self()} TO GROUP "${constants.allUsersEmailAddress}"
     ---
     GRANT SELECT ON ${self()} TO GROUP "otherusers@dataform.co"
 }
