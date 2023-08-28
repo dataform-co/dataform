@@ -184,8 +184,11 @@ export class SyntaxTreeNode {
     const nodeStack = [currentNode];
     lexer.reset(code);
     for (const token of lexer) {
+      if (!token.type) {
+        throw new Error('Undefined token type encountered.');
+      }
       if (START_TOKEN_NODE_MAPPINGS.has(token.type)) {
-        const childType = START_TOKEN_NODE_MAPPINGS.get(token.type);
+        const childType = START_TOKEN_NODE_MAPPINGS.get(token.type)!;
         if (childType === SyntaxTreeNodeType.SQL && currentNode.type !== SyntaxTreeNodeType.SQL) {
           throw new Error("SQL syntax tree nodes may only be children of other SQL nodes.");
         }
@@ -199,7 +202,7 @@ export class SyntaxTreeNode {
         currentNode = nodeStack[nodeStack.length - 1];
       } else if (WHOLE_TOKEN_NODE_MAPPINGS.has(token.type)) {
         currentNode.push(
-          new SyntaxTreeNode(WHOLE_TOKEN_NODE_MAPPINGS.get(token.type)).push(token.value)
+          new SyntaxTreeNode(WHOLE_TOKEN_NODE_MAPPINGS.get(token.type)!).push(token.value)
         );
       } else {
         currentNode.push(token.value);
@@ -222,7 +225,7 @@ export class SyntaxTreeNode {
   }
 
   public concatenate(mutators?: Map<SyntaxTreeNodeType, (str: string) => string>): string {
-    const mutator = mutators?.has(this.type) ? mutators.get(this.type) : (str: string) => str;
+    const mutator = mutators?.has(this.type) ? mutators.get(this.type)! : (str: string) => str;
     return this.allChildren
       .map(child => {
         if (typeof child === "string") {
@@ -241,7 +244,7 @@ export class SyntaxTreeNode {
     ) {
       this.allChildren[this.allChildren.length - 1] =
         this.allChildren[this.allChildren.length - 1] + child;
-      return;
+      return this;
     }
     this.allChildren.push(child);
     return this;

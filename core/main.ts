@@ -43,18 +43,23 @@ export function main(encodedCoreExecutionRequest: string): string {
   // Allow "includes" files to use the current session object.
   globalAny.dataform = session;
 
-  // Require "includes" *.js files.
+  // Require "includes/*.js" files, attaching them (by file basename) to the `global` object.
+  // We delay attaching them to `global` until after all have been required, to prevent
+  // "includes" files from implicitly depending on other "includes" files.
+  const topLevelIncludes: {[key: string]: any} = {};
   compileRequest.compileConfig.filePaths
-    .filter(path => path.startsWith("includes/"))
+    .filter(path => path.startsWith(`includes${utils.pathSeperator}`))
+    .filter(path => path.split(utils.pathSeperator).length === 2) // Only include top-level "includes" files.
     .filter(path => path.endsWith(".js"))
     .forEach(includePath => {
       try {
         // tslint:disable-next-line: tsr-detect-non-literal-require
-        globalAny[utils.baseFilename(includePath)] = require(includePath);
+        topLevelIncludes[utils.baseFilename(includePath)] = require(includePath);
       } catch (e) {
         session.compileError(e, includePath);
       }
     });
+  Object.assign(globalAny, topLevelIncludes);
 
   // Bind various @dataform/core APIs to the 'global' object.
   globalAny.publish = session.publish.bind(session);
@@ -65,7 +70,7 @@ export function main(encodedCoreExecutionRequest: string): string {
 
   // Require all "definitions" files (attaching them to the session).
   compileRequest.compileConfig.filePaths
-    .filter(path => path.startsWith("definitions/"))
+    .filter(path => path.startsWith(`definitions${utils.pathSeperator}`))
     .filter(path => path.endsWith(".js") || path.endsWith(".sqlx"))
     .forEach(definitionPath => {
       try {
