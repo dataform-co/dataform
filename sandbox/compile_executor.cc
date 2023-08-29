@@ -164,9 +164,6 @@ int main(int argc, char **argv)
                       // JS files are loaded into memory by V8.
                       .AllowMmap()
 
-                      // Allow epoll I/O event notification and piping for fd data transferral.
-                      //   .AllowPipe()
-
                       // [24/sched_yield], allow delegation back to the sandboxer on timeout.
                       .AllowSyscall(__NR_sched_yield)
 
@@ -204,6 +201,7 @@ int main(int argc, char **argv)
                       .AllowExit()
                       .AllowGetRandom()
                       .AllowDynamicStartup()
+                      // For UDS communication.
                       .AllowSyscall(__NR_rt_sigprocmask)
                       .AllowSyscall(__NR_rt_sigaction)
                       .AllowSyscall(__NR_fcntl)
@@ -218,16 +216,17 @@ int main(int argc, char **argv)
                       .AllowSyscall(__NR_socket)
                       .AllowSyscall(__NR_socketpair)
                       .AllowSyscall(__NR_sendmmsg)
+                      // Allow epoll I/O event notification and piping for fd data transferral.
                       .AllowSyscall(__NR_epoll_create1)
                       .AllowSyscall(__NR_epoll_ctl)
                       .AllowSyscall(__NR_epoll_wait)
                       .AllowSyscall(__NR_pipe2)
                       .AllowSyscall(__NR_eventfd2)
+
                       .AllowSyscall(__NR_clone3)
                       .AllowSyscall(__NR_sysinfo)
                       .AllowSyscall(__NR_statx)
                       .AllowSyscall(__NR_getcwd)
-
                       .BuildOrDie();
 
     sandbox2::Sandbox2 s2(std::move(executor), std::move(policy));

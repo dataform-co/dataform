@@ -88,7 +88,6 @@ export function compileAndSend(socket: string, encodedCompileConfig: string) {
         process.exit(0);
       });
     } catch (e) {
-      console.log(e);
       const serializableError = {};
       for (const prop of Object.getOwnPropertyNames(e)) {
         (serializableError as any)[prop] = e[prop];

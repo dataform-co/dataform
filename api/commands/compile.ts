@@ -1,7 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import * as net from "net";
-import { promisify} from "util";
+import { promisify } from "util";
 import * as os from "os";
 
 import { ChildProcess, fork, spawn } from "child_process";
@@ -24,13 +24,14 @@ const simpleCheckProps: Array<keyof dataform.IProjectConfig> = [
   "defaultSchema"
 ];
 
-export class CompilationTimeoutError extends Error {}
+export class CompilationTimeoutError extends Error { }
 
 export async function compile(
-  compileConfig: dataform.ICompileConfig = {}
+  compileConfig: dataform.ICompileConfig = {},
+  useSandbox2?: boolean,
 ): Promise<dataform.CompiledGraph> {
   // Resolve the path in case it hasn't been resolved already.
-  compileConfig = { ...compileConfig, projectDir: path.resolve(compileConfig.projectDir)}
+  compileConfig = { ...compileConfig, projectDir: path.resolve(compileConfig.projectDir) }
 
   try {
     // check dataformJson is valid before we try to compile
@@ -59,7 +60,7 @@ export async function compile(
 
   server.listen(socketPath);
 
-  await CompileChildProcess.forkProcess(socketPath, {...compileConfig, useMain: false}).timeout(compileConfig.timeoutMillis || 5000);
+  await CompileChildProcess.forkProcess(socketPath, { ...compileConfig, useMain: false }, useSandbox2).timeout(compileConfig.timeoutMillis || 5000);
 
   await promisify(server.close.bind(server))();
 
@@ -71,14 +72,20 @@ export async function compile(
 }
 
 export class CompileChildProcess {
-  public static forkProcess(socket: string, compileConfig: dataform.ICompileConfig) {
-  const platformPath = os.platform() === "darwin" ? "nodejs_darwin_amd64" : "nodejs_linux_amd64";
-  const nodePath = path.join(process.env.RUNFILES, "df", `external/${platformPath}/bin/nodejs/bin/node`);
-  const workerRootPath = path.join(process.env.RUNFILES, "df", "sandbox/worker");
-  const sandboxerPath = path.join(process.env.RUNFILES, "df", `sandbox/compile_executor`);
-    return new CompileChildProcess(
-      spawn(sandboxerPath, [nodePath, workerRootPath, socket, encode64(dataform.CompileConfig, compileConfig), compileConfig.projectDir], { stdio: [0, 1, 2, "ipc", "pipe"] })
-    );
+  public static forkProcess(socket: string, compileConfig: dataform.ICompileConfig, useSandbox2: boolean) {
+    const platformPath = os.platform() === "darwin" ? "nodejs_darwin_amd64" : "nodejs_linux_amd64";
+    const nodePath = path.join(process.env.RUNFILES, "df", `external/${platformPath}/bin/nodejs/bin/node`);
+    const workerRootPath = path.join(process.env.RUNFILES, "df", "sandbox/worker");
+    const sandboxerPath = path.join(process.env.RUNFILES, "df", `sandbox/compile_executor`);
+    if (useSandbox2) {
+      return new CompileChildProcess(
+        spawn(sandboxerPath, [nodePath, workerRootPath, socket, encode64(dataform.CompileConfig, compileConfig), compileConfig.projectDir], { stdio: [0, 1, 2, "ipc", "pipe"] })
+      );
+    } else {
+      return new CompileChildProcess(
+        spawn(nodePath, [path.join(workerRootPath, "worker_bundle.js"), socket, encode64(dataform.CompileConfig, compileConfig)], { stdio: [0, 1, 2, "ipc", "pipe"] })
+      );
+    }
   }
   private readonly childProcess: ChildProcess;
 
@@ -98,10 +105,10 @@ export class CompileChildProcess {
     let timer;
     const timeout = new Promise(
       (resolve, reject) =>
-        (timer = setTimeout(
-          () => reject(new CompilationTimeoutError("Compilation timed out")),
-          timeoutMillis
-        ))
+      (timer = setTimeout(
+        () => reject(new CompilationTimeoutError("Compilation timed out")),
+        timeoutMillis
+      ))
     );
     try {
       await Promise.race([timeout, compileInChildProcess]);
@@ -120,9 +127,8 @@ export class CompileChildProcess {
 export const checkDataformJsonValidity = (dataformJsonParsed: { [prop: string]: any }) => {
   const invalidWarehouseProp = () => {
     return dataformJsonParsed.warehouse && !validWarehouses.includes(dataformJsonParsed.warehouse)
-      ? `Invalid value on property warehouse: ${
-          dataformJsonParsed.warehouse
-        }. Should be one of: ${validWarehouses.join(", ")}.`
+      ? `Invalid value on property warehouse: ${dataformJsonParsed.warehouse
+      }. Should be one of: ${validWarehouses.join(", ")}.`
       : null;
   };
   const invalidProp = () => {
