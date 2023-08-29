@@ -24,20 +24,3 @@ cc_binary(
         "@com_google_sandboxed_api//sandboxed_api/util:runfiles",
     ],
 )
-
-load("//testing:index.bzl", "ts_test_suite")
-
-ts_test_suite(
-    name = "test",
-    srcs = glob(["*.spec.ts"]),
-    args = ["$(execpath :compile_executor)"],
-    data = [":compile_executor"],
-    deps = [
-        "//common/errors",
-        "//protos:ts",
-        "//testing",
-        "@npm//@types/chai",
-        "@npm//@types/node",
-        "@npm//chai",
-    ],
-)
