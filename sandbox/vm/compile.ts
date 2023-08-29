@@ -93,7 +93,7 @@ export function compileAndSend(socket: string, encodedCompileConfig: string) {
       for (const prop of Object.getOwnPropertyNames(e)) {
         (serializableError as any)[prop] = e[prop];
       }
-      client.write(JSON.stringify(serializableError), (err) => {
+      client.write("ERROR:" + JSON.stringify(serializableError), (err) => {
         client.end(); 
         process.exit(0);
       });

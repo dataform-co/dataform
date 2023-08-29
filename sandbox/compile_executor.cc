@@ -53,8 +53,6 @@
 
 namespace fs = std::filesystem;
 
-// std::string EXAMPLE_COMPILE_PATH = "/usr/local/google/home/eliaskassell/Documents/github/dataform/examples/common_v1";
-std::string EXAMPLE_COMPILE_PATH = "/usr/local/google/home/lewishemens/workspace/dataform-data";
 const int TIMEOUT_SECS = 10000;
 const int FALLBACK_TIMEOUT_DELAY = 1000;
 
@@ -66,8 +64,6 @@ void OutputFD(int stdoutFd, int errFd)
         char stderrBuf[4096];
         ssize_t stdoutRLen = read(stdoutFd, stdoutBuf, sizeof(stdoutBuf));
         ssize_t stderrRLen = read(errFd, stderrBuf, sizeof(stderrBuf));
-        printf("stdout: '%s'\n", std::string(stdoutBuf, stdoutRLen).c_str());
-        printf("stderr: '%s'\n", std::string(stderrBuf, stderrRLen).c_str());
         if (stdoutRLen < 1)
         {
             break;
@@ -77,12 +73,6 @@ void OutputFD(int stdoutFd, int errFd)
 
 int main(int argc, char **argv)
 {
-    printf("ALL ARGVS:\n");
-    for (int i = 0; i < argc; i++)
-    {
-        printf("%i: %s\n", i, argv[i]);
-    }
-
     gflags::ParseCommandLineFlags(&argc, &argv, true);
     google::InitGoogleLogging(argv[0]);
 
@@ -95,20 +85,13 @@ int main(int argc, char **argv)
     std::string workerRoot = sapi::GetDataDependencyFilePath(workerRelativeRoot);
     std::string workerBundle = workerRoot + "/worker_bundle.js";
 
-    // Useful for debugging paths.
-    std::cout << "Current path is " << fs::current_path() << '\n';
-    std::cout << "Worker path is " << workerRoot << '\n';
-
     std::vector<std::string> args = {
         nodePath,
         "/worker_root/worker_bundle.js",
         argv[3], // socket
         argv[4]  // compileConfig
     };
-    printf("Running command: '%s'\n", (args[0] + " " + args[1]).c_str());
-    printf("Project dir: ");
-    printf(argv[5]);
-    // printf("Running command: '%s'\n", (args[0] + " " + args[1] + " " + args[2]).c_str());
+
     auto executor = absl::make_unique<sandbox2::Executor>(nodePath, args);
 
     executor->set_enable_sandbox_before_exec(true)
@@ -126,10 +109,10 @@ int main(int argc, char **argv)
                       // Workaround to make the forkserver's execveat work.
                       .AddFileAt("/dev/zero", "/dev/fd/1022", false)
 
-                      .AddFile(argv[3], false) // socket
+                      .AddFile(argv[3], false)     // socket
                       .AddDirectory(argv[5], true) // Project dir
                       .AddLibrariesForBinary(nodePath)
-            
+
                       .AddFileAt(workerRoot + "/worker_bundle.js", "/worker_root/worker_bundle.js", true)
                       .AddFileAt(workerRoot + "/node_modules/vm2/index.js", "/worker_root/node_modules/vm2/index.js", true)
                       .AddFileAt(workerRoot + "/node_modules/vm2/lib/bridge.js", "/worker_root/node_modules/vm2/lib/bridge.js", true)
@@ -157,8 +140,94 @@ int main(int argc, char **argv)
                       .AddFileAt(workerRoot + "/node_modules/acorn-walk/dist/walk.js", "/worker_root/node_modules/acorn-walk/dist/walk.js", true)
                       .AddFileAt(workerRoot + "/node_modules/acorn-walk/dist/walk.mjs", "/worker_root/node_modules/acorn-walk/dist/walk.mjs", true)
                       .AddFileAt(workerRoot + "/node_modules/acorn-walk/package.json", "/worker_root/node_modules/acorn-walk/package.json", true)
-                      .AllowStat()
-                      .DangerDefaultAllowAll()
+
+                      // System policies are described here as "[syscall number], reason".
+
+                      // [202/futex], fast user-space locking, used by v8 when available.
+                      // If not available, V8 will emulate them instead, which is slower:
+                      // https://source.corp.google.com/cobalt/third_party/v8/src/execution/futex-emulation.h;rcl=8a873473f20e4e6ad0a507e6ae257e4d1bcc9416;l=22
+                      .AllowFutexOp(FUTEX_WAKE)
+                      .AllowFutexOp(FUTEX_WAIT)
+                      .AllowFutexOp(FUTEX_CMP_REQUEUE)
+
+                      // File and directory content handling.
+                      .AllowRead()
+                      .AllowReaddir()
+                      .AllowWrite()
+                      .AllowAccess()
+                      .AllowGetIDs()
+
+                      // [257/openat], open a file relative to a directory file descriptor.
+                      // Required for opening files.
+                      .AllowOpen()
+                      // [9/mmap], map or unmap files or devices into memory.
+                      // JS files are loaded into memory by V8.
+                      .AllowMmap()
+
+                      // Allow epoll I/O event notification and piping for fd data transferral.
+                      //   .AllowPipe()
+
+                      // [24/sched_yield], allow delegation back to the sandboxer on timeout.
+                      .AllowSyscall(__NR_sched_yield)
+
+                      // [302/prlimit64], set resource limits of 64 bit processes.
+                      .AllowSyscall(__NR_prlimit64)
+
+                      // Allow PKU for protecting spaces.
+                      // https://groups.google.com/a/google.com/g/v8-google3/c/5qBIb3IQ4J0
+                      .AllowSyscall(__NR_pkey_alloc)
+                      .AllowSyscall(__NR_pkey_free)
+                      .AllowSyscall(__NR_pkey_mprotect)
+
+                      // [39/getpid], get process ID.
+                      .AllowSyscalls({__NR_getpid, __NR_gettid})
+                      // [56/clone], create a child process. Used for thread creation.
+                      .AllowSyscall(__NR_clone)
+                      // [234/tgkill], send a kill signal to a thread. Inparticular used when
+                      // hitting memory limits.
+                      .AllowSyscall(__NR_tgkill)
+                      // Memory management.
+                      .AllowTcMalloc()
+                      // [28/madvise], give advice about use of memory
+                      .AllowSyscall(__NR_madvise)
+                      // [10/mprotect], set protection of a region of memory.
+                      .AllowSyscall(__NR_mprotect)
+                      // [324/membarrier], issue memory barriers.
+                      .AllowSyscall(__NR_membarrier)
+                      // [16/ioctl], used for terminal output.
+                      .AllowSyscall(__NR_ioctl)
+                      // [330/pkey_alloc] V8 uses for querying available memory protection.
+                      .AllowSyscall(__NR_pkey_alloc)
+                      // Needed in v8::base::Stack::GetStackStart().
+                      .AllowSyscall(__NR_sched_getaffinity)
+                      .AllowTime()
+                      .AllowExit()
+                      .AllowGetRandom()
+                      .AllowDynamicStartup()
+                      .AllowSyscall(__NR_rt_sigprocmask)
+                      .AllowSyscall(__NR_rt_sigaction)
+                      .AllowSyscall(__NR_fcntl)
+                      .AllowSyscall(__NR_getsockopt)
+                      .AllowSyscall(__NR_setsockopt)
+                      .AllowSyscall(__NR_sendto)
+                      .AllowSyscall(__NR_shutdown)
+                      .AllowSyscall(__NR_bind)
+                      .AllowSyscall(__NR_listen)
+                      .AllowSyscall(__NR_connect)
+                      .AllowSyscall(__NR_getsockname)
+                      .AllowSyscall(__NR_socket)
+                      .AllowSyscall(__NR_socketpair)
+                      .AllowSyscall(__NR_sendmmsg)
+                      .AllowSyscall(__NR_epoll_create1)
+                      .AllowSyscall(__NR_epoll_ctl)
+                      .AllowSyscall(__NR_epoll_wait)
+                      .AllowSyscall(__NR_pipe2)
+                      .AllowSyscall(__NR_eventfd2)
+                      .AllowSyscall(__NR_clone3)
+                      .AllowSyscall(__NR_sysinfo)
+                      .AllowSyscall(__NR_statx)
+                      .AllowSyscall(__NR_getcwd)
+
                       .BuildOrDie();
 
     sandbox2::Sandbox2 s2(std::move(executor), std::move(policy));

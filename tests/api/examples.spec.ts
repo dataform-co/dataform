@@ -7,8 +7,19 @@ import { targetAsReadableString } from "df/core/targets";
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
 import { cleanSql } from "df/tests/utils";
+import { exec } from "child_process";
 
-suite("examples", () => {
+
+suite("examples", ({before}) => {
+  const cleanExamplesRoot = path.join(process.env.TEST_TMPDIR, "examples");
+  before("copy examples into clean fs", () => {
+    console.log(process.env);
+    const cp = exec(`cp -LR ${path.resolve("examples")} ${cleanExamplesRoot}`);
+    return new Promise((resolve) => {
+      cp.on("close", () => resolve());
+    });
+  });
+
   suite("common_v2 bigquery", async () => {
     for (const useMain of [true, false]) {
       for (const databaseSuffix of ["", "foo"]) {
@@ -20,7 +31,7 @@ suite("examples", () => {
 
           test(`compiles with database suffix "${databaseSuffix}", schema suffix "${schemaSuffix}"`, async () => {
             const graph = await compile({
-              projectDir: path.resolve("examples/common_v2"),
+              projectDir: path.join(cleanExamplesRoot, "common_v2"),
               projectConfigOverride: { schemaSuffix, databaseSuffix, warehouse: "bigquery" },
               useMain
             });
@@ -757,7 +768,7 @@ suite("examples", () => {
   suite("common_v1", async () => {
     test("bigquery compiles", async () => {
       const graph = await compile({
-        projectDir: path.resolve("examples/common_v1"),
+        projectDir: path.join(cleanExamplesRoot, "common_v1"),
         projectConfigOverride: { warehouse: "bigquery", defaultDatabase: "tada-analytics" }
       });
       const tableNames = graph.tables.map((t: dataform.ITable) => targetAsReadableString(t.target));
@@ -895,7 +906,7 @@ suite("examples", () => {
 
     test("bigquery compiles with schema override", async () => {
       const graph = await compile({
-        projectDir: path.resolve("examples/common_v1"),
+        projectDir: path.join(cleanExamplesRoot, "common_v1"),
         projectConfigOverride: {
           warehouse: "redshift",
           schemaSuffix: "suffix"
@@ -911,7 +922,7 @@ suite("examples", () => {
 
     test("bigquery compiles with database override", async () => {
       const graph = await compile({
-        projectDir: path.resolve("examples/common_v2"),
+        projectDir: path.join(cleanExamplesRoot, "common_v2"),
         projectConfigOverride: {
           warehouse: "bigquery",
           defaultDatabase: "overridden-database"
@@ -928,7 +939,7 @@ suite("examples", () => {
 
     test("redshift compiles", () => {
       return compile({
-        projectDir: "examples/common_v1",
+        projectDir: path.join(cleanExamplesRoot, "common_v1"),
         projectConfigOverride: { warehouse: "redshift" }
       }).then(graph => {
         const tableNames = graph.tables.map((t: dataform.ITable) =>
@@ -978,7 +989,7 @@ suite("examples", () => {
 
     test("snowflake compiles", async () => {
       const graph = await compile({
-        projectDir: "examples/common_v1",
+        projectDir: path.join(cleanExamplesRoot, "common_v1"),
         projectConfigOverride: { warehouse: "snowflake" }
       }).catch(error => error);
       expect(graph).to.not.be.an.instanceof(Error);
@@ -1119,7 +1130,7 @@ suite("examples", () => {
   });
 
   test("backwards_compatibility", async () => {
-    const graph = await compile({ projectDir: "examples/backwards_compatibility" });
+    const graph = await compile({ projectDir: path.join(cleanExamplesRoot, "backwards_compatibility") });
 
     const tableNames = graph.tables.map((t: dataform.ITable) => t.target.name);
 
@@ -1135,7 +1146,7 @@ suite("examples", () => {
 
   test("times out after timeout period during compilation", async () => {
     try {
-      await compile({ projectDir: "examples/never_finishes_compiling" });
+      await compile({ projectDir: path.join(cleanExamplesRoot, "never_finishes_compiling") });
       fail("Compilation timeout Error expected.");
     } catch (e) {
       expect(e.message).to.equal("Compilation timed out");
@@ -1145,7 +1156,7 @@ suite("examples", () => {
   test("invalid dataform json throws error", async () => {
     try {
       await compile({
-        projectDir: path.resolve("examples/invalid_dataform_json")
+        projectDir: path.join(cleanExamplesRoot, "invalid_dataform_json")
       });
       fail("Should have failed.");
     } catch (e) {
@@ -1155,7 +1166,7 @@ suite("examples", () => {
 
   test("version is correctly set", async () => {
     const graph = await compile({
-      projectDir: "examples/common_v2",
+      projectDir: path.join(cleanExamplesRoot, "common_v2"),
       projectConfigOverride: { warehouse: "bigquery" }
     });
     const { version: expectedVersion } = require("df/core/version");

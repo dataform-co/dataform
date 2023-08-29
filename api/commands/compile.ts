@@ -59,10 +59,13 @@ export async function compile(
 
   server.listen(socketPath);
 
-  await CompileChildProcess.forkProcess(socketPath, {...compileConfig, useMain: false}).timeout(compileConfig.timeoutMillis || 20000);
+  await CompileChildProcess.forkProcess(socketPath, {...compileConfig, useMain: false}).timeout(compileConfig.timeoutMillis || 5000);
 
   await promisify(server.close.bind(server))();
 
+  if (result.startsWith("ERROR:")) {
+    throw coerceAsError(JSON.parse(result.substring(6)));
+  }
   const decodedResult = decode64(dataform.CompiledGraph, result);
   return decodedResult;
 }
