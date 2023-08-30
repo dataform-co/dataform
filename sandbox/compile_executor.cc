@@ -53,8 +53,7 @@
 
 namespace fs = std::filesystem;
 
-const int TIMEOUT_SECS = 10000;
-const int FALLBACK_TIMEOUT_DELAY = 1000;
+const int TIMEOUT_SECS = 1000;
 
 void OutputFD(int stdoutFd, int errFd)
 {
@@ -76,20 +75,24 @@ int main(int argc, char **argv)
     gflags::ParseCommandLineFlags(&argc, &argv, true);
     google::InitGoogleLogging(argv[0]);
 
-    std::string currentPath = std::string(fs::current_path()) + "/";
-
     std::string nodeRelativePath(argv[1]);
+    std::string workerRelativeRoot(argv[2]);
+    std::string socketPath(argv[3]);
+    std::string compileConfigBase64(argv[4]);
+    std::string projectDir(argv[5]);
+
+    std::string currentPath = std::string(fs::current_path()) + "/";
     std::string nodePath =
         sapi::GetDataDependencyFilePath(nodeRelativePath);
-    std::string workerRelativeRoot(argv[2]);
+
     std::string workerRoot = sapi::GetDataDependencyFilePath(workerRelativeRoot);
     std::string workerBundle = workerRoot + "/worker_bundle.js";
 
     std::vector<std::string> args = {
         nodePath,
         "/worker_root/worker_bundle.js",
-        argv[3], // socket
-        argv[4]  // compileConfig
+        socketPath,
+        compileConfigBase64
     };
 
     auto executor = absl::make_unique<sandbox2::Executor>(nodePath, args);
@@ -99,18 +102,17 @@ int main(int argc, char **argv)
         ->set_rlimit_as(RLIM64_INFINITY)
         .set_rlimit_fsize(4ULL << 20)
         .set_rlimit_cpu(RLIM64_INFINITY)
-        .set_walltime_limit(absl::Seconds(10));
+        .set_walltime_limit(absl::Seconds(90));
 
     int stdoutFd = executor->ipc()->ReceiveFd(STDOUT_FILENO);
     int stderrFd = executor->ipc()->ReceiveFd(STDERR_FILENO);
-    // int dataformFd = executor->ipc()->ReceiveFd(3);
 
     auto policy = sandbox2::PolicyBuilder()
                       // Workaround to make the forkserver's execveat work.
                       .AddFileAt("/dev/zero", "/dev/fd/1022", false)
 
-                      .AddFile(argv[3], false)     // socket
-                      .AddDirectory(argv[5], true) // Project dir
+                      .AddFile(socketPath, false)
+                      .AddDirectory(projectDir, true)
                       .AddLibrariesForBinary(nodePath)
 
                       .AddFileAt(workerRoot + "/worker_bundle.js", "/worker_root/worker_bundle.js", true)
@@ -235,18 +237,18 @@ int main(int argc, char **argv)
     if (!s2.RunAsync())
     {
         auto result = s2.AwaitResultWithTimeout(
-            absl::Seconds(TIMEOUT_SECS + FALLBACK_TIMEOUT_DELAY));
+            absl::Seconds(TIMEOUT_SECS));
         LOG(ERROR) << "sandbox failed to start: " << result->ToString();
         return EXIT_FAILURE;
     }
 
     auto result = s2.AwaitResultWithTimeout(
-        absl::Seconds(TIMEOUT_SECS + FALLBACK_TIMEOUT_DELAY));
+        absl::Seconds(TIMEOUT_SECS));
 
     OutputFD(stdoutFd, stderrFd);
 
     printf("Final execution status: %s\n", result->ToString().c_str());
 
-    return result->final_status() == sandbox2::Result::OK ? EXIT_SUCCESS
+    return result.ok() && (result->final_status() == sandbox2::Result::OK) ? EXIT_SUCCESS
                                                           : EXIT_FAILURE;
 }
