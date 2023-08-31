@@ -1,12 +1,16 @@
 import * as fs from "fs";
 import * as path from "path";
+import * as net from "net";
+import { promisify } from "util";
+import * as os from "os";
 
-import { ChildProcess, fork } from "child_process";
+import { ChildProcess, fork, spawn } from "child_process";
 import deepmerge from "deepmerge";
 import { validWarehouses } from "df/api/dbadapters";
 import { coerceAsError, ErrorWithCause } from "df/common/errors/errors";
-import { decode64 } from "df/common/protos";
+import { decode64, encode64 } from "df/common/protos";
 import { dataform } from "df/protos/ts";
+import { v4 as uuid } from "uuid";
 
 // Project config properties that are required.
 const mandatoryProps: Array<keyof dataform.IProjectConfig> = ["warehouse", "defaultSchema"];
@@ -20,13 +24,14 @@ const simpleCheckProps: Array<keyof dataform.IProjectConfig> = [
   "defaultSchema"
 ];
 
-export class CompilationTimeoutError extends Error {}
+export class CompilationTimeoutError extends Error { }
 
 export async function compile(
-  compileConfig: dataform.ICompileConfig = {}
+  compileConfig: dataform.ICompileConfig = {},
+  useSandbox2?: boolean,
 ): Promise<dataform.CompiledGraph> {
   // Resolve the path in case it hasn't been resolved already.
-  path.resolve(compileConfig.projectDir);
+  compileConfig = { ...compileConfig, projectDir: path.resolve(compileConfig.projectDir) }
 
   try {
     // check dataformJson is valid before we try to compile
@@ -40,32 +45,47 @@ export async function compile(
     );
   }
 
-  const result = await CompileChildProcess.forkProcess().compile(compileConfig);
+  var result: string = "";
 
-  if (compileConfig.useMain) {
-    const decodedResult = decode64(dataform.CoreExecutionResponse, result);
-    return dataform.CompiledGraph.create(decodedResult.compile.compiledGraph);
+  const socketPath = `/tmp/${uuid()}.sock`;
+
+  if (fs.existsSync(socketPath)) {
+    fs.unlinkSync(socketPath);
   }
+  const server = net.createServer((socket) => {
+    socket.on("data", (buf) => {
+      result += buf.toString();
+    });
+  });
 
-  return decode64(dataform.CompiledGraph, result);
+  server.listen(socketPath);
+
+  await CompileChildProcess.forkProcess(socketPath, { ...compileConfig, useMain: false }, useSandbox2).timeout(compileConfig.timeoutMillis || 5000);
+
+  await promisify(server.close.bind(server))();
+
+  if (result.startsWith("ERROR:")) {
+    throw coerceAsError(JSON.parse(result.substring(6)));
+  }
+  const decodedResult = decode64(dataform.CompiledGraph, result);
+  return decodedResult;
 }
 
 export class CompileChildProcess {
-  public static forkProcess() {
-    // Runs the worker_bundle script we generate for the package (see packages/@dataform/cli/BUILD)
-    // if it exists, otherwise run the bazel compile loader target.
-    const findForkScript = () => {
-      try {
-        const workerBundlePath = require.resolve("./worker_bundle");
-        return workerBundlePath;
-      } catch (e) {
-        return require.resolve("../../sandbox/vm/compile_loader");
-      }
-    };
-    const forkScript = findForkScript();
-    return new CompileChildProcess(
-      fork(require.resolve(forkScript), [], { stdio: [0, 1, 2, "ipc", "pipe"] })
-    );
+  public static forkProcess(socket: string, compileConfig: dataform.ICompileConfig, useSandbox2: boolean) {
+    const platformPath = os.platform() === "darwin" ? "nodejs_darwin_amd64" : "nodejs_linux_amd64";
+    const nodePath = path.join(process.env.RUNFILES, "df", `external/${platformPath}/bin/nodejs/bin/node`);
+    const workerRootPath = path.join(process.env.RUNFILES, "df", "sandbox/worker");
+    const sandboxerPath = path.join(process.env.RUNFILES, "df", `sandbox/compile_executor`);
+    if (useSandbox2) {
+      return new CompileChildProcess(
+        spawn(sandboxerPath, [nodePath, workerRootPath, socket, encode64(dataform.CompileConfig, compileConfig), compileConfig.projectDir], { stdio: [0, 1, 2, "ipc", "pipe"] })
+      );
+    } else {
+      return new CompileChildProcess(
+        spawn(nodePath, [path.join(workerRootPath, "worker_bundle.js"), socket, encode64(dataform.CompileConfig, compileConfig)], { stdio: [0, 1, 2, "ipc", "pipe"] })
+      );
+    }
   }
   private readonly childProcess: ChildProcess;
 
@@ -73,34 +93,22 @@ export class CompileChildProcess {
     this.childProcess = childProcess;
   }
 
-  public async compile(compileConfig: dataform.ICompileConfig) {
+  public async timeout(timeoutMillis: number) {
     const compileInChildProcess = new Promise<string>(async (resolve, reject) => {
-      this.childProcess.on("error", (e: Error) => reject(coerceAsError(e)));
-
-      this.childProcess.on("message", (messageOrError: string | Error) => {
-        if (typeof messageOrError === "string") {
-          resolve(messageOrError);
-          return;
-        }
-        reject(coerceAsError(messageOrError));
-      });
-
-      this.childProcess.on("close", exitCode => {
+      this.childProcess.on("exit", exitCode => {
         if (exitCode !== 0) {
           reject(new Error(`Compilation child process exited with exit code ${exitCode}.`));
         }
+        resolve("Compilation completed successfully");
       });
-
-      // Trigger the child process to start compiling.
-      this.childProcess.send(compileConfig);
     });
     let timer;
     const timeout = new Promise(
       (resolve, reject) =>
-        (timer = setTimeout(
-          () => reject(new CompilationTimeoutError("Compilation timed out")),
-          compileConfig.timeoutMillis || 5000
-        ))
+      (timer = setTimeout(
+        () => reject(new CompilationTimeoutError("Compilation timed out")),
+        timeoutMillis
+      ))
     );
     try {
       await Promise.race([timeout, compileInChildProcess]);
@@ -119,9 +127,8 @@ export class CompileChildProcess {
 export const checkDataformJsonValidity = (dataformJsonParsed: { [prop: string]: any }) => {
   const invalidWarehouseProp = () => {
     return dataformJsonParsed.warehouse && !validWarehouses.includes(dataformJsonParsed.warehouse)
-      ? `Invalid value on property warehouse: ${
-          dataformJsonParsed.warehouse
-        }. Should be one of: ${validWarehouses.join(", ")}.`
+      ? `Invalid value on property warehouse: ${dataformJsonParsed.warehouse
+      }. Should be one of: ${validWarehouses.join(", ")}.`
       : null;
   };
   const invalidProp = () => {

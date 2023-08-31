@@ -8,6 +8,12 @@ ts_library(
         ["**/*.ts"],
         exclude = ["utils/**/*.*"],
     ),
+    data = [
+        "@nodejs_linux_amd64//:node_bin",
+        "//sandbox:compile_executor",
+        "//sandbox/worker:worker_bundle.js",
+        "//sandbox/worker:node_modules"
+    ],
     deps = [
         "//api/utils",
         "//common/errors",
@@ -32,6 +38,7 @@ ts_library(
         "@npm//@types/pg-query-stream",
         "@npm//@types/semver",
         "@npm//@types/ssh2",
+        "@npm//@types/uuid",
         "@npm//cron-parser",
         "@npm//deepmerge",
         "@npm//get-port",
@@ -41,6 +48,7 @@ ts_library(
         "@npm//mssql",
         "@npm//object-hash",
         "@npm//pg",
+        "@npm//uuid",
         "@npm//pg-query-stream",
         "@npm//presto-client",
         "@npm//pretty-ms",
