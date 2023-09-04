@@ -32,7 +32,7 @@ npm_package_bin(
         "worker_bundle.js",
     ],
     args = [
-        "--config=sandbox/worker/webpack.config.js",
+        "--config=$(location webpack.config.js)",
         "--output=$(location worker_bundle.js)",
     ],
     data = [
