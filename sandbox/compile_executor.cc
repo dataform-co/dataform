@@ -66,11 +66,10 @@ int main(int argc, char **argv)
     std::string compileConfigBase64(argv[4]);
     std::string projectDir(argv[5]);
 
-    std::string currentPath = std::string(fs::current_path()) + "/";
     std::string nodePath =
-        sapi::GetDataDependencyFilePath(nodeRelativePath);
+        nodeRelativePath;
 
-    std::string workerRoot = sapi::GetDataDependencyFilePath(workerRelativeRoot);
+    std::string workerRoot = workerRelativeRoot;
     std::string workerBundle = workerRoot + "/worker_bundle.js";
 
     std::vector<std::string> args = {
