@@ -63,6 +63,8 @@ void OutputFD(int stdoutFd, int errFd)
         char stderrBuf[4096];
         ssize_t stdoutRLen = read(stdoutFd, stdoutBuf, sizeof(stdoutBuf));
         ssize_t stderrRLen = read(errFd, stderrBuf, sizeof(stderrBuf));
+        printf("stdout: '%s'\n", std::string(stdoutBuf, stdoutRLen).c_str());
+        printf("stderr: '%s'\n", std::string(stderrBuf, stderrRLen).c_str());
         if (stdoutRLen < 1)
         {
             break;
@@ -81,11 +83,10 @@ int main(int argc, char **argv)
     std::string compileConfigBase64(argv[4]);
     std::string projectDir(argv[5]);
 
-    std::string currentPath = std::string(fs::current_path()) + "/";
     std::string nodePath =
-        sapi::GetDataDependencyFilePath(nodeRelativePath);
+        nodeRelativePath;
 
-    std::string workerRoot = sapi::GetDataDependencyFilePath(workerRelativeRoot);
+    std::string workerRoot = workerRelativeRoot;
     std::string workerBundle = workerRoot + "/worker_bundle.js";
 
     std::vector<std::string> args = {

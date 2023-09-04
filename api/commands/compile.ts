@@ -74,16 +74,17 @@ export async function compile(
 export class CompileChildProcess {
   public static forkProcess(socket: string, compileConfig: dataform.ICompileConfig, useSandbox2: boolean) {
     const platformPath = os.platform() === "darwin" ? "nodejs_darwin_amd64" : "nodejs_linux_amd64";
-    const nodePath = path.join(process.env.RUNFILES, "df", `external/${platformPath}/bin/nodejs/bin/node`);
+    const nodePath = path.join(`external/${platformPath}/bin/nodejs/bin/node`);
     const workerRootPath = path.join(process.env.RUNFILES, "df", "sandbox/worker");
     const sandboxerPath = path.join(process.env.RUNFILES, "df", `sandbox/compile_executor`);
+    const workerBundlePath = path.join(workerRootPath, "worker_bundle.js");
     if (useSandbox2) {
       return new CompileChildProcess(
         spawn(sandboxerPath, [nodePath, workerRootPath, socket, encode64(dataform.CompileConfig, compileConfig), compileConfig.projectDir], { stdio: [0, 1, 2, "ipc", "pipe"] })
       );
     } else {
       return new CompileChildProcess(
-        spawn(nodePath, [path.join(workerRootPath, "worker_bundle.js"), socket, encode64(dataform.CompileConfig, compileConfig)], { stdio: [0, 1, 2, "ipc", "pipe"] })
+        spawn(nodePath, [workerBundlePath, socket, encode64(dataform.CompileConfig, compileConfig)], { stdio: [0, 1, 2, "ipc", "pipe"] })
       );
     }
   }
