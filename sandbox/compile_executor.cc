@@ -213,6 +213,7 @@ int main(int argc, char **argv)
                       .AllowSyscall(__NR_sysinfo)
                       .AllowSyscall(__NR_statx)
                       .AllowSyscall(__NR_getcwd)
+                      .AllowSyscall(229) // clock_getres
                       .BuildOrDie();
 
     sandbox2::Sandbox2 s2(std::move(executor), std::move(policy));
