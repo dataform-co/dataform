@@ -55,23 +55,6 @@ namespace fs = std::filesystem;
 
 const int TIMEOUT_SECS = 1000;
 
-void OutputFD(int stdoutFd, int errFd)
-{
-    for (;;)
-    {
-        char stdoutBuf[4096];
-        char stderrBuf[4096];
-        ssize_t stdoutRLen = read(stdoutFd, stdoutBuf, sizeof(stdoutBuf));
-        ssize_t stderrRLen = read(errFd, stderrBuf, sizeof(stderrBuf));
-        printf("stdout: '%s'\n", std::string(stdoutBuf, stdoutRLen).c_str());
-        printf("stderr: '%s'\n", std::string(stderrBuf, stderrRLen).c_str());
-        if (stdoutRLen < 1)
-        {
-            break;
-        }
-    }
-}
-
 int main(int argc, char **argv)
 {
     gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -226,10 +209,11 @@ int main(int argc, char **argv)
                       .AllowSyscall(__NR_pipe2)
                       .AllowSyscall(__NR_eventfd2)
 
-                      .AllowSyscall(__NR_clone3)
+                      .AllowSyscall(435) // clone3
                       .AllowSyscall(__NR_sysinfo)
                       .AllowSyscall(__NR_statx)
                       .AllowSyscall(__NR_getcwd)
+                      .AllowSyscall(229) // clock_getres
                       .BuildOrDie();
 
     sandbox2::Sandbox2 s2(std::move(executor), std::move(policy));
@@ -245,8 +229,6 @@ int main(int argc, char **argv)
 
     auto result = s2.AwaitResultWithTimeout(
         absl::Seconds(TIMEOUT_SECS));
-
-    OutputFD(stdoutFd, stderrFd);
 
     printf("Final execution status: %s\n", result->ToString().c_str());
 
