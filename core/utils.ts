@@ -73,8 +73,8 @@ export function getCallerFile(rootDir: string) {
     lastfile = nextLastfile;
     if (
       !(
-        nextLastfile.includes(`definitions${pathSeperator}`) ||
-        nextLastfile.includes(`models${pathSeperator}`)
+        nextLastfile.includes(`definitions/`) ||
+        nextLastfile.includes(`models/`)
       )
     ) {
       continue;

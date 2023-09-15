@@ -47,14 +47,16 @@ export function main(encodedCoreExecutionRequest: string): string {
   // We delay attaching them to `global` until after all have been required, to prevent
   // "includes" files from implicitly depending on other "includes" files.
   const topLevelIncludes: {[key: string]: any} = {};
+  function localBaseFilename(fullPath) {
+    return fullPath.split("/").slice(-1)[0].split(".")[0];};
   compileRequest.compileConfig.filePaths
-    .filter(path => path.startsWith(`includes${utils.pathSeperator}`))
-    .filter(path => path.split(utils.pathSeperator).length === 2) // Only include top-level "includes" files.
+    .filter(path => path.startsWith(`includes/`))
+    .filter(path => path.split("/").length === 2) // Only include top-level "includes" files.
     .filter(path => path.endsWith(".js"))
     .forEach(includePath => {
       try {
         // tslint:disable-next-line: tsr-detect-non-literal-require
-        topLevelIncludes[utils.baseFilename(includePath)] = require(includePath);
+        topLevelIncludes[localBaseFilename(includePath)] = require(includePath);
       } catch (e) {
         session.compileError(e, includePath);
       }
@@ -70,7 +72,7 @@ export function main(encodedCoreExecutionRequest: string): string {
 
   // Require all "definitions" files (attaching them to the session).
   compileRequest.compileConfig.filePaths
-    .filter(path => path.startsWith(`definitions${utils.pathSeperator}`))
+    .filter(path => path.startsWith(`definitions/`))
     .filter(path => path.endsWith(".js") || path.endsWith(".sqlx"))
     .forEach(definitionPath => {
       try {
