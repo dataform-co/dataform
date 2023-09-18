@@ -1,12 +1,12 @@
 import * as fs from "fs";
 import * as jsBeautify from "js-beautify";
 import * as sqlFormatter from "sql-formatter";
-import { typeid } from "typeid-js";
 import { promisify } from "util";
 
 import { ErrorWithCause } from "df/common/errors/errors";
 import { WarehouseType } from "df/core/adapters";
 import { SyntaxTreeNode, SyntaxTreeNodeType } from "df/sqlx/lexer";
+import { typeid } from "typeid-js";
 
 const JS_BEAUTIFY_OPTIONS = {
   indent_size: 2,
@@ -198,10 +198,9 @@ function stripUnformattableText(
 function generatePlaceholderId() {
   // Add a leading character to ensure that the placeholder doesn't start with a number.
   // Identifiers beginning with a number cause errors when formatting.
-  return typeid()
+  return typeid("placeholder")
     .toString()
-    .replace(/-/g, "")
-    .substring(0, 16);
+    .replace(/-/g, "");
 }
 
 function replacePlaceholders(
