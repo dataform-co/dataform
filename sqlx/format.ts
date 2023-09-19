@@ -246,6 +246,9 @@ function formatPlaceholderInSqlx(
   sqlx: string
 ) {
   const wholeLine = getWholeLineContainingPlaceholderId(placeholderId, sqlx);
+  if (!wholeLine) {
+    return sqlx;
+  }
   const indent = " ".repeat(wholeLine.length - wholeLine.trimStart().length);
   const formattedPlaceholder = formatSqlQueryPlaceholder(placeholderSyntaxNode, indent);
 
@@ -314,7 +317,7 @@ function getWholeLineContainingPlaceholderId(placeholderId: string, text: string
   const regexpEscapedPlaceholderId = placeholderId.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   // This RegExp is safe because we only use a 'placeholderId' that this file has generated.
   // tslint:disable-next-line: tsr-detect-non-literal-regexp
-  return text.match(new RegExp(".*" + regexpEscapedPlaceholderId + ".*"))[0];
+  return text.match(new RegExp(".*" + regexpEscapedPlaceholderId + ".*"))?.[0];
 }
 
 function postProcessFormattedSqlx(formattedSql: string) {
