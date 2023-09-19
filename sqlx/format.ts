@@ -150,7 +150,7 @@ function separateSqlxIntoParts(nodeContents: Array<string | SyntaxTreeNode>) {
           sqlxStatements.push([]);
           return;
         default:
-          return;
+        // Unknown parts are handled the same as strings.
       }
     }
     sqlxStatements[sqlxStatements.length - 1].push(child);
@@ -198,9 +198,12 @@ function stripUnformattableText(
 function generatePlaceholderId() {
   // Add a leading character to ensure that the placeholder doesn't start with a number.
   // Identifiers beginning with a number cause errors when formatting.
-  return typeid("placeholder")
+  // A shortened UUID is used to facilitate same-line strings.
+  // The last chunk of the UUID is used as it is the most random.
+  const uuid = typeid("p")
     .toString()
     .replace(/-/g, "");
+  return "_" + uuid.substring(uuid.length - 16);
 }
 
 function replacePlaceholders(
