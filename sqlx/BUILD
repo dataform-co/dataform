@@ -27,9 +27,8 @@ ts_library(
         "//sqlx:sqlx",
         "@npm//@types/js-beautify",
         "@npm//@types/node",
-        "@npm//@types/uuid",
         "@npm//js-beautify",
         "@npm//sql-formatter",
-        "@npm//uuid",
+        "@npm//typeid-js",
     ],
 )
