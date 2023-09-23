@@ -6,7 +6,7 @@ import { promisify } from "util";
 import { ErrorWithCause } from "df/common/errors/errors";
 import { WarehouseType } from "df/core/adapters";
 import { SyntaxTreeNode, SyntaxTreeNodeType } from "df/sqlx/lexer";
-import { v4 as uuidv4 } from "uuid";
+import { typeid } from "typeid-js";
 
 const JS_BEAUTIFY_OPTIONS = {
   indent_size: 2,
@@ -74,7 +74,7 @@ export async function formatFile(
   return formattedText;
 }
 
-function formatSqlx(node: SyntaxTreeNode, indent: string = "", warehouse: WarehouseType) {
+function formatSqlx(node: SyntaxTreeNode, indent = "", warehouse: WarehouseType) {
   const { sqlxStatements, javascriptBlocks, innerSqlBlocks } = separateSqlxIntoParts(
     node.children()
   );
@@ -149,6 +149,8 @@ function separateSqlxIntoParts(nodeContents: Array<string | SyntaxTreeNode>) {
         case SyntaxTreeNodeType.SQL_STATEMENT_SEPARATOR:
           sqlxStatements.push([]);
           return;
+        default:
+        // Unknown parts are handled the same as strings.
       }
     }
     sqlxStatements[sqlxStatements.length - 1].push(child);
@@ -196,9 +198,12 @@ function stripUnformattableText(
 function generatePlaceholderId() {
   // Add a leading character to ensure that the placeholder doesn't start with a number.
   // Identifiers beginning with a number cause errors when formatting.
-  return '_' + uuidv4()
-    .replace(/-/g, "")
-    .substring(0, 16);
+  // A shortened UUID is used to facilitate same-line strings.
+  // The last chunk of the UUID is used as it is the most random.
+  const uuid = typeid("p")
+    .toString()
+    .replace(/-/g, "");
+  return "_" + uuid.substring(uuid.length - 16);
 }
 
 function replacePlaceholders(
@@ -241,7 +246,10 @@ function formatPlaceholderInSqlx(
   sqlx: string
 ) {
   const wholeLine = getWholeLineContainingPlaceholderId(placeholderId, sqlx);
-  const indent = " ".repeat(wholeLine.length - wholeLine.trimLeft().length);
+  if (!wholeLine) {
+    return sqlx;
+  }
+  const indent = " ".repeat(wholeLine.length - wholeLine.trimStart().length);
   const formattedPlaceholder = formatSqlQueryPlaceholder(placeholderSyntaxNode, indent);
 
   // Replace the placeholder entirely if (a) it fits on one line and (b) it isn't a comment.
@@ -277,9 +285,9 @@ function formatSqlQueryPlaceholder(node: SyntaxTreeNode, jsIndent: string): stri
       return formatJavaScriptPlaceholder(node, jsIndent);
     case SyntaxTreeNodeType.SQL_LITERAL_STRING:
     case SyntaxTreeNodeType.SQL_COMMENT:
-      return formatEveryLine(node.concatenate(), line => `${jsIndent}${line.trimLeft()}`);
+      return formatEveryLine(node.concatenate(), line => `${jsIndent}${line.trimStart()}`);
     case SyntaxTreeNodeType.SQL_LITERAL_MULTILINE_STRING:
-      return `${jsIndent}${node.concatenate().trimLeft()}`;
+      return `${jsIndent}${node.concatenate().trimStart()}`;
     default:
       throw new Error(`Unrecognized SyntaxTreeNodeType: ${node.type}`);
   }
@@ -309,7 +317,7 @@ function getWholeLineContainingPlaceholderId(placeholderId: string, text: string
   const regexpEscapedPlaceholderId = placeholderId.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   // This RegExp is safe because we only use a 'placeholderId' that this file has generated.
   // tslint:disable-next-line: tsr-detect-non-literal-regexp
-  return text.match(new RegExp(".*" + regexpEscapedPlaceholderId + ".*"))[0];
+  return text.match(new RegExp(".*" + regexpEscapedPlaceholderId + ".*"))?.[0];
 }
 
 function postProcessFormattedSqlx(formattedSql: string) {
@@ -318,7 +326,7 @@ function postProcessFormattedSqlx(formattedSql: string) {
     const lineHasContent = currentLine.trim().length > 0;
     if (lineHasContent) {
       previousLineHadContent = true;
-      return `${accumulatedSql}\n${currentLine.trimRight()}`;
+      return `${accumulatedSql}\n${currentLine.trimEnd()}`;
     }
     if (previousLineHadContent) {
       previousLineHadContent = false;

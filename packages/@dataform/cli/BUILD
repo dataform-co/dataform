@@ -57,6 +57,7 @@ externals = [
     "snowflake-sdk",
     "sql-formatter",
     "ssh2",
+    "typeid-js",
     "vm2",
 ]
 
