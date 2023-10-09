@@ -1,29 +1,12 @@
-<p align="center">
-  <img src="https://github.com/dataform-co/dataform/blob/main/static/images/github_bg.png">
-</p>
+# Dataform Core
 
-# Intro
-
-Dataform core is an open source meta-language to create SQL tables and workflows. Dataform core extends SQL by providing a dependency management system, automated data quality testing, and data documentation.
+Dataform core is an open source meta-language to create SQL tables and workflows in BigQuery. Dataform core extends SQL by providing a dependency management system, automated data quality testing, and data documentation.
 
 Using Dataform core, data teams can build scalable SQL data transformation pipelines following software engineering best practices, like version control and testing.
 
-<br/>
-<br/>
+![Data collections and integrations feed into Dataform, which exports this data to BI and analytics tools.](static/images/single-source-of-truth.png?raw=true)
 
-<p align="center">
-  <img src="https://assets.dataform.co/github-readme/single-source-of-truth%20(1).png">
-</p>
-
-### Supported warehouses
-
-- BigQuery
-- Snowflake
-- Redshift
-- Postgres
-- Azure SQL data warehouse
-
-# Data modeling with Dataform
+## Data modeling with Dataform
 
 - [Quickstart](https://cloud.google.com/dataform/docs/quickstart)
 - [Create tables and views](https://cloud.google.com/dataform/docs/tables)
@@ -31,16 +14,13 @@ Using Dataform core, data teams can build scalable SQL data transformation pipel
 - Write [data quality checks](https://cloud.google.com/dataform/docs/assertions)
 - Enable [scripting](https://cloud.google.com/dataform/docs/develop-workflows-js) and code re-use with a JavaScript API
 
-<div align="center">
-  <img src="https://assets.dataform.co/docs/introduction/simple_dag.png" alt="Dependency tree in a Dataform project">
-<i>Dependency tree in a Dataform project</i>
-</div>
+![A simple Dataform DAG illustrating table dependency](static/images/simple-dag.png?raw=true)
 
 _Note: we have recently undergone a documentation transition from [docs.dataform.co](https://docs.dataform.co/) to [cloud.google.com/dataform/docs](https://cloud.google.com/dataform/docs). Content hosted on the old document site is published from the [`main_v1` branch](https://github.com/dataform-co/dataform/tree/main_v1)._
 
-# Get started
+## Get started
 
-## With the CLI
+### With the CLI
 
 You can install the Dataform CLI tool using the following command line. Follow the [docs](https://cloud.google.com/dataform/docs/use-dataform-cli) to get started.
 
@@ -48,9 +28,7 @@ You can install the Dataform CLI tool using the following command line. Follow t
 npm i -g @dataform/cli
 ```
 
-<br/>
-
-## In Google Cloud Platform
+### In Google Cloud Platform
 
 Dataform in Google Cloud Platform provides a fully managed experience to build scalable data transformations pipelines in **BigQuery** using SQL. It includes:
 
@@ -59,15 +37,15 @@ Dataform in Google Cloud Platform provides a fully managed experience to build s
 
 You can learn more on [cloud.google.com/dataform](https://cloud.google.com/dataform)
 
-## How it works
+### How it works
 
 - Read the [docs here](https://cloud.google.com/dataform/docs/overview).
 
-# Want to report a bug or request a feature?
+## Want to report a bug or request a feature?
 
 - For Dataform core / open source requests, you can open an [issue](https://github.com/dataform-co/dataform/issues) in GitHub.
 - For Dataform in Google Cloud Platform, you can file a bug [here](https://issuetracker.google.com/issues/new?component=1193995&template=1698201), and file feature requests [here](https://issuetracker.google.com/issues/new?component=1193995&template=1713836).
 
-# Want to contribute?
+## Want to contribute?
 
 Check out our [contributors guide](https://github.com/dataform-co/dataform/blob/main/contributing.md) to get started with setting up the repo.
