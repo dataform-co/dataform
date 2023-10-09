@@ -161,14 +161,6 @@ export class Session {
     if (actionOptions.postOperationsContextable && !definesDataset(sqlxConfig.type)) {
       this.compileError("Actions may only include post_operations if they create a dataset.");
     }
-    if (
-      !!sqlxConfig.hasOwnProperty("sqldatawarehouse") &&
-      !["bigquery", "snowflake"].includes(this.config.warehouse)
-    ) {
-      this.compileError(
-        "Actions may only specify 'database' in projects whose warehouse is 'BigQuery' or 'Snowflake'."
-      );
-    }
 
     switch (sqlxConfig.type) {
       case "view":
@@ -226,7 +218,11 @@ export class Session {
     }
     const resolved = allResolved.length > 0 ? allResolved[0] : undefined;
 
-    if (resolved && resolved instanceof Table && resolved.proto.enumType === dataform.TableType.INLINE) {
+    if (
+      resolved &&
+      resolved instanceof Table &&
+      resolved.proto.enumType === dataform.TableType.INLINE
+    ) {
       // TODO: Pretty sure this is broken as the proto.query value may not
       // be set yet as it happens during compilation. We should evalute the query here.
       return `(${resolved.proto.query})`;
@@ -244,10 +240,9 @@ export class Session {
       return this.adapter().resolveTarget({
         ...resolved.proto.target,
         database:
-          resolved.proto.target.database &&
-          this.finalizeDatabase(resolved.proto.target.database),
+          resolved.proto.target.database && this.finalizeDatabase(resolved.proto.target.database),
         schema: this.finalizeSchema(resolved.proto.target.schema),
-        name: this.finalizeName(resolved.proto.target.name),
+        name: this.finalizeName(resolved.proto.target.name)
       });
     }
     // TODO: Here we allow 'ref' to go unresolved. This is for backwards compatibility with projects
@@ -262,8 +257,7 @@ export class Session {
           this.config,
           this.finalizeName(ref),
           this.finalizeSchema(this.config.defaultSchema),
-          this.config.defaultDatabase &&
-            this.finalizeDatabase(this.config.defaultDatabase),
+          this.config.defaultDatabase && this.finalizeDatabase(this.config.defaultDatabase)
         )
       );
     }
@@ -273,7 +267,7 @@ export class Session {
         this.config,
         this.finalizeName(ref.name),
         this.finalizeSchema(ref.schema),
-        ref.database && this.finalizeName(ref.database),
+        ref.database && this.finalizeName(ref.database)
       )
     );
   }
@@ -370,8 +364,8 @@ export class Session {
       );
     }
     if (
-      !!this.config.vars && 
-      !Object.values(this.config.vars).every((value) => typeof value === 'string')
+      !!this.config.vars &&
+      !Object.values(this.config.vars).every(value => typeof value === "string")
     ) {
       throw new Error("Custom variables defined in dataform.json can only be strings.");
     }
@@ -439,17 +433,16 @@ export class Session {
 
   public finalizeDatabase(database: string): string {
     return this.adapter().normalizeIdentifier(
-      `${database}${this.getDatabaseSuffixWithUnderscore()}`);
+      `${database}${this.getDatabaseSuffixWithUnderscore()}`
+    );
   }
 
   public finalizeSchema(schema: string): string {
-    return this.adapter().normalizeIdentifier(
-      `${schema}${this.getSchemaSuffixWithUnderscore()}`);
+    return this.adapter().normalizeIdentifier(`${schema}${this.getSchemaSuffixWithUnderscore()}`);
   }
 
   public finalizeName(name: string): string {
-    return this.adapter().normalizeIdentifier(
-      `${this.getTablePrefixWithUnderscore()}${name}`);
+    return this.adapter().normalizeIdentifier(`${this.getTablePrefixWithUnderscore()}${name}`);
   }
 
   private getDatabaseSuffixWithUnderscore() {
@@ -503,7 +496,10 @@ export class Session {
           // We found a single matching target, and fully-qualify it if it's a normal dependency,
           // or add all of its dependencies to ours if it's an 'inline' table.
           const protoDep = possibleDeps[0].proto;
-          if (protoDep instanceof dataform.Table && protoDep.enumType === dataform.TableType.INLINE) {
+          if (
+            protoDep instanceof dataform.Table &&
+            protoDep.enumType === dataform.TableType.INLINE
+          ) {
             protoDep.dependencyTargets.forEach(inlineDep =>
               action.dependencyTargets.push(inlineDep)
             );
@@ -584,127 +580,6 @@ export class Session {
           table.fileName,
           table.target
         );
-      }
-
-      // materialized
-      if (!!table.materialized) {
-        if (
-          table.enumType !== dataform.TableType.VIEW ||
-          (this.config.warehouse !== "snowflake" && this.config.warehouse !== "bigquery")
-        ) {
-          this.compileError(
-            new Error(`The 'materialized' option is only valid for Snowflake and BigQuery views`),
-            table.fileName,
-            table.target
-          );
-        }
-      }
-
-      // snowflake config
-      if (!!table.snowflake) {
-        if (table.snowflake.secure && table.enumType !== dataform.TableType.VIEW) {
-          this.compileError(
-            new Error(`The 'secure' option is only valid for Snowflake views`),
-            table.fileName,
-            table.target
-          );
-        }
-
-        if (table.snowflake.transient && table.enumType !== dataform.TableType.TABLE) {
-          this.compileError(
-            new Error(`The 'transient' option is only valid for Snowflake tables`),
-            table.fileName,
-            table.target
-          );
-        }
-
-        if (
-          table.snowflake.clusterBy?.length > 0 &&
-          table.enumType !== dataform.TableType.TABLE &&
-          table.enumType !== dataform.TableType.INCREMENTAL
-        ) {
-          this.compileError(
-            new Error(`The 'clusterBy' option is only valid for Snowflake tables`),
-            table.fileName,
-            table.target
-          );
-        }
-      }
-
-      // sqldatawarehouse config
-      if (!!table.sqlDataWarehouse) {
-        if (!!table.uniqueKey && table.uniqueKey.length > 0) {
-          this.compileError(
-            new Error(
-              `Merging using unique keys for SQLDataWarehouse has not yet been implemented`
-            ),
-            table.fileName,
-            table.target
-          );
-        }
-
-        if (table.sqlDataWarehouse.distribution) {
-          const distribution = table.sqlDataWarehouse.distribution.toUpperCase();
-          if (
-            distribution !== "REPLICATE" &&
-            distribution !== "ROUND_ROBIN" &&
-            !SQL_DATA_WAREHOUSE_DIST_HASH_REGEXP.test(distribution)
-          ) {
-            this.compileError(
-              new Error(`Invalid value for sqldatawarehouse distribution: ${distribution}`),
-              table.fileName,
-              table.target
-            );
-          }
-        }
-      }
-
-      // Redshift config
-      if (!!table.redshift) {
-        const validatePropertyDefined = (
-          opts: dataform.IRedshiftOptions,
-          prop: keyof dataform.IRedshiftOptions
-        ) => {
-          const value = opts[prop];
-          if (!opts.hasOwnProperty(prop)) {
-            this.compileError(`Property "${prop}" is not defined`, table.fileName, table.target);
-          } else if (value instanceof Array) {
-            if (value.length === 0) {
-              this.compileError(`Property "${prop}" is not defined`, table.fileName, table.target);
-            }
-          }
-        };
-        const validatePropertiesDefined = (
-          opts: dataform.IRedshiftOptions,
-          props: Array<keyof dataform.IRedshiftOptions>
-        ) => props.forEach(prop => validatePropertyDefined(opts, prop));
-        const validatePropertyValueInValues = (
-          opts: dataform.IRedshiftOptions,
-          prop: keyof dataform.IRedshiftOptions & ("distStyle" | "sortStyle"),
-          values: readonly string[]
-        ) => {
-          if (!!opts[prop] && !values.includes(opts[prop])) {
-            this.compileError(
-              `Wrong value of "${prop}" property. Should only use predefined values: ${joinQuoted(
-                values
-              )}`,
-              table.fileName,
-              table.target
-            );
-          }
-        };
-
-        if (table.redshift.distStyle || table.redshift.distKey) {
-          validatePropertiesDefined(table.redshift, ["distStyle", "distKey"]);
-          validatePropertyValueInValues(table.redshift, "distStyle", DistStyleType);
-        }
-        if (
-          table.redshift.sortStyle ||
-          (table.redshift.sortKeys && table.redshift.sortKeys.length)
-        ) {
-          validatePropertiesDefined(table.redshift, ["sortStyle", "sortKeys"]);
-          validatePropertyValueInValues(table.redshift, "sortStyle", SortStyleType);
-        }
       }
 
       // BigQuery config

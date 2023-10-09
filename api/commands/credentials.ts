@@ -6,12 +6,7 @@ import { dataform } from "df/protos/ts";
 
 export const CREDENTIALS_FILENAME = ".df-credentials.json";
 
-export type Credentials =
-  | dataform.IBigQuery
-  | dataform.IJDBC
-  | dataform.IPresto
-  | dataform.ISnowflake
-  | dataform.ISQLDataWarehouse;
+export type Credentials = dataform.IBigQuery;
 
 export function read(warehouse: string, credentialsPath: string): Credentials {
   if (!fs.existsSync(credentialsPath)) {
@@ -30,41 +25,8 @@ export function coerce(warehouse: string, credentials: any): Credentials {
         requiredWarehouseProps[warehouse]
       );
     }
-    case WarehouseType.POSTGRES:
-    case WarehouseType.REDSHIFT: {
-      return validateAnyAsCredentials(
-        credentials,
-        dataform.JDBC.verify,
-        dataform.JDBC.create,
-        requiredWarehouseProps[warehouse]
-      );
-    }
-    case WarehouseType.PRESTO: {
-      return validateAnyAsCredentials(
-        credentials,
-        dataform.Presto.verify,
-        dataform.Presto.create,
-        requiredWarehouseProps[warehouse]
-      );
-    }
-    case WarehouseType.SNOWFLAKE: {
-      return validateAnyAsCredentials(
-        credentials,
-        dataform.Snowflake.verify,
-        dataform.Snowflake.create,
-        requiredWarehouseProps[warehouse]
-      );
-    }
-    case WarehouseType.SQLDATAWAREHOUSE: {
-      return validateAnyAsCredentials(
-        credentials,
-        dataform.SQLDataWarehouse.verify,
-        dataform.SQLDataWarehouse.create,
-        requiredWarehouseProps[warehouse]
-      );
-    }
     default:
-      throw new Error(`Unrecognized warehouse: ${warehouse}`);
+      throw new Error(`Dataform now only supports ${WarehouseType.BIGQUERY}`);
   }
 }
 

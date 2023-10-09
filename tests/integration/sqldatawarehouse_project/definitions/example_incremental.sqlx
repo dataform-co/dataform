@@ -1,9 +1,0 @@
-config {
-  type: "incremental"
-}
-
-${ when(incremental(), "select * from (") }
-
-select CURRENT_TIMESTAMP as ts
-
-${ when(incremental(), `) as subquery where ts > (select max(ts) from ${self()}) or (select max(ts) from ${self()}) is null`) }
