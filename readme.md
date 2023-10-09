@@ -28,8 +28,6 @@ You can install the Dataform CLI tool using the following command line. Follow t
 npm i -g @dataform/cli
 ```
 
-<br/>
-
 ### In Google Cloud Platform
 
 Dataform in Google Cloud Platform provides a fully managed experience to build scalable data transformations pipelines in **BigQuery** using SQL. It includes:
