@@ -7,23 +7,13 @@ import { AContextable, Assertion, AssertionContext, IAssertionConfig } from "df/
 import { Contextable, ICommonContext, Resolvable } from "df/core/common";
 import { Declaration, IDeclarationConfig } from "df/core/declaration";
 import { IOperationConfig, Operation, OperationContext } from "df/core/operation";
-import {
-  DistStyleType,
-  ITableConfig,
-  ITableContext,
-  SortStyleType,
-  Table,
-  TableContext,
-  TableType
-} from "df/core/table";
+import { ITableConfig, ITableContext, Table, TableContext, TableType } from "df/core/table";
 import { targetAsReadableString, targetStringifier } from "df/core/targets";
 import * as test from "df/core/test";
 import * as utils from "df/core/utils";
-import { setOrValidateTableEnumType, toResolvable } from "df/core/utils";
+import { toResolvable } from "df/core/utils";
 import { version as dataformCoreVersion } from "df/core/version";
 import { dataform } from "df/protos/ts";
-
-const SQL_DATA_WAREHOUSE_DIST_HASH_REGEXP = new RegExp("HASH\\s*\\(\\s*\\w*\\s*\\)\\s*");
 
 const DEFAULT_CONFIG = {
   defaultSchema: "dataform",
