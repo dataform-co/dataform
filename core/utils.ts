@@ -33,6 +33,10 @@ export function baseFilename(fullPath: string) {
     .split(".")[0];
 }
 
+export function getEscapedFileName(path: string) {
+  return baseFilename(path).replace(/\\/g, '\\\\')
+}
+
 export function matchPatterns(patterns: string[], values: string[]) {
   const fullyQualifiedActions: string[] = [];
   patterns.forEach(pattern => {
@@ -269,6 +273,7 @@ export function tableTypeStringToEnum(type: string, throwIfUnknown: boolean) {
 export function tableTypeEnumToString(enumType: dataform.TableType) {
   return dataform.TableType[enumType].toLowerCase();
 }
+
 
 export function setOrValidateTableEnumType(table: dataform.ITable) {
   let enumTypeFromStr: dataform.TableType | null = null;
