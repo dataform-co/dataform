@@ -254,7 +254,7 @@ export function runCli() {
                 "The default database to use. For BigQuery, this is a Google Cloud Project ID."
             },
             check: (argv: yargs.Arguments<any>) => {
-              if (argv[defaultDatabaseOptionName] && argv[warehouseOption.name] != "bigquery") {
+              if (argv[defaultDatabaseOptionName] && argv[warehouseOption.name] !== "bigquery") {
                 throw new Error(
                   `The --${defaultDatabaseOptionName} flag is only used for BigQuery projects.`
                 );

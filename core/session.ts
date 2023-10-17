@@ -572,6 +572,20 @@ export class Session {
         );
       }
 
+      // materialized
+      if (!!table.materialized) {
+        if (
+          table.enumType !== dataform.TableType.VIEW ||
+          (this.config.warehouse !== "snowflake" && this.config.warehouse !== "bigquery")
+        ) {
+          this.compileError(
+            new Error(`The 'materialized' option is only valid for Snowflake and BigQuery views`),
+            table.fileName,
+            table.target
+          );
+        }
+      }
+
       // BigQuery config
       if (!!table.bigquery) {
         if (
