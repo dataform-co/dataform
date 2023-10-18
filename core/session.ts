@@ -4,6 +4,7 @@ import { encode64 } from "df/common/protos";
 import { StringifiedMap, StringifiedSet } from "df/common/strings/stringifier";
 import { AContextable, Assertion, AssertionContext, IAssertionConfig } from "df/core/assertion";
 import { Contextable, ICommonContext, Resolvable } from "df/core/common";
+import { CompilationSql } from "df/core/compilation_sql";
 import { Declaration, IDeclarationConfig } from "df/core/declaration";
 import { IOperationConfig, Operation, OperationContext } from "df/core/operation";
 import { ITableConfig, ITableContext, Table, TableContext, TableType } from "df/core/table";
@@ -13,7 +14,6 @@ import * as utils from "df/core/utils";
 import { toResolvable } from "df/core/utils";
 import { version as dataformCoreVersion } from "df/core/version";
 import { dataform } from "df/protos/ts";
-import { CompilationSql } from "df/core/compilation_sql";
 
 const DEFAULT_CONFIG = {
   defaultSchema: "dataform",

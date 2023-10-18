@@ -2,7 +2,7 @@ import * as semver from "semver";
 
 import { ErrorWithCause } from "df/common/errors/errors";
 import { CompilationSql } from "df/core/compilation_sql";
-import { Task, Tasks, concatenateQueries } from "df/core/tasks";
+import { concatenateQueries, Task, Tasks } from "df/core/tasks";
 import { tableTypeEnumToString } from "df/core/utils";
 import { dataform } from "df/protos/ts";
 

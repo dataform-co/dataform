@@ -14,20 +14,20 @@ export function keyBy<V>(values: V[], keyFn: (value: V) => string): { [key: stri
 
 export async function dropAllTables(
   tables: dataform.ITableMetadata[],
-  ExecutionSql: ExecutionSql,
+  executionSql: ExecutionSql,
   dbadapter: dbadapters.IDbAdapter
 ) {
   await Promise.all(
-    tables.map(table => dbadapter.execute(ExecutionSql.dropIfExists(table.target, table.type)))
+    tables.map(table => dbadapter.execute(executionSql.dropIfExists(table.target, table.type)))
   );
 }
 
 export async function getTableRows(
   target: dataform.ITarget,
-  ExecutionSql: ExecutionSql,
+  executionSql: ExecutionSql,
   dbadapter: dbadapters.IDbAdapter
 ) {
-  return (await dbadapter.execute(`SELECT * FROM ${ExecutionSql.resolveTarget(target)}`)).rows;
+  return (await dbadapter.execute(`SELECT * FROM ${executionSql.resolveTarget(target)}`)).rows;
 }
 
 export async function compile(

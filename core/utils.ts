@@ -171,7 +171,7 @@ export function target(
   schema = schema || config.defaultSchema;
   database = database || config.defaultDatabase;
   return dataform.Target.create({
-    name: name,
+    name,
     schema: !!schema ? schema || config.defaultSchema : undefined,
     database: !!database ? database : undefined
   });
