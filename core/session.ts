@@ -2,7 +2,6 @@ import { default as TarjanGraphConstructor, Graph as TarjanGraph } from "tarjan-
 
 import { encode64 } from "df/common/protos";
 import { StringifiedMap, StringifiedSet } from "df/common/strings/stringifier";
-import * as adapters from "df/core/adapters";
 import { AContextable, Assertion, AssertionContext, IAssertionConfig } from "df/core/assertion";
 import { Contextable, ICommonContext, Resolvable } from "df/core/common";
 import { Declaration, IDeclarationConfig } from "df/core/declaration";
@@ -14,6 +13,7 @@ import * as utils from "df/core/utils";
 import { toResolvable } from "df/core/utils";
 import { version as dataformCoreVersion } from "df/core/version";
 import { dataform } from "df/protos/ts";
+import { CompilationSqlAdapter } from "df/core/compilation_sql_adapter";
 
 const DEFAULT_CONFIG = {
   defaultSchema: "dataform",
@@ -103,8 +103,8 @@ export class Session {
     });
   }
 
-  public adapter(): adapters.IAdapter {
-    return adapters.create(this.config, dataformCoreVersion);
+  public adapter(): CompilationSqlAdapter {
+    return new CompilationSqlAdapter(this.config, dataformCoreVersion);
   }
 
   public sqlxAction(actionOptions: {
@@ -243,7 +243,6 @@ export class Session {
     if (typeof ref === "string") {
       return this.adapter().resolveTarget(
         utils.target(
-          this.adapter(),
           this.config,
           this.finalizeName(ref),
           this.finalizeSchema(this.config.defaultSchema),
@@ -253,7 +252,6 @@ export class Session {
     }
     return this.adapter().resolveTarget(
       utils.target(
-        this.adapter(),
         this.config,
         this.finalizeName(ref.name),
         this.finalizeSchema(ref.schema),
@@ -345,7 +343,7 @@ export class Session {
   }
 
   public compile(): dataform.CompiledGraph {
-    this.indexedActions = new ActionIndex(this.adapter(), this.actions);
+    this.indexedActions = new ActionIndex(this.actions);
 
     if (this.config.warehouse === "bigquery" && !this.config.defaultLocation) {
       this.compileError(
@@ -422,17 +420,15 @@ export class Session {
   }
 
   public finalizeDatabase(database: string): string {
-    return this.adapter().normalizeIdentifier(
-      `${database}${this.getDatabaseSuffixWithUnderscore()}`
-    );
+    return `${database}${this.getDatabaseSuffixWithUnderscore()}`;
   }
 
   public finalizeSchema(schema: string): string {
-    return this.adapter().normalizeIdentifier(`${schema}${this.getSchemaSuffixWithUnderscore()}`);
+    return `${schema}${this.getSchemaSuffixWithUnderscore()}`;
   }
 
   public finalizeName(name: string): string {
-    return this.adapter().normalizeIdentifier(`${this.getTablePrefixWithUnderscore()}${name}`);
+    return `${this.getTablePrefixWithUnderscore()}${name}`;
   }
 
   private getDatabaseSuffixWithUnderscore() {
@@ -528,15 +524,9 @@ export class Session {
         ...action.target,
         database:
           action.target.database &&
-          this.adapter().normalizeIdentifier(
-            `${action.target.database}${this.getDatabaseSuffixWithUnderscore()}`
-          ),
-        schema: this.adapter().normalizeIdentifier(
-          `${action.target.schema}${this.getSchemaSuffixWithUnderscore()}`
-        ),
-        name: this.adapter().normalizeIdentifier(
-          `${this.getTablePrefixWithUnderscore()}${action.target.name}`
-        )
+          `${action.target.database}${this.getDatabaseSuffixWithUnderscore()}`,
+        schema: `${action.target.schema}${this.getSchemaSuffixWithUnderscore()}`,
+        name: `${this.getTablePrefixWithUnderscore()}${action.target.name}`
       });
       action.target = newTargetByOriginalTarget.get(action.target);
     });
@@ -813,7 +803,7 @@ class ActionIndex {
     Map<string, Map<string, Action[]>>
   > = new Map();
 
-  public constructor(private readonly adapter: adapters.IAdapter, actions: Action[]) {
+  public constructor(actions: Action[]) {
     for (const action of actions) {
       if (!this.byName.has(action.proto.target.name)) {
         this.byName.set(action.proto.target.name, []);
@@ -860,24 +850,16 @@ class ActionIndex {
       if (!!target.schema) {
         return (
           this.byDatabaseSchemaAndName
-            .get(this.adapter.normalizeIdentifier(target.database))
-            .get(this.adapter.normalizeIdentifier(target.schema))
-            .get(this.adapter.normalizeIdentifier(target.name)) || []
+            .get(target.database)
+            .get(target.schema)
+            .get(target.name) || []
         );
       }
-      return (
-        this.byDatabaseAndName
-          .get(this.adapter.normalizeIdentifier(target.database))
-          .get(this.adapter.normalizeIdentifier(target.name)) || []
-      );
+      return this.byDatabaseAndName.get(target.database).get(target.name) || [];
     }
     if (!!target.schema) {
-      return (
-        this.bySchemaAndName
-          .get(this.adapter.normalizeIdentifier(target.schema))
-          .get(this.adapter.normalizeIdentifier(target.name)) || []
-      );
+      return this.bySchemaAndName.get(target.schema).get(target.name) || [];
     }
-    return this.byName.get(this.adapter.normalizeIdentifier(target.name)) || [];
+    return this.byName.get(target.name) || [];
   }
 }

@@ -2,10 +2,10 @@ import { prune } from "df/api/commands/prune";
 import { state } from "df/api/commands/state";
 import * as dbadapters from "df/api/dbadapters";
 import { StringifiedMap, StringifiedSet } from "df/common/strings/stringifier";
-import { adapters } from "df/core";
 import { targetStringifier } from "df/core/targets";
 import * as utils from "df/core/utils";
 import { dataform } from "df/protos/ts";
+import { ExecutionSqlAdapter } from "df/api/dbadapters/execution_sql_adapter";
 
 export async function build(
   compiledGraph: dataform.ICompiledGraph,
@@ -41,14 +41,14 @@ export async function build(
 }
 
 export class Builder {
-  private readonly adapter: adapters.IAdapter;
+  private readonly adapter: ExecutionSqlAdapter;
 
   constructor(
     private readonly prunedGraph: dataform.ICompiledGraph,
     private readonly runConfig: dataform.IRunConfig,
     private readonly warehouseState: dataform.IWarehouseState
   ) {
-    this.adapter = adapters.create(
+    this.adapter = new ExecutionSqlAdapter(
       prunedGraph.projectConfig,
       prunedGraph.dataformCoreVersion || "1.0.0"
     );

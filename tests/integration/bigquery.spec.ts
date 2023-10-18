@@ -4,12 +4,11 @@ import Long from "long";
 import * as dfapi from "df/api";
 import * as dbadapters from "df/api/dbadapters";
 import { BigQueryDbAdapter } from "df/api/dbadapters/bigquery";
-import * as adapters from "df/core/adapters";
-import { BigQueryAdapter } from "df/core/adapters/bigquery";
 import { targetAsReadableString } from "df/core/targets";
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
 import { compile, dropAllTables, getTableRows, keyBy } from "df/tests/integration/utils";
+import { ExecutionSqlAdapter } from "df/api/dbadapters/execution_sql_adapter";
 
 suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) => {
   const credentials = dfapi.credentials.read("bigquery", "test_credentials/bigquery.json");
@@ -81,7 +80,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
       await cleanWarehouse(compiledGraph, dbadapter);
 
       // Run two iterations of the project.
-      const adapter = adapters.create(
+      const adapter = new ExecutionSqlAdapter(
         compiledGraph.projectConfig,
         compiledGraph.dataformCoreVersion
       );
@@ -388,7 +387,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
         target: { schema: "", name: "", database: "" }
       };
 
-      const bqadapter = new BigQueryAdapter({ warehouse: "bigquery" }, "1.4.8");
+      const bqadapter = new ExecutionSqlAdapter({ warehouse: "bigquery" }, "1.4.8");
 
       const refresh = bqadapter.publishTasks(table, { fullRefresh: true }, { fields: [] }).build();
       const splitRefresh = refresh[0].statement.split("\n;\n");
@@ -501,7 +500,7 @@ async function cleanWarehouse(
 ) {
   await dropAllTables(
     (await dfapi.build(compiledGraph, {}, dbadapter)).warehouseState.tables,
-    adapters.create(compiledGraph.projectConfig, compiledGraph.dataformCoreVersion),
+    new ExecutionSqlAdapter(compiledGraph.projectConfig, compiledGraph.dataformCoreVersion),
     dbadapter
   );
 }

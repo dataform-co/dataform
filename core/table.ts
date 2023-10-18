@@ -22,6 +22,7 @@ import {
   validateQueryString
 } from "df/core/utils";
 import { dataform } from "df/protos/ts";
+import { CompilationSqlAdapter } from "df/core/compilation_sql_adapter";
 
 /**
  * @hidden

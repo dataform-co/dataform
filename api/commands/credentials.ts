@@ -1,7 +1,6 @@
 import * as fs from "fs";
 
 import * as dbadapters from "df/api/dbadapters";
-import { requiredWarehouseProps, WarehouseType } from "df/core/adapters";
 import { dataform } from "df/protos/ts";
 
 export const CREDENTIALS_FILENAME = ".df-credentials.json";
@@ -17,16 +16,17 @@ export function read(warehouse: string, credentialsPath: string): Credentials {
 
 export function coerce(warehouse: string, credentials: any): Credentials {
   switch (warehouse) {
-    case WarehouseType.BIGQUERY: {
+    // TODO(ekrekr): Remove the need for bigquery at all in the dataform.json.
+    case "bigquery": {
       return validateAnyAsCredentials(
         credentials,
         dataform.BigQuery.verify,
         dataform.BigQuery.create,
-        requiredWarehouseProps[warehouse]
+        ["projectId"]
       );
     }
     default:
-      throw new Error(`Dataform now only supports ${WarehouseType.BIGQUERY}`);
+      throw new Error(`Dataform now only supports bigquery`);
   }
 }
 

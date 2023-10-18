@@ -1,4 +1,3 @@
-import * as adapters from "df/core/adapters";
 import * as compilers from "df/core/compilers";
 import { genIndex } from "df/core/gen_index";
 import { Session } from "df/core/session";
@@ -8,8 +7,6 @@ import { Session } from "df/core/session";
 export const indexFileGenerator = genIndex;
 export const compiler = compilers.compile;
 export { main } from "df/core/main";
-
-export { adapters };
 
 // Create static session object.
 // This hack just enforces the singleton session object to
