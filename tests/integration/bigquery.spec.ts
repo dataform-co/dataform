@@ -4,11 +4,11 @@ import Long from "long";
 import * as dfapi from "df/api";
 import * as dbadapters from "df/api/dbadapters";
 import { BigQueryDbAdapter } from "df/api/dbadapters/bigquery";
+import { ExecutionSql } from "df/api/dbadapters/execution_sql";
 import { targetAsReadableString } from "df/core/targets";
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
 import { compile, dropAllTables, getTableRows, keyBy } from "df/tests/integration/utils";
-import { ExecutionSql } from "df/api/dbadapters/execution_sql";
 
 suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) => {
   const credentials = dfapi.credentials.read("bigquery", "test_credentials/bigquery.json");

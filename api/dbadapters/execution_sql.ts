@@ -1,9 +1,10 @@
 import * as semver from "semver";
-import { Task, Tasks, concatenateQueries } from "df/core/tasks";
-import { dataform } from "df/protos/ts";
-import { tableTypeEnumToString } from "df/core/utils";
+
 import { ErrorWithCause } from "df/common/errors/errors";
 import { CompilationSql } from "df/core/compilation_sql";
+import { Task, Tasks, concatenateQueries } from "df/core/tasks";
+import { tableTypeEnumToString } from "df/core/utils";
+import { dataform } from "df/protos/ts";
 
 export type QueryOrAction = string | dataform.Table | dataform.Operation | dataform.Assertion;
 
@@ -45,7 +46,7 @@ export class ExecutionSql {
     }
   }
 
-  protected insertInto(target: dataform.ITarget, columns: string[], query: string) {
+  public insertInto(target: dataform.ITarget, columns: string[], query: string) {
     return `	
 insert into ${this.resolveTarget(target)}	
 (${columns.join(",")})	
@@ -53,7 +54,7 @@ select ${columns.join(",")}
 from (${query}) as insertions`;
   }
 
-  protected oppositeTableType(type: dataform.TableMetadata.Type) {
+  public oppositeTableType(type: dataform.TableMetadata.Type) {
     switch (type) {
       case dataform.TableMetadata.Type.TABLE:
         return dataform.TableMetadata.Type.VIEW;
@@ -64,7 +65,7 @@ from (${query}) as insertions`;
     }
   }
 
-  protected where(query: string, where: string) {
+  public where(query: string, where: string) {
     return where
       ? `
   select * from (${query}) as subquery
@@ -72,7 +73,7 @@ from (${query}) as insertions`;
       : query;
   }
 
-  protected shouldWriteIncrementally(
+  public shouldWriteIncrementally(
     runConfig: dataform.IRunConfig,
     tableMetadata?: dataform.ITableMetadata
   ) {
@@ -83,7 +84,7 @@ from (${query}) as insertions`;
     );
   }
 
-  protected preOps(
+  public preOps(
     table: dataform.ITable,
     runConfig: dataform.IRunConfig,
     tableMetadata?: dataform.ITableMetadata
@@ -99,7 +100,7 @@ from (${query}) as insertions`;
     return (preOps || []).map(pre => Task.statement(pre));
   }
 
-  protected postOps(
+  public postOps(
     table: dataform.ITable,
     runConfig: dataform.IRunConfig,
     tableMetadata?: dataform.ITableMetadata

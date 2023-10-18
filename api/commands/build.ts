@@ -1,11 +1,11 @@
 import { prune } from "df/api/commands/prune";
 import { state } from "df/api/commands/state";
 import * as dbadapters from "df/api/dbadapters";
+import { ExecutionSql } from "df/api/dbadapters/execution_sql";
 import { StringifiedMap, StringifiedSet } from "df/common/strings/stringifier";
 import { targetStringifier } from "df/core/targets";
 import * as utils from "df/core/utils";
 import { dataform } from "df/protos/ts";
-import { ExecutionSql } from "df/api/dbadapters/execution_sql";
 
 export async function build(
   compiledGraph: dataform.ICompiledGraph,
