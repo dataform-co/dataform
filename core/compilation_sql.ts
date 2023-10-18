@@ -1,6 +1,6 @@
 import { dataform } from "df/protos/ts";
 
-export class CompilationSqlAdapter {
+export class CompilationSql {
   constructor(
     private readonly project: dataform.IProjectConfig,
     private readonly dataformCoreVersion: string

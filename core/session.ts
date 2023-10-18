@@ -13,7 +13,7 @@ import * as utils from "df/core/utils";
 import { toResolvable } from "df/core/utils";
 import { version as dataformCoreVersion } from "df/core/version";
 import { dataform } from "df/protos/ts";
-import { CompilationSqlAdapter } from "df/core/compilation_sql_adapter";
+import { CompilationSql } from "df/core/compilation_sql";
 
 const DEFAULT_CONFIG = {
   defaultSchema: "dataform",
@@ -103,8 +103,8 @@ export class Session {
     });
   }
 
-  public adapter(): CompilationSqlAdapter {
-    return new CompilationSqlAdapter(this.config, dataformCoreVersion);
+  public compilationSql(): CompilationSql {
+    return new CompilationSql(this.config, dataformCoreVersion);
   }
 
   public sqlxAction(actionOptions: {
@@ -225,9 +225,9 @@ export class Session {
 
     if (resolved) {
       if (resolved instanceof Declaration) {
-        return this.adapter().resolveTarget(resolved.proto.target);
+        return this.compilationSql().resolveTarget(resolved.proto.target);
       }
-      return this.adapter().resolveTarget({
+      return this.compilationSql().resolveTarget({
         ...resolved.proto.target,
         database:
           resolved.proto.target.database && this.finalizeDatabase(resolved.proto.target.database),
@@ -241,7 +241,7 @@ export class Session {
     // backwards compatibility with .sql files, we should remove the below code, and append a compile
     // error instead.
     if (typeof ref === "string") {
-      return this.adapter().resolveTarget(
+      return this.compilationSql().resolveTarget(
         utils.target(
           this.config,
           this.finalizeName(ref),
@@ -250,7 +250,7 @@ export class Session {
         )
       );
     }
-    return this.adapter().resolveTarget(
+    return this.compilationSql().resolveTarget(
       utils.target(
         this.config,
         this.finalizeName(ref.name),

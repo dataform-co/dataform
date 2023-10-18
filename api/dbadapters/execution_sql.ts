@@ -3,7 +3,7 @@ import { Task, Tasks, concatenateQueries } from "df/core/tasks";
 import { dataform } from "df/protos/ts";
 import { tableTypeEnumToString } from "df/core/utils";
 import { ErrorWithCause } from "df/common/errors/errors";
-import { CompilationSqlAdapter } from "df/core/compilation_sql_adapter";
+import { CompilationSql } from "df/core/compilation_sql";
 
 export type QueryOrAction = string | dataform.Table | dataform.Operation | dataform.Assertion;
 
@@ -12,14 +12,14 @@ export interface IValidationQuery {
   incremental?: boolean;
 }
 
-export class ExecutionSqlAdapter {
-  private readonly compilationSqlAdapter: CompilationSqlAdapter;
+export class ExecutionSql {
+  private readonly CompilationSql: CompilationSql;
 
   constructor(
     private readonly project: dataform.IProjectConfig,
     private readonly dataformCoreVersion: string
   ) {
-    this.compilationSqlAdapter = new CompilationSqlAdapter(project, dataformCoreVersion);
+    this.CompilationSql = new CompilationSql(project, dataformCoreVersion);
   }
 
   public baseTableType(enumType: dataform.TableType) {
@@ -116,7 +116,7 @@ from (${query}) as insertions`;
   }
 
   public resolveTarget(target: dataform.ITarget) {
-    return this.compilationSqlAdapter.resolveTarget(target);
+    return this.CompilationSql.resolveTarget(target);
   }
 
   public publishTasks(

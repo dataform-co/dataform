@@ -15,7 +15,7 @@ import { LimitedResultSet } from "df/api/utils/results";
 import { coerceAsError } from "df/common/errors/errors";
 import { retry } from "df/common/promises";
 import { dataform } from "df/protos/ts";
-import { QueryOrAction, collectEvaluationQueries } from "df/api/dbadapters/execution_sql_adapter";
+import { QueryOrAction, collectEvaluationQueries } from "df/api/dbadapters/execution_sql";
 
 const EXTRA_GOOGLE_SCOPES = ["https://www.googleapis.com/auth/drive"];
 

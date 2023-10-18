@@ -2,7 +2,7 @@ import { expect } from "chai";
 
 import * as dfapi from "df/api";
 import * as dbadapters from "df/api/dbadapters";
-import { ExecutionSqlAdapter } from "df/api/dbadapters/execution_sql_adapter";
+import { ExecutionSql } from "df/api/dbadapters/execution_sql";
 import { dataform } from "df/protos/ts";
 
 export function keyBy<V>(values: V[], keyFn: (value: V) => string): { [key: string]: V } {
@@ -14,23 +14,20 @@ export function keyBy<V>(values: V[], keyFn: (value: V) => string): { [key: stri
 
 export async function dropAllTables(
   tables: dataform.ITableMetadata[],
-  executionSqlAdapter: ExecutionSqlAdapter,
+  ExecutionSql: ExecutionSql,
   dbadapter: dbadapters.IDbAdapter
 ) {
   await Promise.all(
-    tables.map(table =>
-      dbadapter.execute(executionSqlAdapter.dropIfExists(table.target, table.type))
-    )
+    tables.map(table => dbadapter.execute(ExecutionSql.dropIfExists(table.target, table.type)))
   );
 }
 
 export async function getTableRows(
   target: dataform.ITarget,
-  executionSqlAdapter: ExecutionSqlAdapter,
+  ExecutionSql: ExecutionSql,
   dbadapter: dbadapters.IDbAdapter
 ) {
-  return (await dbadapter.execute(`SELECT * FROM ${executionSqlAdapter.resolveTarget(target)}`))
-    .rows;
+  return (await dbadapter.execute(`SELECT * FROM ${ExecutionSql.resolveTarget(target)}`)).rows;
 }
 
 export async function compile(
