@@ -1,4 +1,4 @@
-syntax="proto3";
+syntax = "proto3";
 
 package dataform;
 
@@ -25,7 +25,6 @@ message ProjectConfig {
   string database_suffix = 15;
   string schema_suffix = 7;
   string table_prefix = 11;
-
 
   // Deprecated.
   // Please use 'default_database' instead.
@@ -79,29 +78,6 @@ message BigQueryOptions {
   map<string, string> additional_options = 7;
 }
 
-message RedshiftOptions {
-  string dist_key = 1;
-  string dist_style = 2;
-  repeated string sort_keys = 3;
-  string sort_style = 4;
-
-  bool bind = 5 [deprecated = true];
-}
-
-message SnowflakeOptions {
-  bool secure = 1;
-  bool transient = 2;
-  repeated string cluster_by = 3;
-}
-
-message SQLDataWarehouseOptions {
-  string distribution = 1;
-}
-
-message PrestoOptions {
-  repeated string partition_by = 3;
-}
-
 message GraphErrors {
   repeated CompilationError compilation_errors = 1;
 
@@ -129,7 +105,8 @@ message ColumnDescriptor {
   string description = 1;
 
   // For nested records, the path might look like e.g. ["record", "column"].
-  // For simple columns, this will always contain a single entry e.g. ["column"].
+  // For simple columns, this will always contain a single entry e.g.
+  // ["column"].
   repeated string path = 2;
 
   string display_name = 3;
@@ -198,16 +175,12 @@ message Table {
   repeated string incremental_post_ops = 29;
 
   // Warehouse specific features.
-  RedshiftOptions redshift = 21;
   BigQueryOptions bigquery = 22;
-  SnowflakeOptions snowflake = 33;
-  SQLDataWarehouseOptions sql_data_warehouse = 25;
-  PrestoOptions presto = 34;
 
   // Generated.
   string file_name = 18;
 
-  reserved 1,2, 7, 12, 16;
+  reserved 1, 2, 7, 12, 16;
 }
 
 message Operation {
@@ -262,7 +235,6 @@ enum ActionHermeticity {
 }
 
 message Declaration {
-
   Target target = 2;
   Target canonical_target = 5;
 

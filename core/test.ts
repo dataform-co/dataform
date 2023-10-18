@@ -210,14 +210,6 @@ class RefReplacingContext implements ITableContext {
     return "";
   }
 
-  public redshift(redshift: dataform.IRedshiftOptions) {
-    return "";
-  }
-
-  public bigquery(bigquery: dataform.IBigQueryOptions) {
-    return "";
-  }
-
   public dependencies(name: string) {
     return "";
   }

@@ -24,16 +24,10 @@ import {
   printSuccess,
   printTestResult
 } from "df/cli/console";
-import {
-  getBigQueryCredentials,
-  getPostgresCredentials,
-  getRedshiftCredentials,
-  getSnowflakeCredentials,
-  getSQLDataWarehouseCredentials
-} from "df/cli/credentials";
+import { getBigQueryCredentials } from "df/cli/credentials";
 import { actuallyResolve, assertPathExists, compiledGraphHasErrors } from "df/cli/util";
 import { createYargsCli, INamedOption } from "df/cli/yargswrapper";
-import { isWarehouseType, supportsCancel, WarehouseType } from "df/core/adapters";
+import { isWarehouseType, WarehouseType } from "df/core/adapters";
 import { targetAsReadableString } from "df/core/targets";
 import { dataform } from "df/protos/ts";
 import { formatFile } from "df/sqlx/format";
@@ -260,12 +254,9 @@ export function runCli() {
                 "The default database to use. For BigQuery, this is a Google Cloud Project ID."
             },
             check: (argv: yargs.Arguments<any>) => {
-              if (
-                argv[defaultDatabaseOptionName] &&
-                !["bigquery", "snowflake"].includes(argv[warehouseOption.name])
-              ) {
+              if (argv[defaultDatabaseOptionName] && argv[warehouseOption.name] !== "bigquery") {
                 throw new Error(
-                  `The --${defaultDatabaseOptionName} flag is only used for BigQuery and Snowflake projects.`
+                  `The --${defaultDatabaseOptionName} flag is only used for BigQuery projects.`
                 );
               }
               if (!argv[defaultDatabaseOptionName] && argv[warehouseOption.name] === "bigquery") {
@@ -355,18 +346,6 @@ export function runCli() {
             switch (argv[warehouseOption.name]) {
               case "bigquery": {
                 return getBigQueryCredentials();
-              }
-              case "postgres": {
-                return getPostgresCredentials();
-              }
-              case "redshift": {
-                return getRedshiftCredentials();
-              }
-              case "sqldatawarehouse": {
-                return getSQLDataWarehouseCredentials();
-              }
-              case "snowflake": {
-                return getSnowflakeCredentials();
               }
               default: {
                 throw new Error(`Unrecognized warehouse type ${argv[warehouseOption.name]}`);
@@ -665,13 +644,6 @@ export function runCli() {
                 : {}
             );
             process.on("SIGINT", () => {
-              if (
-                !supportsCancel(
-                  WarehouseType[compiledGraph.projectConfig.warehouse as keyof typeof WarehouseType]
-                )
-              ) {
-                process.exit(1);
-              }
               runner.cancel();
             });
 
@@ -718,7 +690,10 @@ export function runCli() {
           const readWarehouseConfig = (): WarehouseType => {
             let wh: string;
             try {
-              const dataformJson = fs.readFileSync(path.resolve(argv[projectDirMustExistOption.name], "dataform.json"), 'utf8');
+              const dataformJson = fs.readFileSync(
+                path.resolve(argv[projectDirMustExistOption.name], "dataform.json"),
+                "utf8"
+              );
               const projectConfig = JSON.parse(dataformJson);
               wh = projectConfig.warehouse;
             } catch (e) {

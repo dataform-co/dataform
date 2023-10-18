@@ -17,12 +17,7 @@ const JS_BEAUTIFY_OPTIONS = {
 const MAX_SQL_FORMAT_ATTEMPTS = 5;
 
 const WAREHOUSE_LANGUAGE_MAP: Record<WarehouseType, sqlFormatter.SqlLanguage> = {
-  [WarehouseType.BIGQUERY]: "bigquery",
-  [WarehouseType.PRESTO]: "trino",
-  [WarehouseType.POSTGRES]: "postgresql",
-  [WarehouseType.REDSHIFT]: "redshift",
-  [WarehouseType.SNOWFLAKE]: "snowflake",
-  [WarehouseType.SQLDATAWAREHOUSE]: "transactsql"
+  [WarehouseType.BIGQUERY]: "bigquery"
 };
 
 const DEFAULT_WAREHOUSE_FOR_FORMATTING: WarehouseType = WarehouseType.BIGQUERY;

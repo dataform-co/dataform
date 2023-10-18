@@ -13,7 +13,7 @@ fi
 
 # Run all the tests.
 
-bazel test //... --build_tests_only -- -tests/integration:snowflake.spec
+bazel test //... --build_tests_only
 
 bazel run packages/@dataform/cli:package.publish
 bazel run packages/@dataform/core:package.publish

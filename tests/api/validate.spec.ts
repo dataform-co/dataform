@@ -19,7 +19,7 @@ suite("@dataform/api/validate", () => {
     test("fails on missing warehouse", async () => {
       expect(() =>
         checkDataformJsonValidity({
-          aint_no_warehouse: "redshift",
+          aint_no_warehouse: "bigquery",
           defaultSchema: "df_integration_test",
           assertionSchema: "df_integration_test_assertions"
         })
@@ -29,7 +29,7 @@ suite("@dataform/api/validate", () => {
     test("fails on invalid default schema", async () => {
       expect(() =>
         checkDataformJsonValidity({
-          warehouse: "redshift",
+          warehouse: "bigquery",
           defaultDatabase: "tada-analytics",
           defaultSchema: "rock&roll",
           assertionSchema: "df_integration_test_assertions"
@@ -43,7 +43,7 @@ suite("@dataform/api/validate", () => {
   test("passes for valid config", async () => {
     expect(() =>
       checkDataformJsonValidity({
-        warehouse: "redshift",
+        warehouse: "bigquery",
         defaultSchema: "df_integration_test-",
         assertionSchema: ""
       })

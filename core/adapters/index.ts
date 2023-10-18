@@ -1,9 +1,5 @@
 import { ErrorWithCause } from "df/common/errors/errors";
 import { BigQueryAdapter } from "df/core/adapters/bigquery";
-import { PrestoAdapter } from "df/core/adapters/presto";
-import { RedshiftAdapter } from "df/core/adapters/redshift";
-import { SnowflakeAdapter } from "df/core/adapters/snowflake";
-import { SQLDataWarehouseAdapter } from "df/core/adapters/sqldatawarehouse";
 import { concatenateQueries, Tasks } from "df/core/tasks";
 import { dataform } from "df/protos/ts";
 
@@ -33,59 +29,17 @@ export type AdapterConstructor<T extends IAdapter> = new (
 ) => T;
 
 export enum WarehouseType {
-  BIGQUERY = "bigquery",
-  PRESTO = "presto",
-  POSTGRES = "postgres",
-  REDSHIFT = "redshift",
-  SNOWFLAKE = "snowflake",
-  SQLDATAWAREHOUSE = "sqldatawarehouse"
+  BIGQUERY = "bigquery"
 }
 
 export function isWarehouseType(input: any): input is WarehouseType {
   return Object.values(WarehouseType).includes(input);
 }
 
-const CANCELLATION_SUPPORTED = [WarehouseType.BIGQUERY, WarehouseType.SQLDATAWAREHOUSE];
-
-export function supportsCancel(warehouseType: WarehouseType) {
-  return CANCELLATION_SUPPORTED.some(w => {
-    return w === warehouseType;
-  });
-}
-
 const requiredBigQueryWarehouseProps: Array<keyof dataform.IBigQuery> = ["projectId"];
-const requiredJdbcWarehouseProps: Array<keyof dataform.IJDBC> = [
-  "host",
-  "port",
-  "username",
-  "password",
-  "databaseName"
-];
-const requiredSnowflakeWarehouseProps: Array<keyof dataform.ISnowflake> = [
-  "accountId",
-  "username",
-  "password",
-  "role",
-  "databaseName",
-  "warehouse"
-];
-const requiredSQLDataWarehouseProps: Array<keyof dataform.ISQLDataWarehouse> = [
-  "server",
-  "port",
-  "username",
-  "password",
-  "database"
-];
-
-const requiredPrestoWarehouseProps: Array<keyof dataform.IPresto> = ["host", "port", "user"];
 
 export const requiredWarehouseProps = {
-  [WarehouseType.BIGQUERY]: requiredBigQueryWarehouseProps,
-  [WarehouseType.POSTGRES]: requiredJdbcWarehouseProps,
-  [WarehouseType.REDSHIFT]: requiredJdbcWarehouseProps,
-  [WarehouseType.SNOWFLAKE]: requiredSnowflakeWarehouseProps,
-  [WarehouseType.SQLDATAWAREHOUSE]: requiredSQLDataWarehouseProps,
-  [WarehouseType.PRESTO]: requiredPrestoWarehouseProps
+  [WarehouseType.BIGQUERY]: requiredBigQueryWarehouseProps
 };
 
 const registry: { [warehouseType: string]: AdapterConstructor<IAdapter> } = {};
@@ -105,14 +59,6 @@ export function create(
 }
 
 register("bigquery", BigQueryAdapter);
-register("presto", PrestoAdapter);
-// TODO: The redshift client library happens to work well for postgres, but we should probably
-// not be relying on that behaviour. At some point we should replace this with a first-class
-// PostgresAdapter.
-register("postgres", RedshiftAdapter);
-register("redshift", RedshiftAdapter);
-register("snowflake", SnowflakeAdapter);
-register("sqldatawarehouse", SQLDataWarehouseAdapter);
 
 export type QueryOrAction = string | dataform.Table | dataform.Operation | dataform.Assertion;
 

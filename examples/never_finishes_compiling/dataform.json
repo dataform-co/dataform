@@ -1,6 +1,6 @@
 {
-    "warehouse": "redshift",
-    "defaultSchema": "df_integration_test",
-    "assertionSchema": "df_integration_test_assertions",
-    "defaultLocation": "US"
+  "warehouse": "bigquery",
+  "defaultSchema": "df_integration_test",
+  "assertionSchema": "df_integration_test_assertions",
+  "defaultLocation": "US"
 }

@@ -1,5 +1,5 @@
 {
-  "warehouse": "redshift",
+  "warehouse": "bigquery",
   "defaultDatabase": "tada-analytics",
   "defaultSchema": "rock&roll",
   "assertionSchema": "df_integration_test_assertions"

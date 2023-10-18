@@ -63,9 +63,9 @@ suite("examples", () => {
                   message: "Actions may only include pre_operations if they create a dataset."
                 },
                 {
-                  fileName: "definitions/has_compile_errors/assertion_with_redshift.sqlx",
+                  fileName: "definitions/has_compile_errors/assertion_with_bigquery.sqlx",
                   message:
-                    'Unexpected property "redshift" in assertion config. Supported properties are: ["database","dependencies","description","disabled","hermetic","name","schema","tags","type"]'
+                    'Unexpected property "bigquery" in assertion config. Supported properties are: ["database","dependencies","description","disabled","hermetic","name","schema","tags","type"]'
                 },
                 {
                   fileName: "definitions/has_compile_errors/protected_assertion.sqlx",
@@ -93,8 +93,7 @@ suite("examples", () => {
                 },
                 {
                   fileName: "definitions/has_compile_errors/table_with_materialized.sqlx",
-                  message:
-                    "The 'materialized' option is only valid for Snowflake and BigQuery views"
+                  message: "The 'materialized' option is only valid for BigQuery views"
                 },
                 {
                   fileName: "definitions/has_compile_errors/view_without_hermetic.sqlx",

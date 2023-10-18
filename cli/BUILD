@@ -25,7 +25,6 @@ ts_library(
         "@npm//chokidar",
         "@npm//glob",
         "@npm//parse-duration",
-        "@npm//presto-client",
         "@npm//readline-sync",
         "@npm//untildify",
         "@npm//uuid",

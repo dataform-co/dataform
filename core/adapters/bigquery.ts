@@ -9,8 +9,11 @@ export class BigQueryAdapter extends Adapter implements IAdapter {
   }
 
   public resolveTarget(target: dataform.ITarget) {
-    return `\`${target.database || this.project.defaultDatabase}.${target.schema ||
-      this.project.defaultSchema}.${target.name}\``;
+    const database = target.database || this.project.defaultDatabase;
+    if (!database) {
+      return `\`${target.schema || this.project.defaultSchema}.${target.name}\``;
+    }
+    return `\`${database}.${target.schema || this.project.defaultSchema}.${target.name}\``;
   }
 
   public publishTasks(
@@ -76,24 +79,20 @@ export class BigQueryAdapter extends Adapter implements IAdapter {
   }
 
   private createOrReplace(table: dataform.ITable) {
-    const options = []
-    if (table.bigquery && table.bigquery.partitionBy && table.bigquery.partitionExpirationDays){
-      options.push(`partition_expiration_days=${table.bigquery.partitionExpirationDays}`)
+    const options = [];
+    if (table.bigquery && table.bigquery.partitionBy && table.bigquery.partitionExpirationDays) {
+      options.push(`partition_expiration_days=${table.bigquery.partitionExpirationDays}`);
     }
-    if (table.bigquery && table.bigquery.partitionBy && table.bigquery.requirePartitionFilter){
-      options.push(`require_partition_filter=${table.bigquery.requirePartitionFilter}`)
+    if (table.bigquery && table.bigquery.partitionBy && table.bigquery.requirePartitionFilter) {
+      options.push(`require_partition_filter=${table.bigquery.requirePartitionFilter}`);
     }
-    if(table.bigquery && table.bigquery.additionalOptions){
-      for(const [optionName, optionValue] of Object.entries(table.bigquery.additionalOptions)){
-        options.push(`${optionName}=${optionValue}`)
+    if (table.bigquery && table.bigquery.additionalOptions) {
+      for (const [optionName, optionValue] of Object.entries(table.bigquery.additionalOptions)) {
+        options.push(`${optionName}=${optionValue}`);
       }
     }
 
-    return `create or replace ${
-      table.materialized
-      ? "materialized "
-      : ""
-    }${this.tableTypeAsSql(
+    return `create or replace ${table.materialized ? "materialized " : ""}${this.tableTypeAsSql(
       this.baseTableType(table.enumType)
     )} ${this.resolveTarget(table.target)} ${
       table.bigquery && table.bigquery.partitionBy
@@ -103,10 +102,7 @@ export class BigQueryAdapter extends Adapter implements IAdapter {
       table.bigquery && table.bigquery.clusterBy && table.bigquery.clusterBy.length > 0
         ? `cluster by ${table.bigquery.clusterBy.join(", ")} `
         : ""
-    }${
-      options.length>0 ?
-      `OPTIONS(${options.join(',')})` : ""
-    }as ${table.query}`;
+    }${options.length > 0 ? `OPTIONS(${options.join(",")})` : ""}as ${table.query}`;
   }
 
   private createOrReplaceView(target: dataform.ITarget, query: string) {

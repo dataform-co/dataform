@@ -39,106 +39,6 @@ export const TableType = ["table", "view", "incremental", "inline"] as const;
 export type TableType = typeof TableType[number];
 
 /**
- * @hidden
- */
-export const DistStyleType = ["even", "key", "all"] as const;
-/**
- * Valid types for setting the distribution style for Redshift tables.
- *
- * View the [Redshift documentation](https://docs.aws.amazon.com/redshift/latest/dg/r_CREATE_TABLE_examples.html#r_CREATE_TABLE_NEW-diststyle-distkey-and-sortkey-options) for more information.
- */
-export type DistStyleType = typeof DistStyleType[number];
-
-/**
- * @hidden
- */
-export const SortStyleType = ["compound", "interleaved"] as const;
-/**
- * Valid types for setting the sort style for Redshift tables.
- *
- * View the [Redshift documentation](https://docs.aws.amazon.com/redshift/latest/dg/r_CREATE_TABLE_examples.html#r_CREATE_TABLE_NEW-diststyle-distkey-and-sortkey-options) for more information.
- */
-export type SortStyleType = typeof SortStyleType[number];
-
-/**
- * Redshift-specific warehouse options.
- */
-export interface IRedshiftOptions {
-  /**
-   * Sets the DISTKEY property when creating tables.
-   *
-   * For more information, read the [Redshift create table docs](https://docs.aws.amazon.com/redshift/latest/dg/r_CREATE_TABLE_examples.html#r_CREATE_TABLE_NEW-diststyle-distkey-and-sortkey-options).
-   */
-  distKey?: string;
-
-  /**
-   * Set the DISTSTYLE property when creating tables.
-   *
-   * For more information, read the [Redshift create table docs](https://docs.aws.amazon.com/redshift/latest/dg/r_CREATE_TABLE_examples.html#r_CREATE_TABLE_NEW-diststyle-distkey-and-sortkey-options).
-   */
-  distStyle?: string;
-
-  /**
-   * A list of string values that will configure the SORTKEY property when creating tables.
-   *
-   * For more information, read the [Redshift create table docs](https://docs.aws.amazon.com/redshift/latest/dg/r_CREATE_TABLE_examples.html#r_CREATE_TABLE_NEW-diststyle-distkey-and-sortkey-options).
-   */
-  sortKeys?: string[];
-
-  /**
-   * Sets the style of the sort key when using sort keys.
-   *
-   * For more information, read the [Redshift sort style article](https://docs.aws.amazon.com/redshift/latest/dg/t_Sorting_data-compare-sort-styles.html).
-   */
-  sortStyle?: string;
-}
-
-const IRedshiftOptionsProperties = () =>
-  strictKeysOf<IRedshiftOptions>()(["distKey", "distStyle", "sortKeys", "sortStyle"]);
-
-/**
- * Snowflake-specific warehouse options.
- */
-export interface ISnowflakeOptions {
-  /**
-   * If set to true, a secure view will be created.
-   *
-   * For more information, read the [Snowflake Secure Views docs](https://docs.snowflake.com/en/user-guide/views-secure.html).
-   */
-  secure?: boolean;
-
-  /**
-   * If set to true, a transient table will be created. Only applicable to actions of type "table".
-   *
-   * For more information, read the [Snowflake docs](https://docs.snowflake.com/en/user-guide/tables-temp-transient.html).
-   */
-  transient?: boolean;
-
-  /**
-   * A list of clustering keys to cluster the table by. Only applicable to actions of type "table" or "incremental".
-   *
-   * For more information, read the [Snowflake clustering docs](https://docs.snowflake.com/en/user-guide/tables-clustering-keys.html).
-   */
-  clusterBy?: string[];
-}
-const ISnowflakeOptionsProperties = () =>
-  strictKeysOf<ISnowflakeOptions>()(["secure", "transient", "clusterBy"]);
-
-/**
- * Azure SQL Data Warehouse-specific warehouse options.
- */
-export interface ISQLDataWarehouseOptions {
-  /**
-   * The distribution option value.
-   *
-   * For more information, read the [Azure CTAS docs](https://docs.microsoft.com/en-gb/sql/t-sql/statements/create-table-as-select-azure-sql-data-warehouse?view=aps-pdw-2016-au7#examples-for-table-distribution).
-   */
-  distribution?: string;
-}
-const ISQLDataWarehouseOptionsProperties = () =>
-  strictKeysOf<ISQLDataWarehouseOptions>()(["distribution"]);
-
-/**
  * BigQuery-specific warehouse options.
  */
 export interface IBigQueryOptions {
@@ -210,20 +110,6 @@ const IBigQueryOptionsProperties = () =>
   ]);
 
 /**
- * Options for creating tables within Presto projects.
- */
-export interface IPrestoOptions {
-  /**
-   * The key with which to partition the table. Typically the name of a timestamp or date column.
-   *
-   * For more information, read the partitioning documentation for the Presto connection in use.
-   */
-  partitionBy?: string[];
-}
-
-const IPrestoOptionsProperties = () => strictKeysOf<IPrestoOptions>()(["partitionBy"]);
-
-/**
  * Options for creating assertions as part of a dataset definition.
  */
 export interface ITableAssertions {
@@ -284,29 +170,9 @@ export interface ITableConfig
   protected?: boolean;
 
   /**
-   * Redshift-specific warehouse options.
-   */
-  redshift?: IRedshiftOptions;
-
-  /**
    * BigQuery-specific warehouse options.
    */
   bigquery?: IBigQueryOptions;
-
-  /**
-   * Snowflake-specific options.
-   */
-  snowflake?: ISnowflakeOptions;
-
-  /**
-   * Azure SQL Data Warehouse-specific options.
-   */
-  sqldatawarehouse?: ISQLDataWarehouseOptions;
-
-  /**
-   * Presto-specific options.
-   */
-  presto?: IPrestoOptions;
 
   /**
    * Assertions to be run on the dataset.
@@ -324,12 +190,10 @@ export interface ITableConfig
 
   /**
    * Only valid when the table type is `view`.
-   * Only valid when using Snowflake or BigQuery.
    *
    * If set to true, will make the view materialized.
    *
-   * For more information, read the [BigQuery materialized view docs](https://cloud.google.com/bigquery/docs/materialized-views-intro)
-   *  or the [Snowflake materialized view docs](https://docs.snowflake.com/en/user-guide/views-materialized.html).
+   * For more information, read the [BigQuery materialized view docs](https://cloud.google.com/bigquery/docs/materialized-views-intro).
    */
   materialized?: boolean;
 }
@@ -341,11 +205,7 @@ export const ITableConfigProperties = () =>
     "disabled",
     "protected",
     "name",
-    "redshift",
     "bigquery",
-    "snowflake",
-    "sqldatawarehouse",
-    "presto",
     "tags",
     "uniqueKey",
     "dependencies",
@@ -379,19 +239,14 @@ export interface ITableContext extends ICommonContext {
  * @hidden
  */
 export class Table {
-  public static readonly INLINE_IGNORED_PROPS: Array<keyof dataform.ITable> = 
-    [
-      "bigquery",
-      "redshift",
-      "snowflake",
-      "sqlDataWarehouse",
-      "presto",
-      "preOps",
-      "postOps",
-      "actionDescriptor",
-      "disabled",
-      "where"
-    ];
+  public static readonly INLINE_IGNORED_PROPS: Array<keyof dataform.ITable> = [
+    "bigquery",
+    "preOps",
+    "postOps",
+    "actionDescriptor",
+    "disabled",
+    "where"
+  ];
 
   public proto: dataform.ITable = dataform.Table.create({
     type: "view",
@@ -434,20 +289,8 @@ export class Table {
     if (config.protected) {
       this.protected();
     }
-    if (config.redshift) {
-      this.redshift(config.redshift);
-    }
     if (config.bigquery) {
       this.bigquery(config.bigquery);
-    }
-    if (config.snowflake) {
-      this.snowflake(config.snowflake);
-    }
-    if (config.sqldatawarehouse) {
-      this.sqldatawarehouse(config.sqldatawarehouse);
-    }
-    if (config.presto) {
-      this.presto(config.presto);
     }
     if (config.tags) {
       this.tags(config.tags);
@@ -523,39 +366,6 @@ export class Table {
     this.proto.materialized = materialized;
   }
 
-  public snowflake(snowflake: dataform.ISnowflakeOptions) {
-    checkExcessProperties(
-      (e: Error) => this.session.compileError(e),
-      snowflake,
-      ISnowflakeOptionsProperties(),
-      "snowflake config"
-    );
-    this.proto.snowflake = dataform.SnowflakeOptions.create(snowflake);
-    return this;
-  }
-
-  public sqldatawarehouse(sqlDataWarehouse: dataform.ISQLDataWarehouseOptions) {
-    checkExcessProperties(
-      (e: Error) => this.session.compileError(e),
-      sqlDataWarehouse,
-      ISQLDataWarehouseOptionsProperties(),
-      "sqldatawarehouse config"
-    );
-    this.proto.sqlDataWarehouse = dataform.SQLDataWarehouseOptions.create(sqlDataWarehouse);
-    return this;
-  }
-
-  public redshift(redshift: dataform.IRedshiftOptions) {
-    checkExcessProperties(
-      (e: Error) => this.session.compileError(e),
-      redshift,
-      IRedshiftOptionsProperties(),
-      "redshift config"
-    );
-    this.proto.redshift = dataform.RedshiftOptions.create(redshift);
-    return this;
-  }
-
   public bigquery(bigquery: dataform.IBigQueryOptions) {
     checkExcessProperties(
       (e: Error) => this.session.compileError(e),
@@ -570,17 +380,6 @@ export class Table {
       }
       this.proto.actionDescriptor.bigqueryLabels = bigquery.labels;
     }
-    return this;
-  }
-
-  public presto(presto: dataform.IPrestoOptions) {
-    checkExcessProperties(
-      (e: Error) => this.session.compileError(e),
-      presto,
-      IPrestoOptionsProperties(),
-      "presto config"
-    );
-    this.proto.presto = dataform.PrestoOptions.create(presto);
     return this;
   }
 
@@ -772,9 +571,7 @@ export class TableContext implements ITableContext {
   }
 
   public name(): string {
-    return this.table.session.finalizeName(
-      this.table.proto.target.name
-    );
+    return this.table.session.finalizeName(this.table.proto.target.name);
   }
 
   public ref(ref: Resolvable | string[], ...rest: string[]): string {
@@ -792,9 +589,7 @@ export class TableContext implements ITableContext {
   }
 
   public schema(): string {
-    return this.table.session.finalizeSchema(
-      this.table.proto.target.schema
-    );
+    return this.table.session.finalizeSchema(this.table.proto.target.schema);
   }
 
   public database(): string {
@@ -803,9 +598,7 @@ export class TableContext implements ITableContext {
       return "";
     }
 
-    return this.table.session.finalizeDatabase(
-      this.table.proto.target.database
-    );
+    return this.table.session.finalizeDatabase(this.table.proto.target.database);
   }
 
   public type(type: TableType) {
@@ -841,18 +634,8 @@ export class TableContext implements ITableContext {
     return "";
   }
 
-  public redshift(redshift: dataform.IRedshiftOptions) {
-    this.table.redshift(redshift);
-    return "";
-  }
-
   public bigquery(bigquery: dataform.IBigQueryOptions) {
     this.table.bigquery(bigquery);
-    return "";
-  }
-
-  public presto(presto: dataform.IPrestoOptions) {
-    this.table.presto(presto);
     return "";
   }
 
