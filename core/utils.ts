@@ -1,4 +1,3 @@
-import { adapters } from "df/core";
 import { Assertion } from "df/core/assertion";
 import { Resolvable } from "df/core/common";
 import { Declaration } from "df/core/declaration";
@@ -164,7 +163,6 @@ export function ambiguousActionNameMsg(
 }
 
 export function target(
-  adapter: adapters.IAdapter,
   config: dataform.IProjectConfig,
   name: string,
   schema?: string,
@@ -173,9 +171,9 @@ export function target(
   schema = schema || config.defaultSchema;
   database = database || config.defaultDatabase;
   return dataform.Target.create({
-    name: adapter.normalizeIdentifier(name),
-    schema: !!schema ? adapter.normalizeIdentifier(schema || config.defaultSchema) : undefined,
-    database: !!database ? adapter.normalizeIdentifier(database) : undefined
+    name,
+    schema: !!schema ? schema || config.defaultSchema : undefined,
+    database: !!database ? database : undefined
   });
 }
 
@@ -186,14 +184,8 @@ export function setNameAndTarget(
   overrideSchema?: string,
   overrideDatabase?: string
 ) {
-  action.target = target(session.adapter(), session.config, name, overrideSchema, overrideDatabase);
-  action.canonicalTarget = target(
-    session.adapter(),
-    session.canonicalConfig,
-    name,
-    overrideSchema,
-    overrideDatabase
-  );
+  action.target = target(session.config, name, overrideSchema, overrideDatabase);
+  action.canonicalTarget = target(session.canonicalConfig, name, overrideSchema, overrideDatabase);
 }
 
 /**

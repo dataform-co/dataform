@@ -9,12 +9,12 @@ import {
   TableMetadata
 } from "@google-cloud/bigquery";
 import { Credentials } from "df/api/commands/credentials";
+import { collectEvaluationQueries, QueryOrAction } from "df/api/dbadapters/execution_sql";
 import { IDbAdapter, IDbClient, IExecutionResult, OnCancel } from "df/api/dbadapters/index";
 import { parseBigqueryEvalError } from "df/api/utils/error_parsing";
 import { LimitedResultSet } from "df/api/utils/results";
 import { coerceAsError } from "df/common/errors/errors";
 import { retry } from "df/common/promises";
-import { collectEvaluationQueries, QueryOrAction } from "df/core/adapters";
 import { dataform } from "df/protos/ts";
 
 const EXTRA_GOOGLE_SCOPES = ["https://www.googleapis.com/auth/drive"];

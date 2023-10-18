@@ -472,7 +472,7 @@ export class Table {
       uniqueKeys.forEach((uniqueKey, index) => {
         const uniqueKeyAssertion = this.session.assert(
           `${this.proto.target.schema}_${this.proto.target.name}_assertions_uniqueKey_${index}`,
-          ctx => this.session.adapter().indexAssertion(ctx.ref(this.proto.target), uniqueKey)
+          ctx => this.session.compilationSql().indexAssertion(ctx.ref(this.proto.target), uniqueKey)
         );
         if (this.proto.tags) {
           uniqueKeyAssertion.tags(this.proto.tags);
@@ -495,7 +495,7 @@ export class Table {
         `${this.proto.target.schema}_${this.proto.target.name}_assertions_rowConditions`,
         ctx =>
           this.session
-            .adapter()
+            .compilationSql()
             .rowConditionsAssertion(ctx.ref(this.proto.target), mergedRowConditions)
       );
       this.rowConditionsAssertion.proto.parentAction = this.proto.target;

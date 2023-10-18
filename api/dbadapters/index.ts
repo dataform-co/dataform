@@ -1,6 +1,6 @@
 import { Credentials } from "df/api/commands/credentials";
 import { BigQueryDbAdapter } from "df/api/dbadapters/bigquery";
-import { QueryOrAction } from "df/core/adapters";
+import { QueryOrAction } from "df/api/dbadapters/execution_sql";
 import { dataform } from "df/protos/ts";
 
 export type OnCancel = (handleCancel: () => void) => void;

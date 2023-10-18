@@ -1,8 +1,8 @@
 import { prune } from "df/api/commands/prune";
 import { state } from "df/api/commands/state";
 import * as dbadapters from "df/api/dbadapters";
+import { ExecutionSql } from "df/api/dbadapters/execution_sql";
 import { StringifiedMap, StringifiedSet } from "df/common/strings/stringifier";
-import { adapters } from "df/core";
 import { targetStringifier } from "df/core/targets";
 import * as utils from "df/core/utils";
 import { dataform } from "df/protos/ts";
@@ -41,14 +41,14 @@ export async function build(
 }
 
 export class Builder {
-  private readonly adapter: adapters.IAdapter;
+  private readonly executionSql: ExecutionSql;
 
   constructor(
     private readonly prunedGraph: dataform.ICompiledGraph,
     private readonly runConfig: dataform.IRunConfig,
     private readonly warehouseState: dataform.IWarehouseState
   ) {
-    this.adapter = adapters.create(
+    this.executionSql = new ExecutionSql(
       prunedGraph.projectConfig,
       prunedGraph.dataformCoreVersion || "1.0.0"
     );
@@ -98,7 +98,7 @@ export class Builder {
       tableType: utils.tableTypeEnumToString(table.enumType),
       tasks: table.disabled
         ? []
-        : this.adapter.publishTasks(table, runConfig, tableMetadata).build(),
+        : this.executionSql.publishTasks(table, runConfig, tableMetadata).build(),
       hermeticity: table.hermeticity || dataform.ActionHermeticity.HERMETIC
     };
   }
@@ -120,7 +120,7 @@ export class Builder {
       type: "assertion",
       tasks: assertion.disabled
         ? []
-        : this.adapter.assertTasks(assertion, this.prunedGraph.projectConfig).build(),
+        : this.executionSql.assertTasks(assertion, this.prunedGraph.projectConfig).build(),
       hermeticity: assertion.hermeticity || dataform.ActionHermeticity.HERMETIC
     };
   }

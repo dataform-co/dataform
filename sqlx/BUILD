@@ -22,7 +22,6 @@ ts_library(
     ),
     deps = [
         "//:modules-fix",
-        "//core",
         "//common/errors",
         "//sqlx:sqlx",
         "@npm//@types/js-beautify",

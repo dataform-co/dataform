@@ -27,7 +27,6 @@ import {
 import { getBigQueryCredentials } from "df/cli/credentials";
 import { actuallyResolve, assertPathExists, compiledGraphHasErrors } from "df/cli/util";
 import { createYargsCli, INamedOption } from "df/cli/yargswrapper";
-import { isWarehouseType, WarehouseType } from "df/core/adapters";
 import { targetAsReadableString } from "df/core/targets";
 import { dataform } from "df/protos/ts";
 import { formatFile } from "df/sqlx/format";
@@ -158,7 +157,7 @@ const warehouseOption: INamedOption<yargs.PositionalOptions> = {
   name: "warehouse",
   option: {
     describe: "The project's data warehouse type.",
-    choices: Object.values(WarehouseType)
+    choices: ["bigquery"]
   }
 };
 
@@ -687,7 +686,7 @@ export function runCli() {
         positionalOptions: [projectDirMustExistOption],
         options: [trackOption],
         processFn: async argv => {
-          const readWarehouseConfig = (): WarehouseType => {
+          const readWarehouseConfig = (): string => {
             let wh: string;
             try {
               const dataformJson = fs.readFileSync(
@@ -698,9 +697,6 @@ export function runCli() {
               wh = projectConfig.warehouse;
             } catch (e) {
               throw new Error(`Could not parse dataform.json: ${e.message}`);
-            }
-            if (!isWarehouseType(wh)) {
-              throw new Error("Unrecognized 'warehouse' setting in dataform.json");
             }
             return wh;
           };
@@ -713,8 +709,7 @@ export function runCli() {
             filenames.map(async filename => {
               try {
                 await formatFile(path.resolve(argv[projectDirMustExistOption.name], filename), {
-                  overwriteFile: true,
-                  warehouse
+                  overwriteFile: true
                 });
                 return {
                   filename
