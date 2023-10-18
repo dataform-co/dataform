@@ -52,7 +52,6 @@ pkg_json(
         "//packages/@dataform:package.layer.json",
     ],
     main = "bundle.js",
-    # types = "bundle.d.ts",
     version = DF_VERSION,
 )
 
