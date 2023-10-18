@@ -574,12 +574,9 @@ export class Session {
 
       // materialized
       if (!!table.materialized) {
-        if (
-          table.enumType !== dataform.TableType.VIEW ||
-          (this.config.warehouse !== "snowflake" && this.config.warehouse !== "bigquery")
-        ) {
+        if (table.enumType !== dataform.TableType.VIEW) {
           this.compileError(
-            new Error(`The 'materialized' option is only valid for Snowflake and BigQuery views`),
+            new Error(`The 'materialized' option is only valid for BigQuery views`),
             table.fileName,
             table.target
           );

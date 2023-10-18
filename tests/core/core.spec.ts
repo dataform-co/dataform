@@ -16,20 +16,30 @@ class TestConfigs {
     defaultLocation: "US"
   };
 
-  public static bigqueryWithDatabase: dataform.IProjectConfig = {
+  public static bigqueryWithDefaultDatabase: dataform.IProjectConfig = {
     ...TestConfigs.bigquery,
-    defaultDatabase: "test-db"
+    defaultDatabase: "default-database"
   };
 
-  public static bigqueryWithDatabaseAndSuffix: dataform.IProjectConfig = {
-    ...TestConfigs.bigqueryWithDatabase,
+  public static bigqueryWithSchemaSuffix: dataform.IProjectConfig = {
+    ...TestConfigs.bigquery,
+    schemaSuffix: "suffix"
+  };
+
+  public static bigqueryWithDefaultDatabaseAndSuffix: dataform.IProjectConfig = {
+    ...TestConfigs.bigqueryWithDefaultDatabase,
     databaseSuffix: "suffix"
+  };
+
+  public static bigqueryWithTablePrefix: dataform.IProjectConfig = {
+    ...TestConfigs.bigquery,
+    tablePrefix: "prefix"
   };
 }
 
 suite("@dataform/core", () => {
   suite("publish", () => {
-    [TestConfigs.bigquery, TestConfigs.bigqueryWithDatabaseAndSuffix].forEach(testConfig => {
+    [TestConfigs.bigquery, TestConfigs.bigqueryWithTablePrefix].forEach(testConfig => {
       test(`config with prefix "${testConfig.tablePrefix}"`, () => {
         const tableWithPrefix = (table: string) =>
           testConfig.tablePrefix ? `${testConfig.tablePrefix}_${table}` : table;
@@ -122,7 +132,7 @@ suite("@dataform/core", () => {
       });
     });
 
-    [TestConfigs.bigquery, TestConfigs.bigqueryWithDatabaseAndSuffix].forEach(testConfig => {
+    [TestConfigs.bigquery, TestConfigs.bigqueryWithSchemaSuffix].forEach(testConfig => {
       test(`config with suffix "${testConfig.schemaSuffix}"`, () => {
         const schemaWithSuffix = (schema: string) =>
           testConfig.schemaSuffix ? `${schema}_${testConfig.schemaSuffix}` : schema;
@@ -362,7 +372,7 @@ suite("@dataform/core", () => {
     test("validation_bigquery_fail", () => {
       const session = new Session(path.dirname(__filename), TestConfigs.bigquery);
       session.publish("example_materialized_view", {
-        type: "view",
+        type: "table",
         materialized: true
       });
 
@@ -565,6 +575,9 @@ suite("@dataform/core", () => {
         tableB.dependencyTargets.map(dependency => targetAsReadableString(dependency))
       ).includes("schema.a");
       expect(tableB.actionDescriptor).eql({
+        bigqueryLabels: {
+          a: "b"
+        },
         columns: [
           dataform.ColumnDescriptor.create({
             description: "test description b",
@@ -576,12 +589,14 @@ suite("@dataform/core", () => {
       expect(tableB.postOps).deep.equals(["post_op_b"]);
       expect(asPlainObject(tableB.bigquery)).deep.equals(
         asPlainObject({
-          // TODO.
+          labels: {
+            a: "b"
+          }
         })
       );
       expect(tableB.disabled).equals(true);
       expect(tableB.where).equals("test_where");
-      expect(tableB.query).equals('select * from "schema"."a"');
+      expect(tableB.query).equals("select * from `schema.a`");
 
       const tableC = graph.tables.find(
         table => targetAsReadableString(table.target) === "schema.c"
@@ -604,7 +619,7 @@ suite("@dataform/core", () => {
       expect(tableC.bigquery).equals(null);
       expect(tableC.disabled).equals(false);
       expect(tableC.where).equals("");
-      expect(tableC.query).equals('select * from (select * from "schema"."a")');
+      expect(tableC.query).equals("select * from (select * from `schema.a`)");
 
       const errors = graph.graphErrors.compilationErrors
         .filter(item => item.actionName === "schema.b")
@@ -658,8 +673,8 @@ suite("@dataform/core", () => {
 
     [
       TestConfigs.bigquery,
-      TestConfigs.bigqueryWithDatabaseAndSuffix,
-      TestConfigs.bigqueryWithDatabaseAndSuffix
+      TestConfigs.bigqueryWithSchemaSuffix,
+      TestConfigs.bigqueryWithTablePrefix
     ].forEach(testConfig => {
       test(`ref with prefix "${testConfig.tablePrefix}" and suffix "${testConfig.schemaSuffix}"`, () => {
         const session = new Session(path.dirname(__filename), testConfig);
@@ -746,7 +761,7 @@ suite("@dataform/core", () => {
 
     [
       { testConfig: TestConfigs.bigquery, target: "schema" },
-      { testConfig: TestConfigs.bigqueryWithDatabaseAndSuffix, target: "schema_suffix" }
+      { testConfig: TestConfigs.bigqueryWithSchemaSuffix, target: "schema_suffix" }
     ].forEach(({ testConfig, target }) => {
       test(`schema/suffix: "${target}"`, () => {
         const session = new Session(path.dirname(__filename), testConfig);
@@ -765,7 +780,7 @@ suite("@dataform/core", () => {
     [
       { testConfig: TestConfigs.bigquery, target: "schema.test", name: "test" },
       {
-        testConfig: TestConfigs.bigqueryWithDatabaseAndSuffix,
+        testConfig: TestConfigs.bigqueryWithTablePrefix,
         target: "schema.prefix_test",
         name: "prefix_test"
       }
@@ -786,14 +801,14 @@ suite("@dataform/core", () => {
 
     [
       {
-        testConfig: TestConfigs.bigqueryWithDatabase,
-        target: "test-db.schema.test",
-        database: "test-db"
+        testConfig: TestConfigs.bigqueryWithDefaultDatabase,
+        target: "default-database.schema.test",
+        database: "default-database"
       },
       {
-        testConfig: TestConfigs.bigqueryWithDatabaseAndSuffix,
-        target: "test-db_suffix.schema.test",
-        database: "test-db_suffix"
+        testConfig: TestConfigs.bigqueryWithDefaultDatabaseAndSuffix,
+        target: "default-database_suffix.schema.test",
+        database: "default-database_suffix"
       }
     ].forEach(({ testConfig, target, database }) => {
       test(`database/suffix: "${target}"`, () => {
@@ -830,8 +845,8 @@ suite("@dataform/core", () => {
   suite("resolve", () => {
     [
       TestConfigs.bigquery,
-      TestConfigs.bigqueryWithDatabaseAndSuffix,
-      TestConfigs.bigqueryWithDatabaseAndSuffix
+      TestConfigs.bigqueryWithSchemaSuffix,
+      TestConfigs.bigqueryWithTablePrefix
     ].forEach(testConfig => {
       test(`resolve with prefix "${testConfig.tablePrefix}" and suffix "${testConfig.schemaSuffix}"`, () => {
         const session = new Session(path.dirname(__filename), testConfig);
@@ -840,7 +855,7 @@ suite("@dataform/core", () => {
         const prefix = testConfig.tablePrefix ? `${testConfig.tablePrefix}_` : "";
 
         const resolvedRef = session.resolve("e");
-        expect(resolvedRef).to.equal(`"schema${suffix}"."${prefix}e"`);
+        expect(resolvedRef).to.equal(`\`schema${suffix}.${prefix}e\``);
       });
     });
   });
@@ -869,12 +884,15 @@ suite("@dataform/core", () => {
       expect(
         graph.operations[1].dependencyTargets.map(dependency => targetAsReadableString(dependency))
       ).deep.equals(["schema.operate-1"]);
-      expect(graph.operations[1].queries).deep.equals(['select * from "schema"."operate-1"']);
+      expect(graph.operations[1].queries).deep.equals(["select * from `schema.operate-1`"]);
     });
 
     [
       { testConfig: TestConfigs.bigquery, finalizedSchema: "schema" },
-      { testConfig: TestConfigs.bigqueryWithDatabaseAndSuffix, finalizedSchema: "schema_suffix" }
+      {
+        testConfig: TestConfigs.bigqueryWithSchemaSuffix,
+        finalizedSchema: "schema_suffix"
+      }
     ].forEach(({ testConfig, finalizedSchema }) => {
       test(`schema with suffix: "${finalizedSchema}"`, () => {
         const session = new Session(path.dirname(__filename), testConfig);
@@ -888,7 +906,10 @@ suite("@dataform/core", () => {
 
     [
       { testConfig: TestConfigs.bigquery, finalizedName: "operate-1" },
-      { testConfig: TestConfigs.bigqueryWithDatabaseAndSuffix, finalizedName: "prefix_operate-1" }
+      {
+        testConfig: TestConfigs.bigqueryWithTablePrefix,
+        finalizedName: "prefix_operate-1"
+      }
     ].forEach(({ testConfig, finalizedName }) => {
       test(`name with prefix: "${finalizedName}"`, () => {
         const session = new Session(path.dirname(__filename), testConfig);
@@ -901,8 +922,14 @@ suite("@dataform/core", () => {
     });
 
     [
-      { testConfig: TestConfigs.bigqueryWithDatabase, finalizedDatabase: "test-db" },
-      { testConfig: TestConfigs.bigqueryWithDatabaseAndSuffix, finalizedDatabase: "test-db_suffix" }
+      {
+        testConfig: TestConfigs.bigqueryWithDefaultDatabase,
+        finalizedDatabase: "default-database"
+      },
+      {
+        testConfig: TestConfigs.bigqueryWithDefaultDatabaseAndSuffix,
+        finalizedDatabase: "default-database_suffix"
+      }
     ].forEach(({ testConfig, finalizedDatabase }) => {
       test(`database with suffix: "${finalizedDatabase}"`, () => {
         const session = new Session(path.dirname(__filename), testConfig);
@@ -1210,7 +1237,7 @@ select '\${\`bar\`}'
   suite("assert", () => {
     [
       { testConfig: TestConfigs.bigquery, assertion: "schema" },
-      { testConfig: TestConfigs.bigqueryWithDatabaseAndSuffix, assertion: "schema_suffix" }
+      { testConfig: TestConfigs.bigqueryWithSchemaSuffix, assertion: "schema_suffix" }
     ].forEach(({ testConfig, assertion }) => {
       test(`schema: ${assertion}`, () => {
         const session = new Session(path.dirname(__filename), testConfig);
@@ -1225,7 +1252,7 @@ select '\${\`bar\`}'
 
     [
       { testConfig: TestConfigs.bigquery, finalizedName: "name" },
-      { testConfig: TestConfigs.bigqueryWithDatabaseAndSuffix, finalizedName: "prefix_name" }
+      { testConfig: TestConfigs.bigqueryWithTablePrefix, finalizedName: "prefix_name" }
     ].forEach(({ testConfig, finalizedName }) => {
       test(`name: ${finalizedName}`, () => {
         const session = new Session(path.dirname(__filename), testConfig);
@@ -1239,13 +1266,19 @@ select '\${\`bar\`}'
     });
 
     [
-      { testConfig: TestConfigs.bigqueryWithDatabase, finalizedDatabase: "test-db" },
-      { testConfig: TestConfigs.bigqueryWithDatabaseAndSuffix, finalizedDatabase: "test-db_suffix" }
+      {
+        testConfig: TestConfigs.bigqueryWithDefaultDatabase,
+        finalizedDatabase: "default-database"
+      },
+      {
+        testConfig: TestConfigs.bigqueryWithDefaultDatabaseAndSuffix,
+        finalizedDatabase: "default-database_suffix"
+      }
     ].forEach(({ testConfig, finalizedDatabase }) => {
       test(`database: ${finalizedDatabase}`, () => {
         const session = new Session(path.dirname(__filename), {
           ...testConfig,
-          defaultDatabase: "test-db"
+          defaultDatabase: "default-database"
         });
 
         session.assert("database", ctx => ctx.database());

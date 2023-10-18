@@ -218,18 +218,12 @@ suite("@dataform/api", () => {
 
         test(`${warehouse} when running non incrementally`, () => {
           const action = new Builder(graph, {}, TEST_STATE).build().actions[0];
-          expect(action.tasks[0]).eql(
+          expect(action.tasks).eql([
             dataform.ExecutionTask.create({
               type: "statement",
-              statement: "preOp"
+              statement: "preOp\n;\ncreate or replace table `schema.a` as foo\n;\npostOp"
             })
-          );
-          expect(action.tasks.slice(-1)[0]).eql(
-            dataform.ExecutionTask.create({
-              type: "statement",
-              statement: "postOp"
-            })
-          );
+          ]);
         });
 
         test(`${warehouse} when running incrementally`, () => {
@@ -240,18 +234,13 @@ suite("@dataform/api", () => {
               tables: [{ target: graph.tables[0].target, fields: [] }]
             })
           ).build().actions[0];
-          expect(action.tasks[0]).eql(
+          expect(action.tasks).eql([
             dataform.ExecutionTask.create({
               type: "statement",
-              statement: "incremental preOp"
+              statement:
+                "incremental preOp\n;\ndrop view if exists `schema.a`\n;\ninsert into `schema.a`\t\n()\t\nselect \t\nfrom (incremental foo) as insertions\n;\nincremental postOp"
             })
-          );
-          expect(action.tasks.slice(-1)[0]).eql(
-            dataform.ExecutionTask.create({
-              type: "statement",
-              statement: "incremental postOp"
-            })
-          );
+          ]);
         });
       }
     });
@@ -816,7 +805,7 @@ suite("@dataform/api", () => {
     test("warehouse_check", () => {
       expect(() => credentials.coerce("bigquery", bigqueryCredentials)).to.not.throw();
       expect(() => credentials.coerce("some_other_warehouse", {})).to.throw(
-        /Unrecognized warehouse:/
+        /Dataform now only supports bigquery/
       );
     });
 
