@@ -1,6 +1,6 @@
 import * as fs from "fs";
 
-import * as dbadapters from "df/api/dbadapters";
+import * as dbadapters from "df/cli/api/dbadapters";
 import { dataform } from "df/protos/ts";
 
 export const CREDENTIALS_FILENAME = ".df-credentials.json";

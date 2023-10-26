@@ -2,7 +2,7 @@ import * as path from "path";
 import { CompilerFunction, NodeVM } from "vm2";
 
 import { dataform } from "df/protos/ts";
-import { createCoreExecutionRequest, createGenIndexConfig } from "df/sandbox/vm/create_config";
+import { createCoreExecutionRequest, createGenIndexConfig } from "df/cli/vm/create_config";
 
 function missingValidCorePackageError() {
   return new Error(

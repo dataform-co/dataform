@@ -8,9 +8,8 @@ ts_library(
     name = "cli",
     srcs = glob(["*.ts"]),
     deps = [
-        "//api",
         "//cli",
-        "//sandbox/vm",
+        "//cli/vm:compile_loader",
     ],
 )
 

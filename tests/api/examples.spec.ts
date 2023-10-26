@@ -2,7 +2,7 @@ import { fail } from "assert";
 import { expect } from "chai";
 import * as path from "path";
 
-import { Builder, compile } from "df/api";
+import { Builder, compile } from "df/cli/api";
 import { JSONObjectStringifier, StringifiedSet } from "df/common/strings/stringifier";
 import { targetAsReadableString } from "df/core/targets";
 import { dataform } from "df/protos/ts";

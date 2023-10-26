@@ -8,11 +8,11 @@ import {
   TableField,
   TableMetadata
 } from "@google-cloud/bigquery";
-import { Credentials } from "df/api/commands/credentials";
-import { collectEvaluationQueries, QueryOrAction } from "df/api/dbadapters/execution_sql";
-import { IDbAdapter, IDbClient, IExecutionResult, OnCancel } from "df/api/dbadapters/index";
-import { parseBigqueryEvalError } from "df/api/utils/error_parsing";
-import { LimitedResultSet } from "df/api/utils/results";
+import { Credentials } from "df/cli/api/commands/credentials";
+import { collectEvaluationQueries, QueryOrAction } from "df/cli/api/dbadapters/execution_sql";
+import { IDbAdapter, IDbClient, IExecutionResult, OnCancel } from "df/cli/api/dbadapters/index";
+import { parseBigqueryEvalError } from "df/cli/api/utils/error_parsing";
+import { LimitedResultSet } from "df/cli/api/utils/results";
 import { coerceAsError } from "df/common/errors/errors";
 import { retry } from "df/common/promises";
 import { dataform } from "df/protos/ts";

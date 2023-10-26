@@ -6,7 +6,7 @@ ts_library(
     name = "vscode",
     srcs = glob(["**/*.ts"]),
     deps = [
-        "//api",
+        "//cli/api",
         "//protos:ts",
         "@npm//@types/node",
         "@npm//@types/vscode",

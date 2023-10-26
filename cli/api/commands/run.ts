@@ -1,8 +1,8 @@
 import EventEmitter from "events";
 import Long from "long";
 
-import * as dbadapters from "df/api/dbadapters";
-import { IBigQueryExecutionOptions } from "df/api/dbadapters/bigquery";
+import * as dbadapters from "df/cli/api/dbadapters";
+import { IBigQueryExecutionOptions } from "df/cli/api/dbadapters/bigquery";
 import { Flags } from "df/common/flags";
 import { retry } from "df/common/promises";
 import { deepClone, equals } from "df/common/protos";

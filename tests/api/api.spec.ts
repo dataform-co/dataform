@@ -2,9 +2,9 @@ import { assert, config, expect } from "chai";
 import Long from "long";
 import { anyString, anything, instance, mock, verify, when } from "ts-mockito";
 
-import { Builder, credentials, prune, Runner } from "df/api";
-import { IDbAdapter } from "df/api/dbadapters";
-import { BigQueryDbAdapter } from "df/api/dbadapters/bigquery";
+import { Builder, credentials, prune, Runner } from "df/cli/api";
+import { IDbAdapter } from "df/cli/api/dbadapters";
+import { BigQueryDbAdapter } from "df/cli/api/dbadapters/bigquery";
 import { sleep, sleepUntil } from "df/common/promises";
 import { targetAsReadableString, targetsAreEqual } from "df/core/targets";
 import { dataform } from "df/protos/ts";
