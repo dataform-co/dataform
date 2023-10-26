@@ -1,7 +1,7 @@
-import { prune } from "df/api/commands/prune";
-import { state } from "df/api/commands/state";
-import * as dbadapters from "df/api/dbadapters";
-import { ExecutionSql } from "df/api/dbadapters/execution_sql";
+import { prune } from "df/cli/api/commands/prune";
+import { state } from "df/cli/api/commands/state";
+import * as dbadapters from "df/cli/api/dbadapters";
+import { ExecutionSql } from "df/cli/api/dbadapters/execution_sql";
 import { StringifiedMap, StringifiedSet } from "df/common/strings/stringifier";
 import { targetStringifier } from "df/core/targets";
 import * as utils from "df/core/utils";

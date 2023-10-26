@@ -1,4 +1,4 @@
-import * as dbadapters from "df/api/dbadapters";
+import * as dbadapters from "df/cli/api/dbadapters";
 import { dataform } from "df/protos/ts";
 
 export async function test(

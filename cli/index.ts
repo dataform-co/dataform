@@ -4,11 +4,11 @@ import * as path from "path";
 import yargs from "yargs";
 
 import * as chokidar from "chokidar";
-import { build, compile, credentials, init, install, run, table, test } from "df/api";
-import { CREDENTIALS_FILENAME } from "df/api/commands/credentials";
-import * as dbadapters from "df/api/dbadapters";
-import { prettyJsonStringify } from "df/api/utils";
 import { trackError, trackOption } from "df/cli/analytics";
+import { build, compile, credentials, init, install, run, table, test } from "df/cli/api";
+import { CREDENTIALS_FILENAME } from "df/cli/api/commands/credentials";
+import * as dbadapters from "df/cli/api/dbadapters";
+import { prettyJsonStringify } from "df/cli/api/utils";
 import {
   print,
   printCompiledGraph,

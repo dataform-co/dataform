@@ -16,8 +16,8 @@ ts_test_suite(
         "//examples/never_finishes_compiling:node_modules",
     ],
     deps = [
-        "//api",
-        "//api/utils",
+        "//cli/api",
+        "//cli/api/utils",
         "//common/promises",
         "//common/strings",
         "//core",

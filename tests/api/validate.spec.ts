@@ -1,6 +1,6 @@
 import { expect } from "chai";
 
-import { checkDataformJsonValidity } from "df/api/commands/compile";
+import { checkDataformJsonValidity } from "df/cli/api/commands/compile";
 import { suite, test } from "df/testing";
 
 suite("@dataform/api/validate", () => {

@@ -1,8 +1,8 @@
 import { expect } from "chai";
 
-import * as dfapi from "df/api";
-import * as dbadapters from "df/api/dbadapters";
-import { ExecutionSql } from "df/api/dbadapters/execution_sql";
+import * as dfapi from "df/cli/api";
+import * as dbadapters from "df/cli/api/dbadapters";
+import { ExecutionSql } from "df/cli/api/dbadapters/execution_sql";
 import { dataform } from "df/protos/ts";
 
 export function keyBy<V>(values: V[], keyFn: (value: V) => string): { [key: string]: V } {

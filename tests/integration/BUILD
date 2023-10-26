@@ -13,8 +13,8 @@ ts_test_suite(
         "//tests/integration/bigquery_project:node_modules",
     ],
     deps = [
-        "//api",
-        "//api/utils",
+        "//cli/api",
+        "//cli/api/utils",
         "//common/promises",
         "//core",
         "//protos:ts",

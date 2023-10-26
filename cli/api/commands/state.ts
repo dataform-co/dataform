@@ -1,4 +1,4 @@
-import { IDbAdapter } from "df/api/dbadapters";
+import { IDbAdapter } from "df/cli/api/dbadapters";
 import { dataform } from "df/protos/ts";
 
 export async function state(

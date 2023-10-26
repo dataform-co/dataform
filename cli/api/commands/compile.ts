@@ -4,7 +4,7 @@ import * as semver from "semver";
 
 import { ChildProcess, fork } from "child_process";
 import deepmerge from "deepmerge";
-import { validWarehouses } from "df/api/dbadapters";
+import { validWarehouses } from "df/cli/api/dbadapters";
 import { coerceAsError, ErrorWithCause } from "df/common/errors/errors";
 import { decode64 } from "df/common/protos";
 import { setOrValidateTableEnumType } from "df/core/utils";
@@ -77,7 +77,7 @@ export class CompileChildProcess {
         const workerBundlePath = require.resolve("./worker_bundle");
         return workerBundlePath;
       } catch (e) {
-        return require.resolve("../../sandbox/vm/compile_loader");
+        return require.resolve("../../vm/compile_loader");
       }
     };
     const forkScript = findForkScript();

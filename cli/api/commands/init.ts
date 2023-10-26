@@ -1,9 +1,9 @@
 import * as fs from "fs";
 import * as path from "path";
 
-import { CREDENTIALS_FILENAME } from "df/api/commands/credentials";
-import { install } from "df/api/commands/install";
-import { prettyJsonStringify } from "df/api/utils";
+import { CREDENTIALS_FILENAME } from "df/cli/api/commands/credentials";
+import { install } from "df/cli/api/commands/install";
+import { prettyJsonStringify } from "df/cli/api/utils";
 import { version } from "df/core/version";
 import { dataform } from "df/protos/ts";
 
