@@ -1,6 +1,0 @@
-{
-  "name": "@dataform/examples-redshift-never-finishes-compiling",
-  "version": "0.1.0",
-  "description": "Dataform project used in a testcase.",
-  "private": true
-}
