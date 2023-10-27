@@ -21,7 +21,7 @@ suite("examples", () => {
 
           test(`compiles with database suffix "${databaseSuffix}", schema suffix "${schemaSuffix}"`, async () => {
             const graph = await compile({
-              projectDir: path.resolve("examples/common_v2"),
+              projectDir: path.resolve("tests/integration/common_v2"),
               projectConfigOverride: { schemaSuffix, databaseSuffix, warehouse: "bigquery" },
               useMain
             });
@@ -63,9 +63,9 @@ suite("examples", () => {
                   message: "Actions may only include pre_operations if they create a dataset."
                 },
                 {
-                  fileName: "definitions/has_compile_errors/assertion_with_redshift.sqlx",
+                  fileName: "definitions/has_compile_errors/assertion_with_bigquery.sqlx",
                   message:
-                    'Unexpected property "redshift" in assertion config. Supported properties are: ["database","dependencies","description","disabled","hermetic","name","schema","tags","type"]'
+                    'Unexpected property "bigquery" in assertion config. Supported properties are: ["database","dependencies","description","disabled","hermetic","name","schema","tags","type"]'
                 },
                 {
                   fileName: "definitions/has_compile_errors/protected_assertion.sqlx",
@@ -93,8 +93,7 @@ suite("examples", () => {
                 },
                 {
                   fileName: "definitions/has_compile_errors/table_with_materialized.sqlx",
-                  message:
-                    "The 'materialized' option is only valid for Snowflake and BigQuery views"
+                  message: "The 'materialized' option is only valid for BigQuery views"
                 },
                 {
                   fileName: "definitions/has_compile_errors/view_without_hermetic.sqlx",
@@ -745,7 +744,7 @@ suite("examples", () => {
   });
 
   test("backwards_compatibility", async () => {
-    const graph = await compile({ projectDir: "examples/backwards_compatibility" });
+    const graph = await compile({ projectDir: "tests/integration/backwards_compatibility" });
 
     const tableNames = graph.tables.map((t: dataform.ITable) => t.target.name);
 
@@ -761,7 +760,7 @@ suite("examples", () => {
 
   test("times out after timeout period during compilation", async () => {
     try {
-      await compile({ projectDir: "examples/never_finishes_compiling" });
+      await compile({ projectDir: "tests/integration/never_finishes_compiling" });
       fail("Compilation timeout Error expected.");
     } catch (e) {
       expect(e.message).to.equal("Compilation timed out");
@@ -771,7 +770,7 @@ suite("examples", () => {
   test("invalid dataform json throws error", async () => {
     try {
       await compile({
-        projectDir: path.resolve("examples/invalid_dataform_json")
+        projectDir: path.resolve("tests/integration/invalid_dataform_json")
       });
       fail("Should have failed.");
     } catch (e) {
@@ -781,7 +780,7 @@ suite("examples", () => {
 
   test("version is correctly set", async () => {
     const graph = await compile({
-      projectDir: "examples/common_v2",
+      projectDir: "tests/integration/common_v2",
       projectConfigOverride: { warehouse: "bigquery" }
     });
     const { version: expectedVersion } = require("df/core/version");

@@ -1,0 +1,20 @@
+config {
+  type: "view",
+  schema: "staging",
+  description: "Cleaned version of stackoverflow.posts_questions",
+  tags: ["staging"]
+}
+
+select
+  id as post_id,
+  creation_date as created_at,
+  'question' as type,
+  title,
+  body,
+  owner_user_id,
+  parent_id
+from
+  ${ref("posts_questions")}
+where
+  -- limit to recent data for the purposes of this demo project
+  creation_date >= timestamp("2019-01-01")
