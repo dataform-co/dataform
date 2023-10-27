@@ -12,22 +12,26 @@ suite("@dataform/sqlx", () => {
       const fileContents = `config { type: "view",
       tags: ["tag1", "tag2"]
 }
+
 js {
 const foo = 
   jsFunction("table");
 }
+
 select 
-1 from \${ref({ schema: "df_integration_test", name: "sample_data" })} 
+1 from \${ref({ schema: "df_integration_test", name: "sample_data" })}
 `;
       fs.writeFileSync(filePath, fileContents);
       expect(await formatFile(filePath)).eql(`config {
   type: "view",
   tags: ["tag1", "tag2"]
 }
+
 js {
   const foo =
     jsFunction("table");
 }
+
 select
   1
 from
@@ -44,12 +48,22 @@ from
       const fileContents = `js {
     var tempTable = "yay"
            const colname =         "column";
+
+
+
            let finalTableName = 'dkaodihwada';
 }
+
 drop something
+
+
      ---
+
+
      alter table \${tempTable} rename to \${finalTableName}
+
 ---
+
 SELECT
   SUM(
   IF
@@ -60,13 +74,19 @@ SELECT
       expect(format(fileContents, "sqlx")).eql(`js {
   var tempTable = "yay"
   const colname = "column";
+
   let finalTableName = 'dkaodihwada';
 }
+
 drop something
+
 ---
+
 alter table \${tempTable}
 rename to \${finalTableName}
+
 ---
+
 SELECT
   SUM(IF(session_start_event, 1, 0)) AS session_index
 `);
@@ -74,21 +94,23 @@ SELECT
 
     test("correctly formats bigquery regexps", async () => {
       const fileContents = `config { type: "operation",
-      tags: ["tag1", "tag2"]
+                      tags: ["tag1", "tag2"]
 }
+
 select CAST(REGEXP_EXTRACT("", r'^/([0-9]+)\\'\\"/.*') AS INT64) AS id,
-CAST(REGEXP_EXTRACT("", r"^/([0-9]+)\\"\\'/.*") AS INT64) AS id2,
-IFNULL (
-regexp_extract('', r'\\a?query=([^&]+)&*'),
-regexp_extract('', r'\\a?q=([^&]+)&*')
-) AS id3,
-regexp_extract('bar', r'bar') as ID4 from \${ref("dab")}
-where sample = 100
-`;
+       CAST(REGEXP_EXTRACT("", r"^/([0-9]+)\\"\\'/.*") AS INT64) AS id2,
+       IFNULL (
+         regexp_extract('', r'\\a?query=([^&]+)&*'),
+         regexp_extract('', r'\\a?q=([^&]+)&*')
+       ) AS id3,
+       regexp_extract('bar', r'bar') as ID4 from \${ref("dab")}
+
+where sample = 100`;
       expect(format(fileContents, "sqlx")).eql(`config {
   type: "operation",
   tags: ["tag1", "tag2"]
 }
+
 select
   CAST(
     REGEXP_EXTRACT("", r'^/([0-9]+)\\'\\"/.*') AS INT64
@@ -108,28 +130,46 @@ where
 `);
     });
 
-    test("correctly formats comments.sqlx", async () => {
+    test("correctly formats comments", async () => {
       const fileContents = `
+
 SELECT
     MAX((SELECT SUM(IF(track.event="event_viewed_project_with_connection",1,0)) FROM UNNEST(records)))>0 as created_project,
+
 /* multi line
      comment      */ 2 as
      foo
+
+
 input "something" {
+
+
+
+
+
     select 1
 as test
    /* something */
 /* something
      else      */
           -- and another thing
+
+
+
+
+
+
+
           
 }
+
        config { type: "test",
 }
 `;
       expect(format(fileContents, "sqlx")).eql(`config {
   type: "test",
 }
+
 SELECT
   MAX(
     (
@@ -142,6 +182,7 @@ SELECT
   /* multi line
   comment      */
   2 as foo
+
 input "something" {
   select
     1 as test
@@ -170,11 +211,12 @@ input "something" {
 
     test("formats named arguments", async () => {
       const fileContents = `config { type: "operations" }
-SELECT MAKE_INTERVAL(1,  day=>2, minute => 3)
-`;
+
+SELECT MAKE_INTERVAL(1,  day=>2, minute => 3)`;
       expect(format(fileContents, "sqlx")).equal(`config {
   type: "operations"
 }
+
 SELECT
   MAKE_INTERVAL(1, day => 2, minute => 3)
 `);
@@ -183,12 +225,14 @@ SELECT
     test("formats QUALIFY clause", async () => {
       const fileContents = `
 config { type: "operations" }
+
 SELECT * FROM UNNEST([0,1,2,3,4,5,6,7,8,9]) AS n
 WHERE n < 8
 QUALIFY MOD(ROW_NUMBER() OVER (), 2) = 0`;
       expect(format(fileContents, "sqlx")).equal(`config {
   type: "operations"
 }
+
 SELECT
   *
 FROM
@@ -202,26 +246,33 @@ QUALIFY
 
     test("format triple quoted string", async () => {
       const fileContents = `config { type: "table" }
+
 SELECT
+
 '''1''' AS single_line,
+
 """multi
   line
     string
       with indent"""
 AS multi_line,
+
 REGEXP_CONTAINS(
   "\\n  abc\\n  ",
   r'''
 abc
 ''') AS multi_line_regex,
+
 """
 This project is ...
   "\${database()}"!!
 """ AS with_js
+
 post_operations { select """1""" as inner_sql }`;
       expect(format(fileContents, "sqlx")).equal(`config {
   type: "table"
 }
+
 SELECT
   '''1''' AS single_line,
   """multi
@@ -235,6 +286,7 @@ abc
 This project is ...
   "\${database()}"!!
 """ AS with_js
+
 post_operations {
   select
     """1""" as inner_sql
@@ -246,17 +298,18 @@ post_operations {
   suite("formatter todos", () => {
     test("formats template strings in a string", async () => {
       const fileContents = `
-        config {
-          type: "view"
-        }
-        SELECT
-          "ok" AS \${  "here"+  "works"  },
-          "1 + 2 = \${ 1+2  }" AS TODO_in_string,
-          '''\${1  +2  }''' AS TODO_in_triple_quoted_string
-      `;
+config {
+  type: "view"
+}
+SELECT
+  "ok" AS \${  "here"+  "works"  },
+  "1 + 2 = \${ 1+2  }" AS TODO_in_string,
+  '''\${1  +2  }''' AS TODO_in_triple_quoted_string
+`;
       expect(format(fileContents, "sqlx")).eql(`config {
   type: "view"
 }
+
 SELECT
   "ok" AS \${"here" + "works"},
   "1 + 2 = \${ 1+2  }" AS TODO_in_string,
