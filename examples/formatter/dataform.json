@@ -1,6 +1,0 @@
-{
-  "warehouse": "bigquery",
-  "defaultDatabase": "tada-analytics",
-  "defaultSchema": "df_integration_test",
-  "assertionSchema": "df_integration_test_assertions"
-}
