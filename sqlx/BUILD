@@ -21,9 +21,10 @@ ts_library(
         "format.ts"
     ],
     deps = [
-        "//:modules-fix",
-        "//common/errors",
         ":lexer",
+        "//:modules-fix",
+        "//core",
+        "//common/errors",
         "@npm//@types/js-beautify",
         "@npm//@types/node",
         "@npm//js-beautify",
@@ -39,8 +40,8 @@ ts_test_suite(
         "lexer_test.ts",
     ],
     deps = [
-        ":lexer",
         ":format",
+        ":lexer",
         "//testing",
         "@npm//@types/chai",
         "@npm//@types/node",

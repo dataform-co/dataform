@@ -8,8 +8,6 @@ ts_test_suite(
         "//examples/backwards_compatibility:node_modules",
         "//examples/common_v2:files",
         "//examples/common_v2:node_modules",
-        "//examples/formatter:files",
-        "//examples/formatter:node_modules",
         "//examples/invalid_dataform_json:files",
         "//examples/invalid_dataform_json:node_modules",
         "//examples/never_finishes_compiling:files",
