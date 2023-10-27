@@ -58,6 +58,11 @@ suite("examples", () => {
                 message: "Actions may only include pre_operations if they create a dataset."
               },
               {
+                fileName: "definitions/has_compile_errors/assertion_with_redshift.sqlx",
+                message:
+                  'Unexpected property "redshift" in assertion config. Supported properties are: ["database","dependencies","description","disabled","hermetic","name","schema","tags","type"]'
+              },
+              {
                 fileName: "definitions/has_compile_errors/protected_assertion.sqlx",
                 message:
                   "Actions may only specify 'protected: true' if they are of type 'incremental'."
