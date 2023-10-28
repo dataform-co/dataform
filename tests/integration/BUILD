@@ -12,7 +12,9 @@ ts_test_suite(
             # Redshift integrations tests are currently disabled while we reorganize cluster structure.
             "redshift.spec.ts",
             # Presto tests are disabled until our adapter is updated to Trinio.
-            "presto.spec.ts"
+            "presto.spec.ts",
+            # Postgres image build is failing.
+            "postgres.spec.ts",
         ],
     ),
     data = [
@@ -21,15 +23,10 @@ ts_test_suite(
         "//test_credentials:sqldatawarehouse.json",
         "//tests/integration/bigquery_project:files",
         "//tests/integration/bigquery_project:node_modules",
-        "//tests/integration/postgres_project:files",
-        "//tests/integration/postgres_project:node_modules",
-        "//tests/integration/presto_project:files",
-        "//tests/integration/presto_project:node_modules",
         "//tests/integration/snowflake_project:files",
         "//tests/integration/snowflake_project:node_modules",
         "//tests/integration/sqldatawarehouse_project:files",
         "//tests/integration/sqldatawarehouse_project:node_modules",
-        "//tools/presto:presto_config_files",
     ],
     templated_args = ["--snowflake-use-ocsp=false"],
     deps = [
@@ -40,8 +37,6 @@ ts_test_suite(
         "//protos:ts",
         "//testing",
         "//tests/utils",
-        "//tools/postgres",
-        "//tools/presto",
         "@npm//@types/chai",
         "@npm//@types/long",
         "@npm//@types/node",

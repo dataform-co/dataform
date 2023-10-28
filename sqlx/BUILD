@@ -1,13 +1,13 @@
-package(default_visibility = ["//visibility:public"])
-
+load("//testing:index.bzl", "ts_test_suite")
 load("//tools:ts_library.bzl", "ts_library")
 
+package(default_visibility = ["//visibility:public"])
+
 ts_library(
-    name = "sqlx",
-    srcs = glob(
-        ["**/*.ts"],
-        exclude = ["format.ts"],
-    ),
+    name = "lexer",
+    srcs = [
+        "lexer.ts"
+    ],
     deps = [
         "//:modules-fix",
         "@npm//@types/moo",
@@ -17,18 +17,34 @@ ts_library(
 
 ts_library(
     name = "format",
-    srcs = glob(
-        ["format.ts"],
-    ),
+    srcs = [
+        "format.ts"
+    ],
     deps = [
+        ":lexer",
         "//:modules-fix",
         "//core",
         "//common/errors",
-        "//sqlx:sqlx",
         "@npm//@types/js-beautify",
         "@npm//@types/node",
         "@npm//js-beautify",
         "@npm//sql-formatter",
         "@npm//typeid-js",
+    ],
+)
+
+ts_test_suite(
+    name = "tests",
+    srcs = [
+        "format_test.ts",
+        "lexer_test.ts",
+    ],
+    deps = [
+        ":format",
+        ":lexer",
+        "//testing",
+        "@npm//@types/chai",
+        "@npm//@types/node",
+        "@npm//chai",
     ],
 )
