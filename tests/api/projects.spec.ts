@@ -3,7 +3,6 @@ import { expect } from "chai";
 import * as path from "path";
 
 import { Builder, compile } from "df/cli/api";
-import { JSONObjectStringifier, StringifiedSet } from "df/common/strings/stringifier";
 import { targetAsReadableString } from "df/core/targets";
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
@@ -21,87 +20,82 @@ suite("examples", () => {
 
           test(`compiles with database suffix "${databaseSuffix}", schema suffix "${schemaSuffix}"`, async () => {
             const graph = await compile({
-              projectDir: path.resolve("examples/common_v2"),
+              projectDir: path.resolve("tests/api/projects/common_v2"),
               projectConfigOverride: { schemaSuffix, databaseSuffix, warehouse: "bigquery" },
               useMain
             });
             expect(
-              new StringifiedSet(
-                new JSONObjectStringifier(),
-                graph.graphErrors.compilationErrors.map(({ fileName, message }) => ({
-                  fileName,
-                  message
-                }))
-              )
-            ).deep.equals(
-              new StringifiedSet(new JSONObjectStringifier(), [
-                {
-                  fileName: "includes/example_ignore.js",
-                  message: "publish is not defined"
-                },
-                {
-                  fileName: "definitions/has_compile_errors/assertion_with_bigquery.sqlx",
-                  message:
-                    'Unexpected property "bigquery" in assertion config. Supported properties are: ["database","dependencies","description","disabled","hermetic","name","schema","tags","type"]'
-                },
-                {
-                  fileName: "definitions/has_compile_errors/assertion_with_materialized.sqlx",
-                  message:
-                    'Unexpected property "materialized" in assertion config. Supported properties are: ["database","dependencies","description","disabled","hermetic","name","schema","tags","type"]'
-                },
-                {
-                  fileName: "definitions/has_compile_errors/assertion_with_output.sqlx",
-                  message:
-                    'Unexpected property "hasOutput" in assertion config. Supported properties are: ["database","dependencies","description","disabled","hermetic","name","schema","tags","type"]'
-                },
-                {
-                  fileName: "definitions/has_compile_errors/assertion_with_postops.sqlx",
-                  message: "Actions may only include post_operations if they create a dataset."
-                },
-                {
-                  fileName: "definitions/has_compile_errors/assertion_with_preops.sqlx",
-                  message: "Actions may only include pre_operations if they create a dataset."
-                },
-                {
-                  fileName: "definitions/has_compile_errors/assertion_with_bigquery.sqlx",
-                  message:
-                    'Unexpected property "bigquery" in assertion config. Supported properties are: ["database","dependencies","description","disabled","hermetic","name","schema","tags","type"]'
-                },
-                {
-                  fileName: "definitions/has_compile_errors/protected_assertion.sqlx",
-                  message:
-                    "Actions may only specify 'protected: true' if they are of type 'incremental'."
-                },
-                {
-                  fileName: "definitions/has_compile_errors/protected_assertion.sqlx",
-                  message:
-                    'Unexpected property "protected" in assertion config. Supported properties are: ["database","dependencies","description","disabled","hermetic","name","schema","tags","type"]'
-                },
-                {
-                  fileName: "definitions/has_compile_errors/view_with_incremental.sqlx",
-                  message:
-                    "Actions may only include incremental_where if they are of type 'incremental'."
-                },
-                {
-                  fileName: "definitions/has_compile_errors/view_with_multiple_statements.sqlx",
-                  message:
-                    "Actions may only contain more than one SQL statement if they are of type 'operations'."
-                },
-                {
-                  fileName: "definitions/has_compile_errors/view_with_semi_colon_at_end.sqlx",
-                  message: "Semi-colons are not allowed at the end of SQL statements."
-                },
-                {
-                  fileName: "definitions/has_compile_errors/table_with_materialized.sqlx",
-                  message: "The 'materialized' option is only valid for BigQuery views"
-                },
-                {
-                  fileName: "definitions/has_compile_errors/view_without_hermetic.sqlx",
-                  message:
-                    "Zero-dependency actions which create datasets are required to explicitly declare 'hermetic: (true|false)' when run caching is turned on."
-                }
-              ])
-            );
+              graph.graphErrors.compilationErrors.map(({ fileName, message }) => ({
+                fileName,
+                message
+              }))
+            ).deep.equals([
+              {
+                fileName: "includes/example_ignore.js",
+                message: "publish is not defined"
+              },
+              {
+                fileName: "definitions/has_compile_errors/assertion_with_bigquery.sqlx",
+                message:
+                  'Unexpected property "bigquery" in assertion config. Supported properties are: ["database","dependencies","description","disabled","hermetic","name","schema","tags","type"]'
+              },
+              {
+                fileName: "definitions/has_compile_errors/assertion_with_materialized.sqlx",
+                message:
+                  'Unexpected property "materialized" in assertion config. Supported properties are: ["database","dependencies","description","disabled","hermetic","name","schema","tags","type"]'
+              },
+              {
+                fileName: "definitions/has_compile_errors/assertion_with_output.sqlx",
+                message:
+                  'Unexpected property "hasOutput" in assertion config. Supported properties are: ["database","dependencies","description","disabled","hermetic","name","schema","tags","type"]'
+              },
+              {
+                fileName: "definitions/has_compile_errors/assertion_with_postops.sqlx",
+                message: "Actions may only include post_operations if they create a dataset."
+              },
+              {
+                fileName: "definitions/has_compile_errors/assertion_with_preops.sqlx",
+                message: "Actions may only include pre_operations if they create a dataset."
+              },
+              {
+                fileName: "definitions/has_compile_errors/assertion_with_bigquery.sqlx",
+                message:
+                  'Unexpected property "bigquery" in assertion config. Supported properties are: ["database","dependencies","description","disabled","hermetic","name","schema","tags","type"]'
+              },
+              {
+                fileName: "definitions/has_compile_errors/protected_assertion.sqlx",
+                message:
+                  "Actions may only specify 'protected: true' if they are of type 'incremental'."
+              },
+              {
+                fileName: "definitions/has_compile_errors/protected_assertion.sqlx",
+                message:
+                  'Unexpected property "protected" in assertion config. Supported properties are: ["database","dependencies","description","disabled","hermetic","name","schema","tags","type"]'
+              },
+              {
+                fileName: "definitions/has_compile_errors/view_with_incremental.sqlx",
+                message:
+                  "Actions may only include incremental_where if they are of type 'incremental'."
+              },
+              {
+                fileName: "definitions/has_compile_errors/view_with_multiple_statements.sqlx",
+                message:
+                  "Actions may only contain more than one SQL statement if they are of type 'operations'."
+              },
+              {
+                fileName: "definitions/has_compile_errors/view_with_semi_colon_at_end.sqlx",
+                message: "Semi-colons are not allowed at the end of SQL statements."
+              },
+              {
+                fileName: "definitions/has_compile_errors/table_with_materialized.sqlx",
+                message: "The 'materialized' option is only valid for BigQuery views"
+              },
+              {
+                fileName: "definitions/has_compile_errors/view_without_hermetic.sqlx",
+                message:
+                  "Zero-dependency actions which create datasets are required to explicitly declare 'hermetic: (true|false)' when run caching is turned on."
+              }
+            ]);
 
             // Check JS blocks get processed.
             const exampleJsBlocks = graph.tables.find(
@@ -744,7 +738,7 @@ suite("examples", () => {
   });
 
   test("backwards_compatibility", async () => {
-    const graph = await compile({ projectDir: "examples/backwards_compatibility" });
+    const graph = await compile({ projectDir: "tests/api/projects/backwards_compatibility" });
 
     const tableNames = graph.tables.map((t: dataform.ITable) => t.target.name);
 
@@ -760,7 +754,7 @@ suite("examples", () => {
 
   test("times out after timeout period during compilation", async () => {
     try {
-      await compile({ projectDir: "examples/never_finishes_compiling" });
+      await compile({ projectDir: "tests/api/projects/never_finishes_compiling" });
       fail("Compilation timeout Error expected.");
     } catch (e) {
       expect(e.message).to.equal("Compilation timed out");
@@ -770,7 +764,7 @@ suite("examples", () => {
   test("invalid dataform json throws error", async () => {
     try {
       await compile({
-        projectDir: path.resolve("examples/invalid_dataform_json")
+        projectDir: path.resolve("tests/api/projects/invalid_dataform_json")
       });
       fail("Should have failed.");
     } catch (e) {
@@ -780,7 +774,7 @@ suite("examples", () => {
 
   test("version is correctly set", async () => {
     const graph = await compile({
-      projectDir: "examples/common_v2",
+      projectDir: "tests/api/projects/common_v2",
       projectConfigOverride: { warehouse: "bigquery" }
     });
     const { version: expectedVersion } = require("df/core/version");
