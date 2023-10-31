@@ -1,6 +1,6 @@
 import { expect } from "chai";
 
-import { compile } from "df/api";
+import { compile } from "df/cli/api";
 import { suite, test } from "df/testing";
 
 suite("examples", () => {

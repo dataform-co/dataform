@@ -18,7 +18,7 @@ ts_test_suite(
         ":node_modules",
     ],
     deps = [
-        "//api",
+        "//cli/api",
         "//testing",
         "//tests/utils",
         "@npm//@types/chai",
