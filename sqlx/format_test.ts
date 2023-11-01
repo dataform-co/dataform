@@ -163,11 +163,11 @@ as test
           
 }
 
-       config { type: "test",
+       config { type: "table",
 }
 `;
       expect(format(fileContents, "sqlx")).eql(`config {
-  type: "test",
+  type: "table",
 }
 
 SELECT

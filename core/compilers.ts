@@ -1,6 +1,3 @@
-import { AssertionContext } from "df/core/assertion";
-import { OperationContext } from "df/core/operation";
-import { TableContext } from "df/core/table";
 import * as utils from "df/core/utils";
 import { SyntaxTreeNode, SyntaxTreeNodeType } from "df/sqlx/lexer";
 
@@ -8,63 +5,7 @@ export function compile(code: string, path: string) {
   if (path.endsWith(".sqlx")) {
     return compileSqlx(SyntaxTreeNode.create(code), path);
   }
-  if (path.endsWith(".assert.sql")) {
-    return compileAssertionSql(code, path);
-  }
-  if (path.endsWith(".ops.sql")) {
-    return compileOperationSql(code, path);
-  }
-  if (path.endsWith(".sql")) {
-    return compileTableSql(code, path);
-  }
   return code;
-}
-
-// For older versions of @dataform/core, these functions may not actually exist so leave them as undefined.
-function safelyBindCtxFunction(name: string) {
-  return `ctx.${name} ? ctx.${name}.bind(ctx) : undefined`;
-}
-
-function compileTableSql(code: string, path: string) {
-  const { sql, js } = extractJsBlocks(code);
-  const functionsBindings = getFunctionPropertyNames(TableContext.prototype).map(
-    name => `const ${name} = ${safelyBindCtxFunction(name)};`
-  );
-
-  return `
-  publish("${utils.getEscapedFileName(path)}").query(ctx => {
-    ${functionsBindings.join("\n")}
-    ${js}
-    return \`${sql}\`;
-  })`;
-}
-
-function compileOperationSql(code: string, path: string) {
-  const { sql, js } = extractJsBlocks(code);
-  const functionsBindings = getFunctionPropertyNames(OperationContext.prototype).map(
-    name => `const ${name} = ${safelyBindCtxFunction(name)};`
-  );
-
-  return `
-  operate("${utils.getEscapedFileName(path)}").queries(ctx => {
-    ${functionsBindings.join("\n")}
-    ${js}
-    return \`${sql}\`.split("\\n---\\n");
-  })`;
-}
-
-function compileAssertionSql(code: string, path: string) {
-  const { sql, js } = extractJsBlocks(code);
-  const functionsBindings = getFunctionPropertyNames(AssertionContext.prototype).map(
-    name => `const ${name} = ${safelyBindCtxFunction(name)};`
-  );
-
-  return `
-  assert("${utils.getEscapedFileName(path)}").query(ctx => {
-    ${functionsBindings.join("\n")}
-    ${js}
-    return \`${sql}\`;
-  })`;
 }
 
 export function extractJsBlocks(code: string): { sql: string; js: string } {
@@ -88,33 +29,6 @@ export function extractJsBlocks(code: string): { sql: string; js: string } {
     sql: cleanSql.trim(),
     js: jsBlocks.map(block => block.trim()).join("\n")
   };
-}
-
-export function compileStandaloneSqlxQuery(code: string) {
-  const { config, js, sql, incremental, preOperations, postOperations, inputs } = extractSqlxParts(
-    SyntaxTreeNode.create(code)
-  );
-  if (config) {
-    throw new Error(`Standalone SQLX queries may not define 'config' code blocks.`);
-  }
-  if (incremental) {
-    throw new Error(`Standalone SQLX queries may not define 'incremental_where' code blocks.`);
-  }
-  if (preOperations.length > 0) {
-    throw new Error(`Standalone SQLX queries may not define 'pre_operations' code blocks.`);
-  }
-  if (postOperations.length > 0) {
-    throw new Error(`Standalone SQLX queries may not define 'post_operations' code blocks.`);
-  }
-  if (inputs.length > 0) {
-    throw new Error(`Standalone SQLX queries may not define 'input' code blocks.`);
-  }
-  return `
-    const ref = dataform.resolve.bind(dataform);
-    const resolve = dataform.resolve.bind(dataform);
-    ${js}
-    return \`${sql}\`;
-  `;
 }
 
 function compileSqlx(rootNode: SyntaxTreeNode, path: string) {
@@ -286,22 +200,6 @@ function extractSqlxParts(rootNode: SyntaxTreeNode) {
     postOperations,
     inputs
   };
-}
-
-function getFunctionPropertyNames(prototype: any) {
-  return [
-    ...new Set(
-      Object.getOwnPropertyNames(prototype).filter(propertyName => {
-        if (typeof prototype[propertyName] !== "function") {
-          return false;
-        }
-        if (propertyName === "constructor") {
-          return false;
-        }
-        return true;
-      })
-    )
-  ];
 }
 
 function createEscapedStatements(nodes: Array<string | SyntaxTreeNode>) {
