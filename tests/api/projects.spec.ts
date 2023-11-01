@@ -733,6 +733,8 @@ suite("examples", () => {
   });
 
   test("backwards_compatibility", async () => {
+    // The purpose of this test is partially to make sure we don't break the compilation "contract"
+    // between the old versions of core and the new versions of the CLI.
     const graph = await compile({ projectDir: "tests/api/projects/backwards_compatibility" });
 
     const tableNames = graph.tables.map((t: dataform.ITable) => t.target.name);
