@@ -1,4 +1,3 @@
-import { decode64, encode64 } from "df/common/protos";
 import { Session } from "df/core/session";
 import * as utils from "df/core/utils";
 import { dataform } from "df/protos/ts";
@@ -6,14 +5,14 @@ import { dataform } from "df/protos/ts";
 /**
  * This is the main entry point into the user space code that should be invoked by the compilation wrapper sandbox.
  *
- * @param encodedCoreExecutionRequest a base64 encoded {@see dataform.CoreExecutionRequest} proto.
- * @returns a base64 encoded {@see dataform.CoreExecutionResponse} proto.
+ * @param coreExecutionRequest an encoded {@see dataform.CoreExecutionRequest} proto.
+ * @returns a {@see dataform.CoreExecutionResponse} proto.
  */
-export function main(encodedCoreExecutionRequest: string): string {
+export function main(coreExecutionRequest: Uint8Array): Uint8Array {
   const globalAny = global as any;
 
-  const request = decode64(dataform.CoreExecutionRequest, encodedCoreExecutionRequest);
-  const compileRequest = request.compile;
+  const request = dataform.CoreExecutionRequest.decode(coreExecutionRequest).compile;
+  const compileRequest = request;
 
   // Read the project config from the root of the project.
   const originalProjectConfig = require("dataform.json");
@@ -46,7 +45,7 @@ export function main(encodedCoreExecutionRequest: string): string {
   // Require "includes/*.js" files, attaching them (by file basename) to the `global` object.
   // We delay attaching them to `global` until after all have been required, to prevent
   // "includes" files from implicitly depending on other "includes" files.
-  const topLevelIncludes: {[key: string]: any} = {};
+  const topLevelIncludes: { [key: string]: any } = {};
   compileRequest.compileConfig.filePaths
     .filter(path => path.startsWith(`includes${utils.pathSeperator}`))
     .filter(path => path.split(utils.pathSeperator).length === 2) // Only include top-level "includes" files.
@@ -81,9 +80,9 @@ export function main(encodedCoreExecutionRequest: string): string {
       }
     });
 
-  // Return a base64 encoded proto. Returning a Uint8Array directly causes issues.
-  return encode64(
-    dataform.CoreExecutionResponse,
-    dataform.CoreExecutionResponse.create({ compile: { compiledGraph: session.compile() } })
-  );
+  return dataform.CoreExecutionResponse.encode(
+    dataform.CoreExecutionResponse.create({
+      compile: { compiledGraph: session.compile() }
+    })
+  ).finish();
 }
