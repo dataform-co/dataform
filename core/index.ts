@@ -1,9 +1,9 @@
 import * as adapters from "df/core/adapters";
 import { compile as compiler, compileStandaloneSqlxQuery } from "df/core/compilers";
 import { genIndex as indexFileGenerator } from "df/core/gen_index";
+import { main } from "df/core/main";
 import { Session } from "df/core/session";
 import { version as dataformCoreVersion } from "df/core/version";
-import { main } from "df/core/main";
 
 // Create static session object.
 // This hack just enforces the singleton session object to
